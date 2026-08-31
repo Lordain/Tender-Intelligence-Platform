@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 import { readComprasMxContractsFile } from "../lib/ingestion/connectors/compras-mx-contracts-bulk-file";
 import { mapComprasMxContractRowToTender } from "../lib/ingestion/compras-mx-contracts-mapper";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
 import type { Tender } from "../types/tender";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -28,55 +29,17 @@ async function upsertTenders(tenders: Tender[]) {
     process.exit(1);
   }
 
-  for (const tender of tenders) {
-    const { keyDates, ...fields } = tender;
+  const { upsertedCount, failed } = await upsertTendersBatched(supabase, tenders, (done, total) => {
+    console.log(`Upserted ${done}/${total}...`);
+  });
 
-    const { data: upserted, error: tenderError } = await supabase
-      .from("tenders")
-      .upsert(
-        {
-          slug: fields.slug,
-          tender_number: fields.tenderNumber,
-          title: fields.title,
-          summary: fields.summary,
-          buyer: fields.buyer,
-          country: fields.country,
-          government_level: fields.governmentLevel,
-          industry: fields.industry,
-          scope_type: fields.scopeType,
-          procedure_type: fields.procedureType,
-          publication_date: fields.publicationDate,
-          award_date: fields.awardDate ?? null,
-          estimated_value: fields.estimatedValue ?? null,
-          currency: fields.currency ?? null,
-          status: fields.status,
-          relevance_tier: fields.relevance.tier,
-          relevance_label: fields.relevance.label,
-          relevance_reason: fields.relevance.reason,
-          source_name: fields.sourceName,
-          source_url: fields.sourceUrl,
-          updated_at: fields.updatedAt,
-        },
-        { onConflict: "slug" },
-      )
-      .select("id")
-      .single();
-
-    if (tenderError || !upserted) {
-      console.error(`Failed to upsert ${fields.slug}:`, tenderError?.message);
-      continue;
-    }
-
-    const tenderId = upserted.id as string;
-    await supabase.from("tender_key_dates").delete().eq("tender_id", tenderId);
-    if (keyDates.length > 0) {
-      await supabase.from("tender_key_dates").insert(
-        keyDates.map((d) => ({ tender_id: tenderId, type: d.type, date: d.date })),
-      );
-    }
-
-    console.log(`Upserted: ${fields.slug}`);
+  if (failed.length > 0) {
+    console.error(`${failed.length} row(s) failed to upsert:`);
+    for (const f of failed.slice(0, 20)) console.error(`  ${f.slug}: ${f.error}`);
+    if (failed.length > 20) console.error(`  ...and ${failed.length - 20} more.`);
   }
+
+  console.log(`Upserted ${upsertedCount} of ${tenders.length} mapped tenders.`);
 }
 
 async function main() {
@@ -103,13 +66,18 @@ async function main() {
   console.log(`Mapped ${tenders.length} of ${rows.length} rows.`);
 
   if (useFixture || !shouldWrite) {
-    console.log(JSON.stringify(tenders, null, 2));
+    // A real bulk file can map tens of thousands of tenders — printing all
+    // of them to stdout on a dry run isn't useful past confirming the shape
+    // looks right, so only the fixture (a couple of rows) prints in full.
+    console.log(JSON.stringify(useFixture ? tenders : tenders.slice(0, 5), null, 2));
+    if (!useFixture && tenders.length > 5) {
+      console.log(`\n...and ${tenders.length - 5} more (showing first 5 of a real file's dry run).`);
+    }
     console.log(`\n${useFixture ? "--fixture" : "dry run (pass --write to actually upsert)"} — nothing was written to Supabase.`);
     return;
   }
 
   await upsertTenders(tenders);
-  console.log(`Done. Ingested ${tenders.length} tenders.`);
 }
 
 main();

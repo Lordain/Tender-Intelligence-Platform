@@ -86,6 +86,46 @@ should be treated as more reliable than `compras-mx-contracts-mapper.ts`**
 respectively, while the contracts mapper is built against and tested
 against real downloaded data.
 
+### The open-tenders-vs-contracts gap is still open (re-investigated, still unresolved)
+
+Re-checked this again to see if it could finally be closed: all
+`*.gob.mx` domains (comprasmx.buengobierno.gob.mx,
+upcp-compranet.buengobierno.gob.mx, including a specific 2023 CompraNet
+guide PDF surfaced by search) are still network-egress-blocked from this
+environment — confirmed with a direct fetch attempt, not assumed. Web
+search surfaced one third-party project
+(`procurement-analytics/compranet-data` on GitHub) that claims to download
+Compranet data and convert it to OCDS, but its README doesn't document the
+actual endpoint/format it uses, it predates the 2023 Compras MX migration,
+and per this project's own sourcing rule (real docs/files only, never a
+guess or an unverified third party), it isn't trustworthy enough to build
+against blind.
+
+**This still needs the same thing that unblocked the contracts mapper**: a
+real sample from the user — either a browser-devtools network capture of
+the "Difusión de procedimientos" search results (the live/open-tender list,
+as opposed to the awarded-contracts bulk file already ingested), or an
+official doc that documents that endpoint. Until then, this platform's
+Mexico data is historical/awarded contracts only, not "tenders you can
+still bid on" — flagged here rather than silently treated as solved.
+
+## Bulk ingestion at real scale
+
+`upsert-tenders.ts` (`upsertTendersBatched`) is the shared write path for
+`ingest-compras-mx-contracts.ts` and `ingest-compranet5-bulk.ts`. It replaced
+each script's original one-row-at-a-time upsert loop, which would have taken
+hours and burned through Supabase rate limits against a real yearly export
+(tens of thousands of rows) — confirmed by generating a synthetic 5,000-row
+file with the real column headers and timing the mapping step (~1s once
+Node/tsx is warm; the actual bottleneck was always going to be network round
+trips, not parsing). It upserts tenders `BATCH_SIZE` (500) rows at a time,
+replaces `tender_key_dates` per batch with two bulk calls instead of two
+calls per row, and records per-slug failures without aborting the whole run
+so one bad batch doesn't lose everything else in a large file. Both scripts'
+dry-run mode (no `--write`) now prints only the first 5 mapped tenders for a
+real file, not the whole file, so a large dry run doesn't flood the
+terminal — `--fixture` still prints in full since it's only a couple of rows.
+
 ## What's still an unverified placeholder
 
 - `connectors/compras-mx-connector.ts` — assumes a queryable OCDS REST API

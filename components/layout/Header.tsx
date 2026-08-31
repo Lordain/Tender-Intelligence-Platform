@@ -5,6 +5,7 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { AuthNav } from "@/components/layout/AuthNav";
 
 export function Header({ tenders }: { tenders: Tender[] }) {
   const { locale } = useLocale();
@@ -39,7 +40,8 @@ export function Header({ tenders }: { tenders: Tender[] }) {
             </Link>
           </nav>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <AuthNav />
           <NotificationBell tenders={tenders} />
           <LocaleSwitcher />
         </div>

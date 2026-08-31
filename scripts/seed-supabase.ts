@@ -1,6 +1,6 @@
 /**
  * Upserts the bundled mock tenders (data/tenders.ts) into Supabase.
- * Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (the service role
+ * Requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (the service role
  * key is required, not just the anon key, since RLS only grants public
  * read access — writes must bypass it).
  *
@@ -13,7 +13,7 @@ async function main() {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
     console.error(
-      "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set. See .env.example.",
+      "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set. See .env.example.",
     );
     process.exit(1);
   }

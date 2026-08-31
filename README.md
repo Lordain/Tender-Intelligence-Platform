@@ -36,17 +36,21 @@ The app works out of the box with bundled mock data (`data/tenders.ts`) — no
 database required. To connect a real Supabase project:
 
 1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard).
-2. In **Settings → API**, copy the **Project URL**, the **anon** key, and the
-   **service_role** key (secret — never expose it client-side).
-3. Open the **SQL Editor** and run `supabase/migrations/0001_init.sql`. This
-   creates all tables (`tenders`, `tender_requirements`, `tender_key_dates`,
-   `tender_risks`, `tender_documents`, `buyers`, `industries`, `profiles`,
-   `subscriptions`) with indexes and Row Level Security policies (public
-   read on tender data; private read on profiles/subscriptions).
+2. In **Settings → API**, copy the **Project URL**, the **anon** / **Publishable**
+   key, and the **service_role** / **Secret** key (secret — never expose it
+   client-side).
+3. Open the **SQL Editor** and run, in order:
+   - `supabase/migrations/0001_init.sql` — creates all tables (`tenders`,
+     `tender_requirements`, `tender_key_dates`, `tender_risks`,
+     `tender_documents`, `buyers`, `industries`, `profiles`,
+     `subscriptions`) with indexes and Row Level Security policies (public
+     read on tender data; private read on profiles/subscriptions).
+   - `supabase/migrations/0002_profile_on_signup.sql` — auto-creates a
+     `profiles` row whenever someone registers via Supabase Auth.
 4. Copy `.env.example` to `.env.local` and fill in the three values:
    ```
-   SUPABASE_URL=
-   SUPABASE_ANON_KEY=
+   NEXT_PUBLIC_SUPABASE_URL=
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=
    SUPABASE_SERVICE_ROLE_KEY=
    ```
 5. Seed it with the bundled mock tenders (optional):
@@ -56,6 +60,24 @@ database required. To connect a real Supabase project:
 6. Run `npm run dev` — the app automatically prefers Supabase when these env
    vars are set, and falls back to mock data otherwise (see
    `lib/tenders.ts`).
+
+## Auth
+
+Register/log in/log out use Supabase Auth (email + password), via
+`@supabase/ssr` for session handling — `middleware.ts` refreshes the session
+cookie on every request. Auth state is read client-side (`lib/auth.ts`) so
+pages stay statically prerendered; reading the session in a Server Component
+would force the whole app into dynamic rendering just to know whether one
+visitor is logged in.
+
+By default, a new Supabase project requires email confirmation before a
+user can log in — after registering, check the inbox for that address. You
+can disable this in **Authentication → Providers → Email → Confirm email**
+in the Supabase dashboard if you'd rather test without it.
+
+Saved tenders/searches (see below) are still `localStorage`-only, not tied
+to the account yet — that migration to per-user Supabase storage is future
+work now that accounts exist.
 
 **Note on schema shape**: qualification, experience, and required-document
 requirements share one `tender_requirements` table distinguished by a `kind`

@@ -7,10 +7,10 @@
  * Usage: npm run db:seed
  */
 import { tenders } from "../data/tenders";
-import { getSupabaseServerClient } from "../lib/supabase/server";
+import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
 async function main() {
-  const supabase = getSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   if (!supabase) {
     console.error(
       "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set. See .env.example.",

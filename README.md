@@ -63,9 +63,10 @@ database required. To connect a real Supabase project:
 
 ## Auth
 
-Register/log in/log out use Supabase Auth (email + password), via
-`@supabase/ssr` for session handling — `middleware.ts` refreshes the session
-cookie on every request. Auth state is read client-side (`lib/auth.ts`) so
+Register/log in/log out use Supabase Auth (email + password, plus a magic-link
+option), via `@supabase/ssr` for session handling — `proxy.ts` (Next.js's
+renamed `middleware.ts` convention) refreshes the session cookie on every
+request. Auth state is read client-side (`lib/auth.ts`) so
 pages stay statically prerendered; reading the session in a Server Component
 would force the whole app into dynamic rendering just to know whether one
 visitor is logged in.
@@ -86,3 +87,16 @@ column, since they're structurally identical. Localized text (`title`,
 directly on each row rather than in a separate translations table, keeping
 one row the single source of truth per the "original language wins" design
 principle.
+
+## Data Ingestion
+
+`lib/ingestion/` — see **`lib/ingestion/README.md`** for the full picture,
+including what's verified-working, what's an unverified placeholder pending
+confirmation of the real Compras MX API endpoint, and what's deliberately
+not built yet (extracting qualifications/risks/documents needs an LLM,
+Phase 6). Quick check that the mapping logic works, no network or Supabase
+needed:
+
+```bash
+npm run ingest:compras-mx -- --fixture
+```

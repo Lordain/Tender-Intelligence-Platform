@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "tsx scripts/seed-supabase.ts"
+    "db:seed": "tsx scripts/seed-supabase.ts",
+    "ingest:compras-mx": "tsx scripts/ingest-compras-mx.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

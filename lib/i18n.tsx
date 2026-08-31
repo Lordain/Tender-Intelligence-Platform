@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { Locale } from "@/types/tender";
 import { localize, uiText } from "@/lib/localize";
+import { pickSupportedLocale } from "@/lib/detect-locale";
 
 export { localize, uiText };
 
@@ -32,13 +33,21 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("en");
 
   useEffect(() => {
+    // Deliberately syncing post-mount (rather than as lazy initial state) to avoid an SSR/client
+    // hydration mismatch — the server always renders "en" since it has no access to the browser's
+    // stored preference or language settings.
     const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-    if (stored && LOCALES.includes(stored as Locale)) {
-      // Deliberately syncing from localStorage post-mount to avoid an SSR/client hydration mismatch.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLocaleState(stored as Locale);
-    }
+    const detected =
+      stored && LOCALES.includes(stored as Locale)
+        ? (stored as Locale)
+        : pickSupportedLocale(navigator.languages ?? [navigator.language]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocaleState(detected);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   function setLocale(next: Locale) {
     setLocaleState(next);

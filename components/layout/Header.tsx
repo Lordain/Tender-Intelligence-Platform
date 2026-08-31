@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
-export function Header() {
+export function Header({ tenders }: { tenders: Tender[] }) {
   const { locale } = useLocale();
 
   return (
@@ -37,7 +39,10 @@ export function Header() {
             </Link>
           </nav>
         </div>
-        <LocaleSwitcher />
+        <div className="flex items-center gap-3">
+          <NotificationBell tenders={tenders} />
+          <LocaleSwitcher />
+        </div>
       </div>
     </header>
   );

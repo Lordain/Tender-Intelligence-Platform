@@ -4,6 +4,7 @@ import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { getAllTenders } from "@/lib/tenders";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +22,9 @@ export const metadata: Metadata = {
     "Discover, understand, and qualify for government tenders in Mexico and beyond.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const tenders = await getAllTenders();
+
   return (
     <html
       lang="en"
@@ -29,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <LocaleProvider>
-          <Header />
+          <Header tenders={tenders} />
           <main className="flex flex-1 flex-col">{children}</main>
           <Footer />
         </LocaleProvider>

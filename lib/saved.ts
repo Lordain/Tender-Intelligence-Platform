@@ -50,9 +50,11 @@ export type SavedSearch = {
   name: string;
   /** Relative URL (e.g. "/tenders?q=...&industry=Energy&status=open") that replays this search. */
   href: string;
-  /** Data model only — no email/push delivery is implemented yet (needs a backend job + email provider). */
+  /** When enabled, tenders published after lastCheckedAt matching this search surface in the notification bell. */
   alertEnabled: boolean;
   createdAt: string;
+  /** Tenders created at or before this timestamp are treated as already seen. Advances via markSearchChecked. */
+  lastCheckedAt: string;
 };
 
 export function useSavedSearches() {
@@ -63,12 +65,10 @@ export function useSavedSearches() {
     setSearches(readList<SavedSearch>(SAVED_SEARCHES_KEY));
   }, []);
 
-  const addSearch = useCallback((search: Omit<SavedSearch, "id" | "createdAt">) => {
+  const addSearch = useCallback((search: Omit<SavedSearch, "id" | "createdAt" | "lastCheckedAt">) => {
     setSearches((prev) => {
-      const next = [
-        ...prev,
-        { ...search, id: crypto.randomUUID(), createdAt: new Date().toISOString() },
-      ];
+      const now = new Date().toISOString();
+      const next = [...prev, { ...search, id: crypto.randomUUID(), createdAt: now, lastCheckedAt: now }];
       writeList(SAVED_SEARCHES_KEY, next);
       return next;
     });
@@ -92,5 +92,16 @@ export function useSavedSearches() {
     });
   }, []);
 
-  return { searches, addSearch, removeSearch, toggleAlert };
+  const markSearchesChecked = useCallback((ids: string[], checkedAt = new Date().toISOString()) => {
+    setSearches((prev) => {
+      const idSet = new Set(ids);
+      const next = prev.map((search) =>
+        idSet.has(search.id) ? { ...search, lastCheckedAt: checkedAt } : search,
+      );
+      writeList(SAVED_SEARCHES_KEY, next);
+      return next;
+    });
+  }, []);
+
+  return { searches, addSearch, removeSearch, toggleAlert, markSearchesChecked };
 }

@@ -131,6 +131,15 @@ export const uiText = {
     es: "Enviamos un enlace de confirmación a tu correo. Haz clic en él para activar tu cuenta y luego inicia sesión.",
     zh: "我们已向您的邮箱发送了确认链接。点击链接激活账户后即可登录。",
   },
+  passwordTab: { en: "Password", es: "Contraseña", zh: "密码登录" },
+  magicLinkTab: { en: "Magic Link", es: "Enlace Mágico", zh: "免密登录" },
+  sendMagicLink: { en: "Send magic link", es: "Enviar enlace mágico", zh: "发送登录链接" },
+  magicLinkSent: { en: "Check your email", es: "Revisa tu correo", zh: "请查收邮箱" },
+  magicLinkSentBody: {
+    en: "We sent a one-click login link to your email. It expires shortly, so use it soon.",
+    es: "Enviamos un enlace de acceso de un clic a tu correo. Caduca pronto, así que úsalo cuanto antes.",
+    zh: "我们已向您的邮箱发送了一键登录链接，链接很快会过期，请尽快使用。",
+  },
   authNotConfigured: {
     en: "Accounts aren't available yet — the site owner hasn't connected authentication.",
     es: "Las cuentas aún no están disponibles — el propietario del sitio no ha configurado la autenticación.",

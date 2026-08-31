@@ -15,9 +15,12 @@ export function AuthNav() {
   if (user) {
     return (
       <div className="flex items-center gap-3">
-        <span className="hidden max-w-[10rem] truncate text-xs text-zinc-500 sm:inline">
+        <Link
+          href="/account"
+          className="hidden max-w-[10rem] truncate text-xs text-zinc-500 hover:text-zinc-900 sm:inline dark:hover:text-zinc-50"
+        >
           {user.email}
-        </span>
+        </Link>
         <button
           type="button"
           onClick={async () => {

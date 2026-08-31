@@ -165,4 +165,26 @@ export const uiText = {
   previousPage: { en: "Previous", es: "Anterior", zh: "上一页" },
   nextPage: { en: "Next", es: "Siguiente", zh: "下一页" },
   pageOf: { en: "Page {page} of {total}", es: "Página {page} de {total}", zh: "第 {page} 页，共 {total} 页" },
+
+  navPricing: { en: "Pricing", es: "Precios", zh: "价格" },
+  navAccount: { en: "Account", es: "Cuenta", zh: "账户" },
+  account: { en: "Account", es: "Cuenta", zh: "账户" },
+  companyNameLabel: { en: "Company name", es: "Nombre de la empresa", zh: "公司名称" },
+  saveProfile: { en: "Save", es: "Guardar", zh: "保存" },
+  profileSaved: { en: "Saved", es: "Guardado", zh: "已保存" },
+  currentPlan: { en: "Current plan", es: "Plan actual", zh: "当前套餐" },
+  freePlan: { en: "Free preview — no active subscription", es: "Vista previa gratuita — sin suscripción activa", zh: "免费预览——尚未订阅付费套餐" },
+  viewPlans: { en: "View plans", es: "Ver planes", zh: "查看套餐" },
+  pricingTitle: { en: "Plans for every stage of bidding", es: "Planes para cada etapa de licitación", zh: "适配各阶段投标需求的套餐" },
+  pricingSubtitle: {
+    en: "Start free-preview, upgrade as your team starts bidding seriously.",
+    es: "Comienza con la vista previa gratuita y mejora conforme tu equipo empiece a licitar en serio.",
+    zh: "从免费预览开始，随着团队正式投标逐步升级。",
+  },
+  mostPopular: { en: "Most popular", es: "Más popular", zh: "最受欢迎" },
+  paymentNotConfigured: {
+    en: "Checkout isn't connected yet — this is a preview of the plans. Contact us to get set up.",
+    es: "El pago aún no está configurado — esta es una vista previa de los planes. Contáctanos para activarlo.",
+    zh: "支付功能尚未开通——这里仅为套餐预览。请联系我们完成开通。",
+  },
 } satisfies Record<string, LocalizedText>;

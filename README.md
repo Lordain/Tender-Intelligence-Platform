@@ -97,13 +97,13 @@ principle.
 
 `lib/ingestion/` — see **`lib/ingestion/README.md`** for the full picture:
 confirmed portal structure, which mapper to trust most (the one built and
-tested against real downloaded data, not documentation alone), the
-contracts-vs-open-tenders caveat, and what's deliberately not built yet
-(extracting qualifications/risks/documents needs an LLM, Phase 6). Three
-mappers, each verifiable offline:
+tested against real downloaded data, not documentation alone), and what's
+deliberately not built yet (extracting qualifications/risks/documents needs
+an LLM, Phase 6). Four mappers, each verifiable offline:
 
 ```bash
-npm run ingest:comprasmx-contracts -- --fixture   # real Compras MX contracts CSV → Tender (strongest — built from real data)
+npm run ingest:comprasmx-contracts -- --fixture   # real Compras MX contracts CSV → Tender (awarded/historical, built from real data)
+npm run ingest:comprasmx-open -- --fixture        # real "Difusión de procedimientos" export → Tender (still-open procedures, built from real data)
 npm run ingest:compranet5 -- --fixture            # older CompraNet 5.0 (2010-2022) bulk-export row → Tender
 npm run ingest:compras-mx -- --fixture            # OCDS release → Tender (format confirmed real, no sample record yet)
 ```

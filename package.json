@@ -10,7 +10,8 @@
     "db:seed": "tsx scripts/seed-supabase.ts",
     "ingest:compras-mx": "tsx scripts/ingest-compras-mx.ts",
     "ingest:compranet5": "tsx scripts/ingest-compranet5-bulk.ts",
-    "ingest:comprasmx-contracts": "tsx scripts/ingest-compras-mx-contracts.ts"
+    "ingest:comprasmx-contracts": "tsx scripts/ingest-compras-mx-contracts.ts",
+    "ingest:comprasmx-open": "tsx scripts/ingest-comprasmx-open-tenders.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

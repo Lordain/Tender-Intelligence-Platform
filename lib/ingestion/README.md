@@ -37,30 +37,45 @@ official documentation the user supplied.
 
 ## What's verified working (offline, no network needed)
 
-Three independent mappers, each provable without touching the network:
+Four independent mappers, each provable without touching the network:
 
-- **`compras-mx-contracts-mapper.ts`** — the strongest one. Maps a row of
-  the **real** Compras MX "Datos Abiertos" contracts CSV
-  (`contratos_comprasmx_2025.csv`, a real file the user downloaded and
-  provided — 73 columns, verified field-by-field with pandas, not
-  eyeballed off raw CSV text with embedded commas). `Orden de gobierno`
-  gives `governmentLevel` directly (`APF` = federal — confirmed, not a
-  name-guessing heuristic) for the first time. Real amounts, real dates in
-  two different formats (both handled), a real per-record source URL
-  (`Dirección del anuncio`, an actual `comprasmx.buengobierno.gob.mx`
-  detail link). The file arrived GB18030-encoded rather than UTF-8
-  (evidently round-tripped through a Chinese-locale tool) — the reader
-  tries UTF-8 first and falls back automatically.
-  `npm run ingest:comprasmx-contracts -- --fixture` runs it against two
-  real rows (`__fixtures__/sample-compras-mx-contracts.csv`). **This is
-  the mapper to build on going forward** for Mexico.
+- **`compras-mx-contracts-mapper.ts`** — maps a row of the **real** Compras
+  MX "Datos Abiertos" contracts CSV (`contratos_comprasmx_2025.csv`, a real
+  file the user downloaded and provided — 73 columns, verified
+  field-by-field with pandas, not eyeballed off raw CSV text with embedded
+  commas). `Orden de gobierno` gives `governmentLevel` directly (`APF` =
+  federal — confirmed, not a name-guessing heuristic) for the first time.
+  Real amounts, real dates in two different formats (both handled), a real
+  per-record source URL (`Dirección del anuncio`, an actual
+  `comprasmx.buengobierno.gob.mx` detail link). The file arrived
+  GB18030-encoded rather than UTF-8 (evidently round-tripped through a
+  Chinese-locale tool) — the reader tries UTF-8 first and falls back
+  automatically. `npm run ingest:comprasmx-contracts -- --fixture` runs it
+  against two real rows (`__fixtures__/sample-compras-mx-contracts.csv`).
+  **Covers awarded/historical contracts** — see the gap section below for
+  why this is deliberately not the whole picture.
+- **`compras-mx-open-tenders-mapper.ts`** — maps a row of the real
+  "Difusión de procedimientos" browser export (the public search page's
+  own Excel export — see the gap section below). Covers procedures **still
+  in progress** (no award yet): `ESTATUS` (VIGENTE / EN ACLARACIONES / EN
+  REPREGUNTAS / EN ATENCIÓN DE PREGUNTAS), a real submission/opening date,
+  a clarification-meeting date, state (`ENTIDAD FEDERATIVA`), and procedure
+  type. Verified against the **full real file** (515 rows, not a trimmed
+  sample) — every row mapped cleanly, 0 skipped.
+  `npm run ingest:comprasmx-open -- --fixture` runs it against 6 real rows
+  (`__fixtures__/sample-comprasmx-open-tenders.xlsx`, deliberately including
+  both VIGENTE and EN ACLARACIONES/EN REPREGUNTAS statuses).
 - **`compranet5-mapper.ts`** — maps the older, sparser
   `DD_HISTORICO_CNET5.xlsx` summary schema (`Código de expediente`,
   `Carácter`, `Nombre del anuncio`, `Dependencia`, `Tipo de Contratación`,
   `Tipo de Expediente`, `Fecha de publicación`, `OCDS`). Superseded by
   `compras-mx-contracts-mapper.ts` for anything 2023+; still relevant for
-  the 2010–2022 CompraNet 5.0 archive specifically.
-  `npm run ingest:compranet5 -- --fixture`.
+  the 2010–2022 CompraNet 5.0 archive specifically. (A much richer 45-column
+  real contracts export for this era, `Contratos_CompraNet5.csv`, also
+  exists — `Estatus del contrato` there is Activo/Expirado/Terminado, i.e.
+  still post-award only; not yet mapped since `compras-mx-contracts-mapper.ts`
+  already covers the current system and this older one has no open-tenders
+  angle to add.) `npm run ingest:compranet5 -- --fixture`.
 - **`ocds-mapper.ts`** — maps a full OCDS release. Confirmed to exist (see
   above) as a per-record download, not yet obtained. Has the richest
   potential fields (tender period, enquiry period, items/classification)
@@ -68,62 +83,77 @@ Three independent mappers, each provable without touching the network:
 - The `SourceConnector` interface (`types.ts`) — the contract every
   source implements, so the mapper/ingestion layer doesn't care which
   portal or file format the data came from.
-- All three scripts' Supabase upsert logic — same upsert-by-slug pattern
-  verified against a real project during Phase 2.
-
-**IMPORTANT — the Datos Abiertos contracts file is CONTRACTS/AWARDS, not
-open tenders.** Every row inspected already has a formalized contract
-(`Estatus Contrato` = `FORMALIZADO`). That makes it excellent for
-historical intelligence (winners, award values, pricing benchmarks — the
-platform's Phase 7 concept) and for backfilling closed/historical tender
-records, but it is **not** the feed for "tenders still open to bid on" —
-that's the different, still-unconfirmed "Difusión de procedimientos de
-Contratación Compras MX" live search page.
+- All four scripts share one batched Supabase upsert helper
+  (`upsert-tenders.ts`) — see "Bulk ingestion at real scale" below.
 
 **Neither `compranet5-mapper.ts` nor `ocds-mapper.ts`/the OCDS connector
-should be treated as more reliable than `compras-mx-contracts-mapper.ts`**
+should be treated as more reliable than the two Compras MX mappers above**
 — they're built against documentation and a smaller dictionary,
-respectively, while the contracts mapper is built against and tested
-against real downloaded data.
+respectively, while the Compras MX mappers are built against and tested
+against real downloaded/exported data.
 
-### The open-tenders-vs-contracts gap is still open (re-investigated, still unresolved)
+### The open-tenders-vs-contracts gap — resolved without touching the anti-bot API
 
-Re-checked this again to see if it could finally be closed: all
-`*.gob.mx` domains (comprasmx.buengobierno.gob.mx,
-upcp-compranet.buengobierno.gob.mx, including a specific 2023 CompraNet
-guide PDF surfaced by search) are still network-egress-blocked from this
-environment — confirmed with a direct fetch attempt, not assumed. Web
-search surfaced one third-party project
-(`procurement-analytics/compranet-data` on GitHub) that claims to download
-Compranet data and convert it to OCDS, but its README doesn't document the
-actual endpoint/format it uses, it predates the 2023 Compras MX migration,
-and per this project's own sourcing rule (real docs/files only, never a
-guess or an unverified third party), it isn't trustworthy enough to build
-against blind.
+This was open for a while: the Datos Abiertos contracts export looked like
+it might be contracts-only, based on a 2-row sample. Re-investigated twice
+more this session:
 
-**This still needs the same thing that unblocked the contracts mapper**: a
-real sample from the user — either a browser-devtools network capture of
-the "Difusión de procedimientos" search results (the live/open-tender list,
-as opposed to the awarded-contracts bulk file already ingested), or an
-official doc that documents that endpoint. Until then, this platform's
-Mexico data is historical/awarded contracts only, not "tenders you can
-still bid on" — flagged here rather than silently treated as solved.
+1. **Re-confirmed the live search API is anti-bot-gated, and decided not to
+   build against it.** The user captured real requests to
+   `whitney/sitiopublico/expedientes` (list) and its per-record detail
+   endpoint, both under `upcp-cnetservicios.buengobierno.gob.mx`. Both
+   require `grc`/`igrc`/`xgrc` headers — long signed tokens paired with a
+   dedicated `.../adele/interoperabilidad/tp/reloj` ("clock") call, the
+   classic pattern for a time-synced anti-automation challenge, not a plain
+   API key or CSRF token (there's no login on this public search — a
+   normal session token wouldn't be needed at all). Building a connector
+   that keeps working over time would mean either running a headless
+   browser to solve that challenge or reverse-engineering the token
+   algorithm — both are bypassing anti-bot protection, which this project
+   doesn't do. This connector was never built.
+2. **Re-verified the contracts export against the FULL real 2025 file**
+   (23,597 rows, not the earlier 2-row sample): `Estatus DRC` is
+   `PUBLICADO` for literally every row (not a useful discriminator), and
+   the 8,414 rows with no `Estatus Contrato` value turned out to still have
+   a real `Fecha de fallo` (ruling/award date) and a contract title/code in
+   99% of cases — i.e. already awarded, just missing one status field, not
+   "still open." Confirmed: **this export is exclusively post-ruling
+   records** — the original finding held up under the full file, it just
+   needed the bigger sample to be sure.
+3. **Found the actual answer in a file the user already had**: Compras MX's
+   public search page has its own **"export" button** (Información
+   Pública/`Informaci_nP_blica_export_*.xlsx`) that dumps the current
+   search results — no anti-bot token needed, because it's a normal
+   browser-side download, the same category of thing as the Datos Abiertos
+   CSV. A real export (515 rows) had `ESTATUS` values of VIGENTE / EN
+   ACLARACIONES / EN REPREGUNTAS / EN ATENCIÓN DE PREGUNTAS and **no**
+   award/contract fields at all — genuinely still-open procedures, several
+   with a submission/opening date literally the next day relative to when
+   it was exported. `compras-mx-open-tenders-mapper.ts` is built and
+   verified against this real file (see above).
+
+**Residual caveat**: this is still a manual/periodic export, not a live
+feed — someone has to click "export" on the search page and hand us the
+file, the same workflow as the Datos Abiertos CSV. That's an acceptable
+tradeoff for real, unblocked data over a technically-live feed that would
+require bypassing anti-bot protection to keep running.
 
 ## Bulk ingestion at real scale
 
 `upsert-tenders.ts` (`upsertTendersBatched`) is the shared write path for
-`ingest-compras-mx-contracts.ts` and `ingest-compranet5-bulk.ts`. It replaced
-each script's original one-row-at-a-time upsert loop, which would have taken
-hours and burned through Supabase rate limits against a real yearly export
-(tens of thousands of rows) — confirmed by generating a synthetic 5,000-row
-file with the real column headers and timing the mapping step (~1s once
+`ingest-compras-mx-contracts.ts`, `ingest-compranet5-bulk.ts`, and
+`ingest-comprasmx-open-tenders.ts`. It replaced each script's original
+one-row-at-a-time upsert loop, which would have taken hours and burned
+through Supabase rate limits against a real yearly export (tens of
+thousands of rows) — confirmed by generating a synthetic 5,000-row file
+with the real column headers and timing the mapping step (~1s once
 Node/tsx is warm; the actual bottleneck was always going to be network round
 trips, not parsing). It upserts tenders `BATCH_SIZE` (500) rows at a time,
 replaces `tender_key_dates` per batch with two bulk calls instead of two
 calls per row, and records per-slug failures without aborting the whole run
-so one bad batch doesn't lose everything else in a large file. Both scripts'
-dry-run mode (no `--write`) now prints only the first 5 mapped tenders for a
-real file, not the whole file, so a large dry run doesn't flood the
+so one bad batch doesn't lose everything else in a large file. All three
+scripts' dry-run mode (no `--write`) now prints only the first 5 mapped
+tenders for a real file, not the whole file, so a large dry run doesn't flood the
 terminal — `--fixture` still prints in full since it's only a couple of rows.
 
 ## What's still an unverified placeholder

@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Tender Intelligence Platform",
   description:
-    "Discover, understand, and qualify for government tenders in Mexico and beyond.",
+    "Tender intelligence for companies expanding into Mexico — understand government tender requirements in your own language and decide bid or no-bid with confidence.",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

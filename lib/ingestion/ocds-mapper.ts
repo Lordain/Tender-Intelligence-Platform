@@ -1,31 +1,12 @@
 import type {
-  GovernmentLevel,
-  LocalizedText,
   Tender,
   TenderKeyDate,
   TenderScopeType,
   TenderStatus,
 } from "@/types/tender";
 import type { OcdsRelease } from "@/lib/ingestion/types";
-
-/**
- * OCDS carries a single (Spanish) string per field, not per-locale text. The
- * platform's rule is "original language is the source of truth" — we store
- * the real Spanish text in `es` and mirror it into `en`/`zh` rather than
- * fabricate a translation. Phase 6 (AI Analysis) is what's supposed to
- * produce real en/zh text; until that exists, showing the Spanish source
- * in every locale is honest, a fabricated-sounding translation is not.
- */
-function untranslated(text: string): LocalizedText {
-  return { es: text, en: text, zh: text };
-}
-
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+import { untranslated, slugify } from "@/lib/ingestion/text-utils";
+import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
 
 const SCOPE_TYPE_BY_CATEGORY: Record<string, TenderScopeType> = {
   goods: "equipment",
@@ -53,21 +34,6 @@ function inferStatus(release: OcdsRelease): TenderStatus {
     return STATUS_BY_OCDS_STATUS[ocdsStatus];
   }
   return "open";
-}
-
-const GOVERNMENT_LEVEL_PATTERNS: [RegExp, GovernmentLevel][] = [
-  [/municipio|ayuntamiento/i, "municipal"],
-  [/gobierno del estado|secretar[íi]a de.*estado/i, "state"],
-  [/^cfe$|comisión federal de electricidad|^pemex$|petróleos mexicanos|imss|isste/i, "public_company"],
-  [/secretar[íi]a|instituto nacional|federal/i, "federal"],
-];
-
-/** Best-effort heuristic from the buyer name — OCDS has no government-level field. Flag for human review, don't trust blindly. */
-function inferGovernmentLevel(buyerName: string): GovernmentLevel {
-  for (const [pattern, level] of GOVERNMENT_LEVEL_PATTERNS) {
-    if (pattern.test(buyerName)) return level;
-  }
-  return "federal";
 }
 
 function buildKeyDates(release: OcdsRelease): TenderKeyDate[] {

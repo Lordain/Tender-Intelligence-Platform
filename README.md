@@ -6,6 +6,11 @@ AI Tender Intelligence Platform — 解决企业在"找标、看标、判断能�
 
 发现招标机会 → 快速理解招标要求 → 判断企业是否具备投标资格。
 
+**Positioning**: primarily for Chinese enterprises (and other international
+bidders) expanding into Mexico — the differentiator against Spanish-native
+local competitors (LicitIA, Licitacom, etc.) is the language/translation
+layer, not raw data aggregation, which is already a fairly crowded market.
+
 First market: Mexico public procurement (Compras MX, DOF).
 
 ## Getting Started
@@ -90,13 +95,17 @@ principle.
 
 ## Data Ingestion
 
-`lib/ingestion/` — see **`lib/ingestion/README.md`** for the full picture,
-including what's verified-working, what's an unverified placeholder pending
-confirmation of the real Compras MX API endpoint, and what's deliberately
-not built yet (extracting qualifications/risks/documents needs an LLM,
-Phase 6). Quick check that the mapping logic works, no network or Supabase
-needed:
+`lib/ingestion/` — see **`lib/ingestion/README.md`** for the full picture:
+confirmed portal structure (Compras MX / CompraNet 5.0 / 3.0 / Datos
+Abiertos), what's verified-working, what's still an unverified placeholder,
+and what's deliberately not built yet (extracting qualifications/risks/
+documents needs an LLM, Phase 6). Two mappers, each verifiable offline:
 
 ```bash
-npm run ingest:compras-mx -- --fixture
+npm run ingest:compras-mx -- --fixture    # OCDS release → Tender
+npm run ingest:compranet5 -- --fixture    # CompraNet 5.0 bulk-export row → Tender
 ```
+
+`ingest:compranet5` also accepts a real downloaded file:
+`npm run ingest:compranet5 -- path/to/file.xlsx` (dry run) or add `--write`
+to upsert into Supabase.

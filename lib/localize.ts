@@ -11,14 +11,14 @@ export const uiText = {
     zh: "发现·理解·资格判断",
   },
   heroTitle: {
-    en: "Tender intelligence for teams that bid to win",
-    es: "Inteligencia de licitaciones para equipos que buscan ganar",
-    zh: "为志在中标的团队提供招投标情报",
+    en: "Tender intelligence for companies expanding into Mexico",
+    es: "Inteligencia de licitaciones para proveedores internacionales en México",
+    zh: "中国企业出海墨西哥的招投标情报平台",
   },
   heroSubtitle: {
-    en: "Search Mexican government tenders, understand qualification requirements in minutes, and decide bid or no-bid with confidence.",
-    es: "Busca licitaciones del gobierno mexicano, comprende los requisitos de calificación en minutos y decide si participar con confianza.",
-    zh: "检索墨西哥政府招标信息，几分钟内理解资格要求，自信地判断是否值得投标。",
+    en: "Break through the Spanish-language barrier: understand Mexican government tender requirements in your own language, and decide bid or no-bid with confidence.",
+    es: "Licitaciones del gobierno mexicano, traducidas y estructuradas para que proveedores internacionales entiendan los requisitos de calificación en minutos y decidan si participar con confianza.",
+    zh: "看不懂西语标书、搞不清资质要求？我们把墨西哥政府招标信息转化为结构化的中文情报，帮您快速判断能不能投、该不该投。",
   },
   browseTenders: {
     en: "Browse Tenders",

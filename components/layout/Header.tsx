@@ -28,6 +28,12 @@ export function Header() {
           >
             {localize(uiText.navTenders, locale)}
           </Link>
+          <Link
+            href="/saved"
+            className="text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+          >
+            {localize(uiText.navSaved, locale)}
+          </Link>
           <LocaleSwitcher />
         </nav>
       </div>

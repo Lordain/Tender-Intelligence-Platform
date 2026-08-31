@@ -9,15 +9,13 @@ import {
   STATUS_COLORS,
   STATUS_LABELS,
 } from "@/lib/tender-labels";
+import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 
 export function TenderCard({ tender }: { tender: Tender }) {
   const { locale } = useLocale();
 
   return (
-    <Link
-      href={`/tenders/${tender.slug}`}
-      className="group flex flex-col gap-3 rounded-xl border border-zinc-200 p-5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
-    >
+    <div className="group relative flex flex-col gap-3 rounded-xl border border-zinc-200 p-5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600">
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
@@ -29,13 +27,18 @@ export function TenderCard({ tender }: { tender: Tender }) {
             {localize(STATUS_LABELS[tender.status], locale)}
           </span>
         </div>
-        <span className="whitespace-nowrap text-xs text-zinc-400">
-          {tender.tenderNumber}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="whitespace-nowrap text-xs text-zinc-400">
+            {tender.tenderNumber}
+          </span>
+          <SaveTenderButton tenderId={tender.id} className="relative z-10" />
+        </div>
       </div>
 
-      <h3 className="text-base font-semibold leading-snug text-zinc-900 group-hover:underline dark:text-zinc-50">
-        {localize(tender.title, locale)}
+      <h3 className="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+        <Link href={`/tenders/${tender.slug}`} className="after:absolute after:inset-0 group-hover:underline">
+          {localize(tender.title, locale)}
+        </Link>
       </h3>
 
       <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -72,6 +75,6 @@ export function TenderCard({ tender }: { tender: Tender }) {
       <span className="text-xs font-medium text-zinc-500">
         {localize(SCOPE_TYPE_LABELS[tender.scopeType], locale)}
       </span>
-    </Link>
+    </div>
   );
 }

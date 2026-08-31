@@ -9,6 +9,7 @@ import {
   STATUS_COLORS,
   STATUS_LABELS,
 } from "@/lib/tender-labels";
+import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -24,16 +25,19 @@ export function TenderOverview({ tender }: { tender: Tender }) {
 
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-          {tender.industry}
-        </span>
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[tender.status]}`}
-        >
-          {localize(STATUS_LABELS[tender.status], locale)}
-        </span>
-        <span className="text-xs text-zinc-400">{tender.tenderNumber}</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+            {tender.industry}
+          </span>
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[tender.status]}`}
+          >
+            {localize(STATUS_LABELS[tender.status], locale)}
+          </span>
+          <span className="text-xs text-zinc-400">{tender.tenderNumber}</span>
+        </div>
+        <SaveTenderButton tenderId={tender.id} className="border border-zinc-200 dark:border-zinc-800" />
       </div>
 
       <h1 className="text-2xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">

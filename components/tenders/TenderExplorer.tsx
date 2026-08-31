@@ -5,8 +5,9 @@ import type { Tender, TenderScopeType, TenderStatus } from "@/types/tender";
 import { INDUSTRIES } from "@/data/tenders";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { SCOPE_TYPE_LABELS, STATUS_LABELS } from "@/lib/tender-labels";
-import { filterTenders } from "@/lib/tenders";
+import { filterTenders } from "@/lib/filter-tenders";
 import { TenderCard } from "@/components/tenders/TenderCard";
+import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
 
 const SCOPE_TYPES: TenderScopeType[] = [
   "equipment",
@@ -28,28 +29,26 @@ const STATUSES: TenderStatus[] = [
 export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const { locale } = useLocale();
   const [query, setQuery] = useState("");
-  const [industry, setIndustry] = useState<string>("");
-  const [scopeType, setScopeType] = useState<TenderScopeType | "">("");
-  const [status, setStatus] = useState<TenderStatus | "">("");
+  const [industries, setIndustries] = useState<string[]>([]);
+  const [scopeTypes, setScopeTypes] = useState<TenderScopeType[]>([]);
+  const [statuses, setStatuses] = useState<TenderStatus[]>([]);
+
+  const hasActiveFilters =
+    industries.length > 0 || scopeTypes.length > 0 || statuses.length > 0 || query.length > 0;
 
   const results = useMemo(
     () =>
-      filterTenders(
-        tenders,
-        {
-          query,
-          industry: industry || undefined,
-          scopeType: scopeType || undefined,
-          status: status || undefined,
-        },
-        locale,
-      ),
-    [tenders, query, industry, scopeType, status, locale],
+      filterTenders(tenders, { query, industries, scopeTypes, statuses }, locale),
+    [tenders, query, industries, scopeTypes, statuses, locale],
   );
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
+      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        {localize(uiText.navTenders, locale)}
+      </h1>
+
+      <div className="flex flex-col gap-4">
         <input
           type="search"
           value={query}
@@ -58,50 +57,49 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
           className="w-full rounded-lg border border-zinc-200 px-4 py-2.5 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
         />
 
-        <div className="flex flex-wrap gap-3">
-          <select
-            value={industry}
-            onChange={(event) => setIndustry(event.target.value)}
-            className="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <option value="">{localize(uiText.allIndustries, locale)}</option>
-            {INDUSTRIES.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <MultiSelectPills
+            label={localize(uiText.industryLabel, locale)}
+            options={INDUSTRIES.map((option) => ({ value: option, label: option }))}
+            selected={industries}
+            onChange={setIndustries}
+          />
 
-          <select
-            value={scopeType}
-            onChange={(event) =>
-              setScopeType(event.target.value as TenderScopeType | "")
-            }
-            className="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <option value="">{localize(uiText.allScopes, locale)}</option>
-            {SCOPE_TYPES.map((option) => (
-              <option key={option} value={option}>
-                {localize(SCOPE_TYPE_LABELS[option], locale)}
-              </option>
-            ))}
-          </select>
+          <MultiSelectPills
+            label={localize(uiText.scopeLabel, locale)}
+            options={SCOPE_TYPES.map((option) => ({
+              value: option,
+              label: localize(SCOPE_TYPE_LABELS[option], locale),
+            }))}
+            selected={scopeTypes}
+            onChange={setScopeTypes}
+          />
 
-          <select
-            value={status}
-            onChange={(event) =>
-              setStatus(event.target.value as TenderStatus | "")
-            }
-            className="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <option value="">{localize(uiText.allStatuses, locale)}</option>
-            {STATUSES.map((option) => (
-              <option key={option} value={option}>
-                {localize(STATUS_LABELS[option], locale)}
-              </option>
-            ))}
-          </select>
+          <MultiSelectPills
+            label={localize(uiText.statusLabel, locale)}
+            options={STATUSES.map((option) => ({
+              value: option,
+              label: localize(STATUS_LABELS[option], locale),
+            }))}
+            selected={statuses}
+            onChange={setStatuses}
+          />
         </div>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setIndustries([]);
+              setScopeTypes([]);
+              setStatuses([]);
+            }}
+            className="self-start text-xs font-medium text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+          >
+            {localize(uiText.clearFilters, locale)}
+          </button>
+        )}
       </div>
 
       <p className="text-sm text-zinc-500">

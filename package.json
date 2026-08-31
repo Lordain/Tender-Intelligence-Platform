@@ -9,7 +9,8 @@
     "lint": "eslint",
     "db:seed": "tsx scripts/seed-supabase.ts",
     "ingest:compras-mx": "tsx scripts/ingest-compras-mx.ts",
-    "ingest:compranet5": "tsx scripts/ingest-compranet5-bulk.ts"
+    "ingest:compranet5": "tsx scripts/ingest-compranet5-bulk.ts",
+    "ingest:comprasmx-contracts": "tsx scripts/ingest-compras-mx-contracts.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

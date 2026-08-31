@@ -37,37 +37,54 @@ official documentation the user supplied.
 
 ## What's verified working (offline, no network needed)
 
-Two independent mappers, each provable without touching the network:
+Three independent mappers, each provable without touching the network:
 
-- **`ocds-mapper.ts`** — maps one OCDS release to our `Tender` type.
-  `npm run ingest:compras-mx -- --fixture` runs it end-to-end against
-  `__fixtures__/sample-ocds-release.json`. Use this once a real OCDS
-  record (the per-record download the dictionary refers to) is in hand.
-- **`compranet5-mapper.ts`** — maps one row of the confirmed
+- **`compras-mx-contracts-mapper.ts`** — the strongest one. Maps a row of
+  the **real** Compras MX "Datos Abiertos" contracts CSV
+  (`contratos_comprasmx_2025.csv`, a real file the user downloaded and
+  provided — 73 columns, verified field-by-field with pandas, not
+  eyeballed off raw CSV text with embedded commas). `Orden de gobierno`
+  gives `governmentLevel` directly (`APF` = federal — confirmed, not a
+  name-guessing heuristic) for the first time. Real amounts, real dates in
+  two different formats (both handled), a real per-record source URL
+  (`Dirección del anuncio`, an actual `comprasmx.buengobierno.gob.mx`
+  detail link). The file arrived GB18030-encoded rather than UTF-8
+  (evidently round-tripped through a Chinese-locale tool) — the reader
+  tries UTF-8 first and falls back automatically.
+  `npm run ingest:comprasmx-contracts -- --fixture` runs it against two
+  real rows (`__fixtures__/sample-compras-mx-contracts.csv`). **This is
+  the mapper to build on going forward** for Mexico.
+- **`compranet5-mapper.ts`** — maps the older, sparser
   `DD_HISTORICO_CNET5.xlsx` summary schema (`Código de expediente`,
   `Carácter`, `Nombre del anuncio`, `Dependencia`, `Tipo de Contratación`,
-  `Tipo de Expediente`, `Fecha de publicación`, `OCDS`) to a `Tender`.
-  `npm run ingest:compranet5 -- --fixture` runs it against
-  `__fixtures__/sample-compranet5-row.csv`. This is the more
-  immediately-actionable path: it's a bulk-file format (CSV/XLSX),
-  confirmed to exist as an official download, and needs no API guessing —
-  just the user downloading a real yearly file and handing it to
-  `connectors/compranet5-bulk-file.ts` (`npm run ingest:compranet5 --
-  path/to/file.xlsx`, add `--write` to actually upsert once the mapped
-  output looks right).
+  `Tipo de Expediente`, `Fecha de publicación`, `OCDS`). Superseded by
+  `compras-mx-contracts-mapper.ts` for anything 2023+; still relevant for
+  the 2010–2022 CompraNet 5.0 archive specifically.
+  `npm run ingest:compranet5 -- --fixture`.
+- **`ocds-mapper.ts`** — maps a full OCDS release. Confirmed to exist (see
+  above) as a per-record download, not yet obtained. Has the richest
+  potential fields (tender period, enquiry period, items/classification)
+  once a real record is in hand. `npm run ingest:compras-mx -- --fixture`.
 - The `SourceConnector` interface (`types.ts`) — the contract every
   source implements, so the mapper/ingestion layer doesn't care which
   portal or file format the data came from.
-- Both scripts' Supabase upsert logic — same upsert-by-slug pattern
+- All three scripts' Supabase upsert logic — same upsert-by-slug pattern
   verified against a real project during Phase 2.
 
-**`compranet5-mapper.ts` only fills a small subset of `Tender`** — the
-summary export has no value/currency, no deadline, no explicit status. It
-intentionally defaults `status` to `submission_closed` (these are 2010–2022
-records — defaulting to "open" would be actively misleading) and leaves
-`industry` as `"General"`. Enriching a specific record needs its `OCDS`
-link, which is captured as `sourceUrl` when present but not followed
-automatically.
+**IMPORTANT — the Datos Abiertos contracts file is CONTRACTS/AWARDS, not
+open tenders.** Every row inspected already has a formalized contract
+(`Estatus Contrato` = `FORMALIZADO`). That makes it excellent for
+historical intelligence (winners, award values, pricing benchmarks — the
+platform's Phase 7 concept) and for backfilling closed/historical tender
+records, but it is **not** the feed for "tenders still open to bid on" —
+that's the different, still-unconfirmed "Difusión de procedimientos de
+Contratación Compras MX" live search page.
+
+**Neither `compranet5-mapper.ts` nor `ocds-mapper.ts`/the OCDS connector
+should be treated as more reliable than `compras-mx-contracts-mapper.ts`**
+— they're built against documentation and a smaller dictionary,
+respectively, while the contracts mapper is built against and tested
+against real downloaded data.
 
 ## What's still an unverified placeholder
 
@@ -128,3 +145,22 @@ fields from a DOF notice's body text needs the same Layer 2 (AI) work,
 just for more of the record. Compras MX stays the primary source; DOF is
 future work as a secondary/cross-validation source (its original intended
 role per the platform's design), not a replacement.
+
+## Multi-country expansion (strategic direction, not yet built)
+
+The product direction is now **Latin America Tender Intelligence for
+Chinese Enterprises** — Mexico, Brazil, Colombia, Chile, Peru. Portuguese
+(for Brazil) is part of that long-term direction but explicitly deferred
+for now — the app stays zh/en/es. Also part of the direction: a
+"Pre-Screening" / China overseas relevance classification step deciding
+how much analysis depth a
+given tender gets (per-country connectors documented in the country's own
+official sources: Brazil PNCP, Colombia SECOP I/II, Chile Mercado
+Público/ChileCompra API, Peru SEACE/OECE/OCDS). None of that is built —
+only Mexico has a verified connector so far, and building Brazil/Colombia/
+Chile/Peru connectors without real documentation or sample files from
+those portals (the way Mexico's connectors were built from user-provided
+real files) would repeat the mistake this file's history already shows
+the cost of: guessing at an API shape produces a placeholder, not a
+working connector. Each new country needs the same treatment Mexico got —
+real docs or a real sample file — before its connector is written.

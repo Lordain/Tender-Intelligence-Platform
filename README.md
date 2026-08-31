@@ -96,16 +96,26 @@ principle.
 ## Data Ingestion
 
 `lib/ingestion/` — see **`lib/ingestion/README.md`** for the full picture:
-confirmed portal structure (Compras MX / CompraNet 5.0 / 3.0 / Datos
-Abiertos), what's verified-working, what's still an unverified placeholder,
-and what's deliberately not built yet (extracting qualifications/risks/
-documents needs an LLM, Phase 6). Two mappers, each verifiable offline:
+confirmed portal structure, which mapper to trust most (the one built and
+tested against real downloaded data, not documentation alone), the
+contracts-vs-open-tenders caveat, and what's deliberately not built yet
+(extracting qualifications/risks/documents needs an LLM, Phase 6). Three
+mappers, each verifiable offline:
 
 ```bash
-npm run ingest:compras-mx -- --fixture    # OCDS release → Tender
-npm run ingest:compranet5 -- --fixture    # CompraNet 5.0 bulk-export row → Tender
+npm run ingest:comprasmx-contracts -- --fixture   # real Compras MX contracts CSV → Tender (strongest — built from real data)
+npm run ingest:compranet5 -- --fixture            # older CompraNet 5.0 (2010-2022) bulk-export row → Tender
+npm run ingest:compras-mx -- --fixture            # OCDS release → Tender (format confirmed real, no sample record yet)
 ```
 
-`ingest:compranet5` also accepts a real downloaded file:
-`npm run ingest:compranet5 -- path/to/file.xlsx` (dry run) or add `--write`
-to upsert into Supabase.
+Each also accepts a real downloaded file in place of `--fixture`, e.g.
+`npm run ingest:comprasmx-contracts -- path/to/file.csv` (dry run by
+default; add `--write` to upsert into Supabase).
+
+**Product direction has expanded** to Latin America (Mexico, Brazil,
+Colombia, Chile, Peru), positioned for Chinese enterprises bidding
+overseas. Portuguese (for Brazil) is part of that long-term direction but
+explicitly deferred for now — the app stays zh/en/es until that's picked
+back up. See the "Multi-country expansion" section in
+`lib/ingestion/README.md` for what the country expansion means for
+ingestion specifically; only Mexico has a real connector so far.

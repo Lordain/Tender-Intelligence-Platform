@@ -22,6 +22,9 @@ import { classifyRelevance } from "@/lib/relevance";
  * This platform does not attempt to defeat that gate; this mapper only
  * ever reads a file a human already exported from their own browser
  * session, the same way the Datos Abiertos CSV is handled.
+ *
+ * Shares its slug scheme with compras-mx-contracts-mapper.ts on purpose —
+ * see the comment on `slug` below.
  */
 export type ComprasMxOpenTenderRow = {
   "NÚM."?: string;
@@ -132,7 +135,18 @@ export function mapComprasMxOpenTenderRowToTender(
 
   return {
     id: crypto.randomUUID(),
-    slug: `comprasmx-open-${slugify(tenderNumber)}`,
+    // Deliberately the SAME slug scheme as compras-mx-contracts-mapper.ts
+    // (`comprasmx-${slugify(tenderNumber)}`, same field priority: procedure
+    // number, then expediente code) — confirmed against both real files
+    // that "Código del expediente"/"CÓDIGO DE EXPEDIENTE" and "Número de
+    // procedimiento"/"NÚMERO DE IDENTIFICACIÓN" use the identical format
+    // across sources (e.g. "E-2025-00038653", "IA-12-NEF-012NEF001-I-30-2025").
+    // That means when a tender ingested here as still-open later gets
+    // awarded and shows up in a Datos Abiertos contracts export, upserting
+    // that file updates THIS SAME row (status → awarded, award date, value
+    // filled in) instead of creating a second, orphaned "open" duplicate
+    // that never gets cleaned up.
+    slug: `comprasmx-${slugify(tenderNumber)}`,
     tenderNumber,
     title: untranslated(title),
     summary: untranslated(title),

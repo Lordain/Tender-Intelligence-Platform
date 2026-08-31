@@ -138,6 +138,23 @@ file, the same workflow as the Datos Abiertos CSV. That's an acceptable
 tradeoff for real, unblocked data over a technically-live feed that would
 require bypassing anti-bot protection to keep running.
 
+**Lifecycle join between the two sources**: `compras-mx-open-tenders-mapper.ts`
+deliberately reuses `compras-mx-contracts-mapper.ts`'s exact slug scheme
+(`comprasmx-${slugify(tenderNumber)}`, same field priority) rather than a
+separate prefix — confirmed against both real files that "Código del
+expediente"/"CÓDIGO DE EXPEDIENTE" and "Número de procedimiento"/"NÚMERO DE
+IDENTIFICACIÓN" share the identical format across sources (e.g.
+`E-2025-00038653`, `IA-12-NEF-012NEF001-I-30-2025`). So a tender first
+ingested as still-open, once it's awarded and shows up in a later Datos
+Abiertos contracts export, gets upserted onto the SAME row (status flips to
+`awarded`, award date/value fill in) instead of leaving a stale orphaned
+"open" duplicate around forever. Known tradeoff: if a *stale* open-tenders
+export were re-ingested after the same tender was already awarded
+elsewhere, it would blow its award fields back to null — acceptable because
+a genuinely fresh export can't contain an already-awarded procedure (it
+drops out of the live search results once awarded, confirmed: none of the
+515 real rows had any award/contract field populated).
+
 ## Bulk ingestion at real scale
 
 `upsert-tenders.ts` (`upsertTendersBatched`) is the shared write path for

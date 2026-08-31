@@ -2,6 +2,7 @@ import type {
   GovernmentLevel,
   LocalizedText,
   TenderKeyDate,
+  TenderRelevanceTier,
   TenderRiskLevel,
   TenderScopeType,
   TenderStatus,
@@ -61,6 +62,13 @@ export const RISK_LEVEL_ICONS: Record<TenderRiskLevel, string> = {
   medium: "🟡",
   high: "🟠",
   critical: "🔴",
+};
+
+export const RELEVANCE_TIER_COLORS: Record<TenderRelevanceTier, string> = {
+  flagship: "bg-amber-100 text-amber-900",
+  significant: "bg-emerald-100 text-emerald-800",
+  standard: "bg-zinc-100 text-zinc-600",
+  excluded: "bg-zinc-100 text-zinc-400",
 };
 
 export const KEY_DATE_TYPE_LABELS: Record<TenderKeyDate["type"], LocalizedText> = {

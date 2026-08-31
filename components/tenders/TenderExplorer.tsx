@@ -47,6 +47,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const sortParam = searchParams.get("sort");
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "publication_desc";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const includeExcluded = searchParams.get("all") === "1";
 
   const hasActiveFilters =
     industries.length > 0 || scopeTypes.length > 0 || statuses.length > 0 || query.length > 0;
@@ -67,8 +68,8 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   }
 
   const filtered = useMemo(
-    () => filterTenders(tenders, { query, industries, scopeTypes, statuses }, locale),
-    [tenders, query, industries, scopeTypes, statuses, locale],
+    () => filterTenders(tenders, { query, industries, scopeTypes, statuses, includeExcluded }, locale),
+    [tenders, query, industries, scopeTypes, statuses, includeExcluded, locale],
   );
 
   const sorted = useMemo(() => sortTenders(filtered, sort), [filtered, sort]);
@@ -138,6 +139,15 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
             </select>
           </label>
         </div>
+
+        <label className="flex w-fit items-center gap-2 text-xs text-zinc-500">
+          <input
+            type="checkbox"
+            checked={includeExcluded}
+            onChange={(event) => updateParams({ all: event.target.checked ? "1" : null })}
+          />
+          {localize(uiText.showRoutineServices, locale)}
+        </label>
 
         <div className="flex flex-wrap items-center gap-4">
           {hasActiveFilters && (

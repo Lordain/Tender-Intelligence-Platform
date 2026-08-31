@@ -4,9 +4,11 @@ import type {
   LocalizedText,
   Tender,
   TenderKeyDate,
+  TenderRelevance,
   TenderRequirement,
   TenderRisk,
 } from "@/types/tender";
+import { classifyRelevance } from "@/lib/relevance";
 
 type TenderRow = {
   id: string;
@@ -28,6 +30,9 @@ type TenderRow = {
   currency: string | null;
   location: string | null;
   status: Tender["status"];
+  relevance_tier: TenderRelevance["tier"] | null;
+  relevance_label: LocalizedText | null;
+  relevance_reason: LocalizedText | null;
   source_name: string;
   source_url: string;
   created_at: string;
@@ -67,7 +72,8 @@ const TENDER_SELECT = `
   id, slug, tender_number, title, summary, buyer, country, government_level,
   industry, subcategory, scope_type, procedure_type, publication_date,
   submission_deadline, award_date, estimated_value, currency, location,
-  status, source_name, source_url, created_at, updated_at,
+  status, relevance_tier, relevance_label, relevance_reason,
+  source_name, source_url, created_at, updated_at,
   tender_requirements ( id, kind, title, description, mandatory, source_reference, sort_order ),
   tender_key_dates ( id, type, date, mandatory, notes ),
   tender_risks ( id, level, title, description, source_reference )
@@ -103,6 +109,21 @@ function toRisk(row: RiskRow): TenderRisk {
   };
 }
 
+/** Legacy rows ingested before the relevance columns existed compute it on the fly rather than showing a gap. */
+function toRelevance(row: TenderRow): TenderRelevance {
+  if (row.relevance_tier && row.relevance_label && row.relevance_reason) {
+    return { tier: row.relevance_tier, label: row.relevance_label, reason: row.relevance_reason };
+  }
+  return classifyRelevance({
+    title: row.title.es,
+    summary: row.summary.es,
+    industry: row.industry,
+    scopeType: row.scope_type,
+    estimatedValue: row.estimated_value ?? undefined,
+    currency: row.currency ?? undefined,
+  });
+}
+
 function toTender(row: TenderRow): Tender {
   const requirements = [...row.tender_requirements].sort(
     (a, b) => a.sort_order - b.sort_order,
@@ -133,6 +154,7 @@ function toTender(row: TenderRow): Tender {
     requiredDocuments: requirements.filter((r) => r.kind === "document").map(toRequirement),
     keyDates: row.tender_key_dates.map(toKeyDate),
     risks: row.tender_risks.map(toRisk),
+    relevance: toRelevance(row),
     sourceName: row.source_name,
     sourceUrl: row.source_url,
     createdAt: row.created_at,

@@ -187,4 +187,9 @@ export const uiText = {
     es: "El pago aún no está configurado — esta es una vista previa de los planes. Contáctanos para activarlo.",
     zh: "支付功能尚未开通——这里仅为套餐预览。请联系我们完成开通。",
   },
+  showRoutineServices: {
+    en: "Show routine-service tenders too",
+    es: "Mostrar también licitaciones de servicios rutinarios",
+    zh: "同时显示日常服务类招标",
+  },
 } satisfies Record<string, LocalizedText>;

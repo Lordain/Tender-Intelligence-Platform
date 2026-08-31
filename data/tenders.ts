@@ -1,8 +1,9 @@
 import type { Tender } from "@/types/tender";
+import { classifyRelevance } from "@/lib/relevance";
 
 export const INDUSTRIES = ["Energy", "Construction", "ICT/Telecom"] as const;
 
-export const tenders: Tender[] = [
+const rawTenders: Omit<Tender, "relevance">[] = [
   {
     id: "t-001",
     slug: "cfe-subestacion-electrica-oaxaca",
@@ -597,3 +598,15 @@ export const tenders: Tender[] = [
     updatedAt: "2026-08-20T09:00:00Z",
   },
 ];
+
+export const tenders: Tender[] = rawTenders.map((tender) => ({
+  ...tender,
+  relevance: classifyRelevance({
+    title: tender.title.es,
+    summary: tender.summary.es,
+    industry: tender.industry,
+    scopeType: tender.scopeType,
+    estimatedValue: tender.estimatedValue,
+    currency: tender.currency,
+  }),
+}));

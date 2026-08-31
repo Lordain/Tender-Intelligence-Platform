@@ -62,6 +62,30 @@ export type TenderRisk = {
   sourceReference?: string;
 };
 
+/**
+ * Pre-Screening classification: not every tender gets full analysis depth
+ * (AI cost control) or a place in the default feed. "flagship"/
+ * "significant" surface by default; "standard" is available but
+ * de-emphasized; "excluded" (routine services — cleaning, catering,
+ * security guards, etc.) is hidden from the default feed but its metadata
+ * is kept, not deleted, for future market statistics.
+ *
+ * The underlying classification is the same for every locale, but how
+ * it's framed to the reader is not: the Chinese UI frames this as
+ * relevance to Chinese enterprises bidding overseas ("中资出海相关度"),
+ * while English/Spanish frame the identical tier as project
+ * significance/scale ("Flagship Project") — deliberately without
+ * "China"-specific language, per product decision. `label`/`reason` carry
+ * that per-locale framing directly since they're already LocalizedText.
+ */
+export type TenderRelevanceTier = "flagship" | "significant" | "standard" | "excluded";
+
+export type TenderRelevance = {
+  tier: TenderRelevanceTier;
+  label: LocalizedText;
+  reason: LocalizedText;
+};
+
 export type Tender = {
   id: string;
   slug: string;
@@ -87,6 +111,7 @@ export type Tender = {
   requiredDocuments: TenderRequirement[];
   keyDates: TenderKeyDate[];
   risks: TenderRisk[];
+  relevance: TenderRelevance;
   sourceName: string;
   sourceUrl: string;
   createdAt: string;

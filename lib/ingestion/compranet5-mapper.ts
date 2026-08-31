@@ -1,6 +1,7 @@
 import type { Tender, TenderKeyDate, TenderScopeType } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
+import { classifyRelevance } from "@/lib/relevance";
 
 /**
  * One row from the "Histórico de CompraNet 5.0" bulk export
@@ -80,6 +81,8 @@ export function mapCompranet5RowToTender(
   const keyDates: TenderKeyDate[] = [
     { id: `${tenderNumber}-publication`, type: "publication", date: publicationDate },
   ];
+  const industry = "General";
+  const scopeType = inferScopeType(row["Tipo de Contratación"] ?? "");
 
   return {
     id: crypto.randomUUID(),
@@ -92,8 +95,8 @@ export function mapCompranet5RowToTender(
     buyer,
     country: "Mexico",
     governmentLevel: inferGovernmentLevel(buyer),
-    industry: "General",
-    scopeType: inferScopeType(row["Tipo de Contratación"] ?? ""),
+    industry,
+    scopeType,
     procedureType: row["Tipo de Expediente"] ?? row["Carácter"] ?? "Unknown",
     publicationDate,
     // Historical (2010–2022, long closed) records with no explicit status
@@ -105,6 +108,7 @@ export function mapCompranet5RowToTender(
     requiredDocuments: [],
     keyDates,
     risks: [],
+    relevance: classifyRelevance({ title, industry, scopeType }),
     sourceName,
     sourceUrl: row["OCDS"]?.trim() || `${sourceUrlBase}${encodeURIComponent(tenderNumber)}`,
     createdAt: now,

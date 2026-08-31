@@ -7,6 +7,7 @@ import type {
 import type { OcdsRelease } from "@/lib/ingestion/types";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
+import { classifyRelevance } from "@/lib/relevance";
 
 const SCOPE_TYPE_BY_CATEGORY: Record<string, TenderScopeType> = {
   goods: "equipment",
@@ -90,6 +91,10 @@ export function mapOcdsReleaseToTender(
   if (!publicationDate) return null;
 
   const now = new Date().toISOString();
+  const industry = tender.items?.[0]?.classification?.description ?? "General";
+  const scopeType = inferScopeType(tender.mainProcurementCategory);
+  const estimatedValue = tender.value?.amount;
+  const currency = tender.value?.currency;
 
   return {
     id: crypto.randomUUID(),
@@ -100,20 +105,28 @@ export function mapOcdsReleaseToTender(
     buyer: buyerName,
     country: "Mexico",
     governmentLevel: inferGovernmentLevel(buyerName),
-    industry: tender.items?.[0]?.classification?.description ?? "General",
-    scopeType: inferScopeType(tender.mainProcurementCategory),
+    industry,
+    scopeType,
     procedureType: tender.procurementMethodDetails ?? tender.procurementMethod ?? "Unknown",
     publicationDate,
     submissionDeadline: tender.tenderPeriod?.endDate,
     awardDate: release.awards?.[0]?.date,
-    estimatedValue: tender.value?.amount,
-    currency: tender.value?.currency,
+    estimatedValue,
+    currency,
     status: inferStatus(release),
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],
     keyDates: buildKeyDates(release),
     risks: [],
+    relevance: classifyRelevance({
+      title: tender.title,
+      summary: tender.description,
+      industry,
+      scopeType,
+      estimatedValue,
+      currency,
+    }),
     sourceName,
     sourceUrl: `${sourceUrlBase}${release.ocid}`,
     createdAt: now,

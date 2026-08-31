@@ -6,16 +6,19 @@ export type TenderFilterOptions = {
   industries?: string[];
   scopeTypes?: TenderScopeType[];
   statuses?: TenderStatus[];
+  /** "Find fewer, find better": routine-service tenders are hidden by default (see lib/relevance.ts) unless explicitly shown. */
+  includeExcluded?: boolean;
 };
 
 export function filterTenders(
   allTenders: Tender[],
-  { query, industries, scopeTypes, statuses }: TenderFilterOptions,
+  { query, industries, scopeTypes, statuses, includeExcluded }: TenderFilterOptions,
   locale: Locale,
 ): Tender[] {
   const normalizedQuery = query?.trim().toLowerCase();
 
   return allTenders.filter((tender) => {
+    if (!includeExcluded && tender.relevance.tier === "excluded") return false;
     if (industries && industries.length > 0 && !industries.includes(tender.industry)) {
       return false;
     }

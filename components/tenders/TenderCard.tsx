@@ -5,6 +5,7 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
+  RELEVANCE_TIER_COLORS,
   SCOPE_TYPE_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
@@ -26,6 +27,15 @@ export function TenderCard({ tender }: { tender: Tender }) {
           >
             {localize(STATUS_LABELS[tender.status], locale)}
           </span>
+          {(tender.relevance.tier === "flagship" || tender.relevance.tier === "significant") && (
+            <span
+              title={localize(tender.relevance.reason, locale)}
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${RELEVANCE_TIER_COLORS[tender.relevance.tier]}`}
+            >
+              {tender.relevance.tier === "flagship" ? "★ " : ""}
+              {localize(tender.relevance.label, locale)}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="whitespace-nowrap text-xs text-zinc-400">

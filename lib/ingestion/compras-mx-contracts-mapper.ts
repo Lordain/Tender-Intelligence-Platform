@@ -1,6 +1,7 @@
 import type { Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
+import { classifyRelevance } from "@/lib/relevance";
 
 /**
  * One row of the real "Datos Abiertos" contracts export
@@ -136,6 +137,11 @@ export function mapComprasMxContractRowToTender(
     row["Descripción del contrato"]?.trim() || row["Título del contrato"]?.trim() || title;
 
   const now = new Date().toISOString();
+  const industry = row["Descripción Ramo"]?.trim() || "General";
+  const scopeType = inferScopeType(row["Tipo de contratación"]);
+  const estimatedValue =
+    parseAmount(row["Monto sin imp./máximo"]) ?? parseAmount(row["Importe DRC"]) ?? undefined;
+  const currency = row["Moneda"]?.trim();
 
   return {
     id: crypto.randomUUID(),
@@ -146,20 +152,20 @@ export function mapComprasMxContractRowToTender(
     buyer,
     country: "Mexico",
     governmentLevel: inferGovernmentLevelFromOrden(row["Orden de gobierno"], buyer),
-    industry: row["Descripción Ramo"]?.trim() || "General",
-    scopeType: inferScopeType(row["Tipo de contratación"]),
+    industry,
+    scopeType,
     procedureType: row["Tipo Procedimiento"]?.trim() || row["Ley"]?.trim() || "Unknown",
     publicationDate,
     awardDate: parseDate(row["Fecha de fallo"]) ?? undefined,
-    estimatedValue:
-      parseAmount(row["Monto sin imp./máximo"]) ?? parseAmount(row["Importe DRC"]) ?? undefined,
-    currency: row["Moneda"]?.trim(),
+    estimatedValue,
+    currency,
     status: inferStatus(row["Estatus Contrato"], row["Estatus DRC"]),
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
+    relevance: classifyRelevance({ title, summary, industry, scopeType, estimatedValue, currency }),
     sourceName,
     sourceUrl: row["Dirección del anuncio"]?.trim() || "",
     createdAt: now,

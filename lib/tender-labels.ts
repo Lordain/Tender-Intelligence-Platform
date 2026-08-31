@@ -1,6 +1,7 @@
 import type {
   GovernmentLevel,
   LocalizedText,
+  TenderKeyDate,
   TenderRiskLevel,
   TenderScopeType,
   TenderStatus,
@@ -60,4 +61,27 @@ export const RISK_LEVEL_ICONS: Record<TenderRiskLevel, string> = {
   medium: "🟡",
   high: "🟠",
   critical: "🔴",
+};
+
+export const KEY_DATE_TYPE_LABELS: Record<TenderKeyDate["type"], LocalizedText> = {
+  publication: { en: "Publication", es: "Publicación", zh: "发布" },
+  site_visit: { en: "Site Visit", es: "Visita a Sitio", zh: "现场踏勘" },
+  questions_deadline: {
+    en: "Questions Deadline",
+    es: "Límite de Preguntas",
+    zh: "提问截止" ,
+  },
+  clarification: {
+    en: "Junta de Aclaraciones",
+    es: "Junta de Aclaraciones",
+    zh: "澄清会议",
+  },
+  submission: { en: "Submission", es: "Presentación", zh: "提交截止" },
+  opening: { en: "Opening", es: "Apertura", zh: "开标" },
+  award: { en: "Award", es: "Fallo", zh: "中标结果" },
+  contract_signing: {
+    en: "Contract Signing",
+    es: "Firma de Contrato",
+    zh: "合同签署",
+  },
 };

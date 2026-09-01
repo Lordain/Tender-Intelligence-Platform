@@ -259,6 +259,8 @@ const rawTenders: Omit<Tender, "relevance">[] = [
     currency: "MXN",
     location: "Jalisco, Mexico",
     status: "awarded",
+    participationScope: "international_treaty",
+    awardedTo: "Grupo Constructor del Pacífico, S.A. de C.V.",
     qualifications: [
       {
         id: "q1",

@@ -654,7 +654,7 @@ mostly pointless for expired procedures):
 ```js
 async function pullPemexAttachments(listTitle, filename, onlyOpen = true) {
   const base = "https://www.pemex.com/procura/procedimientos-de-contratacion/concursosabiertos/_api/web/lists/getbytitle('" + listTitle + "')/items";
-  let url = base + "?$select=Id,Title,vencimiento,Attachments&$top=5000&$filter=Attachments eq true";
+  let url = base + "?$select=Id,Title,vencimiento,Attachments&$top=5000&$orderby=Modified desc";
   let items = [];
   while (url) {
     const r = await fetch(url, {headers:{Accept:"application/json;odata=nometadata"}});
@@ -663,7 +663,12 @@ async function pullPemexAttachments(listTitle, filename, onlyOpen = true) {
     url = d["odata.nextLink"] || null;
   }
   const now = new Date();
-  const targets = onlyOpen ? items.filter(i => i.vencimiento && new Date(i.vencimiento) > now) : items;
+  // Filtering client-side, not via $filter=Attachments eq true: a real
+  // attempt at that server-side filter silently returned 0 items (not an
+  // error) — this SharePoint's REST implementation doesn't support
+  // filtering on the Attachments field, the same way it does on ordinary
+  // list columns.
+  const targets = items.filter(i => i.Attachments === true && (!onlyOpen || (i.vencimiento && new Date(i.vencimiento) > now)));
   console.log("fetching attachments for", targets.length, "items...");
   const results = [];
   for (const item of targets) {

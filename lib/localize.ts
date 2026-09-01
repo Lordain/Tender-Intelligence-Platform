@@ -55,6 +55,7 @@ export const uiText = {
     zh: "没有符合筛选条件的招标。",
   },
   estimatedValue: { en: "Estimated Value", es: "Valor Estimado", zh: "预估金额" },
+  awardedToLabel: { en: "Awarded To", es: "Adjudicado A", zh: "中标供应商" },
   submissionDeadline: {
     en: "Submission Deadline",
     es: "Fecha Límite de Presentación",

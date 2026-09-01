@@ -40,6 +40,7 @@ async function main() {
         publication_date: tenderFields.publicationDate,
         submission_deadline: tenderFields.submissionDeadline ?? null,
         award_date: tenderFields.awardDate ?? null,
+        awarded_to: tenderFields.awardedTo ?? null,
         estimated_value: tenderFields.estimatedValue ?? null,
         currency: tenderFields.currency ?? null,
         location: tenderFields.location ?? null,

@@ -54,6 +54,7 @@ export async function upsertTendersBatched(
         publication_date: fields.publicationDate,
         submission_deadline: fields.submissionDeadline ?? null,
         award_date: fields.awardDate ?? null,
+        awarded_to: fields.awardedTo ?? null,
         estimated_value: fields.estimatedValue ?? null,
         currency: fields.currency ?? null,
         location: fields.location ?? null,

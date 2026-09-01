@@ -114,6 +114,8 @@ export type Tender = {
   publicationDate: string;
   submissionDeadline?: string;
   awardDate?: string;
+  /** Winning supplier/contractor name — only meaningful once a tender is awarded, from a real source ("Proveedor o contratista" in the Compras MX contracts export). */
+  awardedTo?: string;
   estimatedValue?: number;
   currency?: string;
   location?: string;

@@ -39,6 +39,7 @@ export type ComprasMxContractRow = {
   "Importe DRC"?: string;
   "Monto sin imp./máximo"?: string;
   "Moneda"?: string;
+  "Proveedor o contratista"?: string;
   "Dirección del anuncio"?: string;
 };
 
@@ -158,6 +159,7 @@ export function mapComprasMxContractRowToTender(
     participationScope: inferParticipationScope(row["Carácter del procedimiento"]),
     publicationDate,
     awardDate: parseDate(row["Fecha de fallo"]) ?? undefined,
+    awardedTo: row["Proveedor o contratista"]?.trim() || undefined,
     estimatedValue,
     currency,
     status: inferStatus(row["Estatus Contrato"], row["Estatus DRC"]),

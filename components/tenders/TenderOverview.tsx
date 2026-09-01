@@ -93,6 +93,9 @@ export function TenderOverview({ tender }: { tender: Tender }) {
               : "—"
           }
         />
+        {tender.awardedTo && (
+          <Field label={localize(uiText.awardedToLabel, locale)} value={tender.awardedTo} />
+        )}
       </dl>
     </section>
   );

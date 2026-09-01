@@ -27,6 +27,7 @@ type TenderRow = {
   publication_date: string;
   submission_deadline: string | null;
   award_date: string | null;
+  awarded_to: string | null;
   estimated_value: number | null;
   currency: string | null;
   location: string | null;
@@ -73,7 +74,7 @@ const TENDER_SELECT = `
   id, slug, tender_number, title, summary, buyer, country, government_level,
   industry, subcategory, scope_type, procedure_type, participation_scope,
   publication_date,
-  submission_deadline, award_date, estimated_value, currency, location,
+  submission_deadline, award_date, awarded_to, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason,
   source_name, source_url, created_at, updated_at,
   tender_requirements ( id, kind, title, description, mandatory, source_reference, sort_order ),
@@ -148,6 +149,7 @@ function toTender(row: TenderRow): Tender {
     publicationDate: row.publication_date,
     submissionDeadline: row.submission_deadline ?? undefined,
     awardDate: row.award_date ?? undefined,
+    awardedTo: row.awarded_to ?? undefined,
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
     location: row.location ?? undefined,

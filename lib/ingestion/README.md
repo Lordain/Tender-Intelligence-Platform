@@ -231,19 +231,13 @@ a guessed document URL or an unconfirmed provider. Two things need
 verifying/deciding before any of this is real code, same pattern as every
 other source in this file:
 
-1. **Document access is unconfirmed.** Every real per-record `sourceUrl`
-   captured so far (`.../sitiopublico/#/sitiopublico/detalle/<uuid>/procedimiento`)
-   is a client-side-routed SPA page, not a fetchable document — the actual
-   Convocatoria/Anexo Técnico files are very likely served by the same
-   `whitney/sitiopublico` JSON API family already confirmed anti-bot-gated
-   (see the open-tenders section above), but that's an inference, not a
-   verified fact. Needs the same treatment that unblocked the open-tenders
-   export: capture a real document-download request from a browser (does
-   it need the `grc`/`igrc`/`xgrc` headers, or is the actual file served
-   from a separate, ungated storage/CDN URL once you have the link?). If
-   it's gated, this becomes a manual-download workflow like the two
-   existing sources; if it's an ungated direct link, a real connector can
-   fetch it.
+1. **Document access is gated too — confirmed, not inferred.** A real
+   document-download request captured from a browser hits
+   `upcp-cnetservicios.buengobierno.gob.mx/norah/documentos/recursos/ulck?id_documento=<uuid>&user=sitiopublico`
+   and carries the same `grc`/`igrc`/`xgrc` anti-automation headers as the
+   search API. So document retrieval is a manual/human-in-the-loop step
+   like the two existing bulk sources — no downloader is built against
+   that endpoint, for the same reason no search connector was.
 2. **No LLM provider is configured anywhere in this codebase** (checked —
    no `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/etc. referenced anywhere, not
    even in `.env.example`). Needs a provider decision before any
@@ -251,6 +245,72 @@ other source in this file:
    shape without ever running it would be exactly the kind of
    unverified-placeholder mistake this file's history already shows the
    cost of.
+
+#### What a real Convocatoria actually contains (read one end-to-end)
+
+Read the full 50-page Convocatoria for `IA-60-N56-901026999-T-50-2026`
+(ISSEA, Aguascalientes — the same tender that's row 2 of
+`__fixtures__/sample-comprasmx-open-tenders.xlsx`, so this is a real
+document for a tender already in the pipeline). Two findings that change
+the extraction design:
+
+- **~95% of it is legally-mandated boilerplate**, near-identical across
+  every LAASSP procedure of the same (Ley, Tipo de Procedimiento,
+  Carácter) combination: glossary, who may not bid (17 fractions), the 23
+  `causales de desechamiento`, rescission/conciliation/inconformidad
+  procedures, penas convencionales, garantía rules. Sending 50 pages of
+  this to an LLM per tender would pay repeatedly for the same answer.
+  Cheaper design: author the standard requirement/risk bundle **once per
+  (Ley, Tipo de Procedimiento, Carácter) combination** and attach it by
+  reference; spend LLM calls only on what's actually tender-specific.
+- **The genuinely tender-specific technical requirements are NOT in the
+  Convocatoria** — it repeatedly defers to a separate "ANEXO TÉCNICO" and
+  "Anexo No. 00" (the document checklist), which are separate files not
+  included in this PDF. So "extract the requirements for this tender"
+  needs the Anexos, not just the Convocatoria — a tender maps to *several*
+  documents, which is why `tender_documents` is per-document with its own
+  hash rather than one blob per tender.
+
+What the Convocatoria alone does yield, verified against this real one:
+generic-but-real qualifications (SAT `opinión de cumplimiento` positive
+and <30 days old, IMSS social-security opinion, INFONAVIT no-debt
+certificate, notarised power of attorney, `declaración de integridad`),
+and real risk flags (`penas convencionales` at 4-per-thousand per day of
+delay capped at the performance bond; a 10% `garantía de cumplimiento`
+due within 10 calendar days of contract signature; 23 distinct grounds
+for outright rejection, including submitting in a currency other than MXN
+or a language other than Spanish — both directly relevant to a foreign
+bidder).
+
+#### Volume: why manual document retrieval is actually tractable
+
+Measured on the real 515-row open-tenders export rather than assumed:
+deadlines span 36 days, so steady state is **~14 new tenders/day across
+all of Mexico** (federal + state, all sectors), ~6/day after
+Pre-Screening keeps only flagship tier. And **only 82 of 515 (16%) are
+open to foreign bidders at all** — the other 84% are `NACIONAL`, biddable
+only by a Mexican legal entity.
+
+That 16% is also concentrated: mostly medical/health supply
+(osteosynthesis, endoprostheses, infusion pumps, interventional radiology
+services — health institutions buy internationally); only 3 are
+`works` scope. **Infrastructure/EPC/power tenders are almost entirely
+`NACIONAL`.** That's a market-structure fact, not a data gap: a Chinese
+EPC firm needs a Mexican entity or local partner to bid on those at all —
+which is how such firms usually operate in LatAm anyway. Product
+implication: `participationScope` should be a prominent *label* ("needs a
+Mexican legal entity"), not a default filter that would hide 84% of the
+market from customers who do have one.
+
+So the document-retrieval funnel is single-digit documents per week for a
+given customer segment, not hundreds per day — manual retrieval is fine
+at this stage, and the real scaling path is (a) fetch on demand for
+tenders a user actually opens, cached by `content_hash` so the cost is
+paid once across all subscribers, then (b) if volume ever justifies it,
+official channels: a formal bulk-data request through Mexico's
+transparency system (PNT/INAI) or a data-sharing arrangement with the
+operating agency. Not headless-browser automation against the anti-bot
+gate, at any volume.
 
 Once both are real, the pipeline this schema is already shaped for:
 

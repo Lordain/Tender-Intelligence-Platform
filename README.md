@@ -6,10 +6,15 @@ AI Tender Intelligence Platform — 解决企业在"找标、看标、判断能�
 
 发现招标机会 → 快速理解招标要求 → 判断企业是否具备投标资格。
 
-**Positioning**: primarily for Chinese enterprises (and other international
-bidders) expanding into Mexico — the differentiator against Spanish-native
-local competitors (LicitIA, Licitacom, etc.) is the language/translation
-layer, not raw data aggregation, which is already a fairly crowded market.
+**Positioning**: for Chinese enterprises expanding into Mexico — the
+differentiator against Spanish-native local competitors (LicitIA, Licitacom,
+etc.) is the language/translation layer, not raw data aggregation, which is
+already a fairly crowded market. Per that same reasoning, the frontend is
+**Chinese-only by design** (`lib/i18n.tsx`) — the en/es tender-intelligence
+market already has enough similar sites; the underlying `LocalizedText`
+data model still carries `es`/`en`/`zh` (Spanish stays the source-of-truth
+field for real government data), it's just not rendered in the UI or
+switchable anymore.
 
 First market: Mexico public procurement (Compras MX, DOF).
 
@@ -26,7 +31,7 @@ This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/a
 ## Project Structure
 
 ```text
-app/            Next.js App Router routes (tenders, pricing, account, admin, industries, agencies, saved, alerts)
+app/            Next.js App Router routes (/, tenders, pricing, login, register, account, saved)
 components/     UI components (tenders/, layout/)
 data/           Mock / seed data
 lib/            Shared utilities, Supabase clients, and the data-access layer
@@ -44,14 +49,14 @@ database required. To connect a real Supabase project:
 2. In **Settings → API**, copy the **Project URL**, the **anon** / **Publishable**
    key, and the **service_role** / **Secret** key (secret — never expose it
    client-side).
-3. Open the **SQL Editor** and run, in order:
-   - `supabase/migrations/0001_init.sql` — creates all tables (`tenders`,
-     `tender_requirements`, `tender_key_dates`, `tender_risks`,
-     `tender_documents`, `buyers`, `industries`, `profiles`,
-     `subscriptions`) with indexes and Row Level Security policies (public
-     read on tender data; private read on profiles/subscriptions).
-   - `supabase/migrations/0002_profile_on_signup.sql` — auto-creates a
-     `profiles` row whenever someone registers via Supabase Auth.
+3. Open the **SQL Editor** and run every file in `supabase/migrations/` **in
+   filename order** (`0001_init.sql` creates all tables — `tenders`,
+   `tender_requirements`, `tender_key_dates`, `tender_risks`,
+   `tender_documents`, `buyers`, `industries`, `profiles`, `subscriptions` —
+   with indexes and Row Level Security policies, public read on tender data
+   and private read on profiles/subscriptions; each later-numbered file is a
+   small, additive schema change — new nullable columns, a renamed pricing
+   tier, etc. — never a rewrite of an earlier one).
 4. Copy `.env.example` to `.env.local` and fill in the three values:
    ```
    NEXT_PUBLIC_SUPABASE_URL=
@@ -115,7 +120,6 @@ default; add `--write` to upsert into Supabase).
 **Product direction has expanded** to Latin America (Mexico, Brazil,
 Colombia, Chile, Peru), positioned for Chinese enterprises bidding
 overseas. Portuguese (for Brazil) is part of that long-term direction but
-explicitly deferred for now — the app stays zh/en/es until that's picked
-back up. See the "Multi-country expansion" section in
+explicitly deferred for now. See the "Multi-country expansion" section in
 `lib/ingestion/README.md` for what the country expansion means for
 ingestion specifically; only Mexico has a real connector so far.

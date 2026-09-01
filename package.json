@@ -13,7 +13,8 @@
     "ingest:comprasmx-contracts": "tsx scripts/ingest-compras-mx-contracts.ts",
     "ingest:comprasmx-open": "tsx scripts/ingest-comprasmx-open-tenders.ts",
     "ingest:documents": "tsx scripts/ingest-tender-documents.ts",
-    "extract:document": "tsx scripts/extract-tender-document.ts"
+    "extract:document": "tsx scripts/extract-tender-document.ts",
+    "ingest:dof": "tsx scripts/ingest-dof.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

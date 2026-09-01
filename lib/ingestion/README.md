@@ -418,7 +418,25 @@ misleading for the exact bid/no-bid decision this field exists to inform.
 That interpretation belongs in Phase 6 (real, verified legal/trade
 research), not guessed here.
 
-## Why DOF isn't built yet
+## DOF — now built, real data confirmed
+
+The user captured real DOF daily-edition API responses (a `ListaDiarios`
+lookup — date range in, `codDiario` edition codes out — and a per-`codDiario`
+notice list). Confirmed real, not guessed: 95 notices in one real day's
+edition, exactly 1 title-matched as a tender ("Convocatoria de la
+licitación pública LPEM No. 01/16..."). `dof-mapper.ts` +
+`connectors/dof-file.ts` + `npm run ingest:dof` map only title/date/
+buyer/page — DOF carries no value, deadline, or scope data, so this stays
+the lighter connector predicted below. `sourceUrl` uses
+`dof.gob.mx/nota_detalle.php?codigo=<id>&fecha=...`, cross-referenced from
+a real DOF URL found in unrelated research (not captured for this exact
+endpoint) — flagged as a strong inference, not a directly verified link.
+Files decode as latin-1, not GB18030 like the Compras MX exports —
+confirmed by decode success. This is also the still-unverified likely
+path to CFE/PEMEX tender notices (see below) — not yet tested against
+one, since the captured sample didn't happen to contain a CFE/PEMEX row.
+
+### Original framing (still accurate for what DOF _isn't_)
 
 DOF (Diario Oficial de la Federación) also has an open-data section
 (`sidof.segob.gob.mx/datos_abiertos`), but it publishes the *full text* of

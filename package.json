@@ -14,7 +14,8 @@
     "ingest:comprasmx-open": "tsx scripts/ingest-comprasmx-open-tenders.ts",
     "ingest:documents": "tsx scripts/ingest-tender-documents.ts",
     "extract:document": "tsx scripts/extract-tender-document.ts",
-    "ingest:dof": "tsx scripts/ingest-dof.ts"
+    "ingest:dof": "tsx scripts/ingest-dof.ts",
+    "ingest:dof-search": "tsx scripts/ingest-dof-search.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

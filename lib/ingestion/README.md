@@ -432,9 +432,46 @@ the lighter connector predicted below. `sourceUrl` uses
 a real DOF URL found in unrelated research (not captured for this exact
 endpoint) — flagged as a strong inference, not a directly verified link.
 Files decode as latin-1, not GB18030 like the Compras MX exports —
-confirmed by decode success. This is also the still-unverified likely
-path to CFE/PEMEX tender notices (see below) — not yet tested against
-one, since the captured sample didn't happen to contain a CFE/PEMEX row.
+confirmed by decode success.
+
+### CFE tenders confirmed in DOF — and the search endpoint isn't anti-bot gated
+
+Closed the loop this was for: searched DOF's advanced search
+(`sidof.segob.gob.mx/busquedaAvanzada/busqueda`) for "Comisión Federal de
+Electricidad" and got 79 real hits, several filed under the literal DOF
+section **"CONVOCATORIAS PARA CONCURSOS DE ADQUISICIONES, ARRENDAMIENTOS,
+OBRAS Y SERVICIOS DEL SECTOR PUBLICO"** — DOF's own tender-notice
+category, dated the same day. **CFE tenders are real, current, and
+findable in DOF.** Captured the actual request that renders the results
+table: `POST sidof.segob.gob.mx/busqueda/CargaNotasAvanzadas/`
+(DataTables server-side format + `tipoBus`/`textoBus`/`fechaIni`/
+`fechaFin`/`idOrg` params). **This endpoint carries no `grc`/`igrc`/`xgrc`
+anti-automation headers** — just a `ci_session` cookie, the routine
+session cookie any visitor gets, not a deliberate challenge like Compras
+MX's search API. `dof-search-mapper.ts` + `connectors/dof-search-file.ts`
++ `npm run ingest:dof-search` map this response shape.
+
+**Important: this endpoint's fields mean something different from the
+daily-edition endpoint's.** There, `codOrgaUno` is a short branch code
+(PE/PJ/...) and `codOrgaDos` is the publishing department. Here,
+`codOrgaUno` instead carries the section name (the tender-category string
+above, when it's a tender) or the branch's full name, and the buyer name
+lives inside the title itself ("`<BUYER> - REF:<number>`", parsed by
+`dof-search-mapper.ts`) rather than a dedicated field — confirmed by
+comparing two real notes about CFE side by side (a tariff notice had
+`codOrgaUno: "EMPRESAS PUBLICAS DEL ESTADO MEXICANO"`,
+`codOrgaDos: "COMISION FEDERAL DE ELECTRICIDAD"`; a tender notice had
+`codOrgaUno` set to the section name and `codOrgaDos: null`). Two
+separate mappers on purpose, not one merged type — conflating them would
+silently mislabel a section name as a buyer name or vice versa.
+
+**Still not built: an actual live fetcher.** Confirmed anti-bot-free
+doesn't mean confirmed automatable from here — this session can't reach
+`*.gob.mx` at all to test a live request end-to-end (get a `ci_session`
+cookie, then POST with it), so both DOF connectors still read a
+locally-saved response file, same as every other source in this project.
+Worth revisiting if the platform ever runs somewhere with real network
+access to verify against.
 
 ### Original framing (still accurate for what DOF _isn't_)
 

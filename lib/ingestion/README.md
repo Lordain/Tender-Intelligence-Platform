@@ -473,6 +473,41 @@ locally-saved response file, same as every other source in this project.
 Worth revisiting if the platform ever runs somewhere with real network
 access to verify against.
 
+### DOF is a CFE/PEMEX supplement, not a general replacement for Compras MX
+
+`dof-search-mapper.ts` has no CFE-specific logic — searching any buyer
+name works the same way — but it should only ever be *run* for CFE/PEMEX
+(and their subsidiaries), not for buyers already covered by Compras MX
+(IMSS, SICT, SAT, ...). Two reasons: DOF's fields are far sparser (no
+value, deadline, scope, or `participationScope` — Compras MX's summary
+exports are strictly richer for anything they actually cover), and the
+set of buyers that genuinely need this workaround is small and legally
+closed — "Empresas Productivas del Estado" is a specific constitutional
+status the 2013-2014 energy reform created for exactly CFE and PEMEX,
+not an open category.
+
+**A real search for "Petróleos Mexicanos" surfaced a naming trap, not
+PEMEX**: every hit was **Instituto Mexicano del Petróleo (IMP)** — a
+SENER-affiliated research institute that shares the word "Petróleo" but
+has nothing to do with PEMEX's Empresa Productiva del Estado status
+(`codOrgaUno: "PODER EJECUTIVO"` / `"SECRETARIA DE ENERGIA"` for its
+general notices, same `CONVOCATORIAS...` section as CFE for its tender
+ones — IMP is a normal federal entity, unrelated to the CFE/PEMEX
+question). PEMEX itself is still unconfirmed in DOF — worth a follow-up
+search for "PEMEX" specifically (the company almost never spells out
+"Petróleos Mexicanos" in its own procurement notices) or filtering
+`organismos` down to just `EPEM` to exclude regular Poder Ejecutivo
+entities like IMP from the results.
+
+This same real data also caught a mapper bug: some titles prefix a short
+internal unit code before the buyer name ("018T0O - INSTITUTO MEXICANO
+DEL PETROLEO - REF:579186" vs. plain "INSTITUTO MEXICANO DEL PETROLEO -
+REF:573547" for the same buyer on an older notice) — `parseBuyerAndRef`
+now strips a leading short all-caps/digit code specifically, rather than
+naively splitting on the first "-", which would have also mangled real
+buyer names that legitimately contain one (confirmed real:
+"COMISION FEDERAL DE ELECTRICIDAD A RUEGO Y ENCARGO").
+
 ### Original framing (still accurate for what DOF _isn't_)
 
 DOF (Diario Oficial de la Federación) also has an open-data section

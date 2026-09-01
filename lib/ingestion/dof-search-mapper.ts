@@ -42,7 +42,20 @@ const TENDER_SECTION = /CONVOCATORIAS PARA CONCURSOS/i;
 function parseBuyerAndRef(titulo: string): { buyer?: string; ref?: string } {
   const match = titulo.match(/^(.+?)\s*-\s*REF:\s*(\d+)/i);
   if (!match) return {};
-  return { buyer: match[1].trim(), ref: match[2] };
+  let buyer = match[1].trim();
+
+  // Some real titles prefix a short internal unit code before the actual
+  // buyer name — confirmed real: "018T0O - INSTITUTO MEXICANO DEL
+  // PETROLEO - REF:579186" (older notices for the same buyer, e.g.
+  // "INSTITUTO MEXICANO DEL PETROLEO - REF:573547", have no such prefix).
+  // Strip it only when it looks like a code (short, no lowercase letters
+  // or spaces) rather than blindly taking everything before the first
+  // "-", since some real buyer names legitimately contain their own dash
+  // (e.g. "COMISION FEDERAL DE ELECTRICIDAD A RUEGO Y ENCARGO").
+  const codePrefix = buyer.match(/^[A-Z0-9]{4,8}\s*-\s*(.+)$/);
+  if (codePrefix) buyer = codePrefix[1].trim();
+
+  return { buyer, ref: match[2] };
 }
 
 function parseFecha(raw: string): string | null {

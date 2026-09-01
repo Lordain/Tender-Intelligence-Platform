@@ -6,15 +6,16 @@ export type TenderFilterOptions = {
   industries?: string[];
   scopeTypes?: TenderScopeType[];
   statuses?: TenderStatus[];
+  countries?: string[];
   /** Filters to the selected relevance/scale tiers (see lib/relevance.ts) — e.g. flagship + significant only, to cut out the long tail of small routine tenders. Empty/omitted means no tier restriction. */
   relevanceTiers?: TenderRelevanceTier[];
-  /** "Find fewer, find better": routine-service tenders are hidden by default (see lib/relevance.ts) unless explicitly shown. */
+  /** "Find fewer, find better": routine-service tenders are hidden by default (see lib/relevance.ts). No UI control exposes this right now — kept as a param rather than removed since the underlying tier still needs to not leak into the default view. */
   includeExcluded?: boolean;
 };
 
 export function filterTenders(
   allTenders: Tender[],
-  { query, industries, scopeTypes, statuses, relevanceTiers, includeExcluded }: TenderFilterOptions,
+  { query, industries, scopeTypes, statuses, countries, relevanceTiers, includeExcluded }: TenderFilterOptions,
   locale: Locale,
 ): Tender[] {
   const normalizedQuery = query?.trim().toLowerCase();
@@ -33,6 +34,9 @@ export function filterTenders(
     if (statuses && statuses.length > 0 && !statuses.includes(tender.status)) {
       return false;
     }
+    if (countries && countries.length > 0 && !countries.includes(tender.country)) {
+      return false;
+    }
 
     if (normalizedQuery) {
       const haystack = [
@@ -49,12 +53,7 @@ export function filterTenders(
   });
 }
 
-export const SORT_KEYS = [
-  "publication_desc",
-  "deadline_asc",
-  "value_desc",
-  "value_asc",
-] as const;
+export const SORT_KEYS = ["publication_desc", "deadline_asc"] as const;
 
 export type SortKey = (typeof SORT_KEYS)[number];
 
@@ -74,10 +73,6 @@ export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SOR
         if (!b.submissionDeadline) return -1;
         return a.submissionDeadline.localeCompare(b.submissionDeadline);
       });
-    case "value_desc":
-      return sorted.sort((a, b) => (b.estimatedValue ?? -Infinity) - (a.estimatedValue ?? -Infinity));
-    case "value_asc":
-      return sorted.sort((a, b) => (a.estimatedValue ?? Infinity) - (b.estimatedValue ?? Infinity));
     case "publication_desc":
     default:
       return sorted.sort((a, b) => b.publicationDate.localeCompare(a.publicationDate));

@@ -11,6 +11,24 @@ import type {
 import type { IndustryKey } from "@/lib/industry";
 import type { Locale } from "@/types/tender";
 
+/**
+ * Product direction is Latin America (see lib/ingestion/README.md's
+ * "Multi-country expansion" section) — only Mexico has a real connector
+ * built so far, but the filter is added ahead of that so the UI doesn't
+ * need reworking again once Brazil/Chile/Colombia/Peru connectors exist.
+ * Values match the real `country` field every mapper already writes
+ * (`country: "Mexico"`, English canonical).
+ */
+export const ALL_COUNTRIES = ["Mexico", "Brazil", "Chile", "Colombia", "Peru"] as const;
+
+export const COUNTRY_LABELS: Record<(typeof ALL_COUNTRIES)[number], LocalizedText> = {
+  Mexico: { en: "Mexico", es: "México", zh: "墨西哥" },
+  Brazil: { en: "Brazil", es: "Brasil", zh: "巴西" },
+  Chile: { en: "Chile", es: "Chile", zh: "智利" },
+  Colombia: { en: "Colombia", es: "Colombia", zh: "哥伦比亚" },
+  Peru: { en: "Peru", es: "Perú", zh: "秘鲁" },
+};
+
 export const INDUSTRY_LABELS: Record<IndustryKey, LocalizedText> = {
   education: { en: "Education", es: "Educación", zh: "教育" },
   healthcare: { en: "Healthcare", es: "Salud", zh: "医疗" },

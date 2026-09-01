@@ -20,9 +20,9 @@ export function MultiSelectPills<T extends string>({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium text-zinc-500">{label}</span>
-      <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-1">
+      <span className="text-[11px] font-medium text-zinc-500">{label}</span>
+      <div className="flex flex-wrap gap-1.5">
         {options.map((option) => {
           const active = selected.includes(option.value);
           return (
@@ -31,7 +31,7 @@ export function MultiSelectPills<T extends string>({
               type="button"
               onClick={() => toggle(option.value)}
               aria-pressed={active}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-full border px-2 py-1 text-[11px] font-medium transition-colors ${
                 active
                   ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
                   : "border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:border-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600"

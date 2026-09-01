@@ -33,9 +33,9 @@ export const uiText = {
   navHome: { en: "Home", es: "Inicio", zh: "首页" },
   navTenders: { en: "Tenders", es: "Licitaciones", zh: "招标项目" },
   searchPlaceholder: {
-    en: "Search by tender name, buyer, or ID…",
-    es: "Buscar por nombre, comprador o ID…",
-    zh: "按名称、采购人或编号搜索…",
+    en: "Search by issuing agency or project keyword…",
+    es: "Buscar por entidad emisora o palabra clave del proyecto…",
+    zh: "按发标单位、项目关键字搜索…",
   },
   industryLabel: { en: "Industry", es: "Industria", zh: "行业" },
   scopeLabel: { en: "Scope", es: "Alcance", zh: "标的类型" },
@@ -163,8 +163,6 @@ export const uiText = {
   sortLabel: { en: "Sort", es: "Ordenar", zh: "排序" },
   sortPublicationDesc: { en: "Newest", es: "Más recientes", zh: "最新发布" },
   sortDeadlineAsc: { en: "Deadline: Soonest", es: "Fecha límite: Próxima", zh: "截止日期：最近优先" },
-  sortValueDesc: { en: "Value: High to Low", es: "Valor: Mayor a menor", zh: "金额：从高到低" },
-  sortValueAsc: { en: "Value: Low to High", es: "Valor: Menor a mayor", zh: "金额：从低到高" },
   previousPage: { en: "Previous", es: "Anterior", zh: "上一页" },
   nextPage: { en: "Next", es: "Siguiente", zh: "下一页" },
   pageOf: { en: "Page {page} of {total}", es: "Página {page} de {total}", zh: "第 {page} 页，共 {total} 页" },
@@ -190,10 +188,6 @@ export const uiText = {
     es: "El pago aún no está configurado — esta es una vista previa de los planes. Contáctanos para activarlo.",
     zh: "支付功能尚未开通——这里仅为套餐预览。请联系我们完成开通。",
   },
-  showRoutineServices: {
-    en: "Show routine-service tenders too",
-    es: "Mostrar también licitaciones de servicios rutinarios",
-    zh: "同时显示日常服务类招标",
-  },
   scaleLabel: { en: "Scale", es: "Escala", zh: "项目规模" },
+  countryLabel: { en: "Country", es: "País", zh: "国家" },
 } satisfies Record<string, LocalizedText>;

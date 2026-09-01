@@ -5,7 +5,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { ALL_INDUSTRIES } from "@/lib/industry";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_LABELS } from "@/lib/tender-labels";
+import {
+  ALL_COUNTRIES,
+  COUNTRY_LABELS,
+  INDUSTRY_LABELS,
+  RELEVANCE_TIER_LABELS,
+  SCOPE_TYPE_LABELS,
+  STATUS_LABELS,
+} from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders, type SortKey } from "@/lib/filter-tenders";
 import { TenderCard } from "@/components/tenders/TenderCard";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
@@ -28,8 +35,9 @@ const STATUSES: TenderStatus[] = [
   "cancelled",
 ];
 
-// "excluded" isn't offered here — that tier is a hide/show toggle
-// (showRoutineServices), not one more scale to filter down to.
+// "excluded" isn't offered here — routine-service tenders stay hidden by
+// default (see includeExcluded in lib/filter-tenders.ts); no UI control
+// exposes showing them right now.
 const RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
 
 const PAGE_SIZE = 9;
@@ -48,16 +56,17 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const industries = parseList(searchParams.get("industry"));
   const scopeTypes = parseList(searchParams.get("scope")) as TenderScopeType[];
   const statuses = parseList(searchParams.get("status")) as TenderStatus[];
+  const countries = parseList(searchParams.get("country"));
   const relevanceTiers = parseList(searchParams.get("tier")) as TenderRelevanceTier[];
   const sortParam = searchParams.get("sort");
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "publication_desc";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
-  const includeExcluded = searchParams.get("all") === "1";
 
   const hasActiveFilters =
     industries.length > 0 ||
     scopeTypes.length > 0 ||
     statuses.length > 0 ||
+    countries.length > 0 ||
     relevanceTiers.length > 0 ||
     query.length > 0;
 
@@ -80,10 +89,10 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
     () =>
       filterTenders(
         tenders,
-        { query, industries, scopeTypes, statuses, relevanceTiers, includeExcluded },
+        { query, industries, scopeTypes, statuses, countries, relevanceTiers },
         locale,
       ),
-    [tenders, query, industries, scopeTypes, statuses, relevanceTiers, includeExcluded, locale],
+    [tenders, query, industries, scopeTypes, statuses, countries, relevanceTiers, locale],
   );
 
   const sorted = useMemo(() => sortTenders(filtered, sort), [filtered, sort]);
@@ -108,8 +117,8 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
         className="w-full rounded-lg border border-zinc-200 px-4 py-2.5 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
       />
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap gap-x-8 gap-y-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap gap-x-6 gap-y-2.5">
           <MultiSelectPills
             label={localize(uiText.scaleLabel, locale)}
             options={RELEVANCE_TIERS.map((option) => ({
@@ -150,31 +159,30 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
             onChange={(next) => updateParams({ status: next.join(",") || null })}
           />
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-zinc-500">
+          <MultiSelectPills
+            label={localize(uiText.countryLabel, locale)}
+            options={ALL_COUNTRIES.map((option) => ({
+              value: option,
+              label: localize(COUNTRY_LABELS[option], locale),
+            }))}
+            selected={countries}
+            onChange={(next) => updateParams({ country: next.join(",") || null })}
+          />
+
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium text-zinc-500">
               {localize(uiText.sortLabel, locale)}
             </span>
             <select
               value={sort}
               onChange={(event) => updateParams({ sort: event.target.value })}
-              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs dark:border-zinc-800 dark:bg-zinc-900"
+              className="rounded-lg border border-zinc-200 px-2 py-1 text-[11px] dark:border-zinc-800 dark:bg-zinc-900"
             >
               <option value="publication_desc">{localize(uiText.sortPublicationDesc, locale)}</option>
               <option value="deadline_asc">{localize(uiText.sortDeadlineAsc, locale)}</option>
-              <option value="value_desc">{localize(uiText.sortValueDesc, locale)}</option>
-              <option value="value_asc">{localize(uiText.sortValueAsc, locale)}</option>
             </select>
           </label>
         </div>
-
-        <label className="flex w-fit items-center gap-2 text-xs text-zinc-500">
-          <input
-            type="checkbox"
-            checked={includeExcluded}
-            onChange={(event) => updateParams({ all: event.target.checked ? "1" : null })}
-          />
-          {localize(uiText.showRoutineServices, locale)}
-        </label>
 
         <div className="flex flex-wrap items-center gap-4">
           {hasActiveFilters && (

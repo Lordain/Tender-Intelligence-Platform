@@ -65,6 +65,21 @@ async function main() {
 
   console.log(`Mapped ${mappedTenders.length} of ${rows.length} rows.`);
 
+  // Every row parsed but none mapped is almost always a header/schema
+  // mismatch this mapper hasn't seen — the exact wrong-schema bug this
+  // caught once already (see README.md). Printing the raw shape of one
+  // real row here beats a silent "Mapped 0" and a guessing match over
+  // chat, where accents/whitespace can get mangled in transit.
+  if (!useFixture && rows.length > 0 && mappedTenders.length === 0) {
+    const sample = rows[0] as Record<string, unknown>;
+    console.error("\nNo rows mapped — dumping the first real row for diagnosis:");
+    console.error("Column names found in this file:", Object.keys(sample));
+    console.error("Required-field values this mapper reads from that row:");
+    for (const key of ["Número del procedimiento", "Código del expediente", "Título del expediente", "Institución", "Fecha de publicación"]) {
+      console.error(`  ${JSON.stringify(key)}: ${JSON.stringify(sample[key])}`);
+    }
+  }
+
   const tenders = filterRecentTenders(mappedTenders, months);
   if (tenders.length !== mappedTenders.length) {
     console.log(

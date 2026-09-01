@@ -14,16 +14,29 @@ import { convertToUsd } from "@/lib/currency";
 const EXCLUDE_KEYWORDS = [
   /limpieza/i,
   /conserjer[íi]a|conserje/i,
-  /guardia de seguridad|vigilante/i,
-  /catering|banquete/i,
-  /jardiner[íi]a/i,
+  /guardia de seguridad|vigilante|servicio de vigilancia/i,
+  /catering|banquete|comedor|servicio de alimentos|servicio de comida/i,
+  /jardiner[íi]a|poda de [áa]rboles|[áa]reas verdes/i,
   /control de plagas|fumigaci[óo]n/i,
   /mensajer[íi]a local|paqueter[íi]a/i,
   /personal temporal|staffing temporal/i,
   /recolecci[óo]n de basura|residuos s[óo]lidos urbanos/i,
   /estacionamiento/i,
-  /papeler[íi]a de oficina|art[íi]culos de oficina/i,
+  /papeler[íi]a de oficina|art[íi]culos de oficina|material de oficina|consumibles de oficina/i,
   /impresi[óo]n rutinaria|fotocopiado/i,
+  // Added without a real observed case yet (see lib/ingestion/README.md
+  // for this project's normal "confirmed real, not guessed" bar) —
+  // these are common, well-established routine-procurement categories
+  // across Mexican/Colombian government tenders, added deliberately
+  // conservative (specific phrases, not bare words) to keep the same
+  // low-false-positive posture as the rest of this list.
+  /uniformes/i,
+  /arrendamiento de veh[íi]culos|renta de veh[íi]culos/i,
+  /agua embotellada|garraf[óo]n(es)? de agua/i,
+  /recarga de extintores/i,
+  /art[íi]culos de aseo|insumos de aseo/i,
+  /cafeter[íi]a|servicio de caf[ée]/i,
+  /telefon[íi]a fija|l[íi]nea telef[óo]nica/i,
 ];
 
 const INCLUDE_OVERRIDE_KEYWORDS = [
@@ -69,6 +82,20 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
 const FLAGSHIP_VALUE_USD = 2_000_000;
 const SIGNIFICANT_VALUE_USD = 250_000;
 
+/**
+ * A real, known contract value under this floor isn't worth a Chinese
+ * enterprise's time to fly out and bid on, regardless of industry —
+ * chosen well below SIGNIFICANT_VALUE_USD so it only catches genuinely
+ * trivial purchases (a handful of office chairs, a single small repair),
+ * not small-but-real equipment/service contracts. Deliberately does NOT
+ * apply when estimatedValue is missing (most Mexican open-tenders rows
+ * carry no value at all — absence isn't evidence of smallness) or when
+ * hasIncludeOverride matched (the same override that protects a flagged
+ * technical category from EXCLUDE_KEYWORDS should also protect it from
+ * being dismissed on value alone).
+ */
+const MIN_VALUE_USD = 10_000;
+
 const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   flagship: {
     zh: "旗舰项目 · 建议中资企业重点关注",
@@ -86,9 +113,22 @@ const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
     es: "Proyecto Estándar",
   },
   excluded: {
-    zh: "日常服务类 · 默认不推荐",
-    en: "Routine Service (filtered by default)",
-    es: "Servicio Rutinario (filtrado por defecto)",
+    zh: "日常服务类/小额标 · 默认不推荐",
+    en: "Routine/Low-Value (filtered by default)",
+    es: "Rutinario/Bajo Valor (filtrado por defecto)",
+  },
+};
+
+const EXCLUDED_REASON_BY_SIGNAL: Record<"keyword" | "value", LocalizedText> = {
+  keyword: {
+    zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
+    en: "This is a routine service procurement, not typically the kind of opportunity worth deep review — filtered from the default feed (metadata is kept, not deleted).",
+    es: "Esta es una contratación de servicios rutinarios, no del tipo de oportunidad que suele valer una revisión a fondo — filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
+  value: {
+    zh: `该项目预估金额低于 $${MIN_VALUE_USD.toLocaleString("en-US")} 美元，规模过小，通常不值得中资企业专门出海投标，默认不进入推荐列表（数据仍保留，可用于统计）。`,
+    en: `Estimated value is under $${MIN_VALUE_USD.toLocaleString("en-US")} — too small to be worth bidding on from abroad, filtered from the default feed (metadata is kept, not deleted).`,
+    es: `El valor estimado es menor a $${MIN_VALUE_USD.toLocaleString("en-US")} — demasiado pequeño para justificar una oferta desde el extranjero, filtrada de la vista predeterminada (los metadatos se conservan).`,
   },
 };
 
@@ -97,11 +137,7 @@ function reasonFor(
   signal: "value" | "scope" | "industry" | "keyword" | "none",
 ): LocalizedText {
   if (tier === "excluded") {
-    return {
-      zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
-      en: "This is a routine service procurement, not typically the kind of opportunity worth deep review — filtered from the default feed (metadata is kept, not deleted).",
-      es: "Esta es una contratación de servicios rutinarios, no del tipo de oportunidad que suele valer una revisión a fondo — filtrada de la vista predeterminada (los metadatos se conservan).",
-    };
+    return EXCLUDED_REASON_BY_SIGNAL[signal === "value" ? "value" : "keyword"];
   }
   if (tier === "flagship") {
     return {
@@ -142,6 +178,10 @@ export function classifyRelevance(input: {
 
   const normalizedValue =
     input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
+
+  if (!hasIncludeOverride && normalizedValue !== undefined && normalizedValue < MIN_VALUE_USD) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "value") };
+  }
 
   const matchesFlagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.some((pattern) => pattern.test(haystack));
   const isWorksLike = input.scopeType === "works" || input.scopeType === "equipment_services";

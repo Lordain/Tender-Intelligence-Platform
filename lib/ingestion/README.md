@@ -964,6 +964,35 @@ currencies per session). Real source currency is still what's stored
 (`tender.currency`) — conversion happens at display/classification time,
 not by overwriting the real ingested value.
 
+### Filtering refined: a real-value floor, plus wider routine-service keyword coverage
+
+`lib/relevance.ts`'s `excluded` tier previously only caught routine
+services by keyword — a tender with a genuinely tiny value (a few office
+chairs, a single small repair) but no matching keyword still landed in
+`standard` and showed in the default feed. Added `MIN_VALUE_USD` (10,000):
+a tender with a *known* estimated value under that floor is now excluded
+too, unless `hasIncludeOverride` matched (the same override that protects
+a flagged technical category — e.g. `subestación`, `fibra óptica` — from
+the keyword list also protects it here, since a small line item inside a
+genuinely significant technical project shouldn't be dismissed on value
+alone). Deliberately does **not** apply when `estimatedValue` is missing
+— most Mexican open-tenders rows carry no value at all, and absence isn't
+evidence of smallness. The two exclusion reasons (routine-service keyword
+vs. too-small value) now show distinct explanations in the UI
+(`EXCLUDED_REASON_BY_SIGNAL` in `relevance.ts`) even though both hide from
+the default feed identically.
+
+Also widened `EXCLUDE_KEYWORDS` with more routine-procurement categories
+common across Mexican/Colombian government tenders (bottled water,
+uniforms, vehicle rental, cafeteria/coffee service, fire-extinguisher
+recharge, routine landline phone service, cleaning-supply consumables) —
+added without a specific real observed case this time (unlike every other
+keyword addition in this project, which was added after seeing it in real
+data), since none was available when this was designed. Flag if any of
+these turn out to be over- or under-matching once real data surfaces
+cases — this is the one place in this file where a rule was added on
+general knowledge of the domain rather than a confirmed real example.
+
 ### Brazil / Chile / Peru — still unbuilt
 
 Brazil PNCP, Chile Mercado Público/ChileCompra API, Peru SEACE/OECE/OCDS

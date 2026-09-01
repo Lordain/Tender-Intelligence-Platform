@@ -2,6 +2,7 @@ import type {
   GovernmentLevel,
   LocalizedText,
   TenderKeyDate,
+  TenderParticipationScope,
   TenderRelevanceTier,
   TenderRiskLevel,
   TenderScopeType,
@@ -48,6 +49,29 @@ export const GOVERNMENT_LEVEL_LABELS: Record<GovernmentLevel, LocalizedText> = {
   municipal: { en: "Municipal", es: "Municipal", zh: "市级" },
   public_company: { en: "Public Company", es: "Empresa Pública", zh: "国有企业" },
   private: { en: "Private", es: "Privada", zh: "私营" },
+};
+
+/**
+ * Translated as-is from the real "Carácter del procedimiento" values, not
+ * interpreted — see TenderParticipationScope in types/tender.ts for why
+ * this platform doesn't assert which countries a treaty covers.
+ */
+export const PARTICIPATION_SCOPE_LABELS: Record<TenderParticipationScope, LocalizedText> = {
+  national: {
+    en: "National (domestic suppliers only)",
+    es: "Nacional (solo proveedores nacionales)",
+    zh: "仅限本国供应商",
+  },
+  international_treaty: {
+    en: "International — treaty coverage only",
+    es: "Internacional — bajo cobertura de tratados",
+    zh: "国际招标（仅限贸易协定覆盖国）",
+  },
+  international_open: {
+    en: "International — open",
+    es: "Internacional — abierto",
+    zh: "国际公开招标",
+  },
 };
 
 export const RISK_LEVEL_COLORS: Record<TenderRiskLevel, string> = {

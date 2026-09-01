@@ -20,5 +20,17 @@ export function readComprasMxContractsFile(filePath: string): ComprasMxContractR
     content = new TextDecoder("gb18030").decode(buffer);
   }
 
-  return parse(content, { columns: true, skip_empty_lines: true, trim: true }) as ComprasMxContractRow[];
+  return parse(content, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+    // The real full 2025 file (23,597 rows) has at least one unquoted
+    // field with an embedded literal quote —
+    // `HOSPITAL GENERAL DE MéXICO "DR. EDUARDO LICEAGA"` in `Institución`,
+    // not RFC4180-escaped — which strict csv-parse rejects outright
+    // (Invalid Opening Quote), aborting the whole file after 48 rows.
+    // Confirmed relax_quotes parses all 23,597 rows correctly, including
+    // that institution name intact.
+    relax_quotes: true,
+  }) as ComprasMxContractRow[];
 }

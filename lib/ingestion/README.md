@@ -173,6 +173,21 @@ scripts' dry-run mode (no `--write`) now prints only the first 5 mapped
 tenders for a real file, not the whole file, so a large dry run doesn't flood the
 terminal — `--fixture` still prints in full since it's only a couple of rows.
 
+**Found running the full real file end-to-end for the first time**: earlier
+verification of `compras-mx-contracts-mapper.ts` used pandas (a lenient CSV
+parser) to inspect the real file, not this platform's own reader — running
+the actual `readComprasMxContractsFile` against the full 23,597-row file
+surfaced a real bug: strict `csv-parse` rejects the file outright
+(`Invalid Opening Quote`) at row 48, because `Institución` contains an
+unescaped literal quote (`HOSPITAL GENERAL DE MéXICO "DR. EDUARDO
+LICEAGA"`) in a field that isn't RFC4180-quoted. Fixed with
+`relax_quotes: true` on all three CSV readers (all read the same family of
+government exports) — confirmed this parses the institution name intact
+and all 23,597 rows. Separately, of those, 20,661 map to a `Tender`
+successfully; the other 2,936 all have a blank `Fecha de publicación` —
+real data-quality gaps in the source, not a bug (the mapper correctly
+refuses to fabricate a publication date rather than guessing one).
+
 ## What's still an unverified placeholder
 
 - `connectors/compras-mx-connector.ts` — assumes a queryable OCDS REST API
@@ -243,6 +258,26 @@ Shared in `heuristics.ts`. Three tiers of confidence, strongest first:
 `industry` has no equivalent documented derivation in any source seen so
 far — still a plain best-effort/fallback value (`Descripción Ramo` where
 present, else `"General"`).
+
+## `participationScope` — whether a foreign bidder can participate at all
+
+The most directly bid/no-bid-relevant field either real Compras MX export
+carries: `Carácter del procedimiento` ("Carácter" in the open-tenders
+export). Confirmed identical real values in both sources — on the full
+23,597-row contracts file: 16,575 `NACIONAL`, 2,807 `INTERNACIONAL
+ABIERTO`, 1,279 `INTERNACIONAL BAJO LA COBERTURA DE TRATADOS`; on the
+515-row open-tenders file: 433 / 31 / 51 respectively. Mapped 1:1 via
+`inferParticipationScope` (`heuristics.ts`) into
+`national`/`international_open`/`international_treaty` and shown as-is on
+the tender detail page.
+
+Deliberately **not** interpreted further — this platform doesn't assert
+which countries a given `INTERNACIONAL BAJO LA COBERTURA DE TRATADOS`
+procedure's treaty actually covers (Mexico's major trade agreements don't
+uniformly include China), and getting that wrong would be actively
+misleading for the exact bid/no-bid decision this field exists to inform.
+That interpretation belongs in Phase 6 (real, verified legal/trade
+research), not guessed here.
 
 ## Why DOF isn't built yet
 

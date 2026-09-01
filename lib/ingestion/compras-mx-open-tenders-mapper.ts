@@ -1,6 +1,6 @@
 import type { Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
-import { inferGovernmentLevelFromProcedureNumber } from "@/lib/ingestion/heuristics";
+import { inferGovernmentLevelFromProcedureNumber, inferParticipationScope } from "@/lib/ingestion/heuristics";
 import { classifyRelevance } from "@/lib/relevance";
 
 /**
@@ -156,6 +156,7 @@ export function mapComprasMxOpenTenderRowToTender(
     industry,
     scopeType,
     procedureType: row["TIPO DE PUBLICACIÓN"]?.trim() || "Unknown",
+    participationScope: inferParticipationScope(row["CARÁCTER"]),
     publicationDate: now,
     submissionDeadline: submissionDeadline ?? undefined,
     location: row["ENTIDAD FEDERATIVA"]?.trim(),

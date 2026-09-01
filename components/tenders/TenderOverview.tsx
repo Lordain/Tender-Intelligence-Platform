@@ -5,6 +5,7 @@ import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
   GOVERNMENT_LEVEL_LABELS,
+  PARTICIPATION_SCOPE_LABELS,
   SCOPE_TYPE_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
@@ -62,6 +63,12 @@ export function TenderOverview({ tender }: { tender: Tender }) {
           label={localize(uiText.procedureType, locale)}
           value={tender.procedureType}
         />
+        {tender.participationScope && (
+          <Field
+            label={localize(uiText.participationScopeLabel, locale)}
+            value={localize(PARTICIPATION_SCOPE_LABELS[tender.participationScope], locale)}
+          />
+        )}
         <Field
           label={localize(uiText.locationLabel, locale)}
           value={tender.location ?? tender.country}

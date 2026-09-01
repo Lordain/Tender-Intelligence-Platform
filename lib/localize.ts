@@ -72,6 +72,7 @@ export const uiText = {
   buyer: { en: "Buyer", es: "Comprador", zh: "采购人" },
   governmentLevelLabel: { en: "Government Level", es: "Nivel de Gobierno", zh: "政府层级" },
   procedureType: { en: "Procedure Type", es: "Tipo de Procedimiento", zh: "采购方式" },
+  participationScopeLabel: { en: "Bidder Eligibility", es: "Carácter del Procedimiento", zh: "参与资格范围" },
   locationLabel: { en: "Location", es: "Ubicación", zh: "地点" },
   publicationDateLabel: { en: "Publication Date", es: "Fecha de Publicación", zh: "发布日期" },
   qualifications: { en: "Qualification Requirements", es: "Requisitos de Calificación", zh: "资质要求" },

@@ -1,4 +1,4 @@
-import type { GovernmentLevel } from "@/types/tender";
+import type { GovernmentLevel, TenderParticipationScope } from "@/types/tender";
 
 const GOVERNMENT_LEVEL_PATTERNS: [RegExp, GovernmentLevel][] = [
   [/municipio|ayuntamiento/i, "municipal"],
@@ -49,4 +49,25 @@ export function inferGovernmentLevelFromProcedureNumber(
     if (ramo >= 60 && ramo <= 91) return "state";
   }
   return inferGovernmentLevel(buyerName);
+}
+
+const PARTICIPATION_SCOPE_BY_CARACTER: Record<string, TenderParticipationScope> = {
+  NACIONAL: "national",
+  "INTERNACIONAL BAJO LA COBERTURA DE TRATADOS": "international_treaty",
+  "INTERNACIONAL ABIERTO": "international_open",
+};
+
+/**
+ * "Carácter del procedimiento" — confirmed identical real values in both
+ * the contracts export (16,896 NACIONAL / 5,420 INTERNACIONAL ABIERTO /
+ * 1,281 INTERNACIONAL BAJO LA COBERTURA DE TRATADOS, out of the full
+ * 23,597-row 2025 file) and the open-tenders export. An exact lookup, not
+ * a guess — returns undefined rather than a wrong default for anything
+ * unrecognized, since this field is optional in the schema precisely so a
+ * source that doesn't carry it (or a value that doesn't match) just omits
+ * it instead of asserting something unverified.
+ */
+export function inferParticipationScope(caracter: string | undefined): TenderParticipationScope | undefined {
+  if (!caracter) return undefined;
+  return PARTICIPATION_SCOPE_BY_CARACTER[caracter.toUpperCase().trim()];
 }

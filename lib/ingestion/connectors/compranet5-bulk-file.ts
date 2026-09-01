@@ -14,7 +14,17 @@ import type { Compranet5Row } from "@/lib/ingestion/compranet5-mapper";
 export async function readCompranet5BulkFile(filePath: string): Promise<Compranet5Row[]> {
   if (filePath.endsWith(".csv")) {
     const content = readFileSync(filePath, "utf-8");
-    return parse(content, { columns: true, skip_empty_lines: true, trim: true }) as Compranet5Row[];
+    // relax_quotes: a real Compras MX contracts export has at least one
+    // unquoted field with an embedded literal quote that strict csv-parse
+    // rejects outright (see compras-mx-contracts-bulk-file.ts) — applying
+    // the same defensive option here since this reads the same family of
+    // government exports.
+    return parse(content, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+      relax_quotes: true,
+    }) as Compranet5Row[];
   }
 
   const workbook = new ExcelJS.Workbook();

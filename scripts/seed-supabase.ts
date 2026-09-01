@@ -36,6 +36,7 @@ async function main() {
         subcategory: tenderFields.subcategory ?? null,
         scope_type: tenderFields.scopeType,
         procedure_type: tenderFields.procedureType,
+        participation_scope: tenderFields.participationScope ?? null,
         publication_date: tenderFields.publicationDate,
         submission_deadline: tenderFields.submissionDeadline ?? null,
         award_date: tenderFields.awardDate ?? null,

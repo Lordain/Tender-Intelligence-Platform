@@ -23,6 +23,7 @@ type TenderRow = {
   subcategory: string | null;
   scope_type: Tender["scopeType"];
   procedure_type: string;
+  participation_scope: Tender["participationScope"] | null;
   publication_date: string;
   submission_deadline: string | null;
   award_date: string | null;
@@ -70,7 +71,8 @@ type RiskRow = {
 
 const TENDER_SELECT = `
   id, slug, tender_number, title, summary, buyer, country, government_level,
-  industry, subcategory, scope_type, procedure_type, publication_date,
+  industry, subcategory, scope_type, procedure_type, participation_scope,
+  publication_date,
   submission_deadline, award_date, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason,
   source_name, source_url, created_at, updated_at,
@@ -142,6 +144,7 @@ function toTender(row: TenderRow): Tender {
     subcategory: row.subcategory ?? undefined,
     scopeType: row.scope_type,
     procedureType: row.procedure_type,
+    participationScope: row.participation_scope ?? undefined,
     publicationDate: row.publication_date,
     submissionDeadline: row.submission_deadline ?? undefined,
     awardDate: row.award_date ?? undefined,

@@ -86,6 +86,17 @@ export type TenderRelevance = {
   reason: LocalizedText;
 };
 
+/**
+ * Whether a foreign bidder can participate at all — "Carácter del
+ * procedimiento" in the real Compras MX exports (contracts and open
+ * tenders alike; both confirmed to use the same three literal values).
+ * Surfaced as-is (translated, not interpreted) rather than asserting
+ * which countries a given treaty covers — that's a legal question this
+ * platform doesn't have a verified source for yet, and getting it wrong
+ * would be actively misleading for a bid/no-bid decision.
+ */
+export type TenderParticipationScope = "national" | "international_treaty" | "international_open";
+
 export type Tender = {
   id: string;
   slug: string;
@@ -99,6 +110,7 @@ export type Tender = {
   subcategory?: string;
   scopeType: TenderScopeType;
   procedureType: string;
+  participationScope?: TenderParticipationScope;
   publicationDate: string;
   submissionDeadline?: string;
   awardDate?: string;

@@ -1,6 +1,6 @@
 import type { Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
-import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
+import { inferGovernmentLevel, inferParticipationScope } from "@/lib/ingestion/heuristics";
 import { classifyRelevance } from "@/lib/relevance";
 
 /**
@@ -15,9 +15,8 @@ import { classifyRelevance } from "@/lib/relevance";
  * IMPORTANT: this file is a CONTRACTS/AWARDS export, not an open-tenders
  * feed — every row we inspected already had a formalized contract. That
  * makes it excellent for historical intelligence (winners, award values,
- * pricing) but it is NOT the source for "tenders still open to bid on".
- * The live/open-tender feed is a different, still-unconfirmed page
- * ("Difusión de procedimientos de Contratación Compras MX").
+ * pricing) but it is NOT the source for "tenders still open to bid on" —
+ * that's compras-mx-open-tenders-mapper.ts, see lib/ingestion/README.md.
  */
 export type ComprasMxContractRow = {
   "Orden de gobierno"?: string;
@@ -29,6 +28,7 @@ export type ComprasMxContractRow = {
   "Tipo Procedimiento"?: string;
   "Número de procedimiento"?: string;
   "Tipo de contratación"?: string;
+  "Carácter del procedimiento"?: string;
   "Fecha de publicación"?: string;
   "Fecha de apertura"?: string;
   "Fecha de fallo"?: string;
@@ -155,6 +155,7 @@ export function mapComprasMxContractRowToTender(
     industry,
     scopeType,
     procedureType: row["Tipo Procedimiento"]?.trim() || row["Ley"]?.trim() || "Unknown",
+    participationScope: inferParticipationScope(row["Carácter del procedimiento"]),
     publicationDate,
     awardDate: parseDate(row["Fecha de fallo"]) ?? undefined,
     estimatedValue,

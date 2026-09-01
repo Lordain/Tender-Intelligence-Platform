@@ -21,7 +21,17 @@ export async function readComprasMxOpenTendersFile(filePath: string): Promise<Co
     } catch {
       content = new TextDecoder("gb18030").decode(buffer);
     }
-    return parse(content, { columns: true, skip_empty_lines: true, trim: true }) as ComprasMxOpenTenderRow[];
+    // relax_quotes: a real Compras MX contracts export has at least one
+    // unquoted field with an embedded literal quote that strict csv-parse
+    // rejects outright (see compras-mx-contracts-bulk-file.ts) — applying
+    // the same defensive option here in case a future CSV export of this
+    // file has the same issue.
+    return parse(content, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+      relax_quotes: true,
+    }) as ComprasMxOpenTenderRow[];
   }
 
   const workbook = new ExcelJS.Workbook();

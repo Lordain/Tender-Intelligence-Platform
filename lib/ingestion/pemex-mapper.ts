@@ -140,7 +140,16 @@ export function mapPemexConcursoItemToTender(
     procedureType: item.areacontratante?.trim() ? `${procedureLabel} (${item.areacontratante.trim()})` : procedureLabel,
     participationScope: inferParticipationScope(item.tipoevento),
     publicationDate,
-    submissionDeadline: toIso(item.vencimiento) ?? undefined,
+    // Deliberately NOT populating submissionDeadline from `vencimiento`:
+    // real data shows it's 1-2 years out from `inicio` (e.g. created
+    // 2026-08-27, vencimiento 2028-08-27) — "vencimiento" is this
+    // standing Concurso Abierto mechanism's own validity/expiration
+    // window, not a one-time bid submission cutoff the way Compras MX's
+    // "FECHA DE PRESENTACIÓN Y APERTURA DE PROPOSICIONES" genuinely is.
+    // Surfacing it as submissionDeadline would tell a bidder "you have
+    // until 2028" when that isn't what the field means, actively
+    // misleading a bid/no-bid decision. Still used for status inference
+    // below, where "is this mechanism still valid" is the right question.
     status: inferStatus(item.vencimiento),
     qualifications: [],
     experienceRequirements: [],

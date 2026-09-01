@@ -576,6 +576,18 @@ Two real findings from running the mapper against the full export:
   for the same underlying concept, so `pemex-mapper.ts` has its own exact
   lookup rather than reusing `inferParticipationScope()` from
   `heuristics.ts`.
+- **`vencimiento` is not a submission deadline.** Caught only once real
+  data was live in the app's own UI (a screenshot showing every PEP card's
+  "提交截止日期" reading 2028): `vencimiento` is 1-2 years out from
+  `inicio` for every real item checked (e.g. created 2026-08-27,
+  vencimiento 2028-08-27) — it's this standing Concurso Abierto
+  mechanism's own validity/expiration window, not a one-time bid cutoff
+  the way Compras MX's "FECHA DE PRESENTACIÓN Y APERTURA DE PROPOSICIONES"
+  genuinely is. It was originally also mapped into `submissionDeadline`
+  alongside driving `status` — removed from `submissionDeadline` (kept
+  only for `status`), since telling a bidder "you have until 2028 to
+  submit" is actively misleading for the bid/no-bid decision this field
+  exists to inform, not just imprecise.
 
 **Update: verified against all seven real subsidiary lists that carry
 real data** (all but `Concursos-Abiertos-PCS`, see below), not just PEP. A

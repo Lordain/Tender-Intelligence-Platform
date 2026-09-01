@@ -37,6 +37,7 @@ const EXPEDIENTE_CODE_PATTERN = /\bE-\d{4}-\d{8}\b/g;
 export type TenderDocumentType =
   | "convocatoria"
   | "anexo_tecnico"
+  | "bases"
   | "junta_aclaraciones"
   | "fallo"
   | "contrato"
@@ -51,12 +52,28 @@ export type TenderDocumentType =
  * and "convocatoria" is checked before the things a convocatoria refers
  * to. Bare mentions must never win, or every document classifies as
  * whichever type its boilerplate happens to name first.
+ *
+ * "bases" and the bare `fallo` fallback were added from real PEMEX
+ * SharePoint attachment file names (see pemex-mapper.ts), which this
+ * function also classifies — filename only, no body text, since those
+ * files aren't downloaded. "Bases" (e.g. "02_Bases Iniciales_...zip",
+ * "Bases Finales_....zip") is the actual substantive tender-terms
+ * document there, distinct enough from Convocatoria to need its own type
+ * rather than folding into `anexo_tecnico`, which already means something
+ * more specific for Compras MX documents. The bare `fallo` fallback is
+ * placed after every self-titling check (convocatoria/anexo_tecnico/
+ * bases), so it only ever catches a document that isn't titled as
+ * something else first — the same protection `acta de fallo` already
+ * gives, just extended to PEMEX's real "Fallo_....pdf" naming, which
+ * doesn't use the "acta de" phrasing Compras MX documents do.
  */
 const DOCUMENT_TYPE_PATTERNS: [RegExp, TenderDocumentType][] = [
   [/acta\s+de\s+(la\s+)?junta\s+de\s+aclaraciones/i, "junta_aclaraciones"],
   [/acta\s+de\s+fallo/i, "fallo"],
   [/\bconvocatoria\b|\bconvoca\b/i, "convocatoria"],
   [/anexo\s+t[ée]cnico/i, "anexo_tecnico"],
+  [/\bbases\b/i, "bases"],
+  [/\bfallo\b/i, "fallo"],
   [/\bcontrato\b|\bpedido\b/i, "contrato"],
 ];
 

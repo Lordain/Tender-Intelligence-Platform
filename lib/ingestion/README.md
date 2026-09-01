@@ -701,6 +701,39 @@ portal has no anti-bot gate, so an actual byte-level downloader is
 possible here in a way it isn't for Compras MX — just not built yet
 (out of scope for this pass).
 
+**Verified against a real 309-tender/3,933-file PEP export** (all
+currently-open PEP items). Two real problems found and fixed along the
+way:
+
+- The Console snippet's first version used a server-side
+  `$filter=Attachments eq true`, which silently matched 0 items (not an
+  error) — this SharePoint's REST layer doesn't support filtering on that
+  field. Fixed by filtering client-side instead (see the snippet above).
+- Chrome blocked the attachments export's automatic download (a third
+  script-triggered download in the same tab) with no visible error beyond
+  an address-bar icon — the "successful" run silently produced an empty
+  file. Worth knowing if a future capture session mysteriously downloads
+  an empty/stale file: check for a blocked-download notification before
+  assuming the API returned nothing.
+
+Real PEMEX file names turned out to need two small `document-intake.ts`
+classifier additions (it was written against Compras MX naming, and
+already gets reused here since it takes a bare filename fine): a `bases`
+type (e.g. "02_Bases Iniciales_...zip" — the actual substantive
+tender-terms document, distinct enough from `anexo_tecnico` to need its
+own type) and a bare `\bfallo\b` fallback after every self-titling check
+(PEMEX names it "Fallo_....pdf" directly, not "Acta de Fallo..." the way
+Compras MX documents do). Result on the real 3,933-file export:
+convocatoria 125, bases 603, fallo 45, contrato 26, unknown 3,134 (up
+from 3,782 before the fix). The remaining `unknown` majority is real
+procedural paperwork (Q&A rounds — "Recep de Preguntas"/"Notificación de
+Resp", deadline extensions — "Diferimiento"/"Reactivación", bid-opening
+minutes — "Acta de Apertura") — deliberately left unclassified rather
+than force-mapped into an existing type that means something more
+specific, since qualification/requirement extraction (this platform's
+actual Layer 2 target) only needs Convocatoria and Bases, not the
+procedural trail.
+
 Not yet done: an actual `--write` run against Supabase for any of this
 PEMEX data (this environment has no Supabase credentials — every
 verification above is still dry-run/local mapper output, same as the

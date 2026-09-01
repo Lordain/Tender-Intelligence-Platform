@@ -30,10 +30,16 @@ async function record(entries: ReturnType<typeof readPemexAttachmentsFile>) {
     process.exit(1);
   }
 
+  let recorded = 0;
+  let alreadyOnFile = 0;
+  let failed = 0;
+  let skippedTenders = 0;
+
   for (const entry of entries) {
     const tenderNumber = entry.Title?.trim();
     if (!tenderNumber) {
       console.error(`  skipped item ${entry.Id}: no Title/tenderNumber in this export`);
+      skippedTenders++;
       continue;
     }
 
@@ -41,6 +47,7 @@ async function record(entries: ReturnType<typeof readPemexAttachmentsFile>) {
     const { data: tender } = await supabase.from("tenders").select("id").eq("slug", slug).maybeSingle();
     if (!tender) {
       console.error(`  skipped item ${entry.Id}: no ingested tender matches ${tenderNumber} (${slug}) — run ingest:pemex first`);
+      skippedTenders++;
       continue;
     }
 
@@ -57,6 +64,7 @@ async function record(entries: ReturnType<typeof readPemexAttachmentsFile>) {
         .maybeSingle();
       if (existing) {
         console.log(`  already on file: ${file.FileName}`);
+        alreadyOnFile++;
         continue;
       }
 
@@ -68,10 +76,19 @@ async function record(entries: ReturnType<typeof readPemexAttachmentsFile>) {
         extraction_status: "pending",
       });
 
-      if (error) console.error(`  failed ${file.FileName}: ${error.message}`);
-      else console.log(`  recorded: ${file.FileName} -> ${tenderNumber}`);
+      if (error) {
+        console.error(`  failed ${file.FileName}: ${error.message}`);
+        failed++;
+      } else {
+        console.log(`  recorded: ${file.FileName} -> ${tenderNumber}`);
+        recorded++;
+      }
     }
   }
+
+  console.log(
+    `\nDone. Recorded ${recorded}, already on file ${alreadyOnFile}, failed ${failed}, tender(s) skipped ${skippedTenders}.`,
+  );
 }
 
 async function main() {

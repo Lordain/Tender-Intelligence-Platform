@@ -734,10 +734,36 @@ specific, since qualification/requirement extraction (this platform's
 actual Layer 2 target) only needs Convocatoria and Bases, not the
 procedural trail.
 
-Not yet done: an actual `--write` run against Supabase for any of this
-PEMEX data (this environment has no Supabase credentials — every
-verification above is still dry-run/local mapper output, same as the
-rest of this project).
+### First real `--write` run against Supabase — and two more real bugs it found
+
+This environment's own outbound network policy blocks arbitrary external
+hosts (confirmed via `$HTTPS_PROXY/__agentproxy/status`'s
+`recentRelayFailures` — a 403 "policy denial" on the CONNECT tunnel,
+naming the Supabase project host explicitly, the same class of block
+seen earlier for `pemex.com` and `msc.cfe.mx`), so the actual `--write`
+run happened on the user's own machine instead, against a real Supabase
+project with all 7 migrations applied. Two real bugs surfaced by finally
+exercising this path for the first time in the project's history:
+
+- **Every ingest script's `--fixture --write` silently no-opped.** The
+  dry-run guard was `if (useFixture || !shouldWrite)` — always true
+  whenever `--fixture` was set, regardless of `--write` — so "smoke-test
+  the write path against the fixture" did nothing, across all six scripts
+  that copied this pattern. Fixed to `if (!shouldWrite)`.
+- **None of the `tsx scripts/*.ts` commands loaded `.env.local` at all.**
+  Only Next.js's own dev/build does that automatically; a standalone tsx
+  script needs it explicitly. Every script in `package.json` now runs
+  with `--env-file-if-exists=.env.local` (the `-if-exists` variant
+  specifically, since this repo has run dry-run-only with no `.env.local`
+  present for its entire history until now, and the plain `--env-file`
+  hard-errors when the file is missing).
+
+With both fixed, a real write against the full 2,067-item PEP export
+succeeded (2,065 tenders upserted) and the attachments export against it
+recorded real `tender_documents` rows for the matching tenders — the 2
+items dropped by the mapper (missing `descripcion`) correctly logged as
+"skipped, no ingested tender matches" rather than either crashing or
+silently losing those documents.
 
 ### Original framing (still accurate for what DOF _isn't_)
 

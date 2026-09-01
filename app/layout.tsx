@@ -16,10 +16,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// The product is Chinese-only on the frontend (see lib/i18n.tsx) — this
+// isn't LocalizedText-driven like the rest of the UI copy, so it needs to
+// be kept in sync with lib/localize.ts's uiText.heroTitle/heroSubtitle by
+// hand.
 export const metadata: Metadata = {
-  title: "Tender Intelligence Platform",
+  title: "招投标情报平台 | 中国企业出海墨西哥",
   description:
-    "Tender intelligence for companies expanding into Mexico — understand government tender requirements in your own language and decide bid or no-bid with confidence.",
+    "把墨西哥政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/重点项目。",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -27,7 +31,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
   return (
     <html
-      lang="en"
+      lang="zh"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

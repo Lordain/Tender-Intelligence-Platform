@@ -1,0 +1,113 @@
+{
+  "_meta": {
+    "tenderNumber": "LO-09-JZO-009JZO001-I-26-2026",
+    "sourceDocuments": ["CONVOCATORIA.docx", "MOD_CONTR.docx"],
+    "note": "Manually extracted by reading the real Convocatoria/contract-model text (pdftotext/docx-XML extraction, not the automated Layer 2 pipeline — no ANTHROPIC_API_KEY in this environment). Serves as a known-good reference to validate npm run extract:document's output shape and quality against once a real key is configured. Covers only bidding/qualification content, not the 17 engineering annexes (BIM, RAMS, Riel, etc.) per product decision to skip technical detail at this stage."
+  },
+  "qualifications": [
+    {
+      "title": { "es": "Declaración de nacionalidad", "zh": "国籍声明" },
+      "description": {
+        "es": "Escrito bajo protesta de decir verdad declarando la nacionalidad del licitante (FORMATO 01 para mexicanos, FORMATO 01 EXTRANJEROS para extranjeros); el formato de extranjeros requiere el documento oficial de nacionalidad apostillado y traducido al español.",
+        "zh": "投标人须以书面声明（具结）说明其国籍（本国供应商用FORMATO 01，外国供应商用FORMATO 01 EXTRANJEROS）；外国供应商需提供经公证认证（apostille）并翻译为西班牙语的官方国籍证明文件。"
+      },
+      "mandatory": true,
+      "sourceReference": "CONVOCATORIA.docx, sección 3 'Documentación distinta a la propuesta técnica y económica'"
+    },
+    {
+      "title": { "es": "No inhabilitación (Art. 51 y 78)", "zh": "无禁标记录声明" },
+      "description": {
+        "es": "Escrito bajo protesta de decir verdad de que el licitante no se encuentra en los supuestos de inhabilitación de los artículos 51 y 78 de la Ley (FORMATO 02); para personas morales, extiende a socios/asociados.",
+        "zh": "投标人须书面声明未处于《采购法》第51、78条规定的禁止投标情形（FORMATO 02）；法人投标人该声明须涵盖其股东/合伙人。"
+      },
+      "mandatory": true,
+      "sourceReference": "CONVOCATORIA.docx, sección 3"
+    },
+    {
+      "title": { "es": "Declaración de integridad", "zh": "廉洁诚信声明" },
+      "description": {
+        "es": "Declaración bajo protesta de decir verdad de abstenerse de conductas que busquen influir indebidamente en la evaluación o el procedimiento (FORMATO 04).",
+        "zh": "投标人须声明不会采取不正当手段影响评标或采购程序（FORMATO 04）。"
+      },
+      "mandatory": true,
+      "sourceReference": "CONVOCATORIA.docx, sección 3"
+    },
+    {
+      "title": { "es": "Existencia legal y representación", "zh": "法人资格与代表权文件" },
+      "description": {
+        "es": "Acta constitutiva y sus reformas inscritas, RFC/Constancia de Situación Fiscal, poder notarial del representante legal e identificación oficial; documentos extranjeros requieren apostilla y traducción al español.",
+        "zh": "须提交已登记的公司章程及其修订、税务登记证（RFC）、法定代表人公证授权书及有效身份证明；外国公司文件需经公证认证并翻译为西班牙语。"
+      },
+      "mandatory": true,
+      "sourceReference": "CONVOCATORIA.docx, sección 3, incisos a) y b)"
+    },
+    {
+      "title": { "es": "No inhabilitación por la Secretaría", "zh": "未被主管部门列入失格名单" },
+      "description": {
+        "es": "No podrán participar personas físicas o morales inhabilitadas por resolución de la Secretaría Anticorrupción y Buen Gobierno.",
+        "zh": "被反腐败与善治部（Secretaría Anticorrupción y Buen Gobierno）裁定失格的自然人或法人不得参与本次招标。"
+      },
+      "mandatory": true,
+      "sourceReference": "CONVOCATORIA.docx, sección 6 'Requisitos adicionales'"
+    }
+  ],
+  "experienceRequirements": [],
+  "requiredDocuments": [
+    {
+      "title": { "es": "Formatos administrativos estándar (01–04, MD, FAC, EC, 20)", "zh": "标准行政表格（01-04、MD、FAC、EC、20）" },
+      "description": {
+        "es": "Conjunto de formatos oficiales de la convocatoria: nacionalidad, no inhabilitación, veracidad de estudios previos, integridad, domicilio para notificaciones, facultades del firmante, confidencialidad de información y nota OCDE sobre cohecho a servidores públicos extranjeros.",
+        "zh": "招标文件规定的一整套官方表格：国籍声明、无禁标记录、既往研究真实性、廉洁诚信、通知送达地址、签署人授权、信息保密声明，以及关于打击跨国商业行贿的OECD通报（FORMATO 20）。"
+      },
+      "mandatory": true,
+      "sourceReference": "CONVOCATORIA.docx, sección 3 (lista completa de formatos referenciados)"
+    },
+    {
+      "title": { "es": "Convenio de Proposición Conjunta (si aplica)", "zh": "联合投标协议（如适用）" },
+      "description": {
+        "es": "Para agrupaciones de licitantes: FORMATO CPPC con nombre, RFC, representante común designado y estipulación de responsabilidad solidaria de cada integrante.",
+        "zh": "联合体投标须提交FORMATO CPPC，载明各成员名称、税号、共同代表人，并约定各方承担连带责任。"
+      },
+      "mandatory": false,
+      "sourceReference": "CONVOCATORIA.docx, sección 3, 'Para los interesados que decidan agruparse...'"
+    }
+  ],
+  "risks": [
+    {
+      "level": "high",
+      "title": { "es": "Garantía de cumplimiento del 20%", "zh": "20%履约保证金" },
+      "description": {
+        "es": "Fianza indivisible por el 20% del monto total del contrato (sin IVA), a favor de la Tesorería de la Federación, entregada dentro de los 2 días hábiles previos a la firma del contrato — el doble del 10% habitual en licitaciones estándar de Compras MX.",
+        "zh": "须在合同签署前2个工作日内，向联邦财政部（Tesorería de la Federación）提交金额为合同总额（不含增值税）**20%**的不可分割保函 —— 是 Compras MX 常规招标10%标准的两倍，反映该项目风险等级更高。"
+      },
+      "sourceReference": "MOD_CONTR.docx, línea ~424"
+    },
+    {
+      "level": "medium",
+      "title": { "es": "Garantía de anticipo del 100%", "zh": "100%预付款保函" },
+      "description": {
+        "es": "El monto del anticipo recibido debe garantizarse al 100%, incluyendo IVA.",
+        "zh": "获得的预付款须以其全额（含增值税）提供保函担保。"
+      },
+      "sourceReference": "MOD_CONTR.docx, línea ~414"
+    },
+    {
+      "level": "high",
+      "title": { "es": "Pena convencional por atraso (Hitos Penalizables)", "zh": "延期违约金（按可罚里程碑计算）" },
+      "description": {
+        "es": "Penalización diaria sobre el importe actualizado de los trabajos no ejecutados, calculada conforme a un Anexo de 'Hitos Penalizables' no incluido en los documentos recibidos — el mecanismo exacto de cálculo no puede confirmarse sin ese anexo.",
+        "zh": "按未完成工程的调整后金额逐日计罚，具体计算依据一份《可罚里程碑》（Hitos Penalizables）附件——该附件不在已收到的文件中，因此无法确认具体计算方式，需要额外索取。"
+      },
+      "sourceReference": "MOD_CONTR.docx, línea ~395"
+    },
+    {
+      "level": "medium",
+      "title": { "es": "Contrato a precio alzado, sin ajustes", "zh": "总价包干合同，原则上不可调整" },
+      "description": {
+        "es": "El monto y plazo no pueden modificarse ni ajustarse por costos salvo circunstancias económicas generales ajenas a las partes (Art. 59 Ter de la Ley) — el riesgo de sobrecosto por errores de estimación recae en el contratista.",
+        "zh": "合同金额和工期原则上不可因成本变化调整，除非出现与双方无关的宏观经济因素（依据《采购法》第59条之三）—— 报价估算失误导致的超支风险由承包商自行承担。"
+      },
+      "sourceReference": "CONVOCATORIA.docx, sección 6, 'Los contratos bajo la condición de pago a precio alzado...'"
+    }
+  ]
+}

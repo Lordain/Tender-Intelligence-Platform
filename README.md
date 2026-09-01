@@ -116,6 +116,11 @@ npm run ingest:dof-search -- --fixture            # DOF advanced-search notice �
 npm run ingest:pemex -- --fixture                 # PEMEX's own SharePoint "Concursos Abiertos" list → Tender (no anti-bot gate, built from a real 2,067-item export)
 ```
 
+`ingest:pemex-attachments` records real document names/URLs against
+already-ingested PEMEX tenders (metadata only, no download) — see
+`lib/ingestion/README.md` for the browser Console snippet that produces
+its input file.
+
 Each also accepts a real downloaded file in place of `--fixture`, e.g.
 `npm run ingest:comprasmx-contracts -- path/to/file.csv` (dry run by
 default; add `--write` to upsert into Supabase).

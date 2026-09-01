@@ -609,12 +609,94 @@ a `procedureLabel` parameter (defaults to "Concurso Abierto") rather than
 hardcoding one label for every source list; `ingest-pemex.ts` exposes it
 as `--procedure-label`.
 
-Not yet done: fetching the actual tender documents (each item has
-`Attachments: true` but the list export only carries that boolean, not
-file URLs — getting them needs a separate `/items(<Id>)/AttachmentFiles`
-call per item) and an actual `--write` run against Supabase (this
-environment has no Supabase credentials — every verification above is
-still dry-run/local mapper output, same as the rest of this project).
+Capturing an item-list export (the input `ingest-pemex.ts` reads) uses a
+paginated Console snippet, following `odata.nextLink` past SharePoint's
+5,000-item-per-request cap:
+
+```js
+async function pullPemexList(listTitle, filename) {
+  const base = "https://www.pemex.com/procura/procedimientos-de-contratacion/concursosabiertos/_api/web/lists/getbytitle('" + listTitle + "')/items";
+  const select = "$select=Id,Title,descripcion,inicio,vencimiento,tipoevento,tiposuministro,areacontratante,Created,Modified,Attachments";
+  let url = base + "?" + select + "&$top=5000&$orderby=Modified desc";
+  let all = [];
+  while (url) {
+    const r = await fetch(url, {headers:{Accept:"application/json;odata=nometadata"}});
+    const d = await r.json();
+    all = all.concat(d.value);
+    url = d["odata.nextLink"] || null;
+  }
+  const blob = new Blob([JSON.stringify(all)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+await pullPemexList("Concursos-Abiertos-PPS", "pemex-pps.json");
+```
+
+### PEMEX document references — the metadata half, not the download
+
+Each item's `Attachments: true` only says files exist, not what they are.
+Getting the real file names/URLs needs one more call per item:
+`_api/web/lists/getbytitle('<List>')/items(<Id>)/AttachmentFiles` — same
+anonymous, anti-bot-free access as everything else on this site. Run this
+in the browser Console (swap `listTitle`/`filename`; `onlyOpen=true`
+limits the AttachmentFiles round trips to currently-open items only,
+since fetching all 11,758 items' attachments one by one would be slow and
+mostly pointless for expired procedures):
+
+```js
+async function pullPemexAttachments(listTitle, filename, onlyOpen = true) {
+  const base = "https://www.pemex.com/procura/procedimientos-de-contratacion/concursosabiertos/_api/web/lists/getbytitle('" + listTitle + "')/items";
+  let url = base + "?$select=Id,Title,vencimiento,Attachments&$top=5000&$filter=Attachments eq true";
+  let items = [];
+  while (url) {
+    const r = await fetch(url, {headers:{Accept:"application/json;odata=nometadata"}});
+    const d = await r.json();
+    items = items.concat(d.value);
+    url = d["odata.nextLink"] || null;
+  }
+  const now = new Date();
+  const targets = onlyOpen ? items.filter(i => i.vencimiento && new Date(i.vencimiento) > now) : items;
+  console.log("fetching attachments for", targets.length, "items...");
+  const results = [];
+  for (const item of targets) {
+    const r = await fetch(base + "(" + item.Id + ")/AttachmentFiles", {headers:{Accept:"application/json;odata=nometadata"}});
+    const d = await r.json();
+    results.push({Id: item.Id, Title: item.Title, files: (d.value || []).map(f => ({FileName: f.FileName, ServerRelativeUrl: f.ServerRelativeUrl}))});
+  }
+  const blob = new Blob([JSON.stringify(results)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+await pullPemexAttachments("Concursos-Abiertos-PEP", "pemex-pep-attachments.json");
+```
+
+`ingest-pemex-attachments.ts` reads that export, matches each entry to an
+already-ingested tender by the same `pemex-${slugify(Title)}` slug
+`pemex-mapper.ts` uses, and records `{file_name, source_url,
+document_type}` rows in `tender_documents` (`document_type` via
+`detectDocumentType()` from `document-intake.ts`, reused as-is — it
+already accepts a filename with no text, which is all that's available
+here since nothing gets downloaded). `extraction_status` stays `pending`;
+dedup key is `source_url` rather than `content_hash`, since there's no
+downloaded content yet to hash.
+
+**Deliberately stops at metadata, same posture as Compras MX documents**:
+this records where each document is, not the document itself. PEMEX's
+portal has no anti-bot gate, so an actual byte-level downloader is
+possible here in a way it isn't for Compras MX — just not built yet
+(out of scope for this pass).
+
+Also not yet pulled: `Concursos-Abiertos-PPS` (17 items) and
+`Concursos-Abiertos-PCS` (1 item) — the same `pullPemexList()` snippet
+above (the item-list one, not the attachments one) works for these too,
+just small enough to be low priority. And an actual `--write` run against
+Supabase for any of this PEMEX data (this environment has no Supabase
+credentials — every verification above is still dry-run/local mapper
+output, same as the rest of this project).
 
 ### Original framing (still accurate for what DOF _isn't_)
 

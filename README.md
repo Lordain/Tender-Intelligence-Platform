@@ -104,13 +104,16 @@ principle.
 confirmed portal structure, which mapper to trust most (the one built and
 tested against real downloaded data, not documentation alone), and what's
 deliberately not built yet (extracting qualifications/risks/documents needs
-an LLM, Phase 6). Four mappers, each verifiable offline:
+an LLM, Phase 6). Several mappers, each verifiable offline:
 
 ```bash
 npm run ingest:comprasmx-contracts -- --fixture   # real Compras MX contracts CSV → Tender (awarded/historical, built from real data)
 npm run ingest:comprasmx-open -- --fixture        # real "Difusión de procedimientos" export → Tender (still-open procedures, built from real data)
 npm run ingest:compranet5 -- --fixture            # older CompraNet 5.0 (2010-2022) bulk-export row → Tender
 npm run ingest:compras-mx -- --fixture            # OCDS release → Tender (format confirmed real, no sample record yet)
+npm run ingest:dof -- --fixture                   # DOF daily-edition notice → Tender (CFE/PEMEX supplement, not a Compras MX replacement)
+npm run ingest:dof-search -- --fixture            # DOF advanced-search notice → Tender (same CFE/PEMEX supplement role)
+npm run ingest:pemex -- --fixture                 # PEMEX's own SharePoint "Concursos Abiertos" list → Tender (no anti-bot gate, built from a real 2,067-item export)
 ```
 
 Each also accepts a real downloaded file in place of `--fixture`, e.g.

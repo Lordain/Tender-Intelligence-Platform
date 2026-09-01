@@ -514,6 +514,77 @@ naively splitting on the first "-", which would have also mangled real
 buyer names that legitimately contain one (confirmed real:
 "COMISION FEDERAL DE ELECTRICIDAD A RUEGO Y ENCARGO").
 
+### CFE's own portal is WAF-protected; PEMEX's is not — checked both directly
+
+Both CFE and PEMEX run their own procurement portals outside Compras MX
+(see above). Both were checked directly, with different outcomes:
+
+**CFE (`msc.cfe.mx`)** — a real captured request/response for its search
+endpoint (`POST .../Procedure/getProcBusqueda`) carries `X-Cdn: Imperva`
+and `visid_incap_*`/`incap_ses_*`/`nlbi_*` cookies: a commercial WAF/
+bot-mitigation product, the same category of deliberate anti-automation
+gate as Compras MX's `grc`/`igrc`/`xgrc` tokens (different vendor, same
+posture). Per this project's standing policy, no connector was built
+against it.
+
+**PEMEX (`pemex.com/procura/.../concursosabiertos`)** — checked the same
+way and found the opposite: this is an on-premises SharePoint Server 2019
+site (`_spPageContextInfo.isSPO: false`) with `isAnonymousUser: true`.
+Its standard, Microsoft-documented REST API
+(`_api/web/lists?$select=Title,Id,ItemCount`) answered a plain
+unauthenticated request with no WAF cookies, no signed tokens, nothing —
+confirmed by literally visiting the URL in a browser with no special
+tooling. This is not a workaround or a reverse-engineered endpoint; it's
+SharePoint's own public REST surface, left open to anonymous visitors the
+same way the page itself is.
+
+That enumeration call revealed one SharePoint list per PEMEX subsidiary,
+all under the same site, all with an identical item shape:
+
+| List | Items | Subsidiary |
+|---|---|---|
+| `Concursos-Abiertos-PTI` | 8,382 | Transformación Industrial (refining) |
+| `Concursos-Abiertos-PEP` | 2,067 | Exploración y Producción |
+| `Concursos-e-invitaciones` | 593 | Invitation-only procedures |
+| `Concursos-Abiertos-PL` | 488 | Logística |
+| `Concursos-Abiertos-PE` | 181 | Corporate |
+| `Concursos-Abiertos-PF` | 48 | Fertilizantes |
+| `Concursos-Abiertos-PPS` | 17 | — |
+| `Concursos-Abiertos-PCS` | 1 | Cogeneración y Servicios |
+
+`pemex-mapper.ts` / `connectors/pemex-file.ts` / `scripts/ingest-pemex.ts`
+were built and verified against a real, full 2,067-item export of the PEP
+list (`_api/web/lists/getbytitle('Concursos-Abiertos-PEP')/items`,
+captured via a browser Console `fetch()` + Blob download, same "read a
+file a human exported from their own session" posture as every other
+connector here — see the fixture `sample-pemex-pep.json` for a small,
+diverse real sample). 2,065 of 2,067 items mapped (2 dropped for missing
+`descripcion`).
+
+Two real findings from running the mapper against the full export:
+
+- **The list name is misleading.** "Concursos Abiertos" (Open Tenders) is
+  a historical archive back to at least 2015, not a live "currently open"
+  view — real items carry `vencimiento` (expiration) dates years in the
+  past sitting alongside ones dated today. `status` is derived by
+  comparing `vencimiento` to now (309 of 2,067 came back "open"), the same
+  posture as `inferStatus()` in `compras-mx-open-tenders-mapper.ts` for an
+  analogous "misleadingly-named source" problem.
+- **`tipoevento`'s three real values** ("Nacional" 331 / "Internacional
+  bajo TLC" 1,634 / "Internacional" 102) are worded differently from
+  Compras MX's "Carácter del procedimiento" ("INTERNACIONAL ABIERTO" etc.)
+  for the same underlying concept, so `pemex-mapper.ts` has its own exact
+  lookup rather than reusing `inferParticipationScope()` from
+  `heuristics.ts`.
+
+Not yet done: fetching the actual tender documents (each item has
+`Attachments: true` but the list export only carries that boolean, not
+file URLs — getting them needs a separate `/items(<Id>)/AttachmentFiles`
+call per item) and running the same enumeration + export against the
+other seven subsidiary lists (PTI alone, at 8,382 items, is larger than
+PEP and would need `$skiptoken` pagination past SharePoint's 5,000-item
+per-request cap).
+
 ### Original framing (still accurate for what DOF _isn't_)
 
 DOF (Diario Oficial de la Federación) also has an open-data section

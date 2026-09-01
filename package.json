@@ -15,7 +15,8 @@
     "ingest:documents": "tsx scripts/ingest-tender-documents.ts",
     "extract:document": "tsx scripts/extract-tender-document.ts",
     "ingest:dof": "tsx scripts/ingest-dof.ts",
-    "ingest:dof-search": "tsx scripts/ingest-dof-search.ts"
+    "ingest:dof-search": "tsx scripts/ingest-dof-search.ts",
+    "ingest:pemex": "tsx scripts/ingest-pemex.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

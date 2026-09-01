@@ -34,7 +34,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "professional",
     name: { en: "Professional", es: "Professional", zh: "专业版" },
-    price: { en: "$599–$999", es: "$599–$999", zh: "$599–$999" },
+    price: { en: "$999", es: "$999", zh: "$999" },
     period: { en: "/ month", es: "/ mes", zh: "/ 月" },
     description: {
       en: "For teams that actively bid and need full analysis.",

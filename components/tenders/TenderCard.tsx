@@ -9,6 +9,7 @@ import {
   SCOPE_TYPE_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
+  industryLabel,
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 
@@ -19,11 +20,16 @@ export function TenderCard({ tender }: { tender: Tender }) {
     <div className="group relative flex flex-col gap-3 rounded-xl border border-zinc-200 p-5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600">
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-            {tender.industry}
-          </span>
+          {tender.industries.map((industry) => (
+            <span
+              key={industry}
+              className="shrink-0 whitespace-nowrap rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+            >
+              {industryLabel(industry, locale)}
+            </span>
+          ))}
           <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[tender.status]}`}
+            className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[tender.status]}`}
           >
             {localize(STATUS_LABELS[tender.status], locale)}
           </span>
@@ -50,10 +56,7 @@ export function TenderCard({ tender }: { tender: Tender }) {
         </span>
       )}
 
-      <h3 className="flex items-baseline gap-1.5 text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-        <span className="shrink-0 rounded bg-zinc-100 px-1 py-0.5 text-[10px] font-medium leading-none text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-          ES
-        </span>
+      <h3 className="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
         <Link href={`/tenders/${tender.slug}`} className="after:absolute after:inset-0 group-hover:underline">
           {tender.title.es}
         </Link>
@@ -62,12 +65,7 @@ export function TenderCard({ tender }: { tender: Tender }) {
           untranslated() produces) makes this line worth showing —
           otherwise it would just repeat the Spanish title verbatim. */}
       {tender.title.zh !== tender.title.es && (
-        <p className="-mt-2 flex items-baseline gap-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-          <span className="shrink-0 rounded bg-amber-50 px-1 py-0.5 text-[10px] font-medium leading-none text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-            译
-          </span>
-          {tender.title.zh}
-        </p>
+        <p className="-mt-2 text-sm text-zinc-500 dark:text-zinc-400">{tender.title.zh}</p>
       )}
 
       <p className="text-sm text-zinc-500 dark:text-zinc-400">

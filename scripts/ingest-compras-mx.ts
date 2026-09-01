@@ -48,7 +48,7 @@ async function upsertTenders(tenders: Tender[]) {
           buyer: fields.buyer,
           country: fields.country,
           government_level: fields.governmentLevel,
-          industry: fields.industry,
+          industries: fields.industries,
           subcategory: fields.subcategory ?? null,
           scope_type: fields.scopeType,
           procedure_type: fields.procedureType,

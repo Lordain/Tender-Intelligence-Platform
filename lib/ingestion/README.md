@@ -394,9 +394,31 @@ Shared in `heuristics.ts`. Three tiers of confidence, strongest first:
    no `confidence_score` column exists yet, deliberately, to avoid a schema
    change before Phase 6 actually needs one.
 
-`industry` has no equivalent documented derivation in any source seen so
-far — still a plain best-effort/fallback value (`Descripción Ramo` where
-present, else `"General"`).
+**Update: `industry` is now `industries: string[]`, via a real multi-tag
+classifier.** Every connector used to hardcode `industry = "General"`
+except `compras-mx-contracts-mapper.ts` (real `Descripción Ramo` column)
+and `ocds-mapper.ts` (OCDS item classification) — and even those are
+government-branch labels, not the kind of category a bidder filters by.
+`lib/industry.ts`'s `classifyIndustries()` (same rule-based keyword-
+matching posture as `lib/relevance.ts`) now runs uniformly across every
+mapper against real title/description/buyer text (plus a source's own
+real category field, like `Descripción Ramo`, fed into the same haystack
+rather than special-cased). It returns an array, not a single value — a
+railway project is genuinely both `transportation` and `construction`, a
+power-plant SCADA upgrade both `power` and `ict_telecom`, and the schema
+change reflects that (`supabase/migrations/0008_tender_multi_industry.sql`
+replaces the `industry text` column with `industries text[]`).
+
+Category set (product decision, minimum required): `education`,
+`healthcare`, `tax`, `energy` (oil & gas / renewables), `power`
+(electricity grid — deliberately separate from `energy`: different
+buyers, PEMEX-shaped vs. CFE-shaped), `ict_telecom`, `transportation`,
+`construction`; plus `mining`/`water`/`manufacturing` added on top since
+they're common, real categories in Mexican public procurement, and
+`general` as the always-present fallback. Labels are in
+`lib/tender-labels.ts`'s `INDUSTRY_LABELS` (the first UI element that
+used to show raw English strings — "Energy", "ICT/Telecom" — in an
+otherwise all-Chinese interface; now properly localized).
 
 ## `participationScope` — whether a foreign bidder can participate at all
 

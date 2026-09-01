@@ -1,8 +1,6 @@
 import type { Tender } from "@/types/tender";
 import { classifyRelevance } from "@/lib/relevance";
 
-export const INDUSTRIES = ["Energy", "Construction", "ICT/Telecom"] as const;
-
 const rawTenders: Omit<Tender, "relevance">[] = [
   {
     id: "t-001",
@@ -21,7 +19,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
     buyer: "Comisión Federal de Electricidad (CFE)",
     country: "Mexico",
     governmentLevel: "public_company",
-    industry: "Energy",
+    industries: ["power"],
     subcategory: "Power Transmission & Distribution",
     scopeType: "equipment_services",
     procedureType: "Licitación Pública Nacional",
@@ -142,7 +140,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
     buyer: "Petróleos Mexicanos (PEMEX)",
     country: "Mexico",
     governmentLevel: "public_company",
-    industry: "Energy",
+    industries: ["energy"],
     subcategory: "Oil & Gas",
     scopeType: "services",
     procedureType: "Licitación Pública Nacional",
@@ -248,7 +246,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
     buyer: "Secretaría de Infraestructura, Comunicaciones y Transportes (SICT)",
     country: "Mexico",
     governmentLevel: "federal",
-    industry: "Construction",
+    industries: ["construction", "transportation"],
     subcategory: "Highway / EPC",
     scopeType: "works",
     procedureType: "Licitación Pública Nacional",
@@ -338,7 +336,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
     buyer: "Instituto Mexicano del Seguro Social (IMSS)",
     country: "Mexico",
     governmentLevel: "public_company",
-    industry: "ICT/Telecom",
+    industries: ["ict_telecom"],
     subcategory: "Datacenter / Cloud",
     scopeType: "equipment_services",
     procedureType: "Licitación Pública Internacional",
@@ -446,7 +444,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
     buyer: "Municipio de Monterrey",
     country: "Mexico",
     governmentLevel: "municipal",
-    industry: "ICT/Telecom",
+    industries: ["ict_telecom"],
     subcategory: "Telecom Infrastructure",
     scopeType: "equipment_services",
     procedureType: "Invitación a Cuando Menos Tres Personas",
@@ -531,7 +529,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
     buyer: "Comisión Federal de Electricidad (CFE)",
     country: "Mexico",
     governmentLevel: "public_company",
-    industry: "Energy",
+    industries: ["energy", "power"],
     subcategory: "Renewable Energy",
     scopeType: "consulting",
     procedureType: "Licitación Pública Nacional",
@@ -606,7 +604,7 @@ export const tenders: Tender[] = rawTenders.map((tender) => ({
   relevance: classifyRelevance({
     title: tender.title.es,
     summary: tender.summary.es,
-    industry: tender.industry,
+    industries: tender.industries,
     scopeType: tender.scopeType,
     estimatedValue: tender.estimatedValue,
     currency: tender.currency,

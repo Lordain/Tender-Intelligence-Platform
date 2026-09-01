@@ -130,12 +130,12 @@ function reasonFor(
 export function classifyRelevance(input: {
   title: string;
   summary?: string;
-  industry: string;
+  industries: string[];
   scopeType: TenderScopeType;
   estimatedValue?: number;
   currency?: string;
 }): TenderRelevance {
-  const haystack = [input.title, input.summary, input.industry].filter(Boolean).join(" ");
+  const haystack = [input.title, input.summary, ...input.industries].filter(Boolean).join(" ");
   const hasIncludeOverride = INCLUDE_OVERRIDE_KEYWORDS.some((pattern) => pattern.test(haystack));
 
   if (!hasIncludeOverride && EXCLUDE_KEYWORDS.some((pattern) => pattern.test(haystack))) {

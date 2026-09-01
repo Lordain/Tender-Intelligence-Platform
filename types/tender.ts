@@ -106,7 +106,13 @@ export type Tender = {
   buyer: string;
   country: string;
   governmentLevel: GovernmentLevel;
-  industry: string;
+  /**
+   * One or more industry tags (see lib/industry.ts's IndustryKey union) —
+   * a tender can genuinely span more than one (e.g. a power plant's
+   * SCADA/telecom upgrade is both "energy" and "ict_telecom"), so this is
+   * an array rather than a single category.
+   */
+  industries: string[];
   subcategory?: string;
   scopeType: TenderScopeType;
   procedureType: string;

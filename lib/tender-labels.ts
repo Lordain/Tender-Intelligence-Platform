@@ -8,6 +8,29 @@ import type {
   TenderScopeType,
   TenderStatus,
 } from "@/types/tender";
+import type { IndustryKey } from "@/lib/industry";
+import type { Locale } from "@/types/tender";
+
+export const INDUSTRY_LABELS: Record<IndustryKey, LocalizedText> = {
+  education: { en: "Education", es: "Educación", zh: "教育" },
+  healthcare: { en: "Healthcare", es: "Salud", zh: "医疗" },
+  tax: { en: "Tax/Fiscal", es: "Fiscal/Tributario", zh: "税务" },
+  energy: { en: "Energy (Oil & Gas)", es: "Energía (Petróleo y Gas)", zh: "能源" },
+  power: { en: "Power/Electricity", es: "Electricidad", zh: "电力" },
+  ict_telecom: { en: "ICT/Telecom", es: "TIC/Telecom", zh: "ICT" },
+  transportation: { en: "Transportation", es: "Transporte", zh: "交通" },
+  construction: { en: "Construction", es: "Construcción", zh: "土建" },
+  manufacturing: { en: "Manufacturing", es: "Manufactura", zh: "制造业" },
+  mining: { en: "Mining", es: "Minería", zh: "矿业" },
+  water: { en: "Water & Sanitation", es: "Agua y Saneamiento", zh: "水务" },
+  general: { en: "General", es: "General", zh: "综合" },
+};
+
+/** tender.industries is typed as string[] (matches the Postgres text[] column), not IndustryKey[] — a real classifyIndustries() result is always a known key, but this stays defensive (falls back to the raw string) against any stale/unrecognized value rather than crashing on an unknown lookup. */
+export function industryLabel(key: string, locale: Locale): string {
+  const label = INDUSTRY_LABELS[key as IndustryKey];
+  return label ? label[locale] : key;
+}
 
 export const SCOPE_TYPE_LABELS: Record<TenderScopeType, LocalizedText> = {
   equipment: { en: "Equipment", es: "Equipo", zh: "设备" },

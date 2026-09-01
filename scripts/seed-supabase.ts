@@ -32,7 +32,7 @@ async function main() {
         buyer: tenderFields.buyer,
         country: tenderFields.country,
         government_level: tenderFields.governmentLevel,
-        industry: tenderFields.industry,
+        industries: tenderFields.industries,
         subcategory: tenderFields.subcategory ?? null,
         scope_type: tenderFields.scopeType,
         procedure_type: tenderFields.procedureType,

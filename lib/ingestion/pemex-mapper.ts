@@ -1,6 +1,7 @@
 import type { Tender, TenderScopeType, TenderParticipationScope, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyRelevance } from "@/lib/relevance";
+import { classifyIndustries } from "@/lib/industry";
 
 /**
  * One item from a PEMEX subsidiary's "Concursos Abiertos" SharePoint list
@@ -114,7 +115,11 @@ export function mapPemexConcursoItemToTender(
 
   const publicationDate = toIso(item.inicio) ?? toIso(item.Created) ?? new Date().toISOString();
   const scopeType = inferScopeType(item.tiposuministro);
-  const industry = "General";
+  // buyer is included in the haystack so every PEMEX tender picks up
+  // "energy" even when the description text itself doesn't happen to
+  // mention petróleo/gas/etc. — "Pemex Exploración y Producción" alone
+  // matches the \bpemex\b pattern.
+  const industries = classifyIndustries(description, buyer);
   const now = new Date().toISOString();
 
   return {
@@ -135,7 +140,7 @@ export function mapPemexConcursoItemToTender(
     // "pemex"/"petróleos mexicanos" as "public_company"; hardcoded here
     // since every item from this source is PEMEX by construction.
     governmentLevel: "public_company",
-    industry,
+    industries,
     scopeType,
     procedureType: item.areacontratante?.trim() ? `${procedureLabel} (${item.areacontratante.trim()})` : procedureLabel,
     participationScope: inferParticipationScope(item.tipoevento),
@@ -156,7 +161,7 @@ export function mapPemexConcursoItemToTender(
     requiredDocuments: [],
     keyDates: [],
     risks: [],
-    relevance: classifyRelevance({ title: description, industry, scopeType }),
+    relevance: classifyRelevance({ title: description, industries, scopeType }),
     sourceName,
     // Not directly captured (the SharePoint REST response doesn't include
     // a display-form URL) — same "cross-referenced, not captured" posture

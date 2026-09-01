@@ -2,6 +2,7 @@ import type { Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/typ
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevel, inferParticipationScope } from "@/lib/ingestion/heuristics";
 import { classifyRelevance } from "@/lib/relevance";
+import { classifyIndustries } from "@/lib/industry";
 
 /**
  * One row of the real "Datos Abiertos" contracts export
@@ -138,7 +139,11 @@ export function mapComprasMxContractRowToTender(
     row["Descripción del contrato"]?.trim() || row["Título del contrato"]?.trim() || title;
 
   const now = new Date().toISOString();
-  const industry = row["Descripción Ramo"]?.trim() || "General";
+  // The real "Descripción Ramo" column (e.g. "Energía", "Salud") is a
+  // government-branch label, not a bidder-facing category — fed into the
+  // classifier's haystack alongside title/summary rather than surfaced
+  // verbatim, so it's just one more real signal instead of a special case.
+  const industries = classifyIndustries(title, summary, row["Descripción Ramo"]);
   const scopeType = inferScopeType(row["Tipo de contratación"]);
   const estimatedValue =
     parseAmount(row["Monto sin imp./máximo"]) ?? parseAmount(row["Importe DRC"]) ?? undefined;
@@ -153,7 +158,7 @@ export function mapComprasMxContractRowToTender(
     buyer,
     country: "Mexico",
     governmentLevel: inferGovernmentLevelFromOrden(row["Orden de gobierno"], buyer),
-    industry,
+    industries,
     scopeType,
     procedureType: row["Tipo Procedimiento"]?.trim() || row["Ley"]?.trim() || "Unknown",
     participationScope: inferParticipationScope(row["Carácter del procedimiento"]),
@@ -168,7 +173,7 @@ export function mapComprasMxContractRowToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
-    relevance: classifyRelevance({ title, summary, industry, scopeType, estimatedValue, currency }),
+    relevance: classifyRelevance({ title, summary, industries, scopeType, estimatedValue, currency }),
     sourceName,
     sourceUrl: row["Dirección del anuncio"]?.trim() || "",
     createdAt: now,

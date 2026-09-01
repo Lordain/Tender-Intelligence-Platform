@@ -1,6 +1,7 @@
 import type { Tender } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyRelevance } from "@/lib/relevance";
+import { classifyIndustries } from "@/lib/industry";
 
 /**
  * One "nota" from DOF's advanced-search endpoint
@@ -76,7 +77,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
   const { buyer: parsedBuyer, ref } = parseBuyerAndRef(title);
   const buyer = parsedBuyer ?? nota.codOrgaDos ?? "Desconocido";
   const now = new Date().toISOString();
-  const industry = "General";
+  const industries = classifyIndustries(title, buyer);
   const scopeType = "services" as const;
 
   return {
@@ -88,7 +89,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     buyer,
     country: "Mexico",
     governmentLevel: "federal",
-    industry,
+    industries,
     scopeType,
     procedureType: "Convocatoria (DOF)",
     publicationDate,
@@ -98,7 +99,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     requiredDocuments: [],
     keyDates: [{ id: `dof-${nota.codNota}-publication`, type: "publication", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ title, industry, scopeType }),
+    relevance: classifyRelevance({ title, industries, scopeType }),
     sourceName,
     // Same cross-referenced (not directly captured) URL pattern as
     // dof-mapper.ts — see that file's buildSourceUrl comment.

@@ -1,6 +1,7 @@
 import type { Tender, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyRelevance } from "@/lib/relevance";
+import { classifyIndustries } from "@/lib/industry";
 
 /**
  * One "nota" (notice) from a real DOF (Diario Oficial de la Federación)
@@ -75,7 +76,7 @@ export function mapDofNotaToTender(nota: DofNota, sourceName: string): Tender | 
     : nota.codOrgaDos ?? nota.nombreCodOrgaUno ?? "Desconocido";
 
   const now = new Date().toISOString();
-  const industry = "General";
+  const industries = classifyIndustries(title, buyer);
   const scopeType = "services" as const;
   // DOF is a publication record, not a live bidding-status feed — a
   // notice that was JUST published is presumptively still within its
@@ -97,7 +98,7 @@ export function mapDofNotaToTender(nota: DofNota, sourceName: string): Tender | 
     // DOF is the FEDERAL gazette — every notice it publishes is federal
     // government-level by construction, not inferred from buyer name.
     governmentLevel: "federal",
-    industry,
+    industries,
     scopeType,
     procedureType: nota.tipoNota && nota.tipoNota !== "null" ? nota.tipoNota : "Unknown",
     publicationDate,
@@ -108,7 +109,7 @@ export function mapDofNotaToTender(nota: DofNota, sourceName: string): Tender | 
     requiredDocuments: [],
     keyDates: [{ id: `dof-${nota.codNota}-publication`, type: "publication", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ title, industry, scopeType }),
+    relevance: classifyRelevance({ title, industries, scopeType }),
     sourceName,
     sourceUrl: buildSourceUrl(nota),
     createdAt: now,

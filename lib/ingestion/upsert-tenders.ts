@@ -47,7 +47,7 @@ export async function upsertTendersBatched(
         buyer: fields.buyer,
         country: fields.country,
         government_level: fields.governmentLevel,
-        industry: fields.industry,
+        industries: fields.industries,
         scope_type: fields.scopeType,
         procedure_type: fields.procedureType,
         participation_scope: fields.participationScope ?? null,

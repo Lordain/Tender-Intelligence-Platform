@@ -24,7 +24,7 @@ export function filterTenders(
     if (relevanceTiers && relevanceTiers.length > 0 && !relevanceTiers.includes(tender.relevance.tier)) {
       return false;
     }
-    if (industries && industries.length > 0 && !industries.includes(tender.industry)) {
+    if (industries && industries.length > 0 && !tender.industries.some((i) => industries.includes(i))) {
       return false;
     }
     if (scopeTypes && scopeTypes.length > 0 && !scopeTypes.includes(tender.scopeType)) {

@@ -9,6 +9,7 @@ import {
   SCOPE_TYPE_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
+  industryLabel,
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 
@@ -28,11 +29,16 @@ export function TenderOverview({ tender }: { tender: Tender }) {
     <section className="flex flex-col gap-4 rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-            {tender.industry}
-          </span>
+          {tender.industries.map((industry) => (
+            <span
+              key={industry}
+              className="shrink-0 whitespace-nowrap rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+            >
+              {industryLabel(industry, locale)}
+            </span>
+          ))}
           <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[tender.status]}`}
+            className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[tender.status]}`}
           >
             {localize(STATUS_LABELS[tender.status], locale)}
           </span>
@@ -41,22 +47,14 @@ export function TenderOverview({ tender }: { tender: Tender }) {
         <SaveTenderButton tenderId={tender.id} className="border border-zinc-200 dark:border-zinc-800" />
       </div>
 
-      <h1 className="flex items-baseline gap-2 text-2xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-        <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium leading-none text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-          ES
-        </span>
+      <h1 className="text-2xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
         {tender.title.es}
       </h1>
       {/* Only a real translation (Layer 2 AI, not the es/zh mirror
           untranslated() produces) makes this line worth showing —
           otherwise it would just repeat the Spanish title verbatim. */}
       {tender.title.zh !== tender.title.es && (
-        <p className="-mt-2 flex items-baseline gap-2 text-base text-zinc-500 dark:text-zinc-400">
-          <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium leading-none text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-            译
-          </span>
-          {tender.title.zh}
-        </p>
+        <p className="-mt-2 text-base text-zinc-500 dark:text-zinc-400">{tender.title.zh}</p>
       )}
 
       <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">

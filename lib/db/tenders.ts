@@ -19,7 +19,7 @@ type TenderRow = {
   buyer: string;
   country: string;
   government_level: Tender["governmentLevel"];
-  industry: string;
+  industries: string[];
   subcategory: string | null;
   scope_type: Tender["scopeType"];
   procedure_type: string;
@@ -72,7 +72,7 @@ type RiskRow = {
 
 const TENDER_SELECT = `
   id, slug, tender_number, title, summary, buyer, country, government_level,
-  industry, subcategory, scope_type, procedure_type, participation_scope,
+  industries, subcategory, scope_type, procedure_type, participation_scope,
   publication_date,
   submission_deadline, award_date, awarded_to, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason,
@@ -120,7 +120,7 @@ function toRelevance(row: TenderRow): TenderRelevance {
   return classifyRelevance({
     title: row.title.es,
     summary: row.summary.es,
-    industry: row.industry,
+    industries: row.industries,
     scopeType: row.scope_type,
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
@@ -141,7 +141,7 @@ function toTender(row: TenderRow): Tender {
     buyer: row.buyer,
     country: row.country,
     governmentLevel: row.government_level,
-    industry: row.industry,
+    industries: row.industries,
     subcategory: row.subcategory ?? undefined,
     scopeType: row.scope_type,
     procedureType: row.procedure_type,

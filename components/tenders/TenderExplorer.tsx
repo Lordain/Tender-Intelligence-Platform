@@ -3,9 +3,9 @@
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
-import { INDUSTRIES } from "@/data/tenders";
+import { ALL_INDUSTRIES } from "@/lib/industry";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_LABELS } from "@/lib/tender-labels";
+import { INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_LABELS } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders, type SortKey } from "@/lib/filter-tenders";
 import { TenderCard } from "@/components/tenders/TenderCard";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
@@ -122,7 +122,10 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
 
           <MultiSelectPills
             label={localize(uiText.industryLabel, locale)}
-            options={INDUSTRIES.map((option) => ({ value: option, label: option }))}
+            options={ALL_INDUSTRIES.map((option) => ({
+              value: option,
+              label: localize(INDUSTRY_LABELS[option], locale),
+            }))}
             selected={industries}
             onChange={(next) => updateParams({ industry: next.join(",") || null })}
           />

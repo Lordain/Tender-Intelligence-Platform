@@ -2,6 +2,7 @@ import type { Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/typ
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevelFromProcedureNumber, inferParticipationScope } from "@/lib/ingestion/heuristics";
 import { classifyRelevance } from "@/lib/relevance";
+import { classifyIndustries } from "@/lib/industry";
 
 /**
  * One row of a real "Difusión de procedimientos" export — the public
@@ -125,7 +126,7 @@ export function mapComprasMxOpenTenderRowToTender(
 
   const submissionDeadline = parseDate(row["FECHA DE PRESENTACIÓN Y APERTURA DE PROPOSICIONES"]);
   const scopeType = inferScopeType(row["TIPO DE CONTRATACIÓN"]);
-  const industry = "General";
+  const industries = classifyIndustries(title, buyer);
 
   // The export has no publication-date column at all (unlike the awarded-
   // contracts export) — using the ingestion timestamp is an honest "when we
@@ -153,7 +154,7 @@ export function mapComprasMxOpenTenderRowToTender(
     buyer,
     country: "Mexico",
     governmentLevel: inferGovernmentLevelFromProcedureNumber(tenderNumber, buyer),
-    industry,
+    industries,
     scopeType,
     procedureType: row["TIPO DE PUBLICACIÓN"]?.trim() || "Unknown",
     participationScope: inferParticipationScope(row["CARÁCTER"]),
@@ -166,7 +167,7 @@ export function mapComprasMxOpenTenderRowToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
-    relevance: classifyRelevance({ title, industry, scopeType }),
+    relevance: classifyRelevance({ title, industries, scopeType }),
     sourceName,
     sourceUrl,
     createdAt: now,

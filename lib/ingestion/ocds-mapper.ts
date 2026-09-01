@@ -8,6 +8,7 @@ import type { OcdsRelease } from "@/lib/ingestion/types";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
 import { classifyRelevance } from "@/lib/relevance";
+import { classifyIndustries } from "@/lib/industry";
 
 const SCOPE_TYPE_BY_CATEGORY: Record<string, TenderScopeType> = {
   goods: "equipment",
@@ -91,7 +92,11 @@ export function mapOcdsReleaseToTender(
   if (!publicationDate) return null;
 
   const now = new Date().toISOString();
-  const industry = tender.items?.[0]?.classification?.description ?? "General";
+  const industries = classifyIndustries(
+    tender.title,
+    tender.description,
+    tender.items?.[0]?.classification?.description,
+  );
   const scopeType = inferScopeType(tender.mainProcurementCategory);
   const estimatedValue = tender.value?.amount;
   const currency = tender.value?.currency;
@@ -105,7 +110,7 @@ export function mapOcdsReleaseToTender(
     buyer: buyerName,
     country: "Mexico",
     governmentLevel: inferGovernmentLevel(buyerName),
-    industry,
+    industries,
     scopeType,
     procedureType: tender.procurementMethodDetails ?? tender.procurementMethod ?? "Unknown",
     publicationDate,
@@ -122,7 +127,7 @@ export function mapOcdsReleaseToTender(
     relevance: classifyRelevance({
       title: tender.title,
       summary: tender.description,
-      industry,
+      industries,
       scopeType,
       estimatedValue,
       currency,

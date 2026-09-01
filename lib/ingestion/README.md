@@ -837,21 +837,72 @@ pattern as every other source here: needs the user to visit
 there (a sample bulk file, or a captured request if it's interactive)
 before a connector gets written.
 
-## Multi-country expansion (strategic direction, not yet built)
+## Multi-country expansion (strategic direction — Colombia now has a real connector)
 
-The product direction is now **Latin America Tender Intelligence for
-Chinese Enterprises** — Mexico, Brazil, Colombia, Chile, Peru. Portuguese
-(for Brazil) is part of that long-term direction but explicitly deferred
-for now — the app stays zh/en/es. Also part of the direction: a
-"Pre-Screening" / China overseas relevance classification step deciding
-how much analysis depth a
-given tender gets (per-country connectors documented in the country's own
-official sources: Brazil PNCP, Colombia SECOP I/II, Chile Mercado
-Público/ChileCompra API, Peru SEACE/OECE/OCDS). None of that is built —
-only Mexico has a verified connector so far, and building Brazil/Colombia/
-Chile/Peru connectors without real documentation or sample files from
-those portals (the way Mexico's connectors were built from user-provided
-real files) would repeat the mistake this file's history already shows
-the cost of: guessing at an API shape produces a placeholder, not a
-working connector. Each new country needs the same treatment Mexico got —
-real docs or a real sample file — before its connector is written.
+The product direction is **Latin America Tender Intelligence for Chinese
+Enterprises** — Mexico, Brazil, Colombia, Chile, Peru. Portuguese (for
+Brazil) is part of that long-term direction but explicitly deferred for
+now — the app stays zh/en/es. Each new country needs the same treatment
+Mexico got — real docs or a real sample file — before its connector is
+written; guessing at an API shape produces a placeholder, not a working
+connector, per this file's own history.
+
+### Colombia — SECOP II via `datos.gov.co`, real and unauthenticated
+
+Confirmed real by a direct, unauthenticated browser request (no login,
+no API key) returning 5 real rows: Colombia's official open-data portal
+(`datos.gov.co`, a Socrata deployment) hosts **"SECOP II - Procesos de
+Contratación"** (resource id `p6dx-8zbt`, published by Agencia Nacional
+de Contratación Pública — Colombia Compra Eficiente), 9,097,326 rows as
+of this writing. The dataset's own "Exportar conjunto de datos" dialog
+defaults to SODA3 (which needs an auth token), but the plain SODA2 read
+endpoint needs none for a public dataset:
+
+```
+https://www.datos.gov.co/resource/p6dx-8zbt.json?$limit=N&$offset=M
+```
+
+This is a materially easier source than anything on the Mexico side —
+no anti-bot layer to work around (like Compras MX/CFE), no anti-bot-free-
+but-undocumented-shape reverse engineering (like DOF/PEMEX), just a
+standard, publicly documented open-data API. `colombia-mapper.ts` /
+`connectors/colombia-secop-file.ts` / `scripts/ingest-colombia.ts` are
+built and verified against the real 5-row sample
+(`sample-colombia-secop.json`) — all 5 mapped correctly, including a real
+find: `estado_del_procedimiento` values like "Seleccionado" do NOT mean
+"awarded" despite the name (seen on rows where `adjudicado: "No"`) — the
+real awarded signal is `adjudicado` itself, checked directly rather than
+inferred from the friendlier-sounding phase name.
+
+Not yet done: pulling past the 5-row sample (needs `$limit`/`$offset`
+pagination and almost certainly a `$where` date filter — 9M rows is not
+a "dump the whole thing" source), and broadening `inferScopeType()`,
+which is currently just an exact lookup over the 2 distinct
+`tipo_de_contrato` values the 5-row sample happened to contain.
+
+### Currency unified to USD platform-wide
+
+Adding a source with real values in a currency other than MXN (Colombian
+COP) surfaced a real bug before it shipped: `lib/relevance.ts`'s value
+thresholds were MXN-scale, and a raw COP figure compared directly against
+them would be wildly over-classified (COP is worth roughly 1/4,200 of a
+USD — a real COP 57,333,333 tender, worth about USD 13,650, would have
+cleared the "significant" bar meant for actual high-value opportunities).
+`lib/currency.ts` is now the single shared (approximate, static — this
+environment can't reach a live FX API) currency→USD rate table, used by
+both `lib/relevance.ts` (thresholds now in USD) and
+`lib/format.ts`'s `formatEstimatedValueUsd()` (the one place the app
+displays a value — a Chinese enterprise comparing opportunities across
+countries sees one consistent unit instead of mentally converting several
+currencies per session). Real source currency is still what's stored
+(`tender.currency`) — conversion happens at display/classification time,
+not by overwriting the real ingested value.
+
+### Brazil / Chile / Peru — still unbuilt
+
+Brazil PNCP, Chile Mercado Público/ChileCompra API, Peru SEACE/OECE/OCDS
+— none of these have been checked yet. Same posture as Colombia before
+this session: needs a real, verified capture (an unauthenticated request
+returning real rows, or a real downloaded export) before a connector gets
+written, not assumed from general knowledge of what these portals
+probably look like.

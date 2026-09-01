@@ -1,4 +1,5 @@
 import type { LocalizedText, TenderRelevance, TenderScopeType } from "@/types/tender";
+import { convertToUsd } from "@/lib/currency";
 
 /**
  * Pre-Screening / relevance classification (rule-based, not AI — see
@@ -59,17 +60,14 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   /medicamento|f[áa]rmaco|insumo m[ée]dico|material de curaci[óo]n/i,
 ];
 
-// MXN-scale thresholds; a non-MXN value is normalized with a rough
-// static rate rather than left uncompared — good enough for a v1 filter,
-// not a precise FX conversion.
-const FLAGSHIP_VALUE_MXN = 40_000_000;
-const SIGNIFICANT_VALUE_MXN = 5_000_000;
-const USD_TO_MXN_RATE = 20;
-
-function normalizeToMxn(value: number, currency: string | undefined): number {
-  if (currency === "USD") return value * USD_TO_MXN_RATE;
-  return value;
-}
+// USD-scale thresholds (the whole platform standardizes display and
+// classification on USD — see lib/currency.ts). Any value is normalized
+// through that shared, approximate rate table before comparing — without
+// it, e.g. a real COP 57,333,333 tender (worth roughly USD 13,650) would
+// be compared directly against a threshold sized for MXN/USD-scale
+// figures and wildly over-classified.
+const FLAGSHIP_VALUE_USD = 2_000_000;
+const SIGNIFICANT_VALUE_USD = 250_000;
 
 const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   flagship: {
@@ -143,14 +141,14 @@ export function classifyRelevance(input: {
   }
 
   const normalizedValue =
-    input.estimatedValue !== undefined ? normalizeToMxn(input.estimatedValue, input.currency) : undefined;
+    input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
 
   const matchesFlagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.some((pattern) => pattern.test(haystack));
   const isWorksLike = input.scopeType === "works" || input.scopeType === "equipment_services";
 
   if (
     hasIncludeOverride ||
-    (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_MXN) ||
+    (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD) ||
     (normalizedValue === undefined && isWorksLike)
   ) {
     return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
@@ -163,7 +161,7 @@ export function classifyRelevance(input: {
   // an ICT, power or medical-equipment purchase could never rank above
   // "standard" no matter how well it matched the target sectors.
   if (
-    (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_MXN) ||
+    (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) ||
     matchesFlagshipIndustry
   ) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };

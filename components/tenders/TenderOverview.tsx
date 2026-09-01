@@ -2,7 +2,7 @@
 
 import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatEstimatedValueUsd, formatDate } from "@/lib/format";
 import {
   GOVERNMENT_LEVEL_LABELS,
   PARTICIPATION_SCOPE_LABELS,
@@ -96,9 +96,9 @@ export function TenderOverview({ tender }: { tender: Tender }) {
         <Field
           label={localize(uiText.estimatedValue, locale)}
           value={
-            tender.estimatedValue && tender.currency
-              ? formatCurrency(tender.estimatedValue, tender.currency, locale)
-              : "—"
+            (tender.estimatedValue !== undefined
+              ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, locale)
+              : null) ?? "—"
           }
         />
         <Field

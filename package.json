@@ -17,7 +17,8 @@
     "ingest:dof": "tsx --env-file-if-exists=.env.local scripts/ingest-dof.ts",
     "ingest:dof-search": "tsx --env-file-if-exists=.env.local scripts/ingest-dof-search.ts",
     "ingest:pemex": "tsx --env-file-if-exists=.env.local scripts/ingest-pemex.ts",
-    "ingest:pemex-attachments": "tsx --env-file-if-exists=.env.local scripts/ingest-pemex-attachments.ts"
+    "ingest:pemex-attachments": "tsx --env-file-if-exists=.env.local scripts/ingest-pemex-attachments.ts",
+    "ingest:colombia": "tsx --env-file-if-exists=.env.local scripts/ingest-colombia.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

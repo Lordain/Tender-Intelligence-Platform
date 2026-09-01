@@ -100,16 +100,16 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
         {localize(uiText.navTenders, locale)}
       </h1>
 
-      <div className="flex flex-col gap-4">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => updateParams({ q: event.target.value })}
-          placeholder={localize(uiText.searchPlaceholder, locale)}
-          className="w-full rounded-lg border border-zinc-200 px-4 py-2.5 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
-        />
+      <input
+        type="search"
+        value={query}
+        onChange={(event) => updateParams({ q: event.target.value })}
+        placeholder={localize(uiText.searchPlaceholder, locale)}
+        className="w-full rounded-lg border border-zinc-200 px-4 py-2.5 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+      />
 
-        <div className="flex flex-wrap gap-x-8 gap-y-4">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <aside className="flex w-full shrink-0 flex-col gap-6 rounded-xl border border-zinc-200 p-4 lg:w-64 dark:border-zinc-800">
           <MultiSelectPills
             label={localize(uiText.scaleLabel, locale)}
             options={RELEVANCE_TIERS.map((option) => ({
@@ -147,89 +147,93 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
             onChange={(next) => updateParams({ status: next.join(",") || null })}
           />
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-zinc-500">
-              {localize(uiText.sortLabel, locale)}
-            </span>
-            <select
-              value={sort}
-              onChange={(event) => updateParams({ sort: event.target.value })}
-              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <option value="publication_desc">{localize(uiText.sortPublicationDesc, locale)}</option>
-              <option value="deadline_asc">{localize(uiText.sortDeadlineAsc, locale)}</option>
-              <option value="value_desc">{localize(uiText.sortValueDesc, locale)}</option>
-              <option value="value_asc">{localize(uiText.sortValueAsc, locale)}</option>
-            </select>
+          <label className="flex w-fit items-center gap-2 text-xs text-zinc-500">
+            <input
+              type="checkbox"
+              checked={includeExcluded}
+              onChange={(event) => updateParams({ all: event.target.checked ? "1" : null })}
+            />
+            {localize(uiText.showRoutineServices, locale)}
           </label>
-        </div>
 
-        <label className="flex w-fit items-center gap-2 text-xs text-zinc-500">
-          <input
-            type="checkbox"
-            checked={includeExcluded}
-            onChange={(event) => updateParams({ all: event.target.checked ? "1" : null })}
-          />
-          {localize(uiText.showRoutineServices, locale)}
-        </label>
-
-        <div className="flex flex-wrap items-center gap-4">
           {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={() => router.replace(pathname, { scroll: false })}
-              className="text-xs font-medium text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-50"
-            >
-              {localize(uiText.clearFilters, locale)}
-            </button>
-          )}
-          {hasActiveFilters && <SaveSearchControl href={currentSearchHref} />}
-        </div>
-      </div>
-
-      <p className="text-sm text-zinc-500">
-        {sorted.length} {localize(uiText.resultsCount, locale)}
-      </p>
-
-      {sorted.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          {localize(uiText.noResults, locale)}
-        </p>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {paginated.map((tender) => (
-              <TenderCard key={tender.id} tender={tender} />
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex flex-col gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
               <button
                 type="button"
-                onClick={() => updateParams({ page: String(currentPage - 1) }, false)}
-                disabled={currentPage <= 1}
-                className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-400"
+                onClick={() => router.replace(pathname, { scroll: false })}
+                className="w-fit text-xs font-medium text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-50"
               >
-                {localize(uiText.previousPage, locale)}
+                {localize(uiText.clearFilters, locale)}
               </button>
-              <span className="text-xs text-zinc-500">
-                {localize(uiText.pageOf, locale)
-                  .replace("{page}", String(currentPage))
-                  .replace("{total}", String(totalPages))}
-              </span>
-              <button
-                type="button"
-                onClick={() => updateParams({ page: String(currentPage + 1) }, false)}
-                disabled={currentPage >= totalPages}
-                className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-400"
-              >
-                {localize(uiText.nextPage, locale)}
-              </button>
+              <SaveSearchControl href={currentSearchHref} />
             </div>
           )}
-        </>
-      )}
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-zinc-500">
+              {sorted.length} {localize(uiText.resultsCount, locale)}
+            </p>
+
+            <label className="flex items-center gap-2">
+              <span className="text-xs font-medium text-zinc-500">
+                {localize(uiText.sortLabel, locale)}
+              </span>
+              <select
+                value={sort}
+                onChange={(event) => updateParams({ sort: event.target.value })}
+                className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                <option value="publication_desc">{localize(uiText.sortPublicationDesc, locale)}</option>
+                <option value="deadline_asc">{localize(uiText.sortDeadlineAsc, locale)}</option>
+                <option value="value_desc">{localize(uiText.sortValueDesc, locale)}</option>
+                <option value="value_asc">{localize(uiText.sortValueAsc, locale)}</option>
+              </select>
+            </label>
+          </div>
+
+          {sorted.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+              {localize(uiText.noResults, locale)}
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {paginated.map((tender) => (
+                  <TenderCard key={tender.id} tender={tender} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => updateParams({ page: String(currentPage - 1) }, false)}
+                    disabled={currentPage <= 1}
+                    className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-400"
+                  >
+                    {localize(uiText.previousPage, locale)}
+                  </button>
+                  <span className="text-xs text-zinc-500">
+                    {localize(uiText.pageOf, locale)
+                      .replace("{page}", String(currentPage))
+                      .replace("{total}", String(totalPages))}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateParams({ page: String(currentPage + 1) }, false)}
+                    disabled={currentPage >= totalPages}
+                    className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-400"
+                  >
+                    {localize(uiText.nextPage, locale)}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -27,15 +27,6 @@ export function TenderCard({ tender }: { tender: Tender }) {
           >
             {localize(STATUS_LABELS[tender.status], locale)}
           </span>
-          {(tender.relevance.tier === "flagship" || tender.relevance.tier === "significant") && (
-            <span
-              title={localize(tender.relevance.reason, locale)}
-              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${RELEVANCE_TIER_COLORS[tender.relevance.tier]}`}
-            >
-              {tender.relevance.tier === "flagship" ? "★ " : ""}
-              {localize(tender.relevance.label, locale)}
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="whitespace-nowrap text-xs text-zinc-400">
@@ -44,6 +35,20 @@ export function TenderCard({ tender }: { tender: Tender }) {
           <SaveTenderButton tenderId={tender.id} className="relative z-10" />
         </div>
       </div>
+
+      {/* Its own full-width block, not squeezed into the flex-wrap badge
+          row above — this label's text is long enough to wrap onto
+          multiple lines, which looked broken crammed into a rounded-full
+          pill sized for short one-line tags. */}
+      {(tender.relevance.tier === "flagship" || tender.relevance.tier === "significant") && (
+        <span
+          title={localize(tender.relevance.reason, locale)}
+          className={`-mt-1 block w-fit rounded-lg px-2.5 py-1 text-xs font-medium leading-snug ${RELEVANCE_TIER_COLORS[tender.relevance.tier]}`}
+        >
+          {tender.relevance.tier === "flagship" ? "★ " : ""}
+          {localize(tender.relevance.label, locale)}
+        </span>
+      )}
 
       <h3 className="flex items-baseline gap-1.5 text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
         <span className="shrink-0 rounded bg-zinc-100 px-1 py-0.5 text-[10px] font-medium leading-none text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">

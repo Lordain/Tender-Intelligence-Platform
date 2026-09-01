@@ -431,6 +431,31 @@ just for more of the record. Compras MX stays the primary source; DOF is
 future work as a secondary/cross-validation source (its original intended
 role per the platform's design), not a replacement.
 
+**Newly relevant: DOF may be the only real path to CFE/PEMEX.** Confirmed
+via real 2025 data (23,597 contracts, 515 open tenders) that CFE and
+PEMEX have **zero** rows in Compras MX — as state productive enterprises
+("Empresas Productivas del Estado," 2013-2014 energy reform) they run
+their own procurement regimes (CFE: `msc.cfe.mx`; PEMEX: SISCeP/HIIP via
+`pemex.com/procura`), not LAASSP/LOPSRM. Neither publishes an OCDS feed or
+bulk API — only retrospective, static awarded-contract CSVs on
+`datos.gob.mx`. But PEMEX's own "Disposiciones Generales de Contratación"
+(DOF, 2021-10-08) explicitly requires publishing the convocatoria summary
+in DOF before a licitación can start — a real legal citation, not
+inferred; CFE's equivalent obligation is plausible (same 2013-2014 reform
+family) but not confirmed with an equally direct quote.
+
+**DOF's own API/open-data structure is still unverified** — re-checked:
+`sidof.segob.gob.mx/datos_abiertos` and `sidof.segob.gob.mx/apiStatus`
+are real government URLs (found via search) but unreachable from this
+environment; the only concrete "API" descriptions found are a stale 2012
+third-party scraper (`github.com/imco/dof-api`, hitting undocumented PHP
+endpoints like `WS_getDiarioFecha.php`) and a commercial value-added
+search service, neither a real official API to build against. Same
+pattern as every other source here: needs the user to visit
+`sidof.segob.gob.mx/datos_abiertos` directly and share what's actually
+there (a sample bulk file, or a captured request if it's interactive)
+before a connector gets written.
+
 ## Multi-country expansion (strategic direction, not yet built)
 
 The product direction is now **Latin America Tender Intelligence for

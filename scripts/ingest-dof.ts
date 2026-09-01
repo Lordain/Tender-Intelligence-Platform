@@ -16,6 +16,7 @@ import { readDofNotasFile } from "../lib/ingestion/connectors/dof-file";
 import { mapDofNotaToTender } from "../lib/ingestion/dof-mapper";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
+import { filterRecentTenders } from "../lib/ingestion/recency";
 import type { Tender } from "../types/tender";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -44,6 +45,8 @@ async function main() {
   const useFixture = args.includes("--fixture");
   const shouldWrite = args.includes("--write");
   const filePath = args.find((a) => !a.startsWith("--"));
+  const monthsIdx = args.indexOf("--months");
+  const months = monthsIdx >= 0 ? Number(args[monthsIdx + 1]) : 6;
 
   if (!useFixture && !filePath) {
     console.error("Usage: npm run ingest:dof -- <response.json> [--write]");
@@ -56,11 +59,18 @@ async function main() {
     : filePath!;
 
   const notas = readDofNotasFile(resolvedPath);
-  const tenders = notas
+  const mappedTenders = notas
     .map((n) => mapDofNotaToTender(n, SOURCE_NAME))
     .filter((t): t is Tender => t !== null);
 
-  console.log(`Mapped ${tenders.length} tender notice(s) of ${notas.length} total notices.`);
+  console.log(`Mapped ${mappedTenders.length} tender notice(s) of ${notas.length} total notices.`);
+
+  const tenders = filterRecentTenders(mappedTenders, months);
+  if (tenders.length !== mappedTenders.length) {
+    console.log(
+      `Keeping ${tenders.length} of ${mappedTenders.length} published within the last ${months} month(s) (pass --months 0 to disable).`,
+    );
+  }
 
   if (!shouldWrite) {
     console.log(JSON.stringify(useFixture ? tenders : tenders.slice(0, 5), null, 2));

@@ -18,6 +18,7 @@ import { readComprasMxOpenTendersFile } from "../lib/ingestion/connectors/compra
 import { mapComprasMxOpenTenderRowToTender } from "../lib/ingestion/compras-mx-open-tenders-mapper";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
+import { filterRecentTenders } from "../lib/ingestion/recency";
 import type { Tender } from "../types/tender";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -49,6 +50,8 @@ async function main() {
   const useFixture = args.includes("--fixture");
   const shouldWrite = args.includes("--write");
   const filePath = args.find((a) => !a.startsWith("--"));
+  const monthsIdx = args.indexOf("--months");
+  const months = monthsIdx >= 0 ? Number(args[monthsIdx + 1]) : 6;
 
   if (!useFixture && !filePath) {
     console.error("Usage: npm run ingest:comprasmx-open -- <file.xlsx|file.csv> [--write]");
@@ -61,11 +64,23 @@ async function main() {
     : filePath!;
 
   const rows = await readComprasMxOpenTendersFile(resolvedPath);
-  const tenders = rows
+  const mappedTenders = rows
     .map((row) => mapComprasMxOpenTenderRowToTender(row, SOURCE_NAME, SOURCE_URL))
     .filter((t): t is Tender => t !== null);
 
-  console.log(`Mapped ${tenders.length} of ${rows.length} rows.`);
+  console.log(`Mapped ${mappedTenders.length} of ${rows.length} rows.`);
+
+  // Every row in this export is still open to bid — its "publication date"
+  // is stamped at export time (see compras-mx-open-tenders-mapper.ts), so
+  // the recency filter is a no-op here. Applied anyway for consistency
+  // with the other sources and in case a future mapper reads a real
+  // publication date out of the file.
+  const tenders = filterRecentTenders(mappedTenders, months);
+  if (tenders.length !== mappedTenders.length) {
+    console.log(
+      `Keeping ${tenders.length} of ${mappedTenders.length} published within the last ${months} month(s) (pass --months 0 to disable).`,
+    );
+  }
 
   if (!shouldWrite) {
     console.log(JSON.stringify(useFixture ? tenders : tenders.slice(0, 5), null, 2));

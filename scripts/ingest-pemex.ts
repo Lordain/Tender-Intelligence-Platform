@@ -13,6 +13,7 @@ import { readPemexFile } from "../lib/ingestion/connectors/pemex-file";
 import { mapPemexConcursoItemToTender } from "../lib/ingestion/pemex-mapper";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
+import { filterRecentTenders } from "../lib/ingestion/recency";
 import type { Tender } from "../types/tender";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -50,6 +51,7 @@ async function main() {
   );
   const buyer = argValue(args, "--buyer") ?? "Petróleos Mexicanos (PEMEX)";
   const procedureLabel = argValue(args, "--procedure-label") ?? "Concurso Abierto";
+  const months = Number(argValue(args, "--months") ?? 6);
 
   if (!useFixture && !filePath) {
     console.error('Usage: npm run ingest:pemex -- <items.json> --buyer "Pemex Exploración y Producción" [--write]');
@@ -63,13 +65,20 @@ async function main() {
   const resolvedBuyer = useFixture ? "Pemex Exploración y Producción" : buyer;
 
   const items = readPemexFile(resolvedPath);
-  const tenders = items
+  const mappedTenders = items
     .map((item) => mapPemexConcursoItemToTender(item, resolvedBuyer, SOURCE_NAME, SOURCE_URL, procedureLabel))
     .filter((t): t is Tender => t !== null);
 
-  console.log(`Mapped ${tenders.length} tender(s) of ${items.length} items in this export.`);
-  const openCount = tenders.filter((t) => t.status === "open").length;
-  console.log(`${openCount} currently open (by vencimiento date), ${tenders.length - openCount} expired.`);
+  console.log(`Mapped ${mappedTenders.length} tender(s) of ${items.length} items in this export.`);
+  const openCount = mappedTenders.filter((t) => t.status === "open").length;
+  console.log(`${openCount} currently open (by vencimiento date), ${mappedTenders.length - openCount} expired.`);
+
+  const tenders = filterRecentTenders(mappedTenders, months);
+  if (tenders.length !== mappedTenders.length) {
+    console.log(
+      `Keeping ${tenders.length} of ${mappedTenders.length} published within the last ${months} month(s) (pass --months 0 to disable).`,
+    );
+  }
 
   if (!shouldWrite) {
     console.log(JSON.stringify(useFixture ? tenders : tenders.slice(0, 5), null, 2));

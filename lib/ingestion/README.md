@@ -188,6 +188,26 @@ successfully; the other 2,936 all have a blank `Fecha de publicación` —
 real data-quality gaps in the source, not a bug (the mapper correctly
 refuses to fabricate a publication date rather than guessing one).
 
+### Recency filter — only the last N months by default
+
+All seven `Tender`-producing ingest scripts (`ingest-pemex.ts`, `ingest-dof.ts`,
+`ingest-dof-search.ts`, `ingest-comprasmx-open-tenders.ts`,
+`ingest-compras-mx-contracts.ts`, `ingest-compranet5-bulk.ts`,
+`ingest-colombia.ts`) now filter mapped tenders through
+`filterRecentTenders()` (`lib/ingestion/recency.ts`) before printing/writing
+them, keeping only tenders whose `publicationDate` falls within the last
+`--months` (default `6`) — a real yearly Datos Abiertos export or a PEMEX
+SharePoint list mixes years of history with genuinely current
+opportunities, and older tenders aren't actionable for a Chinese enterprise
+deciding what to bid on next. Pass `--months 0` to disable it (or a larger
+number to widen the window) — e.g.
+`npm run ingest:compranet5 -- file.csv --write --months 12`. The
+`ingest:comprasmx-open` source is a special case: every row is still open
+to bid and its "publication date" is stamped at export time (see
+`compras-mx-open-tenders-mapper.ts`), so the filter is effectively a no-op
+there — wired in anyway for consistency and in case a future mapper reads
+a real publication date out of that file.
+
 ## What's still an unverified placeholder
 
 - `connectors/compras-mx-connector.ts` — assumes a queryable OCDS REST API

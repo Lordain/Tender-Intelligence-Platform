@@ -37,7 +37,17 @@ export async function upsertTendersBatched(
   const failed: UpsertTendersResult["failed"] = [];
   let upsertedCount = 0;
 
-  for (const batch of chunk(tenders, BATCH_SIZE)) {
+  // A real bug this caught: a single `.upsert(rows, { onConflict: "slug" })`
+  // call is one SQL statement, and Postgres rejects "ON CONFLICT DO UPDATE
+  // command cannot affect row a second time" if two rows in that SAME
+  // statement share the conflict key — which failed a WHOLE 500-row batch
+  // at once on a real PEMEX run, not just the duplicates, because a source
+  // export can genuinely repeat the same procedure (same slug) more than
+  // once. De-duping by slug before chunking (last occurrence wins) keeps
+  // every batch's conflict keys unique, which is what Postgres requires.
+  const uniqueBySlug = [...new Map(tenders.map((t) => [t.slug, t])).values()];
+
+  for (const batch of chunk(uniqueBySlug, BATCH_SIZE)) {
     const rows = batch.map((fields) => {
       return {
         slug: fields.slug,

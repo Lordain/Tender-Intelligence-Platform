@@ -577,11 +577,12 @@ Two real findings from running the mapper against the full export:
   lookup rather than reusing `inferParticipationScope()` from
   `heuristics.ts`.
 
-**Update: verified against all six real, sizable subsidiary lists**, not
-just PEP. A paginated version of the same Console `fetch()` snippet
-(follows `odata.nextLink` past SharePoint's 5,000-item-per-request cap)
-pulled full real exports for PTI, PL, `Concursos-e-invitaciones`, PE, and
-PF as well:
+**Update: verified against all seven real subsidiary lists that carry
+real data** (all but `Concursos-Abiertos-PCS`, see below), not just PEP. A
+paginated version of the same Console `fetch()` snippet (follows
+`odata.nextLink` past SharePoint's 5,000-item-per-request cap) pulled
+full real exports for PTI, PL, `Concursos-e-invitaciones`, PE, PF and PPS
+as well:
 
 | List | Buyer used | Items | Mapped | Currently open |
 |---|---|---|---|---|
@@ -591,12 +592,17 @@ PF as well:
 | Concursos-Abiertos-PL | Pemex Logística | 488 | 488 | 132 |
 | Concursos-Abiertos-PE | Petróleos Mexicanos (PEMEX) | 181 | 181 | 0 |
 | Concursos-Abiertos-PF | Pemex Fertilizantes | 48 | 48 | 1 |
-| **Total** | | **11,758** | **11,748** | **3,128** |
+| Concursos-Abiertos-PPS | Pemex Perforación y Servicios | 17 | 17 | 0 |
+| **Total** | | **11,775** | **11,765** | **3,128** |
 
-(`Concursos-Abiertos-PPS`, 17 items, and `Concursos-Abiertos-PCS`, 1 item,
-not yet pulled — small enough to be low priority.) A real find in the
-`Concursos-e-invitaciones` sample: it includes PEMEX's own medical-goods
-procurement ("Adquisición de diversos materiales para mantenimiento de las
+`Concursos-Abiertos-PCS` (1 item) was pulled but deliberately excluded:
+its only row is `Title`/`descripcion` both literally "Registro de prueba"
+("test record") — an obvious placeholder entry, not a real tender, so
+ingesting it would just plant fake data. A real, if minor, reminder that
+"the list exists" doesn't mean every row in it is real procurement data.
+
+A real find in the `Concursos-e-invitaciones` sample: it includes PEMEX's
+own medical-goods procurement ("Adquisición de diversos materiales para mantenimiento de las
 Unidades Médicas de los Servicios de Salud de Petróleos Mexicanos") —
 directly relevant to the medical/health-goods expansion decided earlier
 in this project.
@@ -690,13 +696,10 @@ portal has no anti-bot gate, so an actual byte-level downloader is
 possible here in a way it isn't for Compras MX — just not built yet
 (out of scope for this pass).
 
-Also not yet pulled: `Concursos-Abiertos-PPS` (17 items) and
-`Concursos-Abiertos-PCS` (1 item) — the same `pullPemexList()` snippet
-above (the item-list one, not the attachments one) works for these too,
-just small enough to be low priority. And an actual `--write` run against
-Supabase for any of this PEMEX data (this environment has no Supabase
-credentials — every verification above is still dry-run/local mapper
-output, same as the rest of this project).
+Not yet done: an actual `--write` run against Supabase for any of this
+PEMEX data (this environment has no Supabase credentials — every
+verification above is still dry-run/local mapper output, same as the
+rest of this project).
 
 ### Original framing (still accurate for what DOF _isn't_)
 

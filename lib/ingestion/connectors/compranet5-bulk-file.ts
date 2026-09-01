@@ -13,7 +13,22 @@ import type { Compranet5Row } from "@/lib/ingestion/compranet5-mapper";
  */
 export async function readCompranet5BulkFile(filePath: string): Promise<Compranet5Row[]> {
   if (filePath.endsWith(".csv")) {
-    const content = readFileSync(filePath, "utf-8");
+    // Confirmed real: this file decodes as latin-1, NOT the gb18030 the
+    // Compras MX Datos Abiertos contracts export uses (see
+    // compras-mx-contracts-bulk-file.ts) — a different real encoding for a
+    // different real government export, not a guess. Reading as plain
+    // "utf-8" (the previous behavior) silently mangled every accented
+    // column name (e.g. "Institución" -> "Instituci�n"), which meant every
+    // row lookup in compranet5-mapper.ts missed its expected key and the
+    // whole file mapped to zero tenders — caught by actually running this
+    // against a real 13,400-row file for the first time, not in review.
+    const buffer = readFileSync(filePath);
+    let content: string;
+    try {
+      content = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+    } catch {
+      content = new TextDecoder("latin1").decode(buffer);
+    }
     // relax_quotes: a real Compras MX contracts export has at least one
     // unquoted field with an embedded literal quote that strict csv-parse
     // rejects outright (see compras-mx-contracts-bulk-file.ts) — applying

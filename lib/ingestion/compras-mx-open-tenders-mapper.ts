@@ -1,6 +1,6 @@
 import type { Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
-import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
+import { inferGovernmentLevelFromProcedureNumber } from "@/lib/ingestion/heuristics";
 import { classifyRelevance } from "@/lib/relevance";
 
 /**
@@ -152,7 +152,7 @@ export function mapComprasMxOpenTenderRowToTender(
     summary: untranslated(title),
     buyer,
     country: "Mexico",
-    governmentLevel: inferGovernmentLevel(buyer),
+    governmentLevel: inferGovernmentLevelFromProcedureNumber(tenderNumber, buyer),
     industry,
     scopeType,
     procedureType: row["TIPO DE PUBLICACIÓN"]?.trim() || "Unknown",

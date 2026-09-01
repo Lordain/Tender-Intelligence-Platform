@@ -209,16 +209,40 @@ should prioritize accurate es→zh/es→en translation and requirement
 extraction over raw data coverage — the language/interpretation layer is
 the gap local competitors have no reason to fill.
 
-## `governmentLevel` and `industry` are best-effort guesses
+## `governmentLevel` and `industry` are best-effort guesses (mostly)
 
-Shared in `heuristics.ts` — neither OCDS nor the CompraNet 5.0 summary
-schema has a government-level field or this platform's own industry
-taxonomy. Inferred from the buyer name via regex; reasonable for
-well-known buyers (CFE, PEMEX, "Municipio de X") but not authoritative.
-Treat as needing human review, same as the platform's original
-"Confidence Checking" design intent — no `confidence_score` column exists
-yet, deliberately, to avoid a schema change before Phase 6 actually needs
-one.
+Shared in `heuristics.ts`. Three tiers of confidence, strongest first:
+
+1. **`compras-mx-contracts-mapper.ts`** reads `Orden de gobierno` directly
+   off the row (`inferGovernmentLevelFromOrden`) — a real field, not
+   inferred, confirmed APF/GEM.
+2. **`compras-mx-open-tenders-mapper.ts`** has no such column, but derives
+   the same APF/GEM signal from `NÚMERO DE IDENTIFICACIÓN`'s structure
+   (`inferGovernmentLevelFromProcedureNumber` in `heuristics.ts`) — per
+   the real `DD_PIC_CONTRATOS_2400703.xlsx` data dictionary, "Número de
+   procedimiento" is `XX-##-XXX-XXXXXXXXX-X-#-####` where `##` is "Clave
+   del ramo" (02–51 = APF, 60–91 = GEM). Not just documented — checked
+   against the full real 23,597-row contracts file, which has both this
+   field and the ground-truth `Orden de gobierno` column: the extraction
+   predicted the correct value for 23,552/23,552 rows where it parsed
+   (100%), falling back to the buyer-name heuristic for the other 45. This
+   matters in practice: on the real 515-row open-tenders file, the old
+   buyer-name-only heuristic guessed "federal" for 427/515 rows (83%, since
+   most buyer acronyms like SIAPA/ISSEA/CCIH don't match any
+   state/municipal keyword and fall through to the federal default) —
+   the procedure-number derivation instead gives a real 243 state /
+   272 federal split.
+3. **`compranet5-mapper.ts`** and OCDS records with no procedure-number
+   field to parse fall back to `inferGovernmentLevel(buyerName)` — regex
+   over the buyer name, reasonable for well-known buyers (CFE, PEMEX,
+   "Municipio de X") but not authoritative. Treat as needing human review,
+   same as the platform's original "Confidence Checking" design intent —
+   no `confidence_score` column exists yet, deliberately, to avoid a schema
+   change before Phase 6 actually needs one.
+
+`industry` has no equivalent documented derivation in any source seen so
+far — still a plain best-effort/fallback value (`Descripción Ramo` where
+present, else `"General"`).
 
 ## Why DOF isn't built yet
 

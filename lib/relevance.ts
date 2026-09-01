@@ -43,6 +43,20 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   /energ[íi]a|el[ée]ctric|power/i,
   /infraestructura|construcci[óo]n|carretera|puente|ferrocarril|puerto|aeropuerto/i,
   /telecom|comunicaciones|datacenter/i,
+  // Medical/health goods. Added deliberately after measuring the real
+  // open-tenders export: of the 82 of 515 procedures open to foreign
+  // bidders at all, the large majority are health-sector goods (health
+  // institutions buy internationally, infrastructure almost never does),
+  // so excluding them would hide most of what a foreign bidder can
+  // actually bid on. Matches the goods/services themselves, NOT the word
+  // "salud" — that appears as the buyer's Ramo on every health-ministry
+  // tender including the routine cleaning ones EXCLUDE_KEYWORDS drops.
+  /equipo m[ée]dico|medical equipment|equipo de laboratorio/i,
+  /osteos[íi]ntesis|endopr[óo]tesis|pr[óo]tesis|implante|ortopedia/i,
+  /bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia/i,
+  /imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia|ultrasonido|rayos x/i,
+  /laboratorio cl[íi]nico|reactivo/i,
+  /medicamento|f[áa]rmaco|insumo m[ée]dico|material de curaci[óo]n/i,
 ];
 
 // MXN-scale thresholds; a non-MXN value is normalized with a rough
@@ -142,9 +156,15 @@ export function classifyRelevance(input: {
     return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
   }
 
+  // A target-industry match counts on its own, not only for works-like
+  // scope. It used to be gated behind `isWorksLike`, which made
+  // FLAGSHIP_INDUSTRY_KEYWORDS dead for every equipment/services tender —
+  // and since the open-tenders export carries no value at all, that meant
+  // an ICT, power or medical-equipment purchase could never rank above
+  // "standard" no matter how well it matched the target sectors.
   if (
     (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_MXN) ||
-    (isWorksLike && matchesFlagshipIndustry)
+    matchesFlagshipIndustry
   ) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
   }

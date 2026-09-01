@@ -117,6 +117,19 @@ Each also accepts a real downloaded file in place of `--fixture`, e.g.
 `npm run ingest:comprasmx-contracts -- path/to/file.csv` (dry run by
 default; add `--write` to upsert into Supabase).
 
+Tender documents (Convocatoria, Anexo Técnico, actas) are filed with a
+separate step, since Compras MX serves them from behind an
+anti-automation gate and this platform doesn't fetch through it:
+
+```bash
+npm run ingest:documents -- path/to/downloaded-pdfs   # dry run; --write records them
+```
+
+Drop whatever was downloaded into a folder and it works out which tender
+each file belongs to (from the procedure number in the document text),
+what kind of document it is, and hashes it so the same file is never
+analysed twice — no renaming, sorting or matching by hand.
+
 **Product direction has expanded** to Latin America (Mexico, Brazil,
 Colombia, Chile, Peru), positioned for Chinese enterprises bidding
 overseas. Portuguese (for Brazil) is part of that long-term direction but

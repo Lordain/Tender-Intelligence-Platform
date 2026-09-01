@@ -224,12 +224,11 @@ es→zh translation and requirement extraction over raw data coverage — the
 language/interpretation layer is the gap local competitors have no reason
 to fill.
 
-### Layer 2 design (not yet built — this is the plan, not a connector)
+### Layer 2 — document intake and extraction are built; extraction is untested against a live key
 
-Following this project's own rule: nothing below gets implemented against
-a guessed document URL or an unconfirmed provider. Two things need
-verifying/deciding before any of this is real code, same pattern as every
-other source in this file:
+Following this project's own rule: nothing below is implemented against a
+guessed document URL. One thing was genuinely unresolved and is now a
+product decision rather than an unknown:
 
 1. **Document access is gated too — confirmed, not inferred.** A real
    document-download request captured from a browser hits
@@ -238,13 +237,30 @@ other source in this file:
    search API. So document retrieval is a manual/human-in-the-loop step
    like the two existing bulk sources — no downloader is built against
    that endpoint, for the same reason no search connector was.
-2. **No LLM provider is configured anywhere in this codebase** (checked —
-   no `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/etc. referenced anywhere, not
-   even in `.env.example`). Needs a provider decision before any
-   extraction code is written — building against a guessed SDK/prompt
-   shape without ever running it would be exactly the kind of
-   unverified-placeholder mistake this file's history already shows the
-   cost of.
+   `lib/ingestion/document-intake.ts` + `npm run ingest:documents` handles
+   everything *after* that human step (matching each file to its tender by
+   the procedure number in its own text, classifying document type,
+   sha256-hashing for reuse) — verified against the real 50-page
+   Convocatoria below (all 54 procedure-number occurrences found, one per
+   page header; two real classifier bugs found and fixed in the process,
+   see the commit history).
+2. **LLM provider: Anthropic, decided.** `lib/ingestion/extract-requirements.ts`
+   + `npm run extract:document` calls `claude-opus-5` via the Anthropic
+   TypeScript SDK (`client.messages.parse` + `zodOutputFormat`, PDF as a
+   base64 `document` content block, prompt-cached system instructions) to
+   produce `qualifications`/`experienceRequirements`/`requiredDocuments`/
+   `risks` in exactly the shape those fields already have in
+   `types/tender.ts`. **Not live-tested** — this environment has no
+   `ANTHROPIC_API_KEY`, so every request shape is copied from current SDK
+   documentation and confirmed to compile/typecheck, but the actual model
+   output has never been seen. Run `npm run extract:document -- <pdf>
+   <tender-slug>` against a real document once a key is configured, read
+   the output critically before trusting it, and expect the prompt to need
+   at least one real iteration. Locale: the model is asked for `es` (a
+   paraphrase, not a verbatim legal quote) and a real `zh` translation;
+   `en` is mirrored from `es` like `text-utils.ts`'s `untranslated()`
+   already does elsewhere — no fabricated English, per the Chinese-only
+   product direction.
 
 #### What a real Convocatoria actually contains (read one end-to-end)
 

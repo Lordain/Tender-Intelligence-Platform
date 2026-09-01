@@ -31,7 +31,7 @@ export const uiText = {
     zh: "近期发布",
   },
   navHome: { en: "Home", es: "Inicio", zh: "首页" },
-  navTenders: { en: "Tenders", es: "Licitaciones", zh: "招标" },
+  navTenders: { en: "Tenders", es: "Licitaciones", zh: "招标项目" },
   searchPlaceholder: {
     en: "Search by tender name, buyer, or ID…",
     es: "Buscar por nombre, comprador o ID…",
@@ -194,4 +194,5 @@ export const uiText = {
     es: "Mostrar también licitaciones de servicios rutinarios",
     zh: "同时显示日常服务类招标",
   },
+  scaleLabel: { en: "Scale", es: "Escala", zh: "项目规模" },
 } satisfies Record<string, LocalizedText>;

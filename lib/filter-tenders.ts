@@ -1,4 +1,4 @@
-import type { Locale, Tender, TenderScopeType, TenderStatus } from "@/types/tender";
+import type { Locale, Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { localize } from "@/lib/localize";
 
 export type TenderFilterOptions = {
@@ -6,19 +6,24 @@ export type TenderFilterOptions = {
   industries?: string[];
   scopeTypes?: TenderScopeType[];
   statuses?: TenderStatus[];
+  /** Filters to the selected relevance/scale tiers (see lib/relevance.ts) — e.g. flagship + significant only, to cut out the long tail of small routine tenders. Empty/omitted means no tier restriction. */
+  relevanceTiers?: TenderRelevanceTier[];
   /** "Find fewer, find better": routine-service tenders are hidden by default (see lib/relevance.ts) unless explicitly shown. */
   includeExcluded?: boolean;
 };
 
 export function filterTenders(
   allTenders: Tender[],
-  { query, industries, scopeTypes, statuses, includeExcluded }: TenderFilterOptions,
+  { query, industries, scopeTypes, statuses, relevanceTiers, includeExcluded }: TenderFilterOptions,
   locale: Locale,
 ): Tender[] {
   const normalizedQuery = query?.trim().toLowerCase();
 
   return allTenders.filter((tender) => {
     if (!includeExcluded && tender.relevance.tier === "excluded") return false;
+    if (relevanceTiers && relevanceTiers.length > 0 && !relevanceTiers.includes(tender.relevance.tier)) {
+      return false;
+    }
     if (industries && industries.length > 0 && !industries.includes(tender.industry)) {
       return false;
     }

@@ -88,6 +88,13 @@ export const RISK_LEVEL_ICONS: Record<TenderRiskLevel, string> = {
   critical: "🔴",
 };
 
+export const RELEVANCE_TIER_LABELS: Record<TenderRelevanceTier, LocalizedText> = {
+  flagship: { en: "Flagship", es: "Insignia", zh: "旗舰大标" },
+  significant: { en: "Significant", es: "Relevante", zh: "重点项目" },
+  standard: { en: "Standard", es: "Estándar", zh: "常规项目" },
+  excluded: { en: "Routine service", es: "Servicio rutinario", zh: "日常服务类" },
+};
+
 export const RELEVANCE_TIER_COLORS: Record<TenderRelevanceTier, string> = {
   flagship: "bg-amber-100 text-amber-900",
   significant: "bg-emerald-100 text-emerald-800",

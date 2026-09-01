@@ -2,10 +2,10 @@
 
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { Tender, TenderScopeType, TenderStatus } from "@/types/tender";
+import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { INDUSTRIES } from "@/data/tenders";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { SCOPE_TYPE_LABELS, STATUS_LABELS } from "@/lib/tender-labels";
+import { RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_LABELS } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders, type SortKey } from "@/lib/filter-tenders";
 import { TenderCard } from "@/components/tenders/TenderCard";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
@@ -28,6 +28,10 @@ const STATUSES: TenderStatus[] = [
   "cancelled",
 ];
 
+// "excluded" isn't offered here — that tier is a hide/show toggle
+// (showRoutineServices), not one more scale to filter down to.
+const RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
+
 const PAGE_SIZE = 9;
 
 function parseList(param: string | null): string[] {
@@ -44,13 +48,18 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const industries = parseList(searchParams.get("industry"));
   const scopeTypes = parseList(searchParams.get("scope")) as TenderScopeType[];
   const statuses = parseList(searchParams.get("status")) as TenderStatus[];
+  const relevanceTiers = parseList(searchParams.get("tier")) as TenderRelevanceTier[];
   const sortParam = searchParams.get("sort");
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "publication_desc";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const includeExcluded = searchParams.get("all") === "1";
 
   const hasActiveFilters =
-    industries.length > 0 || scopeTypes.length > 0 || statuses.length > 0 || query.length > 0;
+    industries.length > 0 ||
+    scopeTypes.length > 0 ||
+    statuses.length > 0 ||
+    relevanceTiers.length > 0 ||
+    query.length > 0;
 
   function updateParams(updates: Record<string, string | null>, resetPage = true) {
     // Reads the live URL rather than the `searchParams` snapshot from this render: router.replace()
@@ -68,8 +77,13 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   }
 
   const filtered = useMemo(
-    () => filterTenders(tenders, { query, industries, scopeTypes, statuses, includeExcluded }, locale),
-    [tenders, query, industries, scopeTypes, statuses, includeExcluded, locale],
+    () =>
+      filterTenders(
+        tenders,
+        { query, industries, scopeTypes, statuses, relevanceTiers, includeExcluded },
+        locale,
+      ),
+    [tenders, query, industries, scopeTypes, statuses, relevanceTiers, includeExcluded, locale],
   );
 
   const sorted = useMemo(() => sortTenders(filtered, sort), [filtered, sort]);
@@ -96,6 +110,16 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
         />
 
         <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <MultiSelectPills
+            label={localize(uiText.scaleLabel, locale)}
+            options={RELEVANCE_TIERS.map((option) => ({
+              value: option,
+              label: localize(RELEVANCE_TIER_LABELS[option], locale),
+            }))}
+            selected={relevanceTiers}
+            onChange={(next) => updateParams({ tier: next.join(",") || null })}
+          />
+
           <MultiSelectPills
             label={localize(uiText.industryLabel, locale)}
             options={INDUSTRIES.map((option) => ({ value: option, label: option }))}

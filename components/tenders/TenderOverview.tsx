@@ -41,9 +41,23 @@ export function TenderOverview({ tender }: { tender: Tender }) {
         <SaveTenderButton tenderId={tender.id} className="border border-zinc-200 dark:border-zinc-800" />
       </div>
 
-      <h1 className="text-2xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-        {localize(tender.title, locale)}
+      <h1 className="flex items-baseline gap-2 text-2xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+        <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium leading-none text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+          ES
+        </span>
+        {tender.title.es}
       </h1>
+      {/* Only a real translation (Layer 2 AI, not the es/zh mirror
+          untranslated() produces) makes this line worth showing —
+          otherwise it would just repeat the Spanish title verbatim. */}
+      {tender.title.zh !== tender.title.es && (
+        <p className="-mt-2 flex items-baseline gap-2 text-base text-zinc-500 dark:text-zinc-400">
+          <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium leading-none text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+            译
+          </span>
+          {tender.title.zh}
+        </p>
+      )}
 
       <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
         {localize(tender.summary, locale)}

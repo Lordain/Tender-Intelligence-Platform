@@ -45,11 +45,25 @@ export function TenderCard({ tender }: { tender: Tender }) {
         </div>
       </div>
 
-      <h3 className="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+      <h3 className="flex items-baseline gap-1.5 text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+        <span className="shrink-0 rounded bg-zinc-100 px-1 py-0.5 text-[10px] font-medium leading-none text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+          ES
+        </span>
         <Link href={`/tenders/${tender.slug}`} className="after:absolute after:inset-0 group-hover:underline">
-          {localize(tender.title, locale)}
+          {tender.title.es}
         </Link>
       </h3>
+      {/* Only a real translation (Layer 2 AI, not the es/zh mirror
+          untranslated() produces) makes this line worth showing —
+          otherwise it would just repeat the Spanish title verbatim. */}
+      {tender.title.zh !== tender.title.es && (
+        <p className="-mt-2 flex items-baseline gap-1.5 text-sm text-zinc-500 dark:text-zinc-400">
+          <span className="shrink-0 rounded bg-amber-50 px-1 py-0.5 text-[10px] font-medium leading-none text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+            译
+          </span>
+          {tender.title.zh}
+        </p>
+      )}
 
       <p className="text-sm text-zinc-500 dark:text-zinc-400">
         {tender.buyer} · {tender.location ?? tender.country}

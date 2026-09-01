@@ -15,7 +15,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "explorer",
     name: { en: "Explorer", es: "Explorer", zh: "探索版" },
-    price: { en: "$99", es: "$99", zh: "$99" },
+    price: { en: "$199", es: "$199", zh: "$199" },
     period: { en: "/ month", es: "/ mes", zh: "/ 月" },
     description: {
       en: "For teams starting to track opportunities in Mexico.",
@@ -34,7 +34,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "professional",
     name: { en: "Professional", es: "Professional", zh: "专业版" },
-    price: { en: "$299–$499", es: "$299–$499", zh: "$299–$499" },
+    price: { en: "$599–$999", es: "$599–$999", zh: "$599–$999" },
     period: { en: "/ month", es: "/ mes", zh: "/ 月" },
     description: {
       en: "For teams that actively bid and need full analysis.",
@@ -57,7 +57,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "enterprise",
     name: { en: "Enterprise", es: "Enterprise", zh: "企业版" },
-    price: { en: "$1,000+", es: "$1,000+", zh: "$1,000+" },
+    price: { en: "$2,000+", es: "$2,000+", zh: "$2,000+" },
     period: { en: "/ month", es: "/ mes", zh: "/ 月" },
     description: {
       en: "For organizations that need scale, API access, and intelligence across Latin America.",

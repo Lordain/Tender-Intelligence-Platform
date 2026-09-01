@@ -5,7 +5,7 @@
  *
  * Usage:
  *   npm run ingest:pemex -- --fixture
- *   npm run ingest:pemex -- path/to/items.json --buyer "Pemex Exploración y Producción" [--write]
+ *   npm run ingest:pemex -- path/to/items.json --buyer "Pemex Exploración y Producción" [--procedure-label "Concurso Abierto"] [--write]
  */
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -45,8 +45,11 @@ async function main() {
   const args = process.argv.slice(2);
   const useFixture = args.includes("--fixture");
   const shouldWrite = args.includes("--write");
-  const filePath = args.find((a, i) => !a.startsWith("--") && args[i - 1] !== "--buyer");
+  const filePath = args.find(
+    (a, i) => !a.startsWith("--") && args[i - 1] !== "--buyer" && args[i - 1] !== "--procedure-label",
+  );
   const buyer = argValue(args, "--buyer") ?? "Petróleos Mexicanos (PEMEX)";
+  const procedureLabel = argValue(args, "--procedure-label") ?? "Concurso Abierto";
 
   if (!useFixture && !filePath) {
     console.error('Usage: npm run ingest:pemex -- <items.json> --buyer "Pemex Exploración y Producción" [--write]');
@@ -61,7 +64,7 @@ async function main() {
 
   const items = readPemexFile(resolvedPath);
   const tenders = items
-    .map((item) => mapPemexConcursoItemToTender(item, resolvedBuyer, SOURCE_NAME, SOURCE_URL))
+    .map((item) => mapPemexConcursoItemToTender(item, resolvedBuyer, SOURCE_NAME, SOURCE_URL, procedureLabel))
     .filter((t): t is Tender => t !== null);
 
   console.log(`Mapped ${tenders.length} tender(s) of ${items.length} items in this export.`);

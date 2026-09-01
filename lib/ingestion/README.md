@@ -577,13 +577,44 @@ Two real findings from running the mapper against the full export:
   lookup rather than reusing `inferParticipationScope()` from
   `heuristics.ts`.
 
+**Update: verified against all six real, sizable subsidiary lists**, not
+just PEP. A paginated version of the same Console `fetch()` snippet
+(follows `odata.nextLink` past SharePoint's 5,000-item-per-request cap)
+pulled full real exports for PTI, PL, `Concursos-e-invitaciones`, PE, and
+PF as well:
+
+| List | Buyer used | Items | Mapped | Currently open |
+|---|---|---|---|---|
+| Concursos-Abiertos-PTI | Pemex Transformación Industrial | 8,382 | 8,374 | 2,543 |
+| Concursos-Abiertos-PEP | Pemex Exploración y Producción | 2,067 | 2,065 | 309 |
+| Concursos-e-invitaciones | Petróleos Mexicanos (PEMEX) | 592 | 592 | 143 |
+| Concursos-Abiertos-PL | Pemex Logística | 488 | 488 | 132 |
+| Concursos-Abiertos-PE | Petróleos Mexicanos (PEMEX) | 181 | 181 | 0 |
+| Concursos-Abiertos-PF | Pemex Fertilizantes | 48 | 48 | 1 |
+| **Total** | | **11,758** | **11,748** | **3,128** |
+
+(`Concursos-Abiertos-PPS`, 17 items, and `Concursos-Abiertos-PCS`, 1 item,
+not yet pulled — small enough to be low priority.) A real find in the
+`Concursos-e-invitaciones` sample: it includes PEMEX's own medical-goods
+procurement ("Adquisición de diversos materiales para mantenimiento de las
+Unidades Médicas de los Servicios de Salud de Petróleos Mexicanos") —
+directly relevant to the medical/health-goods expansion decided earlier
+in this project.
+
+That list also surfaced a second real procedure type: not every list is a
+"Concurso Abierto" — `Concursos-e-invitaciones` mixes in "Invitación a
+Cuando Menos Tres Personas" (a real, distinct LAASSP/LOPSRM-equivalent
+procedure, not a naming quirk), so `mapPemexConcursoItemToTender()` takes
+a `procedureLabel` parameter (defaults to "Concurso Abierto") rather than
+hardcoding one label for every source list; `ingest-pemex.ts` exposes it
+as `--procedure-label`.
+
 Not yet done: fetching the actual tender documents (each item has
 `Attachments: true` but the list export only carries that boolean, not
 file URLs — getting them needs a separate `/items(<Id>)/AttachmentFiles`
-call per item) and running the same enumeration + export against the
-other seven subsidiary lists (PTI alone, at 8,382 items, is larger than
-PEP and would need `$skiptoken` pagination past SharePoint's 5,000-item
-per-request cap).
+call per item) and an actual `--write` run against Supabase (this
+environment has no Supabase credentials — every verification above is
+still dry-run/local mapper output, same as the rest of this project).
 
 ### Original framing (still accurate for what DOF _isn't_)
 

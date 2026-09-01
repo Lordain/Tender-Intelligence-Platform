@@ -100,6 +100,13 @@ export function mapPemexConcursoItemToTender(
   buyer: string,
   sourceName: string,
   sourceUrl: string,
+  // Most subsidiary lists are named "Concursos-Abiertos-*" (open tenders),
+  // but "Concursos-e-invitaciones" mixes in "Invitación a Cuando Menos Tres
+  // Personas" procedures — a real, distinct LAASSP/LOPSRM-equivalent
+  // procedure type, not a formatting choice — so the caller passing the
+  // list's own real label keeps procedureType honest per source list
+  // instead of asserting every item is a "Concurso Abierto".
+  procedureLabel = "Concurso Abierto",
 ): Tender | null {
   const tenderNumber = item.Title?.trim();
   const description = item.descripcion?.trim();
@@ -130,7 +137,7 @@ export function mapPemexConcursoItemToTender(
     governmentLevel: "public_company",
     industry,
     scopeType,
-    procedureType: item.areacontratante?.trim() ? `Concurso Abierto (${item.areacontratante.trim()})` : "Concurso Abierto",
+    procedureType: item.areacontratante?.trim() ? `${procedureLabel} (${item.areacontratante.trim()})` : procedureLabel,
     participationScope: inferParticipationScope(item.tipoevento),
     publicationDate,
     submissionDeadline: toIso(item.vencimiento) ?? undefined,

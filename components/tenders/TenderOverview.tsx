@@ -47,14 +47,22 @@ export function TenderOverview({ tender }: { tender: Tender }) {
         <SaveTenderButton tenderId={tender.id} className="border border-zinc-200 dark:border-zinc-800" />
       </div>
 
-      <h1 className="text-2xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-        {tender.title.es}
-      </h1>
-      {/* Only a real translation (Layer 2 AI, not the es/zh mirror
-          untranslated() produces) makes this line worth showing —
-          otherwise it would just repeat the Spanish title verbatim. */}
-      {tender.title.zh !== tender.title.es && (
-        <p className="-mt-2 text-base text-zinc-500 dark:text-zinc-400">{tender.title.zh}</p>
+      {/* Chinese leads when a real translation exists (this platform's
+          readers work in Chinese first) — Spanish stays visible as the
+          smaller reference line, since that's the text that actually
+          matches the official documents. Without a translation yet,
+          Spanish is all there is, so it carries the heading alone. */}
+      {tender.title.zh !== tender.title.es ? (
+        <>
+          <h1 className="text-2xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+            {tender.title.zh}
+          </h1>
+          <p className="-mt-2 text-sm text-zinc-400 dark:text-zinc-500">{tender.title.es}</p>
+        </>
+      ) : (
+        <h1 className="text-lg font-medium leading-snug text-zinc-600 dark:text-zinc-400">
+          {tender.title.es}
+        </h1>
       )}
 
       <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">

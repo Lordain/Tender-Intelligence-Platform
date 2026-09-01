@@ -71,6 +71,7 @@ export const uiText = {
   },
   overview: { en: "Overview", es: "Resumen", zh: "概览" },
   buyer: { en: "Buyer", es: "Comprador", zh: "采购人" },
+  buyerLabelCard: { en: "Issuing Agency", es: "Entidad Emisora", zh: "发标单位" },
   governmentLevelLabel: { en: "Government Level", es: "Nivel de Gobierno", zh: "政府层级" },
   procedureType: { en: "Procedure Type", es: "Tipo de Procedimiento", zh: "采购方式" },
   participationScopeLabel: { en: "Bidder Eligibility", es: "Carácter del Procedimiento", zh: "参与资格范围" },

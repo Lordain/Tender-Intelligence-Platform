@@ -25,6 +25,20 @@ import type { TenderRequirement, TenderRisk } from "@/types/tender";
  * `zh` translation of that paraphrase, never a fabricated `en` — `en` is
  * mirrored from `es`, the same convention lib/ingestion/text-utils.ts's
  * `untranslated()` already uses for non-extracted fields.
+ *
+ * sourceReference is self-reported by the model, not API-verified. The
+ * Anthropic API's native PDF citations (`citations: {enabled: true}`,
+ * which anchor to real, non-hallucinated page numbers) are documented as
+ * incompatible with `output_config.format` — the structured-output
+ * feature this file relies on for a reliable JSON shape. Real per-item
+ * page citations would need restructuring extraction away from
+ * structured outputs (e.g. tool use, or a two-pass citations-then-
+ * structure pipeline); not done here since it hasn't been decided this
+ * tradeoff is worth it yet. Until then, treat sourceReference as "where
+ * the model believes this came from," not a verified pointer — spot-check
+ * it against the source document, the same way the fixture below was
+ * checked against each .docx's own real table-of-contents page numbers
+ * rather than invented ones.
  */
 
 const LocalizedPairSchema = z.object({

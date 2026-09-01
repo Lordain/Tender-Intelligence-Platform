@@ -493,11 +493,17 @@ has nothing to do with PEMEX's Empresa Productiva del Estado status
 (`codOrgaUno: "PODER EJECUTIVO"` / `"SECRETARIA DE ENERGIA"` for its
 general notices, same `CONVOCATORIAS...` section as CFE for its tender
 ones — IMP is a normal federal entity, unrelated to the CFE/PEMEX
-question). PEMEX itself is still unconfirmed in DOF — worth a follow-up
-search for "PEMEX" specifically (the company almost never spells out
-"Petróleos Mexicanos" in its own procurement notices) or filtering
-`organismos` down to just `EPEM` to exclude regular Poder Ejecutivo
-entities like IMP from the results.
+question). **Follow-up search for "PEMEX" directly confirmed it**: 348
+real hits, several dated the same day and titled plainly
+"PETROLEOS MEXICANOS - REF:<number>" under the same `CONVOCATORIAS...`
+section as CFE's. Both target buyers are now confirmed real in DOF —
+PEMEX's tender volume there (348 hits for a ~1-year window) is
+noticeably higher than CFE's (79), consistent with oil & gas being a
+heavier-procurement sector. IMP remains a useful negative example kept in
+the fixture: same section, same title shape, wrong company — a reminder
+that `organismos=EPEM` (or comparing `codOrgaDos` on the buyer's
+non-tender notices) is the more precise filter than a plain name search
+whenever a target buyer's name overlaps another real institution's.
 
 This same real data also caught a mapper bug: some titles prefix a short
 internal unit code before the buyer name ("018T0O - INSTITUTO MEXICANO

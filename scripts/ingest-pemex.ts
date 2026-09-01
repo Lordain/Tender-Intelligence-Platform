@@ -71,9 +71,9 @@ async function main() {
   const openCount = tenders.filter((t) => t.status === "open").length;
   console.log(`${openCount} currently open (by vencimiento date), ${tenders.length - openCount} expired.`);
 
-  if (useFixture || !shouldWrite) {
+  if (!shouldWrite) {
     console.log(JSON.stringify(useFixture ? tenders : tenders.slice(0, 5), null, 2));
-    console.log(`\n${useFixture ? "--fixture" : "dry run (pass --write to actually upsert)"} — nothing was written to Supabase.`);
+    console.log("\ndry run (pass --write to actually upsert) — nothing was written to Supabase.");
     return;
   }
 

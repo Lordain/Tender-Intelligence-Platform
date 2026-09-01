@@ -65,7 +65,7 @@ async function main() {
 
   console.log(`Mapped ${tenders.length} of ${rows.length} rows.`);
 
-  if (useFixture || !shouldWrite) {
+  if (!shouldWrite) {
     // A real bulk file can map tens of thousands of tenders — printing all
     // of them to stdout on a dry run isn't useful past confirming the shape
     // looks right, so only the fixture (a couple of rows) prints in full.

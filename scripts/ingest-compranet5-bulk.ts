@@ -62,7 +62,7 @@ async function main() {
 
   console.log(`Mapped ${tenders.length} of ${rows.length} rows.`);
 
-  if (useFixture || !shouldWrite) {
+  if (!shouldWrite) {
     console.log(JSON.stringify(useFixture ? tenders : tenders.slice(0, 5), null, 2));
     if (!useFixture && tenders.length > 5) {
       console.log(`\n...and ${tenders.length - 5} more (showing first 5 of a real file's dry run).`);

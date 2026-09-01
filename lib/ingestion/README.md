@@ -217,12 +217,75 @@ empty arrays rather than fabricating content. The UI already renders
 LicitIA (licitia.com.mx) and several other independent platforms already
 aggregate ComprasMX + state portals and use AI to extract exactly these
 fields from tender documents — that market is not empty. Given that, and
-given the product's positioning is shifting toward **Chinese enterprises
-(and other non-Spanish-speaking bidders) expanding into Mexico** rather
-than competing head-on with Spanish-native local aggregators, Phase 6
-should prioritize accurate es→zh/es→en translation and requirement
-extraction over raw data coverage — the language/interpretation layer is
-the gap local competitors have no reason to fill.
+given the product is now **Chinese-only, positioned for Chinese
+enterprises expanding into Mexico** rather than competing head-on with
+Spanish-native local aggregators, Phase 6 should prioritize accurate
+es→zh translation and requirement extraction over raw data coverage — the
+language/interpretation layer is the gap local competitors have no reason
+to fill.
+
+### Layer 2 design (not yet built — this is the plan, not a connector)
+
+Following this project's own rule: nothing below gets implemented against
+a guessed document URL or an unconfirmed provider. Two things need
+verifying/deciding before any of this is real code, same pattern as every
+other source in this file:
+
+1. **Document access is unconfirmed.** Every real per-record `sourceUrl`
+   captured so far (`.../sitiopublico/#/sitiopublico/detalle/<uuid>/procedimiento`)
+   is a client-side-routed SPA page, not a fetchable document — the actual
+   Convocatoria/Anexo Técnico files are very likely served by the same
+   `whitney/sitiopublico` JSON API family already confirmed anti-bot-gated
+   (see the open-tenders section above), but that's an inference, not a
+   verified fact. Needs the same treatment that unblocked the open-tenders
+   export: capture a real document-download request from a browser (does
+   it need the `grc`/`igrc`/`xgrc` headers, or is the actual file served
+   from a separate, ungated storage/CDN URL once you have the link?). If
+   it's gated, this becomes a manual-download workflow like the two
+   existing sources; if it's an ungated direct link, a real connector can
+   fetch it.
+2. **No LLM provider is configured anywhere in this codebase** (checked —
+   no `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/etc. referenced anywhere, not
+   even in `.env.example`). Needs a provider decision before any
+   extraction code is written — building against a guessed SDK/prompt
+   shape without ever running it would be exactly the kind of
+   unverified-placeholder mistake this file's history already shows the
+   cost of.
+
+Once both are real, the pipeline this schema is already shaped for:
+
+- **Storage**: `tender_documents` (existed since `0001_init.sql` as an
+  unpopulated placeholder; `0007_tender_documents_extraction_tracking.sql`
+  adds `source_url` (the real government URL, for provenance —
+  independent of `storage_url`, this platform's own hosted copy),
+  `content_hash` (sha256 of the raw file), and `extraction_status`
+  (`pending`/`extracted`/`failed`/`not_extractable`) + `extracted_at`.
+- **Extraction, once per unique document**: PDF → text (OCR fallback for
+  scanned pages — this session already confirmed `poppler-utils`/
+  `pdftoppm` works in this environment for that) → one LLM call per
+  document producing `qualifications`/`experienceRequirements`/
+  `requiredDocuments`/`risks` in exactly the shape those fields already
+  have (`TenderRequirement`/`TenderRisk` in `types/tender.ts` — no schema
+  change needed for the extraction output itself, just a populated
+  pipeline). `content_hash` is the reuse key: same "analyze once, all
+  subscribers reuse" cost-control principle already applied to
+  `lib/relevance.ts` — a document that's already been extracted (hash
+  match) is never re-sent to the LLM; ingestion just re-links the existing
+  `tender_requirements`/`tender_risks` rows to the tender.
+- **Confidence/verification**: `TenderRequirement.sourceReference` and
+  `TenderRisk.sourceReference` already exist for exactly this — the
+  extraction prompt should be required to cite where in the document a
+  claim came from (page/section), not just assert it, matching the
+  platform's original "Confidence Checking" design intent. No FK from
+  `tender_requirements`/`tender_risks` to a specific `tender_documents`
+  row yet — `source_reference` as free text is enough until the real
+  extraction shape shows whether one's actually needed (e.g. extracting
+  from one combined context vs. per-document).
+- **Translation**: same LLM call (or a second pass) should also produce
+  the `zh` field for `title`/`summary`/description text currently mirrored
+  from `es` via `untranslated()` — real translation, not the placeholder
+  mirror, is what actually differentiates this product per the framing
+  above.
 
 ## `governmentLevel` and `industry` are best-effort guesses (mostly)
 

@@ -65,17 +65,29 @@ Four independent mappers, each provable without touching the network:
   `npm run ingest:comprasmx-open -- --fixture` runs it against 6 real rows
   (`__fixtures__/sample-comprasmx-open-tenders.xlsx`, deliberately including
   both VIGENTE and EN ACLARACIONES/EN REPREGUNTAS statuses).
-- **`compranet5-mapper.ts`** — maps the older, sparser
-  `DD_HISTORICO_CNET5.xlsx` summary schema (`Código de expediente`,
-  `Carácter`, `Nombre del anuncio`, `Dependencia`, `Tipo de Contratación`,
-  `Tipo de Expediente`, `Fecha de publicación`, `OCDS`). Superseded by
-  `compras-mx-contracts-mapper.ts` for anything 2023+; still relevant for
-  the 2010–2022 CompraNet 5.0 archive specifically. (A much richer 45-column
-  real contracts export for this era, `Contratos_CompraNet5.csv`, also
-  exists — `Estatus del contrato` there is Activo/Expirado/Terminado, i.e.
-  still post-award only; not yet mapped since `compras-mx-contracts-mapper.ts`
-  already covers the current system and this older one has no open-tenders
-  angle to add.) `npm run ingest:compranet5 -- --fixture`.
+- **`compranet5-mapper.ts`** — maps the real 45-column
+  `Contratos_CompraNet5.csv` contracts export for the 2010–2022 CompraNet
+  5.0 archive (confirmed real header from a real 13,400-row file the user
+  downloaded and ran with `--write`). **This mapper originally targeted
+  the wrong schema** — the sparser `DD_HISTORICO_CNET5.xlsx` summary
+  dictionary (`Código de expediente`, `Nombre del anuncio`, `Dependencia`,
+  `Tipo de Contratación`, ...) — and that mismatch (real columns are
+  `Código del expediente`, `Título del expediente`, `Institución`, `Tipo
+  de contratación`, ...) mapped 0 of 13,400 real rows: every row failed
+  the mapper's required-field check, not an encoding or parsing bug (the
+  file parsed fine — the previous CSV-encoding fix was real and correct,
+  just not the whole story). Rewritten against the real header, which
+  turns out near-identical in shape to `compras-mx-contracts-mapper.ts`'s
+  (both are Datos Abiertos contract exports), reusing the same
+  `inferGovernmentLevelFromOrden`/`inferParticipationScope`/dual-format
+  date parsing conventions. One real difference: `Estatus del contrato`'s
+  confirmed real values here are Activo/Expirado/Terminado (a contract
+  lifecycle), not `compras-mx-contracts-mapper.ts`'s `FORMALIZADO` — since
+  every row in a contracts export already has a formalized contract, all
+  three map to `awarded` (only an unobserved but plausible "Cancelado"
+  maps to `cancelled`). Superseded by `compras-mx-contracts-mapper.ts` for
+  anything 2023+; still relevant for the 2010–2022 archive specifically.
+  `npm run ingest:compranet5 -- --fixture`.
 - **`ocds-mapper.ts`** — maps a full OCDS release. Confirmed to exist (see
   above) as a per-record download, not yet obtained. Has the richest
   potential fields (tender period, enquiry period, items/classification)
@@ -812,12 +824,46 @@ exercising this path for the first time in the project's history:
   present for its entire history until now, and the plain `--env-file`
   hard-errors when the file is missing).
 
-With both fixed, a real write against the full 2,067-item PEP export
-succeeded (2,065 tenders upserted) and the attachments export against it
-recorded real `tender_documents` rows for the matching tenders — the 2
-items dropped by the mapper (missing `descripcion`) correctly logged as
-"skipped, no ingested tender matches" rather than either crashing or
-silently losing those documents.
+With both fixed, a real write against the full 2,067-item PEP export was
+attempted and the attachments export against it recorded real
+`tender_documents` rows for the matching tenders — the 2 items dropped by
+the mapper (missing `descripcion`) correctly logged as "skipped, no
+ingested tender matches" rather than either crashing or silently losing
+those documents. **Correction**: this section originally claimed all
+2,065 mapped tenders upserted cleanly — the real run actually only
+upserted 1,565 and failed the other 500 as one whole batch; see the next
+section for the actual bug and fix.
+
+### Second real `--write` session — three more real bugs it found
+
+A later real run — PEMEX `--write` against the full PEP export, plus
+first-time real writes for Compras MX contracts, Compras MX open tenders,
+and CompraNet5 — surfaced three more real bugs, none reachable from a
+fixture or a dry run:
+
+- **PEMEX: "ON CONFLICT DO UPDATE command cannot affect row a second
+  time" failed a whole 500-row batch at once**, not just the offending
+  rows — 500 of 2,065 tenders in that run. Root cause: `upsertTendersBatched`
+  (`upsert-tenders.ts`) chunks tenders into 500-row batches and upserts
+  each as one `.upsert(rows, { onConflict: "slug" })` call, which Postgres
+  treats as one SQL statement — and Postgres rejects a single statement
+  that would update the same conflict-key row twice. A real PEMEX export
+  genuinely repeats the same procedure (same slug) more than once, so two
+  duplicate-slug rows landing in the same 500-row batch failed that
+  entire batch, not just the duplicates. Fixed by de-duplicating by slug
+  (last occurrence wins) across the whole input before chunking, so every
+  batch's conflict keys are guaranteed unique.
+- **`compras-mx-contracts` and `compras-mx-open-tenders` both worked
+  correctly on the first real `--write` run** (254/254 and 515/515
+  upserted respectively) — no new bugs in either mapper. These numbers
+  also confirm the recency filter (see "Recency filter" above) is doing
+  real work: of 20,661 mapped Compras MX contracts, only 254 fell within
+  the last 6 months and were kept.
+- **CompraNet5 mapped 0 of 13,400 real rows** — not an encoding bug (the
+  earlier UTF-8→latin-1 fallback fix was real and correct, and this run
+  proves the file parsed fine). The real cause: `compranet5-mapper.ts`
+  was built against the wrong schema entirely. See the `compranet5-mapper.ts`
+  entry above for the full real-header comparison and the fix.
 
 ### Original framing (still accurate for what DOF _isn't_)
 

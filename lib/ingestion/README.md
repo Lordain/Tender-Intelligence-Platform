@@ -43,6 +43,32 @@ Every `ingest:*` command also accepts `--fixture` (runs against the small
 real sample already committed under `__fixtures__/`, no capture needed)
 and `--months N` (default 6 — see "Recency filter" below).
 
+### How current is each source's *own* data — separate question from the `--months` filter
+
+`--months`/`filterRecentTenders()` only controls what this platform
+*keeps* after ingesting — it can't make a source's underlying data any
+newer than the source itself actually publishes. This table is the
+other, real question: as of when a source is queried/captured, how far
+back does its "latest" data actually go? Verified per-source, not
+assumed — several of these (Peru especially) turned out more nuanced
+than a first pass assumed.
+
+| Source | How current, as of capture/query time |
+|---|---|
+| Compras MX — contracts / open tenders | **Genuinely current** — a live government portal; a human's export reflects whatever is posted at the moment they download it. No inherent lag beyond "whenever someone last ran the export." |
+| CompraNet 5.0 | **Historical only, not current** — this is Mexico's *retired* pre-2021 procurement system, superseded by Compras MX. A real 13,400-row export mapped 12,877 rows, nearly all older than the 6-month recency window — confirmed by the user's own run, who then chose to skip ingesting it for exactly this reason. Useful for historical/statistical reference, not for finding open tenders. |
+| DOF — daily edition / advanced search | **Current only for the specific date(s) a human captures** — the DOF publishes one edition per day; each capture is a snapshot of that day's (or search window's) content, not an ongoing feed. No automatic "give me today's" without a human re-running the capture. |
+| PEMEX — subsidiary lists / attachment references | **Genuinely current at capture time** — a live SharePoint REST API reflecting PEMEX's currently posted items; only "stale" in the sense that nothing re-runs it automatically. |
+| Colombia — SECOP II process list (`ingest:colombia-live`) / documents | **Genuinely live** — the automated connector issues a real `$where`-filtered query at run time; this is the most current source in the project, with zero batch/file lag at all (not even "last night's export" — this second's data). |
+| Ecopetrol — contracts | **Snapshot-dated, not always-current** — the real downloaded filename itself carries a cutoff (`contratacioncortejun2026.xlsb`, "corte jun2026" = a June 2026 snapshot), suggesting the source page publishes periodic dated snapshots rather than always serving today's data. Getting anything newer means checking the source page again for a later "corte," not just re-running the same download. |
+| Ecopetrol — convocatorias (Ley de Garantías) | **Historical/bounded — confirmed real, hard cutoff, not a live feed.** Tied to a real Colombian pre-election "garantías electorales" disclosure period; the user confirmed directly that the real data only goes up to June, with no July-onward rows, because the disclosure window itself closed. This will never get more current no matter how often it's re-checked, unless a future election cycle opens a new window. |
+| Peru — OECE OCDS (`ingest:peru-live` / `ingest:peru`) | **Real, but batched by complete calendar month — not a rolling "current" feed.** The latest available file is always the *previous* full month (confirmed: a September 2026 file request returned a real 404 on 2026-09-02, two days into that month). A tender published on the 1st of a month is invisible until the *following* month's file — up to ~30 days' real lag; one published on the last day of the month appears within about a day. `/records`/`/releases` (the non-file OCDS endpoints) were not tested for whether they serve current-month data live instead — a real, unconfirmed opportunity, not assumed either way. |
+
+None of the "automated" sources above run on a schedule yet (see the
+top of this section) — "genuinely current" describes what the data
+*would* reflect if run right now, not that it's being kept current
+continuously.
+
 ### Technique 1 — browser download/export button
 
 The simplest real case: the source's own UI has a download/export
@@ -1665,9 +1691,25 @@ attempt, and even `WebFetch`, returned `ENOTFOUND`/`EGRESS_BLOCKED`):
    1.85MB ZIP (`content-disposition: attachment;
    filename="2020-01_seace_v3_json.zip"`). `GET /files?page=1` returned
    a real listing — most recent entry `seace_v3-2026-08`
-   (`timestamp: "2026-09-01T12:05:18..."`), confirming the data is
-   genuinely current (~1 month lag), not stalled at 2023 the way some
-   indexed documentation implied.
+   (`timestamp: "2026-09-01T12:05:18..."`) — real, current data, not
+   stalled at 2023 the way some indexed documentation implied. **The
+   real lag pattern is not a flat "~1 month," though** — this was
+   corrected after the user pushed back on that first characterization
+   (checked on 2026-09-02, only 2 days into September): `GET
+   /file/seace_v3/json/2026/09` returned a real `404`, confirming these
+   are **complete-calendar-month batch files**, each published shortly
+   after its month closes (the August file's `last-modified` was
+   2026-09-01). That means the *current* month is invisible through
+   this endpoint the entire time it's in progress — a tender published
+   on September 1st doesn't appear until the October file is published,
+   nearly a full month later, while one published September 30th
+   appears within about a day. The real lag for the most recent tenders
+   ranges roughly 1–30 days depending on where in the calendar month a
+   tender was published, not a fixed number. `/records`/`/releases`
+   (the non-bulk-file Record/Release endpoints from point 2) were
+   *not* tested for whether they query live, current-month data instead
+   of the monthly batch — a real, unconfirmed opportunity to close this
+   gap, not assumed either way.
 4. **The real record-package JSON structure was pasted directly by the
    user** after downloading and unzipping `2026-08_seace_v3_json.zip`
    themselves — 9 complete real records now live in

@@ -28,7 +28,12 @@ export type OeceFileListing = {
 /**
  * `GET /files` — real response confirmed by the user: `{ "results": [...] }`,
  * most recent entry at the time `seace_v3-2026-08` (generated
- * 2026-09-01) — i.e. genuinely current, roughly a one-month lag.
+ * 2026-09-01). These are complete-calendar-month batches, not a
+ * rolling window — the current month stays invisible the whole time
+ * it's in progress (confirmed: `GET /file/seace_v3/json/2026/09`
+ * returned a real 404 on 2026-09-02), so real lag for the newest
+ * tenders is ~1–30 days depending on where in the month they were
+ * published, not a flat "~1 month" — see README.md's Peru section.
  * `page` mirrors the real query param seen in the Swagger UI.
  */
 export async function listOeceFiles(page = 1): Promise<OeceFileListing[]> {

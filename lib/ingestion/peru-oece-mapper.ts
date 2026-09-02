@@ -12,10 +12,15 @@ import { classifyIndustries } from "@/lib/industry";
  * endpoint. Confirmed real end-to-end by the user directly in their own
  * browser: opened the live Swagger docs, ran `GET /files` (real listing
  * of monthly export files, most recent as of this writing being
- * `seace_v3-2026-08`, generated 2026-09-01 — i.e. genuinely current,
- * about a one-month lag), then `GET /file/seace_v3/json/2026/08` (200,
- * a real ~5.2MB ZIP containing this JSON), unzipped it locally, and
- * pasted real record content directly. No authentication needed.
+ * `seace_v3-2026-08`, generated 2026-09-01), then `GET
+ * /file/seace_v3/json/2026/08` (200, a real ~5.2MB ZIP containing this
+ * JSON), unzipped it locally, and pasted real record content directly.
+ * No authentication needed. Files are complete-calendar-month batches,
+ * not a rolling window — see README.md's Peru section for the corrected
+ * lag characterization (not a flat "~1 month": the current month is
+ * fully invisible the entire time it's in progress, so real lag for the
+ * newest tenders ranges ~1–30 days depending on where in the month a
+ * tender was published).
  *
  * Real structural notes from that data (see the fixture, built from 9
  * of those real records, for the full shape):

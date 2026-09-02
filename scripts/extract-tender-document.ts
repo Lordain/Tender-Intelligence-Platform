@@ -8,11 +8,12 @@
  * lib/ingestion/extract-requirements.ts.
  *
  * Usage:
- *   npm run extract:document -- path/to/file.pdf <tender-slug>              (dry run — prints the extraction)
+ *   npm run extract:document -- path/to/file.pdf <tender-slug>              (dry run — prints the extraction, Sonnet 5)
+ *   npm run extract:document -- path/to/file.pdf <tender-slug> --precise    (dry run — Opus 5, the "精度分析" premium tier)
  *   npm run extract:document -- path/to/file.pdf <tender-slug> --write      (writes to Supabase)
  */
 import { intakeDocument } from "../lib/ingestion/document-intake";
-import { extractTenderRequirements, toTenderFields } from "../lib/ingestion/extract-requirements";
+import { extractTenderRequirements, toTenderFields, type ExtractionModel } from "../lib/ingestion/extract-requirements";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
 async function writeToSupabase(slug: string, contentHash: string, fields: ReturnType<typeof toTenderFields>) {
@@ -96,14 +97,20 @@ async function main() {
     process.exit(1);
   }
 
-  const intake = intakeDocument(pdfPath);
-  console.log(`Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}`);
+  const model: ExtractionModel = args.includes("--precise") ? "claude-opus-5" : "claude-sonnet-5";
 
-  const extraction = await extractTenderRequirements(pdfPath, {
-    tenderNumber: intake.tenderNumber ?? tenderSlug,
-    title: intake.fileName,
-    buyer: "",
-  });
+  const intake = intakeDocument(pdfPath);
+  console.log(`Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}, model: ${model}`);
+
+  const extraction = await extractTenderRequirements(
+    pdfPath,
+    {
+      tenderNumber: intake.tenderNumber ?? tenderSlug,
+      title: intake.fileName,
+      buyer: "",
+    },
+    model,
+  );
   const fields = toTenderFields(extraction, tenderSlug);
 
   console.log(JSON.stringify(fields, null, 2));

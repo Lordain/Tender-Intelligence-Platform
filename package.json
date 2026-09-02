@@ -19,7 +19,9 @@
     "ingest:dof-search": "tsx --env-file-if-exists=.env.local scripts/ingest-dof-search.ts",
     "ingest:pemex": "tsx --env-file-if-exists=.env.local scripts/ingest-pemex.ts",
     "ingest:pemex-attachments": "tsx --env-file-if-exists=.env.local scripts/ingest-pemex-attachments.ts",
-    "ingest:colombia": "tsx --env-file-if-exists=.env.local scripts/ingest-colombia.ts"
+    "ingest:colombia": "tsx --env-file-if-exists=.env.local scripts/ingest-colombia.ts",
+    "ingest:ecopetrol-contracts": "tsx --env-file-if-exists=.env.local scripts/ingest-ecopetrol-contracts.ts",
+    "ingest:ecopetrol-convocatorias": "tsx --env-file-if-exists=.env.local scripts/ingest-ecopetrol-convocatorias.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",
@@ -31,6 +33,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
+    "xlsx": "^0.18.5",
     "zod": "^4.5.4"
   },
   "devDependencies": {

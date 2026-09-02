@@ -981,18 +981,68 @@ a "dump the whole thing" source), and broadening `inferScopeType()`,
 which is currently just an exact lookup over the 2 distinct
 `tipo_de_contrato` values the 5-row sample happened to contain.
 
-**Ecopetrol (Colombia's PEMEX-equivalent state oil company) — checked,
-real negative result.** Same question asked of Mexico's state productive
-enterprises (do they run their own procurement outside the general
-platform?) applies to Colombia too. Confirmed real via search: Ecopetrol
-does maintain its own supplier/procurement portal separate from SECOP II
-(`proveedores.ecopetrol.com.co`), not the SharePoint-with-anonymous-REST-
-access pattern PEMEX turned out to have — the user confirmed by trying it
-directly that this portal **requires login**. Unlike PEMEX, there's no
-unauthenticated public surface here to build a connector against; scraping
-an authenticated internal system isn't the same posture as reading a
-public open-data endpoint. Not pursued further without real Ecopetrol
-credentials.
+### Ecopetrol — Colombia's PEMEX-equivalent state oil company, two real public sources found
+
+Same question asked of Mexico's state productive enterprises (do they run
+their own procurement outside the general platform?) applies to Colombia
+too. First real finding was a negative one: Ecopetrol's supplier portal,
+`proveedores.ecopetrol.com.co`, is not the SharePoint-with-anonymous-REST
+pattern PEMEX turned out to have — the user confirmed directly that most
+of it **requires login**. Later confirmed by the user: the actual bidding
+workflow behind that login runs on **SAP Business Network** (formerly SAP
+Ariba) — a real, standard enterprise procurement platform, not something
+specific to Ecopetrol, and consistent with why registration is gated.
+
+Two real, genuinely public (no login) pages were found on the same
+portal domain, though, and both now have working connectors:
+
+- **`ecopetrol-contracts-mapper.ts` + `connectors/ecopetrol-contracts-xlsb-file.ts`**
+  — Ecopetrol's own **"Contratación asignada a la fecha"** disclosure,
+  actually hosted on the main corporate site
+  (`ecopetrol.com.co/wps/portal/.../Gestioncontractual/ContratacionAsignadaFecha`,
+  confirmed by the user with a screenshot showing the public breadcrumb
+  trail and a direct download link — not the login-gated supplier
+  portal). A real `.xlsb` (binary Excel) file, one sheet per year
+  (2016–2026); the 2026 sheet alone has 5,506 real rows, 17 real columns,
+  zero missing values, zero duplicate contract numbers. This is an
+  **awarded-contracts registry** (`status: "awarded"` always), same
+  posture as `compras-mx-contracts-mapper.ts`/`compranet5-mapper.ts` —
+  historical intelligence, not open-to-bid tenders. Real finds while
+  parsing it: dates are Excel serial numbers (verified the exact epoch
+  conversion — `1899-12-30` base — against Python before porting to
+  TypeScript, confirming e.g. serial `46096` → `2026-03-15`, a plausible
+  date for a 2026-sheet row); the two value columns are year-suffixed
+  (`"Valor Suscrito en Ordenes Despacho en Pesos en 2026"`), so the reader
+  finds them by prefix match rather than a hardcoded year; real supplier
+  countries in the 2026 sheet include 2 from China, 152 from the US, 14
+  from Mexico, alongside 5,285 from Colombia itself — genuine evidence of
+  Ecopetrol contracting with foreign suppliers, not just domestic ones.
+  Needed adding the `xlsx` (SheetJS) npm package — this project's
+  existing `exceljs` dependency reads `.xlsx` (OOXML) only, not the
+  binary `.xlsb` format this real file turned out to be.
+- **`ecopetrol-convocatorias-mapper.ts` + `connectors/ecopetrol-convocatorias-file.ts`**
+  — the **"Convocatorias públicas en Ley de Garantías"** page (confirmed
+  public by the user directly opening it with no login), a DataTables
+  widget with the real tender list rendered server-side (no separate API
+  call needed — confirmed by inspecting a captured network request that
+  turned out to just be Microsoft OneCollector page-view telemetry, not
+  the actual data), so the intake is a plain tab-separated copy-paste of
+  the visible table. Real, important scope caveat the user confirmed
+  directly: **"Ley de Garantías"** is Colombia's pre-election
+  restricted-contracting disclosure law — this page only lists
+  convocatorias published under that legally-mandated window, and rows
+  stop appearing once the window closes (confirmed real: nothing past
+  June 2026 in what the user could see). This is a real, valuable, but
+  **time-bounded batch, not a continuously live feed** — unlike SECOP II
+  or the contracts export above. A genuinely year-round public tender
+  list, if one exists, would be under the portal's "Procesos" section
+  instead — not checked yet.
+
+Both mappers verified against small real fixtures (`sample-ecopetrol-contratacion.xlsb`,
+built from 3 real rows of the actual file; `sample-ecopetrol-convocatorias.tsv`,
+3 real rows the user pasted) — dates, COP amounts, and relevance
+classification all checked by hand against the source values, not just
+"the script ran."
 
 ### Currency unified to USD platform-wide
 

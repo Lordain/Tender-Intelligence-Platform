@@ -93,6 +93,31 @@ const EXCLUDE_KEYWORDS = [
   // "ARTÍCULOS DE ASEO GRUPO DE SUMINISTRO 350" from this same batch is
   // already covered by the "artículos de aseo" pattern above — no new
   // entry needed.
+  //
+  // Batch #3 (2026-09-02): a ~200-row real exclusion-review list the user
+  // built by hand from the live site, grouped under their own reason
+  // labels — provided as a "reduce kept count further" reference
+  // alongside the value/major-project tightening above. Each pattern
+  // below is scoped to a real title from that list; comments carry the
+  // user's own Chinese reason label for traceability.
+  /rehabilitaci[óo]n (de )?pozo(s)?\b|rehabilitaci[óo]n del pozo\b|equipamiento (de|con) pozo(s)? profundo|perforaci[óo]n y aforo de pozo/i, // 只聚焦一个区的小工程 — single-well rehab/equipping, small localized works
+  /caseta(s)? de desinfecci[óo]n/i, // 只聚焦一个区的小工程 — single-tank disinfection booths
+  /\bsupervisi[óo]n\b.{0,60}(construcci[óo]n|obra|puente|ferrocarril|carretera|paso superior)/i, // 只是监理 — inspection/oversight only, not the actual works contract
+  /servicio(s)? de mantenimiento|programa de mantenimiento|trabajos de mantenimiento|mantenimiento preventivo|mantenimiento correctivo|mantenimiento menor|mantenimiento gen(?:eral)?\b|mantenimiento a (los )?equipos?|mantenimiento y refacciones/i, // 维护类服务 — routine maintenance/service contracts, deliberately broad per explicit user direction to cut kept volume (accepted trade-off: a genuinely large maintenance-only contract is excluded too)
+  /suministro de (partes|herramientas|material(es)?)\b|adquisici[óo]n de (herramientas|refacciones)\b|refacciones, accesorios y herramientas/i, // 物料/工具、物料 — spare parts, tools, consumable materials, not equipment/works
+  /servicio m[ée]dico integral/i, // 不参加医疗的Servicio Integral — outsourced integrated medical service
+  /destrucci[óo]n y disposici[óo]n final|disposici[óo]n final de residuos|destrucci[óo]n de insumos/i, // 废料处理 — waste destruction/disposal
+  /medici[óo]n de caudales/i, // 测量项目 — small flow-measurement project
+  /barda(s)? perimetral(es)?/i, // 围栏 — perimeter wall/fence construction
+  /im[áa]genes de sat[ée]lite/i, // 卫星 — satellite imagery subscription service
+  /rehabilitaci[óo]n de filtros|suministro de filtros/i, // FILTROS修复/滤芯 — filter media repair/cartridge supply
+  /obras? civiles? menores/i, // 小型工程 — explicitly "minor civil works"
+  /neum[áa]ticos? para veh[íi]culos/i, // 车子轮胎 — tires
+  /arrendamiento de (domo|stands|conexiones|equipo|mobiliario|plataforma)/i, // 租赁服务 — venue/equipment rental
+  /simulador(es)? de (operaciones de perforaci[óo]n|entrenamiento)/i, // 模拟器 — training simulator refurbishment
+  /curso(s)? de actualizaci[óo]n/i, // 更新服务 — training/refresher courses
+  /servicios profesionales para la elaboraci[óo]n del aval[úu]o/i, // 专业类服务 — property appraisal professional services
+  /\ban[áa]lisis (satelital|petrof[íi]sicos?|de aguas|de laboratorio|geol[óo]gicos?|de fluidos|metoce[áa]nicos?)\b|servicio(s)? de an[áa]lisis\b|monitoreo (local y remoto|de la calidad)/i, // 分析服务/分析设备 — analysis/monitoring services, not equipment or works
 ];
 
 /**
@@ -188,23 +213,100 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
 // it, e.g. a real COP 57,333,333 tender (worth roughly USD 13,650) would
 // be compared directly against a threshold sized for MXN/USD-scale
 // figures and wildly over-classified.
-const FLAGSHIP_VALUE_USD = 2_000_000;
+//
+// Lowered from 2,000,000 to 1,000,000 per the user's explicit request
+// ("加入大项目标识...比如大于1,000,000 USD的项目") — the "flagship" tier
+// already IS this platform's "major project" (大项目) concept, so rather
+// than build a second parallel tag this just becomes flagship's value
+// bar. Paired with MAJOR_PROJECT_KEYWORDS below, which promotes a tender
+// to flagship on a keyword/duration match alone, independent of value.
+const FLAGSHIP_VALUE_USD = 1_000_000;
 const SIGNIFICANT_VALUE_USD = 250_000;
+
+/**
+ * "大项目" (major-project) keyword signal — promotes straight to flagship
+ * regardless of value, per the user's explicit list (2026-09-02): railway,
+ * long-distance highway/pipeline, dam/reservoir, power plant, airport,
+ * large/national network, data center, core network, bridge, port,
+ * national cloud. Several of these (aeropuerto/puente/puerto/datacenter)
+ * already appear in FLAGSHIP_INDUSTRY_KEYWORDS, but that list only
+ * promotes to "significant", not "flagship" — this is a distinct,
+ * deliberately higher bar.
+ *
+ * Two items on the user's original list are NOT encoded here:
+ * - "多期项目(2期以上)" (multi-phase, 2+ stages) — dropped after a real
+ *   counter-example surfaced in the same conversation: "CONSTRUCCIÓN DE
+ *   BARDA PERIMETRAL EN LA UABJO 2A. ETAPA" is a small perimeter-fence
+ *   job that happens to be its second phase, not a major project. Phase
+ *   count alone isn't a reliable size signal without a real project-type
+ *   anchor, so it's left out rather than encoded and risk false
+ *   promotions exactly like that example.
+ * - "大规模项目(数量大或距离长)" (large quantity or long distance) — too
+ *   vague to encode as a keyword; the concrete distance-based cases the
+ *   user listed (公路/排水/铁路/油管道) are covered by the highway/
+ *   pipeline/railway patterns below and by industry.ts's own long-haul
+ *   signals (e.g. the "\bkm\s*\d+\+\d{3}\b" alignment-notation pattern).
+ */
+const MAJOR_PROJECT_KEYWORDS = [
+  /ferrocarril|v[íi]a f[ée]rrea|tren (de carga|el[ée]ctrico|interurbano)/i, // 建铁路
+  /construcci[óo]n de (la )?(carretera|autopista)|autopista de cuota|libramiento carretero/i, // 建长距离公路 — anchored to "construcción", not maintenance
+  /\bpresa\b|\brepresa\b|\bembalse\b/i, // 建水库、建水坝
+  /planta (de generaci[óo]n|termoel[ée]ctrica|hidroel[ée]ctrica|e[óo]lica|fotovoltaica|de ciclo combinado)|central (el[ée]ctrica|de generaci[óo]n)/i, // 建电站
+  /aeropuerto\b/i, // 建机场
+  /red (nacional|de [áa]mbito nacional)|backbone nacional|infraestructura de red nacional/i, // 建大型或国家网络
+  /centro de datos|datacenter/i, // 建数据中心
+  /red (troncal|core|n[úu]cleo)|core network/i, // 建核心网络
+  /\bpuente\b/i, // 建桥
+  /\bpuerto\b|terminal portuaria|recinto portuario/i, // 建港口
+  /nube (nacional|de gobierno|gubernamental)|national cloud|government cloud/i, // 国家云
+  /oleoducto|gasoducto|poliducto/i, // long-distance pipeline, the concrete "distancia larga" case the user named
+];
+
+/**
+ * Real-world contract duration is almost never a clean structured field
+ * on any source this project ingests (see types/tender.ts —
+ * submissionDeadline is the BID window, a different real concept from
+ * "plazo de ejecución"/execution period). This only fires on an explicit,
+ * anchored real phrase ("plazo de ejecución: 400 días" and similar) —
+ * deliberately NOT a bare "\d+ días" scan, since an unrelated day count
+ * (e.g. a delivery lead time for goods) would otherwise be
+ * misinterpreted as project duration. Added defensively per the user's
+ * explicit ask (长工期/短工期项目按天数) — not yet confirmed against a
+ * real title carrying this phrasing; revisit if it never fires on real
+ * data.
+ */
+const DURATION_ANCHOR =
+  /(plazo de ejecuci[óo]n|plazo de entrega|plazo contractual|vigencia del contrato|duraci[óo]n del contrato)[^.\n]{0,25}?(\d{1,4})\s*d[íi]as/i;
+
+function extractAnchoredDurationDays(text: string): number | undefined {
+  const match = DURATION_ANCHOR.exec(text);
+  if (!match) return undefined;
+  const days = Number(match[2]);
+  return Number.isFinite(days) ? days : undefined;
+}
+
+/** 长工期或长交期项目(360天以上) — a major-project signal on its own, independent of MAJOR_PROJECT_KEYWORDS/value. */
+const LONG_DURATION_DAYS = 360;
+/** 短工期或短交期项目(180天以下) — blacklisted per the user's explicit call, same extraction helper as the long-duration signal above. */
+const SHORT_DURATION_DAYS = 180;
 
 /**
  * A real, known contract value under this floor isn't worth a Chinese
  * enterprise's time to fly out and bid on, regardless of industry.
- * Raised from an initial 10,000 to 50,000 per the user's explicit call —
- * still well below SIGNIFICANT_VALUE_USD, so it only catches genuinely
- * small purchases, not the flagship/significant contracts those tiers
- * are meant to surface. Deliberately does NOT apply when estimatedValue
- * is missing (most Mexican open-tenders rows carry no value at all —
+ * Raised again from 50,000 to 100,000 per the user's explicit call
+ * ("改成100,000 USD以上") — part of a broader tightening pass (2026-09-02)
+ * to cut the kept-tender count, alongside the new MAJOR_PROJECT_KEYWORDS
+ * signal below and a large batch of new EXCLUDE_KEYWORDS. Still well
+ * below SIGNIFICANT_VALUE_USD, so it only catches genuinely small
+ * purchases, not the flagship/significant contracts those tiers are
+ * meant to surface. Deliberately does NOT apply when estimatedValue is
+ * missing (most Mexican open-tenders rows carry no value at all —
  * absence isn't evidence of smallness) or when hasIncludeOverride
  * matched (the same override that protects a flagged technical category
  * from EXCLUDE_KEYWORDS should also protect it from being dismissed on
  * value alone).
  */
-const MIN_VALUE_USD = 50_000;
+const MIN_VALUE_USD = 100_000;
 
 const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   flagship: {
@@ -229,7 +331,10 @@ const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   },
 };
 
-const EXCLUDED_REASON_BY_SIGNAL: Record<"keyword" | "value" | "industry" | "no_content", LocalizedText> = {
+const EXCLUDED_REASON_BY_SIGNAL: Record<
+  "keyword" | "value" | "industry" | "no_content" | "short_duration",
+  LocalizedText
+> = {
   no_content: {
     zh: "该记录只包含发标单位和参考编号，没有任何描述标的物的信息（数据源本身如此，非抓取遗漏），无法判断相关性，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This record only carries a buyer name and a reference number — the real source data has no description of what's being procured at all (not a scraping gap), so there's nothing to judge relevance from. Filtered from the default feed (metadata is kept, not deleted).",
@@ -250,15 +355,22 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<"keyword" | "value" | "industry" | "no_c
     en: "This tender doesn't match any priority industry and carries no estimated value — too little signal to surface by default (metadata is kept, not deleted).",
     es: "Esta licitación no coincide con ningún sector prioritario y no tiene valor estimado — muy poca señal para mostrarla por defecto (los metadatos se conservan).",
   },
+  short_duration: {
+    zh: `该项目的执行/交付周期低于 ${SHORT_DURATION_DAYS} 天，规模通常偏小，默认不进入推荐列表（数据仍保留，可用于统计）。`,
+    en: `This tender's execution/delivery period is under ${SHORT_DURATION_DAYS} days — usually too small in scope, filtered from the default feed (metadata is kept, not deleted).`,
+    es: `El plazo de ejecución/entrega de esta licitación es menor a ${SHORT_DURATION_DAYS} días — normalmente de escala reducida, filtrada de la vista predeterminada (los metadatos se conservan).`,
+  },
 };
 
 function reasonFor(
   tier: TenderRelevance["tier"],
-  signal: "value" | "scope" | "industry" | "keyword" | "no_content" | "none",
+  signal: "value" | "scope" | "industry" | "keyword" | "no_content" | "short_duration" | "none",
 ): LocalizedText {
   if (tier === "excluded") {
     return EXCLUDED_REASON_BY_SIGNAL[
-      signal === "value" || signal === "industry" || signal === "no_content" ? signal : "keyword"
+      signal === "value" || signal === "industry" || signal === "no_content" || signal === "short_duration"
+        ? signal
+        : "keyword"
     ];
   }
   if (tier === "flagship") {
@@ -302,6 +414,11 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
 
+  const durationDays = extractAnchoredDurationDays(haystack);
+  if (!hasIncludeOverride && durationDays !== undefined && durationDays < SHORT_DURATION_DAYS) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "short_duration") };
+  }
+
   const normalizedValue =
     input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
 
@@ -310,10 +427,14 @@ export function classifyRelevance(input: {
   }
 
   const matchesFlagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.some((pattern) => pattern.test(haystack));
+  const matchesMajorProject = MAJOR_PROJECT_KEYWORDS.some((pattern) => pattern.test(haystack));
+  const hasLongDuration = durationDays !== undefined && durationDays >= LONG_DURATION_DAYS;
   const isWorksLike = input.scopeType === "works" || input.scopeType === "equipment_services";
 
   if (
     hasIncludeOverride ||
+    matchesMajorProject ||
+    hasLongDuration ||
     (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD) ||
     (normalizedValue === undefined && isWorksLike)
   ) {

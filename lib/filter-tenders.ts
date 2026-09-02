@@ -4,6 +4,17 @@ import { localize } from "@/lib/localize";
 export type TenderFilterOptions = {
   query?: string;
   industries?: string[];
+  /**
+   * A tender can carry multiple industries.ts tags (e.g. a power-plant
+   * SCADA upgrade is both "power" and "ict_telecom" — see
+   * lib/industry.ts's header comment). Default "any" is standard
+   * faceted-search OR semantics: check ICT and Power to see every
+   * tender tagged with either one. "all" switches to AND — only
+   * tenders carrying every selected tag — for when the user wants to
+   * isolate genuine cross-sector combo projects (ICT + Power together)
+   * from the larger single-sector pool that OR would otherwise mix in.
+   */
+  industryMatchMode?: "any" | "all";
   scopeTypes?: TenderScopeType[];
   statuses?: TenderStatus[];
   countries?: string[];
@@ -15,7 +26,16 @@ export type TenderFilterOptions = {
 
 export function filterTenders(
   allTenders: Tender[],
-  { query, industries, scopeTypes, statuses, countries, relevanceTiers, includeExcluded }: TenderFilterOptions,
+  {
+    query,
+    industries,
+    industryMatchMode = "any",
+    scopeTypes,
+    statuses,
+    countries,
+    relevanceTiers,
+    includeExcluded,
+  }: TenderFilterOptions,
   locale: Locale,
 ): Tender[] {
   const normalizedQuery = query?.trim().toLowerCase();
@@ -25,8 +45,12 @@ export function filterTenders(
     if (relevanceTiers && relevanceTiers.length > 0 && !relevanceTiers.includes(tender.relevance.tier)) {
       return false;
     }
-    if (industries && industries.length > 0 && !tender.industries.some((i) => industries.includes(i))) {
-      return false;
+    if (industries && industries.length > 0) {
+      const matchesIndustries =
+        industryMatchMode === "all"
+          ? industries.every((i) => tender.industries.includes(i))
+          : tender.industries.some((i) => industries.includes(i));
+      if (!matchesIndustries) return false;
     }
     if (scopeTypes && scopeTypes.length > 0 && !scopeTypes.includes(tender.scopeType)) {
       return false;

@@ -69,6 +69,36 @@ top of this section) — "genuinely current" describes what the data
 *would* reflect if run right now, not that it's being kept current
 continuously.
 
+### Which sources carry a real reference/estimated value — a separate question from recency
+
+The user asked directly (2026-09-02): which countries/sources have a
+usable `estimatedValue`, and which don't? This matters because
+`lib/relevance.ts`'s value-based tiers (flagship/significant, and the
+`MIN_VALUE_USD` exclusion floor) simply can't fire on a source that
+never carries a number — those tenders fall back entirely to
+keyword/industry/scopeType signals. Grounded in what each real mapper
+actually reads (`lib/ingestion/*-mapper.ts`), not assumed:
+
+| Source | Real field read | Coverage, as actually observed |
+|---|---|---|
+| Compras MX — **contracts** (awarded) | `Monto sin imp./máximo` / `Importe DRC` | **Usually present** — awarded contracts publish a real peso figure. |
+| Compras MX — **open tenders** (via the shared OCDS mapper) | `tender.value.amount` | **Mostly absent** — the real OCDS export from this source overwhelmingly leaves this at 0/missing before award; this is *why* `lib/relevance.ts`'s value checks are all written to skip when `estimatedValue` is `undefined` rather than treat it as "worth $0." |
+| CompraNet 5.0 (retired system, historical only) | `Importe del contrato` | **Usually present** — same reasoning as Compras MX contracts (awarded, historical data), moot in practice since this source is skipped for being too old (see the recency table above). |
+| DOF — daily edition / advanced search | *(no value field mapped at all)* | **Never** — DOF notices carry no monetary figure in the real data; some don't even carry a real title (`BARE_BUYER_REF_TITLE`, see below). Classification here relies entirely on keywords/industry. |
+| PEMEX — subsidiary lists / attachment references | *(no value field mapped at all)* | **Never** — PEMEX's SharePoint listings carry no monetary figure. |
+| Colombia — SECOP II (`ingest:colombia-live` and the documents connector) | `precio_base` | **Often present, not universal** — real Socrata rows frequently carry a nonzero `precio_base`; mapped to `estimatedValue` only when `> 0`. |
+| Ecopetrol — contracts (awarded) | `Valor Suscrito en Ordenes Despacho` | **Usually present** — same "awarded contract" reasoning as the other awarded-contracts sources above. |
+| Ecopetrol — convocatorias (Ley de Garantías) | *(uses the generic OCDS mapper — same field as Compras MX open tenders)* | **Mostly absent**, consistent with pre-award OCDS data elsewhere in this project. |
+| Peru — OECE OCDS (`ingest:peru-live` / `ingest:peru`) | `tender.value.amount` | **Frequently `0.0`** — confirmed in the real sample (see `peru-oece-mapper.ts`'s header comment): "absence isn't evidence of smallness," same posture as Compras MX's open-tenders export. When it IS present, real currencies seen are both `PEN` and `USD`. |
+
+The pattern across every source: **awarded/historical contract data
+tends to carry a real value; pre-award open-tender data tends not to.**
+This is exactly why `lib/relevance.ts` was built to never treat a
+missing value as "worth $0" (`MIN_VALUE_USD`/`FLAGSHIP_VALUE_USD` checks
+all gate on `normalizedValue !== undefined` first) — for most sources,
+the *majority* of open, still-biddable tenders would otherwise be
+misclassified as too small.
+
 ### Technique 1 — browser download/export button
 
 The simplest real case: the source's own UI has a download/export
@@ -1795,3 +1825,29 @@ browser, same as Colombia's original capture:
   community thread asking about this exact API). Not pursued further this
   session; worth retrying later rather than assuming it's permanently
   broken.
+
+## Tightening pass (2026-09-02) — fewer, larger kept tenders
+
+Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.
+
+- **`MIN_VALUE_USD` raised 50,000 → 100,000** — a known contract value below this is excluded outright (unless it also carries an include-override/major-project signal).
+- **`FLAGSHIP_VALUE_USD` lowered 2,000,000 → 1,000,000** — the "flagship" tier (this platform's existing "大项目/旗舰项目" concept) now also triggers at the user's requested USD 1,000,000 bar, not just 2,000,000.
+- **`MAJOR_PROJECT_KEYWORDS` added** — a real keyword list (railway, long-distance highway/pipeline, dam/reservoir, power plant, airport, large/national network, data center, core network, bridge, port, national cloud) that promotes straight to flagship regardless of value. Two items on the user's original list were deliberately **not** encoded: "多期项目(2期以上)" (multi-phase) — dropped after a real counter-example surfaced in the same conversation (a small perimeter-fence job on its "2a etapa" is not a major project); and the vague "大规模项目(数量大或距离长)" descriptor, whose concrete distance-based cases are already covered by the highway/pipeline/railway patterns.
+- **Duration-based signals added, anchored to explicit contract-duration phrasing only** (`plazo de ejecución`/`plazo de entrega`/`vigencia del contrato`/`duración del contrato` + a day count) — deliberately NOT a bare "\d+ días" scan, since an unrelated day count (e.g. a goods delivery lead time) isn't project duration. ≥360 days promotes to flagship; <180 days is now blacklisted. Not yet confirmed to fire against any real title in this project's data — added defensively per the user's explicit ask, worth revisiting if it stays silent.
+- **~20 new `EXCLUDE_KEYWORDS` patterns added**, grounded in a real ~200-row exclusion-review list the user built by hand from the live site (single-well/tank rehab work, inspection-only "supervisión" contracts, routine maintenance services, spare-parts/tools/materials supply, outsourced integrated medical services, waste disposal, analysis/monitoring services, perimeter fencing, satellite-imagery subscriptions, minor civil works, vehicle tires, venue/equipment rental, training simulators, refresher courses, and property-appraisal professional services). The maintenance-services and analysis-services patterns are deliberately broad — an explicit trade-off accepted per the user's stated preference to cut kept volume, even at the cost of also excluding a genuinely large maintenance-only or analysis-only contract.
+
+### Multi-industry filtering — the data already supports it; the UI now does too
+
+The user asked whether the industry tag being singular blocks finding a tender that spans two sectors at once (e.g. ICT + Power). The underlying data model already didn't have that limitation: `lib/industry.ts`'s `classifyIndustries()` has always returned an array (a tender can carry multiple tags — see its own header comment), the `tenders.industries` column is `text[]`, and `TenderCard.tsx` already renders every tag, not just the first. What the UI filter (`components/tenders/TenderExplorer.tsx`) didn't offer was a way to isolate a specific combo: checking both "ICT" and "Power" used plain OR semantics (`lib/filter-tenders.ts`), so it surfaced every ICT-only and every Power-only tender mixed in with the genuine ICT+Power combos, with no way to see just the combos. Added a small toggle (shown once 2+ industries are checked) that switches to AND semantics (`industryMatchMode: "all"`) — every selected tag must be present on the tender, not just one.
+
+### Purging old data
+
+`npm run purge:old-tenders` (dry run by default, `--write` to actually delete) removes tenders whose `publication_date` is older than a cutoff (default 6 months, `--months=N` to override), per the user's explicit request to clear out stale data alongside this tightening pass. Related rows (`tender_requirements`/`tender_key_dates`/`tender_risks`/`tender_documents`) all cascade-delete via their `tender_id` foreign key (`supabase/migrations/0001_init.sql`), so no orphaned rows are left behind. Same dry-run-first, CSV-export posture as `reclassify:tenders` — must be run from the user's own machine.
+
+## Two-round screening/analysis — current state and the real gap
+
+The user described the intended shape of this platform's filtering pipeline directly: **round 1** happens before any document exists — title/buyer/keyword-only Pre-Screening (`lib/relevance.ts` + `lib/industry.ts`, both described above), necessarily coarse since a title alone often can't show the full scope. **Round 2** happens once a tender's actual bid documents have been captured and analyzed — using what the document really says to refine the tags: which industries it actually spans (their own examples: "ICT + 交通", "电力+车", "只有电力"), how large it really is, and how broad its scope is, feeding back into a better-informed keep/exclude decision than round 1 could make from a title alone.
+
+**What already exists toward round 2**: the Layer 2 document-extraction pipeline (`lib/ingestion/extract-requirements.ts`, `npm run extract:document`) reads a real captured document (PDF) and produces `qualifications`/`experienceRequirements`/`requiredDocuments`/`risks` — genuinely document-grounded, not title-based. It is NOT LIVE-TESTED (no `ANTHROPIC_API_KEY` in this environment — see that file's own header comment) and, as of this pass, **does not yet re-derive `industries`/`relevance` from document content** — those still only ever come from `classifyIndustries()`/`classifyRelevance()` running against the title/buyer text a mapper had at ingest time, even for tenders that already have a fully-extracted document sitting in `tender_documents`.
+
+**The concrete gap, and the smallest real next step**: extend `extractTenderRequirements()`'s structured-output schema (already Zod + `client.messages.parse`, see that file) to also return a document-grounded industry-tag list and a scale/scope assessment, then add a step — either inside `extract-requirements.ts` itself or a follow-up pass over `tender_documents` rows already marked `extraction_status: "extracted"` — that re-runs `classifyRelevance()`/merges the document-derived industry tags into the stored `industries` array and updates `relevance_tier`/`relevance_label`/`relevance_reason` accordingly, the same "recompute and diff against what's stored" pattern `reclassify-tenders.ts` already uses for round-1-only reclassification. Not built this session — flagged here as the concrete, scoped piece of work round 2 actually needs, rather than a vague "add AI analysis" note, since the extraction plumbing (PDF intake, structured output, Supabase write-back) already exists and mostly just needs its output schema and write path extended.

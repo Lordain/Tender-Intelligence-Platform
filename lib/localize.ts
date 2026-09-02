@@ -38,6 +38,11 @@ export const uiText = {
     zh: "按发标单位、项目关键字搜索…",
   },
   industryLabel: { en: "Industry", es: "Industria", zh: "行业" },
+  industryMatchAll: {
+    en: "Require all selected industries (e.g. ICT + Power)",
+    es: "Requerir todas las industrias seleccionadas (ej. TIC + Electricidad)",
+    zh: "仅显示同时符合所选全部行业的项目（如：ICT + 电力）",
+  },
   scopeLabel: { en: "Scope", es: "Alcance", zh: "标的类型" },
   statusLabel: { en: "Status", es: "Estado", zh: "状态" },
   allIndustries: { en: "All Industries", es: "Todas las Industrias", zh: "全部行业" },

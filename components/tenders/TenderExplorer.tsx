@@ -54,6 +54,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
 
   const query = searchParams.get("q") ?? "";
   const industries = parseList(searchParams.get("industry"));
+  const industryMatchMode = searchParams.get("industryMode") === "all" ? "all" : "any";
   const scopeTypes = parseList(searchParams.get("scope")) as TenderScopeType[];
   const statuses = parseList(searchParams.get("status")) as TenderStatus[];
   const countries = parseList(searchParams.get("country"));
@@ -89,10 +90,10 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
     () =>
       filterTenders(
         tenders,
-        { query, industries, scopeTypes, statuses, countries, relevanceTiers },
+        { query, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers },
         locale,
       ),
-    [tenders, query, industries, scopeTypes, statuses, countries, relevanceTiers, locale],
+    [tenders, query, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers, locale],
   );
 
   const sorted = useMemo(() => sortTenders(filtered, sort), [filtered, sort]);
@@ -129,15 +130,30 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
             onChange={(next) => updateParams({ tier: next.join(",") || null })}
           />
 
-          <MultiSelectPills
-            label={localize(uiText.industryLabel, locale)}
-            options={ALL_INDUSTRIES.map((option) => ({
-              value: option,
-              label: localize(INDUSTRY_LABELS[option], locale),
-            }))}
-            selected={industries}
-            onChange={(next) => updateParams({ industry: next.join(",") || null })}
-          />
+          <div className="flex flex-col gap-1">
+            <MultiSelectPills
+              label={localize(uiText.industryLabel, locale)}
+              options={ALL_INDUSTRIES.map((option) => ({
+                value: option,
+                label: localize(INDUSTRY_LABELS[option], locale),
+              }))}
+              selected={industries}
+              onChange={(next) => updateParams({ industry: next.join(",") || null })}
+            />
+            {industries.length > 1 && (
+              <label className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                <input
+                  type="checkbox"
+                  checked={industryMatchMode === "all"}
+                  onChange={(event) =>
+                    updateParams({ industryMode: event.target.checked ? "all" : null })
+                  }
+                  className="h-3 w-3"
+                />
+                {localize(uiText.industryMatchAll, locale)}
+              </label>
+            )}
+          </div>
 
           <MultiSelectPills
             label={localize(uiText.scopeLabel, locale)}

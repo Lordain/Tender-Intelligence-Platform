@@ -25,6 +25,7 @@
     "ingest:ecopetrol-convocatorias": "tsx --env-file-if-exists=.env.local scripts/ingest-ecopetrol-convocatorias.ts",
     "ingest:colombia-documents": "tsx --env-file-if-exists=.env.local scripts/ingest-colombia-documents.ts",
     "reclassify:tenders": "tsx --env-file-if-exists=.env.local scripts/reclassify-tenders.ts",
+    "purge:old-tenders": "tsx --env-file-if-exists=.env.local scripts/purge-old-tenders.ts",
     "ingest:peru": "tsx --env-file-if-exists=.env.local scripts/ingest-peru.ts",
     "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts"
   },

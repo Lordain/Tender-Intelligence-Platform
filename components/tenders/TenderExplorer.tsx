@@ -35,6 +35,17 @@ const STATUSES: TenderStatus[] = [
   "cancelled",
 ];
 
+// "awarded"/"cancelled" hidden from the default view per the user's
+// explicit request (2026-09-02): a tender that's already been awarded to
+// someone else (or cancelled) isn't a live bid opportunity — showing it
+// mixed in with genuinely open tenders contradicts the platform's whole
+// purpose. Real awarded-contract data (Ecopetrol contracts, Compras MX
+// contracts, etc.) stays in the database for market-intelligence/value-
+// calibration use — same "kept but not shown by default" treatment as
+// "excluded" relevance and "standard" tier — and a user doing competitor/
+// pricing research can still check these two pills to bring them back.
+const DEFAULT_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed"];
+
 // "excluded" isn't offered here — routine-service tenders stay hidden by
 // default (see includeExcluded in lib/filter-tenders.ts); no UI control
 // exposes showing them right now.
@@ -64,7 +75,10 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const industries = parseList(searchParams.get("industry"));
   const industryMatchMode = searchParams.get("industryMode") === "all" ? "all" : "any";
   const scopeTypes = parseList(searchParams.get("scope")) as TenderScopeType[];
-  const statuses = parseList(searchParams.get("status")) as TenderStatus[];
+  const statusParam = searchParams.get("status");
+  const statuses = (
+    statusParam !== null ? parseList(statusParam) : DEFAULT_STATUSES
+  ) as TenderStatus[];
   const countries = parseList(searchParams.get("country"));
   const tierParam = searchParams.get("tier");
   const relevanceTiers = (
@@ -77,7 +91,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const hasActiveFilters =
     industries.length > 0 ||
     scopeTypes.length > 0 ||
-    statuses.length > 0 ||
+    statusParam !== null ||
     countries.length > 0 ||
     tierParam !== null ||
     query.length > 0;

@@ -3,6 +3,141 @@
 What's real, what's a verified-working architecture, and what's an
 explicitly-flagged placeholder. Read this before touching anything here.
 
+## Operating runbook — the real manual capture step, per source
+
+**No source in this project has a live, scheduled fetcher today except
+one** (Colombia's SECOP II document downloads — see "SECOP II tender
+documents" below). Every other source's ingest script reads an
+already-downloaded local file; a human has to capture that file first,
+by one of three real techniques depending on the source. This section is
+the operational quick-reference — the *why* behind each technique, and
+every real endpoint/field finding it depends on, is in the dated
+sections further down; this is just "what do I actually click/paste."
+
+None of these run on any schedule — every capture below is a manual,
+on-demand action; there is no cron/daily automation anywhere in this
+project yet.
+
+| Source | Capture technique | Ingest command |
+|---|---|---|
+| Compras MX — contracts | Browser download button | `npm run ingest:comprasmx-contracts -- <file>.csv --write` |
+| Compras MX — open tenders | Browser export button | `npm run ingest:comprasmx-open -- <file>.xlsx --write` |
+| CompraNet 5.0 (historical) | Browser download button | `npm run ingest:compranet5 -- <file>.csv\|.xlsx --write` |
+| DOF — daily edition | DevTools Network capture | `npm run ingest:dof -- <file>.json --write` |
+| DOF — advanced search (CFE/PEMEX) | DevTools Network capture | `npm run ingest:dof-search -- <file>.json --write` |
+| PEMEX — subsidiary lists | Browser Console script | `npm run ingest:pemex -- <file>.json --buyer "<name>" --write` |
+| PEMEX — attachment references | Browser Console script | `npm run ingest:pemex-attachments -- <file>.json --write` |
+| Colombia — SECOP II process list | Direct browser request | `npm run ingest:colombia -- <file>.json --write` |
+| Colombia — SECOP II documents | **Automatic — no capture step** | `npm run ingest:colombia-documents -- --proceso <id> --tender-slug <slug> --write` |
+| Ecopetrol — contracts | Browser download button (public page, no login) | `npm run ingest:ecopetrol-contracts -- <file>.xlsb --write` |
+| Ecopetrol — convocatorias | Copy-paste the on-page table (public page, no login) | `npm run ingest:ecopetrol-convocatorias -- <file>.tsv --write` |
+
+Every `ingest:*` command also accepts `--fixture` (runs against the small
+real sample already committed under `__fixtures__/`, no capture needed)
+and `--months N` (default 6 — see "Recency filter" below).
+
+### Technique 1 — browser download/export button
+
+The simplest real case: the source's own UI has a download/export
+control. Compras MX contracts, CompraNet 5.0, and Ecopetrol contracts all
+work this way:
+
+- **Compras MX contracts**: open `https://comprasmx.buengobierno.gob.mx/datos-abiertos`,
+  find "Contratos ingresados a CompraNet", pick a year, click download.
+- **Compras MX open tenders**: open `https://comprasmx.buengobierno.gob.mx/sitiopublico/#/`
+  ("Difusión de procedimientos"), filter as needed, click the page's own
+  Excel export button.
+- **CompraNet 5.0**: same `datos-abiertos` page as Compras MX contracts,
+  "Histórico de CompraNet 5.0" instead.
+- **Ecopetrol contracts**: open
+  `https://www.ecopetrol.com.co/wps/portal/Home/es/GruposInteres/GestionDeAbastecimiento/Gestioncontractual/ContratacionAsignadaFecha`
+  (public, no login — confirmed by the user with a screenshot showing the
+  public breadcrumb) and click "Ver información."
+
+### Technique 2 — DevTools Network capture (DOF, both connectors)
+
+DOF's advanced search has no download button — the results table is
+rendered from an API response, so the response itself is what gets
+captured:
+
+1. Open `https://sidof.segob.gob.mx/busquedaAvanzada/busqueda`.
+2. Search for the target buyer (e.g. "COMISIÓN FEDERAL DE ELECTRICIDAD",
+   or "PETROLEOS MEXICANOS" for PEMEX — **not** "Instituto Mexicano del
+   Petróleo," a real, differently-owned entity with a confusingly similar
+   name, see "DOF is a CFE/PEMEX supplement" below).
+3. Open DevTools (F12) → Network tab.
+4. Find the `POST .../busqueda/CargaNotasAvanzadas/` request, open its
+   Response, save it as a local `.json` file.
+5. `npm run ingest:dof-search -- <file>.json --write`.
+
+The daily-edition connector (`ingest:dof`) captures the same way, from
+DOF's daily-edition browsing feature (a `ListaDiarios` lookup, then the
+per-edition notice list) rather than the advanced search — see "DOF —
+now built, real data confirmed" below for the exact real response shape.
+
+### Technique 3 — browser Console script (PEMEX)
+
+PEMEX's SharePoint site answers anonymous requests directly — no button
+needed, just a script pasted into the Console:
+
+1. Open the relevant subsidiary list page, e.g.
+   `https://www.pemex.com/procura/procedimientos-de-contratacion/concursosabiertos`.
+2. Open DevTools Console (F12), paste and run:
+
+```js
+async function pullPemexList(listTitle, filename) {
+  const base = "https://www.pemex.com/procura/procedimientos-de-contratacion/concursosabiertos/_api/web/lists/getbytitle('" + listTitle + "')/items";
+  const select = "$select=Id,Title,descripcion,inicio,vencimiento,tipoevento,tiposuministro,areacontratante,Created,Modified,Attachments";
+  let url = base + "?" + select + "&$top=5000&$orderby=Modified desc";
+  let all = [];
+  while (url) {
+    const r = await fetch(url, {headers:{Accept:"application/json;odata=nometadata"}});
+    const d = await r.json();
+    all = all.concat(d.value);
+    url = d["odata.nextLink"] || null;
+  }
+  const blob = new Blob([JSON.stringify(all)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+await pullPemexList("Concursos-Abiertos-PEP", "pemex-pep.json");
+```
+
+Swap the list title for any real subsidiary list: `Concursos-Abiertos-PTI`
+/`PL`/`PE`/`PF`/`PPS`, or `Concursos-e-invitaciones`. Attachment
+*references* (file names + URLs, not the file bytes — PEMEX's connector
+never downloads them, see "PEMEX document references" below) use the
+same technique with a second script — full snippet in that section.
+
+### Technique 4 — direct browser request (Colombia's Socrata endpoints)
+
+Colombia's open-data portal needs no button and no script — just a URL
+typed directly into the address bar, since the endpoint is public
+unauthenticated JSON:
+
+- **SECOP II process list**: `https://www.datos.gov.co/resource/p6dx-8zbt.json?$limit=N&$offset=M`
+  (paginate `$offset` for more than one page; a real `$where` date filter
+  is worth adding once pulling past a small sample — see "Colombia —
+  SECOP II" below). Save the response as a local `.json` file, then
+  `npm run ingest:colombia -- <file>.json --write`.
+- **Ecopetrol convocatorias**: not a JSON endpoint — the real table is
+  rendered server-side on
+  `https://proveedores.ecopetrol.com.co/es-ES/Convocatorias-p%C3%BAblicas-en-ley-de-garant%C3%ADas/`
+  (public, no login), so the capture here is copy-pasting the visible
+  table (raise "Mostrar ... registros por página" to show more rows
+  first) into a local `.tsv` file — see "Ecopetrol" below for the
+  important time-bounded-window caveat.
+
+### The one exception — SECOP II tender documents, genuinely automatic
+
+`npm run ingest:colombia-documents` needs **no capture step at all** — it
+fetches real document metadata and downloads real file bytes itself, live,
+both confirmed genuinely unauthenticated by the user directly (see "SECOP
+II tender documents" below for the full verification). This is the one
+piece of this project that doesn't belong in the table above.
+
 ## Confirmed portal structure (from official docs, not guessed)
 
 Per the official "Guía de navegación en el portal Compras MX" (Secretaría

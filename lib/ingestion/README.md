@@ -26,7 +26,7 @@ project yet.
 | DOF — daily edition | DevTools Network capture | `npm run ingest:dof -- <file>.json --write` |
 | DOF — advanced search (CFE/PEMEX) | DevTools Network capture | `npm run ingest:dof-search -- <file>.json --write` |
 | PEMEX — subsidiary lists | Browser Console script | `npm run ingest:pemex -- <file>.json --buyer "<name>" --write` |
-| PEMEX — attachment references | Browser Console script | `npm run ingest:pemex-attachments -- <file>.json --write` |
+| PEMEX — attachment references (+ optional real download) | Browser Console script (list only — the files themselves download automatically) | `npm run ingest:pemex-attachments -- <file>.json --write [--download]` |
 | Colombia — SECOP II process list | Direct browser request | `npm run ingest:colombia -- <file>.json --write` |
 | Colombia — SECOP II documents | **Automatic — no capture step** | `npm run ingest:colombia-documents -- --proceso <id> --tender-slug <slug> --write` |
 | Ecopetrol — contracts | Browser download button (public page, no login) | `npm run ingest:ecopetrol-contracts -- <file>.xlsb --write` |
@@ -931,11 +931,28 @@ here since nothing gets downloaded). `extraction_status` stays `pending`;
 dedup key is `source_url` rather than `content_hash`, since there's no
 downloaded content yet to hash.
 
-**Deliberately stops at metadata, same posture as Compras MX documents**:
-this records where each document is, not the document itself. PEMEX's
-portal has no anti-bot gate, so an actual byte-level downloader is
-possible here in a way it isn't for Compras MX — just not built yet
-(out of scope for this pass).
+**Metadata-only by default, same posture as Compras MX documents** —
+this records where each document is, not the document itself, unless you
+pass `--download`. PEMEX's portal has no anti-bot gate, so unlike Compras
+MX an actual byte-level downloader is possible here, and it's now built:
+`npm run ingest:pemex-attachments -- <file>.json --write --download`
+fetches each real file's bytes (`downloadPemexDocument()` in
+`connectors/pemex-attachments-file.ts` — a plain unauthenticated
+`fetch()`, no anti-bot workaround needed), saves them under
+`downloads/pemex/<tender-slug>/` (same "never re-served to users, only
+used to update structured info" posture as
+`ingest-colombia-documents.ts` — `tender_documents.storage_url` stays
+unset either way), and records a real `content_hash` instead of relying
+on `source_url` alone for dedup. Only `.pdf` files get
+`extraction_status: "pending"`; other real PEMEX attachment formats
+(`.zip` bases packages, etc.) are downloaded and recorded but marked
+`"not_extractable"` until a non-PDF extraction path exists. Not yet
+verified against a real `--download` run — the metadata-only path above
+was the one verified against the real 309-tender/3,933-file PEP export;
+`--download` reuses the same anonymous fetch already confirmed to work
+for that export's `AttachmentFiles` calls, so no new access assumption is
+being made, but the download+hash+save path itself is untested against
+real bytes.
 
 **Verified against a real 309-tender/3,933-file PEP export** (all
 currently-open PEP items). Two real problems found and fixed along the

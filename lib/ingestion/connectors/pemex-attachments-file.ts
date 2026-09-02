@@ -22,3 +22,19 @@ export function readPemexAttachmentsFile(filePath: string): PemexAttachmentEntry
   const data = JSON.parse(content) as PemexAttachmentEntry[];
   return Array.isArray(data) ? data : [];
 }
+
+/**
+ * Downloads a real PEMEX attachment's bytes. Same anonymous, anti-bot-free
+ * access already confirmed for the item lists and the AttachmentFiles
+ * metadata call (see README.md's "PEMEX document references" section) —
+ * unlike Compras MX documents, there is no `grc`/`igrc`/`xgrc` gate to
+ * defeat here, so a plain unauthenticated fetch is all this needs.
+ */
+export async function downloadPemexDocument(url: string): Promise<Buffer> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`PEMEX document download responded ${response.status} ${response.statusText} for ${url}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}

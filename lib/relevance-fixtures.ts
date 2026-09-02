@@ -179,8 +179,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "ADQUISICIÓN DE TRANSFORMADORES DE POTENCIA",
-    expectedTier: "significant",
-    note: "Earlier-approved real batch — power equipment.",
+    expectedTier: "standard",
+    note: "Was 'significant' before the 2026-09-02 whitelist narrowing, but only via a coincidental match — the passed-in industries:['power'] array literally contains the English word 'power', which happened to match the old bare energía|eléctrico|power alternative in FLAGSHIP_INDUSTRY_KEYWORDS, not real title content. After narrowing that list to construction/infra + medical/lab equipment per the user's explicit 13-title whitelist, this correctly lands on 'standard' (still kept, just not promoted) since 'transformadores' alone isn't in either remaining category.",
     industries: ["power"],
   },
   {

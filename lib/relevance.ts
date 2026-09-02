@@ -207,10 +207,22 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   /sistema de alarma.{0,40}incendio|detecci[óo]n y supresi[óo]n de incendio/i, // SISTEMA DE ALARMA, DETECCIÓN Y SUPRESIÓN DE INCENDIO DE LA GCRNE — industrial fire-safety system
 ];
 
+// Narrowed (2026-09-02) after the user gave an explicit "only these count
+// as significant" whitelist of 13 real titles — all either genuine
+// construction/infrastructure works or genuine medical/lab equipment.
+// Dropped the two bare category alternatives that used to also promote to
+// "significant" on their own — "energía|eléctrico|power" and
+// "telecom|comunicaciones|datacenter" — since none of the 13 confirmed
+// examples needed them and the user said "others will not be in the
+// considerations." This doesn't touch flagship-tier protection for real
+// power/telecom infrastructure: MAJOR_PROJECT_KEYWORDS (power plants,
+// national/core networks, data centers) and INCLUDE_OVERRIDE_KEYWORDS (the
+// real BTS/RAN/telecom-equipment batch) still promote those straight to
+// flagship independent of this list. What's lost is only the weaker
+// signal — a bare mention of "energía"/"telecom" with no other evidence —
+// which is exactly what the user asked to stop counting.
 const FLAGSHIP_INDUSTRY_KEYWORDS = [
-  /energ[íi]a|el[ée]ctric|power/i,
   /infraestructura|construcci[óo]n|carretera|puente|ferrocarril|puerto|aeropuerto/i,
-  /telecom|comunicaciones|datacenter/i,
   // Medical/health goods. Added deliberately after measuring the real
   // open-tenders export: of the 82 of 515 procedures open to foreign
   // bidders at all, the large majority are health-sector goods (health

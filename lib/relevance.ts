@@ -37,6 +37,21 @@ const EXCLUDE_KEYWORDS = [
   /art[íi]culos de aseo|insumos de aseo/i,
   /cafeter[íi]a|servicio de caf[ée]/i,
   /telefon[íi]a fija|l[íi]nea telef[óo]nica/i,
+  // License/consumables batch — also added without a real observed case
+  // (searched every fixture and every real finding documented in
+  // README.md first; none of these terms appear in either). Deliberately
+  // scoped to "for our own internal operations" phrasing rather than a
+  // bare "combustible"/"gas"/"químicos", which would also catch a real
+  // large-value fuel-supply-for-power-plant or industrial-process-
+  // chemical contract — a genuinely different, potentially flagship-tier
+  // category this list must not swallow. The chemicals pattern
+  // deliberately avoids "reactivo" (already a FLAGSHIP_INDUSTRY_KEYWORDS
+  // term for clinical lab reagents) so the two lists can't collide on
+  // the same tender.
+  /licencia(s)? de software|licenciamiento de software|renovaci[óo]n de licencia(s)?|suscripci[óo]n de software/i,
+  /combustible para (el parque vehicular|veh[íi]culos)|suministro de gasolina y di[ée]sel/i,
+  /gas lp para (cocina|oficinas|comedor)|suministro de gas dom[ée]stico/i,
+  /qu[íi]micos de limpieza|productos qu[íi]micos para tratamiento de agua|insumos qu[íi]micos de limpieza/i,
 ];
 
 const INCLUDE_OVERRIDE_KEYWORDS = [
@@ -84,17 +99,18 @@ const SIGNIFICANT_VALUE_USD = 250_000;
 
 /**
  * A real, known contract value under this floor isn't worth a Chinese
- * enterprise's time to fly out and bid on, regardless of industry —
- * chosen well below SIGNIFICANT_VALUE_USD so it only catches genuinely
- * trivial purchases (a handful of office chairs, a single small repair),
- * not small-but-real equipment/service contracts. Deliberately does NOT
- * apply when estimatedValue is missing (most Mexican open-tenders rows
- * carry no value at all — absence isn't evidence of smallness) or when
- * hasIncludeOverride matched (the same override that protects a flagged
- * technical category from EXCLUDE_KEYWORDS should also protect it from
- * being dismissed on value alone).
+ * enterprise's time to fly out and bid on, regardless of industry.
+ * Raised from an initial 10,000 to 50,000 per the user's explicit call —
+ * still well below SIGNIFICANT_VALUE_USD, so it only catches genuinely
+ * small purchases, not the flagship/significant contracts those tiers
+ * are meant to surface. Deliberately does NOT apply when estimatedValue
+ * is missing (most Mexican open-tenders rows carry no value at all —
+ * absence isn't evidence of smallness) or when hasIncludeOverride
+ * matched (the same override that protects a flagged technical category
+ * from EXCLUDE_KEYWORDS should also protect it from being dismissed on
+ * value alone).
  */
-const MIN_VALUE_USD = 10_000;
+const MIN_VALUE_USD = 50_000;
 
 const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   flagship: {

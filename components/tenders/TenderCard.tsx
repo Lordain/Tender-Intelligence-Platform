@@ -9,6 +9,7 @@ import {
   SCOPE_TYPE_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
+  countryLabel,
   industryLabel,
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
@@ -95,6 +96,8 @@ export function TenderCard({ tender }: { tender: Tender }) {
       )}
 
       <p className="mt-1 border-t border-zinc-100 pt-2 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+        {countryLabel(tender.country, locale)}
+        {" · "}
         {localize(uiText.buyerLabelCard, locale)}
         {"："}
         {tender.buyer}

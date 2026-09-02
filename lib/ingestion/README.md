@@ -993,6 +993,26 @@ these turn out to be over- or under-matching once real data surfaces
 cases — this is the one place in this file where a rule was added on
 general knowledge of the domain rather than a confirmed real example.
 
+**Update — `MIN_VALUE_USD` raised to 50,000, plus a second unverified
+keyword batch.** Per explicit user direction: before adding the next
+batch (software license renewals; fuel/gas/chemical consumables), every
+real fixture file and every real finding documented in this README was
+searched for those terms first — none appear anywhere in this project's
+real data so far, so there was nothing to ground these in (unlike the
+project's normal bar). Added anyway, deliberately scoped to "for our own
+internal operations" phrasing rather than a bare "combustible"/"gas"/
+"químicos" — those bare words would also catch a real large-value
+fuel-supply-for-power-plant or industrial-process-chemical contract,
+which can be a genuinely flagship-tier opportunity this list must not
+swallow. The chemicals pattern also deliberately avoids "reactivo"
+(already a `FLAGSHIP_INDUSTRY_KEYWORDS` term for clinical lab reagents,
+added earlier in this file) so the two lists can't collide on the same
+tender — verified with a synthetic test case (a lab-reagents tender
+containing both "reactivo" and "productos químicos" still classifies as
+`significant`, not `excluded`) since no real one was available either.
+Flag any of these — the value floor included — the moment real data
+shows over- or under-matching.
+
 ### Brazil / Chile / Peru — still unbuilt
 
 Brazil PNCP, Chile Mercado Público/ChileCompra API, Peru SEACE/OECE/OCDS

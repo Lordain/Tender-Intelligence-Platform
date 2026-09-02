@@ -1048,6 +1048,63 @@ containing both "reactivo" and "productos químicos" still classifies as
 Flag any of these — the value floor included — the moment real data
 shows over- or under-matching.
 
+### Ten real observed titles, plus a real medical-equipment-vs-consumables bug they surfaced
+
+The user's next batch was the first grounded in **actual titles from the
+live site** rather than domain knowledge — a real course-correction after
+the two speculative batches above. Ten titles, each added as a specific,
+scoped `EXCLUDE_KEYWORDS` pattern rather than a broad generalization:
+routine road maintenance (not new road construction — "carretera" stays a
+`FLAGSHIP_INDUSTRY_KEYWORDS` signal), a single overhead-crane purchase,
+staff training, computer/telecom spare parts (would otherwise have hit the
+`telecom` flagship keyword — real proof the exclude-before-flagship check
+order matters, not just a theoretical concern), routine HVAC/cooling-unit
+maintenance, small-scale rural sanitation construction (would otherwise
+have hit the `construcción` flagship keyword — same real proof), a social
+program's food supply, vendor IT support (Oracle), and event logistics.
+Verified against all ten plus three control titles (real medical imaging
+equipment, a real bridge, a real power-plant fuel contract) that must
+stay classified normally — all thirteen behaved correctly.
+
+One of the ten was a real bug, not just a missing keyword:
+**"ADQUISICIÓN Y SUMINISTRO DE INSUMOS DE OSTEOSÍNTESIS Y ENDOPRÓTESIS"**
+was already matching `FLAGSHIP_INDUSTRY_KEYWORDS`'s medical-goods pattern
+(`osteosíntesis|endoprótesis|prótesis|implante|ortopedia`, added earlier
+in this file after the 82-of-515-foreign-biddable analysis) — meaning it
+was being actively promoted to `significant`/`flagship`, not just left
+unfiltered. The user's product scope is medical **equipment**, not
+consumables/implants — a real, previously-undecided scope boundary this
+example forced. Fixed by moving that pattern (plus `reactivo`, and
+`medicamento|fármaco|insumo médico|material de curación`, both already in
+`FLAGSHIP_INDUSTRY_KEYWORDS`) to `EXCLUDE_KEYWORDS`, removed from
+`FLAGSHIP_INDUSTRY_KEYWORDS` entirely rather than left duplicated (a term
+always shadowed by `EXCLUDE_KEYWORDS`'s earlier check serves no purpose
+staying in the flagship list too). `equipo médico`/imaging/lab-equipment/
+infusion-pump/ventilator/dialysis-machine patterns are genuine equipment
+and stay untouched. This makes the earlier "reactivo" collision-avoidance
+comment on the chemicals keyword (previous section) now describe a
+resolved situation, not a live one — left as-is since it's still an
+accurate record of that decision at the time.
+
+### Allowlist gate — under discussion, not yet built
+
+Raised by the user after this batch: instead of (or in addition to) an
+ever-growing `EXCLUDE_KEYWORDS` blocklist, gate the default feed on
+*positively* matching a target industry (via the existing multi-tag
+`lib/industry.ts` classifier) or clearing a high value bar — "白名单"
+(allowlist) rather than "黑名单" (blocklist). Real tradeoff flagged before
+building it: a blocklist's misses are visible (a junk tender sits in the
+list, a human notices, reports it — exactly how this section's ten
+examples arrived); an allowlist's misses are silent (a genuinely relevant
+tender using unanticipated terminology just never appears, and nobody
+knows to report an absence). Latin American procurement phrasing varies
+a lot across countries/sources, and `classifyIndustries()` is rule-based
+matching, not exhaustive — tightening to "must be tagged as a target
+industry" would shrink the `general` bucket's default visibility
+significantly. Direction agreed: a hybrid — keep `EXCLUDE_KEYWORDS` (cheap
+to catch unambiguous noise) and layer an industry/value allowlist gate on
+top, rather than replace one with the other. Not implemented yet.
+
 ### Brazil / Chile / Peru — still unbuilt
 
 Brazil PNCP, Chile Mercado Público/ChileCompra API, Peru SEACE/OECE/OCDS

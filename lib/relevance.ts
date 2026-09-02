@@ -52,6 +52,26 @@ const EXCLUDE_KEYWORDS = [
   /combustible para (el parque vehicular|veh[íi]culos)|suministro de gasolina y di[ée]sel/i,
   /gas lp para (cocina|oficinas|comedor)|suministro de gas dom[ée]stico/i,
   /qu[íi]micos de limpieza|productos qu[íi]micos para tratamiento de agua|insumos qu[íi]micos de limpieza/i,
+  // Real observed titles the user flagged from the live site (confirmed
+  // real, not guessed — the first batch this session grounded in actual
+  // titles rather than domain knowledge alone). Each pattern is scoped to
+  // the specific real phrase, not a broad generalization from it.
+  /mantenimiento de camino(s)?/i, // MANTENIMIENTO DE CAMINO — routine road upkeep, not new road construction
+  /gr[úu]a viajera/i, // PROYECTO GRÚA VIAJERA — a single overhead-crane purchase, not an infrastructure project
+  /capacitaci[óo]n|adiestramiento/i, // training services — routine staff training, named as a category (no single title quoted)
+  /refacciones y accesorios|refacciones para equipo/i, // ADQ. DE REFACCIONES Y ACCESORIOS PARA EQUIPO DE CÓMPUTO Y TELECOMUNICACIONES — spare parts, would otherwise hit the "telecom" FLAGSHIP_INDUSTRY_KEYWORDS match
+  /torres? de enfriamiento|unidades? paquete/i, // SERVICIO DE MANTENIMIENTO PREVENTIVO A TORRES DE ENFRIAMIENTO, UNIDADES PAQUETE — routine HVAC/industrial-unit maintenance
+  /sanitarios rurales|letrinas/i, // CONSTRUCCIÓN DE 53 SANITARIOS RURALES — small-scale rural sanitation, would otherwise hit the "construcción" FLAGSHIP_INDUSTRY_KEYWORDS match
+  /adquisici[óo]n de alimentos|adquisici[óo]n alimentos|compra de alimentos/i, // ADQUISICIÓN ALIMENTOS PROGRAMA APOYO A ESPACIOS REFUGIO... — food supply for a social program, not a catering service (already covered) but still routine goods
+  /soporte (t[ée]cnico )?(al |de )?hardware y software|mantenimiento de licencia(s)?/i, // SERVICIO DE SOPORTE AL HARDWARE Y SOFTWARE ORACLE — vendor IT support/maintenance, distinct from the license-renewal phrasing already covered above
+  /apoyo log[íi]stico|servicio log[íi]stico/i, // SERVICIO INTEGRAL Y APOYO LOGÍSTICO PARA EL DESARROLLO DE ASAMBLEAS INFORMATIVAS — event logistics support
+  // Medical consumables — moved from FLAGSHIP_INDUSTRY_KEYWORDS above,
+  // not newly invented (see the comment there): implants/prosthetics,
+  // lab reagents, drugs, and generic medical supplies are materials, not
+  // the equipment this platform targets.
+  /osteos[íi]ntesis|endopr[óo]tesis|pr[óo]tesis|implante|ortopedia/i, // ADQUISICIÓN Y SUMINISTRO DE INSUMOS DE OSTEOSÍNTESIS Y ENDOPRÓTESIS
+  /reactivo/i,
+  /medicamento|f[áa]rmaco|insumo m[ée]dico|material de curaci[óo]n/i,
 ];
 
 const INCLUDE_OVERRIDE_KEYWORDS = [
@@ -80,12 +100,18 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // actually bid on. Matches the goods/services themselves, NOT the word
   // "salud" — that appears as the buyer's Ramo on every health-ministry
   // tender including the routine cleaning ones EXCLUDE_KEYWORDS drops.
+  // Deliberately EQUIPMENT only — real observed data showed this list was
+  // catching medical CONSUMABLES too (osteosíntesis/endoprótesis implants,
+  // lab reagents, drugs, generic supplies), per explicit user direction:
+  // "我们只做医疗设备" (this platform targets medical equipment, not
+  // consumables/materials). Those terms moved to EXCLUDE_KEYWORDS below —
+  // removed from here entirely rather than left duplicated, since a term
+  // that's always caught by EXCLUDE_KEYWORDS first serves no purpose
+  // staying in this list too and would misleadingly look like it still
+  // does.
   /equipo m[ée]dico|medical equipment|equipo de laboratorio/i,
-  /osteos[íi]ntesis|endopr[óo]tesis|pr[óo]tesis|implante|ortopedia/i,
   /bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia/i,
   /imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia|ultrasonido|rayos x/i,
-  /laboratorio cl[íi]nico|reactivo/i,
-  /medicamento|f[áa]rmaco|insumo m[ée]dico|material de curaci[óo]n/i,
 ];
 
 // USD-scale thresholds (the whole platform standardizes display and

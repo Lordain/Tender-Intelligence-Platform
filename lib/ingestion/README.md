@@ -1576,6 +1576,64 @@ DE ASEO GRUPO DE SUMINISTRO 350" — needed no new rule at all; it was
 already caught by the `artículos de aseo` pattern from the very first
 speculative batch, a real confirmation that pattern was correctly scoped.
 
+### `scopeType === "equipment"` joins the allowlist gate; a real "vehicles" industry added
+
+A third real batch — this time 18 titles the user evaluated directly as
+legitimate opportunities, plus an explicit question: should "车"
+(vehicles) become its own industry, given how much government vehicle
+buying happens via tender (fleet buses, tanker trucks, heavy
+machinery)? Checking why several of these were being excluded surfaced
+a real structural gap, not just missing keywords: most of the batch
+(laptops, a video-inspection robot, transformers, a resistivity system,
+industrial equipment, vehicles, heavy machinery) are `scopeType ===
+"equipment"` — a real, structured signal `compras-mx-open-tenders-
+mapper.ts` already derives from an exact lookup on the source's own
+"Tipo de contratación" field (`ADQUISICIONES`/`ARRENDAMIENTOS` ->
+`"equipment"`, not a guess) — yet the allowlist gate only ever checked
+`industries`/`estimatedValue`, never `scopeType`, so a genuine
+"Adquisición de X" with no matching industry keyword and no listed
+value (extremely common in the open-tenders export — see the "no value
+at all" note earlier in this file) fell straight through to excluded.
+Since "this tender is a real goods/equipment acquisition" is exactly
+this platform's core interest, `scopeType === "equipment"` now counts
+as its own positive signal in the gate, alongside the existing
+industry-tag and known-value checks. `EXCLUDE_KEYWORDS` still runs
+*before* the gate, so routine equipment-shaped noise (office supplies,
+uniforms, vehicle *rentals*) stays excluded regardless — verified with
+regression controls, no change in outcome for any of those.
+
+Two items in the batch are real *services*, not equipment, so the
+`scopeType` fix doesn't reach them — added directly to
+`INCLUDE_OVERRIDE_KEYWORDS` instead: `seguridad perimetral` (a managed
+perimeter-security infrastructure service — fencing/sensors/cameras,
+not a routine guard contract) and the fire alarm/detection/suppression
+system phrasing. A third services item, the private-cloud
+virtualization one, needed no new rule — already covered by `nube
+privada` from the earlier ICT batch.
+
+New `vehicles` `IndustryKey` added (`lib/industry.ts` + `tender-
+labels.ts`, zh: "车辆") for the explicit ask: `vehículo(s)`, the real
+`vehs\.` abbreviation seen in "22 VEHS. CISTERNA," `camión(es)`,
+`autobús(es)`, `maquinaria pesada` — deliberately distinct from
+`transportation` (which here means transit *infrastructure/services*,
+not buying the vehicles themselves). A few other existing industry
+patterns were also broadened with real variant phrasings hit by this
+batch: `equipo médico` -> also `equipamiento médico` (healthcare, kept
+in sync with `FLAGSHIP_INDUSTRY_KEYWORDS`), `equipo industrial` -> also
+`equipamiento industrial` (manufacturing), and `power` gained
+`transformador(es)` and `casa de máquinas` (a hydroelectric plant's
+powerhouse equipment) while `energy` gained `resistividad` (geophysical
+exploration equipment). One title needed a narrowly-scoped structural
+signal instead of a keyword: "ELABORACIÓN DEL PROYECTO RAMO: DEL KM
+150+000 AL KM 170+000 CAMPECHE" mentions no road/carretera word at all,
+just the real Mexican federal-highway kilometer-marker notation — added
+`\bkm\s*\d+\+\d{3}\b` to `construction`.
+
+Verified against all 18 real titles (0 still excluded) and against
+regression controls (office cleaning, HVAC maintenance, office
+supplies, uniforms, vehicle *rentals*, and the earlier ICT/bare-title
+batches) — no false positives introduced.
+
 ### Peru — OECE OCDS, confirmed real and built (a third automated country, alongside Colombia)
 
 Peru's real endpoint went through the same "confirmed real, not guessed"

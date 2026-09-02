@@ -148,6 +148,12 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   /firewall/i, // equipos firewall de siguiente generación
   /\bixp\b/i, // Ruteadores para IXP
   /internet gratuito/i, // equipos para la provisión del servicio de internet gratuito
+  // Real batch #2, more mixed real titles the user evaluated as
+  // legitimate opportunities — these two are SERVICES (not equipment),
+  // so the scopeType==="equipment" allowlist-gate change below doesn't
+  // cover them; they need an explicit override.
+  /seguridad perimetral/i, // SERVICIO ADMINISTRADO DE SEGURIDAD PERIMETRAL — a real managed security-infrastructure service (fencing/sensors/cameras), not a routine guard-service contract
+  /sistema de alarma.{0,40}incendio|detecci[óo]n y supresi[óo]n de incendio/i, // SISTEMA DE ALARMA, DETECCIÓN Y SUPRESIÓN DE INCENDIO DE LA GCRNE — industrial fire-safety system
 ];
 
 const FLAGSHIP_INDUSTRY_KEYWORDS = [
@@ -171,7 +177,7 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // that's always caught by EXCLUDE_KEYWORDS first serves no purpose
   // staying in this list too and would misleadingly look like it still
   // does.
-  /equipo m[ée]dico|medical equipment|equipo de laboratorio/i,
+  /equipo m[ée]dico|equipamiento m[ée]dico|medical equipment|equipo de laboratorio/i,
   /bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia/i,
   /imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia|ultrasonido|rayos x/i,
 ];
@@ -335,18 +341,32 @@ export function classifyRelevance(input: {
   // FLAGSHIP_INDUSTRY_KEYWORDS, didn't clear SIGNIFICANT_VALUE_USD. If it
   // ALSO carries no target-industry tag at all (industries is exactly
   // ["general"] — classifyIndustries()'s fallback for "no keyword
-  // matched") and no known value, there is nothing distinguishing it from
-  // noise, so it's excluded too rather than shown by default. A tender
-  // with a real value (even below SIGNIFICANT_VALUE_USD) still shows as
-  // "standard" — a concrete dollar figure is itself a legitimizing signal
-  // even when the source text just doesn't use any INDUSTRY_KEYWORDS
-  // phrasing. Deliberately NOT gating on FLAGSHIP_INDUSTRY_KEYWORDS here
-  // (already checked above) — this uses input.industries, the multi-tag
+  // matched"), isn't a genuine equipment/goods purchase, and has no known
+  // value, there is nothing distinguishing it from noise, so it's
+  // excluded too rather than shown by default. A tender with a real value
+  // (even below SIGNIFICANT_VALUE_USD) still shows as "standard" — a
+  // concrete dollar figure is itself a legitimizing signal even when the
+  // source text just doesn't use any INDUSTRY_KEYWORDS phrasing.
+  // Deliberately NOT gating on FLAGSHIP_INDUSTRY_KEYWORDS here (already
+  // checked above) — this uses input.industries, the multi-tag
   // classifyIndustries() result callers already computed, so a tender
   // tagged by a real source field (e.g. "Descripción Ramo") still counts
   // even if its title text alone wouldn't match FLAGSHIP_INDUSTRY_KEYWORDS.
+  //
+  // `scopeType === "equipment"` counts as its own positive signal (added
+  // after the user flagged a real batch of legitimate equipment tenders
+  // — laptops, transformers, a resistivity system, industrial equipment,
+  // vehicles — that were being excluded purely because their title text
+  // didn't happen to match a named industry, despite Compras MX's own
+  // "Tipo de contratación" field already saying, as a real structured
+  // fact not a guess, that the tender IS a goods/equipment acquisition
+  // (compras-mx-open-tenders-mapper.ts's ADQUISICIONES/ARRENDAMIENTOS ->
+  // "equipment" exact lookup). That's exactly the category this platform
+  // exists to surface — "no industry tag" here means "no *specific*
+  // sector match," not "no evidence of being a real opportunity."
   const hasTargetIndustry = input.industries.some((i) => i !== "general");
-  if (!hasTargetIndustry && normalizedValue === undefined) {
+  const isEquipmentPurchase = input.scopeType === "equipment";
+  if (!hasTargetIndustry && !isEquipmentPurchase && normalizedValue === undefined) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }
 

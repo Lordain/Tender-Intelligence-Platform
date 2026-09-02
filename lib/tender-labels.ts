@@ -47,6 +47,7 @@ export const INDUSTRY_LABELS: Record<IndustryKey, LocalizedText> = {
   manufacturing: { en: "Manufacturing", es: "Manufactura", zh: "制造业" },
   mining: { en: "Mining", es: "Minería", zh: "矿业" },
   water: { en: "Water & Sanitation", es: "Agua y Saneamiento", zh: "水务" },
+  vehicles: { en: "Vehicles", es: "Vehículos", zh: "车辆" },
   general: { en: "General", es: "General", zh: "综合" },
 };
 

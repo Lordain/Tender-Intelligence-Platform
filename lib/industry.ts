@@ -41,6 +41,7 @@ export type IndustryKey =
   | "manufacturing"
   | "mining"
   | "water"
+  | "vehicles"
   | "general";
 
 /** Every defined category, in the order the filter UI should list them (required-minimum set first, extras after, "general" last as the catch-all). */
@@ -56,6 +57,7 @@ export const ALL_INDUSTRIES: IndustryKey[] = [
   "manufacturing",
   "mining",
   "water",
+  "vehicles",
   "general",
 ];
 
@@ -68,10 +70,10 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // consumables" scope decision (see README.md) — a tender relevance.ts
   // now excludes shouldn't still carry a "healthcare" tag implying it's a
   // target opportunity.
-  ["healthcare", /equipo m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|hospital\b|unidad m[ée]dica|servicios de salud|\bsalud\b/i],
+  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|hospital\b|unidad m[ée]dica|servicios de salud|\bsalud\b/i],
   ["tax", /administraci[óo]n tributaria|fiscalizaci[óo]n|declaraci[óo]n fiscal|sistema de recaudaci[óo]n|\bsat\b|servicio de administraci[óo]n tributaria|padr[óo]n de contribuyentes|aduanas?\b|hacienda y cr[ée]dito p[úu]blico/i],
-  ["energy", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|refiner[íi]a|gas natural|ducto\b|oleoducto|gasoducto|\bpemex\b|petr[óo]leos mexicanos|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible/i],
-  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad/i],
+  ["energy", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|refiner[íi]a|gas natural|ducto\b|oleoducto|gasoducto|\bpemex\b|petr[óo]leos mexicanos|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible|resistividad/i],
+  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|casa de m[áa]quinas/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to
   // INCLUDE_OVERRIDE_KEYWORDS in lib/relevance.ts (a real batch of 29
@@ -79,10 +81,26 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // tagged "ict_telecom" for filtering, not just protected from exclusion.
   ["ict_telecom", /telecomunicaci|datacenter|centro de datos|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|\b5g\b|ciberseguridad|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito/i],
   ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|metro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|comunicaciones y transportes/i],
-  ["construction", /construcci[óo]n|obra p[úu]blica|carretera|puente\b|ferrocarril|puerto\b|aeropuerto|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial/i],
-  ["manufacturing", /maquinaria industrial|equipo industrial|planta industrial|l[íi]nea de producci[óo]n|manufactura/i],
+  // The "\bkm\s*\d+\+\d{3}\b" alternative is a real kilometer-marker
+  // notation ("DEL KM 150+000 AL KM 170+000") — standard Mexican federal
+  // highway-alignment notation, seen on a real road-engineering-study
+  // title ("ELABORACIÓN DEL PROYECTO RAMO: DEL KM 150+000 AL KM
+  // 170+000 CAMPECHE") that mentions no other road/carretera keyword at
+  // all — this notation alone is a strong, narrowly-scoped real signal.
+  ["construction", /construcci[óo]n|obra p[úu]blica|carretera|puente\b|ferrocarril|puerto\b|aeropuerto|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|\bkm\s*\d+\+\d{3}\b/i],
+  ["manufacturing", /maquinaria industrial|equipo industrial|equipamiento industrial|planta industrial|l[íi]nea de producci[óo]n|manufactura/i],
   ["mining", /miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
   ["water", /agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora/i],
+  // Real batch the user flagged as legitimate opportunities: bulk vehicle
+  // and heavy-machinery acquisitions ("ADQS. DE 22 VEHS. CISTERNA...",
+  // "ADQUISICION DE VEHICULOS PARA EL CONVENIO CONASAMA 2026",
+  // "ADQUISICIÓN DE 'CAMIÓN COSTERO...'", "ADQUISICIÓN DE MAQUINARIA
+  // PESADA") — a genuine, common Mexican government procurement
+  // category (vehicle fleets, buses, tanker trucks) distinct enough
+  // from "transportation" (which here means transit *infrastructure/
+  // services*, not buying the vehicles themselves) to need its own tag.
+  // "vehs\.?\b" is the real abbreviation seen in the cistern-truck title.
+  ["vehicles", /veh[íi]culo(s)?|vehs\.?\b|cami[óo]n(es)?\b|autob[úu]s(es)?|maquinaria pesada/i],
 ];
 
 /** Matches against real Spanish-language text (title/description, plus any real category field a source provides) — never guesses from a buyer name alone. Falls back to ["general"] rather than an empty array, so every tender has at least one tag to display/filter by. */

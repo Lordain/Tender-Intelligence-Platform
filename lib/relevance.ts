@@ -273,19 +273,25 @@ const SIGNIFICANT_VALUE_USD = 250_000;
  *   pipeline/railway patterns below and by industry.ts's own long-haul
  *   signals (e.g. the "\bkm\s*\d+\+\d{3}\b" alignment-notation pattern).
  */
+// Bare-word entries below (aeropuerto/presa/puente/puerto/etc.) allow an
+// optional trailing "s" — found as a real gap (2026-09-02) while
+// verifying the isWorksLike-fallback removal above: a real title
+// ("DRAGADO DE DESAZOLVE DE LOS PUERTOS DE CHUBURNA Y CHABIHAU" — port
+// dredging, genuinely major-project work) used the plural "PUERTOS",
+// which the un-pluralized \bpuerto\b never matched.
 const MAJOR_PROJECT_KEYWORDS = [
   /ferrocarril|v[íi]a f[ée]rrea|tren (de carga|el[ée]ctrico|interurbano)/i, // 建铁路
   /construcci[óo]n de (la )?(carretera|autopista)|autopista de cuota|libramiento carretero/i, // 建长距离公路 — anchored to "construcción", not maintenance
-  /\bpresa\b|\brepresa\b|\bembalse\b/i, // 建水库、建水坝
-  /planta (de generaci[óo]n|termoel[ée]ctrica|hidroel[ée]ctrica|e[óo]lica|fotovoltaica|de ciclo combinado)|central (el[ée]ctrica|de generaci[óo]n)/i, // 建电站
-  /aeropuerto\b/i, // 建机场
-  /red (nacional|de [áa]mbito nacional)|backbone nacional|infraestructura de red nacional/i, // 建大型或国家网络
-  /centro de datos|datacenter/i, // 建数据中心
-  /red (troncal|core|n[úu]cleo)|core network/i, // 建核心网络
-  /\bpuente\b/i, // 建桥
-  /\bpuerto\b|terminal portuaria|recinto portuario/i, // 建港口
-  /nube (nacional|de gobierno|gubernamental)|national cloud|government cloud/i, // 国家云
-  /oleoducto|gasoducto|poliducto/i, // long-distance pipeline, the concrete "distancia larga" case the user named
+  /\bpresas?\b|\brepresas?\b|\bembalses?\b/i, // 建水库、建水坝
+  /plantas? (de generaci[óo]n|termoel[ée]ctrica|hidroel[ée]ctrica|e[óo]lica|fotovoltaica|de ciclo combinado)|central(es)? (el[ée]ctrica|de generaci[óo]n)/i, // 建电站
+  /aeropuertos?\b/i, // 建机场
+  /redes? (nacional(es)?|de [áa]mbito nacional)|backbone nacional|infraestructura de red nacional/i, // 建大型或国家网络
+  /centros? de datos|datacenter/i, // 建数据中心
+  /redes? (troncal(es)?|core|n[úu]cleo)|core network/i, // 建核心网络
+  /\bpuentes?\b/i, // 建桥
+  /\bpuertos?\b|terminal(es)? portuaria(s)?|recinto(s)? portuario(s)?/i, // 建港口
+  /nubes? (nacional(es)?|de gobierno|gubernamental(es)?)|national cloud|government cloud/i, // 国家云
+  /oleoductos?|gasoductos?|poliductos?/i, // long-distance pipeline, the concrete "distancia larga" case the user named
 ];
 
 /**
@@ -473,14 +479,28 @@ export function classifyRelevance(input: {
   const matchesFlagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.some((pattern) => pattern.test(haystack));
   const matchesMajorProject = MAJOR_PROJECT_KEYWORDS.some((pattern) => pattern.test(haystack));
   const hasLongDuration = durationDays !== undefined && durationDays >= LONG_DURATION_DAYS;
-  const isWorksLike = input.scopeType === "works" || input.scopeType === "equipment_services";
 
+  // Previously also promoted any scopeType "works"/"equipment_services"
+  // tender with an unknown value straight to flagship (isWorksLike),
+  // regardless of what the work actually was — removed (2026-09-02) after
+  // the user asked how many of the "flagship" tier actually matched their
+  // own stated 大项目 criteria (MAJOR_PROJECT_KEYWORDS above, or value ≥
+  // FLAGSHIP_VALUE_USD): of 201 real flagship rows in that export, only 32
+  // did — the other 169 were "works"-scope tenders with no value at all,
+  // e.g. "REHAB. PAVIM. CON MEZCLA ASFALT. EN CALIENTE CALLE S/N" (one
+  // street's asphalt patch) and "MANTENIMIENTO EN EDIFICIOS DE LA TERMINAL
+  // DE TRANSBORDADORES" (a maintenance job) — neither a major project by
+  // any reading of the user's list. Dropping this doesn't exclude those
+  // tenders outright: a real infrastructure title still lands on
+  // "significant" via matchesFlagshipIndustry below (construcción/
+  // carretera/puente/etc.) or "standard" via the content-industry
+  // allowlist gate further down — this only stops "no value + happens to
+  // be scoped works" alone from claiming the top tier.
   if (
     hasIncludeOverride ||
     matchesMajorProject ||
     hasLongDuration ||
-    (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD) ||
-    (normalizedValue === undefined && isWorksLike)
+    (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD)
   ) {
     return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
   }

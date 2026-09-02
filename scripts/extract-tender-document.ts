@@ -4,7 +4,7 @@
  * Supabase — populating qualifications/experienceRequirements/
  * requiredDocuments/risks for the tender it belongs to.
  *
- * Requires ANTHROPIC_API_KEY. NOT LIVE-TESTED — see the header comment in
+ * Requires ANTHROPIC_API_KEY. LIVE-TESTED (2026-09-02) — see the header comment in
  * lib/ingestion/extract-requirements.ts.
  *
  * Usage:

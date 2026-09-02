@@ -1086,24 +1086,57 @@ comment on the chemicals keyword (previous section) now describe a
 resolved situation, not a live one — left as-is since it's still an
 accurate record of that decision at the time.
 
-### Allowlist gate — under discussion, not yet built
+### Allowlist gate — built, hybrid with the blocklist
 
-Raised by the user after this batch: instead of (or in addition to) an
-ever-growing `EXCLUDE_KEYWORDS` blocklist, gate the default feed on
+Raised by the user after the previous batch: instead of (or in addition
+to) an ever-growing `EXCLUDE_KEYWORDS` blocklist, gate the default feed on
 *positively* matching a target industry (via the existing multi-tag
 `lib/industry.ts` classifier) or clearing a high value bar — "白名单"
 (allowlist) rather than "黑名单" (blocklist). Real tradeoff flagged before
 building it: a blocklist's misses are visible (a junk tender sits in the
-list, a human notices, reports it — exactly how this section's ten
-examples arrived); an allowlist's misses are silent (a genuinely relevant
-tender using unanticipated terminology just never appears, and nobody
-knows to report an absence). Latin American procurement phrasing varies
-a lot across countries/sources, and `classifyIndustries()` is rule-based
-matching, not exhaustive — tightening to "must be tagged as a target
-industry" would shrink the `general` bucket's default visibility
-significantly. Direction agreed: a hybrid — keep `EXCLUDE_KEYWORDS` (cheap
-to catch unambiguous noise) and layer an industry/value allowlist gate on
-top, rather than replace one with the other. Not implemented yet.
+list, a human notices, reports it — exactly how the previous section's
+ten examples arrived); an allowlist's misses are silent (a genuinely
+relevant tender using unanticipated terminology just never appears, and
+nobody knows to report an absence). Latin American procurement phrasing
+varies a lot across countries/sources, and `classifyIndustries()` is
+rule-based matching, not exhaustive.
+
+Direction agreed and built as a **hybrid**, not a replacement: keep
+`EXCLUDE_KEYWORDS` (cheap, catches unambiguous noise) and add one targeted
+gate at the very end of `classifyRelevance()` — a tender reaching that
+point already failed every positive signal above it (not keyword-excluded,
+cleared the value floor, didn't match `FLAGSHIP_INDUSTRY_KEYWORDS`, didn't
+clear `SIGNIFICANT_VALUE_USD`). If it *also* carries no target-industry
+tag at all (`input.industries` is exactly `["general"]` — the
+`classifyIndustries()` fallback for "no keyword matched") **and** no known
+value, there's nothing left distinguishing it from noise, so it's excluded
+too — a new `"industry"` signal on the existing `excluded` tier, with its
+own explanation text (`EXCLUDED_REASON_BY_SIGNAL`), not a new tier. Kept
+deliberately narrow: a tender with a real value (even below
+`SIGNIFICANT_VALUE_USD`) still shows as `standard` — a concrete dollar
+figure is itself a legitimizing signal even when the source text doesn't
+use any `INDUSTRY_KEYWORDS` phrasing — so the `general`-tagged bucket
+isn't wiped out, only the "no industry AND no value" combination is,
+which is the specific weak-signal case the discussion above was about.
+Uses `input.industries` (the multi-tag result callers already computed
+via `classifyIndustries()`) rather than re-running `FLAGSHIP_INDUSTRY_KEYWORDS`
+against title text, so a tender tagged from a real source field (e.g.
+Compras MX's `Descripción Ramo`) still counts even when its title text
+alone wouldn't match.
+
+Verified with five synthetic cases (no real "silently gated out" example
+available to check against yet, same caveat as the earlier speculative
+batches): a general-only/no-value tender is now excluded; the same
+tender with a real $80k value stays `standard`; an `education`-tagged
+tender with no value stays `standard` (has an industry tag); a
+`healthcare`-tagged tender with real equipment terms still reaches
+`significant`. Also fixed a parallel inconsistency this surfaced:
+`lib/industry.ts`'s `healthcare` keyword pattern still matched the same
+consumable terms (osteosíntesis, reactivo, medicamento, ...) just moved
+out of `FLAGSHIP_INDUSTRY_KEYWORDS` in the previous section — a tender
+`relevance.ts` now excludes shouldn't still carry a `healthcare` tag
+implying it's a target opportunity, so the same terms were removed there
+too.
 
 ### Brazil / Chile / Peru — still unbuilt
 

@@ -61,7 +61,14 @@ export const ALL_INDUSTRIES: IndustryKey[] = [
 
 const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   ["education", /educaci[óo]n|escuela\b|plantel educativo|universidad|instituto tecnol[óo]gico|mobiliario escolar|infraestructura educativa|centro educativo/i],
-  ["healthcare", /equipo m[ée]dico|equipo de laboratorio|osteos[íi]ntesis|endopr[óo]tesis|pr[óo]tesis|implante|ortopedia|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|laboratorio cl[íi]nico|reactivo de laboratorio|medicamento|f[áa]rmaco|insumo m[ée]dico|material de curaci[óo]n|hospital\b|unidad m[ée]dica|servicios de salud|\bsalud\b/i],
+  // Deliberately equipment/facility only — osteosíntesis/endoprótesis/
+  // prótesis/implante/ortopedia/reactivo/medicamento/fármaco/insumo
+  // médico/material de curación are medical CONSUMABLES, not equipment;
+  // removed to match lib/relevance.ts's same "equipment only, not
+  // consumables" scope decision (see README.md) — a tender relevance.ts
+  // now excludes shouldn't still carry a "healthcare" tag implying it's a
+  // target opportunity.
+  ["healthcare", /equipo m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|hospital\b|unidad m[ée]dica|servicios de salud|\bsalud\b/i],
   ["tax", /administraci[óo]n tributaria|fiscalizaci[óo]n|declaraci[óo]n fiscal|sistema de recaudaci[óo]n|\bsat\b|servicio de administraci[óo]n tributaria|padr[óo]n de contribuyentes|aduanas?\b|hacienda y cr[ée]dito p[úu]blico/i],
   ["energy", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|refiner[íi]a|gas natural|ducto\b|oleoducto|gasoducto|\bpemex\b|petr[óo]leos mexicanos|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible/i],
   ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad/i],

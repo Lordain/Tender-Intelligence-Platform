@@ -161,7 +161,7 @@ const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   },
 };
 
-const EXCLUDED_REASON_BY_SIGNAL: Record<"keyword" | "value", LocalizedText> = {
+const EXCLUDED_REASON_BY_SIGNAL: Record<"keyword" | "value" | "industry", LocalizedText> = {
   keyword: {
     zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This is a routine service procurement, not typically the kind of opportunity worth deep review — filtered from the default feed (metadata is kept, not deleted).",
@@ -172,6 +172,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<"keyword" | "value", LocalizedText> = {
     en: `Estimated value is under $${MIN_VALUE_USD.toLocaleString("en-US")} — too small to be worth bidding on from abroad, filtered from the default feed (metadata is kept, not deleted).`,
     es: `El valor estimado es menor a $${MIN_VALUE_USD.toLocaleString("en-US")} — demasiado pequeño para justificar una oferta desde el extranjero, filtrada de la vista predeterminada (los metadatos se conservan).`,
   },
+  industry: {
+    zh: "该项目未匹配到任何重点行业，且没有可参考的预估金额，信息过少，默认不进入推荐列表（数据仍保留，可用于统计）。",
+    en: "This tender doesn't match any priority industry and carries no estimated value — too little signal to surface by default (metadata is kept, not deleted).",
+    es: "Esta licitación no coincide con ningún sector prioritario y no tiene valor estimado — muy poca señal para mostrarla por defecto (los metadatos se conservan).",
+  },
 };
 
 function reasonFor(
@@ -179,7 +184,7 @@ function reasonFor(
   signal: "value" | "scope" | "industry" | "keyword" | "none",
 ): LocalizedText {
   if (tier === "excluded") {
-    return EXCLUDED_REASON_BY_SIGNAL[signal === "value" ? "value" : "keyword"];
+    return EXCLUDED_REASON_BY_SIGNAL[signal === "value" || signal === "industry" ? signal : "keyword"];
   }
   if (tier === "flagship") {
     return {
@@ -247,6 +252,29 @@ export function classifyRelevance(input: {
     matchesFlagshipIndustry
   ) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
+  }
+
+  // Allowlist gate (hybrid with the EXCLUDE_KEYWORDS blocklist above — see
+  // README.md "Allowlist gate", built after the user flagged that an
+  // ever-growing blocklist can't be the whole strategy). Everything
+  // reaching this point already failed every positive signal above: not
+  // keyword-excluded, not below the value floor, didn't match
+  // FLAGSHIP_INDUSTRY_KEYWORDS, didn't clear SIGNIFICANT_VALUE_USD. If it
+  // ALSO carries no target-industry tag at all (industries is exactly
+  // ["general"] — classifyIndustries()'s fallback for "no keyword
+  // matched") and no known value, there is nothing distinguishing it from
+  // noise, so it's excluded too rather than shown by default. A tender
+  // with a real value (even below SIGNIFICANT_VALUE_USD) still shows as
+  // "standard" — a concrete dollar figure is itself a legitimizing signal
+  // even when the source text just doesn't use any INDUSTRY_KEYWORDS
+  // phrasing. Deliberately NOT gating on FLAGSHIP_INDUSTRY_KEYWORDS here
+  // (already checked above) — this uses input.industries, the multi-tag
+  // classifyIndustries() result callers already computed, so a tender
+  // tagged by a real source field (e.g. "Descripción Ramo") still counts
+  // even if its title text alone wouldn't match FLAGSHIP_INDUSTRY_KEYWORDS.
+  const hasTargetIndustry = input.industries.some((i) => i !== "general");
+  if (!hasTargetIndustry && normalizedValue === undefined) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }
 
   return { tier: "standard", label: LABELS.standard, reason: reasonFor("standard", "none") };

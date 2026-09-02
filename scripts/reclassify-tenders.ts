@@ -83,19 +83,30 @@ async function main() {
     process.exit(1);
   }
 
-  const { data, error } = await supabase
-    .from("tenders")
-    .select(
-      "slug, tender_number, title, summary, buyer, country, industries, scope_type, estimated_value, currency, relevance_tier, relevance_label, relevance_reason, source_url, publication_date",
-    )
-    .order("publication_date", { ascending: false });
+  // PostgREST caps an unranged select at 1000 rows — confirmed against
+  // real production data (a first run silently returned exactly 1000 with
+  // no error). Page with .range() so nothing past the first 1000 gets
+  // silently dropped from either the CSV export or the --write pass.
+  const PAGE_SIZE = 1000;
+  const rows: TenderRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select(
+        "slug, tender_number, title, summary, buyer, country, industries, scope_type, estimated_value, currency, relevance_tier, relevance_label, relevance_reason, source_url, publication_date",
+      )
+      .order("publication_date", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
 
-  if (error || !data) {
-    console.error(`Failed to fetch tenders: ${error?.message ?? "no data"}`);
-    process.exit(1);
+    if (error) {
+      console.error(`Failed to fetch tenders: ${error.message}`);
+      process.exit(1);
+    }
+
+    const page = data as unknown as TenderRow[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
   }
-
-  const rows = data as unknown as TenderRow[];
   console.log(`Fetched ${rows.length} tender(s) from Supabase. Recomputing relevance with the current ruleset...`);
 
   let changed = 0;

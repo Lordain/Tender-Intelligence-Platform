@@ -167,22 +167,33 @@ function toTender(row: TenderRow): Tender {
   };
 }
 
+/** PostgREST caps an unranged select at this many rows per request — a real, silent truncation confirmed against production data (exactly 1000 rows came back with no error), not a documentation-only concern. Must page with .range() to get everything. */
+const SUPABASE_PAGE_SIZE = 1000;
+
 /** Returns null when Supabase isn't configured, so callers can fall back to mock data. */
 export async function fetchAllTendersFromDb(): Promise<Tender[] | null> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
 
-  const { data, error } = await supabase
-    .from("tenders")
-    .select(TENDER_SELECT)
-    .order("publication_date", { ascending: false });
+  const rows: TenderRow[] = [];
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select(TENDER_SELECT)
+      .order("publication_date", { ascending: false })
+      .range(from, from + SUPABASE_PAGE_SIZE - 1);
 
-  if (error) {
-    console.error("Failed to fetch tenders from Supabase:", error.message);
-    return null;
+    if (error) {
+      console.error("Failed to fetch tenders from Supabase:", error.message);
+      return null;
+    }
+
+    const page = data as unknown as TenderRow[];
+    rows.push(...page);
+    if (page.length < SUPABASE_PAGE_SIZE) break;
   }
 
-  return (data as unknown as TenderRow[]).map(toTender);
+  return rows.map(toTender);
 }
 
 /** Returns undefined when configured but no row matches; null when Supabase isn't configured. */

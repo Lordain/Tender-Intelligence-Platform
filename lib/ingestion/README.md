@@ -606,6 +606,23 @@ correctly: a real run (dry run, no `--write`) returned a real
 hits in this sandbox, not a bug. Needs a real run on a machine with
 network access to actually see the numbers and download the CSVs.
 
+**Real bug found and fixed on the first actual production run**: the
+user's first real run silently fetched exactly 1,000 rows with no
+error — PostgREST caps an unranged `.select()` at 1,000 rows by default.
+This wasn't just this script's problem: `fetchAllTendersFromDb()`
+(`lib/db/tenders.ts`, what the live site's `/tenders` page and every
+other public listing actually calls) had the exact same unranged
+`.select(TENDER_SELECT)`, meaning **the live site itself was silently
+capped at showing only 1,000 tenders** once real ingestion pushed past
+that count — not a hypothetical, the reclassify run's own 1,000-row
+fetch is direct evidence the real count is at or past the cap.
+`translate-tenders.ts`'s fetch had the same issue. All three now page
+with `.range(from, from + 1000 - 1)` in a loop until a page comes back
+shorter than the page size. The other real `.from("tenders")` call sites
+(`upsert-tenders.ts`, `ingest-compras-mx.ts`) are per-batch
+upserts/single-slug lookups, not full-table selects, so they were never
+at risk the same way.
+
 ## `governmentLevel` and `industry` are best-effort guesses (mostly)
 
 Shared in `heuristics.ts`. Three tiers of confidence, strongest first:

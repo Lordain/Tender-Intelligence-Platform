@@ -52,17 +52,28 @@ async function main() {
     process.exit(1);
   }
 
-  const { data, error } = await supabase
-    .from("tenders")
-    .select("slug, title, summary")
-    .neq("relevance_tier", "excluded");
+  // PostgREST caps an unranged select at 1000 rows — confirmed against
+  // real production data by reclassify-tenders.ts (a first run silently
+  // returned exactly 1000 with no error). Page with .range() so tenders
+  // past the first 1000 don't silently get skipped for translation.
+  const PAGE_SIZE = 1000;
+  const rows: { slug: string; title: LocalizedText; summary: LocalizedText }[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("slug, title, summary")
+      .neq("relevance_tier", "excluded")
+      .range(from, from + PAGE_SIZE - 1);
 
-  if (error || !data) {
-    console.error(`Failed to fetch tenders: ${error?.message ?? "no data"}`);
-    process.exit(1);
+    if (error) {
+      console.error(`Failed to fetch tenders: ${error.message}`);
+      process.exit(1);
+    }
+
+    const page = data as { slug: string; title: LocalizedText; summary: LocalizedText }[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
   }
-
-  const rows = data as { slug: string; title: LocalizedText; summary: LocalizedText }[];
   // Untranslated = exactly the untranslated() mirror every mapper writes
   // (title.zh === title.es, byte for byte) — a real translation always
   // differs from the Spanish original.

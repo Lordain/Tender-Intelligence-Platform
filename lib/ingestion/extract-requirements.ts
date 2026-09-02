@@ -12,21 +12,33 @@ import type { TenderRequirement, TenderRisk } from "@/types/tender";
  * exactly the shape those fields already have in types/tender.ts.
  *
  * LIVE-TESTED (2026-09-02, on the user's own machine — this sandbox still
- * has no ANTHROPIC_API_KEY) against two real Compras MX documents: a
- * Convocatoria (produced 9 qualifications/3 experience requirements/30
- * required documents/13 risks, every item citing a real página/numeral,
- * correctly referencing real LAASSP articles and real percentages — not
- * boilerplate) and an Anexo Técnico (correctly returned empty
- * qualifications/experienceRequirements, since a technical annex doesn't
- * carry bidder-qualification content, while still extracting its real
- * technical/delivery requirements). Notably caught, as a "critical" risk,
- * that the Convocatoria's procedure was "carácter NACIONAL" requiring
- * Mexican nationality and ≥65% national content — something no title-only
- * signal could ever surface, and the concrete real-world case for
- * `types/tender.ts`'s `participationScope` field (see the
+ * has no ANTHROPIC_API_KEY) against two real Compras MX documents on
+ * `claude-opus-5`: a Convocatoria (produced 9 qualifications/3 experience
+ * requirements/30 required documents/13 risks, every item citing a real
+ * página/numeral, correctly referencing real LAASSP articles and real
+ * percentages — not boilerplate) and an Anexo Técnico (correctly returned
+ * empty qualifications/experienceRequirements, since a technical annex
+ * doesn't carry bidder-qualification content, while still extracting its
+ * real technical/delivery requirements). Notably caught, as a "critical"
+ * risk, that the Convocatoria's procedure was "carácter NACIONAL"
+ * requiring Mexican nationality and ≥65% national content — something no
+ * title-only signal could ever surface, and the concrete real-world case
+ * for `types/tender.ts`'s `participationScope` field (see the
  * "`participationScope`" section below), currently only a best-effort
  * guess. First real evidence the prompt/schema genuinely work, not just
  * that the request shape compiles.
+ *
+ * Model (2026-09-02): downgraded from `claude-opus-5` to `claude-sonnet-5`
+ * as a deliberate cost experiment per the user's explicit request, once
+ * the bigger cost lever (gate this whole call behind an on-demand,
+ * cached "analyze" trigger for subscribed users, rather than running it
+ * proactively on every captured document) was agreed as the real fix and
+ * Opus 5's extraction quality was already confirmed above. NOT yet
+ * re-verified on Sonnet 5 against a real document — re-run
+ * `npm run extract:document` against the same two test PDFs and compare
+ * output quality before trusting Sonnet 5's extraction at scale; revert
+ * to `claude-opus-5` if quality regresses (e.g. missed requirements,
+ * vaguer risk descriptions, weaker sourceReference citations).
  *
  * Locale: the product is Chinese-only (lib/i18n.tsx). Originally asked the
  * model for a Spanish paraphrase AND a Chinese translation of that
@@ -109,7 +121,7 @@ export async function extractTenderRequirements(
   const pdfBase64 = readFileSync(pdfPath).toString("base64");
 
   const response = await client.messages.parse({
-    model: "claude-opus-5",
+    model: "claude-sonnet-5",
     max_tokens: 16000,
     system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [

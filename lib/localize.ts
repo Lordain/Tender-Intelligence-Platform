@@ -190,4 +190,25 @@ export const uiText = {
   },
   scaleLabel: { en: "Scale", es: "Escala", zh: "项目规模" },
   countryLabel: { en: "Country", es: "País", zh: "国家" },
+
+  documentsNeededTitle: {
+    en: "Tenders needing attachments",
+    es: "Licitaciones que necesitan anexos",
+    zh: "待下载附件的标书",
+  },
+  documentsNeededSubtitle: {
+    en: "Tenders that passed relevance screening but have no attachments on file yet — click the source link to open the real tender page and download the documents by hand.",
+    es: "Licitaciones que pasaron el filtro de relevancia pero aún no tienen anexos registrados — haz clic en el enlace de origen para abrir la página real y descargar los documentos manualmente.",
+    zh: "以下标书已通过筛选（黑白名单），但还没有录入任何附件——点击来源链接打开真实标书页面，手动下载附件。",
+  },
+  documentsNeededEmpty: {
+    en: "Nothing needs attachments right now — every screened tender already has documents on file.",
+    es: "Por ahora nada necesita anexos — todas las licitaciones filtradas ya tienen documentos registrados.",
+    zh: "暂无待处理项目——所有通过筛选的标书都已经录入了附件。",
+  },
+  colTitle: { en: "Title", es: "Título", zh: "标题" },
+  colValueTier: { en: "Value tier", es: "Nivel de valor", zh: "金额档" },
+  colPublicationDate: { en: "Published", es: "Publicada", zh: "发标日期" },
+  colSourceLink: { en: "Source", es: "Origen", zh: "来源链接" },
+  openSource: { en: "Open source page", es: "Abrir página de origen", zh: "打开来源页面" },
 } satisfies Record<string, LocalizedText>;

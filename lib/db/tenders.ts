@@ -4,6 +4,7 @@ import type {
   LocalizedText,
   Tender,
   TenderKeyDate,
+  TenderNeedingDocuments,
   TenderRelevance,
   TenderRequirement,
   TenderRisk,
@@ -217,3 +218,73 @@ export async function fetchTenderBySlugFromDb(
   if (!data) return undefined;
   return toTender(data as unknown as TenderRow);
 }
+
+type DocumentsNeededRow = {
+  slug: string;
+  title: LocalizedText;
+  country: string;
+  estimated_value: number | null;
+  currency: string | null;
+  relevance_tier: TenderRelevance["tier"] | null;
+  relevance_label: LocalizedText | null;
+  publication_date: string;
+  source_url: string;
+  tender_documents: { id: string }[];
+};
+
+const DOCUMENTS_NEEDED_SELECT = `
+  slug, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url,
+  tender_documents ( id )
+`;
+
+/**
+ * The `/admin/documents-needed` worklist: tenders that already passed
+ * relevance screening (tier != "excluded" — no point sending anyone to
+ * download attachments for a tender the default feed hides) but have no
+ * `tender_documents` row yet. `.neq("relevance_tier", "excluded")` also
+ * drops legacy rows with a null tier (Postgres's three-valued NULL logic
+ * means NULL != 'excluded' isn't true) — an acceptable default here: this
+ * is a "go download this" worklist, not the public feed, so a tender with
+ * no computed tier yet is safer left out than sent to a human as if it
+ * were confirmed worth the trip.
+ */
+export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedingDocuments[] | null> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+
+  const rows: DocumentsNeededRow[] = [];
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select(DOCUMENTS_NEEDED_SELECT)
+      .neq("relevance_tier", "excluded")
+      .order("publication_date", { ascending: false })
+      .range(from, from + SUPABASE_PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("Failed to fetch tenders needing documents from Supabase:", error.message);
+      return null;
+    }
+
+    const page = data as unknown as DocumentsNeededRow[];
+    rows.push(...page);
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+  }
+
+  return rows
+    .filter((row) => row.tender_documents.length === 0)
+    .map((row) => ({
+      slug: row.slug,
+      title: row.title,
+      country: row.country,
+      estimatedValue: row.estimated_value ?? undefined,
+      currency: row.currency ?? undefined,
+      relevanceTier: row.relevance_tier ?? "standard",
+      relevanceLabel: row.relevance_label ?? LABELS_FALLBACK,
+      publicationDate: row.publication_date,
+      sourceUrl: row.source_url,
+    }));
+}
+
+/** Used only for the rare legacy row with a stored tier but somehow no stored label — classifyRelevance() itself always sets both together, so this is a defensive fallback, not an expected path. */
+const LABELS_FALLBACK: LocalizedText = { en: "Standard Project", es: "Proyecto Estándar", zh: "常规项目" };

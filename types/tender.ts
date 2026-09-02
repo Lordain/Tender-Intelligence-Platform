@@ -97,6 +97,19 @@ export type TenderRelevance = {
  */
 export type TenderParticipationScope = "national" | "international_treaty" | "international_open";
 
+/** The /admin/documents-needed worklist row shape — see lib/db/tenders.ts's fetchTendersNeedingDocumentsFromDb(). Kept here (not in that server-only file) so client components can import the type without pulling in server-only code. */
+export type TenderNeedingDocuments = {
+  slug: string;
+  title: LocalizedText;
+  country: string;
+  estimatedValue?: number;
+  currency?: string;
+  relevanceTier: TenderRelevanceTier;
+  relevanceLabel: LocalizedText;
+  publicationDate: string;
+  sourceUrl: string;
+};
+
 export type Tender = {
   id: string;
   slug: string;

@@ -40,7 +40,7 @@ const STATUSES: TenderStatus[] = [
 // exposes showing them right now.
 const RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
 
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 28;
 
 function parseList(param: string | null): string[] {
   return param ? param.split(",").filter(Boolean) : [];

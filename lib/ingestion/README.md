@@ -36,6 +36,8 @@ project yet.
 | Colombia — SECOP II documents | **Automatic — no capture step** | `npm run ingest:colombia-documents -- --proceso <id> --tender-slug <slug> --write` |
 | Ecopetrol — contracts | Browser download button (public page, no login) | `npm run ingest:ecopetrol-contracts -- <file>.xlsb --write` |
 | Ecopetrol — convocatorias | Copy-paste the on-page table (public page, no login) | `npm run ingest:ecopetrol-convocatorias -- <file>.tsv --write` |
+| Peru — OECE OCDS (automated) | **Automatic — no capture step** | `npm run ingest:peru-live -- --write` |
+| Peru — OECE OCDS (manual, offline fallback) | Download + unzip a monthly file | `npm run ingest:peru -- <file>.json --write` |
 
 Every `ingest:*` command also accepts `--fixture` (runs against the small
 real sample already committed under `__fixtures__/`, no capture needed)
@@ -1574,13 +1576,97 @@ DE ASEO GRUPO DE SUMINISTRO 350" — needed no new rule at all; it was
 already caught by the `artículos de aseo` pattern from the very first
 speculative batch, a real confirmation that pattern was correctly scoped.
 
-### Brazil / Chile / Peru — still unbuilt
+### Peru — OECE OCDS, confirmed real and built (a third automated country, alongside Colombia)
 
-Chile Mercado Público/ChileCompra API, Peru SEACE/OECE/OCDS — not checked
-yet. Same posture as Colombia before this session: needs a real, verified
-capture (an unauthenticated request returning real rows, or a real
-downloaded export) before a connector gets written, not assumed from
-general knowledge of what these portals probably look like.
+Peru's real endpoint went through the same "confirmed real, not guessed"
+process as everything else in this README, entirely through the user's
+own browser (this sandbox can't reach `*.gob.pe` — every direct fetch
+attempt, and even `WebFetch`, returned `ENOTFOUND`/`EGRESS_BLOCKED`):
+
+1. **The institution renamed itself** — "Organismo Supervisor de las
+   Contrataciones del Estado (OSCE)" became "Organismo Especializado
+   para las Contrataciones Públicas Eficientes (OECE)." The old
+   `contratacionesabiertas.osce.gob.pe` subdomain genuinely stopped
+   resolving as a result (a real `ENOTFOUND`, not this sandbox's egress
+   block — confirmed by the *different* error type on the new domain:
+   `contratacionesabiertas.oece.gob.pe` returned `EGRESS_BLOCKED`
+   instead, meaning it resolves fine and is only blocked by this
+   sandbox specifically). Search results kept surfacing the old domain
+   since most indexed pages predate the rename.
+2. **Base URL and full endpoint set confirmed directly from the live
+   Swagger docs** (`contratacionesabiertas.oece.gob.pe/api`, screenshotted
+   by the user): `GET /release/{id}`, `/release/{sourceId}/{tenderId}`,
+   `/releases`, `/releasesAfter` (Release endpoints); `/record/{ocid}`,
+   `/record/{sourceId}/{tenderId}`, `/records`, `/recordsAfter` (Record
+   endpoints); `/file/{source}/{type}/{year}/{month}`, `/files` (bulk
+   download endpoints) — all OAS 3.0, `source` ∈ `seace_v3`/`seace_v2`,
+   `type` ∈ `csv`/`xlsx`/`json`/`sha`.
+3. **A real `Try it out` + `Execute` run confirmed the exact base URL**
+   (`https://contratacionesabiertas.oece.gob.pe/api/v1`) and that no
+   auth is needed: `GET /file/seace_v3/json/2020/01` → real `200`, a
+   1.85MB ZIP (`content-disposition: attachment;
+   filename="2020-01_seace_v3_json.zip"`). `GET /files?page=1` returned
+   a real listing — most recent entry `seace_v3-2026-08`
+   (`timestamp: "2026-09-01T12:05:18..."`), confirming the data is
+   genuinely current (~1 month lag), not stalled at 2023 the way some
+   indexed documentation implied.
+4. **The real record-package JSON structure was pasted directly by the
+   user** after downloading and unzipping `2026-08_seace_v3_json.zip`
+   themselves — 9 complete real records now live in
+   `__fixtures__/sample-peru-oece.json`, covering municipal/regional/
+   federal/state-owned-enterprise buyers, PEN and USD currencies,
+   goods/services/works categories, and one real awarded tender (with a
+   real `awards` array and real supplier RUCs). See
+   `peru-oece-mapper.ts`'s header comment for the full real-structure
+   notes (`tender.title` is the procedure code not a description,
+   `tender.value.amount` is frequently `0.0` = "no value published,"
+   `awards` presence is the real awarded-status signal, no confirmed
+   real per-tender human-facing deep link found yet, etc.).
+
+Built as `lib/ingestion/peru-oece-mapper.ts` +
+`lib/ingestion/connectors/peru-oece-live.ts` (live: `GET /files` to
+discover which real months exist, then downloads + unzips each one in
+the recency window — needed a new dependency, `adm-zip`, since the real
+API returns a ZIP archive around the JSON, not raw JSON) +
+`lib/ingestion/connectors/peru-oece-file.ts` (manual/offline fallback,
+same file-based pattern as every other source) +
+`scripts/ingest-peru-live.ts` / `scripts/ingest-peru.ts`
+(`npm run ingest:peru-live -- --write` / `npm run ingest:peru -- --fixture`).
+
+Verified against the real fixture: 9 of 9 records mapped, government
+level/scope type/currency/status all correct by hand-check (one real
+bug caught and fixed in the process — EGEMSA, a real state-owned power
+company, has no "S.A." suffix in its actual buyer string despite its
+real legal name carrying one, so the first version of
+`inferGovernmentLevel()`'s regex missed it; loosened to match the
+`EMPRESA`/`ENTIDAD PRESTADORA` prefix alone, since a real *buyer* in
+this dataset starting with "Empresa" is essentially always a
+state-owned utility — private sellers only ever appear as
+`tenderer`/`supplier` parties, never as `buyer`). The ZIP-extraction
+logic was verified structurally (built a synthetic ZIP with the same
+single-`.json`-entry shape and round-tripped it through `adm-zip`); the
+live fetch itself reaches the confirmed real host and query shape
+correctly (a real run returned a real `403 Forbidden` — this
+*environment's* egress block, same as every other source) but hasn't
+been run to completion against real network access yet.
+
+**A real bonus find**: unlike Colombia (which needed a *second* Socrata
+dataset just for document metadata), Peru's OCDS records already embed
+real per-document URLs and classifications directly
+(`tender.documents[].url` → `prod1.seace.gob.pe/SeaceWeb-PRO/...`,
+`documentType` ∈ `biddingDocuments`/`evaluationReports`/
+`clarifications`/`awardNotice`). A follow-up `ingest-peru-documents`
+connector analogous to Colombia's could reuse this data directly with
+no second live request — not built yet, noted here as a real, confirmed
+opportunity rather than a guess.
+
+### Brazil / Chile — still unbuilt
+
+Chile Mercado Público/ChileCompra API — not checked yet. Same posture as
+Colombia and Peru before this session: needs a real, verified capture
+(an unauthenticated request returning real rows, or a real downloaded
+export) before a connector gets written, not assumed from general
+knowledge of what these portals probably look like.
 
 **Brazil PNCP — partially confirmed real, blocked by a real server-side
 reliability problem, not a missing/wrong endpoint.** This sandbox can't

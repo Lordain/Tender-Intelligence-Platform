@@ -13,6 +13,7 @@ export const USD_RATES: Record<string, number> = {
   USD: 1,
   MXN: 1 / 20,
   COP: 1 / 4200,
+  PEN: 1 / 3.7,
 };
 
 /** Returns null (not the raw value) when the currency isn't in the rate table, so callers can distinguish "genuinely converted" from "unknown currency, don't display a number that looks precise but isn't even the right unit." */

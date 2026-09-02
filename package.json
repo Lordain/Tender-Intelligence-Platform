@@ -24,12 +24,15 @@
     "ingest:ecopetrol-contracts": "tsx --env-file-if-exists=.env.local scripts/ingest-ecopetrol-contracts.ts",
     "ingest:ecopetrol-convocatorias": "tsx --env-file-if-exists=.env.local scripts/ingest-ecopetrol-convocatorias.ts",
     "ingest:colombia-documents": "tsx --env-file-if-exists=.env.local scripts/ingest-colombia-documents.ts",
-    "reclassify:tenders": "tsx --env-file-if-exists=.env.local scripts/reclassify-tenders.ts"
+    "reclassify:tenders": "tsx --env-file-if-exists=.env.local scripts/reclassify-tenders.ts",
+    "ingest:peru": "tsx --env-file-if-exists=.env.local scripts/ingest-peru.ts",
+    "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
+    "adm-zip": "^0.6.0",
     "csv-parse": "^7.0.2",
     "exceljs": "^4.4.0",
     "next": "16.3.3",

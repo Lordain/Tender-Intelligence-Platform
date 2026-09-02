@@ -95,6 +95,26 @@ const EXCLUDE_KEYWORDS = [
   // entry needed.
 ];
 
+/**
+ * DOF's advanced-search notices sometimes carry no real title at all —
+ * confirmed real: the actual `titulo` field for some notices is
+ * literally just "<BUYER> - REF:<number>" (e.g. "COMISION FEDERAL DE
+ * ELECTRICIDAD - REF:579845"), with nothing describing what's being
+ * procured, and no other real field on that source (see
+ * dof-search-mapper.ts) carries a description either — not a scraping
+ * gap, the source data itself has nothing more to give. Tested against
+ * `input.title` alone (anchored start-to-end, and case-SENSITIVE —
+ * deliberately not /i), not the combined haystack
+ * EXCLUDE_KEYWORDS/INCLUDE_OVERRIDE_KEYWORDS use, since this is about the
+ * title carrying zero content, not a keyword within it. Requiring no
+ * lowercase letters anywhere in the title (real Mexican government
+ * entity names are always written in full caps in this source) means a
+ * genuinely descriptive title that happened to end in "- REF:12345"
+ * couldn't accidentally match — Spanish descriptive text always has
+ * lowercase letters.
+ */
+const BARE_BUYER_REF_TITLE = /^[^a-z]+-\s*REF:\d+\s*$/;
+
 const INCLUDE_OVERRIDE_KEYWORDS = [
   /videovigilancia|video surveillance/i,
   /control de acceso|access control/i,
@@ -203,7 +223,12 @@ const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   },
 };
 
-const EXCLUDED_REASON_BY_SIGNAL: Record<"keyword" | "value" | "industry", LocalizedText> = {
+const EXCLUDED_REASON_BY_SIGNAL: Record<"keyword" | "value" | "industry" | "no_content", LocalizedText> = {
+  no_content: {
+    zh: "该记录只包含发标单位和参考编号，没有任何描述标的物的信息（数据源本身如此，非抓取遗漏），无法判断相关性，默认不进入推荐列表（数据仍保留，可用于统计）。",
+    en: "This record only carries a buyer name and a reference number — the real source data has no description of what's being procured at all (not a scraping gap), so there's nothing to judge relevance from. Filtered from the default feed (metadata is kept, not deleted).",
+    es: "Este registro solo tiene el nombre de la entidad y un número de referencia — la fuente real no incluye ninguna descripción de lo que se está contratando (no es un problema de captura), así que no hay nada de qué juzgar relevancia. Filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
   keyword: {
     zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This is a routine service procurement, not typically the kind of opportunity worth deep review — filtered from the default feed (metadata is kept, not deleted).",
@@ -223,10 +248,12 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<"keyword" | "value" | "industry", Locali
 
 function reasonFor(
   tier: TenderRelevance["tier"],
-  signal: "value" | "scope" | "industry" | "keyword" | "none",
+  signal: "value" | "scope" | "industry" | "keyword" | "no_content" | "none",
 ): LocalizedText {
   if (tier === "excluded") {
-    return EXCLUDED_REASON_BY_SIGNAL[signal === "value" || signal === "industry" ? signal : "keyword"];
+    return EXCLUDED_REASON_BY_SIGNAL[
+      signal === "value" || signal === "industry" || signal === "no_content" ? signal : "keyword"
+    ];
   }
   if (tier === "flagship") {
     return {
@@ -260,6 +287,10 @@ export function classifyRelevance(input: {
 }): TenderRelevance {
   const haystack = [input.title, input.summary, ...input.industries].filter(Boolean).join(" ");
   const hasIncludeOverride = INCLUDE_OVERRIDE_KEYWORDS.some((pattern) => pattern.test(haystack));
+
+  if (!hasIncludeOverride && BARE_BUYER_REF_TITLE.test(input.title.trim())) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "no_content") };
+  }
 
   if (!hasIncludeOverride && EXCLUDE_KEYWORDS.some((pattern) => pattern.test(haystack))) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };

@@ -796,6 +796,22 @@ naively splitting on the first "-", which would have also mangled real
 buyer names that legitimately contain one (confirmed real:
 "COMISION FEDERAL DE ELECTRICIDAD A RUEGO Y ENCARGO").
 
+**These "<BUYER> - REF:<number>" titles carry zero descriptive content**
+— confirmed real from the user's own translation-pipeline test run: 3 of
+5 sampled untranslated tenders were exactly this shape (e.g.
+"COMISION FEDERAL DE ELECTRICIDAD - REF:579845"), and there's no other
+real field on this source to recover a description from (see
+`DofSearchNota`'s comment above — `titulo` is genuinely all there is).
+Translating or surfacing these adds no information a reader can act on,
+so `lib/relevance.ts` now excludes them directly: `BARE_BUYER_REF_TITLE`
+tests the real title alone (not the combined keyword-matching haystack,
+and deliberately case-sensitive — real Spanish descriptive text always
+has lowercase letters, real DOF entity names are always full caps) for
+"nothing but a buyer name and a REF: number, start to end." Verified
+against all 4 real bare-title examples seen so far (all excluded) and
+against synthetic descriptive titles that happen to end in "- REF:12345"
+(none excluded — the lowercase-content check protects them).
+
 ### CFE's own portal is WAF-protected; PEMEX's is not — checked both directly
 
 Both CFE and PEMEX run their own procurement portals outside Compras MX

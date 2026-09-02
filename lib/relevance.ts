@@ -72,6 +72,27 @@ const EXCLUDE_KEYWORDS = [
   /osteos[íi]ntesis|endopr[óo]tesis|pr[óo]tesis|implante|ortopedia/i, // ADQUISICIÓN Y SUMINISTRO DE INSUMOS DE OSTEOSÍNTESIS Y ENDOPRÓTESIS
   /reactivo/i,
   /medicamento|f[áa]rmaco|insumo m[ée]dico|material de curaci[óo]n/i,
+  // Real observed titles, second batch. Two of these are the same class
+  // of bug as "refacciones"/"sanitarios rurales" above — a SERVICE or
+  // small-scale local work that happens to contain a word
+  // FLAGSHIP_INDUSTRY_KEYWORDS or an industry tag treats as a positive
+  // signal (imaging modality name; "construcción"; the "water"/"education"
+  // industries.ts tag, which the allowlist gate — see README.md — would
+  // otherwise let through since it only gates tenders with NO industry
+  // tag at all).
+  /consumibles y accesorios|tamizaje card[íi]aco/i, // ADQ CONSUMIBLES Y ACCESORIOS TAMIZAJE CARDIACO — medical consumables, not equipment
+  /servicio m[ée]dico subrogado|servicio (m[ée]dico )?(para|de) tratamiento/i, // SERVICIO MÉDICO SUBROGADO DE RESONANCIA MAGNÉTICA; SERVICIO PARA TRATAMIENTO SAOS — an outsourced medical SERVICE, not an equipment purchase — would otherwise hit the "resonancia" FLAGSHIP_INDUSTRY_KEYWORDS match. Scoped to require "servicio" as the anchor so a genuine "equipo ... para tratamiento oncológico" (an equipment purchase) doesn't match.
+  /actualizaci[óo]n,? mantenimiento preventivo y soporte|mantenimiento preventivo y soporte/i, // SERVICIO INTEGRAL PARA LA ACTUALIZACIÓN, MANTENIMIENTO PREVENTIVO Y SOPORTE — routine IT/systems support
+  /mobiliario (y equipo )?para (equipar )?aula|equipar aula multisensorial/i, // ADQUISICIÓN DE MOBILIARIO Y EQUIPO PARA EQUIPAR AULA MULTISENSORIAL — routine classroom furniture, small-scale despite the real "education" industry tag
+  /rehabilitaci[óo]n de (sistemas? de )?captaci[óo]n de agua|rehab\.? de sistemas? de captaci[óo]n/i, // REHAB. DE SISTEMAS DE CAPTACIÓN DE AGUA POTABLE — small rural water-system repair, not real water infrastructure, despite the real "water" industry tag
+  /aire acondicionado|climatizaci[óo]n/i, // MTTO AIRE ACONDICIONADO — routine HVAC maintenance
+  /embanquetado|banquetas?\b/i, // EMBANQUETADO EN CALLE PABLO GONZALEZ — one street's sidewalk work
+  /productos alimenticios/i, // ADQUISICIÓN DE PRODUCTOS ALIMENTICIOS PARA PERSONAS — food supply, different phrasing from "alimentos" above
+  /circuito hidr[áa]ulico/i, // CONSTRUCCIÓN CIRCUITO HIDRAULICO DEL SECTOR 3A — one small neighborhood's local pipe network, would otherwise hit the "construcción" FLAGSHIP_INDUSTRY_KEYWORDS match
+  /alberca(s)?/i, // SV. MANTO. ALBERCAS — swimming pool maintenance
+  // "ARTÍCULOS DE ASEO GRUPO DE SUMINISTRO 350" from this same batch is
+  // already covered by the "artículos de aseo" pattern above — no new
+  // entry needed.
 ];
 
 const INCLUDE_OVERRIDE_KEYWORDS = [

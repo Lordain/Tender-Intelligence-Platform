@@ -1138,6 +1138,52 @@ out of `FLAGSHIP_INDUSTRY_KEYWORDS` in the previous section — a tender
 implying it's a target opportunity, so the same terms were removed there
 too.
 
+### Twelve more real observed titles — the allowlist gate's real blind spot
+
+A second real batch, arriving right after the allowlist gate shipped —
+and two of these twelve are exactly the blind spot that section's own
+tradeoff discussion predicted, just from the opposite direction (a false
+positive the gate can't catch, not a false negative): **"REHAB. DE
+SISTEMAS DE CAPTACIÓN DE AGUA POTABLE EN LA LOCALIDAD DE TIXKUNCHEIL"**
+(a small rural water-catchment repair) and **"ADQUISICIÓN DE MOBILIARIO Y
+EQUIPO PARA EQUIPAR AULA MULTISENSORIAL"** (classroom furniture) both get
+a real `water`/`education` tag from `classifyIndustries()` — which means
+the allowlist gate's `hasTargetIndustry` check does NOT exclude them,
+since having *any* industry tag is exactly what rescues a tender from
+that gate. The gate answers "does this have a target-industry signal at
+all," not "is this genuinely significant within that industry" — a
+small-scale, routine tender inside a real target sector still needs
+`EXCLUDE_KEYWORDS` specifically, the gate doesn't substitute for it.
+Two more of the twelve are the same "keyword match promotes it, EXCLUDE_KEYWORDS
+must run first to stop that" bug as the previous batch's "refacciones"/
+"sanitarios rurales": **"SERVICIO MÉDICO SUBROGADO DE RESONANCIA
+MAGNÉTICA"** and **"SERVICIO PARA TRATAMIENTO SÍNDROME DE APNEA
+OBSTRUCTIVA DEL SUEÑO"** are outsourced medical *services* (paying a
+third party to run a scan or a treatment program), not equipment
+purchases — but "resonancia" alone is a `FLAGSHIP_INDUSTRY_KEYWORDS` term
+for imaging *equipment*. Fixed with a `servicio médico subrogado|servicio
+(médico )?(para|de) tratamiento` pattern requiring "servicio" as the
+anchor word specifically, so a genuine "equipo ... para tratamiento
+oncológico" (an actual equipment purchase that happens to mention
+"tratamiento") still isn't caught — verified with that exact synthetic
+title as a control case, alongside a real MRI-equipment-purchase title, a
+real water-treatment-plant construction title, and a real bridge title,
+all of which still classify normally.
+
+The remaining eight: cardiac-screening consumables (medical materials,
+same "equipment only" principle as before), a combined
+"actualización/mantenimiento preventivo/soporte" IT-support phrase,
+routine air-conditioning maintenance, one street's sidewalk work
+("embanquetado"), a food-products purchase (different real phrasing —
+"productos alimenticios" — from the "alimentos" pattern the previous
+batch already added), one small neighborhood's local pipe network
+("circuito hidráulico" — would otherwise have hit the "construcción"
+`FLAGSHIP_INDUSTRY_KEYWORDS` match, same class of bug as "sanitarios
+rurales"), and swimming-pool maintenance. One of the twelve — "ARTÍCULOS
+DE ASEO GRUPO DE SUMINISTRO 350" — needed no new rule at all; it was
+already caught by the `artículos de aseo` pattern from the very first
+speculative batch, a real confirmation that pattern was correctly scoped.
+
 ### Brazil / Chile / Peru — still unbuilt
 
 Brazil PNCP, Chile Mercado Público/ChileCompra API, Peru SEACE/OECE/OCDS

@@ -5,11 +5,15 @@ explicitly-flagged placeholder. Read this before touching anything here.
 
 ## Operating runbook — the real manual capture step, per source
 
-**No source in this project has a live, scheduled fetcher today except
-one** (Colombia's SECOP II document downloads — see "SECOP II tender
-documents" below). Every other source's ingest script reads an
-already-downloaded local file; a human has to capture that file first,
-by one of three real techniques depending on the source. This section is
+**No source in this project has a live, scheduled fetcher today** — "live"
+here means the ingest script itself makes the real HTTP request, not that
+anything runs automatically on a timer (see the note below the table).
+Two sources are automatable in that sense (Colombia's SECOP II tender
+list and its document downloads — see "SECOP II tender list — automated"
+and "SECOP II tender documents" below). Every other source's ingest
+script reads an already-downloaded local file; a human has to capture
+that file first, by one of three real techniques depending on the
+source. This section is
 the operational quick-reference — the *why* behind each technique, and
 every real endpoint/field finding it depends on, is in the dated
 sections further down; this is just "what do I actually click/paste."
@@ -27,7 +31,8 @@ project yet.
 | DOF — advanced search (CFE/PEMEX) | DevTools Network capture | `npm run ingest:dof-search -- <file>.json --write` |
 | PEMEX — subsidiary lists | Browser Console script | `npm run ingest:pemex -- <file>.json --buyer "<name>" --write` |
 | PEMEX — attachment references (+ optional real download) | Browser Console script (list only — the files themselves download automatically) | `npm run ingest:pemex-attachments -- <file>.json --write [--download]` |
-| Colombia — SECOP II process list | Direct browser request | `npm run ingest:colombia -- <file>.json --write` |
+| Colombia — SECOP II process list (manual, offline fallback) | Direct browser request | `npm run ingest:colombia -- <file>.json --write` |
+| Colombia — SECOP II process list (automated) | **Automatic — no capture step** | `npm run ingest:colombia-live -- --write` |
 | Colombia — SECOP II documents | **Automatic — no capture step** | `npm run ingest:colombia-documents -- --proceso <id> --tender-slug <slug> --write` |
 | Ecopetrol — contracts | Browser download button (public page, no login) | `npm run ingest:ecopetrol-contracts -- <file>.xlsb --write` |
 | Ecopetrol — convocatorias | Copy-paste the on-page table (public page, no login) | `npm run ingest:ecopetrol-convocatorias -- <file>.tsv --write` |
@@ -564,6 +569,42 @@ than save anything. Run `npm run translate:tenders -- --limit 20 --write`
 against a small real batch once a key is configured, and read the
 Chinese output critically (proper nouns, technical terms) before running
 it unlimited.
+
+### Re-classifying already-ingested tenders against the current ruleset
+
+`fetchAllTendersFromDb()` (`lib/db/tenders.ts`) only recomputes relevance
+on the fly for legacy rows with no stored `relevance_tier` at all — every
+row that already has one (almost everything ingested so far) keeps
+showing whatever tier it got at ingest time. `lib/relevance.ts` has
+changed a lot since most real data was ingested this session
+(`MIN_VALUE_USD` raised $10k→$50k, two real-observed exclude-keyword
+batches added, the allowlist gate added) — so the live site is currently
+showing stale classifications for most already-ingested tenders, and
+"excluded" is always hidden from the default feed (see the comment in
+`TenderExplorer.tsx`), so a stale tier isn't just cosmetic.
+
+`scripts/reclassify-tenders.ts` (`npm run reclassify:tenders`) fixes
+this: fetches every tender, recomputes relevance with today's rules, and
+
+1. always exports `exports/tenders-kept-<date>.csv` (tier != "excluded",
+   what the default feed shows) and `exports/tenders-excluded-<date>.csv`
+   (everything hidden) — both carry `previous_tier`/`new_tier`/
+   `tier_changed` columns so a changed classification is visible at a
+   glance, ready to download and review for the next round of keyword
+   tuning;
+2. only with `--write`, also `UPDATE`s `relevance_tier`/`relevance_label`/
+   `relevance_reason` in Supabase for every row whose recomputed value
+   actually differs from what's stored — this is what actually brings
+   the live site's feed current. No rows are ever deleted; relevance is
+   metadata, safely re-derivable again the next time the keyword lists
+   change.
+
+Confirmed the code reaches the real production Supabase instance
+correctly: a real run (dry run, no `--write`) returned a real
+`Host not in allowlist: <project>.supabase.co` error — this
+*environment's* egress block, the same one every other real endpoint
+hits in this sandbox, not a bug. Needs a real run on a machine with
+network access to actually see the numbers and download the CSVs.
 
 ## `governmentLevel` and `industry` are best-effort guesses (mostly)
 
@@ -1195,6 +1236,46 @@ built from 3 real rows of the actual file; `sample-ecopetrol-convocatorias.tsv`,
 3 real rows the user pasted) — dates, COP amounts, and relevance
 classification all checked by hand against the source values, not just
 "the script ran."
+
+### SECOP II tender list — automated, no manual capture step needed
+
+The main SECOP II process dataset (`p6dx-8zbt`, documented in
+`colombia-mapper.ts`) is the same real, unauthenticated Socrata endpoint
+`ingest-colombia.ts` already reads from a manually-captured file — it
+just turns out the ingest script itself can make that request directly,
+same as the documents dataset below. Built as
+`lib/ingestion/connectors/colombia-secop-live.ts` +
+`scripts/ingest-colombia-live.ts` (`npm run ingest:colombia-live --
+--write`), reusing the exact same `mapSecopRowToTender()` mapper —
+nothing about the mapping changes, only how the raw rows arrive.
+
+The one real constraint this dataset imposes that the documents dataset
+doesn't: **9,097,326 rows total**, far too many to page through. A full
+`$offset`-paginated dump isn't viable, so this connector always applies a
+server-side `$where=fecha_de_publicacion_del >= '<sinceDate>'` filter
+(SoQL, not client-side) computed from `--months`, the same 6-month
+default every other source uses — plus `$order=fecha_de_publicacion_del
+DESC` and a `--max-pages` cap (default 20 × 1,000 rows = 20,000) as a
+safety net in case the real recent-window row count turns out larger
+than expected. `filterRecentTenders()` still runs afterward too, as a
+second, exact check against the same real `publicationDate` every other
+source uses — cheap, and it guards against the `$where` cutoff and
+`filterRecentTenders()`'s own cutoff math ever drifting apart.
+
+Confirmed the code reaches the real endpoint with the correct query
+shape: a live run (`--max-pages 1`) against the real `p6dx-8zbt` resource
+returned a real `403 Forbidden` — this *environment's* egress block, the
+same one every other real gov endpoint hits in this sandbox, not a bug
+in the request (same evidence pattern as the documents connector below).
+Not yet run for real against an unblocked network — the `$where` SoQL
+syntax and the pagination loop are unverified against real Socrata
+response shapes beyond that one blocked request; worth a close look at
+the row count and a couple of sample rows on the first real `--write`
+run before trusting it at scale.
+
+The manual, file-based `ingest-colombia.ts` stays as-is — an offline
+fallback (works from a saved export with no network access at ingest
+time) and useful for re-processing a specific already-captured page.
 
 ### SECOP II tender documents — genuinely automatable, unlike Mexico
 

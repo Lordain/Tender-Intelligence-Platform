@@ -43,3 +43,6 @@ next-env.d.ts
 
 # real downloaded tender documents (ingest-colombia-documents.ts) — never committed, and never served back to users (see that script's header comment)
 /downloads/
+
+# reclassify-tenders.ts's CSV exports of real (or locally-seeded) production data — never committed
+/exports/

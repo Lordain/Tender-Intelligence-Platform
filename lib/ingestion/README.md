@@ -1044,6 +1044,67 @@ built from 3 real rows of the actual file; `sample-ecopetrol-convocatorias.tsv`,
 classification all checked by hand against the source values, not just
 "the script ran."
 
+### SECOP II tender documents — genuinely automatable, unlike Mexico
+
+The user asked directly whether Colombia's tender attachments could be
+fetched automatically instead of needing a human to download them first
+(the posture every Mexican source needs — Compras MX is anti-bot gated,
+PEMEX's attachments connector deliberately never downloads bytes). The
+answer turned out to be yes, confirmed real end-to-end:
+
+1. Colombia's open-data portal hosts a **second real Socrata dataset**
+   specifically for document metadata — "SECOP II - Archivos Descarga
+   Desde 2025" (resource id `dmgg-8hin`), found via search and confirmed
+   real by the user with a direct unauthenticated request
+   (`datos.gov.co/resource/dmgg-8hin.json?$limit=5`). Real fields:
+   `id_documento`, `proceso` (the SECOP process id, same shape as
+   `id_del_proceso` in the main `p6dx-8zbt` dataset — NOT necessarily the
+   same as a tender's `tenderNumber`, which prefers
+   `referencia_del_proceso`), `nombre_archivo`, `tamanno_archivo`,
+   `extensi_n`, `fecha_carga`, `entidad`, `nit_entidad`, and — the real
+   find that makes this automatable —
+   `url_descarga_documento.url`, a per-document direct download link on
+   `community.secop.gov.co`.
+2. That download link is **genuinely unauthenticated** — confirmed by
+   the user opening one in a private/incognito browser window (no
+   session cookie) and it downloaded immediately, no login. The
+   downloaded file's real size matched the dataset's own
+   `tamanno_archivo` value exactly (29,155 bytes) — not just "a file
+   downloaded," a verified match to the real metadata.
+3. Real find while inspecting the 5-row sample: this dataset spans
+   SECOP II's **whole contract lifecycle**, not just tender-stage
+   documents. 4 of 5 real rows carried a
+   `n_mero_de_contrato` (contract number) and were post-award
+   contract-management paperwork (a payment receipt, a supervisor
+   designation, an insurance certificate); the one row without a
+   contract number was a genuine pre-award document (a market-analysis
+   study, part of Colombia's standard "Estudios Previos" pre-tender
+   package). `isPreAwardDocument()` in the connector uses that
+   structural signal (contract number present/absent) rather than a
+   filename guess to skip the post-award noise — thin evidence (n=1 for
+   the "clean" case), needs broadening once more real data is seen.
+
+Built as `lib/ingestion/connectors/colombia-documents-connector.ts` +
+`scripts/ingest-colombia-documents.ts` — the first script in this
+project to make live HTTP requests itself (fetch metadata, then download
+each file's real bytes) rather than reading an already-downloaded local
+file, since both real endpoints turned out to need no auth. Confirmed the
+code reaches the real endpoint correctly (a live run against the real
+`proceso` id from the 5-row sample returned a real `403 Forbidden` —
+this *environment's* egress block, the same one that blocks every other
+real gov endpoint touched this session, not a bug in the request). Per
+explicit product direction — this platform never offers tender document
+downloads to its own users, only the structured information Layer 2
+extracts from them — downloaded files are saved locally only (ready for
+`npm run extract:document`) and `tender_documents.storage_url` is
+deliberately never populated; only `source_url` (real government link,
+provenance) and a real `content_hash` (computed from the actual
+downloaded bytes — a first, since PEMEX's reference-only connector never
+had bytes to hash) are recorded. Non-PDF real files (`.xlsx`, `.zip`
+both seen in the 5-row sample) are downloaded and recorded but marked
+`extraction_status: "not_extractable"` — `extract-requirements.ts` only
+reads PDFs.
+
 ### Currency unified to USD platform-wide
 
 Adding a source with real values in a currency other than MXN (Colombian

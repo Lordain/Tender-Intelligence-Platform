@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# real downloaded tender documents (ingest-colombia-documents.ts) — never committed, and never served back to users (see that script's header comment)
+/downloads/

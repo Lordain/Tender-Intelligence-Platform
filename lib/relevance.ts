@@ -1,5 +1,6 @@
 import type { LocalizedText, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
+import { classifyIndustries } from "@/lib/industry";
 
 /**
  * Pre-Screening / relevance classification (rule-based, not AI — see
@@ -485,7 +486,24 @@ export function classifyRelevance(input: {
   // "equipment" exact lookup). That's exactly the category this platform
   // exists to surface — "no industry tag" here means "no *specific*
   // sector match," not "no evidence of being a real opportunity."
-  const hasTargetIndustry = input.industries.some((i) => i !== "general");
+  //
+  // Deliberately recomputed from title/summary alone here, NOT
+  // input.industries — real bug found in a 2026-09-02 kept-list export:
+  // compras-mx-open-tenders-mapper.ts (and dof-mapper.ts, dof-search-
+  // mapper.ts, peru-oece-mapper.ts) pass the raw buyer name into
+  // classifyIndustries() too, and PEMEX's own buyer name literally
+  // contains "pemex" (industry.ts's energy pattern: /\bpemex\b/). That
+  // tagged EVERY PEMEX Exploración y Producción tender "energy" —
+  // 992 of the ~1900-row kept export were this exact case, e.g. "Servicio
+  // de calibración a equipos patrones" (a routine calibration SERVICE)
+  // surviving as "standard" for no reason but the buyer's own name,
+  // regardless of what was actually being procured. input.industries
+  // (the stored, buyer-inclusive tags) stays as-is for the industry
+  // filter UI, where a user deliberately browsing "everything PEMEX
+  // procures under energy" is a defensible use — but it must not be
+  // what keeps a no-value, non-equipment tender out of "excluded" here.
+  const contentIndustries = classifyIndustries(input.title, input.summary);
+  const hasTargetIndustry = contentIndustries.some((i) => i !== "general");
   const isEquipmentPurchase = input.scopeType === "equipment";
   if (!hasTargetIndustry && !isEquipmentPurchase && normalizedValue === undefined) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };

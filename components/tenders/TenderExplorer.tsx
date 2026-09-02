@@ -40,6 +40,14 @@ const STATUSES: TenderStatus[] = [
 // exposes showing them right now.
 const RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
 
+// "standard" tenders are hidden from the default view per the user's
+// explicit request (2026-09-02): "也不要常规规模项目" — a 2026-09-02
+// export showed "standard" was 60-75% of the kept feed even after the
+// value/keyword tightening pass, so it's excluded from the default tier
+// set the same way "excluded" already is, while staying a normal,
+// selectable pill (unlike "excluded") for anyone who wants to browse it.
+const DEFAULT_RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant"];
+
 const PAGE_SIZE = 28;
 
 function parseList(param: string | null): string[] {
@@ -58,7 +66,10 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const scopeTypes = parseList(searchParams.get("scope")) as TenderScopeType[];
   const statuses = parseList(searchParams.get("status")) as TenderStatus[];
   const countries = parseList(searchParams.get("country"));
-  const relevanceTiers = parseList(searchParams.get("tier")) as TenderRelevanceTier[];
+  const tierParam = searchParams.get("tier");
+  const relevanceTiers = (
+    tierParam !== null ? parseList(tierParam) : DEFAULT_RELEVANCE_TIERS
+  ) as TenderRelevanceTier[];
   const sortParam = searchParams.get("sort");
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "publication_desc";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -68,7 +79,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
     scopeTypes.length > 0 ||
     statuses.length > 0 ||
     countries.length > 0 ||
-    relevanceTiers.length > 0 ||
+    tierParam !== null ||
     query.length > 0;
 
   function updateParams(updates: Record<string, string | null>, resetPage = true) {

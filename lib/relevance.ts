@@ -107,6 +107,27 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   /subestaci[óo]n|substation/i,
   /transmisi[óo]n el[ée]ctrica|power transmission/i,
   /\bepc\b/i,
+  // Real ICT/telecom equipment whitelist — a batch of 29 real tender
+  // titles the user provided (Mexico's CFE TEIT-style national telecom
+  // buildout: RAN/BTS radio equipment, transport/core network gear,
+  // towers and shelters), each a genuine hardware/infrastructure
+  // purchase a Chinese ICT vendor would want visibility into. Protects
+  // these from EXCLUDE_KEYWORDS/MIN_VALUE_USD the same way the existing
+  // telecom/power terms above do; industry.ts's ict_telecom pattern was
+  // extended alongside this so these also get tagged correctly.
+  /\bran\b|\bbts\b|macro ran|micro ran|estaci[óo]n(es)? base/i, // Equipo de Radio Frecuencia Macro BTS (RAN); Macro/Micro RAN 4G LTE; Estaciones Base de Telecomunicaciones (BTS)
+  /ruteador(es)?|\brouter(es)?\b|\bmifi\b/i, // ruteadores de gama alta/baja para Red Metropolitana/Red Nacional de Agregación/IXP; router Wifi portátil Mifi
+  /nube privada/i, // Servicio de respaldo y recuperación para la Nube Privada
+  /red metropolitana|red de agregaci[óo]n|red terrestre core/i, // RED METROPOLITANA; Red Nacional de Agregación; Red Terrestre CORE para BTS
+  /\bwdm\b|\bdwdm\b/i, // Transporte WDM para sitios Rurales; equipos DWDM para fase 4 de iluminación de FOO
+  /enlaces? de microondas/i, // Adquisición y servicio de enlaces de microondas
+  /antiddos|anti-ddos/i, // equipos ANTIDDoS de gama alta
+  /caseta(s)? integral(es)? de comunicaciones|minicaseta(s)?/i, // Minicasetas/casetas Integrales de Comunicaciones
+  /torres? (arriostrad|autosoportad)|infraestructura de telecomunicaciones (autosoportada|de r[áa]pido despliegue)/i, // materiales para torres arriostradas y autosoportadas; infraestructura de telecomunicaciones autosoportada/de rápido despliegue
+  /\baicc\b|asistente virtual.{0,20}atenci[óo]n/i, // Servicio de asistente virtual para la atención a clientes (AICC)
+  /firewall/i, // equipos firewall de siguiente generación
+  /\bixp\b/i, // Ruteadores para IXP
+  /internet gratuito/i, // equipos para la provisión del servicio de internet gratuito
 ];
 
 const FLAGSHIP_INDUSTRY_KEYWORDS = [

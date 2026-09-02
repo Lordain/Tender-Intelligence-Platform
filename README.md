@@ -24,6 +24,11 @@ First market: Mexico public procurement (Compras MX, DOF).
 npm run dev
 ```
 
+**Prerequisite for document ingestion/extraction only** (`npm run ingest:documents`, `npm run extract:document` — not needed for `npm run dev` or the rest of the app): both call into `lib/ingestion/document-intake.ts`, which shells out to Poppler's `pdftotext` binary for PDF text extraction. Install it and confirm it's on `PATH` (`pdftotext -v`) before running either:
+- Windows: `winget install --id=oschwartz10612.Poppler -e` (or `choco install poppler`), then restart your terminal
+- macOS: `brew install poppler`
+- Linux: `apt install poppler-utils` (Debian/Ubuntu) or your distro's equivalent
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) (TypeScript, App Router, Tailwind CSS, Turbopack).

@@ -10,13 +10,12 @@ None of these steps run on a schedule. Every capture is manual, on demand — re
 
 ## Part 1 — Compras MX (most mature; two verified mappers)
 
-- [ ] **1.1 Open tenders** (still-biddable procedures)
+- [ ] **1.1 Open tenders** (still-biddable procedures — this is the whole point: real, currently-biddable opportunities)
   - Open `https://comprasmx.buengobierno.gob.mx/sitiopublico/#/` ("Difusión de procedimientos"), filter as needed, click the page's own Excel export button.
   - `npm run ingest:comprasmx-open -- <file>.xlsx --write`
   - Re-running this later with an overlapping export is safe — upsert is keyed by the tender's real procedure number, not insert-only (see README's "Re-ingestion dedup").
-- [ ] **1.2 Contracts** (awarded/historical — real peso values, used for relevance calibration + market intel, not shown to users by default anymore)
-  - Open `https://comprasmx.buengobierno.gob.mx/datos-abiertos`, find "Contratos ingresados a CompraNet", pick a year, download.
-  - `npm run ingest:comprasmx-contracts -- <file>.csv --write`
+
+**Contracts (awarded/historical) intentionally NOT in this checklist.** Corrected 2026-09-02 after the user caught the inconsistency: this data is only useful for relevance-threshold calibration and market intelligence — the thresholds are already calibrated and tested against real data from earlier this session, and market intelligence is explicitly a post-launch feature, not current priority. Awarded/cancelled tenders are also hidden from the default view now (see README's "awarded/cancelled status hidden by default"). Re-add `npm run ingest:comprasmx-contracts` here only if a real future need for fresh contract data actually shows up.
 
 ## Part 2 — PEMEX (documents are semi-automatic here — the strongest of the three)
 

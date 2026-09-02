@@ -981,6 +981,19 @@ a "dump the whole thing" source), and broadening `inferScopeType()`,
 which is currently just an exact lookup over the 2 distinct
 `tipo_de_contrato` values the 5-row sample happened to contain.
 
+**Ecopetrol (Colombia's PEMEX-equivalent state oil company) — checked,
+real negative result.** Same question asked of Mexico's state productive
+enterprises (do they run their own procurement outside the general
+platform?) applies to Colombia too. Confirmed real via search: Ecopetrol
+does maintain its own supplier/procurement portal separate from SECOP II
+(`proveedores.ecopetrol.com.co`), not the SharePoint-with-anonymous-REST-
+access pattern PEMEX turned out to have — the user confirmed by trying it
+directly that this portal **requires login**. Unlike PEMEX, there's no
+unauthenticated public surface here to build a connector against; scraping
+an authenticated internal system isn't the same posture as reading a
+public open-data endpoint. Not pursued further without real Ecopetrol
+credentials.
+
 ### Currency unified to USD platform-wide
 
 Adding a source with real values in a currency other than MXN (Colombian
@@ -1186,9 +1199,36 @@ speculative batch, a real confirmation that pattern was correctly scoped.
 
 ### Brazil / Chile / Peru — still unbuilt
 
-Brazil PNCP, Chile Mercado Público/ChileCompra API, Peru SEACE/OECE/OCDS
-— none of these have been checked yet. Same posture as Colombia before
-this session: needs a real, verified capture (an unauthenticated request
-returning real rows, or a real downloaded export) before a connector gets
-written, not assumed from general knowledge of what these portals
-probably look like.
+Chile Mercado Público/ChileCompra API, Peru SEACE/OECE/OCDS — not checked
+yet. Same posture as Colombia before this session: needs a real, verified
+capture (an unauthenticated request returning real rows, or a real
+downloaded export) before a connector gets written, not assumed from
+general knowledge of what these portals probably look like.
+
+**Brazil PNCP — partially confirmed real, blocked by a real server-side
+reliability problem, not a missing/wrong endpoint.** This sandbox can't
+reach `pncp.gov.br` at all (same egress policy as every other
+gov/corporate site), so all verification here ran through the user's own
+browser, same as Colombia's original capture:
+
+- The base API (`https://pncp.gov.br/api/consulta/...`) and its query
+  shape (`/v1/contratacoes/publicacao?dataInicial=&dataFinal=&codigoModalidadeContratacao=&pagina=`,
+  paginated response with `data`/`totalRegistros`/`totalPaginas`) are
+  confirmed real via public documentation (a GitHub gist, the
+  `powerandcontrol/PNCP` collector repo) — not guessed.
+- `codigoModalidadeContratacao`'s real value table is confirmed via a
+  direct, unauthenticated real request the user ran
+  (`GET /v1/pncp/v1/modalidades?statusAtivo=true` — 19 real modality
+  codes returned, e.g. `6` = Pregão Eletrônico, `16` = Concorrência –
+  Eletrônica Internacional).
+- The actual data endpoint (`/v1/contratacoes/publicacao`) **times out
+  with a real 504 Gateway Time-out** — confirmed on two separate real
+  attempts by the user, including the narrowest reasonable request (one
+  day, `tamanhoPagina=5`, a rarer international modality code expected to
+  return few rows). This is not a parameter mistake (the modalities
+  endpoint on the same domain answered instantly) — it looks like a real,
+  current reliability problem with this specific PNCP endpoint, matching
+  informal complaints found in the same search results (a GestGov
+  community thread asking about this exact API). Not pursued further this
+  session; worth retrying later rather than assuming it's permanently
+  broken.

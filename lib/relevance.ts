@@ -518,18 +518,6 @@ export function classifyRelevance(input: {
   // tagged by a real source field (e.g. "Descripción Ramo") still counts
   // even if its title text alone wouldn't match FLAGSHIP_INDUSTRY_KEYWORDS.
   //
-  // `scopeType === "equipment"` counts as its own positive signal (added
-  // after the user flagged a real batch of legitimate equipment tenders
-  // — laptops, transformers, a resistivity system, industrial equipment,
-  // vehicles — that were being excluded purely because their title text
-  // didn't happen to match a named industry, despite Compras MX's own
-  // "Tipo de contratación" field already saying, as a real structured
-  // fact not a guess, that the tender IS a goods/equipment acquisition
-  // (compras-mx-open-tenders-mapper.ts's ADQUISICIONES/ARRENDAMIENTOS ->
-  // "equipment" exact lookup). That's exactly the category this platform
-  // exists to surface — "no industry tag" here means "no *specific*
-  // sector match," not "no evidence of being a real opportunity."
-  //
   // Deliberately recomputed from title/summary alone here, NOT
   // input.industries — real bug found in a 2026-09-02 kept-list export:
   // compras-mx-open-tenders-mapper.ts (and dof-mapper.ts, dof-search-
@@ -547,8 +535,7 @@ export function classifyRelevance(input: {
   // what keeps a no-value, non-equipment tender out of "excluded" here.
   const contentIndustries = classifyIndustries(input.title, input.summary);
   const hasTargetIndustry = contentIndustries.some((i) => i !== "general");
-  const isEquipmentPurchase = input.scopeType === "equipment";
-  if (!hasTargetIndustry && !isEquipmentPurchase && normalizedValue === undefined) {
+  if (!hasTargetIndustry && normalizedValue === undefined) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }
 

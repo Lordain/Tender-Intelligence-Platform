@@ -126,6 +126,7 @@ async function main() {
       scopeType: row.scope_type,
       estimatedValue: row.estimated_value ?? undefined,
       currency: row.currency ?? undefined,
+      buyer: row.buyer,
     });
 
     const tierChanged = row.relevance_tier !== recomputed.tier;

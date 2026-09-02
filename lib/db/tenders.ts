@@ -125,6 +125,7 @@ function toRelevance(row: TenderRow): TenderRelevance {
     scopeType: row.scope_type,
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
+    buyer: row.buyer,
   });
 }
 

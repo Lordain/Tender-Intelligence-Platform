@@ -167,7 +167,7 @@ export function mapComprasMxOpenTenderRowToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
-    relevance: classifyRelevance({ title, industries, scopeType }),
+    relevance: classifyRelevance({ title, industries, scopeType, buyer }),
     sourceName,
     sourceUrl,
     createdAt: now,

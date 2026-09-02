@@ -99,7 +99,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     requiredDocuments: [],
     keyDates: [{ id: `dof-${nota.codNota}-publication`, type: "publication", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ title, industries, scopeType }),
+    relevance: classifyRelevance({ title, industries, scopeType, buyer }),
     sourceName,
     // Same cross-referenced (not directly captured) URL pattern as
     // dof-mapper.ts — see that file's buildSourceUrl comment.

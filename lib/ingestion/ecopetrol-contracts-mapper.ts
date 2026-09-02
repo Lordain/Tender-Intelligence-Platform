@@ -104,7 +104,7 @@ export function mapEcopetrolContractRowToTender(row: EcopetrolContractRow, sourc
     requiredDocuments: [],
     keyDates: [{ id: `${tenderNumber}-award`, type: "award", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ title, industries, scopeType, estimatedValue, currency: "COP" }),
+    relevance: classifyRelevance({ title, industries, scopeType, estimatedValue, currency: "COP", buyer: "Ecopetrol S.A." }),
     sourceName,
     sourceUrl,
     createdAt: now,

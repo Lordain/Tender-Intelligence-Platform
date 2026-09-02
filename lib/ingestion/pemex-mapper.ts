@@ -161,7 +161,7 @@ export function mapPemexConcursoItemToTender(
     requiredDocuments: [],
     keyDates: [],
     risks: [],
-    relevance: classifyRelevance({ title: description, industries, scopeType }),
+    relevance: classifyRelevance({ title: description, industries, scopeType, buyer }),
     sourceName,
     // Not directly captured (the SharePoint REST response doesn't include
     // a display-form URL) — same "cross-referenced, not captured" posture

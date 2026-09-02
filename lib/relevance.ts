@@ -122,6 +122,31 @@ const EXCLUDE_KEYWORDS = [
 ];
 
 /**
+ * Buyer-name-only exclude list — the inverse problem from the buyer-name
+ * industry-tag bug fixed above (2026-09-02, second pass): that bug was a
+ * buyer wrongly ADDING a false positive signal; this is a buyer whose
+ * ABSENCE of any real signal should count for something. Real example
+ * from a 2026-09-02 kept-list export: "ALIMENTACIÓN PARA EL BIENESTAR,
+ * S.A. DE C.V." (Mexico's federal below-poverty-line food/hygiene
+ * distribution program) had 207 of its 208 kept tenders classified
+ * "standard" purely via the scopeType==="equipment" fallback signal
+ * below — because its real titles are bare retail product names
+ * ("COLGATE TRIPLE", "PAPEL HIGIENICO", "SARDINA SAL ROJA", "MANGO
+ * ROJO"), which don't match any EXCLUDE_KEYWORDS phrase (those are all
+ * *category* phrases like "artículos de aseo", not brand/product names)
+ * and don't match any industry either. Rather than chase individual
+ * grocery product names, this targets the one signal that's actually
+ * reliable here: this specific buyer's entire real-world mandate is
+ * bulk retail groceries/hygiene goods for a social program, never an
+ * industrial or infrastructure opportunity, regardless of item name.
+ * Deliberately a short, explicit buyer-name list (not a broad pattern),
+ * same low-false-positive posture as the rest of this file — a buyer
+ * only belongs here once its catalog is confirmed, like this one, to be
+ * uniformly irrelevant.
+ */
+const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
+
+/**
  * DOF's advanced-search notices sometimes carry no real title at all —
  * confirmed real: the actual `titulo` field for some notices is
  * literally just "<BUYER> - REF:<number>" (e.g. "COMISION FEDERAL DE
@@ -333,7 +358,7 @@ const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
 };
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "value" | "industry" | "no_content" | "short_duration",
+  "keyword" | "value" | "industry" | "no_content" | "short_duration" | "buyer",
   LocalizedText
 > = {
   no_content: {
@@ -361,15 +386,24 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     en: `This tender's execution/delivery period is under ${SHORT_DURATION_DAYS} days — usually too small in scope, filtered from the default feed (metadata is kept, not deleted).`,
     es: `El plazo de ejecución/entrega de esta licitación es menor a ${SHORT_DURATION_DAYS} días — normalmente de escala reducida, filtrada de la vista predeterminada (los metadatos se conservan).`,
   },
+  buyer: {
+    zh: "该采购单位的标的物通常是民生消费品/日用品（非工业或基建类），默认不进入推荐列表（数据仍保留，可用于统计）。",
+    en: "This buyer's procurement is typically consumer/household goods for a social program, not an industrial or infrastructure opportunity — filtered from the default feed (metadata is kept, not deleted).",
+    es: "Las contrataciones de esta entidad suelen ser bienes de consumo/hogar para un programa social, no una oportunidad industrial o de infraestructura — filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
 };
 
 function reasonFor(
   tier: TenderRelevance["tier"],
-  signal: "value" | "scope" | "industry" | "keyword" | "no_content" | "short_duration" | "none",
+  signal: "value" | "scope" | "industry" | "keyword" | "no_content" | "short_duration" | "buyer" | "none",
 ): LocalizedText {
   if (tier === "excluded") {
     return EXCLUDED_REASON_BY_SIGNAL[
-      signal === "value" || signal === "industry" || signal === "no_content" || signal === "short_duration"
+      signal === "value" ||
+      signal === "industry" ||
+      signal === "no_content" ||
+      signal === "short_duration" ||
+      signal === "buyer"
         ? signal
         : "keyword"
     ];
@@ -403,12 +437,21 @@ export function classifyRelevance(input: {
   scopeType: TenderScopeType;
   estimatedValue?: number;
   currency?: string;
+  buyer?: string;
 }): TenderRelevance {
   const haystack = [input.title, input.summary, ...input.industries].filter(Boolean).join(" ");
   const hasIncludeOverride = INCLUDE_OVERRIDE_KEYWORDS.some((pattern) => pattern.test(haystack));
 
   if (!hasIncludeOverride && BARE_BUYER_REF_TITLE.test(input.title.trim())) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "no_content") };
+  }
+
+  if (
+    !hasIncludeOverride &&
+    input.buyer &&
+    EXCLUDE_BUYER_KEYWORDS.some((pattern) => pattern.test(input.buyer!))
+  ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "buyer") };
   }
 
   if (!hasIncludeOverride && EXCLUDE_KEYWORDS.some((pattern) => pattern.test(haystack))) {

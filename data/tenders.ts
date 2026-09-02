@@ -608,5 +608,6 @@ export const tenders: Tender[] = rawTenders.map((tender) => ({
     scopeType: tender.scopeType,
     estimatedValue: tender.estimatedValue,
     currency: tender.currency,
+    buyer: tender.buyer,
   }),
 }));

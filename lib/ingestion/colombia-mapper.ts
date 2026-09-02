@@ -162,7 +162,7 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
     requiredDocuments: [],
     keyDates: [{ id: `${tenderNumber}-publication`, type: "publication", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ title, summary, industries, scopeType, estimatedValue, currency: "COP" }),
+    relevance: classifyRelevance({ title, summary, industries, scopeType, estimatedValue, currency: "COP", buyer }),
     sourceName,
     // Real, directly captured — urlproceso.url points at the actual
     // public tender page on community.secop.gov.co.

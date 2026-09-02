@@ -131,6 +131,7 @@ export function mapOcdsReleaseToTender(
       scopeType,
       estimatedValue,
       currency,
+      buyer: buyerName,
     }),
     sourceName,
     sourceUrl: `${sourceUrlBase}${release.ocid}`,

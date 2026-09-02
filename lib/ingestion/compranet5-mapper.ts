@@ -179,7 +179,7 @@ export function mapCompranet5RowToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
-    relevance: classifyRelevance({ title, summary, industries, scopeType, estimatedValue, currency }),
+    relevance: classifyRelevance({ title, summary, industries, scopeType, estimatedValue, currency, buyer }),
     sourceName,
     sourceUrl: row["Dirección del anuncio"]?.trim() || `${sourceUrlBase}${encodeURIComponent(tenderNumber)}`,
     createdAt: now,

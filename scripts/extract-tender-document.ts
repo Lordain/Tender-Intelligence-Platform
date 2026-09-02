@@ -11,12 +11,28 @@
  *   npm run extract:document -- path/to/file.pdf <tender-slug>              (dry run — prints the extraction, Sonnet 5)
  *   npm run extract:document -- path/to/file.pdf <tender-slug> --precise    (dry run — Opus 5, the "精度分析" premium tier)
  *   npm run extract:document -- path/to/file.pdf <tender-slug> --write      (writes to Supabase)
+ *   npm run extract:document -- path/to/file.pdf <tender-slug> --write --force  (write even if this would downgrade an existing Opus 5 result to Sonnet 5)
+ *
+ * Overwrite semantics (2026-09-02, user-confirmed): re-extracting a
+ * document always replaces its stored qualifications/experience/
+ * documents/risks outright — there's no parallel "keep both tiers"
+ * storage. The one guard: if the document was already extracted at the
+ * precision (claude-opus-5) tier and this run would write the standard
+ * (claude-sonnet-5) tier, --write refuses unless --force is also passed —
+ * a standard-tier re-run should never silently downgrade a result a
+ * subscriber already paid to have analyzed at the higher tier.
  */
 import { intakeDocument } from "../lib/ingestion/document-intake";
 import { extractTenderRequirements, toTenderFields, type ExtractionModel } from "../lib/ingestion/extract-requirements";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
-async function writeToSupabase(slug: string, contentHash: string, fields: ReturnType<typeof toTenderFields>) {
+async function writeToSupabase(
+  slug: string,
+  contentHash: string,
+  fields: ReturnType<typeof toTenderFields>,
+  model: ExtractionModel,
+  force: boolean,
+) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     console.error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). See .env.example.");
@@ -34,6 +50,19 @@ async function writeToSupabase(slug: string, contentHash: string, fields: Return
     process.exit(1);
   }
   const tenderId = tender.id as string;
+
+  const { data: existingDoc } = await supabase
+    .from("tender_documents")
+    .select("extraction_model")
+    .eq("content_hash", contentHash)
+    .maybeSingle();
+
+  if (existingDoc?.extraction_model === "claude-opus-5" && model === "claude-sonnet-5" && !force) {
+    console.error(
+      "This document was already analyzed at the precision (claude-opus-5) tier — refusing to overwrite it with a standard (claude-sonnet-5) result. Pass --force to downgrade anyway.",
+    );
+    process.exit(1);
+  }
 
   for (const kind of ["qualification", "experience", "document"] as const) {
     await supabase.from("tender_requirements").delete().eq("tender_id", tenderId).eq("kind", kind);
@@ -73,7 +102,7 @@ async function writeToSupabase(slug: string, contentHash: string, fields: Return
 
   await supabase
     .from("tender_documents")
-    .update({ extraction_status: "extracted", extracted_at: new Date().toISOString() })
+    .update({ extraction_status: "extracted", extracted_at: new Date().toISOString(), extraction_model: model })
     .eq("content_hash", contentHash);
 
   console.log(
@@ -120,7 +149,7 @@ async function main() {
     return;
   }
 
-  await writeToSupabase(tenderSlug, intake.contentHash, fields);
+  await writeToSupabase(tenderSlug, intake.contentHash, fields, model, args.includes("--force"));
 }
 
 main();

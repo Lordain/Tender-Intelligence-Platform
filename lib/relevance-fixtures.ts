@@ -149,38 +149,38 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "Mantenimiento, rehabilitación y/o construcción de ductos y líneas de descarga en los Activos de la Subdirección de Extracción Región Terrestre Norte",
-    expectedTier: "significant",
-    note: "User-confirmed keep list — PEMEX pipeline construction, kept despite starting with 'Mantenimiento,' because the exact EXCLUDE_KEYWORDS maintenance phrases (mantenimiento preventivo/correctivo/general/etc.) don't match this exact wording, and 'construcción' matches independently.",
+    expectedTier: "excluded",
+    note: "Was in the user's first (18-title) whitelist, then deliberately dropped from the narrower 13-title version without comment — confirmed intentional (2026-09-02) when asked directly. \\bductos?\\b exclude pattern.",
     buyer: "Pemex Exploración y Producción",
   },
   {
     title: "Ingeniería, Procura y Construcción de ductos marinos en el Golfo de México, Paquete 2",
-    expectedTier: "significant",
-    note: "User-confirmed keep list — offshore pipeline EPC.",
+    expectedTier: "excluded",
+    note: "Same PEMEX-drop group as above, confirmed intentional. \\bductos?\\b exclude pattern.",
     buyer: "Pemex Exploración y Producción",
   },
   {
     title: "Construcción, rehabilitación y/o sustitución de líneas de descarga y de inyección de agua congénita con tubería no metálica para los activos de la Subdirección de Extracción Región Terrestre Norte",
-    expectedTier: "significant",
-    note: "User-confirmed keep list — PEMEX pipeline construction/rehab.",
+    expectedTier: "excluded",
+    note: "Same PEMEX-drop group, confirmed intentional. Doesn't say 'ducto' literally — caught by the separate 'líneas de descarga' exclude pattern added alongside it.",
     buyer: "Pemex Exploración y Producción",
   },
   {
     title: "Mantenimiento, rehabilitación e infraestructuras complementarias en instalaciones de las Regiones Marinas. (Paquete 2)",
-    expectedTier: "significant",
-    note: "User-confirmed keep list — matches via bare 'infraestructuras'.",
+    expectedTier: "excluded",
+    note: "Same PEMEX-drop group, confirmed intentional. Doesn't say 'ducto' either — caught by the separate 'infraestructuras complementarias' exclude pattern.",
     buyer: "Pemex Exploración y Producción",
   },
   {
     title: "Construcción de ductos terrestres para recolección y transporte de hidrocarburos en Instalaciones de Exploración y Extracción de Petróleos Mexicanos",
-    expectedTier: "significant",
-    note: "User-confirmed keep list — onshore pipeline construction.",
+    expectedTier: "excluded",
+    note: "Same PEMEX-drop group as above, confirmed intentional. \\bductos?\\b exclude pattern.",
     buyer: "Pemex Exploración y Producción",
   },
   {
     title: "ADQUISICIÓN DE TRANSFORMADORES DE POTENCIA",
-    expectedTier: "standard",
-    note: "Was 'significant' before the 2026-09-02 whitelist narrowing, but only via a coincidental match — the passed-in industries:['power'] array literally contains the English word 'power', which happened to match the old bare energía|eléctrico|power alternative in FLAGSHIP_INDUSTRY_KEYWORDS, not real title content. After narrowing that list to construction/infra + medical/lab equipment per the user's explicit 13-title whitelist, this correctly lands on 'standard' (still kept, just not promoted) since 'transformadores' alone isn't in either remaining category.",
+    expectedTier: "excluded",
+    note: "Was 'significant' before the whitelist narrowing (via a coincidental industries:['power'] match, not real content), briefly 'standard' after narrowing FLAGSHIP_INDUSTRY_KEYWORDS. Now 'excluded': the user confirmed (2026-09-02) that 'standard' should stop being a kept tier entirely — only flagship + the construction/medical-equipment whitelist stay visible. 'transformadores' alone isn't on that whitelist.",
     industries: ["power"],
   },
   {
@@ -190,23 +190,27 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     industries: ["healthcare"],
   },
 
-  // --- Standard: real cases that should stay visible but not promoted ---
+  // --- "standard" tier eliminated (2026-09-02, user-confirmed): these were
+  // "standard" earlier in the session — kept as fixtures to document the
+  // reversal, not because they're still expected to classify that way.
+  // Everything below now correctly lands "excluded" since only flagship +
+  // the construction/medical-equipment whitelist stay visible by default. ---
   {
     title: "ADQUISICIÓN DE VEHÍCULOS PARA EL CONVENIO CONASAMA 2026",
-    expectedTier: "standard",
-    note: "Earlier-approved real batch — vehicle fleet purchase, below SIGNIFICANT_VALUE_USD with no other promotion signal.",
+    expectedTier: "excluded",
+    note: "Was 'standard' (earlier-approved real batch, below SIGNIFICANT_VALUE_USD with no other promotion signal) — now excluded per the user's 2026-09-02 confirmation that 'standard' should stop being kept at all.",
     industries: ["vehicles"],
   },
   {
     title: "ADQUISICIÓN DE MAQUINARIA PESADA",
-    expectedTier: "standard",
-    note: "Earlier-approved real batch — heavy machinery, same as above.",
+    expectedTier: "excluded",
+    note: "Was 'standard' (earlier-approved real batch, heavy machinery) — now excluded, same reversal as above.",
     industries: ["vehicles"],
   },
   {
     title: "Servicio de calibración a equipos patrones para instrumentos de control y medición de las instalaciones de Petróleos Mexicanos",
-    expectedTier: "standard",
-    note: "Real PEMEX title with genuine hydrocarbon-facility content in the TITLE itself (not just buyer name) — deliberately NOT excluded by the buyer-tag-contamination fix, since this is real content, not buyer-only noise.",
+    expectedTier: "excluded",
+    note: "Was 'standard' (real PEMEX title with genuine hydrocarbon-facility content in the TITLE itself, not just buyer name — deliberately NOT caught by the buyer-tag-contamination fix since this is real content) — now excluded, same 'standard' elimination.",
     scopeType: "services",
     buyer: "Pemex Exploración y Producción",
   },

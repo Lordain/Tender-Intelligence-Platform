@@ -1890,7 +1890,13 @@ The user then said explicitly: they don't want all of "significant" and "standar
 
 Recomputed against the export: `flagship 48 / significant 102 / standard 121 / excluded 227` — 271 total kept. Caught one fixture that only passed "significant" via a coincidental artifact (`industries: ["power"]`'s literal English word "power" matching the old bare `/power/i` alternative, not real title content) — updated its expected tier to "standard" with a note explaining why, rather than silently deleting the fixture.
 
-This pass is explicitly NOT the full ask: the user's stated goal was closer to "only flagship + this exact whitelist should exist at all," including possibly deleting the rest from Supabase outright — a much bigger, harder-to-reverse change (it would also catch legitimate real "standard"-tier cases approved earlier this session, e.g. vehicle/heavy-machinery purchases) that needs explicit confirmation before going further. Raised back to the user rather than assumed.
+This pass was explicitly not the full ask — confirmed directly (2026-09-02, three-question check-in):
+
+1. **"standard" eliminated as a kept tier entirely.** `classifyRelevance()` never returns "standard" anymore — the final fallback that used to land there now returns "excluded" with a new `below_threshold` reason. This is a deliberate reversal of several "standard"-tier cases approved earlier the same session (vehicle/heavy-machinery purchases, a PEMEX service with genuine hydrocarbon content in its title) — all now excluded too, per explicit confirmation. The "standard" tier stays in the type/schema and UI (for already-stored legacy rows until reclassified) but is no longer a real outcome of the classifier.
+2. **The 5 PEMEX pipeline/ductos titles were intentionally dropped**, not an oversight, from the user's narrower 13-title whitelist (they'd been in an earlier, broader 18-title version). Added targeted excludes grounded in the exact real title wording: bare `\bductos?\b` (word-boundary-safe — confirmed it never matches inside the compound words "oleoducto"/"gasoducto"/"poliducto", which stay flagship signals via `MAJOR_PROJECT_KEYWORDS`), plus `líneas de descarga` and `infraestructuras complementarias` for the two titles in that same group that didn't literally say "ducto".
+3. **"Delete" means literal deletion from Supabase**, not just hiding — confirmed, but not yet built. Given the scale (this now excludes the large majority of the former significant/standard pool) and that it's irreversible, this needs its own dry-run-first script (the `purge-old-tenders.ts` pattern) rather than being folded into a relevance-only change — not done this pass.
+
+Recomputed against the export with all three changes: **`flagship 48 / significant 96 / standard 0 / excluded 354` — 144 total kept**, down from the session's starting point of ~1,900 (about 7.6%).
 
 ### Multi-industry filtering — the data already supports it; the UI now does too
 

@@ -119,6 +119,31 @@ const EXCLUDE_KEYWORDS = [
   /curso(s)? de actualizaci[óo]n/i, // 更新服务 — training/refresher courses
   /servicios profesionales para la elaboraci[óo]n del aval[úu]o/i, // 专业类服务 — property appraisal professional services
   /\ban[áa]lisis (satelital|petrof[íi]sicos?|de aguas|de laboratorio|geol[óo]gicos?|de fluidos|metoce[áa]nicos?)\b|servicio(s)? de an[áa]lisis\b|monitoreo (local y remoto|de la calidad)/i, // 分析服务/分析设备 — analysis/monitoring services, not equipment or works
+  // Bare "ducto(s)" — generic internal facility piping/conduit work (real
+  // PEMEX examples: "construcción de ductos y líneas de descarga",
+  // "sustitución de líneas de descarga... con tubería no metálica").
+  // Deliberately NOT the same signal as the "oleoducto/gasoducto/
+  // poliducto" long-distance transport pipeline in MAJOR_PROJECT_KEYWORDS
+  // below — \bductos?\b never matches inside those compound words (no
+  // word boundary between "oleo"/"gas"/"poli" and "ducto"), confirmed
+  // against all three. Added (2026-09-02) after the user's narrowed
+  // 13-title "keep as significant" whitelist deliberately excluded 5 real
+  // PEMEX pipeline/ductos titles they'd included in an earlier, broader
+  // version of the same list — this is what actually differentiates them
+  // from the kept water-treatment-plant/building/highway/railway
+  // construction titles, which all reach FLAGSHIP_INDUSTRY_KEYWORDS via
+  // "construcción" but don't also mention "ducto(s)".
+  /\bductos?\b/i,
+  // Same PEMEX-drop batch, real titles that didn't happen to say "ducto"
+  // but are the same category of internal upstream E&P facility
+  // maintenance/infrastructure work (as opposed to the actual long-haul
+  // pipeline construction/EPC that oleoducto/gasoducto/poliducto and
+  // "ductos" above already catch): "líneas de descarga" (discharge
+  // lines) and "infraestructuras complementarias" (complementary
+  // facility infrastructure) — both from the same 5-title PEMEX group
+  // the user's narrowed whitelist dropped.
+  /l[íi]neas? de descarga/i,
+  /infraestructuras? complementarias?/i,
 ];
 
 /**
@@ -376,7 +401,7 @@ const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
 };
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "value" | "industry" | "no_content" | "short_duration" | "buyer",
+  "keyword" | "value" | "industry" | "no_content" | "short_duration" | "buyer" | "below_threshold",
   LocalizedText
 > = {
   no_content: {
@@ -409,11 +434,25 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     en: "This buyer's procurement is typically consumer/household goods for a social program, not an industrial or infrastructure opportunity — filtered from the default feed (metadata is kept, not deleted).",
     es: "Las contrataciones de esta entidad suelen ser bienes de consumo/hogar para un programa social, no una oportunidad industrial o de infraestructura — filtrada de la vista predeterminada (los metadatos se conservan).",
   },
+  below_threshold: {
+    zh: `该项目未匹配到当前的重点白名单（建筑/基建类工程、医疗及化验设备等），或预估金额低于 $${SIGNIFICANT_VALUE_USD.toLocaleString("en-US")} 美元的重点门槛，默认不进入推荐列表（数据仍保留，可用于统计）。`,
+    en: `This tender doesn't match the current priority whitelist (construction/infrastructure works, medical/lab equipment) and its value is under the $${SIGNIFICANT_VALUE_USD.toLocaleString("en-US")} significant-tier bar — filtered from the default feed (metadata is kept, not deleted).`,
+    es: `Esta licitación no coincide con la lista blanca de prioridades actual (obras de construcción/infraestructura, equipo médico/de laboratorio) y su valor está por debajo del umbral de $${SIGNIFICANT_VALUE_USD.toLocaleString("en-US")} para el nivel significativo — filtrada de la vista predeterminada (los metadatos se conservan).`,
+  },
 };
 
 function reasonFor(
   tier: TenderRelevance["tier"],
-  signal: "value" | "scope" | "industry" | "keyword" | "no_content" | "short_duration" | "buyer" | "none",
+  signal:
+    | "value"
+    | "scope"
+    | "industry"
+    | "keyword"
+    | "no_content"
+    | "short_duration"
+    | "buyer"
+    | "below_threshold"
+    | "none",
 ): LocalizedText {
   if (tier === "excluded") {
     return EXCLUDED_REASON_BY_SIGNAL[
@@ -421,7 +460,8 @@ function reasonFor(
       signal === "industry" ||
       signal === "no_content" ||
       signal === "short_duration" ||
-      signal === "buyer"
+      signal === "buyer" ||
+      signal === "below_threshold"
         ? signal
         : "keyword"
     ];
@@ -571,5 +611,15 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }
 
-  return { tier: "standard", label: LABELS.standard, reason: reasonFor("standard", "none") };
+  // "standard" eliminated as a kept tier (2026-09-02, per explicit user
+  // confirmation): the user's "keep only flagship + this whitelist"
+  // request meant everything that reaches this point — real value or
+  // industry-tag signal present, but not enough to clear "significant" —
+  // no longer shows by default either. This is a deliberate reversal of
+  // earlier-approved "standard" cases from the same session (vehicle/
+  // heavy-machinery purchases, a PEMEX service with genuine hydrocarbon
+  // content in its title) — those move to excluded too now. classifyRelevance()
+  // itself never returns "standard" going forward; the tier stays in the
+  // type/schema only for already-stored legacy rows until reclassified.
+  return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "below_threshold") };
 }

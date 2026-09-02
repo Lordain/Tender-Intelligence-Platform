@@ -390,10 +390,45 @@ Once both are real, the pipeline this schema is already shaped for:
   extraction shape shows whether one's actually needed (e.g. extracting
   from one combined context vs. per-document).
 - **Translation**: same LLM call (or a second pass) should also produce
-  the `zh` field for `title`/`summary`/description text currently mirrored
-  from `es` via `untranslated()` — real translation, not the placeholder
-  mirror, is what actually differentiates this product per the framing
-  above.
+  the `zh` field for description text this extraction pipeline itself
+  outputs (`TenderRequirement`/`TenderRisk` — the model is already asked
+  for both `es` and `zh` per field, see extract-requirements.ts). Built
+  separately from title/summary translation below, since those need a
+  translation pass over every already-ingested tender, not just the ones
+  that get a document extracted.
+
+### Title/summary translation — es→zh on Haiku 4.5, built and untested
+
+`lib/ingestion/translate-titles.ts` + `npm run translate:tenders` is now
+built: batches (25 per call) of already-ingested tenders whose
+`title.zh === title.es` (the `untranslated()` mirror every mapper writes —
+see `text-utils.ts`) through `client.messages.parse` + `zodOutputFormat`
+on **Haiku 4.5**, not Opus 5 — an explicit user decision, since
+translating a title/summary is mechanical compared to
+`extract-requirements.ts`'s document-comprehension work, so the
+cheap/fast tier is the right fit for it specifically. Skips
+`relevance_tier: "excluded"` tenders (no point paying to translate what
+the default feed never shows). Writes only `title.zh`/`summary.zh` back
+via a plain `UPDATE` per tender (not a batched upsert like
+`upsert-tenders.ts` — a partial upsert would need every `NOT NULL` column
+present or Postgres tries to validate the INSERT branch's missing columns
+before it can even discover the conflict; a plain `UPDATE` on an
+already-existing row has no such requirement). `title.en`/`summary.en`
+stay mirrored from `es` — `en` is never a target locale for this
+Chinese-only product.
+
+**Not live-tested**, same caveat as document extraction — no
+`ANTHROPIC_API_KEY` in this environment. One real design choice already
+made without live testing: no `cache_control` on the system prompt here,
+unlike `extract-requirements.ts` — that file's system prompt is long
+enough to clear the minimum cacheable-prefix threshold and is genuinely
+reused across many real documents; this file's system prompt is short
+(likely under that threshold) and the actual batch content is different,
+volatile data on every call, so caching would silently do nothing rather
+than save anything. Run `npm run translate:tenders -- --limit 20 --write`
+against a small real batch once a key is configured, and read the
+Chinese output critically (proper nouns, technical terms) before running
+it unlimited.
 
 ## `governmentLevel` and `industry` are best-effort guesses (mostly)
 

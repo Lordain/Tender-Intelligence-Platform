@@ -42,19 +42,47 @@ export function buildComprasMxDetailUrl(comprasMxId: string): string {
   return `https://comprasmx.buengobierno.gob.mx/sitiopublico/#/sitiopublico/detalle/${comprasMxId}/procedimiento`;
 }
 
-/** Returns null when LicitIA doesn't have this procedure indexed (a real, expected case — LicitIA syncs from Compras MX daily, not instantly) or the request otherwise fails, rather than throwing — a single unresolved link shouldn't abort a batch backfill. */
-export async function resolveComprasMxDetailUrl(procedureNumber: string): Promise<string | null> {
+/**
+ * "not_found" is the real, expected case (LicitIA syncs from Compras MX
+ * daily, not instantly) — a 404 or a response with no `data.id`.
+ * "error" is everything else (network failure, a non-404 non-2xx status,
+ * a response that didn't parse as JSON) and carries a real message —
+ * 2026-09-03: the first version of this function collapsed every one of
+ * these into a bare `null`, and a real batch run against 526 tenders
+ * came back 0/526 resolved with no way to tell whether that meant
+ * "genuinely not indexed" or "every request is silently failing" (it
+ * turned out to be the latter — see resolve-comprasmx-links.ts's
+ * now-surfaced error messages for the real cause). A single unresolved
+ * link still shouldn't abort a batch backfill, so this returns a typed
+ * result instead of throwing — but the caller can now actually see why.
+ */
+export type ResolveComprasMxDetailUrlResult =
+  | { status: "resolved"; detailUrl: string }
+  | { status: "not_found" }
+  | { status: "error"; message: string };
+
+export async function resolveComprasMxDetailUrl(procedureNumber: string): Promise<ResolveComprasMxDetailUrlResult> {
   const url = `${LICITIA_BASE}/licitaciones/${encodeURIComponent(procedureNumber)}.json`;
 
   let response: Response;
   try {
     response = await fetch(url, { headers: { Accept: "application/json" } });
-  } catch {
-    return null;
+  } catch (err) {
+    return { status: "error", message: err instanceof Error ? err.message : String(err) };
   }
-  if (!response.ok) return null;
 
-  const body = (await response.json()) as LicitiaLicitacionResponse;
+  if (response.status === 404) return { status: "not_found" };
+  if (!response.ok) return { status: "error", message: `HTTP ${response.status} ${response.statusText}` };
+
+  let body: LicitiaLicitacionResponse;
+  try {
+    body = (await response.json()) as LicitiaLicitacionResponse;
+  } catch (err) {
+    return { status: "error", message: `response wasn't valid JSON: ${err instanceof Error ? err.message : String(err)}` };
+  }
+
   const id = body.data?.id;
-  return typeof id === "string" && id.length > 0 ? buildComprasMxDetailUrl(id) : null;
+  return typeof id === "string" && id.length > 0
+    ? { status: "resolved", detailUrl: buildComprasMxDetailUrl(id) }
+    : { status: "not_found" };
 }

@@ -31,6 +31,16 @@ import { resolveComprasMxDetailUrl } from "../lib/ingestion/connectors/licitia-c
 
 const GENERIC_SOURCE_URL = "https://comprasmx.buengobierno.gob.mx/sitiopublico/#/";
 
+// A real run against 526 tenders came back 0 resolved with every single
+// one silently swallowed as "not found" (2026-09-03) - traced to
+// resolveComprasMxDetailUrl() not distinguishing a real "not indexed"
+// from every other failure mode. If the same systemic problem recurs
+// (a firewall/proxy blocking this host, a DNS issue, etc.), erroring
+// out immediately on the first several failures is far more useful than
+// burning through hundreds of doomed requests and a wall of identical
+// output before the user notices.
+const ERROR_CIRCUIT_BREAKER_THRESHOLD = 5;
+
 async function main() {
   const shouldWrite = process.argv.includes("--write");
 
@@ -58,28 +68,45 @@ async function main() {
 
   let resolvedCount = 0;
   let notFoundCount = 0;
+  let errorCount = 0;
+  let consecutiveErrors = 0;
 
   for (const row of rows) {
     const slug = row.slug as string;
     const tenderNumber = row.tender_number as string;
 
-    const detailUrl = await resolveComprasMxDetailUrl(tenderNumber);
-    if (!detailUrl) {
+    const result = await resolveComprasMxDetailUrl(tenderNumber);
+
+    if (result.status === "error") {
+      console.error(`  [error]     ${slug} (${tenderNumber}) — ${result.message}`);
+      errorCount++;
+      consecutiveErrors++;
+      if (consecutiveErrors >= ERROR_CIRCUIT_BREAKER_THRESHOLD) {
+        console.error(
+          `\n${consecutiveErrors} requests in a row failed with an error (not "not found") — stopping early rather than repeating the same failure hundreds more times. This looks systemic (network/firewall/DNS on this machine reaching api.licitia.com.mx), not "these procedures aren't indexed." Fix that first, then re-run.`,
+        );
+        process.exit(1);
+      }
+      continue;
+    }
+    consecutiveErrors = 0;
+
+    if (result.status === "not_found") {
       console.log(`  [not found] ${slug} (${tenderNumber}) — not in LicitIA's index yet`);
       notFoundCount++;
       continue;
     }
 
-    console.log(`  [resolved]  ${slug} (${tenderNumber}) -> ${detailUrl}`);
+    console.log(`  [resolved]  ${slug} (${tenderNumber}) -> ${result.detailUrl}`);
     resolvedCount++;
 
     if (shouldWrite) {
-      const { error: updateError } = await supabase.from("tenders").update({ source_url: detailUrl }).eq("slug", slug);
+      const { error: updateError } = await supabase.from("tenders").update({ source_url: result.detailUrl }).eq("slug", slug);
       if (updateError) console.error(`    failed to write: ${updateError.message}`);
     }
   }
 
-  console.log(`\nResolved ${resolvedCount} of ${rows.length} (${notFoundCount} not found in LicitIA's index).`);
+  console.log(`\nResolved ${resolvedCount} of ${rows.length} (${notFoundCount} not found in LicitIA's index, ${errorCount} errored).`);
   if (!shouldWrite) console.log("dry run (pass --write to update Supabase) — nothing was written.");
 }
 

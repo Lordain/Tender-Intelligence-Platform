@@ -39,7 +39,7 @@
  *   npm run analyze:batch -- path/to/folder --provider=claude-haiku [--count=5]
  *   npm run analyze:batch -- path/to/folder --provider=gemini [--count=5]
  *
- * --provider: claude-haiku | claude-sonnet | claude-opus | qwen | qwen-anthropic | gemini
+ * --provider: claude-haiku | claude-sonnet | claude-opus | qwen | qwen-anthropic | qwen-anthropic-3.6 | gemini
  * --count: how many DOCUMENTS to run (default 5), not tenders — takes the
  *   first N matched files in the folder, alphabetical. Real gap found
  *   2026-09-03: a folder with more than --count files can silently cut off
@@ -57,7 +57,7 @@ import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract
 import { extractTenderRequirementsGemini } from "../lib/ingestion/extract-requirements-gemini";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
-type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "qwen-anthropic" | "gemini";
+type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "qwen-anthropic" | "qwen-anthropic-3.6" | "gemini";
 type ExtractContext = { tenderNumber: string; title: string; buyer: string };
 
 const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractContext) => Promise<TenderExtraction>> = {
@@ -66,6 +66,7 @@ const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractCo
   "claude-opus": (p, c) => extractTenderRequirements(p, c, "claude-opus-5"),
   qwen: extractTenderRequirementsQwen,
   "qwen-anthropic": extractTenderRequirementsQwenAnthropic,
+  "qwen-anthropic-3.6": (p, c) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.6-plus"),
   gemini: extractTenderRequirementsGemini,
 };
 
@@ -75,6 +76,7 @@ const PROVIDER_ENV_VAR: Record<ProviderKey, string> = {
   "claude-opus": "ANTHROPIC_API_KEY",
   qwen: "DASHSCOPE_API_KEY",
   "qwen-anthropic": "DASHSCOPE_API_KEY",
+  "qwen-anthropic-3.6": "DASHSCOPE_API_KEY",
   gemini: "GEMINI_API_KEY",
 };
 
@@ -198,7 +200,7 @@ async function main() {
   const count = countArg ? parseInt(countArg, 10) : 5;
 
   if (!dir || !provider || !(provider in PROVIDER_RUNNERS)) {
-    console.error("Usage: npm run analyze:batch -- <folder> --provider=<claude-haiku|claude-sonnet|claude-opus|qwen|qwen-anthropic|gemini> [--count=5]");
+    console.error("Usage: npm run analyze:batch -- <folder> --provider=<claude-haiku|claude-sonnet|claude-opus|qwen|qwen-anthropic|qwen-anthropic-3.6|gemini> [--count=5]");
     process.exit(1);
   }
 

@@ -118,7 +118,7 @@ Ground rules:
 - If a section is genuinely absent from this document (e.g. no Anexo Técnico attached), return an empty array for the corresponding field rather than guessing.`;
 
 /** Sonnet 5 is the default (included) tier; Opus 5 is the "精度分析" premium tier the user proposed (2026-09-02) — same schema/prompt either way, only the model differs. Not yet wired to any actual paid-gating UI/API route (that doesn't exist yet); this parameter is what such a route would pass through once built. `claude-haiku-4-5-20251001` was added 2026-09-03 as a cheaper tier to evaluate alongside Qwen/Gemini via scripts/analyze-batch.ts — same schema/prompt, only the model differs, so the comparison is fair. `qwen3.5-plus` (2026-09-03) is Qwen accessed through DashScope's Anthropic-compatible endpoint, not Claude — see extract-requirements-qwen-anthropic.ts, which calls this same function with a differently-configured client via the new `client` parameter below. */
-export type ExtractionModel = "claude-sonnet-5" | "claude-opus-5" | "claude-haiku-4-5-20251001" | "qwen3.5-plus";
+export type ExtractionModel = "claude-sonnet-5" | "claude-opus-5" | "claude-haiku-4-5-20251001" | "qwen3.5-plus" | "qwen3.6-plus";
 
 type ExtractionContent = Array<{ type: "text"; text: string } | { type: "document"; source: { type: "base64"; media_type: "application/pdf"; data: string } }>;
 

@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { extractTenderRequirements, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
+import { extractTenderRequirements, type TenderExtraction, type ExtractionModel } from "@/lib/ingestion/extract-requirements";
 
 /**
  * Second Qwen path (2026-09-03, per the user), via DashScope's
@@ -31,14 +31,28 @@ import { extractTenderRequirements, type TenderExtraction } from "@/lib/ingestio
  * pdf-split.ts): a 28,000,000-character cap on the base64 PDF field
  * itself, and a 16,777,216-byte cap on the overall request body — both
  * already accounted for in pdf-split.ts's chunk-size budget.
+ *
+ * `qwen3.6-plus` (2026-09-03) is a second selectable model, added per the
+ * user's request to test whether it handles a specific real failure case
+ * differently from qwen3.5-plus: a 33MB scanned Anexo that, after
+ * splitting into chunks (native-PDF page/size limits — see pdf-split.ts),
+ * came back with suspiciously tiny per-chunk input token counts (~535,
+ * versus tens of thousands for a normal chunk) and an empty 0/0/0/0
+ * result on qwen3.5-plus — see extract-requirements.ts's header comment
+ * on isPdfNativeLimitError() for the confirmed size ceilings this is
+ * unrelated to. Whether that's a qwen3.5-plus-specific weakness (worth
+ * routing this kind of document to a different model) or a deeper
+ * DashScope/chunked-PDF issue neither model can get past is what this
+ * comparison is meant to answer — not assumed either way.
  */
 export async function extractTenderRequirementsQwenAnthropic(
   filePath: string,
   context: { tenderNumber: string; title: string; buyer: string },
+  model: Extract<ExtractionModel, "qwen3.5-plus" | "qwen3.6-plus"> = "qwen3.5-plus",
 ): Promise<TenderExtraction> {
   const client = new Anthropic({
     apiKey: process.env.DASHSCOPE_API_KEY,
     baseURL: "https://dashscope-intl.aliyuncs.com/apps/anthropic",
   });
-  return extractTenderRequirements(filePath, context, "qwen3.5-plus", client, false);
+  return extractTenderRequirements(filePath, context, model, client, false);
 }

@@ -91,6 +91,8 @@ export const uiText = {
   mandatory: { en: "Mandatory", es: "Obligatorio", zh: "强制要求" },
   optional: { en: "Optional", es: "Opcional", zh: "非强制" },
   viewSourceDocument: { en: "View source document", es: "Ver documento fuente", zh: "查看原始来源文件" },
+  copyProcedureNumber: { en: "Copy procedure number", es: "Copiar número de procedimiento", zh: "复制招标编号" },
+  copiedToClipboard: { en: "Copied", es: "Copiado", zh: "已复制" },
   noneListed: { en: "None listed for this tender.", es: "No se enlistan para esta licitación.", zh: "本项目未列出相关内容。" },
 
   navSaved: { en: "Saved", es: "Guardados", zh: "已收藏" },

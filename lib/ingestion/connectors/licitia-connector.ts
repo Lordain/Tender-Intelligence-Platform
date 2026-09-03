@@ -51,6 +51,99 @@ type LicitiaLicitacionResponse = {
   data?: { id?: string };
 };
 
+/**
+ * One line of LicitIA's bulk `/descargas/licitaciones/{lote}` NDJSON dump —
+ * confirmed real (2026-09-03) against a real downloaded lote (lote 1 of 15,
+ * 372,449 rows total across the whole corpus). This is LicitIA's own
+ * normalization of ComprasMX's official "Datos Abiertos" bulk files
+ * (confirmed via https://licitia.com.mx/datos — "La fuente primaria es
+ * ComprasMX y su portal de Datos Abiertos"), not a scrape of the anti-bot-
+ * gated detail API.
+ *
+ * Deliberately a flat, coarse row (no Carácter/Tipo de contratación/estado
+ * federativo-name fields the manual "Difusión de procedimientos" export
+ * has) — see licitia-vigente-mapper.ts for the honest gaps this leaves in
+ * the mapped Tender.
+ */
+export type LicitiaVigenteRow = {
+  numero: string;
+  nombre: string;
+  dependencia: string;
+  siglas: string;
+  tipo: string;
+  estatus: string;
+  seccion: "vigente" | "seguimiento" | "concluido" | string;
+  anio: number;
+  estado: number;
+  publicacion: string | null;
+  apertura: string | null;
+  fallo: string | null;
+  adjudicaciones: number;
+};
+
+type LicitiaDescargasManifestResponse = {
+  success: boolean;
+  data?: {
+    formato: string;
+    plantilla: string;
+    licencia: string;
+    entidades: { entidad: string; lotes: number; filas: number }[];
+  };
+};
+
+/**
+ * `GET /descargas` — confirmed real (2026-09-03): returns how many lotes
+ * (batches) exist per entity, so the caller never has to hardcode a lote
+ * count that could go stale as the corpus grows.
+ */
+export async function fetchDescargasManifest(): Promise<{ entidad: string; lotes: number; filas: number }[]> {
+  const response = await fetch(`${LICITIA_BASE}/descargas`, { headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`LicitIA /descargas returned HTTP ${response.status} ${response.statusText}`);
+
+  const body = (await response.json()) as LicitiaDescargasManifestResponse;
+  if (!body.success || !body.data) throw new Error("LicitIA /descargas returned an unsuccessful response");
+  return body.data.entidades;
+}
+
+/** One lote of the bulk `licitaciones` dump — real NDJSON, one JSON object per line. */
+export async function fetchLicitacionesLote(lote: number): Promise<LicitiaVigenteRow[]> {
+  const response = await fetch(`${LICITIA_BASE}/descargas/licitaciones/${lote}`, { headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`LicitIA /descargas/licitaciones/${lote} returned HTTP ${response.status} ${response.statusText}`);
+
+  const text = await response.text();
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => JSON.parse(line) as LicitiaVigenteRow);
+}
+
+/**
+ * Downloads every lote of the bulk `licitaciones` corpus and keeps only
+ * `seccion === "vigente"` (ComprasMX's own normalized "currently open for
+ * bidding" bucket, distinct from "seguimiento"/post-opening-in-progress and
+ * "concluido"/closed) — this is what replaces the manual "open the site,
+ * filter, click export" step. The corpus itself covers every status/year
+ * since 2022, so most of it is discarded; downloading it lote-by-lote (not
+ * a single giant request) keeps a single failed lote retryable in
+ * principle, though this first version doesn't retry — see caller.
+ */
+export async function fetchAllVigenteLicitaciones(onProgress?: (lote: number, totalLotes: number) => void): Promise<LicitiaVigenteRow[]> {
+  const manifest = await fetchDescargasManifest();
+  const licitaciones = manifest.find((e) => e.entidad === "licitaciones");
+  if (!licitaciones) throw new Error("LicitIA's /descargas manifest doesn't list a 'licitaciones' entity — its shape may have changed");
+
+  const vigente: LicitiaVigenteRow[] = [];
+  for (let lote = 1; lote <= licitaciones.lotes; lote++) {
+    onProgress?.(lote, licitaciones.lotes);
+    const rows = await fetchLicitacionesLote(lote);
+    for (const row of rows) {
+      if (row.seccion === "vigente") vigente.push(row);
+    }
+  }
+  return vigente;
+}
+
 export function buildComprasMxDetailUrl(comprasMxId: string): string {
   return `https://comprasmx.buengobierno.gob.mx/sitiopublico/#/sitiopublico/detalle/${comprasMxId}/procedimiento`;
 }

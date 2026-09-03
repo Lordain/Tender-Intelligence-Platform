@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   LocalizedText,
@@ -172,8 +173,22 @@ function toTender(row: TenderRow): Tender {
 /** PostgREST caps an unranged select at this many rows per request — a real, silent truncation confirmed against production data (exactly 1000 rows came back with no error), not a documentation-only concern. Must page with .range() to get everything. */
 const SUPABASE_PAGE_SIZE = 1000;
 
-/** Returns null when Supabase isn't configured, so callers can fall back to mock data. */
-export async function fetchAllTendersFromDb(): Promise<Tender[] | null> {
+/**
+ * Returns null when Supabase isn't configured, so callers can fall back
+ * to mock data.
+ *
+ * Wrapped in React's `cache()` (2026-09-03, real user-reported slowness
+ * — every page load turned out to run this full, paged, multi-round-trip
+ * table scan TWICE: once in app/layout.tsx just to feed the header's
+ * notification bell, and again in whichever page component also calls
+ * getAllTenders(), with no de-dup between them since this is a Supabase
+ * client call, not a plain `fetch()` Next.js would already de-dupe on
+ * its own). `cache()` makes every call within one request's render pass
+ * reuse the same in-flight/resolved promise instead of re-querying —
+ * the standard React Server Component fix for exactly this shape of
+ * problem, not a change in what data comes back.
+ */
+export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> => {
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
 
@@ -196,7 +211,7 @@ export async function fetchAllTendersFromDb(): Promise<Tender[] | null> {
   }
 
   return rows.map(toTender);
-}
+});
 
 /** Returns undefined when configured but no row matches; null when Supabase isn't configured. */
 export async function fetchTenderBySlugFromDb(

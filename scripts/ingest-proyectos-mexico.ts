@@ -58,7 +58,7 @@ async function main() {
     ? join(__dirname, "../lib/ingestion/__fixtures__/sample-proyectos-mexico.csv")
     : filePath!;
 
-  const rows = readProyectosMexicoFile(resolvedPath);
+  const rows = await readProyectosMexicoFile(resolvedPath);
   const mappedTenders = rows
     .map((row) => mapProyectosMexicoRowToTender(row, SOURCE_NAME))
     .filter((t): t is Tender => t !== null);

@@ -36,6 +36,18 @@ import { classifyIndustries, type IndustryKey } from "@/lib/industry";
  * with nothing in either system's data linking the two rows. Accepted
  * as a known, documented limitation rather than attempting unreliable
  * fuzzy title/buyer matching to "resolve" it.
+ *
+ * WITHIN this source, title collisions after stripping the numeric id
+ * prefix were checked directly against all 58 real Licitación-stage
+ * rows and found none — but the site itself covers every project stage
+ * (pre-investment through operating), and the same real project likely
+ * gets a new numeric id as it moves between stages (a different
+ * database row per stage, not a status update on one row) — a real
+ * possibility the user flagged, not yet confirmed against a multi-stage
+ * export. If a future export ever mixes stages, the post-strip title is
+ * the closest thing to a stable same-project key this source offers on
+ * its own (still not a hard guarantee — real project names could
+ * coincidentally match, or legitimately change between stages).
  */
 export type ProyectosMexicoRow = {
   Proyecto?: string;
@@ -113,15 +125,30 @@ function parseDate(raw: string | undefined): string | null {
 /**
  * Real values are in MILLIONS (e.g. "7,651" in the MXN column means
  * 7,651,000,000 MXN — confirmed against the real export's own column
- * header "Inversión (Millones MXN)"). The USD column is preferred when
- * present since it needs no currency-table conversion — the same real
- * row that has an MXN figure always has the USD one too in the export
- * inspected.
+ * header "Inversión (Millones MXN)").
+ *
+ * Reads the native-currency MXN column, NOT the site's own precomputed
+ * USD column — corrected (2026-09-02) per the user's explicit note.
+ * Matches every other Mexican-sourced mapper's convention: store the
+ * real native-currency figure and let classifyRelevance()'s own
+ * convertToUsd() table do the normalization, rather than trusting a
+ * site's own USD conversion (unknown exchange rate, unknown as-of date)
+ * that would otherwise sit inconsistently alongside every other tender
+ * on the platform. "Moneda del contrato" is the real currency-code
+ * field (confirmed real values: "Pesos mexicanos MXN" on 55/58 rows,
+ * "Dólares americanos USD" on 3/58 — those 3 had no value in the file
+ * inspected, but the field is read properly regardless in case a future
+ * export does carry one), not assumed to always be MXN.
  */
 function parseMillions(raw: string | undefined): number | undefined {
   if (!raw) return undefined;
   const n = Number(raw.replace(/,/g, ""));
   return Number.isFinite(n) ? n * 1_000_000 : undefined;
+}
+
+function extractCurrencyCode(moneda: string | undefined): string | undefined {
+  const match = /([A-Z]{3})\s*$/.exec(moneda ?? "");
+  return match?.[1];
 }
 
 function buildKeyDates(id: string, row: ProyectosMexicoRow): TenderKeyDate[] {
@@ -152,17 +179,31 @@ export function mapProyectosMexicoRowToTender(row: ProyectosMexicoRow, sourceNam
   if (row.Etapa?.trim() !== "Licitación") return null;
 
   const publicationDate = parseDate(row["Anuncio/ Convocatoria"]) ?? new Date().toISOString();
-  const summary = row["Descripción"]?.trim() || row.Alias?.trim() || title;
+  // Alias is preferred over Descripción for summary (2026-09-02, per the
+  // user's explicit note): Alias is a real one-sentence restatement of
+  // the project (confirmed against all 58 real rows), close in shape to
+  // a normal tender summary. Descripción is a much longer multi-
+  // paragraph technical spec — real, useful content, but not what this
+  // platform's summary field is for; Descripción is still fed into
+  // classifyIndustries() below for its real signal even when Alias wins
+  // the display summary.
+  const summary = row.Alias?.trim() || row["Descripción"]?.trim() || title;
 
   const sectorIndustry = row.Sector ? SECTOR_KEYWORDS[row.Sector.trim()] : undefined;
-  let industries = classifyIndustries(title, summary, row.Subsector);
+  let industries = classifyIndustries(title, summary, row["Descripción"], row.Subsector);
   if (sectorIndustry && !industries.includes(sectorIndustry)) {
     industries = [...industries.filter((i) => i !== "general"), sectorIndustry];
   }
 
   const scopeType: TenderScopeType = "works";
-  const estimatedValue = parseMillions(row["Inversión (Millones USD)"]);
-  const currency = estimatedValue !== undefined ? "USD" : undefined;
+  const mxnValue = parseMillions(row["Inversión (Millones MXN)"]);
+  const estimatedValue = mxnValue ?? parseMillions(row["Inversión (Millones USD)"]);
+  const currency =
+    estimatedValue === undefined
+      ? undefined
+      : mxnValue !== undefined
+        ? (extractCurrencyCode(row["Moneda del contrato"]) ?? "MXN")
+        : "USD";
 
   const now = new Date().toISOString();
 

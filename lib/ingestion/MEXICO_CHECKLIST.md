@@ -14,6 +14,12 @@ None of these steps run on a schedule. Every capture is manual, on demand — re
   - Open `https://comprasmx.buengobierno.gob.mx/sitiopublico/#/` ("Difusión de procedimientos"), filter as needed, click the page's own Excel export button.
   - `npm run ingest:comprasmx-open -- <file>.xlsx --write`
   - Re-running this later with an overlapping export is safe — upsert is keyed by the tender's real procedure number, not insert-only (see README's "Re-ingestion dedup").
+- [ ] **1.2 Automated discovery via LicitIA** (added 2026-09-03 — a second, independent discovery path on top of 1.1, not a replacement)
+  - `npm run discover:comprasmx-vigente -- --write` — no manual export step at all; pulls LicitIA's bulk `licitaciones` corpus, keeps only `seccion === "vigente"`, skips anything already in Supabase, resolves a real deep link for each new one.
+  - Real run (2026-09-03): 564 vigente total, 555 already covered by 1.1's manual exports, 9 genuinely new. Run this anytime; safe to re-run (same slug scheme as 1.1).
+  - See README's "LicitIA — a third-party ComprasMX/CompraNet mirror" section for the full story, including confirmation this does NOT cover PEMEX, CFE, or Proyectos Estratégicos MX (Part 3.5 stays the only path for that one).
+- [ ] **1.3 Deep-link backfill for anything still on the generic fallback URL**
+  - `npm run resolve:comprasmx-links -- --write` — safe to re-run anytime; real run resolved 591/591.
 
 **Contracts (awarded/historical) intentionally NOT in this checklist.** Corrected 2026-09-02 after the user caught the inconsistency: this data is only useful for relevance-threshold calibration and market intelligence — the thresholds are already calibrated and tested against real data from earlier this session, and market intelligence is explicitly a post-launch feature, not current priority. Awarded/cancelled tenders are also hidden from the default view now (see README's "awarded/cancelled status hidden by default"). Re-add `npm run ingest:comprasmx-contracts` here only if a real future need for fresh contract data actually shows up.
 

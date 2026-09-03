@@ -60,7 +60,17 @@ type TenderRow = {
   relevance_reason: LocalizedText | null;
   source_url: string;
   publication_date: string;
+  source_name: string;
 };
+
+// isNationalPriorityProject isn't a persisted column — the mapper only
+// passes it into classifyRelevance() at ingest time (see
+// proyectos-mexico-mapper.ts) — so it has to be re-derived here from the
+// one real, already-persisted field that identifies the source:
+// source_name. Without this, re-running this script after ingesting
+// Proyectos México would silently strip their forced-flagship tier on
+// rows with no estimatedValue/keyword match of their own.
+const PROYECTOS_MEXICO_SOURCE_NAME = "Proyectos México (Banobras/SHCP)";
 
 const OUT_DIR = "exports";
 
@@ -93,7 +103,7 @@ async function main() {
     const { data, error } = await supabase
       .from("tenders")
       .select(
-        "slug, tender_number, title, summary, buyer, country, industries, scope_type, estimated_value, currency, relevance_tier, relevance_label, relevance_reason, source_url, publication_date",
+        "slug, tender_number, title, summary, buyer, country, industries, scope_type, estimated_value, currency, relevance_tier, relevance_label, relevance_reason, source_url, publication_date, source_name",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
@@ -127,6 +137,7 @@ async function main() {
       estimatedValue: row.estimated_value ?? undefined,
       currency: row.currency ?? undefined,
       buyer: row.buyer,
+      isNationalPriorityProject: row.source_name === PROYECTOS_MEXICO_SOURCE_NAME,
     });
 
     const tierChanged = row.relevance_tier !== recomputed.tier;

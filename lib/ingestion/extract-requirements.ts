@@ -227,7 +227,7 @@ async function runTextExtractionWithOverflowRetry(
 function dedupeByTitleAndDescription<T extends { title: string; description: string }>(items: T[]): T[] {
   const seen = new Set<string>();
   return items.filter((item) => {
-    const key = `${item.title} ${item.description}`;
+    const key = `${item.title}|${item.description}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -326,7 +326,7 @@ export async function extractTenderRequirements(
     return await runExtraction(client, model, pdfContent, context);
   } catch (err) {
     if (!isPdfNativeLimitError(err)) throw err;
-    console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 100)}) — splitting into chunks.`);
+    console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 300)}) — splitting into chunks.`);
 
     try {
       return await runChunkedPdfExtraction(client, model, filePath, instruction, context);
@@ -341,7 +341,7 @@ export async function extractTenderRequirements(
       // context window for a genuinely huge document (confirmed real
       // 2026-09-03) — runTextExtractionWithOverflowRetry() handles that
       // second failure mode too.
-      console.log(`  chunked extraction failed (${(chunkErr instanceof Error ? chunkErr.message : String(chunkErr)).slice(0, 100)}) — falling back to extracted text instead.`);
+      console.log(`  chunked extraction failed (${(chunkErr instanceof Error ? chunkErr.message : String(chunkErr)).slice(0, 800)}) — falling back to extracted text instead.`);
       return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context);
     }
   }

@@ -34,8 +34,16 @@ import mammoth from "mammoth";
  * `XX-##-XXX-XXXXXXXXX-X-#-####` (type+ley, ramo, unidad responsable,
  * unidad compradora, carácter, consecutive, year). Real example:
  * `IA-60-N56-901026999-T-50-2026`.
+ *
+ * The "unidad compradora" segment was originally assumed pure-numeric
+ * (`\d+`, matching that one real example) — wrong, confirmed 2026-09-03
+ * when a real document (`LO-09-JZO-009JZO001-T-36-2026`, unidad
+ * compradora `009JZO001`) went completely unmatched. Widened to
+ * `[A-Z0-9]+` like the "unidad responsable" segment next to it — still
+ * bounded by the surrounding hyphens either way, so this only accepts
+ * more real numbers, it doesn't loosen what counts as a match elsewhere.
  */
-const PROCEDURE_NUMBER_PATTERN = /\b[A-Z]{2}-\d{2}-[A-Z0-9]+-\d+-[A-Z]-\d+-\d{4}\b/g;
+const PROCEDURE_NUMBER_PATTERN = /\b[A-Z]{2}-\d{2}-[A-Z0-9]+-[A-Z0-9]+-[A-Z]-\d+-\d{4}\b/g;
 
 /** Expediente code, per the same dictionary: `E` + 4-digit year + 8-digit serial. */
 const EXPEDIENTE_CODE_PATTERN = /\bE-\d{4}-\d{8}\b/g;

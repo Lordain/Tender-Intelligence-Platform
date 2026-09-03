@@ -128,7 +128,7 @@ async function main() {
     };
 
     run++;
-    console.log(`\n[${run}/${count}] ${slug} — ${intake.fileName}`);
+    console.log(`\n[${run}/${count}] ${slug} — ${intake.fileName} (procedure number appears ${intake.tenderNumberOccurrences}x in the text)`);
     const started = Date.now();
     try {
       const extraction = await PROVIDER_RUNNERS[provider](pdfPath, context);

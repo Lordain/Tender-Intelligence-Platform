@@ -168,7 +168,23 @@ function extractJsonObject(text: string): unknown {
   const start = candidate.indexOf("{");
   const end = candidate.lastIndexOf("}");
   if (start === -1 || end === -1 || end < start) throw new Error(`No JSON object found in response text: ${text.slice(0, 200)}`);
-  return JSON.parse(candidate.slice(start, end + 1));
+
+  const jsonText = candidate.slice(start, end + 1);
+  try {
+    return JSON.parse(jsonText);
+  } catch (err) {
+    // Real gap found 2026-09-03: a model can produce near-valid JSON with
+    // one real syntax error (an unescaped quote inside a string value is
+    // the classic case) — the generic JSON.parse error alone ("Expected
+    // ',' or '}' after property value...") wasn't enough to diagnose
+    // without the actual text around the failure, so this surfaces a
+    // window around the reported position (when JSON.parse's message
+    // includes one) alongside the original message.
+    const message = err instanceof Error ? err.message : String(err);
+    const posMatch = message.match(/position (\d+)/);
+    const context = posMatch ? jsonText.slice(Math.max(0, Number(posMatch[1]) - 80), Number(posMatch[1]) + 80) : jsonText.slice(0, 300);
+    throw new Error(`${message} — context: ...${context}...`);
+  }
 }
 
 /**

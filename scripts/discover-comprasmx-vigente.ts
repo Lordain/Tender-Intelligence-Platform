@@ -17,12 +17,17 @@
  *      ingest:comprasmx-open export has real Carácter/Tipo de contratación
  *      fields this bulk source doesn't carry; re-mapping it here would
  *      overwrite those with worse (defaulted) values.
- *   3. For each genuinely new one, resolve its real ComprasMX deep-link URL
- *      via resolveComprasMxDetailUrl() — the same function
- *      resolve-comprasmx-links.ts already uses, with the same
- *      not_found/error distinction and the same circuit breaker (a run
- *      that error-status's 5 times in a row stops rather than grinding
- *      through the rest doomed).
+  *   3. For each genuinely new one, fetchLicitacionDetail() (same endpoint
+ *      resolveComprasMxDetailUrl() uses, generalized to also return
+ *      buyer.agency/buyer.acronym in the same request — the bulk row's own
+ *      siglas/dependencia can be a raw code for a buyer with no
+ *      established short name, confirmed real 2026-09-03 for
+ *      LO-73-R96-914004997-N-38-2026, a Jalisco state procedure whose bulk
+ *      "siglas" was literally "073R96"; see resolveBuyerName() in
+ *      licitia-vigente-mapper.ts) — same not_found/error distinction and
+ *      circuit breaker as resolve-comprasmx-links.ts (a run that
+ *      error-status's 5 times in a row stops rather than grinding through
+ *      the rest doomed).
  *   4. Map + batch-upsert.
  *
  * This does NOT replace ingest:comprasmx-open — that manual path stays
@@ -37,7 +42,7 @@
  *   npm run discover:comprasmx-vigente -- --months 0  (skip the recency filter)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
-import { fetchAllVigenteLicitaciones, resolveComprasMxDetailUrl } from "../lib/ingestion/connectors/licitia-connector";
+import { fetchAllVigenteLicitaciones, fetchLicitacionDetail, buildComprasMxDetailUrl } from "../lib/ingestion/connectors/licitia-connector";
 import { mapLicitiaVigenteRowToTender } from "../lib/ingestion/licitia-vigente-mapper";
 import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
 import { filterRecentTenders } from "../lib/ingestion/recency";
@@ -84,24 +89,29 @@ async function main() {
   let consecutiveErrors = 0;
 
   for (const [i, row] of newRows.entries()) {
-    const result = await resolveComprasMxDetailUrl(row.numero);
+    // One request gets both the deep-link id AND buyer.agency/buyer.acronym
+    // (the bulk row's own siglas/dependencia can be a raw code for a buyer
+    // without an established short name — see resolveBuyerName() in
+    // licitia-vigente-mapper.ts) — no reason to fetch this row twice.
+    const result = await fetchLicitacionDetail(row.numero);
 
     if (result.status === "error") {
-      console.error(`  [${i + 1}/${newRows.length}] error resolving link for ${row.numero} — ${result.message}`);
+      console.error(`  [${i + 1}/${newRows.length}] error resolving detail for ${row.numero} — ${result.message}`);
       consecutiveErrors++;
       if (consecutiveErrors >= ERROR_CIRCUIT_BREAKER_THRESHOLD) {
         console.error(
-          `\n${consecutiveErrors} link lookups in a row failed with an error (not "not found") — stopping early. This looks systemic (network/firewall/DNS reaching api.licitia.com.mx), not "these procedures aren't indexed." Fix that first, then re-run — already-discovered rows aren't lost, they'll just be re-downloaded next run.`,
+          `\n${consecutiveErrors} detail lookups in a row failed with an error (not "not found") — stopping early. This looks systemic (network/firewall/DNS reaching api.licitia.com.mx), not "these procedures aren't indexed." Fix that first, then re-run — already-discovered rows aren't lost, they'll just be re-downloaded next run.`,
         );
         process.exit(1);
       }
     } else {
       consecutiveErrors = 0;
-      if (result.status === "resolved") resolvedLinks++;
+      if (result.status === "found") resolvedLinks++;
     }
 
-    const sourceUrl = result.status === "resolved" ? result.detailUrl : FALLBACK_SOURCE_URL;
-    const tender = mapLicitiaVigenteRowToTender(row, SOURCE_NAME, sourceUrl);
+    const sourceUrl = result.status === "found" ? buildComprasMxDetailUrl(result.detail.id) : FALLBACK_SOURCE_URL;
+    const detail = result.status === "found" ? result.detail : undefined;
+    const tender = mapLicitiaVigenteRowToTender(row, SOURCE_NAME, sourceUrl, detail);
     if (tender) tenders.push(tender);
 
     if ((i + 1) % 50 === 0 || i + 1 === newRows.length) {

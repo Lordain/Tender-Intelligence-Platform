@@ -12,10 +12,24 @@
  * exports/ for review. Never writes to Supabase — this is an evaluation
  * tool, not scripts/extract-tender-document.ts's --write path.
  *
- * Matches documents to tenders the same way ingest-tender-documents.ts
- * does: reads the procedure number out of the PDF's own text and looks
- * up `comprasmx-${slugify(procedureNumber)}`. A PDF that doesn't match an
- * ingested tender is skipped, not counted toward --count.
+ * Matches documents to tenders by looking up the extracted procedure
+ * number directly against the `tenders.tender_number` column — NOT by
+ * reconstructing a `comprasmx-${slug}` (the first version of this script
+ * did that, which only ever matched Compras MX-sourced tenders; PEMEX
+ * tenders use a `pemex-` slug and were silently skipped even when their
+ * own procedure number matched fine, since it never got looked up).
+ *
+ * CFE tenders (ingested via ingest:dof-search, slug `dof-<DOF codNota>`)
+ * can't be matched this way at all — a DOF publication code isn't a
+ * procedure number and never appears in a CFE bases/convocatoria PDF's
+ * own text. For those (or any tender whose real identifier a document
+ * can't carry), name the file `<slug>__anything.pdf` — a recognized
+ * `<slug>__` prefix looks the tender up directly, bypassing procedure-
+ * number extraction entirely. Find the real slug via Supabase
+ * (`select slug from tenders where source_name ilike '%DOF%'` or the
+ * admin panel) before renaming the file.
+ *
+ * A PDF that matches neither way is skipped, not counted toward --count.
  *
  * Usage:
  *   npm run analyze:batch -- path/to/folder --provider=claude-haiku [--count=5]
@@ -26,13 +40,12 @@
  *   matching PDFs in the folder, alphabetical.
  */
 import { readdirSync, statSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { join, extname } from "node:path";
+import { join, extname, basename } from "node:path";
 import { intakeDocument } from "../lib/ingestion/document-intake";
 import { extractTenderRequirements, type TenderExtraction } from "../lib/ingestion/extract-requirements";
 import { extractTenderRequirementsQwen } from "../lib/ingestion/extract-requirements-qwen";
 import { extractTenderRequirementsGemini } from "../lib/ingestion/extract-requirements-gemini";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
-import { slugify } from "../lib/ingestion/text-utils";
 
 type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "gemini";
 type ExtractContext = { tenderNumber: string; title: string; buyer: string };
@@ -60,6 +73,55 @@ function findDocuments(dir: string): string[] {
     .map((name) => join(dir, name))
     .filter((path) => statSync(path).isFile() && SUPPORTED_EXTENSIONS.includes(extname(path).toLowerCase()))
     .sort();
+}
+
+type ResolvedTender = { slug: string; title: string; buyer: string; tenderNumber: string; matchNote: string };
+
+/** A recognized `<slug>__` file name prefix (e.g. `dof-5678901__bases.pdf`) looks the tender up directly by slug — see this file's header comment for why CFE/DOF tenders need this instead of procedure-number extraction. */
+const SLUG_OVERRIDE_PATTERN = /^([a-z0-9-]+)__/;
+
+async function resolveTender(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  pdfPath: string,
+): Promise<{ tender: ResolvedTender } | { skip: string }> {
+  const fileName = basename(pdfPath);
+  const slugOverride = fileName.match(SLUG_OVERRIDE_PATTERN)?.[1];
+
+  if (slugOverride) {
+    const { data } = await supabase!.from("tenders").select("slug, tender_number, title, buyer").eq("slug", slugOverride).maybeSingle();
+    if (!data) return { skip: `${fileName} — filename names slug "${slugOverride}" but no tender in Supabase has it` };
+    return {
+      tender: {
+        slug: data.slug as string,
+        tenderNumber: data.tender_number as string,
+        title: (data.title as { zh: string }).zh,
+        buyer: data.buyer as string,
+        matchNote: `filename slug override (${slugOverride})`,
+      },
+    };
+  }
+
+  const intake = await intakeDocument(pdfPath);
+  if (!intake.tenderNumber) {
+    return {
+      skip: `${intake.fileName} — no procedure number found in its file name or text (rename it "<slug>__..." to match a tender directly, e.g. for a CFE/DOF tender)`,
+    };
+  }
+
+  const { data } = await supabase!.from("tenders").select("slug, title, buyer").eq("tender_number", intake.tenderNumber).maybeSingle();
+  if (!data) return { skip: `${intake.fileName} — no ingested tender has tender_number ${intake.tenderNumber}` };
+
+  const matchNote =
+    intake.tenderNumberSource === "filename" ? "procedure number from file name" : `procedure number appears ${intake.tenderNumberOccurrences}x in the text`;
+  return {
+    tender: {
+      slug: data.slug as string,
+      tenderNumber: intake.tenderNumber,
+      title: (data.title as { zh: string }).zh,
+      buyer: data.buyer as string,
+      matchNote,
+    },
+  };
 }
 
 function summarize(extraction: TenderExtraction) {
@@ -108,31 +170,21 @@ async function main() {
   for (const pdfPath of documents) {
     if (run >= count) break;
 
-    const intake = await intakeDocument(pdfPath);
-    if (!intake.tenderNumber) {
-      console.log(`[skip] ${intake.fileName} — no procedure number found in its file name or text`);
+    const resolved = await resolveTender(supabase, pdfPath);
+    if ("skip" in resolved) {
+      console.log(`[skip] ${resolved.skip}`);
       continue;
     }
-
-    const slug = `comprasmx-${slugify(intake.tenderNumber)}`;
-    const { data: tender } = await supabase.from("tenders").select("title, buyer").eq("slug", slug).maybeSingle();
-    if (!tender) {
-      console.log(`[skip] ${intake.fileName} — no ingested tender matches ${intake.tenderNumber} (${slug})`);
-      continue;
-    }
+    const { tender } = resolved;
 
     const context: ExtractContext = {
-      tenderNumber: intake.tenderNumber,
-      title: (tender.title as { zh: string }).zh,
-      buyer: tender.buyer as string,
+      tenderNumber: tender.tenderNumber,
+      title: tender.title,
+      buyer: tender.buyer,
     };
 
     run++;
-    const matchNote =
-      intake.tenderNumberSource === "filename"
-        ? "from file name"
-        : `appears ${intake.tenderNumberOccurrences}x in the text`;
-    console.log(`\n[${run}/${count}] ${slug} — ${intake.fileName} (procedure number ${matchNote})`);
+    console.log(`\n[${run}/${count}] ${tender.slug} — ${basename(pdfPath)} (${tender.matchNote})`);
     const started = Date.now();
     try {
       const extraction = await PROVIDER_RUNNERS[provider](pdfPath, context);
@@ -141,11 +193,11 @@ async function main() {
       console.log(
         `  [ok] ${elapsedMs}ms — ${s.qualifications} qualifications, ${s.experienceRequirements} experience, ${s.requiredDocuments} documents, ${s.risks} risks (${s.criticalRisks} critical)`,
       );
-      results[slug] = extraction;
+      results[tender.slug] = extraction;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`  [fail] ${message}`);
-      results[slug] = { error: message };
+      results[tender.slug] = { error: message };
     }
   }
 

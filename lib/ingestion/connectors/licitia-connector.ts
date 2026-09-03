@@ -48,7 +48,10 @@ const LICITIA_BASE = "https://api.licitia.com.mx/api/open/v1";
 
 type LicitiaLicitacionResponse = {
   success: boolean;
-  data?: { id?: string };
+  data?: {
+    id?: string;
+    buyer?: { agency?: string; acronym?: string };
+  };
 };
 
 /**
@@ -166,12 +169,36 @@ export function buildComprasMxDetailUrl(comprasMxId: string): string {
  * link still shouldn't abort a batch backfill, so this returns a typed
  * result instead of throwing — but the caller can now actually see why.
  */
-export type ResolveComprasMxDetailUrlResult =
-  | { status: "resolved"; detailUrl: string }
+export type LicitiaLicitacionDetail = {
+  id: string;
+  /** Full agency name, e.g. "SECRETARÍA DE INFRAESTRUCTURA Y OBRA PÚBLICA (JAL)" — always meaningful when present. */
+  buyerAgency?: string;
+  /**
+   * Short acronym, e.g. "SEDENA" — but NOT always a real acronym: confirmed
+   * real (2026-09-03, procedure LO-73-R96-914004997-N-38-2026) that for a
+   * buyer without an established short name (this one, Jalisco's own
+   * infrastructure secretariat), LicitIA's own "acronym" is just the ramo+
+   * unidad-responsable code ("073R96") — identical to what the bulk
+   * `/descargas/licitaciones/{lote}` dump's "siglas" field already gives,
+   * not a richer value. Callers should treat an acronym containing a digit
+   * as "not really an acronym" and prefer buyerAgency instead — see
+   * licitia-vigente-mapper.ts's resolveBuyerName().
+   */
+  buyerAcronym?: string;
+};
+
+export type FetchLicitacionDetailResult =
+  | { status: "found"; detail: LicitiaLicitacionDetail }
   | { status: "not_found" }
   | { status: "error"; message: string };
 
-export async function resolveComprasMxDetailUrl(procedureNumber: string): Promise<ResolveComprasMxDetailUrlResult> {
+/**
+ * `GET /licitaciones/{numero}` — the single-procedure detail endpoint.
+ * Shared by resolveComprasMxDetailUrl() (just the id, for the deep link)
+ * and discover-comprasmx-vigente.ts (also buyer.agency/acronym, since it's
+ * the same HTTP call either way — no reason to fetch this twice per row).
+ */
+export async function fetchLicitacionDetail(procedureNumber: string): Promise<FetchLicitacionDetailResult> {
   const url = `${LICITIA_BASE}/licitaciones/${encodeURIComponent(procedureNumber)}`;
 
   let response: Response;
@@ -192,7 +219,35 @@ export async function resolveComprasMxDetailUrl(procedureNumber: string): Promis
   }
 
   const id = body.success ? body.data?.id : undefined;
-  return typeof id === "string" && id.length > 0
-    ? { status: "resolved", detailUrl: buildComprasMxDetailUrl(id) }
-    : { status: "not_found" };
+  if (typeof id !== "string" || id.length === 0) return { status: "not_found" };
+
+  return {
+    status: "found",
+    detail: { id, buyerAgency: body.data?.buyer?.agency, buyerAcronym: body.data?.buyer?.acronym },
+  };
+}
+
+/**
+ * "not_found" is the real, expected case (LicitIA syncs from Compras MX
+ * daily, not instantly) — a 404 or a response with no `data.id`.
+ * "error" is everything else (network failure, a non-404 non-2xx status,
+ * a response that didn't parse as JSON) and carries a real message —
+ * 2026-09-03: the first version of this function collapsed every one of
+ * these into a bare `null`, and a real batch run against 526 tenders
+ * came back 0/526 resolved with no way to tell whether that meant
+ * "genuinely not indexed" or "every request is silently failing" (it
+ * turned out to be the latter — see resolve-comprasmx-links.ts's
+ * now-surfaced error messages for the real cause). A single unresolved
+ * link still shouldn't abort a batch backfill, so this returns a typed
+ * result instead of throwing — but the caller can now actually see why.
+ */
+export type ResolveComprasMxDetailUrlResult =
+  | { status: "resolved"; detailUrl: string }
+  | { status: "not_found" }
+  | { status: "error"; message: string };
+
+export async function resolveComprasMxDetailUrl(procedureNumber: string): Promise<ResolveComprasMxDetailUrlResult> {
+  const result = await fetchLicitacionDetail(procedureNumber);
+  if (result.status === "found") return { status: "resolved", detailUrl: buildComprasMxDetailUrl(result.detail.id) };
+  return result;
 }

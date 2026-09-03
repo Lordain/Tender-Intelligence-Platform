@@ -36,6 +36,30 @@ import type { LicitiaVigenteRow } from "@/lib/ingestion/connectors/licitia-conne
  *   wrong state name.
  */
 
+/**
+ * A "real" acronym (SEDENA, IMSS, SICT...) is letters only. Confirmed real
+ * (2026-09-03, procedure LO-73-R96-914004997-N-38-2026, Jalisco's own
+ * infrastructure secretariat) that LicitIA's own `buyer.acronym` degrades
+ * to a raw ramo+unidad-responsable code ("073R96") for a buyer without an
+ * established short name — indistinguishable from a real acronym except
+ * that it contains a digit, which no real Mexican government acronym does.
+ */
+const LOOKS_LIKE_RAW_CODE = /\d/;
+
+/**
+ * Prefers a clean acronym when the detail lookup found one; falls back to
+ * the full agency name when the "acronym" is really just a raw code (see
+ * LOOKS_LIKE_RAW_CODE above); falls back further to the bulk row's own
+ * (possibly equally raw) siglas/dependencia if the detail lookup didn't
+ * resolve at all (not_found/error — the row still gets ingested, just with
+ * whatever the bulk dump itself carries).
+ */
+export function resolveBuyerName(row: LicitiaVigenteRow, detail?: { buyerAgency?: string; buyerAcronym?: string }): string | undefined {
+  if (detail?.buyerAcronym && !LOOKS_LIKE_RAW_CODE.test(detail.buyerAcronym)) return detail.buyerAcronym;
+  if (detail?.buyerAgency) return detail.buyerAgency;
+  return (row.siglas || row.dependencia)?.trim();
+}
+
 function inferStatus(estatus: string): TenderStatus {
   const normalized = estatus.toUpperCase();
   if (normalized.includes("ACLARACION") || normalized.includes("PREGUNTA") || / JA$| JA /.test(normalized)) return "clarification";
@@ -53,10 +77,15 @@ function buildKeyDates(row: LicitiaVigenteRow, tenderNumber: string): TenderKeyD
   ];
 }
 
-export function mapLicitiaVigenteRowToTender(row: LicitiaVigenteRow, sourceName: string, sourceUrl: string): Tender | null {
+export function mapLicitiaVigenteRowToTender(
+  row: LicitiaVigenteRow,
+  sourceName: string,
+  sourceUrl: string,
+  detail?: { buyerAgency?: string; buyerAcronym?: string },
+): Tender | null {
   const tenderNumber = row.numero?.trim().toUpperCase();
   const title = row.nombre?.trim();
-  const buyer = (row.siglas || row.dependencia)?.trim();
+  const buyer = resolveBuyerName(row, detail);
   if (!tenderNumber || !title || !buyer) return null;
 
   const industries = classifyIndustries(title, buyer);

@@ -11,6 +11,16 @@
  * tender_number already present) means simply re-running it does NOT
  * revisit rows it already wrote.
  *
+ * Deliberately re-checks EVERY row from this source, not just ones whose
+ * stored buyer "looks like" a raw code — real gap found 2026-09-03: a
+ * buyer stored as "ATTRAPI" (no digit) slipped past an earlier version of
+ * this script that only checked `/\d/`, and there was no way to tell from
+ * the stored value alone whether that's a real acronym or another kind of
+ * bad data LicitIA's detail API returns for some buyers. Re-fetching
+ * unconditionally and diffing against what's stored catches both known
+ * and not-yet-seen bad shapes the same way, at the cost of one extra API
+ * call per row for buyers that turn out fine already.
+ *
  * Scoped to source_name = the LicitIA discovery source specifically —
  * other sources' buyer fields come from their own real columns (Compras
  * MX's "SIGLAS DEPENDENCIA O ENTIDAD", etc.) and were never at risk of
@@ -25,7 +35,6 @@ import { fetchLicitacionDetail } from "../lib/ingestion/connectors/licitia-conne
 import { resolveBuyerName } from "../lib/ingestion/licitia-vigente-mapper";
 
 const SOURCE_NAME = "LicitIA Abierto (espejo de ComprasMX/CompraNet Datos Abiertos)";
-const LOOKS_LIKE_RAW_CODE = /\d/;
 
 async function main() {
   const shouldWrite = process.argv.includes("--write");
@@ -42,12 +51,11 @@ async function main() {
     process.exit(1);
   }
 
-  const affected = (rows ?? []).filter((r) => LOOKS_LIKE_RAW_CODE.test(r.buyer as string));
-  console.log(`${rows?.length ?? 0} tender(s) from this source, ${affected.length} with a raw-code-looking buyer name.\n`);
+  console.log(`${rows?.length ?? 0} tender(s) from this source — re-checking every one against the live detail API.\n`);
 
   let fixed = 0;
   let unchanged = 0;
-  for (const row of affected) {
+  for (const row of rows ?? []) {
     const tenderNumber = row.tender_number as string;
     const slug = row.slug as string;
     const oldBuyer = row.buyer as string;

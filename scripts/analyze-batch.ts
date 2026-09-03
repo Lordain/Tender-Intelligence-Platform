@@ -12,22 +12,26 @@
  * exports/ for review. Never writes to Supabase — this is an evaluation
  * tool, not scripts/extract-tender-document.ts's --write path.
  *
- * Matches documents to tenders by looking up the extracted procedure
- * number directly against the `tenders.tender_number` column — NOT by
- * reconstructing a `comprasmx-${slug}` (the first version of this script
- * did that, which only ever matched Compras MX-sourced tenders; PEMEX
- * tenders use a `pemex-` slug and were silently skipped even when their
- * own procedure number matched fine, since it never got looked up).
+ * Matches documents to tenders primarily by checking each document's own
+ * text/file name for a real, already-known `tenders.tender_number` value
+ * (every tender number currently in Supabase is fetched once up front) —
+ * not by guessing a source-specific ID shape via regex. This replaced an
+ * earlier version that extracted a Compras MX-shaped procedure number
+ * (`XX-##-XXX-XXXXXXXXX-X-#-####`) via regex and looked THAT up: it
+ * silently failed for any source whose real ID doesn't fit that shape —
+ * confirmed real for both PEMEX (`DAS-CAN-B-GCSS-MCHV-107475-2026-1`, a
+ * structurally different, internally inconsistent format) and CFE
+ * (`CFE-0001-CAAAT-0134-2026` — a 3-letter prefix, not 2). Checking
+ * against known tender numbers instead needs no per-source regex at all,
+ * and is MORE accurate for Compras MX-shaped numbers too (a document
+ * quoting a different, unrelated procedure number more often than its own
+ * would previously win on raw frequency).
  *
- * CFE tenders (ingested via ingest:dof-search, slug `dof-<DOF codNota>`)
- * can't be matched this way at all — a DOF publication code isn't a
- * procedure number and never appears in a CFE bases/convocatoria PDF's
- * own text. For those (or any tender whose real identifier a document
- * can't carry), name the file `<slug>__anything.pdf` — a recognized
- * `<slug>__` prefix looks the tender up directly, bypassing procedure-
- * number extraction entirely. Find the real slug via Supabase
- * (`select slug from tenders where source_name ilike '%DOF%'` or the
- * admin panel) before renaming the file.
+ * A document whose real identifier can't appear in its own text at all
+ * (e.g. a source keyed on an internal id no PDF would ever quote — none
+ * currently, but kept as an escape hatch) can still be named
+ * `<slug>__anything.pdf` — a recognized `<slug>__` prefix looks the
+ * tender up directly, bypassing text matching entirely.
  *
  * A PDF that matches neither way is skipped, not counted toward --count.
  *
@@ -41,7 +45,7 @@
  */
 import { readdirSync, statSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, extname, basename } from "node:path";
-import { intakeDocument } from "../lib/ingestion/document-intake";
+import { intakeDocument, extractDocumentText } from "../lib/ingestion/document-intake";
 import { extractTenderRequirements, type TenderExtraction } from "../lib/ingestion/extract-requirements";
 import { extractTenderRequirementsQwen } from "../lib/ingestion/extract-requirements-qwen";
 import { extractTenderRequirementsGemini } from "../lib/ingestion/extract-requirements-gemini";
@@ -76,13 +80,39 @@ function findDocuments(dir: string): string[] {
 }
 
 type ResolvedTender = { slug: string; title: string; buyer: string; tenderNumber: string; matchNote: string };
+type KnownTender = { slug: string; title: string; buyer: string };
 
-/** A recognized `<slug>__` file name prefix (e.g. `dof-5678901__bases.pdf`) looks the tender up directly by slug — see this file's header comment for why CFE/DOF tenders need this instead of procedure-number extraction. */
+/** A recognized `<slug>__` file name prefix (e.g. `dof-5678901__bases.pdf`) looks the tender up directly by slug — see this file's header comment for the (currently theoretical) case that needs this instead of text matching. */
 const SLUG_OVERRIDE_PATTERN = /^([a-z0-9-]+)__/;
+
+/**
+ * Every real tender_number currently in Supabase, fetched once per run —
+ * this is the "known facts" a document's own text/file name gets checked
+ * against, rather than a guessed regex shape (see header comment). Paged
+ * via `.range()` since a real production count can exceed PostgREST's
+ * 1000-row default cap (the PEMEX ingest alone kept 3,128 real rows).
+ */
+async function loadKnownTenders(supabase: ReturnType<typeof createSupabaseAdminClient>): Promise<Map<string, KnownTender>> {
+  const known = new Map<string, KnownTender>();
+  const PAGE_SIZE = 1000;
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase!.from("tenders").select("slug, tender_number, title, buyer").range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(`Failed to load known tender numbers: ${error.message}`);
+    for (const row of data ?? []) {
+      const tenderNumber = row.tender_number as string;
+      if (tenderNumber) {
+        known.set(tenderNumber.toUpperCase(), { slug: row.slug as string, title: (row.title as { zh: string }).zh, buyer: row.buyer as string });
+      }
+    }
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return known;
+}
 
 async function resolveTender(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   pdfPath: string,
+  knownTenders: Map<string, KnownTender>,
 ): Promise<{ tender: ResolvedTender } | { skip: string }> {
   const fileName = basename(pdfPath);
   const slugOverride = fileName.match(SLUG_OVERRIDE_PATTERN)?.[1];
@@ -101,25 +131,43 @@ async function resolveTender(
     };
   }
 
+  // Check the file name first (cheap, and a human-chosen name is
+  // higher-confidence than a regex frequency count), then the document's
+  // own extracted text. Prefer the LONGEST matching known number if more
+  // than one appears — a document naming its own procedure plus a couple
+  // of others it references should still resolve to its own.
+  const text = await extractDocumentText(pdfPath);
+  const haystack = `${fileName}\n${text}`.toUpperCase();
+  let bestMatch: string | undefined;
+  for (const tenderNumber of knownTenders.keys()) {
+    if (haystack.includes(tenderNumber) && (!bestMatch || tenderNumber.length > bestMatch.length)) bestMatch = tenderNumber;
+  }
+
+  if (bestMatch) {
+    const known = knownTenders.get(bestMatch)!;
+    return { tender: { ...known, tenderNumber: bestMatch, matchNote: `matched known tender_number ${bestMatch} in file name/text` } };
+  }
+
+  // Fall back to the old Compras MX-shaped regex extraction — still useful
+  // for a document whose tender genuinely isn't in Supabase yet, or a
+  // shape the known-numbers check happened to miss (e.g. OCR noise).
   const intake = await intakeDocument(pdfPath);
   if (!intake.tenderNumber) {
     return {
-      skip: `${intake.fileName} — no procedure number found in its file name or text (rename it "<slug>__..." to match a tender directly, e.g. for a CFE/DOF tender)`,
+      skip: `${fileName} — no known tender_number found in its file name/text, and no Compras MX-shaped procedure number either (rename it "<slug>__..." if you know which tender it belongs to)`,
     };
   }
-
   const { data } = await supabase!.from("tenders").select("slug, title, buyer").eq("tender_number", intake.tenderNumber).maybeSingle();
-  if (!data) return { skip: `${intake.fileName} — no ingested tender has tender_number ${intake.tenderNumber}` };
+  if (!data) return { skip: `${fileName} — extracted procedure number ${intake.tenderNumber}, but no ingested tender has it` };
 
-  const matchNote =
-    intake.tenderNumberSource === "filename" ? "procedure number from file name" : `procedure number appears ${intake.tenderNumberOccurrences}x in the text`;
   return {
     tender: {
       slug: data.slug as string,
       tenderNumber: intake.tenderNumber,
       title: (data.title as { zh: string }).zh,
       buyer: data.buyer as string,
-      matchNote,
+      matchNote:
+        intake.tenderNumberSource === "filename" ? "procedure number from file name (regex fallback)" : `procedure number appears ${intake.tenderNumberOccurrences}x in the text (regex fallback)`,
     },
   };
 }
@@ -164,13 +212,17 @@ async function main() {
     return;
   }
 
+  console.log("Loading known tender numbers from Supabase...");
+  const knownTenders = await loadKnownTenders(supabase);
+  console.log(`${knownTenders.size} known tender number(s) loaded.\n`);
+
   const results: Record<string, TenderExtraction | { error: string }> = {};
   let run = 0;
 
   for (const pdfPath of documents) {
     if (run >= count) break;
 
-    const resolved = await resolveTender(supabase, pdfPath);
+    const resolved = await resolveTender(supabase, pdfPath, knownTenders);
     if ("skip" in resolved) {
       console.log(`[skip] ${resolved.skip}`);
       continue;

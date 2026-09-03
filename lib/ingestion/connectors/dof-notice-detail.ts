@@ -22,19 +22,30 @@
  * confirmed in DOF"), consistent with DOF being a public transparency
  * portal rather than a transactional system like Compras MX.
  *
- * Real HTML shape (from that one CFE example — NOT yet confirmed for
- * PEMEX or other buyers, which may format their convocatoria table
- * differently; parseDofNoticeDetailHtml() returns null rather than
- * fabricating a guess when the expected shape isn't found, so a
- * differently-shaped notice is a visible skip, not silent wrong data):
- * an anchor `<a name="table01">` precedes a `<table>` whose first two
- * rows are single `colspan="2"` cells (procedure number, then title), and
- * every row after that is a label/value pair — the label cell has
- * `bgcolor="#D9D9D9"`, the sibling `<td>` holds the value. Labels seen so
- * far: "Fecha de publicación en Micrositio:", "Sesión de Aclaraciones:",
- * "Límite para presentación de ofertas:", "Apertura Técnica:", "Apertura
- * Económica:", "Fallo" (no trailing colon on this last one — a real,
- * easy-to-miss inconsistency in DOF's own generated HTML).
+ * Real HTML shape: an anchor `<a name="table01">` precedes a `<table>`
+ * whose leading `colspan="2"` row(s) hold the procedure number and title,
+ * and every row after that is a label/value pair — the label cell has
+ * `bgcolor="#D9D9D9"`, the sibling `<td>` holds the value.
+ * parseDofNoticeDetailHtml() returns null rather than fabricating a guess
+ * when no table01 is found at all, so a genuinely different notice shape
+ * is a visible skip, not silent wrong data — but CFE alone is confirmed
+ * to use at least TWO different leading-row shapes for the number/title,
+ * both handled here (2026-09-03, two different CFE "Área Contratante"
+ * offices, same overall table structure otherwise):
+ * - CFE-0001-CAAAT-0134-2026: TWO separate colspan rows, number then
+ *   title, nothing else on either.
+ * - CFE-0040-CAAAT-0004-2026: ONE colspan row containing BOTH, as
+ *   "<numero>: <título>" (title text continuing in a nested `<p>`) — this
+ *   one silently lost its title entirely under the old two-row-only
+ *   assumption (fell back to the search stub) until the real HTML was
+ *   pulled and compared line-by-line against the two-row example.
+ * Real date-field labels also vary between these two same offices, not
+ * just the number/title shape — confirmed real: "Apertura Técnica"/
+ * "Apertura Económica" (first office) vs "Apertura de ofertas técnicas."/
+ * "Apertura de ofertas económicas." (second office, trailing period,
+ * "de ofertas" inserted) — dof-search-mapper.ts's label patterns were
+ * widened to match both after the second office's dates went missing
+ * entirely under the narrower patterns.
  */
 
 const NAMED_ENTITIES: Record<string, string> = {
@@ -98,8 +109,23 @@ export function parseDofNoticeDetailHtml(html: string): DofNoticeDetail | null {
     if (cells.length === 0) continue;
 
     if (cells.length === 1 || /colspan/i.test(cells[0].attrs)) {
-      if (procedureNumber === undefined) procedureNumber = cells[0].text;
-      else if (title === undefined) title = cells[0].text;
+      const cellText = cells[0].text;
+      // Real gap (2026-09-03, CFE-0040-CAAAT-0004-2026): some notices put
+      // BOTH the number and the title in this one leading row as
+      // "<numero>: <título>", not two separate rows — assuming a second
+      // colspan row would always follow lost the title entirely for
+      // these (silently fell back to the search stub). A colon this
+      // early can only be the number/title separator here — a real
+      // procedure number never contains one.
+      const combinedMatch = procedureNumber === undefined ? cellText.match(/^([^:]{1,40}):\s*(.+)$/) : null;
+      if (combinedMatch) {
+        procedureNumber = combinedMatch[1].trim();
+        title = combinedMatch[2].trim();
+      } else if (procedureNumber === undefined) {
+        procedureNumber = cellText;
+      } else if (title === undefined) {
+        title = cellText;
+      }
       continue;
     }
 

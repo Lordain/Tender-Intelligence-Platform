@@ -77,19 +77,52 @@ export function toDetailPageFecha(searchFecha: string): string | null {
   return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
 }
 
+const SPANISH_MONTHS: Record<string, string> = {
+  enero: "01",
+  febrero: "02",
+  marzo: "03",
+  abril: "04",
+  mayo: "05",
+  junio: "06",
+  julio: "07",
+  agosto: "08",
+  septiembre: "09",
+  octubre: "10",
+  noviembre: "11",
+  diciembre: "12",
+};
+
 /**
- * DOF's own detail-page date values, e.g. "11/09/2026, 10:30 hrs" or just
- * "27/08/2026" with no time — confirmed real 2026-09-03 (both shapes seen
- * in the same table, CFE-0001-CAAAT-0134-2026's "Fecha de publicación en
- * Micrositio" has no time, every other row does).
+ * DOF's own detail-page date values come in at least two real shapes —
+ * confirmed 2026-09-03 from two different CFE "Área Contratante" offices
+ * generating their own convocatoria HTML: "11/09/2026, 10:30 hrs" (numeric,
+ * CFE-0001-CAAAT-0134-2026) and "4 de septiembre de 2026 a las 10:00
+ * horas" (written-out Spanish month name, CFE-0040-CAAAT-0004-2026) — the
+ * first version of this function only handled the numeric shape, so every
+ * date on the second office's notices silently failed to parse (returned
+ * null) and got dropped rather than recorded with the wrong value —
+ * caught by comparing that notice's real HTML side by side with the first.
  */
 function parseDofDetailDate(raw: string | undefined): string | null {
   if (!raw) return null;
-  const match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*(\d{1,2}):(\d{2})\s*hrs)?/i);
-  if (!match) return null;
-  const [, day, month, year, hour, minute] = match;
-  const parsed = new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${(hour ?? "00").padStart(2, "0")}:${minute ?? "00"}:00`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+
+  const numeric = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*(\d{1,2}):(\d{2})\s*hrs)?/i);
+  if (numeric) {
+    const [, day, month, year, hour, minute] = numeric;
+    const parsed = new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${(hour ?? "00").padStart(2, "0")}:${minute ?? "00"}:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  const written = raw.match(/^(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+de\s+(\d{4})(?:\s+a\s+las\s+(\d{1,2}):(\d{2})\s*horas)?/i);
+  if (written) {
+    const [, day, monthName, year, hour, minute] = written;
+    const month = SPANISH_MONTHS[monthName.toLowerCase()];
+    if (!month) return null;
+    const parsed = new Date(`${year}-${month}-${day.padStart(2, "0")}T${(hour ?? "00").padStart(2, "0")}:${minute ?? "00"}:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  return null;
 }
 
 /**
@@ -116,9 +149,12 @@ function buildDofDetailFields(fieldsByLabel: Record<string, string>, tenderNumbe
     } else if (/l[íi]mite.*ofertas|presentaci[óo]n.*ofertas/i.test(label)) {
       submissionDeadline = iso;
       keyDates.push({ id: `${tenderNumber}-submission`, type: "submission", date: iso });
-    } else if (/apertura t[ée]cnica/i.test(label)) {
+    } else if (/apertura.*t[ée]cnica/i.test(label)) {
+      // Real label variants: "Apertura Técnica" (first office) vs.
+      // "Apertura de ofertas técnicas." (second office, "de ofertas"
+      // inserted, trailing period) — .* bridges both.
       keyDates.push({ id: `${tenderNumber}-opening-tecnica`, type: "opening", date: iso });
-    } else if (/apertura econ[óo]mica/i.test(label)) {
+    } else if (/apertura.*econ[óo]mica/i.test(label)) {
       keyDates.push({ id: `${tenderNumber}-opening-economica`, type: "opening", date: iso });
     } else if (/^fallo/i.test(label)) {
       keyDates.push({ id: `${tenderNumber}-award`, type: "award", date: iso });
@@ -185,8 +221,12 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     relevance: classifyRelevance({ title, industries, scopeType, buyer }),
     sourceName,
     // Same cross-referenced (not directly captured) URL pattern as
-    // dof-mapper.ts — see that file's buildSourceUrl comment.
-    sourceUrl: `https://www.dof.gob.mx/nota_detalle.php?codigo=${nota.codNota}`,
+    // dof-mapper.ts — see that file's buildSourceUrl comment. Deliberately
+    // no "www." (2026-09-03, real find): www.dof.gob.mx fails TLS/SNI
+    // verification for at least one real user ("SEC_E_WRONG_PRINCIPAL")
+    // while the bare domain works fine — the same bare host every real
+    // fetch in this codebase (dof-notice-detail.ts included) already uses.
+    sourceUrl: `https://dof.gob.mx/nota_detalle.php?codigo=${nota.codNota}`,
     createdAt: now,
     updatedAt: now,
   };

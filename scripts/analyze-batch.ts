@@ -62,9 +62,11 @@
  * token counts suggesting the reconstructed PDF chunks weren't actually
  * being read). Everything else (has real text — most PDFs and all Word
  * docs) goes to qwen-anthropic, confirmed working well and far cheaper.
- * This is a real, live-tested cost/quality split, not a guess — but it's
- * only wired into this evaluation script for now, not the production
- * extract-tender-document.ts pipeline.
+ * This is a real, live-tested cost/quality split, not a guess. Also wired
+ * into the production extract-tender-document.ts pipeline as its new
+ * default (2026-09-03) — see that script and lib/ingestion/text-layer.ts,
+ * which both this file and that one import the same hasRealTextLayer()
+ * check from.
  * --count: how many DOCUMENTS to run (default 5), not tenders — takes the
  *   first N matched files in the folder, alphabetical. Real gap found
  *   2026-09-03: a folder with more than --count files can silently cut off
@@ -80,28 +82,11 @@ import { extractTenderRequirements, type TenderExtraction } from "../lib/ingesti
 import { extractTenderRequirementsQwen } from "../lib/ingestion/extract-requirements-qwen";
 import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract-requirements-qwen-anthropic";
 import { extractTenderRequirementsGemini } from "../lib/ingestion/extract-requirements-gemini";
+import { hasRealTextLayer } from "../lib/ingestion/text-layer";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
 type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "qwen-anthropic" | "qwen-anthropic-3.6" | "gemini" | "auto";
 type ExtractContext = { tenderNumber: string; title: string; buyer: string };
-
-// Below this many characters of pdftotext output, treat a PDF as having no
-// real text layer (scanned/image-only) — real reference point 2026-09-03:
-// the 33MB scanned Anexo's own extracted text was small enough to produce
-// only ~1,561 input tokens when sent as plain text (see extract-
-// requirements.ts's header comments), while every real text-layer PDF
-// tested this session ran well into the tens of thousands of tokens. 500
-// characters is comfortably below the smallest real text-bearing document
-// seen and comfortably above what a scanned PDF's stray OCR-able caption
-// or metadata text might produce.
-const TEXT_LAYER_MIN_CHARS = 500;
-
-/** Word docs are always machine-readable text — see extractTenderRequirements()'s own isWord branch — so only PDFs need the real check. */
-async function hasRealTextLayer(filePath: string): Promise<boolean> {
-  if ([".docx", ".doc"].includes(extname(filePath).toLowerCase())) return true;
-  const text = await extractDocumentText(filePath);
-  return text.trim().length >= TEXT_LAYER_MIN_CHARS;
-}
 
 const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractContext) => Promise<TenderExtraction>> = {
   "claude-haiku": (p, c) => extractTenderRequirements(p, c, "claude-haiku-4-5-20251001"),

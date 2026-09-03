@@ -4,26 +4,40 @@
  * Supabase — populating qualifications/experienceRequirements/
  * requiredDocuments/risks for the tender it belongs to.
  *
- * Requires ANTHROPIC_API_KEY. LIVE-TESTED (2026-09-02) — see the header comment in
- * lib/ingestion/extract-requirements.ts.
+ * Default provider selection (2026-09-03, per the user, pre-launch so no
+ * staged rollout needed): auto-routes by whether the document has a real
+ * text layer (lib/ingestion/text-layer.ts's hasRealTextLayer(), same
+ * check scripts/analyze-batch.ts's --provider=auto uses and live-tested
+ * there first) — qwen3.5-plus (via DashScope's Anthropic-compatible
+ * endpoint) for anything with real text, since it's confirmed working
+ * well and far cheaper; claude-haiku-4-5-20251001 for a scanned/image-
+ * only PDF, the only provider confirmed to read scanned pages correctly
+ * (including after PDF chunking for an oversized one — see pdf-split.ts).
+ * --precise overrides this entirely and forces claude-opus-5 (the paid
+ * "精度分析" premium tier), regardless of text layer.
+ *
+ * Requires ANTHROPIC_API_KEY always, and DASHSCOPE_API_KEY unless
+ * --precise is passed (a --precise run never touches the Qwen path).
  *
  * Usage:
- *   npm run extract:document -- path/to/file.pdf <tender-slug>              (dry run — prints the extraction, Sonnet 5)
+ *   npm run extract:document -- path/to/file.pdf <tender-slug>              (dry run — auto-routed: qwen3.5-plus or claude-haiku)
  *   npm run extract:document -- path/to/file.pdf <tender-slug> --precise    (dry run — Opus 5, the "精度分析" premium tier)
  *   npm run extract:document -- path/to/file.pdf <tender-slug> --write      (writes to Supabase)
- *   npm run extract:document -- path/to/file.pdf <tender-slug> --write --force  (write even if this would downgrade an existing Opus 5 result to Sonnet 5)
+ *   npm run extract:document -- path/to/file.pdf <tender-slug> --write --force  (write even if this would downgrade an existing Opus 5 result)
  *
  * Overwrite semantics (2026-09-02, user-confirmed): re-extracting a
  * document always replaces its stored qualifications/experience/
  * documents/risks outright — there's no parallel "keep both tiers"
  * storage. The one guard: if the document was already extracted at the
- * precision (claude-opus-5) tier and this run would write the standard
- * (claude-sonnet-5) tier, --write refuses unless --force is also passed —
- * a standard-tier re-run should never silently downgrade a result a
+ * precision (claude-opus-5) tier and this run would write anything else
+ * (auto-routed or not), --write refuses unless --force is also passed —
+ * a non-precision re-run should never silently downgrade a result a
  * subscriber already paid to have analyzed at the higher tier.
  */
 import { intakeDocument } from "../lib/ingestion/document-intake";
-import { extractTenderRequirements, toTenderFields, type ExtractionModel } from "../lib/ingestion/extract-requirements";
+import { extractTenderRequirements, toTenderFields, type ExtractionModel, type TenderExtraction } from "../lib/ingestion/extract-requirements";
+import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract-requirements-qwen-anthropic";
+import { hasRealTextLayer } from "../lib/ingestion/text-layer";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
 async function writeToSupabase(
@@ -57,9 +71,13 @@ async function writeToSupabase(
     .eq("content_hash", contentHash)
     .maybeSingle();
 
-  if (existingDoc?.extraction_model === "claude-opus-5" && model === "claude-sonnet-5" && !force) {
+  // Guards against ANY non-precision model downgrading an existing
+  // precision (Opus 5) result — widened from a Sonnet-5-only check
+  // (2026-09-03) once auto-routing meant the "downgrade" model could
+  // just as easily be qwen3.5-plus or claude-haiku as claude-sonnet-5.
+  if (existingDoc?.extraction_model === "claude-opus-5" && model !== "claude-opus-5" && !force) {
     console.error(
-      "This document was already analyzed at the precision (claude-opus-5) tier — refusing to overwrite it with a standard (claude-sonnet-5) result. Pass --force to downgrade anyway.",
+      `This document was already analyzed at the precision (claude-opus-5) tier — refusing to overwrite it with a ${model} result. Pass --force to downgrade anyway.`,
     );
     process.exit(1);
   }
@@ -126,20 +144,33 @@ async function main() {
     process.exit(1);
   }
 
-  const model: ExtractionModel = args.includes("--precise") ? "claude-opus-5" : "claude-sonnet-5";
+  const precise = args.includes("--precise");
+  if (!precise && !process.env.DASHSCOPE_API_KEY) {
+    console.error("DASHSCOPE_API_KEY isn't set (needed for auto-routing's qwen3.5-plus path — pass --precise to skip it and force claude-opus-5). See .env.example.");
+    process.exit(1);
+  }
 
   const intake = await intakeDocument(pdfPath);
-  console.log(`Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}, model: ${model}`);
+  const context = {
+    tenderNumber: intake.tenderNumber ?? tenderSlug,
+    title: intake.fileName,
+    buyer: "",
+  };
 
-  const extraction = await extractTenderRequirements(
-    pdfPath,
-    {
-      tenderNumber: intake.tenderNumber ?? tenderSlug,
-      title: intake.fileName,
-      buyer: "",
-    },
-    model,
-  );
+  let model: ExtractionModel;
+  let extraction: TenderExtraction;
+  if (precise) {
+    model = "claude-opus-5";
+    console.log(`Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}, model: ${model} (--precise)`);
+    extraction = await extractTenderRequirements(pdfPath, context, model);
+  } else {
+    const hasText = await hasRealTextLayer(pdfPath);
+    model = hasText ? "qwen3.5-plus" : "claude-haiku-4-5-20251001";
+    console.log(
+      `Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}, model: ${model} (auto — ${hasText ? "has a real text layer" : "no real text layer (scanned)"})`,
+    );
+    extraction = hasText ? await extractTenderRequirementsQwenAnthropic(pdfPath, context) : await extractTenderRequirements(pdfPath, context, model);
+  }
   const fields = toTenderFields(extraction, tenderSlug);
 
   console.log(JSON.stringify(fields, null, 2));

@@ -133,8 +133,12 @@ export async function fetchAllVigenteLicitaciones(onProgress?: (lote: number, to
   const licitaciones = manifest.find((e) => e.entidad === "licitaciones");
   if (!licitaciones) throw new Error("LicitIA's /descargas manifest doesn't list a 'licitaciones' entity — its shape may have changed");
 
+  // Confirmed real (2026-09-03): lote indices are 0-based (lote 15 404'd
+  // when the manifest said "lotes: 15", i.e. that's a COUNT, valid indices
+  // are 0..lotes-1) — the first version of this loop assumed 1-based and
+  // crashed on the last lote of every entity.
   const vigente: LicitiaVigenteRow[] = [];
-  for (let lote = 1; lote <= licitaciones.lotes; lote++) {
+  for (let lote = 0; lote < licitaciones.lotes; lote++) {
     onProgress?.(lote, licitaciones.lotes);
     const rows = await fetchLicitacionesLote(lote);
     for (const row of rows) {

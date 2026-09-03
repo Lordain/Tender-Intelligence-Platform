@@ -35,7 +35,16 @@ None of these steps run on a schedule. Every capture is manual, on demand — re
   - `npm run ingest:dof-search -- <file>.json --write`
 - [ ] **3.2 Documents** — no automated path exists. DOF notices carry no document; CFE's own portal (`msc.cfe.mx`) is WAF-protected (Imperva) and not accessible. Treat CFE tenders as metadata-only for now, or manually hunt down bases/convocatoria PDFs per-tender if a specific opportunity is worth the effort.
 
-## Part 4 — Shared steps (run once, after Parts 1–3)
+## Part 3.5 — Proyectos México (added 2026-09-02 — a new source, auto-flagship)
+
+- [ ] **Real national-priority project list, currently in bidding**
+  - Open `https://www.proyectosmexico.gob.mx/proyectos/`, filter as needed, click the page's own CSV export button (no anti-bot gate — a plain browser download, same as Compras MX contracts).
+  - `npm run ingest:proyectos-mexico -- <file>.csv --write`
+  - Every tender from this source is tagged `isNationalPriorityProject: true` and lands on **flagship** regardless of value/keywords — being listed on this official government source IS the signal (user's explicit instruction). Real 58-row export the user captured: 57/58 mapped, all flagship.
+  - Bonus: `participationScope` (can a foreign bidder even participate) is a genuine field here (`Proceso de selección`), not a best-effort guess like every other source — and 7 of 58 real rows had CFE as the buyer, a second real path to CFE tenders alongside DOF.
+  - **Known gap, not fixed**: no ID shared with Compras MX/PEMEX/DOF, so a project appearing both here and as its own later Compras MX procedure will show as two separate rows — accepted, not silently merged (see README).
+
+## Part 4 — Shared steps (run once, after Parts 1–3.5)
 
 - [ ] **4.1 Reclassify with the current relevance rules**
   - `npm run reclassify:tenders` (dry run — check the exported CSV looks right)

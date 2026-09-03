@@ -496,9 +496,24 @@ export function classifyRelevance(input: {
   estimatedValue?: number;
   currency?: string;
   buyer?: string;
+  /**
+   * True only for tenders sourced from proyectosmexico.gob.mx (Banobras/
+   * SHCP's official curated list of strategic national investment
+   * projects — see proyectos-mexico-mapper.ts). Being listed there IS
+   * itself the strongest possible flagship signal this platform has:
+   * a real, verified government determination that this is a major
+   * project, not a keyword/value proxy for one. Deliberately folded into
+   * `hasIncludeOverride` below rather than a separate check — it needs
+   * exactly the same two effects that flag already has (bypass every
+   * exclude/value-floor check, then count toward the flagship-promotion
+   * condition), so reusing it is more correct than a parallel branch
+   * that could drift out of sync.
+   */
+  isNationalPriorityProject?: boolean;
 }): TenderRelevance {
   const haystack = [input.title, input.summary, ...input.industries].filter(Boolean).join(" ");
-  const hasIncludeOverride = INCLUDE_OVERRIDE_KEYWORDS.some((pattern) => pattern.test(haystack));
+  const hasIncludeOverride =
+    INCLUDE_OVERRIDE_KEYWORDS.some((pattern) => pattern.test(haystack)) || input.isNationalPriorityProject === true;
 
   if (!hasIncludeOverride && BARE_BUYER_REF_TITLE.test(input.title.trim())) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "no_content") };

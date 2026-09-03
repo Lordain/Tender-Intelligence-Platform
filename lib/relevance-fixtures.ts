@@ -32,6 +32,7 @@ export type RelevanceFixture = {
   estimatedValue?: number;
   currency?: string;
   buyer?: string;
+  isNationalPriorityProject?: boolean;
 };
 
 export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
@@ -79,6 +80,15 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     scopeType: "works",
     estimatedValue: 5_000_000,
     currency: "USD",
+  },
+  {
+    title: "Central de Generación Co-Localizada Los Cabos",
+    expectedTier: "flagship",
+    note: "Real proyectosmexico.gob.mx row (2026-09-02, project 1117, buyer Comisión Federal de Electricidad) — isNationalPriorityProject alone must force flagship even with no estimatedValue in this fixture (the real row had one; this checks the flag works standalone).",
+    industries: ["energy", "power"],
+    scopeType: "works",
+    buyer: "Comisión Federal de Electricidad",
+    isNationalPriorityProject: true,
   },
 
   // --- Significant: real examples the user confirmed as "keep" (2026-09-02) ---

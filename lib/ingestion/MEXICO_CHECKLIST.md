@@ -39,7 +39,8 @@ None of these steps run on a schedule. Every capture is manual, on demand — re
   - Open `https://sidof.segob.gob.mx/busquedaAvanzada/busqueda`, search "COMISIÓN FEDERAL DE ELECTRICIDAD".
   - DevTools (F12) → Network → find `POST .../busqueda/CargaNotasAvanzadas/` → save its Response as `.json`.
   - `npm run ingest:dof-search -- <file>.json --write`
-- [ ] **3.2 Documents** — no automated path exists. DOF notices carry no document; CFE's own portal (`msc.cfe.mx`) is WAF-protected (Imperva) and not accessible. Treat CFE tenders as metadata-only for now, or manually hunt down bases/convocatoria PDFs per-tender if a specific opportunity is worth the effort.
+  - As of 2026-09-03 this also fetches each notice's own DOF detail page for real content (procedure number, title, key dates) — no longer the bare "BUYER - REF:number" stub. Real run: 13/13 detail pages fetched successfully. See README's "LicitIA" section (`dof-notice-detail.ts`) for how this works and its one confirmed limitation (a differently-shaped notice table falls back to the old stub-only mapping, not a crash).
+- [ ] **3.2 Documents** — still no automated path: DOF notices themselves carry no attachment, and CFE's own portal (`msc.cfe.mx`, including its per-procedure detail-data API, not just the search box) is confirmed Imperva/CSRF-gated end to end (README "CFE's own portal is WAF-protected"). Once a CFE tender is visible on this platform (3.1 above), manually open its real procedure number on `msc.cfe.mx`'s own site to find and download the Convocatoria/Bases PDF, then `npm run ingest:documents` as usual.
 
 ## Part 3.5 — Proyectos Estratégicos MX (added 2026-09-03 — a new source, auto-flagship, supersedes Proyectos México)
 

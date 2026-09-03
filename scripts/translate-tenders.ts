@@ -41,6 +41,28 @@ function argValue(args: string[], flag: string): string | undefined {
   return idx >= 0 ? args[idx + 1] : undefined;
 }
 
+// Diagnostic only, run when an item still 400s after the sanitize fix in
+// translate-titles.ts already ruled out unpaired surrogates (real case,
+// 2026-09-03: proyectosmexico-1090 kept failing even alone). Flags control
+// characters and other genuinely abnormal code points — NOT ordinary
+// accented Spanish (é, ñ, ¡, etc., all well within normal prose) — so the
+// next failure's log line names the actual character instead of needing a
+// separate one-off script to go find it.
+function describeSuspiciousChars(label: string, s: string): string | null {
+  const found = new Set<string>();
+  for (const ch of s) {
+    const cp = ch.codePointAt(0)!;
+    const isControl = cp < 0x20 && cp !== 0x09 && cp !== 0x0a && cp !== 0x0d;
+    const isDelOrC1 = cp === 0x7f || (cp >= 0x80 && cp <= 0x9f);
+    const isNonCharacter = cp === 0xfffe || cp === 0xffff || (cp >= 0xfdd0 && cp <= 0xfdef);
+    if (isControl || isDelOrC1 || isNonCharacter) {
+      found.add(`U+${cp.toString(16).toUpperCase().padStart(4, "0")}`);
+    }
+  }
+  if (found.size === 0) return null;
+  return `${label} (len ${s.length}) has suspicious code point(s): ${[...found].join(", ")}`;
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const shouldWrite = args.includes("--write");
@@ -139,6 +161,11 @@ async function main() {
       const translated = bySlug.get(tender.slug);
       if (!translated) {
         console.error(`  no translation returned for ${tender.slug}`);
+        const titleFlag = describeSuspiciousChars("titleEs", tender.title.es);
+        const summaryFlag = describeSuspiciousChars("summaryEs", tender.summary.es);
+        if (titleFlag) console.error(`    ${titleFlag}`);
+        if (summaryFlag) console.error(`    ${summaryFlag}`);
+        if (!titleFlag && !summaryFlag) console.error(`    no suspicious code points found — titleEs len ${tender.title.es.length}, summaryEs len ${tender.summary.es.length}`);
         failedCount++;
         continue;
       }

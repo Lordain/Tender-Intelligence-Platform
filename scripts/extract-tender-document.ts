@@ -128,7 +128,7 @@ async function main() {
 
   const model: ExtractionModel = args.includes("--precise") ? "claude-opus-5" : "claude-sonnet-5";
 
-  const intake = intakeDocument(pdfPath);
+  const intake = await intakeDocument(pdfPath);
   console.log(`Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}, model: ${model}`);
 
   const extraction = await extractTenderRequirements(

@@ -53,10 +53,12 @@ const PROVIDER_ENV_VAR: Record<ProviderKey, string> = {
   gemini: "GEMINI_API_KEY",
 };
 
-function findPdfs(dir: string): string[] {
+const SUPPORTED_EXTENSIONS = [".pdf", ".docx"];
+
+function findDocuments(dir: string): string[] {
   return readdirSync(dir)
     .map((name) => join(dir, name))
-    .filter((path) => statSync(path).isFile() && extname(path).toLowerCase() === ".pdf")
+    .filter((path) => statSync(path).isFile() && SUPPORTED_EXTENSIONS.includes(extname(path).toLowerCase()))
     .sort();
 }
 
@@ -94,19 +96,19 @@ async function main() {
     process.exit(1);
   }
 
-  const pdfs = findPdfs(dir);
-  if (pdfs.length === 0) {
-    console.log(`No PDFs found in ${dir}.`);
+  const documents = findDocuments(dir);
+  if (documents.length === 0) {
+    console.log(`No PDF/DOCX files found in ${dir}.`);
     return;
   }
 
   const results: Record<string, TenderExtraction | { error: string }> = {};
   let run = 0;
 
-  for (const pdfPath of pdfs) {
+  for (const pdfPath of documents) {
     if (run >= count) break;
 
-    const intake = intakeDocument(pdfPath);
+    const intake = await intakeDocument(pdfPath);
     if (!intake.tenderNumber) {
       console.log(`[skip] ${intake.fileName} — no procedure number found in its text`);
       continue;

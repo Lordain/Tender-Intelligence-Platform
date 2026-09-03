@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
+import { extname } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { TenderRequirement, TenderRisk } from "@/types/tender";
+import { extractDocxText } from "@/lib/ingestion/document-intake";
 
 /**
  * Layer 2 extraction (see lib/ingestion/README.md "Layer 2 design"): reads
@@ -118,32 +120,35 @@ Ground rules:
 export type ExtractionModel = "claude-sonnet-5" | "claude-opus-5" | "claude-haiku-4-5-20251001";
 
 export async function extractTenderRequirements(
-  pdfPath: string,
+  filePath: string,
   context: { tenderNumber: string; title: string; buyer: string },
   model: ExtractionModel = "claude-sonnet-5",
 ): Promise<TenderExtraction> {
   const client = new Anthropic();
-  const pdfBase64 = readFileSync(pdfPath).toString("base64");
+  // .docx (2026-09-03, per the user's report that many real tender
+  // documents arrive as Word files, not PDF) goes through local text
+  // extraction instead of Claude's native document vision — unlike a
+  // scanned PDF page, a real .docx is already machine-readable text, so
+  // there's nothing meaningful for native document understanding to add
+  // here (no layout/table-image rendering to lose).
+  const isDocx = extname(filePath).toLowerCase() === ".docx";
+  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isDocx ? "document text below" : "attached document"}.`;
+
+  const content = isDocx
+    ? [{ type: "text" as const, text: `${instruction}\n\n---\n\n${await extractDocxText(filePath)}` }]
+    : [
+        {
+          type: "document" as const,
+          source: { type: "base64" as const, media_type: "application/pdf" as const, data: readFileSync(filePath).toString("base64") },
+        },
+        { type: "text" as const, text: instruction },
+      ];
 
   const response = await client.messages.parse({
     model,
     max_tokens: 16000,
     system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "document",
-            source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-          },
-          {
-            type: "text",
-            text: `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the attached document.`,
-          },
-        ],
-      },
-    ],
+    messages: [{ role: "user", content }],
     output_config: { format: zodOutputFormat(ExtractionSchema) },
   });
 

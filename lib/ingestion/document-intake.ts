@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { basename } from "node:path";
+import { basename, extname } from "node:path";
+import mammoth from "mammoth";
 
 /**
  * Takes tender documents a human already downloaded (Convocatoria, Anexo
@@ -19,8 +20,13 @@ import { basename } from "node:path";
  * folder of downloaded PDFs in, and nothing has to be renamed, sorted,
  * matched to a tender, or typed in by hand.
  *
- * Text extraction uses poppler's `pdftotext` (present in this environment;
- * verified against a real 50-page Convocatoria).
+ * Text extraction uses poppler's `pdftotext` for PDFs (present in this
+ * environment; verified against a real 50-page Convocatoria), and
+ * `mammoth` for real .docx attachments (2026-09-03, per the user's
+ * report that many tender documents actually arrive as Word files, not
+ * PDF) — a pure-JS npm dependency rather than another external binary
+ * like poppler, since it needs to run on the user's own machine, not
+ * just this sandbox.
  */
 
 /**
@@ -100,6 +106,16 @@ export function extractPdfText(filePath: string): string {
   });
 }
 
+export async function extractDocxText(filePath: string): Promise<string> {
+  const { value } = await mammoth.extractRawText({ path: filePath });
+  return value;
+}
+
+/** Dispatches on the real file extension — everything but .docx is assumed to be a PDF, matching every existing caller's naming/behavior before .docx support existed. */
+export async function extractDocumentText(filePath: string): Promise<string> {
+  return extname(filePath).toLowerCase() === ".docx" ? extractDocxText(filePath) : extractPdfText(filePath);
+}
+
 /** Most frequent match wins: a Convocatoria repeats its own number in every page header (54 times in the real one tested), while any other number it cites appears once or twice. */
 function mostFrequentMatch(text: string, pattern: RegExp): { value?: string; occurrences: number } {
   const counts = new Map<string, number>();
@@ -125,9 +141,9 @@ export function detectDocumentType(text: string, fileName: string): TenderDocume
   return "unknown";
 }
 
-export function intakeDocument(filePath: string): TenderDocumentIntake {
+export async function intakeDocument(filePath: string): Promise<TenderDocumentIntake> {
   const buffer = readFileSync(filePath);
-  const text = extractPdfText(filePath);
+  const text = await extractDocumentText(filePath);
   const procedure = mostFrequentMatch(text, PROCEDURE_NUMBER_PATTERN);
   const expediente = mostFrequentMatch(text, EXPEDIENTE_CODE_PATTERN);
   const fileName = basename(filePath);

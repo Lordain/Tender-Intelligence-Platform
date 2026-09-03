@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
+import { extname } from "node:path";
 import { GoogleGenAI, Type } from "@google/genai";
 import { ExtractionSchema, SYSTEM_PROMPT, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
+import { extractDocxText } from "@/lib/ingestion/document-intake";
 
 /**
  * Cost-comparison alternative to extract-requirements.ts's Claude
@@ -59,18 +61,27 @@ function requirementSchema() {
 }
 
 export async function extractTenderRequirementsGemini(
-  pdfPath: string,
+  filePath: string,
   context: { tenderNumber: string; title: string; buyer: string },
 ): Promise<TenderExtraction> {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const pdfBase64 = readFileSync(pdfPath).toString("base64");
+  // .docx goes through local text extraction instead of Gemini's native
+  // inlineData PDF path — see extract-requirements.ts's matching comment
+  // for why that's not a quality tradeoff the way it is for Qwen's PDF
+  // text-only path (a real .docx is already machine-readable text).
+  const isDocx = extname(filePath).toLowerCase() === ".docx";
+  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isDocx ? "document text below" : "attached document"}.`;
+
+  const contents = isDocx
+    ? [{ text: `${instruction}\n\n---\n\n${await extractDocxText(filePath)}` }]
+    : [
+        { text: instruction },
+        { inlineData: { mimeType: "application/pdf", data: readFileSync(filePath).toString("base64") } },
+      ];
 
   const response = await ai.models.generateContent({
     model: "gemini-3.1-flash-lite",
-    contents: [
-      { text: `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the attached document.` },
-      { inlineData: { mimeType: "application/pdf", data: pdfBase64 } },
-    ],
+    contents,
     config: {
       systemInstruction: SYSTEM_PROMPT,
       responseMimeType: "application/json",

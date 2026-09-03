@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { extractPdfText } from "@/lib/ingestion/document-intake";
+import { extractDocumentText } from "@/lib/ingestion/document-intake";
 import { ExtractionSchema, SYSTEM_PROMPT, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
 
 /**
@@ -33,7 +33,7 @@ import { ExtractionSchema, SYSTEM_PROMPT, type TenderExtraction } from "@/lib/in
  * `npm run compare:extraction <file.pdf>` once a key is added.
  */
 export async function extractTenderRequirementsQwen(
-  pdfPath: string,
+  filePath: string,
   context: { tenderNumber: string; title: string; buyer: string },
 ): Promise<TenderExtraction> {
   const client = new OpenAI({
@@ -41,7 +41,7 @@ export async function extractTenderRequirementsQwen(
     baseURL: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
   });
 
-  const documentText = extractPdfText(pdfPath);
+  const documentText = await extractDocumentText(filePath);
 
   const response = await client.chat.completions.create({
     model: "qwen3.6-plus",

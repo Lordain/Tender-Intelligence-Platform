@@ -1,7 +1,9 @@
 /**
  * Takes a folder of tender documents a human already downloaded from
  * Compras MX and files them against the right tenders automatically —
- * no renaming, sorting or data entry by hand.
+ * no renaming, sorting or data entry by hand. Both PDF and .docx are
+ * supported (2026-09-03 — many real tender attachments turn out to be
+ * Word files, not PDF).
  *
  * This deliberately does NOT download anything: the Compras MX document
  * endpoint is behind the same anti-automation gate as its search API
@@ -17,10 +19,12 @@ import { intakeDocument, type TenderDocumentIntake } from "../lib/ingestion/docu
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { slugify } from "../lib/ingestion/text-utils";
 
-function findPdfs(dir: string): string[] {
+const SUPPORTED_EXTENSIONS = [".pdf", ".docx"];
+
+function findDocuments(dir: string): string[] {
   return readdirSync(dir)
     .map((name) => join(dir, name))
-    .filter((path) => statSync(path).isFile() && extname(path).toLowerCase() === ".pdf")
+    .filter((path) => statSync(path).isFile() && SUPPORTED_EXTENSIONS.includes(extname(path).toLowerCase()))
     .sort();
 }
 
@@ -81,14 +85,14 @@ async function main() {
     process.exit(1);
   }
 
-  const pdfs = findPdfs(dir);
-  if (pdfs.length === 0) {
-    console.log(`No PDFs found in ${dir}.`);
+  const documents = findDocuments(dir);
+  if (documents.length === 0) {
+    console.log(`No PDF/DOCX files found in ${dir}.`);
     return;
   }
 
-  console.log(`Found ${pdfs.length} PDF(s) in ${dir}.\n`);
-  const intakes = pdfs.map(intakeDocument);
+  console.log(`Found ${documents.length} document(s) in ${dir}.\n`);
+  const intakes = await Promise.all(documents.map(intakeDocument));
 
   for (const intake of intakes) {
     console.log(intake.fileName);

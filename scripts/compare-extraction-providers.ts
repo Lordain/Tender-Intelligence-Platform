@@ -60,7 +60,7 @@ async function main() {
     process.exit(1);
   }
 
-  const intake = intakeDocument(pdfPath);
+  const intake = await intakeDocument(pdfPath);
   const context = { tenderNumber: intake.tenderNumber ?? tenderSlug ?? intake.fileName, title: intake.fileName, buyer: "" };
   console.log(`Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}\n`);
 

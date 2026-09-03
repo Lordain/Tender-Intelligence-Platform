@@ -36,7 +36,8 @@
     "analyze:batch": "tsx --env-file-if-exists=.env.local scripts/analyze-batch.ts",
     "resolve:comprasmx-links": "tsx --env-file-if-exists=.env.local scripts/resolve-comprasmx-links.ts",
     "discover:comprasmx-vigente": "tsx --env-file-if-exists=.env.local scripts/discover-comprasmx-vigente.ts",
-    "fix:licitia-buyer-names": "tsx --env-file-if-exists=.env.local scripts/fix-licitia-buyer-names.ts"
+    "fix:licitia-buyer-names": "tsx --env-file-if-exists=.env.local scripts/fix-licitia-buyer-names.ts",
+    "inspect:dof-notice": "tsx --env-file-if-exists=.env.local scripts/inspect-dof-notice.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

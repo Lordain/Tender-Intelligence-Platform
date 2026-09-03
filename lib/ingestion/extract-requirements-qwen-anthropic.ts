@@ -17,15 +17,20 @@ import { extractTenderRequirements, type TenderExtraction } from "@/lib/ingestio
  * compatible endpoint), this one gets native PDF vision "for free" if
  * DashScope's Anthropic-compat layer genuinely mirrors the real API.
  *
- * NOT LIVE-TESTED. Real, disclosed uncertainty: whether every feature the
- * underlying call uses is actually supported by DashScope's compat layer —
- * native `document` content blocks, `output_config.format` structured
- * outputs, and `cache_control` prompt caching in particular — is unknown
- * pending a real run. A genuine incompatibility will surface as a real
- * 4xx from this endpoint, which is what to fix against rather than a
- * guess about where the gap is. Run `npm run analyze:batch -- <folder>
- * --provider=qwen-anthropic` once DASHSCOPE_API_KEY is set and report
- * back whatever the first real error/result looks like.
+ * LIVE-TESTED 2026-09-03: real `document` content blocks ARE accepted
+ * (confirmed by the size-limit errors below, which mean the request
+ * parsed far enough to hit a length check). `output_config.format`
+ * structured outputs are NOT reliable through this endpoint's translation
+ * layer, though — real responses came back as a top-level JSON array
+ * instead of an object, and separately with required array keys entirely
+ * omitted rather than `[]` — so `useStructuredOutput: false` is passed
+ * below to bypass that feature entirely (see runExtraction()'s header
+ * comment in extract-requirements.ts for the full real-error detail).
+ * `cache_control` prompt caching support remains unconfirmed either way.
+ * Two more real, confirmed ceilings on top of Claude's own (see
+ * pdf-split.ts): a 28,000,000-character cap on the base64 PDF field
+ * itself, and a 16,777,216-byte cap on the overall request body — both
+ * already accounted for in pdf-split.ts's chunk-size budget.
  */
 export async function extractTenderRequirementsQwenAnthropic(
   filePath: string,
@@ -35,5 +40,5 @@ export async function extractTenderRequirementsQwenAnthropic(
     apiKey: process.env.DASHSCOPE_API_KEY,
     baseURL: "https://dashscope-intl.aliyuncs.com/apps/anthropic",
   });
-  return extractTenderRequirements(filePath, context, "qwen3.5-plus", client);
+  return extractTenderRequirements(filePath, context, "qwen3.5-plus", client, false);
 }

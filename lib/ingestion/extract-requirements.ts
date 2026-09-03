@@ -153,19 +153,82 @@ function parseContextOverflow(err: unknown): { actualTokens: number; maxTokens: 
   return match ? { actualTokens: Number(match[1]), maxTokens: Number(match[2]) } : null;
 }
 
-async function runExtraction(client: Anthropic, model: ExtractionModel, content: ExtractionContent, context: { tenderNumber: string }) {
-  const response = await client.messages.parse({
+/**
+ * Describes the exact JSON shape manually, for providers that don't take
+ * `output_config.format` (Claude's structured-output feature) reliably —
+ * mirrors extract-requirements-qwen.ts's already-proven OpenAI-compat
+ * prompt, since the underlying schema is identical.
+ */
+const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...]} — no prose, no markdown fences. ALL FOUR keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical".`;
+
+/** Pulls the first JSON object out of a text response — tolerates a model wrapping it in a ```json fence or prose despite instructions not to, rather than requiring an exact match. */
+function extractJsonObject(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced ? fenced[1] : text;
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) throw new Error(`No JSON object found in response text: ${text.slice(0, 200)}`);
+  return JSON.parse(candidate.slice(start, end + 1));
+}
+
+/**
+ * Real gap found 2026-09-03 (qwen3.5-plus via DashScope's Anthropic-
+ * compatible endpoint, see extract-requirements-qwen-anthropic.ts): its
+ * translation of `output_config.format` doesn't reliably produce the
+ * requested object shape — one real response came back as a top-level
+ * JSON *array* instead of an object, another omitted required array keys
+ * entirely (`qualifications`/`risks` simply absent) rather than `[]`.
+ * Neither is fixable by retrying the same structured-output call, so
+ * `useStructuredOutput = false` bypasses `output_config.format` for that
+ * provider and asks for the JSON shape directly in the prompt instead
+ * (JSON_SHAPE_INSTRUCTIONS above) — the same manual-parse strategy
+ * extract-requirements-qwen.ts already uses successfully over its OpenAI-
+ * compat path. Missing array keys are defaulted to `[]` before validation
+ * either way (a model saying nothing by omitting an empty category is a
+ * reasonable real behavior, not a shape to hard-fail on) — but a
+ * genuinely wrong top-level shape (e.g. an array, not an object) still
+ * throws rather than guessing how to reinterpret it.
+ */
+async function runExtraction(
+  client: Anthropic,
+  model: ExtractionModel,
+  content: ExtractionContent,
+  context: { tenderNumber: string },
+  useStructuredOutput: boolean,
+) {
+  if (useStructuredOutput) {
+    const response = await client.messages.parse({
+      model,
+      max_tokens: 16000,
+      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content }],
+      output_config: { format: zodOutputFormat(ExtractionSchema) },
+    });
+
+    // Printed so a real cost is visible per run, not just guessed at — the
+    // user asked directly after the first two live-test calls whether
+    // $1.30/month usage (real, checked on their own Anthropic console) was
+    // expected. response.usage is real API data, not an estimate.
+    const u = response.usage;
+    console.log(
+      `Token usage — input: ${u.input_tokens}, output: ${u.output_tokens}` +
+        (u.cache_creation_input_tokens ? `, cache write: ${u.cache_creation_input_tokens}` : "") +
+        (u.cache_read_input_tokens ? `, cache read: ${u.cache_read_input_tokens}` : ""),
+    );
+
+    if (!response.parsed_output) {
+      throw new Error(`Extraction failed to parse for ${context.tenderNumber} (stop_reason: ${response.stop_reason})`);
+    }
+    return response.parsed_output;
+  }
+
+  const response = await client.messages.create({
     model,
     max_tokens: 16000,
-    system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+    system: [{ type: "text", text: `${SYSTEM_PROMPT}\n\n${JSON_SHAPE_INSTRUCTIONS}`, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content }],
-    output_config: { format: zodOutputFormat(ExtractionSchema) },
   });
 
-  // Printed so a real cost is visible per run, not just guessed at — the
-  // user asked directly after the first two live-test calls whether
-  // $1.30/month usage (real, checked on their own Anthropic console) was
-  // expected. response.usage is real API data, not an estimate.
   const u = response.usage;
   console.log(
     `Token usage — input: ${u.input_tokens}, output: ${u.output_tokens}` +
@@ -173,10 +236,18 @@ async function runExtraction(client: Anthropic, model: ExtractionModel, content:
       (u.cache_read_input_tokens ? `, cache read: ${u.cache_read_input_tokens}` : ""),
   );
 
-  if (!response.parsed_output) {
-    throw new Error(`Extraction failed to parse for ${context.tenderNumber} (stop_reason: ${response.stop_reason})`);
+  const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
+  if (!textBlock) throw new Error(`Extraction returned no text content for ${context.tenderNumber} (stop_reason: ${response.stop_reason})`);
+
+  const raw = extractJsonObject(textBlock.text) as Record<string, unknown>;
+  for (const key of ["qualifications", "experienceRequirements", "requiredDocuments", "risks"]) {
+    if (raw[key] === undefined) raw[key] = [];
   }
-  return response.parsed_output;
+  const parsed = ExtractionSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error(`Extraction failed schema validation for ${context.tenderNumber}: ${parsed.error.message}`);
+  }
+  return parsed.data;
 }
 
 /**
@@ -196,10 +267,11 @@ async function runTextExtractionWithOverflowRetry(
   instruction: string,
   documentText: string,
   context: { tenderNumber: string },
+  useStructuredOutput: boolean,
 ) {
   const content: ExtractionContent = [{ type: "text", text: `${instruction}\n\n---\n\n${documentText}` }];
   try {
-    return await runExtraction(client, model, content, context);
+    return await runExtraction(client, model, content, context, useStructuredOutput);
   } catch (err) {
     const overflow = parseContextOverflow(err);
     if (!overflow) throw err;
@@ -212,7 +284,7 @@ async function runTextExtractionWithOverflowRetry(
     const truncatedContent: ExtractionContent = [
       { type: "text", text: `${instruction}\n\n---\n\n${truncatedText}\n\n[... document truncated to fit the model's context window; content past this point was not seen ...]` },
     ];
-    return runExtraction(client, model, truncatedContent, context);
+    return runExtraction(client, model, truncatedContent, context, useStructuredOutput);
   }
 }
 
@@ -262,6 +334,7 @@ async function runChunkedPdfExtraction(
   filePath: string,
   instruction: string,
   context: { tenderNumber: string },
+  useStructuredOutput: boolean,
 ): Promise<TenderExtraction> {
   const { chunks, cleanup } = splitPdfIntoChunks(filePath);
   try {
@@ -276,7 +349,7 @@ async function runChunkedPdfExtraction(
         },
         { type: "text", text: chunkInstruction },
       ];
-      parts.push(await runExtraction(client, model, content, context));
+      parts.push(await runExtraction(client, model, content, context, useStructuredOutput));
     }
     return mergeExtractions(parts);
   } finally {
@@ -291,8 +364,11 @@ export async function extractTenderRequirements(
   // Defaults to a real Anthropic client; extract-requirements-qwen-
   // anthropic.ts passes one pointed at DashScope's Anthropic-compatible
   // endpoint instead, reusing every call below (native PDF document
-  // blocks, structured output, chunking, overflow retry) unchanged.
+  // blocks, chunking, overflow retry) unchanged.
   client: Anthropic = new Anthropic(),
+  // False for extract-requirements-qwen-anthropic.ts — see runExtraction()'s
+  // header comment for the real gap that requires this.
+  useStructuredOutput: boolean = true,
 ): Promise<TenderExtraction> {
   // Word documents — .docx and legacy .doc alike (2026-09-03, per the
   // user's report that many real tender documents arrive as Word files,
@@ -312,7 +388,7 @@ export async function extractTenderRequirements(
   // Harmless for Claude's own structured outputs either way.
   const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}, and respond with a valid JSON object matching the required schema.`;
 
-  if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context);
+  if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context, useStructuredOutput);
 
   const pdfContent: ExtractionContent = [
     {
@@ -323,13 +399,13 @@ export async function extractTenderRequirements(
   ];
 
   try {
-    return await runExtraction(client, model, pdfContent, context);
+    return await runExtraction(client, model, pdfContent, context, useStructuredOutput);
   } catch (err) {
     if (!isPdfNativeLimitError(err)) throw err;
     console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 300)}) — splitting into chunks.`);
 
     try {
-      return await runChunkedPdfExtraction(client, model, filePath, instruction, context);
+      return await runChunkedPdfExtraction(client, model, filePath, instruction, context, useStructuredOutput);
     } catch (chunkErr) {
       // Chunking needs poppler's pdfinfo/pdfseparate/pdfunite on PATH —
       // if any is missing (ENOENT) or a chunk call itself errors, this
@@ -342,7 +418,7 @@ export async function extractTenderRequirements(
       // 2026-09-03) — runTextExtractionWithOverflowRetry() handles that
       // second failure mode too.
       console.log(`  chunked extraction failed (${(chunkErr instanceof Error ? chunkErr.message : String(chunkErr)).slice(0, 800)}) — falling back to extracted text instead.`);
-      return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context);
+      return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context, useStructuredOutput);
     }
   }
 }

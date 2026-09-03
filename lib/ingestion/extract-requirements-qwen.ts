@@ -7,18 +7,27 @@ import { ExtractionSchema, SYSTEM_PROMPT, type TenderExtraction } from "@/lib/in
  * Sonnet/Opus 5 path (2026-09-03) — see translate-titles-qwen.ts's
  * header for the full context.
  *
- * Unlike Claude/Gemini, this does NOT send the PDF natively. Qwen3.6-
+ * Unlike Claude/Gemini, this does NOT send the PDF natively. Qwen3.5-
  * Plus's exact support for native PDF input over DashScope's OpenAI-
  * compatible chat completions endpoint couldn't be confirmed via
  * WebSearch (2026-09-03) — evidence exists for Qwen's dedicated "-vl"
  * vision-language models handling files/images, but not a documented
- * request shape for plain qwen3.6-plus, and guessing the wrong content-
+ * request shape for plain qwen3.5-plus, and guessing the wrong content-
  * part shape here would silently produce garbage or a hard error rather
  * than a fair comparison. Extracts the PDF's text locally instead, with
  * the same `pdftotext` path document-intake.ts already uses and has
  * tested against real Compras MX/PEMEX documents, and sends that as a
  * plain text message — a well-established capability with nothing to
  * guess.
+ *
+ * See extract-requirements-qwen-anthropic.ts for a second Qwen path
+ * (2026-09-03, per the user) via DashScope's Anthropic-compatible
+ * endpoint instead — that one reuses extract-requirements.ts completely
+ * unchanged, native PDF document blocks included, since it speaks the
+ * same request shape as Claude. Kept alongside this text-only path
+ * rather than replacing it, so their real output quality can be compared
+ * directly through analyze-batch.ts (--provider=qwen vs
+ * --provider=qwen-anthropic).
  *
  * This is a real, disclosed difference from the Claude/Gemini paths, not
  * a bug: Qwen loses whatever Claude/Gemini's native document vision
@@ -44,7 +53,7 @@ export async function extractTenderRequirementsQwen(
   const documentText = await extractDocumentText(filePath);
 
   const response = await client.chat.completions.create({
-    model: "qwen3.6-plus",
+    model: "qwen3.5-plus",
     response_format: { type: "json_object" },
     messages: [
       {

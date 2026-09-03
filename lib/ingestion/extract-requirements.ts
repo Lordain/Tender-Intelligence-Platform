@@ -159,7 +159,12 @@ function parseContextOverflow(err: unknown): { actualTokens: number; maxTokens: 
  * mirrors extract-requirements-qwen.ts's already-proven OpenAI-compat
  * prompt, since the underlying schema is identical.
  */
-const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...]} — no prose, no markdown fences. ALL FOUR keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical".`;
+// The Chinese-only reminder at the end is deliberate repetition, not
+// redundant with SYSTEM_PROMPT's own rule above it: real gap found
+// 2026-09-03 (qwen3.5-plus, first document in a batch run) — every
+// title/description came back in Spanish, not Chinese, despite
+// SYSTEM_PROMPT already saying so once, further up the combined prompt.
+const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...]} — no prose, no markdown fences. ALL FOUR keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". Every "title" and "description" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
 
 /** Pulls the first JSON object out of a text response — tolerates a model wrapping it in a ```json fence or prose despite instructions not to, rather than requiring an exact match. */
 function extractJsonObject(text: string): unknown {

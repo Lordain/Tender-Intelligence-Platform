@@ -12,6 +12,17 @@
  * exports/ for review. Never writes to Supabase — this is an evaluation
  * tool, not scripts/extract-tender-document.ts's --write path.
  *
+ * Real bug fixed 2026-09-03: exported results used to be keyed by
+ * `tender.slug` alone, so when a real tender has multiple source
+ * documents (common — CFE/PEMEX/Compras MX tenders here often have 2-3),
+ * each later document's result silently OVERWROTE the earlier one's in
+ * the exported JSON — every multi-document tender's export only ever
+ * showed its LAST-processed file, with the others' extractions discarded
+ * with no error or warning. Found by the user noticing an export only had
+ * 7 entries for a 14-document run. Now keyed by `"<slug> :: <fileName>"`
+ * so every document's own result survives.
+ *
+
  * Matches documents to tenders primarily by checking each document's own
  * text/file name for a real, already-known `tenders.tender_number` value
  * (every tender number currently in Supabase is fetched once up front) —
@@ -255,11 +266,11 @@ async function main() {
       console.log(
         `  [ok] ${elapsedMs}ms — ${s.qualifications} qualifications, ${s.experienceRequirements} experience, ${s.requiredDocuments} documents, ${s.risks} risks (${s.criticalRisks} critical)`,
       );
-      results[tender.slug] = extraction;
+      results[`${tender.slug} :: ${basename(pdfPath)}`] = extraction;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`  [fail] ${message}`);
-      results[tender.slug] = { error: message };
+      results[`${tender.slug} :: ${basename(pdfPath)}`] = { error: message };
     }
   }
 

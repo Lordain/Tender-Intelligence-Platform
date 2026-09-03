@@ -144,7 +144,16 @@ function buildDofDetailFields(fieldsByLabel: Record<string, string>, tenderNumbe
 
     if (/publicaci[óo]n/i.test(label)) {
       publicationDate = iso;
-    } else if (/aclaracion/i.test(label)) {
+    } else if (/visita en sitio/i.test(label)) {
+      // Real label, third office (CFE-0400-CAAAT-0009-2026): "Visita en
+      // sitio" — a real site-visit date this source never carried before.
+      keyDates.push({ id: `${tenderNumber}-site-visit`, type: "site_visit", date: iso });
+    } else if (/aclaraci[óo]n/i.test(label)) {
+      // Same third office, real gap: "Aclaración a los documentos del
+      // Concurso" (singular, written accent on the ó) — the old plain
+      // "aclaracion" pattern only matched the accent-free plural
+      // ("Sesión de Aclaraciones", first office) and silently dropped
+      // this one's clarification date entirely.
       keyDates.push({ id: `${tenderNumber}-clarification`, type: "clarification", date: iso });
     } else if (/l[íi]mite.*ofertas|presentaci[óo]n.*ofertas/i.test(label)) {
       submissionDeadline = iso;

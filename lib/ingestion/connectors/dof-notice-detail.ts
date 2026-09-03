@@ -135,6 +135,32 @@ export function parseDofNoticeDetailHtml(html: string): DofNoticeDetail | null {
     }
   }
 
+  // Real third table shape (2026-09-03, CFE-0400-CAAAT-0009-2026, yet
+  // another "Área Contratante" office): NO leading colspan row at all —
+  // the number and title are just two more bgcolor-labeled rows
+  // ("Número del Concurso:"/"Descripción del Concurso:"), which the loop
+  // above already captured into fieldsByLabel since it only ever checked
+  // colspan rows for these two fields. Promoted here rather than matched
+  // inline above so the colspan branch — confirmed real for the other two
+  // offices — stays untouched; removed from fieldsByLabel afterward so
+  // they don't get mistaken for a date field downstream (harmless either
+  // way, since neither value parses as a date, but this keeps the map
+  // to just what it's named for).
+  if (procedureNumber === undefined) {
+    const key = Object.keys(fieldsByLabel).find((l) => /n[úu]mero del concurso|n[úu]mero de procedimiento/i.test(l));
+    if (key) {
+      procedureNumber = fieldsByLabel[key];
+      delete fieldsByLabel[key];
+    }
+  }
+  if (title === undefined) {
+    const key = Object.keys(fieldsByLabel).find((l) => /descripci[óo]n del concurso|objeto de la contrataci[óo]n/i.test(l));
+    if (key) {
+      title = fieldsByLabel[key];
+      delete fieldsByLabel[key];
+    }
+  }
+
   if (!procedureNumber && !title && Object.keys(fieldsByLabel).length === 0) return null;
   return { procedureNumber, title, fieldsByLabel };
 }

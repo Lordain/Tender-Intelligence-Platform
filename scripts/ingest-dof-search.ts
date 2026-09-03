@@ -3,6 +3,17 @@
  * that finally confirmed CFE tenders publish in DOF under a real,
  * identifiable section (see lib/ingestion/dof-search-mapper.ts).
  *
+ * For every tender-section notice, also fetches its own detail page
+ * (dof-notice-detail.ts, confirmed not anti-bot gated, 2026-09-03) before
+ * mapping — the search response alone only ever carries "<BUYER> -
+ * REF:<number>" with zero real content (see lib/relevance.ts's
+ * BARE_BUYER_REF_TITLE), while the detail page has the real procedure
+ * number, title, and key-dates table. A notice whose detail page doesn't
+ * parse (a different table shape — confirmed real for CFE only so far,
+ * see dof-notice-detail.ts) still maps from the bare stub exactly as
+ * before, so this can only add real content, never lose a row that would
+ * have ingested otherwise.
+ *
  * Usage:
  *   npm run ingest:dof-search -- --fixture
  *   npm run ingest:dof-search -- path/to/response.json [--write]
@@ -10,11 +21,52 @@
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { readDofSearchFile } from "../lib/ingestion/connectors/dof-search-file";
-import { mapDofSearchNotaToTender } from "../lib/ingestion/dof-search-mapper";
+import { mapDofSearchNotaToTender, toDetailPageFecha } from "../lib/ingestion/dof-search-mapper";
+import { fetchDofNoticeDetail } from "../lib/ingestion/connectors/dof-notice-detail";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
 import { filterRecentTenders } from "../lib/ingestion/recency";
 import type { Tender } from "../types/tender";
+import type { DofSearchNota } from "../lib/ingestion/dof-search-mapper";
+import type { DofNoticeDetail } from "../lib/ingestion/connectors/dof-notice-detail";
+
+// Same reasoning as resolve-comprasmx-links.ts / discover-comprasmx-vigente.ts:
+// a real systemic failure (network/firewall/DNS) should stop the run
+// loudly instead of grinding through hundreds more doomed requests.
+const ERROR_CIRCUIT_BREAKER_THRESHOLD = 5;
+
+const TENDER_SECTION = /CONVOCATORIAS PARA CONCURSOS/i;
+
+async function fetchDetailsForNotas(notas: DofSearchNota[]): Promise<Map<number, DofNoticeDetail>> {
+  const details = new Map<number, DofNoticeDetail>();
+  const tenderNotas = notas.filter((n) => n.titulo?.trim() && TENDER_SECTION.test(n.codOrgaUno ?? ""));
+
+  let consecutiveErrors = 0;
+  for (const [i, nota] of tenderNotas.entries()) {
+    const fecha = toDetailPageFecha(nota.fecha);
+    if (!fecha) continue;
+
+    const result = await fetchDofNoticeDetail(nota.codNota, fecha);
+
+    if (result.status === "error") {
+      console.error(`  [${i + 1}/${tenderNotas.length}] error fetching detail for codNota ${nota.codNota} — ${result.message}`);
+      consecutiveErrors++;
+      if (consecutiveErrors >= ERROR_CIRCUIT_BREAKER_THRESHOLD) {
+        console.error(
+          `\n${consecutiveErrors} detail fetches in a row failed with an error — stopping early. This looks systemic (network/firewall/DNS reaching dof.gob.mx), not "these notices don't have detail pages." Fix that first, then re-run.`,
+        );
+        process.exit(1);
+      }
+      continue;
+    }
+    consecutiveErrors = 0;
+
+    if (result.status === "found") details.set(nota.codNota, result.detail);
+  }
+
+  console.log(`Fetched real detail-page content for ${details.size} of ${tenderNotas.length} tender notice(s).`);
+  return details;
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SOURCE_NAME = "Diario Oficial de la Federación (DOF) — búsqueda avanzada";
@@ -54,8 +106,14 @@ async function main() {
     : filePath!;
 
   const notas = readDofSearchFile(resolvedPath);
+
+  // --fixture stays fully offline (per this project's "verified working
+  // offline, no network needed" posture) — real network fetches only
+  // happen against a real, user-provided search response.
+  const detailsByCodNota: Map<number, DofNoticeDetail> = useFixture ? new Map() : await fetchDetailsForNotas(notas);
+
   const mappedTenders = notas
-    .map((n) => mapDofSearchNotaToTender(n, SOURCE_NAME))
+    .map((n) => mapDofSearchNotaToTender(n, SOURCE_NAME, detailsByCodNota.get(n.codNota)))
     .filter((t): t is Tender => t !== null);
 
   console.log(`Mapped ${mappedTenders.length} tender notice(s) of ${notas.length} notices in this response.`);

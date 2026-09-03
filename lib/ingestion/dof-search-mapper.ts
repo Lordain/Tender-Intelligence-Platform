@@ -1,7 +1,9 @@
-import type { Tender } from "@/types/tender";
+import type { Tender, TenderKeyDate } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyRelevance } from "@/lib/relevance";
 import { classifyIndustries } from "@/lib/industry";
+import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
+import type { DofNoticeDetail } from "@/lib/ingestion/connectors/dof-notice-detail";
 
 /**
  * One "nota" from DOF's advanced-search endpoint
@@ -67,15 +69,91 @@ function parseFecha(raw: string): string | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
-export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string): Tender | null {
-  const title = nota.titulo?.trim();
-  if (!title || !TENDER_SECTION.test(nota.codOrgaUno ?? "")) return null;
+/** Converts a search result's "YYYY/MM/DD" fecha into the detail page's own "DD/MM/YYYY" URL format — confirmed real (2026-09-03) both are DOF's own, just different endpoints with different conventions. */
+export function toDetailPageFecha(searchFecha: string): string | null {
+  const match = searchFecha.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (!match) return null;
+  const [, year, month, day] = match;
+  return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+}
 
-  const publicationDate = parseFecha(nota.fecha);
-  if (!publicationDate) return null;
+/**
+ * DOF's own detail-page date values, e.g. "11/09/2026, 10:30 hrs" or just
+ * "27/08/2026" with no time — confirmed real 2026-09-03 (both shapes seen
+ * in the same table, CFE-0001-CAAAT-0134-2026's "Fecha de publicación en
+ * Micrositio" has no time, every other row does).
+ */
+function parseDofDetailDate(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*(\d{1,2}):(\d{2})\s*hrs)?/i);
+  if (!match) return null;
+  const [, day, month, year, hour, minute] = match;
+  const parsed = new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${(hour ?? "00").padStart(2, "0")}:${minute ?? "00"}:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
 
-  const { buyer: parsedBuyer, ref } = parseBuyerAndRef(title);
+/**
+ * Maps the detail page's real field-label table (see dof-notice-detail.ts)
+ * into keyDates + submissionDeadline + a real publication date — labels
+ * confirmed real for CFE-0001-CAAAT-0134-2026 only so far; a label none of
+ * these patterns match is silently skipped (not fabricated into a wrong
+ * type), so a differently-worded notice degrades gracefully to "fewer key
+ * dates" rather than a wrong one.
+ */
+function buildDofDetailFields(fieldsByLabel: Record<string, string>, tenderNumber: string) {
+  const keyDates: TenderKeyDate[] = [];
+  let submissionDeadline: string | undefined;
+  let publicationDate: string | undefined;
+
+  for (const [label, rawValue] of Object.entries(fieldsByLabel)) {
+    const iso = parseDofDetailDate(rawValue);
+    if (!iso) continue;
+
+    if (/publicaci[óo]n/i.test(label)) {
+      publicationDate = iso;
+    } else if (/aclaracion/i.test(label)) {
+      keyDates.push({ id: `${tenderNumber}-clarification`, type: "clarification", date: iso });
+    } else if (/l[íi]mite.*ofertas|presentaci[óo]n.*ofertas/i.test(label)) {
+      submissionDeadline = iso;
+      keyDates.push({ id: `${tenderNumber}-submission`, type: "submission", date: iso });
+    } else if (/apertura t[ée]cnica/i.test(label)) {
+      keyDates.push({ id: `${tenderNumber}-opening-tecnica`, type: "opening", date: iso });
+    } else if (/apertura econ[óo]mica/i.test(label)) {
+      keyDates.push({ id: `${tenderNumber}-opening-economica`, type: "opening", date: iso });
+    } else if (/^fallo/i.test(label)) {
+      keyDates.push({ id: `${tenderNumber}-award`, type: "award", date: iso });
+    }
+  }
+
+  return { keyDates, submissionDeadline, publicationDate };
+}
+
+/**
+ * `detail`, when present, is the notice's own detail page content (see
+ * dof-notice-detail.ts) — real procedure number, real title, and a real
+ * key-dates table, replacing the search endpoint's bare "<BUYER> -
+ * REF:<number>" stub (see lib/relevance.ts's BARE_BUYER_REF_TITLE — a row
+ * with no detail still maps exactly as before, and still gets excluded
+ * for having no real content, which is honest: there genuinely is none).
+ */
+export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string, detail?: DofNoticeDetail): Tender | null {
+  const stubTitle = nota.titulo?.trim();
+  if (!stubTitle || !TENDER_SECTION.test(nota.codOrgaUno ?? "")) return null;
+
+  const searchDate = parseFecha(nota.fecha);
+  if (!searchDate) return null;
+
+  const { buyer: parsedBuyer, ref } = parseBuyerAndRef(stubTitle);
   const buyer = parsedBuyer ?? nota.codOrgaDos ?? "Desconocido";
+
+  const tenderNumber = detail?.procedureNumber?.trim() || (ref ? `DOF-REF-${ref}` : `DOF-${nota.codNota}`);
+  const title = detail?.title?.trim() || stubTitle;
+
+  const { keyDates: detailKeyDates, submissionDeadline, publicationDate: detailPublicationDate } = detail
+    ? buildDofDetailFields(detail.fieldsByLabel, tenderNumber)
+    : { keyDates: [] as TenderKeyDate[], submissionDeadline: undefined, publicationDate: undefined };
+
+  const publicationDate = detailPublicationDate ?? searchDate;
   const now = new Date().toISOString();
   const industries = classifyIndustries(title, buyer);
   const scopeType = "services" as const;
@@ -83,21 +161,26 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
   return {
     id: crypto.randomUUID(),
     slug: `dof-${slugify(String(nota.codNota))}`,
-    tenderNumber: ref ? `DOF-REF-${ref}` : `DOF-${nota.codNota}`,
+    tenderNumber,
     title: untranslated(title),
     summary: untranslated(title),
     buyer,
     country: "Mexico",
-    governmentLevel: "federal",
+    // CFE/PEMEX are constitutionally distinct "Empresas Productivas del
+    // Estado", not federal ministries (see pemex-mapper.ts) — this used
+    // to be hardcoded "federal" for every DOF row regardless of buyer;
+    // inferGovernmentLevel() already recognizes CFE/PEMEX by name.
+    governmentLevel: inferGovernmentLevel(buyer),
     industries,
     scopeType,
     procedureType: "Convocatoria (DOF)",
     publicationDate,
+    submissionDeadline,
     status: "open",
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],
-    keyDates: [{ id: `dof-${nota.codNota}-publication`, type: "publication", date: publicationDate }],
+    keyDates: detailKeyDates.length > 0 ? detailKeyDates : [{ id: `dof-${nota.codNota}-publication`, type: "publication", date: publicationDate }],
     risks: [],
     relevance: classifyRelevance({ title, industries, scopeType, buyer }),
     sourceName,

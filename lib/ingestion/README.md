@@ -895,6 +895,23 @@ tooling. This is not a workaround or a reverse-engineered endpoint; it's
 SharePoint's own public REST surface, left open to anonymous visitors the
 same way the page itself is.
 
+**CFE's per-procedure detail data is gated too, not just the search box**
+(2026-09-03, real captured requests from a working browser session on
+`msc.cfe.mx/.../Procedure/Details`): every request — including
+`Procedure/FechasRecepcionPropuesta`, which returns real per-procedure
+data (a key-dates list) — carries the same `visid_incap_*`/`nlbi_*`/
+`incap_ses_*` Imperva cookies as the search endpoint, PLUS a
+session-bound `__RequestVerificationToken` sent both as a cookie and in
+the POST body — an ASP.NET anti-forgery token that only exists after a
+real browser session has already loaded the page once. Stricter than
+Compras MX's `grc`/`igrc`/`xgrc` tokens, not looser: this isn't "open but
+undocumented" the way PEMEX's SharePoint REST API is, it's "requires a
+live, freshly-established session, not just no login." Confirms rather
+than revises the conclusion above — CFE's own site stays off-limits at
+every layer tested so far (search AND detail), so real CFE tender content
+still has to come through DOF's notice detail pages (see "LicitIA" section
+above's `dof-notice-detail.ts`) instead.
+
 That enumeration call revealed one SharePoint list per PEMEX subsidiary,
 all under the same site, all with an identical item shape:
 

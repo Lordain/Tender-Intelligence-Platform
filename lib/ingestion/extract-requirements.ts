@@ -119,32 +119,15 @@ Ground rules:
 /** Sonnet 5 is the default (included) tier; Opus 5 is the "精度分析" premium tier the user proposed (2026-09-02) — same schema/prompt either way, only the model differs. Not yet wired to any actual paid-gating UI/API route (that doesn't exist yet); this parameter is what such a route would pass through once built. `claude-haiku-4-5-20251001` was added 2026-09-03 as a cheaper tier to evaluate alongside Qwen/Gemini via scripts/analyze-batch.ts — same schema/prompt, only the model differs, so the comparison is fair. */
 export type ExtractionModel = "claude-sonnet-5" | "claude-opus-5" | "claude-haiku-4-5-20251001";
 
-export async function extractTenderRequirements(
-  filePath: string,
-  context: { tenderNumber: string; title: string; buyer: string },
-  model: ExtractionModel = "claude-sonnet-5",
-): Promise<TenderExtraction> {
-  const client = new Anthropic();
-  // Word documents — .docx and legacy .doc alike (2026-09-03, per the
-  // user's report that many real tender documents arrive as Word files,
-  // both formats, not PDF) — go through local text extraction instead of
-  // Claude's native document vision — unlike a scanned PDF page, a real
-  // Word file is already machine-readable text, so there's nothing
-  // meaningful for native document understanding to add here (no
-  // layout/table-image rendering to lose).
-  const isWord = [".docx", ".doc"].includes(extname(filePath).toLowerCase());
-  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}.`;
+type ExtractionContent = Array<{ type: "text"; text: string } | { type: "document"; source: { type: "base64"; media_type: "application/pdf"; data: string } }>;
 
-  const content = isWord
-    ? [{ type: "text" as const, text: `${instruction}\n\n---\n\n${await extractDocumentText(filePath)}` }]
-    : [
-        {
-          type: "document" as const,
-          source: { type: "base64" as const, media_type: "application/pdf" as const, data: readFileSync(filePath).toString("base64") },
-        },
-        { type: "text" as const, text: instruction },
-      ];
+/** A real Compras MX/Proyectos Estratégicos MX PDF can exceed Claude's native-document limits outright (2026-09-03, live-tested batch run): a multi-hundred-page Convocatoria hit "A maximum of 100 PDF pages may be provided", and a ~33MB scanned Anexo hit the request's overall size cap ("request_too_large") — both real 4xx failures from the API, not a guess about where the ceiling is. Matched against the message text since the SDK doesn't expose a distinct error subclass for either. */
+function isPdfNativeLimitError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /maximum of \d+ pdf pages/i.test(message) || /request_too_large|exceeds the maximum size/i.test(message);
+}
 
+async function runExtraction(client: Anthropic, model: ExtractionModel, content: ExtractionContent, context: { tenderNumber: string }) {
   const response = await client.messages.parse({
     model,
     max_tokens: 16000,
@@ -168,6 +151,48 @@ export async function extractTenderRequirements(
     throw new Error(`Extraction failed to parse for ${context.tenderNumber} (stop_reason: ${response.stop_reason})`);
   }
   return response.parsed_output;
+}
+
+export async function extractTenderRequirements(
+  filePath: string,
+  context: { tenderNumber: string; title: string; buyer: string },
+  model: ExtractionModel = "claude-sonnet-5",
+): Promise<TenderExtraction> {
+  const client = new Anthropic();
+  // Word documents — .docx and legacy .doc alike (2026-09-03, per the
+  // user's report that many real tender documents arrive as Word files,
+  // both formats, not PDF) — go through local text extraction instead of
+  // Claude's native document vision — unlike a scanned PDF page, a real
+  // Word file is already machine-readable text, so there's nothing
+  // meaningful for native document understanding to add here (no
+  // layout/table-image rendering to lose).
+  const isWord = [".docx", ".doc"].includes(extname(filePath).toLowerCase());
+  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}.`;
+
+  const textContent: ExtractionContent = [{ type: "text", text: `${instruction}\n\n---\n\n${await extractDocumentText(filePath)}` }];
+
+  if (isWord) return runExtraction(client, model, textContent, context);
+
+  const pdfContent: ExtractionContent = [
+    {
+      type: "document",
+      source: { type: "base64", media_type: "application/pdf", data: readFileSync(filePath).toString("base64") },
+    },
+    { type: "text", text: instruction },
+  ];
+
+  try {
+    return await runExtraction(client, model, pdfContent, context);
+  } catch (err) {
+    if (!isPdfNativeLimitError(err)) throw err;
+    // Falls back to locally-extracted plain text (pdftotext, same path
+    // extractDocumentText() already uses for the tender-number matching
+    // step) rather than failing the whole document outright — loses
+    // layout/table-image understanding for this one document, but a
+    // degraded extraction beats none for a real oversized bidding book.
+    console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 100)}) — retrying with extracted text instead.`);
+    return runExtraction(client, model, textContent, context);
+  }
 }
 
 // es/en mirror zh here (untranslated()'s convention) rather than carrying

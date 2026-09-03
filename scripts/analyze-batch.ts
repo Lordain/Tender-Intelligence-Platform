@@ -40,8 +40,13 @@
  *   npm run analyze:batch -- path/to/folder --provider=gemini [--count=5]
  *
  * --provider: claude-haiku | claude-sonnet | claude-opus | qwen | gemini
- * --count: how many documents to run (default 5) — takes the first N
- *   matching PDFs in the folder, alphabetical.
+ * --count: how many DOCUMENTS to run (default 5), not tenders — takes the
+ *   first N matched files in the folder, alphabetical. Real gap found
+ *   2026-09-03: a folder with more than --count files can silently cut off
+ *   before reaching a tender whose files sort last (e.g. "SNR-..." never
+ *   ran in an 8-count pass over a folder whose other tenders' files came
+ *   first alphabetically) — pass a --count at least as large as the
+ *   folder's total file count to guarantee every tender gets analyzed.
  */
 import { readdirSync, statSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, extname, basename } from "node:path";

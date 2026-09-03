@@ -1951,6 +1951,8 @@ The user found `proyectosmexico.gob.mx/proyectos/` — a federal platform (hoste
 
 `npm run ingest:proyectos-mexico -- <file>.csv [--write]` (`--fixture` for an offline dry run against two real rows). No `--months` recency filter, unlike every other ingest script — this source only ever lists currently-in-bidding projects (filtered to `Etapa === "Licitación"` inside the mapper itself), so there's no multi-year historical backlog to trim.
 
+**`status` fix (2026-09-03, user-caught real data bug)**: every mapped row originally hardcoded `status: "open"` (i.e. always shown as "招标中"), reasoning `Etapa === "Licitación"` already meant "currently accepting bids." Wrong — the user checked several rows manually against Compras MX and found some the site still still tagged `open` hadn't actually had their Convocatoria published yet. `Etapa === "Licitación"` only means the project's current lifecycle stage is *procurement*, not that a specific bidding window is live right now. Fixed to derive `status` from the two real date columns this source does give: `submission_closed` if `Recepción de propuestas` is already in the past, `open` if `Anuncio/ Convocatoria` is in the past (and the deadline hasn't passed), otherwise `planned` (not yet actually announced). Existing already-ingested rows still carry the old hardcoded `open` until the same source CSV is re-ingested with `--write` (an upsert, so this is a safe no-duplicate re-run) — this hasn't been done yet.
+
 ### Three real fixes, same day, after the first real ingest attempt
 
 The user's first real dry run surfaced three real issues, all fixed:

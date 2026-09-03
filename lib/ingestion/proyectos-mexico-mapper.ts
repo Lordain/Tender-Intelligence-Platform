@@ -1,4 +1,4 @@
-import type { Tender, TenderKeyDate, TenderScopeType, TenderParticipationScope } from "@/types/tender";
+import type { Tender, TenderKeyDate, TenderScopeType, TenderParticipationScope, TenderStatus } from "@/types/tender";
 import { untranslated } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
 import { classifyRelevance } from "@/lib/relevance";
@@ -178,7 +178,28 @@ export function mapProyectosMexicoRowToTender(row: ProyectosMexicoRow, sourceNam
   // default-hide behavior to paper over it.
   if (row.Etapa?.trim() !== "Licitación") return null;
 
-  const publicationDate = parseDate(row["Anuncio/ Convocatoria"]) ?? new Date().toISOString();
+  // `Etapa === "Licitación"` only means this project's current LIFECYCLE
+  // stage is procurement — confirmed real-world gap (2026-09-03, user
+  // caught it directly: some rows the site still tagged as this stage
+  // haven't actually had their Convocatoria published yet, or already
+  // passed their own "Recepción de propuestas" deadline). Neither
+  // "already open" nor "still open" is implied by the stage alone, so
+  // status has to be derived from the two real date fields this source
+  // does give (same "Anuncio/Convocatoria" / "Recepción de propuestas"
+  // columns already used for keyDates below), not hardcoded to "open".
+  const announcementDate = parseDate(row["Anuncio/ Convocatoria"]);
+  const submissionDeadlineDate = parseDate(row["Recepción de propuestas"]);
+  const now = Date.now();
+  let status: TenderStatus;
+  if (submissionDeadlineDate && new Date(submissionDeadlineDate).getTime() < now) {
+    status = "submission_closed";
+  } else if (announcementDate && new Date(announcementDate).getTime() <= now) {
+    status = "open";
+  } else {
+    status = "planned";
+  }
+
+  const publicationDate = announcementDate ?? new Date(now).toISOString();
   // Alias is preferred over Descripción for summary (2026-09-02, per the
   // user's explicit note): Alias is a real one-sentence restatement of
   // the project (confirmed against all 58 real rows), close in shape to
@@ -205,7 +226,7 @@ export function mapProyectosMexicoRowToTender(row: ProyectosMexicoRow, sourceNam
         ? (extractCurrencyCode(row["Moneda del contrato"]) ?? "MXN")
         : "USD";
 
-  const now = new Date().toISOString();
+  const nowIso = new Date(now).toISOString();
 
   return {
     id: crypto.randomUUID(),
@@ -221,10 +242,10 @@ export function mapProyectosMexicoRowToTender(row: ProyectosMexicoRow, sourceNam
     procedureType: row["Proceso de selección"]?.trim() || row["Tipo de contrato"]?.trim() || "Unknown",
     participationScope: inferParticipationScopeFromProceso(row["Proceso de selección"]),
     publicationDate,
-    submissionDeadline: parseDate(row["Recepción de propuestas"]) ?? undefined,
+    submissionDeadline: submissionDeadlineDate ?? undefined,
     estimatedValue,
     currency,
-    status: "open",
+    status,
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],
@@ -242,7 +263,7 @@ export function mapProyectosMexicoRowToTender(row: ProyectosMexicoRow, sourceNam
     }),
     sourceName,
     sourceUrl: row.URL?.trim() || "",
-    createdAt: now,
-    updatedAt: now,
+    createdAt: nowIso,
+    updatedAt: nowIso,
   };
 }

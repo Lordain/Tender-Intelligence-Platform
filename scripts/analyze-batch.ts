@@ -22,7 +22,6 @@
  * 7 entries for a 14-document run. Now keyed by `"<slug> :: <fileName>"`
  * so every document's own result survives.
  *
-
  * Matches documents to tenders primarily by checking each document's own
  * text/file name for a real, already-known `tenders.tender_number` value
  * (every tender number currently in Supabase is fetched once up front) —
@@ -50,7 +49,22 @@
  *   npm run analyze:batch -- path/to/folder --provider=claude-haiku [--count=5]
  *   npm run analyze:batch -- path/to/folder --provider=gemini [--count=5]
  *
- * --provider: claude-haiku | claude-sonnet | claude-opus | qwen | qwen-anthropic | qwen-anthropic-3.6 | gemini
+ * --provider: claude-haiku | claude-sonnet | claude-opus | qwen | qwen-anthropic | qwen-anthropic-3.6 | gemini | auto
+ *
+ * --provider=auto (2026-09-03, per the user): routes each document by
+ * whether it has a real text layer, per the day's findings — Word docs
+ * always do; a PDF is checked via the same `pdftotext` extraction already
+ * used for tender-number matching. Scanned/image-only PDFs (no meaningful
+ * text layer) go to claude-haiku, since it's the only provider confirmed
+ * to read scanned pages correctly after chunking (qwen-anthropic returned
+ * an empty 0/0/0/0 result on a real 33MB scanned Anexo, on BOTH
+ * qwen3.5-plus and qwen3.6-plus, with suspiciously tiny per-chunk input
+ * token counts suggesting the reconstructed PDF chunks weren't actually
+ * being read). Everything else (has real text — most PDFs and all Word
+ * docs) goes to qwen-anthropic, confirmed working well and far cheaper.
+ * This is a real, live-tested cost/quality split, not a guess — but it's
+ * only wired into this evaluation script for now, not the production
+ * extract-tender-document.ts pipeline.
  * --count: how many DOCUMENTS to run (default 5), not tenders — takes the
  *   first N matched files in the folder, alphabetical. Real gap found
  *   2026-09-03: a folder with more than --count files can silently cut off
@@ -68,8 +82,26 @@ import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract
 import { extractTenderRequirementsGemini } from "../lib/ingestion/extract-requirements-gemini";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
-type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "qwen-anthropic" | "qwen-anthropic-3.6" | "gemini";
+type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "qwen-anthropic" | "qwen-anthropic-3.6" | "gemini" | "auto";
 type ExtractContext = { tenderNumber: string; title: string; buyer: string };
+
+// Below this many characters of pdftotext output, treat a PDF as having no
+// real text layer (scanned/image-only) — real reference point 2026-09-03:
+// the 33MB scanned Anexo's own extracted text was small enough to produce
+// only ~1,561 input tokens when sent as plain text (see extract-
+// requirements.ts's header comments), while every real text-layer PDF
+// tested this session ran well into the tens of thousands of tokens. 500
+// characters is comfortably below the smallest real text-bearing document
+// seen and comfortably above what a scanned PDF's stray OCR-able caption
+// or metadata text might produce.
+const TEXT_LAYER_MIN_CHARS = 500;
+
+/** Word docs are always machine-readable text — see extractTenderRequirements()'s own isWord branch — so only PDFs need the real check. */
+async function hasRealTextLayer(filePath: string): Promise<boolean> {
+  if ([".docx", ".doc"].includes(extname(filePath).toLowerCase())) return true;
+  const text = await extractDocumentText(filePath);
+  return text.trim().length >= TEXT_LAYER_MIN_CHARS;
+}
 
 const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractContext) => Promise<TenderExtraction>> = {
   "claude-haiku": (p, c) => extractTenderRequirements(p, c, "claude-haiku-4-5-20251001"),
@@ -79,16 +111,28 @@ const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractCo
   "qwen-anthropic": extractTenderRequirementsQwenAnthropic,
   "qwen-anthropic-3.6": (p, c) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.6-plus"),
   gemini: extractTenderRequirementsGemini,
+  // Self-referencing PROVIDER_RUNNERS here is fine — this arrow function
+  // body only runs once PROVIDER_RUNNERS itself is fully assigned, since
+  // it's called later, not during this object literal's construction.
+  auto: async (p, c) => {
+    const hasText = await hasRealTextLayer(p);
+    const chosen: ProviderKey = hasText ? "qwen-anthropic" : "claude-haiku";
+    console.log(`  [auto] ${hasText ? "has a real text layer" : "no real text layer (scanned)"} — routing to ${chosen}`);
+    return PROVIDER_RUNNERS[chosen](p, c);
+  },
 };
 
-const PROVIDER_ENV_VAR: Record<ProviderKey, string> = {
-  "claude-haiku": "ANTHROPIC_API_KEY",
-  "claude-sonnet": "ANTHROPIC_API_KEY",
-  "claude-opus": "ANTHROPIC_API_KEY",
-  qwen: "DASHSCOPE_API_KEY",
-  "qwen-anthropic": "DASHSCOPE_API_KEY",
-  "qwen-anthropic-3.6": "DASHSCOPE_API_KEY",
-  gemini: "GEMINI_API_KEY",
+const PROVIDER_ENV_VAR: Record<ProviderKey, string[]> = {
+  "claude-haiku": ["ANTHROPIC_API_KEY"],
+  "claude-sonnet": ["ANTHROPIC_API_KEY"],
+  "claude-opus": ["ANTHROPIC_API_KEY"],
+  qwen: ["DASHSCOPE_API_KEY"],
+  "qwen-anthropic": ["DASHSCOPE_API_KEY"],
+  "qwen-anthropic-3.6": ["DASHSCOPE_API_KEY"],
+  gemini: ["GEMINI_API_KEY"],
+  // Either underlying provider could get picked per document, so both
+  // keys need to be set up front rather than discovered mid-run.
+  auto: ["ANTHROPIC_API_KEY", "DASHSCOPE_API_KEY"],
 };
 
 const SUPPORTED_EXTENSIONS = [".pdf", ".docx", ".doc"];
@@ -211,13 +255,13 @@ async function main() {
   const count = countArg ? parseInt(countArg, 10) : 5;
 
   if (!dir || !provider || !(provider in PROVIDER_RUNNERS)) {
-    console.error("Usage: npm run analyze:batch -- <folder> --provider=<claude-haiku|claude-sonnet|claude-opus|qwen|qwen-anthropic|qwen-anthropic-3.6|gemini> [--count=5]");
+    console.error("Usage: npm run analyze:batch -- <folder> --provider=<claude-haiku|claude-sonnet|claude-opus|qwen|qwen-anthropic|qwen-anthropic-3.6|gemini|auto> [--count=5]");
     process.exit(1);
   }
 
-  const envVar = PROVIDER_ENV_VAR[provider];
-  if (!process.env[envVar]) {
-    console.error(`${envVar} isn't set. See .env.example.`);
+  const missingEnvVars = PROVIDER_ENV_VAR[provider].filter((v) => !process.env[v]);
+  if (missingEnvVars.length > 0) {
+    console.error(`${missingEnvVars.join(", ")} isn't set. See .env.example.`);
     process.exit(1);
   }
 

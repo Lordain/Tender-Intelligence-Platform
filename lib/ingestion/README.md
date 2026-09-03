@@ -981,6 +981,27 @@ as well:
 | Concursos-Abiertos-PPS | Pemex Perforación y Servicios | 17 | 17 | 0 |
 | **Total** | | **11,775** | **11,765** | **3,128** |
 
+**`sourceUrl` bug found and fixed (2026-09-03):** every row above was
+originally written with `sourceUrl` built from one hardcoded site-root
+guess (`.../concursosabiertos/DispForm.aspx?ID=<id>`) shared across all 7
+lists — the user clicked "查看原始来源文件" on a real tender
+(`pemex-snr-mad-140-ca-o-2026`) and got PEMEX's own 404 page, proving the
+guess wrong. The real per-item link depends on which SharePoint *list* the
+row came from, not the site root: each list has its own display-form path,
+confirmed (not guessed) by querying each list's `DefaultDisplayFormUrl`
+property via the same anonymous REST API (`_api/web/lists/getbytitle('
+<title>')?$select=DefaultDisplayFormUrl`) — e.g. `Concursos-Abiertos-PEP`
+resolves to `.../concursosabiertos/Lists/ConcursosAbiertosPEP/
+DispForm.aspx`, `Concursos-e-invitaciones` to `.../Lists/
+Concursoseinvitaciones/DispForm.aspx`. `pemex-mapper.ts` now takes a
+`listTitle` parameter (`DISPLAY_FORM_PATH_BY_LIST_TITLE`) instead of a bare
+`sourceUrl` string, and `ingest-pemex.ts` requires `--list-title` to build
+it correctly going forward. `scripts/fix-pemex-source-urls.ts` repairs
+already-written rows — it recovers each row's real numeric SharePoint Id
+from the `?ID=` query param already present in the old (wrong-prefix)
+`sourceUrl`, and infers which list a row came from via `(buyer,
+procedureType)` since the list itself was never stored as its own column.
+
 `Concursos-Abiertos-PCS` (1 item) was pulled but deliberately excluded:
 its only row is `Title`/`descripcion` both literally "Registro de prueba"
 ("test record") — an obvious placeholder entry, not a real tender, so

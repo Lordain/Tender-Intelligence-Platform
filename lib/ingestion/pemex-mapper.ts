@@ -96,11 +96,33 @@ function toIso(raw: string | undefined): string | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
+const PEMEX_SITE_ORIGIN = "https://www.pemex.com";
+
+/**
+ * Real per-list item display-form path, confirmed 2026-09-03 by querying
+ * each list's own `DefaultDisplayFormUrl` property via PEMEX's anonymous
+ * SharePoint REST API (`_api/web/lists/getbytitle('<title>')?$select=
+ * DefaultDisplayFormUrl`) — NOT a guess. A prior version of this mapper
+ * pointed every subsidiary at one hardcoded site-root
+ * `.../concursosabiertos/DispForm.aspx`, which 404'd for real: each
+ * subsidiary is its own SharePoint List with its own display form under
+ * `Lists/<ListInternalName>/DispForm.aspx`, not the site root.
+ */
+const DISPLAY_FORM_PATH_BY_LIST_TITLE: Record<string, string> = {
+  "Concursos-Abiertos-PEP": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPEP/DispForm.aspx",
+  "Concursos-Abiertos-PTI": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPTI/DispForm.aspx",
+  "Concursos-Abiertos-PL": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPL/DispForm.aspx",
+  "Concursos-Abiertos-PE": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPE/DispForm.aspx",
+  "Concursos-Abiertos-PF": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPF/DispForm.aspx",
+  "Concursos-Abiertos-PPS": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPPS/DispForm.aspx",
+  "Concursos-e-invitaciones": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/Concursoseinvitaciones/DispForm.aspx",
+};
+
 export function mapPemexConcursoItemToTender(
   item: PemexConcursoItem,
   buyer: string,
   sourceName: string,
-  sourceUrl: string,
+  listTitle: string,
   // Most subsidiary lists are named "Concursos-Abiertos-*" (open tenders),
   // but "Concursos-e-invitaciones" mixes in "Invitación a Cuando Menos Tres
   // Personas" procedures — a real, distinct LAASSP/LOPSRM-equivalent
@@ -163,12 +185,15 @@ export function mapPemexConcursoItemToTender(
     risks: [],
     relevance: classifyRelevance({ title: description, industries, scopeType, buyer }),
     sourceName,
-    // Not directly captured (the SharePoint REST response doesn't include
-    // a display-form URL) — same "cross-referenced, not captured" posture
-    // as the DOF mappers' sourceUrl. DispForm.aspx is SharePoint's standard
-    // list-item detail view, addressable by the list's internal folder
-    // name and item Id.
-    sourceUrl: `${sourceUrl}/DispForm.aspx?ID=${item.Id}`,
+    // Real per-list DispForm.aspx path (see DISPLAY_FORM_PATH_BY_LIST_TITLE
+    // above) + the item's own Id — confirmed against a real item, unlike
+    // the old site-root guess this replaced. A list title this mapper
+    // doesn't recognize has no verified path, so falls back to the list's
+    // own filtered browse page rather than another guessed-and-unverified
+    // link.
+    sourceUrl: DISPLAY_FORM_PATH_BY_LIST_TITLE[listTitle]
+      ? `${PEMEX_SITE_ORIGIN}${DISPLAY_FORM_PATH_BY_LIST_TITLE[listTitle]}?ID=${item.Id}`
+      : `${PEMEX_SITE_ORIGIN}/procura/procedimientos-de-contratacion/concursosabiertos`,
     createdAt: now,
     updatedAt: now,
   };

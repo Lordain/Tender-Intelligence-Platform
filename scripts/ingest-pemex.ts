@@ -5,7 +5,15 @@
  *
  * Usage:
  *   npm run ingest:pemex -- --fixture
- *   npm run ingest:pemex -- path/to/items.json --buyer "Pemex Exploración y Producción" [--procedure-label "Concurso Abierto"] [--write]
+ *   npm run ingest:pemex -- path/to/items.json --buyer "Pemex Exploración y Producción" --list-title "Concursos-Abiertos-PEP" [--procedure-label "Concurso Abierto"] [--write]
+ *
+ * --list-title must match the real SharePoint list Title used to capture
+ * the export (e.g. "Concursos-Abiertos-PEP", "Concursos-e-invitaciones")
+ * — it's looked up against DISPLAY_FORM_PATH_BY_LIST_TITLE in
+ * pemex-mapper.ts to build each tender's real sourceUrl. Omitting it (or
+ * passing one the mapper doesn't recognize) still ingests fine, but
+ * sourceUrl falls back to the generic list-browser page instead of a real
+ * per-item deep link.
  */
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -18,8 +26,6 @@ import type { Tender } from "../types/tender";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SOURCE_NAME = "PEMEX — Concursos Abiertos";
-const SOURCE_URL =
-  "https://www.pemex.com/procura/procedimientos-de-contratacion/concursosabiertos";
 
 async function upsertTenders(tenders: Tender[]) {
   const supabase = createSupabaseAdminClient();
@@ -47,14 +53,15 @@ async function main() {
   const useFixture = args.includes("--fixture");
   const shouldWrite = args.includes("--write");
   const filePath = args.find(
-    (a, i) => !a.startsWith("--") && args[i - 1] !== "--buyer" && args[i - 1] !== "--procedure-label",
+    (a, i) => !a.startsWith("--") && args[i - 1] !== "--buyer" && args[i - 1] !== "--procedure-label" && args[i - 1] !== "--list-title",
   );
   const buyer = argValue(args, "--buyer") ?? "Petróleos Mexicanos (PEMEX)";
   const procedureLabel = argValue(args, "--procedure-label") ?? "Concurso Abierto";
+  const listTitle = argValue(args, "--list-title") ?? "";
   const months = Number(argValue(args, "--months") ?? 6);
 
   if (!useFixture && !filePath) {
-    console.error('Usage: npm run ingest:pemex -- <items.json> --buyer "Pemex Exploración y Producción" [--write]');
+    console.error('Usage: npm run ingest:pemex -- <items.json> --buyer "Pemex Exploración y Producción" --list-title "Concursos-Abiertos-PEP" [--write]');
     console.error("   or: npm run ingest:pemex -- --fixture");
     process.exit(1);
   }
@@ -63,10 +70,11 @@ async function main() {
     ? join(__dirname, "../lib/ingestion/__fixtures__/sample-pemex-pep.json")
     : filePath!;
   const resolvedBuyer = useFixture ? "Pemex Exploración y Producción" : buyer;
+  const resolvedListTitle = useFixture ? "Concursos-Abiertos-PEP" : listTitle;
 
   const items = readPemexFile(resolvedPath);
   const mappedTenders = items
-    .map((item) => mapPemexConcursoItemToTender(item, resolvedBuyer, SOURCE_NAME, SOURCE_URL, procedureLabel))
+    .map((item) => mapPemexConcursoItemToTender(item, resolvedBuyer, SOURCE_NAME, resolvedListTitle, procedureLabel))
     .filter((t): t is Tender => t !== null);
 
   console.log(`Mapped ${mappedTenders.length} tender(s) of ${items.length} items in this export.`);

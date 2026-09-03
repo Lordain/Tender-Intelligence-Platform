@@ -37,6 +37,7 @@
     "resolve:comprasmx-links": "tsx --env-file-if-exists=.env.local scripts/resolve-comprasmx-links.ts",
     "discover:comprasmx-vigente": "tsx --env-file-if-exists=.env.local scripts/discover-comprasmx-vigente.ts",
     "fix:licitia-buyer-names": "tsx --env-file-if-exists=.env.local scripts/fix-licitia-buyer-names.ts",
+    "fix:pemex-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-pemex-source-urls.ts",
     "inspect:dof-notice": "tsx --env-file-if-exists=.env.local scripts/inspect-dof-notice.ts"
   },
   "dependencies": {

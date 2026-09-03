@@ -9,17 +9,17 @@ export function RiskList({ risks }: { risks: TenderRisk[] }) {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+      <h2 className="text-xl font-black text-[#071826]">
         {localize(uiText.risks, locale)}
       </h2>
       {risks.length === 0 ? (
-        <p className="text-sm text-zinc-500">{localize(uiText.noneListed, locale)}</p>
+        <p className="text-sm text-[#64717c]">{localize(uiText.noneListed, locale)}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {risks.map((risk) => (
             <li
               key={risk.id}
-              className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+              className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5"
             >
               <div className="flex items-start gap-2">
                 <span aria-hidden className="text-lg leading-none">
@@ -27,7 +27,7 @@ export function RiskList({ risks }: { risks: TenderRisk[] }) {
                 </span>
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-medium text-zinc-900 dark:text-zinc-50">
+                    <h3 className="font-bold text-[#071826]">
                       {localize(risk.title, locale)}
                     </h3>
                     <span
@@ -36,7 +36,7 @@ export function RiskList({ risks }: { risks: TenderRisk[] }) {
                       {risk.level}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  <p className="mt-1.5 text-sm leading-6 text-[#52636e]">
                     {localize(risk.description, locale)}
                   </p>
                   {risk.sourceReference && (

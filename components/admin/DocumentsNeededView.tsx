@@ -35,7 +35,7 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
   if (!SUPABASE_CONFIGURED) {
     return (
       <div className="mx-auto flex w-full max-w-md flex-col gap-3 px-6 py-16">
-        <p className="text-sm text-zinc-500">{localize(uiText.authNotConfigured, locale)}</p>
+        <p className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-6 text-sm text-[#64717c]">{localize(uiText.authNotConfigured, locale)}</p>
       </div>
     );
   }
@@ -45,24 +45,25 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-16">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-10 sm:px-8 lg:py-12">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Document worklist</p>
+        <h1 className="text-3xl font-black tracking-tight text-[#071826]">
           {localize(uiText.documentsNeededTitle, locale)}
         </h1>
-        <p className="max-w-3xl text-sm text-zinc-500">
+        <p className="max-w-3xl text-sm text-[#64717c]">
           {localize(uiText.documentsNeededSubtitle, locale)}
         </p>
       </div>
 
       {tenders.length === 0 ? (
-        <p className="rounded-xl border border-zinc-200 p-6 text-sm text-zinc-500 dark:border-zinc-800">
+        <p className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-6 text-sm text-[#64717c]">
           {localize(uiText.documentsNeededEmpty, locale)}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]">
           <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            <thead className="border-b border-[#dbe2e5] bg-[#edf2f3] text-xs text-[#52636e]">
               <tr>
                 <th className="px-4 py-3 font-medium">{localize(uiText.colTitle, locale)}</th>
                 <th className="px-4 py-3 font-medium">{localize(uiText.countryLabel, locale)}</th>
@@ -71,17 +72,17 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
                 <th className="px-4 py-3 font-medium">{localize(uiText.colSourceLink, locale)}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-[#e5e9eb]">
               {tenders.map((tender) => {
                 const value = tender.estimatedValue
                   ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, locale)
                   : null;
                 return (
                   <tr key={tender.slug}>
-                    <td className="max-w-md px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
+                    <td className="max-w-md px-4 py-3 font-bold text-[#071826]">
                       {localize(tender.title, locale)}
                     </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                    <td className="px-4 py-3 text-[#5d6d77]">
                       {countryLabel(tender.country, locale)}
                     </td>
                     <td className="px-4 py-3">
@@ -92,7 +93,7 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
                       </span>
                       {value && <div className="mt-1 text-xs text-zinc-500">{value}</div>}
                     </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                    <td className="px-4 py-3 text-[#5d6d77]">
                       {formatDate(tender.publicationDate, locale)}
                     </td>
                     <td className="px-4 py-3">
@@ -100,7 +101,7 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
                         href={tender.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-medium text-zinc-900 underline underline-offset-2 dark:text-zinc-50"
+                        className="font-bold text-[#0a2b40] underline decoration-[#ffb21c] decoration-2 underline-offset-4"
                       >
                         {localize(uiText.openSource, locale)}
                       </a>

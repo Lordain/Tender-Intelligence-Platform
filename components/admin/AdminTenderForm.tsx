@@ -28,9 +28,9 @@ const PARTICIPATION_SCOPE_KEYS = Object.keys(PARTICIPATION_SCOPE_LABELS) as Tend
 const RELEVANCE_TIER_KEYS = Object.keys(RELEVANCE_TIER_LABELS) as TenderRelevanceTier[];
 
 const inputClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50";
+  "w-full rounded-xl border border-[#d8e0e3] bg-white px-3 py-2.5 text-sm text-[#071826] outline-none focus:border-[#ffb21c]";
 const labelClass = "flex flex-col gap-1 text-sm";
-const labelTextClass = "text-xs font-medium text-zinc-500";
+const labelTextClass = "text-xs font-semibold text-[#52636e]";
 
 type FormState = {
   titleEs: string;
@@ -179,7 +179,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-7">
       {error && (
         <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           {error}
@@ -249,8 +249,8 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
               key={key}
               className={`cursor-pointer rounded-full border px-3 py-1 text-xs ${
                 form.industries.includes(key)
-                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
-                  : "border-zinc-300 text-zinc-600 dark:border-zinc-700 dark:text-zinc-400"
+                  ? "border-[#061b2b] bg-[#061b2b] text-white"
+                  : "border-[#d8e0e3] text-[#5d6d77]"
               }`}
             >
               <input type="checkbox" className="hidden" checked={form.industries.includes(key)} onChange={() => toggleIndustry(key)} />
@@ -369,7 +369,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
         </label>
       </div>
 
-      <div className="flex items-center justify-between border-t border-zinc-200 pt-4 dark:border-zinc-800">
+      <div className="flex items-center justify-between border-t border-[#e3e8ea] pt-5">
         <div>
           {isEdit && (
             <button
@@ -385,7 +385,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
         <button
           type="submit"
           disabled={saving || deleting}
-          className="rounded-full bg-zinc-900 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="rounded-xl bg-[#ffb21c] px-5 py-2.5 text-sm font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50"
         >
           {saving ? "保存中…" : isEdit ? "保存修改" : "创建项目"}
         </button>

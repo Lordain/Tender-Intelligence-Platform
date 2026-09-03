@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f4ee;
+  --foreground: #071826;
+  --navy-950: #031521;
+  --navy-900: #061b2b;
+  --navy-800: #0a2b40;
+  --ink: #071826;
+  --muted: #64717c;
+  --paper: #fffdf9;
+  --line: #dbe2e5;
+  --amber: #ffb21c;
+  --amber-strong: #f39b00;
 }
 
 @theme inline {
@@ -12,20 +21,62 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), "Microsoft YaHei", "PingFang SC", Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: #a7f3d0;
-  color: #14532d;
+  background: #ffd77b;
+  color: #061b2b;
+}
+
+button,
+a,
+input,
+select {
+  outline-color: var(--amber);
+}
+
+.hero-product-edge {
+  background: radial-gradient(
+    ellipse 108% 148% at 100% 50%,
+    #fffdf9 0%,
+    #fffdf9 70%,
+    rgba(255, 253, 249, .92) 78%,
+    rgba(255, 253, 249, .68) 88%,
+    rgba(255, 253, 249, .24) 97%,
+    rgba(255, 253, 249, .08) 100%
+  );
+  backdrop-filter: blur(1.5px);
+}
+
+.hero-tender-scroll {
+  animation: tender-scroll 18s linear infinite;
+}
+
+.government-logo-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+.government-logo-scroll {
+  animation: government-logo-scroll 34s linear infinite;
+}
+
+@keyframes tender-scroll {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+@keyframes government-logo-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-tender-scroll,
+  .government-logo-scroll { animation: none; }
 }

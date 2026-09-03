@@ -10,14 +10,14 @@ export function AuthNav() {
   const { user, loading, logout, supabaseConfigured } = useUser();
   const router = useRouter();
 
-  if (!supabaseConfigured || loading) return null;
+  if (loading) return null;
 
-  if (user) {
+  if (supabaseConfigured && user) {
     return (
       <div className="flex items-center gap-3">
         <Link
           href="/account"
-          className="hidden max-w-[10rem] truncate text-xs text-zinc-500 hover:text-zinc-900 sm:inline dark:hover:text-zinc-50"
+          className="hidden max-w-[10rem] truncate text-xs text-white/60 hover:text-white sm:inline"
         >
           {user.email}
         </Link>
@@ -27,7 +27,7 @@ export function AuthNav() {
             await logout();
             router.push("/");
           }}
-          className="text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+          className="text-sm font-medium text-white/70 transition-colors hover:text-white"
         >
           {localize(uiText.logout, locale)}
         </button>
@@ -36,16 +36,16 @@ export function AuthNav() {
   }
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-2 sm:gap-3">
       <Link
         href="/login"
-        className="text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+        className="rounded-xl border border-white/75 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white hover:text-[#061b2b]"
       >
         {localize(uiText.login, locale)}
       </Link>
       <Link
         href="/register"
-        className="rounded-full bg-zinc-900 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        className="hidden rounded-xl bg-[#ffb21c] px-4 py-2 text-sm font-semibold text-[#071826] transition-colors hover:bg-[#ffc247] sm:inline-flex"
       >
         {localize(uiText.register, locale)}
       </Link>

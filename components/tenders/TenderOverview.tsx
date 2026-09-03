@@ -16,8 +16,8 @@ import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs text-zinc-400">{label}</dt>
-      <dd className="mt-0.5 font-medium text-zinc-900 dark:text-zinc-50">{value}</dd>
+      <dt className="text-xs font-medium text-[#849098]">{label}</dt>
+      <dd className="mt-1 font-bold text-[#071826]">{value}</dd>
     </div>
   );
 }
@@ -26,13 +26,13 @@ export function TenderOverview({ tender }: { tender: Tender }) {
   const { locale } = useLocale();
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
+    <section className="flex flex-col gap-5 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {tender.industries.map((industry) => (
             <span
               key={industry}
-              className="shrink-0 whitespace-nowrap rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+              className="shrink-0 whitespace-nowrap rounded-full bg-[#edf2f3] px-2.5 py-1 text-xs font-semibold text-[#24465a]"
             >
               {industryLabel(industry, locale)}
             </span>
@@ -42,9 +42,9 @@ export function TenderOverview({ tender }: { tender: Tender }) {
           >
             {localize(STATUS_LABELS[tender.status], locale)}
           </span>
-          <span className="text-xs text-zinc-400">{tender.tenderNumber}</span>
+          <span className="text-xs text-[#849098]">{tender.tenderNumber}</span>
         </div>
-        <SaveTenderButton tenderId={tender.id} className="border border-zinc-200 dark:border-zinc-800" />
+        <SaveTenderButton tenderId={tender.id} className="border border-[#dbe2e5] bg-white" />
       </div>
 
       {/* Chinese leads when a real translation exists (this platform's
@@ -54,22 +54,22 @@ export function TenderOverview({ tender }: { tender: Tender }) {
           Spanish is all there is, so it carries the heading alone. */}
       {tender.title.zh !== tender.title.es ? (
         <>
-          <h1 className="text-2xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-3xl font-black leading-tight tracking-[-0.03em] text-black sm:text-4xl">
             {tender.title.zh}
           </h1>
-          <p className="-mt-2 text-sm text-zinc-400 dark:text-zinc-500">{tender.title.es}</p>
+          <p className="-mt-2 text-sm text-[#7a878f]">{tender.title.es}</p>
         </>
       ) : (
-        <h1 className="text-lg font-medium leading-snug text-zinc-600 dark:text-zinc-400">
+        <h1 className="text-xl font-bold leading-snug text-black">
           {tender.title.es}
         </h1>
       )}
 
-      <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+      <p className="text-base leading-7 text-[#52636e]">
         {localize(tender.summary, locale)}
       </p>
 
-      <dl className="grid grid-cols-2 gap-4 border-t border-zinc-100 pt-4 sm:grid-cols-3 dark:border-zinc-800">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-6 border-t border-[#e4e9eb] pt-6 sm:grid-cols-3">
         <Field label={localize(uiText.buyer, locale)} value={tender.buyer} />
         <Field
           label={localize(uiText.governmentLevelLabel, locale)}
@@ -106,7 +106,7 @@ export function TenderOverview({ tender }: { tender: Tender }) {
           value={formatDate(tender.publicationDate, locale)}
         />
         <Field
-          label={localize(uiText.submissionDeadline, locale)}
+          label="计划交标"
           value={
             tender.submissionDeadline
               ? formatDate(tender.submissionDeadline, locale)

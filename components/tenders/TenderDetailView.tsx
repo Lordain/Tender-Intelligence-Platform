@@ -13,10 +13,10 @@ export function TenderDetailView({ tender }: { tender: Tender }) {
   const { locale } = useLocale();
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-12">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-10 sm:px-8 sm:py-12">
       <Link
         href="/tenders"
-        className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50"
+        className="w-fit text-sm font-semibold text-[#536772] hover:text-[#b86e00]"
       >
         ← {localize(uiText.backToTenders, locale)}
       </Link>

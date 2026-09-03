@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
+import { AuthFrame } from "@/components/auth/AuthFrame";
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -24,9 +25,7 @@ export default function LoginPage() {
 
   if (!SUPABASE_CONFIGURED) {
     return (
-      <div className="mx-auto flex w-full max-w-md flex-col gap-3 px-6 py-16">
-        <p className="text-sm text-zinc-500">{localize(uiText.authNotConfigured, locale)}</p>
-      </div>
+      <AuthFrame mode="login"><div><h1 className="text-3xl font-black text-[#071826]">登录</h1><p className="mt-4 rounded-xl bg-[#fff4d8] p-4 text-sm leading-6 text-[#72521b]">{localize(uiText.authNotConfigured, locale)}</p></div></AuthFrame>
     );
   }
 
@@ -71,22 +70,22 @@ export default function LoginPage() {
 
   if (magicLinkSent) {
     return (
-      <div className="mx-auto flex w-full max-w-md flex-col gap-3 px-6 py-16">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+      <AuthFrame mode="login"><div className="flex w-full flex-col gap-3">
+        <h1 className="text-xl font-black text-[#071826]">
           {localize(uiText.magicLinkSent, locale)}
         </h1>
-        <p className="text-sm text-zinc-500">{localize(uiText.magicLinkSentBody, locale)}</p>
-      </div>
+        <p className="text-sm text-[#64717c]">{localize(uiText.magicLinkSentBody, locale)}</p>
+      </div></AuthFrame>
     );
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-6 px-6 py-16">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+    <AuthFrame mode="login"><div className="flex w-full flex-col gap-6">
+      <h1 className="text-3xl font-black tracking-tight text-[#071826]">
         {localize(uiText.login, locale)}
       </h1>
 
-      <div className="flex gap-1 rounded-full border border-zinc-200 p-0.5 self-start dark:border-zinc-800">
+      <div className="flex gap-1 rounded-xl bg-[#edf2f3] p-1 self-start">
         {(["password", "magic-link"] as const).map((option) => (
           <button
             key={option}
@@ -96,10 +95,10 @@ export default function LoginPage() {
               setError(null);
             }}
             aria-pressed={mode === option}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
               mode === option
-                ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50"
+                ? "bg-[#061b2b] text-white"
+                : "text-[#64717c] hover:text-[#071826]"
             }`}
           >
             {localize(option === "password" ? uiText.passwordTab : uiText.magicLinkTab, locale)}
@@ -112,7 +111,7 @@ export default function LoginPage() {
         className="flex flex-col gap-4"
       >
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-zinc-500">
+          <span className="text-xs font-semibold text-[#52636e]">
             {localize(uiText.emailLabel, locale)}
           </span>
           <input
@@ -121,13 +120,13 @@ export default function LoginPage() {
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+            className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm focus:border-[#ffb21c] focus:outline-none"
           />
         </label>
 
         {mode === "password" && (
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-zinc-500">
+            <span className="text-xs font-semibold text-[#52636e]">
               {localize(uiText.passwordLabel, locale)}
             </span>
             <input
@@ -136,7 +135,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+              className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm focus:border-[#ffb21c] focus:outline-none"
             />
           </label>
         )}
@@ -146,18 +145,18 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="rounded-xl bg-[#ffb21c] px-4 py-3 text-sm font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50"
         >
           {localize(mode === "password" ? uiText.signIn : uiText.sendMagicLink, locale)}
         </button>
       </form>
 
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-[#64717c]">
         {localize(uiText.dontHaveAccount, locale)}{" "}
-        <Link href="/register" className="font-medium text-zinc-900 underline underline-offset-2 dark:text-zinc-50">
+        <Link href="/register" className="font-bold text-[#0a2b40] underline decoration-[#ffb21c] decoration-2 underline-offset-4">
           {localize(uiText.register, locale)}
         </Link>
       </p>
-    </div>
+    </div></AuthFrame>
   );
 }

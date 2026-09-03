@@ -41,9 +41,14 @@ type TenderRow = {
   source_url: string;
   created_at: string;
   updated_at: string;
-  tender_requirements: RequirementRow[];
-  tender_key_dates: KeyDateRow[];
-  tender_risks: RiskRow[];
+  // Optional: TENDER_LIST_SELECT (used for list/notification views that
+  // never render qualifications/keyDates/risks — see fetchAllTendersFromDb)
+  // omits these three joins entirely to skip their real DB cost across an
+  // unbounded, full-table, thousands-of-rows query. Only
+  // fetchTenderBySlugFromDb's TENDER_SELECT (one row) still joins them.
+  tender_requirements?: RequirementRow[];
+  tender_key_dates?: KeyDateRow[];
+  tender_risks?: RiskRow[];
 };
 
 type RequirementRow = {
@@ -72,17 +77,25 @@ type RiskRow = {
   source_reference: string | null;
 };
 
-const TENDER_SELECT = `
+const TENDER_LIST_FIELDS = `
   id, slug, tender_number, title, summary, buyer, country, government_level,
   industries, subcategory, scope_type, procedure_type, participation_scope,
   publication_date,
   submission_deadline, award_date, awarded_to, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason,
-  source_name, source_url, created_at, updated_at,
+  source_name, source_url, created_at, updated_at
+`;
+
+/** One tender's full detail, including its qualifications/keyDates/risks — for fetchTenderBySlugFromDb (a single row). */
+const TENDER_SELECT = `
+  ${TENDER_LIST_FIELDS},
   tender_requirements ( id, kind, title, description, mandatory, source_reference, sort_order ),
   tender_key_dates ( id, type, date, mandatory, notes ),
   tender_risks ( id, level, title, description, source_reference )
 `;
+
+/** Same flat tender fields, without the three child-table joins — for fetchAllTendersFromDb, whose every real caller (list/notification views) only ever renders these flat fields, never qualifications/keyDates/risks (confirmed 2026-09-03 by grepping every consumer) — so there's no reason for an unbounded, thousands-of-rows query to also join and transfer three child tables' worth of rows per tender. toTender() defaults the omitted fields to empty arrays. */
+const TENDER_LIST_SELECT = TENDER_LIST_FIELDS;
 
 function toRequirement(row: RequirementRow): TenderRequirement {
   return {
@@ -131,7 +144,7 @@ function toRelevance(row: TenderRow): TenderRelevance {
 }
 
 function toTender(row: TenderRow): Tender {
-  const requirements = [...row.tender_requirements].sort(
+  const requirements = [...(row.tender_requirements ?? [])].sort(
     (a, b) => a.sort_order - b.sort_order,
   );
 
@@ -160,8 +173,8 @@ function toTender(row: TenderRow): Tender {
     qualifications: requirements.filter((r) => r.kind === "qualification").map(toRequirement),
     experienceRequirements: requirements.filter((r) => r.kind === "experience").map(toRequirement),
     requiredDocuments: requirements.filter((r) => r.kind === "document").map(toRequirement),
-    keyDates: row.tender_key_dates.map(toKeyDate),
-    risks: row.tender_risks.map(toRisk),
+    keyDates: (row.tender_key_dates ?? []).map(toKeyDate),
+    risks: (row.tender_risks ?? []).map(toRisk),
     relevance: toRelevance(row),
     sourceName: row.source_name,
     sourceUrl: row.source_url,
@@ -177,16 +190,24 @@ const SUPABASE_PAGE_SIZE = 1000;
  * Returns null when Supabase isn't configured, so callers can fall back
  * to mock data.
  *
- * Wrapped in React's `cache()` (2026-09-03, real user-reported slowness
- * — every page load turned out to run this full, paged, multi-round-trip
- * table scan TWICE: once in app/layout.tsx just to feed the header's
- * notification bell, and again in whichever page component also calls
- * getAllTenders(), with no de-dup between them since this is a Supabase
- * client call, not a plain `fetch()` Next.js would already de-dupe on
- * its own). `cache()` makes every call within one request's render pass
- * reuse the same in-flight/resolved promise instead of re-querying —
- * the standard React Server Component fix for exactly this shape of
- * problem, not a change in what data comes back.
+ * Real user-reported slowness (2026-09-03) traced to two stacked
+ * problems, both fixed here:
+ * 1. Called TWICE per page load with no de-dup — once in app/layout.tsx
+ *    just to feed the header's notification bell, and again in whichever
+ *    page component also calls getAllTenders() — since this is a
+ *    Supabase client call, not a plain `fetch()` Next.js already de-dupes
+ *    on its own. Fixed by wrapping in React's `cache()`: every call
+ *    within one request's render pass now reuses the same in-flight/
+ *    resolved promise instead of re-querying.
+ * 2. The query itself joined tender_requirements/tender_key_dates/
+ *    tender_risks for EVERY row of this unbounded, full-table query —
+ *    real cost (now the table has thousands of real rows from ingestion,
+ *    not ~6 mock rows) for data no list/notification view actually
+ *    renders (confirmed by grepping every real caller). Fixed by
+ *    querying TENDER_LIST_SELECT (the flat fields only) instead of
+ *    TENDER_SELECT — toTender() defaults the omitted child arrays to
+ *    empty. fetchTenderBySlugFromDb (the single-tender detail page,
+ *    which does need them) is untouched.
  */
 export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> => {
   const supabase = getSupabaseServerClient();
@@ -196,7 +217,7 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select(TENDER_SELECT)
+      .select(TENDER_LIST_SELECT)
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
 

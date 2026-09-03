@@ -122,10 +122,28 @@ export type ExtractionModel = "claude-sonnet-5" | "claude-opus-5" | "claude-haik
 
 type ExtractionContent = Array<{ type: "text"; text: string } | { type: "document"; source: { type: "base64"; media_type: "application/pdf"; data: string } }>;
 
-/** A real Compras MX/Proyectos Estratégicos MX PDF can exceed Claude's native-document limits outright (2026-09-03, live-tested batch run): a multi-hundred-page Convocatoria hit "A maximum of 100 PDF pages may be provided", and a ~33MB scanned Anexo hit the request's overall size cap ("request_too_large") — both real 4xx failures from the API, not a guess about where the ceiling is. Matched against the message text since the SDK doesn't expose a distinct error subclass for either. */
+/**
+ * A real Compras MX/Proyectos Estratégicos MX PDF can exceed a provider's
+ * native-document limits outright — real 4xx failures hit live
+ * 2026-09-03, not a guess about where any ceiling is:
+ * - Claude: a multi-hundred-page Convocatoria hit "A maximum of 100 PDF
+ *   pages may be provided"; a ~33MB scanned Anexo hit the request's
+ *   overall size cap ("Request exceeds the maximum size").
+ * - DashScope's Anthropic-compatible endpoint (qwen3.5-plus, see
+ *   extract-requirements-qwen-anthropic.ts): the SAME 33MB Anexo hit a
+ *   DIFFERENT limit there — not an overall request cap, but a per-JSON-
+ *   string-field length cap on the base64 PDF data itself ("String value
+ *   length (28049408) exceeds the maximum allowed (28000000, from
+ *   `StreamReadConstraints.getMaxStringLength()`)") — confirms this
+ *   endpoint genuinely accepts native `document` content blocks (it got
+ *   far enough to parse the field before rejecting it on length), just
+ *   with a stricter, differently-shaped ceiling than Claude's own.
+ * Matched against message text since neither SDK exposes a distinct error
+ * subclass for any of these.
+ */
 function isPdfNativeLimitError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
-  return /maximum of \d+ pdf pages/i.test(message) || /request_too_large|exceeds the maximum size/i.test(message);
+  return /maximum of \d+ pdf pages/i.test(message) || /request_too_large|exceeds the maximum (size|allowed)/i.test(message);
 }
 
 /** Real second-order failure found the same day: the SAME oversized PDF that hit isPdfNativeLimitError() above, once its pdftotext fallback text was sent instead, overflowed the model's own context window too ("prompt is too long: 298943 tokens > 200000 maximum") — a multi-hundred-page real Convocatoria is long enough as plain text alone. Parses the exact actual/max token counts the API itself reports rather than guessing a chars-per-token ratio for Spanish text. */

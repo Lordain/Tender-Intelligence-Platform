@@ -43,7 +43,16 @@ export function getPdfPageCount(filePath: string): number {
 export type PdfChunk = { path: string; startPage: number; endPage: number; totalPages: number };
 
 const MAX_PAGES_PER_CHUNK = 80; // margin under Claude's real 100-page hard limit
-const MAX_CHUNK_BYTES = 20 * 1024 * 1024; // raw bytes; base64 (~1.33x) stays comfortably under the ~32MB request cap
+// Raw bytes per chunk. The stricter of two real, confirmed 2026-09-03
+// ceilings decides this: Claude's own ~32MB total-request cap (20MB raw
+// leaves ample room), and DashScope's Anthropic-compat endpoint's tighter
+// per-field base64-string-length cap (28,000,000 characters — the same
+// 33MB PDF that fit under Claude's cap failed there instead). 15MB raw
+// base64-encodes to ~20M characters, safely under DashScope's 28M-char
+// field limit with real margin for chunk-to-chunk size variance (actual
+// bytes-per-page isn't perfectly uniform across a real document), while
+// still comfortably under Claude's own cap too.
+const MAX_CHUNK_BYTES = 15 * 1024 * 1024;
 
 /** Splits `filePath` into chunk PDFs under both limits above. Caller must call the returned `cleanup()` once done reading the chunk files. */
 export function splitPdfIntoChunks(filePath: string): { chunks: PdfChunk[]; cleanup: () => void } {

@@ -37,7 +37,7 @@ None of these steps run on a schedule. Every capture is manual, on demand — re
 
 ## Part 3.5 — Proyectos México (added 2026-09-02 — a new source, auto-flagship)
 
-- [ ] **Real national-priority project list, currently in bidding**
+- [x] **Real national-priority project list, currently in bidding** (done 2026-09-03 — real 58-row export, 57/58 upserted)
   - Open `https://www.proyectosmexico.gob.mx/proyectos/`, filter as needed, click the page's own CSV export button (no anti-bot gate — a plain browser download, same as Compras MX contracts).
   - `npm run ingest:proyectos-mexico -- <file>.csv --write`
   - Every tender from this source is tagged `isNationalPriorityProject: true` and lands on **flagship** regardless of value/keywords — being listed on this official government source IS the signal (user's explicit instruction). Real 58-row export the user captured: 57/58 mapped, all flagship.

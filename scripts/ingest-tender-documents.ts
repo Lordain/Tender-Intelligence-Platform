@@ -1,9 +1,11 @@
 /**
  * Takes a folder of tender documents a human already downloaded from
  * Compras MX and files them against the right tenders automatically —
- * no renaming, sorting or data entry by hand. Both PDF and .docx are
- * supported (2026-09-03 — many real tender attachments turn out to be
- * Word files, not PDF).
+ * no sorting or data entry by hand, and no renaming required (though it
+ * helps: see intakeDocument()'s file-name-first matching, 2026-09-03,
+ * for an attachment whose own text never repeats the procedure number).
+ * Both PDF and .docx are supported (2026-09-03 — many real tender
+ * attachments turn out to be Word files, not PDF).
  *
  * This deliberately does NOT download anything: the Compras MX document
  * endpoint is behind the same anti-automation gate as its search API
@@ -96,7 +98,11 @@ async function main() {
 
   for (const intake of intakes) {
     console.log(intake.fileName);
-    console.log(`  tender:   ${intake.tenderNumber ?? "NOT FOUND"}${intake.tenderNumber ? ` (appears ${intake.tenderNumberOccurrences}x)` : ""}`);
+    console.log(
+      `  tender:   ${intake.tenderNumber ?? "NOT FOUND"}${
+        intake.tenderNumberSource === "filename" ? " (from file name)" : intake.tenderNumber ? ` (appears ${intake.tenderNumberOccurrences}x in text)` : ""
+      }`,
+    );
     console.log(`  expediente: ${intake.expedienteCode ?? "—"}`);
     console.log(`  type:     ${intake.documentType}`);
     console.log(`  text:     ${intake.textLength.toLocaleString()} chars, ${(intake.byteSize / 1024).toFixed(0)} KB`);

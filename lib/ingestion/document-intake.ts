@@ -42,8 +42,15 @@ import mammoth from "mammoth";
  * `[A-Z0-9]+` like the "unidad responsable" segment next to it — still
  * bounded by the surrounding hyphens either way, so this only accepts
  * more real numbers, it doesn't loosen what counts as a match elsewhere.
+ *
+ * Boundaries use `(?<![A-Za-z0-9])`/`(?![A-Za-z0-9])`, not `\b` — `\b`
+ * treats `_` as a word character, so it fails to match a procedure
+ * number an operator glued directly against other text with an
+ * underscore (e.g. `LO-09-JZO-009JZO001-T-36-2026_ANEXO.pdf`, a real
+ * file-naming style), which is exactly the case this pattern needs to
+ * catch when matched against a file name (see intakeDocument() below).
  */
-const PROCEDURE_NUMBER_PATTERN = /\b[A-Z]{2}-\d{2}-[A-Z0-9]+-[A-Z0-9]+-[A-Z]-\d+-\d{4}\b/g;
+const PROCEDURE_NUMBER_PATTERN = /(?<![A-Za-z0-9])[A-Z]{2}-\d{2}-[A-Z0-9]+-[A-Z0-9]+-[A-Z]-\d+-\d{4}(?![A-Za-z0-9])/g;
 
 /** Expediente code, per the same dictionary: `E` + 4-digit year + 8-digit serial. */
 const EXPEDIENTE_CODE_PATTERN = /\bE-\d{4}-\d{8}\b/g;
@@ -97,12 +104,14 @@ export type TenderDocumentIntake = {
   contentHash: string;
   byteSize: number;
   documentType: TenderDocumentType;
-  /** Procedure number this document belongs to, if one appears in its text. */
+  /** Procedure number this document belongs to, if one appears in its file name or text. */
   tenderNumber?: string;
+  /** Where tenderNumber came from — "filename" is the higher-confidence source, since it means a human deliberately labeled the file (the only signal at all for an attachment whose own text never repeats the number, e.g. a spreadsheet annex). */
+  tenderNumberSource?: "filename" | "text";
   /** Expediente code, the other identifier both real Compras MX exports share. */
   expedienteCode?: string;
   textLength: number;
-  /** How many times the winning procedure number appears — a weak confidence signal. */
+  /** How many times the winning procedure number appears in the document's own text — a weak confidence signal, and 0 when tenderNumber came from the file name instead. */
   tenderNumberOccurrences: number;
 };
 
@@ -152,9 +161,26 @@ export function detectDocumentType(text: string, fileName: string): TenderDocume
 export async function intakeDocument(filePath: string): Promise<TenderDocumentIntake> {
   const buffer = readFileSync(filePath);
   const text = await extractDocumentText(filePath);
-  const procedure = mostFrequentMatch(text, PROCEDURE_NUMBER_PATTERN);
-  const expediente = mostFrequentMatch(text, EXPEDIENTE_CODE_PATTERN);
   const fileName = basename(filePath);
+  const expediente = mostFrequentMatch(text, EXPEDIENTE_CODE_PATTERN);
+
+  // A file name the operator deliberately renamed to include the real
+  // procedure number (2026-09-03, the user's own suggestion, for exactly
+  // the case a text-only match can't handle: an attachment — a
+  // spreadsheet annex, a technical-spec doc — whose own body never
+  // repeats the number the way a Convocatoria's page headers do) wins
+  // outright over the text-frequency heuristic, rather than being folded
+  // into the same count — a human labeling the file is higher-confidence
+  // than "appears most often."
+  const fileNameMatch = fileName.match(PROCEDURE_NUMBER_PATTERN)?.[0];
+  const textMatch = mostFrequentMatch(text, PROCEDURE_NUMBER_PATTERN);
+
+  const tenderNumber = fileNameMatch ?? textMatch.value;
+  const tenderNumberSource: TenderDocumentIntake["tenderNumberSource"] = fileNameMatch
+    ? "filename"
+    : textMatch.value
+      ? "text"
+      : undefined;
 
   return {
     filePath,
@@ -162,9 +188,10 @@ export async function intakeDocument(filePath: string): Promise<TenderDocumentIn
     contentHash: createHash("sha256").update(buffer).digest("hex"),
     byteSize: buffer.byteLength,
     documentType: detectDocumentType(text, fileName),
-    tenderNumber: procedure.value,
+    tenderNumber,
+    tenderNumberSource,
     expedienteCode: expediente.value,
     textLength: text.length,
-    tenderNumberOccurrences: procedure.occurrences,
+    tenderNumberOccurrences: fileNameMatch ? 0 : textMatch.occurrences,
   };
 }

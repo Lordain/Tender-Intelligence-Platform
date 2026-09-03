@@ -110,7 +110,7 @@ async function main() {
 
     const intake = await intakeDocument(pdfPath);
     if (!intake.tenderNumber) {
-      console.log(`[skip] ${intake.fileName} — no procedure number found in its text`);
+      console.log(`[skip] ${intake.fileName} — no procedure number found in its file name or text`);
       continue;
     }
 
@@ -128,7 +128,11 @@ async function main() {
     };
 
     run++;
-    console.log(`\n[${run}/${count}] ${slug} — ${intake.fileName} (procedure number appears ${intake.tenderNumberOccurrences}x in the text)`);
+    const matchNote =
+      intake.tenderNumberSource === "filename"
+        ? "from file name"
+        : `appears ${intake.tenderNumberOccurrences}x in the text`;
+    console.log(`\n[${run}/${count}] ${slug} — ${intake.fileName} (procedure number ${matchNote})`);
     const started = Date.now();
     try {
       const extraction = await PROVIDER_RUNNERS[provider](pdfPath, context);

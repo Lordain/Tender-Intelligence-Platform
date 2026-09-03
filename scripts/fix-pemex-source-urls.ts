@@ -1,24 +1,24 @@
 /**
  * One-off repair for PEMEX tenders written before pemex-mapper.ts's
- * sourceUrl fix (see DISPLAY_FORM_PATH_BY_LIST_TITLE there) — every row
- * ingested under the old guess has a 404ing sourceUrl
- * (".../concursosabiertos/DispForm.aspx?ID=<id>", the site root) instead
- * of the real per-list path
- * (".../concursosabiertos/Lists/ConcursosAbiertos<X>/DispForm.aspx?ID=<id>").
+ * sourceUrl fix — every row ingested under the old guesses has a broken
+ * or login-gated sourceUrl (see SEARCH_PAGE_PATH_BY_LIST_TITLE's header
+ * comment in lib/ingestion/pemex-mapper.ts for the two dead ends already
+ * ruled out: a hardcoded site-root DispForm.aspx guess that 404'd, then a
+ * per-list DispForm.aspx that redirected to a real PEMEX login form).
  * Confirmed real 2026-09-03: the user clicked "查看原始来源文件" on
  * pemex-snr-mad-140-ca-o-2026 and got PEMEX's own 404 page.
  *
- * The item's numeric SharePoint Id survives in the old sourceUrl's own
- * `?ID=` query param, so this only rewrites the path prefix — no need to
- * re-derive the Id from anywhere else. Which subsidiary list a row came
- * from isn't stored as its own column, so it's inferred from (buyer,
- * procedureType), the same two fields ingest-pemex.ts derives from
- * --buyer/--procedure-label per subsidiary (see README.md's real
- * subsidiary run table). One real ambiguity: "Concursos-Abiertos-PE"
- * (Corporate) and "Concursos-e-invitaciones" both use buyer "Petróleos
- * Mexicanos (PEMEX)" — disambiguated by procedureType, which embeds the
- * procedure label ("Concurso Abierto" vs "Invitación a Cuando Menos Tres
- * Personas").
+ * The fix here is the same one now baked into pemex-mapper.ts: point
+ * sourceUrl at each subsidiary's real, anonymously-reachable search page
+ * under `Paginas/` instead of any per-item link (none exists anonymously
+ * on this site). Which subsidiary list a row came from isn't stored as
+ * its own column, so it's inferred from (buyer, procedureType) — the same
+ * two fields ingest-pemex.ts derives from --buyer/--procedure-label per
+ * subsidiary (see README.md's real subsidiary run table). One real
+ * ambiguity: "Concursos-Abiertos-PE" (Corporate) and
+ * "Concursos-e-invitaciones" both use buyer "Petróleos Mexicanos
+ * (PEMEX)" — disambiguated by procedureType, which embeds the procedure
+ * label ("Concurso Abierto" vs "Invitación a Cuando Menos Tres Personas").
  *
  * Usage:
  *   npm run fix:pemex-source-urls               (dry run — report only)
@@ -28,18 +28,19 @@ import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
 const SOURCE_NAME = "PEMEX — Concursos Abiertos";
 const PEMEX_SITE_ORIGIN = "https://www.pemex.com";
+const CONCURSOS_ROOT_PATH = "/procura/procedimientos-de-contratacion/concursosabiertos";
 
-// Kept in sync by hand with DISPLAY_FORM_PATH_BY_LIST_TITLE in
+// Kept in sync by hand with SEARCH_PAGE_PATH_BY_LIST_TITLE in
 // lib/ingestion/pemex-mapper.ts — not imported from there since this
 // script keys off (buyer, procedureType), not listTitle directly.
-const DISPLAY_FORM_PATH_BY_LIST_TITLE: Record<string, string> = {
-  "Concursos-Abiertos-PEP": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPEP/DispForm.aspx",
-  "Concursos-Abiertos-PTI": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPTI/DispForm.aspx",
-  "Concursos-Abiertos-PL": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPL/DispForm.aspx",
-  "Concursos-Abiertos-PE": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPE/DispForm.aspx",
-  "Concursos-Abiertos-PF": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPF/DispForm.aspx",
-  "Concursos-Abiertos-PPS": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPPS/DispForm.aspx",
-  "Concursos-e-invitaciones": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/Concursoseinvitaciones/DispForm.aspx",
+const SEARCH_PAGE_PATH_BY_LIST_TITLE: Record<string, string> = {
+  "Concursos-Abiertos-PEP": `${CONCURSOS_ROOT_PATH}/Paginas/Pemex-Exploración-y-Producción.aspx`,
+  "Concursos-Abiertos-PTI": `${CONCURSOS_ROOT_PATH}/Paginas/Pemex-Transformación-Industrial.aspx`,
+  "Concursos-Abiertos-PL": `${CONCURSOS_ROOT_PATH}/Paginas/Pemex-Logística.aspx`,
+  "Concursos-Abiertos-PE": `${CONCURSOS_ROOT_PATH}/Paginas/Pemex.aspx`,
+  "Concursos-Abiertos-PF": CONCURSOS_ROOT_PATH,
+  "Concursos-Abiertos-PPS": CONCURSOS_ROOT_PATH,
+  "Concursos-e-invitaciones": CONCURSOS_ROOT_PATH,
 };
 
 function inferListTitle(buyer: string, procedureType: string | null): string | undefined {
@@ -74,8 +75,7 @@ async function main() {
 
   const PAGE_SIZE = 1000;
   let fixed = 0;
-  let noId = 0;
-  let unrecognizedList = 0;
+  let unrecognizedBuyer = 0;
   let alreadyRight = 0;
 
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -96,22 +96,14 @@ async function main() {
       const procedureType = row.procedure_type as string | null;
       const oldSourceUrl = row.source_url as string;
 
-      const idMatch = oldSourceUrl.match(/[?&]ID=(\d+)/);
-      if (!idMatch) {
-        console.log(`  [skip] ${slug} — no ?ID= in stored sourceUrl: ${oldSourceUrl}`);
-        noId++;
-        continue;
-      }
-
       const listTitle = inferListTitle(buyer, procedureType);
-      const path = listTitle ? DISPLAY_FORM_PATH_BY_LIST_TITLE[listTitle] : undefined;
-      if (!path) {
+      if (!listTitle) {
         console.log(`  [skip] ${slug} — buyer "${buyer}" doesn't match a known subsidiary list`);
-        unrecognizedList++;
+        unrecognizedBuyer++;
         continue;
       }
 
-      const newSourceUrl = `${PEMEX_SITE_ORIGIN}${path}?ID=${idMatch[1]}`;
+      const newSourceUrl = `${PEMEX_SITE_ORIGIN}${SEARCH_PAGE_PATH_BY_LIST_TITLE[listTitle]}`;
       if (newSourceUrl === oldSourceUrl) {
         alreadyRight++;
         continue;
@@ -127,9 +119,7 @@ async function main() {
     if (rows.length < PAGE_SIZE) break;
   }
 
-  console.log(
-    `\n${fixed} fixable, ${alreadyRight} already correct, ${noId} skipped (no ?ID= found), ${unrecognizedList} skipped (unrecognized buyer).`,
-  );
+  console.log(`\n${fixed} fixable, ${alreadyRight} already correct, ${unrecognizedBuyer} skipped (unrecognized buyer).`);
   if (!shouldWrite) console.log("dry run (pass --write to update Supabase) — nothing was written.");
 }
 

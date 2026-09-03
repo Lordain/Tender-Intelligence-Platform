@@ -97,25 +97,47 @@ function toIso(raw: string | undefined): string | null {
 }
 
 const PEMEX_SITE_ORIGIN = "https://www.pemex.com";
+const CONCURSOS_ROOT_PATH = "/procura/procedimientos-de-contratacion/concursosabiertos";
 
 /**
- * Real per-list item display-form path, confirmed 2026-09-03 by querying
- * each list's own `DefaultDisplayFormUrl` property via PEMEX's anonymous
- * SharePoint REST API (`_api/web/lists/getbytitle('<title>')?$select=
- * DefaultDisplayFormUrl`) — NOT a guess. A prior version of this mapper
- * pointed every subsidiary at one hardcoded site-root
- * `.../concursosabiertos/DispForm.aspx`, which 404'd for real: each
- * subsidiary is its own SharePoint List with its own display form under
- * `Lists/<ListInternalName>/DispForm.aspx`, not the site root.
+ * Real per-list item display-form path (`Lists/<ListInternalName>/
+ * DispForm.aspx`), confirmed 2026-09-03 via each list's own
+ * `DefaultDisplayFormUrl` REST property — briefly used here, then
+ * abandoned the same day: opening one for real (item ID intact) redirected
+ * to `pemex.com/acceso-denegado`, a login form. So PEMEX's anonymous
+ * access covers the REST *data* API but not this rendered *UI* page —
+ * different auth zones for the same site, not the blanket "anonymous
+ * everywhere" the earlier `isAnonymousUser: true` finding suggested. Kept
+ * only as a comment so a future attempt doesn't re-derive and re-try the
+ * same dead end.
+ *
+ * What IS confirmed real and publicly reachable (no login) is each
+ * subsidiary's own search page under `Paginas/` — e.g.
+ * `Paginas/Pemex-Transformación-Industrial.aspx`, visually confirmed by
+ * the user loading it with no login prompt. Real page filenames enumerated
+ * 2026-09-03 via `_api/web/getfolderbyserverrelativeurl('.../Paginas')/
+ * files` (anonymous REST folder listing, not guessed):
+ * Pemex-Exploración-y-Producción.aspx, Pemex-Transformación-Industrial.aspx,
+ * Pemex-Logística.aspx, Pemex.aspx, PEP.aspx, default.aspx, plus several
+ * Exploración-y-Producción-region pages (Sur/Norte/Centro/Marinas...) not
+ * used here since they don't correspond to any of the 7 known lists. No
+ * dedicated page exists for PF, PPS, or Concursos-e-invitaciones — those
+ * fall back to the root search page below rather than a guessed filename.
+ * This means sourceUrl is a real, working SEARCH page (a human can look up
+ * the tender there by number/description), not a per-item deep link — no
+ * anonymous per-item link exists at all on this site.
  */
-const DISPLAY_FORM_PATH_BY_LIST_TITLE: Record<string, string> = {
-  "Concursos-Abiertos-PEP": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPEP/DispForm.aspx",
-  "Concursos-Abiertos-PTI": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPTI/DispForm.aspx",
-  "Concursos-Abiertos-PL": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPL/DispForm.aspx",
-  "Concursos-Abiertos-PE": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPE/DispForm.aspx",
-  "Concursos-Abiertos-PF": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPF/DispForm.aspx",
-  "Concursos-Abiertos-PPS": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/ConcursosAbiertosPPS/DispForm.aspx",
-  "Concursos-e-invitaciones": "/procura/procedimientos-de-contratacion/concursosabiertos/Lists/Concursoseinvitaciones/DispForm.aspx",
+const SEARCH_PAGE_PATH_BY_LIST_TITLE: Record<string, string> = {
+  "Concursos-Abiertos-PEP": `${CONCURSOS_ROOT_PATH}/Paginas/Pemex-Exploración-y-Producción.aspx`,
+  "Concursos-Abiertos-PTI": `${CONCURSOS_ROOT_PATH}/Paginas/Pemex-Transformación-Industrial.aspx`,
+  "Concursos-Abiertos-PL": `${CONCURSOS_ROOT_PATH}/Paginas/Pemex-Logística.aspx`,
+  // "Pemex.aspx" is the best real-filename match for the generic
+  // corporate list (buyer "Petróleos Mexicanos (PEMEX)") — not visually
+  // confirmed to show PE-list content specifically, unlike PEP/PTI/PL.
+  "Concursos-Abiertos-PE": `${CONCURSOS_ROOT_PATH}/Paginas/Pemex.aspx`,
+  "Concursos-Abiertos-PF": CONCURSOS_ROOT_PATH,
+  "Concursos-Abiertos-PPS": CONCURSOS_ROOT_PATH,
+  "Concursos-e-invitaciones": CONCURSOS_ROOT_PATH,
 };
 
 export function mapPemexConcursoItemToTender(
@@ -185,15 +207,12 @@ export function mapPemexConcursoItemToTender(
     risks: [],
     relevance: classifyRelevance({ title: description, industries, scopeType, buyer }),
     sourceName,
-    // Real per-list DispForm.aspx path (see DISPLAY_FORM_PATH_BY_LIST_TITLE
-    // above) + the item's own Id — confirmed against a real item, unlike
-    // the old site-root guess this replaced. A list title this mapper
-    // doesn't recognize has no verified path, so falls back to the list's
-    // own filtered browse page rather than another guessed-and-unverified
-    // link.
-    sourceUrl: DISPLAY_FORM_PATH_BY_LIST_TITLE[listTitle]
-      ? `${PEMEX_SITE_ORIGIN}${DISPLAY_FORM_PATH_BY_LIST_TITLE[listTitle]}?ID=${item.Id}`
-      : `${PEMEX_SITE_ORIGIN}/procura/procedimientos-de-contratacion/concursosabiertos`,
+    // Real, anonymously-reachable search page for this list (see
+    // SEARCH_PAGE_PATH_BY_LIST_TITLE above) — not a per-item deep link;
+    // none exists anonymously on this site (DispForm.aspx requires login).
+    // A list title this mapper doesn't recognize falls back to the same
+    // root search page as the three known-but-pageless subsidiaries.
+    sourceUrl: `${PEMEX_SITE_ORIGIN}${SEARCH_PAGE_PATH_BY_LIST_TITLE[listTitle] ?? CONCURSOS_ROOT_PATH}`,
     createdAt: now,
     updatedAt: now,
   };

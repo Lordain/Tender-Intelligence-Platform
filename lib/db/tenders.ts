@@ -289,3 +289,70 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
 
 /** Used only for the rare legacy row with a stored tier but somehow no stored label — classifyRelevance() itself always sets both together, so this is a defensive fallback, not an expected path. */
 const LABELS_FALLBACK: LocalizedText = { en: "Standard Project", es: "Proyecto Estándar", zh: "常规项目" };
+
+/** The /admin/tenders list row shape — deliberately lighter than the full Tender (no nested requirements/key dates/risks joins) since this powers a table over 1000+ rows, not a detail view. */
+export type AdminTenderListRow = {
+  slug: string;
+  tenderNumber: string;
+  title: LocalizedText;
+  buyer: string;
+  country: string;
+  status: Tender["status"];
+  relevanceTier: TenderRelevance["tier"] | null;
+  estimatedValue?: number;
+  currency?: string;
+  publicationDate: string;
+  updatedAt: string;
+};
+
+type AdminTenderListDbRow = {
+  slug: string;
+  tender_number: string;
+  title: LocalizedText;
+  buyer: string;
+  country: string;
+  status: Tender["status"];
+  relevance_tier: TenderRelevance["tier"] | null;
+  estimated_value: number | null;
+  currency: string | null;
+  publication_date: string;
+  updated_at: string;
+};
+
+/** Returns null when Supabase isn't configured. Every tender, regardless of relevance tier — this is the admin's full inventory, not the public feed. */
+export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[] | null> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+
+  const rows: AdminTenderListDbRow[] = [];
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("slug, tender_number, title, buyer, country, status, relevance_tier, estimated_value, currency, publication_date, updated_at")
+      .order("publication_date", { ascending: false })
+      .range(from, from + SUPABASE_PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("Failed to fetch admin tender list from Supabase:", error.message);
+      return null;
+    }
+
+    const page = data as unknown as AdminTenderListDbRow[];
+    rows.push(...page);
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+  }
+
+  return rows.map((row) => ({
+    slug: row.slug,
+    tenderNumber: row.tender_number,
+    title: row.title,
+    buyer: row.buyer,
+    country: row.country,
+    status: row.status,
+    relevanceTier: row.relevance_tier,
+    estimatedValue: row.estimated_value ?? undefined,
+    currency: row.currency ?? undefined,
+    publicationDate: row.publication_date,
+    updatedAt: row.updated_at,
+  }));
+}

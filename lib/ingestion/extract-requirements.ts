@@ -5,6 +5,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { TenderRequirement, TenderRisk } from "@/types/tender";
 import { extractDocumentText } from "@/lib/ingestion/document-intake";
+import { splitPdfIntoChunks } from "@/lib/ingestion/pdf-split";
 
 /**
  * Layer 2 extraction (see lib/ingestion/README.md "Layer 2 design"): reads
@@ -197,6 +198,74 @@ async function runTextExtractionWithOverflowRetry(
   }
 }
 
+/**
+ * Boilerplate legal citations repeat near-verbatim on many pages of a real
+ * Convocatoria (see SYSTEM_PROMPT's own note on this) — splitting into
+ * chunks means each chunk's own instance of that boilerplate can get
+ * independently (re-)extracted, producing exact-duplicate items across
+ * chunks that a single whole-document call wouldn't. Dropped here by exact
+ * (title, description) match rather than left for a human to notice.
+ */
+function dedupeByTitleAndDescription<T extends { title: string; description: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.title} ${item.description}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mergeExtractions(parts: TenderExtraction[]): TenderExtraction {
+  return {
+    qualifications: dedupeByTitleAndDescription(parts.flatMap((p) => p.qualifications)),
+    experienceRequirements: dedupeByTitleAndDescription(parts.flatMap((p) => p.experienceRequirements)),
+    requiredDocuments: dedupeByTitleAndDescription(parts.flatMap((p) => p.requiredDocuments)),
+    risks: dedupeByTitleAndDescription(parts.flatMap((p) => p.risks)),
+  };
+}
+
+/**
+ * Splits an oversized PDF (see pdf-split.ts's header comment for the two
+ * real limits this works around) and runs the SAME native-document call
+ * per chunk, merging the results — unlike the plain-text fallback, this
+ * keeps Claude's native PDF vision per chunk, so a scanned/image-only page
+ * still gets read (confirmed real gap 2026-09-03: a 33MB scanned Anexo
+ * produced an empty 0/0/0/0 result under the text-only fallback alone,
+ * since pdftotext has nothing to extract from a page with no text layer).
+ * Real, disclosed cost: a requirement whose own text spans a chunk
+ * boundary, or a "ver página 45" reference pointing outside the current
+ * chunk, can be missed or come back incomplete — inherent to splitting,
+ * not fixable without reassembling full-document context.
+ */
+async function runChunkedPdfExtraction(
+  client: Anthropic,
+  model: ExtractionModel,
+  filePath: string,
+  instruction: string,
+  context: { tenderNumber: string },
+): Promise<TenderExtraction> {
+  const { chunks, cleanup } = splitPdfIntoChunks(filePath);
+  try {
+    console.log(`  splitting into ${chunks.length} chunk(s) of up to 80 pages each (native PDF understanding per chunk, not a text fallback)...`);
+    const parts: TenderExtraction[] = [];
+    for (const chunk of chunks) {
+      const chunkInstruction = `${instruction}\n\n(This excerpt is pages ${chunk.startPage}-${chunk.endPage} of a ${chunk.totalPages}-page document, split to fit — a requirement or cross-reference spanning outside this page range may not be visible here.)`;
+      const content: ExtractionContent = [
+        {
+          type: "document",
+          source: { type: "base64", media_type: "application/pdf", data: readFileSync(chunk.path).toString("base64") },
+        },
+        { type: "text", text: chunkInstruction },
+      ];
+      parts.push(await runExtraction(client, model, content, context));
+    }
+    return mergeExtractions(parts);
+  } finally {
+    cleanup();
+  }
+}
+
 export async function extractTenderRequirements(
   filePath: string,
   context: { tenderNumber: string; title: string; buyer: string },
@@ -227,17 +296,24 @@ export async function extractTenderRequirements(
     return await runExtraction(client, model, pdfContent, context);
   } catch (err) {
     if (!isPdfNativeLimitError(err)) throw err;
-    // Falls back to locally-extracted plain text (pdftotext, same path
-    // extractDocumentText() already uses for the tender-number matching
-    // step) rather than failing the whole document outright — loses
-    // layout/table-image understanding for this one document, but a
-    // degraded extraction beats none for a real oversized bidding book.
-    // That fallback text can ITSELF overflow the context window for a
-    // genuinely huge document (confirmed real 2026-09-03, the same
-    // oversized PDF that triggered this branch) — runTextExtraction
-    // WithOverflowRetry() below handles that second failure mode too.
-    console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 100)}) — retrying with extracted text instead.`);
-    return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context);
+    console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 100)}) — splitting into chunks.`);
+
+    try {
+      return await runChunkedPdfExtraction(client, model, filePath, instruction, context);
+    } catch (chunkErr) {
+      // Chunking needs poppler's pdfinfo/pdfseparate/pdfunite on PATH —
+      // if any is missing (ENOENT) or a chunk call itself errors, this
+      // falls back to locally-extracted plain text instead of failing the
+      // whole document outright. Loses layout/table-image understanding
+      // (and anything on a scanned/image-only page — see
+      // runChunkedPdfExtraction()'s header comment), but a degraded
+      // extraction beats none. That fallback text can ITSELF overflow the
+      // context window for a genuinely huge document (confirmed real
+      // 2026-09-03) — runTextExtractionWithOverflowRetry() handles that
+      // second failure mode too.
+      console.log(`  chunked extraction failed (${(chunkErr instanceof Error ? chunkErr.message : String(chunkErr)).slice(0, 100)}) — falling back to extracted text instead.`);
+      return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context);
+    }
   }
 }
 

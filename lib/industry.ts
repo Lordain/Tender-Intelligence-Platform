@@ -72,7 +72,13 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // target opportunity.
   ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|hospital\b|unidad m[ée]dica|servicios de salud|\bsalud\b/i],
   ["tax", /administraci[óo]n tributaria|fiscalizaci[óo]n|declaraci[óo]n fiscal|sistema de recaudaci[óo]n|\bsat\b|servicio de administraci[óo]n tributaria|padr[óo]n de contribuyentes|aduanas?\b|hacienda y cr[ée]dito p[úu]blico/i],
-  ["energy", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|refiner[íi]a|gas natural|ducto\b|oleoducto|gasoducto|\bpemex\b|petr[óo]leos mexicanos|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible|resistividad/i],
+  // "\bducto\b" (2026-09-03, real bug found against a real Proyectos
+  // Estratégicos MX export): was missing its leading \b, so it matched
+  // as a bare substring of "acueducto" (aqueduct — CONAGUA's own
+  // vocabulary for a water pipeline) too, wrongly tagging real water
+  // projects "energy" (5/48 real rows in that export). "\bducto\b" alone
+  // now only matches the standalone word.
+  ["energy", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|refiner[íi]a|gas natural|\bducto\b|oleoducto|gasoducto|\bpemex\b|petr[óo]leos mexicanos|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible|resistividad/i],
   ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|casa de m[áa]quinas/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to
@@ -87,10 +93,18 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // title ("ELABORACIÓN DEL PROYECTO RAMO: DEL KM 150+000 AL KM
   // 170+000 CAMPECHE") that mentions no other road/carretera keyword at
   // all — this notation alone is a strong, narrowly-scoped real signal.
-  ["construction", /construcci[óo]n|obra p[úu]blica|carretera|puente\b|ferrocarril|puerto\b|aeropuerto|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|\bkm\s*\d+\+\d{3}\b/i],
+  // "carreter[ao]" (2026-09-03, real gap found against the same export):
+  // "carretera" alone missed several real SICT titles that use the
+  // adjective form instead ("EJE CARRETERO..."), landing them on the
+  // "general" fallback instead of "construction".
+  ["construction", /construcci[óo]n|obra p[úu]blica|carreter[ao]|puente\b|ferrocarril|puerto\b|aeropuerto|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|\bkm\s*\d+\+\d{3}\b/i],
   ["manufacturing", /maquinaria industrial|equipo industrial|equipamiento industrial|planta industrial|l[íi]nea de producci[óo]n|manufactura/i],
   ["mining", /miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
-  ["water", /agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora/i],
+  // "\bptar\b" (2026-09-03, real gap): CONAGUA's own titles overwhelmingly
+  // abbreviate "Planta de Tratamiento de Aguas Residuales" as "PTAR"
+  // rather than spelling it out (many real rows in the same export) —
+  // "planta de tratamiento de agua" alone missed all of them.
+  ["water", /agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora|\bptar\b/i],
   // Real batch the user flagged as legitimate opportunities: bulk vehicle
   // and heavy-machinery acquisitions ("ADQS. DE 22 VEHS. CISTERNA...",
   // "ADQUISICION DE VEHICULOS PARA EL CONVENIO CONASAMA 2026",

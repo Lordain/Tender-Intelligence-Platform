@@ -127,6 +127,13 @@ function isPdfNativeLimitError(err: unknown): boolean {
   return /maximum of \d+ pdf pages/i.test(message) || /request_too_large|exceeds the maximum size/i.test(message);
 }
 
+/** Real second-order failure found the same day: the SAME oversized PDF that hit isPdfNativeLimitError() above, once its pdftotext fallback text was sent instead, overflowed the model's own context window too ("prompt is too long: 298943 tokens > 200000 maximum") — a multi-hundred-page real Convocatoria is long enough as plain text alone. Parses the exact actual/max token counts the API itself reports rather than guessing a chars-per-token ratio for Spanish text. */
+function parseContextOverflow(err: unknown): { actualTokens: number; maxTokens: number } | null {
+  const message = err instanceof Error ? err.message : String(err);
+  const match = message.match(/prompt is too long:\s*(\d+)\s*tokens?\s*>\s*(\d+)\s*maximum/i);
+  return match ? { actualTokens: Number(match[1]), maxTokens: Number(match[2]) } : null;
+}
+
 async function runExtraction(client: Anthropic, model: ExtractionModel, content: ExtractionContent, context: { tenderNumber: string }) {
   const response = await client.messages.parse({
     model,
@@ -153,6 +160,43 @@ async function runExtraction(client: Anthropic, model: ExtractionModel, content:
   return response.parsed_output;
 }
 
+/**
+ * Runs a text-only extraction, retrying ONCE with the document text
+ * truncated to fit if the model rejects it as too long for its context
+ * window (see parseContextOverflow()'s header comment). Truncates from the
+ * end, keeping the beginning — a Convocatoria's own qualification/
+ * requirement sections are typically front-loaded, with repetitive
+ * annex/format boilerplate padding the tail — and keeps a safety margin
+ * below the API's own reported ratio rather than trimming to the exact
+ * boundary, since re-tokenizing slightly different text than what produced
+ * the original count could still land just over.
+ */
+async function runTextExtractionWithOverflowRetry(
+  client: Anthropic,
+  model: ExtractionModel,
+  instruction: string,
+  documentText: string,
+  context: { tenderNumber: string },
+) {
+  const content: ExtractionContent = [{ type: "text", text: `${instruction}\n\n---\n\n${documentText}` }];
+  try {
+    return await runExtraction(client, model, content, context);
+  } catch (err) {
+    const overflow = parseContextOverflow(err);
+    if (!overflow) throw err;
+
+    const keepRatio = (overflow.maxTokens / overflow.actualTokens) * 0.85;
+    const truncatedText = documentText.slice(0, Math.floor(documentText.length * keepRatio));
+    console.log(
+      `  document text (${overflow.actualTokens} tokens) exceeds the ${overflow.maxTokens}-token context window — retrying truncated to ~${Math.round((truncatedText.length / documentText.length) * 100)}% of its original length.`,
+    );
+    const truncatedContent: ExtractionContent = [
+      { type: "text", text: `${instruction}\n\n---\n\n${truncatedText}\n\n[... document truncated to fit the model's context window; content past this point was not seen ...]` },
+    ];
+    return runExtraction(client, model, truncatedContent, context);
+  }
+}
+
 export async function extractTenderRequirements(
   filePath: string,
   context: { tenderNumber: string; title: string; buyer: string },
@@ -169,9 +213,7 @@ export async function extractTenderRequirements(
   const isWord = [".docx", ".doc"].includes(extname(filePath).toLowerCase());
   const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}.`;
 
-  const textContent: ExtractionContent = [{ type: "text", text: `${instruction}\n\n---\n\n${await extractDocumentText(filePath)}` }];
-
-  if (isWord) return runExtraction(client, model, textContent, context);
+  if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context);
 
   const pdfContent: ExtractionContent = [
     {
@@ -190,8 +232,12 @@ export async function extractTenderRequirements(
     // step) rather than failing the whole document outright — loses
     // layout/table-image understanding for this one document, but a
     // degraded extraction beats none for a real oversized bidding book.
+    // That fallback text can ITSELF overflow the context window for a
+    // genuinely huge document (confirmed real 2026-09-03, the same
+    // oversized PDF that triggered this branch) — runTextExtraction
+    // WithOverflowRetry() below handles that second failure mode too.
     console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 100)}) — retrying with extracted text instead.`);
-    return runExtraction(client, model, textContent, context);
+    return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context);
   }
 }
 

@@ -29,6 +29,19 @@
  * Used only to build a link BACK to the real official
  * comprasmx.buengobierno.gob.mx page — LicitIA's own JSON content is not
  * stored or displayed anywhere on this platform, only this one id field.
+ *
+ * Real request shape (verified 2026-09-03 against this exact procedure,
+ * after a real batch run came back 0/591 resolved and the user curl'd
+ * both variants to compare): appending `.json` to the path — this
+ * file's original guess, based on the docs' own "Formatos por página"
+ * wording — is WRONG and returns a real 404
+ * (`{"success":false,"error":{"code":"NOT_FOUND",...}}`) for every
+ * procedure, indexed or not. The real way to get JSON is the bare path
+ * (`/licitaciones/{numero}`, no suffix) with `Accept: application/json`
+ * — confirmed returning the full real record. Content negotiation via
+ * header only; the `.json`/`.md` suffixes the docs mention are a
+ * different mechanism this endpoint doesn't accept the same way (not
+ * investigated further since the header alone works).
  */
 
 const LICITIA_BASE = "https://api.licitia.com.mx/api/open/v1";
@@ -62,7 +75,7 @@ export type ResolveComprasMxDetailUrlResult =
   | { status: "error"; message: string };
 
 export async function resolveComprasMxDetailUrl(procedureNumber: string): Promise<ResolveComprasMxDetailUrlResult> {
-  const url = `${LICITIA_BASE}/licitaciones/${encodeURIComponent(procedureNumber)}.json`;
+  const url = `${LICITIA_BASE}/licitaciones/${encodeURIComponent(procedureNumber)}`;
 
   let response: Response;
   try {
@@ -81,7 +94,7 @@ export async function resolveComprasMxDetailUrl(procedureNumber: string): Promis
     return { status: "error", message: `response wasn't valid JSON: ${err instanceof Error ? err.message : String(err)}` };
   }
 
-  const id = body.data?.id;
+  const id = body.success ? body.data?.id : undefined;
   return typeof id === "string" && id.length > 0
     ? { status: "resolved", detailUrl: buildComprasMxDetailUrl(id) }
     : { status: "not_found" };

@@ -32,7 +32,8 @@
     "ingest:proyectos-mexico": "tsx --env-file-if-exists=.env.local scripts/ingest-proyectos-mexico.ts",
     "test:relevance": "tsx scripts/test-relevance.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
-    "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts"
+    "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",
+    "analyze:batch": "tsx --env-file-if-exists=.env.local scripts/analyze-batch.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

@@ -302,7 +302,15 @@ export async function extractTenderRequirements(
   // meaningful for native document understanding to add here (no
   // layout/table-image rendering to lose).
   const isWord = [".docx", ".doc"].includes(extname(filePath).toLowerCase());
-  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}.`;
+  // The literal word "json" below is required, not decorative: DashScope's
+  // Anthropic-compatible endpoint (extract-requirements-qwen-anthropic.ts)
+  // translates output_config.format into its own OpenAI-style
+  // response_format:"json_object" mode under the hood, which real-world
+  // 2026-09-03 testing showed rejects the request outright ("'messages'
+  // must contain the word 'json' in some form") when nothing in the
+  // messages array says so — this file's SYSTEM_PROMPT never happened to.
+  // Harmless for Claude's own structured outputs either way.
+  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}, and respond with a valid JSON object matching the required schema.`;
 
   if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context);
 

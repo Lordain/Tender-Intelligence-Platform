@@ -87,7 +87,8 @@ const RiskSchema = z.object({
   sourceReference: z.string(),
 });
 
-const ExtractionSchema = z.object({
+/** Exported so translate-requirements-{qwen,gemini}.ts can reuse the exact same schema/prompt — a provider cost/quality comparison isn't meaningful if each provider is answering a differently-worded question. */
+export const ExtractionSchema = z.object({
   qualifications: z.array(RequirementSchema).describe(
     "Legal/administrative standing the bidder's COMPANY must prove — RFC, no debt with SAT/IMSS/Infonavit, not on a disqualified-persons list, corporate existence, power of attorney, etc. NOT the same as experience or documents to submit.",
   ),
@@ -104,7 +105,7 @@ const ExtractionSchema = z.object({
 
 export type TenderExtraction = z.infer<typeof ExtractionSchema>;
 
-const SYSTEM_PROMPT = `You are extracting bid-qualification information from a real Mexican government tender document (Convocatoria, Anexo Técnico, or similar) for a platform that helps Chinese enterprises decide whether to bid.
+export const SYSTEM_PROMPT = `You are extracting bid-qualification information from a real Mexican government tender document (Convocatoria, Anexo Técnico, or similar) for a platform that helps Chinese enterprises decide whether to bid.
 
 Ground rules:
 - Extract only what THIS document actually says. Never infer, generalize, or fill in a plausible-sounding requirement that isn't stated.

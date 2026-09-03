@@ -109,18 +109,31 @@ async function main() {
 
     // A single batch failing (a transient API error, e.g. a real 500 seen
     // 2026-09-03) used to crash the whole run, leaving every later batch
-    // untouched. Catch and move on instead — re-running this script picks
-    // up exactly what's left, since the untranslated filter above already
-    // skips anything that succeeded.
+    // untouched. Catch and move on instead of aborting.
     let results: TranslatedTender[];
     try {
       results = await translateTenderBatch(input);
     } catch (err) {
       console.error(`  batch failed (${batch.map((t) => t.slug).join(", ")}): ${err instanceof Error ? err.message : String(err)}`);
-      failedCount += batch.length;
-      continue;
+      results = [];
     }
     const bySlug = new Map(results.map((r) => [r.slug, r]));
+
+    // A batch can also fail *without* throwing — the model returns fewer
+    // items than it was sent (seen 2026-09-03 alongside the same real
+    // batch-level 400). Either way, one bad item shouldn't cost its 7
+    // batch-mates their translation: retry only what's actually missing,
+    // one item at a time, so a single problem row (bad/garbled source
+    // text) is isolated instead of sinking the whole batch.
+    const missing = batch.filter((t) => !bySlug.has(t.slug));
+    for (const tender of missing) {
+      try {
+        const [single] = await translateTenderBatch([{ slug: tender.slug, titleEs: tender.title.es, summaryEs: tender.summary.es }]);
+        if (single) bySlug.set(tender.slug, single);
+      } catch (err) {
+        console.error(`  retry failed for ${tender.slug}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
 
     for (const tender of batch) {
       const translated = bySlug.get(tender.slug);

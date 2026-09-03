@@ -497,11 +497,15 @@ export function classifyRelevance(input: {
   currency?: string;
   buyer?: string;
   /**
-   * True only for tenders sourced from proyectosmexico.gob.mx (Banobras/
-   * SHCP's official curated list of strategic national investment
-   * projects — see proyectos-mexico-mapper.ts). Being listed there IS
-   * itself the strongest possible flagship signal this platform has:
-   * a real, verified government determination that this is a major
+   * True only for tenders sourced from a government-curated list of
+   * strategic/priority projects — currently Proyectos Estratégicos MX
+   * (proyectosestrategicosmx.hacienda.gob.mx, projects under the "Ley
+   * para el Fomento de la Inversión en Infraestructura Estratégica" —
+   * see proyectos-estrategicos-mapper.ts; supersedes the now-retired
+   * proyectosmexico.gob.mx/Banobras-SHCP source as of 2026-09-03). Being
+   * listed there IS itself the strongest possible flagship signal this
+   * platform has: a real, verified government determination that this
+   * is a major
    * project, not a keyword/value proxy for one. Deliberately folded into
    * `hasIncludeOverride` below rather than a separate check — it needs
    * exactly the same two effects that flag already has (bypass every

@@ -29,7 +29,7 @@
     "purge:excluded-tenders": "tsx --env-file-if-exists=.env.local scripts/purge-excluded-tenders.ts",
     "ingest:peru": "tsx --env-file-if-exists=.env.local scripts/ingest-peru.ts",
     "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts",
-    "ingest:proyectos-mexico": "tsx --env-file-if-exists=.env.local scripts/ingest-proyectos-mexico.ts",
+    "ingest:proyectos-estrategicos": "tsx --env-file-if-exists=.env.local scripts/ingest-proyectos-estrategicos.ts",
     "test:relevance": "tsx scripts/test-relevance.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",

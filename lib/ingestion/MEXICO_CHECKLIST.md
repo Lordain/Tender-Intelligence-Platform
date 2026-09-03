@@ -35,14 +35,15 @@ None of these steps run on a schedule. Every capture is manual, on demand — re
   - `npm run ingest:dof-search -- <file>.json --write`
 - [ ] **3.2 Documents** — no automated path exists. DOF notices carry no document; CFE's own portal (`msc.cfe.mx`) is WAF-protected (Imperva) and not accessible. Treat CFE tenders as metadata-only for now, or manually hunt down bases/convocatoria PDFs per-tender if a specific opportunity is worth the effort.
 
-## Part 3.5 — Proyectos México (added 2026-09-02 — a new source, auto-flagship)
+## Part 3.5 — Proyectos Estratégicos MX (added 2026-09-03 — a new source, auto-flagship, supersedes Proyectos México)
 
-- [x] **Real national-priority project list, currently in bidding** (done 2026-09-03 — real 58-row export, 57/58 upserted)
-  - Open `https://www.proyectosmexico.gob.mx/proyectos/`, filter as needed, click the page's own CSV export button (no anti-bot gate — a plain browser download, same as Compras MX contracts).
-  - `npm run ingest:proyectos-mexico -- <file>.csv --write`
-  - Every tender from this source is tagged `isNationalPriorityProject: true` and lands on **flagship** regardless of value/keywords — being listed on this official government source IS the signal (user's explicit instruction). Real 58-row export the user captured: 57/58 mapped, all flagship.
-  - Bonus: `participationScope` (can a foreign bidder even participate) is a genuine field here (`Proceso de selección`), not a best-effort guess like every other source — and 7 of 58 real rows had CFE as the buyer, a second real path to CFE tenders alongside DOF.
-  - **Known gap, not fixed**: no ID shared with Compras MX/PEMEX/DOF, so a project appearing both here and as its own later Compras MX procedure will show as two separate rows — accepted, not silently merged (see README).
+- [x] **"Ley para el Fomento de la Inversión en Infraestructura Estratégica" project list, real bidding data with real attachments** (done 2026-09-03 — real 48-row export, 48/48 mapped)
+  - Open `https://proyectosestrategicosmx.hacienda.gob.mx/sitiopublico/#/`, filter as needed, click the page's own export button (same "Información Pública" export format as Compras MX's "Difusión de procedimientos" — no anti-bot gate, a plain browser download).
+  - `npm run ingest:proyectos-estrategicos -- <file>.xlsx --write`
+  - Every tender from this source is tagged `isNationalPriorityProject: true` and lands on **flagship** regardless of value/keywords — being listed under this strategic-infrastructure law IS the signal, same reasoning the retired Proyectos México source used.
+  - **Supersedes Proyectos México (Banobras/SHCP)** (2026-09-02 through 2026-09-03, retired 2026-09-03 — its 57 ingested rows deleted, its mapper/ingest script removed): the user found a real Proyectos México project page ("Presa Mujer Solteca," CONAGUA) that links out to this exact portal once the project reaches actual bidding — confirming this IS the real procurement destination, not an unrelated third system, and it comes with real Convocatoria/Anexo attachments Proyectos México never had (Proyectos México only ever listed the investment-pipeline stage, no downloadable documents).
+  - Unlike Proyectos México's own `participationScope` field, this source reuses Compras MX's `Carácter` vocabulary (NACIONAL / INTERNACIONAL BAJO LA COBERTURA DE TRATADOS / etc.) via the shared `compras-mx-open-tenders-mapper.ts` logic — see `lib/ingestion/proyectos-estrategicos-mapper.ts` for why this mapper is a thin wrapper reusing that file's field parsing wholesale rather than a separate implementation.
+  - **Known gap, not fixed**: no ID shared with Compras MX/PEMEX/DOF (same limitation the retired Proyectos México source had), so a project appearing both here and as its own Compras MX procedure will show as two separate rows — accepted, not silently merged (see README).
 
 ## Part 4 — Shared steps (run once, after Parts 1–3.5)
 

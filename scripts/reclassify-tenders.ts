@@ -65,12 +65,19 @@ type TenderRow = {
 
 // isNationalPriorityProject isn't a persisted column — the mapper only
 // passes it into classifyRelevance() at ingest time (see
-// proyectos-mexico-mapper.ts) — so it has to be re-derived here from the
-// one real, already-persisted field that identifies the source:
-// source_name. Without this, re-running this script after ingesting
-// Proyectos México would silently strip their forced-flagship tier on
-// rows with no estimatedValue/keyword match of their own.
-const PROYECTOS_MEXICO_SOURCE_NAME = "Proyectos México (Banobras/SHCP)";
+// proyectos-estrategicos-mapper.ts) — so it has to be re-derived here
+// from the one real, already-persisted field that identifies the
+// source: source_name. Without this, re-running this script after
+// ingesting Proyectos Estratégicos MX would silently strip their
+// forced-flagship tier on rows with no estimatedValue/keyword match of
+// their own.
+//
+// "Proyectos México (Banobras/SHCP)" (2026-09-02 through 2026-09-03) was
+// superseded and its rows deleted (2026-09-03) — Proyectos Estratégicos
+// MX lists the same real projects once they reach actual bidding, with
+// real Convocatoria/Anexo attachments Proyectos México never had. Not
+// kept here since no row can carry that source_name anymore.
+const NATIONAL_PRIORITY_SOURCE_NAME = "Proyectos Estratégicos MX (Hacienda)";
 
 const OUT_DIR = "exports";
 
@@ -137,7 +144,7 @@ async function main() {
       estimatedValue: row.estimated_value ?? undefined,
       currency: row.currency ?? undefined,
       buyer: row.buyer,
-      isNationalPriorityProject: row.source_name === PROYECTOS_MEXICO_SOURCE_NAME,
+      isNationalPriorityProject: row.source_name === NATIONAL_PRIORITY_SOURCE_NAME,
     });
 
     const tierChanged = row.relevance_tier !== recomputed.tier;

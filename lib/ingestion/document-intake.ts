@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { basename, extname } from "node:path";
 import mammoth from "mammoth";
+import WordExtractor from "word-extractor";
 
 /**
  * Takes tender documents a human already downloaded (Convocatoria, Anexo
@@ -21,12 +22,13 @@ import mammoth from "mammoth";
  * matched to a tender, or typed in by hand.
  *
  * Text extraction uses poppler's `pdftotext` for PDFs (present in this
- * environment; verified against a real 50-page Convocatoria), and
- * `mammoth` for real .docx attachments (2026-09-03, per the user's
- * report that many tender documents actually arrive as Word files, not
- * PDF) — a pure-JS npm dependency rather than another external binary
- * like poppler, since it needs to run on the user's own machine, not
- * just this sandbox.
+ * environment; verified against a real 50-page Convocatoria), `mammoth`
+ * for .docx attachments, and `word-extractor` for legacy .doc
+ * attachments (2026-09-03, per the user's report that many tender
+ * documents arrive as Word files — both current and legacy-binary
+ * format — not PDF) — both pure-JS npm dependencies rather than another
+ * external binary like poppler, since they need to run on the user's
+ * own machine, not just this sandbox.
  */
 
 /**
@@ -128,9 +130,29 @@ export async function extractDocxText(filePath: string): Promise<string> {
   return value;
 }
 
-/** Dispatches on the real file extension — everything but .docx is assumed to be a PDF, matching every existing caller's naming/behavior before .docx support existed. */
+/**
+ * Legacy binary .doc (pre-2007 Word, OLE compound file format — a
+ * different, older format from .docx's ECMA-376 zip/XML, not just a
+ * naming variant) — mammoth doesn't read this format at all. `word-
+ * extractor` (2026-09-03, per the user's report that .doc attachments
+ * are common) is pure JS with no external binary or Word/LibreOffice
+ * install required, unlike every other real option for this format, so
+ * it works the same way on the user's own Windows machine as it does
+ * here with nothing extra to install — the same reasoning that ruled
+ * out LibreOffice for .docx.
+ */
+export async function extractDocText(filePath: string): Promise<string> {
+  const extractor = new WordExtractor();
+  const doc = await extractor.extract(filePath);
+  return doc.getBody();
+}
+
+/** Dispatches on the real file extension — everything but .docx/.doc is assumed to be a PDF, matching every existing caller's naming/behavior before Word support existed. */
 export async function extractDocumentText(filePath: string): Promise<string> {
-  return extname(filePath).toLowerCase() === ".docx" ? extractDocxText(filePath) : extractPdfText(filePath);
+  const ext = extname(filePath).toLowerCase();
+  if (ext === ".docx") return extractDocxText(filePath);
+  if (ext === ".doc") return extractDocText(filePath);
+  return extractPdfText(filePath);
 }
 
 /** Most frequent match wins: a Convocatoria repeats its own number in every page header (54 times in the real one tested), while any other number it cites appears once or twice. */

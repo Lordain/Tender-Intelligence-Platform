@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { TenderRequirement, TenderRisk } from "@/types/tender";
-import { extractDocxText } from "@/lib/ingestion/document-intake";
+import { extractDocumentText } from "@/lib/ingestion/document-intake";
 
 /**
  * Layer 2 extraction (see lib/ingestion/README.md "Layer 2 design"): reads
@@ -125,17 +125,18 @@ export async function extractTenderRequirements(
   model: ExtractionModel = "claude-sonnet-5",
 ): Promise<TenderExtraction> {
   const client = new Anthropic();
-  // .docx (2026-09-03, per the user's report that many real tender
-  // documents arrive as Word files, not PDF) goes through local text
-  // extraction instead of Claude's native document vision — unlike a
-  // scanned PDF page, a real .docx is already machine-readable text, so
-  // there's nothing meaningful for native document understanding to add
-  // here (no layout/table-image rendering to lose).
-  const isDocx = extname(filePath).toLowerCase() === ".docx";
-  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isDocx ? "document text below" : "attached document"}.`;
+  // Word documents — .docx and legacy .doc alike (2026-09-03, per the
+  // user's report that many real tender documents arrive as Word files,
+  // both formats, not PDF) — go through local text extraction instead of
+  // Claude's native document vision — unlike a scanned PDF page, a real
+  // Word file is already machine-readable text, so there's nothing
+  // meaningful for native document understanding to add here (no
+  // layout/table-image rendering to lose).
+  const isWord = [".docx", ".doc"].includes(extname(filePath).toLowerCase());
+  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}.`;
 
-  const content = isDocx
-    ? [{ type: "text" as const, text: `${instruction}\n\n---\n\n${await extractDocxText(filePath)}` }]
+  const content = isWord
+    ? [{ type: "text" as const, text: `${instruction}\n\n---\n\n${await extractDocumentText(filePath)}` }]
     : [
         {
           type: "document" as const,

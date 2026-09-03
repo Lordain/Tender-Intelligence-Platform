@@ -4,8 +4,9 @@
  * no sorting or data entry by hand, and no renaming required (though it
  * helps: see intakeDocument()'s file-name-first matching, 2026-09-03,
  * for an attachment whose own text never repeats the procedure number).
- * Both PDF and .docx are supported (2026-09-03 — many real tender
- * attachments turn out to be Word files, not PDF).
+ * PDF, .docx, and legacy .doc are all supported (2026-09-03 — many real
+ * tender attachments turn out to be Word files, current or legacy
+ * format, not PDF).
  *
  * This deliberately does NOT download anything: the Compras MX document
  * endpoint is behind the same anti-automation gate as its search API
@@ -21,7 +22,7 @@ import { intakeDocument, type TenderDocumentIntake } from "../lib/ingestion/docu
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { slugify } from "../lib/ingestion/text-utils";
 
-const SUPPORTED_EXTENSIONS = [".pdf", ".docx"];
+const SUPPORTED_EXTENSIONS = [".pdf", ".docx", ".doc"];
 
 function findDocuments(dir: string): string[] {
   return readdirSync(dir)
@@ -89,7 +90,7 @@ async function main() {
 
   const documents = findDocuments(dir);
   if (documents.length === 0) {
-    console.log(`No PDF/DOCX files found in ${dir}.`);
+    console.log(`No PDF/DOCX/DOC files found in ${dir}.`);
     return;
   }
 

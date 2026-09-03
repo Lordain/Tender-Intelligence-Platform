@@ -53,7 +53,7 @@ const PROVIDER_ENV_VAR: Record<ProviderKey, string> = {
   gemini: "GEMINI_API_KEY",
 };
 
-const SUPPORTED_EXTENSIONS = [".pdf", ".docx"];
+const SUPPORTED_EXTENSIONS = [".pdf", ".docx", ".doc"];
 
 function findDocuments(dir: string): string[] {
   return readdirSync(dir)
@@ -98,7 +98,7 @@ async function main() {
 
   const documents = findDocuments(dir);
   if (documents.length === 0) {
-    console.log(`No PDF/DOCX files found in ${dir}.`);
+    console.log(`No PDF/DOCX/DOC files found in ${dir}.`);
     return;
   }
 

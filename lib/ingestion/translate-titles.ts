@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import { sanitizeForApi } from "@/lib/ingestion/text-sanitize";
 
 /**
  * Title/summary translation (es -> zh) for already-ingested tenders.
@@ -60,20 +61,6 @@ Ground rules:
 - Keep proper nouns (agency names, place names, standard/law citations) recognizable — transliterate, or keep the Spanish acronym, where a standard Chinese equivalent doesn't exist (e.g. "PEMEX" stays "PEMEX", not translated).
 - Preserve technical terms precisely — this is used to help a company decide whether to bid, so a mistranslated quantity, material, or scope is a real error, not a stylistic one.
 - Return exactly one output item per input item, matched back by the echoed slug (order doesn't need to match the input).`;
-
-// Unpaired UTF-16 surrogates are invalid Unicode — the JSON body still
-// builds fine locally (JSON.stringify doesn't validate this), but the API
-// can reject it wholesale with a 400 "Invalid request data" once it's
-// re-decoded server-side. Real cause seen 2026-09-03: a batch containing a
-// Proyectos México row failed this way — that source's own connector
-// already documents mangled non-ASCII bytes in at least one real field
-// (see connectors/proyectos-mexico-file.ts), so a stray lone surrogate in
-// source text is plausible, not hypothetical. Replaces any unpaired
-// surrogate with U+FFFD rather than trying to guess/repair the original
-// character.
-function sanitizeForApi(s: string): string {
-  return s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "�");
-}
 
 export async function translateTenderBatch(items: TenderToTranslate[]): Promise<TranslatedTender[]> {
   const client = new Anthropic();

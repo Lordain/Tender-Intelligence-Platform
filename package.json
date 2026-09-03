@@ -30,16 +30,19 @@
     "ingest:peru": "tsx --env-file-if-exists=.env.local scripts/ingest-peru.ts",
     "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts",
     "ingest:proyectos-mexico": "tsx --env-file-if-exists=.env.local scripts/ingest-proyectos-mexico.ts",
-    "test:relevance": "tsx scripts/test-relevance.ts"
+    "test:relevance": "tsx scripts/test-relevance.ts",
+    "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",
+    "@google/genai": "^2.21.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
     "adm-zip": "^0.6.0",
     "csv-parse": "^7.0.2",
     "exceljs": "^4.4.0",
     "next": "16.3.3",
+    "openai": "^7.9.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",

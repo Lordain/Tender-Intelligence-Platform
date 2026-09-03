@@ -19,10 +19,16 @@
  *   npm run translate:tenders -- --write                (translates every untranslated, non-excluded tender)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
-import { translateTenderBatch, type TenderToTranslate } from "../lib/ingestion/translate-titles";
+import { translateTenderBatch, type TenderToTranslate, type TranslatedTender } from "../lib/ingestion/translate-titles";
 import type { LocalizedText } from "../types/tender";
 
-const BATCH_SIZE = 25;
+// Was 25 — dropped after a real run (2026-09-03) truncated a 25-item
+// batch's output (max_tokens: 8000 in translate-titles.ts) when a few
+// items in the batch fell back to Descripción (a long multi-paragraph
+// spec, not the usual one-sentence Alias — see proyectos-mexico-mapper.ts)
+// as their summary. A smaller batch keeps worst-case per-call output well
+// under the cap even when several long summaries land in the same batch.
+const BATCH_SIZE = 8;
 
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -101,7 +107,19 @@ async function main() {
       summaryEs: t.summary.es,
     }));
 
-    const results = await translateTenderBatch(input);
+    // A single batch failing (a transient API error, e.g. a real 500 seen
+    // 2026-09-03) used to crash the whole run, leaving every later batch
+    // untouched. Catch and move on instead — re-running this script picks
+    // up exactly what's left, since the untranslated filter above already
+    // skips anything that succeeded.
+    let results: TranslatedTender[];
+    try {
+      results = await translateTenderBatch(input);
+    } catch (err) {
+      console.error(`  batch failed (${batch.map((t) => t.slug).join(", ")}): ${err instanceof Error ? err.message : String(err)}`);
+      failedCount += batch.length;
+      continue;
+    }
     const bySlug = new Map(results.map((r) => [r.slug, r]));
 
     for (const tender of batch) {

@@ -50,11 +50,24 @@ function buildBody(params: { texto: string; fechaIni: string; fechaFin: string; 
   return body;
 }
 
-type DataTablesResponse = {
-  draw: number;
-  recordsTotal: number;
-  recordsFiltered: number;
-  data: DofSearchNota[];
+/**
+ * The REAL response shape (confirmed 2026-09-04 from actual server output,
+ * not a guess) — despite the request being formatted as a DataTables
+ * server-side-processing POST (draw/columns[]/order[]/start/length), the
+ * response is DOF's own custom envelope, NOT the generic DataTables
+ * {draw, recordsTotal, recordsFiltered, data} shape this file originally
+ * assumed. Identical to dof-search-file.ts's DofSearchResponse (the shape
+ * of a locally-saved capture) — that type was right all along; this live
+ * connector's original DataTables-shaped assumption was the actual bug
+ * (see the Eighth-pass README entry: two earlier fixes, date format and
+ * the cookie jar, both turned out to be real but incomplete — this was
+ * the last piece, found only once raw response logging showed the real
+ * body: `{"messageCode":200,"response":"OK","totalRegistros":86,"Notas":[...]}`).
+ */
+type DofSearchResponse = {
+  messageCode: number;
+  totalRegistros: number;
+  Notas?: DofSearchNota[];
 };
 
 /**
@@ -64,19 +77,6 @@ type DataTablesResponse = {
  * capture the same day confirming it. Two-step: GET the search page first
  * to receive Set-Cookie, then POST with the FULL cookie jar attached, same
  * as a real browser session.
- *
- * Confirmed real bug (2026-09-04): the very first live run returned 0
- * results for a search the user then confirmed by hand has real hits —
- * root-caused to fechaIni/fechaFin format (now fixed at the caller, see
- * ImportDofSearchForm.tsx's isoToDofDate()). If results are STILL empty
- * after that fix, the next suspect is this cookie handling: the real
- * capture's Cookie header carries several OTHER cookies beyond ci_session
- * (one with an unusual, WAF/CDN-looking name — "UrtK5jLykjmM...") that an
- * earlier version of this function silently dropped, forwarding only
- * ci_session. Forwarding every cookie the initial GET sets — not
- * cherry-picking ci_session alone — removes that as a possible cause,
- * since there's no confirmed proof yet that ci_session alone is
- * sufficient (only that it's necessary).
  */
 export async function fetchDofSearchLive(params: { texto: string; fechaIni: string; fechaFin: string; idOrg?: string }): Promise<DofSearchNota[]> {
   const idOrg = params.idOrg ?? "PE,PL,PJ,OA,EPEM,EF,OD,AV,CV,VG,TODOS";
@@ -102,9 +102,9 @@ export async function fetchDofSearchLive(params: { texto: string; fechaIni: stri
 
   const all: DofSearchNota[] = [];
   let start = 0;
-  let recordsTotal = Infinity;
+  let totalRegistros = Infinity;
 
-  while (start < recordsTotal) {
+  while (start < totalRegistros) {
     const res = await fetch(`${BASE_URL}${SEARCH_ENDPOINT}`, {
       method: "POST",
       headers: {
@@ -135,15 +135,15 @@ export async function fetchDofSearchLive(params: { texto: string; fechaIni: stri
       throw new Error(`DOF search request failed: HTTP ${res.status} ${res.statusText} — body: ${rawText.slice(0, 500)}`);
     }
 
-    let data: DataTablesResponse;
+    let data: DofSearchResponse;
     try {
-      data = JSON.parse(rawText) as DataTablesResponse;
+      data = JSON.parse(rawText) as DofSearchResponse;
     } catch (err) {
       // A WAF/login-redirect page or an HTML error page would land here —
       // the old `res.json()` call would throw an unhelpful "unexpected
       // token" error with no context; this surfaces the actual response
       // body (truncated) so it's obvious the server sent something other
-      // than the expected DataTables JSON.
+      // than the expected DOF JSON envelope.
       throw new Error(
         `DOF search: response wasn't valid JSON (${err instanceof Error ? err.message : String(err)}) — first 500 chars: ${rawText.slice(0, 500)}`,
       );
@@ -151,22 +151,18 @@ export async function fetchDofSearchLive(params: { texto: string; fechaIni: stri
 
     // JSON.parse() happily accepts a JSON-encoded STRING (e.g. an entire
     // HTML page as one big quoted string) and returns a JS string
-    // primitive — property access on that (data.recordsTotal etc.) never
+    // primitive — property access on that (data.totalRegistros etc.) never
     // throws, it just silently returns undefined, which is indistinguishable
-    // from "the search returned zero rows" unless checked explicitly. This
-    // is exactly the failure mode a real run hit (2026-09-04): HTTP 200,
-    // Content-Type text/html, a real 57KB body, valid JSON syntax — but not
-    // the DataTables shape, so the old code silently treated it as "0
-    // results" instead of surfacing that something else entirely came back.
-    if (typeof data !== "object" || data === null || !("recordsTotal" in data)) {
+    // from "the search returned zero rows" unless checked explicitly.
+    if (typeof data !== "object" || data === null || !("totalRegistros" in data)) {
       throw new Error(
-        `DOF search: response was valid JSON but not the expected DataTables shape (got ${typeof data}, no "recordsTotal" field) — first 500 chars: ${rawText.slice(0, 500)}`,
+        `DOF search: response was valid JSON but not the expected shape (got ${typeof data}, no "totalRegistros" field) — first 500 chars: ${rawText.slice(0, 500)}`,
       );
     }
-    console.log(`[dof-search-live] recordsTotal=${data.recordsTotal}, recordsFiltered=${data.recordsFiltered}, data.length=${(data.data ?? []).length}`);
+    console.log(`[dof-search-live] messageCode=${data.messageCode}, totalRegistros=${data.totalRegistros}, Notas.length=${(data.Notas ?? []).length}`);
 
-    all.push(...(data.data ?? []));
-    recordsTotal = data.recordsTotal ?? all.length;
+    all.push(...(data.Notas ?? []));
+    totalRegistros = data.totalRegistros ?? all.length;
     start += PAGE_SIZE;
   }
 

@@ -12,7 +12,7 @@ import {
   industryLabel,
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
-import { MexicoFlag } from "@/components/tenders/CountryFlag";
+import { CountryFlag } from "@/components/tenders/CountryFlag";
 
 export function TenderCard({ tender }: { tender: Tender }) {
   const { locale } = useLocale();
@@ -81,7 +81,7 @@ export function TenderCard({ tender }: { tender: Tender }) {
       )}
 
       <p className="flex items-start gap-1.5 border-t border-[#e6eaec] pt-3 text-xs leading-5 text-[#586873]">
-        <MexicoFlag className="mt-[3px]" />
+        <CountryFlag country={tender.country} className="mt-[3px]" />
         <span>{countryLabel(tender.country, locale)}
         {" · "}
         {localize(uiText.buyerLabelCard, locale)}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const columns = [
-  { title: "产品", links: [["招标项目", "/tenders"], ["已收藏", "/saved"], ["价格方案", "/pricing"]] },
+  { title: "产品", links: [["招标项目", "/tenders"], ["我的收藏", "/saved"], ["订阅服务", "/pricing"]] },
   { title: "资源", links: [["问题澄清", "/clarifications"], ["管理后台", "/admin/tenders"], ["待补文件", "/admin/documents-needed"]] },
   { title: "法律", links: [["服务条款", "/terms"], ["隐私政策", "/privacy"]] },
 ] as const;
@@ -24,9 +24,6 @@ export function Footer() {
         <div className="max-w-sm">
           <Link href="/" className="inline-flex items-center gap-3"><FooterMark /><span className="text-lg font-black tracking-[0.08em]">招投标情报</span></Link>
           <p className="mt-5 text-sm leading-7 text-white/52">把墨西哥政府招标信息转化为结构化中文情报，帮助中国团队更快发现、理解和跟进机会。</p>
-          <div className="mt-6 flex flex-wrap gap-2 text-[10px] font-semibold text-white/48">
-            {['COMPRAS MX', 'CFE', 'PEMEX'].map((source) => <span key={source} className="rounded-lg border border-white/12 px-3 py-1.5">{source}</span>)}
-          </div>
         </div>
         {columns.map((column) => (
           <div key={column.title}>

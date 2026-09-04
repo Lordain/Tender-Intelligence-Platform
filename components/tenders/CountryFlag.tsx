@@ -12,3 +12,22 @@ export function MexicoFlag({ className = "" }: { className?: string }) {
     </span>
   );
 }
+
+export function ColombiaFlag({ className = "" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-grid h-3.5 w-5 shrink-0 grid-rows-[2fr_1fr_1fr] overflow-hidden rounded-[2px] border border-black/10 shadow-[0_1px_2px_rgba(0,0,0,.08)] ${className}`}
+    >
+      <span className="bg-[#fcd116]" />
+      <span className="bg-[#003893]" />
+      <span className="bg-[#ce1126]" />
+    </span>
+  );
+}
+
+export function CountryFlag({ country, className = "" }: { country: string; className?: string }) {
+  if (country === "Mexico") return <MexicoFlag className={className} />;
+  if (country === "Colombia") return <ColombiaFlag className={className} />;
+  return null;
+}

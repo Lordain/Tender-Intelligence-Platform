@@ -97,7 +97,7 @@ export const uiText = {
   copiedToClipboard: { en: "Copied", es: "Copiado", zh: "已复制" },
   noneListed: { en: "None listed for this tender.", es: "No se enlistan para esta licitación.", zh: "本项目未列出相关内容。" },
 
-  navSaved: { en: "Saved", es: "Guardados", zh: "已收藏" },
+  navSaved: { en: "Saved", es: "Guardados", zh: "我的收藏" },
   saveTender: { en: "Save tender", es: "Guardar licitación", zh: "收藏该招标" },
   unsaveTender: { en: "Remove from saved", es: "Quitar de guardados", zh: "取消收藏" },
   savedTenders: { en: "Saved Tenders", es: "Licitaciones Guardadas", zh: "已收藏的招标" },
@@ -176,7 +176,7 @@ export const uiText = {
   nextPage: { en: "Next", es: "Siguiente", zh: "下一页" },
   pageOf: { en: "Page {page} of {total}", es: "Página {page} de {total}", zh: "第 {page} 页，共 {total} 页" },
 
-  navPricing: { en: "Pricing", es: "Precios", zh: "价格" },
+  navPricing: { en: "Pricing", es: "Precios", zh: "订阅服务" },
   navAccount: { en: "Account", es: "Cuenta", zh: "账户" },
   account: { en: "Account", es: "Cuenta", zh: "账户" },
   companyNameLabel: { en: "Company name", es: "Nombre de la empresa", zh: "公司名称" },

@@ -3,7 +3,7 @@ const values = [
     number: "01",
     title: "多平台汇集",
     summary: "把分散信息集中到一个入口",
-    detail: "整合多个政府采购平台的公开招标信息，聚焦经过筛选的重点项目，减少团队反复检索和整理的时间。",
+    detail: "整合多个政府采购平台的公开招标信息，让团队在一个入口集中查找与浏览，减少跨平台反复检索和整理的时间。",
   },
   {
     number: "02",
@@ -17,6 +17,24 @@ const values = [
     summary: "先看清要求，再决定是否投入",
     detail: "提炼计划交标时间、资质要求和潜在风险点，帮助中国企业更高效地判断项目是否值得参与。",
   },
+  {
+    number: "04",
+    title: "重点项目优选",
+    summary: "优先定位更值得投入的机会",
+    detail: "支持按项目规模与重点程度快速筛选，帮助团队从大量信息中优先识别大型及重点项目。",
+  },
+  {
+    number: "05",
+    title: "行业精准定位",
+    summary: "快速找到与业务相关的项目",
+    detail: "支持多行业组合筛选，缩小检索范围，让团队更快找到与自身能力和业务方向相符的机会。",
+  },
+  {
+    number: "06",
+    title: "全中文情报",
+    summary: "跨语言信息也能快速读懂",
+    detail: "将关键信息整理为清晰易读的中文内容，减少额外翻译和理解成本，加快内部评估与沟通。",
+  },
 ] as const;
 
 export function ValuePropositions() {
@@ -26,14 +44,21 @@ export function ValuePropositions() {
         <div className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[0.75fr_1.25fr] lg:items-end">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Why us</p>
-            <h2 className="mt-3 text-3xl font-black tracking-[-0.04em] text-[#071826] sm:text-4xl">从发现项目到投标判断，<br className="hidden sm:block" />关键信息一步到位</h2>
+            <h2 className="mt-3 text-3xl font-black leading-[1.18] tracking-[-0.04em] text-[#071826] sm:text-4xl">从发现项目到投标判断，<br className="hidden sm:block" />关键信息一步到位</h2>
           </div>
           <p className="max-w-2xl text-sm leading-7 text-[#64717c] lg:justify-self-end">不替企业做决定，而是把分散、陌生且难以快速判断的政府招标信息，整理成团队能够高效使用的中文情报。</p>
         </div>
 
-        <div className="grid divide-y divide-[#dbe2e5] lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3">
           {values.map((value, index) => (
-            <article key={value.number} className={`py-9 text-center lg:px-8 lg:py-11 ${index === 0 ? "lg:pl-0" : ""} ${index === values.length - 1 ? "lg:pr-0" : ""}`}>
+            <article
+              key={value.number}
+              className={`border-[#dbe2e5] px-4 py-10 text-center sm:px-7 lg:px-9 lg:py-12 ${
+                index > 0 ? "border-t sm:border-t-0" : ""
+              } ${index % 2 === 1 ? "sm:border-l" : ""} ${index >= 2 ? "sm:border-t" : ""} ${
+                index % 3 !== 0 ? "lg:border-l" : "lg:border-l-0"
+              } ${index >= 3 ? "lg:border-t" : "lg:border-t-0"}`}
+            >
               <div className="flex flex-col items-center text-[#b86e00]">
                 <span className="font-mono text-[2.25rem] font-black leading-none tracking-[-0.08em]">{value.number}</span>
                 <span className="mt-4 h-px w-12 bg-current" />

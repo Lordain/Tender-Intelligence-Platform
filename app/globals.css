@@ -57,26 +57,26 @@ select {
   animation: tender-scroll 18s linear infinite;
 }
 
-.government-logo-mask {
+.industry-logo-mask {
   -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
   mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
 }
 
-.government-logo-scroll {
-  animation: government-logo-scroll 34s linear infinite;
+.industry-logo-scroll {
+  animation: industry-logo-scroll 34s linear infinite;
 }
 
 @keyframes tender-scroll {
   from { transform: translateY(0); }
-  to { transform: translateY(-50%); }
+  to { transform: translateY(-25%); }
 }
 
-@keyframes government-logo-scroll {
+@keyframes industry-logo-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-tender-scroll,
-  .government-logo-scroll { animation: none; }
+  .industry-logo-scroll { animation: none; }
 }

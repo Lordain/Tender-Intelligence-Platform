@@ -287,7 +287,15 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // vehículos") — this whitelist entry is only ever reached once none of
   // those already excluded the tender. "camioneta"/"pick up"/"SUV"/
   // "furgoneta" match industry.ts's own widened "vehicles" tag.
-  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\b[^.\n]{0,40}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?)/i,
+  //
+  // "maquinaria pesada" (heavy machinery — excavators, bulldozers, etc.)
+  // added back into the SAME anchored pattern per the user's follow-up ask
+  // (2026-09-04): a PURCHASE of heavy machinery is the same real category
+  // as a vehicle purchase, but "arrendamiento/renta de maquinaria pesada"
+  // (rental) or a bare maintenance mention still isn't caught by this
+  // pattern (no purchase verb) and falls through to the bottom exclusion
+  // exactly like vehicle rental does — see the regression fixture below.
+  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\b[^.\n]{0,40}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?|maquinaria pesada)/i,
 ];
 
 // USD-scale thresholds (the whole platform standardizes display and

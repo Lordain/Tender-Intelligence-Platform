@@ -206,12 +206,6 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // Everything below now correctly lands "excluded" since only flagship +
   // the construction/medical-equipment whitelist stay visible by default. ---
   {
-    title: "ADQUISICIÓN DE MAQUINARIA PESADA",
-    expectedTier: "excluded",
-    note: "Was 'standard' (earlier-approved real batch, heavy machinery) — now excluded, same reversal as above. Deliberately NOT re-added to the whitelist by the 2026-09-04 vehicle-purchase pattern below (the user asked specifically for vehicles — cars/buses/trucks/SUVs — not heavy machinery like excavators/bulldozers; 'maquinaria pesada' isn't a vehicle noun that pattern matches).",
-    industries: ["vehicles"],
-  },
-  {
     title: "Servicio de calibración a equipos patrones para instrumentos de control y medición de las instalaciones de Petróleos Mexicanos",
     expectedTier: "excluded",
     note: "Was 'standard' (real PEMEX title with genuine hydrocarbon-facility content in the TITLE itself, not just buyer name — deliberately NOT caught by the buyer-tag-contamination fix since this is real content) — now excluded, same 'standard' elimination.",
@@ -265,6 +259,18 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     title: "ARRENDAMIENTO DE VEHÍCULOS PARA EL PERSONAL ADMINISTRATIVO",
     expectedTier: "excluded",
     note: "Vehicle RENTAL, not a purchase — caught by the existing 'arrendamiento de vehículos|renta de vehículos' EXCLUDE_KEYWORDS pattern before the new whitelist entry, confirming the anchored purchase-verb pattern doesn't accidentally match this.",
+    industries: ["vehicles"],
+  },
+  {
+    title: "ADQUISICIÓN DE MAQUINARIA PESADA",
+    expectedTier: "significant",
+    note: "Was 'standard' until the 2026-09-02 elimination moved it to excluded — restored per the user's 2026-09-04 follow-up ask (\"'maquinaria pesada' 也加回白名单\") to the SAME anchored purchase-verb pattern as the vehicle purchases above, not a separate rule.",
+    industries: ["vehicles"],
+  },
+  {
+    title: "ARRENDAMIENTO DE MAQUINARIA PESADA PARA OBRAS PÚBLICAS",
+    expectedTier: "excluded",
+    note: "Heavy-machinery RENTAL, not a purchase — no EXCLUDE_KEYWORDS pattern names machinery specifically, but the anchored whitelist pattern requires a purchase verb (adquisición/adqs./compra/suministro), which 'arrendamiento' isn't, so this falls through to the bottom below_threshold exclusion exactly like vehicle rental does.",
     industries: ["vehicles"],
   },
 

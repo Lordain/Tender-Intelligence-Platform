@@ -327,7 +327,7 @@ function dedupeByTitleAndDescription<T extends { title: string; description: str
   });
 }
 
-function mergeExtractions(parts: TenderExtraction[]): TenderExtraction {
+export function mergeExtractions(parts: TenderExtraction[]): TenderExtraction {
   return {
     qualifications: dedupeByTitleAndDescription(parts.flatMap((p) => p.qualifications)),
     experienceRequirements: dedupeByTitleAndDescription(parts.flatMap((p) => p.experienceRequirements)),

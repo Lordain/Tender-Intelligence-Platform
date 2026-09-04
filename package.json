@@ -14,6 +14,7 @@
     "ingest:comprasmx-open": "tsx --env-file-if-exists=.env.local scripts/ingest-comprasmx-open-tenders.ts",
     "ingest:documents": "tsx --env-file-if-exists=.env.local scripts/ingest-tender-documents.ts",
     "extract:document": "tsx --env-file-if-exists=.env.local scripts/extract-tender-document.ts",
+    "import:batch-analysis": "tsx --env-file-if-exists=.env.local scripts/import-batch-analysis.ts",
     "translate:tenders": "tsx --env-file-if-exists=.env.local scripts/translate-tenders.ts",
     "ingest:dof": "tsx --env-file-if-exists=.env.local scripts/ingest-dof.ts",
     "ingest:dof-search": "tsx --env-file-if-exists=.env.local scripts/ingest-dof-search.ts",

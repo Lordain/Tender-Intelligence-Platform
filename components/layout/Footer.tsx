@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const columns = [
-  { title: "产品", links: [["招标项目", "/tenders"], ["已收藏", "/saved"], ["价格方案", "/pricing"]] },
+  { title: "产品", links: [["招标项目", "/tenders"], ["我的收藏", "/saved"], ["价格方案", "/pricing"]] },
   { title: "资源", links: [["问题澄清", "/clarifications"], ["管理后台", "/admin/tenders"], ["待补文件", "/admin/documents-needed"]] },
   { title: "法律", links: [["服务条款", "/terms"], ["隐私政策", "/privacy"]] },
 ] as const;

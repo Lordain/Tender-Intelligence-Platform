@@ -15,6 +15,7 @@ import { InlineTogglePills } from "@/components/tenders/InlineTogglePills";
 import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { ColombiaFlag, CountryFlag, MexicoFlag } from "@/components/tenders/CountryFlag";
+import { PageIntro } from "@/components/layout/PageIntro";
 
 const SCOPE_TYPES: TenderScopeType[] = ["equipment", "services", "equipment_services", "works", "consulting"];
 const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed", "awarded", "cancelled"];
@@ -207,14 +208,14 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const currentSearchHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   return (
-    <div className="space-y-7">
-      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="text-4xl font-black tracking-[-0.04em] text-[#071826] sm:text-5xl">招标项目</h1>
-          <p className="mt-2 text-base text-[#65747d]">筛选并评估适合中国企业的拉美政府采购机会</p>
-        </div>
-        <p className="text-sm font-semibold text-[#52636e]">共 {sorted.length.toLocaleString()} 个项目</p>
-      </header>
+    <div className="space-y-6">
+      <PageIntro
+        eyebrow="Tender database"
+        title="招标项目"
+        description="筛选并评估适合中国企业的拉美政府采购机会"
+        tags={["墨西哥 · 哥伦比亚", "重点行业", "持续更新"]}
+        metrics={[{ label: "当前结果", value: sorted.length.toLocaleString(), suffix: "个项目" }]}
+      />
 
       <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
         <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => event.preventDefault()}>

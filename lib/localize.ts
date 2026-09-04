@@ -93,7 +93,7 @@ export const uiText = {
   viewSourceDocument: { en: "View source document", es: "Ver documento fuente", zh: "查看原始来源文件" },
   noneListed: { en: "None listed for this tender.", es: "No se enlistan para esta licitación.", zh: "本项目未列出相关内容。" },
 
-  navSaved: { en: "Saved", es: "Guardados", zh: "已收藏" },
+  navSaved: { en: "Saved", es: "Guardados", zh: "我的收藏" },
   saveTender: { en: "Save tender", es: "Guardar licitación", zh: "收藏该招标" },
   unsaveTender: { en: "Remove from saved", es: "Quitar de guardados", zh: "取消收藏" },
   savedTenders: { en: "Saved Tenders", es: "Licitaciones Guardadas", zh: "已收藏的招标" },

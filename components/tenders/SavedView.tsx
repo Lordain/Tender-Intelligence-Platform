@@ -5,6 +5,7 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { useSavedSearches, useSavedTenderIds } from "@/lib/saved";
 import { TenderCard } from "@/components/tenders/TenderCard";
+import { PageIntro } from "@/components/layout/PageIntro";
 
 function BellIcon({ active }: { active: boolean }) {
   return (
@@ -48,26 +49,20 @@ export function SavedView({ tenders }: { tenders: Tender[] }) {
   const savedTenders = tenders.filter((tender) => savedIds.includes(tender.id));
 
   return (
-    <main className="bg-[#f6f4ef] px-5 py-12 sm:px-8 sm:py-14">
-      <div className="mx-auto max-w-[80rem]">
-        <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <h1 className="text-4xl font-black tracking-[-0.04em] text-[#071826] sm:text-5xl">我的收藏</h1>
-            <p className="mt-2 max-w-2xl text-base text-[#65747d]">集中管理常用筛选与重点项目，快速返回正在评估和持续跟进的招标机会。</p>
-          </div>
-          <div className="flex gap-3">
-            <div className="min-w-28 rounded-xl border border-[#dbe2e5] bg-[#fffdf9] px-4 py-3">
-              <p className="text-[11px] font-semibold text-[#75838c]">已保存搜索</p>
-              <p className="mt-1 text-2xl font-black leading-none text-[#071826]">{searches.length}</p>
-            </div>
-            <div className="min-w-28 rounded-xl bg-[#061b2b] px-4 py-3 text-white">
-              <p className="text-[11px] font-semibold text-white/55">已收藏项目</p>
-              <p className="mt-1 text-2xl font-black leading-none text-[#ffb21c]">{savedTenders.length}</p>
-            </div>
-          </div>
-        </header>
+    <main className="bg-[#f6f4ef] px-5 py-8 sm:px-8 sm:py-10">
+      <div className="mx-auto max-w-[94rem]">
+        <PageIntro
+          eyebrow="My workspace"
+          title="我的收藏"
+          description="集中管理常用筛选与重点项目，快速返回正在评估和持续跟进的招标机会。"
+          tags={["常用筛选", "重点项目", "集中跟进"]}
+          metrics={[
+            { label: "已保存搜索", value: searches.length, suffix: "项" },
+            { label: "已收藏项目", value: savedTenders.length, suffix: "个" },
+          ]}
+        />
 
-        <section className="mt-9">
+        <section className="mt-6">
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <h2 className="text-2xl font-black tracking-[-0.025em] text-[#071826]">{localize(uiText.savedSearches, locale)}</h2>

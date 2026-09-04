@@ -5,6 +5,14 @@ const SEARCH_PAGE_PATH = "/busquedaAvanzada/busqueda";
 const SEARCH_ENDPOINT = "/busqueda/CargaNotasAvanzadas/";
 const PAGE_SIZE = 100;
 
+// Node's fetch() sends no User-Agent by default (or a non-browser one,
+// depending on runtime) — added defensively alongside the full-cookie-jar
+// fix above, on the same "make this indistinguishable from a real browser
+// request" reasoning, given the WAF/CDN-looking cookie noted there. Real
+// value copied from the user's own real "Copy as cURL" capture (2026-09-04).
+const BROWSER_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36";
+
 // The DataTables column/order boilerplate is fixed — copied verbatim
 // from a real "Copy as cURL" capture of the advanced-search page's own
 // request (2026-09-04), never varies with the search terms.
@@ -52,28 +60,36 @@ type DataTablesResponse = {
 /**
  * Live, server-side equivalent of DOF's advanced-search page (README's
  * "Technique 2" — previously only a manual DevTools Network capture).
- * Real request captured via "Copy as cURL" 2026-09-04: a routine
- * `ci_session` cookie (set on any visit to the site, not a deliberate
- * anti-bot challenge — confirmed no grc/igrc/xgrc header) plus a full
- * DataTables-format POST body. Two-step: GET the search page first to
- * receive that cookie via Set-Cookie, then POST with it attached, same
+ * Real request captured via "Copy as cURL" 2026-09-04, then a second real
+ * capture the same day confirming it. Two-step: GET the search page first
+ * to receive Set-Cookie, then POST with the FULL cookie jar attached, same
  * as a real browser session.
  *
- * NOT yet exercised against the real endpoint from this session (this
- * sandbox has no network egress to *.gob.mx) — the request shape isn't
- * a guess, it's copied field-for-field from the user's own real capture,
- * but the first live run should be watched once before trusting it at
- * scale.
+ * Confirmed real bug (2026-09-04): the very first live run returned 0
+ * results for a search the user then confirmed by hand has real hits —
+ * root-caused to fechaIni/fechaFin format (now fixed at the caller, see
+ * ImportDofSearchForm.tsx's isoToDofDate()). If results are STILL empty
+ * after that fix, the next suspect is this cookie handling: the real
+ * capture's Cookie header carries several OTHER cookies beyond ci_session
+ * (one with an unusual, WAF/CDN-looking name — "UrtK5jLykjmM...") that an
+ * earlier version of this function silently dropped, forwarding only
+ * ci_session. Forwarding every cookie the initial GET sets — not
+ * cherry-picking ci_session alone — removes that as a possible cause,
+ * since there's no confirmed proof yet that ci_session alone is
+ * sufficient (only that it's necessary).
  */
 export async function fetchDofSearchLive(params: { texto: string; fechaIni: string; fechaFin: string; idOrg?: string }): Promise<DofSearchNota[]> {
   const idOrg = params.idOrg ?? "PE,PL,PJ,OA,EPEM,EF,OD,AV,CV,VG,TODOS";
 
   const searchPageUrl = `${BASE_URL}${SEARCH_PAGE_PATH}?tipo=T&tipotexto=Y&texto=${encodeURIComponent(params.texto)}&fechainicio=${params.fechaIni}&fechahasta=${params.fechaFin}&organismos=${idOrg}&sinonimos=false`;
 
-  const sessionRes = await fetch(searchPageUrl);
-  const setCookies = typeof sessionRes.headers.getSetCookie === "function" ? sessionRes.headers.getSetCookie() : [sessionRes.headers.get("set-cookie") ?? ""];
-  const ciSession = setCookies.map((c) => /ci_session=[^;]+/.exec(c)?.[0]).find(Boolean);
-  if (!ciSession) {
+  const sessionRes = await fetch(searchPageUrl, { headers: { "User-Agent": BROWSER_USER_AGENT } });
+  const setCookies = typeof sessionRes.headers.getSetCookie === "function" ? sessionRes.headers.getSetCookie() : sessionRes.headers.get("set-cookie") ? [sessionRes.headers.get("set-cookie")!] : [];
+  // Forward the whole cookie jar (just the name=value pair each Set-Cookie
+  // starts with, dropping its own Path/HttpOnly/... attributes) rather than
+  // isolating just ci_session — see header comment above.
+  const cookieHeader = setCookies.map((c) => c.split(";")[0]?.trim()).filter(Boolean).join("; ");
+  if (!cookieHeader || !/ci_session=/.test(cookieHeader)) {
     throw new Error("DOF search: didn't receive a ci_session cookie from the search page — the site may have changed how it issues sessions.");
   }
 
@@ -90,7 +106,8 @@ export async function fetchDofSearchLive(params: { texto: string; fechaIni: stri
         Origin: BASE_URL,
         Referer: searchPageUrl,
         "X-Requested-With": "XMLHttpRequest",
-        Cookie: ciSession,
+        "User-Agent": BROWSER_USER_AGENT,
+        Cookie: cookieHeader,
       },
       body: buildBody({ texto: params.texto, fechaIni: params.fechaIni, fechaFin: params.fechaFin, idOrg, start }),
     });

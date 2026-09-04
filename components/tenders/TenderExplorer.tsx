@@ -356,25 +356,25 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
         </div>
 
         <aside className="space-y-5">
-          <section className="rounded-2xl bg-[#061b2b] p-6 text-white">
-            <h2 className="text-lg font-bold">本周机会</h2>
-            <div className="mt-6 grid grid-cols-3 divide-x divide-white/20 text-center">
-              <div className="px-1"><p className="text-xs text-white/60">当前项目</p><p className="mt-2 text-2xl font-black">{sorted.length}</p></div>
+          <section className="rounded-2xl bg-[#061b2b] p-5 text-white">
+            <h2 className="text-base font-bold">本周机会</h2>
+            <div className="mt-4 grid grid-cols-3 divide-x divide-white/20 text-center">
+              <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">当前项目</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{sorted.length}</p></div>
               <button
                 type="button"
                 onClick={() => updateParams({ view: view === "new" ? null : "new", sort: view === "new" ? null : "publication_desc" })}
-                className={`rounded-lg px-1 py-1 transition-colors ${view === "new" ? "bg-white/15" : "hover:bg-white/10"}`}
+                className={`rounded-lg px-1 py-1.5 transition-colors ${view === "new" ? "bg-white/15" : "hover:bg-white/10"}`}
               >
-                <p className="text-xs text-white/60">本周新增</p>
-                <p className="mt-2 text-2xl font-black text-[#ffb21c]">{newThisWeekCount}</p>
+                <p className="text-[11px] font-medium text-white/58">本周新增</p>
+                <p className="mt-1.5 text-[1.65rem] font-black leading-none text-[#ffb21c]">{newThisWeekCount}</p>
               </button>
               <button
                 type="button"
                 onClick={() => updateParams({ view: view === "deadline" ? null : "deadline", sort: view === "deadline" ? null : "deadline_asc" })}
-                className={`rounded-lg px-1 py-1 transition-colors ${view === "deadline" ? "bg-white/15" : "hover:bg-white/10"}`}
+                className={`rounded-lg px-1 py-1.5 transition-colors ${view === "deadline" ? "bg-white/15" : "hover:bg-white/10"}`}
               >
-                <p className="text-xs text-white/60">即将交标</p>
-                <p className="mt-2 text-2xl font-black text-[#ffb21c]">{upcomingCount}</p>
+                <p className="text-[11px] font-medium text-white/58">即将交标</p>
+                <p className="mt-1.5 text-[1.65rem] font-black leading-none text-[#ffb21c]">{upcomingCount}</p>
               </button>
             </div>
           </section>

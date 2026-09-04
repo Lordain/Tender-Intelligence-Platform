@@ -37,6 +37,9 @@ export type IngestColombiaResult = {
   documentsMetadataRowsFound?: number;
   /** Of documentsMetadataRowsFound, how many were skipped as post-award (already carried a contract number) rather than actually attempted for download. */
   documentsSkippedPostAward?: number;
+  /** How many candidates got a metadata match via the noticeUID parsed from their own sourceUrl vs. the older id_del_proceso fallback — see extractNoticeUidFromUrl's header comment (2026-09-04 finding). */
+  documentsFoundViaNoticeUid?: number;
+  documentsFoundViaIdDelProceso?: number;
 };
 
 const DOCUMENTS_PAGE_SIZE = 500;
@@ -45,6 +48,32 @@ function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
   return chunks;
+}
+
+/**
+ * Real finding (2026-09-04): `id_del_proceso` from the main process
+ * dataset (`CO1.REQ.*`) does NOT match the archivos-metadata dataset's
+ * `proceso` column (`CO1.BDOS.*` in a fresh unfiltered sample) — a real
+ * bulk run confirmed 0 matching rows across 440+ candidates. The user then
+ * manually opened one tender's own `sourceUrl` (community.secop.gov.co,
+ * CAPTCHA-gated) and found its address bar carries a THIRD id namespace,
+ * `noticeUID=CO1.NTC.*` — and confirmed with their own eyes that this
+ * specific tender's detail page really does list real, downloadable
+ * attachments. `urlproceso.url` (stored verbatim as `sourceUrl` by
+ * colombia-mapper.ts) already carries this exact noticeUID for every
+ * tender this connector ever sees — no extra fetch needed to get it.
+ * Worth trying against the (CAPTCHA-free, genuinely open) archivos
+ * dataset's `proceso` filter before falling back to `id_del_proceso`,
+ * since the failure mode of a wrong id is just another empty array, not
+ * an error — strictly a "try harder," never worse than the status quo.
+ */
+function extractNoticeUidFromUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).searchParams.get("noticeUID")?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -114,7 +143,9 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
     for (const row of data ?? []) idBySlug.set(row.slug as string, row.id as string);
   }
 
-  const documentCandidates = kept.filter((m) => idBySlug.has(m.tender.slug) && m.row.id_del_proceso);
+  const documentCandidates = kept.filter(
+    (m) => idBySlug.has(m.tender.slug) && (m.row.id_del_proceso || extractNoticeUidFromUrl(m.row.urlproceso?.url)),
+  );
   result.documentsCandidateTenders = documentCandidates.length;
 
   let documentsDownloaded = 0;
@@ -130,6 +161,8 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
   // stats alone.
   let documentsMetadataRowsFound = 0;
   let documentsSkippedPostAward = 0;
+  let documentsFoundViaNoticeUid = 0;
+  let documentsFoundViaIdDelProceso = 0;
 
   // One-time diagnostic (2026-09-04, after the first real bulk run came
   // back with 0 metadata rows for all 499 candidates): print a few real
@@ -149,14 +182,35 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
     console.log(
       `  [diag] this run's own "id_del_proceso" values (first 5 of ${documentCandidates.length}): ${JSON.stringify(documentCandidates.slice(0, 5).map((m) => m.row.id_del_proceso))}`,
     );
+    console.log(
+      `  [diag] this run's own "noticeUID" values parsed from urlproceso.url (first 5): ${JSON.stringify(documentCandidates.slice(0, 5).map((m) => extractNoticeUidFromUrl(m.row.urlproceso?.url)))}`,
+    );
   }
 
   for (const { row, tender } of documentCandidates) {
     const tenderId = idBySlug.get(tender.slug)!;
-    const procesoId = row.id_del_proceso!;
+    // Try the real noticeUID (parsed from this tender's own sourceUrl)
+    // FIRST — see extractNoticeUidFromUrl's header comment for why this is
+    // now believed more likely correct than id_del_proceso. Falls back to
+    // id_del_proceso only if the noticeUID lookup comes back empty (or
+    // there's no noticeUID to try), same two-attempt-max cost either way.
+    const noticeUid = extractNoticeUidFromUrl(row.urlproceso?.url);
+    const procesoIdCandidates = [...new Set([noticeUid, row.id_del_proceso].filter((v): v is string => !!v))];
 
     try {
-      const docs = await fetchSecopDocumentsForProcess(procesoId);
+      let docs: Awaited<ReturnType<typeof fetchSecopDocumentsForProcess>> = [];
+      let matchedVia: "noticeUID" | "id_del_proceso" | undefined;
+      for (const candidateId of procesoIdCandidates) {
+        const attempt = await fetchSecopDocumentsForProcess(candidateId);
+        if (attempt.length > 0) {
+          docs = attempt;
+          matchedVia = candidateId === noticeUid ? "noticeUID" : "id_del_proceso";
+          break;
+        }
+      }
+      if (matchedVia === "noticeUID") documentsFoundViaNoticeUid++;
+      if (matchedVia === "id_del_proceso") documentsFoundViaIdDelProceso++;
+
       documentsMetadataRowsFound += docs.length;
       const preAward = docs.filter(isPreAwardDocument);
       documentsSkippedPostAward += docs.length - preAward.length;
@@ -204,7 +258,9 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
         }
       }
     } catch (err) {
-      console.error(`  failed to fetch document list for proceso=${procesoId} (${tender.slug}): ${err instanceof Error ? err.message : String(err)}`);
+      console.error(
+        `  failed to fetch document list for proceso candidates=${JSON.stringify(procesoIdCandidates)} (${tender.slug}): ${err instanceof Error ? err.message : String(err)}`,
+      );
       documentsFailed++;
     }
   }
@@ -214,6 +270,11 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
   result.documentsFailed = documentsFailed;
   result.documentsMetadataRowsFound = documentsMetadataRowsFound;
   result.documentsSkippedPostAward = documentsSkippedPostAward;
+  result.documentsFoundViaNoticeUid = documentsFoundViaNoticeUid;
+  result.documentsFoundViaIdDelProceso = documentsFoundViaIdDelProceso;
+  console.log(
+    `  [diag] metadata rows matched via noticeUID: ${documentsFoundViaNoticeUid} candidate(s); via id_del_proceso: ${documentsFoundViaIdDelProceso} candidate(s).`,
+  );
 
   return result;
 }

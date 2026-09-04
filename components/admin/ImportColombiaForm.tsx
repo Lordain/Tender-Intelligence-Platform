@@ -18,6 +18,8 @@ type ImportColombiaResult = {
   documentsFailed?: number;
   documentsMetadataRowsFound?: number;
   documentsSkippedPostAward?: number;
+  documentsFoundViaNoticeUid?: number;
+  documentsFoundViaIdDelProceso?: number;
 };
 
 /**
@@ -146,6 +148,14 @@ export function ImportColombiaForm() {
               {result.documentsMetadataRowsFound === 0 && !result.documentsFailed
                 ? "。返回 0 条说明这批项目在附件元数据数据集里暂时查不到对应记录（可能是刚发布还没归档，也可能是 id 对不上），不是下载失败。"
                 : ""}
+              {result.documentsFoundViaNoticeUid || result.documentsFoundViaIdDelProceso ? (
+                <>
+                  {" "}
+                  （其中 {result.documentsFoundViaNoticeUid ?? 0} 条项目通过 noticeUID 匹配到，{result.documentsFoundViaIdDelProceso ?? 0} 条通过 id_del_proceso 匹配到）
+                </>
+              ) : (
+                ""
+              )}
               。文件保存在服务器本地 downloads/colombia/&lt;项目 slug&gt;/ 目录，尚未做 AI 分析——需要再用&quot;标书附件分析&quot;逐条上传分析，或用 <code>npm run extract:document</code> 处理。
             </p>
           )}

@@ -1537,10 +1537,48 @@ form's summary line, so the *next* real run tells these apart without
 guessing: nonzero `documentsMetadataRowsFound` on a later run (especially
 if isolated to older/already-awarded tenders) points at (1); still zero
 across the board — including when manually pointed at a known-old, likely-
-awarded `id_del_proceso` — would confirm (2). Not fixed yet since which
-explanation is true (and therefore what the fix even looks like — wait
-longer / query a different dataset / re-derive the join key some other way)
-can't be determined without a real network request this sandbox can't make.
+awarded `id_del_proceso` — would confirm (2).
+
+### (2) confirmed real — a THIRD id namespace, and a fix (2026-09-04)
+
+A second real run added a diagnostic log printing real `proceso` values
+from `dmgg-8hin` next to this run's own real `id_del_proceso` values
+side-by-side. Confirmed explanation (2), not (1): `id_del_proceso` for
+this batch was consistently `CO1.REQ.*` while `dmgg-8hin`'s `proceso`
+sample was consistently `CO1.BDOS.*` — genuinely different id
+namespaces, not a coverage-lag question.
+
+The user then manually opened one tender's own `sourceUrl` (the real
+`community.secop.gov.co` tendering-detail page) and found two more real
+things:
+
+1. That page is itself **CAPTCHA-gated** ("Por favor, complete la
+   validación para acceder a la página") — the same anti-bot posture as
+   Compras MX. Its internal AJAX endpoints (company business card,
+   category loader) run on a `PublicSessionCookie` only a human passing
+   the CAPTCHA can obtain — not something this project automates around,
+   same standing posture as every other anti-bot-gated source here.
+2. Once past the CAPTCHA, the page really does show a real
+   "Documentación" section with real downloadable PDFs (user manually
+   confirmed one downloads) — and the page's own URL carries a **third**
+   id namespace: `noticeUID=CO1.NTC.*`, in the address bar's query string.
+
+The useful part: `urlproceso.url` (stored verbatim as every Colombia
+tender's `sourceUrl` by `colombia-mapper.ts`) already carries this exact
+`noticeUID` for every tender the connector ever sees — no extra request
+needed to get it, and no CAPTCHA involved in reading a field already in
+hand from the original (CAPTCHA-free) process-list fetch. `ingest-
+colombia.ts` now parses `noticeUID` out of `urlproceso.url`
+(`extractNoticeUidFromUrl()`) and tries it against the (still genuinely
+open, Socrata) `dmgg-8hin` dataset FIRST, falling back to the old
+`id_del_proceso` only if that comes back empty — strictly a "try harder,"
+since a wrong id was already just another empty array, never an error.
+`documentsFoundViaNoticeUid`/`documentsFoundViaIdDelProceso` in the
+result (and the admin form's summary line) report which path actually
+matched on the next real run. Not yet confirmed whether `dmgg-8hin`'s
+`proceso` column actually accepts `NTC`-namespace ids at all (the 5-row
+sample seen so far was 100% `BDOS`) — that's what the next real run with
+this change will show.
 
 ### Currency unified to USD platform-wide
 

@@ -39,3 +39,17 @@ export function formatEstimatedValueUsd(
     maximumFractionDigits: 0,
   }).format(usd);
 }
+
+export function formatEstimatedValueUsdMillions(
+  value: number,
+  currency: string | undefined,
+  locale: Locale,
+): string | null {
+  const usd = convertToUsd(value, currency);
+  if (usd === null) return null;
+  const millions = new Intl.NumberFormat(DATE_LOCALES[locale], {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  }).format(usd / 1_000_000);
+  return `$${millions}M USD`;
+}

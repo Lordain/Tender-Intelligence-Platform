@@ -184,18 +184,18 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       <div className="overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_18px_50px_-48px_rgba(6,27,43,.55)]">
-        <table className="w-full min-w-[1240px] table-fixed text-left text-[13px]">
+        <table className="w-full min-w-[980px] table-fixed text-left text-xs">
           <thead className="border-b border-[#dbe2e5] bg-[#edf2f3] text-[11px] uppercase tracking-[0.06em] text-[#52636e]">
             <tr>
-              <th className="w-[29%] px-4 py-3 font-black">标题</th>
-              <th className="w-[13%] px-3 py-3 font-black">采购单位</th>
-              <th className="w-[8%] px-3 py-3 font-black">国家</th>
-              <th className="w-[8%] px-3 py-3 font-black">状态</th>
-              <th className="w-[10%] px-3 py-3 font-black">相关度</th>
-              <th className="w-[5%] px-3 py-3 text-center font-black" title="免费用户在首页能看到的项目——见列表上方“首页免费展示设置”">首页</th>
-              <th className="w-[10%] px-3 py-3 font-black">金额</th>
-              <th className="w-[9%] px-3 py-3 font-black">发布日期</th>
-              <th className="w-[8%] px-3 py-3 text-right font-black">操作</th>
+              <th className="w-[25%] px-3 py-3 font-black">标题</th>
+              <th className="w-[12%] px-2 py-3 font-black">采购单位</th>
+              <th className="w-[7%] px-2 py-3 font-black">国家</th>
+              <th className="w-[7%] px-2 py-3 font-black">状态</th>
+              <th className="w-[9%] px-2 py-3 font-black">相关度</th>
+              <th className="w-[5%] px-2 py-3 text-center font-black" title="免费用户在首页能看到的项目——见列表上方“首页免费展示设置”">首页</th>
+              <th className="w-[8%] px-2 py-3 font-black">金额</th>
+              <th className="w-[10%] px-2 py-3 font-black">发布日期</th>
+              <th className="w-[17%] px-3 py-3 text-right font-black">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e5e9eb]">
@@ -203,17 +203,17 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               const value = tender.estimatedValue ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, "zh") : null;
               return (
                 <tr key={tender.slug} className="transition-colors hover:bg-[#fff9ec]">
-                  <td className="px-4 py-3">
-                    <p title={tender.title.zh} className="truncate whitespace-nowrap font-black text-[#071826]">{tender.title.zh}</p>
+                  <td className="px-3 py-3">
+                    <p title={tender.title.zh} className="truncate whitespace-nowrap text-[12px] font-black text-[#071826]">{tender.title.zh}</p>
                   </td>
-                  <td title={tender.buyer} className="truncate whitespace-nowrap px-3 py-3 text-[#5d6d77]">{tender.buyer}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-[#425461]">
+                  <td title={tender.buyer} className="truncate whitespace-nowrap px-2 py-3 text-[11px] text-[#5d6d77]">{tender.buyer}</td>
+                  <td className="whitespace-nowrap px-2 py-3 text-[11px] text-[#425461]">
                     <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, "zh")}</span>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3">
+                  <td className="whitespace-nowrap px-2 py-3">
                     <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-bold ${STATUS_COLORS[tender.status]}`}>{STATUS_LABELS[tender.status].zh}</span>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3">
+                  <td className="whitespace-nowrap px-2 py-3">
                     {tender.relevanceTier ? (
                       <span
                         title={tender.relevanceManuallyOverridden ? "管理员手动锁定，重新入库不会被自动分类覆盖" : undefined}
@@ -224,7 +224,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                       </span>
                     ) : <span className="text-[#9aa5ab]">未分类</span>}
                   </td>
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-2 py-3 text-center">
                     <input
                       type="checkbox"
                       aria-label={`${tender.title.zh}首页展示`}
@@ -234,18 +234,18 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                       className="size-4 accent-[#ffb21c] disabled:opacity-50"
                     />
                   </td>
-                  <td title={value ?? undefined} className="truncate whitespace-nowrap px-3 py-3 font-bold text-[#425461]">{value ?? "—"}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-[#5d6d77]">
+                  <td title={value ?? undefined} className="truncate whitespace-nowrap px-2 py-3 text-[11px] font-bold text-[#425461]">{value ?? "—"}</td>
+                  <td className="whitespace-nowrap px-2 py-3 text-[11px] text-[#5d6d77]">
                     {formatDate(tender.publicationDate, "zh")}
                     {tender.publicationDateIsEstimated && (
                       <span title="该来源无真实发布日期字段，此为收录时间" className="ml-1.5 rounded-full bg-[#edf2f3] px-1.5 py-0.5 text-[10px] font-semibold text-[#7a878f]">估</span>
                     )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
+                    <div className="flex items-center justify-end gap-1">
                       <Link
                         href={`/admin/tenders/${tender.slug}`}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
+                        className="inline-flex h-7 items-center gap-1 rounded-lg border border-[#cbd6da] bg-white px-2 text-[10px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
                       >
                         <PencilIcon />编辑
                       </Link>
@@ -253,7 +253,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                         type="button"
                         onClick={() => handleDelete(tender.slug, tender.title.zh)}
                         disabled={deletingSlug === tender.slug}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 text-[11px] font-black text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 disabled:opacity-50"
+                        className="inline-flex h-7 items-center gap-1 rounded-lg border border-red-200 bg-white px-2 text-[10px] font-black text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 disabled:opacity-50"
                       >
                         <TrashIcon />{deletingSlug === tender.slug ? "删除中…" : "删除"}
                       </button>

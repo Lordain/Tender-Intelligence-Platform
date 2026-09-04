@@ -23,6 +23,8 @@ export function TenderDetailView({ tender }: { tender: Tender }) {
 
       <TenderOverview tender={tender} />
 
+      <KeyDatesTimeline dates={tender.keyDates} />
+
       <RequirementSection
         title={uiText.qualifications}
         items={tender.qualifications}
@@ -36,7 +38,6 @@ export function TenderDetailView({ tender }: { tender: Tender }) {
         items={tender.requiredDocuments}
       />
 
-      <KeyDatesTimeline dates={tender.keyDates} />
       <RiskList risks={tender.risks} />
       <SourcePanel tender={tender} />
     </div>

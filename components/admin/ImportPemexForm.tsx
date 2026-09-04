@@ -24,7 +24,16 @@ export function ImportPemexForm() {
 
   function handleListTitleChange(value: PemexListTitle) {
     setListTitle(value);
-    if (KNOWN_BUYER_NAMES[value]) setBuyer(KNOWN_BUYER_NAMES[value]!);
+    // Real bug (2026-09-04, user-caught): switching to a list with no known
+    // buyer name (PPS, PF, PE, "Concursos-e-invitaciones") left whatever
+    // name a PREVIOUS selection had set (e.g. "Pemex Logística" from PL)
+    // sitting in the field — since the old code only ever set the field
+    // when a known name existed, never cleared it otherwise. That risks
+    // silently submitting the wrong buyer's name for a genuinely different
+    // subsidiary. Always resolving from KNOWN_BUYER_NAMES (falling back to
+    // "") clears it for every list without a confirmed real name, forcing
+    // the admin to fill in the real one by hand rather than being misled.
+    setBuyer(KNOWN_BUYER_NAMES[value] ?? "");
   }
 
   async function run() {

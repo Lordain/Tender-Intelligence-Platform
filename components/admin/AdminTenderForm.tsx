@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type {
   Tender,
@@ -31,6 +31,21 @@ const inputClass =
   "h-11 w-full rounded-xl border border-[#d8e0e3] bg-white px-4 text-sm text-[#071826] outline-none transition-shadow focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10";
 const labelClass = "flex flex-col gap-1 text-sm";
 const labelTextClass = "text-xs font-black text-[#52636e]";
+
+function FormSection({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_18px_50px_-48px_rgba(6,27,43,.5)] sm:p-6">
+      <div className="flex items-start gap-3 border-b border-[#e5e9eb] pb-4">
+        <span aria-hidden="true" className="mt-0.5 h-8 w-1 shrink-0 rounded-full bg-[#ffb21c]" />
+        <div>
+          <h2 className="text-base font-black text-[#071826]">{title}</h2>
+          <p className="mt-0.5 text-xs leading-5 text-[#75838c]">{description}</p>
+        </div>
+      </div>
+      <div className="mt-5 flex flex-col gap-4">{children}</div>
+    </section>
+  );
+}
 
 type FormState = {
   titleEs: string;
@@ -182,7 +197,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_22px_60px_-52px_rgba(6,27,43,.55)] sm:p-7">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {error && (
         <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           {error}
@@ -195,6 +210,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
         </p>
       )}
 
+      <FormSection title="项目名称与摘要" description="保留西语原文，并提供面向中文用户的标题与简要说明。">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className={labelClass}>
           <span className={labelTextClass}>标题（西语原文）*</span>
@@ -216,7 +232,9 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           <textarea className={`${inputClass} min-h-24 py-3`} value={form.summaryZh} onChange={(e) => update("summaryZh", e.target.value)} />
         </label>
       </div>
+      </FormSection>
 
+      <FormSection title="采购与分类" description="定义采购主体、所属市场、行业标签和投标范围。">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className={labelClass}>
           <span className={labelTextClass}>采购单位 *</span>
@@ -294,7 +312,9 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           </select>
         </label>
       </div>
+      </FormSection>
 
+      <FormSection title="时间与预算" description="设置项目状态、关键日期、金额和实施地点。">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className={labelClass}>
           <span className={labelTextClass}>发布日期 *</span>
@@ -343,9 +363,10 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           <input className={inputClass} value={form.location} onChange={(e) => update("location", e.target.value)} />
         </label>
       </div>
+      </FormSection>
 
       {isEdit && (
-        <div className="flex flex-col gap-2">
+        <FormSection title="相关度设置" description="人工调整项目优先级，并决定是否阻止后续自动分类覆盖。">
           <label className={labelClass}>
             <span className={labelTextClass}>相关度分级（手动覆盖会替换掉自动生成的理由说明）</span>
             <select
@@ -377,9 +398,10 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
             />
             🔒 锁定此分级（以后这条标书被重新抓取/入库时，不会被自动分类规则覆盖；取消勾选可恢复自动分类）
           </label>
-        </div>
+        </FormSection>
       )}
 
+      <FormSection title="来源信息" description="保存官方编号和原始信息入口，方便后续核验与追溯。">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className={labelClass}>
           <span className={labelTextClass}>标书编号</span>
@@ -394,6 +416,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           <input className={inputClass} value={form.sourceUrl} onChange={(e) => update("sourceUrl", e.target.value)} />
         </label>
       </div>
+      </FormSection>
 
       <div className="sticky bottom-4 z-10 flex items-center justify-between rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]/95 p-3 shadow-[0_12px_35px_-18px_rgba(6,27,43,.35)] backdrop-blur">
         <div>

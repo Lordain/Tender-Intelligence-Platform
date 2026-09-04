@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { ALL_INDUSTRIES } from "@/lib/industry";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, industryLabel } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders, type SortKey } from "@/lib/filter-tenders";
@@ -44,9 +44,10 @@ function SearchIcon() {
 function TenderRow({ tender }: { tender: Tender }) {
   const { locale } = useLocale();
   const hasRealTranslation = tender.title.zh !== tender.title.es;
+  const value = tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null;
 
   return (
-    <article className="group relative grid gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 transition-all hover:border-[#a9b8bf] hover:shadow-[0_18px_45px_-35px_rgba(6,27,43,.5)] md:grid-cols-[minmax(0,1fr)_12rem] md:items-center">
+    <article className="group relative grid gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 transition-all hover:border-[#a9b8bf] hover:shadow-[0_18px_45px_-35px_rgba(6,27,43,.5)] md:grid-cols-[minmax(0,1fr)_14rem] md:items-center">
       <div className="min-w-0">
         <div className="mb-2.5 flex flex-wrap gap-2">
           {tender.industries.map((industry) => (
@@ -72,8 +73,10 @@ function TenderRow({ tender }: { tender: Tender }) {
       </div>
       <div className="flex items-center justify-between gap-4 border-t border-[#e5e9eb] pt-4 md:border-l md:border-t-0 md:pl-5 md:pt-0">
         <div>
-          <p className="text-xs font-semibold text-[#7a878f]">计划交标</p>
-          <p className="mt-1 text-base font-black text-[#071826]">
+          <p className="text-xs font-semibold text-[#7a878f]">项目金额</p>
+          <p className={`mt-1 text-lg font-black ${value ? "text-[#b86e00]" : "text-[#9aa5ab]"}`}>{value ?? "未公开"}</p>
+          <p className="mt-3 text-xs font-semibold text-[#7a878f]">计划交标</p>
+          <p className="mt-1 text-sm font-bold text-[#071826]">
             {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "待公布"}
           </p>
         </div>

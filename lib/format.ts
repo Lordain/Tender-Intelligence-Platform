@@ -53,3 +53,23 @@ export function formatEstimatedValueUsd(
     maximumFractionDigits: 0,
   }).format(usd);
 }
+
+/**
+ * A compact "$12.5M USD" form for space-constrained card layouts (the
+ * tender list rows) — formatEstimatedValueUsd's full "$12,345,678" is too
+ * wide there. Same convertToUsd() source, just divided by 1e6 and shown
+ * to one decimal place.
+ */
+export function formatEstimatedValueUsdMillions(
+  value: number,
+  currency: string | undefined,
+  locale: Locale,
+): string | null {
+  const usd = convertToUsd(value, currency);
+  if (usd === null) return null;
+  const millions = new Intl.NumberFormat(DATE_LOCALES[locale], {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  }).format(usd / 1_000_000);
+  return `$${millions}M USD`;
+}

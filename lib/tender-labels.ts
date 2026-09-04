@@ -177,3 +177,28 @@ export const KEY_DATE_TYPE_LABELS: Record<TenderKeyDate["type"], LocalizedText> 
     zh: "合同签署",
   },
 };
+
+/**
+ * Short, always-shown clarification under each key-date TYPE label — added
+ * 2026-09-04 per a real user question ("'开标'是交标日期还是结果公示日期？
+ * 不清晰"): "开标" alone doesn't say whether it's the submission deadline,
+ * the results date, or something else. "opening" (开标) is the date
+ * submitted bids are formally unsealed/reviewed — sometimes the exact same
+ * timestamp as the submission deadline when a source's own field combines
+ * both events (see compras-mx-open-tenders-mapper.ts's
+ * "FECHA DE PRESENTACIÓN Y APERTURA DE PROPOSICIONES" column), sometimes a
+ * separately scheduled session — but it is NEVER the results/award date,
+ * which is its own distinct "award" type. Applies to every source (not
+ * just the one that prompted this), since the same ambiguity exists
+ * anywhere "opening" is shown regardless of which mapper produced it.
+ */
+export const KEY_DATE_TYPE_DESCRIPTIONS: Record<TenderKeyDate["type"], LocalizedText> = {
+  publication: { en: "When this tender was published.", es: "Cuándo se publicó esta licitación.", zh: "标书正式发布的日期。" },
+  site_visit: { en: "Optional/mandatory site visit for bidders.", es: "Visita al sitio, opcional u obligatoria para los oferentes.", zh: "投标人现场踏勘的时间（是否强制视具体项目而定）。" },
+  questions_deadline: { en: "Last day to submit clarification questions.", es: "Último día para enviar preguntas de aclaración.", zh: "投标人提交澄清问题的截止时间。" },
+  clarification: { en: "Buyer's clarification meeting/response session.", es: "Sesión de junta de aclaraciones del comprador.", zh: "采购方召开的澄清会议。" },
+  submission: { en: "Deadline to submit your bid — after this, no more submissions are accepted.", es: "Fecha límite para presentar la oferta — después de esto no se aceptan más propuestas.", zh: "投标文件提交截止时间——过了这个时间就不能再交标了。" },
+  opening: { en: "When submitted bids are formally opened/unsealed for review — NOT the results date (sometimes the same moment as the submission deadline, sometimes a separate scheduled session).", es: "Cuándo se abren formalmente las ofertas presentadas para su revisión — NO es la fecha de resultados (a veces coincide con la fecha límite de presentación, a veces es una sesión aparte).", zh: "投标文件正式拆封唱标的时间——不是中标结果公布时间（有的项目跟交标截止是同一时刻，有的项目是单独安排的）。" },
+  award: { en: "When the award/results are announced — this is the outcome date.", es: "Cuándo se anuncia el fallo/resultado — esta es la fecha del resultado.", zh: "中标结果公布的时间——这才是真正的结果公示日期。" },
+  contract_signing: { en: "When the winning bidder signs the contract.", es: "Cuándo el ganador firma el contrato.", zh: "中标方正式签署合同的时间。" },
+};

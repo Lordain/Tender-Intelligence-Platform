@@ -3,7 +3,7 @@
 import type { TenderKeyDate } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
-import { KEY_DATE_TYPE_LABELS } from "@/lib/tender-labels";
+import { KEY_DATE_TYPE_LABELS, KEY_DATE_TYPE_DESCRIPTIONS } from "@/lib/tender-labels";
 import { DetailSectionHeading } from "@/components/tenders/DetailSectionHeading";
 
 export function KeyDatesTimeline({ dates }: { dates: TenderKeyDate[] }) {
@@ -36,11 +36,9 @@ export function KeyDatesTimeline({ dates }: { dates: TenderKeyDate[] }) {
                     </span>
                   )}
                 </p>
-                {keyDate.notes && (
-                  <p className="mt-1 text-xs text-[#64717c]">
-                    {localize(keyDate.notes, locale)}
-                  </p>
-                )}
+                <p className="mt-1 text-xs text-[#64717c]">
+                  {localize(keyDate.notes ?? KEY_DATE_TYPE_DESCRIPTIONS[keyDate.type], locale)}
+                </p>
               </div>
               <span className="ml-auto whitespace-nowrap text-sm font-black text-[#b86e00]">
                 {formatDate(keyDate.date, locale)}

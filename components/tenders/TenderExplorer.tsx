@@ -10,6 +10,7 @@ import { localize, uiText, useLocale } from "@/lib/i18n";
 import { INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, industryLabel } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders, type SortKey } from "@/lib/filter-tenders";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
+import { InlineTogglePills } from "@/components/tenders/InlineTogglePills";
 import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { MexicoFlag } from "@/components/tenders/CountryFlag";
@@ -200,12 +201,6 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
             <span className="flex h-10 items-center gap-2 rounded-xl border border-[#d8e0e3] bg-[#f2f4f3] px-3 text-sm font-semibold text-[#172c3b]"><MexicoFlag />墨西哥</span>
           </label>
           <MultiSelectPills
-            label={localize(uiText.scaleLabel, locale)}
-            options={RELEVANCE_TIERS.map((option) => ({ value: option, label: localize(RELEVANCE_TIER_LABELS[option], locale) }))}
-            selected={relevanceTiers}
-            onChange={(next) => updateParams({ tier: next.join(",") || null })}
-          />
-          <MultiSelectPills
             label="行业"
             searchable
             options={ALL_INDUSTRIES.map((option) => ({ value: option, label: localize(INDUSTRY_LABELS[option], locale) }))}
@@ -218,19 +213,33 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
             selected={scopeTypes}
             onChange={(next) => updateParams({ scope: next.join(",") || null })}
           />
-          <MultiSelectPills
+        </div>
+
+        {/* Short, fixed-length option lists stay always-visible instead of
+            behind a dropdown — see InlineTogglePills' header comment. */}
+        <div className="mt-4 flex flex-col gap-3 border-t border-[#e5e9eb] pt-4">
+          <InlineTogglePills
+            label={localize(uiText.scaleLabel, locale)}
+            options={RELEVANCE_TIERS.map((option) => ({ value: option, label: localize(RELEVANCE_TIER_LABELS[option], locale) }))}
+            selected={relevanceTiers}
+            onChange={(next) => updateParams({ tier: next.join(",") || null })}
+          />
+          <InlineTogglePills
             label="项目阶段"
             options={STATUSES.map((option) => ({ value: option, label: localize(STATUS_LABELS[option], locale) }))}
             selected={statuses}
             onChange={(next) => updateParams({ status: next.join(",") || null })}
           />
-          <label className="flex min-w-[10rem] flex-col gap-1.5">
-            <span className="text-xs font-semibold text-[#425461]">计划交标时间</span>
-            <select value={sort} onChange={(event) => updateParams({ sort: event.target.value })} className="h-10 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#172c3b] focus:border-[#ffb21c] focus:outline-none">
-              <option value="deadline_asc">由近到远</option>
-              <option value="publication_desc">最新发布</option>
-            </select>
-          </label>
+          <InlineTogglePills
+            label="计划交标"
+            mode="single"
+            options={[
+              { value: "deadline_asc" as const, label: "由近到远" },
+              { value: "publication_desc" as const, label: "最新发布" },
+            ]}
+            selected={[sort]}
+            onChange={(next) => updateParams({ sort: next[0] ?? null })}
+          />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">

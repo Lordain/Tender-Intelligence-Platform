@@ -1,5 +1,6 @@
 import { ImportTendersForm } from "@/components/admin/ImportTendersForm";
 import { TranslateTendersButton } from "@/components/admin/TranslateTendersButton";
+import { ImportPemexForm } from "@/components/admin/ImportPemexForm";
 
 export default function AdminImportTendersPage() {
   return (
@@ -13,6 +14,7 @@ export default function AdminImportTendersPage() {
         会自动分组映射、按发布时间过滤，批量写入 Supabase。先不勾选&quot;写入 Supabase&quot;预览一遍，确认数字没问题再写入。
       </p>
       <ImportTendersForm />
+      <ImportPemexForm />
       <TranslateTendersButton />
     </div>
   );

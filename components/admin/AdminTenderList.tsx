@@ -2,12 +2,33 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { AdminTenderListRow } from "@/lib/db/tenders";
 import { formatDate, formatEstimatedValueUsd } from "@/lib/format";
 import { countryLabel, RELEVANCE_TIER_COLORS, RELEVANCE_TIER_LABELS, STATUS_LABELS } from "@/lib/tender-labels";
 
 export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDelete(slug: string, titleZh: string) {
+    if (!confirm(`确定要删除「${titleZh}」吗？此操作无法撤销。`)) return;
+
+    setDeletingSlug(slug);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/tenders/${slug}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeletingSlug(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -34,6 +55,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       <p className="text-xs text-[#64717c]">
         共 {tenders.length} 条，当前显示 {filtered.length} 条
       </p>
+      {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       <div className="overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]">
         <table className="w-full min-w-[900px] text-left text-sm">
@@ -68,12 +90,22 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                   <td className="px-4 py-3 text-[#5d6d77]">{value ?? "—"}</td>
                   <td className="px-4 py-3 text-[#5d6d77]">{formatDate(t.publicationDate, "zh")}</td>
                   <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/admin/tenders/${t.slug}`}
-                      className="font-bold text-[#0a2b40] underline decoration-[#ffb21c] decoration-2 underline-offset-4"
-                    >
-                      编辑
-                    </Link>
+                    <div className="flex items-center justify-end gap-4">
+                      <Link
+                        href={`/admin/tenders/${t.slug}`}
+                        className="font-bold text-[#0a2b40] underline decoration-[#ffb21c] decoration-2 underline-offset-4"
+                      >
+                        编辑
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(t.slug, t.title.zh)}
+                        disabled={deletingSlug === t.slug}
+                        className="font-bold text-red-600 underline decoration-red-300 decoration-2 underline-offset-4 hover:text-red-700 disabled:opacity-50"
+                      >
+                        {deletingSlug === t.slug ? "删除中…" : "删除"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

@@ -121,6 +121,15 @@ export async function fetchDofSearchLive(params: { texto: string; fechaIni: stri
 
     const rawText = await res.text();
     console.log(`[dof-search-live] POST ${SEARCH_ENDPOINT} (start=${start}) -> HTTP ${res.status}, content-type: ${res.headers.get("content-type")}, body length: ${rawText.length}`);
+    // Unconditional, regardless of whether JSON.parse below succeeds — a
+    // response that parses "successfully" into something with no
+    // recordsTotal/data (like a JSON-encoded STRING containing an entire
+    // HTML page, which JSON.parse happily accepts and returns as a JS
+    // string primitive — property access on it just silently returns
+    // undefined, no throw) needs this raw preview to actually diagnose,
+    // since the parse-succeeded/parse-failed branching alone can't tell
+    // that story.
+    console.log(`[dof-search-live] raw body preview: ${JSON.stringify(rawText.slice(0, 300))}`);
 
     if (!res.ok) {
       throw new Error(`DOF search request failed: HTTP ${res.status} ${res.statusText} — body: ${rawText.slice(0, 500)}`);
@@ -137,6 +146,21 @@ export async function fetchDofSearchLive(params: { texto: string; fechaIni: stri
       // than the expected DataTables JSON.
       throw new Error(
         `DOF search: response wasn't valid JSON (${err instanceof Error ? err.message : String(err)}) — first 500 chars: ${rawText.slice(0, 500)}`,
+      );
+    }
+
+    // JSON.parse() happily accepts a JSON-encoded STRING (e.g. an entire
+    // HTML page as one big quoted string) and returns a JS string
+    // primitive — property access on that (data.recordsTotal etc.) never
+    // throws, it just silently returns undefined, which is indistinguishable
+    // from "the search returned zero rows" unless checked explicitly. This
+    // is exactly the failure mode a real run hit (2026-09-04): HTTP 200,
+    // Content-Type text/html, a real 57KB body, valid JSON syntax — but not
+    // the DataTables shape, so the old code silently treated it as "0
+    // results" instead of surfacing that something else entirely came back.
+    if (typeof data !== "object" || data === null || !("recordsTotal" in data)) {
+      throw new Error(
+        `DOF search: response was valid JSON but not the expected DataTables shape (got ${typeof data}, no "recordsTotal" field) — first 500 chars: ${rawText.slice(0, 500)}`,
       );
     }
     console.log(`[dof-search-live] recordsTotal=${data.recordsTotal}, recordsFiltered=${data.recordsFiltered}, data.length=${(data.data ?? []).length}`);

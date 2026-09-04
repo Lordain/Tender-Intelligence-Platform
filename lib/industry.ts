@@ -89,7 +89,39 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // vocabulary for a water pipeline) too, wrongly tagging real water
   // projects "energy" (5/48 real rows in that export). "\bducto\b" alone
   // now only matches the standalone word.
-  ["energy", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|refiner[íi]a|gas natural|\bducto\b|oleoducto|gasoducto|\bpemex\b|petr[óo]leos mexicanos|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible|resistividad/i],
+  // "\bpemex\b|petr[óo]leos mexicanos" removed (2026-09-04, real recurring
+  // bug — the SAME class of problem this file already documented once for
+  // "SERVICIO DE CALIBRACIÓN A EQUIPOS PATRONES", a routine calibration
+  // service that only ever got tagged "energy" because PEMEX happened to be
+  // the buyer): several mappers (pemex-mapper.ts among them) pass the buyer
+  // name into classifyIndustries(), and a bare organization name says
+  // nothing about what's actually being procured — real titles like
+  // "ADQUISICIÓN DE EXCAVADORA HIDRÁULICA PARA USARSE EN LA REFINERÍA
+  // MADERO" and "ADQUISICIÓN DE CAMIÓN TIPO CISTERNA...PARA LA REFINERÍA
+  // MINATITLÁN" (buyer: Pemex Transformación Industrial) were tagged
+  // "energy" purely from the buyer's own name, not from buying an
+  // excavator or a tanker truck having anything to do with oil & gas. Real
+  // energy-sector CONTENT is already well covered by every other term in
+  // this pattern (petróleo/petroquímica/hidrocarburo/refinería/gas
+  // natural/ductos/pozo petrolero/renewables) — a PEMEX-buyer tender whose
+  // title genuinely describes oil-and-gas work still tags "energy"
+  // normally through those; one that doesn't (equipment/vehicles/routine
+  // services) correctly no longer does just because of who's buying it.
+  // "refiner[íi]a" narrowed with a negative lookbehind (2026-09-04, per the
+  // user's explicit follow-up: "好几个 PEMEX 买家的车辆/设备采购（挖掘机、油罐车）可以改"):
+  // removing the bare "\bpemex\b" alternative above wasn't enough to fix the
+  // two real examples the user pointed at — "ADQUISICIÓN DE EXCAVADORA
+  // HIDRÁULICA PARA USARSE EN LA REFINERÍA MADERO..." and "ADQUISICIÓN DE
+  // CAMIÓN TIPO CISTERNA...PARA LA REFINERÍA MINATITLÁN" — because their
+  // titles independently say "refinería", just as a DELIVERY LOCATION for a
+  // vehicle purchase, not as the subject of the work. The lookbehind only
+  // excludes the exact "para (uso/usarse en )?(la/el )?refinería" phrase
+  // shape — a genuine refinery construction/expansion/maintenance title
+  // ("CONSTRUCCIÓN DE NUEVA REFINERÍA...", "MODERNIZACIÓN DE LA REFINERÍA DE
+  // TULA...", "SERVICIOS DE MANTENIMIENTO INDUSTRIAL EN LA REFINERÍA...")
+  // still matches normally since "refinería" there isn't immediately
+  // preceded by that narrow "para ... la/el" shape.
+  ["energy", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|(?<!para (uso en |usarse en )?(la |el )?)refiner[íi]a|gas natural|\bducto\b|oleoducto|gasoducto|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible|resistividad/i],
   ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|casa de m[áa]quinas/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to

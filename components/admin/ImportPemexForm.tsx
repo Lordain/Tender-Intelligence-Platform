@@ -3,14 +3,23 @@
 import { useState } from "react";
 import { PEMEX_LIST_TITLES, type PemexListTitle, type ImportPemexLiveResult } from "@/lib/ingestion/pemex-sources";
 
-// Confirmed real full names for these three (see pemex-mapper.ts's own
-// header comment / lib/ingestion/README.md) — the rest are left blank on
-// purpose rather than guessed, since this project doesn't fabricate a
-// buyer's real corporate name without a confirmed source.
+// Real full names for every subsidiary list — the first three were
+// confirmed earlier this session (see pemex-mapper.ts's own header comment
+// / lib/ingestion/README.md); PE/PF/PPS added per the user's own real-world
+// research (2026-09-04, matching PEMEX's actual current subsidiary
+// structure: Etileno/Fertilizantes/Perforación y Servicios).
+// "Concursos-e-invitaciones" isn't tied to one subsidiary at all (it's a
+// separate, broader list) — "Pemex Concursos e Invitaciones" is the user's
+// own placeholder label for it, not a real corporate entity name, same as
+// every other value here being the buyer name submitted with each tender.
 const KNOWN_BUYER_NAMES: Partial<Record<PemexListTitle, string>> = {
   "Concursos-Abiertos-PEP": "Pemex Exploración y Producción",
   "Concursos-Abiertos-PTI": "Pemex Transformación Industrial",
   "Concursos-Abiertos-PL": "Pemex Logística",
+  "Concursos-Abiertos-PE": "Pemex Etileno",
+  "Concursos-Abiertos-PF": "Pemex Fertilizantes",
+  "Concursos-Abiertos-PPS": "Pemex Perforación y Servicios",
+  "Concursos-e-invitaciones": "Pemex Concursos e Invitaciones",
 };
 
 export function ImportPemexForm() {

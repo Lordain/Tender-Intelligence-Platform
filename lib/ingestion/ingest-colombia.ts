@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchSecopProcesos } from "@/lib/ingestion/connectors/colombia-secop-live";
-import { fetchSecopDocumentsForProcess, downloadSecopDocument, isPreAwardDocument } from "@/lib/ingestion/connectors/colombia-documents-connector";
+import { fetchSecopDocumentsForProcess, fetchSecopDocumentsSample, downloadSecopDocument, isPreAwardDocument } from "@/lib/ingestion/connectors/colombia-documents-connector";
 import { mapSecopRowToTender, type SecopProcesoRow } from "@/lib/ingestion/colombia-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { filterRecentTenders } from "@/lib/ingestion/recency";
@@ -130,6 +130,26 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
   // stats alone.
   let documentsMetadataRowsFound = 0;
   let documentsSkippedPostAward = 0;
+
+  // One-time diagnostic (2026-09-04, after the first real bulk run came
+  // back with 0 metadata rows for all 499 candidates): print a few real
+  // `proceso` values from the archivos dataset next to a few real
+  // `id_del_proceso` values from THIS run's own candidates, so a human
+  // watching the server console can immediately see whether the two
+  // datasets' ids are actually the same shape/namespace — no guessing.
+  if (documentCandidates.length > 0) {
+    try {
+      const sample = await fetchSecopDocumentsSample(5);
+      console.log(
+        `  [diag] archivos-metadata sample "proceso" values: ${JSON.stringify(sample.map((d) => d.proceso))}`,
+      );
+    } catch (err) {
+      console.log(`  [diag] archivos-metadata sample fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    console.log(
+      `  [diag] this run's own "id_del_proceso" values (first 5 of ${documentCandidates.length}): ${JSON.stringify(documentCandidates.slice(0, 5).map((m) => m.row.id_del_proceso))}`,
+    );
+  }
 
   for (const { row, tender } of documentCandidates) {
     const tenderId = idBySlug.get(tender.slug)!;

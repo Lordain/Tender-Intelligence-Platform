@@ -59,6 +59,25 @@ export async function fetchSecopDocumentsForProcess(procesoId: string): Promise<
 }
 
 /**
+ * Unfiltered sample of the archivos-metadata dataset — used purely as a
+ * diagnostic (see ingest-colombia.ts's call site) to print real `proceso`
+ * values next to real `id_del_proceso` values from the process dataset,
+ * since the first real bulk run (2026-09-04) got 0 matching rows for all
+ * 499 candidates and this is the fastest way to eyeball whether the two
+ * datasets' ids are actually the same shape/namespace or not.
+ */
+export async function fetchSecopDocumentsSample(limit = 5): Promise<SecopDocumentRow[]> {
+  const url = new URL(METADATA_BASE_URL);
+  url.searchParams.set("$limit", String(limit));
+
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!response.ok) {
+    throw new Error(`SECOP documents API sample responded ${response.status} ${response.statusText}`);
+  }
+  return (await response.json()) as SecopDocumentRow[];
+}
+
+/**
  * `n_mero_de_contrato` (contract number) present vs. absent is a real,
  * structural signal for pre-award (tender/bidding-stage) vs. post-award
  * (contract-management) documents — confirmed against the one real

@@ -66,16 +66,51 @@ function inferScopeType(tipoContratacion: string | undefined): TenderScopeType {
 }
 
 /**
- * The real file's only status values seen so far: VIGENTE (open) and three
- * clarification-phase variants (EN ACLARACIONES / EN REPREGUNTAS / EN
- * ATENCIÓN DE PREGUNTAS). Since this whole feed's domain is "procedures
- * still in progress", an unrecognized value defaults to "open" rather than
- * a closed/awarded status — the safer wrong guess for this source.
+ * Real ESTATUS values, now confirmed against a much larger real export
+ * (1,791 rows, 2026-09-04) than the small sample this function was
+ * originally written from — that sample only ever showed VIGENTE and the
+ * three clarification-phase variants below, so a bare `startsWith("EN ")`
+ * heuristic looked safe. The bigger file proved it wasn't: "EN APERTURA" /
+ * "EN EVALUACIÓN" / "EN DECISIÓN DE FALLO" all start with "EN " too, but
+ * they're PAST the clarification phase (submission already closed, the
+ * procedure is now at/after the bid-opening event) — mapping them to
+ * "clarification" was actively wrong, not just imprecise. Worse,
+ * "SUSPENDIDO" (162 of the 1,791 rows, ~9%) doesn't start with "EN " at
+ * all and was silently defaulting to "open" — showing a SUSPENDED
+ * procedure as currently biddable, which is a real, user-facing
+ * correctness bug, not just a coarse guess.
  */
 function inferStatus(estatus: string | undefined): TenderStatus {
   const normalized = estatus?.toUpperCase().trim();
-  if (normalized?.startsWith("EN ")) return "clarification";
-  return "open";
+  switch (normalized) {
+    case "VIGENTE":
+    case "PENDIENTE DE APERTURA":
+      return "open";
+    case "EN ACLARACIONES":
+    case "EN REPREGUNTAS":
+    case "EN ATENCIÓN DE PREGUNTAS":
+      return "clarification";
+    case "EN APERTURA":
+    case "EN EVALUACIÓN":
+    case "EN DECISIÓN DE FALLO":
+      // Submission has already closed; the procedure is at/after the
+      // bid-opening event, awaiting a ruling — "clarification" would
+      // wrongly suggest it's still in the pre-submission Q&A phase.
+      return "submission_closed";
+    case "SUSPENDIDO":
+      // No dedicated "suspended" status in this platform's TenderStatus —
+      // "cancelled" is the closest fit and, just as importantly, is
+      // excluded from the tender list's default status filter the same
+      // way "open"/"clarification" tenders are shown by default (see
+      // DEFAULT_STATUSES in TenderExplorer.tsx) — a suspended procedure
+      // no longer belongs in the default "currently biddable" view.
+      return "cancelled";
+    default:
+      // Unrecognized (e.g. the rare "EN OSD", 2 of 1,791 rows, meaning
+      // unconfirmed) — "open" remains the safer wrong guess for a feed
+      // whose whole domain is "procedures still in progress".
+      return "open";
+  }
 }
 
 function parseDate(raw: string | undefined): string | null {

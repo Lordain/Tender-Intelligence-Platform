@@ -540,4 +540,27 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real title (SEPOMEX buyer) — 维护管理服务 (routine ongoing IT-ops support, not the infrastructure backup/recovery service the confirmed 'Servicio de respaldo y recuperación para la Nube Privada' example was).",
     scopeType: "services",
   },
+
+  // --- "control de acceso" narrowed to require an equipment/system
+  // qualifier (2026-09-04) after a real Colombia SECOP II example was
+  // found live in production: a ~US$476 bundled janitorial/reception-desk
+  // staffing contract wrongly promoted straight to flagship. ---
+  {
+    title: "ANDERSON DAVID PACHECO COLINA",
+    expectedTier: "excluded",
+    note: "Real Colombia title (ESE HOSPITAL LOCAL DE SITIONUEVO buyer, ~US$476/1,999,200 COP) — the process name IS a contractor's own name (a direct individual-services contract), and the real summary is 'PRESTACIÓN DE SERVICIOS DE APOYO A LA GESTIÓN PARA EL DESARROLLO DE ACTIVIDADES DE CONSERJERÍA, CONTROL DE ACCESO, APOYO LOGÍSTICO Y MANTENIMIENTO BÁSICO...' — a bundled janitorial/reception-desk staffing job, not an access-control equipment purchase. The bare 'control de acceso' phrase used to match INCLUDE_OVERRIDE_KEYWORDS and bypass both the exclude checks (including EXCLUDE_KEYWORDS' own 'conserjería' term, present in this same text) and the value floor, landing straight on flagship.",
+    summary:
+      "PRESTACIÓN DE SERVICIOS DE APOYO A LA GESTIÓN PARA EL DESARROLLO DE ACTIVIDADES DE CONSERJERÍA, CONTROL DE ACCESO, APOYO LOGÍSTICO Y MANTENIMIENTO BÁSICO DE LAS INSTALACIONES DE LA E.S.E. HOSPITAL LOCAL DE SITIONUEVO.",
+    scopeType: "services",
+    estimatedValue: 1_999_200,
+    currency: "COP",
+    buyer: "ESE HOSPITAL LOCAL DE SITIONUEVO",
+    country: "Colombia",
+  },
+  {
+    title: "ADQUISICIÓN DE SISTEMA DE CONTROL DE ACCESO BIOMÉTRICO PARA INSTALACIONES ESTRATÉGICAS",
+    expectedTier: "flagship",
+    note: "Regression check — a genuine access-control SYSTEM/equipment purchase must still promote via INCLUDE_OVERRIDE_KEYWORDS, confirming the narrowed pattern (now requiring 'sistema'/'equipo'/'dispositivo'/etc. near 'control de acceso') doesn't lose real matches, only the bare-word false positive above.",
+    scopeType: "equipment",
+  },
 ];

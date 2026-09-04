@@ -1580,6 +1580,63 @@ matched on the next real run. Not yet confirmed whether `dmgg-8hin`'s
 sample seen so far was 100% `BDOS`) — that's what the next real run with
 this change will show.
 
+**Result of that next real run**: still 0/0 via both paths
+(`documentsFoundViaNoticeUid` and `documentsFoundViaIdDelProceso` both
+0 across 339 candidates) — the `NTC` namespace doesn't match `dmgg-8hin`'s
+`proceso` column either. `dmgg-8hin` genuinely appears to only index
+`BDOS`-namespace processes; whatever real-world distinction that
+corresponds to (regime/modality?) hasn't been identified yet, and no
+further automatic path has been found for this batch's `REQ`/`NTC`-style
+processes. Attachment auto-download for Colombia stays effectively
+inert for now — the tender list itself, and manual per-tender document
+retrieval (open `sourceUrl`, pass the CAPTCHA, download by hand) are
+unaffected.
+
+### Real flagship-tag bug found via this same investigation (2026-09-04)
+
+While chasing the attachment-id mismatch above, the user opened one of
+the affected tenders' edit page directly and spotted something
+unrelated but worse: **"ANDERSON DAVID PACHECO COLINA"** — a real
+Colombia tender whose title is literally a contractor's own name (a
+direct individual-services contract), estimated value ≈US$476
+(1,999,200 COP) — was tagged **flagship** (旗舰大标) in the admin
+tenders list. Any value floor should have excluded this outright.
+
+Root cause: the real summary text is "PRESTACIÓN DE SERVICIOS DE APOYO
+A LA GESTIÓN PARA EL DESARROLLO DE ACTIVIDADES DE CONSERJERÍA, CONTROL
+DE ACCESO, APOYO LOGÍSTICO Y MANTENIMIENTO BÁSICO DE LAS INSTALACIONES
+DE LA E.S.E. HOSPITAL LOCAL DE SITIONUEVO" — a bundled janitorial/
+reception-desk staffing contract for one small hospital. The bare
+phrase `control de acceso` in `INCLUDE_OVERRIDE_KEYWORDS`
+(`lib/relevance.ts`) matched it, and `hasIncludeOverride` unconditionally
+bypasses EVERY exclude check — including `EXCLUDE_KEYWORDS`' own
+`conserjería` term, which is *also* present in this exact same text —
+and the value floor, landing straight on flagship. Same category of bug
+already fixed twice this session for `seguridad perimetral`/`nube
+privada` (a bare INCLUDE_OVERRIDE_KEYWORDS phrase matching a routine
+staffing/ops-support service instead of the genuine
+equipment/infrastructure purchase it was meant to catch) — Colombia's
+free-text `descripci_n_del_procedimiento` field makes this kind of
+false positive more likely than Mexico's terse titles, same risk
+already flagged in the earlier "0 attachments" investigation above.
+
+Fixed the same way as those two: `control de acceso` now requires an
+equipment/system qualifier nearby (`sistema`/`equipo`/`dispositivo`/
+`torniquete`/`lector`/`biométrico`/`electrónico`/`vehicular`, either
+side, within 40 chars) rather than matching bare. Confirmed via
+`lib/relevance-fixtures.ts`: the real bad example now returns `excluded`
+(value-floor path), and a genuine `"ADQUISICIÓN DE SISTEMA DE CONTROL DE
+ACCESO BIOMÉTRICO..."` still returns `flagship` — 77/77 fixtures pass
+(up from 75).
+
+This was found by manually inspecting ONE flagged example — the
+existing `ReclassifyButton` (写入 mode) should be run after this fix
+ships to recompute every already-stored tender's tier under the
+corrected rule; anything that comes back `excluded` gets deleted
+automatically by that same action (see its own header comment). Not run
+from this sandbox (no live Supabase access) — needs the user's own
+"重新分类并写入" click.
+
 ### Currency unified to USD platform-wide
 
 Adding a source with real values in a currency other than MXN (Colombian

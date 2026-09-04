@@ -238,7 +238,21 @@ const BARE_BUYER_REF_TITLE = /^[^a-z]+-\s*REF:\d+\s*$/;
 
 const INCLUDE_OVERRIDE_KEYWORDS = [
   /videovigilancia|video surveillance/i,
-  /control de acceso|access control/i,
+  // Narrowed (2026-09-04, real counter-example found): the bare phrase
+  // also matched a real Colombia SECOP II summary — "PRESTACIÓN DE
+  // SERVICIOS DE APOYO A LA GESTIÓN PARA EL DESARROLLO DE ACTIVIDADES DE
+  // CONSERJERÍA, CONTROL DE ACCESO, APOYO LOGÍSTICO Y MANTENIMIENTO
+  // BÁSICO..." — a ~US$476 bundled janitorial/reception-desk staffing
+  // contract for one small hospital (the SAME text also contains
+  // "conserjería", already an EXCLUDE_KEYWORDS routine-service term, but
+  // hasIncludeOverride bypasses every exclude check unconditionally once
+  // it matches anything). "Control de acceso" duty performed by a
+  // person is not the same real-world thing as an access-control SYSTEM
+  // purchase — now requires an equipment/system qualifier nearby, same
+  // proximity-anchor approach as "seguridad perimetral"/"nube privada"
+  // below. Still matches a genuine "SISTEMA DE CONTROL DE ACCESO
+  // BIOMÉTRICO" / "EQUIPOS DE CONTROL DE ACCESO VEHICULAR" purchase.
+  /(sistema(s)?|equipo(s)?|dispositivo(s)?|torniquete(s)?|lector(es)?|biom[ée]tric[oa]|electr[óo]nico|vehicular).{0,40}control de acceso|control de acceso.{0,40}(sistema(s)?|equipo(s)?|dispositivo(s)?|torniquete(s)?|lector(es)?|biom[ée]tric[oa])|access control system/i,
   /ciberseguridad|cybersecurity/i,
   /centro de comando|command center/i,
   /seguridad electr[óo]nica|electronic security/i,

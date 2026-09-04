@@ -189,8 +189,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "ADQUISICIÓN DE TRANSFORMADORES DE POTENCIA",
-    expectedTier: "excluded",
-    note: "Was 'significant' before the whitelist narrowing (via a coincidental industries:['power'] match, not real content), briefly 'standard' after narrowing FLAGSHIP_INDUSTRY_KEYWORDS. Now 'excluded': the user confirmed (2026-09-02) that 'standard' should stop being a kept tier entirely — only flagship + the construction/medical-equipment whitelist stay visible. 'transformadores' alone isn't on that whitelist.",
+    expectedTier: "significant",
+    note: "Was excluded since the Seventh pass removed the old bare 'energía|eléctrico|power' signal, with nothing replacing it for power equipment specifically. Restored to significant (2026-09-04) per the user's explicit request to whitelist power-grid key equipment (变压器/发电机/继电保护器/UPS) — via the same anchored purchase-verb pattern as vehicles, not the old broad bare-word match.",
     industries: ["power"],
   },
   {
@@ -272,6 +272,66 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "excluded",
     note: "Heavy-machinery RENTAL, not a purchase — no EXCLUDE_KEYWORDS pattern names machinery specifically, but the anchored whitelist pattern requires a purchase verb (adquisición/adqs./compra/suministro), which 'arrendamiento' isn't, so this falls through to the bottom below_threshold exclusion exactly like vehicle rental does.",
     industries: ["vehicles"],
+  },
+  {
+    title: "ADQUISICIÓN DE COMBUSTIBLES Y LUBRICANTES PARA VEHÍCULOS Y EQUIPOS TERRESTRES",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-04) that exposed a real bug: 'vehículos' appears only 32 chars after 'adquisición de', inside the OLD whitelist pattern's 40-char loose gap, matching via the 'para vehículos' trailing modifier even though the actual object being purchased is fuel/lubricants, not vehicles. Fixed by tightening the gap to digits/quotes/whitespace only (a real quantity prefix, not arbitrary words) and adding an explicit belt-and-suspenders EXCLUDE_KEYWORDS pattern.",
+    industries: ["vehicles", "energy"],
+  },
+
+  // --- Hemodiálisis/hemodinamia SERVICES and consumables, not equipment
+  // (2026-09-04, real titles the user flagged) — same class of bug as the
+  // earlier osteosíntesis/reactivo/medicamento fixes: the bare
+  // "hemodiálisis|hemodinamia" FLAGSHIP_INDUSTRY_KEYWORDS term is meant for
+  // genuine EQUIPMENT purchases, but these three are an outsourced service
+  // and a consumables purchase respectively. ---
+  {
+    title: "ADQUISICIÓN Y/O SUMINISTRO DE INSUMOS PARA EL SERVICIO DE HEMODINAMIA, 2026",
+    expectedTier: "excluded",
+    note: "Consumables ('insumos') for the hemodinamia service, not equipment — would otherwise hit the bare 'hemodinamia' FLAGSHIP_INDUSTRY_KEYWORDS match.",
+    industries: ["healthcare"],
+  },
+  {
+    title: "SERVICIOS MEDICO DE HEMODIALISIS SUBROGADA",
+    expectedTier: "excluded",
+    note: "Outsourced ('subrogada') hemodiálisis service — word order didn't match the existing 'servicio médico subrogado' pattern ('subrogada' separated from 'medico' by 'de hemodialisis'), so it would otherwise hit the bare 'hemodiálisis' FLAGSHIP_INDUSTRY_KEYWORDS match.",
+    scopeType: "services",
+  },
+  {
+    title: "SERVICIO DE HEMODIÁLISIS EXTRAMUROS",
+    expectedTier: "excluded",
+    note: "Off-site ('extramuros') hemodiálisis service contract, real procedure number LA-50-GYR-050GYR033-T-91-2026 — same class of bug as the subrogada title above.",
+    scopeType: "services",
+  },
+
+  // --- Power-grid key equipment restored to the whitelist (2026-09-04, per
+  // the user's explicit request: "白名单加入电力相关的关键设备：变压器、
+  // 发电机、继电保护器等" then "还有UPS") — same anchored purchase-verb
+  // mechanism as vehicles, reusing the same tightened gap. ---
+  {
+    title: "ADQUISICIÓN DE GENERADORES DE EMERGENCIA PARA HOSPITALES",
+    expectedTier: "significant",
+    note: "Generator purchase — 发电机, one of the user's named examples (2026-09-04). Deliberately avoids the word 'subestación' — that already triggers INCLUDE_OVERRIDE_KEYWORDS straight to flagship on its own, which would test that rule instead of this one.",
+    industries: ["power"],
+  },
+  {
+    title: "ADQUISICIÓN DE RELEVADORES DE PROTECCIÓN PARA LÍNEAS DE TRANSMISIÓN",
+    expectedTier: "significant",
+    note: "Protection-relay purchase — 继电保护器, one of the user's named examples (2026-09-04). Mexican Spanish 'relevador' variant, not just 'relé'.",
+    industries: ["power"],
+  },
+  {
+    title: "ADQUISICIÓN DE UPS PARA EQUIPO DE CÓMPUTO",
+    expectedTier: "significant",
+    note: "UPS purchase, one of the user's named examples (2026-09-04, follow-up \"还有UPS\"). Deliberately avoids 'centro de datos' — that already triggers MAJOR_PROJECT_KEYWORDS straight to flagship on its own, which would test that rule instead of this one.",
+    industries: ["power", "ict_telecom"],
+  },
+  {
+    title: "MANTENIMIENTO PREVENTIVO A TRANSFORMADORES DE POTENCIA",
+    expectedTier: "excluded",
+    note: "Power-equipment MAINTENANCE, not a purchase — regression check mirroring the vehicle/machinery rental checks above: no purchase verb, so this falls through to the existing broad 'mantenimiento preventivo' EXCLUDE_KEYWORDS pattern before the whitelist entry is ever reached.",
+    industries: ["power"],
   },
 
   // --- Excluded: real noise confirmed this session ---

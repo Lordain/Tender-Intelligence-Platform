@@ -51,6 +51,14 @@ const EXCLUDE_KEYWORDS = [
   // the same tender.
   /licencia(s)? de software|licenciamiento de software|renovaci[óo]n de licencia(s)?|suscripci[óo]n de software/i,
   /combustible para (el parque vehicular|veh[íi]culos)|suministro de gasolina y di[ée]sel/i,
+  // Real title (2026-09-04): "ADQUISICIÓN DE COMBUSTIBLES Y LUBRICANTES
+  // PARA VEHÍCULOS Y EQUIPOS TERRESTRES" — fuel/lubricant purchase, not a
+  // vehicle purchase, but "vehículos" appearing as a "para X" trailing
+  // modifier let it slip through the vehicle-purchase whitelist pattern's
+  // old, looser gap (see FLAGSHIP_INDUSTRY_KEYWORDS below, now tightened) —
+  // added here too as an explicit, narrower belt-and-suspenders pattern,
+  // same posture as the "combustible para..." line right above it.
+  /combustibles? y lubricantes? para veh[íi]culos/i,
   /gas lp para (cocina|oficinas|comedor)|suministro de gas dom[ée]stico/i,
   /qu[íi]micos de limpieza|productos qu[íi]micos para tratamiento de agua|insumos qu[íi]micos de limpieza/i,
   // Real observed titles the user flagged from the live site (confirmed
@@ -83,6 +91,21 @@ const EXCLUDE_KEYWORDS = [
   // tag at all).
   /consumibles y accesorios|tamizaje card[íi]aco/i, // ADQ CONSUMIBLES Y ACCESORIOS TAMIZAJE CARDIACO — medical consumables, not equipment
   /servicio m[ée]dico subrogado|servicio (m[ée]dico )?(para|de) tratamiento/i, // SERVICIO MÉDICO SUBROGADO DE RESONANCIA MAGNÉTICA; SERVICIO PARA TRATAMIENTO SAOS — an outsourced medical SERVICE, not an equipment purchase — would otherwise hit the "resonancia" FLAGSHIP_INDUSTRY_KEYWORDS match. Scoped to require "servicio" as the anchor so a genuine "equipo ... para tratamiento oncológico" (an equipment purchase) doesn't match.
+  // Real titles (2026-09-04): "SERVICIOS MEDICO DE HEMODIALISIS SUBROGADA"
+  // and "SERVICIO DE HEMODIÁLISIS EXTRAMUROS" — outsourced/off-site
+  // hemodiálisis SERVICE contracts, not equipment purchases, but word
+  // order ("servicio(s) ... de hemodialisis ... subrogada", "subrogada"/
+  // "extramuros" separated from "servicio" by "de hemodiálisis") didn't
+  // match the "servicio médico subrogado" pattern right above, and would
+  // otherwise hit the bare "hemodiálisis" FLAGSHIP_INDUSTRY_KEYWORDS match.
+  /servicio(s)? (m[ée]dico )?de hemodi[áa]lisis|hemodi[áa]lisis (subrogada|extramuros)/i,
+  // Real title (2026-09-04): "ADQUISICIÓN Y/O SUMINISTRO DE INSUMOS PARA
+  // EL SERVICIO DE HEMODINAMIA, 2026" — consumables ("insumos") for the
+  // hemodiálisis/hemodinamia SERVICE, not equipment — same class of bug as
+  // osteosíntesis/reactivo/medicamento above, just for this specific
+  // procedure. A genuine "equipo de hemodinamia" purchase still isn't
+  // touched (no "insumos... servicio de" framing).
+  /insumos? (para|de) (el )?servicio de (hemodi[áa]lisis|hemodinamia)/i,
   /actualizaci[óo]n,? mantenimiento preventivo y soporte|mantenimiento preventivo y soporte/i, // SERVICIO INTEGRAL PARA LA ACTUALIZACIÓN, MANTENIMIENTO PREVENTIVO Y SOPORTE — routine IT/systems support
   /mobiliario (y equipo )?para (equipar )?aula|equipar aula multisensorial/i, // ADQUISICIÓN DE MOBILIARIO Y EQUIPO PARA EQUIPAR AULA MULTISENSORIAL — routine classroom furniture, small-scale despite the real "education" industry tag
   /rehabilitaci[óo]n de (sistemas? de )?captaci[óo]n de agua|rehab\.? de sistemas? de captaci[óo]n/i, // REHAB. DE SISTEMAS DE CAPTACIÓN DE AGUA POTABLE — small rural water-system repair, not real water infrastructure, despite the real "water" industry tag
@@ -295,7 +318,37 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // (rental) or a bare maintenance mention still isn't caught by this
   // pattern (no purchase verb) and falls through to the bottom exclusion
   // exactly like vehicle rental does — see the regression fixture below.
-  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\b[^.\n]{0,40}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?|maquinaria pesada)/i,
+  //
+  // Gap between the verb and the noun tightened from "any text, up to 40
+  // chars" to "only digits/quotes/whitespace, up to 15 chars" (2026-09-04,
+  // real false positive the user caught): "ADQUISICIÓN DE COMBUSTIBLES Y
+  // LUBRICANTES PARA VEHÍCULOS Y EQUIPOS TERRESTRES" — a fuel purchase, not
+  // a vehicle purchase — matched the old loose gap because "vehículos"
+  // appeared only 32 characters after "de", well inside the old 40-char
+  // allowance, via the "para vehículos" trailing modifier rather than as
+  // the actual object being acquired. The tightened gap only allows what a
+  // real quantity/quote prefix looks like ("22 ", "'") between the verb and
+  // the noun — see "ADQS. DE 22 VEHS. CISTERNA..." in industry.ts's own
+  // comment — so the noun has to be the immediate object of the purchase,
+  // not a modifier buried later in the sentence. Every existing fixture
+  // still matches (the noun always follows "de" directly, at most after a
+  // number), confirmed by the passing test suite.
+  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+[\d'"\s]{0,15}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?|maquinaria pesada)/i,
+  // Power-grid key equipment — added per the user's explicit request
+  // (2026-09-04: "白名单加入电力相关的关键设备：变压器、发电机、继电保护器等"
+  // then "还有UPS"). Same anchored purchase-verb pattern and reasoning as
+  // vehicles above — a genuine ACQUISITION of a transformer/generator/
+  // protection relay/UPS promotes to significant; "mantenimiento de
+  // transformadores" (maintenance) still isn't caught here (no purchase
+  // verb) and falls through to the existing broad maintenance
+  // EXCLUDE_KEYWORDS pattern earlier in this pipeline, same as vehicle
+  // maintenance. This reverses the ADQUISICIÓN DE TRANSFORMADORES DE
+  // POTENCIA fixture below from "excluded" to "significant" — it was
+  // "excluded" only because no whitelist pattern covered bare power
+  // equipment nouns after the Seventh pass removed the old, much broader
+  // "energía|eléctrico|power" bare-word signal; this is a narrower,
+  // deliberately re-added replacement for that one real equipment class.
+  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+[\d'"\s]{0,15}(transformador(es)?|generador(es)?|rel[ée]s? de protecci[óo]n|relevador(es)? de protecci[óo]n|\bups\b)/i,
 ];
 
 // USD-scale thresholds (the whole platform standardizes display and

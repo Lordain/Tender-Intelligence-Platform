@@ -33,13 +33,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "no file uploaded" }, { status: 400 });
   }
 
-  const precise = form.get("precise") === "true";
   const write = form.get("write") === "true";
   const force = form.get("force") === "true";
 
-  if (!precise && !process.env.DASHSCOPE_API_KEY) {
+  if (!process.env.DASHSCOPE_API_KEY) {
     return NextResponse.json(
-      { error: "DASHSCOPE_API_KEY isn't set (needed for auto-routing's qwen3.5-plus path — check '精度分析' to skip it and force claude-opus-5). See .env.example." },
+      { error: "DASHSCOPE_API_KEY isn't set (needed for auto-routing's qwen3.5-plus path). See .env.example." },
       { status: 500 },
     );
   }
@@ -52,7 +51,7 @@ export async function POST(request: Request) {
   const buffer = Buffer.from(await file.arrayBuffer());
 
   try {
-    const result = await analyzeUploadedDocument(supabase!, tenderSlug.trim(), { buffer, fileName: file.name }, { precise, write, force });
+    const result = await analyzeUploadedDocument(supabase!, tenderSlug.trim(), { buffer, fileName: file.name }, { write, force });
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

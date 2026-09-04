@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import type { TenderNeedingDocuments } from "@/types/tender";
 import { useUser } from "@/lib/auth";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { formatDate, formatEstimatedValueUsd } from "@/lib/format";
-import { countryLabel, RELEVANCE_TIER_COLORS } from "@/lib/tender-labels";
+import { formatDate } from "@/lib/format";
+import { countryLabel } from "@/lib/tender-labels";
 import { AnalyzeDocumentForm } from "@/components/admin/AnalyzeDocumentForm";
 
 const SUPABASE_CONFIGURED = Boolean(
@@ -83,7 +83,7 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
               <tr>
                 <th className="px-4 py-3 font-medium">{localize(uiText.colTitle, locale)}</th>
                 <th className="px-4 py-3 font-medium">{localize(uiText.countryLabel, locale)}</th>
-                <th className="px-4 py-3 font-medium">{localize(uiText.colValueTier, locale)}</th>
+                <th className="px-4 py-3 font-medium">{localize(uiText.colTenderId, locale)}</th>
                 <th className="px-4 py-3 font-medium">{localize(uiText.colPublicationDate, locale)}</th>
                 <th className="px-4 py-3 font-medium">{localize(uiText.colSourceLink, locale)}</th>
                 <th className="px-4 py-3 font-medium" />
@@ -91,9 +91,6 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
             </thead>
             <tbody className="divide-y divide-[#e5e9eb]">
               {tenders.map((tender) => {
-                const value = tender.estimatedValue
-                  ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, locale)
-                  : null;
                 const isOpen = openSlug === tender.slug;
                 return (
                   <Fragment key={tender.slug}>
@@ -104,13 +101,8 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
                       <td className="px-4 py-3 text-[#5d6d77]">
                         {countryLabel(tender.country, locale)}
                       </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${RELEVANCE_TIER_COLORS[tender.relevanceTier]}`}
-                        >
-                          {localize(tender.relevanceLabel, locale)}
-                        </span>
-                        {value && <div className="mt-1 text-xs text-zinc-500">{value}</div>}
+                      <td className="px-4 py-3 font-mono text-xs text-[#5d6d77]">
+                        {tender.slug}
                       </td>
                       <td className="px-4 py-3 text-[#5d6d77]">
                         {formatDate(tender.publicationDate, locale)}

@@ -37,7 +37,6 @@ export function AnalyzeDocumentForm({
 }) {
   const [tenderSlug, setTenderSlug] = useState(initialSlug ?? "");
   const [file, setFile] = useState<File | null>(null);
-  const [precise, setPrecise] = useState(false);
   const [write, setWrite] = useState(false);
   const [force, setForce] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -63,7 +62,6 @@ export function AnalyzeDocumentForm({
     const form = new FormData();
     form.append("tenderSlug", tenderSlug.trim());
     form.append("file", file);
-    form.append("precise", String(precise));
     form.append("write", String(write));
     form.append("force", String(force));
 
@@ -115,10 +113,6 @@ export function AnalyzeDocumentForm({
         </label>
 
         <div className="mt-5 flex flex-col gap-2 border-t border-[#e5e9eb] pt-5">
-          <label className="flex items-center gap-2 text-sm text-[#233846]">
-            <input type="checkbox" checked={precise} onChange={(e) => setPrecise(e.target.checked)} className="size-4 accent-[#ffb21c]" />
-            精度分析（强制使用 claude-opus-5，忽略自动路由）
-          </label>
           <label className="flex items-center gap-2 text-sm text-[#233846]">
             <input type="checkbox" checked={write} onChange={(e) => setWrite(e.target.checked)} className="size-4 accent-[#ffb21c]" />
             写入 Supabase（不勾选则只预览，不会真的写入）

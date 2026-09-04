@@ -52,7 +52,7 @@ export async function analyzeUploadedDocument(
   supabase: SupabaseClient,
   tenderSlug: string,
   file: { buffer: Buffer; fileName: string },
-  options: { precise: boolean; write: boolean; force: boolean },
+  options: { write: boolean; force: boolean },
 ): Promise<AnalyzeUploadedDocumentResult> {
   const tempDir = mkdtempSync(join(tmpdir(), "tender-doc-"));
   const tempPath = join(tempDir, file.fileName || `upload${extname(file.fileName) || ".pdf"}`);
@@ -63,16 +63,16 @@ export async function analyzeUploadedDocument(
     const intake = await intakeDocument(tempPath);
     const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: intake.fileName, buyer: "" };
 
-    let model: ExtractionModel;
-    let extraction: TenderExtraction;
-    if (options.precise) {
-      model = "claude-opus-5";
-      extraction = await extractTenderRequirements(tempPath, context, model);
-    } else {
-      const hasText = await hasRealTextLayer(tempPath);
-      model = hasText ? "qwen3.5-plus" : "claude-haiku-4-5-20251001";
-      extraction = hasText ? await extractTenderRequirementsQwenAnthropic(tempPath, context) : await extractTenderRequirements(tempPath, context, model);
-    }
+    // Always auto-routed (text-layer -> qwen3.5-plus / scanned -> claude-
+    // haiku) — the "精度分析" (force claude-opus-5) option was removed
+    // from this upload flow per the user's explicit request (2026-09-04).
+    // extract-tender-document.ts's CLI --precise flag is a separate code
+    // path and is unaffected.
+    const hasText = await hasRealTextLayer(tempPath);
+    const model: ExtractionModel = hasText ? "qwen3.5-plus" : "claude-haiku-4-5-20251001";
+    const extraction: TenderExtraction = hasText
+      ? await extractTenderRequirementsQwenAnthropic(tempPath, context)
+      : await extractTenderRequirements(tempPath, context, model);
     const fields = toTenderFields(extraction, tenderSlug);
 
     const base = {
@@ -100,7 +100,10 @@ export async function analyzeUploadedDocument(
       .eq("content_hash", intake.contentHash)
       .maybeSingle();
 
-    if (existingDoc?.extraction_model === "claude-opus-5" && model !== "claude-opus-5" && !options.force) {
+    // This upload flow always auto-routes (never opus) — so any existing
+    // claude-opus-5 result (from extract-tender-document.ts's CLI
+    // --precise flag) would always be a downgrade here unless forced.
+    if (existingDoc?.extraction_model === "claude-opus-5" && !options.force) {
       return { ...base, status: "skipped-opus-precision", message: "已有精度分析（claude-opus-5）结果" };
     }
 

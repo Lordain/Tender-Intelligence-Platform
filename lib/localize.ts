@@ -217,6 +217,7 @@ export const uiText = {
   },
   colTitle: { en: "Title", es: "Título", zh: "标题" },
   colValueTier: { en: "Value tier", es: "Nivel de valor", zh: "金额档" },
+  colTenderId: { en: "Tender ID", es: "ID de la licitación", zh: "标书ID" },
   colPublicationDate: { en: "Published", es: "Publicada", zh: "发标日期" },
   colSourceLink: { en: "Source", es: "Origen", zh: "来源链接" },
   openSource: { en: "Open source page", es: "Abrir página de origen", zh: "打开来源页面" },

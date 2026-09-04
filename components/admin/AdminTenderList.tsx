@@ -195,7 +195,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               <th className="w-[5%] px-2 py-3 text-center font-black" title="免费用户在首页能看到的项目——见列表上方“首页免费展示设置”">首页</th>
               <th className="w-[8%] px-2 py-3 font-black">金额</th>
               <th className="w-[10%] px-2 py-3 font-black">发布日期</th>
-              <th className="w-[17%] px-3 py-3 text-right font-black">操作</th>
+              <th className="w-[17%] px-3 py-3 text-center font-black">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e5e9eb]">
@@ -241,8 +241,8 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                       <span title="该来源无真实发布日期字段，此为收录时间" className="ml-1.5 rounded-full bg-[#edf2f3] px-1.5 py-0.5 text-[10px] font-semibold text-[#7a878f]">估</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                  <td className="whitespace-nowrap px-3 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
                       <Link
                         href={`/admin/tenders/${tender.slug}`}
                         className="inline-flex h-7 items-center gap-1 rounded-lg border border-[#cbd6da] bg-white px-2 text-[10px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"

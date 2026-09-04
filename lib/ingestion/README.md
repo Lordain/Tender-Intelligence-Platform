@@ -1493,6 +1493,55 @@ Documents are downloaded and recorded (`extraction_status: "pending"` for PDFs) 
 
 Still true as of this pass: the live connector has never been confirmed reachable from outside this sandbox's blocked egress (see "SECOP II tender list" above) — the first real `--write`/"写入" run from the admin's own machine should be spot-checked (row count, a few sample rows, and that a downloaded document's file size matches its `tender_documents` metadata) before trusting it at scale, the same posture every other newly-automated source in this project gets.
 
+### First real bulk run downloaded 0 attachments — diagnosed, not yet confirmed (2026-09-04)
+
+The spot-check above happened: a real "拉取并写入" run from the admin's own
+machine wrote 220 tenders and attempted documents for 499 candidate slugs
+(candidates include tenders already in Supabase from earlier runs, not just
+the 220 written this time — `documentCandidates` is built from a fresh
+Supabase lookup by slug, not from `upsertedCount`). Result: 0 downloaded, 0
+already-on-file, 0 failed. Since `documentsFailed` was 0, every one of the
+499 `fetchSecopDocumentsForProcess()` calls returned a real 200 — the
+archivos-metadata dataset (`dmgg-8hin`) itself came back with **zero
+matching rows** for every single candidate's `id_del_proceso`, before the
+`isPreAwardDocument()` filter even ran. That's not a download failure; it's
+the exact assumption this connector's header comment already flagged as
+unverified (`proceso` in `dmgg-8hin` is "the same shape as `id_del_proceso`
+in the main `p6dx-8zbt` dataset... not verified either way yet") coming up
+empty at scale.
+
+Two real (non-exclusive) explanations, neither confirmable from this
+sandbox (still no egress to `datos.gov.co` — a direct `curl` here gets the
+same policy-level `403` at the proxy, not a real API response):
+
+1. **Coverage lag, not a bug.** The original 5-row sample of `dmgg-8hin`
+   was 4/5 post-award paperwork (payment receipts, insurance certs — all
+   carrying a `n_mero_de_contrato`) and only 1/5 genuine pre-award. This
+   platform only ingests recently-*published, still-open* tenders (2-month
+   window) — if Colombia only archives a process's documents into this
+   dataset once it's further along its lifecycle (award, contract setup),
+   a freshly-published open tender may simply have no rows there yet,
+   which would produce exactly this "0 for all 499, no errors" result.
+2. **`id_del_proceso` != `proceso`.** The two datasets' id columns were
+   never actually cross-checked against each other with a real matching
+   pair — only that both looked like the same shape in isolation. If the
+   `dmgg-8hin` dataset's `proceso` column uses a different real-world id
+   (e.g., a contract-level id rather than the process-level one), the
+   equality filter would legitimately return nothing for any process id
+   from `p6dx-8zbt`, regardless of lifecycle stage.
+
+Added instrumentation (`documentsMetadataRowsFound`, the raw row count
+across all candidates before the pre-award filter, and
+`documentsSkippedPostAward`) to `ingestColombia()`'s result and the admin
+form's summary line, so the *next* real run tells these apart without
+guessing: nonzero `documentsMetadataRowsFound` on a later run (especially
+if isolated to older/already-awarded tenders) points at (1); still zero
+across the board — including when manually pointed at a known-old, likely-
+awarded `id_del_proceso` — would confirm (2). Not fixed yet since which
+explanation is true (and therefore what the fix even looks like — wait
+longer / query a different dataset / re-derive the join key some other way)
+can't be determined without a real network request this sandbox can't make.
+
 ### Currency unified to USD platform-wide
 
 Adding a source with real values in a currency other than MXN (Colombian

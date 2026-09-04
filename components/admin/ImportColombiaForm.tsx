@@ -16,6 +16,8 @@ type ImportColombiaResult = {
   documentsDownloaded?: number;
   documentsAlreadyOnFile?: number;
   documentsFailed?: number;
+  documentsMetadataRowsFound?: number;
+  documentsSkippedPostAward?: number;
 };
 
 /**
@@ -136,9 +138,14 @@ export function ImportColombiaForm() {
           )}
           {result.documentsCandidateTenders !== undefined && (
             <p className="mt-1">
-              附件：对 {result.documentsCandidateTenders} 条新写入项目逐条查询，下载并记录 {result.documentsDownloaded ?? 0} 份
+              附件：对 {result.documentsCandidateTenders} 条新写入项目逐条查询，SECOP 附件元数据接口共返回 {result.documentsMetadataRowsFound ?? 0} 条记录
+              {result.documentsSkippedPostAward ? `（其中 ${result.documentsSkippedPostAward} 条因带合同编号=已中标后文件，跳过）` : ""}
+              ，下载并记录 {result.documentsDownloaded ?? 0} 份
               {result.documentsAlreadyOnFile ? `（${result.documentsAlreadyOnFile} 份已存在，跳过）` : ""}
               {result.documentsFailed ? `，${result.documentsFailed} 份失败` : ""}
+              {result.documentsMetadataRowsFound === 0 && !result.documentsFailed
+                ? "。返回 0 条说明这批项目在附件元数据数据集里暂时查不到对应记录（可能是刚发布还没归档，也可能是 id 对不上），不是下载失败。"
+                : ""}
               。文件保存在服务器本地 downloads/colombia/&lt;项目 slug&gt;/ 目录，尚未做 AI 分析——需要再用&quot;标书附件分析&quot;逐条上传分析，或用 <code>npm run extract:document</code> 处理。
             </p>
           )}

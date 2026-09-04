@@ -33,6 +33,10 @@ export type IngestColombiaResult = {
   documentsDownloaded?: number;
   documentsAlreadyOnFile?: number;
   documentsFailed?: number;
+  /** Raw row count returned by the archivos-metadata API across all candidates, BEFORE the pre-award filter or per-file dedup/download. 0 here (with documentsFailed also 0) means the metadata dataset itself returned no rows for these tenders' `id_del_proceso` values — a coverage/id-matching question, not a download failure. See the comment on the fetch loop below. */
+  documentsMetadataRowsFound?: number;
+  /** Of documentsMetadataRowsFound, how many were skipped as post-award (already carried a contract number) rather than actually attempted for download. */
+  documentsSkippedPostAward?: number;
 };
 
 const DOCUMENTS_PAGE_SIZE = 500;
@@ -116,6 +120,16 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
   let documentsDownloaded = 0;
   let documentsAlreadyOnFile = 0;
   let documentsFailed = 0;
+  // Tracked separately from documentsDownloaded/documentsFailed so a future
+  // real run can tell apart "the archivos-metadata dataset (dmgg-8hin) has
+  // zero rows for these tenders' id_del_proceso" from "rows exist but every
+  // one is post-award" from "downloads themselves are failing" — the first
+  // real bulk run (2026-09-04) came back with 0 downloaded / 0 failed /
+  // 0 already-on-file across 499 candidates, which is consistent with any
+  // of those three but was previously indistinguishable from the exposed
+  // stats alone.
+  let documentsMetadataRowsFound = 0;
+  let documentsSkippedPostAward = 0;
 
   for (const { row, tender } of documentCandidates) {
     const tenderId = idBySlug.get(tender.slug)!;
@@ -123,7 +137,9 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
 
     try {
       const docs = await fetchSecopDocumentsForProcess(procesoId);
+      documentsMetadataRowsFound += docs.length;
       const preAward = docs.filter(isPreAwardDocument);
+      documentsSkippedPostAward += docs.length - preAward.length;
 
       for (const doc of preAward) {
         const sourceUrl = doc.url_descarga_documento?.url;
@@ -176,6 +192,8 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
   result.documentsDownloaded = documentsDownloaded;
   result.documentsAlreadyOnFile = documentsAlreadyOnFile;
   result.documentsFailed = documentsFailed;
+  result.documentsMetadataRowsFound = documentsMetadataRowsFound;
+  result.documentsSkippedPostAward = documentsSkippedPostAward;
 
   return result;
 }

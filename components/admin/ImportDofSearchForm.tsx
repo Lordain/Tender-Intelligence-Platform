@@ -6,19 +6,18 @@ import { DEFAULT_DOF_ID_ORG, DOF_BUYER_PRESETS, type ImportDofSearchLiveResult }
 const CUSTOM_BUYER_VALUE = "__custom__";
 
 // DOF's own advanced-search page (sidof.segob.gob.mx/busquedaAvanzada/busqueda)
-// takes fechaIni/fechaFin as free-form date strings — the exact separator/
-// order the real search FORM itself sends was never independently captured
-// (only the field names were), so this was originally a plain text field to
-// avoid a native picker silently reformatting it wrong. Per the user's
-// request (2026-09-04), switched to real `<input type="date">` pickers —
-// isoToDofDate() converts the native YYYY-MM-DD value to DD/MM/YYYY (the
-// same convention DOF's own detail-page URLs use elsewhere in this project)
-// before it's sent. A first live run against this endpoint returned 0
-// results — if DD/MM/YYYY turns out to be the wrong guess, that conversion
-// is the one place to fix it.
+// takes fechaIni/fechaFin as free-form date strings. Confirmed real
+// (2026-09-04, the user's own manual search on the live page, "Desde"/
+// "Hasta" fields and the resulting "Búsqueda realizada... desde 03-08-2026
+// hasta 04-09-2026" confirmation text both showing it): **DD-MM-YYYY with
+// hyphens**, NOT the DD/MM/YYYY-with-slashes this project's detail-page
+// URLs use elsewhere (dof-notice-detail.ts) — a real, confirmed first live
+// run of this connector returned 0 results with the slash format, even for
+// a window the manual search proved has real CFE hits in it, which is what
+// pinned this down as the actual bug rather than "genuinely no data."
 function isoToDofDate(iso: string): string {
   const [year, month, day] = iso.split("-");
-  return `${day}/${month}/${year}`;
+  return `${day}-${month}-${year}`;
 }
 
 export function ImportDofSearchForm() {

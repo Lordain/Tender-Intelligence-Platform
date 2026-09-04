@@ -7,6 +7,19 @@ const DATE_LOCALES: Record<Locale, string> = {
   zh: "zh-CN",
 };
 
+/**
+ * Every date this platform stores is a calendar day with no meaningful
+ * time-of-day (parseDate() in the mappers stores UTC midnight for a
+ * date-only source value like "28/08/2026" — see e.g.
+ * compras-mx-open-tenders-mapper.ts). Formatting that instant without
+ * pinning timeZone: "UTC" lets Intl.DateTimeFormat convert it into
+ * whatever timezone the runtime (server or browser) happens to be in
+ * first — for any timezone behind UTC (Mexico included, UTC-6) that
+ * rolls UTC midnight back to the previous local day, so every date on
+ * the site would silently read one day earlier than the real one. Real,
+ * user-caught bug (2026-09-04): a Proyectos Estratégicos MX tender's
+ * dates were all off by exactly one day from the official portal.
+ */
 export function formatDate(isoDate: string, locale: Locale): string {
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) return isoDate;
@@ -14,6 +27,7 @@ export function formatDate(isoDate: string, locale: Locale): string {
     year: "numeric",
     month: "short",
     day: "numeric",
+    timeZone: "UTC",
   }).format(date);
 }
 

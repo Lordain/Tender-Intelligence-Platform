@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 export function MultiSelectPills<T extends string>({
   label,
@@ -16,6 +16,7 @@ export function MultiSelectPills<T extends string>({
   searchable?: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const detailsRef = useRef<HTMLDetailsElement>(null);
   const visibleOptions = useMemo(
     () => options.filter((option) => option.label.toLowerCase().includes(query.trim().toLowerCase())),
     [options, query],
@@ -36,7 +37,7 @@ export function MultiSelectPills<T extends string>({
   return (
     <label className="relative flex min-w-[9.5rem] flex-col gap-1.5">
       <span className="text-xs font-semibold text-[#425461]">{label}</span>
-      <details className="group">
+      <details ref={detailsRef} className="group">
         <summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#172c3b] transition-colors hover:border-[#9babb3] [&::-webkit-details-marker]:hidden">
           <span className="max-w-[10rem] truncate">{summary}</span>
           <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5 fill-none stroke-current transition-transform group-open:rotate-180">
@@ -74,7 +75,15 @@ export function MultiSelectPills<T extends string>({
           </div>
           <div className="mt-3 flex items-center justify-between border-t border-[#e5e9eb] pt-3">
             <button type="button" onClick={() => onChange([])} className="px-2 py-1.5 text-xs font-semibold text-[#63737d] hover:text-[#071826]">重置</button>
-            <span className="rounded-lg bg-[#ffb21c] px-3 py-1.5 text-xs font-bold text-[#071826]">应用 {selected.length || 0} 项</span>
+            <button
+              type="button"
+              onClick={() => {
+                if (detailsRef.current) detailsRef.current.open = false;
+              }}
+              className="rounded-lg bg-[#ffb21c] px-3 py-1.5 text-xs font-bold text-[#071826] hover:bg-[#ffc247]"
+            >
+              应用 {selected.length || 0} 项
+            </button>
           </div>
         </div>
       </details>

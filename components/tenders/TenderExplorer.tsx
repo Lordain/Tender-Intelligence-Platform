@@ -7,7 +7,7 @@ import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from 
 import { ALL_INDUSTRIES } from "@/lib/industry";
 import { formatDate } from "@/lib/format";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { INDUSTRY_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, industryLabel } from "@/lib/tender-labels";
+import { INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, industryLabel } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders, type SortKey } from "@/lib/filter-tenders";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
 import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
@@ -17,6 +17,14 @@ import { MexicoFlag } from "@/components/tenders/CountryFlag";
 const SCOPE_TYPES: TenderScopeType[] = ["equipment", "services", "equipment_services", "works", "consulting"];
 const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed", "awarded", "cancelled"];
 const DEFAULT_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed"];
+// "excluded" isn't offered here — routine-service tenders stay hidden by
+// default (see includeExcluded in lib/filter-tenders.ts); no UI control
+// exposes showing them. "standard" IS offered (unlike "excluded") since
+// it's a normal, selectable tier — just off by default per
+// DEFAULT_RELEVANCE_TIERS below — this control has to exist or a
+// document-analyzed "standard"-tier tender is permanently invisible with
+// no way to widen the filter from the UI.
+const RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
 const DEFAULT_RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant"];
 const PAGE_SIZE = 28;
 
@@ -93,7 +101,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "deadline_asc";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
 
-  const hasActiveFilters = industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || query.length > 0;
+  const hasActiveFilters = industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || tierParam !== null || query.length > 0;
 
   function updateParams(updates: Record<string, string | null>, resetPage = true) {
     const params = new URLSearchParams(window.location.search);
@@ -128,7 +136,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
       </header>
 
       <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
-        <div className="flex gap-3">
+        <form className="flex gap-3" onSubmit={(event) => event.preventDefault()}>
           <label className="relative flex-1">
             <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[#6e7d86]"><SearchIcon /></span>
             <input
@@ -139,14 +147,20 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
               className="h-11 w-full rounded-xl border border-[#d8e0e3] bg-white pl-12 pr-4 text-sm placeholder:text-[#919ca2] focus:border-[#ffb21c] focus:outline-none"
             />
           </label>
-          <button type="button" className="rounded-xl bg-[#ffb21c] px-7 text-sm font-black text-[#071826] hover:bg-[#ffc247]">搜索</button>
-        </div>
+          <button type="submit" className="rounded-xl bg-[#ffb21c] px-7 text-sm font-black text-[#071826] hover:bg-[#ffc247]">搜索</button>
+        </form>
 
         <div className="mt-5 flex flex-wrap items-start gap-4">
           <label className="flex min-w-[9.5rem] flex-col gap-1.5">
             <span className="text-xs font-semibold text-[#425461]">国家 / 地区</span>
             <span className="flex h-10 items-center gap-2 rounded-xl border border-[#d8e0e3] bg-[#f2f4f3] px-3 text-sm font-semibold text-[#172c3b]"><MexicoFlag />墨西哥</span>
           </label>
+          <MultiSelectPills
+            label={localize(uiText.scaleLabel, locale)}
+            options={RELEVANCE_TIERS.map((option) => ({ value: option, label: localize(RELEVANCE_TIER_LABELS[option], locale) }))}
+            selected={relevanceTiers}
+            onChange={(next) => updateParams({ tier: next.join(",") || null })}
+          />
           <MultiSelectPills
             label="行业"
             searchable

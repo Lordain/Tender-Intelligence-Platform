@@ -92,6 +92,13 @@ export async function fetchDofSearchLive(params: { texto: string; fechaIni: stri
   if (!cookieHeader || !/ci_session=/.test(cookieHeader)) {
     throw new Error("DOF search: didn't receive a ci_session cookie from the search page — the site may have changed how it issues sessions.");
   }
+  // Diagnostic logging (2026-09-04) — two real fixes (date format, then
+  // cookie jar) both still came back "0 results, no error" on the next live
+  // run, which gives no visibility into WHY. Printed to the server console
+  // (wherever `next dev`/`next start` is running) so the admin can see
+  // exactly what this function received back, not just the UI's final
+  // zero-everything summary.
+  console.log(`[dof-search-live] GET ${searchPageUrl} -> HTTP ${sessionRes.status}; cookies received: ${setCookies.length} (forwarding: ${cookieHeader})`);
 
   const all: DofSearchNota[] = [];
   let start = 0;
@@ -112,10 +119,28 @@ export async function fetchDofSearchLive(params: { texto: string; fechaIni: stri
       body: buildBody({ texto: params.texto, fechaIni: params.fechaIni, fechaFin: params.fechaFin, idOrg, start }),
     });
 
+    const rawText = await res.text();
+    console.log(`[dof-search-live] POST ${SEARCH_ENDPOINT} (start=${start}) -> HTTP ${res.status}, content-type: ${res.headers.get("content-type")}, body length: ${rawText.length}`);
+
     if (!res.ok) {
-      throw new Error(`DOF search request failed: HTTP ${res.status} ${res.statusText}`);
+      throw new Error(`DOF search request failed: HTTP ${res.status} ${res.statusText} — body: ${rawText.slice(0, 500)}`);
     }
-    const data = (await res.json()) as DataTablesResponse;
+
+    let data: DataTablesResponse;
+    try {
+      data = JSON.parse(rawText) as DataTablesResponse;
+    } catch (err) {
+      // A WAF/login-redirect page or an HTML error page would land here —
+      // the old `res.json()` call would throw an unhelpful "unexpected
+      // token" error with no context; this surfaces the actual response
+      // body (truncated) so it's obvious the server sent something other
+      // than the expected DataTables JSON.
+      throw new Error(
+        `DOF search: response wasn't valid JSON (${err instanceof Error ? err.message : String(err)}) — first 500 chars: ${rawText.slice(0, 500)}`,
+      );
+    }
+    console.log(`[dof-search-live] recordsTotal=${data.recordsTotal}, recordsFiltered=${data.recordsFiltered}, data.length=${(data.data ?? []).length}`);
+
     all.push(...(data.data ?? []));
     recordsTotal = data.recordsTotal ?? all.length;
     start += PAGE_SIZE;

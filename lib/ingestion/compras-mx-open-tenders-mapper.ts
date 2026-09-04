@@ -66,19 +66,33 @@ function inferScopeType(tipoContratacion: string | undefined): TenderScopeType {
 }
 
 /**
- * Real ESTATUS values, now confirmed against a much larger real export
- * (1,791 rows, 2026-09-04) than the small sample this function was
- * originally written from — that sample only ever showed VIGENTE and the
- * three clarification-phase variants below, so a bare `startsWith("EN ")`
- * heuristic looked safe. The bigger file proved it wasn't: "EN APERTURA" /
- * "EN EVALUACIÓN" / "EN DECISIÓN DE FALLO" all start with "EN " too, but
- * they're PAST the clarification phase (submission already closed, the
- * procedure is now at/after the bid-opening event) — mapping them to
- * "clarification" was actively wrong, not just imprecise. Worse,
- * "SUSPENDIDO" (162 of the 1,791 rows, ~9%) doesn't start with "EN " at
- * all and was silently defaulting to "open" — showing a SUSPENDED
- * procedure as currently biddable, which is a real, user-facing
- * correctness bug, not just a coarse guess.
+ * Real ESTATUS values, now confirmed against much larger real exports
+ * (2026-09-04) than the small sample this function was originally written
+ * from — that sample only ever showed VIGENTE and the three
+ * clarification-phase variants below, so a bare `startsWith("EN ")`
+ * heuristic looked safe. Two bigger files proved it wasn't:
+ *
+ * 1. The "Anuncios vigentes" (still-in-progress) tab, 1,791 rows: "EN
+ *    APERTURA" / "EN EVALUACIÓN" / "EN DECISIÓN DE FALLO" all start with
+ *    "EN " too, but they're PAST the clarification phase (submission
+ *    already closed) — mapping them to "clarification" was actively wrong.
+ *    "SUSPENDIDO" (162 of 1,791, ~9%) doesn't start with "EN " at all and
+ *    was silently defaulting to "open" — showing a SUSPENDED procedure as
+ *    currently biddable.
+ * 2. The "Anuncios concluidos" (concluded) tab — same 13-column export
+ *    format, confirmed real (2,000-row sample, 2026-09-04): every row was
+ *    ADJUDICADO/ADJUDICADO PARCIAL. This means the "whole feed's domain is
+ *    procedures still in progress" assumption the old default-to-"open"
+ *    comment relied on no longer holds — this same mapper can now receive
+ *    concluded-tab uploads too, where an unrecognized status defaulting to
+ *    "open" would be far worse (100% wrong on the whole file, not a rare
+ *    edge case). ADJUDICADO/ADJUDICADO PARCIAL are matched by substring
+ *    (not an exact switch case) alongside a CANCEL/DESIERT substring catch
+ *    for the plausible "cancelled"/"lot declared void" siblings of
+ *    ADJUDICADO this 2,000-row sample didn't happen to contain — same
+ *    substring-matching approach compranet5-mapper.ts already uses for its
+ *    own "CANCEL" check, safer than hardcoding only the exact strings seen
+ *    so far in a vocabulary this codebase hasn't fully enumerated.
  */
 function inferStatus(estatus: string | undefined): TenderStatus {
   const normalized = estatus?.toUpperCase().trim();
@@ -105,12 +119,15 @@ function inferStatus(estatus: string | undefined): TenderStatus {
       // DEFAULT_STATUSES in TenderExplorer.tsx) — a suspended procedure
       // no longer belongs in the default "currently biddable" view.
       return "cancelled";
-    default:
-      // Unrecognized (e.g. the rare "EN OSD", 2 of 1,791 rows, meaning
-      // unconfirmed) — "open" remains the safer wrong guess for a feed
-      // whose whole domain is "procedures still in progress".
-      return "open";
   }
+  if (normalized?.includes("ADJUDICA")) return "awarded";
+  if (normalized?.includes("CANCEL") || normalized?.includes("DESIERT")) return "cancelled";
+  // Unrecognized (e.g. the rare "EN OSD", 2 of 1,791 rows in the vigentes
+  // tab, meaning unconfirmed) — "open" remains the safer wrong guess for
+  // the still-in-progress tab; a concluded-tab upload with a genuinely
+  // unrecognized status is the one real remaining risk this can't rule
+  // out, since there's no third bucket to fall back to here.
+  return "open";
 }
 
 function parseDate(raw: string | undefined): string | null {

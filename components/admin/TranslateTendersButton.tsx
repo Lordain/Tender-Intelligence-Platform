@@ -5,7 +5,9 @@ import type { TranslateAllTendersResult } from "@/lib/ingestion/translate-all-te
 
 export function TranslateTendersButton() {
   const [limit, setLimit] = useState("20");
-  const [write, setWrite] = useState(false);
+  // Defaults to checked per the user's explicit request (2026-09-04): "写入
+  // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
+  const [write, setWrite] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TranslateAllTendersResult | null>(null);

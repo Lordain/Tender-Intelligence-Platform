@@ -37,7 +37,9 @@ export function AnalyzeDocumentForm({
 }) {
   const [tenderSlug, setTenderSlug] = useState(initialSlug ?? "");
   const [file, setFile] = useState<File | null>(null);
-  const [write, setWrite] = useState(false);
+  // Defaults to checked per the user's explicit request (2026-09-04): "写入
+  // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
+  const [write, setWrite] = useState(true);
   const [force, setForce] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

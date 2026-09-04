@@ -17,7 +17,9 @@ export function ImportPemexForm() {
   const [listTitle, setListTitle] = useState<PemexListTitle>(PEMEX_LIST_TITLES[0]);
   const [buyer, setBuyer] = useState(KNOWN_BUYER_NAMES[PEMEX_LIST_TITLES[0]] ?? "");
   const [months, setMonths] = useState("6");
-  const [write, setWrite] = useState(false);
+  // Defaults to checked per the user's explicit request (2026-09-04): "写入
+  // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
+  const [write, setWrite] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportPemexLiveResult | null>(null);

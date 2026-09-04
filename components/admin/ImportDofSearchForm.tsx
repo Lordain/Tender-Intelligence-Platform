@@ -1,22 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { DEFAULT_DOF_ID_ORG, type ImportDofSearchLiveResult } from "@/lib/ingestion/dof-sources";
+import { DEFAULT_DOF_ID_ORG, DOF_BUYER_PRESETS, type ImportDofSearchLiveResult } from "@/lib/ingestion/dof-sources";
+
+const CUSTOM_BUYER_VALUE = "__custom__";
 
 // DOF's own advanced-search page (sidof.segob.gob.mx/busquedaAvanzada/busqueda)
-// takes fechaIni/fechaFin as free-form date strings passed straight through to
-// its DataTables endpoint — the exact separator/order wasn't pinned down in the
-// real capture this connector is built from, so this stays a plain text field:
-// type it exactly as it appears on the DOF search page itself (same format the
-// detail-page URLs use elsewhere in this project — DD/MM/YYYY) rather than a
-// native date picker that could silently reformat it wrong.
+// takes fechaIni/fechaFin as free-form date strings — the exact separator/
+// order the real search FORM itself sends was never independently captured
+// (only the field names were), so this was originally a plain text field to
+// avoid a native picker silently reformatting it wrong. Per the user's
+// request (2026-09-04), switched to real `<input type="date">` pickers —
+// isoToDofDate() converts the native YYYY-MM-DD value to DD/MM/YYYY (the
+// same convention DOF's own detail-page URLs use elsewhere in this project)
+// before it's sent. A first live run against this endpoint returned 0
+// results — if DD/MM/YYYY turns out to be the wrong guess, that conversion
+// is the one place to fix it.
+function isoToDofDate(iso: string): string {
+  const [year, month, day] = iso.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 export function ImportDofSearchForm() {
-  const [texto, setTexto] = useState("");
-  const [fechaIni, setFechaIni] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
+  const [buyerPreset, setBuyerPreset] = useState<string>(DOF_BUYER_PRESETS[0].value);
+  const [customTexto, setCustomTexto] = useState("");
+  const texto = buyerPreset === CUSTOM_BUYER_VALUE ? customTexto : buyerPreset;
+  const [fechaIni, setFechaIni] = useState(""); // native <input type="date"> value, YYYY-MM-DD
+  const [fechaFin, setFechaFin] = useState(""); // native <input type="date"> value, YYYY-MM-DD
   const [idOrg, setIdOrg] = useState(DEFAULT_DOF_ID_ORG);
   const [months, setMonths] = useState("6");
-  const [write, setWrite] = useState(false);
+  // Defaults to checked per the user's explicit request (2026-09-04): "写入
+  // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
+  const [write, setWrite] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportDofSearchLiveResult | null>(null);
@@ -26,8 +41,8 @@ export function ImportDofSearchForm() {
       setError("请先填写采购单位关键词。");
       return;
     }
-    if (!fechaIni.trim() || !fechaFin.trim()) {
-      setError("请填写起止日期（格式需与 DOF 搜索页一致，例如 01/01/2026）。");
+    if (!fechaIni || !fechaFin) {
+      setError("请选择起止日期。");
       return;
     }
     if (write && !confirm(`确定要从 DOF 官网直接拉取「${texto}」的搜索结果并写入 Supabase 吗？`)) return;
@@ -41,8 +56,8 @@ export function ImportDofSearchForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           texto: texto.trim(),
-          fechaIni: fechaIni.trim(),
-          fechaFin: fechaFin.trim(),
+          fechaIni: isoToDofDate(fechaIni),
+          fechaFin: isoToDofDate(fechaFin),
           idOrg: idOrg.trim(),
           write,
           months: months.trim() === "" ? undefined : Number(months),
@@ -73,31 +88,43 @@ export function ImportDofSearchForm() {
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm sm:col-span-2">
           <span className="text-xs font-semibold text-[#52636e]">采购单位关键词</span>
-          <input
-            type="text"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            placeholder="例如 Comisión Federal de Electricidad"
+          <select
+            value={buyerPreset}
+            onChange={(e) => setBuyerPreset(e.target.value)}
             className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
-          />
+          >
+            {DOF_BUYER_PRESETS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+            <option value={CUSTOM_BUYER_VALUE}>自定义…</option>
+          </select>
+          {buyerPreset === CUSTOM_BUYER_VALUE && (
+            <input
+              type="text"
+              value={customTexto}
+              onChange={(e) => setCustomTexto(e.target.value)}
+              placeholder="填写其他采购单位的西语全名"
+              className="mt-1.5 h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
+            />
+          )}
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-semibold text-[#52636e]">起始日期（DOF 搜索页格式）</span>
+          <span className="text-xs font-semibold text-[#52636e]">起始日期</span>
           <input
-            type="text"
+            type="date"
             value={fechaIni}
             onChange={(e) => setFechaIni(e.target.value)}
-            placeholder="01/01/2026"
             className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-semibold text-[#52636e]">截止日期（DOF 搜索页格式）</span>
+          <span className="text-xs font-semibold text-[#52636e]">截止日期</span>
           <input
-            type="text"
+            type="date"
             value={fechaFin}
             onChange={(e) => setFechaFin(e.target.value)}
-            placeholder="04/09/2026"
             className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
           />
         </label>

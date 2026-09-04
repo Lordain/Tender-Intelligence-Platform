@@ -1,6 +1,7 @@
 import { ImportTendersForm } from "@/components/admin/ImportTendersForm";
 import { TranslateTendersButton } from "@/components/admin/TranslateTendersButton";
 import { ImportPemexForm } from "@/components/admin/ImportPemexForm";
+import { ImportDofSearchForm } from "@/components/admin/ImportDofSearchForm";
 
 export default function AdminImportTendersPage() {
   return (
@@ -15,6 +16,7 @@ export default function AdminImportTendersPage() {
       </p>
       <ImportTendersForm />
       <ImportPemexForm />
+      <ImportDofSearchForm />
       <TranslateTendersButton />
     </div>
   );

@@ -1,9 +1,10 @@
 import { AdminTenderForm } from "@/components/admin/AdminTenderForm";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 export default function NewAdminTenderPage() {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-10 sm:px-8 lg:py-12">
-      <div><p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">New record</p><h1 className="mt-2 text-3xl font-black tracking-tight text-[#071826]">添加新项目</h1></div>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-8 sm:px-8 lg:py-10">
+      <AdminPageHeader eyebrow="New record" title="添加新项目" description="补充项目基础资料与来源信息，带 * 的字段为必填项。" backHref="/admin/tenders" />
       <AdminTenderForm />
     </div>
   );

@@ -28,9 +28,9 @@ const PARTICIPATION_SCOPE_KEYS = Object.keys(PARTICIPATION_SCOPE_LABELS) as Tend
 const RELEVANCE_TIER_KEYS = Object.keys(RELEVANCE_TIER_LABELS) as TenderRelevanceTier[];
 
 const inputClass =
-  "w-full rounded-xl border border-[#d8e0e3] bg-white px-3 py-2.5 text-sm text-[#071826] outline-none focus:border-[#ffb21c]";
+  "h-11 w-full rounded-xl border border-[#d8e0e3] bg-white px-4 text-sm text-[#071826] outline-none transition-shadow focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10";
 const labelClass = "flex flex-col gap-1 text-sm";
-const labelTextClass = "text-xs font-semibold text-[#52636e]";
+const labelTextClass = "text-xs font-black text-[#52636e]";
 
 type FormState = {
   titleEs: string;
@@ -182,7 +182,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-7">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_22px_60px_-52px_rgba(6,27,43,.55)] sm:p-7">
       {error && (
         <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           {error}
@@ -190,8 +190,8 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       )}
 
       {isEdit && (
-        <p className="text-xs text-zinc-400">
-          slug: <code>{tender!.slug}</code>（不可修改）
+        <p className="w-fit rounded-lg bg-[#f2f4f3] px-3 py-2 text-xs text-[#7a878f]">
+          项目标识：<code className="font-bold text-[#425461]">{tender!.slug}</code>（不可修改）
         </p>
       )}
 
@@ -209,11 +209,11 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className={labelClass}>
           <span className={labelTextClass}>摘要（西语原文）</span>
-          <textarea className={`${inputClass} min-h-24`} value={form.summaryEs} onChange={(e) => update("summaryEs", e.target.value)} />
+          <textarea className={`${inputClass} min-h-24 py-3`} value={form.summaryEs} onChange={(e) => update("summaryEs", e.target.value)} />
         </label>
         <label className={labelClass}>
           <span className={labelTextClass}>摘要（中文）</span>
-          <textarea className={`${inputClass} min-h-24`} value={form.summaryZh} onChange={(e) => update("summaryZh", e.target.value)} />
+          <textarea className={`${inputClass} min-h-24 py-3`} value={form.summaryZh} onChange={(e) => update("summaryZh", e.target.value)} />
         </label>
       </div>
 
@@ -250,7 +250,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           {ALL_INDUSTRIES.map((key) => (
             <label
               key={key}
-              className={`cursor-pointer rounded-full border px-3 py-1 text-xs ${
+              className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${
                 form.industries.includes(key)
                   ? "border-[#061b2b] bg-[#061b2b] text-white"
                   : "border-[#d8e0e3] text-[#5d6d77]"
@@ -395,7 +395,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
         </label>
       </div>
 
-      <div className="flex items-center justify-between border-t border-[#e3e8ea] pt-5">
+      <div className="sticky bottom-4 z-10 flex items-center justify-between rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]/95 p-3 shadow-[0_12px_35px_-18px_rgba(6,27,43,.35)] backdrop-blur">
         <div>
           {isEdit && (
             <button

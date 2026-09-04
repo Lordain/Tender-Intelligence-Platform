@@ -3,6 +3,7 @@ import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
 import { fetchHomepageFeaturedCount } from "@/lib/db/site-settings";
 import { AdminTenderList } from "@/components/admin/AdminTenderList";
 import { HomepageSettingsPanel } from "@/components/admin/HomepageSettingsPanel";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 export default async function AdminTendersPage() {
   const [tenders, homepageFeaturedCount] = await Promise.all([
@@ -11,11 +12,14 @@ export default async function AdminTendersPage() {
   ]);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-10 sm:px-8 lg:py-12">
-      <div className="flex items-center justify-between">
-        <div><p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Tender records</p><h1 className="mt-2 text-3xl font-black tracking-tight text-[#071826]">项目管理</h1></div>
-        <div className="flex items-center gap-3">
-          <Link href="/admin/import-analysis" className="text-sm font-medium text-[#64717c] hover:text-[#071826]">
+    <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-5 py-8 sm:px-8 lg:py-10">
+      <AdminPageHeader
+        eyebrow="Tender records"
+        title="项目管理"
+        description="集中管理全部招标项目，快速筛选、编辑并控制首页展示内容。"
+        actions={
+          <>
+          <Link href="/admin/import-analysis" className="rounded-xl border border-[#d8e0e3] bg-white px-4 py-2.5 text-sm font-black text-[#52636e] transition-colors hover:border-[#ffb21c] hover:text-[#071826]">
             导入分析结果
           </Link>
           <Link
@@ -24,8 +28,9 @@ export default async function AdminTendersPage() {
           >
             + 添加新项目
           </Link>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <HomepageSettingsPanel initialCount={homepageFeaturedCount} />
 

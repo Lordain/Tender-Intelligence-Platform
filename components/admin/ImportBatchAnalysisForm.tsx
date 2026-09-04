@@ -66,9 +66,9 @@ export function ImportBatchAnalysisForm() {
         <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
       )}
 
-      <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
+      <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_22px_60px_-52px_rgba(6,27,43,.55)] sm:p-6">
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-semibold text-[#52636e]">分析结果 JSON 文件（可多选）</span>
+          <span className="text-xs font-black text-[#52636e]">分析结果 JSON 文件（可多选）</span>
           <input
             type="file"
             accept="application/json,.json"

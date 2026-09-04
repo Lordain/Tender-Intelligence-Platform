@@ -5,6 +5,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { ImportTendersTabs } from "@/components/admin/ImportTendersTabs";
 import { TranslateTendersButton } from "@/components/admin/TranslateTendersButton";
 import { ReclassifyButton } from "@/components/admin/ReclassifyButton";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 // Same real admin gate as app/admin/tenders/layout.tsx — this page writes
 // new tenders to Supabase, so it needs the strict allowlist check. Also
@@ -29,11 +30,8 @@ export default async function AdminImportTendersLayout({ children }: { children:
 
   return (
     <AdminShell>
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-5 py-10 sm:px-8 lg:py-12">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">New tenders</p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-[#071826]">新项目清单</h1>
-        </div>
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-8 sm:px-8 lg:py-10">
+        <AdminPageHeader eyebrow="New tenders" title="新项目清单" description="按国家导入最新政府采购项目，并在正式写入前预览数据。" backHref="/admin/tenders" />
 
         <ImportTendersTabs />
 

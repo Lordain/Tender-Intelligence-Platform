@@ -208,12 +208,11 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const currentSearchHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageIntro
         eyebrow="Tender database"
         title="招标项目"
         description="筛选并评估适合中国企业的拉美政府采购机会"
-        tags={["墨西哥 · 哥伦比亚", "重点行业", "持续更新"]}
         metrics={[{ label: "当前结果", value: sorted.length.toLocaleString(), suffix: "个项目" }]}
       />
 

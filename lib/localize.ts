@@ -172,7 +172,7 @@ export const uiText = {
   nextPage: { en: "Next", es: "Siguiente", zh: "下一页" },
   pageOf: { en: "Page {page} of {total}", es: "Página {page} de {total}", zh: "第 {page} 页，共 {total} 页" },
 
-  navPricing: { en: "Pricing", es: "Precios", zh: "价格" },
+  navPricing: { en: "Pricing", es: "Precios", zh: "订阅服务" },
   navAccount: { en: "Account", es: "Cuenta", zh: "账户" },
   account: { en: "Account", es: "Cuenta", zh: "账户" },
   companyNameLabel: { en: "Company name", es: "Nombre de la empresa", zh: "公司名称" },

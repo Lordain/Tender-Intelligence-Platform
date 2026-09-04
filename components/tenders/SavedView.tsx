@@ -49,20 +49,19 @@ export function SavedView({ tenders }: { tenders: Tender[] }) {
   const savedTenders = tenders.filter((tender) => savedIds.includes(tender.id));
 
   return (
-    <main className="bg-[#f6f4ef] px-5 py-8 sm:px-8 sm:py-10">
+    <main className="bg-[#f6f4ef] px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-[94rem]">
         <PageIntro
           eyebrow="My workspace"
           title="我的收藏"
           description="集中管理常用筛选与重点项目，快速返回正在评估和持续跟进的招标机会。"
-          tags={["常用筛选", "重点项目", "集中跟进"]}
           metrics={[
             { label: "已保存搜索", value: searches.length, suffix: "项" },
             { label: "已收藏项目", value: savedTenders.length, suffix: "个" },
           ]}
         />
 
-        <section className="mt-6">
+        <section className="mt-5">
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <h2 className="text-2xl font-black tracking-[-0.025em] text-[#071826]">{localize(uiText.savedSearches, locale)}</h2>

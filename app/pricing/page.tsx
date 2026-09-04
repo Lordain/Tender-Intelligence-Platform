@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/layout/PageIntro";
 
 const PLANS = [
   {
@@ -9,8 +10,10 @@ const PLANS = [
     monthly: "$1,000",
     halfYear: "$5,400",
     halfYearAverage: "平均 $900/月",
+    halfYearSaving: "省下 10%",
     yearly: "$9,600",
     yearlyAverage: "平均 $800/月",
+    yearlySaving: "省下 20%",
     notificationSchedule: "每日 2 个时段",
     features: [
       "招标项目搜索与单行业筛选",
@@ -29,8 +32,10 @@ const PLANS = [
     monthly: "$2,000",
     halfYear: "$10,800",
     halfYearAverage: "平均 $1,800/月",
+    halfYearSaving: "省下 10%",
     yearly: "$19,200",
     yearlyAverage: "平均 $1,600/月",
+    yearlySaving: "省下 20%",
     notificationSchedule: "每日 3 个时段",
     features: [
       "招标项目搜索与多行业组合筛选",
@@ -62,22 +67,16 @@ function LockIcon() {
 
 export default function PricingPage() {
   return (
-    <main className="bg-[#f6f4ef] px-5 py-14 sm:px-8 sm:py-18">
-      <div className="mx-auto max-w-[76rem]">
-        <header className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#e7b84e] bg-[#fff4d8] px-3.5 py-1.5 text-xs font-black tracking-[0.06em] text-[#8a5700]">
-            <span className="size-1.5 rounded-full bg-[#ffb21c]" />
-            当前免费开放
-          </span>
-          <h1 className="mt-5 text-4xl font-black leading-[1.12] tracking-[-0.045em] text-[#071826] sm:text-5xl">
-            为个人与企业团队提供<br className="hidden sm:block" />清晰的订阅方案
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-[#5d6d77]">
-            目前所有核心功能入口免费开放，正式订阅尚未启动。你可以先完整体验平台，邮件通知功能将在收费订阅开放后启用。
-          </p>
-        </header>
+    <main className="bg-[#f6f4ef] px-5 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto max-w-[94rem]">
+        <PageIntro
+          eyebrow="Subscription plans"
+          title="订阅服务"
+          description="为个人与企业团队提供清晰的使用方案，按实际协作与筛选需求选择。"
+          metrics={[{ label: "当前阶段", value: "免费", suffix: "开放" }]}
+        />
 
-        <section className="mt-10 rounded-2xl border border-[#d9e0e2] bg-[#fffdf9] px-5 py-4 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:px-6">
+        <section className="mt-5 rounded-2xl border border-[#d9e0e2] bg-[#fffdf9] px-5 py-4 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:px-6">
           <div>
             <p className="text-sm font-black text-[#071826]">免费开放期间</p>
             <p className="mt-1 text-sm leading-6 text-[#64717c]">无需选择套餐或填写付款信息，即可使用除新标邮件通知外的核心功能。</p>
@@ -109,14 +108,17 @@ export default function PricingPage() {
 
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <div className="rounded-xl border border-[#dbe2e5] bg-white p-4">
-                    <p className="text-xs font-bold text-[#64717c]">半年订阅</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-bold text-[#64717c]">半年订阅</p>
+                      <span className="rounded-full bg-[#edf2f3] px-2 py-0.5 text-[10px] font-black text-[#425461]">{plan.halfYearSaving}</span>
+                    </div>
                     <p className="mt-1.5 text-xl font-black text-[#071826]">{plan.halfYear}</p>
                     <p className="mt-1 text-[11px] font-semibold text-[#b86e00]">{plan.halfYearAverage}</p>
                   </div>
                   <div className="rounded-xl border border-[#e7b84e] bg-[#fff8e9] p-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-bold text-[#64717c]">年度订阅</p>
-                      <span className="rounded-full bg-[#ffb21c] px-2 py-0.5 text-[10px] font-black text-[#071826]">更优惠</span>
+                      <span className="rounded-full bg-[#ffb21c] px-2 py-0.5 text-[10px] font-black text-[#071826]">{plan.yearlySaving}</span>
                     </div>
                     <p className="mt-1.5 text-xl font-black text-[#071826]">{plan.yearly}</p>
                     <p className="mt-1 text-[11px] font-semibold text-[#b86e00]">{plan.yearlyAverage}</p>

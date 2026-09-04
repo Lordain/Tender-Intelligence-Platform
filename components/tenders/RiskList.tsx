@@ -1,8 +1,14 @@
 "use client";
 
-import type { Locale, TenderRisk } from "@/types/tender";
+import type { Locale, TenderRisk, TenderRiskLevel } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { RISK_LEVEL_COLORS, RISK_LEVEL_ICONS } from "@/lib/tender-labels";
+
+const RISK_LEVEL_RANK: Record<TenderRiskLevel, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
+function bySeverity(a: TenderRisk, b: TenderRisk): number {
+  return RISK_LEVEL_RANK[a.level] - RISK_LEVEL_RANK[b.level];
+}
 
 function ChevronIcon() {
   return (
@@ -38,8 +44,8 @@ function RiskItem({ risk, locale }: { risk: TenderRisk; locale: Locale }) {
 
 export function RiskList({ risks }: { risks: TenderRisk[] }) {
   const { locale } = useLocale();
-  const highRisks = risks.filter((risk) => risk.level === "critical" || risk.level === "high");
-  const lowerRisks = risks.filter((risk) => risk.level === "medium" || risk.level === "low");
+  const highRisks = risks.filter((risk) => risk.level === "critical" || risk.level === "high").sort(bySeverity);
+  const lowerRisks = risks.filter((risk) => risk.level === "medium" || risk.level === "low").sort(bySeverity);
 
   return (
     <section className="flex flex-col gap-3">

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
+import type { TenderRelevanceTier } from "@/types/tender";
 
 // Mirrors AnalyzeUploadedDocumentResult (lib/ingestion/analyze-uploaded-
 // document.ts) — redeclared here rather than imported, since that module
@@ -18,7 +20,20 @@ type AnalyzeResult = {
   risks: number;
   status: "written" | "dry-run" | "skipped-opus-precision";
   message?: string;
+  participationScopeSet?: string;
+  relevanceTierChanged?: { from: string; to: string; reasoning: string };
+  skippedLockedTier?: boolean;
 };
+
+const PARTICIPATION_SCOPE_LABELS: Record<string, string> = {
+  national: "国内标（要求墨西哥国籍/本地成分）",
+  international_treaty: "国际标（限有贸易协定国家）",
+  international_open: "国际公开标",
+};
+
+function tierLabel(tier: string): string {
+  return RELEVANCE_TIER_LABELS[tier as TenderRelevanceTier]?.zh ?? tier;
+}
 
 export function AnalyzeDocumentForm({
   initialSlug,
@@ -149,6 +164,29 @@ export function AnalyzeDocumentForm({
             {result.status === "dry-run" && <span className="text-[#52636e]">预览模式，未写入。</span>}
             {result.status === "skipped-opus-precision" && <span className="text-[#b86e00]">跳过 — {result.message}</span>}
           </p>
+          {(result.participationScopeSet || result.relevanceTierChanged || result.skippedLockedTier) && (
+            <div className="mt-3 rounded-xl border border-[#e5e9eb] bg-white p-3 text-xs">
+              <p className="font-bold text-[#071826]">二轮打标签（基于文档内容）</p>
+              {result.participationScopeSet && (
+                <p className="mt-1.5">
+                  参与范围已更新为：<span className="font-semibold text-[#071826]">{PARTICIPATION_SCOPE_LABELS[result.participationScopeSet] ?? result.participationScopeSet}</span>
+                </p>
+              )}
+              {result.relevanceTierChanged && (
+                <div className="mt-1.5">
+                  <p>
+                    相关度分级：<span className="font-semibold text-[#071826]">{tierLabel(result.relevanceTierChanged.from)}</span> → <span className="font-semibold text-[#b86e00]">{tierLabel(result.relevanceTierChanged.to)}</span>
+                  </p>
+                  <p className="mt-1 text-[#64717c]">理由：{result.relevanceTierChanged.reasoning}</p>
+                </div>
+              )}
+              {result.skippedLockedTier && (
+                <p className="mt-1.5 text-[#64717c]">
+                  🔒 AI 认为分级应该调整，但该项目已被管理员手动锁定分级，未自动覆盖——如需采纳请到项目编辑页手动修改。
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </form>

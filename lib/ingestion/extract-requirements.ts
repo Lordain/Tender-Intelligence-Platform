@@ -90,6 +90,45 @@ const RiskSchema = z.object({
   sourceReference: z.string(),
 });
 
+/**
+ * Round 2 re-tagging (lib/ingestion/README.md "Two-round screening" —
+ * added 2026-09-04, per the user's explicit choice of "let the AI judge
+ * directly" over a deterministic keyword approach). Round 1
+ * (classifyRelevance() in lib/relevance.ts) only ever sees a title/summary
+ * and matches Spanish-language keyword regexes against it — cheap, and
+ * necessarily coarse. This document-extraction call ALREADY reads the real
+ * document, so it's the natural place to also ask: now that you've
+ * actually read it, does the Round 1 tier still hold, and what does the
+ * document say about participationScope (currently only a best-effort
+ * guess from a summary field — see types/tender.ts's own comment on it)?
+ *
+ * Deliberately NOT solved by feeding the extracted qualifications/risks
+ * text back into classifyRelevance()'s existing Spanish-regex matching —
+ * that text is Chinese-only (see this file's header comment on the
+ * zh-only extraction decision), so it would never match those patterns at
+ * all, a silently-broken "round 2" that looks like it works but never
+ * fires. Asking the model directly, grounded in the same document it just
+ * read, is the only approach that actually uses the document's content.
+ */
+const RelevanceAssessmentSchema = z.object({
+  participationScope: z
+    .enum(["national", "international_treaty", "international_open"])
+    .nullable()
+    .describe(
+      "The procedure's 'Carácter' as this document actually states it. 'national' = NACIONAL — requires Mexican nationality and/or a minimum % of contenido nacional; a foreign bidder cannot realistically participate directly. 'international_treaty' = INTERNACIONAL BAJO LA COBERTURA DE TRATADOS — open to bidders from countries with a trade treaty covering Mexico. 'international_open' = INTERNACIONAL ABIERTA — fully open. Return null ONLY if the document genuinely never states this (don't guess).",
+    ),
+  suggestedTier: z
+    .enum(["flagship", "significant", "standard", "excluded"])
+    .describe(
+      "Your own assessment of how much priority this tender deserves for a Chinese enterprise, now that you've read the real document — not a repeat of whatever the title alone suggested. flagship = genuinely large-scale/strategically significant. significant = a real, meaningful opportunity. standard = real but modest in scale. excluded = having read the actual document, this isn't a genuine equipment/works opportunity worth surfacing (e.g. it turns out to be a routine service, or participationScope is 'national' with no realistic path for a foreign bidder).",
+    ),
+  reasoning: z
+    .string()
+    .describe(
+      "Why, in Chinese (zh), grounded specifically in what THIS document says — cite concrete content (a real requirement, value, scope, or the participationScope finding), not generic boilerplate reasoning that could apply to any tender.",
+    ),
+});
+
 /** Exported so translate-requirements-{qwen,gemini}.ts can reuse the exact same schema/prompt — a provider cost/quality comparison isn't meaningful if each provider is answering a differently-worded question. */
 export const ExtractionSchema = z.object({
   qualifications: z.array(RequirementSchema).describe(
@@ -104,6 +143,13 @@ export const ExtractionSchema = z.object({
   risks: z.array(RiskSchema).describe(
     "Concrete ways a bidder or winner loses money or gets disqualified — penas convencionales, garantía de cumplimiento, causales de desechamiento, rescisión, sanciones. Do not restate generic procurement-law boilerplate that applies to every Compras MX tender identically unless this document gives it a specific number/deadline/amount."
   ),
+  // Optional (not every provider reliably returns every field on the
+  // manual-JSON-parse path — see JSON_SHAPE_INSTRUCTIONS/runExtraction()
+  // below) — analyze-uploaded-document.ts treats an absent assessment as
+  // "not assessed" rather than failing the whole extraction over it; the
+  // qualifications/experienceRequirements/requiredDocuments/risks arrays
+  // remain the core deliverable this schema exists for.
+  relevanceAssessment: RelevanceAssessmentSchema.optional(),
 });
 
 export type TenderExtraction = z.infer<typeof ExtractionSchema>;
@@ -115,7 +161,9 @@ Ground rules:
 - Every item needs a sourceReference citing where it came from (page number and/or numeral/section) — an item you cannot cite, you cannot include.
 - These documents are long and mostly procedural boilerplate (the same legal citations appear in nearly every Compras MX tender). Extract only tender-specific, actionable content — skip generic restatements of the procurement law itself.
 - All title/description fields must be written directly in Chinese (zh), concise and close to the document's own terms — do not copy multi-sentence legal paragraphs verbatim, and do not write a placeholder.
-- If a section is genuinely absent from this document (e.g. no Anexo Técnico attached), return an empty array for the corresponding field rather than guessing.`;
+- If a section is genuinely absent from this document (e.g. no Anexo Técnico attached), return an empty array for the corresponding field rather than guessing.
+
+Additionally, provide a "relevanceAssessment": this tender was already given a rough priority tier from its TITLE ALONE before anyone had read the actual document — you have now read the real thing, so give your own independent, grounded assessment of participationScope and suggestedTier (see the schema field descriptions for exactly what each means). Base this ONLY on what THIS document actually says, the same evidentiary bar as everything else above — cite concrete content in your reasoning, not a generic template.`;
 
 /** Sonnet 5 is the default (included) tier; Opus 5 is the "精度分析" premium tier the user proposed (2026-09-02) — same schema/prompt either way, only the model differs. Not yet wired to any actual paid-gating UI/API route (that doesn't exist yet); this parameter is what such a route would pass through once built. `claude-haiku-4-5-20251001` was added 2026-09-03 as a cheaper tier to evaluate alongside Qwen/Gemini via scripts/analyze-batch.ts — same schema/prompt, only the model differs, so the comparison is fair. `qwen3.5-plus` (2026-09-03) is Qwen accessed through DashScope's Anthropic-compatible endpoint, not Claude — see extract-requirements-qwen-anthropic.ts, which calls this same function with a differently-configured client via the new `client` parameter below. */
 export type ExtractionModel = "claude-sonnet-5" | "claude-opus-5" | "claude-haiku-4-5-20251001" | "qwen3.5-plus" | "qwen3.6-plus";
@@ -164,7 +212,7 @@ function parseContextOverflow(err: unknown): { actualTokens: number; maxTokens: 
 // 2026-09-03 (qwen3.5-plus, first document in a batch run) — every
 // title/description came back in Spanish, not Chinese, despite
 // SYSTEM_PROMPT already saying so once, further up the combined prompt.
-const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...]} — no prose, no markdown fences. ALL FOUR keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". Every "title" and "description" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
+const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...], "relevanceAssessment": {...}} — no prose, no markdown fences. The four array keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". "relevanceAssessment" is {"participationScope": "national"|"international_treaty"|"international_open"|null, "suggestedTier": "flagship"|"significant"|"standard"|"excluded", "reasoning": "..."} — include it when you can support it from the document; omit the key entirely rather than guessing if you genuinely cannot. Every "title"/"description"/"reasoning" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
 
 /** Pulls the first JSON object out of a text response — tolerates a model wrapping it in a ```json fence or prose despite instructions not to, rather than requiring an exact match. */
 function extractJsonObject(text: string): unknown {

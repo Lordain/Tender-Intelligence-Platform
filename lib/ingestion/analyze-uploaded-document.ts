@@ -34,6 +34,8 @@ import { intakeDocument } from "@/lib/ingestion/document-intake";
 import { hasRealTextLayer } from "@/lib/ingestion/text-layer";
 import { extractTenderRequirements, toTenderFields, type ExtractionModel, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
 import { extractTenderRequirementsQwenAnthropic } from "@/lib/ingestion/extract-requirements-qwen-anthropic";
+import { untranslated } from "@/lib/ingestion/text-utils";
+import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 
 export type AnalyzeUploadedDocumentResult = {
   fileName: string;
@@ -46,6 +48,17 @@ export type AnalyzeUploadedDocumentResult = {
   risks: number;
   status: "written" | "dry-run" | "skipped-opus-precision";
   message?: string;
+  /**
+   * Round 2 re-tagging outcome (see extract-requirements.ts's
+   * RelevanceAssessmentSchema) — undefined when the model didn't return an
+   * assessment at all (tolerated, not an error). relevanceTierChanged is
+   * undefined both when the model agreed with the existing tier AND when
+   * the tender's tier is manually locked (relevance_manually_overridden) —
+   * skippedLockedTier distinguishes the second case for the admin UI.
+   */
+  participationScopeSet?: string;
+  relevanceTierChanged?: { from: string; to: string; reasoning: string };
+  skippedLockedTier?: boolean;
 };
 
 export async function analyzeUploadedDocument(
@@ -88,7 +101,11 @@ export async function analyzeUploadedDocument(
 
     if (!options.write) return { ...base, status: "dry-run" };
 
-    const { data: tender, error: tenderError } = await supabase.from("tenders").select("id").eq("slug", tenderSlug).maybeSingle();
+    const { data: tender, error: tenderError } = await supabase
+      .from("tenders")
+      .select("id, relevance_tier, relevance_manually_overridden")
+      .eq("slug", tenderSlug)
+      .maybeSingle();
     if (tenderError || !tender) {
       throw new Error(`No ingested tender found for slug "${tenderSlug}": ${tenderError?.message ?? "not found"}`);
     }
@@ -160,7 +177,39 @@ export async function analyzeUploadedDocument(
       });
     }
 
-    return { ...base, status: "written" };
+    // Round 2 re-tagging (see extract-requirements.ts's
+    // RelevanceAssessmentSchema header comment) — apply the model's own
+    // assessment of THIS document, now that it's been read, instead of
+    // leaving relevance/participationScope permanently fixed at whatever
+    // Round 1's title-only classifyRelevance() decided at ingest time.
+    let participationScopeSet: string | undefined;
+    let relevanceTierChanged: { from: string; to: string; reasoning: string } | undefined;
+    let skippedLockedTier: boolean | undefined;
+
+    const assessment = extraction.relevanceAssessment;
+    if (assessment) {
+      if (assessment.participationScope) {
+        await supabase.from("tenders").update({ participation_scope: assessment.participationScope }).eq("id", tenderId);
+        participationScopeSet = assessment.participationScope;
+      }
+
+      const currentTier = tender.relevance_tier as string | null;
+      if (tender.relevance_manually_overridden) {
+        if (assessment.suggestedTier !== currentTier) skippedLockedTier = true;
+      } else if (assessment.suggestedTier !== currentTier) {
+        await supabase
+          .from("tenders")
+          .update({
+            relevance_tier: assessment.suggestedTier,
+            relevance_label: RELEVANCE_TIER_LABELS[assessment.suggestedTier],
+            relevance_reason: untranslated(assessment.reasoning),
+          })
+          .eq("id", tenderId);
+        relevanceTierChanged = { from: currentTier ?? "(none)", to: assessment.suggestedTier, reasoning: assessment.reasoning };
+      }
+    }
+
+    return { ...base, status: "written", participationScopeSet, relevanceTierChanged, skippedLockedTier };
   } finally {
     try {
       unlinkSync(tempPath);

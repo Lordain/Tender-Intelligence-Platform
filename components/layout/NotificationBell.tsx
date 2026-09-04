@@ -39,7 +39,7 @@ export function NotificationBell({ tenders }: { tenders: Tender[] }) {
         onClick={() => setOpen((prev) => !prev)}
         aria-label={localize(uiText.notifications, locale)}
         aria-expanded={open}
-        className="relative inline-flex items-center justify-center rounded-full p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50"
+        className="relative inline-flex size-10 items-center justify-center rounded-xl border border-white/20 text-white/60 transition-colors hover:border-white/40 hover:bg-white/8 hover:text-white"
       >
         <BellIcon />
         {unreadCount > 0 && (

@@ -24,9 +24,6 @@ export function Footer() {
         <div className="max-w-sm">
           <Link href="/" className="inline-flex items-center gap-3"><FooterMark /><span className="text-lg font-black tracking-[0.08em]">招投标情报</span></Link>
           <p className="mt-5 text-sm leading-7 text-white/52">把墨西哥政府招标信息转化为结构化中文情报，帮助中国团队更快发现、理解和跟进机会。</p>
-          <div className="mt-6 flex flex-wrap gap-2 text-[10px] font-semibold text-white/48">
-            {['COMPRAS MX', 'CFE', 'PEMEX'].map((source) => <span key={source} className="rounded-lg border border-white/12 px-3 py-1.5">{source}</span>)}
-          </div>
         </div>
         {columns.map((column) => (
           <div key={column.title}>

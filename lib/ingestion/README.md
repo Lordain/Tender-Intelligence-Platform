@@ -1637,6 +1637,70 @@ automatically by that same action (see its own header comment). Not run
 from this sandbox (no live Supabase access) — needs the user's own
 "重新分类并写入" click.
 
+### Colombia's real key dates are incomplete — two real gaps fixed, one bigger option surfaced (2026-09-04)
+
+The user flagged this directly ("哥伦比亚招标信息目前并不完整，很多关键日期缺失") after
+opening one real tender's government detail page and seeing several real
+date fields (fecha de firma del contrato, fecha de inicio de ejecución,
+plazo de ejecución) that this platform's Colombia tenders don't show at
+all. Two real, immediately-fixable causes found in `colombia-mapper.ts`,
+both just wiring already-fetched data that was going unused — no new
+network access needed:
+
+1. **`submissionDeadline` was computed but never added to `keyDates`.**
+   The field was set on the `Tender` itself, but `keyDates` only ever
+   carried a single hardcoded `publication` entry — the exact same
+   "computed a value, never pushed it into keyDates" trap already
+   documented in `licitia-vigente-mapper.ts`'s header comment (the tender
+   detail page's timeline only ever renders `keyDates`, never the raw
+   `Tender` fields directly). Fixed: a `submission` entry is now added
+   whenever `submissionDeadline` is present.
+2. **`duracion`/`unidad_de_duracion` were captured in `SecopProcesoRow`
+   from day one but never read anywhere.** These are real fields (part of
+   the original 5-row sample this connector was built from) that
+   `relevance.ts`'s duration-based signal (`SHORT_DURATION_DAYS`/
+   `LONG_DURATION_DAYS`, task #10 in the standing backlog) could have used
+   from the start — except that signal only ever read a Spanish text
+   phrase (`DURATION_ANCHOR`, "plazo de ejecución: N días") out of
+   title/summary, which Colombia's real text never contains. So Colombia
+   tenders could never trigger this signal at all, real duration or not.
+   Fixed: `classifyRelevance()` now accepts an optional
+   `structuredDurationDays` input that takes precedence over the text
+   scan; `colombia-mapper.ts` normalizes `duracion`+`unidad_de_duracion`
+   into days and passes it through. **Caveat, same posture as
+   `DURATION_ANCHOR`'s own header comment**: the unit words
+   (`normalizeDurationDays()` in `colombia-mapper.ts` — día/semana/mes/año)
+   are the common Spanish terms, NOT yet confirmed against a real
+   `unidad_de_duracion` value (none has ever been recorded in this file);
+   an unrecognized unit falls back to not firing rather than guessing a
+   conversion. Added two synthetic `lib/relevance-fixtures.ts` cases
+   (45-day -> excluded, 400-day -> flagship) confirming the plumbing
+   itself works; 79/79 fixtures pass. Still needs a real run to confirm
+   the actual unit words match — this is the mechanism now existing where
+   it didn't before, not full confirmation of task #10.
+
+**A bigger, not-yet-pursued option surfaced in the same conversation**:
+the user separately found Colombia Compra Eficiente's own official OCDS
+(Open Contracting Data Standard) API manual
+(`operaciones.colombiacompra.gov.co/.../cce_manual_datos_abiertos.pdf`,
+`api.colombiacompra.gov.co/releases/`) — a properly documented,
+standards-based endpoint distinct from the two Socrata datasets this
+connector currently chains together. This project already has full,
+confirmed-real OCDS plumbing built for Mexico (`ocds-mapper.ts` +
+`types.ts`'s `OcdsRelease`/`OcdsDocument`/`OcdsPeriod` types — see
+`README.md`'s Mexico OCDS section), which already reads
+`tender.tenderPeriod`/`tender.enquiryPeriod`/`awards[].date` into
+`keyDates` AND `tender.documents[].url` — i.e., the OCDS route could
+plausibly solve BOTH the missing-key-dates problem here AND the
+attachment-id-mismatch problem investigated earlier in this same file, in
+one integration, since OCDS is a single standardized schema rather than
+three separately-namespaced ids. Deliberately NOT built this pass:
+standing up a Colombia OCDS connector is a bigger scope change (new
+connector, pagination strategy, and a real de-dup risk against the
+already-ingested Socrata-sourced tenders under a different slug
+namespace) that deserves a deliberate go/no-go from the user rather than
+a silent addition mid-investigation — flagged back to them, not resolved.
+
 ### Currency unified to USD platform-wide
 
 Adding a source with real values in a currency other than MXN (Colombian

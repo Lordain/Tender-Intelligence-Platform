@@ -111,6 +111,45 @@ function parseDate(raw: string | undefined): string | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
+/**
+ * Normalizes `duracion` + `unidad_de_duracion` into days, feeding
+ * classifyRelevance()'s SHORT_DURATION_DAYS/LONG_DURATION_DAYS signal from
+ * a real STRUCTURED field instead of the Spanish text-phrase scan
+ * (DURATION_ANCHOR in relevance.ts) that Colombia's title/summary text
+ * never actually contains — without this, Colombia could never trigger the
+ * duration signal at all, real or not.
+ *
+ * DEFENSIVE, same posture as DURATION_ANCHOR's own header comment: the
+ * unit words below ("Día(s)"/"Mes(es)"/"Año(s)"/"Semana(s)") are the
+ * common Spanish terms, NOT yet confirmed against a real
+ * `unidad_de_duracion` value (no real example has been captured/recorded
+ * anywhere in this project's README yet) — an unrecognized unit falls
+ * back to undefined (signal doesn't fire) rather than guessing a
+ * conversion, so a bad guess can't silently misfire. Revisit once a real
+ * value is seen.
+ */
+const DAYS_PER_UNIT: Record<string, number> = {
+  "día": 1,
+  "dias": 1,
+  "días": 1,
+  semana: 7,
+  semanas: 7,
+  mes: 30,
+  meses: 30,
+  "año": 365,
+  ano: 365,
+  años: 365,
+  anos: 365,
+};
+
+function normalizeDurationDays(duracion: string | undefined, unidad: string | undefined): number | undefined {
+  if (!duracion || !unidad) return undefined;
+  const count = Number(duracion);
+  if (!Number.isFinite(count) || count <= 0) return undefined;
+  const perUnit = DAYS_PER_UNIT[unidad.trim().toLowerCase()];
+  return perUnit !== undefined ? Math.round(count * perUnit) : undefined;
+}
+
 export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): Tender | null {
   const title = row.nombre_del_procedimiento?.trim();
   const buyer = row.entidad?.trim();
@@ -131,6 +170,9 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
   const providerName = row.nombre_del_proveedor?.trim();
   const awardedTo = providerName && providerName !== "No Definido" ? providerName : undefined;
 
+  const submissionDeadline = parseDate(row.fecha_de_recepcion_de) ?? undefined;
+  const structuredDurationDays = normalizeDurationDays(row.duracion, row.unidad_de_duracion);
+
   return {
     id: crypto.randomUUID(),
     // Own slug namespace ("secop-") — a real, standalone connector, no
@@ -146,7 +188,7 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
     scopeType,
     procedureType: row.modalidad_de_contratacion?.trim() || "Unknown",
     publicationDate,
-    submissionDeadline: parseDate(row.fecha_de_recepcion_de) ?? undefined,
+    submissionDeadline,
     // Colombian public procurement is denominated in COP by law/convention
     // — the dataset carries no separate currency field to read directly
     // (unlike Compras MX's explicit "Moneda" column), so this is a real-
@@ -160,9 +202,28 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],
-    keyDates: [{ id: `${tenderNumber}-publication`, type: "publication", date: publicationDate }],
+    keyDates: [
+      { id: `${tenderNumber}-publication`, type: "publication", date: publicationDate },
+      // Real gap fixed 2026-09-04: submissionDeadline was already being
+      // computed above but never also reflected here, so the tender
+      // detail page's key-dates timeline (which only ever renders
+      // keyDates, same trap already documented in
+      // licitia-vigente-mapper.ts) silently dropped it for every
+      // Colombia tender that had one.
+      ...(submissionDeadline ? [{ id: `${tenderNumber}-submission`, type: "submission" as const, date: submissionDeadline }] : []),
+    ],
     risks: [],
-    relevance: classifyRelevance({ title, summary, industries, scopeType, estimatedValue, currency: "COP", buyer, country: "Colombia" }),
+    relevance: classifyRelevance({
+      title,
+      summary,
+      industries,
+      scopeType,
+      estimatedValue,
+      currency: "COP",
+      buyer,
+      country: "Colombia",
+      structuredDurationDays,
+    }),
     sourceName,
     // Real, directly captured — urlproceso.url points at the actual
     // public tender page on community.secop.gov.co.

@@ -31,6 +31,7 @@ for (const fixture of RELEVANCE_FIXTURES) {
     buyer: fixture.buyer,
     country: fixture.country,
     isNationalPriorityProject: fixture.isNationalPriorityProject,
+    structuredDurationDays: fixture.structuredDurationDays,
   });
 
   const ok = result.tier === fixture.expectedTier;

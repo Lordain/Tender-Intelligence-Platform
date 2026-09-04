@@ -34,6 +34,7 @@ export type RelevanceFixture = {
   buyer?: string;
   country?: string;
   isNationalPriorityProject?: boolean;
+  structuredDurationDays?: number;
 };
 
 export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
@@ -562,5 +563,29 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "flagship",
     note: "Regression check — a genuine access-control SYSTEM/equipment purchase must still promote via INCLUDE_OVERRIDE_KEYWORDS, confirming the narrowed pattern (now requiring 'sistema'/'equipo'/'dispositivo'/etc. near 'control de acceso') doesn't lose real matches, only the bare-word false positive above.",
     scopeType: "equipment",
+  },
+
+  // --- structuredDurationDays (2026-09-04): Colombia's real duracion/
+  // unidad_de_duracion fields feed the duration signal directly now,
+  // since Colombia's title/summary text never contains the Spanish
+  // phrasing DURATION_ANCHOR scans for — without this the signal could
+  // never fire for Colombia at all. See colombia-mapper.ts's
+  // normalizeDurationDays() header comment for the "units unverified
+  // against real data" caveat. ---
+  {
+    title: "SUMINISTRO DE ALGO GENERICO",
+    expectedTier: "excluded",
+    note: "Synthetic — a 45-day structured duration must trigger the same SHORT_DURATION_DAYS exclude as a text-anchored one would, confirming classifyRelevance() actually reads structuredDurationDays.",
+    scopeType: "services",
+    structuredDurationDays: 45,
+    country: "Colombia",
+  },
+  {
+    title: "SUMINISTRO DE ALGO GENERICO A LARGO PLAZO",
+    expectedTier: "flagship",
+    note: "Synthetic — a 400-day structured duration must trigger the same LONG_DURATION_DAYS flagship promotion as a text-anchored one would, independent of value/industry match.",
+    scopeType: "services",
+    structuredDurationDays: 400,
+    country: "Colombia",
   },
 ];

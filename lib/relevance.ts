@@ -711,6 +711,17 @@ export function classifyRelevance(input: {
    * that could drift out of sync.
    */
   isNationalPriorityProject?: boolean;
+  /**
+   * Pre-computed contract duration in days, from a real STRUCTURED source
+   * field (e.g. Colombia SECOP II's `duracion`/`unidad_de_duracion`) rather
+   * than the DURATION_ANCHOR text-phrase scan below. Takes precedence over
+   * that scan when present. Added 2026-09-04: Colombia's real title/summary
+   * text never contains the Spanish phrasing DURATION_ANCHOR looks for
+   * ("plazo de ejecución: N días"), so without this the duration-based
+   * signal (SHORT_DURATION_DAYS/LONG_DURATION_DAYS) could never fire for
+   * Colombia at all, structured data or not.
+   */
+  structuredDurationDays?: number;
 }): TenderRelevance {
   const haystack = [input.title, input.summary, ...input.industries].filter(Boolean).join(" ");
   const hasIncludeOverride =
@@ -748,7 +759,7 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "consulting") };
   }
 
-  const durationDays = extractAnchoredDurationDays(haystack);
+  const durationDays = input.structuredDurationDays ?? extractAnchoredDurationDays(haystack);
   if (!hasIncludeOverride && durationDays !== undefined && durationDays < SHORT_DURATION_DAYS) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "short_duration") };
   }

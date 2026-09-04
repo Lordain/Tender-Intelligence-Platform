@@ -115,10 +115,26 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const industries = parseList(searchParams.get("industry"));
   const industryMatchMode = searchParams.get("industryMode") === "all" ? "all" : "any";
   const scopeTypes = parseList(searchParams.get("scope")) as TenderScopeType[];
+  // "none" is a distinct sentinel from an absent param: absent means "use
+  // the app's default preset" (DEFAULT_STATUSES/DEFAULT_RELEVANCE_TIERS
+  // below); "none" means the user explicitly cleared every chip in that
+  // group via the "全部" quick-clear button (see InlineTogglePills) and
+  // wants NO restriction on this dimension — a plain empty comma-list
+  // can't represent that distinction on its own, since joining an empty
+  // array back to "" is indistinguishable from "param was never set".
   const statusParam = searchParams.get("status");
-  const statuses = (statusParam !== null ? parseList(statusParam) : DEFAULT_STATUSES) as TenderStatus[];
+  // Memoized so an empty-array branch (statusParam === "none") doesn't get
+  // a fresh [] reference on every render — filterTenders' own useMemo
+  // below depends on this array's identity, not just its contents.
+  const statuses = useMemo<TenderStatus[]>(
+    () => (statusParam === "none" ? [] : statusParam !== null ? (parseList(statusParam) as TenderStatus[]) : DEFAULT_STATUSES),
+    [statusParam],
+  );
   const tierParam = searchParams.get("tier");
-  const relevanceTiers = (tierParam !== null ? parseList(tierParam) : DEFAULT_RELEVANCE_TIERS) as TenderRelevanceTier[];
+  const relevanceTiers = useMemo<TenderRelevanceTier[]>(
+    () => (tierParam === "none" ? [] : tierParam !== null ? (parseList(tierParam) as TenderRelevanceTier[]) : DEFAULT_RELEVANCE_TIERS),
+    [tierParam],
+  );
   const sortParam = searchParams.get("sort");
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "deadline_asc";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -209,10 +225,10 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
           <button type="submit" className="rounded-xl bg-[#ffb21c] px-7 text-sm font-black text-[#071826] hover:bg-[#ffc247]">搜索</button>
         </form>
 
-        <div className="mt-5 flex flex-wrap items-start gap-4">
-          <label className="flex min-w-[9.5rem] flex-col gap-1.5">
-            <span className="text-xs font-semibold text-[#425461]">国家 / 地区</span>
-            <span className="flex h-10 items-center gap-2 rounded-xl border border-[#d8e0e3] bg-[#f2f4f3] px-3 text-sm font-semibold text-[#172c3b]"><MexicoFlag />墨西哥</span>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-[#425461]">国家/地区</span>
+            <span className="flex h-9 items-center gap-1.5 rounded-xl border border-[#d8e0e3] bg-[#f2f4f3] px-2.5 text-sm font-semibold text-[#172c3b]"><MexicoFlag />墨西哥</span>
           </label>
           <MultiSelectPills
             label="行业"
@@ -230,19 +246,23 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
         </div>
 
         {/* Short, fixed-length option lists stay always-visible instead of
-            behind a dropdown — see InlineTogglePills' header comment. */}
-        <div className="mt-4 flex flex-col gap-3 border-t border-[#e5e9eb] pt-4">
+            behind a dropdown — see InlineTogglePills' header comment. All
+            three groups share one wrapping row (compressed per explicit
+            user request 2026-09-04) rather than a row each. */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#e5e9eb] pt-3">
           <InlineTogglePills
             label={localize(uiText.scaleLabel, locale)}
             options={RELEVANCE_TIERS.map((option) => ({ value: option, label: localize(RELEVANCE_TIER_LABELS[option], locale) }))}
             selected={relevanceTiers}
-            onChange={(next) => updateParams({ tier: next.join(",") || null })}
+            showAllOption
+            onChange={(next) => updateParams({ tier: next.length === 0 ? "none" : next.join(",") })}
           />
           <InlineTogglePills
             label="项目阶段"
             options={STATUSES.map((option) => ({ value: option, label: localize(STATUS_LABELS[option], locale) }))}
             selected={statuses}
-            onChange={(next) => updateParams({ status: next.join(",") || null })}
+            showAllOption
+            onChange={(next) => updateParams({ status: next.length === 0 ? "none" : next.join(",") })}
           />
           <InlineTogglePills
             label="计划交标"

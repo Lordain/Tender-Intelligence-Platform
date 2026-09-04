@@ -126,6 +126,10 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const currentPage = Math.min(page, totalPages);
   const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const reminders = sorted.filter((tender) => tender.submissionDeadline).slice(0, 4);
+  const newThisWeekCount = useMemo(() => {
+    const cutoff = new Date().getTime() - 7 * 24 * 60 * 60 * 1000;
+    return sorted.filter((tender) => new Date(tender.createdAt).getTime() >= cutoff).length;
+  }, [sorted]);
   const currentSearchHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   return (
@@ -238,8 +242,8 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
             <h2 className="text-lg font-bold">本周机会</h2>
             <div className="mt-6 grid grid-cols-3 divide-x divide-white/20 text-center">
               <div><p className="text-xs text-white/60">当前项目</p><p className="mt-2 text-2xl font-black">{sorted.length}</p></div>
+              <div><p className="text-xs text-white/60">本周新增</p><p className="mt-2 text-2xl font-black text-[#ffb21c]">{newThisWeekCount}</p></div>
               <div><p className="text-xs text-white/60">即将交标</p><p className="mt-2 text-2xl font-black text-[#ffb21c]">{reminders.length}</p></div>
-              <div><p className="text-xs text-white/60">已选行业</p><p className="mt-2 text-2xl font-black text-[#ffb21c]">{industries.length}</p></div>
             </div>
           </section>
           <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5">

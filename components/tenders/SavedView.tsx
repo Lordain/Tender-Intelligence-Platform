@@ -50,11 +50,10 @@ export function SavedView({ tenders }: { tenders: Tender[] }) {
   return (
     <main className="bg-[#f6f4ef] px-5 py-12 sm:px-8 sm:py-14">
       <div className="mx-auto max-w-[80rem]">
-        <header className="flex flex-col justify-between gap-6 border-b border-[#dbe2e5] pb-8 sm:flex-row sm:items-end">
+        <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">My workspace</p>
-            <h1 className="mt-3 text-4xl font-black tracking-[-0.045em] text-[#071826] sm:text-5xl">我的收藏</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#64717c]">集中管理常用筛选与重点项目，快速返回正在评估和持续跟进的招标机会。</p>
+            <h1 className="text-4xl font-black tracking-[-0.04em] text-[#071826] sm:text-5xl">我的收藏</h1>
+            <p className="mt-2 max-w-2xl text-base text-[#65747d]">集中管理常用筛选与重点项目，快速返回正在评估和持续跟进的招标机会。</p>
           </div>
           <div className="flex gap-3">
             <div className="min-w-28 rounded-xl border border-[#dbe2e5] bg-[#fffdf9] px-4 py-3">

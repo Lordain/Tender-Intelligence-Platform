@@ -22,6 +22,7 @@
     "ingest:pemex-attachments": "tsx --env-file-if-exists=.env.local scripts/ingest-pemex-attachments.ts",
     "ingest:colombia": "tsx --env-file-if-exists=.env.local scripts/ingest-colombia.ts",
     "ingest:colombia-live": "tsx --env-file-if-exists=.env.local scripts/ingest-colombia-live.ts",
+    "ingest:colombia-ocds": "tsx --env-file-if-exists=.env.local scripts/ingest-colombia-ocds.ts",
     "ingest:ecopetrol-contracts": "tsx --env-file-if-exists=.env.local scripts/ingest-ecopetrol-contracts.ts",
     "ingest:ecopetrol-convocatorias": "tsx --env-file-if-exists=.env.local scripts/ingest-ecopetrol-convocatorias.ts",
     "ingest:colombia-documents": "tsx --env-file-if-exists=.env.local scripts/ingest-colombia-documents.ts",

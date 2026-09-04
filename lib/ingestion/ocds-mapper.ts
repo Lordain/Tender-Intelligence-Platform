@@ -80,6 +80,8 @@ export function mapOcdsReleaseToTender(
   release: OcdsRelease,
   sourceName: string,
   sourceUrlBase: string,
+  /** Defaults to "Mexico" (this mapper's original, only real user) so the existing compras-mx caller doesn't need updating. Colombia's OCDS connector (colombia-ocds-live.ts) passes "Colombia" explicitly. */
+  country: string = "Mexico",
 ): Tender | null {
   const tender = release.tender;
   if (!tender?.title) return null;
@@ -108,7 +110,7 @@ export function mapOcdsReleaseToTender(
     title: untranslated(tender.title),
     summary: untranslated(tender.description ?? tender.title),
     buyer: buyerName,
-    country: "Mexico",
+    country,
     governmentLevel: inferGovernmentLevel(buyerName),
     industries,
     scopeType,
@@ -132,6 +134,7 @@ export function mapOcdsReleaseToTender(
       estimatedValue,
       currency,
       buyer: buyerName,
+      country,
     }),
     sourceName,
     sourceUrl: `${sourceUrlBase}${release.ocid}`,

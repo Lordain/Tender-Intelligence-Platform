@@ -30,6 +30,8 @@ export type TranslateAllTendersResult = {
   translatedCount?: number;
   failedCount?: number;
   failedSlugs?: string[];
+  /** Most recent real error message from a failed API call, if any — callers (the admin API route) use this to log an admin_alerts row when translation is failing systemically (quota/connection), not just per one bad row. */
+  lastErrorMessage?: string;
   sample: { slug: string; titleEs: string }[];
 };
 
@@ -73,6 +75,7 @@ export async function translateAllTenders(
   let translatedCount = 0;
   let failedCount = 0;
   const failedSlugs: string[] = [];
+  let lastErrorMessage: string | undefined;
 
   for (const batch of chunk(toTranslate, BATCH_SIZE)) {
     const input: TenderToTranslate[] = batch.map((t) => ({ slug: t.slug, titleEs: t.title.es, summaryEs: t.summary.es }));
@@ -80,8 +83,9 @@ export async function translateAllTenders(
     let results: TranslatedTender[];
     try {
       results = await translateTenderBatch(input);
-    } catch {
+    } catch (err) {
       results = [];
+      lastErrorMessage = err instanceof Error ? err.message : String(err);
     }
     const bySlug = new Map(results.map((r) => [r.slug, r]));
 
@@ -93,8 +97,8 @@ export async function translateAllTenders(
       try {
         const [single] = await translateTenderBatch([{ slug: tender.slug, titleEs: tender.title.es, summaryEs: tender.summary.es }]);
         if (single) bySlug.set(tender.slug, single);
-      } catch {
-        // leave missing — recorded as failed below
+      } catch (err) {
+        lastErrorMessage = err instanceof Error ? err.message : String(err);
       }
     }
 
@@ -124,5 +128,5 @@ export async function translateAllTenders(
     }
   }
 
-  return { ...result, translatedCount, failedCount, failedSlugs };
+  return { ...result, translatedCount, failedCount, failedSlugs, lastErrorMessage };
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { analyzeUploadedDocument } from "@/lib/ingestion/analyze-uploaded-document";
+import { logAdminAlert } from "@/lib/admin-alerts";
 
 /**
  * Web-form counterpart to the two-step CLI flow (npm run ingest:documents
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
     const result = await analyzeUploadedDocument(supabase!, tenderSlug.trim(), { buffer, fileName: file.name }, { write, force });
     return NextResponse.json(result);
   } catch (err) {
+    await logAdminAlert(supabase, "analyze-document", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

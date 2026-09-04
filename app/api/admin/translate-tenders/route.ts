@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { translateAllTenders } from "@/lib/ingestion/translate-all-tenders";
+import { logAdminAlert } from "@/lib/admin-alerts";
 
 /**
  * Web-form counterpart to `npm run translate:tenders` (see the "翻译所有
@@ -29,8 +30,12 @@ export async function POST(request: Request) {
 
   try {
     const result = await translateAllTenders(supabase, { write: body.write === true, limit: body.limit });
+    if (result.failedCount && result.lastErrorMessage) {
+      await logAdminAlert(supabase, "translate-tenders", new Error(result.lastErrorMessage));
+    }
     return NextResponse.json(result);
   } catch (err) {
+    await logAdminAlert(supabase, "translate-tenders", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

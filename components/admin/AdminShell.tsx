@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AdminAlertBanner } from "@/components/admin/AdminAlertBanner";
 
 const links = [
   { href: "/admin/tenders", label: "项目管理", detail: "招标数据" },
@@ -39,7 +40,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <Link href="/tenders" className="mt-8 hidden border-t border-white/10 px-3 pt-6 text-xs font-semibold text-white/52 hover:text-white lg:block">← 返回前台</Link>
         </div>
       </aside>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0">
+        <AdminAlertBanner />
+        {children}
+      </div>
     </div>
   );
 }

@@ -7,14 +7,14 @@ import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from 
 import { ALL_INDUSTRIES } from "@/lib/industry";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, industryLabel } from "@/lib/tender-labels";
+import { COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, countryLabel, industryLabel } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders, type SortKey } from "@/lib/filter-tenders";
 import { useSavedTenderIds } from "@/lib/saved";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
 import { InlineTogglePills } from "@/components/tenders/InlineTogglePills";
 import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
-import { MexicoFlag } from "@/components/tenders/CountryFlag";
+import { ColombiaFlag, CountryFlag, MexicoFlag } from "@/components/tenders/CountryFlag";
 
 const SCOPE_TYPES: TenderScopeType[] = ["equipment", "services", "equipment_services", "works", "consulting"];
 const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed", "awarded", "cancelled"];
@@ -28,6 +28,7 @@ const DEFAULT_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "s
 // no way to widen the filter from the UI.
 const RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
 const DEFAULT_RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant"];
+const AVAILABLE_COUNTRIES = ["Mexico", "Colombia"] as const;
 const PAGE_SIZE = 28;
 
 function parseList(param: string | null): string[] {
@@ -84,7 +85,7 @@ function TenderRow({ tender }: { tender: Tender }) {
         </h2>
         {hasRealTranslation && <p className="mt-1 truncate text-xs text-[#75838c]">{tender.title.es}</p>}
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-[#52636e]">
-          <span className="inline-flex items-center gap-1.5"><MexicoFlag />墨西哥</span>
+          <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
           <span className="truncate">发布机构：{tender.buyer}</span>
           <span>项目编号：{tender.tenderNumber}</span>
         </div>
@@ -112,6 +113,11 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const { savedIds } = useSavedTenderIds();
 
   const query = searchParams.get("q") ?? "";
+  const countryParam = searchParams.get("country");
+  const countries = useMemo(
+    () => countryParam ? parseList(countryParam) : [...AVAILABLE_COUNTRIES],
+    [countryParam],
+  );
   const industries = parseList(searchParams.get("industry"));
   const industryMatchMode = searchParams.get("industryMode") === "all" ? "all" : "any";
   const scopeTypes = parseList(searchParams.get("scope")) as TenderScopeType[];
@@ -141,7 +147,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const viewParam = searchParams.get("view");
   const view = viewParam === "new" || viewParam === "deadline" ? viewParam : null;
 
-  const hasActiveFilters = industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || tierParam !== null || query.length > 0 || view !== null;
+  const hasActiveFilters = countryParam !== null || industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || tierParam !== null || query.length > 0 || view !== null;
 
   function updateParams(updates: Record<string, string | null>, resetPage = true) {
     const params = new URLSearchParams(window.location.search);
@@ -155,8 +161,8 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   }
 
   const filtered = useMemo(
-    () => filterTenders(tenders, { query, industries, industryMatchMode, scopeTypes, statuses, countries: ["Mexico"], relevanceTiers }, locale),
-    [tenders, query, industries, industryMatchMode, scopeTypes, statuses, relevanceTiers, locale],
+    () => filterTenders(tenders, { query, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers }, locale),
+    [tenders, query, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers, locale],
   );
   // Stat-card counts are derived from `filtered` (every active filter EXCEPT
   // `view`), not `sorted` — so the "本周新增"/"即将交标" numbers stay stable
@@ -205,7 +211,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-4xl font-black tracking-[-0.04em] text-[#071826] sm:text-5xl">招标情报</h1>
-          <p className="mt-2 text-base text-[#65747d]">发现并评估适合中国企业的墨西哥政府采购机会</p>
+          <p className="mt-2 text-base text-[#65747d]">发现并评估适合中国企业的拉美政府采购机会</p>
         </div>
         <p className="text-sm font-semibold text-[#52636e]">共 {sorted.length.toLocaleString()} 个项目</p>
       </header>
@@ -225,11 +231,17 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
           <button type="submit" className="rounded-xl bg-[#ffb21c] px-7 text-sm font-black text-[#071826] hover:bg-[#ffc247]">搜索</button>
         </form>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[#425461]">国家/地区</span>
-            <span className="flex h-9 items-center gap-1.5 rounded-xl border border-[#d8e0e3] bg-[#f2f4f3] px-2.5 text-sm font-semibold text-[#172c3b]"><MexicoFlag />墨西哥</span>
-          </label>
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
+          <MultiSelectPills
+            label="国家/地区"
+            options={AVAILABLE_COUNTRIES.map((country) => ({
+              value: country,
+              label: localize(COUNTRY_LABELS[country], locale),
+              icon: country === "Mexico" ? <MexicoFlag /> : <ColombiaFlag />,
+            }))}
+            selected={countries as (typeof AVAILABLE_COUNTRIES)[number][]}
+            onChange={(next) => updateParams({ country: next.length === 1 ? next[0] : null })}
+          />
           <MultiSelectPills
             label="行业"
             searchable
@@ -249,31 +261,37 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
             behind a dropdown — see InlineTogglePills' header comment. All
             three groups share one wrapping row (compressed per explicit
             user request 2026-09-04) rather than a row each. */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#e5e9eb] pt-3">
-          <InlineTogglePills
-            label={localize(uiText.scaleLabel, locale)}
-            options={RELEVANCE_TIERS.map((option) => ({ value: option, label: localize(RELEVANCE_TIER_LABELS[option], locale) }))}
-            selected={relevanceTiers}
-            showAllOption
-            onChange={(next) => updateParams({ tier: next.length === 0 ? "none" : next.join(",") })}
-          />
-          <InlineTogglePills
-            label="项目阶段"
-            options={STATUSES.map((option) => ({ value: option, label: localize(STATUS_LABELS[option], locale) }))}
-            selected={statuses}
-            showAllOption
-            onChange={(next) => updateParams({ status: next.length === 0 ? "none" : next.join(",") })}
-          />
-          <InlineTogglePills
-            label="计划交标"
-            mode="single"
-            options={[
-              { value: "deadline_asc" as const, label: "由近到远" },
-              { value: "publication_desc" as const, label: "最新发布" },
-            ]}
-            selected={[sort]}
-            onChange={(next) => updateParams({ sort: next[0] ?? null })}
-          />
+        <div className="mt-4 grid gap-y-3 border-t border-[#e5e9eb] pt-4 xl:grid-cols-[max-content_max-content_max-content] xl:divide-x xl:divide-[#dbe2e5]">
+          <div className="xl:pr-5">
+            <InlineTogglePills
+              label={localize(uiText.scaleLabel, locale)}
+              options={RELEVANCE_TIERS.map((option) => ({ value: option, label: localize(RELEVANCE_TIER_LABELS[option], locale) }))}
+              selected={relevanceTiers}
+              showAllOption
+              onChange={(next) => updateParams({ tier: next.length === 0 ? "none" : next.join(",") })}
+            />
+          </div>
+          <div className="xl:px-5">
+            <InlineTogglePills
+              label="项目阶段"
+              options={STATUSES.map((option) => ({ value: option, label: localize(STATUS_LABELS[option], locale) }))}
+              selected={statuses}
+              showAllOption
+              onChange={(next) => updateParams({ status: next.length === 0 ? "none" : next.join(",") })}
+            />
+          </div>
+          <div className="xl:pl-5">
+            <InlineTogglePills
+              label="计划交标"
+              mode="single"
+              options={[
+                { value: "deadline_asc" as const, label: "由近到远" },
+                { value: "publication_desc" as const, label: "最新发布" },
+              ]}
+              selected={[sort]}
+              onChange={(next) => updateParams({ sort: next[0] ?? null })}
+            />
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -362,7 +380,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
               <div className="mt-4 divide-y divide-[#e5e9eb]">
                 {savedReminders.map((tender) => (
                   <Link key={tender.id} href={`/tenders/${tender.slug}`} className="block py-3 first:pt-0 last:pb-0">
-                    <span className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#64717c]"><MexicoFlag />墨西哥</span>
+                    <span className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#64717c]"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
                     <p className="line-clamp-2 text-sm font-bold leading-5 text-[#172c3b]">{tender.title.zh || tender.title.es}</p>
                     <p className="mt-1.5 text-xs font-semibold text-[#b86e00]">{formatDate(tender.submissionDeadline!, locale)}</p>
                   </Link>

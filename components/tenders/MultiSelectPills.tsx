@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 
 export function MultiSelectPills<T extends string>({
   label,
@@ -10,7 +10,7 @@ export function MultiSelectPills<T extends string>({
   searchable = false,
 }: {
   label: string;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; icon?: ReactNode }[];
   selected: T[];
   onChange: (next: T[]) => void;
   searchable?: boolean;
@@ -45,16 +45,14 @@ export function MultiSelectPills<T extends string>({
     if (detailsRef.current) detailsRef.current.open = false;
   }
 
-  const summary = selected.length
-    ? `${selected.slice(0, 2).map((value) => options.find((option) => option.value === value)?.label ?? value).join("、")}${selected.length > 2 ? ` +${selected.length - 2}` : ""}`
-    : "全部";
+  const selectedOptions = selected.slice(0, 2).map((value) => options.find((option) => option.value === value));
 
   return (
-    <label className="relative flex min-w-[9.5rem] flex-col gap-1.5">
-      <span className="text-xs font-semibold text-[#425461]">{label}</span>
+    <label className="flex items-center gap-2">
+      <span className="whitespace-nowrap text-xs font-semibold text-[#425461]">{label}</span>
       <details
         ref={detailsRef}
-        className="group"
+        className="group relative"
         // Re-sync the draft to whatever's actually applied every time the
         // panel opens — picks up both a fresh session and any change made
         // elsewhere on the page (e.g. the "清除筛选" link) since it was
@@ -64,8 +62,17 @@ export function MultiSelectPills<T extends string>({
           if (event.currentTarget.open) setDraft(selected);
         }}
       >
-        <summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#172c3b] transition-colors hover:border-[#9babb3] [&::-webkit-details-marker]:hidden">
-          <span className="max-w-[10rem] truncate">{summary}</span>
+        <summary className="flex h-9 min-w-[9.5rem] cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#172c3b] transition-colors hover:border-[#9babb3] [&::-webkit-details-marker]:hidden">
+          <span className="flex max-w-[12rem] items-center gap-2 overflow-hidden whitespace-nowrap">
+            {selected.length === 0 ? "全部" : selectedOptions.map((option, index) => (
+              <span key={option?.value ?? index} className="inline-flex shrink-0 items-center gap-1.5">
+                {option?.icon}
+                {option?.label ?? selected[index]}
+                {index < selectedOptions.length - 1 ? "、" : ""}
+              </span>
+            ))}
+            {selected.length > 2 && <span className="shrink-0">+{selected.length - 2}</span>}
+          </span>
           <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5 fill-none stroke-current transition-transform group-open:rotate-180">
             <path d="m4 6 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -95,6 +102,7 @@ export function MultiSelectPills<T extends string>({
                     </svg>
                   )}
                 </span>
+                {option.icon}
                 {option.label}
               </button>
             ))}

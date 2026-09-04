@@ -75,20 +75,20 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-8 px-6 py-16">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-8 px-5 py-14 sm:px-8">
+      <h1 className="text-4xl font-black tracking-tight text-[#071826]">
         {localize(uiText.account, locale)}
       </h1>
 
-      <section className="flex flex-col gap-4 rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
+      <section className="flex flex-col gap-5 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-6">
         <div>
-          <div className="text-xs text-zinc-400">{localize(uiText.emailLabel, locale)}</div>
-          <div className="font-medium text-zinc-900 dark:text-zinc-50">{user.email}</div>
+          <div className="text-xs text-[#849098]">{localize(uiText.emailLabel, locale)}</div>
+          <div className="font-bold text-[#071826]">{user.email}</div>
         </div>
 
         <form onSubmit={handleSaveProfile} className="flex flex-col gap-2">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-zinc-500">
+            <span className="text-xs font-semibold text-[#52636e]">
               {localize(uiText.companyNameLabel, locale)}
             </span>
             <input
@@ -98,14 +98,14 @@ export default function AccountPage() {
                 setCompanyName(event.target.value);
                 setSaved(false);
               }}
-              className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+              className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm focus:border-[#ffb21c] focus:outline-none"
             />
           </label>
           <div className="flex items-center gap-3">
             <button
               type="submit"
               disabled={saving}
-              className="self-start rounded-full bg-zinc-900 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="self-start rounded-xl bg-[#ffb21c] px-4 py-2.5 text-xs font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50"
             >
               {localize(uiText.saveProfile, locale)}
             </button>
@@ -116,14 +116,14 @@ export default function AccountPage() {
         </form>
       </section>
 
-      <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
-        <div className="text-xs text-zinc-400">{localize(uiText.currentPlan, locale)}</div>
-        <div className="font-medium text-zinc-900 dark:text-zinc-50">
+      <section className="flex flex-col gap-2 rounded-2xl bg-[#061b2b] p-6 text-white">
+        <div className="text-xs text-white/55">{localize(uiText.currentPlan, locale)}</div>
+        <div className="font-bold">
           {plan ?? localize(uiText.freePlan, locale)}
         </div>
         <Link
           href="/pricing"
-          className="w-fit text-xs font-medium text-zinc-900 underline underline-offset-2 dark:text-zinc-50"
+          className="w-fit text-xs font-bold text-[#ffb21c] underline underline-offset-4"
         >
           {localize(uiText.viewPlans, locale)}
         </Link>

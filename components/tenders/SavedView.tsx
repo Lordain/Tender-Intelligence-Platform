@@ -30,20 +30,20 @@ export function SavedView({ tenders }: { tenders: Tender[] }) {
   const savedTenders = tenders.filter((tender) => savedIds.includes(tender.id));
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-10 px-5 py-10 sm:px-8 sm:py-12">
       <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-3xl font-black tracking-tight text-[#071826]">
           {localize(uiText.savedSearches, locale)}
         </h2>
         {searches.length === 0 ? (
-          <p className="text-sm text-zinc-500">{localize(uiText.noSavedSearches, locale)}</p>
+          <p className="rounded-2xl border border-dashed border-[#bdc8cd] bg-[#fffdf9] p-8 text-center text-sm text-[#64717c]">{localize(uiText.noSavedSearches, locale)}</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-zinc-100 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+          <ul className="flex flex-col divide-y divide-[#e5e9eb] rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]">
             {searches.map((search) => (
               <li key={search.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <Link
                   href={search.href}
-                  className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+                  className="text-sm font-bold text-[#071826] hover:text-[#b86e00]"
                 >
                   {search.name}
                 </Link>
@@ -64,7 +64,7 @@ export function SavedView({ tenders }: { tenders: Tender[] }) {
                   <button
                     type="button"
                     onClick={() => removeSearch(search.id)}
-                    className="text-xs font-medium text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+                    className="text-xs font-semibold text-[#64717c] underline underline-offset-2 hover:text-[#071826]"
                   >
                     {localize(uiText.remove, locale)}
                   </button>
@@ -76,11 +76,11 @@ export function SavedView({ tenders }: { tenders: Tender[] }) {
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-3xl font-black tracking-tight text-[#071826]">
           {localize(uiText.savedTenders, locale)}
         </h2>
         {savedTenders.length === 0 ? (
-          <p className="text-sm text-zinc-500">{localize(uiText.noSavedTenders, locale)}</p>
+          <p className="rounded-2xl border border-dashed border-[#bdc8cd] bg-[#fffdf9] p-8 text-center text-sm text-[#64717c]">{localize(uiText.noSavedTenders, locale)}</p>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {savedTenders.map((tender) => (

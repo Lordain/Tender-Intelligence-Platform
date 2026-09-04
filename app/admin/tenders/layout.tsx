@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { isAdminEmail } from "@/lib/admin-auth";
 import { getCurrentUser } from "@/lib/supabase/server-client";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 // Real admin gate (see lib/admin-auth.ts) for every /admin/tenders/* route
 // and the API routes under app/api/admin/tenders/ — write access, so a
@@ -21,5 +22,5 @@ export default async function AdminTendersLayout({ children }: { children: React
     );
   }
 
-  return <div className="min-h-screen">{children}</div>;
+  return <AdminShell>{children}</AdminShell>;
 }

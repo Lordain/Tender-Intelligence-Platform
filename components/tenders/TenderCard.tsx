@@ -5,7 +5,6 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import {
-  RELEVANCE_TIER_COLORS,
   SCOPE_TYPE_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
@@ -13,6 +12,7 @@ import {
   industryLabel,
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
+import { MexicoFlag } from "@/components/tenders/CountryFlag";
 
 export function TenderCard({ tender }: { tender: Tender }) {
   const { locale } = useLocale();
@@ -22,13 +22,13 @@ export function TenderCard({ tender }: { tender: Tender }) {
   const hasRealTranslation = tender.title.zh !== tender.title.es;
 
   return (
-    <div className="group relative flex flex-col gap-2 rounded-xl border border-zinc-200 p-3.5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600">
+    <article className="group relative flex h-full flex-col gap-3 rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 transition-all hover:-translate-y-0.5 hover:border-[#aebdc3] hover:shadow-[0_18px_50px_-32px_rgba(6,27,43,0.45)]">
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           {tender.industries.map((industry) => (
             <span
               key={industry}
-              className="shrink-0 whitespace-nowrap rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+              className="shrink-0 whitespace-nowrap rounded-full bg-[#edf2f3] px-2.5 py-1 text-[11px] font-semibold text-[#24465a]"
             >
               {industryLabel(industry, locale)}
             </span>
@@ -38,26 +38,12 @@ export function TenderCard({ tender }: { tender: Tender }) {
           >
             {localize(STATUS_LABELS[tender.status], locale)}
           </span>
-          <span className="shrink-0 whitespace-nowrap rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+          <span className="shrink-0 whitespace-nowrap rounded-full border border-[#d8e0e3] px-2.5 py-1 text-[11px] font-medium text-[#566773]">
             {localize(SCOPE_TYPE_LABELS[tender.scopeType], locale)}
           </span>
         </div>
         <SaveTenderButton tenderId={tender.id} className="relative z-10 shrink-0" />
       </div>
-
-      {/* Its own full-width block, not squeezed into the flex-wrap badge
-          row above — this label's text is long enough to wrap onto
-          multiple lines, which looked broken crammed into a rounded-full
-          pill sized for short one-line tags. */}
-      {(tender.relevance.tier === "flagship" || tender.relevance.tier === "significant") && (
-        <span
-          title={localize(tender.relevance.reason, locale)}
-          className={`block w-fit rounded-lg px-2 py-0.5 text-[11px] font-medium leading-snug ${RELEVANCE_TIER_COLORS[tender.relevance.tier]}`}
-        >
-          {tender.relevance.tier === "flagship" ? "★ " : ""}
-          {localize(tender.relevance.label, locale)}
-        </span>
-      )}
 
       {/* Chinese leads when a real translation exists (this platform's
           readers work in Chinese first) — Spanish stays visible as the
@@ -66,42 +52,42 @@ export function TenderCard({ tender }: { tender: Tender }) {
           yet, Spanish is all there is, so it carries the heading alone. */}
       {hasRealTranslation ? (
         <>
-          <h3 className="text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-            <Link href={`/tenders/${tender.slug}`} className="after:absolute after:inset-0 group-hover:underline">
+          <h3 className="text-base font-black leading-snug text-black">
+            <Link href={`/tenders/${tender.slug}`} className="after:absolute after:inset-0">
               {tender.title.zh}
             </Link>
           </h3>
-          <p className="text-xs text-zinc-400 dark:text-zinc-500">{tender.title.es}</p>
+          <p className="line-clamp-1 text-xs text-[#75838c]">{tender.title.es}</p>
         </>
       ) : (
-        <h3 className="text-xs font-medium leading-snug text-zinc-600 dark:text-zinc-400">
-          <Link href={`/tenders/${tender.slug}`} className="after:absolute after:inset-0 group-hover:underline">
+        <h3 className="text-sm font-bold leading-snug text-black">
+          <Link href={`/tenders/${tender.slug}`} className="after:absolute after:inset-0">
             {tender.title.es}
           </Link>
         </h3>
       )}
 
-      <p className="line-clamp-2 text-xs text-zinc-600 dark:text-zinc-400">
+      <p className="line-clamp-2 text-xs leading-5 text-[#61717c]">
         {localize(tender.summary, locale)}
       </p>
 
       {tender.submissionDeadline && (
-        <p className="text-xs text-zinc-400">
-          {localize(uiText.submissionDeadline, locale)}
-          {"："}
-          <span className="font-medium text-zinc-700 dark:text-zinc-300">
+        <div className="mt-auto rounded-xl bg-[#fff6df] px-3 py-2.5">
+          <p className="text-[11px] font-medium text-[#966000]">计划交标</p>
+          <span className="mt-0.5 block text-sm font-bold text-[#071826]">
             {formatDate(tender.submissionDeadline, locale)}
           </span>
-        </p>
+        </div>
       )}
 
-      <p className="mt-1 border-t border-zinc-100 pt-2 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-        {countryLabel(tender.country, locale)}
+      <p className="flex items-start gap-1.5 border-t border-[#e6eaec] pt-3 text-xs leading-5 text-[#586873]">
+        <MexicoFlag className="mt-[3px]" />
+        <span>{countryLabel(tender.country, locale)}
         {" · "}
         {localize(uiText.buyerLabelCard, locale)}
         {"："}
-        {tender.buyer}
+        {tender.buyer}</span>
       </p>
-    </div>
+    </article>
   );
 }

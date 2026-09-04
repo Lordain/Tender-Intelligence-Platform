@@ -29,15 +29,15 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
         placeholder="按标题、采购单位、slug 或标书编号搜索…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="w-full max-w-md rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+        className="h-11 w-full max-w-md rounded-xl border border-[#d8e0e3] bg-[#fffdf9] px-4 text-sm outline-none focus:border-[#ffb21c]"
       />
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-[#64717c]">
         共 {tenders.length} 条，当前显示 {filtered.length} 条
       </p>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+      <div className="overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]">
         <table className="w-full min-w-[900px] text-left text-sm">
-          <thead className="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+          <thead className="border-b border-[#dbe2e5] bg-[#edf2f3] text-xs text-[#52636e]">
             <tr>
               <th className="px-4 py-3 font-medium">标题</th>
               <th className="px-4 py-3 font-medium">采购单位</th>
@@ -49,15 +49,15 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               <th className="px-4 py-3 font-medium" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <tbody className="divide-y divide-[#e5e9eb]">
             {filtered.map((t) => {
               const value = t.estimatedValue ? formatEstimatedValueUsd(t.estimatedValue, t.currency, "zh") : null;
               return (
-                <tr key={t.slug}>
-                  <td className="max-w-xs truncate px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{t.title.zh}</td>
-                  <td className="max-w-[10rem] truncate px-4 py-3 text-zinc-600 dark:text-zinc-400">{t.buyer}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{countryLabel(t.country, "zh")}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{STATUS_LABELS[t.status].zh}</td>
+                <tr key={t.slug} className="transition-colors hover:bg-[#fff9ec]">
+                  <td className="max-w-xs truncate px-4 py-3 font-bold text-[#071826]">{t.title.zh}</td>
+                  <td className="max-w-[10rem] truncate px-4 py-3 text-[#5d6d77]">{t.buyer}</td>
+                  <td className="px-4 py-3 text-[#5d6d77]">{countryLabel(t.country, "zh")}</td>
+                  <td className="px-4 py-3 text-[#5d6d77]">{STATUS_LABELS[t.status].zh}</td>
                   <td className="px-4 py-3">
                     {t.relevanceTier && (
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${RELEVANCE_TIER_COLORS[t.relevanceTier]}`}>
@@ -65,12 +65,12 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{value ?? "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{formatDate(t.publicationDate, "zh")}</td>
+                  <td className="px-4 py-3 text-[#5d6d77]">{value ?? "—"}</td>
+                  <td className="px-4 py-3 text-[#5d6d77]">{formatDate(t.publicationDate, "zh")}</td>
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/admin/tenders/${t.slug}`}
-                      className="font-medium text-zinc-900 underline underline-offset-2 dark:text-zinc-50"
+                      className="font-bold text-[#0a2b40] underline decoration-[#ffb21c] decoration-2 underline-offset-4"
                     >
                       编辑
                     </Link>

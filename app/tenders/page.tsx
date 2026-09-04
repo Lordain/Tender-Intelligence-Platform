@@ -6,7 +6,7 @@ export default async function TendersPage() {
   const tenders = await getAllTenders();
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-12">
+    <div className="mx-auto w-full max-w-[94rem] px-5 py-10 sm:px-8 sm:py-12">
       <Suspense>
         <TenderExplorer tenders={tenders} />
       </Suspense>

@@ -77,7 +77,11 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // consumables" scope decision (see README.md) — a tender relevance.ts
   // now excludes shouldn't still carry a "healthcare" tag implying it's a
   // target opportunity.
-  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|hospital\b|unidad m[ée]dica|servicios de salud|\bsalud\b/i],
+  // "unidad m[ée]dica" (2026-09-04, real gap): never matched the plural
+  // "UNIDADES MEDICAS" real titles use — no \b/plural handling at all.
+  // "rayos x" added alongside — real title "ADQUISICIÓN DE EQUIPOS DE
+  // RAYOS X PARA DIVERSAS UNIDADES MEDICAS" matched neither term before.
+  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|rayos x|hospital\b|unidad(es)? m[ée]dica(s)?|servicios de salud|\bsalud\b/i],
   ["tax", /administraci[óo]n tributaria|fiscalizaci[óo]n|declaraci[óo]n fiscal|sistema de recaudaci[óo]n|\bsat\b|servicio de administraci[óo]n tributaria|padr[óo]n de contribuyentes|aduanas?\b|hacienda y cr[ée]dito p[úu]blico/i],
   // "\bducto\b" (2026-09-03, real bug found against a real Proyectos
   // Estratégicos MX export): was missing its leading \b, so it matched
@@ -92,8 +96,21 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // INCLUDE_OVERRIDE_KEYWORDS in lib/relevance.ts (a real batch of 29
   // CFE TEIT-style tender titles) — kept in sync so these also get
   // tagged "ict_telecom" for filtering, not just protected from exclusion.
-  ["ict_telecom", /telecomunicaci|datacenter|centro de datos|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|\b5g\b|ciberseguridad|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito/i],
-  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|metro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|comunicaciones y transportes/i],
+  // "seguridad electr[óo]nica|videovigilancia" added (2026-09-04, real gap):
+  // already in relevance.ts's INCLUDE_OVERRIDE_KEYWORDS (protects tier) but
+  // missing here (never got the ict_telecom TAG) — real title
+  // "IMPLEMENTACIÓN DE SOLUCIÓN DE SISTEMAS DE SEGURIDAD ELECTRÓNICA TIPO
+  // VIDEOVIGILANCIA".
+  ["ict_telecom", /telecomunicaci|datacenter|centro de datos|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|\b5g\b|ciberseguridad|seguridad electr[óo]nica|videovigilancia|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito/i],
+  // "tren ferroviario"/"tramo ... ferroviario"/"eje prioritario"/"ancho de
+  // corona" added (2026-09-04, real gaps): real SICT/rail titles like
+  // "CONSTRUCCIÓN Y DISEÑO DE 82.00 KM DEL TRAMO II FERROVIARIO DEL TREN DE
+  // PASAJEROS", "MODERNIZACIÓN Y AMPLIACIÓN DEL EJE PRIORITARIO SALINA CRUZ
+  // - ZIHUATANEJO", "...CON UN ANCHO DE CORONA DE 22.00" (road-widening —
+  // "ancho de corona" is standard Mexican highway-engineering terminology
+  // for the road's top width) never matched any existing transportation
+  // term.
+  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|metro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona/i],
   // The "\bkm\s*\d+\+\d{3}\b" alternative is a real kilometer-marker
   // notation ("DEL KM 150+000 AL KM 170+000") — standard Mexican federal
   // highway-alignment notation, seen on a real road-engineering-study
@@ -104,13 +121,47 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // "carretera" alone missed several real SICT titles that use the
   // adjective form instead ("EJE CARRETERO..."), landing them on the
   // "general" fallback instead of "construction".
-  ["construction", /construcci[óo]n|obra p[úu]blica|carreter[ao]|puente\b|ferrocarril|puerto\b|aeropuerto|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|\bkm\s*\d+\+\d{3}\b/i],
+  // "puente\b" -> "puentes?\b" (2026-09-04, real gap): missed the plural
+  // "PUENTES" real titles use ("...PUENTES DE LA RED FEDERAL...") — no \b
+  // right after "puente" means no word boundary exists before the plural
+  // "s", so the old pattern silently never matched it.
+  // "aeropuerto" narrowed out of the bare list (2026-09-04, real false
+  // positive): "ADQUISICIÓN DE EQUIPOS DE SEGURIDAD PARA REVISIÓN DE
+  // EQUIPAJE EN EL AEROPUERTO" is an equipment purchase, not construction,
+  // but the bare word alone was tagging it "construction" regardless.
+  // Re-added below as its own alternative, anchored to a real construction
+  // verb nearby — still matches genuine airport construction/expansion
+  // ("AMPLIACIÓN DE AEROPUERTO INTERNACIONAL"), no longer a bare mention.
+  // "remodelaci[óo]n"/"modernizaci[óo]n y ampliaci[óo]n"/"ancho de corona"
+  // added for the same real batch as the transportation pattern above.
+  // "puerto\b" -> "\bpuerto\b" (2026-09-04, real bug found while fixing the
+  // aeropuerto false positive below): no LEADING boundary meant "puerto\b"
+  // matched as a bare substring inside "aeroPUERTO" too — the exact same
+  // "\bducto\b"-inside-"acueDUCTO" class of bug this file's own header
+  // comment already documents for a different word. That silently defeated
+  // the aeropuerto narrowing just below (still matched via "puerto" as a
+  // substring even after removing the standalone "aeropuerto" alternative)
+  // until caught by a real end-to-end check against the exact false-positive
+  // title.
+  ["construction", /construcci[óo]n|obra p[úu]blica|carreter[ao]|puentes?\b|ferrocarril|\bpuerto\b|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|remodelaci[óo]n|modernizaci[óo]n y ampliaci[óo]n|ancho de corona|\bkm\s*\d+\+\d{3}\b|(construcci[óo]n|ampliaci[óo]n|modernizaci[óo]n|remodelaci[óo]n).{0,30}aeropuerto/i],
   ["mining", /miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
   // "\bptar\b" (2026-09-03, real gap): CONAGUA's own titles overwhelmingly
   // abbreviate "Planta de Tratamiento de Aguas Residuales" as "PTAR"
   // rather than spelling it out (many real rows in the same export) —
   // "planta de tratamiento de agua" alone missed all of them.
-  ["water", /agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora|\bptar\b/i],
+  // dragado/desazolve/acueducto/canal principal/río/margen (derecha|
+  // izquierda)/zona de riego/presa added (2026-09-04, real gaps): real
+  // CONAGUA titles like "DRAGADO DE DESAZOLVE DE LOS PUERTOS DE...",
+  // "SUSTITUCIÓN ACUEDUCTOS PAPAGAYO I Y II...", "CANAL PRINCIPAL
+  // CAJONES...", "OBRAS DE PROTECCIÓN EN LA MARGEN DERECHA DEL RÍO
+  // TULA...", "CONSOLIDACIÓN DE LA ZONA DE RIEGO DE LA PRESA SANTA
+  // MARIA..." never matched any existing water term (some only had
+  // "construcción", landing them on the construction tag alone despite
+  // being genuine water-infrastructure work). "\bpresas?\b" mirrors
+  // relevance.ts's own MAJOR_PROJECT_KEYWORDS dam pattern, added here too
+  // so the same real dam/reservoir titles also get the water TAG, not
+  // just the flagship tier.
+  ["water", /agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora|\bptar\b|dragado|desazolve|acueducto(s)?|canal principal|\br[íi]o\b|margen (derecha|izquierda)|zona de riego|\bpresas?\b/i],
   // Real batch the user flagged as legitimate opportunities: bulk vehicle
   // and heavy-machinery acquisitions ("ADQS. DE 22 VEHS. CISTERNA...",
   // "ADQUISICION DE VEHICULOS PARA EL CONVENIO CONASAMA 2026",

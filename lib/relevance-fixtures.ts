@@ -451,4 +451,93 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     estimatedValue: 150_000,
     currency: "USD",
   },
+
+  // --- Batch #4 fixtures (2026-09-04): a real annotated review the user
+  // marked up on live browse-page screenshots. See the matching
+  // EXCLUDE_KEYWORDS/BRIDGE_LENGTH_ANCHOR comments in relevance.ts for the
+  // full reasoning per pattern. ---
+  {
+    title: "ADQUISICIÓN DE MATERIAL ELÉCTRICO PARA LA INFRAESTRUCTURA HOSPITALARIA",
+    expectedTier: "excluded",
+    note: "Real title (ISSSTE buyer) — 材料项目 (a materials purchase, not equipment).",
+    scopeType: "equipment",
+  },
+  {
+    title: "ADQUISICIÓN DE MATERIAL DE CONSTRUCCIÓN PARA CAMPAMENTOS DE CONSERVACIÓN Y DERECHO DE VÍA",
+    expectedTier: "excluded",
+    note: "Real title (CAPUFE buyer) — 建筑材料 (raw construction materials, not a works contract).",
+    scopeType: "equipment",
+  },
+  {
+    title: "CONSTRUCCIÓN DE 20 MICROSECTORES",
+    expectedTier: "excluded",
+    note: "Real title (SOP buyer) — 小项目 (20 small distributed sectors).",
+    scopeType: "works",
+  },
+  {
+    title: "IA-50-GYR-050GYR036-N-39-2026 SERVICIO MED SUBROGADO TOMOGRAFIA PET (3ER VUELTA)",
+    expectedTier: "excluded",
+    note: "Real title (IMSS buyer) — 医疗服务 (outsourced medical service, abbreviated 'MED' not 'MÉDICO' — the original servicio médico subrogado pattern required the full word and missed this).",
+    scopeType: "services",
+  },
+  {
+    title: "EQUIPAMIENTO ELECTROMECÁNICO DE 2 POZOS DE AGUA POTABLE (POZO 1: CARRETERA ESTATAL)",
+    expectedTier: "excluded",
+    note: "Real title (INAGUA buyer) — 2口井，小项目 (a 1-2 well job).",
+    scopeType: "equipment",
+  },
+  {
+    title: "ADQUISICIÓN DE CONSUMIBLES PARA EQUIPO MEDICO CON PRESTAMO DE EQUIPO",
+    expectedTier: "excluded",
+    note: "Real title (IMSS buyer) — 医疗消耗品 (medical consumables, not the equipment itself).",
+    scopeType: "equipment",
+  },
+  {
+    title: "CONSERVACIÓN PERIÓDICA DE PUENTES DE LA RED FEDERAL LIBRE DE PEAJE EN NAYARIT",
+    expectedTier: "excluded",
+    note: "Real title (SICT buyer) — 长期维护类项目 (periodic maintenance, not new bridge construction — 'puentes' would otherwise promote straight to flagship via MAJOR_PROJECT_KEYWORDS regardless of maintenance-vs-new-build framing).",
+    scopeType: "works",
+  },
+  {
+    title: "TRABAJOS DE CONSERVACIÓN EN LA CARRETERA",
+    expectedTier: "excluded",
+    note: "Real title (SOP buyer) — 道路维护 (road maintenance, not new highway construction — bare 'carretera' would otherwise match FLAGSHIP_INDUSTRY_KEYWORDS regardless).",
+    scopeType: "works",
+  },
+  {
+    title: "DETERMINACIÓN DEL ANÁLISIS TÉCNICO Y CONSTRUCCIÓN, EN EL ESTADO DE TLAXCALA",
+    expectedTier: "excluded",
+    note: "Real title (CONAGUA buyer) — 咨询服务 (a technical study/determination, not the works contract itself, despite 'construcción' appearing in the same title).",
+    scopeType: "works",
+  },
+  {
+    title: "CONSTRUCCIÓN DE COLECTOR ORIENTE EN LA LOCALIDAD DE NUEVA ITALIA DE RUÍZ, EN EL MUNICIPIO",
+    expectedTier: "excluded",
+    note: "Real title (CEAC buyer) — 单区域小项目 (one small locality's drainage collector).",
+    scopeType: "works",
+  },
+  {
+    title: "CONSTRUCCION DE PUENTE TUBULAR DE 18.00 MTS. DE LARGO X 4.00 MTS.",
+    expectedTier: "excluded",
+    note: "Real title (K0080080096 procedure) — 小项目，桥长度小于30M (an 18-meter tubular culvert, not the kind of bridge project 'puente' is meant to signal — new BRIDGE_LENGTH_ANCHOR/SHORT_BRIDGE_METERS check).",
+    scopeType: "works",
+  },
+  {
+    title: "CONSTRUCCIÓN DE PUENTE VEHICULAR DE 120 METROS DE LARGO",
+    expectedTier: "flagship",
+    note: "Regression check — a genuinely large bridge (well over SHORT_BRIDGE_METERS) must still promote via MAJOR_PROJECT_KEYWORDS's bare 'puente' match, confirming the new length check only excludes real small culverts, not real bridges.",
+    scopeType: "works",
+  },
+  {
+    title: "SERVICIO ADMINISTRADO DE SEGURIDAD PERIMETRAL",
+    expectedTier: "excluded",
+    note: "Real title (SHF buyer) — 管理服务项目 (a routine outsourced facility guard/fencing service, not the critical-infrastructure security system the confirmed 'PARA INSTALACIONES ESTRATÉGICAS' example was — the bare phrase without that qualifier no longer bypasses exclusion).",
+    scopeType: "services",
+  },
+  {
+    title: "SERVICIO ADMINISTRADO DE VIRTUALIZACIÓN EN NUBE PRIVADA Y COMPLEMENTOS OPERATIVO",
+    expectedTier: "excluded",
+    note: "Real title (SEPOMEX buyer) — 维护管理服务 (routine ongoing IT-ops support, not the infrastructure backup/recovery service the confirmed 'Servicio de respaldo y recuperación para la Nube Privada' example was).",
+    scopeType: "services",
+  },
 ];

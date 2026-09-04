@@ -167,6 +167,28 @@ const EXCLUDE_KEYWORDS = [
   // the user's narrowed whitelist dropped.
   /l[íi]neas? de descarga/i,
   /infraestructuras? complementarias?/i,
+
+  // Batch #4 (2026-09-04): a real annotated review of live browse-page
+  // results the user marked up directly on screenshots (real titles +
+  // buyers, each with the user's own Chinese reason). Same posture as
+  // batch #3 above — each pattern scoped to the real title, comment
+  // carries the user's reason for traceability.
+  /material(es)? el[ée]ctrico(s)?/i, // 材料项目 — ADQUISICIÓN DE MATERIAL ELÉCTRICO PARA LA INFRAESTRUCTURA HOSPITALARIA, a materials purchase, not equipment
+  /material(es)? de construcci[óo]n/i, // 建筑材料 — ADQUISICIÓN DE MATERIAL DE CONSTRUCCIÓN PARA CAMPAMENTOS DE CONSERVACIÓN..., raw materials, not a works contract
+  /\bmicrosectores?\b/i, // 小项目 — CONSTRUCCIÓN DE 20 MICROSECTORES, small distributed local works
+  // "servicio m[ée]dico subrogado" above required the full word "médico" —
+  // real gap found here: "SERVICIO MED SUBROGADO TOMOGRAFIA PET" abbreviates
+  // it "MED", which that pattern never matched.
+  /servicio (m[ée]d\.?|m[ée]dico)?\s*subrogado/i, // 医疗服务 — SERVICIO MED SUBROGADO TOMOGRAFIA PET (3ER VUELTA)
+  /equipamiento (electromec[áa]nico )?de \d+ pozo(s)?/i, // 小项目 — EQUIPAMIENTO ELECTROMECÁNICO DE 2 POZOS DE AGUA POTABLE, a 1-2 well job
+  /consumibles para equipo m[ée]dico/i, // 医疗消耗品 — ADQUISICIÓN DE CONSUMIBLES PARA EQUIPO MEDICO CON PRESTAMO DE EQUIPO
+  // Real gap: "puente"/"carretera" bare mentions in MAJOR_PROJECT_KEYWORDS/
+  // FLAGSHIP_INDUSTRY_KEYWORDS promote regardless of whether the work is
+  // NEW construction or just routine upkeep — these two real titles are
+  // maintenance framed with a bridge/highway noun, not new works.
+  /conservaci[óo]n peri[óo]dica|trabajos de conservaci[óo]n/i, // 长期维护/道路维护 — CONSERVACIÓN PERIÓDICA DE PUENTES DE LA RED FEDERAL...; TRABAJOS DE CONSERVACIÓN EN LA CARRETERA
+  /determinaci[óo]n del an[áa]lisis t[ée]cnico/i, // 咨询服务 — DETERMINACIÓN DEL ANÁLISIS TÉCNICO Y CONSTRUCCIÓN, EN EL ESTADO DE TLAXCALA — a technical study/determination, not the works contract itself despite "construcción" appearing in the same title
+  /\bcolector(es)?\b.{0,50}en la localidad de/i, // 单区域小项目 — CONSTRUCCIÓN DE COLECTOR ORIENTE EN LA LOCALIDAD DE NUEVA ITALIA DE RUÍZ — one small locality's drainage collector
 ];
 
 /**
@@ -236,7 +258,16 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   // extended alongside this so these also get tagged correctly.
   /\bran\b|\bbts\b|macro ran|micro ran|estaci[óo]n(es)? base/i, // Equipo de Radio Frecuencia Macro BTS (RAN); Macro/Micro RAN 4G LTE; Estaciones Base de Telecomunicaciones (BTS)
   /ruteador(es)?|\brouter(es)?\b|\bmifi\b/i, // ruteadores de gama alta/baja para Red Metropolitana/Red Nacional de Agregación/IXP; router Wifi portátil Mifi
-  /nube privada/i, // Servicio de respaldo y recuperación para la Nube Privada
+  // Narrowed (2026-09-04, real counter-example found): the bare phrase
+  // alone also matched "SERVICIO ADMINISTRADO DE VIRTUALIZACIÓN EN NUBE
+  // PRIVADA Y COMPLEMENTOS OPERATIVO" — routine ongoing IT-ops support, not
+  // the infrastructure-backup service the original confirmed example
+  // ("Servicio de respaldo y recuperación para la Nube Privada") actually
+  // was. Now requires "respaldo"/"recuperación"/"infraestructura" to also
+  // appear nearby (either order, since the confirmed example has it as a
+  // prefix) — still matches that real example, no longer matches the
+  // ops-support one.
+  /(respaldo|recuperaci[óo]n|infraestructura).{0,80}nube privada|nube privada.{0,80}(respaldo|recuperaci[óo]n|infraestructura)/i, // Servicio de respaldo y recuperación para la Nube Privada
   /red metropolitana|red de agregaci[óo]n|red terrestre core/i, // RED METROPOLITANA; Red Nacional de Agregación; Red Terrestre CORE para BTS
   /\bwdm\b|\bdwdm\b/i, // Transporte WDM para sitios Rurales; equipos DWDM para fase 4 de iluminación de FOO
   /enlaces? de microondas/i, // Adquisición y servicio de enlaces de microondas
@@ -251,7 +282,15 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   // legitimate opportunities — these two are SERVICES (not equipment),
   // so the scopeType==="equipment" allowlist-gate change below doesn't
   // cover them; they need an explicit override.
-  /seguridad perimetral/i, // SERVICIO ADMINISTRADO DE SEGURIDAD PERIMETRAL — a real managed security-infrastructure service (fencing/sensors/cameras), not a routine guard-service contract
+  // Narrowed (2026-09-04, real counter-example found): the bare phrase also
+  // matched a plain "SERVICIO ADMINISTRADO DE SEGURIDAD PERIMETRAL" for SHF
+  // (a mortgage/housing-finance buyer) — a routine outsourced facility
+  // guard/fencing service, not the critical-infrastructure security system
+  // the original confirmed example ("...PARA INSTALACIONES ESTRATÉGICAS")
+  // actually was. Now requires an "instalaciones estratégicas"/"infraestructura
+  // crítica" qualifier in the same title — still matches that confirmed
+  // example, no longer matches a bare mention with no such qualifier.
+  /seguridad perimetral.{0,80}(instalaci[óo]n(es)? estrat[ée]gica(s)?|infraestructura (cr[íi]tica|estrat[ée]gica))/i, // SERVICIO ADMINISTRADO DE SEGURIDAD PERIMETRAL PARA INSTALACIONES ESTRATÉGICAS — a real managed security-infrastructure service (fencing/sensors/cameras), not a routine guard-service contract
   /sistema de alarma.{0,40}incendio|detecci[óo]n y supresi[óo]n de incendio/i, // SISTEMA DE ALARMA, DETECCIÓN Y SUPRESIÓN DE INCENDIO DE LA GCRNE — industrial fire-safety system
 ];
 
@@ -441,6 +480,29 @@ const LONG_DURATION_DAYS = 360;
 const SHORT_DURATION_DAYS = 180;
 
 /**
+ * Real gap found 2026-09-04: a bare "puente"/"puentes" mention in
+ * MAJOR_PROJECT_KEYWORDS (relevance tier) and the construction pattern
+ * (industry.ts) promotes/tags regardless of the bridge's actual size — real
+ * title "CONSTRUCCION DE PUENTE TUBULAR DE 18.00 MTS. DE LARGO X 4.00 MTS."
+ * is an 18-meter tubular culvert, not a real bridge project, but "puente"
+ * alone was enough to promote it straight to flagship. Same anchored-
+ * extraction approach as DURATION_ANCHOR above — only fires on an explicit
+ * "puente ... de N mts/metros de largo" phrase, never a bare number scan.
+ */
+const BRIDGE_LENGTH_ANCHOR =
+  /puentes?\s+(?:tubular(?:es)?\s+|vehicular(?:es)?\s+|peatonal(?:es)?\s+)?de\s+(\d+(?:\.\d+)?)\s*(?:mts?|metros)\.?\s+de\s+largo/i;
+
+function extractAnchoredBridgeLengthMeters(text: string): number | undefined {
+  const match = BRIDGE_LENGTH_ANCHOR.exec(text);
+  if (!match) return undefined;
+  const meters = Number(match[1]);
+  return Number.isFinite(meters) ? meters : undefined;
+}
+
+/** 桥梁长度低于30米 — per the user's explicit call (2026-09-04), a real small culvert/tubular-bridge job, not the kind of bridge project "puente" is meant to signal. */
+const SHORT_BRIDGE_METERS = 30;
+
+/**
  * A real, known contract value under this floor isn't worth a Chinese
  * enterprise's time to fly out and bid on, regardless of industry.
  * Raised again from 50,000 to 100,000 per the user's explicit call
@@ -509,7 +571,7 @@ function valueExcludedReason(thresholdUsd: number): LocalizedText {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "buyer" | "below_threshold" | "consulting",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "below_threshold" | "consulting",
   LocalizedText
 > = {
   no_content: {
@@ -531,6 +593,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: `该项目的执行/交付周期低于 ${SHORT_DURATION_DAYS} 天，规模通常偏小，默认不进入推荐列表（数据仍保留，可用于统计）。`,
     en: `This tender's execution/delivery period is under ${SHORT_DURATION_DAYS} days — usually too small in scope, filtered from the default feed (metadata is kept, not deleted).`,
     es: `El plazo de ejecución/entrega de esta licitación es menor a ${SHORT_DURATION_DAYS} días — normalmente de escala reducida, filtrada de la vista predeterminada (los metadatos se conservan).`,
+  },
+  short_bridge: {
+    zh: `该项目是一座长度低于 ${SHORT_BRIDGE_METERS} 米的桥梁/涵洞，规模过小，默认不进入推荐列表（数据仍保留，可用于统计）。`,
+    en: `This is a bridge/culvert under ${SHORT_BRIDGE_METERS} meters long — too small in scope, filtered from the default feed (metadata is kept, not deleted).`,
+    es: `Este es un puente/alcantarilla de menos de ${SHORT_BRIDGE_METERS} metros de largo — de escala demasiado reducida, filtrada de la vista predeterminada (los metadatos se conservan).`,
   },
   buyer: {
     zh: "该采购单位的标的物通常是民生消费品/日用品（非工业或基建类），默认不进入推荐列表（数据仍保留，可用于统计）。",
@@ -558,6 +625,7 @@ function reasonFor(
     | "keyword"
     | "no_content"
     | "short_duration"
+    | "short_bridge"
     | "buyer"
     | "below_threshold"
     | "consulting"
@@ -571,6 +639,7 @@ function reasonFor(
       signal === "industry" ||
       signal === "no_content" ||
       signal === "short_duration" ||
+      signal === "short_bridge" ||
       signal === "buyer" ||
       signal === "below_threshold" ||
       signal === "consulting"
@@ -668,6 +737,11 @@ export function classifyRelevance(input: {
   const durationDays = extractAnchoredDurationDays(haystack);
   if (!hasIncludeOverride && durationDays !== undefined && durationDays < SHORT_DURATION_DAYS) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "short_duration") };
+  }
+
+  const bridgeLengthMeters = extractAnchoredBridgeLengthMeters(haystack);
+  if (!hasIncludeOverride && bridgeLengthMeters !== undefined && bridgeLengthMeters < SHORT_BRIDGE_METERS) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "short_bridge") };
   }
 
   const normalizedValue =

@@ -64,9 +64,13 @@ None of these steps run on a schedule. Every capture is manual, on demand — re
   - Manually download Convocatoria/Bases PDFs for the flagship/significant Compras MX tenders you care about.
   - Drop them in a folder, then `npm run ingest:documents -- <folder> --write` to file them against the right tenders.
 - [ ] **4.4 Analysis — on demand only, not proactive** (per the agreed cost model: cheap translation for everyone, expensive extraction only when a subscriber actually wants it)
-  - `npm run extract:document -- <file.pdf> <tender-slug>` — standard tier (Sonnet 5)
-  - `npm run extract:document -- <file.pdf> <tender-slug> --precise` — precision tier (Opus 5, paid upsell)
-  - Add `--write` once you're happy with the printed result. `--force` is needed to downgrade an existing Opus 5 result back to Sonnet 5.
+  - **Apply `supabase/migrations/0010_tender_documents_extraction_model_auto.sql` once, via the Supabase SQL Editor, before the first `--write` run below** — it widens `tender_documents.extraction_model`'s CHECK constraint to allow the two model values auto-routing can now write.
+  - `npm run extract:document -- <file.pdf> <tender-slug>` — default tier, auto-routed by whether the document has a real text layer (2026-09-03): `qwen3.5-plus` for a real text layer, `claude-haiku-4-5-20251001` for a scanned/image-only PDF. Requires `DASHSCOPE_API_KEY` unless `--precise` is also passed.
+  - `npm run extract:document -- <file.pdf> <tender-slug> --precise` — precision tier (Opus 5, paid "精度分析" upsell), regardless of text layer.
+  - Add `--write` once you're happy with the printed result. `--force` is needed to overwrite an existing Opus 5 result with a non-Opus one.
+  - See README's "Layer 2 extraction hardening" section for why the routing is text-layer-based, and its flagged-not-resolved open question on qwen3.5-plus under-detecting critical risks.
+- [ ] **4.5 Importing already-produced eval/batch results without re-running the LLM**
+  - If documents were already analyzed through `npm run analyze:batch` (an eval tool — see README), `npm run import:batch-analysis -- <export1.json> [<export2.json> ...] --write` (or the `/admin/import-analysis` web form) writes those results straight into `tender_requirements`/`tender_risks`, merged per tender, without spending another LLM call.
 
 ## Known gaps, not blocking but worth knowing
 

@@ -1480,6 +1480,19 @@ both seen in the 5-row sample) are downloaded and recorded but marked
 `extraction_status: "not_extractable"` — `extract-requirements.ts` only
 reads PDFs.
 
+### Colombia moved to the admin backend, with bulk documents (2026-09-04)
+
+Both scripts above were CLI-only until the user asked directly: "取2个月的哥伦比亚数据进来+附件，看看结果，看看怎么跑" (pull 2 months of Colombia data + attachments, see the results). Two real things this needed, not just a button:
+
+1. **One combined admin action, not two** — `lib/ingestion/ingest-colombia.ts` merges what ingest-colombia-live.ts (tender list) and ingest-colombia-documents.ts (one process's documents) used to do as separate manual steps. The admin form (`ImportColombiaForm.tsx`) exposes both months + a "同时下载附件" checkbox in one run.
+2. **A real bulk-fetch design constraint**: ingest-colombia-documents.ts always took `--proceso` as an explicit CLI arg — there was no "fetch documents for every tender ingested this run" loop, and the connector's own header comment explicitly warns `id_del_proceso` (needed for the documents dataset's `proceso` filter) is NOT guaranteed to equal a stored tender's `tenderNumber` (which prefers the human-readable `referencia_del_proceso` when present — a different id namespace). `ingestColombia()` avoids this trap by keeping each `SecopProcesoRow` in memory alongside its mapped `Tender` through the whole run, so the document-fetch step always uses the row's own real `id_del_proceso`, never a value re-derived from what got stored.
+
+Which tenders documents actually get fetched for is decided by re-querying Supabase for `id`s of the candidate slugs AFTER the upsert, rather than trying to reconstruct that from `upsertTendersBatched()`'s aggregate counts — a slug that was skipped (excluded tier, or a `tender_manual_deletions` tombstone) simply doesn't come back from that query, so it's correctly never fetched for either, with no separate bookkeeping needed.
+
+Documents are downloaded and recorded (`extraction_status: "pending"` for PDFs) but **not automatically analyzed** — that stays the existing separate, cost-aware step (`npm run extract:document`, or the admin "标书附件分析" upload form once the file's been retrieved locally), same as every other document-analysis path in this project. Bulk-downloading is deterministic and free; running the LLM extraction on each one is a real, per-document cost the admin should trigger deliberately, not something a bulk-import button should do silently.
+
+Still true as of this pass: the live connector has never been confirmed reachable from outside this sandbox's blocked egress (see "SECOP II tender list" above) — the first real `--write`/"写入" run from the admin's own machine should be spot-checked (row count, a few sample rows, and that a downloaded document's file size matches its `tender_documents` metadata) before trusting it at scale, the same posture every other newly-automated source in this project gets.
+
 ### Currency unified to USD platform-wide
 
 Adding a source with real values in a currency other than MXN (Colombian

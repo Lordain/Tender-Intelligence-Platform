@@ -20,13 +20,22 @@
  *
  * Category set: minimum required set is education/healthcare/tax/energy/
  * power/ict_telecom/transportation/construction (product decision); mining/
- * water/manufacturing added on top since they're common, real categories in
- * Mexican public procurement (LOPSRM covers agua potable constantly, for
- * one). "energy" and "power" are deliberately separate, not one merged
- * category: "energy" is oil & gas / renewables (PEMEX-shaped), "power" is
- * the electricity grid itself (CFE-shaped) — different buyers, different
+ * water added on top since they're common, real categories in Mexican
+ * public procurement (LOPSRM covers agua potable constantly, for one).
+ * "energy" and "power" are deliberately separate, not one merged category:
+ * "energy" is oil & gas / renewables (PEMEX-shaped), "power" is the
+ * electricity grid itself (CFE-shaped) — different buyers, different
  * bidder pools, real enough of a distinction in Mexico that lumping them
  * together would blur exactly the signal a filter exists to give.
+ *
+ * "manufacturing" was removed entirely (2026-09-04, per explicit user
+ * request: "把制造业这行业删除，我们不考虑") — not this platform's target
+ * scope, so no future tender should ever be tagged with it. Not folded
+ * into "general" via a compatibility shim, since removing the category
+ * cleanly matches the "trust internal code, no unnecessary fallback"
+ * project convention — any already-stored "manufacturing" tag on an
+ * existing row is harmless leftover data, cleared the next time that row
+ * is re-ingested or reclassified.
  */
 
 export type IndustryKey =
@@ -38,7 +47,6 @@ export type IndustryKey =
   | "ict_telecom"
   | "transportation"
   | "construction"
-  | "manufacturing"
   | "mining"
   | "water"
   | "vehicles"
@@ -54,7 +62,6 @@ export const ALL_INDUSTRIES: IndustryKey[] = [
   "ict_telecom",
   "transportation",
   "construction",
-  "manufacturing",
   "mining",
   "water",
   "vehicles",
@@ -98,7 +105,6 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // adjective form instead ("EJE CARRETERO..."), landing them on the
   // "general" fallback instead of "construction".
   ["construction", /construcci[óo]n|obra p[úu]blica|carreter[ao]|puente\b|ferrocarril|puerto\b|aeropuerto|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|\bkm\s*\d+\+\d{3}\b/i],
-  ["manufacturing", /maquinaria industrial|equipo industrial|equipamiento industrial|planta industrial|l[íi]nea de producci[óo]n|manufactura/i],
   ["mining", /miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
   // "\bptar\b" (2026-09-03, real gap): CONAGUA's own titles overwhelmingly
   // abbreviate "Planta de Tratamiento de Aguas Residuales" as "PTAR"

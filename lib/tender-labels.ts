@@ -44,7 +44,6 @@ export const INDUSTRY_LABELS: Record<IndustryKey, LocalizedText> = {
   ict_telecom: { en: "ICT/Telecom", es: "TIC/Telecom", zh: "ICT" },
   transportation: { en: "Transportation", es: "Transporte", zh: "交通" },
   construction: { en: "Construction", es: "Construcción", zh: "土建" },
-  manufacturing: { en: "Manufacturing", es: "Manufactura", zh: "制造业" },
   mining: { en: "Mining", es: "Minería", zh: "矿业" },
   water: { en: "Water & Sanitation", es: "Agua y Saneamiento", zh: "水务" },
   vehicles: { en: "Vehicles", es: "Vehículos", zh: "车辆" },

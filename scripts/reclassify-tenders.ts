@@ -18,25 +18,31 @@
  *   1. Always: fetch every tender, recompute relevance with today's rules,
  *      write exports/tenders-kept-<date>.csv (everything that would show
  *      in the default feed — tier != "excluded") and
- *      exports/tenders-excluded-<date>.csv (everything hidden), each row
- *      carrying both the previous and newly-computed tier so a changed
- *      classification is visible at a glance. This is the "cleaned list"
- *      to download and review for the next round of keyword tuning.
- *   2. Only with --write: also UPDATE relevance_tier/relevance_label/
- *      relevance_reason in Supabase for every row whose recomputed tier,
- *      label, or reason actually differs from what's stored — this is
- *      what actually "cleans" the live site (excluded tenders drop out of
- *      the public feed the moment this runs; see the comment in
- *      TenderExplorer.tsx confirming "excluded" is always hidden by
- *      default).
+ *      exports/tenders-excluded-<date>.csv (everything that WOULD be
+ *      deleted under --write), each row carrying both the previous and
+ *      newly-computed tier so a changed classification is visible at a
+ *      glance. This is the "cleaned list" to download and review for the
+ *      next round of keyword tuning.
+ *   2. Only with --write: for every row whose recomputed tier is
+ *      "excluded", DELETE it outright (cascades to tender_requirements/
+ *      tender_key_dates/tender_risks/tender_documents via the FK
+ *      constraints already in place); for every other row whose
+ *      recomputed tier/label/reason actually differs from what's stored,
+ *      UPDATE relevance_tier/relevance_label/relevance_reason.
  *
- * No rows are ever deleted — relevance_tier is metadata, not the tenders
- * themselves; classification can always be re-run again as the keyword
- * lists keep evolving.
+ * Per the user's explicit call (2026-09-04): "excluded" (routine-service)
+ * tenders are no longer kept as hidden metadata — upsert-tenders.ts (the
+ * shared ingest write path) now skips inserting them at all going
+ * forward, and this script deletes any that are already stored, rather
+ * than just re-tagging them, so reclassifying under a tightened ruleset
+ * also cleans up what's already in Supabase. Recovering an excluded
+ * tender's data later means re-ingesting its source file, not querying
+ * Supabase — relevance_tier stops being purely "hide/show" metadata for
+ * this one tier.
  *
  * Usage:
  *   npm run reclassify:tenders                (dry run — exports CSVs, reports what would change, writes nothing to Supabase)
- *   npm run reclassify:tenders -- --write      (also updates Supabase)
+ *   npm run reclassify:tenders -- --write      (also updates/deletes in Supabase)
  */
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -130,6 +136,7 @@ async function main() {
   let nowExcluded = 0;
   let nowIncluded = 0;
   let updated = 0;
+  let deleted = 0;
   let failed = 0;
 
   const keptCsvRows: (string | number | boolean | null | undefined)[][] = [];
@@ -177,26 +184,36 @@ async function main() {
     else keptCsvRows.push(csvRow);
 
     if (shouldWrite) {
-      const fieldsChanged =
-        row.relevance_tier !== recomputed.tier ||
-        row.relevance_label?.zh !== recomputed.label.zh ||
-        row.relevance_reason?.zh !== recomputed.reason.zh;
-
-      if (fieldsChanged) {
-        const { error: updateError } = await supabase
-          .from("tenders")
-          .update({
-            relevance_tier: recomputed.tier,
-            relevance_label: recomputed.label,
-            relevance_reason: recomputed.reason,
-          })
-          .eq("slug", row.slug);
-
-        if (updateError) {
-          console.error(`  failed to update ${row.slug}: ${updateError.message}`);
+      if (recomputed.tier === "excluded") {
+        const { error: deleteError } = await supabase.from("tenders").delete().eq("slug", row.slug);
+        if (deleteError) {
+          console.error(`  failed to delete ${row.slug}: ${deleteError.message}`);
           failed++;
         } else {
-          updated++;
+          deleted++;
+        }
+      } else {
+        const fieldsChanged =
+          row.relevance_tier !== recomputed.tier ||
+          row.relevance_label?.zh !== recomputed.label.zh ||
+          row.relevance_reason?.zh !== recomputed.reason.zh;
+
+        if (fieldsChanged) {
+          const { error: updateError } = await supabase
+            .from("tenders")
+            .update({
+              relevance_tier: recomputed.tier,
+              relevance_label: recomputed.label,
+              relevance_reason: recomputed.reason,
+            })
+            .eq("slug", row.slug);
+
+          if (updateError) {
+            console.error(`  failed to update ${row.slug}: ${updateError.message}`);
+            failed++;
+          } else {
+            updated++;
+          }
         }
       }
     }
@@ -236,9 +253,9 @@ async function main() {
   );
 
   if (!shouldWrite) {
-    console.log("\ndry run (pass --write to also update relevance_tier/label/reason in Supabase) — nothing was written to Supabase.");
+    console.log("\ndry run (pass --write to update relevance_tier/label/reason in Supabase, and delete anything now excluded) — nothing was written to Supabase.");
   } else {
-    console.log(`\nUpdated ${updated} row(s) in Supabase (${failed} failed).`);
+    console.log(`\nUpdated ${updated} row(s), deleted ${deleted} newly-excluded row(s) in Supabase (${failed} failed).`);
   }
 }
 

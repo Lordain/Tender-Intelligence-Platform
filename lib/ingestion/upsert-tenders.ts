@@ -34,6 +34,20 @@ export async function upsertTendersBatched(
   tenders: Tender[],
   onProgress?: (upsertedSoFar: number, total: number) => void,
 ): Promise<UpsertTendersResult> {
+  // Per the user's explicit call (2026-09-04): an "excluded" (routine-
+  // service) tender no longer gets written at all, replacing the earlier
+  // "write it but hide it by default" design (see purge-excluded-
+  // tenders.ts, which still exists for the one-off cleanup of rows
+  // ingested before this change). A source re-ingested later will simply
+  // never (re-)insert these rows going forward; recovering their metadata
+  // for future stats means re-ingesting the original file, not querying
+  // Supabase.
+  const includable = tenders.filter((t) => t.relevance.tier !== "excluded");
+  const excludedCount = tenders.length - includable.length;
+  if (excludedCount > 0) {
+    console.log(`Skipping ${excludedCount} tender(s) classified "excluded" (routine service) — not written to Supabase.`);
+  }
+
   const failed: UpsertTendersResult["failed"] = [];
   let upsertedCount = 0;
 
@@ -45,7 +59,7 @@ export async function upsertTendersBatched(
   // export can genuinely repeat the same procedure (same slug) more than
   // once. De-duping by slug before chunking (last occurrence wins) keeps
   // every batch's conflict keys unique, which is what Postgres requires.
-  const uniqueBySlug = [...new Map(tenders.map((t) => [t.slug, t])).values()];
+  const uniqueBySlug = [...new Map(includable.map((t) => [t.slug, t])).values()];
 
   for (const batch of chunk(uniqueBySlug, BATCH_SIZE)) {
     const rows = batch.map((fields) => {
@@ -88,7 +102,7 @@ export async function upsertTendersBatched(
       for (const tender of batch) {
         failed.push({ slug: tender.slug, error: error?.message ?? "no rows returned" });
       }
-      onProgress?.(upsertedCount, tenders.length);
+      onProgress?.(upsertedCount, includable.length);
       continue;
     }
 
@@ -113,7 +127,7 @@ export async function upsertTendersBatched(
       else failed.push({ slug: tender.slug, error: "not returned by upsert" });
     }
 
-    onProgress?.(upsertedCount, tenders.length);
+    onProgress?.(upsertedCount, includable.length);
   }
 
   return { upsertedCount, failed };

@@ -2,6 +2,8 @@ import { ImportTendersForm } from "@/components/admin/ImportTendersForm";
 import { TranslateTendersButton } from "@/components/admin/TranslateTendersButton";
 import { ImportPemexForm } from "@/components/admin/ImportPemexForm";
 import { ImportDofSearchForm } from "@/components/admin/ImportDofSearchForm";
+import { LicitiaRefreshPanel } from "@/components/admin/LicitiaRefreshPanel";
+import { ReclassifyButton } from "@/components/admin/ReclassifyButton";
 
 export default function AdminImportTendersPage() {
   return (
@@ -35,7 +37,9 @@ export default function AdminImportTendersPage() {
       <ImportTendersForm />
       <ImportPemexForm />
       <ImportDofSearchForm />
+      <LicitiaRefreshPanel />
       <TranslateTendersButton />
+      <ReclassifyButton />
     </div>
   );
 }

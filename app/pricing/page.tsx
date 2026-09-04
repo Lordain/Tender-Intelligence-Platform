@@ -97,7 +97,9 @@ export default function PricingPage() {
                     <h2 className="text-3xl font-black tracking-[-0.035em] text-[#071826]">{plan.name}</h2>
                     <p className="mt-2 max-w-md text-sm leading-6 text-[#64717c]">{plan.description}</p>
                   </div>
-                  <span className="w-fit rounded-full bg-[#edf2f3] px-3 py-1.5 text-xs font-bold text-[#425461]">当前免费</span>
+                  <span className="w-fit rounded-full bg-[#edf2f3] px-3 py-1.5 text-xs font-bold text-[#425461]">
+                    {plan.id === "company" ? "未开放" : "当前免费"}
+                  </span>
                 </div>
 
                 <div className="mt-7 flex items-end gap-2">

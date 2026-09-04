@@ -114,7 +114,11 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // from "transportation" (which here means transit *infrastructure/
   // services*, not buying the vehicles themselves) to need its own tag.
   // "vehs\.?\b" is the real abbreviation seen in the cistern-truck title.
-  ["vehicles", /veh[íi]culo(s)?|vehs\.?\b|cami[óo]n(es)?\b|autob[úu]s(es)?|maquinaria pesada/i],
+  // Widened (2026-09-04, per the user's explicit request) to also match
+  // camioneta/pick up/SUV/furgoneta — real Mexican government fleet
+  // purchases this pattern previously missed entirely (an SUV or pickup
+  // acquisition title never says the bare word "vehículo").
+  ["vehicles", /veh[íi]culo(s)?|vehs\.?\b|cami[óo]n(es)?\b|autob[úu]s(es)?|maquinaria pesada|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?/i],
 ];
 
 /** Matches against real Spanish-language text (title/description, plus any real category field a source provides) — never guesses from a buyer name alone. Falls back to ["general"] rather than an empty array, so every tender has at least one tag to display/filter by. */

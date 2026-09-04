@@ -206,15 +206,9 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // Everything below now correctly lands "excluded" since only flagship +
   // the construction/medical-equipment whitelist stay visible by default. ---
   {
-    title: "ADQUISICIÓN DE VEHÍCULOS PARA EL CONVENIO CONASAMA 2026",
-    expectedTier: "excluded",
-    note: "Was 'standard' (earlier-approved real batch, below SIGNIFICANT_VALUE_USD with no other promotion signal) — now excluded per the user's 2026-09-02 confirmation that 'standard' should stop being kept at all.",
-    industries: ["vehicles"],
-  },
-  {
     title: "ADQUISICIÓN DE MAQUINARIA PESADA",
     expectedTier: "excluded",
-    note: "Was 'standard' (earlier-approved real batch, heavy machinery) — now excluded, same reversal as above.",
+    note: "Was 'standard' (earlier-approved real batch, heavy machinery) — now excluded, same reversal as above. Deliberately NOT re-added to the whitelist by the 2026-09-04 vehicle-purchase pattern below (the user asked specifically for vehicles — cars/buses/trucks/SUVs — not heavy machinery like excavators/bulldozers; 'maquinaria pesada' isn't a vehicle noun that pattern matches).",
     industries: ["vehicles"],
   },
   {
@@ -223,6 +217,55 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Was 'standard' (real PEMEX title with genuine hydrocarbon-facility content in the TITLE itself, not just buyer name — deliberately NOT caught by the buyer-tag-contamination fix since this is real content) — now excluded, same 'standard' elimination.",
     scopeType: "services",
     buyer: "Pemex Exploración y Producción",
+  },
+
+  // --- Vehicle-fleet purchases restored to the whitelist (2026-09-04, per
+  // the user's explicit request) — a genuine ACQUISITION of vehicles now
+  // promotes to "significant" via FLAGSHIP_INDUSTRY_KEYWORDS's new
+  // vehicle-purchase pattern, while routine vehicle services (maintenance,
+  // fuel) stay excluded exactly as before — see relevance.ts's comment on
+  // that pattern for why the two can't collide. ---
+  {
+    title: "ADQUISICIÓN DE VEHÍCULOS PARA EL CONVENIO CONASAMA 2026",
+    expectedTier: "significant",
+    note: "Real title, same one the 2026-09-02 'standard' elimination had moved to excluded — restored per the user's 2026-09-04 explicit ask to whitelist government vehicle purchases.",
+    industries: ["vehicles"],
+  },
+  {
+    title: "ADQUISICIÓN DE AUTOBUSES PARA TRANSPORTE ESCOLAR",
+    expectedTier: "significant",
+    note: "Bus purchase — 公交车, one of the user's named examples (2026-09-04).",
+    industries: ["vehicles"],
+  },
+  {
+    title: "ADQUISICIÓN DE CAMIONES DE VOLTEO PARA OBRAS PÚBLICAS",
+    expectedTier: "significant",
+    note: "Dump-truck purchase — 货车, one of the user's named examples (2026-09-04).",
+    industries: ["vehicles"],
+  },
+  {
+    title: "ADQUISICIÓN DE CAMIONETAS TIPO SUV PARA SEGURIDAD PÚBLICA",
+    expectedTier: "significant",
+    note: "SUV purchase — SUV, one of the user's named examples (2026-09-04); also exercises industry.ts's widened 'vehicles' pattern (SUV/camioneta weren't matched at all before this change).",
+    industries: ["vehicles"],
+  },
+  {
+    title: "SERVICIO DE MANTENIMIENTO PREVENTIVO Y CORRECTIVO AL PARQUE VEHICULAR",
+    expectedTier: "excluded",
+    note: "Regression check for the user's explicit 2026-09-04 concern ('避免触发...加油和保养'): vehicle MAINTENANCE, not a purchase — caught by the existing broad 'servicio de mantenimiento' EXCLUDE_KEYWORDS pattern before the new vehicle-purchase whitelist entry is ever reached.",
+    industries: ["vehicles"],
+  },
+  {
+    title: "SUMINISTRO DE GASOLINA Y DIÉSEL PARA EL PARQUE VEHICULAR",
+    expectedTier: "excluded",
+    note: "Regression check for the same 2026-09-04 concern: vehicle FUEL, not a purchase — caught by the existing 'combustible para el parque vehicular|suministro de gasolina y diésel' EXCLUDE_KEYWORDS pattern.",
+    industries: ["vehicles"],
+  },
+  {
+    title: "ARRENDAMIENTO DE VEHÍCULOS PARA EL PERSONAL ADMINISTRATIVO",
+    expectedTier: "excluded",
+    note: "Vehicle RENTAL, not a purchase — caught by the existing 'arrendamiento de vehículos|renta de vehículos' EXCLUDE_KEYWORDS pattern before the new whitelist entry, confirming the anchored purchase-verb pattern doesn't accidentally match this.",
+    industries: ["vehicles"],
   },
 
   // --- Excluded: real noise confirmed this session ---

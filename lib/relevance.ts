@@ -268,6 +268,26 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   /equipo m[ée]dico|equipamiento m[ée]dico|medical equipment|equipo de laboratorio/i,
   /bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia/i,
   /imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia|ultrasonido|rayos x/i,
+  // Vehicle-fleet purchases — restored to the whitelist per the user's
+  // explicit request (2026-09-04: "加入车辆相关的标书，比如说政府购车、
+  // 公交车、货车、SUV等等，但要避免触发车辆相关的项目比如加油和保养").
+  // These were "standard"-tier until the 2026-09-02 elimination of that
+  // tier moved them to "excluded" (see the ADQUISICIÓN DE VEHÍCULOS
+  // fixture below) — this brings genuine vehicle PURCHASES back as a
+  // "significant" signal, same mechanism as construction/medical
+  // equipment above, without reopening the door to routine vehicle
+  // services. Deliberately anchored to a purchase/acquisition verb
+  // (adquisición/adqs./compra/suministro) immediately followed by a
+  // vehicle noun — NOT a bare "vehículo" mention anywhere in the title —
+  // so a maintenance/fuel/insurance/rental/tire job that happens to
+  // mention a vehicle can't match this. Those already get excluded
+  // earlier in this same classifyRelevance() pipeline regardless
+  // (EXCLUDE_KEYWORDS: "servicio de mantenimiento", "combustible para el
+  // parque vehicular", "arrendamiento de vehículos", "neumáticos para
+  // vehículos") — this whitelist entry is only ever reached once none of
+  // those already excluded the tender. "camioneta"/"pick up"/"SUV"/
+  // "furgoneta" match industry.ts's own widened "vehicles" tag.
+  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\b[^.\n]{0,40}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?)/i,
 ];
 
 // USD-scale thresholds (the whole platform standardizes display and

@@ -1,0 +1,73 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+export function HomepageSettingsPanel({ initialCount }: { initialCount: number }) {
+  const router = useRouter();
+  const [count, setCount] = useState(String(initialCount));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  async function save() {
+    const n = Number(count);
+    if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+      setError("请输入一个非负整数");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const res = await fetch("/api/admin/homepage-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ featuredCount: n }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setSaved(true);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Homepage</p>
+      <h2 className="mt-1 text-lg font-black text-[#071826]">首页免费展示设置</h2>
+      <p className="mt-1 text-sm text-[#52636e]">
+        在下方项目列表里勾选&quot;首页&quot;列，选定要在首页免费展示的项目。这里设置最多展示几条——勾选数量不够时，会自动用最新的项目补足到这个数量，首页不会因为勾选太少而显得空。
+      </p>
+      {error && <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+      <div className="mt-3 flex items-center gap-3">
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="font-semibold text-[#52636e]">首页展示数量</span>
+          <input
+            type="number"
+            min={0}
+            value={count}
+            onChange={(e) => {
+              setCount(e.target.value);
+              setSaved(false);
+            }}
+            className="h-9 w-28 rounded-lg border border-[#d8e0e3] bg-white px-2 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="h-9 rounded-lg bg-[#ffb21c] px-4 text-xs font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50"
+        >
+          {saving ? "保存中…" : "保存"}
+        </button>
+        {saved && <span className="text-xs font-semibold text-emerald-700">已保存</span>}
+      </div>
+    </div>
+  );
+}

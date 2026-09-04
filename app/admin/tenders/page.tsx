@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
+import { fetchHomepageFeaturedCount } from "@/lib/db/site-settings";
 import { AdminTenderList } from "@/components/admin/AdminTenderList";
+import { HomepageSettingsPanel } from "@/components/admin/HomepageSettingsPanel";
 
 export default async function AdminTendersPage() {
-  const tenders = await fetchAdminTenderListFromDb();
+  const [tenders, homepageFeaturedCount] = await Promise.all([
+    fetchAdminTenderListFromDb(),
+    fetchHomepageFeaturedCount(),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-10 sm:px-8 lg:py-12">
@@ -21,6 +26,8 @@ export default async function AdminTendersPage() {
           </Link>
         </div>
       </div>
+
+      <HomepageSettingsPanel initialCount={homepageFeaturedCount} />
 
       {tenders === null ? (
         <p className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-6 text-sm text-[#64717c]">Supabase 未配置。</p>

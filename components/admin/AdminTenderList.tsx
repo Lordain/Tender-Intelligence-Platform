@@ -11,7 +11,27 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
+  const [togglingSlug, setTogglingSlug] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleToggleFeatured(slug: string, next: boolean) {
+    setTogglingSlug(slug);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/tenders/${slug}/homepage-featured`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ featured: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTogglingSlug(null);
+    }
+  }
 
   async function handleDelete(slug: string, titleZh: string) {
     if (!confirm(`确定要删除「${titleZh}」吗？此操作无法撤销。`)) return;
@@ -66,6 +86,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               <th className="px-4 py-3 font-medium">国家</th>
               <th className="px-4 py-3 font-medium">状态</th>
               <th className="px-4 py-3 font-medium">相关度</th>
+              <th className="px-4 py-3 font-medium" title="免费用户在首页能看到的项目——见列表上方“首页免费展示设置”">首页</th>
               <th className="px-4 py-3 font-medium">金额</th>
               <th className="px-4 py-3 font-medium">发布日期</th>
               <th className="px-4 py-3 font-medium" />
@@ -90,6 +111,15 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                         {RELEVANCE_TIER_LABELS[t.relevanceTier].zh}
                       </span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={t.homepageFeatured ?? false}
+                      disabled={togglingSlug === t.slug}
+                      onChange={(e) => handleToggleFeatured(t.slug, e.target.checked)}
+                      className="size-4 accent-[#ffb21c] disabled:opacity-50"
+                    />
                   </td>
                   <td className="px-4 py-3 text-[#5d6d77]">{value ?? "—"}</td>
                   <td className="px-4 py-3 text-[#5d6d77]">

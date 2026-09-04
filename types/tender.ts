@@ -170,6 +170,15 @@ export type Tender = {
    * the same edit form.
    */
   relevanceManuallyOverridden?: boolean;
+  /**
+   * True when an admin picked this tender to show for free on the homepage
+   * (app/page.tsx) once the paywall is on — see the "homepage_featured"
+   * column added 2026-09-04. Manually-picked tenders are shown first (most
+   * recent first); if fewer than the configured count are picked, the
+   * homepage fills the rest with the next most recent tenders automatically
+   * so it never looks sparse.
+   */
+  homepageFeatured?: boolean;
   sourceName: string;
   sourceUrl: string;
   createdAt: string;

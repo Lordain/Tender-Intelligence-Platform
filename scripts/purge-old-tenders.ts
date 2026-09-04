@@ -1,10 +1,23 @@
 /**
  * Deletes tenders whose publication_date is older than a cutoff (default
- * 6 months) from the live Supabase database. Per the user's explicit
- * request (2026-09-02): "把6个月以前的数据都先删除，不要老旧的数据" — old
- * tenders are long past their submission deadline and just add noise to
- * the "reduce kept count" tightening pass done alongside this script (see
- * lib/relevance.ts).
+ * 6 months relative to now, or an absolute --before date) from the live
+ * Supabase database. Per the user's explicit request (2026-09-02): "把6
+ * 个月以前的数据都先删除，不要老旧的数据" — old tenders are long past
+ * their submission deadline and just add noise to the "reduce kept
+ * count" tightening pass done alongside this script (see
+ * lib/relevance.ts). --before added 2026-09-04 for a second cleanup
+ * pass against a fixed calendar date rather than a rolling N-months
+ * window.
+ *
+ * Caveat carried over from lib/format.ts's date-formatting fix (same
+ * day): for a tender whose publication_date is itself a stand-in (the
+ * ingestion timestamp, not a real government-published date — see
+ * Tender.publicationDateIsEstimated and lib/ingestion/README.md), this
+ * cutoff is really filtering by "when this platform first saw it," not
+ * by how old the real opportunity is. That's still a reasonable enough
+ * cleanup signal (a tender first ingested before the cutoff is either
+ * genuinely old or was ingested from a source that's since gone stale),
+ * just not literally "published before this date" for those rows.
  *
  * Related rows (tender_requirements/tender_key_dates/tender_risks/
  * tender_documents) all have `on delete cascade` foreign keys to
@@ -19,7 +32,8 @@
  *
  * Usage:
  *   npm run purge:old-tenders                       (dry run — 6 months, exports a CSV, deletes nothing)
- *   npm run purge:old-tenders -- --months=9          (dry run — custom cutoff)
+ *   npm run purge:old-tenders -- --months=9          (dry run — custom relative cutoff)
+ *   npm run purge:old-tenders -- --before=2026-07-01 (dry run — absolute cutoff date, takes priority over --months)
  *   npm run purge:old-tenders -- --write             (actually deletes from Supabase)
  */
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -40,17 +54,27 @@ function toCsv(headers: string[], rows: (string | number | null | undefined)[][]
 async function main() {
   const args = process.argv.slice(2);
   const shouldWrite = args.includes("--write");
+  const beforeArg = args.find((a) => a.startsWith("--before="));
   const monthsArg = args.find((a) => a.startsWith("--months="));
-  const months = monthsArg ? Number(monthsArg.split("=")[1]) : 6;
 
-  if (!Number.isFinite(months) || months <= 0) {
-    console.error(`Invalid --months value: ${monthsArg}`);
-    process.exit(1);
+  let cutoffIso: string;
+  if (beforeArg) {
+    const beforeDate = new Date(beforeArg.split("=")[1]);
+    if (Number.isNaN(beforeDate.getTime())) {
+      console.error(`Invalid --before date: ${beforeArg} (expected YYYY-MM-DD)`);
+      process.exit(1);
+    }
+    cutoffIso = beforeDate.toISOString();
+  } else {
+    const months = monthsArg ? Number(monthsArg.split("=")[1]) : 6;
+    if (!Number.isFinite(months) || months <= 0) {
+      console.error(`Invalid --months value: ${monthsArg}`);
+      process.exit(1);
+    }
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+    cutoffIso = cutoff.toISOString();
   }
-
-  const cutoff = new Date();
-  cutoff.setMonth(cutoff.getMonth() - months);
-  const cutoffIso = cutoff.toISOString();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
@@ -58,7 +82,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Cutoff: tenders with publication_date < ${cutoffIso} (${months} month(s) old).`);
+  console.log(`Cutoff: tenders with publication_date < ${cutoffIso}${beforeArg ? "" : ` (${monthsArg ? monthsArg.split("=")[1] : 6} month(s) old)`}.`);
 
   // Fast count-only query first (head:true, no row data returned — not
   // subject to PostgREST's default 1000-row select cap, which only bites

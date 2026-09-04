@@ -20,8 +20,22 @@ type AnalyzeResult = {
   message?: string;
 };
 
-export function AnalyzeDocumentForm() {
-  const [tenderSlug, setTenderSlug] = useState("");
+export function AnalyzeDocumentForm({
+  initialSlug,
+  lockSlug = false,
+  compact = false,
+  onDone,
+}: {
+  /** Pre-fills the tender slug — used when this form is embedded next to a specific tender (e.g. a documents-needed row) instead of the standalone, any-slug page. */
+  initialSlug?: string;
+  /** Locks the slug field read-only — set alongside initialSlug when the caller already knows exactly which tender this upload is for. */
+  lockSlug?: boolean;
+  /** Tighter spacing/no card wrapper — for embedding inline in a table row. */
+  compact?: boolean;
+  /** Called after a successful write (not on dry-run/preview) — the caller can e.g. router.refresh() a list that should drop this tender now that it has a document. */
+  onDone?: () => void;
+}) {
+  const [tenderSlug, setTenderSlug] = useState(initialSlug ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [precise, setPrecise] = useState(false);
   const [write, setWrite] = useState(false);
@@ -58,6 +72,7 @@ export function AnalyzeDocumentForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       setResult(data as AnalyzeResult);
+      if ((data as AnalyzeResult).status === "written") onDone?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -67,21 +82,28 @@ export function AnalyzeDocumentForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+          {error === "unauthorized" && "（需要管理员权限）"}
+        </p>
+      )}
 
-      <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-semibold text-[#52636e]">项目 slug</span>
-          <input
-            type="text"
-            value={tenderSlug}
-            onChange={(e) => setTenderSlug(e.target.value)}
-            placeholder="例如 comprasmx-lo-09-jzo-009jzo001-t-36-2026"
-            className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
-          />
-        </label>
+      <div className={compact ? "flex flex-col gap-4" : "rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6"}>
+        {!lockSlug && (
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="text-xs font-semibold text-[#52636e]">项目 slug</span>
+            <input
+              type="text"
+              value={tenderSlug}
+              onChange={(e) => setTenderSlug(e.target.value)}
+              placeholder="例如 comprasmx-lo-09-jzo-009jzo001-t-36-2026"
+              className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
+            />
+          </label>
+        )}
 
-        <label className="mt-4 flex flex-col gap-1.5 text-sm">
+        <label className={`${lockSlug ? "" : "mt-4"} flex flex-col gap-1.5 text-sm`}>
           <span className="text-xs font-semibold text-[#52636e]">标书文件（PDF / .docx / .doc）</span>
           <input
             type="file"

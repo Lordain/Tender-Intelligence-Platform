@@ -140,7 +140,13 @@ export const RELEVANCE_TIER_LABELS: Record<TenderRelevanceTier, LocalizedText> =
   flagship: { en: "Flagship", es: "Insignia", zh: "旗舰大标" },
   significant: { en: "Significant", es: "Relevante", zh: "重点项目" },
   standard: { en: "Standard", es: "Estándar", zh: "常规项目" },
-  excluded: { en: "Routine service", es: "Servicio rutinario", zh: "日常服务类" },
+  // "（排除）" appended per the user's explicit ask (2026-09-04) — this
+  // label shows up both in AdminTenderForm's manual-tier dropdown and
+  // AdminTenderList's tier badge; the front-end tender browser never
+  // renders it at all (RELEVANCE_TIERS there deliberately omits
+  // "excluded" — see TenderExplorer.tsx), so widening it here only
+  // clarifies the two admin-only surfaces, no user-facing risk.
+  excluded: { en: "Routine service (excluded)", es: "Servicio rutinario (excluido)", zh: "日常服务类（排除）" },
 };
 
 export const RELEVANCE_TIER_COLORS: Record<TenderRelevanceTier, string> = {

@@ -38,6 +38,7 @@ type TenderRow = {
   relevance_tier: TenderRelevance["tier"] | null;
   relevance_label: LocalizedText | null;
   relevance_reason: LocalizedText | null;
+  relevance_manually_overridden: boolean | null;
   source_name: string;
   source_url: string;
   created_at: string;
@@ -83,7 +84,7 @@ const TENDER_LIST_FIELDS = `
   industries, subcategory, scope_type, procedure_type, participation_scope,
   publication_date, publication_date_is_estimated,
   submission_deadline, award_date, awarded_to, estimated_value, currency, location,
-  status, relevance_tier, relevance_label, relevance_reason,
+  status, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden,
   source_name, source_url, created_at, updated_at
 `;
 
@@ -178,6 +179,7 @@ function toTender(row: TenderRow): Tender {
     keyDates: (row.tender_key_dates ?? []).map(toKeyDate),
     risks: (row.tender_risks ?? []).map(toRisk),
     relevance: toRelevance(row),
+    relevanceManuallyOverridden: row.relevance_manually_overridden ?? false,
     sourceName: row.source_name,
     sourceUrl: row.source_url,
     createdAt: row.created_at,
@@ -337,6 +339,7 @@ export type AdminTenderListRow = {
   country: string;
   status: Tender["status"];
   relevanceTier: TenderRelevance["tier"] | null;
+  relevanceManuallyOverridden?: boolean;
   estimatedValue?: number;
   currency?: string;
   publicationDate: string;
@@ -352,6 +355,7 @@ type AdminTenderListDbRow = {
   country: string;
   status: Tender["status"];
   relevance_tier: TenderRelevance["tier"] | null;
+  relevance_manually_overridden: boolean | null;
   estimated_value: number | null;
   currency: string | null;
   publication_date: string;
@@ -368,7 +372,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, tender_number, title, buyer, country, status, relevance_tier, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at")
+      .select("slug, tender_number, title, buyer, country, status, relevance_tier, relevance_manually_overridden, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at")
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
 
@@ -390,6 +394,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     country: row.country,
     status: row.status,
     relevanceTier: row.relevance_tier,
+    relevanceManuallyOverridden: row.relevance_manually_overridden ?? false,
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
     publicationDate: row.publication_date,

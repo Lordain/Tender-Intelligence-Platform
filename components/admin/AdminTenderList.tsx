@@ -82,7 +82,11 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                   <td className="px-4 py-3 text-[#5d6d77]">{STATUS_LABELS[t.status].zh}</td>
                   <td className="px-4 py-3">
                     {t.relevanceTier && (
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${RELEVANCE_TIER_COLORS[t.relevanceTier]}`}>
+                      <span
+                        title={t.relevanceManuallyOverridden ? "管理员手动锁定，重新入库不会被自动分类覆盖" : undefined}
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${RELEVANCE_TIER_COLORS[t.relevanceTier]}`}
+                      >
+                        {t.relevanceManuallyOverridden && "🔒"}
                         {RELEVANCE_TIER_LABELS[t.relevanceTier].zh}
                       </span>
                     )}

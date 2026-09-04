@@ -158,6 +158,18 @@ export type Tender = {
   keyDates: TenderKeyDate[];
   risks: TenderRisk[];
   relevance: TenderRelevance;
+  /**
+   * True once an admin has manually set `relevance` via the edit form
+   * (app/admin/tenders/[slug]) — protects the classification from being
+   * silently reverted the next time this same tender is re-ingested from
+   * its original source (upsertTendersBatched() skips relevance_tier/
+   * label/reason for a protected row instead of overwriting it with a
+   * freshly computed classifyRelevance() result). Per the user's explicit
+   * request (2026-09-04): "以后重新入库时如果发现这条标书被人工改过分类，
+   * 就跳过自动覆盖、保留你的手动选择". An admin can un-protect a row from
+   * the same edit form.
+   */
+  relevanceManuallyOverridden?: boolean;
   sourceName: string;
   sourceUrl: string;
   createdAt: string;

@@ -53,6 +53,7 @@ type FormState = {
   location: string;
   status: TenderStatus;
   relevanceTier: TenderRelevanceTier;
+  relevanceManuallyOverridden: boolean;
   tenderNumber: string;
   sourceName: string;
   sourceUrl: string;
@@ -85,6 +86,7 @@ function initialStateFrom(tender?: Tender): FormState {
     location: tender?.location ?? "",
     status: tender?.status ?? "open",
     relevanceTier: tender?.relevance.tier ?? "standard",
+    relevanceManuallyOverridden: tender?.relevanceManuallyOverridden ?? false,
     tenderNumber: tender?.tenderNumber ?? "",
     sourceName: tender?.sourceName ?? "人工添加（管理后台）",
     sourceUrl: tender?.sourceUrl ?? "",
@@ -136,6 +138,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       location: form.location || null,
       status: form.status,
       relevanceTier: form.relevanceTier,
+      relevanceManuallyOverridden: form.relevanceManuallyOverridden,
       tenderNumber: form.tenderNumber,
       sourceName: form.sourceName,
       sourceUrl: form.sourceUrl,
@@ -342,16 +345,39 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       </div>
 
       {isEdit && (
-        <label className={labelClass}>
-          <span className={labelTextClass}>相关度分级（手动覆盖会替换掉自动生成的理由说明）</span>
-          <select className={inputClass} value={form.relevanceTier} onChange={(e) => update("relevanceTier", e.target.value as TenderRelevanceTier)}>
-            {RELEVANCE_TIER_KEYS.map((k) => (
-              <option key={k} value={k}>
-                {RELEVANCE_TIER_LABELS[k].zh}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-2">
+          <label className={labelClass}>
+            <span className={labelTextClass}>相关度分级（手动覆盖会替换掉自动生成的理由说明）</span>
+            <select
+              className={inputClass}
+              value={form.relevanceTier}
+              onChange={(e) => {
+                const value = e.target.value as TenderRelevanceTier;
+                // Changing the tier by hand almost always means "protect
+                // this choice" — auto-check the lock, but leave it
+                // overridable below (e.g. an admin who wants this to
+                // revert to automatic classification on the next
+                // re-ingest can still uncheck it before saving).
+                setForm((prev) => ({ ...prev, relevanceTier: value, relevanceManuallyOverridden: true }));
+              }}
+            >
+              {RELEVANCE_TIER_KEYS.map((k) => (
+                <option key={k} value={k}>
+                  {RELEVANCE_TIER_LABELS[k].zh}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-[#233846]">
+            <input
+              type="checkbox"
+              checked={form.relevanceManuallyOverridden}
+              onChange={(e) => update("relevanceManuallyOverridden", e.target.checked)}
+              className="size-4 accent-[#ffb21c]"
+            />
+            🔒 锁定此分级（以后这条标书被重新抓取/入库时，不会被自动分类规则覆盖；取消勾选可恢复自动分类）
+          </label>
+        </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

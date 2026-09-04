@@ -32,6 +32,8 @@ type UpdateTenderBody = {
   location?: string | null;
   status: TenderStatus;
   relevanceTier: TenderRelevanceTier;
+  /** Per the user's explicit request (2026-09-04): whether this manual tier choice should survive a future re-ingest of this same tender — see lib/ingestion/upsert-tenders.ts. */
+  relevanceManuallyOverridden?: boolean;
   sourceName: string;
   sourceUrl?: string;
   tenderNumber: string;
@@ -107,6 +109,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     row.relevance_reason = MANUAL_OVERRIDE_REASON;
   }
 
+  // relevance_manually_overridden is a separate, independently-toggleable
+  // checkbox in the form (see AdminTenderForm.tsx) — written unconditionally
+  // from the submitted value, unlike tier/label/reason above, since an admin
+  // can turn protection on/off without also changing the tier itself (e.g.
+  // releasing a tender back to automatic classification on its next
+  // re-ingest without first picking a different tier). See lib/ingestion/
+  // upsert-tenders.ts for what this flag actually protects.
+  row.relevance_manually_overridden = body.relevanceManuallyOverridden === true;
+
   const { error } = await supabase.from("tenders").update(row).eq("slug", slug);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -122,11 +133,32 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const supabase = createSupabaseAdminClient();
   if (!supabase) return NextResponse.json({ error: "supabase not configured" }, { status: 500 });
 
+  // Best-effort: read the tender's own tender_number/title before deleting
+  // it, purely so tender_manual_deletions (written below) carries a human-
+  // readable record of what was removed — nothing downstream depends on
+  // these being present.
+  const { data: aboutToDelete } = await supabase.from("tenders").select("tender_number, title").eq("slug", slug).maybeSingle();
+
   // tender_requirements/tender_key_dates/tender_risks/tender_documents all
   // reference tenders(id) with ON DELETE CASCADE (supabase/migrations/0001_init.sql)
   // — deleting the tender row alone cleans up every child row too.
   const { error } = await supabase.from("tenders").delete().eq("slug", slug);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Tombstone this slug so a future re-ingest from the same source (same
+  // slug scheme — see lib/ingestion/README.md) doesn't silently resurrect
+  // it — per the user's explicit request (2026-09-04). Written AFTER the
+  // delete succeeds; a failure here is logged but doesn't fail the request
+  // — the tender is still gone either way, this table is a best-effort
+  // protection layer on top, not the primary action.
+  const title = aboutToDelete?.title as { es?: string } | undefined;
+  const { error: tombstoneError } = await supabase
+    .from("tender_manual_deletions")
+    .upsert(
+      { slug, tender_number: aboutToDelete?.tender_number ?? null, title: title?.es ?? null, deleted_at: new Date().toISOString() },
+      { onConflict: "slug" },
+    );
+  if (tombstoneError) console.error(`Failed to record tender_manual_deletions for "${slug}": ${tombstoneError.message}`);
 
   return NextResponse.json({ ok: true });
 }

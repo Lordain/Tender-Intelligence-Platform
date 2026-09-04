@@ -64,6 +64,7 @@ type TenderRow = {
   relevance_tier: TenderRelevanceTier | null;
   relevance_label: LocalizedText | null;
   relevance_reason: LocalizedText | null;
+  relevance_manually_overridden: boolean | null;
   source_url: string;
   publication_date: string;
   source_name: string;
@@ -116,7 +117,7 @@ async function main() {
     const { data, error } = await supabase
       .from("tenders")
       .select(
-        "slug, tender_number, title, summary, buyer, country, industries, scope_type, estimated_value, currency, relevance_tier, relevance_label, relevance_reason, source_url, publication_date, source_name",
+        "slug, tender_number, title, summary, buyer, country, industries, scope_type, estimated_value, currency, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden, source_url, publication_date, source_name",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
@@ -138,6 +139,7 @@ async function main() {
   let updated = 0;
   let deleted = 0;
   let failed = 0;
+  let protectedSkipped = 0;
 
   const keptCsvRows: (string | number | boolean | null | undefined)[][] = [];
   const excludedCsvRows: (string | number | boolean | null | undefined)[][] = [];
@@ -154,7 +156,18 @@ async function main() {
       isNationalPriorityProject: row.source_name === NATIONAL_PRIORITY_SOURCE_NAME,
     });
 
-    const tierChanged = row.relevance_tier !== recomputed.tier;
+    // A manually-overridden row (see AdminTenderForm.tsx's "🔒 锁定此分级"
+    // checkbox / lib/ingestion/upsert-tenders.ts) keeps its admin-chosen
+    // tier no matter what the current ruleset would recompute — this
+    // script is a bulk automatic-reclassification pass, the exact thing a
+    // human protected the row from. `effective` is what will actually be
+    // true on this row after this script runs; `recomputed` (still shown
+    // in the CSV, for visibility into what the ruleset WOULD say) is
+    // otherwise unused for a protected row.
+    const isProtected = row.relevance_manually_overridden === true;
+    const effective = isProtected ? { tier: row.relevance_tier!, label: row.relevance_label!, reason: row.relevance_reason! } : recomputed;
+
+    const tierChanged = !isProtected && row.relevance_tier !== recomputed.tier;
     if (tierChanged) {
       changed++;
       if (recomputed.tier === "excluded" && row.relevance_tier !== "excluded") nowExcluded++;
@@ -173,18 +186,21 @@ async function main() {
       row.estimated_value ?? "",
       row.currency ?? "",
       row.relevance_tier ?? "",
-      recomputed.tier,
+      effective.tier,
       tierChanged ? "yes" : "no",
-      recomputed.reason.zh,
+      isProtected ? "yes" : "no",
+      effective.reason.zh,
       row.source_url,
       row.publication_date,
     ];
 
-    if (recomputed.tier === "excluded") excludedCsvRows.push(csvRow);
+    if (effective.tier === "excluded") excludedCsvRows.push(csvRow);
     else keptCsvRows.push(csvRow);
 
     if (shouldWrite) {
-      if (recomputed.tier === "excluded") {
+      if (isProtected) {
+        protectedSkipped++;
+      } else if (recomputed.tier === "excluded") {
         const { error: deleteError } = await supabase.from("tenders").delete().eq("slug", row.slug);
         if (deleteError) {
           console.error(`  failed to delete ${row.slug}: ${deleteError.message}`);
@@ -233,6 +249,7 @@ async function main() {
     "previous_tier",
     "new_tier",
     "tier_changed",
+    "manually_protected",
     "reason_zh",
     "source_url",
     "publication_date",
@@ -256,6 +273,9 @@ async function main() {
     console.log("\ndry run (pass --write to update relevance_tier/label/reason in Supabase, and delete anything now excluded) — nothing was written to Supabase.");
   } else {
     console.log(`\nUpdated ${updated} row(s), deleted ${deleted} newly-excluded row(s) in Supabase (${failed} failed).`);
+    if (protectedSkipped > 0) {
+      console.log(`Left ${protectedSkipped} manually-protected row(s) untouched (see the "manually_protected" CSV column for which ones).`);
+    }
   }
 }
 

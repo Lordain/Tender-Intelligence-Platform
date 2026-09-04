@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/admin/tenders", label: "项目管理", detail: "招标数据" },
   { href: "/admin/tenders/new", label: "添加项目", detail: "人工录入" },
+  { href: "/admin/import-analysis", label: "导入分析结果", detail: "批量分析写入" },
   { href: "/admin/documents-needed", label: "待补文件", detail: "下载清单" },
 ];
 

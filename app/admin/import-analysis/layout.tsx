@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { isAdminEmail } from "@/lib/admin-auth";
 import { getCurrentUser } from "@/lib/supabase/server-client";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 // Same real admin gate as app/admin/tenders/layout.tsx — this page writes
 // to tender_requirements/tender_risks, so it needs the strict allowlist
@@ -20,5 +21,5 @@ export default async function AdminImportAnalysisLayout({ children }: { children
     );
   }
 
-  return <div className="min-h-screen">{children}</div>;
+  return <AdminShell>{children}</AdminShell>;
 }

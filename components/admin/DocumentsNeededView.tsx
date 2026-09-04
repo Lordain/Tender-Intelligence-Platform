@@ -105,17 +105,17 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl bg-[#061b2b] px-5 py-4 text-white">
-          <p className="text-xs font-bold text-white/55">当前待处理</p>
-          <p className="mt-1 text-3xl font-black text-[#ffb21c]">{tenders.length}</p>
+        <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4 shadow-[0_16px_40px_-38px_rgba(6,27,43,.45)]">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#75838c]"><span className="size-2 rounded-full bg-[#ffb21c]" />当前待处理</div>
+          <p className="mt-2 text-2xl font-black tracking-tight text-[#071826]">{tenders.length}</p>
         </div>
-        <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4">
-          <p className="text-xs font-bold text-[#75838c]">旗舰及重点项目</p>
-          <p className="mt-1 text-3xl font-black text-[#071826]">{priorityCount}</p>
+        <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4 shadow-[0_16px_40px_-38px_rgba(6,27,43,.45)]">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#75838c]"><span className="size-2 rounded-full bg-[#c8d3d7]" />旗舰及重点项目</div>
+          <p className="mt-2 text-2xl font-black tracking-tight text-[#071826]">{priorityCount}</p>
         </div>
-        <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4">
-          <p className="text-xs font-bold text-[#75838c]">涉及国家/地区</p>
-          <p className="mt-1 text-3xl font-black text-[#071826]">{countries.length}</p>
+        <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4 shadow-[0_16px_40px_-38px_rgba(6,27,43,.45)]">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#75838c]"><span className="size-2 rounded-full bg-[#c8d3d7]" />涉及国家/地区</div>
+          <p className="mt-2 text-2xl font-black tracking-tight text-[#071826]">{countries.length}</p>
         </div>
       </div>
 

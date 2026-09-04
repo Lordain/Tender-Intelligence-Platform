@@ -29,6 +29,7 @@ for (const fixture of RELEVANCE_FIXTURES) {
     estimatedValue: fixture.estimatedValue,
     currency: fixture.currency,
     buyer: fixture.buyer,
+    country: fixture.country,
     isNationalPriorityProject: fixture.isNationalPriorityProject,
   });
 

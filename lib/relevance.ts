@@ -458,6 +458,23 @@ const SHORT_DURATION_DAYS = 180;
  */
 const MIN_VALUE_USD = 100_000;
 
+/**
+ * Per-country override of MIN_VALUE_USD — added per the user's explicit
+ * request (2026-09-04) after reviewing a real Colombia SECOP II import:
+ * many genuine, correctly-classified tenders cleared the platform-wide
+ * $100,000 floor (e.g. real values around $200,000–$400,000) but were
+ * still judged too small in aggregate for Colombia specifically, so the
+ * bar there is raised to $500,000 rather than lowering the shared
+ * platform-wide floor for every country. Keyed by Tender.country
+ * ("Colombia", matching colombia-mapper.ts's literal country field), not
+ * by currency — currency happens to double as a reliable proxy today
+ * (every Colombia row is COP) but country is the actually-intended axis
+ * and is what mappers already pass around.
+ */
+const MIN_VALUE_USD_BY_COUNTRY: Partial<Record<string, number>> = {
+  Colombia: 500_000,
+};
+
 const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   flagship: {
     zh: "旗舰项目 · 建议中资企业重点关注",
@@ -481,8 +498,18 @@ const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   },
 };
 
+/** Generates the "value" excluded-reason dynamically since the threshold now varies by country (MIN_VALUE_USD_BY_COUNTRY) — unlike every other reason here, which is a fixed message. */
+function valueExcludedReason(thresholdUsd: number): LocalizedText {
+  const formatted = thresholdUsd.toLocaleString("en-US");
+  return {
+    zh: `该项目预估金额低于 $${formatted} 美元，规模过小，通常不值得中资企业专门出海投标，默认不进入推荐列表（数据仍保留，可用于统计）。`,
+    en: `Estimated value is under $${formatted} — too small to be worth bidding on from abroad, filtered from the default feed (metadata is kept, not deleted).`,
+    es: `El valor estimado es menor a $${formatted} — demasiado pequeño para justificar una oferta desde el extranjero, filtrada de la vista predeterminada (los metadatos se conservan).`,
+  };
+}
+
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "value" | "industry" | "no_content" | "short_duration" | "buyer" | "below_threshold" | "consulting",
+  "keyword" | "industry" | "no_content" | "short_duration" | "buyer" | "below_threshold" | "consulting",
   LocalizedText
 > = {
   no_content: {
@@ -494,11 +521,6 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This is a routine service procurement, not typically the kind of opportunity worth deep review — filtered from the default feed (metadata is kept, not deleted).",
     es: "Esta es una contratación de servicios rutinarios, no del tipo de oportunidad que suele valer una revisión a fondo — filtrada de la vista predeterminada (los metadatos se conservan).",
-  },
-  value: {
-    zh: `该项目预估金额低于 $${MIN_VALUE_USD.toLocaleString("en-US")} 美元，规模过小，通常不值得中资企业专门出海投标，默认不进入推荐列表（数据仍保留，可用于统计）。`,
-    en: `Estimated value is under $${MIN_VALUE_USD.toLocaleString("en-US")} — too small to be worth bidding on from abroad, filtered from the default feed (metadata is kept, not deleted).`,
-    es: `El valor estimado es menor a $${MIN_VALUE_USD.toLocaleString("en-US")} — demasiado pequeño para justificar una oferta desde el extranjero, filtrada de la vista predeterminada (los metadatos se conservan).`,
   },
   industry: {
     zh: "该项目未匹配到任何重点行业，且没有可参考的预估金额，信息过少，默认不进入推荐列表（数据仍保留，可用于统计）。",
@@ -540,10 +562,12 @@ function reasonFor(
     | "below_threshold"
     | "consulting"
     | "none",
+  /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
+  valueThresholdUsd: number = MIN_VALUE_USD,
 ): LocalizedText {
   if (tier === "excluded") {
+    if (signal === "value") return valueExcludedReason(valueThresholdUsd);
     return EXCLUDED_REASON_BY_SIGNAL[
-      signal === "value" ||
       signal === "industry" ||
       signal === "no_content" ||
       signal === "short_duration" ||
@@ -584,6 +608,8 @@ export function classifyRelevance(input: {
   estimatedValue?: number;
   currency?: string;
   buyer?: string;
+  /** Tender.country — currently only used to look up a per-country MIN_VALUE_USD override (see MIN_VALUE_USD_BY_COUNTRY); undefined falls back to the platform-wide floor, same as before this field existed. */
+  country?: string;
   /**
    * True only for tenders sourced from a government-curated list of
    * strategic/priority projects — currently Proyectos Estratégicos MX
@@ -647,8 +673,9 @@ export function classifyRelevance(input: {
   const normalizedValue =
     input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
 
-  if (!hasIncludeOverride && normalizedValue !== undefined && normalizedValue < MIN_VALUE_USD) {
-    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "value") };
+  const minValueUsd = input.country ? (MIN_VALUE_USD_BY_COUNTRY[input.country] ?? MIN_VALUE_USD) : MIN_VALUE_USD;
+  if (!hasIncludeOverride && normalizedValue !== undefined && normalizedValue < minValueUsd) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "value", minValueUsd) };
   }
 
   const matchesFlagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.some((pattern) => pattern.test(haystack));

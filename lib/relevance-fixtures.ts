@@ -32,6 +32,7 @@ export type RelevanceFixture = {
   estimatedValue?: number;
   currency?: string;
   buyer?: string;
+  country?: string;
   isNationalPriorityProject?: boolean;
 };
 
@@ -418,5 +419,36 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "flagship",
     note: "Regression check — a consulting-scope tender that matches INCLUDE_OVERRIDE_KEYWORDS ('seguridad perimetral') must still bypass the new blanket consulting exclusion, same as every other exclude check in this file (hasIncludeOverride promotes straight to flagship, confirmed by the test run rather than assumed).",
     scopeType: "consulting",
+  },
+
+  // --- Colombia's own, higher MIN_VALUE_USD_BY_COUNTRY floor ($500,000,
+  // vs. the platform-wide $100,000) — added 2026-09-04 after the user
+  // reviewed a real SECOP II import and found the shared floor let too
+  // many small Colombia tenders through. ---
+  {
+    title: "PRESTAR APOYO EN LA EJECUCIÓN DEL PROYECTO",
+    expectedTier: "excluded",
+    note: "Real Colombia value range from the live import (~$300k–$450k USD equivalent) — clears the platform-wide $100,000 floor but not Colombia's own $500,000 one, so this must be excluded on the value signal specifically. estimatedValue is a real-magnitude COP figure (colombia-mapper.ts always stores the raw precio_base in COP): 1,680,000,000 COP / 4200 ≈ $400,000 USD.",
+    scopeType: "works",
+    estimatedValue: 1_680_000_000,
+    currency: "COP",
+    country: "Colombia",
+  },
+  {
+    title: "CONSTRUCCIÓN DE INFRAESTRUCTURA VIAL EN EL MUNICIPIO",
+    expectedTier: "significant",
+    note: "Regression check — a Colombia tender genuinely at/above the $500,000 country-specific floor must still clear it (and 'construcción' also matches FLAGSHIP_INDUSTRY_KEYWORDS on its own, but this confirms the value path alone works too). 2,520,000,000 COP / 4200 = $600,000 USD, a real-magnitude COP figure same as the fixture above.",
+    scopeType: "works",
+    estimatedValue: 2_520_000_000,
+    currency: "COP",
+    country: "Colombia",
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPO MÉDICO PARA HOSPITAL REGIONAL",
+    expectedTier: "significant",
+    note: "Regression check — a $150,000 tender with country left unset (no Mexico/Colombia mapper sets it here) must use the platform-wide $100,000 floor, not accidentally inherit Colombia's $500,000 one — confirms MIN_VALUE_USD_BY_COUNTRY only applies when country is actually set to a country with an override.",
+    scopeType: "equipment",
+    estimatedValue: 150_000,
+    currency: "USD",
   },
 ];

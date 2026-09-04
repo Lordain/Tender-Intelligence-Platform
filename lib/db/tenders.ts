@@ -143,6 +143,7 @@ function toRelevance(row: TenderRow): TenderRelevance {
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
     buyer: row.buyer,
+    country: row.country,
   });
 }
 

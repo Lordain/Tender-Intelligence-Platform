@@ -120,6 +120,7 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
       estimatedValue: row.estimated_value ?? undefined,
       currency: row.currency ?? undefined,
       buyer: row.buyer,
+      country: row.country,
       isNationalPriorityProject: row.source_name === NATIONAL_PRIORITY_SOURCE_NAME,
     });
 

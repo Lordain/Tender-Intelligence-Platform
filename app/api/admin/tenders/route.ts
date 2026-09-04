@@ -67,6 +67,7 @@ export async function POST(request: Request) {
     estimatedValue,
     currency,
     buyer,
+    country: body.country,
   });
 
   // Manual entries get their own slug prefix (distinct from every real

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
+import { DetailSectionHeading } from "@/components/tenders/DetailSectionHeading";
 
 /**
  * Compras MX's "来源" link for a still-open tender (unlike an already-
@@ -27,28 +28,33 @@ export function SourcePanel({ tender }: { tender: Tender }) {
   }
 
   return (
-    <section className="rounded-2xl bg-[#061b2b] p-6 text-white">
-      <h2 className="text-xl font-black">
-        {localize(uiText.source, locale)}
-      </h2>
-      <p className="mt-2 text-sm text-white/65">{tender.sourceName}</p>
-      <a
-        href={tender.sourceUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-3 inline-block rounded-xl bg-[#ffb21c] px-4 py-2 text-sm font-bold text-[#071826] hover:bg-[#ffc247]"
-      >
-        {localize(uiText.viewSourceDocument, locale)}
-      </a>
-      <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2">
-        <span className="min-w-0 flex-1 truncate font-mono text-sm text-white/80">{tender.tenderNumber}</span>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="shrink-0 rounded-md border border-white/20 px-2.5 py-1 text-xs font-medium text-white/80 hover:bg-white/10"
-        >
-          {copied ? localize(uiText.copiedToClipboard, locale) : localize(uiText.copyProcedureNumber, locale)}
-        </button>
+    <section className="flex flex-col gap-4">
+      <DetailSectionHeading title={localize(uiText.source, locale)} description="核对官方公告、原始文件与招标编号" />
+      <div className="rounded-2xl bg-[#061b2b] p-5 text-white sm:p-6">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#ffb21c]">官方信息来源</p>
+            <p className="mt-1.5 text-sm font-bold text-white/78">{tender.sourceName}</p>
+          </div>
+          <a
+            href={tender.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-[#ffb21c] px-4 text-sm font-black text-[#071826] hover:bg-[#ffc247]"
+          >
+            {localize(uiText.viewSourceDocument, locale)} <span aria-hidden="true" className="ml-2">↗</span>
+          </a>
+        </div>
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5">
+          <span className="min-w-0 flex-1 truncate font-mono text-sm text-white/80">{tender.tenderNumber}</span>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="shrink-0 rounded-md border border-white/20 px-2.5 py-1 text-xs font-medium text-white/80 hover:bg-white/10"
+          >
+            {copied ? localize(uiText.copiedToClipboard, locale) : localize(uiText.copyProcedureNumber, locale)}
+          </button>
+        </div>
       </div>
     </section>
   );

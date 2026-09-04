@@ -13,12 +13,12 @@ export function TenderDetailView({ tender }: { tender: Tender }) {
   const { locale } = useLocale();
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-10 sm:px-8 sm:py-12">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 px-5 py-7 sm:px-8 sm:py-9">
       <Link
         href="/tenders"
-        className="w-fit text-sm font-semibold text-[#536772] hover:text-[#b86e00]"
+        className="inline-flex w-fit items-center gap-2 text-sm font-black text-[#536772] transition-colors hover:text-[#b86e00]"
       >
-        ← {localize(uiText.backToTenders, locale)}
+        <span aria-hidden="true">←</span> {localize(uiText.backToTenders, locale)}
       </Link>
 
       <TenderOverview tender={tender} />
@@ -27,14 +27,17 @@ export function TenderDetailView({ tender }: { tender: Tender }) {
 
       <RequirementSection
         title={uiText.qualifications}
+        description="参与项目必须满足的基础资格与合规条件"
         items={tender.qualifications}
       />
       <RequirementSection
         title={uiText.experienceRequirements}
+        description="核对团队资历、同类业绩与专业能力门槛"
         items={tender.experienceRequirements}
       />
       <RequirementSection
         title={uiText.requiredDocuments}
+        description="准备投标时需要提交的主要证明与响应材料"
         items={tender.requiredDocuments}
       />
 

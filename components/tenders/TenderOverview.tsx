@@ -13,11 +13,11 @@ import {
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, emphasized = false }: { label: string; value: string; emphasized?: boolean }) {
   return (
-    <div>
-      <dt className="text-xs font-medium text-[#849098]">{label}</dt>
-      <dd className="mt-1 font-bold text-[#071826]">{value}</dd>
+    <div className={`rounded-xl px-3.5 py-3 ${emphasized ? "bg-[#fff4d8]" : "bg-[#f2f4f3]"}`}>
+      <dt className="text-[11px] font-bold tracking-[0.03em] text-[#7a878f]">{label}</dt>
+      <dd className={`mt-1 text-sm font-black leading-5 ${emphasized ? "text-[#9a6200]" : "text-[#071826]"}`}>{value}</dd>
     </div>
   );
 }
@@ -26,7 +26,7 @@ export function TenderOverview({ tender }: { tender: Tender }) {
   const { locale } = useLocale();
 
   return (
-    <section className="flex flex-col gap-5 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-8">
+    <section className="flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {tender.industries.map((industry) => (
@@ -54,10 +54,13 @@ export function TenderOverview({ tender }: { tender: Tender }) {
           Spanish is all there is, so it carries the heading alone. */}
       {tender.title.zh !== tender.title.es ? (
         <>
-          <h1 className="text-3xl font-black leading-tight tracking-[-0.03em] text-black sm:text-4xl">
+          <h1 className="max-w-4xl text-2xl font-black leading-[1.25] tracking-[-0.035em] text-[#071826] sm:text-3xl">
             {tender.title.zh}
           </h1>
-          <p className="-mt-2 text-sm text-[#7a878f]">{tender.title.es}</p>
+          <div className="-mt-1 flex items-start gap-2 text-sm leading-6 text-[#7a878f]">
+            <span className="shrink-0 text-[11px] font-black uppercase tracking-[0.08em] text-[#9aa5ab]">原文</span>
+            <p>{tender.title.es}</p>
+          </div>
         </>
       ) : (
         <h1 className="text-xl font-bold leading-snug text-black">
@@ -65,11 +68,14 @@ export function TenderOverview({ tender }: { tender: Tender }) {
         </h1>
       )}
 
-      <p className="text-base leading-7 text-[#52636e]">
-        {localize(tender.summary, locale)}
-      </p>
+      {![tender.title.zh, tender.title.es].includes(localize(tender.summary, locale).trim()) && (
+        <div className="rounded-xl border-l-4 border-[#ffb21c] bg-[#fff8e9] px-4 py-3">
+          <p className="text-[11px] font-black uppercase tracking-[0.1em] text-[#9a6200]">项目摘要</p>
+          <p className="mt-1 text-sm leading-6 text-[#425461]">{localize(tender.summary, locale)}</p>
+        </div>
+      )}
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-6 border-t border-[#e4e9eb] pt-6 sm:grid-cols-3">
+      <dl className="grid grid-cols-2 gap-2.5 border-t border-[#e4e9eb] pt-4 sm:grid-cols-3">
         <Field label={localize(uiText.buyer, locale)} value={tender.buyer} />
         <Field
           label={localize(uiText.governmentLevelLabel, locale)}
@@ -87,6 +93,7 @@ export function TenderOverview({ tender }: { tender: Tender }) {
           <Field
             label={localize(uiText.participationScopeLabel, locale)}
             value={localize(PARTICIPATION_SCOPE_LABELS[tender.participationScope], locale)}
+            emphasized
           />
         )}
         <Field
@@ -112,6 +119,7 @@ export function TenderOverview({ tender }: { tender: Tender }) {
               ? formatDate(tender.submissionDeadline, locale)
               : "—"
           }
+          emphasized
         />
         {tender.awardedTo && (
           <Field label={localize(uiText.awardedToLabel, locale)} value={tender.awardedTo} />

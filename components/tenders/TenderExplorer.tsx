@@ -147,7 +147,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const viewParam = searchParams.get("view");
   const view = viewParam === "new" || viewParam === "deadline" ? viewParam : null;
 
-  const hasActiveFilters = countryParam !== null || industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || tierParam !== null || query.length > 0 || view !== null;
+  const hasActiveFilters = countryParam !== null || industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || tierParam !== null || sortParam !== null || query.length > 0 || view !== null;
 
   function updateParams(updates: Record<string, string | null>, resetPage = true) {
     const params = new URLSearchParams(window.location.search);
@@ -217,7 +217,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
       </header>
 
       <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
-        <form className="flex gap-3" onSubmit={(event) => event.preventDefault()}>
+        <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => event.preventDefault()}>
           <label className="relative flex-1">
             <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[#6e7d86]"><SearchIcon /></span>
             <input
@@ -228,7 +228,10 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
               className="h-11 w-full rounded-xl border border-[#d8e0e3] bg-white pl-12 pr-4 text-sm placeholder:text-[#919ca2] focus:border-[#ffb21c] focus:outline-none"
             />
           </label>
-          <button type="submit" className="rounded-xl bg-[#ffb21c] px-7 text-sm font-black text-[#071826] hover:bg-[#ffc247]">搜索</button>
+          <div className="flex gap-3">
+            <button type="submit" className="h-11 flex-1 rounded-xl bg-[#ffb21c] px-7 text-sm font-black text-[#071826] hover:bg-[#ffc247] sm:flex-none">搜索</button>
+            <SaveSearchControl href={currentSearchHref} disabled={!hasActiveFilters} />
+          </div>
         </form>
 
         <div className="mt-4 grid gap-y-3 xl:grid-cols-[max-content_max-content_max-content] xl:divide-x xl:divide-[#dbe2e5]">
@@ -317,7 +320,6 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
               {localize(uiText.clearFilters, locale)}
             </button>
           )}
-          {hasActiveFilters && <SaveSearchControl href={currentSearchHref} />}
         </div>}
       </section>
 

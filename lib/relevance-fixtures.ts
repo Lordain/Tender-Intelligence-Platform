@@ -397,4 +397,26 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real title — a maintenance job, 'works' scope with no value. Same isWorksLike-removal confirmation.",
     scopeType: "works",
   },
+
+  // --- "咨询" (consulting) scopeType excluded outright, per the user's
+  // explicit request (2026-09-04) after filtering the tender list by
+  // 项目类型=咨询 and finding these real examples. ---
+  {
+    title: "ELABORACIÓN DE ESTUDIOS Y PROYECTOS PARA LA MODERNIZACIÓN CARRETERA FEDERA",
+    expectedTier: "excluded",
+    note: "Real title (SICT buyer) — a study/planning contract, not the actual highway construction, despite 'carretera' otherwise matching MAJOR_PROJECT_KEYWORDS.",
+    scopeType: "consulting",
+  },
+  {
+    title: "INSPECCION ULTRASONICA VIA FERREA",
+    expectedTier: "excluded",
+    note: "Real title (FIT buyer) — a railway inspection SERVICE, not the actual railway construction, despite 'ferrocarril'-adjacent wording otherwise matching MAJOR_PROJECT_KEYWORDS.",
+    scopeType: "consulting",
+  },
+  {
+    title: "SERVICIO ADMINISTRADO DE SEGURIDAD PERIMETRAL PARA INSTALACIONES ESTRATÉGICAS",
+    expectedTier: "flagship",
+    note: "Regression check — a consulting-scope tender that matches INCLUDE_OVERRIDE_KEYWORDS ('seguridad perimetral') must still bypass the new blanket consulting exclusion, same as every other exclude check in this file (hasIncludeOverride promotes straight to flagship, confirmed by the test run rather than assumed).",
+    scopeType: "consulting",
+  },
 ];

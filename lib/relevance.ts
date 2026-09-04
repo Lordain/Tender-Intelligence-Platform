@@ -482,7 +482,7 @@ const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
 };
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "value" | "industry" | "no_content" | "short_duration" | "buyer" | "below_threshold",
+  "keyword" | "value" | "industry" | "no_content" | "short_duration" | "buyer" | "below_threshold" | "consulting",
   LocalizedText
 > = {
   no_content: {
@@ -515,6 +515,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     en: "This buyer's procurement is typically consumer/household goods for a social program, not an industrial or infrastructure opportunity — filtered from the default feed (metadata is kept, not deleted).",
     es: "Las contrataciones de esta entidad suelen ser bienes de consumo/hogar para un programa social, no una oportunidad industrial o de infraestructura — filtrada de la vista predeterminada (los metadatos se conservan).",
   },
+  consulting: {
+    zh: "该项目属于纯咨询/研究/规划类服务（非设备采购或工程施工），默认不进入推荐列表（数据仍保留，可用于统计）。",
+    en: "This is a pure consulting/study/planning service, not an equipment purchase or construction contract — filtered from the default feed (metadata is kept, not deleted).",
+    es: "Esta es una contratación de consultoría/estudio/planeación, no una compra de equipo ni una obra de construcción — filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
   below_threshold: {
     zh: `该项目未匹配到当前的重点白名单（建筑/基建类工程、医疗及化验设备等），或预估金额低于 $${SIGNIFICANT_VALUE_USD.toLocaleString("en-US")} 美元的重点门槛，默认不进入推荐列表（数据仍保留，可用于统计）。`,
     en: `This tender doesn't match the current priority whitelist (construction/infrastructure works, medical/lab equipment) and its value is under the $${SIGNIFICANT_VALUE_USD.toLocaleString("en-US")} significant-tier bar — filtered from the default feed (metadata is kept, not deleted).`,
@@ -533,6 +538,7 @@ function reasonFor(
     | "short_duration"
     | "buyer"
     | "below_threshold"
+    | "consulting"
     | "none",
 ): LocalizedText {
   if (tier === "excluded") {
@@ -542,7 +548,8 @@ function reasonFor(
       signal === "no_content" ||
       signal === "short_duration" ||
       signal === "buyer" ||
-      signal === "below_threshold"
+      signal === "below_threshold" ||
+      signal === "consulting"
         ? signal
         : "keyword"
     ];
@@ -614,6 +621,22 @@ export function classifyRelevance(input: {
 
   if (!hasIncludeOverride && EXCLUDE_KEYWORDS.some((pattern) => pattern.test(haystack))) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // Per the user's explicit request (2026-09-04): "咨询" (consulting) as a
+  // whole scopeType — studies, plans, professional/advisory services, not
+  // an equipment purchase or works contract — is excluded outright, not
+  // just when it happens to hit an EXCLUDE_KEYWORDS phrase. Real examples
+  // that triggered this: "ELABORACIÓN DE ESTUDIOS Y PROYECTOS PARA LA
+  // MODERNIZACIÓN..." and an ultrasonic railway-inspection SERVICE — both
+  // scopeType "consulting" from compras-mx-open-tenders-mapper.ts's own
+  // TIPO DE CONTRATACIÓN mapping ("SERVICIOS RELACIONADOS CON LA OBRA" ->
+  // "consulting"). Still bypassed by hasIncludeOverride, same as every
+  // other exclude check above — a genuine cybersecurity/EPC-flagged
+  // consulting-scope tender shouldn't be blindly dropped just for its
+  // scopeType.
+  if (!hasIncludeOverride && input.scopeType === "consulting") {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "consulting") };
   }
 
   const durationDays = extractAnchoredDurationDays(haystack);

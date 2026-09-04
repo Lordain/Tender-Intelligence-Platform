@@ -131,6 +131,19 @@ export type Tender = {
   procedureType: string;
   participationScope?: TenderParticipationScope;
   publicationDate: string;
+  /**
+   * True when publicationDate is a stand-in (the time this platform first
+   * ingested the tender) rather than a real government-published date —
+   * some real sources (e.g. Compras MX's "Difusión de procedimientos"
+   * open-tenders export, and Proyectos Estratégicos MX which reuses that
+   * same mapper) simply don't carry a publication-date column, confirmed
+   * against real captured files (see lib/ingestion/README.md). Lets the
+   * UI show an honest "收录日期" instead of implying it's the real
+   * government-published date — real, user-caught confusion (2026-09-04)
+   * when a tender's shown date didn't match the source portal's.
+   * Undefined/false means publicationDate is a real captured value.
+   */
+  publicationDateIsEstimated?: boolean;
   submissionDeadline?: string;
   awardDate?: string;
   /** Winning supplier/contractor name — only meaningful once a tender is awarded, from a real source ("Proveedor o contratista" in the Compras MX contracts export). */

@@ -210,8 +210,8 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
     <div className="space-y-7">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-4xl font-black tracking-[-0.04em] text-[#071826] sm:text-5xl">招标情报</h1>
-          <p className="mt-2 text-base text-[#65747d]">发现并评估适合中国企业的拉美政府采购机会</p>
+          <h1 className="text-4xl font-black tracking-[-0.04em] text-[#071826] sm:text-5xl">招标项目</h1>
+          <p className="mt-2 text-base text-[#65747d]">筛选并评估适合中国企业的拉美政府采购机会</p>
         </div>
         <p className="text-sm font-semibold text-[#52636e]">共 {sorted.length.toLocaleString()} 个项目</p>
       </header>
@@ -231,30 +231,36 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
           <button type="submit" className="rounded-xl bg-[#ffb21c] px-7 text-sm font-black text-[#071826] hover:bg-[#ffc247]">搜索</button>
         </form>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
-          <MultiSelectPills
-            label="国家/地区"
-            options={AVAILABLE_COUNTRIES.map((country) => ({
-              value: country,
-              label: localize(COUNTRY_LABELS[country], locale),
-              icon: country === "Mexico" ? <MexicoFlag /> : <ColombiaFlag />,
-            }))}
-            selected={countries as (typeof AVAILABLE_COUNTRIES)[number][]}
-            onChange={(next) => updateParams({ country: next.length === 1 ? next[0] : null })}
-          />
-          <MultiSelectPills
-            label="行业"
-            searchable
-            options={ALL_INDUSTRIES.map((option) => ({ value: option, label: localize(INDUSTRY_LABELS[option], locale) }))}
-            selected={industries}
-            onChange={(next) => updateParams({ industry: next.join(",") || null })}
-          />
-          <MultiSelectPills
-            label="项目类型"
-            options={SCOPE_TYPES.map((option) => ({ value: option, label: localize(SCOPE_TYPE_LABELS[option], locale) }))}
-            selected={scopeTypes}
-            onChange={(next) => updateParams({ scope: next.join(",") || null })}
-          />
+        <div className="mt-4 grid gap-y-3 xl:grid-cols-[max-content_max-content_max-content] xl:divide-x xl:divide-[#dbe2e5]">
+          <div className="xl:pr-5">
+            <MultiSelectPills
+              label="国家/地区"
+              options={AVAILABLE_COUNTRIES.map((country) => ({
+                value: country,
+                label: localize(COUNTRY_LABELS[country], locale),
+                icon: country === "Mexico" ? <MexicoFlag /> : <ColombiaFlag />,
+              }))}
+              selected={countries as (typeof AVAILABLE_COUNTRIES)[number][]}
+              onChange={(next) => updateParams({ country: next.length === 1 ? next[0] : null })}
+            />
+          </div>
+          <div className="xl:px-5">
+            <MultiSelectPills
+              label="行业"
+              searchable
+              options={ALL_INDUSTRIES.map((option) => ({ value: option, label: localize(INDUSTRY_LABELS[option], locale) }))}
+              selected={industries}
+              onChange={(next) => updateParams({ industry: next.join(",") || null })}
+            />
+          </div>
+          <div className="xl:pl-5">
+            <MultiSelectPills
+              label="项目类型"
+              options={SCOPE_TYPES.map((option) => ({ value: option, label: localize(SCOPE_TYPE_LABELS[option], locale) }))}
+              selected={scopeTypes}
+              onChange={(next) => updateParams({ scope: next.join(",") || null })}
+            />
+          </div>
         </div>
 
         {/* Short, fixed-length option lists stay always-visible instead of
@@ -294,7 +300,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        {hasActiveFilters && <div className="mt-3 flex flex-wrap items-center gap-3">
           {industries.map((industry) => (
             <button key={industry} type="button" onClick={() => updateParams({ industry: industries.filter((item) => item !== industry).join(",") || null })} className="rounded-full bg-[#e9eef0] px-3 py-1 text-xs font-semibold text-[#314b5c]">
               {industryLabel(industry, locale)} ×
@@ -312,7 +318,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
             </button>
           )}
           {hasActiveFilters && <SaveSearchControl href={currentSearchHref} />}
-        </div>
+        </div>}
       </section>
 
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_20rem]">

@@ -9,6 +9,7 @@ import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, industryLabel } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders, type SortKey } from "@/lib/filter-tenders";
+import { useSavedTenderIds } from "@/lib/saved";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
 import { InlineTogglePills } from "@/components/tenders/InlineTogglePills";
 import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
@@ -108,6 +109,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { savedIds } = useSavedTenderIds();
 
   const query = searchParams.get("q") ?? "";
   const industries = parseList(searchParams.get("industry"));
@@ -167,7 +169,19 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const reminders = sorted.filter((tender) => tender.submissionDeadline).slice(0, 4);
+  // "交标提醒" is specifically about tenders the user has bookmarked (查看
+  // 关注/收藏), not just whatever the current search happens to surface —
+  // per explicit user request (2026-09-04). Derived from the full
+  // `tenders` prop (not `sorted`) so it stays stable regardless of the
+  // active filters/search.
+  const savedReminders = useMemo(
+    () =>
+      tenders
+        .filter((tender) => savedIds.includes(tender.id) && tender.submissionDeadline)
+        .sort((a, b) => a.submissionDeadline!.localeCompare(b.submissionDeadline!))
+        .slice(0, 6),
+    [tenders, savedIds],
+  );
   const currentSearchHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   return (
@@ -322,15 +336,19 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
           </section>
           <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5">
             <div className="flex items-center justify-between"><h2 className="font-bold text-[#071826]">交标提醒</h2><Link href="/saved" className="text-xs font-semibold text-[#24465a]">查看关注</Link></div>
-            <div className="mt-4 divide-y divide-[#e5e9eb]">
-              {reminders.map((tender) => (
-                <Link key={tender.id} href={`/tenders/${tender.slug}`} className="block py-3 first:pt-0 last:pb-0">
-                  <span className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#64717c]"><MexicoFlag />墨西哥</span>
-                  <p className="line-clamp-2 text-sm font-bold leading-5 text-[#172c3b]">{tender.title.zh || tender.title.es}</p>
-                  <p className="mt-1.5 text-xs font-semibold text-[#b86e00]">{formatDate(tender.submissionDeadline!, locale)}</p>
-                </Link>
-              ))}
-            </div>
+            {savedReminders.length === 0 ? (
+              <p className="mt-4 text-sm text-[#64717c]">待收藏项目特别提醒——点击项目上的收藏图标后，交标提醒会显示在这里。</p>
+            ) : (
+              <div className="mt-4 divide-y divide-[#e5e9eb]">
+                {savedReminders.map((tender) => (
+                  <Link key={tender.id} href={`/tenders/${tender.slug}`} className="block py-3 first:pt-0 last:pb-0">
+                    <span className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#64717c]"><MexicoFlag />墨西哥</span>
+                    <p className="line-clamp-2 text-sm font-bold leading-5 text-[#172c3b]">{tender.title.zh || tender.title.es}</p>
+                    <p className="mt-1.5 text-xs font-semibold text-[#b86e00]">{formatDate(tender.submissionDeadline!, locale)}</p>
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
         </aside>
       </div>

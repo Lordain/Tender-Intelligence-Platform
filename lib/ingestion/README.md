@@ -1592,6 +1592,38 @@ inert for now — the tender list itself, and manual per-tender document
 retrieval (open `sourceUrl`, pass the CAPTCHA, download by hand) are
 unaffected.
 
+### OCDS API confirmed unreachable — all three attachment-automation paths now dead (2026-09-04)
+
+The user ran `npm run ingest:colombia-ocds -- --months 2` for real (from
+their own machine, not this sandbox): `ConnectTimeoutError` connecting to
+`api.colombiacompra.gov.co:443`. Then opened
+`https://api.colombiacompra.gov.co/releases/?name=...` directly in a
+browser — also `ERR_CONNECTION_TIMED_OUT`. Two independent real vantage
+points (Node `fetch`, and a browser on a different network path) both
+can't reach the host at all — not a firewall/proxy/sandbox-egress
+question, the domain itself doesn't respond. CCE's own manual documents
+this API, but it's not actually live/reachable as of this pass (wrong
+subdomain, IP-allowlisted, or simply down — undetermined, and not worth
+guessing further without a working request to inspect).
+
+This closes out all three attachment-automation paths investigated this
+session for Colombia:
+1. `dmgg-8hin` Socrata dataset — real id-namespace mismatch (`REQ`/`NTC`
+   vs `BDOS`), confirmed via live diagnostic logging (see above).
+2. `community.secop.gov.co` tender detail page — real CAPTCHA gate,
+   confirmed by the user manually.
+3. `api.colombiacompra.gov.co` OCDS API — host unreachable, confirmed
+   from two independent real network paths just now.
+
+**Conclusion: Colombia attachment auto-download is not currently viable
+by any path found so far.** Not pursuing further without a new, concrete
+lead. `colombia-ocds-live.ts`/`ingest-colombia-ocds.ts` are left in place
+(harmless, real code, just currently unusable) in case the host comes
+back up or a corrected URL surfaces later — no code changes needed if so,
+just re-run the same diagnostic script. Manual per-tender document
+retrieval (open `sourceUrl`, pass the CAPTCHA, download by hand) remains
+the only working path for Colombia attachments.
+
 ### Real flagship-tag bug found via this same investigation (2026-09-04)
 
 While chasing the attachment-id mismatch above, the user opened one of

@@ -11,10 +11,18 @@ import type { ComprasMxOpenTenderRow } from "@/lib/ingestion/compras-mx-open-ten
  * future export comes in that shape; CSV falls back to GB18030 the same
  * way the other Compras MX bulk readers do, since that's the encoding real
  * exports from this portal have arrived in before.
+ *
+ * Accepts either a local file path (the CLI ingest scripts) or the raw
+ * file bytes directly (the admin upload form — app/api/admin/import-
+ * tenders/route.ts reads the uploaded File into a Buffer, no temp file on
+ * disk needed) plus the original filename so the .csv/.xlsx dispatch
+ * still works on an in-memory buffer.
  */
-export async function readComprasMxOpenTendersFile(filePath: string): Promise<ComprasMxOpenTenderRow[]> {
-  if (filePath.endsWith(".csv")) {
-    const buffer = readFileSync(filePath);
+export async function readComprasMxOpenTendersFile(file: string | { buffer: Buffer; fileName: string }): Promise<ComprasMxOpenTenderRow[]> {
+  const isCsv = typeof file === "string" ? file.endsWith(".csv") : file.fileName.endsWith(".csv");
+
+  if (isCsv) {
+    const buffer = typeof file === "string" ? readFileSync(file) : file.buffer;
     let content: string;
     try {
       content = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
@@ -35,7 +43,11 @@ export async function readComprasMxOpenTendersFile(filePath: string): Promise<Co
   }
 
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile(filePath);
+  if (typeof file === "string") {
+    await workbook.xlsx.readFile(file);
+  } else {
+    await workbook.xlsx.load(file.buffer as unknown as ExcelJS.Buffer);
+  }
   const worksheet = workbook.worksheets[0];
   if (!worksheet) return [];
 

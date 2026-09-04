@@ -1,49 +1,22 @@
 /**
- * Ingests a locally-exported "Difusión de procedimientos" file — the
- * public search page's own browser Excel export listing procedures still
- * in progress (no award yet), as opposed to the Datos Abiertos contracts
- * export (awarded/historical). See
- * lib/ingestion/compras-mx-open-tenders-mapper.ts and lib/ingestion/README.md
- * for why this file, not the page's anti-automation-gated JSON API, is the
- * source used here.
+ * CLI wrapper around lib/ingestion/import-new-tenders.ts — see that
+ * file's header for what this actually does (reads a locally-exported
+ * "Difusión de procedimientos" file, maps it, filters to recent
+ * publications, upserts to Supabase). The admin "新项目清单" page
+ * (app/admin/import-tenders/) does the same thing through a web form
+ * instead of the terminal, via the same shared function.
  *
  * Usage:
  *   npm run ingest:comprasmx-open -- --fixture                    (offline dry run)
  *   npm run ingest:comprasmx-open -- path/to/export.xlsx           (dry run against a real exported file)
  *   npm run ingest:comprasmx-open -- path/to/export.xlsx --write   (writes to Supabase)
  */
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import { readComprasMxOpenTendersFile } from "../lib/ingestion/connectors/compras-mx-open-tenders-file";
-import { mapComprasMxOpenTenderRowToTender } from "../lib/ingestion/compras-mx-open-tenders-mapper";
-import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
-import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
-import { filterRecentTenders } from "../lib/ingestion/recency";
-import type { Tender } from "../types/tender";
+import { dirname, join, basename } from "node:path";
+import { importNewTenders } from "../lib/ingestion/import-new-tenders";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SOURCE_NAME = "Compras MX — Difusión de procedimientos (exportación pública)";
-const SOURCE_URL = "https://comprasmx.buengobierno.gob.mx/sitiopublico/#/";
-
-async function upsertTenders(tenders: Tender[]) {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) {
-    console.error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). See .env.example.");
-    process.exit(1);
-  }
-
-  const { upsertedCount, failed } = await upsertTendersBatched(supabase, tenders, (done, total) => {
-    console.log(`Upserted ${done}/${total}...`);
-  });
-
-  if (failed.length > 0) {
-    console.error(`${failed.length} row(s) failed to upsert:`);
-    for (const f of failed.slice(0, 20)) console.error(`  ${f.slug}: ${f.error}`);
-    if (failed.length > 20) console.error(`  ...and ${failed.length - 20} more.`);
-  }
-
-  console.log(`Upserted ${upsertedCount} of ${tenders.length} mapped tenders.`);
-}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -59,39 +32,40 @@ async function main() {
     process.exit(1);
   }
 
-  const resolvedPath = useFixture
-    ? join(__dirname, "../lib/ingestion/__fixtures__/sample-comprasmx-open-tenders.xlsx")
-    : filePath!;
+  const resolvedPath = useFixture ? join(__dirname, "../lib/ingestion/__fixtures__/sample-comprasmx-open-tenders.xlsx") : filePath!;
+  const buffer = readFileSync(resolvedPath);
 
-  const rows = await readComprasMxOpenTendersFile(resolvedPath);
-  const mappedTenders = rows
-    .map((row) => mapComprasMxOpenTenderRowToTender(row, SOURCE_NAME, SOURCE_URL))
-    .filter((t): t is Tender => t !== null);
+  const result = await importNewTenders(
+    "comprasmx-open",
+    { buffer, fileName: basename(resolvedPath) },
+    { write: shouldWrite, months },
+  );
 
-  console.log(`Mapped ${mappedTenders.length} of ${rows.length} rows.`);
-
-  // Every row in this export is still open to bid — its "publication date"
-  // is stamped at export time (see compras-mx-open-tenders-mapper.ts), so
-  // the recency filter is a no-op here. Applied anyway for consistency
-  // with the other sources and in case a future mapper reads a real
-  // publication date out of the file.
-  const tenders = filterRecentTenders(mappedTenders, months);
-  if (tenders.length !== mappedTenders.length) {
+  console.log(`Mapped ${result.mappedCount} of ${result.totalRows} rows.`);
+  if (result.keptAfterRecencyCount !== result.mappedCount) {
     console.log(
-      `Keeping ${tenders.length} of ${mappedTenders.length} published within the last ${months} month(s) (pass --months 0 to disable).`,
+      `Keeping ${result.keptAfterRecencyCount} of ${result.mappedCount} published within the last ${result.months} month(s) (pass --months 0 to disable).`,
     );
   }
 
   if (!shouldWrite) {
-    console.log(JSON.stringify(useFixture ? tenders : tenders.slice(0, 5), null, 2));
-    if (!useFixture && tenders.length > 5) {
-      console.log(`\n...and ${tenders.length - 5} more (showing first 5 of a real file's dry run).`);
+    console.log(JSON.stringify(useFixture ? result.sample : result.sample, null, 2));
+    if (!useFixture && result.keptAfterRecencyCount > result.sample.length) {
+      console.log(`\n...and ${result.keptAfterRecencyCount - result.sample.length} more (showing first ${result.sample.length} of a real file's dry run).`);
     }
     console.log(`\n${useFixture ? "--fixture" : "dry run (pass --write to actually upsert)"} — nothing was written to Supabase.`);
     return;
   }
 
-  await upsertTenders(tenders);
+  if (result.failed && result.failed.length > 0) {
+    console.error(`${result.failed.length} row(s) failed to upsert:`);
+    for (const f of result.failed.slice(0, 20)) console.error(`  ${f.slug}: ${f.error}`);
+    if (result.failed.length > 20) console.error(`  ...and ${result.failed.length - 20} more.`);
+  }
+  if (result.skippedExcludedCount) {
+    console.log(`Skipped ${result.skippedExcludedCount} tender(s) classified "excluded" (routine service) — not written.`);
+  }
+  console.log(`Upserted ${result.upsertedCount} of ${result.keptAfterRecencyCount} mapped tenders.`);
 }
 
 main();

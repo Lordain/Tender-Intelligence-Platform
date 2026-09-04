@@ -19,6 +19,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 export type UpsertTendersResult = {
   upsertedCount: number;
+  skippedExcludedCount: number;
   failed: { slug: string; error: string }[];
 };
 
@@ -130,5 +131,5 @@ export async function upsertTendersBatched(
     onProgress?.(upsertedCount, includable.length);
   }
 
-  return { upsertedCount, failed };
+  return { upsertedCount, skippedExcludedCount: excludedCount, failed };
 }

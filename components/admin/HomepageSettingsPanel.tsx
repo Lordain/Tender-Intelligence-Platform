@@ -7,8 +7,26 @@ export function HomepageSettingsPanel({ initialCount }: { initialCount: number }
   const router = useRouter();
   const [count, setCount] = useState(String(initialCount));
   const [saving, setSaving] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  async function clearFeatured() {
+    if (!confirm("确定要清空所有已勾选的“首页”项目吗？此操作无法撤销。")) return;
+    setClearing(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const res = await fetch("/api/admin/tenders/clear-homepage-featured", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setClearing(false);
+    }
+  }
 
   async function save() {
     const n = Number(count);
@@ -67,6 +85,14 @@ export function HomepageSettingsPanel({ initialCount }: { initialCount: number }
           {saving ? "保存中…" : "保存"}
         </button>
         {saved && <span className="text-xs font-semibold text-emerald-700">已保存</span>}
+        <button
+          type="button"
+          onClick={clearFeatured}
+          disabled={clearing}
+          className="h-9 rounded-lg border border-[#d8e0e3] bg-white px-4 text-xs font-black text-[#64717c] transition-colors hover:border-red-300 hover:text-red-700 disabled:opacity-50"
+        >
+          {clearing ? "清空中…" : "清空当前勾选"}
+        </button>
       </div>
     </div>
   );

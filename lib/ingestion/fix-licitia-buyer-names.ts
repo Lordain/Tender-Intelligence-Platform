@@ -1,18 +1,32 @@
 /**
- * Core logic behind the admin "LicitIA 刷新" section
- * (app/admin/import-tenders/) — one-off repair for tenders
- * discover-comprasmx-vigente.ts already wrote with a raw-code buyer name
- * (e.g. "073R96" instead of a real agency name). Straight extraction of
- * scripts/fix-licitia-buyer-names.ts's logic (that script is now a thin
- * wrapper around this function) — see that script's original header
- * comment for the full story (why every row is re-checked unconditionally,
- * not just ones that "look like" a raw code).
+ * Core logic behind the admin "LicitIA 刷新" section's "修复采购单位名称"
+ * button (app/admin/import-tenders/) — repair for tenders whose buyer name
+ * is an unresolved raw code (e.g. "073R96", "081013") instead of a real
+ * agency name/acronym.
+ *
+ * Originally scoped to only tenders whose source_name identified them as
+ * coming from LicitIA's bulk "vigente" dump (discover-comprasmx-vigente.ts)
+ * — but a real user report (2026-09-04) found the identical raw-code
+ * problem on tenders ingested from the "Compras MX — 开放招标" manual
+ * export (compras-mx-open-tenders-mapper.ts): that source's own "SIGLAS
+ * DEPENDENCIA O ENTIDAD" column carries an unresolved raw code for the same
+ * buyers LicitIA's bulk dump degrades to, and this button never touched
+ * those rows since they don't carry the LicitIA source_name. Now scans
+ * EVERY tender regardless of source_name.
+ *
+ * Deliberately does NOT pre-filter candidates by whether the stored buyer
+ * "looks like" a raw code (e.g. contains a digit) before deciding what to
+ * re-check — an earlier version of this script did exactly that and missed
+ * a real case: a buyer stored as "ATTRAPI" (no digit at all, so it passed
+ * as "looks fine") was still wrong. There's no way to tell from the stored
+ * value alone whether it's a real acronym or bad data, so every row gets
+ * re-checked against the live LicitIA detail API; resolveBuyerName's own
+ * internal LOOKS_LIKE_RAW_CODE check (deciding whether a freshly-resolved
+ * acronym is trustworthy) is unrelated to this and stays as-is.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchLicitacionDetail } from "@/lib/ingestion/connectors/licitia-connector";
 import { resolveBuyerName } from "@/lib/ingestion/licitia-vigente-mapper";
-
-const SOURCE_NAME = "LicitIA Abierto (espejo de ComprasMX/CompraNet Datos Abiertos)";
 
 export type FixLicitiaBuyerNamesResult = {
   candidateCount: number;
@@ -21,19 +35,28 @@ export type FixLicitiaBuyerNamesResult = {
   write: boolean;
 };
 
-export async function fixLicitiaBuyerNames(supabase: SupabaseClient, options: { write: boolean }): Promise<FixLicitiaBuyerNamesResult> {
-  const { data: rows, error } = await supabase.from("tenders").select("slug, tender_number, buyer").eq("source_name", SOURCE_NAME);
-  if (error) throw new Error(`Failed to query tenders: ${error.message}`);
+/** Same 1000-row-per-request PostgREST cap other full-table scans in this codebase page around (see lib/db/tenders.ts's SUPABASE_PAGE_SIZE comment) — this table is small today but there's no reason to silently truncate if it grows. */
+const PAGE_SIZE = 1000;
 
-  console.log(`[fix-licitia-buyer-names] ${rows?.length ?? 0} tender(s) from this source — re-checking every one against the live detail API.`);
+export async function fixLicitiaBuyerNames(supabase: SupabaseClient, options: { write: boolean }): Promise<FixLicitiaBuyerNamesResult> {
+  const rows: { slug: string; tender_number: string; buyer: string }[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase.from("tenders").select("slug, tender_number, buyer").range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(`Failed to query tenders: ${error.message}`);
+    const page = (data ?? []) as { slug: string; tender_number: string; buyer: string }[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+
+  console.log(`[fix-licitia-buyer-names] ${rows.length} tender(s) total (any source) — re-checking every one against the live LicitIA detail API.`);
 
   let fixed = 0;
   let unchanged = 0;
 
-  for (const row of rows ?? []) {
-    const tenderNumber = row.tender_number as string;
-    const slug = row.slug as string;
-    const oldBuyer = row.buyer as string;
+  for (const row of rows) {
+    const tenderNumber = row.tender_number;
+    const slug = row.slug;
+    const oldBuyer = row.buyer;
 
     const result = await fetchLicitacionDetail(tenderNumber);
     if (result.status !== "found") {
@@ -57,5 +80,5 @@ export async function fixLicitiaBuyerNames(supabase: SupabaseClient, options: { 
 
   console.log(`[fix-licitia-buyer-names] ${fixed} fixable (${unchanged} left unchanged, no better name available).`);
 
-  return { candidateCount: rows?.length ?? 0, fixedCount: fixed, unchangedCount: unchanged, write: options.write };
+  return { candidateCount: rows.length, fixedCount: fixed, unchangedCount: unchanged, write: options.write };
 }

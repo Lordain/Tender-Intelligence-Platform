@@ -237,7 +237,7 @@ function FixBuyerNamesSection() {
     <div>
       <h3 className="text-sm font-black text-[#071826]">修复采购单位名称</h3>
       <p className="mt-1 text-xs text-[#52636e]">
-        重新检查所有来自 LicitIA 的标书，把之前写成原始代码（如&quot;073R96&quot;）的采购单位名称，替换成真实全名。
+        逐条重新核对所有标书的采购单位名称（不限来源——包括 Compras MX 开放招标导入的），通过 LicitIA 详情接口尝试补全真实全名，把&quot;073R96&quot;&quot;081013&quot;这类原始代码换成真实全名。
       </p>
       {error && <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-3">

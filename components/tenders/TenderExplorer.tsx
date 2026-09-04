@@ -32,6 +32,22 @@ function parseList(param: string | null): string[] {
   return param ? param.split(",").filter(Boolean) : [];
 }
 
+/** First page, last page, and a small window around the current page — with "ellipsis" markers for any gap — so a jump to page 12 of 40 doesn't require 11 clicks on "下一页". */
+function buildPageWindow(current: number, total: number): (number | "ellipsis")[] {
+  const radius = 1;
+  const pages = new Set<number>([1, total, current]);
+  for (let i = current - radius; i <= current + radius; i++) {
+    if (i >= 1 && i <= total) pages.add(i);
+  }
+  const sorted = [...pages].sort((a, b) => a - b);
+  const result: (number | "ellipsis")[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push("ellipsis");
+    result.push(sorted[i]);
+  }
+  return result;
+}
+
 function SearchIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5 fill-none stroke-current stroke-1.8">
@@ -103,8 +119,10 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const sortParam = searchParams.get("sort");
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "deadline_asc";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const viewParam = searchParams.get("view");
+  const view = viewParam === "new" || viewParam === "deadline" ? viewParam : null;
 
-  const hasActiveFilters = industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || tierParam !== null || query.length > 0;
+  const hasActiveFilters = industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || tierParam !== null || query.length > 0 || view !== null;
 
   function updateParams(updates: Record<string, string | null>, resetPage = true) {
     const params = new URLSearchParams(window.location.search);
@@ -121,15 +139,34 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
     () => filterTenders(tenders, { query, industries, industryMatchMode, scopeTypes, statuses, countries: ["Mexico"], relevanceTiers }, locale),
     [tenders, query, industries, industryMatchMode, scopeTypes, statuses, relevanceTiers, locale],
   );
-  const sorted = useMemo(() => sortTenders(filtered, sort), [filtered, sort]);
+  // Stat-card counts are derived from `filtered` (every active filter EXCEPT
+  // `view`), not `sorted` — so the "本周新增"/"即将交标" numbers stay stable
+  // no matter which of the two views is currently active; only the list
+  // below narrows when a view is clicked.
+  const newThisWeekCount = useMemo(() => {
+    const cutoff = new Date().getTime() - 7 * 24 * 60 * 60 * 1000;
+    return filtered.filter((tender) => new Date(tender.createdAt).getTime() >= cutoff).length;
+  }, [filtered]);
+  const upcomingCount = useMemo(() => {
+    const now = new Date().getTime();
+    return filtered.filter((tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= now).length;
+  }, [filtered]);
+  const viewFiltered = useMemo(() => {
+    if (view === "new") {
+      const cutoff = new Date().getTime() - 7 * 24 * 60 * 60 * 1000;
+      return filtered.filter((tender) => new Date(tender.createdAt).getTime() >= cutoff);
+    }
+    if (view === "deadline") {
+      const now = new Date().getTime();
+      return filtered.filter((tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= now);
+    }
+    return filtered;
+  }, [filtered, view]);
+  const sorted = useMemo(() => sortTenders(viewFiltered, sort), [viewFiltered, sort]);
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const reminders = sorted.filter((tender) => tender.submissionDeadline).slice(0, 4);
-  const newThisWeekCount = useMemo(() => {
-    const cutoff = new Date().getTime() - 7 * 24 * 60 * 60 * 1000;
-    return sorted.filter((tender) => new Date(tender.createdAt).getTime() >= cutoff).length;
-  }, [sorted]);
   const currentSearchHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   return (
@@ -228,10 +265,24 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
           )}
 
           {totalPages > 1 && (
-            <div className="mt-7 flex items-center justify-center gap-3">
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
               <button type="button" onClick={() => updateParams({ page: String(currentPage - 1) }, false)} disabled={currentPage <= 1} className="rounded-xl border border-[#d8e0e3] bg-white px-4 py-2 text-xs font-semibold disabled:opacity-40">上一页</button>
-              <span className="rounded-xl bg-[#ffb21c] px-3 py-2 text-xs font-black">{currentPage}</span>
-              <span className="text-xs text-[#6c7982]">/ {totalPages}</span>
+              {buildPageWindow(currentPage, totalPages).map((p, i) =>
+                p === "ellipsis" ? (
+                  <span key={`ellipsis-${i}`} className="px-1 text-xs text-[#9aa5ab]">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => updateParams({ page: String(p) }, false)}
+                    className={`min-w-9 rounded-xl px-3 py-2 text-xs font-black transition-colors ${
+                      p === currentPage ? "bg-[#ffb21c] text-[#071826]" : "border border-[#d8e0e3] bg-white text-[#425461] hover:border-[#ffb21c]"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ),
+              )}
               <button type="button" onClick={() => updateParams({ page: String(currentPage + 1) }, false)} disabled={currentPage >= totalPages} className="rounded-xl border border-[#d8e0e3] bg-white px-4 py-2 text-xs font-semibold disabled:opacity-40">下一页</button>
             </div>
           )}
@@ -241,9 +292,23 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
           <section className="rounded-2xl bg-[#061b2b] p-6 text-white">
             <h2 className="text-lg font-bold">本周机会</h2>
             <div className="mt-6 grid grid-cols-3 divide-x divide-white/20 text-center">
-              <div><p className="text-xs text-white/60">当前项目</p><p className="mt-2 text-2xl font-black">{sorted.length}</p></div>
-              <div><p className="text-xs text-white/60">本周新增</p><p className="mt-2 text-2xl font-black text-[#ffb21c]">{newThisWeekCount}</p></div>
-              <div><p className="text-xs text-white/60">即将交标</p><p className="mt-2 text-2xl font-black text-[#ffb21c]">{reminders.length}</p></div>
+              <div className="px-1"><p className="text-xs text-white/60">当前项目</p><p className="mt-2 text-2xl font-black">{sorted.length}</p></div>
+              <button
+                type="button"
+                onClick={() => updateParams({ view: view === "new" ? null : "new", sort: view === "new" ? null : "publication_desc" })}
+                className={`rounded-lg px-1 py-1 transition-colors ${view === "new" ? "bg-white/15" : "hover:bg-white/10"}`}
+              >
+                <p className="text-xs text-white/60">本周新增</p>
+                <p className="mt-2 text-2xl font-black text-[#ffb21c]">{newThisWeekCount}</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateParams({ view: view === "deadline" ? null : "deadline", sort: view === "deadline" ? null : "deadline_asc" })}
+                className={`rounded-lg px-1 py-1 transition-colors ${view === "deadline" ? "bg-white/15" : "hover:bg-white/10"}`}
+              >
+                <p className="text-xs text-white/60">即将交标</p>
+                <p className="mt-2 text-2xl font-black text-[#ffb21c]">{upcomingCount}</p>
+              </button>
             </div>
           </section>
           <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5">

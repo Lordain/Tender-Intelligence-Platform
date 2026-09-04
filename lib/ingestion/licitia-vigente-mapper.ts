@@ -44,7 +44,7 @@ import type { LicitiaVigenteRow } from "@/lib/ingestion/connectors/licitia-conne
  * established short name — indistinguishable from a real acronym except
  * that it contains a digit, which no real Mexican government acronym does.
  */
-const LOOKS_LIKE_RAW_CODE = /\d/;
+export const LOOKS_LIKE_RAW_CODE = /\d/;
 
 /**
  * Prefers a clean acronym when the detail lookup found one; falls back to
@@ -66,15 +66,30 @@ function inferStatus(estatus: string): TenderStatus {
   return "open";
 }
 
+/**
+ * Real user report (2026-09-04): the "关键日期" timeline was missing the
+ * award/结果公示 date entirely, even though row.fallo is a real, confirmed
+ * field this same mapper already uses for the top-level awardDate — it just
+ * never made it into keyDates, so the timeline (which only ever renders
+ * keyDates, see components/tenders/KeyDatesTimeline.tsx) silently dropped
+ * it. publicacion is similarly real and now included for the same reason.
+ */
 function buildKeyDates(row: LicitiaVigenteRow, tenderNumber: string): TenderKeyDate[] {
-  if (!row.apertura) return [];
-  // Same reasoning as compras-mx-open-tenders-mapper.ts's buildKeyDates:
-  // this source's one real date field ("apertura") is submission-and-
-  // opening combined, not two separate events.
-  return [
-    { id: `${tenderNumber}-submission`, type: "submission", date: row.apertura },
-    { id: `${tenderNumber}-opening`, type: "opening", date: row.apertura },
-  ];
+  const dates: TenderKeyDate[] = [];
+  if (row.publicacion) {
+    dates.push({ id: `${tenderNumber}-publication`, type: "publication", date: row.publicacion });
+  }
+  if (row.apertura) {
+    // Same reasoning as compras-mx-open-tenders-mapper.ts's buildKeyDates:
+    // this source's one real date field ("apertura") is submission-and-
+    // opening combined, not two separate events.
+    dates.push({ id: `${tenderNumber}-submission`, type: "submission", date: row.apertura });
+    dates.push({ id: `${tenderNumber}-opening`, type: "opening", date: row.apertura });
+  }
+  if (row.fallo) {
+    dates.push({ id: `${tenderNumber}-award`, type: "award", date: row.fallo });
+  }
+  return dates;
 }
 
 export function mapLicitiaVigenteRowToTender(

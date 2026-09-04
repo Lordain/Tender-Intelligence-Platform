@@ -27,6 +27,7 @@ type TenderRow = {
   procedure_type: string;
   participation_scope: Tender["participationScope"] | null;
   publication_date: string;
+  publication_date_is_estimated: boolean | null;
   submission_deadline: string | null;
   award_date: string | null;
   awarded_to: string | null;
@@ -80,7 +81,7 @@ type RiskRow = {
 const TENDER_LIST_FIELDS = `
   id, slug, tender_number, title, summary, buyer, country, government_level,
   industries, subcategory, scope_type, procedure_type, participation_scope,
-  publication_date,
+  publication_date, publication_date_is_estimated,
   submission_deadline, award_date, awarded_to, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason,
   source_name, source_url, created_at, updated_at
@@ -163,6 +164,7 @@ function toTender(row: TenderRow): Tender {
     procedureType: row.procedure_type,
     participationScope: row.participation_scope ?? undefined,
     publicationDate: row.publication_date,
+    publicationDateIsEstimated: row.publication_date_is_estimated ?? undefined,
     submissionDeadline: row.submission_deadline ?? undefined,
     awardDate: row.award_date ?? undefined,
     awardedTo: row.awarded_to ?? undefined,
@@ -338,6 +340,7 @@ export type AdminTenderListRow = {
   estimatedValue?: number;
   currency?: string;
   publicationDate: string;
+  publicationDateIsEstimated?: boolean;
   updatedAt: string;
 };
 
@@ -352,6 +355,7 @@ type AdminTenderListDbRow = {
   estimated_value: number | null;
   currency: string | null;
   publication_date: string;
+  publication_date_is_estimated: boolean | null;
   updated_at: string;
 };
 
@@ -364,7 +368,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, tender_number, title, buyer, country, status, relevance_tier, estimated_value, currency, publication_date, updated_at")
+      .select("slug, tender_number, title, buyer, country, status, relevance_tier, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at")
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
 
@@ -389,6 +393,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
     publicationDate: row.publication_date,
+    publicationDateIsEstimated: row.publication_date_is_estimated ?? undefined,
     updatedAt: row.updated_at,
   }));
 }

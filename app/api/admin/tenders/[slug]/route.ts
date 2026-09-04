@@ -84,6 +84,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     procedure_type: body.procedureType,
     participation_scope: body.participationScope || null,
     publication_date: body.publicationDate,
+    publication_date_is_estimated: false,
     submission_deadline: body.submissionDeadline || null,
     award_date: body.awardDate || null,
     awarded_to: body.awardedTo?.trim() || null,

@@ -91,6 +91,7 @@ export async function POST(request: Request) {
     procedure_type: body.procedureType,
     participation_scope: body.participationScope ?? null,
     publication_date: body.publicationDate,
+    publication_date_is_estimated: false,
     submission_deadline: body.submissionDeadline || null,
     estimated_value: estimatedValue ?? null,
     currency: currency ?? null,

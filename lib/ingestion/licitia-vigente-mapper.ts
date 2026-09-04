@@ -110,6 +110,7 @@ export function mapLicitiaVigenteRowToTender(
     procedureType: row.tipo?.trim() || "Unknown",
     participationScope: undefined,
     publicationDate,
+    publicationDateIsEstimated: !row.publicacion,
     submissionDeadline: row.apertura ?? undefined,
     awardDate: row.fallo ?? undefined,
     status: inferStatus(row.estatus ?? ""),

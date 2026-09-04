@@ -102,7 +102,7 @@ export function TenderOverview({ tender }: { tender: Tender }) {
           }
         />
         <Field
-          label={localize(uiText.publicationDateLabel, locale)}
+          label={localize(tender.publicationDateIsEstimated ? uiText.ingestedDateLabel : uiText.publicationDateLabel, locale)}
           value={formatDate(tender.publicationDate, locale)}
         />
         <Field

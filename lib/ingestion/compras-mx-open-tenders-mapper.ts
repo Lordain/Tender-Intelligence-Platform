@@ -159,6 +159,7 @@ export function mapComprasMxOpenTenderRowToTender(
     procedureType: row["TIPO DE PUBLICACIÓN"]?.trim() || "Unknown",
     participationScope: inferParticipationScope(row["CARÁCTER"]),
     publicationDate: now,
+    publicationDateIsEstimated: true,
     submissionDeadline: submissionDeadline ?? undefined,
     location: row["ENTIDAD FEDERATIVA"]?.trim(),
     status: inferStatus(row["ESTATUS"]),

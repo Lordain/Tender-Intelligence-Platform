@@ -88,7 +88,14 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                     )}
                   </td>
                   <td className="px-4 py-3 text-[#5d6d77]">{value ?? "—"}</td>
-                  <td className="px-4 py-3 text-[#5d6d77]">{formatDate(t.publicationDate, "zh")}</td>
+                  <td className="px-4 py-3 text-[#5d6d77]">
+                    {formatDate(t.publicationDate, "zh")}
+                    {t.publicationDateIsEstimated && (
+                      <span title="该来源无真实发布日期字段，此为收录时间" className="ml-1.5 rounded-full bg-[#edf2f3] px-1.5 py-0.5 text-[10px] font-semibold text-[#7a878f]">
+                        估
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-4">
                       <Link

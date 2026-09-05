@@ -202,6 +202,16 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
   const now = new Date().toISOString();
   const industries = classifyIndustries(title, buyer);
   const scopeType = "services" as const;
+  // Real gap: this used to hardcode "open" even when the notice's own
+  // detail page already published a real "Fallo" (award) date —
+  // buildDofDetailFields() captures that as a keyDates entry of type
+  // "award" but nothing downstream ever looked at it, unlike every other
+  // source in this codebase (peru-oece-mapper.ts's hasAwards,
+  // colombia-mapper.ts's Adjudicado=Sí, compras-mx-open-tenders-mapper.ts's
+  // ADJUDICA), all of which derive "awarded" from a real published signal
+  // the same way (2026-09-05, user asked how CFE/PEMEX awards are
+  // detected at all).
+  const hasAward = detailKeyDates.some((kd) => kd.type === "award");
 
   return {
     id: crypto.randomUUID(),
@@ -221,7 +231,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     procedureType: "Convocatoria (DOF)",
     publicationDate,
     submissionDeadline,
-    status: "open",
+    status: hasAward ? "awarded" : "open",
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],

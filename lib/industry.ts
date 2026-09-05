@@ -146,7 +146,15 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // missing here (never got the ict_telecom TAG) — real title
   // "IMPLEMENTACIÓN DE SOLUCIÓN DE SISTEMAS DE SEGURIDAD ELECTRÓNICA TIPO
   // VIDEOVIGILANCIA".
-  ["ict_telecom", /telecomunicaci|datacenter|centro de datos|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|\b5g\b|ciberseguridad|seguridad electr[óo]nica|videovigilancia|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito/i],
+  // "monitoreo (de )?veh[íi]culos"/"inhibidor(es)? de se[ñn]al"/"video ?wall"
+  // added (2026-09-05, real gaps the user flagged): a vehicle-MONITORING/
+  // tracking system was tagged only "vehicles" (from the bare word
+  // "vehículos"), a signal-jammer purchase fell through to "general" with
+  // no ICT signal at all, and a video-wall display system for a military
+  // school was tagged only "education" (from "escuela militar") — all
+  // three are genuine ICT/electronics equipment, not what their incidental
+  // matching term implied.
+  ["ict_telecom", /telecomunicaci|datacenter|centro de datos|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|\b5g\b|ciberseguridad|seguridad electr[óo]nica|videovigilancia|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito|monitoreo (de )?veh[íi]culos|inhibidor(es)? de se[ñn]al|video ?wall/i],
   // "tren ferroviario"/"tramo ... ferroviario"/"eje prioritario"/"ancho de
   // corona" added (2026-09-04, real gaps): real SICT/rail titles like
   // "CONSTRUCCIÓN Y DISEÑO DE 82.00 KM DEL TRAMO II FERROVIARIO DEL TREN DE

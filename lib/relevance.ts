@@ -193,6 +193,75 @@ const EXCLUDE_KEYWORDS = [
   /conservaci[óo]n peri[óo]dica|trabajos de conservaci[óo]n/i, // 长期维护/道路维护 — CONSERVACIÓN PERIÓDICA DE PUENTES DE LA RED FEDERAL...; TRABAJOS DE CONSERVACIÓN EN LA CARRETERA
   /determinaci[óo]n del an[áa]lisis t[ée]cnico/i, // 咨询服务 — DETERMINACIÓN DEL ANÁLISIS TÉCNICO Y CONSTRUCCIÓN, EN EL ESTADO DE TLAXCALA — a technical study/determination, not the works contract itself despite "construcción" appearing in the same title
   /\bcolector(es)?\b.{0,50}en la localidad de/i, // 单区域小项目 — CONSTRUCCIÓN DE COLECTOR ORIENTE EN LA LOCALIDAD DE NUEVA ITALIA DE RUÍZ — one small locality's drainage collector
+
+  // Batch #5 (2026-09-05): a real ~47-title Colombia SECOP II review the
+  // user marked up by hand ("以下应排除"), each with the user's own Chinese
+  // reason label — same posture as batches #3/#4 above. Grouped by theme;
+  // each pattern scoped to the real title(s)/summary text it's meant to
+  // catch, comment carries the user's reason plus a title fragment for
+  // traceability.
+  //
+  // Outsourced/capitated health-SERVICE contracts (医疗服务/医疗类服务) —
+  // Colombia's public-health-insurance model routes a lot of routine
+  // medical-service delivery through third-party providers; none of this
+  // is an equipment purchase.
+  /prestar servicios? (integral(es)? )?de salud|prestaci[óo]n de (los )?servicios? (m[ée]dicos?|de salud|especializados? de)/i, // E.S.E. HOSPITAL SAN RAFAEL GIRARDOTA (servicios integrales de salud...); PRESTACIÓN DE SERVICIO MEDICOS EN EL MUNICIPIO DE TIBU
+  /modalidad c[áa]pita|r[ée]gimen subsidiado|subsistema de salud de la polic[íi]a nacional/i, // capitation/subsidized-regime/police-health-subsystem contracts — E.S.E. HOSPITAL SAN RAFAEL GIRARDOTA; REUMATOLOGIA DECOR; gastroenterologia chocó
+  /especializados y subespecializados en/i, // ESPECIALIZADOS Y SUBESPECIALIZADOS EN CARDIOLOGÍA; CIRUGÍA CARDIOVASCULAR...
+  /consulta m[ée]dica (general )?intramural|intramural y extramural/i, // bundled outpatient-service contracts — PRESTACIÓN DE SERVICIOS (consulta médica general intramural y extramural...)
+  /servicio de dosimetr[íi]a/i, // SERVICIO DE DOSIMETRIA PARA EL PERSONAL — a personnel radiation-monitoring SERVICE, not equipment
+  /servicio de aseo\b|aseo a todo costo/i, // 清洁服务 — PRESTACIÓN DEL SERVICIO DE ASEO A TODO COSTO — cleaning service (existing "artículos/insumos de aseo" pattern only covers aseo SUPPLIES, not the service itself)
+
+  // Routine materiel/consumables purchases (物料/化学品采购/指定采购)
+  /\bmunici[óo]n(es)?\b/i, // ADQUISICIÓN DE MUNICIÓN CALIBRE 12.7 X 99 MM — ammunition
+  /insumos qu[íi]micos\b/i, // 化学品采购 — COMPRA DE INSUMOS QUÍMICOS PARA EL ICPET DE ECOPETROL — lab/research chemical supplies, not equipment
+  /mortero de [áa]gata/i, // 指定采购 — COMPRA DE MORTERO DE ÁGATA DEL MOLINO RM200 — a small lab-instrument consumable/accessory
+
+  // Interventoría/oversight-only contracts (监理服务) — same class as the
+  // existing "supervisión ... construcción/obra" pattern above but not
+  // anchored to a works keyword, since these interventoría titles cover an
+  // EQUIPMENT acquisition contract, not works.
+  /interventor[íi]a integral/i, // CONTRATAR LA INTERVENTORÍA INTEGRAL PARA EL CONTRATO DE ADQUISICIÓN DE CÁMARAS...; INTERVENTORÍA INTEGRAL PARA LA CONSTRUCCIÓN DE LAS OBRAS DEL PARQUE...
+
+  // Real-estate leasing/purchase (租赁/办公室采购) — a lease or a property
+  // purchase is neither an equipment purchase nor a works contract.
+  /arrendamiento de(l)? (un |la |el )?(inmueble(s)?|espacio (f[íi]sico)?|oficina(s)?|bien inmueble)/i, // EVENTO DE COTIZACIÓN PARA EL ARRENDAMIENTO DE INMUEBLE...; LA ENTREGA A TÍTULO DE ARRENDAMIENTO DE UN ESPACIO FÍSICO...; CONTRATO DE ARRENDAMIENTO DEL BIEN INMUEBLE...; Contratar el arrendamiento de oficinas...
+  /\bllantas?\b/i, // 轮胎 — COTIZACION - LLANTAS GENERAL Y SERVICIOS — tires, colloquial term (existing "neumáticos" pattern doesn't cover this word)
+  /pasajes terrestres|pasajes a[ée]reos/i, // 交通费 — SUMINISTRO DE PASAJES TERRESTRES POR NECESIDAD DE DESPLAZAMIENTO A CITAS MÉDICAS — travel-ticket reimbursement
+  /v[áa]lvulas? mec[áa]nicas?/i, // 物料 — SUMINISTRO DE VÁLVULAS MECÁNICAS Y ACCESORIOS DE TUBERIA — pipe-fitting materials, not equipment
+  /centros de vida\b|atenci[óo]n integral a los adultos mayores/i, // APOYO TÉCNICO; ADMINISTRATIVO Y ECONÓMICO A LOS CENTROS DE VIDA DEL DEPARTAMENTO DE CÓRDOBA PARA LA ATENCIÓN INTEGRAL A LOS ADULTOS MAYORES — elderly day-care social program funding
+  /acciones de educaci[óo]n ambiental/i, // 学习服务 — PP- acciones de educación ambiental en comunas y corregimientos del Distrito de Medellín (Contrato interadministrativo) — an environmental-education program, not equipment/works despite the long, content-bearing interadministrativo title
+  /compraventa de inmueble(s)?|adquirir mediante compraventa (los |el )?inmueble(s)?|compraventa (de )?oficina(s)?/i, // JOSE GABRIEL GONZALEZ MARIÑO (adquirir mediante compraventa los inmuebles...); COMPRAVENTA OFICINA 2101...
+  /\bcomodato\b/i, // COMODATO ENTRE EL MUNICIPIO DE FUSAGASUGÁ... SOBRE UN VEHÍCULO — a free loan-for-use grant between two government entities, not a purchase
+
+  // Inter-institutional cooperation agreements (顾问服务/社区服务/学习类服务) —
+  // "aunar esfuerzos" ("join efforts") is a Colombian legal instrument for
+  // administrative/financial cooperation between entities, same class as
+  // "convenio/contrato interadministrativo" and "mandato sin representación"
+  // above — never a real goods/works/services opportunity for an external
+  // bidder, regardless of the (often substantial) funds involved. Real
+  // batch: 5 separate titles/summaries this session, all this exact phrase.
+  /\baunar esfuerzos\b/i,
+  /^convenio\b.{0,60}\buniversidad\b/i, // CONVENIO UNIVERSIDAD PUBLICA DE NAVARRA Y UDENAR — inter-university academic-cooperation agreement, same "no real content" class as isBareInteradministrativeTitle
+  /articulaci[óo]n con la educaci[óo]n media|formaci[óo]n del talento humano/i, // Docencia Servicio Foscal 2026 (SENA workforce-training articulation program)
+  /contrato de empr[ée]stito/i, // EP 0057-2026 (CONTRATO DE EMPRÉSTITO Y PIGNORACIÓN...) — real gap: the existing bare "^empréstito" pattern is anchored to the START of the whole title+summary haystack, which a real title/reference-number prefix (here "EP 0057-2026") pushes past
+
+  // Staffing/branded-giveaway/small-event items (人力/一般用品)
+  /dotaci[óo]n personal|suministro de dotaci[óo]n/i, // CONTRATATO DE SUMINISTRO DE DOTACIÓN PERSONAL — staff workwear/kit bundle, same class as "uniformes"
+  /personal operativo y administrativo/i, // 人力 — LICITACIÓN PÚBLICA PERSONAL OPERATIVO Y ADMINISTRATIVO DE LOS ESTABLECIMIENTOS EDUCATIVOS DE PEREIRA
+  /asistentes del .{0,10}congreso de docencia|reconocimiento a ganadores/i, // branded congress giveaways/awards — ADQUISICIÓN DE 270 SOMBRILLAS/TERMOS PERSONALES...PARA SER ENTREGADOS A LOS ASISTENTES DEL IV CONGRESO DE DOCENCIA; ADQUISICIÓN DE ELEMENTOS PARA REALIZAR RECONOCIMIENTO A GANADORES...
+  /elementos de papeler[íi]a|[úu]tiles de escritorio/i, // 一般用品 — SUMINISTRO DE ELEMENTOS DE PAPELERÍA; ÚTILES DE ESCRITORIO Y OFICINA — real gap: existing office-supplies pattern requires "papelería DE OFICINA" as one phrase, doesn't match "elementos de papelería" on its own
+  /elementos erg[oó]n[oó]micos/i, // Adquisición de elementos ergonómicos — small office-furniture accessories
+  /alumbrado navide[ñn]o/i, // alumbrado navideño 2026 — Christmas lighting decor
+  /programa de alimentaci[óo]n escolar|\bpae\b.{0,20}(alimentaci[óo]n|escolar)/i, // PAE 2026 II — Colombia's national school-meal program, a recurring catering/food-service contract
+
+  // Miscellaneous services/records (服务类)
+  /administraci[óo]n del archivo|archivo de gesti[óo]n|centro de documentaci[óo]n/i, // PRESTAR LOS SERVICIOS PARA LA ADMINISTRACIÓN DEL ARCHIVO DE GESTIÓN Y ARCHIVO CENTRAL, CENTRO DE DOCUMENTACIÓN...
+  /recipientes a presi[óo]n/i, // SERVICIO DE REPARACION EN RECIPIENTES A PRESION CON SOLDADURA ESPECIALIZADA — a repair SERVICE, not equipment/works
+  /actualizaci[óo]n y modernizaci[óo]n de la plataforma/i, // servicios de soporte; actualización y modernización de la plataforma Broadcom CA Service Management — an ongoing IT platform support/upgrade SERVICE, not equipment
+  /combustible.{0,30}flota de (buses|autobuses)/i, // Suministro y compresión del combustible requerido para la flota de buses a gas — real gap: existing combustible patterns only cover "vehículos" phrasing, not "flota de buses"
+  /mobiliario escolar/i, // DOTACIÓN DE HERRAMIENTAS TECNOLÓGICAS; MOBILIARIO ESCOLAR... — single-school furniture/equipment bundle
+  /^asociaci[óo]n de recicladores/i, // ASOCIACION DE RECICLADORES Y FAMI-BODEGAS DEL SUR (ASOBOSUR) — an association's own name as the record's title, not a description of a procurement, same "not a real tender" class as the labor-union pattern above
 ];
 
 /**
@@ -421,7 +490,16 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
 // signal — a bare mention of "energía"/"telecom" with no other evidence —
 // which is exactly what the user asked to stop counting.
 const FLAGSHIP_INDUSTRY_KEYWORDS = [
-  /infraestructura|construcci[óo]n|carretera|puente|ferrocarril|puerto|aeropuerto/i,
+  // Bare "infraestructura" dropped (2026-09-05, real false positive): the
+  // user flagged "AMPLIACIÓN Y MODERNIZACIÓN DE LA INFRAESTRUCTURA
+  // TECNOLÓGICA DEL SISTEMA DE VIDEOVIGILANCIA..." ($773K) as wrongly
+  // promoted to "significant" via this bare word alone — "infraestructura
+  // tecnológica" is a generic phrase (also seen as "infraestructura
+  // educativa"/"infraestructura hospitalaria" elsewhere in this file's own
+  // EXCLUDE_KEYWORDS comments), a much weaker signal than the concrete
+  // construction/works nouns kept below, which genuinely denote large
+  // projects on their own.
+  /construcci[óo]n|carretera|puente|ferrocarril|puerto|aeropuerto/i,
   // Medical/health goods. Added deliberately after measuring the real
   // open-tenders export: of the 82 of 515 procedures open to foreign
   // bidders at all, the large majority are health-sector goods (health
@@ -560,7 +638,18 @@ const MAJOR_PROJECT_KEYWORDS = [
   /plantas? (de generaci[óo]n|termoel[ée]ctrica|hidroel[ée]ctrica|e[óo]lica|fotovoltaica|de ciclo combinado)|central(es)? (el[ée]ctrica|de generaci[óo]n)/i, // 建电站
   /aeropuertos?\b/i, // 建机场
   /redes? (nacional(es)?|de [áa]mbito nacional)|backbone nacional|infraestructura de red nacional/i, // 建大型或国家网络
-  /centros? de datos|datacenter/i, // 建数据中心
+  // Narrowed (2026-09-05, real false positive): the bare phrase alone also
+  // matched "Modernización datacenter" ($713K) — an upgrade of an EXISTING
+  // datacenter is not the same real category as building a new one, and
+  // shouldn't force flagship regardless of value the way a genuine new-build
+  // does. Now requires a construction/new-build qualifier nearby (either
+  // order) — still matches "CONSTRUCCIÓN DE UN NUEVO CENTRO DE DATOS
+  // NACIONAL", no longer matches a bare "modernización"/"ampliación"/
+  // "mantenimiento" of one. A modernization project still isn't excluded
+  // outright: it's protected from EXCLUDE_KEYWORDS by INCLUDE_OVERRIDE_KEYWORDS
+  // (datacenter|centro de datos, unchanged there) and gets tagged
+  // ict_telecom by industry.ts, just no longer an automatic flagship.
+  /(construcci[óo]n|nuevo|nueva).{0,30}(centro(s)? de datos|datacenter)|(centro(s)? de datos|datacenter).{0,30}(construcci[óo]n|nuevo|nueva)/i, // 建数据中心
   /redes? (troncal(es)?|core|n[úu]cleo)|core network/i, // 建核心网络
   /\bpuentes?\b/i, // 建桥
   /\bpuertos?\b|terminal(es)? portuaria(s)?|recinto(s)? portuario(s)?/i, // 建港口
@@ -909,11 +998,25 @@ export function classifyRelevance(input: {
   // content-industry allowlist gate further down when no value is known
   // (see that gate's own comment) — this only stops "no value + happens
   // to be scoped works" alone from claiming the top tier.
+  // hasIncludeOverride only forces flagship when the value is UNDISCLOSED
+  // (2026-09-05, real false positive: two INCLUDE_OVERRIDE_KEYWORDS matches —
+  // "AMPLIACIÓN Y MODERNIZACIÓN...SISTEMA DE VIDEOVIGILANCIA..." at $773K and
+  // "Modernización datacenter" at $713K — were forced to flagship regardless
+  // of their real, disclosed value, both well under FLAGSHIP_VALUE_USD and
+  // even under SIGNIFICANT_VALUE_USD. Once a real value is known, it governs
+  // the tier the same way it does for every other signal in this file — an
+  // override keyword still guarantees the tender is never excluded (see
+  // hasIncludeOverride's use above), it just no longer bypasses the value
+  // bands once there's a real number to judge by. matchesMajorProject stays
+  // value-independent: genuine major-project categories (railway, dam,
+  // power plant, national network, new datacenter build — see
+  // MAJOR_PROJECT_KEYWORDS) are inherently large-scale regardless of what a
+  // specific procurement notice's line-item value happens to disclose.
   if (
-    hasIncludeOverride ||
     matchesMajorProject ||
     hasLongDuration ||
-    (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD)
+    (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD) ||
+    (hasIncludeOverride && normalizedValue === undefined)
   ) {
     return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
   }

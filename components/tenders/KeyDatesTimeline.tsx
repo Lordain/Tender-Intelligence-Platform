@@ -55,10 +55,11 @@ export function KeyDatesTimeline({ dates }: { dates: TenderKeyDate[] }) {
         <ol className="grid gap-3 sm:grid-cols-2">
           {sorted.map((keyDate, index) => {
             const isMerged = keyDate.id.includes("+");
+            const isLastOddItem = sorted.length % 2 === 1 && index === sorted.length - 1;
             return (
             <li
               key={keyDate.id}
-              className="flex min-w-0 items-start gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-4 py-4"
+              className={`flex min-w-0 items-start gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-4 py-4 ${isLastOddItem ? "sm:col-span-2" : ""}`}
             >
               <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#061b2b] text-[10px] font-black text-[#ffb21c]">{index + 1}</span>
               <div className="min-w-0">

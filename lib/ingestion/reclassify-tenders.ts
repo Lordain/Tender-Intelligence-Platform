@@ -257,10 +257,21 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
   const keptPath = join(OUT_DIR, `tenders-kept-${dateStamp}.csv`);
   const excludedPath = join(OUT_DIR, `tenders-excluded-${dateStamp}.csv`);
 
-  writeFileSync(keptPath, toCsv(headers, keptCsvRows));
-  writeFileSync(excludedPath, toCsv(headers, excludedCsvRows));
-  console.log(`[reclassify-tenders] Wrote ${keptCsvRows.length} kept tender(s) -> ${keptPath}`);
-  console.log(`[reclassify-tenders] Wrote ${excludedCsvRows.length} excluded tender(s) -> ${excludedPath}`);
+  // Best-effort only — every real database write above has already
+  // happened by this point, so a local disk hiccup here (real case,
+  // 2026-09-05: EBUSY on Windows because a previous run's same-named CSV
+  // was still open in Excel) must not make the caller think the whole
+  // reclassify failed and lose sight of the real updated/deleted counts.
+  try {
+    writeFileSync(keptPath, toCsv(headers, keptCsvRows));
+    writeFileSync(excludedPath, toCsv(headers, excludedCsvRows));
+    console.log(`[reclassify-tenders] Wrote ${keptCsvRows.length} kept tender(s) -> ${keptPath}`);
+    console.log(`[reclassify-tenders] Wrote ${excludedCsvRows.length} excluded tender(s) -> ${excludedPath}`);
+  } catch (err) {
+    console.error(
+      `[reclassify-tenders] Failed to write CSV export(s) (database writes above already succeeded, only this local file export failed): ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 
   return {
     totalCount: rows.length,

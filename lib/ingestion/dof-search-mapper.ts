@@ -2,7 +2,7 @@ import type { Tender, TenderKeyDate } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyRelevance } from "@/lib/relevance";
 import { classifyIndustries } from "@/lib/industry";
-import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
+import { inferGovernmentLevel, CFE_BUYER_PATTERN, CFE_MICROSITIO_URL } from "@/lib/ingestion/heuristics";
 import type { DofNoticeDetail } from "@/lib/ingestion/connectors/dof-notice-detail";
 
 /**
@@ -229,13 +229,16 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     risks: [],
     relevance: classifyRelevance({ title, industries, scopeType, buyer }),
     sourceName,
-    // Same cross-referenced (not directly captured) URL pattern as
-    // dof-mapper.ts — see that file's buildSourceUrl comment. Deliberately
+    // CFE tenders link to CFE's own micrositio instead of DOF (explicit
+    // request, 2026-09-05 — see CFE_MICROSITIO_URL's own comment for why
+    // it's a landing page, not a deep link). Every other DOF-sourced
+    // buyer keeps the cross-referenced (not directly captured) DOF URL
+    // pattern — see dof-mapper.ts's buildSourceUrl comment. Deliberately
     // no "www." (2026-09-03, real find): www.dof.gob.mx fails TLS/SNI
     // verification for at least one real user ("SEC_E_WRONG_PRINCIPAL")
     // while the bare domain works fine — the same bare host every real
     // fetch in this codebase (dof-notice-detail.ts included) already uses.
-    sourceUrl: `https://dof.gob.mx/nota_detalle.php?codigo=${nota.codNota}`,
+    sourceUrl: CFE_BUYER_PATTERN.test(buyer) ? CFE_MICROSITIO_URL : `https://dof.gob.mx/nota_detalle.php?codigo=${nota.codNota}`,
     createdAt: now,
     updatedAt: now,
   };

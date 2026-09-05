@@ -2,6 +2,7 @@ import type { Tender, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyRelevance } from "@/lib/relevance";
 import { classifyIndustries } from "@/lib/industry";
+import { CFE_BUYER_PATTERN, CFE_MICROSITIO_URL } from "@/lib/ingestion/heuristics";
 
 /**
  * One "nota" (notice) from a real DOF (Diario Oficial de la Federación)
@@ -58,7 +59,12 @@ function parseDofDate(raw: string): string | null {
  * a strong inference, not a directly verified link, until someone
  * actually opens one.
  */
-function buildSourceUrl(nota: DofNota): string {
+function buildSourceUrl(nota: DofNota, buyer: string): string {
+  // CFE tenders link to CFE's own micrositio instead of DOF (explicit
+  // request, 2026-09-05 — see CFE_MICROSITIO_URL's own comment for why
+  // it's a landing page, not a deep link).
+  if (CFE_BUYER_PATTERN.test(buyer)) return CFE_MICROSITIO_URL;
+
   const [, day, month, year] = nota.fecha.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/) ?? [];
   const dofDate = day && month && year ? `${day}/${month}/${year}` : nota.fecha;
   return `https://www.dof.gob.mx/nota_detalle.php?codigo=${nota.codNota}&fecha=${encodeURIComponent(dofDate)}`;
@@ -111,7 +117,7 @@ export function mapDofNotaToTender(nota: DofNota, sourceName: string): Tender | 
     risks: [],
     relevance: classifyRelevance({ title, industries, scopeType, buyer }),
     sourceName,
-    sourceUrl: buildSourceUrl(nota),
+    sourceUrl: buildSourceUrl(nota, buyer),
     createdAt: now,
     updatedAt: now,
   };

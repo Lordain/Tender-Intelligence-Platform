@@ -16,6 +16,31 @@ export function inferGovernmentLevel(buyerName: string): GovernmentLevel {
 }
 
 /**
+ * Matches CFE's own buyer name across the real spelling/suffix variants
+ * seen in DOF data (accented/unaccented, plus real trailing text like
+ * "COMISION FEDERAL DE ELECTRICIDAD A RUEGO Y ENCARGO" — see
+ * dof-search-mapper.ts's parseBuyerAndRef). Used to route a CFE tender's
+ * `sourceUrl` to CFE's own micrositio (explicit request, 2026-09-05: CFE
+ * tenders should link there instead of DOF) rather than to DOF's notice
+ * detail page, which every OTHER DOF-sourced buyer still uses.
+ */
+export const CFE_BUYER_PATTERN = /comisi[óo]n federal de electricidad/i;
+
+/**
+ * CFE's own tender micrositio (`msc.cfe.mx/Aplicaciones/NCFE/Concursos/`).
+ * Deliberately the general Concursos landing page, not a deep link to one
+ * specific procedure — CFE's own search AND per-procedure detail
+ * endpoints are WAF-gated behind Imperva plus a session-bound
+ * anti-forgery token (see README.md "CFE's own portal is WAF-protected"),
+ * so no URL parameter this codebase could construct would actually reach
+ * a specific procedure without a live authenticated browser session. This
+ * still gets a reader to CFE's own official entry point, just not a
+ * one-click deep link — explicitly requested over DOF's working deep
+ * link anyway (2026-09-05).
+ */
+export const CFE_MICROSITIO_URL = "https://msc.cfe.mx/Aplicaciones/NCFE/Concursos/";
+
+/**
  * Officially documented in DD_PIC_CONTRATOS_2400703.xlsx (the real Datos
  * Relevantes del Contrato data dictionary the user provided): the
  * "Número de procedimiento" field is structured as

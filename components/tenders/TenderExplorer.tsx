@@ -20,16 +20,20 @@ import { trackAnalyticsEvent } from "@/lib/analytics-client";
 
 const SCOPE_TYPES: TenderScopeType[] = ["equipment", "services", "equipment_services", "works", "consulting"];
 const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed", "awarded", "cancelled"];
-const DEFAULT_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed"];
+// Both defaults changed to "全部" (2026-09-05, explicit request) — an
+// empty array here means unrestricted, identical to a user manually
+// clicking the "全部" quick-clear chip (see the "none" URL sentinel
+// handling below), not a distinct "some statuses/tiers hidden" preset
+// anymore. Previously excluded awarded/cancelled statuses and the
+// "standard" relevance tier by default; a tender already-decided or
+// standard-scale is now visible by default too, same as everything else.
+const DEFAULT_STATUSES: TenderStatus[] = [];
 // "excluded" isn't offered here — routine-service tenders stay hidden by
 // default (see includeExcluded in lib/filter-tenders.ts); no UI control
 // exposes showing them. "standard" IS offered (unlike "excluded") since
-// it's a normal, selectable tier — just off by default per
-// DEFAULT_RELEVANCE_TIERS below — this control has to exist or a
-// document-analyzed "standard"-tier tender is permanently invisible with
-// no way to widen the filter from the UI.
+// it's a normal, selectable tier, on by default same as flagship/significant.
 const RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
-const DEFAULT_RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant"];
+const DEFAULT_RELEVANCE_TIERS: TenderRelevanceTier[] = [];
 const AVAILABLE_COUNTRIES = ["Mexico", "Colombia"] as const;
 const PAGE_SIZE = 28;
 

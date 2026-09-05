@@ -2773,3 +2773,14 @@ Workflow: filter 状态=已中标 + 标书分析=无标书分析 → select-all 
 Real gap: the user pasted a tender's exact slug (visible on its `/admin/tenders/[slug]` edit page) into the public `/tenders` search box and got 0 results. `filterTenders()`'s search haystack was `[title, buyer, tenderNumber]` only — never the slug itself, which doesn't necessarily share any substring with those three fields (e.g. Proyectos Estratégicos MX's slug is a slugified transform of its own reference number, not identical to the stored `tenderNumber`'s real formatting). Added `tender.slug` to the haystack.
 
 Also worth checking for this specific tender: the front-end's relevance-tier chips default to `flagship`+`significant` only (`DEFAULT_RELEVANCE_TIERS` in `TenderExplorer.tsx`) — a `standard`("常规项目") tender is invisible in search results until that chip (or "全部") is explicitly selected, independent of the slug-search bug above. Both are real, independent reasons a search could return 0 results for an existing tender.
+
+## Front-end default filters all changed to "全部" (2026-09-05)
+
+Same underlying problem as the slug-search gap above, generalized: the user asked to remove every non-"全部" default across the public tender explorer, so an existing tender is never invisible-by-default again regardless of its status or scale tier. Grepping `TenderExplorer.tsx`'s filter constants found exactly two dimensions with a restrictive default (国家/行业/项目类型 have no `DEFAULT_*` constants at all — already unrestricted):
+
+- `DEFAULT_STATUSES` was `["planned", "open", "clarification", "submission_closed"]`, excluding `awarded`/`cancelled` — now `[]`.
+- `DEFAULT_RELEVANCE_TIERS` was `["flagship", "significant"]`, excluding `standard` — now `[]`.
+
+`InlineTogglePills`'s "全部" chip is already defined as `active` exactly when `selected.length === 0`, and clicking it calls `onChange([])` — so this change is byte-for-byte equivalent to every visitor manually clicking "全部" on both filter groups on first load, not a new code path. The existing "none" URL-sentinel handling (`tier=none`/`status=none` meaning "user explicitly cleared this, independent of whatever the app's current default is") is untouched — it only ever mattered for distinguishing a deliberate empty selection from an absent param, and an absent param now also resolves to empty.
+
+101/101 fixtures unaffected (pure front-end display-filter defaults, no `lib/relevance.ts`/classification logic touched). `tsc --noEmit` and `npm run lint` both clean.

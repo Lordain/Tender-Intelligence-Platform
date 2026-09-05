@@ -6,6 +6,7 @@ import type { Tender } from "@/types/tender";
 import { formatDate } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { MexicoFlag } from "@/components/tenders/CountryFlag";
+import { useUser } from "@/lib/auth";
 
 function ArrowIcon() {
   return (
@@ -114,6 +115,8 @@ function TenderPreview({ tenders }: { tenders: Tender[] }) {
 }
 
 export function HomeHero({ tenders }: { tenders: Tender[] }) {
+  const { user } = useUser();
+
   return (
     <section className="relative isolate overflow-hidden bg-[#031521] text-white">
       <Image src="/lighthouse-hero.png" alt="" fill preload sizes="100vw" className="-z-20 -translate-x-[16%] scale-[1.12] object-cover object-center opacity-90" />
@@ -133,6 +136,11 @@ export function HomeHero({ tenders }: { tenders: Tender[] }) {
             <a href="#how-it-works" className="inline-flex items-center justify-center gap-4 rounded-2xl border border-white/70 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-[#061b2b]">
               我们提供的价值 <ArrowIcon />
             </a>
+            {user && (
+              <Link href="/account#notification-preferences" className="inline-flex items-center justify-center gap-3 rounded-2xl border border-[#ffb21c]/75 bg-[#031521]/35 px-7 py-3.5 text-sm font-bold text-[#ffcf68] transition-colors hover:bg-[#ffb21c] hover:text-[#071826]">
+                设置邮件通知 <ArrowIcon />
+              </Link>
+            )}
           </div>
         </div>
         <div className="relative z-10 hidden min-w-0 lg:block xl:translate-x-4">

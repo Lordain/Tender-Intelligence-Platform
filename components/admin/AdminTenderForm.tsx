@@ -63,6 +63,7 @@ type FormState = {
   procedureType: string;
   participationScope: TenderParticipationScope | "";
   publicationDate: string;
+  publicationDateIsEstimated: boolean;
   submissionDeadline: string;
   awardDate: string;
   awardedTo: string;
@@ -98,6 +99,7 @@ function initialStateFrom(tender?: Tender): FormState {
     procedureType: tender?.procedureType ?? "",
     participationScope: tender?.participationScope ?? "",
     publicationDate: toDateInputValue(tender?.publicationDate) || toDateInputValue(new Date().toISOString()),
+    publicationDateIsEstimated: tender?.publicationDateIsEstimated ?? false,
     submissionDeadline: toDateInputValue(tender?.submissionDeadline),
     awardDate: toDateInputValue(tender?.awardDate),
     awardedTo: tender?.awardedTo ?? "",
@@ -152,6 +154,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       procedureType: form.procedureType,
       participationScope: form.participationScope || undefined,
       publicationDate: form.publicationDate ? new Date(form.publicationDate).toISOString() : undefined,
+      publicationDateIsEstimated: form.publicationDateIsEstimated,
       submissionDeadline: form.submissionDeadline ? new Date(form.submissionDeadline).toISOString() : null,
       awardDate: form.awardDate ? new Date(form.awardDate).toISOString() : null,
       awardedTo: form.awardedTo || null,
@@ -325,10 +328,21 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
 
       <FormSection title="时间与预算" description="设置项目状态、关键日期、金额和实施地点。">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <label className={labelClass}>
-          <span className={labelTextClass}>发布日期 *</span>
-          <input type="date" className={inputClass} value={form.publicationDate} onChange={(e) => update("publicationDate", e.target.value)} required />
-        </label>
+        <div className={labelClass}>
+          <label className="flex flex-col gap-1">
+            <span className={labelTextClass}>发布日期 *</span>
+            <input type="date" className={inputClass} value={form.publicationDate} onChange={(e) => update("publicationDate", e.target.value)} required />
+          </label>
+          <label className="mt-1 flex items-center gap-1.5 text-xs text-[#7a878f]">
+            <input
+              type="checkbox"
+              checked={form.publicationDateIsEstimated}
+              onChange={(e) => update("publicationDateIsEstimated", e.target.checked)}
+              className="size-3.5 accent-[#ffb21c]"
+            />
+            该日期是估算值（部分数据源没有真实发布日期字段，用入库时间代替）——已核实真实日期请取消勾选
+          </label>
+        </div>
         <label className={labelClass}>
           <span className={labelTextClass}>投标截止日期</span>
           <input type="date" className={inputClass} value={form.submissionDeadline} onChange={(e) => update("submissionDeadline", e.target.value)} />

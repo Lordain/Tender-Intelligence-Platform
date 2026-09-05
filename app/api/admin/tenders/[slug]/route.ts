@@ -24,6 +24,8 @@ type UpdateTenderBody = {
   procedureType: string;
   participationScope?: TenderParticipationScope | null;
   publicationDate: string;
+  /** Whether publicationDate is a real, source-confirmed value or a placeholder (e.g. ingestion time, for sources with no real publication-date field — see compras-mx-open-tenders-mapper.ts). Real bug fixed (2026-09-05): this route used to unconditionally write `false` here on every save, silently "confirming" an estimate the moment an admin edited any OTHER field, even without touching the date itself. */
+  publicationDateIsEstimated?: boolean;
   submissionDeadline?: string | null;
   awardDate?: string | null;
   awardedTo?: string | null;
@@ -89,7 +91,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     procedure_type: body.procedureType,
     participation_scope: body.participationScope || null,
     publication_date: body.publicationDate,
-    publication_date_is_estimated: false,
+    publication_date_is_estimated: body.publicationDateIsEstimated === true,
     submission_deadline: body.submissionDeadline || null,
     award_date: body.awardDate || null,
     awarded_to: body.awardedTo?.trim() || null,

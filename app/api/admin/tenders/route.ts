@@ -18,6 +18,7 @@ type CreateTenderBody = {
   procedureType: string;
   participationScope?: TenderParticipationScope;
   publicationDate: string;
+  publicationDateIsEstimated?: boolean;
   submissionDeadline?: string;
   awardDate?: string;
   awardedTo?: string;
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
     procedure_type: body.procedureType,
     participation_scope: body.participationScope ?? null,
     publication_date: body.publicationDate,
-    publication_date_is_estimated: false,
+    publication_date_is_estimated: body.publicationDateIsEstimated === true,
     submission_deadline: body.submissionDeadline || null,
     award_date: body.awardDate || null,
     awarded_to: body.awardedTo?.trim() || null,

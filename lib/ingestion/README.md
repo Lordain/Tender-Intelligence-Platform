@@ -2755,3 +2755,15 @@ Two more real examples the user flagged as wrongly `flagship`:
 2. **"CONSTRUCCIÓN PUENTE PEATONAL ESTACIÓN 3 SIST.INTERCONECTADO ELECTROMOVILIDAD L-5"** — explicit call: "Puente Peatonal" (pedestrian bridge/overpass) should never count as `MAJOR_PROJECT_KEYWORDS`'s bare 建桥 signal at all — a pedestrian bridge is inherently smaller-scale than a vehicular/railway bridge. Narrowed the bare `\bpuentes?\b` entry with `(?!\s+peatonal(es)?)`. Still counts toward `FLAGSHIP_INDUSTRY_KEYWORDS`'s own bare "puente" (unchanged) — a disclosed value still promotes it to `significant` normally, just never straight to `flagship` regardless of value. Verified: no value → `standard`; a disclosed value → `significant`; never `flagship` either way. The existing "CONSTRUCCIÓN DE PUENTE VEHICULAR..." fixture (a real vehicular bridge, correctly `flagship`) is unaffected since "vehicular" ≠ "peatonal".
 
 101/101 fixtures unaffected.
+
+## Bulk-delete for already-awarded, no-analysis tenders (2026-09-05)
+
+Real pain point: the user was manually deleting, one row at a time, every "已中标" (awarded) tender that never got a document analysis — a real, recurring cleanup ("这些我都要人工删除了，对现阶段来说没有意义"). Explicit scope: "已中标+无标书分析" only, never "已中标+有标书分析" ("未来已中标，有标书分析的我不会动") — same criteria the earlier awarded-tender public-visibility fix already uses.
+
+Added:
+- `hasAnalysis` on `AdminTenderListRow` — reuses the existing `fetchAwardedSlugsWithAnalysis()` helper (built for the public-feed fix) rather than a new join; only ever computed for `status === "awarded"` rows, so it stays cheap on a list that already documents its own "1000+ rows, no extra joins" performance constraint.
+- A "标书分析（仅限已中标）" filter (不限/无标书分析/已有标书分析) in `AdminTenderList.tsx`, combinable with the existing 状态 filter.
+- Row checkboxes + a header "select all filtered" checkbox + a bulk-action bar (shown once ≥1 row is selected) with a single "批量删除" button.
+- `POST /api/admin/tenders/bulk-delete` (chunked at 200 slugs per Supabase call) — same two effects as the existing single-tender DELETE route (cascade-delete + tombstone in `tender_manual_deletions`), just batched.
+
+Workflow: filter 状态=已中标 + 标书分析=无标书分析 → select-all → 批量删除. Table layout kept compact per explicit request ("保持好当前的排版，不要过宽") — the new checkbox column takes 4% width, taken from 标题(25→22%) and 操作(17→16%), min-width bumped 980px→1020px only.

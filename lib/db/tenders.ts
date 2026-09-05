@@ -417,6 +417,18 @@ export type AdminTenderListRow = {
   relevanceTier: TenderRelevance["tier"] | null;
   relevanceManuallyOverridden?: boolean;
   homepageFeatured?: boolean;
+  /**
+   * Whether this tender has any logged analysis (qualification/experience/
+   * document requirement or risk — see fetchAwardedSlugsWithAnalysis's own
+   * comment). Only ever computed for `status === "awarded"` rows — cheap
+   * because that's a small subset, unlike joining tender_requirements/
+   * tender_risks for every row in this list, which powers a table over
+   * 1000+ tenders (see this type's own header comment). `undefined` for
+   * every non-awarded row: this field exists only to support the "已中标 +
+   * 无标书分析" bulk-cleanup filter (2026-09-05, explicit request), which
+   * only ever cares about awarded tenders.
+   */
+  hasAnalysis?: boolean;
   estimatedValue?: number;
   currency?: string;
   publicationDate: string;
@@ -465,6 +477,8 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     if (page.length < SUPABASE_PAGE_SIZE) break;
   }
 
+  const awardedWithAnalysis = await fetchAwardedSlugsWithAnalysis(supabase);
+
   return rows.map((row) => ({
     slug: row.slug,
     tenderNumber: row.tender_number,
@@ -476,6 +490,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     relevanceTier: row.relevance_tier,
     relevanceManuallyOverridden: row.relevance_manually_overridden ?? false,
     homepageFeatured: row.homepage_featured ?? false,
+    hasAnalysis: row.status === "awarded" ? awardedWithAnalysis.has(row.slug) : undefined,
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
     publicationDate: row.publication_date,

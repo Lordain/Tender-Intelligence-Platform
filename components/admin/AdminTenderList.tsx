@@ -55,8 +55,11 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const [country, setCountry] = useState("all");
   const [status, setStatus] = useState("all");
   const [relevance, setRelevance] = useState("all");
+  const [analysis, setAnalysis] = useState("all");
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
   const [togglingSlug, setTogglingSlug] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const countries = useMemo(
@@ -100,6 +103,39 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     }
   }
 
+  async function handleBulkDelete() {
+    const slugs = [...selected];
+    if (slugs.length === 0) return;
+    if (!confirm(`确定要删除这 ${slugs.length} 条项目吗？此操作无法撤销。`)) return;
+
+    setBulkDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/tenders/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slugs }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setSelected(new Set());
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
+  function toggleSelected(slug: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(slug);
+      else next.delete(slug);
+      return next;
+    });
+  }
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return tenders.filter((tender) => {
@@ -115,12 +151,15 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       const matchesRelevance =
         relevance === "all" ||
         (relevance === "unclassified" ? !tender.relevanceTier : tender.relevanceTier === relevance);
+      const matchesAnalysis =
+        analysis === "all" ||
+        (analysis === "with_analysis" ? tender.hasAnalysis === true : tender.hasAnalysis === false);
 
-      return matchesQuery && matchesCountry && matchesStatus && matchesRelevance;
+      return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis;
     });
-  }, [country, query, relevance, status, tenders]);
+  }, [analysis, country, query, relevance, status, tenders]);
 
-  const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all";
+  const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all" || analysis !== "all";
 
   function clearFilters() {
     setDraftQuery("");
@@ -128,6 +167,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     setCountry("all");
     setStatus("all");
     setRelevance("all");
+    setAnalysis("all");
   }
 
   return (
@@ -161,7 +201,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
           </p>
         </div>
 
-        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-black text-[#52636e]">国家/地区</span>
             <select value={country} onChange={(event) => setCountry(event.target.value)} className={selectClass}>
@@ -184,6 +224,14 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               <option value="unclassified">未分类</option>
             </select>
           </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-black text-[#52636e]">标书分析（仅限已中标）</span>
+            <select value={analysis} onChange={(event) => setAnalysis(event.target.value)} className={selectClass}>
+              <option value="all">不限</option>
+              <option value="without_analysis">无标书分析</option>
+              <option value="with_analysis">已有标书分析</option>
+            </select>
+          </label>
           <button
             type="button"
             onClick={clearFilters}
@@ -197,11 +245,46 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
 
       {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
+          <p className="text-xs font-bold text-red-700">已选择 {selected.size} 项</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="text-xs font-bold text-[#52636e] hover:underline"
+            >
+              取消选择
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-600 px-3 text-xs font-black text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+            >
+              <TrashIcon />{bulkDeleting ? "删除中…" : "批量删除"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_18px_50px_-48px_rgba(6,27,43,.55)]">
-        <table className="w-full min-w-[980px] table-fixed text-left text-xs">
+        <table className="w-full min-w-[1020px] table-fixed text-left text-xs">
           <thead className="border-b border-[#dbe2e5] bg-[#edf2f3] text-[11px] uppercase tracking-[0.06em] text-[#52636e]">
             <tr>
-              <th className="w-[25%] px-3 py-3 font-black">标题</th>
+              <th className="w-[4%] px-2 py-3 text-center font-black">
+                <input
+                  type="checkbox"
+                  aria-label="全选当前筛选结果"
+                  checked={filtered.length > 0 && filtered.every((tender) => selected.has(tender.slug))}
+                  onChange={(event) => {
+                    if (event.target.checked) setSelected(new Set(filtered.map((tender) => tender.slug)));
+                    else setSelected(new Set());
+                  }}
+                  className="size-4 accent-[#ffb21c]"
+                />
+              </th>
+              <th className="w-[22%] px-3 py-3 font-black">标题</th>
               <th className="w-[12%] px-2 py-3 font-black">行业</th>
               <th className="w-[7%] px-2 py-3 font-black">国家</th>
               <th className="w-[7%] px-2 py-3 font-black">状态</th>
@@ -209,7 +292,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               <th className="w-[5%] px-2 py-3 text-center font-black" title="免费用户在首页能看到的项目——见列表上方“首页免费展示设置”">首页</th>
               <th className="w-[8%] px-2 py-3 font-black">金额</th>
               <th className="w-[10%] px-2 py-3 font-black">发布日期</th>
-              <th className="w-[17%] px-3 py-3 text-center font-black">操作</th>
+              <th className="w-[16%] px-3 py-3 text-center font-black">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e5e9eb]">
@@ -217,6 +300,15 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               const value = tender.estimatedValue ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, "zh") : null;
               return (
                 <tr key={tender.slug} className="transition-colors hover:bg-[#fff9ec]">
+                  <td className="px-2 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label={`选择 ${tender.title.zh}`}
+                      checked={selected.has(tender.slug)}
+                      onChange={(event) => toggleSelected(tender.slug, event.target.checked)}
+                      className="size-4 accent-[#ffb21c]"
+                    />
+                  </td>
                   <td className="px-3 py-3">
                     <p title={tender.title.zh} className="truncate whitespace-nowrap text-[12px] font-black text-[#071826]">{tender.title.zh}</p>
                   </td>
@@ -291,7 +383,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-5 py-14 text-center">
+                <td colSpan={10} className="px-5 py-14 text-center">
                   <p className="font-black text-[#071826]">没有找到符合条件的项目</p>
                   <p className="mt-1 text-xs text-[#75838c]">可以尝试修改关键词或清除筛选条件</p>
                 </td>

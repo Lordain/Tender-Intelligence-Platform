@@ -17,7 +17,13 @@ export function AuthNav() {
       <div className="flex items-center gap-3">
         <Link
           href="/account"
-          className="hidden max-w-[10rem] truncate text-xs text-white/60 hover:text-white sm:inline"
+          className="text-sm font-medium text-white/80 transition-colors hover:text-white"
+        >
+          账户
+        </Link>
+        <Link
+          href="/account"
+          className="hidden max-w-[10rem] truncate text-xs text-white/60 hover:text-white lg:inline"
         >
           {user.email}
         </Link>

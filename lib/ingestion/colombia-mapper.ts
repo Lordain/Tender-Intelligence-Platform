@@ -112,6 +112,40 @@ function parseDate(raw: string | undefined): string | null {
 }
 
 /**
+ * Real finding (2026-09-04): `id_del_proceso` from the main process
+ * dataset (`CO1.REQ.*`) does NOT match the archivos-metadata dataset's
+ * `proceso` column (`CO1.BDOS.*` in a fresh unfiltered sample) — a real
+ * bulk run confirmed 0 matching rows across 440+ candidates. The user then
+ * manually opened one tender's own `sourceUrl` (community.secop.gov.co,
+ * CAPTCHA-gated) and found its address bar carries a THIRD id namespace,
+ * `noticeUID=CO1.NTC.*` — and confirmed with their own eyes that this
+ * specific tender's detail page really does list real, downloadable
+ * attachments. `urlproceso.url` (stored as `sourceUrl` by
+ * mapSecopRowToTender, below) carries this exact noticeUID for every
+ * tender that has a real deep link — ingest-colombia.ts's document-fetch
+ * step tries it against the (CAPTCHA-free, genuinely open) archivos
+ * dataset's `proceso` filter before falling back to `id_del_proceso`.
+ *
+ * Real bug confirmed (2026-09-05): some rows' `urlproceso.url` is not a
+ * deep link at all — it's the bare SECOP login page
+ * (`https://community.secop.gov.co/STS/Users/Login/Index`, no
+ * `noticeUID` query param), which a human clicking "来源链接" just lands
+ * on with nothing to act on. mapSecopRowToTender uses this function to
+ * gate which sourceUrl actually gets stored: a login-page-only url falls
+ * back to the datos.gov.co API link instead, which is at least a working,
+ * specific reference for this process even without a CAPTCHA-free public
+ * detail page.
+ */
+export function extractNoticeUidFromUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).searchParams.get("noticeUID")?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Normalizes `duracion` + `unidad_de_duracion` into days, feeding
  * classifyRelevance()'s SHORT_DURATION_DAYS/LONG_DURATION_DAYS signal from
  * a real STRUCTURED field instead of the Spanish text-phrase scan
@@ -231,9 +265,15 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
       structuredDurationDays,
     }),
     sourceName,
-    // Real, directly captured — urlproceso.url points at the actual
-    // public tender page on community.secop.gov.co.
-    sourceUrl: row.urlproceso?.url || `https://www.datos.gov.co/resource/p6dx-8zbt.json?id_del_proceso=${row.id_del_proceso}`,
+    // Real, directly captured — urlproceso.url usually points at the
+    // actual public tender page on community.secop.gov.co, BUT only when
+    // it carries a real noticeUID (see extractNoticeUidFromUrl's header
+    // comment above); some rows' urlproceso.url is just the bare SECOP
+    // login page with nothing tender-specific in it, so that case falls
+    // back to the datos.gov.co API link instead of storing a dead-end.
+    sourceUrl: extractNoticeUidFromUrl(row.urlproceso?.url)
+      ? row.urlproceso!.url!
+      : `https://www.datos.gov.co/resource/p6dx-8zbt.json?id_del_proceso=${row.id_del_proceso}`,
     createdAt: now,
     updatedAt: now,
   };

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchSecopProcesos } from "@/lib/ingestion/connectors/colombia-secop-live";
 import { fetchSecopDocumentsForProcess, fetchSecopDocumentsSample, downloadSecopDocument, isPreAwardDocument } from "@/lib/ingestion/connectors/colombia-documents-connector";
-import { mapSecopRowToTender, type SecopProcesoRow } from "@/lib/ingestion/colombia-mapper";
+import { mapSecopRowToTender, extractNoticeUidFromUrl, type SecopProcesoRow } from "@/lib/ingestion/colombia-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { filterRecentTenders } from "@/lib/ingestion/recency";
 import type { Tender } from "@/types/tender";
@@ -48,32 +48,6 @@ function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
   return chunks;
-}
-
-/**
- * Real finding (2026-09-04): `id_del_proceso` from the main process
- * dataset (`CO1.REQ.*`) does NOT match the archivos-metadata dataset's
- * `proceso` column (`CO1.BDOS.*` in a fresh unfiltered sample) — a real
- * bulk run confirmed 0 matching rows across 440+ candidates. The user then
- * manually opened one tender's own `sourceUrl` (community.secop.gov.co,
- * CAPTCHA-gated) and found its address bar carries a THIRD id namespace,
- * `noticeUID=CO1.NTC.*` — and confirmed with their own eyes that this
- * specific tender's detail page really does list real, downloadable
- * attachments. `urlproceso.url` (stored verbatim as `sourceUrl` by
- * colombia-mapper.ts) already carries this exact noticeUID for every
- * tender this connector ever sees — no extra fetch needed to get it.
- * Worth trying against the (CAPTCHA-free, genuinely open) archivos
- * dataset's `proceso` filter before falling back to `id_del_proceso`,
- * since the failure mode of a wrong id is just another empty array, not
- * an error — strictly a "try harder," never worse than the status quo.
- */
-function extractNoticeUidFromUrl(url: string | undefined): string | undefined {
-  if (!url) return undefined;
-  try {
-    return new URL(url).searchParams.get("noticeUID")?.trim() || undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 /**

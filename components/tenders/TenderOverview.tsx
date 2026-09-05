@@ -3,6 +3,7 @@
 import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatEstimatedValueUsd, formatDate } from "@/lib/format";
+import { exchangeRateNote } from "@/lib/currency";
 import {
   GOVERNMENT_LEVEL_LABELS,
   PARTICIPATION_SCOPE_LABELS,
@@ -13,11 +14,12 @@ import {
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 
-function Field({ label, value, emphasized = false }: { label: string; value: string; emphasized?: boolean }) {
+function Field({ label, value, emphasized = false, note }: { label: string; value: string; emphasized?: boolean; note?: string | null }) {
   return (
     <div className={`rounded-xl px-3.5 py-3 ${emphasized ? "bg-[#fff4d8]" : "bg-[#f2f4f3]"}`}>
       <dt className="text-[11px] font-bold tracking-[0.03em] text-[#7a878f]">{label}</dt>
       <dd className={`mt-1 text-sm font-black leading-5 ${emphasized ? "text-[#9a6200]" : "text-[#071826]"}`}>{value}</dd>
+      {note && <p className="mt-1 text-[10px] font-normal leading-4 text-[#9aa5ab]">{note}</p>}
     </div>
   );
 }
@@ -107,6 +109,7 @@ export function TenderOverview({ tender }: { tender: Tender }) {
               ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, locale)
               : null) ?? "—"
           }
+          note={tender.estimatedValue !== undefined ? exchangeRateNote(tender.currency, locale) : null}
         />
         <Field
           label={localize(tender.publicationDateIsEstimated ? uiText.ingestedDateLabel : uiText.publicationDateLabel, locale)}
@@ -128,6 +131,7 @@ export function TenderOverview({ tender }: { tender: Tender }) {
               <Field
                 label={localize(uiText.awardedValueLabel, locale)}
                 value={formatEstimatedValueUsd(tender.awardedValue, tender.currency, locale) ?? "—"}
+                note={exchangeRateNote(tender.currency, locale)}
                 emphasized
               />
             )}

@@ -6,6 +6,9 @@ type DigestTender = {
   id: string;
   slug: string;
   title: { zh?: string; es?: string; en?: string };
+  summary: { zh?: string; es?: string; en?: string };
+  buyer: string;
+  tender_number: string;
   country: string;
   industries: string[];
   status: string;
@@ -20,6 +23,7 @@ type Preference = {
   industries: string[];
   statuses: string[];
   relevance_tiers: string[];
+  keywords: string[];
 };
 
 export type DigestRecipient = Preference & { email: string };
@@ -35,11 +39,17 @@ export function notificationsEnabled() {
 
 function matches(tender: DigestTender, preference: Preference, statusOverride?: string[]) {
   const statuses = statusOverride ?? [tender.status];
+  const searchableText = [
+    tender.title.zh, tender.title.es, tender.title.en,
+    tender.summary.zh, tender.summary.es, tender.summary.en,
+    tender.buyer, tender.tender_number,
+  ].filter(Boolean).join(" ").toLocaleLowerCase();
   return (
     (preference.countries.length === 0 || preference.countries.includes(tender.country)) &&
     (preference.industries.length === 0 || tender.industries.some((industry) => preference.industries.includes(industry))) &&
     (preference.statuses.length === 0 || statuses.some((status) => preference.statuses.includes(status))) &&
-    (preference.relevance_tiers.length === 0 || preference.relevance_tiers.includes(tender.relevance_tier ?? ""))
+    (preference.relevance_tiers.length === 0 || preference.relevance_tiers.includes(tender.relevance_tier ?? "")) &&
+    (preference.keywords.length === 0 || preference.keywords.some((keyword) => searchableText.includes(keyword.toLocaleLowerCase())))
   );
 }
 
@@ -59,7 +69,7 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
 
   const { data: preferences } = await supabase
     .from("email_notification_preferences")
-    .select("user_id, enabled, countries, industries, statuses, relevance_tiers")
+    .select("user_id, enabled, countries, industries, statuses, relevance_tiers, keywords")
     .in("user_id", subscribedIds)
     .eq("enabled", true);
 
@@ -88,7 +98,7 @@ export async function getNewTenders(windowStart: Date, windowEnd: Date): Promise
 
   const { data, error } = await supabase
     .from("tenders")
-    .select("id, slug, title, country, industries, status, relevance_tier, created_at")
+    .select("id, slug, title, summary, buyer, tender_number, country, industries, status, relevance_tier, created_at")
     .gte("created_at", windowStart.toISOString())
     .lt("created_at", windowEnd.toISOString())
     .order("created_at", { ascending: false })
@@ -107,7 +117,7 @@ export async function getStatusChanges(windowStart: Date, windowEnd: Date): Prom
 
   const { data, error } = await supabase
     .from("tender_status_history")
-    .select("previous_status, next_status, tenders ( id, slug, title, country, industries, status, relevance_tier, created_at )")
+    .select("previous_status, next_status, tenders ( id, slug, title, summary, buyer, tender_number, country, industries, status, relevance_tier, created_at )")
     .gte("changed_at", windowStart.toISOString())
     .lt("changed_at", windowEnd.toISOString())
     .order("changed_at", { ascending: false })

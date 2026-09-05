@@ -20,6 +20,9 @@ import {
   INDUSTRY_LABELS,
   RELEVANCE_TIER_LABELS,
 } from "@/lib/tender-labels";
+import { KeyDatesEditor } from "@/components/admin/KeyDatesEditor";
+import { RequirementsEditor } from "@/components/admin/RequirementsEditor";
+import { RisksEditor } from "@/components/admin/RisksEditor";
 
 const STATUS_KEYS = Object.keys(STATUS_LABELS) as TenderStatus[];
 const GOVERNMENT_LEVEL_KEYS = Object.keys(GOVERNMENT_LEVEL_LABELS) as GovernmentLevel[];
@@ -405,6 +408,35 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
             />
             🔒 锁定此分级（以后这条标书被重新抓取/入库时，不会被自动分类规则覆盖；取消勾选可恢复自动分类）
           </label>
+        </FormSection>
+      )}
+
+      {isEdit && (
+        <FormSection title="关键日期" description="手动添加、编辑或删除该标书的关键时间节点——每项立即保存，无需点击下方的整体保存按钮。">
+          <KeyDatesEditor tenderSlug={tender!.slug} initialKeyDates={tender!.keyDates} />
+        </FormSection>
+      )}
+
+      {isEdit && (
+        <FormSection title="标书分析结果" description="资质要求、经验要求、所需文件与风险提示——通常由文件分析流程生成，也可以在这里手动补充或修正；每项立即保存。">
+          <div className="flex flex-col gap-5">
+            <div>
+              <p className="mb-2 text-xs font-black text-[#52636e]">资质要求</p>
+              <RequirementsEditor tenderSlug={tender!.slug} kind="qualification" initialItems={tender!.qualifications} />
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-black text-[#52636e]">经验要求</p>
+              <RequirementsEditor tenderSlug={tender!.slug} kind="experience" initialItems={tender!.experienceRequirements} />
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-black text-[#52636e]">所需文件</p>
+              <RequirementsEditor tenderSlug={tender!.slug} kind="document" initialItems={tender!.requiredDocuments} />
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-black text-[#52636e]">风险提示</p>
+              <RisksEditor tenderSlug={tender!.slug} initialItems={tender!.risks} />
+            </div>
+          </div>
         </FormSection>
       )}
 

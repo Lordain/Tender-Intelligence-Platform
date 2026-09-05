@@ -121,8 +121,18 @@ export function TenderOverview({ tender }: { tender: Tender }) {
           }
           emphasized
         />
-        {tender.awardedTo && (
-          <Field label={localize(uiText.awardedToLabel, locale)} value={tender.awardedTo} />
+        {(tender.awardedTo || tender.awardedValue !== undefined) && (
+          <>
+            {tender.awardedTo && <Field label={localize(uiText.awardedToLabel, locale)} value={tender.awardedTo} emphasized />}
+            {tender.awardedValue !== undefined && (
+              <Field
+                label={localize(uiText.awardedValueLabel, locale)}
+                value={formatEstimatedValueUsd(tender.awardedValue, tender.currency, locale) ?? "—"}
+                emphasized
+              />
+            )}
+            {tender.awardDate && <Field label={localize(uiText.awardDateLabel, locale)} value={formatDate(tender.awardDate, locale)} />}
+          </>
         )}
       </dl>
     </section>

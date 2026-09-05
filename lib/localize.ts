@@ -61,6 +61,8 @@ export const uiText = {
   },
   estimatedValue: { en: "Estimated Value", es: "Valor Estimado", zh: "预估金额" },
   awardedToLabel: { en: "Awarded To", es: "Adjudicado A", zh: "中标供应商" },
+  awardedValueLabel: { en: "Awarded Value", es: "Valor Adjudicado", zh: "中标金额" },
+  awardDateLabel: { en: "Award Date", es: "Fecha de Adjudicación", zh: "中标日期" },
   submissionDeadline: {
     en: "Submission Deadline",
     es: "Fecha Límite de Presentación",

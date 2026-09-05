@@ -21,10 +21,17 @@ import type { NextConfig } from "next";
 // Stripe/Resend integration note (being built separately): a redirect-based
 // Stripe Checkout needs no CSP change; embedded Stripe Elements/Checkout
 // would need `https://js.stripe.com` added to script-src and frame-src.
+// 'unsafe-eval' is dev-only (2026-09-05, real error hit running `next dev`
+// with Turbopack): React's development mode calls eval() itself to
+// reconstruct call stacks for its debugging features — nothing to do with
+// third-party scripts or XSS — and a CSP without it breaks the dev server
+// outright ("eval() is not supported in this environment"). React never
+// calls eval() in production, so this stays out of the production CSP.
+const isDev = process.env.NODE_ENV !== "production";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self'",

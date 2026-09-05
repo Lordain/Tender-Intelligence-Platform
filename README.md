@@ -103,6 +103,23 @@ directly on each row rather than in a separate translations table, keeping
 one row the single source of truth per the "original language wins" design
 principle.
 
+**Manual editing (2026-09-05)**: `/admin/tenders/[slug]` — beyond the tender's
+own flat fields, an admin can now add/edit/delete individual `tender_key_dates`,
+`tender_requirements` (all three kinds), and `tender_risks` rows directly from
+the edit page, for a tender with no source document to run the Layer 2
+extraction pipeline against, or to correct/supplement its output by hand.
+Each row persists immediately via its own `/api/admin/tenders/[slug]/{key-dates,requirements,risks}[/[id]]`
+endpoint (not bundled into the surrounding form's single save), and only ever
+writes the `zh` locale from that form — the product is Chinese-only
+(`lib/i18n.tsx` hardcodes `LOCALE = "zh"`), so `es`/`en` are left as empty
+strings rather than duplicated from the zh text. A new nullable
+`tenders.awarded_value` column (migration `0019`, distinct from
+`estimated_value` — the pre-tender budget estimate, which a real award can
+differ from) is editable the same way as the existing `awarded_to`/`award_date`
+fields; the public tender detail page only ever shows the "中标结果" (award
+result) block at all once `awardedTo` or `awardedValue` is actually set —
+there's no empty/placeholder state for a tender that hasn't been awarded yet.
+
 ## Data Ingestion
 
 `lib/ingestion/` — see **`lib/ingestion/README.md`** for the full picture:

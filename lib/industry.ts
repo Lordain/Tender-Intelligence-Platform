@@ -86,7 +86,13 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // plural "HOSPITALES" real titles use (no word boundary between "hospital"
   // and its "es" suffix), e.g. "ADQUISICIÓN DE GENERADORES DE EMERGENCIA
   // PARA HOSPITALES" — same class of bug as "unidad médica" above.
-  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|rayos x|hospital(es)?\b|unidad(es)? m[ée]dica(s)?|servicios de salud|\bsalud\b/i],
+  // "hospitalari[oa]s?" (2026-09-05, real gap): "hospital(es)?\b" requires a
+  // word boundary right after "hospital", which the ADJECTIVE form
+  // "hospitalario/hospitalaria(s)" never has (no boundary between "hospital"
+  // and the following "ario/aria") — real title "ADECUACIONES A LAS
+  // INFRAESTRUCTURAS HOSPITALARIAS DEL DEPARTAMENTO DEL MAGDALENA" matched
+  // neither this nor the construction pattern's own hospital term.
+  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|rayos x|hospital(es)?\b|hospitalari[oa]s?|unidad(es)? m[ée]dica(s)?|servicios de salud|\bsalud\b/i],
   ["tax", /administraci[óo]n tributaria|fiscalizaci[óo]n|declaraci[óo]n fiscal|sistema de recaudaci[óo]n|\bsat\b|servicio de administraci[óo]n tributaria|padr[óo]n de contribuyentes|aduanas?\b|hacienda y cr[ée]dito p[úu]blico/i],
   // "\bducto\b" (2026-09-03, real bug found against a real Proyectos
   // Estratégicos MX export): was missing its leading \b, so it matched
@@ -135,7 +141,13 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // surfaced once relevance.ts started requiring a real industry tag (not
   // just its own keyword match) for a no-value tender to avoid landing in
   // "excluded" instead of "standard".
-  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|generador(es)?|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas/i],
+  // "energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar" (2026-09-05, real
+  // gap): a solar-PV installation is fundamentally an electricity-
+  // generation asset, so it's also tagged "power" (electricity grid/
+  // generation) alongside "energy" (its existing tag via the bare
+  // "fotovoltaic[ao]" term above) — real title "IMPLEMENTACIÓN DE SISTEMAS
+  // DE ENERGÍA FOTOVOLTAICA EN INSTITUCIONES EDUCATIVAS".
+  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|generador(es)?|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to
   // INCLUDE_OVERRIDE_KEYWORDS in lib/relevance.ts (a real batch of 29
@@ -154,7 +166,13 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // school was tagged only "education" (from "escuela militar") — all
   // three are genuine ICT/electronics equipment, not what their incidental
   // matching term implied.
-  ["ict_telecom", /telecomunicaci|datacenter|centro de datos|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|\b5g\b|ciberseguridad|seguridad electr[óo]nica|videovigilancia|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito|monitoreo (de )?veh[íi]culos|inhibidor(es)? de se[ñn]al|video ?wall/i],
+  // "intelig[ée]ncia artificial|big ?data"/"circuito(s) cerrado(s) de
+  // televisi[óo]n|\bcctv\b"/"sistema de informaci[óo]n hospitalaria"/
+  // "sistema inteligente de transporte" added (2026-09-05, real gaps): an
+  // IA/Bigdata equipment purchase, a CCTV system, a hospital
+  // information-system/ERP project, and a smart-transport camera system
+  // all fell through to "general" with no ICT signal at all.
+  ["ict_telecom", /telecomunicaci|datacenter|centro de datos|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|\b5g\b|ciberseguridad|seguridad electr[óo]nica|videovigilancia|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito|monitoreo (de )?veh[íi]culos|inhibidor(es)? de se[ñn]al|video ?wall|intelig[ée]ncia artificial|big ?data|circuito(s)? cerrado(s)? de televisi[óo]n|\bcctv\b|sistema de informaci[óo]n hospitalaria|sistema inteligente de transporte/i],
   // "tren ferroviario"/"tramo ... ferroviario"/"eje prioritario"/"ancho de
   // corona" added (2026-09-04, real gaps): real SICT/rail titles like
   // "CONSTRUCCIÓN Y DISEÑO DE 82.00 KM DEL TRAMO II FERROVIARIO DEL TREN DE
@@ -163,7 +181,11 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // "ancho de corona" is standard Mexican highway-engineering terminology
   // for the road's top width) never matched any existing transportation
   // term.
-  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|metro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona/i],
+  // "v[íi]as? terciarias?|placa huella" (2026-09-05, real gap): "MEJORAMIENTO
+  // DE VIAS TERCIARIAS CON LA CONSTRUCCION DE PLACA HUELLA" — rural
+  // tertiary-road improvement, a distinct real Colombian road-network
+  // category ("vías terciarias") from the urban/highway terms already here.
+  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|metro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona|v[íi]as? terciarias?|placa huella/i],
   // The "\bkm\s*\d+\+\d{3}\b" alternative is a real kilometer-marker
   // notation ("DEL KM 150+000 AL KM 170+000") — standard Mexican federal
   // highway-alignment notation, seen on a real road-engineering-study
@@ -196,7 +218,14 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // substring even after removing the standalone "aeropuerto" alternative)
   // until caught by a real end-to-end check against the exact false-positive
   // title.
-  ["construction", /construcci[óo]n|obra p[úu]blica|carreter[ao]|puentes?\b|ferrocarril|\bpuerto\b|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|remodelaci[óo]n|modernizaci[óo]n y ampliaci[óo]n|ancho de corona|\bkm\s*\d+\+\d{3}\b|(construcci[óo]n|ampliaci[óo]n|modernizaci[óo]n|remodelaci[óo]n).{0,30}aeropuerto/i],
+  // "infraestructuras? hospitalaria(s)?|obras? de reparaci[óo]n y
+  // rehabilitaci[óo]n|rehabilitaci[óo]n de (la )?infraestructura f[íi]sica"
+  // (2026-09-05, real gaps): "ADECUACIONES A LAS INFRAESTRUCTURAS
+  // HOSPITALARIAS..." and "OBRAS DE REPARACIÓN Y REHABILITACIÓN DE LA
+  // INFRAESTRUCTURA FÍSICA DE LAS ÁREAS DE ALTO RIESGO OBSTÉTRICO..." never
+  // matched any existing construction term (no "construcción"/"obra
+  // pública"/etc.) despite being genuine building repair/rehab work.
+  ["construction", /construcci[óo]n|obra p[úu]blica|carreter[ao]|puentes?\b|ferrocarril|\bpuerto\b|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|remodelaci[óo]n|modernizaci[óo]n y ampliaci[óo]n|ancho de corona|\bkm\s*\d+\+\d{3}\b|(construcci[óo]n|ampliaci[óo]n|modernizaci[óo]n|remodelaci[óo]n).{0,30}aeropuerto|infraestructuras? hospitalaria(s)?|obras? de reparaci[óo]n y rehabilitaci[óo]n|rehabilitaci[óo]n de (la )?infraestructura f[íi]sica/i],
   ["mining", /miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
   // "\bptar\b" (2026-09-03, real gap): CONAGUA's own titles overwhelmingly
   // abbreviate "Planta de Tratamiento de Aguas Residuales" as "PTAR"
@@ -231,9 +260,35 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   ["vehicles", /veh[íi]culo(s)?|vehs\.?\b|cami[óo]n(es)?\b|autob[úu]s(es)?|maquinaria pesada|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?/i],
 ];
 
+/**
+ * Real false positives (2026-09-05): bare "puerto"/"puertos"/"puente(s)"
+ * (used here and in relevance.ts's MAJOR_PROJECT_KEYWORDS/
+ * FLAGSHIP_INDUSTRY_KEYWORDS to mean "seaport"/"bridge") also match
+ * Colombian place names that happen to start with those words — common
+ * naming patterns with nothing to do with building a port or a bridge.
+ * Three real, confirmed examples: "...PARA LA CONSTRUCCIÓN DEL PROYECTO DE
+ * LA NUEVA SEDE DEL SENA EN PUERTO BOYACÁ" (a SENA campus building; "Puerto
+ * Boyacá" is just the city), "...PARA EL RESGUARDO INDÍGENA TURPIAL UMAPO
+ * DEL MUNICIPIO DE PUERTO LÓPEZ" (an indigenous-reservation fund, nothing
+ * about a port), and "...EN EL SECTOR EL LLANO PUENTE OSPINA DEL MUNICIPIO
+ * DE CACHIRA" (a paving project in a neighborhood/sector called "Puente
+ * Ospina", not an actual bridge). Real Colombian titles are routinely
+ * written in ALL CAPS, so capitalization can't distinguish a genuine
+ * seaport/bridge mention from a place name the way it might in mixed-case
+ * text — the only reliable fix is naming the confirmed place names
+ * explicitly, same "confirmed real, not guessed" bar as every other pattern
+ * in this file. Add more such place names here as they're found for real,
+ * rather than guessing the full list. Exported so relevance.ts's own
+ * haystack (a separate string built from the same title/summary) gets the
+ * identical treatment before its bare "puerto"/"puente" checks.
+ */
+export function stripKnownFalsePositivePlaceNames(text: string): string {
+  return text.replace(/puerto (boyac[áa]|l[óo]pez)\b|puente ospina\b/gi, "");
+}
+
 /** Matches against real Spanish-language text (title/description, plus any real category field a source provides) — never guesses from a buyer name alone. Falls back to ["general"] rather than an empty array, so every tender has at least one tag to display/filter by. */
 export function classifyIndustries(...texts: (string | undefined)[]): IndustryKey[] {
-  const haystack = texts.filter(Boolean).join(" ");
+  const haystack = stripKnownFalsePositivePlaceNames(texts.filter(Boolean).join(" "));
   const matched = INDUSTRY_KEYWORDS.filter(([, pattern]) => pattern.test(haystack)).map(([key]) => key);
   return matched.length > 0 ? matched : ["general"];
 }

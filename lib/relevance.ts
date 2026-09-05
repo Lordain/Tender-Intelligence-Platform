@@ -1,6 +1,6 @@
 import type { LocalizedText, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
 
 /**
  * Pre-Screening / relevance classification (rule-based, not AI — see
@@ -73,7 +73,7 @@ const EXCLUDE_KEYWORDS = [
   /sanitarios rurales|letrinas/i, // CONSTRUCCIÓN DE 53 SANITARIOS RURALES — small-scale rural sanitation, would otherwise hit the "construcción" FLAGSHIP_INDUSTRY_KEYWORDS match
   /adquisici[óo]n de alimentos|adquisici[óo]n alimentos|compra de alimentos/i, // ADQUISICIÓN ALIMENTOS PROGRAMA APOYO A ESPACIOS REFUGIO... — food supply for a social program, not a catering service (already covered) but still routine goods
   /soporte (t[ée]cnico )?(al |de )?hardware y software|mantenimiento de licencia(s)?/i, // SERVICIO DE SOPORTE AL HARDWARE Y SOFTWARE ORACLE — vendor IT support/maintenance, distinct from the license-renewal phrasing already covered above
-  /apoyo log[íi]stico|servicio log[íi]stico/i, // SERVICIO INTEGRAL Y APOYO LOGÍSTICO PARA EL DESARROLLO DE ASAMBLEAS INFORMATIVAS — event logistics support
+  /apoyo log[íi]stico|servicios? log[íi]sticos?|operador log[íi]stico/i, // SERVICIO INTEGRAL Y APOYO LOGÍSTICO PARA EL DESARROLLO DE ASAMBLEAS INFORMATIVAS — event logistics support; widened (2026-09-05) for plural "servicios logísticos" and "operador logístico" phrasing real titles use
   // Medical consumables — moved from FLAGSHIP_INDUSTRY_KEYWORDS above,
   // not newly invented (see the comment there): implants/prosthetics,
   // lab reagents, drugs, and generic medical supplies are materials, not
@@ -262,6 +262,65 @@ const EXCLUDE_KEYWORDS = [
   /combustible.{0,30}flota de (buses|autobuses)/i, // Suministro y compresión del combustible requerido para la flota de buses a gas — real gap: existing combustible patterns only cover "vehículos" phrasing, not "flota de buses"
   /mobiliario escolar/i, // DOTACIÓN DE HERRAMIENTAS TECNOLÓGICAS; MOBILIARIO ESCOLAR... — single-school furniture/equipment bundle
   /^asociaci[óo]n de recicladores/i, // ASOCIACION DE RECICLADORES Y FAMI-BODEGAS DEL SUR (ASOBOSUR) — an association's own name as the record's title, not a description of a procurement, same "not a real tender" class as the labor-union pattern above
+
+  // Batch #6 (2026-09-05): a second real ~45-title Colombia SECOP review,
+  // same posture as batch #5 above — each pattern scoped to the real
+  // title(s)/summary text it targets.
+  //
+  // Real-estate leasing, verb form — batch #5's "arrendamiento de..."
+  // pattern only covers the NOUN form; these use the VERB "arrendar"
+  // directly ("Arrendar a todo costo un inmueble...", "Arrendar el
+  // inmueble ubicado en...").
+  /arrendar (a todo costo )?(el |un )?inmueble/i,
+  // Military/institutional routine materiel (军需物资/原材料采购)
+  /material de intendencia/i, // ADQUISICION DE MATERIAL DE INTENDENCIA (PRODUCTO TERMINADO) — military quartermaster supplies
+  /materia prima para la fabricaci[óo]n de (medallas|monedas|distintivos|escudos|insignias)/i, // ADQUISICIÓN DE MATERIA PRIMA PARA LA FABRICACIÓN DE MEDALLAS; MONEDAS; DISTINTIVOS; ESCUDOS E INSIGNIAS MILITARES
+  /agencia de viajes|tiquetes a[ée]reos/i, // Suministro de servicios de agencia de viajes para compra de tiquetes aéreos
+  /m[ée]dicos generales\b/i, // PRESTAR APOYO EN LA EJECUCIÓN DEL PROCESO DE MEDICOS GENERALES — general-practitioner staffing, same outsourced-health-service class as the other médico patterns above
+  /sal para (las )?plantas de tratamiento de agua/i, // SUMINISTRAR SAL PARA LAS PLANTAS DE TRATAMIENTO DE AGUA POTABLE — routine water-treatment consumable
+  // Colombian outsourced clinical-service contracting, a recurring phrase
+  // this batch made clear is its own strong signal independent of "de
+  // salud" (batch #5's pattern requires that exact phrase right after
+  // "servicios") — "procesos (y subprocesos) asistenciales" is the
+  // standard term Colombian health entities use for clinical-care
+  // service-outsourcing contracts.
+  /procesos? (y subprocesos )?asistenciales/i,
+  /procesos de especialidades m[ée]dicas/i, // CONTRATAR LA EJECUCIÓN DE LOS PROCESOS DE ESPECIALIDADES MÉDICAS; UCI Y PROFESIONALES DE LA SALUD
+  /servicios? profesionales de enfermer[íi]a|atenci[óo]n integral de pacientes/i, // PRESTACION DE SERVICIOS PROFESIONALES DE ENFERMERIA PARA LA ATENCION INTEGRAL DE PACIENTES
+  /equipos? b[áa]sicos? de salud/i, // "EBSE" (Equipos Básicos de Salud Especializados) — a recurring Colombian primary-care staffing program, e.g. PRESTAR SERVICIOS PROFESIONALES COMO MÉDICO PEDIATRA... EN EL MARCO DE LOS EQUIPOS BÁSICOS DE SALUD ESPECIALIZADOS
+  /obtenci[óo]n y mejoramiento en las condiciones de trabajo/i, // OBTENCION Y MEJORAMIENTO EN LAS CONDICIONES DE TRABAJO PARA LA PRESTACION DE SERVICIOS Y/O EJECUCION DE OBRAS — a vague administrative/labor-conditions contract, not a real goods/works/services opportunity
+  /aval[úu]os? comerciales?/i, // AVALÚOS COMERCIALES — real-estate appraisal, broader phrasing than the existing "servicios profesionales para la elaboración del avalúo" pattern
+  /elementos de construcci[óo]n/i, // ELEMENTOS DE CONSTRUCCION — real gap: existing "material(es) de construcción" pattern doesn't cover "elementos" phrasing
+  /p[óo]lizas? de seguros?|programa de seguros/i, // ADQUISICIÓN PÓLIZAS PARA EL PROGRAMA DE SEGUROS DE LA POLICÍA NACIONAL; Adquirir el programa de seguros...
+  /contrato colectivo sindical/i, // CONTRATO COLECTIVO SINDICAL PARA EL DESARROLLO DE ACTIVIDADES... — a labor-union collective agreement, same "not a real tender" class as the bare "^sindicato" pattern above
+  /licencias? office\b/i, // CONTRATAR LA ADQUISICIÓN LICENCIAS OFFICE Y DE EQUIPOS TECNOLÓGICOS — Microsoft Office license purchase, a routine SaaS license
+  /dotaci[óo]n de bienes muebles/i, // Suministrar la dotación de bienes muebles para el funcionamiento... equipamientos culturales — furniture
+  /transporte terrestre de personas en buses|busetas y microbuses/i, // Prestación del servicio de transporte terrestre de personas en buses; busetas y microbuses
+  /alquiler de (horas de )?maquinaria( amarilla)?/i, // SERVICIO DE ALQUILER DE HORAS DE MAQUINARIA AMARILLA Y VOLQUETAS — heavy-equipment rental by the hour
+  /\binterventor[íi]a\b/i, // Broadened from the batch #5 "interventoría integral" pattern — real gap: "INTERVENTORÍA TÉCNICA; ADMINISTRATIVA; FINANCIERA Y SOCIOAMBIENTAL" uses different adjectives; any interventoría/oversight-only contract is the same "not the actual procurement" class regardless of which adjectives modify it
+  /^corporaci[óo]n integral de servicios/i, // CORPORACION INTEGRAL DE SERVICIOS Y ASESORIAS CORPOINSA — a company's own name as the record's title, same class as the association/union/sindicato patterns above
+  /resguardo ind[íi]gena|sistema general de participaciones/i, // ADMINISTRACIÓN DE LOS RECURSOS DE LA ASIGNACIÓN ESPECIAL DEL SISTEMA GENERAL DE PARTICIPACIONES PARA EL RESGUARDO INDÍGENA — a government fund-administration contract, not real goods/works/services procurement
+  /licencia de uso por suscripci[óo]n/i, // ADQUISICIÓN DE LICENCIA DE USO POR SUSCRIPCIÓN — a SaaS subscription license, broader phrasing than the existing "licencia(s) de software" pattern
+  /insumos de impresi[óòo]n/i, // ADQUIRIR INSUMOS DE IMPRESIÒN CON DESTINO A LAS DEPENDENCIAS DE LA FISCALÍA — printing consumables; grave-accent "Ò" kept as a real encoding variant seen in this exact source row, not a typo to normalize away
+  /renovaci[óo]n del licenciamiento|licenciamiento,? suscripci[óo]n y soporte/i, // CONTRATAR LA RENOVACIÓN DEL LICENCIAMIENTO; SUSCRIPCIÓN Y SOPORTE DE LA INFRAESTRUCTURA DE SEGURIDAD TRELLIX — real gap: existing licensing patterns require "licencia(s)"/"licenciamiento de software" exactly, not bare "licenciamiento"
+  /alimentaci[óo]n escolar/i, // APOYO ALIMENTACIÓN ESCOLAR — broadened from the existing "programa de alimentación escolar" pattern, which requires the word "programa" to also be present
+  /motores y repuestos/i, // LA ADQUISICION DE MOTORES Y REPUESTOS NUEVOS Y ORIGINALES MARCA MERCURY — spare parts, same class as the existing "refacciones" patterns but a different word
+  /proceso de gesti[óo]n financiera/i, // PRESTAR SERVICIOS TECNICOS PARA EL PROCESO DE GESTION FINANCIERA DEL HOSPITAL — financial-management support service
+  /jardines infantiles|primera infancia/i, // Prestación de servicios para el fortalecimiento de la atención en los Jardines Infantiles Buen Comienzo — early-childhood care program
+  /aulas no convencionales|aula(s)? tipo contenedor/i, // Suministro; dotación y puesta en funcionamiento de aulas no convencionales tipo contenedor — small-scale container classrooms
+  /estrategia (integral )?de promoci[óo]n.{0,20}tur[íi]stic[oa]|fortalecimiento tur[íi]stico/i, // IMPLEMENTACIÓN DE UNA ESTRATEGIA INTEGRAL DE PROMOCIÓN Y FORTALECIMIENTO TURÍSTICO DEL MUNICIPIO DE VALLEDUPAR — tourism-promotion program, not equipment/works
+  /fiducoldex|administrador del patrimonio aut[óo]nomo/i, // FIDUCIARIA COLOMBIANA DE COMERCIO EXTERIOR S.A - FIDUCOLDEX ... ADMINISTRADOR DEL PATRIMONIO AUTONOMO — a trust/fiduciary fund-administration entity, not a real procurement opportunity
+  // "CONSTRUCCION Y CONSULTORIAS DE OBRAS DE INGENIERÍA URBANISMO Y
+  // ARQUITECTURA CONTINUAR S.A.S." (flagged "金额太小，不应该是重点项目", content
+  // "No definido") — this reads as the AWARDED CONTRACTOR'S OWN COMPANY
+  // NAME being used as the record's title (the "S.A.S." suffix is the
+  // standard Colombian company-registration type, and the bare word
+  // "construcción" only appears because it's a construction company's
+  // name), same "not a description of a procurement" class as the
+  // association/union/sindicato/corporación patterns above — not a real
+  // "small construction project" the value-band logic should be judging at
+  // all.
+  /construccion y consultorias de obras de ingenier[íi]a urbanismo y arquitectura/i,
 ];
 
 /**
@@ -473,6 +532,42 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   // example, no longer matches a bare mention with no such qualifier.
   /seguridad perimetral.{0,80}(instalaci[óo]n(es)? estrat[ée]gica(s)?|infraestructura (cr[íi]tica|estrat[ée]gica))/i, // SERVICIO ADMINISTRADO DE SEGURIDAD PERIMETRAL PARA INSTALACIONES ESTRATÉGICAS — a real managed security-infrastructure service (fencing/sensors/cameras), not a routine guard-service contract
   /sistema de alarma.{0,40}incendio|detecci[óo]n y supresi[óo]n de incendio/i, // SISTEMA DE ALARMA, DETECCIÓN Y SUPRESIÓN DE INCENDIO DE LA GCRNE — industrial fire-safety system
+];
+
+/**
+ * A narrower subset of INCLUDE_OVERRIDE_KEYWORDS: genuine ICT/electrical
+ * EQUIPMENT purchases or infrastructure UPGRADES (not new critical-
+ * infrastructure builds) that still deserve full protection from exclusion
+ * and the value floor via hasIncludeOverride, but shouldn't automatically
+ * jump straight to "flagship" just because their value happens to be
+ * undisclosed — they cap at "significant" in that case instead. A real
+ * disclosed value ≥ FLAGSHIP_VALUE_USD, or a genuine MAJOR_PROJECT_KEYWORDS
+ * match, still promotes them to flagship normally — this only removes the
+ * "undisclosed value ⇒ flagship" shortcut for these specific categories.
+ *
+ * Real gap (2026-09-05): "Suministro...modernización de la subestación
+ * eléctrica" (no disclosed value) and "SOLICITUD DE COTIZACIÓN ADQUISICIÓN
+ * DE CAMARAS DE VIDEO VIGILANCIA...PARA EL SISTEMA DE SEGURIDAD ELECTRÓNICA
+ * DE LOS LICEOS DEL EJÉRCITO" (also no value) were both automatically
+ * forced to flagship via hasIncludeOverride's undefined-value branch — but
+ * a substation UPGRADE and a camera/CCTV PURCHASE are inherently smaller-
+ * scope categories than the datacenter/national-network/EPC-scale signals
+ * the rest of INCLUDE_OVERRIDE_KEYWORDS protects, which genuinely are
+ * major regardless of one procurement notice's disclosed value. User's
+ * explicit call: "如果是摄像头建议最多放重点项目" (if it's [just] cameras, cap at
+ * significant at most).
+ */
+// Deliberately a NARROWER qualifier set than the INCLUDE_OVERRIDE_KEYWORDS
+// substation pattern above (modernización/rehabilitación/equipamiento only
+// — an UPGRADE of an existing substation — not construcción/ampliación/
+// obra, which mean a NEW substation build and should keep the uncapped
+// flagship-when-undefined treatment): a real fixture, "CONSTRUCCIÓN DE
+// SUBESTACIÓN ELÉCTRICA DE POTENCIA" (a genuine new-build), regressed to
+// "significant" when this first used the same broad qualifier list as
+// INCLUDE_OVERRIDE_KEYWORDS — confirmed via the fixture suite, not assumed.
+const EQUIPMENT_SCALE_CAPPED_KEYWORDS = [
+  /(modernizaci[óo]n|rehabilitaci[óo]n|equipamiento).{0,40}subestaci[óo]n|subestaci[óo]n.{0,40}(modernizaci[óo]n|rehabilitaci[óo]n|equipamiento)/i,
+  /c[áa]maras? de video( ?vigilancia)?|circuito(s)? cerrado(s)? de televisi[óo]n|\bcctv\b/i,
 ];
 
 // Narrowed (2026-09-02) after the user gave an explicit "only these count
@@ -894,7 +989,12 @@ export function classifyRelevance(input: {
    */
   structuredDurationDays?: number;
 }): TenderRelevance {
-  const haystack = [input.title, input.summary, ...input.industries].filter(Boolean).join(" ");
+  // stripKnownFalsePositivePlaceNames: see its own header comment in
+  // industry.ts — bare "puerto"/"puertos"/"puente(s)" below
+  // (MAJOR_PROJECT_KEYWORDS/FLAGSHIP_INDUSTRY_KEYWORDS) otherwise also
+  // match Colombian place names like "Puerto Boyacá"/"Puerto López"/
+  // "Puente Ospina".
+  const haystack = stripKnownFalsePositivePlaceNames([input.title, input.summary, ...input.industries].filter(Boolean).join(" "));
 
   // See MAINTENANCE_ONLY_KEYWORDS' header comment — deliberately checked
   // before, and not gated by, hasIncludeOverride below. Only a real,
@@ -980,6 +1080,7 @@ export function classifyRelevance(input: {
   const matchesFlagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.some((pattern) => pattern.test(haystack));
   const matchesMajorProject = MAJOR_PROJECT_KEYWORDS.some((pattern) => pattern.test(haystack));
   const hasLongDuration = durationDays !== undefined && durationDays >= LONG_DURATION_DAYS;
+  const isEquipmentScaleCapped = EQUIPMENT_SCALE_CAPPED_KEYWORDS.some((pattern) => pattern.test(haystack));
 
   // Previously also promoted any scopeType "works"/"equipment_services"
   // tender with an unknown value straight to flagship (isWorksLike),
@@ -1016,7 +1117,7 @@ export function classifyRelevance(input: {
     matchesMajorProject ||
     hasLongDuration ||
     (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD) ||
-    (hasIncludeOverride && normalizedValue === undefined)
+    (hasIncludeOverride && normalizedValue === undefined && !isEquipmentScaleCapped)
   ) {
     return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
   }
@@ -1039,7 +1140,8 @@ export function classifyRelevance(input: {
   // completely undisclosed value caps this at "standard".
   if (
     (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) ||
-    (matchesFlagshipIndustry && normalizedValue !== undefined)
+    (matchesFlagshipIndustry && normalizedValue !== undefined) ||
+    (isEquipmentScaleCapped && normalizedValue === undefined)
   ) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
   }

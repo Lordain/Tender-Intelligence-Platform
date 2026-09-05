@@ -63,6 +63,7 @@ type FormState = {
   submissionDeadline: string;
   awardDate: string;
   awardedTo: string;
+  awardedValue: string;
   estimatedValue: string;
   currency: string;
   location: string;
@@ -96,6 +97,7 @@ function initialStateFrom(tender?: Tender): FormState {
     submissionDeadline: toDateInputValue(tender?.submissionDeadline),
     awardDate: toDateInputValue(tender?.awardDate),
     awardedTo: tender?.awardedTo ?? "",
+    awardedValue: tender?.awardedValue?.toString() ?? "",
     estimatedValue: tender?.estimatedValue?.toString() ?? "",
     currency: tender?.currency ?? "",
     location: tender?.location ?? "",
@@ -148,6 +150,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       submissionDeadline: form.submissionDeadline ? new Date(form.submissionDeadline).toISOString() : null,
       awardDate: form.awardDate ? new Date(form.awardDate).toISOString() : null,
       awardedTo: form.awardedTo || null,
+      awardedValue: form.awardedValue ? Number(form.awardedValue) : null,
       estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : null,
       currency: form.currency || null,
       location: form.location || null,
@@ -336,8 +339,8 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
         </label>
       </div>
 
-      {(form.status === "awarded" || form.awardDate || form.awardedTo) && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {(form.status === "awarded" || form.awardDate || form.awardedTo || form.awardedValue) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className={labelClass}>
             <span className={labelTextClass}>中标日期</span>
             <input type="date" className={inputClass} value={form.awardDate} onChange={(e) => update("awardDate", e.target.value)} />
@@ -345,6 +348,10 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           <label className={labelClass}>
             <span className={labelTextClass}>中标单位</span>
             <input className={inputClass} value={form.awardedTo} onChange={(e) => update("awardedTo", e.target.value)} />
+          </label>
+          <label className={labelClass}>
+            <span className={labelTextClass}>中标金额（与预估金额分开填写，可能不同）</span>
+            <input type="number" className={inputClass} value={form.awardedValue} onChange={(e) => update("awardedValue", e.target.value)} />
           </label>
         </div>
       )}

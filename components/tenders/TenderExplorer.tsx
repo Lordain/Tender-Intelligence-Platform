@@ -16,6 +16,7 @@ import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { ColombiaFlag, CountryFlag, MexicoFlag } from "@/components/tenders/CountryFlag";
 import { PageIntro } from "@/components/layout/PageIntro";
+import { trackAnalyticsEvent } from "@/lib/analytics-client";
 
 const SCOPE_TYPES: TenderScopeType[] = ["equipment", "services", "equipment_services", "works", "consulting"];
 const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed", "awarded", "cancelled"];
@@ -151,6 +152,15 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const hasActiveFilters = countryParam !== null || industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || tierParam !== null || sortParam !== null || query.length > 0 || view !== null;
 
   function updateParams(updates: Record<string, string | null>, resetPage = true) {
+    for (const [dimension, value] of Object.entries(updates)) {
+      if (!value || dimension === "q" || dimension === "page" || dimension === "industryMode") continue;
+      trackAnalyticsEvent("filter_apply", {
+        properties: {
+          dimension,
+          values: value === "none" ? ["全部"] : value.split(","),
+        },
+      });
+    }
     const params = new URLSearchParams(window.location.search);
     for (const [key, value] of Object.entries(updates)) {
       if (!value) params.delete(key);
@@ -217,7 +227,12 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
       />
 
       <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
-        <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => event.preventDefault()}>
+        <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => {
+          event.preventDefault();
+          if (query.trim()) {
+            trackAnalyticsEvent("filter_apply", { properties: { dimension: "search", values: ["使用搜索"] } });
+          }
+        }}>
           <label className="relative flex-1">
             <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[#6e7d86]"><SearchIcon /></span>
             <input

@@ -5,6 +5,7 @@ import { LocaleProvider } from "@/lib/i18n";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { getAllTenders } from "@/lib/tenders";
+import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <LocaleProvider>
+          <AnalyticsTracker />
           <Header tenders={tenders} />
           <main className="flex flex-1 flex-col">{children}</main>
           <Footer />

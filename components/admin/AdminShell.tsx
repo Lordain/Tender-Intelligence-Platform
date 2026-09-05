@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AdminAlertBanner } from "@/components/admin/AdminAlertBanner";
 
 const links = [
+  { href: "/admin/analytics", label: "运营看板", detail: "流量与用户行为" },
   { href: "/admin/tenders", label: "项目管理", detail: "招标数据" },
   { href: "/admin/tenders/new", label: "添加项目", detail: "人工录入" },
   { href: "/admin/import-tenders", label: "新项目清单", detail: "批量导入+翻译" },
@@ -28,7 +29,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             {links.map((item) => {
               const active = item.href === "/admin/tenders"
                 ? pathname === item.href || (pathname !== "/admin/tenders/new" && /^\/admin\/tenders\/[^/]+$/.test(pathname))
-                : pathname === item.href;
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <Link key={item.href} href={item.href} className={`min-w-fit rounded-xl px-3 py-2.5 transition-colors ${active ? "bg-[#ffb21c] text-[#071826]" : "text-white/68 hover:bg-white/8 hover:text-white"}`}>
                   <span className="block text-sm font-bold">{item.label}</span>

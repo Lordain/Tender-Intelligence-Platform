@@ -8,12 +8,14 @@ import { RequirementSection } from "@/components/tenders/RequirementList";
 import { KeyDatesTimeline } from "@/components/tenders/KeyDatesTimeline";
 import { RiskList } from "@/components/tenders/RiskList";
 import { SourcePanel } from "@/components/tenders/SourcePanel";
+import { TenderViewTracker } from "@/components/analytics/TenderViewTracker";
 
 export function TenderDetailView({ tender }: { tender: Tender }) {
   const { locale } = useLocale();
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 px-5 py-7 sm:px-8 sm:py-9">
+      <TenderViewTracker tenderId={tender.id} />
       <Link
         href="/tenders"
         className="inline-flex w-fit items-center gap-2 text-sm font-black text-[#536772] transition-colors hover:text-[#b86e00]"

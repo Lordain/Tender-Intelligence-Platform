@@ -2,6 +2,7 @@
 
 import { useSavedTenderIds } from "@/lib/saved";
 import { localize, uiText, useLocale } from "@/lib/i18n";
+import { trackAnalyticsEvent } from "@/lib/analytics-client";
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -37,6 +38,7 @@ export function SaveTenderButton({
         event.preventDefault();
         event.stopPropagation();
         toggle(tenderId);
+        trackAnalyticsEvent(saved ? "tender_unsave" : "tender_save", { tenderId });
       }}
       aria-pressed={saved}
       aria-label={label}

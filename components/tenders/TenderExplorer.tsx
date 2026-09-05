@@ -33,6 +33,11 @@ const DEFAULT_RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant
 const AVAILABLE_COUNTRIES = ["Mexico", "Colombia"] as const;
 const PAGE_SIZE = 28;
 
+function formatTenderCount(value: number): string {
+  if (value < 1000) return value.toLocaleString();
+  return `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1).replace(/\.0$/, "")}K`;
+}
+
 function parseList(param: string | null): string[] {
   return param ? param.split(",").filter(Boolean) : [];
 }
@@ -210,6 +215,10 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   const filtered = useMemo(
     () => filterTenders(tenders, { query, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers }, locale),
     [tenders, query, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers, locale],
+  );
+  const siteTenderCount = useMemo(
+    () => tenders.filter((tender) => tender.status !== "awarded" && tender.status !== "cancelled").length,
+    [tenders],
   );
   // Stat-card counts are derived from `filtered` (every active filter EXCEPT
   // `view`), not `sorted` — so the "本周新增"/"即将交标" numbers stay stable
@@ -403,7 +412,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
           <section className="rounded-2xl bg-[#061b2b] p-5 text-white">
             <h2 className="text-base font-bold">本周机会</h2>
             <div className="mt-4 grid grid-cols-3 divide-x divide-white/20 text-center">
-              <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">全站项目</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{tenders.length.toLocaleString()}</p></div>
+              <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">全站项目</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{formatTenderCount(siteTenderCount)}</p></div>
               <button
                 type="button"
                 onClick={() => updateParams({ view: view === "new" ? null : "new", sort: view === "new" ? null : "publication_desc" })}

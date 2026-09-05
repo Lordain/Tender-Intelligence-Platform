@@ -1,0 +1,56 @@
+{
+  "messageCode": 200,
+  "response": "OK",
+  "totalRegistros": 79,
+  "Notas": [
+    {
+      "codNota": 5797646,
+      "titulo": "COMISION FEDERAL DE ELECTRICIDAD - REF:579845",
+      "fecha": "2026/09/01",
+      "codDiario": 329405,
+      "codOrgaUno": "CONVOCATORIAS PARA CONCURSOS DE ADQUISICIONES, ARRENDAMIENTOS, OBRAS Y SERVICIOS DEL SECTOR PUBLICO",
+      "codOrgaDos": null
+    },
+    {
+      "codNota": 5797664,
+      "titulo": "COMISION FEDERAL DE ELECTRICIDAD - REF:579874",
+      "fecha": "2026/09/01",
+      "codDiario": 329405,
+      "codOrgaUno": "CONVOCATORIAS PARA CONCURSOS DE ADQUISICIONES, ARRENDAMIENTOS, OBRAS Y SERVICIOS DEL SECTOR PUBLICO",
+      "codOrgaDos": null
+    },
+    {
+      "codNota": 5797557,
+      "titulo": "Decreto por el que se expropia por causa de utilidad pública la superficie de 19-74-73 hectáreas del ejido \"Polyuc\", municipio de Felipe Carrillo Puerto, estado de Quintana Roo, a favor de Tren Maya, S.A. de C.V., y de la Comisión Federal de Electricidad.",
+      "fecha": "2026/08/31",
+      "codDiario": 329385,
+      "codOrgaUno": "PODER EJECUTIVO",
+      "codOrgaDos": "PRESIDENCIA DE LA REPUBLICA"
+    },
+    {
+      "codNota": 5797487,
+      "titulo": "Tarifas Finales del Suministro Básico que deberá aplicar la Comisión Federal de Electricidad, en la modalidad de Suministradora de Servicios Básicos a sus usuarios, a partir del 1 de agosto de 2026.",
+      "fecha": "2026/08/31",
+      "codDiario": 329365,
+      "codOrgaUno": "EMPRESAS PUBLICAS DEL ESTADO MEXICANO",
+      "codOrgaDos": "COMISION FEDERAL DE ELECTRICIDAD"
+    },
+    {
+      "codNota": 5797629,
+      "titulo": "PETROLEOS MEXICANOS - REF:579862",
+      "fecha": "2026/09/01",
+      "codDiario": 329405,
+      "codOrgaUno": "CONVOCATORIAS PARA CONCURSOS DE ADQUISICIONES, ARRENDAMIENTOS, OBRAS Y SERVICIOS DEL SECTOR PUBLICO",
+      "codOrgaDos": null
+    },
+    {
+      "codNota": 5796005,
+      "titulo": "018T0O - INSTITUTO MEXICANO DEL PETROLEO - REF:579186",
+      "fecha": "2026/08/11",
+      "codDiario": 329025,
+      "codOrgaUno": "CONVOCATORIAS PARA CONCURSOS DE ADQUISICIONES, ARRENDAMIENTOS, OBRAS Y SERVICIOS DEL SECTOR PUBLICO",
+      "codOrgaDos": null
+    }
+  ],
+  "url": "https://sidof.segob.gob.mx/dof/sidof/buscarNotas/avanzada/formato/C/PEMEX/01-09-2026/01-9-2025/PE,PL,PJ,OA,EPEM,EF,OD,AV,CV,VG,TODOS/1/-1/fecha/desc/true"
+}

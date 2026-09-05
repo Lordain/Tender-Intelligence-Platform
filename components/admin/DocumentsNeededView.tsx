@@ -40,18 +40,47 @@ function UploadIcon() {
   );
 }
 
+function BanIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-3.5">
+      <circle cx="12" cy="12" r="9" />
+      <path d="m5.5 5.5 13 13" />
+    </svg>
+  );
+}
+
 const selectClass =
   "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
 
-export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocuments[] }) {
+export function DocumentsNeededView({ tenders: initialTenders }: { tenders: TenderNeedingDocuments[] }) {
   const { locale } = useLocale();
   const router = useRouter();
   const { user, loading } = useUser();
+  const [tenders, setTenders] = useState(initialTenders);
   const [openSlug, setOpenSlug] = useState<string | null>(null);
   const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState("all");
   const [relevance, setRelevance] = useState("all");
+  const [dismissingSlug, setDismissingSlug] = useState<string | null>(null);
+
+  async function dismissTender(slug: string) {
+    if (!confirm("确定要把这条标书标记为「无法获取附件」吗？之后不会再出现在这个清单里（不影响它的相关度判定），后台项目管理里随时能再改回来。")) return;
+    setDismissingSlug(slug);
+    try {
+      const res = await fetch(`/api/admin/tenders/${slug}/documents-unavailable`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unavailable: true }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setTenders((prev) => prev.filter((tender) => tender.slug !== slug));
+    } catch {
+      alert("标记失败，请稍后重试。");
+    } finally {
+      setDismissingSlug(null);
+    }
+  }
 
   useEffect(() => {
     if (!SUPABASE_CONFIGURED || loading) return;
@@ -177,15 +206,15 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
         <p className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-8 text-center text-sm text-[#64717c]">{localize(uiText.documentsNeededEmpty, locale)}</p>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_18px_50px_-48px_rgba(6,27,43,.55)]">
-          <table className="w-full min-w-[980px] table-fixed text-left text-xs">
+          <table className="w-full min-w-[1040px] table-fixed text-left text-xs">
             <thead className="border-b border-[#dbe2e5] bg-[#edf2f3] text-[11px] uppercase tracking-[0.06em] text-[#52636e]">
               <tr>
-                <th className="w-[26%] px-4 py-3 font-black">{localize(uiText.colTitle, locale)}</th>
-                <th className="w-[9%] px-3 py-3 font-black">{localize(uiText.countryLabel, locale)}</th>
-                <th className="w-[9%] px-3 py-3 font-black">状态</th>
-                <th className="w-[20%] px-3 py-3 font-black">{localize(uiText.colTenderId, locale)}</th>
-                <th className="w-[12%] px-3 py-3 font-black">{localize(uiText.colPublicationDate, locale)}</th>
-                <th className="w-[24%] px-3 py-3 text-center font-black">操作</th>
+                <th className="w-[24%] px-4 py-3 font-black">{localize(uiText.colTitle, locale)}</th>
+                <th className="w-[8%] px-3 py-3 font-black">{localize(uiText.countryLabel, locale)}</th>
+                <th className="w-[8%] px-3 py-3 font-black">状态</th>
+                <th className="w-[18%] px-3 py-3 font-black">{localize(uiText.colTenderId, locale)}</th>
+                <th className="w-[11%] px-3 py-3 font-black">{localize(uiText.colPublicationDate, locale)}</th>
+                <th className="w-[31%] px-3 py-3 text-center font-black">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e9eb]">
@@ -219,6 +248,15 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
                             className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[11px] font-black transition-colors ${isOpen ? "border border-[#cbd6da] bg-white text-[#52636e]" : "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]"}`}
                           >
                             <UploadIcon />{isOpen ? "收起" : "上传分析"}
+                          </button>
+                          <button
+                            type="button"
+                            title="标记为无法获取附件——不再出现在此清单，不影响相关度判定"
+                            disabled={dismissingSlug === tender.slug}
+                            onClick={() => dismissTender(tender.slug)}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#8a5a00] transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <BanIcon />
                           </button>
                         </div>
                       </td>

@@ -73,6 +73,7 @@ type FormState = {
   status: TenderStatus;
   relevanceTier: TenderRelevanceTier;
   relevanceManuallyOverridden: boolean;
+  documentsUnavailable: boolean;
   tenderNumber: string;
   sourceName: string;
   sourceUrl: string;
@@ -107,6 +108,7 @@ function initialStateFrom(tender?: Tender): FormState {
     status: tender?.status ?? "open",
     relevanceTier: tender?.relevance.tier ?? "standard",
     relevanceManuallyOverridden: tender?.relevanceManuallyOverridden ?? false,
+    documentsUnavailable: tender?.documentsUnavailable ?? false,
     tenderNumber: tender?.tenderNumber ?? "",
     sourceName: tender?.sourceName ?? "人工添加（管理后台）",
     sourceUrl: tender?.sourceUrl ?? "",
@@ -160,6 +162,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       status: form.status,
       relevanceTier: form.relevanceTier,
       relevanceManuallyOverridden: form.relevanceManuallyOverridden,
+      documentsUnavailable: form.documentsUnavailable,
       tenderNumber: form.tenderNumber,
       sourceName: form.sourceName,
       sourceUrl: form.sourceUrl,
@@ -455,6 +458,17 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           <input className={inputClass} value={form.sourceUrl} onChange={(e) => update("sourceUrl", e.target.value)} />
         </label>
       </div>
+      {isEdit && (
+        <label className="mt-4 flex items-center gap-2 text-sm text-[#233846]">
+          <input
+            type="checkbox"
+            checked={form.documentsUnavailable}
+            onChange={(e) => update("documentsUnavailable", e.target.checked)}
+            className="size-4 accent-[#ffb21c]"
+          />
+          🚫 标记为无法获取附件（不再出现在&ldquo;待补文件&rdquo;清单；取消勾选可恢复到待处理清单）
+        </label>
+      )}
       </FormSection>
 
       <div className="sticky bottom-4 z-10 flex items-center justify-between rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]/95 p-3 shadow-[0_12px_35px_-18px_rgba(6,27,43,.35)] backdrop-blur">

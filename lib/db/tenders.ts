@@ -43,6 +43,7 @@ type TenderRow = {
   relevance_reason: LocalizedText | null;
   relevance_manually_overridden: boolean | null;
   homepage_featured: boolean | null;
+  documents_unavailable: boolean | null;
   source_name: string;
   source_url: string;
   created_at: string;
@@ -89,7 +90,7 @@ const TENDER_LIST_FIELDS = `
   publication_date, publication_date_is_estimated,
   submission_deadline, award_date, awarded_to, awarded_value, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden,
-  homepage_featured, source_name, source_url, created_at, updated_at
+  homepage_featured, documents_unavailable, source_name, source_url, created_at, updated_at
 `;
 
 /** One tender's full detail, including its qualifications/keyDates/risks — for fetchTenderBySlugFromDb (a single row). */
@@ -187,6 +188,7 @@ function toTender(row: TenderRow): Tender {
     relevance: toRelevance(row),
     relevanceManuallyOverridden: row.relevance_manually_overridden ?? false,
     homepageFeatured: row.homepage_featured ?? false,
+    documentsUnavailable: row.documents_unavailable ?? false,
     sourceName: row.source_name,
     sourceUrl: row.source_url,
     createdAt: row.created_at,
@@ -351,6 +353,13 @@ const DOCUMENTS_NEEDED_SELECT = `
  * chasing down attachments for a tender that's already decided or dead is
  * wasted effort, so those are dropped from the worklist even if they'd
  * otherwise qualify (2026-09-05, explicit request).
+ *
+ * `.eq("documents_unavailable", false)` excludes tenders an admin has
+ * explicitly dismissed via the "标记为无法获取" toggle — for sources with no
+ * automated attachment path at all (Colombia's SECOP II detail page is
+ * CAPTCHA-gated; see lib/ingestion/README.md), a tender would otherwise sit
+ * in this worklist forever with no way to mark "not obtainable" distinct
+ * from "not yet attempted" (2026-09-05, explicit request).
  */
 export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedingDocuments[] | null> {
   const supabase = getSupabaseServerClient();
@@ -363,6 +372,7 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
       .select(DOCUMENTS_NEEDED_SELECT)
       .neq("relevance_tier", "excluded")
       .not("status", "in", "(awarded,cancelled)")
+      .eq("documents_unavailable", false)
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
 

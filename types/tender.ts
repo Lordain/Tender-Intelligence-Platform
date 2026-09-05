@@ -182,6 +182,15 @@ export type Tender = {
    * so it never looks sparse.
    */
   homepageFeatured?: boolean;
+  /**
+   * True when an admin dismissed this tender from the /admin/documents-
+   * needed worklist via "标记为无法获取" — for sources with no automated
+   * attachment path at all (e.g. Colombia's CAPTCHA-gated SECOP II detail
+   * page), a tender would otherwise sit in that worklist forever with no
+   * way to mark "not obtainable" (2026-09-05). Never affects relevance;
+   * an admin can un-set it from this same edit form.
+   */
+  documentsUnavailable?: boolean;
   sourceName: string;
   sourceUrl: string;
   createdAt: string;

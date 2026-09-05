@@ -35,6 +35,8 @@ type UpdateTenderBody = {
   relevanceTier: TenderRelevanceTier;
   /** Per the user's explicit request (2026-09-04): whether this manual tier choice should survive a future re-ingest of this same tender — see lib/ingestion/upsert-tenders.ts. */
   relevanceManuallyOverridden?: boolean;
+  /** Whether an admin dismissed this tender from the /admin/documents-needed worklist (see components/admin/DocumentsNeededView.tsx's "标记为无法获取" toggle) — surfaced here too so an admin can reverse it from the edit form, per that toggle's own confirm-dialog promise. */
+  documentsUnavailable?: boolean;
   sourceName: string;
   sourceUrl?: string;
   tenderNumber: string;
@@ -118,6 +120,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   // re-ingest without first picking a different tier). See lib/ingestion/
   // upsert-tenders.ts for what this flag actually protects.
   row.relevance_manually_overridden = body.relevanceManuallyOverridden === true;
+  row.documents_unavailable = body.documentsUnavailable === true;
 
   const { error } = await supabase.from("tenders").update(row).eq("slug", slug);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

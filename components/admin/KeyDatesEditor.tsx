@@ -26,6 +26,23 @@ function toDraft(keyDate: TenderKeyDate): DraftState {
 }
 
 /**
+ * Ids of the submission/opening pair when they share the same date — same
+ * detection KeyDatesTimeline.tsx uses to MERGE them into one card on the
+ * public tender page (that source reports both as a single real event).
+ * The editor deliberately does NOT merge here — each is still its own
+ * tender_key_dates row an admin edits/deletes independently — but flags
+ * both with a small note so it's clear this is the same "merged on the
+ * public page" pair, not two admins-forgot-to-dedupe rows (2026-09-05,
+ * per the user's question "提交截止和开标在编辑里面是不是也拉齐？").
+ */
+function sameDaySubmissionOpeningIds(keyDates: TenderKeyDate[]): Set<string> {
+  const submission = keyDates.find((d) => d.type === "submission");
+  const opening = keyDates.find((d) => d.type === "opening");
+  if (!submission || !opening || submission.date !== opening.date) return new Set();
+  return new Set([submission.id, opening.id]);
+}
+
+/**
  * Manual add/edit/delete for one tender's key dates (tender_key_dates —
  * see supabase/migrations/0001_init.sql). Only rendered in AdminTenderForm's
  * edit mode (a new, unsaved tender has no id for these rows to reference).
@@ -118,6 +135,8 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
     }
   }
 
+  const sameDayIds = sameDaySubmissionOpeningIds(keyDates);
+
   return (
     <div className="flex flex-col gap-3">
       {error && <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
@@ -153,6 +172,11 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
           <div key={kd.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-[#e2e7e9] bg-white px-3 py-2.5 text-sm">
             <span className="rounded-full bg-[#edf2f3] px-2.5 py-1 text-xs font-bold text-[#425461]">{KEY_DATE_TYPE_LABELS[kd.type].zh}</span>
             <span className="font-bold text-[#071826]">{formatDate(kd.date, "zh")}</span>
+            {sameDayIds.has(kd.id) && (
+              <span className="rounded-full bg-[#fff4d8] px-2 py-0.5 text-[11px] font-bold text-[#9a6200]" title="前台会把提交截止和开标合并显示为同一事件">
+                与{kd.type === "submission" ? "开标" : "提交截止"}同日 · 前台合并显示
+              </span>
+            )}
             {kd.mandatory && <span className="text-xs font-bold text-[#b86e00]">强制</span>}
             {kd.notes?.zh && <span className="text-xs text-[#7a878f]">{kd.notes.zh}</span>}
             <span className="ml-auto flex gap-2">

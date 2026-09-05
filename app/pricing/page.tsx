@@ -103,7 +103,7 @@ export default function PricingPage() {
 
                 <div className="mt-7 flex items-end gap-2">
                   <span className="text-5xl font-black tracking-[-0.05em] text-[#071826]">{plan.monthly}</span>
-                  <span className="pb-1 text-sm font-semibold text-[#64717c]">USD + 税 / 月</span>
+                  <span className="pb-1 text-sm font-semibold text-[#64717c]">USD + 16% IVA税 / 月</span>
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-3">
@@ -112,7 +112,7 @@ export default function PricingPage() {
                       <p className="text-xs font-bold text-[#64717c]">半年订阅</p>
                       <span className="rounded-full bg-[#edf2f3] px-2 py-0.5 text-[10px] font-black text-[#425461]">{plan.halfYearSaving}</span>
                     </div>
-                    <p className="mt-1.5 text-xl font-black text-[#071826]">{plan.halfYear}</p>
+                    <p className="mt-1.5 text-xl font-black text-[#071826]">{plan.halfYear}<span className="text-xs font-semibold text-[#64717c]"> + 16% IVA税</span></p>
                     <p className="mt-1 text-[11px] font-semibold text-[#b86e00]">{plan.halfYearAverage}</p>
                   </div>
                   <div className="rounded-xl border border-[#e7b84e] bg-[#fff8e9] p-4">
@@ -120,7 +120,7 @@ export default function PricingPage() {
                       <p className="text-xs font-bold text-[#64717c]">年度订阅</p>
                       <span className="rounded-full bg-[#ffb21c] px-2 py-0.5 text-[10px] font-black text-[#071826]">{plan.yearlySaving}</span>
                     </div>
-                    <p className="mt-1.5 text-xl font-black text-[#071826]">{plan.yearly}</p>
+                    <p className="mt-1.5 text-xl font-black text-[#071826]">{plan.yearly}<span className="text-xs font-semibold text-[#64717c]"> + 16% IVA税</span></p>
                     <p className="mt-1 text-[11px] font-semibold text-[#b86e00]">{plan.yearlyAverage}</p>
                   </div>
                 </div>
@@ -151,7 +151,7 @@ export default function PricingPage() {
         </div>
 
         <p className="mt-7 text-center text-xs leading-6 text-[#7b878e]">
-          页面价格为正式订阅启用后的预定价格，均以美元计价并另加适用税费。收费开放前不会自动扣费，具体启用时间将另行通知。
+          页面价格为正式订阅启用后的预定价格，均以美元计价并另加16% IVA税。收费开放前不会自动扣费，具体启用时间将另行通知。
         </p>
       </div>
     </main>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { ALL_INDUSTRIES } from "@/lib/industry";
@@ -59,6 +59,42 @@ function SearchIcon() {
       <circle cx="8.5" cy="8.5" r="5.5" />
       <path d="m13 13 4 4" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function TenderSearchForm({
+  initialQuery,
+  hasActiveFilters,
+  currentSearchHref,
+  onSearch,
+}: {
+  initialQuery: string;
+  hasActiveFilters: boolean;
+  currentSearchHref: string;
+  onSearch: (query: string) => void;
+}) {
+  const [draftQuery, setDraftQuery] = useState(initialQuery);
+
+  return (
+    <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => {
+      event.preventDefault();
+      onSearch(draftQuery.trim());
+    }}>
+      <label className="relative flex-1">
+        <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[#6e7d86]"><SearchIcon /></span>
+        <input
+          type="search"
+          value={draftQuery}
+          onChange={(event) => setDraftQuery(event.target.value)}
+          placeholder="搜索项目名称、编号或发布机构"
+          className="h-11 w-full rounded-xl border border-[#d8e0e3] bg-white pl-12 pr-4 text-sm placeholder:text-[#919ca2] focus:border-[#ffb21c] focus:outline-none"
+        />
+      </label>
+      <div className="flex gap-3">
+        <button type="submit" className="h-11 flex-1 rounded-xl bg-[#ffb21c] px-7 text-sm font-black text-[#071826] hover:bg-[#ffc247] sm:flex-none">搜索</button>
+        <SaveSearchControl href={currentSearchHref} disabled={!hasActiveFilters} />
+      </div>
+    </form>
   );
 }
 
@@ -227,27 +263,18 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
       />
 
       <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
-        <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => {
-          event.preventDefault();
-          if (query.trim()) {
-            trackAnalyticsEvent("filter_apply", { properties: { dimension: "search", values: ["使用搜索"] } });
-          }
-        }}>
-          <label className="relative flex-1">
-            <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[#6e7d86]"><SearchIcon /></span>
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => updateParams({ q: event.target.value })}
-              placeholder="搜索项目名称、编号或发布机构"
-              className="h-11 w-full rounded-xl border border-[#d8e0e3] bg-white pl-12 pr-4 text-sm placeholder:text-[#919ca2] focus:border-[#ffb21c] focus:outline-none"
-            />
-          </label>
-          <div className="flex gap-3">
-            <button type="submit" className="h-11 flex-1 rounded-xl bg-[#ffb21c] px-7 text-sm font-black text-[#071826] hover:bg-[#ffc247] sm:flex-none">搜索</button>
-            <SaveSearchControl href={currentSearchHref} disabled={!hasActiveFilters} />
-          </div>
-        </form>
+        <TenderSearchForm
+          key={query}
+          initialQuery={query}
+          hasActiveFilters={hasActiveFilters}
+          currentSearchHref={currentSearchHref}
+          onSearch={(nextQuery) => {
+            if (nextQuery) {
+              trackAnalyticsEvent("filter_apply", { properties: { dimension: "search", values: ["使用搜索"] } });
+            }
+            if (nextQuery !== query) updateParams({ q: nextQuery || null });
+          }}
+        />
 
         <div className="mt-4 grid gap-y-3 xl:grid-cols-[max-content_max-content_max-content] xl:divide-x xl:divide-[#dbe2e5]">
           <div className="xl:pr-5">

@@ -49,6 +49,7 @@ const selectClass =
 
 export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) {
   const router = useRouter();
+  const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState("all");
   const [status, setStatus] = useState("all");
@@ -121,6 +122,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all";
 
   function clearFilters() {
+    setDraftQuery("");
     setQuery("");
     setCountry("all");
     setStatus("all");
@@ -131,17 +133,28 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <label className="relative block min-w-0 flex-1">
-            <span className="sr-only">搜索项目</span>
-            <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[#849098]"><SearchIcon /></span>
-            <input
-              type="search"
-              placeholder="按标题、采购单位、slug 或标书编号搜索…"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="h-11 w-full rounded-xl border border-[#d8e0e3] bg-white pl-11 pr-4 text-sm text-[#071826] outline-none transition-colors placeholder:text-[#9aa5ab] focus:border-[#ffb21c]"
-            />
-          </label>
+          <form
+            className="flex min-w-0 flex-1 gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setQuery(draftQuery);
+            }}
+          >
+            <label className="relative block min-w-0 flex-1">
+              <span className="sr-only">搜索项目</span>
+              <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[#849098]"><SearchIcon /></span>
+              <input
+                type="search"
+                placeholder="按标题、采购单位、slug 或标书编号搜索…"
+                value={draftQuery}
+                onChange={(event) => setDraftQuery(event.target.value)}
+                className="h-11 w-full rounded-xl border border-[#d8e0e3] bg-white pl-11 pr-4 text-sm text-[#071826] outline-none transition-colors placeholder:text-[#9aa5ab] focus:border-[#ffb21c]"
+              />
+            </label>
+            <button type="submit" className="h-11 shrink-0 rounded-xl bg-[#ffb21c] px-5 text-sm font-black text-[#071826] transition-colors hover:bg-[#ffc247]">
+              搜索
+            </button>
+          </form>
           <p className="shrink-0 text-xs font-bold text-[#64717c]">
             显示 <span className="text-[#071826]">{filtered.length}</span> / {tenders.length} 个项目
           </p>

@@ -556,6 +556,16 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
  * major regardless of one procurement notice's disclosed value. User's
  * explicit call: "如果是摄像头建议最多放重点项目" (if it's [just] cameras, cap at
  * significant at most).
+ *
+ * Widened same day (Mexico example): "IMPLEMENTACIÓN DE SOLUCIÓN DE
+ * SISTEMAS DE SEGURIDAD ELECTRÓNICA TIPO VIDEOVIGILANCIA" (also no
+ * value) — a full video-surveillance/electronic-security SYSTEM
+ * implementation, not just a bare camera purchase, but the user's "也"
+ * (also/same category) made clear this whole video-surveillance/
+ * electronic-security theme belongs here, not just literal cameras —
+ * moved the bare "videovigilancia"/"seguridad electrónica" terms out of
+ * the flagship-forcing half of INCLUDE_OVERRIDE_KEYWORDS' unconditional
+ * treatment and into this capped list instead.
  */
 // Deliberately a NARROWER qualifier set than the INCLUDE_OVERRIDE_KEYWORDS
 // substation pattern above (modernización/rehabilitación/equipamiento only
@@ -568,6 +578,7 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
 const EQUIPMENT_SCALE_CAPPED_KEYWORDS = [
   /(modernizaci[óo]n|rehabilitaci[óo]n|equipamiento).{0,40}subestaci[óo]n|subestaci[óo]n.{0,40}(modernizaci[óo]n|rehabilitaci[óo]n|equipamiento)/i,
   /c[áa]maras? de video( ?vigilancia)?|circuito(s)? cerrado(s)? de televisi[óo]n|\bcctv\b/i,
+  /videovigilancia|video surveillance|seguridad electr[óo]nica|electronic security/i,
 ];
 
 // Narrowed (2026-09-02) after the user gave an explicit "only these count
@@ -746,7 +757,16 @@ const MAJOR_PROJECT_KEYWORDS = [
   // ict_telecom by industry.ts, just no longer an automatic flagship.
   /(construcci[óo]n|nuevo|nueva).{0,30}(centro(s)? de datos|datacenter)|(centro(s)? de datos|datacenter).{0,30}(construcci[óo]n|nuevo|nueva)/i, // 建数据中心
   /redes? (troncal(es)?|core|n[úu]cleo)|core network/i, // 建核心网络
-  /\bpuentes?\b/i, // 建桥
+  // Narrowed (2026-09-05, real explicit call): "puente(s) peatonal(es)"
+  // (pedestrian bridge/overpass) never counts as this MAJOR_PROJECT
+  // 建桥 signal — a pedestrian bridge is inherently smaller-scale than a
+  // vehicular/railway bridge, confirmed via a real title ("CONSTRUCCIÓN
+  // PUENTE PEATONAL ESTACIÓN 3 SIST.INTERCONECTADO ELECTROMOVILIDAD L-5")
+  // the user explicitly said should never be flagship. Still counts
+  // toward FLAGSHIP_INDUSTRY_KEYWORDS's bare "puente" below (unchanged),
+  // so a disclosed value still promotes it to "significant" normally —
+  // this only removes the value-independent flagship shortcut.
+  /\bpuentes?\b(?!\s+peatonal(es)?)/i, // 建桥
   /\bpuertos?\b|terminal(es)? portuaria(s)?|recinto(s)? portuario(s)?/i, // 建港口
   /nubes? (nacional(es)?|de gobierno|gubernamental(es)?)|national cloud|government cloud/i, // 国家云
   /oleoductos?|gasoductos?|poliductos?/i, // long-distance pipeline, the concrete "distancia larga" case the user named

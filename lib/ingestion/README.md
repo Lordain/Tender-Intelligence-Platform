@@ -2746,3 +2746,12 @@ Per explicit user request: `standard`("常规项目") unchanged; `significant` z
 Also updated: `AdminAnalyticsDashboard.tsx`'s value-label map, `DocumentsNeededView.tsx`'s stat label, the site's `<meta name="description">` (`app/layout.tsx`), both pricing-page "旗舰标标签筛选" feature bullets, the (currently unused/dead — no import site found) `lib/pricing.ts` `PRICING_TIERS`, and `ValuePropositions.tsx`'s homepage feature-card detail sentence that explicitly paired "大型及重点项目". Left alone as NOT literal tier-badge references (generic "your important/priority projects" marketing language, not the renamed labels themselves): `ValuePropositions.tsx`'s card title "重点项目优选" and both "重点项目" mentions in `SavedView.tsx` ("我的收藏" page copy).
 
 101/101 fixtures unaffected (they assert against the tier KEY, e.g. `expectedTier: "significant"`, never the display label text).
+
+## Two more Mexico flagship-cap refinements, same day (2026-09-05)
+
+Two more real examples the user flagged as wrongly `flagship`:
+
+1. **"IMPLEMENTACIÓN DE SOLUCIÓN DE SISTEMAS DE SEGURIDAD ELECTRÓNICA TIPO VIDEOVIGILANCIA"** (no disclosed value) — a full video-surveillance/electronic-security SYSTEM implementation, not just a bare camera purchase, but the user's explicit "也" (also/same category) made clear the whole videovigilancia/seguridad-electrónica theme belongs in the same bucket as the camera-purchase cap added earlier today. Moved the bare `videovigilancia`/`seguridad electrónica` terms from the flagship-forcing half of `INCLUDE_OVERRIDE_KEYWORDS`'s treatment into `EQUIPMENT_SCALE_CAPPED_KEYWORDS` — now caps at `significant` when undisclosed, same as substation-modernization/cameras.
+2. **"CONSTRUCCIÓN PUENTE PEATONAL ESTACIÓN 3 SIST.INTERCONECTADO ELECTROMOVILIDAD L-5"** — explicit call: "Puente Peatonal" (pedestrian bridge/overpass) should never count as `MAJOR_PROJECT_KEYWORDS`'s bare 建桥 signal at all — a pedestrian bridge is inherently smaller-scale than a vehicular/railway bridge. Narrowed the bare `\bpuentes?\b` entry with `(?!\s+peatonal(es)?)`. Still counts toward `FLAGSHIP_INDUSTRY_KEYWORDS`'s own bare "puente" (unchanged) — a disclosed value still promotes it to `significant` normally, just never straight to `flagship` regardless of value. Verified: no value → `standard`; a disclosed value → `significant`; never `flagship` either way. The existing "CONSTRUCCIÓN DE PUENTE VEHICULAR..." fixture (a real vehicular bridge, correctly `flagship`) is unaffected since "vehicular" ≠ "peatonal".
+
+101/101 fixtures unaffected.

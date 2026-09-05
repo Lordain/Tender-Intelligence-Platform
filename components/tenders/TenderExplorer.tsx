@@ -403,7 +403,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
           <section className="rounded-2xl bg-[#061b2b] p-5 text-white">
             <h2 className="text-base font-bold">本周机会</h2>
             <div className="mt-4 grid grid-cols-3 divide-x divide-white/20 text-center">
-              <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">当前项目</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{sorted.length}</p></div>
+              <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">全站项目</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{tenders.length.toLocaleString()}</p></div>
               <button
                 type="button"
                 onClick={() => updateParams({ view: view === "new" ? null : "new", sort: view === "new" ? null : "publication_desc" })}

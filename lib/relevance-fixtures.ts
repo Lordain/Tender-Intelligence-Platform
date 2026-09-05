@@ -607,4 +607,61 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Regression check — a genuine substation construction project must still promote via INCLUDE_OVERRIDE_KEYWORDS, confirming the narrowed pattern (now requiring 'construcción'/'ampliación'/'equipo'/etc. near 'subestación') doesn't lose real matches.",
     scopeType: "works",
   },
+
+  // --- MAINTENANCE_ONLY_KEYWORDS (2026-09-04): a bare "mantenimiento"
+  // now excludes unconditionally, bypassing INCLUDE_OVERRIDE_KEYWORDS and
+  // MAJOR_PROJECT_KEYWORDS both — real batch of ~28 confirmed Colombia/
+  // Mexico examples the user marked "应排除", each wrongly promoted to
+  // flagship/significant via a bare override-keyword match (CCTV,
+  // videovigilancia, fibra óptica, 5G, seguridad electrónica, sistema de
+  // alarma contra incendio, a passing "ferrocarril" reference) alongside
+  // "mantenimiento". A representative sample, not the full batch. ---
+  {
+    title: "CONTRATAR EL MANTENIMIENTO DE LOS SISTEMAS DE CCTV; CONTROLES DE ACCESO Y SEGURIDAD ELECTRÓNICA EN DIFERENTES SEDES",
+    expectedTier: "excluded",
+    note: "Real title (Colombia, despachos judiciales de Córdoba) — a maintenance SERVICE contract on already-installed CCTV/access-control/electronic-security systems, not a new equipment purchase. Used to bypass exclusion via the bare 'seguridad electrónica' INCLUDE_OVERRIDE_KEYWORDS match.",
+    scopeType: "services",
+  },
+  {
+    title: "MANTENIMIENTO DE SISTEMA DE VIDEOVIGILANCIA",
+    expectedTier: "excluded",
+    note: "Real title — bare 'videovigilancia' INCLUDE_OVERRIDE_KEYWORDS match used to promote this straight to flagship despite being pure maintenance.",
+    scopeType: "services",
+  },
+  {
+    title: "PRESTACIÓN DE SERVICIOS DE APOYO EN EL ÁREA FUNCIONAL MANTENIMIENTO DE LA RED FIBRA ÓPTICA; MIGRACIÓN DE CLIENTES A LA RED FTTH",
+    expectedTier: "excluded",
+    note: "Real title (Colombia) — bare 'fibra óptica' INCLUDE_OVERRIDE_KEYWORDS match used to promote a network maintenance/support service straight to flagship.",
+    scopeType: "services",
+  },
+  {
+    title: "MANTENIMIENTO PREVENTIVO; CORRECTIVO Y ACTUALIZACIÓN DEL EQUIPO DE DETECCIÓN Y LOCALIZACIÓN DE EMISIONES 2G; 3G; 4G Y 5G RAPTOR",
+    expectedTier: "excluded",
+    note: "Real title (Colombia police) — bare '5G' INCLUDE_OVERRIDE_KEYWORDS match used to promote equipment maintenance straight to flagship.",
+    scopeType: "services",
+  },
+  {
+    title: "Mantenimiento a las Básculas Camioneras y de Ferrocarril (FFCC) en Terminales de Almacenamiento",
+    expectedTier: "excluded",
+    note: "Real title — a passing 'Ferrocarril (FFCC)' reference (naming what kind of scale is being maintained, not a railway construction project) matched MAJOR_PROJECT_KEYWORDS' bare 'ferrocarril' and promoted straight to flagship. Confirms MAINTENANCE_ONLY_KEYWORDS is checked before MAJOR_PROJECT_KEYWORDS too, not just INCLUDE_OVERRIDE_KEYWORDS.",
+    scopeType: "services",
+  },
+  {
+    title: "CONTRATACIÓN SERV. MANTENIMIENTO PREV. Y CORRECTIVO A EQUIPO MEDICO 2026",
+    expectedTier: "excluded",
+    note: "Real title — abbreviated 'MANT. PREV.' wasn't matched by the old narrower mantenimiento pattern (which required the unabbreviated 'mantenimiento preventivo'), so this fell through to a FLAGSHIP_INDUSTRY_KEYWORDS medical-equipment match and landed on significant instead of excluded. The new bare \\bmantenimiento\\b catch-all fixes this regardless of abbreviation.",
+    scopeType: "services",
+  },
+  {
+    title: "MANTENIMIENTO EQUIPO DE RAYOS X MARCA DRGEM DE LA ESPECIALIDAD DE IMAGENES DIAGNOSTICAS",
+    expectedTier: "excluded",
+    note: "Real title — bare 'mantenimiento equipo' with no preventivo/correctivo qualifier wasn't covered by the old pattern; fell through to a medical-equipment FLAGSHIP_INDUSTRY_KEYWORDS match (significant) despite being maintenance, not a purchase.",
+    scopeType: "services",
+  },
+  {
+    title: "NAC 13-1356/23 REQ 1884 OTROS MATERIALES Y ARTÍCULOS DE CONSTRUCCIÓN Y REPARACIÓN",
+    expectedTier: "excluded",
+    note: "Real title — a bare 'materiales y artículos de construcción' consumables purchase, not a works contract. Broadened the existing spare-parts/tools EXCLUDE_KEYWORDS entry to also catch this bare 'materiales y artículos de' phrasing.",
+    scopeType: "equipment",
+  },
 ];

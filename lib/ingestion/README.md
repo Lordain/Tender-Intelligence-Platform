@@ -1718,6 +1718,58 @@ were touched pre-emptively (this project's "confirmed real, not guessed"
 bar), but the next one found should get the same fix rather than being
 treated as a one-off surprise.
 
+### The next batch confirmed it — systemic fix, not another one-off (2026-09-04)
+
+The user came back with ~28 more real confirmed "应排除" examples in one
+batch (Colombia + Mexico live browse-page titles). Testing all 28 against
+the code at the time found 12 wrongly promoted to flagship/significant —
+every single one was the exact same shape flagged as a risk above, just
+with a different bare keyword each time: `videovigilancia`, `seguridad
+electrónica`, `fibra óptica` (×2), `\b5g\b`, `sistema de alarma...incendio`,
+and even a bare `ferrocarril` (`MAJOR_PROJECT_KEYWORDS`, not
+`INCLUDE_OVERRIDE_KEYWORDS`) from a passing "Ferrocarril (FFCC)" mention
+naming what KIND of scale was being maintained, not a railway project.
+Narrowing one keyword at a time (the `control de acceso`/`refinería`/
+`subestación` approach) clearly wasn't going to scale — with 5+ confirmed
+instances of the identical root cause, this needed a structural fix
+instead of another point patch.
+
+**Fix**: added `MAINTENANCE_ONLY_KEYWORDS` — a single check for "this
+title is fundamentally a maintenance/support SERVICE contract," evaluated
+BEFORE, and deliberately NOT gated by, `hasIncludeOverride` or
+`MAJOR_PROJECT_KEYWORDS` (the one exception to every other exclude check
+in this file, which those can always bypass). Only `isNationalPriorityProject`
+(a real government-verified major-project designation) still rescues a
+match — never a keyword-based override. The pattern itself is a single
+bare `\bmantenimiento\b` (plus `servicio técnico preventivo/correctivo`),
+replacing the old narrower, bypassable `EXCLUDE_KEYWORDS` "mantenimiento"
+entry — that entry's own comment had already documented this exact
+accepted trade-off ("a genuinely large maintenance-only contract is
+excluded too"); this just makes it stick even when an override keyword is
+also present. The bare form also closed real coverage gaps the batch
+surfaced that the old, more specific pattern missed: abbreviated "MANT.
+PREV.", "mantenimiento integral", and bare "mantenimiento equipo" with no
+preventivo/correctivo qualifier at all — each of which fell through to a
+`FLAGSHIP_INDUSTRY_KEYWORDS` medical-equipment match and landed on
+`significant` instead of `excluded`.
+
+Also broadened the existing spare-parts/tools/materials `EXCLUDE_KEYWORDS`
+entry (`suministro de partes/herramientas/material(es)`) to accept
+"suministro" without a following "de" (a real gap — "Suministro
+Herramientas Menores" has no "de") and to also catch bare "materiales y
+artículos de..." consumables purchases (a real example: "OTROS MATERIALES
+Y ARTÍCULOS DE CONSTRUCCIÓN Y REPARACIÓN").
+
+All 28 titles from the batch now correctly return `excluded`. Added 8 new
+permanent `lib/relevance-fixtures.ts` cases covering a representative
+sample (not the full batch) plus the `ferrocarril`-via-`MAJOR_PROJECT_KEYWORDS`
+edge case specifically, since that one confirms the fix isn't scoped to
+`INCLUDE_OVERRIDE_KEYWORDS` alone; 89/89 fixtures pass, zero regressions
+against every prior confirmed-real case in the file (including the two
+flagship regression checks for `seguridad perimetral`/`subestación` that
+this same batch could easily have broken had the new check been too
+broad).
+
 ### Colombia's real key dates are incomplete — two real gaps fixed, one bigger option surfaced (2026-09-04)
 
 The user flagged this directly ("哥伦比亚招标信息目前并不完整，很多关键日期缺失") after

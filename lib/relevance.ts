@@ -127,8 +127,12 @@ const EXCLUDE_KEYWORDS = [
   /rehabilitaci[óo]n (de )?pozo(s)?\b|rehabilitaci[óo]n del pozo\b|equipamiento (de|con) pozo(s)? profundo|perforaci[óo]n y aforo de pozo/i, // 只聚焦一个区的小工程 — single-well rehab/equipping, small localized works
   /caseta(s)? de desinfecci[óo]n/i, // 只聚焦一个区的小工程 — single-tank disinfection booths
   /\bsupervisi[óo]n\b.{0,60}(construcci[óo]n|obra|puente|ferrocarril|carretera|paso superior)/i, // 只是监理 — inspection/oversight only, not the actual works contract
-  /servicio(s)? de mantenimiento|programa de mantenimiento|trabajos de mantenimiento|mantenimiento preventivo|mantenimiento correctivo|mantenimiento menor|mantenimiento gen(?:eral)?\b|mantenimiento a (los )?equipos?|mantenimiento y refacciones/i, // 维护类服务 — routine maintenance/service contracts, deliberately broad per explicit user direction to cut kept volume (accepted trade-off: a genuinely large maintenance-only contract is excluded too)
-  /suministro de (partes|herramientas|material(es)?)\b|adquisici[óo]n de (herramientas|refacciones)\b|refacciones, accesorios y herramientas/i, // 物料/工具、物料 — spare parts, tools, consumable materials, not equipment/works
+  // "mantenimiento" (maintenance) moved out to its own unconditional
+  // MAINTENANCE_ONLY_KEYWORDS check below (2026-09-04) — see that
+  // constant's header comment for why this one specific signal is no
+  // longer gated by hasIncludeOverride/MAJOR_PROJECT_KEYWORDS the way
+  // every other EXCLUDE_KEYWORDS entry still is.
+  /suministro (de )?(partes|herramientas|material(es)?)\b|adquisici[óo]n de (herramientas|refacciones)\b|refacciones, accesorios y herramientas|materiales? y art[íi]culos? de/i, // 物料/工具、物料 — spare parts, tools, consumable materials, not equipment/works
   /servicio m[ée]dico integral/i, // 不参加医疗的Servicio Integral — outsourced integrated medical service
   /destrucci[óo]n y disposici[óo]n final|disposici[óo]n final de residuos|destrucci[óo]n de insumos/i, // 废料处理 — waste destruction/disposal
   /medici[óo]n de caudales/i, // 测量项目 — small flow-measurement project
@@ -215,6 +219,45 @@ const EXCLUDE_KEYWORDS = [
  * uniformly irrelevant.
  */
 const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
+
+/**
+ * Broad "this is fundamentally a maintenance/support SERVICE contract on
+ * already-installed equipment, not a new equipment/construction
+ * opportunity" signal. Deliberately checked BEFORE, and NOT gated by,
+ * `hasIncludeOverride` or `MAJOR_PROJECT_KEYWORDS` — the one exception
+ * to every other exclude check in this file, which INCLUDE_OVERRIDE_KEYWORDS
+ * can always bypass.
+ *
+ * Real batch (2026-09-04, ~28 confirmed real Colombia/Mexico examples the
+ * user marked "应排除"): a title combining "mantenimiento" with an
+ * INCLUDE_OVERRIDE_KEYWORDS anchor — videovigilancia, seguridad
+ * electrónica, fibra óptica, `5g`, "sistema de alarma...incendio" — or a
+ * MAJOR_PROJECT_KEYWORDS anchor (a passing "ferrocarril (FFCC)" mention
+ * in "Mantenimiento a las Básculas Camioneras y de Ferrocarril") was
+ * wrongly promoted straight to flagship every time, because those
+ * override lists exist to protect genuine NEW equipment/infrastructure
+ * purchases — not routine upkeep of systems already installed, which is
+ * a fundamentally different (and for a foreign manufacturer largely
+ * inaccessible — needs an existing local service presence and spare-parts
+ * stock) kind of opportunity. This is a broadened, unconditional version
+ * of the (bypassable, and narrower) "mantenimiento" EXCLUDE_KEYWORDS
+ * entry it replaces — that entry's own comment already documented this
+ * exact accepted trade-off ("a genuinely large maintenance-only contract
+ * is excluded too"); this just makes it stick even when an override
+ * keyword is also present. `isNationalPriorityProject` (a real,
+ * government-verified major-project designation) is still the one
+ * legitimate escape valve — never anything keyword-based.
+ *
+ * The single bare `\bmantenimiento\b` catch-all subsumes the previous
+ * pattern's more specific alternatives (preventivo/correctivo/menor/
+ * general/a los equipos/y refacciones) plus the real coverage gaps this
+ * batch also surfaced: abbreviated "MANT. PREV.", "mantenimiento
+ * integral", bare "mantenimiento equipo" with no preventivo/correctivo
+ * qualifier at all, "soporte y mantenimiento", "renovación...y
+ * mantenimiento", "administración, operación y mantenimiento", "servicio
+ * técnico preventivo y correctivo".
+ */
+const MAINTENANCE_ONLY_KEYWORDS = [/\bmantenimiento\b|servicio t[ée]cnico (preventivo|correctivo)/i];
 
 /**
  * DOF's advanced-search notices sometimes carry no real title at all —
@@ -733,6 +776,15 @@ export function classifyRelevance(input: {
   structuredDurationDays?: number;
 }): TenderRelevance {
   const haystack = [input.title, input.summary, ...input.industries].filter(Boolean).join(" ");
+
+  // See MAINTENANCE_ONLY_KEYWORDS' header comment — deliberately checked
+  // before, and not gated by, hasIncludeOverride below. Only a real,
+  // government-verified national-priority-project designation (never a
+  // keyword-based override) can rescue a maintenance-only tender.
+  if (input.isNationalPriorityProject !== true && MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
   const hasIncludeOverride =
     INCLUDE_OVERRIDE_KEYWORDS.some((pattern) => pattern.test(haystack)) || input.isNationalPriorityProject === true;
 

@@ -10,12 +10,21 @@ import type { Locale } from "@/types/tender";
  * tender" triage (lib/relevance.ts), not for anything that needs exact
  * figures — the UI should read as "approximately" even where it doesn't
  * say so literally.
+ *
+ * Last refreshed 2026-09-05 against real current rates (Investing.com,
+ * XE.com, Wise — cross-checked across sources, not a single quote): the
+ * previous MXN/COP/PEN values had drifted meaningfully from real rates
+ * (MXN off by ~16%, COP by ~25-34%, PEN by ~9%) — a real, user-reported
+ * gap, not a guess. A monthly Claude Code Routine re-checks these against
+ * live rates and updates+pushes this file when drift exceeds ~5% — see
+ * the Routine named "Monthly FX rate refresh" (or ask this session's
+ * owner to look it up via list_triggers if this comment outlives it).
  */
 export const USD_RATES: Record<string, number> = {
   USD: 1,
-  MXN: 1 / 20,
-  COP: 1 / 4200,
-  PEN: 1 / 3.7,
+  MXN: 1 / 16.9,
+  COP: 1 / 3140,
+  PEN: 1 / 3.35,
 };
 
 /** Returns null (not the raw value) when the currency isn't in the rate table, so callers can distinguish "genuinely converted" from "unknown currency, don't display a number that looks precise but isn't even the right unit." */

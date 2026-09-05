@@ -202,15 +202,14 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     industries: ["healthcare"],
   },
 
-  // --- "standard" tier eliminated (2026-09-02, user-confirmed): these were
-  // "standard" earlier in the session — kept as fixtures to document the
-  // reversal, not because they're still expected to classify that way.
-  // Everything below now correctly lands "excluded" since only flagship +
-  // the construction/medical-equipment whitelist stay visible by default. ---
+  // --- "standard" tier reactivated (2026-09-05, per the user's explicit
+  // request — see relevance.ts's final-return comment): these fixtures
+  // were briefly "excluded" under the 2026-09-02 elimination and are back
+  // to "standard" now that classifyRelevance() produces that tier again. ---
   {
     title: "Servicio de calibración a equipos patrones para instrumentos de control y medición de las instalaciones de Petróleos Mexicanos",
-    expectedTier: "excluded",
-    note: "Was 'standard' (real PEMEX title with genuine hydrocarbon-facility content in the TITLE itself, not just buyer name — deliberately NOT caught by the buyer-tag-contamination fix since this is real content) — now excluded, same 'standard' elimination.",
+    expectedTier: "standard",
+    note: "Real PEMEX title with genuine hydrocarbon-facility content in the TITLE itself, not just buyer name (deliberately NOT caught by the buyer-tag-contamination fix since this is real content) — no value disclosed, but a real industry tag, so it lands 'standard' rather than 'excluded'.",
     scopeType: "services",
     buyer: "Pemex Exploración y Producción",
   },
@@ -271,8 +270,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "ARRENDAMIENTO DE MAQUINARIA PESADA PARA OBRAS PÚBLICAS",
-    expectedTier: "excluded",
-    note: "Heavy-machinery RENTAL, not a purchase — no EXCLUDE_KEYWORDS pattern names machinery specifically, but the anchored whitelist pattern requires a purchase verb (adquisición/adqs./compra/suministro), which 'arrendamiento' isn't, so this falls through to the bottom below_threshold exclusion exactly like vehicle rental does.",
+    expectedTier: "standard",
+    note: "Heavy-machinery RENTAL, not a purchase — no EXCLUDE_KEYWORDS pattern names machinery specifically, but the anchored whitelist pattern requires a purchase verb (adquisición/adqs./compra/suministro), which 'arrendamiento' isn't, so this falls through to the bottom of the pipeline; a real 'vehicles' industry tag with no disclosed value lands it 'standard' (was 'excluded' while that tier was eliminated, 2026-09-02–09-05).",
     industries: ["vehicles"],
   },
   {
@@ -537,8 +536,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "SERVICIO ADMINISTRADO DE VIRTUALIZACIÓN EN NUBE PRIVADA Y COMPLEMENTOS OPERATIVO",
-    expectedTier: "excluded",
-    note: "Real title (SEPOMEX buyer) — 维护管理服务 (routine ongoing IT-ops support, not the infrastructure backup/recovery service the confirmed 'Servicio de respaldo y recuperación para la Nube Privada' example was).",
+    expectedTier: "standard",
+    note: "Real title (SEPOMEX buyer) — 维护管理服务 (routine ongoing IT-ops support, not the infrastructure backup/recovery service the confirmed 'Servicio de respaldo y recuperación para la Nube Privada' example was, so it doesn't bypass exclusion via INCLUDE_OVERRIDE_KEYWORDS). Real ict_telecom industry tag with no disclosed value lands it 'standard' now that tier is reactivated (was 'excluded' 2026-09-02–09-05).",
     scopeType: "services",
   },
 
@@ -595,8 +594,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // promoted straight to flagship. ---
   {
     title: "MATERIALES PROFAUNA PARA SUBESTACIONES",
-    expectedTier: "excluded",
-    note: "Real title (CFE buyer) — wildlife-protection fittings for substations (e.g. anti-perching mesh), a routine materials purchase where 'subestaciones' is only the delivery location, not the actual object of procurement. The bare 'subestación' phrase used to match INCLUDE_OVERRIDE_KEYWORDS and promote straight to flagship regardless of value.",
+    expectedTier: "standard",
+    note: "Real title (CFE buyer) — wildlife-protection fittings for substations (e.g. anti-perching mesh), a routine materials purchase where 'subestaciones' is only the delivery location, not the actual object of procurement. The bare 'subestación' phrase used to match INCLUDE_OVERRIDE_KEYWORDS and promote straight to flagship regardless of value; now it doesn't bypass exclusion, but scopeType 'equipment' + power industry tag with no disclosed value lands it 'standard' rather than 'excluded' now that tier is reactivated (was 'excluded' 2026-09-02–09-05).",
     scopeType: "equipment",
     buyer: "COMISION FEDERAL DE ELECTRICIDAD",
     country: "Mexico",

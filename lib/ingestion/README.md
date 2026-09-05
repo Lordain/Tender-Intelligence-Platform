@@ -2634,3 +2634,19 @@ The user flagged a batch of real Colombia SECOP II records that aren't tender op
 - **"EMPRÉSTITO"** — a loan/borrowing instrument, not a procurement.
 
 98/98 fixtures pass (up from 91), including the new counter-example guard.
+
+## "standard" tier reactivated + value bands raised (2026-09-05)
+
+The front-end's "常规项目" filter chip had been permanently empty since the 2026-09-02 "standard eliminated" decision (see that entry above) — `classifyRelevance()` never produced that tier, only the type/schema and UI still listed it. The user asked directly why it was empty, then gave an explicit three-band value scheme to revive it with, applied uniformly to Mexico and Colombia (confirmed via follow-up: not Colombia-only, and the existing per-country value floors — `MIN_VALUE_USD` $100k for Mexico, `MIN_VALUE_USD_BY_COUNTRY` $500k for Colombia — stay as-is beneath these bands, they weren't asked to change):
+
+- Under $1,000,000 → **standard** (常规项目)
+- $1,000,000–$5,000,000 → **significant** (重点项目)
+- Over $5,000,000 → **flagship** (旗舰项目)
+
+Two changes:
+1. `FLAGSHIP_VALUE_USD` raised 1,000,000 → 5,000,000, `SIGNIFICANT_VALUE_USD` raised 250,000 → 1,000,000. A keyword-based promotion (`MAJOR_PROJECT_KEYWORDS`/`FLAGSHIP_INDUSTRY_KEYWORDS`/`INCLUDE_OVERRIDE_KEYWORDS`) still promotes independent of value exactly as before — these bands only govern what a disclosed value alone is worth.
+2. The final fallback in `classifyRelevance()` — everything that clears the country value floor (or carries a real industry tag with no disclosed value) but doesn't clear `SIGNIFICANT_VALUE_USD` or any keyword signal — now returns `standard` instead of `excluded`. Reverses the 2026-09-02 policy for the exact same case; `reasonFor()`'s "standard" branch text was untouched by that removal and needed no changes to support this. The now-unused `below_threshold` excluded-reason (keyword/type entry, `EXCLUDED_REASON_BY_SIGNAL` record entry, the one call site) was removed rather than left dead.
+
+Four fixtures that were deliberately kept as "was standard, now excluded" markers of the 2026-09-02 removal flipped back to `expectedTier: "standard"` (calibration service with real hydrocarbon-facility content, heavy-machinery rental, IT-ops virtualization support, fauna-protection substation materials) — each already had a real industry tag or scopeType signal, just not enough to clear the new $1M significant bar. 98/98 fixtures still pass.
+
+Not yet reflected in already-stored production rows — needs a `npm run reclassify:tenders -- --write` (or the admin "重新分类" button) to apply against the live database; expect a real, potentially large number of previously-`excluded` rows across both countries to resurface as `standard` (visible only once a user manually toggles that filter chip on — `DEFAULT_RELEVANCE_TIERS` in `TenderExplorer.tsx` still defaults to flagship+significant only, so the default feed's shape doesn't change), and some previously-`significant` rows in the $250k–$1,000,000 band to demote to `standard`, and previously-`flagship` rows in the $1,000,000–$5,000,000 band to demote to `significant`.

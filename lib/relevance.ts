@@ -509,14 +509,19 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
 // be compared directly against a threshold sized for MXN/USD-scale
 // figures and wildly over-classified.
 //
-// Lowered from 2,000,000 to 1,000,000 per the user's explicit request
-// ("加入大项目标识...比如大于1,000,000 USD的项目") — the "flagship" tier
-// already IS this platform's "major project" (大项目) concept, so rather
-// than build a second parallel tag this just becomes flagship's value
-// bar. Paired with MAJOR_PROJECT_KEYWORDS below, which promotes a tender
-// to flagship on a keyword/duration match alone, independent of value.
-const FLAGSHIP_VALUE_USD = 1_000_000;
-const SIGNIFICANT_VALUE_USD = 250_000;
+// Raised again (2026-09-05, per the user's explicit three-band scheme,
+// applied to Mexico and Colombia alike — "哥伦比亚+墨西哥通用"): under
+// $1,000,000 = standard, $1,000,000–$5,000,000 = significant, over
+// $5,000,000 = flagship. Previously 1,000,000/250,000 (see the "standard
+// eliminated" note further down, now reversed — "standard" is a real
+// output tier again). A keyword match (MAJOR_PROJECT_KEYWORDS,
+// FLAGSHIP_INDUSTRY_KEYWORDS, INCLUDE_OVERRIDE_KEYWORDS) still promotes
+// independent of value, same as before — these bands only govern what a
+// disclosed value alone is worth. Paired with MAJOR_PROJECT_KEYWORDS
+// below, which promotes to flagship on a keyword/duration match alone,
+// independent of value.
+const FLAGSHIP_VALUE_USD = 5_000_000;
+const SIGNIFICANT_VALUE_USD = 1_000_000;
 
 /**
  * "大项目" (major-project) keyword signal — promotes straight to flagship
@@ -683,7 +688,7 @@ function valueExcludedReason(thresholdUsd: number): LocalizedText {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "below_threshold" | "consulting",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting",
   LocalizedText
 > = {
   no_content: {
@@ -721,11 +726,6 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     en: "This is a pure consulting/study/planning service, not an equipment purchase or construction contract — filtered from the default feed (metadata is kept, not deleted).",
     es: "Esta es una contratación de consultoría/estudio/planeación, no una compra de equipo ni una obra de construcción — filtrada de la vista predeterminada (los metadatos se conservan).",
   },
-  below_threshold: {
-    zh: `该项目未匹配到当前的重点白名单（建筑/基建类工程、医疗及化验设备等），或预估金额低于 $${SIGNIFICANT_VALUE_USD.toLocaleString("en-US")} 美元的重点门槛，默认不进入推荐列表（数据仍保留，可用于统计）。`,
-    en: `This tender doesn't match the current priority whitelist (construction/infrastructure works, medical/lab equipment) and its value is under the $${SIGNIFICANT_VALUE_USD.toLocaleString("en-US")} significant-tier bar — filtered from the default feed (metadata is kept, not deleted).`,
-    es: `Esta licitación no coincide con la lista blanca de prioridades actual (obras de construcción/infraestructura, equipo médico/de laboratorio) y su valor está por debajo del umbral de $${SIGNIFICANT_VALUE_USD.toLocaleString("en-US")} para el nivel significativo — filtrada de la vista predeterminada (los metadatos se conservan).`,
-  },
 };
 
 function reasonFor(
@@ -739,7 +739,6 @@ function reasonFor(
     | "short_duration"
     | "short_bridge"
     | "buyer"
-    | "below_threshold"
     | "consulting"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
@@ -753,7 +752,6 @@ function reasonFor(
       signal === "short_duration" ||
       signal === "short_bridge" ||
       signal === "buyer" ||
-      signal === "below_threshold" ||
       signal === "consulting"
         ? signal
         : "keyword"
@@ -987,15 +985,18 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }
 
-  // "standard" eliminated as a kept tier (2026-09-02, per explicit user
-  // confirmation): the user's "keep only flagship + this whitelist"
-  // request meant everything that reaches this point — real value or
-  // industry-tag signal present, but not enough to clear "significant" —
-  // no longer shows by default either. This is a deliberate reversal of
-  // earlier-approved "standard" cases from the same session (vehicle/
-  // heavy-machinery purchases, a PEMEX service with genuine hydrocarbon
-  // content in its title) — those move to excluded too now. classifyRelevance()
-  // itself never returns "standard" going forward; the tier stays in the
-  // type/schema only for already-stored legacy rows until reclassified.
-  return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "below_threshold") };
+  // "standard" reactivated as a real output tier (2026-09-05, per the
+  // user's explicit request — the front-end's "常规项目" filter chip was
+  // sitting permanently empty since the 2026-09-02 change below stopped
+  // producing it). Everything reaching this point already cleared the
+  // country value floor (or has a real industry-tag signal with no
+  // disclosed value at all) but didn't clear SIGNIFICANT_VALUE_USD or any
+  // keyword-based promotion above — exactly the "known-legitimate but not
+  // top-tier" bucket "standard" originally existed for. Reverses the prior
+  // policy (2026-09-02, "keep only flagship + this whitelist") of routing
+  // this same case to "excluded" instead — see reasonFor()'s final branch
+  // for this tier's reason text, unchanged since it already described
+  // "standard" correctly even while classifyRelevance() itself never
+  // returned it.
+  return { tier: "standard", label: LABELS.standard, reason: reasonFor("standard", "none") };
 }

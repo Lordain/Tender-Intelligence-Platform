@@ -98,8 +98,21 @@ function inferScopeType(tipoContrato: string | undefined): TenderScopeType {
  * "Seleccionado" appeared on rows with `adjudicado: "No"`, so it does NOT
  * mean "awarded" despite the name — a real trap worth flagging, not
  * guessing past).
+ *
+ * Real gap (2026-09-05): `awardedTo`/`nombre_del_proveedor` was already
+ * captured and stored on the tender but never fed into status at all —
+ * for a "Contratación Directa" (direct/sole-source) process especially,
+ * a real named provider is definitive proof the opportunity is already
+ * decided (no competitive bidding was ever going to happen), even when
+ * `adjudicado` still reads "No" — the user found a live SECOP II process
+ * whose own "Fecha de publicación" was already later than its contract
+ * signing/execution-start dates, i.e. published well after the fact, and
+ * asked for these to stop looking like open opportunities. Checked ahead
+ * of `adjudicado` for the same reason: a stale/lagging "No" shouldn't
+ * override a real provider name that's already there.
  */
-function inferStatus(adjudicado: string | undefined, aperturaEstado: string | undefined): TenderStatus {
+function inferStatus(adjudicado: string | undefined, aperturaEstado: string | undefined, providerName: string | undefined): TenderStatus {
+  if (providerName && providerName !== "No Definido") return "awarded";
   if (adjudicado?.trim().toLowerCase() === "si" || adjudicado?.trim().toLowerCase() === "sí") return "awarded";
   if (aperturaEstado === "Cerrado") return "submission_closed";
   return "open";
@@ -237,7 +250,7 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
     estimatedValue,
     currency: estimatedValue ? "COP" : undefined,
     location: row.ciudad_entidad?.trim() && row.ciudad_entidad !== "No Definido" ? row.ciudad_entidad.trim() : row.departamento_entidad?.trim(),
-    status: inferStatus(row.adjudicado, row.estado_de_apertura_del_proceso),
+    status: inferStatus(row.adjudicado, row.estado_de_apertura_del_proceso, providerName),
     awardedTo,
     qualifications: [],
     experienceRequirements: [],

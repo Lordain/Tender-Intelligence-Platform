@@ -244,6 +244,7 @@ const EXCLUDE_KEYWORDS = [
   /\baunar esfuerzos\b/i,
   /^convenio\b.{0,60}\buniversidad\b/i, // CONVENIO UNIVERSIDAD PUBLICA DE NAVARRA Y UDENAR — inter-university academic-cooperation agreement, same "no real content" class as isBareInteradministrativeTitle
   /articulaci[óo]n con la educaci[óo]n media|formaci[óo]n del talento humano/i, // Docencia Servicio Foscal 2026 (SENA workforce-training articulation program)
+  /formaci[óo]n y desarrollo de estrategias acad[ée]micas/i, // FORMACIÓN Y DESARROLLO DE ESTRATEGIAS ACADÉMICAS NECESARIAS PARA LA OPERACIÓN Y MOVIMIENTO DE LOS BUSES EN LAS LÍNEAS COMERCIALES, PATIOS Y TALLERES — bus-operator staff training/curriculum design, same "no real goods/works content" class as the SENA line above, not an actual bus/transit infrastructure procurement
   /contrato de empr[ée]stito/i, // EP 0057-2026 (CONTRATO DE EMPRÉSTITO Y PIGNORACIÓN...) — real gap: the existing bare "^empréstito" pattern is anchored to the START of the whole title+summary haystack, which a real title/reference-number prefix (here "EP 0057-2026") pushes past
 
   // Staffing/branded-giveaway/small-event items (人力/一般用品)

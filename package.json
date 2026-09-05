@@ -41,6 +41,7 @@
     "fix:licitia-buyer-names": "tsx --env-file-if-exists=.env.local scripts/fix-licitia-buyer-names.ts",
     "fix:pemex-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-pemex-source-urls.ts",
     "fix:cfe-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-cfe-source-urls.ts",
+    "fix:colombia-awarded-status": "tsx --env-file-if-exists=.env.local scripts/fix-colombia-awarded-status.ts",
     "inspect:dof-notice": "tsx --env-file-if-exists=.env.local scripts/inspect-dof-notice.ts"
   },
   "dependencies": {

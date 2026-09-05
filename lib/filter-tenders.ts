@@ -63,10 +63,19 @@ export function filterTenders(
     }
 
     if (normalizedQuery) {
+      // tender.slug added (2026-09-05, real gap): an admin pasting a
+      // tender's slug (visible on every /admin/tenders/[slug] edit page,
+      // and in the public tender-detail URL itself) into this search box
+      // got 0 results — the haystack never included it, only
+      // title/buyer/tenderNumber, none of which necessarily contain the
+      // same text as the slug (e.g. Proyectos Estratégicos MX's slug is a
+      // slugified transform of its own reference number, not identical to
+      // the tenderNumber field's real formatting).
       const haystack = [
         localize(tender.title, locale),
         tender.buyer,
         tender.tenderNumber,
+        tender.slug,
       ]
         .join(" ")
         .toLowerCase();

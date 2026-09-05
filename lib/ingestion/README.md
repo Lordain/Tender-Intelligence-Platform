@@ -2767,3 +2767,9 @@ Added:
 - `POST /api/admin/tenders/bulk-delete` (chunked at 200 slugs per Supabase call) — same two effects as the existing single-tender DELETE route (cascade-delete + tombstone in `tender_manual_deletions`), just batched.
 
 Workflow: filter 状态=已中标 + 标书分析=无标书分析 → select-all → 批量删除. Table layout kept compact per explicit request ("保持好当前的排版，不要过宽") — the new checkbox column takes 4% width, taken from 标题(25→22%) and 操作(17→16%), min-width bumped 980px→1020px only.
+
+## Front-end search never matched a tender's own slug (2026-09-05)
+
+Real gap: the user pasted a tender's exact slug (visible on its `/admin/tenders/[slug]` edit page) into the public `/tenders` search box and got 0 results. `filterTenders()`'s search haystack was `[title, buyer, tenderNumber]` only — never the slug itself, which doesn't necessarily share any substring with those three fields (e.g. Proyectos Estratégicos MX's slug is a slugified transform of its own reference number, not identical to the stored `tenderNumber`'s real formatting). Added `tender.slug` to the haystack.
+
+Also worth checking for this specific tender: the front-end's relevance-tier chips default to `flagship`+`significant` only (`DEFAULT_RELEVANCE_TIERS` in `TenderExplorer.tsx`) — a `standard`("常规项目") tender is invisible in search results until that chip (or "全部") is explicitly selected, independent of the slug-search bug above. Both are real, independent reasons a search could return 0 results for an existing tender.

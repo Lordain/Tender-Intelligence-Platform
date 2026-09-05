@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getDigestRecipients,
   getNewTenders,
+  getStatusChanges,
+  matchingStatusChanges,
   matchingTenders,
   notificationsEnabled,
   sendTenderDigestEmail,
@@ -34,7 +36,9 @@ export async function GET(request: NextRequest) {
   if (!slot.slot || !slot.key) {
     return NextResponse.json({ error: "Digest only runs at 09:00 or 18:00 America/Mexico_City" }, { status: 409 });
   }
-  const tenders = await getNewTenders(new Date(now.getTime() - slot.hoursBack * 60 * 60 * 1000), now);
+  const windowStart = new Date(now.getTime() - slot.hoursBack * 60 * 60 * 1000);
+  const tenders = await getNewTenders(windowStart, now);
+  const statusChanges = await getStatusChanges(windowStart, now);
   const recipients = await getDigestRecipients();
   const supabase = createSupabaseAdminClient();
   if (!supabase) return NextResponse.json({ error: "Database is unavailable" }, { status: 503 });
@@ -42,20 +46,21 @@ export async function GET(request: NextRequest) {
   let sent = 0;
   for (const recipient of recipients) {
     const matches = matchingTenders(tenders, recipient);
-    if (matches.length === 0) continue;
+    const matchingUpdates = matchingStatusChanges(statusChanges, recipient);
+    if (matches.length === 0 && matchingUpdates.length === 0) continue;
 
     const { data: existing } = await supabase.from("tender_digest_deliveries")
       .select("id, status").eq("user_id", recipient.user_id).eq("slot_key", slot.key).maybeSingle();
     if (existing?.status === "sent") continue;
 
-    const payload = { tender_ids: matches.map((tender) => tender.id), status: "processing", error_message: null };
+    const payload = { tender_ids: [...new Set([...matches.map((tender) => tender.id), ...matchingUpdates.map((change) => change.tender.id)])], status: "processing", error_message: null };
     const { data: delivery } = existing
       ? await supabase.from("tender_digest_deliveries").update(payload).eq("id", existing.id).select("id").single()
       : await supabase.from("tender_digest_deliveries").insert({ user_id: recipient.user_id, slot_key: slot.key, ...payload }).select("id").single();
     if (!delivery) continue;
 
     try {
-      const resendId = await sendTenderDigestEmail(recipient, matches);
+      const resendId = await sendTenderDigestEmail(recipient, matches, matchingUpdates);
       await supabase.from("tender_digest_deliveries").update({ status: "sent", resend_email_id: resendId, sent_at: new Date().toISOString() }).eq("id", delivery.id);
       sent += 1;
     } catch (error) {
@@ -63,5 +68,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ slot: slot.key, newTenderCount: tenders.length, recipientCount: recipients.length, sent });
+  return NextResponse.json({ slot: slot.key, newTenderCount: tenders.length, statusUpdateCount: statusChanges.length, recipientCount: recipients.length, sent });
 }

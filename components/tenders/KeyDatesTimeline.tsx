@@ -31,7 +31,7 @@ function mergeSameDaySubmissionAndOpening(dates: TenderKeyDate[]): TenderKeyDate
   return dates.filter((d) => d !== submission && d !== opening).concat(merged);
 }
 
-const MERGED_SUBMISSION_OPENING_LABEL = { en: "Submission & Opening", es: "Presentación y Apertura", zh: "提交截止 / 开标" };
+const MERGED_SUBMISSION_OPENING_LABEL = { en: "Submission & Opening", es: "Presentación y Apertura", zh: "提交与开标（同日）" };
 const MERGED_SUBMISSION_OPENING_DESCRIPTION = {
   en: "This source reports submission and opening as the same event — bids are submitted and opened at this single date/time, no separate opening session.",
   es: "Esta fuente reporta la presentación y la apertura como el mismo evento — las ofertas se presentan y se abren en esta misma fecha/hora, sin una sesión de apertura por separado.",
@@ -52,13 +52,13 @@ export function KeyDatesTimeline({ dates }: { dates: TenderKeyDate[] }) {
       {sorted.length === 0 ? (
         <p className="text-sm text-[#64717c]">{localize(uiText.noneListed, locale)}</p>
       ) : (
-        <ol className="grid overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] sm:grid-cols-2 lg:grid-cols-3">
+        <ol className="grid gap-3 sm:grid-cols-2">
           {sorted.map((keyDate, index) => {
             const isMerged = keyDate.id.includes("+");
             return (
             <li
               key={keyDate.id}
-              className="flex min-w-0 items-start gap-3 border-[#e5e9eb] px-4 py-3.5 [&:not(:first-child)]:border-t sm:[&:not(:first-child)]:border-l sm:[&:not(:first-child)]:border-t-0"
+              className="flex min-w-0 items-start gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-4 py-4"
             >
               <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#061b2b] text-[10px] font-black text-[#ffb21c]">{index + 1}</span>
               <div className="min-w-0">
@@ -70,7 +70,7 @@ export function KeyDatesTimeline({ dates }: { dates: TenderKeyDate[] }) {
                     </span>
                   )}
                 </p>
-                <p className="mt-1 text-xs text-[#64717c]">
+                <p className="mt-1.5 text-xs leading-5 text-[#64717c]">
                   {localize(keyDate.notes ?? (isMerged ? MERGED_SUBMISSION_OPENING_DESCRIPTION : KEY_DATE_TYPE_DESCRIPTIONS[keyDate.type]), locale)}
                 </p>
               </div>

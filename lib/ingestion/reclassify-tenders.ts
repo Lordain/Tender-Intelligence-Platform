@@ -7,7 +7,16 @@
  * script is now a thin wrapper around this function) — see that script's
  * original header comment for the full "why this exists" story.
  *
- * Two things happen:
+ * Three things happen:
+ *   0. Always: re-run classifyIndustries() against each row's real
+ *      title/summary/buyer too (2026-09-04, per a real user report — old
+ *      tenders kept showing a stale/wrong industry tag, e.g. "综合"
+ *      instead of "教育"/"水务", forever, because nothing ever re-ran
+ *      classifyIndustries() against already-stored rows; only relevance
+ *      got recomputed here). The FRESH industries (not the stale stored
+ *      ones) feed into classifyRelevance() below too, since a stale
+ *      buyer-inclusive industries tag can itself skew a relevance
+ *      promotion via FLAGSHIP_INDUSTRY_KEYWORDS matching against it.
  *   1. Always: fetch every tender, recompute relevance with today's rules,
  *      write exports/tenders-kept-<date>.csv and
  *      exports/tenders-excluded-<date>.csv (CSV files land on THIS
@@ -16,15 +25,19 @@
  *      each row carrying both the previous and newly-computed tier.
  *   2. Only with write: true — for every row whose recomputed tier is
  *      "excluded", DELETE it outright; for every other row whose
- *      recomputed tier/label/reason differs from what's stored, UPDATE it.
- *      A manually-overridden row (relevance_manually_overridden — see
- *      AdminTenderForm.tsx's "🔒 锁定此分级" checkbox) is left untouched
- *      either way.
+ *      recomputed tier/label/reason/industries differs from what's
+ *      stored, UPDATE it. A manually-overridden row
+ *      (relevance_manually_overridden — see AdminTenderForm.tsx's "🔒
+ *      锁定此分级" checkbox) has its relevance fields left untouched
+ *      either way, but its `industries` still gets refreshed — that lock
+ *      is specifically about the relevance TIER a human corrected, not
+ *      about freezing the industry tags too.
  */
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { classifyRelevance } from "@/lib/relevance";
+import { classifyIndustries } from "@/lib/industry";
 import type { LocalizedText, TenderRelevanceTier, TenderScopeType } from "@/types/tender";
 
 type TenderRow = {
@@ -72,10 +85,19 @@ export type ReclassifyTendersResult = {
   deletedCount: number;
   protectedSkippedCount: number;
   failedCount: number;
+  /** How many rows got a different `industries` array from re-running classifyIndustries() against their real title/summary/buyer (see the header comment's new point 0). */
+  industriesChangedCount: number;
   keptPath: string;
   excludedPath: string;
   write: boolean;
 };
+
+function sameIndustries(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((v, i) => v === sortedB[i]);
+}
 
 export async function reclassifyTenders(supabase: SupabaseClient, options: { write: boolean }): Promise<ReclassifyTendersResult> {
   // PostgREST caps an unranged select at 1000 rows — confirmed against real
@@ -107,15 +129,20 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
   let deleted = 0;
   let failed = 0;
   let protectedSkipped = 0;
+  let industriesChangedCount = 0;
 
   const keptCsvRows: (string | number | boolean | null | undefined)[][] = [];
   const excludedCsvRows: (string | number | boolean | null | undefined)[][] = [];
 
   for (const row of rows) {
+    const recomputedIndustries = classifyIndustries(row.title.es, row.summary.es, row.buyer);
+    const industriesChanged = !sameIndustries(row.industries, recomputedIndustries);
+    if (industriesChanged) industriesChangedCount++;
+
     const recomputed = classifyRelevance({
       title: row.title.es,
       summary: row.summary.es,
-      industries: row.industries,
+      industries: recomputedIndustries,
       scopeType: row.scope_type,
       estimatedValue: row.estimated_value ?? undefined,
       currency: row.currency ?? undefined,
@@ -141,7 +168,7 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
       row.title.es,
       row.buyer,
       row.country,
-      row.industries.join("; "),
+      recomputedIndustries.join("; "),
       row.scope_type,
       row.estimated_value ?? "",
       row.currency ?? "",
@@ -159,6 +186,19 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
 
     if (options.write) {
       if (isProtected) {
+        // The lock is specifically about the relevance TIER a human
+        // corrected — industries still refresh underneath it, same as an
+        // unprotected row, since freezing the tier was never meant to
+        // also freeze what industry the tender is tagged under.
+        if (industriesChanged) {
+          const { error: industriesError } = await supabase.from("tenders").update({ industries: recomputedIndustries }).eq("slug", row.slug);
+          if (industriesError) {
+            console.error(`[reclassify-tenders]   failed to update industries for locked ${row.slug}: ${industriesError.message}`);
+            failed++;
+          } else {
+            updated++;
+          }
+        }
         protectedSkipped++;
       } else if (recomputed.tier === "excluded") {
         const { error: deleteError } = await supabase.from("tenders").delete().eq("slug", row.slug);
@@ -172,12 +212,13 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
         const fieldsChanged =
           row.relevance_tier !== recomputed.tier ||
           row.relevance_label?.zh !== recomputed.label.zh ||
-          row.relevance_reason?.zh !== recomputed.reason.zh;
+          row.relevance_reason?.zh !== recomputed.reason.zh ||
+          industriesChanged;
 
         if (fieldsChanged) {
           const { error: updateError } = await supabase
             .from("tenders")
-            .update({ relevance_tier: recomputed.tier, relevance_label: recomputed.label, relevance_reason: recomputed.reason })
+            .update({ relevance_tier: recomputed.tier, relevance_label: recomputed.label, relevance_reason: recomputed.reason, industries: recomputedIndustries })
             .eq("slug", row.slug);
 
           if (updateError) {
@@ -230,6 +271,7 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
     deletedCount: deleted,
     protectedSkippedCount: protectedSkipped,
     failedCount: failed,
+    industriesChangedCount,
     keptPath,
     excludedPath,
     write: options.write,

@@ -588,4 +588,23 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     structuredDurationDays: 400,
     country: "Colombia",
   },
+
+  // --- "subestación" narrowed to require a construction/equipment
+  // qualifier (2026-09-04) after a real CFE example was found live in
+  // production: a fauna-protection materials purchase was wrongly
+  // promoted straight to flagship. ---
+  {
+    title: "MATERIALES PROFAUNA PARA SUBESTACIONES",
+    expectedTier: "excluded",
+    note: "Real title (CFE buyer) — wildlife-protection fittings for substations (e.g. anti-perching mesh), a routine materials purchase where 'subestaciones' is only the delivery location, not the actual object of procurement. The bare 'subestación' phrase used to match INCLUDE_OVERRIDE_KEYWORDS and promote straight to flagship regardless of value.",
+    scopeType: "equipment",
+    buyer: "COMISION FEDERAL DE ELECTRICIDAD",
+    country: "Mexico",
+  },
+  {
+    title: "CONSTRUCCIÓN DE SUBESTACIÓN ELÉCTRICA DE POTENCIA",
+    expectedTier: "flagship",
+    note: "Regression check — a genuine substation construction project must still promote via INCLUDE_OVERRIDE_KEYWORDS, confirming the narrowed pattern (now requiring 'construcción'/'ampliación'/'equipo'/etc. near 'subestación') doesn't lose real matches.",
+    scopeType: "works",
+  },
 ];

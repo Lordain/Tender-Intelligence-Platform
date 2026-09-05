@@ -259,7 +259,16 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   /datacenter|centro de datos/i,
   /fibra [óo]ptica|fiber optic/i,
   /\b5g\b/i,
-  /subestaci[óo]n|substation/i,
+  // Narrowed (2026-09-04, real counter-example found): the bare phrase
+  // also matched a real CFE title — "MATERIALES PROFAUNA PARA
+  // SUBESTACIONES" (wildlife-protection materials/fittings for
+  // substations, e.g. anti-perching mesh) — a routine materials
+  // purchase where "subestaciones" is only the delivery location, not
+  // the actual object of procurement. Now requires a construction/
+  // equipment/expansion qualifier nearby — still matches a genuine
+  // "CONSTRUCCIÓN DE SUBESTACIÓN ELÉCTRICA"/"AMPLIACIÓN DE LA
+  // SUBESTACIÓN"/"EQUIPAMIENTO DE SUBESTACIÓN" project.
+  /(construcci[óo]n|ampliaci[óo]n|modernizaci[óo]n|rehabilitaci[óo]n|equipamiento|equipo(s)?|obra).{0,40}subestaci[óo]n|subestaci[óo]n.{0,40}(construcci[óo]n|ampliaci[óo]n|modernizaci[óo]n|rehabilitaci[óo]n|equipamiento|equipo(s)?|obra)|substation/i,
   /transmisi[óo]n el[ée]ctrica|power transmission/i,
   /\bepc\b/i,
   // Real ICT/telecom equipment whitelist — a batch of 29 real tender

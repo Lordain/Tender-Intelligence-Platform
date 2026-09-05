@@ -23,7 +23,7 @@ async function main() {
   try {
     const result = await reclassifyTenders(supabase, { write: shouldWrite });
     console.log(
-      `\n${result.changedCount} of ${result.totalCount} tender(s) would change tier under the current rules (${result.nowExcludedCount} newly excluded, ${result.nowIncludedCount} newly rescued into the feed).`,
+      `\n${result.changedCount} of ${result.totalCount} tender(s) would change tier under the current rules (${result.nowExcludedCount} newly excluded, ${result.nowIncludedCount} newly rescued into the feed). ${result.industriesChangedCount} would get a different industries tag.`,
     );
     if (!shouldWrite) {
       console.log("\ndry run (pass --write to update relevance_tier/label/reason in Supabase, and delete anything now excluded) — nothing was written to Supabase.");

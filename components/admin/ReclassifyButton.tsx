@@ -11,6 +11,7 @@ type ReclassifyResult = {
   deletedCount: number;
   protectedSkippedCount: number;
   failedCount: number;
+  industriesChangedCount: number;
   keptPath: string;
   excludedPath: string;
   write: boolean;
@@ -56,7 +57,7 @@ export function ReclassifyButton() {
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Maintenance</p>
       <h2 className="mt-1 text-lg font-black text-[#071826]">重新分类</h2>
       <p className="mt-1 text-sm text-[#52636e]">
-        用最新的分类规则（比如今天新加的车辆/机械白名单）重新计算所有已入库标书。只有改了分类规则本身才需要跑这个——平时导入新标书不需要。人工锁定过分类或人工删除过的标书不会被这个操作动到。
+        用最新的分类规则（比如今天新加的车辆/机械白名单）重新计算所有已入库标书的相关度，同时也会重新计算行业标签（比如把误标成&ldquo;综合&rdquo;的项目改回&ldquo;教育&rdquo;/&ldquo;医疗&rdquo;等正确标签）。只有改了分类或行业规则本身才需要跑这个——平时导入新标书不需要。人工锁定过相关度的标书，其相关度不会被改动，但行业标签仍会刷新；人工删除过的标书不会被这个操作动到。
       </p>
       {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       <label className="mt-4 flex items-center gap-2 border-t border-[#e5e9eb] pt-4 text-sm text-[#233846]">
@@ -74,7 +75,7 @@ export function ReclassifyButton() {
       {result && (
         <div className="mt-4 border-t border-[#e5e9eb] pt-4 text-sm text-[#52636e]">
           <p>
-            共 {result.totalCount} 条，{result.changedCount} 条分类会变化（{result.nowExcludedCount} 条新排除，{result.nowIncludedCount} 条重新纳入）。
+            共 {result.totalCount} 条，{result.changedCount} 条相关度会变化（{result.nowExcludedCount} 条新排除，{result.nowIncludedCount} 条重新纳入），{result.industriesChangedCount} 条行业标签会变化。
           </p>
           <p className="mt-1 text-xs text-[#8a97a0]">
             CSV 已导出到本机 {result.keptPath} / {result.excludedPath}

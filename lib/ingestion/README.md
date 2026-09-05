@@ -1669,6 +1669,55 @@ automatically by that same action (see its own header comment). Not run
 from this sandbox (no live Supabase access) — needs the user's own
 "重新分类并写入" click.
 
+### "重新分类" never re-tagged industries — real gap found, now fixed (2026-09-04)
+
+The user ran "重新分类" for real, confirmed it correctly purged the
+below-value-floor Colombia tenders, but reported two Mexico examples
+whose industry tag ("综合"/general) stayed wrong afterward — a school
+infrastructure project that should tag "教育" (education), a port
+dredging job that should tag "水务" (water). Root cause: `reclassifyTenders()`
+(`lib/ingestion/reclassify-tenders.ts`) only ever recomputed
+`relevance_tier` via `classifyRelevance()`, using each row's STALE stored
+`industries` array as an input — it never called `classifyIndustries()`
+again. So once a tender was ingested with a wrong/outdated industry tag,
+nothing would ever fix it short of a full re-import.
+
+Fixed: `reclassifyTenders()` now also re-runs `classifyIndustries(title,
+summary, buyer)` for every row (same buyer-inclusive convention most
+mappers use at ingest time) and writes the result back to `industries`
+whenever it changed — including for rows with `relevance_manually_overridden`
+(the lock is specifically about a human-corrected relevance TIER, not
+about freezing industry tags too). The fresh industries also feed into
+the relevance recomputation itself, since a stale buyer-inclusive
+industries value could otherwise skew a `FLAGSHIP_INDUSTRY_KEYWORDS`
+match via the haystack. New `industriesChangedCount` in the result,
+admin button, and CLI script summaries.
+
+### "subestación" bare match — same false-positive pattern, third real example (2026-09-04)
+
+Same investigation surfaced a third real example of the
+`INCLUDE_OVERRIDE_KEYWORDS` bare-word trap already fixed twice for
+`control de acceso`/`refinería`: a real CFE (Mexico) tender, **"MATERIALES
+PROFAUNA PARA SUBESTACIONES"** (wildlife-protection fittings for
+substations — anti-perching mesh, a routine materials purchase), was
+promoted straight to flagship because the bare `subestaci[óo]n` phrase
+matched regardless of value or what was actually being procured.
+Narrowed the same way: now requires a construction/equipment/expansion
+qualifier nearby (`construcción`/`ampliación`/`modernización`/
+`rehabilitación`/`equipamiento`/`equipo(s)`/`obra`). A genuine
+`"CONSTRUCCIÓN DE SUBESTACIÓN ELÉCTRICA DE POTENCIA"` still promotes to
+flagship. Two new `lib/relevance-fixtures.ts` cases; 81/81 pass.
+
+Given this is now the third real instance of the exact same
+false-positive shape, worth flagging for a future pass: every remaining
+bare (non-anchored) `INCLUDE_OVERRIDE_KEYWORDS` entry (`ciberseguridad`,
+`datacenter`, `fibra óptica`, `\b5g\b`, `\bepc\b`, `transmisión
+eléctrica`, `videovigilancia`, ...) is a candidate for the same kind of
+false positive — none have a confirmed real counter-example YET, so none
+were touched pre-emptively (this project's "confirmed real, not guessed"
+bar), but the next one found should get the same fix rather than being
+treated as a one-off surprise.
+
 ### Colombia's real key dates are incomplete — two real gaps fixed, one bigger option surfaced (2026-09-04)
 
 The user flagged this directly ("哥伦比亚招标信息目前并不完整，很多关键日期缺失") after

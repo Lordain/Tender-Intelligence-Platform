@@ -50,8 +50,16 @@ function sameDaySubmissionOpeningIds(keyDates: TenderKeyDate[]): Set<string> {
  * the surrounding form's single submit) — same posture as the rest of this
  * admin surface (ReclassifyButton, TranslateTendersButton, etc.).
  */
+function byDateAsc(a: TenderKeyDate, b: TenderKeyDate) {
+  return a.date.localeCompare(b.date);
+}
+
 export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: string; initialKeyDates: TenderKeyDate[] }) {
-  const [keyDates, setKeyDates] = useState<TenderKeyDate[]>(initialKeyDates);
+  // initialKeyDates arrives in DB insertion order (whatever order the
+  // ingestion mapper wrote the rows), not date order — sorting only on
+  // add/edit left a freshly-loaded page showing dates out of chronological
+  // order until an admin touched one (real report, 2026-09-05).
+  const [keyDates, setKeyDates] = useState<TenderKeyDate[]>(() => [...initialKeyDates].sort(byDateAsc));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<DraftState>(EMPTY_DRAFT);
   const [addDraft, setAddDraft] = useState<DraftState>(EMPTY_DRAFT);
@@ -80,7 +88,7 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       setKeyDates((prev) =>
         [...prev, { id: data.id, type: addDraft.type, date: addDraft.date, mandatory: addDraft.mandatory, notes: addDraft.notesZh ? { es: "", en: "", zh: addDraft.notesZh } : undefined }].sort(
-          (a, b) => a.date.localeCompare(b.date),
+          byDateAsc,
         ),
       );
       setAddDraft(EMPTY_DRAFT);
@@ -109,7 +117,7 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
               ? { ...kd, type: editDraft.type, date: editDraft.date, mandatory: editDraft.mandatory, notes: editDraft.notesZh ? { es: "", en: "", zh: editDraft.notesZh } : undefined }
               : kd,
           )
-          .sort((a, b) => a.date.localeCompare(b.date)),
+          .sort(byDateAsc),
       );
       setEditingId(null);
     } catch (err) {

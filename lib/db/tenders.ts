@@ -9,6 +9,7 @@ import type {
   TenderRelevance,
   TenderRequirement,
   TenderRisk,
+  TenderStatus,
 } from "@/types/tender";
 import { classifyRelevance } from "@/lib/relevance";
 
@@ -275,11 +276,12 @@ type DocumentsNeededRow = {
   relevance_label: LocalizedText | null;
   publication_date: string;
   source_url: string;
+  status: TenderStatus;
   tender_documents: { id: string }[];
 };
 
 const DOCUMENTS_NEEDED_SELECT = `
-  slug, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url,
+  slug, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url, status,
   tender_documents ( id )
 `;
 
@@ -293,6 +295,11 @@ const DOCUMENTS_NEEDED_SELECT = `
  * is a "go download this" worklist, not the public feed, so a tender with
  * no computed tier yet is safer left out than sent to a human as if it
  * were confirmed worth the trip.
+ *
+ * `.not("status", "in", ...)` excludes already-awarded/cancelled tenders:
+ * chasing down attachments for a tender that's already decided or dead is
+ * wasted effort, so those are dropped from the worklist even if they'd
+ * otherwise qualify (2026-09-05, explicit request).
  */
 export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedingDocuments[] | null> {
   const supabase = getSupabaseServerClient();
@@ -304,6 +311,7 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
       .from("tenders")
       .select(DOCUMENTS_NEEDED_SELECT)
       .neq("relevance_tier", "excluded")
+      .not("status", "in", "(awarded,cancelled)")
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
 

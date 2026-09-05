@@ -119,14 +119,19 @@ function parseDate(raw: string | undefined): string | null {
  * never actually contains — without this, Colombia could never trigger the
  * duration signal at all, real or not.
  *
- * DEFENSIVE, same posture as DURATION_ANCHOR's own header comment: the
- * unit words below ("Día(s)"/"Mes(es)"/"Año(s)"/"Semana(s)") are the
- * common Spanish terms, NOT yet confirmed against a real
- * `unidad_de_duracion` value (no real example has been captured/recorded
- * anywhere in this project's README yet) — an unrecognized unit falls
- * back to undefined (signal doesn't fire) rather than guessing a
- * conversion, so a bad guess can't silently misfire. Revisit once a real
- * value is seen.
+ * Real bug confirmed (2026-09-05, task "确认工期信号在真实数据上生效"): every
+ * row of the real captured lib/ingestion/__fixtures__/sample-colombia-secop.json
+ * (5/5) carries `unidad_de_duracion` as literally "día(s)" — the header
+ * comment here had already guessed this exact "Día(s)" shape, but the
+ * DAYS_PER_UNIT map/lookup below never actually accounted for the "(s)"
+ * suffix, so `DAYS_PER_UNIT["día(s)"]` was always undefined and this
+ * function silently returned undefined for every single Colombia row —
+ * the duration signal had never fired for Colombia at all, confirming the
+ * exact risk this comment already flagged. Fixed by stripping any
+ * parenthesized suffix before the lookup. "Semana(s)"/"Mes(es)"/"Año(s)"
+ * are inferred to follow the identical SECOP II dropdown convention (same
+ * fix handles them once one is captured) but — same DEFENSIVE posture as
+ * before — aren't yet confirmed real themselves; only "día(s)" is.
  */
 const DAYS_PER_UNIT: Record<string, number> = {
   "día": 1,
@@ -146,7 +151,8 @@ function normalizeDurationDays(duracion: string | undefined, unidad: string | un
   if (!duracion || !unidad) return undefined;
   const count = Number(duracion);
   if (!Number.isFinite(count) || count <= 0) return undefined;
-  const perUnit = DAYS_PER_UNIT[unidad.trim().toLowerCase()];
+  const bareUnit = unidad.trim().toLowerCase().replace(/\(.*?\)/g, "").trim();
+  const perUnit = DAYS_PER_UNIT[bareUnit];
   return perUnit !== undefined ? Math.round(count * perUnit) : undefined;
 }
 

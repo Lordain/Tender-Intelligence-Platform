@@ -96,67 +96,67 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // --- Significant: real examples the user confirmed as "keep" (2026-09-02) ---
   {
     title: "CONSTRUCCIÓN DE EDIFICIO H PARA LA FACULTAD DE ENFERMERÍA Y OBSTETRICIA 2A ETAPA",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — building construction (FLAGSHIP_INDUSTRY_KEYWORDS construcción).",
   },
   {
     title: "ADQUISICIÓN DE EQUIPO MÉDICO Y DE LABORATORIO",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — medical/lab equipment.",
   },
   {
     title: "ADQUISICIÓN DE EQUIPOS DE RAYOS X PARA DIVERSAS UNIDADES MEDICAS",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — imaging equipment (rayos x).",
   },
   {
     title: "EQUIPO MÉDICO DE IMAGENOLOGÍA 2026, MASTÓGRAFOS Y RESONANCIA",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — imaging equipment (imagenología/resonancia).",
   },
   {
     title: "ADQUISICIÓN DE 39 PARTIDAS DE EQUIPO ASOCIADO A OBRA - EQUIPAMIENTO MÉDICO INST",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — bulk medical equipment tied to a works project.",
   },
   {
     title: "CONSTRUCCIÓN DE PLANTA DE TRATAMIENTO DE  AGUAS RESIDUALES",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — wastewater treatment plant construction.",
   },
   {
     title: "ADQUISICION DE 204 PARTIDAS DE EQUIPO ASOCIADO A OBRA - EQUIPAMIENTO MÉDICO P&P",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — bulk medical equipment tied to a works project.",
   },
   {
     title: "CONSTRUCCIÓN DE EDIFICIO ADMINISTRATIVO EN LA ESCUELA PREPARATORIA NO. UNO 3A E",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — building construction, deliberately kept despite being its 3rd phase (per the earlier decision NOT to encode phase-count as an exclude signal).",
   },
   {
     title: "CONSTRUCCIÓN DE LA PLANTA DE TRATAMIENTO DE AGUAS RESIDUALES, STA. ANA DEL VALLE",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — wastewater treatment plant construction.",
   },
   {
     title: "ADQUISICIÓN DE EQUIPO DE LABORATORIO PARA CENTROS DE ACOPIO EN SINALOA",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — lab equipment.",
   },
   {
     title: "REHABILITACIÓN DE LA CARRETERA",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — highway rehab (bare 'carretera' match; not 'construcción de la carretera' so stays significant, not flagship).",
   },
   {
     title: "CONSTRUCCIÓN Y DISEÑO DE 68.00 KM DEL TRAMO I FERROVIARIO DEL TREN DE PASAJEROS",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — passenger railway construction. Matches via bare 'construcción', not the MAJOR_PROJECT_KEYWORDS railway pattern (ferrocarril/tren de carga|eléctrico|interurbano) — 'ferroviario' and 'tren de pasajeros' don't match that pattern's exact wording.",
   },
   {
     title: "CONSTRUCCIÓN Y DISEÑO DE 82.00 KM DEL TRAMO II FERROVIARIO DEL TREN DE PASAJERO",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "User-confirmed keep list — passenger railway construction, same pattern gap as above.",
   },
   {
@@ -191,13 +191,13 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "ADQUISICIÓN DE TRANSFORMADORES DE POTENCIA",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "Was excluded since the Seventh pass removed the old bare 'energía|eléctrico|power' signal, with nothing replacing it for power equipment specifically. Restored to significant (2026-09-04) per the user's explicit request to whitelist power-grid key equipment (变压器/发电机/继电保护器/UPS) — via the same anchored purchase-verb pattern as vehicles, not the old broad bare-word match.",
     industries: ["power"],
   },
   {
     title: "ADQUISICIÓN DE EQUIPO DE LABORATORIO",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "Earlier-approved real batch — lab equipment.",
     industries: ["healthcare"],
   },
@@ -222,25 +222,25 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // that pattern for why the two can't collide. ---
   {
     title: "ADQUISICIÓN DE VEHÍCULOS PARA EL CONVENIO CONASAMA 2026",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "Real title, same one the 2026-09-02 'standard' elimination had moved to excluded — restored per the user's 2026-09-04 explicit ask to whitelist government vehicle purchases.",
     industries: ["vehicles"],
   },
   {
     title: "ADQUISICIÓN DE AUTOBUSES PARA TRANSPORTE ESCOLAR",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "Bus purchase — 公交车, one of the user's named examples (2026-09-04).",
     industries: ["vehicles"],
   },
   {
     title: "ADQUISICIÓN DE CAMIONES DE VOLTEO PARA OBRAS PÚBLICAS",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "Dump-truck purchase — 货车, one of the user's named examples (2026-09-04).",
     industries: ["vehicles"],
   },
   {
     title: "ADQUISICIÓN DE CAMIONETAS TIPO SUV PARA SEGURIDAD PÚBLICA",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "SUV purchase — SUV, one of the user's named examples (2026-09-04); also exercises industry.ts's widened 'vehicles' pattern (SUV/camioneta weren't matched at all before this change).",
     industries: ["vehicles"],
   },
@@ -264,7 +264,7 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "ADQUISICIÓN DE MAQUINARIA PESADA",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "Was 'standard' until the 2026-09-02 elimination moved it to excluded — restored per the user's 2026-09-04 follow-up ask (\"'maquinaria pesada' 也加回白名单\") to the SAME anchored purchase-verb pattern as the vehicle purchases above, not a separate rule.",
     industries: ["vehicles"],
   },
@@ -312,19 +312,19 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // mechanism as vehicles, reusing the same tightened gap. ---
   {
     title: "ADQUISICIÓN DE GENERADORES DE EMERGENCIA PARA HOSPITALES",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "Generator purchase — 发电机, one of the user's named examples (2026-09-04). Deliberately avoids the word 'subestación' — that already triggers INCLUDE_OVERRIDE_KEYWORDS straight to flagship on its own, which would test that rule instead of this one.",
     industries: ["power"],
   },
   {
     title: "ADQUISICIÓN DE RELEVADORES DE PROTECCIÓN PARA LÍNEAS DE TRANSMISIÓN",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "Protection-relay purchase — 继电保护器, one of the user's named examples (2026-09-04). Mexican Spanish 'relevador' variant, not just 'relé'.",
     industries: ["power"],
   },
   {
     title: "ADQUISICIÓN DE UPS PARA EQUIPO DE CÓMPUTO",
-    expectedTier: "significant",
+    expectedTier: "standard",
     note: "UPS purchase, one of the user's named examples (2026-09-04, follow-up \"还有UPS\"). Deliberately avoids 'centro de datos' — that already triggers MAJOR_PROJECT_KEYWORDS straight to flagship on its own, which would test that rule instead of this one.",
     industries: ["power", "ict_telecom"],
   },
@@ -446,9 +446,9 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "ADQUISICIÓN DE EQUIPO MÉDICO PARA HOSPITAL REGIONAL",
     expectedTier: "significant",
-    note: "Regression check — a $150,000 tender with country left unset (no Mexico/Colombia mapper sets it here) must use the platform-wide $100,000 floor, not accidentally inherit Colombia's $500,000 one — confirms MIN_VALUE_USD_BY_COUNTRY only applies when country is actually set to a country with an override.",
+    note: "Repurposed (2026-09-05): used to test that a per-country value floor override didn't leak onto a country-unset tender — that override (MIN_VALUE_USD_BY_COUNTRY) is gone now that Mexico's floor was unified to Colombia's $500,000 (see MIN_VALUE_USD's own comment). Now tests the companion rule instead: a FLAGSHIP_INDUSTRY_KEYWORDS match (equipo médico) combined with ANY disclosed value above the floor — even one that doesn't clear SIGNIFICANT_VALUE_USD ($1,000,000) on its own — still promotes to significant, only a completely undisclosed value caps it at standard.",
     scopeType: "equipment",
-    estimatedValue: 150_000,
+    estimatedValue: 600_000,
     currency: "USD",
   },
 
@@ -753,5 +753,31 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real title, buyer Municipio de Soacha — a loan/borrowing instrument, not a procurement of goods/works/services.",
     scopeType: "services",
     country: "Colombia",
+  },
+
+  // --- Two real industry.ts gaps found chasing the "standard" reactivation
+  // + significant-tier no-value gate above (2026-09-05): once a no-value
+  // FLAGSHIP_INDUSTRY_KEYWORDS match needed a real classifyIndustries() tag
+  // to land "standard" instead of "excluded", two real terms turned out to
+  // have no industry tag at all despite relevance.ts's own patterns already
+  // recognizing them. Both fixed in lib/industry.ts's "healthcare"/"power"
+  // patterns, not here. ---
+  {
+    title: "ADQUISICIÓN DE GENERADORES DE EMERGENCIA PARA HOSPITALES",
+    expectedTier: "standard",
+    note: "'hospital\\b' (no plural handling) never matched 'HOSPITALES' — same class of bug as the earlier 'unidad médica' plural gap. Fixed to 'hospital(es)?\\b'. Without any industry tag, this landed 'excluded' instead of 'standard' despite matching FLAGSHIP_INDUSTRY_KEYWORDS's own generador purchase pattern.",
+    scopeType: "equipment",
+  },
+  {
+    title: "ADQUISICIÓN DE UPS PARA EQUIPO DE CÓMPUTO",
+    expectedTier: "standard",
+    note: "'generador(es)?'/'\\bups\\b' were never in industry.ts's power pattern at all, even though relevance.ts's FLAGSHIP_INDUSTRY_KEYWORDS anchored purchase pattern already recognized both (2026-09-04, '白名单加入电力相关的关键设备...还有UPS'). Added to industry.ts's power pattern to match.",
+    scopeType: "equipment",
+  },
+  {
+    title: "ADQUISICIÓN DE RELEVADORES DE PROTECCIÓN PARA LÍNEAS DE TRANSMISIÓN",
+    expectedTier: "standard",
+    note: "Same gap — 'relevador(es)?'/'relé(s) de protección'/'líneas de transmisión' (without 'eléctrica') were never in industry.ts's power pattern, only in relevance.ts's own anchored purchase pattern. Added all three to industry.ts's power pattern.",
+    scopeType: "equipment",
   },
 ];

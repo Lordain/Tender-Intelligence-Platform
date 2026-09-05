@@ -622,10 +622,13 @@ const SHORT_BRIDGE_METERS = 30;
 /**
  * A real, known contract value under this floor isn't worth a Chinese
  * enterprise's time to fly out and bid on, regardless of industry.
- * Raised again from 50,000 to 100,000 per the user's explicit call
- * ("改成100,000 USD以上") — part of a broader tightening pass (2026-09-02)
- * to cut the kept-tender count, alongside the new MAJOR_PROJECT_KEYWORDS
- * signal below and a large batch of new EXCLUDE_KEYWORDS. Still well
+ * Raised to 500,000 (2026-09-05, per the user's explicit call: "墨西哥
+ * $100K 也改成跟哥伦比亚一样的金额要求") — previously 100,000 platform-wide
+ * with a separate Colombia-only override at 500,000 (added 2026-09-04
+ * after a real Colombia SECOP II import showed the $100,000 floor was
+ * still too low there in aggregate); now unified to one floor for every
+ * country, so the per-country override map this replaced is gone rather
+ * than left as a redundant Colombia-equals-default entry. Still well
  * below SIGNIFICANT_VALUE_USD, so it only catches genuinely small
  * purchases, not the flagship/significant contracts those tiers are
  * meant to surface. Deliberately does NOT apply when estimatedValue is
@@ -635,24 +638,7 @@ const SHORT_BRIDGE_METERS = 30;
  * from EXCLUDE_KEYWORDS should also protect it from being dismissed on
  * value alone).
  */
-const MIN_VALUE_USD = 100_000;
-
-/**
- * Per-country override of MIN_VALUE_USD — added per the user's explicit
- * request (2026-09-04) after reviewing a real Colombia SECOP II import:
- * many genuine, correctly-classified tenders cleared the platform-wide
- * $100,000 floor (e.g. real values around $200,000–$400,000) but were
- * still judged too small in aggregate for Colombia specifically, so the
- * bar there is raised to $500,000 rather than lowering the shared
- * platform-wide floor for every country. Keyed by Tender.country
- * ("Colombia", matching colombia-mapper.ts's literal country field), not
- * by currency — currency happens to double as a reliable proxy today
- * (every Colombia row is COP) but country is the actually-intended axis
- * and is what mappers already pass around.
- */
-const MIN_VALUE_USD_BY_COUNTRY: Partial<Record<string, number>> = {
-  Colombia: 500_000,
-};
+const MIN_VALUE_USD = 500_000;
 
 const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   flagship: {
@@ -677,7 +663,7 @@ const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   },
 };
 
-/** Generates the "value" excluded-reason dynamically since the threshold now varies by country (MIN_VALUE_USD_BY_COUNTRY) — unlike every other reason here, which is a fixed message. */
+/** Takes the threshold as a parameter (rather than reading MIN_VALUE_USD directly) purely so the reason text can't drift out of sync if that constant ever changes again — unlike every other reason here, which is a fixed message. */
 function valueExcludedReason(thresholdUsd: number): LocalizedText {
   const formatted = thresholdUsd.toLocaleString("en-US");
   return {
@@ -884,7 +870,7 @@ export function classifyRelevance(input: {
   const normalizedValue =
     input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
 
-  const minValueUsd = input.country ? (MIN_VALUE_USD_BY_COUNTRY[input.country] ?? MIN_VALUE_USD) : MIN_VALUE_USD;
+  const minValueUsd = MIN_VALUE_USD;
   // Deliberately NOT gated by hasIncludeOverride (2026-09-04, per explicit
   // user request after a real batch of tiny-value Colombia tenders —
   // "SERVICIO DE INTERNET" $571, "QPAR S.A.S" $8,185, "CPS INFRAESTRUCTURA
@@ -917,11 +903,12 @@ export function classifyRelevance(input: {
   // street's asphalt patch) and "MANTENIMIENTO EN EDIFICIOS DE LA TERMINAL
   // DE TRANSBORDADORES" (a maintenance job) — neither a major project by
   // any reading of the user's list. Dropping this doesn't exclude those
-  // tenders outright: a real infrastructure title still lands on
-  // "significant" via matchesFlagshipIndustry below (construcción/
-  // carretera/puente/etc.) or "standard" via the content-industry
-  // allowlist gate further down — this only stops "no value + happens to
-  // be scoped works" alone from claiming the top tier.
+  // tenders outright: a real infrastructure title with a disclosed value
+  // still lands on "significant" via matchesFlagshipIndustry below
+  // (construcción/carretera/puente/etc.), or "standard" via the
+  // content-industry allowlist gate further down when no value is known
+  // (see that gate's own comment) — this only stops "no value + happens
+  // to be scoped works" alone from claiming the top tier.
   if (
     hasIncludeOverride ||
     matchesMajorProject ||
@@ -931,15 +918,25 @@ export function classifyRelevance(input: {
     return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
   }
 
-  // A target-industry match counts on its own, not only for works-like
-  // scope. It used to be gated behind `isWorksLike`, which made
-  // FLAGSHIP_INDUSTRY_KEYWORDS dead for every equipment/services tender —
-  // and since the open-tenders export carries no value at all, that meant
-  // an ICT, power or medical-equipment purchase could never rank above
-  // "standard" no matter how well it matched the target sectors.
+  // A target-industry keyword match counts toward "significant" on its
+  // own, but only once a real value is disclosed (2026-09-05, per the
+  // user's explicit request: "墨西哥很多项目没有金额...设定一些项目降为常规
+  // 项目"). Without this `normalizedValue !== undefined` guard, a bare
+  // FLAGSHIP_INDUSTRY_KEYWORDS match (construcción/equipo médico/vehicle
+  // purchase/etc.) always promoted straight to "significant" regardless
+  // of value — and since most Mexico open-tenders rows carry no value at
+  // all, that meant almost any infrastructure/medical/vehicle-flavored
+  // title skipped "standard" entirely, which is exactly why that tier
+  // stayed empty even after being reactivated above. A genuinely large
+  // project without a disclosed value still isn't excluded outright: it
+  // now lands on "standard" via the content-industry allowlist gate
+  // further down instead of jumping straight to "significant". A
+  // disclosed value, even one that doesn't clear SIGNIFICANT_VALUE_USD on
+  // its own, still combines with the keyword match to promote — only a
+  // completely undisclosed value caps this at "standard".
   if (
     (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) ||
-    matchesFlagshipIndustry
+    (matchesFlagshipIndustry && normalizedValue !== undefined)
   ) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
   }

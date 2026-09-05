@@ -81,7 +81,12 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // "UNIDADES MEDICAS" real titles use — no \b/plural handling at all.
   // "rayos x" added alongside — real title "ADQUISICIÓN DE EQUIPOS DE
   // RAYOS X PARA DIVERSAS UNIDADES MEDICAS" matched neither term before.
-  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|rayos x|hospital\b|unidad(es)? m[ée]dica(s)?|servicios de salud|\bsalud\b/i],
+  // "hospital(es)?\b" (2026-09-05, real gap found chasing the relevance.ts
+  // "standard" no-value demotion): "hospital\b" alone never matched the
+  // plural "HOSPITALES" real titles use (no word boundary between "hospital"
+  // and its "es" suffix), e.g. "ADQUISICIÓN DE GENERADORES DE EMERGENCIA
+  // PARA HOSPITALES" — same class of bug as "unidad médica" above.
+  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|rayos x|hospital(es)?\b|unidad(es)? m[ée]dica(s)?|servicios de salud|\bsalud\b/i],
   ["tax", /administraci[óo]n tributaria|fiscalizaci[óo]n|declaraci[óo]n fiscal|sistema de recaudaci[óo]n|\bsat\b|servicio de administraci[óo]n tributaria|padr[óo]n de contribuyentes|aduanas?\b|hacienda y cr[ée]dito p[úu]blico/i],
   // "\bducto\b" (2026-09-03, real bug found against a real Proyectos
   // Estratégicos MX export): was missing its leading \b, so it matched
@@ -122,7 +127,15 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // still matches normally since "refinería" there isn't immediately
   // preceded by that narrow "para ... la/el" shape.
   ["energy", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|(?<!para (uso en |usarse en )?(la |el )?)refiner[íi]a|gas natural|\bducto\b|oleoducto|gasoducto|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible|resistividad/i],
-  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|casa de m[áa]quinas/i],
+  // "generador(es)?"/"\bups\b" added (2026-09-05, same real gap as the
+  // "hospital(es)?" fix above): relevance.ts's FLAGSHIP_INDUSTRY_KEYWORDS
+  // already recognizes a generator/UPS purchase as power-grid key
+  // equipment (2026-09-04, "白名单加入电力相关的关键设备...还有UPS"), but this
+  // classifier never tagged either term "power" at all — a real gap only
+  // surfaced once relevance.ts started requiring a real industry tag (not
+  // just its own keyword match) for a no-value tender to avoid landing in
+  // "excluded" instead of "standard".
+  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|generador(es)?|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to
   // INCLUDE_OVERRIDE_KEYWORDS in lib/relevance.ts (a real batch of 29

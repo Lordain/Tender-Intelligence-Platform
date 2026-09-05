@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { ALL_INDUSTRIES } from "@/lib/industry";
-import { ALL_COUNTRIES, COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, STATUS_LABELS } from "@/lib/tender-labels";
+import { COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, STATUS_LABELS } from "@/lib/tender-labels";
 import { localize, useLocale } from "@/lib/i18n";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import type { TenderRelevanceTier, TenderStatus } from "@/types/tender";
 
 const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed"];
 const TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
+const NOTIFICATION_COUNTRIES = ["Mexico", "Colombia"] as const;
 
 function ToggleList({ values, selected, onChange, render }: { values: string[]; selected: string[]; onChange: (next: string[]) => void; render: (value: string) => string }) {
   return <div className="mt-2 flex flex-wrap gap-2">{values.map((value) => {
@@ -44,7 +45,7 @@ export function NotificationPreferences({ userId }: { userId: string }) {
 
   return <section id="notification-preferences" className="flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-6">
     <div className="flex items-start justify-between gap-6"><div><h2 className="font-black text-[#071826]">邮件通知</h2><p className="mt-1 text-sm leading-6 text-[#64717c]">每天墨西哥城时间 09:00 和 18:00，发送符合以下条件的新标汇总。</p></div><button type="button" role="switch" aria-checked={enabled} onClick={() => { setEnabled(!enabled); setSaved(false); }} className={`relative h-7 w-12 rounded-full transition-colors ${enabled ? "bg-[#ffb21c]" : "bg-[#cbd5d9]"}`}><span className={`absolute top-1 size-5 rounded-full bg-white transition-transform ${enabled ? "left-6" : "left-1"}`} /></button></div>
-    <div><p className="text-xs font-bold text-[#425461]">国家（不选则不限）</p><ToggleList values={[...ALL_COUNTRIES]} selected={countries} onChange={(next) => { setCountries(next); setSaved(false); }} render={(value) => localize(COUNTRY_LABELS[value as keyof typeof COUNTRY_LABELS], locale)} /></div>
+    <div><p className="text-xs font-bold text-[#425461]">国家（不选则不限）</p><ToggleList values={[...NOTIFICATION_COUNTRIES]} selected={countries} onChange={(next) => { setCountries(next); setSaved(false); }} render={(value) => localize(COUNTRY_LABELS[value as keyof typeof COUNTRY_LABELS], locale)} /></div>
     <div><p className="text-xs font-bold text-[#425461]">行业（不选则不限）</p><ToggleList values={ALL_INDUSTRIES} selected={industries} onChange={(next) => { setIndustries(next); setSaved(false); }} render={(value) => localize(INDUSTRY_LABELS[value as keyof typeof INDUSTRY_LABELS], locale)} /></div>
     <div><p className="text-xs font-bold text-[#425461]">项目阶段（不选则不限）</p><ToggleList values={STATUSES} selected={statuses} onChange={(next) => { setStatuses(next); setSaved(false); }} render={(value) => localize(STATUS_LABELS[value as TenderStatus], locale)} /></div>
     <div><p className="text-xs font-bold text-[#425461]">相关度（不选则不限）</p><ToggleList values={TIERS} selected={tiers} onChange={(next) => { setTiers(next); setSaved(false); }} render={(value) => localize(RELEVANCE_TIER_LABELS[value as TenderRelevanceTier], locale)} /></div>

@@ -834,7 +834,20 @@ export function classifyRelevance(input: {
     input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
 
   const minValueUsd = input.country ? (MIN_VALUE_USD_BY_COUNTRY[input.country] ?? MIN_VALUE_USD) : MIN_VALUE_USD;
-  if (!hasIncludeOverride && normalizedValue !== undefined && normalizedValue < minValueUsd) {
+  // Deliberately NOT gated by hasIncludeOverride (2026-09-04, per explicit
+  // user request after a real batch of tiny-value Colombia tenders —
+  // "SERVICIO DE INTERNET" $571, "QPAR S.A.S" $8,185, "CPS INFRAESTRUCTURA
+  // TI" $5,145 — kept surfacing as flagship because a bare
+  // INCLUDE_OVERRIDE_KEYWORDS match, hidden in the summary text rather
+  // than the title, was bypassing the value floor entirely, the same
+  // mechanism already fixed once for MAINTENANCE_ONLY_KEYWORDS above.
+  // User's explicit rule: "如有金额，金额过了再用关键字，没有金额的直接用
+  // 关键字" (if a value is disclosed, it must clear the floor before any
+  // keyword signal matters; only an UNDISCLOSED value falls through to
+  // keyword-only logic). Only isNationalPriorityProject — a real,
+  // government-verified major-project designation — still rescues a
+  // below-floor value; no keyword-based override can anymore.
+  if (input.isNationalPriorityProject !== true && normalizedValue !== undefined && normalizedValue < minValueUsd) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "value", minValueUsd) };
   }
 

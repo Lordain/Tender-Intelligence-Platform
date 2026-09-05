@@ -664,4 +664,31 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real title — a bare 'materiales y artículos de construcción' consumables purchase, not a works contract. Broadened the existing spare-parts/tools EXCLUDE_KEYWORDS entry to also catch this bare 'materiales y artículos de' phrasing.",
     scopeType: "equipment",
   },
+
+  // --- Value floor no longer bypassable by hasIncludeOverride
+  // (2026-09-04, explicit user rule: "如有金额，金额过了再用关键字，没有
+  // 金额的直接用关键字"). Real batch of tiny-value Colombia tenders kept
+  // surfacing as flagship because a bare INCLUDE_OVERRIDE_KEYWORDS match
+  // hidden in the summary text bypassed the value floor entirely — the
+  // same mechanism already fixed once for MAINTENANCE_ONLY_KEYWORDS. ---
+  {
+    title: "SERVICIO DE INTERNET",
+    expectedTier: "excluded",
+    note: "Synthetic (real shape) — a $571 tender whose summary happens to mention fibra óptica/5G must still be excluded on the value floor; a bare override keyword can no longer rescue a below-floor disclosed value.",
+    summary: "SERVICIO DE INTERNET CON ENLACE DE FIBRA ÓPTICA DEDICADA Y SOPORTE 5G PARA LA INSTITUCIÓN",
+    scopeType: "services",
+    estimatedValue: 571 * 4200,
+    currency: "COP",
+    country: "Colombia",
+  },
+  {
+    title: "QPAR S.A.S",
+    expectedTier: "excluded",
+    note: "Synthetic (real shape, mirrors the real 'ANDERSON DAVID PACHECO COLINA' pattern of a company/person name as title) — an $8,185 contract whose summary mentions videovigilancia/control de acceso must still be excluded on the value floor.",
+    summary: "CONTRATO DE PRESTACIÓN DE SERVICIOS DE VIDEOVIGILANCIA Y CONTROL DE ACCESO",
+    scopeType: "services",
+    estimatedValue: 8185 * 4200,
+    currency: "COP",
+    country: "Colombia",
+  },
 ];

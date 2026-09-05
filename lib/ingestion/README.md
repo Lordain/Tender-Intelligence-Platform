@@ -1770,6 +1770,46 @@ flagship regression checks for `seguridad perimetral`/`subestación` that
 this same batch could easily have broken had the new check been too
 broad).
 
+### The value floor itself was still bypassable — closed the gap for good (2026-09-04)
+
+After re-running "重新分类" for real (44 rows correctly purged by the
+`mantenimiento` fix above), several more tiny-value Colombia tenders kept
+showing as flagship: **"SERVICIO DE INTERNET"** (US$571), **"QPAR S.A.S"**
+(US$8,185, another bare-company-name title in the "ANDERSON DAVID PACHECO
+COLINA" shape), **"CPS INFRAESTRUCTURA TI"** (US$5,145). None of these
+match a `mantenimiento` pattern, so the fix above didn't touch them — the
+real title text alone doesn't show an obvious override keyword either
+(the actual trigger is presumably buried in each tender's `summary` text,
+which isn't visible from the admin list view, and re-fetching every one
+individually wasn't practical at this volume).
+
+Rather than chase each one's hidden summary keyword individually, the
+user gave a direct, general rule: **"如有金额，金额过了再用关键字，没有
+金额的直接用关键字"** (if a value is disclosed, it must clear the floor
+before any keyword signal matters — an undisclosed value is the only
+case where keyword-only logic should decide). This exposed the real
+remaining gap: the value-floor exclude check (line ~837) was still
+gated by `!hasIncludeOverride`, same as literally every other exclude
+check in the file except the just-added `MAINTENANCE_ONLY_KEYWORDS` —
+meaning ANY bare `INCLUDE_OVERRIDE_KEYWORDS` match anywhere in the
+haystack (title, summary, OR stored industries) could bypass the value
+floor entirely, regardless of how small the disclosed value was.
+
+Fixed by removing that gate — the value floor now only respects
+`isNationalPriorityProject` (a real government-verified designation) as
+an escape valve, the same posture `MAINTENANCE_ONLY_KEYWORDS` already
+established. Verified synthetically (the real summaries weren't
+available) with two shape-matched cases — a low-value tender whose
+summary mentions "fibra óptica"/"5G", another mentioning
+"videovigilancia"/"control de acceso" — both now correctly excluded;
+91/91 fixtures pass, zero regressions (no existing confirmed-real
+fixture relies on a low value + override-keyword combination staying
+flagship). This is the last of three concentric fixes to the same root
+issue this session: narrow the specific keyword (`control de acceso`/
+`refinería`/`subestación`) → add an unconditional check for one whole
+signal (`mantenimiento`) → remove the bypass from the value floor
+itself, which no future keyword addition can silently reopen.
+
 ### Colombia's real key dates are incomplete — two real gaps fixed, one bigger option surfaced (2026-09-04)
 
 The user flagged this directly ("哥伦比亚招标信息目前并不完整，很多关键日期缺失") after

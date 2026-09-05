@@ -23,7 +23,7 @@ export function Footer() {
       <div className="mx-auto grid max-w-[94rem] gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.25fr_1fr] lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
         <div className="max-w-sm">
           <Link href="/" className="inline-flex items-center gap-3"><FooterMark /><span className="text-lg font-black tracking-[0.08em]">拉美招投标平台</span></Link>
-          <p className="mt-5 text-sm leading-7 text-white/52">把墨西哥政府招标信息转化为结构化中文情报，帮助中国团队更快发现、理解和跟进机会。</p>
+          <p className="mt-5 text-sm leading-7 text-white/52">把拉美政府招标信息转化为结构化中文情报，帮助中国团队更快发现、理解和跟进机会。</p>
         </div>
         {columns.map((column) => (
           <div key={column.title}>

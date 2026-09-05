@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/auth";
 import { localize, uiText, useLocale } from "@/lib/i18n";
@@ -9,12 +10,45 @@ export function AuthNav() {
   const { locale } = useLocale();
   const { user, loading, logout, supabaseConfigured } = useUser();
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Checked server-side (app/api/admin/whoami) rather than against a
+  // client-bundled allowlist — ADMIN_EMAILS never ships to the browser.
+  // This only controls whether the nav LINK shows; the real gate is still
+  // app/admin/tenders/layout.tsx (and every app/api/admin/... route)
+  // re-checking admin status itself. Rendered as `user && isAdminFlag`
+  // below rather than resetting the flag back to false on logout here —
+  // an effect body shouldn't call setState synchronously on its own
+  // early-return path (react-hooks/set-state-in-effect).
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetch("/api/admin/whoami")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setIsAdmin(Boolean(data.isAdmin));
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   if (loading) return null;
 
   if (supabaseConfigured && user) {
     return (
       <div className="flex items-center gap-3">
+        {isAdmin && (
+          <Link
+            href="/admin/tenders"
+            className="text-sm font-medium text-[#ffb21c] transition-colors hover:text-[#ffc247]"
+          >
+            后台管理
+          </Link>
+        )}
         <Link
           href="/account"
           className="text-sm font-medium text-white/80 transition-colors hover:text-white"

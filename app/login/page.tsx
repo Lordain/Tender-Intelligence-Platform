@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { AuthFrame } from "@/components/auth/AuthFrame";
+import { safeNextPath } from "@/lib/auth-redirect";
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -22,6 +23,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+
+  function nextPath() {
+    return safeNextPath(new URLSearchParams(window.location.search).get("next"));
+  }
 
   if (!SUPABASE_CONFIGURED) {
     return (
@@ -44,7 +49,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    router.replace(nextPath());
   }
 
   async function handleMagicLinkSubmit(event: FormEvent) {
@@ -55,7 +60,9 @@ export default function LoginPage() {
     const supabase = getSupabaseBrowserClient();
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath())}`,
+      },
     });
 
     setLoading(false);

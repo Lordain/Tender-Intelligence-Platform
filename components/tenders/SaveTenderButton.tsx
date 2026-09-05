@@ -3,6 +3,9 @@
 import { useSavedTenderIds } from "@/lib/saved";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
+import { useUser } from "@/lib/auth";
+import { currentPathWithSearch, loginPathFor } from "@/lib/auth-redirect";
+import { useRouter } from "next/navigation";
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -27,6 +30,8 @@ export function SaveTenderButton({
   className?: string;
 }) {
   const { locale } = useLocale();
+  const router = useRouter();
+  const { user } = useUser();
   const { isSaved, toggle } = useSavedTenderIds();
   const saved = isSaved(tenderId);
   const label = localize(saved ? uiText.unsaveTender : uiText.saveTender, locale);
@@ -37,6 +42,10 @@ export function SaveTenderButton({
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
+        if (!user) {
+          router.push(loginPathFor(currentPathWithSearch()));
+          return;
+        }
         toggle(tenderId);
         trackAnalyticsEvent(saved ? "tender_unsave" : "tender_save", { tenderId });
       }}

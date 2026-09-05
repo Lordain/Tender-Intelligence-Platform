@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { useSavedSearches } from "@/lib/saved";
+import { useUser } from "@/lib/auth";
+import { currentPathWithSearch, loginPathFor } from "@/lib/auth-redirect";
+import { useRouter } from "next/navigation";
 
 function BookmarkIcon() {
   return (
@@ -14,6 +17,8 @@ function BookmarkIcon() {
 
 export function SaveSearchControl({ href, disabled = false }: { href: string; disabled?: boolean }) {
   const { locale } = useLocale();
+  const router = useRouter();
+  const { user } = useUser();
   const { addSearch } = useSavedSearches();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -31,7 +36,13 @@ export function SaveSearchControl({ href, disabled = false }: { href: string; di
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (!user) {
+            router.push(loginPathFor(currentPathWithSearch()));
+            return;
+          }
+          setOpen((current) => !current);
+        }}
         aria-expanded={open}
         title={disabled ? "请先设置自定义搜索或筛选条件" : undefined}
         className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#0a2b40] bg-white px-4 text-sm font-black text-[#0a2b40] transition-colors hover:bg-[#edf2f3] disabled:cursor-not-allowed disabled:border-[#d8e0e3] disabled:bg-[#f2f4f3] disabled:text-[#9aa5ab] sm:w-auto"

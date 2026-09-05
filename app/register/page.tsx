@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { AuthFrame } from "@/components/auth/AuthFrame";
+import { safeNextPath } from "@/lib/auth-redirect";
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -19,6 +20,10 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
+
+  function nextPath() {
+    return safeNextPath(new URLSearchParams(window.location.search).get("next"));
+  }
 
   if (!SUPABASE_CONFIGURED) {
     return (
@@ -43,7 +48,13 @@ export default function RegisterPage() {
     setError(null);
 
     const supabase = getSupabaseBrowserClient();
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath())}`,
+      },
+    });
 
     setLoading(false);
 
@@ -53,7 +64,7 @@ export default function RegisterPage() {
     }
 
     if (data.session) {
-      router.push("/");
+      router.replace(nextPath());
     } else {
       setConfirmationSent(true);
     }

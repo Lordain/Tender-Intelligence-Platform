@@ -22,7 +22,7 @@ export function Footer() {
     <footer className="border-t border-white/10 bg-[#031521] text-white">
       <div className="mx-auto grid max-w-[94rem] gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.25fr_1fr] lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
         <div className="max-w-sm">
-          <Link href="/" className="inline-flex items-center gap-3"><FooterMark /><span className="text-lg font-black tracking-[0.08em]">招投标情报</span></Link>
+          <Link href="/" className="inline-flex items-center gap-3"><FooterMark /><span className="text-lg font-black tracking-[0.08em]">拉美招投标平台</span></Link>
           <p className="mt-5 text-sm leading-7 text-white/52">把墨西哥政府招标信息转化为结构化中文情报，帮助中国团队更快发现、理解和跟进机会。</p>
         </div>
         {columns.map((column) => (
@@ -36,8 +36,8 @@ export function Footer() {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[94rem] flex-col gap-3 px-5 py-6 text-[11px] leading-5 text-white/38 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
-          <p>招投标情报提供决策支持，不构成投标资格保证。重要要求请以官方原始文件为准。</p>
-          <p>© {new Date().getFullYear()} 招投标情报 · 平台独立整理公开信息，与相关政府机构无隶属关系。</p>
+          <p>拉美招投标平台提供决策支持，不构成投标资格保证。重要要求请以官方原始文件为准。</p>
+          <p>© {new Date().getFullYear()} 拉美招投标平台 · 平台独立整理公开信息，与相关政府机构无隶属关系。</p>
         </div>
       </div>
     </footer>

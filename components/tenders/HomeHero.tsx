@@ -84,7 +84,7 @@ function TenderPreview({ tenders }: { tenders: Tender[] }) {
     <div className="relative ml-auto w-full max-w-[39rem] xl:max-w-[42rem]">
       <div className="hero-product-edge relative h-[31rem] overflow-hidden rounded-r-[1.6rem] rounded-l-[2.5rem] text-[#071826] shadow-[0_18px_46px_-38px_rgba(0,0,0,0.62)] xl:h-[33rem]">
         <div className="relative z-10 border-b border-[#dbe2e5]/75 bg-transparent pb-3 pl-14 pr-6 pt-4 xl:pl-20 xl:pr-8">
-          <p className="text-base font-bold">招标情报</p>
+          <p className="text-base font-bold">拉美招投标平台</p>
           <div className="mt-3 grid grid-cols-[5.5rem_minmax(0,1fr)_6.75rem] gap-4 text-[10px] font-semibold text-[#7a8790] xl:grid-cols-[6rem_minmax(0,1fr)_7.5rem] xl:text-xs">
             <span>国家</span>
             <span>中文项目名称</span>

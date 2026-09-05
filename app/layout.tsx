@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 // be kept in sync with lib/localize.ts's uiText.heroTitle/heroSubtitle by
 // hand.
 export const metadata: Metadata = {
-  title: "招投标情报平台 | 中国企业出海墨西哥",
+  title: "拉美招投标平台 | 中国企业出海墨西哥",
   description:
     "把墨西哥政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/重点项目。",
 };

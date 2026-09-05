@@ -23,7 +23,7 @@ export function Header({ tenders }: { tenders: Tender[] }) {
       <div className="mx-auto max-w-[94rem] px-5 sm:px-8">
         <div className="flex h-[4.75rem] items-center justify-between gap-5">
           <div className="flex min-w-0 items-center gap-8">
-            <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="招投标情报首页">
+            <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="拉美招投标平台首页">
               <span className="relative flex size-10 items-center justify-center" aria-hidden="true">
                 <svg viewBox="0 0 40 44" className="size-10 fill-none">
                   <path d="M20 2 36 11v22L20 42 4 33V11L20 2Z" stroke="white" strokeWidth="4" strokeLinejoin="round" />
@@ -33,7 +33,7 @@ export function Header({ tenders }: { tenders: Tender[] }) {
                 </svg>
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-lg font-bold tracking-[0.08em]">招投标情报</span>
+                <span className="block truncate text-lg font-bold tracking-[0.08em]">拉美招投标平台</span>
                 <span className="hidden text-[10px] tracking-[0.12em] text-white/60 sm:block">拉美市场 · 投标更有把握</span>
               </span>
             </Link>

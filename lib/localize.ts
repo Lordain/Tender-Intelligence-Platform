@@ -13,7 +13,7 @@ export const uiText = {
   heroTitle: {
     en: "Tender intelligence for companies expanding into Mexico",
     es: "Inteligencia de licitaciones para proveedores internacionales en México",
-    zh: "中国企业出海墨西哥的招投标情报平台",
+    zh: "中国企业出海墨西哥的拉美招投标平台",
   },
   heroSubtitle: {
     en: "Break through the Spanish-language barrier: understand Mexican government tender requirements in your own language, and decide bid or no-bid with confidence.",

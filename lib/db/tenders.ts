@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   LocalizedText,
@@ -196,6 +197,44 @@ function toTender(row: TenderRow): Tender {
 /** PostgREST caps an unranged select at this many rows per request — a real, silent truncation confirmed against production data (exactly 1000 rows came back with no error), not a documentation-only concern. Must page with .range() to get everything. */
 const SUPABASE_PAGE_SIZE = 1000;
 
+type AwardedAnalysisProbeRow = {
+  slug: string;
+  tender_requirements: { id: string }[];
+  tender_risks: { id: string }[];
+};
+
+/**
+ * Slugs of "awarded" tenders that already have analysis logged (at least
+ * one qualification/experience/document requirement or risk — the same
+ * "标书分析结果" data the admin CRUD editors write). Scoped to
+ * `status = "awarded"` only, so this stays a small, cheap query regardless
+ * of how large the full tenders table gets — it never touches the
+ * thousands of non-awarded rows the main list query already avoids
+ * joining (see fetchAllTendersFromDb's own comment below).
+ */
+async function fetchAwardedSlugsWithAnalysis(supabase: SupabaseClient): Promise<Set<string>> {
+  const slugs = new Set<string>();
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("slug, tender_requirements ( id ), tender_risks ( id )")
+      .eq("status", "awarded")
+      .range(from, from + SUPABASE_PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("Failed to check awarded-tender analysis status from Supabase:", error.message);
+      return slugs;
+    }
+
+    const page = data as unknown as AwardedAnalysisProbeRow[];
+    for (const row of page) {
+      if (row.tender_requirements.length > 0 || row.tender_risks.length > 0) slugs.add(row.slug);
+    }
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+  }
+  return slugs;
+}
+
 /**
  * Returns null when Supabase isn't configured, so callers can fall back
  * to mock data.
@@ -218,6 +257,15 @@ const SUPABASE_PAGE_SIZE = 1000;
  *    TENDER_SELECT — toTender() defaults the omitted child arrays to
  *    empty. fetchTenderBySlugFromDb (the single-tender detail page,
  *    which does need them) is untouched.
+ *
+ * Visibility rule (2026-09-05, explicit request): an "awarded" tender with
+ * no analysis logged yet is hidden here. This is the one function behind
+ * every public-facing surface — the main /tenders feed (via
+ * lib/tenders.ts), the homepage teaser (app/page.tsx also calls
+ * getAllTenders()), and the notification digest — so gating it here covers
+ * all of them at once. Admin's own list (fetchAdminTenderListFromDb,
+ * below) is a separate query and stays untouched: admins still need to
+ * see every awarded-but-unanalyzed row to fix it.
  */
 export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> => {
   const supabase = getSupabaseServerClient();
@@ -241,7 +289,10 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
     if (page.length < SUPABASE_PAGE_SIZE) break;
   }
 
-  return rows.map(toTender);
+  const awardedWithAnalysis = await fetchAwardedSlugsWithAnalysis(supabase);
+  return rows
+    .filter((row) => row.status !== "awarded" || awardedWithAnalysis.has(row.slug))
+    .map(toTender);
 });
 
 /** Returns undefined when configured but no row matches; null when Supabase isn't configured. */

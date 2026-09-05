@@ -27,6 +27,7 @@ type UpdateTenderBody = {
   submissionDeadline?: string | null;
   awardDate?: string | null;
   awardedTo?: string | null;
+  awardedValue?: number | null;
   estimatedValue?: number | null;
   currency?: string | null;
   location?: string | null;

@@ -148,6 +148,8 @@ export type Tender = {
   awardDate?: string;
   /** Winning supplier/contractor name — only meaningful once a tender is awarded, from a real source ("Proveedor o contratista" in the Compras MX contracts export). */
   awardedTo?: string;
+  /** Actual awarded/contract amount — distinct from estimatedValue (the pre-tender budget estimate, which a real award can differ from). No ingestion source supplies this yet; admin-entered only. */
+  awardedValue?: number;
   estimatedValue?: number;
   currency?: string;
   location?: string;

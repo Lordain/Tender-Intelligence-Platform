@@ -31,6 +31,7 @@ type TenderRow = {
   submission_deadline: string | null;
   award_date: string | null;
   awarded_to: string | null;
+  awarded_value: number | null;
   estimated_value: number | null;
   currency: string | null;
   location: string | null;
@@ -84,7 +85,7 @@ const TENDER_LIST_FIELDS = `
   id, slug, tender_number, title, summary, buyer, country, government_level,
   industries, subcategory, scope_type, procedure_type, participation_scope,
   publication_date, publication_date_is_estimated,
-  submission_deadline, award_date, awarded_to, estimated_value, currency, location,
+  submission_deadline, award_date, awarded_to, awarded_value, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden,
   homepage_featured, source_name, source_url, created_at, updated_at
 `;
@@ -171,6 +172,7 @@ function toTender(row: TenderRow): Tender {
     submissionDeadline: row.submission_deadline ?? undefined,
     awardDate: row.award_date ?? undefined,
     awardedTo: row.awarded_to ?? undefined,
+    awardedValue: row.awarded_value ?? undefined,
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
     location: row.location ?? undefined,

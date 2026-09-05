@@ -19,6 +19,9 @@ type CreateTenderBody = {
   participationScope?: TenderParticipationScope;
   publicationDate: string;
   submissionDeadline?: string;
+  awardDate?: string;
+  awardedTo?: string;
+  awardedValue?: number;
   estimatedValue?: number;
   currency?: string;
   location?: string;
@@ -94,6 +97,9 @@ export async function POST(request: Request) {
     publication_date: body.publicationDate,
     publication_date_is_estimated: false,
     submission_deadline: body.submissionDeadline || null,
+    award_date: body.awardDate || null,
+    awarded_to: body.awardedTo?.trim() || null,
+    awarded_value: body.awardedValue ?? null,
     estimated_value: estimatedValue ?? null,
     currency: currency ?? null,
     location: body.location?.trim() || null,

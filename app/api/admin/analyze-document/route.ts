@@ -15,12 +15,32 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  * since this runs on the admin's own `next dev` server, not a rate-
  * limited serverless function.
  */
+// Real tender packages run large (multi-hundred-page scanned bid documents
+// are the normal case this pipeline is built for — see the module comment
+// above), so this is deliberately generous, not a tight cap. It exists only
+// to reject a mistaken multi-GB upload before it's ever buffered into
+// memory (Buffer.from(await file.arrayBuffer()) below loads the whole file
+// at once) or sent to an LLM at real token/dollar cost. If a genuine tender
+// document is ever rejected here, raise this constant rather than route
+// around the check.
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".doc"];
+
 export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "ANTHROPIC_API_KEY isn't set. See .env.example." }, { status: 500 });
+  }
+
+  // Checked from the request header before the body is ever parsed —
+  // request.formData() below buffers the entire multipart body into memory
+  // first, so this is the only point a check can reject an oversized
+  // upload before that buffering happens.
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: `文件过大（超过 ${MAX_UPLOAD_BYTES / 1024 / 1024}MB），请拆分或压缩后重新上传。` }, { status: 413 });
   }
 
   const form = await request.formData();
@@ -32,6 +52,18 @@ export async function POST(request: Request) {
   const file = form.get("file");
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "no file uploaded" }, { status: 400 });
+  }
+
+  // Belt-and-suspenders re-check against the actual parsed file (content-
+  // length can be absent/inaccurate on some clients) — and a real type
+  // check server-side, since the form's accept=".pdf,.docx,.doc" is only a
+  // client-side hint an attacker or a mistaken drag-drop can bypass.
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: `文件过大（超过 ${MAX_UPLOAD_BYTES / 1024 / 1024}MB），请拆分或压缩后重新上传。` }, { status: 413 });
+  }
+  const lowerName = file.name.toLowerCase();
+  if (!ALLOWED_EXTENSIONS.some((ext) => lowerName.endsWith(ext))) {
+    return NextResponse.json({ error: `不支持的文件类型，仅支持 ${ALLOWED_EXTENSIONS.join("/")}` }, { status: 400 });
   }
 
   const write = form.get("write") === "true";

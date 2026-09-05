@@ -339,6 +339,7 @@ export type AdminTenderListRow = {
   tenderNumber: string;
   title: LocalizedText;
   buyer: string;
+  industries: Tender["industries"];
   country: string;
   status: Tender["status"];
   relevanceTier: TenderRelevance["tier"] | null;
@@ -356,6 +357,7 @@ type AdminTenderListDbRow = {
   tender_number: string;
   title: LocalizedText;
   buyer: string;
+  industries: Tender["industries"];
   country: string;
   status: Tender["status"];
   relevance_tier: TenderRelevance["tier"] | null;
@@ -377,7 +379,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, tender_number, title, buyer, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at")
+      .select("slug, tender_number, title, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at")
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
 
@@ -396,6 +398,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     tenderNumber: row.tender_number,
     title: row.title,
     buyer: row.buyer,
+    industries: row.industries,
     country: row.country,
     status: row.status,
     relevanceTier: row.relevance_tier,

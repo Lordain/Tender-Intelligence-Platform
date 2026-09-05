@@ -12,6 +12,7 @@ import {
   RELEVANCE_TIER_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
+  industryLabel,
 } from "@/lib/tender-labels";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 
@@ -201,7 +202,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
           <thead className="border-b border-[#dbe2e5] bg-[#edf2f3] text-[11px] uppercase tracking-[0.06em] text-[#52636e]">
             <tr>
               <th className="w-[25%] px-3 py-3 font-black">标题</th>
-              <th className="w-[12%] px-2 py-3 font-black">采购单位</th>
+              <th className="w-[12%] px-2 py-3 font-black">行业</th>
               <th className="w-[7%] px-2 py-3 font-black">国家</th>
               <th className="w-[7%] px-2 py-3 font-black">状态</th>
               <th className="w-[9%] px-2 py-3 font-black">相关度</th>
@@ -219,7 +220,20 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                   <td className="px-3 py-3">
                     <p title={tender.title.zh} className="truncate whitespace-nowrap text-[12px] font-black text-[#071826]">{tender.title.zh}</p>
                   </td>
-                  <td title={tender.buyer} className="truncate whitespace-nowrap px-2 py-3 text-[11px] text-[#5d6d77]">{tender.buyer}</td>
+                  <td className="px-2 py-3">
+                    {tender.industries.length > 0 ? (
+                      <div className="flex flex-nowrap gap-1 overflow-hidden" title={tender.industries.map((industry) => industryLabel(industry, "zh")).join("、")}>
+                        {tender.industries.slice(0, 2).map((industry) => (
+                          <span key={industry} className="truncate rounded-full bg-[#edf2f3] px-2 py-1 text-[10px] font-bold text-[#314b5c]">
+                            {industryLabel(industry, "zh")}
+                          </span>
+                        ))}
+                        {tender.industries.length > 2 && (
+                          <span className="shrink-0 rounded-full bg-[#edf2f3] px-1.5 py-1 text-[10px] font-bold text-[#64717c]">+{tender.industries.length - 2}</span>
+                        )}
+                      </div>
+                    ) : <span className="text-[#9aa5ab]">未标注</span>}
+                  </td>
                   <td className="whitespace-nowrap px-2 py-3 text-[11px] text-[#425461]">
                     <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, "zh")}</span>
                   </td>

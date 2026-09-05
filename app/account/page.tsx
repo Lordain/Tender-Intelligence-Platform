@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/auth";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
+import { NotificationPreferences } from "@/components/account/NotificationPreferences";
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -128,6 +129,8 @@ export default function AccountPage() {
           {localize(uiText.viewPlans, locale)}
         </Link>
       </section>
+
+      <NotificationPreferences userId={user.id} />
     </div>
   );
 }

@@ -410,7 +410,7 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
 
         <aside className="space-y-5">
           <section className="rounded-2xl bg-[#061b2b] p-5 text-white">
-            <h2 className="text-base font-bold">本周机会</h2>
+            <h2 className="text-base font-bold">招标概览</h2>
             <div className="mt-4 grid grid-cols-3 divide-x divide-white/20 text-center">
               <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">全站项目</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{formatTenderCount(siteTenderCount)}</p></div>
               <button

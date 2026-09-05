@@ -260,6 +260,52 @@ const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
 const MAINTENANCE_ONLY_KEYWORDS = [/\bmantenimiento\b|servicio t[ée]cnico (preventivo|correctivo)/i];
 
 /**
+ * Same "this was never a procurable good/work/service" class of signal as
+ * MAINTENANCE_ONLY_KEYWORDS above — unconditional for the identical reason:
+ * no keyword should be able to rescue a record that isn't a real tender
+ * opportunity at all. Two real sub-patterns confirmed against actual
+ * Colombia SECOP II records the user flagged (2026-09-05):
+ *
+ * 1. `MANDATO_SIN_REPRESENTACION_PATTERN` — "mandato sin representación" is
+ *    a specific Colombian public-contracting legal structure where one
+ *    entity administers funds/logistics on another's behalf; the buyer
+ *    named in the record is never the one executing the actual work.
+ *    Real title: "CONTRATO INTERADMINISTRATIVO DE MANDATO SIN
+ *    REPRESENTACIÓN PARA LA OPERACIÓN LOGÍSTICA RELACIONADA CON LAS FASES
+ *    ZONAL REGIONAL Y FINAL NACIONAL DE LOS JUEGOS INTERCOLEGIADOS 2026"
+ *    ($0.8M — clears the Colombia value floor, so needed its own signal
+ *    rather than relying on being caught there).
+ *
+ * 2. `isBareInteradministrativeTitle()` — a title that's essentially JUST
+ *    the legal-instrument name ("CONVENIO INTERADMINISTRATIVO",
+ *    "CONTRATO INTERADMINISTRATIVO", "CONVENIO INTERADMINISTRATIVO
+ *    TRANSMILENIO") with no words describing what's actually being
+ *    procured. Deliberately NOT a bare "interadministrativo" keyword
+ *    match on the whole haystack — real, substantial infrastructure
+ *    projects are legitimately funded through inter-administrative
+ *    agreements too (the Juegos Intercolegiados title above is itself an
+ *    example of a long, content-bearing title using this same legal
+ *    term), so only a SHORT title (≤8 words) anchored to this exact
+ *    phrase is treated as "no real content", leaving any longer,
+ *    substantive title to be judged on its own merits by every other
+ *    signal in this file.
+ *
+ * Also covers two adjacent "this record isn't a tender at all" cases from
+ * the same batch: a labor union appearing as the record's title/buyer
+ * ("SINDICATO DE PROFESIONALES DE LA SALUD PROSALUD") and a loan/borrowing
+ * instrument ("EMPRÉSTITO") — neither describes a procurement, they're
+ * administrative/financial records SECOP's ingest picks up alongside real
+ * tenders.
+ */
+const NON_PROCUREMENT_RECORD_KEYWORDS = [/\bmandato sin representaci[óo]n\b/i, /^sindicato\b/i, /^empr[ée]stito\b/i];
+
+const BARE_INTERADMINISTRATIVE_TITLE_PATTERN = /^(convenio|contrato) interadministrativo\b/i;
+function isBareInteradministrativeTitle(title: string): boolean {
+  const trimmed = title.trim();
+  return BARE_INTERADMINISTRATIVE_TITLE_PATTERN.test(trimmed) && trimmed.split(/\s+/).length <= 8;
+}
+
+/**
  * DOF's advanced-search notices sometimes carry no real title at all —
  * confirmed real: the actual `titulo` field for some notices is
  * literally just "<BUYER> - REF:<number>" (e.g. "COMISION FEDERAL DE
@@ -782,6 +828,13 @@ export function classifyRelevance(input: {
   // government-verified national-priority-project designation (never a
   // keyword-based override) can rescue a maintenance-only tender.
   if (input.isNationalPriorityProject !== true && MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  if (
+    input.isNationalPriorityProject !== true &&
+    (NON_PROCUREMENT_RECORD_KEYWORDS.some((pattern) => pattern.test(haystack)) || isBareInteradministrativeTitle(input.title))
+  ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
 

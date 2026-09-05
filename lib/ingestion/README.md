@@ -2623,3 +2623,14 @@ Neither narrowing regressed its own original confirmed example — both still pr
 2. That alone didn't fully fix the two titles the user pointed at, because both ALSO independently mention "refinería" in the title text itself — but only as a DELIVERY LOCATION for a vehicle purchase ("...PARA USARSE EN LA REFINERÍA MADERO", "...PARA LA REFINERÍA MINATITLÁN"), not as the subject of the work. Fixed by narrowing `refiner[íi]a` with a negative lookbehind that excludes only the exact "para (uso/usarse en )?(la/el )?refinería" phrase shape — genuine refinery construction/modernization/maintenance titles ("CONSTRUCCIÓN DE NUEVA REFINERÍA...", "MODERNIZACIÓN DE LA REFINERÍA DE TULA...", "SERVICIOS DE MANTENIMIENTO INDUSTRIAL EN LA REFINERÍA...") aren't preceded by that narrow shape and still tag "energy" normally — confirmed via an ad hoc sanity check (no formal fixture harness exists for `classifyIndustries()`).
 
 Both examples now correctly return `["vehicles"]` only.
+
+## Non-procurement records: bare inter-administrative agreements, unions, loans (2026-09-05)
+
+The user flagged a batch of real Colombia SECOP II records that aren't tender opportunities at all, despite looking like ordinary tenders in the feed. Added `NON_PROCUREMENT_RECORD_KEYWORDS` + `isBareInteradministrativeTitle()`, checked unconditionally (same position/rationale as `MAINTENANCE_ONLY_KEYWORDS` — no keyword should be able to rescue a record that was never procurable content in the first place):
+
+- **"CONTRATO INTERADMINISTRATIVO DE MANDATO SIN REPRESENTACIÓN PARA LA OPERACIÓN LOGÍSTICA..."** ($0.8M, clears the Colombia value floor) — a "mandato sin representación" contract is a legal structure where the named entity administers funds/logistics on another's behalf, never the one actually executing the work. Caught by a dedicated `mandato sin representación` pattern.
+- **"CONVENIO INTERADMINISTRATIVO TRANSMILENIO"**, **"CONTRATO INTERADMINISTRATIVO"** (×2, different buyers) — titles that are essentially JUST the legal-instrument name, no words describing what's being procured. Caught by `isBareInteradministrativeTitle()`: title starts with "convenio/contrato interadministrativo" AND is ≤8 words total. Deliberately NOT a bare "interadministrativo" keyword scan — real substantial infrastructure projects are legitimately funded this way too (confirmed via a synthetic regression fixture: a long, content-bearing "CONSTRUCCIÓN DE PUENTE VEHICULAR EN EL MARCO DEL CONVENIO INTERADMINISTRATIVO..." title still correctly promotes to flagship, since the word-count gate only fires on a short, content-free title).
+- **"SINDICATO DE PROFESIONALES DE LA SALUD PROSALUD"** — a labor union's name as the record's title, not a procurement.
+- **"EMPRÉSTITO"** — a loan/borrowing instrument, not a procurement.
+
+98/98 fixtures pass (up from 91), including the new counter-example guard.

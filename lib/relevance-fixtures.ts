@@ -691,4 +691,68 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     currency: "COP",
     country: "Colombia",
   },
+
+  // --- NON_PROCUREMENT_RECORD_KEYWORDS / bare interadministrativo titles
+  // (2026-09-05, real Colombia batch the user flagged as "都要排除") — records
+  // that aren't real procurement opportunities at all: a bare inter-
+  // administrative funds/logistics agreement, a labor union, a loan. ---
+  {
+    title: "CONTRATO INTERADMINISTRATIVO DE MANDATO SIN REPRESENTACIÓN PARA LA OPERACIÓN LOGÍSTICA RELACIONADA CON LAS FASES ZONAL REGIONAL Y FINAL NACIONAL DE LOS JUEGOS INTERCOLEGIADOS 2026.",
+    expectedTier: "excluded",
+    note: "Real title, buyer Instituto Departamental de Deportes de Antioquia, $0.8M USD (clears the Colombia value floor, so needed its own signal) — a 'mandato sin representación' contract is an administrative/logistics pass-through for a sports event, not a direct goods/works purchase.",
+    scopeType: "services",
+    estimatedValue: 800_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "CONVENIO INTERADMINISTRATIVO TRANSMILENIO",
+    expectedTier: "excluded",
+    note: "Real title, buyer Secretaría Distrital de Integración Social, $7.8M USD — a bare inter-administrative agreement title with no words describing what's actually being procured.",
+    scopeType: "services",
+    estimatedValue: 7_800_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "CONTRATO INTERADMINISTRATIVO",
+    expectedTier: "excluded",
+    note: "Real title, buyer Municipio de Dabeiba, tagged 土建/水务, $2.1M USD — the entire title is just the legal-instrument name, no content describing the actual scope.",
+    scopeType: "works",
+    estimatedValue: 2_100_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "CONVENIO INTERADMINISTRATIVO",
+    expectedTier: "excluded",
+    note: "Real title, buyer Santiago de Cali Distrito Especial - Secretaría de Desarrollo Económico, $0.6M USD — same bare-title pattern as the Dabeiba example above.",
+    scopeType: "services",
+    estimatedValue: 600_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "CONSTRUCCIÓN DE PUENTE VEHICULAR EN EL MARCO DEL CONVENIO INTERADMINISTRATIVO ENTRE EL DEPARTAMENTO Y EL MUNICIPIO DE EJEMPLO PARA LA CONECTIVIDAD VIAL REGIONAL",
+    expectedTier: "flagship",
+    note: "Synthetic regression check — a genuine, substantial construction project that happens to be funded via an inter-administrative agreement (a legitimate, common Colombian funding structure) must NOT be caught by the bare-interadministrativo-title pattern: the title is long and content-bearing (construcción de puente vehicular), unlike the real bare-title examples above.",
+    scopeType: "works",
+    country: "Colombia",
+  },
+  {
+    title: "SINDICATO DE PROFESIONALES DE LA SALUD PROSALUD",
+    expectedTier: "excluded",
+    note: "Real title, buyer Empresa Social del Estado Hospital Marco Fidel Suarez, $0.8M USD — a labor union's name appearing as the record's title, not a procurement.",
+    scopeType: "services",
+    estimatedValue: 800_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "EMPRÉSTITO",
+    expectedTier: "excluded",
+    note: "Real title, buyer Municipio de Soacha — a loan/borrowing instrument, not a procurement of goods/works/services.",
+    scopeType: "services",
+    country: "Colombia",
+  },
 ];

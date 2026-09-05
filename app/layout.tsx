@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "拉美招投标平台 | 中国企业出海墨西哥",
   description:
-    "把墨西哥政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/重点项目。",
+    "把墨西哥政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/中型项目。",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

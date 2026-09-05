@@ -141,7 +141,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
           <p className="mt-2 text-2xl font-black tracking-tight text-[#071826]">{tenders.length}</p>
         </div>
         <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4 shadow-[0_16px_40px_-38px_rgba(6,27,43,.45)]">
-          <div className="flex items-center gap-2 text-xs font-bold text-[#75838c]"><span className="size-2 rounded-full bg-[#c8d3d7]" />旗舰及重点项目</div>
+          <div className="flex items-center gap-2 text-xs font-bold text-[#75838c]"><span className="size-2 rounded-full bg-[#c8d3d7]" />大型及中型项目</div>
           <p className="mt-2 text-2xl font-black tracking-tight text-[#071826]">{priorityCount}</p>
         </div>
         <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4 shadow-[0_16px_40px_-38px_rgba(6,27,43,.45)]">

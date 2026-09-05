@@ -43,7 +43,7 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     features: [
       { en: "Everything in Explorer", es: "Todo lo del plan Explorer", zh: "包含探索版全部功能" },
-      { en: "Curated feed of significant projects, not everything", es: "Selección curada de proyectos significativos, no todo", zh: "精选大型/重点项目，而非全部招标信息" },
+      { en: "Curated feed of significant projects, not everything", es: "Selección curada de proyectos significativos, no todo", zh: "精选大型/中型项目，而非全部招标信息" },
       { en: "Full qualification analysis", es: "Análisis completo de calificación", zh: "完整资质分析" },
       { en: "Experience requirements & required documents", es: "Requisitos de experiencia y documentos requeridos", zh: "经验要求与所需文件" },
       { en: "Critical dates & risk flags", es: "Fechas críticas y alertas de riesgo", zh: "关键日期与风险提示" },

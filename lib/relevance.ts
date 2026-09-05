@@ -824,14 +824,22 @@ const SHORT_BRIDGE_METERS = 30;
  */
 const MIN_VALUE_USD = 500_000;
 
+// zh tier names renamed 2026-09-05 per explicit user request
+// ("重点项目"->"中型项目", "旗舰项目"->"大型项目") — see the same-day comment
+// in lib/tender-labels.ts. This LABELS object is written into each
+// tender's own stored relevance_label column at classify time, so
+// existing rows keep the OLD zh text until a "重新分类" run recomputes
+// them — only lib/tender-labels.ts's RELEVANCE_TIER_LABELS (used for
+// filter chips/dropdowns, looked up live by tier key, never stored)
+// takes effect immediately.
 const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   flagship: {
-    zh: "旗舰项目 · 建议中资企业重点关注",
+    zh: "大型项目 · 建议中资企业重点关注",
     en: "Flagship Project",
     es: "Proyecto Insignia",
   },
   significant: {
-    zh: "重点项目 · 中资出海相关度较高",
+    zh: "中型项目 · 中资出海相关度较高",
     en: "Significant Project",
     es: "Proyecto Significativo",
   },

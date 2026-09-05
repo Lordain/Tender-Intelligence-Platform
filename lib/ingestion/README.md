@@ -2735,3 +2735,14 @@ The user compared a Compras MX tender's admin edit view ("发布日期 2026/09/0
 2. **A real bug, now fixed.** Both admin tender-save routes (`app/api/admin/tenders/route.ts` POST, `app/api/admin/tenders/[slug]/route.ts` PATCH) unconditionally wrote `publication_date_is_estimated: false` on every save — so the moment an admin edited *any* field on a tender that started with an honest, flagged estimate (like this one), the flag silently flipped to "confirmed real date" even if the admin never touched the date itself or had no idea it was ever an estimate. From then on the public page would show "发布日期" (implying a real, sourced date) for what's still just an ingestion timestamp — and `AdminTenderForm.tsx` never even exposed this distinction, so an admin had no way to notice or preserve it.
 
 Fixed: `publicationDateIsEstimated` is now a real field on `FormState`/both request bodies, with its own checkbox right under the 发布日期 input ("该日期是估算值...已核实真实日期请取消勾选") — pre-filled from the tender's actual stored value, only changed when an admin deliberately (un)checks it. Both routes now write `body.publicationDateIsEstimated === true` instead of a hardcoded `false`.
+
+## Site-wide tier-name rename: 重点项目→中型项目, 旗舰(大标/项目)→大型项目 (2026-09-05)
+
+Per explicit user request: `standard`("常规项目") unchanged; `significant` zh renamed 重点项目→中型项目; `flagship` zh renamed 旗舰大标/旗舰项目→大型项目. Two independent places carry this text and behave differently:
+
+- `lib/tender-labels.ts`'s `RELEVANCE_TIER_LABELS` (filter chips/dropdowns across TenderExplorer/AdminTenderForm/AdminTenderList/DocumentsNeededView — looked up live by tier key, never stored) — takes effect immediately, no reclassify needed.
+- `lib/relevance.ts`'s `LABELS` (the "旗舰项目 · 建议中资企业重点关注" style sentence written into each tender's own `relevance_label` column at classify time) — existing rows keep the OLD zh text until a "重新分类" run recomputes them.
+
+Also updated: `AdminAnalyticsDashboard.tsx`'s value-label map, `DocumentsNeededView.tsx`'s stat label, the site's `<meta name="description">` (`app/layout.tsx`), both pricing-page "旗舰标标签筛选" feature bullets, the (currently unused/dead — no import site found) `lib/pricing.ts` `PRICING_TIERS`, and `ValuePropositions.tsx`'s homepage feature-card detail sentence that explicitly paired "大型及重点项目". Left alone as NOT literal tier-badge references (generic "your important/priority projects" marketing language, not the renamed labels themselves): `ValuePropositions.tsx`'s card title "重点项目优选" and both "重点项目" mentions in `SavedView.tsx` ("我的收藏" page copy).
+
+101/101 fixtures unaffected (they assert against the tier KEY, e.g. `expectedTier: "significant"`, never the display label text).

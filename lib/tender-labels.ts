@@ -136,8 +136,12 @@ export const RISK_LEVEL_ICONS: Record<TenderRiskLevel, string> = {
 };
 
 export const RELEVANCE_TIER_LABELS: Record<TenderRelevanceTier, LocalizedText> = {
-  flagship: { en: "Flagship", es: "Insignia", zh: "旗舰大标" },
-  significant: { en: "Significant", es: "Relevante", zh: "重点项目" },
+  // zh renamed 2026-09-05 per explicit user request ("重点项目"->"中型项目",
+  // "旗舰大标"->"大型项目"); en/es left as-is since the front-end is
+  // Chinese-only (LOCALE hardcoded "zh" in lib/i18n.tsx) and never renders
+  // them.
+  flagship: { en: "Flagship", es: "Insignia", zh: "大型项目" },
+  significant: { en: "Significant", es: "Relevante", zh: "中型项目" },
   standard: { en: "Standard", es: "Estándar", zh: "常规项目" },
   // "（排除）" appended per the user's explicit ask (2026-09-04) — this
   // label shows up both in AdminTenderForm's manual-tier dropdown and

@@ -19,7 +19,7 @@ export function AuthNav() {
           href="/account"
           className="text-sm font-medium text-white/80 transition-colors hover:text-white"
         >
-          账户
+          账户管理
         </Link>
         <Link
           href="/account"

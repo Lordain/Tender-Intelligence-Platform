@@ -388,6 +388,7 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
       relevanceLabel: row.relevance_label ?? LABELS_FALLBACK,
       publicationDate: row.publication_date,
       sourceUrl: row.source_url,
+      status: row.status,
     }));
 }
 

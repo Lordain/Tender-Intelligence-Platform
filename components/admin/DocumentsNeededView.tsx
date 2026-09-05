@@ -6,7 +6,7 @@ import type { TenderNeedingDocuments } from "@/types/tender";
 import { useUser } from "@/lib/auth";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
-import { countryLabel, RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
+import { countryLabel, RELEVANCE_TIER_LABELS, STATUS_LABELS, STATUS_COLORS } from "@/lib/tender-labels";
 import { AnalyzeDocumentForm } from "@/components/admin/AnalyzeDocumentForm";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
@@ -180,11 +180,12 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
           <table className="w-full min-w-[980px] table-fixed text-left text-xs">
             <thead className="border-b border-[#dbe2e5] bg-[#edf2f3] text-[11px] uppercase tracking-[0.06em] text-[#52636e]">
               <tr>
-                <th className="w-[30%] px-4 py-3 font-black">{localize(uiText.colTitle, locale)}</th>
-                <th className="w-[10%] px-3 py-3 font-black">{localize(uiText.countryLabel, locale)}</th>
-                <th className="w-[29%] px-3 py-3 font-black">{localize(uiText.colTenderId, locale)}</th>
-                <th className="w-[13%] px-3 py-3 font-black">{localize(uiText.colPublicationDate, locale)}</th>
-                <th className="w-[18%] px-3 py-3 text-center font-black">操作</th>
+                <th className="w-[26%] px-4 py-3 font-black">{localize(uiText.colTitle, locale)}</th>
+                <th className="w-[9%] px-3 py-3 font-black">{localize(uiText.countryLabel, locale)}</th>
+                <th className="w-[9%] px-3 py-3 font-black">状态</th>
+                <th className="w-[20%] px-3 py-3 font-black">{localize(uiText.colTenderId, locale)}</th>
+                <th className="w-[12%] px-3 py-3 font-black">{localize(uiText.colPublicationDate, locale)}</th>
+                <th className="w-[24%] px-3 py-3 text-center font-black">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e9eb]">
@@ -196,6 +197,9 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
                       <td title={localize(tender.title, locale)} className="truncate whitespace-nowrap px-4 py-3 font-black text-[#071826]">{localize(tender.title, locale)}</td>
                       <td className="whitespace-nowrap px-3 py-3 text-[#425461]">
                         <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${STATUS_COLORS[tender.status]}`}>{STATUS_LABELS[tender.status][locale]}</span>
                       </td>
                       <td title={tender.slug} className="truncate whitespace-nowrap px-3 py-3 font-mono text-[11px] text-[#5d6d77]">{tender.slug}</td>
                       <td className="whitespace-nowrap px-3 py-3 text-[#5d6d77]">{formatDate(tender.publicationDate, locale)}</td>
@@ -221,7 +225,7 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
                     </tr>
                     {isOpen && (
                       <tr>
-                        <td colSpan={5} className="bg-[#f7f5ef] px-5 py-5">
+                        <td colSpan={6} className="bg-[#f7f5ef] px-5 py-5">
                           <AnalyzeDocumentForm
                             initialSlug={tender.slug}
                             lockSlug
@@ -239,7 +243,7 @@ export function DocumentsNeededView({ tenders }: { tenders: TenderNeedingDocumen
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-14 text-center">
+                  <td colSpan={6} className="px-5 py-14 text-center">
                     <p className="font-black text-[#071826]">没有找到符合条件的项目</p>
                     <p className="mt-1 text-xs text-[#75838c]">可以尝试修改关键词或清除筛选条件</p>
                   </td>

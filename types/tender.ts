@@ -108,6 +108,7 @@ export type TenderNeedingDocuments = {
   relevanceLabel: LocalizedText;
   publicationDate: string;
   sourceUrl: string;
+  status: TenderStatus;
 };
 
 export type Tender = {

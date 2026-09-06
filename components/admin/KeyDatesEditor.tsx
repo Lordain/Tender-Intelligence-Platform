@@ -23,7 +23,7 @@ const HANDLED_ELSEWHERE: TenderKeyDate["type"][] = ["publication", "submission",
 const KEY_DATE_TYPES = (Object.keys(KEY_DATE_TYPE_LABELS) as TenderKeyDate["type"][]).filter((t) => !HANDLED_ELSEWHERE.includes(t));
 
 const inputClass =
-  "h-10 w-full rounded-lg border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none transition-shadow focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10";
+  "h-11 w-full rounded-lg border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none transition-shadow focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10";
 const labelClass = "flex flex-col gap-1 text-xs";
 const labelTextClass = "font-bold text-[#52636e]";
 
@@ -169,7 +169,7 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
     <div className="flex flex-col gap-3">
       {error && <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
 
-      {visibleKeyDates.length === 0 && <p className="text-xs text-[#7a878f]">还没有其他关键日期（发布/投标截止/中标日期请在上方&ldquo;时间与预算&rdquo;区域编辑）。</p>}
+      {visibleKeyDates.length === 0 && <p className="text-xs text-[#7a878f]">还没有其他关键日期（发布/投标截止日期请在本区上方编辑，中标日期请在&ldquo;项目状态和预算&rdquo;区域编辑）。</p>}
 
       {visibleKeyDates.map((kd) =>
         editingId === kd.id ? (
@@ -214,11 +214,16 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
                   setEditingId(kd.id);
                   setEditDraft(toDraft(kd));
                 }}
-                className="text-xs font-bold text-[#0a6ebd] hover:underline"
+                className="inline-flex h-8 items-center rounded-lg border border-[#cbd6da] bg-white px-3 text-xs font-black text-[#0a5f9e] transition-colors hover:border-[#0a5f9e] hover:bg-[#eef7fc]"
               >
                 编辑
               </button>
-              <button type="button" disabled={busyId === kd.id} onClick={() => handleDelete(kd.id)} className="text-xs font-bold text-red-600 hover:underline disabled:opacity-50">
+              <button
+                type="button"
+                disabled={busyId === kd.id}
+                onClick={() => handleDelete(kd.id)}
+                className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-white px-3 text-xs font-black text-red-600 transition-colors hover:border-red-400 hover:bg-red-50 disabled:opacity-50"
+              >
                 删除
               </button>
             </span>
@@ -249,7 +254,7 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
           <input type="checkbox" className="size-4 accent-[#ffb21c]" checked={addDraft.mandatory} onChange={(e) => setAddDraft((d) => ({ ...d, mandatory: e.target.checked }))} />
           强制
         </label>
-        <button type="button" disabled={adding} onClick={handleAdd} className="self-end rounded-lg bg-[#061b2b] px-3 py-2 text-xs font-black text-white disabled:opacity-50">
+        <button type="button" disabled={adding} onClick={handleAdd} className="h-11 self-end rounded-lg bg-[#061b2b] px-3 text-xs font-black text-white transition-colors hover:bg-[#123d56] disabled:opacity-50">
           {adding ? "添加中…" : "+ 添加日期"}
         </button>
       </div>

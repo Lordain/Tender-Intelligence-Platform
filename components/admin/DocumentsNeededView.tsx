@@ -131,7 +131,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
       <AdminPageHeader
         eyebrow="Document worklist"
         title={localize(uiText.documentsNeededTitle, locale)}
-        description={`${localize(uiText.documentsNeededSubtitle, locale)} 在同一页面完成来源核验、附件上传和分析。`}
+        description={`${localize(uiText.documentsNeededSubtitle, locale)} 在同一页面完成官方正式投标入口核验、附件上传和分析。`}
         backHref="/admin/tenders"
       />
 
@@ -240,7 +240,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                             rel="noopener noreferrer"
                             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-3 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
                           >
-                            <ExternalLinkIcon />来源链接
+                            <ExternalLinkIcon />官方正式投标入口
                           </a>
                           <button
                             type="button"

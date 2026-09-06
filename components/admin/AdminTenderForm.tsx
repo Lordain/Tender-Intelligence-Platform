@@ -123,7 +123,9 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
   const [form, setForm] = useState<FormState>(() => initialStateFrom(tender));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [copiedTenderNumber, setCopiedTenderNumber] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const officialEntryUrl = /^https?:\/\//i.test(form.sourceUrl.trim()) ? form.sourceUrl.trim() : null;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -134,6 +136,14 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       ...prev,
       industries: prev.industries.includes(key) ? prev.industries.filter((i) => i !== key) : [...prev.industries, key],
     }));
+  }
+
+  async function copyTenderNumber() {
+    const tenderNumber = form.tenderNumber.trim();
+    if (!tenderNumber) return;
+    await navigator.clipboard.writeText(tenderNumber);
+    setCopiedTenderNumber(true);
+    window.setTimeout(() => setCopiedTenderNumber(false), 1800);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -333,7 +343,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       </div>
       </FormSection>
 
-      <FormSection title="时间与预算" description="设置项目状态、金额和实施地点。">
+      <FormSection title="项目状态和预算" description="集中设置项目状态、相关度、预算与中标结果。">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className={labelClass}>
           <span className={labelTextClass}>状态 *</span>
@@ -346,6 +356,38 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           </select>
         </label>
         <label className={labelClass}>
+          <span className={labelTextClass}>相关度分级</span>
+          <select
+            className={inputClass}
+            value={form.relevanceTier}
+            onChange={(e) => {
+              const value = e.target.value as TenderRelevanceTier;
+              setForm((prev) => ({ ...prev, relevanceTier: value, relevanceManuallyOverridden: true }));
+            }}
+          >
+            {RELEVANCE_TIER_KEYS.map((k) => (
+              <option key={k} value={k}>
+                {RELEVANCE_TIER_LABELS[k].zh}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={labelClass}>
+          <span className={labelTextClass}>地点</span>
+          <input className={inputClass} value={form.location} onChange={(e) => update("location", e.target.value)} />
+        </label>
+      </div>
+      <label className="flex items-center gap-2 rounded-xl bg-[#f2f4f3] px-4 py-3 text-sm text-[#233846]">
+        <input
+          type="checkbox"
+          checked={form.relevanceManuallyOverridden}
+          onChange={(e) => update("relevanceManuallyOverridden", e.target.checked)}
+          className="size-4 accent-[#ffb21c]"
+        />
+        锁定此相关度分级，避免重新抓取时被自动分类覆盖
+      </label>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className={labelClass}>
           <span className={labelTextClass}>预估金额</span>
           <input type="number" className={inputClass} value={form.estimatedValue} onChange={(e) => update("estimatedValue", e.target.value)} />
         </label>
@@ -354,34 +396,35 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           <input className={inputClass} value={form.currency} onChange={(e) => update("currency", e.target.value.toUpperCase())} />
         </label>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="border-t border-[#e5e9eb] pt-4">
+        <p className="mb-3 text-xs font-black text-[#52636e]">中标结果</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className={labelClass}>
-          <span className={labelTextClass}>地点</span>
-          <input className={inputClass} value={form.location} onChange={(e) => update("location", e.target.value)} />
+          <span className={labelTextClass}>中标日期</span>
+          <input type="date" className={inputClass} value={form.awardDate} onChange={(e) => update("awardDate", e.target.value)} />
         </label>
+        <label className={labelClass}>
+          <span className={labelTextClass}>中标单位</span>
+          <input className={inputClass} value={form.awardedTo} onChange={(e) => update("awardedTo", e.target.value)} />
+        </label>
+        <label className={labelClass}>
+          <span className={labelTextClass}>中标金额</span>
+          <input type="number" className={inputClass} value={form.awardedValue} onChange={(e) => update("awardedValue", e.target.value)} />
+        </label>
+        </div>
       </div>
       </FormSection>
 
       {/*
-        Real complaint, 2026-09-05: 发布日期/投标截止日期 used to live up in
-        "时间与预算" while every OTHER key date lived in its own section
-        further down, with "相关度设置" sandwiched in between — an admin
-        checking a tender's dates had to look in two places, split across
-        the page. All date-shaped fields (publication/submission/award —
-        the three syncKeyDatesForTopLevelFields() keeps mirrored into
-        tender_key_dates — plus the other key-date types KeyDatesEditor
-        manages directly) now live in this one section, in page order,
-        with nothing else between them. 发布日期/投标截止日期/中标信息 stay
-        visible even when creating a brand-new tender (isEdit false) since
-        publicationDate is required there too; the KeyDatesEditor list
-        itself still only renders in edit mode (it needs a real tender id
-        to call its own CRUD API against).
+        Publication and submission remain together with the additional
+        timeline editor. Award-result fields live in the status/budget
+        section above so administrators can review the outcome as one unit.
       */}
       <FormSection
         title="关键日期"
         description={
           isEdit
-            ? "发布/投标截止/中标日期与预算等其他字段一起，点击下方“保存修改”生效；下方其他关键节点（澄清会议、现场踏勘等）各自独立立即保存。"
+            ? "发布日期与投标截止日期点击下方“保存修改”生效；其他关键节点各自独立立即保存。"
             : "发布日期为必填项；其余关键节点需要先保存这条标书后才能添加。"
         }
       >
@@ -407,31 +450,6 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           </label>
         </div>
 
-        {/*
-          Used to be conditional on form.status === "awarded" (or an award
-          field already having a value) — real complaint, 2026-09-05: an
-          admin who wants to manually record a real award result has no
-          way to see these fields at all until they first flip 状态 to
-          "已中标" in the dropdown above, a non-obvious two-step flow.
-          Always visible now, same as 发布日期/投标截止日期 right above —
-          filling these in doesn't itself change 状态 (an admin still
-          sets that separately), it's just no longer hidden behind it.
-        */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <label className={labelClass}>
-            <span className={labelTextClass}>中标日期</span>
-            <input type="date" className={inputClass} value={form.awardDate} onChange={(e) => update("awardDate", e.target.value)} />
-          </label>
-          <label className={labelClass}>
-            <span className={labelTextClass}>中标单位</span>
-            <input className={inputClass} value={form.awardedTo} onChange={(e) => update("awardedTo", e.target.value)} />
-          </label>
-          <label className={labelClass}>
-            <span className={labelTextClass}>中标金额（与预估金额分开填写，可能不同）</span>
-            <input type="number" className={inputClass} value={form.awardedValue} onChange={(e) => update("awardedValue", e.target.value)} />
-          </label>
-        </div>
-
         {isEdit && (
           <div className="border-t border-[#e5e9eb] pt-5">
             <p className="text-xs font-black text-[#52636e]">其他关键日期</p>
@@ -443,50 +461,6 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
             </div>
           </div>
         )}
-      </FormSection>
-
-      {/*
-        Real complaint, 2026-09-06: "添加新项目" used to hide this entire
-        section (isEdit-only), so a newly-created tender always started
-        life at whatever classifyRelevance() decided with no way to set it
-        at creation time — an admin had to save, then immediately re-open
-        edit just to fix the tier. Nothing here depends on a real tender id
-        (it's plain columns), so it's now always shown; the create route
-        (app/api/admin/tenders/route.ts) honors an admin-chosen tier the
-        same way the edit route already did.
-      */}
-      <FormSection title="相关度设置" description="人工调整项目优先级，并决定是否阻止后续自动分类覆盖。">
-        <label className={labelClass}>
-          <span className={labelTextClass}>相关度分级（手动覆盖会替换掉自动生成的理由说明）</span>
-          <select
-            className={inputClass}
-            value={form.relevanceTier}
-            onChange={(e) => {
-              const value = e.target.value as TenderRelevanceTier;
-              // Changing the tier by hand almost always means "protect
-              // this choice" — auto-check the lock, but leave it
-              // overridable below (e.g. an admin who wants this to
-              // revert to automatic classification on the next
-              // re-ingest can still uncheck it before saving).
-              setForm((prev) => ({ ...prev, relevanceTier: value, relevanceManuallyOverridden: true }));
-            }}
-          >
-            {RELEVANCE_TIER_KEYS.map((k) => (
-              <option key={k} value={k}>
-                {RELEVANCE_TIER_LABELS[k].zh}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-2 text-sm text-[#233846]">
-          <input
-            type="checkbox"
-            checked={form.relevanceManuallyOverridden}
-            onChange={(e) => update("relevanceManuallyOverridden", e.target.checked)}
-            className="size-4 accent-[#ffb21c]"
-          />
-          🔒 锁定此分级（以后这条标书被重新抓取/入库时，不会被自动分类规则覆盖；取消勾选可恢复自动分类）
-        </label>
       </FormSection>
 
       {/*
@@ -526,20 +500,40 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
         )}
       </FormSection>
 
-      <FormSection title="来源信息" description="保存官方编号和原始信息入口，方便后续核验与追溯。">
+      <FormSection title="官方正式投标入口" description="保存官方编号与正式投标页面，方便核验并按官方要求参与投标。">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className={labelClass}>
           <span className={labelTextClass}>标书编号</span>
           <input className={inputClass} value={form.tenderNumber} onChange={(e) => update("tenderNumber", e.target.value)} />
         </label>
         <label className={labelClass}>
-          <span className={labelTextClass}>数据来源名称</span>
+          <span className={labelTextClass}>官方平台名称</span>
           <input className={inputClass} value={form.sourceName} onChange={(e) => update("sourceName", e.target.value)} />
         </label>
         <label className={labelClass}>
-          <span className={labelTextClass}>来源链接</span>
+          <span className={labelTextClass}>官方正式投标入口链接</span>
           <input className={inputClass} value={form.sourceUrl} onChange={(e) => update("sourceUrl", e.target.value)} />
         </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={copyTenderNumber}
+          disabled={!form.tenderNumber.trim()}
+          className="inline-flex h-11 items-center rounded-xl border border-[#cbd6da] bg-white px-4 text-sm font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {copiedTenderNumber ? "已复制标书编号" : "复制标书编号"}
+        </button>
+        {officialEntryUrl && (
+          <a
+            href={officialEntryUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#0a2b40] bg-[#0a2b40] px-4 text-sm font-black text-white transition-colors hover:bg-[#123d56]"
+          >
+            打开官方正式投标入口 <span aria-hidden="true">↗</span>
+          </a>
+        )}
       </div>
       <label className="mt-4 flex items-center gap-2 text-sm text-[#233846]">
         <input

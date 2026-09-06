@@ -51,7 +51,6 @@
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
     "adm-zip": "^0.6.0",
-    "csv-parse": "^7.0.2",
     "exceljs": "^4.4.0",
     "mammoth": "^1.12.2",
     "next": "16.3.3",

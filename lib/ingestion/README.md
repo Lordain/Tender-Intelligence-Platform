@@ -3122,3 +3122,59 @@ Not a bug, recorded so it isn't re-investigated: three `POST
 job. It is mounted once in the root layout and guards on pathname, so
 three events means three paths were visited — client-side navigation
 doesn't clear the Network log.
+
+## 2026-09-06 — Full-codebase audit: what was fixed
+
+A systematic pass over the whole app (code quality, performance,
+responsive, security/robustness). Recording the findings that were acted
+on, and the two that were not.
+
+**The admin Supabase client was not necessarily an admin client.**
+`createSupabaseAdminClient()` fell back to the anon key when
+`SUPABASE_SERVICE_ROLE_KEY` was unset. All ~60 of its callers are writers
+(every `/api/admin` route, both cron routes, every ingestion script), so
+their writes silently ran as `anon`. Two call sites had already grown a
+hand-rolled `&& process.env.SUPABASE_SERVICE_ROLE_KEY` check to work
+around it, which is the tell. It is now service-role-or-null; the anon
+fallback lives in a separate `createSupabaseReadClient()` used only by the
+two public read paths, which preserves the "browsable with only
+NEXT_PUBLIC_* vars" property that fallback actually existed for.
+
+**Two more delete-then-insert sites had the unchecked-write shape** fixed
+earlier in `analyze-uploaded-document.ts`: `import-batch-analysis.ts` and
+`upsert-tenders.ts` (key dates). `assertWritten()` now lives in
+`lib/db/assert-written.ts` and covers all three. The batch importer also
+gained `skipped-empty` (an all-empty extraction no longer wipes a good
+previous result) and `failed` (a write error reports itself per tender
+instead of aborting the batch or claiming success). `app/account/page.tsx`
+showed users "已保存" whether or not their profile update succeeded.
+
+**There were no error boundaries at all.** Any throw in a Server Component
+reached production users as Next's bare "Application error". Added
+`app/error.tsx` (with `reset()` and the server-side digest, which is the
+only handle on a stack Next withholds from the browser),
+`app/global-error.tsx` (self-contained, since the root layout is what
+failed), and a site-wide `app/not-found.tsx`.
+
+**Static assets were 2.8 MB; they are now 100 KB.** `app/favicon.ico` was
+361 KB — six uncompressed BMP entries up to 256×256, loaded on every page
+— re-encoded as PNG-in-ICO at 16/32/48 from the same artwork (5.7 KB).
+The brand mark renders at 40 CSS px but shipped as a 1254×1254 PNG per
+variant (661 KB / 546 KB) → 320px WebP (11.4 KB / 10.5 KB). The hero
+background: 1.59 MB PNG → 65 KB WebP.
+
+**Dead code removed:** `lib/pricing.ts` in full (`PRICING_TIERS` had zero
+references — `/pricing` hardcodes its own content), the `csv-parse`
+dependency (zero references), and five unreferenced Next scaffolding SVGs.
+
+Two things deliberately NOT changed, with reasons:
+
+- `proxy.ts` runs `supabase.auth.getUser()` — a real round-trip — on every
+  matched request. That is the standard Supabase SSR pattern and it is the
+  fixed cost of every page's TTFB, but narrowing the matcher risks
+  silently expiring sessions. Not worth the trade without a measurement
+  showing it matters.
+- `relevance_reason` is fetched for every row and rendered nowhere, but
+  `toRelevance()` uses its presence as the condition for falling back to
+  `classifyRelevance()`. Dropping it from the list select would silently
+  change tier results, so it needs that condition rewritten first.

@@ -122,7 +122,7 @@ export function HomeHero({ tenders }: { tenders: Tender[] }) {
 
   return (
     <section className="relative isolate overflow-hidden bg-[#031521] text-white">
-      <Image src="/lighthouse-hero.png" alt="" fill preload sizes="100vw" className="-z-20 -translate-x-[16%] scale-[1.12] object-cover object-center opacity-90" />
+      <Image src="/lighthouse-hero.webp" alt="" fill preload sizes="100vw" className="-z-20 -translate-x-[16%] scale-[1.12] object-cover object-center opacity-90" />
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(3,21,33,.98)_0%,rgba(3,21,33,.86)_31%,rgba(3,21,33,.24)_50%,rgba(3,21,33,.5)_100%)]" />
       <div className="mx-auto grid min-h-[36rem] max-w-[94rem] items-center gap-8 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:py-8 xl:gap-12">
         <div className="relative z-10 min-w-0 max-w-[40rem]">

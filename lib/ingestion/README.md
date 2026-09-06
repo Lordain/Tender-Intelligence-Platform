@@ -3077,3 +3077,27 @@ The homepage additionally fetched full detail for its featured + ticker
 picks one slug at a time — 13 separate joined queries at the default
 counts, on top of the full-table read in the same render — now a single
 `fetchTendersBySlugsFromDb()`.
+
+## 2026-09-06 — One auth request per tender card
+
+A real Network panel capture of `/tenders` (the user's, not a synthetic
+one) showed the actual browsing-speed problem, and it was not payload:
+the RSC document was only 40.9 kB. It was a staircase of ~30 identical
+`/auth/v1/user` requests, ~1 kB each, ~80 ms apart, all attributed to
+`lib/auth.ts`.
+
+`useUser()` ran `supabase.auth.getUser()` — a real round-trip to the auth
+server every call, unlike `getSession()`, which reads local storage — in
+a per-instance `useEffect`. `SaveTenderButton` calls it, and renders once
+per tender card; `/tenders` shows 28 per page. So every visit opened 28+
+identical requests that the browser's per-host connection limit then
+serialised into a multi-second stall before any bookmark button knew
+whether the visitor was signed in.
+
+Both `useUser()` and `useSavedTenderIds()`/`useSavedSearches()` now read
+from one module-level store via `useSyncExternalStore`, keeping their
+call-site APIs unchanged. The saved-tenders one also fixes a genuine bug:
+each instance held its own copy of the list, so toggling a bookmark
+updated only the button that was clicked, while the saved-reminder list
+further down the same page kept showing the pre-click state until it
+remounted.

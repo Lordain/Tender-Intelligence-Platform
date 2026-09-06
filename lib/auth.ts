@@ -1,12 +1,64 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
+
+type AuthState = { user: User | null; loading: boolean };
+
+/**
+ * Stable reference, returned before the real session is known and as the
+ * server snapshot — useSyncExternalStore requires getSnapshot to return an
+ * identical reference for unchanged state, and the server/hydration render
+ * must agree with the first client render.
+ */
+const INITIAL: AuthState = { user: null, loading: SUPABASE_CONFIGURED };
+
+/**
+ * ONE shared auth state for the whole app, not one per hook instance
+ * (2026-09-06). supabase.auth.getUser() is a real network round-trip to
+ * the auth server every time it's called — unlike getSession(), which
+ * reads local storage — and this hook is called from SaveTenderButton,
+ * which renders once per tender card. A single page of /tenders is 28
+ * cards, so every visit fired 28+ identical /auth/v1/user requests, which
+ * the browser's per-host connection limit then serialised into a visible
+ * multi-second staircase (confirmed in a real Network panel: ~1 kB each,
+ * ~80 ms apart, all from this file). They now share one request and one
+ * onAuthStateChange subscription.
+ */
+let state: AuthState = INITIAL;
+const listeners = new Set<() => void>();
+let started = false;
+
+function setState(next: AuthState) {
+  state = next;
+  for (const listener of listeners) listener();
+}
+
+function start() {
+  if (started || !SUPABASE_CONFIGURED) return;
+  started = true;
+
+  const supabase = getSupabaseBrowserClient();
+  supabase.auth.getUser().then(({ data }) => setState({ user: data.user, loading: false }));
+  // Never unsubscribed: this subscription belongs to the module, not to
+  // any one component, and lives as long as the page does. Tearing it
+  // down when the last consumer unmounts would only mean re-establishing
+  // it (and re-fetching) on the next navigation.
+  supabase.auth.onAuthStateChange((_event, session) => setState({ user: session?.user ?? null, loading: false }));
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  start();
+  return () => {
+    listeners.delete(listener);
+  };
+}
 
 /**
  * Auth state is read client-side (rather than server-side via cookies in the
@@ -16,32 +68,12 @@ const SUPABASE_CONFIGURED = Boolean(
  * don't need router.refresh() after auth actions.
  */
 export function useUser() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(SUPABASE_CONFIGURED);
+  const { user, loading } = useSyncExternalStore(subscribe, () => state, () => INITIAL);
 
-  useEffect(() => {
-    if (!SUPABASE_CONFIGURED) return;
-
-    const supabase = getSupabaseBrowserClient();
-
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      setLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  async function logout() {
+  const logout = useCallback(async () => {
     if (!SUPABASE_CONFIGURED) return;
     await getSupabaseBrowserClient().auth.signOut();
-  }
+  }, []);
 
   return { user, loading, logout, supabaseConfigured: SUPABASE_CONFIGURED };
 }

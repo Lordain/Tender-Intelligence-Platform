@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 const SAVED_TENDERS_KEY = "tender-intelligence:saved-tenders";
 const SAVED_SEARCHES_KEY = "tender-intelligence:saved-searches";
@@ -19,27 +19,63 @@ function writeList<T>(key: string, value: T[]) {
 }
 
 /**
+ * ONE shared list per storage key, not one copy per hook instance
+ * (2026-09-06). These hooks are called from components that render many
+ * times on one page — useSavedTenderIds() runs once per SaveTenderButton,
+ * i.e. once per tender card — and each instance used to hold its own
+ * useState copy of the same list, hydrated by its own post-mount effect.
+ *
+ * That was a real bug, not just waste: toggling a bookmark updated only
+ * the instance that was clicked. Every other instance kept its stale
+ * copy until it remounted, so the "已收藏" reminder list further down the
+ * same page didn't react to the card the user had just clicked. All
+ * consumers now read and write the same store.
+ *
+ * The server snapshot is a stable empty array: server-rendered HTML can't
+ * know what's in localStorage, so the hydration render has to agree that
+ * it's empty and only then switch to the real value — which is what the
+ * post-mount effect this replaces was working around by hand.
+ */
+const EMPTY: never[] = [];
+
+function createListStore<T>(key: string) {
+  // Read at module init on the client (never during the hydration render —
+  // useSyncExternalStore serves getServerSnapshot for that, then re-renders
+  // with this value once hydrated).
+  let value: T[] = typeof window === "undefined" ? (EMPTY as T[]) : readList<T>(key);
+  const listeners = new Set<() => void>();
+
+  return {
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    get: () => value,
+    getServer: () => EMPTY as T[],
+    update(next: (current: T[]) => T[]) {
+      value = next(value);
+      writeList(key, value);
+      for (const listener of listeners) listener();
+    },
+  };
+}
+
+const savedTendersStore = createListStore<string>(SAVED_TENDERS_KEY);
+
+/**
  * Saved tenders/searches live in localStorage until Phase 4 (Auth) adds a
  * per-user profiles table — at that point this hook's storage swaps to
  * Supabase without changing the components that call it.
  */
 export function useSavedTenderIds() {
-  const [ids, setIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    // Deliberately syncing from localStorage post-mount to avoid an SSR/client hydration mismatch.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIds(readList<string>(SAVED_TENDERS_KEY));
-  }, []);
+  const ids = useSyncExternalStore(savedTendersStore.subscribe, savedTendersStore.get, savedTendersStore.getServer);
 
   const isSaved = useCallback((id: string) => ids.includes(id), [ids]);
 
   const toggle = useCallback((id: string) => {
-    setIds((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      writeList(SAVED_TENDERS_KEY, next);
-      return next;
-    });
+    savedTendersStore.update((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }, []);
 
   return { savedIds: ids, isSaved, toggle };
@@ -57,49 +93,32 @@ export type SavedSearch = {
   lastCheckedAt: string;
 };
 
-export function useSavedSearches() {
-  const [searches, setSearches] = useState<SavedSearch[]>([]);
+const savedSearchesStore = createListStore<SavedSearch>(SAVED_SEARCHES_KEY);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSearches(readList<SavedSearch>(SAVED_SEARCHES_KEY));
-  }, []);
+export function useSavedSearches() {
+  const searches = useSyncExternalStore(savedSearchesStore.subscribe, savedSearchesStore.get, savedSearchesStore.getServer);
 
   const addSearch = useCallback((search: Omit<SavedSearch, "id" | "createdAt" | "lastCheckedAt">) => {
-    setSearches((prev) => {
+    savedSearchesStore.update((prev) => {
       const now = new Date().toISOString();
-      const next = [...prev, { ...search, id: crypto.randomUUID(), createdAt: now, lastCheckedAt: now }];
-      writeList(SAVED_SEARCHES_KEY, next);
-      return next;
+      return [...prev, { ...search, id: crypto.randomUUID(), createdAt: now, lastCheckedAt: now }];
     });
   }, []);
 
   const removeSearch = useCallback((id: string) => {
-    setSearches((prev) => {
-      const next = prev.filter((search) => search.id !== id);
-      writeList(SAVED_SEARCHES_KEY, next);
-      return next;
-    });
+    savedSearchesStore.update((prev) => prev.filter((search) => search.id !== id));
   }, []);
 
   const toggleAlert = useCallback((id: string) => {
-    setSearches((prev) => {
-      const next = prev.map((search) =>
-        search.id === id ? { ...search, alertEnabled: !search.alertEnabled } : search,
-      );
-      writeList(SAVED_SEARCHES_KEY, next);
-      return next;
-    });
+    savedSearchesStore.update((prev) =>
+      prev.map((search) => (search.id === id ? { ...search, alertEnabled: !search.alertEnabled } : search)),
+    );
   }, []);
 
   const markSearchesChecked = useCallback((ids: string[], checkedAt = new Date().toISOString()) => {
-    setSearches((prev) => {
+    savedSearchesStore.update((prev) => {
       const idSet = new Set(ids);
-      const next = prev.map((search) =>
-        idSet.has(search.id) ? { ...search, lastCheckedAt: checkedAt } : search,
-      );
-      writeList(SAVED_SEARCHES_KEY, next);
-      return next;
+      return prev.map((search) => (idSet.has(search.id) ? { ...search, lastCheckedAt: checkedAt } : search));
     });
   }, []);
 

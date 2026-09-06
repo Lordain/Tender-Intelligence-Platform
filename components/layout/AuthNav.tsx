@@ -40,7 +40,7 @@ export function AuthNav() {
 
   if (supabaseConfigured && user) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-6 xl:gap-8">
         {isAdmin && (
           <Link
             href="/admin/tenders"

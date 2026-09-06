@@ -42,6 +42,7 @@
     "fix:pemex-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-pemex-source-urls.ts",
     "fix:cfe-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-cfe-source-urls.ts",
     "fix:colombia-awarded-status": "tsx --env-file-if-exists=.env.local scripts/fix-colombia-awarded-status.ts",
+    "backfill:key-dates-sync": "tsx --env-file-if-exists=.env.local scripts/backfill-key-dates-sync.ts",
     "inspect:dof-notice": "tsx --env-file-if-exists=.env.local scripts/inspect-dof-notice.ts"
   },
   "dependencies": {

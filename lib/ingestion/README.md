@@ -2912,3 +2912,11 @@ Still open, needs the user's input before implementing:
 New route: `app/api/cron/purge-stale-colombia/route.ts` — same `Bearer CRON_SECRET` auth as the existing `app/api/cron/tender-digest/route.ts`, same tombstone-on-delete pattern as the admin bulk-delete route (so a future re-ingest of the same process doesn't silently resurrect it), chunked at 200. Deletes for real once authorized by default; `?dryRun=true` reports candidates without touching anything, mirroring `purge-old-tenders.ts`'s own default-dry-run posture. **Not yet wired to an actual schedule** — this repo has no `vercel.json` `crons` entry for `tender-digest` either, so that cron's schedule must already be configured directly in the Vercel dashboard; the user needs to add a second Vercel Cron Job pointing at this new route the same way (daily is plenty, given the cutoff itself is 2 months wide).
 
 101/101 fixtures unaffected. `tsc --noEmit`, `npm run lint` clean.
+
+## Batch backfill for the key-dates-sync fix (2026-09-05)
+
+`syncKeyDatesForTopLevelFields()` (added earlier the same day) only fires when an admin tender route actually runs — it doesn't retroactively repair a tender whose `tender_key_dates` already drifted from its `publication_date`/`submission_deadline`/`award_date` before the fix landed. Real report: the user has "很多" (many) Colombia tenders showing this exact symptom and can't click "保存修改" on each one by hand.
+
+Added `scripts/backfill-key-dates-sync.ts` (`npm run backfill:key-dates-sync` dry run / `-- --write` to apply) — lists every tender (not scoped to Colombia; the underlying bug applied to any admin-edited tender's dates regardless of country/source) and re-runs the exact same `syncKeyDatesForTopLevelFields()` call the admin routes use, one tender at a time. Safe to run repeatedly — a tender whose key dates already match just gets the same values deleted and re-inserted.
+
+`tsc --noEmit`, `npm run lint` clean (couldn't execute the script itself here — no Supabase network access from this sandbox, same limitation as every other backfill script this session).

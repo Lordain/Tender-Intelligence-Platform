@@ -400,22 +400,30 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           </label>
         </div>
 
-        {(form.status === "awarded" || form.awardDate || form.awardedTo || form.awardedValue) && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <label className={labelClass}>
-              <span className={labelTextClass}>中标日期</span>
-              <input type="date" className={inputClass} value={form.awardDate} onChange={(e) => update("awardDate", e.target.value)} />
-            </label>
-            <label className={labelClass}>
-              <span className={labelTextClass}>中标单位</span>
-              <input className={inputClass} value={form.awardedTo} onChange={(e) => update("awardedTo", e.target.value)} />
-            </label>
-            <label className={labelClass}>
-              <span className={labelTextClass}>中标金额（与预估金额分开填写，可能不同）</span>
-              <input type="number" className={inputClass} value={form.awardedValue} onChange={(e) => update("awardedValue", e.target.value)} />
-            </label>
-          </div>
-        )}
+        {/*
+          Used to be conditional on form.status === "awarded" (or an award
+          field already having a value) — real complaint, 2026-09-05: an
+          admin who wants to manually record a real award result has no
+          way to see these fields at all until they first flip 状态 to
+          "已中标" in the dropdown above, a non-obvious two-step flow.
+          Always visible now, same as 发布日期/投标截止日期 right above —
+          filling these in doesn't itself change 状态 (an admin still
+          sets that separately), it's just no longer hidden behind it.
+        */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <label className={labelClass}>
+            <span className={labelTextClass}>中标日期</span>
+            <input type="date" className={inputClass} value={form.awardDate} onChange={(e) => update("awardDate", e.target.value)} />
+          </label>
+          <label className={labelClass}>
+            <span className={labelTextClass}>中标单位</span>
+            <input className={inputClass} value={form.awardedTo} onChange={(e) => update("awardedTo", e.target.value)} />
+          </label>
+          <label className={labelClass}>
+            <span className={labelTextClass}>中标金额（与预估金额分开填写，可能不同）</span>
+            <input type="number" className={inputClass} value={form.awardedValue} onChange={(e) => update("awardedValue", e.target.value)} />
+          </label>
+        </div>
 
         {isEdit && (
           <div className="border-t border-[#e5e9eb] pt-5">

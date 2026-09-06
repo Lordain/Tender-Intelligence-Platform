@@ -2930,3 +2930,7 @@ Moved 发布日期/投标截止日期/中标信息 (中标日期/中标单位/�
 `发布日期`/`投标截止日期`/中标信息 stay visible even when creating a brand-new tender (`isEdit` false) — `publicationDate` is required there too, and these are plain form fields bound to `form`/`update()`, not `KeyDatesEditor`'s own API calls. `KeyDatesEditor` itself still only renders in edit mode, now nested inside the same `FormSection` (below a divider) instead of being its own separate section — it needs a real tender id to call its own CRUD API against, which a new, unsaved tender doesn't have yet.
 
 101/101 fixtures unaffected (pure form layout, no logic touched). `tsc --noEmit`, `npm run lint` clean.
+
+Follow-up, same conversation: the 中标信息 block (中标日期/中标单位/中标金额) was still conditionally rendered — only shown once `status === "awarded"` or one of the three fields already had a value — so an admin who wanted to manually record a real award result for a tender not yet marked awarded had nowhere to type it at all, a real gap the user hit immediately on a Mexico Proyectos Estratégicos tender. Made it unconditionally visible, same as 发布日期/投标截止日期 right above it — filling it in doesn't itself flip 状态 (still a separate dropdown), it's just no longer hidden behind it.
+
+101/101 fixtures unaffected. `tsc --noEmit`, `npm run lint` clean.

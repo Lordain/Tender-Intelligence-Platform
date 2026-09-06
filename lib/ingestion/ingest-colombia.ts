@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchSecopProcesos } from "@/lib/ingestion/connectors/colombia-secop-live";
+import { fetchSecopProcesos, fetchSecopProcesosByReference } from "@/lib/ingestion/connectors/colombia-secop-live";
 import { fetchSecopDocumentsForProcess, fetchSecopDocumentsSample, downloadSecopDocument, isPreAwardDocument } from "@/lib/ingestion/connectors/colombia-documents-connector";
 import { mapSecopRowToTender, extractNoticeUidFromUrl, type SecopProcesoRow } from "@/lib/ingestion/colombia-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
@@ -250,5 +250,73 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
     `  [diag] metadata rows matched via noticeUID: ${documentsFoundViaNoticeUid} candidate(s); via id_del_proceso: ${documentsFoundViaIdDelProceso} candidate(s).`,
   );
 
+  return result;
+}
+
+export type RefreshColombiaResult = {
+  trackedCount: number;
+  fetchedCount: number;
+  mappedCount: number;
+  upsertedCount?: number;
+  skippedExcludedCount?: number;
+  protectedCount?: number;
+  skippedManuallyDeletedCount?: number;
+  failed?: { slug: string; error: string }[];
+};
+
+/**
+ * Refreshes every Colombia tender ALREADY in our database, regardless of
+ * how long ago it was published — a genuinely different operation from
+ * `ingestColombia()` above, which only ever discovers tenders within a
+ * recent publication-date window. Real gap found 2026-09-05: the admin's
+ * "刷新已有标书状态" button originally just re-ran `ingestColombia()`
+ * against the same window as "拉取并写入" — so a tender published outside
+ * that window (e.g. `secop-101147`, `secop-sdm-lp-80-2026`) was never
+ * re-fetched no matter how many times the user clicked it, even though a
+ * tender's dynamic fields (submission deadline, status, awarded
+ * provider/date/value) can keep changing on SECOP's side long after its
+ * own publication date has aged out of any reasonable discovery window.
+ *
+ * Looks up our own already-tracked `tender_number` values first (this is
+ * `referencia_del_proceso`/`id_del_proceso` — see mapSecopRowToTender),
+ * then fetches exactly those specific processes back from Socrata by
+ * reference (`fetchSecopProcesosByReference` — no date filter at all),
+ * re-maps, and upserts. Every real field this pass turns up completely
+ * overwrites the stored row via the normal upsert-by-slug path — same
+ * "no separate refresh logic" posture as ingestColombia().
+ */
+export async function refreshColombiaTenders(supabase: SupabaseClient, options: { write: boolean }): Promise<RefreshColombiaResult> {
+  const PAGE_SIZE = 1000;
+  const tenderNumbers: string[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase.from("tenders").select("tender_number").like("slug", "secop-%").range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(`Failed to list already-tracked Colombia tenders: ${error.message}`);
+    if (!data || data.length === 0) break;
+    for (const row of data) if (row.tender_number) tenderNumbers.push(row.tender_number as string);
+    if (data.length < PAGE_SIZE) break;
+  }
+
+  const rows = await fetchSecopProcesosByReference(tenderNumbers);
+
+  const mapped: Tender[] = [];
+  for (const row of rows) {
+    const tender = mapSecopRowToTender(row, SOURCE_NAME);
+    if (tender) mapped.push(tender);
+  }
+
+  const result: RefreshColombiaResult = {
+    trackedCount: tenderNumbers.length,
+    fetchedCount: rows.length,
+    mappedCount: mapped.length,
+  };
+
+  if (!options.write) return result;
+
+  const { upsertedCount, skippedExcludedCount, protectedCount, skippedManuallyDeletedCount, failed } = await upsertTendersBatched(supabase, mapped);
+  result.upsertedCount = upsertedCount;
+  result.skippedExcludedCount = skippedExcludedCount;
+  result.protectedCount = protectedCount;
+  result.skippedManuallyDeletedCount = skippedManuallyDeletedCount;
+  result.failed = failed;
   return result;
 }

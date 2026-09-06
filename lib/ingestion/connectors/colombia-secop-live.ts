@@ -57,3 +57,51 @@ export async function fetchSecopProcesos(options: FetchSecopProcesosOptions): Pr
 
   return rows;
 }
+
+const REFERENCE_BATCH_SIZE = 50;
+
+function escapeSoqlString(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+/**
+ * Fetches specific processes by their own `referencia_del_proceso`/
+ * `id_del_proceso` value (whichever `mapSecopRowToTender` used as
+ * `tenderNumber` — never guaranteed to be one or the other, so both
+ * columns are checked), batched to keep each `$where` clause a
+ * reasonable length. Unlike `fetchSecopProcesos()` above, this carries
+ * NO date filter at all — a targeted lookup by known reference values is
+ * cheap regardless of how far back they go, unlike trying to page
+ * through this dataset's full 9M+ rows unfiltered.
+ *
+ * Built for refreshing tenders already in our own database (see
+ * `refreshColombiaTenders` in ingest-colombia.ts) — real gap found
+ * 2026-09-05: the admin's "刷新已有标书状态" button originally reused
+ * `fetchSecopProcesos()`'s own recency window, so a tender published
+ * outside that window was never re-fetched no matter how many times the
+ * button was clicked, even though its whole point was to refresh
+ * already-tracked tenders regardless of age.
+ */
+export async function fetchSecopProcesosByReference(references: string[]): Promise<SecopProcesoRow[]> {
+  const unique = [...new Set(references)].filter((r): r is string => !!r);
+  const rows: SecopProcesoRow[] = [];
+
+  for (let i = 0; i < unique.length; i += REFERENCE_BATCH_SIZE) {
+    const batch = unique.slice(i, i + REFERENCE_BATCH_SIZE);
+    const valueList = batch.map((ref) => `'${escapeSoqlString(ref)}'`).join(",");
+    const whereClause = `referencia_del_proceso in (${valueList}) OR id_del_proceso in (${valueList})`;
+
+    const url = new URL(SECOP_BASE_URL);
+    url.searchParams.set("$where", whereClause);
+    url.searchParams.set("$limit", String(batch.length * 2 + 10));
+
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) {
+      throw new Error(`SECOP procesos API responded ${response.status} ${response.statusText} (reference batch starting at ${i})`);
+    }
+    const pageRows = (await response.json()) as SecopProcesoRow[];
+    rows.push(...pageRows);
+  }
+
+  return rows;
+}

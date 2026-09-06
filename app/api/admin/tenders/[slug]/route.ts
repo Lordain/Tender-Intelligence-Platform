@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
+import { syncKeyDatesForTopLevelFields } from "@/lib/db/key-dates-sync";
 import type {
   TenderRelevanceTier,
   TenderScopeType,
@@ -69,7 +70,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
 
   const { data: existing, error: fetchError } = await supabase
     .from("tenders")
-    .select("title, summary, relevance_tier")
+    .select("id, title, summary, relevance_tier")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -126,6 +127,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
 
   const { error } = await supabase.from("tenders").update(row).eq("slug", slug);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await syncKeyDatesForTopLevelFields(supabase, existing.id as string, {
+    publicationDate: body.publicationDate,
+    submissionDeadline: body.submissionDeadline,
+    awardDate: body.awardDate,
+  });
 
   return NextResponse.json({ ok: true });
 }

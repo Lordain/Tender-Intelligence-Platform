@@ -3,6 +3,7 @@ import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { classifyRelevance } from "@/lib/relevance";
 import { slugify } from "@/lib/ingestion/text-utils";
+import { syncKeyDatesForTopLevelFields } from "@/lib/db/key-dates-sync";
 import type { Tender, TenderScopeType, TenderStatus, GovernmentLevel, TenderParticipationScope } from "@/types/tender";
 
 type CreateTenderBody = {
@@ -116,6 +117,12 @@ export async function POST(request: Request) {
 
   const { error } = await supabase.from("tenders").insert(row);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await syncKeyDatesForTopLevelFields(supabase, row.id as string, {
+    publicationDate: body.publicationDate,
+    submissionDeadline: body.submissionDeadline,
+    awardDate: body.awardDate,
+  });
 
   return NextResponse.json({ slug } satisfies { slug: Tender["slug"] });
 }

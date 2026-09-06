@@ -6,8 +6,13 @@ import { logAdminAlert } from "@/lib/admin-alerts";
 
 /**
  * Web-form counterpart to the two-step CLI flow (npm run ingest:documents
- * + npm run extract:document) — see app/admin/analyze-document/page.tsx
- * and lib/ingestion/analyze-uploaded-document.ts for the full story.
+ * + npm run extract:document) — see components/admin/BatchAnalyzeDocument
+ * Form.tsx and lib/ingestion/analyze-uploaded-document.ts for the full
+ * story. Accepts one or more "file" entries for the same tenderSlug
+ * (2026-09-06) — a single tender's own document package is routinely
+ * split across several PDFs (Pliego + Anexos), analyzed together as one
+ * merged result rather than one call per file silently overwriting the
+ * last one's.
  *
  * A real extraction call can take anywhere from several seconds to a
  * couple of minutes (PDF chunking on an oversized scanned document is
@@ -17,13 +22,18 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  */
 // Real tender packages run large (multi-hundred-page scanned bid documents
 // are the normal case this pipeline is built for — see the module comment
-// above), so this is deliberately generous, not a tight cap. It exists only
-// to reject a mistaken multi-GB upload before it's ever buffered into
-// memory (Buffer.from(await file.arrayBuffer()) below loads the whole file
-// at once) or sent to an LLM at real token/dollar cost. If a genuine tender
-// document is ever rejected here, raise this constant rather than route
-// around the check.
+// above), so this is deliberately generous per file, not a tight cap. It
+// exists only to reject a mistaken multi-GB upload before it's ever
+// buffered into memory (Buffer.from(await file.arrayBuffer()) below loads
+// each file at once) or sent to an LLM at real token/dollar cost. If a
+// genuine tender document is ever rejected here, raise this constant
+// rather than route around the check.
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+// Same cap for the whole request (pre-parse, from the content-length
+// header) as MAX_BATCH_SELECTION's own 5-tender ceiling elsewhere — a
+// single tender's document package rarely needs more than a handful of
+// files at once.
+const MAX_TOTAL_UPLOAD_BYTES = MAX_UPLOAD_BYTES * 5;
 const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".doc"];
 
 export async function POST(request: Request) {
@@ -39,8 +49,8 @@ export async function POST(request: Request) {
   // first, so this is the only point a check can reject an oversized
   // upload before that buffering happens.
   const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > MAX_UPLOAD_BYTES) {
-    return NextResponse.json({ error: `文件过大（超过 ${MAX_UPLOAD_BYTES / 1024 / 1024}MB），请拆分或压缩后重新上传。` }, { status: 413 });
+  if (contentLength > MAX_TOTAL_UPLOAD_BYTES) {
+    return NextResponse.json({ error: `文件总大小过大（超过 ${MAX_TOTAL_UPLOAD_BYTES / 1024 / 1024}MB），请拆分或压缩后重新上传。` }, { status: 413 });
   }
 
   const form = await request.formData();
@@ -49,21 +59,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "tenderSlug is required" }, { status: 400 });
   }
 
-  const file = form.get("file");
-  if (!(file instanceof File)) {
+  const uploadedFiles = form.getAll("file");
+  if (uploadedFiles.length === 0 || !uploadedFiles.every((f): f is File => f instanceof File)) {
     return NextResponse.json({ error: "no file uploaded" }, { status: 400 });
   }
 
-  // Belt-and-suspenders re-check against the actual parsed file (content-
+  // Belt-and-suspenders re-check against the actual parsed files (content-
   // length can be absent/inaccurate on some clients) — and a real type
   // check server-side, since the form's accept=".pdf,.docx,.doc" is only a
   // client-side hint an attacker or a mistaken drag-drop can bypass.
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return NextResponse.json({ error: `文件过大（超过 ${MAX_UPLOAD_BYTES / 1024 / 1024}MB），请拆分或压缩后重新上传。` }, { status: 413 });
-  }
-  const lowerName = file.name.toLowerCase();
-  if (!ALLOWED_EXTENSIONS.some((ext) => lowerName.endsWith(ext))) {
-    return NextResponse.json({ error: `不支持的文件类型，仅支持 ${ALLOWED_EXTENSIONS.join("/")}` }, { status: 400 });
+  for (const file of uploadedFiles) {
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: `「${file.name}」过大（超过 ${MAX_UPLOAD_BYTES / 1024 / 1024}MB），请拆分或压缩后重新上传。` }, { status: 413 });
+    }
+    const lowerName = file.name.toLowerCase();
+    if (!ALLOWED_EXTENSIONS.some((ext) => lowerName.endsWith(ext))) {
+      return NextResponse.json({ error: `「${file.name}」类型不支持，仅支持 ${ALLOWED_EXTENSIONS.join("/")}` }, { status: 400 });
+    }
   }
 
   const write = form.get("write") === "true";
@@ -81,10 +93,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supabase isn't configured." }, { status: 500 });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const files = await Promise.all(
+    uploadedFiles.map(async (file) => ({ buffer: Buffer.from(await file.arrayBuffer()), fileName: file.name })),
+  );
 
   try {
-    const result = await analyzeUploadedDocument(supabase!, tenderSlug.trim(), { buffer, fileName: file.name }, { write, force });
+    const result = await analyzeUploadedDocument(supabase!, tenderSlug.trim(), files, { write, force });
     return NextResponse.json(result);
   } catch (err) {
     await logAdminAlert(supabase, "analyze-document", err);

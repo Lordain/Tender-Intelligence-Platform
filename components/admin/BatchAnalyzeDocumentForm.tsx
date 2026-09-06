@@ -1,13 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { LocalizedText } from "@/types/tender";
 import { localize, useLocale } from "@/lib/i18n";
 
 // Mirrors AnalyzeUploadedDocumentResult (lib/ingestion/analyze-uploaded-
 // document.ts) — kept as a local type since that module transitively pulls
 // in node:fs/node:child_process and can't be imported from a "use client"
-// component (same reasoning the old AnalyzeDocumentForm.tsx had).
+// component.
 type AnalyzeResult = {
   oneLineSummary: string;
   qualifications: number;
@@ -39,43 +39,30 @@ export function BatchAnalyzeDocumentForm({
   onWritten: (slug: string) => void;
 }) {
   const { locale } = useLocale();
-  const [files, setFiles] = useState<Record<string, File | null>>({});
+  // Each tender can have more than one document (a Pliego plus one or more
+  // Anexos are routinely separate files for the same tender) — analyzed
+  // together as one merged result, not one call per file overwriting the
+  // last (see analyze-uploaded-document.ts's header comment).
+  const [files, setFiles] = useState<Record<string, File[]>>({});
   const [write, setWrite] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [rows, setRows] = useState<Record<string, RowState>>({});
-  const bulkInputRef = useRef<HTMLInputElement>(null);
 
-  const readyCount = tenders.filter((tender) => files[tender.slug]).length;
+  const readyCount = tenders.filter((tender) => (files[tender.slug]?.length ?? 0) > 0).length;
 
-  function setFile(slug: string, file: File | null) {
-    setFiles((current) => ({ ...current, [slug]: file }));
+  function setTenderFiles(slug: string, fileList: FileList | null) {
+    setFiles((current) => ({ ...current, [slug]: fileList ? Array.from(fileList) : [] }));
   }
 
-  // Lets an admin pick every document in one native file dialog (ctrl/shift
-  // click) instead of opening a separate one-file-at-a-time dialog per
-  // project — the browser's multi-select order is assigned straight down
-  // the tender list in order. Each per-row input below still works
-  // independently afterward, to fix up any file that landed on the wrong
-  // project.
-  function handleBulkFiles(fileList: FileList | null) {
-    if (!fileList || fileList.length === 0) return;
-    const picked = Array.from(fileList).slice(0, tenders.length);
-    setFiles((current) => {
-      const next = { ...current };
-      picked.forEach((file, index) => {
-        const tender = tenders[index];
-        if (tender) next[tender.slug] = file;
-      });
-      return next;
-    });
-    if (bulkInputRef.current) bulkInputRef.current.value = "";
+  function removeTenderFile(slug: string, index: number) {
+    setFiles((current) => ({ ...current, [slug]: (current[slug] ?? []).filter((_, i) => i !== index) }));
   }
 
-  async function analyzeOne(slug: string, file: File) {
+  async function analyzeOne(slug: string, tenderFiles: File[]) {
     setRows((current) => ({ ...current, [slug]: { kind: "analyzing" } }));
     const form = new FormData();
     form.append("tenderSlug", slug);
-    form.append("file", file);
+    tenderFiles.forEach((file) => form.append("file", file));
     form.append("write", String(write));
     try {
       const res = await fetch("/api/admin/analyze-document", { method: "POST", body: form });
@@ -99,9 +86,9 @@ export function BatchAnalyzeDocumentForm({
     // running them one at a time keeps this readable in the UI and avoids
     // firing several expensive calls at once by mistake.
     for (const tender of tenders) {
-      const file = files[tender.slug];
-      if (!file) continue;
-      await analyzeOne(tender.slug, file);
+      const tenderFiles = files[tender.slug];
+      if (!tenderFiles || tenderFiles.length === 0) continue;
+      await analyzeOne(tender.slug, tenderFiles);
     }
     setSubmitting(false);
   }
@@ -112,55 +99,67 @@ export function BatchAnalyzeDocumentForm({
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Batch upload</p>
           <h2 className="mt-1 text-lg font-black text-[#071826]">批量上传分析（已选 {tenders.length}/{MAX_BATCH_SELECTION}）</h2>
-          <p className="mt-1 text-xs text-[#64717c]">下面可以一次选中多个文件，会按项目顺序自动分配；分配错了可以在对应项目那一行重新选择。未分配文件的项目会被跳过。</p>
+          <p className="mt-1 text-xs text-[#64717c]">每个项目可以一次选择多个文件（比如正文 + 附件），会合并在一起分析。未选择文件的项目会被跳过。</p>
         </div>
         <button type="button" onClick={onClear} className="h-9 shrink-0 rounded-lg border border-[#d8e0e3] bg-white px-3 text-xs font-black text-[#52636e] hover:border-[#9aa5ab]">
           取消选择
         </button>
       </div>
 
-      <label className="flex flex-col gap-1.5 rounded-xl border border-dashed border-[#ffb21c]/60 bg-[#fff8e9] p-3 text-sm">
-        <span className="text-xs font-black text-[#8a5a00]">一次选择多个文件（按住 Ctrl / Cmd 或 Shift 多选）</span>
-        <input
-          ref={bulkInputRef}
-          type="file"
-          accept=".pdf,.docx,.doc"
-          multiple
-          disabled={submitting}
-          onChange={(e) => handleBulkFiles(e.target.files)}
-          className="w-full rounded-lg border border-[#d8e0e3] bg-white px-2 py-1.5 text-xs text-[#071826] outline-none file:mr-2 file:rounded-md file:border-0 file:bg-[#071826] file:px-2.5 file:py-1 file:text-[11px] file:font-bold file:text-white disabled:opacity-50"
-        />
-      </label>
-
       <div className="flex flex-col gap-3">
         {tenders.map((tender, index) => {
           const row = rows[tender.slug] ?? { kind: "idle" as const };
+          const tenderFiles = files[tender.slug] ?? [];
           return (
-            <div key={tender.slug} className="flex flex-col gap-2 rounded-xl border border-[#e5e9eb] bg-white p-3 sm:flex-row sm:items-center sm:gap-4">
-              <span className="hidden size-6 shrink-0 items-center justify-center rounded-full bg-[#edf2f3] text-[11px] font-black text-[#52636e] sm:flex">{index + 1}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-black text-[#071826]">{tender.title ? localize(tender.title, locale) : tender.slug}</p>
-                {tender.title && <p className="mt-0.5 font-mono text-[11px] text-[#8a959c]">{tender.slug}</p>}
+            <div key={tender.slug} className="flex flex-col gap-3 rounded-xl border border-[#e5e9eb] bg-white p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                <span className="hidden size-6 shrink-0 items-center justify-center rounded-full bg-[#edf2f3] text-[11px] font-black text-[#52636e] sm:flex">{index + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-black text-[#071826]">{tender.title ? localize(tender.title, locale) : tender.slug}</p>
+                  {tender.title && <p className="mt-0.5 font-mono text-[11px] text-[#8a959c]">{tender.slug}</p>}
+                </div>
+                <label className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-[#071826] px-3 text-xs font-black text-white hover:bg-[#12364d]">
+                  上传（可多选）
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.doc"
+                    multiple
+                    disabled={submitting}
+                    onChange={(e) => setTenderFiles(tender.slug, e.target.files)}
+                    className="hidden"
+                  />
+                </label>
+                <div className="shrink-0 text-xs sm:w-48">
+                  {row.kind === "idle" && <span className="text-[#9aa5ab]">{tenderFiles.length > 0 ? "等待分析" : "未选择文件"}</span>}
+                  {row.kind === "analyzing" && <span className="font-bold text-[#b86e00]">分析中…</span>}
+                  {row.kind === "done" && row.result.status === "written" && (
+                    <span className="font-bold text-emerald-700">已写入 — {row.result.oneLineSummary || "（无一句话总结）"}</span>
+                  )}
+                  {row.kind === "done" && row.result.status === "dry-run" && <span className="text-[#52636e]">预览完成，未写入</span>}
+                  {row.kind === "done" && row.result.status === "skipped-opus-precision" && (
+                    <span className="text-[#b86e00]">跳过 — {row.result.message}</span>
+                  )}
+                  {row.kind === "error" && <span className="font-bold text-red-600">失败：{row.message}</span>}
+                </div>
               </div>
-              <input
-                type="file"
-                accept=".pdf,.docx,.doc"
-                disabled={submitting}
-                onChange={(e) => setFile(tender.slug, e.target.files?.[0] ?? null)}
-                className="w-full shrink-0 rounded-lg border border-[#d8e0e3] bg-white px-2 py-1.5 text-xs text-[#071826] outline-none file:mr-2 file:rounded-md file:border-0 file:bg-[#071826] file:px-2.5 file:py-1 file:text-[11px] file:font-bold file:text-white disabled:opacity-50 sm:w-64"
-              />
-              <div className="shrink-0 text-xs sm:w-48">
-                {row.kind === "idle" && <span className="text-[#9aa5ab]">{files[tender.slug] ? "等待分析" : "未选择文件"}</span>}
-                {row.kind === "analyzing" && <span className="font-bold text-[#b86e00]">分析中…</span>}
-                {row.kind === "done" && row.result.status === "written" && (
-                  <span className="font-bold text-emerald-700">已写入 — {row.result.oneLineSummary || "（无一句话总结）"}</span>
-                )}
-                {row.kind === "done" && row.result.status === "dry-run" && <span className="text-[#52636e]">预览完成，未写入</span>}
-                {row.kind === "done" && row.result.status === "skipped-opus-precision" && (
-                  <span className="text-[#b86e00]">跳过 — {row.result.message}</span>
-                )}
-                {row.kind === "error" && <span className="font-bold text-red-600">失败：{row.message}</span>}
-              </div>
+              {tenderFiles.length > 0 && (
+                <ul className="flex flex-wrap gap-2 pl-0 sm:pl-10">
+                  {tenderFiles.map((file, fileIndex) => (
+                    <li key={`${file.name}-${fileIndex}`} className="inline-flex items-center gap-2 rounded-full border border-[#d8e0e3] bg-[#f7f8f7] py-1 pl-3 pr-1.5 text-[11px] text-[#425461]">
+                      {file.name}
+                      <button
+                        type="button"
+                        aria-label={`移除 ${file.name}`}
+                        disabled={submitting}
+                        onClick={() => removeTenderFile(tender.slug, fileIndex)}
+                        className="flex size-4 items-center justify-center rounded-full text-[#8a959c] hover:bg-[#edf2f3] hover:text-red-600 disabled:opacity-50"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           );
         })}

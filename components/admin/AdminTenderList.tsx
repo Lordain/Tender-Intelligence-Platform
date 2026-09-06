@@ -57,7 +57,6 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const [relevance, setRelevance] = useState("all");
   const [analysis, setAnalysis] = useState("all");
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
-  const [togglingSlug, setTogglingSlug] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,25 +65,6 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     () => [...new Set(tenders.map((tender) => tender.country))].sort((a, b) => countryLabel(a, "zh").localeCompare(countryLabel(b, "zh"), "zh")),
     [tenders],
   );
-
-  async function handleToggleFeatured(slug: string, next: boolean) {
-    setTogglingSlug(slug);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/tenders/${slug}/homepage-featured`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ featured: next }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setTogglingSlug(null);
-    }
-  }
 
   async function handleDelete(slug: string, titleZh: string) {
     if (!confirm(`确定要删除「${titleZh}」吗？此操作无法撤销。`)) return;
@@ -284,12 +264,11 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                   className="size-4 accent-[#ffb21c]"
                 />
               </th>
-              <th className="w-[22%] px-3 py-3 font-black">标题</th>
+              <th className="w-[25%] px-3 py-3 font-black">标题</th>
               <th className="w-[12%] px-2 py-3 font-black">行业</th>
               <th className="w-[7%] px-2 py-3 font-black">国家</th>
               <th className="w-[7%] px-2 py-3 font-black">状态</th>
               <th className="w-[9%] px-2 py-3 font-black">相关度</th>
-              <th className="w-[5%] px-2 py-3 text-center font-black" title="免费用户在首页能看到的项目——见列表上方“首页免费展示设置”">首页</th>
               <th className="w-[8%] px-2 py-3 font-black">金额</th>
               <th className="w-[10%] px-2 py-3 font-black">发布日期</th>
               <th className="w-[16%] px-3 py-3 text-center font-black">操作</th>
@@ -343,16 +322,6 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                       </span>
                     ) : <span className="text-[#9aa5ab]">未分类</span>}
                   </td>
-                  <td className="px-2 py-3 text-center">
-                    <input
-                      type="checkbox"
-                      aria-label={`${tender.title.zh}首页展示`}
-                      checked={tender.homepageFeatured ?? false}
-                      disabled={togglingSlug === tender.slug}
-                      onChange={(event) => handleToggleFeatured(tender.slug, event.target.checked)}
-                      className="size-4 accent-[#ffb21c] disabled:opacity-50"
-                    />
-                  </td>
                   <td title={value ?? undefined} className="truncate whitespace-nowrap px-2 py-3 text-[11px] font-bold text-[#425461]">{value ?? "—"}</td>
                   <td className="whitespace-nowrap px-2 py-3 text-[11px] text-[#5d6d77]">
                     {formatDate(tender.publicationDate, "zh")}
@@ -383,7 +352,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-5 py-14 text-center">
+                <td colSpan={9} className="px-5 py-14 text-center">
                   <p className="font-black text-[#071826]">没有找到符合条件的项目</p>
                   <p className="mt-1 text-xs text-[#75838c]">可以尝试修改关键词或清除筛选条件</p>
                 </td>

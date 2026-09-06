@@ -6,6 +6,7 @@ import { AdminAlertBanner } from "@/components/admin/AdminAlertBanner";
 
 const links = [
   { href: "/admin/analytics", label: "运营看板", detail: "流量与用户行为" },
+  { href: "/admin/homepage", label: "首页控制", detail: "免费展示与滚动项目" },
   { href: "/admin/tenders", label: "项目管理", detail: "招标数据" },
   { href: "/admin/import-tenders", label: "新项目清单", detail: "批量导入+翻译" },
   { href: "/admin/import-analysis", label: "导入分析结果", detail: "批量分析写入" },

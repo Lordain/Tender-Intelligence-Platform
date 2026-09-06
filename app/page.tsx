@@ -1,36 +1,49 @@
 import { getAllTenders, getTenderBySlug } from "@/lib/tenders";
-import { fetchHomepageFeaturedCount } from "@/lib/db/site-settings";
+import { fetchHomepageControlSettings } from "@/lib/db/site-settings";
 import { HomeHero } from "@/components/tenders/HomeHero";
 import { FeaturedTenders } from "@/components/tenders/FeaturedTenders";
 import { ValuePropositions } from "@/components/home/ValuePropositions";
+import type { Tender } from "@/types/tender";
+
+function isTender(tender: Tender | undefined): tender is Tender {
+  return tender !== undefined;
+}
 
 export default async function Home() {
-  const [tenders, featuredCount] = await Promise.all([getAllTenders(), fetchHomepageFeaturedCount()]);
+  const [tenders, settings] = await Promise.all([getAllTenders(), fetchHomepageControlSettings()]);
+  const sorted = tenders.slice().sort((a, b) => b.publicationDate.localeCompare(a.publicationDate));
+  const bySlug = new Map(tenders.map((tender) => [tender.slug, tender]));
 
-  // Admin-picked tenders (app/admin/tenders — the "首页" checkbox) come
-  // first, most recent first; if fewer than featuredCount were picked, the
-  // rest is auto-filled with the next most recent tenders so the homepage
-  // never looks sparse just because an admin hasn't curated it yet.
-  const manuallyFeatured = tenders
-    .filter((t) => t.homepageFeatured)
-    .slice()
-    .sort((a, b) => b.publicationDate.localeCompare(a.publicationDate));
-  const manuallyFeaturedSlugs = new Set(manuallyFeatured.map((t) => t.slug));
-  const autoFill = tenders
-    .filter((t) => !manuallyFeaturedSlugs.has(t.slug))
-    .slice()
-    .sort((a, b) => b.publicationDate.localeCompare(a.publicationDate));
-  const featured = [...manuallyFeatured, ...autoFill].slice(0, featuredCount);
-  // The main feed deliberately fetches a flat, fast list. Homepage cards
-  // additionally preview one requirement/risk of each kind, so enrich only
-  // the admin-configured number of featured cards rather than every tender.
-  const featuredWithPreviews = await Promise.all(
-    featured.map(async (tender) => (await getTenderBySlug(tender.slug)) ?? tender),
-  );
+  // Preserve the old curated-checkbox behaviour until the new 首页控制 page
+  // is saved once. After that, both lists are exact, ordered admin selections.
+  const legacyFeatured = [
+    ...sorted.filter((tender) => tender.homepageFeatured),
+    ...sorted.filter((tender) => !tender.homepageFeatured),
+  ];
+  const featured = (settings.featuredSlugs === null
+    ? legacyFeatured
+    : settings.featuredSlugs.map((slug) => bySlug.get(slug)).filter(isTender)
+  ).slice(0, settings.featuredCount);
+  const featuredSlugSet = new Set(featured.map((tender) => tender.slug));
+
+  // The ticker is a separate pool and can include any supported country, but
+  // it never repeats a project already shown in the free-preview cards.
+  const ticker = (settings.tickerSlugs === null
+    ? sorted.filter((tender) => !featuredSlugSet.has(tender.slug))
+    : settings.tickerSlugs
+        .map((slug) => bySlug.get(slug))
+        .filter(isTender)
+        .filter((tender) => !featuredSlugSet.has(tender.slug))
+  ).slice(0, settings.tickerCount);
+
+  const [featuredWithPreviews, tickerWithPreviews] = await Promise.all([
+    Promise.all(featured.map(async (tender) => (await getTenderBySlug(tender.slug)) ?? tender)),
+    Promise.all(ticker.map(async (tender) => (await getTenderBySlug(tender.slug)) ?? tender)),
+  ]);
 
   return (
     <div className="flex flex-col">
-      <HomeHero tenders={featuredWithPreviews} />
+      <HomeHero tenders={tickerWithPreviews} />
       <FeaturedTenders tenders={featuredWithPreviews} />
       <ValuePropositions />
     </div>

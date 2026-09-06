@@ -433,6 +433,7 @@ const LABELS_FALLBACK: LocalizedText = { en: "Standard Project", es: "Proyecto E
 
 /** The /admin/tenders list row shape — deliberately lighter than the full Tender (no nested requirements/key dates/risks joins) since this powers a table over 1000+ rows, not a detail view. */
 export type AdminTenderListRow = {
+  id: string;
   slug: string;
   tenderNumber: string;
   title: LocalizedText;
@@ -463,6 +464,7 @@ export type AdminTenderListRow = {
 };
 
 type AdminTenderListDbRow = {
+  id: string;
   slug: string;
   tender_number: string;
   title: LocalizedText;
@@ -505,7 +507,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     const { data, error } = await supabase
       .from("tenders")
       .select(
-        "slug, tender_number, title, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline",
+        "id, slug, tender_number, title, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
@@ -525,6 +527,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
   return rows
     .filter((row) => !isHiddenColombiaNoDeadline(row.country, row.submission_deadline))
     .map((row) => ({
+    id: row.id,
     slug: row.slug,
     tenderNumber: row.tender_number,
     title: row.title,

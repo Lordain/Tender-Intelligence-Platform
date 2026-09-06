@@ -5,9 +5,9 @@ import Link from "next/link";
 import type { Tender } from "@/types/tender";
 import { formatDate } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
-import { MexicoFlag } from "@/components/tenders/CountryFlag";
+import { CountryFlag } from "@/components/tenders/CountryFlag";
+import { countryLabel } from "@/lib/tender-labels";
 import { useUser } from "@/lib/auth";
-import { BrandLogo } from "@/components/layout/BrandLogo";
 
 function ArrowIcon() {
   return (
@@ -86,10 +86,7 @@ function TenderPreview({ tenders }: { tenders: Tender[] }) {
     <div className="relative ml-auto w-full max-w-[39rem] xl:max-w-[42rem]">
       <div className="hero-product-edge relative h-[31rem] overflow-hidden rounded-r-[1.6rem] rounded-l-[2.5rem] text-[#071826] shadow-[0_18px_46px_-38px_rgba(0,0,0,0.62)] xl:h-[33rem]">
         <div className="relative z-10 border-b border-[#dbe2e5]/75 bg-transparent pb-3 pl-14 pr-6 pt-4 xl:pl-20 xl:pr-8">
-          <div className="flex items-center gap-2.5">
-            <BrandLogo variant="light" className="size-7" />
-            <p className="text-base font-bold">拉美招投标平台</p>
-          </div>
+          <h2 className="text-base font-bold">拉美招标中项目预览</h2>
           <div className="mt-3 grid grid-cols-[5.5rem_minmax(0,1fr)_6.75rem] gap-4 text-[10px] font-semibold text-[#7a8790] xl:grid-cols-[6rem_minmax(0,1fr)_7.5rem] xl:text-xs">
             <span>国家</span>
             <span>中文项目名称</span>
@@ -104,7 +101,9 @@ function TenderPreview({ tenders }: { tenders: Tender[] }) {
                 aria-hidden={index >= tenders.length}
                 className="grid min-h-[5rem] grid-cols-[5.5rem_minmax(0,1fr)_6.75rem] items-center gap-4 py-3 xl:grid-cols-[6rem_minmax(0,1fr)_7.5rem]"
               >
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#53636e] xl:text-xs"><MexicoFlag />墨西哥</span>
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#53636e] xl:text-xs">
+                  <CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}
+                </span>
                 <p className="line-clamp-2 text-xs font-bold leading-5 text-black xl:text-sm">{tender.title.zh || tender.title.es}</p>
                 <p className="text-right text-[10px] font-bold text-[#071826] xl:text-xs">
                   {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "待公布"}

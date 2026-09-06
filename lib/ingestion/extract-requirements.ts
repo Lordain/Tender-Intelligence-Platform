@@ -131,6 +131,14 @@ const RelevanceAssessmentSchema = z.object({
 
 /** Exported so translate-requirements-{qwen,gemini}.ts can reuse the exact same schema/prompt — a provider cost/quality comparison isn't meaningful if each provider is answering a differently-worded question. */
 export const ExtractionSchema = z.object({
+  // Explicit user request (2026-09-06): a one-line "what is this tender"
+  // summary, shown on the public tender page directly above 资质要求 —
+  // distinct from the ingestion-time `summary` column (a longer, source-
+  // derived paraphrase, already populated before this call ever runs).
+  // zh-only, same convention as every other field this schema generates.
+  oneLineSummary: z.string().describe(
+    "One Chinese (zh) sentence, at most 30 characters, stating what this tender/project actually IS — e.g. '为地铁3号线采购120台安检机', '新建某市污水处理厂二期工程'. Concrete (what's being bought/built and for whom/where if the document says), not a category label ('设备采购项目') or a boilerplate opener ('本项目旨在...'). Written for someone deciding whether to open the full listing.",
+  ),
   qualifications: z.array(RequirementSchema).describe(
     "Legal/administrative standing the bidder's COMPANY must prove — RFC, no debt with SAT/IMSS/Infonavit, not on a disqualified-persons list, corporate existence, power of attorney, etc. NOT the same as experience or documents to submit.",
   ),
@@ -162,6 +170,8 @@ Ground rules:
 - These documents are long and mostly procedural boilerplate (the same legal citations appear in nearly every Compras MX tender). Extract only tender-specific, actionable content — skip generic restatements of the procurement law itself.
 - All title/description fields must be written directly in Chinese (zh), concise and close to the document's own terms — do not copy multi-sentence legal paragraphs verbatim, and do not write a placeholder.
 - If a section is genuinely absent from this document (e.g. no Anexo Técnico attached), return an empty array for the corresponding field rather than guessing.
+
+Also provide "oneLineSummary": one Chinese sentence, at most 30 characters, stating what this tender/project concretely IS — not a category label, not a boilerplate opener. See the schema field description for examples.
 
 Additionally, provide a "relevanceAssessment": this tender was already given a rough priority tier from its TITLE ALONE before anyone had read the actual document — you have now read the real thing, so give your own independent, grounded assessment of participationScope and suggestedTier (see the schema field descriptions for exactly what each means). Base this ONLY on what THIS document actually says, the same evidentiary bar as everything else above — cite concrete content in your reasoning, not a generic template.`;
 
@@ -212,7 +222,7 @@ function parseContextOverflow(err: unknown): { actualTokens: number; maxTokens: 
 // 2026-09-03 (qwen3.5-plus, first document in a batch run) — every
 // title/description came back in Spanish, not Chinese, despite
 // SYSTEM_PROMPT already saying so once, further up the combined prompt.
-const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...], "relevanceAssessment": {...}} — no prose, no markdown fences. The four array keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". "relevanceAssessment" is {"participationScope": "national"|"international_treaty"|"international_open"|null, "suggestedTier": "flagship"|"significant"|"standard"|"excluded", "reasoning": "..."} — include it when you can support it from the document; omit the key entirely rather than guessing if you genuinely cannot. Every "title"/"description"/"reasoning" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
+const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"oneLineSummary": "...", "qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...], "relevanceAssessment": {...}} — no prose, no markdown fences. "oneLineSummary" and the four array keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. "oneLineSummary" is one Chinese sentence, at most 30 characters, stating what this tender/project concretely is (not a category label, not a boilerplate opener). Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". "relevanceAssessment" is {"participationScope": "national"|"international_treaty"|"international_open"|null, "suggestedTier": "flagship"|"significant"|"standard"|"excluded", "reasoning": "..."} — include it when you can support it from the document; omit the key entirely rather than guessing if you genuinely cannot. Every "oneLineSummary"/"title"/"description"/"reasoning" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
 
 /** Pulls the first JSON object out of a text response — tolerates a model wrapping it in a ```json fence or prose despite instructions not to, rather than requiring an exact match. */
 function extractJsonObject(text: string): unknown {
@@ -309,6 +319,7 @@ async function runExtraction(
   if (!textBlock) throw new Error(`Extraction returned no text content for ${context.tenderNumber} (stop_reason: ${response.stop_reason})`);
 
   const raw = extractJsonObject(textBlock.text) as Record<string, unknown>;
+  if (raw.oneLineSummary === undefined) raw.oneLineSummary = "";
   for (const key of ["qualifications", "experienceRequirements", "requiredDocuments", "risks"]) {
     if (raw[key] === undefined) raw[key] = [];
   }
@@ -377,6 +388,11 @@ function dedupeByTitleAndDescription<T extends { title: string; description: str
 
 export function mergeExtractions(parts: TenderExtraction[]): TenderExtraction {
   return {
+    // A chunked PDF's earlier chunks (the document's front matter — title,
+    // objeto del contrato) are the most likely to actually state what the
+    // tender IS, so the first chunk with a non-empty oneLineSummary wins
+    // rather than concatenating one per chunk.
+    oneLineSummary: parts.find((p) => p.oneLineSummary?.trim())?.oneLineSummary ?? "",
     qualifications: dedupeByTitleAndDescription(parts.flatMap((p) => p.qualifications)),
     experienceRequirements: dedupeByTitleAndDescription(parts.flatMap((p) => p.experienceRequirements)),
     requiredDocuments: dedupeByTitleAndDescription(parts.flatMap((p) => p.requiredDocuments)),
@@ -519,6 +535,7 @@ function toRisk(item: TenderExtraction["risks"][number], idPrefix: string, index
 /** Converts the raw model output into the exact arrays Tender's fields expect, id-prefixed by tender slug so re-extraction produces stable, replaceable ids. */
 export function toTenderFields(extraction: TenderExtraction, tenderSlug: string) {
   return {
+    oneLineSummary: extraction.oneLineSummary,
     qualifications: extraction.qualifications.map((item, i) => toRequirement(item, `${tenderSlug}-qual`, i)),
     experienceRequirements: extraction.experienceRequirements.map((item, i) => toRequirement(item, `${tenderSlug}-exp`, i)),
     requiredDocuments: extraction.requiredDocuments.map((item, i) => toRequirement(item, `${tenderSlug}-doc`, i)),

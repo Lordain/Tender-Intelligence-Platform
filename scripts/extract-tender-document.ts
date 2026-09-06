@@ -65,6 +65,10 @@ async function writeToSupabase(
   }
   const tenderId = tender.id as string;
 
+  if (fields.oneLineSummary?.trim()) {
+    await supabase.from("tenders").update({ one_line_summary: fields.oneLineSummary.trim() }).eq("id", tenderId);
+  }
+
   const { data: existingDoc } = await supabase
     .from("tender_documents")
     .select("extraction_model")

@@ -78,6 +78,10 @@ export async function importBatchAnalysis(
     }
     const tenderId = tender.id as string;
 
+    if (fields.oneLineSummary?.trim()) {
+      await supabase!.from("tenders").update({ one_line_summary: fields.oneLineSummary.trim() }).eq("id", tenderId);
+    }
+
     if (!options.force) {
       const { data: opusDoc } = await supabase!
         .from("tender_documents")

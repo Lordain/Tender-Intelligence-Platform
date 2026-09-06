@@ -42,6 +42,7 @@ export type AnalyzeUploadedDocumentResult = {
   documentType: string;
   tenderNumberInText?: string;
   model: ExtractionModel;
+  oneLineSummary: string;
   qualifications: number;
   experienceRequirements: number;
   requiredDocuments: number;
@@ -93,6 +94,7 @@ export async function analyzeUploadedDocument(
       documentType: intake.documentType,
       tenderNumberInText: intake.tenderNumber,
       model,
+      oneLineSummary: fields.oneLineSummary,
       qualifications: fields.qualifications.length,
       experienceRequirements: fields.experienceRequirements.length,
       requiredDocuments: fields.requiredDocuments.length,
@@ -122,6 +124,14 @@ export async function analyzeUploadedDocument(
     // --precise flag) would always be a downgrade here unless forced.
     if (existingDoc?.extraction_model === "claude-opus-5" && !options.force) {
       return { ...base, status: "skipped-opus-precision", message: "已有精度分析（claude-opus-5）结果" };
+    }
+
+    // Real complaint, 2026-09-06: only written when non-empty — a
+    // degraded extraction (e.g. the text-only fallback on a scanned page)
+    // returning "" shouldn't blank out a good oneLineSummary a previous
+    // analysis run already wrote for this same tender.
+    if (fields.oneLineSummary?.trim()) {
+      await supabase.from("tenders").update({ one_line_summary: fields.oneLineSummary.trim() }).eq("id", tenderId);
     }
 
     for (const kind of ["qualification", "experience", "document"] as const) {

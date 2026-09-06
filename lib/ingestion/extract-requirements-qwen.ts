@@ -58,7 +58,7 @@ export async function extractTenderRequirementsQwen(
     messages: [
       {
         role: "system",
-        content: `${SYSTEM_PROMPT}\n\nRespond with ONLY a JSON object matching {"qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...]} — no prose, no markdown fences. Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical".`,
+        content: `${SYSTEM_PROMPT}\n\nRespond with ONLY a JSON object matching {"oneLineSummary": "...", "qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...]} — no prose, no markdown fences. "oneLineSummary" is one Chinese sentence, at most 30 characters, stating what this tender/project concretely is (not a category label, not a boilerplate opener). Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical".`,
       },
       {
         role: "user",

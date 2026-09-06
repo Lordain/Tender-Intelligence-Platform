@@ -14,6 +14,7 @@ type AnalyzeResult = {
   documentType: string;
   tenderNumberInText?: string;
   model: string;
+  oneLineSummary: string;
   qualifications: number;
   experienceRequirements: number;
   requiredDocuments: number;
@@ -156,6 +157,9 @@ export function AnalyzeDocumentForm({
           <p>
             {result.fileName}（{result.documentType}），文中识别到的项目编号：{result.tenderNumberInText ?? "未找到"}，模型：{result.model}
           </p>
+          {result.oneLineSummary && (
+            <p className="mt-2 font-semibold text-[#071826]">一句话总结：{result.oneLineSummary}</p>
+          )}
           <p className="mt-2">
             资质要求 {result.qualifications} / 业绩要求 {result.experienceRequirements} / 所需文件 {result.requiredDocuments} / 风险提示 {result.risks}
           </p>

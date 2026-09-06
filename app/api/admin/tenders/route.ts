@@ -12,6 +12,8 @@ type CreateTenderBody = {
   titleZh: string;
   summaryEs: string;
   summaryZh: string;
+  /** See types/tender.ts's Tender.oneLineSummary — usually written by document analysis, also settable by hand from the admin form (2026-09-06). */
+  oneLineSummary?: string | null;
   buyer: string;
   country: string;
   governmentLevel: GovernmentLevel;
@@ -106,6 +108,7 @@ export async function POST(request: Request) {
     tender_number: slug,
     title: { es: titleEs, en: titleEs, zh: titleZh },
     summary: { es: summaryEs, en: summaryEs, zh: summaryZh },
+    one_line_summary: body.oneLineSummary?.trim() || null,
     buyer,
     country: body.country,
     government_level: body.governmentLevel,

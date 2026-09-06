@@ -27,6 +27,13 @@ export function TenderDetailView({ tender }: { tender: Tender }) {
 
       <KeyDatesTimeline dates={tender.keyDates} />
 
+      {tender.oneLineSummary && (
+        <div className="flex items-start gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4 shadow-[0_18px_50px_-48px_rgba(6,27,43,.5)]">
+          <span aria-hidden="true" className="mt-1 h-8 w-1 shrink-0 rounded-full bg-[#ffb21c]" />
+          <p className="text-base font-black leading-6 text-[#071826] sm:text-lg">{tender.oneLineSummary}</p>
+        </div>
+      )}
+
       <RequirementSection
         title={uiText.qualifications}
         description="参与项目必须满足的基础资格与合规条件"

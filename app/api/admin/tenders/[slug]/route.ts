@@ -17,6 +17,8 @@ type UpdateTenderBody = {
   titleZh: string;
   summaryEs: string;
   summaryZh: string;
+  /** See types/tender.ts's Tender.oneLineSummary — usually written by document analysis, also settable by hand from the admin form (2026-09-06). */
+  oneLineSummary?: string | null;
   buyer: string;
   country: string;
   governmentLevel: GovernmentLevel;
@@ -83,6 +85,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   const row: Record<string, unknown> = {
     title: { ...currentTitle, es: body.titleEs!.trim(), zh: body.titleZh!.trim() },
     summary: { ...currentSummary, es: body.summaryEs?.trim() ?? "", zh: body.summaryZh?.trim() ?? body.summaryEs?.trim() ?? "" },
+    one_line_summary: body.oneLineSummary?.trim() || null,
     tender_number: body.tenderNumber?.trim() || slug,
     buyer: body.buyer!.trim(),
     country: body.country,
@@ -96,6 +99,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     submission_deadline: body.submissionDeadline || null,
     award_date: body.awardDate || null,
     awarded_to: body.awardedTo?.trim() || null,
+    // Real, pre-existing bug found 2026-09-06 while adding one_line_summary
+    // above: this route accepted awardedValue in UpdateTenderBody (added
+    // alongside the awarded_value column) but never actually wrote it here
+    // — every 中标金额 edit from AdminTenderForm.tsx was silently dropped.
+    awarded_value: body.awardedValue ?? null,
     estimated_value: body.estimatedValue ?? null,
     currency: body.currency?.trim() || null,
     location: body.location?.trim() || null,

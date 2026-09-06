@@ -27,6 +27,7 @@ import { extractDocumentText } from "@/lib/ingestion/document-intake";
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
+    oneLineSummary: { type: Type.STRING },
     qualifications: { type: Type.ARRAY, items: requirementSchema() },
     experienceRequirements: { type: Type.ARRAY, items: requirementSchema() },
     requiredDocuments: { type: Type.ARRAY, items: requirementSchema() },
@@ -44,7 +45,7 @@ const RESPONSE_SCHEMA = {
       },
     },
   },
-  required: ["qualifications", "experienceRequirements", "requiredDocuments", "risks"],
+  required: ["oneLineSummary", "qualifications", "experienceRequirements", "requiredDocuments", "risks"],
 };
 
 function requirementSchema() {

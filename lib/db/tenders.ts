@@ -20,6 +20,7 @@ type TenderRow = {
   tender_number: string;
   title: LocalizedText;
   summary: LocalizedText;
+  one_line_summary: string | null;
   buyer: string;
   country: string;
   government_level: Tender["governmentLevel"];
@@ -85,7 +86,7 @@ type RiskRow = {
 };
 
 const TENDER_LIST_FIELDS = `
-  id, slug, tender_number, title, summary, buyer, country, government_level,
+  id, slug, tender_number, title, summary, one_line_summary, buyer, country, government_level,
   industries, subcategory, scope_type, procedure_type, participation_scope,
   publication_date, publication_date_is_estimated,
   submission_deadline, award_date, awarded_to, awarded_value, estimated_value, currency, location,
@@ -162,6 +163,7 @@ function toTender(row: TenderRow): Tender {
     tenderNumber: row.tender_number,
     title: row.title,
     summary: row.summary,
+    oneLineSummary: row.one_line_summary ?? undefined,
     buyer: row.buyer,
     country: row.country,
     governmentLevel: row.government_level,

@@ -56,7 +56,6 @@ export function AnalyzeDocumentForm({
   // Defaults to checked per the user's explicit request (2026-09-04): "写入
   // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
   const [write, setWrite] = useState(true);
-  const [force, setForce] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
@@ -81,7 +80,6 @@ export function AnalyzeDocumentForm({
     form.append("tenderSlug", tenderSlug.trim());
     form.append("file", file);
     form.append("write", String(write));
-    form.append("force", String(force));
 
     try {
       const res = await fetch("/api/admin/analyze-document", { method: "POST", body: form });
@@ -135,12 +133,6 @@ export function AnalyzeDocumentForm({
             <input type="checkbox" checked={write} onChange={(e) => setWrite(e.target.checked)} className="size-4 accent-[#ffb21c]" />
             写入 Supabase（不勾选则只预览，不会真的写入）
           </label>
-          {write && (
-            <label className="ml-6 flex items-center gap-2 text-sm text-[#7a878f]">
-              <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} className="size-4 accent-[#ffb21c]" />
-              即使已有精度分析（claude-opus-5）结果，也强制覆盖
-            </label>
-          )}
         </div>
 
         <button

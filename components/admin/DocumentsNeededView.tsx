@@ -8,6 +8,7 @@ import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { countryLabel, RELEVANCE_TIER_LABELS, STATUS_LABELS, STATUS_COLORS } from "@/lib/tender-labels";
 import { AnalyzeDocumentForm } from "@/components/admin/AnalyzeDocumentForm";
+import { BatchAnalyzeDocumentForm, MAX_BATCH_SELECTION } from "@/components/admin/BatchAnalyzeDocumentForm";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 
@@ -63,6 +64,18 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
   const [country, setCountry] = useState("all");
   const [relevance, setRelevance] = useState("all");
   const [dismissingSlug, setDismissingSlug] = useState<string | null>(null);
+  const [selectedSlugs, setSelectedSlugs] = useState<string[]>([]);
+
+  function toggleSelected(slug: string) {
+    setSelectedSlugs((current) => {
+      if (current.includes(slug)) return current.filter((item) => item !== slug);
+      if (current.length >= MAX_BATCH_SELECTION) {
+        alert(`最多同时选择 ${MAX_BATCH_SELECTION} 个项目一起分析。`);
+        return current;
+      }
+      return [...current, slug];
+    });
+  }
 
   async function dismissTender(slug: string) {
     if (!confirm("确定要把这条标书标记为「无法获取附件」吗？之后不会再出现在这个清单里（不影响它的相关度判定），后台项目管理里随时能再改回来。")) return;
@@ -75,6 +88,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setTenders((prev) => prev.filter((tender) => tender.slug !== slug));
+      setSelectedSlugs((prev) => prev.filter((item) => item !== slug));
     } catch {
       alert("标记失败，请稍后重试。");
     } finally {
@@ -202,6 +216,18 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
         </div>
       </div>
 
+      {selectedSlugs.length > 0 && (
+        <BatchAnalyzeDocumentForm
+          tenders={selectedSlugs.map((slug) => tenders.find((tender) => tender.slug === slug)).filter((tender): tender is TenderNeedingDocuments => Boolean(tender))}
+          onClear={() => setSelectedSlugs([])}
+          onWritten={(slug) => {
+            setTenders((prev) => prev.filter((tender) => tender.slug !== slug));
+            setSelectedSlugs((prev) => prev.filter((item) => item !== slug));
+            router.refresh();
+          }}
+        />
+      )}
+
       {tenders.length === 0 ? (
         <p className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-8 text-center text-sm text-[#64717c]">{localize(uiText.documentsNeededEmpty, locale)}</p>
       ) : (
@@ -209,7 +235,8 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
           <table className="w-full min-w-[1040px] table-fixed text-left text-xs">
             <thead className="border-b border-[#dbe2e5] bg-[#edf2f3] text-[11px] uppercase tracking-[0.06em] text-[#52636e]">
               <tr>
-                <th className="w-[24%] px-4 py-3 font-black">{localize(uiText.colTitle, locale)}</th>
+                <th className="w-10 px-4 py-3 font-black" title={`勾选最多 ${MAX_BATCH_SELECTION} 个项目一起批量分析`}>选</th>
+                <th className="w-[22%] px-4 py-3 font-black">{localize(uiText.colTitle, locale)}</th>
                 <th className="w-[8%] px-3 py-3 font-black">{localize(uiText.countryLabel, locale)}</th>
                 <th className="w-[8%] px-3 py-3 font-black">状态</th>
                 <th className="w-[18%] px-3 py-3 font-black">{localize(uiText.colTenderId, locale)}</th>
@@ -222,7 +249,16 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                 const isOpen = openSlug === tender.slug;
                 return (
                   <Fragment key={tender.slug}>
-                    <tr className="transition-colors hover:bg-[#fff9ec]">
+                    <tr className={`transition-colors hover:bg-[#fff9ec] ${selectedSlugs.includes(tender.slug) ? "bg-[#fff8e9]" : ""}`}>
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          aria-label={`选择「${localize(tender.title, locale)}」用于批量分析`}
+                          checked={selectedSlugs.includes(tender.slug)}
+                          onChange={() => toggleSelected(tender.slug)}
+                          className="size-4 accent-[#ffb21c]"
+                        />
+                      </td>
                       <td title={localize(tender.title, locale)} className="truncate whitespace-nowrap px-4 py-3 font-black text-[#071826]">{localize(tender.title, locale)}</td>
                       <td className="whitespace-nowrap px-3 py-3 text-[#425461]">
                         <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
@@ -263,7 +299,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                     </tr>
                     {isOpen && (
                       <tr>
-                        <td colSpan={6} className="bg-[#f7f5ef] px-5 py-5">
+                        <td colSpan={7} className="bg-[#f7f5ef] px-5 py-5">
                           <AnalyzeDocumentForm
                             initialSlug={tender.slug}
                             lockSlug
@@ -281,7 +317,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-14 text-center">
+                  <td colSpan={7} className="px-5 py-14 text-center">
                     <p className="font-black text-[#071826]">没有找到符合条件的项目</p>
                     <p className="mt-1 text-xs text-[#75838c]">可以尝试修改关键词或清除筛选条件</p>
                   </td>

@@ -62,18 +62,23 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
   const [country, setCountry] = useState("all");
   const [relevance, setRelevance] = useState("all");
   const [dismissingSlug, setDismissingSlug] = useState<string | null>(null);
-  const [selectedSlugs, setSelectedSlugs] = useState<string[]>([]);
+  // The selected tenders themselves, not just their slugs (2026-09-06): a
+  // written tender is dropped from `tenders` immediately, and a panel that
+  // looked its rows up in `tenders` would make the just-finished row —
+  // along with its 已写入/一句话总结 result — vanish the moment it
+  // succeeded, which is exactly when the admin wants to read it.
+  const [selectedTenders, setSelectedTenders] = useState<TenderNeedingDocuments[]>([]);
   const [manualSlugs, setManualSlugs] = useState<string[]>([]);
   const [manualInput, setManualInput] = useState("");
 
-  function toggleSelected(slug: string) {
-    setSelectedSlugs((current) => {
-      if (current.includes(slug)) return current.filter((item) => item !== slug);
+  function toggleSelected(tender: TenderNeedingDocuments) {
+    setSelectedTenders((current) => {
+      if (current.some((item) => item.slug === tender.slug)) return current.filter((item) => item.slug !== tender.slug);
       if (current.length >= MAX_BATCH_SELECTION) {
         alert(`最多同时选择 ${MAX_BATCH_SELECTION} 个项目一起分析。`);
         return current;
       }
-      return [...current, slug];
+      return [...current, tender];
     });
   }
 
@@ -103,7 +108,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setTenders((prev) => prev.filter((tender) => tender.slug !== slug));
-      setSelectedSlugs((prev) => prev.filter((item) => item !== slug));
+      setSelectedTenders((prev) => prev.filter((item) => item.slug !== slug));
     } catch {
       alert("标记失败，请稍后重试。");
     } finally {
@@ -249,7 +254,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
             </thead>
             <tbody className="divide-y divide-[#e5e9eb]">
               {filtered.map((tender) => {
-                const isSelected = selectedSlugs.includes(tender.slug);
+                const isSelected = selectedTenders.some((item) => item.slug === tender.slug);
                 return (
                   <tr key={tender.slug} className={`transition-colors hover:bg-[#fff9ec] ${isSelected ? "bg-[#fff8e9]" : ""}`}>
                     <td className="px-4 py-3">
@@ -257,7 +262,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                         type="checkbox"
                         aria-label={`选择「${localize(tender.title, locale)}」用于批量分析`}
                         checked={isSelected}
-                        onChange={() => toggleSelected(tender.slug)}
+                        onChange={() => toggleSelected(tender)}
                         className="size-4 accent-[#ffb21c]"
                       />
                     </td>
@@ -282,7 +287,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                         </a>
                         <button
                           type="button"
-                          onClick={() => toggleSelected(tender.slug)}
+                          onClick={() => toggleSelected(tender)}
                           className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[11px] font-black transition-colors ${isSelected ? "border border-[#cbd6da] bg-white text-[#52636e]" : "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]"}`}
                         >
                           <UploadIcon />{isSelected ? "取消选择" : "选择上传"}
@@ -314,15 +319,18 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
         </div>
       )}
 
-      {selectedSlugs.length > 0 && (
+      {selectedTenders.length > 0 && (
         <BatchAnalyzeDocumentForm
-          tenders={selectedSlugs.map((slug) => tenders.find((tender) => tender.slug === slug)).filter((tender): tender is TenderNeedingDocuments => Boolean(tender))}
-          onClear={() => setSelectedSlugs([])}
-          onWritten={(slug) => {
-            setTenders((prev) => prev.filter((tender) => tender.slug !== slug));
-            setSelectedSlugs((prev) => prev.filter((item) => item !== slug));
-            router.refresh();
-          }}
+          tenders={selectedTenders}
+          onClear={() => setSelectedTenders([])}
+          // Only the worklist row goes away — the panel row (and its
+          // result) stays until the admin clears the selection.
+          onWritten={(slug) => setTenders((prev) => prev.filter((tender) => tender.slug !== slug))}
+          // One refresh for the whole batch, not one per written tender:
+          // each router.refresh() re-runs this page's server render and
+          // its Supabase queries, and five of them for one click is four
+          // wasted full-page round-trips.
+          onFinished={() => router.refresh()}
         />
       )}
 
@@ -372,10 +380,11 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
             <BatchAnalyzeDocumentForm
               tenders={manualSlugs.map((slug) => ({ slug }))}
               onClear={() => setManualSlugs([])}
-              onWritten={(slug) => {
-                setManualSlugs((prev) => prev.filter((item) => item !== slug));
-                router.refresh();
-              }}
+              // Manually-added slugs stay listed after a successful write
+              // (the panel row is the only place its result is shown) —
+              // the chip's × or 取消选择 removes them.
+              onWritten={() => {}}
+              onFinished={() => router.refresh()}
             />
           </div>
         )}

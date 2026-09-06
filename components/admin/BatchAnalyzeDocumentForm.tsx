@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { LocalizedText } from "@/types/tender";
 import { localize, useLocale } from "@/lib/i18n";
 
@@ -16,6 +16,7 @@ type AnalyzeResult = {
   risks: number;
   status: "written" | "dry-run" | "skipped-opus-precision";
   message?: string;
+  warnings?: string[];
 };
 
 type RowState =
@@ -25,18 +26,25 @@ type RowState =
   | { kind: "error"; message: string };
 
 export const MAX_BATCH_SELECTION = 5;
+/** Must stay <= MAX_FILES_PER_REQUEST in app/api/admin/analyze-document/route.ts — caught here so the admin finds out before uploading, not after. */
+const MAX_FILES_PER_TENDER = 10;
+/** Same as the route's own MAX_UPLOAD_BYTES, for the same reason. */
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 export function BatchAnalyzeDocumentForm({
   tenders,
   onClear,
   onWritten,
+  onFinished,
 }: {
   /** title is omitted when the caller only knows the slug (e.g. manually typed, not looked up from a known list) — the row then just shows the slug. */
   tenders: { slug: string; title?: LocalizedText }[];
   /** Clears the whole selection (e.g. the "取消选择" button). */
   onClear: () => void;
-  /** Called once per tender whose analysis was actually written, so the caller can drop it from the worklist/selection. */
+  /** Called once per tender whose analysis was actually written, so the caller can drop it from the worklist. Must NOT remove the row from `tenders` — see the note on onFinished. */
   onWritten: (slug: string) => void;
+  /** Called once after the whole batch finishes. The caller does its single router.refresh() here rather than one per written tender — refreshing mid-batch re-renders the server tree (and re-runs its queries) up to five times for one action. */
+  onFinished?: () => void;
 }) {
   const { locale } = useLocale();
   // Each tender can have more than one document (a Pliego plus one or more
@@ -50,8 +58,51 @@ export function BatchAnalyzeDocumentForm({
 
   const readyCount = tenders.filter((tender) => (files[tender.slug]?.length ?? 0) > 0).length;
 
-  function setTenderFiles(slug: string, fileList: FileList | null) {
-    setFiles((current) => ({ ...current, [slug]: fileList ? Array.from(fileList) : [] }));
+  // A batch is minutes of real, paid model calls with no server-side
+  // resume — closing the tab mid-run throws that spend away.
+  useEffect(() => {
+    if (!submitting) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [submitting]);
+
+  /**
+   * Appends rather than replaces (2026-09-06): picking the Pliego, then
+   * opening the dialog again to add an Anexo, used to silently discard the
+   * first pick — the exact "我选一个，另一个就被替换掉了" complaint this
+   * whole flow was rebuilt for. Deduped on name+size+lastModified so
+   * re-picking the same file in the second dialog doesn't queue it twice.
+   */
+  function addTenderFiles(slug: string, fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const incoming = Array.from(fileList);
+    const rejected: string[] = [];
+
+    setFiles((current) => {
+      const existing = current[slug] ?? [];
+      const key = (file: File) => `${file.name}|${file.size}|${file.lastModified}`;
+      const seen = new Set(existing.map(key));
+      const added: File[] = [];
+
+      for (const file of incoming) {
+        if (seen.has(key(file))) continue;
+        if (file.size > MAX_FILE_BYTES) {
+          rejected.push(`「${file.name}」超过 ${MAX_FILE_BYTES / 1024 / 1024}MB`);
+          continue;
+        }
+        if (existing.length + added.length >= MAX_FILES_PER_TENDER) {
+          rejected.push(`「${file.name}」超出单个项目最多 ${MAX_FILES_PER_TENDER} 个文件的上限`);
+          continue;
+        }
+        seen.add(key(file));
+        added.push(file);
+      }
+
+      return added.length > 0 ? { ...current, [slug]: [...existing, ...added] } : current;
+    });
+
+    if (rejected.length > 0) alert(`以下文件没有被添加：\n${rejected.join("\n")}`);
   }
 
   function removeTenderFile(slug: string, index: number) {
@@ -66,10 +117,21 @@ export function BatchAnalyzeDocumentForm({
     form.append("write", String(write));
     try {
       const res = await fetch("/api/admin/analyze-document", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-      setRows((current) => ({ ...current, [slug]: { kind: "done", result: data as AnalyzeResult } }));
-      if ((data as AnalyzeResult).status === "written") onWritten(slug);
+      // Not res.json() directly: a 500 from the dev server (or a proxy's
+      // own 413) answers with HTML, and the SyntaxError that produces
+      // would surface to the admin as "Unexpected token <" instead of
+      // anything about what actually failed.
+      const raw = await res.text();
+      let data: (AnalyzeResult & { error?: string }) | null = null;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error(res.ok ? "服务端返回了无法解析的响应" : `HTTP ${res.status}：${raw.slice(0, 200)}`);
+      }
+      if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`);
+      const result = data as AnalyzeResult;
+      setRows((current) => ({ ...current, [slug]: { kind: "done", result } }));
+      if (result.status === "written") onWritten(slug);
     } catch (err) {
       setRows((current) => ({ ...current, [slug]: { kind: "error", message: err instanceof Error ? err.message : String(err) } }));
     }
@@ -91,6 +153,7 @@ export function BatchAnalyzeDocumentForm({
       await analyzeOne(tender.slug, tenderFiles);
     }
     setSubmitting(false);
+    onFinished?.();
   }
 
   return (
@@ -99,9 +162,9 @@ export function BatchAnalyzeDocumentForm({
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Batch upload</p>
           <h2 className="mt-1 text-lg font-black text-[#071826]">批量上传分析（已选 {tenders.length}/{MAX_BATCH_SELECTION}）</h2>
-          <p className="mt-1 text-xs text-[#64717c]">每个项目可以一次选择多个文件（比如正文 + 附件），会合并在一起分析。未选择文件的项目会被跳过。</p>
+          <p className="mt-1 text-xs text-[#64717c]">每个项目可以一次选择多个文件（比如正文 + 附件），会合并在一起分析；再点一次可以继续追加。未选择文件的项目会被跳过。</p>
         </div>
-        <button type="button" onClick={onClear} className="h-9 shrink-0 rounded-lg border border-[#d8e0e3] bg-white px-3 text-xs font-black text-[#52636e] hover:border-[#9aa5ab]">
+        <button type="button" onClick={onClear} disabled={submitting} className="h-9 shrink-0 rounded-lg border border-[#d8e0e3] bg-white px-3 text-xs font-black text-[#52636e] hover:border-[#9aa5ab] disabled:opacity-50">
           取消选择
         </button>
       </div>
@@ -110,6 +173,7 @@ export function BatchAnalyzeDocumentForm({
         {tenders.map((tender, index) => {
           const row = rows[tender.slug] ?? { kind: "idle" as const };
           const tenderFiles = files[tender.slug] ?? [];
+          const warnings = row.kind === "done" ? row.result.warnings ?? [] : [];
           return (
             <div key={tender.slug} className="flex flex-col gap-3 rounded-xl border border-[#e5e9eb] bg-white p-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
@@ -119,18 +183,24 @@ export function BatchAnalyzeDocumentForm({
                   {tender.title && <p className="mt-0.5 font-mono text-[11px] text-[#8a959c]">{tender.slug}</p>}
                 </div>
                 <label className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-[#071826] px-3 text-xs font-black text-white hover:bg-[#12364d]">
-                  上传（可多选）
+                  {tenderFiles.length > 0 ? "继续添加" : "上传（可多选）"}
                   <input
                     type="file"
                     accept=".pdf,.docx,.doc"
                     multiple
                     disabled={submitting}
-                    onChange={(e) => setTenderFiles(tender.slug, e.target.files)}
+                    onChange={(e) => {
+                      addTenderFiles(tender.slug, e.target.files);
+                      // Reset so picking the SAME file again still fires
+                      // onChange (a file input holds its value otherwise,
+                      // and re-selecting it looks like nothing happened).
+                      e.target.value = "";
+                    }}
                     className="hidden"
                   />
                 </label>
                 <div className="shrink-0 text-xs sm:w-48">
-                  {row.kind === "idle" && <span className="text-[#9aa5ab]">{tenderFiles.length > 0 ? "等待分析" : "未选择文件"}</span>}
+                  {row.kind === "idle" && <span className="text-[#9aa5ab]">{tenderFiles.length > 0 ? `等待分析（${tenderFiles.length} 个文件）` : "未选择文件"}</span>}
                   {row.kind === "analyzing" && <span className="font-bold text-[#b86e00]">分析中…</span>}
                   {row.kind === "done" && row.result.status === "written" && (
                     <span className="font-bold text-emerald-700">已写入 — {row.result.oneLineSummary || "（无一句话总结）"}</span>
@@ -145,7 +215,7 @@ export function BatchAnalyzeDocumentForm({
               {tenderFiles.length > 0 && (
                 <ul className="flex flex-wrap gap-2 pl-0 sm:pl-10">
                   {tenderFiles.map((file, fileIndex) => (
-                    <li key={`${file.name}-${fileIndex}`} className="inline-flex items-center gap-2 rounded-full border border-[#d8e0e3] bg-[#f7f8f7] py-1 pl-3 pr-1.5 text-[11px] text-[#425461]">
+                    <li key={`${file.name}-${file.size}-${file.lastModified}`} className="inline-flex items-center gap-2 rounded-full border border-[#d8e0e3] bg-[#f7f8f7] py-1 pl-3 pr-1.5 text-[11px] text-[#425461]">
                       {file.name}
                       <button
                         type="button"
@@ -157,6 +227,18 @@ export function BatchAnalyzeDocumentForm({
                         ×
                       </button>
                     </li>
+                  ))}
+                </ul>
+              )}
+              {row.kind === "done" && (
+                <p className="pl-0 text-[11px] text-[#64717c] sm:pl-10">
+                  资质 {row.result.qualifications} · 业绩 {row.result.experienceRequirements} · 文件 {row.result.requiredDocuments} · 风险 {row.result.risks}
+                </p>
+              )}
+              {warnings.length > 0 && (
+                <ul className="flex flex-col gap-1 rounded-lg border border-[#f2d9a8] bg-[#fff8ea] px-3 py-2 text-[11px] text-[#8a5a00] sm:ml-10">
+                  {warnings.map((warning) => (
+                    <li key={warning}>⚠ {warning}</li>
                   ))}
                 </ul>
               )}

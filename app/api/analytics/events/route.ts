@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
+import { clientIp, createRateLimiter } from "@/lib/security/rate-limit";
 
 const eventSchema = z.object({
   eventType: z.enum(["page_view", "tender_open", "filter_apply", "tender_save", "tender_unsave"]),
@@ -13,12 +14,32 @@ const eventSchema = z.object({
 
 const ALLOWED_FILTER_DIMENSIONS = new Set(["country", "industry", "scope", "status", "tier", "sort", "view", "search"]);
 
+/**
+ * This is the only endpoint in the app that writes to Supabase without
+ * authentication (2026-09-06). Everything below validates the SHAPE of an
+ * event, but nothing limited how MANY: a loop could insert unbounded rows
+ * into analytics_events and run up the project's quota and bill. 60/minute
+ * per address is well clear of real usage — a page view plus a burst of
+ * filter events per interaction — and analytics is the one kind of data
+ * where dropping some beats paying for all of it. See
+ * lib/security/rate-limit.ts for what this does and does not cover.
+ */
+const isRateLimited = createRateLimiter({ windowMs: 60_000, max: 60 });
+
 export async function POST(request: NextRequest) {
   if (/bot|crawler|spider|slurp|preview/i.test(request.headers.get("user-agent") ?? "")) {
     return NextResponse.json({ accepted: false }, { status: 202 });
   }
   if (Number(request.headers.get("content-length") ?? 0) > 8_192) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
+
+  // Answered 202 rather than 429 on purpose: this is fire-and-forget
+  // telemetry the client already ignores the response of, and a 429 would
+  // only add console noise for a real visitor who tripped the limit.
+  const ip = clientIp(request);
+  if (ip !== "unknown" && isRateLimited(ip)) {
+    return NextResponse.json({ accepted: false }, { status: 202 });
   }
 
   const parsed = eventSchema.safeParse(await request.json().catch(() => null));

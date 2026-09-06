@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { clientIp, createRateLimiter } from "@/lib/security/rate-limit";
 
 /**
  * Moderate anti-scraping for the tender list/detail pages — the only pages
@@ -18,38 +19,8 @@ const ALLOWED_CRAWLER_UA =
 const SCRAPER_UA_PATTERN =
   /python-requests|python-urllib|scrapy|curl\/|wget\/|libwww-perl|go-http-client|okhttp|node-fetch|^axios\/|postmanruntime|aiohttp|^java\/|phantomjs/i;
 
-const WINDOW_MS = 60_000;
-const MAX_REQUESTS_PER_WINDOW = 40;
-
-/**
- * Per-instance sliding-window counters. This resets on redeploy/cold start
- * and isn't shared across serverless instances, so it won't stop a
- * distributed scrape — but it blunts the common case (one IP/script hammering
- * every tender detail page) without adding a Redis/Upstash dependency that
- * hasn't been provisioned for this project.
- */
-const requestLog = new Map<string, number[]>();
-
-function clientIp(request: NextRequest): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]!.trim();
-  return request.headers.get("x-real-ip") ?? "unknown";
-}
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (requestLog.get(ip) ?? []).filter((ts) => now - ts < WINDOW_MS);
-  recent.push(now);
-  requestLog.set(ip, recent);
-
-  if (requestLog.size > 5000) {
-    for (const [key, timestamps] of requestLog) {
-      if (timestamps.every((ts) => now - ts >= WINDOW_MS)) requestLog.delete(key);
-    }
-  }
-
-  return recent.length > MAX_REQUESTS_PER_WINDOW;
-}
+/** See lib/security/rate-limit.ts for what this does and does not cover. */
+const isRateLimited = createRateLimiter({ windowMs: 60_000, max: 40 });
 
 export function evaluateBotProtection(request: NextRequest): NextResponse | null {
   if (!PROTECTED_PATH_PATTERN.test(request.nextUrl.pathname)) return null;

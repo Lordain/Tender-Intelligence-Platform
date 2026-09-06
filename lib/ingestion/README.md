@@ -3178,3 +3178,22 @@ Two things deliberately NOT changed, with reasons:
   `toRelevance()` uses its presence as the condition for falling back to
   `classifyRelevance()`. Dropping it from the list select would silently
   change tier results, so it needs that condition rewritten first.
+
+### Rate limiting the one unauthenticated write path
+
+`/api/analytics/events` validated the shape of every event carefully but
+never limited how many arrived — it is the only endpoint in the app that
+writes to Supabase without authentication, so a loop could insert
+unbounded rows into `analytics_events` and run up the project's quota.
+
+`bot-protection.ts` already had a sliding-window limiter, scoped to
+`/tenders*`. It moved to `lib/security/rate-limit.ts` and both callers now
+share it (60/minute per address for events, the existing 40 for tender
+pages). The events endpoint answers 202, not 429: the client is
+fire-and-forget and ignores the response either way, and analytics is the
+one kind of data where dropping some beats paying for all of it.
+
+The limiter's counters are per-process, so they reset on cold start and
+are not shared across serverless instances — it blunts one script from one
+address, not a distributed flood. That is the seam to swap for a shared
+store if real abuse ever appears.

@@ -3197,3 +3197,47 @@ The limiter's counters are per-process, so they reset on cold start and
 are not shared across serverless instances — it blunts one script from one
 address, not a distributed flood. That is the seam to swap for a shared
 store if real abuse ever appears.
+
+### Gemini removed as a provider (2026-09-06)
+
+Per the user's decision that Gemini won't be used going forward, both
+implementations (`extract-requirements-gemini.ts`,
+`translate-titles-gemini.ts` — 172 lines) and the `@google/genai`
+dependency are gone, along with the `gemini` option in
+`scripts/analyze-batch.ts` and the two `compare-*-providers.ts` scripts,
+and `GEMINI_API_KEY` from `.env.example`.
+
+Worth knowing what this cost: those comparison scripts exist to make a
+provider choice defensible on real documents rather than on vendor
+claims, and Gemini was the only other provider besides Claude that read
+a PDF natively rather than through locally-extracted text — the
+asymmetry `compare-extraction-providers.ts` documents. The remaining
+comparison is Claude vs Qwen (both DashScope paths). If a native-PDF
+alternative to Claude is ever needed again, this is what would have to
+be rebuilt.
+
+`@google/genai` was also the single largest dependency in the tree
+(11 MB, plus 3.2 MB of protobufjs) and carried two of the four install
+scripts npm warns about on a fresh `npm i`.
+
+### xlsx upgrade verified (2026-09-06)
+
+`xlsx` moved to 0.20.3 from the SheetJS CDN (`npm audit` had it at HIGH:
+prototype pollution GHSA-4r6h-8v6p-xvw6 and ReDoS GHSA-5pgg-2g8v-p4x9,
+with no fix published to npm — SheetJS stopped publishing there). The
+lockfile pins it by version plus an SRI integrity hash, so installs still
+verify the tarball.
+
+Verified against the real `.xlsb` fixture
+(`__fixtures__/sample-ecopetrol-contratacion.xlsb`) rather than assumed:
+`npm run ingest:ecopetrol-contracts -- --fixture` produces byte-identical
+mapped output on 0.20.3 and 0.18.5 — same 3/3 rows, same slugs, tender
+numbers, award dates and values. The connector only uses `XLSX.read`,
+`utils.sheet_to_json`, `SheetNames` and `Sheets`, none of which changed
+between those versions.
+
+One consequence to know about: `npm ci` now fetches from
+cdn.sheetjs.com, so a build environment that can't reach that host fails
+at install (this is not hypothetical — the sandbox this was developed in
+blocks it). If that ever bites, vendor the tarball into the repo and
+point package.json at a local path.

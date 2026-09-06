@@ -2,7 +2,7 @@
  * Runs the same real tender PDF through all three document-analysis
  * providers (Claude Sonnet 5 — the current production standard tier,
  * plus the two cheaper alternatives the user asked to evaluate,
- * 2026-09-03: Qwen3.6-Plus and Gemini 3.1 Flash-Lite) and prints a
+ * 2026-09-03: Qwen3.6-Plus) and prints a
  * side-by-side item-count summary, so extraction quality can be judged
  * before deciding whether to change scripts/extract-tender-document.ts's
  * production path.
@@ -11,7 +11,7 @@
  * provider whose API key isn't configured is skipped, not treated as a
  * failure.
  *
- * IMPORTANT ASYMMETRY, not a bug: Claude and Gemini read the PDF
+ * IMPORTANT ASYMMETRY, not a bug: Claude reads the PDF
  * natively (real document/vision understanding — layout, tables, scanned
  * pages); Qwen gets locally-extracted plain text instead (see
  * lib/ingestion/extract-requirements-qwen.ts's header for why). A gap in
@@ -26,7 +26,6 @@ import { join } from "node:path";
 import { intakeDocument } from "../lib/ingestion/document-intake";
 import { extractTenderRequirements, type TenderExtraction } from "../lib/ingestion/extract-requirements";
 import { extractTenderRequirementsQwen } from "../lib/ingestion/extract-requirements-qwen";
-import { extractTenderRequirementsGemini } from "../lib/ingestion/extract-requirements-gemini";
 
 type Provider = {
   name: string;
@@ -37,7 +36,6 @@ type Provider = {
 const PROVIDERS: Provider[] = [
   { name: "claude-sonnet-5 (当前生产)", envVar: "ANTHROPIC_API_KEY", run: (p, c) => extractTenderRequirements(p, c, "claude-sonnet-5") },
   { name: "qwen3.6-plus (本地提取文本)", envVar: "DASHSCOPE_API_KEY", run: extractTenderRequirementsQwen },
-  { name: "gemini-3.1-flash-lite (原生 PDF)", envVar: "GEMINI_API_KEY", run: extractTenderRequirementsGemini },
 ];
 
 function summarize(extraction: TenderExtraction) {

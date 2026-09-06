@@ -2,14 +2,14 @@
  * Runs the same batch of real tender titles/summaries through all three
  * translation providers (Claude Haiku 4.5 — the current production path,
  * plus the two cheaper alternatives the user asked to evaluate,
- * 2026-09-03: Qwen3.6-Plus and Gemini 3.1 Flash-Lite) and prints them
+ * 2026-09-03: Qwen3.6-Plus) and prints them
  * side by side, so translation quality can be judged before deciding
  * whether to switch the production path in scripts/translate-tenders.ts.
  *
  * Read-only against Supabase (fetches a sample, never writes anything) —
  * this is an evaluation tool, not a production ingest path. A provider
  * whose API key isn't configured is skipped, not treated as a failure —
- * run this again once DASHSCOPE_API_KEY/GEMINI_API_KEY are added (see
+ * run this again once DASHSCOPE_API_KEY is added (see
  * .env.example) to bring that provider into the comparison.
  *
  * Usage:
@@ -22,7 +22,6 @@ import { join } from "node:path";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { translateTenderBatch, type TenderToTranslate, type TranslatedTender } from "../lib/ingestion/translate-titles";
 import { translateTenderBatchQwen } from "../lib/ingestion/translate-titles-qwen";
-import { translateTenderBatchGemini } from "../lib/ingestion/translate-titles-gemini";
 import type { LocalizedText } from "../types/tender";
 
 type Provider = {
@@ -34,7 +33,6 @@ type Provider = {
 const PROVIDERS: Provider[] = [
   { name: "claude-haiku-4-5 (当前生产)", envVar: "ANTHROPIC_API_KEY", run: translateTenderBatch },
   { name: "qwen3.6-plus", envVar: "DASHSCOPE_API_KEY", run: translateTenderBatchQwen },
-  { name: "gemini-3.1-flash-lite", envVar: "GEMINI_API_KEY", run: translateTenderBatchGemini },
 ];
 
 const FIXTURE: (TenderToTranslate & { existingTitleZh?: string })[] = [

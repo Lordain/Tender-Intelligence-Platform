@@ -7,7 +7,7 @@ import { ExtractionSchema, SYSTEM_PROMPT, type TenderExtraction } from "@/lib/in
  * Sonnet/Opus 5 path (2026-09-03) — see translate-titles-qwen.ts's
  * header for the full context.
  *
- * Unlike Claude/Gemini, this does NOT send the PDF natively. Qwen3.5-
+ * Unlike Claude, this does NOT send the PDF natively. Qwen3.5-
  * Plus's exact support for native PDF input over DashScope's OpenAI-
  * compatible chat completions endpoint couldn't be confirmed via
  * WebSearch (2026-09-03) — evidence exists for Qwen's dedicated "-vl"
@@ -29,14 +29,14 @@ import { ExtractionSchema, SYSTEM_PROMPT, type TenderExtraction } from "@/lib/in
  * directly through analyze-batch.ts (--provider=qwen vs
  * --provider=qwen-anthropic).
  *
- * This is a real, disclosed difference from the Claude/Gemini paths, not
- * a bug: Qwen loses whatever Claude/Gemini's native document vision
+ * This is a real, disclosed difference from the Claude path, not
+ * a bug: Qwen loses whatever Claude's native document vision
  * would catch from layout/tables/a scanned (non-text) page, so a real
  * quality gap here may reflect that gap, not the model's underlying
  * capability — factor this in when reading compare:extraction's output,
  * don't just compare the three columns as if they saw the same input.
  *
- * Same ExtractionSchema/SYSTEM_PROMPT as the Claude/Gemini paths.
+ * Same ExtractionSchema/SYSTEM_PROMPT as the Claude path.
  *
  * NOT LIVE-TESTED — no DASHSCOPE_API_KEY configured yet (2026-09-03). Run
  * `npm run compare:extraction <file.pdf>` once a key is added.

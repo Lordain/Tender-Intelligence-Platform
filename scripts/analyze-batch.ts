@@ -5,7 +5,7 @@
  * at production scale — a single test PDF (compare:extraction) isn't
  * enough evidence for a decision that changes how every tender gets
  * analyzed. Meant to be run once per provider (e.g. --provider=claude-
- * haiku over 5 documents, look at the output, then --provider=gemini
+ * haiku over 5 documents, look at the output, then --provider=qwen
  * over 5 more) rather than all providers at once.
  *
  * Read-only: prints a per-document summary and writes full results to
@@ -47,9 +47,8 @@
  *
  * Usage:
  *   npm run analyze:batch -- path/to/folder --provider=claude-haiku [--count=5]
- *   npm run analyze:batch -- path/to/folder --provider=gemini [--count=5]
  *
- * --provider: claude-haiku | claude-sonnet | claude-opus | qwen | qwen-anthropic | qwen-anthropic-3.6 | gemini | auto
+ * --provider: claude-haiku | claude-sonnet | claude-opus | qwen | qwen-anthropic | qwen-anthropic-3.6 | auto
  *
  * --provider=auto (2026-09-03, per the user): routes each document by
  * whether it has a real text layer, per the day's findings — Word docs
@@ -81,11 +80,10 @@ import { intakeDocument, extractDocumentText } from "../lib/ingestion/document-i
 import { extractTenderRequirements, type TenderExtraction } from "../lib/ingestion/extract-requirements";
 import { extractTenderRequirementsQwen } from "../lib/ingestion/extract-requirements-qwen";
 import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract-requirements-qwen-anthropic";
-import { extractTenderRequirementsGemini } from "../lib/ingestion/extract-requirements-gemini";
 import { hasRealTextLayer } from "../lib/ingestion/text-layer";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
-type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "qwen-anthropic" | "qwen-anthropic-3.6" | "gemini" | "auto";
+type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "qwen-anthropic" | "qwen-anthropic-3.6" | "auto";
 type ExtractContext = { tenderNumber: string; title: string; buyer: string };
 
 const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractContext) => Promise<TenderExtraction>> = {
@@ -95,7 +93,6 @@ const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractCo
   qwen: extractTenderRequirementsQwen,
   "qwen-anthropic": extractTenderRequirementsQwenAnthropic,
   "qwen-anthropic-3.6": (p, c) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.6-plus"),
-  gemini: extractTenderRequirementsGemini,
   // Self-referencing PROVIDER_RUNNERS here is fine — this arrow function
   // body only runs once PROVIDER_RUNNERS itself is fully assigned, since
   // it's called later, not during this object literal's construction.
@@ -114,7 +111,6 @@ const PROVIDER_ENV_VAR: Record<ProviderKey, string[]> = {
   qwen: ["DASHSCOPE_API_KEY"],
   "qwen-anthropic": ["DASHSCOPE_API_KEY"],
   "qwen-anthropic-3.6": ["DASHSCOPE_API_KEY"],
-  gemini: ["GEMINI_API_KEY"],
   // Either underlying provider could get picked per document, so both
   // keys need to be set up front rather than discovered mid-run.
   auto: ["ANTHROPIC_API_KEY", "DASHSCOPE_API_KEY"],
@@ -240,7 +236,7 @@ async function main() {
   const count = countArg ? parseInt(countArg, 10) : 5;
 
   if (!dir || !provider || !(provider in PROVIDER_RUNNERS)) {
-    console.error("Usage: npm run analyze:batch -- <folder> --provider=<claude-haiku|claude-sonnet|claude-opus|qwen|qwen-anthropic|qwen-anthropic-3.6|gemini|auto> [--count=5]");
+    console.error("Usage: npm run analyze:batch -- <folder> --provider=<claude-haiku|claude-sonnet|claude-opus|qwen|qwen-anthropic|qwen-anthropic-3.6|auto> [--count=5]");
     process.exit(1);
   }
 

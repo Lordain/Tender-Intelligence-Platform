@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { translateTenderBatch, type TenderToTranslate, type TranslatedTender } from "@/lib/ingestion/translate-titles";
+import { isHiddenColombiaNoDeadline } from "@/lib/db/tenders";
 import type { LocalizedText } from "@/types/tender";
 
 // Was 25 — dropped after a real run (2026-09-03) truncated a 25-item
@@ -42,17 +43,17 @@ export async function translateAllTenders(
   // PostgREST caps an unranged select at 1000 rows — page with .range()
   // so tenders past the first 1000 don't silently get skipped.
   const PAGE_SIZE = 1000;
-  const rows: { slug: string; title: LocalizedText; summary: LocalizedText }[] = [];
+  const rows: { slug: string; title: LocalizedText; summary: LocalizedText; country: string; submission_deadline: string | null }[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, title, summary")
+      .select("slug, title, summary, country, submission_deadline")
       .neq("relevance_tier", "excluded")
       .range(from, from + PAGE_SIZE - 1);
 
     if (error) throw new Error(`Failed to fetch tenders: ${error.message}`);
 
-    const page = data as { slug: string; title: LocalizedText; summary: LocalizedText }[];
+    const page = data as { slug: string; title: LocalizedText; summary: LocalizedText; country: string; submission_deadline: string | null }[];
     rows.push(...page);
     if (page.length < PAGE_SIZE) break;
   }
@@ -60,7 +61,16 @@ export async function translateAllTenders(
   // Untranslated = exactly the untranslated() mirror every mapper writes
   // (title.zh === title.es, byte for byte) — a real translation always
   // differs from the Spanish original.
-  const untranslated = rows.filter((t) => t.title.zh === t.title.es);
+  //
+  // Also skips a Colombia tender with no submission deadline (2026-09-05,
+  // explicit request) — same rule as fetchAllTendersFromDb()/
+  // fetchAdminTenderListFromDb() (see isHiddenColombiaNoDeadline's own
+  // comment): many of these are already-decided processes with no real
+  // opportunity left, and translation is a real, billed Anthropic API
+  // call per title — no reason to spend it on a tender that's hidden
+  // everywhere else until it either resolves a real deadline or gets
+  // cleaned up.
+  const untranslated = rows.filter((t) => t.title.zh === t.title.es && !isHiddenColombiaNoDeadline(t.country, t.submission_deadline));
   const toTranslate = options.limit !== undefined ? untranslated.slice(0, options.limit) : untranslated;
 
   const result: TranslateAllTendersResult = {

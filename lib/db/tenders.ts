@@ -266,23 +266,23 @@ async function fetchAwardedSlugsWithAnalysis(supabase: SupabaseClient): Promise<
  * lib/tenders.ts), the homepage teaser (app/page.tsx also calls
  * getAllTenders()), and the notification digest — so gating it here covers
  * all of them at once. Admin's own list (fetchAdminTenderListFromDb,
- * below) is a separate query and stays untouched: admins still need to
- * see every awarded-but-unanalyzed row to fix it.
+ * below) is a separate query with the SAME awarded-with-no-analysis
+ * exception NOT applied — admins still need to see every awarded-but-
+ * unanalyzed row to fix it.
  *
  * Second visibility rule, same day, Colombia-only: no `submissionDeadline`
  * (SECOP's "Fecha de presentación de ofertas") hides a Colombia tender
- * here too. The user's own explicit rule: many no-deadline Colombia rows
- * are already-decided/no-real-opportunity ("Contratación Directa"
- * processes published well after signing — see colombia-mapper.ts's
- * inferStatus() comment) and hurt trust in the feed; a genuinely open
- * tender missing this field only because datos.gov.co hasn't synced it
- * yet (confirmed real: secop-sdm-lp-80-2026) self-corrects the moment a
- * re-ingest (the admin "刷新已有标书状态" button) picks up the real date —
- * no separate flag needed, this re-evaluates live off the stored field on
- * every fetch. Scoped to `country === "Colombia"` only: no other source
- * uses submissionDeadline this way, and Mexico/Peru tenders can be
- * legitimately open with no disclosed deadline yet.
+ * here too — see `isHiddenColombiaNoDeadline()` below for the real
+ * reasoning. Unlike the awarded-analysis rule above, this one IS also
+ * applied to `fetchAdminTenderListFromDb()` (per a same-day follow-up
+ * request): a hidden tender was still getting translated/analyzed there,
+ * spending real money on something that might turn out to have no real
+ * opportunity left at all.
  */
+export function isHiddenColombiaNoDeadline(country: string, submissionDeadline: string | null | undefined): boolean {
+  return country === "Colombia" && !submissionDeadline;
+}
+
 export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> => {
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
@@ -308,7 +308,7 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
   const awardedWithAnalysis = await fetchAwardedSlugsWithAnalysis(supabase);
   return rows
     .filter((row) => row.status !== "awarded" || awardedWithAnalysis.has(row.slug))
-    .filter((row) => row.country !== "Colombia" || !!row.submission_deadline)
+    .filter((row) => !isHiddenColombiaNoDeadline(row.country, row.submission_deadline))
     .map(toTender);
 });
 
@@ -467,9 +467,24 @@ type AdminTenderListDbRow = {
   publication_date: string;
   publication_date_is_estimated: boolean | null;
   updated_at: string;
+  submission_deadline: string | null;
 };
 
-/** Returns null when Supabase isn't configured. Every tender, regardless of relevance tier — this is the admin's full inventory, not the public feed. */
+/**
+ * Returns null when Supabase isn't configured. Every tender, regardless of
+ * relevance tier — this is the admin's full inventory, not the public feed.
+ *
+ * Exception (2026-09-05, explicit request): a Colombia tender with no
+ * submission deadline is hidden here too, same rule as
+ * `fetchAllTendersFromDb()`'s public-facing one (`isHiddenColombiaNoDeadline`
+ * below) — these are largely already-decided "Contratación Directa"/
+ * "régimen especial" processes with nothing left to bid on, and the user's
+ * real complaint was that leaving them visible here meant admin actions
+ * that cost real money (翻译标题, 标书分析) kept getting spent on them
+ * before it's even known whether they're worth anything. Same
+ * self-correcting behavior as the public rule: once a re-ingest/refresh
+ * syncs a real deadline, the row reappears here automatically.
+ */
 export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[] | null> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
@@ -478,7 +493,9 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, tender_number, title, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at")
+      .select(
+        "slug, tender_number, title, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline",
+      )
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
 
@@ -494,7 +511,9 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
 
   const awardedWithAnalysis = await fetchAwardedSlugsWithAnalysis(supabase);
 
-  return rows.map((row) => ({
+  return rows
+    .filter((row) => !isHiddenColombiaNoDeadline(row.country, row.submission_deadline))
+    .map((row) => ({
     slug: row.slug,
     tenderNumber: row.tender_number,
     title: row.title,

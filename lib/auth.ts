@@ -35,6 +35,16 @@ const listeners = new Set<() => void>();
 let started = false;
 
 function setState(next: AuthState) {
+  // Emit only on a real change. Supabase reports the same signed-in user
+  // more than once by design — getUser() resolves, then onAuthStateChange
+  // delivers INITIAL_SESSION, then TOKEN_REFRESHED arrives roughly hourly
+  // — and each delivery carries a NEW user object. Without this check,
+  // every consumer holding a `[user]` effect dependency refetches on each
+  // one: AuthNav re-requested /api/admin/whoami three times per page load
+  // for a user whose identity never changed (seen in a real Network
+  // capture). Identity and loading are the only things this store's
+  // consumers actually branch on.
+  if (next.loading === state.loading && next.user?.id === state.user?.id) return;
   state = next;
   for (const listener of listeners) listener();
 }

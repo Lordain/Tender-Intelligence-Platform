@@ -20,8 +20,13 @@ export function AuthNav() {
   // below rather than resetting the flag back to false on logout here —
   // an effect body shouldn't call setState synchronously on its own
   // early-return path (react-hooks/set-state-in-effect).
+  // Read out the id before the effect so the dependency IS what the fetch
+  // depends on — which user is signed in — rather than the user object,
+  // which Supabase hands over anew on every INITIAL_SESSION and hourly
+  // TOKEN_REFRESHED for the same person.
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     let cancelled = false;
     fetch("/api/admin/whoami")
       .then((res) => res.json())
@@ -34,7 +39,7 @@ export function AuthNav() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [userId]);
 
   if (loading) return null;
 

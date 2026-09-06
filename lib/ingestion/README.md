@@ -3101,3 +3101,24 @@ each instance held its own copy of the list, so toggling a bookmark
 updated only the button that was clicked, while the saved-reminder list
 further down the same page kept showing the pre-click state until it
 remounted.
+
+### Follow-up: the same shape, one layer up
+
+The shared-store fix took `/tenders` from ~30 `/auth/v1/user` requests to
+one, and that exposed the next instance of the same pattern: three
+`/api/admin/whoami` requests per page load from `AuthNav`.
+
+Supabase reports the same signed-in user more than once by design —
+`getUser()` resolves, then `onAuthStateChange` delivers
+`INITIAL_SESSION`, then `TOKEN_REFRESHED` arrives roughly hourly — and
+each delivery carries a **new user object**. Any consumer with a
+`[user]` effect dependency therefore refetches on every delivery for a
+user whose identity never changed. The store now emits only when the user
+id or the loading flag actually changes, and `AuthNav` keys its effect on
+`user?.id` rather than the object.
+
+Not a bug, recorded so it isn't re-investigated: three `POST
+/api/analytics/events` in one capture is `AnalyticsTracker` doing its
+job. It is mounted once in the root layout and guards on pathname, so
+three events means three paths were visited — client-side navigation
+doesn't clear the Network log.

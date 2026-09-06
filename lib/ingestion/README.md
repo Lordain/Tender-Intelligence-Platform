@@ -2920,3 +2920,13 @@ New route: `app/api/cron/purge-stale-colombia/route.ts` — same `Bearer CRON_SE
 Added `scripts/backfill-key-dates-sync.ts` (`npm run backfill:key-dates-sync` dry run / `-- --write` to apply) — lists every tender (not scoped to Colombia; the underlying bug applied to any admin-edited tender's dates regardless of country/source) and re-runs the exact same `syncKeyDatesForTopLevelFields()` call the admin routes use, one tender at a time. Safe to run repeatedly — a tender whose key dates already match just gets the same values deleted and re-inserted.
 
 `tsc --noEmit`, `npm run lint` clean (couldn't execute the script itself here — no Supabase network access from this sandbox, same limitation as every other backfill script this session).
+
+## Admin form date fields still felt split across the page (2026-09-05)
+
+The earlier "stop editing the same date in two places" fix (`ae30be7`) confirmed working — but the user's real complaint was broader than just deduplication: 发布日期/投标截止日期 lived up in "时间与预算" while every other key date lived in its own section further down, with an entire unrelated "相关度设置" section sandwiched between them. Checking a tender's dates meant looking in two places split across the page, not one.
+
+Moved 发布日期/投标截止日期/中标信息 (中标日期/中标单位/中标金额) out of "时间与预算" into the "关键日期" `FormSection` — same section that already hosts `KeyDatesEditor`'s other key-date types — so every date-shaped field now lives in one place, in page order, with nothing else between them. "相关度设置" now comes AFTER this merged section instead of between the two date groups. "时间与预算" keeps 状态/预估金额/币种/地点 only.
+
+`发布日期`/`投标截止日期`/中标信息 stay visible even when creating a brand-new tender (`isEdit` false) — `publicationDate` is required there too, and these are plain form fields bound to `form`/`update()`, not `KeyDatesEditor`'s own API calls. `KeyDatesEditor` itself still only renders in edit mode, now nested inside the same `FormSection` (below a divider) instead of being its own separate section — it needs a real tender id to call its own CRUD API against, which a new, unsaved tender doesn't have yet.
+
+101/101 fixtures unaffected (pure form layout, no logic touched). `tsc --noEmit`, `npm run lint` clean.

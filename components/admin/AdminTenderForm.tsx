@@ -326,27 +326,8 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       </div>
       </FormSection>
 
-      <FormSection title="时间与预算" description="设置项目状态、关键日期、金额和实施地点。">
+      <FormSection title="时间与预算" description="设置项目状态、金额和实施地点。">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className={labelClass}>
-          <label className="flex flex-col gap-1">
-            <span className={labelTextClass}>发布日期 *</span>
-            <input type="date" className={inputClass} value={form.publicationDate} onChange={(e) => update("publicationDate", e.target.value)} required />
-          </label>
-          <label className="mt-1 flex items-center gap-1.5 text-xs text-[#7a878f]">
-            <input
-              type="checkbox"
-              checked={form.publicationDateIsEstimated}
-              onChange={(e) => update("publicationDateIsEstimated", e.target.checked)}
-              className="size-3.5 accent-[#ffb21c]"
-            />
-            该日期是估算值（部分数据源没有真实发布日期字段，用入库时间代替）——已核实真实日期请取消勾选
-          </label>
-        </div>
-        <label className={labelClass}>
-          <span className={labelTextClass}>投标截止日期</span>
-          <input type="date" className={inputClass} value={form.submissionDeadline} onChange={(e) => update("submissionDeadline", e.target.value)} />
-        </label>
         <label className={labelClass}>
           <span className={labelTextClass}>状态 *</span>
           <select className={inputClass} value={form.status} onChange={(e) => update("status", e.target.value as TenderStatus)}>
@@ -357,26 +338,6 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
             ))}
           </select>
         </label>
-      </div>
-
-      {(form.status === "awarded" || form.awardDate || form.awardedTo || form.awardedValue) && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <label className={labelClass}>
-            <span className={labelTextClass}>中标日期</span>
-            <input type="date" className={inputClass} value={form.awardDate} onChange={(e) => update("awardDate", e.target.value)} />
-          </label>
-          <label className={labelClass}>
-            <span className={labelTextClass}>中标单位</span>
-            <input className={inputClass} value={form.awardedTo} onChange={(e) => update("awardedTo", e.target.value)} />
-          </label>
-          <label className={labelClass}>
-            <span className={labelTextClass}>中标金额（与预估金额分开填写，可能不同）</span>
-            <input type="number" className={inputClass} value={form.awardedValue} onChange={(e) => update("awardedValue", e.target.value)} />
-          </label>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className={labelClass}>
           <span className={labelTextClass}>预估金额</span>
           <input type="number" className={inputClass} value={form.estimatedValue} onChange={(e) => update("estimatedValue", e.target.value)} />
@@ -385,11 +346,88 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           <span className={labelTextClass}>币种（如 MXN / USD）</span>
           <input className={inputClass} value={form.currency} onChange={(e) => update("currency", e.target.value.toUpperCase())} />
         </label>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className={labelClass}>
           <span className={labelTextClass}>地点</span>
           <input className={inputClass} value={form.location} onChange={(e) => update("location", e.target.value)} />
         </label>
       </div>
+      </FormSection>
+
+      {/*
+        Real complaint, 2026-09-05: 发布日期/投标截止日期 used to live up in
+        "时间与预算" while every OTHER key date lived in its own section
+        further down, with "相关度设置" sandwiched in between — an admin
+        checking a tender's dates had to look in two places, split across
+        the page. All date-shaped fields (publication/submission/award —
+        the three syncKeyDatesForTopLevelFields() keeps mirrored into
+        tender_key_dates — plus the other key-date types KeyDatesEditor
+        manages directly) now live in this one section, in page order,
+        with nothing else between them. 发布日期/投标截止日期/中标信息 stay
+        visible even when creating a brand-new tender (isEdit false) since
+        publicationDate is required there too; the KeyDatesEditor list
+        itself still only renders in edit mode (it needs a real tender id
+        to call its own CRUD API against).
+      */}
+      <FormSection
+        title="关键日期"
+        description={
+          isEdit
+            ? "发布/投标截止/中标日期与预算等其他字段一起，点击下方“保存修改”生效；下方其他关键节点（澄清会议、现场踏勘等）各自独立立即保存。"
+            : "发布日期为必填项；其余关键节点需要先保存这条标书后才能添加。"
+        }
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className={labelClass}>
+            <label className="flex flex-col gap-1">
+              <span className={labelTextClass}>发布日期 *</span>
+              <input type="date" className={inputClass} value={form.publicationDate} onChange={(e) => update("publicationDate", e.target.value)} required />
+            </label>
+            <label className="mt-1 flex items-center gap-1.5 text-xs text-[#7a878f]">
+              <input
+                type="checkbox"
+                checked={form.publicationDateIsEstimated}
+                onChange={(e) => update("publicationDateIsEstimated", e.target.checked)}
+                className="size-3.5 accent-[#ffb21c]"
+              />
+              该日期是估算值（部分数据源没有真实发布日期字段，用入库时间代替）——已核实真实日期请取消勾选
+            </label>
+          </div>
+          <label className={labelClass}>
+            <span className={labelTextClass}>投标截止日期</span>
+            <input type="date" className={inputClass} value={form.submissionDeadline} onChange={(e) => update("submissionDeadline", e.target.value)} />
+          </label>
+        </div>
+
+        {(form.status === "awarded" || form.awardDate || form.awardedTo || form.awardedValue) && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <label className={labelClass}>
+              <span className={labelTextClass}>中标日期</span>
+              <input type="date" className={inputClass} value={form.awardDate} onChange={(e) => update("awardDate", e.target.value)} />
+            </label>
+            <label className={labelClass}>
+              <span className={labelTextClass}>中标单位</span>
+              <input className={inputClass} value={form.awardedTo} onChange={(e) => update("awardedTo", e.target.value)} />
+            </label>
+            <label className={labelClass}>
+              <span className={labelTextClass}>中标金额（与预估金额分开填写，可能不同）</span>
+              <input type="number" className={inputClass} value={form.awardedValue} onChange={(e) => update("awardedValue", e.target.value)} />
+            </label>
+          </div>
+        )}
+
+        {isEdit && (
+          <div className="border-t border-[#e5e9eb] pt-5">
+            <p className="text-xs font-black text-[#52636e]">其他关键日期</p>
+            <p className="mt-1 text-xs leading-5 text-[#75838c]">
+              澄清会议、现场踏勘、提问截止、开标、合同签署等——每项立即保存，无需点击上方的整体保存按钮。
+            </p>
+            <div className="mt-3">
+              <KeyDatesEditor tenderSlug={tender!.slug} initialKeyDates={tender!.keyDates} />
+            </div>
+          </div>
+        )}
       </FormSection>
 
       {isEdit && (
@@ -425,15 +463,6 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
             />
             🔒 锁定此分级（以后这条标书被重新抓取/入库时，不会被自动分类规则覆盖；取消勾选可恢复自动分类）
           </label>
-        </FormSection>
-      )}
-
-      {isEdit && (
-        <FormSection
-          title="其他关键日期"
-          description="澄清会议、现场踏勘、提问截止、开标、合同签署等——每项立即保存，无需点击下方的整体保存按钮。发布/投标截止/中标日期请在上方“时间与预算”区域编辑，会自动同步到这里的时间线。"
-        >
-          <KeyDatesEditor tenderSlug={tender!.slug} initialKeyDates={tender!.keyDates} />
         </FormSection>
       )}
 

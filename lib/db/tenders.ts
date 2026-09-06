@@ -336,6 +336,31 @@ export async function fetchTenderBySlugFromDb(
   return toTender(data as unknown as TenderRow);
 }
 
+/**
+ * Full detail (including the three child-table joins) for many slugs in
+ * ONE query. Added 2026-09-06 for app/page.tsx, which needs child data
+ * for its featured + ticker picks and was calling
+ * fetchTenderBySlugFromDb() once per pick — 13 separate round-trips at
+ * the default counts (3 featured + 10 ticker), each joining three child
+ * tables, on top of the full-table getAllTenders() the same render
+ * already does. Returns a slug-keyed Map; null when Supabase isn't
+ * configured, matching every other fetch*FromDb here.
+ */
+export async function fetchTendersBySlugsFromDb(slugs: string[]): Promise<Map<string, Tender> | null> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+  if (slugs.length === 0) return new Map();
+
+  const { data, error } = await supabase.from("tenders").select(TENDER_SELECT).in("slug", slugs);
+
+  if (error) {
+    console.error("Failed to fetch tenders by slug from Supabase:", error.message);
+    return null;
+  }
+
+  return new Map((data as unknown as TenderRow[]).map((row) => [row.slug, toTender(row)]));
+}
+
 type DocumentsNeededRow = {
   slug: string;
   title: LocalizedText;

@@ -2993,3 +2993,87 @@ Real fix, in both layers:
 - **Frontend** (`BatchAnalyzeDocumentForm.tsx`): removed the global cross-tender bulk picker entirely. Each tender row now has its own single "上传（可多选）" button — a `<input type="file" multiple>` scoped to just that tender — and the chosen files render as a removable chip list read from React state (`files: Record<string, File[]>`), not from the native input's own single-filename display, which was the actual cause of "看不到文件被选" (the bulk picker's assignment to a DIFFERENT input's underlying state can never update that other input's own browser-rendered filename — an uncontrolled-element ceiling, not a data bug). One input, one visible result, one project at a time or several — no more parallel multi-select/single-select mechanisms.
 
 101/101 fixtures unaffected. `tsc --noEmit`, `npm run lint`, `npm run build` clean. Not live-tested against a real multi-document tender — same sandbox network limitation as every other change this session; worth specifically confirming that analyzing dof-5797664 with both its PDFs selected together produces a merged result (i.e. requirement counts reflecting content from both documents, not just one).
+
+## 2026-09-06 — Hardening the multi-document upload write path
+
+A review pass over the multi-file analysis flow (`1050a99`) found three
+ways it could report success while losing data, plus three cheaper
+problems. All fixed together, since they all live in the same write path.
+
+**Every Supabase write was unchecked.** supabase-js returns `{ error }`
+rather than throwing, and none of the eight writes in
+`analyzeUploadedDocument()` looked at it. A failed insert still returned
+`status: "written"`, and the admin UI reported 已写入 with a requirement
+count for data that never landed. Every write now goes through
+`assertWritten()`, which throws with the failing field named in Chinese.
+
+**Worse, the requirements/risks write is a delete-then-insert.** Combined
+with the above, one failed insert didn't just skip the update — it left
+the tender with *nothing* where a good previous analysis had been, and
+said it succeeded. Two changes: the insert rows are now built before the
+delete runs, and an extraction that produced zero requirements AND zero
+risks (a failed OCR route, a model returning 0/0/0/0 on a scanned page)
+now skips the delete entirely and reports a warning, on the same
+reasoning as the existing "don't blank a good `one_line_summary` with an
+empty one" guard. An empty result is never worth more than what's there.
+
+**The `tender_documents` lookup wasn't scoped to the tender.** It matched
+`content_hash` across the whole table, but `content_hash` is not unique
+across tenders and genuinely repeats: a buyer's standard "Anexo formatos"
+boilerplate is byte-identical in every tender it appears in. The effect
+was that such a file, already on record for tender A, made this upload
+update *A's* row while tender B never got one — and A's opus-precision
+result blocked B's entire batch. Now `.eq("tender_id", tenderId)`.
+(`scripts/ingest-tender-documents.ts` and
+`scripts/extract-tender-document.ts` have the same unscoped lookup, and
+theirs additionally uses `.maybeSingle()` on a non-unique column, which
+errors outright once two rows share a hash. Not touched here — separate
+scripts, separate change.)
+
+Also in the same pass:
+
+- **Temp file names are `basename()`d.** They came straight from the
+  multipart body's own filename; `join(tempDir, "../../…")` would have
+  written, and then unlinked, outside the temp directory.
+- **Duplicate files are deduped on content hash before extraction**, so
+  picking the same PDF twice in one upload no longer pays for two
+  identical model calls and inserts two rows for it.
+- **One failed file no longer discards the whole batch.** Extractions
+  already paid for in the same run are kept and written; the failure
+  becomes a warning. Only an all-files-failed batch throws.
+- **Warnings are a first-class part of the result.** The one that matters
+  most: when the uploaded files state *different* procedure numbers, the
+  admin almost certainly attached another tender's document, and nothing
+  downstream would have caught it.
+- `documentType` and `relevanceAssessment` no longer just take file #1.
+  Types are joined; the assessment comes from the longest document, which
+  in a real package is the Pliego/Convocatoria — the one that actually
+  states who may participate. Upload order is meaningless here.
+- The route caps files per request (`MAX_FILES_PER_REQUEST`); nothing
+  else limited how many real LLM calls one request could trigger.
+
+## 2026-09-06 — Rendering modes were never set (and the default was wrong)
+
+Unrelated to ingestion, found in the same pass and worth recording here
+because it silently undid ingestion's own results: a real `next build`
+route table showed `○ /`, `○ /tenders` and `○ /admin/documents-needed` —
+all three **prerendered at build time with no revalidation**. None of
+them uses a request-time API (tender data is read through a service-role
+client, and auth is client-side), so Next's default made them fully
+static, permanently.
+
+The consequence: every tender this pipeline ingested after a deploy was
+invisible on the public list and the homepage until the next deploy,
+while `/tenders/[slug]` — dynamic, because it takes a route param — showed
+the fresh row. The list and the detail page disagreed, and the admin
+worklist at `/admin/documents-needed` was a deploy-time snapshot that
+`router.refresh()` could never update.
+
+`/` and `/tenders` are now `export const revalidate = 300` (still cached,
+which is right for an unbounded full-table query identical for every
+visitor — just with a lifetime well under the real ingestion rate), and
+`/admin/documents-needed` is `force-dynamic` like every other admin page.
+The homepage additionally fetched full detail for its featured + ticker
+picks one slug at a time — 13 separate joined queries at the default
+counts, on top of the full-table read in the same render — now a single
+`fetchTendersBySlugsFromDb()`.

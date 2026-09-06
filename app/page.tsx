@@ -1,9 +1,12 @@
-import { getAllTenders, getTenderBySlug } from "@/lib/tenders";
+import { getAllTenders, getTendersBySlugs } from "@/lib/tenders";
 import { fetchHomepageControlSettings } from "@/lib/db/site-settings";
 import { HomeHero } from "@/components/tenders/HomeHero";
 import { FeaturedTenders } from "@/components/tenders/FeaturedTenders";
 import { ValuePropositions } from "@/components/home/ValuePropositions";
 import type { Tender } from "@/types/tender";
+
+/** Same reasoning as app/tenders/page.tsx — see its comment. This page reads the same service-role data and was prerendered at build time with no revalidation, so a newly featured tender never reached the homepage until the next deploy. */
+export const revalidate = 300;
 
 function isTender(tender: Tender | undefined): tender is Tender {
   return tender !== undefined;
@@ -36,10 +39,14 @@ export default async function Home() {
         .filter((tender) => !featuredSlugSet.has(tender.slug))
   ).slice(0, settings.tickerCount);
 
-  const [featuredWithPreviews, tickerWithPreviews] = await Promise.all([
-    Promise.all(featured.map(async (tender) => (await getTenderBySlug(tender.slug)) ?? tender)),
-    Promise.all(ticker.map(async (tender) => (await getTenderBySlug(tender.slug)) ?? tender)),
-  ]);
+  // One query for all of them (2026-09-06). getAllTenders() above omits
+  // the child-table joins, so the cards' previews need the full row — but
+  // fetching it per pick was featuredCount + tickerCount separate
+  // single-row queries (13 at the defaults), each joining three child
+  // tables, for what is one `.in("slug", …)`.
+  const detailBySlug = await getTendersBySlugs([...featured, ...ticker].map((tender) => tender.slug));
+  const featuredWithPreviews = featured.map((tender) => detailBySlug.get(tender.slug) ?? tender);
+  const tickerWithPreviews = ticker.map((tender) => detailBySlug.get(tender.slug) ?? tender);
 
   return (
     <div className="flex flex-col">

@@ -268,6 +268,20 @@ async function fetchAwardedSlugsWithAnalysis(supabase: SupabaseClient): Promise<
  * all of them at once. Admin's own list (fetchAdminTenderListFromDb,
  * below) is a separate query and stays untouched: admins still need to
  * see every awarded-but-unanalyzed row to fix it.
+ *
+ * Second visibility rule, same day, Colombia-only: no `submissionDeadline`
+ * (SECOP's "Fecha de presentación de ofertas") hides a Colombia tender
+ * here too. The user's own explicit rule: many no-deadline Colombia rows
+ * are already-decided/no-real-opportunity ("Contratación Directa"
+ * processes published well after signing — see colombia-mapper.ts's
+ * inferStatus() comment) and hurt trust in the feed; a genuinely open
+ * tender missing this field only because datos.gov.co hasn't synced it
+ * yet (confirmed real: secop-sdm-lp-80-2026) self-corrects the moment a
+ * re-ingest (the admin "刷新已有标书状态" button) picks up the real date —
+ * no separate flag needed, this re-evaluates live off the stored field on
+ * every fetch. Scoped to `country === "Colombia"` only: no other source
+ * uses submissionDeadline this way, and Mexico/Peru tenders can be
+ * legitimately open with no disclosed deadline yet.
  */
 export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> => {
   const supabase = getSupabaseServerClient();
@@ -294,6 +308,7 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
   const awardedWithAnalysis = await fetchAwardedSlugsWithAnalysis(supabase);
   return rows
     .filter((row) => row.status !== "awarded" || awardedWithAnalysis.has(row.slug))
+    .filter((row) => row.country !== "Colombia" || !!row.submission_deadline)
     .map(toTender);
 });
 

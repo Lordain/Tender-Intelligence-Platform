@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { LocalizedText } from "@/types/tender";
 import { localize, useLocale } from "@/lib/i18n";
 
 // Mirrors AnalyzeUploadedDocumentResult (lib/ingestion/analyze-uploaded-
-// document.ts) — same reasoning as AnalyzeDocumentForm.tsx for not
-// importing it directly from a "use client" component.
+// document.ts) — kept as a local type since that module transitively pulls
+// in node:fs/node:child_process and can't be imported from a "use client"
+// component (same reasoning the old AnalyzeDocumentForm.tsx had).
 type AnalyzeResult = {
   oneLineSummary: string;
   qualifications: number;
@@ -30,10 +31,11 @@ export function BatchAnalyzeDocumentForm({
   onClear,
   onWritten,
 }: {
-  tenders: { slug: string; title: LocalizedText }[];
+  /** title is omitted when the caller only knows the slug (e.g. manually typed, not looked up from a known list) — the row then just shows the slug. */
+  tenders: { slug: string; title?: LocalizedText }[];
   /** Clears the whole selection (e.g. the "取消选择" button). */
   onClear: () => void;
-  /** Called once per tender whose analysis was actually written, so the caller can drop it from the worklist. */
+  /** Called once per tender whose analysis was actually written, so the caller can drop it from the worklist/selection. */
   onWritten: (slug: string) => void;
 }) {
   const { locale } = useLocale();
@@ -41,11 +43,32 @@ export function BatchAnalyzeDocumentForm({
   const [write, setWrite] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [rows, setRows] = useState<Record<string, RowState>>({});
+  const bulkInputRef = useRef<HTMLInputElement>(null);
 
   const readyCount = tenders.filter((tender) => files[tender.slug]).length;
 
   function setFile(slug: string, file: File | null) {
     setFiles((current) => ({ ...current, [slug]: file }));
+  }
+
+  // Lets an admin pick every document in one native file dialog (ctrl/shift
+  // click) instead of opening a separate one-file-at-a-time dialog per
+  // project — the browser's multi-select order is assigned straight down
+  // the tender list in order. Each per-row input below still works
+  // independently afterward, to fix up any file that landed on the wrong
+  // project.
+  function handleBulkFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const picked = Array.from(fileList).slice(0, tenders.length);
+    setFiles((current) => {
+      const next = { ...current };
+      picked.forEach((file, index) => {
+        const tender = tenders[index];
+        if (tender) next[tender.slug] = file;
+      });
+      return next;
+    });
+    if (bulkInputRef.current) bulkInputRef.current.value = "";
   }
 
   async function analyzeOne(slug: string, file: File) {
@@ -89,21 +112,35 @@ export function BatchAnalyzeDocumentForm({
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Batch upload</p>
           <h2 className="mt-1 text-lg font-black text-[#071826]">批量上传分析（已选 {tenders.length}/{MAX_BATCH_SELECTION}）</h2>
-          <p className="mt-1 text-xs text-[#64717c]">为每个项目选择对应的标书文件后一起分析；未选择文件的项目会被跳过。</p>
+          <p className="mt-1 text-xs text-[#64717c]">下面可以一次选中多个文件，会按项目顺序自动分配；分配错了可以在对应项目那一行重新选择。未分配文件的项目会被跳过。</p>
         </div>
         <button type="button" onClick={onClear} className="h-9 shrink-0 rounded-lg border border-[#d8e0e3] bg-white px-3 text-xs font-black text-[#52636e] hover:border-[#9aa5ab]">
           取消选择
         </button>
       </div>
 
+      <label className="flex flex-col gap-1.5 rounded-xl border border-dashed border-[#ffb21c]/60 bg-[#fff8e9] p-3 text-sm">
+        <span className="text-xs font-black text-[#8a5a00]">一次选择多个文件（按住 Ctrl / Cmd 或 Shift 多选）</span>
+        <input
+          ref={bulkInputRef}
+          type="file"
+          accept=".pdf,.docx,.doc"
+          multiple
+          disabled={submitting}
+          onChange={(e) => handleBulkFiles(e.target.files)}
+          className="w-full rounded-lg border border-[#d8e0e3] bg-white px-2 py-1.5 text-xs text-[#071826] outline-none file:mr-2 file:rounded-md file:border-0 file:bg-[#071826] file:px-2.5 file:py-1 file:text-[11px] file:font-bold file:text-white disabled:opacity-50"
+        />
+      </label>
+
       <div className="flex flex-col gap-3">
-        {tenders.map((tender) => {
+        {tenders.map((tender, index) => {
           const row = rows[tender.slug] ?? { kind: "idle" as const };
           return (
             <div key={tender.slug} className="flex flex-col gap-2 rounded-xl border border-[#e5e9eb] bg-white p-3 sm:flex-row sm:items-center sm:gap-4">
+              <span className="hidden size-6 shrink-0 items-center justify-center rounded-full bg-[#edf2f3] text-[11px] font-black text-[#52636e] sm:flex">{index + 1}</span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-black text-[#071826]">{localize(tender.title, locale)}</p>
-                <p className="mt-0.5 font-mono text-[11px] text-[#8a959c]">{tender.slug}</p>
+                <p className="truncate text-sm font-black text-[#071826]">{tender.title ? localize(tender.title, locale) : tender.slug}</p>
+                {tender.title && <p className="mt-0.5 font-mono text-[11px] text-[#8a959c]">{tender.slug}</p>}
               </div>
               <input
                 type="file"

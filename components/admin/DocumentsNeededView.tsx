@@ -7,7 +7,6 @@ import { useUser } from "@/lib/auth";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { countryLabel, RELEVANCE_TIER_LABELS, STATUS_LABELS, STATUS_COLORS } from "@/lib/tender-labels";
-import { AnalyzeDocumentForm } from "@/components/admin/AnalyzeDocumentForm";
 import { BatchAnalyzeDocumentForm, MAX_BATCH_SELECTION } from "@/components/admin/BatchAnalyzeDocumentForm";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
@@ -64,6 +63,8 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
   const [relevance, setRelevance] = useState("all");
   const [dismissingSlug, setDismissingSlug] = useState<string | null>(null);
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([]);
+  const [manualSlugs, setManualSlugs] = useState<string[]>([]);
+  const [manualInput, setManualInput] = useState("");
 
   function toggleSelected(slug: string) {
     setSelectedSlugs((current) => {
@@ -74,6 +75,21 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
       }
       return [...current, slug];
     });
+  }
+
+  function addManualSlug() {
+    const slug = manualInput.trim();
+    if (!slug) return;
+    if (manualSlugs.includes(slug)) {
+      alert("这个项目已经在下面的列表中了。");
+      return;
+    }
+    if (manualSlugs.length >= MAX_BATCH_SELECTION) {
+      alert(`最多同时添加 ${MAX_BATCH_SELECTION} 个项目一起分析。`);
+      return;
+    }
+    setManualSlugs((current) => [...current, slug]);
+    setManualInput("");
   }
 
   async function dismissTender(slug: string) {
@@ -215,18 +231,6 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
         </div>
       </div>
 
-      {selectedSlugs.length > 0 && (
-        <BatchAnalyzeDocumentForm
-          tenders={selectedSlugs.map((slug) => tenders.find((tender) => tender.slug === slug)).filter((tender): tender is TenderNeedingDocuments => Boolean(tender))}
-          onClear={() => setSelectedSlugs([])}
-          onWritten={(slug) => {
-            setTenders((prev) => prev.filter((tender) => tender.slug !== slug));
-            setSelectedSlugs((prev) => prev.filter((item) => item !== slug));
-            router.refresh();
-          }}
-        />
-      )}
-
       {tenders.length === 0 ? (
         <p className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-8 text-center text-sm text-[#64717c]">{localize(uiText.documentsNeededEmpty, locale)}</p>
       ) : (
@@ -310,13 +314,71 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
         </div>
       )}
 
+      {selectedSlugs.length > 0 && (
+        <BatchAnalyzeDocumentForm
+          tenders={selectedSlugs.map((slug) => tenders.find((tender) => tender.slug === slug)).filter((tender): tender is TenderNeedingDocuments => Boolean(tender))}
+          onClear={() => setSelectedSlugs([])}
+          onWritten={(slug) => {
+            setTenders((prev) => prev.filter((tender) => tender.slug !== slug));
+            setSelectedSlugs((prev) => prev.filter((item) => item !== slug));
+            router.refresh();
+          }}
+        />
+      )}
+
       <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
         <div className="mb-5 border-b border-[#e5e9eb] pb-4">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Any tender</p>
-          <h2 className="mt-1 text-xl font-black text-[#071826]">手动上传分析</h2>
-          <p className="mt-1 text-sm text-[#64717c]">用于补传第二份文件，或重新分析已经存在附件的项目。</p>
+          <h2 className="mt-1 text-xl font-black text-[#071826]">手动上传分析（任意项目）</h2>
+          <p className="mt-1 text-sm text-[#64717c]">用于补传第二份文件，重新分析已经存在附件的项目，或分析不在上面清单里的项目——最多同时添加 {MAX_BATCH_SELECTION} 个。</p>
         </div>
-        <AnalyzeDocumentForm compact />
+        <form
+          className="flex flex-col gap-2 sm:flex-row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            addManualSlug();
+          }}
+        >
+          <input
+            value={manualInput}
+            onChange={(event) => setManualInput(event.target.value)}
+            placeholder="输入项目 slug，例如 comprasmx-lo-09-jzo-009jzo001-t-36-2026"
+            className="h-11 min-w-0 flex-1 rounded-xl border border-[#d8e0e3] bg-white px-4 text-sm text-[#071826] outline-none placeholder:text-[#9aa5ab] focus:border-[#ffb21c]"
+          />
+          <button type="submit" className="h-11 shrink-0 rounded-xl bg-[#071826] px-5 text-sm font-black text-white transition-colors hover:bg-[#12364d]">
+            + 添加项目
+          </button>
+        </form>
+
+        {manualSlugs.length === 0 ? (
+          <p className="mt-4 text-sm text-[#8a959c]">还没有添加项目。</p>
+        ) : (
+          <div className="mt-5">
+            <div className="mb-3 flex flex-wrap gap-2">
+              {manualSlugs.map((slug) => (
+                <span key={slug} className="inline-flex items-center gap-2 rounded-full border border-[#d8e0e3] bg-white py-1 pl-3 pr-1.5 font-mono text-[11px] text-[#425461]">
+                  {slug}
+                  <button
+                    type="button"
+                    aria-label={`移除 ${slug}`}
+                    onClick={() => setManualSlugs((prev) => prev.filter((item) => item !== slug))}
+                    className="flex size-4 items-center justify-center rounded-full text-[#8a959c] hover:bg-[#edf2f3] hover:text-red-600"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <BatchAnalyzeDocumentForm
+              tenders={manualSlugs.map((slug) => ({ slug }))}
+              onClear={() => setManualSlugs([])}
+              onWritten={(slug) => {
+                setManualSlugs((prev) => prev.filter((item) => item !== slug));
+                router.refresh();
+              }}
+            />
+          </div>
+        )}
       </section>
     </div>
   );

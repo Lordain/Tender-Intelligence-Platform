@@ -16,7 +16,7 @@ import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 
 function Field({ label, value, emphasized = false, note }: { label: string; value: string; emphasized?: boolean; note?: string | null }) {
   return (
-    <div className={`rounded-xl px-3.5 py-3 ${emphasized ? "bg-[#fff4d8]" : "bg-[#f2f4f3]"}`}>
+    <div className={`flex h-32 flex-col rounded-2xl px-4 py-4 ${emphasized ? "bg-[#fff4d8]" : "bg-[#f2f4f3]"}`}>
       <dt className="text-[11px] font-bold tracking-[0.03em] text-[#7a878f]">{label}</dt>
       <dd className={`mt-1 text-sm font-black leading-5 ${emphasized ? "text-[#9a6200]" : "text-[#071826]"}`}>{value}</dd>
       {note && <p className="mt-1 text-[10px] font-normal leading-4 text-[#9aa5ab]">{note}</p>}
@@ -26,6 +26,12 @@ function Field({ label, value, emphasized = false, note }: { label: string; valu
 
 export function TenderOverview({ tender }: { tender: Tender }) {
   const { locale } = useLocale();
+  const fieldCount = 8
+    + (tender.participationScope ? 1 : 0)
+    + (tender.awardedTo ? 1 : 0)
+    + (tender.awardedValue !== undefined ? 1 : 0)
+    + (tender.awardDate ? 1 : 0);
+  const desktopGrid = fieldCount % 4 === 0 ? "xl:grid-cols-4" : "xl:grid-cols-3";
 
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
@@ -77,7 +83,7 @@ export function TenderOverview({ tender }: { tender: Tender }) {
         </div>
       )}
 
-      <dl className="grid grid-cols-2 gap-2.5 border-t border-[#e4e9eb] pt-4 sm:grid-cols-3">
+      <dl className={`grid grid-cols-1 gap-3 border-t border-[#e4e9eb] pt-5 sm:grid-cols-2 ${desktopGrid}`}>
         <Field label={localize(uiText.buyer, locale)} value={tender.buyer} />
         <Field
           label={localize(uiText.governmentLevelLabel, locale)}

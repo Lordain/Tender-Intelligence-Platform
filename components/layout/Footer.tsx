@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 const columns = [
   { title: "产品", links: [["招标项目", "/tenders"], ["我的收藏", "/saved"], ["订阅服务", "/pricing"]] },
@@ -6,23 +7,12 @@ const columns = [
   { title: "法律", links: [["服务条款", "/terms"], ["隐私政策", "/privacy"], ["Cookie 政策", "/cookies"], ["订阅退款政策", "/refund-policy"]] },
 ] as const;
 
-function FooterMark() {
-  return (
-    <svg viewBox="0 0 40 44" className="size-9 fill-none" aria-hidden="true">
-      <path d="M20 2 36 11v22L20 42 4 33V11L20 2Z" stroke="white" strokeWidth="4" strokeLinejoin="round" />
-      <path d="m20 22 15-9v20l-15 9V22Z" fill="#FFB21C" />
-      <path d="M5 13 20 22v20L5 33V13Z" stroke="white" strokeWidth="4" strokeLinejoin="round" />
-      <path d="m8 11 12 7 12-7" stroke="white" strokeWidth="4" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function Footer() {
   return (
     <footer className="border-t border-white/10 bg-[#031521] text-white">
       <div className="mx-auto grid max-w-[94rem] gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.25fr_1fr] lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
         <div className="max-w-sm">
-          <Link href="/" className="inline-flex items-center gap-3"><FooterMark /><span className="text-lg font-black tracking-[0.08em]">拉美招投标平台</span></Link>
+          <Link href="/" className="inline-flex items-center gap-3"><BrandLogo variant="dark" className="size-10" /><span className="text-lg font-black tracking-[0.08em]">拉美招投标平台</span></Link>
           <p className="mt-5 text-sm leading-7 text-white/52">把拉美政府招标信息转化为结构化中文情报，帮助中国团队更快发现、理解和跟进机会。</p>
         </div>
         {columns.map((column) => (

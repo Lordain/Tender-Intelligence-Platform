@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 export function AuthFrame({ mode, children }: { mode: "login" | "register"; children: React.ReactNode }) {
   return (
@@ -7,7 +8,10 @@ export function AuthFrame({ mode, children }: { mode: "login" | "register"; chil
         <section className="relative overflow-hidden bg-[#061b2b] p-8 text-white sm:p-10">
           <div className="absolute -right-16 -top-16 size-56 rounded-full bg-[#ffb21c]/12 blur-3xl" />
           <div className="relative flex h-full min-h-[24rem] flex-col">
-            <Link href="/" className="text-sm font-black tracking-[0.08em]">拉美招投标平台</Link>
+            <Link href="/" className="inline-flex items-center gap-3 text-sm font-black tracking-[0.08em]">
+              <BrandLogo variant="dark" className="size-11" priority />
+              拉美招投标平台
+            </Link>
             <div className="my-auto py-10">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffb21c]">Tender intelligence</p>
               <h1 className="mt-4 text-3xl font-black leading-tight tracking-[-0.04em]">更快发现机会，<br />更稳做出投标判断</h1>

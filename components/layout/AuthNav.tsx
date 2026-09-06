@@ -57,7 +57,7 @@ export function AuthNav() {
         </Link>
         <Link
           href="/account"
-          className="hidden max-w-[10rem] truncate text-xs text-white/60 hover:text-white lg:inline"
+          className="hidden max-w-[9rem] truncate text-xs text-white/60 hover:text-white 2xl:inline"
         >
           {user.email}
         </Link>

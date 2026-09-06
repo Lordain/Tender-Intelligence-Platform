@@ -76,61 +76,84 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-8 px-5 py-14 sm:px-8">
-      <h1 className="text-4xl font-black tracking-tight text-[#071826]">
-        {localize(uiText.account, locale)}
-      </h1>
+    <div className="flex-1 bg-[#f7f4ee]">
+      <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
+        <header className="border-b border-[#d8e0e3] pb-8">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Account center</p>
+          <h1 className="mt-3 text-4xl font-black tracking-[-0.05em] text-[#071826] sm:text-5xl">
+            账户管理
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-[#64717c] sm:text-base">
+            管理账户资料、订阅套餐和招标邮件通知偏好。
+          </p>
+        </header>
 
-      <section className="flex flex-col gap-5 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-6">
-        <div>
-          <div className="text-xs text-[#849098]">{localize(uiText.emailLabel, locale)}</div>
-          <div className="font-bold text-[#071826]">{user.email}</div>
+        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+          <section className="rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-8">
+            <div className="mb-7 flex items-start gap-4">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#fff0ca] text-[#a96100]" aria-hidden="true">
+                <svg viewBox="0 0 24 24" className="size-5 fill-none stroke-current stroke-2"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-[#071826]">账户资料</h2>
+                <p className="mt-1 text-sm leading-6 text-[#6b7881]">用于账户识别和接收平台服务通知。</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-[#f1f3f2] px-4 py-3.5">
+              <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#849098]">{localize(uiText.emailLabel, locale)}</div>
+              <div className="mt-1 break-all text-sm font-bold text-[#071826] sm:text-base">{user.email}</div>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="mt-6 flex flex-col gap-3">
+              <label className="flex flex-col gap-2">
+                <span className="text-xs font-bold text-[#425461]">
+                  {localize(uiText.companyNameLabel, locale)}
+                </span>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={(event) => {
+                    setCompanyName(event.target.value);
+                    setSaved(false);
+                  }}
+                  placeholder="填写公司或团队名称"
+                  className="h-12 rounded-xl border border-[#d8e0e3] bg-white px-4 text-sm text-[#071826] placeholder:text-[#98a2a8] focus:border-[#ffb21c] focus:outline-none focus:ring-2 focus:ring-[#ffb21c]/15"
+                />
+              </label>
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-xl bg-[#ffb21c] px-5 py-3 text-xs font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50"
+                >
+                  {saving ? "保存中…" : localize(uiText.saveProfile, locale)}
+                </button>
+                {saved && <span className="text-xs font-semibold text-emerald-600">{localize(uiText.profileSaved, locale)}</span>}
+              </div>
+            </form>
+          </section>
+
+          <section className="relative overflow-hidden rounded-3xl bg-[#061b2b] p-6 text-white shadow-[0_22px_60px_-45px_rgba(3,21,33,.85)] sm:p-8">
+            <div className="absolute -right-16 -top-16 size-48 rounded-full bg-[#ffb21c]/12 blur-3xl" />
+            <div className="relative flex h-full min-h-64 flex-col">
+              <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#ffb21c]">Subscription</div>
+              <h2 className="mt-3 text-xl font-black">{localize(uiText.currentPlan, locale)}</h2>
+              <div className="mt-5 rounded-2xl border border-white/12 bg-white/5 p-4 text-lg font-black">
+                {plan ?? localize(uiText.freePlan, locale)}
+              </div>
+              <p className="mt-4 text-sm leading-6 text-white/55">查看可用套餐，解锁更多项目与通知服务。</p>
+              <Link href="/pricing" className="mt-auto inline-flex w-fit items-center gap-2 pt-7 text-sm font-bold text-[#ffb21c] transition-colors hover:text-[#ffd16f]">
+                {localize(uiText.viewPlans, locale)} <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+          </section>
         </div>
 
-        <form onSubmit={handleSaveProfile} className="flex flex-col gap-2">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-[#52636e]">
-              {localize(uiText.companyNameLabel, locale)}
-            </span>
-            <input
-              type="text"
-              value={companyName}
-              onChange={(event) => {
-                setCompanyName(event.target.value);
-                setSaved(false);
-              }}
-              className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm focus:border-[#ffb21c] focus:outline-none"
-            />
-          </label>
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              disabled={saving}
-              className="self-start rounded-xl bg-[#ffb21c] px-4 py-2.5 text-xs font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50"
-            >
-              {localize(uiText.saveProfile, locale)}
-            </button>
-            {saved && (
-              <span className="text-xs text-emerald-600">{localize(uiText.profileSaved, locale)}</span>
-            )}
-          </div>
-        </form>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-2xl bg-[#061b2b] p-6 text-white">
-        <div className="text-xs text-white/55">{localize(uiText.currentPlan, locale)}</div>
-        <div className="font-bold">
-          {plan ?? localize(uiText.freePlan, locale)}
+        <div className="mt-6">
+          <NotificationPreferences userId={user.id} />
         </div>
-        <Link
-          href="/pricing"
-          className="w-fit text-xs font-bold text-[#ffb21c] underline underline-offset-4"
-        >
-          {localize(uiText.viewPlans, locale)}
-        </Link>
-      </section>
-
-      <NotificationPreferences userId={user.id} />
+      </div>
     </div>
   );
 }

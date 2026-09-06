@@ -346,11 +346,12 @@ type DocumentsNeededRow = {
   source_url: string;
   status: TenderStatus;
   tender_documents: { id: string }[];
+  submission_deadline: string | null;
 };
 
 const DOCUMENTS_NEEDED_SELECT = `
   slug, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url, status,
-  tender_documents ( id )
+  tender_documents ( id ), submission_deadline
 `;
 
 /**
@@ -375,6 +376,13 @@ const DOCUMENTS_NEEDED_SELECT = `
  * CAPTCHA-gated; see lib/ingestion/README.md), a tender would otherwise sit
  * in this worklist forever with no way to mark "not obtainable" distinct
  * from "not yet attempted" (2026-09-05, explicit request).
+ *
+ * The final `isHiddenColombiaNoDeadline` filter drops a Colombia tender
+ * with no real submission deadline (same rule as
+ * fetchAllTendersFromDb()/fetchAdminTenderListFromDb()) — chasing down and
+ * analyzing documents for one of these is the same wasted-money problem
+ * the awarded/cancelled exclusion above already solves for a different
+ * "already decided" signal (2026-09-05, explicit request).
  */
 export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedingDocuments[] | null> {
   const supabase = getSupabaseServerClient();
@@ -403,6 +411,7 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
 
   return rows
     .filter((row) => row.tender_documents.length === 0)
+    .filter((row) => !isHiddenColombiaNoDeadline(row.country, row.submission_deadline))
     .map((row) => ({
       slug: row.slug,
       title: row.title,

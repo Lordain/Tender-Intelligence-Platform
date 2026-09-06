@@ -39,14 +39,30 @@ export function ImportColombiaForm() {
   // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
   const [write, setWrite] = useState(true);
   const [fetchDocuments, setFetchDocuments] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<"pull" | "refresh" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportColombiaResult | null>(null);
 
-  async function run() {
-    if (write && !confirm("确定要从 SECOP II 拉取哥伦比亚标书（和附件）并写入 Supabase 吗？这个操作可能需要几分钟，附件下载会逐条项目单独请求。")) return;
+  async function run(mode: "pull" | "refresh" = "pull") {
+    // "refresh" reuses the exact same endpoint/upsert-by-slug path as
+    // "pull" — ingestColombia() already overwrites every mapped field
+    // (submissionDeadline, status, awardedTo, awardDate, awardedValue...)
+    // on a matching slug, so re-running it against the same recency
+    // window is already how an already-tracked tender's dynamic fields
+    // get refreshed (2026-09-05, real gap the user found: a tender's
+    // deadline/award status can change on SECOP's side after first
+    // ingest, and nothing re-visits it until this same action runs
+    // again). Split into its own button — same params, no attachment
+    // re-fetch — since "点一下发现新标" and "点一下刷新已有标的状态" are two
+    // distinct daily habits worth their own, clearly-labeled action
+    // rather than one button silently doing both.
+    const confirmMsg =
+      mode === "pull"
+        ? "确定要从 SECOP II 拉取哥伦比亚标书（和附件）并写入 Supabase 吗？这个操作可能需要几分钟，附件下载会逐条项目单独请求。"
+        : "确定要刷新最近窗口内已入库哥伦比亚标书的动态字段（截止日期/中标状态/供应商/中标结果）吗？不会重新下载附件。";
+    if (write && !confirm(confirmMsg)) return;
 
-    setSubmitting(true);
+    setSubmitting(mode);
     setError(null);
     setResult(null);
     try {
@@ -57,7 +73,7 @@ export function ImportColombiaForm() {
           months: months.trim() === "" ? undefined : Number(months),
           maxPages: maxPages.trim() === "" ? undefined : Number(maxPages),
           write,
-          fetchDocuments: write && fetchDocuments,
+          fetchDocuments: mode === "pull" && write && fetchDocuments,
         }),
       });
       const data = await res.json();
@@ -66,7 +82,7 @@ export function ImportColombiaForm() {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setSubmitting(false);
+      setSubmitting(null);
     }
   }
 
@@ -115,14 +131,30 @@ export function ImportColombiaForm() {
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={run}
-        disabled={submitting}
-        className="mt-4 h-9 rounded-lg bg-[#ffb21c] px-4 text-xs font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50"
-      >
-        {submitting ? "运行中…" : write ? "拉取并写入" : "预览"}
-      </button>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => run("pull")}
+          disabled={submitting !== null}
+          className="h-9 rounded-lg bg-[#ffb21c] px-4 text-xs font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50"
+        >
+          {submitting === "pull" ? "运行中…" : write ? "拉取并写入" : "预览"}
+        </button>
+        {write && (
+          <button
+            type="button"
+            onClick={() => run("refresh")}
+            disabled={submitting !== null}
+            title="重新拉取同一时间窗口内的标书并覆盖写入——已入库标书的截止日期、中标状态、供应商、中标结果等会随之更新；不重新下载附件"
+            className="h-9 rounded-lg border border-[#d8e0e3] bg-white px-4 text-xs font-black text-[#071826] transition-colors hover:border-[#ffb21c] hover:bg-[#fff9ec] disabled:opacity-50"
+          >
+            {submitting === "refresh" ? "运行中…" : "刷新已有标书状态"}
+          </button>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-[#7a878f]">
+        “刷新已有标书状态”用于每天巡查：重新拉取同一时间窗口的数据并覆盖写入，SECOP 上截止日期变化、新出现的中标结果/供应商都会同步更新到已入库的标书，不会重新下载附件。
+      </p>
 
       {result && (
         <div className="mt-3 text-xs text-[#52636e]">

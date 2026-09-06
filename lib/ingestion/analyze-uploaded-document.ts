@@ -54,6 +54,7 @@ import {
 import { extractTenderRequirementsQwenAnthropic } from "@/lib/ingestion/extract-requirements-qwen-anthropic";
 import { untranslated } from "@/lib/ingestion/text-utils";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
+import { assertWritten } from "@/lib/db/assert-written";
 
 export type AnalyzeUploadedDocumentResult = {
   /** Every successfully analyzed file name, in upload order — joined for display since this can now be more than one document analyzed together. */
@@ -91,19 +92,6 @@ export type AnalyzeUploadedDocumentResult = {
   relevanceTierChanged?: { from: string; to: string; reasoning: string };
   skippedLockedTier?: boolean;
 };
-
-/**
- * supabase-js never throws on a failed write — it returns `{ error }`, and
- * an unchecked write is how an admin ends up being told "已写入" about
- * data that was never written. That matters more here than in most places
- * because the requirements/risks write below is a delete-then-insert: a
- * silently failed insert doesn't just skip the update, it leaves the
- * tender with NOTHING where a good previous analysis used to be. Every
- * write in this function goes through here.
- */
-function assertWritten(what: string, result: { error: { message: string } | null }) {
-  if (result.error) throw new Error(`${what} 写入失败：${result.error.message}`);
-}
 
 export async function analyzeUploadedDocument(
   supabase: SupabaseClient,

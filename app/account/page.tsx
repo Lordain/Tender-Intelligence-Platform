@@ -20,6 +20,7 @@ export default function AccountPage() {
   const [plan, setPlan] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!SUPABASE_CONFIGURED || loading) return;
@@ -53,13 +54,23 @@ export default function AccountPage() {
     if (!user) return;
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
 
     const supabase = getSupabaseBrowserClient();
     // A profiles row always exists by now (created by the on-signup trigger),
     // so this is a plain update — RLS only grants update, not insert, on this table.
-    await supabase.from("profiles").update({ company_name: companyName }).eq("id", user.id);
+    // The error is checked (2026-09-06): supabase-js resolves rather than
+    // throwing on a rejected write, so an RLS denial or a dropped
+    // connection used to leave the user looking at "已保存" for a change
+    // that never persisted.
+    const { error } = await supabase.from("profiles").update({ company_name: companyName }).eq("id", user.id);
 
     setSaving(false);
+    if (error) {
+      setSaveError(error.message);
+      return;
+    }
+    setSaveError(null);
     setSaved(true);
   }
 
@@ -116,6 +127,7 @@ export default function AccountPage() {
                   onChange={(event) => {
                     setCompanyName(event.target.value);
                     setSaved(false);
+                    setSaveError(null);
                   }}
                   placeholder="填写公司或团队名称"
                   className="h-12 rounded-xl border border-[#d8e0e3] bg-white px-4 text-sm text-[#071826] placeholder:text-[#98a2a8] focus:border-[#ffb21c] focus:outline-none focus:ring-2 focus:ring-[#ffb21c]/15"
@@ -130,6 +142,7 @@ export default function AccountPage() {
                   {saving ? "保存中…" : localize(uiText.saveProfile, locale)}
                 </button>
                 {saved && <span className="text-xs font-semibold text-emerald-600">{localize(uiText.profileSaved, locale)}</span>}
+                {saveError && <span className="text-xs font-semibold text-red-600">保存失败：{saveError}</span>}
               </div>
             </form>
           </section>

@@ -8,6 +8,8 @@ const STATUS_LABELS: Record<ImportBatchAnalysisResult["status"], string> = {
   "dry-run": "预览（未写入）",
   "tender-not-found": "跳过 — 找不到对应项目",
   "skipped-opus-precision": "跳过 — 已有精度分析结果",
+  "skipped-empty": "跳过 — 没有提取到内容（未覆盖原有结果）",
+  failed: "失败 — 未写入",
 };
 
 const STATUS_CLASS: Record<ImportBatchAnalysisResult["status"], string> = {
@@ -15,6 +17,8 @@ const STATUS_CLASS: Record<ImportBatchAnalysisResult["status"], string> = {
   "dry-run": "bg-[#edf2f3] text-[#52636e]",
   "tender-not-found": "bg-red-50 text-red-700",
   "skipped-opus-precision": "bg-amber-50 text-[#b86e00]",
+  "skipped-empty": "bg-amber-50 text-[#b86e00]",
+  failed: "bg-red-50 text-red-700",
 };
 
 type ApiResponse = { fileCount: number; documentCount: number; results: ImportBatchAnalysisResult[] };

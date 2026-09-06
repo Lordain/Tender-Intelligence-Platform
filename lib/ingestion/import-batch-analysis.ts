@@ -17,6 +17,7 @@
  */
 import { mergeExtractions, toTenderFields, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { assertWritten } from "@/lib/db/assert-written";
 
 export type ImportBatchAnalysisResult = {
   slug: string;
@@ -25,7 +26,13 @@ export type ImportBatchAnalysisResult = {
   experienceRequirements: number;
   requiredDocuments: number;
   risks: number;
-  status: "written" | "dry-run" | "tender-not-found" | "skipped-opus-precision";
+  /**
+   * "skipped-empty" and "failed" exist so a batch tells the truth about
+   * every tender in it (2026-09-06). Before, a Supabase error on the
+   * delete-then-insert below was discarded and the tender was reported
+   * "written" anyway — with its previous analysis already deleted.
+   */
+  status: "written" | "dry-run" | "tender-not-found" | "skipped-opus-precision" | "skipped-empty" | "failed";
   message?: string;
 };
 
@@ -79,7 +86,10 @@ export async function importBatchAnalysis(
     const tenderId = tender.id as string;
 
     if (fields.oneLineSummary?.trim()) {
-      await supabase!.from("tenders").update({ one_line_summary: fields.oneLineSummary.trim() }).eq("id", tenderId);
+      assertWritten(
+        `${slug} 的一句话总结`,
+        await supabase!.from("tenders").update({ one_line_summary: fields.oneLineSummary.trim() }).eq("id", tenderId),
+      );
     }
 
     if (!options.force) {
@@ -96,40 +106,64 @@ export async function importBatchAnalysis(
       }
     }
 
-    for (const kind of ["qualification", "experience", "document"] as const) {
-      await supabase!.from("tender_requirements").delete().eq("tender_id", tenderId).eq("kind", kind);
-    }
-    await supabase!.from("tender_risks").delete().eq("tender_id", tenderId);
-
+    // Rows built BEFORE the delete, so nothing can clear this tender's
+    // existing analysis and then fail to replace it.
     const requirementRows = [
       ...fields.qualifications.map((r, i) => ({ kind: "qualification" as const, sort_order: i, ...r })),
       ...fields.experienceRequirements.map((r, i) => ({ kind: "experience" as const, sort_order: i, ...r })),
       ...fields.requiredDocuments.map((r, i) => ({ kind: "document" as const, sort_order: i, ...r })),
     ];
-    if (requirementRows.length > 0) {
-      await supabase!.from("tender_requirements").insert(
-        requirementRows.map((r) => ({
-          tender_id: tenderId,
-          kind: r.kind,
-          title: r.title,
-          description: r.description,
-          mandatory: r.mandatory,
-          source_reference: r.sourceReference,
-          sort_order: r.sort_order,
-        })),
-      );
+
+    // An export entry that produced nothing at all is never worth more
+    // than what the tender already has — same guard as
+    // analyze-uploaded-document.ts.
+    if (requirementRows.length === 0 && fields.risks.length === 0) {
+      results.push({ ...base, status: "skipped-empty", message: "没有提取到任何要求或风险，已保留该项目原有的分析结果" });
+      continue;
     }
 
-    if (fields.risks.length > 0) {
-      await supabase!.from("tender_risks").insert(
-        fields.risks.map((r) => ({
-          tender_id: tenderId,
-          level: r.level,
-          title: r.title,
-          description: r.description,
-          source_reference: r.sourceReference,
-        })),
-      );
+    // Per-tender, so one tender's failure reports itself instead of
+    // aborting the rest of a batch that may cover dozens.
+    try {
+      for (const kind of ["qualification", "experience", "document"] as const) {
+        assertWritten(`${slug} 的旧${kind}要求清除`, await supabase!.from("tender_requirements").delete().eq("tender_id", tenderId).eq("kind", kind));
+      }
+      assertWritten(`${slug} 的旧风险清除`, await supabase!.from("tender_risks").delete().eq("tender_id", tenderId));
+
+      if (requirementRows.length > 0) {
+        assertWritten(
+          `${slug} 的要求`,
+          await supabase!.from("tender_requirements").insert(
+            requirementRows.map((r) => ({
+              tender_id: tenderId,
+              kind: r.kind,
+              title: r.title,
+              description: r.description,
+              mandatory: r.mandatory,
+              source_reference: r.sourceReference,
+              sort_order: r.sort_order,
+            })),
+          ),
+        );
+      }
+
+      if (fields.risks.length > 0) {
+        assertWritten(
+          `${slug} 的风险`,
+          await supabase!.from("tender_risks").insert(
+            fields.risks.map((r) => ({
+              tender_id: tenderId,
+              level: r.level,
+              title: r.title,
+              description: r.description,
+              source_reference: r.sourceReference,
+            })),
+          ),
+        );
+      }
+    } catch (err) {
+      results.push({ ...base, status: "failed", message: err instanceof Error ? err.message : String(err) });
+      continue;
     }
 
     results.push({ ...base, status: "written" });

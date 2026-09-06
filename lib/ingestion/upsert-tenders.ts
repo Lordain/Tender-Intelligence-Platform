@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
+import { assertWritten } from "@/lib/db/assert-written";
 
 /**
  * Real yearly Datos Abiertos exports run tens of thousands of rows — one
@@ -201,18 +202,22 @@ export async function upsertTendersBatched(
 
     const idBySlug = new Map<string, string>(upserted.map((row) => [row.slug, row.id]));
 
+    // Rows built before the delete, and both halves checked: this is a
+    // delete-then-insert, so a silently failed insert wouldn't skip an
+    // update, it would leave these tenders with no key dates at all while
+    // the ingest reported success (2026-09-06).
     const tenderIds = [...idBySlug.values()];
-    if (tenderIds.length > 0) {
-      await supabase.from("tender_key_dates").delete().in("tender_id", tenderIds);
-    }
-
     const keyDateRows = batch.flatMap((tender) => {
       const tenderId = idBySlug.get(tender.slug);
       if (!tenderId) return [];
       return tender.keyDates.map((d) => ({ tender_id: tenderId, type: d.type, date: d.date }));
     });
+
+    if (tenderIds.length > 0) {
+      assertWritten("旧关键日期清除", await supabase.from("tender_key_dates").delete().in("tender_id", tenderIds));
+    }
     if (keyDateRows.length > 0) {
-      await supabase.from("tender_key_dates").insert(keyDateRows);
+      assertWritten("关键日期", await supabase.from("tender_key_dates").insert(keyDateRows));
     }
 
     for (const tender of batch) {

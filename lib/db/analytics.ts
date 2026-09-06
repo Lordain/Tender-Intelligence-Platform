@@ -58,7 +58,7 @@ async function fetchPeriodSummary(days: number): Promise<AnalyticsPeriod> {
 
 export async function fetchAnalyticsDashboard(days: number): Promise<AnalyticsDashboardData | null> {
   const supabase = createSupabaseAdminClient();
-  if (!supabase || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  if (!supabase) return null;
 
   const selectedDays = [7, 30, 90].includes(days) ? days : 30;
   const sinceDay = dateKey(new Date(Date.now() - (selectedDays - 1) * 24 * 60 * 60 * 1000));

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createSupabaseAdminClient();
-  if (!supabase || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!supabase) {
     return NextResponse.json({ accepted: false }, { status: 503 });
   }
 

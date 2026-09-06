@@ -13,6 +13,12 @@
  * tender (slug prefix "secop-", colombia-mapper.ts's own namespace) with a
  * real `awarded_to` but a status other than "awarded" gets corrected.
  *
+ * Doesn't cover the second awarded signal added the same day
+ * (`estado_del_procedimiento` matching `/adjudicad/i`) — that raw SECOP
+ * field was never persisted as its own column, only used at mapping time,
+ * so there's nothing to backfill from for already-stored rows. Only a
+ * fresh re-ingest of the same process picks that signal up.
+ *
  * Usage:
  *   npm run fix:colombia-awarded-status               (dry run — report only)
  *   npm run fix:colombia-awarded-status -- --write     (writes to Supabase)

@@ -5,6 +5,7 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { TenderOverview } from "@/components/tenders/TenderOverview";
 import { RequirementSection } from "@/components/tenders/RequirementList";
+import { DetailSectionHeading } from "@/components/tenders/DetailSectionHeading";
 import { KeyDatesTimeline } from "@/components/tenders/KeyDatesTimeline";
 import { RiskList } from "@/components/tenders/RiskList";
 import { SourcePanel } from "@/components/tenders/SourcePanel";
@@ -27,12 +28,17 @@ export function TenderDetailView({ tender }: { tender: Tender }) {
 
       <KeyDatesTimeline dates={tender.keyDates} />
 
-      {tender.oneLineSummary && (
-        <div className="flex items-start gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4 shadow-[0_18px_50px_-48px_rgba(6,27,43,.5)]">
-          <span aria-hidden="true" className="mt-1 h-8 w-1 shrink-0 rounded-full bg-[#ffb21c]" />
-          <p className="text-base font-black leading-6 text-[#071826] sm:text-lg">{tender.oneLineSummary}</p>
-        </div>
-      )}
+      <section className="flex flex-col gap-4">
+        <DetailSectionHeading title={localize(uiText.oneLineSummary, locale)} description="一句话说明这个项目具体是什么" />
+        {tender.oneLineSummary ? (
+          <div className="flex items-start gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4 shadow-[0_18px_50px_-48px_rgba(6,27,43,.5)]">
+            <span aria-hidden="true" className="mt-1 h-8 w-1 shrink-0 rounded-full bg-[#ffb21c]" />
+            <p className="text-base font-black leading-6 text-[#071826] sm:text-lg">{tender.oneLineSummary}</p>
+          </div>
+        ) : (
+          <p className="text-sm text-[#64717c]">{localize(uiText.noneListed, locale)}</p>
+        )}
+      </section>
 
       <RequirementSection
         title={uiText.qualifications}

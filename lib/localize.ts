@@ -86,6 +86,7 @@ export const uiText = {
   publicationDateLabel: { en: "Publication Date", es: "Fecha de Publicación", zh: "发布日期" },
   /** Used instead of publicationDateLabel when Tender.publicationDateIsEstimated is true — the stored date is when this platform first ingested the tender, not a real government-published date (some sources' export files carry no publication-date column at all — see types/tender.ts). */
   ingestedDateLabel: { en: "Date Added", es: "Fecha de Registro", zh: "收录日期" },
+  oneLineSummary: { en: "Summary", es: "Resumen breve", zh: "一句话总结" },
   qualifications: { en: "Qualification Requirements", es: "Requisitos de Calificación", zh: "资质要求" },
   experienceRequirements: { en: "Experience Requirements", es: "Requisitos de Experiencia", zh: "经验要求" },
   requiredDocuments: { en: "Required Documents", es: "Documentos Requeridos", zh: "所需文件" },

@@ -57,6 +57,24 @@ export type SecopProcesoRow = {
   tipo_de_contrato?: string;
   urlproceso?: { url?: string };
   codigo_entidad?: string;
+  // Fields confirmed real from the dataset's own SODA API field dictionary
+  // (user pulled it directly, 2026-09-05) but not previously captured:
+  // `estado_resumen` ("Estado Resumen") is a coarser status than
+  // `estado_del_procedimiento` — not yet used for anything (no real value
+  // sample yet), captured for future use. `fecha_adjudicacion`/
+  // `valor_total_adjudicacion` ("Fecha Adjudicacion"/"Valor Total
+  // Adjudicacion") are the real award date/value, previously never
+  // captured at all despite `awardDate`/`awardedValue` existing as real
+  // Tender fields other mappers already populate (compranet5-mapper.ts,
+  // compras-mx-contracts-mapper.ts, ocds-mapper.ts). Deliberately NOT
+  // capturing `nombre_del_adjudicador` ("Nombre del Adjudicador") as a
+  // provider signal — per the same field dictionary this is a DIFFERENT
+  // field from `nombre_del_proveedor` ("Nombre del Proveedor Adjudicado")
+  // — the adjudicador is the awarding body/committee, not the winning
+  // contractor.
+  estado_resumen?: string;
+  fecha_adjudicacion?: string;
+  valor_total_adjudicacion?: string;
 };
 
 /**
@@ -110,10 +128,25 @@ function inferScopeType(tipoContrato: string | undefined): TenderScopeType {
  * asked for these to stop looking like open opportunities. Checked ahead
  * of `adjudicado` for the same reason: a stale/lagging "No" shouldn't
  * override a real provider name that's already there.
+ *
+ * Second real signal added same day: the user manually cross-checked a
+ * live SECOP II process page and found `estado_del_procedimiento`
+ * (labeled "Estado" there) reading literally "Proceso adjudicado y
+ * celebrado" ("process awarded and executed") — confirming this field
+ * DOES carry an unambiguous awarded signal after all, just not via the
+ * "Seleccionado" trap flagged above. Checked as a plain `/adjudicad/i`
+ * substring match, which "Seleccionado"/"Evaluación" etc. never contain,
+ * so the earlier trap can't recur.
  */
-function inferStatus(adjudicado: string | undefined, aperturaEstado: string | undefined, providerName: string | undefined): TenderStatus {
+function inferStatus(
+  adjudicado: string | undefined,
+  aperturaEstado: string | undefined,
+  providerName: string | undefined,
+  estadoDelProcedimiento: string | undefined,
+): TenderStatus {
   if (providerName && providerName !== "No Definido") return "awarded";
   if (adjudicado?.trim().toLowerCase() === "si" || adjudicado?.trim().toLowerCase() === "sí") return "awarded";
+  if (estadoDelProcedimiento && /adjudicad/i.test(estadoDelProcedimiento)) return "awarded";
   if (aperturaEstado === "Cerrado") return "submission_closed";
   return "open";
 }
@@ -226,6 +259,10 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
   const submissionDeadline = parseDate(row.fecha_de_recepcion_de) ?? undefined;
   const structuredDurationDays = normalizeDurationDays(row.duracion, row.unidad_de_duracion);
 
+  const awardDate = parseDate(row.fecha_adjudicacion) ?? undefined;
+  const rawAwardedValue = row.valor_total_adjudicacion ? Number(row.valor_total_adjudicacion) : undefined;
+  const awardedValue = rawAwardedValue && rawAwardedValue > 0 ? rawAwardedValue : undefined;
+
   return {
     id: crypto.randomUUID(),
     // Own slug namespace ("secop-") — a real, standalone connector, no
@@ -250,8 +287,10 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
     estimatedValue,
     currency: estimatedValue ? "COP" : undefined,
     location: row.ciudad_entidad?.trim() && row.ciudad_entidad !== "No Definido" ? row.ciudad_entidad.trim() : row.departamento_entidad?.trim(),
-    status: inferStatus(row.adjudicado, row.estado_de_apertura_del_proceso, providerName),
+    status: inferStatus(row.adjudicado, row.estado_de_apertura_del_proceso, providerName, row.estado_del_procedimiento),
     awardedTo,
+    awardDate,
+    awardedValue,
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],
@@ -264,6 +303,11 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
       // licitia-vigente-mapper.ts) silently dropped it for every
       // Colombia tender that had one.
       ...(submissionDeadline ? [{ id: `${tenderNumber}-submission`, type: "submission" as const, date: submissionDeadline }] : []),
+      // Real gap fixed 2026-09-05: `fecha_adjudicacion` (a real, dedicated
+      // award-date column, confirmed via the dataset's own SODA field
+      // dictionary) was never captured at all — a Colombia tender's public
+      // page never showed a real 中标结果 date the way other sources' do.
+      ...(awardDate ? [{ id: `${tenderNumber}-award`, type: "award" as const, date: awardDate }] : []),
     ],
     risks: [],
     relevance: classifyRelevance({

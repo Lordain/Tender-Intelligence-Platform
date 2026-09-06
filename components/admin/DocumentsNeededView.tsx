@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TenderNeedingDocuments } from "@/types/tender";
 import { useUser } from "@/lib/auth";
@@ -58,7 +58,6 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
   const router = useRouter();
   const { user, loading } = useUser();
   const [tenders, setTenders] = useState(initialTenders);
-  const [openSlug, setOpenSlug] = useState<string | null>(null);
   const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState("all");
@@ -246,73 +245,56 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
             </thead>
             <tbody className="divide-y divide-[#e5e9eb]">
               {filtered.map((tender) => {
-                const isOpen = openSlug === tender.slug;
+                const isSelected = selectedSlugs.includes(tender.slug);
                 return (
-                  <Fragment key={tender.slug}>
-                    <tr className={`transition-colors hover:bg-[#fff9ec] ${selectedSlugs.includes(tender.slug) ? "bg-[#fff8e9]" : ""}`}>
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          aria-label={`选择「${localize(tender.title, locale)}」用于批量分析`}
-                          checked={selectedSlugs.includes(tender.slug)}
-                          onChange={() => toggleSelected(tender.slug)}
-                          className="size-4 accent-[#ffb21c]"
-                        />
-                      </td>
-                      <td title={localize(tender.title, locale)} className="truncate whitespace-nowrap px-4 py-3 font-black text-[#071826]">{localize(tender.title, locale)}</td>
-                      <td className="whitespace-nowrap px-3 py-3 text-[#425461]">
-                        <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${STATUS_COLORS[tender.status]}`}>{STATUS_LABELS[tender.status][locale]}</span>
-                      </td>
-                      <td title={tender.slug} className="truncate whitespace-nowrap px-3 py-3 font-mono text-[11px] text-[#5d6d77]">{tender.slug}</td>
-                      <td className="whitespace-nowrap px-3 py-3 text-[#5d6d77]">{formatDate(tender.publicationDate, locale)}</td>
-                      <td className="whitespace-nowrap px-3 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <a
-                            href={tender.sourceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-3 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
-                          >
-                            <ExternalLinkIcon />官方正式投标入口
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => setOpenSlug(isOpen ? null : tender.slug)}
-                            className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[11px] font-black transition-colors ${isOpen ? "border border-[#cbd6da] bg-white text-[#52636e]" : "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]"}`}
-                          >
-                            <UploadIcon />{isOpen ? "收起" : "上传分析"}
-                          </button>
-                          <button
-                            type="button"
-                            title="标记为无法获取附件——不再出现在此清单，不影响相关度判定"
-                            disabled={dismissingSlug === tender.slug}
-                            onClick={() => dismissTender(tender.slug)}
-                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#8a5a00] transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            <BanIcon />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {isOpen && (
-                      <tr>
-                        <td colSpan={7} className="bg-[#f7f5ef] px-5 py-5">
-                          <AnalyzeDocumentForm
-                            initialSlug={tender.slug}
-                            lockSlug
-                            compact
-                            onDone={() => {
-                              setOpenSlug(null);
-                              router.refresh();
-                            }}
-                          />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
+                  <tr key={tender.slug} className={`transition-colors hover:bg-[#fff9ec] ${isSelected ? "bg-[#fff8e9]" : ""}`}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`选择「${localize(tender.title, locale)}」用于批量分析`}
+                        checked={isSelected}
+                        onChange={() => toggleSelected(tender.slug)}
+                        className="size-4 accent-[#ffb21c]"
+                      />
+                    </td>
+                    <td title={localize(tender.title, locale)} className="truncate whitespace-nowrap px-4 py-3 font-black text-[#071826]">{localize(tender.title, locale)}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-[#425461]">
+                      <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-3">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${STATUS_COLORS[tender.status]}`}>{STATUS_LABELS[tender.status][locale]}</span>
+                    </td>
+                    <td title={tender.slug} className="truncate whitespace-nowrap px-3 py-3 font-mono text-[11px] text-[#5d6d77]">{tender.slug}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-[#5d6d77]">{formatDate(tender.publicationDate, locale)}</td>
+                    <td className="whitespace-nowrap px-3 py-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <a
+                          href={tender.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-3 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
+                        >
+                          <ExternalLinkIcon />官方正式投标入口
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => toggleSelected(tender.slug)}
+                          className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[11px] font-black transition-colors ${isSelected ? "border border-[#cbd6da] bg-white text-[#52636e]" : "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]"}`}
+                        >
+                          <UploadIcon />{isSelected ? "取消选择" : "选择上传"}
+                        </button>
+                        <button
+                          type="button"
+                          title="标记为无法获取附件——不再出现在此清单，不影响相关度判定"
+                          disabled={dismissingSlug === tender.slug}
+                          onClick={() => dismissTender(tender.slug)}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#8a5a00] transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <BanIcon />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 );
               })}
               {filtered.length === 0 && (

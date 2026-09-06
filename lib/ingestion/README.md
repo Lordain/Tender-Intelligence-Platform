@@ -2934,3 +2934,16 @@ Moved 发布日期/投标截止日期/中标信息 (中标日期/中标单位/�
 Follow-up, same conversation: the 中标信息 block (中标日期/中标单位/中标金额) was still conditionally rendered — only shown once `status === "awarded"` or one of the three fields already had a value — so an admin who wanted to manually record a real award result for a tender not yet marked awarded had nowhere to type it at all, a real gap the user hit immediately on a Mexico Proyectos Estratégicos tender. Made it unconditionally visible, same as 发布日期/投标截止日期 right above it — filling it in doesn't itself flip 状态 (still a separate dropdown), it's just no longer hidden behind it.
 
 101/101 fixtures unaffected. `tsc --noEmit`, `npm run lint` clean.
+
+## "添加新项目" was missing whole sections that "编辑项目" had (2026-09-06)
+
+Real complaint after the date-consolidation work above: the create form (`isEdit === false`) cut off after "采购与分类"/关键日期, looking incomplete compared to the edit form — three whole `FormSection`s (相关度设置, 标书分析结果, and the `documentsUnavailable` checkbox inside 来源信息) were unconditionally hidden behind `{isEdit && (...)}`.
+
+Split these into two groups rather than blanket-removing the gate:
+
+- **相关度设置** and the `documentsUnavailable` checkbox are plain columns with no dependency on a persisted tender id — un-gated outright, now shown on both create and edit. `app/api/admin/tenders/route.ts` (POST) previously ignored any `relevanceTier`/`relevanceManuallyOverridden` the client sent and always used `classifyRelevance()`'s own guess — extended it to mirror the PATCH route's existing behavior: when an admin manually picks a tier at creation time, honor it (writing the same `MANUAL_OVERRIDE_REASON` the edit route already uses) instead of silently overwriting it a moment later; `documentsUnavailable` is now also persisted on insert (previously dropped).
+- **标书分析结果** (RequirementsEditor/RisksEditor) and `KeyDatesEditor`'s "其他关键日期" list have a real, unavoidable dependency — they save directly to `/api/admin/tenders/{slug}/requirements|risks|key-dates`, which needs an id that doesn't exist until the row is inserted. Rather than hide the whole "标书分析结果" section (which was the actual complaint — it looked missing, not "intentionally absent"), it now always renders with an explanatory placeholder in create mode instead of the editors themselves, so the block is visibly present and an admin knows why it isn't interactive yet.
+
+Also changed `handleSubmit`'s post-create redirect from `/admin/tenders` (the list) to `/admin/tenders/${slug}` (the new tender's own edit page) — since 标书分析结果/其他关键日期 only become usable in edit mode, sending the admin straight there means those sections are live immediately after clicking "创建项目", with no extra manual navigation back in. Editing an existing tender is unchanged (still returns to the list after "保存修改").
+
+101/101 fixtures unaffected (pure form/route wiring, no relevance logic touched). `tsc --noEmit`, `npm run lint` clean.

@@ -4,7 +4,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { classifyRelevance } from "@/lib/relevance";
 import { slugify } from "@/lib/ingestion/text-utils";
 import { syncKeyDatesForTopLevelFields } from "@/lib/db/key-dates-sync";
-import type { Tender, TenderScopeType, TenderStatus, GovernmentLevel, TenderParticipationScope } from "@/types/tender";
+import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
+import type { Tender, TenderScopeType, TenderStatus, GovernmentLevel, TenderParticipationScope, TenderRelevanceTier, LocalizedText } from "@/types/tender";
 
 type CreateTenderBody = {
   titleEs: string;
@@ -28,7 +29,18 @@ type CreateTenderBody = {
   currency?: string;
   location?: string;
   status: TenderStatus;
+  /** The "添加新项目" form now shows the same 相关度设置 block the edit form does (2026-09-06) — when an admin picks a tier by hand, honor it instead of always overwriting with classifyRelevance()'s own guess. */
+  relevanceTier?: TenderRelevanceTier;
+  relevanceManuallyOverridden?: boolean;
+  documentsUnavailable?: boolean;
   sourceUrl?: string;
+};
+
+/** Mirrors app/api/admin/tenders/[slug]/route.ts's own MANUAL_OVERRIDE_REASON — same honest "a human set this" reason instead of classifyRelevance()'s generated one, whenever an admin picks the tier by hand at creation time too. */
+const MANUAL_OVERRIDE_REASON: LocalizedText = {
+  zh: "管理员在后台手动设置",
+  en: "Manually set by an admin",
+  es: "Establecido manualmente por un administrador",
 };
 
 /**
@@ -75,6 +87,11 @@ export async function POST(request: Request) {
     country: body.country,
   });
 
+  const useManualTier = body.relevanceManuallyOverridden === true && Boolean(body.relevanceTier);
+  const relevanceTier = useManualTier ? body.relevanceTier! : relevance.tier;
+  const relevanceLabel = useManualTier ? RELEVANCE_TIER_LABELS[body.relevanceTier!] : relevance.label;
+  const relevanceReason = useManualTier ? MANUAL_OVERRIDE_REASON : relevance.reason;
+
   // Manual entries get their own slug prefix (distinct from every real
   // source's own scheme — proyectosmexico-<id>, pemex-<slug>, etc.) — a
   // short random id makes collisions negligible without needing a
@@ -106,9 +123,11 @@ export async function POST(request: Request) {
     currency: currency ?? null,
     location: body.location?.trim() || null,
     status: body.status,
-    relevance_tier: relevance.tier,
-    relevance_label: relevance.label,
-    relevance_reason: relevance.reason,
+    relevance_tier: relevanceTier,
+    relevance_label: relevanceLabel,
+    relevance_reason: relevanceReason,
+    relevance_manually_overridden: useManualTier,
+    documents_unavailable: body.documentsUnavailable === true,
     source_name: "人工添加（管理后台）",
     source_url: body.sourceUrl?.trim() || "",
     created_at: now,

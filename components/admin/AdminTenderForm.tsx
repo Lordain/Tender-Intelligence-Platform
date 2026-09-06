@@ -180,7 +180,14 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
 
-      router.push("/admin/tenders");
+      // Real complaint, 2026-09-06: a newly-created tender has no id yet,
+      // so "标书分析结果"/"其他关键日期" can't render on this form (see the
+      // placeholder text above) — sending the admin back to the list after
+      // create meant clicking straight back in to reach those blocks.
+      // Land on the tender's own edit page instead, where everything is
+      // now available. Editing an existing tender still returns to the
+      // list, matching prior behavior.
+      router.push(isEdit ? "/admin/tenders" : `/admin/tenders/${data.slug}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -438,44 +445,62 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
         )}
       </FormSection>
 
-      {isEdit && (
-        <FormSection title="相关度设置" description="人工调整项目优先级，并决定是否阻止后续自动分类覆盖。">
-          <label className={labelClass}>
-            <span className={labelTextClass}>相关度分级（手动覆盖会替换掉自动生成的理由说明）</span>
-            <select
-              className={inputClass}
-              value={form.relevanceTier}
-              onChange={(e) => {
-                const value = e.target.value as TenderRelevanceTier;
-                // Changing the tier by hand almost always means "protect
-                // this choice" — auto-check the lock, but leave it
-                // overridable below (e.g. an admin who wants this to
-                // revert to automatic classification on the next
-                // re-ingest can still uncheck it before saving).
-                setForm((prev) => ({ ...prev, relevanceTier: value, relevanceManuallyOverridden: true }));
-              }}
-            >
-              {RELEVANCE_TIER_KEYS.map((k) => (
-                <option key={k} value={k}>
-                  {RELEVANCE_TIER_LABELS[k].zh}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm text-[#233846]">
-            <input
-              type="checkbox"
-              checked={form.relevanceManuallyOverridden}
-              onChange={(e) => update("relevanceManuallyOverridden", e.target.checked)}
-              className="size-4 accent-[#ffb21c]"
-            />
-            🔒 锁定此分级（以后这条标书被重新抓取/入库时，不会被自动分类规则覆盖；取消勾选可恢复自动分类）
-          </label>
-        </FormSection>
-      )}
+      {/*
+        Real complaint, 2026-09-06: "添加新项目" used to hide this entire
+        section (isEdit-only), so a newly-created tender always started
+        life at whatever classifyRelevance() decided with no way to set it
+        at creation time — an admin had to save, then immediately re-open
+        edit just to fix the tier. Nothing here depends on a real tender id
+        (it's plain columns), so it's now always shown; the create route
+        (app/api/admin/tenders/route.ts) honors an admin-chosen tier the
+        same way the edit route already did.
+      */}
+      <FormSection title="相关度设置" description="人工调整项目优先级，并决定是否阻止后续自动分类覆盖。">
+        <label className={labelClass}>
+          <span className={labelTextClass}>相关度分级（手动覆盖会替换掉自动生成的理由说明）</span>
+          <select
+            className={inputClass}
+            value={form.relevanceTier}
+            onChange={(e) => {
+              const value = e.target.value as TenderRelevanceTier;
+              // Changing the tier by hand almost always means "protect
+              // this choice" — auto-check the lock, but leave it
+              // overridable below (e.g. an admin who wants this to
+              // revert to automatic classification on the next
+              // re-ingest can still uncheck it before saving).
+              setForm((prev) => ({ ...prev, relevanceTier: value, relevanceManuallyOverridden: true }));
+            }}
+          >
+            {RELEVANCE_TIER_KEYS.map((k) => (
+              <option key={k} value={k}>
+                {RELEVANCE_TIER_LABELS[k].zh}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-[#233846]">
+          <input
+            type="checkbox"
+            checked={form.relevanceManuallyOverridden}
+            onChange={(e) => update("relevanceManuallyOverridden", e.target.checked)}
+            className="size-4 accent-[#ffb21c]"
+          />
+          🔒 锁定此分级（以后这条标书被重新抓取/入库时，不会被自动分类规则覆盖；取消勾选可恢复自动分类）
+        </label>
+      </FormSection>
 
-      {isEdit && (
-        <FormSection title="标书分析结果" description="资质要求、经验要求、所需文件与风险提示——通常由文件分析流程生成，也可以在这里手动补充或修正；每项立即保存。">
+      {/*
+        RequirementsEditor/RisksEditor each save straight to their own
+        /api/admin/tenders/{slug}/requirements|risks endpoints — they need
+        a real, already-persisted tender id, which a brand-new tender
+        doesn't have yet. Rather than hiding the whole section (the
+        original complaint was that create looked like it was "missing
+        blocks"), show the same titled block with an explanation, so it's
+        visibly present and an admin knows exactly why it's not editable
+        yet and where it'll show up.
+      */}
+      <FormSection title="标书分析结果" description="资质要求、经验要求、所需文件与风险提示——通常由文件分析流程生成，也可以在这里手动补充或修正；每项立即保存。">
+        {isEdit ? (
           <div className="flex flex-col gap-5">
             <div>
               <p className="mb-2 text-xs font-black text-[#52636e]">资质要求</p>
@@ -494,8 +519,12 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
               <RisksEditor tenderSlug={tender!.slug} initialItems={tender!.risks} />
             </div>
           </div>
-        </FormSection>
-      )}
+        ) : (
+          <p className="rounded-lg bg-[#f2f4f3] px-3 py-2 text-xs leading-5 text-[#7a878f]">
+            请先点击下方“创建项目”保存这条标书，保存后会自动进入编辑页面，再在这里补充资质要求、经验要求、所需文件与风险提示。
+          </p>
+        )}
+      </FormSection>
 
       <FormSection title="来源信息" description="保存官方编号和原始信息入口，方便后续核验与追溯。">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -512,17 +541,15 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           <input className={inputClass} value={form.sourceUrl} onChange={(e) => update("sourceUrl", e.target.value)} />
         </label>
       </div>
-      {isEdit && (
-        <label className="mt-4 flex items-center gap-2 text-sm text-[#233846]">
-          <input
-            type="checkbox"
-            checked={form.documentsUnavailable}
-            onChange={(e) => update("documentsUnavailable", e.target.checked)}
-            className="size-4 accent-[#ffb21c]"
-          />
-          🚫 标记为无法获取附件（不再出现在&ldquo;待补文件&rdquo;清单；取消勾选可恢复到待处理清单）
-        </label>
-      )}
+      <label className="mt-4 flex items-center gap-2 text-sm text-[#233846]">
+        <input
+          type="checkbox"
+          checked={form.documentsUnavailable}
+          onChange={(e) => update("documentsUnavailable", e.target.checked)}
+          className="size-4 accent-[#ffb21c]"
+        />
+        🚫 标记为无法获取附件（不再出现在&ldquo;待补文件&rdquo;清单；取消勾选可恢复到待处理清单）
+      </label>
       </FormSection>
 
       <div className="sticky bottom-4 z-10 flex items-center justify-between rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]/95 p-3 shadow-[0_12px_35px_-18px_rgba(6,27,43,.35)] backdrop-blur">

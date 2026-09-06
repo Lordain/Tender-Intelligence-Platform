@@ -40,7 +40,7 @@
  */
 import { writeFileSync, unlinkSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, extname } from "node:path";
+import { join, extname, basename } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { intakeDocument } from "@/lib/ingestion/document-intake";
 import { hasRealTextLayer } from "@/lib/ingestion/text-layer";
@@ -56,8 +56,9 @@ import { untranslated } from "@/lib/ingestion/text-utils";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 
 export type AnalyzeUploadedDocumentResult = {
-  /** Every uploaded file name, in upload order — joined for display since this can now be more than one document analyzed together. */
+  /** Every successfully analyzed file name, in upload order — joined for display since this can now be more than one document analyzed together. */
   fileName: string;
+  /** Every distinct document type across the analyzed files, joined for display. */
   documentType: string;
   tenderNumberInText?: string;
   /** Every distinct model actually used across the uploaded files (a scanned Anexo and a text-layer Pliego can route to different models), joined for display. */
@@ -69,6 +70,14 @@ export type AnalyzeUploadedDocumentResult = {
   risks: number;
   status: "written" | "dry-run" | "skipped-opus-precision";
   message?: string;
+  /**
+   * Non-fatal things the admin should see: a file that failed while others
+   * succeeded, a duplicate skipped, uploaded files that disagree about
+   * which tender they belong to (the easiest mistake to make in this
+   * flow — attaching another tender's PDF), an extraction that came back
+   * completely empty and was therefore NOT allowed to wipe existing data.
+   */
+  warnings?: string[];
   /**
    * Round 2 re-tagging outcome (see extract-requirements.ts's
    * RelevanceAssessmentSchema) — undefined when no uploaded file's own
@@ -82,6 +91,19 @@ export type AnalyzeUploadedDocumentResult = {
   relevanceTierChanged?: { from: string; to: string; reasoning: string };
   skippedLockedTier?: boolean;
 };
+
+/**
+ * supabase-js never throws on a failed write — it returns `{ error }`, and
+ * an unchecked write is how an admin ends up being told "已写入" about
+ * data that was never written. That matters more here than in most places
+ * because the requirements/risks write below is a delete-then-insert: a
+ * silently failed insert doesn't just skip the update, it leaves the
+ * tender with NOTHING where a good previous analysis used to be. Every
+ * write in this function goes through here.
+ */
+function assertWritten(what: string, result: { error: { message: string } | null }) {
+  if (result.error) throw new Error(`${what} 写入失败：${result.error.message}`);
+}
 
 export async function analyzeUploadedDocument(
   supabase: SupabaseClient,
@@ -98,27 +120,51 @@ export async function analyzeUploadedDocument(
     extraction: TenderExtraction;
   };
   const perFile: PerFile[] = [];
+  const warnings: string[] = [];
 
   try {
     for (const file of files) {
-      const tempPath = join(tempDir, file.fileName || `upload${extname(file.fileName) || ".pdf"}`);
+      // basename(), not the raw name: file.fileName is whatever the
+      // multipart request said it was. Browsers strip directory
+      // components, but this route accepts any multipart body, and
+      // join(tempDir, "../../…") would write (and then unlink) outside
+      // the temp directory entirely.
+      const safeName = basename(file.fileName || "").trim();
+      const tempPath = join(tempDir, safeName || `upload${extname(file.fileName) || ".pdf"}`);
       try {
         writeFileSync(tempPath, file.buffer);
 
         const intake = await intakeDocument(tempPath);
-        const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: intake.fileName, buyer: "" };
+
+        // Deduped on the real content hash, before the expensive call —
+        // selecting the same PDF twice in one upload (easy to do with a
+        // multi-select dialog) would otherwise pay for two identical
+        // extractions AND insert two tender_documents rows for it, since
+        // the existing-document lookup below runs once, before this loop.
+        if (perFile.some((p) => p.intake.contentHash === intake.contentHash)) {
+          warnings.push(`「${intake.fileName}」与已上传的另一个文件内容完全相同，已跳过（未重复调用模型）。`);
+          continue;
+        }
 
         // Always auto-routed (text-layer -> qwen3.5-plus / scanned ->
         // claude-haiku) — the "精度分析" (force claude-opus-5) option was
         // removed from this upload flow per the user's explicit request
         // (2026-09-04). extract-tender-document.ts's CLI --precise flag
         // is a separate code path and is unaffected.
+        const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: intake.fileName, buyer: "" };
         const hasText = await hasRealTextLayer(tempPath);
         const model: ExtractionModel = hasText ? "qwen3.5-plus" : "claude-haiku-4-5-20251001";
         const extraction: TenderExtraction = hasText
           ? await extractTenderRequirementsQwenAnthropic(tempPath, context)
           : await extractTenderRequirements(tempPath, context, model);
         perFile.push({ intake, model, extraction });
+      } catch (err) {
+        // One bad file (corrupt PDF, a model error partway through a
+        // chunked document) must not throw away the extractions already
+        // paid for in this same batch — those are real API spend, and a
+        // Pliego that analyzed fine is still worth writing. Reported as a
+        // warning instead; only an all-files-failed batch throws.
+        warnings.push(`「${safeName || file.fileName}」分析失败，已跳过：${err instanceof Error ? err.message : String(err)}`);
       } finally {
         try {
           unlinkSync(tempPath);
@@ -128,18 +174,39 @@ export async function analyzeUploadedDocument(
       }
     }
 
+    if (perFile.length === 0) {
+      throw new Error(`没有任何文件分析成功。${warnings.join(" ")}`);
+    }
+
     const merged = mergeExtractions(perFile.map((p) => p.extraction));
     const fields = toTenderFields(merged, tenderSlug);
     // mergeExtractions() only merges the 5 core fields (see its own header
     // comment) — relevanceAssessment isn't one of them, so it has to be
-    // picked separately here: first file whose own extraction returned one.
-    const relevanceAssessment = perFile.map((p) => p.extraction.relevanceAssessment).find((a) => a !== undefined);
+    // picked separately here. Upload order is meaningless (the admin picks
+    // files in whatever order the file dialog listed them), so the longest
+    // document wins: in a real package that's the Pliego/Convocatoria,
+    // which is the one that actually states who may participate.
+    const relevanceAssessment = [...perFile]
+      .filter((p) => p.extraction.relevanceAssessment)
+      .sort((a, b) => b.intake.textLength - a.intake.textLength)[0]?.extraction.relevanceAssessment;
     const models = [...new Set(perFile.map((p) => p.model))];
+    const documentTypes = [...new Set(perFile.map((p) => p.intake.documentType))];
+
+    // The single easiest mistake in this flow is attaching a document that
+    // belongs to a DIFFERENT tender than the one selected — nothing
+    // downstream would catch it, the other tender's requirements would
+    // just get written onto this one. The procedure numbers the documents
+    // state about themselves are the only independent signal available,
+    // so surface a disagreement rather than silently taking the first.
+    const distinctTenderNumbers = [...new Set(perFile.map((p) => p.intake.tenderNumber).filter((n): n is string => Boolean(n)))];
+    if (distinctTenderNumbers.length > 1) {
+      warnings.push(`上传的文件里出现了 ${distinctTenderNumbers.length} 个不同的招标编号（${distinctTenderNumbers.join("、")}）——请确认它们确实属于同一个项目。`);
+    }
 
     const base = {
       fileName: perFile.map((p) => p.intake.fileName).join(" + "),
-      documentType: perFile[0].intake.documentType,
-      tenderNumberInText: perFile.map((p) => p.intake.tenderNumber).find((n) => n),
+      documentType: documentTypes.join(" + "),
+      tenderNumberInText: distinctTenderNumbers[0],
       model: models.join(" + "),
       oneLineSummary: fields.oneLineSummary,
       qualifications: fields.qualifications.length,
@@ -148,7 +215,7 @@ export async function analyzeUploadedDocument(
       risks: fields.risks.length,
     };
 
-    if (!options.write) return { ...base, status: "dry-run" };
+    if (!options.write) return { ...base, status: "dry-run", warnings: warnings.length > 0 ? warnings : undefined };
 
     const { data: tender, error: tenderError } = await supabase
       .from("tenders")
@@ -160,11 +227,21 @@ export async function analyzeUploadedDocument(
     }
     const tenderId = tender.id as string;
 
+    // Scoped to THIS tender (2026-09-06): content_hash is not unique
+    // across tenders and genuinely repeats across them — a buyer's
+    // standard "Anexo formatos" boilerplate is byte-identical in every
+    // tender it appears in. An unscoped lookup made that file's row for
+    // some other tender look like this tender's own: the update below
+    // would edit the other tender's row and this tender would never get
+    // one, and the opus guard would block this whole batch over a
+    // precision analysis that belongs to a different tender entirely.
     const contentHashes = perFile.map((p) => p.intake.contentHash);
-    const { data: existingDocs } = await supabase
+    const { data: existingDocs, error: existingDocsError } = await supabase
       .from("tender_documents")
       .select("id, content_hash, extraction_model")
+      .eq("tender_id", tenderId)
       .in("content_hash", contentHashes);
+    if (existingDocsError) throw new Error(`读取已有文档记录失败：${existingDocsError.message}`);
 
     // This upload flow always auto-routes (never opus) — so any file here
     // that matches an existing claude-opus-5 result (from extract-tender-
@@ -173,7 +250,7 @@ export async function analyzeUploadedDocument(
     // per-file write, a single matching file blocks the whole batch.
     const opusDoc = existingDocs?.find((d) => d.extraction_model === "claude-opus-5");
     if (opusDoc && !options.force) {
-      return { ...base, status: "skipped-opus-precision", message: "已有精度分析（claude-opus-5）结果" };
+      return { ...base, status: "skipped-opus-precision", message: "已有精度分析（claude-opus-5）结果", warnings: warnings.length > 0 ? warnings : undefined };
     }
 
     // Real complaint, 2026-09-06: only written when non-empty — a
@@ -181,62 +258,90 @@ export async function analyzeUploadedDocument(
     // returning "" shouldn't blank out a good oneLineSummary a previous
     // analysis run already wrote for this same tender.
     if (fields.oneLineSummary?.trim()) {
-      await supabase.from("tenders").update({ one_line_summary: fields.oneLineSummary.trim() }).eq("id", tenderId);
+      assertWritten(
+        "一句话总结",
+        await supabase.from("tenders").update({ one_line_summary: fields.oneLineSummary.trim() }).eq("id", tenderId),
+      );
     }
 
-    for (const kind of ["qualification", "experience", "document"] as const) {
-      await supabase.from("tender_requirements").delete().eq("tender_id", tenderId).eq("kind", kind);
-    }
-    await supabase.from("tender_risks").delete().eq("tender_id", tenderId);
-
+    // Rows are built BEFORE the delete, so a bad merge can't get as far as
+    // clearing the tender's existing analysis.
     const requirementRows = [
       ...fields.qualifications.map((r, i) => ({ kind: "qualification" as const, sort_order: i, ...r })),
       ...fields.experienceRequirements.map((r, i) => ({ kind: "experience" as const, sort_order: i, ...r })),
       ...fields.requiredDocuments.map((r, i) => ({ kind: "document" as const, sort_order: i, ...r })),
     ];
-    if (requirementRows.length > 0) {
-      await supabase.from("tender_requirements").insert(
-        requirementRows.map((r) => ({
-          tender_id: tenderId,
-          kind: r.kind,
-          title: r.title,
-          description: r.description,
-          mandatory: r.mandatory,
-          source_reference: r.sourceReference,
-          sort_order: r.sort_order,
-        })),
-      );
-    }
 
-    if (fields.risks.length > 0) {
-      await supabase.from("tender_risks").insert(
-        fields.risks.map((r) => ({
-          tender_id: tenderId,
-          level: r.level,
-          title: r.title,
-          description: r.description,
-          source_reference: r.sourceReference,
-        })),
-      );
+    // Same reasoning as the oneLineSummary guard above, applied to the one
+    // write that can actually destroy data: this is a delete-then-insert,
+    // and an extraction that came back completely empty (a failed OCR
+    // route, a model returning 0/0/0/0 on a scanned page) would otherwise
+    // wipe a good previous analysis and replace it with nothing. An empty
+    // result is never worth more than what's already there.
+    if (requirementRows.length === 0 && fields.risks.length === 0) {
+      warnings.push("本次分析没有提取到任何要求或风险，已保留该项目原有的分析结果（不覆盖）。");
+    } else {
+      for (const kind of ["qualification", "experience", "document"] as const) {
+        assertWritten(`清除旧的${kind}要求`, await supabase.from("tender_requirements").delete().eq("tender_id", tenderId).eq("kind", kind));
+      }
+      assertWritten("清除旧的风险", await supabase.from("tender_risks").delete().eq("tender_id", tenderId));
+
+      if (requirementRows.length > 0) {
+        assertWritten(
+          "要求",
+          await supabase.from("tender_requirements").insert(
+            requirementRows.map((r) => ({
+              tender_id: tenderId,
+              kind: r.kind,
+              title: r.title,
+              description: r.description,
+              mandatory: r.mandatory,
+              source_reference: r.sourceReference,
+              sort_order: r.sort_order,
+            })),
+          ),
+        );
+      }
+
+      if (fields.risks.length > 0) {
+        assertWritten(
+          "风险",
+          await supabase.from("tender_risks").insert(
+            fields.risks.map((r) => ({
+              tender_id: tenderId,
+              level: r.level,
+              title: r.title,
+              description: r.description,
+              source_reference: r.sourceReference,
+            })),
+          ),
+        );
+      }
     }
 
     for (const p of perFile) {
       const existingDoc = existingDocs?.find((d) => d.content_hash === p.intake.contentHash);
       if (existingDoc) {
-        await supabase
-          .from("tender_documents")
-          .update({ extraction_status: "extracted", extracted_at: new Date().toISOString(), extraction_model: p.model })
-          .eq("id", existingDoc.id);
+        assertWritten(
+          `文档记录（${p.intake.fileName}）`,
+          await supabase
+            .from("tender_documents")
+            .update({ extraction_status: "extracted", extracted_at: new Date().toISOString(), extraction_model: p.model })
+            .eq("id", existingDoc.id),
+        );
       } else {
-        await supabase.from("tender_documents").insert({
-          tender_id: tenderId,
-          file_name: p.intake.fileName,
-          document_type: p.intake.documentType,
-          content_hash: p.intake.contentHash,
-          extraction_status: "extracted",
-          extracted_at: new Date().toISOString(),
-          extraction_model: p.model,
-        });
+        assertWritten(
+          `文档记录（${p.intake.fileName}）`,
+          await supabase.from("tender_documents").insert({
+            tender_id: tenderId,
+            file_name: p.intake.fileName,
+            document_type: p.intake.documentType,
+            content_hash: p.intake.contentHash,
+            extraction_status: "extracted",
+            extracted_at: new Date().toISOString(),
+            extraction_model: p.model,
+          }),
+        );
       }
     }
 
@@ -252,7 +357,10 @@ export async function analyzeUploadedDocument(
 
     if (relevanceAssessment) {
       if (relevanceAssessment.participationScope) {
-        await supabase.from("tenders").update({ participation_scope: relevanceAssessment.participationScope }).eq("id", tenderId);
+        assertWritten(
+          "参与范围",
+          await supabase.from("tenders").update({ participation_scope: relevanceAssessment.participationScope }).eq("id", tenderId),
+        );
         participationScopeSet = relevanceAssessment.participationScope;
       }
 
@@ -260,19 +368,29 @@ export async function analyzeUploadedDocument(
       if (tender.relevance_manually_overridden) {
         if (relevanceAssessment.suggestedTier !== currentTier) skippedLockedTier = true;
       } else if (relevanceAssessment.suggestedTier !== currentTier) {
-        await supabase
-          .from("tenders")
-          .update({
-            relevance_tier: relevanceAssessment.suggestedTier,
-            relevance_label: RELEVANCE_TIER_LABELS[relevanceAssessment.suggestedTier],
-            relevance_reason: untranslated(relevanceAssessment.reasoning),
-          })
-          .eq("id", tenderId);
+        assertWritten(
+          "相关度分级",
+          await supabase
+            .from("tenders")
+            .update({
+              relevance_tier: relevanceAssessment.suggestedTier,
+              relevance_label: RELEVANCE_TIER_LABELS[relevanceAssessment.suggestedTier],
+              relevance_reason: untranslated(relevanceAssessment.reasoning),
+            })
+            .eq("id", tenderId),
+        );
         relevanceTierChanged = { from: currentTier ?? "(none)", to: relevanceAssessment.suggestedTier, reasoning: relevanceAssessment.reasoning };
       }
     }
 
-    return { ...base, status: "written", participationScopeSet, relevanceTierChanged, skippedLockedTier };
+    return {
+      ...base,
+      status: "written",
+      participationScopeSet,
+      relevanceTierChanged,
+      skippedLockedTier,
+      warnings: warnings.length > 0 ? warnings : undefined,
+    };
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

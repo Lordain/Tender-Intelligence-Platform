@@ -29,11 +29,17 @@ import { logAdminAlert } from "@/lib/admin-alerts";
 // genuine tender document is ever rejected here, raise this constant
 // rather than route around the check.
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
-// Same cap for the whole request (pre-parse, from the content-length
-// header) as MAX_BATCH_SELECTION's own 5-tender ceiling elsewhere — a
-// single tender's document package rarely needs more than a handful of
-// files at once.
-const MAX_TOTAL_UPLOAD_BYTES = MAX_UPLOAD_BYTES * 5;
+// A tender's own document package (Pliego + its Anexos) is a handful of
+// files, not dozens. This is the ceiling that actually matters for cost:
+// every accepted file is one more real LLM call at real token spend, and
+// nothing else downstream limits how many arrive in a single request.
+const MAX_FILES_PER_REQUEST = 10;
+// Whole-request ceiling, checked pre-parse from the content-length header.
+// Not MAX_UPLOAD_BYTES * MAX_FILES_PER_REQUEST — request.formData() below
+// buffers the ENTIRE multipart body into this process's memory at once,
+// so this is a memory ceiling, deliberately far below what the per-file
+// limits would multiply out to.
+const MAX_TOTAL_UPLOAD_BYTES = 150 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".doc"];
 
 export async function POST(request: Request) {
@@ -62,6 +68,12 @@ export async function POST(request: Request) {
   const uploadedFiles = form.getAll("file");
   if (uploadedFiles.length === 0 || !uploadedFiles.every((f): f is File => f instanceof File)) {
     return NextResponse.json({ error: "no file uploaded" }, { status: 400 });
+  }
+  if (uploadedFiles.length > MAX_FILES_PER_REQUEST) {
+    return NextResponse.json(
+      { error: `一次最多分析 ${MAX_FILES_PER_REQUEST} 个文件（本次 ${uploadedFiles.length} 个）——每个文件都是一次真实的模型调用。` },
+      { status: 400 },
+    );
   }
 
   // Belt-and-suspenders re-check against the actual parsed files (content-

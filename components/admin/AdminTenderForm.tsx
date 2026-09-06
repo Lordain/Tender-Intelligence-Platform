@@ -429,7 +429,10 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       )}
 
       {isEdit && (
-        <FormSection title="关键日期" description="手动添加、编辑或删除该标书的关键时间节点——每项立即保存，无需点击下方的整体保存按钮。">
+        <FormSection
+          title="其他关键日期"
+          description="澄清会议、现场踏勘、提问截止、开标、合同签署等——每项立即保存，无需点击下方的整体保存按钮。发布/投标截止/中标日期请在上方“时间与预算”区域编辑，会自动同步到这里的时间线。"
+        >
           <KeyDatesEditor tenderSlug={tender!.slug} initialKeyDates={tender!.keyDates} />
         </FormSection>
       )}

@@ -5,7 +5,22 @@ import type { TenderKeyDate } from "@/types/tender";
 import { KEY_DATE_TYPE_LABELS } from "@/lib/tender-labels";
 import { formatDate } from "@/lib/format";
 
-const KEY_DATE_TYPES = Object.keys(KEY_DATE_TYPE_LABELS) as TenderKeyDate["type"][];
+/**
+ * "publication"/"submission"/"award" are deliberately excluded from this
+ * editor's own type list — those three have their own dedicated quick-edit
+ * fields further up AdminTenderForm.tsx (发布日期/投标截止日期/中标日期) and
+ * are kept in sync into tender_key_dates automatically by
+ * syncKeyDatesForTopLevelFields() (lib/db/key-dates-sync.ts) whenever one
+ * of those fields is saved. Real complaint fixed 2026-09-05: the same date
+ * was editable in two different places on this one page (the quick field
+ * above, and a generic "发布"/"提交截止" row down here), and editing only
+ * one of them could leave the two displays disagreeing — this editor now
+ * only ever shows/creates the OTHER key-date types (clarification, site
+ * visit, questions deadline, opening, contract signing), which have no
+ * top-level column counterpart and stay purely admin-managed here.
+ */
+const HANDLED_ELSEWHERE: TenderKeyDate["type"][] = ["publication", "submission", "award"];
+const KEY_DATE_TYPES = (Object.keys(KEY_DATE_TYPE_LABELS) as TenderKeyDate["type"][]).filter((t) => !HANDLED_ELSEWHERE.includes(t));
 
 const inputClass =
   "h-10 w-full rounded-lg border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none transition-shadow focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10";
@@ -19,7 +34,7 @@ type DraftState = {
   mandatory: boolean;
 };
 
-const EMPTY_DRAFT: DraftState = { type: "submission", date: "", notesZh: "", mandatory: false };
+const EMPTY_DRAFT: DraftState = { type: "clarification", date: "", notesZh: "", mandatory: false };
 
 function toDraft(keyDate: TenderKeyDate): DraftState {
   return { type: keyDate.type, date: keyDate.date.slice(0, 10), notesZh: keyDate.notes?.zh ?? "", mandatory: keyDate.mandatory ?? false };
@@ -143,15 +158,20 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
     }
   }
 
+  // sameDaySubmissionOpeningIds still runs against the FULL keyDates state
+  // (submission/award/publication included) even though those types are
+  // filtered out of the list below — the hidden submission entry is still
+  // what an "opening" row's same-day badge needs to compare against.
   const sameDayIds = sameDaySubmissionOpeningIds(keyDates);
+  const visibleKeyDates = keyDates.filter((kd) => !HANDLED_ELSEWHERE.includes(kd.type));
 
   return (
     <div className="flex flex-col gap-3">
       {error && <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
 
-      {keyDates.length === 0 && <p className="text-xs text-[#7a878f]">还没有关键日期。</p>}
+      {visibleKeyDates.length === 0 && <p className="text-xs text-[#7a878f]">还没有其他关键日期（发布/投标截止/中标日期请在上方&ldquo;时间与预算&rdquo;区域编辑）。</p>}
 
-      {keyDates.map((kd) =>
+      {visibleKeyDates.map((kd) =>
         editingId === kd.id ? (
           <div key={kd.id} className="grid grid-cols-1 gap-2 rounded-xl border border-[#ffb21c]/60 bg-[#fff8e9] p-3 sm:grid-cols-[1fr_1fr_1.4fr_auto_auto]">
             <select className={inputClass} value={editDraft.type} onChange={(e) => setEditDraft((d) => ({ ...d, type: e.target.value as TenderKeyDate["type"] }))}>

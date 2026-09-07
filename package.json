@@ -34,6 +34,7 @@
     "purge:old-tenders": "tsx --env-file-if-exists=.env.local scripts/purge-old-tenders.ts",
     "purge:excluded-tenders": "tsx --env-file-if-exists=.env.local scripts/purge-excluded-tenders.ts",
     "purge:manually-deleted": "tsx --env-file-if-exists=.env.local scripts/reapply-manual-deletions.ts",
+    "purge:since": "tsx --env-file-if-exists=.env.local scripts/purge-tenders-since.ts",
     "ingest:peru": "tsx --env-file-if-exists=.env.local scripts/ingest-peru.ts",
     "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts",
     "ingest:proyectos-estrategicos": "tsx --env-file-if-exists=.env.local scripts/ingest-proyectos-estrategicos.ts",

@@ -53,40 +53,75 @@ function matches(tender: DigestTender, preference: Preference, statusOverride?: 
   );
 }
 
+/**
+ * Who gets the twice-daily mail: current subscribers, users still inside the
+ * seven-day trial, and the seat holders on a current enterprise subscription
+ * — intersected with the people who actually turned notifications on.
+ *
+ * The order matters. Eligibility used to be computed first, which meant
+ * `profiles.select("id").gte("trial_ends_at", now)` — an unfiltered read of
+ * every profile on the platform. PostgREST caps a select at 1000 rows by
+ * default and returns the first page without an error, so once the table
+ * passed 1000 rows the trial users beyond the cap would have silently
+ * dropped off the send list with nothing in the logs. Starting from the
+ * opt-ins instead bounds every query below by the (much smaller) set of
+ * people who asked for mail at all. That set is itself still one page, so
+ * this wants real pagination before the platform has ~1000 subscribed
+ * notification opt-ins.
+ */
 export async function getDigestRecipients(): Promise<DigestRecipient[]> {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return [];
 
-  const { data: subscriptions } = await supabase
-    .from("subscriptions")
-    .select("user_id, plan, status, current_period_end")
-    .in("status", ["active", "trialing"]);
-
-  const subscribedIds = [...new Set((subscriptions ?? [])
-    .filter((subscription) => !subscription.current_period_end || new Date(subscription.current_period_end) >= new Date())
-    .map((subscription) => subscription.user_id))];
-
-  const nowIso = new Date().toISOString();
-  const { data: trialProfiles } = await supabase.from("profiles").select("id").gte("trial_ends_at", nowIso);
-  const trialIds = (trialProfiles ?? []).map((profile) => profile.id as string);
-
-  const enterpriseOwnerIds = [...new Set((subscriptions ?? [])
-    .filter((subscription) => subscription.plan === "enterprise" && subscribedIds.includes(subscription.user_id))
-    .map((subscription) => subscription.user_id))];
-  const { data: enterpriseMembers } = enterpriseOwnerIds.length > 0
-    ? await supabase.from("enterprise_members").select("member_user_id").in("owner_user_id", enterpriseOwnerIds).not("member_user_id", "is", null)
-    : { data: [] };
-  const eligibleIds = [...new Set([...subscribedIds, ...trialIds, ...(enterpriseMembers ?? []).map((member) => member.member_user_id as string)])];
-  if (eligibleIds.length === 0) return [];
-
   const { data: preferences } = await supabase
     .from("email_notification_preferences")
     .select("user_id, enabled, countries, industries, statuses, relevance_tiers, keywords")
-    .in("user_id", eligibleIds)
     .eq("enabled", true);
 
   const enabled = (preferences ?? []) as Preference[];
   if (enabled.length === 0) return [];
+  const optedInIds = [...new Set(enabled.map((preference) => preference.user_id))];
+
+  // An enterprise seat holder is entitled through the OWNER's subscription,
+  // not their own, so the owner has to be pulled in even though the owner may
+  // never have enabled notifications themselves.
+  const { data: memberships } = await supabase
+    .from("enterprise_members")
+    .select("member_user_id, owner_user_id")
+    .in("member_user_id", optedInIds);
+  const ownerByMember = new Map(
+    (memberships ?? []).map((row) => [row.member_user_id as string, row.owner_user_id as string]),
+  );
+
+  const { data: subscriptions } = await supabase
+    .from("subscriptions")
+    .select("user_id, plan, status, current_period_end")
+    .in("user_id", [...new Set([...optedInIds, ...ownerByMember.values()])])
+    .in("status", ["active", "trialing"]);
+  const current = (subscriptions ?? []).filter(
+    (subscription) => !subscription.current_period_end || new Date(subscription.current_period_end) >= new Date(),
+  );
+  const subscriberIds = new Set(current.map((subscription) => subscription.user_id as string));
+  const enterpriseOwnerIds = new Set(
+    current.filter((subscription) => subscription.plan === "enterprise").map((subscription) => subscription.user_id as string),
+  );
+
+  const { data: trialProfiles } = await supabase
+    .from("profiles")
+    .select("id")
+    .in("id", optedInIds)
+    .gte("trial_ends_at", new Date().toISOString());
+  const trialIds = new Set((trialProfiles ?? []).map((profile) => profile.id as string));
+
+  const eligible = enabled.filter((preference) => {
+    const ownerId = ownerByMember.get(preference.user_id);
+    return (
+      subscriberIds.has(preference.user_id) ||
+      trialIds.has(preference.user_id) ||
+      (ownerId !== undefined && enterpriseOwnerIds.has(ownerId))
+    );
+  });
+  if (eligible.length === 0) return [];
 
   const usersById = new Map<string, string>();
   for (let page = 1; ; page += 1) {
@@ -98,7 +133,7 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
     if (data.users.length < 1000) break;
   }
 
-  return enabled.flatMap((preference) => {
+  return eligible.flatMap((preference) => {
     const email = usersById.get(preference.user_id);
     return email ? [{ ...preference, email }] : [];
   });

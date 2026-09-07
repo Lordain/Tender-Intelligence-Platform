@@ -45,10 +45,10 @@ console warning) rather than serving a silently empty site.
 
 ## Renewal
 
-**Nothing in this codebase renews a subscription.** `current_period_end` is
-only ever written by hand or by the seeder; moving it forward requires a
-payment provider's webhook, and no checkout flow exists yet. So today a
-subscription stops on its end date whether or not anyone cancelled it.
+Stripe Checkout and its signed webhook renew subscriptions. Every
+`invoice.paid` event advances both `current_period_start` and
+`current_period_end`; a non-Stripe row still stops on its manually assigned
+end date.
 
 `subscriptions.stripe_subscription_id` is what distinguishes the two cases,
 and the account page reads it rather than asserting anything: with a billing
@@ -57,10 +57,10 @@ without one it says the subscription ends on that date and offers nothing to
 cancel, because there is no renewal to stop. Both notices correct themselves
 once checkout writes real provider ids — no copy needs changing.
 
-Cancelling sets `cancel_at_period_end`: access remains active through
-`current_period_end`, then the entitlement falls back to the free role. When
-Stripe is connected, the cancellation endpoint must also schedule the
-cancellation with Stripe so billing and database state stay in step.
+Cancelling first schedules `cancel_at_period_end` in Stripe, then mirrors the
+same state locally: access remains active through `current_period_end`, after
+which the deletion webhook changes the row to `cancelled` and entitlement
+falls back to the free role.
 
 `0027` also adds a unique index allowing only ONE live (`active`/`trialing`)
 subscription per account: the entitlement picks the first row still covering
@@ -72,6 +72,15 @@ opening the new one.
 `npm run list:subscriptions` prints every live subscription with its end date
 and flags the rows that need attention — expired but still active, no end
 date at all, or no billing link.
+
+## Stripe configuration
+
+Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the six
+`STRIPE_PRICE_*` variables shown in `.env.example`. Register
+`/api/stripe/webhook` in Stripe for `checkout.session.completed`,
+`invoice.paid`, and `customer.subscription.deleted`. Checkout metadata is the
+server-validated source of the Supabase user, plan, and billing interval; the
+browser never supplies an amount.
 
 ## Test accounts
 

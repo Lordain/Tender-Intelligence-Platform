@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BILLING_INTERVAL_LABELS, type BillingInterval } from "@/lib/access-control";
-import { loginPathFor } from "@/lib/auth-redirect";
 
 /**
  * Months covered by one payment. Used both to label the price and to work out
@@ -89,11 +88,7 @@ export function PricingPlans() {
         {PLANS.map((plan) => {
           const perMonth = plan.prices ? Math.round(plan.prices[interval] / MONTHS[interval]) : null;
           const saving = plan.prices ? discountPercent(plan.prices, interval) : 0;
-          // TODO(checkout): this is the single line a Stripe checkout flow
-          // replaces — the chosen plan and interval are already in the query
-          // string. Until then it behaves exactly as it did before: sign in
-          // first, and come back here.
-          const href = plan.prices ? loginPathFor(`/pricing?plan=${plan.id}&interval=${interval}`) : "/register";
+          const href = plan.prices ? `/api/stripe/checkout?plan=${plan.id}&interval=${interval}` : "/register";
 
           return (
             <article key={plan.id} className={`flex flex-col overflow-hidden rounded-2xl border bg-[#fffdf9] shadow-[0_24px_60px_-48px_rgba(6,27,43,.5)] ${plan.id === "trial" ? "border-[#e7b84e]" : "border-[#d8e0e3]"}`}>
@@ -124,7 +119,7 @@ export function PricingPlans() {
                     <li key={feature} className="flex items-start gap-3 text-sm leading-6 text-[#425461]"><span className="text-[#b86e00]"><CheckIcon /></span><span>{feature}</span></li>
                   ))}
                 </ul>
-                <Link href={href} className={`mt-7 rounded-xl px-5 py-3 text-center text-sm font-black transition-colors ${plan.id === "trial" ? "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]" : "bg-[#061b2b] text-white hover:bg-[#0a2b40]"}`}>
+                <Link prefetch={false} href={href} className={`mt-7 rounded-xl px-5 py-3 text-center text-sm font-black transition-colors ${plan.id === "trial" ? "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]" : "bg-[#061b2b] text-white hover:bg-[#0a2b40]"}`}>
                   {plan.id === "trial" ? "注册并开始免费试用" : `订阅${BILLING_INTERVAL_LABELS[interval]}`}
                 </Link>
               </div>

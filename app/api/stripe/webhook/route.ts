@@ -1,0 +1,121 @@
+import { NextResponse } from "next/server";
+import type Stripe from "stripe";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { BillingInterval } from "@/lib/access-control";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { getStripeClient, stripeObjectId, stripeSubscriptionPeriod, type StripePlan } from "@/lib/stripe";
+
+export const runtime = "nodejs";
+
+function subscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
+  return stripeObjectId(invoice.parent?.subscription_details?.subscription ?? null);
+}
+
+function dbStatus(status: Stripe.Subscription.Status): "active" | "trialing" | "past_due" | "cancelled" {
+  if (status === "active") return "active";
+  if (status === "trialing") return "trialing";
+  if (status === "canceled") return "cancelled";
+  return "past_due";
+}
+
+function subscriptionIdentity(subscription: Stripe.Subscription, fallbackUserId?: string | null): {
+  userId: string;
+  plan: StripePlan;
+  interval: BillingInterval;
+} {
+  const userId = subscription.metadata.user_id || fallbackUserId;
+  const plan = subscription.metadata.plan;
+  const interval = subscription.metadata.billing_interval;
+  if (!userId || (plan !== "professional" && plan !== "enterprise")) {
+    throw new Error(`Stripe subscription ${subscription.id} is missing valid user/plan metadata.`);
+  }
+  if (interval !== "monthly" && interval !== "semiannual" && interval !== "annual") {
+    throw new Error(`Stripe subscription ${subscription.id} is missing valid billing interval metadata.`);
+  }
+  return { userId, plan, interval };
+}
+
+async function saveSubscription(admin: SupabaseClient, subscription: Stripe.Subscription, fallbackUserId?: string | null) {
+  const { userId, plan, interval } = subscriptionIdentity(subscription, fallbackUserId);
+  const { periodStart, periodEnd } = stripeSubscriptionPeriod(subscription);
+  const values = {
+    user_id: userId,
+    plan,
+    status: dbStatus(subscription.status),
+    billing_interval: interval,
+    stripe_customer_id: stripeObjectId(subscription.customer),
+    stripe_subscription_id: subscription.id,
+    current_period_start: periodStart,
+    current_period_end: periodEnd,
+    cancel_at_period_end: subscription.cancel_at_period_end,
+    canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+  };
+
+  const { data: existing, error: readError } = await admin
+    .from("subscriptions")
+    .select("id")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
+  if (readError) throw new Error(`Subscription lookup failed: ${readError.message}`);
+
+  if (existing) {
+    const { error } = await admin.from("subscriptions").update(values).eq("id", existing.id);
+    if (error) throw new Error(`Subscription update failed: ${error.message}`);
+    return;
+  }
+
+  const { error } = await admin.from("subscriptions").insert(values);
+  if (!error) return;
+  if (error.code === "23505") {
+    const { error: retryError } = await admin
+      .from("subscriptions")
+      .update(values)
+      .eq("stripe_subscription_id", subscription.id);
+    if (!retryError) return;
+  }
+  throw new Error(`Subscription insert failed: ${error.message}`);
+}
+
+export async function POST(request: Request) {
+  const stripe = getStripeClient();
+  const admin = createSupabaseAdminClient();
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  if (!stripe || !admin || !webhookSecret) {
+    return NextResponse.json({ error: "Webhook service is not configured." }, { status: 503 });
+  }
+
+  const signature = request.headers.get("stripe-signature");
+  if (!signature) return NextResponse.json({ error: "Missing Stripe signature." }, { status: 400 });
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(await request.text(), signature, webhookSecret);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid webhook signature.";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  try {
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      const subscriptionId = stripeObjectId(session.subscription);
+      if (session.mode === "subscription" && subscriptionId) {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        await saveSubscription(admin, subscription, session.client_reference_id);
+      }
+    } else if (event.type === "invoice.paid") {
+      const subscriptionId = subscriptionIdFromInvoice(event.data.object);
+      if (subscriptionId) {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        await saveSubscription(admin, subscription);
+      }
+    } else if (event.type === "customer.subscription.deleted") {
+      await saveSubscription(admin, event.data.object);
+    }
+  } catch (error) {
+    console.error(`[stripe-webhook] ${event.type} ${event.id} failed`, error);
+    return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
+  }
+
+  return NextResponse.json({ received: true });
+}

@@ -4,7 +4,7 @@ import { TRIAL_DAYS, type SubscriptionPlan, type ViewerEntitlement, type ViewerR
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 
-const EMPTY: ViewerEntitlement = { role: "guest", plan: null, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false };
+const EMPTY: ViewerEntitlement = { role: "guest", plan: null, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false };
 
 function isCurrent(subscription: { current_period_end?: string | null }) {
   return !subscription.current_period_end || new Date(subscription.current_period_end).getTime() >= Date.now();
@@ -25,12 +25,20 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
     return { ...EMPTY, role: new Date(fallbackEnd).getTime() > Date.now() ? "trial" : "free", trialEndsAt: fallbackEnd };
   }
 
-  const { data: ownSubscriptions } = await admin.from("subscriptions")
-    .select("user_id, plan, status, current_period_end")
+  const detailedOwn = await admin.from("subscriptions")
+    .select("user_id, plan, status, current_period_start, current_period_end, created_at, cancel_at_period_end")
     .eq("user_id", user.id).in("status", ["active", "trialing"]);
-  const own = (ownSubscriptions ?? []).find(isCurrent);
+  // Compatibility while migration 0026 is being deployed: the older schema
+  // still yields a valid entitlement instead of temporarily downgrading a
+  // paying user because the new display-only columns do not exist yet.
+  const fallbackOwn = detailedOwn.error
+    ? await admin.from("subscriptions").select("user_id, plan, status, current_period_end, created_at").eq("user_id", user.id).in("status", ["active", "trialing"])
+    : detailedOwn;
+  const ownSubscriptions = fallbackOwn.data ?? [];
+  const own = ownSubscriptions.find(isCurrent);
   if (own) {
-    return { role: "subscriber", plan: own.plan as SubscriptionPlan, trialEndsAt: null, subscriptionOwnerUserId: user.id, isEnterpriseOwner: own.plan === "enterprise" };
+    const detailed = own as typeof own & { current_period_start?: string | null; cancel_at_period_end?: boolean };
+    return { role: "subscriber", plan: own.plan as SubscriptionPlan, trialEndsAt: null, subscriptionOwnerUserId: user.id, isEnterpriseOwner: own.plan === "enterprise", periodStart: detailed.current_period_start ?? own.created_at ?? null, periodEnd: own.current_period_end ?? null, cancelAtPeriodEnd: detailed.cancel_at_period_end ?? false };
   }
 
   // A seat is granted by an ACCEPTED invitation bound to THIS account, never
@@ -45,17 +53,23 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
     .limit(1);
   const ownerId = memberships?.[0]?.owner_user_id as string | undefined;
   if (ownerId) {
-    const { data: ownerSubscriptions } = await admin.from("subscriptions")
-      .select("user_id, plan, status, current_period_end")
+    const detailedOwner = await admin.from("subscriptions")
+      .select("user_id, plan, status, current_period_start, current_period_end, created_at, cancel_at_period_end")
       .eq("user_id", ownerId).eq("plan", "enterprise").in("status", ["active", "trialing"]);
-    if ((ownerSubscriptions ?? []).some(isCurrent)) {
-      return { role: "subscriber", plan: "enterprise", trialEndsAt: null, subscriptionOwnerUserId: ownerId, isEnterpriseOwner: false };
+    const fallbackOwner = detailedOwner.error
+      ? await admin.from("subscriptions").select("user_id, plan, status, current_period_end, created_at").eq("user_id", ownerId).eq("plan", "enterprise").in("status", ["active", "trialing"])
+      : detailedOwner;
+    const owner = (fallbackOwner.data ?? []).find(isCurrent);
+    if (owner) {
+      const detailed = owner as typeof owner & { current_period_start?: string | null; cancel_at_period_end?: boolean };
+      return { ...EMPTY, role: "subscriber", plan: "enterprise", subscriptionOwnerUserId: ownerId, isEnterpriseOwner: false, periodStart: detailed.current_period_start ?? owner.created_at ?? null, periodEnd: owner.current_period_end ?? null, cancelAtPeriodEnd: detailed.cancel_at_period_end ?? false };
     }
   }
 
   const { data: profile } = await admin.from("profiles").select("trial_ends_at").eq("id", user.id).maybeSingle();
   const trialEndsAt = (profile?.trial_ends_at as string | undefined) ?? fallbackEnd;
-  return { role: new Date(trialEndsAt).getTime() > Date.now() ? "trial" : "free", plan: null, trialEndsAt, subscriptionOwnerUserId: null, isEnterpriseOwner: false };
+  const role = new Date(trialEndsAt).getTime() > Date.now() ? "trial" : "free";
+  return { ...EMPTY, role, trialEndsAt, periodStart: role === "trial" ? new Date(new Date(trialEndsAt).getTime() - TRIAL_DAYS * 86_400_000).toISOString() : null, periodEnd: role === "trial" ? trialEndsAt : null };
 });
 
 export async function getViewerRole(): Promise<ViewerRole> {

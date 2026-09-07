@@ -22,6 +22,9 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [canceling, setCanceling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [entitlementReloadKey, setEntitlementReloadKey] = useState(0);
 
   useEffect(() => {
     if (!SUPABASE_CONFIGURED || loading) return;
@@ -43,7 +46,30 @@ export default function AccountPage() {
 
   }, [user]);
 
-  const entitlement = useEntitlement(Boolean(user));
+  const entitlement = useEntitlement(Boolean(user), entitlementReloadKey);
+
+  const formatPeriodDate = (value: string | null) => value
+    ? new Date(value).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
+    : "待确认";
+
+  async function cancelSubscription() {
+    if (!entitlement?.periodEnd) return;
+    const effectiveDate = formatPeriodDate(entitlement.periodEnd);
+    if (!window.confirm(`确认取消自动续费？\n\n取消后当前订阅仍可使用至 ${effectiveDate}，并从该日期到期后变为免费版。`)) return;
+    setCanceling(true);
+    setCancelError(null);
+    try {
+      const response = await fetch("/api/account/subscription/cancel", { method: "POST" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setCancelError(result.error ?? "取消失败，请稍后重试。");
+        return;
+      }
+      setEntitlementReloadKey((key) => key + 1);
+    } finally {
+      setCanceling(false);
+    }
+  }
 
   async function handleSaveProfile(event: FormEvent) {
     event.preventDefault();
@@ -151,6 +177,12 @@ export default function AccountPage() {
               <div className="mt-5 rounded-2xl border border-white/12 bg-white/5 p-4 text-lg font-black">
                 {entitlement?.role === "trial" ? "7 天免费试用" : entitlement?.plan === "enterprise" ? "企业版" : entitlement?.role === "subscriber" ? "个人版" : localize(uiText.freePlan, locale)}
               </div>
+              {(entitlement?.periodStart || entitlement?.periodEnd) && (
+                <dl className="mt-4 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.035] px-4 text-xs">
+                  <div className="flex items-center justify-between gap-4 py-3"><dt className="text-white/48">开始时间</dt><dd className="font-bold text-white/85">{formatPeriodDate(entitlement.periodStart)}</dd></div>
+                  <div className="flex items-center justify-between gap-4 py-3"><dt className="text-white/48">到期时间</dt><dd className="font-bold text-white/85">{formatPeriodDate(entitlement.periodEnd)}</dd></div>
+                </dl>
+              )}
               <p className="mt-4 text-sm leading-6 text-white/55">
                 {entitlement?.role === "trial" && entitlement.trialEndsAt
                   ? `试用有效期至 ${new Date(entitlement.trialEndsAt).toLocaleDateString("zh-CN")}；到期后自动转为免费版。`
@@ -158,9 +190,18 @@ export default function AccountPage() {
                     ? "免费试用已结束，订阅后可恢复项目详情与邮件通知。"
                     : "查看可用套餐，管理项目与通知服务。"}
               </p>
-              <Link href="/pricing" className="mt-auto inline-flex w-fit items-center gap-2 pt-7 text-sm font-bold text-[#ffb21c] transition-colors hover:text-[#ffd16f]">
-                {localize(uiText.viewPlans, locale)} <span aria-hidden="true">→</span>
-              </Link>
+              {entitlement?.cancelAtPeriodEnd && entitlement.periodEnd && (
+                <div className="mt-5 rounded-xl border border-[#ffb21c]/35 bg-[#ffb21c]/10 px-4 py-3 text-xs font-bold leading-5 text-[#ffd16f]">已取消自动续费。当前权限保留至 {formatPeriodDate(entitlement.periodEnd)}，到期后自动变为免费版。</div>
+              )}
+              <div className="mt-auto flex flex-wrap items-center gap-x-5 gap-y-3 pt-7">
+                <Link href="/pricing" className="inline-flex items-center gap-2 text-sm font-bold text-[#ffb21c] transition-colors hover:text-[#ffd16f]">
+                  {localize(uiText.viewPlans, locale)} <span aria-hidden="true">→</span>
+                </Link>
+                {entitlement?.role === "subscriber" && entitlement.subscriptionOwnerUserId === user.id && entitlement.periodEnd && !entitlement.cancelAtPeriodEnd && (
+                  <button type="button" onClick={cancelSubscription} disabled={canceling} className="text-xs font-bold text-white/52 underline decoration-white/25 underline-offset-4 hover:text-white disabled:opacity-50">{canceling ? "处理中…" : "取消自动续费"}</button>
+                )}
+              </div>
+              {cancelError && <p className="mt-3 text-xs font-bold text-red-300">{cancelError}</p>}
             </div>
           </section>
         </div>

@@ -8,6 +8,9 @@ export type ViewerEntitlement = {
   trialEndsAt: string | null;
   subscriptionOwnerUserId: string | null;
   isEnterpriseOwner: boolean;
+  periodStart: string | null;
+  periodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
 };
 
 export const TRIAL_DAYS = 7;

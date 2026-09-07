@@ -32,14 +32,21 @@ owner's seat once they remove the row.
 
 ## Migrations
 
-Run `0023_server_only_tender_reads.sql`, `0024_trial_and_enterprise_members.sql`
-and `0025_enterprise_member_consent.sql` before deploying this access model.
+Run `0023_server_only_tender_reads.sql`, `0024_trial_and_enterprise_members.sql`,
+`0025_enterprise_member_consent.sql`, and
+`0026_subscription_period_and_cancellation.sql` before deploying this access model.
 `0025` resets every existing `enterprise_members` row to `pending`, so any seat
 that was live before it stops granting access until the invitee accepts.
 
 The server requires `SUPABASE_SERVICE_ROLE_KEY`: since `0023` the anon key
 cannot read tenders at all, and the app falls back to bundled mock data (with a
 console warning) rather than serving a silently empty site.
+
+Cancelling sets `cancel_at_period_end`: access remains active through
+`current_period_end`, then the entitlement automatically falls back to the
+free role. When Stripe billing is connected, the cancellation endpoint must
+also schedule cancellation with Stripe so billing and database state remain
+synchronized.
 
 ## Test accounts
 

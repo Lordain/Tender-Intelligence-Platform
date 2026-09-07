@@ -17,7 +17,7 @@ import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 
 function Field({ label, value, emphasized = false, note }: { label: string; value: string; emphasized?: boolean; note?: string | null }) {
   return (
-    <div className={`flex h-32 flex-col rounded-2xl px-4 py-4 ${emphasized ? "bg-[#fff4d8]" : "bg-[#f2f4f3]"}`}>
+    <div className={`flex min-h-24 flex-col rounded-2xl px-4 py-4 ${emphasized ? "bg-[#fff4d8]" : "bg-[#f2f4f3]"}`}>
       <dt className="text-[11px] font-bold tracking-[0.03em] text-[#7a878f]">{label}</dt>
       <dd className={`mt-1 text-sm font-black leading-5 ${emphasized ? "text-[#9a6200]" : "text-[#071826]"}`}>{value}</dd>
       {note && <p className="mt-1 text-[10px] font-normal leading-4 text-[#9aa5ab]">{note}</p>}

@@ -17,9 +17,6 @@ export function AuthFrame({ mode, children }: { mode: "login" | "register"; chil
               <h1 className="mt-4 text-3xl font-black leading-tight tracking-[-0.04em]">更快发现机会，<br />更稳做出投标判断</h1>
               <p className="mt-5 max-w-sm text-sm leading-7 text-white/62">集中查看墨西哥政府采购信息、中文摘要、资质要求与计划交标时间。</p>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center text-[10px] text-white/48">
-              {['COMPRAS MX', 'CFE', 'PEMEX'].map((source) => <span key={source} className="rounded-lg border border-white/12 px-2 py-2">{source}</span>)}
-            </div>
           </div>
         </section>
         <section className="flex items-center p-7 sm:p-10 lg:p-14">

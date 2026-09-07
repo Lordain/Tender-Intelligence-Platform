@@ -288,7 +288,27 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
  * identical treatment before its bare "puerto"/"puente" checks.
  */
 export function stripKnownFalsePositivePlaceNames(text: string): string {
-  return text.replace(/puerto (boyac[áa]|l[óo]pez)\b|puente ospina\b/gi, "");
+  return text.replace(
+    // Colombia (found earlier).
+    /puerto (boyac[áa]|l[óo]pez)\b|puente ospina\b/gi,
+    "",
+  ).replace(
+    // Mexico (2026-09-07, all four confirmed in a real kept export where
+    // MAJOR_PROJECT_KEYWORDS' bare "puerto" had kept nine tenders — a beach,
+    // an avenue and a municipality among them, none of them a port):
+    //   "PRESERVACION INTEGRAL DEL ACCESO A PLAYA PUERTO MARQUES"
+    //   "PAVIMENTACION … EN AVENIDA FELIPE CARRILLO PUERTO"
+    //   "RECONSTRUCCIÓN DEL TEMPLO … SAN MIGUEL DEL PUERTO"
+    /felipe carrillo puerto\b|puerto marqu[ée]s\b|san miguel del puerto\b/gi,
+    "",
+  ).replace(
+    // "REHABILITACION DE LINEA DE AGUA POTABLE EN CALLE 16 ENTRE CALLE 9 Y
+    // GASODUCTO" — Gasoducto is the name of the cross street, and it was
+    // matching the oleoducto/gasoducto major-project pattern. Anchored on
+    // the street phrasing so a real gas pipeline still matches.
+    /\b(?:calle|avenida|av\.?|entre)\b[^.,;]{0,40}\bgasoducto\b/gi,
+    "",
+  );
 }
 
 /** Matches against real Spanish-language text (title/description, plus any real category field a source provides) — never guesses from a buyer name alone. Falls back to ["general"] rather than an empty array, so every tender has at least one tag to display/filter by. */

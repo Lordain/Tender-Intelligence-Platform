@@ -40,6 +40,7 @@ for (const row of rows) {
   const title = row.title_es || row.title_zh || "";
   const signal = explainKeptSignal({
     title,
+    scopeType: (row.scope_type || undefined) as never,
     industries: (row.industries ?? "").split(/[;,|]/).map((s) => s.trim()).filter(Boolean),
     estimatedValue: row.estimated_value ? Number(row.estimated_value) : undefined,
     currency: row.currency || undefined,

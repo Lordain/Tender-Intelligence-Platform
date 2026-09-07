@@ -222,6 +222,57 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Colombia",
   },
 
+  // --- 2026-09-07: settlement-scale siting, and "Puerto" as a place name ---
+  {
+    title: "“CONSTRUCCIÓN DEL SISTEMA DE RED DE ALCANTARILLADO EN LA COMUNIDAD DE EL CARMEN",
+    expectedTier: "excluded",
+    note: "Real title from the kept export. The shape the user pointed at — 'CONSTRUCCIÓN xxxx en la COMUNIDAD'. A sewer line in one village and a highway between two cities are the same word to the bare 'construcción' whitelist; the administrative unit the source itself names is what separates them.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "CONSTRUCCIÓN DE LA PRIMERA ETAPA DE LA PTAR DE LA LOCALIDAD DE LOS PLANES",
+    expectedTier: "excluded",
+    note: "Same rule via 'localidad'. Note this is a PTAR, like a title the user wants kept — the difference is only that this one names the village it serves.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "MODERNIZACIÓN DE LA CARRETERA: VILLAHERMOSA - FRANCISCO ESCÁRCEGA, TRAMO: KM 220+000",
+    expectedTier: "standard",
+    note: "The control: a real inter-city highway from the same export, no settlement marker, must survive the settlement rule.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "CONSTRUCCIÓN DE PRESA EN LA COMUNIDAD DE SAN JUAN",
+    expectedTier: "flagship",
+    note: "A dam is a dam wherever it is. The settlement rule is checked only after every promotion has returned, so a MAJOR_PROJECT match is never reached by it.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "PAVIMENTACION CON CONCRETO HIDRAULICO EN AVENIDA FELIPE CARRILLO PUERTO",
+    expectedTier: "excluded",
+    note: "Kept by MAJOR_PROJECT_KEYWORDS' bare 'puerto' — Felipe Carrillo Puerto is an avenue, named after a person. One of nine such rows in a real export; the place-name stripper in industry.ts now removes it before any pattern sees the text.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "PRESERVACION INTEGRAL DEL ACCESO A PLAYA PUERTO MARQUES 1",
+    expectedTier: "excluded",
+    note: "Same false positive via a beach in Acapulco.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "AMPLIACIÓN DEL PUERTO DE VERACRUZ, NUEVA TERMINAL DE CONTENEDORES",
+    expectedTier: "flagship",
+    note: "The control for stripping those names: a real port must still match. Only the three confirmed place names are removed, not the word.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+
   // --- Flagship: real MAJOR_PROJECT_KEYWORDS matches ---
   {
     title: "CONSTRUCCIÓN DE PRESA Y RED DE RIEGO",

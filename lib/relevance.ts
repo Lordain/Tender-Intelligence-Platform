@@ -429,6 +429,33 @@ const RENEWAL_ONLY_KEYWORDS = [
   /renovaci[óo]n del? licenciamiento|renovaci[óo]n de (la )?(suscripci[óo]n|licencia(s)?)|renovaci[óo]n de (la )?plataforma/i,
 ];
 
+/**
+ * The settlement the work is IN, when that settlement is a village,
+ * hamlet, ejido or one neighbourhood — a structural marker of scale rather
+ * than a guess at what is being built.
+ *
+ * Added 2026-09-07 after a real kept export showed 265 Mexican tenders held
+ * in by the bare "construcción" in FLAGSHIP_INDUSTRY_KEYWORDS alone, and
+ * the user pointed at the shape of the ones they did not want:
+ * "CONSTRUCCIÓN xxxx en la COMUNIDAD". A sewer line in one comunidad and a
+ * highway between two cities are the same word to that whitelist; the
+ * administrative unit named in the title is what separates them, and it is
+ * a fact the source states rather than something inferred.
+ *
+ * Checked AFTER every promotion has had its chance, so a genuinely major
+ * project sited in a small place — a dam, a railway — has already returned
+ * and is untouched.
+ *
+ * Deliberately NOT including the "LOC" abbreviation: a title the user
+ * confirmed they want, "PAV CAM MANUEL CRESCEN REJON LOS ALACRANES, LOC
+ * PIONEROS DEL RÍO XNOHÁ, CALAKMUL", carries it.
+ */
+const SETTLEMENT_SCALE_KEYWORDS = [
+  /\ben (?:la |el |las |los )?(?:comunidad|localidad|ranch[ée]r[íi]a|ejido|colonia|barrio|vereda|corregimiento)\b/i,
+  /\bde la (?:comunidad|localidad)\b/i,
+  /\bfracc(?:\.|ionamiento)\b/i,
+];
+
 const MAINTENANCE_ONLY_KEYWORDS = [
   // The abbreviations are how Compras MX titles actually write it —
   // "IA-N-182-2026 MTTO PLANTAS DE EMERGENCIA HOSPITALES" is a real one.
@@ -1344,6 +1371,14 @@ export function classifyRelevance(input: {
   // against the same import that motivated the gate: the equipment
   // purchase matches, and not one of the 20 sampled municipal water/paving/
   // well titles does.
+  // Village/neighbourhood-scale siting, undisclosed value — see
+  // SETTLEMENT_SCALE_KEYWORDS. Every promotion above has already returned,
+  // so what reaches here matched at most the bare "construcción" and names
+  // one comunidad/localidad/colonia as its site.
+  if (normalizedValue === undefined && SETTLEMENT_SCALE_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
+  }
+
   if (input.country === "Mexico" && normalizedValue === undefined && !matchesFlagshipIndustry) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
@@ -1390,8 +1425,12 @@ export function explainKeptSignal(input: {
   currency?: string;
   buyer?: string;
   country?: string;
+  scopeType?: TenderScopeType;
 }): string {
-  const result = classifyRelevance({ ...input, scopeType: "works" });
+  // The row's real scopeType matters: hardcoding "works" made 26 rows of a
+  // real kept export report themselves as "excluded", because scopeType
+  // "consulting" is excluded outright and this was overwriting it.
+  const result = classifyRelevance({ ...input, scopeType: input.scopeType ?? "works" });
   if (result.tier === "excluded") return "excluded（不该出现在 kept 里）";
 
   const haystack = stripKnownFalsePositivePlaceNames(

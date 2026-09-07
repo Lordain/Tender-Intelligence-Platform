@@ -44,6 +44,8 @@ import { join, extname, basename } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { intakeDocument } from "@/lib/ingestion/document-intake";
 import { hasRealTextLayer } from "@/lib/ingestion/text-layer";
+import { chooseExtractionModel } from "@/lib/ingestion/extraction-routing";
+import type { TenderRelevanceTier } from "@/types/tender";
 import {
   extractTenderRequirements,
   mergeExtractions,
@@ -111,6 +113,24 @@ export async function analyzeUploadedDocument(
   const warnings: string[] = [];
 
   try {
+    // Resolved BEFORE any model runs, for two reasons. The tender's scale
+    // tag decides which model reads the document (chooseExtractionModel),
+    // and a dry run has to route exactly as the real write would or it is
+    // not a preview of anything. It also means an unknown slug now fails
+    // here instead of after a whole batch of extractions has been paid
+    // for — the lookup used to sit after the dry-run return, so a typo'd
+    // slug burned every model call in the upload first.
+    const { data: tender, error: tenderError } = await supabase
+      .from("tenders")
+      .select("id, relevance_tier, relevance_manually_overridden")
+      .eq("slug", tenderSlug)
+      .maybeSingle();
+    if (tenderError || !tender) {
+      throw new Error(`No ingested tender found for slug "${tenderSlug}": ${tenderError?.message ?? "not found"}`);
+    }
+    const tenderId = tender.id as string;
+    const relevanceTier = (tender.relevance_tier ?? null) as TenderRelevanceTier | null;
+
     for (const file of files) {
       // basename(), not the raw name: file.fileName is whatever the
       // multipart request said it was. Browsers strip directory
@@ -134,16 +154,17 @@ export async function analyzeUploadedDocument(
           continue;
         }
 
-        // Always auto-routed (text-layer -> qwen3.5-plus / scanned ->
-        // claude-haiku) — the "精度分析" (force claude-opus-5) option was
-        // removed from this upload flow per the user's explicit request
-        // (2026-09-04). extract-tender-document.ts's CLI --precise flag
-        // is a separate code path and is unaffected.
+        // Always auto-routed, now on the text layer AND the tender's scale
+        // tag — see chooseExtractionModel() for why those are two separate
+        // questions in that order. The "精度分析" (force claude-opus-5)
+        // option was removed from this upload flow per the user's explicit
+        // request (2026-09-04); extract-tender-document.ts's CLI --precise
+        // flag is a separate code path and is unaffected.
         const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: intake.fileName, buyer: "" };
         const hasText = await hasRealTextLayer(tempPath);
-        const model: ExtractionModel = hasText ? "qwen3.5-plus" : "claude-haiku-4-5-20251001";
+        const model: ExtractionModel = chooseExtractionModel(hasText, relevanceTier);
         const extraction: TenderExtraction = hasText
-          ? await extractTenderRequirementsQwenAnthropic(tempPath, context)
+          ? await extractTenderRequirementsQwenAnthropic(tempPath, context, model === "qwen3.6-plus" ? "qwen3.6-plus" : "qwen3.5-plus")
           : await extractTenderRequirements(tempPath, context, model);
         perFile.push({ intake, model, extraction });
       } catch (err) {
@@ -204,16 +225,6 @@ export async function analyzeUploadedDocument(
     };
 
     if (!options.write) return { ...base, status: "dry-run", warnings: warnings.length > 0 ? warnings : undefined };
-
-    const { data: tender, error: tenderError } = await supabase
-      .from("tenders")
-      .select("id, relevance_tier, relevance_manually_overridden")
-      .eq("slug", tenderSlug)
-      .maybeSingle();
-    if (tenderError || !tender) {
-      throw new Error(`No ingested tender found for slug "${tenderSlug}": ${tenderError?.message ?? "not found"}`);
-    }
-    const tenderId = tender.id as string;
 
     // Scoped to THIS tender (2026-09-06): content_hash is not unique
     // across tenders and genuinely repeats across them — a buyer's

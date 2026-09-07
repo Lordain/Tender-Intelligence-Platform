@@ -20,7 +20,7 @@
  * --precise is passed (a --precise run never touches the Qwen path).
  *
  * Usage:
- *   npm run extract:document -- path/to/file.pdf <tender-slug>              (dry run — auto-routed: qwen3.5-plus or claude-haiku)
+ *   npm run extract:document -- path/to/file.pdf <tender-slug>              (dry run — auto-routed by text layer + the tender's scale tag)
  *   npm run extract:document -- path/to/file.pdf <tender-slug> --precise    (dry run — Opus 5, the "精度分析" premium tier)
  *   npm run extract:document -- path/to/file.pdf <tender-slug> --write      (writes to Supabase)
  *   npm run extract:document -- path/to/file.pdf <tender-slug> --write --force  (write even if this would downgrade an existing Opus 5 result)
@@ -38,7 +38,23 @@ import { intakeDocument } from "../lib/ingestion/document-intake";
 import { extractTenderRequirements, toTenderFields, type ExtractionModel, type TenderExtraction } from "../lib/ingestion/extract-requirements";
 import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract-requirements-qwen-anthropic";
 import { hasRealTextLayer } from "../lib/ingestion/text-layer";
+import { chooseExtractionModel, describeExtractionRouting } from "../lib/ingestion/extraction-routing";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import type { TenderRelevanceTier } from "../types/tender";
+
+/**
+ * The tender's scale tag, which decides between qwen3.6-plus and
+ * qwen3.5-plus. Best-effort on purpose: a dry run has never needed
+ * Supabase, and making it mandatory here would break running this against
+ * a document offline. An unreachable tender routes as not-flagship, and
+ * the log line below says so rather than implying the tag was checked.
+ */
+async function lookUpTier(slug: string): Promise<TenderRelevanceTier | null> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) return null;
+  const { data } = await supabase.from("tenders").select("relevance_tier").eq("slug", slug).maybeSingle();
+  return (data?.relevance_tier ?? null) as TenderRelevanceTier | null;
+}
 
 async function writeToSupabase(
   slug: string,
@@ -150,7 +166,7 @@ async function main() {
 
   const precise = args.includes("--precise");
   if (!precise && !process.env.DASHSCOPE_API_KEY) {
-    console.error("DASHSCOPE_API_KEY isn't set (needed for auto-routing's qwen3.5-plus path — pass --precise to skip it and force claude-opus-5). See .env.example.");
+    console.error("DASHSCOPE_API_KEY isn't set (needed for auto-routing's Qwen path — pass --precise to skip it and force claude-opus-5). See .env.example.");
     process.exit(1);
   }
 
@@ -169,11 +185,14 @@ async function main() {
     extraction = await extractTenderRequirements(pdfPath, context, model);
   } else {
     const hasText = await hasRealTextLayer(pdfPath);
-    model = hasText ? "qwen3.5-plus" : "claude-haiku-4-5-20251001";
+    const tier = await lookUpTier(tenderSlug);
+    model = chooseExtractionModel(hasText, tier);
     console.log(
-      `Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}, model: ${model} (auto — ${hasText ? "has a real text layer" : "no real text layer (scanned)"})`,
+      `Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}, model: ${model} (auto — ${hasText ? "has a real text layer" : "no real text layer (scanned)"}, ${describeExtractionRouting(hasText, tier)})`,
     );
-    extraction = hasText ? await extractTenderRequirementsQwenAnthropic(pdfPath, context) : await extractTenderRequirements(pdfPath, context, model);
+    extraction = hasText
+      ? await extractTenderRequirementsQwenAnthropic(pdfPath, context, model === "qwen3.6-plus" ? "qwen3.6-plus" : "qwen3.5-plus")
+      : await extractTenderRequirements(pdfPath, context, model);
   }
   const fields = toTenderFields(extraction, tenderSlug);
 

@@ -3241,3 +3241,20 @@ cdn.sheetjs.com, so a build environment that can't reach that host fails
 at install (this is not hypothetical — the sandbox this was developed in
 blocks it). If that ever bites, vendor the tarball into the repo and
 point package.json at a local path.
+
+## Extraction routing now reads the tender's scale tag (2026-09-07)
+
+**What changed**: `chooseExtractionModel()` in `lib/ingestion/extraction-routing.ts` is now the single place that decides which model reads a document, and both callers — the admin upload flow (`analyze-uploaded-document.ts`) and the CLI (`scripts/extract-tender-document.ts`) — go through it, so a dry run and the real write can no longer disagree about the model.
+
+Two questions, in this order:
+
+1. **Does the file have a real text layer?** No → `claude-haiku-4-5-20251001`, regardless of the tender's value. Unchanged, and deliberately not negotiable on scale: Haiku is the only provider confirmed here to read image-only pages, and routing scanned documents to it is also what sidesteps the still-unresolved DashScope chunked-PDF gap documented above (a document needing chunking never reaches the Qwen path).
+2. **Only then, what is the tender's `relevance_tier`?** `flagship` (大型项目) → `qwen3.6-plus`; `significant` (中型) and `standard` (常规) → `qwen3.5-plus`, which stays the default for everything else. An absent tier routes as not-flagship — the cheaper model is the right default when the scale is unknown.
+
+The tier read is the one stored on the tender row, which includes an admin's manual override, so the model that produced an extraction always matches the label the tender is filed under in the product.
+
+**Migration required**: `0028_extraction_model_qwen36.sql` adds `qwen3.6-plus` to `tender_documents.extraction_model`'s CHECK constraint. Without it the first flagship analysis fails at write time — *after* the model call has been paid for. `qwen3.6-plus` itself is not new to the codebase (`translate-titles-qwen.ts` has used it since 2026-09-03, and both comparison scripts already offer it); only this constraint had never been widened for it.
+
+**Also fixed in passing**: `analyze-uploaded-document.ts` resolved the tender *after* the dry-run return, so a mistyped slug ran every extraction in the upload and only then failed. The lookup now happens before the first model call.
+
+**Not changed**: a flagship tender whose document is a scan still goes to Haiku (rule 1 wins). Whether a 大型项目 deserves a stronger *scanned*-document model too is a separate question and nobody has asked for it.

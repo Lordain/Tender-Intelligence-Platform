@@ -95,7 +95,7 @@ export async function POST(request: Request) {
 
   if (!process.env.DASHSCOPE_API_KEY) {
     return NextResponse.json(
-      { error: "DASHSCOPE_API_KEY isn't set (needed for auto-routing's qwen3.5-plus path). See .env.example." },
+      { error: "DASHSCOPE_API_KEY isn't set (needed for auto-routing's Qwen path). See .env.example." },
       { status: 500 },
     );
   }

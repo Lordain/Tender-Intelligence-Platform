@@ -273,6 +273,51 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Mexico",
   },
 
+  // --- 2026-09-07: titles that name no procurement, kept on value alone ---
+  {
+    title: "IRON MOUNTAIN COLOMBIA S.A.S.",
+    expectedTier: "excluded",
+    note: "A company name and nothing else, held in by a disclosed value. A value says how much, never on what, so it cannot be the only thing keeping a row that says nothing.",
+    scopeType: "services",
+    estimatedValue: 3_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "SUMINISTRO DE TRANSFORMADORES PARA SUBESTACIÓN ELÉCTRICA S.A.S.",
+    expectedTier: "significant",
+    note: "The control for that pattern: a real description that merely ENDS in a company name must survive. Any procurement verb in the title means it says what is being bought.",
+    scopeType: "equipment",
+    estimatedValue: 3_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "CONTRATO DE OBRA",
+    expectedTier: "excluded",
+    note: "A generic noun standing alone. 'OBRA' and 'SERVICIOS' appeared the same way in the same export.",
+    scopeType: "works",
+    estimatedValue: 3_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "OBRA DE CONSTRUCCIÓN DEL PUENTE VEHICULAR SOBRE EL RÍO MAGDALENA",
+    expectedTier: "flagship",
+    note: "The control for that one: 'obra' as the first word of a real description is not a bare title. The pattern is anchored to the whole string.",
+    scopeType: "works",
+    country: "Colombia",
+  },
+  {
+    title: "EP 0058-2026",
+    expectedTier: "excluded",
+    note: "A bare reference code, same export.",
+    scopeType: "works",
+    estimatedValue: 8_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+
   // --- Flagship: real MAJOR_PROJECT_KEYWORDS matches ---
   {
     title: "CONSTRUCCIÓN DE PRESA Y RED DE RIEGO",

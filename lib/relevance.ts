@@ -532,6 +532,37 @@ function isBareInteradministrativeTitle(title: string): boolean {
  */
 const BARE_BUYER_REF_TITLE = /^[^a-z]+-\s*REF:\d+\s*$/;
 
+/**
+ * Titles that name no procurement at all — a bare company name, a bare
+ * contract reference, or a generic word standing alone.
+ *
+ * From a real Colombian kept export (2026-09-07) where 19 tenders were
+ * held in by their disclosed value alone: "OBRA", "CONTRATO DE OBRA",
+ * "IRON MOUNTAIN COLOMBIA S.A.S.", "EP 0058-2026". A value says how much
+ * was spent, never on what, so it cannot be the only thing keeping a row
+ * that says nothing.
+ *
+ * Anchored to the WHOLE title, so a real description that happens to end
+ * in a company name or contain the word "obra" is untouched.
+ */
+const NO_CONTENT_TITLE = [
+  // A company name and nothing else: … S.A.S. / S.A. DE C.V. / LTDA / S.A.
+  // No "i" flag on purpose — with it, [^a-z] stops matching uppercase too
+  // and the pattern matches nothing at all. Requiring full caps is also the
+  // right constraint here for the same reason BARE_BUYER_REF_TITLE gives:
+  // entity names in these sources are written in caps, while a real
+  // Spanish description always has lowercase letters in it.
+  // The negative lookahead is what keeps a real description that merely
+  // ENDS in a company name — "SUMINISTRO DE TRANSFORMADORES PARA
+  // SUBESTACIÓN ELÉCTRICA S.A.S." — out of this: any procurement verb at
+  // all means the title says what is being bought, so it is not a bare name.
+  /^(?!.*\b(?:SUMINISTRO|ADQUISICI[ÓO]N|ADQUIRIR|CONSTRUCCI[ÓO]N|COMPRA|CONTRATAR|PRESTACI[ÓO]N|MANTENIMIENTO|REHABILITACI[ÓO]N|MODERNIZACI[ÓO]N|AMPLIACI[ÓO]N|SERVICIO)\b)[^a-z]{2,90}(?:S\.?A\.?S\.?|LTDA\.?|S\.?A\.? DE C\.?V\.?|S\.?A\.?)\s*$/,
+  // A generic noun standing alone, with at most a leading verb/article.
+  /^\s*(?:contrato de |contratar (?:la |el )?)?(?:obra|obras|servicio|servicios|suministro|suministros|compra|adquisici[óo]n|mantenimiento|convenio|proyecto)\s*$/i,
+  // A bare reference code: "EP 0058-2026", "LP-004", "SA-2026-11".
+  /^\s*[A-Z]{1,5}[\s-]?\d{1,6}(?:[-/]\d{1,6})*\s*$/,
+];
+
 const INCLUDE_OVERRIDE_KEYWORDS = [
   /videovigilancia|video surveillance/i,
   // Narrowed (2026-09-04, real counter-example found): the bare phrase
@@ -1167,7 +1198,10 @@ export function classifyRelevance(input: {
   const hasIncludeOverride =
     INCLUDE_OVERRIDE_KEYWORDS.some((pattern) => pattern.test(haystack)) || input.isNationalPriorityProject === true;
 
-  if (!hasIncludeOverride && BARE_BUYER_REF_TITLE.test(input.title.trim())) {
+  if (
+    !hasIncludeOverride &&
+    (BARE_BUYER_REF_TITLE.test(input.title.trim()) || NO_CONTENT_TITLE.some((pattern) => pattern.test(input.title.trim())))
+  ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "no_content") };
   }
 

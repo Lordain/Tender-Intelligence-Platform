@@ -22,6 +22,8 @@ import { explainKeptSignal } from "../lib/relevance";
 
 const args = process.argv.slice(2);
 const EXAMPLES = Number(args.find((a) => a.startsWith("--examples="))?.split("=")[1] ?? 5);
+/** Substring of a bucket label; prints every title in the buckets it matches, so one bucket can be reviewed in full. */
+const ONLY = args.find((a) => a.startsWith("--signal="))?.split("=").slice(1).join("=");
 
 function newestKeptCsv(): string {
   const dir = "exports";
@@ -50,11 +52,12 @@ for (const row of rows) {
   const bucket: Bucket = buckets.get(signal) ?? { count: 0, byCountry: new Map<string, number>(), examples: [] };
   bucket.count += 1;
   bucket.byCountry.set(row.country, (bucket.byCountry.get(row.country) ?? 0) + 1);
-  if (bucket.examples.length < EXAMPLES) bucket.examples.push(title.slice(0, 74));
+  if (ONLY ? signal.includes(ONLY) : bucket.examples.length < EXAMPLES) bucket.examples.push(title.slice(0, 110));
   buckets.set(signal, bucket);
 }
 
 for (const [signal, bucket] of [...buckets].sort((a, b) => b[1].count - a[1].count)) {
+  if (ONLY && !signal.includes(ONLY)) continue;
   const countries = [...bucket.byCountry].sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c} ${n}`).join(", ");
   console.log(`${String(bucket.count).padStart(4)}  ${signal}`);
   console.log(`      ${countries}`);

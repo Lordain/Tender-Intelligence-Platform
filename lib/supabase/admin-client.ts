@@ -46,14 +46,26 @@ export function createSupabaseAdminClient(): SupabaseClient | null {
 /**
  * Read-only public data (the tender list/detail and site settings behind
  * lib/db/tenders.ts and lib/db/site-settings.ts — nothing user-scoped and
- * nothing that writes). Prefers the service role when present, but the
- * anon key is enough, which is what keeps the app browsable on a project
- * configured with only NEXT_PUBLIC_* vars — the property the old shared
- * fallback was really there for. Never use this to write.
+ * nothing that writes). Service role only. Never use this to write.
+ *
+ * It used to fall back to NEXT_PUBLIC_SUPABASE_ANON_KEY, which is what kept
+ * the app browsable on a project configured with only NEXT_PUBLIC_* vars.
+ * Migration 0023 ended that: it drops the "Public read access" policies on
+ * tenders and its child tables so a direct anon REST query can no longer
+ * bypass the app's guest/subscriber rules. RLS is enabled on all of them
+ * (0001_init.sql), and a policy-denied select returns an EMPTY array rather
+ * than an error — so the fallback would have served a silently empty site
+ * with nothing in the logs and no failed request to point at. Returning
+ * null instead sends callers back to the bundled mock data, which is
+ * obviously not the real thing.
  */
 export function createSupabaseReadClient(): SupabaseClient | null {
   if (cachedReadClient !== undefined) return cachedReadClient;
-  cachedReadClient =
-    build(process.env.SUPABASE_SERVICE_ROLE_KEY) ?? build(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  cachedReadClient = build(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  if (!cachedReadClient && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.warn(
+      "[supabase] Supabase is configured but SUPABASE_SERVICE_ROLE_KEY is missing, so the site is serving bundled mock data. Since migration 0023 the anon key cannot read tenders.",
+    );
+  }
   return cachedReadClient;
 }

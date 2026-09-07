@@ -50,6 +50,14 @@ const EXCLUDE_KEYWORDS = [
   // term for clinical lab reagents) so the two lists can't collide on
   // the same tender.
   /licencia(s)? de software|licenciamiento de software|renovaci[óo]n de licencia(s)?|suscripci[óo]n de software/i,
+  // Bare "software" as the thing being bought. The patterns above all
+  // require the word "licencia"/"suscripción" next to it, so
+  // "ADQUISICIÓN DE SOFTWARE ESPECIALIZADO" went through untouched.
+  // Anchored on the purchase verb so a major project that merely INCLUDES
+  // software (a videovigilancia or SCADA build) is not caught by the word
+  // appearing anywhere in its scope — and those carry an
+  // INCLUDE_OVERRIDE_KEYWORDS anchor that bypasses this list anyway.
+  /(adquisici[óo]n|compra|suministro|contrataci[óo]n) de software/i,
   /combustible para (el parque vehicular|veh[íi]culos)|suministro de gasolina y di[ée]sel/i,
   // Real title (2026-09-04): "ADQUISICIÓN DE COMBUSTIBLES Y LUBRICANTES
   // PARA VEHÍCULOS Y EQUIPOS TERRESTRES" — fuel/lubricant purchase, not a
@@ -386,7 +394,15 @@ const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
  * mantenimiento", "administración, operación y mantenimiento", "servicio
  * técnico preventivo y correctivo".
  */
-const MAINTENANCE_ONLY_KEYWORDS = [/\bmantenimiento\b|servicio t[ée]cnico (preventivo|correctivo)/i];
+const MAINTENANCE_ONLY_KEYWORDS = [
+  // The abbreviations are how Compras MX titles actually write it —
+  // "IA-N-182-2026 MTTO PLANTAS DE EMERGENCIA HOSPITALES" is a real one.
+  // Only the full word was listed, so those titles were reaching the tiers
+  // below and were being excluded (when they were) by the unrelated
+  // no-industry/no-value gate — which meant the same title WITH an
+  // industry tag survived as a maintenance job.
+  /\bmantenimiento\b|\bmtto\b|\bmantto\b|\bmto\b|servicio t[ée]cnico (preventivo|correctivo)/i,
+];
 
 /**
  * Same "this was never a procurable good/work/service" class of signal as
@@ -887,7 +903,7 @@ function valueExcludedReason(thresholdUsd: number): LocalizedText {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value",
   LocalizedText
 > = {
   no_content: {
@@ -899,6 +915,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This is a routine service procurement, not typically the kind of opportunity worth deep review — filtered from the default feed (metadata is kept, not deleted).",
     es: "Esta es una contratación de servicios rutinarios, no del tipo de oportunidad que suele valer una revisión a fondo — filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
+  undisclosed_value: {
+    zh: "该项目未披露预估金额，且未命中任何重点行业或大型项目关键词，无法判断规模，默认不进入推荐列表（数据仍保留，可用于统计）。",
+    en: "This tender discloses no estimated value and matched no priority-industry or major-project signal, so there is nothing to size it by — filtered from the default feed (metadata is kept, not deleted).",
+    es: "Esta licitación no revela valor estimado y no coincidió con ninguna señal de sector prioritario ni de proyecto mayor, así que no hay con qué dimensionarla — filtrada de la vista predeterminada (los metadatos se conservan).",
   },
   industry: {
     zh: "该项目未匹配到任何重点行业，且没有可参考的预估金额，信息过少，默认不进入推荐列表（数据仍保留，可用于统计）。",
@@ -939,6 +960,7 @@ function reasonFor(
     | "short_bridge"
     | "buyer"
     | "consulting"
+    | "undisclosed_value"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
   valueThresholdUsd: number = MIN_VALUE_USD,
@@ -947,6 +969,7 @@ function reasonFor(
     if (signal === "value") return valueExcludedReason(valueThresholdUsd);
     return EXCLUDED_REASON_BY_SIGNAL[
       signal === "industry" ||
+      signal === "undisclosed_value" ||
       signal === "no_content" ||
       signal === "short_duration" ||
       signal === "short_bridge" ||
@@ -1210,6 +1233,31 @@ export function classifyRelevance(input: {
   // filter UI, where a user deliberately browsing "everything PEMEX
   // procures under energy" is a defensible use — but it must not be
   // what keeps a no-value, non-equipment tender out of "excluded" here.
+  // Mexico only: an undisclosed value is not a reason to KEEP a tender
+  // (2026-09-07, per the user's explicit call — "不是没金额就 Standard，这是
+  // 只应用于哥伦比亚的逻辑，墨西哥不能这么做").
+  //
+  // The platform-wide floor deliberately doesn't fire on a missing value,
+  // reasoning that "absence isn't evidence of smallness". That holds for
+  // Colombia, where SECOP II publishes values and a blank one is unusual.
+  // It does not hold for Compras MX: obra pública there routinely publishes
+  // no amount at all, so the floor — the single strongest filter this
+  // classifier has — simply never ran on them, and every municipal water
+  // main, street paving job and village well fell through to "standard".
+  // One real import: 619 new Mexican tenders, 597 of them "standard", the
+  // titles being things like "RED DE AGUA POTABLE EN LA COLONIA SAN MIGUEL".
+  //
+  // Nothing genuinely large is lost here. Every positive signal has already
+  // returned above this line — MAJOR_PROJECT_KEYWORDS, INCLUDE_OVERRIDE,
+  // FLAGSHIP_INDUSTRY_KEYWORDS, isNationalPriorityProject, the
+  // equipment-scale rule — so a no-value Mexican tender only reaches here
+  // having matched none of them. "CONSTRUCCIÓN DEL SEGUNDO TRAMO DEL
+  // ACUEDUCTO", flagship on keywords alone with no value, never gets this
+  // far.
+  if (input.country === "Mexico" && normalizedValue === undefined) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
+  }
+
   const contentIndustries = classifyIndustries(input.title, input.summary);
   const hasTargetIndustry = contentIndustries.some((i) => i !== "general");
   if (!hasTargetIndustry && normalizedValue === undefined) {

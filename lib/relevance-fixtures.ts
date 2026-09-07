@@ -38,6 +38,84 @@ export type RelevanceFixture = {
 };
 
 export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
+
+  // --- Mexico + undisclosed value: keyword-only logic (2026-09-07) ---
+  // Every one of these is a real title from the 2026-09-07 Compras MX
+  // import that put 619 new Mexican tenders in the list, 597 of them
+  // "standard". Compras MX obra pública publishes no amount, so the value
+  // floor — the strongest filter here — never ran on any of them, and they
+  // fell through on an industry tag alone. Per the user: the keyword rules
+  // must decide these outright.
+  {
+    title: "REHABILITACIÓN DEL SISTEMA DE AGUA POTABLE BERMEJILLO",
+    expectedTier: "excluded",
+    note: "Real 2026-09-07 import title. Municipal water-main repair, no disclosed value, matches no MAJOR_PROJECT/INCLUDE_OVERRIDE keyword. Water industry tag alone used to keep it as 'standard'.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "PAVIMENTACIÓN CON CONCRETO HIDRÁULICO DEL CAMINO LOCAL",
+    expectedTier: "excluded",
+    note: "Real 2026-09-07 import title. One local road surfacing job, no value.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "PERFORACIÓN DE POZO A 300 METROS DE PROFUNDIDAD",
+    expectedTier: "excluded",
+    note: "Real 2026-09-07 import title. A single village well, no value.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "PREMIO IMSS A LA COMPETITIVIDAD 2025 EN LA ESCUELA DE ENFERMERIA",
+    expectedTier: "excluded",
+    note: "Real 2026-09-07 import title, and not a procurement at all — an award. Nothing in the keyword rules describes it, which under keyword-only logic is now enough.",
+    scopeType: "services",
+    country: "Mexico",
+  },
+  {
+    title: "CONSTRUCCIÓN DE PLANTA HIDROELÉCTRICA",
+    expectedTier: "flagship",
+    note: "The case the Mexico rule must NOT break: a genuine major project with NO disclosed value, kept by MAJOR_PROJECT_KEYWORDS alone. The flagship gate returns before the undisclosed-value gate, so keyword-only logic still promotes it — this is what stops the Mexico rule from being a blanket 'no value means gone'.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "CONSTRUCCIÓN DEL SEGUNDO TRAMO DEL ACUEDUCTO",
+    expectedTier: "excluded",
+    note: "Recorded because it was assumed wrong (2026-09-07): a production row with this title shows as 大型项目, so this title was taken to be a MAJOR_PROJECT_KEYWORDS match. It is not — 'acueducto' appears in no keyword list in this file, and this title alone classified as 'standard' even before the Mexico rule. Whatever makes that real row flagship is elsewhere in its full text or its value. Left here as an open question rather than a silent keyword addition: adding 'acueducto' would also promote every municipal 'rehabilitación de acueducto' repair job to flagship.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "REHABILITACIÓN DEL SISTEMA DE AGUA POTABLE BERMEJILLO",
+    expectedTier: "standard",
+    note: "The SAME title as the first fixture above, as a Colombian tender. Proves the undisclosed-value rule is scoped to Mexico and did not quietly become global — SECOP II does publish values, so a blank one there is unusual rather than routine, which is why 'absence isn't evidence of smallness' still holds for Colombia.",
+    scopeType: "works",
+    country: "Colombia",
+  },
+  {
+    title: "IA-N-182-2026 MTTO PLANTAS DE EMERGENCIA HOSPITALES",
+    expectedTier: "excluded",
+    note: "Real 2026-09-07 import title. MTTO is how Compras MX writes mantenimiento; MAINTENANCE_ONLY_KEYWORDS listed only the full word, so this reached the tiers below and was excluded (when it was) by the unrelated no-industry/no-value gate — meaning the same title WITH an industry tag survived as a maintenance job.",
+    industries: ["energy"],
+    scopeType: "services",
+    estimatedValue: 4_000_000,
+    currency: "USD",
+    country: "Mexico",
+  },
+  {
+    title: "ADQUISICIÓN DE SOFTWARE ESPECIALIZADO",
+    expectedTier: "excluded",
+    note: "Bare 'software' as the object of purchase. Every existing licensing pattern required the word licencia/licenciamiento/suscripción beside it, so this phrasing went through. A disclosed, above-floor value is set deliberately so this tests the keyword, not the value floor.",
+    industries: ["ict"],
+    scopeType: "equipment",
+    estimatedValue: 3_000_000,
+    currency: "USD",
+    country: "Mexico",
+  },
+
   // --- Flagship: real MAJOR_PROJECT_KEYWORDS matches ---
   {
     title: "CONSTRUCCIÓN DE PRESA Y RED DE RIEGO",
@@ -594,8 +672,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // promoted straight to flagship. ---
   {
     title: "MATERIALES PROFAUNA PARA SUBESTACIONES",
-    expectedTier: "standard",
-    note: "Real title (CFE buyer) — wildlife-protection fittings for substations (e.g. anti-perching mesh), a routine materials purchase where 'subestaciones' is only the delivery location, not the actual object of procurement. The bare 'subestación' phrase used to match INCLUDE_OVERRIDE_KEYWORDS and promote straight to flagship regardless of value; now it doesn't bypass exclusion, but scopeType 'equipment' + power industry tag with no disclosed value lands it 'standard' rather than 'excluded' now that tier is reactivated (was 'excluded' 2026-09-02–09-05).",
+    expectedTier: "excluded",
+    note: "Real title (CFE buyer) — wildlife-protection fittings for substations (e.g. anti-perching mesh), a routine materials purchase where 'subestaciones' is only the delivery location, not the actual object of procurement. The bare 'subestación' phrase used to match INCLUDE_OVERRIDE_KEYWORDS and promote straight to flagship regardless of value; that was fixed 2026-09-04. Expected 'standard' from 2026-09-05, when that tier was reactivated and a Mexican tender with no disclosed value could still be kept on an industry tag alone. Back to 'excluded' 2026-09-07, per the user's explicit call that an undisclosed value must not keep a MEXICAN tender ('墨西哥不能这么做') — this title matches no priority keyword, so under keyword-only logic there is nothing left to keep it.",
     scopeType: "equipment",
     buyer: "COMISION FEDERAL DE ELECTRICIDAD",
     country: "Mexico",

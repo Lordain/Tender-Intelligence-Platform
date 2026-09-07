@@ -8,6 +8,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { useEntitlement } from "@/lib/use-entitlement";
 import { EnterpriseAccounts } from "@/components/account/EnterpriseAccounts";
+import { PendingInvitations } from "@/components/account/PendingInvitations";
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -163,6 +164,10 @@ export default function AccountPage() {
             </div>
           </section>
         </div>
+
+        {/* Every signed-in user, not just owners: this is where an invitee
+            accepts or declines a seat someone offered them. */}
+        <PendingInvitations />
 
         {entitlement?.isEnterpriseOwner && <EnterpriseAccounts />}
 

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { escapeHtml } from "@/lib/notifications/escape-html";
 
 type DigestTender = {
   id: string;
@@ -186,10 +187,6 @@ export function matchingTenders(tenders: DigestTender[], preference: Preference)
 
 export function matchingStatusChanges(changes: StatusChange[], preference: Preference) {
   return changes.filter((change) => matches(change.tender, preference, [change.previousStatus, change.nextStatus])).slice(0, 20);
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character);
 }
 
 export async function sendTenderDigestEmail(recipient: DigestRecipient, tenders: DigestTender[], statusChanges: StatusChange[]) {

@@ -33,11 +33,17 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
     return { role: "subscriber", plan: own.plan as SubscriptionPlan, trialEndsAt: null, subscriptionOwnerUserId: user.id, isEnterpriseOwner: own.plan === "enterprise" };
   }
 
-  const { data: membershipsById } = await admin.from("enterprise_members").select("owner_user_id").eq("member_user_id", user.id).limit(1);
-  const { data: membershipsByEmail } = !membershipsById?.length && user.email
-    ? await admin.from("enterprise_members").select("owner_user_id").ilike("email", user.email).limit(1)
-    : { data: [] };
-  const ownerId = (membershipsById?.[0]?.owner_user_id ?? membershipsByEmail?.[0]?.owner_user_id) as string | undefined;
+  // A seat is granted by an ACCEPTED invitation bound to THIS account, never
+  // by the email address alone. Matching on the address was how a mistyped
+  // invitation handed a stranger a paid seat without ever asking the person
+  // named on it — see migration 0025.
+  const { data: memberships } = await admin
+    .from("enterprise_members")
+    .select("owner_user_id")
+    .eq("member_user_id", user.id)
+    .eq("status", "accepted")
+    .limit(1);
+  const ownerId = memberships?.[0]?.owner_user_id as string | undefined;
   if (ownerId) {
     const { data: ownerSubscriptions } = await admin.from("subscriptions")
       .select("user_id, plan, status, current_period_end")

@@ -7,7 +7,7 @@
  * to the state described below, so it is safe to run after a schema change
  * or once a trial has aged out. `--cleanup` deletes every account it makes.
  *
- * Requires SUPABASE_SERVICE_ROLE_KEY and migrations through 0026.
+ * Requires SUPABASE_SERVICE_ROLE_KEY and migrations through 0027.
  * Accounts are created with
  * email_confirm: true, so no confirmation mail is sent and they can sign in
  * immediately. Never point this at a database with real users — it deletes
@@ -38,8 +38,8 @@ const DAY = 86_400_000;
 const ACCOUNTS: { role: Role; local: string; describe: string }[] = [
   { role: "trial", local: "qa-trial", describe: "试用中 · 剩余 6 天 · 可看详情、可收邮件" },
   { role: "free", local: "qa-free", describe: "试用已过期 · 可搜索收藏 · 详情提示订阅 · 不收邮件" },
-  { role: "professional", local: "qa-pro", describe: "个人版订阅 · 全部权限" },
-  { role: "enterprise-owner", local: "qa-ent-owner", describe: "企业版主账号 · 可在账户管理邀请成员" },
+  { role: "professional", local: "qa-pro", describe: "个人版订阅（按月）· 全部权限 · 可测取消续期" },
+  { role: "enterprise-owner", local: "qa-ent-owner", describe: "企业版主账号（年度）· 可在账户管理邀请成员" },
   { role: "enterprise-member", local: "qa-ent-member", describe: "企业成员 · 已接受邀请 · 全部权限" },
   { role: "invitee", local: "qa-ent-invitee", describe: "收到待处理邀请 · 用于测试接受/拒绝" },
 ];
@@ -134,13 +134,22 @@ async function seed() {
   // to state. cancel_at_period_end is left at its default; re-running the
   // seeder deletes and reinserts these rows, which is how a cancellation test
   // gets reset.
+  //
+  // The stripe_subscription_id values are obviously fake and belong to no
+  // real Stripe account. They are here because the account page treats a row
+  // with no billing link as "ends on this date, nothing will renew it" and
+  // hides the cancel action — correctly, but that would leave the cancel
+  // flow untestable. The two plans also use different intervals so the
+  // 计费周期 row and list:subscriptions have something to distinguish.
   assertWritten("个人版订阅", await admin.from("subscriptions").insert({
     user_id: idByRole.get("professional"), plan: "professional", status: "active",
+    billing_interval: "monthly", stripe_subscription_id: "sub_seed_professional",
     current_period_start: iso(-30), current_period_end: iso(30),
   }));
   assertWritten("企业版订阅", await admin.from("subscriptions").insert({
     user_id: idByRole.get("enterprise-owner"), plan: "enterprise", status: "active",
-    current_period_start: iso(-30), current_period_end: iso(30),
+    billing_interval: "annual", stripe_subscription_id: "sub_seed_enterprise",
+    current_period_start: iso(-30), current_period_end: iso(335),
   }));
 
   // One seat already accepted, one invitation still waiting — the second is

@@ -135,6 +135,10 @@ async function seed() {
   // seeder deletes and reinserts these rows, which is how a cancellation test
   // gets reset.
   //
+  // Each window is as long as the interval it claims — 30 days for monthly,
+  // 365 for annual — and already underway, so the dates on 账户管理 and in
+  // list:subscriptions agree with the 计费周期 next to them.
+  //
   // The stripe_subscription_id values are obviously fake and belong to no
   // real Stripe account. They are here because the account page treats a row
   // with no billing link as "ends on this date, nothing will renew it" and
@@ -144,7 +148,7 @@ async function seed() {
   assertWritten("个人版订阅", await admin.from("subscriptions").insert({
     user_id: idByRole.get("professional"), plan: "professional", status: "active",
     billing_interval: "monthly", stripe_subscription_id: "sub_seed_professional",
-    current_period_start: iso(-30), current_period_end: iso(30),
+    current_period_start: iso(-10), current_period_end: iso(20),
   }));
   assertWritten("企业版订阅", await admin.from("subscriptions").insert({
     user_id: idByRole.get("enterprise-owner"), plan: "enterprise", status: "active",

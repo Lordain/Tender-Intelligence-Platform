@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatEstimatedValueUsd, formatDate } from "@/lib/format";
@@ -24,7 +25,7 @@ function Field({ label, value, emphasized = false, note }: { label: string; valu
   );
 }
 
-export function TenderOverview({ tender }: { tender: Tender }) {
+export function TenderOverview({ tender, showTrialCta = false }: { tender: Tender; showTrialCta?: boolean }) {
   const { locale } = useLocale();
   const fieldCount = 8
     + (tender.participationScope ? 1 : 0)
@@ -52,7 +53,14 @@ export function TenderOverview({ tender }: { tender: Tender }) {
           </span>
           <span className="text-xs text-[#849098]">{tender.tenderNumber}</span>
         </div>
-        <SaveTenderButton tenderId={tender.id} className="border border-[#dbe2e5] bg-white" />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {showTrialCta && (
+            <Link href={`/register?next=${encodeURIComponent(`/tenders/${tender.slug}`)}`} className="inline-flex h-10 items-center rounded-xl bg-[#ffb21c] px-4 text-xs font-black text-[#071826] hover:bg-[#ffc247]">
+              注册即可免费试用7天
+            </Link>
+          )}
+          <SaveTenderButton tenderId={tender.id} className="border border-[#dbe2e5] bg-white" />
+        </div>
       </div>
 
       {/* Chinese leads when a real translation exists (this platform's

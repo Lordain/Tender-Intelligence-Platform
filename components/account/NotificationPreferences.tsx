@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ALL_INDUSTRIES } from "@/lib/industry";
 import { COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, STATUS_LABELS } from "@/lib/tender-labels";
 import { localize, useLocale } from "@/lib/i18n";
@@ -40,7 +41,15 @@ function PreferenceGroup({ title, children }: { title: string; children: React.R
   );
 }
 
-export function NotificationPreferences({ userId }: { userId: string }) {
+export function NotificationPreferences({
+  userId,
+  locked = false,
+  lockReason = "订阅后即可设置项目邮件通知。",
+}: {
+  userId: string;
+  locked?: boolean;
+  lockReason?: string;
+}) {
   const { locale } = useLocale();
   const [enabled, setEnabled] = useState(false);
   const [countries, setCountries] = useState<string[]>([]);
@@ -53,6 +62,7 @@ export function NotificationPreferences({ userId }: { userId: string }) {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    if (locked) return;
     getSupabaseBrowserClient().from("email_notification_preferences")
       .select("enabled, countries, industries, statuses, relevance_tiers, keywords").eq("user_id", userId).maybeSingle()
       .then(({ data }) => {
@@ -64,7 +74,7 @@ export function NotificationPreferences({ userId }: { userId: string }) {
         setTiers(data.relevance_tiers ?? []);
         setKeywords(data.keywords ?? []);
       });
-  }, [userId]);
+  }, [userId, locked]);
 
   async function save() {
     setSaving(true);
@@ -80,6 +90,28 @@ export function NotificationPreferences({ userId }: { userId: string }) {
     setKeywords([...keywords, keyword]);
     setKeywordDraft("");
     setSaved(false);
+  }
+
+  if (locked) {
+    return (
+      <section id="notification-preferences" className="scroll-mt-28 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#edf2f3] text-[#64717c]" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className="size-5 fill-none stroke-current stroke-2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-xl font-black text-[#071826]">邮件通知</h2>
+                <span className="rounded-full bg-[#edf2f3] px-3 py-1 text-[10px] font-bold text-[#64717c]">暂未开放</span>
+              </div>
+              <p className="mt-2 text-sm leading-7 text-[#64717c]">{lockReason}</p>
+            </div>
+          </div>
+          <Link href="/pricing" className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-[#0a2b40] px-5 text-sm font-black text-[#0a2b40] hover:bg-[#0a2b40] hover:text-white">查看订阅服务</Link>
+        </div>
+      </section>
+    );
   }
 
   return (

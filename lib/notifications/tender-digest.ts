@@ -59,18 +59,30 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
 
   const { data: subscriptions } = await supabase
     .from("subscriptions")
-    .select("user_id, status, current_period_end")
+    .select("user_id, plan, status, current_period_end")
     .in("status", ["active", "trialing"]);
 
   const subscribedIds = [...new Set((subscriptions ?? [])
     .filter((subscription) => !subscription.current_period_end || new Date(subscription.current_period_end) >= new Date())
     .map((subscription) => subscription.user_id))];
-  if (subscribedIds.length === 0) return [];
+
+  const nowIso = new Date().toISOString();
+  const { data: trialProfiles } = await supabase.from("profiles").select("id").gte("trial_ends_at", nowIso);
+  const trialIds = (trialProfiles ?? []).map((profile) => profile.id as string);
+
+  const enterpriseOwnerIds = [...new Set((subscriptions ?? [])
+    .filter((subscription) => subscription.plan === "enterprise" && subscribedIds.includes(subscription.user_id))
+    .map((subscription) => subscription.user_id))];
+  const { data: enterpriseMembers } = enterpriseOwnerIds.length > 0
+    ? await supabase.from("enterprise_members").select("member_user_id").in("owner_user_id", enterpriseOwnerIds).not("member_user_id", "is", null)
+    : { data: [] };
+  const eligibleIds = [...new Set([...subscribedIds, ...trialIds, ...(enterpriseMembers ?? []).map((member) => member.member_user_id as string)])];
+  if (eligibleIds.length === 0) return [];
 
   const { data: preferences } = await supabase
     .from("email_notification_preferences")
     .select("user_id, enabled, countries, industries, statuses, relevance_tiers, keywords")
-    .in("user_id", subscribedIds)
+    .in("user_id", eligibleIds)
     .eq("enabled", true);
 
   const enabled = (preferences ?? []) as Preference[];
@@ -171,7 +183,7 @@ export async function sendTenderDigestEmail(recipient: DigestRecipient, tenders:
       from,
       to: [recipient.email],
       subject: `拉美招投标平台｜${subjectParts}`,
-      html: `<main style="max-width:640px;margin:auto;font-family:Arial,sans-serif;color:#52636e"><h1 style="color:#071826">您的招标动态</h1><p>以下内容符合您在账户中设置的通知条件：</p>${sections}<p style="margin-top:24px;font-size:12px">通知时间：墨西哥城时间每日 09:00 与 18:00。可在账户页面调整通知条件。</p></main>`,
+      html: `<main style="max-width:640px;margin:auto;font-family:Arial,sans-serif;color:#52636e"><h1 style="color:#071826">您的招标动态</h1><p>以下内容符合您设置的通知条件：</p>${sections}<p style="margin-top:24px;font-size:12px">通知时间：墨西哥城时间每日 09:00 与 18:00。可在通知设置页面调整条件。</p></main>`,
     }),
   });
 

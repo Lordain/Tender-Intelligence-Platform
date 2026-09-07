@@ -55,6 +55,12 @@ export function AuthNav() {
           </Link>
         )}
         <Link
+          href="/notifications"
+          className="text-sm font-medium text-white/80 transition-colors hover:text-white"
+        >
+          通知设置
+        </Link>
+        <Link
           href="/account"
           className="text-sm font-medium text-white/80 transition-colors hover:text-white"
         >

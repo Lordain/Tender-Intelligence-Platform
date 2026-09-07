@@ -182,7 +182,7 @@ export const uiText = {
   navPricing: { en: "Pricing", es: "Precios", zh: "订阅服务" },
   navAccount: { en: "Account", es: "Cuenta", zh: "账户" },
   account: { en: "Account", es: "Cuenta", zh: "账户" },
-  companyNameLabel: { en: "Company name", es: "Nombre de la empresa", zh: "公司名称" },
+  companyNameLabel: { en: "Enterprise name", es: "Nombre de la empresa", zh: "企业名称" },
   saveProfile: { en: "Save", es: "Guardar", zh: "保存" },
   profileSaved: { en: "Saved", es: "Guardado", zh: "已保存" },
   currentPlan: { en: "Current plan", es: "Plan actual", zh: "当前套餐" },

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/auth";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { NotificationPreferences } from "@/components/account/NotificationPreferences";
+import { useEntitlement } from "@/lib/use-entitlement";
+import { EnterpriseAccounts } from "@/components/account/EnterpriseAccounts";
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -17,7 +18,6 @@ export default function AccountPage() {
   const router = useRouter();
   const { user, loading } = useUser();
   const [companyName, setCompanyName] = useState("");
-  const [plan, setPlan] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -40,14 +40,9 @@ export default function AccountPage() {
       .maybeSingle()
       .then(({ data }) => setCompanyName(data?.company_name ?? ""));
 
-    supabase
-      .from("subscriptions")
-      .select("plan")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .maybeSingle()
-      .then(({ data }) => setPlan(data?.plan ?? null));
   }, [user]);
+
+  const entitlement = useEntitlement(Boolean(user));
 
   async function handleSaveProfile(event: FormEvent) {
     event.preventDefault();
@@ -95,7 +90,7 @@ export default function AccountPage() {
             账户管理
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[#64717c] sm:text-base">
-            管理账户资料、订阅套餐和招标邮件通知偏好。
+            管理账户资料与订阅状态；邮件提醒请前往独立的通知设置页面。
           </p>
         </header>
 
@@ -119,7 +114,7 @@ export default function AccountPage() {
             <form onSubmit={handleSaveProfile} className="mt-6 flex flex-col gap-3">
               <label className="flex flex-col gap-2">
                 <span className="text-xs font-bold text-[#425461]">
-                  {localize(uiText.companyNameLabel, locale)}
+                  企业名称
                 </span>
                 <input
                   type="text"
@@ -129,7 +124,7 @@ export default function AccountPage() {
                     setSaved(false);
                     setSaveError(null);
                   }}
-                  placeholder="填写公司或团队名称"
+                  placeholder="填写企业或团队名称"
                   className="h-12 rounded-xl border border-[#d8e0e3] bg-white px-4 text-sm text-[#071826] placeholder:text-[#98a2a8] focus:border-[#ffb21c] focus:outline-none focus:ring-2 focus:ring-[#ffb21c]/15"
                 />
               </label>
@@ -153,9 +148,15 @@ export default function AccountPage() {
               <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#ffb21c]">Subscription</div>
               <h2 className="mt-3 text-xl font-black">{localize(uiText.currentPlan, locale)}</h2>
               <div className="mt-5 rounded-2xl border border-white/12 bg-white/5 p-4 text-lg font-black">
-                {plan ?? localize(uiText.freePlan, locale)}
+                {entitlement?.role === "trial" ? "7 天免费试用" : entitlement?.plan === "enterprise" ? "企业版" : entitlement?.role === "subscriber" ? "个人版" : localize(uiText.freePlan, locale)}
               </div>
-              <p className="mt-4 text-sm leading-6 text-white/55">查看可用套餐，解锁更多项目与通知服务。</p>
+              <p className="mt-4 text-sm leading-6 text-white/55">
+                {entitlement?.role === "trial" && entitlement.trialEndsAt
+                  ? `试用有效期至 ${new Date(entitlement.trialEndsAt).toLocaleDateString("zh-CN")}；到期后自动转为免费版。`
+                  : entitlement?.role === "free"
+                    ? "免费试用已结束，订阅后可恢复项目详情与邮件通知。"
+                    : "查看可用套餐，管理项目与通知服务。"}
+              </p>
               <Link href="/pricing" className="mt-auto inline-flex w-fit items-center gap-2 pt-7 text-sm font-bold text-[#ffb21c] transition-colors hover:text-[#ffd16f]">
                 {localize(uiText.viewPlans, locale)} <span aria-hidden="true">→</span>
               </Link>
@@ -163,9 +164,8 @@ export default function AccountPage() {
           </section>
         </div>
 
-        <div className="mt-6">
-          <NotificationPreferences userId={user.id} />
-        </div>
+        {entitlement?.isEnterpriseOwner && <EnterpriseAccounts />}
+
       </div>
     </div>
   );

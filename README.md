@@ -47,6 +47,9 @@ types/          Core domain types (Tender schema, etc.)
 
 ## Database Setup (Supabase)
 
+See [ACCESS_CONTROL.md](ACCESS_CONTROL.md) for the guest/member/subscriber
+permission matrix and the switch from the free launch stage to paid access.
+
 The app works out of the box with bundled mock data (`data/tenders.ts`) — no
 database required. To connect a real Supabase project:
 

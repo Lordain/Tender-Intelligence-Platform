@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
@@ -20,6 +20,13 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
+
+  useEffect(() => {
+    const invitedEmail = new URLSearchParams(window.location.search).get("email");
+    if (!invitedEmail) return;
+    const timer = window.setTimeout(() => setEmail(invitedEmail), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   function nextPath() {
     return safeNextPath(new URLSearchParams(window.location.search).get("next"));
@@ -75,6 +82,7 @@ export default function RegisterPage() {
       <h1 className="text-3xl font-black tracking-tight text-[#071826]">
         {localize(uiText.register, locale)}
       </h1>
+      <p className="-mt-3 text-sm leading-6 text-[#64717c]">注册后自动开启 7 天全功能免费试用，无需绑定银行卡。</p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1">
           <span className="text-xs font-semibold text-[#52636e]">

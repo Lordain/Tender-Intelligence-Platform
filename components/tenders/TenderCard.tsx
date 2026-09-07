@@ -20,8 +20,15 @@ function preferredRequirement(items: Tender["qualifications"]) {
 
 const RISK_PRIORITY = { critical: 0, high: 1, medium: 2, low: 3 } as const;
 
-export function TenderCard({ tender }: { tender: Tender }) {
+export function TenderCard({
+  tender,
+  showOneLineSummary = false,
+}: {
+  tender: Tender;
+  showOneLineSummary?: boolean;
+}) {
   const { locale } = useLocale();
+  const detailHref = `/tenders/${tender.slug}${showOneLineSummary ? "?from=homepage" : ""}`;
   // Only a real translation (Layer 2 AI, not the es/zh mirror untranslated()
   // produces) makes Chinese worth treating as the primary heading — until
   // then the Spanish original is all there is to show.
@@ -31,11 +38,12 @@ export function TenderCard({ tender }: { tender: Tender }) {
   const document = preferredRequirement(tender.requiredDocuments);
   const risk = tender.risks.slice().sort((a, b) => RISK_PRIORITY[a.level] - RISK_PRIORITY[b.level])[0];
   const previews = [
-    qualification && { label: "资质要求", text: localize(qualification.title, locale), strong: qualification.mandatory },
-    experience && { label: "经验要求", text: localize(experience.title, locale), strong: experience.mandatory },
-    document && { label: "所需文件", text: localize(document.title, locale), strong: document.mandatory },
-    risk && { label: "风险提示", text: localize(risk.title, locale), strong: risk.level === "critical" },
-  ].filter(Boolean) as { label: string; text: string; strong: boolean }[];
+    showOneLineSummary && tender.oneLineSummary && { label: "一句话总结", text: tender.oneLineSummary, strong: false, summary: true },
+    qualification && { label: "资质要求", text: localize(qualification.title, locale), strong: qualification.mandatory, summary: false },
+    experience && { label: "经验要求", text: localize(experience.title, locale), strong: experience.mandatory, summary: false },
+    document && { label: "所需文件", text: localize(document.title, locale), strong: document.mandatory, summary: false },
+    risk && { label: "风险提示", text: localize(risk.title, locale), strong: risk.level === "critical", summary: false },
+  ].filter(Boolean) as { label: string; text: string; strong: boolean; summary: boolean }[];
 
   return (
     <article className="group relative flex h-full flex-col gap-3 rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 transition-all hover:-translate-y-0.5 hover:border-[#aebdc3] hover:shadow-[0_18px_50px_-32px_rgba(6,27,43,0.45)]">
@@ -69,7 +77,7 @@ export function TenderCard({ tender }: { tender: Tender }) {
       {hasRealTranslation ? (
         <>
           <h3 className="text-base font-black leading-snug text-black">
-            <Link href={`/tenders/${tender.slug}`} className="after:absolute after:inset-0">
+            <Link href={detailHref} className="after:absolute after:inset-0">
               {tender.title.zh}
             </Link>
           </h3>
@@ -77,7 +85,7 @@ export function TenderCard({ tender }: { tender: Tender }) {
         </>
       ) : (
         <h3 className="text-sm font-bold leading-snug text-black">
-          <Link href={`/tenders/${tender.slug}`} className="after:absolute after:inset-0">
+          <Link href={detailHref} className="after:absolute after:inset-0">
             {tender.title.es}
           </Link>
         </h3>
@@ -89,12 +97,12 @@ export function TenderCard({ tender }: { tender: Tender }) {
 
       {previews.length > 0 && (
         <div className="rounded-xl border border-[#e2e7e9] bg-[#f7f9f8] px-3 py-2.5">
-          <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#73818a]">投标重点预览</p>
+          <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#73818a]">投标重点预览</p>
           <ul className="space-y-1.5">
             {previews.map((preview) => (
-              <li key={preview.label} className="flex min-w-0 items-baseline gap-2 text-xs leading-5">
-                <span className={`shrink-0 font-bold ${preview.strong ? "text-[#b42318]" : "text-[#586b77]"}`}>{preview.label}</span>
-                <span className="truncate text-[#425461]">{preview.text}</span>
+              <li key={preview.label} className={`grid min-w-0 grid-cols-[4.75rem_minmax(0,1fr)] gap-2 text-xs leading-5 ${preview.summary ? "border-b border-[#e1e7e9] pb-2" : ""}`}>
+                <span className={`font-bold ${preview.summary ? "text-[#a96100]" : preview.strong ? "text-[#b42318]" : "text-[#586b77]"}`}>{preview.label}</span>
+                <span className={preview.summary ? "line-clamp-2 font-semibold text-[#172c3b]" : "truncate text-[#425461]"}>{preview.text}</span>
               </li>
             ))}
           </ul>
@@ -118,7 +126,7 @@ export function TenderCard({ tender }: { tender: Tender }) {
         {"："}
         {tender.buyer}</span>
       </p>
-      <Link href={`/tenders/${tender.slug}`} className="relative z-10 mt-1 inline-flex w-full items-center justify-center rounded-xl bg-[#071826] px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-[#163b52]">
+      <Link href={detailHref} className="relative z-10 mt-1 inline-flex w-full items-center justify-center rounded-xl bg-[#071826] px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-[#163b52]">
         查看招标信息
       </Link>
     </article>

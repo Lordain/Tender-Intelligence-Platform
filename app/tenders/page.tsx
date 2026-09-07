@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { getAllTenders } from "@/lib/tenders";
 import { TenderExplorer } from "@/components/tenders/TenderExplorer";
+import { getViewerRole } from "@/lib/access-control-server";
 
 /**
  * ISR, not the default (2026-09-06). This page reads Supabase through a
@@ -18,12 +19,18 @@ import { TenderExplorer } from "@/components/tenders/TenderExplorer";
 export const revalidate = 300;
 
 export default async function TendersPage() {
-  const tenders = await getAllTenders();
+  const [tenders, viewerRole] = await Promise.all([
+    getAllTenders(),
+    getViewerRole(),
+  ]);
 
   return (
     <div className="mx-auto w-full max-w-[94rem] px-5 py-6 sm:px-8 sm:py-8">
       <Suspense>
-        <TenderExplorer tenders={tenders} />
+        <TenderExplorer
+          tenders={tenders}
+          viewerRole={viewerRole}
+        />
       </Suspense>
     </div>
   );

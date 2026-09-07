@@ -17,6 +17,8 @@ import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { ColombiaFlag, CountryFlag, MexicoFlag } from "@/components/tenders/CountryFlag";
 import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
+import { type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
+import { AccessPrompt } from "@/components/access/AccessPrompt";
 
 const SCOPE_TYPES: TenderScopeType[] = ["equipment", "services", "equipment_services", "works", "consulting"];
 const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed", "awarded", "cancelled"];
@@ -152,12 +154,19 @@ function TenderRow({ tender }: { tender: Tender }) {
   );
 }
 
-export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
+export function TenderExplorer({
+  tenders,
+  viewerRole,
+}: {
+  tenders: Tender[];
+  viewerRole: ViewerRole;
+}) {
   const { locale } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { savedIds } = useSavedTenderIds();
+  const [accessPrompt, setAccessPrompt] = useState<AccessPromptKind | null>(null);
 
   const query = searchParams.get("q") ?? "";
   const countryParam = searchParams.get("country");
@@ -266,14 +275,68 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
   );
   const currentSearchHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
+  function promptForInteraction(target: EventTarget | null): AccessPromptKind | null {
+    if (!(target instanceof Element)) return null;
+    const interactive = target.closest("a, button, input, select, textarea, label, [role='button'], [role='switch']");
+    if (!interactive) return null;
+
+    // Guests may inspect the initial list, but every list-page interaction is
+    // a member feature, including opening a project that happens to be free
+    // from the homepage entry point.
+    if (viewerRole === "guest") return "login";
+
+    if (viewerRole === "free") {
+      const detailLink = target.closest<HTMLAnchorElement>("a[href^='/tenders/']");
+      if (detailLink) return "subscription";
+    }
+
+    return null;
+  }
+
+  function stopLockedInteraction(event: {
+    target: EventTarget | null;
+    preventDefault: () => void;
+    stopPropagation: () => void;
+  }) {
+    const kind = promptForInteraction(event.target);
+    if (!kind) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setAccessPrompt(kind);
+  }
+
+  const accessNotice = viewerRole === "guest"
+    ? "当前可预览项目清单；登录后即可使用搜索、筛选、翻页、收藏和查看项目。"
+    : viewerRole === "free"
+      ? "您的 7 天免费试用已结束；仍可搜索、筛选和收藏项目，订阅后可查看完整项目信息。"
+      : null;
+
   return (
-    <div className="space-y-5">
+    <>
+    <div
+      className={`space-y-5 ${viewerRole === "guest" ? "[&_a]:cursor-not-allowed [&_button]:cursor-not-allowed [&_input]:cursor-not-allowed" : ""}`}
+      onPointerDownCapture={(event) => {
+        if (promptForInteraction(event.target)) event.preventDefault();
+      }}
+      onClickCapture={stopLockedInteraction}
+      onSubmitCapture={stopLockedInteraction}
+      onKeyDownCapture={(event) => {
+        if (event.key === "Enter" || event.key === " ") stopLockedInteraction(event);
+      }}
+    >
       <PageIntro
         eyebrow="Tender database"
         title="招标项目"
         description="筛选并评估适合中国企业的拉美政府采购机会"
         metrics={[{ label: "当前结果", value: sorted.length.toLocaleString(), suffix: "个项目" }]}
       />
+
+      {accessNotice && (
+        <button type="button" onClick={() => setAccessPrompt(viewerRole === "guest" ? "login" : "subscription")} className="flex w-full items-center justify-between gap-4 rounded-2xl border border-[#f0ce79] bg-[#fff7df] px-4 py-3 text-left text-sm font-bold text-[#805100] sm:px-5">
+          <span className="flex items-center gap-3"><span aria-hidden="true">🔒</span>{accessNotice}</span>
+          <span className="shrink-0 underline underline-offset-4">了解权限</span>
+        </button>
+      )}
 
       <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
         <TenderSearchForm
@@ -454,5 +517,12 @@ export function TenderExplorer({ tenders }: { tenders: Tender[] }) {
         </aside>
       </div>
     </div>
+    <AccessPrompt
+      open={accessPrompt !== null}
+      kind={accessPrompt ?? "login"}
+      nextPath={currentSearchHref}
+      onClose={() => setAccessPrompt(null)}
+    />
+    </>
   );
 }

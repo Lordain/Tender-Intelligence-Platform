@@ -6,6 +6,8 @@ import { localize, uiText, useLocale } from "@/lib/i18n";
 import { useSavedSearches, useSavedTenderIds } from "@/lib/saved";
 import { TenderCard } from "@/components/tenders/TenderCard";
 import { PageIntro } from "@/components/layout/PageIntro";
+import { useUser } from "@/lib/auth";
+import { AccessPrompt } from "@/components/access/AccessPrompt";
 
 function BellIcon({ active }: { active: boolean }) {
   return (
@@ -44,9 +46,22 @@ function ArrowIcon() {
 
 export function SavedView({ tenders }: { tenders: Tender[] }) {
   const { locale } = useLocale();
+  const { user, loading } = useUser();
   const { savedIds } = useSavedTenderIds();
   const { searches, removeSearch } = useSavedSearches();
   const savedTenders = tenders.filter((tender) => savedIds.includes(tender.id));
+
+  if (loading) {
+    return <main className="min-h-[65vh] bg-[#f6f4ef]" aria-busy="true" />;
+  }
+
+  if (!user) {
+    return (
+      <main className="min-h-[65vh] bg-[#f6f4ef]">
+        <AccessPrompt open kind="login" nextPath="/saved" />
+      </main>
+    );
+  }
 
   return (
     <main className="bg-[#f6f4ef] px-5 py-6 sm:px-8 sm:py-8">

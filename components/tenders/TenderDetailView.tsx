@@ -5,13 +5,12 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { TenderOverview } from "@/components/tenders/TenderOverview";
 import { RequirementSection } from "@/components/tenders/RequirementList";
-import { DetailSectionHeading } from "@/components/tenders/DetailSectionHeading";
 import { KeyDatesTimeline } from "@/components/tenders/KeyDatesTimeline";
 import { RiskList } from "@/components/tenders/RiskList";
 import { SourcePanel } from "@/components/tenders/SourcePanel";
 import { TenderViewTracker } from "@/components/analytics/TenderViewTracker";
 
-export function TenderDetailView({ tender }: { tender: Tender }) {
+export function TenderDetailView({ tender, showTrialCta = false }: { tender: Tender; showTrialCta?: boolean }) {
   const { locale } = useLocale();
 
   return (
@@ -24,21 +23,27 @@ export function TenderDetailView({ tender }: { tender: Tender }) {
         <span aria-hidden="true">←</span> {localize(uiText.backToTenders, locale)}
       </Link>
 
-      <TenderOverview tender={tender} />
+      <TenderOverview tender={tender} showTrialCta={showTrialCta} />
 
       <KeyDatesTimeline dates={tender.keyDates} />
 
-      <section className="flex flex-col gap-4">
-        <DetailSectionHeading title={localize(uiText.oneLineSummary, locale)} description="一句话说明这个项目具体是什么" />
-        {tender.oneLineSummary ? (
-          <div className="flex items-start gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4 shadow-[0_18px_50px_-48px_rgba(6,27,43,.5)]">
-            <span aria-hidden="true" className="mt-1 h-8 w-1 shrink-0 rounded-full bg-[#ffb21c]" />
-            <p className="text-base font-black leading-6 text-[#071826] sm:text-lg">{tender.oneLineSummary}</p>
+      {tender.oneLineSummary && (
+        <section className="relative overflow-hidden rounded-3xl border border-[#efd898] bg-[linear-gradient(135deg,#fff9e9_0%,#fff4d2_100%)] px-6 py-6 shadow-[0_22px_60px_-48px_rgba(126,78,0,.55)] sm:px-8 sm:py-7">
+          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-[#ffb21c]" />
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#ffb21c] text-[#071826]" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current stroke-2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 9h8M8 13h5"/><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 3V6a2 2 0 0 1 2-2Z"/></svg>
+            </span>
+            <div>
+              <h2 className="text-base font-black text-[#071826] sm:text-lg">{localize(uiText.oneLineSummary, locale)}</h2>
+              <p className="mt-0.5 text-xs font-medium text-[#7b6a45]">快速看懂这个项目具体采购什么</p>
+            </div>
           </div>
-        ) : (
-          <p className="text-sm text-[#64717c]">{localize(uiText.noneListed, locale)}</p>
-        )}
-      </section>
+          <p className="mt-5 border-t border-[#e8d79f] pt-5 text-lg font-black leading-8 tracking-[-0.015em] text-[#071826] sm:text-xl">
+            {tender.oneLineSummary}
+          </p>
+        </section>
+      )}
 
       <RequirementSection
         title={uiText.qualifications}

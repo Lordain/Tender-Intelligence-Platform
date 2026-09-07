@@ -10,7 +10,7 @@ export function FeaturedTenders({ tenders }: { tenders: Tender[] }) {
       <div className="mx-auto max-w-[94rem]">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {tenders.map((tender) => (
-          <TenderCard key={tender.id} tender={tender} />
+          <TenderCard key={tender.id} tender={tender} showOneLineSummary />
         ))}
       </div>
 

@@ -34,9 +34,9 @@ const VALUE_LABELS: Record<string, string> = {
   publication_desc: "最新发布",
   explorer: "探索版",
   professional: "个人版",
-  enterprise: "公司版",
+  enterprise: "企业版",
   individual: "个人版",
-  company: "公司版",
+  company: "企业版",
 };
 
 function formatNumber(value: number) {

@@ -1,4 +1,5 @@
-import type { HomepageControlSettings } from "@/lib/db/site-settings";
+import { fetchHomepageControlSettings, type HomepageControlSettings } from "@/lib/db/site-settings";
+import { getCachedTenderList } from "@/lib/tenders";
 import type { Tender } from "@/types/tender";
 
 function isTender(tender: Tender | undefined): tender is Tender {
@@ -34,4 +35,25 @@ export function selectHomepageTenders(
   ).slice(0, settings.tickerCount);
 
   return { featured, ticker };
+}
+
+/**
+ * Is this slug one of the homepage free-preview projects — the allow-list
+ * that lets a guest open a full detail page?
+ *
+ * Answering it does not need the tender table at all in the normal case: a
+ * saved 首页控制 selection is already an exact, ordered list of slugs. Only
+ * the legacy fallback (featuredSlugs === null, i.e. the control page has
+ * never been saved) has to rank every row, and that path disappears the
+ * first time an admin saves. The detail page runs this on every view, so the
+ * difference is a full-table read per project view versus none.
+ */
+export async function isHomepageFreePreviewSlug(slug: string): Promise<boolean> {
+  const settings = await fetchHomepageControlSettings();
+  if (settings.featuredSlugs !== null) {
+    return settings.featuredSlugs.slice(0, settings.featuredCount).includes(slug);
+  }
+  return selectHomepageTenders(await getCachedTenderList(), settings).featured.some(
+    (tender) => tender.slug === slug,
+  );
 }

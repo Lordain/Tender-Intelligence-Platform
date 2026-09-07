@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
-import { getAllTenders, getTenderBySlug } from "@/lib/tenders";
+import { getTenderBySlug } from "@/lib/tenders";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerRole } from "@/lib/access-control-server";
 import { canOpenTenderDetail, tenderDetailPrompt } from "@/lib/access-control";
-import { fetchHomepageControlSettings } from "@/lib/db/site-settings";
-import { selectHomepageTenders } from "@/lib/homepage-selection";
+import { isHomepageFreePreviewSlug } from "@/lib/homepage-selection";
 import { AccessPrompt } from "@/components/access/AccessPrompt";
 
 export default async function TenderDetailPage({
@@ -16,10 +15,9 @@ export default async function TenderDetailPage({
 }) {
   const { slug } = await params;
   const { from } = await searchParams;
-  const [tender, tenders, homepageSettings, viewerRole] = await Promise.all([
+  const [tender, isHomepageFreePreview, viewerRole] = await Promise.all([
     getTenderBySlug(slug),
-    getAllTenders(),
-    fetchHomepageControlSettings(),
+    isHomepageFreePreviewSlug(slug),
     getViewerRole(),
   ]);
 
@@ -27,9 +25,6 @@ export default async function TenderDetailPage({
     notFound();
   }
 
-  const isHomepageFreePreview = selectHomepageTenders(tenders, homepageSettings).featured.some(
-    (item) => item.slug === slug,
-  );
   if (!canOpenTenderDetail(viewerRole, isHomepageFreePreview)) {
     return (
       <main className="min-h-[65vh] bg-[#f6f4ef]">

@@ -22,6 +22,13 @@ import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
 const WRITE = process.argv.includes("--write");
 const PAGE = 1000;
+/**
+ * Slugs per `.in()` filter. That filter goes in the GET query string, and
+ * 1000 slugs makes a URL Supabase's gateway rejects outright — reported by
+ * Node as a bare `TypeError: fetch failed`. Paging reads can stay at 1000;
+ * only filters built from a list need this.
+ */
+const FILTER_CHUNK = 100;
 
 async function main() {
   const supabase = createSupabaseAdminClient();
@@ -51,8 +58,8 @@ async function main() {
   console.log(`手动删除列表共 ${deletedSlugs.length} 条。`);
 
   const present: { slug: string; title: string; country: string }[] = [];
-  for (let i = 0; i < deletedSlugs.length; i += PAGE) {
-    const chunk = deletedSlugs.slice(i, i + PAGE);
+  for (let i = 0; i < deletedSlugs.length; i += FILTER_CHUNK) {
+    const chunk = deletedSlugs.slice(i, i + FILTER_CHUNK);
     const { data, error } = await supabase
       .from("tenders")
       .select("slug, title_es, title_zh, country")
@@ -84,8 +91,8 @@ async function main() {
   }
 
   let removed = 0;
-  for (let i = 0; i < present.length; i += PAGE) {
-    const chunk = present.slice(i, i + PAGE).map((row) => row.slug);
+  for (let i = 0; i < present.length; i += FILTER_CHUNK) {
+    const chunk = present.slice(i, i + FILTER_CHUNK).map((row) => row.slug);
     // Child rows (requirements/risks/key dates/documents) cascade from
     // tenders, so this is the only delete needed.
     const { error } = await supabase.from("tenders").delete().in("slug", chunk);

@@ -12,6 +12,38 @@ import { assertWritten } from "@/lib/db/assert-written";
  */
 const BATCH_SIZE = 500;
 
+/**
+ * Slugs per LOOKUP, much smaller than BATCH_SIZE.
+ *
+ * A PostgREST `.in()` filter travels in the GET query string, so 500 slugs
+ * is a 12,000-23,000 character URL depending on how long the source's slugs
+ * are. Supabase's gateway rejects a request line that size, and Node
+ * surfaces that rejection as a bare `TypeError: fetch failed` with nothing
+ * pointing at the URL — which is exactly what a large Mexico import hit
+ * (2026-09-07), while a smaller one in the same session went through. 100
+ * slugs keeps the worst case near 4 KB, well inside any gateway's limit,
+ * at the cost of a few more small round trips.
+ *
+ * Only the read filters need this. The upserts below send their rows in the
+ * request BODY, where BATCH_SIZE is about payload size, not URL length.
+ */
+const LOOKUP_CHUNK_SIZE = 100;
+
+/**
+ * One retry before giving up. These lookups now abort the whole import when
+ * they fail (see below for why), so a single genuine blip should not cost a
+ * full re-run — but a second failure is treated as real rather than retried
+ * into a hang.
+ */
+async function withOneRetry<T>(run: () => PromiseLike<T>): Promise<T> {
+  try {
+    return await run();
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return run();
+  }
+}
+
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
@@ -142,8 +174,10 @@ export async function upsertTendersBatched(
   // onProgress() denominator correctly, the same way the "excluded" filter
   // above does.
   const deletedSlugs = new Set<string>();
-  for (const slugChunk of chunk(uniqueBySlug.map((t) => t.slug), BATCH_SIZE)) {
-    const { data, error } = await supabase.from("tender_manual_deletions").select("slug").in("slug", slugChunk);
+  for (const slugChunk of chunk(uniqueBySlug.map((t) => t.slug), LOOKUP_CHUNK_SIZE)) {
+    const { data, error } = await withOneRetry(() =>
+      supabase.from("tender_manual_deletions").select("slug").in("slug", slugChunk),
+    );
     // Fails the import rather than continuing (2026-09-07). This used to
     // log and fall through to "nothing was manually deleted", which meant a
     // transient network error silently RE-INSERTED every tender the admin
@@ -168,11 +202,20 @@ export async function upsertTendersBatched(
   }
 
   for (const batch of chunk(liveTenders, BATCH_SIZE)) {
-    const { data: protectedRows, error: protectedError } = await supabase
-      .from("tenders")
-      .select("slug")
-      .in("slug", batch.map((t) => t.slug))
-      .eq("relevance_manually_overridden", true);
+    // Chunked separately from the upsert batch, for the URL-length reason
+    // explained at LOOKUP_CHUNK_SIZE.
+    const protectedSlugList: string[] = [];
+    let protectedError: { message: string } | null = null;
+    for (const slugChunk of chunk(batch.map((t) => t.slug), LOOKUP_CHUNK_SIZE)) {
+      const { data: rows, error } = await withOneRetry(() =>
+        supabase.from("tenders").select("slug").in("slug", slugChunk).eq("relevance_manually_overridden", true),
+      );
+      if (error) {
+        protectedError = error;
+        break;
+      }
+      for (const row of rows ?? []) protectedSlugList.push(row.slug as string);
+    }
     // Also fails the batch rather than continuing (2026-09-07). Falling
     // back to "nothing is protected" is not conservative: every tender in
     // the batch then goes through buildRow(), which writes
@@ -184,7 +227,7 @@ export async function upsertTendersBatched(
     if (protectedError) {
       throw new Error(`无法读取手动覆盖标记，已中止导入以免覆盖人工分类结果：${protectedError.message}`);
     }
-    const protectedSlugs = new Set((protectedRows ?? []).map((r) => r.slug as string));
+    const protectedSlugs = new Set(protectedSlugList);
 
     const normalBatch = batch.filter((t) => !protectedSlugs.has(t.slug));
     const protectedBatch = batch.filter((t) => protectedSlugs.has(t.slug));

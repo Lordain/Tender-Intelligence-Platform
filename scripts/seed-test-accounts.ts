@@ -7,7 +7,8 @@
  * to the state described below, so it is safe to run after a schema change
  * or once a trial has aged out. `--cleanup` deletes every account it makes.
  *
- * Requires SUPABASE_SERVICE_ROLE_KEY. Accounts are created with
+ * Requires SUPABASE_SERVICE_ROLE_KEY and migrations through 0026.
+ * Accounts are created with
  * email_confirm: true, so no confirmation mail is sent and they can sign in
  * immediately. Never point this at a database with real users — it deletes
  * by address and rewrites subscriptions.
@@ -128,11 +129,18 @@ async function seed() {
     );
   }
 
+  // A window that is already underway, so 账户管理 shows a real start AND end
+  // date and the 取消自动续费 flow has a meaningful "access continues until"
+  // to state. cancel_at_period_end is left at its default; re-running the
+  // seeder deletes and reinserts these rows, which is how a cancellation test
+  // gets reset.
   assertWritten("个人版订阅", await admin.from("subscriptions").insert({
-    user_id: idByRole.get("professional"), plan: "professional", status: "active", current_period_end: iso(30),
+    user_id: idByRole.get("professional"), plan: "professional", status: "active",
+    current_period_start: iso(-30), current_period_end: iso(30),
   }));
   assertWritten("企业版订阅", await admin.from("subscriptions").insert({
-    user_id: idByRole.get("enterprise-owner"), plan: "enterprise", status: "active", current_period_end: iso(30),
+    user_id: idByRole.get("enterprise-owner"), plan: "enterprise", status: "active",
+    current_period_start: iso(-30), current_period_end: iso(30),
   }));
 
   // One seat already accepted, one invitation still waiting — the second is

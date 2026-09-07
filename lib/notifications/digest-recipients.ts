@@ -62,9 +62,16 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
   // An enterprise seat holder is entitled through the OWNER's subscription,
   // not their own, so the owner has to be pulled in even though the owner may
   // never have enabled notifications themselves.
+  //
+  // ACCEPTED only. Without that filter a pending invitation counted as a
+  // seat, so someone who had merely been named by an owner — and had never
+  // agreed to anything — received the paid digest. Same consent rule as
+  // getViewerEntitlement(); caught by qa-ent-invitee showing up in
+  // check:digest-recipients.
   const { data: memberships, error: membershipsError } = await supabase
     .from("enterprise_members")
     .select("member_user_id, owner_user_id")
+    .eq("status", "accepted")
     .in("member_user_id", optedInIds);
   if (membershipsError) throw new Error(`企业成员读取失败：${membershipsError.message}`);
   const ownerByMember = new Map(

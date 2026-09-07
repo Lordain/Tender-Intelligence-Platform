@@ -83,8 +83,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "CONSTRUCCIÓN DEL SEGUNDO TRAMO DEL ACUEDUCTO",
-    expectedTier: "excluded",
-    note: "Recorded because it was assumed wrong (2026-09-07): a production row with this title shows as 大型项目, so this title was taken to be a MAJOR_PROJECT_KEYWORDS match. It is not — 'acueducto' appears in no keyword list in this file, and this title alone classified as 'standard' even before the Mexico rule. Whatever makes that real row flagship is elsewhere in its full text or its value. Left here as an open question rather than a silent keyword addition: adding 'acueducto' would also promote every municipal 'rehabilitación de acueducto' repair job to flagship.",
+    expectedTier: "standard",
+    note: "Recorded because it was assumed wrong (2026-09-07): a production row with this title shows as 大型项目, so this title was taken to be a MAJOR_PROJECT_KEYWORDS match. It is not — 'acueducto' appears in no keyword list in this file, and this title alone classified as 'standard' even before the Mexico rule. Whatever makes that real row flagship is elsewhere in its full text or its value. Left here as an open question rather than a silent keyword addition: adding 'acueducto' would also promote every municipal 'rehabilitación de acueducto' repair job to flagship. Kept as 'standard' because 'construcción' does match FLAGSHIP_INDUSTRY_KEYWORDS, which the Mexico rule treats as a real (if non-promoting) signal.",
     scopeType: "works",
     country: "Mexico",
   },
@@ -113,6 +113,29 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     scopeType: "equipment",
     estimatedValue: 3_000_000,
     currency: "USD",
+    country: "Mexico",
+  },
+
+  {
+    title: "ADQUISICIÓN DE EXCAVADORA HIDRÁULICA PARA USARSE EN LA REFINERÍA MADERO Y ADQUISICIÓN DE CAMIÓN CON PLATAFORMA Y BRAZO ARTICULADO PARA USARSE EN LA REFINERÍA MADERO.",
+    expectedTier: "standard",
+    note: "Real title the user caught being wrongly excluded by the 2026-09-07 Mexico undisclosed-value rule. A PEMEX heavy-equipment purchase — the category this platform exists to surface. It DOES match FLAGSHIP_INDUSTRY_KEYWORDS' anchored purchase pattern; it reached the gate only because that match promotes to 'significant' only once a value is disclosed. The gate now skips anything that matched a positive keyword, however weakly.",
+    scopeType: "equipment",
+    buyer: "PEMEX",
+    country: "Mexico",
+  },
+  {
+    title: "ADQUISICIÓN DE EXCAVADORA HIDRÁULICA",
+    expectedTier: "standard",
+    note: "The machine named directly rather than as 'maquinaria pesada', which was the only heavy-machinery phrasing on the whitelist. No disclosed value, so this also pins that the Mexico rule keeps it.",
+    scopeType: "equipment",
+    country: "Mexico",
+  },
+  {
+    title: "ARRENDAMIENTO DE EXCAVADORA HIDRÁULICA Y RETROEXCAVADORA",
+    expectedTier: "excluded",
+    note: "The other side of adding 'excavadora': renting machinery is not buying it. The whitelist pattern is anchored on a purchase verb, so a rental has no positive signal and the Mexico undisclosed-value rule takes it — the same treatment vehicle rental already got.",
+    scopeType: "services",
     country: "Mexico",
   },
 

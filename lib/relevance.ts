@@ -685,7 +685,12 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // not a modifier buried later in the sentence. Every existing fixture
   // still matches (the noun always follows "de" directly, at most after a
   // number), confirmed by the passing test suite.
-  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+[\d'"\s]{0,15}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?|maquinaria pesada)/i,
+  // "excavadora"/"retroexcavadora"/"grúa" named alongside the existing
+  // "maquinaria pesada": the user's 2026-09-04 ask was for heavy-machinery
+  // PURCHASES as a category, and a real PEMEX title (2026-09-07) named the
+  // machine directly rather than using the generic phrase. Same anchored
+  // pattern, so "arrendamiento de excavadora" (rental) still isn't caught.
+  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+[\d'"\s]{0,15}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?|maquinaria pesada|(retro)?excavadora(s)?|gr[úu]a(s)?)/i,
   // Power-grid key equipment — added per the user's explicit request
   // (2026-09-04: "白名单加入电力相关的关键设备：变压器、发电机、继电保护器等"
   // then "还有UPS"). Same anchored purchase-verb pattern and reasoning as
@@ -1254,7 +1259,23 @@ export function classifyRelevance(input: {
   // having matched none of them. "CONSTRUCCIÓN DEL SEGUNDO TRAMO DEL
   // ACUEDUCTO", flagship on keywords alone with no value, never gets this
   // far.
-  if (input.country === "Mexico" && normalizedValue === undefined) {
+  //
+  // Gated on matchesFlagshipIndustry (2026-09-07, same day, after the user
+  // caught a real miss): "ADQUISICIÓN DE EXCAVADORA HIDRÁULICA PARA USARSE
+  // EN LA REFINERÍA MADERO Y ADQUISICIÓN DE CAMIÓN CON PLATAFORMA Y BRAZO
+  // ARTICULADO" was excluded by this gate. It is a PEMEX heavy-equipment
+  // purchase — exactly the category this platform exists to surface — and
+  // it does match FLAGSHIP_INDUSTRY_KEYWORDS' anchored purchase pattern.
+  // It reached this line only because that match promotes to "significant"
+  // only once a value is disclosed, so with no value it fell through with
+  // nothing marking it as having matched anything.
+  //
+  // A keyword match that is real but not strong enough to PROMOTE is still
+  // a keyword match, and this gate must not treat it as silence. Checked
+  // against the same import that motivated the gate: the equipment
+  // purchase matches, and not one of the 20 sampled municipal water/paving/
+  // well titles does.
+  if (input.country === "Mexico" && normalizedValue === undefined && !matchesFlagshipIndustry) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
 

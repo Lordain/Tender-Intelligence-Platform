@@ -257,7 +257,12 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // camioneta/pick up/SUV/furgoneta — real Mexican government fleet
   // purchases this pattern previously missed entirely (an SUV or pickup
   // acquisition title never says the bare word "vehículo").
-  ["vehicles", /veh[íi]culo(s)?|vehs\.?\b|cami[óo]n(es)?\b|autob[úu]s(es)?|maquinaria pesada|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?/i],
+  // excavadora/grúa named alongside the generic "maquinaria pesada" already
+  // here (2026-09-07): relevance.ts's purchase whitelist was extended to
+  // name the machines directly, and without a matching tag here such a
+  // tender still falls to the no-industry/no-value exclusion — the
+  // whitelist entry would match and change nothing.
+  ["vehicles", /veh[íi]culo(s)?|vehs\.?\b|cami[óo]n(es)?\b|autob[úu]s(es)?|maquinaria pesada|(retro)?excavadora(s)?|gr[úu]a(s)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?/i],
 ];
 
 /**

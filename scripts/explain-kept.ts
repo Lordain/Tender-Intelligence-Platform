@@ -15,7 +15,7 @@
  *   npm run explain:kept -- exports/tenders-kept-2026-09-07.csv
  *   npm run explain:kept -- --examples=8
  */
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "csv-parse/sync";
 import { explainKeptSignal } from "../lib/relevance";
@@ -27,9 +27,17 @@ const ONLY = args.find((a) => a.startsWith("--signal="))?.split("=").slice(1).jo
 
 function newestKeptCsv(): string {
   const dir = "exports";
-  const files = readdirSync(dir).filter((f) => f.startsWith("tenders-kept-") && f.endsWith(".csv")).sort();
+  // By modification time, NOT by name: reclassify falls back to
+  // "tenders-kept-<date>-2.csv" when the plain file is open in Excel, and
+  // that name sorts BEFORE the plain one ("-" is 45, "." is 46), so an
+  // alphabetical pick would silently read the older export — which is
+  // exactly the failure this whole path exists to avoid.
+  const files = readdirSync(dir)
+    .filter((f) => f.startsWith("tenders-kept-") && f.endsWith(".csv"))
+    .map((f) => ({ path: join(dir, f), at: statSync(join(dir, f)).mtimeMs }))
+    .sort((a, b) => a.at - b.at);
   if (files.length === 0) throw new Error("exports/ 里没有 tenders-kept-*.csv，先跑 npm run reclassify:tenders");
-  return join(dir, files[files.length - 1]);
+  return files[files.length - 1].path;
 }
 
 const path = args.find((a) => !a.startsWith("--")) ?? newestKeptCsv();
@@ -47,6 +55,13 @@ for (const row of rows) {
     // cannot fire here and this diagnostic would disagree with the real
     // classification — the same kind of divergence it exists to catch.
     governmentLevel: (row.government_level || undefined) as never,
+    // summary and the priority-source flag were both missing here, and both
+    // caused the diagnostic to report rows as excluded that the classifier
+    // keeps — 30 of them in one real export, every one a federal strategic
+    // corridor kept by isNationalPriorityProject. A diagnostic that sees
+    // less than the classifier does not explain it, it contradicts it.
+    summary: row.summary_es || undefined,
+    isNationalPriorityProject: row.source_name === "Proyectos Estratégicos MX (Hacienda)",
     industries: (row.industries ?? "").split(/[;,|]/).map((s) => s.trim()).filter(Boolean),
     estimatedValue: row.estimated_value ? Number(row.estimated_value) : undefined,
     currency: row.currency || undefined,

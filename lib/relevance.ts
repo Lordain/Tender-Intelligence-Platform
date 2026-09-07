@@ -1674,11 +1674,20 @@ export function explainKeptSignal(input: {
   country?: string;
   scopeType?: TenderScopeType;
   governmentLevel?: Tender["governmentLevel"];
+  isNationalPriorityProject?: boolean;
 }): string {
   // The row's real scopeType matters: hardcoding "works" made 26 rows of a
   // real kept export report themselves as "excluded", because scopeType
   // "consulting" is excluded outright and this was overwriting it.
-  const result = classifyRelevance({ ...input, scopeType: input.scopeType ?? "works", governmentLevel: input.governmentLevel });
+  const result = classifyRelevance({
+    ...input,
+    scopeType: input.scopeType ?? "works",
+    governmentLevel: input.governmentLevel,
+    isNationalPriorityProject: input.isNationalPriorityProject,
+  });
+  // Reported before the tier, because this flag bypasses every exclusion and
+  // is the whole reason such a row is in the kept set.
+  if (input.isNationalPriorityProject) return "国家战略项目（Proyectos Estratégicos MX，绕过全部排除）";
   if (result.tier === "excluded") return "excluded（不该出现在 kept 里）";
 
   const haystack = stripKnownFalsePositivePlaceNames(

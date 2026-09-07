@@ -88,8 +88,9 @@ export type ReclassifyTendersResult = {
   failedCount: number;
   /** How many rows got a different `industries` array from re-running classifyIndustries() against their real title/summary/buyer (see the header comment's new point 0). */
   industriesChangedCount: number;
-  keptPath: string;
-  excludedPath: string;
+  /** null when every candidate filename was locked — see writeExport(). */
+  keptPath: string | null;
+  excludedPath: string | null;
   write: boolean;
 };
 
@@ -186,6 +187,8 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
       row.buyer,
       row.country,
       row.government_level,
+      row.source_name,
+      row.summary.es,
       recomputedIndustries.join("; "),
       row.scope_type,
       row.estimated_value ?? "",
@@ -258,6 +261,8 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
     "buyer",
     "country",
     "government_level",
+    "source_name",
+    "summary_es",
     "industries",
     "scope_type",
     "estimated_value",
@@ -273,24 +278,42 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
 
   if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
   const dateStamp = new Date().toISOString().slice(0, 10);
-  const keptPath = join(OUT_DIR, `tenders-kept-${dateStamp}.csv`);
-  const excludedPath = join(OUT_DIR, `tenders-excluded-${dateStamp}.csv`);
-
-  // Best-effort only — every real database write above has already
-  // happened by this point, so a local disk hiccup here (real case,
-  // 2026-09-05: EBUSY on Windows because a previous run's same-named CSV
-  // was still open in Excel) must not make the caller think the whole
-  // reclassify failed and lose sight of the real updated/deleted counts.
-  try {
-    writeFileSync(keptPath, toCsv(headers, keptCsvRows));
-    writeFileSync(excludedPath, toCsv(headers, excludedCsvRows));
-    console.log(`[reclassify-tenders] Wrote ${keptCsvRows.length} kept tender(s) -> ${keptPath}`);
-    console.log(`[reclassify-tenders] Wrote ${excludedCsvRows.length} excluded tender(s) -> ${excludedPath}`);
-  } catch (err) {
-    console.error(
-      `[reclassify-tenders] Failed to write CSV export(s) (database writes above already succeeded, only this local file export failed): ${err instanceof Error ? err.message : String(err)}`,
-    );
+  /**
+   * Writes the export, falling back to a numbered name when the plain one
+   * is locked.
+   *
+   * A locked file is not a disk hiccup, it is the normal state of an export
+   * the reviewer is reading in Excel — and it has now cost two full review
+   * cycles: the run reports its real counts, writes nothing, and
+   * explain-kept.ts then reads the PREVIOUS run's file and reports a
+   * distribution for rules that are no longer in force. Losing the export
+   * of the run you just did is the expensive part, so take a new name
+   * rather than give up.
+   */
+  function writeExport(kind: "kept" | "excluded", csv: string): string | null {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const path = join(OUT_DIR, `tenders-${kind}-${dateStamp}${attempt === 0 ? "" : `-${attempt + 1}`}.csv`);
+      try {
+        writeFileSync(path, csv);
+        return path;
+      } catch (err) {
+        const locked = (err as NodeJS.ErrnoException).code === "EBUSY" || (err as NodeJS.ErrnoException).code === "EPERM";
+        if (!locked) {
+          console.error(
+            `[reclassify-tenders] Failed to write the ${kind} CSV (database writes above already succeeded, only this local file export failed): ${err instanceof Error ? err.message : String(err)}`,
+          );
+          return null;
+        }
+      }
+    }
+    console.error(`[reclassify-tenders] Could not write the ${kind} CSV — six candidate names were all locked. Close them and re-run.`);
+    return null;
   }
+
+  const keptPath = writeExport("kept", toCsv(headers, keptCsvRows));
+  const excludedPath = writeExport("excluded", toCsv(headers, excludedCsvRows));
+  if (keptPath) console.log(`[reclassify-tenders] Wrote ${keptCsvRows.length} kept tender(s) -> ${keptPath}`);
+  if (excludedPath) console.log(`[reclassify-tenders] Wrote ${excludedCsvRows.length} excluded tender(s) -> ${excludedPath}`);
 
   return {
     totalCount: rows.length,

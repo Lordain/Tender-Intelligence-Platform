@@ -13,7 +13,7 @@
  *
  * Usage: npm run check:digest-recipients
  */
-import { getDigestRecipients } from "../lib/notifications/tender-digest";
+import { getDigestRecipients } from "../lib/notifications/digest-recipients";
 
 getDigestRecipients()
   .then((recipients) => {

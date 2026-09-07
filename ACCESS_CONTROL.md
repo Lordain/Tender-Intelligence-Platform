@@ -33,8 +33,9 @@ owner's seat once they remove the row.
 ## Migrations
 
 Run `0023_server_only_tender_reads.sql`, `0024_trial_and_enterprise_members.sql`,
-`0025_enterprise_member_consent.sql`, and
-`0026_subscription_period_and_cancellation.sql` before deploying this access model.
+`0025_enterprise_member_consent.sql`,
+`0026_subscription_period_and_cancellation.sql` and
+`0027_subscription_billing_interval.sql` before deploying this access model.
 `0025` resets every existing `enterprise_members` row to `pending`, so any seat
 that was live before it stops granting access until the invitee accepts.
 
@@ -42,11 +43,35 @@ The server requires `SUPABASE_SERVICE_ROLE_KEY`: since `0023` the anon key
 cannot read tenders at all, and the app falls back to bundled mock data (with a
 console warning) rather than serving a silently empty site.
 
+## Renewal
+
+**Nothing in this codebase renews a subscription.** `current_period_end` is
+only ever written by hand or by the seeder; moving it forward requires a
+payment provider's webhook, and no checkout flow exists yet. So today a
+subscription stops on its end date whether or not anyone cancelled it.
+
+`subscriptions.stripe_subscription_id` is what distinguishes the two cases,
+and the account page reads it rather than asserting anything: with a billing
+link it says the subscription renews on that date and offers to cancel;
+without one it says the subscription ends on that date and offers nothing to
+cancel, because there is no renewal to stop. Both notices correct themselves
+once checkout writes real provider ids — no copy needs changing.
+
 Cancelling sets `cancel_at_period_end`: access remains active through
-`current_period_end`, then the entitlement automatically falls back to the
-free role. When Stripe billing is connected, the cancellation endpoint must
-also schedule cancellation with Stripe so billing and database state remain
-synchronized.
+`current_period_end`, then the entitlement falls back to the free role. When
+Stripe is connected, the cancellation endpoint must also schedule the
+cancellation with Stripe so billing and database state stay in step.
+
+`0027` also adds a unique index allowing only ONE live (`active`/`trialing`)
+subscription per account: the entitlement picks the first row still covering
+today out of an unordered list while the cancellation endpoint picks the
+newest, so with two live rows those can disagree and a cancellation would
+silently leave the other running. An upgrade must close the old row before
+opening the new one.
+
+`npm run list:subscriptions` prints every live subscription with its end date
+and flags the rows that need attention — expired but still active, no end
+date at all, or no billing link.
 
 ## Test accounts
 

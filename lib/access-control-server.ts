@@ -1,11 +1,11 @@
 import "server-only";
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { TRIAL_DAYS, type SubscriptionPlan, type ViewerEntitlement, type ViewerRole } from "@/lib/access-control";
+import { TRIAL_DAYS, type BillingInterval, type SubscriptionPlan, type ViewerEntitlement, type ViewerRole } from "@/lib/access-control";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 
-const EMPTY: ViewerEntitlement = { role: "guest", plan: null, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false };
+const EMPTY: ViewerEntitlement = { role: "guest", plan: null, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, hasBillingLink: false };
 
 function isCurrent(subscription: { current_period_end?: string | null }) {
   return !subscription.current_period_end || new Date(subscription.current_period_end).getTime() >= Date.now();
@@ -18,10 +18,14 @@ type SubscriptionRow = {
   current_period_end: string | null;
   current_period_start?: string | null;
   cancel_at_period_end?: boolean;
+  billing_interval?: string | null;
+  stripe_subscription_id?: string | null;
 };
 
-const SUBSCRIPTION_COLUMNS = "user_id, plan, status, created_at, current_period_end, current_period_start, cancel_at_period_end";
-const SUBSCRIPTION_COLUMNS_BEFORE_0026 = "user_id, plan, status, created_at, current_period_end";
+const SUBSCRIPTION_COLUMNS =
+  "user_id, plan, status, created_at, current_period_end, current_period_start, cancel_at_period_end, billing_interval, stripe_subscription_id";
+/** Migrations 0026 and 0027 add the columns above; this is what came before them. */
+const SUBSCRIPTION_COLUMNS_LEGACY = "user_id, plan, status, created_at, current_period_end";
 
 /**
  * The one active subscription that still covers today, or undefined.
@@ -46,7 +50,7 @@ async function findCurrentSubscription(
   };
 
   let result = await run(SUBSCRIPTION_COLUMNS);
-  if (result.error?.code === "42703") result = await run(SUBSCRIPTION_COLUMNS_BEFORE_0026);
+  if (result.error?.code === "42703") result = await run(SUBSCRIPTION_COLUMNS_LEGACY);
   if (result.error) throw new Error(`订阅读取失败：${result.error.message}`);
 
   return ((result.data ?? []) as unknown as SubscriptionRow[]).find(isCurrent);
@@ -57,6 +61,11 @@ function periodOf(subscription: SubscriptionRow) {
     periodStart: subscription.current_period_start ?? subscription.created_at ?? null,
     periodEnd: subscription.current_period_end ?? null,
     cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+    billingInterval: (subscription.billing_interval ?? null) as BillingInterval | null,
+    // Only a payment provider's webhook can move current_period_end forward.
+    // Without a subscription on that provider's side, the period end is
+    // simply when access stops.
+    hasBillingLink: Boolean(subscription.stripe_subscription_id),
   };
 }
 

@@ -22,6 +22,7 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [entitlementReloadKey, setEntitlementReloadKey] = useState(0);
@@ -48,14 +49,25 @@ export default function AccountPage() {
 
   const entitlement = useEntitlement(Boolean(user), entitlementReloadKey);
 
+  // Only the person who owns the subscription may cancel it; an enterprise
+  // seat holder reads the owner's dates but has nothing to cancel.
+  const canCancel = Boolean(
+    entitlement?.role === "subscriber" &&
+    entitlement.subscriptionOwnerUserId === user?.id &&
+    entitlement.periodEnd &&
+    !entitlement.cancelAtPeriodEnd,
+  );
+
   const formatPeriodDate = (value: string | null) => value
     ? new Date(value).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
     : "待确认";
 
+  // Confirmed in the page rather than through window.confirm(): the native
+  // dialog renders the notice as unstyled plain text, and several browsers
+  // and embedded webviews suppress it outright — there it returns false, so
+  // the button would simply do nothing with no way to tell why.
   async function cancelSubscription() {
     if (!entitlement?.periodEnd) return;
-    const effectiveDate = formatPeriodDate(entitlement.periodEnd);
-    if (!window.confirm(`确认取消自动续费？\n\n取消后当前订阅仍可使用至 ${effectiveDate}，并从该日期到期后变为免费版。`)) return;
     setCanceling(true);
     setCancelError(null);
     try {
@@ -65,7 +77,10 @@ export default function AccountPage() {
         setCancelError(result.error ?? "取消失败，请稍后重试。");
         return;
       }
+      setConfirmingCancel(false);
       setEntitlementReloadKey((key) => key + 1);
+    } catch {
+      setCancelError("网络错误，请稍后重试。");
     } finally {
       setCanceling(false);
     }
@@ -193,12 +208,29 @@ export default function AccountPage() {
               {entitlement?.cancelAtPeriodEnd && entitlement.periodEnd && (
                 <div className="mt-5 rounded-xl border border-[#ffb21c]/35 bg-[#ffb21c]/10 px-4 py-3 text-xs font-bold leading-5 text-[#ffd16f]">已取消自动续费。当前权限保留至 {formatPeriodDate(entitlement.periodEnd)}，到期后自动变为免费版。</div>
               )}
+              {canCancel && confirmingCancel && (
+                <div className="mt-5 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-4">
+                  <p className="text-xs font-bold leading-5 text-white/85">确认取消自动续费？</p>
+                  <p className="mt-2 text-xs leading-5 text-white/55">
+                    当前订阅已付费至 <span className="font-bold text-white/85">{formatPeriodDate(entitlement?.periodEnd ?? null)}</span>，在那之前权限完全不变。
+                    该日期<span className="font-bold text-white/85">当天到期后</span>账户自动转为免费版：项目详情需要重新订阅才能查看，邮件通知同时停止。
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button type="button" onClick={cancelSubscription} disabled={canceling} className="rounded-lg bg-white/90 px-4 py-2 text-xs font-black text-[#061b2b] hover:bg-white disabled:opacity-50">
+                      {canceling ? "处理中…" : "确认取消续费"}
+                    </button>
+                    <button type="button" onClick={() => { setConfirmingCancel(false); setCancelError(null); }} disabled={canceling} className="rounded-lg border border-white/20 px-4 py-2 text-xs font-bold text-white/70 hover:text-white disabled:opacity-50">
+                      保持订阅
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="mt-auto flex flex-wrap items-center gap-x-5 gap-y-3 pt-7">
                 <Link href="/pricing" className="inline-flex items-center gap-2 text-sm font-bold text-[#ffb21c] transition-colors hover:text-[#ffd16f]">
                   {localize(uiText.viewPlans, locale)} <span aria-hidden="true">→</span>
                 </Link>
-                {entitlement?.role === "subscriber" && entitlement.subscriptionOwnerUserId === user.id && entitlement.periodEnd && !entitlement.cancelAtPeriodEnd && (
-                  <button type="button" onClick={cancelSubscription} disabled={canceling} className="text-xs font-bold text-white/52 underline decoration-white/25 underline-offset-4 hover:text-white disabled:opacity-50">{canceling ? "处理中…" : "取消自动续费"}</button>
+                {canCancel && !confirmingCancel && (
+                  <button type="button" onClick={() => setConfirmingCancel(true)} className="text-xs font-bold text-white/52 underline decoration-white/25 underline-offset-4 hover:text-white">取消自动续费</button>
                 )}
               </div>
               {cancelError && <p className="mt-3 text-xs font-bold text-red-300">{cancelError}</p>}

@@ -40,3 +40,12 @@ that was live before it stops granting access until the invitee accepts.
 The server requires `SUPABASE_SERVICE_ROLE_KEY`: since `0023` the anon key
 cannot read tenders at all, and the app falls back to bundled mock data (with a
 console warning) rather than serving a silently empty site.
+
+## Test accounts
+
+`npm run seed:test-accounts` creates one account per entitlement level
+(试用 / 免费 / 个人版 / 企业版主账号 / 企业成员 / 待处理邀请) with
+`email_confirm: true`, so they can sign in immediately. 访客 needs no account.
+It is idempotent — re-run it to reset a trial that has aged out — and
+`-- --cleanup` deletes them. It needs `SUPABASE_SERVICE_ROLE_KEY` and must
+never be pointed at a database holding real users.

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx --env-file-if-exists=.env.local scripts/seed-supabase.ts",
+    "seed:test-accounts": "tsx --env-file-if-exists=.env.local scripts/seed-test-accounts.ts",
     "ingest:compras-mx": "tsx --env-file-if-exists=.env.local scripts/ingest-compras-mx.ts",
     "ingest:compranet5": "tsx --env-file-if-exists=.env.local scripts/ingest-compranet5-bulk.ts",
     "ingest:comprasmx-contracts": "tsx --env-file-if-exists=.env.local scripts/ingest-compras-mx-contracts.ts",

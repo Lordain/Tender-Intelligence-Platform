@@ -152,6 +152,19 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
       // Must match what the mappers pass, or a re-import silently disagrees
       // with the review this export was signed off on.
       governmentLevel: row.government_level,
+      // structuredDurationDays is the ONE input this path cannot supply.
+      // colombia-mapper.ts computes it from SECOP's duracion /
+      // unidad_de_duracion at ingestion, and it is not stored on the
+      // tenders table, so there is nothing to read back here.
+      //
+      // Unreachable today rather than fixed: the rule it feeds only ever
+      // EXCLUDES (duration under SHORT_DURATION_DAYS), so a row that would
+      // fail it was never written in the first place, and every row this
+      // query returns has a duration that is long enough or unknown —
+      // exactly what passing undefined means. It stops being harmless the
+      // moment that rule gains a non-excluding branch or the threshold
+      // moves, and the fix then is a column on tenders written by the
+      // mapper, not a guess here.
       isNationalPriorityProject: row.source_name === NATIONAL_PRIORITY_SOURCE_NAME,
     });
 

@@ -3258,3 +3258,35 @@ The tier read is the one stored on the tender row, which includes an admin's man
 **Also fixed in passing**: `analyze-uploaded-document.ts` resolved the tender *after* the dry-run return, so a mistyped slug ran every extraction in the upload and only then failed. The lookup now happens before the first model call.
 
 **Not changed**: a flagship tender whose document is a scan still goes to Haiku (rule 1 wins). Whether a 大型项目 deserves a stronger *scanned*-document model too is a separate question and nobody has asked for it.
+
+
+## Keeping ingestion and reclassify in step (2026-09-07)
+
+Two code paths classify a tender: the mappers at ingestion, and
+`reclassify-tenders.ts` re-running today's rules over what is already stored.
+They must reach the same verdict for the same tender, or a re-import silently
+disagrees with an export that was just reviewed and signed off.
+
+They already had not: `reclassify-tenders.ts` was not selecting
+`government_level` at all when that field became a classification input. The
+guard against a repeat is the type, not vigilance — `governmentLevel` is a
+REQUIRED field on `classifyRelevance`'s input, and undefined has to be written
+out, so a call site that forgets it does not compile. Making it required is
+what enumerated all nineteen call sites, including the admin API, the bundled
+mock data and `lib/db/tenders.ts`'s own fallback. Any future classification
+input should be added the same way.
+
+`explain-kept.ts` counts as a third path and gets the same treatment: it reads
+`scope_type` and `government_level` out of the export rather than assuming
+them. Both were assumed once, and both times the diagnostic disagreed with the
+classifier it was supposed to explain.
+
+Three differences remain, all deliberate:
+
+- Ingestion skips slugs in `tender_manual_deletions`; reclassify does not (it
+  only ever removes, never inserts).
+- Ingestion leaves `relevance_manually_overridden` rows alone, and so does
+  reclassify.
+- `structuredDurationDays` reaches `classifyRelevance` only at ingestion — see
+  the comment at its call site in `reclassify-tenders.ts` for why that is
+  currently unreachable rather than fixed.

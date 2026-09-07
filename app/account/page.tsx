@@ -7,6 +7,7 @@ import { useUser } from "@/lib/auth";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { useEntitlement } from "@/lib/use-entitlement";
+import { BILLING_INTERVAL_LABELS } from "@/lib/access-control";
 import { EnterpriseAccounts } from "@/components/account/EnterpriseAccounts";
 import { PendingInvitations } from "@/components/account/PendingInvitations";
 
@@ -51,11 +52,15 @@ export default function AccountPage() {
 
   // Only the person who owns the subscription may cancel it; an enterprise
   // seat holder reads the owner's dates but has nothing to cancel.
+  // hasBillingLink matters: with no billing agreement behind it there is no
+  // renewal to stop, and offering to cancel one would just write a state that
+  // says something untrue about what happens at the period end.
   const canCancel = Boolean(
     entitlement?.role === "subscriber" &&
     entitlement.subscriptionOwnerUserId === user?.id &&
     entitlement.periodEnd &&
-    !entitlement.cancelAtPeriodEnd,
+    !entitlement.cancelAtPeriodEnd &&
+    entitlement.hasBillingLink,
   );
 
   const formatPeriodDate = (value: string | null) => value
@@ -196,6 +201,9 @@ export default function AccountPage() {
                 <dl className="mt-4 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.035] px-4 text-xs">
                   <div className="flex items-center justify-between gap-4 py-3"><dt className="text-white/48">开始时间</dt><dd className="font-bold text-white/85">{formatPeriodDate(entitlement.periodStart)}</dd></div>
                   <div className="flex items-center justify-between gap-4 py-3"><dt className="text-white/48">到期时间</dt><dd className="font-bold text-white/85">{formatPeriodDate(entitlement.periodEnd)}</dd></div>
+                  {entitlement.billingInterval && (
+                    <div className="flex items-center justify-between gap-4 py-3"><dt className="text-white/48">计费周期</dt><dd className="font-bold text-white/85">{BILLING_INTERVAL_LABELS[entitlement.billingInterval]}</dd></div>
+                  )}
                 </dl>
               )}
               <p className="mt-4 text-sm leading-6 text-white/55">
@@ -203,10 +211,20 @@ export default function AccountPage() {
                   ? `试用有效期至 ${new Date(entitlement.trialEndsAt).toLocaleDateString("zh-CN")}；到期后自动转为免费版。`
                   : entitlement?.role === "free"
                     ? "免费试用已结束，订阅后可恢复项目详情与邮件通知。"
-                    : "查看可用套餐，管理项目与通知服务。"}
+                    : entitlement?.role === "subscriber" && entitlement.hasBillingLink && !entitlement.cancelAtPeriodEnd
+                      ? `将于 ${formatPeriodDate(entitlement.periodEnd)} 自动续期，可随时取消。`
+                      : "查看可用套餐，管理项目与通知服务。"}
               </p>
               {entitlement?.cancelAtPeriodEnd && entitlement.periodEnd && (
                 <div className="mt-5 rounded-xl border border-[#ffb21c]/35 bg-[#ffb21c]/10 px-4 py-3 text-xs font-bold leading-5 text-[#ffd16f]">已取消自动续费。当前权限保留至 {formatPeriodDate(entitlement.periodEnd)}，到期后自动变为免费版。</div>
+              )}
+              {/* Said plainly rather than left to be inferred: nothing in this
+                  codebase moves current_period_end forward, so a subscription
+                  with no billing agreement behind it simply ends on that date.
+                  This notice disappears on its own once checkout is connected
+                  and rows carry a provider subscription id. */}
+              {entitlement?.role === "subscriber" && !entitlement.hasBillingLink && !entitlement.cancelAtPeriodEnd && entitlement.periodEnd && (
+                <div className="mt-5 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-xs font-bold leading-5 text-white/70">本次订阅有效期至 {formatPeriodDate(entitlement.periodEnd)}，尚未接入自动续期。到期后账户将转为免费版，需重新订阅。</div>
               )}
               {canCancel && confirmingCancel && (
                 <div className="mt-5 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-4">

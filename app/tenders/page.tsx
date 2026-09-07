@@ -1,36 +1,29 @@
 import { Suspense } from "react";
-import { getAllTenders } from "@/lib/tenders";
+import { getCachedTenderList } from "@/lib/tenders";
 import { TenderExplorer } from "@/components/tenders/TenderExplorer";
 import { getViewerRole } from "@/lib/access-control-server";
 
 /**
- * ISR, not the default (2026-09-06). This page reads Supabase through a
- * service-role client and uses no request-time API, so Next prerendered it
- * at BUILD time with no revalidation at all — confirmed from a real
- * `next build` route table (`○ /tenders`). Every tender ingested after a
- * deploy was therefore invisible on the public list until the next
- * deploy, while `/tenders/[slug]` (dynamic) showed the fresh row: the
- * list and the detail page disagreed. Serving it from cache is still the
- * right call for browsing speed — this is an unbounded full-table query
- * whose result is identical for every visitor — so it stays cached, just
- * with a lifetime. Ingestion runs a few times a day, so five minutes is
- * far below the real update rate and costs one regeneration per window.
+ * This page is DYNAMIC, and not by choice: getViewerRole() reads the session
+ * cookie, which opts the whole route into request-time rendering. It has to —
+ * what a guest, a trial user and a lapsed free user may do on this list
+ * differs, and a shared prerendered HTML file cannot hold three answers.
+ *
+ * It used to carry `export const revalidate = 300`. That export is gone
+ * because a dynamic segment ignores it: keeping it would have read as five
+ * minutes of caching that a real `next build` route table (`ƒ /tenders`)
+ * shows does not exist. The caching itself did not go away — it moved into
+ * getCachedTenderList(), which is the part that is genuinely the same for
+ * every visitor. See its comment in lib/tenders.ts.
  */
-export const revalidate = 300;
 
 export default async function TendersPage() {
-  const [tenders, viewerRole] = await Promise.all([
-    getAllTenders(),
-    getViewerRole(),
-  ]);
+  const [tenders, viewerRole] = await Promise.all([getCachedTenderList(), getViewerRole()]);
 
   return (
     <div className="mx-auto w-full max-w-[94rem] px-5 py-6 sm:px-8 sm:py-8">
       <Suspense>
-        <TenderExplorer
-          tenders={tenders}
-          viewerRole={viewerRole}
-        />
+        <TenderExplorer tenders={tenders} viewerRole={viewerRole} />
       </Suspense>
     </div>
   );

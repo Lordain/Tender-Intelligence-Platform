@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { useNotifications } from "@/lib/notifications";
@@ -16,9 +15,9 @@ function BellIcon() {
   );
 }
 
-export function NotificationBell({ tenders }: { tenders: Tender[] }) {
+export function NotificationBell() {
   const { locale } = useLocale();
-  const { items, unreadCount, markAllRead } = useNotifications(tenders);
+  const { items, unreadCount, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 

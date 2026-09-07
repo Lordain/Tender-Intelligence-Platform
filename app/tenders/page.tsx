@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { getCachedTenderList } from "@/lib/tenders";
 import { TenderExplorer } from "@/components/tenders/TenderExplorer";
 import { getViewerRole } from "@/lib/access-control-server";
+import { buildTenderListPage, type TenderListSearchParams } from "@/lib/tender-list-page";
 
 /**
  * This page is DYNAMIC, and not by choice: getViewerRole() reads the session
@@ -17,13 +18,22 @@ import { getViewerRole } from "@/lib/access-control-server";
  * every visitor. See its comment in lib/tenders.ts.
  */
 
-export default async function TendersPage() {
-  const [tenders, viewerRole] = await Promise.all([getCachedTenderList(), getViewerRole()]);
+export default async function TendersPage({
+  searchParams,
+}: {
+  searchParams: Promise<TenderListSearchParams>;
+}) {
+  const [allTenders, viewerRole, params] = await Promise.all([
+    getCachedTenderList(),
+    getViewerRole(),
+    searchParams,
+  ]);
+  const pageData = buildTenderListPage(allTenders, params);
 
   return (
     <div className="mx-auto w-full max-w-[94rem] px-5 py-6 sm:px-8 sm:py-8">
       <Suspense>
-        <TenderExplorer tenders={tenders} viewerRole={viewerRole} />
+        <TenderExplorer {...pageData} viewerRole={viewerRole} />
       </Suspense>
     </div>
   );

@@ -4,7 +4,6 @@ import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { getAllTenders } from "@/lib/tenders";
 import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
 
 const geistSans = Geist({
@@ -27,9 +26,7 @@ export const metadata: Metadata = {
     "把墨西哥政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/中型项目。",
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const tenders = await getAllTenders();
-
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="zh"
@@ -38,7 +35,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <LocaleProvider>
           <AnalyticsTracker />
-          <Header tenders={tenders} />
+          <Header />
           <main className="flex flex-1 flex-col">{children}</main>
           <Footer />
         </LocaleProvider>

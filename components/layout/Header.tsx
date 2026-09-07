@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { AuthNav } from "@/components/layout/AuthNav";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 
-export function Header({ tenders }: { tenders: Tender[] }) {
+export function Header() {
   const { locale } = useLocale();
   const pathname = usePathname();
 
@@ -45,7 +44,7 @@ export function Header({ tenders }: { tenders: Tender[] }) {
           </div>
           <div className="flex shrink-0 items-center gap-6 xl:gap-8">
             <AuthNav />
-            <NotificationBell tenders={tenders} />
+            <NotificationBell />
           </div>
         </div>
 

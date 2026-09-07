@@ -4,7 +4,7 @@ import { tenders as mockTenders } from "@/data/tenders";
 import type { Tender } from "@/types/tender";
 import { fetchAllTendersFromDb, fetchTenderBySlugFromDb, fetchTendersBySlugsFromDb } from "@/lib/db/tenders";
 
-/** Supabase-backed when configured (NEXT_PUBLIC_SUPABASE_URL + a key are set); falls back to bundled mock data otherwise. */
+/** Supabase-backed when configured; bundled mock data is used only when Supabase is not configured. Query failures throw so a transient outage is never cached as mock production data. */
 export async function getAllTenders(): Promise<Tender[]> {
   const fromDb = await fetchAllTendersFromDb();
   return fromDb ?? mockTenders;

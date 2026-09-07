@@ -201,6 +201,29 @@ function toTender(row: TenderRow): Tender {
 
 /** PostgREST caps an unranged select at this many rows per request — a real, silent truncation confirmed against production data (exactly 1000 rows came back with no error), not a documentation-only concern. Must page with .range() to get everything. */
 const SUPABASE_PAGE_SIZE = 1000;
+const SUPABASE_READ_ATTEMPTS = 3;
+
+type SupabaseReadResult<T> = {
+  data: T;
+  error: { message: string } | null;
+};
+
+/** Retry short-lived network/gateway failures; only a successful read may enter Next's shared cache. */
+async function retrySupabaseRead<T>(
+  operation: () => PromiseLike<SupabaseReadResult<T>>,
+  label: string,
+): Promise<T> {
+  let lastMessage = "unknown error";
+  for (let attempt = 0; attempt < SUPABASE_READ_ATTEMPTS; attempt += 1) {
+    const { data, error } = await operation();
+    if (!error) return data;
+    lastMessage = error.message;
+    if (attempt < SUPABASE_READ_ATTEMPTS - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 150 * 2 ** attempt));
+    }
+  }
+  throw new Error(`${label}: ${lastMessage}`);
+}
 
 type AwardedAnalysisProbeRow = {
   slug: string;
@@ -220,16 +243,14 @@ type AwardedAnalysisProbeRow = {
 async function fetchAwardedSlugsWithAnalysis(supabase: SupabaseClient): Promise<Set<string>> {
   const slugs = new Set<string>();
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("tenders")
-      .select("slug, tender_requirements ( id ), tender_risks ( id )")
-      .eq("status", "awarded")
-      .range(from, from + SUPABASE_PAGE_SIZE - 1);
-
-    if (error) {
-      console.error("Failed to check awarded-tender analysis status from Supabase:", error.message);
-      return slugs;
-    }
+    const data = await retrySupabaseRead(
+      () => supabase
+        .from("tenders")
+        .select("slug, tender_requirements ( id ), tender_risks ( id )")
+        .eq("status", "awarded")
+        .range(from, from + SUPABASE_PAGE_SIZE - 1),
+      "Failed to check awarded-tender analysis status from Supabase",
+    );
 
     const page = data as unknown as AwardedAnalysisProbeRow[];
     for (const row of page) {
@@ -292,16 +313,14 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
 
   const rows: TenderRow[] = [];
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("tenders")
-      .select(TENDER_LIST_SELECT)
-      .order("publication_date", { ascending: false })
-      .range(from, from + SUPABASE_PAGE_SIZE - 1);
-
-    if (error) {
-      console.error("Failed to fetch tenders from Supabase:", error.message);
-      return null;
-    }
+    const data = await retrySupabaseRead(
+      () => supabase
+        .from("tenders")
+        .select(TENDER_LIST_SELECT)
+        .order("publication_date", { ascending: false })
+        .range(from, from + SUPABASE_PAGE_SIZE - 1),
+      "Failed to fetch tenders from Supabase",
+    );
 
     const page = data as unknown as TenderRow[];
     rows.push(...page);
@@ -322,16 +341,14 @@ export async function fetchTenderBySlugFromDb(
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
 
-  const { data, error } = await supabase
-    .from("tenders")
-    .select(TENDER_SELECT)
-    .eq("slug", slug)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Failed to fetch tender from Supabase:", error.message);
-    return null;
-  }
+  const data = await retrySupabaseRead(
+    () => supabase
+      .from("tenders")
+      .select(TENDER_SELECT)
+      .eq("slug", slug)
+      .maybeSingle(),
+    "Failed to fetch tender from Supabase",
+  );
 
   if (!data) return undefined;
   return toTender(data as unknown as TenderRow);
@@ -352,12 +369,10 @@ export async function fetchTendersBySlugsFromDb(slugs: string[]): Promise<Map<st
   if (!supabase) return null;
   if (slugs.length === 0) return new Map();
 
-  const { data, error } = await supabase.from("tenders").select(TENDER_SELECT).in("slug", slugs);
-
-  if (error) {
-    console.error("Failed to fetch tenders by slug from Supabase:", error.message);
-    return null;
-  }
+  const data = await retrySupabaseRead(
+    () => supabase.from("tenders").select(TENDER_SELECT).in("slug", slugs),
+    "Failed to fetch tenders by slug from Supabase",
+  );
 
   return new Map((data as unknown as TenderRow[]).map((row) => [row.slug, toTender(row)]));
 }

@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
+import type { TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { ALL_INDUSTRIES } from "@/lib/industry";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, countryLabel, industryLabel } from "@/lib/tender-labels";
-import { filterTenders, isSortKey, sortTenders, type SortKey } from "@/lib/filter-tenders";
+import { isSortKey, type SortKey } from "@/lib/filter-tenders";
 import { useSavedTenderIds } from "@/lib/saved";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
 import { InlineTogglePills } from "@/components/tenders/InlineTogglePills";
@@ -19,6 +19,7 @@ import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
 import { type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
 import { AccessPrompt } from "@/components/access/AccessPrompt";
+import type { TenderListItem } from "@/lib/tender-list-page";
 
 const SCOPE_TYPES: TenderScopeType[] = ["equipment", "services", "equipment_services", "works", "consulting"];
 const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed", "awarded", "cancelled"];
@@ -37,7 +38,6 @@ const DEFAULT_STATUSES: TenderStatus[] = [];
 const RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
 const DEFAULT_RELEVANCE_TIERS: TenderRelevanceTier[] = [];
 const AVAILABLE_COUNTRIES = ["Mexico", "Colombia"] as const;
-const PAGE_SIZE = 28;
 
 function formatTenderCount(value: number): string {
   if (value < 1000) return value.toLocaleString();
@@ -109,7 +109,7 @@ function TenderSearchForm({
   );
 }
 
-function TenderRow({ tender }: { tender: Tender }) {
+function TenderRow({ tender }: { tender: TenderListItem }) {
   const { locale } = useLocale();
   const hasRealTranslation = tender.title.zh !== tender.title.es;
   const value = tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null;
@@ -154,12 +154,63 @@ function TenderRow({ tender }: { tender: Tender }) {
   );
 }
 
+function SavedTenderReminders({ savedIds }: { savedIds: string[] }) {
+  const { locale } = useLocale();
+  const [reminders, setReminders] = useState<TenderListItem[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const request = savedIds.length === 0
+      ? Promise.resolve([] as TenderListItem[])
+      : fetch(`/api/tenders/saved-reminders?ids=${encodeURIComponent(savedIds.join(","))}`, {
+          signal: controller.signal,
+        }).then((response) => {
+          if (!response.ok) throw new Error("Failed to load saved tender reminders");
+          return response.json() as Promise<TenderListItem[]>;
+        });
+
+    request.then(setReminders).catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      console.error(error);
+    });
+    return () => controller.abort();
+  }, [savedIds]);
+
+  if (reminders.length === 0) {
+    return <p className="mt-4 text-sm text-[#64717c]">待收藏项目特别提醒——点击项目上的收藏图标后，交标提醒会显示在这里。</p>;
+  }
+
+  return (
+    <div className="mt-4 divide-y divide-[#e5e9eb]">
+      {reminders.map((tender) => (
+        <Link key={tender.id} href={`/tenders/${tender.slug}`} className="block py-3 first:pt-0 last:pb-0">
+          <span className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#64717c]"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
+          <p className="line-clamp-2 text-sm font-bold leading-5 text-[#172c3b]">{tender.title.zh || tender.title.es}</p>
+          <p className="mt-1.5 text-xs font-semibold text-[#b86e00]">{formatDate(tender.submissionDeadline!, locale)}</p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export function TenderExplorer({
   tenders,
   viewerRole,
+  totalResults,
+  totalPages,
+  currentPage,
+  siteTenderCount,
+  newTodayCount,
+  upcomingCount,
 }: {
-  tenders: Tender[];
+  tenders: TenderListItem[];
   viewerRole: ViewerRole;
+  totalResults: number;
+  totalPages: number;
+  currentPage: number;
+  siteTenderCount: number;
+  newTodayCount: number;
+  upcomingCount: number;
 }) {
   const { locale } = useLocale();
   const router = useRouter();
@@ -199,7 +250,6 @@ export function TenderExplorer({
   );
   const sortParam = searchParams.get("sort");
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "deadline_asc";
-  const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const viewParam = searchParams.get("view");
   const view = viewParam === "new" || viewParam === "deadline" ? viewParam : null;
 
@@ -225,54 +275,6 @@ export function TenderExplorer({
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
   }
 
-  const filtered = useMemo(
-    () => filterTenders(tenders, { query, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers }, locale),
-    [tenders, query, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers, locale],
-  );
-  const siteTenderCount = useMemo(
-    () => tenders.filter((tender) => tender.status !== "awarded" && tender.status !== "cancelled").length,
-    [tenders],
-  );
-  // Stat-card counts are derived from `filtered` (every active filter EXCEPT
-  // `view`), not `sorted` — so the "本周新增"/"即将交标" numbers stay stable
-  // no matter which of the two views is currently active; only the list
-  // below narrows when a view is clicked.
-  const newThisWeekCount = useMemo(() => {
-    const cutoff = new Date().getTime() - 7 * 24 * 60 * 60 * 1000;
-    return filtered.filter((tender) => new Date(tender.createdAt).getTime() >= cutoff).length;
-  }, [filtered]);
-  const upcomingCount = useMemo(() => {
-    const now = new Date().getTime();
-    return filtered.filter((tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= now).length;
-  }, [filtered]);
-  const viewFiltered = useMemo(() => {
-    if (view === "new") {
-      const cutoff = new Date().getTime() - 7 * 24 * 60 * 60 * 1000;
-      return filtered.filter((tender) => new Date(tender.createdAt).getTime() >= cutoff);
-    }
-    if (view === "deadline") {
-      const now = new Date().getTime();
-      return filtered.filter((tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= now);
-    }
-    return filtered;
-  }, [filtered, view]);
-  const sorted = useMemo(() => sortTenders(viewFiltered, sort), [viewFiltered, sort]);
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  // "交标提醒" is specifically about tenders the user has bookmarked (查看
-  // 关注/收藏), not just whatever the current search happens to surface —
-  // per explicit user request (2026-09-04). Derived from the full
-  // `tenders` prop (not `sorted`) so it stays stable regardless of the
-  // active filters/search.
-  const savedReminders = useMemo(
-    () =>
-      tenders
-        .filter((tender) => savedIds.includes(tender.id) && tender.submissionDeadline)
-        .sort((a, b) => a.submissionDeadline!.localeCompare(b.submissionDeadline!))
-        .slice(0, 6),
-    [tenders, savedIds],
-  );
   const currentSearchHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   function promptForInteraction(target: EventTarget | null): AccessPromptKind | null {
@@ -328,7 +330,7 @@ export function TenderExplorer({
         eyebrow="Tender database"
         title="招标项目"
         description="筛选并评估适合中国企业的拉美政府采购机会"
-        metrics={[{ label: "当前结果", value: sorted.length.toLocaleString(), suffix: "个项目" }]}
+        metrics={[{ label: "当前结果", value: totalResults.toLocaleString(), suffix: "个项目" }]}
       />
 
       {accessNotice && (
@@ -443,11 +445,11 @@ export function TenderExplorer({
 
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div>
-          {sorted.length === 0 ? (
+          {tenders.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-[#bdc8cd] bg-[#fffdf9] p-10 text-center text-sm text-[#64717c]">{localize(uiText.noResults, locale)}</p>
           ) : (
             <div className="space-y-3">
-              {paginated.map((tender) => <TenderRow key={tender.id} tender={tender} />)}
+              {tenders.map((tender) => <TenderRow key={tender.id} tender={tender} />)}
             </div>
           )}
 
@@ -485,8 +487,8 @@ export function TenderExplorer({
                 onClick={() => updateParams({ view: view === "new" ? null : "new", sort: view === "new" ? null : "publication_desc" })}
                 className={`rounded-lg px-1 py-1.5 transition-colors ${view === "new" ? "bg-white/15" : "hover:bg-white/10"}`}
               >
-                <p className="text-[11px] font-medium text-white/58">本周新增</p>
-                <p className="mt-1.5 text-[1.65rem] font-black leading-none text-[#ffb21c]">{newThisWeekCount}</p>
+                <p className="text-[11px] font-medium text-white/58">本日新增</p>
+                <p className="mt-1.5 text-[1.65rem] font-black leading-none text-[#ffb21c]">{newTodayCount}</p>
               </button>
               <button
                 type="button"
@@ -500,19 +502,7 @@ export function TenderExplorer({
           </section>
           <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5">
             <div className="flex items-center justify-between"><h2 className="font-bold text-[#071826]">交标提醒</h2><Link href="/saved" className="text-xs font-semibold text-[#24465a]">查看关注</Link></div>
-            {savedReminders.length === 0 ? (
-              <p className="mt-4 text-sm text-[#64717c]">待收藏项目特别提醒——点击项目上的收藏图标后，交标提醒会显示在这里。</p>
-            ) : (
-              <div className="mt-4 divide-y divide-[#e5e9eb]">
-                {savedReminders.map((tender) => (
-                  <Link key={tender.id} href={`/tenders/${tender.slug}`} className="block py-3 first:pt-0 last:pb-0">
-                    <span className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#64717c]"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
-                    <p className="line-clamp-2 text-sm font-bold leading-5 text-[#172c3b]">{tender.title.zh || tender.title.es}</p>
-                    <p className="mt-1.5 text-xs font-semibold text-[#b86e00]">{formatDate(tender.submissionDeadline!, locale)}</p>
-                  </Link>
-                ))}
-              </div>
-            )}
+            <SavedTenderReminders savedIds={savedIds} />
           </section>
         </aside>
       </div>

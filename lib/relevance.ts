@@ -142,6 +142,49 @@ const EXCLUDE_KEYWORDS = [
   // every other EXCLUDE_KEYWORDS entry still is.
   /suministro (de )?(partes|herramientas|material(es)?)\b|adquisici[óo]n de (herramientas|refacciones)\b|refacciones, accesorios y herramientas|materiales? y art[íi]culos? de/i, // 物料/工具、物料 — spare parts, tools, consumable materials, not equipment/works
   /servicio m[ée]dico integral/i,
+
+  // ---- 2026-09-07: a 400-row review by the user, grouped by what the
+  // work actually is. Every pattern below comes from at least one real
+  // title they marked as "should have been excluded". ----
+
+  // Municipal water and sewer NETWORKS, as opposed to the plants they feed.
+  // "CONSTRUCCIÓN DE PLANTA DE TRATAMIENTO DE AGUAS RESIDUALES" and
+  // "CONSTRUCCIÓN DE PLANTA DE BOMBEO" are on the user's keep list; the
+  // pipes, manholes, tanks and collectors around them are not — including
+  // "CONSTRUCCIÓN DE COLECTORES PARA PLANTA DE TRATAMIENTO", which names a
+  // plant but buys collectors. Exclusion runs before the works whitelist,
+  // so naming the plant cannot rescue the pipework.
+  /alcantarillado|drenaje (sanitario|pluvial|menor)|drenaje y alcantarillado|obra de drenaje/i,
+  // Anchored on what the collector IS or feeds, not on the bare word:
+  // "CONSTRUCCIÓN DE LA PRIMERA ETAPA DE LOS COLECTORES DE PRESA GUADALUPE"
+  // is dam infrastructure the user wants kept, while "COLECTORES PARA
+  // PLANTA DE TRATAMIENTO" is the sewage pipework around a plant.
+  /(sub)?colector(es)? (sanitario|pluvial|para|y )/i,
+  /l[íi]nea(s)? de conducci[óo]n|l[íi]nea sanitaria|red(es)? de agua potable|sistema (integral )?de agua potable|sistema de abastecimiento de agua/i,
+  /tanque (de agua|elevado|superficial|de almacenamiento)|caja(s)? de v[áa]lvulas|obra de captaci[óo]n|olla colector/i,
+  /tuber[íi]a(s)? (de )?pvc|pozos? y descargas|estaci[óo]n(es)? de bombeo de aguas residuales|estaciones de medici[óo]n/i,
+
+  // Small community and school buildings.
+  /techumbre|techado\b|m[óo]dulo sanitario|\baulas?\b|sal[óo]n de usos m[úu]ltiples|cancha\b|polideportivo/i,
+  /bardeado perimetral|centro de desarrollo comunitario|cuartos? dormitorio|albergue|centro de resguardo temporal|caseta\b|invernadero/i,
+
+  // Religious buildings — all of them, per the user: 全部TEMPLO 和IGLESIA
+  // 和PARROQUIA 宗教相关都不要.
+  /\btemplo\b|\biglesia\b|\bparroquia\b|\bcapilla\b|\bconvento\b|bas[íi]lica|santuario/i,
+
+  // Health SERVICE delivery and medical consumables, as opposed to
+  // equipment. hemodinamia/hemodiálisis moved here off the whitelist.
+  /hemodi[áa]lisis|hemodinamia|servicios? m[ée]dicos? de especializaci[óo]n|servicio(s)? auxiliares|subrogaci[óo]n de servicios/i,
+  /insumos y refacciones|consumibles para|insumos de laboratorio/i,
+
+  // Repair, refurbishment and upkeep of what already exists.
+  /obras de reparaci[óo]n y rehabilitaci[óo]n|conservaci[óo]n de la malla vial|muro de contenci[óo]n|canal pluvial|obras diversas|art[íi]culos met[áa]licos/i,
+
+  // Colombian one-offs the user confirmed, each narrow on purpose.
+  /interventor[íi]a|envase de vidrio|helic[óo]ptero|inhibidor de se[ñn]al|pintura termopl[áa]stica/i,
+  /postes? de concreto|red el[ée]ctrica rural/i,
+  /equipos de c[óo]mputo y perif[ée]ricos|soluci[óo]n integral para diferentes l[íi]neas|acciones t[ée]cnicas|obra de emergencia|alimentaci[óo]n complementaria|ollas comunitarias/i,
+  /compra de torre\b|tuber[íi]as del hogar/i,
   // Back-office and logistics services, all real 2026-09-07 titles kept by
   // a value above the significant floor: supporting a procurement PROCESS,
   // housing and feeding staff, hauling freight.
@@ -440,6 +483,14 @@ const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
  * procurement a foreign bidder can win, whatever else the sentence names.
  */
 const RENEWAL_ONLY_KEYWORDS = [
+  // Renting, in the same non-bypassable class and for the same reason:
+  // "ARRENDAMIENTO DE CIRCUITO CERRADO DE TELEVISIÓN" and "SERVICIO MENSUAL
+  // DE ARRENDAMIENTO DE 170 CÁMARAS DE VIDEOVIGILANCIA" were both held in
+  // by CCTV/videovigilancia override keywords (2026-09-07, user-confirmed).
+  // Vehicle rental was already excluded by a narrower pattern; this covers
+  // renting anything, including a commercial unit ("Arrendar a título
+  // oneroso el local comercial").
+  /\barrendamiento\b|\barrendar\b/i,
   /renovaci[óo]n del? licenciamiento|renovaci[óo]n de (la )?(suscripci[óo]n|licencia(s)?)|renovaci[óo]n de (la )?plataforma/i,
 ];
 
@@ -477,7 +528,34 @@ const SETTLEMENT_SCALE_KEYWORDS = [
  * had it at the top tier. Demoted to whatever the rest of the title earns
  * (2026-09-07, per the user's explicit call: 改常规项目).
  */
-const MAJOR_PROJECT_LOCATION_ONLY = [/\bbajo (?:el |la )?(?:puente|paso a desnivel|distribuidor vial)/i];
+const MAJOR_PROJECT_LOCATION_ONLY = [
+  /\bbajo (?:el |la )?(?:puente|paso a desnivel|distribuidor vial)/i,
+  // The keyword names the subject of a STUDY, not a build: "ESTUDIO DE
+  // ORDENAM P/LA AMPLIACIÓN Y MODERNIZAC DEL PUERTO DE PROGRESO".
+  /^\s*estudio\b|estudio de ordenam/i,
+  // Dredging silt out of a working port is upkeep: "DRAGADO DE DESAZOLVE DE
+  // LOS PUERTOS DE CHUBURNA Y CHABIHAU". Note "DRAGADO DE CONSTRUCCIÓN Y
+  // CONFORMACIÓN DE LA PLATAFORMA NORTE DE 40 HECTÁREAS" — on the user's
+  // keep list — is dredging TO BUILD something and does not say desazolve.
+  /desazolve/i,
+  // A component AT the dam, not the dam: "CONSTRUCCIÓN DE LA PRIMERA ETAPA
+  // DE LOS COLECTORES DE PRESA GUADALUPE" (2026-09-07, user: 改常规项目).
+  /colectores? de presa|colector de presa/i,
+  // Equipment bought FOR the facility rather than the facility itself:
+  // "ADQUISICIÓN DE EQUIPOS DE SEGURIDAD PARA REVISIÓN DE EQUIPAJE EN EL
+  // AEROPUERTO". Per the user: 建机场才是大型.
+  /(adquisici[óo]n|compra|suministro)\s+de\s+equipos?\b[^.]{0,60}(aeropuerto|puerto)/i,
+];
+
+/**
+ * Override keywords that protect a tender from exclusion but must NOT force
+ * it to the top tier on an undisclosed value alone (2026-09-07, per the
+ * user: all three 从大型项目改常规项目). A fire-alarm panel, a firewall
+ * subscription and a cybersecurity support contract are single systems or
+ * services, not the network-scale builds videovigilancia and fibra óptica
+ * denote — those keep forcing flagship.
+ */
+const OVERRIDE_NOT_FLAGSHIP = [/incendio/i, /firewall/i, /ciberseguridad|cybersecurity/i];
 
 /**
  * A repair of PART of a major structure — real infrastructure work at real
@@ -818,7 +896,12 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // stem, because "medi…" would also catch "medicamento", a consumable
   // this list deliberately excludes.
   /equipo(s)? m[ée]dico|equipo(s)? m[ée]dio\b|equipamiento m[ée]dico|medical equipment|equipo(s)? de laboratorio/i,
-  /bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia/i,
+  // hemodiálisis/hemodinamia removed from this whitelist 2026-09-07
+  // (user-confirmed): every real title carrying them was a SERVICE —
+  // "SERVICIOS MEDICOS DE ESPECIALIZACION (HEMODIALISIS)", "FORTALECIMIENTO
+  // A LOS SERVICIOS DE HEMODINAMIA", "SMI DE HEMODINAMIA" — and this
+  // platform targets medical EQUIPMENT. They are excluded below instead.
+  /bomba de infusi[óo]n|ventilador pulmonar/i,
   /imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia|ultrasonido|rayos x/i,
   // Vehicle-fleet purchases — restored to the whitelist per the user's
   // explicit request (2026-09-04: "加入车辆相关的标书，比如说政府购车、
@@ -873,12 +956,16 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   //     'ADQUISICIÓN DE “CAMIÓN COSTERO MÍNIMO 41 PASAJEROS' missed only
   //     because the typographic quote Compras MX pastes in is not the ASCII
   //     one the old class allowed, and 'DE UN SISTEMA…' missed on the "un";
-  //   · patrulla/automóvil/motocicleta join the vehicle nouns —
+  //   · patrulla/automóvil join the vehicle nouns (motocicleta was added
+  //     with them and removed hours later: the user marked "ADQUISICION DE
+  //     MOTOCICLETAS Y ACCESORIOS" as one to exclude, and the police-fleet
+  //     title that motivated the addition matches on "patrullas" anyway,
+  //     being the noun immediately after the verb) —
   //     'ADQUISICION DE PATRULLAS PICK UPS, AUTOMOVILES Y MOTOCICLETAS' put
   //     "patrullas" first, and the anchored gap only ever looks at the noun
   //     immediately after the verb, so the "pick ups" further along never
   //     counted.
-  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+(?:(?:un|una|el|la|los|las)\s+)?[\d'"“”‘’\s]{0,15}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?|patrulla(s)?|autom[óo]vil(es)?|motocicleta(s)?|maquinaria pesada|(retro)?excavadora(s)?|gr[úu]a(s)?)/i,
+  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+(?:(?:un|una|el|la|los|las)\s+)?[\d'"“”‘’\s]{0,15}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?|patrulla(s)?|autom[óo]vil(es)?|maquinaria pesada|(retro)?excavadora(s)?|gr[úu]a(s)?)/i,
   // Power-grid key equipment — added per the user's explicit request
   // (2026-09-04: "白名单加入电力相关的关键设备：变压器、发电机、继电保护器等"
   // then "还有UPS"). Same anchored purchase-verb pattern and reasoning as
@@ -1392,7 +1479,10 @@ export function classifyRelevance(input: {
     (matchesMajorProject && !majorIsLocationOnly) ||
     hasLongDuration ||
     (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD) ||
-    (hasIncludeOverride && normalizedValue === undefined && !isEquipmentScaleCapped)
+    (hasIncludeOverride &&
+      normalizedValue === undefined &&
+      !isEquipmentScaleCapped &&
+      !OVERRIDE_NOT_FLAGSHIP.some((pattern) => pattern.test(haystack)))
   ) {
     return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
   }
@@ -1515,6 +1605,7 @@ export function classifyRelevance(input: {
     input.governmentLevel === "municipal" &&
     normalizedValue === undefined &&
     matchesFlagshipIndustry &&
+    !hasIncludeOverride &&
     FLAGSHIP_INDUSTRY_KEYWORDS.filter((pattern) => pattern.test(haystack)).every((pattern) => pattern === BARE_WORKS_WHITELIST)
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
@@ -1528,13 +1619,20 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
 
-  if (input.country === "Mexico" && normalizedValue === undefined && !matchesFlagshipIndustry) {
+  // hasIncludeOverride joins matchesFlagshipIndustry here (2026-09-07):
+  // demoting a fire-alarm or firewall tender out of flagship left it with no
+  // whitelist match, and this gate then excluded it outright — turning a
+  // requested demotion into a deletion.
+  if (input.country === "Mexico" && normalizedValue === undefined && !matchesFlagshipIndustry && !hasIncludeOverride) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
 
   const contentIndustries = classifyIndustries(input.title, input.summary);
   const hasTargetIndustry = contentIndustries.some((i) => i !== "general");
-  if (!hasTargetIndustry && normalizedValue === undefined) {
+  // Same correction: this gate's comment says everything reaching it failed
+  // every positive signal, which stopped being true once demotions began
+  // routing keyword-matched tenders past the flagship branch.
+  if (!hasTargetIndustry && normalizedValue === undefined && !matchesFlagshipIndustry && !hasIncludeOverride) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }
 

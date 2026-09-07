@@ -144,11 +144,21 @@ export async function upsertTendersBatched(
   const deletedSlugs = new Set<string>();
   for (const slugChunk of chunk(uniqueBySlug.map((t) => t.slug), BATCH_SIZE)) {
     const { data, error } = await supabase.from("tender_manual_deletions").select("slug").in("slug", slugChunk);
-    // Same defensive posture as the relevance-override check below: a
-    // failed lookup here (including the table not existing yet, before
-    // this migration is applied) shouldn't block ingestion — it just means
-    // this run conservatively falls back to "nothing was manually deleted."
-    if (error) console.error(`  Failed to check tender_manual_deletions for this batch: ${error.message}`);
+    // Fails the import rather than continuing (2026-09-07). This used to
+    // log and fall through to "nothing was manually deleted", which meant a
+    // transient network error silently RE-INSERTED every tender the admin
+    // had deleted — seen for real on an import where both this lookup and
+    // the override lookup below returned `TypeError: fetch failed`, and the
+    // tender count went from ~150 back to ~800. An import that stops is a
+    // retry; an import that quietly undoes the admin's decisions is not
+    // visible at all until someone counts the rows.
+    //
+    // The one tolerated case is the table not existing yet (PostgREST
+    // 42P01), which is what the old fallback was really written for.
+    if (error && error.code !== "42P01") {
+      throw new Error(`无法读取 tender_manual_deletions，已中止导入以免重新插入已删除的项目：${error.message}`);
+    }
+    if (error) console.error(`  tender_manual_deletions 表不存在，本次按「没有手动删除」处理。`);
     for (const row of data ?? []) deletedSlugs.add(row.slug as string);
   }
   const liveTenders = uniqueBySlug.filter((t) => !deletedSlugs.has(t.slug));
@@ -163,11 +173,17 @@ export async function upsertTendersBatched(
       .select("slug")
       .in("slug", batch.map((t) => t.slug))
       .eq("relevance_manually_overridden", true);
-    // A failed lookup here shouldn't block the whole batch from writing —
-    // it just means this batch conservatively falls back to "nothing is
-    // protected," same as before this feature existed. Real, unexpected
-    // Supabase errors still surface via the upsert calls below.
-    if (protectedError) console.error(`  Failed to check for manually-overridden tenders in this batch: ${protectedError.message}`);
+    // Also fails the batch rather than continuing (2026-09-07). Falling
+    // back to "nothing is protected" is not conservative: every tender in
+    // the batch then goes through buildRow(), which writes
+    // relevance_manually_overridden: false along with a freshly computed
+    // tier. So a failed lookup did not merely skip the protection — it
+    // ERASED it, flag and all, leaving nothing in the row to show a human
+    // had ever classified it and no way to find the affected tenders
+    // afterwards. Unrecoverable, unlike a re-inserted deletion.
+    if (protectedError) {
+      throw new Error(`无法读取手动覆盖标记，已中止导入以免覆盖人工分类结果：${protectedError.message}`);
+    }
     const protectedSlugs = new Set((protectedRows ?? []).map((r) => r.slug as string));
 
     const normalBatch = batch.filter((t) => !protectedSlugs.has(t.slug));

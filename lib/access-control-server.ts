@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { TRIAL_DAYS, type SubscriptionPlan, type ViewerEntitlement, type ViewerRole } from "@/lib/access-control";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
@@ -9,7 +10,12 @@ function isCurrent(subscription: { current_period_end?: string | null }) {
   return !subscription.current_period_end || new Date(subscription.current_period_end).getTime() >= Date.now();
 }
 
-export async function getViewerEntitlement(): Promise<ViewerEntitlement> {
+/**
+ * Memoized per request: resolving an entitlement costs an auth round-trip
+ * plus up to three Supabase queries, and both the page and any route handler
+ * in the same request want the same answer.
+ */
+export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> => {
   const user = await getCurrentUser();
   if (!user) return EMPTY;
 
@@ -44,7 +50,7 @@ export async function getViewerEntitlement(): Promise<ViewerEntitlement> {
   const { data: profile } = await admin.from("profiles").select("trial_ends_at").eq("id", user.id).maybeSingle();
   const trialEndsAt = (profile?.trial_ends_at as string | undefined) ?? fallbackEnd;
   return { role: new Date(trialEndsAt).getTime() > Date.now() ? "trial" : "free", plan: null, trialEndsAt, subscriptionOwnerUserId: null, isEnterpriseOwner: false };
-}
+});
 
 export async function getViewerRole(): Promise<ViewerRole> {
   return (await getViewerEntitlement()).role;

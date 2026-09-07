@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
@@ -36,7 +37,15 @@ export async function getSupabaseServerUserClient() {
   );
 }
 
-export async function getCurrentUser() {
+/**
+ * Memoized for the lifetime of one request. supabase.auth.getUser() is a
+ * network round-trip to the auth server on every call, and the entitlement
+ * work now layered on top of it means a single request can ask more than
+ * once — /api/account/enterprise-members calls this directly AND through
+ * getViewerEntitlement(), which was two round-trips for one answer that
+ * cannot change mid-request.
+ */
+export const getCurrentUser = cache(async () => {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return null;
   }
@@ -45,4 +54,4 @@ export async function getCurrentUser() {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
-}
+});

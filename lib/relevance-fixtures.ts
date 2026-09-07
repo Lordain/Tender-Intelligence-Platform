@@ -375,6 +375,101 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Mexico",
   },
 
+  // --- 2026-09-07: Colombian rows kept by a large value alone ---
+  // All real titles from one export's "value ≥ $1M" bucket. The bucket was
+  // mixed, so these are the shapes that were confirmed removable — a
+  // refinery tower, boiler tubing and energy meters were in the same
+  // bucket and are deliberately untouched.
+  {
+    title: "SERVICIO DE SOPORTE PARA EL PROCESO DE ABASTECIMIENTO",
+    expectedTier: "excluded",
+    note: "Back-office support for a procurement PROCESS, not a procurement.",
+    scopeType: "services",
+    estimatedValue: 3_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "SERVICIO DE ALOJAMIENTO Y ALIMENTACIÓN PARA EL PERSONAL DE LA DIRECCIÓN DE ANTINARCÓTICOS",
+    expectedTier: "excluded",
+    note: "Housing and feeding staff.",
+    scopeType: "services",
+    estimatedValue: 4_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "FORTALECIMIENTO DEL CONTROL TERRITORIAL",
+    expectedTier: "excluded",
+    note: "A programme name with no procurement object. Anchored on the two abstract objects seen, so 'FORTALECIMIENTO A LOS SERVICIOS DE HEMODINAMIA' — real hospital equipment, in the same export — is untouched.",
+    scopeType: "services",
+    estimatedValue: 2_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "FORTALECIMIENTO A LOS SERVICIOS DE HEMODINAMIA DEL HOSPITAL GENERAL DE CHETUMAL",
+    expectedTier: "standard",
+    note: "The control for that: the same first word, a real object after it, must not be excluded. 'standard' rather than 'significant' because the medical whitelist only promotes once a value is disclosed and this one has none — the point here is that it survives.",
+    scopeType: "equipment",
+    country: "Mexico",
+    governmentLevel: "federal",
+  },
+  {
+    title: "LP-013-2026 (Fase de Selección (Presentación de ofertas))",
+    expectedTier: "excluded",
+    note: "SECOP II appends the procurement's current phase to the title. It says nothing about what is bought, and it was enough to stop a bare reference code from looking bare.",
+    scopeType: "works",
+    estimatedValue: 6_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "AHLPOB05-026 (Fase de Selección (Presentación de ofertas))",
+    expectedTier: "excluded",
+    note: "Same, with a code the earlier letter-count-based pattern could not match. Codes are now judged by shape: one token, no spaces, containing a digit — a real description always has spaces.",
+    scopeType: "works",
+    estimatedValue: 6_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "UNIÓN TEMPORAL SUMINISTROS ENTORNOS DIGITALES 2026",
+    expectedTier: "excluded",
+    note: "A consortium's own name — a bidder, not a purchase.",
+    scopeType: "equipment",
+    estimatedValue: 2_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "ACTA DE TRANSFERENCIA A TÍTULO GRATUITO DE LOS BIENES ADQUIRIDOS EN VIRTUD DEL CONTRATO DE COMPRAVENTA",
+    expectedTier: "excluded",
+    note: "A record of a transaction already made.",
+    scopeType: "services",
+    estimatedValue: 2_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "COMPRA DE TORRE PARA EL PROYECTO MEJORAS UNIDAD HIDROTRATAMIENTO U-107 DE LA REFINERIA DE CARTAGENA",
+    expectedTier: "significant",
+    note: "The reason this bucket was not removed wholesale: a refinery tower, exactly what the platform exists to surface, sat in it alongside the back-office services.",
+    scopeType: "equipment",
+    estimatedValue: 4_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "COMPRAVENTA DE LAS TUBERÍAS DEL HOGAR DE LA CALDERA DE LA UNIDAD 1 DE TERMOPAIPA; INCLUIDA LA INSTALACIÓN",
+    expectedTier: "significant",
+    note: "Same: boiler tubing for a thermal power unit.",
+    scopeType: "equipment",
+    estimatedValue: 3_000_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+
   // --- Flagship: real MAJOR_PROJECT_KEYWORDS matches ---
   {
     title: "CONSTRUCCIÓN DE PRESA Y RED DE RIEGO",

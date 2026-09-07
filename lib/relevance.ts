@@ -142,6 +142,20 @@ const EXCLUDE_KEYWORDS = [
   // every other EXCLUDE_KEYWORDS entry still is.
   /suministro (de )?(partes|herramientas|material(es)?)\b|adquisici[óo]n de (herramientas|refacciones)\b|refacciones, accesorios y herramientas|materiales? y art[íi]culos? de/i, // 物料/工具、物料 — spare parts, tools, consumable materials, not equipment/works
   /servicio m[ée]dico integral/i,
+  // Back-office and logistics services, all real 2026-09-07 titles kept by
+  // a value above the significant floor: supporting a procurement PROCESS,
+  // housing and feeding staff, hauling freight.
+  /servicio de soporte para el proceso|alojamiento y alimentaci[óo]n|transporte terrestre de carga/i,
+  // A programme name with no procurement object at all — "FORTALECIMIENTO
+  // DEL CONTROL TERRITORIAL", "FORTALECIMIENTO INSTITUCIONAL". Anchored on
+  // the two abstract objects seen, so "fortalecimiento de los servicios de
+  // hemodinamia" (real hospital equipment) is untouched.
+  /fortalecimiento (?:del control territorial|institucional)\b/i,
+  // Refurbishing existing public buildings and sports grounds, as opposed
+  // to building them: "MEJORAMIENTO Y ADECUACION A INSTITUCIONES
+  // EDUCATIVAS", "ADECUACIÓN Y MEJORAMIENTO DE LA INFRAESTRUCTURA DE LOS
+  // ESCENARIOS DEPORTIVOS Y RECREATIVOS".
+  /mejoramiento y adecuaci[óo]n|adecuaci[óo]n y mejoramiento|escenarios deportivos/i,
   // Health SERVICE delivery, as opposed to the medical EQUIPMENT this
   // platform targets ("我们只做医疗设备"). "PRESTACIÓN INTEGRAL DE SERVICIOS
   // DE SALUD EN ONCOLOGÍA" (2026-09-07, user-confirmed) survived on its
@@ -524,7 +538,12 @@ const MAINTENANCE_ONLY_KEYWORDS = [
  * administrative/financial records SECOP's ingest picks up alongside real
  * tenders.
  */
-const NON_PROCUREMENT_RECORD_KEYWORDS = [/\bmandato sin representaci[óo]n\b/i, /^sindicato\b/i, /^empr[ée]stito\b/i];
+const NON_PROCUREMENT_RECORD_KEYWORDS = [
+  // Records of a transaction already made, not a tender: "ACTA DE
+  // TRANSFERENCIA A TÍTULO GRATUITO DE LOS BIENES ADQUIRIDOS", "RATIFICACIÓN
+  // No. 9677-PPAL001-490-2025 A LA ORDEN DE PROVEEDURÍA" (2026-09-07, both
+  // real, both held in the feed by a large value).
+  /acta de transferencia|ratificaci[óo]n n[o°]\.?\s*[\d-]|orden de proveedur[íi]a/i,/\bmandato sin representaci[óo]n\b/i, /^sindicato\b/i, /^empr[ée]stito\b/i];
 
 const BARE_INTERADMINISTRATIVE_TITLE_PATTERN = /^(convenio|contrato) interadministrativo\b/i;
 function isBareInteradministrativeTitle(title: string): boolean {
@@ -565,7 +584,20 @@ const BARE_BUYER_REF_TITLE = /^[^a-z]+-\s*REF:\d+\s*$/;
  * Anchored to the WHOLE title, so a real description that happens to end
  * in a company name or contain the word "obra" is untouched.
  */
+/**
+ * SECOP II appends the procurement's current PHASE to the title —
+ * "(Presentación de oferta)", "(Fase de Selección (Presentación de
+ * ofertas))". It says nothing about what is being bought, and it was
+ * enough to stop a bare reference code from looking bare: "LP-013-2026
+ * (Fase de Selección (Presentación de ofertas))" read as a real title.
+ */
+function withoutProcurementPhase(title: string): string {
+  return title.replace(/\s*\((?:fase de selecci[óo]n|presentaci[óo]n de oferta)[^)]*\)*\s*$/i, "").trim();
+}
+
 const NO_CONTENT_TITLE = [
+  // A consortium's own name, which names a bidder rather than a purchase.
+  /^\s*(?:uni[óo]n temporal|consorcio)\b/i,
   // A company name and nothing else: … S.A.S. / S.A. DE C.V. / LTDA / S.A.
   // No "i" flag on purpose — with it, [^a-z] stops matching uppercase too
   // and the pattern matches nothing at all. Requiring full caps is also the
@@ -579,8 +611,13 @@ const NO_CONTENT_TITLE = [
   /^(?!.*\b(?:SUMINISTRO|ADQUISICI[ÓO]N|ADQUIRIR|CONSTRUCCI[ÓO]N|COMPRA|CONTRATAR|PRESTACI[ÓO]N|MANTENIMIENTO|REHABILITACI[ÓO]N|MODERNIZACI[ÓO]N|AMPLIACI[ÓO]N|SERVICIO)\b)[^a-z]{2,90}(?:S\.?A\.?S\.?|LTDA\.?|S\.?A\.? DE C\.?V\.?|S\.?A\.?)\s*$/,
   // A generic noun standing alone, with at most a leading verb/article.
   /^\s*(?:contrato de |contratar (?:la |el )?)?(?:obra|obras|servicio|servicios|suministro|suministros|compra|adquisici[óo]n|mantenimiento|convenio|proyecto)\s*$/i,
-  // A bare reference code: "EP 0058-2026", "LP-004", "SA-2026-11".
+  // A bare reference code: "EP 0058-2026", "CAS-SS-LP-001-2026",
+  // "AHLPOB05-026". Judged by shape rather than by a letter-count that any
+  // new source's numbering scheme would break — a single token, no spaces,
+  // containing a digit, and short. A real description always has spaces in
+  // it, which is what keeps "CONSTRUCCION DE TANQUE" out of this.
   /^\s*[A-Z]{1,5}[\s-]?\d{1,6}(?:[-/]\d{1,6})*\s*$/,
+  /^(?=\S*\d)[A-Za-z0-9][A-Za-z0-9.\-/_]{2,29}$/,
 ];
 
 const INCLUDE_OVERRIDE_KEYWORDS = [
@@ -1241,7 +1278,7 @@ export function classifyRelevance(input: {
 
   if (
     !hasIncludeOverride &&
-    (BARE_BUYER_REF_TITLE.test(input.title.trim()) || NO_CONTENT_TITLE.some((pattern) => pattern.test(input.title.trim())))
+    (BARE_BUYER_REF_TITLE.test(input.title.trim()) || NO_CONTENT_TITLE.some((pattern) => pattern.test(withoutProcurementPhase(input.title))))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "no_content") };
   }

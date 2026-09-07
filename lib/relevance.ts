@@ -1369,3 +1369,53 @@ export function classifyRelevance(input: {
   // returned it.
   return { tier: "standard", label: LABELS.standard, reason: reasonFor("standard", "none") };
 }
+
+/**
+ * Which positive signal kept a tender in the feed, named.
+ *
+ * Diagnostic only — it changes no classification and is never called from
+ * the pipeline. It exists because "too many are being kept" cannot be acted
+ * on by itself: the useful question is which pattern is doing the keeping,
+ * since that is the one to tighten. Reports the first signal that fires, in
+ * the same order classifyRelevance() checks them, and names the exact regex
+ * so a loose pattern is identifiable rather than merely suspected.
+ *
+ * See scripts/explain-kept.ts, which groups a reclassify export by this.
+ */
+export function explainKeptSignal(input: {
+  title: string;
+  summary?: string;
+  industries: string[];
+  estimatedValue?: number;
+  currency?: string;
+  buyer?: string;
+  country?: string;
+}): string {
+  const result = classifyRelevance({ ...input, scopeType: "works" });
+  if (result.tier === "excluded") return "excluded（不该出现在 kept 里）";
+
+  const haystack = stripKnownFalsePositivePlaceNames(
+    [input.title, input.summary, ...input.industries].filter(Boolean).join(" "),
+  );
+  const value = input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
+  const show = (pattern: RegExp) => String(pattern).slice(0, 96);
+
+  const major = MAJOR_PROJECT_KEYWORDS.find((pattern) => pattern.test(haystack));
+  if (major) return `MAJOR_PROJECT 大型项目关键词 ${show(major)}`;
+
+  const override = INCLUDE_OVERRIDE_KEYWORDS.find((pattern) => pattern.test(haystack));
+  if (override && value === undefined) return `INCLUDE_OVERRIDE 白名单（无金额）${show(override)}`;
+
+  if (value !== undefined && value >= FLAGSHIP_VALUE_USD) return `金额 ≥ ${FLAGSHIP_VALUE_USD.toLocaleString()} USD`;
+  if (value !== undefined && value >= SIGNIFICANT_VALUE_USD) return `金额 ≥ ${SIGNIFICANT_VALUE_USD.toLocaleString()} USD`;
+
+  const flagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.find((pattern) => pattern.test(haystack));
+  if (flagshipIndustry) return `FLAGSHIP_INDUSTRY 白名单 ${show(flagshipIndustry)}`;
+
+  const capped = EQUIPMENT_SCALE_CAPPED_KEYWORDS.find((pattern) => pattern.test(haystack));
+  if (capped) return `EQUIPMENT_SCALE_CAPPED ${show(capped)}`;
+
+  if (override) return `INCLUDE_OVERRIDE 白名单（有金额）${show(override)}`;
+  if (value !== undefined) return `仅凭有金额保留（未命中任何关键词）`;
+  return `仅凭行业标签保留（未命中任何关键词、无金额）`;
+}

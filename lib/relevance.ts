@@ -141,7 +141,20 @@ const EXCLUDE_KEYWORDS = [
   // longer gated by hasIncludeOverride/MAJOR_PROJECT_KEYWORDS the way
   // every other EXCLUDE_KEYWORDS entry still is.
   /suministro (de )?(partes|herramientas|material(es)?)\b|adquisici[óo]n de (herramientas|refacciones)\b|refacciones, accesorios y herramientas|materiales? y art[íi]culos? de/i, // 物料/工具、物料 — spare parts, tools, consumable materials, not equipment/works
-  /servicio m[ée]dico integral/i, // 不参加医疗的Servicio Integral — outsourced integrated medical service
+  /servicio m[ée]dico integral/i,
+  // Health SERVICE delivery, as opposed to the medical EQUIPMENT this
+  // platform targets ("我们只做医疗设备"). "PRESTACIÓN INTEGRAL DE SERVICIOS
+  // DE SALUD EN ONCOLOGÍA" (2026-09-07, user-confirmed) survived on its
+  // healthcare industry tag alone, since the equipment whitelist correctly
+  // didn't match it and nothing else dropped it.
+  /prestaci[óo]n (integral )?de servicios de salud|servicios de salud en\b/i,
+  // "construcción" of a document, not of anything physical. "CONTRATAR LA
+  // CONSTRUCCION Y SOCIALIZACION DEL ANÁLISIS DE SITUACIÓN DE SALUD 2026"
+  // (2026-09-07, user-confirmed) matched FLAGSHIP_INDUSTRY_KEYWORDS' bare
+  // "construcción" — a public-health study, produced with "metodologías
+  // cualitativas de participación social". Excluded here, which runs
+  // before that whitelist is even computed.
+  /construcci[óo]n (y \w+aci[óo]n )?del? (an[áa]lisis|documento|plan\b|estudio|diagn[óo]stico)|an[áa]lisis de situaci[óo]n de salud/i, // 不参加医疗的Servicio Integral — outsourced integrated medical service
   /destrucci[óo]n y disposici[óo]n final|disposici[óo]n final de residuos|destrucci[óo]n de insumos/i, // 废料处理 — waste destruction/disposal
   /medici[óo]n de caudales/i, // 测量项目 — small flow-measurement project
   /barda(s)? perimetral(es)?/i, // 围栏 — perimeter wall/fence construction
@@ -394,6 +407,28 @@ const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
  * mantenimiento", "administración, operación y mantenimiento", "servicio
  * técnico preventivo y correctivo".
  */
+/**
+ * Renewing something that already exists, which is the software equivalent
+ * of MAINTENANCE_ONLY_KEYWORDS and gets the same treatment: checked before
+ * hasIncludeOverride and NOT bypassable by it.
+ *
+ * The licensing patterns in EXCLUDE_KEYWORDS are bypassable, and that is
+ * how "REALIZAR LA RENOVACIÓN DEL LICENCIAMIENTO DE LA PLATAFORMA DE
+ * SEGURIDAD PERIMETRAL EXISTENTE Y ADQUIRIR LA SOLUCIÓN LAN; WIFI Y
+ * FIREWALL" (2026-09-07, real, user-confirmed) came out FLAGSHIP: firewall
+ * and perimeter security are INCLUDE_OVERRIDE_KEYWORDS, so the override
+ * waved away the licence-renewal exclusion and then, with no disclosed
+ * value, promoted it to the top tier.
+ *
+ * The tradeoff is deliberate and the same one maintenance already makes: a
+ * large security project that happens to mention renewing a licence is
+ * dropped too. Renewing a subscription on an installed platform is not a
+ * procurement a foreign bidder can win, whatever else the sentence names.
+ */
+const RENEWAL_ONLY_KEYWORDS = [
+  /renovaci[óo]n del? licenciamiento|renovaci[óo]n de (la )?(suscripci[óo]n|licencia(s)?)|renovaci[óo]n de (la )?plataforma/i,
+];
+
 const MAINTENANCE_ONLY_KEYWORDS = [
   // The abbreviations are how Compras MX titles actually write it —
   // "IA-N-182-2026 MTTO PLANTAS DE EMERGENCIA HOSPITALES" is a real one.
@@ -1087,7 +1122,11 @@ export function classifyRelevance(input: {
   // before, and not gated by, hasIncludeOverride below. Only a real,
   // government-verified national-priority-project designation (never a
   // keyword-based override) can rescue a maintenance-only tender.
-  if (input.isNationalPriorityProject !== true && MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+  if (
+    input.isNationalPriorityProject !== true &&
+    (MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
+      RENEWAL_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack)))
+  ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
 

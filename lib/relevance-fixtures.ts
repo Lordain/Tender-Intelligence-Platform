@@ -191,6 +191,37 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Mexico",
   },
 
+  // --- 2026-09-07: Colombian titles the user confirmed should have been
+  // excluded and were not ---
+  {
+    title: "REALIZAR LA RENOVACIÓN DEL LICENCIAMIENTO DE LA PLATAFORMA DE SEGURIDAD PERIMETRAL EXISTENTE Y ADQUIRIR LA SOLUCIÓN LAN; WIFI Y FIREWALL COMPATIBLE CON LA INFRAESTRUCTURA TECNOLÓGICA ACTUAL DE LA SECRETARÍA",
+    expectedTier: "excluded",
+    note: "Came out FLAGSHIP, the worst possible answer for a licence renewal. The licensing patterns live in EXCLUDE_KEYWORDS, which hasIncludeOverride bypasses — and firewall/perimeter security ARE override keywords, so the override waved the exclusion away and then, with no disclosed value, promoted it to the top tier. Renewal patterns now sit in RENEWAL_ONLY_KEYWORDS, checked before the override and not bypassable by it, the same treatment maintenance already gets.",
+    scopeType: "services",
+    country: "Colombia",
+  },
+  {
+    title: "SUMINISTRO E INSTALACIÓN DE UN SISTEMA DE VIDEOVIGILANCIA Y CONTROL DE ACCESO PARA EL DISTRITO",
+    expectedTier: "significant",
+    note: "The control for that change: an override-flagged security project with no renewal wording in it must still be promoted, not dropped. 'significant' rather than 'flagship' because videovigilancia is in EQUIPMENT_SCALE_CAPPED_KEYWORDS, which caps an undisclosed-value match there on purpose — the point of this fixture is that RENEWAL_ONLY_KEYWORDS is narrow enough to leave it alone, taking renewal of an existing licence/subscription/platform rather than security work as a category.",
+    scopeType: "equipment_services",
+    country: "Colombia",
+  },
+  {
+    title: "PRESTACIÓN INTEGRAL DE SERVICIOS DE SALUD EN ONCOLOGÍA",
+    expectedTier: "excluded",
+    note: "Health SERVICE delivery, not the medical EQUIPMENT this platform targets. The equipment whitelist correctly did not match it, but nothing dropped it either, so its healthcare industry tag alone carried it to standard.",
+    scopeType: "services",
+    country: "Colombia",
+  },
+  {
+    title: "CONTRATAR LA CONSTRUCCION Y SOCIALIZACION DEL ANÁLISIS DE SITUACIÓN DE SALUD 2026; APLICANDO METODOLOGIAS CUALITATIVAS DE PARTICIPACIÓN SOCIAL Y COMUNITARIA EN EL MUNICIPIO DE ESPINAL - TOLIMA",
+    expectedTier: "excluded",
+    note: "'Construcción' of a DOCUMENT — a public-health study written with qualitative methodologies — matching the bare 'construcción' in FLAGSHIP_INDUSTRY_KEYWORDS. Excluded on the abstract noun that follows it, which runs before that whitelist is computed.",
+    scopeType: "services",
+    country: "Colombia",
+  },
+
   // --- Flagship: real MAJOR_PROJECT_KEYWORDS matches ---
   {
     title: "CONSTRUCCIÓN DE PRESA Y RED DE RIEGO",

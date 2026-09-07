@@ -623,6 +623,20 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // construction/works nouns kept below, which genuinely denote large
   // projects on their own.
   /construcci[óo]n|carretera|puente|ferrocarril|puerto|aeropuerto/i,
+  // Highway work identified only by chainage, with no word for "road" in
+  // the title at all: 'MODERNIZACION DEL KM 0+000 AL KM 3+500 CON UNA
+  // LONGITUD DE 3.5 KM'. Anchored on modernización/ampliación immediately
+  // before a KM marker so it can't match a generic "modernización" of
+  // anything else.
+  /(modernizaci[óo]n|ampliaci[óo]n)\s+del?\s+(cuerpo\s+del?\s+)?km\s*\d/i,
+  // 'PAV CAM MANUEL CRESCEN REJON…' — pavimentación de camino, written in
+  // the abbreviated form Compras MX uses for road jobs. Both tokens
+  // required, so neither abbreviation alone can match something unrelated.
+  /\bpav\.?\s+cam\.?\b/i,
+  // Geophysical survey equipment — 'ADQUISICIÓN DE UN SISTEMA DE
+  // RESISTIVIDAD', a resistivity system used for groundwater and
+  // geotechnical surveying. From the user's 2026-09-07 confirmed list.
+  /sistema de resistividad|geof[íi]sic[oa]/i,
   // Medical/health goods. Added deliberately after measuring the real
   // open-tenders export: of the 82 of 515 procedures open to foreign
   // bidders at all, the large majority are health-sector goods (health
@@ -640,7 +654,12 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // that's always caught by EXCLUDE_KEYWORDS first serves no purpose
   // staying in this list too and would misleadingly look like it still
   // does.
-  /equipo m[ée]dico|equipamiento m[ée]dico|medical equipment|equipo de laboratorio/i,
+  // "equipo medio" is a real, recurring Compras MX typo for "equipo médico"
+  // — 'ADQUISICION DE EQUIPO MEDIO Y DE LABORATORIO PARA LAS UNIDADES
+  // MÉDICAS' (2026-09-07). Listed explicitly rather than loosening the
+  // stem, because "medi…" would also catch "medicamento", a consumable
+  // this list deliberately excludes.
+  /equipo(s)? m[ée]dico|equipo(s)? m[ée]dio\b|equipamiento m[ée]dico|medical equipment|equipo(s)? de laboratorio/i,
   /bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia/i,
   /imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia|ultrasonido|rayos x/i,
   // Vehicle-fleet purchases — restored to the whitelist per the user's
@@ -690,7 +709,18 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // PURCHASES as a category, and a real PEMEX title (2026-09-07) named the
   // machine directly rather than using the generic phrase. Same anchored
   // pattern, so "arrendamiento de excavadora" (rental) still isn't caught.
-  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+[\d'"\s]{0,15}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?|maquinaria pesada|(retro)?excavadora(s)?|gr[úu]a(s)?)/i,
+  // Three widenings from a real 2026-09-07 list of titles the user
+  // confirmed should never have been excluded:
+  //   · the gap now tolerates a leading article and CURLY quotes —
+  //     'ADQUISICIÓN DE “CAMIÓN COSTERO MÍNIMO 41 PASAJEROS' missed only
+  //     because the typographic quote Compras MX pastes in is not the ASCII
+  //     one the old class allowed, and 'DE UN SISTEMA…' missed on the "un";
+  //   · patrulla/automóvil/motocicleta join the vehicle nouns —
+  //     'ADQUISICION DE PATRULLAS PICK UPS, AUTOMOVILES Y MOTOCICLETAS' put
+  //     "patrullas" first, and the anchored gap only ever looks at the noun
+  //     immediately after the verb, so the "pick ups" further along never
+  //     counted.
+  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+(?:(?:un|una|el|la|los|las)\s+)?[\d'"“”‘’\s]{0,15}(veh[íi]culo(s)?|vehs\.?\b|autob[úu]s(es)?|cami[óo]n(es)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?|patrulla(s)?|autom[óo]vil(es)?|motocicleta(s)?|maquinaria pesada|(retro)?excavadora(s)?|gr[úu]a(s)?)/i,
   // Power-grid key equipment — added per the user's explicit request
   // (2026-09-04: "白名单加入电力相关的关键设备：变压器、发电机、继电保护器等"
   // then "还有UPS"). Same anchored purchase-verb pattern and reasoning as
@@ -705,7 +735,7 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // equipment nouns after the Seventh pass removed the old, much broader
   // "energía|eléctrico|power" bare-word signal; this is a narrower,
   // deliberately re-added replacement for that one real equipment class.
-  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+[\d'"\s]{0,15}(transformador(es)?|generador(es)?|rel[ée]s? de protecci[óo]n|relevador(es)? de protecci[óo]n|\bups\b)/i,
+  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+(?:(?:un|una|el|la|los|las)\s+)?[\d'"“”‘’\s]{0,15}(transformador(es)?|generador(es)?|rel[ée]s? de protecci[óo]n|relevador(es)? de protecci[óo]n|\bups\b)/i,
 ];
 
 // USD-scale thresholds (the whole platform standardizes display and

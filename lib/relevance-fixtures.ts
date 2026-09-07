@@ -139,6 +139,58 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Mexico",
   },
 
+  // --- 2026-09-07: titles the user confirmed should never have been
+  // excluded, one fixture per distinct mechanism that was missing them ---
+  {
+    title: "ADQUISICIÓN DE “CAMIÓN COSTERO MÍNIMO 41 PASAJEROS CON EQUIPO DE SEÑALIZACIÓN VIAL",
+    expectedTier: "standard",
+    note: "Missed on a typographic quote. The anchored gap allowed ASCII ' and \" but not the curly “ Compras MX pastes in, so the vehicle noun right after it never counted.",
+    scopeType: "equipment",
+    country: "Mexico",
+  },
+  {
+    title: "ADQUISICION DE PATRULLAS PICK UPS, AUTOMOVILES Y MOTOCICLETAS.",
+    expectedTier: "standard",
+    note: "Missed because the gap only ever looks at the noun IMMEDIATELY after the verb: 'patrullas' was not on the vehicle list, and the 'pick ups' further along was never reachable. patrulla/automóvil/motocicleta now join it.",
+    scopeType: "equipment",
+    country: "Mexico",
+  },
+  {
+    title: "ADQUISICION DE EQUIPO MEDIO Y DE LABORATORIO PARA LAS UNIDADES MÉDICAS",
+    expectedTier: "standard",
+    note: "'equipo medio' is a real recurring typo for 'equipo médico'. Listed explicitly rather than loosening the stem to 'medi…', which would also catch 'medicamento' — a consumable this platform deliberately excludes.",
+    scopeType: "equipment",
+    country: "Mexico",
+  },
+  {
+    title: "MODERNIZACION DEL KM 0+000 AL KM 3+500 CON UNA LONGITUD DE 3.5 KM",
+    expectedTier: "standard",
+    note: "Highway work whose title contains no word for road at all — only chainage. Anchored on modernización/ampliación directly before a KM marker so a 'modernización' of anything else can't match.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "PAV CAM MANUEL CRESCEN REJON LOS ALACRANES, LOC PIONEROS DEL RÍO XNOHÁ, CALAKMUL",
+    expectedTier: "standard",
+    note: "Pavimentación de camino in the abbreviated form Compras MX uses. Both tokens are required together, so neither abbreviation alone can match something unrelated.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "ADQUISICIÓN DE UN SISTEMA DE RESISTIVIDAD",
+    expectedTier: "standard",
+    note: "Two separate misses in one title: the gap rejected the article 'un', and no pattern covered geophysical survey equipment. Both fixed.",
+    scopeType: "equipment",
+    country: "Mexico",
+  },
+  {
+    title: "ADQUISICIÓN DE COMBUSTIBLES Y LUBRICANTES PARA VEHÍCULOS Y EQUIPOS TERRESTRES",
+    expectedTier: "excluded",
+    note: "The control for widening that gap. This is the 2026-09-04 false positive the gap was tightened for — a FUEL purchase matching on 'vehículos' as a trailing modifier. Allowing a leading article must not reopen it: 'combustibles' is not an article, so the noun still has to be the immediate object of the verb.",
+    scopeType: "equipment",
+    country: "Mexico",
+  },
+
   // --- Flagship: real MAJOR_PROJECT_KEYWORDS matches ---
   {
     title: "CONSTRUCCIÓN DE PRESA Y RED DE RIEGO",

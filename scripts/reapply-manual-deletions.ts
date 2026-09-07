@@ -30,6 +30,13 @@ const PAGE = 1000;
  */
 const FILTER_CHUNK = 100;
 
+/** tenders.title is jsonb ({ zh, es, en }), not separate columns. */
+function titleOf(title: unknown): string {
+  const value = (title ?? {}) as { zh?: string; es?: string; en?: string };
+  return value.zh || value.es || value.en || "";
+}
+
+
 async function main() {
   const supabase = createSupabaseAdminClient();
   if (!supabase) throw new Error("SUPABASE_SERVICE_ROLE_KEY (and NEXT_PUBLIC_SUPABASE_URL) must be set.");
@@ -62,13 +69,13 @@ async function main() {
     const chunk = deletedSlugs.slice(i, i + FILTER_CHUNK);
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, title_es, title_zh, country")
+      .select("slug, title, country")
       .in("slug", chunk);
     if (error) throw new Error(`读取 tenders 失败：${error.message}`);
     for (const row of data ?? []) {
       present.push({
         slug: row.slug as string,
-        title: ((row.title_zh as string | null) || (row.title_es as string | null) || "").slice(0, 60),
+        title: titleOf(row.title).slice(0, 56),
         country: (row.country as string | null) ?? "",
       });
     }
@@ -81,7 +88,7 @@ async function main() {
 
   console.log(`\n${present.length} 个项目在手动删除列表上，但仍存在于 tenders 表：\n`);
   for (const row of present.slice(0, 50)) {
-    console.log(`  ${row.slug.padEnd(34)} ${row.country.padEnd(4)} ${row.title}`);
+    console.log(`  ${row.slug.padEnd(34)} ${row.country.padEnd(9)} ${row.title}`);
   }
   if (present.length > 50) console.log(`  …以及另外 ${present.length - 50} 个`);
 

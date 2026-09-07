@@ -25,6 +25,7 @@
  *   npm run purge:since -- --since=2026-09-07 --write --tombstone
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { ALL_COUNTRIES } from "../lib/tender-labels";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
@@ -34,8 +35,22 @@ const COUNTRY = flag("country");
 const SINCE = flag("since");
 const FILTER_CHUNK = 100;
 
+/** tenders.title is jsonb ({ zh, es, en }), not separate columns. */
+function titleOf(title: unknown): string {
+  const value = (title ?? {}) as { zh?: string; es?: string; en?: string };
+  return value.zh || value.es || value.en || "";
+}
+
+
 async function main() {
   if (!SINCE) throw new Error("必须指定 --since=YYYY-MM-DD（或完整 ISO 时间）。");
+  // Rejected rather than passed through: tenders.country holds "Mexico",
+  // not "MX", so an unrecognized value would match zero rows and report
+  // "nothing to clean up" — the most dangerous possible answer from a
+  // cleanup tool, because it looks like success.
+  if (COUNTRY && !ALL_COUNTRIES.includes(COUNTRY as (typeof ALL_COUNTRIES)[number])) {
+    throw new Error(`未知的 --country=${COUNTRY}。可用值：${ALL_COUNTRIES.join(", ")}`);
+  }
   const since = new Date(SINCE.length === 10 ? `${SINCE}T00:00:00.000Z` : SINCE);
   if (Number.isNaN(since.getTime())) throw new Error(`无法解析 --since=${SINCE}`);
 
@@ -44,14 +59,14 @@ async function main() {
 
   let query = supabase
     .from("tenders")
-    .select("slug, title_es, title_zh, country, relevance_tier, created_at")
+    .select("slug, title, country, relevance_tier, created_at")
     .gte("created_at", since.toISOString())
     .order("created_at");
   if (COUNTRY) query = query.eq("country", COUNTRY);
 
   const { data, error } = await query;
   if (error) throw new Error(`读取 tenders 失败：${error.message}`);
-  const rows = (data ?? []) as { slug: string; title_es: string | null; title_zh: string | null; country: string; relevance_tier: string | null }[];
+  const rows = (data ?? []) as { slug: string; title: unknown; country: string; relevance_tier: string | null }[];
 
   if (rows.length === 0) {
     console.log(`没有在 ${since.toISOString()} 之后新增的项目${COUNTRY ? `（国家=${COUNTRY}）` : ""}。`);
@@ -65,7 +80,7 @@ async function main() {
   for (const [tier, count] of [...byTier].sort((a, b) => b[1] - a[1])) console.log(`  ${tier.padEnd(14)} ${count}`);
   console.log();
   for (const row of rows.slice(0, 20)) {
-    console.log(`  ${row.slug.padEnd(34)} ${row.country.padEnd(4)} ${((row.title_zh || row.title_es) ?? "").slice(0, 56)}`);
+    console.log(`  ${row.slug.padEnd(34)} ${row.country.padEnd(9)} ${titleOf(row.title).slice(0, 52)}`);
   }
   if (rows.length > 20) console.log(`  …以及另外 ${rows.length - 20} 个`);
 

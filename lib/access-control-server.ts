@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { TRIAL_DAYS, type SubscriptionPlan, type ViewerEntitlement, type ViewerRole } from "@/lib/access-control";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
@@ -8,6 +9,55 @@ const EMPTY: ViewerEntitlement = { role: "guest", plan: null, trialEndsAt: null,
 
 function isCurrent(subscription: { current_period_end?: string | null }) {
   return !subscription.current_period_end || new Date(subscription.current_period_end).getTime() >= Date.now();
+}
+
+type SubscriptionRow = {
+  user_id: string;
+  plan: string;
+  created_at: string | null;
+  current_period_end: string | null;
+  current_period_start?: string | null;
+  cancel_at_period_end?: boolean;
+};
+
+const SUBSCRIPTION_COLUMNS = "user_id, plan, status, created_at, current_period_end, current_period_start, cancel_at_period_end";
+const SUBSCRIPTION_COLUMNS_BEFORE_0026 = "user_id, plan, status, created_at, current_period_end";
+
+/**
+ * The one active subscription that still covers today, or undefined.
+ *
+ * Two things this deliberately does NOT do. It does not retry on any error:
+ * only PostgREST's undefined_column (42703) means "migration 0026 has not
+ * reached this database yet", and retrying anything else would turn a
+ * transient failure into a silent answer of "no subscription" — which
+ * downgrades a paying customer to the free tier, tells them to subscribe for
+ * something they already bought, and leaves nothing in the logs to explain
+ * it. And it does not swallow the second error either: a 500 from an error
+ * boundary is recoverable and visible; a wrong entitlement is neither.
+ */
+async function findCurrentSubscription(
+  admin: SupabaseClient,
+  userId: string,
+  plan?: "enterprise",
+): Promise<SubscriptionRow | undefined> {
+  const run = (columns: string) => {
+    const query = admin.from("subscriptions").select(columns).eq("user_id", userId).in("status", ["active", "trialing"]);
+    return plan ? query.eq("plan", plan) : query;
+  };
+
+  let result = await run(SUBSCRIPTION_COLUMNS);
+  if (result.error?.code === "42703") result = await run(SUBSCRIPTION_COLUMNS_BEFORE_0026);
+  if (result.error) throw new Error(`订阅读取失败：${result.error.message}`);
+
+  return ((result.data ?? []) as unknown as SubscriptionRow[]).find(isCurrent);
+}
+
+function periodOf(subscription: SubscriptionRow) {
+  return {
+    periodStart: subscription.current_period_start ?? subscription.created_at ?? null,
+    periodEnd: subscription.current_period_end ?? null,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+  };
 }
 
 /**
@@ -25,20 +75,16 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
     return { ...EMPTY, role: new Date(fallbackEnd).getTime() > Date.now() ? "trial" : "free", trialEndsAt: fallbackEnd };
   }
 
-  const detailedOwn = await admin.from("subscriptions")
-    .select("user_id, plan, status, current_period_start, current_period_end, created_at, cancel_at_period_end")
-    .eq("user_id", user.id).in("status", ["active", "trialing"]);
-  // Compatibility while migration 0026 is being deployed: the older schema
-  // still yields a valid entitlement instead of temporarily downgrading a
-  // paying user because the new display-only columns do not exist yet.
-  const fallbackOwn = detailedOwn.error
-    ? await admin.from("subscriptions").select("user_id, plan, status, current_period_end, created_at").eq("user_id", user.id).in("status", ["active", "trialing"])
-    : detailedOwn;
-  const ownSubscriptions = fallbackOwn.data ?? [];
-  const own = ownSubscriptions.find(isCurrent);
+  const own = await findCurrentSubscription(admin, user.id);
   if (own) {
-    const detailed = own as typeof own & { current_period_start?: string | null; cancel_at_period_end?: boolean };
-    return { role: "subscriber", plan: own.plan as SubscriptionPlan, trialEndsAt: null, subscriptionOwnerUserId: user.id, isEnterpriseOwner: own.plan === "enterprise", periodStart: detailed.current_period_start ?? own.created_at ?? null, periodEnd: own.current_period_end ?? null, cancelAtPeriodEnd: detailed.cancel_at_period_end ?? false };
+    return {
+      ...EMPTY,
+      role: "subscriber",
+      plan: own.plan as SubscriptionPlan,
+      subscriptionOwnerUserId: user.id,
+      isEnterpriseOwner: own.plan === "enterprise",
+      ...periodOf(own),
+    };
   }
 
   // A seat is granted by an ACCEPTED invitation bound to THIS account, never
@@ -53,20 +99,24 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
     .limit(1);
   const ownerId = memberships?.[0]?.owner_user_id as string | undefined;
   if (ownerId) {
-    const detailedOwner = await admin.from("subscriptions")
-      .select("user_id, plan, status, current_period_start, current_period_end, created_at, cancel_at_period_end")
-      .eq("user_id", ownerId).eq("plan", "enterprise").in("status", ["active", "trialing"]);
-    const fallbackOwner = detailedOwner.error
-      ? await admin.from("subscriptions").select("user_id, plan, status, current_period_end, created_at").eq("user_id", ownerId).eq("plan", "enterprise").in("status", ["active", "trialing"])
-      : detailedOwner;
-    const owner = (fallbackOwner.data ?? []).find(isCurrent);
+    const owner = await findCurrentSubscription(admin, ownerId, "enterprise");
     if (owner) {
-      const detailed = owner as typeof owner & { current_period_start?: string | null; cancel_at_period_end?: boolean };
-      return { ...EMPTY, role: "subscriber", plan: "enterprise", subscriptionOwnerUserId: ownerId, isEnterpriseOwner: false, periodStart: detailed.current_period_start ?? owner.created_at ?? null, periodEnd: owner.current_period_end ?? null, cancelAtPeriodEnd: detailed.cancel_at_period_end ?? false };
+      return {
+        ...EMPTY,
+        role: "subscriber",
+        plan: "enterprise",
+        subscriptionOwnerUserId: ownerId,
+        isEnterpriseOwner: false,
+        ...periodOf(owner),
+      };
     }
   }
 
-  const { data: profile } = await admin.from("profiles").select("trial_ends_at").eq("id", user.id).maybeSingle();
+  // Same reasoning as above: a swallowed error here silently falls back to
+  // "signup + 7 days", which for any account older than a week reads as an
+  // expired trial — a free tier the person never actually landed in.
+  const { data: profile, error: profileError } = await admin.from("profiles").select("trial_ends_at").eq("id", user.id).maybeSingle();
+  if (profileError) throw new Error(`试用状态读取失败：${profileError.message}`);
   const trialEndsAt = (profile?.trial_ends_at as string | undefined) ?? fallbackEnd;
   const role = new Date(trialEndsAt).getTime() > Date.now() ? "trial" : "free";
   return { ...EMPTY, role, trialEndsAt, periodStart: role === "trial" ? new Date(new Date(trialEndsAt).getTime() - TRIAL_DAYS * 86_400_000).toISOString() : null, periodEnd: role === "trial" ? trialEndsAt : null };

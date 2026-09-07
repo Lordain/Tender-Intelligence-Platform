@@ -134,7 +134,7 @@ export function mapLicitiaVigenteRowToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
-    relevance: classifyRelevance({ title, industries, scopeType, buyer }),
+    relevance: classifyRelevance({ title, industries, scopeType, buyer, governmentLevel: inferGovernmentLevelFromProcedureNumber(tenderNumber, buyer) }),
     sourceName,
     sourceUrl,
     createdAt: now,

@@ -87,7 +87,7 @@ export function mapEcopetrolConvocatoriaRowToTender(row: EcopetrolConvocatoriaRo
         : []),
     ],
     risks: [],
-    relevance: classifyRelevance({ title, industries, scopeType, buyer: "Ecopetrol S.A." }),
+    relevance: classifyRelevance({ governmentLevel: "public_company", title, industries, scopeType, buyer: "Ecopetrol S.A." }),
     sourceName,
     sourceUrl,
     createdAt: now,

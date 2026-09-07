@@ -65,6 +65,7 @@ export function mapProyectosEstrategicosRowToTender(
       industries: base.industries,
       scopeType: base.scopeType,
       buyer: base.buyer,
+      governmentLevel: base.governmentLevel,
       isNationalPriorityProject: true,
     }),
   };

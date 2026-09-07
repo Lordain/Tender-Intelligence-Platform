@@ -205,7 +205,7 @@ export function mapPemexConcursoItemToTender(
     requiredDocuments: [],
     keyDates: [],
     risks: [],
-    relevance: classifyRelevance({ title: description, industries, scopeType, buyer }),
+    relevance: classifyRelevance({ governmentLevel: "public_company", title: description, industries, scopeType, buyer }),
     sourceName,
     // Real, anonymously-reachable search page for this list (see
     // SEARCH_PAGE_PATH_BY_LIST_TITLE above) — not a per-item deep link;

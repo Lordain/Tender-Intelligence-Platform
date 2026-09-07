@@ -30,6 +30,7 @@ for (const fixture of RELEVANCE_FIXTURES) {
     currency: fixture.currency,
     buyer: fixture.buyer,
     country: fixture.country,
+    governmentLevel: fixture.governmentLevel,
     isNationalPriorityProject: fixture.isNationalPriorityProject,
     structuredDurationDays: fixture.structuredDurationDays,
   });

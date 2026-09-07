@@ -310,7 +310,7 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
       ...(awardDate ? [{ id: `${tenderNumber}-award`, type: "award" as const, date: awardDate }] : []),
     ],
     risks: [],
-    relevance: classifyRelevance({
+    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevel(row.ordenentidad, buyer),
       title,
       summary,
       industries,

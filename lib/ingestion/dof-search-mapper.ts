@@ -237,7 +237,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     requiredDocuments: [],
     keyDates: detailKeyDates.length > 0 ? detailKeyDates : [{ id: `dof-${nota.codNota}-publication`, type: "publication", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ title, industries, scopeType, buyer }),
+    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevel(buyer), title, industries, scopeType, buyer }),
     sourceName,
     // CFE tenders link to CFE's own micrositio instead of DOF (explicit
     // request, 2026-09-05 — see CFE_MICROSITIO_URL's own comment for why

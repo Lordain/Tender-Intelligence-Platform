@@ -43,6 +43,10 @@ for (const row of rows) {
   const signal = explainKeptSignal({
     title,
     scopeType: (row.scope_type || undefined) as never,
+    // Read from the export, not omitted: without it the municipal rule
+    // cannot fire here and this diagnostic would disagree with the real
+    // classification — the same kind of divergence it exists to catch.
+    governmentLevel: (row.government_level || undefined) as never,
     industries: (row.industries ?? "").split(/[;,|]/).map((s) => s.trim()).filter(Boolean),
     estimatedValue: row.estimated_value ? Number(row.estimated_value) : undefined,
     currency: row.currency || undefined,

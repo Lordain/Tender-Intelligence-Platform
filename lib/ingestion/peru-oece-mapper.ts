@@ -179,7 +179,7 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
     requiredDocuments: [],
     keyDates: [{ id: `peru-${record.ocid}-publication`, type: "publication", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ title, industries, scopeType, estimatedValue, currency, buyer }),
+    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevel(buyer), title, industries, scopeType, estimatedValue, currency, buyer }),
     sourceName,
     sourceUrl: latestRelease?.url || "https://contratacionesabiertas.oece.gob.pe/",
     createdAt: now,

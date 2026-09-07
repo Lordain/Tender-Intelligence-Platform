@@ -20,7 +20,7 @@
  * immediately instead of by chance.
  */
 
-import type { TenderScopeType } from "@/types/tender";
+import type { Tender, TenderScopeType } from "@/types/tender";
 
 export type RelevanceFixture = {
   title: string;
@@ -33,6 +33,7 @@ export type RelevanceFixture = {
   currency?: string;
   buyer?: string;
   country?: string;
+  governmentLevel?: Tender["governmentLevel"];
   isNationalPriorityProject?: boolean;
   structuredDurationDays?: number;
 };
@@ -316,6 +317,62 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     estimatedValue: 8_000_000,
     currency: "USD",
     country: "Colombia",
+  },
+
+  // --- 2026-09-07: government level, and major-project keywords that name
+  // the site rather than the job ---
+  {
+    title: "CONSTRUCCION DE TANQUE",
+    expectedTier: "excluded",
+    note: "Real title from a kept export. Municipal tier, no disclosed value, and nothing holding it in but the broadest works word there is. Wording could not separate this from a federal highway — both are just 'construcción' — but who is buying can, and the source states it.",
+    scopeType: "works",
+    country: "Mexico",
+    governmentLevel: "municipal",
+  },
+  {
+    title: "CONSTRUCCION DE TANQUE",
+    expectedTier: "standard",
+    note: "The same title at federal level, to pin that the rule keys on the government tier and not on the words.",
+    scopeType: "works",
+    country: "Mexico",
+    governmentLevel: "federal",
+  },
+  {
+    title: "ADQUISICIÓN DE VEHÍCULOS TIPO SEDÁN PARA LOS PROGRAMAS SSYRA Y SNSP",
+    expectedTier: "standard",
+    note: "A municipality buying vehicles is untouched: the rule fires only when the ONLY whitelist match is the bare works word, and an anchored purchase pattern matched here instead.",
+    scopeType: "equipment",
+    country: "Mexico",
+    governmentLevel: "municipal",
+  },
+  {
+    title: "CONSTRUCCIÓN DE PRESA MUNICIPAL",
+    expectedTier: "flagship",
+    note: "A dam is a dam whoever buys it. Every promotion returns above the municipal gate.",
+    scopeType: "works",
+    country: "Mexico",
+    governmentLevel: "municipal",
+  },
+  {
+    title: "REPARACIÓN DE JUNTAS DE CALZADA EN PSV DEL PUERTO ALTAMIRA",
+    expectedTier: "significant",
+    note: "Per the user (2026-09-07): 改中型项目. Resurfacing joints at a port is real infrastructure work at real scale, but it is not a port project, and MAJOR_PROJECT_KEYWORDS' 'puerto' had it at the top tier.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "TRABAJOS DE URBANIZACIÓN BAJO PUENTE COMPRENDIDO ENTRE EL FRENTE 1, 13, 17, 19",
+    expectedTier: "standard",
+    note: "Per the user (2026-09-07): 改常规项目. The bridge is the address, not the work.",
+    scopeType: "works",
+    country: "Mexico",
+  },
+  {
+    title: "RECONSTRUCCIÓN DEL PUENTE “XUCHIPANTLA”",
+    expectedTier: "flagship",
+    note: "The control for both demotions: rebuilding a bridge outright stays flagship. 'reparación' demotes, 'reconstrucción' deliberately does not, and several real titles of this shape are in the same export.",
+    scopeType: "works",
+    country: "Mexico",
   },
 
   // --- Flagship: real MAJOR_PROJECT_KEYWORDS matches ---

@@ -126,7 +126,7 @@ export function mapOcdsReleaseToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(release),
     risks: [],
-    relevance: classifyRelevance({
+    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevel(buyerName),
       title: tender.title,
       summary: tender.description,
       industries,

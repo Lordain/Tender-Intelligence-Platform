@@ -1,4 +1,4 @@
-import type { LocalizedText, TenderRelevance, TenderScopeType } from "@/types/tender";
+import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
 
@@ -456,6 +456,26 @@ const SETTLEMENT_SCALE_KEYWORDS = [
   /\bfracc(?:\.|ionamiento)\b/i,
 ];
 
+/**
+ * A major structure named as the ADDRESS of the work, not as the work.
+ * "TRABAJOS DE URBANIZACIÓN BAJO PUENTE COMPRENDIDO ENTRE EL FRENTE 1, 13,
+ * 17, 19" is paving under a bridge, and MAJOR_PROJECT_KEYWORDS' "puente"
+ * had it at the top tier. Demoted to whatever the rest of the title earns
+ * (2026-09-07, per the user's explicit call: 改常规项目).
+ */
+const MAJOR_PROJECT_LOCATION_ONLY = [/\bbajo (?:el |la )?(?:puente|paso a desnivel|distribuidor vial)/i];
+
+/**
+ * A repair of PART of a major structure — real infrastructure work at real
+ * scale, but not a new build. "REPARACIÓN DE JUNTAS DE CALZADA EN PSV DEL
+ * PUERTO ALTAMIRA" is resurfacing joints at a port, not a port project
+ * (2026-09-07, per the user: 改中型项目).
+ *
+ * Deliberately "reparación" only, NOT "reconstrucción": rebuilding a bridge
+ * outright stays flagship, and several such titles are in the same export.
+ */
+const MAJOR_PROJECT_REPAIR_ONLY = [/\breparaci[óo]n\b/i];
+
 const MAINTENANCE_ONLY_KEYWORDS = [
   // The abbreviations are how Compras MX titles actually write it —
   // "IA-N-182-2026 MTTO PLANTAS DE EMERGENCIA HOSPITALES" is a real one.
@@ -705,6 +725,14 @@ const EQUIPMENT_SCALE_CAPPED_KEYWORDS = [
 // flagship independent of this list. What's lost is only the weaker
 // signal — a bare mention of "energía"/"telecom" with no other evidence —
 // which is exactly what the user asked to stop counting.
+/**
+ * The broadest entry in FLAGSHIP_INDUSTRY_KEYWORDS, named so the municipal
+ * rule below can ask specifically whether this — and only this — is what
+ * kept a tender. In a real 2026-09-07 export it alone accounted for 262 of
+ * 467 kept rows, 260 of them Mexican.
+ */
+const BARE_WORKS_WHITELIST = /construcci[óo]n|carretera|puente|ferrocarril|puerto|aeropuerto/i;
+
 const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // Bare "infraestructura" dropped (2026-09-05, real false positive): the
   // user flagged "AMPLIACIÓN Y MODERNIZACIÓN DE LA INFRAESTRUCTURA
@@ -715,7 +743,7 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // EXCLUDE_KEYWORDS comments), a much weaker signal than the concrete
   // construction/works nouns kept below, which genuinely denote large
   // projects on their own.
-  /construcci[óo]n|carretera|puente|ferrocarril|puerto|aeropuerto/i,
+  BARE_WORKS_WHITELIST,
   // Highway work identified only by chainage, with no word for "road" in
   // the title at all: 'MODERNIZACION DEL KM 0+000 AL KM 3+500 CON UNA
   // LONGITUD DE 3.5 KM'. Anchored on modernización/ampliación immediately
@@ -1168,6 +1196,19 @@ export function classifyRelevance(input: {
    * Colombia at all, structured data or not.
    */
   structuredDurationDays?: number;
+  /**
+   * Tender.governmentLevel, as the source itself states it (Compras MX's
+   * "Orden de gobierno", SECOP's "ordenentidad") — never inferred here.
+   * Used for one rule only: see the municipal gate near the end.
+   *
+   * REQUIRED, not optional, and undefined has to be written out. Ingestion
+   * and reclassify-tenders.ts must reach the same verdict for the same
+   * tender — otherwise a re-import silently disagrees with the review that
+   * was just signed off on, which is the exact failure this is guarding
+   * against. Optional would let a call site forget it and diverge in
+   * silence; required makes the compiler enumerate every call site instead.
+   */
+  governmentLevel: Tender["governmentLevel"] | undefined;
 }): TenderRelevance {
   // stripKnownFalsePositivePlaceNames: see its own header comment in
   // industry.ts — bare "puerto"/"puertos"/"puente(s)" below
@@ -1300,8 +1341,18 @@ export function classifyRelevance(input: {
   // power plant, national network, new datacenter build — see
   // MAJOR_PROJECT_KEYWORDS) are inherently large-scale regardless of what a
   // specific procurement notice's line-item value happens to disclose.
+  // Two demotions before the flagship branch, both for a major-project
+  // keyword that names the SITE rather than the job. Neither excludes:
+  // the work is real, its scale is just not what the keyword implies.
+  const majorIsLocationOnly = matchesMajorProject && MAJOR_PROJECT_LOCATION_ONLY.some((pattern) => pattern.test(haystack));
+  const majorIsRepairOnly = matchesMajorProject && MAJOR_PROJECT_REPAIR_ONLY.some((pattern) => pattern.test(haystack));
+
+  if (majorIsRepairOnly && !majorIsLocationOnly) {
+    return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
+  }
+
   if (
-    matchesMajorProject ||
+    (matchesMajorProject && !majorIsLocationOnly) ||
     hasLongDuration ||
     (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD) ||
     (hasIncludeOverride && normalizedValue === undefined && !isEquipmentScaleCapped)
@@ -1405,6 +1456,33 @@ export function classifyRelevance(input: {
   // against the same import that motivated the gate: the equipment
   // purchase matches, and not one of the 20 sampled municipal water/paving/
   // well titles does.
+  // Municipal tier, undisclosed value, and nothing holding it in but the
+  // broadest works word there is (2026-09-07, per the user's call to use
+  // the structural field rather than keep guessing at wording).
+  //
+  // "CONSTRUCCIÓN DE TANQUE" and "MODERNIZACIÓN DE LA CARRETERA:
+  // VILLAHERMOSA - FRANCISCO ESCÁRCEGA" are the same word to
+  // BARE_WORKS_WHITELIST, and no phrasing rule separated them: the
+  // settlement-name rule added earlier reached only 5 of 267. What does
+  // separate them is who is buying — a municipality's water main versus a
+  // federal highway — and the source states that outright in its "Orden de
+  // gobierno" field, so this is read, not inferred.
+  //
+  // Deliberately narrow in three ways. It needs an UNDISCLOSED value (a
+  // real number is judged on its own merits). It requires that the ONLY
+  // whitelist match is the bare works word — a municipality buying
+  // vehicles, medical equipment or transformers matches an anchored
+  // purchase pattern instead and is untouched. And every promotion has
+  // already returned above, so a dam or a railway is never reached.
+  if (
+    input.governmentLevel === "municipal" &&
+    normalizedValue === undefined &&
+    matchesFlagshipIndustry &&
+    FLAGSHIP_INDUSTRY_KEYWORDS.filter((pattern) => pattern.test(haystack)).every((pattern) => pattern === BARE_WORKS_WHITELIST)
+  ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
+  }
+
   // Village/neighbourhood-scale siting, undisclosed value — see
   // SETTLEMENT_SCALE_KEYWORDS. Every promotion above has already returned,
   // so what reaches here matched at most the bare "construcción" and names
@@ -1460,11 +1538,12 @@ export function explainKeptSignal(input: {
   buyer?: string;
   country?: string;
   scopeType?: TenderScopeType;
+  governmentLevel?: Tender["governmentLevel"];
 }): string {
   // The row's real scopeType matters: hardcoding "works" made 26 rows of a
   // real kept export report themselves as "excluded", because scopeType
   // "consulting" is excluded outright and this was overwriting it.
-  const result = classifyRelevance({ ...input, scopeType: input.scopeType ?? "works" });
+  const result = classifyRelevance({ ...input, scopeType: input.scopeType ?? "works", governmentLevel: input.governmentLevel });
   if (result.tier === "excluded") return "excluded（不该出现在 kept 里）";
 
   const haystack = stripKnownFalsePositivePlaceNames(

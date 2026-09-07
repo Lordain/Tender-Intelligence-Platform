@@ -173,7 +173,7 @@ export function mapComprasMxContractRowToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
-    relevance: classifyRelevance({ title, summary, industries, scopeType, estimatedValue, currency, buyer }),
+    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevelFromOrden(row["Orden de gobierno"], buyer), title, summary, industries, scopeType, estimatedValue, currency, buyer }),
     sourceName,
     sourceUrl: row["Dirección del anuncio"]?.trim() || "",
     createdAt: now,

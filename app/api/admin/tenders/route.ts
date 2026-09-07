@@ -87,6 +87,7 @@ export async function POST(request: Request) {
     currency,
     buyer,
     country: body.country,
+    governmentLevel: body.governmentLevel,
   });
 
   const useManualTier = body.relevanceManuallyOverridden === true && Boolean(body.relevanceTier);

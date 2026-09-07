@@ -38,10 +38,11 @@ import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { classifyRelevance } from "@/lib/relevance";
 import { classifyIndustries } from "@/lib/industry";
-import type { LocalizedText, TenderRelevanceTier, TenderScopeType } from "@/types/tender";
+import type { LocalizedText, Tender, TenderRelevanceTier, TenderScopeType } from "@/types/tender";
 
 type TenderRow = {
   slug: string;
+  government_level: Tender["governmentLevel"];
   tender_number: string;
   title: LocalizedText;
   summary: LocalizedText;
@@ -109,7 +110,7 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
     const { data, error } = await supabase
       .from("tenders")
       .select(
-        "slug, tender_number, title, summary, buyer, country, industries, scope_type, estimated_value, currency, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden, source_url, publication_date, source_name",
+        "slug, tender_number, title, summary, buyer, country, government_level, industries, scope_type, estimated_value, currency, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden, source_url, publication_date, source_name",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
@@ -148,6 +149,9 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
       currency: row.currency ?? undefined,
       buyer: row.buyer,
       country: row.country,
+      // Must match what the mappers pass, or a re-import silently disagrees
+      // with the review this export was signed off on.
+      governmentLevel: row.government_level,
       isNationalPriorityProject: row.source_name === NATIONAL_PRIORITY_SOURCE_NAME,
     });
 
@@ -168,6 +172,7 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
       row.title.es,
       row.buyer,
       row.country,
+      row.government_level,
       recomputedIndustries.join("; "),
       row.scope_type,
       row.estimated_value ?? "",
@@ -239,6 +244,7 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
     "title_es",
     "buyer",
     "country",
+    "government_level",
     "industries",
     "scope_type",
     "estimated_value",

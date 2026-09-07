@@ -149,6 +149,7 @@ function toRelevance(row: TenderRow): TenderRelevance {
     currency: row.currency ?? undefined,
     buyer: row.buyer,
     country: row.country,
+    governmentLevel: row.government_level,
   });
 }
 

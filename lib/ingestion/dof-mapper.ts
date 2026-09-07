@@ -115,7 +115,7 @@ export function mapDofNotaToTender(nota: DofNota, sourceName: string): Tender | 
     requiredDocuments: [],
     keyDates: [{ id: `dof-${nota.codNota}-publication`, type: "publication", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ title, industries, scopeType, buyer }),
+    relevance: classifyRelevance({ governmentLevel: "federal", title, industries, scopeType, buyer }),
     sourceName,
     sourceUrl: buildSourceUrl(nota, buyer),
     createdAt: now,

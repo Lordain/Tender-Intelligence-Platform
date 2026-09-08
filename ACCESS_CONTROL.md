@@ -84,6 +84,12 @@ source of the Supabase user, while the subscription's current configured
 Stripe Price is the source of its plan and billing interval. The browser never
 supplies an amount.
 
+A `past_due` subscription keeps access and digest delivery for three days from
+its Stripe `current_period_start`. Missing legacy period data fails closed.
+The UI shows a payment warning during that grace window; after it ends,
+entitlement is calculated as free without needing a scheduled cleanup job.
+Configure Stripe's retry window to last at least three days.
+
 ## Test accounts
 
 `npm run seed:test-accounts` creates one account per entitlement level

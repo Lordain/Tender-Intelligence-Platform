@@ -1,19 +1,16 @@
 import "server-only";
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { TRIAL_DAYS, type BillingInterval, type SubscriptionPlan, type ViewerEntitlement, type ViewerRole } from "@/lib/access-control";
+import { isSubscriptionEntitled, TRIAL_DAYS, type BillingInterval, type SubscriptionPlan, type ViewerEntitlement, type ViewerRole } from "@/lib/access-control";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 
-const EMPTY: ViewerEntitlement = { role: "guest", plan: null, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, hasBillingLink: false };
-
-function isCurrent(subscription: { current_period_end?: string | null }) {
-  return !subscription.current_period_end || new Date(subscription.current_period_end).getTime() >= Date.now();
-}
+const EMPTY: ViewerEntitlement = { role: "guest", plan: null, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
 
 type SubscriptionRow = {
   user_id: string;
   plan: string;
+  status: string;
   created_at: string | null;
   current_period_end: string | null;
   current_period_start?: string | null;
@@ -45,7 +42,7 @@ async function findCurrentSubscription(
   plan?: "enterprise",
 ): Promise<SubscriptionRow | undefined> {
   const run = (columns: string) => {
-    const query = admin.from("subscriptions").select(columns).eq("user_id", userId).in("status", ["active", "trialing"]);
+    const query = admin.from("subscriptions").select(columns).eq("user_id", userId).in("status", ["active", "trialing", "past_due"]);
     return plan ? query.eq("plan", plan) : query;
   };
 
@@ -53,7 +50,13 @@ async function findCurrentSubscription(
   if (result.error?.code === "42703") result = await run(SUBSCRIPTION_COLUMNS_LEGACY);
   if (result.error) throw new Error(`订阅读取失败：${result.error.message}`);
 
-  return ((result.data ?? []) as unknown as SubscriptionRow[]).find(isCurrent);
+  return ((result.data ?? []) as unknown as SubscriptionRow[]).find((subscription) =>
+    isSubscriptionEntitled(
+      subscription.status,
+      subscription.current_period_start,
+      subscription.current_period_end,
+    ),
+  );
 }
 
 function periodOf(subscription: SubscriptionRow) {
@@ -62,6 +65,7 @@ function periodOf(subscription: SubscriptionRow) {
     periodEnd: subscription.current_period_end ?? null,
     cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
     billingInterval: (subscription.billing_interval ?? null) as BillingInterval | null,
+    paymentPastDue: subscription.status === "past_due",
     // Only a payment provider's webhook can move current_period_end forward.
     // Without a subscription on that provider's side, the period end is
     // simply when access stops.

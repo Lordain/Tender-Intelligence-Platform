@@ -35,12 +35,27 @@ function subscriptionIdentity(subscription: Stripe.Subscription, fallbackUserId?
   // Price is the current billing truth. Metadata describes the original
   // Checkout selection and does not change when an operator switches a
   // subscription to another configured price in the Stripe Dashboard.
-  const selection = subscription.items.data
+  const fromPrice = subscription.items.data
     .map((item) => stripeSelectionFromPriceId(item.price.id))
     .find((candidate) => candidate !== null);
+  const metadataPlan = subscription.metadata.plan;
+  const metadataInterval = subscription.metadata.billing_interval;
+  let fromMetadata: { plan: StripePlan; interval: BillingInterval } | null = null;
+  if (
+    (metadataPlan === "professional" || metadataPlan === "enterprise") &&
+    (metadataInterval === "monthly" || metadataInterval === "semiannual" || metadataInterval === "annual")
+  ) {
+    fromMetadata = { plan: metadataPlan, interval: metadataInterval };
+  }
+  const selection = fromPrice ?? fromMetadata;
   if (!selection) {
     const priceIds = subscription.items.data.map((item) => item.price.id).join(", ") || "none";
-    throw new Error(`Stripe subscription ${subscription.id} uses an unconfigured price (${priceIds}).`);
+    throw new Error(`Stripe subscription ${subscription.id} has no configured price or valid plan metadata (${priceIds}).`);
+  }
+  if (!fromPrice) {
+    console.warn(
+      `[stripe-webhook] Subscription ${subscription.id} uses a legacy price; retaining plan and interval from Checkout metadata.`,
+    );
   }
   return { userId, ...selection };
 }
@@ -49,14 +64,13 @@ async function saveSubscription(
   admin: SupabaseClient,
   subscription: Stripe.Subscription,
   fallbackUserId?: string | null,
-  statusOverride?: "active" | "trialing" | "past_due" | "cancelled",
 ) {
   const { userId, plan, interval } = subscriptionIdentity(subscription, fallbackUserId);
   const { periodStart, periodEnd } = stripeSubscriptionPeriod(subscription);
   const values = {
     user_id: userId,
     plan,
-    status: statusOverride ?? dbStatus(subscription.status),
+    status: dbStatus(subscription.status),
     billing_interval: interval,
     stripe_customer_id: stripeObjectId(subscription.customer),
     stripe_subscription_id: subscription.id,
@@ -133,9 +147,12 @@ export async function POST(request: Request) {
       const subscriptionId = subscriptionIdFromInvoice(event.data.object);
       if (subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        await saveSubscription(admin, subscription, undefined, event.type === "invoice.payment_failed" ? "past_due" : undefined);
+        await saveSubscription(admin, subscription);
       }
-    } else if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+    } else if (event.type === "customer.subscription.updated") {
+      const subscription = await stripe.subscriptions.retrieve(event.data.object.id);
+      await saveSubscription(admin, subscription);
+    } else if (event.type === "customer.subscription.deleted") {
       await saveSubscription(admin, event.data.object);
     }
   } catch (error) {

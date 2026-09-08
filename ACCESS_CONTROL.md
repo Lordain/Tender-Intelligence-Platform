@@ -78,9 +78,11 @@ date at all, or no billing link.
 Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the six
 `STRIPE_PRICE_*` variables shown in `.env.example`. Register
 `/api/stripe/webhook` in Stripe for `checkout.session.completed`,
-`invoice.paid`, and `customer.subscription.deleted`. Checkout metadata is the
-server-validated source of the Supabase user, plan, and billing interval; the
-browser never supplies an amount.
+`invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, and
+`customer.subscription.deleted`. Checkout metadata is the server-validated
+source of the Supabase user, while the subscription's current configured
+Stripe Price is the source of its plan and billing interval. The browser never
+supplies an amount.
 
 ## Test accounts
 

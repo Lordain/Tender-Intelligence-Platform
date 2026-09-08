@@ -37,6 +37,20 @@ export function parseStripeSelection(plan: string | null, interval: string | nul
   return priceId ? { plan, interval, priceId } : null;
 }
 
+export function stripeSelectionFromPriceId(priceId: string): {
+  plan: StripePlan;
+  interval: BillingInterval;
+} | null {
+  const plans: StripePlan[] = ["professional", "enterprise"];
+  const intervals: BillingInterval[] = ["monthly", "semiannual", "annual"];
+  for (const plan of plans) {
+    for (const interval of intervals) {
+      if (PRICE_IDS[plan][interval]?.trim() === priceId) return { plan, interval };
+    }
+  }
+  return null;
+}
+
 export function stripeObjectId(value: string | { id: string } | null): string | null {
   if (!value) return null;
   return typeof value === "string" ? value : value.id;

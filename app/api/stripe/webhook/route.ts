@@ -3,7 +3,13 @@ import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BillingInterval } from "@/lib/access-control";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
-import { getStripeClient, stripeObjectId, stripeSubscriptionPeriod, type StripePlan } from "@/lib/stripe";
+import {
+  getStripeClient,
+  stripeObjectId,
+  stripeSelectionFromPriceId,
+  stripeSubscriptionPeriod,
+  type StripePlan,
+} from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
@@ -24,24 +30,33 @@ function subscriptionIdentity(subscription: Stripe.Subscription, fallbackUserId?
   interval: BillingInterval;
 } {
   const userId = subscription.metadata.user_id || fallbackUserId;
-  const plan = subscription.metadata.plan;
-  const interval = subscription.metadata.billing_interval;
-  if (!userId || (plan !== "professional" && plan !== "enterprise")) {
-    throw new Error(`Stripe subscription ${subscription.id} is missing valid user/plan metadata.`);
+  if (!userId) throw new Error(`Stripe subscription ${subscription.id} is missing a valid user ID.`);
+
+  // Price is the current billing truth. Metadata describes the original
+  // Checkout selection and does not change when an operator switches a
+  // subscription to another configured price in the Stripe Dashboard.
+  const selection = subscription.items.data
+    .map((item) => stripeSelectionFromPriceId(item.price.id))
+    .find((candidate) => candidate !== null);
+  if (!selection) {
+    const priceIds = subscription.items.data.map((item) => item.price.id).join(", ") || "none";
+    throw new Error(`Stripe subscription ${subscription.id} uses an unconfigured price (${priceIds}).`);
   }
-  if (interval !== "monthly" && interval !== "semiannual" && interval !== "annual") {
-    throw new Error(`Stripe subscription ${subscription.id} is missing valid billing interval metadata.`);
-  }
-  return { userId, plan, interval };
+  return { userId, ...selection };
 }
 
-async function saveSubscription(admin: SupabaseClient, subscription: Stripe.Subscription, fallbackUserId?: string | null) {
+async function saveSubscription(
+  admin: SupabaseClient,
+  subscription: Stripe.Subscription,
+  fallbackUserId?: string | null,
+  statusOverride?: "active" | "trialing" | "past_due" | "cancelled",
+) {
   const { userId, plan, interval } = subscriptionIdentity(subscription, fallbackUserId);
   const { periodStart, periodEnd } = stripeSubscriptionPeriod(subscription);
   const values = {
     user_id: userId,
     plan,
-    status: dbStatus(subscription.status),
+    status: statusOverride ?? dbStatus(subscription.status),
     billing_interval: interval,
     stripe_customer_id: stripeObjectId(subscription.customer),
     stripe_subscription_id: subscription.id,
@@ -114,13 +129,13 @@ export async function POST(request: Request) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         await saveSubscription(admin, subscription, session.client_reference_id);
       }
-    } else if (event.type === "invoice.paid") {
+    } else if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {
       const subscriptionId = subscriptionIdFromInvoice(event.data.object);
       if (subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        await saveSubscription(admin, subscription);
+        await saveSubscription(admin, subscription, undefined, event.type === "invoice.payment_failed" ? "past_due" : undefined);
       }
-    } else if (event.type === "customer.subscription.deleted") {
+    } else if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
       await saveSubscription(admin, event.data.object);
     }
   } catch (error) {

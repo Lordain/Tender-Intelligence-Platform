@@ -246,9 +246,34 @@ export async function POST(request: Request) {
       },
       { idempotencyKey: `bank-${user.id}-${parsed.data.requestId}` },
     );
-    const invoice = typeof subscription.latest_invoice === "string" ? null : subscription.latest_invoice;
-    const invoiceUrl = invoice?.hosted_invoice_url;
-    if (!invoiceUrl) throw new Error("Stripe did not return a hosted invoice URL.");
+    let invoice =
+      typeof subscription.latest_invoice === "string"
+        ? await stripe.invoices.retrieve(subscription.latest_invoice)
+        : subscription.latest_invoice;
+    if (!invoice) {
+      await stripe.subscriptions.cancel(subscription.id);
+      throw new Error("Stripe did not create an invoice for the bank-transfer subscription.");
+    }
+
+    try {
+      // Stripe creates the first send_invoice subscription invoice as a
+      // draft and normally finalizes it later. A draft deliberately has no
+      // hosted_invoice_url, but this request needs a payment page to return
+      // immediately, so finalize it explicitly before reading the URL.
+      if (invoice.status === "draft") {
+        invoice = await stripe.invoices.finalizeInvoice(invoice.id);
+      }
+    } catch (error) {
+      await stripe.subscriptions.cancel(subscription.id);
+      throw error;
+    }
+
+    const invoiceUrl = invoice.hosted_invoice_url;
+    if (!invoiceUrl) {
+      if (invoice.status === "open") await stripe.invoices.voidInvoice(invoice.id);
+      await stripe.subscriptions.cancel(subscription.id);
+      throw new Error(`Stripe invoice ${invoice.id} has no hosted invoice URL after finalization.`);
+    }
     const { data: pendingRows, error: pendingError } = await admin
       .from("billing_profiles")
       .update({ pending_payment_reference_id: subscription.id, pending_payment_url: invoiceUrl, updated_at: new Date().toISOString() })

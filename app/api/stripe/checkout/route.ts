@@ -211,6 +211,26 @@ export async function POST(request: Request) {
     const quote = bankTransferQuote(selected.plan, selected.interval, transferRate);
     const price = await stripe.prices.retrieve(selected.priceId);
     const productId = typeof price.product === "string" ? price.product : price.product.id;
+
+    // The bank-transfer amount is built from PLAN_PRICES_USD (lib/billing-
+    // catalog.ts) because the browser has to render the quote before this
+    // route runs. That makes the catalog a SECOND source of truth for
+    // price, alongside the real Stripe Price the card flow charges — and a
+    // price raised in the Stripe Dashboard would silently leave every bank
+    // transfer billing the old amount forever, with nothing failing.
+    //
+    // So the two are reconciled here, the same posture as the quotedRate
+    // check above: refuse the purchase rather than charge an amount that
+    // disagrees with what the card flow would charge. Compared in USD cents
+    // to avoid float noise. Only same-currency prices can be compared this
+    // way; a Price that isn't USD means the catalog can't be validated at
+    // all, which is equally worth stopping for.
+    const expectedUsdCents = Math.round(quote.usdAmount * 100);
+    if (price.currency !== "usd" || price.unit_amount !== expectedUsdCents) {
+      throw new Error(
+        `Bank-transfer quote disagrees with Stripe price ${selected.priceId}: catalog says ${expectedUsdCents} USD cents, Stripe says ${price.unit_amount} ${price.currency}. Update PLAN_PRICES_USD in lib/billing-catalog.ts to match before selling this plan by transfer.`,
+      );
+    }
     const subscription = await stripe.subscriptions.create(
       {
         customer: customerId,

@@ -171,3 +171,42 @@ finish on the existing agreement first.
 It is idempotent — re-run it to reset a trial that has aged out — and
 `-- --cleanup` deletes them. It needs `SUPABASE_SERVICE_ROLE_KEY` and must
 never be pointed at a database holding real users.
+
+## Bank transfer: the two things that can drift
+
+Reviewed 2026-09-08 (Codex's `fb79cfb`). The flow itself is sound —
+server-side price selection, idempotency keys on both Stripe calls, an
+atomic `pending_payment_request_id` claim, rollback via
+`checkout.sessions.expire` if the claim is lost, and a `quotedRate` check
+that refuses the purchase when the FX rate moved between page load and
+submit. Two things are worth knowing about, one fixed and one deliberate.
+
+**Fixed: price could silently diverge from Stripe.** The transfer amount is
+computed from `PLAN_PRICES_USD` in `lib/billing-catalog.ts`, because the
+browser must render the quote before the checkout route runs. That made the
+catalog a second source of truth next to the real Stripe Price the card flow
+charges: raising a price in the Stripe Dashboard would have left every bank
+transfer billing the old amount indefinitely, with nothing failing. The
+checkout route now retrieves the Price it already fetches for `product` and
+refuses the purchase when `unit_amount`/`currency` disagree with the
+catalog. **Both must be updated together** — Stripe Dashboard and
+`PLAN_PRICES_USD` — or transfer purchases stop with a loud error.
+
+**Deliberate: the MXN amount is fixed for the life of the subscription.**
+Bank transfer bills an inline `price_data` in MXN, converted at
+`USD_MXN_BANK_TRANSFER_RATE` on the day of purchase, with `recurring` set —
+so every renewal charges that same peso amount forever, at the original
+rate. Card subscribers bill the real USD Prices and are unaffected. Changing
+`USD_MXN_BANK_TRANSFER_RATE` only affects NEW transfer subscriptions;
+existing ones keep their rate. Re-pricing an existing transfer subscriber
+means cancelling and re-subscribing them.
+
+**Why `invoice.payment_failed` skips bank-transfer subscriptions.** A
+`send_invoice` subscription can report `active` before the transfer lands,
+so only `invoice.paid` may create or extend access. Moving a transfer
+subscriber to `past_due` therefore happens through
+`customer.subscription.updated` instead — which is how Stripe reports an
+overdue send-invoice subscription anyway, since no automatic payment attempt
+is made for `customer_balance`. That event is consequently **required** on
+the production webhook endpoint, not optional: without it, a transfer
+subscriber whose renewal never arrives keeps full access indefinitely.

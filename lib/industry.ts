@@ -302,6 +302,22 @@ export function stripKnownFalsePositivePlaceNames(text: string): string {
     /felipe carrillo puerto\b|puerto marqu[ée]s\b|san miguel del puerto\b/gi,
     "",
   ).replace(
+    // Mexico (2026-09-08), both confirmed in the 212-row kept export the
+    // user reviewed. "Puerto Rico" is a village in Municipio Carmen,
+    // Campeche, and it was the single most expensive miss in that export:
+    // two street-paving jobs there
+    //   "PAV CAM LA ANTORCHA - PUERTO RICO, LOCALIDAD PUERTO RICO"
+    //   "PAV DIVERSAS CALLES EN LA LOCALIDAD DE PUERTO RICO"
+    // came out FLAGSHIP — the top tier — on the strength of the village's
+    // name alone. Rename the village and both are excluded, which is what
+    // paving a locality's streets should be. "Puerto Peñasco" (Sonora)
+    // appeared in the same export on a water-treatment plant that is
+    // flagship on its own merits ("CONSTRUCCIÓN PLANTA DE TRATAMIENTO…"),
+    // so stripping it changes nothing today — it is listed because the next
+    // Puerto Peñasco tender will not necessarily carry that other signal.
+    /puerto rico\b|puerto pe[ñn]asco\b/gi,
+    "",
+  ).replace(
     // "REHABILITACION DE LINEA DE AGUA POTABLE EN CALLE 16 ENTRE CALLE 9 Y
     // GASODUCTO" — Gasoducto is the name of the cross street, and it was
     // matching the oleoducto/gasoducto major-project pattern. Anchored on

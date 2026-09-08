@@ -865,10 +865,15 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // before a KM marker so it can't match a generic "modernización" of
   // anything else.
   /(modernizaci[óo]n|ampliaci[óo]n)\s+del?\s+(cuerpo\s+del?\s+)?km\s*\d/i,
-  // 'PAV CAM MANUEL CRESCEN REJON…' — pavimentación de camino, written in
-  // the abbreviated form Compras MX uses for road jobs. Both tokens
-  // required, so neither abbreviation alone can match something unrelated.
-  /\bpav\.?\s+cam\.?\b/i,
+  // "PAV CAM …" (pavimentación de camino) was listed here as a flagship
+  // signal, on the reading that a road job is major-project work. Removed
+  // 2026-09-08: the user's later, explicit rule excludes exactly this work
+  // when it is spelled out — "PAVIMENTACIÓN CON CONCRETO HIDRÁULICO DEL
+  // CAMINO LOCAL" is a fixture, expected "excluded" — so keeping the
+  // abbreviation whitelisted meant the identical job was kept or dropped
+  // according to how the clerk typed it. A camino is not a carretera;
+  // "carretera" stays in BARE_WORKS_WHITELIST, so real highway work is
+  // untouched by this.
   // Geophysical survey equipment — 'ADQUISICIÓN DE UN SISTEMA DE
   // RESISTIVIDAD', a resistivity system used for groundwater and
   // geotechnical surveying. From the user's 2026-09-07 confirmed list.

@@ -61,6 +61,39 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     scopeType: "works",
     country: "Mexico",
   },
+  // Both real, from the 212-row kept export of 2026-09-08. A village in
+  // Municipio Carmen, Campeche is named Puerto Rico, and the bare "puerto"
+  // (seaport) keyword matched the village — these two came out FLAGSHIP,
+  // the top tier, for paving a locality's streets. Fixed by naming the
+  // place in stripKnownFalsePositivePlaceNames(); kept here so a later
+  // "simplification" of that list has to fail a test to remove it. The
+  // third fixture is the control: the same job in a town with an ordinary
+  // name was already excluded, which is what proves the town's name — and
+  // nothing about the work — was doing the promoting.
+  {
+    title: "PAV CAM LA ANTORCHA - PUERTO RICO, LOCALIDAD PUERTO RICO, MUNICIPIO CARMEN",
+    expectedTier: "excluded",
+    note: "Real 2026-09-08 kept-export title. Rural road paving in the village of Puerto Rico, Campeche — not a seaport.",
+    scopeType: "works",
+    country: "Mexico",
+    governmentLevel: "municipal",
+  },
+  {
+    title: "PAV DIVERSAS CALLES EN LA LOCALIDAD DE PUERTO RICO, MUNICIPIO CARMEN (BLOQUE 1)",
+    expectedTier: "excluded",
+    note: "Real 2026-09-08 kept-export title, same village. Street paving, no value.",
+    scopeType: "works",
+    country: "Mexico",
+    governmentLevel: "municipal",
+  },
+  {
+    title: "PAV DIVERSAS CALLES EN LA LOCALIDAD DE SAN JUAN, MUNICIPIO CARMEN",
+    expectedTier: "excluded",
+    note: "Control for the two above — identical job, ordinary town name. Was already excluded before the fix; must stay excluded after it.",
+    scopeType: "works",
+    country: "Mexico",
+    governmentLevel: "municipal",
+  },
   {
     title: "PAVIMENTACIÓN CON CONCRETO HIDRÁULICO DEL CAMINO LOCAL",
     expectedTier: "excluded",
@@ -179,8 +212,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "PAV CAM MANUEL CRESCEN REJON LOS ALACRANES, LOC PIONEROS DEL RÍO XNOHÁ, CALAKMUL",
-    expectedTier: "standard",
-    note: "Pavimentación de camino in the abbreviated form Compras MX uses. Both tokens are required together, so neither abbreviation alone can match something unrelated.",
+    expectedTier: "excluded",
+    note: "Pavimentación de camino in the abbreviated form Compras MX uses. Was \"standard\" until 2026-09-08, kept by a dedicated /pav\\s+cam/ whitelist entry. That entry is gone: the fixture two above it — \"PAVIMENTACIÓN CON CONCRETO HIDRÁULICO DEL CAMINO LOCAL\", the same work spelled out, from the user's review of a real export — is excluded, and one job cannot have two tiers depending on whether the clerk abbreviated it. A camino is not a carretera, which stays whitelisted.",
     scopeType: "works",
     country: "Mexico",
   },

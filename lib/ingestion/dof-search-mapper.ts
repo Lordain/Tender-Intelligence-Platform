@@ -1,4 +1,4 @@
-import type { Tender, TenderKeyDate } from "@/types/tender";
+import type { Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
 import { inferGovernmentLevel, CFE_BUYER_PATTERN, CFE_MICROSITIO_URL } from "@/lib/ingestion/heuristics";
@@ -161,9 +161,25 @@ function buildDofDetailFields(fieldsByLabel: Record<string, string>, tenderNumbe
       // Real label variants: "Apertura Técnica" (first office) vs.
       // "Apertura de ofertas técnicas." (second office, "de ofertas"
       // inserted, trailing period) — .* bridges both.
-      keyDates.push({ id: `${tenderNumber}-opening-tecnica`, type: "opening", date: iso });
+      keyDates.push({
+        id: `${tenderNumber}-opening-tecnica`,
+        type: "opening",
+        date: iso,
+        // Mexican procedures routinely open the technical and the economic
+        // envelope at two separate sessions, days apart (CFE-0001-CAAAT-
+        // 0134-2026: técnica 11/09, económica 18/09). Both are genuinely
+        // TenderKeyDate type "opening", so without a note the timeline
+        // renders two rows both labelled 开标 with nothing to tell them
+        // apart — reported as "为什么变成两个开标" (2026-09-08).
+        notes: { es: "Apertura de ofertas técnicas", en: "Technical bid opening", zh: "技术标开标" },
+      });
     } else if (/apertura.*econ[óo]mica/i.test(label)) {
-      keyDates.push({ id: `${tenderNumber}-opening-economica`, type: "opening", date: iso });
+      keyDates.push({
+        id: `${tenderNumber}-opening-economica`,
+        type: "opening",
+        date: iso,
+        notes: { es: "Apertura de ofertas económicas", en: "Economic bid opening", zh: "商务标开标" },
+      });
     } else if (/^fallo/i.test(label)) {
       keyDates.push({ id: `${tenderNumber}-award`, type: "award", date: iso });
     }
@@ -211,16 +227,32 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     scopeType,
     sourceName,
   });
-  // Real gap: this used to hardcode "open" even when the notice's own
-  // detail page already published a real "Fallo" (award) date —
-  // buildDofDetailFields() captures that as a keyDates entry of type
-  // "award" but nothing downstream ever looked at it, unlike every other
-  // source in this codebase (peru-oece-mapper.ts's hasAwards,
-  // colombia-mapper.ts's Adjudicado=Sí, compras-mx-open-tenders-mapper.ts's
-  // ADJUDICA), all of which derive "awarded" from a real published signal
-  // the same way (2026-09-05, user asked how CFE/PEMEX awards are
-  // detected at all).
-  const hasAward = detailKeyDates.some((kd) => kd.type === "award");
+  // A DOF notice carries a SCHEDULE, not an outcome. Every other source
+  // this codebase reads states the outcome outright — peru-oece-mapper.ts's
+  // `awards` array, colombia-mapper.ts's "Adjudicado = Sí",
+  // compras-mx-open-tenders-mapper.ts's ADJUDICADO status — and this mapper
+  // was written to match them by looking for a "Fallo" key date. That was
+  // wrong in a way the other sources cannot be: "Fallo" is a row on the
+  // convocatoria's published timetable, printed the day bidding OPENS, so
+  // its presence marked every CFE convocatoria as awarded before bids
+  // could even be submitted. Reported 2026-09-08 on
+  // CFE-0001-CAAAT-0134-2026, shown as 已中标 with a Fallo date of 25/09
+  // and a submission deadline of 11/09 still in the future.
+  //
+  // So read the timetable against today instead. Note what this still is:
+  // an inference from a schedule. A fallo date in the past means the
+  // ruling was DUE, not that it was published or that it happened on time —
+  // a real award confirmation for these buyers comes from the Compras MX
+  // contracts export, which states a winner and an amount. Nothing here
+  // ever fills awardedTo/awardedValue, and it should not.
+  const nowMs = Date.now();
+  const dateOf = (type: TenderKeyDate["type"]) => detailKeyDates.find((kd) => kd.type === type)?.date;
+  const isPast = (iso: string | undefined) => iso !== undefined && new Date(iso).getTime() < nowMs;
+  const status: TenderStatus = isPast(dateOf("award"))
+    ? "awarded"
+    : isPast(submissionDeadline)
+      ? "submission_closed"
+      : "open";
 
   return {
     id: crypto.randomUUID(),
@@ -240,7 +272,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     procedureType: "Convocatoria (DOF)",
     publicationDate,
     submissionDeadline,
-    status: hasAward ? "awarded" : "open",
+    status,
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],

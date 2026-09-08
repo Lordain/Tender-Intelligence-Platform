@@ -3,6 +3,12 @@ import { getCachedTenderList } from "@/lib/tenders";
 import { TenderExplorer } from "@/components/tenders/TenderExplorer";
 import { getViewerRole } from "@/lib/access-control-server";
 import { buildTenderListPage, type TenderListSearchParams } from "@/lib/tender-list-page";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "招标项目列表",
+  description: "浏览墨西哥、哥伦比亚政府公开招标项目，按行业、金额与项目规模筛选，全部信息已整理为中文。",
+};
 
 /**
  * This page is DYNAMIC, and not by choice: getViewerRole() reads the session

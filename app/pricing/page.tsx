@@ -1,5 +1,11 @@
 import { PageIntro } from "@/components/layout/PageIntro";
 import { PricingPlans } from "@/components/pricing/PricingPlans";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "订阅方案与价格",
+  description: "个人版与企业版订阅方案、月度/半年度/年度计费周期与包含功能对比。",
+};
 
 export default function PricingPage() {
   return (

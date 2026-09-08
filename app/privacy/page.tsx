@@ -1,4 +1,10 @@
 import { PolicyPage, type PolicySection } from "@/components/content/PolicyPage";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "隐私政策",
+  description: "本平台收集哪些个人信息、如何使用与保存，以及用户可行使的 ARCO 权利。",
+};
 
 // 【占位符提示】见 app/terms/page.tsx 顶部同样的说明——以下方括号内容尚未确定，
 // 正式对外使用前必须替换为真实信息，否则本页不满足墨西哥《联邦个人数据保护法》

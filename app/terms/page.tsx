@@ -1,4 +1,10 @@
 import { PolicyPage, type PolicySection } from "@/components/content/PolicyPage";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "服务条款",
+  description: "平台提供什么、用户如何使用信息，以及双方责任的基本边界。",
+};
 
 // 【占位符提示】以下条款中带方括号的内容（运营主体法定名称/注册地址/联系邮箱）
 // 尚未确定真实信息，仅为占位符——正式对外使用前必须替换为真实、准确的内容，

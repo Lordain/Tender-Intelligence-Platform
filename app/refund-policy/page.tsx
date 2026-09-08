@@ -1,4 +1,10 @@
 import { PolicyPage, type PolicySection } from "@/components/content/PolicyPage";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "退款政策",
+  description: "订阅退款的适用情形、例外情况与申请方式。",
+};
 
 // 【占位符提示】见 app/terms/page.tsx 顶部同样的说明。
 const CONTACT_EMAIL = "【联系邮箱，待补充】";

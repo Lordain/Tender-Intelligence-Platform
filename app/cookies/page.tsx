@@ -1,4 +1,10 @@
 import { PolicyPage, type PolicySection } from "@/components/content/PolicyPage";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Cookie 政策",
+  description: "本平台使用的 Cookie 与同类技术，以及它们各自的用途。",
+};
 
 // 【占位符提示】见 app/terms/page.tsx 顶部同样的说明。
 const CONTACT_EMAIL = "【联系邮箱，待补充】";

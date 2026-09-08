@@ -5,6 +5,7 @@ import { LocaleProvider } from "@/lib/i18n";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
+import { siteOrigin } from "@/lib/site-url";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +22,17 @@ const geistMono = Geist_Mono({
 // be kept in sync with lib/localize.ts's uiText.heroTitle/heroSubtitle by
 // hand.
 export const metadata: Metadata = {
-  title: "拉美招投标平台 | 中国企业出海墨西哥",
+  // Absolute base for canonical URLs and any relative metadata a page sets;
+  // without it Next warns and emits relative canonicals, which crawlers
+  // resolve against whatever host served the page — including preview hosts.
+  metadataBase: new URL(siteOrigin()),
+  title: {
+    default: "拉美招投标平台 | 中国企业出海墨西哥",
+    // Every page below sets a short, page-specific title; this keeps the
+    // brand on the end of it so search results stay attributable without
+    // each page repeating it.
+    template: "%s | 拉美招投标平台",
+  },
   description:
     "把墨西哥政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/中型项目。",
 };

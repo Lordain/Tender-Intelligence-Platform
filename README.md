@@ -198,11 +198,26 @@ the variable to be set, so every request 401s rather than running unprotected.
 `EMAIL_NOTIFICATIONS_ENABLED` and the Resend variables gate the digest
 separately; without them it 409s.
 
-**Plan limits are a real constraint here.** Vercel's Hobby tier allows two cron
-jobs per project and triggers them only once a day, within the hour rather than
-at the minute — this file registers three, and one of them fires twice daily.
-That needs a Pro project. On Hobby, deployment either rejects the third entry or
-the digest fires at an hour the route rejects.
+**On plan limits.** Vercel lifted the per-project cron cap to 100 on every plan
+in January 2026, so three entries is not close to any count limit. Two Hobby
+restrictions still shape this file:
+
+- *Each expression may fire at most once a day.* A twice-daily expression fails
+  at deploy time. This is why the digest is written as two separate once-daily
+  entries rather than the equivalent-looking `0 0,15 * * *` — the combined form
+  is one job firing twice and would be rejected; the split form is two jobs
+  firing once each, which is allowed. Do not "simplify" it back.
+- *Hobby fires anywhere within the scheduled hour*, not at the minute (Pro is
+  minute-accurate). That happens to be safe for the digest: `0 15 * * *` lands
+  somewhere in 15:00–15:59 UTC, which is 09:00–09:59 in Mexico City, so the
+  route's hour check still sees 09. The margin is the full hour and no more —
+  any schedule not aligned to the top of the target hour would drift out of it.
+
+So the cron configuration itself would run on Hobby. The reason this project
+needs Pro is unrelated: Vercel's Hobby plan is licensed for personal,
+non-commercial use only, and this is a paid subscription product. Cron jobs
+carry no separate charge on any plan — their runs bill as ordinary function
+invocations.
 
 To verify without waiting for a schedule:
 

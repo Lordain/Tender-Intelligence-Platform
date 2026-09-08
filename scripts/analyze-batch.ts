@@ -60,12 +60,19 @@
  * qwen3.5-plus and qwen3.6-plus, with suspiciously tiny per-chunk input
  * token counts suggesting the reconstructed PDF chunks weren't actually
  * being read). Everything else (has real text — most PDFs and all Word
- * docs) goes to qwen-anthropic, confirmed working well and far cheaper.
- * This is a real, live-tested cost/quality split, not a guess. Also wired
- * into the production extract-tender-document.ts pipeline as its new
- * default (2026-09-03) — see that script and lib/ingestion/text-layer.ts,
- * which both this file and that one import the same hasRealTextLayer()
- * check from.
+ * docs) goes to Qwen, confirmed working well and far cheaper. This is a
+ * real, live-tested cost/quality split, not a guess.
+ *
+ * Which Qwen depends on what the tender is worth: flagship (大型项目) gets
+ * qwen3.6-plus, everything else qwen3.5-plus. That half is not decided
+ * here — auto calls lib/ingestion/extraction-routing.ts, the same function
+ * the single-document path (extract-tender-document.ts) and the admin
+ * upload path both call, so a document gets the same model whichever way
+ * it is run. Until 2026-09-08 this file asked only the text-layer half and
+ * sent every readable document to qwen3.5-plus, which meant a flagship
+ * tender analysed in a batch got a cheaper read than the same tender
+ * analysed on its own — and scripts/import-batch-analysis.ts writes these
+ * results to production.
  * --count: how many DOCUMENTS to run (default 5), not tenders — takes the
  *   first N matched files in the folder, alphabetical. Real gap found
  *   2026-09-03: a folder with more than --count files can silently cut off
@@ -81,26 +88,43 @@ import { extractTenderRequirements, type TenderExtraction } from "../lib/ingesti
 import { extractTenderRequirementsQwen } from "../lib/ingestion/extract-requirements-qwen";
 import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract-requirements-qwen-anthropic";
 import { hasRealTextLayer } from "../lib/ingestion/text-layer";
+import { chooseExtractionModel, describeExtractionRouting } from "../lib/ingestion/extraction-routing";
+import type { TenderRelevanceTier } from "../types/tender";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
 type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "qwen-anthropic" | "qwen-anthropic-3.6" | "auto";
 type ExtractContext = { tenderNumber: string; title: string; buyer: string };
 
-const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractContext) => Promise<TenderExtraction>> = {
+const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractContext, tier: TenderRelevanceTier | null) => Promise<TenderExtraction>> = {
   "claude-haiku": (p, c) => extractTenderRequirements(p, c, "claude-haiku-4-5-20251001"),
   "claude-sonnet": (p, c) => extractTenderRequirements(p, c, "claude-sonnet-5"),
   "claude-opus": (p, c) => extractTenderRequirements(p, c, "claude-opus-5"),
   qwen: extractTenderRequirementsQwen,
-  "qwen-anthropic": extractTenderRequirementsQwenAnthropic,
+  // Wrapped rather than passed by reference: this map's third argument is
+  // now the tender's tier, and this function's third parameter is a model
+  // id — same position, different meaning.
+  "qwen-anthropic": (p, c) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.5-plus"),
   "qwen-anthropic-3.6": (p, c) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.6-plus"),
   // Self-referencing PROVIDER_RUNNERS here is fine — this arrow function
   // body only runs once PROVIDER_RUNNERS itself is fully assigned, since
   // it's called later, not during this object literal's construction.
-  auto: async (p, c) => {
+  // Defers to lib/ingestion/extraction-routing.ts rather than repeating
+  // the rule, so a batch run and a single-document run put the same
+  // document through the same model. Until 2026-09-08 this only asked the
+  // text-layer half of the question and sent every readable document to
+  // qwen3.5-plus — which quietly meant a flagship tender analysed here got
+  // the cheaper model than the same tender analysed one file at a time,
+  // and scripts/import-batch-analysis.ts writes these results to production.
+  auto: async (p, c, tier) => {
     const hasText = await hasRealTextLayer(p);
-    const chosen: ProviderKey = hasText ? "qwen-anthropic" : "claude-haiku";
-    console.log(`  [auto] ${hasText ? "has a real text layer" : "no real text layer (scanned)"} — routing to ${chosen}`);
-    return PROVIDER_RUNNERS[chosen](p, c);
+    const model = chooseExtractionModel(hasText, tier);
+    const chosen: ProviderKey = !hasText
+      ? "claude-haiku"
+      : model === "qwen3.6-plus"
+        ? "qwen-anthropic-3.6"
+        : "qwen-anthropic";
+    console.log(`  [auto] ${describeExtractionRouting(hasText, tier)} — routing to ${chosen}`);
+    return PROVIDER_RUNNERS[chosen](p, c, tier);
   },
 };
 
@@ -125,8 +149,8 @@ function findDocuments(dir: string): string[] {
     .sort();
 }
 
-type ResolvedTender = { slug: string; title: string; buyer: string; tenderNumber: string; matchNote: string };
-type KnownTender = { slug: string; title: string; buyer: string };
+type ResolvedTender = { slug: string; title: string; buyer: string; tenderNumber: string; tier: TenderRelevanceTier | null; matchNote: string };
+type KnownTender = { slug: string; title: string; buyer: string; tier: TenderRelevanceTier | null };
 
 /** A recognized `<slug>__` file name prefix (e.g. `dof-5678901__bases.pdf`) looks the tender up directly by slug — see this file's header comment for the (currently theoretical) case that needs this instead of text matching. */
 const SLUG_OVERRIDE_PATTERN = /^([a-z0-9-]+)__/;
@@ -142,12 +166,12 @@ async function loadKnownTenders(supabase: ReturnType<typeof createSupabaseAdminC
   const known = new Map<string, KnownTender>();
   const PAGE_SIZE = 1000;
   for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase!.from("tenders").select("slug, tender_number, title, buyer").range(from, from + PAGE_SIZE - 1);
+    const { data, error } = await supabase!.from("tenders").select("slug, tender_number, title, buyer, relevance_tier").range(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(`Failed to load known tender numbers: ${error.message}`);
     for (const row of data ?? []) {
       const tenderNumber = row.tender_number as string;
       if (tenderNumber) {
-        known.set(tenderNumber.toUpperCase(), { slug: row.slug as string, title: (row.title as { zh: string }).zh, buyer: row.buyer as string });
+        known.set(tenderNumber.toUpperCase(), { slug: row.slug as string, title: (row.title as { zh: string }).zh, buyer: row.buyer as string, tier: (row.relevance_tier as TenderRelevanceTier | null) ?? null });
       }
     }
     if (!data || data.length < PAGE_SIZE) break;
@@ -164,7 +188,7 @@ async function resolveTender(
   const slugOverride = fileName.match(SLUG_OVERRIDE_PATTERN)?.[1];
 
   if (slugOverride) {
-    const { data } = await supabase!.from("tenders").select("slug, tender_number, title, buyer").eq("slug", slugOverride).maybeSingle();
+    const { data } = await supabase!.from("tenders").select("slug, tender_number, title, buyer, relevance_tier").eq("slug", slugOverride).maybeSingle();
     if (!data) return { skip: `${fileName} — filename names slug "${slugOverride}" but no tender in Supabase has it` };
     return {
       tender: {
@@ -172,6 +196,7 @@ async function resolveTender(
         tenderNumber: data.tender_number as string,
         title: (data.title as { zh: string }).zh,
         buyer: data.buyer as string,
+        tier: (data.relevance_tier as TenderRelevanceTier | null) ?? null,
         matchNote: `filename slug override (${slugOverride})`,
       },
     };
@@ -203,7 +228,7 @@ async function resolveTender(
       skip: `${fileName} — no known tender_number found in its file name/text, and no Compras MX-shaped procedure number either (rename it "<slug>__..." if you know which tender it belongs to)`,
     };
   }
-  const { data } = await supabase!.from("tenders").select("slug, title, buyer").eq("tender_number", intake.tenderNumber).maybeSingle();
+  const { data } = await supabase!.from("tenders").select("slug, title, buyer, relevance_tier").eq("tender_number", intake.tenderNumber).maybeSingle();
   if (!data) return { skip: `${fileName} — extracted procedure number ${intake.tenderNumber}, but no ingested tender has it` };
 
   return {
@@ -212,6 +237,7 @@ async function resolveTender(
       tenderNumber: intake.tenderNumber,
       title: (data.title as { zh: string }).zh,
       buyer: data.buyer as string,
+      tier: (data.relevance_tier as TenderRelevanceTier | null) ?? null,
       matchNote:
         intake.tenderNumberSource === "filename" ? "procedure number from file name (regex fallback)" : `procedure number appears ${intake.tenderNumberOccurrences}x in the text (regex fallback)`,
     },
@@ -285,7 +311,7 @@ async function main() {
     console.log(`\n[${run}/${count}] ${tender.slug} — ${basename(pdfPath)} (${tender.matchNote})`);
     const started = Date.now();
     try {
-      const extraction = await PROVIDER_RUNNERS[provider](pdfPath, context);
+      const extraction = await PROVIDER_RUNNERS[provider](pdfPath, context, tender.tier);
       const elapsedMs = Date.now() - started;
       const s = summarize(extraction);
       console.log(

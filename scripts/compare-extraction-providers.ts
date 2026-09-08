@@ -34,7 +34,7 @@ type Provider = {
 };
 
 const PROVIDERS: Provider[] = [
-  { name: "claude-sonnet-5 (当前生产)", envVar: "ANTHROPIC_API_KEY", run: (p, c) => extractTenderRequirements(p, c, "claude-sonnet-5") },
+  { name: "claude-sonnet-5", envVar: "ANTHROPIC_API_KEY", run: (p, c) => extractTenderRequirements(p, c, "claude-sonnet-5") },
   { name: "qwen3.6-plus (本地提取文本)", envVar: "DASHSCOPE_API_KEY", run: extractTenderRequirementsQwen },
 ];
 

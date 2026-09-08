@@ -219,6 +219,14 @@ non-commercial use only, and this is a paid subscription product. Cron jobs
 carry no separate charge on any plan — their runs bill as ordinary function
 invocations.
 
+**When to upgrade:** on the day Stripe moves out of test mode, not before and
+not later. Until then the deployment is not being run for financial gain and
+Hobby is the right plan for it; from the moment a real Checkout can take a real
+payment, it is. Upgrading is an account-level change — no redeploy, no code
+change, no domain move — so it costs nothing to do it late, and it belongs in
+the same checklist as the live webhook endpoint, `STRIPE_WEBHOOK_SECRET`, and
+the six live Price IDs.
+
 To verify without waiting for a schedule:
 
 ```bash

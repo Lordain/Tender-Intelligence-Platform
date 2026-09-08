@@ -34,7 +34,7 @@ export function PaymentPastDueBanner() {
       ? `订阅付款异常，当前权限暂时保留至 ${graceDate}。`
       : "订阅付款异常。";
   const action = isOwner
-    ? " 请根据 Stripe 的付款失败邮件更新支付方式。"
+    ? " 请前往账户管理查看账单，并按照 Stripe 提示完成付款。"
     : " 请联系企业主账号处理付款问题。";
 
   return (

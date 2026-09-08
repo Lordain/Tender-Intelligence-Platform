@@ -2,11 +2,17 @@
  * Core logic behind `npm run translate:tenders` (scripts/translate-
  * tenders.ts) and the "翻译所有标题" button on the admin "新项目清单"
  * page — shared so the CLI and the web form translate through exactly
- * the same path. See translate-titles.ts for the actual es->zh model
- * call this drives (Haiku 4.5, batched).
+ * the same path. See translate-titles-qwen.ts for the actual es->zh model
+ * call this drives (Qwen3.6-Plus via DashScope, batched).
+ *
+ * Was Claude Haiku 4.5 (translate-titles.ts) until 2026-09-08, when the
+ * user moved this path to Qwen. Both modules keep the same signature over
+ * TenderToTranslate/TranslatedTender, so switching back is this import
+ * line; scripts/compare-translation-providers.ts still runs both.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { translateTenderBatch, type TenderToTranslate, type TranslatedTender } from "@/lib/ingestion/translate-titles";
+import type { TenderToTranslate, TranslatedTender } from "@/lib/ingestion/translate-titles";
+import { translateTenderBatchQwen } from "@/lib/ingestion/translate-titles-qwen";
 import { isHiddenColombiaNoDeadline } from "@/lib/db/tenders";
 import type { LocalizedText } from "@/types/tender";
 
@@ -15,7 +21,9 @@ import type { LocalizedText } from "@/types/tender";
 // items in the batch fell back to Descripción (a long multi-paragraph
 // spec) as their summary. A smaller batch keeps worst-case per-call
 // output well under the cap even when several long summaries land in
-// the same batch.
+// the same batch. Kept at 8 through the move to Qwen, which sets no
+// max_tokens of its own and so relies on DashScope's default cap —
+// unmeasured, and not worth probing with a bigger batch.
 const BATCH_SIZE = 8;
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -92,7 +100,7 @@ export async function translateAllTenders(
 
     let results: TranslatedTender[];
     try {
-      results = await translateTenderBatch(input);
+      results = await translateTenderBatchQwen(input);
     } catch (err) {
       results = [];
       lastErrorMessage = err instanceof Error ? err.message : String(err);
@@ -105,7 +113,7 @@ export async function translateAllTenders(
     const missing = batch.filter((t) => !bySlug.has(t.slug));
     for (const tender of missing) {
       try {
-        const [single] = await translateTenderBatch([{ slug: tender.slug, titleEs: tender.title.es, summaryEs: tender.summary.es }]);
+        const [single] = await translateTenderBatchQwen([{ slug: tender.slug, titleEs: tender.title.es, summaryEs: tender.summary.es }]);
         if (single) bySlug.set(tender.slug, single);
       } catch (err) {
         lastErrorMessage = err instanceof Error ? err.message : String(err);

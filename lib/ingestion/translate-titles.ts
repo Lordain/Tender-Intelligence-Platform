@@ -11,6 +11,12 @@ import { sanitizeForApi } from "@/lib/ingestion/text-sanitize";
  * translation exists" branch has had nothing to show yet — this is what
  * actually produces one.
  *
+ * NO LONGER THE LIVE PATH: translate-all-tenders.ts moved to
+ * Qwen3.6-Plus (translate-titles-qwen.ts) on 2026-09-08. This module
+ * still owns the shared TenderToTranslate/TranslatedTender types that
+ * file imports, and scripts/compare-translation-providers.ts still calls
+ * it, so it is kept rather than deleted.
+ *
  * Runs on Haiku 4.5, not Opus 5 (extract-requirements.ts's model) — an
  * explicit user decision, not a default: translating a title/summary is a
  * mechanical task, not the long-document comprehension work Layer 2

@@ -1,7 +1,7 @@
 /**
  * CLI wrapper around lib/ingestion/translate-all-tenders.ts — see that
  * file's header for what this actually does (es->zh title/summary
- * translation on Haiku 4.5, batched, for every non-excluded tender still
+ * translation on Qwen3.6-Plus, batched, for every non-excluded tender still
  * showing an untranslated() mirror). The admin "新项目清单" page's
  * "翻译所有标题" button does the same thing through a web form instead
  * of the terminal, via the same shared function.
@@ -9,7 +9,7 @@
  * Skips tenders whose relevance_tier is "excluded" — no point spending
  * real API cost translating tenders the default feed never shows.
  *
- * Requires ANTHROPIC_API_KEY.
+ * Requires DASHSCOPE_API_KEY.
  *
  * Usage:
  *   npm run translate:tenders -- --limit 50            (dry run — prints what would be translated, no API calls)
@@ -30,8 +30,8 @@ async function main() {
   const limitArg = argValue(args, "--limit");
   const limit = limitArg ? Number(limitArg) : undefined;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("ANTHROPIC_API_KEY isn't set. See .env.example.");
+  if (!process.env.DASHSCOPE_API_KEY) {
+    console.error("DASHSCOPE_API_KEY isn't set. See .env.example.");
     process.exit(1);
   }
 

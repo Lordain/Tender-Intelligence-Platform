@@ -31,7 +31,7 @@ type Provider = {
 };
 
 const PROVIDERS: Provider[] = [
-  { name: "claude-haiku-4-5 (当前生产)", envVar: "ANTHROPIC_API_KEY", run: translateTenderBatch },
+  { name: "claude-haiku-4-5", envVar: "ANTHROPIC_API_KEY", run: translateTenderBatch },
   { name: "qwen3.6-plus", envVar: "DASHSCOPE_API_KEY", run: translateTenderBatchQwen },
 ];
 

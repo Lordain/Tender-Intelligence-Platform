@@ -4,12 +4,13 @@ import { sanitizeForApi } from "@/lib/ingestion/text-sanitize";
 import type { TenderToTranslate, TranslatedTender } from "@/lib/ingestion/translate-titles";
 
 /**
- * Cost-comparison alternative to translate-titles.ts's Claude Haiku 4.5
- * path (2026-09-03, per the user's explicit request to evaluate cheaper
- * providers for translation before committing to one). Same
- * input/output shape as translateTenderBatch() so
- * scripts/compare-translation-providers.ts can call all three
- * providers interchangeably.
+ * The es->zh title/summary translation path (2026-09-08, the user's
+ * explicit choice). Added 2026-09-03 as a cost comparison against
+ * translate-titles.ts's Claude Haiku 4.5, which it has now replaced;
+ * that module stays as the alternative and keeps the shared
+ * TenderToTranslate/TranslatedTender types, so
+ * scripts/compare-translation-providers.ts still runs both and switching
+ * back is one import line in translate-all-tenders.ts.
  *
  * Qwen3.6-Plus via Alibaba Cloud DashScope's OpenAI-compatible endpoint —
  * confirmed real (WebSearch, 2026-09-03, since this model postdates

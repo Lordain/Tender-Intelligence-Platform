@@ -19,8 +19,8 @@ export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "ANTHROPIC_API_KEY isn't set. See .env.example." }, { status: 500 });
+  if (!process.env.DASHSCOPE_API_KEY) {
+    return NextResponse.json({ error: "DASHSCOPE_API_KEY isn't set. See .env.example." }, { status: 500 });
   }
 
   const supabase = createSupabaseAdminClient();

@@ -59,7 +59,7 @@ export type UpsertTendersResult = {
    * this import left part of them untouched. Two independent sources of
    * protection, both partial — the rest of the row still updates normally:
    *
-   *   - manual_field_overrides (migration 0030): the columns an admin
+   *   - manual_field_overrides (migration 0032): the columns an admin
    *     actually changed in the edit form. Added 2026-09-08 after a
    *     corrected 发布日期 (and its "estimated" flag) was silently reverted
    *     to the ingestion placeholder by the next import.
@@ -207,7 +207,7 @@ const RELEVANCE_COLUMNS = ["relevance_tier", "relevance_label", "relevance_reaso
 
 /**
  * Every column this import must leave alone for one existing tender:
- * whatever an admin hand-edited (manual_field_overrides, migration 0030)
+ * whatever an admin hand-edited (manual_field_overrides, migration 0032)
  * plus the relevance trio when they ticked the separate manual-override
  * checkbox.
  *

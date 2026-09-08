@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   const { data, error } = await supabase
     .from("tender_key_dates")
     // manually_added: this row came from a human, so lib/ingestion/upsert-
-    // tenders.ts must never delete it on a re-ingest (migration 0031).
+    // tenders.ts must never delete it on a re-ingest (migration 0033).
     .insert({ tender_id: tender.id, type: body.type, date: body.date, mandatory: body.mandatory ?? null, notes, manually_added: true })
     .select("id")
     .single();

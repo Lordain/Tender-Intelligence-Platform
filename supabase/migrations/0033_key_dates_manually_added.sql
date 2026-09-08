@@ -1,6 +1,6 @@
 -- Protects hand-entered key dates from being wiped by a re-ingest.
 --
--- Companion to migration 0030, same 2026-09-08 report. That one covers the
+-- Companion to migration 0032, same 2026-09-08 report. That one covers the
 -- `tenders` row's own columns; this covers the child table. The importer
 -- (lib/ingestion/upsert-tenders.ts) refreshes a tender's key dates by
 -- DELETING every tender_key_dates row for it and re-inserting only what the

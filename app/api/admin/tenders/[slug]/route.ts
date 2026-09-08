@@ -197,7 +197,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   row.documents_unavailable = body.documentsUnavailable === true;
 
   // Record which columns this save actually CHANGED, so a later re-ingest
-  // of the same tender leaves them alone (migration 0030; enforced in
+  // of the same tender leaves them alone (migration 0032; enforced in
   // lib/ingestion/upsert-tenders.ts).
   //
   // Computed by diffing against the stored row rather than trusting the

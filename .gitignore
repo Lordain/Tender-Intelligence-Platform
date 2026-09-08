@@ -46,3 +46,13 @@ next-env.d.ts
 
 # reclassify-tenders.ts's CSV exports of real (or locally-seeded) production data — never committed
 /exports/
+
+# Raw source captures kept at the repo root while building/debugging a
+# connector — real DOF/CFE notice HTML, an OCDS release dump, a scratch
+# export folder. They are evidence for one investigation, not code, and
+# some run to megabytes; keeping them out of the tree stops a `git add -A`
+# from committing a pile of them by accident. Nothing reads these paths.
+/nota-*.html
+/cfe-detail-test.html
+/*.ndjson
+/testProjects/

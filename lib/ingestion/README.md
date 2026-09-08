@@ -3287,6 +3287,115 @@ Three differences remain, all deliberate:
   only ever removes, never inserts).
 - Ingestion leaves `relevance_manually_overridden` rows alone, and so does
   reclassify.
-- `structuredDurationDays` reaches `classifyRelevance` only at ingestion — see
-  the comment at its call site in `reclassify-tenders.ts` for why that is
-  currently unreachable rather than fixed.
+- ~~`structuredDurationDays` reaches `classifyRelevance` only at ingestion.~~
+  Fixed the next day — see the 2026-09-08 section below. It had no column to
+  live in, which is why it read as unreachable; migration 0029 gave it one.
+
+
+## One classifier entry point, and the 193 → 486 incident (2026-09-08)
+
+The section above was right about the shape of the problem and wrong about how
+far it went. `government_level` was not the only input the two paths disagreed
+on, and requiring one field did not make the next one safe.
+
+The user deleted awarded/closed/cancelled tenders down to 193 rows, imported a
+day of new data, and landed on 486. Their reading was that the filters were not
+running on import at all. They were running — the import log's own
+`Skipping 493 excluded` says so — but on different inputs.
+
+**Root cause: not one of the thirteen mappers passed `country`.**
+`reclassify-tenders.ts` did. Several rules branch on it, the Mexico
+undisclosed-value gate among them, so that gate fired when reclassify recomputed
+a row and never when a mapper first classified it. `reclassify --write` deleted
+623 rows on rules the next import did not apply, and the same rows came back.
+Confirmed on the user's own screenshot titles: `REHABILITACIÓN DE AGUA POTABLE
+EN ATOLINGA`, `PAVIMENTACIÓN CON CONCRETO HIDRÁULICO` and `REHABILITACIÓN DE LA
+PTAR CHAHUÉ` were `standard` with country absent and are `excluded` with it.
+
+Five smaller mismatches were found in the same pass, each the same kind of
+mistake — classifying against something other than what the row stores:
+
+- Three different industry haystacks. `compranet5` used title+summary,
+  `compras-mx-contracts` added `Descripción Ramo`, `ocds` added the item
+  classification description — while reclassify used title+summary+buyer.
+- `ocds-mapper` classified `tender.description` but stored
+  `description ?? title`, so a record with no description was classified on
+  less text than it kept.
+- `dof`, `dof-search`, `licitia-vigente`, `pemex`, `peru-oece` and both
+  `ecopetrol` mappers passed no summary at all, yet all seven store one.
+- `proyectos-estrategicos` set the national-priority flag itself, while
+  reclassify could only infer it from `source_name` — a string written out
+  in three files.
+- Colombia's contract duration had no column, so reclassify read it back as
+  absent and quietly demoted those rows. Duration ≥ 360 days is one of the
+  disjuncts that promotes to flagship, so this was not only an exclude signal.
+
+**The fix is one function, not eleven corrections.** `classifyStoredTender()`
+in `lib/relevance.ts` takes the fields a row will actually store and returns
+both the industry tags and the tier. Every mapper and `reclassify-tenders.ts`
+call it. `country` joined `governmentLevel` as a required input for the reason
+that section gives — the compiler enumerates the call sites, vigilance does not.
+`NATIONAL_PRIORITY_SOURCE_NAME` is exported so the marker string is written
+once. Migration 0029 adds `tenders.structured_duration_days`, nullable with no
+backfill: the value was never stored, NULL already means "unknown" to the
+classifier, so no existing row changes tier.
+
+**And a check that does not depend on anyone remembering this.**
+`upsertTendersBatched()` re-derives the classification from the fields in the
+row it is about to write, compares it to what the mapper produced, and on a
+mismatch takes the stored-field answer and warns with the slug and source. It
+corrects rather than throws, deliberately: an aborted import helps nobody, and
+the stored-field verdict is the one that survives. It runs against real data on
+every import, which is what makes it worth more than another fixture.
+
+Verified end to end on production. The three files the user re-imported
+excluded 44, 203 and 40 more rows than before — 287, exactly the number
+`reclassify --write` had deleted, so the import now stops precisely the set
+reclassify would remove. No parity warnings fired. A dry run afterwards
+reported `0 of 212 tender(s) would change tier`.
+
+## A village called Puerto Rico (2026-09-08)
+
+Reading the 212-row kept export the user reviewed turned up a rule bug worth
+recording, because the mechanism is more general than the two rows it hit.
+
+`PAV CAM LA ANTORCHA - PUERTO RICO` and `PAV DIVERSAS CALLES EN LA LOCALIDAD DE
+PUERTO RICO` were **flagship** — the top tier, for paving a village's streets.
+Puerto Rico is a village in Municipio Carmen, Campeche, and the bare `puerto`
+keyword, meaning seaport, matched the village's name. The same titles in a town
+with an ordinary name are excluded. `SUMINISTRO DE ALIMENTOS EN PUERTO
+ESCONDIDO` — a catering contract — was flagship on the same mechanism.
+
+`stripKnownFalsePositivePlaceNames()` already existed for exactly this (Puerto
+Boyacá, Puerto López, Felipe Carrillo Puerto) and the two towns were added to
+it. But that list is always one town behind: Mexico has Vallarta, Escondido,
+Peñasco, Ángel and Morelos; Colombia has Boyacá, Berrío, Asís, Gaitán, Carreño,
+Colombia and Tejada. Each costs a false flagship before anyone can list it, and
+the Colombian corpus is the one that is growing. Per the user's decision the
+keyword now asks for port CONTEXT instead:
+
+- `portuari…` and the marine-works nouns stand on their own — no town is
+  called that.
+- A port NAME counts only with a works verb beside it. Both halves are
+  load-bearing. Without the names, `REPARACIÓN DE JUNTAS DE CALZADA EN PSV DEL
+  PUERTO ALTAMIRA` stops matching — a fixture the user had set to
+  "significant" on 2026-09-07, which a rule aimed at villages would have
+  overturned in silence. Without the verb, `SUMINISTRO DE ALIMENTOS EN EL
+  PUERTO DE VERACRUZ` is flagship again, because that phrase is also how
+  people refer to the city.
+
+`dragado` pairs with a port name rather than standing alone. As a standalone
+signal it promoted `DRAGADO DE CONSTRUCCIÓN Y CONFORMACIÓN DE LA PLATAFORMA
+NORTE` from standard to flagship, which nobody asked for and which sat badly
+beside the user's own call that dredging silt out of a working port is upkeep.
+
+The same reading found `/\bpav\.?\s+cam\.?\b/` whitelisted as a flagship
+signal while `PAVIMENTACIÓN CON CONCRETO HIDRÁULICO DEL CAMINO LOCAL` — the
+same work spelled out, and a fixture from the user's review of a real export —
+was excluded. One job cannot have two tiers depending on whether the clerk
+abbreviated it, so the entry is gone. A camino is not a carretera; `carretera`
+stays whitelisted and highway work is untouched.
+
+Re-scored against all 212 kept rows, both changes together move 3 rows, all
+three the road-paving rows above. 173/173 fixtures, including synthetic
+port-vs-place-name controls.

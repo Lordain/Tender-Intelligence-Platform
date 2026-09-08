@@ -129,7 +129,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
             <span className="text-sm font-black">SPEI 银行转账</span>
             {bankQuote ? (
               <span className="mt-2 block pl-6 text-xs leading-5 text-white/65">
-                应付 {mxn.format(bankQuote.mxnAmount)}，参考汇率 1 USD = {bankQuote.rate.toFixed(4)} MXN。Stripe账单生成后金额锁定 {bankQuote.validDays} 天。
+                应付 {mxn.format(bankQuote.mxnAmount)}，参考汇率 1 USD = {bankQuote.rate.toFixed(2)} MXN。Stripe账单生成后金额锁定 {bankQuote.validDays} 天。
               </span>
             ) : (
               <span className="mt-1 block pl-6 text-xs leading-5 text-white/55">上线前配置当期USD/MXN转账汇率后开放。</span>

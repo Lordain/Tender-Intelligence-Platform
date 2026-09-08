@@ -67,11 +67,22 @@ async function saveSubscription(admin: SupabaseClient, subscription: Stripe.Subs
   const { error } = await admin.from("subscriptions").insert(values);
   if (!error) return;
   if (error.code === "23505") {
-    const { error: retryError } = await admin
+    const { data: updated, error: retryError } = await admin
       .from("subscriptions")
       .update(values)
-      .eq("stripe_subscription_id", subscription.id);
-    if (!retryError) return;
+      .eq("stripe_subscription_id", subscription.id)
+      .select("id");
+    if (retryError) throw new Error(`Subscription conflict update failed: ${retryError.message}`);
+    if (updated && updated.length > 0) return;
+
+    // 0027 has two unique indexes. A duplicate webhook delivery conflicts on
+    // stripe_subscription_id and is safely handled by the update above. A
+    // second live Stripe subscription for the same user conflicts on user_id,
+    // however, so that update matches zero rows. Treating zero rows as success
+    // would acknowledge the webhook while silently dropping a paid purchase.
+    throw new Error(
+      `Subscription insert conflicted for user ${userId}, but no existing row matched Stripe subscription ${subscription.id}.`,
+    );
   }
   throw new Error(`Subscription insert failed: ${error.message}`);
 }

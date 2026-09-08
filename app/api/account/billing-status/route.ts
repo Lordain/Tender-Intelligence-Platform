@@ -35,7 +35,7 @@ export async function GET() {
   }
 
   const profile = profileResult.data;
-  const pendingPayment = profile?.pending_payment_kind && profile.pending_payment_url
+  let pendingPayment = profile?.pending_payment_kind && profile.pending_payment_url
     ? {
         kind: profile.pending_payment_kind as "card" | "bank_transfer",
         url: profile.pending_payment_url,
@@ -48,10 +48,32 @@ export async function GET() {
   const stripe = getStripeClient();
   if (subscriptionId && stripe) {
     try {
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ["latest_invoice"] });
       const configuredCollection = subscription.metadata.payment_collection;
       if (configuredCollection === "card" || configuredCollection === "bank_transfer") {
         paymentCollection = configuredCollection;
+      }
+
+      // The checkout route stores the first Hosted Invoice URL in
+      // billing_profiles, but Stripe creates renewal invoices on its own.
+      // Those later URLs never pass through checkout, so discover the latest
+      // open invoice directly from the authenticated user's subscription.
+      // This also keeps an overdue transfer reachable while its invoice is
+      // still open, without granting the browser access to arbitrary invoice
+      // IDs or trusting a URL supplied by the client.
+      if (configuredCollection === "bank_transfer") {
+        const latestInvoice = typeof subscription.latest_invoice === "string"
+          ? await stripe.invoices.retrieve(subscription.latest_invoice)
+          : subscription.latest_invoice;
+        if (latestInvoice?.status === "open" && latestInvoice.hosted_invoice_url) {
+          pendingPayment = {
+            kind: "bank_transfer",
+            url: latestInvoice.hosted_invoice_url,
+            expiresAt: latestInvoice.due_date
+              ? new Date(latestInvoice.due_date * 1000).toISOString()
+              : null,
+          };
+        }
       }
     } catch (error) {
       // The account page remains usable if Stripe is temporarily unavailable;

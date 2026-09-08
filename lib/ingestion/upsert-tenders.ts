@@ -181,27 +181,37 @@ function buildRow(fields: Tender) {
 }
 
 /**
- * The same row buildRow() produces, minus a chosen set of columns.
+ * The row buildRow() produces, with every protected column's CURRENT stored
+ * value put back over the source's value.
  *
- * Supabase's bulk `.upsert()` derives its ON CONFLICT DO UPDATE SET clause
- * from the JSON keys actually present in the request, uniform across the
- * whole array — so a row shape that never carries a key at all means
- * Postgres leaves that column's existing value completely untouched on
- * conflict, not merely unchanged-because-equal. (Omitting a key on only
- * SOME rows within one mixed-shape array would NOT give this guarantee:
- * PostgREST still includes the column in the shared SET clause and can NULL
- * it out for the rows missing the key.) Everything below therefore groups
- * rows by their exact omit-set and sends one internally-uniform request per
- * group.
+ * The obvious implementation — omit the protected keys entirely — is wrong,
+ * and shipped broken for one import (2026-09-08): `ON CONFLICT DO UPDATE`
+ * makes Postgres build and validate the proposed INSERT tuple BEFORE it
+ * detects the conflict, so a missing `publication_date` (NOT NULL, no
+ * default) fails the whole statement with "null value in column
+ * publication_date violates not-null constraint" — even though the row
+ * exists and only the UPDATE branch would ever have run. The user hit this
+ * on the first import after protecting a hand-corrected date.
  *
- * `slug` is never omitted whatever the caller passes — it is the ON CONFLICT
- * target, and a payload without it cannot match an existing row at all.
+ * Writing the stored value back is equivalent for the UPDATE branch (the
+ * column ends up unchanged either way) and keeps every row the same shape,
+ * which also removes the need to group rows by omit-set: PostgREST derives
+ * one shared ON CONFLICT SET clause per request from the keys present, so
+ * uniform rows are exactly what it wants.
  */
-function buildRowOmitting(fields: Tender, omit: ReadonlySet<string>): Record<string, unknown> {
-  const full = buildRow(fields) as Record<string, unknown>;
-  if (omit.size === 0) return full;
-  return Object.fromEntries(Object.entries(full).filter(([key]) => key === "slug" || !omit.has(key)));
+function buildRowWithProtectedValues(fields: Tender, protection: ProtectedRow | undefined): Record<string, unknown> {
+  const row = buildRow(fields) as Record<string, unknown>;
+  if (!protection || protection.omit.size === 0) return row;
+  for (const column of protection.omit) {
+    // `slug` is the ON CONFLICT target and can never be protected; anything
+    // the stored row doesn't actually have is left as the source built it.
+    if (column === "slug" || !(column in protection.stored)) continue;
+    row[column] = protection.stored[column];
+  }
+  return row;
 }
+
+type ProtectedRow = { omit: Set<string>; stored: Record<string, unknown> };
 
 const RELEVANCE_COLUMNS = ["relevance_tier", "relevance_label", "relevance_reason", "relevance_manually_overridden"] as const;
 
@@ -231,18 +241,14 @@ function omitSetFor(row: { manual_field_overrides?: string[] | null; relevance_m
  * source's own "publication" key date would put the wrong day back on the
  * public timeline even though the column itself is protected.
  */
-function lockedKeyDateTypes(omit: ReadonlySet<string> | undefined): Set<string> {
+function lockedKeyDateTypes(protection: ProtectedRow | undefined): Set<string> {
   const types = new Set<string>();
-  if (!omit) return types;
+  if (!protection) return types;
+  const omit = protection.omit;
   if (omit.has("publication_date")) types.add("publication");
   if (omit.has("submission_deadline")) types.add("submission");
   if (omit.has("award_date")) types.add("award");
   return types;
-}
-
-/** Stable grouping key for an omit-set, so rows sharing one shape batch together. */
-function omitSignature(omit: ReadonlySet<string>): string {
-  return [...omit].sort().join(",");
 }
 
 /**
@@ -324,19 +330,24 @@ export async function upsertTendersBatched(
   for (const batch of chunk(liveTenders, BATCH_SIZE)) {
     // Chunked separately from the upsert batch, for the URL-length reason
     // explained at LOOKUP_CHUNK_SIZE.
-    const protectionBySlug = new Map<string, Set<string>>();
+    const protectionBySlug = new Map<string, ProtectedRow>();
     let protectedError: { message: string } | null = null;
     for (const slugChunk of chunk(batch.map((t) => t.slug), LOOKUP_CHUNK_SIZE)) {
+      // `*` rather than a column list: buildRowWithProtectedValues needs the
+      // stored value of whatever column an admin happened to lock, and a
+      // hand-maintained list here would silently stop protecting any column
+      // added to the table later. Only rows that turn out to BE protected
+      // are kept, so the extra width costs nothing beyond this read.
       const { data: rows, error } = await withOneRetry(() =>
-        supabase.from("tenders").select("slug, manual_field_overrides, relevance_manually_overridden").in("slug", slugChunk),
+        supabase.from("tenders").select("*").in("slug", slugChunk),
       );
       if (error) {
         protectedError = error;
         break;
       }
-      for (const row of (rows ?? []) as { slug: string; manual_field_overrides: string[] | null; relevance_manually_overridden: boolean | null }[]) {
-        const omit = omitSetFor(row);
-        if (omit.size > 0) protectionBySlug.set(row.slug, omit);
+      for (const row of (rows ?? []) as Record<string, unknown>[]) {
+        const omit = omitSetFor(row as { manual_field_overrides?: string[] | null; relevance_manually_overridden?: boolean | null });
+        if (omit.size > 0) protectionBySlug.set(row.slug as string, { omit, stored: row });
       }
     }
     // Fails the batch rather than continuing (2026-09-07, widened 2026-09-08).
@@ -353,27 +364,15 @@ export async function upsertTendersBatched(
     }
     protectedCount += batch.filter((t) => protectionBySlug.has(t.slug)).length;
 
-    // One request per distinct omit-set (see buildRowOmitting for why the
-    // shapes must not be mixed). In practice this is one large group with
-    // no omissions plus a handful of tiny ones.
-    const bySignature = new Map<string, { omit: Set<string>; tenders: Tender[] }>();
-    for (const tender of batch) {
-      const omit = protectionBySlug.get(tender.slug) ?? new Set<string>();
-      const signature = omitSignature(omit);
-      const group = bySignature.get(signature);
-      if (group) group.tenders.push(tender);
-      else bySignature.set(signature, { omit, tenders: [tender] });
-    }
-
     const upserted: { id: string; slug: string }[] = [];
 
-    for (const { omit, tenders } of bySignature.values()) {
+    {
       const { data, error } = await supabase
         .from("tenders")
-        .upsert(tenders.map((t) => buildRowOmitting(t, omit)), { onConflict: "slug" })
+        .upsert(batch.map((t) => buildRowWithProtectedValues(t, protectionBySlug.get(t.slug))), { onConflict: "slug" })
         .select("id, slug");
       if (error || !data) {
-        for (const tender of tenders) failed.push({ slug: tender.slug, error: error?.message ?? "no rows returned" });
+        for (const tender of batch) failed.push({ slug: tender.slug, error: error?.message ?? "no rows returned" });
       } else {
         upserted.push(...(data as { id: string; slug: string }[]));
       }
@@ -381,10 +380,6 @@ export async function upsertTendersBatched(
 
     const idBySlug = new Map<string, string>(upserted.map((row) => [row.slug, row.id]));
 
-    // Rows built before the delete, and both halves checked: this is a
-    // delete-then-insert, so a silently failed insert wouldn't skip an
-    // update, it would leave these tenders with no key dates at all while
-    // the ingest reported success (2026-09-06).
     // Key dates are refreshed by delete-then-insert, which is why both
     // halves below are careful about what a human put there (2026-09-08):
     //

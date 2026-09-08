@@ -55,10 +55,16 @@ export type UpsertTendersResult = {
   upsertedCount: number;
   skippedExcludedCount: number;
   /**
-   * Count of rows skipped for relevance_tier/label/reason ONLY (per the
-   * user's explicit request, 2026-09-04) — an admin manually classified
-   * these via the edit form, so a re-ingest here still updates every other
-   * field (title, dates, buyer, ...) normally, just not the classification.
+   * Count of existing rows that carried at least one protected column, so
+   * this import left part of them untouched. Two independent sources of
+   * protection, both partial — the rest of the row still updates normally:
+   *
+   *   - manual_field_overrides (migration 0030): the columns an admin
+   *     actually changed in the edit form. Added 2026-09-08 after a
+   *     corrected 发布日期 (and its "estimated" flag) was silently reverted
+   *     to the ingestion placeholder by the next import.
+   *   - relevance_manually_overridden (2026-09-04): the relevance trio,
+   *     when an admin ticked that checkbox.
    */
   protectedCount: number;
   /**
@@ -72,8 +78,6 @@ export type UpsertTendersResult = {
   skippedManuallyDeletedCount: number;
   failed: { slug: string; error: string }[];
 };
-
-type TenderRowFields = ReturnType<typeof buildRow>;
 
 /**
  * Re-derives every tender's tier and industry tags from the fields this row
@@ -177,24 +181,68 @@ function buildRow(fields: Tender) {
 }
 
 /**
- * Same row as buildRow(), minus every relevance_* column — for a tender an
- * admin has manually classified (relevance_manually_overridden = true in
- * Supabase). Supabase's bulk `.upsert()` derives its ON CONFLICT DO UPDATE
- * SET clause from the JSON keys actually present in the request, uniform
- * across the whole array — so a row shape that never carries these keys at
- * all means Postgres leaves the existing relevance_tier/label/reason/
- * manually_overridden values on conflict completely untouched, not merely
- * unchanged-because-equal. (Omitting the keys on only SOME rows within one
- * mixed-shape array wouldn't give this guarantee — PostgREST would still
- * include those columns in the shared SET clause and could NULL them out
- * for the rows missing the key — which is why protected and unprotected
- * rows are upserted as two separate, internally-uniform calls below.)
+ * The same row buildRow() produces, minus a chosen set of columns.
+ *
+ * Supabase's bulk `.upsert()` derives its ON CONFLICT DO UPDATE SET clause
+ * from the JSON keys actually present in the request, uniform across the
+ * whole array — so a row shape that never carries a key at all means
+ * Postgres leaves that column's existing value completely untouched on
+ * conflict, not merely unchanged-because-equal. (Omitting a key on only
+ * SOME rows within one mixed-shape array would NOT give this guarantee:
+ * PostgREST still includes the column in the shared SET clause and can NULL
+ * it out for the rows missing the key.) Everything below therefore groups
+ * rows by their exact omit-set and sends one internally-uniform request per
+ * group.
+ *
+ * `slug` is never omitted whatever the caller passes — it is the ON CONFLICT
+ * target, and a payload without it cannot match an existing row at all.
  */
-function buildRowWithoutRelevance(fields: Tender): Omit<TenderRowFields, "relevance_tier" | "relevance_label" | "relevance_reason" | "relevance_manually_overridden"> {
-  const full = buildRow(fields);
-  return Object.fromEntries(
-    Object.entries(full).filter(([key]) => !["relevance_tier", "relevance_label", "relevance_reason", "relevance_manually_overridden"].includes(key)),
-  ) as Omit<TenderRowFields, "relevance_tier" | "relevance_label" | "relevance_reason" | "relevance_manually_overridden">;
+function buildRowOmitting(fields: Tender, omit: ReadonlySet<string>): Record<string, unknown> {
+  const full = buildRow(fields) as Record<string, unknown>;
+  if (omit.size === 0) return full;
+  return Object.fromEntries(Object.entries(full).filter(([key]) => key === "slug" || !omit.has(key)));
+}
+
+const RELEVANCE_COLUMNS = ["relevance_tier", "relevance_label", "relevance_reason", "relevance_manually_overridden"] as const;
+
+/**
+ * Every column this import must leave alone for one existing tender:
+ * whatever an admin hand-edited (manual_field_overrides, migration 0030)
+ * plus the relevance trio when they ticked the separate manual-override
+ * checkbox.
+ *
+ * The two mechanisms stay separate on purpose. relevance_manually_overridden
+ * is a deliberate user-facing checkbox guarding a COMPUTED classification;
+ * manual_field_overrides is filled in automatically by observing which
+ * columns an edit actually changed, and guards TYPED-IN data. Collapsing
+ * them would mean either making the checkbox lock typed data it was never
+ * about, or making every typo fix silently freeze the classification.
+ */
+function omitSetFor(row: { manual_field_overrides?: string[] | null; relevance_manually_overridden?: boolean | null }): Set<string> {
+  const omit = new Set<string>(row.manual_field_overrides ?? []);
+  if (row.relevance_manually_overridden === true) for (const column of RELEVANCE_COLUMNS) omit.add(column);
+  return omit;
+}
+
+/**
+ * The tender_key_dates types that must be left alone for a tender, derived
+ * from the locked columns they mirror (lib/db/key-dates-sync.ts writes the
+ * same three). If an admin corrected `publication_date`, re-inserting the
+ * source's own "publication" key date would put the wrong day back on the
+ * public timeline even though the column itself is protected.
+ */
+function lockedKeyDateTypes(omit: ReadonlySet<string> | undefined): Set<string> {
+  const types = new Set<string>();
+  if (!omit) return types;
+  if (omit.has("publication_date")) types.add("publication");
+  if (omit.has("submission_deadline")) types.add("submission");
+  if (omit.has("award_date")) types.add("award");
+  return types;
+}
+
+/** Stable grouping key for an omit-set, so rows sharing one shape batch together. */
+function omitSignature(omit: ReadonlySet<string>): string {
+  return [...omit].sort().join(",");
 }
 
 /**
@@ -276,56 +324,56 @@ export async function upsertTendersBatched(
   for (const batch of chunk(liveTenders, BATCH_SIZE)) {
     // Chunked separately from the upsert batch, for the URL-length reason
     // explained at LOOKUP_CHUNK_SIZE.
-    const protectedSlugList: string[] = [];
+    const protectionBySlug = new Map<string, Set<string>>();
     let protectedError: { message: string } | null = null;
     for (const slugChunk of chunk(batch.map((t) => t.slug), LOOKUP_CHUNK_SIZE)) {
       const { data: rows, error } = await withOneRetry(() =>
-        supabase.from("tenders").select("slug").in("slug", slugChunk).eq("relevance_manually_overridden", true),
+        supabase.from("tenders").select("slug, manual_field_overrides, relevance_manually_overridden").in("slug", slugChunk),
       );
       if (error) {
         protectedError = error;
         break;
       }
-      for (const row of rows ?? []) protectedSlugList.push(row.slug as string);
+      for (const row of (rows ?? []) as { slug: string; manual_field_overrides: string[] | null; relevance_manually_overridden: boolean | null }[]) {
+        const omit = omitSetFor(row);
+        if (omit.size > 0) protectionBySlug.set(row.slug, omit);
+      }
     }
-    // Also fails the batch rather than continuing (2026-09-07). Falling
-    // back to "nothing is protected" is not conservative: every tender in
-    // the batch then goes through buildRow(), which writes
-    // relevance_manually_overridden: false along with a freshly computed
-    // tier. So a failed lookup did not merely skip the protection — it
-    // ERASED it, flag and all, leaving nothing in the row to show a human
-    // had ever classified it and no way to find the affected tenders
-    // afterwards. Unrecoverable, unlike a re-inserted deletion.
+    // Fails the batch rather than continuing (2026-09-07, widened 2026-09-08).
+    // Falling back to "nothing is protected" is not conservative: every
+    // tender in the batch then goes through the full buildRow(), which
+    // rewrites relevance_manually_overridden: false along with a freshly
+    // computed tier AND overwrites every hand-corrected field. So a failed
+    // lookup does not merely skip the protection — it ERASES it, flag and
+    // all, leaving nothing in the row to show a human had ever touched it
+    // and no way to find the affected tenders afterwards. Unrecoverable,
+    // unlike a re-inserted deletion.
     if (protectedError) {
-      throw new Error(`无法读取手动覆盖标记，已中止导入以免覆盖人工分类结果：${protectedError.message}`);
+      throw new Error(`无法读取人工编辑保护标记，已中止导入以免覆盖人工修改：${protectedError.message}`);
     }
-    const protectedSlugs = new Set(protectedSlugList);
+    protectedCount += batch.filter((t) => protectionBySlug.has(t.slug)).length;
 
-    const normalBatch = batch.filter((t) => !protectedSlugs.has(t.slug));
-    const protectedBatch = batch.filter((t) => protectedSlugs.has(t.slug));
-    protectedCount += protectedBatch.length;
+    // One request per distinct omit-set (see buildRowOmitting for why the
+    // shapes must not be mixed). In practice this is one large group with
+    // no omissions plus a handful of tiny ones.
+    const bySignature = new Map<string, { omit: Set<string>; tenders: Tender[] }>();
+    for (const tender of batch) {
+      const omit = protectionBySlug.get(tender.slug) ?? new Set<string>();
+      const signature = omitSignature(omit);
+      const group = bySignature.get(signature);
+      if (group) group.tenders.push(tender);
+      else bySignature.set(signature, { omit, tenders: [tender] });
+    }
 
     const upserted: { id: string; slug: string }[] = [];
 
-    if (normalBatch.length > 0) {
+    for (const { omit, tenders } of bySignature.values()) {
       const { data, error } = await supabase
         .from("tenders")
-        .upsert(normalBatch.map(buildRow), { onConflict: "slug" })
+        .upsert(tenders.map((t) => buildRowOmitting(t, omit)), { onConflict: "slug" })
         .select("id, slug");
       if (error || !data) {
-        for (const tender of normalBatch) failed.push({ slug: tender.slug, error: error?.message ?? "no rows returned" });
-      } else {
-        upserted.push(...(data as { id: string; slug: string }[]));
-      }
-    }
-
-    if (protectedBatch.length > 0) {
-      const { data, error } = await supabase
-        .from("tenders")
-        .upsert(protectedBatch.map(buildRowWithoutRelevance), { onConflict: "slug" })
-        .select("id, slug");
-      if (error || !data) {
-        for (const tender of protectedBatch) failed.push({ slug: tender.slug, error: error?.message ?? "no rows returned" });
+        for (const tender of tenders) failed.push({ slug: tender.slug, error: error?.message ?? "no rows returned" });
       } else {
         upserted.push(...(data as { id: string; slug: string }[]));
       }
@@ -337,15 +385,42 @@ export async function upsertTendersBatched(
     // delete-then-insert, so a silently failed insert wouldn't skip an
     // update, it would leave these tenders with no key dates at all while
     // the ingest reported success (2026-09-06).
-    const tenderIds = [...idBySlug.values()];
+    // Key dates are refreshed by delete-then-insert, which is why both
+    // halves below are careful about what a human put there (2026-09-08):
+    //
+    //   - manually_added rows (the 其他关键日期 editor — 现场踏勘, 提问截止,
+    //     澄清会议...) are never deleted. No source supplies them, so a
+    //     blanket delete simply destroyed them on every re-import.
+    //   - the three types mirrored from the tender's own columns
+    //     (publication / submission / award) are skipped entirely for a
+    //     tender whose backing column is locked by manual_field_overrides,
+    //     so the timeline cannot drift away from the corrected column.
     const keyDateRows = batch.flatMap((tender) => {
       const tenderId = idBySlug.get(tender.slug);
       if (!tenderId) return [];
-      return tender.keyDates.map((d) => ({ tender_id: tenderId, type: d.type, date: d.date }));
+      const lockedTypes = lockedKeyDateTypes(protectionBySlug.get(tender.slug));
+      return tender.keyDates
+        .filter((d) => !lockedTypes.has(d.type))
+        .map((d) => ({ tender_id: tenderId, type: d.type, date: d.date }));
     });
 
-    if (tenderIds.length > 0) {
-      assertWritten("旧关键日期清除", await supabase.from("tender_key_dates").delete().in("tender_id", tenderIds));
+    // Grouped by locked-type signature so each delete can exclude exactly
+    // the types it must not touch; almost always one group with none.
+    const deleteGroups = new Map<string, { types: string[]; ids: string[] }>();
+    for (const tender of batch) {
+      const tenderId = idBySlug.get(tender.slug);
+      if (!tenderId) continue;
+      const types = [...lockedKeyDateTypes(protectionBySlug.get(tender.slug))].sort();
+      const signature = types.join(",");
+      const group = deleteGroups.get(signature);
+      if (group) group.ids.push(tenderId);
+      else deleteGroups.set(signature, { types, ids: [tenderId] });
+    }
+
+    for (const { types, ids } of deleteGroups.values()) {
+      let query = supabase.from("tender_key_dates").delete().in("tender_id", ids).eq("manually_added", false);
+      if (types.length > 0) query = query.not("type", "in", `(${types.join(",")})`);
+      assertWritten("旧关键日期清除", await query);
     }
     if (keyDateRows.length > 0) {
       assertWritten("关键日期", await supabase.from("tender_key_dates").insert(keyDateRows));

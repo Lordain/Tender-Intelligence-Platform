@@ -54,6 +54,63 @@ const MANUAL_OVERRIDE_REASON: LocalizedText = {
   es: "Establecido manualmente por un administrador",
 };
 
+/**
+ * Columns that are never locked against re-ingest even when an admin edit
+ * changes them. The relevance trio has its own, older and deliberately
+ * user-toggled protection (relevance_manually_overridden — see lib/
+ * ingestion/upsert-tenders.ts); documents_unavailable is an admin worklist
+ * flag the importer never writes at all, so locking it would be noise.
+ */
+const NEVER_LOCKED_COLUMNS = new Set([
+  "relevance_tier",
+  "relevance_label",
+  "relevance_reason",
+  "relevance_manually_overridden",
+  "documents_unavailable",
+  "manual_field_overrides",
+]);
+
+/**
+ * Value equality as Postgres would see it after a round trip, for the
+ * override diff above. Deliberately loose in two places:
+ *
+ * - null and "" are the same absence. The form posts "" for a cleared text
+ *   input while the row stores null, so a strict compare would mark
+ *   untouched empty fields as edited on every single save and lock the row.
+ * - date columns are compared on their calendar day. `publication_date` is
+ *   a Postgres `date` and comes back as "2026-08-21", while the form posts
+ *   the same day and `award_date` is sent as a full ISO timestamp — a raw
+ *   string compare would treat those as different every time.
+ *
+ * jsonb/array columns (title, summary, industries) fall through to a
+ * key-order-independent JSON compare.
+ */
+function sameStoredValue(stored: unknown, next: unknown): boolean {
+  const emptyStored = stored === null || stored === undefined || stored === "";
+  const emptyNext = next === null || next === undefined || next === "";
+  if (emptyStored || emptyNext) return emptyStored && emptyNext;
+  if (typeof stored === "object" || typeof next === "object") {
+    return stableJson(stored) === stableJson(next);
+  }
+  const storedDay = calendarDay(stored);
+  const nextDay = calendarDay(next);
+  if (storedDay && nextDay) return storedDay === nextDay;
+  return String(stored) === String(next);
+}
+
+/** "2026-08-21" for anything Date can parse as a day, else null. */
+function calendarDay(value: unknown): string | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(value)) return null;
+  return value.slice(0, 10);
+}
+
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b));
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableJson(v)}`).join(",")}}`;
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
@@ -72,7 +129,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
 
   const { data: existing, error: fetchError } = await supabase
     .from("tenders")
-    .select("id, title, summary, relevance_tier")
+    .select(`
+      id, title, summary, relevance_tier, manual_field_overrides,
+      one_line_summary, tender_number, buyer, country, government_level, industries,
+      scope_type, procedure_type, participation_scope, publication_date,
+      publication_date_is_estimated, submission_deadline, award_date, awarded_to,
+      awarded_value, estimated_value, currency, location, status, source_name, source_url
+    `)
     .eq("slug", slug)
     .maybeSingle();
 
@@ -132,6 +195,40 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   // upsert-tenders.ts for what this flag actually protects.
   row.relevance_manually_overridden = body.relevanceManuallyOverridden === true;
   row.documents_unavailable = body.documentsUnavailable === true;
+
+  // Record which columns this save actually CHANGED, so a later re-ingest
+  // of the same tender leaves them alone (migration 0030; enforced in
+  // lib/ingestion/upsert-tenders.ts).
+  //
+  // Computed by diffing against the stored row rather than trusting the
+  // submitted body, because the form posts every field on every save —
+  // taking "present in the body" as "edited" would lock the entire row the
+  // first time an admin fixed a single typo, and the tender would then
+  // never receive a real source update again.
+  //
+  // Additive only: an admin re-saving a field back to the value the source
+  // happened to have does NOT release the lock. Releasing it is a separate,
+  // deliberate action (there is no UI for it yet — see the note in the
+  // response below), on the same reasoning as relevance_manually_overridden
+  // being its own explicit checkbox: silently un-protecting data is the
+  // failure mode we are fixing here, so it must not happen as a side effect.
+  const previousOverrides = new Set<string>(((existing.manual_field_overrides as string[] | null) ?? []));
+  for (const [column, nextValue] of Object.entries(row)) {
+    if (column === "updated_at" || NEVER_LOCKED_COLUMNS.has(column)) continue;
+    if (!sameStoredValue((existing as Record<string, unknown>)[column], nextValue)) {
+      previousOverrides.add(column);
+    }
+  }
+  // publication_date and its "is estimated" flag are one fact in two
+  // columns: the 2026-09-08 report was the date being restored to the
+  // ingestion placeholder AND the 估 badge coming back. Locking only the
+  // one the admin happened to touch would let the import re-flag a
+  // hand-confirmed date as an estimate, so they lock together.
+  if (previousOverrides.has("publication_date") || previousOverrides.has("publication_date_is_estimated")) {
+    previousOverrides.add("publication_date");
+    previousOverrides.add("publication_date_is_estimated");
+  }
+  row.manual_field_overrides = [...previousOverrides].sort();
 
   const { error } = await supabase.from("tenders").update(row).eq("slug", slug);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

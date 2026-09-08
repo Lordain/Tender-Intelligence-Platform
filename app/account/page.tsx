@@ -16,6 +16,15 @@ const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
 
+type BillingStatus = {
+  pendingPayment: {
+    kind: "card" | "bank_transfer";
+    url: string;
+    expiresAt: string | null;
+  } | null;
+  paymentCollection: "card" | "bank_transfer" | null;
+};
+
 export default function AccountPage() {
   const { locale } = useLocale();
   const router = useRouter();
@@ -28,6 +37,7 @@ export default function AccountPage() {
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [entitlementReloadKey, setEntitlementReloadKey] = useState(0);
+  const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
 
   useEffect(() => {
     if (!SUPABASE_CONFIGURED || loading) return;
@@ -49,7 +59,16 @@ export default function AccountPage() {
 
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/account/billing-status", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<BillingStatus> : null)
+      .then((result) => setBillingStatus(result))
+      .catch(() => setBillingStatus(null));
+  }, [user, entitlementReloadKey]);
+
   const entitlement = useEntitlement(Boolean(user), entitlementReloadKey);
+  const isBankTransfer = billingStatus?.paymentCollection === "bank_transfer";
 
   // Only the person who owns the subscription may cancel it; an enterprise
   // seat holder reads the owner's dates but has nothing to cancel.
@@ -142,6 +161,24 @@ export default function AccountPage() {
           </p>
         </header>
 
+        {billingStatus?.pendingPayment && (
+          <section className="mt-8 flex flex-col gap-4 rounded-2xl border border-[#e9b949] bg-[#fff7df] px-5 py-5 text-[#5f4300] shadow-[0_16px_40px_-34px_rgba(95,67,0,.55)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div>
+              <h2 className="text-base font-black">
+                {billingStatus.pendingPayment.kind === "bank_transfer" ? "银行转账待付款" : "银行卡付款尚未完成"}
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-[#80621b]">
+                {billingStatus.pendingPayment.kind === "bank_transfer"
+                  ? "可重新打开 Stripe 账单，查看 CLABE、转账参考编号和最新付款状态。"
+                  : "可返回 Stripe 安全付款页面继续完成订阅。"}
+              </p>
+            </div>
+            <a href={billingStatus.pendingPayment.url} className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#071826] px-5 py-3 text-sm font-black text-white transition-colors hover:bg-[#12334a]">
+              {billingStatus.pendingPayment.kind === "bank_transfer" ? "查看转账资料与状态" : "继续付款"}
+            </a>
+          </section>
+        )}
+
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
           <section className="rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-8">
             <div className="mb-7 flex items-start gap-4">
@@ -210,14 +247,16 @@ export default function AccountPage() {
               <p className="mt-4 text-sm leading-6 text-white/55">
                 {entitlement?.role === "trial" && entitlement.trialEndsAt
                   ? `试用有效期至 ${new Date(entitlement.trialEndsAt).toLocaleDateString("zh-CN")}；到期后自动转为免费版。`
-                  : entitlement?.role === "free"
-                    ? "免费试用已结束，订阅后可恢复项目详情与邮件通知。"
+                    : entitlement?.role === "free"
+                      ? "免费试用已结束，订阅后可恢复项目详情与邮件通知。"
+                    : entitlement?.role === "subscriber" && entitlement.hasBillingLink && !entitlement.cancelAtPeriodEnd && isBankTransfer
+                      ? `将于 ${formatPeriodDate(entitlement.periodEnd)} 生成新的 MXN 转账账单，到账后续期。`
                     : entitlement?.role === "subscriber" && entitlement.hasBillingLink && !entitlement.cancelAtPeriodEnd
                       ? `将于 ${formatPeriodDate(entitlement.periodEnd)} 自动续期，可随时取消。`
                       : "查看可用套餐，管理项目与通知服务。"}
               </p>
               {entitlement?.cancelAtPeriodEnd && entitlement.periodEnd && (
-                <div className="mt-5 rounded-xl border border-[#ffb21c]/35 bg-[#ffb21c]/10 px-4 py-3 text-xs font-bold leading-5 text-[#ffd16f]">已取消自动续费。当前权限保留至 {formatPeriodDate(entitlement.periodEnd)}，到期后自动变为免费版。</div>
+                <div className="mt-5 rounded-xl border border-[#ffb21c]/35 bg-[#ffb21c]/10 px-4 py-3 text-xs font-bold leading-5 text-[#ffd16f]">{isBankTransfer ? "已取消续订" : "已取消自动续费"}。当前权限保留至 {formatPeriodDate(entitlement.periodEnd)}，到期后自动变为免费版。</div>
               )}
               {/* Said plainly rather than left to be inferred: nothing in this
                   codebase moves current_period_end forward, so a subscription
@@ -229,7 +268,7 @@ export default function AccountPage() {
               )}
               {canCancel && confirmingCancel && (
                 <div className="mt-5 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-4">
-                  <p className="text-xs font-bold leading-5 text-white/85">确认取消自动续费？</p>
+                  <p className="text-xs font-bold leading-5 text-white/85">确认取消{isBankTransfer ? "续订" : "自动续费"}？</p>
                   <p className="mt-2 text-xs leading-5 text-white/55">
                     当前订阅已付费至 <span className="font-bold text-white/85">{formatPeriodDate(entitlement?.periodEnd ?? null)}</span>，在那之前权限完全不变。
                     该日期<span className="font-bold text-white/85">当天到期后</span>账户自动转为免费版：项目详情需要重新订阅才能查看，邮件通知同时停止。
@@ -249,7 +288,7 @@ export default function AccountPage() {
                   {localize(uiText.viewPlans, locale)} <span aria-hidden="true">→</span>
                 </Link>
                 {canCancel && !confirmingCancel && (
-                  <button type="button" onClick={() => setConfirmingCancel(true)} className="text-xs font-bold text-white/52 underline decoration-white/25 underline-offset-4 hover:text-white">取消自动续费</button>
+                  <button type="button" onClick={() => setConfirmingCancel(true)} className="text-xs font-bold text-white/52 underline decoration-white/25 underline-offset-4 hover:text-white">取消{isBankTransfer ? "续订" : "自动续费"}</button>
                 )}
               </div>
               {cancelError && <p className="mt-3 text-xs font-bold text-red-300">{cancelError}</p>}

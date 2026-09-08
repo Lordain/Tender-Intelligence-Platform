@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isSubscriptionEntitled, TRIAL_DAYS, type BillingInterval, type SubscriptionPlan, type ViewerEntitlement, type ViewerRole } from "@/lib/access-control";
+import { selectPreferredSubscription, TRIAL_DAYS, type BillingInterval, type SubscriptionPlan, type ViewerEntitlement, type ViewerRole } from "@/lib/access-control";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 
@@ -42,7 +42,12 @@ async function findCurrentSubscription(
   plan?: "enterprise",
 ): Promise<SubscriptionRow | undefined> {
   const run = (columns: string) => {
-    const query = admin.from("subscriptions").select(columns).eq("user_id", userId).in("status", ["active", "trialing", "past_due"]);
+    const query = admin
+      .from("subscriptions")
+      .select(columns)
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing", "past_due"])
+      .order("created_at", { ascending: false });
     return plan ? query.eq("plan", plan) : query;
   };
 
@@ -50,13 +55,7 @@ async function findCurrentSubscription(
   if (result.error?.code === "42703") result = await run(SUBSCRIPTION_COLUMNS_LEGACY);
   if (result.error) throw new Error(`订阅读取失败：${result.error.message}`);
 
-  return ((result.data ?? []) as unknown as SubscriptionRow[]).find((subscription) =>
-    isSubscriptionEntitled(
-      subscription.status,
-      subscription.current_period_start,
-      subscription.current_period_end,
-    ),
-  );
+  return selectPreferredSubscription((result.data ?? []) as unknown as SubscriptionRow[]);
 }
 
 function periodOf(subscription: SubscriptionRow) {

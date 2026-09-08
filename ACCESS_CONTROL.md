@@ -90,6 +90,20 @@ The UI shows a payment warning during that grace window; after it ends,
 entitlement is calculated as free without needing a scheduled cleanup job.
 Configure Stripe's retry window to last at least three days.
 
+`current_period_start` is Stripe's billing-period value, not a locally
+recorded failure timestamp. Unit tests verify the three-day calculation but
+cannot prove how a real failed renewal moves Stripe's period fields. Before
+production, use a Stripe Test Clock and a renewal-failure test card to confirm
+that a `past_due` subscription item's `current_period_start` advances to the
+failed renewal cycle. If it does not, store the first failure time explicitly
+instead of silently changing the meaning of a billing-period column.
+
+If historical or concurrent events leave several eligible rows for one user,
+selection is deterministic: `active`/`trialing` outrank `past_due`, then the
+newest `created_at` wins. Checkout also refuses to open a second Stripe
+subscription while an unresolved `past_due` agreement exists; recovery must
+finish on the existing agreement first.
+
 ## Test accounts
 
 `npm run seed:test-accounts` creates one account per entitlement level

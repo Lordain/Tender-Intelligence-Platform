@@ -13,7 +13,7 @@
 // Relative, not "@/": this module is imported by scripts/*.ts running under
 // tsx, which resolves paths without the Next.js bundler.
 import { createSupabaseAdminClient } from "../supabase/admin-client";
-import { isSubscriptionEntitled } from "../access-control";
+import { selectPreferredSubscription } from "../access-control";
 
 type Preference = {
   user_id: string;
@@ -81,17 +81,21 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
 
   const { data: subscriptions, error: subscriptionsError } = await supabase
     .from("subscriptions")
-    .select("user_id, plan, status, current_period_start, current_period_end")
+    .select("user_id, plan, status, created_at, current_period_start, current_period_end")
     .in("user_id", [...new Set([...optedInIds, ...ownerByMember.values()])])
-    .in("status", ["active", "trialing", "past_due"]);
+    .in("status", ["active", "trialing", "past_due"])
+    .order("created_at", { ascending: false });
   if (subscriptionsError) throw new Error(`订阅读取失败：${subscriptionsError.message}`);
-  const current = (subscriptions ?? []).filter(
-    (subscription) => isSubscriptionEntitled(
-      subscription.status,
-      subscription.current_period_start,
-      subscription.current_period_end,
-    ),
-  );
+  const subscriptionsByUser = new Map<string, typeof subscriptions>();
+  for (const subscription of subscriptions ?? []) {
+    const userSubscriptions = subscriptionsByUser.get(subscription.user_id) ?? [];
+    userSubscriptions.push(subscription);
+    subscriptionsByUser.set(subscription.user_id, userSubscriptions);
+  }
+  const current = [...subscriptionsByUser.values()].flatMap((userSubscriptions) => {
+    const selected = selectPreferredSubscription(userSubscriptions);
+    return selected ? [selected] : [];
+  });
   const subscriberIds = new Set(current.map((subscription) => subscription.user_id as string));
   const enterpriseOwnerIds = new Set(
     current.filter((subscription) => subscription.plan === "enterprise").map((subscription) => subscription.user_id as string),

@@ -400,6 +400,65 @@ const EXCLUDE_KEYWORDS = [
   // "small construction project" the value-band logic should be judging at
   // all.
   /construccion y consultorias de obras de ingenier[íi]a urbanismo y arquitectura/i,
+
+  // ---- 2026-09-08 review round. Every pattern below comes from a real
+  // title the user marked "should have been excluded" in that round. ----
+
+  // School buildings as the OBJECT of the work: "CONSTRUCCIÓN Y
+  // REHABILITACION DE ESCUELAS" (many rows). Deliberately anchored on
+  // "<verb> ... de (la|las) escuela(s)" rather than the bare word, because
+  // "CONSTRUCCIÓN DE EDIFICIO ADMINISTRATIVO EN LA ESCUELA PREPARATORIA
+  // NO. UNO" is on the user's confirmed KEEP list — that one is a real
+  // building that merely sits at a school ("en la"), not a school build
+  // ("de la"). Same is-vs-where distinction MAJOR_PROJECT_LOCATION_ONLY
+  // draws for "colectores DE presa".
+  /(construcci[óo]n|rehabilitaci[óo]n|remodelaci[óo]n|ampliaci[óo]n|mejoramiento)[^.]{0,40}\bde\s+(las?\s+)?escuelas?\b/i,
+
+  // Specialist medical SERVICES (the doctors, not the hospital or its
+  // equipment): "SERVICIOS DE MEDICINA ESPECIALIZADA EN NEUMOLOGÍA" (CO).
+  // Sibling of the "prestación de servicios de salud" patterns above.
+  /servicios? de medicina especializada|medicina especializada en\b/i,
+
+  // Tax-culture / taxpayer-relations consulting programs: "PRESTAR
+  // SERVICIOS ESPECIALIZADOS PARA EJECUTAR EL MODELO DE ATENCIÓN DE LA
+  // SECRETARÍA DE HACIENDA DE BOGOTÁ; EN EL MARCO DE LA ESTRATEGIA DE
+  // RELACIONAMIENTO Y CULTURA TRIBUTARIA" (CO). Anchored on the two
+  // program-specific phrases, NOT on "modelo de atención" alone — that
+  // phrase also appears in real health-infrastructure titles.
+  /cultura tributaria|estrategia de relacionamiento\b/i,
+
+  // Headsets and sound consumables for outreach activities: "ADQUIRIR
+  // DIADEMAS E INSUMOS DE SONIDO PARA ACTIVIDADES ... EN MODALIDAD
+  // EXTRAMURAL" (CO) — office/AV consumables, same class as the
+  // "artículos de aseo" category phrases above.
+  /\bdiademas?\b|insumos de sonido/i,
+
+  // Consulting-hours and helpdesk contracts around an existing software
+  // system: "Servicio de horas de consultoría para configuración y ajuste
+  // ... soporte técnico y atención de incidentes al Sistema de Gestión
+  // Documental Papi" (CO). Billed by the hour against software already in
+  // production — not an equipment purchase and not a build.
+  /horas de consultor[íi]a|soporte t[ée]cnico y atenci[óo]n de incidentes|sistema de gesti[óo]n documental/i,
+
+  // Collective social-welfare programs: "CONTRATAR LA PRESTACION DE
+  // SERVICIOS PARA EJECUTAR ACTIVIDADES E INTERVENCIONES COLECTIVAS
+  // DIRIGIDO A PROMOVEER EL BIENESTAR INTEGRAL DE NIÑOS NIÑAS
+  // ADOLESCENTES..." (CO). Social programs delivered by staff, no goods
+  // or works involved.
+  /intervenciones colectivas|bienestar integral de\b/i,
+
+  // State liquor monopolies' own production plant: "IMPLEMENTACIÓN DE UN
+  // SISTEMA INTEGRAL DE BOMBEO CENTRALIZADO Y RECUPERACIÓN DE PRODUCTO
+  // PARA LAS LÍNEAS DE PRODUCTO DE LA FÁBRICA DE LICORES Y ALCOHOLES DE
+  // ANTIOQUIA EICE" (CO). Anchored on the buyer/plant type, NOT on
+  // "bombeo" — "CONSTRUCCIÓN DE PLANTA DE BOMBEO" is on the user's keep
+  // list and must stay kept.
+  /f[áa]brica de licores|licores y alcoholes/i,
+
+  // Compliance-screening data subscriptions: "Proveer el acceso a los
+  // servicios para la consulta en listas restrictivas y de control ...
+  // mediante la consulta web" (CO) — a web data feed, sold by access.
+  /listas restrictivas/i,
 ];
 
 /**
@@ -425,6 +484,41 @@ const EXCLUDE_KEYWORDS = [
  * only belongs here once its catalog is confirmed, like this one, to be
  * uniformly irrelevant.
  */
+/**
+ * Childcare facilities — daycares, community childcare centres, preschool
+ * "estancias". Out of scope whatever is being bought FOR them, which is
+ * why this list is checked BEFORE `hasIncludeOverride` and is not
+ * bypassable by it.
+ *
+ * That placement is the whole point of the list existing separately
+ * (2026-09-08). "SUMINISTRO E INSTALACIÓN DE SISTEMA DE ALARMA CONTRA
+ * INCENDIO EN LAS GUARDERÍAS" matches INCLUDE_OVERRIDE_KEYWORDS' industrial
+ * fire-alarm pattern ("sistema de alarma...incendio", added for real
+ * refinery/plant fire-safety systems), and hasIncludeOverride bypasses
+ * every EXCLUDE_KEYWORDS check unconditionally — so putting "guardería"
+ * in EXCLUDE_KEYWORDS would have had no effect at all on the very title
+ * that prompted the rule. Verified: it classified "standard" until this
+ * check was added.
+ *
+ * Second real title behind this: "CONSTRUCCION DEL COMPLEJO CAIC'S
+ * XOCHIQUÉTZAL - ENCINOS 2026" (CAIC = Centro de Atención Infantil
+ * Comunitario). "estancia infantil" and "jardín de niños" are the same
+ * facility class under Mexico's other two names for it, and
+ * EXCLUDE_KEYWORDS already excludes Colombia's "jardines infantiles" —
+ * so covering all of them here is consistent, not speculative.
+ *
+ * Like the maintenance-only and non-procurement checks it sits beside, a
+ * real government national-priority-project designation still overrides it.
+ */
+const CHILDCARE_FACILITY_KEYWORDS = [
+  /guarder[íi]as?\b/i,
+  // 4-letter acronym, so anchored on both sides to avoid matching inside
+  // a longer word; the possessive "CAIC'S" in the real title is why the
+  // apostrophe is optional.
+  /\bcaic'?s?\b|centros? de atenci[óo]n infantil/i,
+  /estancias? infantil(es)?\b|jard[íi]n de ni[ñn]os/i,
+];
+
 const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
 
 /**
@@ -558,15 +652,32 @@ const MAJOR_PROJECT_LOCATION_ONLY = [
 const OVERRIDE_NOT_FLAGSHIP = [/incendio/i, /firewall/i, /ciberseguridad|cybersecurity/i];
 
 /**
- * A repair of PART of a major structure — real infrastructure work at real
- * scale, but not a new build. "REPARACIÓN DE JUNTAS DE CALZADA EN PSV DEL
+ * Titles that DO match a MAJOR_PROJECT_KEYWORDS term but are not major
+ * projects at that keyword's scale — real infrastructure work at real
+ * scale, just not what the keyword implies. Demoted to "significant"
+ * (中型项目) rather than "standard", which is what MAJOR_PROJECT_LOCATION_
+ * ONLY does for the weaker cases.
+ *
+ * First entry, repairs: a repair of PART of a major structure. "REPARACIÓN DE JUNTAS DE CALZADA EN PSV DEL
  * PUERTO ALTAMIRA" is resurfacing joints at a port, not a port project
  * (2026-09-07, per the user: 改中型项目).
  *
  * Deliberately "reparación" only, NOT "reconstrucción": rebuilding a bridge
  * outright stays flagship, and several such titles are in the same export.
  */
-const MAJOR_PROJECT_REPAIR_ONLY = [/\breparaci[óo]n\b/i];
+const MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT = [
+  /\breparaci[óo]n\b/i,
+  // A water plant built AT a named dam, where the dam is the water source
+  // and not the thing being built: "CONSTRUCCIÓN PLANTA POTABILIZADORA, DE
+  // LA PRESA TUNAL II DURANGO, DURANGO" (2026-09-08, per the user: 大型项目
+  // 改成中型). The bare `presa` entry in MAJOR_PROJECT_KEYWORDS was forcing
+  // flagship. Significant rather than standard because a potabilization /
+  // treatment plant IS the real infrastructure build the user keeps — it is
+  // only the dam-scale reading that is wrong. Contrast MAJOR_PROJECT_
+  // LOCATION_ONLY's "colectores de presa", which the user put at standard:
+  // that one buys pipework, this one builds a plant.
+  /planta\s+(potabilizadora|de\s+tratamiento)[^.]{0,40}\bpresas?\b/i,
+];
 
 const MAINTENANCE_ONLY_KEYWORDS = [
   // The abbreviations are how Compras MX titles actually write it —
@@ -1440,6 +1551,16 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
 
+  // Placed here, above hasIncludeOverride, on purpose — see
+  // CHILDCARE_FACILITY_KEYWORDS' own comment for why an include-override
+  // must not rescue a daycare.
+  if (
+    input.isNationalPriorityProject !== true &&
+    CHILDCARE_FACILITY_KEYWORDS.some((pattern) => pattern.test(haystack))
+  ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
   const hasIncludeOverride =
     INCLUDE_OVERRIDE_KEYWORDS.some((pattern) => pattern.test(haystack)) || input.isNationalPriorityProject === true;
 
@@ -1549,9 +1670,10 @@ export function classifyRelevance(input: {
   // keyword that names the SITE rather than the job. Neither excludes:
   // the work is real, its scale is just not what the keyword implies.
   const majorIsLocationOnly = matchesMajorProject && MAJOR_PROJECT_LOCATION_ONLY.some((pattern) => pattern.test(haystack));
-  const majorIsRepairOnly = matchesMajorProject && MAJOR_PROJECT_REPAIR_ONLY.some((pattern) => pattern.test(haystack));
+  const majorIsDemotedToSignificant =
+    matchesMajorProject && MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT.some((pattern) => pattern.test(haystack));
 
-  if (majorIsRepairOnly && !majorIsLocationOnly) {
+  if (majorIsDemotedToSignificant && !majorIsLocationOnly) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
   }
 

@@ -11,6 +11,13 @@ import {
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 
 export const runtime = "nodejs";
+// This route sends one email per matching recipient in a loop, so it scales
+// with the subscriber list, not with a fixed amount of work. 60s is the
+// ceiling a Vercel Hobby project allows; raise it on Pro before the list gets
+// long enough to matter, because a timeout here loses that slot's digest
+// silently — the tender_digest_deliveries rows it already wrote stay
+// "processing" and the slot_key guard stops a retry from resending them.
+export const maxDuration = 60;
 
 function mexicoSlot(now: Date) {
   const parts = new Intl.DateTimeFormat("en-CA", {

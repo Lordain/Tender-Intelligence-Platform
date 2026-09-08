@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 
 export const runtime = "nodejs";
+// Pages the whole table 1000 rows at a time and deletes in chunks of 200.
+// 60s is the Vercel Hobby ceiling; a partial run is harmless here — the
+// cutoff is two months wide, so whatever it misses today it deletes tomorrow.
+export const maxDuration = 60;
 
 /**
  * Scheduled cleanup for the "no submission deadline" hide rule (see

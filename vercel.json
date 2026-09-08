@@ -1,0 +1,7 @@
+{
+  "crons": [
+    { "path": "/api/cron/tender-digest", "schedule": "0 15 * * *" },
+    { "path": "/api/cron/tender-digest", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/purge-stale-colombia", "schedule": "30 3 * * *" }
+  ]
+}

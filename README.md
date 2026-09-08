@@ -169,3 +169,46 @@ overseas. Portuguese (for Brazil) is part of that long-term direction but
 explicitly deferred for now. See the "Multi-country expansion" section in
 `lib/ingestion/README.md` for what the country expansion means for
 ingestion specifically; only Mexico has a real connector so far.
+
+## Scheduled jobs (Vercel Cron)
+
+`vercel.json` registers the three scheduled runs the product depends on. Until
+it existed, both routes below were reachable but nothing ever called them — the
+twice-daily digest is a paid feature, so on a deployment with no scheduler
+subscribers pay and receive nothing.
+
+| Schedule (UTC) | Path | What it does |
+|---|---|---|
+| `0 15 * * *` | `/api/cron/tender-digest` | 09:00 morning digest |
+| `0 0 * * *` | `/api/cron/tender-digest` | 18:00 evening digest |
+| `30 3 * * *` | `/api/cron/purge-stale-colombia` | Deletes Colombia rows still with no deadline two months after publication |
+
+**The digest times are not arbitrary and cannot be shifted.** The route itself
+only accepts hour 09 or 18 in `America/Mexico_City` and returns 409 otherwise
+(`mexicoSlot()`), so a schedule that misses those hours does not run late — it
+runs and refuses. Mexico has had no DST since 2022, so the zone is UTC-6 all
+year and the conversion is fixed: 09:00 → 15:00 UTC, 18:00 → 00:00 UTC the
+following day. If Mexico ever restores DST, these two entries have to move with
+it.
+
+Auth needs no code: set `CRON_SECRET` in the Vercel project and Vercel sends it
+as `Authorization: Bearer <CRON_SECRET>`, which is exactly what both routes
+already check. A missing `CRON_SECRET` fails closed — `authorized()` requires
+the variable to be set, so every request 401s rather than running unprotected.
+`EMAIL_NOTIFICATIONS_ENABLED` and the Resend variables gate the digest
+separately; without them it 409s.
+
+**Plan limits are a real constraint here.** Vercel's Hobby tier allows two cron
+jobs per project and triggers them only once a day, within the hour rather than
+at the minute — this file registers three, and one of them fires twice daily.
+That needs a Pro project. On Hobby, deployment either rejects the third entry or
+the digest fires at an hour the route rejects.
+
+To verify without waiting for a schedule:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/purge-stale-colombia?dryRun=true
+```
+
+The digest has no dry-run flag and will really send, so test it against a
+staging deployment or a seeded test account rather than production.

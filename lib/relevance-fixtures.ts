@@ -1479,4 +1479,13 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     scopeType: "works",
     country: "Mexico",
   },
+  {
+    title: "CONSTRUCCIÓN DE TANQUES, DISTRIBUCIÓN Y ALCANTARILLADO, M. COMPOSTELA, NAYARIT",
+    expectedTier: "excluded",
+    note: "2026-09-08. The user first listed this under 大型项目改成常规, but the 2026-09-07 municipal-network rules already exclude it outright (it hits 'alcantarillado', 'tanque de almacenamiento' and 'línea de conducción' — the 水厂要、周边管网不要 principle). Excluded is stricter than standard, so it was left excluded and put back to the user, who confirmed: 可以排除. The row showing as 大型 in admin is a pre-2026-09-07 stored tier; npm run reclassify:tenders realigns it. Fixture exists so a future carve-out to any of those three patterns can't silently re-admit this shape.",
+    scopeType: "works",
+    country: "Mexico",
+    estimatedValue: 3_000_000,
+    currency: "USD",
+  },
 ];

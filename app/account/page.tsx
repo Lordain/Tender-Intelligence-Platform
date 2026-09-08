@@ -10,6 +10,7 @@ import { useEntitlement } from "@/lib/use-entitlement";
 import { BILLING_INTERVAL_LABELS } from "@/lib/access-control";
 import { EnterpriseAccounts } from "@/components/account/EnterpriseAccounts";
 import { PendingInvitations } from "@/components/account/PendingInvitations";
+import { InvoiceContact } from "@/components/billing/InvoiceContact";
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -254,6 +255,10 @@ export default function AccountPage() {
               {cancelError && <p className="mt-3 text-xs font-bold text-red-300">{cancelError}</p>}
             </div>
           </section>
+        </div>
+
+        <div className="mt-6">
+          <InvoiceContact accountEmail={user.email} compact />
         </div>
 
         {/* Every signed-in user, not just owners: this is where an invitee

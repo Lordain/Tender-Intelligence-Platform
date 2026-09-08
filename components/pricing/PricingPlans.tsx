@@ -3,13 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BILLING_INTERVAL_LABELS, type BillingInterval } from "@/lib/access-control";
+import { BILLING_MONTHS, PLAN_PRICES_USD } from "@/lib/billing-catalog";
 
 /**
  * Months covered by one payment. Used both to label the price and to work out
  * what a longer commitment saves against paying monthly, so the discount is
  * derived from the prices rather than written down twice.
  */
-const MONTHS: Record<BillingInterval, number> = { monthly: 1, semiannual: 6, annual: 12 };
 const INTERVALS: BillingInterval[] = ["monthly", "semiannual", "annual"];
 const PER_PAYMENT_SUFFIX: Record<BillingInterval, string> = { monthly: "USD / 月", semiannual: "USD / 半年", annual: "USD / 年" };
 
@@ -32,13 +32,13 @@ const PLANS: readonly Plan[] = [
   {
     id: "professional", eyebrow: "个人使用", name: "个人版",
     description: "适合独立负责市场机会搜寻与投标准备的专业人士。",
-    prices: { monthly: 1000, semiannual: 5400, annual: 9600 },
+    prices: PLAN_PRICES_USD.professional,
     features: ["招标项目搜索与单行业筛选", "1 个账户登录", "查看全部招标项目", "完整标书详情与招投标时间", "投标要求、资质、风险与官方入口", "新标通知与邮件提醒（每日 2 个时段）"],
   },
   {
     id: "enterprise", eyebrow: "团队协作", name: "企业版",
     description: "适合多人协作、覆盖多个业务方向的企业团队。",
-    prices: { monthly: 2000, semiannual: 10800, annual: 19200 },
+    prices: PLAN_PRICES_USD.enterprise,
     features: ["招标项目搜索与多行业组合筛选", "最多 3 个账户登录", "查看全部招标项目", "完整标书详情与招投标时间", "不同账号可设置不同通知条件", "新标通知与邮件提醒（每日 2 个时段）"],
   },
 ] as const;
@@ -46,7 +46,7 @@ const PLANS: readonly Plan[] = [
 const money = (value: number) => `$${value.toLocaleString("en-US")}`;
 
 function discountPercent(prices: Record<BillingInterval, number>, interval: BillingInterval) {
-  const atMonthlyRate = prices.monthly * MONTHS[interval];
+  const atMonthlyRate = prices.monthly * BILLING_MONTHS[interval];
   if (atMonthlyRate <= prices[interval]) return 0;
   return Math.round((1 - prices[interval] / atMonthlyRate) * 100);
 }
@@ -86,9 +86,9 @@ export function PricingPlans() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         {PLANS.map((plan) => {
-          const perMonth = plan.prices ? Math.round(plan.prices[interval] / MONTHS[interval]) : null;
+          const perMonth = plan.prices ? Math.round(plan.prices[interval] / BILLING_MONTHS[interval]) : null;
           const saving = plan.prices ? discountPercent(plan.prices, interval) : 0;
-          const href = plan.prices ? `/api/stripe/checkout?plan=${plan.id}&interval=${interval}` : "/register";
+          const href = plan.prices ? `/subscribe?plan=${plan.id}&interval=${interval}` : "/register";
 
           return (
             <article key={plan.id} className={`flex flex-col overflow-hidden rounded-2xl border bg-[#fffdf9] shadow-[0_24px_60px_-48px_rgba(6,27,43,.5)] ${plan.id === "trial" ? "border-[#e7b84e]" : "border-[#d8e0e3]"}`}>

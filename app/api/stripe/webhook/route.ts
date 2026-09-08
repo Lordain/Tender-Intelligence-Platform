@@ -109,6 +109,35 @@ async function saveSubscription(
   throw new Error(`Subscription insert failed: ${error.message}`);
 }
 
+function isBankTransferSubscription(subscription: Stripe.Subscription): boolean {
+  return subscription.metadata.payment_collection === "bank_transfer";
+}
+
+async function clearPendingPayment(admin: SupabaseClient, referenceId: string) {
+  const { error } = await admin
+    .from("billing_profiles")
+    .update({
+      pending_payment_request_id: null,
+      pending_payment_kind: null,
+      pending_payment_reference_id: null,
+      pending_payment_url: null,
+      pending_payment_expires_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("pending_payment_reference_id", referenceId);
+  if (error) throw new Error(`Pending payment cleanup failed: ${error.message}`);
+}
+
+async function hasStoredSubscription(admin: SupabaseClient, subscriptionId: string): Promise<boolean> {
+  const { data, error } = await admin
+    .from("subscriptions")
+    .select("id")
+    .eq("stripe_subscription_id", subscriptionId)
+    .maybeSingle();
+  if (error) throw new Error(`Subscription lookup failed: ${error.message}`);
+  return Boolean(data);
+}
+
 export async function POST(request: Request) {
   const stripe = getStripeClient();
   const admin = createSupabaseAdminClient();
@@ -135,18 +164,31 @@ export async function POST(request: Request) {
       if (session.mode === "subscription" && subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         await saveSubscription(admin, subscription, session.client_reference_id);
+        await clearPendingPayment(admin, session.id);
       }
     } else if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {
       const subscriptionId = subscriptionIdFromInvoice(event.data.object);
       if (subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        await saveSubscription(admin, subscription);
+        // A send-invoice subscription can be reported as active before the
+        // transfer arrives. Only invoice.paid may create or extend access.
+        if (event.type === "invoice.paid" || !isBankTransferSubscription(subscription)) {
+          await saveSubscription(admin, subscription);
+          if (event.type === "invoice.paid") await clearPendingPayment(admin, subscription.id);
+        }
       }
     } else if (event.type === "customer.subscription.updated") {
       const subscription = await stripe.subscriptions.retrieve(event.data.object.id);
-      await saveSubscription(admin, subscription);
+      if (!isBankTransferSubscription(subscription) || (await hasStoredSubscription(admin, subscription.id))) {
+        await saveSubscription(admin, subscription);
+      }
     } else if (event.type === "customer.subscription.deleted") {
-      await saveSubscription(admin, event.data.object);
+      if (isBankTransferSubscription(event.data.object) && !(await hasStoredSubscription(admin, event.data.object.id))) {
+        await clearPendingPayment(admin, event.data.object.id);
+      } else {
+        await saveSubscription(admin, event.data.object);
+        await clearPendingPayment(admin, event.data.object.id);
+      }
     }
   } catch (error) {
     console.error(`[stripe-webhook] ${event.type} ${event.id} failed`, error);

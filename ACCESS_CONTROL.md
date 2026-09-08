@@ -90,6 +90,24 @@ source of the Supabase user, while the subscription's current configured
 Stripe Price is the source of its plan and billing interval. The browser never
 supplies an amount.
 
+Card subscriptions remain denominated in USD and use Stripe Checkout. SPEI
+subscriptions use Stripe Billing's `send_invoice` flow because Checkout does
+not support bank transfer in subscription mode. The customer sees the same USD
+catalog price until selecting bank transfer; the server then converts it using
+`USD_MXN_BANK_TRANSFER_RATE`, creates an MXN recurring price, and Stripe locks
+that invoice amount for `BANK_TRANSFER_DAYS_UNTIL_DUE`. Review the configured
+rate before enabling transfers. A send-invoice subscription may appear
+`active` at Stripe before it is paid, so its `customer.subscription.updated`
+event never grants initial access. Only `invoice.paid` writes the first row and
+extends later periods. Migration `0030_billing_profiles.sql` stores the
+validated billing identity and the one pending transfer invoice allowed per
+user.
+
+No Stripe Tax calculation is enabled. Displayed catalog prices are treated as
+tax-inclusive. Customers request a CFDI manually through
+`billing@latintender.com` or WhatsApp; ordinary support uses
+`support@latintender.com`.
+
 Stripe has eight subscription statuses; this database stores four.
 `subscriptionStatusFromStripe()` in `lib/access-control.ts` maps between them,
 and it is deliberately conservative: only Stripe's own `past_due` earns the

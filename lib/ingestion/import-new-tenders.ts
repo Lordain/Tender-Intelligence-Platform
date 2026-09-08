@@ -17,6 +17,7 @@ import { filterRecentTenders } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import type { Tender } from "@/types/tender";
+import { NATIONAL_PRIORITY_SOURCE_NAME } from "@/lib/relevance";
 import { type NewTendersSource, type ImportNewTendersResult } from "@/lib/ingestion/new-tenders-sources";
 
 export type { NewTendersSource, ImportNewTendersResult } from "@/lib/ingestion/new-tenders-sources";
@@ -32,7 +33,7 @@ const SOURCE_CONFIG: Record<
     map: mapComprasMxOpenTenderRowToTender,
   },
   "proyectos-estrategicos": {
-    sourceName: "Proyectos Estratégicos MX (Hacienda)",
+    sourceName: NATIONAL_PRIORITY_SOURCE_NAME,
     sourceUrl: "https://proyectosestrategicosmx.hacienda.gob.mx/sitiopublico/#/",
     map: mapProyectosEstrategicosRowToTender,
   },

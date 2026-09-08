@@ -1,7 +1,6 @@
 import type { Tender, TenderScopeType } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 import type { EcopetrolContractRow } from "@/lib/ingestion/connectors/ecopetrol-contracts-xlsb-file";
 
 /**
@@ -69,9 +68,23 @@ export function mapEcopetrolContractRowToTender(row: EcopetrolContractRow, sourc
   const publicationDate = excelSerialToIso(row["Fecha Creación Contrato Operativo"]);
   if (!publicationDate) return null;
 
-  const industries = classifyIndustries(title);
   const scopeType = inferScopeType(row["Tipo Contrato Operativo"]);
   const estimatedValue = parseAmount(findValueByPrefix(row, "Valor Suscrito en Ordenes Despacho"));
+  // summary stores the title again below, and the buyer is the constant
+  // "Ecopetrol S.A." this row writes — classifyStoredTender() must see both,
+  // because reclassify-tenders.ts reads them back and would otherwise
+  // classify the same row from more text than the import did.
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary: title,
+    buyer: "Ecopetrol S.A.",
+    country: "Colombia",
+    governmentLevel: "public_company",
+    scopeType,
+    estimatedValue,
+    currency: "COP",
+    sourceName,
+  });
   const now = new Date().toISOString();
 
   const awardedToRaw = row["Nombre Proveedor"];
@@ -104,7 +117,7 @@ export function mapEcopetrolContractRowToTender(row: EcopetrolContractRow, sourc
     requiredDocuments: [],
     keyDates: [{ id: `${tenderNumber}-award`, type: "award", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ governmentLevel: "public_company", title, industries, scopeType, estimatedValue, currency: "COP", buyer: "Ecopetrol S.A." }),
+    relevance,
     sourceName,
     sourceUrl,
     createdAt: now,

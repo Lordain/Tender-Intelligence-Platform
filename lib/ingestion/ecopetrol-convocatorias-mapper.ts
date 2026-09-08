@@ -1,7 +1,6 @@
 import type { Tender, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 import type { EcopetrolConvocatoriaRow } from "@/lib/ingestion/connectors/ecopetrol-convocatorias-file";
 
 /**
@@ -58,8 +57,17 @@ export function mapEcopetrolConvocatoriaRowToTender(row: EcopetrolConvocatoriaRo
   const publicationDate = parseDate(row["Fecha apertura del trámite"]);
   if (!publicationDate) return null;
 
-  const industries = classifyIndustries(title);
   const scopeType = inferScopeType(title);
+  // summary stores the title again below; buyer is the constant this row writes.
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary: title,
+    buyer: "Ecopetrol S.A.",
+    country: "Colombia",
+    governmentLevel: "public_company",
+    scopeType,
+    sourceName,
+  });
   const now = new Date().toISOString();
 
   return {
@@ -87,7 +95,7 @@ export function mapEcopetrolConvocatoriaRowToTender(row: EcopetrolConvocatoriaRo
         : []),
     ],
     risks: [],
-    relevance: classifyRelevance({ governmentLevel: "public_company", title, industries, scopeType, buyer: "Ecopetrol S.A." }),
+    relevance,
     sourceName,
     sourceUrl,
     createdAt: now,

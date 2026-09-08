@@ -1,7 +1,6 @@
 import type { Tender, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 import { CFE_BUYER_PATTERN, CFE_MICROSITIO_URL } from "@/lib/ingestion/heuristics";
 
 /**
@@ -82,8 +81,17 @@ export function mapDofNotaToTender(nota: DofNota, sourceName: string): Tender | 
     : nota.codOrgaDos ?? nota.nombreCodOrgaUno ?? "Desconocido";
 
   const now = new Date().toISOString();
-  const industries = classifyIndustries(title, buyer);
   const scopeType = "services" as const;
+  // summary is the title again because that is what this row stores below.
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary: title,
+    buyer,
+    country: "Mexico",
+    governmentLevel: "federal",
+    scopeType,
+    sourceName,
+  });
   // DOF is a publication record, not a live bidding-status feed — a
   // notice that was JUST published is presumptively still within its
   // bidding window, same reasoning as compras-mx-open-tenders-mapper.ts's
@@ -115,7 +123,7 @@ export function mapDofNotaToTender(nota: DofNota, sourceName: string): Tender | 
     requiredDocuments: [],
     keyDates: [{ id: `dof-${nota.codNota}-publication`, type: "publication", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ governmentLevel: "federal", title, industries, scopeType, buyer }),
+    relevance,
     sourceName,
     sourceUrl: buildSourceUrl(nota, buyer),
     createdAt: now,

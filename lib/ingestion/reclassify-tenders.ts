@@ -36,8 +36,7 @@
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 import type { LocalizedText, Tender, TenderRelevanceTier, TenderScopeType } from "@/types/tender";
 
 type TenderRow = {
@@ -59,12 +58,8 @@ type TenderRow = {
   source_url: string;
   publication_date: string;
   source_name: string;
+  structured_duration_days: number | null;
 };
-
-// isNationalPriorityProject isn't a persisted column — see
-// proyectos-estrategicos-mapper.ts — so it's re-derived here from the one
-// real, already-persisted field that identifies the source: source_name.
-const NATIONAL_PRIORITY_SOURCE_NAME = "Proyectos Estratégicos MX (Hacienda)";
 
 const OUT_DIR = "exports";
 
@@ -111,7 +106,7 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
     const { data, error } = await supabase
       .from("tenders")
       .select(
-        "slug, tender_number, title, summary, buyer, country, government_level, industries, scope_type, estimated_value, currency, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden, source_url, publication_date, source_name",
+        "slug, tender_number, title, summary, buyer, country, government_level, industries, scope_type, estimated_value, currency, structured_duration_days, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden, source_url, publication_date, source_name",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
@@ -137,37 +132,32 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
   const excludedCsvRows: (string | number | boolean | null | undefined)[][] = [];
 
   for (const row of rows) {
-    const recomputedIndustries = classifyIndustries(row.title.es, row.summary.es, row.buyer);
-    const industriesChanged = !sameIndustries(row.industries, recomputedIndustries);
-    if (industriesChanged) industriesChangedCount++;
-
-    const recomputed = classifyRelevance({
+    // classifyStoredTender() — not classifyRelevance() directly — is what
+    // makes this path and the ingestion path the same path. It derives
+    // industries and the tier together from the stored fields, so a re-import
+    // of a row this export was signed off on lands on the same tier.
+    //
+    // structuredDurationDays used to be the one input this path could not
+    // supply — colombia-mapper.ts computed it from SECOP's duracion /
+    // unidad_de_duracion at ingestion and it had no column to live in, so a
+    // Colombian row with a duration >= LONG_DURATION_DAYS was flagship at
+    // import and demoted here. Migration 0029 gives it a column; rows
+    // ingested before that migration read back NULL, which means exactly what
+    // it meant then (unknown duration) and so changes no tier.
+    const { industries: recomputedIndustries, relevance: recomputed } = classifyStoredTender({
       title: row.title.es,
       summary: row.summary.es,
-      industries: recomputedIndustries,
+      buyer: row.buyer,
+      country: row.country,
+      governmentLevel: row.government_level,
       scopeType: row.scope_type,
       estimatedValue: row.estimated_value ?? undefined,
       currency: row.currency ?? undefined,
-      buyer: row.buyer,
-      country: row.country,
-      // Must match what the mappers pass, or a re-import silently disagrees
-      // with the review this export was signed off on.
-      governmentLevel: row.government_level,
-      // structuredDurationDays is the ONE input this path cannot supply.
-      // colombia-mapper.ts computes it from SECOP's duracion /
-      // unidad_de_duracion at ingestion, and it is not stored on the
-      // tenders table, so there is nothing to read back here.
-      //
-      // Unreachable today rather than fixed: the rule it feeds only ever
-      // EXCLUDES (duration under SHORT_DURATION_DAYS), so a row that would
-      // fail it was never written in the first place, and every row this
-      // query returns has a duration that is long enough or unknown —
-      // exactly what passing undefined means. It stops being harmless the
-      // moment that rule gains a non-excluding branch or the threshold
-      // moves, and the fix then is a column on tenders written by the
-      // mapper, not a guess here.
-      isNationalPriorityProject: row.source_name === NATIONAL_PRIORITY_SOURCE_NAME,
+      sourceName: row.source_name,
+      structuredDurationDays: row.structured_duration_days ?? undefined,
     });
+    const industriesChanged = !sameIndustries(row.industries, recomputedIndustries);
+    if (industriesChanged) industriesChangedCount++;
 
     const isProtected = row.relevance_manually_overridden === true;
     const effective = isProtected ? { tier: row.relevance_tier!, label: row.relevance_label!, reason: row.relevance_reason! } : recomputed;

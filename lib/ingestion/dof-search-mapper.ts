@@ -1,7 +1,6 @@
 import type { Tender, TenderKeyDate } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 import { inferGovernmentLevel, CFE_BUYER_PATTERN, CFE_MICROSITIO_URL } from "@/lib/ingestion/heuristics";
 import type { DofNoticeDetail } from "@/lib/ingestion/connectors/dof-notice-detail";
 
@@ -200,8 +199,18 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
 
   const publicationDate = detailPublicationDate ?? searchDate;
   const now = new Date().toISOString();
-  const industries = classifyIndustries(title, buyer);
   const scopeType = "services" as const;
+  const governmentLevel = inferGovernmentLevel(buyer);
+  // summary is the title again because that is what this row stores below.
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary: title,
+    buyer,
+    country: "Mexico",
+    governmentLevel,
+    scopeType,
+    sourceName,
+  });
   // Real gap: this used to hardcode "open" even when the notice's own
   // detail page already published a real "Fallo" (award) date —
   // buildDofDetailFields() captures that as a keyDates entry of type
@@ -225,7 +234,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     // Estado", not federal ministries (see pemex-mapper.ts) — this used
     // to be hardcoded "federal" for every DOF row regardless of buyer;
     // inferGovernmentLevel() already recognizes CFE/PEMEX by name.
-    governmentLevel: inferGovernmentLevel(buyer),
+    governmentLevel,
     industries,
     scopeType,
     procedureType: "Convocatoria (DOF)",
@@ -237,7 +246,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     requiredDocuments: [],
     keyDates: detailKeyDates.length > 0 ? detailKeyDates : [{ id: `dof-${nota.codNota}-publication`, type: "publication", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevel(buyer), title, industries, scopeType, buyer }),
+    relevance,
     sourceName,
     // CFE tenders link to CFE's own micrositio instead of DOF (explicit
     // request, 2026-09-05 — see CFE_MICROSITIO_URL's own comment for why

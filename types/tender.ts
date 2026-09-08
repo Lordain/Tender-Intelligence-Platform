@@ -167,6 +167,17 @@ export type Tender = {
   awardedValue?: number;
   estimatedValue?: number;
   currency?: string;
+  /**
+   * Contract duration in days, read from a STRUCTURED source field rather
+   * than parsed out of prose — currently only Colombia SECOP II's
+   * `duracion`/`unidad_de_duracion` (see colombia-mapper.ts). Persisted
+   * (tenders.structured_duration_days, migration 0029) purely so the
+   * relevance classifier gets the same value at import and at reclassify:
+   * it feeds SHORT_DURATION_DAYS/LONG_DURATION_DAYS in lib/relevance.ts,
+   * where >= 360 days promotes to flagship, and before it had a column the
+   * reclassify path silently demoted those rows. Not rendered anywhere.
+   */
+  structuredDurationDays?: number;
   location?: string;
   status: TenderStatus;
   qualifications: TenderRequirement[];

@@ -1,6 +1,6 @@
 import type { Tender } from "@/types/tender";
 import { mapComprasMxOpenTenderRowToTender, type ComprasMxOpenTenderRow } from "@/lib/ingestion/compras-mx-open-tenders-mapper";
-import { classifyRelevance } from "@/lib/relevance";
+import { NATIONAL_PRIORITY_SOURCE_NAME } from "@/lib/relevance";
 import { slugify } from "@/lib/ingestion/text-utils";
 
 /**
@@ -38,7 +38,11 @@ import { slugify } from "@/lib/ingestion/text-utils";
  * - isNationalPriorityProject: true — same reasoning as
  *   proyectos-mexico-mapper.ts: being listed under this strategic-
  *   infrastructure law IS the flagship signal, stronger than any
- *   keyword/value proxy.
+ *   keyword/value proxy. That flag is no longer set here: classifyStoredTender()
+ *   derives it from sourceName, so the base mapper's own call already produces
+ *   it and reclassify-tenders.ts (which can only see source_name) derives the
+ *   identical flag when it recomputes the row. Re-classifying here on top of
+ *   that is what let the two drift apart, so this now only overrides the slug.
  *
  * Supersedes proyectos-mexico-mapper.ts's ingestion (2026-09-03, per the
  * user's explicit decision — the 57 previously-ingested "Proyectos
@@ -54,19 +58,22 @@ export function mapProyectosEstrategicosRowToTender(
   sourceName: string,
   sourceUrl: string,
 ): Tender | null {
+  // The national-priority flag rides entirely on this exact string now — it
+  // is what classifyStoredTender() matches on, both here at import and in
+  // reclassify-tenders.ts, which has nothing but source_name to go on. A
+  // caller passing anything else would silently downgrade every strategic
+  // project to an ordinary Compras MX row, so fail loudly instead.
+  if (sourceName !== NATIONAL_PRIORITY_SOURCE_NAME) {
+    throw new Error(
+      `mapProyectosEstrategicosRowToTender expects sourceName "${NATIONAL_PRIORITY_SOURCE_NAME}" (the national-priority marker), got "${sourceName}"`,
+    );
+  }
+
   const base = mapComprasMxOpenTenderRowToTender(row, sourceName, sourceUrl);
   if (!base) return null;
 
   return {
     ...base,
     slug: `proyectosestrategicos-${slugify(base.tenderNumber)}`,
-    relevance: classifyRelevance({
-      title: row["NOMBRE"]?.trim() ?? "",
-      industries: base.industries,
-      scopeType: base.scopeType,
-      buyer: base.buyer,
-      governmentLevel: base.governmentLevel,
-      isNationalPriorityProject: true,
-    }),
   };
 }

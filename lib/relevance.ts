@@ -1289,8 +1289,22 @@ export function classifyRelevance(input: {
   estimatedValue?: number;
   currency?: string;
   buyer?: string;
-  /** Tender.country — currently only used to look up a per-country MIN_VALUE_USD override (see MIN_VALUE_USD_BY_COUNTRY); undefined falls back to the platform-wide floor, same as before this field existed. */
-  country?: string;
+  /**
+   * Tender.country. REQUIRED — not optional — for the same reason
+   * governmentLevel is: several rules below branch on it (the Mexico
+   * undisclosed-value gate, and the per-country MIN_VALUE_USD override in
+   * MIN_VALUE_USD_BY_COUNTRY), so a caller that silently omits it gets a
+   * *different tier* than the same row gets through another path.
+   *
+   * That is not hypothetical: every one of the 11 ingestion mappers used to
+   * omit it while reclassify-tenders.ts passed it, so a Mexican row with no
+   * disclosed value was excluded by `npm run reclassify:tenders` and then
+   * re-admitted by the very next import — the 193 → 486 jump the user hit on
+   * 2026-09-08. Making it required means tsc, not a production import, is
+   * what tells you a call site forgot it. Pass `undefined` explicitly (as
+   * the admin API does for a row with no country) rather than omitting it.
+   */
+  country: string | undefined;
   /**
    * True only for tenders sourced from a government-curated list of
    * strategic/priority projects — currently Proyectos Estratégicos MX
@@ -1671,7 +1685,8 @@ export function explainKeptSignal(input: {
   estimatedValue?: number;
   currency?: string;
   buyer?: string;
-  country?: string;
+  /** Required for the same reason classifyRelevance() requires it — an omitted country made this diagnostic report a different tier than the pipeline. */
+  country: string | undefined;
   scopeType?: TenderScopeType;
   governmentLevel?: Tender["governmentLevel"];
   isNationalPriorityProject?: boolean;
@@ -1714,4 +1729,84 @@ export function explainKeptSignal(input: {
   if (override) return `INCLUDE_OVERRIDE 白名单（有金额）${show(override)}`;
   if (value !== undefined) return `仅凭有金额保留（未命中任何关键词）`;
   return `仅凭行业标签保留（未命中任何关键词、无金额）`;
+}
+
+/**
+ * The one source name that marks a tender as a government-declared national
+ * priority project (see isNationalPriorityProject above). Exported because
+ * three separate files used to hardcode this string — the mapper that writes
+ * it, reclassify-tenders.ts, and scripts/explain-kept.ts — and a typo in any
+ * one of them silently drops the strongest include signal the platform has.
+ */
+export const NATIONAL_PRIORITY_SOURCE_NAME = "Proyectos Estratégicos MX (Hacienda)";
+
+/**
+ * Exactly the fields of a tender ROW — the shape that gets written to and
+ * read back from Supabase — that any relevance decision is allowed to depend
+ * on. Anything a connector knows but does not store (Compras MX's "Descripción
+ * Ramo", for instance) is deliberately absent: a signal that cannot survive a
+ * round-trip through the database cannot be part of a stable classification.
+ */
+export type StoredTenderClassificationInput = {
+  /** tenders.title.es, verbatim. */
+  title: string;
+  /** tenders.summary.es, verbatim — pass the title again if the source has no separate summary, which is what those mappers already store. */
+  summary: string;
+  buyer: string;
+  country: string;
+  governmentLevel: Tender["governmentLevel"];
+  scopeType: TenderScopeType;
+  estimatedValue?: number;
+  currency?: string;
+  /** tenders.source_name — the national-priority flag is derived from it here rather than passed, so a connector cannot set or forget it independently. */
+  sourceName: string;
+  /**
+   * tenders.structured_duration_days (migration 0029) — currently written
+   * only by colombia-mapper.ts, from SECOP's duracion/unidad_de_duracion.
+   * It used to be the one classifier input with no column, which made every
+   * Colombian row with a duration >= LONG_DURATION_DAYS flagship at import
+   * and demoted at reclassify. Rows ingested before 0029 read back NULL,
+   * which means what it has always meant here: unknown duration.
+   */
+  structuredDurationDays?: number;
+};
+
+/**
+ * The ONLY way the ingestion path and the reclassify path should ever compute
+ * a tier. Both derive `industries` and `relevance` from the same stored fields
+ * here, so the two cannot disagree.
+ *
+ * This exists because they did disagree, in production, on 2026-09-08: the
+ * mappers omitted `country` (so the Mexico undisclosed-value gate never fired
+ * at ingest) and computed `industries` from a different set of texts than
+ * reclassify did. `npm run reclassify:tenders` deleted 623 rows, and the very
+ * next import put most of them straight back — 193 rows became 486. Requiring
+ * `country` stops that particular field being forgotten; routing both paths
+ * through one function stops the next field being forgotten.
+ *
+ * Rule for anything added later: if a new input changes the tier, it belongs
+ * in StoredTenderClassificationInput above AND in a column on `tenders`. A
+ * connector-only signal will be right at import and wrong forever after.
+ */
+export function classifyStoredTender(input: StoredTenderClassificationInput): {
+  industries: ReturnType<typeof classifyIndustries>;
+  relevance: TenderRelevance;
+} {
+  const industries = classifyIndustries(input.title, input.summary, input.buyer);
+  return {
+    industries,
+    relevance: classifyRelevance({
+      title: input.title,
+      summary: input.summary,
+      industries,
+      scopeType: input.scopeType,
+      estimatedValue: input.estimatedValue,
+      currency: input.currency,
+      buyer: input.buyer,
+      country: input.country,
+      governmentLevel: input.governmentLevel,
+      isNationalPriorityProject: input.sourceName === NATIONAL_PRIORITY_SOURCE_NAME,
+      structuredDurationDays: input.structuredDurationDays,
+    }),
+  };
 }

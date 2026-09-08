@@ -1,7 +1,6 @@
 import type { GovernmentLevel, Tender, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 
 /**
  * One record from Peru's real OCDS "record package" — the OECE
@@ -143,13 +142,25 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
   const publicationDate = parseDate(compiled.tender?.datePublished);
   if (!publicationDate) return null;
 
-  const industries = classifyIndustries(title, buyer);
   const scopeType = inferScopeType(compiled.tender?.mainProcurementCategory);
   const now = new Date().toISOString();
 
   const rawValue = compiled.tender?.value?.amount;
   const estimatedValue = rawValue && rawValue > 0 ? rawValue : undefined;
   const currency = compiled.tender?.value?.currency;
+  const governmentLevel = inferGovernmentLevel(buyer);
+  // summary is the title again because that is what this row stores below.
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary: title,
+    buyer,
+    country: "Peru",
+    governmentLevel,
+    scopeType,
+    estimatedValue,
+    currency,
+    sourceName,
+  });
 
   const party = compiled.parties?.find((p) => p.name === buyer);
   const location = party?.address?.locality ?? party?.address?.department;
@@ -165,7 +176,7 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
     summary: untranslated(title),
     buyer,
     country: "Peru",
-    governmentLevel: inferGovernmentLevel(buyer),
+    governmentLevel,
     industries,
     scopeType,
     procedureType: compiled.tender?.procurementMethodDetails?.trim() || "Unknown",
@@ -179,7 +190,7 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
     requiredDocuments: [],
     keyDates: [{ id: `peru-${record.ocid}-publication`, type: "publication", date: publicationDate }],
     risks: [],
-    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevel(buyer), title, industries, scopeType, estimatedValue, currency, buyer }),
+    relevance,
     sourceName,
     sourceUrl: latestRelease?.url || "https://contratacionesabiertas.oece.gob.pe/",
     createdAt: now,

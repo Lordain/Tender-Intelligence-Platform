@@ -1,8 +1,7 @@
 import type { Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevelFromProcedureNumber, inferParticipationScope } from "@/lib/ingestion/heuristics";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 
 /**
  * One row of a real "Difusión de procedimientos" export — the public
@@ -178,7 +177,19 @@ export function mapComprasMxOpenTenderRowToTender(
 
   const submissionDeadline = parseDate(row["FECHA DE PRESENTACIÓN Y APERTURA DE PROPOSICIONES"]);
   const scopeType = inferScopeType(row["TIPO DE CONTRATACIÓN"]);
-  const industries = classifyIndustries(title, buyer);
+  const governmentLevel = inferGovernmentLevelFromProcedureNumber(tenderNumber, buyer);
+  // summary is the title again because that is literally what this row
+  // stores (`summary: untranslated(title)` below) — classifyStoredTender()
+  // must see the stored values, not the source's, or reclassify disagrees.
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary: title,
+    buyer,
+    country: "Mexico",
+    governmentLevel,
+    scopeType,
+    sourceName,
+  });
 
   // The export has no publication-date column at all (unlike the awarded-
   // contracts export) — using the ingestion timestamp is an honest "when we
@@ -205,7 +216,7 @@ export function mapComprasMxOpenTenderRowToTender(
     summary: untranslated(title),
     buyer,
     country: "Mexico",
-    governmentLevel: inferGovernmentLevelFromProcedureNumber(tenderNumber, buyer),
+    governmentLevel,
     industries,
     scopeType,
     procedureType: row["TIPO DE PUBLICACIÓN"]?.trim() || "Unknown",
@@ -220,7 +231,7 @@ export function mapComprasMxOpenTenderRowToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
-    relevance: classifyRelevance({ title, industries, scopeType, buyer, governmentLevel: inferGovernmentLevelFromProcedureNumber(tenderNumber, buyer) }),
+    relevance,
     sourceName,
     sourceUrl,
     createdAt: now,

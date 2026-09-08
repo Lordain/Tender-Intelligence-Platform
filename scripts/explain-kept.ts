@@ -18,7 +18,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "csv-parse/sync";
-import { explainKeptSignal } from "../lib/relevance";
+import { explainKeptSignal, NATIONAL_PRIORITY_SOURCE_NAME } from "../lib/relevance";
 
 const args = process.argv.slice(2);
 const EXAMPLES = Number(args.find((a) => a.startsWith("--examples="))?.split("=")[1] ?? 5);
@@ -61,7 +61,7 @@ for (const row of rows) {
     // corridor kept by isNationalPriorityProject. A diagnostic that sees
     // less than the classifier does not explain it, it contradicts it.
     summary: row.summary_es || undefined,
-    isNationalPriorityProject: row.source_name === "Proyectos Estratégicos MX (Hacienda)",
+    isNationalPriorityProject: row.source_name === NATIONAL_PRIORITY_SOURCE_NAME,
     industries: (row.industries ?? "").split(/[;,|]/).map((s) => s.trim()).filter(Boolean),
     estimatedValue: row.estimated_value ? Number(row.estimated_value) : undefined,
     currency: row.currency || undefined,

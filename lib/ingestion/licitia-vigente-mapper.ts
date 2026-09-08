@@ -1,8 +1,7 @@
 import type { Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevelFromProcedureNumber } from "@/lib/ingestion/heuristics";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 import type { LicitiaVigenteRow } from "@/lib/ingestion/connectors/licitia-connector";
 
 /**
@@ -103,8 +102,18 @@ export function mapLicitiaVigenteRowToTender(
   const buyer = resolveBuyerName(row, detail);
   if (!tenderNumber || !title || !buyer) return null;
 
-  const industries = classifyIndustries(title, buyer);
   const scopeType = "services" as const;
+  const governmentLevel = inferGovernmentLevelFromProcedureNumber(tenderNumber, buyer);
+  // summary is the title again because that is what this row stores below.
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary: title,
+    buyer,
+    country: "Mexico",
+    governmentLevel,
+    scopeType,
+    sourceName,
+  });
   const now = new Date().toISOString();
   // Real publication date, unlike compras-mx-open-tenders-mapper.ts's
   // ingestion-timestamp placeholder — the manual export has no publication
@@ -119,7 +128,7 @@ export function mapLicitiaVigenteRowToTender(
     summary: untranslated(title),
     buyer,
     country: "Mexico",
-    governmentLevel: inferGovernmentLevelFromProcedureNumber(tenderNumber, buyer),
+    governmentLevel,
     industries,
     scopeType,
     procedureType: row.tipo?.trim() || "Unknown",
@@ -134,7 +143,7 @@ export function mapLicitiaVigenteRowToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
-    relevance: classifyRelevance({ title, industries, scopeType, buyer, governmentLevel: inferGovernmentLevelFromProcedureNumber(tenderNumber, buyer) }),
+    relevance,
     sourceName,
     sourceUrl,
     createdAt: now,

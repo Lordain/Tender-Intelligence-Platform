@@ -1,8 +1,7 @@
 import type { Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevel, inferParticipationScope } from "@/lib/ingestion/heuristics";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 
 /**
  * One row of the real "Contratos_CompraNet5.csv" bulk export
@@ -150,10 +149,25 @@ export function mapCompranet5RowToTender(
   const summary = row["Descripción del contrato"]?.trim() || row["Título del contrato"]?.trim() || title;
 
   const now = new Date().toISOString();
-  const industries = classifyIndustries(title, summary);
   const scopeType = inferScopeType(row["Tipo de contratación"]);
   const estimatedValue = parseAmount(row["Importe del contrato"]);
   const currency = row["Moneda del contrato"]?.trim();
+  const governmentLevel = inferGovernmentLevelFromOrden(row["Orden de gobierno"], buyer);
+  // Both the industry tags and the tier come from classifyStoredTender(), the
+  // same function reclassify-tenders.ts calls, fed the same values this row
+  // will actually store — so `npm run reclassify:tenders` and the next import
+  // of this file cannot land on different answers.
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary,
+    buyer,
+    country: "Mexico",
+    governmentLevel,
+    scopeType,
+    estimatedValue,
+    currency,
+    sourceName,
+  });
 
   return {
     id: crypto.randomUUID(),
@@ -163,7 +177,7 @@ export function mapCompranet5RowToTender(
     summary: untranslated(summary),
     buyer,
     country: "Mexico",
-    governmentLevel: inferGovernmentLevelFromOrden(row["Orden de gobierno"], buyer),
+    governmentLevel,
     industries,
     scopeType,
     procedureType: row["Tipo de procedimiento"]?.trim() || "Unknown",
@@ -179,7 +193,7 @@ export function mapCompranet5RowToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
-    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevelFromOrden(row["Orden de gobierno"], buyer), title, summary, industries, scopeType, estimatedValue, currency, buyer }),
+    relevance,
     sourceName,
     sourceUrl: row["Dirección del anuncio"]?.trim() || `${sourceUrlBase}${encodeURIComponent(tenderNumber)}`,
     createdAt: now,

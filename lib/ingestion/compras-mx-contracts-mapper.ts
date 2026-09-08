@@ -1,8 +1,7 @@
 import type { Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevel, inferParticipationScope } from "@/lib/ingestion/heuristics";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 
 /**
  * One row of the real "Datos Abiertos" contracts export
@@ -139,15 +138,30 @@ export function mapComprasMxContractRowToTender(
     row["Descripción del contrato"]?.trim() || row["Título del contrato"]?.trim() || title;
 
   const now = new Date().toISOString();
-  // The real "Descripción Ramo" column (e.g. "Energía", "Salud") is a
-  // government-branch label, not a bidder-facing category — fed into the
-  // classifier's haystack alongside title/summary rather than surfaced
-  // verbatim, so it's just one more real signal instead of a special case.
-  const industries = classifyIndustries(title, summary, row["Descripción Ramo"]);
   const scopeType = inferScopeType(row["Tipo de contratación"]);
   const estimatedValue =
     parseAmount(row["Monto sin imp./máximo"]) ?? parseAmount(row["Importe DRC"]) ?? undefined;
   const currency = row["Moneda"]?.trim();
+  const governmentLevel = inferGovernmentLevelFromOrden(row["Orden de gobierno"], buyer);
+  // The real "Descripción Ramo" column (e.g. "Energía", "Salud") used to be
+  // fed into the industry haystack here. It no longer is, deliberately: it is
+  // the only classifier input this connector had that is NOT stored on the
+  // tenders row, so every tag it produced was silently undone the next time
+  // reclassify-tenders.ts (which cannot see it) recomputed the row. A signal
+  // that cannot survive a round-trip through the database is worse than no
+  // signal — it makes the two paths disagree, which is exactly the bug that
+  // turned 193 rows into 486 on 2026-09-08.
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary,
+    buyer,
+    country: "Mexico",
+    governmentLevel,
+    scopeType,
+    estimatedValue,
+    currency,
+    sourceName,
+  });
 
   return {
     id: crypto.randomUUID(),
@@ -157,7 +171,7 @@ export function mapComprasMxContractRowToTender(
     summary: untranslated(summary),
     buyer,
     country: "Mexico",
-    governmentLevel: inferGovernmentLevelFromOrden(row["Orden de gobierno"], buyer),
+    governmentLevel,
     industries,
     scopeType,
     procedureType: row["Tipo Procedimiento"]?.trim() || row["Ley"]?.trim() || "Unknown",
@@ -173,7 +187,7 @@ export function mapComprasMxContractRowToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(row, tenderNumber),
     risks: [],
-    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevelFromOrden(row["Orden de gobierno"], buyer), title, summary, industries, scopeType, estimatedValue, currency, buyer }),
+    relevance,
     sourceName,
     sourceUrl: row["Dirección del anuncio"]?.trim() || "",
     createdAt: now,

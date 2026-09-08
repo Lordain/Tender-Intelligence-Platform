@@ -1,7 +1,6 @@
 import type { GovernmentLevel, Tender, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 
 /**
  * One row from Colombia's real "SECOP II - Procesos de Contratación"
@@ -246,7 +245,6 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
   if (!publicationDate) return null;
 
   const summary = row.descripci_n_del_procedimiento?.trim() || title;
-  const industries = classifyIndustries(title, summary, buyer);
   const scopeType = inferScopeType(row.tipo_de_contrato);
   const now = new Date().toISOString();
 
@@ -258,6 +256,23 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
 
   const submissionDeadline = parseDate(row.fecha_de_recepcion_de) ?? undefined;
   const structuredDurationDays = normalizeDurationDays(row.duracion, row.unidad_de_duracion);
+  const governmentLevel = inferGovernmentLevel(row.ordenentidad, buyer);
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary,
+    buyer,
+    country: "Colombia",
+    governmentLevel,
+    scopeType,
+    estimatedValue,
+    // Exactly what the row stores below, not a bare "COP" — the two only
+    // differ when there is no value at all (where currency is ignored
+    // anyway), but the whole point of this call is that it sees stored
+    // values, so there is no reason to make an exception here.
+    currency: estimatedValue ? "COP" : undefined,
+    sourceName,
+    structuredDurationDays,
+  });
 
   const awardDate = parseDate(row.fecha_adjudicacion) ?? undefined;
   const rawAwardedValue = row.valor_total_adjudicacion ? Number(row.valor_total_adjudicacion) : undefined;
@@ -273,7 +288,7 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
     summary: untranslated(summary),
     buyer,
     country: "Colombia",
-    governmentLevel: inferGovernmentLevel(row.ordenentidad, buyer),
+    governmentLevel,
     industries,
     scopeType,
     procedureType: row.modalidad_de_contratacion?.trim() || "Unknown",
@@ -286,6 +301,11 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
     // always being "federal" (see dof-mapper.ts).
     estimatedValue,
     currency: estimatedValue ? "COP" : undefined,
+    // Persisted (migration 0029) purely so reclassify-tenders.ts classifies
+    // this row with the same duration this import did — >= 360 days promotes
+    // to flagship, and with nowhere to store it the reclassify path used to
+    // demote every such Colombian row.
+    structuredDurationDays,
     location: row.ciudad_entidad?.trim() && row.ciudad_entidad !== "No Definido" ? row.ciudad_entidad.trim() : row.departamento_entidad?.trim(),
     status: inferStatus(row.adjudicado, row.estado_de_apertura_del_proceso, providerName, row.estado_del_procedimiento),
     awardedTo,
@@ -310,17 +330,7 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
       ...(awardDate ? [{ id: `${tenderNumber}-award`, type: "award" as const, date: awardDate }] : []),
     ],
     risks: [],
-    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevel(row.ordenentidad, buyer),
-      title,
-      summary,
-      industries,
-      scopeType,
-      estimatedValue,
-      currency: "COP",
-      buyer,
-      country: "Colombia",
-      structuredDurationDays,
-    }),
+    relevance,
     sourceName,
     // Real, directly captured — urlproceso.url usually points at the
     // actual public tender page on community.secop.gov.co, BUT only when

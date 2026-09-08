@@ -12,7 +12,7 @@ import type {
   TenderRisk,
   TenderStatus,
 } from "@/types/tender";
-import { classifyRelevance } from "@/lib/relevance";
+import { classifyStoredTender } from "@/lib/relevance";
 
 type TenderRow = {
   id: string;
@@ -140,17 +140,20 @@ function toRelevance(row: TenderRow): TenderRelevance {
   if (row.relevance_tier && row.relevance_label && row.relevance_reason) {
     return { tier: row.relevance_tier, label: row.relevance_label, reason: row.relevance_reason };
   }
-  return classifyRelevance({
+  // Same entry point the ingestion and reclassify paths use, so a legacy row
+  // is displayed with the tier those paths would give it rather than a third,
+  // slightly different answer.
+  return classifyStoredTender({
     title: row.title.es,
     summary: row.summary.es,
-    industries: row.industries,
-    scopeType: row.scope_type,
-    estimatedValue: row.estimated_value ?? undefined,
-    currency: row.currency ?? undefined,
     buyer: row.buyer,
     country: row.country,
     governmentLevel: row.government_level,
-  });
+    scopeType: row.scope_type,
+    estimatedValue: row.estimated_value ?? undefined,
+    currency: row.currency ?? undefined,
+    sourceName: row.source_name,
+  }).relevance;
 }
 
 function toTender(row: TenderRow): Tender {

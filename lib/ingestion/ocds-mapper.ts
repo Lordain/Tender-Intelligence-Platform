@@ -7,8 +7,7 @@ import type {
 import type { OcdsRelease } from "@/lib/ingestion/types";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevel } from "@/lib/ingestion/heuristics";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 
 const SCOPE_TYPE_BY_CATEGORY: Record<string, TenderScopeType> = {
   goods: "equipment",
@@ -94,14 +93,27 @@ export function mapOcdsReleaseToTender(
   if (!publicationDate) return null;
 
   const now = new Date().toISOString();
-  const industries = classifyIndustries(
-    tender.title,
-    tender.description,
-    tender.items?.[0]?.classification?.description,
-  );
   const scopeType = inferScopeType(tender.mainProcurementCategory);
   const estimatedValue = tender.value?.amount;
   const currency = tender.value?.currency;
+  const governmentLevel = inferGovernmentLevel(buyerName);
+  // The stored summary is `tender.description ?? tender.title` (see below) —
+  // pass exactly that, not tender.description, or a release with no
+  // description gets classified from less text at import than at reclassify.
+  // The OCDS item classification description is dropped for the same reason
+  // Compras MX's "Descripción Ramo" was: it is not stored on the row, so any
+  // tag it produced would be undone by the next reclassify.
+  const { industries, relevance } = classifyStoredTender({
+    title: tender.title,
+    summary: tender.description ?? tender.title,
+    buyer: buyerName,
+    country,
+    governmentLevel,
+    scopeType,
+    estimatedValue,
+    currency,
+    sourceName,
+  });
 
   return {
     id: crypto.randomUUID(),
@@ -111,7 +123,7 @@ export function mapOcdsReleaseToTender(
     summary: untranslated(tender.description ?? tender.title),
     buyer: buyerName,
     country,
-    governmentLevel: inferGovernmentLevel(buyerName),
+    governmentLevel,
     industries,
     scopeType,
     procedureType: tender.procurementMethodDetails ?? tender.procurementMethod ?? "Unknown",
@@ -126,16 +138,7 @@ export function mapOcdsReleaseToTender(
     requiredDocuments: [],
     keyDates: buildKeyDates(release),
     risks: [],
-    relevance: classifyRelevance({ governmentLevel: inferGovernmentLevel(buyerName),
-      title: tender.title,
-      summary: tender.description,
-      industries,
-      scopeType,
-      estimatedValue,
-      currency,
-      buyer: buyerName,
-      country,
-    }),
+    relevance,
     sourceName,
     sourceUrl: `${sourceUrlBase}${release.ocid}`,
     createdAt: now,

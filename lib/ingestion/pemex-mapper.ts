@@ -1,7 +1,6 @@
 import type { Tender, TenderScopeType, TenderParticipationScope, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
-import { classifyRelevance } from "@/lib/relevance";
-import { classifyIndustries } from "@/lib/industry";
+import { classifyStoredTender } from "@/lib/relevance";
 
 /**
  * One item from a PEMEX subsidiary's "Concursos Abiertos" SharePoint list
@@ -163,7 +162,16 @@ export function mapPemexConcursoItemToTender(
   // "energy" even when the description text itself doesn't happen to
   // mention petróleo/gas/etc. — "Pemex Exploración y Producción" alone
   // matches the \bpemex\b pattern.
-  const industries = classifyIndustries(description, buyer);
+  // Both title and summary store `description`, so both get it here.
+  const { industries, relevance } = classifyStoredTender({
+    title: description,
+    summary: description,
+    buyer,
+    country: "Mexico",
+    governmentLevel: "public_company",
+    scopeType,
+    sourceName,
+  });
   const now = new Date().toISOString();
 
   return {
@@ -205,7 +213,7 @@ export function mapPemexConcursoItemToTender(
     requiredDocuments: [],
     keyDates: [],
     risks: [],
-    relevance: classifyRelevance({ governmentLevel: "public_company", title: description, industries, scopeType, buyer }),
+    relevance,
     sourceName,
     // Real, anonymously-reachable search page for this list (see
     // SEARCH_PAGE_PATH_BY_LIST_TITLE above) — not a per-item deep link;

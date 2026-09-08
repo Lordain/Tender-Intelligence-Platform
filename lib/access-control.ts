@@ -40,6 +40,31 @@ export type SubscriptionEntitlementCandidate = {
   created_at?: string | null;
 };
 
+/**
+ * Collapse Stripe's eight subscription statuses onto the four this database
+ * stores — deliberately conservatively.
+ *
+ * Only Stripe's own `past_due` earns the three-day grace window. The other
+ * non-live statuses look similar but mean the opposite of "still recovering":
+ * `incomplete` and `incomplete_expired` are subscriptions whose FIRST payment
+ * never succeeded, `unpaid` is what Stripe leaves behind once it has given up
+ * retrying, and `paused` collects no money by design. Mapping any of them to
+ * `past_due` — which a permissive fallback used to do — hands three days of
+ * full access to an account that has paid nothing, repeatable by opening
+ * another Checkout. So anything that is not explicitly live or explicitly
+ * recovering is treated as cancelled.
+ *
+ * Takes a plain string rather than Stripe.Subscription.Status so the rule
+ * lives beside the entitlement logic it feeds, and stays testable without the
+ * Stripe SDK.
+ */
+export function subscriptionStatusFromStripe(status: string): "active" | "trialing" | "past_due" | "cancelled" {
+  if (status === "active") return "active";
+  if (status === "trialing") return "trialing";
+  if (status === "past_due") return "past_due";
+  return "cancelled";
+}
+
 export function isSubscriptionEntitled(
   status: string,
   currentPeriodStart: string | null | undefined,

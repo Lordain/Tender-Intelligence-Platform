@@ -40,6 +40,7 @@
     "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts",
     "ingest:proyectos-estrategicos": "tsx --env-file-if-exists=.env.local scripts/ingest-proyectos-estrategicos.ts",
     "test:relevance": "tsx scripts/test-relevance.ts",
+    "test:access-control": "tsx scripts/test-access-control.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",
     "analyze:batch": "tsx --env-file-if-exists=.env.local scripts/analyze-batch.ts",

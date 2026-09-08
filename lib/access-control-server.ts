@@ -24,6 +24,19 @@ const SUBSCRIPTION_COLUMNS =
 /** Migrations 0026 and 0027 add the columns above; this is what came before them. */
 const SUBSCRIPTION_COLUMNS_LEGACY = "user_id, plan, status, created_at, current_period_end";
 
+type SubscriptionLookup = {
+  /** The one row that grants access today, or undefined. */
+  selected: SubscriptionRow | undefined;
+  /**
+   * A past-due row exists, whether or not it is still inside the grace
+   * window. Reported separately because Stripe keeps retrying for far longer
+   * than the grace lasts: once it closes the account loses both its access
+   * AND — if this were folded into `selected` — the only notice explaining
+   * why, on precisely the days it still needs to be told how to recover.
+   */
+  hasPastDueRow: boolean;
+};
+
 /**
  * The one active subscription that still covers today, or undefined.
  *
@@ -40,7 +53,7 @@ async function findCurrentSubscription(
   admin: SupabaseClient,
   userId: string,
   plan?: "enterprise",
-): Promise<SubscriptionRow | undefined> {
+): Promise<SubscriptionLookup> {
   const run = (columns: string) => {
     const query = admin
       .from("subscriptions")
@@ -55,7 +68,11 @@ async function findCurrentSubscription(
   if (result.error?.code === "42703") result = await run(SUBSCRIPTION_COLUMNS_LEGACY);
   if (result.error) throw new Error(`订阅读取失败：${result.error.message}`);
 
-  return selectPreferredSubscription((result.data ?? []) as unknown as SubscriptionRow[]);
+  const rows = (result.data ?? []) as unknown as SubscriptionRow[];
+  return {
+    selected: selectPreferredSubscription(rows),
+    hasPastDueRow: rows.some((row) => row.status === "past_due"),
+  };
 }
 
 function periodOf(subscription: SubscriptionRow) {
@@ -88,16 +105,20 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
   }
 
   const own = await findCurrentSubscription(admin, user.id);
-  if (own) {
+  if (own.selected) {
     return {
       ...EMPTY,
       role: "subscriber",
-      plan: own.plan as SubscriptionPlan,
+      plan: own.selected.plan as SubscriptionPlan,
       subscriptionOwnerUserId: user.id,
-      isEnterpriseOwner: own.plan === "enterprise",
-      ...periodOf(own),
+      isEnterpriseOwner: own.selected.plan === "enterprise",
+      ...periodOf(own.selected),
     };
   }
+
+  // Whose failed payment this is, if anyone's. Carried into the free-role
+  // return below so the warning survives the end of the grace window.
+  let pastDueOwnerId: string | null = own.hasPastDueRow ? user.id : null;
 
   // A seat is granted by an ACCEPTED invitation bound to THIS account, never
   // by the email address alone. Matching on the address was how a mistyped
@@ -112,16 +133,17 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
   const ownerId = memberships?.[0]?.owner_user_id as string | undefined;
   if (ownerId) {
     const owner = await findCurrentSubscription(admin, ownerId, "enterprise");
-    if (owner) {
+    if (owner.selected) {
       return {
         ...EMPTY,
         role: "subscriber",
         plan: "enterprise",
         subscriptionOwnerUserId: ownerId,
         isEnterpriseOwner: false,
-        ...periodOf(owner),
+        ...periodOf(owner.selected),
       };
     }
+    if (owner.hasPastDueRow) pastDueOwnerId = ownerId;
   }
 
   // Same reasoning as above: a swallowed error here silently falls back to
@@ -131,7 +153,7 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
   if (profileError) throw new Error(`试用状态读取失败：${profileError.message}`);
   const trialEndsAt = (profile?.trial_ends_at as string | undefined) ?? fallbackEnd;
   const role = new Date(trialEndsAt).getTime() > Date.now() ? "trial" : "free";
-  return { ...EMPTY, role, trialEndsAt, periodStart: role === "trial" ? new Date(new Date(trialEndsAt).getTime() - TRIAL_DAYS * 86_400_000).toISOString() : null, periodEnd: role === "trial" ? trialEndsAt : null };
+  return { ...EMPTY, role, trialEndsAt, paymentPastDue: pastDueOwnerId !== null, subscriptionOwnerUserId: pastDueOwnerId, periodStart: role === "trial" ? new Date(new Date(trialEndsAt).getTime() - TRIAL_DAYS * 86_400_000).toISOString() : null, periodEnd: role === "trial" ? trialEndsAt : null };
 });
 
 export async function getViewerRole(): Promise<ViewerRole> {

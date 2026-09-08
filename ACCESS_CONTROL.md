@@ -73,6 +73,12 @@ opening the new one.
 and flags the rows that need attention — expired but still active, no end
 date at all, or no billing link.
 
+`npm run test:access-control` covers the three pure rules these decisions rest
+on — the Stripe status mapping, `isSubscriptionEntitled()`, and
+`selectPreferredSubscription()` — with no Supabase, Stripe SDK, or network. It
+runs anywhere. Every case in it is a bug that reached this branch at least
+once; add the next one before fixing it.
+
 ## Stripe configuration
 
 Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the six
@@ -84,11 +90,37 @@ source of the Supabase user, while the subscription's current configured
 Stripe Price is the source of its plan and billing interval. The browser never
 supplies an amount.
 
+Stripe has eight subscription statuses; this database stores four.
+`subscriptionStatusFromStripe()` in `lib/access-control.ts` maps between them,
+and it is deliberately conservative: only Stripe's own `past_due` earns the
+grace window below. `incomplete`, `incomplete_expired`, `unpaid` and `paused`
+all become `cancelled`. The permissive fallback this replaced — anything not
+`active`/`trialing`/`canceled` became `past_due` — was harmless until the
+grace window existed, and then meant that a Checkout whose FIRST payment never
+cleared (3DS abandoned, card declined) was written as `past_due` with
+`current_period_start` set to that moment, granting three days of full access
+for nothing, repeatable by starting another Checkout.
+
 A `past_due` subscription keeps access and digest delivery for three days from
 its Stripe `current_period_start`. Missing legacy period data fails closed.
-The UI shows a payment warning during that grace window; after it ends,
-entitlement is calculated as free without needing a scheduled cleanup job.
-Configure Stripe's retry window to last at least three days.
+After the window ends, entitlement is calculated as free without needing a
+scheduled cleanup job. Configure Stripe's retry window to last at least three
+days.
+
+**Stripe must be configured to CANCEL a subscription once retries are
+exhausted** (Dashboard → Billing → Subscriptions and emails). The other two
+settings leave the subscription in `unpaid` or `past_due` forever, and
+checkout refuses to open a second agreement while an unresolved `past_due` row
+exists — so the account would be permanently unable to buy again, recoverable
+only by editing the database. The `unpaid` half of that is covered by the
+mapping above; "leave in past_due" is not, and has no code-side defence.
+
+The payment warning deliberately OUTLIVES the grace window. Stripe retries for
+roughly two weeks, so the days after the third are exactly when an account has
+lost access and still needs telling that recovery is possible — which is why
+`getViewerEntitlement()` reports `paymentPastDue` on a free-role entitlement
+too, and `PaymentPastDueBanner` only changes its wording rather than
+disappearing.
 
 `current_period_start` is Stripe's billing-period value, not a locally
 recorded failure timestamp. Unit tests verify the three-day calculation but

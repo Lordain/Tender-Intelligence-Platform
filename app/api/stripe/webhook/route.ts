@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BillingInterval } from "@/lib/access-control";
+import { subscriptionStatusFromStripe, type BillingInterval } from "@/lib/access-control";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import {
   getStripeClient,
@@ -15,13 +15,6 @@ export const runtime = "nodejs";
 
 function subscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
   return stripeObjectId(invoice.parent?.subscription_details?.subscription ?? null);
-}
-
-function dbStatus(status: Stripe.Subscription.Status): "active" | "trialing" | "past_due" | "cancelled" {
-  if (status === "active") return "active";
-  if (status === "trialing") return "trialing";
-  if (status === "canceled") return "cancelled";
-  return "past_due";
 }
 
 function subscriptionIdentity(subscription: Stripe.Subscription, fallbackUserId?: string | null): {
@@ -70,7 +63,7 @@ async function saveSubscription(
   const values = {
     user_id: userId,
     plan,
-    status: dbStatus(subscription.status),
+    status: subscriptionStatusFromStripe(subscription.status),
     billing_interval: interval,
     stripe_customer_id: stripeObjectId(subscription.customer),
     stripe_subscription_id: subscription.id,

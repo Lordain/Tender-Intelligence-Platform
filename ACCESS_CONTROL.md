@@ -123,12 +123,21 @@ too, and `PaymentPastDueBanner` only changes its wording rather than
 disappearing.
 
 `current_period_start` is Stripe's billing-period value, not a locally
-recorded failure timestamp. Unit tests verify the three-day calculation but
-cannot prove how a real failed renewal moves Stripe's period fields. Before
-production, use a Stripe Test Clock and a renewal-failure test card to confirm
-that a `past_due` subscription item's `current_period_start` advances to the
-failed renewal cycle. If it does not, store the first failure time explicitly
-instead of silently changing the meaning of a billing-period column.
+recorded failure timestamp, so the grace window only works if Stripe advances
+that field when a renewal fails. Unit tests could not settle that — they prove
+the three-day arithmetic, not what Stripe puts in. **Confirmed on 2026-09-08
+with a Stripe Test Clock and a renewal-failure card**: the period does advance,
+`current_period_start` lands on the failed renewal cycle, and the anchor holds.
+No separate `payment_failed_at` column is needed; do not add one without
+re-running that test, and if Stripe ever changes this behaviour, store the
+failure time explicitly rather than quietly redefining a billing-period column.
+
+The rest of the sandbox run passed alongside it: a monthly personal
+subscription, webhook redelivery (idempotent), cancel-at-period-end, a first
+payment that fails producing no entitlement at all, a failed renewal landing in
+`past_due`, access held on day 2 of the grace window and gone on day 4,
+recovery to `active` after updating the card, `current_period_start/end`
+self-healing from a redelivered `invoice.paid`, and both enterprise intervals.
 
 If historical or concurrent events leave several eligible rows for one user,
 selection is deterministic: `active`/`trialing` outrank `past_due`, then the

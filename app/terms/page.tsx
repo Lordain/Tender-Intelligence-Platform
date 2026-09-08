@@ -6,11 +6,14 @@ export const metadata: Metadata = {
   description: "平台提供什么、用户如何使用信息，以及双方责任的基本边界。",
 };
 
-// 【占位符提示】以下条款中带方括号的内容（运营主体法定名称/注册地址/联系邮箱）
-// 尚未确定真实信息，仅为占位符——正式对外使用前必须替换为真实、准确的内容，
+// 【占位符提示】方括号内容尚未确定，正式对外使用前必须替换为真实、准确的内容，
 // 否则不满足墨西哥《联邦个人数据保护法》(LFPDPPP) 对"负责人"身份披露的强制要求。
+//
+// 注册地址已按用户决定（2026-09-08）暂时从条款中移除，等法律主体注册完成后再补。
+// 这不是"不需要"——LFPDPPP 仍然要求披露负责人的真实地址，隐私政策那边尤其如此。
+// 留一个"待补充"的方括号比留空更糟：它会被当成排版事故看，而删掉整句至少不会
+// 让用户以为我们填了个假地址。补回来的时候，这里和 app/privacy/page.tsx 各一处。
 const OPERATOR_NAME = "【运营主体法定名称，待补充】";
-const OPERATOR_ADDRESS = "【运营主体注册地址，待补充】";
 const CONTACT_EMAIL = "【联系邮箱，待补充】";
 
 const sections: PolicySection[] = [
@@ -46,7 +49,7 @@ const sections: PolicySection[] = [
     title: "适用法律与联系方式",
     paragraphs: [
       "本条款适用墨西哥合众国（Estados Unidos Mexicanos）现行有效的法律，因本条款产生的争议，双方应首先友好协商解决。",
-      `运营主体：${OPERATOR_NAME}，注册地址：${OPERATOR_ADDRESS}。与本条款相关的问题、投诉或通知，可发送至 ${CONTACT_EMAIL}。`,
+      `运营主体：${OPERATOR_NAME}。与本条款相关的问题、投诉或通知，可发送至 ${CONTACT_EMAIL}。`,
     ],
   },
 ];

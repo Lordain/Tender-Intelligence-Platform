@@ -6,11 +6,13 @@ export const metadata: Metadata = {
   description: "本平台收集哪些个人信息、如何使用与保存，以及用户可行使的 ARCO 权利。",
 };
 
-// 【占位符提示】见 app/terms/page.tsx 顶部同样的说明——以下方括号内容尚未确定，
-// 正式对外使用前必须替换为真实信息，否则本页不满足墨西哥《联邦个人数据保护法》
-// (LFPDPPP) 对隐私政策（Aviso de Privacidad）必须披露"负责人"真实身份和地址的强制要求。
+// 【占位符提示】见 app/terms/page.tsx 顶部同样的说明。
+//
+// 这一页的地址缺失比条款页更要紧：LFPDPPP 对隐私政策（Aviso de Privacidad）
+// 明确要求披露负责人（Responsable）的真实身份**和地址**，两者都是强制项。地址已按
+// 用户决定（2026-09-08）暂时移除，等法律主体注册完成后必须补回本节第一段，
+// 与法定名称一起——在那之前本页不满足 LFPDPPP。
 const OPERATOR_NAME = "【运营主体法定名称，待补充】";
-const OPERATOR_ADDRESS = "【运营主体注册地址，待补充】";
 const CONTACT_EMAIL = "【联系邮箱，待补充】";
 
 const sections: PolicySection[] = [
@@ -18,7 +20,7 @@ const sections: PolicySection[] = [
     id: "responsible-party",
     title: "负责人身份与联系方式",
     paragraphs: [
-      `本平台由 ${OPERATOR_NAME} 运营（以下称"平台"），注册地址为 ${OPERATOR_ADDRESS}，是本政策项下处理用户个人信息的负责人（Responsable）。`,
+      `本平台由 ${OPERATOR_NAME} 运营（以下称"平台"），是本政策项下处理用户个人信息的负责人（Responsable）。`,
       `与本政策相关的问题，或行使下方「用户权利」一节所述权利，请发送邮件至 ${CONTACT_EMAIL}。`,
     ],
   },

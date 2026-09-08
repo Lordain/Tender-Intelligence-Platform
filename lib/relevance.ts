@@ -846,7 +846,68 @@ const EQUIPMENT_SCALE_CAPPED_KEYWORDS = [
  * kept a tender. In a real 2026-09-07 export it alone accounted for 262 of
  * 467 kept rows, 260 of them Mexican.
  */
-const BARE_WORKS_WHITELIST = /construcci[óo]n|carretera|puente|ferrocarril|puerto|aeropuerto/i;
+/**
+ * Seaport wording, as opposed to a town whose name begins with "Puerto".
+ *
+ * A bare "puerto" was matching place names, not ports (2026-09-08, from the
+ * user's review of a 212-row kept export): two street-paving jobs in the
+ * village of Puerto Rico, Campeche came out FLAGSHIP, and the same
+ * mechanism promoted "SUMINISTRO DE ALIMENTOS EN PUERTO ESCONDIDO" — a
+ * catering contract — to the top tier. Naming each town in
+ * stripKnownFalsePositivePlaceNames() fixes them one at a time, always one
+ * step behind the next town: Mexico has Vallarta/Escondido/Peñasco/Ángel/
+ * Morelos, Colombia has Boyacá/Berrío/Asís/Gaitán/Carreño/Colombia/Tejada
+ * and more. Per the user's decision (2026-09-08) this asks for port
+ * CONTEXT instead, so an unseen town costs nothing.
+ *
+ * A place name reads "EN PUERTO RICO"; a real port reads "PUERTO DE
+ * VERACRUZ" or carries port vocabulary outright. So:
+ *   - "portuari…" (recinto/administración/terminal portuaria) — a town is
+ *     never called that.
+ *   - dragado/dársena/escollera/rompeolas — marine works nouns.
+ *   - "puerto(s) de X", but only next to a works verb. The verb matters:
+ *     "el puerto de Veracruz" is also how people refer to the CITY, so
+ *     without it a catering contract there would land right back in the
+ *     top tier — the exact bug this replaces.
+ *
+ *   - a named port. This is the half that makes the whole approach work:
+ *     the ports are a short, stable list, while the towns called "Puerto
+ *     something" are an open-ended one. "REPARACIÓN DE JUNTAS DE CALZADA EN
+ *     PSV DEL PUERTO ALTAMIRA" is a real fixture the user set to
+ *     "significant" (2026-09-07), and it is written in exactly the bare
+ *     form the context rules above reject — so without the names, this
+ *     change would have quietly overturned a decision the user had already
+ *     made. Every entry stays anchored to the word "puerto", so a contract
+ *     merely located in Cartagena or Veracruz does not match.
+ *
+ * Deliberately NOT included: "muelle", which is also the ordinary word for
+ * a mechanical spring and appears in vehicle-parts tenders.
+ */
+const NAMED_PORTS_SOURCE =
+  "puertos?\\s+(?:de\\s+)?(?:altamira|l[áa]zaro c[áa]rdenas|manzanillo|veracruz|coatzacoalcos|progreso|ensenada|mazatl[áa]n|tampico|dos bocas|salina cruz|topolobampo|guaymas|tuxpan|buenaventura|cartagena|barranquilla|santa marta)\\b";
+
+/**
+ * A works verb, required next to any port NAME (see PORT_WORKS_SOURCE).
+ * "El puerto de Veracruz" is also what people call the city, so a name on
+ * its own promoted "SUMINISTRO DE ALIMENTOS EN EL PUERTO DE VERACRUZ" — a
+ * catering contract — to flagship. "mantenimiento" is deliberately absent:
+ * MAINTENANCE_ONLY_KEYWORDS drops maintenance-only tenders earlier, and
+ * listing it here would have this rule arguing with that one.
+ */
+const PORT_WORKS_VERB_SOURCE =
+  "construcci[óo]n|ampliaci[óo]n|modernizaci[óo]n|rehabilitaci[óo]n|reparaci[óo]n|remodelaci[óo]n|dragado|\\bobras?\\b";
+
+const PORT_NAMED_SOURCE = `${NAMED_PORTS_SOURCE}|puertos?\\s+de\\b`;
+
+const PORT_WORKS_SOURCE =
+  `portuari|d[áa]rsena|escollera|rompeolas` +
+  `|(?:${PORT_WORKS_VERB_SOURCE})[^.]{0,60}(?:${PORT_NAMED_SOURCE})` +
+  `|(?:${PORT_NAMED_SOURCE})[^.]{0,60}(?:${PORT_WORKS_VERB_SOURCE})`;
+
+const BARE_WORKS_WHITELIST = new RegExp(
+  `construcci[óo]n|carretera|puente|ferrocarril|aeropuerto|${PORT_WORKS_SOURCE}`,
+  "i",
+);
 
 const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // Bare "infraestructura" dropped (2026-09-05, real false positive): the
@@ -1069,7 +1130,7 @@ const MAJOR_PROJECT_KEYWORDS = [
   // so a disclosed value still promotes it to "significant" normally —
   // this only removes the value-independent flagship shortcut.
   /\bpuentes?\b(?!\s+peatonal(es)?)/i, // 建桥
-  /\bpuertos?\b|terminal(es)? portuaria(s)?|recinto(s)? portuario(s)?/i, // 建港口
+  new RegExp(PORT_WORKS_SOURCE, "i"), // 建港口 — see PORT_WORKS_SOURCE for why this is not a bare "puerto"
   /nubes? (nacional(es)?|de gobierno|gubernamental(es)?)|national cloud|government cloud/i, // 国家云
   /oleoductos?|gasoductos?|poliductos?/i, // long-distance pipeline, the concrete "distancia larga" case the user named
 ];

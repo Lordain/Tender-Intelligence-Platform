@@ -70,6 +70,36 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // third fixture is the control: the same job in a town with an ordinary
   // name was already excluded, which is what proves the town's name — and
   // nothing about the work — was doing the promoting.
+  // Synthetic controls for PORT_WORKS_SOURCE, in the same spirit as the
+  // "PRUEBA SINTÉTICA…" fixture above: the point is the port-vs-place-name
+  // rule, and a synthetic pair states it more sharply than waiting for each
+  // town to show up in a real export. The real titles that motivated the
+  // rule are the two Puerto Rico paving rows directly below, plus the
+  // PUERTO ALTAMIRA fixture earlier in this file.
+  {
+    title: "SUMINISTRO DE ALIMENTOS EN PUERTO ESCONDIDO",
+    expectedTier: "excluded",
+    note: "Synthetic. Catering, in a town called Puerto Escondido — the bare 'puerto' keyword used to make this FLAGSHIP. A town name is not a port project.",
+    scopeType: "services",
+    country: "Mexico",
+    governmentLevel: "municipal",
+  },
+  {
+    title: "SUMINISTRO DE ALIMENTOS EN EL PUERTO DE VERACRUZ",
+    expectedTier: "excluded",
+    note: "Synthetic. 'El puerto de Veracruz' is also what people call the CITY, so a named port needs a works verb beside it — otherwise every contract in a port city is a port project.",
+    scopeType: "services",
+    country: "Mexico",
+    governmentLevel: "municipal",
+  },
+  {
+    title: "AMPLIACION DEL PUERTO LAZARO CARDENAS",
+    expectedTier: "flagship",
+    note: "Synthetic. The positive half: a real port written bare as 'PUERTO <name>', which is why PORT_WORKS_SOURCE carries a list of actual ports rather than only 'puerto de'. Dropping that list would have overturned the PUERTO ALTAMIRA tier the user set on 2026-09-07.",
+    scopeType: "works",
+    country: "Mexico",
+    governmentLevel: "municipal",
+  },
   {
     title: "PAV CAM LA ANTORCHA - PUERTO RICO, LOCALIDAD PUERTO RICO, MUNICIPIO CARMEN",
     expectedTier: "excluded",

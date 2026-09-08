@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { isHiddenColombiaNoDeadline } from "@/lib/db/tender-visibility";
 import type {
   LocalizedText,
   Tender,
@@ -13,6 +14,11 @@ import type {
   TenderStatus,
 } from "@/types/tender";
 import { classifyStoredTender } from "@/lib/relevance";
+
+// Re-exported so the many existing `from "@/lib/db/tenders"` call sites
+// (and app code) keep working now that the predicate itself lives in a
+// server-only-free module.
+export { isHiddenColombiaNoDeadline };
 
 type TenderRow = {
   id: string;
@@ -306,10 +312,6 @@ async function fetchAwardedSlugsWithAnalysis(supabase: SupabaseClient): Promise<
  * spending real money on something that might turn out to have no real
  * opportunity left at all.
  */
-export function isHiddenColombiaNoDeadline(country: string, submissionDeadline: string | null | undefined): boolean {
-  return country === "Colombia" && !submissionDeadline;
-}
-
 export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> => {
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;

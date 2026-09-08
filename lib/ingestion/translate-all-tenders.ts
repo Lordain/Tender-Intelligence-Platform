@@ -13,7 +13,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TenderToTranslate, TranslatedTender } from "@/lib/ingestion/translate-titles";
 import { translateTenderBatchQwen } from "@/lib/ingestion/translate-titles-qwen";
-import { isHiddenColombiaNoDeadline } from "@/lib/db/tenders";
+import { isHiddenColombiaNoDeadline } from "@/lib/db/tender-visibility";
 import type { LocalizedText } from "@/types/tender";
 
 // Was 25 — dropped after a real run (2026-09-03) truncated a 25-item

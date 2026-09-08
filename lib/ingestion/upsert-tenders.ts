@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
 import { assertWritten } from "@/lib/db/assert-written";
+import { classifyStoredTender } from "@/lib/relevance";
 
 /**
  * Real yearly Datos Abiertos exports run tens of thousands of rows — one
@@ -74,6 +75,72 @@ export type UpsertTendersResult = {
 
 type TenderRowFields = ReturnType<typeof buildRow>;
 
+/**
+ * Re-derives every tender's tier and industry tags from the fields this row
+ * is about to STORE, and makes those the values written — the same
+ * computation, on the same inputs, that `npm run reclassify:tenders` will
+ * perform the next time it runs.
+ *
+ * A mapper cannot disagree with reclassify while both call
+ * classifyStoredTender(), but it can still feed it something other than what
+ * it stores: ocds-mapper.ts really did classify on `tender.description` while
+ * storing `tender.description ?? tender.title`, so a release with no
+ * description was judged on less text at import than on re-read. This closes
+ * that whole class of mistake mechanically, against real data, on every
+ * import — rather than trusting thirteen mappers to keep two lists of fields
+ * in sync by hand.
+ *
+ * It corrects rather than throws, and says so loudly. An import that aborts
+ * because one row's tier drifted helps nobody; a row silently stored with a
+ * tier the next reclassify would change is exactly the bug that turned 193
+ * rows into 486 on 2026-09-08. Correcting means the stored tier is always the
+ * stable one, and the log line names the mapper to fix.
+ */
+function enforceStoredFieldParity(tenders: Tender[]): void {
+  const examples: string[] = [];
+  let driftedCount = 0;
+
+  for (const tender of tenders) {
+    const fromStoredFields = classifyStoredTender({
+      title: tender.title.es,
+      summary: tender.summary.es,
+      buyer: tender.buyer,
+      country: tender.country,
+      governmentLevel: tender.governmentLevel,
+      scopeType: tender.scopeType,
+      estimatedValue: tender.estimatedValue,
+      currency: tender.currency,
+      sourceName: tender.sourceName,
+      structuredDurationDays: tender.structuredDurationDays,
+    });
+
+    const tierDrifted = fromStoredFields.relevance.tier !== tender.relevance.tier;
+    const industriesDrifted =
+      fromStoredFields.industries.length !== tender.industries.length ||
+      [...fromStoredFields.industries].sort().join(",") !== [...tender.industries].sort().join(",");
+
+    if (!tierDrifted && !industriesDrifted) continue;
+
+    driftedCount++;
+    if (examples.length < 10) {
+      examples.push(
+        `  ${tender.slug} (${tender.sourceName}): ` +
+          (tierDrifted ? `tier ${tender.relevance.tier} → ${fromStoredFields.relevance.tier}` : "") +
+          (tierDrifted && industriesDrifted ? ", " : "") +
+          (industriesDrifted ? `industries [${tender.industries.join("|")}] → [${fromStoredFields.industries.join("|")}]` : ""),
+      );
+    }
+
+    tender.relevance = fromStoredFields.relevance;
+    tender.industries = fromStoredFields.industries;
+  }
+
+  if (driftedCount === 0) return;
+  console.warn(
+    `[upsert-tenders] ${driftedCount} tender(s) classified differently from what they store — the mapper passed classifyStoredTender() something other than the field it writes. Stored-field result used (that is what reclassify will compute); fix the mapper. First ${Math.min(driftedCount, 10)}:\n${examples.join("\n")}`,
+  );
+}
+
 function buildRow(fields: Tender) {
   return {
     slug: fields.slug,
@@ -94,6 +161,9 @@ function buildRow(fields: Tender) {
     awarded_to: fields.awardedTo ?? null,
     estimated_value: fields.estimatedValue ?? null,
     currency: fields.currency ?? null,
+    // Not displayed anywhere — stored only so reclassify-tenders.ts can feed
+    // the classifier the same duration this import did (migration 0029).
+    structured_duration_days: fields.structuredDurationDays ?? null,
     location: fields.location ?? null,
     status: fields.status,
     relevance_tier: fields.relevance.tier,
@@ -139,6 +209,8 @@ export async function upsertTendersBatched(
   tenders: Tender[],
   onProgress?: (upsertedSoFar: number, total: number) => void,
 ): Promise<UpsertTendersResult> {
+  enforceStoredFieldParity(tenders);
+
   // Per the user's explicit call (2026-09-04): an "excluded" (routine-
   // service) tender no longer gets written at all, replacing the earlier
   // "write it but hide it by default" design (see purge-excluded-

@@ -56,7 +56,7 @@ function CheckIcon() {
 }
 
 export function PricingPlans() {
-  const [interval, setInterval] = useState<BillingInterval>("annual");
+  const [interval, setInterval] = useState<BillingInterval>("monthly");
 
   return (
     <>

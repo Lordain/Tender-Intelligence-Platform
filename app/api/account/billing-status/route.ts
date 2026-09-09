@@ -84,17 +84,27 @@ export async function GET() {
 
   let manualWire = null;
   if (profile?.pending_payment_kind === "international_wire" && profile.pending_payment_request_id) {
-    const { data: wireRequest, error: wireError } = await admin
-      .from("manual_payment_requests")
-      .select("id, reference, plan, billing_interval, currency, amount_minor, status, sender_name, sender_bank, sender_reference, sent_at, customer_note, created_at")
-      .eq("id", profile.pending_payment_request_id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (wireError) {
-      console.error("[billing-status] Manual wire lookup failed", wireError);
+    const [wireResult, contactResult] = await Promise.all([
+      admin
+        .from("manual_payment_requests")
+        .select("id, reference, plan, billing_interval, currency, amount_minor, status, sender_name, sender_bank, sender_reference, sent_at, customer_note, created_at")
+        .eq("id", profile.pending_payment_request_id)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      admin
+        .from("billing_admin_audit_log")
+        .select("created_at")
+        .eq("manual_payment_request_id", profile.pending_payment_request_id)
+        .eq("action", "manual_payment_customer_contacted")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    if (wireResult.error || contactResult.error) {
+      console.error("[billing-status] Manual wire lookup failed", wireResult.error ?? contactResult.error);
       return NextResponse.json({ error: "暂时无法读取国际电汇状态。" }, { status: 500 });
     }
-    if (wireRequest) manualWire = { request: wireRequest };
+    if (wireResult.data) manualWire = { request: wireResult.data, contactedAt: contactResult.data?.created_at ?? null };
   }
 
   return NextResponse.json({ pendingPayment, paymentCollection, manualWire });

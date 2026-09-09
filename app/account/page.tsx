@@ -24,6 +24,7 @@ type BillingStatus = {
   } | null;
   paymentCollection: "card" | "bank_transfer" | "international_wire" | null;
   manualWire: {
+    contactedAt: string | null;
     request: {
       id: string;
       reference: string;
@@ -236,7 +237,13 @@ export default function AccountPage() {
                 <h2 className="mt-2 text-xl font-black text-[#071826]">国际银行电汇待确认</h2>
                 <p className="mt-2 text-sm leading-6 text-[#64717c]">应付 <strong className="text-[#071826]">US${(billingStatus.manualWire.request.amount_minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} 美元（USD）</strong>。请勿换算为墨西哥比索。</p>
               </div>
-              <span className="w-fit rounded-full bg-[#fff0ca] px-3 py-1 text-xs font-black text-[#8a5700]">{billingStatus.manualWire.request.status === "proof_submitted" ? "已提交，待核账" : "等待汇款"}</span>
+              <span className="w-fit rounded-full bg-[#fff0ca] px-3 py-1 text-xs font-black text-[#8a5700]">
+                {billingStatus.manualWire.request.status === "proof_submitted"
+                  ? "已提交，待核账"
+                  : billingStatus.manualWire.contactedAt
+                    ? "已联系，等待汇款"
+                    : "等待工作人员联系"}
+              </span>
             </div>
             <div className="mt-6 grid gap-5 lg:grid-cols-2">
               <div className="rounded-2xl bg-[#f1f3f2] p-5 text-sm leading-6 text-[#425461]">
@@ -248,7 +255,7 @@ export default function AccountPage() {
               </div>
               <div>
                 <div className="rounded-2xl border border-[#e9b949] bg-[#fff7df] px-4 py-3 text-xs leading-5 text-[#6e510b]">汇款币种必须为 USD，并选择由汇款方承担全部手续费（OUR）。附言必须填写唯一付款编号；少于应付金额时不会开通。</div>
-                {billingStatus.manualWire.request.status === "pending" ? (
+                {billingStatus.manualWire.request.status === "pending" && billingStatus.manualWire.contactedAt ? (
                   <form onSubmit={submitWireProof} className="mt-4 grid gap-3">
                     <input required maxLength={160} placeholder="汇款人 / 公司名称" value={wireProof.senderName} onChange={(event) => setWireProof((value) => ({ ...value, senderName: event.target.value }))} className="h-11 rounded-xl border border-[#d8e0e3] px-4 text-sm" />
                     <input required maxLength={160} placeholder="汇出银行" value={wireProof.senderBank} onChange={(event) => setWireProof((value) => ({ ...value, senderBank: event.target.value }))} className="h-11 rounded-xl border border-[#d8e0e3] px-4 text-sm" />
@@ -257,6 +264,8 @@ export default function AccountPage() {
                     <textarea maxLength={1000} rows={3} placeholder="备注（选填）" value={wireProof.customerNote} onChange={(event) => setWireProof((value) => ({ ...value, customerNote: event.target.value }))} className="rounded-xl border border-[#d8e0e3] px-4 py-3 text-sm" />
                     <button disabled={wireSubmitting} className="rounded-xl bg-[#071826] px-5 py-3 text-sm font-black text-white disabled:opacity-50">{wireSubmitting ? "提交中…" : "我已汇款，提交核账资料"}</button>
                   </form>
+                ) : billingStatus.manualWire.request.status === "pending" ? (
+                  <p className="mt-4 rounded-xl bg-[#f1f3f2] px-4 py-4 text-sm font-bold leading-6 text-[#425461]">申请已收到。工作人员完成资料核对并通过账单邮箱发送本次汇款信息后，这里会开放汇款回执提交表单。</p>
                 ) : <p className="mt-4 text-sm font-bold leading-6 text-emerald-700">已收到你的汇款资料。提交回执不会自动开通，管理员将以实际到账记录为准。</p>}
                 {wireMessage && <p className="mt-3 text-xs font-bold leading-5 text-[#64717c]">{wireMessage}</p>}
               </div>

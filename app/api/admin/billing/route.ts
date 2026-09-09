@@ -81,6 +81,15 @@ export async function POST(request: Request) {
       const { data: payment, error: readError } = await admin.from("manual_payment_requests").select("user_id, reference, status").eq("id", input.requestId).maybeSingle();
       if (readError) throw readError;
       if (!payment || !["pending", "proof_submitted"].includes(payment.status)) return NextResponse.json({ error: "该申请已处理或不存在。" }, { status: 409 });
+      const { data: priorContact, error: priorContactError } = await admin
+        .from("billing_admin_audit_log")
+        .select("id")
+        .eq("manual_payment_request_id", input.requestId)
+        .eq("action", "manual_payment_customer_contacted")
+        .limit(1)
+        .maybeSingle();
+      if (priorContactError) throw priorContactError;
+      if (priorContact) return NextResponse.json({ ok: true });
       const { error } = await admin.from("billing_admin_audit_log").insert({ admin_user_id: adminUser.id, target_user_id: payment.user_id, manual_payment_request_id: input.requestId, action: "manual_payment_customer_contacted", note: input.note ?? null, details: { reference: payment.reference } });
       if (error) throw error;
       return NextResponse.json({ ok: true });

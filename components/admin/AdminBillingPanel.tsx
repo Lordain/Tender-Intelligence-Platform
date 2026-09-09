@@ -100,7 +100,7 @@ export function AdminBillingPanel() {
               {(item.status === "pending" || item.status === "proof_submitted") && <div className="w-full shrink-0 lg:w-80">
                 <textarea rows={2} maxLength={1000} placeholder="审核备注；拒绝时必填" value={notes[item.id] ?? ""} onChange={(event) => setNotes((value) => ({ ...value, [item.id]: event.target.value }))} className="w-full rounded-xl border border-[#d4dde1] px-3 py-2 text-sm" />
                 <div className="mt-2 flex gap-2">
-                  <button disabled={busy !== null} onClick={() => void run({ action: "contacted", requestId: item.id, note: notes[item.id] }, item.id)} className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-black text-blue-700 disabled:opacity-50">记录已联系</button>
+                  <button disabled={busy !== null || contactedRequests.has(item.id)} onClick={() => void run({ action: "contacted", requestId: item.id, note: notes[item.id] }, item.id)} className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-black text-blue-700 disabled:opacity-50">{contactedRequests.has(item.id) ? "已记录联系" : "记录已联系"}</button>
                   <button disabled={busy !== null} onClick={() => void run({ action: "approve", requestId: item.id, note: notes[item.id] }, item.id)} className="flex-1 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">确认到账并开通</button>
                   <button disabled={busy !== null || !(notes[item.id] ?? "").trim()} onClick={() => void run({ action: "reject", requestId: item.id, note: notes[item.id] }, item.id)} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-700 disabled:opacity-40">拒绝</button>
                 </div>

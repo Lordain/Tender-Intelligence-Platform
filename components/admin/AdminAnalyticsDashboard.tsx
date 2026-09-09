@@ -37,10 +37,26 @@ const VALUE_LABELS: Record<string, string> = {
   enterprise: "企业版",
   individual: "个人版",
   company: "企业版",
+  education: "教育",
+  healthcare: "医疗",
+  tax: "税务",
+  energy: "能源",
+  power: "电力",
+  ict_telecom: "ICT",
+  transportation: "交通",
+  construction: "土建",
+  mining: "矿业",
+  water: "水工程",
+  vehicles: "车辆",
+  general: "综合",
 };
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("zh-CN").format(value);
+}
+
+function formatUsd(value: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 }
 
 function MetricCard({ label, period }: { label: string; period: AnalyticsPeriod }) {
@@ -66,6 +82,7 @@ export function AdminAnalyticsDashboard({ data, selectedDays }: { data: Analytic
     trend: Array.from({ length: selectedDays }, () => ({ day: "", views: 0, visitors: 0 })),
     filters: [], projectClicks: [], favorites: [],
     subscriptions: { activeUsers: 0, trialingUsers: 0, registeredUsers: 0, byPlan: [] },
+    payments: { activeStripeSubscriptions: 0, activeManualSubscriptions: 0, pastDueSubscriptions: 0, monthlyListValueUsd: 0, manualCollectedUsd: 0, manualPendingUsd: 0, manualPendingRequests: 0 },
   };
 
   const maxViews = Math.max(1, ...dashboard.trend.map((item) => item.views));
@@ -91,6 +108,26 @@ export function AdminAnalyticsDashboard({ data, selectedDays }: { data: Analytic
           <p className="mt-3 text-3xl font-black tracking-[-0.04em] text-[#ffb21c]">{formatNumber(activeSubscribers)}</p>
           <p className="mt-1 text-xs text-white/52">已注册 {formatNumber(dashboard.subscriptions.registeredUsers)} 位用户</p>
         </article>
+      </section>
+
+      <section className="rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><p className="text-xs font-black uppercase tracking-[0.16em] text-[#b86e00]">Billing health</p><h2 className="mt-1 text-xl font-black text-[#071826]">付款与订阅健康</h2></div>
+          <div className="flex max-w-xl flex-col items-end gap-2 text-right"><p className="text-xs leading-5 text-[#7a878f]">“月度标价”按当前有效套餐折算，不等同于 Stripe 实际到账；税费、退款及支付手续费未计入。</p><Link href="/admin/billing" className="text-xs font-black text-[#9a6200] hover:underline">前往收款与订阅 →</Link></div>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-xl bg-[#f1f4f4] p-4"><p className="text-xs font-bold text-[#64717c]">当前月度标价</p><p className="mt-2 text-2xl font-black text-[#071826]">{formatUsd(dashboard.payments.monthlyListValueUsd)}</p></article>
+          <article className="rounded-xl bg-[#f1f4f4] p-4"><p className="text-xs font-bold text-[#64717c]">人工电汇累计确认</p><p className="mt-2 text-2xl font-black text-[#071826]">{formatUsd(dashboard.payments.manualCollectedUsd)}</p></article>
+          <article className="rounded-xl bg-[#fff7df] p-4"><p className="text-xs font-bold text-[#7a5b16]">待处理人工电汇</p><p className="mt-2 text-2xl font-black text-[#805100]">{formatUsd(dashboard.payments.manualPendingUsd)}</p><p className="mt-1 text-xs text-[#8b733e]">{dashboard.payments.manualPendingRequests} 笔申请</p></article>
+          <article className={`rounded-xl p-4 ${dashboard.payments.pastDueSubscriptions > 0 ? "bg-[#fff0ed]" : "bg-[#edf7f1]"}`}><p className="text-xs font-bold text-[#64717c]">付款逾期账户</p><p className={`mt-2 text-2xl font-black ${dashboard.payments.pastDueSubscriptions > 0 ? "text-[#b42318]" : "text-[#087a52]"}`}>{formatNumber(dashboard.payments.pastDueSubscriptions)}</p></article>
+        </div>
+        <div className="mt-5 rounded-xl border border-[#e1e7e9] p-4">
+          <div className="flex flex-wrap justify-between gap-3 text-xs font-bold text-[#425461]"><span>有效订阅来源</span><span>Stripe {dashboard.payments.activeStripeSubscriptions} · 人工 {dashboard.payments.activeManualSubscriptions}</span></div>
+          <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-[#edf1f2]">
+            <div className="bg-[#635bff]" style={{ width: `${dashboard.payments.activeStripeSubscriptions + dashboard.payments.activeManualSubscriptions === 0 ? 0 : (dashboard.payments.activeStripeSubscriptions / (dashboard.payments.activeStripeSubscriptions + dashboard.payments.activeManualSubscriptions)) * 100}%` }} />
+            <div className="bg-[#ffb21c]" style={{ width: `${dashboard.payments.activeStripeSubscriptions + dashboard.payments.activeManualSubscriptions === 0 ? 0 : (dashboard.payments.activeManualSubscriptions / (dashboard.payments.activeStripeSubscriptions + dashboard.payments.activeManualSubscriptions)) * 100}%` }} />
+          </div>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 sm:p-6">

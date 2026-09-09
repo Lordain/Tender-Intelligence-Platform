@@ -10,7 +10,7 @@ export function AuthFrame({ mode, children }: { mode: "login" | "register"; chil
           <div className="relative flex h-full min-h-[24rem] flex-col">
             <Link href="/" className="inline-flex items-center gap-3 text-sm font-black tracking-[0.08em]">
               <BrandLogo variant="dark" className="size-11" priority />
-              拉美招投标平台
+              拉美招投标信息平台
             </Link>
             <div className="my-auto py-10">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffb21c]">Tender intelligence</p>

@@ -25,10 +25,10 @@ export function Header() {
         <div className="mx-auto max-w-[94rem] px-5 sm:px-8">
           <div className="flex h-[4.75rem] items-center justify-between gap-6">
             <div className="flex min-w-0 items-center gap-10 xl:gap-14">
-              <Link href="/" className="flex min-w-0 shrink-0 items-center gap-3" aria-label="拉美招投标平台首页">
+              <Link href="/" className="flex min-w-0 shrink-0 items-center gap-3" aria-label="拉美招投标信息平台首页">
                 <BrandLogo variant="dark" className="size-11" priority />
                 <span className="min-w-0">
-                  <span className="block truncate text-lg font-bold tracking-[0.08em]">拉美招投标平台</span>
+                  <span className="block truncate text-lg font-bold tracking-[0.08em]">拉美招投标信息平台</span>
                   <span className="hidden text-[10px] tracking-[0.12em] text-white/60 sm:block">拉美市场 · 投标更有把握</span>
                 </span>
               </Link>

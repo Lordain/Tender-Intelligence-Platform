@@ -30,7 +30,7 @@ export async function sendEnterpriseInviteEmail(to: string, invitedBy: string): 
       body: JSON.stringify({
         from,
         to: [to],
-        subject: "拉美招投标平台｜企业版账号邀请",
+        subject: "拉美招投标信息平台｜企业版账号邀请",
         html: `<main style="max-width:640px;margin:auto;font-family:Arial,sans-serif;color:#52636e">`
           + `<h1 style="color:#071826;font-size:22px">您收到一份企业版账号邀请</h1>`
           + `<p><strong style="color:#071826">${escapeHtml(invitedBy)}</strong> 邀请您加入其企业版订阅。接受后，您将获得完整的项目查看权限，并可设置自己的邮件通知条件。</p>`

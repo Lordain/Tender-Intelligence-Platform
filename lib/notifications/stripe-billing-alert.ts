@@ -43,7 +43,7 @@ function money(invoice: Stripe.Invoice): string {
 function emailShell(title: string, body: string): string {
   return `<main style="max-width:640px;margin:auto;font-family:Arial,sans-serif;color:#52636e">`
     + `<h1 style="color:#071826;font-size:22px">${escapeHtml(title)}</h1>${body}`
-    + `<p style="margin-top:28px;font-size:12px">拉美招投标平台自动通知，请勿直接回复本邮件。</p></main>`;
+    + `<p style="margin-top:28px;font-size:12px">拉美招投标信息平台自动通知，请勿直接回复本邮件。</p></main>`;
 }
 
 async function ensureAdminAlert(admin: SupabaseClient, source: string, message: string) {
@@ -93,7 +93,7 @@ export async function notifyInvoicePaymentFailed(input: {
   if (customer) {
     sends.push(sendEmail({
       to: [customer],
-      subject: "拉美招投标平台｜订阅付款未成功",
+      subject: "拉美招投标信息平台｜订阅付款未成功",
       idempotencyKey: `stripe-invoice-customer-failed/${eventId}`,
       html: emailShell("订阅付款未成功", `<p>Stripe 未能完成本次订阅扣款，金额为 <strong>${escapeHtml(money(invoice))}</strong>。</p>`
         + `<p>系统会按照 Stripe 的重试安排继续处理。为避免服务中断，请检查付款方式或按照账单页面提示完成付款。</p>`
@@ -104,7 +104,7 @@ export async function notifyInvoicePaymentFailed(input: {
   if (admins.length > 0) {
     sends.push(sendEmail({
       to: admins,
-      subject: "拉美招投标平台｜客户订阅付款失败",
+      subject: "拉美招投标信息平台｜客户订阅付款失败",
       idempotencyKey: `stripe-invoice-admin-failed/${eventId}`,
       html: emailShell("客户订阅付款失败", `<p>${escapeHtml(summary)}</p><p><strong>客户：</strong>${escapeHtml(customer ?? userId)}</p>`
         + `<p><a href="${stripeInvoiceUrl(invoice)}">在 Stripe 中查看账单</a></p>`),
@@ -127,7 +127,7 @@ export async function notifyInvoiceFinalizationFailed(input: {
   if (admins.length === 0) return;
   await sendEmail({
     to: admins,
-    subject: "拉美招投标平台｜Stripe 账单生成失败",
+    subject: "拉美招投标信息平台｜Stripe 账单生成失败",
     idempotencyKey: `stripe-invoice-finalization-failed/${eventId}`,
     html: emailShell("Stripe 账单生成失败", `<p>${escapeHtml(summary)}</p>`
       + `<p>该账单暂时无法收款，请检查 Stripe Tax、客户地址及账单设置。</p>`
@@ -145,11 +145,11 @@ export async function resolveInvoiceAlerts(admin: SupabaseClient, invoiceId: str
 export async function sendBillingAlertTest(to: string): Promise<boolean> {
   const marker = crypto.randomUUID();
   const base = emailShell("订阅付款未成功（测试）", `<p>这是管理员发起的付款异常邮件测试，不代表真实客户付款失败。</p>`);
-  const customerSent = await sendEmail({ to: [to], subject: "拉美招投标平台｜订阅付款未成功（测试）", html: base, idempotencyKey: `billing-alert-customer-test/${marker}` });
+  const customerSent = await sendEmail({ to: [to], subject: "拉美招投标信息平台｜订阅付款未成功（测试）", html: base, idempotencyKey: `billing-alert-customer-test/${marker}` });
   const admins = adminRecipients();
   const adminSent = await sendEmail({
     to: admins,
-    subject: "拉美招投标平台｜Stripe 账单生成失败（测试）",
+    subject: "拉美招投标信息平台｜Stripe 账单生成失败（测试）",
     html: emailShell("Stripe 账单生成失败（测试）", `<p>这是管理员发起的账单生成失败通知测试，不代表真实账单异常。</p>`),
     idempotencyKey: `billing-alert-admin-test/${marker}`,
   });

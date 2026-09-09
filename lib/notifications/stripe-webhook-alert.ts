@@ -33,7 +33,7 @@ async function sendAlertEmail(input: {
     body: JSON.stringify({
       from,
       to,
-      subject: `拉美招投标平台｜Stripe Webhook ${state}`,
+      subject: `拉美招投标信息平台｜Stripe Webhook ${state}`,
       html: `<main style="max-width:640px;margin:auto;font-family:Arial,sans-serif;color:#52636e">`
         + `<h1 style="color:#071826;font-size:22px">Stripe Webhook ${state}</h1>`
         + `<p><strong>事件类型：</strong>${escapeHtml(input.eventType)}</p>`

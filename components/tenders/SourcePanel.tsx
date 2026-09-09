@@ -55,7 +55,7 @@ export function SourcePanel({ tender }: { tender: Tender }) {
             {copied ? localize(uiText.copiedToClipboard, locale) : localize(uiText.copyProcedureNumber, locale)}
           </button>
         </div>
-        <p className="mt-3 text-xs leading-5 text-white/60">本平台仅提供官方入口与信息整理，不代替正式投标。若链接进入官方检索页，请复制以上招标编号查询，并以官方文件和要求为准。</p>
+        <p className="mt-3 text-xs leading-5 text-white/60">本站是信息服务，不接收投标文件或代办投标。请前往上述官方渠道完成正式流程；若链接进入官方检索页，请复制招标编号查询，并以官方文件和要求为准。</p>
       </div>
     </section>
   );

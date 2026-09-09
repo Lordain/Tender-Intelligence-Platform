@@ -219,12 +219,12 @@ export function renderTenderDigestEmail(
     : "";
 
   return {
-    subject: `拉美招投标平台｜${subjectParts}`,
+    subject: `拉美招投标信息平台｜${subjectParts}`,
     html: `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>`
       + `<body style="margin:0;background:#f4f1eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',Arial,sans-serif;color:#52636e">`
       + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:28px 14px;background:#f4f1eb"><tr><td align="center">`
       + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;overflow:hidden;border-radius:18px;background:#ffffff">`
-      + `<tr><td style="padding:28px 32px;background:#061b2b;color:#ffffff"><div style="font-size:12px;font-weight:800;letter-spacing:.18em;color:#ffb21c">TENDER ALERT</div><div style="margin-top:10px;font-size:23px;font-weight:800">拉美招投标平台</div><div style="margin-top:7px;font-size:13px;color:#a9b8bf">为您筛选值得关注的拉美政府采购机会</div></td></tr>`
+      + `<tr><td style="padding:28px 32px;background:#061b2b;color:#ffffff"><div style="font-size:12px;font-weight:800;letter-spacing:.18em;color:#ffb21c">TENDER ALERT</div><div style="margin-top:10px;font-size:23px;font-weight:800">拉美招投标信息平台</div><div style="margin-top:7px;font-size:13px;color:#a9b8bf">为您筛选值得关注的拉美政府采购机会</div></td></tr>`
       + `<tr><td style="padding:30px 32px"><h1 style="margin:0;font-size:26px;line-height:1.4;color:#071826">您的招标动态</h1><p style="margin:10px 0 18px;font-size:15px;line-height:1.7;color:#64717c">以下内容符合您当前设置的通知条件。</p>`
       + `<div style="margin:0 0 28px;border-radius:12px;background:#f1f4f4;padding:16px 18px"><div style="margin-bottom:7px;font-size:13px;font-weight:800;color:#071826">当前通知设置</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${renderPreferenceSummary(preference)}</table></div>`
       + `${tenderSection}${statusSection}`

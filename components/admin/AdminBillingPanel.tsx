@@ -27,6 +27,7 @@ export function AdminBillingPanel() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [showRequestHistory, setShowRequestHistory] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [confirmingStop, setConfirmingStop] = useState<string | null>(null);
   const [activation, setActivation] = useState<{ email: string; plan: PaidPlan; interval: BillingInterval; note: string }>({ email: "", plan: "professional", interval: "monthly", note: "" });
@@ -57,6 +58,9 @@ export function AdminBillingPanel() {
 
   const needle = query.trim().toLowerCase();
   const requests = useMemo(() => (data?.requests ?? []).filter((item) => !needle || `${item.email} ${item.reference} ${item.sender_reference ?? ""}`.toLowerCase().includes(needle)), [data, needle]);
+  const openRequests = useMemo(() => requests.filter((item) => item.status === "pending" || item.status === "proof_submitted"), [requests]);
+  const historicalRequests = useMemo(() => requests.filter((item) => item.status !== "pending" && item.status !== "proof_submitted"), [requests]);
+  const visibleRequests = showRequestHistory || needle ? requests : openRequests;
   const subscriptions = useMemo(() => (data?.subscriptions ?? []).filter((item) => !needle || item.email.toLowerCase().includes(needle)), [data, needle]);
   const contactedRequests = useMemo(() => new Set((data?.audit ?? []).filter((item) => item.action === "manual_payment_customer_contacted").map((item) => item.manual_payment_request_id)), [data]);
 
@@ -82,12 +86,17 @@ export function AdminBillingPanel() {
         </form>
       </section>
 
-      <div className="mt-6 flex items-center justify-between gap-4">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-black text-[#071826]">国际电汇申请</h2>
-        <input placeholder="搜索邮箱、附言或交易号" value={query} onChange={(event) => setQuery(event.target.value)} className={`${inputClass} w-full max-w-sm`} />
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <button type="button" disabled={Boolean(needle)} onClick={() => setShowRequestHistory((value) => !value)} className="h-11 rounded-xl border border-[#b9c8ce] bg-white px-4 text-xs font-black text-[#425461] hover:bg-[#f4f7f7] disabled:cursor-default disabled:opacity-60">
+            {needle ? "搜索包含历史记录" : showRequestHistory ? "隐藏历史记录" : `查看历史记录（${historicalRequests.length}）`}
+          </button>
+          <input placeholder="搜索邮箱、附言或交易号" value={query} onChange={(event) => setQuery(event.target.value)} className={`${inputClass} w-full sm:w-80`} />
+        </div>
       </div>
       <div className="mt-3 grid gap-4">
-        {requests.map((item) => (
+        {visibleRequests.map((item) => (
           <article key={item.id} className="rounded-2xl border border-[#dbe2e5] bg-white p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
@@ -124,7 +133,11 @@ export function AdminBillingPanel() {
             </div>
           </article>
         ))}
-        {!requests.length && <div className="rounded-2xl border border-dashed border-[#cfd9dd] p-8 text-center text-sm text-[#64717c]">没有匹配的电汇申请。</div>}
+        {!visibleRequests.length && (
+          <div className="rounded-2xl border border-dashed border-[#cfd9dd] p-8 text-center text-sm text-[#64717c]">
+            {needle ? "没有匹配的电汇申请。" : "目前没有需要处理的电汇申请；已完成记录可在历史记录中查看。"}
+          </div>
+        )}
       </div>
 
       <h2 className="mt-10 text-xl font-black text-[#071826]">订阅管理</h2>

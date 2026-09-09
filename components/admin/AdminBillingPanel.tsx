@@ -94,8 +94,24 @@ export function AdminBillingPanel() {
                 <div className="flex flex-wrap items-center gap-2"><span className="font-black text-[#071826]">{item.reference}</span><span className="rounded-full bg-[#f1f3f2] px-2.5 py-1 text-[11px] font-bold">{statusNames[item.status] ?? item.status}</span>{contactedRequests.has(item.id) && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">已联系客户</span>}</div>
                 <p className="mt-2 break-all text-sm font-bold text-[#425461]">{item.email}</p>
                 <p className="mt-1 text-sm text-[#64717c]">{PLAN_NAMES[item.plan]} · {BILLING_INTERVAL_LABELS[item.billing_interval]} · US${(item.amount_minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
-                {item.sender_reference && <p className="mt-3 text-xs leading-5 text-[#64717c]">汇款人：{item.sender_name} · 汇出行：{item.sender_bank}<br />交易号：{item.sender_reference} · 汇款时间：{item.sent_at ? new Date(item.sent_at).toLocaleString("zh-CN") : "—"}</p>}
-                {item.customer_note && <p className="mt-2 text-xs text-[#64717c]">客户备注：{item.customer_note}</p>}
+                {(item.sender_reference || item.customer_note) && (
+                  <div className="mt-4 rounded-xl border border-[#b9c8ce] bg-[#f4f7f7] px-4 py-3 shadow-sm">
+                    {item.sender_reference && (
+                      <dl className="grid gap-x-6 gap-y-2 text-xs leading-5 text-[#425461] sm:grid-cols-2">
+                        <div><dt className="font-black text-[#071826]">汇款人 / 公司</dt><dd className="mt-0.5 break-words">{item.sender_name}</dd></div>
+                        <div><dt className="font-black text-[#071826]">汇出银行</dt><dd className="mt-0.5 break-words">{item.sender_bank}</dd></div>
+                        <div><dt className="font-black text-[#071826]">银行交易编号</dt><dd className="mt-0.5 break-all font-bold text-[#071826]">{item.sender_reference}</dd></div>
+                        <div><dt className="font-black text-[#071826]">汇款时间</dt><dd className="mt-0.5">{item.sent_at ? new Date(item.sent_at).toLocaleString("zh-CN") : "—"}</dd></div>
+                      </dl>
+                    )}
+                    {item.customer_note && (
+                      <div className={`${item.sender_reference ? "mt-3 border-t border-[#d4dde1] pt-3" : ""} text-xs leading-5 text-[#425461]`}>
+                        <div className="font-black text-[#071826]">客户备注</div>
+                        <p className="mt-0.5 break-words">{item.customer_note}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               {(item.status === "pending" || item.status === "proof_submitted") && <div className="w-full shrink-0 lg:w-80">
                 <textarea rows={2} maxLength={1000} placeholder="审核备注；拒绝时必填" value={notes[item.id] ?? ""} onChange={(event) => setNotes((value) => ({ ...value, [item.id]: event.target.value }))} className="w-full rounded-xl border border-[#d4dde1] px-3 py-2 text-sm" />

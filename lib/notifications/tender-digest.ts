@@ -234,7 +234,12 @@ export function renderTenderDigestEmail(
   };
 }
 
-export async function sendTenderDigestEmail(recipient: DigestRecipient, tenders: DigestTender[], statusChanges: StatusChange[]) {
+export async function sendTenderDigestEmail(
+  recipient: DigestRecipient,
+  tenders: DigestTender[],
+  statusChanges: StatusChange[],
+  options: { test?: boolean } = {},
+) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
   const appUrl = process.env.APP_URL;
@@ -248,7 +253,7 @@ export async function sendTenderDigestEmail(recipient: DigestRecipient, tenders:
     body: JSON.stringify({
       from,
       to: [recipient.email],
-      subject: email.subject,
+      subject: options.test ? `【测试】${email.subject}` : email.subject,
       html: email.html,
     }),
   });

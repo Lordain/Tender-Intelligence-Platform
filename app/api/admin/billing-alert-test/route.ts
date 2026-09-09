@@ -10,7 +10,7 @@ export async function POST() {
   try {
     const sent = await sendBillingAlertTest(user.email);
     if (!sent) return NextResponse.json({ error: "邮件未发出，请检查 WEBHOOK_ALERT_EMAILS 和 Resend 配置。" }, { status: 503 });
-    return NextResponse.json({ ok: true, message: "测试邮件已发送至当前管理员和告警收件人。" });
+    return NextResponse.json({ ok: true, message: "两封测试邮件均已发送至当前管理员和告警收件人。" });
   } catch (error) {
     console.error("[billing-alert-test] Failed", error);
     return NextResponse.json({ error: "付款异常测试邮件发送失败。" }, { status: 500 });

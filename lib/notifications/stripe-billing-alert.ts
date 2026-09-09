@@ -144,11 +144,11 @@ export async function resolveInvoiceAlerts(admin: SupabaseClient, invoiceId: str
 
 export async function sendBillingAlertTest(to: string): Promise<boolean> {
   const marker = crypto.randomUUID();
+  const recipients = Array.from(new Set([to.trim().toLowerCase(), ...adminRecipients()])).filter((email) => email.includes("@"));
   const base = emailShell("订阅付款未成功（测试）", `<p>这是管理员发起的付款异常邮件测试，不代表真实客户付款失败。</p>`);
-  const customerSent = await sendEmail({ to: [to], subject: "拉美招投标平台｜订阅付款未成功（测试）", html: base, idempotencyKey: `billing-alert-customer-test/${marker}` });
-  const admins = adminRecipients();
+  const customerSent = await sendEmail({ to: recipients, subject: "拉美招投标平台｜订阅付款未成功（测试）", html: base, idempotencyKey: `billing-alert-customer-test/${marker}` });
   const adminSent = await sendEmail({
-    to: admins,
+    to: recipients,
     subject: "拉美招投标平台｜Stripe 账单生成失败（测试）",
     html: emailShell("Stripe 账单生成失败（测试）", `<p>这是管理员发起的账单生成失败通知测试，不代表真实账单异常。</p>`),
     idempotencyKey: `billing-alert-admin-test/${marker}`,

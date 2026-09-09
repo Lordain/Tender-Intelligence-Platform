@@ -16,7 +16,7 @@ type Subscription = {
   current_period_start: string | null; current_period_end: string | null; cancel_at_period_end: boolean;
   payment_source: "stripe" | "manual"; stripe_subscription_id: string | null;
 };
-type Audit = { id: string; email: string; adminEmail: string | null; action: string; note: string | null; created_at: string };
+type Audit = { id: string; email: string; adminEmail: string | null; manual_payment_request_id: string | null; action: string; note: string | null; created_at: string };
 type Data = { requests: PaymentRequest[]; subscriptions: Subscription[]; audit: Audit[] };
 
 const statusNames: Record<string, string> = { pending: "等待汇款", proof_submitted: "待核账", paid: "已到账", rejected: "已拒绝", expired: "已过期", cancelled: "已取消", active: "有效", trialing: "试用", past_due: "逾期" };
@@ -58,6 +58,7 @@ export function AdminBillingPanel() {
   const needle = query.trim().toLowerCase();
   const requests = useMemo(() => (data?.requests ?? []).filter((item) => !needle || `${item.email} ${item.reference} ${item.sender_reference ?? ""}`.toLowerCase().includes(needle)), [data, needle]);
   const subscriptions = useMemo(() => (data?.subscriptions ?? []).filter((item) => !needle || item.email.toLowerCase().includes(needle)), [data, needle]);
+  const contactedRequests = useMemo(() => new Set((data?.audit ?? []).filter((item) => item.action === "manual_payment_customer_contacted").map((item) => item.manual_payment_request_id)), [data]);
 
   function activate(event: FormEvent) {
     event.preventDefault();
@@ -90,7 +91,7 @@ export function AdminBillingPanel() {
           <article key={item.id} className="rounded-2xl border border-[#dbe2e5] bg-white p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2"><span className="font-black text-[#071826]">{item.reference}</span><span className="rounded-full bg-[#f1f3f2] px-2.5 py-1 text-[11px] font-bold">{statusNames[item.status] ?? item.status}</span></div>
+                <div className="flex flex-wrap items-center gap-2"><span className="font-black text-[#071826]">{item.reference}</span><span className="rounded-full bg-[#f1f3f2] px-2.5 py-1 text-[11px] font-bold">{statusNames[item.status] ?? item.status}</span>{contactedRequests.has(item.id) && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">已联系客户</span>}</div>
                 <p className="mt-2 break-all text-sm font-bold text-[#425461]">{item.email}</p>
                 <p className="mt-1 text-sm text-[#64717c]">{PLAN_NAMES[item.plan]} · {BILLING_INTERVAL_LABELS[item.billing_interval]} · US${(item.amount_minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
                 {item.sender_reference && <p className="mt-3 text-xs leading-5 text-[#64717c]">汇款人：{item.sender_name} · 汇出行：{item.sender_bank}<br />交易号：{item.sender_reference} · 汇款时间：{item.sent_at ? new Date(item.sent_at).toLocaleString("zh-CN") : "—"}</p>}
@@ -99,6 +100,7 @@ export function AdminBillingPanel() {
               {(item.status === "pending" || item.status === "proof_submitted") && <div className="w-full shrink-0 lg:w-80">
                 <textarea rows={2} maxLength={1000} placeholder="审核备注；拒绝时必填" value={notes[item.id] ?? ""} onChange={(event) => setNotes((value) => ({ ...value, [item.id]: event.target.value }))} className="w-full rounded-xl border border-[#d4dde1] px-3 py-2 text-sm" />
                 <div className="mt-2 flex gap-2">
+                  <button disabled={busy !== null} onClick={() => void run({ action: "contacted", requestId: item.id, note: notes[item.id] }, item.id)} className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-black text-blue-700 disabled:opacity-50">记录已联系</button>
                   <button disabled={busy !== null} onClick={() => void run({ action: "approve", requestId: item.id, note: notes[item.id] }, item.id)} className="flex-1 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">确认到账并开通</button>
                   <button disabled={busy !== null || !(notes[item.id] ?? "").trim()} onClick={() => void run({ action: "reject", requestId: item.id, note: notes[item.id] }, item.id)} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-700 disabled:opacity-40">拒绝</button>
                 </div>

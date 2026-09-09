@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { selectPreferredSubscription } from "@/lib/access-control";
 import { PLAN_PRICES_USD } from "@/lib/billing-catalog";
-import { getInternationalWireInstructions } from "@/lib/manual-wire";
+import { internationalWireEnabled } from "@/lib/manual-wire";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 
@@ -45,8 +45,7 @@ export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "登录已过期，请重新登录。" }, { status: 401 });
   const admin = createSupabaseAdminClient();
-  const instructions = getInternationalWireInstructions();
-  if (!admin || !instructions) return NextResponse.json({ error: "国际电汇暂未开放，请选择银行卡付款。" }, { status: 503 });
+  if (!admin || !internationalWireEnabled()) return NextResponse.json({ error: "国际电汇暂未开放，请选择银行卡付款。" }, { status: 503 });
 
   const { data: subscriptionRows, error: subscriptionError } = await admin
     .from("subscriptions")

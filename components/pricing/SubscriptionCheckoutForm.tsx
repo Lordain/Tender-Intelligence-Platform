@@ -141,17 +141,17 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
             <span className="text-sm font-black">国际银行电汇（人工确认）</span>
             <span className="mt-1 block pl-6 text-xs leading-5 text-white/55">
               {internationalWireEnabled
-                ? `境外企业以美元（USD）汇款，金额 ${usd.format(usdAmount)}。到账核实后人工开通，不会自动续费。`
+                ? `提交联系申请后，工作人员将核对资料并通过账单邮箱提供本次汇款信息。金额 ${usd.format(usdAmount)} 美元（USD），到账核实后人工开通。`
                 : "收款账户审核完成后开放。"}
             </span>
           </label>
         </fieldset>
 
         {method === "bank_transfer" && <p className="mt-4 rounded-xl border border-[#ffb21c]/25 bg-[#ffb21c]/10 px-4 py-3 text-xs leading-5 text-[#ffd16f]">转账不是自动扣款。每个续费周期Stripe会发送新的MXN账单和转账指示，到账后才延长账户权限。</p>}
-        {method === "international_wire" && <p className="mt-4 rounded-xl border border-[#ffb21c]/25 bg-[#ffb21c]/10 px-4 py-3 text-xs leading-5 text-[#ffd16f]">请使用申请页显示的唯一附言编号，并选择由汇款方承担全部中间行费用（OUR）。提交回执不代表到账，管理员核实足额入账后才会开通。</p>}
+        {method === "international_wire" && <p className="mt-4 rounded-xl border border-[#ffb21c]/25 bg-[#ffb21c]/10 px-4 py-3 text-xs leading-5 text-[#ffd16f]">此处只提交联系申请，不会显示银行资料。工作人员联系并完成身份核对后才会提供汇款信息；提交回执不代表到账。</p>}
         {error && <p className="mt-4 text-xs font-bold leading-5 text-red-300">{error}</p>}
         <button disabled={submitting} type="submit" className="mt-6 w-full rounded-xl bg-[#ffb21c] px-5 py-3.5 text-sm font-black text-[#071826] hover:bg-[#ffc247] disabled:opacity-50">
-          {submitting ? "正在创建付款申请…" : method === "international_wire" ? "生成国际电汇申请" : method === "bank_transfer" ? "生成 Stripe 转账账单" : "前往 Stripe 安全付款"}
+          {submitting ? "正在创建付款申请…" : method === "international_wire" ? "提交国际电汇联系申请" : method === "bank_transfer" ? "生成 Stripe 转账账单" : "前往 Stripe 安全付款"}
         </button>
       </aside>
     </form>

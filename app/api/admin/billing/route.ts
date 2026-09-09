@@ -7,6 +7,7 @@ export const runtime = "nodejs";
 
 const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("approve"), requestId: z.uuid(), note: z.string().trim().max(1000).optional() }),
+  z.object({ action: z.literal("contacted"), requestId: z.uuid(), note: z.string().trim().max(1000).optional() }),
   z.object({ action: z.literal("reject"), requestId: z.uuid(), note: z.string().trim().min(1).max(1000) }),
   z.object({ action: z.literal("activate"), email: z.email(), plan: z.enum(["professional", "enterprise"]), interval: z.enum(["monthly", "semiannual", "annual"]), note: z.string().trim().max(1000).optional() }),
   z.object({ action: z.enum(["cancel_now", "cancel_period_end", "resume", "extend"]), subscriptionId: z.uuid(), note: z.string().trim().max(1000).optional() }),
@@ -43,7 +44,7 @@ export async function GET() {
   const [requestResult, subscriptionResult, auditResult, users] = await Promise.all([
     admin.from("manual_payment_requests").select("*").order("created_at", { ascending: false }).limit(200),
     admin.from("subscriptions").select("id, user_id, plan, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, payment_source, stripe_subscription_id, created_at").order("created_at", { ascending: false }).limit(300),
-    admin.from("billing_admin_audit_log").select("id, admin_user_id, target_user_id, action, note, details, created_at").order("created_at", { ascending: false }).limit(100),
+    admin.from("billing_admin_audit_log").select("id, admin_user_id, target_user_id, manual_payment_request_id, action, note, details, created_at").order("created_at", { ascending: false }).limit(100),
     userDirectory(admin),
   ]);
   const error = requestResult.error ?? subscriptionResult.error ?? auditResult.error;
@@ -72,6 +73,15 @@ export async function POST(request: Request) {
   try {
     if (input.action === "approve") {
       const { error } = await admin.rpc("approve_manual_payment", { p_request_id: input.requestId, p_admin_user_id: adminUser.id, p_note: input.note ?? null });
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
+
+    if (input.action === "contacted") {
+      const { data: payment, error: readError } = await admin.from("manual_payment_requests").select("user_id, reference, status").eq("id", input.requestId).maybeSingle();
+      if (readError) throw readError;
+      if (!payment || !["pending", "proof_submitted"].includes(payment.status)) return NextResponse.json({ error: "该申请已处理或不存在。" }, { status: 409 });
+      const { error } = await admin.from("billing_admin_audit_log").insert({ admin_user_id: adminUser.id, target_user_id: payment.user_id, manual_payment_request_id: input.requestId, action: "manual_payment_customer_contacted", note: input.note ?? null, details: { reference: payment.reference } });
       if (error) throw error;
       return NextResponse.json({ ok: true });
     }

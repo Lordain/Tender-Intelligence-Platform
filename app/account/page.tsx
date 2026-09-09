@@ -38,16 +38,6 @@ type BillingStatus = {
       sent_at: string | null;
       customer_note: string | null;
     };
-    instructions: {
-      provider: string;
-      beneficiaryName: string;
-      bankName: string;
-      accountNumber: string;
-      routing: string | null;
-      swift: string;
-      bankAddress: string | null;
-      beneficiaryAddress: string | null;
-    };
   } | null;
 };
 
@@ -227,17 +217,13 @@ export default function AccountPage() {
               <span className="w-fit rounded-full bg-[#fff0ca] px-3 py-1 text-xs font-black text-[#8a5700]">{billingStatus.manualWire.request.status === "proof_submitted" ? "已提交，待核账" : "等待汇款"}</span>
             </div>
             <div className="mt-6 grid gap-5 lg:grid-cols-2">
-              <dl className="grid gap-3 rounded-2xl bg-[#f1f3f2] p-5 text-sm">
-                <div><dt className="text-xs font-bold text-[#7a878f]">唯一付款附言</dt><dd className="mt-1 font-black text-[#071826]">{billingStatus.manualWire.request.reference}</dd></div>
-                <div><dt className="text-xs font-bold text-[#7a878f]">收款平台</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.provider}</dd></div>
-                <div><dt className="text-xs font-bold text-[#7a878f]">收款人</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.beneficiaryName}</dd></div>
-                <div><dt className="text-xs font-bold text-[#7a878f]">银行</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.bankName}</dd></div>
-                <div><dt className="text-xs font-bold text-[#7a878f]">账号 / IBAN</dt><dd className="mt-1 break-all font-bold text-[#071826]">{billingStatus.manualWire.instructions.accountNumber}</dd></div>
-                {billingStatus.manualWire.instructions.routing && <div><dt className="text-xs font-bold text-[#7a878f]">Routing / ABA</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.routing}</dd></div>}
-                <div><dt className="text-xs font-bold text-[#7a878f]">SWIFT / BIC</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.swift}</dd></div>
-                {billingStatus.manualWire.instructions.bankAddress && <div><dt className="text-xs font-bold text-[#7a878f]">银行地址</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.bankAddress}</dd></div>}
-                {billingStatus.manualWire.instructions.beneficiaryAddress && <div><dt className="text-xs font-bold text-[#7a878f]">收款人地址</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.beneficiaryAddress}</dd></div>}
-              </dl>
+              <div className="rounded-2xl bg-[#f1f3f2] p-5 text-sm leading-6 text-[#425461]">
+                <div className="text-xs font-bold text-[#7a878f]">申请编号</div>
+                <div className="mt-1 font-black text-[#071826]">{billingStatus.manualWire.request.reference}</div>
+                <p className="mt-4">工作人员会先核对你的购买主体与账单资料，再通过账单邮箱与你联系并提供本次汇款所需的信息。</p>
+                <p className="mt-3 font-bold text-[#071826]">网站不会展示或自动发送银行账号、SWIFT/BIC 或收款人地址。</p>
+                <p className="mt-3 text-xs text-[#64717c]">如收到与申请金额、币种或收款主体不一致的信息，请暂停汇款并通过官网公布的联系方式复核。</p>
+              </div>
               <div>
                 <div className="rounded-2xl border border-[#e9b949] bg-[#fff7df] px-4 py-3 text-xs leading-5 text-[#6e510b]">汇款币种必须为 USD，并选择由汇款方承担全部手续费（OUR）。附言必须填写唯一付款编号；少于应付金额时不会开通。</div>
                 {billingStatus.manualWire.request.status === "pending" ? (

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { getStripeClient } from "@/lib/stripe";
-import { getInternationalWireInstructions } from "@/lib/manual-wire";
 
 export const runtime = "nodejs";
 
@@ -95,8 +94,7 @@ export async function GET() {
       console.error("[billing-status] Manual wire lookup failed", wireError);
       return NextResponse.json({ error: "暂时无法读取国际电汇状态。" }, { status: 500 });
     }
-    const instructions = getInternationalWireInstructions();
-    if (wireRequest && instructions) manualWire = { request: wireRequest, instructions };
+    if (wireRequest) manualWire = { request: wireRequest };
   }
 
   return NextResponse.json({ pendingPayment, paymentCollection, manualWire });

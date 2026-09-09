@@ -7,17 +7,31 @@ import {
   previewTenders,
 } from "@/lib/notifications/tender-digest-preview";
 import { sendTenderDigestEmail } from "@/lib/notifications/tender-digest";
+import { sendSubscriptionRenewalReminder } from "@/lib/notifications/subscription-renewal-reminder";
 
 export const runtime = "nodejs";
 
 const isRateLimited = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 3 });
 
-export async function POST() {
+export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin?.email) return NextResponse.json({ error: "无管理员权限。" }, { status: 403 });
   if (isRateLimited(admin.id)) return NextResponse.json({ error: "测试邮件发送过于频繁，请一小时后再试。" }, { status: 429 });
 
   try {
+    if (new URL(request.url).searchParams.get("kind") === "renewal") {
+      const periodEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      await sendSubscriptionRenewalReminder({
+        to: admin.email,
+        subscriptionId: `test-${crypto.randomUUID()}`,
+        plan: "professional",
+        interval: "monthly",
+        amountMinor: 100_000,
+        currency: "usd",
+        periodEnd,
+      });
+      return NextResponse.json({ ok: true, message: `续费提醒测试邮件已发送到当前管理员邮箱 ${admin.email}。` });
+    }
     await sendTenderDigestEmail(
       {
         user_id: admin.id,

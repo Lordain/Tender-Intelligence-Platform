@@ -15,7 +15,7 @@ export function AuthFrame({ mode, children }: { mode: "login" | "register"; chil
             <div className="my-auto py-10">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffb21c]">Tender intelligence</p>
               <h1 className="mt-4 text-3xl font-black leading-tight tracking-[-0.04em]">更快发现机会，<br />更稳做出投标判断</h1>
-              <p className="mt-5 max-w-sm text-sm leading-7 text-white/62">集中查看墨西哥政府采购信息、中文摘要、资质要求与计划交标时间。</p>
+              <p className="mt-5 max-w-sm text-sm leading-7 text-white/62">集中查看拉美政府采购信息、中文摘要、资质要求与计划交标时间。</p>
             </div>
           </div>
         </section>

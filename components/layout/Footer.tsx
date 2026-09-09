@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/layout/BrandLogo";
-import { SUPPORT_EMAIL, SUPPORT_WHATSAPP } from "@/lib/support";
+import { SUPPORT_EMAIL } from "@/lib/support";
 
 const columns = [
   { title: "产品", links: [["招标项目", "/tenders"], ["我的收藏", "/saved"], ["订阅服务", "/pricing"]] },
@@ -9,13 +9,12 @@ const columns = [
 ] as const;
 
 export function Footer() {
-  const whatsappHref = SUPPORT_WHATSAPP ? `https://wa.me/${SUPPORT_WHATSAPP}` : null;
   return (
     <footer className="border-t border-white/10 bg-[#031521] text-white">
       <div className="mx-auto grid max-w-[94rem] gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.25fr_1fr] lg:grid-cols-[1.35fr_0.8fr_0.8fr_0.9fr_1fr]">
         <div className="max-w-sm">
           <Link href="/" className="inline-flex items-center gap-3"><BrandLogo variant="dark" className="size-10" /><span className="text-lg font-black tracking-[0.08em]">拉美招投标信息平台</span></Link>
-          <p className="mt-5 text-sm leading-7 text-white/52">把拉美政府招标信息转化为结构化中文情报，帮助中国团队更快发现、理解和跟进机会。</p>
+          <p className="mt-5 text-sm leading-7 text-white/52">把拉美政府招标信息转化为结构化中文情报，帮助中国企业更快发现、理解和跟进机会。</p>
         </div>
         {columns.map((column) => (
           <div key={column.title}>
@@ -25,17 +24,12 @@ export function Footer() {
             </ul>
           </div>
         ))}
-        {whatsappHref && (
-          <div>
-            <h2 className="text-xs font-black uppercase tracking-[0.15em] text-[#ffb21c]">联系</h2>
-            <a href={whatsappHref} target="_blank" rel="noreferrer" className="mt-4 inline-block text-sm text-white/58 transition-colors hover:text-white">
-              WhatsApp：+52 55 1910 3724
-            </a>
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="mt-3 block text-sm text-white/58 transition-colors hover:text-white">
-              {SUPPORT_EMAIL}
-            </a>
-          </div>
-        )}
+        <div>
+          <h2 className="text-xs font-black uppercase tracking-[0.15em] text-[#ffb21c]">联系</h2>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="mt-4 block text-sm text-white/58 transition-colors hover:text-white">
+            {SUPPORT_EMAIL}
+          </a>
+        </div>
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[94rem] flex-col gap-3 px-5 py-6 text-[11px] leading-5 text-white/38 sm:px-8 lg:flex-row lg:items-center lg:justify-between">

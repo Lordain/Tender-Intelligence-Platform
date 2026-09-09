@@ -52,6 +52,9 @@ export default function AccountPage() {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [confirmingAbandonPayment, setConfirmingAbandonPayment] = useState(false);
+  const [abandoningPayment, setAbandoningPayment] = useState(false);
+  const [abandonPaymentError, setAbandonPaymentError] = useState<string | null>(null);
   const [entitlementReloadKey, setEntitlementReloadKey] = useState(0);
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
   const [wireProof, setWireProof] = useState({ senderName: "", senderBank: "", senderReference: "", sentAt: "", customerNote: "" });
@@ -156,6 +159,25 @@ export default function AccountPage() {
     }
   }
 
+  async function abandonPendingPayment() {
+    setAbandoningPayment(true);
+    setAbandonPaymentError(null);
+    try {
+      const response = await fetch("/api/account/pending-payment", { method: "DELETE" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setAbandonPaymentError(result.error ?? "暂时无法关闭这笔待付款，请稍后重试。");
+        return;
+      }
+      setConfirmingAbandonPayment(false);
+      setEntitlementReloadKey((key) => key + 1);
+    } catch {
+      setAbandonPaymentError("网络错误，请稍后重试。");
+    } finally {
+      setAbandoningPayment(false);
+    }
+  }
+
   async function handleSaveProfile(event: FormEvent) {
     event.preventDefault();
     if (!user) return;
@@ -243,7 +265,8 @@ export default function AccountPage() {
         )}
 
         {billingStatus?.pendingPayment && billingStatus.pendingPayment.kind !== "international_wire" && (
-          <section className="mt-8 flex flex-col gap-4 rounded-2xl border border-[#e9b949] bg-[#fff7df] px-5 py-5 text-[#5f4300] shadow-[0_16px_40px_-34px_rgba(95,67,0,.55)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <section className="mt-8 rounded-2xl border border-[#e9b949] bg-[#fff7df] px-5 py-5 text-[#5f4300] shadow-[0_16px_40px_-34px_rgba(95,67,0,.55)] sm:px-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-black">
                 {billingStatus.pendingPayment.kind === "bank_transfer" ? "银行转账待付款" : "银行卡付款尚未完成"}
@@ -254,9 +277,36 @@ export default function AccountPage() {
                   : "可返回 Stripe 安全付款页面继续完成订阅。"}
               </p>
             </div>
-            <a href={billingStatus.pendingPayment.url} className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#071826] px-5 py-3 text-sm font-black text-white transition-colors hover:bg-[#12334a]">
-              {billingStatus.pendingPayment.kind === "bank_transfer" ? "查看转账资料与状态" : "继续付款"}
-            </a>
+              <div className="flex shrink-0 flex-wrap gap-3">
+                <a href={billingStatus.pendingPayment.url} className="inline-flex items-center justify-center rounded-xl bg-[#071826] px-5 py-3 text-sm font-black text-white transition-colors hover:bg-[#12334a]">
+                  {billingStatus.pendingPayment.kind === "bank_transfer" ? "查看转账资料与状态" : "继续付款"}
+                </a>
+                {!confirmingAbandonPayment && (
+                  <button type="button" onClick={() => { setConfirmingAbandonPayment(true); setAbandonPaymentError(null); }} className="rounded-xl border border-[#b98a25] px-5 py-3 text-sm font-black text-[#6d4c00] hover:bg-white/55">
+                    放弃这笔待付款
+                  </button>
+                )}
+              </div>
+            </div>
+            {confirmingAbandonPayment && (
+              <div className="mt-5 rounded-xl border border-[#d8b45d] bg-white/55 px-4 py-4">
+                <p className="text-sm font-black text-[#5f4300]">确认放弃这笔待付款？</p>
+                <p className="mt-2 text-xs leading-5 text-[#80621b]">
+                  {billingStatus.pendingPayment.kind === "bank_transfer"
+                    ? "未付款的 Stripe 转账账单及对应订阅将关闭。若 Stripe 已记录任何到账金额，则无法取消。"
+                    : "Stripe 安全付款页面将失效；未完成的付款不会扣款，也不会影响账户已有权限。"}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button type="button" onClick={abandonPendingPayment} disabled={abandoningPayment} className="rounded-lg bg-[#071826] px-4 py-2 text-xs font-black text-white disabled:opacity-50">
+                    {abandoningPayment ? "处理中…" : "确认放弃"}
+                  </button>
+                  <button type="button" onClick={() => { setConfirmingAbandonPayment(false); setAbandonPaymentError(null); }} disabled={abandoningPayment} className="rounded-lg border border-[#b98a25] px-4 py-2 text-xs font-bold text-[#6d4c00] disabled:opacity-50">
+                    返回
+                  </button>
+                </div>
+                {abandonPaymentError && <p className="mt-3 text-xs font-bold text-red-700">{abandonPaymentError}</p>}
+              </div>
+            )}
           </section>
         )}
 

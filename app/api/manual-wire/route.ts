@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (billingProfileError) return NextResponse.json({ error: "暂时无法检查付款状态。" }, { status: 500 });
   if (billingProfile?.pending_payment_request_id && billingProfile.pending_payment_kind !== "international_wire") {
-    return NextResponse.json({ error: "账户已有未完成的 Stripe 付款，请先在账户页处理。", url: billingProfile.pending_payment_url ?? "/account" }, { status: 409 });
+    return NextResponse.json({ error: "账户已有未完成的 Stripe 付款，请先在账户页处理。", url: "/account" }, { status: 409 });
   }
 
   const { data: existing, error: existingError } = await admin

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { BILLING_INTERVAL_LABELS, type BillingInterval } from "@/lib/access-control";
 import { PLAN_NAMES, type PaidPlan } from "@/lib/billing-catalog";
 
@@ -34,6 +35,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
   const [method, setMethod] = useState<"card" | "bank_transfer" | "international_wire">("card");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recoveryUrl, setRecoveryUrl] = useState<string | null>(null);
 
   function update<K extends keyof BillingProfile>(key: K, value: BillingProfile[K]) {
     setProfile((current) => ({ ...current, [key]: value }));
@@ -43,6 +45,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
     event.preventDefault();
     setSubmitting(true);
     setError(null);
+    setRecoveryUrl(null);
     try {
       const response = await fetch(method === "international_wire" ? "/api/manual-wire" : "/api/stripe/checkout", {
         method: "POST",
@@ -59,6 +62,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.url) {
         setError(result.error ?? "暂时无法创建付款页面，请稍后重试。");
+        setRecoveryUrl(typeof result.url === "string" && result.url.startsWith("/") ? result.url : null);
         return;
       }
       window.location.assign(result.url);
@@ -149,7 +153,12 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
 
         {method === "bank_transfer" && <p className="mt-4 rounded-xl border border-[#ffb21c]/25 bg-[#ffb21c]/10 px-4 py-3 text-xs leading-5 text-[#ffd16f]">转账不是自动扣款。每个续费周期Stripe会发送新的MXN账单和转账指示，到账后才延长账户权限。</p>}
         {method === "international_wire" && <p className="mt-4 rounded-xl border border-[#ffb21c]/25 bg-[#ffb21c]/10 px-4 py-3 text-xs leading-5 text-[#ffd16f]">此处只提交联系申请，不会显示银行资料。工作人员联系并完成身份核对后才会提供汇款信息；提交回执不代表到账。</p>}
-        {error && <p className="mt-4 text-xs font-bold leading-5 text-red-300">{error}</p>}
+        {error && (
+          <div className="mt-4 text-xs font-bold leading-5 text-red-300">
+            <p>{error}</p>
+            {recoveryUrl && <Link href={recoveryUrl} className="mt-2 inline-block text-[#ffd16f] underline underline-offset-4">前往账户页处理旧的待付款 →</Link>}
+          </div>
+        )}
         <button disabled={submitting} type="submit" className="mt-6 w-full rounded-xl bg-[#ffb21c] px-5 py-3.5 text-sm font-black text-[#071826] hover:bg-[#ffc247] disabled:opacity-50">
           {submitting ? "正在创建付款申请…" : method === "international_wire" ? "提交国际电汇联系申请" : method === "bank_transfer" ? "生成 Stripe 转账账单" : "前往 Stripe 安全付款"}
         </button>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { getStripeClient } from "@/lib/stripe";
+import { getInternationalWireInstructions } from "@/lib/manual-wire";
 
 export const runtime = "nodejs";
 
@@ -15,15 +16,14 @@ export async function GET() {
   const [profileResult, subscriptionResult] = await Promise.all([
     admin
       .from("billing_profiles")
-      .select("pending_payment_kind, pending_payment_url, pending_payment_expires_at")
+      .select("pending_payment_request_id, pending_payment_kind, pending_payment_url, pending_payment_expires_at")
       .eq("user_id", user.id)
       .maybeSingle(),
     admin
       .from("subscriptions")
-      .select("stripe_subscription_id")
+      .select("stripe_subscription_id, payment_source")
       .eq("user_id", user.id)
       .in("status", ["active", "trialing", "past_due"])
-      .not("stripe_subscription_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -37,13 +37,14 @@ export async function GET() {
   const profile = profileResult.data;
   let pendingPayment = profile?.pending_payment_kind && profile.pending_payment_url
     ? {
-        kind: profile.pending_payment_kind as "card" | "bank_transfer",
+        kind: profile.pending_payment_kind as "card" | "bank_transfer" | "international_wire",
         url: profile.pending_payment_url,
         expiresAt: profile.pending_payment_expires_at as string | null,
       }
     : null;
 
-  let paymentCollection: "card" | "bank_transfer" | null = null;
+  let paymentCollection: "card" | "bank_transfer" | "international_wire" | null =
+    subscriptionResult.data?.payment_source === "manual" ? "international_wire" : null;
   const subscriptionId = subscriptionResult.data?.stripe_subscription_id as string | null | undefined;
   const stripe = getStripeClient();
   if (subscriptionId && stripe) {
@@ -82,5 +83,21 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ pendingPayment, paymentCollection });
+  let manualWire = null;
+  if (profile?.pending_payment_kind === "international_wire" && profile.pending_payment_request_id) {
+    const { data: wireRequest, error: wireError } = await admin
+      .from("manual_payment_requests")
+      .select("id, reference, plan, billing_interval, currency, amount_minor, status, sender_name, sender_bank, sender_reference, sent_at, customer_note, created_at")
+      .eq("id", profile.pending_payment_request_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (wireError) {
+      console.error("[billing-status] Manual wire lookup failed", wireError);
+      return NextResponse.json({ error: "暂时无法读取国际电汇状态。" }, { status: 500 });
+    }
+    const instructions = getInternationalWireInstructions();
+    if (wireRequest && instructions) manualWire = { request: wireRequest, instructions };
+  }
+
+  return NextResponse.json({ pendingPayment, paymentCollection, manualWire });
 }

@@ -6,6 +6,7 @@ import { bankTransferQuote, PLAN_PRICES_USD } from "@/lib/billing-catalog";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { parseStripeSelection } from "@/lib/stripe";
+import { internationalWireEnabled } from "@/lib/manual-wire";
 
 export const metadata: Metadata = { title: "确认订阅与付款" };
 
@@ -45,6 +46,7 @@ export default async function SubscribePage({
           interval={selected.interval}
           usdAmount={PLAN_PRICES_USD[selected.plan][selected.interval]}
           bankQuote={quote ? { mxnAmount: quote.mxnAmount, rate, validDays } : null}
+          internationalWireEnabled={internationalWireEnabled()}
           initialProfile={{
             buyerType: profile?.buyer_type === "individual" ? "individual" : "business",
             legalName: profile?.legal_name ?? "",

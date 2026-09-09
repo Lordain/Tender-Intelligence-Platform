@@ -12,6 +12,7 @@ const links = [
   { href: "/admin/import-analysis", label: "导入分析结果", detail: "批量分析写入" },
   { href: "/admin/documents-needed", label: "待补文件", detail: "下载+上传分析" },
   { href: "/admin/email-preview", label: "邮件预览", detail: "通知邮件效果" },
+  { href: "/admin/billing", label: "收款与订阅", detail: "人工电汇与权限" },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {

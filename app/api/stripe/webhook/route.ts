@@ -67,6 +67,7 @@ async function saveSubscription(
     billing_interval: interval,
     stripe_customer_id: stripeObjectId(subscription.customer),
     stripe_subscription_id: subscription.id,
+    payment_source: "stripe",
     current_period_start: periodStart,
     current_period_end: periodEnd,
     cancel_at_period_end: subscription.cancel_at_period_end,

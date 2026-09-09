@@ -18,11 +18,37 @@ const SUPABASE_CONFIGURED = Boolean(
 
 type BillingStatus = {
   pendingPayment: {
-    kind: "card" | "bank_transfer";
+    kind: "card" | "bank_transfer" | "international_wire";
     url: string;
     expiresAt: string | null;
   } | null;
-  paymentCollection: "card" | "bank_transfer" | null;
+  paymentCollection: "card" | "bank_transfer" | "international_wire" | null;
+  manualWire: {
+    request: {
+      id: string;
+      reference: string;
+      plan: "professional" | "enterprise";
+      billing_interval: "monthly" | "semiannual" | "annual";
+      currency: "USD";
+      amount_minor: number;
+      status: "pending" | "proof_submitted";
+      sender_name: string | null;
+      sender_bank: string | null;
+      sender_reference: string | null;
+      sent_at: string | null;
+      customer_note: string | null;
+    };
+    instructions: {
+      provider: string;
+      beneficiaryName: string;
+      bankName: string;
+      accountNumber: string;
+      routing: string | null;
+      swift: string;
+      bankAddress: string | null;
+      beneficiaryAddress: string | null;
+    };
+  } | null;
 };
 
 export default function AccountPage() {
@@ -38,6 +64,9 @@ export default function AccountPage() {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [entitlementReloadKey, setEntitlementReloadKey] = useState(0);
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
+  const [wireProof, setWireProof] = useState({ senderName: "", senderBank: "", senderReference: "", sentAt: "", customerNote: "" });
+  const [wireSubmitting, setWireSubmitting] = useState(false);
+  const [wireMessage, setWireMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!SUPABASE_CONFIGURED || loading) return;
@@ -69,6 +98,32 @@ export default function AccountPage() {
 
   const entitlement = useEntitlement(Boolean(user), entitlementReloadKey);
   const isBankTransfer = billingStatus?.paymentCollection === "bank_transfer";
+
+  async function submitWireProof(event: FormEvent) {
+    event.preventDefault();
+    const requestId = billingStatus?.manualWire?.request.id;
+    if (!requestId) return;
+    setWireSubmitting(true);
+    setWireMessage(null);
+    try {
+      const response = await fetch("/api/manual-wire", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...wireProof, requestId, sentAt: new Date(wireProof.sentAt).toISOString() }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setWireMessage(result.error ?? "暂时无法提交汇款资料。");
+        return;
+      }
+      setWireMessage("汇款资料已提交，管理员将在核实足额到账后开通订阅。");
+      setEntitlementReloadKey((key) => key + 1);
+    } catch {
+      setWireMessage("网络错误，请稍后重试。");
+    } finally {
+      setWireSubmitting(false);
+    }
+  }
 
   // Only the person who owns the subscription may cancel it; an enterprise
   // seat holder reads the owner's dates but has nothing to cancel.
@@ -161,7 +216,47 @@ export default function AccountPage() {
           </p>
         </header>
 
-        {billingStatus?.pendingPayment && (
+        {billingStatus?.manualWire && (
+          <section className="mt-8 rounded-3xl border border-[#d5dee2] bg-[#fffdf9] p-6 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#b86e00]">International wire · manual review</p>
+                <h2 className="mt-2 text-xl font-black text-[#071826]">国际银行电汇待确认</h2>
+                <p className="mt-2 text-sm leading-6 text-[#64717c]">应付 <strong className="text-[#071826]">US${(billingStatus.manualWire.request.amount_minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} 美元（USD）</strong>。请勿换算为墨西哥比索。</p>
+              </div>
+              <span className="w-fit rounded-full bg-[#fff0ca] px-3 py-1 text-xs font-black text-[#8a5700]">{billingStatus.manualWire.request.status === "proof_submitted" ? "已提交，待核账" : "等待汇款"}</span>
+            </div>
+            <div className="mt-6 grid gap-5 lg:grid-cols-2">
+              <dl className="grid gap-3 rounded-2xl bg-[#f1f3f2] p-5 text-sm">
+                <div><dt className="text-xs font-bold text-[#7a878f]">唯一付款附言</dt><dd className="mt-1 font-black text-[#071826]">{billingStatus.manualWire.request.reference}</dd></div>
+                <div><dt className="text-xs font-bold text-[#7a878f]">收款平台</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.provider}</dd></div>
+                <div><dt className="text-xs font-bold text-[#7a878f]">收款人</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.beneficiaryName}</dd></div>
+                <div><dt className="text-xs font-bold text-[#7a878f]">银行</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.bankName}</dd></div>
+                <div><dt className="text-xs font-bold text-[#7a878f]">账号 / IBAN</dt><dd className="mt-1 break-all font-bold text-[#071826]">{billingStatus.manualWire.instructions.accountNumber}</dd></div>
+                {billingStatus.manualWire.instructions.routing && <div><dt className="text-xs font-bold text-[#7a878f]">Routing / ABA</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.routing}</dd></div>}
+                <div><dt className="text-xs font-bold text-[#7a878f]">SWIFT / BIC</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.swift}</dd></div>
+                {billingStatus.manualWire.instructions.bankAddress && <div><dt className="text-xs font-bold text-[#7a878f]">银行地址</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.bankAddress}</dd></div>}
+                {billingStatus.manualWire.instructions.beneficiaryAddress && <div><dt className="text-xs font-bold text-[#7a878f]">收款人地址</dt><dd className="mt-1 font-bold text-[#071826]">{billingStatus.manualWire.instructions.beneficiaryAddress}</dd></div>}
+              </dl>
+              <div>
+                <div className="rounded-2xl border border-[#e9b949] bg-[#fff7df] px-4 py-3 text-xs leading-5 text-[#6e510b]">汇款币种必须为 USD，并选择由汇款方承担全部手续费（OUR）。附言必须填写唯一付款编号；少于应付金额时不会开通。</div>
+                {billingStatus.manualWire.request.status === "pending" ? (
+                  <form onSubmit={submitWireProof} className="mt-4 grid gap-3">
+                    <input required maxLength={160} placeholder="汇款人 / 公司名称" value={wireProof.senderName} onChange={(event) => setWireProof((value) => ({ ...value, senderName: event.target.value }))} className="h-11 rounded-xl border border-[#d8e0e3] px-4 text-sm" />
+                    <input required maxLength={160} placeholder="汇出银行" value={wireProof.senderBank} onChange={(event) => setWireProof((value) => ({ ...value, senderBank: event.target.value }))} className="h-11 rounded-xl border border-[#d8e0e3] px-4 text-sm" />
+                    <input required maxLength={160} placeholder="银行交易编号 / SWIFT 参考号" value={wireProof.senderReference} onChange={(event) => setWireProof((value) => ({ ...value, senderReference: event.target.value }))} className="h-11 rounded-xl border border-[#d8e0e3] px-4 text-sm" />
+                    <label className="grid gap-1 text-xs font-bold text-[#64717c]">汇款时间<input required type="datetime-local" value={wireProof.sentAt} onChange={(event) => setWireProof((value) => ({ ...value, sentAt: event.target.value }))} className="h-11 rounded-xl border border-[#d8e0e3] px-4 text-sm text-[#071826]" /></label>
+                    <textarea maxLength={1000} rows={3} placeholder="备注（选填）" value={wireProof.customerNote} onChange={(event) => setWireProof((value) => ({ ...value, customerNote: event.target.value }))} className="rounded-xl border border-[#d8e0e3] px-4 py-3 text-sm" />
+                    <button disabled={wireSubmitting} className="rounded-xl bg-[#071826] px-5 py-3 text-sm font-black text-white disabled:opacity-50">{wireSubmitting ? "提交中…" : "我已汇款，提交核账资料"}</button>
+                  </form>
+                ) : <p className="mt-4 text-sm font-bold leading-6 text-emerald-700">已收到你的汇款资料。提交回执不会自动开通，管理员将以实际到账记录为准。</p>}
+                {wireMessage && <p className="mt-3 text-xs font-bold leading-5 text-[#64717c]">{wireMessage}</p>}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {billingStatus?.pendingPayment && billingStatus.pendingPayment.kind !== "international_wire" && (
           <section className="mt-8 flex flex-col gap-4 rounded-2xl border border-[#e9b949] bg-[#fff7df] px-5 py-5 text-[#5f4300] shadow-[0_16px_40px_-34px_rgba(95,67,0,.55)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div>
               <h2 className="text-base font-black">

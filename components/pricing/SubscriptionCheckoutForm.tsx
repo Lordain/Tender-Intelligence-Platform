@@ -22,15 +22,16 @@ type Props = {
   interval: BillingInterval;
   usdAmount: number;
   bankQuote: { mxnAmount: number; rate: number; validDays: number } | null;
+  internationalWireEnabled: boolean;
   initialProfile: BillingProfile;
 };
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-const mxn = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2 });
+const mxn = new Intl.NumberFormat("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote, initialProfile }: Props) {
+export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote, internationalWireEnabled, initialProfile }: Props) {
   const [profile, setProfile] = useState(initialProfile);
-  const [method, setMethod] = useState<"card" | "bank_transfer">("card");
+  const [method, setMethod] = useState<"card" | "bank_transfer" | "international_wire">("card");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +44,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
     setSubmitting(true);
     setError(null);
     try {
-      const response = await fetch("/api/stripe/checkout", {
+      const response = await fetch(method === "international_wire" ? "/api/manual-wire" : "/api/stripe/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -126,21 +127,31 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
           </label>
           <label className={`block rounded-2xl border p-4 ${bankQuote ? "cursor-pointer" : "cursor-not-allowed opacity-55"} ${method === "bank_transfer" ? "border-[#ffb21c] bg-[#ffb21c]/10" : "border-white/15"}`}>
             <input type="radio" name="payment-method" value="bank_transfer" disabled={!bankQuote} checked={method === "bank_transfer"} onChange={() => setMethod("bank_transfer")} className="mr-3" />
-            <span className="text-sm font-black">SPEI 银行转账</span>
+            <span className="text-sm font-black">SPEI 银行转账（仅限墨西哥境内银行）</span>
             {bankQuote ? (
               <span className="mt-2 block pl-6 text-xs leading-5 text-white/65">
-                应付 {mxn.format(bankQuote.mxnAmount)}，参考汇率 1 USD = {bankQuote.rate.toFixed(2)} MXN。Stripe账单生成后金额锁定 {bankQuote.validDays} 天。
+                应付 {mxn.format(bankQuote.mxnAmount)} 墨西哥比索（MXN）。请从墨西哥银行账户通过 SPEI 转账；境外客户请使用银行卡付款。参考汇率 1 USD = {bankQuote.rate.toFixed(2)} MXN，Stripe账单生成后金额锁定 {bankQuote.validDays} 天。
               </span>
             ) : (
               <span className="mt-1 block pl-6 text-xs leading-5 text-white/55">上线前配置当期USD/MXN转账汇率后开放。</span>
             )}
           </label>
+          <label className={`block rounded-2xl border p-4 ${internationalWireEnabled ? "cursor-pointer" : "cursor-not-allowed opacity-55"} ${method === "international_wire" ? "border-[#ffb21c] bg-[#ffb21c]/10" : "border-white/15"}`}>
+            <input type="radio" name="payment-method" value="international_wire" disabled={!internationalWireEnabled} checked={method === "international_wire"} onChange={() => setMethod("international_wire")} className="mr-3" />
+            <span className="text-sm font-black">国际银行电汇（人工确认）</span>
+            <span className="mt-1 block pl-6 text-xs leading-5 text-white/55">
+              {internationalWireEnabled
+                ? `境外企业以美元（USD）汇款，金额 ${usd.format(usdAmount)}。到账核实后人工开通，不会自动续费。`
+                : "收款账户审核完成后开放。"}
+            </span>
+          </label>
         </fieldset>
 
         {method === "bank_transfer" && <p className="mt-4 rounded-xl border border-[#ffb21c]/25 bg-[#ffb21c]/10 px-4 py-3 text-xs leading-5 text-[#ffd16f]">转账不是自动扣款。每个续费周期Stripe会发送新的MXN账单和转账指示，到账后才延长账户权限。</p>}
+        {method === "international_wire" && <p className="mt-4 rounded-xl border border-[#ffb21c]/25 bg-[#ffb21c]/10 px-4 py-3 text-xs leading-5 text-[#ffd16f]">请使用申请页显示的唯一附言编号，并选择由汇款方承担全部中间行费用（OUR）。提交回执不代表到账，管理员核实足额入账后才会开通。</p>}
         {error && <p className="mt-4 text-xs font-bold leading-5 text-red-300">{error}</p>}
         <button disabled={submitting} type="submit" className="mt-6 w-full rounded-xl bg-[#ffb21c] px-5 py-3.5 text-sm font-black text-[#071826] hover:bg-[#ffc247] disabled:opacity-50">
-          {submitting ? "正在创建安全付款…" : method === "bank_transfer" ? "生成 Stripe 转账账单" : "前往 Stripe 安全付款"}
+          {submitting ? "正在创建付款申请…" : method === "international_wire" ? "生成国际电汇申请" : method === "bank_transfer" ? "生成 Stripe 转账账单" : "前往 Stripe 安全付款"}
         </button>
       </aside>
     </form>

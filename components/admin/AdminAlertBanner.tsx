@@ -18,10 +18,8 @@ const KIND_LABEL: Record<AdminAlert["kind"], string> = {
 
 /**
  * Rendered in AdminShell on every /admin/* page — shows unresolved rows
- * from admin_alerts (see lib/admin-alerts.ts for what writes them: real
- * Anthropic/DashScope quota/rate-limit errors or network failures from
- * the two web tools that call an LLM directly, translate-tenders and
- * analyze-document). Fetches once on mount, not polled — this is a
+ * from admin_alerts (see lib/admin-alerts.ts and the Stripe webhook
+ * monitor for what writes them). Fetches once on mount, not polled — this is a
  * locally-run admin tool, not a monitoring dashboard; refresh the page
  * to see anything that happened since.
  */
@@ -57,7 +55,7 @@ export function AdminAlertBanner() {
       <div className="mx-auto flex max-w-6xl flex-col gap-2">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-red-800">
-            {alerts.length} 条未处理的系统告警（LLM 调用出错 — 额度用完或连接失败）
+            {alerts.length} 条未处理的系统告警（接口、额度或支付处理异常）
           </p>
           <button type="button" onClick={() => resolve()} className="text-xs font-semibold text-red-700 underline underline-offset-2 hover:text-red-900">
             全部标记已读

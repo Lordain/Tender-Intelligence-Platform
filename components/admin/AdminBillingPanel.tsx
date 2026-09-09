@@ -32,6 +32,7 @@ export function AdminBillingPanel() {
   const [busy, setBusy] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [showRequestHistory, setShowRequestHistory] = useState(false);
+  const [webhookTestStatus, setWebhookTestStatus] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [confirmingStop, setConfirmingStop] = useState<string | null>(null);
   const [confirmingExtend, setConfirmingExtend] = useState<string | null>(null);
@@ -84,10 +85,35 @@ export function AdminBillingPanel() {
     void run({ action: "activate", ...activation }, "activate");
   }
 
+  async function testWebhookAlerts() {
+    setBusy("webhook-alert-test"); setError(null); setWebhookTestStatus(null);
+    try {
+      const response = await fetch("/api/admin/webhook-alert-test", { method: "POST" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? "Webhook 告警测试失败。");
+      setWebhookTestStatus(result.message ?? "测试通知已发送。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Webhook 告警测试失败。");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-[94rem] px-5 py-8 sm:px-8">
       <AdminPageHeader eyebrow="Billing operations" title="收款与订阅" description="人工电汇只有在核实足额到账后才能开通。Stripe 订阅仍由 Stripe 管理。" />
       {error && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</div>}
+
+      <section className="mt-6 flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-black text-[#071826]">Stripe Webhook 监控</h2>
+          <p className="mt-1 text-xs leading-5 text-[#64717c]">处理失败会显示后台告警并发送邮件；Stripe 重试成功后发送恢复通知。</p>
+          {webhookTestStatus && <p className="mt-2 text-xs font-bold text-emerald-700">{webhookTestStatus}</p>}
+        </div>
+        <button type="button" disabled={busy !== null} onClick={() => void testWebhookAlerts()} className="h-11 shrink-0 rounded-xl border border-[#b9c8ce] bg-white px-4 text-xs font-black text-[#071826] hover:bg-[#f4f7f7] disabled:opacity-50">
+          {busy === "webhook-alert-test" ? "正在发送…" : "发送失败与恢复测试邮件"}
+        </button>
+      </section>
 
       <section className="mt-6 rounded-2xl border border-[#dbe2e5] bg-white p-5">
         <h2 className="text-lg font-black text-[#071826]">人工开通订阅</h2>

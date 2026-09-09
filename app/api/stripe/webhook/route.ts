@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { subscriptionStatusFromStripe, type BillingInterval } from "@/lib/access-control";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { reportStripeWebhookFailure, resolveStripeWebhookFailure } from "@/lib/notifications/stripe-webhook-alert";
 import {
   getStripeClient,
   stripeObjectId,
@@ -193,8 +194,10 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error(`[stripe-webhook] ${event.type} ${event.id} failed`, error);
+    after(() => reportStripeWebhookFailure(admin, event, error));
     return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 
+  after(() => resolveStripeWebhookFailure(admin, event));
   return NextResponse.json({ received: true });
 }

@@ -60,8 +60,6 @@ export function NotificationPreferences({
   const [keywordDraft, setKeywordDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [testSending, setTestSending] = useState(false);
-  const [testMessage, setTestMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,7 +81,6 @@ export function NotificationPreferences({
     setSaving(true);
     setSaved(false);
     setError(null);
-    setTestMessage(null);
     const { error: saveError } = await getSupabaseBrowserClient().from("email_notification_preferences").upsert({ user_id: userId, enabled, countries, industries, statuses, relevance_tiers: tiers, keywords, timezone: "America/Mexico_City", updated_at: new Date().toISOString() });
     setSaving(false);
     if (saveError) {
@@ -91,22 +88,6 @@ export function NotificationPreferences({
       return;
     }
     setSaved(true);
-  }
-
-  async function sendTest() {
-    setTestSending(true);
-    setError(null);
-    setTestMessage(null);
-    try {
-      const response = await fetch("/api/account/notification-test", { method: "POST" });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error ?? "测试邮件发送失败。");
-      setTestMessage(result.message ?? "测试邮件已发送。");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "测试邮件发送失败。");
-    } finally {
-      setTestSending(false);
-    }
   }
 
   function addKeyword() {
@@ -179,11 +160,8 @@ export function NotificationPreferences({
 
       <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[#e4e9eb] pt-6">
         <button type="button" onClick={save} disabled={saving} className="rounded-xl bg-[#ffb21c] px-5 py-3 text-xs font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50">{saving ? "保存中…" : "保存通知设置"}</button>
-        <button type="button" onClick={sendTest} disabled={saving || testSending || !enabled || !saved} className="rounded-xl border border-[#071826] px-5 py-3 text-xs font-black text-[#071826] transition-colors hover:bg-[#071826] hover:text-white disabled:cursor-not-allowed disabled:opacity-40">{testSending ? "发送中…" : "发送测试邮件"}</button>
         {saved && <span className="text-xs font-semibold text-emerald-600">已保存</span>}
       </div>
-      {!saved && enabled && <p className="mt-3 text-[11px] text-[#7a878f]">请先保存当前设置，再发送测试邮件。</p>}
-      {testMessage && <p className="mt-3 text-xs font-bold text-emerald-700">{testMessage}</p>}
       {error && <p className="mt-3 text-xs font-bold text-red-700">{error}</p>}
     </section>
   );

@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { subscriptionStatusFromStripe, type BillingInterval } from "@/lib/access-control";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { notifyInvoiceFinalizationFailed, notifyInvoicePaymentFailed, resolveInvoiceAlerts } from "@/lib/notifications/stripe-billing-alert";
 import { reportStripeWebhookFailure, resolveStripeWebhookFailure } from "@/lib/notifications/stripe-webhook-alert";
 import {
   getStripeClient,
@@ -169,16 +170,33 @@ export async function POST(request: Request) {
         await clearPendingPayment(admin, session.id);
       }
     } else if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {
-      const subscriptionId = subscriptionIdFromInvoice(event.data.object);
+      let invoice = event.data.object;
+      const subscriptionId = subscriptionIdFromInvoice(invoice);
       if (subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        if (event.type === "invoice.payment_failed") invoice = await stripe.invoices.retrieve(invoice.id);
         // A send-invoice subscription can be reported as active before the
         // transfer arrives. Only invoice.paid may create or extend access.
         if (event.type === "invoice.paid" || !isBankTransferSubscription(subscription)) {
           await saveSubscription(admin, subscription);
-          if (event.type === "invoice.paid") await clearPendingPayment(admin, subscription.id);
+          if (event.type === "invoice.paid") {
+            await clearPendingPayment(admin, subscription.id);
+            after(() => resolveInvoiceAlerts(admin, invoice.id).catch((error) => console.error("[stripe-billing-alert] Failed to resolve invoice alerts", error)));
+          } else if (invoice.status === "paid") {
+            // Stripe doesn't guarantee event ordering. If this old failure
+            // arrives after payment, sync current state without alarming the customer.
+            after(() => resolveInvoiceAlerts(admin, invoice.id).catch((error) => console.error("[stripe-billing-alert] Failed to resolve invoice alerts", error)));
+          } else {
+            const { userId } = subscriptionIdentity(subscription);
+            after(() => notifyInvoicePaymentFailed({ admin, eventId: event.id, invoice, userId })
+              .catch((error) => console.error("[stripe-billing-alert] Payment failure notification failed", error)));
+          }
         }
       }
+    } else if (event.type === "invoice.finalization_failed") {
+      const invoice = event.data.object;
+      after(() => notifyInvoiceFinalizationFailed({ admin, eventId: event.id, invoice })
+        .catch((error) => console.error("[stripe-billing-alert] Finalization failure notification failed", error)));
     } else if (event.type === "customer.subscription.updated") {
       const subscription = await stripe.subscriptions.retrieve(event.data.object.id);
       if (!isBankTransferSubscription(subscription) || (await hasStoredSubscription(admin, subscription.id))) {

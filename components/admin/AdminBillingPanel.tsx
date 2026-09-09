@@ -99,6 +99,20 @@ export function AdminBillingPanel() {
     }
   }
 
+  async function testBillingAlerts() {
+    setBusy("billing-alert-test"); setError(null); setWebhookTestStatus(null);
+    try {
+      const response = await fetch("/api/admin/billing-alert-test", { method: "POST" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? "付款异常邮件测试失败。");
+      setWebhookTestStatus(result.message ?? "付款异常测试通知已发送。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "付款异常邮件测试失败。");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-[94rem] px-5 py-8 sm:px-8">
       <AdminPageHeader eyebrow="Billing operations" title="收款与订阅" description="人工电汇只有在核实足额到账后才能开通。Stripe 订阅仍由 Stripe 管理。" />
@@ -110,9 +124,14 @@ export function AdminBillingPanel() {
           <p className="mt-1 text-xs leading-5 text-[#64717c]">处理失败会显示后台告警并发送邮件；Stripe 重试成功后发送恢复通知。</p>
           {webhookTestStatus && <p className="mt-2 text-xs font-bold text-emerald-700">{webhookTestStatus}</p>}
         </div>
-        <button type="button" disabled={busy !== null} onClick={() => void testWebhookAlerts()} className="h-11 shrink-0 rounded-xl border border-[#b9c8ce] bg-white px-4 text-xs font-black text-[#071826] hover:bg-[#f4f7f7] disabled:opacity-50">
-          {busy === "webhook-alert-test" ? "正在发送…" : "发送失败与恢复测试邮件"}
-        </button>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <button type="button" disabled={busy !== null} onClick={() => void testWebhookAlerts()} className="h-11 rounded-xl border border-[#b9c8ce] bg-white px-4 text-xs font-black text-[#071826] hover:bg-[#f4f7f7] disabled:opacity-50">
+            {busy === "webhook-alert-test" ? "正在发送…" : "测试 Webhook 监控邮件"}
+          </button>
+          <button type="button" disabled={busy !== null} onClick={() => void testBillingAlerts()} className="h-11 rounded-xl border border-[#b9c8ce] bg-white px-4 text-xs font-black text-[#071826] hover:bg-[#f4f7f7] disabled:opacity-50">
+            {busy === "billing-alert-test" ? "正在发送…" : "测试付款异常邮件"}
+          </button>
+        </div>
       </section>
 
       <section className="mt-6 rounded-2xl border border-[#dbe2e5] bg-white p-5">

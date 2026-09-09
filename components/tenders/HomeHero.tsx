@@ -27,7 +27,7 @@ const COVERED_INDUSTRIES = [
   ["transport", "交通", "Transportation"],
   ["construction", "基建", "Construction"],
   ["mining", "矿业", "Mining"],
-  ["water", "水务", "Water"],
+  ["water", "水工程", "Water"],
   ["vehicles", "车辆", "Vehicles"],
   ["heavy", "重设", "Heavy equipment"],
 ] as const;

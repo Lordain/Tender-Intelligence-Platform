@@ -28,7 +28,7 @@ const sampleTenders: DigestTender[] = [
     buyer: "国家水务委员会",
     tender_number: "CONAGUA-LO-2026-032",
     country: "墨西哥",
-    industries: ["水务", "土建"],
+    industries: ["水工程", "土建"],
     status: "open",
     relevance_tier: "flagship",
     publication_date: "2026-09-06",

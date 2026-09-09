@@ -97,7 +97,7 @@ function TenderSearchForm({
           type="search"
           value={draftQuery}
           onChange={(event) => setDraftQuery(event.target.value)}
-          placeholder="搜索项目名称、编号或发布机构"
+          placeholder="搜索项目名称、摘要、编号或发布机构"
           className="h-11 w-full rounded-xl border border-[#d8e0e3] bg-white pl-12 pr-4 text-sm placeholder:text-[#919ca2] focus:border-[#ffb21c] focus:outline-none"
         />
       </label>

@@ -16,7 +16,11 @@ type Subscription = {
   current_period_start: string | null; current_period_end: string | null; cancel_at_period_end: boolean;
   payment_source: "stripe" | "manual"; stripe_subscription_id: string | null;
 };
-type Audit = { id: string; email: string; adminEmail: string | null; manual_payment_request_id: string | null; action: string; note: string | null; created_at: string };
+type Audit = {
+  id: string; email: string; adminEmail: string | null; manual_payment_request_id: string | null;
+  subscription_id: string | null; action: string; note: string | null;
+  details: Record<string, unknown> | null; created_at: string;
+};
 type Data = { requests: PaymentRequest[]; subscriptions: Subscription[]; audit: Audit[] };
 
 const statusNames: Record<string, string> = { pending: "等待汇款", proof_submitted: "待核账", paid: "已到账", rejected: "已拒绝", expired: "已过期", cancelled: "已取消", active: "有效", trialing: "试用", past_due: "逾期" };
@@ -31,6 +35,7 @@ export function AdminBillingPanel() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [confirmingStop, setConfirmingStop] = useState<string | null>(null);
   const [confirmingExtend, setConfirmingExtend] = useState<string | null>(null);
+  const [confirmingUndoExtend, setConfirmingUndoExtend] = useState<string | null>(null);
   const [activation, setActivation] = useState<{ email: string; plan: PaidPlan; interval: BillingInterval; note: string }>({ email: "", plan: "professional", interval: "monthly", note: "" });
 
   const load = useCallback(async () => {
@@ -64,6 +69,15 @@ export function AdminBillingPanel() {
   const visibleRequests = showRequestHistory || needle ? requests : openRequests;
   const subscriptions = useMemo(() => (data?.subscriptions ?? []).filter((item) => !needle || item.email.toLowerCase().includes(needle)), [data, needle]);
   const contactedRequests = useMemo(() => new Set((data?.audit ?? []).filter((item) => item.action === "manual_payment_customer_contacted").map((item) => item.manual_payment_request_id)), [data]);
+  const undoableExtensions = useMemo(() => {
+    const latestActions = new Map<string, Audit>();
+    for (const audit of data?.audit ?? []) {
+      if (audit.subscription_id && !latestActions.has(audit.subscription_id)) latestActions.set(audit.subscription_id, audit);
+    }
+    return new Set([...latestActions.entries()]
+      .filter(([, audit]) => audit.action === "manual_subscription_extend" && Object.hasOwn(audit.details ?? {}, "previous_cancel_at_period_end"))
+      .map(([subscriptionId]) => subscriptionId));
+  }, [data]);
 
   function activate(event: FormEvent) {
     event.preventDefault();
@@ -144,7 +158,58 @@ export function AdminBillingPanel() {
       <h2 className="mt-10 text-xl font-black text-[#071826]">订阅管理</h2>
       <div className="mt-3 overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-white">
         <table className="w-full min-w-[64rem] text-left text-sm"><thead className="bg-[#f1f3f2] text-xs text-[#64717c]"><tr><th className="p-3">账号</th><th>套餐</th><th>来源</th><th>状态</th><th>到期</th><th className="pr-3 text-right">操作</th></tr></thead>
-          <tbody className="divide-y divide-[#e5eaec]">{subscriptions.map((item) => <tr key={item.id}><td className="p-3 font-bold">{item.email}</td><td>{PLAN_NAMES[item.plan]} · {BILLING_INTERVAL_LABELS[item.billing_interval]}</td><td>{item.payment_source === "stripe" ? "Stripe" : "人工"}</td><td>{statusNames[item.status] ?? item.status}{item.cancel_at_period_end ? "（到期停用）" : ""}</td><td>{item.current_period_end ? new Date(item.current_period_end).toLocaleDateString("zh-CN") : "—"}</td><td className="py-2 pr-3 text-right">{item.payment_source === "manual" ? <div className="flex justify-end gap-2">{confirmingExtend === item.id ? <div className="flex flex-col items-end gap-1"><span className="text-[11px] font-bold text-amber-700">将延长一个计费周期，无法自动撤销</span><div className="flex gap-2"><button disabled={busy !== null} onClick={() => { setConfirmingExtend(null); void run({ action: "extend", subscriptionId: item.id }, item.id); }} className="rounded-lg bg-[#071826] px-2 py-1 text-xs font-black text-white">确认续一期</button><button disabled={busy !== null} onClick={() => setConfirmingExtend(null)} className="rounded-lg border px-2 py-1 text-xs font-bold">返回</button></div></div> : <button disabled={busy !== null} onClick={() => { setConfirmingStop(null); setConfirmingExtend(item.id); }} className="rounded-lg border px-2 py-1 text-xs font-bold">续一期</button>}{item.cancel_at_period_end ? <button disabled={busy !== null} onClick={() => void run({ action: "resume", subscriptionId: item.id }, item.id)} className="rounded-lg border px-2 py-1 text-xs font-bold">恢复</button> : <button disabled={busy !== null} onClick={() => void run({ action: "cancel_period_end", subscriptionId: item.id }, item.id)} className="rounded-lg border px-2 py-1 text-xs font-bold">到期停用</button>}{confirmingStop === item.id ? <><button disabled={busy !== null} onClick={() => { setConfirmingStop(null); void run({ action: "cancel_now", subscriptionId: item.id }, item.id); }} className="rounded-lg bg-red-700 px-2 py-1 text-xs font-black text-white">确认停用</button><button onClick={() => setConfirmingStop(null)} className="rounded-lg border px-2 py-1 text-xs font-bold">返回</button></> : <button disabled={busy !== null} onClick={() => { setConfirmingExtend(null); setConfirmingStop(item.id); }} className="rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-700">立即停用</button>}</div> : <span className="text-xs text-[#849098]">请在 Stripe 管理</span>}</td></tr>)}</tbody>
+          <tbody className="divide-y divide-[#e5eaec]">
+            {subscriptions.map((item) => (
+              <tr key={item.id}>
+                <td className="p-3 font-bold">{item.email}</td>
+                <td>{PLAN_NAMES[item.plan]} · {BILLING_INTERVAL_LABELS[item.billing_interval]}</td>
+                <td>{item.payment_source === "stripe" ? "Stripe" : "人工"}</td>
+                <td>{statusNames[item.status] ?? item.status}{item.cancel_at_period_end ? "（到期停用）" : ""}</td>
+                <td>{item.current_period_end ? new Date(item.current_period_end).toLocaleDateString("zh-CN") : "—"}</td>
+                <td className="py-2 pr-3 text-right">
+                  {item.payment_source === "manual" ? (
+                    <div className="flex justify-end gap-2">
+                      {confirmingExtend === item.id ? (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[11px] font-bold text-amber-700">将延长一个计费周期；下一次操作前可撤销</span>
+                          <div className="flex gap-2">
+                            <button disabled={busy !== null} onClick={() => { setConfirmingExtend(null); void run({ action: "extend", subscriptionId: item.id }, item.id); }} className="rounded-lg bg-[#071826] px-2 py-1 text-xs font-black text-white">确认续一期</button>
+                            <button disabled={busy !== null} onClick={() => setConfirmingExtend(null)} className="rounded-lg border px-2 py-1 text-xs font-bold">返回</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button disabled={busy !== null} onClick={() => { setConfirmingStop(null); setConfirmingUndoExtend(null); setConfirmingExtend(item.id); }} className="rounded-lg border px-2 py-1 text-xs font-bold">续一期</button>
+                      )}
+                      {undoableExtensions.has(item.id) && (confirmingUndoExtend === item.id ? (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[11px] font-bold text-amber-700">恢复续期前的到期日和状态？</span>
+                          <div className="flex gap-2">
+                            <button disabled={busy !== null} onClick={() => { setConfirmingUndoExtend(null); void run({ action: "undo_extend", subscriptionId: item.id }, item.id); }} className="rounded-lg bg-amber-700 px-2 py-1 text-xs font-black text-white">确认撤销</button>
+                            <button disabled={busy !== null} onClick={() => setConfirmingUndoExtend(null)} className="rounded-lg border px-2 py-1 text-xs font-bold">返回</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button disabled={busy !== null} onClick={() => { setConfirmingStop(null); setConfirmingExtend(null); setConfirmingUndoExtend(item.id); }} className="rounded-lg border border-amber-300 px-2 py-1 text-xs font-bold text-amber-800">撤销最近续期</button>
+                      ))}
+                      {item.cancel_at_period_end ? (
+                        <button disabled={busy !== null} onClick={() => void run({ action: "resume", subscriptionId: item.id }, item.id)} className="rounded-lg border px-2 py-1 text-xs font-bold">恢复</button>
+                      ) : (
+                        <button disabled={busy !== null} onClick={() => void run({ action: "cancel_period_end", subscriptionId: item.id }, item.id)} className="rounded-lg border px-2 py-1 text-xs font-bold">到期停用</button>
+                      )}
+                      {confirmingStop === item.id ? (
+                        <>
+                          <button disabled={busy !== null} onClick={() => { setConfirmingStop(null); void run({ action: "cancel_now", subscriptionId: item.id }, item.id); }} className="rounded-lg bg-red-700 px-2 py-1 text-xs font-black text-white">确认停用</button>
+                          <button onClick={() => setConfirmingStop(null)} className="rounded-lg border px-2 py-1 text-xs font-bold">返回</button>
+                        </>
+                      ) : (
+                        <button disabled={busy !== null} onClick={() => { setConfirmingExtend(null); setConfirmingUndoExtend(null); setConfirmingStop(item.id); }} className="rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-700">立即停用</button>
+                      )}
+                    </div>
+                  ) : <span className="text-xs text-[#849098]">请在 Stripe 管理</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
 

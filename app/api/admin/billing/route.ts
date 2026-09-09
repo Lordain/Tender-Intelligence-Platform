@@ -10,7 +10,7 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("contacted"), requestId: z.uuid(), note: z.string().trim().max(1000).optional() }),
   z.object({ action: z.literal("reject"), requestId: z.uuid(), note: z.string().trim().min(1).max(1000) }),
   z.object({ action: z.literal("activate"), email: z.email(), plan: z.enum(["professional", "enterprise"]), interval: z.enum(["monthly", "semiannual", "annual"]), note: z.string().trim().max(1000).optional() }),
-  z.object({ action: z.enum(["cancel_now", "cancel_period_end", "resume", "extend"]), subscriptionId: z.uuid(), note: z.string().trim().max(1000).optional() }),
+  z.object({ action: z.enum(["cancel_now", "cancel_period_end", "resume", "extend", "undo_extend"]), subscriptionId: z.uuid(), note: z.string().trim().max(1000).optional() }),
 ]);
 
 async function userDirectory(admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>) {
@@ -44,7 +44,7 @@ export async function GET() {
   const [requestResult, subscriptionResult, auditResult, users] = await Promise.all([
     admin.from("manual_payment_requests").select("*").order("created_at", { ascending: false }).limit(200),
     admin.from("subscriptions").select("id, user_id, plan, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, payment_source, stripe_subscription_id, created_at").order("created_at", { ascending: false }).limit(300),
-    admin.from("billing_admin_audit_log").select("id, admin_user_id, target_user_id, manual_payment_request_id, action, note, details, created_at").order("created_at", { ascending: false }).limit(100),
+    admin.from("billing_admin_audit_log").select("id, admin_user_id, target_user_id, manual_payment_request_id, subscription_id, action, note, details, created_at").order("created_at", { ascending: false }).limit(100),
     userDirectory(admin),
   ]);
   const error = requestResult.error ?? subscriptionResult.error ?? auditResult.error;
@@ -113,6 +113,11 @@ export async function POST(request: Request) {
     if (readError) throw readError;
     if (!subscription) return NextResponse.json({ error: "订阅不存在。" }, { status: 404 });
     if (subscription.stripe_subscription_id) return NextResponse.json({ error: "Stripe 订阅必须在 Stripe 中管理。" }, { status: 409 });
+    if (input.action === "undo_extend") {
+      const { error } = await admin.rpc("undo_manual_subscription_extension", { p_subscription_id: subscription.id, p_admin_user_id: adminUser.id, p_note: input.note ?? null });
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
     const { error } = await admin.rpc("manage_manual_subscription", { p_subscription_id: subscription.id, p_action: input.action, p_admin_user_id: adminUser.id, p_note: input.note ?? null });
     if (error) throw error;
     return NextResponse.json({ ok: true });

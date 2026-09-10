@@ -199,19 +199,47 @@ function buildRow(fields: Tender) {
  * one shared ON CONFLICT SET clause per request from the keys present, so
  * uniform rows are exactly what it wants.
  */
-function buildRowWithProtectedValues(fields: Tender, protection: ProtectedRow | undefined): Record<string, unknown> {
+function buildRowWithProtectedValues(fields: Tender, existing: ExistingRow | undefined): Record<string, unknown> {
   const row = buildRow(fields) as Record<string, unknown>;
-  if (!protection || protection.omit.size === 0) return row;
-  for (const column of protection.omit) {
+  if (!existing) return row;
+
+  // An ESTIMATED publication date never overwrites one already stored.
+  //
+  // Several sources publish no real publication-date field, so their mappers
+  // fall back to the ingestion timestamp and mark it estimated (see e.g.
+  // compras-mx-open-tenders-mapper.ts). Re-importing then moved the date to
+  // "today" every single run, so a tender's 发布日期 crept forward daily and
+  // 最新发布 sorting became meaningless — reported by the user 2026-09-10:
+  // 发布日期每天都在变动.
+  //
+  // Keeping the stored value means the date settles on the day the tender
+  // was FIRST seen, which is the closest honest answer a source without the
+  // field allows, and it stops moving. A REAL date (is_estimated false) still
+  // overwrites anything, estimate or not — that is genuine new information,
+  // and it is how an estimate gets corrected once the source publishes one.
+  if (row.publication_date_is_estimated === true && existing.stored.publication_date) {
+    row.publication_date = existing.stored.publication_date;
+    // `?? true` guards the NOT NULL column (migration 0011) against a stored
+    // row that somehow has no flag: we do know THIS import's date is an
+    // estimate, so calling it one is both safe and the honest reading.
+    row.publication_date_is_estimated = existing.stored.publication_date_is_estimated ?? true;
+  }
+
+  if (existing.omit.size === 0) return row;
+  for (const column of existing.omit) {
     // `slug` is the ON CONFLICT target and can never be protected; anything
     // the stored row doesn't actually have is left as the source built it.
-    if (column === "slug" || !(column in protection.stored)) continue;
-    row[column] = protection.stored[column];
+    if (column === "slug" || !(column in existing.stored)) continue;
+    row[column] = existing.stored[column];
   }
   return row;
 }
 
-type ProtectedRow = { omit: Set<string>; stored: Record<string, unknown> };
+type ExistingRow = {
+  /** Columns this import must not touch; empty for a row nobody edited. */
+  omit: Set<string>;
+  stored: Record<string, unknown>;
+};
 
 const RELEVANCE_COLUMNS = ["relevance_tier", "relevance_label", "relevance_reason", "relevance_manually_overridden"] as const;
 
@@ -241,10 +269,15 @@ function omitSetFor(row: { manual_field_overrides?: string[] | null; relevance_m
  * source's own "publication" key date would put the wrong day back on the
  * public timeline even though the column itself is protected.
  */
-function lockedKeyDateTypes(protection: ProtectedRow | undefined): Set<string> {
+function lockedKeyDateTypes(fields: Tender, existing: ExistingRow | undefined): Set<string> {
   const types = new Set<string>();
-  if (!protection) return types;
-  const omit = protection.omit;
+  if (!existing) return types;
+  // Mirror of the estimated-date rule in buildRowWithProtectedValues: when
+  // the stored publication_date is kept, the source's own "publication" key
+  // date must not be written either, or the timeline would show the drifting
+  // date the column no longer has.
+  if (fields.publicationDateIsEstimated === true && existing.stored.publication_date) types.add("publication");
+  const omit = existing.omit;
   if (omit.has("publication_date")) types.add("publication");
   if (omit.has("submission_deadline")) types.add("submission");
   if (omit.has("award_date")) types.add("award");
@@ -330,7 +363,11 @@ export async function upsertTendersBatched(
   for (const batch of chunk(liveTenders, BATCH_SIZE)) {
     // Chunked separately from the upsert batch, for the URL-length reason
     // explained at LOOKUP_CHUNK_SIZE.
-    const protectionBySlug = new Map<string, ProtectedRow>();
+    // Every EXISTING row in this batch, keyed by slug — not just the
+    // protected ones. buildRowWithProtectedValues() needs the stored row for
+    // the estimated-publication-date rule too, which applies to rows nobody
+    // has ever edited.
+    const protectionBySlug = new Map<string, ExistingRow>();
     let protectedError: { message: string } | null = null;
     for (const slugChunk of chunk(batch.map((t) => t.slug), LOOKUP_CHUNK_SIZE)) {
       // `*` rather than a column list: buildRowWithProtectedValues needs the
@@ -347,7 +384,7 @@ export async function upsertTendersBatched(
       }
       for (const row of (rows ?? []) as Record<string, unknown>[]) {
         const omit = omitSetFor(row as { manual_field_overrides?: string[] | null; relevance_manually_overridden?: boolean | null });
-        if (omit.size > 0) protectionBySlug.set(row.slug as string, { omit, stored: row });
+        protectionBySlug.set(row.slug as string, { omit, stored: row });
       }
     }
     // Fails the batch rather than continuing (2026-09-07, widened 2026-09-08).
@@ -362,7 +399,7 @@ export async function upsertTendersBatched(
     if (protectedError) {
       throw new Error(`无法读取人工编辑保护标记，已中止导入以免覆盖人工修改：${protectedError.message}`);
     }
-    protectedCount += batch.filter((t) => protectionBySlug.has(t.slug)).length;
+    protectedCount += batch.filter((t) => (protectionBySlug.get(t.slug)?.omit.size ?? 0) > 0).length;
 
     const upserted: { id: string; slug: string }[] = [];
 
@@ -393,7 +430,7 @@ export async function upsertTendersBatched(
     const keyDateRows = batch.flatMap((tender) => {
       const tenderId = idBySlug.get(tender.slug);
       if (!tenderId) return [];
-      const lockedTypes = lockedKeyDateTypes(protectionBySlug.get(tender.slug));
+      const lockedTypes = lockedKeyDateTypes(tender, protectionBySlug.get(tender.slug));
       return tender.keyDates
         .filter((d) => !lockedTypes.has(d.type))
         .map((d) => ({ tender_id: tenderId, type: d.type, date: d.date }));
@@ -405,7 +442,7 @@ export async function upsertTendersBatched(
     for (const tender of batch) {
       const tenderId = idBySlug.get(tender.slug);
       if (!tenderId) continue;
-      const types = [...lockedKeyDateTypes(protectionBySlug.get(tender.slug))].sort();
+      const types = [...lockedKeyDateTypes(tender, protectionBySlug.get(tender.slug))].sort();
       const signature = types.join(",");
       const group = deleteGroups.get(signature);
       if (group) group.ids.push(tenderId);

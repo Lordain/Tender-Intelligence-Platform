@@ -2,6 +2,8 @@ import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from 
 import { filterTenders, isSortKey, sortTenders } from "@/lib/filter-tenders";
 
 export const TENDER_PAGE_SIZE = 20;
+export const LOCKED_TENDER_PAGE_SIZE = 10;
+export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "awarded"];
 
 const AVAILABLE_COUNTRIES = ["Mexico", "Colombia"] as const;
 const PLATFORM_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -75,13 +77,16 @@ function platformDateKey(value: string | number | Date): string | null {
 /**
  * Applies the public list's search, facets, views, sorting and pagination on
  * the server. The underlying shared list stays cached for five minutes, but
- * only one 20-row page is serialized into the browser's React payload.
+ * only the role-appropriate page (20 rows for members, 10 for locked
+ * visitor/free previews) is serialized into the browser's React payload.
  */
 export function buildTenderListPage(
   allTenders: Tender[],
   params: TenderListSearchParams,
-  now = new Date(),
+  options: { now?: Date; pageSize?: number } = {},
 ): TenderListPageData {
+  const now = options.now ?? new Date();
+  const pageSize = options.pageSize ?? TENDER_PAGE_SIZE;
   const query = firstValue(params.q) ?? "";
   const countryParam = firstValue(params.country);
   const countries = countryParam ? parseList(countryParam) : [...AVAILABLE_COUNTRIES];
@@ -89,7 +94,11 @@ export function buildTenderListPage(
   const industryMatchMode = firstValue(params.industryMode) === "all" ? "all" : "any";
   const scopeTypes = parseList(firstValue(params.scope)) as TenderScopeType[];
   const statusParam = firstValue(params.status);
-  const statuses = (statusParam === "none" ? [] : parseList(statusParam)) as TenderStatus[];
+  const statuses = (statusParam === "none"
+    ? []
+    : statusParam !== null
+      ? parseList(statusParam)
+      : DEFAULT_TENDER_LIST_STATUSES) as TenderStatus[];
   const tierParam = firstValue(params.tier);
   const relevanceTiers = (tierParam === "none" ? [] : parseList(tierParam)) as TenderRelevanceTier[];
   const sortParam = firstValue(params.sort);
@@ -114,14 +123,14 @@ export function buildTenderListPage(
     : view === "deadline"
       ? filtered.filter((tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= nowMs)
       : filtered;
-  const sorted = sortTenders(viewed, sort);
-  const totalPages = Math.max(1, Math.ceil(sorted.length / TENDER_PAGE_SIZE));
+  const sorted = sortTenders(viewed, sort, nowMs);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const requestedPage = Math.max(1, Number(firstValue(params.page)) || 1);
   const currentPage = Math.min(requestedPage, totalPages);
-  const offset = (currentPage - 1) * TENDER_PAGE_SIZE;
+  const offset = (currentPage - 1) * pageSize;
 
   return {
-    tenders: sorted.slice(offset, offset + TENDER_PAGE_SIZE).map(toTenderListItem),
+    tenders: sorted.slice(offset, offset + pageSize).map(toTenderListItem),
     totalResults: sorted.length,
     totalPages,
     currentPage,

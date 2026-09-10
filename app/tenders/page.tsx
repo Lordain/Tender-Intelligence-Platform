@@ -3,7 +3,7 @@ import { getCachedTenderList } from "@/lib/tenders";
 import { TenderExplorer } from "@/components/tenders/TenderExplorer";
 import { getViewerRole } from "@/lib/access-control-server";
 import { canInteractWithTenderList } from "@/lib/access-control";
-import { buildTenderListPage, type TenderListSearchParams } from "@/lib/tender-list-page";
+import { buildTenderListPage, LOCKED_TENDER_PAGE_SIZE, TENDER_PAGE_SIZE, type TenderListSearchParams } from "@/lib/tender-list-page";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -44,7 +44,9 @@ export default async function TendersPage({
   if (!canInteractWithTenderList(viewerRole) && Object.keys(params).length > 0) {
     redirect("/tenders");
   }
-  const pageData = buildTenderListPage(allTenders, params);
+  const pageData = buildTenderListPage(allTenders, params, {
+    pageSize: canInteractWithTenderList(viewerRole) ? TENDER_PAGE_SIZE : LOCKED_TENDER_PAGE_SIZE,
+  });
 
   return (
     <div className="mx-auto w-full max-w-[94rem] px-5 py-6 sm:px-8 sm:py-8">

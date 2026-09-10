@@ -97,16 +97,40 @@ export function isSortKey(value: string | null): value is SortKey {
   return SORT_KEYS.includes(value as SortKey);
 }
 
-export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SORT): Tender[] {
+export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SORT, now = Date.now()): Tender[] {
   const sorted = [...allTenders];
 
   switch (sortKey) {
-    case "deadline_asc":
+    case "deadline_asc": {
+      const deadlineOf = (tender: Tender) => {
+        if (!tender.submissionDeadline) return null;
+        const timestamp = new Date(tender.submissionDeadline).getTime();
+        return Number.isFinite(timestamp) ? timestamp : null;
+      };
+      const priorityOf = (tender: Tender, deadline: number | null) => {
+        const isFuture = deadline !== null && deadline >= now;
+        if (isFuture && (tender.status === "open" || tender.status === "clarification")) return 0;
+        if (isFuture && tender.status === "planned") return 1;
+        if (tender.status === "awarded") return 2;
+        if (isFuture) return 3;
+        return 4;
+      };
+
       return sorted.sort((a, b) => {
-        if (!a.submissionDeadline) return 1;
-        if (!b.submissionDeadline) return -1;
-        return a.submissionDeadline.localeCompare(b.submissionDeadline);
+        const aDeadline = deadlineOf(a);
+        const bDeadline = deadlineOf(b);
+        const priorityDifference = priorityOf(a, aDeadline) - priorityOf(b, bDeadline);
+        if (priorityDifference !== 0) return priorityDifference;
+
+        // Inside a live/future group, the actionable deadline is the useful
+        // ordering. Historical/no-date rows fall back to newest publication
+        // first instead of putting the oldest stale deadline at the top.
+        if (aDeadline !== null && bDeadline !== null && aDeadline >= now && bDeadline >= now) {
+          return aDeadline - bDeadline;
+        }
+        return b.publicationDate.localeCompare(a.publicationDate);
       });
+    }
     case "publication_desc":
     default:
       return sorted.sort((a, b) => b.publicationDate.localeCompare(a.publicationDate));

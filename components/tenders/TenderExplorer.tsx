@@ -19,18 +19,14 @@ import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
 import { canInteractWithTenderList, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
 import { AccessPrompt } from "@/components/access/AccessPrompt";
-import type { TenderListItem } from "@/lib/tender-list-page";
+import { DEFAULT_TENDER_LIST_STATUSES, type TenderListItem } from "@/lib/tender-list-page";
 
 const SCOPE_TYPES: TenderScopeType[] = ["equipment", "services", "equipment_services", "works", "consulting"];
 const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed", "awarded", "cancelled"];
-// Both defaults changed to "全部" (2026-09-05, explicit request) — an
-// empty array here means unrestricted, identical to a user manually
-// clicking the "全部" quick-clear chip (see the "none" URL sentinel
-// handling below), not a distinct "some statuses/tiers hidden" preset
-// anymore. Previously excluded awarded/cancelled statuses and the
-// "standard" relevance tier by default; a tender already-decided or
-// standard-scale is now visible by default too, same as everything else.
-const DEFAULT_STATUSES: TenderStatus[] = [];
+// Closed and cancelled projects stay available through an explicit filter,
+// but do not crowd the initial discovery view. Awarded projects remain in
+// the default set (the public DB layer already requires them to have analysis).
+const DEFAULT_STATUSES: TenderStatus[] = DEFAULT_TENDER_LIST_STATUSES;
 // "excluded" isn't offered here — routine-service tenders stay hidden by
 // default (see includeExcluded in lib/filter-tenders.ts); no UI control
 // exposes showing them. "standard" IS offered (unlike "excluded") since

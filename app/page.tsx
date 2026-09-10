@@ -3,6 +3,7 @@ import { fetchHomepageControlSettings } from "@/lib/db/site-settings";
 import { HomeHero } from "@/components/tenders/HomeHero";
 import { FeaturedTenders } from "@/components/tenders/FeaturedTenders";
 import { ValuePropositions } from "@/components/home/ValuePropositions";
+import { ParticipationGuidesPreview } from "@/components/home/ParticipationGuidesPreview";
 import { selectHomepageTenders } from "@/lib/homepage-selection";
 
 /** Same reasoning as app/tenders/page.tsx — see its comment. This page reads the same service-role data and was prerendered at build time with no revalidation, so a newly featured tender never reached the homepage until the next deploy. */
@@ -25,6 +26,7 @@ export default async function Home() {
     <div className="flex flex-col">
       <HomeHero tenders={tickerWithPreviews} />
       <FeaturedTenders tenders={featuredWithPreviews} />
+      <ParticipationGuidesPreview />
       <ValuePropositions />
     </div>
   );

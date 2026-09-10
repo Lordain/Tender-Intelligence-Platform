@@ -15,6 +15,7 @@ export function Header() {
   const links = [
     ["/", localize(uiText.navHome, locale)],
     ["/tenders", localize(uiText.navTenders, locale)],
+    ["/guides", localize(uiText.navGuides, locale)],
     ["/saved", localize(uiText.navSaved, locale)],
     ["/pricing", localize(uiText.navPricing, locale)],
   ] as const;

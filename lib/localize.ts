@@ -32,6 +32,7 @@ export const uiText = {
   },
   navHome: { en: "Home", es: "Inicio", zh: "首页" },
   navTenders: { en: "Tenders", es: "Licitaciones", zh: "招标项目" },
+  navGuides: { en: "Bid Guides", es: "Guías para licitar", zh: "参标指南" },
   searchPlaceholder: {
     en: "Search by issuing agency or project keyword…",
     es: "Buscar por entidad emisora o palabra clave del proyecto…",

@@ -3,6 +3,7 @@ import { fetchHomepageControlSettings } from "@/lib/db/site-settings";
 import { selectHomepageTenders } from "@/lib/homepage-selection";
 import { getCachedTenderList } from "@/lib/tenders";
 import { siteOrigin } from "@/lib/site-url";
+import { participationGuides } from "@/lib/participation-guides";
 
 /**
  * What a crawler is allowed to know about.
@@ -32,6 +33,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: origin, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${origin}/tenders`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    { url: `${origin}/guides`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    ...participationGuides.map((guide) => ({
+      url: `${origin}/guides/${guide.slug}`,
+      lastModified: new Date(guide.verifiedAtIso),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
     { url: `${origin}/pricing`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${origin}/clarifications`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: `${origin}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },

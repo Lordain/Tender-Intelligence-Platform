@@ -1,7 +1,7 @@
 import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { filterTenders, isSortKey, sortTenders } from "@/lib/filter-tenders";
 
-export const TENDER_PAGE_SIZE = 28;
+export const TENDER_PAGE_SIZE = 20;
 
 const AVAILABLE_COUNTRIES = ["Mexico", "Colombia"] as const;
 const PLATFORM_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -75,7 +75,7 @@ function platformDateKey(value: string | number | Date): string | null {
 /**
  * Applies the public list's search, facets, views, sorting and pagination on
  * the server. The underlying shared list stays cached for five minutes, but
- * only one 28-row page is serialized into the browser's React payload.
+ * only one 20-row page is serialized into the browser's React payload.
  */
 export function buildTenderListPage(
   allTenders: Tender[],

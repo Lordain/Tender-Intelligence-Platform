@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { AuthFrame } from "@/components/auth/AuthFrame";
+import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
 import { safeNextPath } from "@/lib/auth-redirect";
 
 const SUPABASE_CONFIGURED = Boolean(
@@ -91,6 +92,8 @@ export default function LoginPage() {
       <h1 className="text-3xl font-black tracking-tight text-[#071826]">
         {localize(uiText.login, locale)}
       </h1>
+
+      <SocialAuthButtons onError={setError} />
 
       <div className="flex gap-1 rounded-xl bg-[#edf2f3] p-1 self-start">
         {(["password", "magic-link"] as const).map((option) => (

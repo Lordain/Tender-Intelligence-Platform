@@ -155,6 +155,21 @@ export const uiText = {
     es: "Enviamos un enlace de acceso de un clic a tu correo. Caduca pronto, así que úsalo cuanto antes.",
     zh: "我们已向您的邮箱发送了一键登录链接，链接很快会过期，请尽快使用。",
   },
+  continueWithGoogle: {
+    en: "Continue with Google",
+    es: "Continuar con Google",
+    zh: "使用 Google 继续",
+  },
+  connectingToGoogle: {
+    en: "Connecting to Google…",
+    es: "Conectando con Google…",
+    zh: "正在前往 Google…",
+  },
+  orContinueWithEmail: {
+    en: "or continue with email",
+    es: "o continuar con correo",
+    zh: "或使用邮箱",
+  },
   authNotConfigured: {
     en: "Accounts aren't available yet — the site owner hasn't connected authentication.",
     es: "Las cuentas aún no están disponibles — el propietario del sitio no ha configurado la autenticación.",

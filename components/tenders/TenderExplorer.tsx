@@ -17,7 +17,7 @@ import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { ColombiaFlag, CountryFlag, MexicoFlag } from "@/components/tenders/CountryFlag";
 import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
-import { type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
+import { canInteractWithTenderList, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
 import { AccessPrompt } from "@/components/access/AccessPrompt";
 import type { TenderListItem } from "@/lib/tender-list-page";
 
@@ -136,7 +136,6 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-[#52636e]">
           <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
           <span className="truncate">发布机构：{tender.buyer}</span>
-          <span>项目编号：{tender.tenderNumber}</span>
         </div>
       </div>
       <div className="flex items-center justify-between gap-4 border-t border-[#e5e9eb] pt-4 md:border-l md:border-t-0 md:pl-5 md:pt-0">
@@ -287,10 +286,9 @@ export function TenderExplorer({
     // from the homepage entry point.
     if (viewerRole === "guest") return "login";
 
-    if (viewerRole === "free") {
-      const detailLink = target.closest<HTMLAnchorElement>("a[href^='/tenders/']");
-      if (detailLink) return "subscription";
-    }
+    // An expired trial gets the same read-only initial list as a visitor,
+    // but every attempted action leads to subscription rather than login.
+    if (viewerRole === "free") return "subscription";
 
     return null;
   }
@@ -310,13 +308,15 @@ export function TenderExplorer({
   const accessNotice = viewerRole === "guest"
     ? "当前可预览项目清单；登录后即可使用搜索、筛选、翻页、收藏和查看项目。"
     : viewerRole === "free"
-      ? "您的 7 天免费试用已结束；仍可搜索、筛选和收藏项目，订阅后可查看完整项目信息。"
+      ? "您的 7 天免费试用已结束；当前可预览项目清单，订阅后即可使用搜索、筛选、翻页、收藏和查看项目。"
       : null;
+
+  const listIsLocked = !canInteractWithTenderList(viewerRole);
 
   return (
     <>
     <div
-      className={`space-y-5 ${viewerRole === "guest" ? "[&_a]:cursor-not-allowed [&_button]:cursor-not-allowed [&_input]:cursor-not-allowed" : ""}`}
+      className={`space-y-5 ${listIsLocked ? "[&_a]:cursor-not-allowed [&_button]:cursor-not-allowed [&_input]:cursor-not-allowed" : ""}`}
       onPointerDownCapture={(event) => {
         if (promptForInteraction(event.target)) event.preventDefault();
       }}

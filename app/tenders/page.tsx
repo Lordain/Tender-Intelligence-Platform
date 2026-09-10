@@ -2,8 +2,10 @@ import { Suspense } from "react";
 import { getCachedTenderList } from "@/lib/tenders";
 import { TenderExplorer } from "@/components/tenders/TenderExplorer";
 import { getViewerRole } from "@/lib/access-control-server";
+import { canInteractWithTenderList } from "@/lib/access-control";
 import { buildTenderListPage, type TenderListSearchParams } from "@/lib/tender-list-page";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "招标项目列表",
@@ -34,6 +36,14 @@ export default async function TendersPage({
     getViewerRole(),
     searchParams,
   ]);
+
+  // A locked visitor/free account must always receive the same initial list.
+  // UI capture below handles ordinary clicks; this redirect closes the
+  // server-side bypass where someone types ?q=, ?page= or filter params into
+  // the address bar directly.
+  if (!canInteractWithTenderList(viewerRole) && Object.keys(params).length > 0) {
+    redirect("/tenders");
+  }
   const pageData = buildTenderListPage(allTenders, params);
 
   return (

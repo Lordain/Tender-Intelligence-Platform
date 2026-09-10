@@ -13,6 +13,8 @@
  * one before fixing it.
  */
 import {
+  canInteractWithTenderList,
+  canOpenTenderDetail,
   isSubscriptionEntitled,
   selectPreferredSubscription,
   subscriptionStatusFromStripe,
@@ -58,6 +60,22 @@ check("active past its period", isSubscriptionEntitled("active", iso(-40), iso(-
 check("active with no period end", isSubscriptionEntitled("active", iso(-10), null, NOW), true);
 check("trialing inside its period", isSubscriptionEntitled("trialing", iso(-2), iso(5), NOW), true);
 check("cancelled never counts", isSubscriptionEntitled("cancelled", iso(-1), iso(30), NOW), false);
+
+// ---------------------------------------------------------------------------
+// Tender discovery access. Homepage previews stay available to unsigned
+// visitors, but an account whose trial expired must subscribe before using
+// any list interaction or opening any project.
+// ---------------------------------------------------------------------------
+check("guest list is read-only", canInteractWithTenderList("guest"), false);
+check("expired free list is read-only", canInteractWithTenderList("free"), false);
+check("trial list is interactive", canInteractWithTenderList("trial"), true);
+check("subscriber list is interactive", canInteractWithTenderList("subscriber"), true);
+check("guest may open homepage preview", canOpenTenderDetail("guest", true), true);
+check("guest may not open ordinary detail", canOpenTenderDetail("guest", false), false);
+check("expired free may not open homepage preview", canOpenTenderDetail("free", true), false);
+check("expired free may not open ordinary detail", canOpenTenderDetail("free", false), false);
+check("trial may open ordinary detail", canOpenTenderDetail("trial", false), true);
+check("subscriber may open ordinary detail", canOpenTenderDetail("subscriber", false), true);
 
 check(
   `past_due on day ${PAYMENT_GRACE_DAYS - 1} of grace`,

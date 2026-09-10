@@ -15,6 +15,7 @@
  *
  * Usage:
  *   npm run seed:test-accounts
+ *   npm run seed:test-accounts -- --only-free
  *   npm run seed:test-accounts -- --password='YourPass123!' --domain=example.com
  *   npm run seed:test-accounts -- --cleanup
  */
@@ -30,6 +31,7 @@ const flag = (name: string, fallback: string) =>
   args.find((argument) => argument.startsWith(`--${name}=`))?.split("=").slice(1).join("=") ?? fallback;
 
 const CLEANUP = args.includes("--cleanup");
+const ONLY_FREE = args.includes("--only-free");
 const DOMAIN = flag("domain", "example.com");
 const PASSWORD = flag("password", "TenderTest123!");
 const COMPANY = "测试企业（Seeded）";
@@ -37,12 +39,13 @@ const COMPANY = "测试企业（Seeded）";
 const DAY = 86_400_000;
 const ACCOUNTS: { role: Role; local: string; describe: string }[] = [
   { role: "trial", local: "qa-trial", describe: "试用中 · 剩余 6 天 · 可看详情、可收邮件" },
-  { role: "free", local: "qa-free", describe: "试用已过期 · 可搜索收藏 · 详情提示订阅 · 不收邮件" },
+  { role: "free", local: "qa-free", describe: "试用已过期 · 项目列表只读 · 所有操作提示订阅 · 不收邮件" },
   { role: "professional", local: "qa-pro", describe: "个人版订阅（按月）· 全部权限 · 可测取消续期" },
   { role: "enterprise-owner", local: "qa-ent-owner", describe: "企业版主账号（年度）· 可在账户管理邀请成员" },
   { role: "enterprise-member", local: "qa-ent-member", describe: "企业成员 · 已接受邀请 · 全部权限" },
   { role: "invitee", local: "qa-ent-invitee", describe: "收到待处理邀请 · 用于测试接受/拒绝" },
 ];
+const TARGET_ACCOUNTS = ONLY_FREE ? ACCOUNTS.filter((account) => account.role === "free") : ACCOUNTS;
 
 const emailFor = (local: string) => `${local}@${DOMAIN}`;
 
@@ -78,7 +81,7 @@ async function ensureUser(email: string): Promise<string> {
 }
 
 async function cleanup() {
-  for (const account of ACCOUNTS) {
+  for (const account of TARGET_ACCOUNTS) {
     const email = emailFor(account.local);
     const id = await findUserIdByEmail(email);
     if (!id) {
@@ -94,7 +97,7 @@ async function cleanup() {
 
 async function seed() {
   const idByRole = new Map<Role, string>();
-  for (const account of ACCOUNTS) {
+  for (const account of TARGET_ACCOUNTS) {
     idByRole.set(account.role, await ensureUser(emailFor(account.local)));
   }
 
@@ -127,6 +130,27 @@ async function seed() {
         company_name: role === "enterprise-owner" ? COMPANY : null,
       }).eq("id", id),
     );
+  }
+
+  // The common UI check only needs the lapsed account. Keep this targeted
+  // mode from creating or resetting the other five QA identities in a live
+  // project merely to exercise one paywall state.
+  if (ONLY_FREE) {
+    const freeId = idByRole.get("free")!;
+    assertWritten("通知偏好(free)", await admin.from("email_notification_preferences").upsert({
+      user_id: freeId,
+      enabled: true,
+      countries: [],
+      industries: [],
+      statuses: [],
+      relevance_tiers: [],
+      keywords: [],
+      timezone: "America/Mexico_City",
+      updated_at: new Date(now).toISOString(),
+    }));
+    console.log(`\n密码：${PASSWORD}\n`);
+    console.log(`${emailFor("qa-free").padEnd(34)} ${TARGET_ACCOUNTS[0].describe}`);
+    return;
   }
 
   // A window that is already underway, so 账户管理 shows a real start AND end
@@ -190,7 +214,7 @@ async function seed() {
   }
 
   console.log(`\n密码（全部账号相同）：${PASSWORD}\n`);
-  for (const account of ACCOUNTS) {
+  for (const account of TARGET_ACCOUNTS) {
     console.log(`${emailFor(account.local).padEnd(34)} ${account.describe}`);
   }
   console.log(`\n访客：直接退出登录访问，无需账号。`);

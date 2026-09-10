@@ -115,7 +115,16 @@ export function selectPreferredSubscription<T extends SubscriptionEntitlementCan
 }
 
 export function canOpenTenderDetail(role: ViewerRole, isHomepageFreePreview: boolean): boolean {
-  return isHomepageFreePreview || role === "trial" || role === "subscriber";
+  // Homepage previews are a visitor acquisition surface, not a permanent
+  // free-account entitlement. Once the seven-day trial has ended, every
+  // project detail requires a subscription — including a slug that happens
+  // to be featured on the homepage.
+  return role === "trial" || role === "subscriber" || (role === "guest" && isHomepageFreePreview);
+}
+
+/** Search, filters, pagination and saves share the same list-page paywall. */
+export function canInteractWithTenderList(role: ViewerRole): boolean {
+  return role === "trial" || role === "subscriber";
 }
 
 export function tenderDetailPrompt(role: ViewerRole): AccessPromptKind {

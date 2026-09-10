@@ -18,7 +18,6 @@ export type TenderListItem = Pick<
   Tender,
   | "id"
   | "slug"
-  | "tenderNumber"
   | "title"
   | "buyer"
   | "country"
@@ -43,7 +42,6 @@ export function toTenderListItem(tender: Tender): TenderListItem {
   return {
     id: tender.id,
     slug: tender.slug,
-    tenderNumber: tender.tenderNumber,
     title: tender.title,
     buyer: tender.buyer,
     country: tender.country,

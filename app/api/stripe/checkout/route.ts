@@ -112,11 +112,10 @@ export async function POST(request: Request) {
     const customerData = {
       name: parsed.data.legalName,
       email: parsed.data.billingEmail,
-      // Stripe uses the Customer locale for Hosted Invoice Pages, invoice
-      // emails, and PDFs. Keep the SPEI instructions in English so Mexican
-      // banking terminology and beneficiary details aren't mixed with a
-      // Chinese Stripe interface. Card Checkout is still explicitly shown in
-      // Chinese below.
+      // Stripe uses the Customer locale for invoice emails and PDFs. The
+      // Hosted Invoice Page itself still follows the visitor's browser
+      // language, which Stripe intentionally prioritizes. Card Checkout is
+      // explicitly shown in Chinese below.
       preferred_locales: parsed.data.paymentMethod === "bank_transfer" ? ["en" as const] : ["zh" as const],
       address: {
         line1: parsed.data.addressLine1,

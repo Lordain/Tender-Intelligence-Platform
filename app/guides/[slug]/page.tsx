@@ -35,7 +35,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
       <header className="bg-[#061b2b] px-5 py-12 text-white sm:px-8 sm:py-16">
         <div className="mx-auto max-w-6xl">
           <Link href="/guides" className="inline-flex items-center gap-2 text-sm font-bold text-white/62 transition hover:text-white">← 返回全部参标指南</Link>
-          <div className="mt-9 grid gap-9 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-end">
+          <div className="mt-9 max-w-4xl">
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="rounded-full bg-[#ffb21c] px-3 py-1 text-xs font-black text-[#071826]">{guide.country}</span>
@@ -44,17 +44,18 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
               <h1 className="mt-5 max-w-4xl text-3xl font-black leading-[1.22] tracking-[-0.04em] sm:text-5xl">{guide.title}</h1>
               <p className="mt-5 max-w-3xl text-base leading-8 text-white/68">{guide.summary}</p>
             </div>
-            <div className="rounded-2xl border border-white/12 bg-white/6 p-5">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ffb21c]">最近核验</p>
-              <p className="mt-2 text-lg font-black">{guide.verifiedAt}</p>
-              <p className="mt-2 text-xs leading-6 text-white/52">制度和平台可能更新，正式参与前请再次打开页面底部的官方来源。</p>
-            </div>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
-        <div className="rounded-2xl border border-[#e6b13f] bg-[#fff3cf] p-5 sm:p-6">
+        <section className="rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Platform introduction</p>
+          <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">{guide.platform} 是什么？</h2>
+          <p className="mt-4 text-sm leading-8 text-[#52636e] sm:text-base">{guide.whatIs}</p>
+        </section>
+
+        <div className="mt-6 rounded-2xl border border-[#e6b13f] bg-[#fff3cf] p-5 sm:p-6">
           <p className="font-black text-[#6d4900]">重要说明</p>
           <p className="mt-2 text-sm leading-7 text-[#6d5a31]">本页用于帮助企业做前期准备，不代表采购方确认您具备资格。具体项目的公告、招标文件、附件、澄清答复及更正通知具有最终效力。</p>
         </div>

@@ -36,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${origin}/guides`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     ...participationGuides.map((guide) => ({
       url: `${origin}/guides/${guide.slug}`,
-      lastModified: new Date(guide.verifiedAtIso),
+      lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),

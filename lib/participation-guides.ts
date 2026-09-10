@@ -24,9 +24,8 @@ export type ParticipationGuide = {
   platform: string;
   title: string;
   summary: string;
+  whatIs: string;
   audience: string;
-  verifiedAt: string;
-  verifiedAtIso: string;
   quickFacts: Array<{ label: string; value: string }>;
   sections: GuideSection[];
   sources: GuideSource[];
@@ -40,9 +39,8 @@ export const participationGuides: ParticipationGuide[] = [
     platform: "Compras MX",
     title: "怎么参与 Compras MX 的政府采购项目？",
     summary: "从平台注册、寻找项目到提交响应，了解墨西哥联邦政府采购平台的基本参与路径。",
+    whatIs: "Compras MX 是墨西哥联邦政府公共采购数字平台，由墨西哥反腐与良政部主管，并由原 CompraNet 系统转型而来。政府机构通过该平台发布和管理货物、服务、租赁及公共工程等采购程序，供应商可以查找公告、获取文件并依具体程序参与。",
     audience: "希望参与墨西哥联邦政府采购的境内外自然人或企业",
-    verifiedAt: "2026年9月10日",
-    verifiedAtIso: "2026-09-10",
     quickFacts: [
       { label: "官方平台", value: "Compras MX" },
       { label: "常用语言", value: "西班牙语" },
@@ -98,9 +96,8 @@ export const participationGuides: ParticipationGuide[] = [
     platform: "CFE Micrositio",
     title: "怎么参与 CFE Micrositio 的项目？",
     summary: "面向墨西哥联邦电力委员会采购与工程项目，梳理供应商注册、电子签名和逐项参与流程。",
+    whatIs: "CFE Micrositio de Concursos 是墨西哥联邦电力委员会（CFE）的电子采购和竞赛平台。CFE 通过该平台发布货物、租赁、服务及工程类采购程序，供应商可注册账户、寻找项目、参加答疑并依招标文件提交技术和经济方案。",
     audience: "电力、能源、工程建设、设备与专业服务供应商",
-    verifiedAt: "2026年9月10日",
-    verifiedAtIso: "2026-09-10",
     quickFacts: [
       { label: "采购单位", value: "CFE（墨西哥联邦电力委员会）" },
       { label: "官方系统", value: "Micrositio de Concursos" },
@@ -155,9 +152,8 @@ export const participationGuides: ParticipationGuide[] = [
     platform: "Pemex SISCEP",
     title: "怎么参与 Pemex 的采购项目？",
     summary: "了解 Pemex 供应商登记、SISCEP 联系人开通、表达参与意向及逐项响应的主要步骤。",
+    whatIs: "SISCEP 是 Pemex 用于电子采购活动和供应商互动的系统。企业通常需要先完成 Pemex 供应商资料登记，再通过获授权的企业联系人进入系统，对具体采购事件表达参与意向、接收通知并提交相应资料。",
     audience: "油气、石化、工程、设备、运维与专业服务供应商",
-    verifiedAt: "2026年9月10日",
-    verifiedAtIso: "2026-09-10",
     quickFacts: [
       { label: "采购单位", value: "Pemex" },
       { label: "参与系统", value: "SISCEP" },
@@ -212,9 +208,8 @@ export const participationGuides: ParticipationGuide[] = [
     platform: "SECOP II",
     title: "怎么参与 SECOP II 的政府采购项目？",
     summary: "从个人用户到供应商账户，了解哥伦比亚电子公共采购系统的注册、资料公开与项目响应逻辑。",
+    whatIs: "SECOP II 是哥伦比亚的交易型电子公共采购平台，由 Colombia Compra Eficiente 管理。采购实体和供应商可以在平台内完成项目发布、信息沟通、报价提交、评审与合同管理等采购流程。",
     audience: "希望参与哥伦比亚公共采购的本地或境外供应商",
-    verifiedAt: "2026年9月10日",
-    verifiedAtIso: "2026-09-10",
     quickFacts: [
       { label: "官方系统", value: "SECOP II" },
       { label: "账户结构", value: "个人用户 + 供应商账户" },
@@ -271,9 +266,8 @@ export const participationGuides: ParticipationGuide[] = [
     platform: "Proyectos Estratégicos MX",
     title: "怎么参与 Proyectos Estratégicos MX 的项目？",
     summary: "面向墨西哥战略基础设施新机制，说明如何识别项目适用规则、获取文件并按公告指定渠道参与。",
+    whatIs: "Proyectos Estratégicos MX 是墨西哥财政与公共信贷部面向战略基础设施投资项目设立的官方公开平台，用于展示和管理新制度下的相关采购与项目程序。它与 Compras MX 是不同入口，参与方式应以每个项目发布的公告和基础文件为准。",
     audience: "基础设施、工程、设备、能源、交通与大型项目供应商",
-    verifiedAt: "2026年9月10日",
-    verifiedAtIso: "2026-09-10",
     quickFacts: [
       { label: "官方平台", value: "Proyectos Estratégicos MX" },
       { label: "主管领域", value: "战略基础设施投资项目" },

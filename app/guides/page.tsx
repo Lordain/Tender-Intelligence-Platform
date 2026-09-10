@@ -20,7 +20,7 @@ export default function GuidesPage() {
             </div>
             <div className="rounded-2xl border border-white/12 bg-white/6 p-6">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ffb21c]">免费开放</p>
-              <p className="mt-3 text-sm leading-7 text-white/68">指南不需要登录或订阅。内容会随官方制度和平台变化持续复核，页面会标注最近核验日期。</p>
+              <p className="mt-3 text-sm leading-7 text-white/68">指南不需要登录或订阅。内容会随官方制度和平台变化持续整理，并保留便于核对的官方来源。</p>
             </div>
           </div>
         </div>
@@ -58,8 +58,7 @@ export default function GuidesPage() {
                     <p className="mt-7 text-xs font-black uppercase tracking-[0.16em] text-[#b86e00]">{guide.platform}</p>
                     <h3 className="mt-3 text-xl font-black leading-8 tracking-[-0.02em]">{guide.title}</h3>
                     <p className="mt-4 text-sm leading-7 text-[#64717c]">{guide.summary}</p>
-                    <div className="mt-auto flex items-end justify-between gap-5 pt-8">
-                      <span className="text-xs text-[#7a858d]">核验于 {guide.verifiedAt}</span>
+                    <div className="mt-auto flex justify-end pt-8">
                       <span className="font-black text-[#b86e00] transition-transform group-hover:translate-x-1">查看指南 →</span>
                     </div>
                   </Link>

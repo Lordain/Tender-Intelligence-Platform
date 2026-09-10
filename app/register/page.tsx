@@ -82,7 +82,7 @@ export default function RegisterPage() {
       <h1 className="text-3xl font-black tracking-tight text-[#071826]">
         {localize(uiText.register, locale)}
       </h1>
-      <p className="-mt-3 text-sm leading-6 text-[#64717c]">注册后自动开启 7 天全功能免费试用，无需绑定银行卡。</p>
+      <p className="-mt-3 text-sm leading-6 text-[#64717c]">注册后自动开启 3 天全功能免费试用，无需绑定银行卡。</p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1">
           <span className="text-xs font-semibold text-[#52636e]">

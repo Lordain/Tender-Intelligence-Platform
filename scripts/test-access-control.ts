@@ -19,6 +19,7 @@ import {
   selectPreferredSubscription,
   subscriptionStatusFromStripe,
   PAYMENT_GRACE_DAYS,
+  TRIAL_DAYS,
 } from "../lib/access-control";
 
 const NOW = Date.parse("2026-06-15T12:00:00Z");
@@ -55,6 +56,7 @@ check("an unknown future status grants nothing", subscriptionStatusFromStripe("s
 // ---------------------------------------------------------------------------
 // Entitlement.
 // ---------------------------------------------------------------------------
+check("no-card trial lasts three days", TRIAL_DAYS, 3);
 check("active inside its period", isSubscriptionEntitled("active", iso(-10), iso(20), NOW), true);
 check("active past its period", isSubscriptionEntitled("active", iso(-40), iso(-1), NOW), false);
 check("active with no period end", isSubscriptionEntitled("active", iso(-10), null, NOW), true);

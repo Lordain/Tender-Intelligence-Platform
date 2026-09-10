@@ -15,7 +15,7 @@ const COPY = {
   subscription: {
     eyebrow: "Subscriber access",
     title: "订阅后使用项目功能",
-    description: "您的 7 天免费试用已结束。订阅后即可使用项目搜索、筛选、翻页、收藏，并查看完整项目信息。",
+    description: "您的 3 天免费试用已结束。订阅后即可使用项目搜索、筛选、翻页、收藏，并查看完整项目信息。",
     action: "查看订阅方案",
   },
 } as const;

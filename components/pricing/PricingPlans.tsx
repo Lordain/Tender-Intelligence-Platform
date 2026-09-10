@@ -24,7 +24,7 @@ type Plan = {
 
 const PLANS: readonly Plan[] = [
   {
-    id: "trial", eyebrow: "注册即享", name: "免费试用 7 天",
+    id: "trial", eyebrow: "注册即享", name: "免费试用 3 天",
     description: "功能与个人版相同，注册后自动开启，无需绑定银行卡。",
     prices: null,
     features: ["招标项目搜索与筛选", "1 个账户登录", "查看全部招标项目", "完整标书详情与招投标时间", "投标要求、资质、风险与官方入口", "新标通知与邮件提醒（每日 2 个时段）"],
@@ -109,7 +109,7 @@ export function PricingPlans() {
                     </p>
                   </>
                 ) : (
-                  <div className="mt-7 rounded-2xl bg-[#fff4d8] p-4 text-sm font-black text-[#8a5700]">7 天内完整体验个人版全部功能</div>
+                  <div className="mt-7 rounded-2xl bg-[#fff4d8] p-4 text-sm font-black text-[#8a5700]">3 天内完整体验个人版全部功能</div>
                 )}
               </div>
               <div className="flex flex-1 flex-col p-6 sm:p-7">

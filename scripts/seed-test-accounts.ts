@@ -38,7 +38,7 @@ const COMPANY = "测试企业（Seeded）";
 
 const DAY = 86_400_000;
 const ACCOUNTS: { role: Role; local: string; describe: string }[] = [
-  { role: "trial", local: "qa-trial", describe: "试用中 · 剩余 6 天 · 可看详情、可收邮件" },
+  { role: "trial", local: "qa-trial", describe: "试用中 · 剩余 2 天 · 可看详情、可收邮件" },
   { role: "free", local: "qa-free", describe: "试用已过期 · 项目列表只读 · 所有操作提示订阅 · 不收邮件" },
   { role: "professional", local: "qa-pro", describe: "个人版订阅（按月）· 全部权限 · 可测取消续期" },
   { role: "enterprise-owner", local: "qa-ent-owner", describe: "企业版主账号（年度）· 可在账户管理邀请成员" },
@@ -115,7 +115,7 @@ async function seed() {
   // trial on purpose, so a subscriber role can only be coming from the
   // subscription — that is the thing under test.
   const trialEnds: Record<Role, string> = {
-    trial: iso(6),
+    trial: iso(2),
     free: iso(-1),
     professional: iso(-1),
     "enterprise-owner": iso(-1),

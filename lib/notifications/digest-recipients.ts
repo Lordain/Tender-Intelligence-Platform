@@ -30,7 +30,7 @@ export type DigestRecipient = Preference & { email: string };
 
 /**
  * Who gets the twice-daily mail: current subscribers, users still inside the
- * seven-day trial, and the seat holders on a current enterprise subscription
+ * three-day trial, and the seat holders on a current enterprise subscription
  * — intersected with the people who actually turned notifications on.
  *
  * The order matters. Eligibility used to be computed first, which meant

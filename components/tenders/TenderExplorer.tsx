@@ -304,7 +304,7 @@ export function TenderExplorer({
   const accessNotice = viewerRole === "guest"
     ? "当前可预览项目清单；登录后即可使用搜索、筛选、翻页、收藏和查看项目。"
     : viewerRole === "free"
-      ? "您的 7 天免费试用已结束；当前可预览项目清单，订阅后即可使用搜索、筛选、翻页、收藏和查看项目。"
+      ? "您的 3 天免费试用已结束；当前可预览项目清单，订阅后即可使用搜索、筛选、翻页、收藏和查看项目。"
       : null;
 
   const listIsLocked = !canInteractWithTenderList(viewerRole);

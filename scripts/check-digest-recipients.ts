@@ -4,7 +4,7 @@
  * and 18:00 America/Mexico_City, and when it does run it delivers real mail.
  *
  * What this is for is the eligibility rule itself — subscribers, users still
- * inside the seven-day trial, and accepted enterprise seats, intersected with
+ * inside the three-day trial, and accepted enterprise seats, intersected with
  * the people who turned notifications on. After `npm run seed:test-accounts`
  * the expected answer is four of the six seeded accounts, with qa-free absent
  * even though it asked for mail.

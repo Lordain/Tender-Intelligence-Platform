@@ -23,7 +23,7 @@ export default function NotificationsPage() {
           <h1 className="mt-3 text-4xl font-black tracking-[-0.05em] text-[#071826] sm:text-5xl">通知设置</h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[#64717c] sm:text-base">设置新标与项目状态邮件。试用期和订阅期每日 09:00、18:00 发送。</p>
         </header>
-        {entitlement?.role === "trial" && <div className="mt-6 rounded-2xl border border-[#efcf80] bg-[#fff7df] px-5 py-4 text-sm font-bold text-[#805100]">7 天免费试用期间通知功能已开放；试用结束且未订阅时将自动停止发送。</div>}
+        {entitlement?.role === "trial" && <div className="mt-6 rounded-2xl border border-[#efcf80] bg-[#fff7df] px-5 py-4 text-sm font-bold text-[#805100]">3 天免费试用期间通知功能已开放；试用结束且未订阅时将自动停止发送。</div>}
         <div className="mt-6"><NotificationPreferences userId={user.id} locked={locked} lockReason="您的免费试用已结束，订阅后即可恢复邮件通知。" /></div>
       </div>
     </main>

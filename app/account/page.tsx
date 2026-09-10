@@ -373,7 +373,7 @@ export default function AccountPage() {
               <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#ffb21c]">Subscription</div>
               <h2 className="mt-3 text-xl font-black">{localize(uiText.currentPlan, locale)}</h2>
               <div className="mt-5 rounded-2xl border border-white/12 bg-white/5 p-4 text-lg font-black">
-                {entitlement?.role === "trial" ? "7 天免费试用" : entitlement?.plan === "enterprise" ? "企业版" : entitlement?.role === "subscriber" ? "个人版" : localize(uiText.freePlan, locale)}
+                {entitlement?.role === "trial" ? "3 天免费试用" : entitlement?.plan === "enterprise" ? "企业版" : entitlement?.role === "subscriber" ? "个人版" : localize(uiText.freePlan, locale)}
               </div>
               {(entitlement?.periodStart || entitlement?.periodEnd) && (
                 <dl className="mt-4 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.035] px-4 text-xs">

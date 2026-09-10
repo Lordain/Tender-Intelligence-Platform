@@ -30,7 +30,7 @@ export const BILLING_INTERVAL_LABELS: Record<BillingInterval, string> = {
   annual: "年度",
 };
 
-export const TRIAL_DAYS = 7;
+export const TRIAL_DAYS = 3;
 export const PAYMENT_GRACE_DAYS = 3;
 
 export type SubscriptionEntitlementCandidate = {
@@ -116,7 +116,7 @@ export function selectPreferredSubscription<T extends SubscriptionEntitlementCan
 
 export function canOpenTenderDetail(role: ViewerRole, isHomepageFreePreview: boolean): boolean {
   // Homepage previews are a visitor acquisition surface, not a permanent
-  // free-account entitlement. Once the seven-day trial has ended, every
+  // free-account entitlement. Once the three-day trial has ended, every
   // project detail requires a subscription — including a slug that happens
   // to be featured on the homepage.
   return role === "trial" || role === "subscriber" || (role === "guest" && isHomepageFreePreview);

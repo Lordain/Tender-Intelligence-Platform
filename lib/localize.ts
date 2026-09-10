@@ -165,6 +165,16 @@ export const uiText = {
     es: "Conectando con Google…",
     zh: "正在前往 Google…",
   },
+  continueWithApple: {
+    en: "Continue with Apple",
+    es: "Continuar con Apple",
+    zh: "使用 Apple 继续",
+  },
+  connectingToApple: {
+    en: "Connecting to Apple…",
+    es: "Conectando con Apple…",
+    zh: "正在前往 Apple…",
+  },
   orContinueWithEmail: {
     en: "or continue with email",
     es: "o continuar con correo",

@@ -130,7 +130,7 @@ export function HomeHero({ tenders }: { tenders: Tender[] }) {
             把拉美招标<br />变成中国企业<br />看得懂的机会
           </h1>
           <p className="mt-7 max-w-xl text-base leading-8 text-white/78 sm:text-lg lg:max-w-[27rem] xl:max-w-xl">
-            把政府招标信息转化为结构化中文情报，帮助中国企业更快判断能不能投、该不该投。
+            我们专注于为中国企业提供拉美市场的招标与采购信息汇集，持续整理和汇总当地公开招标信息，帮助中国企业更加高效地获取拉美市场的项目信息，了解当地采购需求，寻找潜在合作机会。
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link href="/tenders" className="inline-flex items-center justify-center gap-4 rounded-2xl bg-[#ffb21c] px-7 py-3.5 text-sm font-bold text-[#071826] transition-transform hover:-translate-y-0.5 hover:bg-[#ffc247]">

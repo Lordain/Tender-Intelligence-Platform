@@ -14,7 +14,7 @@ export function Footer() {
       <div className="mx-auto grid max-w-[94rem] gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.25fr_1fr] lg:grid-cols-[1.35fr_0.8fr_0.8fr_0.9fr_1fr]">
         <div className="max-w-sm">
           <Link href="/" className="inline-flex items-center gap-3"><BrandLogo variant="dark" className="size-10" /><span className="text-lg font-black tracking-[0.08em]">拉美招投标信息平台</span></Link>
-          <p className="mt-5 text-sm leading-7 text-white/52">把拉美政府招标信息转化为结构化中文情报，帮助中国企业更快发现、理解和跟进机会。</p>
+          <p className="mt-5 text-sm leading-7 text-white/52">持续整理和汇总拉美市场的公开招标与采购信息，帮助中国企业高效了解当地采购需求、发现潜在合作机会。</p>
         </div>
         {columns.map((column) => (
           <div key={column.title}>

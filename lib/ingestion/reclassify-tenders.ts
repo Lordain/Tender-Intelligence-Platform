@@ -96,7 +96,22 @@ function sameIndustries(a: string[], b: string[]): boolean {
   return sortedA.every((v, i) => v === sortedB[i]);
 }
 
-export async function reclassifyTenders(supabase: SupabaseClient, options: { write: boolean }): Promise<ReclassifyTendersResult> {
+export async function reclassifyTenders(
+  supabase: SupabaseClient,
+  options: {
+    write: boolean;
+    /**
+     * Write the two review CSVs to `exports/`. Defaults to true (the CLI's
+     * behaviour). The admin route passes false: a serverless filesystem is
+     * read-only outside /tmp, so `mkdirSync("exports")` there threw
+     * "ENOENT: no such file or directory, mkdir \'exports\'" — AFTER the
+     * reclassification had already been written to Supabase, so the run
+     * reported a hard failure for work it had actually completed
+     * (2026-09-10, reported by the user from the 重新分类 panel).
+     */
+    exportCsv?: boolean;
+  },
+): Promise<ReclassifyTendersResult> {
   // PostgREST caps an unranged select at 1000 rows — confirmed against real
   // production data. Page with .range() so nothing past the first 1000
   // gets silently dropped.
@@ -266,7 +281,6 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
     "publication_date",
   ];
 
-  if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
   const dateStamp = new Date().toISOString().slice(0, 10);
   /**
    * Writes the export, falling back to a numbered name when the plain one
@@ -300,10 +314,22 @@ export async function reclassifyTenders(supabase: SupabaseClient, options: { wri
     return null;
   }
 
-  const keptPath = writeExport("kept", toCsv(headers, keptCsvRows));
-  const excludedPath = writeExport("excluded", toCsv(headers, excludedCsvRows));
-  if (keptPath) console.log(`[reclassify-tenders] Wrote ${keptCsvRows.length} kept tender(s) -> ${keptPath}`);
-  if (excludedPath) console.log(`[reclassify-tenders] Wrote ${excludedCsvRows.length} excluded tender(s) -> ${excludedPath}`);
+  // The CSVs are a reviewer convenience; the reclassification itself is
+  // already committed to Supabase by this point. Nothing about the disk can
+  // be allowed to turn a completed run into a reported failure.
+  let keptPath: string | null = null;
+  let excludedPath: string | null = null;
+  if (options.exportCsv !== false) {
+    try {
+      if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
+      keptPath = writeExport("kept", toCsv(headers, keptCsvRows));
+      excludedPath = writeExport("excluded", toCsv(headers, excludedCsvRows));
+      if (keptPath) console.log(`[reclassify-tenders] Wrote ${keptCsvRows.length} kept tender(s) -> ${keptPath}`);
+      if (excludedPath) console.log(`[reclassify-tenders] Wrote ${excludedCsvRows.length} excluded tender(s) -> ${excludedPath}`);
+    } catch (err) {
+      console.error(`[reclassify-tenders] CSV export skipped (${(err as Error).message}). The reclassification itself completed.`);
+    }
+  }
 
   return {
     totalCount: rows.length,

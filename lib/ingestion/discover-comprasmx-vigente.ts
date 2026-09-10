@@ -18,7 +18,20 @@ import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { filterRecentTenders } from "@/lib/ingestion/recency";
 import type { Tender } from "@/types/tender";
 
-const SOURCE_NAME = "LicitIA Abierto (espejo de ComprasMX/CompraNet Datos Abiertos)";
+/**
+ * Shown to readers as the tender's source, and next to the 官方投标入口
+ * link on the detail page — so it names where the PROCUREMENT lives, which
+ * is Compras MX (the link goes to comprasmx.buengobierno.gob.mx).
+ *
+ * The rows are fetched through LicitIA Abierto's open mirror of the Compras
+ * MX / CompraNet Datos Abiertos feed (see connectors/licitia-connector.ts,
+ * which is still named for it). That used to be spelled out in this string;
+ * per the user (2026-09-10) it is transport detail, not the source a bidder
+ * cares about, and naming it here only made the 官方投标平台 label look
+ * like the tender came from somewhere other than Compras MX. Migration 0039
+ * renamed the rows already in Supabase to match.
+ */
+const SOURCE_NAME = "Compras MX";
 const FALLBACK_SOURCE_URL = "https://comprasmx.buengobierno.gob.mx/sitiopublico/#/";
 
 // Same reasoning as resolve-comprasmx-links.ts: a real systemic failure

@@ -21,7 +21,12 @@ export async function POST(request: Request) {
   if (!supabase) return NextResponse.json({ error: "Supabase isn't configured." }, { status: 500 });
 
   try {
-    const result = await reclassifyTenders(supabase, { write: body.write === true });
+    const result = await reclassifyTenders(supabase, {
+      write: body.write === true,
+      // No writable working directory in a serverless runtime — see the
+      // option's own comment in lib/ingestion/reclassify-tenders.ts.
+      exportCsv: false,
+    });
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
+import { INDUSTRY_LABELS } from "@/lib/tender-labels";
 import Link from "next/link";
 import type { Tender } from "@/types/tender";
 import { formatDate } from "@/lib/format";
@@ -17,20 +19,47 @@ function ArrowIcon() {
   );
 }
 
-const COVERED_INDUSTRIES = [
-  ["healthcare", "医疗", "Healthcare"],
-  ["energy", "能矿", "Energy & mining"],
-  ["power", "电力", "Power"],
-  ["ict", "ICT", "ICT & telecom"],
-  ["transport", "交通", "Transportation"],
-  ["construction", "土建", "Construction"],
-  ["heavy", "工程机械", "Construction machinery"],
-  ["water", "水工程", "Water engineering"],
-  ["vehicles", "车辆", "Vehicles"],
-  ["general", "综合", "General"],
-] as const;
+/**
+ * Icon per industry, and the ONLY thing this file hardcodes about the
+ * taxonomy — the labels come from INDUSTRY_LABELS and the order from
+ * ALL_INDUSTRIES, so the rail cannot drift from the filter the way it did
+ * on 2026-09-11 (it still listed 教育/税务/矿业 for several commits after
+ * those categories were removed, and had to be hand-resynced).
+ *
+ * Typed as a total Record, deliberately: adding a category to
+ * lib/industry.ts now fails to compile here until someone picks an icon
+ * for it, which is the check that would have caught that drift.
+ */
+const INDUSTRY_ICONS: Record<IndustryKey, IndustryIconName> = {
+  healthcare: "healthcare",
+  energy_mining: "energy",
+  power: "power",
+  ict_telecom: "ict",
+  transportation: "transport",
+  construction: "construction",
+  heavy_equipment: "heavy",
+  water: "water",
+  vehicles: "vehicles",
+  general: "general",
+};
 
-type IndustryIconName = (typeof COVERED_INDUSTRIES)[number][0];
+const COVERED_INDUSTRIES = ALL_INDUSTRIES.map((key) => ({
+  icon: INDUSTRY_ICONS[key],
+  name: INDUSTRY_LABELS[key].zh,
+  detail: INDUSTRY_LABELS[key].en,
+}));
+
+type IndustryIconName =
+  | "healthcare"
+  | "energy"
+  | "power"
+  | "ict"
+  | "transport"
+  | "construction"
+  | "heavy"
+  | "water"
+  | "vehicles"
+  | "general";
 
 function IndustryIcon({ name }: { name: IndustryIconName }) {
   return (
@@ -57,7 +86,7 @@ function IndustryLogoRail() {
         <div className="industry-logo-scroll flex w-max">
           {[0, 1].map((copy) => (
             <div key={copy} aria-hidden={copy === 1} className="flex shrink-0 items-center gap-12 pr-12 sm:gap-16 sm:pr-16">
-              {COVERED_INDUSTRIES.map(([icon, name, detail]) => (
+              {COVERED_INDUSTRIES.map(({ icon, name, detail }) => (
                 <div key={`${copy}-${name}`} className="flex min-w-max items-center gap-3 text-white/42">
                   <IndustryIcon name={icon} />
                   <span>

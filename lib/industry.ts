@@ -18,13 +18,23 @@
  * do the rest — a source's own real field just becomes one more signal in
  * the haystack, not a special case.
  *
- * Category set: minimum required set is education/healthcare/tax/energy/
- * power/ict_telecom/transportation/construction (product decision); mining/
- * water added on top since they're common, real categories in Mexican
+ * Category set. The original product decision named education/healthcare/
+ * tax/energy/power/ict_telecom/transportation/construction as the required
+ * minimum, with mining/water on top as common, real categories in Mexican
  * public procurement (LOPSRM covers agua potable constantly, for one).
- * "energy" and "power" are deliberately separate, not one merged category:
- * "energy" is oil & gas / renewables (PEMEX-shaped), "power" is the
- * electricity grid itself (CFE-shaped) — different buyers, different
+ *
+ * Three of those are gone as of 2026-09-11, after the user saw how much of
+ * the filter was dead: "education" and "tax" removed outright, "mining"
+ * merged into "energy" as "energy_mining" (能矿). Education and tax were
+ * empty by design — this file's own keyword rules were fine, but
+ * lib/relevance.ts excludes school buildings, childcare, medical services,
+ * consulting and tax-culture programs, which is nearly everything those two
+ * ever held. Mining is granted by concession here, not tendered. Migration
+ * 0040 rewrote the tags already stored.
+ *
+ * "energy_mining" and "power" stay separate, and that is not an oversight:
+ * "power" is the electricity grid itself (CFE-shaped), the merged category
+ * is extraction and fuels (PEMEX-shaped) — different buyers, different
  * bidder pools, real enough of a distinction in Mexico that lumping them
  * together would blur exactly the signal a filter exists to give.
  *

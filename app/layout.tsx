@@ -4,6 +4,7 @@ import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { CookieNotice } from "@/components/layout/CookieNotice";
 import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
 import { siteOrigin } from "@/lib/site-url";
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Header />
           <main className="flex flex-1 flex-col">{children}</main>
           <Footer />
+          <CookieNotice />
         </LocaleProvider>
       </body>
     </html>

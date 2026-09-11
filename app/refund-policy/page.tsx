@@ -38,6 +38,14 @@ const sections: PolicySection[] = [
     ],
   },
   {
+    id: "invoice",
+    title: "发票处理",
+    paragraphs: [
+      "发票（CFDI）由平台人工开具，需用户在付款后主动通过 WhatsApp 或邮箱申请并提供开票资料，详见《服务条款》「发票（CFDI）」一节。",
+      "若某笔款项已开具发票且后续获得退款，平台将按适用规则作相应的发票冲销或开具贷记凭证；该过程可能需要用户配合提供必要信息。",
+    ],
+  },
+  {
     id: "how-to-request",
     title: "如何申请",
     paragraphs: [`如认为符合上述例外情形，请发送邮件至 ${LEGAL_CONTACT_EMAIL}，说明账户邮箱、涉及的计费周期、付款日期和具体情况；如有 Stripe 账单号、SPEI 参考号或人工电汇申请编号，也请一并提供。平台会在合理期限内审核并答复。`],
@@ -50,7 +58,7 @@ export default function RefundPolicyPage() {
       eyebrow="Billing"
       title="订阅退款政策"
       intro="本政策说明订阅费用的退款规则，请在订阅付费方案前仔细阅读；本页与《服务条款》「订阅退款政策」一节内容一致，单独列出便于查阅。"
-      updated="2026年9月9日"
+      updated="2026年9月11日"
       sections={sections}
     />
   );

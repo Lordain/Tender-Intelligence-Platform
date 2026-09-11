@@ -33,6 +33,15 @@ const sections: PolicySection[] = [
       `如对扣费有疑问或需要申请前款情形下的处理，请联系 ${LEGAL_CONTACT_EMAIL}。`,
     ],
   },
+  {
+    id: "invoice",
+    title: "发票（CFDI）",
+    paragraphs: [
+      "平台不会自动开具发票。付款完成后，用户可通过账户页面或定价页面的「需要 CFDI 发票？」入口，经 WhatsApp 或邮箱与平台联系，并提供账户邮箱及开票所需的税务资料（例如 RFC、税务制度、发票用途以及接收发票的邮箱），由平台人工开具并发送。",
+      "发票按实际收到的款项金额与币种开具。为避免跨期开票受到限制，建议在付款当月内提出申请；逾期提出的申请，平台将在适用规则允许的范围内尽力处理，但无法保证一定能够开具。",
+      "若已开具发票的款项后续获得退款，平台将按适用规则作相应的发票冲销或开具贷记凭证，可能需要用户配合提供必要信息。",
+    ],
+  },
   { id: "ip", title: "知识产权", paragraphs: ["平台界面、整理结构与原创分析受适用法律保护。政府公告与第三方文件的权利归相应权利人所有；平台展示这些内容不代表取得其所有权。"] },
   { id: "availability", title: "服务可用性与变更", paragraphs: ["平台可能因维护、安全、第三方服务变化或不可抗力暂时中断，并可在合理范围内调整功能。重大条款变更将在平台内以适当方式提示。"] },
   { id: "liability", title: "责任限制", paragraphs: ["在适用法律允许的范围内，平台不对因依赖辅助翻译、摘要、筛选结果或第三方来源而产生的投标损失、机会损失或间接损失承担责任。任何资格与投标决定均应结合官方文件和专业意见作出。"] },
@@ -48,5 +57,5 @@ const sections: PolicySection[] = [
 ];
 
 export default function TermsPage() {
-  return <PolicyPage eyebrow="Legal" title="服务条款" intro="本条款说明平台提供什么、用户如何使用信息，以及双方责任的基本边界。" updated="2026年9月9日" sections={sections} />;
+  return <PolicyPage eyebrow="Legal" title="服务条款" intro="本条款说明平台提供什么、用户如何使用信息，以及双方责任的基本边界。" updated="2026年9月11日" sections={sections} />;
 }

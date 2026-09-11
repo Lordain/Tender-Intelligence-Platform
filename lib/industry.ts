@@ -39,37 +39,32 @@
  */
 
 export type IndustryKey =
-  | "education"
   | "healthcare"
-  | "tax"
-  | "energy"
+  | "energy_mining"
   | "power"
   | "ict_telecom"
   | "transportation"
   | "construction"
-  | "mining"
+  | "heavy_equipment"
   | "water"
   | "vehicles"
   | "general";
 
 /** Every defined category, in the order the filter UI should list them (required-minimum set first, extras after, "general" last as the catch-all). */
 export const ALL_INDUSTRIES: IndustryKey[] = [
-  "education",
   "healthcare",
-  "tax",
-  "energy",
+  "energy_mining",
   "power",
   "ict_telecom",
   "transportation",
   "construction",
-  "mining",
+  "heavy_equipment",
   "water",
   "vehicles",
   "general",
 ];
 
 const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
-  ["education", /educaci[óo]n|escuela\b|plantel educativo|universidad|instituto tecnol[óo]gico|mobiliario escolar|infraestructura educativa|centro educativo/i],
   // Deliberately equipment/facility only — osteosíntesis/endoprótesis/
   // prótesis/implante/ortopedia/reactivo/medicamento/fármaco/insumo
   // médico/material de curación are medical CONSUMABLES, not equipment;
@@ -93,7 +88,6 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // INFRAESTRUCTURAS HOSPITALARIAS DEL DEPARTAMENTO DEL MAGDALENA" matched
   // neither this nor the construction pattern's own hospital term.
   ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|rayos x|hospital(es)?\b|hospitalari[oa]s?|unidad(es)? m[ée]dica(s)?|servicios de salud|\bsalud\b/i],
-  ["tax", /administraci[óo]n tributaria|fiscalizaci[óo]n|declaraci[óo]n fiscal|sistema de recaudaci[óo]n|\bsat\b|servicio de administraci[óo]n tributaria|padr[óo]n de contribuyentes|aduanas?\b|hacienda y cr[ée]dito p[úu]blico/i],
   // "\bducto\b" (2026-09-03, real bug found against a real Proyectos
   // Estratégicos MX export): was missing its leading \b, so it matched
   // as a bare substring of "acueducto" (aqueduct — CONAGUA's own
@@ -132,7 +126,22 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // TULA...", "SERVICIOS DE MANTENIMIENTO INDUSTRIAL EN LA REFINERÍA...")
   // still matches normally since "refinería" there isn't immediately
   // preceded by that narrow "para ... la/el" shape.
-  ["energy", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|(?<!para (uso en |usarse en )?(la |el )?)refiner[íi]a|gas natural|\bducto\b|oleoducto|gasoducto|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible|resistividad/i],
+  // energy and mining merged into one category 2026-09-11 (user: 把矿业+能源
+  // 合并，统称能矿). Government procurement in these countries tenders very
+  // little of either on its own — mining is granted by concession, not
+  // bought — so two near-empty filter options were worse than one real one.
+  // Heavy construction machinery as its own category (2026-09-11, user:
+  // 把 Excavadora、Grúa 这类重型设备都调到这个标签下). These used to land on
+  // "construction" next to real civil works, or on "general", which made the
+  // filter useless for the one thing a Chinese manufacturer most wants to
+  // find: equipment tenders it can actually supply.
+  //
+  // "grúa" is deliberately qualified — a bare match would also pull in tow
+  // trucks ("grúa de arrastre"), which belong under vehicles. "montacargas"
+  // (forklift) is included: it is materials-handling plant, bought the same
+  // way and by the same buyers.
+  ["heavy_equipment", /excavadora|retroexcavadora|motoniveladora|cargador frontal|minicargador|bulldozer|topadora|tractor de orugas|compactadora|rodillo vibratorio|pavimentadora|montacargas|maquinaria pesada|maquinaria para construcci[óo]n|gr[úu]a(s)? (torre|hidr[áa]ulica|telesc[óo]pica|sobre|m[óo]vil|articulada)|planta de asfalto|revolvedora de concreto|olla revolvedora/i],
+  ["energy_mining", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|(?<!para (uso en |usarse en )?(la |el )?)refiner[íi]a|gas natural|\bducto\b|oleoducto|gasoducto|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible|resistividad|miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
   // "generador(es)?"/"\bups\b" added (2026-09-05, same real gap as the
   // "hospital(es)?" fix above): relevance.ts's FLAGSHIP_INDUSTRY_KEYWORDS
   // already recognizes a generator/UPS purchase as power-grid key
@@ -226,7 +235,6 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // matched any existing construction term (no "construcción"/"obra
   // pública"/etc.) despite being genuine building repair/rehab work.
   ["construction", /construcci[óo]n|obra p[úu]blica|carreter[ao]|puentes?\b|ferrocarril|\bpuerto\b|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|remodelaci[óo]n|modernizaci[óo]n y ampliaci[óo]n|ancho de corona|\bkm\s*\d+\+\d{3}\b|(construcci[óo]n|ampliaci[óo]n|modernizaci[óo]n|remodelaci[óo]n).{0,30}aeropuerto|infraestructuras? hospitalaria(s)?|obras? de reparaci[óo]n y rehabilitaci[óo]n|rehabilitaci[óo]n de (la )?infraestructura f[íi]sica/i],
-  ["mining", /miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
   // "\bptar\b" (2026-09-03, real gap): CONAGUA's own titles overwhelmingly
   // abbreviate "Planta de Tratamiento de Aguas Residuales" as "PTAR"
   // rather than spelling it out (many real rows in the same export) —

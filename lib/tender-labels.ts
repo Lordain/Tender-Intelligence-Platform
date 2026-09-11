@@ -36,15 +36,13 @@ export function countryLabel(country: string, locale: Locale): string {
 }
 
 export const INDUSTRY_LABELS: Record<IndustryKey, LocalizedText> = {
-  education: { en: "Education", es: "Educación", zh: "教育" },
   healthcare: { en: "Healthcare", es: "Salud", zh: "医疗" },
-  tax: { en: "Tax/Fiscal", es: "Fiscal/Tributario", zh: "税务" },
-  energy: { en: "Energy (Oil & Gas)", es: "Energía (Petróleo y Gas)", zh: "能源" },
+  heavy_equipment: { en: "Heavy Equipment", es: "Maquinaria Pesada", zh: "工程机械" },
+  energy_mining: { en: "Energy & Mining", es: "Energía y Minería", zh: "能矿" },
   power: { en: "Power/Electricity", es: "Electricidad", zh: "电力" },
   ict_telecom: { en: "ICT/Telecom", es: "TIC/Telecom", zh: "ICT" },
   transportation: { en: "Transportation", es: "Transporte", zh: "交通" },
   construction: { en: "Construction", es: "Construcción", zh: "土建" },
-  mining: { en: "Mining", es: "Minería", zh: "矿业" },
   water: { en: "Water & Sanitation", es: "Agua y Saneamiento", zh: "水工程" },
   vehicles: { en: "Vehicles", es: "Vehículos", zh: "车辆" },
   general: { en: "General", es: "General", zh: "综合" },

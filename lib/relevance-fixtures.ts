@@ -614,8 +614,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "ESTUDIO DE ORDENAM P/LA AMPLIACIÓN Y MODERNIZAC DEL PUERTO DE PROGRESO, YUCATÁN",
-    expectedTier: "standard",
-    note: "Per the user: 从大型项目改常规项目. The port is the SUBJECT of a study, not the work. scopeType 'works', not 'consulting': the real row reached the flagship bucket in the export, which a consulting-scoped tender cannot do — that scope is excluded outright.",
+    expectedTier: "excluded",
+    note: "Was standard (2026-09-07: 从大型项目改常规项目 — the port is the SUBJECT of a study, not the work). Superseded 2026-09-11: asked directly whether port planning studies should go too, the user answered 要排除, so any title leading with the study is now excluded whatever it studies. Kept rather than deleted — it is the case that forced the question, and it pins the wider rule.",
     scopeType: "works",
     country: "Mexico",
   },

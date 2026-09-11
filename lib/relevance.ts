@@ -474,14 +474,15 @@ const EXCLUDE_KEYWORDS = [
   // "ESTUDIOS PROYECTO CONSTRUCCIÓN Y EQUIPO PARA POZO HGZ TULA Y UMF 37
   // HIDALGO". `^\W*` because real titles arrive wrapped in stray quotes.
   //
-  // Deliberately NOT a bare leading-"estudios" rule, which is what this
-  // started as: the regression suite caught that it would also have
-  // excluded "ESTUDIO DE ORDENAM P/LA AMPLIACIÓN Y MODERNIZAC DEL PUERTO DE
-  // PROGRESO", which the user reviewed on 2026-09-07 and put at 常规 rather
-  // than excluding. A named study of a major asset and a design package for
-  // a clinic well are different calls, and the older one still stands until
-  // the user says otherwise.
-  /^\W*estudios?\s+(y\s+)?proyectos?\b/i,
+  // Widened on the same day, after the user confirmed: 港口规划研究这类要
+  // 也一起排除. This first shipped narrowed to the "estudios y proyectos"
+  // phrasing, because the regression suite caught that a bare leading-
+  // "estudios" rule would also exclude "ESTUDIO DE ORDENAM P/LA AMPLIACIÓN
+  // Y MODERNIZAC DEL PUERTO DE PROGRESO", which the user had put at 常规 on
+  // 2026-09-07. Raising that rather than silently overriding it is what got
+  // the newer decision: any title that leads with the study is buying the
+  // study, whatever it studies. The 2026-09-07 fixture is updated to match.
+  /^\W*estudios?\b/i,
 
   // Highway U-turn/return lanes: "CONSTRUCCIÓN DE RETORNO TIPO
   // \"HERRADURA\"" — a single road fixture, the same small-scale roadworks

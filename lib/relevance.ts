@@ -846,6 +846,35 @@ const MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT = [
   /planta\s+(potabilizadora|de\s+tratamiento)[^.]{0,40}\bpresas?\b/i,
 ];
 
+/**
+ * IOARR — "Inversión de Optimización, de Ampliación Marginal, de Reposición y
+ * de Rehabilitación", a formal category under Peru's Invierte.pe system.
+ * By legal definition these are NOT new projects: they are marginal
+ * optimisation, replacement and rehabilitation spend on an asset that already
+ * exists, and they skip the full pre-investment study a real project needs.
+ *
+ * Real spellings in SEACE titles include the official "IOARR" and the common
+ * clerical "IOAAR", both present in the 2026-09-11 import.
+ *
+ * Why this is checked, and checked here: 168 of that run's 1295 kept rows came
+ * in on the bare "puente" keyword, and a large share were titles like
+ * "CONTRATACION DE LA EJECUCION DE LA IOARR: RENOVACION DE PUENTE; EN EL(LA)
+ * SAN MIGUEL EN LA LOCALIDAD SAN MIGUEL" — a village footbridge replacement,
+ * promoted to flagship on the word "puente" alone with no amount at all.
+ *
+ * The rule the user set (2026-09-11): an IOARR with NO disclosed value is
+ * excluded; an IOARR that publishes a real amount is judged on that amount
+ * like anything else, because some genuinely do run to several million.
+ *
+ * Placed with MAINTENANCE_ONLY_KEYWORDS rather than among the undisclosed-
+ * value gates further down, for the reason that motivated it: those gates sit
+ * below every promotion branch, and this exact row promotes on a keyword and
+ * returns before reaching them. Same posture as those keywords too — an
+ * include-override must not rescue it, only a real government national-
+ * priority designation.
+ */
+const PERU_MARGINAL_INVESTMENT = /\bioa[ar]r\b/i;
+
 const MAINTENANCE_ONLY_KEYWORDS = [
   // The abbreviations are how Compras MX titles actually write it —
   // "IA-N-182-2026 MTTO PLANTAS DE EMERGENCIA HOSPITALES" is a real one.
@@ -1847,6 +1876,16 @@ export function classifyRelevance(input: {
       RENEWAL_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack)))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // See PERU_MARGINAL_INVESTMENT — undisclosed value only; a real amount is
+  // judged on its merits below like any other row.
+  if (
+    input.isNationalPriorityProject !== true &&
+    input.estimatedValue === undefined &&
+    PERU_MARGINAL_INVESTMENT.test(haystack)
+  ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
 
   if (

@@ -1781,4 +1781,22 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "'complejo deportivo' / 'práctica deportiva' joined MUNICIPAL_AMENITY_KEYWORDS. Value is under the class's ≥$5M works exception, so the exception is not what decides this one.",
     country: "Peru", scopeType: "works", estimatedValue: 4_000_000, currency: "PEN",
   },
+  {
+    title: "CONTRATACION DE LA EJECUCION DE LA IOARR: RENOVACION DE PUENTE; EN EL(LA) SAN MIGUEL EN LA LOCALIDAD SAN MIGUEL",
+    expectedTier: "excluded",
+    note: "PERU_MARGINAL_INVESTMENT, the user's call on 2026-09-11 ('IOARR 且无金额 → 排除'). A village footbridge replacement that was flagship on the word 'puente' alone.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "CONTRATACIÓN PARA LA EJECUCION DE LA IOAAR: RENOVACION DE PUENTE; EN EL(LA) CAMINO VECINAL RUTA LA MORADA",
+    expectedTier: "excluded",
+    note: "Same rule through the clerical misspelling 'IOAAR', which is as common as the official 'IOARR' in real SEACE titles.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "CONTRATACION DE LA EJECUCION DE LA IOARR: RENOVACION DE PUENTE EN LA RUTA NACIONAL PE-5N",
+    expectedTier: "flagship",
+    note: "The other half of that call — 有金额的照常按门槛judge. An IOARR that publishes a real amount is judged on it, because some genuinely run to several million.",
+    country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 42_000_000, currency: "PEN",
+  },
 ];

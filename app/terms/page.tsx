@@ -42,7 +42,7 @@ const sections: PolicySection[] = [
     title: "适用法律与联系方式",
     paragraphs: [
       "本条款适用墨西哥合众国（Estados Unidos Mexicanos）现行有效的法律，因本条款产生的争议，双方应首先友好协商解决。",
-      `运营主体：${LEGAL_OPERATOR_NAME}；法定地址：${LEGAL_OPERATOR_ADDRESS}。与本条款相关的问题、投诉或通知，可发送至 ${LEGAL_CONTACT_EMAIL}。`,
+      `运营主体：${LEGAL_OPERATOR_NAME}${LEGAL_OPERATOR_ADDRESS ? `；法定地址：${LEGAL_OPERATOR_ADDRESS}` : ""}。与本条款相关的问题、投诉或通知，可发送至 ${LEGAL_CONTACT_EMAIL}。`,
     ],
   },
 ];

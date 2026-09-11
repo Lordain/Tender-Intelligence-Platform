@@ -12,7 +12,7 @@ const sections: PolicySection[] = [
     id: "responsible-party",
     title: "负责人身份与联系方式",
     paragraphs: [
-      `本平台由 ${LEGAL_OPERATOR_NAME} 运营（以下称“平台”），法定地址为 ${LEGAL_OPERATOR_ADDRESS}，是本政策项下处理用户个人信息的负责人（Responsable）。`,
+      `本平台由 ${LEGAL_OPERATOR_NAME} 运营（以下称“平台”）${LEGAL_OPERATOR_ADDRESS ? `，法定地址为 ${LEGAL_OPERATOR_ADDRESS}` : ""}，是本政策项下处理用户个人信息的负责人（Responsable）。`,
       `与本政策相关的问题，或行使下方「用户权利」一节所述权利，请发送邮件至 ${LEGAL_CONTACT_EMAIL}。`,
     ],
   },

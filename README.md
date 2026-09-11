@@ -203,6 +203,20 @@ Coverage is per-source and the UI says so rather than failing quietly:
 | Source | Per-document links | Why |
 | --- | --- | --- |
 | Peru — SEACE/OECE | ✅ inline in the OCDS record | Filtered to `biddingDocuments` + `clarifications`; award/evaluation documents are an outcome, not a bid input |
+
+`prod1.seace.gob.pe` is slow and a single *Bases Administrativas* routinely
+runs to several MB, so the first real run downloaded 1 of 3 and reported the
+other two as timeouts at 20s. Nothing was wrong with them. Two things
+followed: the per-file ceiling is a **total-transfer** budget (an
+`AbortSignal` kills the body stream, so a file arriving perfectly well still
+dies when it expires) and is now 60s; and concurrency dropped from 4 to 2,
+because parallelism does not create bandwidth on a slow origin — it splits
+one pipe N ways so every file takes N times longer and they approach the
+timeout together. The batch also carries a wall-clock budget (48s on Vercel,
+270s locally) and reports "not attempted" separately from "timed out", so a
+slow origin yields a partial ZIP with an honest report instead of a dead
+request. Selecting 1–2 tenders at a time is the practical advice, and the UI
+gives it.
 | Colombia — SECOP II | ⚠️ automatable, not wired up | `colombia-documents-connector.ts` downloads fine, but its `proceso` id matched 0 of 499 stored tenders on the first real run — wiring it before that is understood would return empty ZIPs |
 | Mexico — Compras MX | ❌ never | Same anti-automation gate as its search API |
 | Peru — ProInversión OxI | ❌ | The export carries a project detail link, no document URLs |

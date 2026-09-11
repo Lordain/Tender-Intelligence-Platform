@@ -37,9 +37,31 @@ const MAX_FILES = 40;
 const MAX_FILE_BYTES = 40 * 1024 * 1024;
 /** Total ZIP ceiling — a response much larger than this will not finish inside maxDuration anyway. */
 const MAX_TOTAL_BYTES = 80 * 1024 * 1024;
-const PER_FILE_TIMEOUT_MS = 20_000;
-/** Government file servers throttle; four at a time is fast without looking like a scrape. */
-const CONCURRENCY = 4;
+/**
+ * Per-file ceiling, and it is a TOTAL-TRANSFER budget, not a connect timeout:
+ * `AbortSignal.timeout` kills the body stream too, so a large file that is
+ * downloading perfectly well still dies when it expires.
+ *
+ * The first real run (2026-09-11) made that concrete: three files, one 6.9MB
+ * .docx arrived, the other two were reported as "下载超时" at 20s. Nothing
+ * was wrong with them — prod1.seace.gob.pe is simply slow, 7MB is a normal
+ * size for Bases Administrativas, and three of those at once share one link.
+ */
+const PER_FILE_TIMEOUT_MS = 60_000;
+/**
+ * Two at a time, not four. Concurrency does not create bandwidth: on a slow
+ * origin it splits the same pipe N ways, so every file takes N times longer
+ * and they all approach the timeout together instead of finishing one by one.
+ * That is exactly what the first real run looked like.
+ */
+const CONCURRENCY = 2;
+/**
+ * Wall-clock budget for the whole batch, so a slow origin produces a partial
+ * ZIP plus an honest report rather than a dead request. Vercel's limit is
+ * maxDuration above and the response still has to be built and sent inside
+ * it; a local dev server has no limit, which is where a big batch belongs.
+ */
+const TOTAL_BUDGET_MS = process.env.VERCEL ? 48_000 : 270_000;
 
 /**
  * Same honest-identification posture as the OECE index fetch (see
@@ -100,12 +122,12 @@ function uniquePath(path: string, used: Set<string>): string {
   }
 }
 
-async function downloadOne(link: StoredDocumentLink): Promise<{ outcome: FileOutcome; buffer?: Buffer }> {
+async function downloadOne(link: StoredDocumentLink, timeoutMs: number): Promise<{ outcome: FileOutcome; buffer?: Buffer }> {
   const base: FileOutcome = { slug: link.slug, fileName: link.fileName, ok: false };
   try {
     const response = await fetch(link.sourceUrl, {
       headers: DOWNLOAD_HEADERS,
-      signal: AbortSignal.timeout(PER_FILE_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) {
       return { outcome: { ...base, error: `HTTP ${response.status} ${response.statusText}` } };
@@ -118,7 +140,14 @@ async function downloadOne(link: StoredDocumentLink): Promise<{ outcome: FileOut
     return { outcome: { ...base, ok: true, bytes: buffer.byteLength }, buffer };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { outcome: { ...base, error: /timed out|abort/i.test(message) ? "下载超时" : message } };
+    return {
+      outcome: {
+        ...base,
+        error: /timed out|abort/i.test(message)
+          ? `下载超时（${Math.round(timeoutMs / 1000)} 秒内没传完，秘鲁服务器慢，标书又常有好几 MB——少选几个再试）`
+          : message,
+      },
+    };
   }
 }
 
@@ -167,18 +196,31 @@ export async function POST(request: Request) {
   // an amended publication — and adding the same name to a flat archive twice
   // makes one of them unreachable.
   const usedPaths = new Set<string>();
+  const startedAt = Date.now();
+  const remainingBudget = () => TOTAL_BUDGET_MS - (Date.now() - startedAt);
   // Sequential batches of CONCURRENCY rather than one Promise.all over
-  // everything: the byte ceiling has to be checked against work already
-  // finished, and firing all 40 at once would blow past it before the first
-  // check runs.
+  // everything: the byte and time ceilings have to be checked against work
+  // already finished, and firing all 40 at once would blow past both before
+  // the first check runs.
   for (let from = 0; from < links.length; from += CONCURRENCY) {
-    if (totalBytes >= MAX_TOTAL_BYTES) {
+    const stopReason =
+      totalBytes >= MAX_TOTAL_BYTES
+        ? "已达到本次下载总大小上限，未下载"
+        : // A file given only the scraps of the budget is a guaranteed
+          // timeout that also burns the time the report needs to be built and
+          // sent. Better to say plainly that it was not attempted.
+          remainingBudget() < 15_000
+          ? "本次下载时间用完了，这个文件没有开始下载——少选几个，或者在本机 npm run dev 下运行（本机时间宽裕得多）"
+          : null;
+    if (stopReason) {
       for (const link of links.slice(from)) {
-        outcomes.push({ slug: link.slug, fileName: link.fileName, ok: false, error: "已达到本次下载总大小上限，未下载" });
+        outcomes.push({ slug: link.slug, fileName: link.fileName, ok: false, error: stopReason });
       }
       break;
     }
-    const results = await Promise.all(links.slice(from, from + CONCURRENCY).map(downloadOne));
+    // Never promise a file more time than the batch has left.
+    const timeoutMs = Math.min(PER_FILE_TIMEOUT_MS, remainingBudget());
+    const results = await Promise.all(links.slice(from, from + CONCURRENCY).map((link) => downloadOne(link, timeoutMs)));
     for (const { outcome, buffer } of results) {
       outcomes.push(outcome);
       if (!buffer) continue;
@@ -189,11 +231,19 @@ export async function POST(request: Request) {
 
   const okCount = outcomes.filter((outcome) => outcome.ok).length;
   const missing = slugs.filter((slug) => (bySlug.get(slug) ?? []).length === 0);
+  const elapsedSeconds = ((Date.now() - startedAt) / 1000).toFixed(0);
   const report = [
     `下载时间：${new Date().toISOString()}`,
     `选中项目：${slugs.length} 个`,
     `找到官方链接：${links.length} 个文件`,
-    `下载成功：${okCount} 个（${(totalBytes / 1024 / 1024).toFixed(1)} MB）`,
+    `下载成功：${okCount} 个（${(totalBytes / 1024 / 1024).toFixed(1)} MB，耗时 ${elapsedSeconds} 秒）`,
+    ...(okCount < links.length
+      ? [
+          "",
+          "有文件没下下来。秘鲁 prod1.seace.gob.pe 传得慢，标书动辄好几 MB，同时下反而更慢——",
+          "一次选 1～2 个项目重试即可；失败的不会影响已经成功的。在本机 npm run dev 下运行时间预算宽松很多。",
+        ]
+      : []),
     "",
     "文件名格式为 <项目 slug>__<文件名>，本地批量分析会直接按这个 slug 归属，不需要再手动对应。",
     "",

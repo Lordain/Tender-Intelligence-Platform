@@ -19,23 +19,29 @@ const geistMono = Geist_Mono({
 });
 
 // The product is Chinese-only on the frontend (see lib/i18n.tsx) — this
-// isn't LocalizedText-driven like the rest of the UI copy, so it needs to
-// be kept in sync with lib/localize.ts's uiText.heroTitle/heroSubtitle by
-// hand.
+// isn't LocalizedText-driven like the rest of the UI copy, so it has to be
+// kept in step BY HAND with the brand copy a visitor actually reads:
+// components/tenders/HomeHero.tsx and components/layout/{Header,Footer}.tsx.
+// It drifted once already — those three said 拉美 while this still said
+// 墨西哥 only, long after Colombia and Peru were live.
+//
+// The three countries are named rather than rolled up into 拉美 because
+// that is what people search for; when a fourth connector ships, this list
+// and AVAILABLE_COUNTRIES (lib/tender-list-page.ts) both need the addition.
 export const metadata: Metadata = {
   // Absolute base for canonical URLs and any relative metadata a page sets;
   // without it Next warns and emits relative canonicals, which crawlers
   // resolve against whatever host served the page — including preview hosts.
   metadataBase: new URL(siteOrigin()),
   title: {
-    default: "拉美招投标信息平台 | 中国企业出海墨西哥",
+    default: "拉美招投标信息平台 | 中国企业出海墨西哥、哥伦比亚、秘鲁",
     // Every page below sets a short, page-specific title; this keeps the
     // brand on the end of it so search results stay attributable without
     // each page repeating it.
     template: "%s | 拉美招投标信息平台",
   },
   description:
-    "把墨西哥政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/中型项目。",
+    "把墨西哥、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/中型项目。",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

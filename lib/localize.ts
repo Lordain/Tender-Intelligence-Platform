@@ -10,15 +10,18 @@ export const uiText = {
     es: "Descubre. Comprende. Califica.",
     zh: "发现·理解·资格判断",
   },
+  // Nothing renders these two today — components/tenders/HomeHero.tsx carries
+  // its own headline — but app/layout.tsx's metadata comment points here, so
+  // they are kept true rather than left describing a Mexico-only product.
   heroTitle: {
-    en: "Tender intelligence for companies expanding into Mexico",
-    es: "Inteligencia de licitaciones para proveedores internacionales en México",
-    zh: "面向中国企业出海墨西哥的拉美招投标信息平台",
+    en: "Tender intelligence for companies expanding into Latin America",
+    es: "Inteligencia de licitaciones para proveedores internacionales en América Latina",
+    zh: "面向中国企业出海拉美的招投标信息平台",
   },
   heroSubtitle: {
-    en: "Break through the Spanish-language barrier: understand Mexican government tender requirements in your own language, and decide bid or no-bid with confidence.",
-    es: "Licitaciones del gobierno mexicano, traducidas y estructuradas para que proveedores internacionales entiendan los requisitos de calificación en minutos y decidan si participar con confianza.",
-    zh: "看不懂西语标书、搞不清资质要求？我们把墨西哥政府招标信息转化为结构化的中文情报，帮您快速判断能不能投、该不该投。",
+    en: "Break through the Spanish-language barrier: understand government tender requirements from Mexico, Colombia and Peru in your own language, and decide bid or no-bid with confidence.",
+    es: "Licitaciones públicas de México, Colombia y Perú, traducidas y estructuradas para que proveedores internacionales entiendan los requisitos de calificación en minutos y decidan si participar con confianza.",
+    zh: "看不懂西语标书、搞不清资质要求？我们把墨西哥、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮您快速判断能不能投、该不该投。",
   },
   browseTenders: {
     en: "Browse Tenders",

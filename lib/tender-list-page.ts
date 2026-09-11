@@ -1,4 +1,5 @@
 import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
+import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { filterTenders, isSortKey, sortTenders } from "@/lib/filter-tenders";
 
 export const TENDER_PAGE_SIZE = 20;
@@ -35,6 +36,22 @@ export type TenderListPageData = {
   totalResults: number;
   totalPages: number;
   currentPage: number;
+  /**
+   * Industry filter options, narrowed to the categories that actually have
+   * tenders behind them right now.
+   *
+   * The taxonomy (ALL_INDUSTRIES) is aspirational — it carries tax, mining,
+   * education and others that government procurement in these countries
+   * either never tenders or that this platform's own exclude rules remove
+   * on purpose. Offering all of them made most of the filter dead: every
+   * click returned zero and read as a broken site rather than an empty
+   * category (2026-09-11, user: 很多行业一个项目都没有).
+   *
+   * Computed from the UNFILTERED list, so choosing an industry never makes
+   * its own checkbox disappear, and it reappears by itself the day a source
+   * starts supplying that category — no hardcoded hide list to maintain.
+   */
+  availableIndustries: IndustryKey[];
   siteTenderCount: number;
   newTodayCount: number;
   upcomingCount: number;
@@ -111,6 +128,9 @@ export function buildTenderListPage(
     { query, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers },
     "zh",
   );
+  const presentIndustries = new Set(allTenders.flatMap((tender) => tender.industries));
+  const availableIndustries = ALL_INDUSTRIES.filter((industry) => presentIndustries.has(industry));
+
   const today = platformDateKey(now);
   const nowMs = now.getTime();
   const newTodayCount = filtered.filter((tender) => platformDateKey(tender.createdAt) === today).length;
@@ -134,6 +154,7 @@ export function buildTenderListPage(
     totalResults: sorted.length,
     totalPages,
     currentPage,
+    availableIndustries,
     siteTenderCount: allTenders.filter((tender) => tender.status !== "awarded" && tender.status !== "cancelled").length,
     newTodayCount,
     upcomingCount,

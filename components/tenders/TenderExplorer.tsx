@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
-import { ALL_INDUSTRIES } from "@/lib/industry";
+import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, countryLabel, industryLabel } from "@/lib/tender-labels";
@@ -196,6 +196,7 @@ export function TenderExplorer({
   totalResults,
   totalPages,
   currentPage,
+  availableIndustries,
   siteTenderCount,
   newTodayCount,
   upcomingCount,
@@ -205,6 +206,7 @@ export function TenderExplorer({
   totalResults: number;
   totalPages: number;
   currentPage: number;
+  availableIndustries: IndustryKey[];
   siteTenderCount: number;
   newTodayCount: number;
   upcomingCount: number;
@@ -215,6 +217,10 @@ export function TenderExplorer({
   const searchParams = useSearchParams();
   const { savedIds } = useSavedTenderIds();
   const [accessPrompt, setAccessPrompt] = useState<AccessPromptKind | null>(null);
+
+  // Falls back to the full taxonomy only if the data carries no industries
+  // at all — an empty filter would be worse than an over-broad one.
+  const industryOptions = availableIndustries.length > 0 ? availableIndustries : ALL_INDUSTRIES;
 
   const query = searchParams.get("q") ?? "";
   const countryParam = searchParams.get("country");
@@ -369,7 +375,7 @@ export function TenderExplorer({
             <MultiSelectPills
               label="行业"
               searchable
-              options={ALL_INDUSTRIES.map((option) => ({ value: option, label: localize(INDUSTRY_LABELS[option], locale) }))}
+              options={industryOptions.map((option) => ({ value: option, label: localize(INDUSTRY_LABELS[option], locale) }))}
               selected={industries}
               onChange={(next) => updateParams({ industry: next.join(",") || null })}
             />

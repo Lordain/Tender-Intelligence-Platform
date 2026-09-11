@@ -459,6 +459,34 @@ const EXCLUDE_KEYWORDS = [
   // servicios para la consulta en listas restrictivas y de control ...
   // mediante la consulta web" (CO) — a web data feed, sold by access.
   /listas restrictivas/i,
+
+  // ---- 2026-09-11 review round (Mexico). ----
+
+  // Outsourced diagnostic imaging, bought as a SERVICE: "IA-N-188-226
+  // SERVICIO DE MASTOGRAFIAS Y ULTRASONIDO MAMARIO UNIDAD MOVIL". Anchored
+  // on the service framing and on the study type, NOT on "unidad móvil" —
+  // a mobile unit can be a real vehicle purchase, which the user keeps
+  // (车辆采购: 留，但重要性和优先级都不用太高).
+  /servicios? de mastograf[íi]a|mastograf[íi]as\s+y\b|ultrasonido mamario|estudios? de (gabinete|imagenolog[íi]a)/i,
+
+  // "Estudios y proyectos" is the standard Mexican phrasing for a design-
+  // and-engineering package — the paperwork for a build, not the build:
+  // "ESTUDIOS PROYECTO CONSTRUCCIÓN Y EQUIPO PARA POZO HGZ TULA Y UMF 37
+  // HIDALGO". `^\W*` because real titles arrive wrapped in stray quotes.
+  //
+  // Deliberately NOT a bare leading-"estudios" rule, which is what this
+  // started as: the regression suite caught that it would also have
+  // excluded "ESTUDIO DE ORDENAM P/LA AMPLIACIÓN Y MODERNIZAC DEL PUERTO DE
+  // PROGRESO", which the user reviewed on 2026-09-07 and put at 常规 rather
+  // than excluding. A named study of a major asset and a design package for
+  // a clinic well are different calls, and the older one still stands until
+  // the user says otherwise.
+  /^\W*estudios?\s+(y\s+)?proyectos?\b/i,
+
+  // Highway U-turn/return lanes: "CONSTRUCCIÓN DE RETORNO TIPO
+  // \"HERRADURA\"" — a single road fixture, the same small-scale roadworks
+  // class as the community buildings above.
+  /construcci[óo]n de retorno\b|\bretorno tipo\b/i,
 ];
 
 /**

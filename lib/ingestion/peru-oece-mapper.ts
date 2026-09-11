@@ -77,6 +77,13 @@ export type OeceRecord = {
     };
     awards?: unknown[];
     parties?: { name?: string; address?: { locality?: string; department?: string } }[];
+    /**
+     * The `YYYY-MM` bucket this record belongs to (OECE's own
+     * ocds_datasegmentation extension) — the same key the monthly bulk files
+     * are cut on. Read back by peru-oece-live.ts to verify a filtered query
+     * was actually honoured; see its dataSegmentationID note.
+     */
+    dataSegmentation?: { id?: string; criteria?: string[] };
   };
   releases?: { url?: string; date?: string }[];
 };

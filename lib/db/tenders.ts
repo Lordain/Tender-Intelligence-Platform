@@ -86,6 +86,16 @@ type RiskRow = {
   source_reference: string | null;
 };
 
+/**
+ * NOTE: this string is sent verbatim as PostgREST's `?select=` parameter. It
+ * is NOT SQL — it has no comment syntax, and a `--` line inside it is parsed
+ * as part of a column name and fails the request (broke production for three
+ * deploys, 2026-09-11). Keep every explanation out here.
+ *
+ * `tender_key_dates ( type, date )` is needed by deriveTenderStatus() for the
+ * clarification-day rule (lib/tender-status.ts) — only the two columns that
+ * rule reads, since this query pages over every tender.
+ */
 const TENDER_LIST_FIELDS = `
   id, slug, tender_number, title, summary, one_line_summary, buyer, country, government_level,
   industries, subcategory, scope_type, procedure_type, participation_scope,
@@ -93,10 +103,6 @@ const TENDER_LIST_FIELDS = `
   submission_deadline, award_date, awarded_to, awarded_value, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden,
   homepage_featured, documents_unavailable, source_name, source_url, created_at, updated_at,
-  -- Needed by deriveTenderStatus() for the clarification-day rule (lib/
-  -- tender-status.ts). Only the two columns the rule reads: the list is
-  -- paged over every tender, so pulling the full child row here would cost
-  -- far more than the rule is worth.
   tender_key_dates ( type, date )
 `;
 

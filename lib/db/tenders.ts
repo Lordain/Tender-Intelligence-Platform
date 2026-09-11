@@ -87,35 +87,48 @@ type RiskRow = {
 };
 
 /**
- * NOTE: this string is sent verbatim as PostgREST's `?select=` parameter. It
- * is NOT SQL — it has no comment syntax, and a `--` line inside it is parsed
- * as part of a column name and fails the request (broke production for three
- * deploys, 2026-09-11). Keep every explanation out here.
+ * NOTE: every string here is sent verbatim as PostgREST's `?select=`
+ * parameter. They are NOT SQL — there is no comment syntax, and a `--` line
+ * inside one is parsed as part of a column name and fails the request (broke
+ * production, 2026-09-11). Keep explanations out here.
  *
- * `tender_key_dates ( type, date )` is needed by deriveTenderStatus() for the
- * clarification-day rule (lib/tender-status.ts) — only the two columns that
- * rule reads, since this query pages over every tender.
+ * Flat columns only, no embedded child tables. The two selects below add
+ * whichever children they actually need. Embedding a child HERE would put it
+ * into TENDER_SELECT twice — once inherited, once its own — which PostgREST
+ * rejects with "aggregate functions are not allowed in FROM clause of their
+ * own query level" (the second failure of that same 2026-09-11 change).
  */
-const TENDER_LIST_FIELDS = `
+const TENDER_FLAT_FIELDS = `
   id, slug, tender_number, title, summary, one_line_summary, buyer, country, government_level,
   industries, subcategory, scope_type, procedure_type, participation_scope,
   publication_date, publication_date_is_estimated,
   submission_deadline, award_date, awarded_to, awarded_value, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden,
-  homepage_featured, documents_unavailable, source_name, source_url, created_at, updated_at,
-  tender_key_dates ( type, date )
+  homepage_featured, documents_unavailable, source_name, source_url, created_at, updated_at
 `;
 
 /** One tender's full detail, including its qualifications/keyDates/risks — for fetchTenderBySlugFromDb (a single row). */
 const TENDER_SELECT = `
-  ${TENDER_LIST_FIELDS},
+  ${TENDER_FLAT_FIELDS},
   tender_requirements ( id, kind, title, description, mandatory, source_reference, sort_order ),
   tender_key_dates ( id, type, date, mandatory, notes ),
   tender_risks ( id, level, title, description, source_reference )
 `;
 
-/** Same flat tender fields, without the three child-table joins — for fetchAllTendersFromDb, whose every real caller (list/notification views) only ever renders these flat fields, never qualifications/keyDates/risks (confirmed 2026-09-03 by grepping every consumer) — so there's no reason for an unbounded, thousands-of-rows query to also join and transfer three child tables' worth of rows per tender. toTender() defaults the omitted fields to empty arrays. */
-const TENDER_LIST_SELECT = TENDER_LIST_FIELDS;
+/**
+ * The flat fields plus the two key-date columns deriveTenderStatus() needs
+ * for its clarification-day rule (lib/tender-status.ts) — and nothing else.
+ *
+ * This query is unbounded (thousands of rows, paged), and every real caller
+ * renders flat fields only, never qualifications/risks — confirmed 2026-09-03
+ * by grepping every consumer — so joining the other two child tables here
+ * would transfer a lot of rows nobody reads. toTender() defaults whatever is
+ * omitted to empty arrays.
+ */
+const TENDER_LIST_SELECT = `
+  ${TENDER_FLAT_FIELDS},
+  tender_key_dates ( type, date )
+`;
 
 function toRequirement(row: RequirementRow): TenderRequirement {
   return {

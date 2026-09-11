@@ -66,9 +66,22 @@ if (COUNTRY && rows.length === 0) {
 }
 
 type Bucket = { count: number; byCountry: Map<string, number>; examples: string[] };
+const PROTECTED = "管理员手动设置（分类规则未参与）";
 const buckets = new Map<string, Bucket>();
 for (const row of rows) {
   const title = row.title_es || row.title_zh || "";
+  // A hand-set tier is not the rules' doing, and reporting it under whichever
+  // rule would have fired misattributes it — an admin-protected row showed up
+  // in the "excluded（不该出现在 kept 里）" bucket on 2026-09-11 and read as a
+  // classifier bug when it was the protection working as designed.
+  if ((row.manually_protected ?? "").toLowerCase() === "true" || row.manually_protected === "yes") {
+    const bucket: Bucket = buckets.get(PROTECTED) ?? { count: 0, byCountry: new Map<string, number>(), examples: [] };
+    bucket.count += 1;
+    bucket.byCountry.set(row.country, (bucket.byCountry.get(row.country) ?? 0) + 1);
+    if (ONLY ? PROTECTED.includes(ONLY) : bucket.examples.length < EXAMPLES) bucket.examples.push(title.slice(0, 110));
+    buckets.set(PROTECTED, bucket);
+    continue;
+  }
   const signal = explainKeptSignal({
     title,
     scopeType: (row.scope_type || undefined) as never,

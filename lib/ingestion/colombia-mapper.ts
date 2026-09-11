@@ -99,6 +99,68 @@ const SCOPE_TYPE_BY_TIPO_CONTRATO: Record<string, TenderScopeType> = {
   CONSULTORÍA: "consulting",
 };
 
+/**
+ * SECOP II publishes the same procurement more than once, and the copies
+ * differ only by a phase label glued onto BOTH the reference and the name:
+ *
+ *   JBB-LP-004-2026                          CONCESION CAV
+ *   JBB-LP-004-2026 (Presentación de oferta)  CONCESION CAV (Presentación de oferta)
+ *
+ * Since the slug is built from the reference, that produced two rows for one
+ * tender — confirmed on real data (2026-09-11): identical buyer, identical
+ * description, identical everything else. Stripping the suffix collapses them
+ * onto one slug, so the upsert dedupes them by itself.
+ *
+ * Only a trailing parenthetical naming a KNOWN phase is removed, never any
+ * trailing parenthetical: real Colombian references carry meaningful ones
+ * ("(Obra)", "(Grupo 2)"), and dropping those would merge tenders that are
+ * genuinely different. Loops because the label nests —
+ * "(Fase de Selección (Presentación de ofertas))".
+ */
+const PROCESS_PHASE_WORDS =
+  /fase de selecci[óo]n|presentaci[óo]n de ofertas?|borrador|convocatoria|adjudicaci[óo]n|evaluaci[óo]n de ofertas?/i;
+
+export function stripProcessPhaseSuffix(value: string): string {
+  let out = value.trim();
+  for (let guard = 0; guard < 3; guard += 1) {
+    const match = out.match(/\s*\(([^()]*(?:\([^()]*\)[^()]*)*)\)\s*$/);
+    if (!match || match.index === undefined || !PROCESS_PHASE_WORDS.test(match[1])) break;
+    out = out.slice(0, match.index).trim();
+  }
+  return out;
+}
+
+/**
+ * Reference-shaped or otherwise contentless procedure names, e.g. "CERRITO",
+ * "Nº LP-SI-001-2026", "OBRA SAN BERNARDO", "PRESTACION DE SERVICIOS",
+ * "LICITACION DE OBRA PUBLICA INV-0001-2026".
+ *
+ * `nombre_del_procedimiento` is frequently an internal label — it tells a
+ * reader nothing, and it is also what the relevance keywords and the
+ * translator see, so a contentless name degrades classification and the
+ * Chinese title alike. `descripci_n_del_procedimiento` carries the real
+ * object of the contract.
+ */
+function isUninformativeName(name: string): boolean {
+  const compact = name.replace(/\s+/g, " ").trim();
+  if (compact.length < 25) return true;
+  // A bare code, optionally introduced by procurement boilerplate.
+  if (/^(licitaci[óo]n\s+p[úu]blica|licitaci[óo]n\s+de\s+obra\s+p[úu]blica|obra\s+p[úu]blica|contrataci[óo]n|concurso\s+de\s+m[ée]ritos|invitaci[óo]n)?\s*(n[°ºo.]*\s*)?[A-Za-z0-9]{1,6}[-–][A-Za-z0-9\-–/.]{2,}$/i.test(compact)) {
+    return true;
+  }
+  // Pure boilerplate with no object: "PRESTACION DE SERVICIOS".
+  return /^(prestaci[óo]n de servicios|obra p[úu]blica|licitaci[óo]n p[úu]blica|suministro|compraventa|concesi[óo]n)$/i.test(compact);
+}
+
+/** Cuts at a word boundary so a description used as a title doesn't end mid-word. */
+function titleFromDescription(description: string): string {
+  const compact = description.replace(/\s+/g, " ").trim();
+  if (compact.length <= 160) return compact;
+  const cut = compact.slice(0, 160);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > 120 ? cut.slice(0, lastSpace) : cut).replace(/[;,.\s]+$/, "")}…`;
+}
+
 /** Only 2 real distinct values seen in the 5-row sample ("Prestación de servicios", "Otro") — an exact lookup for the one real signal seen, "services" as the fallback since that's this dataset's overwhelming majority in the sample. Needs broadening once a larger real pull is available. */
 function inferScopeType(tipoContrato: string | undefined): TenderScopeType {
   if (!tipoContrato) return "services";
@@ -281,15 +343,22 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
   // still run afterwards, on what survives this.
   if (!isIngestedColombiaModalidad(row.modalidad_de_contratacion)) return null;
 
-  const title = row.nombre_del_procedimiento?.trim();
+  const rawName = stripProcessPhaseSuffix(row.nombre_del_procedimiento?.trim() ?? "");
   const buyer = row.entidad?.trim();
-  const tenderNumber = row.referencia_del_proceso?.trim() || row.id_del_proceso?.trim();
-  if (!title || !buyer || !tenderNumber) return null;
+  const tenderNumber = stripProcessPhaseSuffix(
+    row.referencia_del_proceso?.trim() || row.id_del_proceso?.trim() || "",
+  );
+  if (!rawName || !buyer || !tenderNumber) return null;
+
+  const description = row.descripci_n_del_procedimiento?.trim();
+  // A contentless procedure name is replaced by the description — which is
+  // what a reader, the keyword rules and the translator all actually need.
+  const title = description && isUninformativeName(rawName) ? titleFromDescription(description) : rawName;
 
   const publicationDate = parseDate(row.fecha_de_publicacion_del);
   if (!publicationDate) return null;
 
-  const summary = row.descripci_n_del_procedimiento?.trim() || title;
+  const summary = description || title;
   const scopeType = inferScopeType(row.tipo_de_contrato);
   const now = new Date().toISOString();
 

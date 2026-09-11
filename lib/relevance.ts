@@ -412,7 +412,16 @@ const EXCLUDE_KEYWORDS = [
   // building that merely sits at a school ("en la"), not a school build
   // ("de la"). Same is-vs-where distinction MAJOR_PROJECT_LOCATION_ONLY
   // draws for "colectores DE presa".
-  /(construcci[óo]n|rehabilitaci[óo]n|remodelaci[óo]n|ampliaci[óo]n|mejoramiento)[^.]{0,40}\bde\s+(las?\s+)?escuelas?\b/i,
+  //
+  // Widened 2026-09-11 for Colombia, which says "institución educativa" (and
+  // "colegio") where Mexico says "escuela", and frames the work as
+  // "mejoras en infraestructura y dotación DE las instituciones educativas"
+  // rather than "construcción de". Same is-vs-where anchor as before: the
+  // school has to be what is being built or fitted out, not where the work
+  // happens — "SISTEMAS DE ENERGÍA FOTOVOLTAICA EN INSTITUCIONES EDUCATIVAS"
+  // stays in, because that is a solar installation that happens to sit at
+  // schools.
+  /(construcci[óo]n|rehabilitaci[óo]n|remodelaci[óo]n|ampliaci[óo]n|mejoramiento|mejoras?|dotaci[óo]n)[^.]{0,40}\bde\s+(las?\s+)?(escuelas?|colegios?|instituci[óo]n(?:es)?\s+educativas?)\b/i,
 
   // Specialist medical SERVICES (the doctors, not the hospital or its
   // equipment): "SERVICIOS DE MEDICINA ESPECIALIZADA EN NEUMOLOGÍA" (CO).
@@ -488,6 +497,35 @@ const EXCLUDE_KEYWORDS = [
   // \"HERRADURA\"" — a single road fixture, the same small-scale roadworks
   // class as the community buildings above.
   /construcci[óo]n de retorno\b|\bretorno tipo\b/i,
+
+  // ---- 2026-09-11 review round (Colombia). Every pattern below comes from
+  // a real title in the first import after the modalidad gate opened
+  // Colombia up, which the user marked "排除". ----
+
+  // Veterinary field services: "PRESTAR LOS SERVICIOS MÉDICO-VETERINARIOS
+  // PARA LA ATENCIÓN DE CANINOS Y FELINOS; MEDIANTE JORNADAS DE
+  // ESTERILIZACIÓN". Two anchors, and deliberately NOT a bare
+  // "esterilización" — that word is also how hospitals describe sterilizing
+  // surgical instruments, which is real medical-equipment spend.
+  /m[ée]dico[\s-]*veterinari/i,
+  /esterilizaci[óo]n[^.]{0,40}\b(caninos?|felinos?|mascotas?|animales|semovientes)\b/i,
+
+  // Insurance brokerage: "CONTRATAR A UN INTERMEDIARIO DE SEGUROS;
+  // LEGALMENTE CONSTITUIDO EN COLOMBIA; QUE REALICE LA INTERMEDIACIÓN".
+  // A financial intermediary's commission, same class as the restricted-
+  // lists data subscription excluded on 2026-09-08.
+  /intermediari[oa]s?\s+de\s+seguros|intermediaci[óo]n\s+(de\s+)?seguros|corredor(es)?\s+de\s+seguros/i,
+
+  // Ecological revegetation: "EJECUTAR ESTRATEGIAS DE REHABILITACIÓN Y
+  // REVEGETALIZACIÓN EN ÁREAS CON PRESENCIA DE ESPECIES PIONERAS". Plain
+  // "reforestación" is deliberately left out — it turns up as a compensation
+  // measure inside real civil-works contracts, where the build is the point.
+  /revegetalizaci[óo]n|restauraci[óo]n ecol[óo]gica/i,
+
+  // Colombian police detention transfer centres: "ADECUACIÓN DEL CENTRO DE
+  // TRASLADO POR PROTECCIÓN (CTP)". The full phrase only — the bare acronym
+  // CTP collides with too much else.
+  /centro de traslado por protecci[óo]n/i,
 ];
 
 /**

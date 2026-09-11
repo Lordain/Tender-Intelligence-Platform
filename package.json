@@ -46,6 +46,7 @@
     "analyze:batch": "tsx --env-file-if-exists=.env.local scripts/analyze-batch.ts",
     "resolve:comprasmx-links": "tsx --env-file-if-exists=.env.local scripts/resolve-comprasmx-links.ts",
     "discover:comprasmx-vigente": "tsx --env-file-if-exists=.env.local scripts/discover-comprasmx-vigente.ts",
+    "dedupe:secop-phases": "tsx --env-file-if-exists=.env.local scripts/dedupe-secop-phase-rows.ts",
     "fix:licitia-buyer-names": "tsx --env-file-if-exists=.env.local scripts/fix-licitia-buyer-names.ts",
     "fix:pemex-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-pemex-source-urls.ts",
     "fix:cfe-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-cfe-source-urls.ts",

@@ -43,6 +43,43 @@ export type TranslateAllTendersResult = {
   sample: { slug: string; titleEs: string }[];
 };
 
+type TranslatableRow = {
+  slug: string;
+  title: LocalizedText;
+  summary: LocalizedText;
+  manual_field_overrides: string[] | null;
+};
+
+/**
+ * Untranslated = exactly the untranslated() mirror every mapper writes
+ * (zh === es, byte for byte) — a real translation always differs from the
+ * Spanish original — AND not a field an admin edited by hand
+ * (manual_field_overrides, migration 0032).
+ *
+ * Decided per field, not per row (2026-09-11). One flag on the title used to
+ * decide both, which was wrong in both directions:
+ *
+ *   - a row whose title was still Spanish but whose summary a human had
+ *     written in Chinese was picked up, and the write below replaced BOTH —
+ *     silently destroying the hand-written summary;
+ *   - a row whose title a human had translated was skipped entirely, so its
+ *     Spanish summary never got translated at all.
+ *
+ * The manual_field_overrides half matters because this path does not go
+ * through the importer's protection: it writes the columns directly. An
+ * admin who rewrote a machine translation into better Chinese has a title
+ * where zh !== es, so the first test already spares it — but one who
+ * corrected it back to something that happens to match the Spanish (a
+ * proper noun, a bare tender number) would lose the edit without this.
+ */
+function needsTitle(row: TranslatableRow): boolean {
+  return row.title.zh === row.title.es && !(row.manual_field_overrides ?? []).includes("title");
+}
+
+function needsSummary(row: TranslatableRow): boolean {
+  return row.summary.zh === row.summary.es && !(row.manual_field_overrides ?? []).includes("summary");
+}
+
 export async function translateAllTenders(
   supabase: SupabaseClient,
   options: { write: boolean; limit?: number },
@@ -50,28 +87,22 @@ export async function translateAllTenders(
   // PostgREST caps an unranged select at 1000 rows — page with .range()
   // so tenders past the first 1000 don't silently get skipped.
   const PAGE_SIZE = 1000;
-  const rows: { slug: string; title: LocalizedText; summary: LocalizedText; country: string; submission_deadline: string | null }[] = [];
+  const rows: TranslatableRow[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, title, summary, country, submission_deadline")
+      .select("slug, title, summary, manual_field_overrides")
       .neq("relevance_tier", "excluded")
       .range(from, from + PAGE_SIZE - 1);
 
     if (error) throw new Error(`Failed to fetch tenders: ${error.message}`);
 
-    const page = data as { slug: string; title: LocalizedText; summary: LocalizedText; country: string; submission_deadline: string | null }[];
+    const page = data as TranslatableRow[];
     rows.push(...page);
     if (page.length < PAGE_SIZE) break;
   }
 
-  // Untranslated = exactly the untranslated() mirror every mapper writes
-  // (title.zh === title.es, byte for byte) — a real translation always
-  // differs from the Spanish original.
-  //
-  // Also skips a Colombia tender with no submission deadline (2026-09-05,
-  // explicit request) — same rule as fetchAllTendersFromDb()/
-  const untranslated = rows.filter((t) => t.title.zh === t.title.es);
+  const untranslated = rows.filter((t) => needsTitle(t) || needsSummary(t));
   const toTranslate = options.limit !== undefined ? untranslated.slice(0, options.limit) : untranslated;
 
   const result: TranslateAllTendersResult = {
@@ -121,13 +152,16 @@ export async function translateAllTenders(
         continue;
       }
 
+      // Only the fields that actually needed it. The model is asked for both
+      // (it reads better with the title for context) but whichever one a
+      // human already owns is never written back.
+      const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (needsTitle(tender)) update.title = { ...tender.title, zh: translated.titleZh };
+      if (needsSummary(tender)) update.summary = { ...tender.summary, zh: translated.summaryZh };
+
       const { error: updateError } = await supabase
         .from("tenders")
-        .update({
-          title: { ...tender.title, zh: translated.titleZh },
-          summary: { ...tender.summary, zh: translated.summaryZh },
-          updated_at: new Date().toISOString(),
-        })
+        .update(update)
         .eq("slug", tender.slug);
 
       if (updateError) {

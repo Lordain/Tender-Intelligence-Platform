@@ -125,6 +125,21 @@ function parseDofDetailDate(raw: string | undefined): string | null {
 }
 
 /**
+ * The notice's own Spanish label, kept as the key date's note.
+ *
+ * Two reasons. A timeline showing two 开标 rows on different dates is
+ * unreadable without something to tell them apart (real report,
+ * 2026-09-11), and this source genuinely reports several distinct events
+ * that all map to one TenderKeyDate type. And when a new "Área Contratante"
+ * office words a label a way these patterns have not seen, the stored note
+ * is what says so — cheaper than re-fetching the notice to find out.
+ */
+function sourceLabelNote(label: string): TenderKeyDate["notes"] {
+  const clean = label.replace(/\s+/g, " ").trim();
+  return { es: clean, en: clean, zh: clean };
+}
+
+/**
  * Maps the detail page's real field-label table (see dof-notice-detail.ts)
  * into keyDates + submissionDeadline + a real publication date — labels
  * confirmed real for CFE-0001-CAAAT-0134-2026 only so far; a label none of
@@ -136,6 +151,7 @@ function buildDofDetailFields(fieldsByLabel: Record<string, string>, tenderNumbe
   const keyDates: TenderKeyDate[] = [];
   let submissionDeadline: string | undefined;
   let publicationDate: string | undefined;
+  let openingFallbackIndex = 0;
 
   for (const [label, rawValue] of Object.entries(fieldsByLabel)) {
     const iso = parseDofDetailDate(rawValue);
@@ -154,10 +170,18 @@ function buildDofDetailFields(fieldsByLabel: Record<string, string>, tenderNumbe
       // ("Sesión de Aclaraciones", first office) and silently dropped
       // this one's clarification date entirely.
       keyDates.push({ id: `${tenderNumber}-clarification`, type: "clarification", date: iso });
-    } else if (/l[íi]mite.*ofertas|presentaci[óo]n.*ofertas/i.test(label)) {
+    } else if (/(l[íi]mite|presentaci[óo]n|recepci[óo]n|entrega).*(ofertas|proposiciones|propuestas)/i.test(label)) {
+      // "ofertas" is CFE's own Disposiciones Generales wording; works
+      // contracts under the LOPSRM say "proposiciones" instead
+      // ("PRESENTACIÓN Y APERTURA DE PROPOSICIONES", real 2013 CFE notice),
+      // and "propuestas" appears too. Matching only "ofertas" left a real
+      // notice with no submission deadline at all — 计划交标 rendered "—"
+      // while the date was sitting in the source table (2026-09-11).
       submissionDeadline = iso;
+      // No note: there is only ever one submission row, and the standard
+      // translated description for the type reads better than raw Spanish.
       keyDates.push({ id: `${tenderNumber}-submission`, type: "submission", date: iso });
-    } else if (/apertura.*t[ée]cnica/i.test(label)) {
+    } else if (/apertura.*(t[ée]cnica|t[ée]cnicas)/i.test(label)) {
       // Real label variants: "Apertura Técnica" (first office) vs.
       // "Apertura de ofertas técnicas." (second office, "de ofertas"
       // inserted, trailing period) — .* bridges both.
@@ -179,6 +203,20 @@ function buildDofDetailFields(fieldsByLabel: Record<string, string>, tenderNumbe
         type: "opening",
         date: iso,
         notes: { es: "Apertura de ofertas económicas", en: "Economic bid opening", zh: "商务标开标" },
+      });
+    } else if (/apertura/i.test(label)) {
+      // Any other opening wording. Previously dropped silently, which is the
+      // wrong default for this one type: an opening date a bidder has to be
+      // present for is not something to discard because the office phrased
+      // its label a third way. Carries the real label so the timeline can
+      // still tell two openings apart, and so the next screenshot says what
+      // the wording actually was.
+      openingFallbackIndex += 1;
+      keyDates.push({
+        id: `${tenderNumber}-opening-${openingFallbackIndex}`,
+        type: "opening",
+        date: iso,
+        notes: sourceLabelNote(label),
       });
     } else if (/^fallo/i.test(label)) {
       keyDates.push({ id: `${tenderNumber}-award`, type: "award", date: iso });

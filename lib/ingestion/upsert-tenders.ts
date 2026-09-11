@@ -433,7 +433,22 @@ export async function upsertTendersBatched(
       const lockedTypes = lockedKeyDateTypes(tender, protectionBySlug.get(tender.slug));
       return tender.keyDates
         .filter((d) => !lockedTypes.has(d.type))
-        .map((d) => ({ tender_id: tenderId, type: d.type, date: d.date }));
+        // `notes` and `mandatory` were dropped here — both columns have
+        // existed since 0001_init and the timeline renders both, but the
+        // insert only ever carried type and date. The visible cost
+        // (2026-09-11, reported from a real CFE notice): Mexican procedures
+        // open the technical and the economic envelope at two separate
+        // sessions days apart, dof-search-mapper.ts labels each one
+        // 技术标开标/商务标开标 precisely so they can be told apart, and the
+        // timeline showed two identical 开标 rows on different dates because
+        // the labels never reached the database.
+        .map((d) => ({
+          tender_id: tenderId,
+          type: d.type,
+          date: d.date,
+          notes: d.notes ?? null,
+          mandatory: d.mandatory ?? null,
+        }));
     });
 
     // Grouped by locked-type signature so each delete can exclude exactly

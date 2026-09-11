@@ -30,8 +30,28 @@ export async function readPeruOxiFile(file: string | { buffer: Buffer; fileName:
   const worksheet = workbook.worksheets[0];
   if (!worksheet) return [];
 
-  const cellText = (value: ExcelJS.CellValue): string =>
-    value instanceof Date ? value.toISOString() : String(value ?? "").trim();
+  /**
+   * Two of this export's columns are real Excel HYPERLINK cells, not text:
+   * "Enlace Portal web ProInversión" carries each convocatoria's own detail
+   * page on investinperu.pe, and "Enlace SSI MEF" its investment record at
+   * MEF. ExcelJS hands those back as `{ text, hyperlink }`, which a bare
+   * String() turns into "[object Object]" — which is exactly what happened on
+   * the first pass, and is why this source looked like it had no per-row link
+   * when in fact every row carries one. The URL is the useful half, so it
+   * wins; richText cells fall back to their concatenated runs.
+   */
+  const cellText = (value: ExcelJS.CellValue): string => {
+    if (value instanceof Date) return value.toISOString();
+    if (value && typeof value === "object") {
+      const hyperlink = (value as ExcelJS.CellHyperlinkValue).hyperlink;
+      if (typeof hyperlink === "string") return hyperlink.trim();
+      const richText = (value as ExcelJS.CellRichTextValue).richText;
+      if (Array.isArray(richText)) return richText.map((run) => run.text ?? "").join("").trim();
+      const text = (value as { text?: unknown }).text;
+      if (typeof text === "string") return text.trim();
+    }
+    return String(value ?? "").trim();
+  };
 
   let headerRowNumber = 0;
   const headers: string[] = [];

@@ -60,6 +60,9 @@ export type PeruOxiRow = {
   Función?: string;
   "Monto Convocatoria (S/)"?: string;
   "Año Convocatoria"?: string;
+  /** Excel hyperlink cells — see readPeruOxiFile's cellText for why these arrive as URLs rather than the "Enlace Portal"/"Enlace MEF" label text. */
+  "Enlace Portal web ProInversión"?: string;
+  "Enlace SSI MEF"?: string;
   "Fecha Convocatoria"?: string;
   "Fecha Integración Bases"?: string;
   "Fecha Presentación Propuestas"?: string;
@@ -67,7 +70,8 @@ export type PeruOxiRow = {
 };
 
 export const PERU_OXI_SOURCE_NAME = "ProInversión — Obras por Impuestos (Perú)";
-export const PERU_OXI_SOURCE_URL = "https://www.investinperu.pe/es/app/obras-por-impuestos/proyectos";
+/** The real listing page behind the "Exportar a Excel" button, confirmed by the user 2026-09-11. Only a fallback now — nearly every row carries its own detail link. */
+export const PERU_OXI_SOURCE_URL = "https://www.investinperu.pe/inversiones-seleccion-oxi/";
 
 /** Real values seen in the export, all six of them. */
 const LEVEL_BY_NIVEL: Record<string, GovernmentLevel> = {
@@ -139,6 +143,10 @@ export function mapPeruOxiRowToTender(row: PeruOxiRow, sourceName: string, sourc
   }
 
   const isSupervision = (row["Tipo de Convocatoria"] ?? "").includes("Supervisora");
+  const portalUrl = /^https?:\/\//i.test(row["Enlace Portal web ProInversión"] ?? "")
+    ? row["Enlace Portal web ProInversión"]!.trim()
+    : undefined;
+  const mefUrl = /^https?:\/\//i.test(row["Enlace SSI MEF"] ?? "") ? row["Enlace SSI MEF"]!.trim() : undefined;
 
   return {
     id: crypto.randomUUID(),
@@ -176,17 +184,19 @@ export function mapPeruOxiRowToTender(row: PeruOxiRow, sourceName: string, sourc
               : "本条为出资并施工方（Empresa Privada）标。") +
             "具体投标资格、联合体安排与分包空间以该项目招标文件（Bases）为准。",
         ),
-        sourceReference: row["Código Único de Inversiones (CUI)"]?.trim()
-          ? `CUI ${row["Código Único de Inversiones (CUI)"]!.trim()}`
-          : undefined,
+        // The MEF investment record for this CUI — the public file on the
+        // project itself (budget, stage, executing unit), separate from the
+        // procurement process, and carried as a real hyperlink in the export.
+        sourceReference: mefUrl ?? (row["Código Único de Inversiones (CUI)"]?.trim() ? `CUI ${row["Código Único de Inversiones (CUI)"]!.trim()}` : undefined),
       },
     ],
     relevance,
     sourceName,
-    // No per-convocatoria deep link in the export — the Enlace columns are
-    // label text ("Enlace Portal"), not URLs, so this points at the real
-    // searchable listing rather than inventing a URL pattern.
-    sourceUrl,
+    // Each row's own ProInversión detail page — the same page a human reaches
+    // via VER PROCESO, carrying the Bases, the Convocatoria and the rest of
+    // the schedule. Falls back to the listing page on the rare row without
+    // one, so the link is never dead.
+    sourceUrl: portalUrl ?? sourceUrl,
     createdAt: now,
     updatedAt: now,
   };

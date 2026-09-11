@@ -22,6 +22,13 @@
  *   npm run ingest:peru-live -- --months 3 --write
  *   npm run ingest:peru-live -- --segment 2026-09     (one specific month)
  *   npm run ingest:peru-live -- --bulk --months 6     (the old monthly-file path)
+ *   npm run ingest:peru-live -- --json                (raw Tender objects instead of the review report)
+ *
+ * A dry run prints a classification REPORT, not rows: one real segment is
+ * ~4000 records and the first five of those tell you nothing about whether
+ * the rules are right. It also writes the same two review CSVs
+ * reclassify-tenders.ts writes, so `npm run explain:kept -- <that file>`
+ * answers "which rule kept these?" before anything reaches Supabase.
  */
 import {
   listOeceFiles,
@@ -34,6 +41,7 @@ import type { OeceRecord } from "../lib/ingestion/peru-oece-mapper";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
 import { filterRecentTenders } from "../lib/ingestion/recency";
+import { reportClassificationPreview } from "../lib/ingestion/preview-report";
 import type { Tender } from "../types/tender";
 
 const SOURCE_NAME = "OECE — Organismo Especializado para las Contrataciones Públicas Eficientes (Perú)";
@@ -120,6 +128,7 @@ async function collectViaBulk(months: number, sourceId: string): Promise<OeceRec
   return records;
 }
 
+
 async function main() {
   const args = process.argv.slice(2);
   const shouldWrite = args.includes("--write");
@@ -144,7 +153,15 @@ async function main() {
   }
 
   if (!shouldWrite) {
-    console.log(JSON.stringify(tenders.slice(0, 5), null, 2));
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(tenders.slice(0, 5), null, 2));
+    } else {
+      reportClassificationPreview(tenders, {
+        examples: Number(argValue(args, "--examples") ?? 25),
+        label: "ingest-peru-live",
+        exportBaseName: "peru-preview",
+      });
+    }
     console.log("\ndry run (pass --write to actually upsert) — nothing was written to Supabase.");
     return;
   }

@@ -33,8 +33,7 @@
  *      is specifically about the relevance TIER a human corrected, not
  *      about freezing the industry tags too.
  */
-import { writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { REVIEW_CSV_HEADERS, toCsv, writeReviewCsv, type CsvValue } from "@/lib/ingestion/review-csv";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { classifyStoredTender } from "@/lib/relevance";
 import type { LocalizedText, Tender, TenderRelevanceTier, TenderScopeType } from "@/types/tender";
@@ -62,15 +61,6 @@ type TenderRow = {
 };
 
 const OUT_DIR = "exports";
-
-function csvField(value: string | number | boolean | null | undefined): string {
-  const s = value === null || value === undefined ? "" : String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-function toCsv(headers: string[], rows: (string | number | boolean | null | undefined)[][]): string {
-  return [headers.join(","), ...rows.map((row) => row.map(csvField).join(","))].join("\n");
-}
 
 export type ReclassifyTendersResult = {
   totalCount: number;
@@ -143,8 +133,8 @@ export async function reclassifyTenders(
   let protectedSkipped = 0;
   let industriesChangedCount = 0;
 
-  const keptCsvRows: (string | number | boolean | null | undefined)[][] = [];
-  const excludedCsvRows: (string | number | boolean | null | undefined)[][] = [];
+  const keptCsvRows: CsvValue[][] = [];
+  const excludedCsvRows: CsvValue[][] = [];
 
   for (const row of rows) {
     // classifyStoredTender() — not classifyRelevance() directly — is what
@@ -258,61 +248,15 @@ export async function reclassifyTenders(
     }
   }
 
-  const headers = [
-    "slug",
-    "tender_number",
-    "title_zh",
-    "title_es",
-    "buyer",
-    "country",
-    "government_level",
-    "source_name",
-    "summary_es",
-    "industries",
-    "scope_type",
-    "estimated_value",
-    "currency",
-    "previous_tier",
-    "new_tier",
-    "tier_changed",
-    "manually_protected",
-    "reason_zh",
-    "source_url",
-    "publication_date",
-  ];
-
   const dateStamp = new Date().toISOString().slice(0, 10);
-  /**
-   * Writes the export, falling back to a numbered name when the plain one
-   * is locked.
-   *
-   * A locked file is not a disk hiccup, it is the normal state of an export
-   * the reviewer is reading in Excel — and it has now cost two full review
-   * cycles: the run reports its real counts, writes nothing, and
-   * explain-kept.ts then reads the PREVIOUS run's file and reports a
-   * distribution for rules that are no longer in force. Losing the export
-   * of the run you just did is the expensive part, so take a new name
-   * rather than give up.
-   */
-  function writeExport(kind: "kept" | "excluded", csv: string): string | null {
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      const path = join(OUT_DIR, `tenders-${kind}-${dateStamp}${attempt === 0 ? "" : `-${attempt + 1}`}.csv`);
-      try {
-        writeFileSync(path, csv);
-        return path;
-      } catch (err) {
-        const locked = (err as NodeJS.ErrnoException).code === "EBUSY" || (err as NodeJS.ErrnoException).code === "EPERM";
-        if (!locked) {
-          console.error(
-            `[reclassify-tenders] Failed to write the ${kind} CSV (database writes above already succeeded, only this local file export failed): ${err instanceof Error ? err.message : String(err)}`,
-          );
-          return null;
-        }
-      }
-    }
-    console.error(`[reclassify-tenders] Could not write the ${kind} CSV — six candidate names were all locked. Close them and re-run.`);
-    return null;
-  }
+  const writeExport = (kind: "kept" | "excluded", csv: string) =>
+    writeReviewCsv({
+      dir: OUT_DIR,
+      baseName: `tenders-${kind}-${dateStamp}`,
+      csv,
+      label: "reclassify-tenders",
+      failureNote: "database writes above already succeeded, only this local file export failed",
+    });
 
   // The CSVs are a reviewer convenience; the reclassification itself is
   // already committed to Supabase by this point. Nothing about the disk can
@@ -321,9 +265,8 @@ export async function reclassifyTenders(
   let excludedPath: string | null = null;
   if (options.exportCsv !== false) {
     try {
-      if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
-      keptPath = writeExport("kept", toCsv(headers, keptCsvRows));
-      excludedPath = writeExport("excluded", toCsv(headers, excludedCsvRows));
+      keptPath = writeExport("kept", toCsv(REVIEW_CSV_HEADERS, keptCsvRows));
+      excludedPath = writeExport("excluded", toCsv(REVIEW_CSV_HEADERS, excludedCsvRows));
       if (keptPath) console.log(`[reclassify-tenders] Wrote ${keptCsvRows.length} kept tender(s) -> ${keptPath}`);
       if (excludedPath) console.log(`[reclassify-tenders] Wrote ${excludedCsvRows.length} excluded tender(s) -> ${excludedPath}`);
     } catch (err) {

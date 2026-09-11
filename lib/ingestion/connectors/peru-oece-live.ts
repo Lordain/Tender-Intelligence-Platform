@@ -44,6 +44,23 @@ const OECE_MAX_ATTEMPTS = 4;
  * messages name the segment/file being fetched, which is what makes a failure
  * in a multi-segment run actionable.
  */
+/**
+ * The failure message, with as much of the WAF's own answer as fits.
+ *
+ * "403 Forbidden" alone cannot tell a blocked User-Agent from a blocked IP
+ * range, and those need opposite fixes — the first is ours to send, the
+ * second means this request has to come from somewhere else entirely. WAF
+ * block pages name which one they are (an Imperva support id, a Cloudflare
+ * ray id, "country not allowed"), so the body is the diagnostic.
+ */
+async function oeceError(prefix: string, response: Response): Promise<Error> {
+  const body = await response
+    .text()
+    .then((text) => text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300))
+    .catch(() => "");
+  return new Error(`${prefix} ${response.status} ${response.statusText}${body ? ` — 服务端返回：${body}` : ""}`);
+}
+
 async function fetchOece(url: string | URL): Promise<Response> {
   let response = await fetch(url, { headers: OECE_HEADERS });
   for (let attempt = 1; attempt < OECE_MAX_ATTEMPTS && OECE_RETRYABLE_STATUSES.has(response.status); attempt++) {
@@ -79,9 +96,7 @@ export async function listOeceFiles(page = 1): Promise<OeceFileListing[]> {
   url.searchParams.set("page", String(page));
 
   const response = await fetchOece(url);
-  if (!response.ok) {
-    throw new Error(`OECE /files responded ${response.status} ${response.statusText}`);
-  }
+  if (!response.ok) throw await oeceError("OECE /files responded", response);
   const body = (await response.json()) as { results: OeceFileListing[] };
   return body.results ?? [];
 }
@@ -103,9 +118,7 @@ export async function downloadOeceRecordPackage(
   // header is harmless on a ZIP download (the server ignores it) and the
   // User-Agent is the half that matters.
   const response = await fetchOece(url);
-  if (!response.ok) {
-    throw new Error(`OECE file download responded ${response.status} ${response.statusText} for ${url}`);
-  }
+  if (!response.ok) throw await oeceError(`OECE file download for ${url} responded`, response);
   const arrayBuffer = await response.arrayBuffer();
 
   const zip = new AdmZip(Buffer.from(arrayBuffer));
@@ -246,9 +259,7 @@ export async function fetchOeceRecordsForSegment(
   for (let page = 0; next && page < OECE_MAX_PAGES_PER_SEGMENT; page++) {
     const response: Response = await fetchOece(next);
     if (!response.ok) {
-      throw new Error(
-        `OECE /recordsAfter responded ${response.status} ${response.statusText} for segment ${query.dataSegmentationId}`,
-      );
+      throw await oeceError(`OECE /recordsAfter for segment ${query.dataSegmentationId} responded`, response);
     }
     const body = (await response.json()) as {
       records?: OeceRecord[];

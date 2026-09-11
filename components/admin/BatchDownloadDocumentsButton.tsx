@@ -82,7 +82,9 @@ export function BatchDownloadDocumentsButton({ tenders }: { tenders: { slug: str
             {withLinks.length > 0 ? (
               <>
                 已选 {tenders.length} 个项目，其中 <span className="font-black text-[#071826]">{withLinks.length}</span> 个带官方标书链接，共{" "}
-                <span className="font-black text-[#071826]">{linkCount}</span> 份文件。下载后解压，再拖进下面的分析面板。
+                <span className="font-black text-[#071826]">{linkCount}</span> 份文件。文件名是{" "}
+                <code className="rounded bg-[#edf2f3] px-1 font-mono text-[10px]">项目slug__文件名.pdf</code>
+                ，解压后可以直接拖进下面的分析面板，或者把整个文件夹丢给「本地批量分析」——它按这个 slug 自动归属，不用手动一个个对。
               </>
             ) : (
               <>

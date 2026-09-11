@@ -169,8 +169,18 @@ Where a source publishes real per-document URLs, the download stops being
 manual. Peru's SEACE/OECE OCDS records carry them inline
 (`compiledRelease.tender.documents[].url`), so `ingest:peru-live` records
 them as it writes each tender, and `/admin/documents-needed` grows a
-**批量下载标书** button: select rows, click once, get one ZIP with a folder
-per tender plus a `下载报告.txt` naming every file that failed.
+**批量下载标书** button: select rows, click once, get one ZIP plus a
+`下载报告.txt` naming every file that failed.
+
+Every entry in that ZIP is named `<slug>__<document name>`, which is the
+`SLUG_OVERRIDE_PATTERN` branch of `match-documents-to-tenders.ts` — the
+first and only exact step in the matcher, no text extraction and no
+ambiguity. Without the prefix these files fall through to "does any known
+`tender_number` appear in the name or the extracted text", and the name alone
+says nothing: every one of them is called `Bases Administrativas.pdf`. The
+ZIP is flat for the same reason `findDocuments()` does not recurse — an
+unzipped folder pointed at `/admin/local-batch` has to actually contain the
+files.
 
 Those links live in their own table, `tender_document_links`, **not** in
 `tender_documents`. A row in `tender_documents` means "this platform holds

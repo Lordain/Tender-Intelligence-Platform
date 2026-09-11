@@ -10,11 +10,15 @@ import { fetchDocumentLinksForSlugs, type StoredDocumentLink } from "@/lib/inges
  * government source and streams them back as a single ZIP.
  *
  * Why a ZIP straight to the browser rather than a storage bucket: the files
- * are only ever an input to the 批量分析 panel right next to this button,
- * which takes local file uploads. Putting them in Supabase Storage first
- * would add a bucket, a retention policy and a re-download step to reach
- * exactly the same place — and the site deliberately never re-serves tender
- * documents to its own users (see colombia-documents-connector.ts's header).
+ * are only ever an input to the analysis pipeline on the admin's own machine
+ * — the 批量分析 panel next to this button, or /admin/local-batch for the
+ * 100MB ones. Putting them in Supabase Storage first would add a bucket, a
+ * retention policy and a re-download step to reach exactly the same place —
+ * and the site deliberately never re-serves tender documents to its own users
+ * (see colombia-documents-connector.ts's header).
+ *
+ * Entries are named `<slug>__<document name>` so the pipeline resolves each
+ * file to its tender by exact slug lookup — see analysisFileName() below.
  *
  * Coverage is per-source and honest about it: only tenders whose ingestion
  * captured real per-document URLs have anything to download. Today that is
@@ -54,6 +58,28 @@ const UNSAFE_PATH_CHARS = /[\\/:*?"<>|]/g;
 
 function zipSafe(segment: string): string {
   return segment.replace(UNSAFE_PATH_CHARS, "-").trim().slice(0, 120) || "unnamed";
+}
+
+/**
+ * The file name the analysis pipeline can resolve without opening the file.
+ *
+ * lib/ingestion/match-documents-to-tenders.ts resolves a document to its
+ * tender in three steps, and the FIRST one is a `<slug>__` file-name prefix
+ * (SLUG_OVERRIDE_PATTERN) — an exact lookup, no text extraction, no
+ * ambiguity. Without the prefix these files would fall through to step two,
+ * "does any known tender_number appear in the name or the extracted text",
+ * and the name alone says nothing: every one of them is called "Bases
+ * Administrativas.pdf". They would still usually resolve off the PDF's own
+ * text, but only after extracting it, and only if SEACE's own document
+ * happens to spell the procedure number the way the record does.
+ *
+ * So the ZIP is flat and every entry is `<slug>__<document name>`. Flat
+ * because findDocuments() does not recurse: an admin who unzipped and pointed
+ * /admin/local-batch at the folder would have got "0 files found" from a
+ * folder visibly full of PDFs.
+ */
+function analysisFileName(slug: string, fileName: string): string {
+  return `${zipSafe(slug)}__${zipSafe(fileName)}`;
 }
 
 /** Appends " (2)", " (3)", ... before the extension until the path is free. */
@@ -138,7 +164,7 @@ export async function POST(request: Request) {
   let totalBytes = 0;
   // Two documents under one tender genuinely share a name — a real record in
   // the fixture carries "Bases Administrativas.pdf" for both the original and
-  // an amended publication — and adding the same path to the archive twice
+  // an amended publication — and adding the same name to a flat archive twice
   // makes one of them unreachable.
   const usedPaths = new Set<string>();
   // Sequential batches of CONCURRENCY rather than one Promise.all over
@@ -157,10 +183,7 @@ export async function POST(request: Request) {
       outcomes.push(outcome);
       if (!buffer) continue;
       totalBytes += buffer.byteLength;
-      // One folder per tender: the 批量分析 panel takes files per tender, and
-      // a flat archive holding "Bases Administrativas.pdf" eight times over
-      // would be unusable.
-      zip.addFile(uniquePath(`${zipSafe(outcome.slug)}/${zipSafe(outcome.fileName)}`, usedPaths), buffer);
+      zip.addFile(uniquePath(analysisFileName(outcome.slug, outcome.fileName), usedPaths), buffer);
     }
   }
 
@@ -172,10 +195,12 @@ export async function POST(request: Request) {
     `找到官方链接：${links.length} 个文件`,
     `下载成功：${okCount} 个（${(totalBytes / 1024 / 1024).toFixed(1)} MB）`,
     "",
+    "文件名格式为 <项目 slug>__<文件名>，本地批量分析会直接按这个 slug 归属，不需要再手动对应。",
+    "",
     ...outcomes.map((outcome) =>
       outcome.ok
-        ? `[OK] ${outcome.slug} / ${outcome.fileName}（${((outcome.bytes ?? 0) / 1024).toFixed(0)} KB）`
-        : `[失败] ${outcome.slug} / ${outcome.fileName} — ${outcome.error}`,
+        ? `[OK] ${analysisFileName(outcome.slug, outcome.fileName)}（${((outcome.bytes ?? 0) / 1024).toFixed(0)} KB）`
+        : `[失败] ${analysisFileName(outcome.slug, outcome.fileName)} — ${outcome.error}`,
     ),
     ...(missing.length > 0 ? ["", ...missing.map((slug) => `[无链接] ${slug}：这条项目没有已记录的官方标书链接，需要手动下载。`)] : []),
   ].join("\n");

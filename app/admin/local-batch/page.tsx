@@ -18,7 +18,7 @@ export default function AdminLocalBatchPage() {
       <AdminPageHeader
         eyebrow="Local batch"
         title="本地批量分析"
-        description="把下载好的标书放进一个文件夹，填路径即可——文件不经过浏览器上传。系统会按文件内的招标编号自动归属到对应项目，一个项目的多个文件合并分析后写回资质、业绩、文件要求与风险。同一文件按内容哈希去重，不会重复付费。"
+        description="把下载好的标书放进一个文件夹，填路径即可——文件不经过浏览器上传。系统会按文件内的招标编号自动归属到对应项目，一个项目的多个文件合并分析后写回一句话总结、资质、业绩、文件要求与风险。同一文件按内容哈希去重，不会重复付费。"
         backHref="/admin/tenders"
       />
       <LocalBatchAnalysisForm />

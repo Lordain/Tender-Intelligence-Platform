@@ -17,7 +17,8 @@
  * by tender, and reports progress.
  *
  * Grouping matters: analyzeUploadedDocument() takes all of one tender's
- * documents at once and merges their extractions into a single set of fields.
+ * documents at once and merges their extractions into a single set of fields
+ * (one-line summary, qualifications, experience, required documents, risks).
  * Calling it once per file would make each write overwrite the last, so a
  * tender with a Pliego and three Anexos would end up with only the last
  * annex's requirements.

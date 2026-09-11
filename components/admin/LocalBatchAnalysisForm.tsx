@@ -11,6 +11,7 @@ type Result = {
     fileName: string;
     documentType: string;
     model: string;
+    oneLineSummary: string;
     qualifications: number;
     experienceRequirements: number;
     requiredDocuments: number;
@@ -103,11 +104,12 @@ export function LocalBatchAnalysisForm() {
 
           {result.results.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] border-collapse text-left text-xs">
+              <table className="w-full min-w-[820px] border-collapse text-left text-xs">
                 <thead>
                   <tr className="border-b border-[#e5e9eb] text-[#52636e]">
                     <th className="py-2 pr-3 font-black">项目</th>
                     <th className="py-2 pr-3 font-black">文件</th>
+                    <th className="py-2 pr-3 font-black">一句话总结</th>
                     <th className="py-2 pr-3 font-black">模型</th>
                     <th className="py-2 pr-3 font-black">资质/业绩/文件/风险</th>
                     <th className="py-2 font-black">状态</th>
@@ -118,6 +120,10 @@ export function LocalBatchAnalysisForm() {
                     <tr key={row.tenderSlug} className="border-b border-[#f0f2f3] align-top">
                       <td className="py-2 pr-3 font-mono text-[11px]">{row.tenderSlug}</td>
                       <td className="py-2 pr-3">{row.fileName}</td>
+                      {/* The single most useful column for judging whether an
+                          analysis is any good — a wrong or empty summary shows
+                          a bad extraction faster than the four counts do. */}
+                      <td className="py-2 pr-3 max-w-[22rem] text-[#071826]">{row.oneLineSummary || <span className="text-[#8a959c]">（空）</span>}</td>
                       <td className="py-2 pr-3 text-[#52636e]">{row.model}</td>
                       <td className="py-2 pr-3">
                         {row.qualifications}/{row.experienceRequirements}/{row.requiredDocuments}/{row.risks}

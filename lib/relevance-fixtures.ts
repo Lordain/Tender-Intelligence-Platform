@@ -1812,4 +1812,28 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "The other side of that narrowing — what the rule was always for, outsourced service DELIVERY, must still be excluded.",
     country: "Peru", scopeType: "services", estimatedValue: 20_000_000, currency: "PEN",
   },
+  {
+    title: "CREACION DEL SERVICIO DE AGUA POTABLE RURAL Y CREACION DEL SERVICIO DE ALCANTARILLADO U OTRAS FORMAS DE DISPOSICIÓN SANITARIA DE EXCRETAS EN 28 CENTROS POBLADOS DE LA CUENCA DEL RIO MOMON DISTRITO DE PUNCHANA DE LA PROVINCIA DE MAYNAS DEL DEPARTAMENTO DE LORETO",
+    expectedTier: "flagship",
+    note: "WATER_NETWORK_KEYWORDS' value exception, the user's call on 2026-09-11 (保留). S/139,742,000 ≈ $41.7M, the second-largest row in the first OxI export — a whole greenfield system for 28 settlements, excluded until now on the word 'alcantarillado' alone.",
+    country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 139_742_000, currency: "PEN",
+  },
+  {
+    title: "CREACION DEL SISTEMA DE AGUA POTABLE, ALCANTARILLADO Y PLANTA DE TRATAMIENTO DE AGUA RESIDUAL (PTAR) DE LOS CENTROS URBANOS ALEDAÑOS A LA AV. LA MARINA, DISTRITO DE YARINACOCHA",
+    expectedTier: "flagship",
+    note: "Second real row of the same shape, this one naming the treatment plant outright.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal", estimatedValue: 84_118_500, currency: "PEN",
+  },
+  {
+    title: "CONSTRUCCIÓN DE LÍNEA DE CONDUCCIÓN PARA EL SISTEMA DE AGUA POTABLE DEL CENTRO POBLADO",
+    expectedTier: "excluded",
+    note: "The exception must not swallow the rule. A real Peru row at ~$550k — a water main, which is exactly what the user's 2026-09-07 'networks out, plants in' call excludes — stays out because it is nowhere near the $5M works threshold.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal", estimatedValue: 1_845_000, currency: "PEN",
+  },
+  {
+    title: "EJECUCIÓN DEL MANUAL DE OPERACIÓN Y MANTENIMIENTO DE LA PLANTA DE TRATAMIENTO DE AGUA POTABLE Y LA PLANTA DE TRATAMIENTO DE AGUAS RESIDUALES DE LA CIUDAD DE HUARMEY",
+    expectedTier: "excluded",
+    note: "The fifth large 'alcantarillado'-family row in that export: an O&M manual for an existing plant at $3.35M. Below the threshold AND maintenance-only — it must stay excluded on either count.",
+    country: "Peru", scopeType: "services", governmentLevel: "municipal", estimatedValue: 11_222_500, currency: "PEN",
+  },
 ];

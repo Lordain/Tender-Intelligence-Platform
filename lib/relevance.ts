@@ -147,22 +147,9 @@ const EXCLUDE_KEYWORDS = [
   // work actually is. Every pattern below comes from at least one real
   // title they marked as "should have been excluded". ----
 
-  // Municipal water and sewer NETWORKS, as opposed to the plants they feed.
-  // "CONSTRUCCIÓN DE PLANTA DE TRATAMIENTO DE AGUAS RESIDUALES" and
-  // "CONSTRUCCIÓN DE PLANTA DE BOMBEO" are on the user's keep list; the
-  // pipes, manholes, tanks and collectors around them are not — including
-  // "CONSTRUCCIÓN DE COLECTORES PARA PLANTA DE TRATAMIENTO", which names a
-  // plant but buys collectors. Exclusion runs before the works whitelist,
-  // so naming the plant cannot rescue the pipework.
-  /alcantarillado|drenaje (sanitario|pluvial|menor)|drenaje y alcantarillado|obra de drenaje/i,
-  // Anchored on what the collector IS or feeds, not on the bare word:
-  // "CONSTRUCCIÓN DE LA PRIMERA ETAPA DE LOS COLECTORES DE PRESA GUADALUPE"
-  // is dam infrastructure the user wants kept, while "COLECTORES PARA
-  // PLANTA DE TRATAMIENTO" is the sewage pipework around a plant.
-  /(sub)?colector(es)? (sanitario|pluvial|para|y )/i,
-  /l[íi]nea(s)? de conducci[óo]n|l[íi]nea sanitaria|red(es)? de agua potable|sistema (integral )?de agua potable|sistema de abastecimiento de agua/i,
-  /tanque (de agua|elevado|superficial|de almacenamiento)|caja(s)? de v[áa]lvulas|obra de captaci[óo]n|olla colector/i,
-  /tuber[íi]a(s)? (de )?pvc|pozos? y descargas|estaci[óo]n(es)? de bombeo de aguas residuales|estaciones de medici[óo]n/i,
+  // Municipal water and sewer networks live in WATER_NETWORK_KEYWORDS, not in
+  // this array — like the municipal amenities below, they are an exclusion
+  // class with a value exception. See its header comment.
 
   // Small community and school buildings.
   /techumbre|techado\b|m[óo]dulo sanitario|\baulas?\b|sal[óo]n de usos m[úu]ltiples|cancha\b|polideportivo/i,
@@ -673,7 +660,7 @@ const CHILDCARE_FACILITY_KEYWORDS = [
  * class the user signed off on excluding for both countries (2026-09-11).
  *
  * Checked separately from EXCLUDE_KEYWORDS because this is the only
- * exclusion class with a VALUE EXCEPTION: see isLargeAmenityBuild().
+ * exclusion class with a VALUE EXCEPTION: see isLargeWorksBuild().
  *
  * Why the exception exists (the user's call, 2026-09-11, on a real reviewed
  * row): the class is meant to catch SMALL municipal amenities — a
@@ -689,6 +676,47 @@ const CHILDCARE_FACILITY_KEYWORDS = [
  * amenity here stays excluded exactly as before. That is a property of the
  * data, not something this rule special-cases by country.
  */
+/**
+ * Municipal water and sewer NETWORKS, as opposed to the plants they feed.
+ * "CONSTRUCCIÓN DE PLANTA DE TRATAMIENTO DE AGUAS RESIDUALES" and
+ * "CONSTRUCCIÓN DE PLANTA DE BOMBEO" are on the user's keep list (2026-09-07);
+ * the pipes, manholes, tanks and collectors around them are not — including
+ * "CONSTRUCCIÓN DE COLECTORES PARA PLANTA DE TRATAMIENTO", which names a plant
+ * but buys collectors. Exclusion runs before the works whitelist, so naming
+ * the plant cannot rescue the pipework.
+ *
+ * THE VALUE EXCEPTION (the user's call, 2026-09-11): a works contract at or
+ * above FLAGSHIP_VALUE_USD is not pipework. The first ProInversión Obras por
+ * Impuestos export made the gap concrete — four real rows, every one a whole
+ * greenfield or expansion system rather than a network extension, all of them
+ * excluded on the word "alcantarillado" alone:
+ *
+ *   $41.7M  CREACION DEL SERVICIO DE AGUA POTABLE RURAL Y ... ALCANTARILLADO
+ *           ... EN 28 CENTROS POBLADOS DE LA CUENCA DEL RIO MOMON
+ *   $25.1M  CREACION DEL SISTEMA DE AGUA POTABLE, ALCANTARILLADO Y PLANTA DE
+ *           TRATAMIENTO DE AGUA RESIDUAL (PTAR) ... YARINACOCHA
+ *   $8.7M / $7.9M  two more, both including the treatment plant
+ *
+ * The cut lands where it should: the fifth large "alcantarillado" row in that
+ * file is a $3.35M O&M manual for an existing plant, which stays excluded on
+ * both counts.
+ *
+ * Deliberately the SAME helper and the same threshold as the municipal-amenity
+ * exception — one rule ("a works build at flagship scale is not the small
+ * thing this class is about"), not two that can drift apart.
+ */
+const WATER_NETWORK_KEYWORDS = [
+  /alcantarillado|drenaje (sanitario|pluvial|menor)|drenaje y alcantarillado|obra de drenaje/i,
+  // Anchored on what the collector IS or feeds, not on the bare word:
+  // "CONSTRUCCIÓN DE LA PRIMERA ETAPA DE LOS COLECTORES DE PRESA GUADALUPE"
+  // is dam infrastructure the user wants kept, while "COLECTORES PARA
+  // PLANTA DE TRATAMIENTO" is the sewage pipework around a plant.
+  /(sub)?colector(es)? (sanitario|pluvial|para|y )/i,
+  /l[íi]nea(s)? de conducci[óo]n|l[íi]nea sanitaria|red(es)? de agua potable|sistema (integral )?de agua potable|sistema de abastecimiento de agua/i,
+  /tanque (de agua|elevado|superficial|de almacenamiento)|caja(s)? de v[áa]lvulas|obra de captaci[óo]n|olla colector/i,
+  /tuber[íi]a(s)? (de )?pvc|pozos? y descargas|estaci[óo]n(es)? de bombeo de aguas residuales|estaciones de medici[óo]n/i,
+];
+
 const MUNICIPAL_AMENITY_KEYWORDS = [
   /centro de alto rendimiento|pista de patinaje|parques? (ecol[óo]gico|recreativo|de proximidad|deportivo)|infraestructura deportiva|escenarios? deportivos?|complejos? deportivos?|pr[áa]ctica deportiva/i,
   /centro de integraci[óo]n social|centro vida\b|centro de bienestar animal|casa de la cultura|teatro al aire libre/i,
@@ -941,7 +969,7 @@ function isConcessionWithBuildScope(haystack: string): boolean {
  * establish scale with, so the row stays excluded (same posture as
  * "undisclosed_value" everywhere else in this file).
  */
-function isLargeAmenityBuild(input: { scopeType: TenderScopeType; estimatedValue?: number; currency?: string }): boolean {
+function isLargeWorksBuild(input: { scopeType: TenderScopeType; estimatedValue?: number; currency?: string }): boolean {
   if (input.scopeType !== "works") return false;
   if (input.estimatedValue === undefined) return false;
   const usd = convertToUsd(input.estimatedValue, input.currency);
@@ -1937,10 +1965,19 @@ export function classifyRelevance(input: {
 
   // The municipal-amenity class, split out of EXCLUDE_KEYWORDS above because
   // it is the one exclusion with a value exception — see
-  // MUNICIPAL_AMENITY_KEYWORDS and isLargeAmenityBuild().
+  // WATER_NETWORK_KEYWORDS — same value exception, same helper, see its header.
   if (
     !hasIncludeOverride &&
-    !isLargeAmenityBuild(input) &&
+    !isLargeWorksBuild(input) &&
+    WATER_NETWORK_KEYWORDS.some((pattern) => pattern.test(haystack))
+  ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // MUNICIPAL_AMENITY_KEYWORDS and isLargeWorksBuild().
+  if (
+    !hasIncludeOverride &&
+    !isLargeWorksBuild(input) &&
     MUNICIPAL_AMENITY_KEYWORDS.some((pattern) => pattern.test(haystack))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };

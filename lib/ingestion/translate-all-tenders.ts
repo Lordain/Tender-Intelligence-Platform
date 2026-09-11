@@ -13,7 +13,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TenderToTranslate, TranslatedTender } from "@/lib/ingestion/translate-titles";
 import { translateTenderBatchQwen } from "@/lib/ingestion/translate-titles-qwen";
-import { isHiddenColombiaNoDeadline } from "@/lib/db/tender-visibility";
 import type { LocalizedText } from "@/types/tender";
 
 // Was 25 — dropped after a real run (2026-09-03) truncated a 25-item
@@ -72,13 +71,7 @@ export async function translateAllTenders(
   //
   // Also skips a Colombia tender with no submission deadline (2026-09-05,
   // explicit request) — same rule as fetchAllTendersFromDb()/
-  // fetchAdminTenderListFromDb() (see isHiddenColombiaNoDeadline's own
-  // comment): many of these are already-decided processes with no real
-  // opportunity left, and translation is a real, billed Anthropic API
-  // call per title — no reason to spend it on a tender that's hidden
-  // everywhere else until it either resolves a real deadline or gets
-  // cleaned up.
-  const untranslated = rows.filter((t) => t.title.zh === t.title.es && !isHiddenColombiaNoDeadline(t.country, t.submission_deadline));
+  const untranslated = rows.filter((t) => t.title.zh === t.title.es);
   const toTranslate = options.limit !== undefined ? untranslated.slice(0, options.limit) : untranslated;
 
   const result: TranslateAllTendersResult = {

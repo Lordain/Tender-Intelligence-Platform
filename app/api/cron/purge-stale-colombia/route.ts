@@ -8,30 +8,33 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
- * Scheduled cleanup for the "no submission deadline" hide rule (see
- * isHiddenColombiaNoDeadline() in lib/db/tenders.ts) — explicit request,
- * 2026-09-05: a Colombia tender hidden for this reason should stay hidden
- * as long as it lacks a deadline, but if it's been published for 2 months
- * and still never got one, delete it outright rather than leave it
- * parked forever. Most of these are already-decided "Contratación
- * Directa"/"régimen especial" processes with nothing left to bid on (see
- * lib/ingestion/README.md's investigation) — 2 months is long enough for
- * a genuinely-just-lagging datos.gov.co sync (the deadline-sync gap also
- * documented there) to have caught up if it was ever going to.
+ * Scheduled cleanup of Colombia rows this platform no longer ingests.
  *
- * Cutoff counts from publication_date, matching scripts/purge-old-
- * tenders.ts's own existing "N months since publication" convention —
- * the only other age-based cutoff in this codebase — rather than tracking
- * a separate "first observed with no deadline" timestamp this schema
- * doesn't have.
+ * Was a cleanup for the "no submission deadline" hide rule (2026-09-05).
+ * That rule is gone (2026-09-11): it hid genuine open tenders whose
+ * deadline datos.gov.co had not synced yet — 18 of 37 rows on 2026-09-08,
+ * 14 of them flagship — and the real intent moved into the ingestion gate,
+ * which admits only Licitación pública modalidades
+ * (isIngestedColombiaModalidad, lib/ingestion/colombia-mapper.ts).
+ *
+ * Re-pointing this route was not optional once that rule went. Deleting
+ * "Colombia + no deadline" used to only ever remove rows nobody could see;
+ * with the hide rule gone it would have deleted exactly the visible
+ * flagship tenders the change was meant to bring back. It now targets what
+ * was actually meant all along: rows whose modalidad the ingestion gate
+ * would reject today — already-decided Contratación Directa / régimen
+ * especial processes that entered before the gate existed.
+ *
+ * The 2-month cutoff counts from publication_date, matching scripts/purge-
+ * old-tenders.ts's own "N months since publication" convention — the only
+ * other age-based cutoff in this codebase — rather than tracking a "first
+ * observed" timestamp this schema does not have. It is deliberately kept:
+ * a row that the gate would reject is not urgent to remove, and the delay
+ * leaves a window to notice a modalidad string this platform should have
+ * been accepting.
  *
  * Same auth pattern as app/api/cron/tender-digest/route.ts (Bearer
- * CRON_SECRET) — wire this route up to a Vercel Cron Job (or whatever
- * external scheduler already triggers tender-digest) on whatever cadence
- * makes sense (daily is plenty, since the cutoff itself is 2 months wide).
- * Deletes for real by default once authorized; pass ?dryRun=true to only
- * report what WOULD be deleted, same escape hatch purge-old-tenders.ts's
- * CLI offers via its own default dry-run.
+ * CRON_SECRET).
  */
 function authorized(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -67,7 +70,15 @@ export async function GET(request: NextRequest) {
       .from("tenders")
       .select("slug, tender_number, title")
       .eq("country", "Colombia")
-      .is("submission_deadline", null)
+      // Modalidad, not "has no deadline" — see this route's header comment
+      // for why that changed on 2026-09-11. `not.ilike` runs in Postgres,
+      // so the accent-tolerant prefix match of
+      // isIngestedColombiaModalidad() cannot be reused here: the two real
+      // values differ only in their tail, and procedure_type stores the
+      // modalidad verbatim, so matching the accented and unaccented spelling
+      // of "Licitaci_n p_blica" with single-character wildcards covers both
+      // without inventing a normalized column.
+      .not("procedure_type", "ilike", "Licitaci_n p_blica%")
       .lt("publication_date", cutoffIso)
       .range(from, from + PAGE_SIZE - 1);
 

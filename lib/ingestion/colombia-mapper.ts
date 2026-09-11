@@ -235,7 +235,52 @@ function normalizeDurationDays(duracion: string | undefined, unidad: string | un
   return perUnit !== undefined ? Math.round(count * perUnit) : undefined;
 }
 
+/**
+ * SECOP II modalidades this platform ingests at all — public open tenders,
+ * and nothing else (2026-09-11, explicit request: 只加入 Modalidad de
+ * Contratación = Licitación pública 或 Licitación pública Obra Pública，
+ * 非这两个条目的项目都不要加进系统).
+ *
+ * This replaces the "hide a Colombia tender that has no submission
+ * deadline" rule, which was the previous, indirect attempt at the same
+ * goal. That rule was both too broad and too narrow: it hid genuine open
+ * tenders whose deadline datos.gov.co had not synced yet (37 rows imported
+ * on 2026-09-08, 18 hidden, 14 of them flagship), while still letting
+ * plenty of Contratación Directa / régimen especial rows through whenever
+ * they happened to carry a date. Filtering on the modalidad says what was
+ * actually meant.
+ *
+ * Matched on a normalized prefix rather than exact string equality:
+ * datos.gov.co is inconsistent about accents and spacing in this field
+ * ("Obra Publica" and "Obra Pública" both occur), and an exact-match list
+ * would silently drop real licitaciones over a missing tilde — the failure
+ * mode being avoided here in the first place. "licitacion publica" is
+ * narrow enough that only the two intended values can match it.
+ */
+const INGESTED_MODALIDAD_PREFIX = "licitacion publica";
+
+function normalizeModalidad(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** Exported for scripts/tests that need the same gate without re-mapping a row. */
+export function isIngestedColombiaModalidad(modalidad: string | null | undefined): boolean {
+  if (!modalidad) return false;
+  return normalizeModalidad(modalidad).startsWith(INGESTED_MODALIDAD_PREFIX);
+}
+
 export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): Tender | null {
+  // First gate, before anything else is parsed: a modalidad this platform
+  // does not carry is not a tender we have any use for, whatever its value
+  // or keywords say. The existing value/keyword rules (lib/relevance.ts)
+  // still run afterwards, on what survives this.
+  if (!isIngestedColombiaModalidad(row.modalidad_de_contratacion)) return null;
+
   const title = row.nombre_del_procedimiento?.trim();
   const buyer = row.entidad?.trim();
   const tenderNumber = row.referencia_del_proceso?.trim() || row.id_del_proceso?.trim();

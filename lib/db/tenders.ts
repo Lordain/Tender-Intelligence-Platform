@@ -2,7 +2,6 @@ import "server-only";
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { isHiddenColombiaNoDeadline } from "@/lib/db/tender-visibility";
 import type {
   LocalizedText,
   Tender,
@@ -15,11 +14,6 @@ import type {
 } from "@/types/tender";
 import { classifyStoredTender } from "@/lib/relevance";
 import { deriveTenderStatus } from "@/lib/tender-status";
-
-// Re-exported so the many existing `from "@/lib/db/tenders"` call sites
-// (and app code) keep working now that the predicate itself lives in a
-// server-only-free module.
-export { isHiddenColombiaNoDeadline };
 
 type TenderRow = {
   id: string;
@@ -314,14 +308,15 @@ async function fetchAwardedSlugsWithAnalysis(supabase: SupabaseClient): Promise<
  * exception NOT applied — admins still need to see every awarded-but-
  * unanalyzed row to fix it.
  *
- * Second visibility rule, same day, Colombia-only: no `submissionDeadline`
- * (SECOP's "Fecha de presentación de ofertas") hides a Colombia tender
- * here too — see `isHiddenColombiaNoDeadline()` below for the real
- * reasoning. Unlike the awarded-analysis rule above, this one IS also
- * applied to `fetchAdminTenderListFromDb()` (per a same-day follow-up
- * request): a hidden tender was still getting translated/analyzed there,
- * spending real money on something that might turn out to have no real
- * opportunity left at all.
+ * Retired 2026-09-11: a second visibility rule used to hide any Colombia
+ * tender with no submission deadline. It was the indirect way of keeping
+ * already-decided Contratación Directa / régimen especial processes out,
+ * and it was wrong in both directions — it hid genuine open tenders whose
+ * deadline datos.gov.co had not synced yet (18 of 37 rows on 2026-09-08,
+ * 14 of them flagship), while still admitting plenty of directa rows that
+ * happened to carry a date. The gate moved to ingestion instead, where it
+ * can say what was meant: only Licitación pública modalidades enter the
+ * system at all (isIngestedColombiaModalidad, lib/ingestion/colombia-mapper.ts).
  */
 export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> => {
   const supabase = getSupabaseServerClient();
@@ -346,7 +341,6 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
   const awardedWithAnalysis = await fetchAwardedSlugsWithAnalysis(supabase);
   return rows
     .filter((row) => row.status !== "awarded" || awardedWithAnalysis.has(row.slug))
-    .filter((row) => !isHiddenColombiaNoDeadline(row.country, row.submission_deadline))
     .map(toTender);
 });
 
@@ -436,12 +430,15 @@ const DOCUMENTS_NEEDED_SELECT = `
  * in this worklist forever with no way to mark "not obtainable" distinct
  * from "not yet attempted" (2026-09-05, explicit request).
  *
- * The final `isHiddenColombiaNoDeadline` filter drops a Colombia tender
- * with no real submission deadline (same rule as
- * fetchAllTendersFromDb()/fetchAdminTenderListFromDb()) — chasing down and
- * analyzing documents for one of these is the same wasted-money problem
- * the awarded/cancelled exclusion above already solves for a different
- * "already decided" signal (2026-09-05, explicit request).
+ * Retired 2026-09-11: a second visibility rule used to hide any Colombia
+ * tender with no submission deadline. It was the indirect way of keeping
+ * already-decided Contratación Directa / régimen especial processes out,
+ * and it was wrong in both directions — it hid genuine open tenders whose
+ * deadline datos.gov.co had not synced yet (18 of 37 rows on 2026-09-08,
+ * 14 of them flagship), while still admitting plenty of directa rows that
+ * happened to carry a date. The gate moved to ingestion instead, where it
+ * can say what was meant: only Licitación pública modalidades enter the
+ * system at all (isIngestedColombiaModalidad, lib/ingestion/colombia-mapper.ts).
  */
 export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedingDocuments[] | null> {
   const supabase = getSupabaseServerClient();
@@ -470,7 +467,6 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
 
   return rows
     .filter((row) => row.tender_documents.length === 0)
-    .filter((row) => !isHiddenColombiaNoDeadline(row.country, row.submission_deadline))
     .map((row) => ({
       slug: row.slug,
       title: row.title,
@@ -544,12 +540,15 @@ type AdminTenderListDbRow = {
  * Returns null when Supabase isn't configured. Every tender, regardless of
  * relevance tier — this is the admin's full inventory, not the public feed.
  *
- * Exception (2026-09-05, explicit request): a Colombia tender with no
- * submission deadline is hidden here too, same rule as
- * `fetchAllTendersFromDb()`'s public-facing one (`isHiddenColombiaNoDeadline`
- * below) — these are largely already-decided "Contratación Directa"/
- * "régimen especial" processes with nothing left to bid on, and the user's
- * real complaint was that leaving them visible here meant admin actions
+ * Retired 2026-09-11: a second visibility rule used to hide any Colombia
+ * tender with no submission deadline. It was the indirect way of keeping
+ * already-decided Contratación Directa / régimen especial processes out,
+ * and it was wrong in both directions — it hid genuine open tenders whose
+ * deadline datos.gov.co had not synced yet (18 of 37 rows on 2026-09-08,
+ * 14 of them flagship), while still admitting plenty of directa rows that
+ * happened to carry a date. The gate moved to ingestion instead, where it
+ * can say what was meant: only Licitación pública modalidades enter the
+ * system at all (isIngestedColombiaModalidad, lib/ingestion/colombia-mapper.ts).
  * that cost real money (翻译标题, 标书分析) kept getting spent on them
  * before it's even known whether they're worth anything. Same
  * self-correcting behavior as the public rule: once a re-ingest/refresh
@@ -582,7 +581,6 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
   const awardedWithAnalysis = await fetchAwardedSlugsWithAnalysis(supabase);
 
   return rows
-    .filter((row) => !isHiddenColombiaNoDeadline(row.country, row.submission_deadline))
     .map((row) => ({
     id: row.id,
     slug: row.slug,

@@ -1725,4 +1725,60 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "User decided 保留 in this round, unlike the other small municipal buildings.",
     country: "Mexico", scopeType: "works",
   },
+  // --- Peru's first real import (2026-09-11, 8620 OECE records) ------------
+  // Every title below is verbatim from that run's kept/excluded export.
+  {
+    title: "ADQUISION DE DIESEL B5 S50 PARA EL PROYECTO MEJORAMIENTO DE LA TRANSITABILIDAD VEHICULAR DE LA CARRETERA PAUCARTAMBO",
+    expectedTier: "excluded",
+    note: "purchaseSubject(): the contract is for diesel. Before the cut, 'carretera' in the project name matched the bare works whitelist and this came in as a road project. No estimatedValue on purpose — with the project name gone there is no flagship-industry match left, so this also pins the Peru undisclosed-value gate.",
+    country: "Peru", scopeType: "equipment",
+  },
+  {
+    title: "ADQUISICION DE DIVERSOS MUEBLES DE MELAMINE Y OTROS SEGÚN EE.TT. PARA LA OBRA CONSTRUCCION INFRAESTRUCTURA DEPORTIVA",
+    expectedTier: "excluded",
+    note: "Same cut through the other connector ('para la obra'). Melamine furniture, named after the works it furnishes.",
+    country: "Peru", scopeType: "equipment",
+  },
+  {
+    title: "SERVICIO DE ALQUILER DE EXCAVADORA SOBRE ORUGA SEGUN REQUERIMIENTO Y TERMINOS DE REFERENCIA, PARA EL PROYECTO MEJORAMIENTO DE LA CARRETERA",
+    expectedTier: "excluded",
+    note: "Equipment RENTAL for someone else's road project — the third supply head purchaseSubject() recognises.",
+    country: "Peru", scopeType: "services",
+  },
+  {
+    title: "CONTRATACIÓN PARA EJECUCIÓN DE LA OBRA: MEJORAMIENTO DE LA CARRETERA DEPARTAMENTAL EMP. PE-3N",
+    expectedTier: "flagship",
+    note: "The guard on purchaseSubject(): this title's head is CONTRATACIÓN, not a purchase, so 'obra' being a connector word must NOT cut it. A real departmental highway from the same run.",
+    country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 170_000_000, currency: "PEN",
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPAMIENTO MEDICO DE ESPECIALIDADES SEGÚN REQUERIMIENTO PARA EL PROYECTO MEJORAMIENTO DEL SERVICIO DE SALUD",
+    expectedTier: "flagship",
+    note: "The other side of the guard: the cut fires, and the row still promotes — because what is left, 'EQUIPAMIENTO MEDICO', is itself a flagship industry. The rule removes borrowed signal, not real signal.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "state", estimatedValue: 20_000_000, currency: "PEN",
+  },
+  {
+    title: "CONTRATACIÓN DE SERVICIO DE TÉCNICAS EN ENFERMERÍA PARA LOS DIFERENTES SERVICIOS DEL CENTRO DE SALUD LA OROYA",
+    expectedTier: "excluded",
+    note: "Peru undisclosed-value gate: nursing-agency staffing, tagged healthcare, no amount. 571 of 1295 kept rows were this shape before the gate covered Peru.",
+    country: "Peru", scopeType: "services",
+  },
+  {
+    title: "ADQUISICION DE PUERTAS DE MADERA INCLUYE ACCESORIOS E INSTALACION SEGÚN REQUERIMIENTO Y ESPECIFICACIONES TECNICAS",
+    expectedTier: "excluded",
+    note: "Same gate, no 'para el proyecto' involved — wooden doors with no amount.",
+    country: "Peru", scopeType: "equipment",
+  },
+  {
+    title: "SUMINISTRO DE MEDICAMENTOS NO PNUME - INMUNOGLOBULINA HUMANA NORMAL 5g/100 mL INY 100 mL",
+    expectedTier: "excluded",
+    note: "The /\\b5g\\b/ telecom pattern was matching a gram dosage and rescuing drug supply as an include-override. Guarded in both relevance.ts and industry.ts.",
+    country: "Peru", scopeType: "equipment",
+  },
+  {
+    title: "EJECUCION DE LA OBRA AMPLIACION DEL SERVICIO DE PRÁCTICA DEPORTIVA Y/O RECREATIVA EN COMPLEJO DEPORTIVO MULTIUSOS",
+    expectedTier: "excluded",
+    note: "'complejo deportivo' / 'práctica deportiva' joined MUNICIPAL_AMENITY_KEYWORDS. Value is under the class's ≥$5M works exception, so the exception is not what decides this one.",
+    country: "Peru", scopeType: "works", estimatedValue: 4_000_000, currency: "PEN",
+  },
 ];

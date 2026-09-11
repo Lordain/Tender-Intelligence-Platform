@@ -682,7 +682,7 @@ const CHILDCARE_FACILITY_KEYWORDS = [
  * data, not something this rule special-cases by country.
  */
 const MUNICIPAL_AMENITY_KEYWORDS = [
-  /centro de alto rendimiento|pista de patinaje|parques? (ecol[óo]gico|recreativo|de proximidad|deportivo)|infraestructura deportiva|escenarios? deportivos?/i,
+  /centro de alto rendimiento|pista de patinaje|parques? (ecol[óo]gico|recreativo|de proximidad|deportivo)|infraestructura deportiva|escenarios? deportivos?|complejos? deportivos?|pr[áa]ctica deportiva/i,
   /centro de integraci[óo]n social|centro vida\b|centro de bienestar animal|casa de la cultura|teatro al aire libre/i,
 ];
 
@@ -1053,7 +1053,13 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   /seguridad electr[óo]nica|electronic security/i,
   /datacenter|centro de datos/i,
   /fibra [óo]ptica|fiber optic/i,
-  /\b5g\b/i,
+  // Anchored away from drug dosages (2026-09-11, two real Peru rows):
+  // "INMUNOGLOBULINA HUMANA NORMAL 5g/100 mL" and "L-GLUTAMINA +
+  // MALTODEXTRINA + LACTOBACILLUS REUTERI 10G + 5G" both matched the bare
+  // word and were kept as telecom. A gram figure is either written as a rate
+  // ("5g/100 mL") or follows another quantity in a list ("10G + 5G"); real
+  // telecom usage ("RED 5G", "TECNOLOGÍA 5G") is neither.
+  /(?<![\d+]\s?)\b5g\b(?!\s*[\/x×])/i,
   // Narrowed (2026-09-04, real counter-example found): the bare phrase
   // also matched a real CFE title — "MATERIALES PROFAUNA PARA
   // SUBESTACIONES" (wildlife-protection materials/fittings for
@@ -1538,6 +1544,30 @@ const SHORT_BRIDGE_METERS = 30;
  * from EXCLUDE_KEYWORDS should also protect it from being dismissed on
  * value alone).
  */
+/**
+ * Countries whose source routinely publishes NO amount at all, where an
+ * undisclosed value therefore carries no information and must not by itself
+ * keep a tender in the feed.
+ *
+ * The platform-wide floor deliberately does not fire on a missing value —
+ * "absence isn't evidence of smallness". That reasoning holds for Colombia,
+ * where SECOP II publishes values and a blank one is unusual, and the user
+ * drew the line explicitly on 2026-09-07: "不是没金额就 Standard，这是只应用于
+ * 哥伦比亚的逻辑，墨西哥不能这么做".
+ *
+ * Mexico was the first country where it broke down (Compras MX obra pública
+ * publishes no amount, so the strongest filter this classifier has simply
+ * never ran on it). Peru joined on 2026-09-11 on measured evidence, not by
+ * analogy: the first real OECE import was 8620 records, 3776 of them (43.8%)
+ * carrying no `tender.value.amount` at all, and 571 of the 1295 kept rows
+ * were held in by nothing but an industry tag on a no-value row — wooden
+ * doors, a generator, nursing-agency staffing, an excavator rental.
+ *
+ * Membership is a claim about one SOURCE's publishing habits, so it is
+ * decided per country from a real import and never assumed for a new one.
+ */
+const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru"]);
+
 const MIN_VALUE_USD = 500_000;
 
 // zh tier names renamed 2026-09-05 per explicit user request
@@ -1680,6 +1710,54 @@ function reasonFor(
   };
 }
 
+/**
+ * Peru's SEACE titles routinely name the umbrella PROJECT a purchase belongs
+ * to, after the thing actually being bought:
+ *
+ *   "ADQUISION DE DIESEL B5 S50 PARA EL PROYECTO MEJORAMIENTO DE LA
+ *    TRANSITABILIDAD VEHICULAR DE LA CARRETERA PAUCARTAMBO ..."
+ *   "ADQUISICION DE DIVERSOS MUEBLES DE MELAMINE ... PARA LA OBRA
+ *    CONSTRUCCION INFRAESTRUCTURA ..."
+ *   "SERVICIO DE ALQUILER DE EXCAVADORA SOBRE ORUGA ... PARA EL PROYECTO ..."
+ *
+ * The contract is for diesel, furniture and an excavator rental. The
+ * classifier was reading the project name and promoting all three — on the
+ * first real Peru import (2026-09-11, 8620 records) this was the single
+ * largest false-positive mechanism: 99 of 1295 kept rows came in on the bare
+ * construcción/carretera/puente whitelist, and every sampled one was a
+ * materials or rental purchase named after the project it supplies.
+ *
+ * So: when a title's own head is a supply/rental purchase, everything from
+ * the project connector onward is context about someone else's contract, and
+ * is cut before any keyword runs.
+ *
+ * Deliberately narrow on both sides. The head must be an explicit purchase
+ * ("adquisición", "suministro", "alquiler", "contratación de bienes") — a
+ * title that opens "CONTRATACIÓN PARA LA EJECUCIÓN DE LA OBRA: MEJORAMIENTO
+ * DE LA CARRETERA ..." is the works contract itself and is untouched, which
+ * is why "obra" being in the connector list is safe. And the connector must
+ * name a project/works/investment wrapper, not any "para" at all: "ADQUISICIÓN
+ * DE CAMIONETAS PARA LAS COMISARÍAS" and "ADQUISICIÓN DE UN MONTACARGA PARA EL
+ * TERMINAL PORTUARIO DE SUPE" keep their full text.
+ *
+ * Applied to the classifier's haystack only. BARE_BUYER_REF_TITLE and
+ * NO_CONTENT_TITLE still read the raw title, so a cut can never turn a real
+ * title into a "no content" exclusion.
+ */
+const SUPPLY_PURCHASE_HEAD =
+  /^\W*(?:contrataci[óo]n\s+(?:de\s+bienes|para\s+la\s+adquisi\w*n)|adquisi\w*n|adqs?\.|compra|suministro|abastecimiento|(?:servicio\s+de\s+)?alquiler)\b/i;
+
+const PROJECT_CONTEXT_CONNECTOR =
+  /\bpara\s+(?:el|la|los|las)\s+(?:sub\s*)?(?:proyectos?|obras?|ioarr|plan\s+de\s+negocio|meta)\b/i;
+
+function purchaseSubject(text: string | undefined): string | undefined {
+  if (!text) return text;
+  if (!SUPPLY_PURCHASE_HEAD.test(text)) return text;
+  const connector = PROJECT_CONTEXT_CONNECTOR.exec(text);
+  if (!connector || connector.index === 0) return text;
+  return text.slice(0, connector.index).trim();
+}
+
 export function classifyRelevance(input: {
   title: string;
   summary?: string;
@@ -1752,7 +1830,11 @@ export function classifyRelevance(input: {
   // (MAJOR_PROJECT_KEYWORDS/FLAGSHIP_INDUSTRY_KEYWORDS) otherwise also
   // match Colombian place names like "Puerto Boyacá"/"Puerto López"/
   // "Puente Ospina".
-  const haystack = stripKnownFalsePositivePlaceNames([input.title, input.summary, ...input.industries].filter(Boolean).join(" "));
+  // purchaseSubject: see its header comment — a Peruvian "buy X PARA EL
+  // PROYECTO <big project>" title is a contract for X, not for the project.
+  const subjectTitle = purchaseSubject(input.title)!;
+  const subjectSummary = purchaseSubject(input.summary);
+  const haystack = stripKnownFalsePositivePlaceNames([subjectTitle, subjectSummary, ...input.industries].filter(Boolean).join(" "));
 
   // See MAINTENANCE_ONLY_KEYWORDS' header comment — deliberately checked
   // before, and not gated by, hasIncludeOverride below. Only a real,
@@ -2059,11 +2141,17 @@ export function classifyRelevance(input: {
   // demoting a fire-alarm or firewall tender out of flagship left it with no
   // whitelist match, and this gate then excluded it outright — turning a
   // requested demotion into a deletion.
-  if (input.country === "Mexico" && normalizedValue === undefined && !matchesFlagshipIndustry && !hasIncludeOverride) {
+  if (
+    input.country !== undefined &&
+    UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL.has(input.country) &&
+    normalizedValue === undefined &&
+    !matchesFlagshipIndustry &&
+    !hasIncludeOverride
+  ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
 
-  const contentIndustries = classifyIndustries(input.title, input.summary);
+  const contentIndustries = classifyIndustries(subjectTitle, subjectSummary);
   const hasTargetIndustry = contentIndustries.some((i) => i !== "general");
   // Same correction: this gate's comment says everything reaching it failed
   // every positive signal, which stopped being true once demotions began

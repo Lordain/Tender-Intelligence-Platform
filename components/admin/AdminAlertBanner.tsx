@@ -10,6 +10,28 @@ type AdminAlert = {
   created_at: string;
 };
 
+/** A scheduled job that should have run by now and hasn't — migration 0041. */
+type StaleCronJob = {
+  job: string;
+  label: string;
+  lastRunAt: string | null;
+  detail: string | null;
+  reason: "never" | "overdue" | "failed";
+};
+
+const REASON_TEXT: Record<StaleCronJob["reason"], string> = {
+  never: "从未运行过",
+  overdue: "超过预期时间未运行",
+  failed: "最近一次运行失败",
+};
+
+function describeLastRun(job: StaleCronJob) {
+  if (!job.lastRunAt) return "没有运行记录";
+  const hours = Math.floor((Date.now() - new Date(job.lastRunAt).getTime()) / 3_600_000);
+  if (hours < 24) return `上次运行：${hours} 小时前`;
+  return `上次运行：${Math.floor(hours / 24)} 天前`;
+}
+
 const KIND_LABEL: Record<AdminAlert["kind"], string> = {
   quota: "额度/限流",
   connection: "网络连接",
@@ -25,12 +47,16 @@ const KIND_LABEL: Record<AdminAlert["kind"], string> = {
  */
 export function AdminAlertBanner() {
   const [alerts, setAlerts] = useState<AdminAlert[]>([]);
+  const [staleJobs, setStaleJobs] = useState<StaleCronJob[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/admin/alerts")
       .then((res) => res.json())
-      .then((data) => setAlerts(data.alerts ?? []))
+      .then((data) => {
+        setAlerts(data.alerts ?? []);
+        setStaleJobs(data.staleJobs ?? []);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -48,9 +74,31 @@ export function AdminAlertBanner() {
     }
   }
 
-  if (loading || alerts.length === 0) return null;
+  if (loading || (alerts.length === 0 && staleJobs.length === 0)) return null;
 
   return (
+    <>
+    {staleJobs.length > 0 && (
+      // Amber, not red, and with no dismiss control: this is not an event that
+      // happened and can be acknowledged, it is a state that is still true.
+      // It clears itself the moment the job runs again.
+      <div className="border-b border-amber-900/20 bg-amber-50 px-5 py-3 sm:px-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2">
+          <p className="text-sm font-bold text-amber-900">
+            {staleJobs.length} 个定时任务没有按计划运行（检查 Vercel Cron 与 CRON_SECRET）
+          </p>
+          <ul className="flex flex-col gap-1.5">
+            {staleJobs.map((job) => (
+              <li key={job.job} className="text-xs text-amber-800">
+                <span className="font-semibold">{job.label}</span>：{REASON_TEXT[job.reason]}（{describeLastRun(job)}）
+                {job.detail ? `　${job.detail}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    )}
+    {alerts.length > 0 && (
     <div className="border-b border-red-900/20 bg-red-50 px-5 py-3 sm:px-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-2">
         <div className="flex items-center justify-between">
@@ -75,5 +123,7 @@ export function AdminAlertBanner() {
         </ul>
       </div>
     </div>
+    )}
+    </>
   );
 }

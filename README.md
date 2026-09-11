@@ -364,7 +364,7 @@ The admin 新项目清单 page's 翻译所有标题 button runs the same functio
 
 ## Scheduled jobs (Vercel Cron)
 
-`vercel.json` registers the three scheduled runs the product depends on. Until
+`vercel.json` registers the four scheduled runs the product depends on. Until
 it existed, both routes below were reachable but nothing ever called them — the
 twice-daily digest is a paid feature, so on a deployment with no scheduler
 subscribers pay and receive nothing.
@@ -373,6 +373,7 @@ subscribers pay and receive nothing.
 |---|---|---|
 | `0 15 * * *` | `/api/cron/tender-digest` | 09:00 morning digest |
 | `0 0 * * *` | `/api/cron/tender-digest` | 18:00 evening digest |
+| `0 16 * * *` | `/api/cron/subscription-renewal-reminders` | Warns a subscriber five days before a card renews |
 | `30 3 * * *` | `/api/cron/purge-stale-colombia` | Deletes Colombia rows whose `Modalidad de Contratación` the ingestion gate would reject today, two months after publication |
 
 **The digest times are not arbitrary and cannot be shifted.** The route itself
@@ -427,3 +428,40 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/purge-stale
 
 The digest has no dry-run flag and will really send, so test it against a
 staging deployment or a seeded test account rather than production.
+
+### When one of them breaks
+
+Three layers, because they catch different failures:
+
+1. **A run that fails** writes an `admin_alerts` row and emails
+   `WEBHOOK_ALERT_EMAILS` (falling back to `ADMIN_EMAILS`) —
+   `lib/notifications/ops-alert.ts`. Deduped per incident, not per run: while
+   an unresolved row with the same `source` exists, a repeat writes nothing and
+   sends nothing, so a digest failing for one subscriber twice a day for a week
+   is one email rather than fourteen. Dismissing the banner row re-arms it.
+   That is why a source names the failing thing
+   (`tender-digest:recipient:<id>`) and never the moment.
+2. **A run that fails wholesale** — Supabase unreachable, a schema change, a
+   throw between the queries — is caught at the top of each route and reported
+   the same way. Before this it was a 500 in a log nobody reads.
+3. **A job that never runs at all** is what the first two structurally cannot
+   see, and the likeliest failure on a fresh deploy: a schedule that was not
+   deployed, or a rotated `CRON_SECRET` making every call 401. Each route
+   records a heartbeat (`cron_heartbeats`, migration 0041) and `/admin` shows
+   an amber banner for any job past its expected interval. A legitimate skip
+   (notifications off, digest fired outside its slot) still writes a heartbeat
+   with status `skipped` — the job ran and had nothing to do, which is exactly
+   what has to be told apart from never running. A dry-run purge writes none,
+   so running one by hand cannot mask a dead scheduler.
+
+The amber banner has no dismiss control: it reports a state that is still true
+and clears itself when the job next runs. The red one reports events, which is
+why those are acknowledged by hand.
+
+**Sending a real test email** without waiting for a cron: `/admin/email-preview`
+has buttons for the digest, the renewal reminder and the enterprise invitation
+— all to the signed-in admin's own address, rate-limited to 3/hour, and the
+invitation writes no `enterprise_members` row. `/admin/billing` has the Stripe
+webhook alert test. The invitation is there because it is otherwise unreachable
+for staff: sending a real one requires an enterprise owner, and an admin
+deliberately is not one (see "Admins on the front end").

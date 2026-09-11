@@ -5,6 +5,8 @@ import type { PaidPlan } from "@/lib/billing-catalog";
 import { sendSubscriptionRenewalReminder } from "@/lib/notifications/subscription-renewal-reminder";
 import { getStripeClient, stripeSubscriptionPeriod } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { recordCronHeartbeat } from "@/lib/ops/cron-heartbeat";
+import { reportOpsFailure } from "@/lib/notifications/ops-alert";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -45,23 +47,26 @@ async function customerEmail(userId: string, invoice: Stripe.Invoice, admin: Non
   return data.user?.email ?? null;
 }
 
+/**
+ * Same source key and same once-per-incident rule as before; what changed
+ * (2026-09-11) is that it now also emails WEBHOOK_ALERT_EMAILS. A row in
+ * admin_alerts is only seen by someone who opens /admin, and a renewal
+ * reminder that stops going out is not noticed by the customer either —
+ * they find out when the charge lands.
+ */
 async function recordFailureAlert(
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
   candidate: Candidate,
   message: string,
 ) {
-  const source = `subscription-renewal-reminder:${candidate.stripe_subscription_id}`;
-  const { data } = await admin.from("admin_alerts").select("id").eq("source", source).is("resolved_at", null).limit(1).maybeSingle();
-  if (!data) {
-    await admin.from("admin_alerts").insert({
-      kind: "other",
-      source,
-      message: `自动续费提醒发送失败：${candidate.stripe_subscription_id}；${message}`.slice(0, 2000),
-    });
-  }
+  await reportOpsFailure(admin, {
+    source: `subscription-renewal-reminder:${candidate.stripe_subscription_id}`,
+    title: "自动续费提醒发送失败",
+    message: `${candidate.stripe_subscription_id}；${message}`,
+  });
 }
 
-export async function GET(request: NextRequest) {
+async function runReminders(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const stripe = getStripeClient();
   const admin = createSupabaseAdminClient();
@@ -150,5 +155,23 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  await recordCronHeartbeat(admin, "subscription-renewal-reminders", failed > 0 ? "failed" : "ok", failed > 0 ? `${failed} 条提醒发送失败` : undefined);
   return NextResponse.json({ checked: data?.length ?? 0, sent, skipped, failed, windowEnd: windowEnd.toISOString() });
+}
+
+/**
+ * A throw anywhere above — Supabase unreachable, Stripe's API down, a schema
+ * change — used to surface only as a 500 in Vercel's log. Unattended work
+ * that fails has to reach a person; see lib/notifications/ops-alert.ts.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    return await runReminders(request);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const admin = createSupabaseAdminClient();
+    await recordCronHeartbeat(admin, "subscription-renewal-reminders", "failed", message);
+    await reportOpsFailure(admin, { source: "subscription-renewal-reminders:run", title: "续费提醒任务整体失败", message });
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

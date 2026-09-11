@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { recordCronHeartbeat } from "@/lib/ops/cron-heartbeat";
+import { reportOpsFailure } from "@/lib/notifications/ops-alert";
 
 export const runtime = "nodejs";
 // Pages the whole table 1000 rows at a time and deletes in chunks of 200.
@@ -52,7 +54,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 type Candidate = { slug: string; tender_number: string | null; title: { es?: string } | null };
 
-export async function GET(request: NextRequest) {
+async function runPurge(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "true";
@@ -89,6 +91,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (dryRun || candidates.length === 0) {
+    // A dry run is a manual inspection, not a scheduled pass, so it must not
+    // refresh the heartbeat — otherwise running one by hand would mask a
+    // scheduler that has stopped firing. Having nothing to delete is a real
+    // run and does.
+    if (!dryRun) await recordCronHeartbeat(supabase, "purge-stale-colombia", "ok", "没有到期项目");
     return NextResponse.json({ dryRun, cutoff: cutoffIso, candidateCount: candidates.length, slugs: candidates.map((c) => c.slug) });
   }
 
@@ -115,5 +122,33 @@ export async function GET(request: NextRequest) {
     if (tombstoneError) console.error(`purge-stale-colombia: failed to record tender_manual_deletions: ${tombstoneError.message}`);
   }
 
+  if (failed.length > 0) {
+    // Keyed on the job, not the slug: a delete failing here is almost always
+    // one cause (a constraint, RLS, connectivity) hitting every chunk, so per
+    // slug would mean dozens of identical emails.
+    await reportOpsFailure(supabase, {
+      source: "purge-stale-colombia:delete",
+      title: "哥伦比亚过期项目清理失败",
+      message: `${failed.length} 个项目删除失败，例如 ${failed.slice(0, 3).join("、")}`,
+    });
+  }
+  await recordCronHeartbeat(supabase, "purge-stale-colombia", failed.length > 0 ? "failed" : "ok", failed.length > 0 ? `${failed.length} 个项目删除失败` : undefined);
   return NextResponse.json({ dryRun, cutoff: cutoffIso, deletedCount, failed });
+}
+
+/**
+ * A throw anywhere above — Supabase unreachable, Stripe's API down, a schema
+ * change — used to surface only as a 500 in Vercel's log. Unattended work
+ * that fails has to reach a person; see lib/notifications/ops-alert.ts.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    return await runPurge(request);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const admin = createSupabaseAdminClient();
+    await recordCronHeartbeat(admin, "purge-stale-colombia", "failed", message);
+    await reportOpsFailure(admin, { source: "purge-stale-colombia:run", title: "哥伦比亚过期项目清理任务失败", message });
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

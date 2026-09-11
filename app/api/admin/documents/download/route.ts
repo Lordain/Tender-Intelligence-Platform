@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { fetchDocumentLinksForSlugs, type StoredDocumentLink } from "@/lib/ingestion/document-links";
+import { downloadFile } from "@/lib/ingestion/download-file";
 
 /**
  * Backs the 批量下载标书 button on /admin/documents-needed: given a set of
@@ -37,22 +38,15 @@ const MAX_FILES = 40;
 const MAX_FILE_BYTES = 40 * 1024 * 1024;
 /** Total ZIP ceiling — a response much larger than this will not finish inside maxDuration anyway. */
 const MAX_TOTAL_BYTES = 80 * 1024 * 1024;
-/**
- * Per-file ceiling, and it is a TOTAL-TRANSFER budget, not a connect timeout:
- * `AbortSignal.timeout` kills the body stream too, so a large file that is
- * downloading perfectly well still dies when it expires.
- *
- * The first real run (2026-09-11) made that concrete: three files, one 6.9MB
- * .docx arrived, the other two were reported as "下载超时" at 20s. Nothing
- * was wrong with them — prod1.seace.gob.pe is simply slow, 7MB is a normal
- * size for Bases Administrativas, and three of those at once share one link.
- */
-const PER_FILE_TIMEOUT_MS = 60_000;
+/** How long with no new bytes before a transfer is treated as dead. See lib/ingestion/download-file.ts for why this is a stall clock and not a per-file deadline. */
+const STALL_TIMEOUT_MS = 30_000;
 /**
  * Two at a time, not four. Concurrency does not create bandwidth: on a slow
  * origin it splits the same pipe N ways, so every file takes N times longer
- * and they all approach the timeout together instead of finishing one by one.
- * That is exactly what the first real run looked like.
+ * and none of them finishes early. Measured at 4 on the first real run, the
+ * whole batch moved at ~220 KB/s in total — the same ceiling, just spread
+ * thinner, so files that would have completed one after another all hung
+ * together instead.
  */
 const CONCURRENCY = 2;
 /**
@@ -68,11 +62,11 @@ const TOTAL_BUDGET_MS = process.env.VERCEL ? 48_000 : 270_000;
  * peru-oece-live.ts's fetchOece): .gob.pe answers 403 to a request carrying
  * no User-Agent at all, which is what Node's fetch sends.
  */
-const DOWNLOAD_HEADERS = {
+const DOWNLOAD_HEADERS: Record<string, string> = {
   "User-Agent":
     "TenderIntelligencePlatform/1.0 (+https://github.com/lordain/tender-intelligence-platform; open-data ingestion)",
   "Accept-Language": "es-PE,es;q=0.9",
-} as const;
+};
 
 type FileOutcome = { slug: string; fileName: string; ok: boolean; bytes?: number; error?: string };
 
@@ -122,33 +116,20 @@ function uniquePath(path: string, used: Set<string>): string {
   }
 }
 
-async function downloadOne(link: StoredDocumentLink, timeoutMs: number): Promise<{ outcome: FileOutcome; buffer?: Buffer }> {
+/** Adapts the tested downloader (lib/ingestion/download-file.ts, npm run test:download) to this route's per-file reporting shape. */
+async function downloadOne(
+  link: StoredDocumentLink,
+  limits: { budgetMs: number },
+): Promise<{ outcome: FileOutcome; buffer?: Buffer }> {
   const base: FileOutcome = { slug: link.slug, fileName: link.fileName, ok: false };
-  try {
-    const response = await fetch(link.sourceUrl, {
-      headers: DOWNLOAD_HEADERS,
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!response.ok) {
-      return { outcome: { ...base, error: `HTTP ${response.status} ${response.statusText}` } };
-    }
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.byteLength === 0) return { outcome: { ...base, error: "空文件（0 字节）" } };
-    if (buffer.byteLength > MAX_FILE_BYTES) {
-      return { outcome: { ...base, error: `单个文件超过 ${MAX_FILE_BYTES / 1024 / 1024}MB，已跳过` } };
-    }
-    return { outcome: { ...base, ok: true, bytes: buffer.byteLength }, buffer };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return {
-      outcome: {
-        ...base,
-        error: /timed out|abort/i.test(message)
-          ? `下载超时（${Math.round(timeoutMs / 1000)} 秒内没传完，秘鲁服务器慢，标书又常有好几 MB——少选几个再试）`
-          : message,
-      },
-    };
-  }
+  const result = await downloadFile(link.sourceUrl, {
+    budgetMs: limits.budgetMs,
+    stallMs: STALL_TIMEOUT_MS,
+    maxBytes: MAX_FILE_BYTES,
+    headers: DOWNLOAD_HEADERS,
+  });
+  if (!result.ok) return { outcome: { ...base, error: result.error } };
+  return { outcome: { ...base, ok: true, bytes: result.bytes }, buffer: result.buffer };
 }
 
 export async function POST(request: Request) {
@@ -206,10 +187,10 @@ export async function POST(request: Request) {
     const stopReason =
       totalBytes >= MAX_TOTAL_BYTES
         ? "已达到本次下载总大小上限，未下载"
-        : // A file given only the scraps of the budget is a guaranteed
-          // timeout that also burns the time the report needs to be built and
-          // sent. Better to say plainly that it was not attempted.
-          remainingBudget() < 15_000
+        : // A file given only the scraps of the budget is a guaranteed failure
+          // that also burns the time the report needs to be built and sent.
+          // Better to say plainly that it was not attempted.
+          remainingBudget() < 20_000
           ? "本次下载时间用完了，这个文件没有开始下载——少选几个，或者在本机 npm run dev 下运行（本机时间宽裕得多）"
           : null;
     if (stopReason) {
@@ -218,9 +199,10 @@ export async function POST(request: Request) {
       }
       break;
     }
-    // Never promise a file more time than the batch has left.
-    const timeoutMs = Math.min(PER_FILE_TIMEOUT_MS, remainingBudget());
-    const results = await Promise.all(links.slice(from, from + CONCURRENCY).map((link) => downloadOne(link, timeoutMs)));
+    // Never promise a file more time than the batch has left, minus what
+    // zipping and sending the response still needs.
+    const budgetMs = Math.max(remainingBudget() - 10_000, 15_000);
+    const results = await Promise.all(links.slice(from, from + CONCURRENCY).map((link) => downloadOne(link, { budgetMs })));
     for (const { outcome, buffer } of results) {
       outcomes.push(outcome);
       if (!buffer) continue;
@@ -231,16 +213,19 @@ export async function POST(request: Request) {
 
   const okCount = outcomes.filter((outcome) => outcome.ok).length;
   const missing = slugs.filter((slug) => (bySlug.get(slug) ?? []).length === 0);
-  const elapsedSeconds = ((Date.now() - startedAt) / 1000).toFixed(0);
+  const elapsedMs = Date.now() - startedAt;
+  const elapsedSeconds = (elapsedMs / 1000).toFixed(0);
+  // The one number that says whether a bigger batch was ever going to fit.
+  const throughput = elapsedMs > 0 ? Math.round(totalBytes / 1024 / (elapsedMs / 1000)) : 0;
   const report = [
     `下载时间：${new Date().toISOString()}`,
     `选中项目：${slugs.length} 个`,
     `找到官方链接：${links.length} 个文件`,
-    `下载成功：${okCount} 个（${(totalBytes / 1024 / 1024).toFixed(1)} MB，耗时 ${elapsedSeconds} 秒）`,
+    `下载成功：${okCount} 个（${(totalBytes / 1024 / 1024).toFixed(1)} MB，耗时 ${elapsedSeconds} 秒，平均 ${throughput} KB/s）`,
     ...(okCount < links.length
       ? [
           "",
-          "有文件没下下来。秘鲁 prod1.seace.gob.pe 传得慢，标书动辄好几 MB，同时下反而更慢——",
+          "有文件没下下来。秘鲁 prod1.seace.gob.pe 传得慢，标书动辄十几 MB，同时下反而更慢——",
           "一次选 1～2 个项目重试即可；失败的不会影响已经成功的。在本机 npm run dev 下运行时间预算宽松很多。",
         ]
       : []),

@@ -205,18 +205,26 @@ Coverage is per-source and the UI says so rather than failing quietly:
 | Peru — SEACE/OECE | ✅ inline in the OCDS record | Filtered to `biddingDocuments` + `clarifications`; award/evaluation documents are an outcome, not a bid input |
 
 `prod1.seace.gob.pe` is slow and a single *Bases Administrativas* routinely
-runs to several MB, so the first real run downloaded 1 of 3 and reported the
-other two as timeouts at 20s. Nothing was wrong with them. Two things
-followed: the per-file ceiling is a **total-transfer** budget (an
-`AbortSignal` kills the body stream, so a file arriving perfectly well still
-dies when it expires) and is now 60s; and concurrency dropped from 4 to 2,
-because parallelism does not create bandwidth on a slow origin — it splits
-one pipe N ways so every file takes N times longer and they approach the
-timeout together. The batch also carries a wall-clock budget (48s on Vercel,
-270s locally) and reports "not attempted" separately from "timed out", so a
-slow origin yields a partial ZIP with an honest report instead of a dead
-request. Selecting 1–2 tenders at a time is the practical advice, and the UI
-gives it.
+runs past 10MB, which took two real runs to get right. At a 20s per-file
+deadline, 1 of 3 files arrived; at 60s, 3 of 4 — 23.1MB in 105s, about
+110 KB/s per stream. Every reported "timeout" was a download working
+normally.
+
+The lesson is that **no fixed per-file deadline can separate "slow" from
+"broken"** when a healthy transfer legitimately needs two minutes, and an
+`AbortSignal` makes it worse by killing the body stream, not just the
+connect. Silence is the signal that actually distinguishes them, so
+`lib/ingestion/download-file.ts` resets its clock on every chunk: a slow file
+takes as long as it takes, a dead one is dropped in 30s. Concurrency also
+dropped from 4 to 2 — parallelism creates no bandwidth on a slow origin, it
+splits one pipe N ways so nothing finishes early.
+
+The batch carries a wall-clock budget (48s on Vercel, 270s locally), and
+"ran out of batch time" and "not attempted" are reported as distinct from
+"stalled" because each implies a different fix. `npm run test:download`
+covers all of it against a local server that really trickles and really
+stalls — including the case both wrong versions failed: a transfer slower
+than any per-file deadline, which must still complete.
 | Colombia — SECOP II | ⚠️ automatable, not wired up | `colombia-documents-connector.ts` downloads fine, but its `proceso` id matched 0 of 499 stored tenders on the first real run — wiring it before that is understood would return empty ZIPs |
 | Mexico — Compras MX | ❌ never | Same anti-automation gate as its search API |
 | Peru — ProInversión OxI | ❌ | The export carries a project detail link, no document URLs |

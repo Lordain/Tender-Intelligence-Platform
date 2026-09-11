@@ -26,8 +26,8 @@ export default async function Home() {
     <div className="flex flex-col">
       <HomeHero tenders={tickerWithPreviews} />
       <FeaturedTenders tenders={featuredWithPreviews} />
-      <ParticipationGuidesPreview />
       <ValuePropositions />
+      <ParticipationGuidesPreview />
     </div>
   );
 }

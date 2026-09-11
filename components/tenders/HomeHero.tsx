@@ -18,18 +18,16 @@ function ArrowIcon() {
 }
 
 const COVERED_INDUSTRIES = [
-  ["education", "教育", "Education"],
   ["healthcare", "医疗", "Healthcare"],
-  ["tax", "税务", "Tax & customs"],
-  ["energy", "能源", "Energy"],
+  ["energy", "能矿", "Energy & mining"],
   ["power", "电力", "Power"],
   ["ict", "ICT", "ICT & telecom"],
   ["transport", "交通", "Transportation"],
-  ["construction", "基建", "Construction"],
-  ["mining", "矿业", "Mining"],
-  ["water", "水工程", "Water"],
+  ["construction", "土建", "Construction"],
+  ["heavy", "工程机械", "Construction machinery"],
+  ["water", "水工程", "Water engineering"],
   ["vehicles", "车辆", "Vehicles"],
-  ["heavy", "重设", "Heavy equipment"],
+  ["general", "综合", "General"],
 ] as const;
 
 type IndustryIconName = (typeof COVERED_INDUSTRIES)[number][0];
@@ -37,18 +35,16 @@ type IndustryIconName = (typeof COVERED_INDUSTRIES)[number][0];
 function IndustryIcon({ name }: { name: IndustryIconName }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="size-8 shrink-0 fill-none stroke-current stroke-[1.5]" strokeLinecap="round" strokeLinejoin="round">
-      {name === "education" && <><path d="M3 5.5c3-1 6-.4 9 1.5v12c-3-1.9-6-2.5-9-1.5z" /><path d="M21 5.5c-3-1-6-.4-9 1.5v12c3-1.9 6-2.5 9-1.5z" /></>}
       {name === "healthcare" && <><path d="M8 3h8v5h5v8h-5v5H8v-5H3V8h5z" /></>}
-      {name === "tax" && <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2" /></>}
       {name === "energy" && <><path d="M13.5 2.5c.5 4-3.5 5-3.5 8.5 0 1.7 1 2.8 2 3.5-.2-2.8 2-3.5 3-5.5 2 1.8 3 4.1 3 6.5A6 6 0 1 1 6 15c0-3.2 2-6.1 7.5-12.5Z" /></>}
       {name === "power" && <><path d="m13 2-8 12h7l-1 8 8-12h-7z" /></>}
       {name === "ict" && <><circle cx="5" cy="6" r="2" /><circle cx="19" cy="6" r="2" /><circle cx="12" cy="18" r="2" /><path d="m7 7 4 9m6-9-4 9M7 6h10" /></>}
       {name === "transport" && <><rect x="5" y="3" width="14" height="15" rx="3" /><path d="M8 7h8M7 13h10M8 21l2-3m6 3-2-3" /><circle cx="8.5" cy="14.5" r=".5" fill="currentColor" /><circle cx="15.5" cy="14.5" r=".5" fill="currentColor" /></>}
       {name === "construction" && <><path d="M4 21 9.5 3h5L20 21M2 21h20" /><path d="M12 5.5v3m0 3v3m0 3V21" /></>}
-      {name === "mining" && <><path d="m5 20 8-8m-5-5 9 9M8 7l3-3m6 12 3-3M3 7c5-4 11-4 16 0" /></>}
       {name === "water" && <><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Z" /><path d="M9 16c.5 1.5 1.5 2 3 2" /></>}
       {name === "vehicles" && <><path d="m5 16-1-2 2-6h12l2 6-1 2M6 16h12v3H6zM8 12h8" /><circle cx="8" cy="18" r="1.5" /><circle cx="16" cy="18" r="1.5" /></>}
       {name === "heavy" && <><path d="M3 18h12M5 18v-7h7l3 4v3M12 11l3-6h3l3 5-4 2" /><circle cx="7" cy="19" r="2" /><circle cx="13" cy="19" r="2" /></>}
+      {name === "general" && <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>}
     </svg>
   );
 }

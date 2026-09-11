@@ -77,6 +77,8 @@ export type OeceRecord = {
     };
     awards?: unknown[];
     parties?: { name?: string; address?: { locality?: string; department?: string } }[];
+    /** OECE's own pointer at the system the record came from — for seace_v3 the real public SEACE search page. Used as sourceUrl; see this file's header. */
+    sources?: { id?: string; name?: string; url?: string }[];
     /**
      * The `YYYY-MM` bucket this record belongs to (OECE's own
      * ocds_datasegmentation extension) — the same key the monthly bulk files
@@ -172,8 +174,15 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
   const party = compiled.parties?.find((p) => p.name === buyer);
   const location = party?.address?.locality ?? party?.address?.department;
 
-  // Most recent release's own detail URL — see this file's header comment on why there's no confirmed human-facing deep link yet.
-  const latestRelease = record.releases?.[0];
+  // The SEACE platform page a human can actually use. Not the OCDS release
+  // URL, which is unique to this tender but serves raw JSON: the user's call
+  // (2026-09-11), once it was confirmed that SEACE's own per-tender page
+  // (prod2.seace.gob.pe/.../fichaSeleccion.xhtml?id=<uuid>) is keyed by an
+  // internal UUID that appears NOWHERE in the OCDS record — searched the whole
+  // structure; the only UUID in there is a document fileCode — so no deep link
+  // can be derived. "先不连标书，连平台": send the reader to the platform, where
+  // the tenderNumber shown next to this link is the search key.
+  const platformUrl = compiled.sources?.find((source) => source.url)?.url;
 
   return {
     id: crypto.randomUUID(),
@@ -199,7 +208,7 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
     risks: [],
     relevance,
     sourceName,
-    sourceUrl: latestRelease?.url || "https://contratacionesabiertas.oece.gob.pe/",
+    sourceUrl: platformUrl || "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml",
     createdAt: now,
     updatedAt: now,
   };

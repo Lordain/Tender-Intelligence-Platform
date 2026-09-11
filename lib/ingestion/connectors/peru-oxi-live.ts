@@ -58,12 +58,20 @@ function looksLikeXlsx(buffer: Buffer): boolean {
 /**
  * Returns the raw .xlsx bytes, ready for readPeruOxiFile().
  *
- * Handles both plausible response shapes, because the captured request sends
- * `Accept: application/json` while the button produces a file: the endpoint
- * may return the workbook directly, or JSON naming a generated file to
- * download. Anything else throws with the beginning of the body attached, so
- * a redesigned endpoint or an interstitial reads as a real failure instead of
- * a zero-row import.
+ * The real shape, confirmed by the user's first live run (2026-09-11): JSON
+ * with the whole workbook BASE64-ENCODED in `Data`, alongside a `Url` field
+ * that is null —
+ *
+ *   {"Code":1,"SubCode":"C-SU-D-00001","Title":"Satisfactorio",
+ *    "Message":"La busqueda se ha realizado correctamente.",
+ *    "Url":null,"Data":"UEsDBBQAAAAIAMVVK10k..."}
+ *
+ * ("UEsDBBQ" is base64 for "PK\x03\x04".) The other two shapes — the
+ * workbook returned directly, and JSON naming a file to fetch — are still
+ * handled, because `Url` being present rather than null is clearly a path
+ * this endpoint knows about. Anything else throws with the beginning of the
+ * body attached, so a redesign reads as a real failure rather than a zero-row
+ * import.
  */
 export async function downloadOxiExport(): Promise<Buffer> {
   const form = new FormData();
@@ -96,9 +104,14 @@ export async function downloadOxiExport(): Promise<Buffer> {
     );
   }
 
+  const embedded = findEmbeddedWorkbook(payload);
+  if (embedded) return embedded;
+
   const fileUrl = findFileUrl(payload);
   if (!fileUrl) {
-    throw new Error(`OxI export returned JSON with no downloadable file URL in it: ${text.slice(0, 300)}`);
+    throw new Error(
+      `OxI export returned JSON carrying neither a base64 workbook nor a file URL: ${text.slice(0, 300)}`,
+    );
   }
   const absolute = fileUrl.startsWith("http") ? fileUrl : new URL(fileUrl, OXI_LISTING_PAGE).toString();
   const fileResponse = await fetch(absolute, { headers: { Referer: OXI_LISTING_PAGE } });
@@ -125,6 +138,37 @@ function findFileUrl(payload: unknown): string | undefined {
   if (payload && typeof payload === "object") {
     for (const value of Object.values(payload)) {
       const found = findFileUrl(value);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * First base64 string in the payload that decodes to a ZIP — the workbook the
+ * endpoint inlines in `Data`. Searched structurally rather than read from
+ * `Data` by name so a renamed field still works, and validated by magic bytes
+ * rather than by field name so a long non-base64 string cannot be mistaken
+ * for one.
+ */
+function findEmbeddedWorkbook(payload: unknown): Buffer | undefined {
+  if (typeof payload === "string") {
+    // Cheap reject first: anything short, or not base64 at all, is not a
+    // 90 KB spreadsheet.
+    if (payload.length < 1000 || !/^[A-Za-z0-9+/\r\n]+={0,2}$/.test(payload)) return undefined;
+    const decoded = Buffer.from(payload, "base64");
+    return looksLikeXlsx(decoded) ? decoded : undefined;
+  }
+  if (Array.isArray(payload)) {
+    for (const item of payload) {
+      const found = findEmbeddedWorkbook(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (payload && typeof payload === "object") {
+    for (const value of Object.values(payload)) {
+      const found = findEmbeddedWorkbook(value);
       if (found) return found;
     }
   }

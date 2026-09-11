@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { truncatePdfToPages } from "@/lib/ingestion/pdf-pages";
 import { extname } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
@@ -454,6 +455,12 @@ export async function extractTenderRequirements(
   // False for extract-requirements-qwen-anthropic.ts — see runExtraction()'s
   // header comment for the real gap that requires this.
   useStructuredOutput: boolean = true,
+  /**
+   * Read at most this many PDF pages. Callers pass maxPagesForTier() (lib/
+   * ingestion/extraction-routing.ts); undefined reads the whole document,
+   * which is what the offline comparison scripts want.
+   */
+  maxPages?: number,
 ): Promise<TenderExtraction> {
   // Word documents — .docx and legacy .doc alike (2026-09-03, per the
   // user's report that many real tender documents arrive as Word files,
@@ -475,36 +482,51 @@ export async function extractTenderRequirements(
 
   if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context, useStructuredOutput);
 
-  const pdfContent: ExtractionContent = [
-    {
-      type: "document",
-      source: { type: "base64", media_type: "application/pdf", data: readFileSync(filePath).toString("base64") },
-    },
-    { type: "text", text: instruction },
-  ];
+  // Cap the pages BEFORE reading the file, not after: a 100MB, 900-page
+  // tender would otherwise be base64'd into memory in full just to have most
+  // of it thrown away. Everything below — the chunking fallback and the
+  // plain-text fallback — then operates on the capped file too, so the cap
+  // holds on every path rather than only the happy one.
+  const capped = maxPages === undefined ? null : truncatePdfToPages(filePath, maxPages);
+  const sourcePath = capped?.path ?? filePath;
+  if (capped?.truncated) {
+    console.log(`  Reading the first ${capped.usedPages} of ${capped.originalPages} pages (tier cap ${maxPages}).`);
+  }
 
   try {
-    return await runExtraction(client, model, pdfContent, context, useStructuredOutput);
-  } catch (err) {
-    if (!isPdfNativeLimitError(err)) throw err;
-    console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 300)}) — splitting into chunks.`);
+    const pdfContent: ExtractionContent = [
+      {
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: readFileSync(sourcePath).toString("base64") },
+      },
+      { type: "text", text: instruction },
+    ];
 
     try {
-      return await runChunkedPdfExtraction(client, model, filePath, instruction, context, useStructuredOutput);
-    } catch (chunkErr) {
-      // Chunking needs poppler's pdfinfo/pdfseparate/pdfunite on PATH —
-      // if any is missing (ENOENT) or a chunk call itself errors, this
-      // falls back to locally-extracted plain text instead of failing the
-      // whole document outright. Loses layout/table-image understanding
-      // (and anything on a scanned/image-only page — see
-      // runChunkedPdfExtraction()'s header comment), but a degraded
-      // extraction beats none. That fallback text can ITSELF overflow the
-      // context window for a genuinely huge document (confirmed real
-      // 2026-09-03) — runTextExtractionWithOverflowRetry() handles that
-      // second failure mode too.
-      console.log(`  chunked extraction failed (${(chunkErr instanceof Error ? chunkErr.message : String(chunkErr)).slice(0, 800)}) — falling back to extracted text instead.`);
-      return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context, useStructuredOutput);
+      return await runExtraction(client, model, pdfContent, context, useStructuredOutput);
+    } catch (err) {
+      if (!isPdfNativeLimitError(err)) throw err;
+      console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 300)}) — splitting into chunks.`);
+
+      try {
+        return await runChunkedPdfExtraction(client, model, sourcePath, instruction, context, useStructuredOutput);
+      } catch (chunkErr) {
+        // Chunking needs poppler's pdfinfo/pdfseparate/pdfunite on PATH —
+        // if any is missing (ENOENT) or a chunk call itself errors, this
+        // falls back to locally-extracted plain text instead of failing the
+        // whole document outright. Loses layout/table-image understanding
+        // (and anything on a scanned/image-only page — see
+        // runChunkedPdfExtraction()'s header comment), but a degraded
+        // extraction beats none. That fallback text can ITSELF overflow the
+        // context window for a genuinely huge document (confirmed real
+        // 2026-09-03) — runTextExtractionWithOverflowRetry() handles that
+        // second failure mode too.
+        console.log(`  chunked extraction failed (${(chunkErr instanceof Error ? chunkErr.message : String(chunkErr)).slice(0, 800)}) — falling back to extracted text instead.`);
+        return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(sourcePath), context, useStructuredOutput);
+      }
     }
+  } finally {
+    capped?.cleanup();
   }
 }
 

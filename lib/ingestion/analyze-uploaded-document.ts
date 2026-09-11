@@ -44,7 +44,7 @@ import { join, extname, basename } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { intakeDocument } from "@/lib/ingestion/document-intake";
 import { hasRealTextLayer } from "@/lib/ingestion/text-layer";
-import { chooseExtractionModel } from "@/lib/ingestion/extraction-routing";
+import { maxPagesForTier, chooseExtractionModel } from "@/lib/ingestion/extraction-routing";
 import type { TenderRelevanceTier } from "@/types/tender";
 import {
   extractTenderRequirements,
@@ -163,9 +163,13 @@ export async function analyzeUploadedDocument(
         const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: intake.fileName, buyer: "" };
         const hasText = await hasRealTextLayer(tempPath);
         const model: ExtractionModel = chooseExtractionModel(hasText, relevanceTier);
+        // Only the first N pages are read, N by tier — real tenders reach
+        // 900 pages and 100MB, and the fields extracted here are all stated
+        // up front. See maxPagesForTier().
+        const maxPages = maxPagesForTier(relevanceTier);
         const extraction: TenderExtraction = hasText
-          ? await extractTenderRequirementsQwenAnthropic(tempPath, context, model === "qwen3.6-plus" ? "qwen3.6-plus" : "qwen3.5-plus")
-          : await extractTenderRequirements(tempPath, context, model);
+          ? await extractTenderRequirementsQwenAnthropic(tempPath, context, model === "qwen3.6-plus" ? "qwen3.6-plus" : "qwen3.5-plus", maxPages)
+          : await extractTenderRequirements(tempPath, context, model, undefined, true, maxPages);
         perFile.push({ intake, model, extraction });
       } catch (err) {
         // One bad file (corrupt PDF, a model error partway through a

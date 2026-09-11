@@ -38,7 +38,7 @@ import { intakeDocument } from "../lib/ingestion/document-intake";
 import { extractTenderRequirements, toTenderFields, type ExtractionModel, type TenderExtraction } from "../lib/ingestion/extract-requirements";
 import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract-requirements-qwen-anthropic";
 import { hasRealTextLayer } from "../lib/ingestion/text-layer";
-import { chooseExtractionModel, describeExtractionRouting } from "../lib/ingestion/extraction-routing";
+import { maxPagesForTier, chooseExtractionModel, describeExtractionRouting } from "../lib/ingestion/extraction-routing";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import type { TenderRelevanceTier } from "../types/tender";
 
@@ -190,9 +190,13 @@ async function main() {
     console.log(
       `Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}, model: ${model} (auto — ${hasText ? "has a real text layer" : "no real text layer (scanned)"}, ${describeExtractionRouting(hasText, tier)})`,
     );
+    // Same per-tier page cap the upload flow uses, so a document analysed
+    // from the terminal costs and reads the same as one analysed in the
+    // browser. --precise deliberately keeps reading the whole document.
+    const maxPages = maxPagesForTier(tier);
     extraction = hasText
-      ? await extractTenderRequirementsQwenAnthropic(pdfPath, context, model === "qwen3.6-plus" ? "qwen3.6-plus" : "qwen3.5-plus")
-      : await extractTenderRequirements(pdfPath, context, model);
+      ? await extractTenderRequirementsQwenAnthropic(pdfPath, context, model === "qwen3.6-plus" ? "qwen3.6-plus" : "qwen3.5-plus", maxPages)
+      : await extractTenderRequirements(pdfPath, context, model, undefined, true, maxPages);
   }
   const fields = toTenderFields(extraction, tenderSlug);
 

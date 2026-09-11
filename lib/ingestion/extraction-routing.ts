@@ -37,3 +37,25 @@ export function describeExtractionRouting(hasTextLayer: boolean, tier: TenderRel
   if (!hasTextLayer) return "扫描件（无文字层）";
   return tier === "flagship" ? "大型项目（flagship）" : `${tier ?? "未分级"}（非大型项目）`;
 }
+
+/**
+ * How many pages of a document are worth paying to read, by tier
+ * (2026-09-11, explicit request: 常规项目前 20 页、中型项目前 30 页、大型项目
+ * 前 40 页).
+ *
+ * A 900-page, 100MB tender is real here, and almost all of it is annexes,
+ * price schedules and boilerplate. What this platform extracts —
+ * qualifications, experience requirements, required documents, risks — is
+ * stated in the opening sections; reading to the end multiplies the token
+ * bill without adding fields.
+ *
+ * The cap scales with the tier for the same reason the model does: a
+ * flagship tender is worth more care. An unclassified row gets the standard
+ * cap, the cheaper default when scale is unknown — matching
+ * chooseExtractionModel()'s treatment of the same case.
+ */
+export function maxPagesForTier(tier: TenderRelevanceTier | null | undefined): number {
+  if (tier === "flagship") return 40;
+  if (tier === "significant") return 30;
+  return 20;
+}

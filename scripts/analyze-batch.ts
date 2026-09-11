@@ -88,7 +88,7 @@ import { extractTenderRequirements, type TenderExtraction } from "../lib/ingesti
 import { extractTenderRequirementsQwen } from "../lib/ingestion/extract-requirements-qwen";
 import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract-requirements-qwen-anthropic";
 import { hasRealTextLayer } from "../lib/ingestion/text-layer";
-import { chooseExtractionModel, describeExtractionRouting } from "../lib/ingestion/extraction-routing";
+import { maxPagesForTier, chooseExtractionModel, describeExtractionRouting } from "../lib/ingestion/extraction-routing";
 import type { TenderRelevanceTier } from "../types/tender";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
@@ -96,15 +96,18 @@ type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "
 type ExtractContext = { tenderNumber: string; title: string; buyer: string };
 
 const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractContext, tier: TenderRelevanceTier | null) => Promise<TenderExtraction>> = {
-  "claude-haiku": (p, c) => extractTenderRequirements(p, c, "claude-haiku-4-5-20251001"),
-  "claude-sonnet": (p, c) => extractTenderRequirements(p, c, "claude-sonnet-5"),
-  "claude-opus": (p, c) => extractTenderRequirements(p, c, "claude-opus-5"),
+  // Every runner takes the tier's page cap. An evaluation run that read
+  // more pages than production does would be measuring a pipeline nobody
+  // ships.
+  "claude-haiku": (p, c, tier) => extractTenderRequirements(p, c, "claude-haiku-4-5-20251001", undefined, true, maxPagesForTier(tier)),
+  "claude-sonnet": (p, c, tier) => extractTenderRequirements(p, c, "claude-sonnet-5", undefined, true, maxPagesForTier(tier)),
+  "claude-opus": (p, c, tier) => extractTenderRequirements(p, c, "claude-opus-5", undefined, true, maxPagesForTier(tier)),
   qwen: extractTenderRequirementsQwen,
   // Wrapped rather than passed by reference: this map's third argument is
   // now the tender's tier, and this function's third parameter is a model
   // id — same position, different meaning.
-  "qwen-anthropic": (p, c) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.5-plus"),
-  "qwen-anthropic-3.6": (p, c) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.6-plus"),
+  "qwen-anthropic": (p, c, tier) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.5-plus", maxPagesForTier(tier)),
+  "qwen-anthropic-3.6": (p, c, tier) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.6-plus", maxPagesForTier(tier)),
   // Self-referencing PROVIDER_RUNNERS here is fine — this arrow function
   // body only runs once PROVIDER_RUNNERS itself is fully assigned, since
   // it's called later, not during this object literal's construction.

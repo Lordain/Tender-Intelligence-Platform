@@ -49,10 +49,12 @@ export async function extractTenderRequirementsQwenAnthropic(
   filePath: string,
   context: { tenderNumber: string; title: string; buyer: string },
   model: Extract<ExtractionModel, "qwen3.5-plus" | "qwen3.6-plus"> = "qwen3.5-plus",
+  /** Per-tier page cap — see maxPagesForTier() in extraction-routing.ts. */
+  maxPages?: number,
 ): Promise<TenderExtraction> {
   const client = new Anthropic({
     apiKey: process.env.DASHSCOPE_API_KEY,
     baseURL: "https://dashscope-intl.aliyuncs.com/apps/anthropic",
   });
-  return extractTenderRequirements(filePath, context, model, client, false);
+  return extractTenderRequirements(filePath, context, model, client, false, maxPages);
 }

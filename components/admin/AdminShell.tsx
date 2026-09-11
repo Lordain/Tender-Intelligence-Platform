@@ -11,6 +11,12 @@ const links = [
   { href: "/admin/import-tenders", label: "新项目清单", detail: "批量导入+翻译" },
   { href: "/admin/import-analysis", label: "导入分析结果", detail: "批量分析写入" },
   { href: "/admin/documents-needed", label: "待补文件", detail: "下载+上传分析" },
+  // Only on a local dev server: the page reads the operator's own disk, which
+  // a deployed instance has no access to. NODE_ENV is inlined at build time in
+  // a client component, so the deployed bundle never carries this entry.
+  ...(process.env.NODE_ENV === "production"
+    ? []
+    : [{ href: "/admin/local-batch", label: "本地批量分析", detail: "本机文件夹，免上传" }]),
   { href: "/admin/email-preview", label: "邮件预览", detail: "通知邮件效果" },
   { href: "/admin/billing", label: "收款与订阅", detail: "人工电汇与权限" },
 ];

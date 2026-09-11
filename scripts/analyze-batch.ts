@@ -81,13 +81,13 @@
  *   first alphabetically) — pass a --count at least as large as the
  *   folder's total file count to guarantee every tender gets analyzed.
  */
-import { readdirSync, statSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { join, extname, basename } from "node:path";
-import { intakeDocument, extractDocumentText } from "../lib/ingestion/document-intake";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { join, basename } from "node:path";
 import { extractTenderRequirements, type TenderExtraction } from "../lib/ingestion/extract-requirements";
 import { extractTenderRequirementsQwen } from "../lib/ingestion/extract-requirements-qwen";
 import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract-requirements-qwen-anthropic";
 import { hasRealTextLayer } from "../lib/ingestion/text-layer";
+import { findDocuments, loadKnownTenders, resolveTender } from "@/lib/ingestion/match-documents-to-tenders";
 import { maxPagesForTier, chooseExtractionModel, describeExtractionRouting } from "../lib/ingestion/extraction-routing";
 import type { TenderRelevanceTier } from "../types/tender";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
@@ -142,110 +142,6 @@ const PROVIDER_ENV_VAR: Record<ProviderKey, string[]> = {
   // keys need to be set up front rather than discovered mid-run.
   auto: ["ANTHROPIC_API_KEY", "DASHSCOPE_API_KEY"],
 };
-
-const SUPPORTED_EXTENSIONS = [".pdf", ".docx", ".doc"];
-
-function findDocuments(dir: string): string[] {
-  return readdirSync(dir)
-    .map((name) => join(dir, name))
-    .filter((path) => statSync(path).isFile() && SUPPORTED_EXTENSIONS.includes(extname(path).toLowerCase()))
-    .sort();
-}
-
-type ResolvedTender = { slug: string; title: string; buyer: string; tenderNumber: string; tier: TenderRelevanceTier | null; matchNote: string };
-type KnownTender = { slug: string; title: string; buyer: string; tier: TenderRelevanceTier | null };
-
-/** A recognized `<slug>__` file name prefix (e.g. `dof-5678901__bases.pdf`) looks the tender up directly by slug — see this file's header comment for the (currently theoretical) case that needs this instead of text matching. */
-const SLUG_OVERRIDE_PATTERN = /^([a-z0-9-]+)__/;
-
-/**
- * Every real tender_number currently in Supabase, fetched once per run —
- * this is the "known facts" a document's own text/file name gets checked
- * against, rather than a guessed regex shape (see header comment). Paged
- * via `.range()` since a real production count can exceed PostgREST's
- * 1000-row default cap (the PEMEX ingest alone kept 3,128 real rows).
- */
-async function loadKnownTenders(supabase: ReturnType<typeof createSupabaseAdminClient>): Promise<Map<string, KnownTender>> {
-  const known = new Map<string, KnownTender>();
-  const PAGE_SIZE = 1000;
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase!.from("tenders").select("slug, tender_number, title, buyer, relevance_tier").range(from, from + PAGE_SIZE - 1);
-    if (error) throw new Error(`Failed to load known tender numbers: ${error.message}`);
-    for (const row of data ?? []) {
-      const tenderNumber = row.tender_number as string;
-      if (tenderNumber) {
-        known.set(tenderNumber.toUpperCase(), { slug: row.slug as string, title: (row.title as { zh: string }).zh, buyer: row.buyer as string, tier: (row.relevance_tier as TenderRelevanceTier | null) ?? null });
-      }
-    }
-    if (!data || data.length < PAGE_SIZE) break;
-  }
-  return known;
-}
-
-async function resolveTender(
-  supabase: ReturnType<typeof createSupabaseAdminClient>,
-  pdfPath: string,
-  knownTenders: Map<string, KnownTender>,
-): Promise<{ tender: ResolvedTender } | { skip: string }> {
-  const fileName = basename(pdfPath);
-  const slugOverride = fileName.match(SLUG_OVERRIDE_PATTERN)?.[1];
-
-  if (slugOverride) {
-    const { data } = await supabase!.from("tenders").select("slug, tender_number, title, buyer, relevance_tier").eq("slug", slugOverride).maybeSingle();
-    if (!data) return { skip: `${fileName} — filename names slug "${slugOverride}" but no tender in Supabase has it` };
-    return {
-      tender: {
-        slug: data.slug as string,
-        tenderNumber: data.tender_number as string,
-        title: (data.title as { zh: string }).zh,
-        buyer: data.buyer as string,
-        tier: (data.relevance_tier as TenderRelevanceTier | null) ?? null,
-        matchNote: `filename slug override (${slugOverride})`,
-      },
-    };
-  }
-
-  // Check the file name first (cheap, and a human-chosen name is
-  // higher-confidence than a regex frequency count), then the document's
-  // own extracted text. Prefer the LONGEST matching known number if more
-  // than one appears — a document naming its own procedure plus a couple
-  // of others it references should still resolve to its own.
-  const text = await extractDocumentText(pdfPath);
-  const haystack = `${fileName}\n${text}`.toUpperCase();
-  let bestMatch: string | undefined;
-  for (const tenderNumber of knownTenders.keys()) {
-    if (haystack.includes(tenderNumber) && (!bestMatch || tenderNumber.length > bestMatch.length)) bestMatch = tenderNumber;
-  }
-
-  if (bestMatch) {
-    const known = knownTenders.get(bestMatch)!;
-    return { tender: { ...known, tenderNumber: bestMatch, matchNote: `matched known tender_number ${bestMatch} in file name/text` } };
-  }
-
-  // Fall back to the old Compras MX-shaped regex extraction — still useful
-  // for a document whose tender genuinely isn't in Supabase yet, or a
-  // shape the known-numbers check happened to miss (e.g. OCR noise).
-  const intake = await intakeDocument(pdfPath);
-  if (!intake.tenderNumber) {
-    return {
-      skip: `${fileName} — no known tender_number found in its file name/text, and no Compras MX-shaped procedure number either (rename it "<slug>__..." if you know which tender it belongs to)`,
-    };
-  }
-  const { data } = await supabase!.from("tenders").select("slug, title, buyer, relevance_tier").eq("tender_number", intake.tenderNumber).maybeSingle();
-  if (!data) return { skip: `${fileName} — extracted procedure number ${intake.tenderNumber}, but no ingested tender has it` };
-
-  return {
-    tender: {
-      slug: data.slug as string,
-      tenderNumber: intake.tenderNumber,
-      title: (data.title as { zh: string }).zh,
-      buyer: data.buyer as string,
-      tier: (data.relevance_tier as TenderRelevanceTier | null) ?? null,
-      matchNote:
-        intake.tenderNumberSource === "filename" ? "procedure number from file name (regex fallback)" : `procedure number appears ${intake.tenderNumberOccurrences}x in the text (regex fallback)`,
-    },
-  };
-}
 
 function summarize(extraction: TenderExtraction) {
   return {

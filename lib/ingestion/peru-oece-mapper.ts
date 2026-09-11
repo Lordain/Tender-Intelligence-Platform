@@ -45,8 +45,25 @@ import { classifyStoredTender } from "@/lib/relevance";
  *   real record seen (not a real submission deadline) — no field in
  *   this sample carries an actual bid-submission deadline, so
  *   `submissionDeadline` is deliberately left unset rather than guessed
- *   from `tenderPeriod` or `enquiryPeriod` (the latter is the Q&A
- *   window, a different real concept).
+ *   from `tenderPeriod` or `enquiryPeriod`.
+ * - `enquiryPeriod` IS real and is mapped (as `questions_deadline`): it is
+ *   the cronograma's "Formulación de consultas y observaciones" window,
+ *   confirmed against a live ficha for LP-ABR-16-2026-MPV/COM-1 — feed
+ *   2026-09-08→2026-09-10, ficha 08/09 00:01→10/09 23:59. Present on 8 of
+ *   the 9 fixture records.
+ * - What the feed does NOT carry is the rest of that cronograma. The ficha
+ *   for that same tender lists Registro de participantes, Absolución de
+ *   consultas, Integración de las Bases, **Presentación de propuestas
+ *   (16/09/2026)**, Calificación y Evaluación and Otorgamiento de la Buena
+ *   Pro; the OCDS record has no `milestones` array and nothing else
+ *   date-bearing (checked every field of all 9 records). So 计划交标 being
+ *   blank on a SEACE tender is the source's limit, not a parsing miss
+ *   (user, 2026-09-11: 官网有日期，我们没有日期) — the cronograma exists only
+ *   on the ficha HTML page, which is keyed by a UUID that appears nowhere
+ *   in the record (see the sourceUrl note below). Deriving the submission
+ *   date from the enquiry window would be arithmetic on the Reglamento's
+ *   minimum intervals, i.e. a guess, so it is not done; SourcePanel tells
+ *   the reader where on the official page to look instead.
  * - `tender.documents[]` carries real per-document download URLs
  *   (`prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=...`)
  *   and real type labels (biddingDocuments/evaluationReports/
@@ -71,6 +88,8 @@ export type OeceRecord = {
       title?: string;
       description?: string;
       datePublished?: string;
+      /** The cronograma's consultas y observaciones window — see this file's header. */
+      enquiryPeriod?: { startDate?: string; endDate?: string };
       procurementMethodDetails?: string;
       mainProcurementCategory?: "goods" | "services" | "works";
       value?: { amount?: number; currency?: string };
@@ -203,10 +222,64 @@ function inferStatus(hasAwards: boolean): TenderStatus {
   return hasAwards ? "awarded" : "open";
 }
 
-function parseDate(raw: string | undefined): string | null {
+/**
+ * The Lima CALENDAR DAY the timestamp falls on, as midnight UTC.
+ *
+ * Unlike every other source this platform reads, OECE publishes real
+ * times-of-day with a real offset — `2026-09-03T23:59:00-05:00` for an
+ * enquiry window that the official ficha shows ending 10/09 23:59. A plain
+ * `.toISOString()` turns that into `2026-09-04T04:59Z`, and since
+ * `tender_key_dates.date` is a `date` column and formatDate() renders in UTC,
+ * the reader would be shown a deadline one day LATER than the one the entity
+ * published. Anchoring to the day in Peru is the only reading that matches
+ * the ficha a bidder is working from.
+ */
+function limaCalendarDay(raw: string | undefined): string | null {
   if (!raw) return null;
   const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  if (Number.isNaN(parsed.getTime())) return null;
+  // en-CA gives YYYY-MM-DD, which is the format the rest of this pipeline
+  // (and Postgres) already speaks.
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima", year: "numeric", month: "2-digit", day: "2-digit" }).format(parsed);
+  return `${day}T00:00:00.000Z`;
+}
+
+const parseDate = limaCalendarDay;
+
+/** The same Lima day, written the way the official ficha writes it (DD/MM/YYYY), for reading back inside a note. */
+function limaDayLabel(rawOrIso: string): string {
+  return new Date(rawOrIso).toLocaleDateString("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+/**
+ * Every date this source actually publishes — which is publication, and the
+ * consultas y observaciones window when the record carries one.
+ *
+ * The note names the Spanish stage rather than leaning on the generic
+ * "提问截止" description, because a reader comparing this against the official
+ * ficha is looking at a cronograma written in Spanish, and because it is the
+ * honest place to say the window has a start as well as an end. The rest of
+ * that cronograma — including the submission deadline — is not in this feed
+ * at all; see this file's header.
+ */
+function oeceKeyDates(ocid: string, publicationDate: string, enquiryPeriod?: { startDate?: string; endDate?: string }): Tender["keyDates"] {
+  const dates: Tender["keyDates"] = [{ id: `peru-${ocid}-publication`, type: "publication", date: publicationDate }];
+
+  const enquiryEnd = limaCalendarDay(enquiryPeriod?.endDate);
+  if (enquiryEnd && enquiryPeriod?.endDate) {
+    // Labelled from the RAW timestamps, which still carry Peru's offset.
+    const window = enquiryPeriod.startDate
+      ? `${limaDayLabel(enquiryPeriod.startDate)} – ${limaDayLabel(enquiryPeriod.endDate)}`
+      : limaDayLabel(enquiryPeriod.endDate);
+    dates.push({
+      id: `peru-${ocid}-enquiry`,
+      type: "questions_deadline",
+      date: enquiryEnd,
+      notes: untranslated(`向采购实体提交质询与异议的截止日（Formulación de consultas y observaciones，${window}，秘鲁时间）。逾期不再受理，之后才会发布整合版标书（bases integradas）。`),
+    });
+  }
+
+  return dates;
 }
 
 export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): Tender | null {
@@ -272,7 +345,7 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],
-    keyDates: [{ id: `peru-${record.ocid}-publication`, type: "publication", date: publicationDate }],
+    keyDates: oeceKeyDates(record.ocid, publicationDate, compiled.tender?.enquiryPeriod),
     risks: [],
     relevance,
     sourceName,

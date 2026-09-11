@@ -1886,4 +1886,52 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Why 'electrificación' was deliberately left OUT of the new patterns: Invierte.pe names small household electrification programmes this way, and Peru would have flooded in behind the Mexican fix.",
     country: "Peru", scopeType: "works", governmentLevel: "municipal",
   },
+  // ---- 2026-09-11, second pass: the first real DOF pull for CFE kept 4 of
+  // 33, and the user named the four scenarios still missing — 发电 / 输电 /
+  // 配电 / 逆变器. One fixture per category, plus the guards each one needed.
+  // Every Mexican title is a real CFE convocatoria or a real phrasing from
+  // one; the Peru rows are the flood these patterns must not cause. ----
+  {
+    title:
+      "Adquisición de Partes a Presión para Pared Frontal, Posterior, Laterales, Esquinas y Módulo de Economizador del Generador de Vapor de la Unidad 3 de la Central Termoeléctrica Pdte. Emilio Portes Gil",
+    expectedTier: "standard",
+    note: "Real, live on the site after the first DOF pull. Held by two independent terms (generador de vapor, central termoeléctrica) — a regression here means the whole 发电 block broke.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "public_company",
+  },
+  {
+    title: "SUMINISTRO DE INTERRUPTORES DE POTENCIA 115 KV Y SECCIONADORES",
+    expectedTier: "standard",
+    note: "输电: substation switchgear. Neither term existed in any whitelist, and with DOF publishing no value these fell out for having no signal at all.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "public_company",
+  },
+  {
+    title: "SUMINISTRO DE CELDAS DE MEDIA TENSIÓN Y CENTRO DE TRANSFORMACIÓN",
+    expectedTier: "standard",
+    note: "配电: distribution plant.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "public_company",
+  },
+  {
+    title: "ADQUISICIÓN DE INVERSORES PARA PLANTA SOLAR",
+    expectedTier: "standard",
+    note: "逆变器, via the purchase-verb frame.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "public_company",
+  },
+  {
+    title: "CONVOCATORIA A INVERSORES PARA EL PROYECTO",
+    expectedTier: "excluded",
+    note: "Why the inverter patterns are anchored and never bare: 'inversores' is also the ordinary Spanish word for INVESTORS, and a financing notice is not a tender.",
+    country: "Mexico", scopeType: "services", governmentLevel: "public_company",
+  },
+  {
+    title: "MANTENIMIENTO PREVENTIVO A TURBINAS DE GAS",
+    expectedTier: "excluded",
+    note: "The generation vocabulary must not rescue maintenance — the same line the 2026-09-04 transformer rule drew by requiring a purchase verb.",
+    country: "Mexico", scopeType: "services", governmentLevel: "public_company",
+  },
+  {
+    title: "AMPLIACION DE REDES DE DISTRIBUCION PRIMARIA Y SECUNDARIA EN EL CENTRO POBLADO",
+    expectedTier: "excluded",
+    note: "The reason every 配电 pattern demands an electrical qualifier: this is how Invierte.pe names small Peruvian rural distribution programmes, and a bare 'redes de distribución' would have flooded Peru behind a Mexican fix.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
 ];

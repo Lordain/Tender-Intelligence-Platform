@@ -1511,6 +1511,38 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // describes itself in kV. Bounded to 1-4 digits so a catalogue code cannot
   // masquerade as one.
   /\b\d{1,4}(\.\d+)?\s?kv\b/i,
+  // ---- The four CFE scenarios the user named on 2026-09-11 after the first
+  // real DOF pull kept 4 of 33: 发电 / 输电 / 配电 / 逆变器. Every term below
+  // is an electrical asset noun, for the same reason as the block above —
+  // nothing here can appear except on real power work. ----
+  //
+  // 发电 (generation). "caldera" is qualified on purpose: an unqualified one
+  // is just as likely to be a hospital's hot-water boiler.
+  /turbina(s)?\b|turbogenerador(es)?|generador(es)? de vapor|alternador(es)? (s[íi]ncrono|el[ée]ctrico)/i,
+  /caldera(s)? (acuotubular|recuperadora|de vapor|de recuperaci[óo]n)|recuperador(a)? de calor|\bhrsg\b/i,
+  /unidad(es)? generadora(s)?|planta(s)? de generaci[óo]n|grupo(s)? electr[óo]geno(s)?/i,
+  //
+  // 输电 (transmission). Switchgear and line hardware — an interruptor de
+  // potencia or a seccionador is substation plant, not a wall switch.
+  /torre(s)? de transmisi[óo]n|estructura(s)? (de|para) (l[íi]nea(s)? de )?transmisi[óo]n/i,
+  /interruptor(es)? de potencia|seccionador(es)?|cuchilla(s)? desconectadora(s)?|apartarrayos?|pararrayos de l[íi]nea/i,
+  /l[íi]nea(s)? (de )?(alta|media) tensi[óo]n|\bcable de guarda\b|conductor(es)? acsr|\bacsr\b|\bsf ?6\b/i,
+  //
+  // 配电 (distribution). Every one of these REQUIRES an electrical qualifier.
+  // A bare "redes de distribución" is exactly how Invierte.pe names small
+  // Peruvian rural distribution programmes ("REDES DE DISTRIBUCION PRIMARIA
+  // Y SECUNDARIA EN EL CENTRO POBLADO..."), so admitting it would flood Peru
+  // behind a Mexican fix — the same trap that kept "electrificación" out.
+  /red(es)? (el[ée]ctrica(s)?|de distribuci[óo]n el[ée]ctrica)|circuito(s)? de distribuci[óo]n el[ée]ctrica/i,
+  /alimentador(es)? (el[ée]ctrico|primario|de distribuci[óo]n)|transformador(es)? de distribuci[óo]n/i,
+  /centro(s)? de transformaci[óo]n|celda(s)? de (media|alta) tensi[óo]n|tablero(s)? de (media|alta) tensi[óo]n/i,
+  //
+  // 逆变器 (inverters). Anchored deliberately: bare "inversores" is ALSO the
+  // ordinary Spanish word for investors, and a financing notice is not a
+  // tender. Either an electrical qualifier, or the purchase-verb frame the
+  // transformer rule above already uses.
+  /inversor(es)? (fotovoltaico|solar|central|de (corriente|potencia|red|string))/i,
+  /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+(?:(?:un|una|el|la|los|las)\s+)?[\d'"“”‘’\s]{0,15}inversor(es)?\b/i,
 ];
 
 // USD-scale thresholds (the whole platform standardizes display and

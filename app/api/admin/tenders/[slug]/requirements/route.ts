@@ -1,3 +1,4 @@
+import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
@@ -68,5 +69,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // The public list is cached; drop it so this edit shows up now.
+  revalidateTenders();
   return NextResponse.json({ id: data.id });
 }

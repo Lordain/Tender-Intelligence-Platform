@@ -1,3 +1,4 @@
+import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { importBatchAnalysis, type ImportBatchAnalysisResult } from "@/lib/ingestion/import-batch-analysis";
@@ -41,5 +42,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 
+  // The public list is cached; drop it so this edit shows up now.
+  revalidateTenders();
   return NextResponse.json({ fileCount: files.length, documentCount, results });
 }

@@ -1,3 +1,4 @@
+import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
@@ -25,5 +26,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   const { error } = await supabase.from("tenders").update({ homepage_featured: body.featured }).eq("slug", slug);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // The public list is cached; drop it so this edit shows up now.
+  revalidateTenders();
   return NextResponse.json({ ok: true });
 }

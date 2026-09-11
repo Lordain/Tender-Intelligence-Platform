@@ -1,4 +1,5 @@
 import "server-only";
+import { TENDERS_CACHE_TAG } from "@/lib/cache-tags";
 import { unstable_cache } from "next/cache";
 import { tenders as mockTenders } from "@/data/tenders";
 import type { Tender } from "@/types/tender";
@@ -45,5 +46,5 @@ export async function getTendersBySlugs(slugs: string[]): Promise<Map<string, Te
  */
 export const getCachedTenderList = unstable_cache(getAllTenders, ["public-tender-list"], {
   revalidate: 300,
-  tags: ["tenders"],
+  tags: [TENDERS_CACHE_TAG],
 });

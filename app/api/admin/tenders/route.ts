@@ -1,3 +1,4 @@
+import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
@@ -147,5 +148,7 @@ export async function POST(request: Request) {
     awardDate: body.awardDate,
   });
 
+  // The public list is cached; drop it so this edit shows up now.
+  revalidateTenders();
   return NextResponse.json({ slug } satisfies { slug: Tender["slug"] });
 }

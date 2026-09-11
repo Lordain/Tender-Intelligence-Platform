@@ -1,3 +1,4 @@
+import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { importDofSearchLive } from "@/lib/ingestion/import-dof-search-live";
@@ -46,6 +47,8 @@ export async function POST(request: Request) {
       },
       { write: body.write === true, months: body.months },
     );
+    // The public list is cached; drop it so this edit shows up now.
+    revalidateTenders();
     return NextResponse.json(result);
   } catch (err) {
     await logAdminAlert(supabase, "import-dof", err);

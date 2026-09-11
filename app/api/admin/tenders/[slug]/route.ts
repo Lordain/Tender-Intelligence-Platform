@@ -1,3 +1,4 @@
+import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
@@ -239,6 +240,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     awardDate: body.awardDate,
   });
 
+  // The public list is cached; drop it so this edit shows up now.
+  revalidateTenders();
   return NextResponse.json({ ok: true });
 }
 
@@ -278,5 +281,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     );
   if (tombstoneError) console.error(`Failed to record tender_manual_deletions for "${slug}": ${tombstoneError.message}`);
 
+  // The public list is cached; drop it so this edit shows up now.
+  revalidateTenders();
   return NextResponse.json({ ok: true });
 }

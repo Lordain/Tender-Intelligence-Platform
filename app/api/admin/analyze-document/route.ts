@@ -1,3 +1,4 @@
+import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
@@ -111,6 +112,8 @@ export async function POST(request: Request) {
 
   try {
     const result = await analyzeUploadedDocument(supabase!, tenderSlug.trim(), files, { write, force });
+    // The public list is cached; drop it so this edit shows up now.
+    revalidateTenders();
     return NextResponse.json(result);
   } catch (err) {
     await logAdminAlert(supabase, "analyze-document", err);

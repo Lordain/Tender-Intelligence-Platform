@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateTenders } from "@/lib/cache-tags";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 
@@ -56,6 +57,8 @@ export async function PATCH(request: Request) {
   ], { onConflict: "key" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // The homepage teaser reads the cached tender list, not just the page.
+  revalidateTenders();
   revalidatePath("/");
   revalidatePath("/admin/homepage");
   return NextResponse.json({ ok: true });

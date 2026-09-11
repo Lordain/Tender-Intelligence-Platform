@@ -1,3 +1,4 @@
+import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
@@ -68,5 +69,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "bulk delete failed", failed }, { status: 500 });
   }
 
+  // The public list is cached; drop it so this edit shows up now.
+  revalidateTenders();
   return NextResponse.json({ ok: true, deletedCount, failed });
 }

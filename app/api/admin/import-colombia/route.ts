@@ -1,3 +1,4 @@
+import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
   try {
     if (body.mode === "refresh") {
       const result = await refreshColombiaTenders(supabase!, { write });
+      // The public list is cached; drop it so this edit shows up now.
+      revalidateTenders();
       return NextResponse.json(result);
     }
 
@@ -27,6 +30,8 @@ export async function POST(request: Request) {
     const maxPages = Number.isFinite(body.maxPages) ? Number(body.maxPages) : 20;
     const fetchDocuments = body.fetchDocuments === true;
     const result = await ingestColombia(supabase!, { months, maxPages, write, fetchDocuments });
+    // The public list is cached; drop it so this edit shows up now.
+    revalidateTenders();
     return NextResponse.json(result);
   } catch (err) {
     await logAdminAlert(supabase, "import-colombia", err);

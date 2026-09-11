@@ -1,3 +1,4 @@
+import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAdminUser } from "@/lib/admin-auth";
@@ -47,6 +48,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     .eq("tender_id", resolved.tenderId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // The public list is cached; drop it so this edit shows up now.
+  revalidateTenders();
   return NextResponse.json({ ok: true });
 }
 
@@ -63,5 +66,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   const { error } = await supabase.from("tender_risks").delete().eq("id", id).eq("tender_id", resolved.tenderId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // The public list is cached; drop it so this edit shows up now.
+  revalidateTenders();
   return NextResponse.json({ ok: true });
 }

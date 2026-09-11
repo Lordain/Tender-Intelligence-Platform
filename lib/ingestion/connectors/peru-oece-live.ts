@@ -15,6 +15,44 @@ import type { OeceRecord, OeceRecordPackage } from "@/lib/ingestion/peru-oece-ma
  */
 const OECE_BASE_URL = "https://contratacionesabiertas.oece.gob.pe/api/v1";
 
+/**
+ * `.gob.pe` sits behind a WAF that answers 403 to a request carrying no
+ * User-Agent at all, which is exactly what Node's fetch sends. The CLI runs
+ * kept working (residential IP, and the WAF's reputation scoring is lenient
+ * there) while the very same code called from the admin 秘鲁 tab came back
+ * `OECE /recordsAfter responded 403 Forbidden for segment 2026-09`
+ * (2026-09-11, reported by the user with a screenshot of that panel).
+ *
+ * Identifying the client honestly — a real product name and a contact URL,
+ * which is what a public open-data API wants to see — is the fix. This is
+ * NOT a browser impersonation string: nothing here claims to be Chrome, and
+ * the point is to be MORE identifiable to the operator, not less.
+ */
+const OECE_HEADERS = {
+  Accept: "application/json",
+  "Accept-Language": "es-PE,es;q=0.9",
+  "User-Agent": "TenderIntelligencePlatform/1.0 (+https://github.com/lordain/tender-intelligence-platform; open-data ingestion)",
+} as const;
+
+/** 403/429 from a WAF and 5xx from an overloaded origin are both routinely transient; a hard 404 or 400 is not, and retrying it only wastes the caller's time. */
+const OECE_RETRYABLE_STATUSES = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
+const OECE_MAX_ATTEMPTS = 4;
+
+/**
+ * One GET with bounded backoff (1s, 2s, 4s). Returns the LAST response rather
+ * than throwing, so each call site keeps its own error message — those
+ * messages name the segment/file being fetched, which is what makes a failure
+ * in a multi-segment run actionable.
+ */
+async function fetchOece(url: string | URL): Promise<Response> {
+  let response = await fetch(url, { headers: OECE_HEADERS });
+  for (let attempt = 1; attempt < OECE_MAX_ATTEMPTS && OECE_RETRYABLE_STATUSES.has(response.status); attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
+    response = await fetch(url, { headers: OECE_HEADERS });
+  }
+  return response;
+}
+
 export type OeceFileListing = {
   id: string;
   year: string;
@@ -40,7 +78,7 @@ export async function listOeceFiles(page = 1): Promise<OeceFileListing[]> {
   const url = new URL(`${OECE_BASE_URL}/files`);
   url.searchParams.set("page", String(page));
 
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  const response = await fetchOece(url);
   if (!response.ok) {
     throw new Error(`OECE /files responded ${response.status} ${response.statusText}`);
   }
@@ -61,7 +99,10 @@ export async function downloadOeceRecordPackage(
   month: string,
 ): Promise<OeceRecordPackage> {
   const url = `${OECE_BASE_URL}/file/${source}/json/${year}/${month}`;
-  const response = await fetch(url);
+  // Same WAF as every other .gob.pe call here; the Accept: application/json
+  // header is harmless on a ZIP download (the server ignores it) and the
+  // User-Agent is the half that matters.
+  const response = await fetchOece(url);
   if (!response.ok) {
     throw new Error(`OECE file download responded ${response.status} ${response.statusText} for ${url}`);
   }
@@ -203,7 +244,7 @@ export async function fetchOeceRecordsForSegment(
   let checkedFirstPage = false;
 
   for (let page = 0; next && page < OECE_MAX_PAGES_PER_SEGMENT; page++) {
-    const response: Response = await fetch(next, { headers: { Accept: "application/json" } });
+    const response: Response = await fetchOece(next);
     if (!response.ok) {
       throw new Error(
         `OECE /recordsAfter responded ${response.status} ${response.statusText} for segment ${query.dataSegmentationId}`,

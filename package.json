@@ -39,6 +39,7 @@
     "ingest:peru": "tsx --env-file-if-exists=.env.local scripts/ingest-peru.ts",
     "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts",
     "ingest:peru-oxi": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-oxi.ts",
+    "backfill:peru-documents": "tsx --env-file-if-exists=.env.local scripts/backfill-peru-document-links.ts",
     "protect:source-urls": "tsx --env-file-if-exists=.env.local scripts/protect-manual-source-urls.ts",
     "ingest:proyectos-estrategicos": "tsx --env-file-if-exists=.env.local scripts/ingest-proyectos-estrategicos.ts",
     "test:relevance": "tsx scripts/test-relevance.ts",

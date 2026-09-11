@@ -8,6 +8,7 @@ import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { countryLabel, RELEVANCE_TIER_LABELS, STATUS_LABELS, STATUS_COLORS } from "@/lib/tender-labels";
 import { BatchAnalyzeDocumentForm, MAX_BATCH_SELECTION } from "@/components/admin/BatchAnalyzeDocumentForm";
+import { BatchDownloadDocumentsButton } from "@/components/admin/BatchDownloadDocumentsButton";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 
@@ -266,7 +267,17 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                         className="size-4 accent-[#ffb21c]"
                       />
                     </td>
-                    <td title={localize(tender.title, locale)} className="truncate whitespace-nowrap px-4 py-3 font-black text-[#071826]">{localize(tender.title, locale)}</td>
+                    <td title={localize(tender.title, locale)} className="truncate whitespace-nowrap px-4 py-3 font-black text-[#071826]">
+                      {tender.documentLinkCount > 0 && (
+                        <span
+                          title={`这条项目有 ${tender.documentLinkCount} 份官方标书可以自动下载`}
+                          className="mr-1.5 inline-flex items-center rounded-md bg-[#e8f1ff] px-1.5 py-0.5 align-middle text-[10px] font-black text-[#1b4d86]"
+                        >
+                          标书 {tender.documentLinkCount}
+                        </span>
+                      )}
+                      {localize(tender.title, locale)}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-3 text-[#425461]">
                       <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
                     </td>
@@ -318,6 +329,8 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
           </table>
         </div>
       )}
+
+      {selectedTenders.length > 0 && <BatchDownloadDocumentsButton tenders={selectedTenders} />}
 
       {selectedTenders.length > 0 && (
         <BatchAnalyzeDocumentForm

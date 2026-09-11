@@ -11,7 +11,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchOeceRecordsForSegment, recentSegmentIds } from "@/lib/ingestion/connectors/peru-oece-live";
-import { mapOeceRecordToTender, type OeceRecord } from "@/lib/ingestion/peru-oece-mapper";
+import { mapOeceRecordToTender, oeceDocumentLinks, type OeceRecord, type TenderDocumentLink } from "@/lib/ingestion/peru-oece-mapper";
+import { saveDocumentLinks } from "@/lib/ingestion/document-links";
 import { downloadOxiExport } from "@/lib/ingestion/connectors/peru-oxi-live";
 import { readPeruOxiFile } from "@/lib/ingestion/connectors/peru-oxi-file";
 import { mapPeruOxiRowToTender, PERU_OXI_SOURCE_NAME, PERU_OXI_SOURCE_URL } from "@/lib/ingestion/peru-oxi-mapper";
@@ -37,6 +38,13 @@ export type PeruIngestResult = {
   upsertedCount?: number;
   skippedExcludedCount?: number;
   failed?: { slug: string; error: string }[];
+  /**
+   * Official bid-document links recorded alongside the written tenders
+   * (OECE only — the OxI export carries no per-document URLs). Feeds the
+   * 批量下载标书 button on /admin/documents-needed; see
+   * lib/ingestion/document-links.ts.
+   */
+  documentLinks?: { tenders: number; links: number };
   sample: Tender[];
 };
 
@@ -115,15 +123,37 @@ export async function ingestPeruOece(
     records.push(...fetched);
   }
 
-  const mapped = records
-    .map((record) => mapOeceRecordToTender(record, PERU_OECE_SOURCE_NAME))
-    .filter((tender): tender is Tender => tender !== null);
+  // The document links live on the RECORD, not on the mapped Tender, so the
+  // two have to be paired here — mapping to Tender first and looking the
+  // record back up afterwards would need an ocid->record index for no gain.
+  const linksBySlug = new Map<string, TenderDocumentLink[]>();
+  const mapped: Tender[] = [];
+  for (const record of records) {
+    const tender = mapOeceRecordToTender(record, PERU_OECE_SOURCE_NAME);
+    if (!tender) continue;
+    mapped.push(tender);
+    const links = oeceDocumentLinks(record);
+    if (links.length > 0) linksBySlug.set(tender.slug, links);
+  }
+
   const kept = applyRecency(mapped, options, months);
   const result = summarize("oece", records.length, mapped, kept, { write: options.write, segments, preview: options.preview });
 
   if (!options.write) return result;
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
-  return writeOut(supabase, kept, result);
+  const written = await writeOut(supabase, kept, result);
+
+  // After the upsert, never before: a link row references tenders.id, and an
+  // "excluded" tender is deliberately never written at all (see
+  // upsert-tenders.ts), so its slug has no id to point at.
+  const saved = await saveDocumentLinks(
+    supabase,
+    kept
+      .filter((tender) => tender.relevance.tier !== "excluded" && linksBySlug.has(tender.slug))
+      .map((tender) => ({ slug: tender.slug, links: linksBySlug.get(tender.slug) ?? [] })),
+  );
+  onProgress?.(`recorded ${saved.linkCount} official document link(s) across ${saved.tendersWithLinks} tender(s)`);
+  return { ...written, documentLinks: { tenders: saved.tendersWithLinks, links: saved.linkCount } };
 }
 
 /**

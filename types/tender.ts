@@ -109,6 +109,13 @@ export type TenderNeedingDocuments = {
   publicationDate: string;
   sourceUrl: string;
   status: TenderStatus;
+  /**
+   * How many official bid-document download links ingestion captured for this
+   * tender (supabase/migrations/0042_tender_document_links.sql). 0 means the
+   * files have to be fetched by hand — true for every Compras MX row (anti-bot
+   * gated) and for anything ingested before those links were recorded.
+   */
+  documentLinkCount: number;
 };
 
 export type Tender = {

@@ -5,14 +5,17 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { ImportTendersTabs } from "@/components/admin/ImportTendersTabs";
 import { TranslateTendersButton } from "@/components/admin/TranslateTendersButton";
 import { ReclassifyButton } from "@/components/admin/ReclassifyButton";
+import { ExplainKeptPanel } from "@/components/admin/ExplainKeptPanel";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
 // Same real admin gate as app/admin/tenders/layout.tsx — this page writes
 // new tenders to Supabase, so it needs the strict allowlist check. Also
 // now the shared shell for every /admin/import-tenders/<country> page —
-// the tab nav (ImportTendersTabs) plus two maintenance actions that
-// operate across ALL countries at once (translate, reclassify), so they
-// live here rather than duplicated on every per-country tab.
+// the tab nav (ImportTendersTabs) plus the maintenance actions that
+// operate across ALL countries at once (translate, reclassify, and the
+// read-only 保留原因分析), so they live here rather than duplicated on every
+// per-country tab. 保留原因分析 carries its own country filter because the
+// useful comparison is one country against the whole corpus.
 export default async function AdminImportTendersLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -41,10 +44,11 @@ export default async function AdminImportTendersLayout({ children }: { children:
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">All countries</p>
             <h2 className="mt-1 text-lg font-black text-[#071826]">通用维护</h2>
-            <p className="mt-1 text-sm text-[#52636e]">这两个操作对所有国家的标书统一生效，不区分当前选中的标签页。</p>
+            <p className="mt-1 text-sm text-[#52636e]">这些操作对所有国家的标书统一生效，不区分当前选中的标签页（保留原因分析自带国家筛选）。</p>
           </div>
           <TranslateTendersButton />
           <ReclassifyButton />
+          <ExplainKeptPanel />
         </div>
       </div>
     </AdminShell>

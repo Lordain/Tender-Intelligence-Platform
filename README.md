@@ -163,6 +163,44 @@ each file belongs to (from the procedure number in the document text),
 what kind of document it is, and hashes it so the same file is never
 analysed twice — no renaming, sorting or matching by hand.
 
+### Batch-downloading tender documents
+
+Where a source publishes real per-document URLs, the download stops being
+manual. Peru's SEACE/OECE OCDS records carry them inline
+(`compiledRelease.tender.documents[].url`), so `ingest:peru-live` records
+them as it writes each tender, and `/admin/documents-needed` grows a
+**批量下载标书** button: select rows, click once, get one ZIP with a folder
+per tender plus a `下载报告.txt` naming every file that failed.
+
+Those links live in their own table, `tender_document_links`, **not** in
+`tender_documents`. A row in `tender_documents` means "this platform holds
+this file", and `/admin/documents-needed` treats one as "this tender is
+handled" — writing discovered links there would have silently emptied the
+worklist for every Peru tender the moment the links were captured, with
+nothing actually downloaded.
+
+```bash
+npm run backfill:peru-documents -- --months 6 --write   # links for Peru rows ingested before this existed
+```
+
+Coverage is per-source and the UI says so rather than failing quietly:
+
+| Source | Per-document links | Why |
+| --- | --- | --- |
+| Peru — SEACE/OECE | ✅ inline in the OCDS record | Filtered to `biddingDocuments` + `clarifications`; award/evaluation documents are an outcome, not a bid input |
+| Colombia — SECOP II | ⚠️ automatable, not wired up | `colombia-documents-connector.ts` downloads fine, but its `proceso` id matched 0 of 499 stored tenders on the first real run — wiring it before that is understood would return empty ZIPs |
+| Mexico — Compras MX | ❌ never | Same anti-automation gate as its search API |
+| Peru — ProInversión OxI | ❌ | The export carries a project detail link, no document URLs |
+
+### Which rule kept this? (`保留原因分析`)
+
+`npm run explain:kept` groups the kept set by the first positive signal that
+fired, so one loose pattern shows up as a large bucket with real titles under
+it. The same diagnostic runs as a button in `/admin/import-tenders` (under
+通用维护), reading the live `tenders` table instead of a `reclassify:tenders`
+CSV — so it is current, needs no terminal, and its country filter covers
+Mexico and Colombia exactly as it covers Peru. Read-only either way.
+
 **Product direction has expanded** to Latin America (Mexico, Brazil,
 Colombia, Chile, Peru), positioned for Chinese enterprises bidding
 overseas. Portuguese (for Brazil) is part of that long-term direction but

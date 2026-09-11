@@ -74,6 +74,8 @@ export type OeceRecord = {
       procurementMethodDetails?: string;
       mainProcurementCategory?: "goods" | "services" | "works";
       value?: { amount?: number; currency?: string };
+      /** Real per-document download links — see oeceDocumentLinks() below. */
+      documents?: OeceDocument[];
     };
     awards?: unknown[];
     parties?: { name?: string; address?: { locality?: string; department?: string } }[];
@@ -93,6 +95,72 @@ export type OeceRecord = {
 export type OeceRecordPackage = {
   records: OeceRecord[];
 };
+
+export type OeceDocument = {
+  id?: string;
+  url?: string;
+  title?: string;
+  format?: string;
+  documentType?: string;
+  datePublished?: string;
+};
+
+/** One official download link for a tender's bid documents — see supabase/migrations/0042_tender_document_links.sql for why these are stored apart from `tender_documents`. */
+export type TenderDocumentLink = {
+  sourceUrl: string;
+  fileName: string;
+  documentType?: string;
+  format?: string;
+  publishedAt?: string;
+};
+
+/**
+ * Document types worth downloading for a bid/no-bid decision.
+ *
+ * Same posture as Colombia's isPreAwardDocument(): `evaluationReports` and
+ * `awardNotice` describe an outcome that has already happened, so they cost a
+ * download and tell a prospective bidder nothing about whether to bid.
+ * `biddingDocuments` (Bases Administrativas / Bases Integradas) is the actual
+ * tender document; `clarifications` is the consultas-y-observaciones round,
+ * which routinely AMENDS those bases and so is part of the same read.
+ */
+const DOWNLOADABLE_DOCUMENT_TYPES = new Set(["biddingDocuments", "clarifications"]);
+
+/** Windows and every zip tool reject these; a document title like "Bases Administrativas 1/2" is real. */
+function safeFileName(raw: string): string {
+  return raw.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "-").replace(/\s+/g, " ").trim().slice(0, 120);
+}
+
+/**
+ * The real bid-document links carried inline in one OCDS record.
+ *
+ * Deduped by URL: a record that has been re-compiled can legitimately repeat
+ * the same document across `documents[]` entries with different ids, and a
+ * ZIP with the same file twice is just a slower download.
+ */
+export function oeceDocumentLinks(record: OeceRecord): TenderDocumentLink[] {
+  const documents = record.compiledRelease?.tender?.documents ?? [];
+  const byUrl = new Map<string, TenderDocumentLink>();
+  for (const document of documents) {
+    const url = document.url?.trim();
+    if (!url) continue;
+    if (document.documentType && !DOWNLOADABLE_DOCUMENT_TYPES.has(document.documentType)) continue;
+    if (byUrl.has(url)) continue;
+    const format = document.format?.trim().toLowerCase() || undefined;
+    const base = safeFileName(document.title?.trim() || document.documentType || document.id || "documento");
+    byUrl.set(url, {
+      sourceUrl: url,
+      // The URL is a query-string handle with no filename in it, so the
+      // extension has to come from `format` or the file lands on disk as a
+      // nameless blob no viewer will open.
+      fileName: format && !base.toLowerCase().endsWith(`.${format}`) ? `${base}.${format}` : base,
+      documentType: document.documentType,
+      format,
+      publishedAt: document.datePublished,
+    });
+  }
+  return [...byUrl.values()];
+}
 
 /**
  * Real buyer-name patterns from the sample: "MUNICIPALIDAD DISTRITAL DE

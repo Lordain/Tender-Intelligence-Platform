@@ -24,6 +24,8 @@ type PeruResult = {
   upsertedCount?: number;
   skippedExcludedCount?: number;
   failed?: { slug: string; error: string }[];
+  /** OECE only — the OxI export carries no per-document URLs. Feeds 批量下载标书 on /admin/documents-needed. */
+  documentLinks?: { tenders: number; links: number };
   sample: { slug: string; tenderNumber: string; title: { es: string }; estimatedValue?: number; currency?: string; relevance: { tier: string } }[];
 };
 
@@ -57,9 +59,14 @@ function ResultPanel({ result }: { result: PeruResult }) {
           {result.skippedExcludedCount ? `，跳过已过滤 ${result.skippedExcludedCount} 条` : ""}
           {result.failed && result.failed.length > 0 ? `，失败 ${result.failed.length} 条` : ""}。
         </p>
-      ) : (
-        <p className="mt-2 text-xs text-[#64717c]">预览模式，没有写入 Supabase。</p>
-      )}
+      ) : null}
+      {result.write && result.documentLinks && result.documentLinks.links > 0 ? (
+        <p className="mt-1 text-xs text-[#233846]">
+          同时记录了 <strong>{result.documentLinks.links}</strong> 份官方标书链接（覆盖 {result.documentLinks.tenders} 个项目）——
+          去「待补文件项目」页勾选后可一键打包下载。
+        </p>
+      ) : null}
+      {result.write ? null : <p className="mt-2 text-xs text-[#64717c]">预览模式，没有写入 Supabase。</p>}
       {result.failed && result.failed.length > 0 && (
         <ul className="mt-2 space-y-0.5 text-xs text-red-700">
           {result.failed.slice(0, 5).map((f) => (

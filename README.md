@@ -196,10 +196,17 @@ Coverage is per-source and the UI says so rather than failing quietly:
 
 `npm run explain:kept` groups the kept set by the first positive signal that
 fired, so one loose pattern shows up as a large bucket with real titles under
-it. The same diagnostic runs as a button in `/admin/import-tenders` (under
-通用维护), reading the live `tenders` table instead of a `reclassify:tenders`
-CSV — so it is current, needs no terminal, and its country filter covers
-Mexico and Colombia exactly as it covers Peru. Read-only either way.
+it. The same diagnostic runs as a button in
+`/admin/import-tenders/maintenance`, reading the live `tenders` table instead
+of a `reclassify:tenders` CSV — so it is current, needs no terminal, and its
+country filter covers Mexico and Colombia exactly as it covers Peru.
+Read-only either way.
+
+That 通用维护 tab is the one non-country tab in `/admin/import-tenders`, and
+holds the three actions that run across the whole table rather than one
+country's import: translate, reclassify, and this. It sits first in the tab
+order, separated by a rule; `/admin/import-tenders` still lands on 墨西哥,
+since maintenance is the tab you open on purpose, not the daily one.
 
 **Product direction has expanded** to Latin America (Mexico, Brazil,
 Colombia, Chile, Peru), positioned for Chinese enterprises bidding

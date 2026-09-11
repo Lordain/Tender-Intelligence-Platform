@@ -1636,10 +1636,22 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Colombia", scopeType: "services",
   },
   {
-    title: "CONCESIÓN PARA LA CONSTRUCCIÓN Y OPERACIÓN DE LA DOBLE CALZADA BUCARAMANGA - PAMPLONA",
+    title: "CONCESIÓN PARA LA CONSTRUCCIÓN, OPERACIÓN Y MANTENIMIENTO DE LA DOBLE CALZADA BUCARAMANGA - PAMPLONA",
     expectedTier: "flagship",
-    note: "Guards the concession rule: a build-and-operate highway concession is exactly what this platform exists to surface, which is why that rule anchors on 'otorgar en concesión ... explotación' and not on the word concesión. Note the wording — adding 'Y MANTENIMIENTO' makes the PRE-EXISTING routine-maintenance rule exclude it, which is worth knowing before a real BOT concession shows up phrased that way. Raised with the user 2026-09-11 rather than changed here, since no such real title has appeared yet.",
+    note: "Guards the concession rule: a build-and-operate highway concession is exactly what this platform exists to surface, which is why that rule anchors on 'otorgar en concesión ... explotación' and not on the word concesión. It also pins the maintenance carve-out added the same day: 'construcción, operación y mantenimiento' is the standard naming of a DBOM road concession, and the bare mantenimiento catch-all was excluding every one of them.",
     country: "Colombia", scopeType: "works", estimatedValue: 900_000_000_000, currency: "COP",
+  },
+  {
+    title: "ADMINISTRACIÓN, OPERACIÓN Y MANTENIMIENTO DEL SISTEMA DE ACUEDUCTO Y ALCANTARILLADO MUNICIPAL",
+    expectedTier: "excluded",
+    note: "Guards the concession carve-out from the other side: a pure O&M contract names no construction and no concession, so it stays excluded — which is the 2026-09-04 decision the maintenance rule exists to enforce.",
+    country: "Colombia", scopeType: "services", estimatedValue: 40_000_000_000, currency: "COP",
+  },
+  {
+    title: "MANTENIMIENTO Y REHABILITACIÓN DE LA VÍA TERCIARIA DEL MUNICIPIO DE GUATAVITA",
+    expectedTier: "excluded",
+    note: "Second guard: a build verb alone must not reopen the rule. Without the concession framing this is still routine road upkeep.",
+    country: "Colombia", scopeType: "works", estimatedValue: 8_000_000_000, currency: "COP",
   },
   {
     title: "IMPLEMENTACIÓN DE ACCIONES DE RESTAURACIÓN Y REHABILITACIÓN ECOLÓGICA PARA LA PRESERVACIÓN DE LOS ECOSISTEMAS",

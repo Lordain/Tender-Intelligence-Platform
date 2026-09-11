@@ -832,6 +832,38 @@ const MAINTENANCE_ONLY_KEYWORDS = [
 ];
 
 /**
+ * The one thing "mantenimiento" must not swallow: a concession whose object
+ * includes BUILDING the asset.
+ *
+ * "Construcción, operación y mantenimiento" is the standard naming of a
+ * design-build-operate-maintain road concession (Colombia's 4G/5G programme,
+ * Mexico's APPs) — the largest projects either country tenders, and squarely
+ * what this platform exists to surface. The bare `\bmantenimiento\b`
+ * catch-all excluded every one of them, and silently: the word sits at the
+ * end of a title whose real object is a new highway.
+ *
+ * Both halves are required, and that is what keeps the 2026-09-04 batch this
+ * rule came from still excluded. Those were routine upkeep — "administración,
+ * operación y mantenimiento", "MTTO PLANTAS DE EMERGENCIA HOSPITALES",
+ * "Mantenimiento a las Básculas Camioneras y de Ferrocarril" — none of which
+ * names a concession, and the O&M one names no construction either. Upkeep of
+ * an existing asset stays excluded no matter how it is worded; only a
+ * contract that builds AND is structured as a concession gets past.
+ *
+ * Deliberately not extended to "operación y mantenimiento" without the
+ * concession framing: a pure O&M contract needs a local service presence and
+ * spare-parts stock — exactly the opportunity the original rule judged a
+ * foreign bidder cannot take.
+ */
+const CONCESSION_FRAMING = /concesi[óo]n|asociaci[óo]n(es)? p[úu]blico[\s-]?privadas?|\bapp\s+de\s+infraestructura\b/i;
+const BUILD_OBJECT = /construcci[óo]n|dise[ñn]o y construcci[óo]n|rehabilitaci[óo]n|ampliaci[óo]n|modernizaci[óo]n|doble calzada/i;
+
+/** A build-and-operate concession, not routine upkeep — see CONCESSION_FRAMING. */
+function isConcessionWithBuildScope(haystack: string): boolean {
+  return CONCESSION_FRAMING.test(haystack) && BUILD_OBJECT.test(haystack);
+}
+
+/**
  * Same "this was never a procurable good/work/service" class of signal as
  * MAINTENANCE_ONLY_KEYWORDS above — unconditional for the identical reason:
  * no keyword should be able to rescue a record that isn't a real tender
@@ -1680,6 +1712,7 @@ export function classifyRelevance(input: {
   // keyword-based override) can rescue a maintenance-only tender.
   if (
     input.isNationalPriorityProject !== true &&
+    !isConcessionWithBuildScope(haystack) &&
     (MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
       RENEWAL_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack)))
   ) {

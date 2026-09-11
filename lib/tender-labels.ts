@@ -66,6 +66,32 @@ export const SCOPE_TYPE_LABELS: Record<TenderScopeType, LocalizedText> = {
   consulting: { en: "Consulting", es: "Consultoría", zh: "咨询" },
 };
 
+/**
+ * Display order for the scope filter. Two of these five effectively never
+ * reach the public feed, which is why the filter offers only what the data
+ * actually contains (availableScopeTypes in lib/tender-list-page.ts) rather
+ * than this list:
+ *
+ *   - equipment_services: no mapper produces it. Colombia derives scope from
+ *     tipo_de_contrato and Compras MX from tipo_de_contratación, and neither
+ *     source has a combined category — only seed data and fixtures carry it.
+ *     An admin can still set it by hand on one tender, and then it appears.
+ *   - consulting: classifyRelevance() excludes it outright (the user's
+ *     2026-09-04 rule, 咨询 as a scope type is out), so it only survives with
+ *     an include-override keyword.
+ *
+ * Both stay in the union: they are real values the data can hold, and
+ * deleting them would mean a hand-set or override-rescued tender could not be
+ * filtered for at all.
+ */
+export const ALL_SCOPE_TYPES: TenderScopeType[] = [
+  "equipment",
+  "services",
+  "equipment_services",
+  "works",
+  "consulting",
+];
+
 export const STATUS_LABELS: Record<TenderStatus, LocalizedText> = {
   planned: { en: "Planned", es: "Planeada", zh: "计划中" },
   open: { en: "Open", es: "Abierta", zh: "招标中" },

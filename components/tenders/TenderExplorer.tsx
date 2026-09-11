@@ -8,7 +8,7 @@ import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
 import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, countryLabel, industryLabel } from "@/lib/tender-labels";
+import { ALL_SCOPE_TYPES, COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, countryLabel, industryLabel } from "@/lib/tender-labels";
 import { isSortKey, type SortKey } from "@/lib/filter-tenders";
 import { useSavedTenderIds } from "@/lib/saved";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
@@ -22,7 +22,6 @@ import { canInteractWithTenderList, type AccessPromptKind, type ViewerRole } fro
 import { AccessPrompt } from "@/components/access/AccessPrompt";
 import { DEFAULT_TENDER_LIST_STATUSES, type TenderListItem } from "@/lib/tender-list-page";
 
-const SCOPE_TYPES: TenderScopeType[] = ["equipment", "services", "equipment_services", "works", "consulting"];
 // "planned"/计划中 is deliberately absent — see lib/tender-status.ts.
 const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
 // Closed and cancelled projects stay available through an explicit filter,
@@ -197,6 +196,7 @@ export function TenderExplorer({
   totalPages,
   currentPage,
   availableIndustries,
+  availableScopeTypes,
   siteTenderCount,
   newTodayCount,
   upcomingCount,
@@ -207,6 +207,7 @@ export function TenderExplorer({
   totalPages: number;
   currentPage: number;
   availableIndustries: IndustryKey[];
+  availableScopeTypes: TenderScopeType[];
   siteTenderCount: number;
   newTodayCount: number;
   upcomingCount: number;
@@ -221,6 +222,9 @@ export function TenderExplorer({
   // Falls back to the full taxonomy only if the data carries no industries
   // at all — an empty filter would be worse than an over-broad one.
   const industryOptions = availableIndustries.length > 0 ? availableIndustries : ALL_INDUSTRIES;
+  // Same fallback rule as industries: offer everything only when the data
+  // carries nothing, since an empty filter is worse than an over-broad one.
+  const scopeTypeOptions = availableScopeTypes.length > 0 ? availableScopeTypes : ALL_SCOPE_TYPES;
 
   const query = searchParams.get("q") ?? "";
   const countryParam = searchParams.get("country");
@@ -383,7 +387,7 @@ export function TenderExplorer({
           <div className="xl:pl-5">
             <MultiSelectPills
               label="项目类型"
-              options={SCOPE_TYPES.map((option) => ({ value: option, label: localize(SCOPE_TYPE_LABELS[option], locale) }))}
+              options={scopeTypeOptions.map((option) => ({ value: option, label: localize(SCOPE_TYPE_LABELS[option], locale) }))}
               selected={scopeTypes}
               onChange={(next) => updateParams({ scope: next.join(",") || null })}
             />

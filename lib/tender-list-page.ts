@@ -1,5 +1,6 @@
 import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
+import { ALL_SCOPE_TYPES } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders } from "@/lib/filter-tenders";
 
 export const TENDER_PAGE_SIZE = 20;
@@ -52,6 +53,14 @@ export type TenderListPageData = {
    * starts supplying that category — no hardcoded hide list to maintain.
    */
   availableIndustries: IndustryKey[];
+  /**
+   * Same reasoning as availableIndustries, for the 项目类型 filter: two of the
+   * five scope types effectively never reach the feed (see ALL_SCOPE_TYPES),
+   * and a checkbox that can only ever return nothing is worse than no
+   * checkbox. Derived, not a hide list, so a hand-set or override-rescued
+   * tender brings its option back by itself.
+   */
+  availableScopeTypes: TenderScopeType[];
   siteTenderCount: number;
   newTodayCount: number;
   upcomingCount: number;
@@ -130,6 +139,8 @@ export function buildTenderListPage(
   );
   const presentIndustries = new Set(allTenders.flatMap((tender) => tender.industries));
   const availableIndustries = ALL_INDUSTRIES.filter((industry) => presentIndustries.has(industry));
+  const presentScopeTypes = new Set(allTenders.map((tender) => tender.scopeType));
+  const availableScopeTypes = ALL_SCOPE_TYPES.filter((scopeType) => presentScopeTypes.has(scopeType));
 
   const today = platformDateKey(now);
   const nowMs = now.getTime();
@@ -155,6 +166,7 @@ export function buildTenderListPage(
     totalPages,
     currentPage,
     availableIndustries,
+    availableScopeTypes,
     siteTenderCount: allTenders.filter((tender) => tender.status !== "awarded" && tender.status !== "cancelled").length,
     newTodayCount,
     upcomingCount,

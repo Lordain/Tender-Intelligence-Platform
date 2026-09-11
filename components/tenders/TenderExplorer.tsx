@@ -442,11 +442,24 @@ export function TenderExplorer({
               同时包含全部所选行业
             </label>
           )}
-          {hasActiveFilters && (
-            <button type="button" onClick={() => router.replace(pathname, { scroll: false })} className="text-xs font-semibold text-[#64717c] underline underline-offset-4 hover:text-[#071826]">
-              {localize(uiText.clearFilters, locale)}
-            </button>
-          )}
+          {/*
+            Reads as a button, not as fine print. It used to be a grey
+            underlined text link sitting under three rows of amber pills, which
+            is the one control on this bar a user goes looking for when the
+            list has gone empty — and the hardest to spot (user, 2026-09-11:
+            把清除筛选的按钮做得明显一点). ml-auto puts it at the far end of the
+            row so it never reads as one more industry chip.
+          */}
+          <button
+            type="button"
+            onClick={() => router.replace(pathname, { scroll: false })}
+            className="ml-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[#e0b661] bg-[#fff4d8] px-4 text-xs font-black text-[#8f5b00] transition-colors hover:border-[#b8860b] hover:bg-[#ffe9b0]"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="size-3.5 fill-none stroke-current stroke-[2.5]" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+            {localize(uiText.clearFilters, locale)}
+          </button>
         </div>}
       </section>
 

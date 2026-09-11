@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { participationGuides } from "@/lib/participation-guides";
+import { homepageGuides } from "@/lib/participation-guides";
 
 export function ParticipationGuidesPreview() {
   return (
@@ -22,10 +22,12 @@ export function ParticipationGuidesPreview() {
           never doubled. The point is that this holds for ANY number of guides:
           the previous version hard-coded five columns and hand-placed the
           dividers by index, which came apart the moment Peru added a sixth and
-          seventh card.
+          seventh card. The strip is capped at four now (homepageGuides), so
+          that particular break can't recur — but nothing here depends on the
+          count, which is the point.
         */}
         <div className="mt-9 grid overflow-hidden rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] md:grid-cols-2 xl:grid-cols-4">
-          {participationGuides.map((guide) => (
+          {homepageGuides().map((guide) => (
             <Link key={guide.slug} href={`/guides/${guide.slug}`} className="group -ml-px -mt-px border-l border-t border-[#dbe2e5] p-6 transition hover:bg-[#fff4d8]">
               <span className="text-xs font-black uppercase tracking-[0.14em] text-[#b86e00]">{guide.country}</span>
               <h3 className="mt-3 text-lg font-black leading-7 text-[#071826]">{guide.platform}</h3>

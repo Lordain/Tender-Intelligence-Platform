@@ -448,6 +448,28 @@ export const participationGuides: ParticipationGuide[] = [
   },
 ];
 
+/**
+ * The four guides the homepage strip shows, in this order (user, 2026-09-11:
+ * 只展示4个：墨西哥2个(CompraMx, CFE Micrositio)、哥伦比亚1个、秘鲁1个).
+ *
+ * A teaser, not an index — /guides carries all of them. One per country plus
+ * a second Mexican one keeps the row to a single line of four at every
+ * breakpoint, which is what went wrong when it simply rendered everything:
+ * seven cards wrapped to 4+3 and left a hole.
+ *
+ * Peru is represented by SEACE rather than Obras por Impuestos because SEACE
+ * is where nearly every Peruvian tender on this site comes from; OxI is a
+ * separate financing mechanism most readers meet later.
+ */
+const HOMEPAGE_GUIDE_SLUGS = ["mexico-compras-mx", "mexico-cfe-micrositio", "colombia-secop-ii", "peru-seace-oece"] as const;
+
+/** Resolved in HOMEPAGE_GUIDE_SLUGS order, skipping any slug that no longer exists rather than rendering a hole. */
+export function homepageGuides(): ParticipationGuide[] {
+  return HOMEPAGE_GUIDE_SLUGS.map((slug) => participationGuides.find((guide) => guide.slug === slug)).filter(
+    (guide): guide is ParticipationGuide => guide !== undefined,
+  );
+}
+
 export function getParticipationGuide(slug: string) {
   return participationGuides.find((guide) => guide.slug === slug);
 }

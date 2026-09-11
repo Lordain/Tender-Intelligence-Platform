@@ -1625,9 +1625,27 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "CONSTRUCCIÓN DE CENTRO DE ALTO RENDIMIENTO DEPORTIVO EN LA CIUDAD DE MONTERÍA; DEPARTAMENTO DE CÓRDOBA; FASE II",
+    expectedTier: "flagship",
+    note: "The row that produced the municipal-amenity value exception (user's call, 2026-09-11). Real value, COP 28,037,383,178 ≈ USD 8.9M — a structural works contract at a scale a foreign contractor bids on, which the flat amenity rule was excluding alongside a USD 2.5M skating rink. The three fixtures below are its guards: the exception must not widen the class.",
+    country: "Colombia", scopeType: "works", estimatedValue: 28_037_383_178, currency: "COP",
+  },
+  {
+    title: "CONSTRUCCIÓN DEL PARQUE ECOLÓGICO DE LOS DEPORTES DEL MUNICIPIO DE SOGAMOSO PARQUE RECREACIONAL DEL SUR DEPARTAMENTO DE BOYACA",
     expectedTier: "excluded",
-    note: "Municipal sports/park/culture amenity — the class already excluded for Mexico, extended to Colombia in this round.",
-    country: "Colombia", scopeType: "works", estimatedValue: 115_000_000_000, currency: "COP",
+    note: "The near-miss that pins the floor. Real row from the same reviewed export, COP 14,166,534,845 ≈ USD 4.5M — just under FLAGSHIP_VALUE_USD, so it stays excluded. If the floor is ever lowered this fixture is what catches it.",
+    country: "Colombia", scopeType: "works", estimatedValue: 14_166_534_845, currency: "COP",
+  },
+  {
+    title: "CONSTRUCCION DE PISTA DE PATINAJE - MUNICIPIO DE ARACATACA - DEPARTAMENTO DEL MAGDALENA",
+    expectedTier: "excluded",
+    note: "Real row, COP 7,948,700,039 ≈ USD 2.5M. The small municipal amenity the class is actually for — unaffected by the exception.",
+    country: "Colombia", scopeType: "works", estimatedValue: 7_948_700_039, currency: "COP",
+  },
+  {
+    title: "CONSTRUCCIÓN DE CENTRO DE ALTO RENDIMIENTO DEPORTIVO EN LA CIUDAD DE MONTERÍA; DEPARTAMENTO DE CÓRDOBA; FASE II",
+    expectedTier: "excluded",
+    note: "Same real title and real value as the flagship fixture above, with only scopeType varied to 'services' — the real row is 'works'. Deliberately synthetic in that one field, to pin the scopeType half of isLargeAmenityBuild(): running or programming an amenity is the human/social class the exclusion is for however large the budget, and only construction gets the exception.",
+    country: "Colombia", scopeType: "services", estimatedValue: 28_037_383_178, currency: "COP",
   },
   {
     title: "OTORGAR EN CONCESIÓN, LA OPERACIÓN Y EXPLOTACIÓN DE LAS ÁREAS QUE COMPONEN LA ESTRUCTURA FÍSICA DEL CENTRO DE ATENCION AL VISITANTE",

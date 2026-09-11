@@ -553,10 +553,9 @@ const EXCLUDE_KEYWORDS = [
   // SISTEMA DE VIDEOVIGILANCIA", which the user keeps).
   /^\W*fortalecimiento\b(?![^.]{0,60}(infraestructura|vial|acueducto|alcantarillado|hospital|energ[íi]a|el[ée]ctric|red de distribuci|planta))/i,
 
-  // B. Parks, sports, culture and social-service buildings — the same
-  // municipal-amenity class already excluded for Mexico.
-  /centro de alto rendimiento|pista de patinaje|parques? (ecol[óo]gico|recreativo|de proximidad|deportivo)|infraestructura deportiva|escenarios? deportivos?/i,
-  /centro de integraci[óo]n social|centro vida\b|centro de bienestar animal|casa de la cultura|teatro al aire libre/i,
+  // B. Parks, sports, culture and social-service buildings live in
+  // MUNICIPAL_AMENITY_KEYWORDS, not in this array — they are the one
+  // exclusion class that has a value exception. See its header comment.
 
   // D. Concessions where the contractor OPERATES an asset the state already
   // owns, rather than building anything: "OTORGAR EN CONCESIÓN, LA OPERACIÓN
@@ -659,6 +658,32 @@ const CHILDCARE_FACILITY_KEYWORDS = [
   // Infantil". Added under the user's existing daycare decision rather than
   // as a new one.
   /centros? de desarrollo infantil/i,
+];
+
+/**
+ * Parks, sports, culture and social-service buildings — the municipal-amenity
+ * class the user signed off on excluding for both countries (2026-09-11).
+ *
+ * Checked separately from EXCLUDE_KEYWORDS because this is the only
+ * exclusion class with a VALUE EXCEPTION: see isLargeAmenityBuild().
+ *
+ * Why the exception exists (the user's call, 2026-09-11, on a real reviewed
+ * row): the class is meant to catch SMALL municipal amenities — a
+ * neighbourhood park, a skating rink, a set of court roofs. It is not meant
+ * to catch "anything with a sports word in it". "CONSTRUCCIÓN DE CENTRO DE
+ * ALTO RENDIMIENTO DEPORTIVO ... FASE II" (Departamento de Córdoba,
+ * COP 28,037,383,178 ≈ USD 8.9M) is a real structural works contract at a
+ * scale a Chinese contractor would bid on, and the flat rule excluded it
+ * alongside a USD 2.5M skating rink. The value floor separates the two.
+ *
+ * NOTE for Mexico: Compras MX obra pública publishes no amount at all, so
+ * the exception structurally cannot fire on a Mexican row and every Mexican
+ * amenity here stays excluded exactly as before. That is a property of the
+ * data, not something this rule special-cases by country.
+ */
+const MUNICIPAL_AMENITY_KEYWORDS = [
+  /centro de alto rendimiento|pista de patinaje|parques? (ecol[óo]gico|recreativo|de proximidad|deportivo)|infraestructura deportiva|escenarios? deportivos?/i,
+  /centro de integraci[óo]n social|centro vida\b|centro de bienestar animal|casa de la cultura|teatro al aire libre/i,
 ];
 
 const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
@@ -861,6 +886,29 @@ const BUILD_OBJECT = /construcci[óo]n|dise[ñn]o y construcci[óo]n|rehabilitac
 /** A build-and-operate concession, not routine upkeep — see CONCESSION_FRAMING. */
 function isConcessionWithBuildScope(haystack: string): boolean {
   return CONCESSION_FRAMING.test(haystack) && BUILD_OBJECT.test(haystack);
+}
+
+/**
+ * The value exception to MUNICIPAL_AMENITY_KEYWORDS — see that array's
+ * header comment for the reviewed row this came from.
+ *
+ * Both halves are required. scopeType "works" keeps the exception on real
+ * construction: a large park OPERATIONS or events-programming contract is
+ * still the human/social class the exclusion is for, however big its budget,
+ * and those come through as "services". The floor is FLAGSHIP_VALUE_USD
+ * rather than a second hardcoded number because it is the same judgement
+ * already encoded there — above it, a works contract is big enough to be
+ * worth a foreign bidder's attention on size alone.
+ *
+ * Undisclosed value does NOT pass: with no amount there is nothing to
+ * establish scale with, so the row stays excluded (same posture as
+ * "undisclosed_value" everywhere else in this file).
+ */
+function isLargeAmenityBuild(input: { scopeType: TenderScopeType; estimatedValue?: number; currency?: string }): boolean {
+  if (input.scopeType !== "works") return false;
+  if (input.estimatedValue === undefined) return false;
+  const usd = convertToUsd(input.estimatedValue, input.currency);
+  return usd !== null && usd !== undefined && usd >= FLAGSHIP_VALUE_USD;
 }
 
 /**
@@ -1755,6 +1803,17 @@ export function classifyRelevance(input: {
   }
 
   if (!hasIncludeOverride && EXCLUDE_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // The municipal-amenity class, split out of EXCLUDE_KEYWORDS above because
+  // it is the one exclusion with a value exception — see
+  // MUNICIPAL_AMENITY_KEYWORDS and isLargeAmenityBuild().
+  if (
+    !hasIncludeOverride &&
+    !isLargeAmenityBuild(input) &&
+    MUNICIPAL_AMENITY_KEYWORDS.some((pattern) => pattern.test(haystack))
+  ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
 

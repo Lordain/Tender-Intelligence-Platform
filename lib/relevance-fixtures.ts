@@ -1799,4 +1799,17 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "The other half of that call — 有金额的照常按门槛judge. An IOARR that publishes a real amount is judged on it, because some genuinely run to several million.",
     country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 42_000_000, currency: "PEN",
   },
+  // --- ProInversión Obras por Impuestos (2026-09-11 export) ----------------
+  {
+    title: "MEJORAMIENTO Y AMPLIACION DE LOS SERVICIOS DE SALUD EN EL HOSPITAL II-E LAMAS DISTRITO DE LAMAS - PROVINCIA DE LAMAS - DEPARTAMENTO DE SAN MARTIN",
+    expectedTier: "flagship",
+    note: "The largest row in the first OxI export (S/305,207,991 ≈ $91.1M) and it was EXCLUDED as routine health-services procurement: Invierte.pe names every public investment 'MEJORAMIENTO DEL SERVICIO DE <public service>', so a hospital BUILDING project reads as outsourced staffing to a bare 'servicios de salud en' pattern. That half of the pattern now requires prestación/contratación framing.",
+    country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 305_207_991, currency: "PEN",
+  },
+  {
+    title: "CONTRATACIÓN DE LA PRESTACIÓN DE SERVICIOS DE SALUD EN CONSULTA EXTERNA PARA ASEGURADOS",
+    expectedTier: "excluded",
+    note: "The other side of that narrowing — what the rule was always for, outsourced service DELIVERY, must still be excluded.",
+    country: "Peru", scopeType: "services", estimatedValue: 20_000_000, currency: "PEN",
+  },
 ];

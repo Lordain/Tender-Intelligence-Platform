@@ -38,6 +38,7 @@
     "purge:since": "tsx --env-file-if-exists=.env.local scripts/purge-tenders-since.ts",
     "ingest:peru": "tsx --env-file-if-exists=.env.local scripts/ingest-peru.ts",
     "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts",
+    "ingest:peru-oxi": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-oxi.ts",
     "ingest:proyectos-estrategicos": "tsx --env-file-if-exists=.env.local scripts/ingest-proyectos-estrategicos.ts",
     "test:relevance": "tsx scripts/test-relevance.ts",
     "test:access-control": "tsx scripts/test-access-control.ts",

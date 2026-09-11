@@ -22,6 +22,7 @@
  *   npm run ingest:peru-live -- --months 3 --write
  *   npm run ingest:peru-live -- --segment 2026-09     (one specific month)
  *   npm run ingest:peru-live -- --bulk --months 6     (the old monthly-file path)
+ *   npm run ingest:peru-live -- --days 5              (only the last 5 days — routine top-ups)
  *   npm run ingest:peru-live -- --json                (raw Tender objects instead of the review report)
  *
  * A dry run prints a classification REPORT, not rows: one real segment is
@@ -40,7 +41,7 @@ import { mapOeceRecordToTender } from "../lib/ingestion/peru-oece-mapper";
 import type { OeceRecord } from "../lib/ingestion/peru-oece-mapper";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
-import { filterRecentTenders } from "../lib/ingestion/recency";
+import { filterRecentTenders, filterTendersPublishedWithinDays } from "../lib/ingestion/recency";
 import { reportClassificationPreview } from "../lib/ingestion/preview-report";
 import type { Tender } from "../types/tender";
 
@@ -147,9 +148,15 @@ async function main() {
   // A segment holds tenders whose CONVOCATORIA started that month, which is
   // not quite "published within N months" — so the recency filter still runs
   // over the mapped rows, exactly as the bulk path always did.
-  const tenders = filterRecentTenders(allTenders, months);
+  // --days narrows to a real rolling window inside the fetched segments. The
+  // segments themselves still have to be whole months (that is the only unit
+  // the API filters on), so a --days run fetches the same pages and simply
+  // keeps less — cheap in review time, not in requests.
+  const days = Number(argValue(args, "--days") ?? 0);
+  const tenders = days > 0 ? filterTendersPublishedWithinDays(allTenders, days) : filterRecentTenders(allTenders, months);
   if (tenders.length !== allTenders.length) {
-    console.log(`Keeping ${tenders.length} of ${allTenders.length} published within the last ${months} month(s).`);
+    const window = days > 0 ? `${days} day(s)` : `${months} month(s)`;
+    console.log(`Keeping ${tenders.length} of ${allTenders.length} published within the last ${window}.`);
   }
 
   if (!shouldWrite) {

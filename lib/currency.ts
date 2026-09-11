@@ -11,6 +11,10 @@ import type { Locale } from "@/types/tender";
  * figures — the UI should read as "approximately" even where it doesn't
  * say so literally.
  *
+ * Re-verified 2026-09-11 (Wise/XE/Investing.com, cross-checked): PEN 3.3545,
+ * MXN 16.94, COP 3,099 spot against a 7-day average of 3,140 — every existing
+ * row within ~1.3% of real, so none were changed; EUR and GBP were added.
+ *
  * Last refreshed 2026-09-05 against real current rates (Investing.com,
  * XE.com, Wise — cross-checked across sources, not a single quote): the
  * previous MXN/COP/PEN values had drifted meaningfully from real rates
@@ -25,6 +29,14 @@ export const USD_RATES: Record<string, number> = {
   MXN: 1 / 16.9,
   COP: 1 / 3140,
   PEN: 1 / 3.35,
+  // Added 2026-09-11: Peru's OECE data is genuinely multi-currency and a real
+  // import turned up 7 EUR and 2 GBP tenders. Without a rate, convertToUsd()
+  // returns null and the classifier reads a real amount as "no value
+  // published" — the one outcome that table is meant to prevent. Quoted the
+  // other way round from the rows above (these are worth MORE than a dollar),
+  // hence no reciprocal.
+  EUR: 1.16,
+  GBP: 1.354,
 };
 
 /** Returns null (not the raw value) when the currency isn't in the rate table, so callers can distinguish "genuinely converted" from "unknown currency, don't display a number that looks precise but isn't even the right unit." */

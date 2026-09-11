@@ -204,7 +204,15 @@ const EXCLUDE_KEYWORDS = [
   // DE SALUD EN ONCOLOGÍA" (2026-09-07, user-confirmed) survived on its
   // healthcare industry tag alone, since the equipment whitelist correctly
   // didn't match it and nothing else dropped it.
-  /prestaci[óo]n (integral )?de servicios de salud|servicios de salud en\b/i,
+  // The bare "servicios de salud en" half was removed 2026-09-11. Peru's
+  // Invierte.pe names EVERY public investment "MEJORAMIENTO / CREACIÓN /
+  // AMPLIACIÓN DEL SERVICIO DE <the public service being improved>", so a
+  // hospital BUILDING project is titled "MEJORAMIENTO Y AMPLIACION DE LOS
+  // SERVICIOS DE SALUD EN EL HOSPITAL II-E ..." — a real $91.1M OxI works
+  // contract that this pattern was excluding as outsourced health staffing.
+  // What the rule is actually after is service DELIVERY being contracted out,
+  // so it now requires that framing explicitly instead of the bare noun.
+  /(?:prestaci[óo]n|contrataci[óo]n|tercerizaci[óo]n)\s+(?:integral\s+)?de\s+servicios?\s+de\s+salud\b/i,
   // "construcción" of a document, not of anything physical. "CONTRATAR LA
   // CONSTRUCCION Y SOCIALIZACION DEL ANÁLISIS DE SITUACIÓN DE SALUD 2026"
   // (2026-09-07, user-confirmed) matched FLAGSHIP_INDUSTRY_KEYWORDS' bare

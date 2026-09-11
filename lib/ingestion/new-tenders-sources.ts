@@ -12,11 +12,12 @@
  */
 import type { Tender } from "@/types/tender";
 
-export type NewTendersSource = "comprasmx-open" | "proyectos-estrategicos";
+export type NewTendersSource = "comprasmx-open" | "proyectos-estrategicos" | "peru-oxi";
 
 export const NEW_TENDERS_SOURCES: { value: NewTendersSource; label: string }[] = [
   { value: "comprasmx-open", label: "Compras MX — 开放招标（Difusión de procedimientos）" },
   { value: "proyectos-estrategicos", label: "Proyectos Estratégicos MX (Hacienda)" },
+  { value: "peru-oxi", label: "ProInversión — Obras por Impuestos（秘鲁，Exportar a Excel 导出件）" },
 ];
 
 export type ImportNewTendersResult = {
@@ -28,4 +29,6 @@ export type ImportNewTendersResult = {
   skippedExcludedCount?: number;
   failed?: { slug: string; error: string }[];
   sample: Tender[];
+  /** Every kept row, not just the first five — only populated for a CLI dry run (see importNewTenders' `preview` option). */
+  preview?: Tender[];
 };

@@ -140,7 +140,7 @@ const EXCLUDE_KEYWORDS = [
   // constant's header comment for why this one specific signal is no
   // longer gated by hasIncludeOverride/MAJOR_PROJECT_KEYWORDS the way
   // every other EXCLUDE_KEYWORDS entry still is.
-  /suministro (de )?(partes|herramientas|material(es)?)\b|adquisici[óo]n de (herramientas|refacciones)\b|refacciones, accesorios y herramientas|materiales? y art[íi]culos? de/i, // 物料/工具、物料 — spare parts, tools, consumable materials, not equipment/works
+  /suministro (de )?(partes|herramientas)\b|adquisici[óo]n de (herramientas|refacciones)\b|refacciones, accesorios y herramientas|materiales? y art[íi]culos? de/i, // 物料/工具、物料 — spare parts, tools, consumable materials, not equipment/works
   /servicio m[ée]dico integral/i,
 
   // ---- 2026-09-07: a 400-row review by the user, grouped by what the
@@ -969,6 +969,37 @@ function isConcessionWithBuildScope(haystack: string): boolean {
  * establish scale with, so the row stays excluded (same posture as
  * "undisclosed_value" everywhere else in this file).
  */
+/**
+ * "suministro de materiales", lifted out of EXCLUDE_KEYWORDS (2026-09-11)
+ * because it means two opposite things depending on what surrounds it.
+ *
+ * On its own it is a consumables purchase, which is what it was listed for.
+ * But it is also half of the standard Mexican phrasing for a full works
+ * contract — "CONSTRUCCIÓN DE OBRAS DE ELECTRIFICACIÓN (MANO DE OBRA Y
+ * SUMINISTRO DE MATERIALES)", a real CFE distribution build, where it says
+ * the contractor supplies labour AND materials rather than the client
+ * issuing them. Read as a consumables purchase, that excluded the tender
+ * outright even with a value attached, while the identical title without the
+ * parenthetical was kept — the classification turned on a scope note.
+ *
+ * So the phrase only excludes when nothing around it says "works": same
+ * shape as purchaseSubject()'s PROJECT_CONTEXT_CONNECTOR, which exists for
+ * the mirror-image case (a purchase that merely names a project).
+ *
+ * It also matches a title that OPENS with the noun, with no purchase verb at
+ * all — "MATERIALES PROFAUNA PARA SUBESTACIONES", a real fixture. That one
+ * used to be excluded only because it had no value; once the power-asset
+ * terms below could rescue an undisclosed-value row, "para subestaciones"
+ * started reading as grid work when it is the delivery address for a box of
+ * materials. purchaseSubject() cannot help here — it needs a purchase verb
+ * to cut on, and this title leads with the goods themselves.
+ */
+const MATERIALS_SUPPLY_PATTERN = /^\W*materiales?\b|suministro (de )?material(es)?\b/i;
+
+/** A title that states it is building something — enough to read a materials clause as the contractor's scope, not the subject of the purchase. */
+const WORKS_CONTRACT_CONTEXT =
+  /\b(obras?\s+(de|p[úu]blicas?)|construcci[óo]n|edificaci[óo]n|ejecuci[óo]n\s+de\s+(la\s+)?obra|llave en mano|epc)\b/i;
+
 function isLargeWorksBuild(input: { scopeType: TenderScopeType; estimatedValue?: number; currency?: string }): boolean {
   if (input.scopeType !== "works") return false;
   if (input.estimatedValue === undefined) return false;
@@ -1451,6 +1482,35 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // "energía|eléctrico|power" bare-word signal; this is a narrower,
   // deliberately re-added replacement for that one real equipment class.
   /(adquisici[óo]n|adqs?\.?|compra|suministro)\s+de\s+(?:(?:un|una|el|la|los|las)\s+)?[\d'"“”‘’\s]{0,15}(transformador(es)?|generador(es)?|rel[ée]s? de protecci[óo]n|relevador(es)? de protecci[óo]n|\bups\b)/i,
+  // Power-grid and generation ASSETS, as opposed to the equipment purchase
+  // above. Added 2026-09-11 after the user asked why the platform held one
+  // electricity project when CFE plainly had open ones: every CFE tender
+  // arrives from DOF, DOF publishes no value at all, and Mexico is in
+  // UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL — so with no whitelist term to
+  // rescue them, they all fell out. Measured against real titles: a bare
+  // "subestación eléctrica", "línea de transmisión 400 kV", "central de
+  // ciclo combinado" and "parque eólico" were ALL excluded, while the
+  // industry classifier had already tagged every one of them `power`. The
+  // 2026-09-04 pass added transformers/generators/relays/UPS but only when
+  // anchored to a purchase verb, which covers buying a component and not
+  // building or extending the grid itself.
+  //
+  // Concrete asset nouns only, deliberately. The Seventh pass removed a bare
+  // "energía|eléctrico|power" signal for being far too broad and that
+  // judgement stands; none of these can appear except on real grid or
+  // generation work. "electrificación" is also left out on purpose — Peru's
+  // Invierte.pe names household rural-electrification programmes that way,
+  // and those are small; the Mexican works titles that matter carry
+  // "construcción de obras" and are kept by the construction term already.
+  /\bsubestaci[óo]n(es)?\b/i,
+  /l[íi]nea(s)? de (sub)?transmisi[óo]n|red(es)? de (transmisi[óo]n|distribuci[óo]n) el[ée]ctrica/i,
+  // "CENTRAL CICLO COMBINADO POZA RICA" drops the "de", so it is optional.
+  /central(es)? (de )?(ciclo combinado|termoel[ée]ctrica|hidroel[ée]ctrica|geotermoel[ée]ctrica|nucleoel[ée]ctrica|el[ée]ctrica|generadora)s?/i,
+  /parque(s)? e[óo]lico|central(es)? e[óo]lica/i,
+  // A stated voltage is only ever written on grid work — no routine purchase
+  // describes itself in kV. Bounded to 1-4 digits so a catalogue code cannot
+  // masquerade as one.
+  /\b\d{1,4}(\.\d+)?\s?kv\b/i,
 ];
 
 // USD-scale thresholds (the whole platform standardizes display and
@@ -1979,6 +2039,16 @@ export function classifyRelevance(input: {
     !hasIncludeOverride &&
     !isLargeWorksBuild(input) &&
     MUNICIPAL_AMENITY_KEYWORDS.some((pattern) => pattern.test(haystack))
+  ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // Materials supply — excluded unless the title says the materials are part
+  // of building something. See MATERIALS_SUPPLY_PATTERN.
+  if (
+    !hasIncludeOverride &&
+    MATERIALS_SUPPLY_PATTERN.test(haystack) &&
+    !WORKS_CONTRACT_CONTEXT.test(haystack)
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }

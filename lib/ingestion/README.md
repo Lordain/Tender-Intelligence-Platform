@@ -814,6 +814,52 @@ locally-saved response file, same as every other source in this project.
 Worth revisiting if the platform ever runs somewhere with real network
 access to verify against.
 
+### Why the platform held one electricity project (2026-09-11)
+
+The user asked why CFE coverage was near-empty when CFE's own micrositio
+plainly listed open tenders. Two separate causes, and the smaller one is the
+ingestion path:
+
+**The classifier was dropping almost all of them.** CFE reaches this platform
+only through DOF; DOF publishes **no estimated value on any notice**; Mexico
+is in `UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL`. So every CFE tender needed a
+whitelist term to survive — and `FLAGSHIP_INDUSTRY_KEYWORDS` had no grid
+vocabulary at all. Measured against real titles: `subestación eléctrica`,
+`línea de transmisión 400 kV`, `central de ciclo combinado`, `red de
+distribución eléctrica` and `parque eólico` were **all excluded**, while
+`industry.ts` had already tagged every one of them `power`. The 2026-09-04
+pass added transformer/generator/relay/UPS patterns, but anchored to a
+purchase verb — that covers buying a component, not building the grid.
+
+Fixed by adding concrete asset nouns (substation, transmission/distribution
+line, the named generation-plant types, wind farm, and a stated kV rating).
+Deliberately nouns, not the bare `energía|eléctrico` signal the Seventh pass
+removed for being far too broad. **`electrificación` is deliberately absent**:
+Invierte.pe names small household rural-electrification programmes that way,
+so including it would have flooded Peru behind a Mexican fix.
+
+A second, separate defect surfaced with it: `suministro de materiales` was
+read as a consumables purchase, but it is also half the standard Mexican
+phrasing for a full works contract — "CONSTRUCCIÓN DE OBRAS DE
+ELECTRIFICACIÓN (MANO DE OBRA Y SUMINISTRO DE MATERIALES)" — where it means
+the contractor supplies both. That excluded a real CFE distribution build
+*even with a value*, while the identical title without the parenthetical was
+kept. It now only excludes when nothing around it says "works", and it also
+catches a title that opens with the goods ("MATERIALES PROFAUNA PARA
+SUBESTACIONES"), which `purchaseSubject()` cannot cut because there is no
+purchase verb.
+
+**How the competing platforms have CFE data.** Argos Inteligencia shows
+`FUENTE: cfe_federal` with external ids shaped `CFE-MSC-CFE-0929-CSAAA-0007-2026`
+— `MSC` is CFE's Micrositio de Concursos, so they are reading `msc.cfe.mx`
+directly, the Imperva-protected portal this project declined to build against
+(see "CFE's own portal is WAF-protected"). GlobalTenders is an aggregator of
+the same kind. That is a scraping-posture difference, not a data source this
+platform lacks: the convocatoria summary they display is also published in
+DOF, which is the legally authoritative channel and is openly accessible.
+What `msc.cfe.mx` adds over DOF is the bid documents and the per-procedure
+detail — not the existence of the tender.
+
 ### DOF is a CFE/PEMEX supplement, not a general replacement for Compras MX
 
 `dof-search-mapper.ts` has no CFE-specific logic — searching any buyer

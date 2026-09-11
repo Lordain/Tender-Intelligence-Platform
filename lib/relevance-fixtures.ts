@@ -1836,4 +1836,54 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "The fifth large 'alcantarillado'-family row in that export: an O&M manual for an existing plant at $3.35M. Below the threshold AND maintenance-only — it must stay excluded on either count.",
     country: "Peru", scopeType: "services", governmentLevel: "municipal", estimatedValue: 11_222_500, currency: "PEN",
   },
+  // ---- 2026-09-11: the user asked why the platform held ONE electricity
+  // project while CFE plainly had open ones. Root cause: every CFE tender
+  // reaches us through DOF, DOF publishes no value at all, Mexico is in
+  // UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL, and FLAGSHIP_INDUSTRY_KEYWORDS
+  // had no grid vocabulary — so `power` was tagged and then dropped. Every
+  // title below is a real CFE convocatoria the user found published. ----
+  {
+    title:
+      "Suministro, instalación y puesta en servicio de reguladores automáticos de tensión para las centrales generadoras de la RGVM",
+    expectedTier: "standard",
+    note: "CFE-0001-CAAAT-0127-2024, real DOF convocatoria. Kept on 'centrales generadoras'. Was excluded purely for having no value — DOF never publishes one.",
+    country: "Mexico", scopeType: "services", governmentLevel: "public_company",
+  },
+  {
+    title:
+      "IMPLEMENTACION DE UNIDAD TERMINAL REMOTA REDUNDANTE PARA EL ENLACE DEL SISTEMA DE CONTROL DISTRIBUIDO DE LA CENTRAL CICLO COMBINADO POZA RICA Y EL CENTRO NACIONAL DE CONTROL DE ENERGIA",
+    expectedTier: "standard",
+    note: "CFE-MSC-CFE-0929-CSAAA-0007-2026, open on CFE's micrositio. 'CENTRAL CICLO COMBINADO' drops the 'de', which is why that word is optional in the pattern.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "public_company",
+  },
+  {
+    title: "LÍNEA DE TRANSMISIÓN 400 KV Y SUBESTACIÓN ELÉCTRICA ZONA NORTE",
+    expectedTier: "standard",
+    note: "The grid vocabulary that carried no signal at all before — subestación, línea de transmisión, a stated kV. Deliberately phrased with NO construcción/ampliación verb: with one it is kept by INCLUDE_OVERRIDE and proves nothing about these patterns.",
+    country: "Mexico", scopeType: "works", governmentLevel: "public_company",
+  },
+  {
+    title: "MATERIALES PROFAUNA PARA SUBESTACIONES",
+    expectedTier: "excluded",
+    note: "The other side of it. A box of materials delivered TO a substation is not grid work — and this one has no purchase verb for purchaseSubject() to cut on, so the materials rule has to recognise a title that opens with the goods.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "public_company",
+  },
+  {
+    title: "QUERÉTARO.- CONSTRUCCIÓN DE OBRAS DE ELECTRIFICACIÓN (MANO DE OBRA Y SUMINISTRO DE MATERIALES) PROGRAMA CDI, TERCER PAQUETE MUNICIPIOS DE EZEQUIEL MONTES Y CADEREYTA",
+    expectedTier: "standard",
+    note: "Real CFE distribution build. 'mano de obra y suministro de materiales' is the standard phrasing for a full works contract — the contractor supplies both — and reading it as a consumables purchase excluded the tender even WITH a value, while the identical title without the parenthetical was kept.",
+    country: "Mexico", scopeType: "works", governmentLevel: "public_company",
+  },
+  {
+    title: "SERVICIO DE VIGILANCIA Y SEGURIDAD PARA LA SUBESTACIÓN",
+    expectedTier: "excluded",
+    note: "Guard duty at a substation must not ride in on the new grid vocabulary.",
+    country: "Mexico", scopeType: "services", governmentLevel: "public_company",
+  },
+  {
+    title: "MEJORAMIENTO DEL SERVICIO DE ENERGIA ELECTRICA EN LA LOCALIDAD DE SAN JUAN",
+    expectedTier: "excluded",
+    note: "Why 'electrificación' was deliberately left OUT of the new patterns: Invierte.pe names small household electrification programmes this way, and Peru would have flooded in behind the Mexican fix.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
 ];

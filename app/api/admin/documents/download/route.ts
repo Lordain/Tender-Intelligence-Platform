@@ -34,10 +34,21 @@ export const maxDuration = 60;
 /** Mirrors MAX_DOWNLOAD_SELECTION on the client — a bigger batch does not fit in maxDuration. */
 const MAX_TENDERS = 10;
 const MAX_FILES = 40;
-/** One oversized attachment must not eat the whole budget; 40MB is already well past any real Bases PDF seen. */
-const MAX_FILE_BYTES = 40 * 1024 * 1024;
-/** Total ZIP ceiling — a response much larger than this will not finish inside maxDuration anyway. */
-const MAX_TOTAL_BYTES = 80 * 1024 * 1024;
+/**
+ * 40MB was set as "already well past any real Bases PDF" and was simply
+ * wrong — the user reports real tender documents reaching 90-100MB, and the
+ * third run hit the cap on a genuine one. The analysis pipeline has always
+ * assumed that size (pdf-split.ts exists for 900-page/100MB files, and
+ * /admin/local-batch exists because pushing them through a browser upload is
+ * the bottleneck), so the downloader was the odd one out.
+ *
+ * Vercel keeps the old ceiling: the whole ZIP is built in memory and returned
+ * as one response body there, which a 100MB file does not survive regardless
+ * of what this constant says. On a local dev server neither limit applies.
+ */
+const MAX_FILE_BYTES = (process.env.VERCEL ? 40 : 150) * 1024 * 1024;
+/** Total ZIP ceiling. Locally this is what a whole batch of 100MB documents needs; on Vercel the response body could never carry it. */
+const MAX_TOTAL_BYTES = (process.env.VERCEL ? 80 : 400) * 1024 * 1024;
 /** How long with no new bytes before a transfer is treated as dead. See lib/ingestion/download-file.ts for why this is a stall clock and not a per-file deadline. */
 const STALL_TIMEOUT_MS = 30_000;
 /**
@@ -55,7 +66,7 @@ const CONCURRENCY = 2;
  * maxDuration above and the response still has to be built and sent inside
  * it; a local dev server has no limit, which is where a big batch belongs.
  */
-const TOTAL_BUDGET_MS = process.env.VERCEL ? 48_000 : 270_000;
+const TOTAL_BUDGET_MS = process.env.VERCEL ? 48_000 : 900_000;
 
 /**
  * Same honest-identification posture as the OECE index fetch (see

@@ -168,7 +168,149 @@ Colombia, Chile, Peru), positioned for Chinese enterprises bidding
 overseas. Portuguese (for Brazil) is part of that long-term direction but
 explicitly deferred for now. See the "Multi-country expansion" section in
 `lib/ingestion/README.md` for what the country expansion means for
-ingestion specifically; only Mexico has a real connector so far.
+ingestion specifically. Mexico and Colombia have real connectors; Brazil,
+Chile and Peru do not yet.
+
+Colombia comes from SECOP II's public Socrata API (`colombia-secop-live.ts`)
+rather than a downloaded file, and is filtered twice on the way in. The table
+is ~9M rows, so the fetch is narrowed server-side to a publication-date
+window plus a coarse `modalidad_de_contratacion like '%icitaci%'`, and the
+mapper then applies the exact gate: only **Licitación pública** and
+**Licitación pública Obra Pública** are ingested at all
+(`isIngestedColombiaModalidad`). Everything else — Contratación Directa,
+régimen especial, selección abreviada, supplier information requests — never
+enters the system.
+
+That gate replaced an earlier rule that hid any Colombia tender with no
+submission deadline. The rule was the indirect version of the same intent and
+was wrong in both directions: it hid genuine open tenders whose deadline
+datos.gov.co had not synced yet (18 of 37 rows on one import, 14 of them
+flagship), while still admitting directa rows whenever they happened to carry
+a date.
+
+The `$order` carries `id_del_proceso` as a tiebreaker, which is not
+cosmetic: `fecha_de_publicacion_del` is shared by hundreds of rows and
+Socrata gives no stable order within a tie, so `$offset` paging over it alone
+could return one row twice and another never.
+
+### Admins on the front end
+
+An account whose email is in `ADMIN_EMAILS` resolves to a full entitlement in
+`getViewerEntitlement()` — every paid gate on the public site opens, because
+they all read that one function. Keyed on the same list that gates `/admin`,
+so one env var decides who is staff and there is no second mechanism (a
+comped subscription row, a flag column) to drift from it.
+
+It grants access, not a fabricated subscription: no period, no billing link.
+The account page correctly shows nothing to renew.
+
+**Consequence:** an admin cannot see the paywall as themselves. Checking what
+a free or trial visitor sees needs an account that is not in `ADMIN_EMAILS`.
+`ACCESS_CONTROL.md` has the rest of the entitlement rules.
+
+## Classification and editing
+
+Everything a tender goes through between a source row and the public list.
+
+### The four gates
+
+A tender has to survive all four to reach the feed. They run in this order,
+and knowing which one dropped something is usually the whole debugging job:
+
+| # | Where | What it rejects |
+|---|---|---|
+| 1 | Connector (`$where`, server-side) | Outside the publication-date window; for Colombia, anything that is not a licitación |
+| 2 | Mapper | Missing title/buyer/number/publication date; for Colombia, the exact modalidad gate |
+| 3 | `lib/relevance.ts` | Below the value floor, or matching an exclude keyword, or carrying no target industry |
+| 4 | `upsert-tenders.ts` | `tier === "excluded"` — **never written to Supabase at all** |
+
+Gate 4 is why an excluded tender is absent rather than hidden. The public
+list has its own `excluded` filter as a backstop, but only rows admitted
+under older rules can ever hit it.
+
+Gate 3 runs **at import time** and stores its verdict, so a row keeps the
+tier the rules gave it on the day it was ingested. After changing a rule, run
+`npm run reclassify:tenders` (or the 重新分类 panel) to recompute every stored
+row's tier and industry tags; rows that are now excluded are deleted. It does
+**not** re-apply gates 1 or 2 — a modalidad the mapper would now reject has to
+be removed with SQL.
+
+Every rule change is pinned by a fixture in `lib/relevance-fixtures.ts` —
+every real title the user has confirmed a tier for, re-verified on every
+change by `npm run test:relevance`. Add the new case there **first**: a
+failure then tells you exactly which existing decision your rule would
+break. That is not theoretical — a leading-"estudios" exclude rule was caught
+contradicting a decision made four days earlier, and a narrower rule shipped
+instead.
+
+### Industry tags
+
+Ten categories (`lib/industry.ts`), multi-tag, keyword-matched. Education,
+tax and mining are deliberately absent: the first two are emptied by this
+platform's own exclude rules (school buildings, childcare, medical services,
+consulting, tax-culture programs), and mining is granted by concession here
+rather than tendered. Mining merged into `energy_mining` (能矿).
+`energy_mining` and `power` stay separate — extraction and fuels (PEMEX) vs
+the electricity grid (CFE), different buyers and different bidder pools.
+
+The public industry filter lists only categories that currently have tenders
+behind them, computed from the unfiltered list. A dead filter option reads as
+a broken site rather than an empty category, and this needs no hide list to
+maintain: a category reappears by itself once a source supplies it.
+
+### Status is derived, not stored
+
+`lib/tender-status.ts` computes what a reader sees from the stored status
+plus the calendar: `awarded`/`cancelled` always win, a passed deadline closes
+a tender, **澄清中 applies only on the day of the clarification meeting
+itself**, and everything else reads 招标中. 计划中 is not used.
+
+Derived because the clarification rule is time-dependent — a stored status is
+only correct on the day it was written, which is exactly how a one-day junta
+de aclaraciones ended up displayed for weeks. Days are compared in
+`America/Mexico_City`: the meeting happens where the meeting happens.
+
+### Manual edits win
+
+An admin edit to a tender is protected from the next import of that same
+tender. `tenders.manual_field_overrides` (migration 0032) records the columns
+a save actually **changed** — diffed against the stored row, not taken from
+the request body, since the form posts every field every time and treating
+"present" as "edited" would freeze the whole row on the first typo fix.
+`publication_date` and its estimated flag lock as a pair.
+
+`tender_key_dates.manually_added` (migration 0033) does the same for dates
+typed into the 其他关键日期 editor: the importer refreshes key dates by
+delete-then-insert, so without the flag a hand-entered 现场踏勘 vanished on
+every import.
+
+Separately, an **estimated** publication date never overwrites a stored one.
+Sources with no real publication-date field fall back to the ingestion
+timestamp, so re-importing used to move a tender's 发布日期 forward every
+single run. A real date still overwrites anything — that is how an estimate
+gets corrected.
+
+Protected columns are written back with their current stored value rather
+than omitted from the upsert: `ON CONFLICT DO UPDATE` validates the proposed
+INSERT tuple before detecting the conflict, so omitting a NOT NULL column
+fails the whole statement even though only the UPDATE branch could run.
+
+### Translation
+
+```bash
+npm run translate:tenders -- --limit 20            # dry run, no API calls
+npm run translate:tenders -- --limit 20 --write    # translate 20 and save
+npm run translate:tenders -- --write               # everything still untranslated
+```
+
+es→zh on Qwen3.6-Plus via DashScope (`DASHSCOPE_API_KEY`), batched. Title and
+summary are decided **separately**: a field is translated only if it is still
+the untranslated mirror every mapper writes (`zh === es`, byte for byte) and
+is not in `manual_field_overrides`. A human's Chinese is never overwritten,
+and a hand-translated title no longer blocks its own summary from being
+translated.
+
+The admin 新项目清单 page's 翻译所有标题 button runs the same function.
 
 ## Scheduled jobs (Vercel Cron)
 
@@ -181,7 +323,7 @@ subscribers pay and receive nothing.
 |---|---|---|
 | `0 15 * * *` | `/api/cron/tender-digest` | 09:00 morning digest |
 | `0 0 * * *` | `/api/cron/tender-digest` | 18:00 evening digest |
-| `30 3 * * *` | `/api/cron/purge-stale-colombia` | Deletes Colombia rows still with no deadline two months after publication |
+| `30 3 * * *` | `/api/cron/purge-stale-colombia` | Deletes Colombia rows whose `Modalidad de Contratación` the ingestion gate would reject today, two months after publication |
 
 **The digest times are not arbitrary and cannot be shifted.** The route itself
 only accepts hour 09 or 18 in `America/Mexico_City` and returns 409 otherwise

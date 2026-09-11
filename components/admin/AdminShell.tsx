@@ -27,7 +27,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-[calc(100vh-4.75rem)] bg-[#eef1ef] lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="border-b border-white/10 bg-[#061b2b] px-5 py-6 text-white lg:border-b-0 lg:border-r lg:px-4 lg:py-8">
-        <div className="mx-auto max-w-[94rem] lg:sticky lg:top-8">
+        <div className="mx-auto max-w-[94rem] lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
           <div className="mb-7 px-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffb21c]">Control center</p>
             <h1 className="mt-2 text-xl font-black">管理后台</h1>

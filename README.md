@@ -193,6 +193,56 @@ cosmetic: `fecha_de_publicacion_del` is shared by hundreds of rows and
 Socrata gives no stable order within a tie, so `$offset` paging over it alone
 could return one row twice and another never.
 
+### Local batch analysis (`/admin/local-batch`)
+
+A tender document can run to 900 pages / 100MB. Uploading those through a
+browser form is slow enough to be the bottleneck, so the dev server reads
+them off the operator's own disk instead: drop the downloaded files in one
+folder, paste the folder path, and every file is matched to its tender (by
+the procedure number inside the document), grouped so one tender's files are
+analysed together, and written back as a one-line summary plus
+qualifications / experience / required documents / risks. Identical files are
+skipped by content hash, so a re-run is not re-billed.
+
+Page caps keep the token cost bounded: 20 pages for a standard tender, 30 for
+significant, 40 for flagship (`maxPagesForTier`), truncated with
+`pdfseparate`/`pdfunite` before the file is ever read into memory.
+
+The route is **local-only** — it returns 404 when `NODE_ENV === "production"`,
+and the nav entry is compiled out of the deployed bundle. On a deployed
+instance the path would address Vercel's filesystem, which would make the
+endpoint an arbitrary-path file reader behind nothing but an admin cookie.
+
+**Setting it up on another computer.** The tool runs wherever `npm run dev`
+runs; nothing is installed globally.
+
+1. Node >= 20.9 (Next 16's floor), Git, then clone the repo and
+   `npm install`.
+2. Poppler on `PATH` — `pdfinfo`, `pdfseparate` and `pdfunite` do the page
+   counting and truncation, `pdftotext` the text fallback. Install per the
+   Getting Started section above and confirm with `pdfinfo -v`.
+3. `.env.local`. This tool needs six values and none of the Stripe/Resend
+   ones: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAILS` (your own address),
+   `DASHSCOPE_API_KEY` (Qwen — the default extraction tiers), and
+   `ANTHROPIC_API_KEY` (scanned PDFs with no text layer route to Claude).
+   `SUPABASE_SERVICE_ROLE_KEY` bypasses RLS: move it through a password
+   manager, not chat or email, and never commit it.
+4. `npm run dev`, sign in with the `ADMIN_EMAILS` address, open
+   `/admin/local-batch`.
+
+The Supabase project is shared, so the second machine sees the same tenders
+and writes to the same rows — only the folder path is local, and it must be
+that machine's own absolute path (`D:\tenders\2026-09`,
+`/Users/you/tenders/2026-09`).
+
+**If sign-in bounces you to the production site**, the dev server is on a port
+that is not in Supabase's redirect allow list. Supabase falls back to the
+project's Site URL when `redirect_to` does not match, rather than erroring.
+Add `http://localhost:3000/**` and whatever port `next dev` actually chose
+(it takes 3001 when 3000 is busy) under Authentication → URL Configuration →
+Redirect URLs.
+
 ### Admins on the front end
 
 An account whose email is in `ADMIN_EMAILS` resolves to a full entitlement in

@@ -211,3 +211,27 @@ overdue send-invoice subscription anyway, since no automatic payment attempt
 is made for `customer_balance`. That event is consequently **required** on
 the production webhook endpoint, not optional: without it, a transfer
 subscriber whose renewal never arrives keeps full access indefinitely.
+
+## Admins on the front end
+
+An account whose email is in `ADMIN_EMAILS` resolves to `role: "subscriber"`,
+`plan: "enterprise"` in `getViewerEntitlement()` — full access to tender
+detail pages, notification settings and everything else the paid tiers gate
+(2026-09-11, explicit request). Every front-end gate reads that one function,
+so there is nothing else to configure.
+
+Keyed on `ADMIN_EMAILS`, the same list that gates `/admin` itself: one place
+decides who is staff, set through an env var only a deployer controls. The
+alternative — a comped subscription row, or a flag column — is a second
+mechanism that can drift from the first and can be written by anything with
+service-role access.
+
+It grants access, **not a fabricated subscription**: no period, no billing
+link, `isEnterpriseOwner` false. The account page therefore shows an
+enterprise plan with nothing to renew, which is accurate — there is no
+subscription behind it. Inventing a period would make the billing UI lie to
+the person most likely to be checking whether it tells the truth.
+
+Consequence worth knowing: an admin cannot see the paywall by logging in as
+themselves. To check what a real free or trial user sees, use a separate
+account that is not in `ADMIN_EMAILS`.

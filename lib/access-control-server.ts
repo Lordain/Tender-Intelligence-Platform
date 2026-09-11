@@ -1,4 +1,5 @@
 import "server-only";
+import { isAdminEmail } from "@/lib/admin-auth";
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { selectPreferredSubscription, TRIAL_DAYS, type BillingInterval, type SubscriptionPlan, type ViewerEntitlement, type ViewerRole } from "@/lib/access-control";
@@ -97,6 +98,23 @@ function periodOf(subscription: SubscriptionRow) {
 export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> => {
   const user = await getCurrentUser();
   if (!user) return EMPTY;
+
+  // Admins see the whole front end, regardless of subscription state
+  // (2026-09-11, explicit request: 当前我的 admin 账号在前台被订阅限制了).
+  //
+  // Keyed on ADMIN_EMAILS — the same list that gates /admin itself, so there
+  // is exactly one place that decides who is staff, and no second mechanism
+  // (a flag column, a comped subscription row) that could drift from it or
+  // be set by anything other than an env var only a deployer controls.
+  //
+  // Deliberately returns no period, no billing link and isEnterpriseOwner
+  // false: this is access, not a fabricated subscription. The account page
+  // will correctly show nothing to renew, because there is nothing —
+  // inventing a period would make the billing UI lie to the one person who
+  // most needs to see what real subscribers see.
+  if (isAdminEmail(user.email)) {
+    return { ...EMPTY, role: "subscriber", plan: "enterprise" };
+  }
 
   const admin = createSupabaseAdminClient();
   const fallbackEnd = new Date(new Date(user.created_at).getTime() + TRIAL_DAYS * 86_400_000).toISOString();

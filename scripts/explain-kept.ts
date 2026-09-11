@@ -14,6 +14,8 @@
  *   npm run explain:kept                                  (newest exports/tenders-kept-*.csv)
  *   npm run explain:kept -- exports/tenders-kept-2026-09-07.csv
  *   npm run explain:kept -- --examples=8
+ *   npm run explain:kept -- --country=Colombia          (只看某个国家)
+ *   npm run explain:kept -- --country=Colombia --signal=金额   (把某一桶的标题全部列出)
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -24,6 +26,15 @@ const args = process.argv.slice(2);
 const EXAMPLES = Number(args.find((a) => a.startsWith("--examples="))?.split("=")[1] ?? 5);
 /** Substring of a bucket label; prints every title in the buckets it matches, so one bucket can be reviewed in full. */
 const ONLY = args.find((a) => a.startsWith("--signal="))?.split("=").slice(1).join("=");
+/**
+ * Case-insensitive country filter, e.g. --country=Colombia.
+ *
+ * A rule change lands in one country at a time — the Colombia modalidad gate
+ * added ~100 rows in a single import — and the useful question then is which
+ * rules are keeping THOSE, not the distribution across a corpus that Mexico
+ * dominates.
+ */
+const COUNTRY = args.find((a) => a.startsWith("--country="))?.split("=").slice(1).join("=");
 
 function newestKeptCsv(): string {
   const dir = "exports";
@@ -41,8 +52,18 @@ function newestKeptCsv(): string {
 }
 
 const path = args.find((a) => !a.startsWith("--")) ?? newestKeptCsv();
-const rows = parse(readFileSync(path), { columns: true, skip_empty_lines: true, relax_quotes: true }) as Record<string, string>[];
-console.log(`${path}：${rows.length} 条保留\n`);
+const allRows = parse(readFileSync(path), { columns: true, skip_empty_lines: true, relax_quotes: true }) as Record<string, string>[];
+const rows = COUNTRY
+  ? allRows.filter((row) => (row.country ?? "").toLowerCase().includes(COUNTRY.toLowerCase()))
+  : allRows;
+console.log(
+  COUNTRY
+    ? `${path}：${allRows.length} 条保留，其中 ${COUNTRY} ${rows.length} 条\n`
+    : `${path}：${rows.length} 条保留\n`,
+);
+if (COUNTRY && rows.length === 0) {
+  console.log(`没有 country 含「${COUNTRY}」的行。CSV 里出现过的国家：${[...new Set(allRows.map((r) => r.country))].join("、")}`);
+}
 
 type Bucket = { count: number; byCountry: Map<string, number>; examples: string[] };
 const buckets = new Map<string, Bucket>();

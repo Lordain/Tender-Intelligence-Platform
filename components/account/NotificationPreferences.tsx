@@ -7,8 +7,10 @@ import { COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, STATUS_LABELS }
 import { localize, useLocale } from "@/lib/i18n";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import type { TenderRelevanceTier, TenderStatus } from "@/types/tender";
+import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
 
-const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed", "awarded", "cancelled"];
+// "planned"/计划中 is deliberately absent — see lib/tender-status.ts.
+const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
 const TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
 const NOTIFICATION_COUNTRIES = ["Mexico", "Colombia"] as const;
 

@@ -14,6 +14,7 @@ import type {
   TenderStatus,
 } from "@/types/tender";
 import { classifyStoredTender } from "@/lib/relevance";
+import { deriveTenderStatus } from "@/lib/tender-status";
 
 // Re-exported so the many existing `from "@/lib/db/tenders"` call sites
 // (and app code) keep working now that the predicate itself lives in a
@@ -97,7 +98,12 @@ const TENDER_LIST_FIELDS = `
   publication_date, publication_date_is_estimated,
   submission_deadline, award_date, awarded_to, awarded_value, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden,
-  homepage_featured, documents_unavailable, source_name, source_url, created_at, updated_at
+  homepage_featured, documents_unavailable, source_name, source_url, created_at, updated_at,
+  -- Needed by deriveTenderStatus() for the clarification-day rule (lib/
+  -- tender-status.ts). Only the two columns the rule reads: the list is
+  -- paged over every tender, so pulling the full child row here would cost
+  -- far more than the rule is worth.
+  tender_key_dates ( type, date )
 `;
 
 /** One tender's full detail, including its qualifications/keyDates/risks — for fetchTenderBySlugFromDb (a single row). */
@@ -191,7 +197,12 @@ function toTender(row: TenderRow): Tender {
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
     location: row.location ?? undefined,
-    status: row.status,
+    // Derived, not stored — see lib/tender-status.ts. The stored column
+    // stays as the source reported it; this is what every surface displays.
+    status: deriveTenderStatus(row.status, {
+      submissionDeadline: row.submission_deadline,
+      keyDates: row.tender_key_dates ?? [],
+    }),
     qualifications: requirements.filter((r) => r.kind === "qualification").map(toRequirement),
     experienceRequirements: requirements.filter((r) => r.kind === "experience").map(toRequirement),
     requiredDocuments: requirements.filter((r) => r.kind === "document").map(toRequirement),

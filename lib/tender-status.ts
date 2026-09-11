@@ -1,0 +1,82 @@
+/**
+ * Derives the status a reader should see, from what the row stores plus the
+ * calendar. Called from toTender() (lib/db/tenders.ts), so every surface —
+ * public list, detail page, admin list, digest — shows the same answer
+ * without each one re-deriving it.
+ *
+ * Derived rather than stored because the rules the user set on 2026-09-10
+ * are time-dependent, and a stored status is only correct on the day it was
+ * written:
+ *
+ *   1. 计划中 ("planned") is not used. Sources that report a planning stage
+ *      (ocds-mapper maps OCDS `planning` to it) now read as 招标中.
+ *   2. 澄清中 applies ONLY on the day of the clarification meeting itself.
+ *      The complaint was that a junta de aclaraciones lasts one day, but
+ *      the status stuck: a tender imported during its clarification window
+ *      read 澄清中 for weeks afterwards, which told the reader the wrong
+ *      thing about what they could still do.
+ *   3. Anything else that has not closed reads 招标中.
+ *
+ * `awarded` and `cancelled` are terminal facts about the procurement, not
+ * stages of an open one, so they always win. A passed submission deadline
+ * closes a tender regardless of what the source last said.
+ */
+import type { Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
+
+/**
+ * Statuses a reader can ever see, and the only ones offered as filters.
+ * "planned" is deliberately absent — see rule 1 above.
+ */
+export const VISIBLE_TENDER_STATUSES: TenderStatus[] = [
+  "open",
+  "clarification",
+  "submission_closed",
+  "awarded",
+  "cancelled",
+];
+
+/**
+ * Calendar day in the platform's business timezone. Mexico City is UTC-6
+ * year-round (DST abolished in 2022) and every tender here is Mexican or
+ * Colombian, so "the day of the meeting" means the day it is where the
+ * meeting happens — not on the server, and not in the reader's browser.
+ */
+const DAY_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Mexico_City",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export function platformDay(value: string | number | Date): string | null {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return DAY_FORMATTER.format(date);
+}
+
+export function deriveTenderStatus(
+  stored: TenderStatus,
+  fields: { submissionDeadline?: string | null; keyDates?: Pick<TenderKeyDate, "type" | "date">[] },
+  now: Date = new Date(),
+): TenderStatus {
+  if (stored === "awarded" || stored === "cancelled") return stored;
+
+  const today = platformDay(now);
+  const deadlineDay = fields.submissionDeadline ? platformDay(fields.submissionDeadline) : null;
+  // Compared as day strings, not timestamps: a deadline at 14:00 today has
+  // not closed the tender for a reader looking at it in the morning, and a
+  // date-only deadline column has no time of day to compare against anyway.
+  if (today && deadlineDay && deadlineDay < today) return "submission_closed";
+
+  const clarifiesToday = (fields.keyDates ?? []).some(
+    (keyDate) => keyDate.type === "clarification" && today && platformDay(keyDate.date) === today,
+  );
+  if (clarifiesToday) return "clarification";
+
+  return "open";
+}
+
+/** Convenience wrapper for a fully-built Tender. */
+export function tenderDisplayStatus(tender: Tender, now?: Date): TenderStatus {
+  return deriveTenderStatus(tender.status, tender, now);
+}

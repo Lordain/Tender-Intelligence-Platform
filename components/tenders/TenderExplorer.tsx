@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
+import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
 import { ALL_INDUSTRIES } from "@/lib/industry";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import { localize, uiText, useLocale } from "@/lib/i18n";
@@ -22,7 +23,8 @@ import { AccessPrompt } from "@/components/access/AccessPrompt";
 import { DEFAULT_TENDER_LIST_STATUSES, type TenderListItem } from "@/lib/tender-list-page";
 
 const SCOPE_TYPES: TenderScopeType[] = ["equipment", "services", "equipment_services", "works", "consulting"];
-const STATUSES: TenderStatus[] = ["planned", "open", "clarification", "submission_closed", "awarded", "cancelled"];
+// "planned"/计划中 is deliberately absent — see lib/tender-status.ts.
+const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
 // Closed and cancelled projects stay available through an explicit filter,
 // but do not crowd the initial discovery view. Awarded projects remain in
 // the default set (the public DB layer already requires them to have analysis).

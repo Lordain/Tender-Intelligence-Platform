@@ -109,8 +109,10 @@ export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SOR
       };
       const priorityOf = (tender: Tender, deadline: number | null) => {
         const isFuture = deadline !== null && deadline >= now;
+        // 计划中 was tier 1 here; it is no longer a status any tender can
+        // display (lib/tender-status.ts), so open/clarification is the whole
+        // "live opportunity" band.
         if (isFuture && (tender.status === "open" || tender.status === "clarification")) return 0;
-        if (isFuture && tender.status === "planned") return 1;
         if (tender.status === "awarded") return 2;
         if (isFuture) return 3;
         return 4;

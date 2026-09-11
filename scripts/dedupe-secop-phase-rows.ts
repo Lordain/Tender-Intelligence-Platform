@@ -1,6 +1,7 @@
 /**
- * Cleans up the duplicate Colombian rows that SECOP II's phase labels
- * created before colombia-mapper.ts started stripping them.
+ * Cleans up duplicate tenders from two different causes.
+ *
+ * COLOMBIA — SECOP II's phase labels, before colombia-mapper.ts stripped them.
  *
  * The same procurement was published twice, differing only by a suffix on
  * the reference — "JBB-LP-004-2026" and "JBB-LP-004-2026 (Presentación de
@@ -18,6 +19,21 @@
  * Manually edited rows are never touched: an admin who fixed one of the pair
  * by hand should be asked which to keep, not have the answer chosen here.
  *
+ * MEXICO — the same federal project ingested twice under two slug
+ * namespaces, "comprasmx-<num>" and "proyectosestrategicos-<num>", with an
+ * identical tender_number. 27 of them on 2026-09-11: the user imported a
+ * Compras MX export while the Proyectos Estratégicos source was selected.
+ * The visible damage is that one project appears twice at DIFFERENT tiers —
+ * the Proyectos Estratégicos copy carries isNationalPriorityProject and lands
+ * flagship, the Compras MX copy lands standard.
+ *
+ * The Proyectos Estratégicos copy is the one kept: it has the priority flag
+ * and the Hacienda detail URL. Same protections as above — a row an admin has
+ * edited is never touched, whichever side it is on.
+ *
+ * This half is a one-off cleanup of an import mistake, not a connector bug,
+ * so nothing in the mappers changed to prevent it.
+ *
  * Usage:
  *   npm run dedupe:secop-phases                (dry run — prints the plan)
  *   npm run dedupe:secop-phases -- --write
@@ -31,6 +47,8 @@ type Row = {
   tender_number: string;
   title: { es?: string } | null;
   manual_field_overrides: string[] | null;
+  country: string;
+  source_name: string | null;
 };
 
 async function main() {
@@ -46,8 +64,8 @@ async function main() {
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, tender_number, title, manual_field_overrides")
-      .eq("country", "Colombia")
+      .select("slug, tender_number, title, manual_field_overrides, country, source_name")
+      .in("country", ["Colombia", "Mexico"])
       .range(from, from + PAGE - 1);
     if (error) throw new Error(`读取失败：${error.message}`);
     rows.push(...((data ?? []) as Row[]));
@@ -60,6 +78,7 @@ async function main() {
   const skipped: Row[] = [];
 
   for (const row of rows) {
+    if (row.country !== "Colombia") continue;
     const cleanNumber = stripProcessPhaseSuffix(row.tender_number ?? "");
     if (!cleanNumber || cleanNumber === row.tender_number) continue;
     const cleanSlug = `secop-${slugify(cleanNumber)}`;
@@ -73,7 +92,40 @@ async function main() {
     else toRename.push({ row, slug: cleanSlug, tenderNumber: cleanNumber });
   }
 
-  console.log(`哥伦比亚共 ${rows.length} 条。`);
+  // ---- Mexico: the same tender_number under both slug namespaces ----
+  const byNumber = new Map<string, Row[]>();
+  for (const row of rows) {
+    if (row.country !== "Mexico") continue;
+    const key = (row.tender_number ?? "").trim().toUpperCase();
+    if (!key) continue;
+    const list = byNumber.get(key) ?? [];
+    list.push(row);
+    byNumber.set(key, list);
+  }
+  const shadows: Row[] = [];
+  const shadowSkipped: Row[] = [];
+  for (const group of byNumber.values()) {
+    if (group.length < 2) continue;
+    const keeper = group.find((row) => row.slug.startsWith("proyectosestrategicos-"));
+    if (!keeper) continue;
+    for (const row of group) {
+      if (row === keeper) continue;
+      if (!row.slug.startsWith("comprasmx-")) continue;
+      if ((row.manual_field_overrides ?? []).length > 0) shadowSkipped.push(row);
+      else shadows.push(row);
+    }
+  }
+
+  console.log(`共读取 ${rows.length} 条（哥伦比亚 + 墨西哥）。`);
+  console.log(`\n墨西哥跨来源重复（保留 proyectosestrategicos，删除 comprasmx 影子）：${shadows.length}`);
+  for (const row of shadows.slice(0, 20)) console.log(`    - ${row.slug}`);
+  if (shadows.length > 20) console.log(`    …… 还有 ${shadows.length - 20} 条`);
+  if (shadowSkipped.length > 0) {
+    console.log(`  有手动编辑、跳过不动：${shadowSkipped.length}`);
+    for (const row of shadowSkipped) console.log(`    ! ${row.slug}`);
+  }
+
+  console.log(`\n哥伦比亚阶段后缀重复：`);
   console.log(`  重复（有干净副本）可删除：${toDelete.length}`);
   for (const row of toDelete.slice(0, 20)) console.log(`    - ${row.slug}`);
   if (toDelete.length > 20) console.log(`    …… 还有 ${toDelete.length - 20} 条`);
@@ -92,7 +144,7 @@ async function main() {
   }
 
   let deleted = 0;
-  for (const row of toDelete) {
+  for (const row of [...toDelete, ...shadows]) {
     const { error } = await supabase.from("tenders").delete().eq("slug", row.slug);
     if (error) console.error(`删除失败 ${row.slug}：${error.message}`);
     else deleted += 1;

@@ -520,12 +520,83 @@ const EXCLUDE_KEYWORDS = [
   // REVEGETALIZACIÓN EN ÁREAS CON PRESENCIA DE ESPECIES PIONERAS". Plain
   // "reforestación" is deliberately left out — it turns up as a compensation
   // measure inside real civil-works contracts, where the build is the point.
-  /revegetalizaci[óo]n|restauraci[óo]n ecol[óo]gica/i,
+  // Widened later the same day: the first version required the two words to
+  // be adjacent and so missed "IMPLEMENTACIÓN DE ACCIONES DE RESTAURACIÓN Y
+  // REHABILITACIÓN ECOLÓGICA" ($25.7M), where a second noun sits between
+  // them. A national-priority project still overrides this, which is why
+  // Mexico's "REVEGETACIÓN AFLUENTES, RESTAURACIÓN RIBERAS" stays in.
+  /revegetalizaci[óo]n|revegetaci[óo]n|(restauraci[óo]n|rehabilitaci[óo]n)[^.]{0,30}ecol[óo]gica|restauraci[óo]n de ecosistemas?/i,
 
   // Colombian police detention transfer centres: "ADECUACIÓN DEL CENTRO DE
   // TRASLADO POR PROTECCIÓN (CTP)". The full phrase only — the bare acronym
   // CTP collides with too much else.
   /centro de traslado por protecci[óo]n/i,
+  // ---- 2026-09-11, second Colombia round + a Mexico pass. Every pattern
+  // below is a real kept title the user reviewed and marked 排除. ----
+
+  // A. Contracts that buy PEOPLE or run a programme — no works, no goods.
+  /proceso de selecci[óo]n[^.]{0,80}empleos?\s+vacantes?|provisi[óo]n definitiva[^.]{0,60}empleos?/i,
+  /pago por resultados|promoci[óo]n de empleo/i,
+  /recurso humano id[óo]neo|suministro de personal|talento humano\b/i,
+  /pruebas de (conocimiento|competencias)/i,
+  /plan de bienestar\b/i,
+  /vigilancia y seguridad privada|servicios? de escolta/i,
+  /servicios? de log[íi]stica integral/i,
+  /contratar los seguros|p[óo]lizas? de seguros?|programa de seguros/i,
+  // "FORTALECIMIENTO <abstract noun>" as the whole object is a
+  // capacity-building programme: FORTALECIMIENTO EMPRESARIAL,
+  // ... ORGANIZACIONES SOCIALES, ... DE PEQUEÑOS Y MEDIANOS PRODUCTORES,
+  // ... DE LA RED DE BIBLIOTECAS. Only when it LEADS the title, and with a
+  // lookahead for the infrastructure nouns, because the same word introduces
+  // real works ("FORTALECIMIENTO DE LA INFRAESTRUCTURA VIAL") and trails
+  // real equipment buys ("ADQUISICIÓN DE VEHÍCULO ... Y FORTALECIMIENTO DEL
+  // SISTEMA DE VIDEOVIGILANCIA", which the user keeps).
+  /^\W*fortalecimiento\b(?![^.]{0,60}(infraestructura|vial|acueducto|alcantarillado|hospital|energ[íi]a|el[ée]ctric|red de distribuci|planta))/i,
+
+  // B. Parks, sports, culture and social-service buildings — the same
+  // municipal-amenity class already excluded for Mexico.
+  /centro de alto rendimiento|pista de patinaje|parques? (ecol[óo]gico|recreativo|de proximidad|deportivo)|infraestructura deportiva|escenarios? deportivos?/i,
+  /centro de integraci[óo]n social|centro vida\b|centro de bienestar animal|casa de la cultura|teatro al aire libre/i,
+
+  // D. Concessions where the contractor OPERATES an asset the state already
+  // owns, rather than building anything: "OTORGAR EN CONCESIÓN, LA OPERACIÓN
+  // Y EXPLOTACIÓN DE LAS ÁREAS ... TIENDA Y RESTAURANTE". Anchored on
+  // operación/explotación precisely so a build-and-operate highway concession
+  // — which is exactly the kind of project this platform exists to find —
+  // does not get swept up with it.
+  /otorgar en concesi[óo]n[^.]{0,90}(operaci[óo]n y )?explotaci[óo]n/i,
+  /accionistas? operador(es)? privado/i,
+
+  // ---- Mexico, same round. ----
+
+  // Supervision of someone else's build: "SEGUIMIENTO Y CONTROL DE LOS
+  // TRABAJOS DE RECONSTRUCCIÓN PAQ. 11" (5 rows). Same class as the
+  // "estudios y proyectos" engineering packages.
+  /seguimiento y control de (los )?trabajos/i,
+
+  // Preventive/corrective maintenance contracts — "SERVICIO DE M/P Y M/C PUE
+  // SISTEMA DE CIRCUITO CERRADO DE TELEVISIÓN".
+  /\bm\/p\s+y\s+m\/c\b|mantenimiento preventivo y correctivo/i,
+
+  // Dry toilets. Anchored to "sanitarios", so a real biogas plant keeps its
+  // own word.
+  /sanitarios?[^.]{0,25}biodigestor/i,
+
+  /centro de rehabilitaci[óo]n[^.]{0,60}fauna|rescate[^.]{0,40}fauna/i,
+  /centro de conciliaci[óo]n laboral/i,
+  /generador(es)? monof[áa]sic/i,
+
+  // Pedestrian bridges, now excluded outright (user, 2026-09-11). The
+  // MAJOR_PROJECT bridge rule already refused to promote them, but the
+  // "construcción" industry whitelist was still keeping them.
+  /puentes? peatonal(es)?/i,
+
+  // Single-unit vehicle purchases: "ADQUISICIÓN DE UN VEHICULO TIPO PICK UP",
+  // "ADQUISICION DE VEHICULO PARA LA COORDINACION DE PROTECCION CIVIL". The
+  // user keeps fleet buys at low priority (车辆采购: 留，但重要性和优先级都不用
+  // 太高) — this is the 单台下限 they asked for, and it works off the singular
+  // noun: "VEHÍCULOS" and "22 VEHS." both stay in.
+  /adquisici[óo]n de (un |una )?veh[íi]culo\b(?!s)/i,
 ];
 
 /**
@@ -584,6 +655,10 @@ const CHILDCARE_FACILITY_KEYWORDS = [
   // apostrophe is optional.
   /\bcaic'?s?\b|centros? de atenci[óo]n infantil/i,
   /estancias? infantil(es)?\b|jard[íi]n de ni[ñn]os/i,
+  // Colombia's term for the same thing (2026-09-11) — "Centro de desarrollo
+  // Infantil". Added under the user's existing daycare decision rather than
+  // as a new one.
+  /centros? de desarrollo infantil/i,
 ];
 
 const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];

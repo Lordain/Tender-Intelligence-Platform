@@ -1590,4 +1590,109 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     estimatedValue: 1_600_000,
     currency: "USD",
   },
+  // --- 2026-09-11, second round. The user reviewed the full kept list for
+  // both countries; these pin the rules that came out of it, and — more
+  // importantly — the near misses each one had to avoid. ---
+  {
+    title: "DESARROLLAR EL PROCESO DE SELECCIÓN PARA LA PROVISIÓN DEFINITIVA EN LA MODALIDAD DE INGRESO DE LOS EMPLEOS VACANTES DEL MUNICIPIO",
+    expectedTier: "excluded",
+    note: "Civil-service recruitment, and at $9.8M it was sitting at flagship.",
+    country: "Colombia", scopeType: "services", estimatedValue: 40_000_000_000, currency: "COP",
+  },
+  {
+    title: "FORTALECIMIENTO DE PEQUEÑOS Y MEDIANOS PRODUCTORES",
+    expectedTier: "excluded",
+    note: "Capacity-building programme. The rule only fires on a LEADING 'fortalecimiento'.",
+    country: "Colombia", scopeType: "services", estimatedValue: 26_000_000_000, currency: "COP",
+  },
+  {
+    title: "FORTALECIMIENTO DE LA INFRAESTRUCTURA VIAL DEL MUNICIPIO DE SOACHA",
+    expectedTier: "flagship",
+    note: "Guards the leading-fortalecimiento rule: the same word introduces real roadworks, which is why it carries a lookahead for the infrastructure nouns.",
+    country: "Colombia", scopeType: "works", estimatedValue: 26_000_000_000, currency: "COP",
+  },
+  {
+    title: "ADQUISICIÓN DE VEHÍCULO TIPO VAN UNIFORMADA CON DESTINO A LA ESTACION DE POLICIA NOBSA Y FORTALECIMIENTO DEL SISTEMA DE VIDEOVIGILANCIA",
+    expectedTier: "significant",
+    note: "Second guard on the same rule — 'fortalecimiento' trailing a real equipment purchase the user keeps. Plural-less 'VEHÍCULO' here is deliberate too: this one is a marked van with a CCTV package, not a bare single-car buy, and it survives because the title does not start with 'adquisición de vehículo'.",
+    country: "Colombia", scopeType: "equipment", estimatedValue: 2_400_000_000, currency: "COP",
+  },
+  {
+    title: "PRESTAR LOS SERVICIOS DE VIGILANCIA Y SEGURIDAD PRIVADA, COMPRENDIDOS POR VIGILANCIA FÍSICA, SERVICIO DE ESCOLTA, MONITOREO",
+    expectedTier: "excluded",
+    note: "Outsourced guards. Was kept by the CCTV equipment rule.",
+    country: "Colombia", scopeType: "services", estimatedValue: 2_200_000_000, currency: "COP",
+  },
+  {
+    title: "CONSTRUCCIÓN DE CENTRO DE ALTO RENDIMIENTO DEPORTIVO EN LA CIUDAD DE MONTERÍA; DEPARTAMENTO DE CÓRDOBA; FASE II",
+    expectedTier: "excluded",
+    note: "Municipal sports/park/culture amenity — the class already excluded for Mexico, extended to Colombia in this round.",
+    country: "Colombia", scopeType: "works", estimatedValue: 115_000_000_000, currency: "COP",
+  },
+  {
+    title: "OTORGAR EN CONCESIÓN, LA OPERACIÓN Y EXPLOTACIÓN DE LAS ÁREAS QUE COMPONEN LA ESTRUCTURA FÍSICA DEL CENTRO DE ATENCION AL VISITANTE",
+    expectedTier: "excluded",
+    note: "The state leasing out an asset it already owns, not buying anything.",
+    country: "Colombia", scopeType: "services",
+  },
+  {
+    title: "CONCESIÓN PARA LA CONSTRUCCIÓN Y OPERACIÓN DE LA DOBLE CALZADA BUCARAMANGA - PAMPLONA",
+    expectedTier: "flagship",
+    note: "Guards the concession rule: a build-and-operate highway concession is exactly what this platform exists to surface, which is why that rule anchors on 'otorgar en concesión ... explotación' and not on the word concesión. Note the wording — adding 'Y MANTENIMIENTO' makes the PRE-EXISTING routine-maintenance rule exclude it, which is worth knowing before a real BOT concession shows up phrased that way. Raised with the user 2026-09-11 rather than changed here, since no such real title has appeared yet.",
+    country: "Colombia", scopeType: "works", estimatedValue: 900_000_000_000, currency: "COP",
+  },
+  {
+    title: "IMPLEMENTACIÓN DE ACCIONES DE RESTAURACIÓN Y REHABILITACIÓN ECOLÓGICA PARA LA PRESERVACIÓN DE LOS ECOSISTEMAS",
+    expectedTier: "excluded",
+    note: "Why the ecological rule stopped requiring the two words to be adjacent — a second noun sits between them here.",
+    country: "Colombia", scopeType: "services", estimatedValue: 108_000_000_000, currency: "COP",
+  },
+  {
+    title: "Centro de desarrollo Infantil",
+    expectedTier: "excluded",
+    note: "Colombia's wording for a daycare, added under the user's existing childcare decision.",
+    country: "Colombia", scopeType: "works", estimatedValue: 17_000_000_000, currency: "COP",
+  },
+  {
+    title: "SEGUIMIENTO Y CONTROL DE LOS TRABAJOS DE RECONSTRUCCIÓN LA ZONA SUR (PAQ. 1)",
+    expectedTier: "excluded",
+    note: "Supervision of someone else's build — 5 real rows in the 2026-09-11 Mexico list.",
+    country: "Mexico", scopeType: "services",
+  },
+  {
+    title: "CONSTRUCCIÓN PUENTE PEATONAL ESTACIÓN 3 SIST.INTERCONECTADO ELECTROMOVILIDAD L-5",
+    expectedTier: "excluded",
+    note: "User excluded pedestrian bridges outright (2026-09-11). The bridge rule already refused to PROMOTE them; the construcción whitelist was still keeping them.",
+    country: "Mexico", scopeType: "works",
+  },
+  {
+    title: "ADQUISICIÓN DE UN VEHICULO TIPO PICK UP, PATRONATO",
+    expectedTier: "excluded",
+    note: "The 单台下限 the user asked for: a one-car purchase.",
+    country: "Mexico", scopeType: "equipment",
+  },
+  {
+    title: "ADQUISICIÓN DE VEHÍCULOS TIPO SEDÁN PARA LOS PROGRAMAS SSYRA Y SNSP SANAS 2026",
+    expectedTier: "standard",
+    note: "Guards the single-vehicle floor: a fleet buy stays in, at the low priority the user set for vehicles.",
+    country: "Mexico", scopeType: "equipment",
+  },
+  {
+    title: "ADQS. DE 22 VEHS. CISTERNA CAP. 10,000 LTS. PARA TURBOCINA",
+    expectedTier: "standard",
+    note: "Second guard on the same floor — an abbreviated, numbered fleet buy.",
+    country: "Mexico", scopeType: "equipment",
+  },
+  {
+    title: "SERVICIOS TECNOLÓGICOS DE GEOLOCALIZACIÓN Y SOPORTE EN CIBERSEGURIDAD",
+    expectedTier: "standard",
+    note: "User decided 保留 in this round. Pinned so a later services sweep cannot take it silently.",
+    country: "Mexico", scopeType: "services",
+  },
+  {
+    title: "RECONSTRUCCIÓN DEL PALACIO MUNICIPAL, GUEVEA DE HUMBOLDT, OAXACA",
+    expectedTier: "standard",
+    note: "User decided 保留 in this round, unlike the other small municipal buildings.",
+    country: "Mexico", scopeType: "works",
+  },
 ];

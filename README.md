@@ -202,6 +202,23 @@ Coverage is per-source and the UI says so rather than failing quietly:
 | Mexico — Compras MX | ❌ never | Same anti-automation gate as its search API |
 | Peru — ProInversión OxI | ❌ | The export carries a project detail link, no document URLs |
 
+### Peru SEACE is CLI-only on a deployed instance
+
+Confirmed 2026-09-11: SEACE/OECE's proxy answers
+`{"code":"403","message":"Forbidden",...}` to requests from Vercel's
+datacenter range (`iad1`), while the identical code pulls 2428 records for
+the same segment from an ordinary connection. It is the operator's access
+policy, and the data is reachable the way they allow, so it is not worked
+around — `npm run ingest:peru-live` on the admin's own machine is the
+supported path, and `/admin/import-tenders/peru` says so and hands over the
+command pre-filled when the button fails. Running the same page under `npm
+run dev` locally works normally.
+
+Two consequences worth stating plainly: an import cron for SEACE on Vercel is
+impossible, not merely unbuilt — OxI (investinperu.pe, a different host, not
+behind this proxy) is the only Peru source that could ever run on a schedule
+there; and `backfill:peru-documents` is a local command for the same reason.
+
 ### Which rule kept this? (`保留原因分析`)
 
 `npm run explain:kept` groups the kept set by the first positive signal that

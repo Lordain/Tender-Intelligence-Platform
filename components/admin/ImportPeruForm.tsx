@@ -90,6 +90,49 @@ function ResultPanel({ result }: { result: PeruResult }) {
   );
 }
 
+/**
+ * An import failure, and — when the failure is Peru refusing this deployment's
+ * IP range — the command that does work, built from the settings just
+ * submitted.
+ *
+ * Confirmed 2026-09-11: SEACE's proxy denies Vercel's datacenter range
+ * (`iad1`) outright. Nothing about the request changes that, so repeating
+ * "403 Forbidden" at the admin and stopping would leave them to work out the
+ * flags by hand every time.
+ */
+function ErrorPanel({
+  error,
+  copied,
+  onCopy,
+}: {
+  error: { message: string; cliCommand?: string };
+  copied: boolean;
+  onCopy: (command: string) => void;
+}) {
+  return (
+    <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+      <p>{error.message}</p>
+      {error.cliCommand && (
+        <div className="mt-2 border-t border-red-200 pt-2">
+          <p className="font-black text-[#8a2b2b]">在你自己的电脑上跑这条命令，参数已按上面的设置填好：</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11px] text-[#071826]">
+              {error.cliCommand}
+            </code>
+            <button
+              type="button"
+              onClick={() => onCopy(error.cliCommand!)}
+              className="h-7 shrink-0 rounded-lg border border-red-300 bg-white px-2.5 text-[11px] font-black text-[#8a2b2b] transition-colors hover:bg-red-100"
+            >
+              {copied ? "已复制" : "复制"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ImportPeruForm() {
   const [months, setMonths] = useState("2");
   const [days, setDays] = useState("5");
@@ -97,7 +140,20 @@ export function ImportPeruForm() {
   const [write, setWrite] = useState(false);
   const [running, setRunning] = useState<"oece" | "oxi" | null>(null);
   const [results, setResults] = useState<Partial<Record<"oece" | "oxi", PeruResult>>>({});
-  const [errors, setErrors] = useState<Partial<Record<"oece" | "oxi", string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<"oece" | "oxi", { message: string; cliCommand?: string }>>>({});
+  const [copied, setCopied] = useState(false);
+
+  async function copyCommand(command: string) {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access can be refused (insecure origin, permissions) — the
+      // command is on screen and selectable either way, so this is not worth
+      // an alert.
+    }
+  }
 
   async function run(source: "oece" | "oxi") {
     if (write && !confirm(`确定要把${source === "oece" ? " SEACE/OECE " : " Obras por Impuestos "}的秘鲁标书写入 Supabase 吗？`)) return;
@@ -115,10 +171,18 @@ export function ImportPeruForm() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      if (!res.ok) {
+        // Peru blocks this deployment's egress; the route replies with the
+        // command that works instead of leaving it as a dead error.
+        setErrors((prev) => ({
+          ...prev,
+          [source]: { message: data.error ?? `HTTP ${res.status}`, cliCommand: data.cliCommand },
+        }));
+        return;
+      }
       setResults((prev) => ({ ...prev, [source]: data as PeruResult }));
     } catch (err) {
-      setErrors((prev) => ({ ...prev, [source]: err instanceof Error ? err.message : String(err) }));
+      setErrors((prev) => ({ ...prev, [source]: { message: err instanceof Error ? err.message : String(err) } }));
     } finally {
       setRunning(null);
     }
@@ -174,7 +238,12 @@ export function ImportPeruForm() {
         <p className="mt-1 text-sm text-[#52636e]">
           秘鲁绝大部分公共采购走这里，量最大（一个月约 4000 条），约一天延迟。数据里没有投标截止日，链接指向 SEACE 公共检索平台，配合项目编号检索。
         </p>
-        {errors.oece && <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{errors.oece}</p>}
+        <p className="mt-2 rounded-xl border border-[#f0d9a8] bg-[#fff8e9] px-3 py-2 text-xs text-[#7a5200]">
+          <strong>线上部署跑不了这个来源。</strong>秘鲁官方接口拒绝机房 IP（已确认 Vercel iad1 返回 403），
+          这是对方的访问策略，不绕。<strong>请在自己的电脑上用命令行导入</strong>——下面的按钮如果失败，会直接把填好参数的命令给你复制。
+          本地 <code className="font-mono">npm run dev</code> 打开这个页面时按钮是好用的。
+        </p>
+        {errors.oece && <ErrorPanel error={errors.oece} copied={copied} onCopy={copyCommand} />}
         <button
           type="button"
           onClick={() => run("oece")}
@@ -193,7 +262,7 @@ export function ImportPeruForm() {
           量小但质量高（约 400 条在招，保留率约 40%），<strong>有真实投标截止日</strong>，每条都带官方单项目链接。
           投标方需为秘鲁纳税主体——每条项目会自动挂一条机制提示。
         </p>
-        {errors.oxi && <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{errors.oxi}</p>}
+        {errors.oxi && <ErrorPanel error={errors.oxi} copied={copied} onCopy={copyCommand} />}
         <button
           type="button"
           onClick={() => run("oxi")}

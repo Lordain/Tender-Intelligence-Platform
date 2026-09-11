@@ -58,7 +58,22 @@ async function oeceError(prefix: string, response: Response): Promise<Error> {
     .text()
     .then((text) => text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300))
     .catch(() => "");
-  return new Error(`${prefix} ${response.status} ${response.statusText}${body ? ` — 服务端返回：${body}` : ""}${whereAmI(response.status)}`);
+  const error = new Error(
+    `${prefix} ${response.status} ${response.statusText}${body ? ` — 服务端返回：${body}` : ""}${whereAmI(response.status)}`,
+  );
+  if (isEgressBlocked(response.status)) (error as OeceError).oeceEgressBlocked = true;
+  return error;
+}
+
+/** A thrown Error carrying this flag means the request was refused for where it came from, not for anything the caller can change. Callers surface a CLI fallback instead of a retry. */
+export type OeceError = Error & { oeceEgressBlocked?: boolean };
+
+export function isOeceEgressBlocked(err: unknown): boolean {
+  return err instanceof Error && (err as OeceError).oeceEgressBlocked === true;
+}
+
+function isEgressBlocked(status: number): boolean {
+  return status === 403 && Boolean(process.env.VERCEL_REGION);
 }
 
 /**
@@ -69,9 +84,15 @@ async function oeceError(prefix: string, response: Response): Promise<Error> {
  * own machine (2428 records for 2026-09) minutes before the admin route got
  * `{"code":"403","message":"Forbidden","RequestId":"${http.request.id}"}` for
  * it — a hand-written deny at an edge proxy, its own template placeholder
- * left unexpanded, not a commercial WAF's challenge page. A 403 that reaches
- * a reader without saying which machine it came from costs another round trip
- * to establish the one fact that decides what to do about it.
+ * left unexpanded, not a commercial WAF's challenge page. This line then
+ * CONFIRMED it the same day: the refused request came from `iad1`, Vercel's
+ * us-east-1 region. Peru's proxy denies the datacenter range wholesale.
+ *
+ * Deliberately not worked around. The block is the operator's decision about
+ * who may call their service from where, and the data is reachable the way
+ * they allow — from a machine on an ordinary connection, which is what the
+ * CLI is. So SEACE is a CLI-only source on a Vercel deployment, said plainly
+ * in the UI rather than left as a button that always fails.
  */
 function whereAmI(status: number): string {
   if (status !== 403) return "";

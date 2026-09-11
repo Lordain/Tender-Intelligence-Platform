@@ -189,6 +189,11 @@ handled" — writing discovered links there would have silently emptied the
 worklist for every Peru tender the moment the links were captured, with
 nothing actually downloaded.
 
+Rows ingested before that capture existed have no links, so they get a
+backfill — re-reads the same OCDS segments and fills in only the links,
+touching no tender. It is a button on the 秘鲁 tab (local dev only, since it
+calls SEACE) and a command, both on the same implementation:
+
 ```bash
 npm run backfill:peru-documents -- --months 6 --write   # links for Peru rows ingested before this existed
 ```
@@ -217,7 +222,10 @@ run dev` locally works normally.
 Two consequences worth stating plainly: an import cron for SEACE on Vercel is
 impossible, not merely unbuilt — OxI (investinperu.pe, a different host, not
 behind this proxy) is the only Peru source that could ever run on a schedule
-there; and `backfill:peru-documents` is a local command for the same reason.
+there; and the document-link backfill is local-only for the same reason — it
+appears as a panel on the 秘鲁 tab under `npm run dev` and 404s from the
+deployed route, rather than shipping a button that spends two minutes to
+produce a 403.
 
 ### Which rule kept this? (`保留原因分析`)
 

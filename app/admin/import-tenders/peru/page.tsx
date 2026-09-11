@@ -1,4 +1,5 @@
 import { ImportPeruForm } from "@/components/admin/ImportPeruForm";
+import { PeruDocumentLinksForm } from "@/components/admin/PeruDocumentLinksForm";
 
 export default function AdminImportTendersPeruPage() {
   return (
@@ -26,6 +27,13 @@ export default function AdminImportTendersPeruPage() {
         </a>
       </div>
       <ImportPeruForm />
+      {/*
+        Local dev only, and the route enforces it too — it calls SEACE, which
+        refuses Vercel's datacenter range. Rendered conditionally rather than
+        shown-and-disabled: on the deployed site this genuinely does not
+        exist, and a greyed-out panel invites someone to try to enable it.
+      */}
+      {process.env.NODE_ENV !== "production" && <PeruDocumentLinksForm />}
     </div>
   );
 }

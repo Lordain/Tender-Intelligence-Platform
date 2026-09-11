@@ -12,7 +12,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchOeceRecordsForSegment, recentSegmentIds } from "@/lib/ingestion/connectors/peru-oece-live";
 import { mapOeceRecordToTender, oeceDocumentLinks, type OeceRecord, type TenderDocumentLink } from "@/lib/ingestion/peru-oece-mapper";
-import { saveDocumentLinks } from "@/lib/ingestion/document-links";
+import { saveDocumentLinks, type DocumentLinksForSlug } from "@/lib/ingestion/document-links";
 import { downloadOxiExport } from "@/lib/ingestion/connectors/peru-oxi-live";
 import { readPeruOxiFile } from "@/lib/ingestion/connectors/peru-oxi-file";
 import { mapPeruOxiRowToTender, PERU_OXI_SOURCE_NAME, PERU_OXI_SOURCE_URL } from "@/lib/ingestion/peru-oxi-mapper";
@@ -189,4 +189,72 @@ export async function ingestPeruOxi(
   if (!options.write) return result;
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
   return writeOut(supabase, kept, result);
+}
+
+
+export type PeruDocumentLinkBackfillResult = {
+  segments: string[];
+  recordCount: number;
+  /** Records that carried at least one downloadable link, before matching against what is stored. */
+  tendersWithLinks: number;
+  linkCount: number;
+  write: boolean;
+  /** Populated only on a write. */
+  saved?: { tendersWithLinks: number; linkCount: number; unmatchedSlugs: number; failed: { slug: string; error: string }[] };
+};
+
+/**
+ * Records official bid-document links for Peru tenders ALREADY in Supabase.
+ *
+ * ingestPeruOece captures these as it writes new tenders, but every Peru row
+ * ingested before that existed has none — and the 批量下载标书 button has
+ * nothing to download for them. This re-reads the same OCDS segments and
+ * fills the links in without touching the tenders themselves: no
+ * reclassification, no upsert, no deletions. Safe to re-run; links upsert on
+ * (tender_id, source_url).
+ *
+ * Shared by `npm run backfill:peru-documents` and the 秘鲁 tab's local-only
+ * panel, for the same reason every other ingestion path here is shared: two
+ * copies drift, and this one decides which tenders are downloadable.
+ */
+export async function backfillPeruDocumentLinks(
+  supabase: SupabaseClient | null,
+  options: { write: boolean; months?: number; segment?: string; sourceId?: string },
+  onProgress?: (message: string) => void,
+): Promise<PeruDocumentLinkBackfillResult> {
+  const months = options.months ?? 2;
+  const segments = options.segment ? [options.segment] : recentSegmentIds(months);
+  const sourceId = options.sourceId ?? "seace_v3";
+
+  const entries: DocumentLinksForSlug[] = [];
+  let recordCount = 0;
+  for (const segment of segments) {
+    const records = await fetchOeceRecordsForSegment({ dataSegmentationId: segment, sourceId }, (page, soFar) => {
+      if (page === 1 || page % 10 === 0) onProgress?.(`${segment}: page ${page}, ${soFar} record(s)`);
+    });
+    recordCount += records.length;
+    for (const record of records) {
+      // Mapped rather than slugified inline, so the slug this matches on is
+      // byte-identical to the one the ingest wrote — a hand-rolled second slug
+      // rule is exactly how a backfill ends up matching nothing.
+      const tender = mapOeceRecordToTender(record, PERU_OECE_SOURCE_NAME);
+      if (!tender) continue;
+      const links = oeceDocumentLinks(record);
+      if (links.length > 0) entries.push({ slug: tender.slug, links });
+    }
+    onProgress?.(`${segment}: ${records.length} record(s)`);
+  }
+
+  const result: PeruDocumentLinkBackfillResult = {
+    segments,
+    recordCount,
+    tendersWithLinks: entries.length,
+    linkCount: entries.reduce((sum, entry) => sum + entry.links.length, 0),
+    write: options.write,
+  };
+  if (!options.write) return result;
+  if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
+
+  const saved = await saveDocumentLinks(supabase, entries);
+  return { ...result, saved };
 }

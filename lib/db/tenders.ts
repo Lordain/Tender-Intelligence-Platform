@@ -416,6 +416,7 @@ type DocumentsNeededRow = {
   relevance_label: LocalizedText | null;
   publication_date: string;
   source_url: string;
+  source_name: string;
   status: TenderStatus;
   tender_documents: { id: string }[];
   tender_document_links: { id: string }[];
@@ -423,7 +424,7 @@ type DocumentsNeededRow = {
 };
 
 const DOCUMENTS_NEEDED_SELECT = `
-  slug, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url, status,
+  slug, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url, source_name, status,
   tender_documents ( id ), tender_document_links ( id ), submission_deadline
 `;
 
@@ -497,6 +498,7 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
       relevanceLabel: row.relevance_label ?? LABELS_FALLBACK,
       publicationDate: row.publication_date,
       sourceUrl: row.source_url,
+      sourceName: row.source_name,
       status: row.status,
       documentLinkCount: row.tender_document_links?.length ?? 0,
     }));

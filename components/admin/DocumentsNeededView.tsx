@@ -62,6 +62,9 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState("all");
   const [relevance, setRelevance] = useState("all");
+  const [source, setSource] = useState("all");
+  /** Only some sources publish machine-readable document URLs, so "which of these can I actually batch-download" is a different question from "which source is this" — and the one the admin is really asking. */
+  const [downloadableOnly, setDownloadableOnly] = useState(false);
   const [dismissingSlug, setDismissingSlug] = useState<string | null>(null);
   // The selected tenders themselves, not just their slugs (2026-09-06): a
   // written tender is dropped from `tenders` immediately, and a panel that
@@ -127,6 +130,17 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
     [locale, tenders],
   );
 
+  // Built from the rows actually present rather than a hardcoded list, so a
+  // new connector shows up here the day its first tender lands.
+  const sources = useMemo(
+    () =>
+      [...new Set(tenders.map((tender) => tender.sourceName).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, locale),
+      ),
+    [locale, tenders],
+  );
+  const downloadableCount = useMemo(() => tenders.filter((tender) => tender.documentLinkCount > 0).length, [tenders]);
+
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return tenders.filter((tender) => {
@@ -137,18 +151,22 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
         tender.slug.toLowerCase().includes(normalizedQuery);
       const matchesCountry = country === "all" || tender.country === country;
       const matchesRelevance = relevance === "all" || tender.relevanceTier === relevance;
-      return matchesQuery && matchesCountry && matchesRelevance;
+      const matchesSource = source === "all" || tender.sourceName === source;
+      const matchesDownloadable = !downloadableOnly || tender.documentLinkCount > 0;
+      return matchesQuery && matchesCountry && matchesRelevance && matchesSource && matchesDownloadable;
     });
-  }, [country, locale, query, relevance, tenders]);
+  }, [country, downloadableOnly, locale, query, relevance, source, tenders]);
 
   const priorityCount = tenders.filter((tender) => tender.relevanceTier === "flagship" || tender.relevanceTier === "significant").length;
-  const hasFilters = Boolean(query.trim()) || country !== "all" || relevance !== "all";
+  const hasFilters = Boolean(query.trim()) || country !== "all" || relevance !== "all" || source !== "all" || downloadableOnly;
 
   function clearFilters() {
     setDraftQuery("");
     setQuery("");
     setCountry("all");
     setRelevance("all");
+    setSource("all");
+    setDownloadableOnly(false);
   }
 
   if (!SUPABASE_CONFIGURED) {
@@ -211,7 +229,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
           </form>
           <p className="shrink-0 text-xs font-bold text-[#64717c]">显示 <span className="text-[#071826]">{filtered.length}</span> / {tenders.length} 个项目</p>
         </div>
-        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto] lg:items-end">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-black text-[#52636e]">国家/地区</span>
             <select value={country} onChange={(event) => setCountry(event.target.value)} className={selectClass}>
@@ -226,6 +244,13 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
               {Object.entries(RELEVANCE_TIER_LABELS).map(([key, label]) => <option key={key} value={key}>{label[locale]}</option>)}
             </select>
           </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-black text-[#52636e]">来源</span>
+            <select value={source} onChange={(event) => setSource(event.target.value)} className={selectClass}>
+              <option value="all">全部来源</option>
+              {sources.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
           <button
             type="button"
             onClick={clearFilters}
@@ -235,6 +260,16 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
             清除筛选
           </button>
         </div>
+        <label className="mt-3 flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 text-xs font-black text-[#52636e] transition-colors hover:border-[#ffb21c]">
+          <input
+            type="checkbox"
+            checked={downloadableOnly}
+            onChange={(event) => setDownloadableOnly(event.target.checked)}
+            className="size-4 accent-[#ffb21c]"
+          />
+          只看能一键下载标书的（{downloadableCount} 个）
+          <span className="font-bold text-[#8a959c]">——目前只有秘鲁 SEACE/OECE 带官方标书链接</span>
+        </label>
       </div>
 
       {tenders.length === 0 ? (

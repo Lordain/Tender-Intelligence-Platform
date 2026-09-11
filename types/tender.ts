@@ -108,6 +108,8 @@ export type TenderNeedingDocuments = {
   relevanceLabel: LocalizedText;
   publicationDate: string;
   sourceUrl: string;
+  /** Which connector produced this row — the /admin/documents-needed 来源 filter, since only some sources carry auto-downloadable document links. */
+  sourceName: string;
   status: TenderStatus;
   /**
    * How many official bid-document download links ingestion captured for this

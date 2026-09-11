@@ -58,14 +58,39 @@ async function oeceError(prefix: string, response: Response): Promise<Error> {
     .text()
     .then((text) => text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300))
     .catch(() => "");
-  return new Error(`${prefix} ${response.status} ${response.statusText}${body ? ` — 服务端返回：${body}` : ""}`);
+  return new Error(`${prefix} ${response.status} ${response.statusText}${body ? ` — 服务端返回：${body}` : ""}${whereAmI(response.status)}`);
+}
+
+/**
+ * Says where THIS request went out from, appended to a 403.
+ *
+ * The 2026-09-11 report narrowed the cause to egress rather than headers: the
+ * identical code reached the same segment fine from the CLI on the operator's
+ * own machine (2428 records for 2026-09) minutes before the admin route got
+ * `{"code":"403","message":"Forbidden","RequestId":"${http.request.id}"}` for
+ * it — a hand-written deny at an edge proxy, its own template placeholder
+ * left unexpanded, not a commercial WAF's challenge page. A 403 that reaches
+ * a reader without saying which machine it came from costs another round trip
+ * to establish the one fact that decides what to do about it.
+ */
+function whereAmI(status: number): string {
+  if (status !== 403) return "";
+  const region = process.env.VERCEL_REGION;
+  return region
+    ? `（本次请求从 Vercel ${region} 机房发出。秘鲁这个接口对境外机房 IP 有拦截，本机命令行不受影响——用 npm run ingest:peru-live）`
+    : "（本次请求从运行这个服务的机器发出，不是 Vercel。如果同一台机器上 npm run ingest:peru-live 能跑通，问题就不在 IP）";
 }
 
 async function fetchOece(url: string | URL): Promise<Response> {
-  let response = await fetch(url, { headers: OECE_HEADERS });
+  // `cache: "no-store"` because Next patches global fetch and this is a live
+  // index: a response held from an earlier call — a 403 included — would be
+  // replayed as if it were this call's answer, which is exactly the shape of
+  // bug that makes a fix look like it did not work.
+  const init: RequestInit = { headers: OECE_HEADERS, cache: "no-store" };
+  let response = await fetch(url, init);
   for (let attempt = 1; attempt < OECE_MAX_ATTEMPTS && OECE_RETRYABLE_STATUSES.has(response.status); attempt++) {
     await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
-    response = await fetch(url, { headers: OECE_HEADERS });
+    response = await fetch(url, init);
   }
   return response;
 }

@@ -35,13 +35,35 @@ function soqlTimestamp(date: Date): string {
 
 export async function fetchSecopProcesos(options: FetchSecopProcesosOptions): Promise<SecopProcesoRow[]> {
   const { sinceDate, maxPages = DEFAULT_MAX_PAGES } = options;
-  const whereClause = `fecha_de_publicacion_del >= '${soqlTimestamp(sinceDate)}'`;
+  // Coarse modalidad filter, server-side, so the maxPages budget is spent
+  // only on rows this platform can actually ingest (2026-09-11). The precise
+  // gate still runs in the mapper — isIngestedColombiaModalidad() — but
+  // applying it ONLY there meant all 9M rows' worth of Contratación Directa
+  // and régimen especial consumed the page budget first, and a busy two-month
+  // window could push real licitaciones past the cap and silently out of the
+  // import.
+  //
+  // Deliberately `%icitaci%` rather than a precise prefix: SoQL `like` is
+  // byte-comparing, so an accent-insensitive match is not available, and
+  // datos.gov.co is inconsistent about the ó in "Licitación". Dropping the
+  // first letter and the accented vowel matches every spelling; anything
+  // extra it lets through is rejected by the mapper a moment later.
+  const whereClause =
+    `fecha_de_publicacion_del >= '${soqlTimestamp(sinceDate)}'` +
+    ` AND modalidad_de_contratacion like '%icitaci%'`;
 
   const rows: SecopProcesoRow[] = [];
   for (let page = 0; page < maxPages; page++) {
     const url = new URL(SECOP_BASE_URL);
     url.searchParams.set("$where", whereClause);
-    url.searchParams.set("$order", "fecha_de_publicacion_del DESC");
+    // The tiebreaker is not cosmetic. `fecha_de_publicacion_del` is far from
+    // unique — hundreds of rows share a publication timestamp — and Socrata
+    // gives no stable order within a tie, so $offset paging over a
+    // non-unique sort key can return the same row on two pages and never
+    // return another at all. Every page boundary was a chance to silently
+    // lose a tender. `id_del_proceso` is unique, which makes the total order
+    // deterministic and the paging lossless.
+    url.searchParams.set("$order", "fecha_de_publicacion_del DESC, id_del_proceso ASC");
     url.searchParams.set("$limit", String(PAGE_SIZE));
     url.searchParams.set("$offset", String(page * PAGE_SIZE));
 

@@ -101,7 +101,7 @@ export const participationGuides: ParticipationGuide[] = [
     quickFacts: [
       { label: "采购单位", value: "CFE（墨西哥联邦电力委员会）" },
       { label: "官方系统", value: "Micrositio de Concursos" },
-      { label: "关键准备", value: "平台认可的电子签名" },
+      { label: "关键准备", value: "与 SAT 校验的企业 e.firma" },
     ],
     sections: [
       {
@@ -110,7 +110,7 @@ export const participationGuides: ParticipationGuide[] = [
         steps: [
           { title: "确认供应商类别", detail: "注册时选择境内或境外、自然人或法人，并确认属于货物／租赁／服务供应商，还是工程承包商。" },
           { title: "创建供应商账户", detail: "在 CFE Micrositio 的新供应商入口录入企业、联系人和税务等资料，并按系统提示完成账户配置。" },
-          { title: "配置电子签名", detail: "系统注册页面要求上传受认可的电子签名证书与私钥文件，并输入对应密码。境外企业应先核对当前系统接受的签名与替代安排。" },
+          { title: "配置电子签名（e.firma）", detail: "注册页面要求上传证书（.cer）与私钥（.key）文件并输入密码，系统会与墨西哥税务局（SAT）校验；法人须使用企业本身的 e.firma，而不是个人的。这实际上意味着注册前需要先有墨西哥税号（RFC）。没有 RFC 的境外企业应先向 CFE 服务台确认当前是否存在适用于境外主体的替代安排，不要假设一定有。" },
           { title: "查找并加入具体程序", detail: "检索采购程序，阅读公告和日历，按系统指引表达参与意向或加入程序，并关注提问与答疑窗口。" },
           { title: "提交方案并跟进", detail: "依 bases 与附件分别准备法律／行政、技术和经济方案，在指定时间内完成电子提交并保存回执。" },
         ],
@@ -121,7 +121,7 @@ export const participationGuides: ParticipationGuide[] = [
         items: [
           "企业注册、法定代表人、授权委托及联系人资料",
           "税务和银行信息，以及公告要求的诚信、利益冲突与合规声明",
-          "平台认可的电子签名证书、私钥和相应密码",
+          "企业 e.firma 的证书（.cer）、私钥（.key）和密码；注册资料默认有效期一年，到期需更新续期",
           "与标的匹配的技术规格响应、人员履历、设备清单与实施计划",
           "相关合同经验、客户证明、质量或行业认证",
           "经济报价、成本构成、担保和公告要求的其他附件",
@@ -132,7 +132,7 @@ export const participationGuides: ParticipationGuide[] = [
         title: "中国企业重点核对",
         items: [
           "注册页面中的境外法人路径是否与当前企业情况相符",
-          "项目是否允许国际参与，以及电子签名是否存在境外企业适用的当前操作方案",
+          "项目是否允许国际参与；没有墨西哥 RFC 时，e.firma 这一关是否存在当前可用的替代方案",
           "技术标准、墨西哥本地含量、现场能力、保修和备件要求",
           "所有关键日期，包括说明会、现场踏勘、问题提交、开标与提交截止时间",
         ],
@@ -164,9 +164,9 @@ export const participationGuides: ParticipationGuide[] = [
         id: "process",
         title: "参与流程",
         steps: [
-          { title: "完成供应商登记", detail: "先在 Pemex 的供应商完整信息工具（HIIP）登记，取得六位供应商编号及相应登记证明。公开竞赛通常要求完成该登记。" },
+          { title: "完成供应商登记", detail: "先在 Pemex 的供应商信息整合工具（HIIP，Herramienta de Información Integral de Proveedores）登记，取得六位供应商编号及相应登记证明。公开竞赛通常要求完成该登记。" },
           { title: "开通 SISCEP 联系人", detail: "为企业建立或启用可进入 SISCEP 的公司联系人账户，确保邮箱与授权关系有效。" },
-          { title: "查找项目并表达意向", detail: "阅读公开采购程序；对希望参加的项目提交 manifestación de interés（参与意向）。" },
+          { title: "查找项目并表达意向", detail: "阅读公开采购程序；对希望参加的项目按公告指定方式提交 manifestación de interés（参与意向）——Pemex 现行流程通常要求以邮件提交，且提交时 HIIP 登记须处于有效状态。" },
           { title: "通过邀请链接进入事件", detail: "Pemex 通常向已表达意向且符合系统流程的联系人发送加入采购事件的链接，企业再在 SISCEP 内继续操作。" },
           { title: "提交响应并跟进结果", detail: "按项目 bases、附件、答疑与更正准备和提交方案，持续查看事件通知与评审结果。" },
         ],
@@ -237,7 +237,7 @@ export const participationGuides: ParticipationGuide[] = [
           "已完成合同或相关经验清单",
           "同意公共机构查询相关数据库的授权文件",
           "企业分类、联系信息及系统要求的其他账户资料",
-          "RUP（Registro Único de Proponentes）如适用；它不是创建 SECOP II 供应商账户的一般前置条件",
+          "RUP（Registro Único de Proponentes）如适用；它不是创建 SECOP II 供应商账户的一般前置条件，但在公开招标中是另一回事——见下方「中国企业重点核对」",
         ],
         note: "供应商目录中的注册资料可能被其他用户查看。上传身份证件或敏感资料前，应按官方指南考虑水印、保密标注和必要的信息保护。",
       },
@@ -246,7 +246,8 @@ export const participationGuides: ParticipationGuide[] = [
         title: "中国企业重点核对",
         items: [
           "具体程序是否允许外国供应商，以及是否要求在哥伦比亚设分支、委任代表或组成联合体",
-          "RUP、税务登记、保证金和本地银行安排是否适用于该程序",
+          "RUP 在本程序中是否适用：哥伦比亚官方口径是，在哥伦比亚有住所的自然人、在哥伦比亚设有分支机构（sucursal）的外国法人须登记 RUP；没有住所的外国自然人和没有分支机构的外国法人属于法定豁免，由采购实体以其他适当方式核验资格条件。注意反向情形——若为投标在当地设立分支机构，通常反而落入 RUP 义务",
+          "税务登记、保证金和本地银行安排是否适用于该程序",
           "中国文件的西班牙语官方翻译、公证、附加证明书或领事认证要求",
           "时区、电子签署、报价币种、税费与跨境履约安排",
         ],
@@ -254,9 +255,13 @@ export const participationGuides: ParticipationGuide[] = [
       },
     ],
     sources: [
-      { label: "SECOP II 供应商注册官方指南（2024）", href: "https://www.colombiacompra.gov.co/sites/cce_public/files/cce_step/cce-sec-gi-07_guia_procedimiento_de_registro_de_proveedores_del_sistema_electronico_para_la_contratacion_publica_secop_ii_29-05-2024.pdf" },
+      // The guide's landing page rather than a direct PDF path: Colombia Compra
+      // Eficiente migrated www off /sites/cce_public/ (that tree now answers on
+      // the operaciones. subdomain), so a PDF URL is the part that rots.
+      { label: "SECOP II 供应商注册官方指南", href: "https://www.colombiacompra.gov.co/archivos/manual/guia-de-procedimiento-de-registro-de-proveedores-del-sistema-electronico-para-la-contratacion-publica-secop-ii" },
       { label: "SECOP II 注册所需文件说明", href: "https://operaciones.colombiacompra.gov.co/secop-ii/3247/23693/Documentos%20requeridos%20para%20el%20registro" },
       { label: "Colombia Compra Eficiente 官方门户", href: "https://www.colombiacompra.gov.co/secop/secop-ii" },
+      { label: "RUP 官方说明（谁需要登记、谁豁免）", href: "https://www.colombiacompra.gov.co/archivos/infografia/registro-unico-de-proponentes" },
     ],
   },
   {
@@ -312,8 +317,11 @@ export const participationGuides: ParticipationGuide[] = [
     ],
     sources: [
       { label: "Proyectos Estratégicos MX 官方平台", href: "https://proyectosestrategicosmx.hacienda.gob.mx/sitiopublico/#/" },
-      { label: "战略基础设施投资促进法（DOF，2026-04-09）", href: "https://www.dof.gob.mx/abrirPDF.php?anio=2026&archivo=09042026-VES.pdf&repo=" },
-      { label: "配套条例（DOF，2026-05-08）", href: "https://www.dof.gob.mx/abrirPDF.php?anio=2026&archivo=08052026-VES.pdf&repo=" },
+      // Per-document permalinks, not abrirPDF.php whole-edition PDFs: the DOF
+      // evening edition of 2026-04-09 also carries an unrelated LFPRH reform, so
+      // the edition PDF makes a reader hunt for the law inside it.
+      { label: "战略基础设施投资促进法 LFIIEDB（DOF，2026-04-09 晚版）", href: "https://www.dof.gob.mx/nota_detalle.php?codigo=5784517&fecha=09/04/2026" },
+      { label: "配套条例 Reglamento（DOF，2026-05-08 晚版）", href: "https://www.dof.gob.mx/nota_detalle.php?codigo=5786977&fecha=08/05/2026" },
     ],
   },
 ];

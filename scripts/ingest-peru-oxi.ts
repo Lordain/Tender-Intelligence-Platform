@@ -1,62 +1,58 @@
 /**
- * Imports ProInversión's Obras por Impuestos convocatorias from the file the
- * "Exportar a Excel" button on investinperu.pe produces.
+ * CLI for ProInversión's Obras por Impuestos convocatorias — thin wrapper
+ * around lib/ingestion/ingest-peru.ts, same shared path the admin 秘鲁 tab
+ * uses.
  *
- * Peru's third channel, alongside SEACE/OECE and the APP concessions — see
- * lib/ingestion/peru-oxi-mapper.ts for what it is, why it earns a place next
- * to SEACE (a real bid deadline, which OECE's data has none of), and the
- * Ley 29230 tax-offset mechanism every row carries a risk note about.
- *
- * The export is a snapshot of what is open right now, so there is no recency
- * filter: --months 0. A convocatoria that closes drops out of the next export
- * rather than ageing inside this one.
- *
- * With no file argument it fetches the export live, from the same endpoint the
- * site's own "Exportar a Excel" button calls — see peru-oxi-live.ts, including
- * why that path has never been exercised from this project's sandbox. Pass a
- * downloaded file to bypass the network entirely.
+ * With no file argument it fetches live from the endpoint the site's own
+ * "Exportar a Excel" button calls (peru-oxi-live.ts). Pass a downloaded file
+ * to bypass the network entirely.
  *
  * Usage:
  *   npm run ingest:peru-oxi                           (fetch live, dry run)
  *   npm run ingest:peru-oxi -- --write
+ *   npm run ingest:peru-oxi -- --days 5
  *   npm run ingest:peru-oxi -- ListaConvocatoriaProceso_20260911.xlsx
- *   npm run ingest:peru-oxi -- ListaConvocatoriaProceso_20260911.xlsx --write
- *   npm run ingest:peru-oxi -- <file>.xlsx --days 5      (only convocatorias published in the last 5 days)
  */
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
-import { downloadOxiExport } from "../lib/ingestion/connectors/peru-oxi-live";
-import { importNewTenders } from "../lib/ingestion/import-new-tenders";
+import { ingestPeruOxi } from "../lib/ingestion/ingest-peru";
 import { reportClassificationPreview } from "../lib/ingestion/preview-report";
+import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+
+function argValue(args: string[], flag: string): string | undefined {
+  const idx = args.indexOf(flag);
+  return idx >= 0 ? args[idx + 1] : undefined;
+}
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
-  const filePath = args.find((a) => !a.startsWith("--"));
-
-  let buffer: Buffer;
-  let fileName: string;
-  if (filePath) {
-    buffer = readFileSync(filePath);
-    fileName = basename(filePath);
-  } else {
-    console.log("Fetching the OxI export live from investinperu.pe...");
-    buffer = await downloadOxiExport();
-    fileName = `ListaConvocatoriaProceso_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    console.log(`  got ${(buffer.length / 1024).toFixed(0)} KB.`);
+  const write = args.includes("--write");
+  const filePath = args.find((a) => !a.startsWith("--") && /\.(xlsx|xls)$/i.test(a));
+  const supabase = createSupabaseAdminClient();
+  if (write && !supabase) {
+    console.error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). See .env.example.");
+    process.exit(1);
   }
 
-  const result = await importNewTenders(
-    "peru-oxi",
-    { buffer, fileName },
-    { write: shouldWrite, months: 0, days: Number(args[args.indexOf("--days") + 1]) || 0, preview: !shouldWrite },
+  const result = await ingestPeruOxi(
+    supabase,
+    {
+      write,
+      days: Number(argValue(args, "--days") ?? 0),
+      preview: !write,
+      file: filePath ? { buffer: readFileSync(filePath), fileName: basename(filePath) } : undefined,
+    },
+    (message) => console.log(message),
   );
 
-  console.log(`Mapped ${result.mappedCount} of ${result.totalRows} rows.`);
+  console.log(`Mapped ${result.mappedCount} of ${result.fetchedCount} rows.`);
+  if (result.keptAfterRecencyCount !== result.mappedCount) {
+    console.log(`Keeping ${result.keptAfterRecencyCount} of ${result.mappedCount} within the recency window.`);
+  }
 
-  if (!shouldWrite) {
-    reportClassificationPreview(result.preview ?? result.sample, {
-      examples: Number(args[args.indexOf("--examples") + 1]) || 25,
+  if (!write) {
+    reportClassificationPreview(result.preview ?? [], {
+      examples: Number(argValue(args, "--examples") ?? 25),
       label: "ingest-peru-oxi",
       exportBaseName: "peru-oxi-preview",
     });

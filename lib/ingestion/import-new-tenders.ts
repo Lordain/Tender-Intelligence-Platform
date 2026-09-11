@@ -8,13 +8,13 @@
  * (confirmed byte-identical columns, see lib/ingestion/README.md's
  * "Proyectos Estratégicos MX" section) and reader
  * (readComprasMxOpenTendersFile), differing only in mapper, source name and
- * source URL. Peru's Obras por Impuestos export is a different file
- * entirely, so each source now owns a `load` step that pairs its own reader
- * with its own mapper, rather than the reader being hardcoded here.
+ * source URL. Each source still owns a `load` step pairing its own reader
+ * with its own mapper rather than the reader being hardcoded here — Peru's
+ * Obras por Impuestos briefly lived here and proved the seam worth keeping,
+ * before moving to its own country tab and its own live fetch
+ * (lib/ingestion/ingest-peru.ts).
  */
 import { readComprasMxOpenTendersFile } from "@/lib/ingestion/connectors/compras-mx-open-tenders-file";
-import { readPeruOxiFile } from "@/lib/ingestion/connectors/peru-oxi-file";
-import { mapPeruOxiRowToTender, PERU_OXI_SOURCE_NAME, PERU_OXI_SOURCE_URL } from "@/lib/ingestion/peru-oxi-mapper";
 import { mapComprasMxOpenTenderRowToTender } from "@/lib/ingestion/compras-mx-open-tenders-mapper";
 import { mapProyectosEstrategicosRowToTender } from "@/lib/ingestion/proyectos-estrategicos-mapper";
 import { filterRecentTenders, filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
@@ -56,19 +56,6 @@ const SOURCE_CONFIG: Record<NewTendersSource, SourceConfig> = {
     "https://proyectosestrategicosmx.hacienda.gob.mx/sitiopublico/#/",
     mapProyectosEstrategicosRowToTender,
   ),
-  "peru-oxi": {
-    sourceName: PERU_OXI_SOURCE_NAME,
-    sourceUrl: PERU_OXI_SOURCE_URL,
-    load: async (file) => {
-      const rows = await readPeruOxiFile(file);
-      return {
-        totalRows: rows.length,
-        mapped: rows
-          .map((row) => mapPeruOxiRowToTender(row, PERU_OXI_SOURCE_NAME, PERU_OXI_SOURCE_URL))
-          .filter((t): t is Tender => t !== null),
-      };
-    },
-  },
 };
 
 export async function importNewTenders(

@@ -26,8 +26,23 @@ export function ColombiaFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/** Three vertical bands, red-white-red. The plain civil flag, without the coat of arms — at 20x14 px an escudo is noise, same reasoning as Mexico's eagle being one dot above. */
+export function PeruFlag({ className = "" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-grid h-3.5 w-5 shrink-0 grid-cols-3 overflow-hidden rounded-[2px] border border-black/10 shadow-[0_1px_2px_rgba(0,0,0,.08)] ${className}`}
+    >
+      <span className="bg-[#d91023]" />
+      <span className="bg-white" />
+      <span className="bg-[#d91023]" />
+    </span>
+  );
+}
+
 export function CountryFlag({ country, className = "" }: { country: string; className?: string }) {
   if (country === "Mexico") return <MexicoFlag className={className} />;
   if (country === "Colombia") return <ColombiaFlag className={className} />;
+  if (country === "Peru") return <PeruFlag className={className} />;
   return null;
 }

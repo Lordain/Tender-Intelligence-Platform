@@ -15,6 +15,7 @@ import { CountryFlag } from "@/components/tenders/CountryFlag";
 const TABS = [
   { href: "/admin/import-tenders/mexico", label: "墨西哥", country: "Mexico" },
   { href: "/admin/import-tenders/colombia", label: "哥伦比亚", country: "Colombia" },
+  { href: "/admin/import-tenders/peru", label: "秘鲁", country: "Peru" },
 ];
 
 export function ImportTendersTabs() {

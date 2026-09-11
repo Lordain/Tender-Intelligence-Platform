@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "招标项目列表",
-  description: "浏览墨西哥、哥伦比亚政府公开招标项目，按行业、金额与项目规模筛选，全部信息已整理为中文。",
+  description: "浏览墨西哥、哥伦比亚、秘鲁政府公开招标项目，按行业、金额与项目规模筛选，全部信息已整理为中文。",
 };
 
 /**

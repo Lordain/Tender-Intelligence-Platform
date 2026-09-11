@@ -16,6 +16,7 @@ const DIMENSION_LABELS: Record<string, string> = {
 const VALUE_LABELS: Record<string, string> = {
   Mexico: "墨西哥",
   Colombia: "哥伦比亚",
+  Peru: "秘鲁",
   flagship: "大型项目",
   significant: "中型项目",
   standard: "常规项目",

@@ -7,7 +7,22 @@ export const TENDER_PAGE_SIZE = 20;
 export const LOCKED_TENDER_PAGE_SIZE = 10;
 export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "awarded"];
 
-const AVAILABLE_COUNTRIES = ["Mexico", "Colombia"] as const;
+/**
+ * Countries the public list offers as a filter — and, because an absent
+ * country param means "all of these", the countries the default feed shows
+ * AT ALL. A country missing from this list is invisible on /tenders no matter
+ * how many of its tenders are in the database, which is exactly what happened
+ * to Peru between its first import and 2026-09-11.
+ *
+ * So this is the switch that turns a country on for users, and it belongs
+ * next to a real connector: ALL_COUNTRIES (lib/tender-labels.ts) also carries
+ * Brazil and Chile, which have no source yet and would only ever return zero.
+ *
+ * Exported because TenderExplorer draws the filter pills from the very same
+ * list: two copies would let the pills and the server-side filter disagree,
+ * and the failure mode of that is a country a user can tick but never see.
+ */
+export const AVAILABLE_COUNTRIES = ["Mexico", "Colombia", "Peru"] as const;
 const PLATFORM_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Mexico_City",
   year: "numeric",

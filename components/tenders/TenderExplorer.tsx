@@ -15,12 +15,12 @@ import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
 import { InlineTogglePills } from "@/components/tenders/InlineTogglePills";
 import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
-import { ColombiaFlag, CountryFlag, MexicoFlag } from "@/components/tenders/CountryFlag";
+import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
 import { canInteractWithTenderList, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
 import { AccessPrompt } from "@/components/access/AccessPrompt";
-import { DEFAULT_TENDER_LIST_STATUSES, type TenderListItem } from "@/lib/tender-list-page";
+import { AVAILABLE_COUNTRIES, DEFAULT_TENDER_LIST_STATUSES, type TenderListItem } from "@/lib/tender-list-page";
 
 // "planned"/计划中 is deliberately absent — see lib/tender-status.ts.
 const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
@@ -34,7 +34,6 @@ const DEFAULT_STATUSES: TenderStatus[] = DEFAULT_TENDER_LIST_STATUSES;
 // it's a normal, selectable tier, on by default same as flagship/significant.
 const RELEVANCE_TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
 const DEFAULT_RELEVANCE_TIERS: TenderRelevanceTier[] = [];
-const AVAILABLE_COUNTRIES = ["Mexico", "Colombia"] as const;
 
 function formatTenderCount(value: number): string {
   if (value < 1000) return value.toLocaleString();
@@ -369,7 +368,7 @@ export function TenderExplorer({
               options={AVAILABLE_COUNTRIES.map((country) => ({
                 value: country,
                 label: localize(COUNTRY_LABELS[country], locale),
-                icon: country === "Mexico" ? <MexicoFlag /> : <ColombiaFlag />,
+                icon: <CountryFlag country={country} />,
               }))}
               selected={countries as (typeof AVAILABLE_COUNTRIES)[number][]}
               onChange={(next) => updateParams({ country: next.length === 1 ? next[0] : null })}

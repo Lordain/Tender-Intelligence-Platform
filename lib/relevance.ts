@@ -1251,9 +1251,19 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   // BIOMÉTRICO" / "EQUIPOS DE CONTROL DE ACCESO VEHICULAR" purchase.
   /(sistema(s)?|equipo(s)?|dispositivo(s)?|torniquete(s)?|lector(es)?|biom[ée]tric[oa]|electr[óo]nico|vehicular).{0,40}control de acceso|control de acceso.{0,40}(sistema(s)?|equipo(s)?|dispositivo(s)?|torniquete(s)?|lector(es)?|biom[ée]tric[oa])|access control system/i,
   /ciberseguridad|cybersecurity/i,
-  /centro de comando|command center/i,
+  /centro(s)? de comando|command center/i,
   /seguridad electr[óo]nica|electronic security/i,
-  /datacenter|centro de datos/i,
+  // `centro(s)?`, not `centro` (2026-09-12): a real open Compras MX tender,
+  // "SERVICIO PARA EL FORTALECIMIENTO DE LOS CENTROS DE DATOS DE INFOTEC"
+  // (LA-55-91M-05591M001-N-24-2026), was excluded outright on the plural
+  // alone — the row carries no value, Mexico is in
+  // UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL, and this list was its only way
+  // back in. Singularising the title flips it excluded -> flagship.
+  //
+  // An oversight rather than a judgement: the flagship datacenter pattern
+  // further down already writes `centro(s)? de datos`, so the two spellings
+  // of the same rule disagreed about the same words.
+  /datacenter|centro(s)? de datos/i,
   /fibra [óo]ptica|fiber optic/i,
   // Anchored away from drug dosages (2026-09-11, two real Peru rows):
   // "INMUNOGLOBULINA HUMANA NORMAL 5g/100 mL" and "L-GLUTAMINA +

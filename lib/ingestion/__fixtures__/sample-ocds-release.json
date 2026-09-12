@@ -1,0 +1,38 @@
+{
+  "uri": "https://example.gob.mx/contratacionesabiertas/sample.json",
+  "publishedDate": "2026-08-20T00:00:00Z",
+  "releases": [
+    {
+      "ocid": "ocds-abc123-CFE-2026-0447",
+      "id": "ocds-abc123-CFE-2026-0447-tender",
+      "date": "2026-08-20T09:00:00Z",
+      "buyer": { "id": "CFE", "name": "Comisión Federal de Electricidad (CFE)" },
+      "parties": [
+        { "id": "CFE", "name": "Comisión Federal de Electricidad (CFE)", "roles": ["buyer", "procuringEntity"] }
+      ],
+      "tender": {
+        "id": "LO-018TOQ001-E200-2026",
+        "title": "Suministro de Transformadores de Distribución para Red Eléctrica en Chihuahua",
+        "description": "CFE requiere el suministro de transformadores de distribución de 13.8 kV para reforzar la red eléctrica regional en el estado de Chihuahua.",
+        "status": "active",
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Nacional",
+        "mainProcurementCategory": "goods",
+        "value": { "amount": 62000000, "currency": "MXN" },
+        "tenderPeriod": { "startDate": "2026-08-20T00:00:00Z", "endDate": "2026-10-05T18:00:00Z" },
+        "enquiryPeriod": { "endDate": "2026-09-10T18:00:00Z" },
+        "documents": [
+          { "id": "doc-1", "documentType": "tenderNotice", "title": "Convocatoria", "url": "https://example.gob.mx/docs/convocatoria.pdf" }
+        ],
+        "items": [
+          {
+            "id": "item-1",
+            "description": "Transformadores de distribución 13.8 kV",
+            "classification": { "scheme": "CPV", "id": "31170000", "description": "Energy" }
+          }
+        ]
+      },
+      "awards": []
+    }
+  ]
+}

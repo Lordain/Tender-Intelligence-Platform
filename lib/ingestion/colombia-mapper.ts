@@ -1,0 +1,461 @@
+import type { GovernmentLevel, Tender, TenderScopeType, TenderStatus } from "@/types/tender";
+import { untranslated, slugify } from "@/lib/ingestion/text-utils";
+import { classifyStoredTender } from "@/lib/relevance";
+
+/**
+ * One row from Colombia's real "SECOP II - Procesos de Contratación"
+ * open-data set on `datos.gov.co` (Socrata resource `p6dx-8zbt`, published
+ * by Agencia Nacional de Contratación Pública — Colombia Compra
+ * Eficiente). Confirmed real and reachable with NO authentication via the
+ * standard public Socrata read endpoint:
+ *
+ *   https://www.datos.gov.co/resource/p6dx-8zbt.json?$limit=N&$offset=M
+ *
+ * (SODA2 — the dataset's own export dialog defaults to SODA3, which
+ * requires an auth token; the plain `/resource/<id>.json` SODA2 path
+ * needs none for read access to a public dataset, confirmed by a real
+ * unauthenticated request returning real rows). 9,097,326 rows total as
+ * of this writing — by far the largest single source this platform has
+ * touched; a real pull needs `$limit`/`$offset` pagination and almost
+ * certainly a `$where` date filter (e.g. recent `fecha_de_publicacion_del`
+ * only), not a full dump.
+ *
+ * Field names are Socrata's auto-generated column identifiers, derived
+ * from each column's real display name by stripping/mangling accents —
+ * e.g. "Descripción del Procedimiento" becomes `descripci_n_del_procedimiento`
+ * (not a typo here). Values themselves keep real accented Spanish text.
+ *
+ * This dataset is confirmed real from a direct, unauthenticated browser
+ * request returning 5 real rows (DANE, Barranquilla, a Bogotá school,
+ * INVIAS, a Putumayo municipality) — the field mapping below is built
+ * from those 5 rows and will need broadening as more real data is seen
+ * (see the status/scope-type functions' comments for what's still a
+ * best-effort guess from a small sample).
+ */
+export type SecopProcesoRow = {
+  entidad?: string;
+  nit_entidad?: string;
+  departamento_entidad?: string;
+  ciudad_entidad?: string;
+  ordenentidad?: string; // "Nacional" | "Territorial"
+  id_del_proceso?: string;
+  referencia_del_proceso?: string;
+  nombre_del_procedimiento?: string;
+  descripci_n_del_procedimiento?: string;
+  fecha_de_publicacion_del?: string; // "yyyy-mm-ddT00:00:00.000"
+  precio_base?: string;
+  modalidad_de_contratacion?: string;
+  duracion?: string;
+  unidad_de_duracion?: string;
+  fecha_de_recepcion_de?: string;
+  estado_del_procedimiento?: string;
+  adjudicado?: string; // "No" | "Si" (real values seen so far are all "No")
+  nombre_del_proveedor?: string;
+  codigo_principal_de_categoria?: string; // UNSPSC-shaped, e.g. "V1.80111500"
+  estado_de_apertura_del_proceso?: string; // "Abierto" | "Cerrado"
+  tipo_de_contrato?: string;
+  urlproceso?: { url?: string };
+  codigo_entidad?: string;
+  // Fields confirmed real from the dataset's own SODA API field dictionary
+  // (user pulled it directly, 2026-09-05) but not previously captured:
+  // `estado_resumen` ("Estado Resumen") is a coarser status than
+  // `estado_del_procedimiento` — not yet used for anything (no real value
+  // sample yet), captured for future use. `fecha_adjudicacion`/
+  // `valor_total_adjudicacion` ("Fecha Adjudicacion"/"Valor Total
+  // Adjudicacion") are the real award date/value, previously never
+  // captured at all despite `awardDate`/`awardedValue` existing as real
+  // Tender fields other mappers already populate (compranet5-mapper.ts,
+  // compras-mx-contracts-mapper.ts, ocds-mapper.ts). Deliberately NOT
+  // capturing `nombre_del_adjudicador` ("Nombre del Adjudicador") as a
+  // provider signal — per the same field dictionary this is a DIFFERENT
+  // field from `nombre_del_proveedor` ("Nombre del Proveedor Adjudicado")
+  // — the adjudicador is the awarding body/committee, not the winning
+  // contractor.
+  estado_resumen?: string;
+  fecha_adjudicacion?: string;
+  valor_total_adjudicacion?: string;
+};
+
+/**
+ * Colombia is a unitary republic, not federated like Mexico — "Nacional"
+ * (central government) is the clean federal-equivalent match. "Territorial"
+ * covers both departmental (state-equivalent) and municipal entities with
+ * no further field to split them, so the buyer name itself is checked for
+ * municipal-specific words ("municipio", "distrito", "alcaldía" — all real,
+ * seen in the 5-row sample) before falling back to "state" for anything
+ * territorial that isn't obviously a municipality (e.g. a "Gobernación").
+ */
+function inferGovernmentLevel(ordenEntidad: string | undefined, entidad: string | undefined): GovernmentLevel {
+  if (ordenEntidad === "Nacional") return "federal";
+  if (/municipio|distrito|alcald[íi]a/i.test(entidad ?? "")) return "municipal";
+  return "state";
+}
+
+const SCOPE_TYPE_BY_TIPO_CONTRATO: Record<string, TenderScopeType> = {
+  "PRESTACIÓN DE SERVICIOS": "services",
+  COMPRAVENTA: "equipment",
+  SUMINISTRO: "equipment",
+  "OBRA": "works",
+  CONSULTORÍA: "consulting",
+};
+
+/**
+ * SECOP II publishes the same procurement more than once, and the copies
+ * differ only by a phase label glued onto BOTH the reference and the name:
+ *
+ *   JBB-LP-004-2026                          CONCESION CAV
+ *   JBB-LP-004-2026 (Presentación de oferta)  CONCESION CAV (Presentación de oferta)
+ *
+ * Since the slug is built from the reference, that produced two rows for one
+ * tender — confirmed on real data (2026-09-11): identical buyer, identical
+ * description, identical everything else. Stripping the suffix collapses them
+ * onto one slug, so the upsert dedupes them by itself.
+ *
+ * Only a trailing parenthetical naming a KNOWN phase is removed, never any
+ * trailing parenthetical: real Colombian references carry meaningful ones
+ * ("(Obra)", "(Grupo 2)"), and dropping those would merge tenders that are
+ * genuinely different. Loops because the label nests —
+ * "(Fase de Selección (Presentación de ofertas))".
+ */
+const PROCESS_PHASE_WORDS =
+  /fase de selecci[óo]n|presentaci[óo]n de ofertas?|borrador|convocatoria|adjudicaci[óo]n|evaluaci[óo]n de ofertas?/i;
+
+export function stripProcessPhaseSuffix(value: string): string {
+  let out = value.trim();
+  for (let guard = 0; guard < 3; guard += 1) {
+    const match = out.match(/\s*\(([^()]*(?:\([^()]*\)[^()]*)*)\)\s*$/);
+    if (!match || match.index === undefined || !PROCESS_PHASE_WORDS.test(match[1])) break;
+    out = out.slice(0, match.index).trim();
+  }
+  return out;
+}
+
+/**
+ * Reference-shaped or otherwise contentless procedure names, e.g. "CERRITO",
+ * "Nº LP-SI-001-2026", "OBRA SAN BERNARDO", "PRESTACION DE SERVICIOS",
+ * "LICITACION DE OBRA PUBLICA INV-0001-2026".
+ *
+ * `nombre_del_procedimiento` is frequently an internal label — it tells a
+ * reader nothing, and it is also what the relevance keywords and the
+ * translator see, so a contentless name degrades classification and the
+ * Chinese title alike. `descripci_n_del_procedimiento` carries the real
+ * object of the contract.
+ */
+function isUninformativeName(name: string): boolean {
+  const compact = name.replace(/\s+/g, " ").trim();
+  if (compact.length < 25) return true;
+  // A bare code, optionally introduced by procurement boilerplate.
+  if (/^(licitaci[óo]n\s+p[úu]blica|licitaci[óo]n\s+de\s+obra\s+p[úu]blica|obra\s+p[úu]blica|contrataci[óo]n|concurso\s+de\s+m[ée]ritos|invitaci[óo]n)?\s*(n[°ºo.]*\s*)?[A-Za-z0-9]{1,6}[-–][A-Za-z0-9\-–/.]{2,}$/i.test(compact)) {
+    return true;
+  }
+  // Pure boilerplate with no object: "PRESTACION DE SERVICIOS".
+  return /^(prestaci[óo]n de servicios|obra p[úu]blica|licitaci[óo]n p[úu]blica|suministro|compraventa|concesi[óo]n)$/i.test(compact);
+}
+
+/** Cuts at a word boundary so a description used as a title doesn't end mid-word. */
+function titleFromDescription(description: string): string {
+  const compact = description.replace(/\s+/g, " ").trim();
+  if (compact.length <= 160) return compact;
+  const cut = compact.slice(0, 160);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > 120 ? cut.slice(0, lastSpace) : cut).replace(/[;,.\s]+$/, "")}…`;
+}
+
+/** Only 2 real distinct values seen in the 5-row sample ("Prestación de servicios", "Otro") — an exact lookup for the one real signal seen, "services" as the fallback since that's this dataset's overwhelming majority in the sample. Needs broadening once a larger real pull is available. */
+function inferScopeType(tipoContrato: string | undefined): TenderScopeType {
+  if (!tipoContrato) return "services";
+  return SCOPE_TYPE_BY_TIPO_CONTRATO[tipoContrato.toUpperCase().trim()] ?? "services";
+}
+
+/**
+ * `adjudicado` ("Sí"/"No") is the real awarded signal — checked first
+ * regardless of the other status fields. `estado_de_apertura_del_proceso`
+ * ("Abierto"/"Cerrado") is the clean open/closed signal for everything
+ * else. `estado_del_procedimiento` ("Seleccionado", "Evaluación", ...) is
+ * a finer-grained real phase name but not used here yet — the 5-row
+ * sample isn't enough to build a confident full mapping from it (e.g.
+ * "Seleccionado" appeared on rows with `adjudicado: "No"`, so it does NOT
+ * mean "awarded" despite the name — a real trap worth flagging, not
+ * guessing past).
+ *
+ * Real gap (2026-09-05): `awardedTo`/`nombre_del_proveedor` was already
+ * captured and stored on the tender but never fed into status at all —
+ * for a "Contratación Directa" (direct/sole-source) process especially,
+ * a real named provider is definitive proof the opportunity is already
+ * decided (no competitive bidding was ever going to happen), even when
+ * `adjudicado` still reads "No" — the user found a live SECOP II process
+ * whose own "Fecha de publicación" was already later than its contract
+ * signing/execution-start dates, i.e. published well after the fact, and
+ * asked for these to stop looking like open opportunities. Checked ahead
+ * of `adjudicado` for the same reason: a stale/lagging "No" shouldn't
+ * override a real provider name that's already there.
+ *
+ * Second real signal added same day: the user manually cross-checked a
+ * live SECOP II process page and found `estado_del_procedimiento`
+ * (labeled "Estado" there) reading literally "Proceso adjudicado y
+ * celebrado" ("process awarded and executed") — confirming this field
+ * DOES carry an unambiguous awarded signal after all, just not via the
+ * "Seleccionado" trap flagged above. Checked as a plain `/adjudicad/i`
+ * substring match, which "Seleccionado"/"Evaluación" etc. never contain,
+ * so the earlier trap can't recur.
+ */
+function inferStatus(
+  adjudicado: string | undefined,
+  aperturaEstado: string | undefined,
+  providerName: string | undefined,
+  estadoDelProcedimiento: string | undefined,
+): TenderStatus {
+  if (providerName && providerName !== "No Definido") return "awarded";
+  if (adjudicado?.trim().toLowerCase() === "si" || adjudicado?.trim().toLowerCase() === "sí") return "awarded";
+  if (estadoDelProcedimiento && /adjudicad/i.test(estadoDelProcedimiento)) return "awarded";
+  if (aperturaEstado === "Cerrado") return "submission_closed";
+  return "open";
+}
+
+function parseDate(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+/**
+ * Real finding (2026-09-04): `id_del_proceso` from the main process
+ * dataset (`CO1.REQ.*`) does NOT match the archivos-metadata dataset's
+ * `proceso` column (`CO1.BDOS.*` in a fresh unfiltered sample) — a real
+ * bulk run confirmed 0 matching rows across 440+ candidates. The user then
+ * manually opened one tender's own `sourceUrl` (community.secop.gov.co,
+ * CAPTCHA-gated) and found its address bar carries a THIRD id namespace,
+ * `noticeUID=CO1.NTC.*` — and confirmed with their own eyes that this
+ * specific tender's detail page really does list real, downloadable
+ * attachments. `urlproceso.url` (stored as `sourceUrl` by
+ * mapSecopRowToTender, below) carries this exact noticeUID for every
+ * tender that has a real deep link — ingest-colombia.ts's document-fetch
+ * step tries it against the (CAPTCHA-free, genuinely open) archivos
+ * dataset's `proceso` filter before falling back to `id_del_proceso`.
+ *
+ * Real bug confirmed (2026-09-05): some rows' `urlproceso.url` is not a
+ * deep link at all — it's the bare SECOP login page
+ * (`https://community.secop.gov.co/STS/Users/Login/Index`, no
+ * `noticeUID` query param), which a human clicking "来源链接" just lands
+ * on with nothing to act on. mapSecopRowToTender uses this function to
+ * gate which sourceUrl actually gets stored: a login-page-only url falls
+ * back to the datos.gov.co API link instead, which is at least a working,
+ * specific reference for this process even without a CAPTCHA-free public
+ * detail page.
+ */
+export function extractNoticeUidFromUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).searchParams.get("noticeUID")?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Normalizes `duracion` + `unidad_de_duracion` into days, feeding
+ * classifyRelevance()'s SHORT_DURATION_DAYS/LONG_DURATION_DAYS signal from
+ * a real STRUCTURED field instead of the Spanish text-phrase scan
+ * (DURATION_ANCHOR in relevance.ts) that Colombia's title/summary text
+ * never actually contains — without this, Colombia could never trigger the
+ * duration signal at all, real or not.
+ *
+ * Real bug confirmed (2026-09-05, task "确认工期信号在真实数据上生效"): every
+ * row of the real captured lib/ingestion/__fixtures__/sample-colombia-secop.json
+ * (5/5) carries `unidad_de_duracion` as literally "día(s)" — the header
+ * comment here had already guessed this exact "Día(s)" shape, but the
+ * DAYS_PER_UNIT map/lookup below never actually accounted for the "(s)"
+ * suffix, so `DAYS_PER_UNIT["día(s)"]` was always undefined and this
+ * function silently returned undefined for every single Colombia row —
+ * the duration signal had never fired for Colombia at all, confirming the
+ * exact risk this comment already flagged. Fixed by stripping any
+ * parenthesized suffix before the lookup. "Semana(s)"/"Mes(es)"/"Año(s)"
+ * are inferred to follow the identical SECOP II dropdown convention (same
+ * fix handles them once one is captured) but — same DEFENSIVE posture as
+ * before — aren't yet confirmed real themselves; only "día(s)" is.
+ */
+const DAYS_PER_UNIT: Record<string, number> = {
+  "día": 1,
+  "dias": 1,
+  "días": 1,
+  semana: 7,
+  semanas: 7,
+  mes: 30,
+  meses: 30,
+  "año": 365,
+  ano: 365,
+  años: 365,
+  anos: 365,
+};
+
+function normalizeDurationDays(duracion: string | undefined, unidad: string | undefined): number | undefined {
+  if (!duracion || !unidad) return undefined;
+  const count = Number(duracion);
+  if (!Number.isFinite(count) || count <= 0) return undefined;
+  const bareUnit = unidad.trim().toLowerCase().replace(/\(.*?\)/g, "").trim();
+  const perUnit = DAYS_PER_UNIT[bareUnit];
+  return perUnit !== undefined ? Math.round(count * perUnit) : undefined;
+}
+
+/**
+ * SECOP II modalidades this platform ingests at all — public open tenders,
+ * and nothing else (2026-09-11, explicit request: 只加入 Modalidad de
+ * Contratación = Licitación pública 或 Licitación pública Obra Pública，
+ * 非这两个条目的项目都不要加进系统).
+ *
+ * This replaces the "hide a Colombia tender that has no submission
+ * deadline" rule, which was the previous, indirect attempt at the same
+ * goal. That rule was both too broad and too narrow: it hid genuine open
+ * tenders whose deadline datos.gov.co had not synced yet (37 rows imported
+ * on 2026-09-08, 18 hidden, 14 of them flagship), while still letting
+ * plenty of Contratación Directa / régimen especial rows through whenever
+ * they happened to carry a date. Filtering on the modalidad says what was
+ * actually meant.
+ *
+ * Matched on a normalized prefix rather than exact string equality:
+ * datos.gov.co is inconsistent about accents and spacing in this field
+ * ("Obra Publica" and "Obra Pública" both occur), and an exact-match list
+ * would silently drop real licitaciones over a missing tilde — the failure
+ * mode being avoided here in the first place. "licitacion publica" is
+ * narrow enough that only the two intended values can match it.
+ */
+const INGESTED_MODALIDAD_PREFIX = "licitacion publica";
+
+function normalizeModalidad(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** Exported for scripts/tests that need the same gate without re-mapping a row. */
+export function isIngestedColombiaModalidad(modalidad: string | null | undefined): boolean {
+  if (!modalidad) return false;
+  return normalizeModalidad(modalidad).startsWith(INGESTED_MODALIDAD_PREFIX);
+}
+
+export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): Tender | null {
+  // First gate, before anything else is parsed: a modalidad this platform
+  // does not carry is not a tender we have any use for, whatever its value
+  // or keywords say. The existing value/keyword rules (lib/relevance.ts)
+  // still run afterwards, on what survives this.
+  if (!isIngestedColombiaModalidad(row.modalidad_de_contratacion)) return null;
+
+  const rawName = stripProcessPhaseSuffix(row.nombre_del_procedimiento?.trim() ?? "");
+  const buyer = row.entidad?.trim();
+  const tenderNumber = stripProcessPhaseSuffix(
+    row.referencia_del_proceso?.trim() || row.id_del_proceso?.trim() || "",
+  );
+  if (!rawName || !buyer || !tenderNumber) return null;
+
+  const description = row.descripci_n_del_procedimiento?.trim();
+  // A contentless procedure name is replaced by the description — which is
+  // what a reader, the keyword rules and the translator all actually need.
+  const title = description && isUninformativeName(rawName) ? titleFromDescription(description) : rawName;
+
+  const publicationDate = parseDate(row.fecha_de_publicacion_del);
+  if (!publicationDate) return null;
+
+  const summary = description || title;
+  const scopeType = inferScopeType(row.tipo_de_contrato);
+  const now = new Date().toISOString();
+
+  const priceBase = row.precio_base ? Number(row.precio_base) : undefined;
+  const estimatedValue = priceBase && priceBase > 0 ? priceBase : undefined;
+
+  const providerName = row.nombre_del_proveedor?.trim();
+  const awardedTo = providerName && providerName !== "No Definido" ? providerName : undefined;
+
+  const submissionDeadline = parseDate(row.fecha_de_recepcion_de) ?? undefined;
+  const structuredDurationDays = normalizeDurationDays(row.duracion, row.unidad_de_duracion);
+  const governmentLevel = inferGovernmentLevel(row.ordenentidad, buyer);
+  const { industries, relevance } = classifyStoredTender({
+    title,
+    summary,
+    buyer,
+    country: "Colombia",
+    governmentLevel,
+    scopeType,
+    estimatedValue,
+    // Exactly what the row stores below, not a bare "COP" — the two only
+    // differ when there is no value at all (where currency is ignored
+    // anyway), but the whole point of this call is that it sees stored
+    // values, so there is no reason to make an exception here.
+    currency: estimatedValue ? "COP" : undefined,
+    sourceName,
+    structuredDurationDays,
+  });
+
+  const awardDate = parseDate(row.fecha_adjudicacion) ?? undefined;
+  const rawAwardedValue = row.valor_total_adjudicacion ? Number(row.valor_total_adjudicacion) : undefined;
+  const awardedValue = rawAwardedValue && rawAwardedValue > 0 ? rawAwardedValue : undefined;
+
+  return {
+    id: crypto.randomUUID(),
+    // Own slug namespace ("secop-") — a real, standalone connector, no
+    // cross-source de-dup scheme to line up with.
+    slug: `secop-${slugify(tenderNumber)}`,
+    tenderNumber,
+    title: untranslated(title),
+    summary: untranslated(summary),
+    buyer,
+    country: "Colombia",
+    governmentLevel,
+    industries,
+    scopeType,
+    procedureType: row.modalidad_de_contratacion?.trim() || "Unknown",
+    publicationDate,
+    submissionDeadline,
+    // Colombian public procurement is denominated in COP by law/convention
+    // — the dataset carries no separate currency field to read directly
+    // (unlike Compras MX's explicit "Moneda" column), so this is a real-
+    // world fact treated as given, not a guess, the same posture as DOF
+    // always being "federal" (see dof-mapper.ts).
+    estimatedValue,
+    currency: estimatedValue ? "COP" : undefined,
+    // Persisted (migration 0029) purely so reclassify-tenders.ts classifies
+    // this row with the same duration this import did — >= 360 days promotes
+    // to flagship, and with nowhere to store it the reclassify path used to
+    // demote every such Colombian row.
+    structuredDurationDays,
+    location: row.ciudad_entidad?.trim() && row.ciudad_entidad !== "No Definido" ? row.ciudad_entidad.trim() : row.departamento_entidad?.trim(),
+    status: inferStatus(row.adjudicado, row.estado_de_apertura_del_proceso, providerName, row.estado_del_procedimiento),
+    awardedTo,
+    awardDate,
+    awardedValue,
+    qualifications: [],
+    experienceRequirements: [],
+    requiredDocuments: [],
+    keyDates: [
+      { id: `${tenderNumber}-publication`, type: "publication", date: publicationDate },
+      // Real gap fixed 2026-09-04: submissionDeadline was already being
+      // computed above but never also reflected here, so the tender
+      // detail page's key-dates timeline (which only ever renders
+      // keyDates, same trap already documented in
+      // licitia-vigente-mapper.ts) silently dropped it for every
+      // Colombia tender that had one.
+      ...(submissionDeadline ? [{ id: `${tenderNumber}-submission`, type: "submission" as const, date: submissionDeadline }] : []),
+      // Real gap fixed 2026-09-05: `fecha_adjudicacion` (a real, dedicated
+      // award-date column, confirmed via the dataset's own SODA field
+      // dictionary) was never captured at all — a Colombia tender's public
+      // page never showed a real 中标结果 date the way other sources' do.
+      ...(awardDate ? [{ id: `${tenderNumber}-award`, type: "award" as const, date: awardDate }] : []),
+    ],
+    risks: [],
+    relevance,
+    sourceName,
+    // Real, directly captured — urlproceso.url usually points at the
+    // actual public tender page on community.secop.gov.co, BUT only when
+    // it carries a real noticeUID (see extractNoticeUidFromUrl's header
+    // comment above); some rows' urlproceso.url is just the bare SECOP
+    // login page with nothing tender-specific in it, so that case falls
+    // back to the datos.gov.co API link instead of storing a dead-end.
+    sourceUrl: extractNoticeUidFromUrl(row.urlproceso?.url)
+      ? row.urlproceso!.url!
+      : `https://www.datos.gov.co/resource/p6dx-8zbt.json?id_del_proceso=${row.id_del_proceso}`,
+    createdAt: now,
+    updatedAt: now,
+  };
+}

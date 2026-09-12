@@ -31,7 +31,6 @@ export type ImportDofSearchLiveResult = {
   detailsFetched: number;
   mappedCount: number;
   keptAfterRecencyCount: number;
-  months: number;
   upsertedCount?: number;
   skippedExcludedCount?: number;
   failed?: { slug: string; error: string }[];

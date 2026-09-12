@@ -22,7 +22,6 @@ export async function POST(request: Request) {
     fechaFin?: string;
     idOrg?: string;
     write?: boolean;
-    months?: number;
   };
 
   if (!body.texto?.trim()) {
@@ -45,7 +44,7 @@ export async function POST(request: Request) {
         fechaFin: body.fechaFin.trim(),
         idOrg: body.idOrg?.trim() || undefined,
       },
-      { write: body.write === true, months: body.months },
+      { write: body.write === true },
     );
     // The public list is cached; drop it so this edit shows up now.
     revalidateTenders();

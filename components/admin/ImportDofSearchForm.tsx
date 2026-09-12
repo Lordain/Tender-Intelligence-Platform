@@ -27,7 +27,6 @@ export function ImportDofSearchForm() {
   const [fechaIni, setFechaIni] = useState(""); // native <input type="date"> value, YYYY-MM-DD
   const [fechaFin, setFechaFin] = useState(""); // native <input type="date"> value, YYYY-MM-DD
   const [idOrg, setIdOrg] = useState(DEFAULT_DOF_ID_ORG);
-  const [months, setMonths] = useState("6");
   // Defaults to checked per the user's explicit request (2026-09-04): "写入
   // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
   const [write, setWrite] = useState(true);
@@ -59,7 +58,6 @@ export function ImportDofSearchForm() {
           fechaFin: isoToDofDate(fechaFin),
           idOrg: idOrg.trim(),
           write,
-          months: months.trim() === "" ? undefined : Number(months),
         }),
       });
       const data = await res.json();
@@ -136,16 +134,6 @@ export function ImportDofSearchForm() {
             className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 font-mono text-xs text-[#071826] outline-none focus:border-[#ffb21c]"
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-semibold text-[#52636e]">保留最近几个月（0 = 不限制）</span>
-          <input
-            type="number"
-            min={0}
-            value={months}
-            onChange={(e) => setMonths(e.target.value)}
-            className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
-          />
-        </label>
       </div>
 
       <label className="mt-4 flex items-center gap-2 border-t border-[#e5e9eb] pt-4 text-sm text-[#233846]">
@@ -165,8 +153,8 @@ export function ImportDofSearchForm() {
       {result && (
         <div className="mt-4 border-t border-[#e5e9eb] pt-4 text-sm text-[#52636e]">
           <p>
-            搜索结果共 {result.totalNotas} 条，成功抓取详情页 {result.detailsFetched} 条，成功映射 {result.mappedCount} 条，按最近{" "}
-            {result.months || "不限"} 个月过滤后剩 {result.keptAfterRecencyCount} 条。
+            搜索结果共 {result.totalNotas} 条，成功抓取详情页 {result.detailsFetched} 条，成功映射 {result.mappedCount} 条，剩{" "}
+            {result.keptAfterRecencyCount} 条在所选日期范围内。
           </p>
           {result.upsertedCount !== undefined && (
             <p className="mt-1 font-semibold text-emerald-700">

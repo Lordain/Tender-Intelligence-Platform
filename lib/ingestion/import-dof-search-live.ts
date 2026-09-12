@@ -19,7 +19,6 @@ import { fetchDofNoticeDetail } from "@/lib/ingestion/connectors/dof-notice-deta
 import type { DofNoticeDetail } from "@/lib/ingestion/connectors/dof-notice-detail";
 import { mapDofSearchNotaToTender, toDetailPageFecha } from "@/lib/ingestion/dof-search-mapper";
 import type { DofSearchNota } from "@/lib/ingestion/dof-search-mapper";
-import { filterRecentTenders } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import type { Tender } from "@/types/tender";
@@ -65,26 +64,51 @@ async function fetchDetailsForNotas(notas: DofSearchNota[]): Promise<Map<number,
   return details;
 }
 
+/**
+ * The requested date range, as a cutoff timestamp — the DOF search is asked
+ * for `fechainicio`..`fechahasta`, so the window is already stated and asking
+ * a second time for it in months was, as the user put it (2026-09-12),
+ * meaningless: 毕竟都是选取上面的日期.
+ *
+ * Not simply deleted, because the filter was doing one real thing. A DOF
+ * notice's own detail page can print a different publication date from the
+ * one it was indexed under, and dof-search-mapper prefers the detail page's
+ * (`detailPublicationDate ?? searchDate`) — so a notice returned for
+ * September can still map to a tender dated years earlier. What is removed is
+ * the SECOND knob: the window now comes from the dates actually requested, so
+ * the two can no longer disagree, and a wider range than the months box could
+ * no longer silently discard exactly the rows that were asked for.
+ */
+function cutoffFromRange(fechaIni: string): number | null {
+  // dd-mm-yyyy, the format the DOF search itself takes.
+  const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(fechaIni.trim());
+  if (!match) return null;
+  const [, day, month, year] = match;
+  const parsed = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
 export async function importDofSearchLive(
   params: { texto: string; fechaIni: string; fechaFin: string; idOrg?: string },
-  options: { write: boolean; months?: number },
+  options: { write: boolean },
 ): Promise<ImportDofSearchLiveResult> {
-  const months = options.months ?? 6;
-
   const notas = await fetchDofSearchLive(params);
   const detailsByCodNota = await fetchDetailsForNotas(notas);
 
   const mapped = notas
     .map((n) => mapDofSearchNotaToTender(n, SOURCE_NAME, detailsByCodNota.get(n.codNota)))
     .filter((t): t is Tender => t !== null);
-  const kept = filterRecentTenders(mapped, months);
+
+  const cutoff = cutoffFromRange(params.fechaIni);
+  const kept = cutoff === null
+    ? mapped
+    : mapped.filter((tender) => new Date(tender.publicationDate).getTime() >= cutoff);
 
   const result: ImportDofSearchLiveResult = {
     totalNotas: notas.length,
     detailsFetched: detailsByCodNota.size,
     mappedCount: mapped.length,
     keptAfterRecencyCount: kept.length,
-    months,
     sample: kept.slice(0, 5),
   };
 

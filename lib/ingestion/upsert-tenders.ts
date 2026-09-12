@@ -496,5 +496,19 @@ export async function upsertTendersBatched(
     console.log(`Kept the existing relevance classification for ${protectedCount} tender(s) an admin has manually overridden — every other field still updated normally.`);
   }
 
+  // The one line that says what the run actually DID.
+  //
+  // Every other log in this function reports a skip, so a run that wrote
+  // hundreds of rows and a run that wrote none printed the same shape of
+  // output and both read as "nothing happened" (user, 2026-09-12, asking
+  // whether Colombia had no new projects — the answer was not in the log at
+  // all, only in a panel in the browser). Printed unconditionally, zero
+  // included: "upserted 0" is the single most useful thing this can say.
+  console.log(
+    `Upserted ${upsertedCount} tender(s)` +
+      (failed.length > 0 ? `, ${failed.length} failed` : "") +
+      ` (of ${tenders.length} mapped: ${excludedCount} excluded, ${skippedManuallyDeletedCount} previously deleted by an admin).`,
+  );
+
   return { upsertedCount, skippedExcludedCount: excludedCount, protectedCount, skippedManuallyDeletedCount, failed };
 }

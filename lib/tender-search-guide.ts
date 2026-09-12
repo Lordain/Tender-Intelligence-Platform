@@ -6,11 +6,11 @@ import type { Tender } from "@/types/tender";
  *
  * Most sources here publish a searchable listing but no per-tender URL a
  * stranger can link to — Compras MX keys its detail page on an internal GUID,
- * Pemex's DispForm.aspx needs a login, SEACE's ficha is keyed by a UUID that
- * appears nowhere in the OCDS record, and CFE isn't the source of its own
- * tenders here at all (they arrive via DOF). So "前往官方投标入口" lands the
- * reader on a search form, and until now the site left them there to work out
- * which of half a dozen fields takes a procedure number.
+ * Pemex's DispForm.aspx needs a login, CFE's own endpoints are WAF-gated
+ * behind a session-bound token, and SEACE's ficha is keyed by a UUID that
+ * appears nowhere in the OCDS record. So "前往官方投标入口" lands the reader on
+ * a search form, and until now the site left them there to work out which of
+ * half a dozen fields takes a procedure number.
  *
  * Every step below is the user's own verified click-path (2026-09-11), field
  * names copied as those pages actually spell them — that is the point, since a
@@ -64,22 +64,28 @@ export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide |
   if (CFE.test(origin)) {
     return {
       platform: "CFE — Micrositio de Concursos",
-      // CFE tenders reach this site through the DOF convocatoria, so the
-      // tender's own link goes to the DOF notice — which carries the summary
-      // but never the bases. Those live only on the micrositio.
-      url: "https://msc.cfe.mx/Aplicaciones/NCFE/Concursos/",
+      // No second link: a CFE tender's own 官方入口 is ALREADY the micrositio.
+      // Ingestion rewrites it there rather than to the DOF notice it was read
+      // from (CFE_BUYER_PATTERN / CFE_MICROSITIO_URL in
+      // lib/ingestion/heuristics.ts, user's call 2026-09-05), so offering a
+      // separate "打开 CFE 检索页" button would be the same destination twice.
+      url: null,
       steps: [
-        "打开 CFE 招标微网站（下面的链接）",
+        "打开上面的「前往官方投标入口」",
         "把招标编号粘贴到 Número de procedimiento",
         "点击 Buscar",
       ],
-      note: "本站的 CFE 项目来自《联邦公报》(DOF) 的招标公告——公告里有摘要，但标书（bases）只在 CFE 自己的微网站上。",
     };
   }
 
   if (SEACE.test(origin)) {
     return {
       platform: "SEACE — Sistema Electrónico de Contrataciones del Estado",
+      // The only branch that carries its own link. A Peru tender's stored
+      // 官方入口 is whatever host OECE's own `sources[].url` names (prodapp2),
+      // while the path the user actually walked — and the one the ficha in
+      // their screenshot lives on — is prod2. Same system, and rather than
+      // guess which alias stays up, the verified one is spelled out here.
       url: "https://prod2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml",
       steps: [
         "打开 SEACE 公开检索页（下面的链接）",

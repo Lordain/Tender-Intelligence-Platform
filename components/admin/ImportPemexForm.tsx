@@ -64,10 +64,10 @@ export function ImportPemexForm() {
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Live fetch</p>
       <h2 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black text-[#071826]">
         PEMEX 直接拉取
-        <AutoRunBadge schedule="每天 04:20 UTC，Vercel 定时任务" />
+        <AutoRunBadge schedule="每天 04:00 UTC，GitHub Actions" />
       </h2>
       <AutoRunNote>
-        每天 04:20 UTC 自动跑一次，七个子公司列表轮流跑（单次 42 秒预算，跑不完的明天优先），所以每个列表最长隔几天轮到一次。
+        每天 04:00 UTC 自动跑一次，<strong>七个子公司列表全部跑一遍</strong>。这里只在需要提前拉某一个列表时用。
       </AutoRunNote>
       <p className="mt-1 text-sm text-[#52636e]">
         PEMEX 的 SharePoint 招标列表接口本身是匿名公开的，不用再打开浏览器 Console 手动抓取——选一个子公司列表，服务器直接去

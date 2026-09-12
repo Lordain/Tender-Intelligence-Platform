@@ -17,6 +17,19 @@ type StaleCronJob = {
   lastRunAt: string | null;
   detail: string | null;
   reason: "never" | "overdue" | "failed";
+  /**
+   * Where the schedule lives. Not decoration: this banner used to tell every
+   * reader to "检查 Vercel Cron 与 CRON_SECRET", which is now the wrong place
+   * for the three ingestion jobs — they run on GitHub Actions with their own
+   * secrets. A monitor that sends you to the wrong console at the moment
+   * something is broken is worse than one that says nothing.
+   */
+  runsOn?: "vercel" | "github-actions";
+};
+
+const WHERE_TEXT: Record<NonNullable<StaleCronJob["runsOn"]>, string> = {
+  vercel: "Vercel Cron",
+  "github-actions": "GitHub Actions",
 };
 
 const REASON_TEXT: Record<StaleCronJob["reason"], string> = {
@@ -85,12 +98,13 @@ export function AdminAlertBanner() {
       <div className="border-b border-amber-900/20 bg-amber-50 px-5 py-3 sm:px-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-2">
           <p className="text-sm font-bold text-amber-900">
-            {staleJobs.length} 个定时任务没有按计划运行（检查 Vercel Cron 与 CRON_SECRET）
+            {staleJobs.length} 个定时任务没有按计划运行
           </p>
           <ul className="flex flex-col gap-1.5">
             {staleJobs.map((job) => (
               <li key={job.job} className="text-xs text-amber-800">
                 <span className="font-semibold">{job.label}</span>：{REASON_TEXT[job.reason]}（{describeLastRun(job)}）
+                {job.runsOn ? `　去 ${WHERE_TEXT[job.runsOn]} 查` : ""}
                 {job.detail ? `　${job.detail}` : ""}
               </li>
             ))}

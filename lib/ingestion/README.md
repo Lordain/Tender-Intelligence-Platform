@@ -3718,3 +3718,51 @@ relevance rules rejected each day stays reviewable without a local run.
 variables → Actions). The service-role key bypasses RLS, so this is the one
 place in this project where it lives outside Vercel — worth knowing when
 rotating it.
+
+### Same day again — all of it moved off Vercel
+
+The two Vercel cron routes worked (all six schedules registered and ran). They
+were removed anyway, on the user's question "能不能不依赖 Vercel，4 个都通过
+GitHub?", because for THIS workload a runner beats a serverless function:
+
+- **PEMEX now imports all seven subsidiary lists every day.** As a route it
+  ran under a 42-second budget with the list order rotating, so a given
+  subsidiary was reached every few days. Nothing was lost — the recency window
+  is wider than a rotation — but a tender could sit unimported for days for no
+  reason except a request timeout. That constraint is gone, and with it the
+  budget and the rotation.
+- **One schedule instead of three.** Colombia, PEMEX and LicitIA run as three
+  parallel matrix jobs of `.github/workflows/daily-ingest.yml` at 04:00 UTC,
+  `fail-fast: false` — a PEMEX outage is not a reason to skip Colombia.
+- Logs that outlive the incident, a re-run button, a failure email, and no
+  cron-count limit to plan around.
+
+Costs, stated rather than discovered later:
+
+- The Supabase service-role key (which bypasses RLS) now lives in the
+  repository's Actions secrets as well as in Vercel. Rotating it means
+  rotating it in two places, and a half-rotation shows up as a heartbeat going
+  quiet, not as an error.
+- GitHub's scheduler is best-effort and can start a run tens of minutes late.
+  Irrelevant nightly; the 30-hour `maxAgeHours` already allows for it.
+- The public list is cached five minutes and a CLI write cannot invalidate it
+  (`lib/cache-tags.ts` says why), so new tenders appear up to five minutes
+  after a run. At 04:00 UTC nobody is watching.
+
+Still on Vercel, and correctly so: `tender-digest`,
+`subscription-renewal-reminders` and `purge-stale-colombia`. They are short,
+they already work, and the first two render and send email inside the Next
+runtime — moving them would be a rewrite in exchange for nothing.
+
+Two supporting changes this forced, both worth having on their own:
+
+- **`lib/ops/cron-jobs.ts`** now holds the job registry and the heartbeat
+  write, free of `import "server-only"`, so plain `tsx` scripts can record a
+  heartbeat without weakening that guard. `lib/ops/cron-heartbeat.ts` keeps
+  the guard and the admin banner's staleness query. The first version of
+  `scripts/licitia-daily.ts` had duplicated the write inline; it no longer
+  does.
+- **The admin banner no longer tells everyone to "检查 Vercel Cron 与
+  CRON_SECRET".** Each job carries where its schedule lives, and the row says
+  it. A monitor that sends you to the wrong console at the moment something is
+  broken is worse than one that says nothing.

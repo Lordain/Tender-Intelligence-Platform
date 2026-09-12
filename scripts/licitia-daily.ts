@@ -2,13 +2,12 @@
  * The LicitIA half of the daily ingestion, as ONE command, so a scheduler has
  * a single thing to call.
  *
- * Why this is not a Vercel cron like Colombia and PEMEX: discovery downloads
- * LicitIA's bulk corpus (15 lotes, ~372k rows) and then makes one detail
- * lookup per newly-discovered procedure, and link resolution is one sequential
- * HTTP request per unresolved tender. That is minutes of work — it does not
- * fit in a serverless function's request ceiling, at any plan. So it runs on a
- * runner with no such ceiling (.github/workflows/licitia-daily.yml) against
- * the same Supabase database.
+ * The heaviest of the three: discovery downloads LicitIA's bulk corpus (15
+ * lotes, ~372k rows) and then makes one detail lookup per newly-discovered
+ * procedure, and link resolution is one sequential HTTP request per unresolved
+ * tender. Minutes of work — it never fit a serverless function's request
+ * ceiling at any plan, and it is the reason the whole daily ingest moved to
+ * .github/workflows/daily-ingest.yml.
  *
  * Both steps run even if the first one fails: link resolution operates on
  * tenders ALREADY in the database and has nothing to do with whether today's
@@ -22,35 +21,9 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { discoverComprasMxVigente } from "../lib/ingestion/discover-comprasmx-vigente";
 import { resolveComprasMxLinks } from "../lib/ingestion/resolve-comprasmx-links";
+import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 
-/** Matches lib/ops/cron-heartbeat.ts's CRON_JOBS entry — keep the two in step. */
-const JOB = "licitia-daily";
 const DISCOVER_MONTHS = 2;
-
-/**
- * Deliberately NOT importing recordCronHeartbeat from lib/ops/cron-heartbeat.ts:
- * that module starts with `import "server-only"`, which throws outside a Next
- * server runtime — and the guard is worth keeping there. The write is three
- * lines and the shape is pinned by the same table, so duplicating it here
- * costs less than weakening that boundary. Best-effort, for the same reason
- * the original is: a heartbeat that fails to write must never turn a healthy
- * run into a failed one.
- */
-async function heartbeat(
-  supabase: ReturnType<typeof createSupabaseAdminClient>,
-  status: "ok" | "failed",
-  detail?: string,
-): Promise<void> {
-  if (!supabase) return;
-  const now = new Date().toISOString();
-  try {
-    await supabase
-      .from("cron_heartbeats")
-      .upsert({ job: JOB, last_run_at: now, status, detail: detail?.slice(0, 2000) ?? null, updated_at: now }, { onConflict: "job" });
-  } catch {
-    // swallow — see above
-  }
-}
 
 async function main() {
   const write = process.argv.includes("--write");
@@ -100,7 +73,7 @@ async function main() {
     return;
   }
 
-  await heartbeat(supabase, problems.length > 0 ? "failed" : "ok", problems.length > 0 ? problems.join("；") : notes.join("，"));
+  await writeCronHeartbeat(supabase, "licitia-daily", problems.length > 0 ? "failed" : "ok", problems.length > 0 ? problems.join("；") : notes.join("，"));
 
   if (problems.length > 0) {
     console.error(`\n有 ${problems.length} 处失败：`);

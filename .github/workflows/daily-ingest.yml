@@ -1,0 +1,88 @@
+# Every ingestion source that can run unattended, on one schedule, off Vercel.
+#
+# WHY HERE AND NOT AS VERCEL CRONS (they were, briefly, and worked):
+#
+#  - No request ceiling. PEMEX has seven subsidiary lists and as a serverless
+#    route had to run them under a 42-second budget with the order rotating by
+#    day, so a given subsidiary was only reached every few days. Here all seven
+#    run every day. LicitIA never fit at all — it downloads a 15-lote, ~372k-row
+#    corpus and then makes one detail lookup per new procedure.
+#  - Logs that outlive the incident, a re-run button, and a failure email.
+#  - No cron-count limit to plan around.
+#
+# The cost, stated plainly: the Supabase service-role key (which bypasses RLS)
+# lives in this repository's secrets as well as in Vercel, and GitHub's
+# scheduler is best-effort — a run can start tens of minutes late. Neither
+# matters for a nightly import; both are worth knowing when rotating keys or
+# reading a heartbeat.
+#
+# The public tender list is cached for five minutes (lib/cache-tags.ts) and a
+# CLI write cannot invalidate it, so new tenders appear up to five minutes
+# after a run. At 04:00 UTC nobody is watching.
+name: Daily ingest
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      write:
+        description: "真的写入 Supabase（不勾就是试运行）"
+        type: boolean
+        default: false
+
+# Two overlapping runs would race on the same upserts.
+concurrency:
+  group: daily-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      # One source failing must not stop the others — they share nothing but
+      # the database, and a PEMEX outage is not a reason to skip Colombia.
+      fail-fast: false
+      matrix:
+        include:
+          - name: Colombia (SECOP II)
+            command: cron:colombia
+          - name: PEMEX
+            command: cron:pemex
+          - name: LicitIA (Compras MX)
+            command: licitia:daily
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Import
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        # A scheduled run always writes; a manual run writes only when asked,
+        # so the whole thing can be exercised before it is trusted.
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.write }}" = "true" ]; then
+            npm run ${{ matrix.command }} -- --write
+          else
+            npm run ${{ matrix.command }}
+          fi
+
+      - name: Upload the excluded-tenders CSV
+        # Runs even on failure — a partial export is still the fastest way to
+        # see what the relevance rules rejected today.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: excluded-${{ strategy.job-index }}-${{ github.run_id }}
+          path: exports/
+          if-no-files-found: ignore
+          retention-days: 14

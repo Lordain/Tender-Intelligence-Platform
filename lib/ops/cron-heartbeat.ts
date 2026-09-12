@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { CRON_JOBS, writeCronHeartbeat, type CronHeartbeatStatus, type CronJobId } from "@/lib/ops/cron-jobs";
 
 /**
  * Did the scheduler reach us?
@@ -7,72 +8,25 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * Every other monitor in this project is written by code running inside a
  * job, so it can only report failures of work that started. A cron that stops
  * firing altogether — schedule not deployed, CRON_SECRET rotated so every
- * call 401s, the project renamed — reports nothing, and from the admin banner
- * that is indistinguishable from a quiet, healthy week. This is the one
- * signal that tells those apart. See migration 0041.
+ * call 401s, a GitHub secret rotated on one side only — reports nothing, and
+ * from the admin banner that is indistinguishable from a quiet, healthy week.
+ * This is the one signal that tells those apart. See migration 0041.
+ *
+ * The registry and the write itself live in lib/ops/cron-jobs.ts, which
+ * carries no `server-only` guard, because the ingestion jobs run as plain
+ * `tsx` scripts on GitHub Actions and need to write heartbeats from outside
+ * any Next runtime. What stays here is what genuinely belongs to the server:
+ * the admin banner's staleness query.
  */
-export type CronJobId =
-  | "tender-digest"
-  | "subscription-renewal-reminders"
-  | "purge-stale-colombia"
-  | "import-colombia"
-  | "import-pemex"
-  | "licitia-daily";
+export { CRON_JOBS, type CronJobId, type CronJobSpec, type CronHeartbeatStatus } from "@/lib/ops/cron-jobs";
 
-export type CronJobSpec = {
-  id: CronJobId;
-  label: string;
-  /**
-   * How long after a run this job is overdue. Set from the widest gap the
-   * schedule in vercel.json allows, plus room for a late start — not from the
-   * average gap, or a job that legitimately runs once a day reports itself
-   * broken every morning.
-   */
-  maxAgeHours: number;
-};
-
-export const CRON_JOBS: CronJobSpec[] = [
-  // Twice daily (15:00 and 00:00 UTC = 09:00 and 18:00 America/Mexico_City),
-  // so the widest gap is 15h.
-  { id: "tender-digest", label: "每日招标摘要邮件", maxAgeHours: 24 },
-  { id: "subscription-renewal-reminders", label: "续费提醒", maxAgeHours: 30 },
-  { id: "purge-stale-colombia", label: "哥伦比亚过期项目清理", maxAgeHours: 30 },
-  // Daily. These two are the first ingestion steps that run unattended, which
-  // makes their heartbeats the only thing standing between "no new tenders
-  // this week" and "we stopped reading this source a week ago" — the two are
-  // indistinguishable from the feed itself.
-  { id: "import-colombia", label: "哥伦比亚自动导入", maxAgeHours: 30 },
-  { id: "import-pemex", label: "PEMEX 自动导入", maxAgeHours: 30 },
-  // Runs on GitHub Actions rather than Vercel (it takes minutes, not seconds —
-  // see .github/workflows/licitia-daily.yml). The heartbeat is written by
-  // scripts/licitia-daily.ts, so this banner covers it exactly like the two
-  // that do run here.
-  { id: "licitia-daily", label: "LicitIA 自动导入", maxAgeHours: 30 },
-];
-
-export type CronHeartbeatStatus = "ok" | "skipped" | "failed";
-
-/**
- * Best-effort, and deliberately so: a heartbeat that fails to write must
- * never turn a healthy run into a failed one. The cost is a false "overdue"
- * warning, which is the safe direction to be wrong in.
- */
 export async function recordCronHeartbeat(
   admin: SupabaseClient | null,
   job: CronJobId,
   status: CronHeartbeatStatus = "ok",
   detail?: string,
 ): Promise<void> {
-  if (!admin) return;
-  const now = new Date().toISOString();
-  try {
-    await admin.from("cron_heartbeats").upsert(
-      { job, last_run_at: now, status, detail: detail?.slice(0, 2000) ?? null, updated_at: now },
-      { onConflict: "job" },
-    );
-  } catch {
-    // swallow — see the doc comment above
-  }
+  return writeCronHeartbeat(admin, job, status, detail);
 }
 
 export type StaleCronJob = {
@@ -83,14 +37,16 @@ export type StaleCronJob = {
   status: CronHeartbeatStatus | null;
   detail: string | null;
   reason: "never" | "overdue" | "failed";
+  /** Where to go looking when this one is quiet — Vercel's Cron Jobs page or the repository's Actions tab. */
+  runsOn: "vercel" | "github-actions";
 };
 
 /**
  * Jobs that should have run by now and have not.
  *
  * A job with no row at all counts as a problem only in production: a local
- * dev server has no scheduler and would otherwise show three permanent
- * warnings for jobs that are working fine on Vercel.
+ * dev server has no scheduler and would otherwise show a permanent warning
+ * for every job that is working fine in production.
  */
 export async function findStaleCronJobs(admin: SupabaseClient | null, now = new Date()): Promise<StaleCronJob[]> {
   if (!admin) return [];
@@ -104,7 +60,7 @@ export async function findStaleCronJobs(admin: SupabaseClient | null, now = new 
     const row = rows.get(spec.id);
     if (!row) {
       if (process.env.NODE_ENV === "production") {
-        stale.push({ job: spec.id, label: spec.label, lastRunAt: null, status: null, detail: null, reason: "never" });
+        stale.push({ job: spec.id, label: spec.label, lastRunAt: null, status: null, detail: null, reason: "never", runsOn: spec.runsOn });
       }
       continue;
     }
@@ -114,11 +70,11 @@ export async function findStaleCronJobs(admin: SupabaseClient | null, now = new 
     const ageHours = (now.getTime() - new Date(lastRunAt).getTime()) / 3_600_000;
 
     if (status === "failed") {
-      stale.push({ job: spec.id, label: spec.label, lastRunAt, status, detail, reason: "failed" });
+      stale.push({ job: spec.id, label: spec.label, lastRunAt, status, detail, reason: "failed", runsOn: spec.runsOn });
       continue;
     }
     if (ageHours > spec.maxAgeHours) {
-      stale.push({ job: spec.id, label: spec.label, lastRunAt, status, detail, reason: "overdue" });
+      stale.push({ job: spec.id, label: spec.label, lastRunAt, status, detail, reason: "overdue", runsOn: spec.runsOn });
     }
   }
 

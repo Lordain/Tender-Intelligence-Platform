@@ -8,10 +8,10 @@
  * marked one is a panel you only open to force an early run or to preview
  * what the schedule would write.
  *
- * `schedule` is shown in full rather than abbreviated, because the next
- * question after "does this run itself?" is always "when, and where does it
- * run from?" — and for LicitIA the answer is a different machine entirely
- * (GitHub Actions, see .github/workflows/licitia-daily.yml).
+ * `schedule` names the time AND the machine, because the next question after
+ * "does this run itself?" is always "where do I go when it stops?" — and the
+ * answer is not this app: every ingestion job runs on GitHub Actions
+ * (.github/workflows/daily-ingest.yml), not on Vercel.
  */
 export function AutoRunBadge({ schedule }: { schedule: string }) {
   return (

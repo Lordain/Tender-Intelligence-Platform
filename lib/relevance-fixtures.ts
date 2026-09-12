@@ -1719,6 +1719,27 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "User decided 保留 in this round. Pinned so a later services sweep cannot take it silently.",
     country: "Mexico", scopeType: "services",
   },
+  // --- Two real open Colombia tenders from the 2026-09-12 exclusion export --
+  // Both were excluded on the word "mantenimiento" sitting at the end of a
+  // scope list whose real object is new work. See NEW_BUILD_OR_PURCHASE.
+  {
+    title: "OBRAS DE INFRAESTRUCTURA PARA LA CONSTRUCCION, RECONSTRUCCION, REHABILITACION, MEJORAMIENTO, CONSERVACION Y/O MANTENIMIENTO DE LAS OBRAS CIVILES MARITIMAS Y FLUVIALES O ESTRUCTURAS HIDRÁULICAS MARITIMAS O FLUVIALES DEL TAJAMAR OCCIDENTA UBICADO EN EL DISTRITO INDUSTRIAL, ESPECIAL Y PORTUARIO DE BARRANQUILLA.",
+    expectedTier: "flagship",
+    note: "LP-015-2026, COP 380,650,345,500 (~USD 121M). A port breakwater programme excluded on its last two words — the single most expensive thing the rules have been caught throwing away.",
+    country: "Colombia", scopeType: "works", estimatedValue: 380650345500, currency: "COP",
+  },
+  {
+    title: "ADQUISICION E INSTALACION DE DISPOSITIVOS Y EQUIPOS DE CONECTIVIDAD PARA EL MEJORAMIENTO, MANTENIMIENTO Y AMPLIACION DEL SISTEMA DE CIRCUITO CERRADO DE TELEVISION (CCTV) Y DEL SISTEMA INTEGRADO DE EMERGENCIAS SIES 123, OPERADO Y MONITOREADO POR LA POLICIA NACIONAL DEL DEPARTAMENTO DE RISARALDA",
+    expectedTier: "standard",
+    note: "STICS-LP-009-2026, COP 3,249,120,313 (~USD 1.0M). A real CCTV/SIES buildout — adquisición e instalación, with the upkeep word in the middle of the scope.",
+    country: "Colombia", scopeType: "equipment", estimatedValue: 3249120313, currency: "COP",
+  },
+  {
+    title: "MANTENIMIENTO Y REHABILITACIÓN DE LA VÍA TERCIARIA DEL MUNICIPIO DE GUADUAS",
+    expectedTier: "excluded",
+    note: "The guard on the two above. Relaxing the maintenance exception to BUILD_OBJECT (which includes rehabilitación) was tried first and let this through — routine road upkeep, which is what the rule exists for.",
+    country: "Colombia", scopeType: "works",
+  },
   // --- Four real open INFOTEC procedures the user found missing 2026-09-12 --
   // All four are on Compras MX right now and all four were excluded: the rows
   // carry no value, Mexico is in UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL, and

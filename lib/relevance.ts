@@ -975,9 +975,40 @@ const MAINTENANCE_ONLY_KEYWORDS = [
 const CONCESSION_FRAMING = /concesi[óo]n|asociaci[óo]n(es)? p[úu]blico[\s-]?privadas?|\bapp\s+de\s+infraestructura\b/i;
 const BUILD_OBJECT = /construcci[óo]n|dise[ñn]o y construcci[óo]n|rehabilitaci[óo]n|ampliaci[óo]n|modernizaci[óo]n|doble calzada/i;
 
+/**
+ * The OTHER thing "mantenimiento" must not swallow: a bundled works or supply
+ * contract whose scope list happens to end in upkeep.
+ *
+ * Colombian entities routinely tender one framework covering the whole
+ * lifecycle, and the title is the whole list. Two real open ones the user
+ * caught in the 2026-09-12 exclusion export:
+ *
+ *   OBRAS DE INFRAESTRUCTURA PARA LA CONSTRUCCION, RECONSTRUCCION,
+ *   REHABILITACION, MEJORAMIENTO, CONSERVACION Y/O MANTENIMIENTO DE LAS OBRAS
+ *   CIVILES MARITIMAS Y FLUVIALES ... TAJAMAR OCCIDENTAL ... BARRANQUILLA
+ *   — COP 380,650,345,500, about USD 121M, works, construction. A port
+ *   breakwater programme, excluded on its last two words.
+ *
+ *   ADQUISICION E INSTALACION DE DISPOSITIVOS Y EQUIPOS DE CONECTIVIDAD PARA
+ *   EL MEJORAMIENTO, MANTENIMIENTO Y AMPLIACION DEL SISTEMA DE CIRCUITO
+ *   CERRADO DE TELEVISION (CCTV) ... SIES 123
+ *   — about USD 1.0M, ict_telecom, equipment. A real CCTV buildout.
+ *
+ * Narrower than BUILD_OBJECT on purpose, and the difference is load-bearing.
+ * Relaxing this to BUILD_OBJECT itself was tried first and broke a real
+ * fixture — "MANTENIMIENTO Y REHABILITACIÓN DE LA VÍA TERCIARIA DEL
+ * MUNICIPIO", which is exactly the routine upkeep the rule exists for.
+ * `rehabilitación`, `mejoramiento` and `modernización` describe work on an
+ * existing asset and say nothing about whether this is upkeep; `construcción`,
+ * `reconstrucción`, `adquisición`, `instalación` and `ampliación` name
+ * something that did not exist before. Only the second group gets past.
+ */
+const NEW_BUILD_OR_PURCHASE = /construcci[óo]n|reconstrucci[óo]n|adquisici[óo]n|instalaci[óo]n|ampliaci[óo]n|doble calzada/i;
+
 /** A build-and-operate concession, not routine upkeep — see CONCESSION_FRAMING. */
 function isConcessionWithBuildScope(haystack: string): boolean {
-  return CONCESSION_FRAMING.test(haystack) && BUILD_OBJECT.test(haystack);
+  if (CONCESSION_FRAMING.test(haystack) && BUILD_OBJECT.test(haystack)) return true;
+  return NEW_BUILD_OR_PURCHASE.test(haystack);
 }
 
 /**

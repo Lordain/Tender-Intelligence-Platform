@@ -176,8 +176,15 @@ export type Tender = {
    * question because the real distribution is lopsided — 16,896 NACIONAL vs
    * 5,420 INTERNACIONAL ABIERTO and 1,281 BAJO TRATADOS across the full
    * 23,597-row 2025 Compras MX contracts export (see
-   * lib/ingestion/heuristics.ts) — and answered: the reader is told, the
-   * platform does not decide for them.
+   * lib/ingestion/heuristics.ts).
+   *
+   * The question was raised on the premise that NACIONAL puts a tender out of
+   * reach of this platform's readers, and that premise was wrong: a Chinese
+   * enterprise can hold a Mexican entity, or bid with a Mexican partner, and
+   * either route is a national supplier. What the Carácter restricts is WHO
+   * MAY SIGN, not which companies can pursue the work — so it is a fact about
+   * how to structure a bid, which is the reader's call, not a fact about
+   * whether the opportunity exists.
    *
    * So do not turn this into an exclude rule or a tier demotion without
    * asking again. Note also that the LicitIA bulk source carries no Carácter

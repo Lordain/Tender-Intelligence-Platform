@@ -200,12 +200,55 @@ function renderStatusRows(statusChanges: StatusChange[], appUrl: string): string
 }
 
 /** The single source of truth used by both Resend delivery and the admin preview page. */
+/**
+ * The plain-text half of the message.
+ *
+ * Not an accessibility nicety: an HTML-only body is one of the oldest and
+ * strongest spam signals there is, because legitimate bulk senders have sent
+ * multipart/alternative for twenty years and bulk spammers historically did
+ * not. Real evidence on this project (2026-09-13): the same sending domain,
+ * the same Resend account, two messages — the digest reached the Gmail inbox
+ * and the enterprise invite went to 垃圾邮件. Both were HTML-only.
+ *
+ * Written from the same data as the HTML rather than stripped out of it, so
+ * it reads like something a person would send instead of a tag-stripped
+ * skeleton — which filters score separately and no better.
+ */
+function renderTenderDigestText(
+  tenders: DigestTender[],
+  statusChanges: StatusChange[],
+  appUrl: string,
+): string {
+  const line = (tender: DigestTender) =>
+    [
+      `- ${tender.title.zh || tender.title.es || tender.tender_number}`,
+      `  ${tender.country}｜${tender.buyer}｜${tender.tender_number}`,
+      `  ${new URL(`/tenders/${tender.slug}`, appUrl).toString()}`,
+    ].join("\n");
+
+  const blocks: string[] = ["您的招标动态", "以下内容符合您当前设置的通知条件。"];
+  if (tenders.length > 0) {
+    blocks.push(`新发布项目（${tenders.length} 个）`, tenders.map(line).join("\n\n"));
+  }
+  if (statusChanges.length > 0) {
+    blocks.push(
+      `项目状态更新（${statusChanges.length} 个）`,
+      statusChanges.map((change) => `${line(change.tender)}\n  状态：${change.previousStatus} → ${change.nextStatus}`).join("\n\n"),
+    );
+  }
+  blocks.push(
+    `修改通知条件或退订：${new URL("/notifications", appUrl).toString()}`,
+    "拉美招投标信息平台自动通知，请勿直接回复本邮件。",
+  );
+  return blocks.join("\n\n");
+}
+
 export function renderTenderDigestEmail(
   tenders: DigestTender[],
   statusChanges: StatusChange[],
   appUrl: string,
   preference: DigestPreferenceSummary,
-): { subject: string; html: string } {
+): { subject: string; html: string; text: string } {
   const subjectParts = [
     tenders.length > 0 ? `${tenders.length} 个新标` : "",
     statusChanges.length > 0 ? `${statusChanges.length} 项状态更新` : "",
@@ -220,6 +263,7 @@ export function renderTenderDigestEmail(
 
   return {
     subject: `拉美招投标信息平台｜${subjectParts}`,
+    text: renderTenderDigestText(tenders, statusChanges, appUrl),
     html: `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>`
       + `<body style="margin:0;background:#f4f1eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',Arial,sans-serif;color:#52636e">`
       + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:28px 14px;background:#f4f1eb"><tr><td align="center">`
@@ -255,6 +299,16 @@ export async function sendTenderDigestEmail(
       to: [recipient.email],
       subject: options.test ? `【测试】${email.subject}` : email.subject,
       html: email.html,
+      // multipart/alternative — see renderTenderDigestText.
+      text: email.text,
+      headers: {
+        // Recurring mail to a list of subscribers is exactly what these are
+        // for, and since Google's 2024 bulk-sender rules a one-click
+        // unsubscribe is effectively required rather than polite. The URL is
+        // the real preferences page, which already has the switch.
+        "List-Unsubscribe": `<${new URL("/notifications", appUrl).toString()}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
     }),
   });
 

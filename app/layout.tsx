@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { CookieNotice } from "@/components/layout/CookieNotice";
 import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
 import { siteOrigin } from "@/lib/site-url";
+import { StructuredData } from "@/components/seo/StructuredData";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,6 +43,27 @@ export const metadata: Metadata = {
   },
   description:
     "把墨西哥、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/中型项目。",
+  // Without these, a link pasted into WeChat, 企业微信, Slack or anywhere else
+  // renders as a bare URL — no title, no description, no image. For a B2B
+  // product that spreads by being forwarded to a colleague, that costs more
+  // than any ranking factor on this page. The image itself is
+  // app/opengraph-image.png, picked up by file convention; Twitter falls back
+  // to og:image, so one file covers both.
+  openGraph: {
+    type: "website",
+    siteName: "拉美招投标信息平台",
+    locale: "zh_CN",
+    url: siteOrigin(),
+    title: "拉美招投标信息平台 | 中国企业出海墨西哥、哥伦比亚、秘鲁",
+    description:
+      "把墨西哥、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投。",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "拉美招投标信息平台",
+    description: "墨西哥、哥伦比亚、秘鲁的政府招标信息，结构化中文情报。",
+  },
+  alternates: { canonical: "/" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -51,6 +73,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <StructuredData />
         <LocaleProvider>
           <AnalyticsTracker />
           <Header />

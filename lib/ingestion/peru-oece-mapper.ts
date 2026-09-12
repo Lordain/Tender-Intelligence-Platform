@@ -1,6 +1,7 @@
 import type { GovernmentLevel, Tender, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
+import { safeFileName, type TenderDocumentLink as SharedTenderDocumentLink } from "@/lib/ingestion/document-links";
 
 /**
  * One record from Peru's real OCDS "record package" — the OECE
@@ -124,14 +125,8 @@ export type OeceDocument = {
   datePublished?: string;
 };
 
-/** One official download link for a tender's bid documents — see supabase/migrations/0042_tender_document_links.sql for why these are stored apart from `tender_documents`. */
-export type TenderDocumentLink = {
-  sourceUrl: string;
-  fileName: string;
-  documentType?: string;
-  format?: string;
-  publishedAt?: string;
-};
+/** Re-exported so this mapper's existing importers don't all have to change; the type itself now lives beside the table it is written to, because PEMEX produces them too. */
+export type { TenderDocumentLink } from "@/lib/ingestion/document-links";
 
 /**
  * Document types worth downloading for a bid/no-bid decision.
@@ -145,10 +140,7 @@ export type TenderDocumentLink = {
  */
 const DOWNLOADABLE_DOCUMENT_TYPES = new Set(["biddingDocuments", "clarifications"]);
 
-/** Windows and every zip tool reject these; a document title like "Bases Administrativas 1/2" is real. */
-function safeFileName(raw: string): string {
-  return raw.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "-").replace(/\s+/g, " ").trim().slice(0, 120);
-}
+
 
 /**
  * The real bid-document links carried inline in one OCDS record.
@@ -157,9 +149,9 @@ function safeFileName(raw: string): string {
  * the same document across `documents[]` entries with different ids, and a
  * ZIP with the same file twice is just a slower download.
  */
-export function oeceDocumentLinks(record: OeceRecord): TenderDocumentLink[] {
+export function oeceDocumentLinks(record: OeceRecord): SharedTenderDocumentLink[] {
   const documents = record.compiledRelease?.tender?.documents ?? [];
-  const byUrl = new Map<string, TenderDocumentLink>();
+  const byUrl = new Map<string, SharedTenderDocumentLink>();
   for (const document of documents) {
     const url = document.url?.trim();
     if (!url) continue;

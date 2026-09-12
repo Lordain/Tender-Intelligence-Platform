@@ -306,7 +306,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
         {/* One row, wrapping only when it must (2026-09-12, user: 这两个选项并排 / 放在同一行). The explanatory tails move into title= so the two stay side by side at ordinary widths. */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label
-            title="目前只有秘鲁 SEACE/OECE 的项目自带官方标书链接，可以一键打包下载"
+            title="目前秘鲁 SEACE/OECE 和墨西哥 PEMEX 的项目自带官方标书链接，可以一键打包下载"
             className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 text-xs font-black text-[#52636e] transition-colors hover:border-[#ffb21c]"
           >
             <input

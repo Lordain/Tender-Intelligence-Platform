@@ -133,6 +133,50 @@ function ErrorPanel({
   );
 }
 
+/**
+ * The command that always works for this source, kept on screen rather than
+ * only appearing after a failure.
+ *
+ * SEACE refuses this deployment's IP range, so on the live site the button is
+ * guaranteed to fail and the CLI is the real path — waiting for the error to
+ * hand over the command means every import starts with a failed request
+ * (user, 2026-09-12: 帮我把这条命令加在后台新项目清单->秘鲁，可以直接复制).
+ * Built from the same flags the API route builds it from, so the two cannot
+ * drift.
+ */
+function peruCliCommand(options: { months: string; days: string; useDays: boolean; write: boolean }): string {
+  const flags = [
+    `--months ${Number(options.months) || 2}`,
+    options.useDays && Number(options.days) > 0 ? `--days ${Number(options.days)}` : "",
+    options.write ? "--write" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return `npm run ingest:peru-live -- ${flags}`;
+}
+
+function CommandBox({ command, copied, onCopy }: { command: string; copied: boolean; onCopy: (command: string) => void }) {
+  return (
+    <div className="mt-3 rounded-xl border border-[#d8e0e3] bg-[#f7f9f9] px-3 py-2.5">
+      <p className="text-[11px] font-black text-[#52636e]">在自己的电脑上跑这条（参数跟上面的设置同步）</p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <code className="min-w-0 flex-1 break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11px] text-[#071826]">{command}</code>
+        <button
+          type="button"
+          onClick={() => onCopy(command)}
+          className="h-7 shrink-0 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
+        >
+          {copied ? "已复制" : "复制"}
+        </button>
+      </div>
+      <p className="mt-1.5 text-[11px] text-[#75838c]">
+        没有 <code className="font-mono">--write</code> 就是<strong>只预览、不写库</strong>（还会在 <code className="font-mono">exports/</code> 生成 CSV 方便逐条看）。
+        上面勾了「写入 Supabase」，这条命令就会自动带上 <code className="font-mono">--write</code>。
+      </p>
+    </div>
+  );
+}
+
 export function ImportPeruForm() {
   const [months, setMonths] = useState("2");
   const [days, setDays] = useState("5");
@@ -243,6 +287,7 @@ export function ImportPeruForm() {
           这是对方的访问策略，不绕。<strong>请在自己的电脑上用命令行导入</strong>——下面的按钮如果失败，会直接把填好参数的命令给你复制。
           本地 <code className="font-mono">npm run dev</code> 打开这个页面时按钮是好用的。
         </p>
+        <CommandBox command={peruCliCommand({ months, days, useDays, write })} copied={copied} onCopy={copyCommand} />
         {errors.oece && <ErrorPanel error={errors.oece} copied={copied} onCopy={copyCommand} />}
         <button
           type="button"

@@ -148,6 +148,13 @@ export function ImportPemexForm() {
               {result.failed && result.failed.length > 0 ? `，${result.failed.length} 条失败` : ""}
             </p>
           )}
+          {result.documentLinks && result.documentLinks.links > 0 && (
+            <p className="mt-1 text-xs text-[#233846]">
+              同时记录了 <strong>{result.documentLinks.links}</strong> 份官方标书链接（覆盖 {result.documentLinks.tenders} 个项目）——
+              去「待补文件项目」页勾选后可一键打包下载。
+              {result.documentLinks.failedItems > 0 ? ` 另有 ${result.documentLinks.failedItems} 条附件没取到（不影响已写入的项目）。` : ""}
+            </p>
+          )}
         </div>
       )}
     </div>

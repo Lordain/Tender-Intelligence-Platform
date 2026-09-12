@@ -442,12 +442,20 @@ export function TenderExplorer({
           */}
           {hasActiveFilters && (
             <div className="flex xl:justify-end xl:pl-5">
+              {/*
+                Sized as one more pill, not as a call to action: same
+                rounded-full / px-2.5 / py-1 / text-xs as chipClass in
+                InlineTogglePills, so it sits on the same baseline as 项目规模
+                and friends instead of making the whole row taller (user,
+                2026-09-12: 不要那么大，不要影响到整个空间，高度跟左边保持一致).
+                The amber border is what still marks it out.
+              */}
               <button
                 type="button"
                 onClick={() => router.replace(pathname, { scroll: false })}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[#e0b661] bg-[#fff4d8] px-4 text-xs font-black text-[#8f5b00] transition-colors hover:border-[#b8860b] hover:bg-[#ffe9b0]"
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#e0b661] bg-[#fff4d8] px-2.5 py-1 text-xs font-semibold text-[#8f5b00] transition-colors hover:border-[#b8860b] hover:bg-[#ffe9b0]"
               >
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="size-3.5 fill-none stroke-current stroke-[2.5]" strokeLinecap="round">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="size-3 fill-none stroke-current stroke-[2.5]" strokeLinecap="round">
                   <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
                 {localize(uiText.clearFilters, locale)}

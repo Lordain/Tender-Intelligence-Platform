@@ -9,7 +9,20 @@
  * would empty the worklist without anything having been downloaded).
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { TenderDocumentLink } from "@/lib/ingestion/peru-oece-mapper";
+
+/** One official download link for a tender's bid documents. Lives here rather than in a mapper because more than one source now produces them (Peru SEACE/OECE, PEMEX). */
+export type TenderDocumentLink = {
+  sourceUrl: string;
+  fileName: string;
+  documentType?: string;
+  format?: string;
+  publishedAt?: string;
+};
+
+/** Windows and every zip tool reject these; a document title like "Bases Administrativas 1/2" is real. */
+export function safeFileName(raw: string): string {
+  return raw.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "-").replace(/\s+/g, " ").trim().slice(0, 120);
+}
 
 export type DocumentLinksForSlug = { slug: string; links: TenderDocumentLink[] };
 

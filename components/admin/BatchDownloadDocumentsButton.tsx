@@ -12,7 +12,7 @@ import { useState } from "react";
  * component owns the whole "get them onto the admin's disk" half.
  *
  * Only some sources carry machine-readable document links (Peru SEACE/OECE
- * today), so the button reports coverage BEFORE it is pressed rather than
+ * and PEMEX today), so the button reports coverage BEFORE it is pressed rather than
  * after: pressing it for rows that have none is a wasted round trip and an
  * error message, which reads as a broken feature.
  */
@@ -86,13 +86,13 @@ export function BatchDownloadDocumentsButton({ tenders }: { tenders: { slug: str
                 <code className="rounded bg-[#edf2f3] px-1 font-mono text-[10px]">项目slug__文件名.pdf</code>
                 ，解压后可以直接拖进下面的分析面板，或者把整个文件夹丢给「本地批量分析」——它按这个 slug 自动归属，不用手动一个个对。
                 <span className="mt-1 block text-[#8a959c]">
-                  秘鲁的服务器较慢、单份标书常有好几 MB，<strong>建议一次选 1～2 个项目</strong>；没下完的重试即可，不会重复计费也不会影响已成功的。
+                  秘鲁的服务器较慢、单份标书常有好几 MB，<strong>建议一次选 1～2 个项目</strong>（PEMEX 快一些）；没下完的重试即可，不会重复计费也不会影响已成功的。
                 </span>
               </>
             ) : (
               <>
                 已选的项目都没有可自动下载的官方标书链接——需要点「官方正式投标入口」手动下载。
-                目前只有秘鲁 SEACE/OECE 的项目自带链接；墨西哥 Compras MX 有反爬限制，无法自动获取。
+                目前秘鲁 SEACE/OECE 和墨西哥 PEMEX 的项目自带链接；Compras MX 和 CFE 有反爬限制，无法自动获取。
               </>
             )}
           </p>

@@ -28,5 +28,7 @@ export type ImportPemexLiveResult = {
   upsertedCount?: number;
   skippedExcludedCount?: number;
   failed?: { slug: string; error: string }[];
+  /** Official bid-document links captured for the written tenders — feeds 批量下载标书 on /admin/documents-needed. Write runs only. */
+  documentLinks?: { tenders: number; links: number; failedItems: number };
   sample: Tender[];
 };

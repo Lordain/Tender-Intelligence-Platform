@@ -1,6 +1,8 @@
 import type { Tender, TenderScopeType, TenderParticipationScope, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
+import { safeFileName, type TenderDocumentLink } from "@/lib/ingestion/document-links";
+import { pemexAttachmentUrl, type PemexAttachmentFile } from "@/lib/ingestion/connectors/pemex-live";
 
 /**
  * One item from a PEMEX subsidiary's "Concursos Abiertos" SharePoint list
@@ -254,4 +256,36 @@ export function mapPemexConcursoItemToTender(
     createdAt: now,
     updatedAt: now,
   };
+}
+
+
+/**
+ * Which of an item's attachments are worth putting in the ZIP.
+ *
+ * PEMEX names them by convention — "01. Convocatoria_CON-114-2026.pdf",
+ * "02. Bases_CON-114-2026.pdf", "02.1 Anexos Bases_...zip", "03. Bases
+ * VF_...pdf" — so everything on a live item is pre-award by construction and
+ * there is no equivalent of OCDS's documentType to filter on. Rather than
+ * guess at a name pattern that would silently drop a file the day PEMEX
+ * renames something, this takes them all and lets the size caps in
+ * app/api/admin/documents/download do the limiting.
+ *
+ * Deduped by URL, and the filename is kept as PEMEX spells it — those numeric
+ * prefixes are the reading order, which a bidder wants.
+ */
+export function pemexDocumentLinks(files: PemexAttachmentFile[]): TenderDocumentLink[] {
+  const byUrl = new Map<string, TenderDocumentLink>();
+  for (const file of files) {
+    const relative = file.ServerRelativeUrl?.trim();
+    const name = file.FileName?.trim();
+    if (!relative || !name) continue;
+    const url = pemexAttachmentUrl(relative);
+    if (byUrl.has(url)) continue;
+    byUrl.set(url, {
+      sourceUrl: url,
+      fileName: safeFileName(name),
+      format: name.includes(".") ? name.slice(name.lastIndexOf(".") + 1).toLowerCase() : undefined,
+    });
+  }
+  return [...byUrl.values()];
 }

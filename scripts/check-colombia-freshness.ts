@@ -64,6 +64,7 @@ async function main() {
   const passedModalidad = new Map<string, number>();
   const wouldBeWritten = new Map<string, number>();
   const excluded: Tender[] = [];
+  const keptBySlug = new Map<string, Tender>();
 
   for (const row of rows) {
     const day = dayOf(row.fecha_de_publicacion_del);
@@ -72,21 +73,29 @@ async function main() {
     bump(passedModalidad, day);
     const tender = mapSecopRowToTender(row, SOURCE_NAME);
     if (!tender) continue;
-    if (tender.relevance.tier !== "excluded") bump(wouldBeWritten, day);
-    else excluded.push(tender);
+    if (tender.relevance.tier !== "excluded") {
+      bump(wouldBeWritten, day);
+      keptBySlug.set(tender.slug, tender);
+    } else {
+      excluded.push(tender);
+    }
   }
 
   const inSupabase = new Map<string, number>();
+  const storedSlugs = new Set<string>();
   const supabase = createSupabaseAdminClient();
   if (supabase) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("publication_date")
+      .select("slug, publication_date")
       .eq("source_name", SOURCE_NAME)
       .gte("publication_date", since.toISOString().slice(0, 10))
       .limit(5000);
     if (error) console.error(`Could not read Supabase: ${error.message}`);
-    for (const row of data ?? []) bump(inSupabase, dayOf((row as { publication_date: string }).publication_date));
+    for (const row of (data ?? []) as { slug: string; publication_date: string }[]) {
+      bump(inSupabase, dayOf(row.publication_date));
+      storedSlugs.add(row.slug);
+    }
   } else {
     // Loudly, and repeated in the conclusion below: the first real run was
     // read as "we have nothing since August" when the truth was that the CLI
@@ -148,6 +157,29 @@ async function main() {
         : `  我们比源头落后 ${lagDays} 天。看上面哪一列先掉到 0，就是那一步丢的。`,
     );
   }
+  // Columns 3 and 4 disagreeing has TWO causes, and they need opposite fixes,
+  // so counting per day cannot answer it — the first real run showed 61
+  // should-be-written against 29 stored, and also days where the DB held MORE
+  // than today's rules would keep (09-03: 1 vs 2). Matching by slug does:
+  //
+  //   - Missing: the rules keep it, the database does not have it. An
+  //     excluded row is NEVER WRITTEN (upsert-tenders skips it entirely), so
+  //     when the rules later loosen — as they did twice today — reclassify
+  //     cannot bring it back, because there is no row to reclassify. Only a
+  //     re-import of that window can.
+  //   - Stale: the database has it and today's rules would not keep it. That
+  //     one IS reclassify's job; nothing needs re-fetching.
+  if (dbMeasured) {
+    const missing = [...keptBySlug.values()].filter((t) => !storedSlugs.has(t.slug));
+    const staleCount = [...storedSlugs].filter((slug) => !keptBySlug.has(slug)).length;
+    console.log(`\n规则要留、库里没有：${missing.length} 条 —— 重新导入这段时间才能拿回来（排除掉的行根本没写过库，reclassify 找不到它们）。`);
+    for (const tender of missing.slice(0, 15)) {
+      console.log(`  ${tender.publicationDate.slice(0, 10)}  ${tender.relevance.tier.padEnd(11)} ${tender.title.es.slice(0, 76)}`);
+    }
+    if (missing.length > 15) console.log(`  …还有 ${missing.length - 15} 条。`);
+    console.log(`\n库里有、现在的规则不留：${staleCount} 条 —— 这些是入库时按旧规则判的，npm run reclassify:tenders 就能纠正。`);
+  }
+
   // The gap between columns 2 and 3 is the whole story on this feed — the
   // first real run kept 61 of 579 — and a percentage cannot say whether the
   // other 518 were genuinely routine or whether a keyword is missing. The

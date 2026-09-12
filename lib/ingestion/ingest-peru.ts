@@ -167,6 +167,108 @@ export async function ingestPeruOece(
 }
 
 /**
+ * Re-reads the segments the tenders we ALREADY have were published in, and
+ * lets their current OCDS record correct their status.
+ *
+ * Layer 2 of the three the user set (2026-09-12): 没有日期从是否有中标状态识别.
+ * A Peru record gains an `awards` array once the buena pro is granted, and
+ * mapOeceRecordToTender turns that into "awarded" — so the feed can learn a
+ * tender is over without any date existing anywhere. What was missing is that
+ * nothing ever went back to look. An ordinary run fetches the LAST FEW MONTHS
+ * of segments, and a tender published in March is in March's segment, not
+ * September's: the award for it lands in a segment no top-up ever asks for
+ * again.
+ *
+ * So the segments come from the rows themselves. Every Peru OECE tender still
+ * reading open contributes its publication month, and only those months are
+ * fetched.
+ *
+ * Two deliberate differences from ingestPeruOece():
+ * - No recency filter. Recency is the exact thing being worked around here;
+ *   applying it would discard every record this function exists to re-read.
+ * - Nothing NEW is written. Only slugs already in the database are kept, so a
+ *   refresh cannot quietly backfill months of old tenders as if they were new
+ *   arrivals — a re-read of 24 months of segments would otherwise dump two
+ *   years of March tenders into 本日新增.
+ */
+export async function refreshPeruOeceStatuses(
+  supabase: SupabaseClient,
+  options: { write: boolean; sourceId?: string; maxSegments?: number },
+  onProgress?: (message: string) => void,
+): Promise<{
+  openCount: number;
+  segments: string[];
+  skippedSegments: number;
+  matchedCount: number;
+  nowAwarded: { slug: string; title: string }[];
+  write: boolean;
+  upsertedCount?: number;
+  failed?: { slug: string; error: string }[];
+}> {
+  const open: { slug: string; publication_date: string; title: { zh?: string; es?: string } | null }[] = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("slug, publication_date, title")
+      .eq("source_name", PERU_OECE_SOURCE_NAME)
+      // The two terminal statuses (lib/tender-status.ts) — a row already
+      // reading 已中标/已取消 has nothing left for a refresh to discover.
+      .not("status", "in", "(awarded,cancelled)")
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(`Failed to read open Peru tenders: ${error.message}`);
+    const page = data ?? [];
+    open.push(...(page as typeof open));
+    if (page.length < PAGE) break;
+  }
+
+  const bySegment = new Map<string, string[]>();
+  for (const row of open) {
+    const segment = row.publication_date?.slice(0, 7);
+    if (!segment || !/^\d{4}-\d{2}$/.test(segment)) continue;
+    const slugs = bySegment.get(segment);
+    if (slugs) slugs.push(row.slug);
+    else bySegment.set(segment, [row.slug]);
+  }
+
+  // Newest first, so a capped run refreshes the months most likely to have
+  // just changed rather than whichever the Map happened to list first.
+  const allSegments = [...bySegment.keys()].sort().reverse();
+  const maxSegments = options.maxSegments ?? 12;
+  const segments = allSegments.slice(0, maxSegments);
+  const skippedSegments = allSegments.length - segments.length;
+
+  const knownSlugs = new Set(open.map((row) => row.slug));
+  const sourceId = options.sourceId ?? "seace_v3";
+  const matched: Tender[] = [];
+
+  for (const segment of segments) {
+    const fetched = await fetchOeceRecordsForSegment({ dataSegmentationId: segment, sourceId }, (page, soFar) => {
+      if (page === 1 || page % 10 === 0) onProgress?.(`${segment}: page ${page}, ${soFar} record(s)`);
+    });
+    let hits = 0;
+    for (const record of fetched) {
+      const tender = mapOeceRecordToTender(record, PERU_OECE_SOURCE_NAME);
+      if (!tender || !knownSlugs.has(tender.slug)) continue;
+      matched.push(tender);
+      hits += 1;
+    }
+    onProgress?.(`${segment}: ${fetched.length} record(s), ${hits} of ours`);
+  }
+
+  const titleBySlug = new Map(open.map((row) => [row.slug, row.title?.zh || row.title?.es || row.slug]));
+  const nowAwarded = matched
+    .filter((tender) => tender.status === "awarded")
+    .map((tender) => ({ slug: tender.slug, title: titleBySlug.get(tender.slug) ?? tender.slug }));
+
+  const base = { openCount: open.length, segments, skippedSegments, matchedCount: matched.length, nowAwarded, write: options.write };
+  if (!options.write) return base;
+
+  const { upsertedCount, failed } = await upsertTendersBatched(supabase, matched);
+  return { ...base, upsertedCount, failed };
+}
+
+/**
  * ProInversión Obras por Impuestos.
  *
  * `file` lets a caller pass an export a human downloaded, bypassing the

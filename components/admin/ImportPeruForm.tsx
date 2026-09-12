@@ -156,6 +156,15 @@ function CommandBox({ days, copied, onCopy }: { days: string; copied: string | n
   const rows: { label: string; command: string; emphasis?: boolean }[] = [
     { label: "先预览（不写库，另存 CSV 到 exports/）", command: peruCliCommand({ days, write: false }) },
     { label: "确认没问题后，真正写入", command: peruCliCommand({ days, write: true }), emphasis: true },
+    // A different job, not a third variant of the import: it adds no
+    // tenders. SEACE's records gain an `awards` array once the buena pro is
+    // granted, but a tender published in March lives in March's segment,
+    // which no "last N days" run ever asks for again — so an award landing
+    // there is invisible until something goes back and looks.
+    {
+      label: "另外：检查旧项目有没有中标（不新增项目，只更新状态）",
+      command: "npm run ingest:peru-live -- --refresh-open --write",
+    },
   ];
 
   return (

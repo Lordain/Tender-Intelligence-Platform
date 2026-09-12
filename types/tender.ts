@@ -167,6 +167,23 @@ export type Tender = {
   subcategory?: string;
   scopeType: TenderScopeType;
   procedureType: string;
+  /**
+   * "Carácter del procedimiento" where the source states it — INFORMATIONAL
+   * ONLY, by explicit decision (user, 2026-09-12: Nacional 不是一个筛选屏蔽条件).
+   *
+   * It is shown on the tender detail page and nowhere else: classifyRelevance()
+   * does not read it, and no list filter is derived from it. Raised as a
+   * question because the real distribution is lopsided — 16,896 NACIONAL vs
+   * 5,420 INTERNACIONAL ABIERTO and 1,281 BAJO TRATADOS across the full
+   * 23,597-row 2025 Compras MX contracts export (see
+   * lib/ingestion/heuristics.ts) — and answered: the reader is told, the
+   * platform does not decide for them.
+   *
+   * So do not turn this into an exclude rule or a tier demotion without
+   * asking again. Note also that the LicitIA bulk source carries no Carácter
+   * column at all (licitia-vigente-mapper.ts), so any rule built on it would
+   * apply to part of the Mexican feed and silently skip the rest.
+   */
   participationScope?: TenderParticipationScope;
   publicationDate: string;
   /**

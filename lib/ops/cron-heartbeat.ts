@@ -16,7 +16,8 @@ export type CronJobId =
   | "subscription-renewal-reminders"
   | "purge-stale-colombia"
   | "import-colombia"
-  | "import-pemex";
+  | "import-pemex"
+  | "licitia-daily";
 
 export type CronJobSpec = {
   id: CronJobId;
@@ -42,6 +43,11 @@ export const CRON_JOBS: CronJobSpec[] = [
   // indistinguishable from the feed itself.
   { id: "import-colombia", label: "哥伦比亚自动导入", maxAgeHours: 30 },
   { id: "import-pemex", label: "PEMEX 自动导入", maxAgeHours: 30 },
+  // Runs on GitHub Actions rather than Vercel (it takes minutes, not seconds —
+  // see .github/workflows/licitia-daily.yml). The heartbeat is written by
+  // scripts/licitia-daily.ts, so this banner covers it exactly like the two
+  // that do run here.
+  { id: "licitia-daily", label: "LicitIA 自动导入", maxAgeHours: 30 },
 ];
 
 export type CronHeartbeatStatus = "ok" | "skipped" | "failed";

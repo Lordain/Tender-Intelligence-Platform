@@ -3668,15 +3668,7 @@ cries wolf daily stops being read.
 
 ### What is NOT automated, and why
 
-- **LicitIA discover** (`discoverComprasMxVigente`) downloads a 15-lote,
-  ~372k-row bulk corpus and then makes one detail lookup per newly discovered
-  procedure. Minutes, not seconds — it cannot run in a serverless function,
-  and its own admin route says as much ("runs on the admin's own `next dev`
-  server, not a rate-limited serverless function"). Same for
-  `resolveComprasMxLinks`, which is one sequential HTTP request per unresolved
-  row. These need a runner without a request ceiling (a scheduled GitHub
-  Actions workflow is the obvious one), which is a separate decision because
-  it means putting the Supabase service-role key in repository secrets.
+- **LicitIA** runs, but not on Vercel — see below.
 - **Peru OECE** — Vercel's egress IPs are blocked by the source, and this
   project does not work around deliberate blocks.
 - **Compras MX export** and **CFE** — anti-automation gated, same standing
@@ -3690,3 +3682,39 @@ hours. That registration is not bookkeeping: these are the first jobs whose
 silence would be indistinguishable from a quiet week in the feed, so the
 overdue banner on /admin is the only thing that can tell "no new Colombian
 tenders" from "we stopped reading Colombia eight days ago".
+
+### `.github/workflows/licitia-daily.yml` — 04:40 UTC daily
+
+LicitIA discovery downloads a 15-lote, ~372k-row bulk corpus and then makes one
+detail lookup per newly-discovered procedure; link resolution is one sequential
+HTTP request per unresolved tender. Minutes, not seconds — it does not fit a
+serverless function's request ceiling at any plan, and its own admin route says
+as much ("runs on the admin's own `next dev` server, not a rate-limited
+serverless function"). So it runs on a GitHub Actions runner, which has no such
+ceiling, against the same Supabase database.
+
+`scripts/licitia-daily.ts` (`npm run licitia:daily`) is the single command the
+schedule calls: discovery, then link resolution, then the heartbeat. Both steps
+run even if the first fails — link resolution operates on tenders ALREADY in
+the database and has nothing to do with whether today's discovery worked — and
+the process still exits non-zero if either did, so the run shows red.
+
+Two deliberate details:
+
+- **It does not import `recordCronHeartbeat`.** That module starts with
+  `import "server-only"`, which throws outside a Next server runtime, and the
+  guard is worth keeping. The write is three lines against a table whose shape
+  is already pinned, so duplicating it costs less than weakening that boundary.
+  `licitia-daily` is registered in `CRON_JOBS` like the other five, so the
+  overdue banner on /admin covers a job running on entirely different infra.
+- **A scheduled run always writes; a manual `workflow_dispatch` writes only
+  when asked.** The workflow can be exercised end to end before it is trusted.
+
+The excluded-tenders CSV is uploaded as a run artifact (14 days), so what the
+relevance rules rejected each day stays reviewable without a local run.
+
+**Setup, one time**: add `NEXT_PUBLIC_SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY` as repository secrets (Settings → Secrets and
+variables → Actions). The service-role key bypasses RLS, so this is the one
+place in this project where it lives outside Vercel — worth knowing when
+rotating it.

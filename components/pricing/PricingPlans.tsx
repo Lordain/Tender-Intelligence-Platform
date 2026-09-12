@@ -80,8 +80,15 @@ export function PricingPlans() {
             {PROMOTION.label}
             {promotionDeadline() ? ` · 截止 ${promotionDeadline()}` : ""}
           </p>
+          {/* Precise, because the two readings of 限时 are opposites to
+              somebody deciding whether to buy: "limited time to get this
+              price" (what this is) vs "you keep this price for a limited
+              time" (what the earlier wording implied). Subscribers keep the
+              promotional rate — Stripe binds a subscription to the Price it
+              was created against — so saying so is both accurate and the
+              stronger argument. */}
           <p className="mt-1 text-xs font-bold text-[#7c4b46]">
-            下方为优惠后价格，划线价为原价。优惠结束后恢复原价。
+            下方为优惠后价格，划线价为原价。<strong>优惠期内订阅，续费一直按优惠价</strong>；优惠结束后新订阅恢复原价。
           </p>
         </div>
       )}

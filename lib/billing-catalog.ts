@@ -32,6 +32,16 @@ export const PLAN_LIST_PRICES_USD = {
  * PLAN_LIST_PRICES_USD over PLAN_PRICES_USD, flips `active`, AND swaps the
  * six STRIPE_PRICE_* environment variables back. The code change alone is not
  * enough — see the warning on PLAN_PRICES_USD.
+ *
+ * SUBSCRIBERS KEEP THE PROMOTIONAL PRICE (the user's decision, 2026-09-13).
+ * That is Stripe's own behaviour and needs no code: a subscription is bound
+ * to the Price object it was created against, so it renews at that amount
+ * however the environment variables later change. Two consequences worth
+ * holding on to — when the promotion ends, do NOT archive the promotional
+ * Prices in Stripe, since live subscriptions still bill from them; and the
+ * page must say this plainly, because "限时" then means "limited time to GET
+ * this price", not "you keep this price for a limited time", and those read
+ * as opposites to someone deciding whether to buy.
  */
 export const PROMOTION = {
   active: true,

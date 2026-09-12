@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SubscriptionCheckoutForm } from "@/components/pricing/SubscriptionCheckoutForm";
 import { loginPathFor } from "@/lib/auth-redirect";
-import { bankTransferQuote, PLAN_PRICES_USD } from "@/lib/billing-catalog";
+import { bankTransferQuote, PLAN_LIST_PRICES_USD, PLAN_PRICES_USD, PROMOTION, promotionSavingPercent } from "@/lib/billing-catalog";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { parseStripeSelection } from "@/lib/stripe";
@@ -40,6 +40,19 @@ export default async function SubscribePage({
         <header className="mb-8 border-b border-[#d8e0e3] pb-7">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Secure checkout</p>
           <h1 className="mt-3 text-4xl font-black tracking-[-0.045em] text-[#071826]">确认订阅</h1>
+          {/* The promotion is stated again here rather than only on /pricing:
+              this is the page where the decision is actually made, and the
+              part that matters to that decision — that the rate is kept on
+              renewal — is not something a buyer should have to remember from
+              the previous page. */}
+          {promotionSavingPercent(selected.plan, selected.interval) > 0 && (
+            <p className="mt-4 rounded-xl border border-[#f3c2bd] bg-[#fff5f4] px-4 py-3 text-sm font-bold text-[#a3261f]">
+              {PROMOTION.label}：原价 ${PLAN_LIST_PRICES_USD[selected.plan][selected.interval].toLocaleString("en-US")}，
+              现价 ${PLAN_PRICES_USD[selected.plan][selected.interval].toLocaleString("en-US")}
+              （省 {promotionSavingPercent(selected.plan, selected.interval)}%）。
+              <span className="font-black">现在订阅，续费一直按此价。</span>
+            </p>
+          )}
         </header>
         <SubscriptionCheckoutForm
           plan={selected.plan}

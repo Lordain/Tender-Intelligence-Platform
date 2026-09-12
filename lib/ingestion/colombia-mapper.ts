@@ -120,8 +120,77 @@ const SCOPE_TYPE_BY_TIPO_CONTRATO: Record<string, TenderScopeType> = {
 const PROCESS_PHASE_WORDS =
   /fase de selecci[óo]n|presentaci[óo]n de ofertas?|borrador|convocatoria|adjudicaci[óo]n|evaluaci[óo]n de ofertas?/i;
 
+/**
+ * The same labels as complete strings, accent-free and without their inner
+ * parentheses, for prefix-matching a TRUNCATED one — see
+ * stripTruncatedPhaseSuffix().
+ */
+const PROCESS_PHASE_LABELS = [
+  "fase de seleccion presentacion de ofertas",
+  "fase de seleccion presentacion de oferta",
+  "presentacion de ofertas",
+  "presentacion de oferta",
+  "evaluacion de ofertas",
+  "convocatoria",
+  "adjudicacion",
+  "borrador",
+];
+
+/**
+ * SECOP truncates `nombre_del_procedimiento` at exactly 200 characters —
+ * confirmed on seven real rows (2026-09-12), every one of them 200 long to
+ * the character. When the phase label is what gets cut, its closing
+ * parenthesis goes with it:
+ *
+ *   ...DEPARTAMENTO DE AMAZONAS. (Fase de Selección (P
+ *   ...EN SEDES URBANAS Y RURALES (Presentació
+ *   ...DEPARTAMENTO DE ARAUCA (Fas
+ *
+ * stripProcessPhaseSuffix()'s regex needs a closed parenthetical, so it left
+ * these alone — and the ragged fragment went straight into the public feed as
+ * part of the tender's title. It also made the re-published copy look like a
+ * DIFFERENT tender from the original to anything comparing titles, which is
+ * how check-duplicate-ids came to report seven "collisions" that were nothing
+ * of the sort.
+ *
+ * Cuts from the first parenthesis that is never closed, and only when what
+ * follows is the beginning of a known phase label — "(Fas" goes, "(ETAPA" and
+ * "(Grupo 2" stay. Three characters minimum, so a bare "(A" is never enough
+ * to lose text on.
+ */
+function stripTruncatedPhaseSuffix(value: string): string {
+  let depth = 0;
+  let openedAt = -1;
+  for (let i = 0; i < value.length; i += 1) {
+    if (value[i] === "(") {
+      if (depth === 0) openedAt = i;
+      depth += 1;
+    } else if (value[i] === ")") {
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) openedAt = -1;
+    }
+  }
+  if (depth === 0 || openedAt < 0) return value;
+
+  const fragment = value
+    .slice(openedAt + 1)
+    .replace(/[()]/g, " ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  if (fragment.length < 3) return value;
+  if (!PROCESS_PHASE_LABELS.some((label) => label.startsWith(fragment))) return value;
+
+  return value.slice(0, openedAt).trim();
+}
+
 export function stripProcessPhaseSuffix(value: string): string {
-  let out = value.trim();
+  // Truncated tail first: it is the only thing that can sit AFTER a complete
+  // parenthetical ("NAME (Obra) (Fase de Selecci"), and removing it is what
+  // lets the loop below see the complete one at the end of the string.
+  let out = stripTruncatedPhaseSuffix(value.trim());
   for (let guard = 0; guard < 3; guard += 1) {
     const match = out.match(/\s*\(([^()]*(?:\([^()]*\)[^()]*)*)\)\s*$/);
     if (!match || match.index === undefined || !PROCESS_PHASE_WORDS.test(match[1])) break;

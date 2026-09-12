@@ -3577,3 +3577,40 @@ reference matches 32 different entities and whose stored title matches none of
 them. Left untouched and reported — guessing would block a stranger's tender.
 It no longer blocks anything, so if that project reappears in an import it can
 simply be deleted again.
+
+### And the last 7 were not collisions either — SECOP truncates titles at 200
+
+With the identity check fixed, 60 reported collisions became 7. Those 7 had a
+tell the earlier output could not show: the character position where the two
+titles diverge — 179, 188, 184, 158, 196, 183, 179 — and at every one of those
+positions the newer copy carried a ragged fragment.
+
+    ...DEPARTAMENTO DE AMAZONAS. (Fase de Selección (P
+    ...EN SEDES URBANAS Y RURALES (Presentació
+    ...DEPARTAMENTO DE ARAUCA (Fas
+
+Every one of those rows is exactly 200 characters long, to the character.
+`nombre_del_procedimiento` is capped at 200 by SECOP, and when a phase label
+is what gets cut, its closing parenthesis goes with it.
+`stripProcessPhaseSuffix()`'s regex requires a CLOSED parenthetical, so it
+left all of them alone.
+
+Two consequences, one of which had nothing to do with duplicate detection:
+the ragged fragment was going into the public feed as part of the tender's
+title, and it made a republished copy look like a different tender to anything
+comparing titles.
+
+`stripTruncatedPhaseSuffix()` now cuts from the first parenthesis that is
+never closed, but only when what follows is the beginning of a known phase
+label: "(Fas" goes, "(ETAPA", "(Grupo 2" and "(LOTE 3" stay, and a fragment
+under three characters is never enough to lose text on. It runs BEFORE the
+existing closed-parenthetical loop, since a truncated label is the only thing
+that can sit after a complete one ("OBRA (Grupo 2) (Fase de Selecci").
+
+`npm run test:colombia-titles` (22 checks) pins both directions — a phase
+label must go, a meaningful parenthetical must stay. This function has now
+been wrong twice in two days, both times invisibly, and both times the failure
+mode was merging or splitting real tenders.
+
+**Stored rows still carry the ragged titles** until a re-import or a refresh
+re-maps them; nothing retroactively rewrites what is already in the table.

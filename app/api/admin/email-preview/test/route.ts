@@ -68,6 +68,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, message: `测试邮件已发送到当前管理员邮箱 ${admin.email}。` });
   } catch (error) {
     console.error("[admin-email-preview-test] Delivery failed", error);
-    return NextResponse.json({ error: "测试邮件发送失败，请检查生产环境邮件配置。" }, { status: 500 });
+    // The reason, not a shrug. Every throw reaching here is either our own
+    // config check ("Email delivery is not fully configured") or Resend's own
+    // words, and Resend's are precise and actionable — the live example that
+    // prompted this was "Invalid `to` field. Please use our testing email
+    // address instead of domains like `example.com`", which names the fix.
+    // Replacing that with "请检查生产环境邮件配置" threw away the answer and
+    // sent the admin to guess at five environment variables, on the wrong
+    // machine besides. This route is admin-gated and the messages carry no
+    // secrets — the key and the cron secret fail as a 401 or a config check,
+    // never as an echoed value.
+    const reason = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: `测试邮件发送失败：${reason}` }, { status: 500 });
   }
 }

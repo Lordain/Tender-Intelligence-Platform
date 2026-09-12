@@ -11,6 +11,7 @@ import {
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { recordCronHeartbeat } from "@/lib/ops/cron-heartbeat";
 import { reportOpsFailure, resolveOpsFailure } from "@/lib/notifications/ops-alert";
+import { isReservedEmailDomain } from "@/lib/notifications/reserved-domains";
 
 export const runtime = "nodejs";
 // This route sends one email per matching recipient in a loop, so it scales
@@ -67,8 +68,24 @@ async function runDigest(request: NextRequest, heartbeatClient: ReturnType<typeo
 
   let sent = 0;
   let failed = 0;
+  let undeliverable = 0;
   const recovered: string[] = [];
   for (const recipient of recipients) {
+    // Before any work for this recipient: an RFC 2606 reserved domain can
+    // never receive mail, so attempting it is not a test of anything — it is
+    // a guaranteed failure that files an alert and reddens the heartbeat
+    // every single run. The seeded QA accounts are exactly this
+    // (scripts/seed-test-accounts.ts defaults to @example.com) and produced
+    // five standing alerts against a permanently failed job, which buried the
+    // real failures this monitor exists to surface. Counted, never alerted.
+    if (isReservedEmailDomain(recipient.email)) {
+      undeliverable += 1;
+      // Clears the standing alert left by the runs that did attempt it —
+      // that alert describes an attempt this code no longer makes.
+      await resolveOpsFailure(supabase, `tender-digest:recipient:${recipient.user_id}`);
+      continue;
+    }
+
     const matches = matchingTenders(tenders, recipient);
     const matchingUpdates = matchingStatusChanges(statusChanges, recipient);
     if (matches.length === 0 && matchingUpdates.length === 0) continue;
@@ -109,8 +126,15 @@ async function runDigest(request: NextRequest, heartbeatClient: ReturnType<typeo
   // transient bounce does not need dismissing by hand.
   for (const userId of recovered) await resolveOpsFailure(supabase, `tender-digest:recipient:${userId}`);
 
-  await recordCronHeartbeat(supabase, "tender-digest", failed > 0 ? "failed" : "ok", failed > 0 ? `${failed} 位收件人发送失败` : undefined);
-  return NextResponse.json({ slot: slot.key, newTenderCount: tenders.length, statusUpdateCount: statusChanges.length, recipientCount: recipients.length, sent, failed });
+  // The skipped count rides along in the heartbeat detail rather than the
+  // status: a test account that cannot receive mail is not a fault, but
+  // silently dropping five recipients would be its own kind of lie.
+  const detail = [
+    failed > 0 ? `${failed} 位收件人发送失败` : null,
+    undeliverable > 0 ? `${undeliverable} 位测试账号邮箱不可投递，已跳过` : null,
+  ].filter(Boolean).join("；");
+  await recordCronHeartbeat(supabase, "tender-digest", failed > 0 ? "failed" : "ok", detail || undefined);
+  return NextResponse.json({ slot: slot.key, newTenderCount: tenders.length, statusUpdateCount: statusChanges.length, recipientCount: recipients.length, sent, failed, undeliverable });
 }
 
 export async function GET(request: NextRequest) {

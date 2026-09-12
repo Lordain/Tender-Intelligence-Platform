@@ -47,6 +47,7 @@
     "test:download": "tsx scripts/test-download-file.ts",
     "test:key-dates": "tsx scripts/test-key-dates.ts",
     "test:colombia-titles": "tsx scripts/test-colombia-titles.ts",
+    "test:reserved-domains": "tsx scripts/test-reserved-domains.ts",
     "check:colombia": "tsx --env-file-if-exists=.env.local scripts/check-colombia-freshness.ts",
     "check:duplicate-ids": "tsx --env-file-if-exists=.env.local scripts/check-duplicate-ids.ts",
     "migrate:colombia-slugs": "tsx --env-file-if-exists=.env.local scripts/migrate-colombia-slugs.ts",

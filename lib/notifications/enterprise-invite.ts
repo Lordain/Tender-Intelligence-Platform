@@ -31,6 +31,25 @@ export async function sendEnterpriseInviteEmail(to: string, invitedBy: string): 
         from,
         to: [to],
         subject: "拉美招投标信息平台｜企业版账号邀请",
+        // A reply that reaches a person is a legitimacy signal, and this is
+        // the one message in the set a confused recipient genuinely wants to
+        // answer ("who invited me?").
+        reply_to: from,
+        // multipart/alternative. Gmail put this exact message in 垃圾邮件 on
+        // 2026-09-13 while the digest from the same domain and the same
+        // Resend account reached the inbox; both were HTML-only, and this one
+        // has the shape filters are most suspicious of — a short body, one
+        // large call-to-action button, and a second link going somewhere
+        // else. The text part is written out rather than stripped from the
+        // HTML so it reads as a real message.
+        text: [
+          "您收到一份企业版账号邀请",
+          `${invitedBy} 邀请您加入其企业版订阅。接受后，您将获得完整的项目查看权限，并可设置自己的邮件通知条件。`,
+          "邀请需要您本人确认才会生效。请登录后前往「账户管理」页面接受或拒绝：",
+          accountUrl,
+          `还没有账号？先用本邮箱注册后，即可在同一页面看到这份邀请：${registerUrl}`,
+          "如果您不认识邀请方，忽略这封邮件即可——未经您确认，不会有任何账号变更。",
+        ].join("\n\n"),
         html: `<main style="max-width:640px;margin:auto;font-family:Arial,sans-serif;color:#52636e">`
           + `<h1 style="color:#071826;font-size:22px">您收到一份企业版账号邀请</h1>`
           + `<p><strong style="color:#071826">${escapeHtml(invitedBy)}</strong> 邀请您加入其企业版订阅。接受后，您将获得完整的项目查看权限，并可设置自己的邮件通知条件。</p>`

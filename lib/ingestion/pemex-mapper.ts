@@ -99,6 +99,34 @@ const PEMEX_SITE_ORIGIN = "https://www.pemex.com";
 const CONCURSOS_ROOT_PATH = "/procura/procedimientos-de-contratacion/concursosabiertos";
 
 /**
+ * Both dates this source actually has.
+ *
+ * PEMEX tenders used to reach the site with `keyDates: []`, so the 关键日期
+ * section read "本项目未列出相关内容" while the overview right above it showed a
+ * publication date (user, 2026-09-12: Pemex项目也没有关键日期). Every other
+ * mapper writes at least a publication entry; this one simply never did.
+ *
+ * `vencimiento` is the second, and it is the reason validity_end exists as a
+ * type. It is NOT a bid deadline — see the submissionDeadline comment below,
+ * and migration 0044 — but it is real, it is the only other date this list
+ * publishes, and a date shown under an honest label beats an empty timeline.
+ * Skipped when it is not after publication, which is what a stale or
+ * placeholder value looks like.
+ */
+function pemexKeyDates(tenderNumber: string, publicationDate: string, vencimiento: string | undefined): Tender["keyDates"] {
+  const dates: Tender["keyDates"] = [
+    { id: `pemex-${slugify(tenderNumber)}-publication`, type: "publication", date: publicationDate },
+  ];
+
+  const validUntil = toIso(vencimiento);
+  if (validUntil && validUntil > publicationDate) {
+    dates.push({ id: `pemex-${slugify(tenderNumber)}-validity`, type: "validity_end", date: validUntil });
+  }
+
+  return dates;
+}
+
+/**
  * Real per-list item display-form path (`Lists/<ListInternalName>/
  * DispForm.aspx`), confirmed 2026-09-03 via each list's own
  * `DefaultDisplayFormUrl` REST property — briefly used here, then
@@ -207,11 +235,13 @@ export function mapPemexConcursoItemToTender(
     // until 2028" when that isn't what the field means, actively
     // misleading a bid/no-bid decision. Still used for status inference
     // below, where "is this mechanism still valid" is the right question.
+    // It IS shown, though — as a validity_end key date, under its real
+    // meaning. See pemexKeyDates().
     status: inferStatus(item.vencimiento),
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],
-    keyDates: [],
+    keyDates: pemexKeyDates(tenderNumber, publicationDate, item.vencimiento),
     risks: [],
     relevance,
     sourceName,

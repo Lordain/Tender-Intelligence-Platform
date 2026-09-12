@@ -204,6 +204,11 @@ export const KEY_DATE_TYPE_LABELS: Record<TenderKeyDate["type"], LocalizedText> 
     es: "Firma de Contrato",
     zh: "合同签署",
   },
+  validity_end: {
+    en: "Mechanism Valid Until",
+    es: "Vigencia del Concurso",
+    zh: "机制有效期至",
+  },
 };
 
 /**
@@ -229,4 +234,12 @@ export const KEY_DATE_TYPE_DESCRIPTIONS: Record<TenderKeyDate["type"], Localized
   opening: { en: "When submitted bids are formally opened/unsealed for review — NOT the results date (sometimes the same moment as the submission deadline, sometimes a separate scheduled session).", es: "Cuándo se abren formalmente las ofertas presentadas para su revisión — NO es la fecha de resultados (a veces coincide con la fecha límite de presentación, a veces es una sesión aparte).", zh: "投标文件正式拆封唱标的时间——不是中标结果公布时间（有的项目跟交标截止是同一时刻，有的项目是单独安排的）。" },
   award: { en: "When the award/results are announced — this is the outcome date.", es: "Cuándo se anuncia el fallo/resultado — esta es la fecha del resultado.", zh: "中标结果公布的时间——这才是真正的结果公示日期。" },
   contract_signing: { en: "When the winning bidder signs the contract.", es: "Cuándo el ganador firma el contrato.", zh: "中标方正式签署合同的时间。" },
+  // Spelled out at length because the whole point of this type is that it is
+  // NOT the thing a reader will assume it is. PEMEX's own `vencimiento` runs
+  // one to two years past publication.
+  validity_end: {
+    en: "How long this standing procurement mechanism stays open — NOT a bid deadline. Each specific event under it has its own timetable, published on the buyer's portal.",
+    es: "Hasta cuándo sigue vigente este mecanismo de contratación — NO es una fecha límite de presentación. Cada evento concreto tiene su propio calendario en el portal del comprador.",
+    zh: "这个长期公开征询机制的有效期截止日——不是交标截止日。具体某一次采购事件另有自己的时间表，以采购方平台公布的为准。",
+  },
 };

@@ -46,7 +46,13 @@ export type TenderKeyDate = {
     | "submission"
     | "opening"
     | "award"
-    | "contract_signing";
+    | "contract_signing"
+    /**
+     * The date a standing procurement mechanism stops being valid — NOT a bid
+     * deadline. PEMEX's Concursos Abiertos carry one (`vencimiento`, routinely
+     * a year or two out); see supabase/migrations/0044_key_date_validity_end.sql.
+     */
+    | "validity_end";
   date: string;
   mandatory?: boolean;
   notes?: LocalizedText;

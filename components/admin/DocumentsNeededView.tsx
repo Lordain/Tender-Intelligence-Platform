@@ -41,6 +41,14 @@ function UploadIcon() {
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="size-3.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m5 12.5 4.5 4.5L19 7" />
+    </svg>
+  );
+}
+
 function BanIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-3.5">
@@ -65,7 +73,10 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
   const [source, setSource] = useState("all");
   /** Only some sources publish machine-readable document URLs, so "which of these can I actually batch-download" is a different question from "which source is this" — and the one the admin is really asking. */
   const [downloadableOnly, setDownloadableOnly] = useState(false);
+  /** "I already fetched this one's files" — see supabase/migrations/0043_documents_downloaded_at.sql. Not the same as 无法获取, which removes the row. */
+  const [pendingDownloadOnly, setPendingDownloadOnly] = useState(false);
   const [dismissingSlug, setDismissingSlug] = useState<string | null>(null);
+  const [markingSlug, setMarkingSlug] = useState<string | null>(null);
   // The selected tenders themselves, not just their slugs (2026-09-06): a
   // written tender is dropped from `tenders` immediately, and a panel that
   // looked its rows up in `tenders` would make the just-finished row —
@@ -99,6 +110,35 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
     }
     setManualSlugs((current) => [...current, slug]);
     setManualInput("");
+  }
+
+  /**
+   * Optimism would be wrong here: the whole point of the marker is to be
+   * trusted across a session that spans days, so it flips only once the write
+   * has actually landed. The row stays in the worklist either way — it is
+   * still waiting for its files to be uploaded.
+   */
+  async function toggleDownloaded(tender: TenderNeedingDocuments) {
+    const downloaded = !tender.documentsDownloadedAt;
+    setMarkingSlug(tender.slug);
+    try {
+      const res = await fetch(`/api/admin/tenders/${tender.slug}/documents-downloaded`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ downloaded }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { documentsDownloadedAt } = (await res.json()) as { documentsDownloadedAt: string | null };
+      setTenders((prev) =>
+        prev.map((item) =>
+          item.slug === tender.slug ? { ...item, documentsDownloadedAt: documentsDownloadedAt ?? undefined } : item,
+        ),
+      );
+    } catch {
+      alert("标记失败，请稍后重试。");
+    } finally {
+      setMarkingSlug(null);
+    }
   }
 
   async function dismissTender(slug: string) {
@@ -140,6 +180,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
     [locale, tenders],
   );
   const downloadableCount = useMemo(() => tenders.filter((tender) => tender.documentLinkCount > 0).length, [tenders]);
+  const pendingDownloadCount = useMemo(() => tenders.filter((tender) => !tender.documentsDownloadedAt).length, [tenders]);
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -153,12 +194,13 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
       const matchesRelevance = relevance === "all" || tender.relevanceTier === relevance;
       const matchesSource = source === "all" || tender.sourceName === source;
       const matchesDownloadable = !downloadableOnly || tender.documentLinkCount > 0;
-      return matchesQuery && matchesCountry && matchesRelevance && matchesSource && matchesDownloadable;
+      const matchesPending = !pendingDownloadOnly || !tender.documentsDownloadedAt;
+      return matchesQuery && matchesCountry && matchesRelevance && matchesSource && matchesDownloadable && matchesPending;
     });
-  }, [country, downloadableOnly, locale, query, relevance, source, tenders]);
+  }, [country, downloadableOnly, locale, pendingDownloadOnly, query, relevance, source, tenders]);
 
   const priorityCount = tenders.filter((tender) => tender.relevanceTier === "flagship" || tender.relevanceTier === "significant").length;
-  const hasFilters = Boolean(query.trim()) || country !== "all" || relevance !== "all" || source !== "all" || downloadableOnly;
+  const hasFilters = Boolean(query.trim()) || country !== "all" || relevance !== "all" || source !== "all" || downloadableOnly || pendingDownloadOnly;
 
   function clearFilters() {
     setDraftQuery("");
@@ -167,6 +209,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
     setRelevance("all");
     setSource("all");
     setDownloadableOnly(false);
+    setPendingDownloadOnly(false);
   }
 
   if (!SUPABASE_CONFIGURED) {
@@ -270,6 +313,16 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
           只看能一键下载标书的（{downloadableCount} 个）
           <span className="font-bold text-[#8a959c]">——目前只有秘鲁 SEACE/OECE 带官方标书链接</span>
         </label>
+        <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 text-xs font-black text-[#52636e] transition-colors hover:border-[#ffb21c]">
+          <input
+            type="checkbox"
+            checked={pendingDownloadOnly}
+            onChange={(event) => setPendingDownloadOnly(event.target.checked)}
+            className="size-4 accent-[#ffb21c]"
+          />
+          只看还没下载的（{pendingDownloadCount} 个）
+          <span className="font-bold text-[#8a959c]">——下载完一个就点那一行的「已下载」</span>
+        </label>
       </div>
 
       {tenders.length === 0 ? (
@@ -303,6 +356,14 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                       />
                     </td>
                     <td title={localize(tender.title, locale)} className="truncate whitespace-nowrap px-4 py-3 font-black text-[#071826]">
+                      {tender.documentsDownloadedAt && (
+                        <span
+                          title={`已于 ${formatDate(tender.documentsDownloadedAt, locale)} 标记为已下载`}
+                          className="mr-1.5 inline-flex items-center rounded-md bg-[#e3f3e6] px-1.5 py-0.5 align-middle text-[10px] font-black text-[#1c6b2c]"
+                        >
+                          已下载
+                        </span>
+                      )}
                       {tender.documentLinkCount > 0 && (
                         <span
                           title={`这条项目有 ${tender.documentLinkCount} 份官方标书可以自动下载`}
@@ -337,6 +398,24 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                           className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[11px] font-black transition-colors ${isSelected ? "border border-[#cbd6da] bg-white text-[#52636e]" : "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]"}`}
                         >
                           <UploadIcon />{isSelected ? "取消选择" : "选择上传"}
+                        </button>
+                        <button
+                          type="button"
+                          title={
+                            tender.documentsDownloadedAt
+                              ? `已于 ${formatDate(tender.documentsDownloadedAt, locale)} 标记为已下载——再点一次可取消`
+                              : "标记为「标书已下载」——项目仍留在清单里等上传，只是不用再去下载了"
+                          }
+                          disabled={markingSlug === tender.slug}
+                          onClick={() => toggleDownloaded(tender)}
+                          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-black transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                            tender.documentsDownloadedAt
+                              ? "border-[#a8d6b3] bg-[#e3f3e6] text-[#1c6b2c] hover:border-[#7fbf90]"
+                              : "border-[#cbd6da] bg-white text-[#52636e] hover:border-[#7fbf90] hover:bg-[#edf7ee] hover:text-[#1c6b2c]"
+                          }`}
+                        >
+                          <CheckIcon />
+                          {tender.documentsDownloadedAt ? "已下载" : "标记已下载"}
                         </button>
                         <button
                           type="button"

@@ -421,11 +421,12 @@ type DocumentsNeededRow = {
   tender_documents: { id: string }[];
   tender_document_links: { id: string }[];
   submission_deadline: string | null;
+  documents_downloaded_at: string | null;
 };
 
 const DOCUMENTS_NEEDED_SELECT = `
   slug, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url, source_name, status,
-  tender_documents ( id ), tender_document_links ( id ), submission_deadline
+  tender_documents ( id ), tender_document_links ( id ), submission_deadline, documents_downloaded_at
 `;
 
 /**
@@ -501,6 +502,7 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
       sourceName: row.source_name,
       status: row.status,
       documentLinkCount: row.tender_document_links?.length ?? 0,
+      documentsDownloadedAt: row.documents_downloaded_at ?? undefined,
     }));
 }
 

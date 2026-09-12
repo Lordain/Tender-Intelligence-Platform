@@ -118,6 +118,14 @@ export type TenderNeedingDocuments = {
    * gated) and for anything ingested before those links were recorded.
    */
   documentLinkCount: number;
+  /**
+   * When an admin marked "I already downloaded this one's documents"
+   * (supabase/migrations/0043_documents_downloaded_at.sql). Undefined means
+   * not downloaded. Distinct from documents_unavailable, which removes the row
+   * from the worklist entirely — this row is still waiting for its files to be
+   * uploaded, it just no longer needs fetching.
+   */
+  documentsDownloadedAt?: string;
 };
 
 export type Tender = {

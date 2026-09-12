@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AutoRunBadge, AutoRunNote } from "@/components/admin/AutoRunBadge";
 import { KNOWN_BUYER_NAMES, PEMEX_LIST_TITLES, type PemexListTitle, type ImportPemexLiveResult } from "@/lib/ingestion/pemex-sources";
 
 export function ImportPemexForm() {
@@ -61,7 +62,13 @@ export function ImportPemexForm() {
   return (
     <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Live fetch</p>
-      <h2 className="mt-1 text-lg font-black text-[#071826]">PEMEX 直接拉取</h2>
+      <h2 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black text-[#071826]">
+        PEMEX 直接拉取
+        <AutoRunBadge schedule="每天 04:20 UTC，Vercel 定时任务" />
+      </h2>
+      <AutoRunNote>
+        每天 04:20 UTC 自动跑一次，七个子公司列表轮流跑（单次 42 秒预算，跑不完的明天优先），所以每个列表最长隔几天轮到一次。
+      </AutoRunNote>
       <p className="mt-1 text-sm text-[#52636e]">
         PEMEX 的 SharePoint 招标列表接口本身是匿名公开的，不用再打开浏览器 Console 手动抓取——选一个子公司列表，服务器直接去
         pemex.com 拉取最新数据。

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AutoRunBadge } from "@/components/admin/AutoRunBadge";
 
 type DiscoverResult = {
   vigenteCount: number;
@@ -37,9 +38,11 @@ type FixBuyerNamesResult = {
  * (npm run discover:comprasmx-vigente / resolve:comprasmx-links /
  * fix:licitia-buyer-names) — see lib/ingestion/discover-comprasmx-vigente.ts,
  * resolve-comprasmx-links.ts, fix-licitia-buyer-names.ts for the shared
- * logic each button calls into. None of this refreshes automatically —
- * these are still manual, on-demand operations, just no longer requiring
- * a terminal.
+ * logic each button calls into. Two of the three now ALSO run on a daily
+ * schedule (.github/workflows/licitia-daily.yml — on GitHub Actions rather
+ * than Vercel, because they take minutes); the buttons remain, for forcing
+ * an early run or previewing what the schedule would write. Only 修复采购
+ * 单位名称 is still manual-only.
  */
 export function LicitiaRefreshPanel() {
   return (
@@ -47,7 +50,7 @@ export function LicitiaRefreshPanel() {
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Maintenance</p>
       <h2 className="mt-1 text-lg font-black text-[#071826]">LicitIA 刷新</h2>
       <p className="mt-1 text-sm text-[#52636e]">
-        三个原本只能在命令行跑的维护操作，现在都可以在这里手动触发。都不是自动定时的——需要的时候点一下就行。
+        三个原本只能在命令行跑的维护操作，现在都可以在这里手动触发。其中前两个已经每天自动跑了（04:40 UTC，跑在 GitHub Actions 上而不是 Vercel——它要几分钟，装不进 Vercel 的请求上限）；「修复采购单位名称」仍然只在需要时手动点。
       </p>
 
       <div className="mt-4 flex flex-col gap-4">
@@ -97,7 +100,10 @@ function DiscoverSection() {
 
   return (
     <div>
-      <h3 className="text-sm font-black text-[#071826]">发现新标书</h3>
+      <h3 className="flex flex-wrap items-center gap-2 text-sm font-black text-[#071826]">
+        发现新标书
+        <AutoRunBadge schedule="每天 04:40 UTC，GitHub Actions" />
+      </h3>
       <p className="mt-1 text-xs text-[#52636e]">
         从 LicitIA 的批量数据下载所有当前&quot;vigente&quot;（招标中）的标书，跳过已入库的（不限来源），映射后写入。可能需要几分钟。
       </p>
@@ -189,7 +195,10 @@ function ResolveLinksSection() {
 
   return (
     <div>
-      <h3 className="text-sm font-black text-[#071826]">补全真实链接</h3>
+      <h3 className="flex flex-wrap items-center gap-2 text-sm font-black text-[#071826]">
+        补全真实链接
+        <AutoRunBadge schedule="每天 04:40 UTC，GitHub Actions" />
+      </h3>
       <p className="mt-1 text-xs text-[#52636e]">
         给还停留在 Compras MX 通用搜索页链接的标书，通过 LicitIA 补上真实的详情页链接。
       </p>

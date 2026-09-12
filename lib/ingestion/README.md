@@ -3614,3 +3614,79 @@ mode was merging or splitting real tenders.
 
 **Stored rows still carry the ragged titles** until a re-import or a refresh
 re-maps them; nothing retroactively rewrites what is already in the table.
+
+## 2026-09-12 — the first ingestion that runs without anybody clicking
+
+Until today not one ingestion step in this project ran on its own. Every
+tender in the database is there because a person clicked a button. The gap
+that matters is not the clicking: **a source this platform stops reading looks
+exactly like a source with no new tenders**, and Colombia's feed is thin enough
+(about 11% of published licitaciones survive the relevance rules) that the
+difference is invisible from the outside.
+
+Two of the automatable sources now run on a Vercel schedule, on the pattern
+`purge-stale-colombia` already established — Bearer `CRON_SECRET`,
+`recordCronHeartbeat`, `reportOpsFailure`, `?dryRun=true` to see what a run
+would write without waiting a day to find out.
+
+### `/api/cron/import-colombia` — 04:00 UTC daily
+
+Two passes, both cheap enough for one invocation:
+
+1. **Discover** — `ingestColombia` over a ONE-MONTH publication window. The
+   connector applies its own server-side `%icitaci%` filter, so a real 30-day
+   window is ~550 rows: a single 1000-row page. A month rather than a day
+   because datos.gov.co lags the portal by days — a daily window would miss
+   exactly the tenders that arrive late, and re-reading a month costs one
+   request.
+2. **Refresh** — `refreshColombiaTenders`, which re-reads the tenders we
+   ALREADY track, by reference, with no date filter. This is what moves a
+   tender to 已中标, fills a deadline SECOP published after we first saw the
+   row, and picks up an awarded provider. Discovery alone never updates a
+   tender it already has.
+
+Documents are deliberately not fetched (`fetchDocuments: false`): minutes of
+work and hundreds of megabytes, against the user's own call that the document
+corpus is not worth pulling wholesale. Downloading stays an explicit action on
+/admin/documents-needed.
+
+### `/api/cron/import-pemex` — 04:20 UTC daily
+
+PEMEX publishes through seven SharePoint lists, one per subsidiary, each
+costing a list fetch plus one attachment request per kept tender (four at a
+time). Call it ten seconds a list — which does not fit seven times over in 60
+seconds.
+
+So the run takes a TIME BUDGET (42s) rather than a list count, and **the order
+rotates by day of year**. Whatever is not reached today leads tomorrow's run,
+so no list can be starved by the ones ahead of it — which a fixed order would
+do silently, and which is precisely the failure this whole change exists to
+prevent. Nothing is lost to a partial run: the recency window is two months
+wide, far wider than the few days a full rotation takes. A skipped list is
+reported as `ok`, not `failed`; it is the design, not a fault, and a job that
+cries wolf daily stops being read.
+
+### What is NOT automated, and why
+
+- **LicitIA discover** (`discoverComprasMxVigente`) downloads a 15-lote,
+  ~372k-row bulk corpus and then makes one detail lookup per newly discovered
+  procedure. Minutes, not seconds — it cannot run in a serverless function,
+  and its own admin route says as much ("runs on the admin's own `next dev`
+  server, not a rate-limited serverless function"). Same for
+  `resolveComprasMxLinks`, which is one sequential HTTP request per unresolved
+  row. These need a runner without a request ceiling (a scheduled GitHub
+  Actions workflow is the obvious one), which is a separate decision because
+  it means putting the Supabase service-role key in repository secrets.
+- **Peru OECE** — Vercel's egress IPs are blocked by the source, and this
+  project does not work around deliberate blocks.
+- **Compras MX export** and **CFE** — anti-automation gated, same standing
+  policy.
+- **DOF** — needs a session cookie captured by hand.
+
+### Heartbeats are the point
+
+Both jobs are registered in `CRON_JOBS` (`lib/ops/cron-heartbeat.ts`) at 30
+hours. That registration is not bookkeeping: these are the first jobs whose
+silence would be indistinguishable from a quiet week in the feed, so the
+overdue banner on /admin is the only thing that can tell "no new Colombian
+tenders" from "we stopped reading Colombia eight days ago".

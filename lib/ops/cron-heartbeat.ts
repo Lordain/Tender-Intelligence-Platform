@@ -11,7 +11,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * that is indistinguishable from a quiet, healthy week. This is the one
  * signal that tells those apart. See migration 0041.
  */
-export type CronJobId = "tender-digest" | "subscription-renewal-reminders" | "purge-stale-colombia";
+export type CronJobId =
+  | "tender-digest"
+  | "subscription-renewal-reminders"
+  | "purge-stale-colombia"
+  | "import-colombia"
+  | "import-pemex";
 
 export type CronJobSpec = {
   id: CronJobId;
@@ -31,6 +36,12 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "tender-digest", label: "每日招标摘要邮件", maxAgeHours: 24 },
   { id: "subscription-renewal-reminders", label: "续费提醒", maxAgeHours: 30 },
   { id: "purge-stale-colombia", label: "哥伦比亚过期项目清理", maxAgeHours: 30 },
+  // Daily. These two are the first ingestion steps that run unattended, which
+  // makes their heartbeats the only thing standing between "no new tenders
+  // this week" and "we stopped reading this source a week ago" — the two are
+  // indistinguishable from the feed itself.
+  { id: "import-colombia", label: "哥伦比亚自动导入", maxAgeHours: 30 },
+  { id: "import-pemex", label: "PEMEX 自动导入", maxAgeHours: 30 },
 ];
 
 export type CronHeartbeatStatus = "ok" | "skipped" | "failed";

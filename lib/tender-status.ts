@@ -66,6 +66,25 @@ const DAY_FORMATTER = new Intl.DateTimeFormat("en-CA", {
 });
 
 export function platformDay(value: string | number | Date): string | null {
+  // A bare YYYY-MM-DD is ALREADY a calendar day and has no time of day to
+  // convert, so it is returned untouched.
+  //
+  // Without this it was converted anyway, and every one of it shifted a day
+  // EARLIER (found 2026-09-12 while testing the validity_end rule): every
+  // date this function is given from the database is a `date` column —
+  // submission_deadline, award_date, tender_key_dates.date are all `date`
+  // in 0001_init — and PostgREST returns those as "2026-09-12", which
+  // `new Date()` reads as UTC midnight, which is 18:00 the PREVIOUS day in
+  // Mexico City.
+  //
+  // Two live rules were off by exactly one day because of it. A tender read
+  // 已截止 on the morning of its own deadline — the precise thing the
+  // comment below says must not happen — and 澄清中 showed on the day
+  // before the junta de aclaraciones and never on the day itself.
+  if (typeof value === "string") {
+    const bareDay = /^(\d{4}-\d{2}-\d{2})$/.exec(value.trim());
+    if (bareDay) return bareDay[1];
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return DAY_FORMATTER.format(date);

@@ -57,6 +57,7 @@ import { extractTenderRequirementsQwenAnthropic } from "@/lib/ingestion/extract-
 import { untranslated } from "@/lib/ingestion/text-utils";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 import { assertWritten } from "@/lib/db/assert-written";
+import { writeExtractedKeyDates } from "@/lib/db/extracted-key-dates";
 
 export type AnalyzeUploadedDocumentResult = {
   /** Every successfully analyzed file name, in upload order — joined for display since this can now be more than one document analyzed together. */
@@ -71,6 +72,9 @@ export type AnalyzeUploadedDocumentResult = {
   experienceRequirements: number;
   requiredDocuments: number;
   risks: number;
+  /** How many cronograma rows the document yielded, and what happened to the bid deadline among them — see writeExtractedKeyDates(). */
+  keyDates: number;
+  submissionDeadlineSet?: string;
   status: "written" | "dry-run" | "skipped-opus-precision";
   message?: string;
   /**
@@ -122,7 +126,7 @@ export async function analyzeUploadedDocument(
     // slug burned every model call in the upload first.
     const { data: tender, error: tenderError } = await supabase
       .from("tenders")
-      .select("id, relevance_tier, relevance_manually_overridden")
+      .select("id, relevance_tier, relevance_manually_overridden, submission_deadline, award_date")
       .eq("slug", tenderSlug)
       .maybeSingle();
     if (tenderError || !tender) {
@@ -226,6 +230,7 @@ export async function analyzeUploadedDocument(
       experienceRequirements: fields.experienceRequirements.length,
       requiredDocuments: fields.requiredDocuments.length,
       risks: fields.risks.length,
+      keyDates: fields.keyDates.length,
     };
 
     if (!options.write) return { ...base, status: "dry-run", warnings: warnings.length > 0 ? warnings : undefined };
@@ -322,6 +327,21 @@ export async function analyzeUploadedDocument(
       }
     }
 
+    // The cronograma. For Peru this is the ONLY place a bid deadline exists
+    // (see KeyDateSchema in extract-requirements.ts), so it is written even
+    // when the requirement/risk arrays came back empty — those are separate
+    // findings and one being empty says nothing about the other.
+    const submissionDeadlineSet = await writeExtractedKeyDates(
+      supabase,
+      tenderId,
+      fields.keyDates,
+      {
+        submissionDeadline: (tender.submission_deadline as string | null) ?? null,
+        awardDate: (tender.award_date as string | null) ?? null,
+      },
+      warnings,
+    );
+
     for (const p of perFile) {
       const existingDoc = existingDocs?.find((d) => d.content_hash === p.intake.contentHash);
       if (existingDoc) {
@@ -389,6 +409,7 @@ export async function analyzeUploadedDocument(
     return {
       ...base,
       status: "written",
+      submissionDeadlineSet,
       participationScopeSet,
       relevanceTierChanged,
       skippedLockedTier,
@@ -398,3 +419,4 @@ export async function analyzeUploadedDocument(
     rmSync(tempDir, { recursive: true, force: true });
   }
 }
+

@@ -14,6 +14,8 @@ type AnalyzeResult = {
   experienceRequirements: number;
   requiredDocuments: number;
   risks: number;
+  keyDates: number;
+  submissionDeadlineSet?: string;
   status: "written" | "dry-run" | "skipped-opus-precision";
   message?: string;
   warnings?: string[];
@@ -232,7 +234,17 @@ export function BatchAnalyzeDocumentForm({
               )}
               {row.kind === "done" && (
                 <p className="pl-0 text-[11px] text-[#64717c] sm:pl-10">
-                  资质 {row.result.qualifications} · 业绩 {row.result.experienceRequirements} · 文件 {row.result.requiredDocuments} · 风险 {row.result.risks}
+                  资质 {row.result.qualifications} · 业绩 {row.result.experienceRequirements} · 文件 {row.result.requiredDocuments} · 风险 {row.result.risks} · 关键日期{" "}
+                  {row.result.keyDates}
+                  {/*
+                    Called out separately from the count: for a Peru project
+                    this is the ONLY place a 交标截止日 can come from, so
+                    "we just gave this tender a deadline it did not have" is
+                    a different event from "we read 6 cronograma rows".
+                  */}
+                  {row.result.submissionDeadlineSet && (
+                    <span className="font-semibold text-emerald-700">　✓ 已补上交标截止日 {row.result.submissionDeadlineSet}</span>
+                  )}
                 </p>
               )}
               {warnings.length > 0 && (

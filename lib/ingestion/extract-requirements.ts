@@ -92,6 +92,43 @@ const RiskSchema = z.object({
 });
 
 /**
+ * The cronograma / calendario de actividades every one of these documents
+ * prints, and for some sources the ONLY place those dates exist.
+ *
+ * Peru is the case that forced this (user, 2026-09-12: 优先从标书抓日期).
+ * OECE's OCDS records carry no submission deadline of any kind — all nine
+ * fixture records were checked field by field, there are no `milestones` and
+ * no `tenderPeriod.endDate` — while the official SEACE ficha shows a full
+ * cronograma, because that cronograma lives in the bases PDF. This platform
+ * already downloads that PDF for its requirements/risks, so the date is
+ * already in front of the model; it was simply never asked for.
+ *
+ * "publication" and "validity_end" are deliberately NOT offered:
+ * publication_date comes from the source feed and is protected there
+ * (migration 0030), and validity_end is PEMEX's `vencimiento`, a field of
+ * the list API rather than anything a document states. A model-read second
+ * opinion on either would only ever be a way to contradict structured data
+ * that is already right.
+ */
+const KeyDateSchema = z.object({
+  type: z
+    .enum(["site_visit", "questions_deadline", "clarification", "submission", "opening", "award", "contract_signing"])
+    .describe(
+      "Which cronograma row this is. site_visit = visita de obra / visita al sitio / reconocimiento del lugar. questions_deadline = the LAST day to submit consultas/observaciones. clarification = the junta de aclaraciones / absolución de consultas itself. submission = presentación de ofertas/propuestas — the bid deadline, the single most important one. opening = apertura de sobres/propuestas. award = otorgamiento de la buena pro / fallo. contract_signing = suscripción/firma del contrato.",
+    ),
+  date: z
+    .string()
+    .describe(
+      "The calendar date as YYYY-MM-DD, nothing else — no time, no range, no Spanish month name. Convert the document's own format (10/09/2026, '10 de septiembre de 2026'): these are DAY/MONTH/YEAR, never month/day. If the document gives a range, use the LAST day. If the year is not stated anywhere and cannot be read off the document, omit this entry entirely rather than guessing a year.",
+    ),
+  notes: z
+    .string()
+    .nullable()
+    .describe("Short Chinese (zh) note only when the document adds something a date alone loses — a time of day, a place, 'sólo para postores registrados'. Null otherwise; do not restate the type."),
+  sourceReference: z.string().describe("Where in the document this row was read, e.g. 'página 7, Capítulo II, Cronograma' — same bar as everything else: no citation, no entry."),
+});
+
+/**
  * Round 2 re-tagging (lib/ingestion/README.md "Two-round screening" —
  * added 2026-09-04, per the user's explicit choice of "let the AI judge
  * directly" over a deterministic keyword approach). Round 1
@@ -152,6 +189,9 @@ export const ExtractionSchema = z.object({
   risks: z.array(RiskSchema).describe(
     "Concrete ways a bidder or winner loses money or gets disqualified — penas convencionales, garantía de cumplimiento, causales de desechamiento, rescisión, sanciones. Do not restate generic procurement-law boilerplate that applies to every Compras MX tender identically unless this document gives it a specific number/deadline/amount."
   ),
+  keyDates: z.array(KeyDateSchema).describe(
+    "Every dated row of this document's cronograma / calendario de actividades — one entry per row, in the document's own order. Empty array if the document genuinely prints no schedule; never invent one from the publication date.",
+  ),
   // Optional (not every provider reliably returns every field on the
   // manual-JSON-parse path — see JSON_SHAPE_INSTRUCTIONS/runExtraction()
   // below) — analyze-uploaded-document.ts treats an absent assessment as
@@ -171,6 +211,8 @@ Ground rules:
 - These documents are long and mostly procedural boilerplate (the same legal citations appear in nearly every Compras MX tender). Extract only tender-specific, actionable content — skip generic restatements of the procurement law itself.
 - All title/description fields must be written directly in Chinese (zh), concise and close to the document's own terms — do not copy multi-sentence legal paragraphs verbatim, and do not write a placeholder.
 - If a section is genuinely absent from this document (e.g. no Anexo Técnico attached), return an empty array for the corresponding field rather than guessing.
+
+Also extract "keyDates": the document's cronograma / calendario de actividades, one entry per dated row. For several of the sources this platform reads (Peru's OECE above all) the bid deadline exists NOWHERE else — not in any feed, not on any list page, only in this document — so a cronograma read correctly here is the only deadline a bidder will ever see. Dates are DAY/MONTH/YEAR in every one of these countries; return YYYY-MM-DD. An addendum/circular that moves a date supersedes the original schedule — use the moved date. Never derive a date from the publication date or from how these procedures usually run.
 
 Also provide "oneLineSummary": one Chinese sentence, at most 30 characters, stating what this tender/project concretely IS — not a category label, not a boilerplate opener. See the schema field description for examples.
 
@@ -398,7 +440,22 @@ export function mergeExtractions(parts: TenderExtraction[]): TenderExtraction {
     experienceRequirements: dedupeByTitleAndDescription(parts.flatMap((p) => p.experienceRequirements)),
     requiredDocuments: dedupeByTitleAndDescription(parts.flatMap((p) => p.requiredDocuments)),
     risks: dedupeByTitleAndDescription(parts.flatMap((p) => p.risks)),
+    // Deduped on type+date, not title+description (a key date has neither).
+    // A cronograma printed once but repeated in a summary table, or read
+    // twice because it straddles a chunk boundary, must not put the same day
+    // on the timeline twice.
+    keyDates: dedupeKeyDates(parts.flatMap((p) => p.keyDates ?? [])),
   };
+}
+
+function dedupeKeyDates(items: TenderExtraction["keyDates"]): TenderExtraction["keyDates"] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.type}|${item.date}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**
@@ -555,6 +612,34 @@ function toRisk(item: TenderExtraction["risks"][number], idPrefix: string, index
 }
 
 /** Converts the raw model output into the exact arrays Tender's fields expect, id-prefixed by tender slug so re-extraction produces stable, replaceable ids. */
+/**
+ * A real calendar day, or null.
+ *
+ * The schema asks for YYYY-MM-DD and describes the trap (these countries
+ * write 10/09/2026 for 10 September, never 9 October), but a `z.string()`
+ * cannot enforce either, and the manual-JSON-parse path some providers take
+ * does not even validate the schema. A date is the one extracted field that
+ * is acted on rather than read — it drives 交标截止日, the status derivation
+ * and the digest — so anything not already an unambiguous ISO day is dropped
+ * rather than parsed generously: `new Date("10/09/2026")` silently answers
+ * October 9th, which is a wrong deadline presented as a real one.
+ *
+ * Also rejects a day that does not exist (2026-02-30 round-trips to March 2
+ * through Date), and anything absurdly far out, which is what a
+ * hallucinated or mis-OCR'd year looks like.
+ */
+export function toCalendarDay(raw: string, now: Date = new Date()): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+  if (!match) return null;
+  const [, year, month, day] = match;
+  const parsed = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  if (parsed.toISOString().slice(0, 10) !== `${year}-${month}-${day}`) return null;
+  const yearNumber = Number(year);
+  if (yearNumber < now.getUTCFullYear() - 5 || yearNumber > now.getUTCFullYear() + 5) return null;
+  return `${year}-${month}-${day}`;
+}
+
 export function toTenderFields(extraction: TenderExtraction, tenderSlug: string) {
   return {
     oneLineSummary: extraction.oneLineSummary,
@@ -562,5 +647,20 @@ export function toTenderFields(extraction: TenderExtraction, tenderSlug: string)
     experienceRequirements: extraction.experienceRequirements.map((item, i) => toRequirement(item, `${tenderSlug}-exp`, i)),
     requiredDocuments: extraction.requiredDocuments.map((item, i) => toRequirement(item, `${tenderSlug}-doc`, i)),
     risks: extraction.risks.map((item, i) => toRisk(item, tenderSlug, i)),
+    keyDates: (extraction.keyDates ?? []).flatMap((item) => {
+      const date = toCalendarDay(item.date);
+      return date
+        ? [{
+            type: item.type,
+            date,
+            // Same inline LocalizedText convention as toRequirement/toRisk
+            // above — zh mirrored into es/en, which this file's header
+            // explains is not a loss: the text was AI-authored Chinese to
+            // begin with, never captured source text.
+            notes: item.notes?.trim() ? { es: item.notes.trim(), en: item.notes.trim(), zh: item.notes.trim() } : null,
+            sourceReference: item.sourceReference,
+          }]
+        : [];
+    }),
   };
 }

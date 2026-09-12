@@ -40,6 +40,7 @@ import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract
 import { hasRealTextLayer } from "../lib/ingestion/text-layer";
 import { maxPagesForTier, chooseExtractionModel, describeExtractionRouting } from "../lib/ingestion/extraction-routing";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { writeExtractedKeyDates } from "../lib/db/extracted-key-dates";
 import type { TenderRelevanceTier } from "../types/tender";
 
 /**
@@ -71,7 +72,7 @@ async function writeToSupabase(
 
   const { data: tender, error: tenderError } = await supabase
     .from("tenders")
-    .select("id")
+    .select("id, submission_deadline, award_date")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -138,13 +139,31 @@ async function writeToSupabase(
     );
   }
 
+  // Shares writeExtractedKeyDates() with the admin upload flow rather than
+  // repeating the fill-don't-overwrite rule here — the two paths analyzing
+  // the same document must not reach different conclusions about whose date
+  // wins. Warnings are printed rather than returned; this is a terminal.
+  const keyDateWarnings: string[] = [];
+  const deadlineSet = await writeExtractedKeyDates(
+    supabase,
+    tenderId,
+    fields.keyDates,
+    {
+      submissionDeadline: (tender.submission_deadline as string | null) ?? null,
+      awardDate: (tender.award_date as string | null) ?? null,
+    },
+    keyDateWarnings,
+  );
+  for (const warning of keyDateWarnings) console.warn(`  ! ${warning}`);
+  if (deadlineSet) console.log(`  set submission deadline ${deadlineSet} (this tender had none)`);
+
   await supabase
     .from("tender_documents")
     .update({ extraction_status: "extracted", extracted_at: new Date().toISOString(), extraction_model: model })
     .eq("content_hash", contentHash);
 
   console.log(
-    `Wrote ${fields.qualifications.length} qualifications, ${fields.experienceRequirements.length} experience requirements, ${fields.requiredDocuments.length} required documents, ${fields.risks.length} risks for ${slug}.`,
+    `Wrote ${fields.qualifications.length} qualifications, ${fields.experienceRequirements.length} experience requirements, ${fields.requiredDocuments.length} required documents, ${fields.risks.length} risks, ${fields.keyDates.length} key dates for ${slug}.`,
   );
 }
 

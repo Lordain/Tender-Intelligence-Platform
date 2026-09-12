@@ -423,6 +423,12 @@ export async function upsertTendersBatched(
     //   - manually_added rows (the 其他关键日期 editor — 现场踏勘, 提问截止,
     //     澄清会议...) are never deleted. No source supplies them, so a
     //     blanket delete simply destroyed them on every re-import.
+    //   - extracted_from_document rows (migration 0045) are never deleted
+    //     either, for the same reason and more sharply: they are the whole
+    //     cronograma read out of the bases PDF, and for Peru they are the
+    //     only dates that exist at all. Deleting "what the source did not
+    //     supply" would wipe every one of them on the next run, since the
+    //     source supplies none of them.
     //   - the three types mirrored from the tender's own columns
     //     (publication / submission / award) are skipped entirely for a
     //     tender whose backing column is locked by manual_field_overrides,
@@ -465,7 +471,12 @@ export async function upsertTendersBatched(
     }
 
     for (const { types, ids } of deleteGroups.values()) {
-      let query = supabase.from("tender_key_dates").delete().in("tender_id", ids).eq("manually_added", false);
+      let query = supabase
+        .from("tender_key_dates")
+        .delete()
+        .in("tender_id", ids)
+        .eq("manually_added", false)
+        .eq("extracted_from_document", false);
       if (types.length > 0) query = query.not("type", "in", `(${types.join(",")})`);
       assertWritten("旧关键日期清除", await query);
     }

@@ -24,27 +24,57 @@ const SYNCED_KEY_DATE_TYPES = ["publication", "submission", "award"] as const;
  * opening/contract_signing) has no top-level column counterpart and is
  * left untouched here — those stay purely admin/ingestion-managed via
  * `KeyDatesEditor`'s own dedicated CRUD.
+ *
+ * Of the three it does own, it only clears a row when it has a real value to
+ * put back in its place. The delete used to be unconditional, which was
+ * harmless while every row of these types was a mirror of a column — but a
+ * cronograma read out of the bases PDF (migration 0045) can carry an
+ * `award` date with no `award_date` column behind it, and saving an
+ * unrelated field on the admin form would then have silently deleted the
+ * planned 授标日 with nothing to restore it from. Where a column DOES have a
+ * value it still wins outright, extracted or hand-entered alike: that is the
+ * rule the user set (2026-09-12) — 有的交标、中标日期的话，以实际日期为准.
  */
 export async function syncKeyDatesForTopLevelFields(
   supabase: SupabaseClient,
   tenderId: string,
   fields: { publicationDate?: string | null; submissionDeadline?: string | null; awardDate?: string | null },
 ): Promise<void> {
-  const { error: deleteError } = await supabase.from("tender_key_dates").delete().eq("tender_id", tenderId).in("type", SYNCED_KEY_DATE_TYPES);
-  if (deleteError) {
-    console.error(`Failed to clear synced key dates for tender ${tenderId}: ${deleteError.message}`);
-    return;
-  }
-
-  const rows = (
+  const incoming = (
     [
       ["publication", fields.publicationDate],
       ["submission", fields.submissionDeadline],
       ["award", fields.awardDate],
     ] as const
-  )
-    .filter(([, date]) => !!date)
-    .map(([type, date]) => ({ tender_id: tenderId, type, date }));
+  ).filter(([, date]) => !!date);
+
+  // Old mirrors of all three types go; a row someone or something else put
+  // there survives unless a real column value is replacing it.
+  const { error: deleteError } = await supabase
+    .from("tender_key_dates")
+    .delete()
+    .eq("tender_id", tenderId)
+    .in("type", SYNCED_KEY_DATE_TYPES)
+    .eq("manually_added", false)
+    .eq("extracted_from_document", false);
+  if (deleteError) {
+    console.error(`Failed to clear synced key dates for tender ${tenderId}: ${deleteError.message}`);
+    return;
+  }
+
+  if (incoming.length > 0) {
+    const { error: supersedeError } = await supabase
+      .from("tender_key_dates")
+      .delete()
+      .eq("tender_id", tenderId)
+      .in("type", incoming.map(([type]) => type));
+    if (supersedeError) {
+      console.error(`Failed to clear superseded key dates for tender ${tenderId}: ${supersedeError.message}`);
+      return;
+    }
+  }
+
+  const rows = incoming.map(([type, date]) => ({ tender_id: tenderId, type, date }));
 
   if (rows.length === 0) return;
   const { error: insertError } = await supabase.from("tender_key_dates").insert(rows);

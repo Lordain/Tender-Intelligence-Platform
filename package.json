@@ -45,6 +45,7 @@
     "ingest:proyectos-estrategicos": "tsx --env-file-if-exists=.env.local scripts/ingest-proyectos-estrategicos.ts",
     "test:relevance": "tsx scripts/test-relevance.ts",
     "test:download": "tsx scripts/test-download-file.ts",
+    "test:key-dates": "tsx scripts/test-key-dates.ts",
     "test:access-control": "tsx scripts/test-access-control.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",

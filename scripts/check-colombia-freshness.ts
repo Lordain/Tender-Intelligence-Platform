@@ -169,14 +169,49 @@ async function main() {
   //     re-import of that window can.
   //   - Stale: the database has it and today's rules would not keep it. That
   //     one IS reclassify's job; nothing needs re-fetching.
-  if (dbMeasured) {
+  if (dbMeasured && supabase) {
     const missing = [...keptBySlug.values()].filter((t) => !storedSlugs.has(t.slug));
     const staleCount = [...storedSlugs].filter((slug) => !keptBySlug.has(slug)).length;
-    console.log(`\n规则要留、库里没有：${missing.length} 条 —— 重新导入这段时间才能拿回来（排除掉的行根本没写过库，reclassify 找不到它们）。`);
-    for (const tender of missing.slice(0, 15)) {
-      console.log(`  ${tender.publicationDate.slice(0, 10)}  ${tender.relevance.tier.padEnd(11)} ${tender.title.es.slice(0, 76)}`);
+
+    // "Missing" splits again, and the two halves need opposite actions. A
+    // slug on tender_manual_deletions is BLOCKED: upsert-tenders filters it
+    // out before the insert, on every import, forever — so re-importing does
+    // nothing for it, and the row is invisible in a way nothing in the admin
+    // UI surfaces (that table has no read or undo path anywhere in this
+    // codebase — see npm run restore:deleted, added 2026-09-12 with this).
+    // The first real run found 26 missing Colombia tenders next to a
+    // "Skipping 22 tender(s) an admin previously deleted" line in the same
+    // session's import log, which is exactly the confusion this separates.
+    const blocked = new Set<string>();
+    for (let i = 0; i < missing.length; i += 200) {
+      const { data } = await supabase
+        .from("tender_manual_deletions")
+        .select("slug")
+        .in("slug", missing.slice(i, i + 200).map((t) => t.slug));
+      for (const row of (data ?? []) as { slug: string }[]) blocked.add(row.slug);
     }
-    if (missing.length > 15) console.log(`  …还有 ${missing.length - 15} 条。`);
+
+    const neverImported = missing.filter((t) => !blocked.has(t.slug));
+    const wasDeleted = missing.filter((t) => blocked.has(t.slug));
+
+    console.log(`\n规则要留、库里没有：${missing.length} 条。分成两种：`);
+
+    console.log(`\n  A. 从没写过库：${neverImported.length} 条 —— 重新导入这段时间就能拿回来。`);
+    for (const tender of neverImported.slice(0, 15)) {
+      console.log(`     ${tender.publicationDate.slice(0, 10)}  ${tender.relevance.tier.padEnd(11)} ${tender.title.es.slice(0, 72)}`);
+    }
+    if (neverImported.length > 15) console.log(`     …还有 ${neverImported.length - 15} 条。`);
+
+    console.log(`\n  B. 被手动删除过：${wasDeleted.length} 条 —— 重新导入也不会回来，每次导入都会被挡掉。`);
+    for (const tender of wasDeleted.slice(0, 15)) {
+      console.log(`     ${tender.publicationDate.slice(0, 10)}  ${tender.relevance.tier.padEnd(11)} ${tender.title.es.slice(0, 72)}`);
+      console.log(`       ${tender.slug}`);
+    }
+    if (wasDeleted.length > 15) console.log(`     …还有 ${wasDeleted.length - 15} 条。`);
+    if (wasDeleted.length > 0) {
+      console.log(`\n     想放回来：npm run restore:deleted -- <slug> [<slug>...]，然后重新导入。`);
+    }
+
     console.log(`\n库里有、现在的规则不留：${staleCount} 条 —— 这些是入库时按旧规则判的，npm run reclassify:tenders 就能纠正。`);
   }
 

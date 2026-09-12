@@ -41,6 +41,8 @@ export type TranslateAllTendersResult = {
   /** Most recent real error message from a failed API call, if any — callers (the admin API route) use this to log an admin_alerts row when translation is failing systemically (quota/connection), not just per one bad row. */
   lastErrorMessage?: string;
   sample: { slug: string; titleEs: string }[];
+  /** Real model output for the first `sample` rows, written nowhere — see the `sample` option. */
+  preview?: { slug: string; titleEs: string; titleZh: string; summaryEs: string; summaryZh: string }[];
 };
 
 type TranslatableRow = {
@@ -80,9 +82,23 @@ function needsSummary(row: TranslatableRow): boolean {
   return row.summary.zh === row.summary.es && !(row.manual_field_overrides ?? []).includes("summary");
 }
 
+/**
+ * `sample` closes a real gap in how this gets verified.
+ *
+ * A dry run counts rows and makes no API call, so the only way to see what
+ * the model actually produces was to write it — to every row, on the live
+ * site, at once. The titles are the product here (the homepage column is
+ * literally headed 中文项目名称), and Spanish procurement prose is full of
+ * things a general translator gets wrong: entity acronyms, "5/A. SECCIÓN",
+ * road and plant designations. Judging that after the fact, on production, is
+ * the wrong order.
+ *
+ * With `sample: n` and `write: false` this translates the first n rows for
+ * real and returns them for inspection, writing nothing.
+ */
 export async function translateAllTenders(
   supabase: SupabaseClient,
-  options: { write: boolean; limit?: number },
+  options: { write: boolean; limit?: number; sample?: number },
 ): Promise<TranslateAllTendersResult> {
   // PostgREST caps an unranged select at 1000 rows — page with .range()
   // so tenders past the first 1000 don't silently get skipped.
@@ -112,7 +128,26 @@ export async function translateAllTenders(
     sample: toTranslate.slice(0, 5).map((t) => ({ slug: t.slug, titleEs: t.title.es })),
   };
 
-  if (!options.write) return result;
+  if (!options.write) {
+    if (!options.sample || options.sample <= 0) return result;
+    const rowsToPreview = toTranslate.slice(0, options.sample);
+    try {
+      const translated = await translateTenderBatchQwen(
+        rowsToPreview.map((t) => ({ slug: t.slug, titleEs: t.title.es, summaryEs: t.summary.es })),
+      );
+      const bySlug = new Map(translated.map((r) => [r.slug, r]));
+      result.preview = rowsToPreview.map((t) => ({
+        slug: t.slug,
+        titleEs: t.title.es,
+        titleZh: bySlug.get(t.slug)?.titleZh ?? "(模型没有返回这一条)",
+        summaryEs: t.summary.es,
+        summaryZh: bySlug.get(t.slug)?.summaryZh ?? "(模型没有返回这一条)",
+      }));
+    } catch (err) {
+      result.lastErrorMessage = err instanceof Error ? err.message : String(err);
+    }
+    return result;
+  }
 
   let translatedCount = 0;
   let failedCount = 0;

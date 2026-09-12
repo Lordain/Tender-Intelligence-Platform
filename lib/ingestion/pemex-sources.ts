@@ -19,6 +19,26 @@ export const PEMEX_LIST_TITLES = [
 
 export type PemexListTitle = (typeof PEMEX_LIST_TITLES)[number];
 
+// Real full names for every subsidiary list — the first three were confirmed
+// 2026-09-03 (see pemex-mapper.ts's own header comment and
+// lib/ingestion/README.md); PE/PF/PPS added per the user's own real-world
+// research (2026-09-04, matching PEMEX's actual current subsidiary
+// structure: Etileno/Fertilizantes/Perforación y Servicios).
+// "Concursos-e-invitaciones" isn't tied to one subsidiary at all (it's a
+// separate, broader list) — "Pemex Concursos e Invitaciones" is the user's
+// own placeholder label for it, not a real corporate entity name, same as
+// every other value here being the buyer name submitted with each tender.
+export const KNOWN_BUYER_NAMES: Partial<Record<PemexListTitle, string>> = {
+  "Concursos-Abiertos-PEP": "Pemex Exploración y Producción",
+  "Concursos-Abiertos-PTI": "Pemex Transformación Industrial",
+  "Concursos-Abiertos-PL": "Pemex Logística",
+  "Concursos-Abiertos-PE": "Pemex Etileno",
+  "Concursos-Abiertos-PF": "Pemex Fertilizantes",
+  "Concursos-Abiertos-PPS": "Pemex Perforación y Servicios",
+  "Concursos-e-invitaciones": "Pemex Concursos e Invitaciones",
+};
+
+
 export type ImportPemexLiveResult = {
   listTitle: string;
   totalItems: number;

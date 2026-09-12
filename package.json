@@ -48,6 +48,7 @@
     "test:key-dates": "tsx scripts/test-key-dates.ts",
     "check:colombia": "tsx --env-file-if-exists=.env.local scripts/check-colombia-freshness.ts",
     "check:duplicate-ids": "tsx --env-file-if-exists=.env.local scripts/check-duplicate-ids.ts",
+    "purge:mis-sourced": "tsx --env-file-if-exists=.env.local scripts/purge-mis-sourced-duplicates.ts",
     "restore:deleted": "tsx --env-file-if-exists=.env.local scripts/restore-deleted-tenders.ts",
     "test:access-control": "tsx scripts/test-access-control.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",

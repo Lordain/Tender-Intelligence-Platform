@@ -58,6 +58,45 @@ const SOURCE_CONFIG: Record<NewTendersSource, SourceConfig> = {
   ),
 };
 
+/**
+ * Proyectos Estratégicos procedure numbers start FP-; ordinary Compras MX
+ * ones start LA-/LO-/IA-/IO-/AA-/AO-.
+ *
+ * The two portals export the IDENTICAL file format, read by the identical
+ * reader, so until now nothing could tell which portal a file came from and
+ * picking the wrong option in the dropdown was invisible. It happened, and
+ * the damage is silent and permanent: the two sources use different slug
+ * namespaces on purpose (proyectos-estrategicos-mapper.ts), so the same
+ * procedure imported under the wrong one becomes a SECOND row rather than
+ * updating the first. 26 duplicate pairs were found in production on
+ * 2026-09-12, every one of them an FP- number sitting under both prefixes —
+ * the user's own diagnosis: 我之前导入时选错了数据来源.
+ *
+ * A wrong choice is refused rather than warned about, because the person who
+ * would read a warning is the same person who just picked the wrong option.
+ * Preview is untouched; only writing is blocked.
+ */
+const STRATEGIC_PROJECT_NUMBER = /^FP-/i;
+
+function assertSourceMatchesFile(source: NewTendersSource, mapped: Tender[]): void {
+  if (mapped.length === 0) return;
+  const strategic = mapped.filter((t) => STRATEGIC_PROJECT_NUMBER.test(t.tenderNumber.trim())).length;
+  const share = strategic / mapped.length;
+
+  if (source === "comprasmx-open" && share > 0.5) {
+    throw new Error(
+      `这个文件里 ${strategic}/${mapped.length} 条的招标编号是 FP- 开头，那是「Proyectos Estratégicos MX」的编号，不是 Compras MX 的。` +
+        `数据来源选错了——请改选「Proyectos Estratégicos MX」再导入。（选错会生成一份重复的项目，而不是更新原有的。）`,
+    );
+  }
+  if (source === "proyectos-estrategicos" && share < 0.5) {
+    throw new Error(
+      `这个文件里只有 ${strategic}/${mapped.length} 条是 FP- 开头的编号，不像「Proyectos Estratégicos MX」的导出。` +
+        `数据来源可能选错了——如果这是 Compras MX 的导出，请改选「Compras MX — 开放招标」。`,
+    );
+  }
+}
+
 export async function importNewTenders(
   source: NewTendersSource,
   file: { buffer: Buffer; fileName: string },
@@ -83,6 +122,10 @@ export async function importNewTenders(
   };
 
   if (!options.write) return result;
+
+  // After the preview is built, before anything is written: a dry run should
+  // still show what the file contains even when the source is wrong.
+  assertSourceMatchesFile(source, mapped);
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

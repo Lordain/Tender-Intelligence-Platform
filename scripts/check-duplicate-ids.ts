@@ -96,9 +96,21 @@ async function checkColombiaSource(days: number) {
   // SECOP II genuinely republishes one procurement under phase labels, which
   // colombia-mapper deliberately collapses onto one slug — that is intended
   // and must not be reported here.
-  const collisions = [...bySlug.entries()].filter(([, list]) => new Set(list.map((e) => e.processId || e.title)).size > 1);
+  // Collapse to DISTINCT processes before counting anything. The feed returns
+  // the same record many times over (one municipality's row appeared 15 times
+  // in a single 30-day window), and the first version of this script counted
+  // those repeats as separate projects — it reported 579 losses over 60 days
+  // where the real figure is the distinct-process count below. A number that
+  // overstates a real problem is still a wrong number.
+  const distinctBySlug = new Map<string, typeof bySlug extends Map<string, infer V> ? V : never>();
+  for (const [slug, list] of bySlug) {
+    const seen = new Map<string, (typeof list)[number]>();
+    for (const entry of list) if (!seen.has(entry.processId || entry.title)) seen.set(entry.processId || entry.title, entry);
+    distinctBySlug.set(slug, [...seen.values()]);
+  }
+  const collisions = [...distinctBySlug.entries()].filter(([, list]) => list.length > 1);
 
-  console.log(`共 ${rows.length} 条，映射后 ${bySlug.size} 个不同的 slug，其中 ${collisions.length} 个 slug 被不止一个真实项目占用。\n`);
+  console.log(`共 ${rows.length} 条（去重后 ${[...distinctBySlug.values()].reduce((n, l) => n + l.length, 0)} 个不同项目），映射到 ${distinctBySlug.size} 个 slug，其中 ${collisions.length} 个 slug 被不止一个真实项目占用。\n`);
   for (const [slug, list] of collisions.slice(0, 25)) {
     console.log(`  ${slug}   ← ${list.length} 个不同项目挤在这一个 ID 上`);
     for (const entry of list) {

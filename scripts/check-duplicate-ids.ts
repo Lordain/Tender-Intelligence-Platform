@@ -72,12 +72,25 @@ async function checkSupabase() {
   console.log();
 }
 
+/**
+ * Where two titles stop agreeing — the one number that says whether a
+ * same-buyer, same-reference pair is two different jobs or one job whose
+ * notice was corrected. Reported as a 1-based character position.
+ */
+function firstDifference(titles: string[]): number {
+  const [first, ...rest] = titles;
+  for (let i = 0; i < first.length; i += 1) {
+    if (rest.some((other) => other[i] !== first[i])) return i + 1;
+  }
+  return first.length + 1;
+}
+
 async function checkColombiaSource(days: number) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   console.log(`【源头】拉取 datos.gov.co ${since.toISOString().slice(0, 10)} 之后发布的招标...`);
   const rows = await fetchSecopProcesos({ sinceDate: since });
 
-  const bySlug = new Map<string, { entity: string; title: string; reference: string; processId: string }[]>();
+  const bySlug = new Map<string, { entity: string; title: string; reference: string; processId: string; published: string }[]>();
   for (const row of rows) {
     if (!isIngestedColombiaModalidad(row.modalidad_de_contratacion)) continue;
     const tender = mapSecopRowToTender(row, SOURCE_NAME);
@@ -87,6 +100,7 @@ async function checkColombiaSource(days: number) {
       title: tender.title.es,
       reference: row.referencia_del_proceso?.trim() ?? "",
       processId: row.id_del_proceso?.trim() ?? "",
+      published: (row.fecha_de_publicacion_del ?? "").slice(0, 10),
     };
     const list = bySlug.get(tender.slug);
     if (list) list.push(entry);
@@ -114,7 +128,7 @@ async function checkColombiaSource(days: number) {
   const identity = (entry: { entity: string; title: string }) =>
     `${entry.entity.trim().toUpperCase()}::${entry.title.replace(/\s+/g, " ").trim().toUpperCase()}`;
 
-  const distinctBySlug = new Map<string, { entity: string; title: string; reference: string; processId: string }[]>();
+  const distinctBySlug = new Map<string, { entity: string; title: string; reference: string; processId: string; published: string }[]>();
   let republishedCount = 0;
   for (const [slug, list] of bySlug) {
     const seen = new Map<string, (typeof list)[number]>();
@@ -128,9 +142,18 @@ async function checkColombiaSource(days: number) {
   console.log(`另有 ${republishedCount} 个 slug 收到同一个标的多个版本（同单位、同编号、同标题，只是 id_del_proceso 不同）——这是 buildSecopSlug 有意合并的，不是撞号。\n`);
   for (const [slug, list] of collisions.slice(0, 25)) {
     console.log(`  ${slug}   ← ${list.length} 个不同项目挤在这一个 ID 上`);
+    // FULL titles, not the 60-char display truncation used elsewhere. These
+    // groups already agree on buyer and reference, so the ONLY thing that
+    // tells a real collision (one entity reusing a reference for two
+    // different jobs) from a corrected re-publication (one word edited) is
+    // where the titles diverge — and that is almost always past the point a
+    // truncated line would show. Printing a prefix here is what made the
+    // last two wrong numbers in this script hard to spot.
     for (const entry of list) {
-      console.log(`     ${entry.entity.slice(0, 46).padEnd(46)} ${entry.processId.padEnd(20)} ${entry.title.slice(0, 60)}`);
+      console.log(`     ${entry.processId.padEnd(20)} ${entry.published}  ${entry.entity}`);
+      console.log(`       ${entry.title}`);
     }
+    console.log(`     ↑ 标题从第 ${firstDifference(list.map((e) => e.title))} 个字符开始不同`);
     console.log();
   }
   if (collisions.length > 25) console.log(`  …还有 ${collisions.length - 25} 组。\n`);

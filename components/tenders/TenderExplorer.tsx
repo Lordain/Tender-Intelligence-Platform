@@ -369,6 +369,7 @@ export function TenderExplorer({
           <div className="xl:pr-5">
             <MultiSelectPills
               label="国家/地区"
+              maxVisible={AVAILABLE_COUNTRIES.length}
               options={AVAILABLE_COUNTRIES.map((country) => ({
                 value: country,
                 label: localize(COUNTRY_LABELS[country], locale),
@@ -401,7 +402,7 @@ export function TenderExplorer({
             behind a dropdown — see InlineTogglePills' header comment. All
             three groups share one wrapping row (compressed per explicit
             user request 2026-09-04) rather than a row each. */}
-        <div className="mt-4 grid gap-y-3 border-t border-[#e5e9eb] pt-4 xl:grid-cols-[max-content_max-content_max-content] xl:divide-x xl:divide-[#dbe2e5]">
+        <div className="mt-4 grid gap-y-3 border-t border-[#e5e9eb] pt-4 xl:grid-cols-[max-content_max-content_max-content_minmax(0,1fr)] xl:items-center xl:divide-x xl:divide-[#dbe2e5]">
           <div className="xl:pr-5">
             <InlineTogglePills
               label={localize(uiText.scaleLabel, locale)}
@@ -432,6 +433,27 @@ export function TenderExplorer({
               onChange={(next) => updateParams({ sort: next[0] ?? null })}
             />
           </div>
+          {/*
+            Sits in the pill row itself, right-aligned and vertically centred
+            on it (user, 2026-09-12: 把清除筛选的按钮和项目规模、项目阶段、计划交标
+            高度拉齐). The fourth grid column is flexible and the cell is only
+            rendered when there is something to clear, so the three pill groups
+            keep their max-content widths either way.
+          */}
+          {hasActiveFilters && (
+            <div className="flex xl:justify-end xl:pl-5">
+              <button
+                type="button"
+                onClick={() => router.replace(pathname, { scroll: false })}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[#e0b661] bg-[#fff4d8] px-4 text-xs font-black text-[#8f5b00] transition-colors hover:border-[#b8860b] hover:bg-[#ffe9b0]"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="size-3.5 fill-none stroke-current stroke-[2.5]" strokeLinecap="round">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+                {localize(uiText.clearFilters, locale)}
+              </button>
+            </div>
+          )}
         </div>
 
         {hasActiveFilters && <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -446,24 +468,6 @@ export function TenderExplorer({
               同时包含全部所选行业
             </label>
           )}
-          {/*
-            Reads as a button, not as fine print. It used to be a grey
-            underlined text link sitting under three rows of amber pills, which
-            is the one control on this bar a user goes looking for when the
-            list has gone empty — and the hardest to spot (user, 2026-09-11:
-            把清除筛选的按钮做得明显一点). ml-auto puts it at the far end of the
-            row so it never reads as one more industry chip.
-          */}
-          <button
-            type="button"
-            onClick={() => router.replace(pathname, { scroll: false })}
-            className="ml-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[#e0b661] bg-[#fff4d8] px-4 text-xs font-black text-[#8f5b00] transition-colors hover:border-[#b8860b] hover:bg-[#ffe9b0]"
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="size-3.5 fill-none stroke-current stroke-[2.5]" strokeLinecap="round">
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-            {localize(uiText.clearFilters, locale)}
-          </button>
         </div>}
       </section>
 

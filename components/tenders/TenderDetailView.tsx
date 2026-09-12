@@ -27,9 +27,6 @@ export function TenderDetailView({ tender, showTrialCta = false }: { tender: Ten
 
       <TenderOverview tender={tender} showTrialCta={showTrialCta} />
 
-      {/* Above the timeline on purpose: whether this is an OxI project decides whether the dates are worth reading. */}
-      {isObrasPorImpuestos(tender) && <ObrasPorImpuestosNotice />}
-
       <KeyDatesTimeline dates={tender.keyDates} />
 
       {tender.oneLineSummary && (
@@ -68,6 +65,14 @@ export function TenderDetailView({ tender, showTrialCta = false }: { tender: Ten
 
       <RiskList risks={tender.risks} />
       <SourcePanel tender={tender} />
+
+      {/*
+        Last on the page (user, 2026-09-12: 移到最下面). It was directly under
+        the overview, which put a wall of mechanism explanation between the
+        reader and the project itself; down here it reads as the footnote it
+        is, next to the official-entry panel it actually qualifies.
+      */}
+      {isObrasPorImpuestos(tender) && <ObrasPorImpuestosNotice />}
     </div>
   );
 }

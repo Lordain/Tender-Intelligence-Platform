@@ -303,42 +303,59 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
             清除筛选
           </button>
         </div>
-        <label className="mt-3 flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 text-xs font-black text-[#52636e] transition-colors hover:border-[#ffb21c]">
-          <input
-            type="checkbox"
-            checked={downloadableOnly}
-            onChange={(event) => setDownloadableOnly(event.target.checked)}
-            className="size-4 accent-[#ffb21c]"
-          />
-          只看能一键下载标书的（{downloadableCount} 个）
-          <span className="font-bold text-[#8a959c]">——目前只有秘鲁 SEACE/OECE 带官方标书链接</span>
-        </label>
-        <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 text-xs font-black text-[#52636e] transition-colors hover:border-[#ffb21c]">
-          <input
-            type="checkbox"
-            checked={pendingDownloadOnly}
-            onChange={(event) => setPendingDownloadOnly(event.target.checked)}
-            className="size-4 accent-[#ffb21c]"
-          />
-          只看还没下载的（{pendingDownloadCount} 个）
-          <span className="font-bold text-[#8a959c]">——下载完一个就点那一行的「已下载」</span>
-        </label>
+        {/* One row, wrapping only when it must (2026-09-12, user: 这两个选项并排 / 放在同一行). The explanatory tails move into title= so the two stay side by side at ordinary widths. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label
+            title="目前只有秘鲁 SEACE/OECE 的项目自带官方标书链接，可以一键打包下载"
+            className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 text-xs font-black text-[#52636e] transition-colors hover:border-[#ffb21c]"
+          >
+            <input
+              type="checkbox"
+              checked={downloadableOnly}
+              onChange={(event) => setDownloadableOnly(event.target.checked)}
+              className="size-4 accent-[#ffb21c]"
+            />
+            只看能一键下载标书的（{downloadableCount} 个）
+          </label>
+          <label
+            title="下载完一个就点那一行的「标记已下载」，这里就能只看剩下的"
+            className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 text-xs font-black text-[#52636e] transition-colors hover:border-[#ffb21c]"
+          >
+            <input
+              type="checkbox"
+              checked={pendingDownloadOnly}
+              onChange={(event) => setPendingDownloadOnly(event.target.checked)}
+              className="size-4 accent-[#ffb21c]"
+            />
+            只看还没下载的（{pendingDownloadCount} 个）
+          </label>
+        </div>
       </div>
 
       {tenders.length === 0 ? (
         <p className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-8 text-center text-sm text-[#64717c]">{localize(uiText.documentsNeededEmpty, locale)}</p>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_18px_50px_-48px_rgba(6,27,43,.55)]">
-          <table className="w-full min-w-[1040px] table-fixed text-left text-xs">
+          <table className="w-full min-w-[960px] table-fixed text-left text-xs">
             <thead className="border-b border-[#dbe2e5] bg-[#edf2f3] text-[11px] uppercase tracking-[0.06em] text-[#52636e]">
               <tr>
-                <th className="w-10 px-4 py-3 font-black" title={`勾选最多 ${MAX_BATCH_SELECTION} 个项目一起批量分析`}>选</th>
-                <th className="w-[22%] px-4 py-3 font-black">{localize(uiText.colTitle, locale)}</th>
-                <th className="w-[8%] px-3 py-3 font-black">{localize(uiText.countryLabel, locale)}</th>
-                <th className="w-[8%] px-3 py-3 font-black">状态</th>
-                <th className="w-[18%] px-3 py-3 font-black">{localize(uiText.colTenderId, locale)}</th>
-                <th className="w-[11%] px-3 py-3 font-black">{localize(uiText.colPublicationDate, locale)}</th>
-                <th className="w-[31%] px-3 py-3 text-center font-black">操作</th>
+                {/*
+                  The slug had 18% and showed a truncated
+                  "peru-ocds-dgv273-seacev3-12…" on every Peru row — the
+                  characters that differ are the ones cut off, so it was 18% of
+                  the table spent on an ellipsis. It keeps enough to recognise a
+                  row (the full value is still in the cell's title attribute and
+                  is what the search box matches), and the title — the only
+                  column anyone reads to decide — takes the difference.
+                  2026-09-12, user: 更紧凑一点，比如标书ID可以再窄一点.
+                */}
+                <th className="w-9 px-3 py-2.5 font-black" title={`勾选最多 ${MAX_BATCH_SELECTION} 个项目一起批量分析`}>选</th>
+                <th className="w-[34%] px-3 py-2.5 font-black">{localize(uiText.colTitle, locale)}</th>
+                <th className="w-[7%] px-2 py-2.5 font-black">{localize(uiText.countryLabel, locale)}</th>
+                <th className="w-[7%] px-2 py-2.5 font-black">状态</th>
+                <th className="w-[11%] px-2 py-2.5 font-black">{localize(uiText.colTenderId, locale)}</th>
+                <th className="w-[9%] px-2 py-2.5 font-black">{localize(uiText.colPublicationDate, locale)}</th>
+                <th className="w-[29%] px-2 py-2.5 text-center font-black">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e9eb]">
@@ -355,7 +372,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                         className="size-4 accent-[#ffb21c]"
                       />
                     </td>
-                    <td title={localize(tender.title, locale)} className="truncate whitespace-nowrap px-4 py-3 font-black text-[#071826]">
+                    <td title={localize(tender.title, locale)} className="truncate whitespace-nowrap px-3 py-2 font-black text-[#071826]">
                       {tender.documentsDownloadedAt && (
                         <span
                           title={`已于 ${formatDate(tender.documentsDownloadedAt, locale)} 标记为已下载`}
@@ -374,30 +391,31 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                       )}
                       {localize(tender.title, locale)}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-[#425461]">
+                    <td className="whitespace-nowrap px-2 py-2 text-[#425461]">
                       <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3">
+                    <td className="whitespace-nowrap px-2 py-2">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${STATUS_COLORS[tender.status]}`}>{STATUS_LABELS[tender.status][locale]}</span>
                     </td>
-                    <td title={tender.slug} className="truncate whitespace-nowrap px-3 py-3 font-mono text-[11px] text-[#5d6d77]">{tender.slug}</td>
-                    <td className="whitespace-nowrap px-3 py-3 text-[#5d6d77]">{formatDate(tender.publicationDate, locale)}</td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <div className="flex items-center justify-center gap-2">
+                    <td title={tender.slug} className="truncate whitespace-nowrap px-2 py-2 font-mono text-[10px] text-[#5d6d77]">{tender.slug}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-[#5d6d77]">{formatDate(tender.publicationDate, locale)}</td>
+                    <td className="whitespace-nowrap px-2 py-2">
+                      <div className="flex items-center justify-center gap-1.5">
                         <a
                           href={tender.sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-3 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
+                          title="打开这条项目的官方正式投标入口"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
                         >
-                          <ExternalLinkIcon />官方正式投标入口
+                          <ExternalLinkIcon />官方入口
                         </a>
                         <button
                           type="button"
                           onClick={() => toggleSelected(tender)}
-                          className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[11px] font-black transition-colors ${isSelected ? "border border-[#cbd6da] bg-white text-[#52636e]" : "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]"}`}
+                          className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-black transition-colors ${isSelected ? "border border-[#cbd6da] bg-white text-[#52636e]" : "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]"}`}
                         >
-                          <UploadIcon />{isSelected ? "取消选择" : "选择上传"}
+                          <UploadIcon />{isSelected ? "取消" : "选择上传"}
                         </button>
                         <button
                           type="button"
@@ -408,14 +426,14 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                           }
                           disabled={markingSlug === tender.slug}
                           onClick={() => toggleDownloaded(tender)}
-                          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-black transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          className={`inline-flex h-8 items-center gap-1 rounded-lg border px-2 text-[11px] font-black transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                             tender.documentsDownloadedAt
                               ? "border-[#a8d6b3] bg-[#e3f3e6] text-[#1c6b2c] hover:border-[#7fbf90]"
                               : "border-[#cbd6da] bg-white text-[#52636e] hover:border-[#7fbf90] hover:bg-[#edf7ee] hover:text-[#1c6b2c]"
                           }`}
                         >
                           <CheckIcon />
-                          {tender.documentsDownloadedAt ? "已下载" : "标记已下载"}
+                          {tender.documentsDownloadedAt ? "已下载" : "标记下载"}
                         </button>
                         <button
                           type="button"

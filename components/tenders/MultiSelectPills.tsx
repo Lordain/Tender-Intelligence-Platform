@@ -8,12 +8,21 @@ export function MultiSelectPills<T extends string>({
   selected,
   onChange,
   searchable = false,
+  maxVisible = 2,
 }: {
   label: string;
   options: { value: T; label: string; icon?: ReactNode }[];
   selected: T[];
   onChange: (next: T[]) => void;
   searchable?: boolean;
+  /**
+   * How many chosen options the closed trigger spells out before collapsing
+   * the rest into "+N". Two suits a long list like 行业; the country filter
+   * passes its full count so no country is ever hidden behind a "+1" — with
+   * three countries live, Peru was invisible until the menu was opened
+   * (user, 2026-09-12: 让秘鲁可以直接被看到).
+   */
+  maxVisible?: number;
 }) {
   const [query, setQuery] = useState("");
   // Staged locally until "应用" is clicked — checking/unchecking a box no
@@ -45,7 +54,7 @@ export function MultiSelectPills<T extends string>({
     if (detailsRef.current) detailsRef.current.open = false;
   }
 
-  const selectedOptions = selected.slice(0, 2).map((value) => options.find((option) => option.value === value));
+  const selectedOptions = selected.slice(0, maxVisible).map((value) => options.find((option) => option.value === value));
 
   return (
     <label className="flex items-center gap-2">
@@ -63,7 +72,7 @@ export function MultiSelectPills<T extends string>({
         }}
       >
         <summary className="flex h-9 min-w-[9.5rem] cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#172c3b] transition-colors hover:border-[#9babb3] [&::-webkit-details-marker]:hidden">
-          <span className="flex max-w-[12rem] items-center gap-2 overflow-hidden whitespace-nowrap">
+          <span className="flex max-w-[24rem] items-center gap-2 overflow-hidden whitespace-nowrap">
             {selected.length === 0 ? "全部" : selectedOptions.map((option, index) => (
               <span key={option?.value ?? index} className="inline-flex shrink-0 items-center gap-1.5">
                 {option?.icon}
@@ -71,7 +80,7 @@ export function MultiSelectPills<T extends string>({
                 {index < selectedOptions.length - 1 ? "、" : ""}
               </span>
             ))}
-            {selected.length > 2 && <span className="shrink-0">+{selected.length - 2}</span>}
+            {selected.length > maxVisible && <span className="shrink-0">+{selected.length - maxVisible}</span>}
           </span>
           <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5 fill-none stroke-current transition-transform group-open:rotate-180">
             <path d="m4 6 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />

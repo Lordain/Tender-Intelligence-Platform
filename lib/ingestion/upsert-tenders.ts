@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
 import { assertWritten } from "@/lib/db/assert-written";
 import { classifyStoredTender } from "@/lib/relevance";
+import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "@/lib/ingestion/review-csv";
+import { slugify } from "@/lib/ingestion/text-utils";
 
 /**
  * Real yearly Datos Abiertos exports run tens of thousands of rows — one
@@ -76,6 +78,8 @@ export type UpsertTendersResult = {
    * up again in a later re-ingest from its original source.
    */
   skippedManuallyDeletedCount: number;
+  /** Where the full list of excluded rows was written, when it could be. */
+  excludedCsvPath?: string;
   failed: { slug: string; error: string }[];
 };
 
@@ -306,10 +310,34 @@ export async function upsertTendersBatched(
   // never (re-)insert these rows going forward; recovering their metadata
   // for future stats means re-ingesting the original file, not querying
   // Supabase.
+  let lastExcludedCsvPath: string | null = null;
   const includable = tenders.filter((t) => t.relevance.tier !== "excluded");
-  const excludedCount = tenders.length - includable.length;
+  const excluded = tenders.filter((t) => t.relevance.tier === "excluded");
+  const excludedCount = excluded.length;
   if (excludedCount > 0) {
     console.log(`Skipping ${excludedCount} tender(s) classified "excluded" (routine service) — not written to Supabase.`);
+    // The complete list, every source, every write run — and it has to be
+    // here, because this is the only line in the codebase where a tender is
+    // discarded, and the comment above is why: an excluded row is never
+    // stored, so nothing can query it afterwards. The count alone has now
+    // twice hidden a real opportunity, once a COP 380bn (~USD 121M) port
+    // programme that lost on the word "mantenimiento" (user, 2026-09-12:
+    // 可以让我扫一下当前 Excluded 的清单，我看一下有没有被误删的).
+    //
+    // Not a sample and not capped — 完整清单, since the point is to find the
+    // one row nobody predicted. Never throws and never blocks the import:
+    // writeReviewCsv returns null and logs if the directory is read-only,
+    // which is what a serverless deploy looks like.
+    const sourceTag = slugify(excluded[0].sourceName ?? "import").slice(0, 40) || "import";
+    const path = writeReviewCsv({
+      dir: "exports",
+      baseName: `excluded-${sourceTag}-${new Date().toISOString().slice(0, 10)}`,
+      csv: toCsv(REVIEW_CSV_HEADERS, excluded.map(reviewCsvRow)),
+      label: "upsert-tenders",
+      failureNote: "the import itself is unaffected",
+    });
+    if (path) console.log(`  full list of the ${excludedCount} excluded -> ${path}`);
+    lastExcludedCsvPath = path;
   }
 
   const failed: UpsertTendersResult["failed"] = [];
@@ -510,5 +538,5 @@ export async function upsertTendersBatched(
       ` (of ${tenders.length} mapped: ${excludedCount} excluded, ${skippedManuallyDeletedCount} previously deleted by an admin).`,
   );
 
-  return { upsertedCount, skippedExcludedCount: excludedCount, protectedCount, skippedManuallyDeletedCount, failed };
+  return { upsertedCount, skippedExcludedCount: excludedCount, protectedCount, skippedManuallyDeletedCount, failed, excludedCsvPath: lastExcludedCsvPath ?? undefined };
 }

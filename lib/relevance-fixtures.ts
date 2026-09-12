@@ -1719,6 +1719,37 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "User decided 保留 in this round. Pinned so a later services sweep cannot take it silently.",
     country: "Mexico", scopeType: "services",
   },
+  // --- 2026-09-12, second exclusion review by the user ----------------------
+  {
+    title: "ADQUISICIÓN DE 01 VEHÍCULO TIPO TODO TERRENO 4X4",
+    expectedTier: "excluded",
+    note: "User: 1台车. One unit — the stated count is what separates it from a fleet, since the generic noun 'vehículo' is the same either way.",
+    country: "Mexico", scopeType: "equipment",
+  },
+  {
+    title: "ADQUISICIÓN DE 15 VEHÍCULOS TIPO AMBULANCIA PARA LA SECRETARÍA DE SALUD",
+    expectedTier: "standard",
+    note: "The guard on the row above: \\b0?1\\b must not read '15' as a single unit. A fleet order stays in, at the low priority vehicles were given 2026-09-06.",
+    country: "Mexico", scopeType: "equipment",
+  },
+  {
+    title: "REHABILITACIÓN DE CAJA COLECTORA, CONSTRUCCIÓN DE CARCAMO DE REBOMBEO Y TANQUE DE REGULACION",
+    expectedTier: "excluded",
+    note: "User: 这类项目太多了. Components of an existing municipal water network, not a water system.",
+    country: "Mexico", scopeType: "works",
+  },
+  {
+    title: "CONSTRUCCION TANQUES SUPERFICIALES, ZACUALPAN, ESTADO DE NAYARIT",
+    expectedTier: "excluded",
+    note: "Same class as the row above — surface storage tanks for a municipality.",
+    country: "Mexico", scopeType: "works",
+  },
+  {
+    title: "MEJORAMIENTO DE LOS SERVICIOS DE APOYO AL DESARROLLO PRODUCTIVO EN LAS CADENAS PRODUCTIVAS DE PAPA Y MAÍZ DISTRITO DE PULLO DE LA PROVINCIA DE PARINACOCHAS DEL DEPARTAMENTO DE AYACUCHO",
+    expectedTier: "excluded",
+    note: "User: 农业？ Peru Invierte.pe extension services for potato and maize farmers. The 'MEJORAMIENTO DE LOS SERVICIOS DE' opener is on every Invierte.pe project and cannot be the signal; 'cadenas productivas' is.",
+    country: "Peru", scopeType: "works",
+  },
   // --- Two real open Colombia tenders from the 2026-09-12 exclusion export --
   // Both were excluded on the word "mantenimiento" sitting at the end of a
   // scope list whose real object is new work. See NEW_BUILD_OR_PURCHASE.

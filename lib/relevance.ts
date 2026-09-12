@@ -1144,7 +1144,61 @@ const WORKS_CONSULTANCY_PATTERN =
  * fleet. Spanish marks the difference reliably; a count in the title does not
  * (neither of the user's rows carries one).
  */
-const SUPPORT_VEHICLE_KEYWORDS = [/\bcamioneta\b(?!s)/i, /\bmontacarga\b(?!s)/i];
+const SUPPORT_VEHICLE_KEYWORDS = [
+  /\bcamioneta\b(?!s)/i,
+  /\bmontacarga\b(?!s)/i,
+  // A stated count of one, which the comment above said the rows then in hand
+  // did not carry — one since has: "ADQUISICIÓN DE 01 VEHÍCULO TIPO TODO
+  // TERRENO 4X4" (2026-09-12, user: 1台车). The generic noun "vehículo" cannot
+  // be excluded on its own the way "camioneta" can, because a fleet order uses
+  // the same word; the number is what separates them here. Written to accept
+  // the three spellings these titles use — "01", "1", "UN (01)" — and the
+  // \b0?1\b is what keeps "15 VEHÍCULOS" out of it.
+  /\b(?:0?1|un|una)\s+(?:\([^)]{0,6}\)\s*)?veh[íi]culo\b(?!s)/i,
+];
+
+/**
+ * Small municipal water-system components, as opposed to a water system.
+ *
+ * A cárcamo de rebombeo (pumping sump), a caja colectora (collector box) and a
+ * tanque superficial (surface storage tank) are single structures inside an
+ * existing network, typically a few hundred thousand dollars, built by a local
+ * contractor. Mexican municipalities tender them constantly — the user's words
+ * on 2026-09-12 were 这类项目太多了 — and they crowd out the feed:
+ *
+ *   REHABILITACIÓN DE CAJA COLECTORA, CONSTRUCCIÓN DE CARCAMO DE REBOMBEO Y
+ *   TANQUE DE...
+ *   CONSTRUCCION TANQUES SUPERFICIALES, ZACUALPAN, ESTADO DE NAYARIT
+ *
+ * Component nouns only, deliberately. A treatment plant, an aqueduct, a dam or
+ * a distribution network keeps its own words and is untouched — a PTAR whose
+ * scope happens to include a cárcamo is still named a PTAR. The cost of this
+ * rule is the genuinely large pumping station that names nothing else; judged
+ * worth it against how many small ones there are.
+ */
+const MUNICIPAL_WATER_COMPONENT_KEYWORDS = [
+  /\bc[áa]rcamo(s)?\b/i,
+  /\bcaja(s)? colectora(s)?\b/i,
+  /\btanque(s)? superficial(es)?\b/i,
+];
+
+/**
+ * Agricultural and economic development PROGRAMMES, which are not procurement
+ * of anything a foreign bidder supplies.
+ *
+ * "MEJORAMIENTO DE LOS SERVICIOS DE APOYO AL DESARROLLO PRODUCTIVO EN LAS
+ * CADENAS PRODUCTIVAS DE PAPA Y MAÍZ, DISTRITO DE PULLO..." (2026-09-12, user:
+ * 农业？) is Peru's Invierte.pe naming for extension services to potato and
+ * maize farmers — training, technical assistance, seed. The title reads like a
+ * works project because every Invierte.pe project is named "MEJORAMIENTO DE
+ * LOS SERVICIOS DE ...", which is why the generic opener cannot be the signal.
+ *
+ * Both terms are specific to that programme vocabulary: "cadena productiva" is
+ * the agricultural value chain, and the anchored "servicios de apoyo al
+ * desarrollo productivo/económico" is the programme type itself. Neither
+ * appears on a road, a plant or an equipment purchase.
+ */
+const PRODUCTIVE_DEVELOPMENT_PROGRAMME = /cadena(s)? productiva(s)?|servicios? de apoyo al desarrollo (productivo|econ[óo]mico)/i;
 
 
 /** A title that states it is building something — enough to read a materials clause as the contractor's scope, not the subject of the purchase. */
@@ -2283,7 +2337,9 @@ export function classifyRelevance(input: {
     !hasIncludeOverride &&
     (CONSTRUCTION_INPUT_GOODS.some((pattern) => pattern.test(haystack)) ||
       WORKS_CONSULTANCY_PATTERN.test(haystack) ||
-      SUPPORT_VEHICLE_KEYWORDS.some((pattern) => pattern.test(haystack)))
+      SUPPORT_VEHICLE_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
+      MUNICIPAL_WATER_COMPONENT_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
+      PRODUCTIVE_DEVELOPMENT_PROGRAMME.test(haystack))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }

@@ -464,7 +464,15 @@ export function TenderExplorer({
           )}
         </div>
 
-        {hasActiveFilters && <div className="mt-3 flex flex-wrap items-center gap-3">
+        {/*
+          Gated on the chips themselves, NOT on hasActiveFilters (user,
+          2026-09-12: 为什么清除筛选框出现后，整个外框会变大？). Any active
+          filter at all — a 项目规模 pill, a country — used to render this
+          row, and with no 行业 chips selected it rendered EMPTY: no content,
+          but still mt-3, so the card grew 12px the moment 清除筛选 appeared.
+          The button was never the cause; this invisible sibling was.
+        */}
+        {industries.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-3">
           {industries.map((industry) => (
             <button key={industry} type="button" onClick={() => updateParams({ industry: industries.filter((item) => item !== industry).join(",") || null })} className="rounded-full bg-[#e9eef0] px-3 py-1 text-xs font-semibold text-[#314b5c]">
               {industryLabel(industry, locale)} ×

@@ -870,6 +870,19 @@ const OVERRIDE_NOT_FLAGSHIP = [/incendio/i, /firewall/i, /ciberseguridad|cyberse
  */
 const MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT = [
   /\breparaci[óo]n\b/i,
+  // Bridges, as a class (2026-09-12, per the user: 感觉秘鲁的大型工程太多了，
+  // 请把桥的等级最多改成中级，除非金额很大的项目).
+  //
+  // "puente" in MAJOR_PROJECT_KEYWORDS was forcing flagship value-independently,
+  // and in Peru that is almost never right: the overwhelming majority of SEACE
+  // "RENOVACIÓN DE PUENTE; EN EL(LA) CAMINO VECINAL ..." rows are single-span
+  // village crossings on a rural road. The real case that triggered this had a
+  // disclosed value of $500,000 and still came out 大型项目.
+  //
+  // A genuinely large bridge is not lost: the demotion branch below yields to a
+  // disclosed value at or above FLAGSHIP_VALUE_USD, so a $6M+ crossing is still
+  // flagship. What is gone is flagship on the word alone.
+  /\bpuente(s)?\b/i,
   // A water plant built AT a named dam, where the dam is the water source
   // and not the thing being built: "CONSTRUCCIÓN PLANTA POTABILIZADORA, DE
   // LA PRESA TUNAL II DURANGO, DURANGO" (2026-09-08, per the user: 大型项目
@@ -995,6 +1008,99 @@ function isConcessionWithBuildScope(haystack: string): boolean {
  * to cut on, and this title leads with the goods themselves.
  */
 const MATERIALS_SUPPLY_PATTERN = /^\W*materiales?\b|suministro (de )?material(es)?\b/i;
+
+/**
+ * Commodity construction inputs, plant consumables and catalogue products,
+ * bought as goods.
+ *
+ * These arrived together from one 2026-09-12 review, the CFE and Peru halves
+ * of it being the same shape:
+ *
+ *   "Adquisición de Tubería Lisa y Riflada para las Paredes de los Generadores
+ *    de Vapor de la C.T. Puerto Libertad"
+ *   "ADQUISICIÓN DE BARRA DE ACERO CORRUGADO PARA LA OBRA: MEJORAMIENTO DEL
+ *    SERVICIO DE TRANSITABILIDAD VIAL MEDIANTE EL PUENTE CARROZABLE ..."
+ *   "SERVICIO DE CARGA Y TRANSPORTE DE MATERIAL DE CANTERA ... PARA LA META
+ *    123 MEJORAMIENTO DE AMPLIACIÓN DE LA CARRETERA ..."
+ *
+ * Every one of them names a real, large, whitelisted work — a power station, a
+ * bridge, a highway — which is exactly why they were being kept:
+ * MATERIALS_SUPPLY_PATTERN above yields whenever WORKS_CONTRACT_CONTEXT
+ * matches, and "PARA LA OBRA: <works>" matches it. A bidder on a steel-rebar
+ * order is a steel supplier, not a bridge builder.
+ *
+ * Named categories, NOT a general "bought for a named project" rule. The
+ * general version was written first and had to be withdrawn: "ADQUISICIÓN DE
+ * EQUIPAMIENTO MEDICO DE ESPECIALIDADES ... PARA EL PROYECTO MEJORAMIENTO DEL
+ * SERVICIO DE SALUD" at 20M PEN is a fixture here, and it is precisely the
+ * business this platform exists for. "Para el proyecto" cannot tell rebar from
+ * hospital equipment; the noun can.
+ *
+ * The list is what a Chinese exporter could actually win: rebar, aggregate,
+ * asphalt, cement, pipe, valves and fuel are commodity orders a local yard
+ * serves, and they arrive in volume from SEACE and CFE alike. 管道不要 /
+ * 阀门不要 is the user's own wording, given against three CFE component orders
+ * at power stations.
+ *
+ * This runs as an exclusion, so it beats the power-asset whitelist in
+ * FLAGSHIP_INDUSTRY_KEYWORDS — deliberately. "Adquisición de válvulas de
+ * Control del Generador de Vapor" is a valve order that happens to name a
+ * boiler; the thing being bought is the valve.
+ */
+const CONSTRUCTION_INPUT_GOODS = [
+  /\bbarras?\s+de\s+acero\b|acero\s+corrugado|fierro\s+corrugado/i,
+  /\bmaterial(es)?\s+(granular(es)?|de\s+cantera|de\s+pr[ée]stamo|de\s+afirmado)\b|\bagregados?\s+(p[ée]treos|de\s+cantera)\b/i,
+  /\basfalto\b|\bemulsi[óo]n(es)?\s+asf[áa]ltica/i,
+  /\bcemento\b|\bconcreto\s+premezclado\b|\bhormig[óo]n\s+premezclado\b/i,
+  /\btuber[íi]as?\b|\btubos?\b/i,
+  /\bv[áa]lvulas?\b/i,
+  /\bcombustible(s)?\b|\bdi[ée]sel\b|\bgasolina\b|\bpetr[óo]leo\s+diesel\b/i,
+  // A catalogue product with a model number, fabricated to order and shipped:
+  // "CONTRATACION DE SERVICIO DE FABRICACIÓN DE PUENTE METALICO MODULAR DE
+  // 24.384X3.2M DSR2 ... TRANSPORTE ... MONTAJE Y LANZAMIENTO". It reached 中型
+  // on the word 桥 inside its own product name. Narrow on purpose — building a
+  // bridge is kept, buying a prefabricated span is not.
+  /\bpuente(s)?\s+met[áa]lico(s)?\s+modular(es)?\b/i,
+];
+
+/**
+ * Engineering consultancy ON a works contract — the study, the design file,
+ * the site supervision. Not the construction.
+ *
+ * scopeType === "consulting" already excludes this class, but only where the
+ * SOURCE says so: SEACE reports these as `works` (Peru files them under the
+ * obra they attach to), so they arrived carrying the whole vocabulary of the
+ * project they supervise and were promoted on it. Two of the 2026-09-12 list
+ * reached flagship purely on "RENOVACIÓN DE PUENTE" inside the name of the
+ * work being supervised.
+ *
+ * "expediente técnico" only counts when it is the deliverable. A design-build
+ * contract that says "ELABORACIÓN DE EXPEDIENTE TÉCNICO Y EJECUCIÓN DE LA
+ * OBRA" is a real works contract and stays — hence the negative lookahead.
+ */
+const WORKS_CONSULTANCY_PATTERN =
+  /\bconsultor[íi]a\s+de\s+obra\b|\bsupervisi[óo]n\s+de\s+(la\s+)?obra\b|\bsupervisor\s+de\s+la\s+ejecuci[óo]n\b|\bestudios?\s+definitivos?\b|\bexpediente\s+t[ée]cnico\b(?![^.]{0,40}\bejecuci[óo]n\b)/i;
+
+/**
+ * A single support vehicle or yard machine for an entity's own operations —
+ * a pickup for the disaster-management office, one 5-tonne forklift for a
+ * port (2026-09-12, user: 1台车 / 1台叉车).
+ *
+ * This narrows, and does not reverse, the 2026-09-06 decision to keep vehicle
+ * procurement ("留，但重要性和优先级都不用太高"): a fleet order for buses,
+ * ambulances, dump trucks or heavy machinery is still a real opportunity and
+ * is untouched. What is excluded is the pickup-and-forklift class, which is
+ * an internal purchase served by a local dealer.
+ *
+ * SINGULAR only, which is what separates the two: both of the user's rows name
+ * one unit ("ADQUISICION DE CAMIONETA 4 X 4 PARA LA GERENCIA DE OPERACIONES",
+ * "UN (01) MONTACARGA DE 5 TONELADAS"), while the fixture that must survive is
+ * "ADQUISICIÓN DE CAMIONETAS TIPO SUV PARA SEGURIDAD PÚBLICA" — plural, a
+ * fleet. Spanish marks the difference reliably; a count in the title does not
+ * (neither of the user's rows carries one).
+ */
+const SUPPORT_VEHICLE_KEYWORDS = [/\bcamioneta\b(?!s)/i, /\bmontacarga\b(?!s)/i];
+
 
 /** A title that states it is building something — enough to read a materials clause as the contractor's scope, not the subject of the purchase. */
 const WORKS_CONTRACT_CONTEXT =
@@ -1553,18 +1659,19 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
 // figures and wildly over-classified.
 //
 // Raised again (2026-09-05, per the user's explicit three-band scheme,
-// applied to Mexico and Colombia alike — "哥伦比亚+墨西哥通用"): under
-// $1,000,000 = standard, $1,000,000–$5,000,000 = significant, over
-// $5,000,000 = flagship. Previously 1,000,000/250,000 (see the "standard
-// eliminated" note further down, now reversed — "standard" is a real
-// output tier again). A keyword match (MAJOR_PROJECT_KEYWORDS,
+// applied to Mexico and Colombia alike — "哥伦比亚+墨西哥通用"). Raised
+// 2026-09-12 on the user's explicit call (感觉500,000以上的太多了): the bands
+// are now 常规 $800,000–$3M, 中型 $3M–$6M, 大型 over $6M. Previously
+// 500,000/1,000,000/5,000,000, and before that 1,000,000/250,000 (see the
+// "standard eliminated" note further down, now reversed — "standard" is a
+// real output tier again). A keyword match (MAJOR_PROJECT_KEYWORDS,
 // FLAGSHIP_INDUSTRY_KEYWORDS, INCLUDE_OVERRIDE_KEYWORDS) still promotes
 // independent of value, same as before — these bands only govern what a
 // disclosed value alone is worth. Paired with MAJOR_PROJECT_KEYWORDS
 // below, which promotes to flagship on a keyword/duration match alone,
 // independent of value.
-const FLAGSHIP_VALUE_USD = 5_000_000;
-const SIGNIFICANT_VALUE_USD = 1_000_000;
+const FLAGSHIP_VALUE_USD = 6_000_000;
+const SIGNIFICANT_VALUE_USD = 3_000_000;
 
 /**
  * "大项目" (major-project) keyword signal — promotes straight to flagship
@@ -1725,7 +1832,7 @@ const SHORT_BRIDGE_METERS = 30;
  */
 const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru"]);
 
-const MIN_VALUE_USD = 500_000;
+const MIN_VALUE_USD = 800_000;
 
 // zh tier names renamed 2026-09-05 per explicit user request
 // ("重点项目"->"中型项目", "旗舰项目"->"大型项目") — see the same-day comment
@@ -2085,6 +2192,19 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
 
+  // Supplying, hauling or consulting ON someone else's works contract, and
+  // commodity construction inputs — see each pattern's own header. These come
+  // after the materials gate above because they are the cases that gate lets
+  // through: naming the works is what rescued them.
+  if (
+    !hasIncludeOverride &&
+    (CONSTRUCTION_INPUT_GOODS.some((pattern) => pattern.test(haystack)) ||
+      WORKS_CONSULTANCY_PATTERN.test(haystack) ||
+      SUPPORT_VEHICLE_KEYWORDS.some((pattern) => pattern.test(haystack)))
+  ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
   // Per the user's explicit request (2026-09-04): "咨询" (consulting) as a
   // whole scopeType — studies, plans, professional/advisory services, not
   // an equipment purchase or works contract — is excluded outright, not
@@ -2175,14 +2295,28 @@ export function classifyRelevance(input: {
   const majorIsDemotedToSignificant =
     matchesMajorProject && MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT.some((pattern) => pattern.test(haystack));
 
-  if (majorIsDemotedToSignificant && !majorIsLocationOnly) {
+  // The demotion yields to a real flagship-scale number. Without this a $50M
+  // bridge would be capped at 中型 by the same rule that exists to stop a
+  // village footbridge being 大型 — the keyword is a poor scale estimate, but a
+  // disclosed amount is not an estimate at all (2026-09-12: 除非金额很大的项目).
+  const hasFlagshipScaleValue = normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD;
+
+  if (majorIsDemotedToSignificant && !majorIsLocationOnly && !hasFlagshipScaleValue) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
   }
 
   if (
     (matchesMajorProject && !majorIsLocationOnly) ||
-    hasLongDuration ||
-    (normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD) ||
+    // Long duration only speaks when nothing better does. It is a proxy for
+    // scale, and a proxy must lose to a measurement: structured_duration_days
+    // is written by exactly one mapper (Colombia's, from SECOP's
+    // duracion/unidad_de_duracion), so "any Colombian contract running a year
+    // or more is 大型项目" was the real rule — which is how a $1.02M
+    // multi-year framework contract came out flagship and prompted the user's
+    // 为什么哥伦比亚很多项目金额不到都被列为大型项目 (2026-09-12). With a real
+    // amount in hand the bands below decide; with none, duration still counts.
+    (hasLongDuration && normalizedValue === undefined) ||
+    hasFlagshipScaleValue ||
     (hasIncludeOverride &&
       normalizedValue === undefined &&
       !isEquipmentScaleCapped &&

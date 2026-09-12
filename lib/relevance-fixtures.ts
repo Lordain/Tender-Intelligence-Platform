@@ -374,8 +374,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "OBRA DE CONSTRUCCIÓN DEL PUENTE VEHICULAR SOBRE EL RÍO MAGDALENA",
-    expectedTier: "flagship",
-    note: "The control for that one: 'obra' as the first word of a real description is not a bare title. The pattern is anchored to the whole string.",
+    expectedTier: "significant",
+    note: "The control for that one: 'obra' as the first word of a real description is not a bare title. The pattern is anchored to the whole string. 2026-09-12 — 中型 now, not 大型: bridges are capped at significant unless a disclosed value clears FLAGSHIP_VALUE_USD (user: 把桥的等级最多改成中级，除非金额很大的项目). Peru's SEACE feed is mostly single-span village crossings, and the word alone was promoting all of them.",
     scopeType: "works",
     country: "Colombia",
   },
@@ -439,8 +439,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "RECONSTRUCCIÓN DEL PUENTE “XUCHIPANTLA”",
-    expectedTier: "flagship",
-    note: "The control for both demotions: rebuilding a bridge outright stays flagship. 'reparación' demotes, 'reconstrucción' deliberately does not, and several real titles of this shape are in the same export.",
+    expectedTier: "significant",
+    note: "The control for both demotions: rebuilding a bridge outright stays flagship. 'reparación' demotes, 'reconstrucción' deliberately does not, and several real titles of this shape are in the same export. 2026-09-12 — 中型 now, not 大型: bridges are capped at significant unless a disclosed value clears FLAGSHIP_VALUE_USD (user: 把桥的等级最多改成中级，除非金额很大的项目). Peru's SEACE feed is mostly single-span village crossings, and the word alone was promoting all of them. Supersedes the earlier 'reconstrucción stays flagship' carve-out — the cap is by class now, and a big rebuild still reaches 大型 on its own value.",
     scopeType: "works",
     country: "Mexico",
   },
@@ -644,8 +644,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "CONSTRUCCIÓN DE PUENTE VEHICULAR SOBRE EL RÍO",
-    expectedTier: "flagship",
-    note: "Bridge construction — MAJOR_PROJECT_KEYWORDS 建桥.",
+    expectedTier: "significant",
+    note: "Bridge construction — MAJOR_PROJECT_KEYWORDS 建桥. 2026-09-12 — 中型 now, not 大型: bridges are capped at significant unless a disclosed value clears FLAGSHIP_VALUE_USD (user: 把桥的等级最多改成中级，除非金额很大的项目). Peru's SEACE feed is mostly single-span village crossings, and the word alone was promoting all of them.",
     industries: ["construction"],
     scopeType: "works",
   },
@@ -672,8 +672,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "OBRA CIVIL",
-    expectedTier: "flagship",
-    note: "Synthetic — value >= FLAGSHIP_VALUE_USD alone should promote regardless of title content.",
+    expectedTier: "significant",
+    note: "Synthetic — value >= FLAGSHIP_VALUE_USD alone should promote regardless of title content. 2026-09-12 — the value bands moved (大型 now $6M, was $5M), so this $5,000,000 row lands one tier lower. Still the same check: value alone decides when the title says nothing.",
     industries: ["construction"],
     scopeType: "works",
     estimatedValue: 5_000_000,
@@ -1041,8 +1041,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "ADQUISICIÓN DE EQUIPO MÉDICO PARA HOSPITAL REGIONAL",
-    expectedTier: "significant",
-    note: "Repurposed (2026-09-05): used to test that a per-country value floor override didn't leak onto a country-unset tender — that override (MIN_VALUE_USD_BY_COUNTRY) is gone now that Mexico's floor was unified to Colombia's $500,000 (see MIN_VALUE_USD's own comment). Now tests the companion rule instead: a FLAGSHIP_INDUSTRY_KEYWORDS match (equipo médico) combined with ANY disclosed value above the floor — even one that doesn't clear SIGNIFICANT_VALUE_USD ($1,000,000) on its own — still promotes to significant, only a completely undisclosed value caps it at standard.",
+    expectedTier: "excluded",
+    note: "Repurposed (2026-09-05): used to test that a per-country value floor override didn't leak onto a country-unset tender — that override (MIN_VALUE_USD_BY_COUNTRY) is gone now that Mexico's floor was unified to Colombia's $500,000 (see MIN_VALUE_USD's own comment). Now tests the companion rule instead: a FLAGSHIP_INDUSTRY_KEYWORDS match (equipo médico) combined with ANY disclosed value above the floor — even one that doesn't clear SIGNIFICANT_VALUE_USD ($1,000,000) on its own — still promotes to significant, only a completely undisclosed value caps it at standard. 2026-09-12 — $600,000 is now under the floor (MIN_VALUE_USD 500,000 → 800,000, user: 感觉500,000以上的太多了).",
     scopeType: "equipment",
     estimatedValue: 600_000,
     currency: "USD",
@@ -1120,8 +1120,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "CONSTRUCCIÓN DE PUENTE VEHICULAR DE 120 METROS DE LARGO",
-    expectedTier: "flagship",
-    note: "Regression check — a genuinely large bridge (well over SHORT_BRIDGE_METERS) must still promote via MAJOR_PROJECT_KEYWORDS's bare 'puente' match, confirming the new length check only excludes real small culverts, not real bridges.",
+    expectedTier: "significant",
+    note: "Regression check — a genuinely large bridge (well over SHORT_BRIDGE_METERS) must still promote via MAJOR_PROJECT_KEYWORDS's bare 'puente' match, confirming the new length check only excludes real small culverts, not real bridges. 2026-09-12 — 中型 now, not 大型: bridges are capped at significant unless a disclosed value clears FLAGSHIP_VALUE_USD (user: 把桥的等级最多改成中级，除非金额很大的项目). Peru's SEACE feed is mostly single-span village crossings, and the word alone was promoting all of them.",
     scopeType: "works",
   },
   {
@@ -1329,8 +1329,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "CONSTRUCCIÓN DE PUENTE VEHICULAR EN EL MARCO DEL CONVENIO INTERADMINISTRATIVO ENTRE EL DEPARTAMENTO Y EL MUNICIPIO DE EJEMPLO PARA LA CONECTIVIDAD VIAL REGIONAL",
-    expectedTier: "flagship",
-    note: "Synthetic regression check — a genuine, substantial construction project that happens to be funded via an inter-administrative agreement (a legitimate, common Colombian funding structure) must NOT be caught by the bare-interadministrativo-title pattern: the title is long and content-bearing (construcción de puente vehicular), unlike the real bare-title examples above.",
+    expectedTier: "significant",
+    note: "Synthetic regression check — a genuine, substantial construction project that happens to be funded via an inter-administrative agreement (a legitimate, common Colombian funding structure) must NOT be caught by the bare-interadministrativo-title pattern: the title is long and content-bearing (construcción de puente vehicular), unlike the real bare-title examples above. 2026-09-12 — 中型 now, not 大型: bridges are capped at significant unless a disclosed value clears FLAGSHIP_VALUE_USD (user: 把桥的等级最多改成中级，除非金额很大的项目). Peru's SEACE feed is mostly single-span village crossings, and the word alone was promoting all of them.",
     scopeType: "works",
     country: "Colombia",
   },
@@ -1529,8 +1529,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "ADQUISICIÓN DE EQUIPO DE ESTERILIZACIÓN DE INSTRUMENTAL QUIRÚRGICO PARA EL HOSPITAL DEPARTAMENTAL",
-    expectedTier: "significant",
-    note: "Guards the veterinary rule: 'esterilización' also describes sterilizing surgical instruments, which is real hospital equipment spend. Excluding on the bare word would have taken this with it. Lands in significant on the Colombia value band, as every kept row at this amount does; what it pins is that it is kept at all.",
+    expectedTier: "standard",
+    note: "Guards the veterinary rule: 'esterilización' also describes sterilizing surgical instruments, which is real hospital equipment spend. Excluding on the bare word would have taken this with it. Lands in significant on the Colombia value band, as every kept row at this amount does; what it pins is that it is kept at all. 2026-09-12 — $1.2M sits in the new 常规 band (800k–3M); 中型 starts at $3M.",
     country: "Colombia",
     scopeType: "equipment",
     estimatedValue: 1_200_000,
@@ -1574,8 +1574,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "IMPLEMENTACIÓN DE SISTEMAS DE ENERGÍA FOTOVOLTAICA EN INSTITUCIONES EDUCATIVAS DEL MUNICIPIO DE TAME; DEPARTAMENTO DE ARAUCA",
-    expectedTier: "significant",
-    note: "The is-vs-where line the school rule deliberately draws, now on the Colombian wording: this is a solar installation that happens to sit AT schools ('en'), not a school being built or fitted out ('de'). Flagged to the user as the one arguable case in this round.",
+    expectedTier: "standard",
+    note: "The is-vs-where line the school rule deliberately draws, now on the Colombian wording: this is a solar installation that happens to sit AT schools ('en'), not a school being built or fitted out ('de'). Flagged to the user as the one arguable case in this round. 2026-09-12 — $1.4M sits in the new 常规 band (800k–3M).",
     country: "Colombia",
     scopeType: "works",
     estimatedValue: 1_400_000,
@@ -1613,8 +1613,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "ADQUISICIÓN DE VEHÍCULO TIPO VAN UNIFORMADA CON DESTINO A LA ESTACION DE POLICIA NOBSA Y FORTALECIMIENTO DEL SISTEMA DE VIDEOVIGILANCIA",
-    expectedTier: "significant",
-    note: "Second guard on the same rule — 'fortalecimiento' trailing a real equipment purchase the user keeps. Plural-less 'VEHÍCULO' here is deliberate too: this one is a marked van with a CCTV package, not a bare single-car buy, and it survives because the title does not start with 'adquisición de vehículo'.",
+    expectedTier: "excluded",
+    note: "Second guard on the same rule — 'fortalecimiento' trailing a real equipment purchase the user keeps. Plural-less 'VEHÍCULO' here is deliberate too: this one is a marked van with a CCTV package, not a bare single-car buy, and it survives because the title does not start with 'adquisición de vehículo'. 2026-09-12 — 2.4B COP ≈ $764k, now under the $800,000 floor.",
     country: "Colombia", scopeType: "equipment", estimatedValue: 2_400_000_000, currency: "COP",
   },
   {
@@ -1753,8 +1753,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "ADQUISICIÓN DE EQUIPAMIENTO MEDICO DE ESPECIALIDADES SEGÚN REQUERIMIENTO PARA EL PROYECTO MEJORAMIENTO DEL SERVICIO DE SALUD",
-    expectedTier: "flagship",
-    note: "The other side of the guard: the cut fires, and the row still promotes — because what is left, 'EQUIPAMIENTO MEDICO', is itself a flagship industry. The rule removes borrowed signal, not real signal.",
+    expectedTier: "significant",
+    note: "The other side of the guard: the cut fires, and the row still promotes — because what is left, 'EQUIPAMIENTO MEDICO', is itself a flagship industry. The rule removes borrowed signal, not real signal. 2026-09-12 — 20M PEN ≈ $5.97M, just under the new $6M 大型 line. Kept as a fixture precisely because it is the case that killed the first draft of the construction-input rule: 'PARA EL PROYECTO' is not evidence that goods are a materials order.",
     country: "Peru", scopeType: "equipment", governmentLevel: "state", estimatedValue: 20_000_000, currency: "PEN",
   },
   {
@@ -1933,5 +1933,143 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "excluded",
     note: "The reason every 配电 pattern demands an electrical qualifier: this is how Invierte.pe names small Peruvian rural distribution programmes, and a bare 'redes de distribución' would have flooded Peru behind a Mexican fix.",
     country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  // ---------------------------------------------------------------------
+  // 2026-09-12 review. The user worked three live lists and named every row
+  // that should not have been there, plus two tier complaints and a new set
+  // of value bands. Each one is kept here so the next rule change has to
+  // answer for it.
+  // ---------------------------------------------------------------------
+  {
+    title: "DESARROLLAR EL PROCESO DE SELECCIÓN PARA LA PROVISIÓN DEFINITIVA EN LA MODALIDAD DE INGRESO DE LOS EMPLEOS VACANTES DEL SISTEMA DE CARRERA ESPECIAL DEL INSTITUTO NACIONAL DE MEDICINA LEGAL Y CIENCIAS FORENSES",
+    expectedTier: "excluded",
+    note: "Colombia, 2026-09-12 — a civil-service recruitment competition, not procurement. 医疗人员资质筛选类.",
+    country: "Colombia", scopeType: "services", governmentLevel: "federal",
+  },
+  {
+    title: "PAGO POR RESULTADOS - PROMOCIÓN DE EMPLEO",
+    expectedTier: "excluded",
+    note: "Colombia, 2026-09-12 — employment-promotion programme funding. 就业推动.",
+    country: "Colombia", scopeType: "services", governmentLevel: "federal",
+  },
+  {
+    title: "FIDUCIA PAGO POR RESULTADOS EMPLEO",
+    expectedTier: "excluded",
+    note: "Colombia, 2026-09-12 — the trust vehicle administering the same employment programme. 就业推动.",
+    country: "Colombia", scopeType: "services", governmentLevel: "federal",
+  },
+  {
+    title: "OTORGAR EN CONCESIÓN, LA OPERACIÓN Y EXPLOTACIÓN DE LAS ÁREAS QUE COMPONEN LA ESTRUCTURA FÍSICA DEL CENTRO DE ATENCION AL VISITANTE - CAV DEL JARDÍN BOTÁNICO",
+    expectedTier: "excluded",
+    note: "Colombia, 2026-09-12 — a concession to run a visitor centre, not a build. 特许经营权.",
+    country: "Colombia", scopeType: "services", governmentLevel: "municipal",
+  },
+  {
+    title: "Prestar los servicios para el desarrollo del diseño y aplicación de la prueba de conocimiento, competencias, aptitudes, habilidades y/o psicotécnica de la convocatoria 28 para los funcionarios de la Rama Judicial",
+    expectedTier: "excluded",
+    note: "Colombia, 2026-09-12 — designing and running civil-service exams. 咨询服务.",
+    country: "Colombia", scopeType: "consulting", governmentLevel: "federal",
+  },
+  {
+    title: "FORTALECIMIENTO ORGANIZACIONES SOCIALES E INSTANCIAS DE PARTICIPACION",
+    expectedTier: "excluded",
+    note: "Colombia, 2026-09-12 — capacity-building for community organisations.",
+    country: "Colombia", scopeType: "services", governmentLevel: "municipal",
+  },
+  {
+    title: "FORTALECIMIENTO EMPRESARIAL",
+    expectedTier: "excluded",
+    note: "Colombia, 2026-09-12 — small-business support programme.",
+    country: "Colombia", scopeType: "services", governmentLevel: "municipal",
+  },
+  {
+    title: "Adquisición de Tubería Lisa y Riflada para las Paredes de los Generadores de Vapor de la C.T. Puerto Libertad",
+    expectedTier: "excluded",
+    note: "CFE, 2026-09-12 — 管道不要. Boiler-wall tubing for a named power station: a pipe order that mentions a generator, not generation equipment. The exclusion has to beat the power whitelist, which is why CONSTRUCTION_INPUT_GOODS runs as an exclude.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "federal",
+  },
+  {
+    title: "Adquisición de tubería y accesorios para el suministro de obra toma Laguna y la red contra incendio con destino a la Central Termoeléctrica Altamira.",
+    expectedTier: "excluded",
+    note: "CFE, 2026-09-12 — 管道不要. Names a thermoelectric plant and a works intake; still a pipe-and-fittings order.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "federal",
+  },
+  {
+    title: "Adquisición de válvulas de Control del Generador de Vapor de la C.T. F.P.R.",
+    expectedTier: "excluded",
+    note: "CFE, 2026-09-12 — 阀门不要.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "federal",
+  },
+  {
+    title: "ADQUISICIÓN DE BARRA DE ACERO CORRUGADO PARA LA OBRA: MEJORAMIENTO DEL SERVICIO DE TRANSITABILIDAD VIAL MEDIANTE EL PUENTE CARROZABLE CCENTABAMBA DE LOS DISTRITOS DE SIVIA Y AYNA",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — rebar for a named bridge works. The bridge in the title is what was promoting it; the contract is a steel order.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+  },
+  {
+    title: "ADQUISICIÓN DE MATERIAL GRANULAR PARA SUB-BASE TIPO B, PARA LA OBRA: MEJORAMIENTO DEL SERVICIO DE TRANSITABILIDAD VIAL INTERURBANA DE LA VIA VECINAL RUTA S/C EMP MO-518 (PUENTE CANILAY) PE-36 A, DISTRITO DE TORATA",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — sub-base aggregate for a named road works.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+  },
+  {
+    title: "CONTRATACIÓN DE CONSULTORÍA DE OBRA PARA EL SUPERVISOR DE LA EJECUCION DE LA OBRA: CREACION DEL SERVICIO DE MOVILIDAD URBANA EN LAS VÍAS LOCALES DE LA ASOCIACIÓN SAN JOSÉ ETAPA II - ANTIGUO AEROPUERTO",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — site supervision. SEACE files these as scopeType works (they attach to the obra), so the consulting-scope exclusion never saw them and they were promoted on the vocabulary of the project they supervise — this one on 'AEROPUERTO'.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "CONTRATACIÓN DE CONSULTORÍA DE OBRA: RENOVACIÓN DE PUENTE; EN EL(LA) VÍA VECINAL CHUGURMAYO _ LA FLORIDA (PUENTE EL COLORADO) EN EL CENTRO POBLADO CHUGURMAYO, DISTRITO DE SOROCHUCO",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — consultancy on a bridge renewal; reached 大型 on the bridge it studies.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "CONSULTORIA DE OBRA RENOVACION DE PUENTE; EN EL(LA) VIA VECINAL, QUEBRADA SAN JUAN PAMPA EN EL CAMINO VECINAL EMP. CA-876 (NINABAMBA) - SAN JUAN PAMPA",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — same shape without the CONTRATACIÓN DE prefix.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "SERVICIO A TODO COSTO DE CONSTRUCCIÓN DE 226 CAJAS PARA INSTALACIÓN DE VÁLVULAS DE PURGA DE AIRE EN EL AMBITO DE EPSEL SA - ESTUDIO TARIFARIO 2025-2028",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — 226 concrete boxes for air-release valves on a water utility's network.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "CONTRATACION DE SERVICIO DE FABRICACIÓN DE PUENTE METALICO MODULAR DE 24.384X3.2M DSR2, PARA SOBRECARGA HL-93, TRANSPORTE DE ESTRUCTURA METÁLICA Y MONTAJE Y LANZAMIENTO DEL PUENTE METALICO MODULAR",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — a prefabricated modular span with a model number, fabricated and shipped. Building a bridge is kept; buying one off a catalogue is not.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "ADQUISICIÓN DE UN (01) MONTACARGA DE 5 TONELADAS PARA EL TERMINAL PORTUARIO DE SUPE",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — 1台叉车. Was reaching 大型 on 'TERMINAL PORTUARIO'.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "federal",
+  },
+  {
+    title: "ADQUISICION DE CAMIONETA 4 X 4 PARA LA GERENCIA DE OPERACIONES DE LA EPS EMAPA PASCO S.A.",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — 1台车. Singular camioneta; the plural fleet fixture (CAMIONETAS TIPO SUV) must stay in.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+  },
+  {
+    title: "ADQUISICION DE CAMIONETA; EN EL (LA) OFICINA DE GESTION DEL RIESGO DE DESASTRES Y DEFENSA CIVIL DE LA MUNICIPALIDAD PROVINCIAL DE HUARAZ",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — one pickup for a municipal office.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+  },
+  {
+    title: "SERVICIO DE CARGA Y TRANSPORTE DE MATERIAL DE CANTERA, (MATERIAL DE ENCIMADO Y CORONA PARA CONFORMACIÓN DE SUB RASANTE PARA LA META 123 MEJORAMIENTO DE AMPLIACIÓN DE LA CARRETERA",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — hauling quarry material to a highway works.",
+    country: "Peru", scopeType: "services", governmentLevel: "municipal",
+  },
+  {
+    title: "COMBUSTIBLE B5 S-50 PARA EL PROGRAMA AGUA ES VIDA DE LA GERENCIA DE VIVIENDA, CONSTRUCCIÓN Y SANEAMIENTO",
+    expectedTier: "excluded",
+    note: "Peru, 2026-09-12 — diesel for a programme's own vehicles.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "state",
   },
 ];

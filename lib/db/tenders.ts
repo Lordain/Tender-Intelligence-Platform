@@ -214,6 +214,7 @@ function toTender(row: TenderRow): Tender {
     // stays as the source reported it; this is what every surface displays.
     status: deriveTenderStatus(row.status, {
       submissionDeadline: row.submission_deadline,
+      publicationDate: row.publication_date,
       keyDates: row.tender_key_dates ?? [],
     }),
     qualifications: requirements.filter((r) => r.kind === "qualification").map(toRequirement),

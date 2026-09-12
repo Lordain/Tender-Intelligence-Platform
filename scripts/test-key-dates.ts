@@ -91,5 +91,48 @@ check(
   deriveTenderStatus("open", { submissionDeadline: "2026-09-11", keyDates: [] }, NOW) === "submission_closed",
 );
 
+// Rule 5: the 45-day last resort, and the four things that must outrank it.
+check(
+  "a date-less tender stays open inside the window",
+  deriveTenderStatus("open", { publicationDate: "2026-09-01", keyDates: [] }, NOW) === "open",
+);
+check(
+  "a date-less tender closes once the window has passed",
+  deriveTenderStatus("open", { publicationDate: "2026-07-01", keyDates: [] }, NOW) === "submission_closed",
+);
+check(
+  "exactly 45 days is still open",
+  deriveTenderStatus("open", { publicationDate: "2026-07-29", keyDates: [] }, NOW) === "open",
+  String(daysBetweenForTest("2026-07-29")),
+);
+check(
+  "46 days is not",
+  deriveTenderStatus("open", { publicationDate: "2026-07-28", keyDates: [] }, NOW) === "submission_closed",
+);
+check(
+  "a FUTURE deadline outranks the window — an old tender open until December stays open",
+  deriveTenderStatus("open", { publicationDate: "2026-01-01", submissionDeadline: "2026-12-01", keyDates: [] }, NOW) === "open",
+);
+check(
+  "a future validity_end outranks it too (PEMEX standing invitations)",
+  deriveTenderStatus("open", { publicationDate: "2026-01-01", keyDates: [{ type: "validity_end", date: "2028-08-27" }] }, NOW) === "open",
+);
+check(
+  "an award outranks it — a long-decided tender still reads 已中标, not 已截止",
+  deriveTenderStatus("awarded", { publicationDate: "2026-01-01", keyDates: [] }, NOW) === "awarded",
+);
+check(
+  "a junta de aclaraciones happening today outranks it",
+  deriveTenderStatus("open", { publicationDate: "2026-01-01", keyDates: [{ type: "clarification", date: "2026-09-12" }] }, NOW) === "clarification",
+);
+check(
+  "no publication date at all means the window cannot fire",
+  deriveTenderStatus("open", { keyDates: [] }, NOW) === "open",
+);
+
+function daysBetweenForTest(day: string): number {
+  return Math.floor((new Date("2026-09-12T00:00:00.000Z").getTime() - new Date(`${day}T00:00:00.000Z`).getTime()) / 86_400_000);
+}
+
 console.log(`\n${passed}/${passed + failed} checks passed.`);
 if (failed > 0) process.exit(1);

@@ -131,7 +131,7 @@ function TenderPreview({ tenders }: { tenders: Tender[] }) {
                 </span>
                 <p className="line-clamp-2 text-xs font-bold leading-5 text-black xl:text-sm">{tender.title.zh || tender.title.es}</p>
                 <p className="text-right text-[10px] font-bold text-[#071826] xl:text-xs">
-                  {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "待公布"}
+                  {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "未提供"}
                 </p>
               </div>
             ))}

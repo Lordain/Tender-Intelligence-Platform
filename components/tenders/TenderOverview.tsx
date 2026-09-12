@@ -5,6 +5,7 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatEstimatedValueUsd, formatDate } from "@/lib/format";
 import { exchangeRateNote } from "@/lib/currency";
+import { STALE_WITHOUT_END_DATE_DAYS } from "@/lib/tender-status";
 import {
   GOVERNMENT_LEVEL_LABELS,
   PARTICIPATION_SCOPE_LABELS,
@@ -129,12 +130,22 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
           label={localize(tender.publicationDateIsEstimated ? uiText.ingestedDateLabel : uiText.publicationDateLabel, locale)}
           value={formatDate(tender.publicationDate, locale)}
         />
+        {/*
+          Says which kind of "no date" this is. 待公布 used to stand here and
+          on the list rows, and for Peru's OECE records it is simply untrue —
+          that source publishes no deadline field at all, so nothing is ever
+          going to be 公布. Worse once rule 5 (lib/tender-status.ts) began
+          closing these: the reader saw 已截止 next to 待公布, a contradiction
+          with no explanation anywhere on the page.
+        */}
         <Field
           label="计划交标"
           value={
             tender.submissionDeadline
               ? formatDate(tender.submissionDeadline, locale)
-              : "—"
+              : tender.status === "submission_closed"
+                ? `数据源未提供 · 已按发布满 ${STALE_WITHOUT_END_DATE_DAYS} 天推定截止`
+                : "数据源未提供"
           }
           emphasized
         />

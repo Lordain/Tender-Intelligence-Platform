@@ -33,10 +33,22 @@
  *      instead makes it a calendar question again, answered on every
  *      request, for rows already in the database — no re-import.
  *
- * This still leaves genuinely date-less rows open forever, which is a data
- * problem rather than a derivation one: Peru's OECE records carry no end
- * date of any kind (see peru-oece-mapper.ts). Nothing is invented here to
- * cover that — a guessed 已截止 is a claim about someone's bid window.
+   5. A tender with NO end date of any kind reads 已截止 45 days after it
+ *      was published. Last resort, and only ever reached when rules 3 and 4
+ *      have nothing to work with: no submission deadline, no validity_end,
+ *      and no award (which would already have won at the top). That is the
+ *      Peru OECE population — its records carry no end date at all, so
+ *      nothing else can ever close them — plus any row whose source simply
+ *      never supplied one.
+ *
+ *      This IS a guess, and the only one in this file. It is the third of
+ *      three layers the user set (2026-09-12): read the real date out of
+ *      the bases PDF first, fall back to the award appearing in the feed,
+ *      and only then to the calendar. A wrong guess here costs a reader an
+ *      opportunity that was still open; leaving these permanently 招标中
+ *      costs every reader their trust in the status column, because a feed
+ *      where a third of the rows are eternally "open" is not reporting
+ *      anything. 45 days is the tunable part — see STALE_WITHOUT_END_DATE_DAYS.
  */
 import type { Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
 
@@ -90,9 +102,33 @@ export function platformDay(value: string | number | Date): string | null {
   return DAY_FORMATTER.format(date);
 }
 
+/**
+ * How long a tender with no end date of any kind stays 招标中 (rule 5).
+ *
+ * Not derived from anything — a real number would need a measured
+ * publication-to-close distribution per source, which this platform does not
+ * have. Chosen to sit past the usual run of these procedures rather than at
+ * the middle of it, so the rule closes a stale row late rather than closing
+ * a live one early. Raise it if real projects start disappearing while still
+ * open; lower it if the feed fills with rows that closed weeks ago.
+ */
+export const STALE_WITHOUT_END_DATE_DAYS = 45;
+
+function daysBetween(fromDay: string, toDay: string): number {
+  const from = new Date(`${fromDay}T00:00:00.000Z`).getTime();
+  const to = new Date(`${toDay}T00:00:00.000Z`).getTime();
+  if (Number.isNaN(from) || Number.isNaN(to)) return 0;
+  return Math.floor((to - from) / 86_400_000);
+}
+
 export function deriveTenderStatus(
   stored: TenderStatus,
-  fields: { submissionDeadline?: string | null; keyDates?: Pick<TenderKeyDate, "type" | "date">[] },
+  fields: {
+    submissionDeadline?: string | null;
+    /** Needed for rule 5 only. Absent (mock data, a partial row) simply means rule 5 cannot fire. */
+    publicationDate?: string | null;
+    keyDates?: Pick<TenderKeyDate, "type" | "date">[];
+  },
   now: Date = new Date(),
 ): TenderStatus {
   if (stored === "awarded" || stored === "cancelled") return stored;
@@ -117,6 +153,20 @@ export function deriveTenderStatus(
     (keyDate) => keyDate.type === "clarification" && today && platformDay(keyDate.date) === today,
   );
   if (clarifiesToday) return "clarification";
+
+  // Rule 5, last. Deliberately below the clarification check: a junta de
+  // aclaraciones happening TODAY is direct evidence the procedure is live,
+  // and no calendar guess should be able to overrule it.
+  //
+  // "No end date of any kind" is the whole precondition — a deadline or a
+  // validity_end that has not passed yet returned "open" above only because
+  // the tender is genuinely still running, and must not be second-guessed
+  // here.
+  const hasAnyEndDate = deadlineDay !== null || validityEndDay !== undefined;
+  const publishedDay = fields.publicationDate ? platformDay(fields.publicationDate) : null;
+  if (!hasAnyEndDate && today && publishedDay && daysBetween(publishedDay, today) > STALE_WITHOUT_END_DATE_DAYS) {
+    return "submission_closed";
+  }
 
   return "open";
 }

@@ -144,7 +144,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
           <p className={`mt-1 text-lg font-black ${value ? "text-[#b86e00]" : "text-[#9aa5ab]"}`}>{value ?? "未公开"}</p>
           <p className="mt-3 text-xs font-semibold text-[#7a878f]">计划交标</p>
           <p className="mt-1 text-sm font-bold text-[#071826]">
-            {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "待公布"}
+            {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "未提供"}
           </p>
         </div>
         <SaveTenderButton tenderId={tender.id} className="relative z-10 shrink-0" />

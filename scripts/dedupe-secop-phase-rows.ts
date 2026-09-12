@@ -81,7 +81,17 @@ async function main() {
     if (row.country !== "Colombia") continue;
     const cleanNumber = stripProcessPhaseSuffix(row.tender_number ?? "");
     if (!cleanNumber || cleanNumber === row.tender_number) continue;
-    const cleanSlug = `secop-${slugify(cleanNumber)}`;
+    // Rebuilt IN PLACE rather than as `secop-${slugify(cleanNumber)}`: the
+    // Colombian slug is entity-qualified now (`secop-<nit>-<referencia>`,
+    // buildSecopSlug in colombia-mapper.ts), and only the referencia part
+    // carries the phase suffix. Composing the old shape from scratch would
+    // rename live rows back onto the colliding scheme this project just left.
+    const dirtySuffix = slugify(row.tender_number ?? "");
+    if (!row.slug.endsWith(dirtySuffix)) {
+      skipped.push(row);
+      continue;
+    }
+    const cleanSlug = `${row.slug.slice(0, row.slug.length - dirtySuffix.length)}${slugify(cleanNumber)}`;
     if (cleanSlug === row.slug) continue;
 
     if ((row.manual_field_overrides ?? []).length > 0) {

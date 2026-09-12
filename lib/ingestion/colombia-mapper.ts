@@ -106,8 +106,8 @@ const SCOPE_TYPE_BY_TIPO_CONTRATO: Record<string, TenderScopeType> = {
  *   JBB-LP-004-2026                          CONCESION CAV
  *   JBB-LP-004-2026 (Presentación de oferta)  CONCESION CAV (Presentación de oferta)
  *
- * Since the slug is built from the reference, that produced two rows for one
- * tender — confirmed on real data (2026-09-11): identical buyer, identical
+ * Since the slug is built from the reference (buildSecopSlug, below), that
+ * produced two rows for one tender — confirmed on real data (2026-09-11): identical buyer, identical
  * description, identical everything else. Stripping the suffix collapses them
  * onto one slug, so the upsert dedupes them by itself.
  *
@@ -128,6 +128,48 @@ export function stripProcessPhaseSuffix(value: string): string {
     out = out.slice(0, match.index).trim();
   }
   return out;
+}
+
+/**
+ * A Colombian process reference is an ENTITY-LOCAL sequence: every
+ * municipality, school and ministry issues its own LP-001-2026,
+ * LP-002-2026, LP-003-2026. `secop-${slugify(referencia)}` therefore put
+ * completely unrelated procurements on one slug, and because the import
+ * upserts by slug, the second one written silently DESTROYED the first —
+ * four collisions were visible in a single screen of real output on
+ * 2026-09-12 (secop-lp-002-2026, -003-, -005-, -006- each carrying two
+ * different tenders from two different buyers). The same bug poisons the
+ * slug-keyed block list: deleting one municipality's contract permanently
+ * blocked another municipality's unrelated project.
+ *
+ * The fix qualifies the reference with the buying entity's NIT (its tax
+ * id) — stable, present on every real row seen, and exactly the thing that
+ * scopes the sequence. Note what it deliberately does NOT use:
+ * `id_del_proceso` is globally unique and would have been the obvious key,
+ * but the phase-variant copies of ONE procurement
+ * ("JBB-LP-004-2026" / "JBB-LP-004-2026 (Presentación de oferta)") are
+ * separate dataset rows with separate `id_del_proceso` values, so keying on
+ * it would re-open the duplicate this file's stripProcessPhaseSuffix()
+ * closed on 2026-09-11. NIT + phase-stripped reference closes both: same
+ * entity and same reference collapse, different entities never do.
+ *
+ * `codigo_entidad` is the fallback (same entity, different column), then
+ * the globally unique process id — never the bare reference again, which
+ * is the thing that collided.
+ *
+ * Changing this changes every existing Colombian row's identity;
+ * scripts/migrate-colombia-slugs.ts re-keys the stored rows and the
+ * deletion block list onto the new scheme.
+ */
+export function buildSecopSlug(
+  row: Pick<SecopProcesoRow, "nit_entidad" | "codigo_entidad" | "id_del_proceso">,
+  phaseStrippedTenderNumber: string,
+): string {
+  const entity = row.nit_entidad?.trim() || row.codigo_entidad?.trim() || "";
+  if (entity) return `secop-${slugify(entity)}-${slugify(phaseStrippedTenderNumber)}`;
+  const processId = row.id_del_proceso?.trim();
+  if (processId) return `secop-${slugify(processId)}`;
+  return `secop-${slugify(phaseStrippedTenderNumber)}`;
 }
 
 /**
@@ -395,8 +437,9 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
   return {
     id: crypto.randomUUID(),
     // Own slug namespace ("secop-") — a real, standalone connector, no
-    // cross-source de-dup scheme to line up with.
-    slug: `secop-${slugify(tenderNumber)}`,
+    // cross-source de-dup scheme to line up with. Entity-qualified, see
+    // buildSecopSlug().
+    slug: buildSecopSlug(row, tenderNumber),
     tenderNumber,
     title: untranslated(title),
     summary: untranslated(summary),

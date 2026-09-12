@@ -8,12 +8,15 @@
  *    number on two unrelated projects is wrong on its own.
  *
  * 2. THE SOURCE — more than one live SECOP II procurement mapping to ONE slug.
- *    This is the dangerous one, and it is silent. Colombia's slug is
+ *    This is the dangerous one, and it was silent. Colombia's slug USED TO BE
  *    `secop-${slugify(referencia_del_proceso)}` (colombia-mapper.ts), and a
  *    Colombian process reference is an ENTITY-LOCAL sequence: every
  *    municipality issues its own LP-001-2026, LP-002-2026, LP-003-2026. Two
- *    unrelated projects therefore collide on one slug, and because the import
- *    upserts by slug, the second one written silently overwrites the first.
+ *    unrelated projects therefore collided on one slug, and because the import
+ *    upserts by slug, the second one written silently overwrote the first.
+ *    Fixed 2026-09-12 — the slug is entity-qualified now (buildSecopSlug),
+ *    and stored rows were re-keyed by scripts/migrate-colombia-slugs.ts. This
+ *    check stays as the regression test: it should now report zero.
  *
  *    Four collisions were visible in a single screen of the user's own output
  *    on 2026-09-12 — secop-lp-002-2026, -003-, -005- and -006- each carrying
@@ -21,10 +24,8 @@
  *    block list, which is keyed by slug: deleting one municipality's security
  *    contract permanently blocks another municipality's hospital.
  *
- * Read-only. The row carries nit_entidad, codigo_entidad and a globally unique
- * id_del_proceso (CO1.REQ.10977929) — any of which would make the slug unique —
- * but changing the scheme changes every existing row's identity, so this
- * script only measures. Fix is a separate decision.
+ * Read-only — it only measures. The fix lives in colombia-mapper.ts
+ * (buildSecopSlug) and scripts/migrate-colombia-slugs.ts.
  *
  * Usage:
  *   npm run check:duplicate-ids
@@ -124,9 +125,11 @@ async function checkColombiaSource(days: number) {
     const lost = collisions.reduce((sum, [, list]) => sum + list.length - 1, 0);
     console.log(
       `结论：这 ${days} 天里，至少有 ${lost} 条项目在导入时会被同 slug 的另一条覆盖掉，而且不会有任何报错。\n` +
-        `原因：slug = secop-<referencia_del_proceso>，而哥伦比亚的过程编号是「每个采购单位自己从 001 开始编」的。\n` +
-        `每一行右边那个 CO1.REQ.xxx（id_del_proceso）是全局唯一的，可以用来修。`,
+        `这本该已经修好了——slug 现在是 secop-<nit_entidad>-<referencia>（colombia-mapper.ts 的 buildSecopSlug），\n` +
+        `同编号不同单位不该再撞。还在撞说明这些行的 nit_entidad 和 codigo_entidad 都是空的，请把上面的例子贴出来。`,
     );
+  } else {
+    console.log(`结论：这 ${days} 天里没有一个 slug 被两个不同项目占用——entity-qualified slug（buildSecopSlug）生效了。`);
   }
 }
 

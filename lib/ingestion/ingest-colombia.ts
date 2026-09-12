@@ -284,15 +284,25 @@ export type RefreshColombiaResult = {
  * re-maps, and upserts. Every real field this pass turns up completely
  * overwrites the stored row via the normal upsert-by-slug path — same
  * "no separate refresh logic" posture as ingestColombia().
+ *
+ * Of what comes back, only processes we ALREADY track are kept (see the
+ * filter below). Until scripts/migrate-colombia-slugs.ts has re-keyed the
+ * stored rows onto the entity-qualified slug scheme that filter matches
+ * nothing and this pass is a no-op — `mappedCount: 0` against a non-zero
+ * `fetchedCount` is exactly what an unmigrated database looks like here.
  */
 export async function refreshColombiaTenders(supabase: SupabaseClient, options: { write: boolean }): Promise<RefreshColombiaResult> {
   const PAGE_SIZE = 1000;
   const tenderNumbers: string[] = [];
+  const trackedSlugs = new Set<string>();
   for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase.from("tenders").select("tender_number").like("slug", "secop-%").range(from, from + PAGE_SIZE - 1);
+    const { data, error } = await supabase.from("tenders").select("slug, tender_number").like("slug", "secop-%").range(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(`Failed to list already-tracked Colombia tenders: ${error.message}`);
     if (!data || data.length === 0) break;
-    for (const row of data) if (row.tender_number) tenderNumbers.push(row.tender_number as string);
+    for (const row of data) {
+      if (row.tender_number) tenderNumbers.push(row.tender_number as string);
+      if (row.slug) trackedSlugs.add(row.slug as string);
+    }
     if (data.length < PAGE_SIZE) break;
   }
 
@@ -301,7 +311,14 @@ export async function refreshColombiaTenders(supabase: SupabaseClient, options: 
   const mapped: Tender[] = [];
   for (const row of rows) {
     const tender = mapSecopRowToTender(row, SOURCE_NAME);
-    if (tender) mapped.push(tender);
+    // A lookup by reference is a lookup by an ENTITY-LOCAL number
+    // (buildSecopSlug in colombia-mapper.ts), so asking for one tracked
+    // tender's "LP-002-2026" hands back every other entity's LP-002-2026
+    // too. Refreshing what we track must not quietly ingest strangers' —
+    // discovery is ingestColombia()'s job and it has a date window for a
+    // reason. Before the slug fix those strangers landed on OUR slug and
+    // overwrote the very tender this pass was supposed to be refreshing.
+    if (tender && trackedSlugs.has(tender.slug)) mapped.push(tender);
   }
 
   const result: RefreshColombiaResult = {

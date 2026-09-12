@@ -3445,3 +3445,101 @@ stays whitelisted and highway work is untouched.
 Re-scored against all 212 kept rows, both changes together move 3 rows, all
 three the road-paving rows above. 173/173 fixtures, including synthetic
 port-vs-place-name controls.
+
+## 2026-09-12 — Colombia's slug destroyed tenders, silently, for months
+
+The user asked a narrow question: "全站有没有重复ID的项目？我刚发现一个".
+It turned out to be two unrelated problems wearing the same shirt.
+
+### Mexico: operator error, not a source overlap
+
+26 pairs, every one an `FP-` procedure number sitting under BOTH
+`comprasmx-` and `proyectosestrategicos-`. The user diagnosed it themselves —
+"我之前导入时选错了数据来源" — and they were right. The two Mexican sources
+export a byte-identical file read by an identical reader, so the dropdown is
+the only thing that says which portal a file came from, and the two mappers
+use different slug prefixes ON PURPOSE. Picking the wrong one therefore does
+not update the existing row; it creates a second one, with a different tier
+(the Proyectos Estratégicos copy carries `isNationalPriorityProject` and lands
+flagship, the Compras MX copy lands standard). Silent and permanent.
+
+`assertSourceMatchesFile()` (`import-new-tenders.ts`) now REFUSES the write
+when the file's procedure numbers don't match the selected source —
+`FP-` ⇒ Proyectos Estratégicos, `LA-/LO-/IA-/IO-/AA-/AO-` ⇒ Compras MX.
+Refused rather than warned, because the person who would read a warning is
+the person who just picked the wrong option. The preview is untouched, so a
+dry run still shows what the file contains. `npm run purge:mis-sourced`
+cleaned the 26 existing pairs (keeping the Proyectos Estratégicos side, which
+carries the priority `source_name` and the Chinese title); the user ran it the
+same day.
+
+### Colombia: a structural bug in the slug itself
+
+The slug was `secop-${slugify(referencia_del_proceso)}`. **A Colombian
+process reference is an entity-local sequence** — every municipality, school
+and ministry issues its own LP-001-2026, LP-002-2026, LP-003-2026. Four
+collisions were visible in a single screen of real output (`secop-lp-002-2026`,
+`-003-`, `-005-`, `-006-`, each carrying two different tenders from two
+different buyers). Because the import upserts by slug, the second one written
+DESTROYED the first — no error, no log line, no trace. It also poisoned the
+slug-keyed block list: deleting one municipality's contract permanently
+blocked another municipality's unrelated project from ever being imported.
+
+An audit of all 14 slug schemes found this is Colombia ONLY. Peru
+(`peru-${slugify(record.ocid)}` — OCDS ids are global; `peru-oxi-CONV20262698`
+— a national serial), DOF (`dof-${codNota}` — a gazette entry id), Pemex
+(`pemex-DEE-CAT-B-GCEE-302-105071-26-1` — the number embeds the buying unit)
+and the Compras MX family (Mexican numbers embed ramo + unidad compradora) are
+all globally unique already.
+
+**The fix**: `buildSecopSlug()` emits `secop-<nit_entidad>-<referencia>`.
+What it deliberately does NOT use is `id_del_proceso`, which is globally
+unique and was the obvious candidate: the phase-variant copies of one
+procurement (`JBB-LP-004-2026` and `JBB-LP-004-2026 (Presentación de oferta)`)
+are separate dataset rows with separate `id_del_proceso` values, so keying on
+it would have re-opened the duplicate `stripProcessPhaseSuffix()` closed on
+2026-09-11. NIT + phase-stripped reference closes both at once: same entity
+and same reference collapse, different entities never do. Verified on the real
+fixture plus synthetic controls for each of the three properties.
+
+**Re-keying the existing rows** is `scripts/migrate-colombia-slugs.ts`
+(`npm run migrate:colombia-slugs`, dry run by default). The new slug can't be
+computed from a stored row — nothing in `tenders` carries the entity's NIT —
+so each stored `tender_number` is looked up at the source and the right
+process picked out of the group that reference returns: tenders match on the
+BUYER, block-list entries match on the TITLE (`tender_manual_deletions` keeps
+`title.es`, which is the mapper's own Spanish title and compares exactly).
+Anything that doesn't resolve to exactly one candidate is reported and left
+alone — a wrong re-key would hand one entity's tender the identity of
+another's, which is the bug being fixed. Two rows resolving to one new slug is
+not an error but the phase-variant duplicate collapsing as designed; the
+script keeps the edited row (else the older one) and reports the other rather
+than deleting it, because merging two rows' children is a judgement call, not
+a migration.
+
+### Two adjacent bugs the same reference-lookup exposed
+
+`fetchSecopProcesosByReference()` capped each batch at `batch.length * 2 + 10`
+rows. One reference is used by dozens of entities, so that cap silently
+truncated the group — and truncation is not neutral here, because the caller
+picks its process out of the returned group: a missing row reads as "this
+tender no longer exists at the source." Now paged with a unique `$order`.
+
+`refreshColombiaTenders()` mapped and upserted EVERYTHING that came back from
+those lookups. Asking for one tracked tender's LP-002-2026 hands back every
+other entity's LP-002-2026, so "refresh what we track" was quietly ingesting
+strangers' tenders from outside any discovery window — and before the slug
+fix, those strangers landed on OUR slug and overwrote the very tender the
+pass was meant to refresh. It now keeps only processes whose slug we already
+track. Note the transition state: until the migration has run, that filter
+matches nothing and the pass is a no-op (`mappedCount: 0` against a non-zero
+`fetchedCount`).
+
+### The count I got wrong
+
+The first version of `check-duplicate-ids.ts` reported "579 条被覆盖" over 60
+days. That was inflated: the feed returns the same record many times over (one
+municipality's row appeared 15 times in a single 30-day window) and the script
+counted those repeats as separate projects. It collapses to distinct
+`id_del_proceso` before counting anything now. The real figure is smaller and
+still bad. A number that overstates a real problem is still a wrong number.

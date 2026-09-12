@@ -113,16 +113,28 @@ export async function fetchSecopProcesosByReference(references: string[]): Promi
     const valueList = batch.map((ref) => `'${escapeSoqlString(ref)}'`).join(",");
     const whereClause = `referencia_del_proceso in (${valueList}) OR id_del_proceso in (${valueList})`;
 
-    const url = new URL(SECOP_BASE_URL);
-    url.searchParams.set("$where", whereClause);
-    url.searchParams.set("$limit", String(batch.length * 2 + 10));
+    // Paged, not a single `$limit`. A Colombian process reference is
+    // entity-local (buildSecopSlug in colombia-mapper.ts), so ONE reference
+    // like "LP-002-2026" is genuinely used by dozens of unrelated entities —
+    // the old fixed `batch.length * 2 + 10` cap silently truncated those
+    // groups, and truncation here is not neutral: the caller picks the
+    // matching process out of the returned group, so a missing row reads as
+    // "this tender no longer exists at the source."
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+      const url = new URL(SECOP_BASE_URL);
+      url.searchParams.set("$where", whereClause);
+      url.searchParams.set("$order", "id_del_proceso ASC"); // unique — makes $offset paging lossless, same reason as fetchSecopProcesos.
+      url.searchParams.set("$limit", String(PAGE_SIZE));
+      url.searchParams.set("$offset", String(offset));
 
-    const response = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!response.ok) {
-      throw new Error(`SECOP procesos API responded ${response.status} ${response.statusText} (reference batch starting at ${i})`);
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!response.ok) {
+        throw new Error(`SECOP procesos API responded ${response.status} ${response.statusText} (reference batch starting at ${i})`);
+      }
+      const pageRows = (await response.json()) as SecopProcesoRow[];
+      rows.push(...pageRows);
+      if (pageRows.length < PAGE_SIZE) break;
     }
-    const pageRows = (await response.json()) as SecopProcesoRow[];
-    rows.push(...pageRows);
   }
 
   return rows;

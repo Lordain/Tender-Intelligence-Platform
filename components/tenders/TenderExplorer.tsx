@@ -525,7 +525,14 @@ export function TenderExplorer({
           <section className="rounded-2xl bg-[#061b2b] p-5 text-white">
             <h2 className="text-base font-bold">招标概览</h2>
             <div className="mt-4 grid grid-cols-3 divide-x divide-white/20 text-center">
-              <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">全站项目</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{formatTenderCount(siteTenderCount)}</p></div>
+              {/*
+                全站在招, not 全站项目: this cell is site-wide (it ignores the
+                filters the other two respect) AND live-only (已截止/已中标/
+                已取消 are out). Labelling it 全站项目 promised a total that
+                the header's 当前结果 could exceed, since the default feed
+                shows 已中标 too — see siteTenderCount in lib/tender-list-page.ts.
+              */}
+              <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">全站在招</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{formatTenderCount(siteTenderCount)}</p></div>
               <button
                 type="button"
                 onClick={() => updateParams({ view: view === "new" ? null : "new", sort: view === "new" ? null : "publication_desc" })}

@@ -8,6 +8,15 @@ export const LOCKED_TENDER_PAGE_SIZE = 10;
 export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "awarded"];
 
 /**
+ * Statuses a bidder can still act on — what 全站在招 counts.
+ *
+ * NOT the complement of "awarded + cancelled", which is what siteTenderCount
+ * used to subtract: that left 已截止 (submission_closed) in, so the number
+ * was neither the whole site nor the live pipeline, and matched no label.
+ */
+const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"];
+
+/**
  * Countries the public list offers as a filter — and, because an absent
  * country param means "all of these", the countries the default feed shows
  * AT ALL. A country missing from this list is invisible on /tenders no matter
@@ -81,6 +90,25 @@ export type TenderListPageData = {
    * tender brings its option back by itself.
    */
   availableScopeTypes: TenderScopeType[];
+  /**
+   * Live opportunities across the WHOLE site, ignoring the viewer's filters —
+   * the sidebar's 全站在招. Deliberately on a different basis from
+   * newTodayCount/upcomingCount, which are scoped to the current filters
+   * because clicking them filters the list to exactly that set.
+   *
+   * Two things it used to get wrong (2026-09-12):
+   * - It counted `allTenders` raw, so every excluded-tier row was in the
+   *   total. Those rows are screened out of every public surface by
+   *   filterTenders — the site was advertising a catalogue including
+   *   thousands of tenders no user can reach.
+   * - It subtracted only awarded + cancelled, while the default feed INCLUDES
+   *   awarded (DEFAULT_TENDER_LIST_STATUSES), so 当前结果 could legitimately
+   *   come out LARGER than the site total sitting next to it.
+   *
+   * Now it runs the same filterTenders() gate the feed does, so it is always
+   * a superset of totalResults on the status dimension and can never be
+   * undercut by it.
+   */
   siteTenderCount: number;
   newTodayCount: number;
   upcomingCount: number;
@@ -188,7 +216,7 @@ export function buildTenderListPage(
     currentPage,
     availableIndustries,
     availableScopeTypes,
-    siteTenderCount: allTenders.filter((tender) => tender.status !== "awarded" && tender.status !== "cancelled").length,
+    siteTenderCount: filterTenders(allTenders, { statuses: LIVE_TENDER_STATUSES }, "zh").length,
     newTodayCount,
     upcomingCount,
   };

@@ -1719,6 +1719,35 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "User decided 保留 in this round. Pinned so a later services sweep cannot take it silently.",
     country: "Mexico", scopeType: "services",
   },
+  // --- Four real open INFOTEC procedures the user found missing 2026-09-12 --
+  // All four are on Compras MX right now and all four were excluded: the rows
+  // carry no value, Mexico is in UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL, and
+  // not one of them said "ciberseguridad" or the singular "centro de datos" —
+  // the only two ICT terms that could have rescued them.
+  {
+    title: "SERVICIO INTEGRAL DE SEGURIDAD PARA DATOS CRÍTICOS Y CUENTAS PRIVILEGIADAS",
+    expectedTier: "standard",
+    note: "LA-55-91M-05591M001-N-25-2026. Privileged access management — kept by 'cuentas privilegiadas', at the same tier as any other cybersecurity service (OVERRIDE_NOT_FLAGSHIP).",
+    country: "Mexico", scopeType: "services",
+  },
+  {
+    title: "SERVICIO INTEGRAL DE PROTECCIÓN CONTRA AMENAZAS CIBERNÉTICAS",
+    expectedTier: "standard",
+    note: "LA-55-91M-05591M001-N-26-2026. Cybersecurity without the word ciberseguridad — the gap these two terms close.",
+    country: "Mexico", scopeType: "services",
+  },
+  {
+    title: "SERVICIO PARA EL FORTALECIMIENTO DE LOS CENTROS DE DATOS DE INFOTEC",
+    expectedTier: "flagship",
+    note: "LA-55-91M-05591M001-N-24-2026. Excluded on the plural alone before 2026-09-12 (the list said 'centro de datos'). Pinned at flagship as the datacenter term has always forced it — see the open question on whether an UPGRADE service should, given the 2026-09-05 Modernización-datacenter precedent.",
+    country: "Mexico", scopeType: "services",
+  },
+  {
+    title: "SERVICIO INTEGRAL DE PROTECCIÓN DE LA INFORMACIÓN Y GESTIÓN DE RIESGOS",
+    expectedTier: "excluded",
+    note: "LA-55-91M-05591M001-N-27-2026. The fourth of the same INFOTEC series, and deliberately still out: 'protección de la información' also names archival, privacy and legal-compliance work, and a term in INCLUDE_OVERRIDE_KEYWORDS bypasses every exclude check. Pinned so the decision is visible rather than forgotten.",
+    country: "Mexico", scopeType: "services",
+  },
   {
     title: "RECONSTRUCCIÓN DEL PALACIO MUNICIPAL, GUEVEA DE HUMBOLDT, OAXACA",
     expectedTier: "standard",

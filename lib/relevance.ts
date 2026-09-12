@@ -851,8 +851,21 @@ const MAJOR_PROJECT_LOCATION_ONLY = [
  * subscription and a cybersecurity support contract are single systems or
  * services, not the network-scale builds videovigilancia and fibra óptica
  * denote — those keep forcing flagship.
+ *
+ * The last two entries carry that same 2026-09-07 decision onto the
+ * synonyms added to INCLUDE_OVERRIDE_KEYWORDS on 2026-09-12. Without them a
+ * cybersecurity service reached a different tier depending only on which
+ * word its title happened to use — SERVICIO INTEGRAL DE CIBERSEGURIDAD
+ * standard, SERVICIO INTEGRAL DE PROTECCIÓN CONTRA AMENAZAS CIBERNÉTICAS
+ * flagship — for the same thing bought the same way from the same buyer.
  */
-const OVERRIDE_NOT_FLAGSHIP = [/incendio/i, /firewall/i, /ciberseguridad|cybersecurity/i];
+const OVERRIDE_NOT_FLAGSHIP = [
+  /incendio/i,
+  /firewall/i,
+  /ciberseguridad|cybersecurity/i,
+  /cibern[ée]tic[oa]s?|ciberataque(s)?|ciberdefensa/i,
+  /cuentas privilegiadas|gesti[óo]n de identidades|gesti[óo]n de accesos|privileged access/i,
+];
 
 /**
  * Titles that DO match a MAJOR_PROJECT_KEYWORDS term but are not major
@@ -1251,6 +1264,21 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   // BIOMÉTRICO" / "EQUIPOS DE CONTROL DE ACCESO VEHICULAR" purchase.
   /(sistema(s)?|equipo(s)?|dispositivo(s)?|torniquete(s)?|lector(es)?|biom[ée]tric[oa]|electr[óo]nico|vehicular).{0,40}control de acceso|control de acceso.{0,40}(sistema(s)?|equipo(s)?|dispositivo(s)?|torniquete(s)?|lector(es)?|biom[ée]tric[oa])|access control system/i,
   /ciberseguridad|cybersecurity/i,
+  // The same intent as "ciberseguridad" above, in the words real Compras MX
+  // titles actually use. Added 2026-09-12 after the user found three open
+  // INFOTEC procedures that this list was the only possible way back in for
+  // (Compras MX publishes no value, and Mexico is in
+  // UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL) and that named cybersecurity
+  // without once saying "ciberseguridad":
+  //   SERVICIO INTEGRAL DE PROTECCIÓN CONTRA AMENAZAS CIBERNÉTICAS
+  //   SERVICIO INTEGRAL DE SEGURIDAD PARA DATOS CRÍTICOS Y CUENTAS PRIVILEGIADAS
+  // Both are trade terms with no second meaning — "cuentas privilegiadas" is
+  // privileged access management, "ciberataque" is nothing else — which is
+  // why they are safe in a list whose matches bypass every exclude check.
+  // "protección de la información" was considered with them and deliberately
+  // left out: it also names archival, privacy and legal-compliance work.
+  /cibern[ée]tic[oa]s?|ciberataque(s)?|ciberdefensa/i,
+  /cuentas privilegiadas|gesti[óo]n de identidades|gesti[óo]n de accesos|privileged access/i,
   /centro(s)? de comando|command center/i,
   /seguridad electr[óo]nica|electronic security/i,
   // `centro(s)?`, not `centro` (2026-09-12): a real open Compras MX tender,

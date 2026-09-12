@@ -6,7 +6,11 @@ import { NEW_TENDERS_SOURCES, type NewTendersSource, type ImportNewTendersResult
 export function ImportTendersForm() {
   const [source, setSource] = useState<NewTendersSource>(NEW_TENDERS_SOURCES[0].value);
   const [file, setFile] = useState<File | null>(null);
-  const [months, setMonths] = useState("6");
+    // One month, not six: a wide window is the FIRST import's job, and after
+  // that every run is a top-up that re-fetches and re-upserts months of rows
+  // nobody is waiting on (user, 2026-09-12: 只有第一次需要大量，后续没必要每次都是大量文档).
+  // Still editable, so a catch-up after a gap just means typing a bigger number.
+  const [months, setMonths] = useState("1");
   // Defaults to checked per the user's explicit request (2026-09-04): "写入
   // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
   const [write, setWrite] = useState(true);

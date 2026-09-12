@@ -63,7 +63,11 @@ export function LicitiaRefreshPanel() {
 }
 
 function DiscoverSection() {
-  const [months, setMonths] = useState("6");
+    // One month, not six: a wide window is the FIRST import's job, and after
+  // that every run is a top-up that re-fetches and re-upserts months of rows
+  // nobody is waiting on (user, 2026-09-12: 只有第一次需要大量，后续没必要每次都是大量文档).
+  // Still editable, so a catch-up after a gap just means typing a bigger number.
+  const [months, setMonths] = useState("1");
   const [write, setWrite] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -106,7 +106,7 @@ function ErrorPanel({
   onCopy,
 }: {
   error: { message: string; cliCommand?: string };
-  copied: boolean;
+  copied: string | null;
   onCopy: (command: string) => void;
 }) {
   return (
@@ -124,7 +124,7 @@ function ErrorPanel({
               onClick={() => onCopy(error.cliCommand!)}
               className="h-7 shrink-0 rounded-lg border border-red-300 bg-white px-2.5 text-[11px] font-black text-[#8a2b2b] transition-colors hover:bg-red-100"
             >
-              {copied ? "已复制" : "复制"}
+              {copied === error.cliCommand ? "已复制" : "复制"}
             </button>
           </div>
         </div>
@@ -144,57 +144,57 @@ function ErrorPanel({
  * Built from the same flags the API route builds it from, so the two cannot
  * drift.
  */
-function peruCliCommand(options: { months: string; days: string; useDays: boolean; write: boolean }): string {
-  // --days replaces --months rather than joining it: it decides the month
-  // segments itself now (segmentsForDays in peru-oece-live.ts), so passing
-  // both would just be a number the run ignores.
-  const useDays = options.useDays && Number(options.days) > 0;
-  const flags = [
-    useDays ? `--days ${Number(options.days)}` : `--months ${Number(options.months) || 2}`,
-    options.write ? "--write" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return `npm run ingest:peru-live -- ${flags}`;
+function peruCliCommand(options: { days: string; write: boolean }): string {
+  return `npm run ingest:peru-live -- --days ${Number(options.days) || 5}${options.write ? " --write" : ""}`;
 }
 
-function CommandBox({ command, copied, onCopy }: { command: string; copied: boolean; onCopy: (command: string) => void }) {
+function CommandBox({ days, copied, onCopy }: { days: string; copied: string | null; onCopy: (command: string) => void }) {
+  // Both spellings, always. Tying the one visible command to the 写入 checkbox
+  // meant the command you wanted was usually the one not on screen — and the
+  // difference between them is the whole difference between a rehearsal and a
+  // real import, so it should be two things you can see and choose between.
+  const rows: { label: string; command: string; emphasis?: boolean }[] = [
+    { label: "先预览（不写库，另存 CSV 到 exports/）", command: peruCliCommand({ days, write: false }) },
+    { label: "确认没问题后，真正写入", command: peruCliCommand({ days, write: true }), emphasis: true },
+  ];
+
   return (
     <div className="mt-3 rounded-xl border border-[#d8e0e3] bg-[#f7f9f9] px-3 py-2.5">
-      <p className="text-[11px] font-black text-[#52636e]">在自己的电脑上跑这条（参数跟上面的设置同步）</p>
-      <div className="mt-1.5 flex flex-wrap items-center gap-2">
-        <code className="min-w-0 flex-1 break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11px] text-[#071826]">{command}</code>
-        <button
-          type="button"
-          onClick={() => onCopy(command)}
-          className="h-7 shrink-0 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
-        >
-          {copied ? "已复制" : "复制"}
-        </button>
+      <p className="text-[11px] font-black text-[#52636e]">在自己的电脑上跑（天数跟上面的设置同步）</p>
+      <div className="mt-2 flex flex-col gap-2">
+        {rows.map((row) => (
+          <div key={row.command}>
+            <p className={`text-[11px] ${row.emphasis ? "font-black text-[#7a5200]" : "text-[#75838c]"}`}>{row.label}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <code className="min-w-0 flex-1 break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11px] text-[#071826]">{row.command}</code>
+              <button
+                type="button"
+                onClick={() => onCopy(row.command)}
+                className="h-7 shrink-0 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
+              >
+                {copied === row.command ? "已复制" : "复制"}
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
-      <p className="mt-1.5 text-[11px] text-[#75838c]">
-        没有 <code className="font-mono">--write</code> 就是<strong>只预览、不写库</strong>（还会在 <code className="font-mono">exports/</code> 生成 CSV 方便逐条看）。
-        上面勾了「写入 Supabase」，这条命令就会自动带上 <code className="font-mono">--write</code>。
-      </p>
     </div>
   );
 }
 
 export function ImportPeruForm() {
-  const [months, setMonths] = useState("2");
   const [days, setDays] = useState("5");
-  const [useDays, setUseDays] = useState(true);
   const [write, setWrite] = useState(false);
   const [running, setRunning] = useState<"oece" | "oxi" | null>(null);
   const [results, setResults] = useState<Partial<Record<"oece" | "oxi", PeruResult>>>({});
   const [errors, setErrors] = useState<Partial<Record<"oece" | "oxi", { message: string; cliCommand?: string }>>>({});
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
 
   async function copyCommand(command: string) {
     try {
       await navigator.clipboard.writeText(command);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied(command);
+      setTimeout(() => setCopied(null), 2000);
     } catch {
       // Clipboard access can be refused (insecure origin, permissions) — the
       // command is on screen and selectable either way, so this is not worth
@@ -213,8 +213,7 @@ export function ImportPeruForm() {
         body: JSON.stringify({
           source,
           write,
-          months: Number(months) || 2,
-          days: useDays ? Number(days) || 0 : 0,
+          days: Number(days) || 5,
         }),
       });
       const data = await res.json();
@@ -241,34 +240,14 @@ export function ImportPeruForm() {
         <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">共用设置</p>
         <div className="mt-3 flex flex-wrap items-end gap-4">
           <label className="flex flex-col gap-1 text-xs">
-            <span className={`font-semibold ${useDays ? "text-[#9aa5ab]" : "text-[#52636e]"}`}>抓取最近几个月的月份段（SEACE 用）</span>
+            <span className="font-semibold text-[#52636e]">只保留最近几天发布的</span>
             <input
               type="number"
               min={1}
-              value={months}
-              disabled={useDays}
-              onChange={(e) => setMonths(e.target.value)}
-              className="h-9 w-28 rounded-lg border border-[#d8e0e3] bg-white px-2 text-sm text-[#071826] outline-none focus:border-[#ffb21c] disabled:bg-[#f2f4f3] disabled:text-[#9aa5ab]"
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+              className="h-9 w-24 rounded-lg border border-[#d8e0e3] bg-white px-2 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-xs">
-            <span className="font-semibold text-[#52636e]">只保留最近几天发布的</span>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={useDays}
-                onChange={(e) => setUseDays(e.target.checked)}
-                className="size-4 accent-[#ffb21c]"
-              />
-              <input
-                type="number"
-                min={1}
-                value={days}
-                disabled={!useDays}
-                onChange={(e) => setDays(e.target.value)}
-                className="h-9 w-24 rounded-lg border border-[#d8e0e3] bg-white px-2 text-sm text-[#071826] outline-none focus:border-[#ffb21c] disabled:bg-[#f2f4f3]"
-              />
-            </div>
           </label>
           <label className="flex items-center gap-2 pb-2 text-xs text-[#233846]">
             <input type="checkbox" checked={write} onChange={(e) => setWrite(e.target.checked)} className="size-4 accent-[#ffb21c]" />
@@ -276,16 +255,8 @@ export function ImportPeruForm() {
           </label>
         </div>
         <p className="mt-2 text-xs text-[#64717c]">
-          SEACE 的官方接口只能<strong>按整月</strong>取数，所以「最近几天」仍然是抓回来之后再筛——省的是你要看的条数，不是请求量。
-          {useDays ? (
-            <>
-              {" "}
-              <strong className="text-[#7a5200]">勾了「最近几天」时，上面的「几个月」就不起作用了</strong>
-              ——要抓哪几个月由这个天数自己算（例如 9 月 3 日选最近 5 天，会自动把 8 月的月份段也抓上，否则 8/29–8/31 会静默丢掉）。
-            </>
-          ) : (
-            <> 不勾「最近几天」时，就按「几个月」整月抓、整月保留。</>
-          )}
+          天数自己决定要抓哪几个月份段——SEACE 的官方接口只能<strong>按整月</strong>取数，所以跨月的窗口会自动多抓一个月
+          （例如 9 月 3 日选最近 5 天，会把 8 月也抓上，否则 8/29–8/31 会静默丢掉）。想要整月就填 30。
         </p>
       </div>
 
@@ -300,7 +271,7 @@ export function ImportPeruForm() {
           这是对方的访问策略，不绕。<strong>请在自己的电脑上用命令行导入</strong>——下面的按钮如果失败，会直接把填好参数的命令给你复制。
           本地 <code className="font-mono">npm run dev</code> 打开这个页面时按钮是好用的。
         </p>
-        <CommandBox command={peruCliCommand({ months, days, useDays, write })} copied={copied} onCopy={copyCommand} />
+        <CommandBox days={days} copied={copied} onCopy={copyCommand} />
         {errors.oece && <ErrorPanel error={errors.oece} copied={copied} onCopy={copyCommand} />}
         <button
           type="button"

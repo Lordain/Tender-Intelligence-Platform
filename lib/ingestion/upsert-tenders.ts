@@ -350,9 +350,25 @@ export async function upsertTendersBatched(
   // statement share the conflict key — which failed a WHOLE 500-row batch
   // at once on a real PEMEX run, not just the duplicates, because a source
   // export can genuinely repeat the same procedure (same slug) more than
-  // once. De-duping by slug before chunking (last occurrence wins) keeps
-  // every batch's conflict keys unique, which is what Postgres requires.
-  const uniqueBySlug = [...new Map(includable.map((t) => [t.slug, t])).values()];
+  // once. De-duping by slug before chunking keeps every batch's conflict
+  // keys unique, which is what Postgres requires.
+  //
+  // The winner is the MOST RECENTLY PUBLISHED copy, not simply the last one
+  // in the array. That started to matter the moment Colombia's slug became
+  // entity-qualified (buildSecopSlug in colombia-mapper.ts): SECOP
+  // re-publishes a procurement under a NEW id_del_proceso, so one slug
+  // legitimately collects several versions of one tender — and
+  // fetchSecopProcesos() returns them `fecha_de_publicacion_del DESC`, which
+  // under "last occurrence wins" handed the batch to the OLDEST version
+  // every time. Ties keep the last occurrence, so a source that merely
+  // repeats a row verbatim behaves exactly as it did before.
+  const newestBySlug = new Map<string, Tender>();
+  for (const tender of includable) {
+    const held = newestBySlug.get(tender.slug);
+    if (held && (held.publicationDate ?? "") > (tender.publicationDate ?? "")) continue;
+    newestBySlug.set(tender.slug, tender);
+  }
+  const uniqueBySlug = [...newestBySlug.values()];
 
   // Tombstone check — an admin's earlier manual delete (DELETE
   // /api/admin/tenders/[slug]) should never get silently re-inserted by a

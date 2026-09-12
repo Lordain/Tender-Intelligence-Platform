@@ -93,25 +93,39 @@ async function checkColombiaSource(days: number) {
     else bySlug.set(tender.slug, [entry]);
   }
 
-  // Two rows are only a real collision when they are different PROCESSES.
-  // SECOP II genuinely republishes one procurement under phase labels, which
-  // colombia-mapper deliberately collapses onto one slug — that is intended
-  // and must not be reported here.
-  // Collapse to DISTINCT processes before counting anything. The feed returns
-  // the same record many times over (one municipality's row appeared 15 times
-  // in a single 30-day window), and the first version of this script counted
-  // those repeats as separate projects — it reported 579 losses over 60 days
-  // where the real figure is the distinct-process count below. A number that
-  // overstates a real problem is still a wrong number.
-  const distinctBySlug = new Map<string, typeof bySlug extends Map<string, infer V> ? V : never>();
+  // Two rows are only a real collision when they are different PROCUREMENTS,
+  // and `id_del_proceso` does NOT answer that question. SECOP II republishes
+  // one procurement under a NEW id (a new phase, a corrected notice), so the
+  // same tender routinely appears as CO1.REQ.11024717 and CO1.REQ.10892101 —
+  // same entity, same reference, same title. Keying the de-dup on the process
+  // id counted every one of those as a separate project and reported 60
+  // "collisions" the day the slug fix landed, every one of them a tender
+  // collapsing exactly as buildSecopSlug() intends.
+  //
+  // A procurement's identity, for this platform's purposes, is its BUYER plus
+  // its TITLE — compared in full, not truncated for display. Two rows sharing
+  // a slug are a real collision only when one of those differs.
+  //
+  // (The other wrong number this script has produced: the very first version
+  // counted the feed's repeated copies of one record as separate projects —
+  // one municipality's row appeared 15 times in a single 30-day window — and
+  // reported 579 losses over 60 days. A number that overstates a real problem
+  // is still a wrong number.)
+  const identity = (entry: { entity: string; title: string }) =>
+    `${entry.entity.trim().toUpperCase()}::${entry.title.replace(/\s+/g, " ").trim().toUpperCase()}`;
+
+  const distinctBySlug = new Map<string, { entity: string; title: string; reference: string; processId: string }[]>();
+  let republishedCount = 0;
   for (const [slug, list] of bySlug) {
     const seen = new Map<string, (typeof list)[number]>();
-    for (const entry of list) if (!seen.has(entry.processId || entry.title)) seen.set(entry.processId || entry.title, entry);
+    for (const entry of list) if (!seen.has(identity(entry))) seen.set(identity(entry), entry);
+    if (list.length > seen.size) republishedCount += 1;
     distinctBySlug.set(slug, [...seen.values()]);
   }
   const collisions = [...distinctBySlug.entries()].filter(([, list]) => list.length > 1);
 
-  console.log(`共 ${rows.length} 条（去重后 ${[...distinctBySlug.values()].reduce((n, l) => n + l.length, 0)} 个不同项目），映射到 ${distinctBySlug.size} 个 slug，其中 ${collisions.length} 个 slug 被不止一个真实项目占用。\n`);
+  console.log(`共 ${rows.length} 条（去重后 ${[...distinctBySlug.values()].reduce((n, l) => n + l.length, 0)} 个不同项目），映射到 ${distinctBySlug.size} 个 slug，其中 ${collisions.length} 个 slug 被不止一个真实项目占用。`);
+  console.log(`另有 ${republishedCount} 个 slug 收到同一个标的多个版本（同单位、同编号、同标题，只是 id_del_proceso 不同）——这是 buildSecopSlug 有意合并的，不是撞号。\n`);
   for (const [slug, list] of collisions.slice(0, 25)) {
     console.log(`  ${slug}   ← ${list.length} 个不同项目挤在这一个 ID 上`);
     for (const entry of list) {
@@ -125,8 +139,9 @@ async function checkColombiaSource(days: number) {
     const lost = collisions.reduce((sum, [, list]) => sum + list.length - 1, 0);
     console.log(
       `结论：这 ${days} 天里，至少有 ${lost} 条项目在导入时会被同 slug 的另一条覆盖掉，而且不会有任何报错。\n` +
-        `这本该已经修好了——slug 现在是 secop-<nit_entidad>-<referencia>（colombia-mapper.ts 的 buildSecopSlug），\n` +
-        `同编号不同单位不该再撞。还在撞说明这些行的 nit_entidad 和 codigo_entidad 都是空的，请把上面的例子贴出来。`,
+        `slug 现在是 secop-<nit_entidad>-<referencia>（colombia-mapper.ts 的 buildSecopSlug），同编号不同单位不该再撞。\n` +
+        `上面每一组的「采购单位 + 标题」都不一样才会被算进来——同一个标的重新发布已经排除了。\n` +
+        `还在撞，最可能是这些行的 nit_entidad 和 codigo_entidad 都是空的，请把上面的例子贴出来。`,
     );
   } else {
     console.log(`结论：这 ${days} 天里没有一个 slug 被两个不同项目占用——entity-qualified slug（buildSecopSlug）生效了。`);

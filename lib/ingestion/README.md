@@ -3543,3 +3543,37 @@ municipality's row appeared 15 times in a single 30-day window) and the script
 counted those repeats as separate projects. It collapses to distinct
 `id_del_proceso` before counting anything now. The real figure is smaller and
 still bad. A number that overstates a real problem is still a wrong number.
+
+### Same day, after the migration ran — the "60 collisions" that weren't
+
+The user migrated (40/40 tenders, 100/100 block-list entries re-keyed, 1
+unresolvable) and `check:duplicate-ids` immediately reported 60 slugs
+"occupied by more than one real project". They were not collisions. Every one
+of the 60 groups was the SAME entity, the SAME reference and the SAME title,
+differing only in `id_del_proceso` — SECOP II republishes a procurement under
+a new id (a new phase, a corrected notice), so `CO1.REQ.11024717` and
+`CO1.REQ.10892101` are two versions of one tender, exactly what
+`buildSecopSlug()` is meant to collapse.
+
+The bug was in the check, which de-duplicated on `id_del_proceso` — the one
+field guaranteed to differ between two versions of one procurement. A
+procurement's identity here is its BUYER plus its TITLE, compared in full
+(the console truncates titles to 60 characters; two different roads from one
+governorate can share that prefix, so the comparison must not). The check
+now reports genuine collisions and republished-version groups separately.
+
+The false alarm did expose a real bug next door. `upsertTendersBatched()`
+de-duplicates a batch by slug — it must, since Postgres rejects two rows
+sharing a conflict key in one statement — and did it "last occurrence wins".
+Harmless while one slug only ever meant one source row; wrong the moment a
+slug legitimately collects several versions of one tender, because
+`fetchSecopProcesos()` returns them `fecha_de_publicacion_del DESC`, so "last"
+was the OLDEST version, every time. The stored row would have carried stale
+data from a superseded notice. It now keeps the most recently published copy,
+ties falling back to last-occurrence so verbatim repeats behave as before.
+
+One block-list entry could not be re-keyed: `secop-lp-005-2026`, whose
+reference matches 32 different entities and whose stored title matches none of
+them. Left untouched and reported — guessing would block a stranger's tender.
+It no longer blocks anything, so if that project reappears in an import it can
+simply be deleted again.

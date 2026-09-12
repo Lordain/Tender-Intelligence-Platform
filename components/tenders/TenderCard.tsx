@@ -13,6 +13,7 @@ import {
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
+import { isObrasPorImpuestos, OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
 
 function preferredRequirement(items: Tender["qualifications"]) {
   return items.find((item) => item.mandatory) ?? items[0];
@@ -65,6 +66,11 @@ export function TenderCard({
           <span className="shrink-0 whitespace-nowrap rounded-full border border-[#d8e0e3] px-2.5 py-1 text-[11px] font-medium text-[#566773]">
             {localize(SCOPE_TYPE_LABELS[tender.scopeType], locale)}
           </span>
+          {isObrasPorImpuestos(tender) && (
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#e2eef5] px-2.5 py-1 text-[11px] font-black text-[#155573]">
+              {OBRAS_POR_IMPUESTOS_BADGE}
+            </span>
+          )}
         </div>
         <SaveTenderButton tenderId={tender.id} className="relative z-10 shrink-0" />
       </div>

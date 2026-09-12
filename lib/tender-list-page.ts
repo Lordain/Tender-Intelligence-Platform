@@ -45,6 +45,11 @@ export type TenderListItem = Pick<
   | "estimatedValue"
   | "currency"
   | "submissionDeadline"
+  // Carried purely so a list row can be marked as Obras por Impuestos
+  // (isObrasPorImpuestos) — that mechanism is different enough from an
+  // ordinary tender that finding out only after opening the detail page
+  // wastes the click.
+  | "sourceName"
 >;
 
 export type TenderListPageData = {
@@ -93,6 +98,7 @@ export function toTenderListItem(tender: Tender): TenderListItem {
     estimatedValue: tender.estimatedValue,
     currency: tender.currency,
     submissionDeadline: tender.submissionDeadline,
+    sourceName: tender.sourceName,
   };
 }
 

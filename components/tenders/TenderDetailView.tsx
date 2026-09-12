@@ -8,6 +8,8 @@ import { RequirementSection } from "@/components/tenders/RequirementList";
 import { KeyDatesTimeline } from "@/components/tenders/KeyDatesTimeline";
 import { RiskList } from "@/components/tenders/RiskList";
 import { SourcePanel } from "@/components/tenders/SourcePanel";
+import { ObrasPorImpuestosNotice } from "@/components/tenders/ObrasPorImpuestosNotice";
+import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 import { TenderViewTracker } from "@/components/analytics/TenderViewTracker";
 
 export function TenderDetailView({ tender, showTrialCta = false }: { tender: Tender; showTrialCta?: boolean }) {
@@ -24,6 +26,9 @@ export function TenderDetailView({ tender, showTrialCta = false }: { tender: Ten
       </Link>
 
       <TenderOverview tender={tender} showTrialCta={showTrialCta} />
+
+      {/* Above the timeline on purpose: whether this is an OxI project decides whether the dates are worth reading. */}
+      {isObrasPorImpuestos(tender) && <ObrasPorImpuestosNotice />}
 
       <KeyDatesTimeline dates={tender.keyDates} />
 

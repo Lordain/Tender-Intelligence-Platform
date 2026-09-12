@@ -19,7 +19,24 @@
  *
  * `awarded` and `cancelled` are terminal facts about the procurement, not
  * stages of an open one, so they always win. A passed submission deadline
- * closes a tender regardless of what the source last said.
+ * closes a tender regardless of what the source last said — and so does a
+ * passed validity_end, see rule 4.
+ *
+ *   4. A passed validity_end closes it too. PEMEX's Concurso Abierto is a
+ *      standing invitation with an expiry (`vencimiento`), not a one-shot
+ *      bid round, so it has no submission deadline to pass — and with only
+ *      rule 3 to fall back on it read 招标中 forever. pemex-mapper's
+ *      inferStatus() does look at vencimiento, but only at IMPORT time: the
+ *      answer it writes is correct on the day of the import and frozen
+ *      after it, so a row that expires between two imports never notices
+ *      (user, 2026-09-12: 状态是不是会无限期停留在招标中？). Reading it here
+ *      instead makes it a calendar question again, answered on every
+ *      request, for rows already in the database — no re-import.
+ *
+ * This still leaves genuinely date-less rows open forever, which is a data
+ * problem rather than a derivation one: Peru's OECE records carry no end
+ * date of any kind (see peru-oece-mapper.ts). Nothing is invented here to
+ * cover that — a guessed 已截止 is a claim about someone's bid window.
  */
 import type { Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
 
@@ -67,6 +84,15 @@ export function deriveTenderStatus(
   // not closed the tender for a reader looking at it in the morning, and a
   // date-only deadline column has no time of day to compare against anyway.
   if (today && deadlineDay && deadlineDay < today) return "submission_closed";
+
+  // Same day-string comparison, same reason. Only closes the tender once the
+  // validity window is genuinely in the past — never used to OPEN one, so a
+  // source that reports awarded/cancelled still wins above.
+  const validityEndDay = (fields.keyDates ?? [])
+    .filter((keyDate) => keyDate.type === "validity_end")
+    .map((keyDate) => platformDay(keyDate.date))
+    .find((day): day is string => day !== null);
+  if (today && validityEndDay && validityEndDay < today) return "submission_closed";
 
   const clarifiesToday = (fields.keyDates ?? []).some(
     (keyDate) => keyDate.type === "clarification" && today && platformDay(keyDate.date) === today,

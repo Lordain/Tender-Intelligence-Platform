@@ -30,6 +30,8 @@
 import { fetchSecopProcesos } from "../lib/ingestion/connectors/colombia-secop-live";
 import { mapSecopRowToTender, isIngestedColombiaModalidad } from "../lib/ingestion/colombia-mapper";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "../lib/ingestion/review-csv";
+import type { Tender } from "../types/tender";
 
 const SOURCE_NAME = "SECOP II — Colombia Compra Eficiente";
 
@@ -61,6 +63,7 @@ async function main() {
   const fetched = new Map<string, number>();
   const passedModalidad = new Map<string, number>();
   const wouldBeWritten = new Map<string, number>();
+  const excluded: Tender[] = [];
 
   for (const row of rows) {
     const day = dayOf(row.fecha_de_publicacion_del);
@@ -68,7 +71,9 @@ async function main() {
     if (!isIngestedColombiaModalidad(row.modalidad_de_contratacion)) continue;
     bump(passedModalidad, day);
     const tender = mapSecopRowToTender(row, SOURCE_NAME);
-    if (tender && tender.relevance.tier !== "excluded") bump(wouldBeWritten, day);
+    if (!tender) continue;
+    if (tender.relevance.tier !== "excluded") bump(wouldBeWritten, day);
+    else excluded.push(tender);
   }
 
   const inSupabase = new Map<string, number>();
@@ -83,21 +88,44 @@ async function main() {
     if (error) console.error(`Could not read Supabase: ${error.message}`);
     for (const row of data ?? []) bump(inSupabase, dayOf((row as { publication_date: string }).publication_date));
   } else {
-    console.error("Supabase isn't configured — the last column will be blank.\n");
+    // Loudly, and repeated in the conclusion below: the first real run was
+    // read as "we have nothing since August" when the truth was that the CLI
+    // simply had no credentials (the npm script was missing
+    // --env-file-if-exists=.env.local, which every other script here has).
+    // A zero that means "not measured" must never look like a zero that means
+    // "not there".
+    console.error("!! Supabase isn't configured for this shell — 「已在库里」全列无意义，不是 0，是没测。\n");
   }
+  const dbMeasured = Boolean(supabase);
 
   const allDays = [...new Set([...fetched.keys(), ...inSupabase.keys()])].sort().reverse();
 
-  console.log("发布日          源头有   通过采购方式闸门   规则判定值得写   已在库里");
-  console.log("──────────────────────────────────────────────────────────────────────");
+  // "源头（招标类）" rather than "源头有": the connector already applies a
+  // server-side `like '%icitaci%'` filter, so this column was never all of
+  // SECOP II. The first real run made that obvious — the first two columns
+  // were byte-identical on every single day (62/62, 35/35, 27/27), which is
+  // not a finding, it is the same number printed twice under two names.
+  console.log("发布日        源头（招标类）   通过采购方式闸门   规则判定值得写   已在库里");
+  console.log("────────────────────────────────────────────────────────────────────────────");
   for (const day of allDays) {
     const cells = [
-      String(fetched.get(day) ?? 0).padStart(6),
-      String(passedModalidad.get(day) ?? 0).padStart(14),
+      String(fetched.get(day) ?? 0).padStart(10),
+      String(passedModalidad.get(day) ?? 0).padStart(16),
       String(wouldBeWritten.get(day) ?? 0).padStart(15),
       String(inSupabase.get(day) ?? 0).padStart(11),
     ];
     console.log(`${day}  ${cells.join("")}`);
+  }
+
+  const totalPassed = [...passedModalidad.values()].reduce((a, b) => a + b, 0);
+  const totalKept = [...wouldBeWritten.values()].reduce((a, b) => a + b, 0);
+  console.log(
+    `${"合计".padEnd(12)}${String([...fetched.values()].reduce((a, b) => a + b, 0)).padStart(10)}` +
+      `${String(totalPassed).padStart(16)}${String(totalKept).padStart(15)}` +
+      `${String([...inSupabase.values()].reduce((a, b) => a + b, 0)).padStart(11)}`,
+  );
+  if (totalPassed > 0) {
+    console.log(`\n分级规则留下 ${totalKept} / ${totalPassed} 条（${((totalKept / totalPassed) * 100).toFixed(1)}%），其余 ${totalPassed - totalKept} 条被排除。`);
   }
 
   const newestAtSource = allDays.find((d) => (fetched.get(d) ?? 0) > 0);
@@ -107,8 +135,10 @@ async function main() {
   console.log("\n结论：");
   console.log(`  今天                     ${today}`);
   console.log(`  源头最新一条的发布日     ${newestAtSource ?? "（这个窗口里一条都没有）"}`);
-  console.log(`  我们库里最新一条的发布日 ${newestInDb ?? "（这个窗口里一条都没有）"}`);
-  if (newestAtSource && newestInDb) {
+  console.log(
+    `  我们库里最新一条的发布日 ${!dbMeasured ? "（没测到——这个 shell 没有 Supabase 凭据）" : (newestInDb ?? "（这个窗口里一条都没有）")}`,
+  );
+  if (dbMeasured && newestAtSource && newestInDb) {
     const lagDays = Math.round(
       (new Date(`${newestAtSource}T00:00:00Z`).getTime() - new Date(`${newestInDb}T00:00:00Z`).getTime()) / 86_400_000,
     );
@@ -118,6 +148,21 @@ async function main() {
         : `  我们比源头落后 ${lagDays} 天。看上面哪一列先掉到 0，就是那一步丢的。`,
     );
   }
+  // The gap between columns 2 and 3 is the whole story on this feed — the
+  // first real run kept 61 of 579 — and a percentage cannot say whether the
+  // other 518 were genuinely routine or whether a keyword is missing. The
+  // titles can. Same medicine as discover-comprasmx-vigente.ts, for the same
+  // reason: that gap has twice turned out to be a missing keyword.
+  if (excluded.length > 0) {
+    const path = writeReviewCsv({
+      dir: "exports",
+      baseName: `colombia-excluded-${new Date().toISOString().slice(0, 10)}`,
+      csv: toCsv(REVIEW_CSV_HEADERS, excluded.map(reviewCsvRow)),
+      label: "check-colombia-freshness",
+    });
+    if (path) console.log(`\n被排除的 ${excluded.length} 条标题已导出 -> ${path}`);
+  }
+
   console.log(
     "\n怎么读这张表：「源头有」和「通过采购方式闸门」差很多 = 大部分是我们本来就不要的采购方式；" +
       "\n「通过闸门」和「规则判定值得写」差很多 = 分级规则筛掉的（值得导出来看一眼是不是漏了关键词）；" +

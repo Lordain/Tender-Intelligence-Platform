@@ -1739,7 +1739,7 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "SERVICIO PARA EL FORTALECIMIENTO DE LOS CENTROS DE DATOS DE INFOTEC",
     expectedTier: "flagship",
-    note: "LA-55-91M-05591M001-N-24-2026. Excluded on the plural alone before 2026-09-12 (the list said 'centro de datos'). Pinned at flagship as the datacenter term has always forced it — see the open question on whether an UPGRADE service should, given the 2026-09-05 Modernización-datacenter precedent.",
+    note: "LA-55-91M-05591M001-N-24-2026. Excluded on the plural alone before 2026-09-12 (the list said 'centro de datos'). Flagship confirmed by the user 2026-09-12 when asked whether the 2026-09-05 Modernización-datacenter precedent should demote an UPGRADE service too: it should not. A data centre is flagship here whether it is being built or strengthened.",
     country: "Mexico", scopeType: "services",
   },
   {

@@ -191,7 +191,14 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // IA/Bigdata equipment purchase, a CCTV system, a hospital
   // information-system/ERP project, and a smart-transport camera system
   // all fell through to "general" with no ICT signal at all.
-  ["ict_telecom", /telecomunicaci|datacenter|centro de datos|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|(?<![\d+]\s?)\b5g\b(?!\s*[\/x×])|ciberseguridad|seguridad electr[óo]nica|videovigilancia|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito|monitoreo (de )?veh[íi]culos|inhibidor(es)? de se[ñn]al|video ?wall|intelig[ée]ncia artificial|big ?data|circuito(s)? cerrado(s)? de televisi[óo]n|\bcctv\b|sistema de informaci[óo]n hospitalaria|sistema inteligente de transporte/i],
+  // The same four ICT security terms added to lib/relevance.ts on 2026-09-12,
+  // added here too — the gap was in BOTH files, and the second half of it is
+  // the quieter one. Four live INFOTEC procedures reached the relevance
+  // classifier as "general" with no ICT signal at all, so even once kept they
+  // would not have appeared under the 行业 filter the user actually browses
+  // by. `centro(s)?` for the same reason it was fixed there: the real title
+  // said CENTROS DE DATOS, and the singular never matched it.
+  ["ict_telecom", /telecomunicaci|datacenter|centro(s)? de datos|cibern[ée]tic[oa]s?|ciberataque(s)?|ciberdefensa|cuentas privilegiadas|gesti[óo]n de identidades|protecci[óo]n de (la )?informaci[óo]n|seguridad de la informaci[óo]n|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|(?<![\d+]\s?)\b5g\b(?!\s*[\/x×])|ciberseguridad|seguridad electr[óo]nica|videovigilancia|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito|monitoreo (de )?veh[íi]culos|inhibidor(es)? de se[ñn]al|video ?wall|intelig[ée]ncia artificial|big ?data|circuito(s)? cerrado(s)? de televisi[óo]n|\bcctv\b|sistema de informaci[óo]n hospitalaria|sistema inteligente de transporte/i],
   // "tren ferroviario"/"tramo ... ferroviario"/"eje prioritario"/"ancho de
   // corona" added (2026-09-04, real gaps): real SICT/rail titles like
   // "CONSTRUCCIÓN Y DISEÑO DE 82.00 KM DEL TRAMO II FERROVIARIO DEL TREN DE

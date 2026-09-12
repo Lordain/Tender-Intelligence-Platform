@@ -1724,6 +1724,11 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // carry no value, Mexico is in UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL, and
   // not one of them said "ciberseguridad" or the singular "centro de datos" —
   // the only two ICT terms that could have rescued them.
+  //
+  // All four are kept now, and all four are pinned here rather than trusted
+  // to the keyword list: the whole failure was that an ICT term nobody had
+  // thought to write down silently cost four live opportunities, and a
+  // keyword list cannot tell you what is missing from it. A fixture can.
   {
     title: "SERVICIO INTEGRAL DE SEGURIDAD PARA DATOS CRÍTICOS Y CUENTAS PRIVILEGIADAS",
     expectedTier: "standard",
@@ -1744,8 +1749,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "SERVICIO INTEGRAL DE PROTECCIÓN DE LA INFORMACIÓN Y GESTIÓN DE RIESGOS",
-    expectedTier: "excluded",
-    note: "LA-55-91M-05591M001-N-27-2026. The fourth of the same INFOTEC series, and deliberately still out: 'protección de la información' also names archival, privacy and legal-compliance work, and a term in INCLUDE_OVERRIDE_KEYWORDS bypasses every exclude check. Pinned so the decision is visible rather than forgotten.",
+    expectedTier: "standard",
+    note: "LA-55-91M-05591M001-N-27-2026. Held out on the first pass on the theory that 'protección de la información' also names archival/privacy work; the user confirmed all four are live on Compras MX and wants all four kept, and the theory cost nothing to test — adding the term flips none of the other fixtures here.",
     country: "Mexico", scopeType: "services",
   },
   {

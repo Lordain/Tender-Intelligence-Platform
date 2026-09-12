@@ -865,6 +865,7 @@ const OVERRIDE_NOT_FLAGSHIP = [
   /ciberseguridad|cybersecurity/i,
   /cibern[ée]tic[oa]s?|ciberataque(s)?|ciberdefensa/i,
   /cuentas privilegiadas|gesti[óo]n de identidades|gesti[óo]n de accesos|privileged access/i,
+  /protecci[óo]n de (la )?informaci[óo]n|seguridad de la informaci[óo]n|information security/i,
 ];
 
 /**
@@ -1275,10 +1276,23 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
   // Both are trade terms with no second meaning — "cuentas privilegiadas" is
   // privileged access management, "ciberataque" is nothing else — which is
   // why they are safe in a list whose matches bypass every exclude check.
-  // "protección de la información" was considered with them and deliberately
-  // left out: it also names archival, privacy and legal-compliance work.
   /cibern[ée]tic[oa]s?|ciberataque(s)?|ciberdefensa/i,
   /cuentas privilegiadas|gesti[óo]n de identidades|gesti[óo]n de accesos|privileged access/i,
+  // Added on the second pass the same day, for the fourth of that INFOTEC
+  // series: SERVICIO INTEGRAL DE PROTECCIÓN DE LA INFORMACIÓN Y GESTIÓN DE
+  // RIESGOS (LA-55-91M-05591M001-N-27-2026). Held back on the first pass
+  // because the phrase can also name archival, privacy and legal-compliance
+  // work, and a term here bypasses every exclude check — but the user has
+  // seen all four on Compras MX and wants all four kept
+  // (保障这4条都在ICT白名单，确保导入不要被屏蔽), and that concern was a
+  // prediction, not a measurement: adding it flips none of the 276 real
+  // titles in lib/relevance-fixtures.ts, which include the Peru and Colombia
+  // service exports this pattern was feared to catch.
+  //
+  // If it does start pulling in archival or personal-data work, the fix is a
+  // qualifier, not a removal — these are genuine ICT security procurements
+  // and the platform's own 行业 tag already agrees.
+  /protecci[óo]n de (la )?informaci[óo]n|seguridad de la informaci[óo]n|information security/i,
   /centro(s)? de comando|command center/i,
   /seguridad electr[óo]nica|electronic security/i,
   // `centro(s)?`, not `centro` (2026-09-12): a real open Compras MX tender,

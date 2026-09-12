@@ -145,9 +145,12 @@ function ErrorPanel({
  * drift.
  */
 function peruCliCommand(options: { months: string; days: string; useDays: boolean; write: boolean }): string {
+  // --days replaces --months rather than joining it: it decides the month
+  // segments itself now (segmentsForDays in peru-oece-live.ts), so passing
+  // both would just be a number the run ignores.
+  const useDays = options.useDays && Number(options.days) > 0;
   const flags = [
-    `--months ${Number(options.months) || 2}`,
-    options.useDays && Number(options.days) > 0 ? `--days ${Number(options.days)}` : "",
+    useDays ? `--days ${Number(options.days)}` : `--months ${Number(options.months) || 2}`,
     options.write ? "--write" : "",
   ]
     .filter(Boolean)
@@ -238,13 +241,14 @@ export function ImportPeruForm() {
         <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">共用设置</p>
         <div className="mt-3 flex flex-wrap items-end gap-4">
           <label className="flex flex-col gap-1 text-xs">
-            <span className="font-semibold text-[#52636e]">抓取最近几个月的月份段（SEACE 用）</span>
+            <span className={`font-semibold ${useDays ? "text-[#9aa5ab]" : "text-[#52636e]"}`}>抓取最近几个月的月份段（SEACE 用）</span>
             <input
               type="number"
               min={1}
               value={months}
+              disabled={useDays}
               onChange={(e) => setMonths(e.target.value)}
-              className="h-9 w-28 rounded-lg border border-[#d8e0e3] bg-white px-2 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
+              className="h-9 w-28 rounded-lg border border-[#d8e0e3] bg-white px-2 text-sm text-[#071826] outline-none focus:border-[#ffb21c] disabled:bg-[#f2f4f3] disabled:text-[#9aa5ab]"
             />
           </label>
           <label className="flex flex-col gap-1 text-xs">
@@ -272,7 +276,16 @@ export function ImportPeruForm() {
           </label>
         </div>
         <p className="mt-2 text-xs text-[#64717c]">
-          SEACE 的月份段只能整月抓取（官方接口的限制），所以「最近几天」是在抓回来之后再筛——省的是你要看的条数，不是请求数。
+          SEACE 的官方接口只能<strong>按整月</strong>取数，所以「最近几天」仍然是抓回来之后再筛——省的是你要看的条数，不是请求量。
+          {useDays ? (
+            <>
+              {" "}
+              <strong className="text-[#7a5200]">勾了「最近几天」时，上面的「几个月」就不起作用了</strong>
+              ——要抓哪几个月由这个天数自己算（例如 9 月 3 日选最近 5 天，会自动把 8 月的月份段也抓上，否则 8/29–8/31 会静默丢掉）。
+            </>
+          ) : (
+            <> 不勾「最近几天」时，就按「几个月」整月抓、整月保留。</>
+          )}
         </p>
       </div>
 

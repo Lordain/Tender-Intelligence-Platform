@@ -346,3 +346,35 @@ export function recentSegmentIds(months: number, now: Date = new Date()): string
   }
   return segments;
 }
+
+/**
+ * Exactly the calendar-month segments a "last N days" window touches, newest
+ * first.
+ *
+ * The API can only be asked for whole months, so a days window has always had
+ * to be served by fetching months and filtering afterwards — which left the
+ * caller holding two knobs that have to agree. They did not always agree, and
+ * the disagreement was silent in the worse direction: on 2026-09-03, "last 5
+ * days" means 08-29 through 09-03, and one month of segments fetches only
+ * 2026-09, so three of those days are quietly missing. It only ever looked
+ * fine because the default happens to be two months.
+ *
+ * Deriving the segments from the window instead removes the question. It also
+ * stops the opposite waste — six months of segments (~24,000 records) fetched
+ * to keep five days of them.
+ */
+export function segmentsForDays(days: number, now: Date = new Date()): string[] {
+  const span = days > 0 ? days : 1;
+  const oldest = new Date(now.getTime() - span * 24 * 60 * 60 * 1000);
+  const segments: string[] = [];
+  const cursor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  // Walk back a month at a time until the cursor month ends before the window
+  // starts. Bounded by a sane cap so a mistyped `--days 99999` cannot spin.
+  for (let back = 0; back < 24; back++) {
+    const month = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() - back, 1));
+    const monthEnd = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0, 23, 59, 59));
+    if (monthEnd < oldest) break;
+    segments.push(`${month.getUTCFullYear()}-${String(month.getUTCMonth() + 1).padStart(2, "0")}`);
+  }
+  return segments;
+}

@@ -10,7 +10,7 @@
  * peru-oxi-mapper.ts for what each one is.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchOeceRecordsForSegment, recentSegmentIds } from "@/lib/ingestion/connectors/peru-oece-live";
+import { fetchOeceRecordsForSegment, recentSegmentIds, segmentsForDays } from "@/lib/ingestion/connectors/peru-oece-live";
 import { mapOeceRecordToTender, oeceDocumentLinks, type OeceRecord, type TenderDocumentLink } from "@/lib/ingestion/peru-oece-mapper";
 import { saveDocumentLinks, type DocumentLinksForSlug } from "@/lib/ingestion/document-links";
 import { downloadOxiExport } from "@/lib/ingestion/connectors/peru-oxi-live";
@@ -50,9 +50,9 @@ export type PeruIngestResult = {
 
 export type PeruIngestOptions = {
   write: boolean;
-  /** Calendar-month segments to fetch (OECE only). Ignored when `segment` is set. */
+  /** Calendar-month segments to fetch (OECE only). Ignored when `segment` or `days` is set. */
   months?: number;
-  /** Rolling window in days, applied to what was fetched. 0/undefined = use `months`. */
+  /** Rolling window in days. Decides BOTH which month segments are fetched and what is kept — `months` is ignored when this is set. 0/undefined = use `months`. */
   days?: number;
   /** One specific `YYYY-MM` segment (OECE only). */
   segment?: string;
@@ -108,7 +108,17 @@ export async function ingestPeruOece(
   onProgress?: (message: string) => void,
 ): Promise<PeruIngestResult> {
   const months = options.months ?? 2;
-  const segments = options.segment ? [options.segment] : recentSegmentIds(months);
+  // `days` wins when it is set, and decides the segments itself rather than
+  // trusting `months` to cover the same window. The two used to be independent
+  // knobs the caller had to reconcile: asking for 5 days with 1 month silently
+  // lost whatever fell in the previous month (every time the run happened in
+  // the first days of one), and asking for 5 days with 6 months downloaded
+  // ~24,000 records to keep a few dozen. See segmentsForDays().
+  const segments = options.segment
+    ? [options.segment]
+    : options.days && options.days > 0
+      ? segmentsForDays(options.days)
+      : recentSegmentIds(months);
   const sourceId = options.sourceId ?? "seace_v3";
 
   const records: OeceRecord[] = [];
@@ -223,6 +233,8 @@ export async function backfillPeruDocumentLinks(
   onProgress?: (message: string) => void,
 ): Promise<PeruDocumentLinkBackfillResult> {
   const months = options.months ?? 2;
+  // No `days` here on purpose: the backfill is a catch-up over whole months
+  // for rows that predate link capture, not a rolling top-up.
   const segments = options.segment ? [options.segment] : recentSegmentIds(months);
   const sourceId = options.sourceId ?? "seace_v3";
 

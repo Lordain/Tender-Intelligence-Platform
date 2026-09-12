@@ -204,10 +204,18 @@ export const KEY_DATE_TYPE_LABELS: Record<TenderKeyDate["type"], LocalizedText> 
     es: "Firma de Contrato",
     zh: "合同签署",
   },
+  // 公告有效期至, not 合同有效期至 (proposed and reconsidered with the user,
+  // 2026-09-12): what expires is the standing invitation, and at this point
+  // there IS no contract — nobody has bid, let alone won. "合同" would have
+  // told a reader a contract is already running until 2028, which is a
+  // factual error rather than merely an abstract label. Nor 招标有效期至,
+  // which collides with 投标有效期, the standard term for how long a
+  // submitted bid stays binding. Matches the Spanish the source itself uses:
+  // Vigencia del Concurso — the validity of the competition, not of a contract.
   validity_end: {
-    en: "Mechanism Valid Until",
+    en: "Notice Valid Until",
     es: "Vigencia del Concurso",
-    zh: "机制有效期至",
+    zh: "公告有效期至",
   },
 };
 

@@ -67,7 +67,13 @@ export async function sendSubscriptionRenewalReminder(input: {
     body: JSON.stringify({ from, to: [input.to], subject, html }),
     signal: AbortSignal.timeout(8_000),
   });
-  if (!response.ok) throw new Error(`Resend returned ${response.status}.`);
+  if (!response.ok) {
+    // Resend's body names the actual problem ("Invalid `to` field...", an
+    // unverified from-domain, a restricted key); a bare status code sends
+    // whoever is debugging to guess. Same shape tender-digest.ts already uses.
+    const detail = await response.json().catch(() => null) as { message?: string } | null;
+    throw new Error(detail?.message ?? `Resend returned ${response.status}.`);
+  }
   const result = await response.json() as { id?: string };
   if (!result.id) throw new Error("Resend did not return an email ID.");
   return result.id;

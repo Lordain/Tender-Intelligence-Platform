@@ -3,7 +3,7 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { EmailPreviewTestSender } from "@/components/admin/EmailPreviewTestSender";
 import { renderTenderDigestPreview } from "@/lib/notifications/tender-digest-preview";
 import { EmailConfigStatus } from "@/components/admin/EmailConfigStatus";
-import { describeEmailConfig } from "@/lib/notifications/email-config";
+import { describeEmailConfig, describeEmailEnvironment } from "@/lib/notifications/email-config";
 
 export default async function AdminEmailPreviewPage() {
   // describeEmailConfig() reads process.env, and this panel is worthless
@@ -20,6 +20,7 @@ export default async function AdminEmailPreviewPage() {
 
   const preview = renderTenderDigestPreview();
   const emailConfig = describeEmailConfig();
+  const emailEnvironment = describeEmailEnvironment();
 
   return (
     <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-5 py-8 sm:px-8 lg:py-10">
@@ -30,7 +31,7 @@ export default async function AdminEmailPreviewPage() {
       />
 
       {/* Above the test sender: a passing test does not mean customers get mail. */}
-      <EmailConfigStatus checks={emailConfig} />
+      <EmailConfigStatus checks={emailConfig} environment={emailEnvironment} />
 
       <EmailPreviewTestSender />
 

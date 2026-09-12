@@ -30,6 +30,22 @@ export type EmailConfigCheck = {
   consequence: string;
 };
 
+/**
+ * Which deployment these values came from.
+ *
+ * Added immediately after the panel's first real use, where a local `next
+ * dev` run showed three red rows and read as a production outage — the
+ * opposite of what the panel is for. Vercel sets VERCEL_ENV on every
+ * deployment; its absence means someone's own machine.
+ */
+export function describeEmailEnvironment(): { label: string; isLocal: boolean } {
+  const vercelEnv = process.env.VERCEL_ENV?.trim();
+  if (vercelEnv === "production") return { label: "生产环境", isLocal: false };
+  if (vercelEnv === "preview") return { label: "Preview 部署", isLocal: false };
+  if (vercelEnv) return { label: `Vercel ${vercelEnv}`, isLocal: false };
+  return { label: "本机开发环境（.env.local）", isLocal: true };
+}
+
 export function describeEmailConfig(): EmailConfigCheck[] {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESEND_FROM_EMAIL?.trim();

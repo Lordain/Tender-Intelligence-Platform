@@ -9,19 +9,41 @@ import type { EmailConfigCheck } from "@/lib/notifications/email-config";
  * mail, and the switch that makes those two different (the digest master
  * toggle) is invisible from the test result alone.
  */
-export function EmailConfigStatus({ checks }: { checks: EmailConfigCheck[] }) {
+export function EmailConfigStatus({
+  checks,
+  environment,
+}: {
+  checks: EmailConfigCheck[];
+  environment: { label: string; isLocal: boolean };
+}) {
   const broken = checks.filter((check) => !check.ok);
 
   return (
     <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Delivery config</p>
-      <h2 className="mt-1 text-lg font-black text-[#071826]">邮件配置实况</h2>
+      <h2 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black text-[#071826]">
+        邮件配置实况
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-black ${
+            environment.isLocal ? "bg-[#fff2d6] text-[#8a5a00]" : "bg-[#e7f5ec] text-[#186a3b]"
+          }`}
+        >
+          {environment.label}
+        </span>
+      </h2>
       <p className="mt-1 text-sm text-[#52636e]">
-        这是<strong>当前服务器上</strong>读到的值，不是 .env.example 里写的。
+        这是<strong>当前运行环境</strong>读到的值，不是 .env.example 里写的。
         {broken.length === 0
           ? "五项全部就绪。"
           : `有 ${broken.length} 项没就绪——下面标红的那几项。`}
       </p>
+      {environment.isLocal && (
+        /* The panel's first real use was read as a production outage. It was a
+           dev server missing local env vars; production was fine. */
+        <p className="mt-2 rounded-xl border border-[#ffd9a0] bg-[#fff8ec] px-4 py-2.5 text-xs font-bold text-[#8a5a00]">
+          这里标红的是<strong>你本机</strong>缺的变量，跟生产环境无关。要验证真实发信，请在线上的 /admin/email-preview 操作。
+        </p>
+      )}
 
       <ul className="mt-4 flex flex-col gap-2">
         {checks.map((check) => (

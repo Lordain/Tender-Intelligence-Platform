@@ -1,0 +1,1614 @@
+{
+  "records": [
+    {
+      "compiledRelease": {
+        "tag": [
+          "compiled"
+        ],
+        "id": "ocds-dgv273-seacev3-1245017-2026-09-01T10:23:59.538158-05:00",
+        "date": "2026-09-01T10:23:59.538146-05:00",
+        "ocid": "ocds-dgv273-seacev3-1245017",
+        "publishedDate": "2026-09-01T10:23:59.538164-05:00",
+        "initiationType": "tender",
+        "buyer": {
+          "id": "PE-CONSUCODE-336",
+          "name": "MUNICIPALIDAD DISTRITAL DE SAN ANTONIO DE CACHI"
+        },
+        "planning": {
+          "budget": {
+            "description": "Fondos Públicos",
+            "project": "MEJORAMIENTO DEL SERVICIO DE AGUA PARA RIEGO DEL CANAL INTI WATANA PIYAW PAMPA, COMUNIDAD DE SAN JUAN DE KULA DEL  DISTRITO DE SAN ANTONIO DE CACHI - PROVINCIA DE ANDAHUAYLAS - DEPARTAMENTO DE APURIMAC",
+            "projectID": "2524335"
+          }
+        },
+        "tender": {
+          "id": "1245017",
+          "title": "CP-ABR-2-2026-MDSAC-1",
+          "description": "CONTRATACION DE CONSULTORIA DE OBRA PARA LA SUPERVISION DE LA OBRA: MEJORAMIENTO DEL SERVICIO DE AGUA PARA RIEGO DEL CANAL INTI WATANA PIYAW PAMPA, COMUNIDAD DE SAN JUAN DE KULA DEL DISTRITO DE SAN ANTONIO DE CACHI - PROVINCIA DE ANDAHUAYLAS - DEPARTAMENTO DE APURIMAC, CUI N° 2524335.",
+          "procuringEntity": {
+            "id": "PE-CONSUCODE-336",
+            "name": "MUNICIPALIDAD DISTRITAL DE SAN ANTONIO DE CACHI"
+          },
+          "datePublished": "2026-08-31T12:30:00-05:00",
+          "procurementMethodDetails": "Concurso Público Abreviado",
+          "mainProcurementCategory": "services",
+          "additionalProcurementCategories": [
+            "services"
+          ],
+          "value": {
+            "amount": 0,
+            "currency": "PEN",
+            "currencyName": "Soles",
+            "amount_PEN": 0
+          },
+          "tenderPeriod": {
+            "startDate": "2026-08-31T00:00:00-05:00",
+            "endDate": "2026-08-31T00:00:00-05:00"
+          },
+          "enquiryPeriod": {
+            "startDate": "2026-09-01T00:01:00-05:00",
+            "endDate": "2026-09-03T23:59:00-05:00",
+            "durationInDays": 2
+          },
+          "items": [
+            {
+              "id": "21357324",
+              "position": "1",
+              "description": "CONTRATACION DE CONSULTORIA DE OBRA PARA LA SUPERVISION DE OBRA: MEJORAMIENTO DEL SERVICIO DE AGUA PARA RIEGO DEL CANAL INTI WATANA PIYAW PAMPA, COMUNIDAD DE SAN JUAN DE KULA DEL DISTRITO DE SAN ANTONIO DE CACHI - PROVINCIA DE ANDAHUAYLAS - DEPARTAME",
+              "statusDetails": "CONVOCADO",
+              "status": "active",
+              "classification": {
+                "id": "8110151500336401",
+                "description": "SUPERVISION DE OBRA DE CONSTRUCCION DE CANALES DE CONDUCCION DE AGUAS",
+                "scheme": "CUBSO"
+              },
+              "additionalClassifications": [
+                {
+                  "id": "81101515",
+                  "description": "Ingeniería de infraestructura de plantas o instalaciones",
+                  "scheme": "UNSPSC"
+                }
+              ],
+              "quantity": 1,
+              "totalValue": {
+                "amount": 0,
+                "currency": "PEN",
+                "currencyName": "Soles"
+              },
+              "unit": {
+                "id": "36",
+                "name": "Servicio",
+                "scheme": "PE-SEACE3-UnidadMedida"
+              }
+            }
+          ],
+          "documents": [
+            {
+              "id": "24831474986077614",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=34e442ee-eee9-41cc-8e82-68d293749a99",
+              "datePublished": "2026-08-31T12:30:00-05:00",
+              "format": "pdf",
+              "documentType": "biddingDocuments",
+              "title": "Bases Administrativas",
+              "language": "es"
+            }
+          ],
+          "hasTenderInformationProtectedByLaw": false
+        },
+        "parties": [
+          {
+            "id": "PE-CONSUCODE-336",
+            "name": "MUNICIPALIDAD DISTRITAL DE SAN ANTONIO DE CACHI",
+            "identifier": {
+              "id": "336",
+              "scheme": "PE-CONSUCODE",
+              "legalName": "MUNICIPALIDAD DISTRITAL DE SAN ANTONIO DE CACHI"
+            },
+            "additionalIdentifiers": [
+              {
+                "id": "20163031192",
+                "scheme": "PE-RUC",
+                "legalName": "MUNICIPALIDAD DISTRITAL DE SAN ANTONIO DE CACHI"
+              }
+            ],
+            "address": {
+              "streetAddress": "PLAZA DE ARMAS SN FRENTE A LA PLAZA SAN ANTONIO DE CACHI",
+              "locality": "SAN ANTONIO DE CACHI",
+              "region": "ANDAHUAYLAS",
+              "department": "APURIMAC",
+              "countryName": "PERU"
+            },
+            "contactPoint": {
+              "telephone": "83830024"
+            },
+            "roles": [
+              "buyer",
+              "procuringEntity"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "id": "seace_v3",
+            "name": "Sistema Electrónico de Contrataciones del Estado - Versión 3",
+            "url": "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+          }
+        ],
+        "dataSegmentation": {
+          "id": "2026-08",
+          "criteria": [
+            "añoInicioConvocatoria",
+            "mesInicioConvocatoria"
+          ]
+        }
+      },
+      "ocid": "ocds-dgv273-seacev3-1245017",
+      "releases": [
+        {
+          "url": "https://contratacionesabiertas.oece.gob.pe/api/v1/release/ocds-dgv273-seacev3-1245017-2026-09-01T10:23:59.538158-05:00",
+          "date": "2026-09-01T10:23:59.538146-05:00",
+          "tag": [
+            "planning",
+            "tender"
+          ],
+          "details": {
+            "id": "ocds-dgv273-seacev3-1245017-2026-09-01T10:23:59.538158-05:00",
+            "tender": {
+              "id": "1245017",
+              "title": "CP-ABR-2-2026-MDSAC-1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compiledRelease": {
+        "tag": [
+          "compiled"
+        ],
+        "id": "ocds-dgv273-seacev3-2026-1926-186-2026-09-01T10:23:59.523794-05:00",
+        "date": "2026-09-01T10:23:59.523782-05:00",
+        "ocid": "ocds-dgv273-seacev3-2026-1926-186",
+        "publishedDate": "2026-09-01T10:23:59.523800-05:00",
+        "initiationType": "tender",
+        "buyer": {
+          "id": "PE-CONSUCODE-1926",
+          "name": "BANCO CENTRAL DE RESERVA DEL PERÚ"
+        },
+        "planning": {
+          "budget": {
+            "description": "Fondos Públicos"
+          }
+        },
+        "tender": {
+          "id": "1240818",
+          "title": "CP-ABR-42-2026-BCRPLIM-1",
+          "description": "Contratación anual del servicio de mantenimiento de tabiques de madera en los locales de Lima",
+          "procuringEntity": {
+            "id": "PE-CONSUCODE-1926",
+            "name": "BANCO CENTRAL DE RESERVA DEL PERÚ"
+          },
+          "datePublished": "2026-08-12T16:26:00-05:00",
+          "procurementMethodDetails": "Concurso Público Abreviado",
+          "mainProcurementCategory": "services",
+          "additionalProcurementCategories": [
+            "services"
+          ],
+          "value": {
+            "amount": 168145,
+            "currency": "PEN",
+            "currencyName": "Soles",
+            "amount_PEN": 168145
+          },
+          "tenderPeriod": {
+            "startDate": "2026-08-12T00:00:00-05:00",
+            "endDate": "2026-08-12T00:00:00-05:00"
+          },
+          "enquiryPeriod": {
+            "startDate": "2026-08-13T00:01:00-05:00",
+            "endDate": "2026-08-17T23:59:00-05:00",
+            "durationInDays": 4
+          },
+          "items": [
+            {
+              "id": "21347121",
+              "position": "1",
+              "description": "Servicio de mantenimiento de tabiques de madera",
+              "statusDetails": "ADJUDICADO",
+              "status": "complete",
+              "classification": {
+                "id": "7212110300225152",
+                "description": "SERVICIO DE MANTENIMIENTO DE TABIQUERIA",
+                "scheme": "CUBSO"
+              },
+              "additionalClassifications": [
+                {
+                  "id": "72121103",
+                  "description": "Servicios de renovación y reparación de edificios comerciales y de oficinas",
+                  "scheme": "UNSPSC"
+                }
+              ],
+              "quantity": 1,
+              "totalValue": {
+                "amount": 168145,
+                "currency": "PEN",
+                "currencyName": "Soles"
+              },
+              "unit": {
+                "id": "36",
+                "name": "Servicio",
+                "scheme": "PE-SEACE3-UnidadMedida"
+              }
+            }
+          ],
+          "documents": [
+            {
+              "id": "24831474986055988",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=a55973c3-ccc8-44ef-bbfe-93ad102f9698",
+              "datePublished": "2026-08-12T16:26:00-05:00",
+              "format": "pdf",
+              "documentType": "biddingDocuments",
+              "title": "Bases Administrativas",
+              "language": "es"
+            },
+            {
+              "id": "24831474986062099",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=abf93f04-55e8-43d0-8a34-2c362c746f5b",
+              "datePublished": "2026-08-18T09:55:35-05:00",
+              "format": "pdf",
+              "documentType": "clarifications",
+              "title": "Acta de no formulación de consultas y observaciones",
+              "language": "es"
+            },
+            {
+              "id": "24831474986063858",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=801a41b5-c669-4f7a-80ed-77aadb7b1563",
+              "datePublished": "2026-08-19T10:18:01-05:00",
+              "format": "pdf",
+              "documentType": "biddingDocuments",
+              "title": "Bases Integradas",
+              "language": "es"
+            },
+            {
+              "id": "24831474986077943",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=3ddf4065-5ae0-4fc0-92c9-8de762a36126",
+              "datePublished": "2026-08-31T16:39:49-05:00",
+              "format": "zip",
+              "documentType": "biddingDocuments",
+              "title": "Documentos de Presentación de Propuestas",
+              "language": "es"
+            },
+            {
+              "id": "24831474986077944",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=650395a6-5fee-4abe-8874-4311555e13d4",
+              "datePublished": "2026-08-31T16:39:49-05:00",
+              "format": "zip",
+              "documentType": "evaluationReports",
+              "title": "Documentos de Calificación y Evaluación",
+              "language": "es"
+            },
+            {
+              "id": "24831474986077945",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=1550f360-66c2-4a8d-b059-3eb6c6a5b3d0",
+              "datePublished": "2026-08-31T16:39:49-05:00",
+              "format": "zip",
+              "documentType": "awardNotice",
+              "title": "Documentos de Otorgamiento de Buena Pro",
+              "language": "es"
+            }
+          ],
+          "hasTenderInformationProtectedByLaw": false,
+          "tenderers": [
+            {
+              "id": "PE-RUC-10756093440",
+              "name": "CONDEZO FATAMA ESTEFANIE MUTTY MARIANA"
+            },
+            {
+              "id": "PE-RUC-10761866864",
+              "name": "ARCE KJURO LIZ STEFANY"
+            },
+            {
+              "id": "PE-RUC-20613179462",
+              "name": "COMPANY CARI E.I.R.L."
+            },
+            {
+              "id": "PE-RUC-20601505828",
+              "name": "CORPORACION LUMAYJE S.A.C."
+            },
+            {
+              "id": "PE-RUC-20407806299",
+              "name": "EMPRESA CONSTRUCTORA Y MULTISERVICIOS DJRR E.I.R.L."
+            },
+            {
+              "id": "PE-RUC-20520577018",
+              "name": "ANTHONY & FABIANA CONTRATISTAS GENERALES SOCIEDAD ANONIMA CERRADA-AN & FA CONTRATISTAS GENERALES SAC"
+            },
+            {
+              "id": "PE-RUC-20601206481",
+              "name": "DYSAMAX CONSTRUCCIONES Y SERVICIOS GENERALES E.I.R.L."
+            },
+            {
+              "id": "PE-RUC-20611877596",
+              "name": "CORPORACION YATZURI S.A.C."
+            },
+            {
+              "id": "PE-RUC-20601276845",
+              "name": "MINERIA Y CONSTRUCCION MAR S.A.C."
+            },
+            {
+              "id": "PE-RUC-20550683645",
+              "name": "INVERCON PROYECTOS S.A.C."
+            },
+            {
+              "id": "PE-RUC-20604475059",
+              "name": "LOGISTICA E INGENIERIA V&M S.A.C."
+            },
+            {
+              "id": "PE-RUC-20614917777",
+              "name": "RIVCONSTRUCTION E.I.R.L."
+            },
+            {
+              "id": "PE-RUC-20602120831",
+              "name": "PERUNOVO ARQUITECTURA & CONSTRUCCION S.A.C."
+            },
+            {
+              "id": "PE-RUC-20600794770",
+              "name": "EDIFATEL S.A.C."
+            },
+            {
+              "id": "PE-RUC-20472595840",
+              "name": "GONZALES & CIA.CONTRATISTAS GENERALES SA"
+            }
+          ],
+          "numberOfTenderers": 15
+        },
+        "parties": [
+          {
+            "id": "PE-CONSUCODE-1926",
+            "name": "BANCO CENTRAL DE RESERVA DEL PERÚ",
+            "identifier": {
+              "id": "1926",
+              "scheme": "PE-CONSUCODE",
+              "legalName": "BANCO CENTRAL DE RESERVA DEL PERÚ"
+            },
+            "additionalIdentifiers": [
+              {
+                "id": "20122476309",
+                "scheme": "PE-RUC",
+                "legalName": "BANCO CENTRAL DE RESERVA DEL PERÚ"
+              }
+            ],
+            "address": {
+              "streetAddress": "Jr. Miró Quesada 445-445",
+              "locality": "LIMA",
+              "region": "LIMA",
+              "department": "LIMA",
+              "countryName": "PERU"
+            },
+            "roles": [
+              "buyer",
+              "procuringEntity"
+            ]
+          },
+          {
+            "id": "PE-RUC-10756093440",
+            "name": "CONDEZO FATAMA ESTEFANIE MUTTY MARIANA",
+            "identifier": {
+              "scheme": "PE-RUC",
+              "id": "10756093440",
+              "legalName": "CONDEZO FATAMA ESTEFANIE MUTTY MARIANA"
+            },
+            "contactPoint": {
+              "email": "Ver datos en Ficha del Proveedor",
+              "telephone": "Ver dato en ficha del proveedor"
+            },
+            "roles": [
+              "tenderer"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "id": "seace_v3",
+            "name": "Sistema Electrónico de Contrataciones del Estado - Versión 3",
+            "url": "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+          }
+        ],
+        "dataSegmentation": {
+          "id": "2026-08",
+          "criteria": [
+            "añoInicioConvocatoria",
+            "mesInicioConvocatoria"
+          ]
+        },
+        "awards": [
+          {
+            "id": "1240818-20472595840",
+            "value": {
+              "amount": 159310,
+              "currency": "PEN",
+              "currencyName": "Soles"
+            },
+            "items": [
+              {
+                "id": "21347121",
+                "position": "1",
+                "description": "Servicio de mantenimiento de tabiques de madera",
+                "statusDetails": "ADJUDICADO",
+                "status": "pending",
+                "classification": {
+                  "id": "7212110300225152",
+                  "description": "SERVICIO DE MANTENIMIENTO DE TABIQUERIA",
+                  "scheme": "CUBSO"
+                },
+                "additionalClassifications": [
+                  {
+                    "id": "72121103",
+                    "description": "Servicios de renovación y reparación de edificios comerciales y de oficinas",
+                    "scheme": "UNSPSC"
+                  }
+                ],
+                "quantity": 1,
+                "totalValue": {
+                  "amount": 159310,
+                  "currency": "PEN",
+                  "currencyName": "Soles"
+                },
+                "unit": {
+                  "id": "36",
+                  "name": "Servicio",
+                  "scheme": "PE-SEACE3-UnidadMedida"
+                }
+              }
+            ],
+            "date": "2026-08-31T00:00:00-05:00",
+            "suppliers": [
+              {
+                "id": "PE-RUC-20472595840",
+                "name": "GONZALES & CIA.CONTRATISTAS GENERALES SA"
+              }
+            ]
+          }
+        ]
+      },
+      "ocid": "ocds-dgv273-seacev3-2026-1926-186",
+      "releases": [
+        {
+          "url": "https://contratacionesabiertas.oece.gob.pe/api/v1/release/ocds-dgv273-seacev3-2026-1926-186-2026-09-01T10:23:59.523794-05:00",
+          "date": "2026-09-01T10:23:59.523782-05:00",
+          "tag": [
+            "planning",
+            "tender",
+            "award"
+          ],
+          "details": {
+            "id": "ocds-dgv273-seacev3-2026-1926-186-2026-09-01T10:23:59.523794-05:00",
+            "tender": {
+              "id": "1240818",
+              "title": "CP-ABR-42-2026-BCRPLIM-1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compiledRelease": {
+        "tag": [
+          "compiled"
+        ],
+        "id": "ocds-dgv273-seacev3-1245699-2026-09-01T10:23:59.510954-05:00",
+        "date": "2026-09-01T10:23:59.510941-05:00",
+        "ocid": "ocds-dgv273-seacev3-1245699",
+        "publishedDate": "2026-09-01T10:23:59.510960-05:00",
+        "initiationType": "tender",
+        "buyer": {
+          "id": "PE-CONSUCODE-43",
+          "name": "GOBIERNO REGIONAL DE LAMBAYEQUE Sede Central"
+        },
+        "planning": {
+          "budget": {
+            "description": "Fondos Públicos"
+          }
+        },
+        "tender": {
+          "id": "1245699",
+          "title": "CP-ABR-18-2026-GR.LAMB/CS-3",
+          "description": "CONTRATACIÓN DEL SERVICIO DE CONSULTORÍA DE OBRA PARA LA ELABORACIÓN DEL ESTUDIO DE PREINVERSIÓN DEL PROYECTO:  \"MEJORAMIENTO Y AMPLIACIÓN DE LA RED DE SERVICIO(S) DE AGUA POTABLE RURAL Y DE ALCANTARILLADO U OTRAS FORMAS DE DISPOSICIÓN SANITARIA DE EXCRETAS EN 6 SISTEMAS DE AGUA POTABLE-CI 435452",
+          "procuringEntity": {
+            "id": "PE-CONSUCODE-43",
+            "name": "GOBIERNO REGIONAL DE LAMBAYEQUE Sede Central"
+          },
+          "datePublished": "2026-08-28T18:12:00-05:00",
+          "procurementMethodDetails": "Concurso Público Abreviado",
+          "mainProcurementCategory": "services",
+          "additionalProcurementCategories": [
+            "services"
+          ],
+          "value": {
+            "amount": 158449.49,
+            "currency": "PEN",
+            "currencyName": "Soles",
+            "amount_PEN": 158449.49
+          },
+          "tenderPeriod": {
+            "startDate": "2026-08-28T00:00:00-05:00",
+            "endDate": "2026-08-28T00:00:00-05:00"
+          },
+          "enquiryPeriod": {
+            "startDate": "2026-08-29T00:01:00-05:00",
+            "endDate": "2026-09-02T23:59:00-05:00",
+            "durationInDays": 4
+          },
+          "items": [
+            {
+              "id": "21358909",
+              "position": "1",
+              "description": "CONTRATACIÓN DEL SERVICIO DE CONSULTORÍA DE OBRA PARA LA ELABORACIÓN DEL ESTUDIO DE PREINVERSIÓN DEL PROYECTO",
+              "statusDetails": "CONVOCADO",
+              "status": "active",
+              "classification": {
+                "id": "8110151500337566",
+                "description": "ELABORACION DE EXPEDIENTE TECNICO DE OBRA PARA AMPLIACION DE SISTEMA DE AGUA POTABLE Y ALCANTARILLADO",
+                "scheme": "CUBSO"
+              },
+              "additionalClassifications": [
+                {
+                  "id": "81101515",
+                  "description": "Ingeniería de infraestructura de plantas o instalaciones",
+                  "scheme": "UNSPSC"
+                }
+              ],
+              "quantity": 1,
+              "totalValue": {
+                "amount": 158449.49,
+                "currency": "PEN",
+                "currencyName": "Soles"
+              },
+              "unit": {
+                "id": "36",
+                "name": "Servicio",
+                "scheme": "PE-SEACE3-UnidadMedida"
+              }
+            }
+          ],
+          "documents": [
+            {
+              "id": "24831474986076761",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=6c66e68f-0b75-4bb7-ab5f-5ed4906aff42",
+              "datePublished": "2026-08-28T18:12:00-05:00",
+              "format": "pdf",
+              "documentType": "biddingDocuments",
+              "title": "Bases Administrativas",
+              "language": "es"
+            },
+            {
+              "id": "24831474986076762",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=0f4a703e-df44-4868-8b44-aab9bc145c26",
+              "datePublished": "2026-08-28T18:12:00-05:00",
+              "format": "pdf",
+              "documentType": "evaluationReports",
+              "title": "Informe que sustenta la declaratoria de Desierto",
+              "language": "es"
+            }
+          ],
+          "hasTenderInformationProtectedByLaw": true
+        },
+        "parties": [
+          {
+            "id": "PE-CONSUCODE-43",
+            "name": "GOBIERNO REGIONAL DE LAMBAYEQUE Sede Central",
+            "identifier": {
+              "id": "43",
+              "scheme": "PE-CONSUCODE",
+              "legalName": "GOBIERNO REGIONAL DE LAMBAYEQUE Sede Central"
+            },
+            "additionalIdentifiers": [
+              {
+                "id": "20479569780",
+                "scheme": "PE-RUC",
+                "legalName": "GOBIERNO REGIONAL DE LAMBAYEQUE SEDE CENTRAL"
+              }
+            ],
+            "address": {
+              "streetAddress": "AV. JUAN TOMIS STACK NO 975LAMBAYEQUE - CHICLAYO - CHICLAYO",
+              "locality": "CHICLAYO",
+              "region": "CHICLAYO",
+              "department": "LAMBAYEQUE",
+              "countryName": "PERU"
+            },
+            "contactPoint": {
+              "telephone": "074 2110"
+            },
+            "roles": [
+              "buyer",
+              "procuringEntity"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "id": "seace_v3",
+            "name": "Sistema Electrónico de Contrataciones del Estado - Versión 3",
+            "url": "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+          }
+        ],
+        "dataSegmentation": {
+          "id": "2026-08",
+          "criteria": [
+            "añoInicioConvocatoria",
+            "mesInicioConvocatoria"
+          ]
+        }
+      },
+      "ocid": "ocds-dgv273-seacev3-1245699",
+      "releases": [
+        {
+          "url": "https://contratacionesabiertas.oece.gob.pe/api/v1/release/ocds-dgv273-seacev3-1245699-2026-09-01T10:23:59.510954-05:00",
+          "date": "2026-09-01T10:23:59.510941-05:00",
+          "tag": [
+            "planning",
+            "tender"
+          ],
+          "details": {
+            "id": "ocds-dgv273-seacev3-1245699-2026-09-01T10:23:59.510954-05:00",
+            "tender": {
+              "id": "1245699",
+              "title": "CP-ABR-18-2026-GR.LAMB/CS-3"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compiledRelease": {
+        "tag": [
+          "compiled"
+        ],
+        "id": "ocds-dgv273-seacev3-1245381-2026-09-01T10:23:59.504781-05:00",
+        "date": "2026-09-01T10:23:59.504769-05:00",
+        "ocid": "ocds-dgv273-seacev3-1245381",
+        "publishedDate": "2026-09-01T10:23:59.504787-05:00",
+        "initiationType": "tender",
+        "buyer": {
+          "id": "PE-CONSUCODE-838",
+          "name": "MUNICIPALIDAD PROVINCIAL DE QUISPICANCHIS - URCOS"
+        },
+        "planning": {
+          "budget": {
+            "description": "Fondos Públicos",
+            "project": "MEJORAMIENTO DEL SERVICIO DE PRÁCTICA DEPORTIVA Y/O RECREATIVA EN EL PARQUE REGIONAL DE LA FAMILIA DE CENTRO POBLADO URCOS DISTRITO DE URCOS DE LA PROVINCIA DE QUISPICANCHI DEL DEPARTAMENTO DE CUSCO",
+            "projectID": "2728616"
+          }
+        },
+        "tender": {
+          "id": "1245381",
+          "title": "SIE-SIE-5-2026-OC-MPQ-1",
+          "description": "CONTRATACIÓN DE CEMENTO PORTLAND TIPO IP X 42-50 KG PARA EL PROYECTO",
+          "procuringEntity": {
+            "id": "PE-CONSUCODE-838",
+            "name": "MUNICIPALIDAD PROVINCIAL DE QUISPICANCHIS - URCOS"
+          },
+          "datePublished": "2026-08-27T22:00:00-05:00",
+          "procurementMethod": "open",
+          "procurementMethodDetails": "Subasta Inversa Electrónica",
+          "mainProcurementCategory": "goods",
+          "additionalProcurementCategories": [
+            "goods"
+          ],
+          "value": {
+            "amount": 0,
+            "currency": "PEN",
+            "currencyName": "Soles",
+            "amount_PEN": 0
+          },
+          "tenderPeriod": {
+            "startDate": "2026-08-27T00:00:00-05:00",
+            "endDate": "2026-08-27T00:00:00-05:00"
+          },
+          "items": [
+            {
+              "id": "21358245",
+              "position": "1",
+              "description": "CEMENTO PORTLAND PUZOLANICO TIPO IP X 42.50 kg",
+              "statusDetails": "CONVOCADO",
+              "status": "active",
+              "classification": {
+                "id": "3011160100012953",
+                "description": "CEMENTO PORTLAND PUZOLANICO TIPO IP X 42.50 kg",
+                "scheme": "CUBSO"
+              },
+              "additionalClassifications": [
+                {
+                  "id": "30111601",
+                  "description": "Cemento",
+                  "scheme": "UNSPSC"
+                }
+              ],
+              "quantity": 3100,
+              "totalValue": {
+                "amount": 0,
+                "currency": "PEN",
+                "currencyName": "Soles"
+              },
+              "unit": {
+                "id": "39",
+                "name": "Tonelada Cubica",
+                "scheme": "PE-SEACE3-UnidadMedida"
+              }
+            }
+          ],
+          "documents": [
+            {
+              "id": "24831474986075586",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=85b4d0d9-4dd9-4098-97f8-04f131aaabba",
+              "datePublished": "2026-08-27T22:00:00-05:00",
+              "format": "docx",
+              "documentType": "biddingDocuments",
+              "title": "Bases Administrativas",
+              "language": "es"
+            }
+          ],
+          "hasTenderInformationProtectedByLaw": true
+        },
+        "parties": [
+          {
+            "id": "PE-CONSUCODE-838",
+            "name": "MUNICIPALIDAD PROVINCIAL DE QUISPICANCHIS - URCOS",
+            "identifier": {
+              "id": "838",
+              "scheme": "PE-CONSUCODE",
+              "legalName": "MUNICIPALIDAD PROVINCIAL DE QUISPICANCHIS - URCOS"
+            },
+            "additionalIdentifiers": [
+              {
+                "id": "20187172129",
+                "scheme": "PE-RUC",
+                "legalName": "MUNICIPALIDAD PROVINCIAL DE QUISPICANCHIS - URCOS"
+              }
+            ],
+            "address": {
+              "streetAddress": "AV CESAR VALLEJO NRO 109 PLAZA DE ARMAS URCOS",
+              "locality": "URCOS",
+              "region": "QUISPICANCHI",
+              "department": "CUSCO",
+              "countryName": "PERU"
+            },
+            "contactPoint": {
+              "telephone": "084307050"
+            },
+            "roles": [
+              "buyer",
+              "procuringEntity"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "id": "seace_v3",
+            "name": "Sistema Electrónico de Contrataciones del Estado - Versión 3",
+            "url": "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+          }
+        ],
+        "dataSegmentation": {
+          "id": "2026-08",
+          "criteria": [
+            "añoInicioConvocatoria",
+            "mesInicioConvocatoria"
+          ]
+        }
+      },
+      "ocid": "ocds-dgv273-seacev3-1245381",
+      "releases": [
+        {
+          "url": "https://contratacionesabiertas.oece.gob.pe/api/v1/release/ocds-dgv273-seacev3-1245381-2026-09-01T10:23:59.504781-05:00",
+          "date": "2026-09-01T10:23:59.504769-05:00",
+          "tag": [
+            "planning",
+            "tender"
+          ],
+          "details": {
+            "id": "ocds-dgv273-seacev3-1245381-2026-09-01T10:23:59.504781-05:00",
+            "tender": {
+              "id": "1245381",
+              "title": "SIE-SIE-5-2026-OC-MPQ-1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compiledRelease": {
+        "tag": [
+          "compiled"
+        ],
+        "id": "ocds-dgv273-seacev3-1243906-2026-09-01T10:23:59.497949-05:00",
+        "date": "2026-09-01T10:23:59.497936-05:00",
+        "ocid": "ocds-dgv273-seacev3-1243906",
+        "publishedDate": "2026-09-01T10:23:59.497954-05:00",
+        "initiationType": "tender",
+        "buyer": {
+          "id": "PE-CONSUCODE-2381",
+          "name": "ENTIDAD PRESTADORA DE SERVICIO DE SANEAMIENTO GRAU S.A."
+        },
+        "planning": {
+          "budget": {
+            "description": "Fondos Públicos"
+          }
+        },
+        "tender": {
+          "id": "1243906",
+          "title": "LP-ABR-11-2026-EPS GRAU SA-GG-1",
+          "description": "ADQUISICIÓN DE COMBUSTIBLE DIESEL B5 S-50 PARA LAS UNIDADES VEHICULAES VINCULADOS A LAS ACTIVIDADES DE DISTRIBUCION DE AGUA POTABLE EN EL MARCO DEL CONVENI N°038-2026/VIVIENDA/VMCS/PNSU/DE",
+          "procuringEntity": {
+            "id": "PE-CONSUCODE-2381",
+            "name": "ENTIDAD PRESTADORA DE SERVICIO DE SANEAMIENTO GRAU S.A."
+          },
+          "datePublished": "2026-08-24T16:45:00-05:00",
+          "procurementMethodDetails": "Licitación Pública Abreviada",
+          "mainProcurementCategory": "goods",
+          "additionalProcurementCategories": [
+            "goods"
+          ],
+          "value": {
+            "amount": 0,
+            "currency": "PEN",
+            "currencyName": "Soles",
+            "amount_PEN": 0
+          },
+          "tenderPeriod": {
+            "startDate": "2026-08-24T00:00:00-05:00",
+            "endDate": "2026-08-24T00:00:00-05:00"
+          },
+          "enquiryPeriod": {
+            "startDate": "2026-08-25T00:01:00-05:00",
+            "endDate": "2026-08-27T23:59:00-05:00",
+            "durationInDays": 2
+          },
+          "items": [
+            {
+              "id": "21354304",
+              "position": "1",
+              "description": "DIESEL B5 S-50",
+              "statusDetails": "CONVOCADO",
+              "status": "active",
+              "classification": {
+                "id": "1510150500233280",
+                "description": "DIESEL B5 S-50",
+                "scheme": "CUBSO"
+              },
+              "additionalClassifications": [
+                {
+                  "id": "15101505",
+                  "description": "Diesel",
+                  "scheme": "UNSPSC"
+                }
+              ],
+              "quantity": 8480,
+              "totalValue": {
+                "amount": 0,
+                "currency": "PEN",
+                "currencyName": "Soles"
+              },
+              "unit": {
+                "id": "13",
+                "name": "Galon",
+                "scheme": "PE-SEACE3-UnidadMedida"
+              }
+            }
+          ],
+          "documents": [
+            {
+              "id": "24831474986069459",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=13e6dd74-dfa5-4887-83db-a3ae2c56ed85",
+              "datePublished": "2026-08-24T16:45:00-05:00",
+              "format": "pdf",
+              "documentType": "biddingDocuments",
+              "title": "Bases Administrativas",
+              "language": "es"
+            }
+          ],
+          "hasTenderInformationProtectedByLaw": true
+        },
+        "parties": [
+          {
+            "id": "PE-CONSUCODE-2381",
+            "name": "ENTIDAD PRESTADORA DE SERVICIO DE SANEAMIENTO GRAU S.A.",
+            "identifier": {
+              "id": "2381",
+              "scheme": "PE-CONSUCODE",
+              "legalName": "ENTIDAD PRESTADORA DE SERVICIO DE SANEAMIENTO GRAU S.A."
+            },
+            "additionalIdentifiers": [
+              {
+                "id": "20102762925",
+                "scheme": "PE-RUC",
+                "legalName": "ENTIDAD PRESTADORA DE SERVICIO DE SANEAMIENTO GRAU S.A."
+              }
+            ],
+            "address": {
+              "streetAddress": "LA ARENA CON JR. ZELAYA S/N",
+              "locality": "PIURA",
+              "region": "PIURA",
+              "department": "PIURA",
+              "countryName": "PERU"
+            },
+            "contactPoint": {
+              "telephone": "073-306147",
+              "url": "https://WWW.EPSGRAU.COM.PE"
+            },
+            "roles": [
+              "buyer",
+              "procuringEntity"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "id": "seace_v3",
+            "name": "Sistema Electrónico de Contrataciones del Estado - Versión 3",
+            "url": "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+          }
+        ],
+        "dataSegmentation": {
+          "id": "2026-08",
+          "criteria": [
+            "añoInicioConvocatoria",
+            "mesInicioConvocatoria"
+          ]
+        }
+      },
+      "ocid": "ocds-dgv273-seacev3-1243906",
+      "releases": [
+        {
+          "url": "https://contratacionesabiertas.oece.gob.pe/api/v1/release/ocds-dgv273-seacev3-1243906-2026-09-01T10:23:59.497949-05:00",
+          "date": "2026-09-01T10:23:59.497936-05:00",
+          "tag": [
+            "planning",
+            "tender"
+          ],
+          "details": {
+            "id": "ocds-dgv273-seacev3-1243906-2026-09-01T10:23:59.497949-05:00",
+            "tender": {
+              "id": "1243906",
+              "title": "LP-ABR-11-2026-EPS GRAU SA-GG-1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compiledRelease": {
+        "tag": [
+          "compiled"
+        ],
+        "id": "ocds-dgv273-seacev3-2026-2396-31-2026-09-01T10:23:59.462001-05:00",
+        "date": "2026-09-01T10:23:59.461988-05:00",
+        "ocid": "ocds-dgv273-seacev3-2026-2396-31",
+        "publishedDate": "2026-09-01T10:23:59.462007-05:00",
+        "initiationType": "tender",
+        "buyer": {
+          "id": "PE-CONSUCODE-2396",
+          "name": "EMPRESA DE GENERACION ELECTRICA MACHUPICCHU"
+        },
+        "planning": {
+          "budget": {
+            "description": "Fondos Públicos"
+          }
+        },
+        "tender": {
+          "id": "1246155",
+          "title": "LP-ABR-4-2026-EGEMSA-1",
+          "description": "ADQUISICION DE REGISTRADORES DE FALLA PARA I FASE CHM",
+          "procuringEntity": {
+            "id": "PE-CONSUCODE-2396",
+            "name": "EMPRESA DE GENERACION ELECTRICA MACHUPICCHU"
+          },
+          "datePublished": "2026-08-31T22:35:00-05:00",
+          "procurementMethodDetails": "Licitación Pública Abreviada",
+          "mainProcurementCategory": "goods",
+          "additionalProcurementCategories": [
+            "goods"
+          ],
+          "value": {
+            "amount": 0,
+            "currency": "USD",
+            "currencyName": "Dólar Norteamericano",
+            "amount_PEN": 0
+          },
+          "tenderPeriod": {
+            "startDate": "2026-08-31T00:00:00-05:00",
+            "endDate": "2026-08-31T00:00:00-05:00"
+          },
+          "enquiryPeriod": {
+            "startDate": "2026-09-01T00:01:00-05:00",
+            "endDate": "2026-09-03T23:59:00-05:00",
+            "durationInDays": 2
+          },
+          "items": [
+            {
+              "id": "21360365",
+              "position": "1",
+              "description": "ADQUISICION DE REGISTRADORES DE FALLA PARA FASE I CENTRAL HIDROELECTRICA MACHUPICCHU",
+              "statusDetails": "CONVOCADO",
+              "status": "active",
+              "quantity": 2,
+              "totalValue": {
+                "amount": 0,
+                "currency": "USD",
+                "currencyName": "Dólar Norteamericano"
+              },
+              "unit": {
+                "id": "40",
+                "name": "Unidad",
+                "scheme": "PE-SEACE3-UnidadMedida"
+              }
+            }
+          ],
+          "documents": [
+            {
+              "id": "24831474986078923",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=8627c6ed-5230-4fb6-9b0b-49cd735c1fd5",
+              "datePublished": "2026-08-31T22:35:00-05:00",
+              "format": "zip",
+              "documentType": "biddingDocuments",
+              "title": "Bases Administrativas",
+              "language": "es"
+            }
+          ],
+          "hasTenderInformationProtectedByLaw": false
+        },
+        "parties": [
+          {
+            "id": "PE-CONSUCODE-2396",
+            "name": "EMPRESA DE GENERACION ELECTRICA MACHUPICCHU",
+            "identifier": {
+              "id": "2396",
+              "scheme": "PE-CONSUCODE",
+              "legalName": "EMPRESA DE GENERACION ELECTRICA MACHUPICCHU"
+            },
+            "additionalIdentifiers": [
+              {
+                "id": "20218339167",
+                "scheme": "PE-RUC",
+                "legalName": "EMPRESA DE GENERACION ELECTRICA MACHUPICCHU"
+              }
+            ],
+            "address": {
+              "streetAddress": "MACHUPICCHU S/N. CENTRAL TÉRMICA DOLORESPATA",
+              "locality": "CUSCO",
+              "region": "CUSCO",
+              "department": "CUSCO",
+              "countryName": "PERU"
+            },
+            "contactPoint": {
+              "telephone": "084211150"
+            },
+            "roles": [
+              "buyer",
+              "procuringEntity"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "id": "seace_v3",
+            "name": "Sistema Electrónico de Contrataciones del Estado - Versión 3",
+            "url": "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+          }
+        ],
+        "dataSegmentation": {
+          "id": "2026-08",
+          "criteria": [
+            "añoInicioConvocatoria",
+            "mesInicioConvocatoria"
+          ]
+        }
+      },
+      "ocid": "ocds-dgv273-seacev3-2026-2396-31",
+      "releases": [
+        {
+          "url": "https://contratacionesabiertas.oece.gob.pe/api/v1/release/ocds-dgv273-seacev3-2026-2396-31-2026-09-01T10:23:59.462001-05:00",
+          "date": "2026-09-01T10:23:59.461988-05:00",
+          "tag": [
+            "planning",
+            "tender"
+          ],
+          "details": {
+            "id": "ocds-dgv273-seacev3-2026-2396-31-2026-09-01T10:23:59.462001-05:00",
+            "tender": {
+              "id": "1246155",
+              "title": "LP-ABR-4-2026-EGEMSA-1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compiledRelease": {
+        "tag": [
+          "compiled"
+        ],
+        "id": "ocds-dgv273-seacev3-1246159-2026-09-01T10:23:59.455971-05:00",
+        "date": "2026-09-01T10:23:59.455959-05:00",
+        "ocid": "ocds-dgv273-seacev3-1246159",
+        "publishedDate": "2026-09-01T10:23:59.455977-05:00",
+        "initiationType": "tender",
+        "buyer": {
+          "id": "PE-CONSUCODE-10247",
+          "name": "EJERCITO PERUANO"
+        },
+        "planning": {
+          "budget": {
+            "description": "Fondos Públicos"
+          }
+        },
+        "tender": {
+          "id": "1246159",
+          "title": "CP-ABR-1-2026-EP/UO 0828-2",
+          "description": "SERVICIO DE MANTENIMIENTO DE INFRAESTRUCTURA CONSTRUIDA DE 200 ML DEL CERCO PERIMÉTRICO (SECTOR NORESTE) DEL FUERTE MARISCAL ANDRÉS AVELINO CÁCERES DE LA 5a BRIG SVA PROT AMAZONIA",
+          "procuringEntity": {
+            "id": "PE-CONSUCODE-10247",
+            "name": "EJERCITO PERUANO"
+          },
+          "datePublished": "2026-08-31T22:27:00-05:00",
+          "procurementMethodDetails": "Concurso Público Abreviado",
+          "mainProcurementCategory": "services",
+          "additionalProcurementCategories": [
+            "services"
+          ],
+          "value": {
+            "amount": 0,
+            "currency": "PEN",
+            "currencyName": "Soles",
+            "amount_PEN": 0
+          },
+          "tenderPeriod": {
+            "startDate": "2026-08-31T00:00:00-05:00",
+            "endDate": "2026-08-31T00:00:00-05:00"
+          },
+          "enquiryPeriod": {
+            "startDate": "2026-09-01T00:01:00-05:00",
+            "endDate": "2026-09-03T23:59:00-05:00",
+            "durationInDays": 2
+          },
+          "items": [
+            {
+              "id": "21360359",
+              "position": "1",
+              "description": "SERVICIO DE MANTENIMIENTO DE INFRAESTRUCTURA CONSTRUIDA",
+              "statusDetails": "CONVOCADO",
+              "status": "active",
+              "quantity": 1,
+              "totalValue": {
+                "amount": 0,
+                "currency": "PEN",
+                "currencyName": "Soles"
+              },
+              "unit": {
+                "id": "40",
+                "name": "Unidad",
+                "scheme": "PE-SEACE3-UnidadMedida"
+              }
+            }
+          ],
+          "documents": [
+            {
+              "id": "24831474986078903",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=255921d5-4fd6-4bbb-b9b0-9b3706131e62",
+              "datePublished": "2026-08-31T22:27:00-05:00",
+              "format": "pdf",
+              "documentType": "biddingDocuments",
+              "title": "Bases Administrativas",
+              "language": "es"
+            },
+            {
+              "id": "24831474986078904",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=4b54e6d4-3fed-478b-be4b-9cbb6daa7a98",
+              "datePublished": "2026-08-31T22:27:00-05:00",
+              "format": "pdf",
+              "documentType": "evaluationReports",
+              "title": "Informe que sustenta la declaratoria de Desierto",
+              "language": "es"
+            }
+          ],
+          "hasTenderInformationProtectedByLaw": false
+        },
+        "parties": [
+          {
+            "id": "PE-CONSUCODE-10247",
+            "name": "EJERCITO PERUANO",
+            "identifier": {
+              "id": "10247",
+              "scheme": "PE-CONSUCODE",
+              "legalName": "EJERCITO PERUANO"
+            },
+            "additionalIdentifiers": [
+              {
+                "id": "20131369124",
+                "scheme": "PE-RUC",
+                "legalName": "EJERCITO PERUANO"
+              }
+            ],
+            "address": {
+              "streetAddress": "AV. BOULEVARD LIMA",
+              "locality": "SAN BORJA",
+              "region": "LIMA",
+              "department": "LIMA",
+              "countryName": "PERU"
+            },
+            "contactPoint": {
+              "telephone": "956091695"
+            },
+            "roles": [
+              "buyer",
+              "procuringEntity"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "id": "seace_v3",
+            "name": "Sistema Electrónico de Contrataciones del Estado - Versión 3",
+            "url": "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+          }
+        ],
+        "dataSegmentation": {
+          "id": "2026-08",
+          "criteria": [
+            "añoInicioConvocatoria",
+            "mesInicioConvocatoria"
+          ]
+        }
+      },
+      "ocid": "ocds-dgv273-seacev3-1246159",
+      "releases": [
+        {
+          "url": "https://contratacionesabiertas.oece.gob.pe/api/v1/release/ocds-dgv273-seacev3-1246159-2026-09-01T10:23:59.455971-05:00",
+          "date": "2026-09-01T10:23:59.455959-05:00",
+          "tag": [
+            "planning",
+            "tender"
+          ],
+          "details": {
+            "id": "ocds-dgv273-seacev3-1246159-2026-09-01T10:23:59.455971-05:00",
+            "tender": {
+              "id": "1246159",
+              "title": "CP-ABR-1-2026-EP/UO 0828-2"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compiledRelease": {
+        "tag": [
+          "compiled"
+        ],
+        "id": "ocds-dgv273-seacev3-1245418-2026-09-01T10:23:59.449635-05:00",
+        "date": "2026-09-01T10:23:59.449622-05:00",
+        "ocid": "ocds-dgv273-seacev3-1245418",
+        "publishedDate": "2026-09-01T10:23:59.449640-05:00",
+        "initiationType": "tender",
+        "buyer": {
+          "id": "PE-CONSUCODE-205010",
+          "name": "MUNICIPALIDAD DISTRITAL DE SAN ANTONIO"
+        },
+        "planning": {
+          "budget": {
+            "description": "Fondos Públicos",
+            "project": "MEJORAMIENTO DEL SERVICIO DE MOVILIDAD URBANA EN LA AVENIDA SAN ANTONIO NORTE DEL DISTRITO DE SAN ANTONIO DE LA PROVINCIA DE MARISCAL NIETO DEL DEPARTAMENTO DE MOQUEGUA",
+            "projectID": "2665431"
+          }
+        },
+        "tender": {
+          "id": "1245418",
+          "title": "CP-ABR-23-2026-C/MDSA-2",
+          "description": "CONTRATACIÓN DE CONSULTORÍA DE OBRA PARA LA ELABORACION DE EXPEDIENTE TECNICO, PARA EL PROYECTO DENOMINADO",
+          "procuringEntity": {
+            "id": "PE-CONSUCODE-205010",
+            "name": "MUNICIPALIDAD DISTRITAL DE SAN ANTONIO"
+          },
+          "datePublished": "2026-08-28T15:00:00-05:00",
+          "procurementMethodDetails": "Concurso Público Abreviado",
+          "mainProcurementCategory": "services",
+          "additionalProcurementCategories": [
+            "services"
+          ],
+          "value": {
+            "amount": 243000,
+            "currency": "PEN",
+            "currencyName": "Soles",
+            "amount_PEN": 243000
+          },
+          "tenderPeriod": {
+            "startDate": "2026-08-28T00:00:00-05:00",
+            "endDate": "2026-08-28T00:00:00-05:00"
+          },
+          "enquiryPeriod": {
+            "startDate": "2026-08-29T00:01:00-05:00",
+            "endDate": "2026-09-02T23:59:00-05:00",
+            "durationInDays": 4
+          },
+          "items": [
+            {
+              "id": "21358319",
+              "position": "1",
+              "description": "CONTRATACIÓN DE CONSULTORÍA DE OBRA PARA LA ELABORACION DE EXPEDIENTE TECNICO",
+              "statusDetails": "CONVOCADO",
+              "status": "active",
+              "classification": {
+                "id": "8110151000365140",
+                "description": "ELABORACION DE EXPEDIENTE TECNICO DE OBRA PARA CONSTRUCCION DE CAMINOS VECINALES",
+                "scheme": "CUBSO"
+              },
+              "additionalClassifications": [
+                {
+                  "id": "81101510",
+                  "description": "Ingeniería de carreteras",
+                  "scheme": "UNSPSC"
+                }
+              ],
+              "quantity": 1,
+              "totalValue": {
+                "amount": 243000,
+                "currency": "PEN",
+                "currencyName": "Soles"
+              },
+              "unit": {
+                "id": "36",
+                "name": "Servicio",
+                "scheme": "PE-SEACE3-UnidadMedida"
+              }
+            }
+          ],
+          "documents": [
+            {
+              "id": "24831474986076168",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=a2ab4d97-75f7-473b-81d7-71a7b46ecc53",
+              "datePublished": "2026-08-28T15:00:00-05:00",
+              "format": "rar",
+              "documentType": "biddingDocuments",
+              "title": "Bases Administrativas",
+              "language": "es"
+            },
+            {
+              "id": "24831474986076169",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=22f1b701-6239-4858-8d04-316c6b9560b4",
+              "datePublished": "2026-08-28T15:00:00-05:00",
+              "format": "pdf",
+              "documentType": "evaluationReports",
+              "title": "Informe que sustenta la declaratoria de Desierto",
+              "language": "es"
+            }
+          ],
+          "hasTenderInformationProtectedByLaw": true
+        },
+        "parties": [
+          {
+            "id": "PE-CONSUCODE-205010",
+            "name": "MUNICIPALIDAD DISTRITAL DE SAN ANTONIO",
+            "identifier": {
+              "id": "205010",
+              "scheme": "PE-CONSUCODE",
+              "legalName": "MUNICIPALIDAD DISTRITAL DE SAN ANTONIO"
+            },
+            "additionalIdentifiers": [
+              {
+                "id": "20608197037",
+                "scheme": "PE-RUC",
+                "legalName": "MUNICIPALIDAD DISTRITAL DE SAN ANTONIO"
+              }
+            ],
+            "address": {
+              "streetAddress": "AV. CENTRAL MZA. D LOTE 04",
+              "locality": "SAN ANTONIO",
+              "region": "MARISCAL NIETO",
+              "department": "MOQUEGUA",
+              "countryName": "PERU"
+            },
+            "contactPoint": {
+              "telephone": "053-792606"
+            },
+            "roles": [
+              "buyer",
+              "procuringEntity"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "id": "seace_v3",
+            "name": "Sistema Electrónico de Contrataciones del Estado - Versión 3",
+            "url": "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+          }
+        ],
+        "dataSegmentation": {
+          "id": "2026-08",
+          "criteria": [
+            "añoInicioConvocatoria",
+            "mesInicioConvocatoria"
+          ]
+        }
+      },
+      "ocid": "ocds-dgv273-seacev3-1245418",
+      "releases": [
+        {
+          "url": "https://contratacionesabiertas.oece.gob.pe/api/v1/release/ocds-dgv273-seacev3-1245418-2026-09-01T10:23:59.449635-05:00",
+          "date": "2026-09-01T10:23:59.449622-05:00",
+          "tag": [
+            "planning",
+            "tender"
+          ],
+          "details": {
+            "id": "ocds-dgv273-seacev3-1245418-2026-09-01T10:23:59.449635-05:00",
+            "tender": {
+              "id": "1245418",
+              "title": "CP-ABR-23-2026-C/MDSA-2"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compiledRelease": {
+        "tag": [
+          "compiled"
+        ],
+        "id": "ocds-dgv273-seacev3-1243848-2026-09-01T10:23:59.443517-05:00",
+        "date": "2026-09-01T10:23:59.443504-05:00",
+        "ocid": "ocds-dgv273-seacev3-1243848",
+        "publishedDate": "2026-09-01T10:23:59.443522-05:00",
+        "initiationType": "tender",
+        "buyer": {
+          "id": "PE-CONSUCODE-224",
+          "name": "MUNICIPALIDAD DISTRITAL DE SAN MARCOS"
+        },
+        "planning": {
+          "budget": {
+            "description": "Fondos Públicos",
+            "project": "MEJORAMIENTO Y AMPLIACION DEL SERVICIO DE TRÁNSITO PEATONAL INTERURBANO O RURAL EN EL CAMINO DE HERRADURA DEL SECTOR FLORES DEL C.P. DE PICHIU QUINHUARAGRA DISTRITO DE SAN MARCOS DE LA PROVINCIA DE HUARI DEL DEPARTAMENTO DE ANCASH",
+            "projectID": "2672714"
+          }
+        },
+        "tender": {
+          "id": "1243848",
+          "title": "LP-ABR-241-2026-MDSM/CS-1",
+          "description": "CONTRATACION DE EJECUCION DE OBRA: MEJORAMIENTO Y AMPLIACION DEL SERVICIO DE TRÁNSITO PEATONAL INTERURBANO O RURAL EN EL CAMINO DE HERRADURA DEL SECTOR FLORES DEL C.P. DE PICHIU QUINHUARAGRA DISTRITO DE SAN MARCOS DE LA PROVINCIA DE HUARI DEL DEPARTAMENTO DE ANCASH, CON CUI N° 2672714",
+          "procuringEntity": {
+            "id": "PE-CONSUCODE-224",
+            "name": "MUNICIPALIDAD DISTRITAL DE SAN MARCOS"
+          },
+          "datePublished": "2026-08-25T21:11:00-05:00",
+          "procurementMethodDetails": "Licitación Pública Abreviada",
+          "mainProcurementCategory": "works",
+          "additionalProcurementCategories": [
+            "works"
+          ],
+          "value": {
+            "amount": 0,
+            "currency": "PEN",
+            "currencyName": "Soles",
+            "amount_PEN": 0
+          },
+          "tenderPeriod": {
+            "startDate": "2026-08-25T00:00:00-05:00",
+            "endDate": "2026-08-25T00:00:00-05:00"
+          },
+          "enquiryPeriod": {
+            "startDate": "2026-08-26T00:01:00-05:00",
+            "endDate": "2026-08-28T23:59:00-05:00",
+            "durationInDays": 2
+          },
+          "items": [
+            {
+              "id": "21354227",
+              "position": "1",
+              "description": "CONTRATACION DE EJECUCION DE OBRA",
+              "statusDetails": "CONVOCADO",
+              "status": "active",
+              "classification": {
+                "id": "7214100100233029",
+                "description": "CONSTRUCCION DE CARRETERA",
+                "scheme": "CUBSO"
+              },
+              "additionalClassifications": [
+                {
+                  "id": "72141001",
+                  "description": "Servicios de construcción de pistas y carreteras nuevas",
+                  "scheme": "UNSPSC"
+                }
+              ],
+              "quantity": 1,
+              "totalValue": {
+                "amount": 0,
+                "currency": "PEN",
+                "currencyName": "Soles"
+              },
+              "unit": {
+                "id": "36",
+                "name": "Servicio",
+                "scheme": "PE-SEACE3-UnidadMedida"
+              }
+            }
+          ],
+          "documents": [
+            {
+              "id": "24831474986071872",
+              "url": "https://prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=6fa339fe-dbc4-4607-997c-966cbb53f7ed",
+              "datePublished": "2026-08-25T21:11:00-05:00",
+              "format": "pdf",
+              "documentType": "biddingDocuments",
+              "title": "Bases Administrativas",
+              "language": "es"
+            }
+          ],
+          "hasTenderInformationProtectedByLaw": true
+        },
+        "parties": [
+          {
+            "id": "PE-CONSUCODE-224",
+            "name": "MUNICIPALIDAD DISTRITAL DE SAN MARCOS",
+            "identifier": {
+              "id": "224",
+              "scheme": "PE-CONSUCODE",
+              "legalName": "MUNICIPALIDAD DISTRITAL DE SAN MARCOS"
+            },
+            "additionalIdentifiers": [
+              {
+                "id": "20166544000",
+                "scheme": "PE-RUC",
+                "legalName": "MUNICIPALIDAD DISTRITAL DE SAN MARCOS"
+              }
+            ],
+            "address": {
+              "streetAddress": "JR. PROGRESO Nº 332",
+              "locality": "SAN MARCOS",
+              "region": "HUARI",
+              "department": "ANCASH",
+              "countryName": "PERU"
+            },
+            "contactPoint": {
+              "telephone": "043454525"
+            },
+            "roles": [
+              "buyer",
+              "procuringEntity"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "id": "seace_v3",
+            "name": "Sistema Electrónico de Contrataciones del Estado - Versión 3",
+            "url": "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+          }
+        ],
+        "dataSegmentation": {
+          "id": "2026-08",
+          "criteria": [
+            "añoInicioConvocatoria",
+            "mesInicioConvocatoria"
+          ]
+        }
+      },
+      "ocid": "ocds-dgv273-seacev3-1243848",
+      "releases": [
+        {
+          "url": "https://contratacionesabiertas.oece.gob.pe/api/v1/release/ocds-dgv273-seacev3-1243848-2026-09-01T10:23:59.443517-05:00",
+          "date": "2026-09-01T10:23:59.443504-05:00",
+          "tag": [
+            "planning",
+            "tender"
+          ],
+          "details": {
+            "id": "ocds-dgv273-seacev3-1243848-2026-09-01T10:23:59.443517-05:00",
+            "tender": {
+              "id": "1243848",
+              "title": "LP-ABR-241-2026-MDSM/CS-1"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

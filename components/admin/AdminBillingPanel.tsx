@@ -1,0 +1,264 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { BILLING_INTERVAL_LABELS, type BillingInterval } from "@/lib/access-control";
+import { PLAN_NAMES, type PaidPlan } from "@/lib/billing-catalog";
+
+type PaymentRequest = {
+  id: string; reference: string; email: string; plan: PaidPlan; billing_interval: BillingInterval;
+  currency: "USD"; amount_minor: number; status: string; sender_name: string | null;
+  sender_bank: string | null; sender_reference: string | null; sent_at: string | null;
+  customer_note: string | null; created_at: string; review_note: string | null;
+};
+type Subscription = {
+  id: string; email: string; plan: PaidPlan; status: string; billing_interval: BillingInterval;
+  current_period_start: string | null; current_period_end: string | null; cancel_at_period_end: boolean;
+  payment_source: "stripe" | "manual"; stripe_subscription_id: string | null;
+};
+type Audit = {
+  id: string; email: string; adminEmail: string | null; manual_payment_request_id: string | null;
+  subscription_id: string | null; action: string; note: string | null;
+  details: Record<string, unknown> | null; created_at: string;
+};
+type Data = { requests: PaymentRequest[]; subscriptions: Subscription[]; audit: Audit[] };
+
+const statusNames: Record<string, string> = { pending: "等待汇款", proof_submitted: "待核账", paid: "已到账", rejected: "已拒绝", expired: "已过期", cancelled: "已取消", active: "有效", trialing: "试用", past_due: "逾期" };
+const inputClass = "h-11 rounded-xl border border-[#d4dde1] bg-white px-3 text-sm text-[#071826]";
+
+export function AdminBillingPanel() {
+  const [data, setData] = useState<Data | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [showRequestHistory, setShowRequestHistory] = useState(false);
+  const [webhookTestStatus, setWebhookTestStatus] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [confirmingStop, setConfirmingStop] = useState<string | null>(null);
+  const [confirmingExtend, setConfirmingExtend] = useState<string | null>(null);
+  const [confirmingUndoExtend, setConfirmingUndoExtend] = useState<string | null>(null);
+  const [activation, setActivation] = useState<{ email: string; plan: PaidPlan; interval: BillingInterval; note: string }>({ email: "", plan: "professional", interval: "monthly", note: "" });
+
+  const load = useCallback(async () => {
+    const response = await fetch("/api/admin/billing", { cache: "no-store" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error ?? "无法读取账单后台。");
+    setData(result);
+  }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void load().catch((cause) => setError(cause.message));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+
+  const run = useCallback(async (payload: Record<string, unknown>, key: string) => {
+    setBusy(key); setError(null);
+    try {
+      const response = await fetch("/api/admin/billing", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? "操作失败。");
+      await load();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "操作失败。"); }
+    finally { setBusy(null); }
+  }, [load]);
+
+  const needle = query.trim().toLowerCase();
+  const requests = useMemo(() => (data?.requests ?? []).filter((item) => !needle || `${item.email} ${item.reference} ${item.sender_reference ?? ""}`.toLowerCase().includes(needle)), [data, needle]);
+  const openRequests = useMemo(() => requests.filter((item) => item.status === "pending" || item.status === "proof_submitted"), [requests]);
+  const historicalRequests = useMemo(() => requests.filter((item) => item.status !== "pending" && item.status !== "proof_submitted"), [requests]);
+  const visibleRequests = showRequestHistory || needle ? requests : openRequests;
+  const subscriptions = useMemo(() => (data?.subscriptions ?? []).filter((item) => !needle || item.email.toLowerCase().includes(needle)), [data, needle]);
+  const contactedRequests = useMemo(() => new Set((data?.audit ?? []).filter((item) => item.action === "manual_payment_customer_contacted").map((item) => item.manual_payment_request_id)), [data]);
+  const undoableExtensions = useMemo(() => {
+    const latestActions = new Map<string, Audit>();
+    for (const audit of data?.audit ?? []) {
+      if (audit.subscription_id && !latestActions.has(audit.subscription_id)) latestActions.set(audit.subscription_id, audit);
+    }
+    return new Set([...latestActions.entries()]
+      .filter(([, audit]) => audit.action === "manual_subscription_extend" && Object.hasOwn(audit.details ?? {}, "previous_cancel_at_period_end"))
+      .map(([subscriptionId]) => subscriptionId));
+  }, [data]);
+
+  function activate(event: FormEvent) {
+    event.preventDefault();
+    void run({ action: "activate", ...activation }, "activate");
+  }
+
+  async function testWebhookAlerts() {
+    setBusy("webhook-alert-test"); setError(null); setWebhookTestStatus(null);
+    try {
+      const response = await fetch("/api/admin/webhook-alert-test", { method: "POST" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? "Webhook 告警测试失败。");
+      setWebhookTestStatus(result.message ?? "测试通知已发送。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Webhook 告警测试失败。");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function testBillingAlerts() {
+    setBusy("billing-alert-test"); setError(null); setWebhookTestStatus(null);
+    try {
+      const response = await fetch("/api/admin/billing-alert-test", { method: "POST" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? "付款异常邮件测试失败。");
+      setWebhookTestStatus(result.message ?? "付款异常测试通知已发送。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "付款异常邮件测试失败。");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <main className="mx-auto max-w-[94rem] px-5 py-8 sm:px-8">
+      <AdminPageHeader eyebrow="Billing operations" title="收款与订阅" description="人工电汇只有在核实足额到账后才能开通。Stripe 订阅仍由 Stripe 管理。" />
+      {error && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</div>}
+
+      <section className="mt-6 flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-black text-[#071826]">Stripe Webhook 监控</h2>
+          <p className="mt-1 text-xs leading-5 text-[#64717c]">处理失败会显示后台告警并发送邮件；Stripe 重试成功后发送恢复通知。</p>
+          {webhookTestStatus && <p className="mt-2 text-xs font-bold text-emerald-700">{webhookTestStatus}</p>}
+        </div>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <button type="button" disabled={busy !== null} onClick={() => void testWebhookAlerts()} className="h-11 rounded-xl border border-[#b9c8ce] bg-white px-4 text-xs font-black text-[#071826] hover:bg-[#f4f7f7] disabled:opacity-50">
+            {busy === "webhook-alert-test" ? "正在发送…" : "测试 Webhook 监控邮件"}
+          </button>
+          <button type="button" disabled={busy !== null} onClick={() => void testBillingAlerts()} className="h-11 rounded-xl border border-[#b9c8ce] bg-white px-4 text-xs font-black text-[#071826] hover:bg-[#f4f7f7] disabled:opacity-50">
+            {busy === "billing-alert-test" ? "正在发送…" : "测试付款异常邮件"}
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-[#dbe2e5] bg-white p-5">
+        <h2 className="text-lg font-black text-[#071826]">人工开通订阅</h2>
+        <p className="mt-1 text-xs leading-5 text-[#64717c]">用于线下已确认收款、赠送或补偿。若账号已有 Stripe 订阅，系统会拒绝操作。</p>
+        <form onSubmit={activate} className="mt-4 grid gap-3 sm:grid-cols-[minmax(14rem,1fr)_10rem_10rem_minmax(12rem,1fr)_auto]">
+          <input required type="email" placeholder="客户登录邮箱" value={activation.email} onChange={(event) => setActivation((value) => ({ ...value, email: event.target.value }))} className={inputClass} />
+          <select value={activation.plan} onChange={(event) => setActivation((value) => ({ ...value, plan: event.target.value as PaidPlan }))} className={inputClass}><option value="professional">个人版</option><option value="enterprise">企业版</option></select>
+          <select value={activation.interval} onChange={(event) => setActivation((value) => ({ ...value, interval: event.target.value as BillingInterval }))} className={inputClass}><option value="monthly">按月</option><option value="semiannual">半年</option><option value="annual">年度</option></select>
+          <input maxLength={1000} placeholder="原因 / 到账凭证编号" value={activation.note} onChange={(event) => setActivation((value) => ({ ...value, note: event.target.value }))} className={inputClass} />
+          <button disabled={busy !== null} className="rounded-xl bg-[#071826] px-5 text-sm font-black text-white disabled:opacity-50">开通</button>
+        </form>
+      </section>
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-xl font-black text-[#071826]">国际电汇申请</h2>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <button type="button" disabled={Boolean(needle)} onClick={() => setShowRequestHistory((value) => !value)} className="h-11 rounded-xl border border-[#b9c8ce] bg-white px-4 text-xs font-black text-[#425461] hover:bg-[#f4f7f7] disabled:cursor-default disabled:opacity-60">
+            {needle ? "搜索包含历史记录" : showRequestHistory ? "隐藏历史记录" : `查看历史记录（${historicalRequests.length}）`}
+          </button>
+          <input placeholder="搜索邮箱、附言或交易号" value={query} onChange={(event) => setQuery(event.target.value)} className={`${inputClass} w-full sm:w-80`} />
+        </div>
+      </div>
+      <div className="mt-3 grid gap-4">
+        {visibleRequests.map((item) => (
+          <article key={item.id} className="rounded-2xl border border-[#dbe2e5] bg-white p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2"><span className="font-black text-[#071826]">{item.reference}</span><span className="rounded-full bg-[#f1f3f2] px-2.5 py-1 text-[11px] font-bold">{statusNames[item.status] ?? item.status}</span>{contactedRequests.has(item.id) && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">已联系客户</span>}</div>
+                <p className="mt-2 break-all text-sm font-bold text-[#425461]">{item.email}</p>
+                <p className="mt-1 text-sm text-[#64717c]">{PLAN_NAMES[item.plan]} · {BILLING_INTERVAL_LABELS[item.billing_interval]} · US${(item.amount_minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+                {(item.sender_reference || item.customer_note) && (
+                  <div className="mt-4 rounded-xl border border-[#b9c8ce] bg-[#f4f7f7] px-4 py-3 shadow-sm">
+                    {item.sender_reference && (
+                      <dl className="grid gap-x-6 gap-y-2 text-xs leading-5 text-[#425461] sm:grid-cols-2">
+                        <div><dt className="font-black text-[#071826]">汇款人 / 公司</dt><dd className="mt-0.5 break-words">{item.sender_name}</dd></div>
+                        <div><dt className="font-black text-[#071826]">汇出银行</dt><dd className="mt-0.5 break-words">{item.sender_bank}</dd></div>
+                        <div><dt className="font-black text-[#071826]">银行交易编号</dt><dd className="mt-0.5 break-all font-bold text-[#071826]">{item.sender_reference}</dd></div>
+                        <div><dt className="font-black text-[#071826]">汇款时间</dt><dd className="mt-0.5">{item.sent_at ? new Date(item.sent_at).toLocaleString("zh-CN") : "—"}</dd></div>
+                      </dl>
+                    )}
+                    {item.customer_note && (
+                      <div className={`${item.sender_reference ? "mt-3 border-t border-[#d4dde1] pt-3" : ""} text-xs leading-5 text-[#425461]`}>
+                        <div className="font-black text-[#071826]">客户备注</div>
+                        <p className="mt-0.5 break-words">{item.customer_note}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {(item.status === "pending" || item.status === "proof_submitted") && <div className="w-full shrink-0 lg:w-80">
+                <textarea rows={2} maxLength={1000} placeholder="审核备注；拒绝时必填" value={notes[item.id] ?? ""} onChange={(event) => setNotes((value) => ({ ...value, [item.id]: event.target.value }))} className="w-full rounded-xl border border-[#d4dde1] px-3 py-2 text-sm" />
+                <div className="mt-2 flex gap-2">
+                  <button disabled={busy !== null || contactedRequests.has(item.id)} onClick={() => void run({ action: "contacted", requestId: item.id, note: notes[item.id] }, item.id)} className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-black text-blue-700 disabled:opacity-50">{contactedRequests.has(item.id) ? "已记录联系" : "记录已联系"}</button>
+                  <button disabled={busy !== null} onClick={() => void run({ action: "approve", requestId: item.id, note: notes[item.id] }, item.id)} className="flex-1 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">确认到账并开通</button>
+                  <button disabled={busy !== null || !(notes[item.id] ?? "").trim()} onClick={() => void run({ action: "reject", requestId: item.id, note: notes[item.id] }, item.id)} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-700 disabled:opacity-40">拒绝</button>
+                </div>
+              </div>}
+            </div>
+          </article>
+        ))}
+        {!visibleRequests.length && (
+          <div className="rounded-2xl border border-dashed border-[#cfd9dd] p-8 text-center text-sm text-[#64717c]">
+            {needle ? "没有匹配的电汇申请。" : "目前没有需要处理的电汇申请；已完成记录可在历史记录中查看。"}
+          </div>
+        )}
+      </div>
+
+      <h2 className="mt-10 text-xl font-black text-[#071826]">订阅管理</h2>
+      <div className="mt-3 overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-white">
+        <table className="w-full min-w-[64rem] text-left text-sm"><thead className="bg-[#f1f3f2] text-xs text-[#64717c]"><tr><th className="p-3">账号</th><th>套餐</th><th>来源</th><th>状态</th><th>到期</th><th className="pr-3 text-right">操作</th></tr></thead>
+          <tbody className="divide-y divide-[#e5eaec]">
+            {subscriptions.map((item) => (
+              <tr key={item.id}>
+                <td className="p-3 font-bold">{item.email}</td>
+                <td>{PLAN_NAMES[item.plan]} · {BILLING_INTERVAL_LABELS[item.billing_interval]}</td>
+                <td>{item.payment_source === "stripe" ? "Stripe" : "人工"}</td>
+                <td>{statusNames[item.status] ?? item.status}{item.cancel_at_period_end ? "（到期停用）" : ""}</td>
+                <td>{item.current_period_end ? new Date(item.current_period_end).toLocaleDateString("zh-CN") : "—"}</td>
+                <td className="py-2 pr-3 text-right">
+                  {item.payment_source === "manual" ? (
+                    <div className="flex justify-end gap-2">
+                      {confirmingExtend === item.id ? (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[11px] font-bold text-amber-700">将延长一个计费周期；下一次操作前可撤销</span>
+                          <div className="flex gap-2">
+                            <button disabled={busy !== null} onClick={() => { setConfirmingExtend(null); void run({ action: "extend", subscriptionId: item.id }, item.id); }} className="rounded-lg bg-[#071826] px-2 py-1 text-xs font-black text-white">确认续一期</button>
+                            <button disabled={busy !== null} onClick={() => setConfirmingExtend(null)} className="rounded-lg border px-2 py-1 text-xs font-bold">返回</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button disabled={busy !== null} onClick={() => { setConfirmingStop(null); setConfirmingUndoExtend(null); setConfirmingExtend(item.id); }} className="rounded-lg border px-2 py-1 text-xs font-bold">续一期</button>
+                      )}
+                      {undoableExtensions.has(item.id) && (confirmingUndoExtend === item.id ? (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[11px] font-bold text-amber-700">恢复续期前的到期日和状态？</span>
+                          <div className="flex gap-2">
+                            <button disabled={busy !== null} onClick={() => { setConfirmingUndoExtend(null); void run({ action: "undo_extend", subscriptionId: item.id }, item.id); }} className="rounded-lg bg-amber-700 px-2 py-1 text-xs font-black text-white">确认撤销</button>
+                            <button disabled={busy !== null} onClick={() => setConfirmingUndoExtend(null)} className="rounded-lg border px-2 py-1 text-xs font-bold">返回</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button disabled={busy !== null} onClick={() => { setConfirmingStop(null); setConfirmingExtend(null); setConfirmingUndoExtend(item.id); }} className="rounded-lg border border-amber-300 px-2 py-1 text-xs font-bold text-amber-800">撤销最近续期</button>
+                      ))}
+                      {item.cancel_at_period_end ? (
+                        <button disabled={busy !== null} onClick={() => void run({ action: "resume", subscriptionId: item.id }, item.id)} className="rounded-lg border px-2 py-1 text-xs font-bold">恢复</button>
+                      ) : (
+                        <button disabled={busy !== null} onClick={() => void run({ action: "cancel_period_end", subscriptionId: item.id }, item.id)} className="rounded-lg border px-2 py-1 text-xs font-bold">到期停用</button>
+                      )}
+                      {confirmingStop === item.id ? (
+                        <>
+                          <button disabled={busy !== null} onClick={() => { setConfirmingStop(null); void run({ action: "cancel_now", subscriptionId: item.id }, item.id); }} className="rounded-lg bg-red-700 px-2 py-1 text-xs font-black text-white">确认停用</button>
+                          <button onClick={() => setConfirmingStop(null)} className="rounded-lg border px-2 py-1 text-xs font-bold">返回</button>
+                        </>
+                      ) : (
+                        <button disabled={busy !== null} onClick={() => { setConfirmingExtend(null); setConfirmingUndoExtend(null); setConfirmingStop(item.id); }} className="rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-700">立即停用</button>
+                      )}
+                    </div>
+                  ) : <span className="text-xs text-[#849098]">请在 Stripe 管理</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <details className="mt-8 rounded-2xl border border-[#dbe2e5] bg-white p-5"><summary className="cursor-pointer font-black text-[#071826]">最近操作记录</summary><div className="mt-4 divide-y text-xs">{(data?.audit ?? []).map((item) => <div key={item.id} className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr_1fr]"><span>{new Date(item.created_at).toLocaleString("zh-CN")}</span><span>{item.adminEmail} → {item.email}</span><span>{item.action}{item.note ? ` · ${item.note}` : ""}</span></div>)}</div></details>
+    </main>
+  );
+}

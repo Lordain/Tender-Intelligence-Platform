@@ -8,6 +8,7 @@ type DiscoverResult = {
   mappedCount: number;
   resolvedLinksCount: number;
   keptAfterRecencyCount: number;
+  excludedCsvPath?: string;
   months: number;
   upsertedCount?: number;
   skippedExcludedCount?: number;
@@ -138,6 +139,19 @@ function DiscoverSection() {
               {result.protectedCount ? `，${result.protectedCount} 条保留人工锁定的分类` : ""}
               {result.skippedManuallyDeletedCount ? `，跳过 ${result.skippedManuallyDeletedCount} 条人工删除过的` : ""}
               {result.failed && result.failed.length > 0 ? `，${result.failed.length} 条失败` : ""}
+            </p>
+          )}
+          {/*
+            The rejected titles, named. This step can legitimately write 0 out
+            of several hundred, and a count alone cannot tell "these really
+            were routine services" from "a keyword is missing" — which is how
+            four live INFOTEC cybersecurity procedures were lost until a human
+            happened to see them on Compras MX (2026-09-12).
+          */}
+          {result.excludedCsvPath && (
+            <p className="mt-1 text-[#75838c]">
+              被排除的标题已导出到 <code className="rounded bg-[#eef2f3] px-1 py-0.5 font-mono">{result.excludedCsvPath}</code>
+              ——扫一眼，看有没有本该留下的。
             </p>
           )}
         </div>

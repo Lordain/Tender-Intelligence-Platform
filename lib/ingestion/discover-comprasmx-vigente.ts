@@ -16,6 +16,7 @@ import { fetchAllVigenteLicitaciones, fetchLicitacionDetail, buildComprasMxDetai
 import { mapLicitiaVigenteRowToTender } from "@/lib/ingestion/licitia-vigente-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { filterRecentTenders } from "@/lib/ingestion/recency";
+import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "@/lib/ingestion/review-csv";
 import type { Tender } from "@/types/tender";
 
 /**
@@ -46,6 +47,8 @@ export type DiscoverComprasMxVigenteResult = {
   resolvedLinksCount: number;
   keptAfterRecencyCount: number;
   months: number;
+  /** Where this run's rejected titles were written, so the admin panel can name the file. Absent when the export could not be written (a locked file, a read-only deploy). */
+  excludedCsvPath?: string;
   upsertedCount?: number;
   skippedExcludedCount?: number;
   protectedCount?: number;
@@ -112,6 +115,33 @@ export async function discoverComprasMxVigente(
     `[discover-comprasmx-vigente] Mapped ${tenders.length} of ${newRows.length} new rows (${resolvedLinks} with a real deep link); keeping ${recent.length} within the last ${months || "unlimited"} month(s).`,
   );
 
+  // Every title this run threw away, on disk.
+  //
+  // This step downloads ~372k rows over several minutes and can legitimately
+  // write nothing — a real run on 2026-09-12 mapped 661 and upserted 0,
+  // because these bulk rows carry no value and Mexico is in
+  // UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL, so an ICT/works keyword is the
+  // only thing that can keep one. That is sometimes right and sometimes a
+  // missing keyword, and the two look identical from the outside: four live
+  // INFOTEC cybersecurity procedures were lost that way and only came back
+  // because a human happened to see them on Compras MX the same day.
+  //
+  // A count cannot tell those apart. A list of the rejected titles can, so it
+  // is written on every run, preview included — the CLI classification
+  // preview has had exactly this for other sources
+  // (lib/ingestion/preview-report.ts) and it is how that gap was found.
+  const excludedPath = writeReviewCsv({
+    dir: "exports",
+    baseName: `comprasmx-vigente-excluded-${new Date().toISOString().slice(0, 10)}`,
+    csv: toCsv(REVIEW_CSV_HEADERS, recent.filter((t) => t.relevance.tier === "excluded").map(reviewCsvRow)),
+    label: "discover-comprasmx-vigente",
+  });
+  if (excludedPath) {
+    console.log(
+      `[discover-comprasmx-vigente] ${recent.filter((t) => t.relevance.tier === "excluded").length} excluded title(s) written to ${excludedPath} — skim it for anything that should have been kept.`,
+    );
+  }
+
   const result: DiscoverComprasMxVigenteResult = {
     vigenteCount: vigenteRows.length,
     newCount: newRows.length,
@@ -119,6 +149,7 @@ export async function discoverComprasMxVigente(
     resolvedLinksCount: resolvedLinks,
     keptAfterRecencyCount: recent.length,
     months,
+    excludedCsvPath: excludedPath ?? undefined,
     sample: recent.slice(0, 5),
   };
 

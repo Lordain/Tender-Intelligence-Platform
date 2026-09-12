@@ -11,6 +11,7 @@
  */
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import type { Tender } from "@/types/tender";
 
 export type CsvValue = string | number | boolean | null | undefined;
 
@@ -56,6 +57,41 @@ export const REVIEW_CSV_HEADERS = [
   "source_url",
   "publication_date",
 ];
+
+export /**
+ * One Tender as a REVIEW_CSV_HEADERS row.
+ *
+ * Lives here rather than in preview-report.ts (where it started) because the
+ * headers it has to stay in step with are here, and it now has a second
+ * caller: discover-comprasmx-vigente.ts writes its own rejected-title CSV.
+ */
+function reviewCsvRow(tender: Tender): CsvValue[] {
+  // Positional — must stay in step with REVIEW_CSV_HEADERS. previous_tier is
+  // empty and manually_protected is "no" because nothing here exists in
+  // Supabase yet; see that constant's comment.
+  return [
+    tender.slug,
+    tender.tenderNumber,
+    tender.title.zh,
+    tender.title.es,
+    tender.buyer,
+    tender.country,
+    tender.governmentLevel,
+    tender.sourceName,
+    tender.summary.es,
+    tender.industries.join("; "),
+    tender.scopeType,
+    tender.estimatedValue ?? "",
+    tender.currency ?? "",
+    "",
+    tender.relevance.tier,
+    "n/a",
+    "no",
+    tender.relevance.reason.zh,
+    tender.sourceUrl,
+    tender.publicationDate,
+  ];
+}
 
 /**
  * Writes `csv` to `<dir>/<baseName>.csv`, falling back to a numbered name

@@ -12,7 +12,7 @@
  * fills in.
  */
 import { convertToUsd } from "@/lib/currency";
-import { REVIEW_CSV_HEADERS, toCsv, writeReviewCsv, type CsvValue } from "@/lib/ingestion/review-csv";
+import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "@/lib/ingestion/review-csv";
 import type { Tender, TenderRelevanceTier } from "@/types/tender";
 
 const TIER_ORDER: TenderRelevanceTier[] = ["flagship", "significant", "standard", "excluded"];
@@ -26,33 +26,6 @@ function pct(part: number, whole: number): string {
   return whole === 0 ? "0.0%" : `${((part / whole) * 100).toFixed(1)}%`;
 }
 
-function reviewCsvRow(tender: Tender): CsvValue[] {
-  // Positional — must stay in step with REVIEW_CSV_HEADERS. previous_tier is
-  // empty and manually_protected is "no" because nothing here exists in
-  // Supabase yet; see that constant's comment.
-  return [
-    tender.slug,
-    tender.tenderNumber,
-    tender.title.zh,
-    tender.title.es,
-    tender.buyer,
-    tender.country,
-    tender.governmentLevel,
-    tender.sourceName,
-    tender.summary.es,
-    tender.industries.join("; "),
-    tender.scopeType,
-    tender.estimatedValue ?? "",
-    tender.currency ?? "",
-    "",
-    tender.relevance.tier,
-    "n/a",
-    "no",
-    tender.relevance.reason.zh,
-    tender.sourceUrl,
-    tender.publicationDate,
-  ];
-}
 
 /**
  * What a dry run actually has to answer: how many of these would reach the

@@ -121,7 +121,11 @@ export function findDroppedIdentifiers(zh: string, sourceEs: string): string[] {
   // "437-08-K005.-CONSTRUCCIÓN", "302.-CONSTRUCCIÓN" — so split on one that a
   // letter or hyphen follows. A period BETWEEN digits stays: K.10+700 and 6.5
   // are single values.
-  const tokens = sourceEs.split(/[\s,;:()[\]"'«»]+|\.(?=[A-Za-z-])|\.-/);
+  // Also split where a digit run runs straight into a word with no separator
+  // at all — "302CONSTRUCCIÓN", "401CONSTRUCCIÓN" — which otherwise reads as
+  // one long identifier that no translation could contain. The 302 survives
+  // as a bare number, which is correctly not an identifier.
+  const tokens = sourceEs.split(/[\s,;:()[\]"'«»]+|\.(?=[A-Za-z-])|\.-|(?<=\d)(?=[A-ZÁÉÍÓÚÑ]{4,})/);
 
   // "N° 2563075" is Spanish for "number 2563075"; the code is the digits. A
   // translation writing 第2563075号 has kept it, and flagging that would teach

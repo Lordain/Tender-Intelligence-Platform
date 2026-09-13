@@ -210,6 +210,18 @@ checkText(
   "K.10+700",
 );
 
+// A digit run welded straight onto a word, with no separator at all.
+checkText(
+  "a number fused to the next word is split, and a bare number is not a code",
+  findDroppedIdentifiers("302 混凝土路面施工", "302CONSTRUCCIÓN DE PAVIMENTACIÓN CON CONCRETO").join("|"),
+  "",
+);
+checkText(
+  "the same fusion still reports a real code beside it",
+  findDroppedIdentifiers("混凝土路面施工", "OP302CONSTRUCCIÓN DE PAVIMENTACIÓN").join("|"),
+  "OP302",
+);
+
 // ── findUntranslatedSpanish ────────────────────────────────────────────────
 checkText(
   "a Spanish place phrase left in the Chinese",

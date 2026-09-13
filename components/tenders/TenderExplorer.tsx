@@ -342,6 +342,10 @@ export function TenderExplorer({
         title="招标项目"
         description="筛选并评估适合中国企业的拉美政府采购机会"
         metrics={[{ label: "当前结果", value: totalResults.toLocaleString(), suffix: "个项目" }]}
+        // Says the count is a floor rather than the ceiling: a visitor who
+        // sees a few hundred rows has no way to tell a growing database from
+        // a finished one, and three countries reads as the whole product.
+        metricsNote="本站会持续接入更多拉美国家，项目数量将不断增加"
       />
 
       {accessNotice && (

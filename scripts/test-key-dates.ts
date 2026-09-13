@@ -15,7 +15,7 @@
  *
  * Usage: npm run test:key-dates
  */
-import { toCalendarDay } from "../lib/ingestion/extract-requirements";
+import { ExtractionSchema, JSON_SHAPE_INSTRUCTIONS, normalizeRawExtraction, toCalendarDay } from "../lib/ingestion/extract-requirements";
 import { findKeyDateProblems, submissionIsSuspect, swapDayAndMonth } from "../lib/ingestion/key-date-checks";
 import { isPastSubmissionDeadline } from "../lib/ingestion/recency";
 import { deriveTenderStatus, platformDay } from "../lib/tender-status";
@@ -304,6 +304,49 @@ check(
 check(
   "an unparseable deadline is not grounds to reject either",
   isPastSubmissionDeadline({ submissionDeadline: "pendiente", status: "open" }, NOW) === false,
+);
+
+// normalizeRawExtraction: the response-shape repair that stands between a
+// provider omitting a key and the whole document being thrown away.
+// Regression guard for the real 2026-09-13 outage — keyDates was added to
+// ExtractionSchema as a required array but not to the (then hand-written)
+// default list, so five real Peru bases PDFs failed validation outright and
+// lost their requirements and risks along with the dates.
+const MINIMAL_MODEL_RESPONSE = { oneLineSummary: "为某医院采购医疗设备" };
+
+check(
+  "a response omitting every array still validates",
+  ExtractionSchema.safeParse(normalizeRawExtraction({ ...MINIMAL_MODEL_RESPONSE })).success,
+);
+check(
+  "every array field the schema declares gets defaulted, keyDates included",
+  Object.entries(ExtractionSchema.shape)
+    .filter(([, field]) => (field as { _zod?: { def?: { type?: string } } })?._zod?.def?.type === "array")
+    .every(([key]) => Array.isArray((normalizeRawExtraction({ ...MINIMAL_MODEL_RESPONSE }) as Record<string, unknown>)[key])),
+);
+check(
+  "an omitted oneLineSummary does not fail the document either",
+  ExtractionSchema.safeParse(normalizeRawExtraction({})).success,
+);
+check(
+  "a schedule the model DID return is passed through untouched, not blanked",
+  (() => {
+    const returned = [{ type: "submission", date: "2026-10-02", notes: null, sourceReference: "página 7, Cronograma" }];
+    const parsed = ExtractionSchema.safeParse(normalizeRawExtraction({ ...MINIMAL_MODEL_RESPONSE, keyDates: returned }));
+    return parsed.success && parsed.data.keyDates.length === 1 && parsed.data.keyDates[0].date === "2026-10-02";
+  })(),
+);
+check(
+  "a genuinely malformed key still fails loudly rather than being repaired",
+  ExtractionSchema.safeParse(normalizeRawExtraction({ ...MINIMAL_MODEL_RESPONSE, risks: "none found" })).success === false,
+);
+check(
+  "a top-level array — a real provider response shape — is left alone to fail",
+  ExtractionSchema.safeParse(normalizeRawExtraction([])).success === false,
+);
+check(
+  "the manual-JSON prompt actually asks for the key it requires",
+  JSON_SHAPE_INSTRUCTIONS.includes('"keyDates"'),
 );
 
 function daysBetweenForTest(day: string): number {

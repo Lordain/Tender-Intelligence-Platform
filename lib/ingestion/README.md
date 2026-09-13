@@ -3946,3 +3946,78 @@ the same entry are a separate finding and still worth writing.
 The result now carries a `keyDates` count and any warnings, and both the CLI
 and the admin table show them. A count that was silently zero is a count
 that was not being looked at.
+
+### The same field then failed the other half of the pipeline (2026-09-13)
+
+With the write path fixed, the first real run — 5 Peru bases PDFs through
+`/admin/documents-needed` — came back **5 of 5 failed**, and not partially:
+"没有任何文件分析成功". The requirements and risks were lost too. Two
+distinct causes, both introduced by adding `keyDates` to `ExtractionSchema`
+and neither caught by anything that existed at the time.
+
+**1. A required key nobody was ever asked for.** `runExtraction()` has two
+modes. Claude gets `output_config.format` (structured outputs, the schema
+enforced server-side). DashScope's Anthropic-compat endpoint does not —
+`useStructuredOutput: false` bypasses it and asks for the JSON shape in the
+prompt instead, then parses and validates by hand. That hand path had a
+literal list of keys to default to `[]` when a provider omitted them:
+
+```ts
+for (const key of ["qualifications", "experienceRequirements", "requiredDocuments", "risks"]) {
+```
+
+`keyDates` was added to the schema as a **required** array and added to
+neither that list nor `JSON_SHAPE_INSTRUCTIONS`. So the model was never
+told to return it, didn't, and `ExtractionSchema.safeParse()` rejected the
+whole object:
+
+```
+Extraction failed schema validation for peru-ocds-dgv273-seacev3-1249120:
+  path: ["keyDates"], expected array, received undefined
+```
+
+One missing key threw away a fully successful extraction of everything
+else. Four of the five failures were exactly this, on every path the
+document took — native PDF, chunked, and the plain-text fallback all
+validate through the same function.
+
+The fix is not "add `keyDates` to the list". The list is now **derived from
+`ExtractionSchema.shape`** — every field whose Zod type is an array gets
+defaulted, so the next array added to the schema cannot repeat this. That
+lives in the exported `normalizeRawExtraction()`, which
+`extract-requirements-qwen.ts` (the OpenAI-compat comparison path, which had
+the identical hole) now also calls. `JSON_SHAPE_INSTRUCTIONS` gained a real
+`keyDates` description — defaulting to `[]` only stops the crash; without
+asking for the field, this provider would have gone on returning empty
+schedules forever, which is the failure that looks like success.
+`extract-requirements-qwen.ts` had drifted to its own paraphrase of that
+prompt, so it now imports the shared constant instead of carrying a copy.
+
+**2. A size limit the splitter was already sized for, but never saw.**
+The fifth failure:
+
+```
+400 Exceeded limit on max bytes to request body : 16777216
+```
+
+`MAX_CHUNK_BYTES` in `pdf-split.ts` was set to 8MB **specifically** for this
+16MB body cap — the comment there names the exact error string. But
+`isPdfNativeLimitError()`, the matcher that decides whether to split at all,
+tested for `/maximum of \d+ pdf pages/` and
+`/request_too_large|exceeds the maximum (size|allowed)/`. DashScope words
+this one "Exceeded limit on max bytes to request body", which matches
+neither. So the splitter that was built for this limit never ran for it:
+the document threw straight out, past the chunking fallback and past the
+text fallback both. Matcher widened.
+
+Worth stating plainly: the ceiling was known, documented, and engineered
+around — and the code still didn't reach the workaround, because the
+recognition step and the mitigation step were written against the error at
+different times and never checked against each other.
+
+**Regression coverage** (`npm run test:key-dates`, 61 → 68): every array
+field the schema declares is defaulted (derived, so it fails if a new one
+is forgotten); a schedule the model *did* return passes through untouched;
+a genuinely malformed value still fails loudly rather than being repaired;
+a top-level array — a real DashScope response shape — is still rejected;
+and `JSON_SHAPE_INSTRUCTIONS` actually contains the key it requires.

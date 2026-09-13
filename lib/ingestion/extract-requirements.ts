@@ -203,6 +203,42 @@ export const ExtractionSchema = z.object({
 
 export type TenderExtraction = z.infer<typeof ExtractionSchema>;
 
+/**
+ * Fills in required keys a manual-JSON-parse provider left out entirely,
+ * so an omitted empty category degrades to `[]` instead of hard-failing
+ * the whole document (see runExtraction()'s header comment for the real
+ * responses that made this necessary).
+ *
+ * The array key list is derived FROM the schema rather than written out
+ * by hand, because the hand-written version caused a real, confirmed
+ * outage: `keyDates` was added to ExtractionSchema as a required array
+ * (task #34) and never added to the list, so every DashScope extraction
+ * whose model didn't volunteer the key — which was all of them, since
+ * JSON_SHAPE_INSTRUCTIONS never asked for it either — failed schema
+ * validation and threw away its qualifications, experience, documents and
+ * risks along with it. Five real Peru bases PDFs, all five lost, on
+ * 2026-09-13. Deriving the list means the next array added to the schema
+ * cannot repeat that.
+ *
+ * Note what this deliberately does NOT do: it never invents a *value*.
+ * Only a missing key becomes an empty array; a key the model actually
+ * returned is passed through untouched, wrong shape and all, so a genuine
+ * schema violation still fails loudly instead of being papered over.
+ */
+export function normalizeRawExtraction(input: unknown): unknown {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) return input;
+  const raw = input as Record<string, unknown>;
+  if (raw.oneLineSummary === undefined) raw.oneLineSummary = "";
+  for (const [key, field] of Object.entries(ExtractionSchema.shape)) {
+    if (raw[key] === undefined && isArrayField(field)) raw[key] = [];
+  }
+  return raw;
+}
+
+function isArrayField(field: unknown): boolean {
+  return (field as { _zod?: { def?: { type?: string } } })?._zod?.def?.type === "array";
+}
+
 export const SYSTEM_PROMPT = `You are extracting bid-qualification information from a real Mexican government tender document (Convocatoria, Anexo Técnico, or similar) for a platform that helps Chinese enterprises decide whether to bid.
 
 Ground rules:
@@ -244,7 +280,17 @@ type ExtractionContent = Array<{ type: "text"; text: string } | { type: "documen
  */
 function isPdfNativeLimitError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
-  return /maximum of \d+ pdf pages/i.test(message) || /request_too_large|exceeds the maximum (size|allowed)/i.test(message);
+  return (
+    /maximum of \d+ pdf pages/i.test(message) ||
+    /request_too_large|exceeds the maximum (size|allowed)/i.test(message) ||
+    // DashScope's overall request-BODY cap, worded nothing like the other
+    // two: "Exceeded limit on max bytes to request body : 16777216".
+    // pdf-split.ts's MAX_CHUNK_BYTES was already sized against this exact
+    // ceiling, but this matcher never recognised the message, so the
+    // splitter it was sized for never ran — the document just threw
+    // (confirmed 2026-09-13 on a real Peru bases PDF).
+    /exceeded limit on max bytes to request body/i.test(message)
+  );
 }
 
 /** Real second-order failure found the same day: the SAME oversized PDF that hit isPdfNativeLimitError() above, once its pdftotext fallback text was sent instead, overflowed the model's own context window too ("prompt is too long: 298943 tokens > 200000 maximum") — a multi-hundred-page real Convocatoria is long enough as plain text alone. Parses the exact actual/max token counts the API itself reports rather than guessing a chars-per-token ratio for Spanish text. */
@@ -265,7 +311,7 @@ function parseContextOverflow(err: unknown): { actualTokens: number; maxTokens: 
 // 2026-09-03 (qwen3.5-plus, first document in a batch run) — every
 // title/description came back in Spanish, not Chinese, despite
 // SYSTEM_PROMPT already saying so once, further up the combined prompt.
-const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"oneLineSummary": "...", "qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...], "relevanceAssessment": {...}} — no prose, no markdown fences. "oneLineSummary" and the four array keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. "oneLineSummary" is one Chinese sentence, at most 30 characters, stating what this tender/project concretely is (not a category label, not a boilerplate opener). Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". "relevanceAssessment" is {"participationScope": "national"|"international_treaty"|"international_open"|null, "suggestedTier": "flagship"|"significant"|"standard"|"excluded", "reasoning": "..."} — include it when you can support it from the document; omit the key entirely rather than guessing if you genuinely cannot. Every "oneLineSummary"/"title"/"description"/"reasoning" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
+export const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"oneLineSummary": "...", "qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...], "keyDates": [...], "relevanceAssessment": {...}} — no prose, no markdown fences. "oneLineSummary" and the five array keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks/keyDates, never omit a key. "oneLineSummary" is one Chinese sentence, at most 30 characters, stating what this tender/project concretely is (not a category label, not a boilerplate opener). Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". Each "keyDates" item is {"type", "date", "notes", "sourceReference"} — one entry per dated row of the document's cronograma / calendario de actividades, with "type" one of "site_visit"/"questions_deadline"/"clarification"/"submission"/"opening"/"award"/"contract_signing", "date" as YYYY-MM-DD (the document writes DAY/MONTH/YEAR — 10/09/2026 is 10 September, never 9 October), and "notes" a short Chinese note or null. The "submission" row is the bid deadline and matters most; for some sources it exists nowhere but this document. Return [] only if the document genuinely prints no schedule — never reconstruct one from the publication date. "relevanceAssessment" is {"participationScope": "national"|"international_treaty"|"international_open"|null, "suggestedTier": "flagship"|"significant"|"standard"|"excluded", "reasoning": "..."} — include it when you can support it from the document; omit the key entirely rather than guessing if you genuinely cannot. Every "oneLineSummary"/"title"/"description"/"reasoning" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
 
 /** Pulls the first JSON object out of a text response — tolerates a model wrapping it in a ```json fence or prose despite instructions not to, rather than requiring an exact match. */
 function extractJsonObject(text: string): unknown {
@@ -361,12 +407,7 @@ async function runExtraction(
   const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
   if (!textBlock) throw new Error(`Extraction returned no text content for ${context.tenderNumber} (stop_reason: ${response.stop_reason})`);
 
-  const raw = extractJsonObject(textBlock.text) as Record<string, unknown>;
-  if (raw.oneLineSummary === undefined) raw.oneLineSummary = "";
-  for (const key of ["qualifications", "experienceRequirements", "requiredDocuments", "risks"]) {
-    if (raw[key] === undefined) raw[key] = [];
-  }
-  const parsed = ExtractionSchema.safeParse(raw);
+  const parsed = ExtractionSchema.safeParse(normalizeRawExtraction(extractJsonObject(textBlock.text)));
   if (!parsed.success) {
     throw new Error(`Extraction failed schema validation for ${context.tenderNumber}: ${parsed.error.message}`);
   }

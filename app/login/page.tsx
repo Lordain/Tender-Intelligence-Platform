@@ -1,13 +1,35 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { AuthFrame } from "@/components/auth/AuthFrame";
 import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
 import { safeNextPath } from "@/lib/auth-redirect";
+import { MAX_ACTIVE_DEVICES } from "@/lib/account-devices";
+
+/**
+ * Why this browser was signed out, when DeviceGuard was the one that did it.
+ *
+ * Its own component behind a Suspense boundary because useSearchParams opts
+ * the subtree into client rendering — the same shape app/tenders/page.tsx
+ * uses. An unexplained logout reads as the site being broken, and this is
+ * also the one moment an extra seat sells itself, so it names the way out
+ * rather than scolding.
+ */
+function DeviceLimitNotice() {
+  const reason = useSearchParams().get("reason");
+  if (reason !== "device-limit") return null;
+  return (
+    <p className="rounded-xl bg-[#fff4d8] p-4 text-sm leading-6 text-[#72521b]">
+      该账号已在其他设备上登录，同时最多 {MAX_ACTIVE_DEVICES} 台。重新登录即可继续使用；
+      需要多人同时使用的话，企业版可添加 2 个成员账号，各自独立登录。
+      在「账户管理」可以查看和移除已登录的设备。
+    </p>
+  );
+}
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -92,6 +114,8 @@ export default function LoginPage() {
       <h1 className="text-3xl font-black tracking-tight text-[#071826]">
         {localize(uiText.login, locale)}
       </h1>
+
+      <Suspense><DeviceLimitNotice /></Suspense>
 
       <SocialAuthButtons onError={setError} />
 

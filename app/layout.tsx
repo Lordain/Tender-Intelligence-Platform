@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CookieNotice } from "@/components/layout/CookieNotice";
 import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
+import { DeviceGuard } from "@/components/account/DeviceGuard";
 import { siteOrigin } from "@/lib/site-url";
 import { StructuredData } from "@/components/seo/StructuredData";
 
@@ -76,6 +77,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <StructuredData />
         <LocaleProvider>
           <AnalyticsTracker />
+          <DeviceGuard />
           <Header />
           <main className="flex flex-1 flex-col">{children}</main>
           <Footer />

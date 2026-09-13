@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertWritten } from "@/lib/db/assert-written";
 import type { toTenderFields } from "@/lib/ingestion/extract-requirements";
+import { findKeyDateProblems, submissionIsSuspect } from "@/lib/ingestion/key-date-checks";
 
 /**
  * Writes the cronograma the model read out of the document, under the rule
@@ -24,16 +25,30 @@ import type { toTenderFields } from "@/lib/ingestion/extract-requirements";
  * so the importer's "delete what the source didn't supply" refresh would
  * otherwise wipe the whole cronograma on the very next run.
  *
+ * One thing it will NOT do is fill the column from a deadline the schedule
+ * itself contradicts (findKeyDateProblems, 2026-09-13). The timeline rows go
+ * in either way — they are labelled, cited and visibly a reading of a
+ * document — but a date that lands the bid deadline after the opening has a
+ * known, common cause (10/09 read as 9 October) and a 50/50 chance of being
+ * a month out. Written to `submission_deadline` it stops being a reading and
+ * becomes the tender's deadline: it drives 已截止 on the site and the digest,
+ * so a wrong one either hides a live tender or holds an expired one open.
+ * Leaving the column empty costs the 45-day window rule instead, which is a
+ * guess that is visibly a guess.
+ *
  * Returns the deadline it set, if it set one.
  */
 export async function writeExtractedKeyDates(
   supabase: SupabaseClient,
   tenderId: string,
   keyDates: ReturnType<typeof toTenderFields>["keyDates"],
-  stored: { submissionDeadline: string | null; awardDate: string | null },
+  stored: { submissionDeadline: string | null; awardDate: string | null; publicationDate?: string | null },
   warnings: string[],
 ): Promise<string | undefined> {
   if (keyDates.length === 0) return undefined;
+
+  const problems = findKeyDateProblems(keyDates, { publicationDate: stored.publicationDate });
+  for (const problem of problems) warnings.push(`标书日程有疑点：${problem.message}`);
 
   // Day-string comparison: the stored columns can carry a time, the extracted
   // dates never do.
@@ -77,6 +92,7 @@ export async function writeExtractedKeyDates(
           type: item.type,
           date: item.date,
           notes: item.notes,
+          source_reference: item.sourceReference,
           extracted_from_document: true,
         })),
       ),
@@ -89,6 +105,13 @@ export async function writeExtractedKeyDates(
   // buena pro is a planned date for a decision nobody has made yet. It stays
   // a timeline entry, which is a schedule, not a result.
   if (!extractedDeadline || storedDeadlineDay) return undefined;
+
+  if (submissionIsSuspect(problems)) {
+    warnings.push(
+      `因为上面的疑点，交标截止日（${extractedDeadline}）没有写入项目——日程行已经保留在「其他关键日期」里，核对标书后可以手动填。`,
+    );
+    return undefined;
+  }
 
   assertWritten(
     "交标截止日",

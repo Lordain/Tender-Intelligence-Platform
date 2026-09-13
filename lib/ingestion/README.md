@@ -3766,3 +3766,79 @@ Two supporting changes this forced, both worth having on their own:
   CRON_SECRET".** Each job carries where its schedule lives, and the row says
   it. A monitor that sends you to the wrong console at the moment something is
   broken is worse than one that says nothing.
+
+### A cronograma can be checked against itself (2026-09-13)
+
+Task #34 was "live-validate document key-date extraction", and the first thing
+that had to be admitted is that it could not be done as stated. There is no
+second source to validate against. For Peru's OECE the bases PDF IS the only
+place a bid deadline exists — that is the entire reason the extraction reads
+one (migration 0045) — so "check the extracted date against the real date"
+has no second operand.
+
+What is available is the schedule's own internal consistency, and for the
+failure that actually matters that turns out to be enough.
+
+The failure that matters is not a malformed date. `toCalendarDay()` has
+rejected those since it was written, and it is the only check a key date has
+ever had. The dangerous input is the date that IS a real calendar day and is
+the wrong one: every country here writes `10/09/2026` for 10 September, and a
+model that reads it as 9 October returns `2026-10-09` — valid, plausible, and
+silently written to `submission_deadline`, which drives 已截止 on the site and
+the digest. Nothing downstream can question it.
+
+A day/month swap moves ONE row of the cronograma and leaves the rest where
+they were. So it lands the deadline after the opening, or the award before the
+bids are due, and `findKeyDateProblems()` (`lib/ingestion/key-date-checks.ts`)
+sees it. The message names the corrected reading — "把提交截止的 2026-10-09
+改成 2026-09-10 就顺了——标书里的 10/09 是「日/月」" — rather than only reporting
+that two dates disagree, which would leave the admin re-reading the whole PDF.
+
+**Consequence is scoped by which date is implicated, not by which check
+fired.** An award read after the contract signing is worth saying and changes
+nothing else. A submission date the schedule contradicts does not get written
+to `submission_deadline` at all: the timeline rows still go in (labelled,
+cited, visibly a reading of a document), and the column stays empty, which
+falls back to the 45-day window rule. A wrong deadline hides a live tender or
+holds an expired one open; an empty one is a guess that looks like a guess.
+
+**Three checks were written and then deliberately deleted**, each because it
+fires on correct answers:
+
+- every row on the same day — normal for a Peruvian Adjudicación Simplificada,
+  which holds presentación, apertura and otorgamiento de la buena pro together;
+- `questions_deadline` after `clarification` — further consultas can be raised
+  at the junta itself and answered in a second session. The same goes for
+  `site_visit` against either, which is why all three share one rank and are
+  never compared with each other, only against the bid deadline;
+- a deadline already in the past — this platform imports closed tenders.
+
+This is the same defect class the translation checkers hit twice the day
+before (`5/A` flagged as a dropped identifier, `KM.11+420` as a dropped
+chainage): a warning that fires on a right answer teaches the reader to ignore
+the warning, which costs more than the warning was ever worth.
+
+**`tender_key_dates.source_reference` (migration 0047).** The extraction schema
+has always demanded a citation for every date — "página 7, Capítulo II,
+Cronograma", the same bar as every requirement and risk — and this table had
+nowhere to put it, so it was parsed and dropped. Key dates are where it matters
+most: a requirement a customer doubts costs them a phone call, a deadline they
+doubt costs them the bid, and a deadline with no citation cannot be checked at
+all, only believed. It now shows in the admin 其他关键日期 list (where it also
+serves as the marker for "a model read this off a page" — nothing else ever
+carries one) and in the review script. Not on the public timeline: that is a
+schedule, and page numbers there are noise for a buyer.
+
+**`npm run review:key-dates`** is the instrument. It prints coverage first —
+how many tenders got their deadline from a document, and how many still have
+none — because that is the number saying whether the feature works, and no
+list of flags can show it. Then every schedule that cannot be true, then
+`--sample N` for tenders to open by hand.
+
+That last part is not a garnish. Self-consistency is not correctness: a
+cronograma read one month late in every single row is internally perfect and
+entirely wrong, and no check in this file will ever catch it. Only the PDF
+settles that, so the script's last act is to hand over a short list and say so.
+
+`npm run test:key-dates` covers it, 53 checks now — and half of the new ones
+assert that a check does NOT fire.

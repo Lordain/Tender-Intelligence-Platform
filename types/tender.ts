@@ -56,6 +56,13 @@ export type TenderKeyDate = {
   date: string;
   mandatory?: boolean;
   notes?: LocalizedText;
+  /**
+   * Where in the bid document this date was read (migration 0047) — set only
+   * on a date the Layer 2 extraction produced, which is also what makes it
+   * distinguishable from a feed-supplied or hand-entered one. Admin-facing:
+   * the public 关键日期 timeline is a schedule and shows no page numbers.
+   */
+  sourceReference?: string;
 };
 
 export type TenderRiskLevel = "low" | "medium" | "high" | "critical";

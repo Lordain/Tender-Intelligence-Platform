@@ -207,6 +207,15 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
             )}
             {kd.mandatory && <span className="text-xs font-bold text-[#b86e00]">强制</span>}
             {kd.notes?.zh && <span className="text-xs text-[#7a878f]">{kd.notes.zh}</span>}
+            {/* Only an extraction ever carries one (migration 0047), so this
+                doubles as the marker for "a model read this off a page" —
+                which is precisely the row worth opening the document to
+                check before trusting the date on it. */}
+            {kd.sourceReference && (
+              <span className="text-[11px] text-[#9aa5ab]" title="这一行是从标书里读出来的，不是数据源提供的">
+                标书来源：{kd.sourceReference}
+              </span>
+            )}
             <span className="ml-auto flex gap-2">
               <button
                 type="button"

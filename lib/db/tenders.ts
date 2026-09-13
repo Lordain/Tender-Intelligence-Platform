@@ -76,6 +76,9 @@ type KeyDateRow = {
   date: string;
   mandatory: boolean | null;
   notes: LocalizedText | null;
+  // Absent from TENDER_LIST_SELECT's narrower key-date join, which reads
+  // type/date only.
+  source_reference?: string | null;
 };
 
 type RiskRow = {
@@ -111,7 +114,7 @@ const TENDER_FLAT_FIELDS = `
 const TENDER_SELECT = `
   ${TENDER_FLAT_FIELDS},
   tender_requirements ( id, kind, title, description, mandatory, source_reference, sort_order ),
-  tender_key_dates ( id, type, date, mandatory, notes ),
+  tender_key_dates ( id, type, date, mandatory, notes, source_reference ),
   tender_risks ( id, level, title, description, source_reference )
 `;
 
@@ -147,6 +150,7 @@ function toKeyDate(row: KeyDateRow): TenderKeyDate {
     date: row.date,
     mandatory: row.mandatory ?? undefined,
     notes: row.notes ?? undefined,
+    sourceReference: row.source_reference ?? undefined,
   };
 }
 

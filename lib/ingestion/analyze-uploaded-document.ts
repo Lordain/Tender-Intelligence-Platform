@@ -126,7 +126,7 @@ export async function analyzeUploadedDocument(
     // slug burned every model call in the upload first.
     const { data: tender, error: tenderError } = await supabase
       .from("tenders")
-      .select("id, relevance_tier, relevance_manually_overridden, submission_deadline, award_date")
+      .select("id, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
       .eq("slug", tenderSlug)
       .maybeSingle();
     if (tenderError || !tender) {
@@ -338,6 +338,10 @@ export async function analyzeUploadedDocument(
       {
         submissionDeadline: (tender.submission_deadline as string | null) ?? null,
         awardDate: (tender.award_date as string | null) ?? null,
+        // Only read, never written: it is what findKeyDateProblems checks the
+        // cronograma against, and it is protected from this path anyway
+        // (migration 0030).
+        publicationDate: (tender.publication_date as string | null) ?? null,
       },
       warnings,
     );

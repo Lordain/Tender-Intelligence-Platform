@@ -9,6 +9,15 @@
  * each row (migration 0047), and marks the ones that cannot be true
  * (lib/ingestion/key-date-checks.ts).
  *
+ * When the answer is zero it says WHY, which is the whole difference
+ * between a number and a finding. The first run answered "0 of 285" and
+ * stopped there, and four completely different situations produce that same
+ * zero: no bid document has reached the platform, documents are here but
+ * were never analysed, they were analysed before the extraction learned to
+ * read a cronograma, or they were analysed since and the model genuinely
+ * found no schedule. Each has a different next action and only one of them
+ * is a bug. So the script walks the funnel.
+ *
  * Two things it reports that no check can decide:
  *   - coverage: how many tenders still have no bid deadline at all. That is
  *     the population this whole feature exists for (Peru OECE publishes
@@ -39,6 +48,8 @@ type KeyDateRow = {
   extracted_from_document: boolean;
   manually_added: boolean;
 };
+
+type DocumentRow = { tender_id: string; extraction_status: string | null; extracted_at: string | null };
 
 type TenderRow = {
   id: string;
@@ -139,6 +150,8 @@ async function main() {
   console.log(`  这 ${extracted.length} 个里，${rescued.length} 个的交标截止日是标书给的（数据源本来没有）。`);
   console.log(`  全库还有 ${noDeadline.length} 个项目没有任何交标截止日——前台只能按发布日起 45 天的兜底规则显示。`);
 
+  if (extracted.length === 0) await explainTheZero(supabase, tenders, byTender);
+
   const flagged: { slug: string; messages: string[] }[] = [];
 
   const scoped = slugs.length > 0 ? slugs.map((slug) => bySlug.get(slug)!) : extracted;
@@ -181,6 +194,56 @@ async function main() {
 
   console.log(`\n${RULE}`);
   if (!showAll && slugs.length === 0) console.log("加 --all 看全部日程，加 --sample 5 抽几个对着标书核。");
+}
+
+/**
+ * Why no tender has a cronograma. Runs only when the count is zero, because
+ * that is the only time the funnel is the interesting thing — once dates
+ * exist, the flags and the sample are.
+ *
+ * Reads the pipeline backwards, from what should be there to what is, and
+ * names the one step that is empty. "Documents were analysed but none of
+ * them produced a date" is the only answer here that means something is
+ * broken; the rest mean work has not been done yet, which is worth knowing
+ * before anyone goes looking for a bug.
+ */
+async function explainTheZero(
+  supabase: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+  tenders: TenderRow[],
+  keyDatesByTender: Map<string, KeyDateRow[]>,
+) {
+  const documents = await selectAll<DocumentRow>((from, to) =>
+    supabase.from("tender_documents").select("tender_id, extraction_status, extracted_at").range(from, to),
+  );
+  const requirements = await selectAll<{ tender_id: string }>((from, to) =>
+    supabase.from("tender_requirements").select("tender_id").range(from, to),
+  );
+
+  const withDocuments = new Set(documents.map((row) => row.tender_id));
+  const extractedDocs = documents.filter((row) => row.extraction_status === "extracted");
+  const withAnalysis = new Set(requirements.map((row) => row.tender_id));
+  const withAnyKeyDate = new Set([...keyDatesByTender.entries()].filter(([, rows]) => rows.length > 0).map(([id]) => id));
+
+  console.log(`\n${RULE}\n为什么是 0 —— 按流水线倒着看：`);
+  console.log(`  ${String(tenders.length).padStart(4)} 个项目`);
+  console.log(`  ${String(withDocuments.size).padStart(4)} 个有标书文件记录（tender_documents）`);
+  console.log(`  ${String(extractedDocs.length).padStart(4)} 份文件标记为已提取`);
+  console.log(`  ${String(withAnalysis.size).padStart(4)} 个有分析结果（资质/业绩/所需文件）`);
+  console.log(`  ${String(withAnyKeyDate.size).padStart(4)} 个有任何关键日期（含数据源给的）`);
+  console.log(`     0 个有从标书读出来的日程`);
+
+  console.log("");
+  if (withDocuments.size === 0) {
+    console.log("  卡在第一步：一份标书都还没进平台。先去 /admin/documents-needed 看哪些项目缺文件，");
+    console.log("  把 PDF 下下来，再用 /admin/local-batch 分析（npm run dev，线上没有这个页面）。");
+  } else if (withAnalysis.size === 0) {
+    console.log("  文件在，但一次分析都没跑过。npm run dev → /admin/local-batch，填标书文件夹路径。");
+  } else {
+    console.log("  分析跑过，但没产出任何标书日程。两种可能，含义完全不同：");
+    console.log("    a) 这些分析是在提取器学会读 cronograma 之前跑的（2026-09-12 之前）——重跑一次就有了；");
+    console.log("    b) 或者跑的是「导入分析结果」那条路，它在 2026-09-13 之前根本不写关键日期（已修）。");
+    console.log("  两种都是重跑一次分析就能确认。优先挑秘鲁的项目：那边的交标日只存在于标书里。");
+  }
 }
 
 main().catch((error) => {

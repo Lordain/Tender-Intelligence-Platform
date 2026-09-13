@@ -54,6 +54,7 @@
     "check:duplicate-ids": "tsx --env-file-if-exists=.env.local scripts/check-duplicate-ids.ts",
     "check:stripe-prices": "tsx --env-file-if-exists=.env.local scripts/check-stripe-prices.ts",
     "migrate:colombia-slugs": "tsx --env-file-if-exists=.env.local scripts/migrate-colombia-slugs.ts",
+    "fix:phase-suffixes": "tsx --env-file-if-exists=.env.local scripts/fix-phase-suffixes.ts",
     "purge:mis-sourced": "tsx --env-file-if-exists=.env.local scripts/purge-mis-sourced-duplicates.ts",
     "restore:deleted": "tsx --env-file-if-exists=.env.local scripts/restore-deleted-tenders.ts",
     "test:access-control": "tsx scripts/test-access-control.ts",

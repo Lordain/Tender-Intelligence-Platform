@@ -355,12 +355,24 @@ function extractJsonObject(text: string): unknown {
  * 16,000 max output tokens is exactly that, and this code was not streaming.
  * It is now.
  *
- * maxRetries drops to 1 because a retried TIMEOUT is the least useful retry
- * there is — if the provider needs longer than the budget, asking again
- * changes nothing and doubles the wait. One retry still covers the failures
- * worth retrying (429, 529, a dropped connection).
+ * Streaming alone was NOT enough, and the first fix here was incomplete.
+ * Measured 2026-09-13 on peru-...-1248966: `模型调用耗时 609.0s`, then
+ * "Request timed out". 609s is 10 minutes — the SDK's CLIENT-level default
+ * timeout (`opts.timeout=10 minutes`), which applies to streaming requests
+ * too. Streaming only lifts the extra restriction the SDK imposes on
+ * non-streaming calls; the plain default still cut the call off. So the
+ * model was not failing — we were hanging up on it. The timeout is now set
+ * explicitly rather than inherited.
+ *
+ * maxRetries is 0, not the default 2. Every failure mode actually seen on
+ * this path is one that repeats: a size limit, a schema mismatch, a
+ * provider slower than the budget. Retrying any of them doubles or triples
+ * the wall clock and can be billed again for work the server already did —
+ * that is what turned one batch into 31 minutes. Transient failures (429,
+ * 529) are instead handled a level up: the document is reported, the batch
+ * continues, and two in a row stop the run (extraction-failure.ts).
  */
-const REQUEST_OPTIONS = { maxRetries: 1 } as const;
+const REQUEST_OPTIONS = { maxRetries: 0, timeout: 20 * 60 * 1000 } as const;
 
 /**
  * Prints how long a call actually took.

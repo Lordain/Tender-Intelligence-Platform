@@ -4141,3 +4141,49 @@ point of having it: the stub client implements only `stream()`, and
 `create()`/`parse()` throw `非流式调用` on purpose. A revert to non-streaming
 fails `npm run test:extraction-pipeline` (now 39 checks) instead of being
 discovered on the bill.
+
+### 609 seconds — the number that was missing (2026-09-13)
+
+The single-document re-run printed it:
+
+```
+peru-ocds-dgv273-seacev3-1248966: 模型调用耗时 609.0s
+… 分析失败，已跳过：Request timed out.
+```
+
+**609 seconds is 10 minutes.** The model was not failing — we were hanging
+up on it. Streaming fixed only half the problem: it lifts the extra
+restriction the SDK puts on *non-streaming* calls, but the SDK's
+**client-level** default (`opts.timeout = 10 minutes`) applies to streaming
+requests just the same, and this code inherited it. `REQUEST_OPTIONS` now
+sets the timeout explicitly (20 minutes).
+
+`maxRetries` also drops from 1 to **0**. Every failure actually observed on
+this path repeats on a retry — a size limit, a schema mismatch, a provider
+slower than the budget — so retrying doubles the wall clock and can be
+billed again for work the server already did. That is precisely what turned
+one batch into 31 minutes. Transient failures are handled a level up
+instead: the document is reported, the batch continues, two in a row stop
+the run.
+
+**The second finding is the one that matters more,** and it is not a bug —
+it is a design question the measurement exposed. This document has a real
+text layer (that is *why* it routed to qwen3.5-plus at all —
+`chooseExtractionModel(hasTextLayer: true, …)`), and it is nonetheless sent
+as a **native PDF document block**: 30 pages of a file large enough to have
+hit DashScope's 16MB request-body cap earlier the same day. Ten-plus minutes
+is what uploading and processing that costs.
+
+The contradiction is already written down elsewhere in this file. The Word
+branch of `extractTenderRequirements()` reasons: *"unlike a scanned PDF page,
+a real Word file is already machine-readable text, so there's nothing
+meaningful for native document understanding to add here."* A PDF whose text
+layer we verified with `pdftotext` — which is how the model was chosen — is
+in the same position, and does not get the same treatment.
+
+The real cost of switching it: `extractPdfText()` runs `pdftotext -q` with
+no `-layout`, so a cronograma **table** can come back with its columns
+interleaved — and a cronograma table is exactly what task #34 is chasing.
+That is a genuine tradeoff, not a free win, so it is not being changed
+unilaterally. At ~10 minutes per document, 66 Peru documents is ~11 hours,
+so the current path does not scale either.

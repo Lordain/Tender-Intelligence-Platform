@@ -96,7 +96,7 @@ const USAGE = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 
  */
 function stubClient(script: (unknown | Error)[]) {
   const calls: { contentTypes: string[]; promptChars: number; docBytes: number }[] = [];
-  const requestOptionsSeen: ({ maxRetries?: number } | undefined)[] = [];
+  const requestOptionsSeen: ({ maxRetries?: number; timeout?: number } | undefined)[] = [];
   const next = (content: unknown) => {
     const blocks = Array.isArray(content) ? content : [];
     calls.push({
@@ -122,7 +122,7 @@ function stubClient(script: (unknown | Error)[]) {
       parse: mustStream,
       stream: (
         { messages }: { messages: { content: unknown }[] },
-        requestOptions?: { maxRetries?: number },
+        requestOptions?: { maxRetries?: number; timeout?: number },
       ) => {
         requestOptionsSeen.push(requestOptions);
         // next() throws synchronously for a scripted error; stream() returns
@@ -297,7 +297,14 @@ async function main() {
     check("the extraction streams (create/parse would have thrown)", requestOptionsSeen.length === 1);
     check(
       "and passes an explicit maxRetries instead of the SDK default of 2",
-      requestOptionsSeen[0]?.maxRetries === 1,
+      requestOptionsSeen[0]?.maxRetries === 0,
+      `saw ${JSON.stringify(requestOptionsSeen[0])}`,
+    );
+    // The 609s measurement: the SDK's own 10-minute client default applies to
+    // streaming too, so inheriting it hangs up on a model that is still working.
+    check(
+      "and an explicit timeout above the SDK's inherited 10-minute default",
+      (requestOptionsSeen[0]?.timeout ?? 0) > 10 * 60 * 1000,
       `saw ${JSON.stringify(requestOptionsSeen[0])}`,
     );
   });

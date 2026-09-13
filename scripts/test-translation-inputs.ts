@@ -8,10 +8,20 @@
  *
  * Usage: npm run test:translation-inputs
  */
-import { titleIsTruncated } from "../lib/ingestion/translate-titles";
+import { stripUnverifiedParentheticals, titleIsTruncated } from "../lib/ingestion/translate-titles";
 
 let passed = 0;
 let failed = 0;
+
+function checkText(name: string, actual: string, expected: string): void {
+  if (actual === expected) {
+    passed += 1;
+    console.log(`OK   ${name}`);
+  } else {
+    failed += 1;
+    console.error(`FAIL ${name}\n       expected ${expected}\n       actual   ${actual}`);
+  }
+}
 
 function check(name: string, actual: boolean, expected: boolean): void {
   if (actual === expected) {
@@ -54,6 +64,60 @@ check("a trailing period does not hide the dangling word", titleIsTruncated("OBR
 // A complete title that merely ends on a content word is left alone.
 check("complete title ending on a noun", titleIsTruncated("CONSTRUCCIÓN DE PLANTA DE BOMBEO ANCÓN", LONG_FULL), false);
 check("Compras MX cut mid-word, summary equally cut", titleIsTruncated("EQUIPAMIENTO DE MOBILIARIO Y EQUIPO MÉDICO DEL HOSPITAL GENERAL DE ZONA DE 144 C", "EQUIPAMIENTO DE MOBILIARIO Y EQUIPO MÉDICO DEL HOSPITAL GENERAL DE ZONA DE 144 C"), false);
+
+// ── stripUnverifiedParentheticals ──────────────────────────────────────────
+// The real failure: one letter dropped from a name whose whole job is to be
+// searched for.
+checkText(
+  "a misspelt original is removed",
+  stripUnverifiedParentheticals("卡塔考斯（Catacos）区级救护车采购", "ADQUISICION DE AMBULANCIA URBANA A NIVEL DISTRITAL EN MARCAVELICA Y CATACAOS-PIURA"),
+  "卡塔考斯区级救护车采购",
+);
+checkText(
+  "the correctly copied ones survive the same pass",
+  stripUnverifiedParentheticals("皮乌拉（Piura）马卡维利卡（Marcavelica）", "... EN MARCAVELICA Y CATACAOS-PIURA"),
+  "皮乌拉（Piura）马卡维利卡（Marcavelica）",
+);
+
+// Case and accents move legitimately: sources shout, and strip diacritics.
+checkText(
+  "restoring an accent the source dropped is kept",
+  stripUnverifiedParentheticals("梅斯卡拉帕河（Río Mezcalapa）岸防护", "CONSTRUCCION DE LA PROTECCION MARGINAL, RIO MEZCALAPA, HUIMANGUILLO"),
+  "梅斯卡拉帕河（Río Mezcalapa）岸防护",
+);
+checkText(
+  "an all-caps source matches a title-cased copy",
+  stripUnverifiedParentheticals("塔瓦斯科州（Tabasco）", "..., HUIMANGUILLO, TABASCO."),
+  "塔瓦斯科州（Tabasco）",
+);
+
+// Parentheses that are not copied names are none of this function's business.
+checkText(
+  "a Chinese aside is left alone",
+  stripUnverifiedParentheticals("闭路电视系统（CCTV）的供应", "SUMINISTRO DE CIRCUITOS CERRADOS DE TELEVISION CCTV"),
+  "闭路电视系统（CCTV）的供应",
+);
+checkText(
+  "a parenthetical holding Chinese is left alone even when absent from the source",
+  stripUnverifiedParentheticals("道路改善（二期）", "MEJORAMIENTO DE VIA"),
+  "道路改善（二期）",
+);
+checkText(
+  "a chainage marker the source states is kept",
+  stripUnverifiedParentheticals("桥梁建设（KM 6+512）", "CONSTRUCCIÓN DEL PUENTE UBICADO EN EL KM 6+512"),
+  "桥梁建设（KM 6+512）",
+);
+checkText(
+  "a chainage marker the source never states is dropped",
+  stripUnverifiedParentheticals("桥梁建设（K5+500）", "CONSTRUCCION DEL PUENTE"),
+  "桥梁建设",
+);
+
+checkText(
+  "nothing to do when there are no parentheses",
+  stripUnverifiedParentheticals("重型机械采购", "ADQUISICIÓN DE MAQUINARIA PESADA"),
+  "重型机械采购",
+);
 
 console.log(`\n${passed}/${passed + failed} checks passed.`);
 if (failed > 0) process.exit(1);

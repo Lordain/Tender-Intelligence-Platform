@@ -60,6 +60,43 @@ const BatchTranslationSchema = z.object({
 export type TenderToTranslate = { slug: string; titleEs: string; summaryEs: string; titleIsTruncated?: boolean };
 
 /**
+ * Drop any （original）whose contents are not actually in the Spanish.
+ *
+ * The parenthesis after a transliterated name exists to be searched for — on
+ * a map, in the bid documents. That makes a misspelt one worse than none at
+ * all: CATACAOS came back as 卡塔考斯（Catacos）, which matches no document
+ * and no map while reading as authoritative. A model asked to copy a string
+ * exactly will mostly do it, and "mostly" is not a property this field can
+ * be built on, so the copy is verified rather than trusted.
+ *
+ * Matching ignores case and accents, because normalising them is legitimate:
+ * sources shout in caps and strip diacritics, so RIO MEZCALAPA earning
+ * （Río Mezcalapa）is correct work, not invention. Dropping a letter is not.
+ *
+ * Only Latin-script contents are examined. A parenthetical holding Chinese,
+ * digits or punctuation is something else — an explanatory aside, a phase
+ * number — and none of this applies to it.
+ */
+export function stripUnverifiedParentheticals(zh: string, sourceEs: string): string {
+  const normalize = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const haystack = normalize(sourceEs);
+
+  return zh.replace(/（([^（）]+)）/g, (whole, inner: string) => {
+    if (!/[A-Za-z\u00C0-\u024F]/.test(inner)) return whole;
+    // Anything with CJK in it is commentary, not a copied name.
+    if (/[\u4e00-\u9fff]/.test(inner)) return whole;
+    return haystack.includes(normalize(inner)) ? whole : "";
+  });
+}
+
+/**
  * Did the source cut this title off, leaving the whole sentence only in the
  * summary?
  *

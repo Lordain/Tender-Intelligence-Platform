@@ -11,7 +11,7 @@
  * line; scripts/compare-translation-providers.ts still runs both.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { titleIsTruncated, type TenderToTranslate, type TranslatedTender } from "@/lib/ingestion/translate-titles";
+import { stripUnverifiedParentheticals, titleIsTruncated, type TenderToTranslate, type TranslatedTender } from "@/lib/ingestion/translate-titles";
 import { translateTenderBatchQwen } from "@/lib/ingestion/translate-titles-qwen";
 import type { LocalizedText } from "@/types/tender";
 
@@ -154,13 +154,19 @@ export async function translateAllTenders(
         })),
       );
       const bySlug = new Map(translated.map((r) => [r.slug, r]));
-      result.preview = rowsToPreview.map((t) => ({
-        slug: t.slug,
-        titleEs: t.title.es,
-        titleZh: bySlug.get(t.slug)?.titleZh ?? "(模型没有返回这一条)",
-        summaryEs: t.summary.es,
-        summaryZh: bySlug.get(t.slug)?.summaryZh ?? "(模型没有返回这一条)",
-      }));
+      // Through the same verifier the write path uses: a preview that shows
+      // text --write would not store is reviewing the wrong thing.
+      result.preview = rowsToPreview.map((t) => {
+        const source = `${t.title.es}\n${t.summary.es}`;
+        const got = bySlug.get(t.slug);
+        return {
+          slug: t.slug,
+          titleEs: t.title.es,
+          titleZh: got ? stripUnverifiedParentheticals(got.titleZh, source) : "(模型没有返回这一条)",
+          summaryEs: t.summary.es,
+          summaryZh: got ? stripUnverifiedParentheticals(got.summaryZh, source) : "(模型没有返回这一条)",
+        };
+      });
     } catch (err) {
       result.lastErrorMessage = err instanceof Error ? err.message : String(err);
     }
@@ -220,8 +226,12 @@ export async function translateAllTenders(
       // (it reads better with the title for context) but whichever one a
       // human already owns is never written back.
       const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      if (needsTitle(tender)) update.title = { ...tender.title, zh: translated.titleZh };
-      if (needsSummary(tender)) update.summary = { ...tender.summary, zh: translated.summaryZh };
+      // Checked against BOTH fields: a title rebuilt from the summary names
+      // places that appear only there, and those parentheses are as correct
+      // as any other.
+      const source = `${tender.title.es}\n${tender.summary.es}`;
+      if (needsTitle(tender)) update.title = { ...tender.title, zh: stripUnverifiedParentheticals(translated.titleZh, source) };
+      if (needsSummary(tender)) update.summary = { ...tender.summary, zh: stripUnverifiedParentheticals(translated.summaryZh, source) };
 
       const { error: updateError } = await supabase
         .from("tenders")

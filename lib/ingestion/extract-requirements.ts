@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { truncatePdfToPages } from "@/lib/ingestion/pdf-pages";
 import { extname } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
+import type { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { TenderRequirement, TenderRisk } from "@/types/tender";
 import { extractDocumentText } from "@/lib/ingestion/document-intake";
+import { dispatcherForTimeout } from "@/lib/ingestion/http-dispatcher";
 import { splitPdfIntoChunks } from "@/lib/ingestion/pdf-split";
 
 /**
@@ -399,9 +401,15 @@ const TIMEOUT_MS_PER_PAGE = 60 * 1000;
  * not one call doing real work.
  */
 function requestOptions(maxPages: number | undefined) {
+  const timeout = Math.max(MIN_TIMEOUT_MS, (maxPages ?? 0) * TIMEOUT_MS_PER_PAGE);
   return {
     maxRetries: 0,
-    timeout: Math.max(MIN_TIMEOUT_MS, (maxPages ?? 0) * TIMEOUT_MS_PER_PAGE),
+    timeout,
+    // Node's own fetch stops at 300s by default regardless of the above —
+    // the real cause of both the 304.8s and 609.0s failures. Matching its
+    // limits to this one leaves a single authority over call duration.
+    // See http-dispatcher.ts.
+    fetchOptions: { dispatcher: dispatcherForTimeout(timeout) } as Record<string, unknown>,
   };
 }
 
@@ -413,13 +421,41 @@ function requestOptions(maxPages: number | undefined) {
  * that measurement is how a legitimate slow extraction gets cut off. Two
  * real runs of this log answer it.
  */
-async function withElapsed<T>(tenderNumber: string, run: () => Promise<T>): Promise<T> {
+async function withElapsed<T>(tenderNumber: string, run: (marks: StreamMarks) => Promise<T>): Promise<T> {
   const startedAt = Date.now();
+  const marks: StreamMarks = {};
   try {
-    return await run();
+    return await run(marks);
   } finally {
-    console.log(`  ${tenderNumber}: 模型调用耗时 ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
+    const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+    // The two marks answer the question a total alone cannot: did the
+    // provider actually stream? Headers on a real streaming response arrive
+    // in under a second. Headers that never arrive at all mean the answer
+    // was being buffered server-side and "streaming" bought nothing —
+    // which is what Node's 300s header timeout was really reporting.
+    const detail = [
+      marks.connectedAt === undefined ? "响应头始终未到达（对方在缓冲，不是真流式）" : `首个响应头 ${secs(marks.connectedAt - startedAt)}`,
+      marks.firstEventAt === undefined ? "没有收到任何流式事件" : `首个流式事件 ${secs(marks.firstEventAt - startedAt)}`,
+    ].join("，");
+    console.log(`  ${tenderNumber}: 模型调用耗时 ${secs(Date.now() - startedAt)}（${detail}）`);
   }
+}
+
+type StreamMarks = { connectedAt?: number; firstEventAt?: number };
+
+/**
+ * Attaches the timing marks above to a stream without consuming it. Typed
+ * on MessageStream's own generic so the caller keeps its parsed_output
+ * type — a widened `{ on }` shape would erase it.
+ */
+function markStream<ParsedT>(stream: MessageStream<ParsedT>, marks: StreamMarks): MessageStream<ParsedT> {
+  stream.on("connect", () => {
+    marks.connectedAt ??= Date.now();
+  });
+  stream.on("streamEvent", () => {
+    marks.firstEventAt ??= Date.now();
+  });
+  return stream;
 }
 
 /**
@@ -450,9 +486,9 @@ async function runExtraction(
   maxPages?: number,
 ) {
   if (useStructuredOutput) {
-    const response = await withElapsed(context.tenderNumber, () =>
-      client.messages
-        .stream(
+    const response = await withElapsed(context.tenderNumber, (marks) =>
+      markStream(
+        client.messages.stream(
           {
             model,
             max_tokens: 16000,
@@ -461,7 +497,9 @@ async function runExtraction(
             output_config: { format: zodOutputFormat(ExtractionSchema) },
           },
           requestOptions(maxPages),
-        )
+        ),
+        marks,
+      )
         // Streaming still returns parsed_output when output_config.format is
         // set — structured outputs are not given up by streaming here.
         .finalMessage(),
@@ -484,9 +522,9 @@ async function runExtraction(
     return response.parsed_output;
   }
 
-  const response = await withElapsed(context.tenderNumber, () =>
-    client.messages
-      .stream(
+  const response = await withElapsed(context.tenderNumber, (marks) =>
+    markStream(
+      client.messages.stream(
         {
           model,
           max_tokens: 16000,
@@ -494,8 +532,9 @@ async function runExtraction(
           messages: [{ role: "user", content }],
         },
         requestOptions(maxPages),
-      )
-      .finalMessage(),
+      ),
+      marks,
+    ).finalMessage(),
   );
 
   const u = response.usage;

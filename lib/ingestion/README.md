@@ -4208,3 +4208,57 @@ interleaved — and a cronograma table is exactly what task #34 is chasing.
 That is a genuine tradeoff, not a free win, so it is not being changed
 unilaterally. At ~10 minutes per document, 66 Peru documents is ~11 hours,
 so the current path does not scale either.
+
+### 304.8s — Node's own ceiling, hiding under the SDK's (2026-09-13)
+
+Third measurement, same document, SDK timeout now 30 minutes:
+
+```
+peru-ocds-dgv273-seacev3-1248966: 模型调用耗时 304.8s
+… 分析失败，已跳过：Request timed out.
+```
+
+**304.8s is not 30 minutes.** Nothing in this codebase asked for it. It is
+Node's built-in `fetch` (undici) hitting its own default **`headersTimeout`
+of 300 seconds** — a second ceiling, underneath the SDK's, that no setting
+here ever touched.
+
+It also explains the previous number. **609.0s ≈ 2 × 304s**: the same 300s
+ceiling hit twice, because `maxRetries` was still 1 at the time. Two
+failures, three measurements, one cause — and the SDK timeout, which is what
+both earlier commits adjusted, was never the binding constraint at all.
+
+Fixed in `http-dispatcher.ts`, which builds an undici `Agent` whose
+`headersTimeout`/`bodyTimeout` match whatever the SDK timeout is for that
+call, so there is exactly **one** authority over how long a call may run —
+the deliberate, page-scaled, documented one.
+
+Two things about that file are worth stating rather than burying:
+
+- **It reaches the `Agent` class off Node's global dispatcher** instead of
+  importing `undici`, which is not a dependency here (and `npm install`
+  could not add one from this sandbox anyway). That is a Node internal, so
+  every step is guarded and any surprise returns `undefined`, leaving the
+  old default behaviour rather than throwing. `npm run test:extraction-
+  pipeline` verifies the mechanism against a local server that withholds
+  headers for 1.2s: a deliberately 300ms dispatcher **must** fail (proving
+  it is honoured, not ignored) and a generous one must let the slow response
+  through. Without that first assertion the second proves nothing.
+- **`headersTimeout` measures time to the first response HEADER**, and a
+  genuinely streaming endpoint sends headers immediately. So this limit
+  firing at all is evidence that DashScope's Anthropic-compatible endpoint
+  **buffers the whole answer before replying** — meaning the switch to
+  streaming bought nothing there. That is a finding about the provider, not
+  a setting, and raising the ceiling does not change it.
+
+So the log line now reports what a total alone cannot:
+
+```
+模型调用耗时 304.8s（响应头始终未到达（对方在缓冲，不是真流式），没有收到任何流式事件）
+```
+
+Time-to-first-header and time-to-first-stream-event. If the next run prints
+a header time under a second, the endpoint does stream and the earlier
+reading was wrong. If it prints 响应头始终未到达 again, the buffering is
+confirmed, and the architecture question above — sending a text-layer PDF as
+text rather than as a multi-megabyte native PDF — stops being optional.

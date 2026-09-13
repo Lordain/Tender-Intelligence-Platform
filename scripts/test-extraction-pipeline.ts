@@ -31,6 +31,9 @@ import {
   type TenderExtraction,
 } from "../lib/ingestion/extract-requirements";
 import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
+import { dispatcherForTimeout } from "../lib/ingestion/http-dispatcher";
 import { writeTestPdf } from "./fixtures/make-pdf";
 
 let passed = 0;
@@ -96,7 +99,7 @@ const USAGE = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 
  */
 function stubClient(script: (unknown | Error)[]) {
   const calls: { contentTypes: string[]; promptChars: number; docBytes: number }[] = [];
-  const requestOptionsSeen: ({ maxRetries?: number; timeout?: number } | undefined)[] = [];
+  const requestOptionsSeen: ({ maxRetries?: number; timeout?: number; fetchOptions?: { dispatcher?: unknown } } | undefined)[] = [];
   const next = (content: unknown) => {
     const blocks = Array.isArray(content) ? content : [];
     calls.push({
@@ -122,7 +125,7 @@ function stubClient(script: (unknown | Error)[]) {
       parse: mustStream,
       stream: (
         { messages }: { messages: { content: unknown }[] },
-        requestOptions?: { maxRetries?: number; timeout?: number },
+        requestOptions?: { maxRetries?: number; timeout?: number; fetchOptions?: { dispatcher?: unknown } },
       ) => {
         requestOptionsSeen.push(requestOptions);
         // next() throws synchronously for a scripted error; stream() returns
@@ -134,7 +137,15 @@ function stubClient(script: (unknown | Error)[]) {
             return { err };
           }
         })();
-        return {
+        const self = {
+          // The real MessageStream is an event emitter; extract-requirements
+          // attaches connect/streamEvent marks to it to tell a genuinely
+          // streaming provider from one that buffers. The stub emits
+          // connect immediately, which is what a streaming endpoint does.
+          on: (event: string, listener: () => void) => {
+            if (event === "connect") listener();
+            return self;
+          },
           finalMessage: async () => {
             if ("err" in body) throw body.err;
             return {
@@ -145,6 +156,7 @@ function stubClient(script: (unknown | Error)[]) {
             };
           },
         };
+        return self;
       },
     },
   };
@@ -338,6 +350,48 @@ async function main() {
     batchBudgetExhausted(Date.now() - BATCH_BUDGET_MS - 1) && !batchBudgetExhausted(Date.now()),
   );
   check("a request timeout does NOT end the batch on its own — the next file may be fine", classifyExtractionFailure(new Error("Request timed out.")).kind === "document");
+
+  // ---- 7d. Node's own 300s ceiling, the real cause of both timeouts ----
+  await group("7d dispatcher 真的改变 fetch 行为", async () => {
+    // A server that withholds response HEADERS for 1.2s — the shape of a
+    // provider that buffers its answer instead of streaming it, which is
+    // what undici's headersTimeout actually measures.
+    const server = createServer((_req, res) => {
+      setTimeout(() => {
+        res.writeHead(200, { "content-type": "text/plain" });
+        res.end("ok");
+      }, 1200);
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const { port } = server.address() as AddressInfo;
+    const url = `http://127.0.0.1:${port}/`;
+
+    try {
+      // Forces Node to create its global dispatcher, which is the class the
+      // helper reads. Before any fetch there is nothing to read.
+      await fetch("http://127.0.0.1:1").catch(() => {});
+
+      const tooShort = dispatcherForTimeout(300);
+      check("a dispatcher is actually produced on this Node", tooShort !== undefined);
+
+      // Proves it is honoured rather than ignored: 300ms MUST fail on a
+      // 1.2s server. If this passes, the dispatcher did nothing and the
+      // headroom below would be a comforting illusion.
+      let shortFailed = false;
+      try {
+        await fetch(url, { dispatcher: tooShort } as RequestInit);
+      } catch {
+        shortFailed = true;
+      }
+      check("a deliberately short dispatcher does time out — so it is honoured", shortFailed);
+
+      const generous = dispatcherForTimeout(30_000);
+      const res = await fetch(url, { dispatcher: generous } as RequestInit);
+      check("and a generous one lets the slow response through", res.ok);
+    } finally {
+      server.close();
+    }
+  });
 
   // ---- 8. The money question: does a repeating failure stop the batch? ----
   check(

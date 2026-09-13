@@ -11,7 +11,7 @@
  * line; scripts/compare-translation-providers.ts still runs both.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { stripUnverifiedParentheticals, titleIsTruncated, type TenderToTranslate, type TranslatedTender } from "@/lib/ingestion/translate-titles";
+import { findDroppedIdentifiers, stripUnverifiedParentheticals, titleIsTruncated, type TenderToTranslate, type TranslatedTender } from "@/lib/ingestion/translate-titles";
 import { translateTenderBatchQwen } from "@/lib/ingestion/translate-titles-qwen";
 import type { LocalizedText } from "@/types/tender";
 
@@ -40,6 +40,8 @@ export type TranslateAllTendersResult = {
   failedSlugs?: string[];
   /** Slugs this run actually wrote, so the batch can be handed to reset-translations.ts as a batch. */
   writtenSlugs?: string[];
+  /** Rows whose Chinese lost a reference code the Spanish carried — see findDroppedIdentifiers. */
+  droppedIdentifiers?: { slug: string; codes: string[] }[];
   /** Most recent real error message from a failed API call, if any — callers (the admin API route) use this to log an admin_alerts row when translation is failing systemically (quota/connection), not just per one bad row. */
   lastErrorMessage?: string;
   sample: { slug: string; titleEs: string }[];
@@ -177,6 +179,7 @@ export async function translateAllTenders(
   let failedCount = 0;
   const failedSlugs: string[] = [];
   const writtenSlugs: string[] = [];
+  const droppedIdentifiers: { slug: string; codes: string[] }[] = [];
   let lastErrorMessage: string | undefined;
 
   for (const batch of chunk(toTranslate, BATCH_SIZE)) {
@@ -245,10 +248,16 @@ export async function translateAllTenders(
       }
       translatedCount++;
       writtenSlugs.push(tender.slug);
+
+      const codes = findDroppedIdentifiers(
+        `${update.title ? (update.title as { zh: string }).zh : ""} ${update.summary ? (update.summary as { zh: string }).zh : ""}`,
+        source,
+      );
+      if (codes.length > 0) droppedIdentifiers.push({ slug: tender.slug, codes });
     }
 
     options.onProgress?.(translatedCount + failedCount, toTranslate.length);
   }
 
-  return { ...result, translatedCount, failedCount, failedSlugs, writtenSlugs, lastErrorMessage };
+  return { ...result, translatedCount, failedCount, failedSlugs, writtenSlugs, droppedIdentifiers, lastErrorMessage };
 }

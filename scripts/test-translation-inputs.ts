@@ -8,7 +8,7 @@
  *
  * Usage: npm run test:translation-inputs
  */
-import { stripUnverifiedParentheticals, titleIsTruncated } from "../lib/ingestion/translate-titles";
+import { findDroppedIdentifiers, stripUnverifiedParentheticals, titleIsTruncated } from "../lib/ingestion/translate-titles";
 
 let passed = 0;
 let failed = 0;
@@ -117,6 +117,59 @@ checkText(
   "nothing to do when there are no parentheses",
   stripUnverifiedParentheticals("重型机械采购", "ADQUISICIÓN DE MAQUINARIA PESADA"),
   "重型机械采购",
+);
+
+// ── findDroppedIdentifiers ─────────────────────────────────────────────────
+// The real loss: a works-order number gone from a sentence that still reads
+// perfectly well.
+checkText(
+  "a leading works-order code that vanished",
+  findDroppedIdentifiers("中低压配电网改造", "OP088.- REHABILITACIÓN DE RED DE DISTRIBUCIÓN ELECTRICA EN MEDIA Y BAJA TENSIÓN").join("|"),
+  "OP088",
+);
+checkText(
+  "the same code carried through is not flagged",
+  findDroppedIdentifiers("OP088 中低压配电网改造", "OP088.- REHABILITACIÓN DE RED...").join("|"),
+  "",
+);
+checkText(
+  "an equipment tag that survived",
+  findDroppedIdentifiers("TG-5汽轮发电机组修复", "REHABILITACIÓN DEL TURBOGENERADOR TG-5").join("|"),
+  "",
+);
+checkText(
+  "a chainage that was dropped",
+  findDroppedIdentifiers("道路改善工程", "MEJORAMIENTO ... (K0+000 AL K0+758)").join("|"),
+  "K0+000|K0+758",
+);
+checkText(
+  "a chainage that survived",
+  findDroppedIdentifiers("在San Seb道路KM 6+512处建设桥梁", "CONSTRUCCIÓN DEL PUENTE UBICADO EN EL KM 6+512").join("|"),
+  "",
+);
+
+// Bare numbers are ordinary words a translation may render differently.
+checkText(
+  "a quantity is not an identifier",
+  findDroppedIdentifiers("采购22辆罐车", "ADQS. DE 22 VEHS. CISTERNA").join("|"),
+  "",
+);
+checkText(
+  "a year is not an identifier",
+  findDroppedIdentifiers("道路铺装", "PAVIMENTACIÓN 2026").join("|"),
+  "",
+);
+checkText(
+  "a bare token under three characters is ignored",
+  findDroppedIdentifiers("建设工程", "OBRA T1").join("|"),
+  "",
+);
+
+// Each code reported once however often the source repeats it.
+checkText(
+  "a repeated code is reported once",
+  findDroppedIdentifiers("工程", "OP088 ... OP088 ... OP088").join("|"),
+  "OP088",
 );
 
 console.log(`\n${passed}/${passed + failed} checks passed.`);

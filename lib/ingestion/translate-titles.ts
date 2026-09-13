@@ -60,6 +60,47 @@ const BatchTranslationSchema = z.object({
 export type TenderToTranslate = { slug: string; titleEs: string; summaryEs: string; titleIsTruncated?: boolean };
 
 /**
+ * Reference codes in the Spanish that did not survive into the Chinese.
+ *
+ * "OP088.- REHABILITACIÓN DE RED DE DISTRIBUCIÓN ELECTRICA" came back as
+ * 中低压配电网改造 — fluent, accurate, and missing the works-order number a
+ * bidder uses to find the procurement on the portal. The loss is invisible in
+ * review because what remains reads perfectly well.
+ *
+ * An identifier here is a token carrying both a digit and a letter (OP088,
+ * TG-5, DCMC58, BPIN20241301010259) or a chainage (K5+500, 6+512). Bare
+ * numbers are excluded: quantities, years and counts are ordinary words that
+ * a translation may legitimately render differently, and flagging them would
+ * bury the real thing.
+ *
+ * Reports rather than repairs. Where the code belongs in a Chinese sentence
+ * depends on the sentence, and a wrong insertion is harder to spot than an
+ * absence that has been named.
+ */
+export function findDroppedIdentifiers(zh: string, sourceEs: string): string[] {
+  const CHAINAGE = /^\d+\+\d+$/;
+  const hasDigit = /\d/;
+  const hasLetter = /[A-Za-z]/;
+
+  const dropped: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of sourceEs.split(/[\s,;:()[\]"'«»]+/)) {
+    // Trailing sentence punctuation is not part of the code; an inner hyphen
+    // or plus sign is.
+    const token = raw.replace(/^[.\-]+/, "").replace(/[.\-]+$/, "");
+    if (token.length < 3) continue;
+    if (!hasDigit.test(token)) continue;
+    if (!hasLetter.test(token) && !CHAINAGE.test(token)) continue;
+    if (seen.has(token.toLowerCase())) continue;
+    seen.add(token.toLowerCase());
+    if (!zh.toLowerCase().includes(token.toLowerCase())) dropped.push(token);
+  }
+
+  return dropped;
+}
+
+/**
  * Drop any （original）whose contents are not actually in the Spanish.
  *
  * The parenthesis after a transliterated name exists to be searched for — on

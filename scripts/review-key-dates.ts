@@ -76,12 +76,28 @@ function slugArgs(args: string[]): string[] {
   return slugs;
 }
 
-/** Paged for the same reason every other read script pages: PostgREST caps an unranged select at 1000 and would silently return only the first page. */
+/**
+ * Paged for the same reason every other read script pages: PostgREST caps an
+ * unranged select at 1000 and would silently return only the first page.
+ *
+ * One retry per page, the same posture upsert-tenders.ts takes. A real
+ * Gateway Timeout killed a run outright (2026-09-13) and the immediate
+ * re-run succeeded, which is the definition of a blip — and this script now
+ * makes five full-table reads to build the funnel, so it meets five times
+ * as many chances to hit one. A read-only report is the last thing that
+ * should need a human to type the command again. A second failure is
+ * treated as real rather than retried into a hang.
+ */
 async function selectAll<T>(run: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T[]> {
   const PAGE_SIZE = 1000;
   const rows: T[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await run(from, from + PAGE_SIZE - 1);
+    let { data, error } = await run(from, from + PAGE_SIZE - 1);
+    if (error) {
+      console.error(`  读取超时，重试一次：${error.message}`);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      ({ data, error } = await run(from, from + PAGE_SIZE - 1));
+    }
     if (error) throw new Error(`读取失败：${error.message}`);
     const page = (data ?? []) as T[];
     rows.push(...page);

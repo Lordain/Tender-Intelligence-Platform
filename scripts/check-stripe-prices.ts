@@ -57,6 +57,72 @@ function recurringMonths(price: Stripe.Price): number | null {
   return null;
 }
 
+/**
+ * Stripe secret keys are scoped to one mode; Price ids are not. A live-mode id
+ * is shaped exactly like a test-mode one, and retrieving it with the other
+ * mode's key returns "No such price" — byte for byte the error a typo gives.
+ * The key's prefix is the only thing on hand that separates those two, so say
+ * it out loud before the first retrieve rather than leaving the reader to
+ * guess which of the two failures they are looking at.
+ */
+function describeKeyMode(secretKey: string): { mode: "test" | "live" | "unknown"; label: string } {
+  if (/^(sk|rk)_test_/.test(secretKey)) return { mode: "test", label: "测试模式（sk_test / rk_test）" };
+  if (/^(sk|rk)_live_/.test(secretKey)) return { mode: "live", label: "生产模式（sk_live / rk_live）" };
+  return { mode: "unknown", label: "前缀不认识，无法判断模式" };
+}
+
+/**
+ * All six missing at once is not six mistakes. Either the key is in the other
+ * mode from the Prices, or it belongs to another account — and both look the
+ * same from a single failed retrieve. Listing what this key *can* see settles
+ * it: the ids that come back are the ones the key's mode and account actually
+ * hold, so either the six are in there (and the env vars are wrong) or they
+ * are not (and the key is).
+ */
+async function explainAllMissing(stripe: Stripe, keyLabel: string): Promise<void> {
+  console.log("六个全部查不到——这不是六个 id 都打错了，是这把 key 看不到它们。\n");
+  console.log(`当前 key：${keyLabel}`);
+
+  try {
+    const account = await stripe.accounts.retrieve();
+    const name = account.settings?.dashboard?.display_name;
+    console.log(`当前账户：${account.id}${name ? `（${name}）` : ""}`);
+  } catch {
+    console.log("当前账户：这把 key 读不到账户信息（受限 key 很正常，不影响判断）");
+  }
+
+  try {
+    const list = await stripe.prices.list({ limit: 20 });
+    if (list.data.length === 0) {
+      console.log("\n这把 key 底下一个 Price 都没有——价格建在了另一个模式，或者另一个账户。");
+    } else {
+      console.log(`\n这把 key 能看到的 Price（最多 20 条）：`);
+      for (const price of list.data) {
+        const months = recurringMonths(price);
+        const cycle = months === null ? "一次性" : `${months} 个月`;
+        const mode = price.livemode ? "生产" : "测试";
+        const archived = price.active ? "" : "  [已归档]";
+        console.log(`  ${price.id}  $${((price.unit_amount ?? 0) / 100).toLocaleString("en-US")} / ${cycle}  ${mode}${archived}`);
+      }
+      console.log("\n上面有 .env 里那六个 id 吗？");
+      console.log("  有 → 那是别的问题，把这一段贴出来。");
+      console.log("  没有 → 价格建在了另一个模式或另一个账户，按下面修。");
+    }
+  } catch (error) {
+    console.log(`\n连列 Price 都失败了：${error instanceof Error ? error.message : String(error)}`);
+    console.log("这把 key 大概率是无效的、被吊销了，或者权限不够。");
+  }
+
+  console.log("\n怎么修：");
+  console.log("  1. 打开 Stripe 后台，先看右上角「测试模式 / Test mode」开关现在是开还是关");
+  console.log("  2. 切到和上面这把 key 相同的模式，进 Products，找那六个价格");
+  console.log("  3. 找不到 = 价格建在了另一个模式。二选一：");
+  console.log("     a. 本地自测：把本地 .env.local 的 STRIPE_SECRET_KEY 换成价格所在模式的 key");
+  console.log("     b. 准备上线：在生产模式（sk_live）下重建这六个 Price，再更新环境变量");
+  console.log("\n注意：Vercel 生产环境用的是 sk_live，所以最终这六个 Price 必须存在于生产模式。");
+  console.log("测试模式建的价格，生产环境一律查不到。");
+}
+
 async function main() {
   const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secretKey) {
@@ -64,7 +130,9 @@ async function main() {
     process.exit(1);
   }
   const stripe = new Stripe(secretKey);
+  const keyMode = describeKeyMode(secretKey);
 
+  console.log(`Stripe key：${keyMode.label}`);
   console.log(
     PROMOTION.active
       ? `当前为「${PROMOTION.label}」价格，下面校验的是优惠价。\n`
@@ -75,12 +143,15 @@ async function main() {
   const intervals: BillingInterval[] = ["monthly", "semiannual", "annual"];
   const seen = new Map<string, string>();
   let problems = 0;
+  let missing = 0;
+  let checked = 0;
 
   for (const plan of plans) {
     for (const interval of intervals) {
       const label = `${PLAN_LABELS[plan]} ${INTERVAL_LABELS[interval]}`;
       const envName = ENV_NAMES[plan][interval];
       const priceId = process.env[envName]?.trim();
+      checked += 1;
       const expectedUsd = PLAN_PRICES_USD[plan][interval];
       const listUsd = PLAN_LIST_PRICES_USD[plan][interval];
 
@@ -104,7 +175,18 @@ async function main() {
         price = await stripe.prices.retrieve(priceId);
       } catch (error) {
         problems += 1;
-        console.log(`❌ ${label.padEnd(12)} ${priceId}\n     Stripe 查不到：${error instanceof Error ? error.message : String(error)}`);
+        // Read `code` off the error object rather than narrowing on
+        // Stripe.errors.StripeInvalidRequestError: the class name is a moving
+        // target across stripe-node majors, and this survives either way.
+        const stripeCode =
+          typeof error === "object" && error !== null && "code" in error
+            ? String((error as { code?: unknown }).code ?? "")
+            : "";
+        const isMissing = stripeCode === "resource_missing";
+        if (isMissing) missing += 1;
+        console.log(`❌ ${label.padEnd(12)} ${priceId}`);
+        console.log(`     Stripe 查不到：${error instanceof Error ? error.message : String(error)}`);
+        if (isMissing) console.log(`     这把 key 是${keyMode.label}——Price 可能建在另一个模式里`);
         continue;
       }
 
@@ -135,6 +217,10 @@ async function main() {
   }
 
   console.log();
+  if (missing > 0 && missing === checked) {
+    await explainAllMissing(stripe, keyMode.label);
+    console.log();
+  }
   if (problems > 0) {
     console.error(`${problems} 项不符——先修好再上线，卡支付不会因此报错，只会按 Stripe 上的金额扣款。`);
     process.exit(1);

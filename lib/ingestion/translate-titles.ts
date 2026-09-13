@@ -132,6 +132,11 @@ export function findDroppedIdentifiers(zh: string, sourceEs: string): string[] {
   // the reader to ignore this warning.
   const NUMBER_PREFIX = /^(n[°ºo]?\.?|núm\.?|nro\.?)/i;
 
+  // "5/A." and "2/A." are Spanish short for 5ª and 2ª — ordinals, not codes.
+  // Correct Chinese writes them 第五 / 第二, so the literal token is never
+  // present and flagging it would train the reader to ignore this warning.
+  const ORDINAL = /^\d+\/[ao]$/i;
+
   // Punctuation inside a code moves freely between languages: K.10+700 may
   // come back as K10+700 and is not a loss.
   const core = (value: string) => value.toLowerCase().replace(/[.°º\s]/g, "");
@@ -144,6 +149,7 @@ export function findDroppedIdentifiers(zh: string, sourceEs: string): string[] {
     const trimmed = raw.replace(/^[.\-]+/, "").replace(/[.\-]+$/, "");
     const token = trimmed.replace(NUMBER_PREFIX, "") || trimmed;
     if (token.length < 3) continue;
+    if (ORDINAL.test(token)) continue;
     if (!hasDigit.test(token)) continue;
     if (!hasLetter.test(token) && !CHAINAGE.test(token)) continue;
     if (seen.has(core(token))) continue;

@@ -222,6 +222,25 @@ checkText(
   "OP302",
 );
 
+// "5/A." is 5ª, an ordinal. Correct Chinese writes 第五, so the literal token
+// is never there and reporting it would be noise on a right answer.
+checkText(
+  "a Spanish ordinal abbreviation is not a code",
+  findDroppedIdentifiers(
+    "中央军事医院第五区段建设：儿科专业",
+    "CONSTRUCCIÓN DE LA 5/A. SECCIÓN DEL HOSP. CNTL. MIL.: ESPECIALIDADES PEDIÁTRICAS",
+  ).join("|"),
+  "",
+);
+checkText(
+  "the ordinal exemption does not cover a real code in the same title",
+  findDroppedIdentifiers(
+    "新拉雷多设施建设第二次招标",
+    "CONSTRUCCIÓN INSTLS. NVO. LAREDO 2/A. VUELTA, TRAMO L-5",
+  ).join("|"),
+  "L-5",
+);
+
 // ── findUntranslatedSpanish ────────────────────────────────────────────────
 checkText(
   "a Spanish place phrase left in the Chinese",

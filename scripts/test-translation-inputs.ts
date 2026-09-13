@@ -8,7 +8,7 @@
  *
  * Usage: npm run test:translation-inputs
  */
-import { findDroppedIdentifiers, stripUnverifiedParentheticals, titleIsTruncated } from "../lib/ingestion/translate-titles";
+import { findDroppedIdentifiers, findUntranslatedSpanish, stripUnverifiedParentheticals, titleIsTruncated } from "../lib/ingestion/translate-titles";
 import { mapBatchResultsToSlugs } from "../lib/ingestion/translate-titles-qwen";
 
 let passed = 0;
@@ -171,6 +171,131 @@ checkText(
   "a repeated code is reported once",
   findDroppedIdentifiers("工程", "OP088 ... OP088 ... OP088").join("|"),
   "OP088",
+);
+
+// ── findDroppedIdentifiers: tokenising round two ───────────────────────────
+// A period joins a code to the next word as often as it ends a sentence. The
+// first run flagged "437-08-K005.-CONSTRUCCIÓN" and "302CONSTRUCCIÓN" as
+// missing codes, which is noise, and noise is what gets a check ignored.
+checkText(
+  "a code welded to the next word by a period",
+  findDroppedIdentifiers("工程", "437-08-K005.-CONSTRUCCIÓN DE RED").join("|"),
+  "437-08-K005",
+);
+checkText(
+  "that code, carried through, is not flagged",
+  findDroppedIdentifiers("437-08-K005 电网建设", "437-08-K005.-CONSTRUCCIÓN DE RED").join("|"),
+  "",
+);
+checkText(
+  "a bare number welded to a word is not an identifier",
+  findDroppedIdentifiers("建设工程", "302.-CONSTRUCCIÓN DE PLANTA").join("|"),
+  "",
+);
+// "N°" is Spanish for "number", not part of the code.
+checkText(
+  "the number prefix is not part of the code",
+  findDroppedIdentifiers("第2563075号项目", "EXPEDIENTE N°2563075").join("|"),
+  "",
+);
+// Punctuation inside a code moves between languages.
+checkText(
+  "K.10+700 answering K10+700 is not a loss",
+  findDroppedIdentifiers("桩号K10+700处", "TRAMO K.10+700").join("|"),
+  "",
+);
+checkText(
+  "a period between digits does not split the value",
+  findDroppedIdentifiers("工程", "TRAMO K.10+700 AL FINAL").join("|"),
+  "K.10+700",
+);
+
+// A digit run welded straight onto a word, with no separator at all.
+checkText(
+  "a number fused to the next word is split, and a bare number is not a code",
+  findDroppedIdentifiers("302 混凝土路面施工", "302CONSTRUCCIÓN DE PAVIMENTACIÓN CON CONCRETO").join("|"),
+  "",
+);
+checkText(
+  "the same fusion still reports a real code beside it",
+  findDroppedIdentifiers("混凝土路面施工", "OP302CONSTRUCCIÓN DE PAVIMENTACIÓN").join("|"),
+  "OP302",
+);
+
+// "5/A." is 5ª, an ordinal. Correct Chinese writes 第五, so the literal token
+// is never there and reporting it would be noise on a right answer.
+checkText(
+  "a Spanish ordinal abbreviation is not a code",
+  findDroppedIdentifiers(
+    "中央军事医院第五区段建设：儿科专业",
+    "CONSTRUCCIÓN DE LA 5/A. SECCIÓN DEL HOSP. CNTL. MIL.: ESPECIALIDADES PEDIÁTRICAS",
+  ).join("|"),
+  "",
+);
+checkText(
+  "the ordinal exemption does not cover a real code in the same title",
+  findDroppedIdentifiers(
+    "新拉雷多设施建设第二次招标",
+    "CONSTRUCCIÓN INSTLS. NVO. LAREDO 2/A. VUELTA, TRAMO L-5",
+  ).join("|"),
+  "L-5",
+);
+
+// A chainage prefix is a unit, and the source itself is inconsistent about it.
+checkText(
+  "KM and K are the same chainage marker",
+  findDroppedIdentifiers(
+    "K10+700至K11+420瓜达拉哈拉-查帕拉公路西侧L-5段中央车道施工",
+    "CONSTRUCCIÓN CARRILES CENT. CARR.GDL - CHAPALA, K.10+700 AL KM.11+420 L-PTE L-5",
+  ).join("|"),
+  "",
+);
+checkText(
+  "a chainage whose numbers are absent is still reported",
+  findDroppedIdentifiers("公路中央车道施工", "TRAMO K.10+700 AL KM.11+420").join("|"),
+  "K.10+700|KM.11+420",
+);
+checkText(
+  "the chainage exemption does not extend to a lettered code",
+  findDroppedIdentifiers("桩号11+420处施工", "TRAMO KM.11+420 RUTA HU672").join("|"),
+  "HU672",
+);
+
+// ── findUntranslatedSpanish ────────────────────────────────────────────────
+checkText(
+  "a Spanish place phrase left in the Chinese",
+  findUntranslatedSpanish("位于Arequipa省Santa Rita de Siguas区Nueva Juventud B区").join("|"),
+  "Santa Rita de Siguas|Nueva Juventud B",
+);
+checkText(
+  "a lone Latin word is not enough on its own",
+  findUntranslatedSpanish("位于Arequipa省的道路改善").join("|"),
+  "",
+);
+checkText(
+  "a brand kept deliberately is not flagged",
+  findUntranslatedSpanish("采购马德罗炼油厂蒸汽轮机WOODWARD品牌控制系统的备件").join("|"),
+  "",
+);
+checkText(
+  "an all-caps multi-word name is not flagged",
+  findUntranslatedSpanish("“BRAMONAS 2”及“BRAMONAS 5”堤防建设").join("|"),
+  "",
+);
+checkText(
+  "an acronym is not flagged",
+  findUntranslatedSpanish("IOAR 实验室设备采购").join("|"),
+  "",
+);
+checkText(
+  "the copied original inside （）is not flagged",
+  findUntranslatedSpanish("圣丽塔德西瓜斯区（Santa Rita de Siguas）道路改善").join("|"),
+  "",
+);
+checkText(
+  "a fully Chinese title has nothing to report",
+  findUntranslatedSpanish("塔巴斯科州韦曼吉约梅斯卡拉帕河护岸工程").join("|"),
+  "",
 );
 
 // ── mapBatchResultsToSlugs ─────────────────────────────────────────────────

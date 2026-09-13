@@ -100,7 +100,18 @@ function needsSummary(row: TranslatableRow): boolean {
  */
 export async function translateAllTenders(
   supabase: SupabaseClient,
-  options: { write: boolean; limit?: number; sample?: number },
+  options: {
+    write: boolean;
+    limit?: number;
+    sample?: number;
+    /**
+     * Called after each written batch. A --write run is a sequence of
+     * blocking model calls with nothing printed between them, so without
+     * this a long run is indistinguishable from a hung one — and the full
+     * set is ~31 batches.
+     */
+    onProgress?: (doneCount: number, total: number) => void;
+  },
 ): Promise<TranslateAllTendersResult> {
   // PostgREST caps an unranged select at 1000 rows — page with .range()
   // so tenders past the first 1000 don't silently get skipped.
@@ -210,6 +221,8 @@ export async function translateAllTenders(
       translatedCount++;
       writtenSlugs.push(tender.slug);
     }
+
+    options.onProgress?.(translatedCount + failedCount, toTranslate.length);
   }
 
   return { ...result, translatedCount, failedCount, failedSlugs, writtenSlugs, lastErrorMessage };

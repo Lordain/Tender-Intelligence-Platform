@@ -50,7 +50,17 @@ async function main() {
     process.exit(1);
   }
 
-  const result = await translateAllTenders(supabase, { write: shouldWrite, limit, sample });
+  // Printed before the first model call, not after: the batches below block
+  // for tens of seconds each with nothing in between, and a silent terminal
+  // is how a working run gets killed for looking stuck.
+  if (shouldWrite) console.log("每批 8 条，每批一次模型调用，几十秒不等——中途没有输出是正常的。\n");
+
+  const result = await translateAllTenders(supabase, {
+    write: shouldWrite,
+    limit,
+    sample,
+    onProgress: (done, total) => console.log(`  ${done}/${total} 已处理…`),
+  });
 
   console.log(`${result.untranslatedCount} of ${result.totalNonExcluded} non-excluded tenders still need translation.`);
   console.log(`Translating ${result.attemptedCount}...`);

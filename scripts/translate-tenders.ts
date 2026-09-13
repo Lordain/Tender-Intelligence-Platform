@@ -80,6 +80,15 @@ async function main() {
     console.error(`Failed to translate: ${result.failedSlugs.join(", ")}`);
   }
   console.log(`Done. Translated ${result.translatedCount} of ${result.attemptedCount} tenders (${result.failedCount} failed).`);
+
+  // The slugs this run wrote, so the batch can be undone as a batch. Nothing
+  // records which rows a given run touched, and reset:translations can only
+  // take --slug or --all; without this list, disliking one batch means
+  // resetting every translation in the table.
+  if (result.writtenSlugs && result.writtenSlugs.length > 0) {
+    console.log(`\n本次写入的 ${result.writtenSlugs.length} 条。要撤销这一批：`);
+    console.log(`  npm run reset:translations -- --write ${result.writtenSlugs.map((s) => `--slug ${s}`).join(" ")}`);
+  }
 }
 
 main();

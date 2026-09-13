@@ -38,6 +38,8 @@ export type TranslateAllTendersResult = {
   translatedCount?: number;
   failedCount?: number;
   failedSlugs?: string[];
+  /** Slugs this run actually wrote, so the batch can be handed to reset-translations.ts as a batch. */
+  writtenSlugs?: string[];
   /** Most recent real error message from a failed API call, if any — callers (the admin API route) use this to log an admin_alerts row when translation is failing systemically (quota/connection), not just per one bad row. */
   lastErrorMessage?: string;
   sample: { slug: string; titleEs: string }[];
@@ -152,6 +154,7 @@ export async function translateAllTenders(
   let translatedCount = 0;
   let failedCount = 0;
   const failedSlugs: string[] = [];
+  const writtenSlugs: string[] = [];
   let lastErrorMessage: string | undefined;
 
   for (const batch of chunk(toTranslate, BATCH_SIZE)) {
@@ -205,8 +208,9 @@ export async function translateAllTenders(
         continue;
       }
       translatedCount++;
+      writtenSlugs.push(tender.slug);
     }
   }
 
-  return { ...result, translatedCount, failedCount, failedSlugs, lastErrorMessage };
+  return { ...result, translatedCount, failedCount, failedSlugs, writtenSlugs, lastErrorMessage };
 }

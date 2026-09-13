@@ -30,7 +30,7 @@ import {
   toTenderFields,
   type TenderExtraction,
 } from "../lib/ingestion/extract-requirements";
-import { classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
+import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
 import { writeTestPdf } from "./fixtures/make-pdf";
 
 let passed = 0;
@@ -96,6 +96,7 @@ const USAGE = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 
  */
 function stubClient(script: (unknown | Error)[]) {
   const calls: { contentTypes: string[]; promptChars: number; docBytes: number }[] = [];
+  const requestOptionsSeen: ({ maxRetries?: number } | undefined)[] = [];
   const next = (content: unknown) => {
     const blocks = Array.isArray(content) ? content : [];
     calls.push({
@@ -107,27 +108,57 @@ function stubClient(script: (unknown | Error)[]) {
     if (step instanceof Error) throw step;
     return step;
   };
+  // Only stream() is implemented, and create()/parse() throw on purpose.
+  // Non-streaming is what let one batch spend 31 minutes and return nothing
+  // (the SDK pins a 10-minute timeout for a non-streaming request and then
+  // retries it twice), so a revert to it must fail here rather than be
+  // discovered on the bill.
+  const mustStream = () => {
+    throw new Error("非流式调用：extract-requirements.ts 必须用 messages.stream()，见 REQUEST_OPTIONS 的注释");
+  };
   const client = {
     messages: {
-      create: async ({ messages }: { messages: { content: unknown }[] }) => ({
-        usage: USAGE,
-        stop_reason: "end_turn",
-        content: [{ type: "text", text: JSON.stringify(next(messages[0].content)) }],
-      }),
-      parse: async ({ messages }: { messages: { content: unknown }[] }) => ({
-        usage: USAGE,
-        stop_reason: "end_turn",
-        parsed_output: ExtractionSchema.parse(next(messages[0].content)),
-      }),
+      create: mustStream,
+      parse: mustStream,
+      stream: (
+        { messages }: { messages: { content: unknown }[] },
+        requestOptions?: { maxRetries?: number },
+      ) => {
+        requestOptionsSeen.push(requestOptions);
+        // next() throws synchronously for a scripted error; stream() returns
+        // an object whose finalMessage() rejects, which is the real shape.
+        const body = (() => {
+          try {
+            return { ok: next(messages[0].content) };
+          } catch (err) {
+            return { err };
+          }
+        })();
+        return {
+          finalMessage: async () => {
+            if ("err" in body) throw body.err;
+            return {
+              usage: USAGE,
+              stop_reason: "end_turn",
+              content: [{ type: "text", text: JSON.stringify(body.ok) }],
+              parsed_output: ExtractionSchema.safeParse(body.ok).data ?? null,
+            };
+          },
+        };
+      },
     },
   };
-  return { client: client as unknown as Anthropic, calls };
+  return { client: client as unknown as Anthropic, calls, requestOptionsSeen };
 }
 
 /** The manual-JSON path — the one the production DashScope route uses. */
 const manual = (path: string, script: (unknown | Error)[], maxPages?: number) => {
-  const { client, calls } = stubClient(script);
-  return { run: () => extractTenderRequirements(path, CONTEXT, "qwen3.5-plus", client, false, maxPages), calls };
+  const { client, calls, requestOptionsSeen } = stubClient(script);
+  return {
+    run: () => extractTenderRequirements(path, CONTEXT, "qwen3.5-plus", client, false, maxPages),
+    calls,
+    requestOptionsSeen,
+  };
 };
 
 async function main() {
@@ -258,6 +289,24 @@ async function main() {
     check("a date read twice across a chunk boundary is written once", merged.keyDates.length === 2);
     check("the first non-empty one-line summary wins", merged.oneLineSummary === "为某医院采购医疗设备");
   }
+
+  // ---- 7b. The 31-minute failure: streaming, and bounded retries ----
+  await group("7b 流式与重试上限", async () => {
+    const { run, requestOptionsSeen } = manual(small, [FULL_RESPONSE]);
+    await run();
+    check("the extraction streams (create/parse would have thrown)", requestOptionsSeen.length === 1);
+    check(
+      "and passes an explicit maxRetries instead of the SDK default of 2",
+      requestOptionsSeen[0]?.maxRetries === 1,
+      `saw ${JSON.stringify(requestOptionsSeen[0])}`,
+    );
+  });
+
+  check(
+    "a batch stops at its wall-clock budget rather than running on",
+    batchBudgetExhausted(Date.now() - BATCH_BUDGET_MS - 1) && !batchBudgetExhausted(Date.now()),
+  );
+  check("a request timeout does NOT end the batch on its own — the next file may be fine", classifyExtractionFailure(new Error("Request timed out.")).kind === "document");
 
   // ---- 8. The money question: does a repeating failure stop the batch? ----
   check(

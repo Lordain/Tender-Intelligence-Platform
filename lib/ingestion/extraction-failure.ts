@@ -72,3 +72,23 @@ export const SYSTEMATIC_FAILURE_PREFIX = "【系统性错误，已中止】";
 export function isSystematicFailureError(err: unknown): boolean {
   return (err instanceof Error ? err.message : String(err)).startsWith(SYSTEMATIC_FAILURE_PREFIX);
 }
+
+/**
+ * Wall-clock ceiling for one batch run.
+ *
+ * The per-call bounds in extract-requirements.ts cap a single model call;
+ * this caps the run. Both exist because they fail differently: a call that
+ * hangs is bounded by its own timeout, while a run of documents that are
+ * each merely slow is bounded by nothing at all — which is how a batch
+ * reached 31 minutes on 2026-09-13 and returned nothing.
+ *
+ * Checked BETWEEN tenders, never mid-call: interrupting a call already paid
+ * for would throw away the result and the money both. So the real ceiling is
+ * this budget plus however long the last tender takes — stated here rather
+ * than pretended away.
+ */
+export const BATCH_BUDGET_MS = 20 * 60 * 1000;
+
+export function batchBudgetExhausted(startedAt: number, now: number = Date.now()): boolean {
+  return now - startedAt >= BATCH_BUDGET_MS;
+}

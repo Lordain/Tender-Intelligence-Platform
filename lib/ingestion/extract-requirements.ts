@@ -340,6 +340,46 @@ function extractJsonObject(text: string): unknown {
 }
 
 /**
+ * Every model call below streams, and these bound what one call may cost in
+ * wall-clock time.
+ *
+ * Confirmed live 2026-09-13: a batch spent 31 MINUTES and produced nothing.
+ * The calls were non-streaming, and for a non-streaming request the SDK pins
+ * its own timeout — `_calculateNonstreamingTimeout`, 10 minutes for
+ * max_tokens 16000 — then retries a timeout `maxRetries` (default 2) more
+ * times. One slow document therefore burns up to 30 minutes, and each
+ * attempt can be billed for work the server may well have completed.
+ *
+ * The SDK states the real rule outright: "Streaming is required for
+ * operations that may take longer than 10 minutes." A 30-page native PDF at
+ * 16,000 max output tokens is exactly that, and this code was not streaming.
+ * It is now.
+ *
+ * maxRetries drops to 1 because a retried TIMEOUT is the least useful retry
+ * there is — if the provider needs longer than the budget, asking again
+ * changes nothing and doubles the wait. One retry still covers the failures
+ * worth retrying (429, 529, a dropped connection).
+ */
+const REQUEST_OPTIONS = { maxRetries: 1 } as const;
+
+/**
+ * Prints how long a call actually took.
+ *
+ * Added rather than guessing a tighter timeout: nobody here knows how long
+ * DashScope really needs for a 30-page PDF, and picking a number without
+ * that measurement is how a legitimate slow extraction gets cut off. Two
+ * real runs of this log answer it.
+ */
+async function withElapsed<T>(tenderNumber: string, run: () => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  try {
+    return await run();
+  } finally {
+    console.log(`  ${tenderNumber}: 模型调用耗时 ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
+  }
+}
+
+/**
  * Real gap found 2026-09-03 (qwen3.5-plus via DashScope's Anthropic-
  * compatible endpoint, see extract-requirements-qwen-anthropic.ts): its
  * translation of `output_config.format` doesn't reliably produce the
@@ -365,13 +405,22 @@ async function runExtraction(
   useStructuredOutput: boolean,
 ) {
   if (useStructuredOutput) {
-    const response = await client.messages.parse({
-      model,
-      max_tokens: 16000,
-      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content }],
-      output_config: { format: zodOutputFormat(ExtractionSchema) },
-    });
+    const response = await withElapsed(context.tenderNumber, () =>
+      client.messages
+        .stream(
+          {
+            model,
+            max_tokens: 16000,
+            system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+            messages: [{ role: "user", content }],
+            output_config: { format: zodOutputFormat(ExtractionSchema) },
+          },
+          REQUEST_OPTIONS,
+        )
+        // Streaming still returns parsed_output when output_config.format is
+        // set — structured outputs are not given up by streaming here.
+        .finalMessage(),
+    );
 
     // Printed so a real cost is visible per run, not just guessed at — the
     // user asked directly after the first two live-test calls whether
@@ -390,12 +439,19 @@ async function runExtraction(
     return response.parsed_output;
   }
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: 16000,
-    system: [{ type: "text", text: `${SYSTEM_PROMPT}\n\n${JSON_SHAPE_INSTRUCTIONS}`, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content }],
-  });
+  const response = await withElapsed(context.tenderNumber, () =>
+    client.messages
+      .stream(
+        {
+          model,
+          max_tokens: 16000,
+          system: [{ type: "text", text: `${SYSTEM_PROMPT}\n\n${JSON_SHAPE_INSTRUCTIONS}`, cache_control: { type: "ephemeral" } }],
+          messages: [{ role: "user", content }],
+        },
+        REQUEST_OPTIONS,
+      )
+      .finalMessage(),
+  );
 
   const u = response.usage;
   console.log(

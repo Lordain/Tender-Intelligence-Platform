@@ -27,7 +27,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { analyzeUploadedDocument, type AnalyzeUploadedDocumentResult } from "@/lib/ingestion/analyze-uploaded-document";
-import { isSystematicFailureError, shouldAbortBatch } from "@/lib/ingestion/extraction-failure";
+import { BATCH_BUDGET_MS, batchBudgetExhausted, isSystematicFailureError, shouldAbortBatch } from "@/lib/ingestion/extraction-failure";
 import { findDocuments, loadKnownTenders, resolveTender } from "@/lib/ingestion/match-documents-to-tenders";
 
 export type LocalFolderProgress = {
@@ -92,8 +92,20 @@ export async function analyzeLocalFolder(
   // the consecutive threshold is 2 rather than 1.
   let consecutiveFailures = 0;
   let abortedAfter: { index: number; reason: string } | null = null;
+  const startedAt = Date.now();
 
   for (const [index, [tenderSlug, paths]] of entries.entries()) {
+    // Checked before starting a tender, so the budget never destroys work
+    // already paid for. Index 0 is exempt — a run that does nothing at all
+    // is not a useful way to respect a budget.
+    if (index > 0 && batchBudgetExhausted(startedAt)) {
+      abortedAfter = {
+        index: index - 1,
+        reason: `已经跑了 ${Math.round((Date.now() - startedAt) / 60000)} 分钟，超过单次 ${BATCH_BUDGET_MS / 60000} 分钟的上限，已中止，未继续调用模型。`,
+      };
+      break;
+    }
+
     options.onProgress?.({
       stage: "analyzing",
       message: `${tenderSlug} — ${paths.length} 个文件`,

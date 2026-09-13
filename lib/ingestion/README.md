@@ -4088,3 +4088,56 @@ how many tenders were **never attempted and never billed** — a distinction
 "3 failed" alone cannot make. That form's result table also gained a 关键日期
 column (count, plus the deadline when one was set), since a run that wrote
 no schedule at all was previously invisible without opening each tender.
+
+### 31 minutes, nothing to show for it (2026-09-13)
+
+The first run after the circuit breaker landed stopped correctly — 2 tenders
+failed, 3 were never attempted and never billed — but the two that ran took
+**31 minutes** between them and both ended the same way:
+
+```
+「peru-ocds-dgv273-seacev3-1248966__Bases Administrativas.pdf」分析失败，已跳过：Request timed out.
+```
+
+That number is not arbitrary. The extraction calls were **non-streaming**,
+and for a non-streaming request the Anthropic SDK sets its own timeout —
+`_calculateNonstreamingTimeout` in `client.js`: 10 minutes at
+`max_tokens: 16000` — then retries a timeout `maxRetries` (default **2**)
+more times. One slow document can therefore occupy 30 minutes, and each
+attempt may be billed for work the server had in fact done.
+
+The SDK states the rule plainly in the error it raises one notch higher:
+
+> Streaming is required for operations that may take longer than 10 minutes.
+
+A 30-page native PDF at 16,000 max output tokens is squarely that, and this
+code was not streaming. Three changes:
+
+1. **Both call sites stream** — `client.messages.stream(...).finalMessage()`.
+   Structured outputs are not sacrificed: `stream()` accepts
+   `output_config.format` and `finalMessage()` still carries `parsed_output`,
+   so the Claude path is unchanged in behaviour. (The DashScope path already
+   ran `useStructuredOutput: false` and uses the plain branch.)
+2. **`maxRetries: 1`, explicitly.** A retried *timeout* is the least useful
+   retry there is: if the provider needs longer than the budget, asking again
+   changes nothing and doubles the wait. One retry still covers what is worth
+   retrying — 429, 529, a dropped connection.
+3. **Elapsed time is printed per call** (`模型调用耗时 N s`). Nobody here knows
+   how long DashScope actually needs for a 30-page PDF, and choosing a
+   tighter timeout without that measurement is how a legitimate slow
+   extraction gets cut off. Two real runs answer it; until then the number is
+   measured, not guessed.
+
+And a ceiling on the run itself, not just the call: `BATCH_BUDGET_MS`
+(20 minutes) in `extraction-failure.ts`, checked **between** tenders in
+`analyzeLocalFolder()`. Between, never mid-call — interrupting a call already
+paid for throws away the result and the money both — so the true ceiling is
+the budget plus however long the last tender takes, which is what the code
+comment says rather than pretending otherwise. The first tender is exempt: a
+run that does nothing at all is not a useful way to respect a budget.
+
+**The harness caught this change the moment it was made**, which is the
+point of having it: the stub client implements only `stream()`, and
+`create()`/`parse()` throw `非流式调用` on purpose. A revert to non-streaming
+fails `npm run test:extraction-pipeline` (now 39 checks) instead of being
+discovered on the bill.

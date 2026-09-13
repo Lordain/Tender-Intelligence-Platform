@@ -372,7 +372,38 @@ function extractJsonObject(text: string): unknown {
  * 529) are instead handled a level up: the document is reported, the batch
  * continues, and two in a row stop the run (extraction-failure.ts).
  */
-const REQUEST_OPTIONS = { maxRetries: 0, timeout: 20 * 60 * 1000 } as const;
+const MIN_TIMEOUT_MS = 20 * 60 * 1000;
+/**
+ * Seconds of budget per page read. Calibrated from the one real
+ * measurement available: 30 pages of a real Peru bases PDF was still
+ * working at 609s (10:09) when the old default cut it off, i.e. it needed
+ * MORE than ~20s/page. 60s/page is triple that — headroom, not a stopwatch.
+ * Revise it when a successful run prints a real completion time; do not
+ * tighten it from a failure, which only ever proves a lower bound.
+ */
+const TIMEOUT_MS_PER_PAGE = 60 * 1000;
+
+/**
+ * A backstop against a dead connection — deliberately NOT a performance
+ * budget. It scales with the tier's own page cap (maxPagesForTier: 20
+ * standard / 30 significant / 40 flagship), because that cap is already
+ * this platform's statement of how much document a tender is worth
+ * reading, and a 40-page flagship Convocatoria legitimately takes longer
+ * than a 20-page routine one. An uncapped call (the offline comparison
+ * scripts) gets the floor.
+ *
+ * What bounds the wall clock is NOT this number: maxRetries is 0, so a
+ * call is attempted once rather than three times, and analyzeLocalFolder()
+ * stops the run at BATCH_BUDGET_MS. Those two are why this can afford to
+ * be generous — the 31-minute run was three attempts at one doomed call,
+ * not one call doing real work.
+ */
+function requestOptions(maxPages: number | undefined) {
+  return {
+    maxRetries: 0,
+    timeout: Math.max(MIN_TIMEOUT_MS, (maxPages ?? 0) * TIMEOUT_MS_PER_PAGE),
+  };
+}
 
 /**
  * Prints how long a call actually took.
@@ -415,6 +446,8 @@ async function runExtraction(
   content: ExtractionContent,
   context: { tenderNumber: string },
   useStructuredOutput: boolean,
+  /** Only used to size the request timeout — see requestOptions(). */
+  maxPages?: number,
 ) {
   if (useStructuredOutput) {
     const response = await withElapsed(context.tenderNumber, () =>
@@ -427,7 +460,7 @@ async function runExtraction(
             messages: [{ role: "user", content }],
             output_config: { format: zodOutputFormat(ExtractionSchema) },
           },
-          REQUEST_OPTIONS,
+          requestOptions(maxPages),
         )
         // Streaming still returns parsed_output when output_config.format is
         // set — structured outputs are not given up by streaming here.
@@ -460,7 +493,7 @@ async function runExtraction(
           system: [{ type: "text", text: `${SYSTEM_PROMPT}\n\n${JSON_SHAPE_INSTRUCTIONS}`, cache_control: { type: "ephemeral" } }],
           messages: [{ role: "user", content }],
         },
-        REQUEST_OPTIONS,
+        requestOptions(maxPages),
       )
       .finalMessage(),
   );
@@ -500,10 +533,11 @@ async function runTextExtractionWithOverflowRetry(
   documentText: string,
   context: { tenderNumber: string },
   useStructuredOutput: boolean,
+  maxPages?: number,
 ) {
   const content: ExtractionContent = [{ type: "text", text: `${instruction}\n\n---\n\n${documentText}` }];
   try {
-    return await runExtraction(client, model, content, context, useStructuredOutput);
+    return await runExtraction(client, model, content, context, useStructuredOutput, maxPages);
   } catch (err) {
     const overflow = parseContextOverflow(err);
     if (!overflow) throw err;
@@ -516,7 +550,7 @@ async function runTextExtractionWithOverflowRetry(
     const truncatedContent: ExtractionContent = [
       { type: "text", text: `${instruction}\n\n---\n\n${truncatedText}\n\n[... document truncated to fit the model's context window; content past this point was not seen ...]` },
     ];
-    return runExtraction(client, model, truncatedContent, context, useStructuredOutput);
+    return runExtraction(client, model, truncatedContent, context, useStructuredOutput, maxPages);
   }
 }
 
@@ -587,6 +621,7 @@ async function runChunkedPdfExtraction(
   instruction: string,
   context: { tenderNumber: string },
   useStructuredOutput: boolean,
+  maxPages?: number,
 ): Promise<TenderExtraction> {
   const { chunks, cleanup } = splitPdfIntoChunks(filePath);
   try {
@@ -601,7 +636,7 @@ async function runChunkedPdfExtraction(
         },
         { type: "text", text: chunkInstruction },
       ];
-      parts.push(await runExtraction(client, model, content, context, useStructuredOutput));
+      parts.push(await runExtraction(client, model, content, context, useStructuredOutput, maxPages));
     }
     return mergeExtractions(parts);
   } finally {
@@ -646,7 +681,7 @@ export async function extractTenderRequirements(
   // Harmless for Claude's own structured outputs either way.
   const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}, and respond with a valid JSON object matching the required schema.`;
 
-  if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context, useStructuredOutput);
+  if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context, useStructuredOutput, maxPages);
 
   // Cap the pages BEFORE reading the file, not after: a 100MB, 900-page
   // tender would otherwise be base64'd into memory in full just to have most
@@ -669,13 +704,13 @@ export async function extractTenderRequirements(
     ];
 
     try {
-      return await runExtraction(client, model, pdfContent, context, useStructuredOutput);
+      return await runExtraction(client, model, pdfContent, context, useStructuredOutput, maxPages);
     } catch (err) {
       if (!isPdfNativeLimitError(err)) throw err;
       console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 300)}) — splitting into chunks.`);
 
       try {
-        return await runChunkedPdfExtraction(client, model, sourcePath, instruction, context, useStructuredOutput);
+        return await runChunkedPdfExtraction(client, model, sourcePath, instruction, context, useStructuredOutput, maxPages);
       } catch (chunkErr) {
         // Chunking needs poppler's pdfinfo/pdfseparate/pdfunite on PATH —
         // if any is missing (ENOENT) or a chunk call itself errors, this
@@ -688,7 +723,7 @@ export async function extractTenderRequirements(
         // 2026-09-03) — runTextExtractionWithOverflowRetry() handles that
         // second failure mode too.
         console.log(`  chunked extraction failed (${(chunkErr instanceof Error ? chunkErr.message : String(chunkErr)).slice(0, 800)}) — falling back to extracted text instead.`);
-        return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(sourcePath), context, useStructuredOutput);
+        return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(sourcePath), context, useStructuredOutput, maxPages);
       }
     }
   } finally {

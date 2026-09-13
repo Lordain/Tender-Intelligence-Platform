@@ -86,8 +86,16 @@ export function isSystematicFailureError(err: unknown): boolean {
  * for would throw away the result and the money both. So the real ceiling is
  * this budget plus however long the last tender takes — stated here rather
  * than pretended away.
+ *
+ * An hour, not the 20 minutes first written here. A single flagship
+ * document is allowed up to 40 minutes by itself (requestOptions() in
+ * extract-requirements.ts scales with the tier's page cap), and a budget
+ * that cannot fit one legitimate document is a budget that punishes big
+ * tenders for being big. What actually protects against waste is elsewhere
+ * and is cheaper: retries are 0, so nothing is attempted three times, and
+ * two consecutive failures end the run. This is only a runaway guard.
  */
-export const BATCH_BUDGET_MS = 20 * 60 * 1000;
+export const BATCH_BUDGET_MS = 60 * 60 * 1000;
 
 export function batchBudgetExhausted(startedAt: number, now: number = Date.now()): boolean {
   return now - startedAt >= BATCH_BUDGET_MS;

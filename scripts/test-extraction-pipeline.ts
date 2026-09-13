@@ -309,6 +309,30 @@ async function main() {
     );
   });
 
+  // A big tender must not be punished for being big: the timeout follows the
+  // tier's page cap (20/30/40) rather than one flat number.
+  await group("7c 超时随页数上限放大", async () => {
+    const big = join(TMP, "big.pdf");
+    const standard = manual(big, [FULL_RESPONSE], 20);
+    await standard.run();
+    const flagship = manual(big, [FULL_RESPONSE], 40);
+    await flagship.run();
+    check(
+      "a 40-page flagship gets a longer budget than a 20-page standard",
+      (flagship.requestOptionsSeen[0]?.timeout ?? 0) > (standard.requestOptionsSeen[0]?.timeout ?? 0),
+      `${standard.requestOptionsSeen[0]?.timeout} vs ${flagship.requestOptionsSeen[0]?.timeout}`,
+    );
+    check(
+      "and the 30-page case that really timed out at 609s now gets well over that",
+      (manual(big, [FULL_RESPONSE], 30), true) &&
+        (await (async () => {
+          const thirty = manual(big, [FULL_RESPONSE], 30);
+          await thirty.run();
+          return (thirty.requestOptionsSeen[0]?.timeout ?? 0) >= 30 * 60 * 1000;
+        })()),
+    );
+  });
+
   check(
     "a batch stops at its wall-clock budget rather than running on",
     batchBudgetExhausted(Date.now() - BATCH_BUDGET_MS - 1) && !batchBudgetExhausted(Date.now()),

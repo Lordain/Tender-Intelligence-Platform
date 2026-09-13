@@ -4166,6 +4166,27 @@ one batch into 31 minutes. Transient failures are handled a level up
 instead: the document is reported, the batch continues, two in a row stop
 the run.
 
+**Correction, same day.** 20 minutes was a number picked without evidence,
+and it punishes exactly the documents most worth reading — a 40-page
+flagship Convocatoria legitimately takes longer than a 20-page routine one.
+The timeout now scales with the tier's own page cap (`requestOptions()`:
+`max(20 min, maxPages × 60s)` — 20 min / 30 min / 40 min for standard /
+significant / flagship), because that cap is already this platform's
+statement of how much document a tender is worth reading. 60s per page is
+triple the only real measurement available (30 pages was still working at
+609s when the old default cut it off, i.e. more than ~20s/page) — headroom,
+not a stopwatch. **Do not tighten it from a failure**: a timeout only ever
+proves a lower bound on how long the work takes. Revise it when a
+successful run prints a real completion time.
+
+`BATCH_BUDGET_MS` goes from 20 minutes to **an hour** for the same reason: a
+run budget that cannot fit one legitimate flagship document is not a budget,
+it is a bug. What actually protects against waste is cheaper and sits
+elsewhere — `maxRetries: 0` means nothing is attempted three times, and two
+consecutive failures end the run. The 31-minute incident was three attempts
+at one doomed call, not one call doing real work; those are different
+problems and only the first is worth spending a timeout on.
+
 **The second finding is the one that matters more,** and it is not a bug —
 it is a design question the measurement exposed. This document has a real
 text layer (that is *why* it routed to qwen3.5-plus at all —

@@ -228,6 +228,13 @@ async function explainTheZero(
   );
 
   const withLinks = new Set(links.map((row) => row.tender_id));
+  // The number that decides whether downloading is worth the afternoon.
+  // "66 tenders have links" and "67 tenders have no deadline" are two
+  // separate facts until someone checks whether they are the same 66 — and
+  // if they are, that is not a coverage statistic, it is the entire reason
+  // this feature was built: Peru publishes the deadline nowhere but the PDF.
+  const noDeadline = new Set(tenders.filter((t) => !t.submission_deadline).map((t) => t.id));
+  const linkedAndUndated = [...withLinks].filter((id) => noDeadline.has(id)).length;
   const withDocuments = new Set(documents.map((row) => row.tender_id));
   const extractedDocs = documents.filter((row) => row.extraction_status === "extracted");
   const withAnalysis = new Set(requirements.map((row) => row.tender_id));
@@ -241,6 +248,15 @@ async function explainTheZero(
   console.log(`  ${String(withAnalysis.size).padStart(4)} 个有分析结果（资质/业绩/所需文件）`);
   console.log(`  ${String(withAnyKeyDate.size).padStart(4)} 个有任何关键日期（含数据源给的）`);
   console.log(`     0 个有从标书读出来的日程`);
+
+  if (withLinks.size > 0) {
+    console.log("");
+    console.log(
+      linkedAndUndated > 0
+        ? `  有下载链接的 ${withLinks.size} 个里，${linkedAndUndated} 个正好是没有交标截止日的——把这些标书下回来分析，能补上全库 ${noDeadline.size} 个缺口里的 ${linkedAndUndated} 个。`
+        : `  有下载链接的 ${withLinks.size} 个都已经有交标截止日了，所以下载它们不会补上任何缺口——${noDeadline.size} 个没日期的项目是另一批，得先找到它们的标书来源。`,
+    );
+  }
 
   console.log("");
   if (withDocuments.size === 0 && withLinks.size > 0) {

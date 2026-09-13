@@ -55,6 +55,7 @@
     "purge:mis-sourced": "tsx --env-file-if-exists=.env.local scripts/purge-mis-sourced-duplicates.ts",
     "restore:deleted": "tsx --env-file-if-exists=.env.local scripts/restore-deleted-tenders.ts",
     "test:access-control": "tsx scripts/test-access-control.ts",
+    "test:upsert-protection": "tsx scripts/test-upsert-protection.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",
     "analyze:batch": "tsx --env-file-if-exists=.env.local scripts/analyze-batch.ts",

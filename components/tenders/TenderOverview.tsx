@@ -6,6 +6,7 @@ import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatEstimatedValueUsd, formatDate } from "@/lib/format";
 import { exchangeRateNote } from "@/lib/currency";
 import { STALE_WITHOUT_END_DATE_DAYS } from "@/lib/tender-status";
+import { TRIAL_DAYS } from "@/lib/access-control";
 import {
   GOVERNMENT_LEVEL_LABELS,
   PARTICIPATION_SCOPE_LABELS,
@@ -57,7 +58,7 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
         <div className="flex flex-wrap items-center justify-end gap-2">
           {showTrialCta && (
             <Link href={`/register?next=${encodeURIComponent(`/tenders/${tender.slug}`)}`} className="inline-flex h-10 items-center rounded-xl bg-[#ffb21c] px-4 text-xs font-black text-[#071826] hover:bg-[#ffc247]">
-              注册即可免费试用3天
+              注册即可免费试用{TRIAL_DAYS}天
             </Link>
           )}
           <SaveTenderButton tenderId={tender.id} className="border border-[#dbe2e5] bg-white" />

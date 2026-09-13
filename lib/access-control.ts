@@ -30,7 +30,7 @@ export const BILLING_INTERVAL_LABELS: Record<BillingInterval, string> = {
   annual: "年度",
 };
 
-export const TRIAL_DAYS = 3;
+export const TRIAL_DAYS = 5;
 export const PAYMENT_GRACE_DAYS = 3;
 
 export type SubscriptionEntitlementCandidate = {

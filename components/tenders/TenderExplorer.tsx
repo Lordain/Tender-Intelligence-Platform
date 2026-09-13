@@ -19,7 +19,7 @@ import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { isObrasPorImpuestos, OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
 import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
-import { canInteractWithTenderList, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
+import { canInteractWithTenderList, TRIAL_DAYS, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
 import { AccessPrompt } from "@/components/access/AccessPrompt";
 import { AVAILABLE_COUNTRIES, DEFAULT_TENDER_LIST_STATUSES, type TenderListItem } from "@/lib/tender-list-page";
 
@@ -319,7 +319,7 @@ export function TenderExplorer({
   const accessNotice = viewerRole === "guest"
     ? "当前可预览项目清单；登录后即可使用搜索、筛选、翻页、收藏和查看项目。"
     : viewerRole === "free"
-      ? "您的 3 天免费试用已结束；当前可预览项目清单，订阅后即可使用搜索、筛选、翻页、收藏和查看项目。"
+      ? `您的 ${TRIAL_DAYS} 天免费试用已结束；当前可预览项目清单，订阅后即可使用搜索、筛选、翻页、收藏和查看项目。`
       : null;
 
   const listIsLocked = !canInteractWithTenderList(viewerRole);

@@ -1,6 +1,6 @@
 # Access control
 
-The site runs in subscription mode. Every newly registered user receives a three-day, no-card trial. Trial expiry is stored in `profiles.trial_ends_at`.
+The site runs in subscription mode. Every newly registered user receives a five-day, no-card trial. Trial expiry is stored in `profiles.trial_ends_at`.
 
 - `guest`: homepage and pricing are public; the tender list is read-only and all interactions ask the visitor to log in. Homepage-featured tenders remain public in full.
 - `trial`: full tender, saved-item, account, and twice-daily notification access until `trial_ends_at`.
@@ -36,7 +36,7 @@ Run `0023_server_only_tender_reads.sql`, `0024_trial_and_enterprise_members.sql`
 `0025_enterprise_member_consent.sql`,
 `0026_subscription_period_and_cancellation.sql` and
 `0027_subscription_billing_interval.sql`, plus
-`0038_three_day_trial.sql` before deploying this access model.
+`0038_three_day_trial.sql`, `0039_five_day_trial.sql` before deploying this access model.
 `0025` resets every existing `enterprise_members` row to `pending`, so any seat
 that was live before it stops granting access until the invitee accepts.
 

@@ -203,7 +203,7 @@ function buildRow(fields: Tender) {
  * one shared ON CONFLICT SET clause per request from the keys present, so
  * uniform rows are exactly what it wants.
  */
-function buildRowWithProtectedValues(fields: Tender, existing: ExistingRow | undefined): Record<string, unknown> {
+export function buildRowWithProtectedValues(fields: Tender, existing: ExistingRow | undefined): Record<string, unknown> {
   const row = buildRow(fields) as Record<string, unknown>;
   if (!existing) return row;
 
@@ -229,6 +229,34 @@ function buildRowWithProtectedValues(fields: Tender, existing: ExistingRow | und
     row.publication_date_is_estimated = existing.stored.publication_date_is_estimated ?? true;
   }
 
+  // A machine translation survives re-import.
+  //
+  // Every mapper builds title/summary through untranslated() — zh mirrors es
+  // byte for byte — because translating is a separate pass (translate-all-
+  // tenders.ts) that runs long after the import. So re-importing a tender
+  // still open in its source overwrote whatever that pass had written, and
+  // the next run paid the API cost again for rows it had already done. The
+  // two protections above do not cover this: a machine translation is nobody
+  // 's hand edit, so it never lands in manual_field_overrides.
+  //
+  // Held only while the Spanish is unchanged. When a source corrects its own
+  // title — or the title loses a phase suffix the mapper now strips — the
+  // stored Chinese describes something the row no longer says, so the mirror
+  // goes back in and the next translation pass picks the row up on its own:
+  // that pass looks for exactly zh === es.
+  //
+  // Only the zh key is carried over; the rest of the object stays as the
+  // mapper built it, so nothing here has to know what else LocalizedText
+  // holds now or later.
+  for (const column of ["title", "summary"] as const) {
+    const stored = existing.stored[column] as { es?: string; zh?: string } | null | undefined;
+    const incoming = row[column] as { es?: string; zh?: string } | undefined;
+    if (!stored || !incoming) continue;
+    if (stored.es !== incoming.es) continue;
+    if (stored.zh === undefined || stored.zh === stored.es) continue;
+    row[column] = { ...incoming, zh: stored.zh };
+  }
+
   if (existing.omit.size === 0) return row;
   for (const column of existing.omit) {
     // `slug` is the ON CONFLICT target and can never be protected; anything
@@ -239,7 +267,7 @@ function buildRowWithProtectedValues(fields: Tender, existing: ExistingRow | und
   return row;
 }
 
-type ExistingRow = {
+export type ExistingRow = {
   /** Columns this import must not touch; empty for a row nobody edited. */
   omit: Set<string>;
   stored: Record<string, unknown>;

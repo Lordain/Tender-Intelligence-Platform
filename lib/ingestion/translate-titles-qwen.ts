@@ -49,6 +49,9 @@ Ground rules:
 - Translate naturally and accurately — a Chinese business reader should immediately understand what is being procured, not read a stilted word-for-word rendering.
 - Keep proper nouns (agency names, place names, standard/law citations) recognizable — transliterate, or keep the Spanish acronym, where a standard Chinese equivalent doesn't exist (e.g. "PEMEX" stays "PEMEX", not translated).
 - Preserve technical terms precisely — this is used to help a company decide whether to bid, so a mistranslated quantity, material, or scope is a real error, not a stylistic one.
+- Add nothing the source does not say. Most of these rows carry a summary that is a verbatim copy of the title, because the source published no separate description; when that happens the Chinese summary should render the Spanish and stop, even though the result is short and reads like a title. Do not pad it into something summary-shaped — no added purpose ("aimed at improving regional connectivity"), no added deliverables ("and the engineering and related services required to return it to service"), no procurement-stage note pulled in from elsewhere. The reader is deciding whether to bid on exactly the scope stated, and invented scope is the most expensive kind of error here.
+- Do not narrow a general term into a specific one. "Servicios a Pozos" is well services in general, not workover or completion specifically; translate the breadth the Spanish actually has.
+- Within one item, render a given Spanish term the same way in the title and in the summary. The same wall translated as 前墙 in one and 前壁 in the other reads as two different things.
 - Return exactly one output item per input item, matched back by the echoed slug (order doesn't need to match the input).
 - Respond with ONLY a JSON object of the shape {"items": [{"slug": string, "titleZh": string, "summaryZh": string}, ...]} — no prose, no markdown fences.`;
 

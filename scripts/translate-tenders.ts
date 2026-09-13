@@ -96,8 +96,11 @@ async function main() {
   // take --slug or --all; without this list, disliking one batch means
   // resetting every translation in the table.
   if (result.writtenSlugs && result.writtenSlugs.length > 0) {
-    console.log(`\n本次写入的 ${result.writtenSlugs.length} 条。要撤销这一批：`);
-    console.log(`  npm run reset:translations -- --write ${result.writtenSlugs.map((s) => `--slug ${s}`).join(" ")}`);
+    const slugFlags = result.writtenSlugs.map((s) => `--slug ${s}`).join(" ");
+    console.log(`\n本次写入 ${result.writtenSlugs.length} 条。对照原文检查这一批：`);
+    console.log(`  npm run review:translations -- --csv ${slugFlags}`);
+    console.log(`\n要撤销这一批：`);
+    console.log(`  npm run reset:translations -- --write ${slugFlags}`);
   }
 }
 

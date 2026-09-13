@@ -139,7 +139,11 @@ async function explainAllMissing(stripe: Stripe, keyLabel: string): Promise<void
  */
 async function describeAccount(stripe: Stripe): Promise<string> {
   try {
-    const account = await stripe.accounts.retrieve();
+    // retrieveCurrent, not retrieve: retrieve() takes the id of some OTHER
+    // account and has no zero-argument overload. This one is GET /v1/account —
+    // the account the key itself belongs to, which is the only one being asked
+    // about here.
+    const account = await stripe.accounts.retrieveCurrent();
     const name = account.settings?.dashboard?.display_name;
     return `${account.id}${name ? `（${name}）` : ""}`;
   } catch {

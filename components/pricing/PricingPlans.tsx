@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BILLING_INTERVAL_LABELS, type BillingInterval } from "@/lib/access-control";
-import { BILLING_MONTHS, PLAN_PRICES_USD } from "@/lib/billing-catalog";
+import { BILLING_MONTHS, PLAN_LIST_PRICES_USD, PLAN_PRICES_USD, PROMOTION, promotionSavingPercent, type PaidPlan } from "@/lib/billing-catalog";
 
 /**
  * Months covered by one payment. Used both to label the price and to work out
@@ -14,6 +14,7 @@ const INTERVALS: BillingInterval[] = ["monthly", "semiannual", "annual"];
 const PER_PAYMENT_SUFFIX: Record<BillingInterval, string> = { monthly: "USD / 月", semiannual: "USD / 半年", annual: "USD / 年" };
 
 type Plan = {
+  /** The paid plans' ids are the catalog keys, so the list price can be looked up without a second mapping. */
   id: string;
   eyebrow: string;
   name: string;
@@ -45,6 +46,19 @@ const PLANS: readonly Plan[] = [
 
 const money = (value: number) => `$${value.toLocaleString("en-US")}`;
 
+/** 0 for the free-trial card, whose id is not a paid plan. */
+function promoPercent(planId: string, interval: BillingInterval): number {
+  if (!(planId in PLAN_LIST_PRICES_USD)) return 0;
+  return promotionSavingPercent(planId as PaidPlan, interval);
+}
+
+/** e.g. "2026-10-31" -> "2026年10月31日". Null when no deadline was set. */
+function promotionDeadline(): string | null {
+  if (!PROMOTION.active || !PROMOTION.endsAt) return null;
+  const [y, m, d] = PROMOTION.endsAt.split("-");
+  return y && m && d ? `${y}年${Number(m)}月${Number(d)}日` : null;
+}
+
 function discountPercent(prices: Record<BillingInterval, number>, interval: BillingInterval) {
   const atMonthlyRate = prices.monthly * BILLING_MONTHS[interval];
   if (atMonthlyRate <= prices[interval]) return 0;
@@ -60,6 +74,25 @@ export function PricingPlans() {
 
   return (
     <>
+      {PROMOTION.active && (
+        <div className="mt-7 rounded-2xl border border-[#f3c2bd] bg-[#fff5f4] px-5 py-4 text-center">
+          <p className="text-sm font-black text-[#a3261f]">
+            {PROMOTION.label}
+            {promotionDeadline() ? ` · 截止 ${promotionDeadline()}` : ""}
+          </p>
+          {/* Precise, because the two readings of 限时 are opposites to
+              somebody deciding whether to buy: "limited time to get this
+              price" (what this is) vs "you keep this price for a limited
+              time" (what the earlier wording implied). Subscribers keep the
+              promotional rate — Stripe binds a subscription to the Price it
+              was created against — so saying so is both accurate and the
+              stronger argument. */}
+          <p className="mt-1 text-xs font-bold text-[#7c4b46]">
+            下方为优惠后价格，划线价为原价。<strong>优惠期内订阅，续费一直按优惠价</strong>；优惠结束后新订阅恢复原价。
+          </p>
+        </div>
+      )}
+
       <div className="mt-7 flex justify-center">
         <div role="tablist" aria-label="计费周期" className="inline-flex rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-1">
           {INTERVALS.map((option) => {
@@ -102,6 +135,19 @@ export function PricingPlans() {
                       <span className="text-4xl font-black text-[#071826]">{money(plan.prices[interval])}</span>
                       <span className="pb-1 text-sm font-semibold text-[#64717c]">{PER_PAYMENT_SUFFIX[interval]}</span>
                     </div>
+                    {/* The struck-through original only appears when there is
+                        a real one to strike — promotionSavingPercent returns 0
+                        the moment the promotion is switched off, so this whole
+                        block disappears with it rather than needing its own
+                        edit. */}
+                    {promoPercent(plan.id, interval) > 0 && (
+                      <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                        <span className="font-bold text-[#8a939b] line-through">{money(PLAN_LIST_PRICES_USD[plan.id as PaidPlan][interval])}</span>
+                        <span className="rounded-full bg-[#ffe3e3] px-2 py-0.5 text-xs font-black text-[#a3261f]">
+                          {PROMOTION.label} 省 {promoPercent(plan.id, interval)}%
+                        </span>
+                      </p>
+                    )}
                     <p className="mt-2 text-xs font-bold text-[#64717c]">
                       {interval === "monthly"
                         ? "按月付费，可随时取消"

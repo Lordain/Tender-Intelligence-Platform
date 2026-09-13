@@ -165,7 +165,7 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
   }
 
   // Same reasoning as above: a swallowed error here silently falls back to
-  // "signup + 3 days", which for any account older than three days reads as an
+  // "signup + TRIAL_DAYS", which for any account older than that reads as an
   // expired trial — a free tier the person never actually landed in.
   const { data: profile, error: profileError } = await admin.from("profiles").select("trial_ends_at").eq("id", user.id).maybeSingle();
   if (profileError) throw new Error(`试用状态读取失败：${profileError.message}`);

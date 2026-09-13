@@ -44,6 +44,7 @@ import { join, extname, basename } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { intakeDocument } from "@/lib/ingestion/document-intake";
 import { hasRealTextLayer } from "@/lib/ingestion/text-layer";
+import { SYSTEMATIC_FAILURE_PREFIX, classifyExtractionFailure } from "@/lib/ingestion/extraction-failure";
 import { maxPagesForTier, chooseExtractionModel } from "@/lib/ingestion/extraction-routing";
 import type { TenderRelevanceTier } from "@/types/tender";
 import {
@@ -181,6 +182,19 @@ export async function analyzeUploadedDocument(
         // paid for in this same batch — those are real API spend, and a
         // Pliego that analyzed fine is still worth writing. Reported as a
         // warning instead; only an all-files-failed batch throws.
+        //
+        // A SYSTEMATIC failure is the opposite case and gets no such
+        // tolerance: it is a property of the code or the account, so every
+        // remaining file would fail identically and bill for the privilege
+        // (confirmed 2026-09-13 — five documents, five identical schema
+        // failures, five paid model calls). Thrown immediately, which also
+        // stops the surrounding batch rather than only this tender.
+        const classified = classifyExtractionFailure(err);
+        if (classified.kind === "systematic") {
+          throw new Error(
+            `${SYSTEMATIC_FAILURE_PREFIX}${classified.reason}。已在第一个文件就停止，没有继续调用模型。原始报错：${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
         warnings.push(`「${safeName || file.fileName}」分析失败，已跳过：${err instanceof Error ? err.message : String(err)}`);
       } finally {
         try {

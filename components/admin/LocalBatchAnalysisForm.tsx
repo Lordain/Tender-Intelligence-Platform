@@ -16,10 +16,13 @@ type Result = {
     experienceRequirements: number;
     requiredDocuments: number;
     risks: number;
+    keyDates: number;
+    submissionDeadlineSet?: string;
     status: string;
     warnings?: string[];
   }[];
   failed: { tenderSlug: string; error: string }[];
+  aborted?: { reason: string; remaining: number };
 };
 
 const inputClass =
@@ -102,6 +105,13 @@ export function LocalBatchAnalysisForm() {
             {result.skipped.length} 个文件未匹配
           </p>
 
+          {result.aborted && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800">
+              <p className="font-black">已提前中止，剩余 {result.aborted.remaining} 个项目未处理（没有调用模型，不产生费用）</p>
+              <p className="mt-1 whitespace-pre-wrap">{result.aborted.reason}</p>
+            </div>
+          )}
+
           {result.results.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px] border-collapse text-left text-xs">
@@ -112,6 +122,10 @@ export function LocalBatchAnalysisForm() {
                     <th className="py-2 pr-3 font-black">一句话总结</th>
                     <th className="py-2 pr-3 font-black">模型</th>
                     <th className="py-2 pr-3 font-black">资质/业绩/文件/风险</th>
+                    {/* The whole point of task #34 — a run that wrote no
+                        schedule at all is the failure this column exists to
+                        make visible without opening each tender. */}
+                    <th className="py-2 pr-3 font-black">关键日期</th>
                     <th className="py-2 font-black">状态</th>
                   </tr>
                 </thead>
@@ -127,6 +141,12 @@ export function LocalBatchAnalysisForm() {
                       <td className="py-2 pr-3 text-[#52636e]">{row.model}</td>
                       <td className="py-2 pr-3">
                         {row.qualifications}/{row.experienceRequirements}/{row.requiredDocuments}/{row.risks}
+                      </td>
+                      <td className="py-2 pr-3">
+                        {row.keyDates > 0 ? `${row.keyDates} 条` : <span className="text-[#8a959c]">无</span>}
+                        {row.submissionDeadlineSet ? (
+                          <span className="block text-[11px] font-black text-emerald-700">交标 {row.submissionDeadlineSet}</span>
+                        ) : null}
                       </td>
                       <td className="py-2">
                         {row.status === "written" ? "已写入" : row.status === "dry-run" ? "仅预览" : row.status}

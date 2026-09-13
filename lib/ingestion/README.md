@@ -4021,3 +4021,70 @@ is forgotten); a schedule the model *did* return passes through untouched;
 a genuinely malformed value still fails loudly rather than being repaired;
 a top-level array — a real DashScope response shape — is still rejected;
 and `JSON_SHAPE_INSTRUCTIONS` actually contains the key it requires.
+
+### Why both of those cost money to find, and what now stops that
+
+Both bugs above were fully reproducible with no network and no API key. A
+provider omitting one key, and a provider wording a size limit differently,
+are both just *strings* — nothing about either needed a live model. They
+were found instead by a real run over five real Peru documents, which
+billed five model calls and produced nothing.
+
+Two things were missing, and both now exist.
+
+**1. The pipeline can be run end to end offline** —
+`npm run test:extraction-pipeline` (`scripts/test-extraction-pipeline.ts`).
+It drives the real `extractTenderRequirements()` against a stub client that
+returns scripted responses and scripted errors, over synthetic PDFs
+(`scripts/fixtures/make-pdf.ts` — genuinely valid files, so poppler's
+`pdfinfo`/`pdftotext`/`pdfseparate` do real work on them). 35 checks, 0
+model calls, 0 cost. It covers:
+
+- a response with no `keyDates` key (**the exact failure**), and one with no
+  array keys at all;
+- a schedule the model *did* return surviving parse → merge → `toTenderFields`
+  with its day, note and citation intact;
+- an ambiguous `10/09/2026` being dropped rather than read as October;
+- a top-level array and a bad enum still being rejected;
+- all three size limits — page count, base64 field length, and DashScope's
+  request-body cap (**the second failure**) — reaching the splitter;
+- chunking failing over into the text fallback, and that fallback
+  overflowing the context window and retrying with less text;
+- the per-tier page cap actually sending a smaller document;
+- a duplicate cronograma row across a chunk boundary being written once.
+
+Verified the only way a test is worth anything: both bugs were
+re-introduced, and the harness named both (`1 schema defaulting`,
+`4 请求体上限触发分块`) while the other 32 checks still reported.
+
+What it deliberately does **not** claim: nothing here proves a real model
+reads a real cronograma correctly. That is task #34's live check, and no
+stub substitutes for it. What it proves is that a *given response* survives
+the code — which is the half that was broken.
+
+**2. A batch stops instead of confirming a verdict it already has.**
+`lib/ingestion/extraction-failure.ts` splits a failure two ways:
+
+- **systematic** — a property of the code or the account, identical for
+  every document: schema/shape rejection, a bad or missing API key, an
+  exhausted quota, an unknown model id, a missing poppler binary. The next
+  document cannot do better. `analyzeUploadedDocument()` throws on the first
+  one, which stops the surrounding batch.
+- **document** — a property of *this* file: too large, too many pages,
+  corrupt, a context overflow, a 429/529. The next file is a different file.
+  Keep going.
+
+Unrecognised failures count as **document**, not systematic: guessing wrong
+there costs one extra call, while guessing wrong the other way silently
+abandons a batch the user asked for. The gap that leaves —
+genuinely-systematic failures this list doesn't name — is covered by
+`shouldAbortBatch()`: two consecutive failures with nothing succeeding ends
+the run. Two rather than one, because a batch whose first document happens
+to be corrupt is ordinary, and stopping over it would be its own waste.
+
+`analyzeLocalFolder()` returns `aborted: { reason, remaining }` when it
+stops early, and `LocalBatchAnalysisForm` renders it as a red banner saying
+how many tenders were **never attempted and never billed** — a distinction
+"3 failed" alone cannot make. That form's result table also gained a 关键日期
+column (count, plus the deadline when one was set), since a run that wrote
+no schedule at all was previously invisible without opening each tender.

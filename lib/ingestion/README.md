@@ -3917,3 +3917,32 @@ date is genuinely unknown rather than wrong, and treating it as old would
 throw away live tenders from the two sources that publish no such column.
 The deadline is the field that actually answers "can anyone still bid", so
 that is what gates the write.
+
+### The batch import path never wrote key dates at all (2026-09-13)
+
+`npm run review:key-dates` answered its first question with **0 of 285**:
+not one tender in production had a cronograma read from a document. That is
+the value of building the instrument — the feature had been shipped, marked
+done, and was producing nothing, and nothing on the site said so.
+
+`analyze-uploaded-document.ts` (the admin upload flow and
+`analyze-local-folder.ts`) calls `writeExtractedKeyDates()`.
+`import-batch-analysis.ts` — the `analyze:batch` → `import:batch-analysis`
+path and the admin 导入分析结果 page, which is how the bulk analyses were
+actually run — computed `fields.keyDates` through the same
+`toTenderFields()` and then never wrote them. One missing call, in the path
+that did all the volume.
+
+It now writes them through the same `writeExtractedKeyDates()`, so both
+paths share the fill-never-overwrite rule, the schedule checks and the
+citation. Deliberately placed OUTSIDE the "no requirements and no risks
+means write nothing" guard: an export that found a cronograma but no
+requirements is a real and useful result for Peru, where the deadline is the
+entire reason the document is read. Treating it as nothing to write would
+have kept dropping exactly the dates this path already lost once. A
+key-date failure is reported and never fatal — the requirements and risks in
+the same entry are a separate finding and still worth writing.
+
+The result now carries a `keyDates` count and any warnings, and both the CLI
+and the admin table show them. A count that was silently zero is a count
+that was not being looked at.

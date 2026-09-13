@@ -142,6 +142,17 @@ export function findDroppedIdentifiers(zh: string, sourceEs: string): string[] {
   const core = (value: string) => value.toLowerCase().replace(/[.°º\s]/g, "");
   const haystack = core(zh);
 
+  // In a chainage the letters are a unit, not an identifier: the source writes
+  // "K.10+700 AL KM.11+420" for the two ends of one stretch, and Chinese that
+  // regularises both to K10+700 至 K11+420 has lost nothing a bidder needs.
+  // Compare such tokens on their numbers alone.
+  const CHAINAGE_UNIT = /^(km?)\.?(\d+\+\d+)$/i;
+  const kept = (token: string) => {
+    const chainage = CHAINAGE_UNIT.exec(token);
+    if (chainage) return haystack.includes(chainage[2]);
+    return haystack.includes(core(token));
+  };
+
   const dropped: string[] = [];
   const seen = new Set<string>();
 
@@ -154,7 +165,7 @@ export function findDroppedIdentifiers(zh: string, sourceEs: string): string[] {
     if (!hasLetter.test(token) && !CHAINAGE.test(token)) continue;
     if (seen.has(core(token))) continue;
     seen.add(core(token));
-    if (!haystack.includes(core(token))) dropped.push(token);
+    if (!kept(token)) dropped.push(token);
   }
 
   return dropped;

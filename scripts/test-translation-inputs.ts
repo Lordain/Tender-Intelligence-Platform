@@ -241,6 +241,26 @@ checkText(
   "L-5",
 );
 
+// A chainage prefix is a unit, and the source itself is inconsistent about it.
+checkText(
+  "KM and K are the same chainage marker",
+  findDroppedIdentifiers(
+    "K10+700至K11+420瓜达拉哈拉-查帕拉公路西侧L-5段中央车道施工",
+    "CONSTRUCCIÓN CARRILES CENT. CARR.GDL - CHAPALA, K.10+700 AL KM.11+420 L-PTE L-5",
+  ).join("|"),
+  "",
+);
+checkText(
+  "a chainage whose numbers are absent is still reported",
+  findDroppedIdentifiers("公路中央车道施工", "TRAMO K.10+700 AL KM.11+420").join("|"),
+  "K.10+700|KM.11+420",
+);
+checkText(
+  "the chainage exemption does not extend to a lettered code",
+  findDroppedIdentifiers("桩号11+420处施工", "TRAMO KM.11+420 RUTA HU672").join("|"),
+  "HU672",
+);
+
 // ── findUntranslatedSpanish ────────────────────────────────────────────────
 checkText(
   "a Spanish place phrase left in the Chinese",

@@ -25,6 +25,7 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { translateAllTenders } from "../lib/ingestion/translate-all-tenders";
+import { findDroppedIdentifiers } from "../lib/ingestion/translate-titles";
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -50,7 +51,17 @@ async function main() {
     process.exit(1);
   }
 
-  const result = await translateAllTenders(supabase, { write: shouldWrite, limit, sample });
+  // Printed before the first model call, not after: the batches below block
+  // for tens of seconds each with nothing in between, and a silent terminal
+  // is how a working run gets killed for looking stuck.
+  if (shouldWrite) console.log("每批 8 条，每批一次模型调用，几十秒不等——中途没有输出是正常的。\n");
+
+  const result = await translateAllTenders(supabase, {
+    write: shouldWrite,
+    limit,
+    sample,
+    onProgress: (done, total) => console.log(`  ${done}/${total} 已处理…`),
+  });
 
   console.log(`${result.untranslatedCount} of ${result.totalNonExcluded} non-excluded tenders still need translation.`);
   console.log(`Translating ${result.attemptedCount}...`);
@@ -63,6 +74,8 @@ async function main() {
         console.log(`  标题 ZH  ${item.titleZh}`);
         console.log(`  摘要 ES  ${item.summaryEs.slice(0, 200)}${item.summaryEs.length > 200 ? "…" : ""}`);
         console.log(`  摘要 ZH  ${item.summaryZh.slice(0, 200)}${item.summaryZh.length > 200 ? "…" : ""}`);
+        const codes = findDroppedIdentifiers(`${item.titleZh} ${item.summaryZh}`, `${item.titleEs}\n${item.summaryEs}`);
+        if (codes.length > 0) console.log(`  ⚠ 编号丢失  ${codes.join("、")}`);
       }
       if (result.lastErrorMessage) console.error(`\n调用出错：${result.lastErrorMessage}`);
       console.log(`\n${"─".repeat(78)}`);
@@ -80,6 +93,26 @@ async function main() {
     console.error(`Failed to translate: ${result.failedSlugs.join(", ")}`);
   }
   console.log(`Done. Translated ${result.translatedCount} of ${result.attemptedCount} tenders (${result.failedCount} failed).`);
+
+  // Named rather than counted: these rows are written and readable, and the
+  // only way to find them again is by slug.
+  if (result.droppedIdentifiers && result.droppedIdentifiers.length > 0) {
+    console.warn(`\n⚠ ${result.droppedIdentifiers.length} 条译文丢了原文里的编号——中文本身通顺，所以翻页看不出来：`);
+    for (const { slug, codes } of result.droppedIdentifiers) console.warn(`  ${slug}  缺 ${codes.join("、")}`);
+    console.warn(`  重置这几条再翻一次：npm run reset:translations -- --write ${result.droppedIdentifiers.map((d) => `--slug ${d.slug}`).join(" ")}`);
+  }
+
+  // The slugs this run wrote, so the batch can be undone as a batch. Nothing
+  // records which rows a given run touched, and reset:translations can only
+  // take --slug or --all; without this list, disliking one batch means
+  // resetting every translation in the table.
+  if (result.writtenSlugs && result.writtenSlugs.length > 0) {
+    const slugFlags = result.writtenSlugs.map((s) => `--slug ${s}`).join(" ");
+    console.log(`\n本次写入 ${result.writtenSlugs.length} 条。对照原文检查这一批：`);
+    console.log(`  npm run review:translations -- --csv ${slugFlags}`);
+    console.log(`\n要撤销这一批：`);
+    console.log(`  npm run reset:translations -- --write ${slugFlags}`);
+  }
 }
 
 main();

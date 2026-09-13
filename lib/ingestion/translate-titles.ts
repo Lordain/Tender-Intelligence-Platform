@@ -57,7 +57,130 @@ const BatchTranslationSchema = z.object({
   items: z.array(TranslatedItemSchema),
 });
 
-export type TenderToTranslate = { slug: string; titleEs: string; summaryEs: string };
+export type TenderToTranslate = { slug: string; titleEs: string; summaryEs: string; titleIsTruncated?: boolean };
+
+/**
+ * Reference codes in the Spanish that did not survive into the Chinese.
+ *
+ * "OP088.- REHABILITACIÓN DE RED DE DISTRIBUCIÓN ELECTRICA" came back as
+ * 中低压配电网改造 — fluent, accurate, and missing the works-order number a
+ * bidder uses to find the procurement on the portal. The loss is invisible in
+ * review because what remains reads perfectly well.
+ *
+ * An identifier here is a token carrying both a digit and a letter (OP088,
+ * TG-5, DCMC58, BPIN20241301010259) or a chainage (K5+500, 6+512). Bare
+ * numbers are excluded: quantities, years and counts are ordinary words that
+ * a translation may legitimately render differently, and flagging them would
+ * bury the real thing.
+ *
+ * Reports rather than repairs. Where the code belongs in a Chinese sentence
+ * depends on the sentence, and a wrong insertion is harder to spot than an
+ * absence that has been named.
+ */
+export function findDroppedIdentifiers(zh: string, sourceEs: string): string[] {
+  const CHAINAGE = /^\d+\+\d+$/;
+  const hasDigit = /\d/;
+  const hasLetter = /[A-Za-z]/;
+
+  const dropped: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of sourceEs.split(/[\s,;:()[\]"'«»]+/)) {
+    // Trailing sentence punctuation is not part of the code; an inner hyphen
+    // or plus sign is.
+    const token = raw.replace(/^[.\-]+/, "").replace(/[.\-]+$/, "");
+    if (token.length < 3) continue;
+    if (!hasDigit.test(token)) continue;
+    if (!hasLetter.test(token) && !CHAINAGE.test(token)) continue;
+    if (seen.has(token.toLowerCase())) continue;
+    seen.add(token.toLowerCase());
+    if (!zh.toLowerCase().includes(token.toLowerCase())) dropped.push(token);
+  }
+
+  return dropped;
+}
+
+/**
+ * Drop any （original）whose contents are not actually in the Spanish.
+ *
+ * The parenthesis after a transliterated name exists to be searched for — on
+ * a map, in the bid documents. That makes a misspelt one worse than none at
+ * all: CATACAOS came back as 卡塔考斯（Catacos）, which matches no document
+ * and no map while reading as authoritative. A model asked to copy a string
+ * exactly will mostly do it, and "mostly" is not a property this field can
+ * be built on, so the copy is verified rather than trusted.
+ *
+ * Matching ignores case and accents, because normalising them is legitimate:
+ * sources shout in caps and strip diacritics, so RIO MEZCALAPA earning
+ * （Río Mezcalapa）is correct work, not invention. Dropping a letter is not.
+ *
+ * Only Latin-script contents are examined. A parenthetical holding Chinese,
+ * digits or punctuation is something else — an explanatory aside, a phase
+ * number — and none of this applies to it.
+ */
+export function stripUnverifiedParentheticals(zh: string, sourceEs: string): string {
+  const normalize = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const haystack = normalize(sourceEs);
+
+  return zh.replace(/（([^（）]+)）/g, (whole, inner: string) => {
+    if (!/[A-Za-z\u00C0-\u024F]/.test(inner)) return whole;
+    // Anything with CJK in it is commentary, not a copied name.
+    if (/[\u4e00-\u9fff]/.test(inner)) return whole;
+    return haystack.includes(normalize(inner)) ? whole : "";
+  });
+}
+
+/**
+ * Did the source cut this title off, leaving the whole sentence only in the
+ * summary?
+ *
+ * SECOP truncates nombre_del_procedimiento and marks the cut with an
+ * ellipsis while publishing the complete text as the description. Translating
+ * the fragment yields a title that names nothing: "以单价和耗尽金额执行研究和
+ * 设计更新、补充及调整，以及施工和/或……" has no place, no asset and no scope in
+ * it — and the homepage column headed 中文项目名称 is exactly where it lands.
+ *
+ * Requires the summary to be both longer and not itself truncated, so a row
+ * whose two fields are equally cut is left alone rather than rewritten from
+ * something no better.
+ */
+export function titleIsTruncated(titleEs: string, summaryEs: string): boolean {
+  const title = titleEs.trimEnd();
+  const summary = summaryEs.trimEnd();
+
+  // Whatever replaces the title has to be better than the title. A summary
+  // that is itself cut, or no longer, is not.
+  if (summary.endsWith("…") || summary.endsWith("...")) return false;
+  if (summary.length <= title.length) return false;
+
+  if (title.endsWith("…") || title.endsWith("...")) return true;
+
+  // Not every source leaves an ellipsis. SECOP also hands back titles cut
+  // mid-phrase — "…ESTO EN ATENCIÓN AL CON", "…DEL MUNICIPIO DE" — where the
+  // only evidence is the last word. A Spanish noun phrase does not end on a
+  // preposition, article or conjunction, so one of those in final position
+  // means the sentence was still going.
+  //
+  // Deliberately not a length heuristic: Compras MX cuts at about eighty
+  // characters too ("DE 144 C", "TREN DE PASAJER"), but publishes the same
+  // cut text as the summary, so there is nothing to recover and the length
+  // test above already declines those. Guessing from length alone would
+  // rewrite titles that are merely short.
+  const DANGLING = new Set([
+    "de", "del", "el", "la", "los", "las", "un", "una",
+    "en", "a", "al", "y", "o", "u", "e",
+    "para", "con", "por", "que", "sobre", "entre", "desde", "hasta", "sin",
+  ]);
+  const lastWord = title.split(/[\s]+/).pop()?.toLowerCase().replace(/[.,;:]+$/, "") ?? "";
+  return DANGLING.has(lastWord);
+}
 export type TranslatedTender = { slug: string; titleZh: string; summaryZh: string };
 
 const SYSTEM_PROMPT = `You translate Mexican/Latin American government tender titles and summaries from Spanish to Chinese, for a platform that helps Chinese enterprises evaluate real bidding opportunities.

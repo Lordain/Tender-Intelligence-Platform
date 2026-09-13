@@ -11,7 +11,7 @@
  * line; scripts/compare-translation-providers.ts still runs both.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { TenderToTranslate, TranslatedTender } from "@/lib/ingestion/translate-titles";
+import { findDroppedIdentifiers, stripUnverifiedParentheticals, titleIsTruncated, type TenderToTranslate, type TranslatedTender } from "@/lib/ingestion/translate-titles";
 import { translateTenderBatchQwen } from "@/lib/ingestion/translate-titles-qwen";
 import type { LocalizedText } from "@/types/tender";
 
@@ -38,6 +38,10 @@ export type TranslateAllTendersResult = {
   translatedCount?: number;
   failedCount?: number;
   failedSlugs?: string[];
+  /** Slugs this run actually wrote, so the batch can be handed to reset-translations.ts as a batch. */
+  writtenSlugs?: string[];
+  /** Rows whose Chinese lost a reference code the Spanish carried — see findDroppedIdentifiers. */
+  droppedIdentifiers?: { slug: string; codes: string[] }[];
   /** Most recent real error message from a failed API call, if any — callers (the admin API route) use this to log an admin_alerts row when translation is failing systemically (quota/connection), not just per one bad row. */
   lastErrorMessage?: string;
   sample: { slug: string; titleEs: string }[];
@@ -98,7 +102,18 @@ function needsSummary(row: TranslatableRow): boolean {
  */
 export async function translateAllTenders(
   supabase: SupabaseClient,
-  options: { write: boolean; limit?: number; sample?: number },
+  options: {
+    write: boolean;
+    limit?: number;
+    sample?: number;
+    /**
+     * Called after each written batch. A --write run is a sequence of
+     * blocking model calls with nothing printed between them, so without
+     * this a long run is indistinguishable from a hung one — and the full
+     * set is ~31 batches.
+     */
+    onProgress?: (doneCount: number, total: number) => void;
+  },
 ): Promise<TranslateAllTendersResult> {
   // PostgREST caps an unranged select at 1000 rows — page with .range()
   // so tenders past the first 1000 don't silently get skipped.
@@ -133,16 +148,27 @@ export async function translateAllTenders(
     const rowsToPreview = toTranslate.slice(0, options.sample);
     try {
       const translated = await translateTenderBatchQwen(
-        rowsToPreview.map((t) => ({ slug: t.slug, titleEs: t.title.es, summaryEs: t.summary.es })),
+        rowsToPreview.map((t) => ({
+          slug: t.slug,
+          titleEs: t.title.es,
+          summaryEs: t.summary.es,
+          titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
+        })),
       );
       const bySlug = new Map(translated.map((r) => [r.slug, r]));
-      result.preview = rowsToPreview.map((t) => ({
-        slug: t.slug,
-        titleEs: t.title.es,
-        titleZh: bySlug.get(t.slug)?.titleZh ?? "(模型没有返回这一条)",
-        summaryEs: t.summary.es,
-        summaryZh: bySlug.get(t.slug)?.summaryZh ?? "(模型没有返回这一条)",
-      }));
+      // Through the same verifier the write path uses: a preview that shows
+      // text --write would not store is reviewing the wrong thing.
+      result.preview = rowsToPreview.map((t) => {
+        const source = `${t.title.es}\n${t.summary.es}`;
+        const got = bySlug.get(t.slug);
+        return {
+          slug: t.slug,
+          titleEs: t.title.es,
+          titleZh: got ? stripUnverifiedParentheticals(got.titleZh, source) : "(模型没有返回这一条)",
+          summaryEs: t.summary.es,
+          summaryZh: got ? stripUnverifiedParentheticals(got.summaryZh, source) : "(模型没有返回这一条)",
+        };
+      });
     } catch (err) {
       result.lastErrorMessage = err instanceof Error ? err.message : String(err);
     }
@@ -152,10 +178,17 @@ export async function translateAllTenders(
   let translatedCount = 0;
   let failedCount = 0;
   const failedSlugs: string[] = [];
+  const writtenSlugs: string[] = [];
+  const droppedIdentifiers: { slug: string; codes: string[] }[] = [];
   let lastErrorMessage: string | undefined;
 
   for (const batch of chunk(toTranslate, BATCH_SIZE)) {
-    const input: TenderToTranslate[] = batch.map((t) => ({ slug: t.slug, titleEs: t.title.es, summaryEs: t.summary.es }));
+    const input: TenderToTranslate[] = batch.map((t) => ({
+      slug: t.slug,
+      titleEs: t.title.es,
+      summaryEs: t.summary.es,
+      titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
+    }));
 
     let results: TranslatedTender[];
     try {
@@ -172,7 +205,12 @@ export async function translateAllTenders(
     const missing = batch.filter((t) => !bySlug.has(t.slug));
     for (const tender of missing) {
       try {
-        const [single] = await translateTenderBatchQwen([{ slug: tender.slug, titleEs: tender.title.es, summaryEs: tender.summary.es }]);
+        const [single] = await translateTenderBatchQwen([{
+          slug: tender.slug,
+          titleEs: tender.title.es,
+          summaryEs: tender.summary.es,
+          titleIsTruncated: titleIsTruncated(tender.title.es, tender.summary.es),
+        }]);
         if (single) bySlug.set(tender.slug, single);
       } catch (err) {
         lastErrorMessage = err instanceof Error ? err.message : String(err);
@@ -191,8 +229,12 @@ export async function translateAllTenders(
       // (it reads better with the title for context) but whichever one a
       // human already owns is never written back.
       const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      if (needsTitle(tender)) update.title = { ...tender.title, zh: translated.titleZh };
-      if (needsSummary(tender)) update.summary = { ...tender.summary, zh: translated.summaryZh };
+      // Checked against BOTH fields: a title rebuilt from the summary names
+      // places that appear only there, and those parentheses are as correct
+      // as any other.
+      const source = `${tender.title.es}\n${tender.summary.es}`;
+      if (needsTitle(tender)) update.title = { ...tender.title, zh: stripUnverifiedParentheticals(translated.titleZh, source) };
+      if (needsSummary(tender)) update.summary = { ...tender.summary, zh: stripUnverifiedParentheticals(translated.summaryZh, source) };
 
       const { error: updateError } = await supabase
         .from("tenders")
@@ -205,8 +247,17 @@ export async function translateAllTenders(
         continue;
       }
       translatedCount++;
+      writtenSlugs.push(tender.slug);
+
+      const codes = findDroppedIdentifiers(
+        `${update.title ? (update.title as { zh: string }).zh : ""} ${update.summary ? (update.summary as { zh: string }).zh : ""}`,
+        source,
+      );
+      if (codes.length > 0) droppedIdentifiers.push({ slug: tender.slug, codes });
     }
+
+    options.onProgress?.(translatedCount + failedCount, toTranslate.length);
   }
 
-  return { ...result, translatedCount, failedCount, failedSlugs, lastErrorMessage };
+  return { ...result, translatedCount, failedCount, failedSlugs, writtenSlugs, droppedIdentifiers, lastErrorMessage };
 }

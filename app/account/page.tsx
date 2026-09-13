@@ -9,6 +9,7 @@ import { localize, uiText, useLocale } from "@/lib/i18n";
 import { useEntitlement } from "@/lib/use-entitlement";
 import { BILLING_INTERVAL_LABELS, TRIAL_DAYS } from "@/lib/access-control";
 import { EnterpriseAccounts } from "@/components/account/EnterpriseAccounts";
+import { AccountDevices } from "@/components/account/AccountDevices";
 import { PendingInvitations } from "@/components/account/PendingInvitations";
 import { InvoiceContact } from "@/components/billing/InvoiceContact";
 
@@ -445,6 +446,11 @@ export default function AccountPage() {
         <PendingInvitations />
 
         {entitlement?.isEnterpriseOwner && <EnterpriseAccounts />}
+
+        {/* Everyone sees this, not just enterprise owners: the device cap
+            applies to every account, and the person who most needs to free
+            a slot is the single subscriber who just changed laptops. */}
+        <AccountDevices />
 
       </div>
     </div>

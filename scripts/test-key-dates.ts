@@ -1,8 +1,9 @@
 /**
- * Behaviour tests for the three pure pieces of the key-date pipeline:
+ * Behaviour tests for the four pure pieces of the key-date pipeline:
  * toCalendarDay() (what a model is allowed to have read off a page),
- * findKeyDateProblems() (which of those readings cannot be true) and
- * deriveTenderStatus()'s validity_end rule.
+ * findKeyDateProblems() (which of those readings cannot be true),
+ * isPastSubmissionDeadline() (which tenders are too late to import at all)
+ * and deriveTenderStatus()'s validity_end rule.
  *
  * Dates are the one extracted field that is ACTED on rather than read — they
  * drive 交标截止日, the 招标中/已截止 status and the digest — and the single
@@ -16,6 +17,7 @@
  */
 import { toCalendarDay } from "../lib/ingestion/extract-requirements";
 import { findKeyDateProblems, submissionIsSuspect, swapDayAndMonth } from "../lib/ingestion/key-date-checks";
+import { isPastSubmissionDeadline } from "../lib/ingestion/recency";
 import { deriveTenderStatus, platformDay } from "../lib/tender-status";
 
 let passed = 0;
@@ -264,6 +266,45 @@ check("a swap the document could have carried is offered", swapDayAndMonth("2026
 check("a day past 12 has nothing to swap with", swapDayAndMonth("2026-10-25") === null);
 check("a swap onto a day that does not exist is refused", swapDayAndMonth("2026-02-30") === null, String(swapDayAndMonth("2026-02-30")));
 check("a swap onto 31 February is refused", swapDayAndMonth("2026-31-02") === null);
+
+// isPastSubmissionDeadline: the import gate.
+//
+// It has to agree with deriveTenderStatus() above about the same tender on
+// the same day. An import that rejected a tender the site would still show
+// as 招标中 — or admitted one the site immediately marks 已截止 — would be
+// its own bug, so the boundary cases here deliberately mirror that block's.
+check(
+  "a tender whose deadline was yesterday is not imported",
+  isPastSubmissionDeadline({ submissionDeadline: "2026-09-11", status: "open" }, NOW),
+);
+check(
+  "a tender due TODAY is still imported — the same morning-of rule the site applies",
+  isPastSubmissionDeadline({ submissionDeadline: "2026-09-12", status: "open" }, NOW) === false,
+);
+check(
+  "a future deadline is imported",
+  isPastSubmissionDeadline({ submissionDeadline: "2026-12-01", status: "open" }, NOW) === false,
+);
+check(
+  "no deadline at all is not grounds to reject — most Mexican sources publish none",
+  isPastSubmissionDeadline({ status: "open" }, NOW) === false,
+);
+check(
+  "an awarded tender keeps its place, though its deadline has passed by definition",
+  isPastSubmissionDeadline({ submissionDeadline: "2025-01-01", status: "awarded" }, NOW) === false,
+);
+check(
+  "a 2024 deadline is rejected however recent the publication date looks",
+  isPastSubmissionDeadline({ submissionDeadline: "2024-12-10", status: "open" }, NOW),
+);
+check(
+  "a source-supplied timestamp, not just a bare day, is handled",
+  isPastSubmissionDeadline({ submissionDeadline: "2026-09-11T23:59:00-05:00", status: "open" }, NOW),
+);
+check(
+  "an unparseable deadline is not grounds to reject either",
+  isPastSubmissionDeadline({ submissionDeadline: "pendiente", status: "open" }, NOW) === false,
+);
 
 function daysBetweenForTest(day: string): number {
   return Math.floor((new Date("2026-09-12T00:00:00.000Z").getTime() - new Date(`${day}T00:00:00.000Z`).getTime()) / 86_400_000);

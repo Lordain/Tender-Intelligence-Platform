@@ -46,7 +46,8 @@ async function main() {
   console.log(`${exportPaths.length} file(s), ${documentCount} document result(s) across ${results.length} tender(s).\n`);
 
   for (const r of results) {
-    console.log(`${r.slug}: ${r.documentCount} document(s) -> ${r.qualifications} qualifications, ${r.experienceRequirements} experience, ${r.requiredDocuments} documents, ${r.risks} risks (merged/deduped)`);
+    console.log(`${r.slug}: ${r.documentCount} document(s) -> ${r.qualifications} qualifications, ${r.experienceRequirements} experience, ${r.requiredDocuments} documents, ${r.risks} risks, ${r.keyDates} key dates (merged/deduped)`);
+    for (const warning of r.warnings ?? []) console.log(`  ⚠ ${warning}`);
     if (r.status === "tender-not-found") console.error(`  skipped — no ingested tender found for slug "${r.slug}": ${r.message}`);
     if (r.status === "skipped-opus-precision") console.error(`  skipped — this tender ${r.message}. Pass --force to overwrite it.`);
     if (r.status === "written") console.log(`  written.`);

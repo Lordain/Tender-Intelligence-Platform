@@ -8,7 +8,7 @@
  * list ingest-colombia-live.ts originally only did.
  *
  * Usage:
- *   npm run ingest:colombia-live -- [--months 6] [--max-pages 20]
+ *   npm run ingest:colombia-live -- [--months 1] [--max-pages 20]
  *   npm run ingest:colombia-live -- --write [--fetch-documents]
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
@@ -23,7 +23,13 @@ async function main() {
   const args = process.argv.slice(2);
   const shouldWrite = args.includes("--write");
   const fetchDocuments = args.includes("--fetch-documents");
-  const months = argNumber(args, "--months", 6);
+  // One month, not six. The six-month default was the widest window in the
+  // codebase and the only one a caller got by saying nothing — the admin
+  // forms all default to 1 and the scheduled runs now do too, so a plain
+  // CLI run silently pulled six times as far back as the same import
+  // through any other door (2026-09-13: months-old PEMEX rows in the admin
+  // list). Pass --months explicitly for a deliberate backfill.
+  const months = argNumber(args, "--months", 1);
   const maxPages = argNumber(args, "--max-pages", 20);
 
   const supabase = shouldWrite ? createSupabaseAdminClient() : null;

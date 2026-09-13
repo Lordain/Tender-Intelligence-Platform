@@ -52,7 +52,13 @@ async function main() {
   const shouldWrite = args.includes("--write");
   const filePath = args.find((a, i) => !a.startsWith("--") && args[i - 1] !== "--sheet" && args[i - 1] !== "--months");
   const sheet = argValue(args, "--sheet");
-  const months = Number(argValue(args, "--months") ?? 6);
+  // One month, not six. The six-month default was the widest window in the
+  // codebase and the only one a caller got by saying nothing — the admin
+  // forms all default to 1 and the scheduled runs now do too, so a plain
+  // CLI run silently pulled six times as far back as the same import
+  // through any other door (2026-09-13: months-old PEMEX rows in the admin
+  // list). Pass --months explicitly for a deliberate backfill.
+  const months = Number(argValue(args, "--months") ?? 1);
 
   if (!useFixture && !filePath) {
     console.error("Usage: npm run ingest:ecopetrol-contracts -- <contratacion.xlsb> [--sheet 2026] [--write]");

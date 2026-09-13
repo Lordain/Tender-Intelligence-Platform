@@ -436,6 +436,32 @@ typed into the 其他关键日期 editor: the importer refreshes key dates by
 delete-then-insert, so without the flag a hand-entered 现场踏勘 vanished on
 every import.
 
+### A closed tender is never imported
+
+`upsertTendersBatched()` drops any tender whose `submission_deadline` has
+already passed, from every source and every path — cron, CLI and admin button
+— because that function is the one line all of them pass through.
+
+It is not the recency window's job and could not have been.
+`filterRecentTenders()` judges by publication date, and a source with no
+publication-date column falls back to the ingestion timestamp
+(`publicationDateIsEstimated`): always today, so those rows pass every window
+however narrow. That is how Compras MX rows with 2023 and 2024 deadlines
+reached the admin list under a one-month window. Separately, a Colombia row
+published well inside the window can still close before the nightly run
+reaches it.
+
+Two exemptions: an `awarded` tender is kept (its deadline has passed by
+definition and the result is the point), and a tender due **today** is still
+imported — compared through `platformDay()`, the same rule
+`deriveTenderStatus()` uses, so the importer and the site never disagree about
+the same tender on the same day.
+
+Every recency default is one month: the scheduled runs, the library entry
+points and the CLI scripts. A wider window is a deliberate `--months`.
+`npm run purge:closed-tenders` clears rows already stored (dry run by default,
+CSV, counts by source).
+
 Separately, an **estimated** publication date never overwrites a stored one.
 Sources with no real publication-date field fall back to the ingestion
 timestamp, so re-importing used to move a tender's 发布日期 forward every

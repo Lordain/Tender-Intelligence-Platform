@@ -3842,3 +3842,78 @@ settles that, so the script's last act is to hand over a short list and say so.
 
 `npm run test:key-dates` covers it, 53 checks now — and half of the new ones
 assert that a check does NOT fire.
+
+### Closed tenders were never gated at all (2026-09-13)
+
+The user went through the admin list and found three separate piles of rows
+nobody can bid on: PEMEX notices from March, April and May; Colombia rows
+whose deadline had passed the week before; and Compras MX rows with 交标
+dates in 2024 and 2023. They deleted them by hand and asked what happened.
+
+Three causes, and only one of them is a window set too wide.
+
+**1. The recency filter is structurally blind to a whole class of row.**
+`filterRecentTenders()` filters on `publicationDate`, and its own comment
+said every mapper guarantees a valid one. True — and not the same as every
+mapper HAVING one. A source with no publication-date column falls back to
+the ingestion timestamp and sets `publicationDateIsEstimated` (LicitIA's
+vigente rows with no `publicacion`; Compras MX's manual export, which has no
+such column at all). That date is always today, so those rows pass every
+window the function will ever be given. The screenshot that made this
+obvious: an entire page of rows stamped 发布 2026-09-09 估, deadlines
+scattered through 2023 and 2024. **No value of `months` could have stopped
+a single one of them.**
+
+**2. A row can close between publication and import.** Colombia's deadlines
+sit about a month after publication and datos.gov.co lags the portal by
+days, so a nightly run on a one-month window legitimately meets rows whose
+deadline was last week. Nothing was misconfigured; the schedule and the
+window were both right and the result was still rows nobody can bid on.
+
+**3. The CLI defaults were six months while every other door was one.**
+The admin forms default to 1, the scheduled runs to 1 (Colombia) or 2
+(PEMEX, LicitIA). But `importPemexLive`, `discoverComprasMxVigente`,
+`importNewTenders` and four `scripts/ingest-*.ts` entry points all defaulted
+to **6** — the value a caller gets by saying nothing. A plain
+`npm run ingest:pemex-live -- --write` reached back six months, which is
+exactly where the March rows come from.
+
+**The fix is one gate in one place.** `isPastSubmissionDeadline()` lives in
+`recency.ts` and is applied inside `upsertTendersBatched()` — the single
+line every import path passes through, cron, CLI and admin button alike.
+That placement is the user's standing rule (请一定要保障现在应用的筛选规则，
+在我们导入新项目时，一样适用): a rule there cannot be missed by a path that
+forgets to call it, and there is one place to read to learn what the rule
+is. It is also the only gate that works on a source with no publication
+date at all.
+
+Two exemptions, both deliberate:
+
+- **`awarded` is kept.** Its deadline has passed by definition and the award
+  result is the reason it exists (the public award-result section is built
+  for these). Filtering on the deadline alone would have deleted the entire
+  awarded population.
+- **A tender due TODAY is imported.** It compares through `platformDay()`,
+  the same function `deriveTenderStatus()` uses, so the importer and the
+  site agree about the same tender on the same day. An import that rejected
+  a tender the site still shows as 招标中 would be its own bug.
+
+Every default is now 1 month — the scheduled runs, the library functions and
+the CLI entry points — per the user's rule: 自动跑考虑最近一个月就可以，不用
+考虑好几个月. A backfill is a deliberate act and passes `--months`
+explicitly. Nothing was wider than the gap between two nightly runs except
+to re-read rows already seen.
+
+`npm run purge:closed-tenders` clears what is already stored, dry-run by
+default with a CSV. It reports the count **by source** first, because a
+source contributing most of them is a source whose mapper or window is the
+real problem rather than a pile of rows to delete again next month — and it
+reports how many carry an estimated publication date, which is the number
+that proves a publication-date cutoff could never have caught them.
+
+**Not fixed here, and worth knowing:** `filterRecentTenders()` still cannot
+see estimated-publication rows. That is left alone on purpose — an estimated
+date is genuinely unknown rather than wrong, and treating it as old would
+throw away live tenders from the two sources that publish no such column.
+The deadline is the field that actually answers "can anyone still bid", so
+that is what gates the write.

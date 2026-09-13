@@ -29,7 +29,10 @@ export async function importPemexLive(
   buyer: string,
   options: { write: boolean; months?: number; procedureLabel?: string },
 ): Promise<ImportPemexLiveResult> {
-  const months = options.months ?? 6;
+  // One month, matching the admin forms and the scheduled runs. This is the
+  // value a caller gets by saying nothing, so it must be the conservative
+  // one: a backfill is a deliberate act and can pass months explicitly.
+  const months = options.months ?? 1;
   const procedureLabel = options.procedureLabel ?? "Concurso Abierto";
 
   const items = await fetchPemexList(listTitle);

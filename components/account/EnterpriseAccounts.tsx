@@ -30,6 +30,7 @@ export function EnterpriseAccounts() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [copied, setCopied] = useState("");
 
   // setState lives in the promise callback, not in the effect body — the
   // same shape as lib/use-entitlement.ts, and what react-hooks expects of a
@@ -58,9 +59,11 @@ export function EnterpriseAccounts() {
       }
       // Whether the invitation email actually went out matters to the owner:
       // if it didn't, the invitee only finds it by signing in on their own.
+      // Even a send Resend accepted can land in 垃圾邮件, so "已发送" must not
+      // read as "已送达" — the owner needs to know the link is the reliable path.
       setNotice(data.notified
-        ? `邀请已发送至 ${email}，对方确认后席位才会生效。`
-        : `邀请已创建，但邮件未能发出。请自行通知 ${email} 登录后到「账户管理」接受邀请。`);
+        ? `邀请已发送至 ${email}。邮件可能被判为垃圾邮件，建议同时用下方「复制邀请链接」通过微信等方式发给对方。`
+        : `邀请已创建，但邮件未能发出。请用下方「复制邀请链接」把链接发给 ${email}。`);
       setEmail("");
       setReloadKey((key) => key + 1);
     } finally {
@@ -69,6 +72,41 @@ export function EnterpriseAccounts() {
   }
 
   const usedSeats = members.filter((member) => member.status !== "declined").length;
+
+  /**
+   * The same destination the invitation email points at, for the owner to
+   * send through their own channel.
+   *
+   * Gmail put the invitation in 垃圾邮件 on 2026-09-13 while the nightly
+   * digest from the same domain and the same Resend account reached the
+   * inbox. The difference is not the markup: a digest goes to someone who
+   * registered and has opened our mail before, and an invitation goes to an
+   * address that has never had any contact with this domain. No amount of
+   * HTML tuning earns that relationship, so the invitee has to be reachable
+   * without it — and a message from a colleague they already correspond with
+   * lands where ours cannot.
+   *
+   * It grants nothing on its own: accepting still requires signing in as the
+   * invited address, so a link forwarded to the wrong person is inert.
+   */
+  function inviteLink(member: Member) {
+    const origin = typeof window === "undefined" ? "" : window.location.origin;
+    return member.member_user_id
+      ? `${origin}/account`
+      : `${origin}/register?email=${encodeURIComponent(member.email)}&next=/account`;
+  }
+
+  async function copyInviteLink(member: Member) {
+    try {
+      await navigator.clipboard.writeText(inviteLink(member));
+      setCopied(member.id);
+      window.setTimeout(() => setCopied(""), 2000);
+    } catch {
+      // Clipboard access can be refused (http, or a permission prompt the
+      // user dismissed). Say so rather than silently doing nothing.
+      setError("复制失败，请手动复制：" + inviteLink(member));
+    }
+  }
 
   return (
     <section className="mt-6 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8">
@@ -103,15 +141,14 @@ export function EnterpriseAccounts() {
                 <p className={`text-xs font-bold ${status.tone}`}>{status.text}</p>
               </div>
               <div className="flex shrink-0 gap-2">
-                {member.status === "pending" && !member.member_user_id && (
-                  <a
-                    target="_blank"
-                    rel="noreferrer"
-                    href={`/register?email=${encodeURIComponent(member.email)}&next=/account`}
+                {member.status === "pending" && (
+                  <button
+                    type="button"
+                    onClick={() => copyInviteLink(member)}
                     className="rounded-lg border border-[#b8c4c9] px-3 py-2 text-xs font-bold"
                   >
-                    打开注册页
-                  </a>
+                    {copied === member.id ? "已复制" : "复制邀请链接"}
+                  </button>
                 )}
                 <button
                   type="button"

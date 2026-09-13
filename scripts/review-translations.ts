@@ -20,6 +20,7 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { toCsv, writeReviewCsv } from "../lib/ingestion/review-csv";
+import { findDroppedIdentifiers, findUntranslatedSpanish } from "../lib/ingestion/translate-titles";
 import type { LocalizedText } from "../types/tender";
 
 type Row = {
@@ -115,6 +116,30 @@ async function main() {
       console.log(`  摘要 ES  ${row.summary.es.slice(0, 300)}${row.summary.es.length > 300 ? "…" : ""}`);
       console.log(`  摘要 ZH  ${row.summary.zh.slice(0, 300)}${row.summary.zh.length > 300 ? "…" : ""}${hand(row, "summary") ? "   ← 人工编辑" : ""}`);
     }
+  }
+
+  // The two machine-checkable faults, gathered at the end rather than buried
+  // per row: a reader scrolling fifty rows will not spot either one, which is
+  // the whole reason they are checked at all.
+  const codeLosses: string[] = [];
+  const spanishLeft: string[] = [];
+  for (const row of shown) {
+    const codes = findDroppedIdentifiers(`${row.title.zh} ${row.summary.zh}`, `${row.title.es}\n${row.summary.es}`);
+    if (codes.length > 0) codeLosses.push(`  ${row.slug}  缺 ${codes.join("、")}`);
+    const spanish = findUntranslatedSpanish(row.title.zh);
+    if (spanish.length > 0) spanishLeft.push(`  ${row.slug}  ${spanish.join("、")}`);
+  }
+  if (codeLosses.length > 0) {
+    console.log(`\n⚠ ${codeLosses.length} 条丢了原文里的编号：`);
+    for (const line of codeLosses) console.log(line);
+  }
+  if (spanishLeft.length > 0) {
+    console.log(`\n⚠ ${spanishLeft.length} 条标题里留着没翻译的西班牙语：`);
+    for (const line of spanishLeft) console.log(line);
+  }
+  if (codeLosses.length > 0 || spanishLeft.length > 0) {
+    const bad = [...new Set([...codeLosses, ...spanishLeft].map((l) => l.trim().split(/\s+/)[0]))];
+    console.log(`\n  重翻这几条：npm run reset:translations -- --write ${bad.map((s) => `--slug ${s}`).join(" ")}`);
   }
 
   console.log(`\n${"─".repeat(78)}`);

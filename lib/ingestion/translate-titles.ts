@@ -60,6 +60,41 @@ const BatchTranslationSchema = z.object({
 export type TenderToTranslate = { slug: string; titleEs: string; summaryEs: string; titleIsTruncated?: boolean };
 
 /**
+ * Spanish left standing in the Chinese, where a reader gets no Chinese at all.
+ *
+ * One row came back as "承包实施城市道路基础设施改善工程，位于Arequipa省Santa
+ * Rita de Siguas区Nueva Juventud B区" — the places never transliterated, so
+ * the Chinese title is not in Chinese. Distinct from the parenthesis rule:
+ * that one adds the Spanish beside a Chinese name, this one is the Spanish
+ * instead of a Chinese name.
+ *
+ * A lowercase word inside the run is what separates the two cases. Spanish
+ * phrases carry them — "Santa Rita de Siguas", "Nueva Juventud" — while an
+ * acronym or brand kept deliberately does not: WOODWARD, TURBOCINA, IOAR,
+ * PEMEX and CCTV are all correct as they stand, and flagging them would bury
+ * the real thing.
+ *
+ * Text inside （）is skipped: that is the copied original, which belongs there.
+ *
+ * A lone word is deliberately not enough. "Arequipa" standing alone could as
+ * easily be a brand as a place, and a row that leaves a name untranslated
+ * almost always leaves a phrase too — the row still surfaces, without the
+ * noise of flagging every capitalised token on the page.
+ */
+export function findUntranslatedSpanish(zh: string): string[] {
+  const outside = zh.replace(/（[^（）]*）/g, " ");
+  const runs = outside.match(/[A-Za-zÀ-ÿ]+(?:[ -][A-Za-zÀ-ÿ]+)*/g) ?? [];
+
+  return runs.filter((run) => {
+    const words = run.split(/[ -]/).filter(Boolean);
+    if (words.length < 2) return false;
+    // Every word shouting is a multi-part code or a name kept as-is
+    // ("BRAMONAS 2", "SAN SEB"), not prose the translator skipped.
+    return words.some((word) => /^[a-zà-ÿ]/.test(word) || (word.length > 1 && /[a-zà-ÿ]/.test(word.slice(1))));
+  });
+}
+
+/**
  * Reference codes in the Spanish that did not survive into the Chinese.
  *
  * "OP088.- REHABILITACIÓN DE RED DE DISTRIBUCIÓN ELECTRICA" came back as
@@ -82,19 +117,34 @@ export function findDroppedIdentifiers(zh: string, sourceEs: string): string[] {
   const hasDigit = /\d/;
   const hasLetter = /[A-Za-z]/;
 
+  // A period joins a code to the next word as often as it ends a sentence —
+  // "437-08-K005.-CONSTRUCCIÓN", "302.-CONSTRUCCIÓN" — so split on one that a
+  // letter or hyphen follows. A period BETWEEN digits stays: K.10+700 and 6.5
+  // are single values.
+  const tokens = sourceEs.split(/[\s,;:()[\]"'«»]+|\.(?=[A-Za-z-])|\.-/);
+
+  // "N° 2563075" is Spanish for "number 2563075"; the code is the digits. A
+  // translation writing 第2563075号 has kept it, and flagging that would teach
+  // the reader to ignore this warning.
+  const NUMBER_PREFIX = /^(n[°ºo]?\.?|núm\.?|nro\.?)/i;
+
+  // Punctuation inside a code moves freely between languages: K.10+700 may
+  // come back as K10+700 and is not a loss.
+  const core = (value: string) => value.toLowerCase().replace(/[.°º\s]/g, "");
+  const haystack = core(zh);
+
   const dropped: string[] = [];
   const seen = new Set<string>();
 
-  for (const raw of sourceEs.split(/[\s,;:()[\]"'«»]+/)) {
-    // Trailing sentence punctuation is not part of the code; an inner hyphen
-    // or plus sign is.
-    const token = raw.replace(/^[.\-]+/, "").replace(/[.\-]+$/, "");
+  for (const raw of tokens) {
+    const trimmed = raw.replace(/^[.\-]+/, "").replace(/[.\-]+$/, "");
+    const token = trimmed.replace(NUMBER_PREFIX, "") || trimmed;
     if (token.length < 3) continue;
     if (!hasDigit.test(token)) continue;
     if (!hasLetter.test(token) && !CHAINAGE.test(token)) continue;
-    if (seen.has(token.toLowerCase())) continue;
-    seen.add(token.toLowerCase());
-    if (!zh.toLowerCase().includes(token.toLowerCase())) dropped.push(token);
+    if (seen.has(core(token))) continue;
+    seen.add(core(token));
+    if (!haystack.includes(core(token))) dropped.push(token);
   }
 
   return dropped;

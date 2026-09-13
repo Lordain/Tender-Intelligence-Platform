@@ -57,7 +57,29 @@ const BatchTranslationSchema = z.object({
   items: z.array(TranslatedItemSchema),
 });
 
-export type TenderToTranslate = { slug: string; titleEs: string; summaryEs: string };
+export type TenderToTranslate = { slug: string; titleEs: string; summaryEs: string; titleIsTruncated?: boolean };
+
+/**
+ * Did the source cut this title off, leaving the whole sentence only in the
+ * summary?
+ *
+ * SECOP truncates nombre_del_procedimiento and marks the cut with an
+ * ellipsis while publishing the complete text as the description. Translating
+ * the fragment yields a title that names nothing: "以单价和耗尽金额执行研究和
+ * 设计更新、补充及调整，以及施工和/或……" has no place, no asset and no scope in
+ * it — and the homepage column headed 中文项目名称 is exactly where it lands.
+ *
+ * Requires the summary to be both longer and not itself truncated, so a row
+ * whose two fields are equally cut is left alone rather than rewritten from
+ * something no better.
+ */
+export function titleIsTruncated(titleEs: string, summaryEs: string): boolean {
+  const title = titleEs.trimEnd();
+  if (!title.endsWith("…") && !title.endsWith("...")) return false;
+  const summary = summaryEs.trimEnd();
+  if (summary.endsWith("…") || summary.endsWith("...")) return false;
+  return summary.length > title.length;
+}
 export type TranslatedTender = { slug: string; titleZh: string; summaryZh: string };
 
 const SYSTEM_PROMPT = `You translate Mexican/Latin American government tender titles and summaries from Spanish to Chinese, for a platform that helps Chinese enterprises evaluate real bidding opportunities.

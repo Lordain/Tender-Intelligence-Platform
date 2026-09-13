@@ -11,7 +11,7 @@
  * line; scripts/compare-translation-providers.ts still runs both.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { TenderToTranslate, TranslatedTender } from "@/lib/ingestion/translate-titles";
+import { titleIsTruncated, type TenderToTranslate, type TranslatedTender } from "@/lib/ingestion/translate-titles";
 import { translateTenderBatchQwen } from "@/lib/ingestion/translate-titles-qwen";
 import type { LocalizedText } from "@/types/tender";
 
@@ -146,7 +146,12 @@ export async function translateAllTenders(
     const rowsToPreview = toTranslate.slice(0, options.sample);
     try {
       const translated = await translateTenderBatchQwen(
-        rowsToPreview.map((t) => ({ slug: t.slug, titleEs: t.title.es, summaryEs: t.summary.es })),
+        rowsToPreview.map((t) => ({
+          slug: t.slug,
+          titleEs: t.title.es,
+          summaryEs: t.summary.es,
+          titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
+        })),
       );
       const bySlug = new Map(translated.map((r) => [r.slug, r]));
       result.preview = rowsToPreview.map((t) => ({
@@ -169,7 +174,12 @@ export async function translateAllTenders(
   let lastErrorMessage: string | undefined;
 
   for (const batch of chunk(toTranslate, BATCH_SIZE)) {
-    const input: TenderToTranslate[] = batch.map((t) => ({ slug: t.slug, titleEs: t.title.es, summaryEs: t.summary.es }));
+    const input: TenderToTranslate[] = batch.map((t) => ({
+      slug: t.slug,
+      titleEs: t.title.es,
+      summaryEs: t.summary.es,
+      titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
+    }));
 
     let results: TranslatedTender[];
     try {
@@ -186,7 +196,12 @@ export async function translateAllTenders(
     const missing = batch.filter((t) => !bySlug.has(t.slug));
     for (const tender of missing) {
       try {
-        const [single] = await translateTenderBatchQwen([{ slug: tender.slug, titleEs: tender.title.es, summaryEs: tender.summary.es }]);
+        const [single] = await translateTenderBatchQwen([{
+          slug: tender.slug,
+          titleEs: tender.title.es,
+          summaryEs: tender.summary.es,
+          titleIsTruncated: titleIsTruncated(tender.title.es, tender.summary.es),
+        }]);
         if (single) bySlug.set(tender.slug, single);
       } catch (err) {
         lastErrorMessage = err instanceof Error ? err.message : String(err);

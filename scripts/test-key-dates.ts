@@ -1,7 +1,9 @@
 /**
- * Behaviour tests for the two pure pieces of the key-date pipeline:
- * toCalendarDay() (what a model is allowed to have read off a page) and
- * deriveTenderStatus()'s validity_end rule.
+ * Behaviour tests for the four pure pieces of the key-date pipeline:
+ * toCalendarDay() (what a model is allowed to have read off a page),
+ * findKeyDateProblems() (which of those readings cannot be true),
+ * isPastSubmissionDeadline() (which tenders are too late to import at all)
+ * and deriveTenderStatus()'s validity_end rule.
  *
  * Dates are the one extracted field that is ACTED on rather than read — they
  * drive 交标截止日, the 招标中/已截止 status and the digest — and the single
@@ -14,6 +16,8 @@
  * Usage: npm run test:key-dates
  */
 import { toCalendarDay } from "../lib/ingestion/extract-requirements";
+import { findKeyDateProblems, submissionIsSuspect, swapDayAndMonth } from "../lib/ingestion/key-date-checks";
+import { isPastSubmissionDeadline } from "../lib/ingestion/recency";
 import { deriveTenderStatus, platformDay } from "../lib/tender-status";
 
 let passed = 0;
@@ -128,6 +132,178 @@ check(
 check(
   "no publication date at all means the window cannot fire",
   deriveTenderStatus("open", { keyDates: [] }, NOW) === "open",
+);
+
+// findKeyDateProblems: the wrong day that toCalendarDay cannot see.
+//
+// Half of these assert that a check does NOT fire. That is the point: the
+// reason this checker refuses to look at site_visit vs clarification, or at
+// a schedule where every row lands on one day, is that those shapes are
+// common and correct — and a warning that fires on a right answer is worse
+// than no warning at all, because it trains the reader to skip all of them.
+const CRONOGRAMA = [
+  { type: "clarification" as const, date: "2026-09-01" },
+  { type: "submission" as const, date: "2026-09-10" },
+  { type: "opening" as const, date: "2026-09-10" },
+  { type: "award" as const, date: "2026-09-18" },
+  { type: "contract_signing" as const, date: "2026-10-01" },
+];
+
+check("a well-formed cronograma raises nothing", findKeyDateProblems(CRONOGRAMA).length === 0, JSON.stringify(findKeyDateProblems(CRONOGRAMA)));
+check(
+  "the same day for submission, opening and award is fine (Peru's Adjudicación Simplificada)",
+  findKeyDateProblems([
+    { type: "submission", date: "2026-09-10" },
+    { type: "opening", date: "2026-09-10" },
+    { type: "award", date: "2026-09-10" },
+  ]).length === 0,
+);
+check(
+  "questions closing after the junta is not flagged — a second session can answer them",
+  findKeyDateProblems([
+    { type: "clarification", date: "2026-09-02" },
+    { type: "questions_deadline", date: "2026-09-04" },
+    { type: "submission", date: "2026-09-20" },
+  ]).length === 0,
+);
+check(
+  "a site visit after the bids are due IS flagged",
+  findKeyDateProblems([
+    { type: "site_visit", date: "2026-09-25" },
+    { type: "submission", date: "2026-09-20" },
+  ])[0]?.code === "out-of-order",
+);
+
+// The swap: the document writes 10/09/2026 for 10 September, the model
+// answers 9 October, and every other row of the schedule stays put.
+const SWAPPED = [
+  { type: "submission" as const, date: "2026-10-09" },
+  { type: "opening" as const, date: "2026-09-15" },
+  { type: "award" as const, date: "2026-09-30" },
+];
+const swappedProblems = findKeyDateProblems(SWAPPED);
+check("a day/month swap on the deadline is caught", swappedProblems.length === 1, JSON.stringify(swappedProblems));
+check("it is reported once, not once per row it now contradicts", swappedProblems.length === 1);
+check("the deadline is marked suspect, so it will not be written to the tender", submissionIsSuspect(swappedProblems));
+check(
+  "the message names the corrected reading rather than only the conflict",
+  swappedProblems[0]?.message.includes("2026-09-10") === true,
+  swappedProblems[0]?.message,
+);
+check(
+  "and quotes it the way the document writes it, DD/MM",
+  swappedProblems[0]?.message.includes("10/09") === true,
+  swappedProblems[0]?.message,
+);
+
+check(
+  "an award read before the bids are due is caught too",
+  findKeyDateProblems([
+    { type: "submission", date: "2026-09-20" },
+    { type: "award", date: "2026-08-05" },
+  ]).length === 1,
+);
+check(
+  "a disagreement that does not involve the deadline leaves the deadline writable",
+  submissionIsSuspect(
+    findKeyDateProblems([
+      { type: "submission", date: "2026-09-10" },
+      { type: "award", date: "2026-10-20" },
+      { type: "contract_signing", date: "2026-10-01" },
+    ]),
+  ) === false,
+);
+
+// Against the publication date the source feed supplies.
+check(
+  "a cronograma that predates the tender's own publication is flagged",
+  findKeyDateProblems(CRONOGRAMA, { publicationDate: "2026-11-01" }).some((p) => p.code === "before-publication"),
+);
+check(
+  "one day of slack is allowed, for a publication timestamp that lands on the next UTC day",
+  findKeyDateProblems([{ type: "submission", date: "2026-09-10" }], { publicationDate: "2026-09-11" }).length === 0,
+);
+check(
+  "a misread year is flagged as too far out",
+  findKeyDateProblems([{ type: "submission", date: "2028-09-10" }], { publicationDate: "2026-08-20" }).some(
+    (p) => p.code === "far-after-publication",
+  ),
+);
+check(
+  "a genuinely long obra — award ten months out — is not",
+  findKeyDateProblems(
+    [
+      { type: "submission", date: "2026-09-10" },
+      { type: "award", date: "2027-06-01" },
+    ],
+    { publicationDate: "2026-08-20" },
+  ).length === 0,
+);
+check(
+  "a misread year hitting every row is reported once, not once per row",
+  findKeyDateProblems(
+    [
+      { type: "submission", date: "2029-09-10" },
+      { type: "opening", date: "2029-09-12" },
+      { type: "award", date: "2029-09-20" },
+    ],
+    { publicationDate: "2026-08-20" },
+  ).length === 1,
+);
+check(
+  "publication and validity_end rows are ignored — neither is read from a document",
+  findKeyDateProblems([
+    { type: "publication", date: "2026-09-01" },
+    { type: "validity_end", date: "2028-01-01" },
+    { type: "submission", date: "2026-09-10" },
+  ]).length === 0,
+);
+check("no dates at all is not a problem", findKeyDateProblems([]).length === 0);
+
+// swapDayAndMonth on its own: it may only ever propose a reading the
+// document could actually have carried.
+check("a swap the document could have carried is offered", swapDayAndMonth("2026-10-09") === "2026-09-10");
+check("a day past 12 has nothing to swap with", swapDayAndMonth("2026-10-25") === null);
+check("a swap onto a day that does not exist is refused", swapDayAndMonth("2026-02-30") === null, String(swapDayAndMonth("2026-02-30")));
+check("a swap onto 31 February is refused", swapDayAndMonth("2026-31-02") === null);
+
+// isPastSubmissionDeadline: the import gate.
+//
+// It has to agree with deriveTenderStatus() above about the same tender on
+// the same day. An import that rejected a tender the site would still show
+// as 招标中 — or admitted one the site immediately marks 已截止 — would be
+// its own bug, so the boundary cases here deliberately mirror that block's.
+check(
+  "a tender whose deadline was yesterday is not imported",
+  isPastSubmissionDeadline({ submissionDeadline: "2026-09-11", status: "open" }, NOW),
+);
+check(
+  "a tender due TODAY is still imported — the same morning-of rule the site applies",
+  isPastSubmissionDeadline({ submissionDeadline: "2026-09-12", status: "open" }, NOW) === false,
+);
+check(
+  "a future deadline is imported",
+  isPastSubmissionDeadline({ submissionDeadline: "2026-12-01", status: "open" }, NOW) === false,
+);
+check(
+  "no deadline at all is not grounds to reject — most Mexican sources publish none",
+  isPastSubmissionDeadline({ status: "open" }, NOW) === false,
+);
+check(
+  "an awarded tender keeps its place, though its deadline has passed by definition",
+  isPastSubmissionDeadline({ submissionDeadline: "2025-01-01", status: "awarded" }, NOW) === false,
+);
+check(
+  "a 2024 deadline is rejected however recent the publication date looks",
+  isPastSubmissionDeadline({ submissionDeadline: "2024-12-10", status: "open" }, NOW),
+);
+check(
+  "a source-supplied timestamp, not just a bare day, is handled",
+  isPastSubmissionDeadline({ submissionDeadline: "2026-09-11T23:59:00-05:00", status: "open" }, NOW),
+);
+check(
+  "an unparseable deadline is not grounds to reject either",
+  isPastSubmissionDeadline({ submissionDeadline: "pendiente", status: "open" }, NOW) === false,
 );
 
 function daysBetweenForTest(day: string): number {

@@ -436,6 +436,32 @@ typed into the 其他关键日期 editor: the importer refreshes key dates by
 delete-then-insert, so without the flag a hand-entered 现场踏勘 vanished on
 every import.
 
+### A closed tender is never imported
+
+`upsertTendersBatched()` drops any tender whose `submission_deadline` has
+already passed, from every source and every path — cron, CLI and admin button
+— because that function is the one line all of them pass through.
+
+It is not the recency window's job and could not have been.
+`filterRecentTenders()` judges by publication date, and a source with no
+publication-date column falls back to the ingestion timestamp
+(`publicationDateIsEstimated`): always today, so those rows pass every window
+however narrow. That is how Compras MX rows with 2023 and 2024 deadlines
+reached the admin list under a one-month window. Separately, a Colombia row
+published well inside the window can still close before the nightly run
+reaches it.
+
+Two exemptions: an `awarded` tender is kept (its deadline has passed by
+definition and the result is the point), and a tender due **today** is still
+imported — compared through `platformDay()`, the same rule
+`deriveTenderStatus()` uses, so the importer and the site never disagree about
+the same tender on the same day.
+
+Every recency default is one month: the scheduled runs, the library entry
+points and the CLI scripts. A wider window is a deliberate `--months`.
+`npm run purge:closed-tenders` clears rows already stored (dry run by default,
+CSV, counts by source).
+
 Separately, an **estimated** publication date never overwrites a stored one.
 Sources with no real publication-date field fall back to the ingestion
 timestamp, so re-importing used to move a tender's 发布日期 forward every
@@ -463,6 +489,50 @@ and a hand-translated title no longer blocks its own summary from being
 translated.
 
 The admin 新项目清单 page's 翻译所有标题 button runs the same function.
+
+### Key dates read from a bid document
+
+```bash
+npm run review:key-dates                 # coverage, plus every schedule that cannot be true
+npm run review:key-dates -- --all        # print every extracted cronograma with its citations
+npm run review:key-dates -- --sample 5   # five to open against the PDF by hand
+```
+
+For Peru's OECE the bid deadline exists in no feed and on no list page — only
+inside the bases PDF — so the Layer 2 extraction reads the cronograma and
+`writeExtractedKeyDates()` fills `submission_deadline` from it when the tender
+has none (it never overwrites one a source supplied).
+
+That makes a misread date consequential rather than cosmetic: the column drives
+已截止 on the site and the digest. `toCalendarDay()` rejects anything that is
+not a real calendar day, but the dangerous input is the day that IS real and is
+wrong — these countries write `10/09/2026` for 10 September, and a model that
+reads it as 9 October returns a date nothing downstream can question.
+
+`findKeyDateProblems()` (`lib/ingestion/key-date-checks.ts`) checks the
+schedule against itself, which is the only evidence there is. A day/month swap
+moves one row and leaves the others where they were, so it shows up as a
+deadline after the opening or an award before the bids are due; the warning
+names the corrected reading rather than only the conflict. It also checks every
+row against the tender's own `publication_date`. When the **submission** row is
+one of the dates in question the cronograma is still written to the timeline —
+labelled, cited, visibly a reading — but the deadline column is left empty and
+the admin is told why. A wrong deadline is worse than none: no deadline falls
+back to the 45-day window, a guess that is visibly a guess.
+
+Three plausible checks are deliberately absent because each fires on correct
+answers: a schedule where every row falls on one day (normal for a Peruvian
+Adjudicación Simplificada), `questions_deadline` after `clarification` (a
+second session can answer late consultas), and a deadline already in the past
+(this platform imports closed tenders). A warning that fires on a right answer
+teaches the reader to ignore all of them.
+
+Every extracted row carries `source_reference` (migration 0047) — the page and
+section it was read from, which the extraction schema already demanded and this
+table previously discarded. It shows in the admin 其他关键日期 list and in
+`review:key-dates`; the public timeline stays a schedule and shows no page
+numbers. Self-consistency is not correctness — a cronograma read one month late
+in every row passes every check — which is what `--sample` is for.
 
 ## Scheduled jobs (Vercel Cron)
 

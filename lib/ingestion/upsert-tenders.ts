@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
 import { assertWritten } from "@/lib/db/assert-written";
 import { classifyStoredTender } from "@/lib/relevance";
+import { isPastSubmissionDeadline } from "@/lib/ingestion/recency";
 import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "@/lib/ingestion/review-csv";
 import { slugify } from "@/lib/ingestion/text-utils";
 
@@ -56,6 +57,14 @@ function chunk<T>(items: T[], size: number): T[][] {
 export type UpsertTendersResult = {
   upsertedCount: number;
   skippedExcludedCount: number;
+  /**
+   * Rows dropped because their bid deadline had already passed. Reported
+   * separately from skippedExcludedCount because the two mean different
+   * things to whoever reads a run: "excluded" is a judgement about whether
+   * the tender is worth showing, this is a fact about whether anyone can
+   * still bid on it.
+   */
+  skippedClosedCount: number;
   /**
    * Count of existing rows that carried at least one protected column, so
    * this import left part of them untouched. Two independent sources of
@@ -338,9 +347,31 @@ export async function upsertTendersBatched(
   // never (re-)insert these rows going forward; recovering their metadata
   // for future stats means re-ingesting the original file, not querying
   // Supabase.
+  // Before anything else: a tender whose bid deadline has already passed is
+  // never written, from any source, by any path (2026-09-13, after the user
+  // found March-to-May PEMEX rows, closed Colombia rows, and Compras MX rows
+  // with 2023/2024 deadlines all sitting in the admin list).
+  //
+  // It lives HERE, not in each caller's recency filter, for the reason the
+  // user set as a standing rule: 请一定要保障现在应用的筛选规则，在我们导入新
+  // 项目时，一样适用. This function is the one line every import path passes
+  // through — cron, CLI and the admin buttons alike — so a rule placed here
+  // cannot be missed by a path that forgets to call it, and there is one
+  // place to read to know what the rule is.
+  //
+  // It is also the only gate that works at all on a source with no
+  // publication-date column: see filterRecentTenders' blind-spot note. No
+  // recency window, however narrow, can reject a row whose publication date
+  // is the moment we ingested it.
+  const closed = tenders.filter((t) => isPastSubmissionDeadline(t));
+  const open = tenders.filter((t) => !isPastSubmissionDeadline(t));
+  if (closed.length > 0) {
+    console.log(`Skipping ${closed.length} tender(s) whose submission deadline has already passed — not written to Supabase.`);
+  }
+
   let lastExcludedCsvPath: string | null = null;
-  const includable = tenders.filter((t) => t.relevance.tier !== "excluded");
-  const excluded = tenders.filter((t) => t.relevance.tier === "excluded");
+  const includable = open.filter((t) => t.relevance.tier !== "excluded");
+  const excluded = open.filter((t) => t.relevance.tier === "excluded");
   const excludedCount = excluded.length;
   if (excludedCount > 0) {
     console.log(`Skipping ${excludedCount} tender(s) classified "excluded" (routine service) — not written to Supabase.`);
@@ -579,8 +610,8 @@ export async function upsertTendersBatched(
   console.log(
     `Upserted ${upsertedCount} tender(s)` +
       (failed.length > 0 ? `, ${failed.length} failed` : "") +
-      ` (of ${tenders.length} mapped: ${excludedCount} excluded, ${skippedManuallyDeletedCount} previously deleted by an admin).`,
+      ` (of ${tenders.length} mapped: ${closed.length} already past their deadline, ${excludedCount} excluded, ${skippedManuallyDeletedCount} previously deleted by an admin).`,
   );
 
-  return { upsertedCount, skippedExcludedCount: excludedCount, protectedCount, skippedManuallyDeletedCount, failed, excludedCsvPath: lastExcludedCsvPath ?? undefined };
+  return { upsertedCount, skippedExcludedCount: excludedCount, skippedClosedCount: closed.length, protectedCount, skippedManuallyDeletedCount, failed, excludedCsvPath: lastExcludedCsvPath ?? undefined };
 }

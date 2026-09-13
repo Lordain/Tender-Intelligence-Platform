@@ -3766,3 +3766,183 @@ Two supporting changes this forced, both worth having on their own:
   CRON_SECRET".** Each job carries where its schedule lives, and the row says
   it. A monitor that sends you to the wrong console at the moment something is
   broken is worse than one that says nothing.
+
+### A cronograma can be checked against itself (2026-09-13)
+
+Task #34 was "live-validate document key-date extraction", and the first thing
+that had to be admitted is that it could not be done as stated. There is no
+second source to validate against. For Peru's OECE the bases PDF IS the only
+place a bid deadline exists — that is the entire reason the extraction reads
+one (migration 0045) — so "check the extracted date against the real date"
+has no second operand.
+
+What is available is the schedule's own internal consistency, and for the
+failure that actually matters that turns out to be enough.
+
+The failure that matters is not a malformed date. `toCalendarDay()` has
+rejected those since it was written, and it is the only check a key date has
+ever had. The dangerous input is the date that IS a real calendar day and is
+the wrong one: every country here writes `10/09/2026` for 10 September, and a
+model that reads it as 9 October returns `2026-10-09` — valid, plausible, and
+silently written to `submission_deadline`, which drives 已截止 on the site and
+the digest. Nothing downstream can question it.
+
+A day/month swap moves ONE row of the cronograma and leaves the rest where
+they were. So it lands the deadline after the opening, or the award before the
+bids are due, and `findKeyDateProblems()` (`lib/ingestion/key-date-checks.ts`)
+sees it. The message names the corrected reading — "把提交截止的 2026-10-09
+改成 2026-09-10 就顺了——标书里的 10/09 是「日/月」" — rather than only reporting
+that two dates disagree, which would leave the admin re-reading the whole PDF.
+
+**Consequence is scoped by which date is implicated, not by which check
+fired.** An award read after the contract signing is worth saying and changes
+nothing else. A submission date the schedule contradicts does not get written
+to `submission_deadline` at all: the timeline rows still go in (labelled,
+cited, visibly a reading of a document), and the column stays empty, which
+falls back to the 45-day window rule. A wrong deadline hides a live tender or
+holds an expired one open; an empty one is a guess that looks like a guess.
+
+**Three checks were written and then deliberately deleted**, each because it
+fires on correct answers:
+
+- every row on the same day — normal for a Peruvian Adjudicación Simplificada,
+  which holds presentación, apertura and otorgamiento de la buena pro together;
+- `questions_deadline` after `clarification` — further consultas can be raised
+  at the junta itself and answered in a second session. The same goes for
+  `site_visit` against either, which is why all three share one rank and are
+  never compared with each other, only against the bid deadline;
+- a deadline already in the past — this platform imports closed tenders.
+
+This is the same defect class the translation checkers hit twice the day
+before (`5/A` flagged as a dropped identifier, `KM.11+420` as a dropped
+chainage): a warning that fires on a right answer teaches the reader to ignore
+the warning, which costs more than the warning was ever worth.
+
+**`tender_key_dates.source_reference` (migration 0047).** The extraction schema
+has always demanded a citation for every date — "página 7, Capítulo II,
+Cronograma", the same bar as every requirement and risk — and this table had
+nowhere to put it, so it was parsed and dropped. Key dates are where it matters
+most: a requirement a customer doubts costs them a phone call, a deadline they
+doubt costs them the bid, and a deadline with no citation cannot be checked at
+all, only believed. It now shows in the admin 其他关键日期 list (where it also
+serves as the marker for "a model read this off a page" — nothing else ever
+carries one) and in the review script. Not on the public timeline: that is a
+schedule, and page numbers there are noise for a buyer.
+
+**`npm run review:key-dates`** is the instrument. It prints coverage first —
+how many tenders got their deadline from a document, and how many still have
+none — because that is the number saying whether the feature works, and no
+list of flags can show it. Then every schedule that cannot be true, then
+`--sample N` for tenders to open by hand.
+
+That last part is not a garnish. Self-consistency is not correctness: a
+cronograma read one month late in every single row is internally perfect and
+entirely wrong, and no check in this file will ever catch it. Only the PDF
+settles that, so the script's last act is to hand over a short list and say so.
+
+`npm run test:key-dates` covers it, 53 checks now — and half of the new ones
+assert that a check does NOT fire.
+
+### Closed tenders were never gated at all (2026-09-13)
+
+The user went through the admin list and found three separate piles of rows
+nobody can bid on: PEMEX notices from March, April and May; Colombia rows
+whose deadline had passed the week before; and Compras MX rows with 交标
+dates in 2024 and 2023. They deleted them by hand and asked what happened.
+
+Three causes, and only one of them is a window set too wide.
+
+**1. The recency filter is structurally blind to a whole class of row.**
+`filterRecentTenders()` filters on `publicationDate`, and its own comment
+said every mapper guarantees a valid one. True — and not the same as every
+mapper HAVING one. A source with no publication-date column falls back to
+the ingestion timestamp and sets `publicationDateIsEstimated` (LicitIA's
+vigente rows with no `publicacion`; Compras MX's manual export, which has no
+such column at all). That date is always today, so those rows pass every
+window the function will ever be given. The screenshot that made this
+obvious: an entire page of rows stamped 发布 2026-09-09 估, deadlines
+scattered through 2023 and 2024. **No value of `months` could have stopped
+a single one of them.**
+
+**2. A row can close between publication and import.** Colombia's deadlines
+sit about a month after publication and datos.gov.co lags the portal by
+days, so a nightly run on a one-month window legitimately meets rows whose
+deadline was last week. Nothing was misconfigured; the schedule and the
+window were both right and the result was still rows nobody can bid on.
+
+**3. The CLI defaults were six months while every other door was one.**
+The admin forms default to 1, the scheduled runs to 1 (Colombia) or 2
+(PEMEX, LicitIA). But `importPemexLive`, `discoverComprasMxVigente`,
+`importNewTenders` and four `scripts/ingest-*.ts` entry points all defaulted
+to **6** — the value a caller gets by saying nothing. A plain
+`npm run ingest:pemex-live -- --write` reached back six months, which is
+exactly where the March rows come from.
+
+**The fix is one gate in one place.** `isPastSubmissionDeadline()` lives in
+`recency.ts` and is applied inside `upsertTendersBatched()` — the single
+line every import path passes through, cron, CLI and admin button alike.
+That placement is the user's standing rule (请一定要保障现在应用的筛选规则，
+在我们导入新项目时，一样适用): a rule there cannot be missed by a path that
+forgets to call it, and there is one place to read to learn what the rule
+is. It is also the only gate that works on a source with no publication
+date at all.
+
+Two exemptions, both deliberate:
+
+- **`awarded` is kept.** Its deadline has passed by definition and the award
+  result is the reason it exists (the public award-result section is built
+  for these). Filtering on the deadline alone would have deleted the entire
+  awarded population.
+- **A tender due TODAY is imported.** It compares through `platformDay()`,
+  the same function `deriveTenderStatus()` uses, so the importer and the
+  site agree about the same tender on the same day. An import that rejected
+  a tender the site still shows as 招标中 would be its own bug.
+
+Every default is now 1 month — the scheduled runs, the library functions and
+the CLI entry points — per the user's rule: 自动跑考虑最近一个月就可以，不用
+考虑好几个月. A backfill is a deliberate act and passes `--months`
+explicitly. Nothing was wider than the gap between two nightly runs except
+to re-read rows already seen.
+
+`npm run purge:closed-tenders` clears what is already stored, dry-run by
+default with a CSV. It reports the count **by source** first, because a
+source contributing most of them is a source whose mapper or window is the
+real problem rather than a pile of rows to delete again next month — and it
+reports how many carry an estimated publication date, which is the number
+that proves a publication-date cutoff could never have caught them.
+
+**Not fixed here, and worth knowing:** `filterRecentTenders()` still cannot
+see estimated-publication rows. That is left alone on purpose — an estimated
+date is genuinely unknown rather than wrong, and treating it as old would
+throw away live tenders from the two sources that publish no such column.
+The deadline is the field that actually answers "can anyone still bid", so
+that is what gates the write.
+
+### The batch import path never wrote key dates at all (2026-09-13)
+
+`npm run review:key-dates` answered its first question with **0 of 285**:
+not one tender in production had a cronograma read from a document. That is
+the value of building the instrument — the feature had been shipped, marked
+done, and was producing nothing, and nothing on the site said so.
+
+`analyze-uploaded-document.ts` (the admin upload flow and
+`analyze-local-folder.ts`) calls `writeExtractedKeyDates()`.
+`import-batch-analysis.ts` — the `analyze:batch` → `import:batch-analysis`
+path and the admin 导入分析结果 page, which is how the bulk analyses were
+actually run — computed `fields.keyDates` through the same
+`toTenderFields()` and then never wrote them. One missing call, in the path
+that did all the volume.
+
+It now writes them through the same `writeExtractedKeyDates()`, so both
+paths share the fill-never-overwrite rule, the schedule checks and the
+citation. Deliberately placed OUTSIDE the "no requirements and no risks
+means write nothing" guard: an export that found a cronograma but no
+requirements is a real and useful result for Peru, where the deadline is the
+entire reason the document is read. Treating it as nothing to write would
+have kept dropping exactly the dates this path already lost once. A
+key-date failure is reported and never fatal — the requirements and risks in
+the same entry are a separate finding and still worth writing.
+
+The result now carries a `keyDates` count and any warnings, and both the CLI
+and the admin table show them. A count that was silently zero is a count
+that was not being looked at.

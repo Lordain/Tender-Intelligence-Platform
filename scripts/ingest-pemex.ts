@@ -58,7 +58,13 @@ async function main() {
   const buyer = argValue(args, "--buyer") ?? "Petróleos Mexicanos (PEMEX)";
   const procedureLabel = argValue(args, "--procedure-label") ?? "Concurso Abierto";
   const listTitle = argValue(args, "--list-title") ?? "";
-  const months = Number(argValue(args, "--months") ?? 6);
+  // One month, not six. The six-month default was the widest window in the
+  // codebase and the only one a caller got by saying nothing — the admin
+  // forms all default to 1 and the scheduled runs now do too, so a plain
+  // CLI run silently pulled six times as far back as the same import
+  // through any other door (2026-09-13: months-old PEMEX rows in the admin
+  // list). Pass --months explicitly for a deliberate backfill.
+  const months = Number(argValue(args, "--months") ?? 1);
 
   if (!useFixture && !filePath) {
     console.error('Usage: npm run ingest:pemex -- <items.json> --buyer "Pemex Exploración y Producción" --list-title "Concursos-Abiertos-PEP" [--write]');

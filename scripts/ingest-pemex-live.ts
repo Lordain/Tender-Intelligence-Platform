@@ -35,7 +35,13 @@ function argValue(args: string[], flag: string): string | undefined {
 async function main() {
   const args = process.argv.slice(2);
   const write = args.includes("--write");
-  const months = Number(argValue(args, "--months") ?? 6);
+  // One month, not six. The six-month default was the widest window in the
+  // codebase and the only one a caller got by saying nothing — the admin
+  // forms all default to 1 and the scheduled runs now do too, so a plain
+  // CLI run silently pulled six times as far back as the same import
+  // through any other door (2026-09-13: months-old PEMEX rows in the admin
+  // list). Pass --months explicitly for a deliberate backfill.
+  const months = Number(argValue(args, "--months") ?? 1);
 
   const requested = argValue(args, "--list");
   if (requested && !PEMEX_LIST_TITLES.includes(requested as PemexListTitle)) {

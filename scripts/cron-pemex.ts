@@ -22,7 +22,16 @@ import { importPemexLive } from "../lib/ingestion/import-pemex-live";
 import { PEMEX_LIST_TITLES, KNOWN_BUYER_NAMES } from "../lib/ingestion/pemex-sources";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 
-const RECENCY_MONTHS = 2;
+/**
+ * One month, matching Colombia's and the admin forms' own default.
+ *
+ * Was 2. The user set the rule after finding months-old rows in the admin
+ * list (2026-09-13): 自动跑考虑最近一个月就可以，不用考虑好几个月. A
+ * scheduled run happens every night, so a window wider than the gap between
+ * runs only re-reads rows it has already seen — it buys nothing and costs a
+ * longer run and more rows for a person to read.
+ */
+const RECENCY_MONTHS = 1;
 
 async function main() {
   const write = process.argv.includes("--write");

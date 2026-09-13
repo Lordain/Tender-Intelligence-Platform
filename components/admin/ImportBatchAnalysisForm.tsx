@@ -122,6 +122,7 @@ export function ImportBatchAnalysisForm() {
                   <th className="px-4 py-3">业绩</th>
                   <th className="px-4 py-3">所需文件</th>
                   <th className="px-4 py-3">风险</th>
+                  <th className="px-4 py-3">关键日期</th>
                   <th className="px-4 py-3">状态</th>
                 </tr>
               </thead>
@@ -134,11 +135,19 @@ export function ImportBatchAnalysisForm() {
                     <td className="px-4 py-3 text-[#233846]">{r.experienceRequirements}</td>
                     <td className="px-4 py-3 text-[#233846]">{r.requiredDocuments}</td>
                     <td className="px-4 py-3 text-[#233846]">{r.risks}</td>
+                    <td className="px-4 py-3 text-[#233846]">{r.keyDates}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_CLASS[r.status]}`}>
                         {STATUS_LABELS[r.status]}
                         {r.message ? `（${r.message}）` : ""}
                       </span>
+                      {/* A schedule that contradicts itself, or a deadline
+                          writeExtractedKeyDates refused to write, belongs
+                          where the operator is already looking — not only in
+                          a CLI they may not have run. */}
+                      {r.warnings?.map((warning) => (
+                        <p key={warning} className="mt-1 text-[11px] leading-4 text-[#a3261f]">⚠ {warning}</p>
+                      ))}
                     </td>
                   </tr>
                 ))}

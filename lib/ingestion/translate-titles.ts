@@ -75,10 +75,33 @@ export type TenderToTranslate = { slug: string; titleEs: string; summaryEs: stri
  */
 export function titleIsTruncated(titleEs: string, summaryEs: string): boolean {
   const title = titleEs.trimEnd();
-  if (!title.endsWith("…") && !title.endsWith("...")) return false;
   const summary = summaryEs.trimEnd();
+
+  // Whatever replaces the title has to be better than the title. A summary
+  // that is itself cut, or no longer, is not.
   if (summary.endsWith("…") || summary.endsWith("...")) return false;
-  return summary.length > title.length;
+  if (summary.length <= title.length) return false;
+
+  if (title.endsWith("…") || title.endsWith("...")) return true;
+
+  // Not every source leaves an ellipsis. SECOP also hands back titles cut
+  // mid-phrase — "…ESTO EN ATENCIÓN AL CON", "…DEL MUNICIPIO DE" — where the
+  // only evidence is the last word. A Spanish noun phrase does not end on a
+  // preposition, article or conjunction, so one of those in final position
+  // means the sentence was still going.
+  //
+  // Deliberately not a length heuristic: Compras MX cuts at about eighty
+  // characters too ("DE 144 C", "TREN DE PASAJER"), but publishes the same
+  // cut text as the summary, so there is nothing to recover and the length
+  // test above already declines those. Guessing from length alone would
+  // rewrite titles that are merely short.
+  const DANGLING = new Set([
+    "de", "del", "el", "la", "los", "las", "un", "una",
+    "en", "a", "al", "y", "o", "u", "e",
+    "para", "con", "por", "que", "sobre", "entre", "desde", "hasta", "sin",
+  ]);
+  const lastWord = title.split(/[\s]+/).pop()?.toLowerCase().replace(/[.,;:]+$/, "") ?? "";
+  return DANGLING.has(lastWord);
 }
 export type TranslatedTender = { slug: string; titleZh: string; summaryZh: string };
 

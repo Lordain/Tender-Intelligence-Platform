@@ -44,5 +44,16 @@ check("summary is empty", titleIsTruncated(CUT, ""), false);
 // An ellipsis the source meant, not a cut, still needs a longer summary to act on.
 check("mid-sentence ellipsis is not a trailing cut", titleIsTruncated("OBRAS … VARIAS", FULL), false);
 
+// Cut with no ellipsis at all — the last word is the only evidence left.
+const LONG_FULL = `${FULL} Y DEMÁS ACTIVIDADES CONEXAS AL PROYECTO`;
+check("cut on a preposition", titleIsTruncated("MEJORAMIENTO DE VIAS TERCIARIAS DEL MUNICIPIO DE", LONG_FULL), true);
+check("cut on a conjunction", titleIsTruncated("ESTO EN ATENCIÓN AL CON", LONG_FULL), true);
+check("cut on an article", titleIsTruncated("PAVIMENTACIÓN DE LA VÍA QUE CONDUCE A LA", LONG_FULL), true);
+check("a trailing period does not hide the dangling word", titleIsTruncated("OBRAS CIVILES EN EL MUNICIPIO DE.", LONG_FULL), true);
+
+// A complete title that merely ends on a content word is left alone.
+check("complete title ending on a noun", titleIsTruncated("CONSTRUCCIÓN DE PLANTA DE BOMBEO ANCÓN", LONG_FULL), false);
+check("Compras MX cut mid-word, summary equally cut", titleIsTruncated("EQUIPAMIENTO DE MOBILIARIO Y EQUIPO MÉDICO DEL HOSPITAL GENERAL DE ZONA DE 144 C", "EQUIPAMIENTO DE MOBILIARIO Y EQUIPO MÉDICO DEL HOSPITAL GENERAL DE ZONA DE 144 C"), false);
+
 console.log(`\n${passed}/${passed + failed} checks passed.`);
 if (failed > 0) process.exit(1);

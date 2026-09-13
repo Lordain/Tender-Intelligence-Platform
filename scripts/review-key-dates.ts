@@ -215,10 +215,19 @@ async function explainTheZero(
   const documents = await selectAll<DocumentRow>((from, to) =>
     supabase.from("tender_documents").select("tender_id, extraction_status, extracted_at").range(from, to),
   );
+  // The step between "nothing" and "we hold the file": a KNOWN official
+  // download URL. Worth its own line because the two states need completely
+  // different work — links present means one button on
+  // /admin/documents-needed, links absent means finding them per source, and
+  // for two of the three sources that is not possible at all.
+  const links = await selectAll<{ tender_id: string }>((from, to) =>
+    supabase.from("tender_document_links").select("tender_id").range(from, to),
+  );
   const requirements = await selectAll<{ tender_id: string }>((from, to) =>
     supabase.from("tender_requirements").select("tender_id").range(from, to),
   );
 
+  const withLinks = new Set(links.map((row) => row.tender_id));
   const withDocuments = new Set(documents.map((row) => row.tender_id));
   const extractedDocs = documents.filter((row) => row.extraction_status === "extracted");
   const withAnalysis = new Set(requirements.map((row) => row.tender_id));
@@ -226,6 +235,7 @@ async function explainTheZero(
 
   console.log(`\n${RULE}\n为什么是 0 —— 按流水线倒着看：`);
   console.log(`  ${String(tenders.length).padStart(4)} 个项目`);
+  console.log(`  ${String(withLinks.size).padStart(4)} 个有官方下载链接（tender_document_links）`);
   console.log(`  ${String(withDocuments.size).padStart(4)} 个有标书文件记录（tender_documents）`);
   console.log(`  ${String(extractedDocs.length).padStart(4)} 份文件标记为已提取`);
   console.log(`  ${String(withAnalysis.size).padStart(4)} 个有分析结果（资质/业绩/所需文件）`);
@@ -233,9 +243,16 @@ async function explainTheZero(
   console.log(`     0 个有从标书读出来的日程`);
 
   console.log("");
-  if (withDocuments.size === 0) {
-    console.log("  卡在第一步：一份标书都还没进平台。先去 /admin/documents-needed 看哪些项目缺文件，");
-    console.log("  把 PDF 下下来，再用 /admin/local-batch 分析（npm run dev，线上没有这个页面）。");
+  if (withDocuments.size === 0 && withLinks.size > 0) {
+    console.log(`  卡在下载这一步：${withLinks.size} 个项目已经有官方下载链接，但一个文件都还没取回来。`);
+    console.log("  /admin/documents-needed → 勾选 → 批量下载标书（下成一个 ZIP），解压后");
+    console.log("  npm run dev → /admin/local-batch 填那个文件夹路径。");
+    console.log("  链接目前只有秘鲁 SEACE 有——正好是最需要的：那边的交标日只存在于标书里。");
+  } else if (withDocuments.size === 0) {
+    console.log("  卡在最前面：既没有标书文件，也没有任何官方下载链接。");
+    console.log("  秘鲁：npm run backfill:peru-documents -- --write 先把链接抓回来，再按上面下载。");
+    console.log("  墨西哥 Compras MX：有反自动化网关，只能人工去官网下，再 npm run ingest:documents。");
+    console.log("  哥伦比亚 SECOP II：详情页有 CAPTCHA，同样只能人工下。");
   } else if (withAnalysis.size === 0) {
     console.log("  文件在，但一次分析都没跑过。npm run dev → /admin/local-batch，填标书文件夹路径。");
   } else {

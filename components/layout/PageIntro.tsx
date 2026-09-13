@@ -4,6 +4,16 @@ type PageMetric = {
   suffix: string;
 };
 
+/**
+ * The caption above a metric, and the note's heading beside it.
+ *
+ * Shared so the two read as the same rank. They were both 11px already and
+ * still looked mismatched, because the note's heading was font-black
+ * against the metric's font-semibold — at this size the weight is what the
+ * eye reads as size. Only the colour differs between the two now.
+ */
+const LABEL = "text-[11px] font-semibold";
+
 export function PageIntro({
   eyebrow,
   title,
@@ -43,14 +53,14 @@ export function PageIntro({
       <div className="flex shrink-0 items-stretch gap-3 sm:gap-4">
         {metricsNote && (
           <div className="flex max-w-40 flex-col justify-center rounded-2xl border border-[#f3c2bd] bg-[#fff5f4] px-4 py-3 sm:max-w-56">
-            <p className="text-[11px] font-black text-[#a3261f]">{metricsNote.title}</p>
+            <p className={`${LABEL} text-[#a3261f]`}>{metricsNote.title}</p>
             <p className="mt-1 text-xs font-bold leading-5 text-[#7c4b46]">{metricsNote.body}</p>
           </div>
         )}
         <div className="flex shrink-0 divide-x divide-white/15 overflow-hidden rounded-2xl bg-[#061b2b] px-2 py-3 text-white shadow-[0_16px_40px_-30px_rgba(6,27,43,.65)]">
           {metrics.map((metric) => (
             <div key={metric.label} className="min-w-28 px-4 sm:min-w-32">
-              <p className="text-[11px] font-semibold text-white/55">{metric.label}</p>
+              <p className={`${LABEL} text-white/55`}>{metric.label}</p>
               <p className="mt-1 flex items-baseline gap-1.5">
                 <span className="text-3xl font-black leading-none tracking-[-0.04em] text-[#ffb21c]">{metric.value}</span>
                 <span className="text-xs font-bold text-white/68">{metric.suffix}</span>

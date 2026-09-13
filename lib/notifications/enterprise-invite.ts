@@ -1,5 +1,6 @@
 import "server-only";
 import { escapeHtml } from "@/lib/notifications/escape-html";
+import { SUPPORT_EMAIL } from "@/lib/support";
 
 /**
  * Tell someone an enterprise seat is waiting for them. Deliberately carries
@@ -33,8 +34,11 @@ export async function sendEnterpriseInviteEmail(to: string, invitedBy: string): 
         subject: "拉美招投标信息平台｜企业版账号邀请",
         // A reply that reaches a person is a legitimacy signal, and this is
         // the one message in the set a confused recipient genuinely wants to
-        // answer ("who invited me?").
-        reply_to: from,
+        // answer ("who invited me?"). It has to be a mailbox someone reads:
+        // RESEND_FROM_EMAIL is a no-reply sender, so pointing Reply-To back
+        // at it sent that question into a hole while still claiming a human
+        // was on the other end.
+        reply_to: SUPPORT_EMAIL,
         // multipart/alternative. Gmail put this exact message in 垃圾邮件 on
         // 2026-09-13 while the digest from the same domain and the same
         // Resend account reached the inbox; both were HTML-only, and this one

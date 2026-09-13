@@ -45,8 +45,27 @@ function TrashIcon() {
   );
 }
 
+/**
+ * The deadline as the YYYY-MM-DD the table shows, so a filter and the cell
+ * beside it can never disagree about which day a tender is due.
+ *
+ * submission_deadline is a timestamptz and formatDate renders it in UTC, so
+ * this reads the UTC day too — taking the browser's local day instead would
+ * move an evening deadline to the next date for a reader in Asia and drop
+ * the row out of a range that visibly contains it.
+ */
+function deadlineDay(value: string | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
 const selectClass =
   "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
+
+const dateClass =
+  "h-10 min-w-0 flex-1 rounded-xl border border-[#d8e0e3] bg-white px-2.5 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
 
 export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) {
   const router = useRouter();
@@ -56,6 +75,8 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const [status, setStatus] = useState("all");
   const [relevance, setRelevance] = useState("all");
   const [analysis, setAnalysis] = useState("all");
+  const [deadlineFrom, setDeadlineFrom] = useState("");
+  const [deadlineTo, setDeadlineTo] = useState("");
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -134,12 +155,22 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       const matchesAnalysis =
         analysis === "all" ||
         (analysis === "with_analysis" ? tender.hasAnalysis === true : tender.hasAnalysis === false);
+      // Leaving one end empty is an open-ended range; filling both with the
+      // same day is how you ask for that single day. A tender the source
+      // published no deadline for cannot satisfy either end, so it drops out
+      // as soon as a bound is set — the count beside the search box is what
+      // says how many that was.
+      const day = deadlineDay(tender.submissionDeadline);
+      const matchesDeadline =
+        (!deadlineFrom && !deadlineTo) ||
+        (day !== null && (!deadlineFrom || day >= deadlineFrom) && (!deadlineTo || day <= deadlineTo));
 
-      return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis;
+      return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline;
     });
-  }, [analysis, country, query, relevance, status, tenders]);
+  }, [analysis, country, deadlineFrom, deadlineTo, query, relevance, status, tenders]);
 
-  const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all" || analysis !== "all";
+  const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all" || analysis !== "all"
+    || Boolean(deadlineFrom) || Boolean(deadlineTo);
 
   function clearFilters() {
     setDraftQuery("");
@@ -148,6 +179,8 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     setStatus("all");
     setRelevance("all");
     setAnalysis("all");
+    setDeadlineFrom("");
+    setDeadlineTo("");
   }
 
   return (
@@ -181,7 +214,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
           </p>
         </div>
 
-        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-black text-[#52636e]">国家/地区</span>
             <select value={country} onChange={(event) => setCountry(event.target.value)} className={selectClass}>
@@ -212,6 +245,28 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               <option value="with_analysis">已有标书分析</option>
             </select>
           </label>
+          <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
+            <span className="text-xs font-black text-[#52636e]">交标截止日期</span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                aria-label="交标截止日期起"
+                value={deadlineFrom}
+                max={deadlineTo || undefined}
+                onChange={(event) => setDeadlineFrom(event.target.value)}
+                className={dateClass}
+              />
+              <span className="shrink-0 text-xs font-bold text-[#849098]">至</span>
+              <input
+                type="date"
+                aria-label="交标截止日期止"
+                value={deadlineTo}
+                min={deadlineFrom || undefined}
+                onChange={(event) => setDeadlineTo(event.target.value)}
+                className={dateClass}
+              />
+            </div>
+          </div>
           <button
             type="button"
             onClick={clearFilters}
@@ -270,7 +325,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               <th className="w-[7%] px-2 py-3 font-black">状态</th>
               <th className="w-[9%] px-2 py-3 font-black">相关度</th>
               <th className="w-[8%] px-2 py-3 font-black">金额</th>
-              <th className="w-[10%] px-2 py-3 font-black">发布日期</th>
+              <th className="w-[10%] px-2 py-3 font-black">发布 / 交标</th>
               <th className="w-[16%] px-3 py-3 text-center font-black">操作</th>
             </tr>
           </thead>
@@ -324,10 +379,21 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                   </td>
                   <td title={value ?? undefined} className="truncate whitespace-nowrap px-2 py-3 text-[11px] font-bold text-[#425461]">{value ?? "—"}</td>
                   <td className="whitespace-nowrap px-2 py-3 text-[11px] text-[#5d6d77]">
-                    {formatDate(tender.publicationDate, "zh")}
-                    {tender.publicationDateIsEstimated && (
-                      <span title="该来源无真实发布日期字段，此为收录时间" className="ml-1.5 rounded-full bg-[#edf2f3] px-1.5 py-0.5 text-[10px] font-semibold text-[#7a878f]">估</span>
-                    )}
+                    <span className="block">
+                      {formatDate(tender.publicationDate, "zh")}
+                      {tender.publicationDateIsEstimated && (
+                        <span title="该来源无真实发布日期字段，此为收录时间" className="ml-1.5 rounded-full bg-[#edf2f3] px-1.5 py-0.5 text-[10px] font-semibold text-[#7a878f]">估</span>
+                      )}
+                    </span>
+                    {/* Filtering on a date the table does not show leaves the
+                        admin unable to tell a working filter from a broken
+                        one, so the deadline sits under the publication date
+                        rather than in a column of its own. */}
+                    <span className="mt-0.5 block text-[10px] text-[#7a878f]">
+                      {tender.submissionDeadline
+                        ? `交标 ${formatDate(tender.submissionDeadline, "zh")}`
+                        : "交标 —"}
+                    </span>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">

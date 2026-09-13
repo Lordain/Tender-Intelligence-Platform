@@ -539,6 +539,8 @@ export type AdminTenderListRow = {
   currency?: string;
   publicationDate: string;
   publicationDateIsEstimated?: boolean;
+  /** Undefined when the source has not published one — not every tender has a deadline. */
+  submissionDeadline?: string;
   updatedAt: string;
 };
 
@@ -624,6 +626,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     currency: row.currency ?? undefined,
     publicationDate: row.publication_date,
     publicationDateIsEstimated: row.publication_date_is_estimated ?? undefined,
+    submissionDeadline: row.submission_deadline ?? undefined,
     updatedAt: row.updated_at,
   }));
 }

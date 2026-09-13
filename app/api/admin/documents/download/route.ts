@@ -31,7 +31,17 @@ import { downloadFile } from "@/lib/ingestion/download-file";
  */
 export const maxDuration = 60;
 
-/** Mirrors MAX_DOWNLOAD_SELECTION on the client — a bigger batch does not fit in maxDuration. */
+/**
+ * A bigger batch does not fit in maxDuration.
+ *
+ * Matches MAX_DOWNLOAD_SELECTION on the client, but note that ten is not
+ * what an operator can actually select: /admin/documents-needed keeps ONE
+ * selection for both of its buttons, and the checkbox enforces the analysis
+ * cap (MAX_BATCH_SELECTION = 5, a limit on model cost per batch, not on
+ * download time). So downloads arrive in fives and this ceiling is never
+ * reached through the UI — worth knowing before reading the number here as
+ * the batch size a person gets.
+ */
 const MAX_TENDERS = 10;
 const MAX_FILES = 40;
 /**

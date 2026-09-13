@@ -20,6 +20,13 @@
  * a plan repriced. Read-only: retrieves prices, writes nothing.
  *
  * Usage: npm run check:stripe-prices
+ *
+ * A sandbox and the live account each hold their own six Prices under their
+ * own ids, and a key only ever sees its own account's — so a green run is only
+ * meaningful next to the account it was green for. Both the key's mode and the
+ * account are printed on every run for that reason: point STRIPE_SECRET_KEY at
+ * the account whose prices you mean to check, and read the header to confirm
+ * you checked the one you meant.
  */
 import Stripe from "stripe";
 import { BILLING_MONTHS, PLAN_LIST_PRICES_USD, PLAN_PRICES_USD, PROMOTION, type PaidPlan } from "../lib/billing-catalog";
@@ -84,14 +91,6 @@ async function explainAllMissing(stripe: Stripe, keyLabel: string): Promise<void
   console.log(`当前 key：${keyLabel}`);
 
   try {
-    const account = await stripe.accounts.retrieve();
-    const name = account.settings?.dashboard?.display_name;
-    console.log(`当前账户：${account.id}${name ? `（${name}）` : ""}`);
-  } catch {
-    console.log("当前账户：这把 key 读不到账户信息（受限 key 很正常，不影响判断）");
-  }
-
-  try {
     const list = await stripe.prices.list({ limit: 20 });
     if (list.data.length === 0) {
       console.log("\n这把 key 底下一个 Price 都没有——价格建在了另一个模式，或者另一个账户。");
@@ -107,6 +106,16 @@ async function explainAllMissing(stripe: Stripe, keyLabel: string): Promise<void
       console.log("\n上面有 .env 里那六个 id 吗？");
       console.log("  有 → 那是别的问题，把这一段贴出来。");
       console.log("  没有 → 价格建在了另一个模式或另一个账户，按下面修。");
+      // A Stripe object id carries its account's own suffix, so two ids from
+      // the same account share a tail that ids from another account do not.
+      // That distinguishes "wrong mode, same account" from "wrong account"
+      // without a second key to try.
+      const visibleTail = list.data[0]?.id.slice(-16, -6);
+      if (visibleTail) {
+        console.log(`\n提示：这把 key 下的 id 都带 "${visibleTail}" 这一段（账户自己的标识）。`);
+        console.log("  .env 里那六个也带这一段 → 同一个账户，只是模式不对。");
+        console.log("  带的是别的 → 是另一个账户的价格，换 key 换不出来。");
+      }
     }
   } catch (error) {
     console.log(`\n连列 Price 都失败了：${error instanceof Error ? error.message : String(error)}`);
@@ -123,6 +132,21 @@ async function explainAllMissing(stripe: Stripe, keyLabel: string): Promise<void
   console.log("测试模式建的价格，生产环境一律查不到。");
 }
 
+/**
+ * Which Stripe account did this run actually check? A sandbox and the live
+ * account hold separate Prices under separate ids, so "6 个价格全部与代码一致"
+ * is only meaningful next to the account it was true of.
+ */
+async function describeAccount(stripe: Stripe): Promise<string> {
+  try {
+    const account = await stripe.accounts.retrieve();
+    const name = account.settings?.dashboard?.display_name;
+    return `${account.id}${name ? `（${name}）` : ""}`;
+  } catch {
+    return "这把 key 读不到账户信息（受限 key 很正常，不影响校验）";
+  }
+}
+
 async function main() {
   const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secretKey) {
@@ -133,6 +157,7 @@ async function main() {
   const keyMode = describeKeyMode(secretKey);
 
   console.log(`Stripe key：${keyMode.label}`);
+  console.log(`Stripe 账户：${await describeAccount(stripe)}`);
   console.log(
     PROMOTION.active
       ? `当前为「${PROMOTION.label}」价格，下面校验的是优惠价。\n`

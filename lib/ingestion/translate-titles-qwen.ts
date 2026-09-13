@@ -33,8 +33,19 @@ import type { TenderToTranslate, TranslatedTender } from "@/lib/ingestion/transl
  * actually works before trusting it at scale.
  */
 
+/**
+ * `id` is a position in this batch, not the tender's slug.
+ *
+ * The slug was sent until a sample came back with
+ * "洛-16-B00-016B00985-N-175-2026" prepended to a title whose Spanish holds
+ * no such code: the slug is comprasmx-lo-16-b00-016b00985-n-175-2026, and a
+ * model told to carry reference codes through found one there and even
+ * transliterated its LO. A slug carries a real procurement number, so asking
+ * the model to ignore it is asking it to un-see the answer. A bare index
+ * carries nothing to mistake for content.
+ */
 const TranslatedItemSchema = z.object({
-  slug: z.string(),
+  id: z.union([z.string(), z.number()]).transform(String),
   titleZh: z.string(),
   summaryZh: z.string(),
 });
@@ -53,7 +64,7 @@ Ground rules:
   Copy the name inside the parentheses exactly as the Spanish writes it, letter for letter — CATACAOS is （Catacaos）, never （Catacos）. Normalising case and accents is fine and correct: RIO MEZCALAPA earning （Río Mezcalapa）is right. Adding, dropping or altering a letter is not.
   The parenthesis holds the name alone, not the administrative word the Chinese already carries: DISTRITO DE CAJAMARCA is 卡哈马卡区（Cajamarca）, never 卡哈马卡区（Distrito de Cajamarca）.
   Once per distinct name in a field. Peru routinely gives a district, its province and its department the same name; write 卡哈马卡区（Cajamarca）、卡哈马卡省、卡哈马卡大区 — the parenthesis on the first mention only.
-- Carry every reference code through unchanged: OP088, TG-5, DCMC58, LO-16-B00-016B00985-N-174-2026, CUI 2457630, BPIN 20241301010259, K0+000, KM 6+512. These are how a bidder finds the procurement on the portal and matches it to a document, so dropping one costs the reader the tender itself. A code leading the title stays at the front: "OP088.- REHABILITACIÓN DE RED..." is OP088 中低压配电网改造, not 中低压配电网改造.
+- Carry every reference code through unchanged: OP088, TG-5, DCMC58, CUI 2457630, BPIN 20241301010259, K0+000, KM 6+512. These are how a bidder finds the procurement on the portal and matches it to a document, so dropping one costs the reader the tender itself. A code leading the title stays at the front: "OP088.- REHABILITACIÓN DE RED..." is OP088 中低压配电网改造, not 中低压配电网改造. Only codes written in that item's own titleEs or summaryEs count — never invent one, and never translate or transliterate one.
 - Preserve technical terms precisely — this is used to help a company decide whether to bid, so a mistranslated quantity, material, or scope is a real error, not a stylistic one.
 - Add nothing the source does not say. Most of these rows carry a summary that is a verbatim copy of the title, because the source published no separate description; when that happens the Chinese summary should render the Spanish and stop, even though the result is short and reads like a title. Do not pad it into something summary-shaped — no added purpose ("aimed at improving regional connectivity"), no added deliverables ("and the engineering and related services required to return it to service"), no procurement-stage note pulled in from elsewhere. The reader is deciding whether to bid on exactly the scope stated, and invented scope is the most expensive kind of error here.
 - Do not narrow a general term into a specific one. "Servicios a Pozos" is well services in general, not workover or completion specifically; translate the breadth the Spanish actually has.
@@ -62,8 +73,8 @@ Ground rules:
 - Two different Spanish words listed together are two different things, so give them two different Chinese words. "vigilancia y seguridad" is guarding and security, not 安保与安保; collapsing a pair into one repeated word tells the reader the source said something it did not.
 - A number qualifying a facility is not automatically its identifier. "Hospital General de Zona de 144 camas" is a 144-bed zone general hospital, not hospital number 144 — Hospital General de Zona is IMSS's name for a facility class and the count that follows describes its size. Read what the number measures before turning it into an index.
 - An item marked "titleTruncated": true had its Spanish title cut off by the source — it ends in an ellipsis, and the summary carries the whole sentence. Build titleZh from the summary instead of translating the fragment: one complete, concise Chinese title naming the work, the asset and the place. Keep it to title length; this is the name shown in a list, not the summary repeated. summaryZh is still the summary.
-- Return exactly one output item per input item, matched back by the echoed slug (order doesn't need to match the input).
-- Respond with ONLY a JSON object of the shape {"items": [{"slug": string, "titleZh": string, "summaryZh": string}, ...]} — no prose, no markdown fences.`;
+- Return exactly one output item per input item, matched back by the echoed id (order doesn't need to match the input). The id is a label for pairing input to output and is not part of the tender — never put it in titleZh or summaryZh.
+- Respond with ONLY a JSON object of the shape {"items": [{"id": string, "titleZh": string, "summaryZh": string}, ...]} — no prose, no markdown fences.`;
 
 export async function translateTenderBatchQwen(items: TenderToTranslate[]): Promise<TranslatedTender[]> {
   const client = new OpenAI({
@@ -79,8 +90,8 @@ export async function translateTenderBatchQwen(items: TenderToTranslate[]): Prom
       {
         role: "user",
         content: JSON.stringify(
-          items.map((i) => ({
-            slug: i.slug,
+          items.map((i, index) => ({
+            id: String(index + 1),
             titleEs: sanitizeForApi(i.titleEs),
             summaryEs: sanitizeForApi(i.summaryEs),
             // Omitted rather than sent false, so the flag only ever appears
@@ -99,5 +110,38 @@ export async function translateTenderBatchQwen(items: TenderToTranslate[]): Prom
   const parsed = BatchTranslationSchema.safeParse(JSON.parse(content));
   if (!parsed.success) throw new Error(`Qwen translation batch failed schema validation: ${parsed.error.message}`);
 
-  return parsed.data.items;
+  return mapBatchResultsToSlugs(items, parsed.data.items);
+}
+
+/**
+ * Turn the model's per-batch ids back into slugs.
+ *
+ * This is the one place where a quiet mistake puts a translation on the wrong
+ * tender — a failure no review of the Chinese would catch, because every row
+ * reads correctly and only the pairing is wrong. Hence a pure function with
+ * tests rather than three lines inline behind a network call.
+ *
+ * An id the batch never issued is dropped rather than guessed at.
+ * translate-all-tenders.ts re-sends whatever comes back missing, one item at
+ * a time, so a lost row costs one small call; a misattributed one costs the
+ * reader a tender that is not the tender.
+ */
+export function mapBatchResultsToSlugs(
+  items: TenderToTranslate[],
+  results: { id: string; titleZh: string; summaryZh: string }[],
+): TranslatedTender[] {
+  const claimed = new Set<number>();
+  const mapped: TranslatedTender[] = [];
+
+  for (const item of results) {
+    const index = Number(item.id) - 1;
+    if (!Number.isInteger(index) || index < 0 || index >= items.length) continue;
+    // Two results claiming one id means the model lost track of the batch;
+    // keeping the first and dropping the rest is the only safe reading.
+    if (claimed.has(index)) continue;
+    claimed.add(index);
+    mapped.push({ slug: items[index].slug, titleZh: item.titleZh, summaryZh: item.summaryZh });
+  }
+
+  return mapped;
 }

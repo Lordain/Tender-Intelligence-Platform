@@ -9,6 +9,7 @@
  * Usage: npm run test:translation-inputs
  */
 import { findDroppedIdentifiers, stripUnverifiedParentheticals, titleIsTruncated } from "../lib/ingestion/translate-titles";
+import { mapBatchResultsToSlugs } from "../lib/ingestion/translate-titles-qwen";
 
 let passed = 0;
 let failed = 0;
@@ -170,6 +171,58 @@ checkText(
   "a repeated code is reported once",
   findDroppedIdentifiers("工程", "OP088 ... OP088 ... OP088").join("|"),
   "OP088",
+);
+
+// ── mapBatchResultsToSlugs ─────────────────────────────────────────────────
+// The severe failure mode: a right translation stored against the wrong
+// tender. Nothing in a review of the Chinese would show it.
+const BATCH = [
+  { slug: "secop-a", titleEs: "A", summaryEs: "A" },
+  { slug: "secop-b", titleEs: "B", summaryEs: "B" },
+  { slug: "secop-c", titleEs: "C", summaryEs: "C" },
+];
+const r = (id: string, zh: string) => ({ id, titleZh: zh, summaryZh: zh });
+
+checkText(
+  "ids map back in order",
+  mapBatchResultsToSlugs(BATCH, [r("1", "甲"), r("2", "乙"), r("3", "丙")]).map((x) => `${x.slug}=${x.titleZh}`).join("|"),
+  "secop-a=甲|secop-b=乙|secop-c=丙",
+);
+// The prompt says order need not match, so this is the normal case, not an edge.
+checkText(
+  "ids map back out of order",
+  mapBatchResultsToSlugs(BATCH, [r("3", "丙"), r("1", "甲"), r("2", "乙")]).map((x) => `${x.slug}=${x.titleZh}`).join("|"),
+  "secop-c=丙|secop-a=甲|secop-b=乙",
+);
+checkText(
+  "a missing id leaves the others correctly paired",
+  mapBatchResultsToSlugs(BATCH, [r("1", "甲"), r("3", "丙")]).map((x) => `${x.slug}=${x.titleZh}`).join("|"),
+  "secop-a=甲|secop-c=丙",
+);
+checkText(
+  "an id past the end of the batch is dropped, not wrapped",
+  mapBatchResultsToSlugs(BATCH, [r("1", "甲"), r("9", "戊")]).map((x) => `${x.slug}=${x.titleZh}`).join("|"),
+  "secop-a=甲",
+);
+checkText(
+  "a zero or negative id is dropped",
+  mapBatchResultsToSlugs(BATCH, [r("0", "零"), r("-1", "负"), r("2", "乙")]).map((x) => `${x.slug}=${x.titleZh}`).join("|"),
+  "secop-b=乙",
+);
+checkText(
+  "a non-numeric id is dropped rather than coerced",
+  mapBatchResultsToSlugs(BATCH, [r("secop-a", "甲"), r("2", "乙")]).map((x) => `${x.slug}=${x.titleZh}`).join("|"),
+  "secop-b=乙",
+);
+checkText(
+  "a duplicated id keeps the first and drops the rest",
+  mapBatchResultsToSlugs(BATCH, [r("2", "乙"), r("2", "别的")]).map((x) => `${x.slug}=${x.titleZh}`).join("|"),
+  "secop-b=乙",
+);
+checkText(
+  "an empty result set maps to nothing",
+  mapBatchResultsToSlugs(BATCH, []).map((x) => x.slug).join("|"),
+  "",
 );
 
 console.log(`\n${passed}/${passed + failed} checks passed.`);

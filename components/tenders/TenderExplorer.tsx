@@ -345,7 +345,7 @@ export function TenderExplorer({
         // Says the count is a floor rather than the ceiling: a visitor who
         // sees a few hundred rows has no way to tell a growing database from
         // a finished one, and three countries reads as the whole product.
-        metricsNote="本站会持续接入更多拉美国家，项目数量将不断增加"
+        metricsNote={{ title: "持续扩张中", body: "将陆续接入更多拉美国家，项目数量不断增加" }}
       />
 
       {accessNotice && (

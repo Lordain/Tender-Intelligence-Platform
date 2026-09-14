@@ -2012,14 +2012,52 @@ function valueExcludedReason(thresholdUsd: number): LocalizedText {
   };
 }
 
+/**
+ * Procurement procedures that are a price-only reverse auction on a
+ * standardised catalogue item — Peru's *Subasta Inversa Electrónica* above
+ * all (its records are numbered SIE-…, and Colombia's SECOP uses the same
+ * term for the same mechanism).
+ *
+ * Excluded outright at the user's instruction (2026-09-14), given against
+ * "ADQUISICIÓN DE AGREGADOS PARA LA META 364" — a regional government buying
+ * gravel, published 10/09, proposals due 18/09, awarded 21/09. Eight days,
+ * start to finish.
+ *
+ * The procedure is the reason, not the gravel. A subasta inversa may only be
+ * used for goods and services that appear on the state's own list of
+ * *bienes y servicios comunes*, each with a published ficha técnica fixing
+ * the specification — so every bidder offers an identical item and the award
+ * is decided purely by who bids lowest in the auction window. There is no
+ * technical proposal to differentiate, no qualification narrative worth
+ * reading, and delivery is local and immediate. Nothing this platform exists
+ * to do — assess requirements, weigh risks, judge whether a Chinese
+ * enterprise can compete — applies to one.
+ *
+ * Checked against the procedure the ENTITY itself declared, which is why it
+ * is absolute here: no keyword include-override can rescue it the way one can
+ * rescue a title-based exclusion. A keyword rule is a guess about what a
+ * tender is; this is the buyer's own statement of how it will be awarded.
+ */
+const PRICE_ONLY_AUCTION_PROCEDURES = [/subasta\s+inversa/i];
+
+/** Exported for scripts/tests that need the same verdict without a full classification. */
+export function isPriceOnlyAuction(procedureType: string | undefined): boolean {
+  return !!procedureType && PRICE_ONLY_AUCTION_PROCEDURES.some((pattern) => pattern.test(procedureType));
+}
+
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction",
   LocalizedText
 > = {
   no_content: {
     zh: "该记录只包含发标单位和参考编号，没有任何描述标的物的信息（数据源本身如此，非抓取遗漏），无法判断相关性，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This record only carries a buyer name and a reference number — the real source data has no description of what's being procured at all (not a scraping gap), so there's nothing to judge relevance from. Filtered from the default feed (metadata is kept, not deleted).",
     es: "Este registro solo tiene el nombre de la entidad y un número de referencia — la fuente real no incluye ninguna descripción de lo que se está contratando (no es un problema de captura), así que no hay nada de qué juzgar relevancia. Filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
+  price_only_auction: {
+    zh: "该项目采用电子逆向竞价（Subasta Inversa Electrónica）：标的物是国家通用货物清单上有统一技术规格表的标准品，中标完全由竞价窗口内的最低报价决定，没有技术方案可比，交付也以本地即时供应为主，默认不进入推荐列表（数据仍保留，可用于统计）。",
+    en: "This is a reverse auction (Subasta Inversa Electrónica): the item is a standardised catalogue good with a state-published technical sheet, so the award is decided purely by the lowest bid inside the auction window — no technical proposal to differentiate, and delivery is local and immediate. Filtered from the default feed (metadata is kept, not deleted).",
+    es: "Es una subasta inversa electrónica: el objeto es un bien común con ficha técnica publicada por el Estado, así que la adjudicación se decide únicamente por el menor precio dentro de la ventana de puja — no hay propuesta técnica que diferenciar y la entrega es local e inmediata. Filtrada de la vista predeterminada (los metadatos se conservan).",
   },
   keyword: {
     zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
@@ -2071,6 +2109,7 @@ function reasonFor(
     | "buyer"
     | "consulting"
     | "undisclosed_value"
+    | "price_only_auction"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
   valueThresholdUsd: number = MIN_VALUE_USD,
@@ -2084,7 +2123,8 @@ function reasonFor(
       signal === "short_duration" ||
       signal === "short_bridge" ||
       signal === "buyer" ||
-      signal === "consulting"
+      signal === "consulting" ||
+      signal === "price_only_auction"
         ? signal
         : "keyword"
     ];
@@ -2225,6 +2265,18 @@ export function classifyRelevance(input: {
    * silence; required makes the compiler enumerate every call site instead.
    */
   governmentLevel: Tender["governmentLevel"] | undefined;
+  /**
+   * Tender.procedureType — the procurement procedure the entity itself
+   * declared (SEACE's "Tipo Compra o Selección", SECOP's "modalidad"),
+   * stored verbatim by every mapper. Used for one rule: see
+   * PRICE_ONLY_AUCTION_PROCEDURES.
+   *
+   * REQUIRED, with undefined written out, for the reason governmentLevel
+   * gives above — an import and a reclassify that disagree about the same
+   * tender is the failure this posture exists to prevent, and it is the
+   * user's standing rule that a filter added now must apply to imports too.
+   */
+  procedureType: string | undefined;
 }): TenderRelevance {
   // stripKnownFalsePositivePlaceNames: see its own header comment in
   // industry.ts — bare "puerto"/"puertos"/"puente(s)" below
@@ -2233,6 +2285,12 @@ export function classifyRelevance(input: {
   // "Puente Ospina".
   // purchaseSubject: see its header comment — a Peruvian "buy X PARA EL
   // PROYECTO <big project>" title is a contract for X, not for the project.
+  // Before anything text-based: this is what the buyer said it is doing, not
+  // what a keyword suggests it might be. See PRICE_ONLY_AUCTION_PROCEDURES.
+  if (isPriceOnlyAuction(input.procedureType)) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "price_only_auction") };
+  }
+
   const subjectTitle = purchaseSubject(input.title)!;
   const subjectSummary = purchaseSubject(input.summary);
   const haystack = stripKnownFalsePositivePlaceNames([subjectTitle, subjectSummary, ...input.industries].filter(Boolean).join(" "));
@@ -2659,6 +2717,8 @@ export function explainKeptSignal(input: {
   scopeType?: TenderScopeType;
   governmentLevel?: Tender["governmentLevel"];
   isNationalPriorityProject?: boolean;
+  /** Optional here only because a diagnostic line may have no stored row behind it; pass it whenever one exists. */
+  procedureType?: string;
 }): string {
   // The row's real scopeType matters: hardcoding "works" made 26 rows of a
   // real kept export report themselves as "excluded", because scopeType
@@ -2668,6 +2728,7 @@ export function explainKeptSignal(input: {
     scopeType: input.scopeType ?? "works",
     governmentLevel: input.governmentLevel,
     isNationalPriorityProject: input.isNationalPriorityProject,
+    procedureType: input.procedureType,
   });
   // Reported before the tier, because this flag bypasses every exclusion and
   // is the whole reason such a row is in the kept set.
@@ -2738,6 +2799,8 @@ export type StoredTenderClassificationInput = {
    * which means what it has always meant here: unknown duration.
    */
   structuredDurationDays?: number;
+  /** tenders.procedure_type, verbatim — see classifyRelevance's own field comment. */
+  procedureType: string | undefined;
 };
 
 /**
@@ -2768,6 +2831,7 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
       title: input.title,
       summary: input.summary,
       industries,
+      procedureType: input.procedureType,
       scopeType: input.scopeType,
       estimatedValue: input.estimatedValue,
       currency: input.currency,

@@ -61,7 +61,7 @@ import { analyzeUploadedDocument } from "../lib/ingestion/analyze-uploaded-docum
 import { findDocuments, loadKnownTenders, resolveTender } from "../lib/ingestion/match-documents-to-tenders";
 import { runPool } from "../lib/ingestion/run-pool";
 import { ANALYSIS_CONCURRENCY } from "../lib/ingestion/extraction-failure";
-import { CRONOGRAMA_SOURCE_REFERENCE } from "../lib/ingestion/seace-cronograma";
+import { CRONOGRAMA_SOURCE_REFERENCES } from "../lib/ingestion/seace-cronograma";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
 type Candidate = {
@@ -160,7 +160,7 @@ async function main() {
       .from("tender_key_dates")
       .select("id")
       .eq("tender_id", tender.id)
-      .eq("source_reference", CRONOGRAMA_SOURCE_REFERENCE)
+      .in("source_reference", [...CRONOGRAMA_SOURCE_REFERENCES])
       .limit(1)
       .maybeSingle();
 

@@ -370,7 +370,9 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
   const currency = compiled.tender?.value?.currency;
   const governmentLevel = inferGovernmentLevel(buyer);
   // summary is the title again because that is what this row stores below.
+  const procedureType = compiled.tender?.procurementMethodDetails?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary: title,
     buyer,
@@ -406,7 +408,7 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
     governmentLevel,
     industries,
     scopeType,
-    procedureType: compiled.tender?.procurementMethodDetails?.trim() || "Unknown",
+    procedureType,
     publicationDate,
     estimatedValue,
     currency: estimatedValue ? currency : undefined,

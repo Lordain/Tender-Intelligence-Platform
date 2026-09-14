@@ -120,7 +120,9 @@ export function mapPeruOxiRowToTender(row: PeruOxiRow, sourceName: string, sourc
   // lib/relevance.ts keys on the title text, not on scopeType.
   const scopeType = "works" as const;
 
+  const procedureType = row["Tipo de Convocatoria"]?.trim() || "Obras por Impuestos";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary: title,
     buyer,
@@ -159,7 +161,7 @@ export function mapPeruOxiRowToTender(row: PeruOxiRow, sourceName: string, sourc
     governmentLevel,
     industries,
     scopeType,
-    procedureType: row["Tipo de Convocatoria"]?.trim() || "Obras por Impuestos",
+    procedureType,
     publicationDate,
     submissionDeadline,
     estimatedValue,

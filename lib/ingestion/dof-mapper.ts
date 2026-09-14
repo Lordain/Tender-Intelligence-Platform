@@ -83,7 +83,9 @@ export function mapDofNotaToTender(nota: DofNota, sourceName: string): Tender | 
   const now = new Date().toISOString();
   const scopeType = "services" as const;
   // summary is the title again because that is what this row stores below.
+  const procedureType = nota.tipoNota && nota.tipoNota !== "null" ? nota.tipoNota : "Unknown";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary: title,
     buyer,
@@ -114,7 +116,7 @@ export function mapDofNotaToTender(nota: DofNota, sourceName: string): Tender | 
     governmentLevel: "federal",
     industries,
     scopeType,
-    procedureType: nota.tipoNota && nota.tipoNota !== "null" ? nota.tipoNota : "Unknown",
+    procedureType,
     publicationDate,
     location: undefined,
     status,

@@ -87,6 +87,7 @@ export async function POST(request: Request) {
     estimatedValue,
     currency,
     buyer,
+    procedureType: body.procedureType?.trim() || undefined,
     country: body.country,
     governmentLevel: body.governmentLevel,
   });

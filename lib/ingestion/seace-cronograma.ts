@@ -50,6 +50,23 @@ import type { ExtractedKeyDateType } from "@/lib/ingestion/key-date-checks";
  */
 export const CRONOGRAMA_SOURCE_REFERENCE = "SEACE ficha de selección · Cronograma";
 
+/** The same, for a Proyectos Estratégicos MX procedure page. */
+export const PE_MX_CRONOGRAMA_SOURCE_REFERENCE = "Proyectos Estratégicos MX · Cronograma de eventos";
+
+/**
+ * Every marker this platform has ever written from a pasted schedule.
+ *
+ * The delete-then-rebuild that makes a re-paste idempotent matches on ALL of
+ * them, not just the one the current paste would write. The SEACE string is
+ * already stored on live rows, so narrowing this list — or renaming a member
+ * of it — orphans those rows: the delete stops finding them and the next
+ * paste lands a second copy beside the first. Add to it; never rewrite it.
+ */
+export const CRONOGRAMA_SOURCE_REFERENCES = [
+  CRONOGRAMA_SOURCE_REFERENCE,
+  PE_MX_CRONOGRAMA_SOURCE_REFERENCE,
+] as const;
+
 export type ParsedCronogramaRow = {
   /** The stage exactly as the ficha printed it, for the admin to check against. */
   label: string;
@@ -69,7 +86,7 @@ export type ParsedCronograma = {
 };
 
 /** Accent- and case-insensitive, so "Absolución" and "ABSOLUCION" match one rule. */
-function normalize(text: string): string {
+export function normalize(text: string): string {
   return text
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -102,9 +119,9 @@ const IGNORED_RULES: { match: RegExp; reason: string }[] = [
 ];
 
 /** DD/MM/YYYY, optionally followed by HH:MM. */
-const DATE_TOKEN = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+\d{1,2}:\d{2})?/g;
+export const DATE_TOKEN = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+\d{1,2}:\d{2})?/g;
 
-function toIsoDay(day: string, month: string, year: string): string | null {
+export function toIsoDay(day: string, month: string, year: string): string | null {
   const d = Number(day);
   const m = Number(month);
   const y = Number(year);

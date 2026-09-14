@@ -18,6 +18,7 @@
 import { ExtractionSchema, JSON_SHAPE_INSTRUCTIONS, normalizeRawExtraction, toCalendarDay } from "../lib/ingestion/extract-requirements";
 import { findKeyDateProblems, submissionIsSuspect, swapDayAndMonth } from "../lib/ingestion/key-date-checks";
 import { diffAgainstExisting, parseSeaceCronograma } from "../lib/ingestion/seace-cronograma";
+import { parseAnyCronograma, parseProyectosEstrategicosCronograma } from "../lib/ingestion/proyectos-estrategicos-cronograma";
 import { isPastSubmissionDeadline } from "../lib/ingestion/recency";
 import { deriveTenderStatus, platformDay } from "../lib/tender-status";
 
@@ -488,6 +489,92 @@ check(
   // paste of the same table must behave exactly like the first.
   const rePaste = diffAgainstExisting(fichaRows, []);
   check("re-pasting the same table is idempotent", rePaste.toInsert.length === noneStored.toInsert.length);
+}
+
+// ---------------------------------------------------------------------------
+// parseProyectosEstrategicosCronograma: the Mexican source publishes its
+// schedule as labelled fields, not a table, and the labels are the whole
+// parse. Fixtured on the exact block the user pasted (2026-09-14).
+// ---------------------------------------------------------------------------
+const REAL_PE_MX = [
+  "Fecha y hora de publicación:",
+  "11/09/2026 18:37",
+  "Fecha y hora de presentación y apertura de proposiciones:",
+  "08/10/2026 11:00",
+  "Lugar de apertura de proposiciones:",
+  "EN PLATAFORMA HTTPS://MEET.GOOGLE.COM/IQO-MBJS-CMU",
+  "Fecha y hora de junta de aclaraciones:",
+  "23/09/2026 12:00",
+  "Fecha y hora límite para envío de aclaraciones a través de Proyectos Estratégicos:",
+  "22/09/2026 12:00",
+  "Lugar de la junta de aclaraciones:",
+  "EN PLATAFORMA HTTPS://MEET.GOOGLE.COM/IQO-MBJS-CMU",
+  "Aplica visita:",
+  "NO",
+  "Plazo del procedimiento de contratación:",
+  "NORMAL",
+  "Fecha y hora del acto del Fallo:",
+  "19/10/2026 17:00",
+  "Lugar del acto del Fallo:",
+  "EN PLATAFORMA",
+  "Fecha estimada del inicio del contrato:",
+  "26/10/2026",
+].join("\n");
+
+const pemx = parseProyectosEstrategicosCronograma(REAL_PE_MX);
+const pemxDate = (type: string) => pemx.rows.filter((r) => r.type === type).map((r) => r.date);
+
+{
+  // The combined act is the reason this parser exists at all: taking only one
+  // reading loses either the deadline or the session, and taking "opening" —
+  // which the label invites — is what left live PEMEX rows with no deadline.
+  check("presentación y apertura yields a submission date", pemxDate("submission")[0] === "2026-10-08");
+  check("…and an opening date on the same day", pemxDate("opening")[0] === "2026-10-08");
+  check("…and exactly one of each", pemxDate("submission").length === 1 && pemxDate("opening").length === 1);
+
+  // Two aclaraciones fields, and the límite one must not be read as the junta.
+  check("the aclaraciones deadline is the límite field", pemxDate("questions_deadline")[0] === "2026-09-22");
+  check("the junta de aclaraciones is its own, later date", pemxDate("clarification")[0] === "2026-09-23");
+  check(
+    "the questions deadline precedes the meeting that answers it",
+    pemxDate("questions_deadline")[0]! < pemxDate("clarification")[0]!,
+  );
+
+  check("el Fallo is the award date", pemxDate("award")[0] === "2026-10-19");
+  check("the contract start is kept as contract_signing", pemxDate("contract_signing")[0] === "2026-10-26");
+
+  // Times attached to every value, and DD/MM read as DD/MM.
+  check("08/10/2026 is 8 October, not 10 August", pemxDate("submission")[0] === "2026-10-08");
+
+  // The non-date fields are reported, not silently dropped — an admin pastes
+  // the whole block and has to see that six of its lines carried no date.
+  check("publication is skipped, not overwritten", pemx.ignored.some((i) => /publicaci/i.test(i.label)));
+  check("Lugar fields are skipped", pemx.ignored.filter((i) => /^Lugar/i.test(i.label)).length === 3);
+  check("Aplica visita with no date is skipped", pemx.ignored.some((i) => /Aplica visita/i.test(i.label)));
+  check("Plazo del procedimiento is skipped", pemx.ignored.some((i) => /Plazo del procedimiento/i.test(i.label)));
+  check("nothing in a real block is unparsed", pemx.unparsed.length === 0, JSON.stringify(pemx.unparsed));
+
+  // Label and value on ONE line, which is how some copies arrive.
+  const inline = parseProyectosEstrategicosCronograma("Fecha y hora del acto del Fallo: 19/10/2026 17:00");
+  check("a same-line label/value pair parses too", inline.rows[0]?.date === "2026-10-19");
+
+  // Format detection: one textarea, either source.
+  check("a Proyectos Estratégicos block is detected", parseAnyCronograma(REAL_PE_MX).format === "proyectos-estrategicos");
+  check("a SEACE table is still detected", parseAnyCronograma(REAL_FICHA).format === "seace");
+  check(
+    "detection does not change what either parser returns",
+    parseAnyCronograma(REAL_FICHA).rows.length === ficha.rows.length,
+  );
+
+  // And the whole schedule has to survive the shared checker.
+  check(
+    "the real Proyectos Estratégicos schedule passes findKeyDateProblems",
+    findKeyDateProblems(
+      pemx.rows.map((r) => ({ type: r.type, date: r.date })),
+      { publicationDate: "2026-09-11" },
+    ).length === 0,
+    JSON.stringify(findKeyDateProblems(pemx.rows.map((r) => ({ type: r.type, date: r.date })), { publicationDate: "2026-09-11" })),
+  );
 }
 
 function daysBetweenForTest(day: string): number {

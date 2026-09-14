@@ -181,7 +181,9 @@ export function mapComprasMxOpenTenderRowToTender(
   // summary is the title again because that is literally what this row
   // stores (`summary: untranslated(title)` below) — classifyStoredTender()
   // must see the stored values, not the source's, or reclassify disagrees.
+  const procedureType = row["TIPO DE PUBLICACIÓN"]?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary: title,
     buyer,
@@ -219,7 +221,7 @@ export function mapComprasMxOpenTenderRowToTender(
     governmentLevel,
     industries,
     scopeType,
-    procedureType: row["TIPO DE PUBLICACIÓN"]?.trim() || "Unknown",
+    procedureType,
     participationScope: inferParticipationScope(row["CARÁCTER"]),
     publicationDate: now,
     publicationDateIsEstimated: true,

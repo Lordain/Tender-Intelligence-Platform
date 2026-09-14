@@ -3,7 +3,13 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { findKeyDateProblems } from "@/lib/ingestion/key-date-checks";
-import { CRONOGRAMA_SOURCE_REFERENCE, diffAgainstExisting, parseSeaceCronograma } from "@/lib/ingestion/seace-cronograma";
+import {
+  CRONOGRAMA_SOURCE_REFERENCE,
+  CRONOGRAMA_SOURCE_REFERENCES,
+  PE_MX_CRONOGRAMA_SOURCE_REFERENCE,
+  diffAgainstExisting,
+} from "@/lib/ingestion/seace-cronograma";
+import { parseAnyCronograma } from "@/lib/ingestion/proyectos-estrategicos-cronograma";
 import { syncKeyDatesForTopLevelFields } from "@/lib/db/key-dates-sync";
 
 /**
@@ -31,7 +37,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   const pasted = body.pasted?.trim();
   if (!pasted) return NextResponse.json({ error: "pasted 内容为空" }, { status: 400 });
 
-  const parsed = parseSeaceCronograma(pasted);
+  // One textarea, either source — the two formats are unmistakable and the
+  // detector says which it read, so a paste into the wrong tender surfaces as
+  // a format mismatch rather than as silence. See parseAnyCronograma().
+  const parsed = parseAnyCronograma(pasted);
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) return NextResponse.json({ error: "supabase not configured" }, { status: 500 });
@@ -66,7 +75,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
 
   const existing = (existingRaw ?? [])
-    .filter((row) => row.source_reference !== CRONOGRAMA_SOURCE_REFERENCE)
+    .filter((row) => !CRONOGRAMA_SOURCE_REFERENCES.includes(row.source_reference as (typeof CRONOGRAMA_SOURCE_REFERENCES)[number]))
     .map((row) => ({
       type: row.type as string,
       date: (row.date as string) ?? "",
@@ -120,7 +129,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     .delete()
     .eq("tender_id", tender.id)
     .eq("manually_added", true)
-    .eq("source_reference", CRONOGRAMA_SOURCE_REFERENCE);
+    .in("source_reference", [...CRONOGRAMA_SOURCE_REFERENCES]);
   if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
   // `submission` is deliberately NOT inserted as a row here. It has its own
@@ -133,6 +142,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   // Of what is left, only the rows nothing already states get inserted — see
   // diffAgainstExisting(). A date the bid document already yielded is the
   // same fact, and the first real paste put it on the page twice.
+  // Each format gets its own marker so the admin can see which page a row was
+  // read off; both are deleted above, so re-pasting either stays idempotent.
+  const sourceReference =
+    parsed.format === "proyectos-estrategicos" ? PE_MX_CRONOGRAMA_SOURCE_REFERENCE : CRONOGRAMA_SOURCE_REFERENCE;
   const timelineRows = diff.toInsert;
   if (timelineRows.length > 0) {
     const { error: insertError } = await supabase.from("tender_key_dates").insert(
@@ -140,8 +153,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
         tender_id: tender.id,
         type: row.type,
         date: row.date,
-        notes: { es: "", en: "", zh: `SEACE ficha：${row.label}` },
-        source_reference: CRONOGRAMA_SOURCE_REFERENCE,
+        notes: { es: "", en: "", zh: `${sourceReference}：${row.label}` },
+        source_reference: sourceReference,
         // A human read this off the official page, so a re-ingest must never
         // delete it (migration 0033).
         manually_added: true,

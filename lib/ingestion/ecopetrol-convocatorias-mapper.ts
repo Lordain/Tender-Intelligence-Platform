@@ -59,7 +59,9 @@ export function mapEcopetrolConvocatoriaRowToTender(row: EcopetrolConvocatoriaRo
 
   const scopeType = inferScopeType(title);
   // summary stores the title again below; buyer is the constant this row writes.
+  const procedureType = "Convocatoria Pública";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary: title,
     buyer: "Ecopetrol S.A.",
@@ -81,7 +83,7 @@ export function mapEcopetrolConvocatoriaRowToTender(row: EcopetrolConvocatoriaRo
     governmentLevel: "public_company",
     industries,
     scopeType,
-    procedureType: "Convocatoria Pública",
+    procedureType,
     publicationDate,
     submissionDeadline: parseDate(row["Fecha cierre del trámite"]) ?? undefined,
     status: inferStatus(row.Estado),

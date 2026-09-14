@@ -256,7 +256,9 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
   const scopeType = "services" as const;
   const governmentLevel = inferGovernmentLevel(buyer);
   // summary is the title again because that is what this row stores below.
+  const procedureType = "Convocatoria (DOF)";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary: title,
     buyer,
@@ -307,7 +309,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     governmentLevel,
     industries,
     scopeType,
-    procedureType: "Convocatoria (DOF)",
+    procedureType,
     publicationDate,
     submissionDeadline,
     status,

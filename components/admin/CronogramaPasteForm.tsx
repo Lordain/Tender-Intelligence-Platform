@@ -53,7 +53,7 @@ const TYPE_LABELS: Record<string, string> = {
   site_visit: "现场踏勘",
 };
 
-export function CronogramaPasteForm({ tenderSlug }: { tenderSlug: string }) {
+export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: string; country: string }) {
   const [pasted, setPasted] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [result, setResult] = useState<WriteResult | null>(null);
@@ -84,6 +84,33 @@ export function CronogramaPasteForm({ tenderSlug }: { tenderSlug: string }) {
     }
   }
 
+  // The two sources publish their schedule in completely different shapes, so
+  // the instructions have to name the right page — the parser detects the
+  // format either way, but an admin needs to know what to go and copy.
+  const copy =
+    country === "Mexico"
+      ? {
+          title: "从 Proyectos Estratégicos 粘贴日程",
+          body: (
+            <>
+              打开该项目在 proyectosestrategicosmx.hacienda.gob.mx 的「procedimiento」页，选中{" "}
+              <span className="font-bold">CRONOGRAMA DE EVENTOS</span> 整块复制，粘贴到下面。
+              其中「presentación y apertura de proposiciones」是提交与开标的同一场会，会写成交标截止和开标两条。
+              不调用模型，不访问该网站，解析是确定性的。
+            </>
+          ),
+        }
+      : {
+          title: "从 SEACE ficha 粘贴日程",
+          body: (
+            <>
+              秘鲁的交标截止日只在 ficha de selección 页面上，数据源不提供，标书里也没有。
+              打开该项目的 ficha，选中右侧 <span className="font-bold">Cronograma</span> 整张表复制，粘贴到下面。
+              不调用模型，不访问 SEACE，解析是确定性的。
+            </>
+          ),
+        };
+
   // A paste whose every row the tender already has is still worth writing when
   // the deadline column is empty — that is the field the public page shows.
   const deadlineIsNew = Boolean(preview?.extractedDeadline && !preview?.storedDeadline);
@@ -92,19 +119,19 @@ export function CronogramaPasteForm({ tenderSlug }: { tenderSlug: string }) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fdfcf8] p-5">
       <div>
-        <p className="text-sm font-black text-[#071826]">从 SEACE ficha 粘贴日程</p>
-        <p className="mt-1 text-xs text-[#52636e]">
-          秘鲁的交标截止日只在 ficha de selección 页面上，数据源不提供，标书里也没有。
-          打开该项目的 ficha，选中右侧 <span className="font-bold">Cronograma</span> 整张表复制，粘贴到下面。
-          不调用模型，不访问 SEACE，解析是确定性的。
-        </p>
+        <p className="text-sm font-black text-[#071826]">{copy.title}</p>
+        <p className="mt-1 text-xs text-[#52636e]">{copy.body}</p>
       </div>
 
       <textarea
         value={pasted}
         onChange={(event) => setPasted(event.target.value)}
         rows={6}
-        placeholder={"Etapa\tFecha Inicio\tFecha Fin\nConvocatoria\t10/09/2026\t10/09/2026\n…"}
+        placeholder={
+          country === "Mexico"
+            ? "Fecha y hora de presentación y apertura de proposiciones:\n08/10/2026 11:00\n…"
+            : "Etapa\tFecha Inicio\tFecha Fin\nConvocatoria\t10/09/2026\t10/09/2026\n…"
+        }
         className="w-full rounded-xl border border-[#d8e0e3] bg-white p-3 font-mono text-xs text-[#071826] outline-none focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10"
       />
 

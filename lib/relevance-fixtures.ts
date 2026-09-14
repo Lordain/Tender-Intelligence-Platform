@@ -36,6 +36,8 @@ export type RelevanceFixture = {
   governmentLevel?: Tender["governmentLevel"];
   isNationalPriorityProject?: boolean;
   structuredDurationDays?: number;
+  /** tenders.procedure_type — set only by fixtures that exercise the procedure rule (see PRICE_ONLY_AUCTION_PROCEDURES). */
+  procedureType?: string;
 };
 
 export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
@@ -2157,5 +2159,36 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "excluded",
     note: "Peru, 2026-09-12 — diesel for a programme's own vehicles.",
     country: "Peru", scopeType: "equipment", governmentLevel: "state",
+  },
+
+  // --- Subasta Inversa Electrónica: the procedure decides (2026-09-14) ---
+  // The user's instruction, given against the first of these. A reverse
+  // auction may only be used for goods on the state's list of bienes y
+  // servicios comunes, each with a published ficha técnica, so every bid is
+  // for an identical item and the award goes to the lowest price in the
+  // auction window. Nothing to analyse, and nothing a foreign bidder can win.
+  {
+    title: 'ADQUISICIÓN DE AGREGADOS PARA LA META 364: "MEJORAMIENTO DEL SERVICIO DE TRANSITABILIDAD VIAL MEDIANTE EL PUENTE CARROZABLE CCENTABAMBA DE LOS DISTRITOS DE SIVIA Y AYNA DE LAS PROVINCIAS DE HUANTA Y LA MAR DEL DEPARTAMENTO DE AYACUCHO".',
+    expectedTier: "excluded",
+    note: "Peru SIE-SIE-105-2026-GRA-SEDECENTRAL-1, real. Gravel for a bridge project; published 10/09, proposals due 18/09, awarded 21/09. Excluded on the procedure — bare 'agregados' matches no CONSTRUCTION_INPUT_GOODS pattern, so without procedureType this row was reaching the feed.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "state",
+    procedureType: "Subasta Inversa Electrónica",
+  },
+  {
+    // The procedure beats every positive signal there is: this title would
+    // otherwise be flagship on the airport keyword AND the value floor.
+    title: "CONSTRUCCIÓN DEL NUEVO AEROPUERTO INTERNACIONAL",
+    expectedTier: "excluded",
+    note: "Synthetic. A subasta inversa is never a construction contract, so a row that says it is one is mis-stated either way — and the procedure the entity declared outranks anything read out of the title.",
+    country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
+    procedureType: "Subasta Inversa Electrónica",
+  },
+  {
+    // The control: same country and shape, an ordinary procedure.
+    title: "CONSTRUCCIÓN DEL NUEVO AEROPUERTO INTERNACIONAL",
+    expectedTier: "flagship",
+    note: "Synthetic control for the row above — proves the exclusion comes from the procedure and not from anything else that changed with it.",
+    country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
+    procedureType: "Licitación Pública",
   },
 ];

@@ -15,6 +15,7 @@
 import {
   canInteractWithTenderList,
   canOpenTenderDetail,
+  isClosedTender,
   isSubscriptionEntitled,
   selectPreferredSubscription,
   subscriptionStatusFromStripe,
@@ -72,12 +73,29 @@ check("guest list is read-only", canInteractWithTenderList("guest"), false);
 check("expired free list is read-only", canInteractWithTenderList("free"), false);
 check("trial list is interactive", canInteractWithTenderList("trial"), true);
 check("subscriber list is interactive", canInteractWithTenderList("subscriber"), true);
-check("guest may open homepage preview", canOpenTenderDetail("guest", true), true);
-check("guest may not open ordinary detail", canOpenTenderDetail("guest", false), false);
-check("expired free may not open homepage preview", canOpenTenderDetail("free", true), false);
-check("expired free may not open ordinary detail", canOpenTenderDetail("free", false), false);
-check("trial may open ordinary detail", canOpenTenderDetail("trial", false), true);
-check("subscriber may open ordinary detail", canOpenTenderDetail("subscriber", false), true);
+check("guest may open homepage preview", canOpenTenderDetail("guest", true, false), true);
+check("guest may not open ordinary detail", canOpenTenderDetail("guest", false, false), false);
+check("expired free may not open homepage preview", canOpenTenderDetail("free", true, false), false);
+check("expired free may not open ordinary detail", canOpenTenderDetail("free", false, false), false);
+check("trial may open ordinary detail", canOpenTenderDetail("trial", false, false), true);
+check("subscriber may open ordinary detail", canOpenTenderDetail("subscriber", false, false), true);
+
+// ── A closed tender is public; anything still biddable is not ──────────────
+// The paywall's whole job is the tenders someone can still bid on. Opening
+// the finished ones (user, 2026-09-15) is what turns several hundred dead
+// rows into the only long-tail content this site has — and the direction
+// these checks guard is the other one: that nothing OPEN slipped out with
+// them.
+check("guest may open a closed tender", canOpenTenderDetail("guest", false, true), true);
+check("an expired free account may too", canOpenTenderDetail("free", false, true), true);
+for (const status of ["submission_closed", "awarded", "cancelled"] as const) {
+  check(`${status} counts as closed`, isClosedTender(status), true);
+}
+for (const status of ["planned", "open", "clarification"] as const) {
+  check(`${status} does NOT count as closed`, isClosedTender(status), false);
+  check(`…so a guest still cannot open a ${status} tender`, canOpenTenderDetail("guest", false, isClosedTender(status)), false);
+  check(`…nor an expired free account`, canOpenTenderDetail("free", false, isClosedTender(status)), false);
+}
 
 check(
   `past_due on day ${PAYMENT_GRACE_DAYS - 1} of grace`,

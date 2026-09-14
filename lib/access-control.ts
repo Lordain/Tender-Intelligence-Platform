@@ -1,3 +1,5 @@
+import type { TenderStatus } from "@/types/tender";
+
 export type ViewerRole = "guest" | "trial" | "free" | "subscriber";
 export type SubscriptionPlan = "basic" | "professional" | "enterprise" | null;
 export type BillingInterval = "monthly" | "semiannual" | "annual";
@@ -114,7 +116,40 @@ export function selectPreferredSubscription<T extends SubscriptionEntitlementCan
     })[0];
 }
 
-export function canOpenTenderDetail(role: ViewerRole, isHomepageFreePreview: boolean): boolean {
+/**
+ * A tender nobody can bid on any more.
+ *
+ * `submission_closed` is derived, not stored — deriveTenderStatus() sets it
+ * once the deadline day has passed (lib/tender-status.ts), so a tender with
+ * no deadline at all never reaches it and stays behind the paywall, which is
+ * the conservative direction.
+ */
+const CLOSED_TENDER_STATUSES: readonly TenderStatus[] = ["submission_closed", "awarded", "cancelled"];
+
+export function isClosedTender(status: TenderStatus): boolean {
+  return CLOSED_TENDER_STATUSES.includes(status);
+}
+
+/**
+ * `isClosed` opens the detail page to everyone, and it is a deliberate
+ * product decision (user, 2026-09-15) rather than a leak.
+ *
+ * What a closed tender is worth to a subscriber is nothing: the deadline has
+ * passed, there is no bid to prepare. What it is worth to someone who has
+ * never heard of this platform is the entire pitch — a Chinese engineering
+ * company in Mexico searching for a project name lands on the full Chinese
+ * analysis, the requirements, the schedule and the official entry point, and
+ * knows within seconds what this is. Several hundred such pages are also the
+ * only long-tail content the site has; everything still biddable is, and
+ * stays, behind the paywall.
+ *
+ * Required rather than optional on purpose: the parameter decides who may
+ * read a page, so tsc naming every call site is the point. A default of
+ * false would be the same "protection nobody remembered to opt into" that
+ * cost 13 bid deadlines the day before.
+ */
+export function canOpenTenderDetail(role: ViewerRole, isHomepageFreePreview: boolean, isClosed: boolean): boolean {
+  if (isClosed) return true;
   // Homepage previews are a visitor acquisition surface, not a permanent
   // free-account entitlement. Once the three-day trial has ended, every
   // project detail requires a subscription — including a slug that happens

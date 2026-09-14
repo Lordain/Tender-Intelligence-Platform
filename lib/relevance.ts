@@ -2045,14 +2045,58 @@ export function isPriceOnlyAuction(procedureType: string | undefined): boolean {
   return !!procedureType && PRICE_ONLY_AUCTION_PROCEDURES.some((pattern) => pattern.test(procedureType));
 }
 
+/**
+ * Procedures that award a contract WITHOUT an open competition — Peru's
+ * *Contratación Directa*, Mexico's and Colombia's *Adjudicación/Contratación
+ * Directa*, and OCDS's own `direct` method code, which is what a feed hands
+ * over when it publishes no local label.
+ *
+ * Excluded outright at the user's instruction (2026-09-14), given against
+ * DIRECTA-DIRECTA-14-2026-PNSR-1: a S/ 4.2M works contract whose ficha reads
+ * Causal "Derivado de contrato resuelto o nulo" — the balance of a job whose
+ * first contractor was terminated — invited by CORREO / SEACE on 10/09, with
+ * proposals due 11/09 and the award on 14/09.
+ *
+ * A one-day window is the tell, and it is not an accident: nobody is meant to
+ * find this by browsing. A direct contracting is awarded to parties the
+ * entity invites, under a legal causal that exists precisely to skip the open
+ * call, so a reader of this platform cannot enter it no matter how well the
+ * project matches what they build. Listing one is worse than useless — it
+ * costs a subscriber the time to work out that they were never eligible.
+ *
+ * NOT included, deliberately: Mexico's "Invitación a Cuando Menos Tres
+ * Personas", which several PEMEX lists publish as their procedure. That is a
+ * restricted competition rather than a direct award, it is a real and
+ * separate legal figure, and nobody has asked for it to go. It stays until
+ * someone decides otherwise.
+ */
+const DIRECT_AWARD_PROCEDURES = [
+  /contrataci[óo]n\s+directa/i,
+  /adjudicaci[óo]n\s+directa/i,
+  // Bare codes: OCDS's procurementMethod codelist, and the nomenclature
+  // prefix a SEACE record carries when it states no longer label.
+  /^\s*direct\s*$/i,
+  /^\s*directa\b/i,
+];
+
+/** Exported for scripts/tests that need the same verdict without a full classification. */
+export function isDirectAward(procedureType: string | undefined): boolean {
+  return !!procedureType && DIRECT_AWARD_PROCEDURES.some((pattern) => pattern.test(procedureType));
+}
+
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "direct_award",
   LocalizedText
 > = {
   no_content: {
     zh: "该记录只包含发标单位和参考编号，没有任何描述标的物的信息（数据源本身如此，非抓取遗漏），无法判断相关性，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This record only carries a buyer name and a reference number — the real source data has no description of what's being procured at all (not a scraping gap), so there's nothing to judge relevance from. Filtered from the default feed (metadata is kept, not deleted).",
     es: "Este registro solo tiene el nombre de la entidad y un número de referencia — la fuente real no incluye ninguna descripción de lo que se está contratando (no es un problema de captura), así que no hay nada de qué juzgar relevancia. Filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
+  direct_award: {
+    zh: "该项目属于直接授标类程序（Contratación / Adjudicación Directa）：由采购实体定向邀请特定供应商，不经公开竞争，外部企业无法报名参与，默认不进入推荐列表（数据仍保留，可用于统计）。",
+    en: "This is a direct-award procedure (Contratación / Adjudicación Directa): the entity invites specific suppliers under a legal exception to the open call, so an outside company cannot enter it at all. Filtered from the default feed (metadata is kept, not deleted).",
+    es: "Es un procedimiento de contratación/adjudicación directa: la entidad invita a proveedores determinados bajo una causal que exceptúa la convocatoria pública, así que una empresa externa no puede participar. Filtrada de la vista predeterminada (los metadatos se conservan).",
   },
   price_only_auction: {
     zh: "该项目采用电子逆向竞价（Subasta Inversa Electrónica）：标的物是国家通用货物清单上有统一技术规格表的标准品，中标完全由竞价窗口内的最低报价决定，没有技术方案可比，交付也以本地即时供应为主，默认不进入推荐列表（数据仍保留，可用于统计）。",
@@ -2110,6 +2154,7 @@ function reasonFor(
     | "consulting"
     | "undisclosed_value"
     | "price_only_auction"
+    | "direct_award"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
   valueThresholdUsd: number = MIN_VALUE_USD,
@@ -2124,7 +2169,8 @@ function reasonFor(
       signal === "short_bridge" ||
       signal === "buyer" ||
       signal === "consulting" ||
-      signal === "price_only_auction"
+      signal === "price_only_auction" ||
+      signal === "direct_award"
         ? signal
         : "keyword"
     ];
@@ -2289,6 +2335,9 @@ export function classifyRelevance(input: {
   // what a keyword suggests it might be. See PRICE_ONLY_AUCTION_PROCEDURES.
   if (isPriceOnlyAuction(input.procedureType)) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "price_only_auction") };
+  }
+  if (isDirectAward(input.procedureType)) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "direct_award") };
   }
 
   const subjectTitle = purchaseSubject(input.title)!;

@@ -2191,4 +2191,39 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
     procedureType: "Licitación Pública",
   },
+
+  // --- Contratación Directa: invited, not published (2026-09-14) ---
+  // The user's instruction, given against the first of these. Invited by
+  // email on 10/09, proposals due 11/09, awarded 14/09 — a one-day window,
+  // because the invitation list is the competition.
+  {
+    title: "CONTRATACION PARA LA EJECUCIÓN DEL SALDO DE OBRA: ¿MEJORAMIENTO, AMPLIACIÓN DEL SERVICIO DE AGUA POTABLE Y SANEAMIENTO EN LA COMUNIDAD NATIVA PUERTO ALEGRE, DISTRITO DE ANDOAS, PROVINCIA DEL DATEM DEL MARAÑÓN, REGIÓN LORETO",
+    expectedTier: "excluded",
+    note: "Peru DIRECTA-DIRECTA-14-2026-PNSR-1, real. S/ 4.2M of works, causal 'Derivado de contrato resuelto o nulo'. Nothing in the title excludes it — a water/sanitation works at this value is otherwise a normal row; the procedure is the whole reason.",
+    country: "Peru", scopeType: "works", estimatedValue: 1_120_000, currency: "USD",
+    procedureType: "Contratación Directa",
+  },
+  {
+    title: "ADJUDICACIÓN DIRECTA PARA SUMINISTRO DE EQUIPO DE BOMBEO",
+    expectedTier: "excluded",
+    note: "Synthetic — Mexico's and Colombia's name for the same figure.",
+    country: "Mexico", scopeType: "equipment",
+    procedureType: "Adjudicación Directa",
+  },
+  {
+    title: "CONSTRUCCIÓN DE PLANTA DE GENERACIÓN ELÉCTRICA DE CICLO COMBINADO",
+    expectedTier: "excluded",
+    note: "Synthetic. OCDS's bare `direct` method code, which ocds-mapper stores when a feed publishes no local label — it has to exclude exactly as the spelled-out name does.",
+    country: "Peru", scopeType: "works", estimatedValue: 400_000_000, currency: "USD",
+    procedureType: "direct",
+  },
+  {
+    // The restricted-but-real procedure that must NOT be swept up with these:
+    // several PEMEX lists publish it, and nobody asked for it to go.
+    title: "CONSTRUCCIÓN DE PLANTA DE GENERACIÓN ELÉCTRICA DE CICLO COMBINADO",
+    expectedTier: "flagship",
+    note: "Synthetic control. 'Invitación a Cuando Menos Tres Personas' is a restricted competition, not a direct award — it stays in the feed.",
+    country: "Mexico", scopeType: "works", estimatedValue: 400_000_000, currency: "USD",
+    procedureType: "Invitación a Cuando Menos Tres Personas (Subdirección de Contrataciones)",
+  },
 ];

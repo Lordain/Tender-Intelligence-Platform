@@ -80,7 +80,7 @@ jobs:
         # Runs even on failure — a partial export is still the fastest way to
         # see what the relevance rules rejected today.
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: excluded-${{ strategy.job-index }}-${{ github.run_id }}
           path: exports/

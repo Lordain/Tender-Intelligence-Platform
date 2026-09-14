@@ -188,6 +188,7 @@ export async function reclassifyTenders(
       row.summary.es,
       recomputedIndustries.join("; "),
       row.scope_type,
+      row.procedure_type ?? "",
       row.estimated_value ?? "",
       row.currency ?? "",
       row.relevance_tier ?? "",

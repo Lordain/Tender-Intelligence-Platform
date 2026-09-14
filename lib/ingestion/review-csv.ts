@@ -47,6 +47,10 @@ export const REVIEW_CSV_HEADERS = [
   "summary_es",
   "industries",
   "scope_type",
+  // The procedure the entity declared. A classifier input since 2026-09-14
+  // (Subasta Inversa Electrónica is excluded outright), so a review export
+  // that omitted it could not show why such a row was dropped.
+  "procedure_type",
   "estimated_value",
   "currency",
   "previous_tier",
@@ -81,6 +85,7 @@ function reviewCsvRow(tender: Tender): CsvValue[] {
     tender.summary.es,
     tender.industries.join("; "),
     tender.scopeType,
+    tender.procedureType,
     tender.estimatedValue ?? "",
     tender.currency ?? "",
     "",

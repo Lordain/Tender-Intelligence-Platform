@@ -65,6 +65,31 @@ import { safeFileName, type TenderDocumentLink as SharedTenderDocumentLink } fro
  *   date from the enquiry window would be arithmetic on the Reglamento's
  *   minimum intervals, i.e. a guess, so it is not done; SourcePanel tells
  *   the reader where on the official page to look instead.
+ * - AND THE BID DOCUMENT DOES NOT CARRY IT EITHER (2026-09-14). Reading
+ *   the bases PDF was the whole plan for closing this gap (tasks #31/#34),
+ *   on the premise that a cronograma the feed omits must at least be
+ *   printed in the document. It is not, at least under the current
+ *   template: a live Bases Administrativas for
+ *   peru-ocds-dgv273-seacev3-1248966, issued under Ley N° 32069 / DS
+ *   009-2025-EF, devotes a whole chapter to the schedule and prints no
+ *   date in it —
+ *
+ *     2.1. CRONOGRAMA DEL PROCEDIMIENTO DE SELECCIÓN
+ *          Según el cronograma de la ficha de selección de la
+ *          convocatoria publicada en el SEACE de la Pladicop.
+ *
+ *   Every other "presentación de ofertas" in those 129 pages is a rule
+ *   (submission runs 00:01–23:59; not less than seven working days after
+ *   the integrated bases), never a date. So an extraction returning no
+ *   key dates for such a document is CORRECT, not a miss — which is why
+ *   analyze-uploaded-document.ts now says so in a warning instead of
+ *   leaving a blank cell that reads as failure.
+ *
+ *   That leaves the deadline in exactly one place, the ficha HTML, behind
+ *   the UUID this record does not contain. Confirmed on one document so
+ *   far; the template wording suggests it generalises to every tender
+ *   under the new law, but that is worth re-checking against a second
+ *   bases PDF before treating it as settled.
  * - `tender.documents[]` carries real per-document download URLs
  *   (`prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=...`)
  *   and real type labels (biddingDocuments/evaluationReports/

@@ -364,10 +364,24 @@ export async function analyzeUploadedDocument(
       }
     }
 
-    // The cronograma. For Peru this is the ONLY place a bid deadline exists
-    // (see KeyDateSchema in extract-requirements.ts), so it is written even
-    // when the requirement/risk arrays came back empty — those are separate
-    // findings and one being empty says nothing about the other.
+    // The cronograma, written even when the requirement/risk arrays came
+    // back empty — those are separate findings and one being empty says
+    // nothing about the other.
+    //
+    // An empty cronograma is stated out loud rather than left as a blank
+    // cell, because "无" has two completely different meanings and the
+    // admin cannot tell them apart: the analysis went wrong, or the
+    // document genuinely prints no schedule. The second is real and, for
+    // Peru, common — confirmed 2026-09-14 on a live Bases Administrativas
+    // under Ley N° 32069, whose CRONOGRAMA chapter contains no dates at
+    // all, only "Según el cronograma de la ficha de selección de la
+    // convocatoria publicada en el SEACE de la Pladicop". A model that
+    // returns nothing there is CORRECT, and a blank cell that looks like
+    // a failure invites someone to pay for a re-run that cannot help.
+    if (fields.keyDates.length === 0) {
+      warnings.push("标书里没有读到任何日程（可能是标书本身不载明日期，指向平台 ficha；不一定是分析失败）。");
+    }
+
     const submissionDeadlineSet = await writeExtractedKeyDates(
       supabase,
       tenderId,

@@ -229,15 +229,31 @@ async function main() {
     check(`${label} still triggers chunking`, calls.length > 1);
   }
 
-  // ---- 5. Fallbacks below chunking ----
+  // ---- 5. One bad chunk does not discard the good ones ----
+  // Contract changed 2026-09-16. Chunking used to abort on its first failed
+  // chunk, which threw away every chunk already paid for: three real
+  // Proyectos Estratégicos Convocatorias (75-94MB scans, five chunks each)
+  // lost four good chunks to one Anthropic 500 and reported reading nothing.
+  // A five-chunk document is five chances to fail, so all-or-nothing made
+  // the biggest tenders the least likely to ever succeed.
   {
-    // Every model call fails the same way, so chunking cannot rescue it —
-    // the pipeline must land on locally-extracted text rather than give up.
     const big = join(TMP, "big.pdf");
     const cap = new Error("400 Exceeded limit on max bytes to request body : 16777216");
-    // Call 1 = the whole PDF, call 2 = the first chunk (chunking gives up on
-    // its first failure rather than paying for the rest), call 3 = the text.
-    const { client, calls } = stubClient([cap, cap, FULL_RESPONSE]);
+    const blip = new Error("500 {\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Internal server error\"}}");
+    // Call 1 = the whole PDF (too big), then one chunk blips and the rest answer.
+    const { client, calls } = stubClient([cap, blip, FULL_RESPONSE, FULL_RESPONSE]);
+    const result = await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", client, false);
+    check("a chunk that fails does not abort the document", result.qualifications.length === 1);
+    check("...and the surviving chunks were still sent as documents, not text", calls.at(-1)?.contentTypes.includes("document") === true);
+  }
+
+  {
+    // The other half of the same contract: when NOTHING survives, the text
+    // fallback still runs. Four caps — the whole PDF plus all three chunks
+    // (this fixture splits into three) — and only then the text call.
+    const big = join(TMP, "big.pdf");
+    const cap = new Error("400 Exceeded limit on max bytes to request body : 16777216");
+    const { client, calls } = stubClient([cap, cap, cap, cap, FULL_RESPONSE]);
     const result = await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", client, false);
     check("when every chunk fails, the text fallback runs", calls.at(-1)?.contentTypes.every((t) => t === "text") === true);
     check("...and still returns a usable result", result.qualifications.length === 1);
@@ -250,7 +266,7 @@ async function main() {
     const big = join(TMP, "big.pdf");
     const cap = new Error("400 Exceeded limit on max bytes to request body : 16777216");
     const overflow = new Error("prompt is too long: 298943 tokens > 200000 maximum");
-    const { client, calls } = stubClient([cap, cap, overflow, FULL_RESPONSE]);
+    const { client, calls } = stubClient([cap, cap, cap, cap, overflow, FULL_RESPONSE]);
     await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", client, false);
     const [secondLast, last] = calls.slice(-2);
     check("a context overflow retries with less text, not the same text", last.promptChars < secondLast.promptChars);

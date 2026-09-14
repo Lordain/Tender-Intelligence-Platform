@@ -15,8 +15,10 @@
  *
  * Deleting is safe in the sense that nothing else depends on these rows:
  * analytics_events is referenced by no other table, and it holds no data the
- * product reads at runtime (saves live in localStorage and in saved_tenders,
- * not here). It is NOT reversible — there is no soft delete.
+ * product reads at runtime. Favourites in particular are NOT stored here —
+ * lib/saved.ts keeps them in localStorage alone, and the tender_save rows in
+ * this table are a record that a save happened, never the save itself. It is
+ * NOT reversible — there is no soft delete.
  *
  * Dry run by default, like every other purge script here.
  *

@@ -19,6 +19,7 @@ import { ExtractionSchema, JSON_SHAPE_INSTRUCTIONS, normalizeRawExtraction, toCa
 import { findKeyDateProblems, submissionIsSuspect, swapDayAndMonth } from "../lib/ingestion/key-date-checks";
 import { diffAgainstExisting, parseSeaceCronograma } from "../lib/ingestion/seace-cronograma";
 import { parseAnyCronograma, parseProyectosEstrategicosCronograma } from "../lib/ingestion/proyectos-estrategicos-cronograma";
+import { deadlineFromOpening } from "../lib/ingestion/mexico-opening-deadline";
 import { isPastSubmissionDeadline } from "../lib/ingestion/recency";
 import { deriveTenderStatus, platformDay } from "../lib/tender-status";
 
@@ -608,6 +609,67 @@ const pemxDate = (type: string) => pemx.rows.filter((r) => r.type === type).map(
   check("SEACE: the award follows the submission deadline", !!seaceSubmission && seaceAward[0]!.date >= seaceSubmission);
   const pemxSubmission = pemx.rows.find((r) => r.type === "submission")?.date;
   check("PE MX: the award follows the submission deadline", !!pemxSubmission && pemxAward[0]!.date >= pemxSubmission);
+}
+
+// ---------------------------------------------------------------------------
+// Mexico: the bid deadline read off an opening date the tender already has.
+// LAASSP/LOPSRM hand in and open proposals at one act — except that a
+// two-envelope procedure opens the economic proposals days LATER, and both
+// rows are type "opening". Filling a deadline from that second session would
+// publish a date a week after bidding actually closed.
+// ---------------------------------------------------------------------------
+{
+  check(
+    "a lone opening supplies the deadline",
+    (() => {
+      const out = deadlineFromOpening([{ type: "opening", date: "2026-09-25T10:00:00.000Z" }]);
+      return out.ok && out.date === "2026-09-25T10:00:00.000Z";
+    })(),
+  );
+
+  // The real pair behind dof-search-mapper.ts's note: CFE-0001-CAAAT-0134-2026.
+  const twoEnvelope = [
+    { type: "opening" as const, date: "2026-09-18T10:00:00.000Z", notes: { es: "Apertura de ofertas económicas", zh: "商务标开标" } },
+    { type: "opening" as const, date: "2026-09-11T10:00:00.000Z", notes: { es: "Apertura de ofertas técnicas", zh: "技术标开标" } },
+  ];
+  check(
+    "a two-envelope procedure takes the technical act, not the economic one",
+    (() => {
+      const out = deadlineFromOpening(twoEnvelope);
+      return out.ok && out.date === "2026-09-11T10:00:00.000Z";
+    })(),
+  );
+  check(
+    "…and order in the array does not decide it",
+    (() => {
+      const out = deadlineFromOpening([...twoEnvelope].reverse());
+      return out.ok && out.date === "2026-09-11T10:00:00.000Z";
+    })(),
+  );
+  check(
+    "an economic opening alone supplies nothing",
+    (() => {
+      const out = deadlineFromOpening([twoEnvelope[0]]);
+      return !out.ok && out.reason === "economic_only";
+    })(),
+  );
+  check(
+    "no opening at all is reported as such, not guessed from another type",
+    (() => {
+      const out = deadlineFromOpening([
+        { type: "clarification", date: "2026-09-05T10:00:00.000Z" },
+        { type: "site_visit", date: "2026-09-03T10:00:00.000Z" },
+      ]);
+      return !out.ok && out.reason === "no_opening";
+    })(),
+  );
+  check(
+    "the Chinese label alone is enough to spot an economic opening",
+    (() => {
+      const out = deadlineFromOpening([{ type: "opening", date: "2026-09-18T10:00:00.000Z", notes: { zh: "商务标开标" } }]);
+      return !out.ok && out.reason === "economic_only";
+    })(),
+  );
 }
 
 function daysBetweenForTest(day: string): number {

@@ -81,7 +81,8 @@
     "test:account-devices": "tsx scripts/test-account-devices.ts",
     "report:account-sharing": "tsx --env-file-if-exists=.env.local scripts/report-account-sharing.ts",
     "measure:deadlines": "tsx scripts/measure-deadline-accuracy.ts",
-    "test:admin-form-merge": "tsx scripts/test-admin-form-merge.ts"
+    "test:admin-form-merge": "tsx scripts/test-admin-form-merge.ts",
+    "backfill:mx-deadlines": "tsx --env-file-if-exists=.env.local scripts/backfill-mexico-deadlines.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

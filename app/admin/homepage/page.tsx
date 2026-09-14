@@ -37,6 +37,7 @@ export default async function AdminHomepagePage() {
         initialFeaturedSlugs={featuredSlugs}
         initialTickerSlugs={tickerSlugs}
         initialFeaturedCount={settings.featuredCount}
+        initialTickerMode={settings.tickerMode}
         initialTickerCount={settings.tickerCount}
       />
     </div>

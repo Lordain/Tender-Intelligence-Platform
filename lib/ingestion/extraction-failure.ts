@@ -71,19 +71,35 @@ export const MAX_CONSECUTIVE_FAILURES = 2;
  * through in the same minutes. That is not a failure that repeats.
  *
  * Deliberately narrow:
- *   - Server-side 5xx and explicit overload only. A 4xx is this request being
- *     wrong and will be wrong again.
+ *   - Server-side 5xx, explicit overload, and a dead connection. A 4xx is this
+ *     request being wrong and will be wrong again.
  *   - A timeout is excluded by name, whatever status it carries with it. It
  *     is the one failure whose retry cost is the full budget over again.
  *   - Anything already classified systematic never reaches here.
  */
 const TRANSIENT_PATTERNS = [
-  /50[0234]/,
-  /529/,
+  // Word-anchored: without \b, /50[0234]/ also matches a token count like
+  // "15002 input tokens" that happens to appear in an error message.
+  /\b50[0234]\b/,
+  /\b529\b/,
   /internal server error/i,
-  /overloaded_error|overloaded/i,
-  /api_error/i,
+  /overloaded_error|\boverloaded\b/i,
+  /\bapi_error\b/i,
   /bad gateway|service unavailable/i,
+  // The network layer, which the first version of this list missed entirely
+  // (2026-09-16): a Proyectos Estratégicos scan died with the SDK's bare
+  // "Connection error." and was not retried. A dead socket is the MOST
+  // obviously transient failure there is — nothing was answered, and the
+  // request may never have reached the server at all. It is also the failure
+  // these documents invite: a 90MB PDF is ~120MB of base64 on one connection.
+  //
+  // "terminated" is undici's wording when a response stream dies mid-flight;
+  // it cost a 33-notice DOF import once already (dof-notice-detail.ts).
+  /connection error/i,
+  /ECONNRESET|ECONNREFUSED|EPIPE|ENETUNREACH|ENOTFOUND|EAI_AGAIN/,
+  /socket hang up/i,
+  /fetch failed/i,
+  /\bterminated\b/i,
 ];
 
 const NEVER_TRANSIENT = /timed?\s*out|timeout|ETIMEDOUT|aborted/i;

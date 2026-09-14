@@ -578,6 +578,21 @@ export type AdminTenderListRow = {
    * only ever cares about awarded tenders.
    */
   hasAnalysis?: boolean;
+  /**
+   * True when this tender HAS an analysed bid document and the analysis came
+   * back with nothing — no qualification, no experience requirement, no
+   * required document, no risk. The 0/0/0/0 row in a batch run.
+   *
+   * Its own field rather than a corollary of hasAnalysis because the two ask
+   * different questions of different populations. hasAnalysis is awarded-only
+   * and asks "did anyone log a result". This asks "did a model read a document
+   * and find nothing", which is a worklist: it means either the file was the
+   * wrong one or it was a scan the text path could not read (2026-09-16 — a
+   * 61-page DOCUMENTO BASE returned 0/0/0/0 for exactly that reason), and a
+   * person has to look at it. Scoped to tenders with an extracted document, so
+   * it stays a small query however large the table gets.
+   */
+  analysisEmpty?: boolean;
   estimatedValue?: number;
   currency?: string;
   publicationDate: string;
@@ -625,6 +640,42 @@ type AdminTenderListDbRow = {
  * self-correcting behavior as the public rule: once a re-ingest/refresh
  * syncs a real deadline, the row reappears here automatically.
  */
+type AnalysedDocumentProbeRow = {
+  slug: string;
+  tender_requirements: { id: string }[];
+  tender_risks: { id: string }[];
+};
+
+/**
+ * Slugs whose bid document was analysed and yielded nothing — see
+ * AdminTenderListRow.analysisEmpty.
+ *
+ * `tender_documents!inner` with extraction_status = "extracted" is what keeps
+ * this cheap: only tenders someone actually paid to analyse are joined, not
+ * the whole table. A tender nobody has analysed is not in the result at all,
+ * which is right — it has no empty analysis, it has no analysis.
+ */
+async function fetchAnalysedButEmptySlugs(supabase: SupabaseClient): Promise<Set<string>> {
+  const slugs = new Set<string>();
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const data = await retrySupabaseRead(
+      () => supabase
+        .from("tenders")
+        .select("slug, tender_documents!inner ( id ), tender_requirements ( id ), tender_risks ( id )")
+        .eq("tender_documents.extraction_status", "extracted")
+        .range(from, from + SUPABASE_PAGE_SIZE - 1),
+      "Failed to check which analysed tenders came back empty",
+    );
+
+    const page = data as unknown as AnalysedDocumentProbeRow[];
+    for (const row of page) {
+      if (row.tender_requirements.length === 0 && row.tender_risks.length === 0) slugs.add(row.slug);
+    }
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+  }
+  return slugs;
+}
+
 export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[] | null> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
@@ -649,7 +700,10 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     if (page.length < SUPABASE_PAGE_SIZE) break;
   }
 
-  const awardedWithAnalysis = await fetchAwardedSlugsWithAnalysis(supabase);
+  const [awardedWithAnalysis, analysedButEmpty] = await Promise.all([
+    fetchAwardedSlugsWithAnalysis(supabase),
+    fetchAnalysedButEmptySlugs(supabase),
+  ]);
 
   return rows
     .map((row) => ({
@@ -665,6 +719,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     relevanceManuallyOverridden: row.relevance_manually_overridden ?? false,
     homepageFeatured: row.homepage_featured ?? false,
     hasAnalysis: row.status === "awarded" ? awardedWithAnalysis.has(row.slug) : undefined,
+    analysisEmpty: analysedButEmpty.has(row.slug),
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
     publicationDate: row.publication_date,

@@ -155,9 +155,16 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       const matchesRelevance =
         relevance === "all" ||
         (relevance === "unclassified" ? !tender.relevanceTier : tender.relevanceTier === relevance);
+      // Three questions, not one scale. "分析结果为空" is about every tender
+      // that has an analysed document, while the other two are awarded-only —
+      // see AdminTenderListRow.hasAnalysis / .analysisEmpty.
       const matchesAnalysis =
         analysis === "all" ||
-        (analysis === "with_analysis" ? tender.hasAnalysis === true : tender.hasAnalysis === false);
+        (analysis === "analysed_empty"
+          ? tender.analysisEmpty === true
+          : analysis === "with_analysis"
+            ? tender.hasAnalysis === true
+            : tender.hasAnalysis === false);
       // Leaving one end empty is an open-ended range; filling both with the
       // same day is how you ask for that single day. A tender the source
       // published no deadline for cannot satisfy either end, so it drops out
@@ -272,11 +279,15 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">标书分析（仅限已中标）</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">标书分析</span>
             <select value={analysis} onChange={(event) => setAnalysis(event.target.value)} className={selectClass}>
               <option value="all">不限</option>
-              <option value="without_analysis">无标书分析</option>
-              <option value="with_analysis">已有标书分析</option>
+              <option value="without_analysis">无标书分析（仅已中标）</option>
+              <option value="with_analysis">已有标书分析（仅已中标）</option>
+              {/* The worklist the other two cannot show: a document WAS
+                  analysed and produced nothing. Either the wrong file was
+                  fetched, or it is a scan the text path could not read. */}
+              <option value="analysed_empty">分析结果为空（0/0/0/0）</option>
             </select>
           </label>
           <label className="flex flex-col gap-1.5">

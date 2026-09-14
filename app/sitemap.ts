@@ -4,6 +4,7 @@ import { selectHomepageTenders } from "@/lib/homepage-selection";
 import { getCachedTenderList } from "@/lib/tenders";
 import { siteOrigin } from "@/lib/site-url";
 import { isClosedTender } from "@/lib/access-control";
+import { fetchSlugsWithAnalysis } from "@/lib/db/tenders";
 import { participationGuides } from "@/lib/participation-guides";
 
 /**
@@ -17,9 +18,14 @@ import { participationGuides } from "@/lib/participation-guides";
  *
  * Tender detail pages are the interesting case, and the answer changed on
  * 2026-09-15. A guest can open two kinds: the homepage free-preview slugs,
- * and every CLOSED tender — one nobody can bid on any more is worth nothing
- * to a subscriber and is the whole pitch to someone who has never heard of
- * this platform (see canOpenTenderDetail). Both kinds go in.
+ * and a CLOSED tender THAT CARRIES ANALYSIS — one nobody can bid on any more
+ * is worth nothing to a subscriber and is the whole pitch to someone who has
+ * never heard of this platform (see isPublicArchive). Both kinds go in.
+ *
+ * The analysis half is not a detail: without it this would list every tender
+ * that ever expired, most of them a title and a summary under a real project
+ * name with nothing else on the page. That is what the user was preventing by
+ * deleting tenders the day they closed (2026-09-16).
  *
  * What still does not: anything biddable. A crawler asking for one of those
  * gets the "subscribe to continue" prompt, so listing it would be submitting
@@ -61,7 +67,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { featured } = selectHomepageTenders(tenders, settings);
     const bySlug = new Map<string, (typeof tenders)[number]>();
     for (const tender of featured) bySlug.set(tender.slug, tender);
-    for (const tender of tenders) if (isClosedTender(tender.status)) bySlug.set(tender.slug, tender);
+    const closed = tenders.filter((tender) => isClosedTender(tender.status));
+    const withAnalysis = await fetchSlugsWithAnalysis(closed.map((tender) => tender.slug));
+    for (const tender of closed) if (withAnalysis.has(tender.slug)) bySlug.set(tender.slug, tender);
 
     return [
       ...staticPages,

@@ -33,7 +33,7 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { deriveTenderStatus } from "../lib/tender-status";
-import { isClosedTender } from "../lib/access-control";
+import { hasPublishedAnalysis, isClosedTender } from "../lib/access-control";
 import { INDEXNOW_KEY, indexNowKeyPath, submitToIndexNow } from "../lib/indexnow";
 import { siteOrigin } from "../lib/site-url";
 import { participationGuides } from "../lib/participation-guides";
@@ -84,29 +84,31 @@ async function readAllTenders(supabase: SupabaseClient): Promise<Row[]> {
 }
 
 /**
- * An "awarded" tender with no analysis logged is hidden from every public
- * surface (fetchAllTendersFromDb's visibility rule, 2026-09-05) and is
- * therefore absent from the sitemap. Submitting it here would tell Bing about
- * a page this site does not otherwise admit exists — and the page itself is
- * an empty result with nothing to read.
+ * Slugs that have analysis logged — at least one requirement or risk.
+ *
+ * A closed tender without it is not a public page (isPublicArchive) and is
+ * not in the sitemap, so submitting it would point Bing at either an access
+ * prompt or an empty page under a real project name. Mirrors
+ * fetchSlugsWithAnalysis in lib/db/tenders.ts, which cannot be imported here:
+ * that module is "server-only".
  */
-async function awardedSlugsWithoutAnalysis(supabase: SupabaseClient): Promise<Set<string>> {
-  const hidden = new Set<string>();
-  for (let from = 0; ; from += PAGE_SIZE) {
+async function slugsWithAnalysis(supabase: SupabaseClient, slugs: readonly string[]): Promise<Set<string>> {
+  const withAnalysis = new Set<string>();
+  const CHUNK = 200;
+  for (let start = 0; start < slugs.length; start += CHUNK) {
     const { data, error } = await supabase
       .from("tenders")
       .select("slug, tender_requirements ( id ), tender_risks ( id )")
-      .eq("status", "awarded")
-      .range(from, from + PAGE_SIZE - 1)
+      .in("slug", slugs.slice(start, start + CHUNK) as string[])
       .returns<{ slug: string; tender_requirements: { id: string }[]; tender_risks: { id: string }[] }[]>();
-    if (error) throw new Error(`读取已授标项目失败：${error.message}`);
-    const page = data ?? [];
-    for (const row of page) {
-      if (row.tender_requirements.length === 0 && row.tender_risks.length === 0) hidden.add(row.slug);
+    if (error) throw new Error(`读取标书分析状态失败：${error.message}`);
+    for (const row of data ?? []) {
+      if (hasPublishedAnalysis({ requirementCount: row.tender_requirements.length, riskCount: row.tender_risks.length })) {
+        withAnalysis.add(row.slug);
+      }
     }
-    if (page.length < PAGE_SIZE) break;
   }
-  return hidden;
+  return withAnalysis;
 }
 
 function flag(name: string): boolean {
@@ -164,9 +166,7 @@ async function main() {
   }
 
   const rows = await readAllTenders(supabase);
-  const hidden = await awardedSlugsWithoutAnalysis(supabase);
-  const closed = rows.filter((row) =>
-    !hidden.has(row.slug) &&
+  const closedRows = rows.filter((row) =>
     isClosedTender(
       deriveTenderStatus(
         row.status,
@@ -179,6 +179,9 @@ async function main() {
       ),
     ),
   );
+
+  const analysed = await slugsWithAnalysis(supabase, closedRows.map((row) => row.slug));
+  const closed = closedRows.filter((row) => analysed.has(row.slug));
 
   const tenders = closed.filter((row) => {
     if (all) return true;
@@ -200,10 +203,11 @@ async function main() {
   // "nothing closed since yesterday" (normal) or "this database holds no
   // closed tenders at all" (something to look at) — and without these two
   // counts the two look identical from the outside.
-  console.log(`数据库共 ${rows.length} 个项目，其中已截止（可收录）${closed.length} 个`);
-  if (hidden.size > 0) console.log(`（另有 ${hidden.size} 个已授标但尚未录入分析的项目，公开列表本来就不显示，不提交）`);
-  if (closed.length === 0 && rows.length > 0) {
+  console.log(`数据库共 ${rows.length} 个项目，已截止 ${closedRows.length} 个，其中有标书分析、可公开收录的 ${closed.length} 个`);
+  if (closedRows.length === 0 && rows.length > 0) {
     console.log("没有任何已截止项目 —— 检查是不是被 purge:closed-tenders 清掉了，或者截止日期普遍为空");
+  } else if (closed.length === 0 && closedRows.length > 0) {
+    console.log("已截止项目都没有录入标书分析 —— 空页面不公开也不提交，先补分析（/admin/documents-needed）");
   }
   console.log(`待提交：${urls.length} 个地址`);
   for (const url of urls.slice(0, 20)) console.log(`  ${url}`);

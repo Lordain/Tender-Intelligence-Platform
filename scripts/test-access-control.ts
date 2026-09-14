@@ -15,7 +15,9 @@
 import {
   canInteractWithTenderList,
   canOpenTenderDetail,
+  hasPublishedAnalysis,
   isClosedTender,
+  isPublicArchive,
   isSubscriptionEntitled,
   selectPreferredSubscription,
   subscriptionStatusFromStripe,
@@ -96,6 +98,39 @@ for (const status of ["planned", "open", "clarification"] as const) {
   check(`…so a guest still cannot open a ${status} tender`, canOpenTenderDetail("guest", false, isClosedTender(status)), false);
   check(`…nor an expired free account`, canOpenTenderDetail("free", false, isClosedTender(status)), false);
 }
+
+// ── …and only if there is something on the page ────────────────────────────
+// The correction of 2026-09-16. The user had been deleting tenders the day
+// they closed, and the reason was 因为缺少大量标书分析内容 — a closed tender
+// with no requirements and no risks is a title over an empty page, and a few
+// hundred of those under real project names is worse than not being indexed.
+// So "closed" alone no longer opens anything; "closed AND analysed" does.
+const ANALYSED = { requirementCount: 3, riskCount: 1 };
+const STUB = { requirementCount: 0, riskCount: 0 };
+
+check("a requirement alone counts as analysis", hasPublishedAnalysis({ requirementCount: 1, riskCount: 0 }), true);
+check("a risk alone counts as analysis", hasPublishedAnalysis({ requirementCount: 0, riskCount: 1 }), true);
+check("neither does not", hasPublishedAnalysis(STUB), false);
+
+for (const status of ["submission_closed", "awarded", "cancelled"] as const) {
+  check(`an analysed ${status} tender is a public archive`, isPublicArchive(status, ANALYSED), true);
+  check(`a ${status} tender with no analysis is NOT`, isPublicArchive(status, STUB), false);
+  check(
+    `…so a guest cannot open the ${status} stub`,
+    canOpenTenderDetail("guest", false, isPublicArchive(status, STUB)),
+    false,
+  );
+}
+
+// Analysis does not open a tender that is still biddable — the paywall's
+// actual job. Only the deadline passing does that.
+for (const status of ["open", "clarification"] as const) {
+  check(`an analysed ${status} tender stays behind the paywall`, isPublicArchive(status, ANALYSED), false);
+}
+
+// A subscriber still gets everything, analysed or not.
+check("a subscriber may open a closed stub", canOpenTenderDetail("subscriber", false, isPublicArchive("submission_closed", STUB)), true);
+check("so may a trial account", canOpenTenderDetail("trial", false, isPublicArchive("submission_closed", STUB)), true);
 
 check(
   `past_due on day ${PAYMENT_GRACE_DAYS - 1} of grace`,

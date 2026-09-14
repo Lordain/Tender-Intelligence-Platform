@@ -2238,4 +2238,45 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Peru", scopeType: "works", estimatedValue: 4_835_000, currency: "USD", governmentLevel: "federal",
     procedureType: "Procedimiento de Contratación Pública Especial para la Reconstrucción con Cambios",
   },
+
+  // --- Comparación de Precios: six days for an off-the-shelf item (2026-09-14) ---
+  // The user's instruction, given against the first of these. Convocatoria
+  // 09/09, registration open for one day, proposals 14/09, buena pro 15/09.
+  {
+    // Truncated in the ficha itself ("...ADQUISICIÓN DE GRUPO EL…"), so the
+    // description is as much of it as the page shows.
+    title: "CONTRATACIÓN PARA LA ADQUISICIÓN DE GRUPO ELECTRÓGENO",
+    expectedTier: "excluded",
+    note: "Peru COMPRE-COMPRE-56-2026-MDM/DEC-1, real. Municipalidad Distrital de Megantoni, Ley 32069, no reference value published. A value-less generator purchase would likely fall out on other grounds too — the two synthetic rows below are what prove the procedure is doing the work.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+    procedureType: "Comparación de Precios",
+  },
+  {
+    // The procedure beats every positive signal there is, as it does for a
+    // subasta inversa above: nothing bought this way is a half-billion-dollar
+    // airport, so a row that says both is mis-stated either way.
+    title: "CONSTRUCCIÓN DEL NUEVO AEROPUERTO INTERNACIONAL",
+    expectedTier: "excluded",
+    note: "Synthetic. Pins that the exclusion is absolute — no value floor or flagship keyword rescues a comparación de precios.",
+    country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
+    procedureType: "Comparación de Precios",
+  },
+  {
+    // The control: same row, an ordinary procedure.
+    title: "CONSTRUCCIÓN DEL NUEVO AEROPUERTO INTERNACIONAL",
+    expectedTier: "flagship",
+    note: "Synthetic control for the row above — proves the exclusion comes from the procedure and nothing else that changed with it.",
+    country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
+    procedureType: "Licitación Pública Abreviada",
+  },
+  {
+    // The near-miss that must NOT be caught: the bare SEACE code pattern is
+    // /^compre\b/, and "Compra por Catálogo" starts with the same five
+    // letters. It is arguably the same family, but nobody has ruled on it.
+    title: "CONSTRUCCIÓN DEL NUEVO AEROPUERTO INTERNACIONAL",
+    expectedTier: "flagship",
+    note: "Synthetic control. 'Compra por Catálogo Electrónico' (Acuerdo Marco) is a separate procedure that no instruction covers — pinned as INCLUDED so the comparación-de-precios patterns cannot quietly swallow it.",
+    country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
+    procedureType: "Compra por Catálogo Electrónico de Acuerdo Marco",
+  },
 ];

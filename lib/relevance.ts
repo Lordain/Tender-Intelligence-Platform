@@ -2046,6 +2046,43 @@ export function isPriceOnlyAuction(procedureType: string | undefined): boolean {
 }
 
 /**
+ * Peru's *Comparación de Precios* (SEACE numbers these COMPRE-…), the
+ * abbreviated procedure for standard, low-value goods and services under
+ * arts. 93–95 of the Reglamento of Ley 32069: the entity collects quotations
+ * for an off-the-shelf item and buys the cheapest.
+ *
+ * Excluded outright at the user's instruction (2026-09-14), given against
+ * COMPRE-COMPRE-56-2026-MDM/DEC-1 — the Municipalidad Distrital de Megantoni
+ * buying a grupo electrógeno. Convocatoria 09/09, participant registration
+ * open for one day (10/09, 08:00–18:00), proposals 14/09, buena pro 15/09.
+ * Six days end to end, with no reference value published at all.
+ *
+ * Same reasoning as PRICE_ONLY_AUCTION_PROCEDURES above, by a different
+ * route: there the state fixes the specification, here the low value and the
+ * six-day clock do. Either way price is the only variable, the item is one a
+ * local supplier already has on a shelf, and there is no technical proposal
+ * for this platform to analyse or for a foreign bidder to win on. A window
+ * this short cannot be met from abroad even by a company that wanted to.
+ *
+ * NOT included, deliberately: "Compra por Catálogo Electrónico" (Acuerdo
+ * Marco). It is arguably the same family — catalogue goods, no real contest —
+ * but it is a separate legal figure that nobody has ruled on, and a rule
+ * written on a guess is how a whole class of tenders disappears unnoticed.
+ */
+const PRICE_COMPARISON_PROCEDURES = [
+  /comparaci[óo]n\s+de\s+precios/i,
+  // The bare SEACE code, for a record that states the nomenclature rather
+  // than the name. Anchored so it cannot reach into "COMPRA …" or any other
+  // word that merely starts the same way.
+  /^\s*compre\b/i,
+];
+
+/** Exported for scripts/tests that need the same verdict without a full classification. */
+export function isPriceComparison(procedureType: string | undefined): boolean {
+  return !!procedureType && PRICE_COMPARISON_PROCEDURES.some((pattern) => pattern.test(procedureType));
+}
+
+/**
  * Procedures that award a contract WITHOUT an open competition — Peru's
  * *Contratación Directa*, Mexico's and Colombia's *Adjudicación/Contratación
  * Directa*, and OCDS's own `direct` method code, which is what a feed hands
@@ -2085,7 +2122,7 @@ export function isDirectAward(procedureType: string | undefined): boolean {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "direct_award",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award",
   LocalizedText
 > = {
   no_content: {
@@ -2102,6 +2139,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: "该项目采用电子逆向竞价（Subasta Inversa Electrónica）：标的物是国家通用货物清单上有统一技术规格表的标准品，中标完全由竞价窗口内的最低报价决定，没有技术方案可比，交付也以本地即时供应为主，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This is a reverse auction (Subasta Inversa Electrónica): the item is a standardised catalogue good with a state-published technical sheet, so the award is decided purely by the lowest bid inside the auction window — no technical proposal to differentiate, and delivery is local and immediate. Filtered from the default feed (metadata is kept, not deleted).",
     es: "Es una subasta inversa electrónica: el objeto es un bien común con ficha técnica publicada por el Estado, así que la adjudicación se decide únicamente por el menor precio dentro de la ventana de puja — no hay propuesta técnica que diferenciar y la entrega es local e inmediata. Filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
+  price_comparison: {
+    zh: "该项目采用比价采购（Comparación de Precios）：这是秘鲁针对小额、标准化货物/服务的简化程序，采购单位收集报价后直接择低价成交，从公告到授标通常只有几天，且多数不公布预估金额；没有技术方案可比，实际上只面向本地现货供应商，默认不进入推荐列表（数据仍保留，可用于统计）。",
+    en: "This is a price comparison (Comparación de Precios): Peru's abbreviated procedure for standard, low-value goods and services, where the entity collects quotations and buys the cheapest, usually within days of publishing and often without disclosing a reference value. There is no technical proposal to differentiate and the timetable only suits a local supplier with stock on hand. Filtered from the default feed (metadata is kept, not deleted).",
+    es: "Es una comparación de precios: el procedimiento abreviado para bienes y servicios estándar de poca cuantía, en el que la entidad compara cotizaciones y compra la más baja, normalmente pocos días después de la convocatoria y a menudo sin publicar valor referencial. No hay propuesta técnica que diferenciar y el cronograma solo alcanza a un proveedor local con stock. Filtrada de la vista predeterminada (los metadatos se conservan).",
   },
   keyword: {
     zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
@@ -2154,6 +2196,7 @@ function reasonFor(
     | "consulting"
     | "undisclosed_value"
     | "price_only_auction"
+    | "price_comparison"
     | "direct_award"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
@@ -2170,6 +2213,7 @@ function reasonFor(
       signal === "buyer" ||
       signal === "consulting" ||
       signal === "price_only_auction" ||
+      signal === "price_comparison" ||
       signal === "direct_award"
         ? signal
         : "keyword"
@@ -2338,6 +2382,9 @@ export function classifyRelevance(input: {
   }
   if (isDirectAward(input.procedureType)) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "direct_award") };
+  }
+  if (isPriceComparison(input.procedureType)) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "price_comparison") };
   }
 
   const subjectTitle = purchaseSubject(input.title)!;

@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { getTenderBySlug } from "@/lib/tenders";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerRole } from "@/lib/access-control-server";
-import { canOpenTenderDetail, isClosedTender, tenderDetailPrompt } from "@/lib/access-control";
+import { canOpenTenderDetail, isPublicArchive, tenderDetailPrompt } from "@/lib/access-control";
+import type { Tender } from "@/types/tender";
 import { isHomepageFreePreviewSlug } from "@/lib/homepage-selection";
 import { AccessPrompt } from "@/components/access/AccessPrompt";
 
@@ -17,6 +18,15 @@ import { AccessPrompt } from "@/components/access/AccessPrompt";
 // where React's cache() has no request to scope itself to.
 const loadTender = cache(getTenderBySlug);
 const loadIsFreePreview = cache(isHomepageFreePreviewSlug);
+
+/** Requirements live in three arrays on Tender but one table in the database. */
+function analysisPresence(tender: Tender) {
+  return {
+    requirementCount:
+      tender.qualifications.length + tender.experienceRequirements.length + tender.requiredDocuments.length,
+    riskCount: tender.risks.length,
+  };
+}
 
 /**
  * A crawler is a guest, so what it can see is exactly the free-preview
@@ -32,9 +42,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const [tender, isFreePreview] = await Promise.all([loadTender(slug), loadIsFreePreview(slug)]);
   if (!tender) return { title: "项目不存在" };
   // Indexable exactly when it is readable without an account: the free-preview
-  // slugs, and every closed tender. Anything still biddable stays out of the
-  // index, because what a crawler would get is the access prompt.
-  const indexable = isFreePreview || isClosedTender(tender.status);
+  // slugs, and closed tenders that carry analysis. Anything still biddable
+  // stays out of the index, because what a crawler would get is the access
+  // prompt — and a closed tender with no analysis stays out because what it
+  // would get is an empty page under a real project name.
+  const indexable = isFreePreview || isPublicArchive(tender.status, analysisPresence(tender));
 
   const summary = tender.summary.zh.trim();
   return {
@@ -70,10 +82,11 @@ export default async function TenderDetailPage({
     notFound();
   }
 
-  // A closed tender is readable by anyone — see canOpenTenderDetail(). The
-  // status here is the DERIVED one (lib/db/tenders.ts runs deriveTenderStatus
-  // when it maps the row), so a deadline that passed this morning counts.
-  const isClosed = isClosedTender(tender.status);
+  // A closed tender WITH analysis is readable by anyone — see
+  // isPublicArchive(). The status here is the DERIVED one (lib/db/tenders.ts
+  // runs deriveTenderStatus when it maps the row), so a deadline that passed
+  // this morning counts.
+  const isClosed = isPublicArchive(tender.status, analysisPresence(tender));
 
   if (!canOpenTenderDetail(viewerRole, isHomepageFreePreview, isClosed)) {
     return (

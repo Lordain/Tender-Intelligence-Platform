@@ -303,6 +303,42 @@ async function fetchAwardedSlugsWithAnalysis(supabase: SupabaseClient): Promise<
 }
 
 /**
+ * Of the slugs given, the ones with analysis logged — at least one
+ * requirement or risk, the same test fetchAwardedSlugsWithAnalysis applies to
+ * awarded tenders.
+ *
+ * Takes an explicit slug list rather than scanning the table because the only
+ * caller (app/sitemap.ts) needs it for CLOSED tenders, and closed is derived
+ * from the calendar rather than stored — it cannot be expressed as a filter
+ * here. Passing the slugs the caller already computed keeps this bounded by
+ * the closed population instead of joining the whole table, which is the cost
+ * fetchAllTendersFromDb's own comment exists to avoid.
+ */
+export async function fetchSlugsWithAnalysis(slugs: readonly string[]): Promise<Set<string>> {
+  const withAnalysis = new Set<string>();
+  const supabase = getSupabaseServerClient();
+  if (!supabase || slugs.length === 0) return withAnalysis;
+
+  // Postgres has a ceiling on the length of an IN list, and Supabase sends it
+  // in the URL, so this is chunked rather than sent as one filter.
+  const CHUNK = 200;
+  for (let start = 0; start < slugs.length; start += CHUNK) {
+    const chunk = slugs.slice(start, start + CHUNK);
+    const data = await retrySupabaseRead(
+      () => supabase
+        .from("tenders")
+        .select("slug, tender_requirements ( id ), tender_risks ( id )")
+        .in("slug", chunk as string[]),
+      "Failed to check which tenders have analysis logged",
+    );
+    for (const row of data as unknown as AwardedAnalysisProbeRow[]) {
+      if (row.tender_requirements.length > 0 || row.tender_risks.length > 0) withAnalysis.add(row.slug);
+    }
+  }
+  return withAnalysis;
+}
+
+/**
  * Returns null when Supabase isn't configured, so callers can fall back
  * to mock data.
  *

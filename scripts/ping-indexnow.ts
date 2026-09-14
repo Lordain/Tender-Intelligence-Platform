@@ -23,13 +23,21 @@
  *   npm run ping:indexnow -- --write        (submits)
  *   npm run ping:indexnow -- --days 7       (widen the window; default 2)
  *   npm run ping:indexnow -- --all          (every indexable URL, including the static pages — for the first run)
+ *   npm run ping:indexnow -- --origin https://latintender.com
+ *
+ * On --origin: the site's address normally comes from APP_URL, which a local
+ * .env.local deliberately does NOT set to production — the same variable
+ * builds Stripe's return URLs and the digest email links, so pointing it at
+ * latintender.com just to run this would send a local Checkout test back to
+ * the live site. Pass the origin for this one command instead.
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { deriveTenderStatus } from "../lib/tender-status";
-import { isClosedTender } from "../lib/access-control";
+import { hasPublishedAnalysis, isClosedTender } from "../lib/access-control";
 import { INDEXNOW_KEY, indexNowKeyPath, submitToIndexNow } from "../lib/indexnow";
 import { siteOrigin } from "../lib/site-url";
 import { participationGuides } from "../lib/participation-guides";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TenderStatus } from "../types/tender";
 
 type Row = {
@@ -50,8 +58,67 @@ const STATIC_PATHS = [
   "/clarifications",
 ];
 
+/**
+ * Supabase caps an unbounded select at 1000 rows and says nothing about it,
+ * so this pages the way lib/db/tenders.ts does. Without it a table of several
+ * thousand tenders silently returns an arbitrary first slice — which is how a
+ * run can report "0 closed tenders" on a database full of them.
+ */
+const PAGE_SIZE = 1000;
+
+async function readAllTenders(supabase: SupabaseClient): Promise<Row[]> {
+  const rows: Row[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("slug, status, submission_deadline, publication_date, updated_at, tender_key_dates ( type, date )")
+      .order("publication_date", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1)
+      .returns<Row[]>();
+    if (error) throw new Error(`读取 tenders 失败：${error.message}`);
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
+/**
+ * Slugs that have analysis logged — at least one requirement or risk.
+ *
+ * A closed tender without it is not a public page (isPublicArchive) and is
+ * not in the sitemap, so submitting it would point Bing at either an access
+ * prompt or an empty page under a real project name. Mirrors
+ * fetchSlugsWithAnalysis in lib/db/tenders.ts, which cannot be imported here:
+ * that module is "server-only".
+ */
+async function slugsWithAnalysis(supabase: SupabaseClient, slugs: readonly string[]): Promise<Set<string>> {
+  const withAnalysis = new Set<string>();
+  const CHUNK = 200;
+  for (let start = 0; start < slugs.length; start += CHUNK) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("slug, tender_requirements ( id ), tender_risks ( id )")
+      .in("slug", slugs.slice(start, start + CHUNK) as string[])
+      .returns<{ slug: string; tender_requirements: { id: string }[]; tender_risks: { id: string }[] }[]>();
+    if (error) throw new Error(`读取标书分析状态失败：${error.message}`);
+    for (const row of data ?? []) {
+      if (hasPublishedAnalysis({ requirementCount: row.tender_requirements.length, riskCount: row.tender_risks.length })) {
+        withAnalysis.add(row.slug);
+      }
+    }
+  }
+  return withAnalysis;
+}
+
 function flag(name: string): boolean {
   return process.argv.includes(`--${name}`);
+}
+
+function text(name: string): string | undefined {
+  const index = process.argv.indexOf(`--${name}`);
+  if (index === -1) return undefined;
+  return process.argv[index + 1]?.trim() || undefined;
 }
 
 function option(name: string, fallback: number): number {
@@ -83,12 +150,14 @@ async function main() {
   const write = flag("write");
   const all = flag("all");
   const days = option("days", 2);
-  const origin = siteOrigin();
+  const origin = text("origin") ? new URL(text("origin")!).origin : siteOrigin();
   const now = new Date();
   const cutoff = new Date(now.getTime() - days * 86_400_000);
 
   if (origin.includes("localhost")) {
-    throw new Error("APP_URL 没设置，现在指向 localhost —— 提交本地地址没有意义");
+    throw new Error(
+      "站点地址指向 localhost —— 提交本地地址没有意义。加 --origin https://latintender.com，或在环境里设 APP_URL。",
+    );
   }
 
   const supabase = createSupabaseAdminClient();
@@ -96,25 +165,26 @@ async function main() {
     throw new Error("Supabase 没有配置（NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY），见 .env.example");
   }
 
-  const { data, error } = await supabase
-    .from("tenders")
-    .select("slug, status, submission_deadline, publication_date, updated_at, tender_key_dates ( type, date )")
-    .returns<Row[]>();
-  if (error) throw new Error(`读取 tenders 失败：${error.message}`);
+  const rows = await readAllTenders(supabase);
+  const closedRows = rows.filter((row) =>
+    isClosedTender(
+      deriveTenderStatus(
+        row.status,
+        {
+          submissionDeadline: row.submission_deadline,
+          publicationDate: row.publication_date,
+          keyDates: (row.tender_key_dates ?? []) as { type: never; date: string }[],
+        },
+        now,
+      ),
+    ),
+  );
 
-  const tenders = (data ?? []).filter((row) => {
-    const derived = deriveTenderStatus(
-      row.status,
-      {
-        submissionDeadline: row.submission_deadline,
-        publicationDate: row.publication_date,
-        keyDates: (row.tender_key_dates ?? []) as { type: never; date: string }[],
-      },
-      now,
-    );
-    if (!isClosedTender(derived)) return false;
+  const analysed = await slugsWithAnalysis(supabase, closedRows.map((row) => row.slug));
+  const closed = closedRows.filter((row) => analysed.has(row.slug));
+
+  const tenders = closed.filter((row) => {
     if (all) return true;
-
     const changed = row.updated_at ? new Date(row.updated_at) >= cutoff : false;
     const justClosed = row.submission_deadline
       ? new Date(row.submission_deadline) >= cutoff && new Date(row.submission_deadline) <= now
@@ -129,6 +199,16 @@ async function main() {
 
   console.log(`站点：${origin}`);
   console.log(all ? "范围：全部可收录页面" : `范围：最近 ${days} 天内更新或刚刚截止的项目`);
+  // Says why the answer is zero. A run that submits no tender page is either
+  // "nothing closed since yesterday" (normal) or "this database holds no
+  // closed tenders at all" (something to look at) — and without these two
+  // counts the two look identical from the outside.
+  console.log(`数据库共 ${rows.length} 个项目，已截止 ${closedRows.length} 个，其中有标书分析、可公开收录的 ${closed.length} 个`);
+  if (closedRows.length === 0 && rows.length > 0) {
+    console.log("没有任何已截止项目 —— 检查是不是被 purge:closed-tenders 清掉了，或者截止日期普遍为空");
+  } else if (closed.length === 0 && closedRows.length > 0) {
+    console.log("已截止项目都没有录入标书分析 —— 空页面不公开也不提交，先补分析（/admin/documents-needed）");
+  }
   console.log(`待提交：${urls.length} 个地址`);
   for (const url of urls.slice(0, 20)) console.log(`  ${url}`);
   if (urls.length > 20) console.log(`  …… 其余 ${urls.length - 20} 个`);

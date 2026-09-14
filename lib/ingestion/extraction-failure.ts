@@ -40,8 +40,33 @@ const SYSTEMATIC_PATTERNS: { pattern: RegExp; reason: string }[] = [
   { pattern: /DASHSCOPE_API_KEY|ANTHROPIC_API_KEY/i, reason: "缺少 API key 环境变量" },
 ];
 
+/**
+ * Not every schema failure is a contract bug.
+ *
+ * The 2026-09-13 run that this whole file exists for failed on SHAPE: a
+ * required array the prompt never asked for, absent from all five responses
+ * because the prompt was the same all five times. Nothing about the documents
+ * mattered, and stopping was right.
+ *
+ * A value outside an enum is the opposite. On 2026-09-16 one risk out of five
+ * came back with a level the enum does not list — the model wrote it in the
+ * document's own language — and the batch aborted with four tenders left
+ * unprocessed. The contract held; the model slipped on one row of one answer,
+ * and the next document is a fresh roll of the same dice.
+ *
+ * So: a schema failure whose every complaint is `invalid_value` is treated as
+ * this document's problem. Mixed with anything else — a missing key, a wrong
+ * type — it is the shape again, and shape is systematic.
+ */
+function isValueOnlySchemaFailure(message: string): boolean {
+  if (!/failed schema validation/i.test(message)) return false;
+  const codes = [...message.matchAll(/"code":\s*"([a-z_]+)"/g)].map((match) => match[1]);
+  return codes.length > 0 && codes.every((code) => code === "invalid_value");
+}
+
 export function classifyExtractionFailure(err: unknown): { kind: ExtractionFailureKind; reason?: string } {
   const message = err instanceof Error ? err.message : String(err);
+  if (isValueOnlySchemaFailure(message)) return { kind: "document" };
   const hit = SYSTEMATIC_PATTERNS.find((entry) => entry.pattern.test(message));
   return hit ? { kind: "systematic", reason: hit.reason } : { kind: "document" };
 }
@@ -103,6 +128,44 @@ const TRANSIENT_PATTERNS = [
 ];
 
 const NEVER_TRANSIENT = /timed?\s*out|timeout|ETIMEDOUT|aborted/i;
+
+/**
+ * Output the model got slightly wrong, on a request that was fine.
+ *
+ * Only the manual-JSON path can produce these: Claude's structured outputs are
+ * enforced server-side, so a response there is valid by construction. On
+ * DashScope the model writes the JSON itself, and 2026-09-16 produced three in
+ * one run — two where a stray ASCII quote inside a Chinese sentence closed a
+ * string early ("文件“ASPECTOS PARTICULARES"章节"), one where an object was
+ * closed and then continued with more properties.
+ *
+ * None of that is a property of the document or of this code. It is one
+ * sampling of a model that usually gets it right, which makes it exactly as
+ * retriable as a 500 — and a retry is far better than the alternatives, which
+ * are writing a JSON repairer or losing the document.
+ *
+ * "No JSON object found" is deliberately NOT here: it stays systematic. A
+ * response with no JSON at all means the prompt or the provider配置 is wrong,
+ * and every document would do the same.
+ */
+const MALFORMED_OUTPUT_PATTERNS = [
+  /in JSON at position \d+/i,
+  /Unexpected token .* in JSON/i,
+  /Unexpected end of JSON input/i,
+  /Expected (?:',' or|double-quoted property name)/i,
+];
+
+export function isMalformedModelOutput(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/no json object found in response/i.test(message)) return false;
+  if (isValueOnlySchemaFailure(message)) return true;
+  return MALFORMED_OUTPUT_PATTERNS.some((pattern) => pattern.test(message));
+}
+
+/** Worth sending again exactly once — the provider had a bad second, or the model's own output slipped. */
+export function isRetriableExtractionFailure(err: unknown): boolean {
+  return isTransientServerError(err) || isMalformedModelOutput(err);
+}
 
 export function isTransientServerError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);

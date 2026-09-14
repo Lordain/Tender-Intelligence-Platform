@@ -33,7 +33,8 @@ import {
 } from "../lib/ingestion/extract-requirements";
 import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
 import { isTextLayerSubstantial } from "../lib/ingestion/text-layer";
-import { isTransientServerError } from "../lib/ingestion/extraction-failure";
+import { isRetriableExtractionFailure, isTransientServerError } from "../lib/ingestion/extraction-failure";
+import { escapeStrayQuotes, normalizeRawExtraction } from "../lib/ingestion/extract-requirements";
 import { chooseExtractionModel, maxPagesForTier } from "../lib/ingestion/extraction-routing";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -593,6 +594,72 @@ async function main() {
       "Token usage — input: 15002, output: 1276",
     ]) {
       check(`not retried: ${message.slice(0, 40)}`, !isTransientServerError(new Error(message)));
+    }
+  });
+
+  // ---- A model's wording must not cost the batch ----
+  await group("风险等级用别的写法不该中止整批", async () => {
+    for (const [written, expected] of [["alto", "high"], ["MUY ALTO", "critical"], ["中等", "medium"], ["高", "high"], ["Bajo", "low"]] as const) {
+      const normalized = normalizeRawExtraction({ risks: [{ level: written }] }) as { risks: { level: string }[] };
+      check(`"${written}" reads as ${expected}`, normalized.risks[0].level === expected);
+    }
+    const unknown = normalizeRawExtraction({ risks: [{ level: "catastrófico-ish" }] }) as { risks: { level: string }[] };
+    check("a level nobody can map is left alone, to fail loudly", unknown.risks[0].level === "catastrófico-ish");
+
+    // The 2026-09-16 abort: one bad enum value stopped a batch with four
+    // tenders left. A value complaint is this document's problem.
+    const valueOnly = new Error(
+      'Extraction failed schema validation for peru-x: [{ "code": "invalid_value", "path": ["risks", 4, "level"] }]',
+    );
+    check("an invalid enum value is a document failure, not systematic", classifyExtractionFailure(valueOnly).kind === "document");
+
+    // The 2026-09-13 outage: a required key the prompt never asked for. Shape,
+    // identical on every document, and stopping is right.
+    const shape = new Error(
+      'Extraction failed schema validation for peru-y: [{ "code": "invalid_type", "expected": "array", "path": ["keyDates"] }]',
+    );
+    check("a wrong SHAPE is still systematic", classifyExtractionFailure(shape).kind === "systematic");
+
+    const mixed = new Error(
+      'Extraction failed schema validation for peru-z: [{ "code": "invalid_value" }, { "code": "invalid_type" }]',
+    );
+    check("value plus shape is shape", classifyExtractionFailure(mixed).kind === "systematic");
+
+    // The model writing its own JSON gets one more go — 2026-09-16 produced
+    // three of these in one run, all on the DashScope path, all a stray quote
+    // or a stray brace in otherwise complete answers.
+    for (const message of [
+      "Expected ',' or '}' after property value in JSON at position 3502 (line 98 column 63)",
+      "Expected ',' or ']' after array element in JSON at position 2099",
+      "Unexpected end of JSON input",
+    ]) {
+      check(`retried: ${message.slice(0, 44)}`, isRetriableExtractionFailure(new Error(message)));
+    }
+    check("a value-only schema failure is retried too", isRetriableExtractionFailure(valueOnly));
+    check("a wrong shape is NOT retried — it would fail identically", !isRetriableExtractionFailure(shape));
+    check(
+      "no JSON at all is NOT retried — that is the prompt or the provider",
+      !isRetriableExtractionFailure(new Error("No JSON object found in response")),
+    );
+  });
+
+  // ---- Unescaped quotes inside a value ----
+  // Both fixtures are verbatim from real 2026-09-16 failures: writing Chinese,
+  // the model quotes a Spanish proper noun with ASCII double quotes and does
+  // not escape them, which ends the string early and costs the whole document.
+  await group("字符串里的裸引号能修好", async () => {
+    const bramonas = '{"oneLineSummary": "科蒙杜市地下水回灌项目，建设"BRAMONAS 2"及"BRAMONAS 5"堤防，工期 91 天。", "risks": []}';
+    const repaired = JSON.parse(escapeStrayQuotes(bramonas)) as { oneLineSummary: string; risks: unknown[] };
+    check("the document survives", repaired.oneLineSummary.includes("BRAMONAS 2"));
+    check("...with the quotes kept as text, not dropped", repaired.oneLineSummary.includes('"BRAMONAS 5"'));
+    check("...and the rest of the object intact", Array.isArray(repaired.risks));
+
+    const aspectos = '{"reasoning": "但文件“ASPECTOS PARTICULARES"章节明确要求投标人为墨西哥法人。"}';
+    check("a Chinese opening quote closed by an ASCII one too", (JSON.parse(escapeStrayQuotes(aspectos)) as { reasoning: string }).reasoning.includes("章节"));
+
+    // The repair must not touch JSON that was already correct.
+    for (const valid of ['{"a": "b", "c": ["d", "e"], "f": {"g": 1}}', '{"empty": "", "escaped": "say \\"hi\\""}']) {
+      check(`untouched: ${valid.slice(0, 28)}`, escapeStrayQuotes(valid) === valid);
     }
   });
 

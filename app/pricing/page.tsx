@@ -1,14 +1,16 @@
 import { PageIntro } from "@/components/layout/PageIntro";
 import { PricingPlans } from "@/components/pricing/PricingPlans";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { InvoiceContact } from "@/components/billing/InvoiceContact";
 import { TRIAL_DAYS } from "@/lib/access-control";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "订阅方案与价格",
-  description: "个人版与企业版订阅方案、月度/半年度/年度计费周期与包含功能对比。",
-  alternates: { canonical: "/pricing" },
-};
+  description:
+    "个人版与企业版订阅方案、月度/半年度/年度计费周期与包含功能对比。",
+  path: "/pricing",
+});
 
 export default function PricingPage() {
   return (

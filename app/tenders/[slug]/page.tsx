@@ -1,5 +1,6 @@
 import { cache } from "react";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { getTenderBySlug } from "@/lib/tenders";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
@@ -33,10 +34,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const summary = tender.summary.zh.trim();
   return {
-    title: tender.title.zh,
-    description: summary.length > 155 ? `${summary.slice(0, 154)}…` : summary,
+    ...pageMetadata({
+      title: tender.title.zh,
+      description: summary.length > 155 ? `${summary.slice(0, 154)}…` : summary,
+      path: `/tenders/${slug}`,
+    }),
+    // Only the free-preview slugs are indexable; every other one renders an
+    // access prompt, and a crawler must not be told that page is the tender.
+    // Its share card still carries the real title and summary — a paywalled
+    // page is still worth forwarding to a colleague.
     robots: isFreePreview ? undefined : { index: false, follow: true },
-    alternates: { canonical: `/tenders/${slug}` },
   };
 }
 

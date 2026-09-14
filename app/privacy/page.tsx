@@ -1,12 +1,14 @@
 import { PolicyPage, type PolicySection } from "@/components/content/PolicyPage";
 import { LEGAL_CONTACT_EMAIL, LEGAL_OPERATOR_ADDRESS, LEGAL_OPERATOR_NAME } from "@/lib/legal";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "隐私政策",
-  description: "本平台收集哪些个人信息、如何使用与保存，以及用户可行使的 ARCO 权利。",
-  alternates: { canonical: "/privacy" },
-};
+  description:
+    "本平台收集哪些个人信息、如何使用与保存，以及用户可行使的 ARCO 权利。",
+  path: "/privacy",
+});
 
 const sections: PolicySection[] = [
   {

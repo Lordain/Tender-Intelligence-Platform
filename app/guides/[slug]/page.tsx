@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getParticipationGuide, participationGuides } from "@/lib/participation-guides";
@@ -16,11 +17,11 @@ export async function generateMetadata({ params }: GuidePageProps): Promise<Meta
   const guide = getParticipationGuide(slug);
   if (!guide) return {};
 
-  return {
+  return pageMetadata({
     title: `${guide.platform} 参标指南`,
     description: guide.summary,
-    alternates: { canonical: `/guides/${guide.slug}` },
-  };
+    path: `/guides/${guide.slug}`,
+  });
 }
 
 export default async function GuideDetailPage({ params }: GuidePageProps) {

@@ -1,12 +1,14 @@
 import { PolicyPage, type PolicySection } from "@/components/content/PolicyPage";
 import { LEGAL_CONTACT_EMAIL, LEGAL_OPERATOR_ADDRESS, LEGAL_OPERATOR_NAME } from "@/lib/legal";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "服务条款",
-  description: "平台提供什么、用户如何使用信息，以及双方责任的基本边界。",
-  alternates: { canonical: "/terms" },
-};
+  description:
+    "平台提供什么、用户如何使用信息，以及双方责任的基本边界。",
+  path: "/terms",
+});
 
 const sections: PolicySection[] = [
   { id: "scope", title: "服务范围", paragraphs: ["本信息平台对公开招标信息进行汇集、翻译、分类与结构化展示，帮助用户发现和评估潜在机会。本站不是采购机构、招标代理或官方投标系统，不受理投标文件、不代办投标，也不代表任何政府部门。用户参与项目时，必须前往项目标明的官方渠道核验要求并完成正式投标流程。"] },

@@ -1,12 +1,14 @@
 import { PolicyPage, type PolicySection } from "@/components/content/PolicyPage";
 import { LEGAL_CONTACT_EMAIL } from "@/lib/legal";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Cookie 政策",
-  description: "本平台使用的 Cookie 与同类技术，以及它们各自的用途。",
-  alternates: { canonical: "/cookies" },
-};
+  description:
+    "本平台使用的 Cookie 与同类技术，以及它们各自的用途。",
+  path: "/cookies",
+});
 
 const sections: PolicySection[] = [
   {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { BackfillResult } from "@/lib/ingestion/backfill-mexico-deadlines";
+import { KEY_DATE_TYPE_LABELS } from "@/lib/tender-labels";
 
 const day = (value: string | null | undefined) => value?.slice(0, 10) ?? "—";
 
@@ -70,11 +71,14 @@ export function MexicoDeadlineBackfillPanel() {
           <p>
             {result.totalMissing} 个墨西哥项目没有交标截止日：{result.fillableCount} 个可填，{result.stuckCount} 个填不了。
           </p>
-          {result.write && (
-            <p className="mt-1 font-semibold text-emerald-700">
-              已写入 {result.writtenCount} 条{result.failedCount > 0 ? `，${result.failedCount} 条失败` : ""}。
-            </p>
-          )}
+          {result.write &&
+            (result.writtenCount > 0 ? (
+              <p className="mt-1 font-semibold text-emerald-700">
+                已写入 {result.writtenCount} 条{result.failedCount > 0 ? `，${result.failedCount} 条失败` : ""}。
+              </p>
+            ) : (
+              <p className="mt-1 text-[#8a97a0]">没有可写入的项目，数据库未改动{result.failedCount > 0 ? `（${result.failedCount} 条失败）` : ""}。</p>
+            ))}
           <ul className="mt-3 flex flex-col gap-3">
             {result.candidates.map((candidate) => (
               <li key={candidate.slug} className="rounded-xl border border-[#e5e9eb] bg-white p-3">
@@ -85,7 +89,9 @@ export function MexicoDeadlineBackfillPanel() {
                 </p>
                 {candidate.keyDates.length > 0 && (
                   <p className="mt-1 text-xs text-[#52636e]">
-                    {candidate.keyDates.map((row) => `${day(row.date)} ${row.label || row.type}`).join("　·　")}
+                    {candidate.keyDates
+                      .map((row) => `${day(row.date)} ${row.label || KEY_DATE_TYPE_LABELS[row.type].zh}`)
+                      .join("　·　")}
                   </p>
                 )}
                 {candidate.fill ? (

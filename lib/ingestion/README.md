@@ -4469,6 +4469,21 @@ Two consequences worth stating plainly:
   to be the wrong place to test them. Mexico's Convocatorias do print a
   cronograma; that is where this should be validated.
 
+**Third confirmation, from the pipeline itself (2026-09-16).** The note
+above rested on one bases PDF read by hand. The re-run after the two
+extraction bugs were fixed (`c65d629`) put three through the live path —
+1248966, 1249139 and 1249156, via 本地批量分析 — with
+JSON_SHAPE_INSTRUCTIONS now explicitly asking for `keyDates`. All three
+wrote their analysis (3/1/3/4, 2/2/11/4 and 2/0/3/3 qualifications /
+experience / documents / risks) and all three returned an EMPTY schedule.
+
+That combination is what makes it evidence rather than a failure: a run
+that extracts eleven required documents from a PDF and no dates from the
+same PDF is not a run that could not read it. The model was asked, on
+three separate documents, and there was nothing to answer with. Peru's
+bid deadline reaches this platform by hand or not at all, and the paste
+tool plus the ficha URL capture are the whole answer, not a stopgap.
+
 What is NOT being done, and why: deriving the submission date from the
 enquiry window plus the Reglamento's minimum intervals is arithmetic on a
 rule, i.e. a guess presented as a date, and a wrong deadline is worse than a

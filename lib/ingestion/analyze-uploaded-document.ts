@@ -127,7 +127,7 @@ export async function analyzeUploadedDocument(
     // slug burned every model call in the upload first.
     const { data: tender, error: tenderError } = await supabase
       .from("tenders")
-      .select("id, title, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
+      .select("id, title, summary, one_line_summary, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
       .eq("slug", tenderSlug)
       .maybeSingle();
     if (tenderError || !tender) {
@@ -144,6 +144,20 @@ export async function analyzeUploadedDocument(
     // "title" and never saw the tender at all.
     const tenderTitle = (tender.title as { zh?: string; es?: string } | null) ?? null;
     const titleForModel = tenderTitle?.zh?.trim() || tenderTitle?.es?.trim() || tenderSlug;
+    // Title alone is not enough (user, 2026-09-14: 有些地名标题没有，摘要里面有).
+    // The summary routinely names a river, a neighbouring district or the
+    // buyer's municipality that the title never mentions, and each of those
+    // is a name the extraction would otherwise transliterate afresh.
+    const tenderSummary = (tender.summary as { zh?: string } | null) ?? null;
+    const existingChineseText = [
+      tenderTitle?.zh?.trim() ? `标题：${tenderTitle.zh.trim()}` : null,
+      tenderSummary?.zh?.trim() ? `摘要：${tenderSummary.zh.trim()}` : null,
+      typeof tender.one_line_summary === "string" && tender.one_line_summary.trim()
+        ? `已有一句话总结：${tender.one_line_summary.trim()}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     for (const file of files) {
       // basename(), not the raw name: file.fileName is whatever the
@@ -174,7 +188,7 @@ export async function analyzeUploadedDocument(
         // option was removed from this upload flow per the user's explicit
         // request (2026-09-04); extract-tender-document.ts's CLI --precise
         // flag is a separate code path and is unaffected.
-        const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: titleForModel, buyer: "" };
+        const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: titleForModel, buyer: "", existingChineseText };
         const hasText = await hasRealTextLayer(tempPath);
         const model: ExtractionModel = chooseExtractionModel(hasText, relevanceTier);
         // Only the first N pages are read, N by tier — real tenders reach

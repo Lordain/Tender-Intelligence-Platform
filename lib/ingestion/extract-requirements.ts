@@ -248,7 +248,7 @@ Ground rules:
 - Every item needs a sourceReference citing where it came from (page number and/or numeral/section) — an item you cannot cite, you cannot include.
 - These documents are long and mostly procedural boilerplate (the same legal citations appear in nearly every Compras MX tender). Extract only tender-specific, actionable content — skip generic restatements of the procurement law itself.
 - All title/description fields must be written directly in Chinese (zh), concise and close to the document's own terms — do not copy multi-sentence legal paragraphs verbatim, and do not write a placeholder.
-- The tender's own title is given to you above, and where it is already in Chinese it is what this platform SHOWS for this tender. Reuse its renderings of proper nouns — place names, entity names, river and project names — exactly as written there. Do not re-transliterate a name that already appears in it: one tender showing 亚纳万卡区 in its title and 扬阿万卡 in its summary reads as two different places to a customer.
+- You may be given a block headed 本平台已对该项目使用的中文写法 — the tender's title, summary and any earlier one-line summary, as this platform ALREADY displays them. It is reference vocabulary, never a source to extract from. Reuse its renderings of proper nouns — place names, entity names, river and project names — exactly as written there, and do not re-transliterate any name that appears in it. One tender showing 亚纳万卡区 in its title and 扬阿万卡 in its summary reads as two different places to a customer. For a name that appears NOWHERE in that block, transliterate it as you normally would.
 - If a section is genuinely absent from this document (e.g. no Anexo Técnico attached), return an empty array for the corresponding field rather than guessing.
 
 Also extract "keyDates": the document's cronograma / calendario de actividades, one entry per dated row. For several of the sources this platform reads (Peru's OECE above all) the bid deadline exists NOWHERE else — not in any feed, not on any list page, only in this document — so a cronograma read correctly here is the only deadline a bidder will ever see. Dates are DAY/MONTH/YEAR in every one of these countries; return YYYY-MM-DD. An addendum/circular that moves a date supersedes the original schedule — use the moved date. Never derive a date from the publication date or from how these procedures usually run.
@@ -686,7 +686,25 @@ async function runChunkedPdfExtraction(
 
 export async function extractTenderRequirements(
   filePath: string,
-  context: { tenderNumber: string; title: string; buyer: string },
+  context: {
+    tenderNumber: string;
+    title: string;
+    buyer: string;
+    /**
+     * Chinese this platform ALREADY shows for this tender — its title, its
+     * summary, and any one-line summary a previous analysis wrote.
+     *
+     * Handed to the model purely as a vocabulary anchor. Real report
+     * 2026-09-14: a tender titled 亚纳万卡区（Yanahuanca） was summarised as
+     * 扬阿万卡 — one town, two transliterations, on one page. The title
+     * alone does not fix it, because a place named only in the summary
+     * (a river, a neighbouring district, the buyer's own municipality)
+     * still gets re-transliterated from scratch. Everything the site
+     * already displays goes in, so there is one established spelling per
+     * name rather than one per model call.
+     */
+    existingChineseText?: string;
+  },
   model: ExtractionModel = "claude-sonnet-5",
   // Defaults to a real Anthropic client; extract-requirements-qwen-
   // anthropic.ts passes one pointed at DashScope's Anthropic-compatible
@@ -744,7 +762,13 @@ export async function extractTenderRequirements(
   // must contain the word 'json' in some form") when nothing in the
   // messages array says so — this file's SYSTEM_PROMPT never happened to.
   // Harmless for Claude's own structured outputs either way.
-  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}, and respond with a valid JSON object matching the required schema.`;
+  // Placed AFTER the task sentence and clearly labelled, so it reads as
+  // reference material rather than as content to extract from — it is the
+  // platform's own prior output, not the tender document.
+  const established = context.existingChineseText?.trim()
+    ? `\n\n本平台已对该项目使用的中文写法（仅供统一术语，不是提取来源）：\n${context.existingChineseText.trim()}`
+    : "";
+  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}, and respond with a valid JSON object matching the required schema.${established}`;
 
   if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context, useStructuredOutput, maxPages);
 

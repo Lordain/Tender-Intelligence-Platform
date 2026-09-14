@@ -99,13 +99,14 @@ const USAGE = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 
  * which is exactly the sequence the chunking fallback depends on.
  */
 function stubClient(script: (unknown | Error)[]) {
-  const calls: { contentTypes: string[]; promptChars: number; docBytes: number }[] = [];
+  const calls: { contentTypes: string[]; promptChars: number; promptText: string; docBytes: number }[] = [];
   const requestOptionsSeen: ({ maxRetries?: number; timeout?: number; fetchOptions?: { dispatcher?: unknown } } | undefined)[] = [];
   const next = (content: unknown) => {
     const blocks = Array.isArray(content) ? content : [];
     calls.push({
       contentTypes: blocks.map((b) => (b as { type: string }).type),
       promptChars: blocks.reduce((n, b) => n + ((b as { text?: string }).text?.length ?? 0), 0),
+      promptText: blocks.map((b) => (b as { text?: string }).text ?? "").join("\n"),
       docBytes: blocks.reduce((n, b) => n + ((b as { source?: { data?: string } }).source?.data?.length ?? 0), 0),
     });
     const step = script[Math.min(calls.length - 1, script.length - 1)];
@@ -462,6 +463,36 @@ async function main() {
 
     const empty = await runPool([], 4, async () => {});
     check("an empty run is not an error", empty.completed === 0);
+  });
+
+  // ---- 7g. One spelling per name, across two unrelated model calls ----
+  await group("7g 术语锚点", async () => {
+    const big = join(TMP, "big.pdf");
+    const established = "标题：亚纳万卡区河岸防护工程\n摘要：乔皮瓦兰加河左右岸防护";
+    const { client, calls } = stubClient([FULL_RESPONSE]);
+    await extractTenderRequirements(
+      big,
+      { ...CONTEXT, existingChineseText: established },
+      "qwen3.5-plus",
+      client,
+      false,
+      20,
+      true,
+    );
+    const sent = calls[0].promptText;
+    check("the established Chinese reaches the model", sent.includes("亚纳万卡区"));
+    check("including names that appear only in the summary, not the title", sent.includes("乔皮瓦兰加河"));
+    check(
+      "labelled as vocabulary, not as something to extract from",
+      sent.includes("本平台已对该项目使用的中文写法") && sent.includes("不是提取来源"),
+    );
+
+    const without = stubClient([FULL_RESPONSE]);
+    await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", without.client, false, 20, true);
+    check(
+      "and a tender with no established Chinese gets no empty header",
+      !without.calls[0].promptText.includes("本平台已对该项目使用的中文写法"),
+    );
   });
 
   // ---- 8. The money question: does a repeating failure stop the batch? ----

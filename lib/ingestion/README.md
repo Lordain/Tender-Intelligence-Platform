@@ -4339,11 +4339,28 @@ to know the platform already renders it 亚纳万卡. The title translation
 (task #24) and the document extraction are two unrelated model calls with no
 shared vocabulary between them.
 
-Now the tender's stored `title.zh` is selected and passed as the context
-title, and SYSTEM_PROMPT carries an explicit rule: reuse the proper nouns —
-places, entities, rivers, project names — exactly as the given title writes
-them, never re-transliterate a name that already appears there. The title is
-the anchor because it is what the site shows.
+The fix is not the title alone. The title does not name every place (user,
+same day: 有些地名标题没有，摘要里面有) — a river, a neighbouring district, the
+buyer's own municipality routinely appear only in the summary, and each of
+those is a name the extraction would still transliterate afresh.
+
+So everything the site already displays in Chinese for that tender goes in:
+`title.zh`, `summary.zh`, and any `one_line_summary` an earlier analysis
+wrote. They reach the model as a labelled block after the task sentence —
+
+```
+本平台已对该项目使用的中文写法（仅供统一术语，不是提取来源）：
+标题：…
+摘要：…
+已有一句话总结：…
+```
+
+— and SYSTEM_PROMPT requires reusing its renderings of proper nouns exactly,
+never re-transliterating a name that appears in it, while transliterating
+normally any name that does not. The label matters as much as the content:
+this is the platform's own prior output, and without saying so it reads as
+more document to extract requirements from. A tender with no established
+Chinese gets no block at all rather than an empty header.
 
 **The throughput.** One document at ~99s and a strictly sequential batch is
 about six per hour; 66 Peru documents is over two hours of mostly *idle*

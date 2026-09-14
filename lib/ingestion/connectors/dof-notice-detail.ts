@@ -170,20 +170,47 @@ export type FetchDofNoticeDetailResult =
   | { status: "not_found" }
   | { status: "error"; message: string };
 
+/**
+ * One notice's detail page.
+ *
+ * Everything that can go wrong on the wire comes back as `status: "error"`,
+ * never as a thrown exception — the caller runs this over every notice in a
+ * search and has its own circuit breaker for "this looks systemic"
+ * (import-dof-search-live.ts). A real import died for exactly this reason
+ * (2026-09-14): the body read sat OUTSIDE the try, so when DOF closed a
+ * connection mid-response undici's "terminated" escaped the function, past
+ * the breaker, and killed a 33-notice import that had already fetched most
+ * of them. Nothing was written, and the admin saw one word: terminated.
+ *
+ * The timeout is here for the same reason. Without one a single hung
+ * connection holds the whole request open until the platform kills it, which
+ * looks identical to "DOF is down" and loses just as much work.
+ */
+const DETAIL_FETCH_TIMEOUT_MS = 15_000;
+
 /** `fecha` must be DD/MM/YYYY, matching the real URL shape the user confirmed (not the search endpoint's YYYY/MM/DD). */
 export async function fetchDofNoticeDetail(codNota: number, fecha: string): Promise<FetchDofNoticeDetailResult> {
   const url = `https://dof.gob.mx/nota_detalle.php?codigo=${codNota}&fecha=${encodeURIComponent(fecha)}`;
 
-  let response: Response;
-  try {
-    response = await fetch(url);
-  } catch (err) {
-    return { status: "error", message: err instanceof Error ? err.message : String(err) };
-  }
-  if (response.status === 404) return { status: "not_found" };
-  if (!response.ok) return { status: "error", message: `HTTP ${response.status} ${response.statusText}` };
+  // One retry, the same posture the read scripts take: a dropped connection
+  // or a timeout on a public page is far likelier to be a blip than a fact
+  // about this notice, and re-running the whole import to find out is the
+  // expensive way to ask. A second failure is treated as real.
+  let lastError = "";
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(DETAIL_FETCH_TIMEOUT_MS) });
+      if (response.status === 404) return { status: "not_found" };
+      if (!response.ok) return { status: "error", message: `HTTP ${response.status} ${response.statusText}` };
 
-  const html = await response.text();
-  const detail = parseDofNoticeDetailHtml(html);
-  return detail ? { status: "found", detail } : { status: "not_found" };
+      // Inside the try: this is where "terminated" comes from.
+      const html = await response.text();
+      const detail = parseDofNoticeDetailHtml(html);
+      return detail ? { status: "found", detail } : { status: "not_found" };
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+      if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  return { status: "error", message: lastError };
 }

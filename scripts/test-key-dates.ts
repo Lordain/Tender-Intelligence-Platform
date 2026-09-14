@@ -577,6 +577,39 @@ const pemxDate = (type: string) => pemx.rows.filter((r) => r.type === type).map(
   );
 }
 
+// ---------------------------------------------------------------------------
+// Both formats must yield an award date, since the paste route now fills the
+// award_date column from it. Before that, a pasted award went in as a plain
+// timeline row — which KeyDatesEditor hides (HANDLED_ELSEWHERE) while the
+// public timeline shows it, so a real tender displayed 中标结果 2026-10-13 in
+// public that an admin could neither see nor delete (reported 2026-09-14).
+// ---------------------------------------------------------------------------
+{
+  const seaceAward = ficha.rows.filter((r) => r.type === "award");
+  check("the SEACE table yields exactly one award date", seaceAward.length === 1);
+  check("…and it is the Buena Pro day", seaceAward[0]?.date === "2026-10-14");
+
+  const pemxAward = pemx.rows.filter((r) => r.type === "award");
+  check("the Proyectos Estratégicos block yields exactly one award date", pemxAward.length === 1);
+  check("…and it is el Fallo", pemxAward[0]?.date === "2026-10-19");
+
+  // Whatever fills a column must never ALSO be inserted as its own row.
+  for (const [name, parsedRows] of [["SEACE", ficha.rows], ["PE MX", pemx.rows]] as const) {
+    const timeline = parsedRows.filter((r) => r.type !== "submission" && r.type !== "award");
+    check(
+      `${name}: the column-backed types are separable from the timeline rows`,
+      timeline.every((r) => r.type !== "submission" && r.type !== "award") &&
+        timeline.length === parsedRows.length - parsedRows.filter((r) => r.type === "submission" || r.type === "award").length,
+    );
+  }
+
+  // The award must not land before the deadline it follows.
+  const seaceSubmission = ficha.rows.find((r) => r.type === "submission")?.date;
+  check("SEACE: the award follows the submission deadline", !!seaceSubmission && seaceAward[0]!.date >= seaceSubmission);
+  const pemxSubmission = pemx.rows.find((r) => r.type === "submission")?.date;
+  check("PE MX: the award follows the submission deadline", !!pemxSubmission && pemxAward[0]!.date >= pemxSubmission);
+}
+
 function daysBetweenForTest(day: string): number {
   return Math.floor((new Date("2026-09-12T00:00:00.000Z").getTime() - new Date(`${day}T00:00:00.000Z`).getTime()) / 86_400_000);
 }

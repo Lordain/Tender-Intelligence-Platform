@@ -64,6 +64,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
   const storedDeadline = (tender.submission_deadline as string | null)?.slice(0, 10) ?? null;
   const extractedDeadline = parsed.rows.find((row) => row.type === "submission")?.date;
+  const storedAwardDate = (tender.award_date as string | null)?.slice(0, 10) ?? null;
+  const extractedAwardDate = parsed.rows.find((row) => row.type === "award")?.date;
 
   // What this tender already has, minus whatever a previous paste wrote (those
   // rows are deleted and rebuilt below, so counting them would make a re-paste
@@ -85,8 +87,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
   // `submission` is handled by the deadline column and its sync, not as a row
   // here, so it is not part of the row-level diff.
+  // `submission` and `award` are both excluded from the row-level diff: each
+  // has its own column, and syncKeyDatesForTopLevelFields() owns the single
+  // row that mirrors it. Inserting one here as well would put two 交标截止 or
+  // two 授标 entries on the public timeline until the next admin save silently
+  // removed one, which a customer would see.
   const diff = diffAgainstExisting(
-    parsed.rows.filter((row) => row.type !== "submission"),
+    parsed.rows.filter((row) => row.type !== "submission" && row.type !== "award"),
     existing,
   );
 
@@ -110,6 +117,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
       problems: problems.map((p) => p.message),
       storedDeadline,
       extractedDeadline,
+      storedAwardDate,
+      extractedAwardDate,
       duplicates,
       conflicts,
       willInsert: diff.toInsert.length,
@@ -167,14 +176,41 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   // "fill, never overwrite" rule writeExtractedKeyDates() follows, for the
   // same reason: a date already there came from somewhere and a paste is
   // not grounds to silently replace it.
+  //
+  // The award date is filled the same way, at the user's instruction
+  // (2026-09-14). Note what it means: 中标日期 on the public page reads as a
+  // statement that the tender WAS awarded, while an otorgamiento de la buena
+  // pro on a cronograma is a date nobody has reached yet — which is why the
+  // document-extraction path (writeExtractedKeyDates) deliberately does NOT
+  // fill it. What makes it safe here is that the public overview renders the
+  // date only inside the awarded block, which needs a supplier or an awarded
+  // amount; a planned date alone changes nothing a reader sees, and gives the
+  // admin the schedule they asked for.
+  const columnUpdate: Record<string, string> = {};
+  if (extractedDeadline && !storedDeadline) columnUpdate.submission_deadline = extractedDeadline;
+  if (extractedAwardDate && !storedAwardDate) columnUpdate.award_date = extractedAwardDate;
+
   let deadlineSet: string | undefined;
-  if (extractedDeadline && !storedDeadline) {
-    const { error } = await supabase.from("tenders").update({ submission_deadline: extractedDeadline }).eq("id", tender.id);
+  let awardDateSet: string | undefined;
+  if (Object.keys(columnUpdate).length > 0) {
+    const { error } = await supabase.from("tenders").update(columnUpdate).eq("id", tender.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    // The same call the admin form's own save makes, so the timeline row and
-    // the column can never disagree — and exactly one row exists either way.
-    await syncKeyDatesForTopLevelFields(supabase, tender.id as string, { submissionDeadline: extractedDeadline });
-    deadlineSet = extractedDeadline;
+    deadlineSet = columnUpdate.submission_deadline;
+    awardDateSet = columnUpdate.award_date;
+  }
+
+  // The same call the admin form's own save makes, so the timeline rows and
+  // the columns can never disagree — and exactly one row exists of each type.
+  // Passed the EFFECTIVE values, stored or just-written: a column that already
+  // had a date still needs its mirror row rebuilt, since the paste deleted
+  // whatever rows it had written for these types a moment ago.
+  const effectiveDeadline = storedDeadline ?? deadlineSet;
+  const effectiveAwardDate = storedAwardDate ?? awardDateSet;
+  if (effectiveDeadline || effectiveAwardDate) {
+    await syncKeyDatesForTopLevelFields(supabase, tender.id as string, {
+      submissionDeadline: effectiveDeadline,
+      awardDate: effectiveAwardDate,
+    });
   }
 
   revalidateTenders();
@@ -187,6 +223,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     duplicates,
     conflicts,
     deadlineSet,
+    awardDateSet,
+    awardDateUnchanged: extractedAwardDate && storedAwardDate && storedAwardDate !== extractedAwardDate ? storedAwardDate : undefined,
     deadlineUnchanged: extractedDeadline && storedDeadline && storedDeadline !== extractedDeadline ? storedDeadline : undefined,
   });
 }

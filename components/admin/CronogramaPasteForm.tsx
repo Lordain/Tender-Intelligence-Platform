@@ -25,6 +25,8 @@ type Preview = {
   problems: string[];
   storedDeadline: string | null;
   extractedDeadline?: string;
+  storedAwardDate: string | null;
+  extractedAwardDate?: string;
   /** Ficha rows an existing entry already states — not written again. */
   duplicates: { label: string; date: string; type: string; existingSource: string }[];
   /** Same stage, different day. Both rows end up stored; a person settles it. */
@@ -38,6 +40,8 @@ type WriteResult = {
   timelineRows: number;
   deadlineSet?: string;
   deadlineUnchanged?: string;
+  awardDateSet?: string;
+  awardDateUnchanged?: string;
   problems: string[];
   duplicates: { label: string; date: string; type: string; existingSource: string }[];
   conflicts: { label: string; type: string; fichaDate: string; storedDate: string; existingSource: string }[];
@@ -114,7 +118,8 @@ export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: strin
   // A paste whose every row the tender already has is still worth writing when
   // the deadline column is empty — that is the field the public page shows.
   const deadlineIsNew = Boolean(preview?.extractedDeadline && !preview?.storedDeadline);
-  const canWrite = Boolean(preview && (preview.willInsert > 0 || deadlineIsNew));
+  const awardDateIsNew = Boolean(preview?.extractedAwardDate && !preview?.storedAwardDate);
+  const canWrite = Boolean(preview && (preview.willInsert > 0 || deadlineIsNew || awardDateIsNew));
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fdfcf8] p-5">
@@ -164,7 +169,7 @@ export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: strin
             : preview.willInsert > 0
               ? `写入这 ${preview.willInsert} 条`
               : deadlineIsNew
-                ? "只写入交标截止日"
+                ? "只写入交标截止日/中标日期"
                 : "无需写入（都已存在）"}
         </button>
         {!preview && !busy && (
@@ -215,8 +220,19 @@ export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: strin
           {preview.extractedDeadline && (
             <p className={preview.storedDeadline ? "text-amber-700" : "font-black text-emerald-700"}>
               {preview.storedDeadline
-                ? `交标截止：ficha 是 ${preview.extractedDeadline}，但本项目已有 ${preview.storedDeadline} —— 不会覆盖，如需更改请用上方的「投标截止日期」字段。`
+                ? `交标截止：日程是 ${preview.extractedDeadline}，但本项目已有 ${preview.storedDeadline} —— 不会覆盖，如需更改请用上方的「投标截止日期」字段。`
                 : `交标截止 ${preview.extractedDeadline} 将写入本项目（原为空）。`}
+            </p>
+          )}
+
+          {/* The award date gets the same treatment, and the same caveat: it
+              fills 中标日期, which is a RESULT field. The date here is the
+              planned otorgamiento de la buena pro, so the note says so. */}
+          {preview.extractedAwardDate && (
+            <p className={preview.storedAwardDate ? "text-amber-700" : "font-black text-emerald-700"}>
+              {preview.storedAwardDate
+                ? `中标日期：日程是 ${preview.extractedAwardDate}，但本项目已有 ${preview.storedAwardDate} —— 不会覆盖。`
+                : `中标日期 ${preview.extractedAwardDate} 将写入本项目（原为空，这是日程上的计划授标日，不代表已经定标）。`}
             </p>
           )}
 
@@ -291,6 +307,8 @@ export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: strin
           )}
           {result.deadlineSet && <p className="mt-1 font-black">交标截止日已设为 {result.deadlineSet}。</p>}
           {result.deadlineUnchanged && <p className="mt-1">本项目已有交标截止日 {result.deadlineUnchanged}，未覆盖。</p>}
+          {result.awardDateSet && <p className="mt-1 font-black">中标日期已设为 {result.awardDateSet}（计划授标日）。</p>}
+          {result.awardDateUnchanged && <p className="mt-1">本项目已有中标日期 {result.awardDateUnchanged}，未覆盖。</p>}
           <p className="mt-1">刷新页面查看关键日期时间线。</p>
         </div>
       )}

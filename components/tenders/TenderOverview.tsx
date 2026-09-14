@@ -29,11 +29,18 @@ function Field({ label, value, emphasized = false, note }: { label: string; valu
 
 export function TenderOverview({ tender, showTrialCta = false }: { tender: Tender; showTrialCta?: boolean }) {
   const { locale } = useLocale();
+  // awardDate renders ONLY inside the awarded block below, so it only counts
+  // when that block renders. It used to be counted unconditionally, which was
+  // invisible while an award date implied an awarded tender — but a pasted
+  // cronograma now fills award_date with the PLANNED otorgamiento de la buena
+  // pro, so a tender with a date and no supplier is the common case, and the
+  // grid was picking a 4-column layout for 3 columns of content.
+  const hasAwardResult = Boolean(tender.awardedTo) || tender.awardedValue !== undefined;
   const fieldCount = 8
     + (tender.participationScope ? 1 : 0)
     + (tender.awardedTo ? 1 : 0)
     + (tender.awardedValue !== undefined ? 1 : 0)
-    + (tender.awardDate ? 1 : 0);
+    + (hasAwardResult && tender.awardDate ? 1 : 0);
   const desktopGrid = fieldCount % 4 === 0 ? "xl:grid-cols-4" : "xl:grid-cols-3";
 
   return (
@@ -150,7 +157,7 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
           }
           emphasized
         />
-        {(tender.awardedTo || tender.awardedValue !== undefined) && (
+        {hasAwardResult && (
           <>
             {tender.awardedTo && <Field label={localize(uiText.awardedToLabel, locale)} value={tender.awardedTo} emphasized />}
             {tender.awardedValue !== undefined && (

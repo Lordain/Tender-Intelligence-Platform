@@ -567,32 +567,30 @@ export type AdminTenderListRow = {
   relevanceManuallyOverridden?: boolean;
   homepageFeatured?: boolean;
   /**
-   * Whether this tender has any logged analysis (qualification/experience/
-   * document requirement or risk — see fetchAwardedSlugsWithAnalysis's own
-   * comment). Only ever computed for `status === "awarded"` rows — cheap
-   * because that's a small subset, unlike joining tender_requirements/
-   * tender_risks for every row in this list, which powers a table over
-   * 1000+ tenders (see this type's own header comment). `undefined` for
-   * every non-awarded row: this field exists only to support the "已中标 +
-   * 无标书分析" bulk-cleanup filter (2026-09-05, explicit request), which
-   * only ever cares about awarded tenders.
-   */
-  hasAnalysis?: boolean;
-  /**
-   * True when this tender HAS an analysed bid document and the analysis came
-   * back with nothing — no qualification, no experience requirement, no
-   * required document, no risk. The 0/0/0/0 row in a batch run.
+   * What running 标书分析 on this tender's documents produced, or that nobody
+   * has run it.
    *
-   * Its own field rather than a corollary of hasAnalysis because the two ask
-   * different questions of different populations. hasAnalysis is awarded-only
-   * and asks "did anyone log a result". This asks "did a model read a document
-   * and find nothing", which is a worklist: it means either the file was the
-   * wrong one or it was a scan the text path could not read (2026-09-16 — a
-   * 61-page DOCUMENTO BASE returned 0/0/0/0 for exactly that reason), and a
-   * person has to look at it. Scoped to tenders with an extracted document, so
-   * it stays a small query however large the table gets.
+   *   "empty"     — a document WAS analysed and yielded nothing: no
+   *                 qualification, no experience requirement, no required
+   *                 document, no risk. The 0/0/0/0 row in a batch run, and a
+   *                 worklist: either the wrong file was fetched, or it is a
+   *                 scan the text path could not read (2026-09-16 — a 61-page
+   *                 DOCUMENTO BASE returned 0/0/0/0 for exactly that reason).
+   *   "analysed"  — a document was analysed and produced something.
+   *   "none"      — no document of this tender has been analysed.
+   *
+   * It replaces the awarded-only hasAnalysis filter (2026-09-16, explicit
+   * request). That one could only ever answer for `status === "awarded"`
+   * rows, because joining requirements and risks for every row of a 1000-row
+   * table was not worth one cleanup filter. This asks the question of the
+   * document instead, so one probe scoped with tender_documents!inner covers
+   * every tender at the same cost: whatever has not been analysed is simply
+   * absent from it.
+   *
+   * The 已中标 + 没跑过分析 cleanup the old filter existed for is still one
+   * click away — 项目状态 已中标 plus 标书分析 还没跑过.
    */
-  analysisEmpty?: boolean;
+  analysisState?: "empty" | "analysed" | "none";
   estimatedValue?: number;
   currency?: string;
   publicationDate: string;
@@ -647,16 +645,18 @@ type AnalysedDocumentProbeRow = {
 };
 
 /**
- * Slugs whose bid document was analysed and yielded nothing — see
- * AdminTenderListRow.analysisEmpty.
+ * Split every tender whose bid document has been analysed into the ones that
+ * produced something and the ones that came back 0/0/0/0 — see
+ * AdminTenderListRow.analysisState.
  *
  * `tender_documents!inner` with extraction_status = "extracted" is what keeps
  * this cheap: only tenders someone actually paid to analyse are joined, not
- * the whole table. A tender nobody has analysed is not in the result at all,
- * which is right — it has no empty analysis, it has no analysis.
+ * the whole table. A tender nobody has analysed appears in neither set, which
+ * is exactly the third state.
  */
-async function fetchAnalysedButEmptySlugs(supabase: SupabaseClient): Promise<Set<string>> {
-  const slugs = new Set<string>();
+async function fetchAnalysisStates(supabase: SupabaseClient): Promise<{ empty: Set<string>; analysed: Set<string> }> {
+  const empty = new Set<string>();
+  const analysed = new Set<string>();
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
     const data = await retrySupabaseRead(
       () => supabase
@@ -669,11 +669,12 @@ async function fetchAnalysedButEmptySlugs(supabase: SupabaseClient): Promise<Set
 
     const page = data as unknown as AnalysedDocumentProbeRow[];
     for (const row of page) {
-      if (row.tender_requirements.length === 0 && row.tender_risks.length === 0) slugs.add(row.slug);
+      const hasContent = row.tender_requirements.length > 0 || row.tender_risks.length > 0;
+      (hasContent ? analysed : empty).add(row.slug);
     }
     if (page.length < SUPABASE_PAGE_SIZE) break;
   }
-  return slugs;
+  return { empty, analysed };
 }
 
 export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[] | null> {
@@ -700,10 +701,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     if (page.length < SUPABASE_PAGE_SIZE) break;
   }
 
-  const [awardedWithAnalysis, analysedButEmpty] = await Promise.all([
-    fetchAwardedSlugsWithAnalysis(supabase),
-    fetchAnalysedButEmptySlugs(supabase),
-  ]);
+  const analysisStates = await fetchAnalysisStates(supabase);
 
   return rows
     .map((row) => ({
@@ -718,8 +716,11 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     relevanceTier: row.relevance_tier,
     relevanceManuallyOverridden: row.relevance_manually_overridden ?? false,
     homepageFeatured: row.homepage_featured ?? false,
-    hasAnalysis: row.status === "awarded" ? awardedWithAnalysis.has(row.slug) : undefined,
-    analysisEmpty: analysedButEmpty.has(row.slug),
+    analysisState: analysisStates.empty.has(row.slug)
+      ? "empty"
+      : analysisStates.analysed.has(row.slug)
+        ? "analysed"
+        : "none",
     estimatedValue: row.estimated_value ?? undefined,
     currency: row.currency ?? undefined,
     publicationDate: row.publication_date,

@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "服务条款",
   description: "平台提供什么、用户如何使用信息，以及双方责任的基本边界。",
+  alternates: { canonical: "/terms" },
 };
 
 const sections: PolicySection[] = [

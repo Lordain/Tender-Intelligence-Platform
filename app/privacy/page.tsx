@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "隐私政策",
   description: "本平台收集哪些个人信息、如何使用与保存，以及用户可行使的 ARCO 权利。",
+  alternates: { canonical: "/privacy" },
 };
 
 const sections: PolicySection[] = [

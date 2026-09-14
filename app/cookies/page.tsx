@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Cookie 政策",
   description: "本平台使用的 Cookie 与同类技术，以及它们各自的用途。",
+  alternates: { canonical: "/cookies" },
 };
 
 const sections: PolicySection[] = [

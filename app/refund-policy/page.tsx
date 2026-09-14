@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "退款政策",
   description: "订阅退款的适用情形、例外情况与申请方式。",
+  alternates: { canonical: "/refund-policy" },
 };
 
 const sections: PolicySection[] = [

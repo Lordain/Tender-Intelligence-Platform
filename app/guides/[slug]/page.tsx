@@ -19,6 +19,7 @@ export async function generateMetadata({ params }: GuidePageProps): Promise<Meta
   return {
     title: `${guide.platform} 参标指南`,
     description: guide.summary,
+    alternates: { canonical: `/guides/${guide.slug}` },
   };
 }
 

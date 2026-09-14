@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "问题澄清",
   description: "说明数据来源、中文整理的边界，以及投标判断中最容易被误解的问题。",
+  alternates: { canonical: "/clarifications" },
 };
 
 const questions = [

@@ -5,6 +5,7 @@ import { guideCountries, participationGuides } from "@/lib/participation-guides"
 export const metadata: Metadata = {
   title: "参标指南",
   description: "面向中国企业的拉美政府采购参标指南，免费了解各官方平台的参与流程、常见资料与注意事项。",
+  alternates: { canonical: "/guides" },
 };
 
 export default function GuidesPage() {

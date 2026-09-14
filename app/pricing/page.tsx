@@ -7,6 +7,7 @@ import { TRIAL_DAYS } from "@/lib/access-control";
 export const metadata: Metadata = {
   title: "订阅方案与价格",
   description: "个人版与企业版订阅方案、月度/半年度/年度计费周期与包含功能对比。",
+  alternates: { canonical: "/pricing" },
 };
 
 export default function PricingPage() {

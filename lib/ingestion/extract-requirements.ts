@@ -87,6 +87,36 @@ const RequirementSchema = z.object({
   sourceReference: z.string().describe("Where this came from, e.g. 'página 18, numeral 2.3' — always cite a page/section, never assert without one."),
 });
 
+/**
+ * What the model actually writes when asked for a risk level, mapped onto the
+ * four the schema stores.
+ *
+ * A real run on 2026-09-16 lost a whole document — and aborted the batch
+ * behind it — because ONE risk out of five came back with a level outside the
+ * enum. The model was not wrong about the risk; it wrote the level in the
+ * document's own language, or in the Chinese the rest of its answer is in.
+ * Rejecting the entire extraction over that is the schema being brittle about
+ * vocabulary, not the model breaking a contract.
+ *
+ * Only unambiguous synonyms, and only for a field whose four values are an
+ * ordered scale: mapping "alto" to high is a translation, not a guess. A value
+ * this does not recognise still fails, loudly, as before.
+ *
+ * Applied in normalizeRawExtraction rather than as a z.preprocess on the
+ * schema itself, because that schema is also handed to zodOutputFormat for
+ * Claude's structured outputs — where the API enforces the enum server-side
+ * and this deviation cannot happen. Only the manual-JSON path (DashScope,
+ * useStructuredOutput: false) can produce it, and that path is exactly what
+ * normalizeRawExtraction exists for.
+ */
+const RISK_LEVEL_SYNONYMS: Record<string, "low" | "medium" | "high" | "critical"> = {
+  bajo: "low", baja: "low", leve: "low", 低: "low", 低风险: "low", informational: "low",
+  medio: "medium", media: "medium", moderado: "medium", moderate: "medium", 中: "medium", 中等: "medium", 中风险: "medium",
+  alto: "high", alta: "high", 高: "high", 高风险: "high", severe: "high",
+  "muy alto": "critical", "muy alta": "critical", critico: "critical", crítico: "critical", critica: "critical", crítica: "critical",
+  极高: "critical", 严重: "critical", 致命: "critical", fatal: "critical",
+};
+
 const RiskSchema = z.object({
   level: z.enum(["low", "medium", "high", "critical"]).describe(
     "critical: grounds for automatic disqualification (causal de desechamiento) or contract rescission. high: financial penalty tied to a specific, easy-to-miss deadline or condition. medium: a real but manageable obligation (e.g. standard performance guarantee). low: informational.",
@@ -197,6 +227,22 @@ export function normalizeRawExtraction(input: unknown): unknown {
   for (const [key, field] of Object.entries(ExtractionSchema.shape)) {
     if (raw[key] === undefined && isArrayField(field)) raw[key] = [];
   }
+
+  // Translate a risk level the model wrote in the document's language, or in
+  // the Chinese the rest of its answer is in — see RISK_LEVEL_SYNONYMS. Same
+  // rule as the array defaulting above: only a missing or differently-worded
+  // value is repaired, never a value invented. Anything unrecognised is left
+  // exactly as it came and still fails validation.
+  if (Array.isArray(raw.risks)) {
+    for (const risk of raw.risks) {
+      if (typeof risk !== "object" || risk === null) continue;
+      const item = risk as Record<string, unknown>;
+      if (typeof item.level !== "string") continue;
+      const mapped = RISK_LEVEL_SYNONYMS[item.level.trim().toLowerCase()];
+      if (mapped) item.level = mapped;
+    }
+  }
+
   return raw;
 }
 

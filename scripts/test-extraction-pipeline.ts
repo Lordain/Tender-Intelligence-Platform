@@ -34,6 +34,7 @@ import {
 import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
 import { isTextLayerSubstantial } from "../lib/ingestion/text-layer";
 import { isTransientServerError } from "../lib/ingestion/extraction-failure";
+import { normalizeRawExtraction } from "../lib/ingestion/extract-requirements";
 import { chooseExtractionModel, maxPagesForTier } from "../lib/ingestion/extraction-routing";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -594,6 +595,35 @@ async function main() {
     ]) {
       check(`not retried: ${message.slice(0, 40)}`, !isTransientServerError(new Error(message)));
     }
+  });
+
+  // ---- A model's wording must not cost the batch ----
+  await group("风险等级用别的写法不该中止整批", async () => {
+    for (const [written, expected] of [["alto", "high"], ["MUY ALTO", "critical"], ["中等", "medium"], ["高", "high"], ["Bajo", "low"]] as const) {
+      const normalized = normalizeRawExtraction({ risks: [{ level: written }] }) as { risks: { level: string }[] };
+      check(`"${written}" reads as ${expected}`, normalized.risks[0].level === expected);
+    }
+    const unknown = normalizeRawExtraction({ risks: [{ level: "catastrófico-ish" }] }) as { risks: { level: string }[] };
+    check("a level nobody can map is left alone, to fail loudly", unknown.risks[0].level === "catastrófico-ish");
+
+    // The 2026-09-16 abort: one bad enum value stopped a batch with four
+    // tenders left. A value complaint is this document's problem.
+    const valueOnly = new Error(
+      'Extraction failed schema validation for peru-x: [{ "code": "invalid_value", "path": ["risks", 4, "level"] }]',
+    );
+    check("an invalid enum value is a document failure, not systematic", classifyExtractionFailure(valueOnly).kind === "document");
+
+    // The 2026-09-13 outage: a required key the prompt never asked for. Shape,
+    // identical on every document, and stopping is right.
+    const shape = new Error(
+      'Extraction failed schema validation for peru-y: [{ "code": "invalid_type", "expected": "array", "path": ["keyDates"] }]',
+    );
+    check("a wrong SHAPE is still systematic", classifyExtractionFailure(shape).kind === "systematic");
+
+    const mixed = new Error(
+      'Extraction failed schema validation for peru-z: [{ "code": "invalid_value" }, { "code": "invalid_type" }]',
+    );
+    check("value plus shape is shape", classifyExtractionFailure(mixed).kind === "systematic");
   });
 
   console.log(`\n${passed}/${passed + failed} checks passed (0 model calls, 0 cost).`);

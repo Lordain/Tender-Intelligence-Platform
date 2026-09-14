@@ -463,14 +463,19 @@ type DocumentsNeededRow = {
   source_name: string;
   status: TenderStatus;
   tender_documents: { id: string }[];
+  tender_key_dates?: { type: TenderKeyDate["type"]; date: string }[];
   tender_document_links: { id: string }[];
   submission_deadline: string | null;
   documents_downloaded_at: string | null;
 };
 
+// tender_key_dates is joined for one reason: deriveTenderStatus needs it (a
+// PEMEX validity_end is the only end date some rows have). Same narrow
+// type/date join TENDER_LIST_SELECT uses over the whole table.
 const DOCUMENTS_NEEDED_SELECT = `
   slug, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url, source_name, status,
-  tender_documents ( id ), tender_document_links ( id ), submission_deadline, documents_downloaded_at
+  tender_documents ( id ), tender_document_links ( id ), submission_deadline, documents_downloaded_at,
+  tender_key_dates ( type, date )
 `;
 
 /**
@@ -544,7 +549,16 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
       publicationDate: row.publication_date,
       sourceUrl: row.source_url,
       sourceName: row.source_name,
-      status: row.status,
+      // Derived, exactly as the public list does it (toTender above). Showing
+      // the stored column here is how a tender whose junta de aclaraciones
+      // was a week ago still read 澄清中 on this page while the site said
+      // 招标中 — the stored status is only ever correct on the day it was
+      // written (lib/tender-status.ts's own header says so).
+      status: deriveTenderStatus(row.status, {
+        submissionDeadline: row.submission_deadline,
+        publicationDate: row.publication_date,
+        keyDates: row.tender_key_dates ?? [],
+      }),
       documentLinkCount: row.tender_document_links?.length ?? 0,
       documentsDownloadedAt: row.documents_downloaded_at ?? undefined,
     }));
@@ -618,6 +632,7 @@ type AdminTenderListDbRow = {
   publication_date_is_estimated: boolean | null;
   updated_at: string;
   submission_deadline: string | null;
+  tender_key_dates?: { type: TenderKeyDate["type"]; date: string }[];
 };
 
 /**
@@ -686,7 +701,9 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     const { data, error } = await supabase
       .from("tenders")
       .select(
-        "id, slug, tender_number, title, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline",
+        // tender_key_dates joined for deriveTenderStatus only — see
+        // DOCUMENTS_NEEDED_SELECT's comment for why it cannot be skipped.
+        "id, slug, tender_number, title, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, tender_key_dates ( type, date )",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
@@ -712,7 +729,13 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     buyer: row.buyer,
     industries: row.industries,
     country: row.country,
-    status: row.status,
+    // Derived, like every other surface — see toTender and
+    // fetchTendersNeedingDocumentsFromDb.
+    status: deriveTenderStatus(row.status, {
+      submissionDeadline: row.submission_deadline,
+      publicationDate: row.publication_date,
+      keyDates: row.tender_key_dates ?? [],
+    }),
     relevanceTier: row.relevance_tier,
     relevanceManuallyOverridden: row.relevance_manually_overridden ?? false,
     homepageFeatured: row.homepage_featured ?? false,

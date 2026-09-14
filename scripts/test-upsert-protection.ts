@@ -113,5 +113,55 @@ const ZH = "修建绕行路段";
   check("manual_field_overrides wins even when the Spanish changed", row.title, handwritten);
 }
 
+// ── An import may not delete a value by having none ────────────────────────
+// The rule that would have prevented 2026-09-15 on its own: ~65 Peru
+// deadlines, pasted in by hand from the official SEACE ficha, written to null
+// by the next import because Peru's feed publishes no deadline at all. No
+// lock was involved — the feed simply had nothing to say and said it anyway.
+{
+  const withDates = mapped(ES) as Record<string, unknown>;
+  const row = buildRowWithProtectedValues(withDates as unknown as Tender, stored({
+    slug: "secop-test-1",
+    submission_deadline: "2026-10-13",
+    award_date: "2026-10-20",
+    estimated_value: 1_200_000,
+    currency: "PEN",
+    awarded_to: "CONSORCIO X",
+    structured_duration_days: 240,
+  }));
+  check("a pasted bid deadline survives an import that carries none", row.submission_deadline, "2026-10-13");
+  check("…so does the award date", row.award_date, "2026-10-20");
+  check("…and the estimated value with its currency", [row.estimated_value, row.currency], [1_200_000, "PEN"]);
+  check("…and the awarded supplier", row.awarded_to, "CONSORCIO X");
+  check("…and the stored duration", row.structured_duration_days, 240);
+}
+
+{
+  // The other direction, which must keep working: a source that DOES publish
+  // a date still updates one, lock absent. Nobody may delete a value by
+  // having none; anyone may improve it.
+  const incoming = { ...mapped(ES), submissionDeadline: "2026-11-01" } as unknown as Tender;
+  const row = buildRowWithProtectedValues(incoming, stored({ slug: "secop-test-1", submission_deadline: "2026-10-13" }));
+  check("a real date from the source still wins", row.submission_deadline, "2026-11-01");
+}
+
+{
+  // And a hand edit still outranks even a real source value.
+  const incoming = { ...mapped(ES), submissionDeadline: "2026-11-01" } as unknown as Tender;
+  const row = buildRowWithProtectedValues(incoming, stored({
+    slug: "secop-test-1",
+    submission_deadline: "2026-10-13",
+    __omit: ["submission_deadline"],
+  }));
+  check("a locked deadline beats a real source value", row.submission_deadline, "2026-10-13");
+}
+
+{
+  // A column that was empty stays fillable — the rule must not freeze nulls.
+  const incoming = { ...mapped(ES), submissionDeadline: "2026-11-01" } as unknown as Tender;
+  const row = buildRowWithProtectedValues(incoming, stored({ slug: "secop-test-1", submission_deadline: null }));
+  check("an empty deadline is still filled by the source", row.submission_deadline, "2026-11-01");
+}
+
 console.log(`\n${passed}/${passed + failed} checks passed.`);
 if (failed > 0) process.exit(1);

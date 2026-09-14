@@ -83,7 +83,8 @@
     "measure:deadlines": "tsx scripts/measure-deadline-accuracy.ts",
     "test:admin-form-merge": "tsx scripts/test-admin-form-merge.ts",
     "backfill:mx-deadlines": "tsx --env-file-if-exists=.env.local scripts/backfill-mexico-deadlines.ts",
-    "test:canonical-urls": "tsx scripts/test-canonical-urls.ts"
+    "test:canonical-urls": "tsx scripts/test-canonical-urls.ts",
+    "protect:pasted-deadlines": "tsx --env-file-if-exists=.env.local scripts/protect-pasted-deadlines.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

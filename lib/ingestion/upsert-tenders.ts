@@ -213,9 +213,54 @@ function buildRow(fields: Tender) {
  * one shared ON CONFLICT SET clause per request from the keys present, so
  * uniform rows are exactly what it wants.
  */
+/**
+ * Columns where "the mapper produced nothing" means the SOURCE does not
+ * publish this field — not that the value was withdrawn.
+ *
+ * The rule: an import never replaces a stored value with null. Absence of
+ * data is not data.
+ *
+ * This exists because the same class of bug has now cost real work three
+ * times, and manual_field_overrides did not stop it. That mechanism is opt-in
+ * per write path — every place that writes one of these columns has to also
+ * remember to record the lock — so it protects exactly the paths somebody
+ * remembered, and the failures are silent by construction. The cronograma
+ * paste tool wrote ~65 hand-entered Peru deadlines and recorded no lock, and
+ * the next import wrote null over every one of them (2026-09-15). Peru's feed
+ * has never published a deadline; it had nothing to say and said it anyway.
+ *
+ * Where the two mechanisms now sit: manual_field_overrides still means "a
+ * human decided this, do not update it EVEN with a real value". This list is
+ * weaker and unconditional — anyone may still improve a value, nobody may
+ * delete one by having nothing. A source that genuinely withdraws a date
+ * leaves the old one showing until an admin clears it, which is the safer of
+ * the two failure modes: a stale deadline is visible and correctable, a
+ * deleted one looks exactly like a tender that never had one.
+ *
+ * Deliberately not every nullable column. `participation_scope`, `location`
+ * and the estimate flag are re-derived from the same record every run and
+ * carry no hand-entered value worth defending.
+ */
+const NEVER_NULLED_BY_AN_IMPORT = [
+  "submission_deadline",
+  "award_date",
+  "awarded_to",
+  "estimated_value",
+  "currency",
+  "structured_duration_days",
+] as const;
+
 export function buildRowWithProtectedValues(fields: Tender, existing: ExistingRow | undefined): Record<string, unknown> {
   const row = buildRow(fields) as Record<string, unknown>;
   if (!existing) return row;
+
+  // Before anything else: nothing an import brings may erase what is stored.
+  // See NEVER_NULLED_BY_AN_IMPORT.
+  for (const column of NEVER_NULLED_BY_AN_IMPORT) {
+    if (row[column] === null && existing.stored[column] !== null && existing.stored[column] !== undefined) {
+      row[column] = existing.stored[column];
+    }
+  }
 
   // An ESTIMATED publication date never overwrites one already stored.
   //

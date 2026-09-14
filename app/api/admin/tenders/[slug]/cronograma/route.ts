@@ -47,7 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
   const { data: tender, error: tenderError } = await supabase
     .from("tenders")
-    .select("id, submission_deadline, award_date, publication_date")
+    .select("id, submission_deadline, award_date, publication_date, manual_field_overrides")
     .eq("slug", slug)
     .maybeSingle();
   if (tenderError) return NextResponse.json({ error: tenderError.message }, { status: 500 });
@@ -196,7 +196,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   let deadlineSet: string | undefined;
   let awardDateSet: string | undefined;
   if (Object.keys(columnUpdate).length > 0) {
-    const { error } = await supabase.from("tenders").update(columnUpdate).eq("id", tender.id);
+    // Locked as a hand edit in the SAME statement that writes it.
+    //
+    // Without this the next import silently undid the work. A Peru OECE
+    // record carries no deadline at all, so upsertTendersBatched() wrote
+    // `submission_deadline: null` straight over the pasted date, and
+    // lockedKeyDateTypes() — which reads exactly this column list — did not
+    // protect the mirror row either, so the timeline entry went with it. The
+    // user pasted ~65 SEACE cronogramas by hand and the next morning's import
+    // emptied them (reported 2026-09-15: 昨天都手动补了交标日期，今天重新导入
+    // 又变成没有). Their standing rule is the opposite: 不要我们做了半天，然后
+    // 重新导入又得重做.
+    //
+    // The admin form's own save route has always done this (it diffs the
+    // submitted row against the stored one); this route bypassed that route
+    // and wrote the columns directly, which is how it missed the lock. Merged
+    // rather than replaced, so an earlier lock on another column survives.
+    const overrides = new Set<string>((tender.manual_field_overrides as string[] | null) ?? []);
+    for (const column of Object.keys(columnUpdate)) overrides.add(column);
+
+    const { error } = await supabase
+      .from("tenders")
+      .update({ ...columnUpdate, manual_field_overrides: [...overrides].sort() })
+      .eq("id", tender.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     deadlineSet = columnUpdate.submission_deadline;
     awardDateSet = columnUpdate.award_date;

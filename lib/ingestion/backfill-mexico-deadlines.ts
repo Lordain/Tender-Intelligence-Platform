@@ -68,6 +68,7 @@ type TenderRow = {
   source_url: string | null;
   publication_date: string | null;
   award_date: string | null;
+  manual_field_overrides: string[] | null;
 };
 
 type KeyDateRow = {
@@ -109,7 +110,7 @@ export async function backfillMexicoDeadlines(
 
   const { data: tenderData, error: tenderError } = await supabase
     .from("tenders")
-    .select("id, slug, title, source_name, source_url, publication_date, award_date")
+    .select("id, slug, title, source_name, source_url, publication_date, award_date, manual_field_overrides")
     .eq("country", country)
     .is("submission_deadline", null);
   if (tenderError) throw new Error(tenderError.message);
@@ -187,7 +188,18 @@ export async function backfillMexicoDeadlines(
 
     if (!write || !verdict.ok) continue;
 
-    const { error } = await supabase.from("tenders").update({ submission_deadline: verdict.date }).eq("id", tender.id);
+    // Locked as a hand edit, same as the cronograma paste route — and for the
+    // same reason it was added there (2026-09-15): a source that publishes no
+    // deadline writes null straight over this on the next import, and the
+    // mirror key date goes with it. A date derived from the opening act is
+    // this platform's own reading, not the feed's, so the feed must not get
+    // to erase it.
+    const overrides = new Set<string>(tender.manual_field_overrides ?? []);
+    overrides.add("submission_deadline");
+    const { error } = await supabase
+      .from("tenders")
+      .update({ submission_deadline: verdict.date, manual_field_overrides: [...overrides].sort() })
+      .eq("id", tender.id);
     if (error) {
       candidate.outcome = "failed";
       candidate.error = error.message;

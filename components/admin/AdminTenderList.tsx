@@ -62,10 +62,10 @@ function deadlineDay(value: string | undefined): string | null {
 }
 
 const selectClass =
-  "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
+  "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-2 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
 
 const dateClass =
-  "h-10 min-w-0 flex-1 rounded-xl border border-[#d8e0e3] bg-white px-2.5 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c] disabled:cursor-not-allowed disabled:bg-[#f2f4f3] disabled:text-[#a7b1b7]";
+  "h-10 min-w-0 flex-1 rounded-xl border border-[#d8e0e3] bg-white px-1.5 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c] disabled:cursor-not-allowed disabled:bg-[#f2f4f3] disabled:text-[#a7b1b7]";
 
 export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) {
   const router = useRouter();
@@ -222,23 +222,23 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
           </p>
         </div>
 
-        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.7fr)_auto] lg:items-end">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-black text-[#52636e]">国家/地区</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">国家/地区</span>
             <select value={country} onChange={(event) => setCountry(event.target.value)} className={selectClass}>
               <option value="all">全部国家</option>
               {countries.map((item) => <option key={item} value={item}>{countryLabel(item, "zh")}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-black text-[#52636e]">项目状态</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">项目状态</span>
             <select value={status} onChange={(event) => setStatus(event.target.value)} className={selectClass}>
               <option value="all">全部状态</option>
               {STATUS_KEYS.map((key) => <option key={key} value={key}>{STATUS_LABELS[key].zh}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-black text-[#52636e]">相关度</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">相关度</span>
             <select value={relevance} onChange={(event) => setRelevance(event.target.value)} className={selectClass}>
               <option value="all">全部相关度</option>
               {RELEVANCE_KEYS.map((key) => <option key={key} value={key}>{RELEVANCE_TIER_LABELS[key].zh}</option>)}
@@ -246,7 +246,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-black text-[#52636e]">标书分析（仅限已中标）</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">标书分析（仅限已中标）</span>
             <select value={analysis} onChange={(event) => setAnalysis(event.target.value)} className={selectClass}>
               <option value="all">不限</option>
               <option value="without_analysis">无标书分析</option>
@@ -254,7 +254,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-black text-[#52636e]">交标日期</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">交标日期</span>
             <select
               value={deadlinePresence}
               onChange={(event) => setDeadlinePresence(event.target.value)}
@@ -266,7 +266,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             </select>
           </label>
           <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
-            <span className="text-xs font-black text-[#52636e]">交标截止日期</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">交标截止日期</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="date"
@@ -293,7 +293,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             type="button"
             onClick={clearFilters}
             disabled={!hasFilters}
-            className="h-10 rounded-xl border border-[#d8e0e3] bg-white px-4 text-xs font-black text-[#52636e] transition-colors hover:border-[#9aa5ab] hover:text-[#071826] disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-10 whitespace-nowrap rounded-xl border border-[#d8e0e3] bg-white px-3 text-xs font-black text-[#52636e] transition-colors hover:border-[#9aa5ab] hover:text-[#071826] disabled:cursor-not-allowed disabled:opacity-40"
           >
             清除筛选
           </button>

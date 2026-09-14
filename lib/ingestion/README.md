@@ -4262,3 +4262,60 @@ a header time under a second, the endpoint does stream and the earlier
 reading was wrong. If it prints 响应头始终未到达 again, the buffering is
 confirmed, and the architecture question above — sending a text-layer PDF as
 text rather than as a multi-megabyte native PDF — stops being optional.
+
+### It worked — and the same log settled the architecture question (2026-09-13)
+
+The run completed. `已写入`, with `3/2/11/4` requirements and risks and a
+correct one-line summary (秘鲁扬阿万卡区河岸防御扩建改善工程). Two calls, and
+the pair of them answers everything the previous three days were guessing at:
+
+```
+调用1（原生 PDF）: 734.5s（响应头始终未到达（对方在缓冲，不是真流式），没有收到任何流式事件）
+                 → 400 String value length (28049408) exceeds the maximum allowed
+调用2（文本兜底）: 98.9s（首个响应头 4.6s，首个流式事件 4.7s）→ 成功
+```
+
+Same document, same model, same provider, minutes apart.
+
+- The dispatcher fix worked: 734.5s is well past the old 300s ceiling, so
+  the call ran to a **real provider error** instead of a timeout. The
+  failures were never the model's.
+- **Native PDF: no response header for 734 seconds.** The endpoint buffers.
+  Streaming bought nothing on that path, exactly as the header timeout
+  implied.
+- **Text: first header at 4.6s, first event at 4.7s.** It streams properly,
+  finishes in 98.9s, and succeeds. Seven times faster and the difference
+  between working and not.
+
+So `extractTenderRequirementsQwenAnthropic` now passes
+`preferExtractedText: true`: on that provider a PDF's text is sent, never
+the PDF. This is the same branch Word documents already took, for the same
+stated reason, plus one more — a provider that holds a multi-megabyte
+document for twelve minutes and then rejects it on size is not one to send a
+document to. The Claude path is untouched and still uses native PDF vision,
+which is what scanned tenders are routed to it for.
+
+**The one thing that did not work: 关键日期 was 无.** Everything else came
+back — 3 qualifications, 2 experience, 11 documents, 4 risks — and the single
+field shaped like a **table** came back empty. `extractPdfText()` was running
+`pdftotext -q` with no `-layout`, and on a two-column fixture that is the
+difference between:
+
+```
+Presentacion de ofertas          ← -q: label and date on separate lines,
+                                    blank lines between, pairing left to
+02/10/2026                          the model to guess
+
+Presentacion de ofertas    02/10/2026    ← -layout
+```
+
+A real cronograma has three or four columns (etapa / inicio / fin / hora),
+where the same loss is worse. `-layout` is now passed. Whether it is
+sufficient is the next run's answer, not an assumption — if 关键日期 is still
+无, the schedule is either outside the 30-page cap or printed as an image,
+and both are diagnosable from the document itself rather than by spending
+another call.
+
+`npm run test:extraction-pipeline` is at 50 checks, including that the
+DashScope path makes exactly one call with no document block, and that the
+Claude path still sends native PDF.

@@ -56,5 +56,7 @@ export async function extractTenderRequirementsQwenAnthropic(
     apiKey: process.env.DASHSCOPE_API_KEY,
     baseURL: "https://dashscope-intl.aliyuncs.com/apps/anthropic",
   });
-  return extractTenderRequirements(filePath, context, model, client, false, maxPages);
+  // preferExtractedText: true — see that parameter's comment in
+  // extract-requirements.ts for the three days of real failures behind it.
+  return extractTenderRequirements(filePath, context, model, client, false, maxPages, true);
 }

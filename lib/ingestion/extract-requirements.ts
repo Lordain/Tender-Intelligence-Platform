@@ -701,6 +701,31 @@ export async function extractTenderRequirements(
    * which is what the offline comparison scripts want.
    */
   maxPages?: number,
+  /**
+   * Send a PDF's locally-extracted text instead of the PDF itself, for a
+   * provider where native document input is the wrong tool.
+   *
+   * Set by extract-requirements-qwen-anthropic.ts, on three days of real
+   * evidence rather than a preference. DashScope's Anthropic-compatible
+   * endpoint rejected the same real Peru bases PDF three different ways —
+   * a 16MB request-body cap, a 28,000,000-character base64 field cap, and
+   * chunks that still exceeded the second — and, measured 2026-09-13, sent
+   * NO response header for 734.5 seconds before failing, which means it
+   * buffers the whole answer rather than streaming it. The text of the very
+   * same document, on the very same model, returned in 98.9s with its first
+   * header at 4.6s and succeeded. Seven times faster, and the difference
+   * between working and not.
+   *
+   * This costs what native document understanding would have given: a table
+   * rendered as an IMAGE inside an otherwise text-bearing PDF is invisible
+   * to pdftotext. A text table is not — extractPdfText() now passes
+   * -layout, which keeps a cronograma's columns on one line. The route is
+   * only ever taken for a file hasRealTextLayer() has already confirmed,
+   * and an empty 关键日期 in the batch table is the visible symptom if a
+   * schedule was nonetheless lost, so this fails loudly rather than
+   * silently.
+   */
+  preferExtractedText?: boolean,
 ): Promise<TenderExtraction> {
   // Word documents — .docx and legacy .doc alike (2026-09-03, per the
   // user's report that many real tender documents arrive as Word files,
@@ -721,6 +746,27 @@ export async function extractTenderRequirements(
   const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}, and respond with a valid JSON object matching the required schema.`;
 
   if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context, useStructuredOutput, maxPages);
+
+  // Same branch as Word, for the same reason and one more: a provider that
+  // buffers a multi-megabyte native PDF for 12 minutes and then rejects it
+  // on size is not one to send a PDF to at all. See preferExtractedText.
+  if (preferExtractedText) {
+    const capped = maxPages === undefined ? null : truncatePdfToPages(filePath, maxPages);
+    try {
+      const textInstruction = instruction.replace("attached document", "document text below");
+      return await runTextExtractionWithOverflowRetry(
+        client,
+        model,
+        textInstruction,
+        await extractDocumentText(capped?.path ?? filePath),
+        context,
+        useStructuredOutput,
+        maxPages,
+      );
+    } finally {
+      capped?.cleanup();
+    }
+  }
 
   // Cap the pages BEFORE reading the file, not after: a 100MB, 900-page
   // tender would otherwise be base64'd into memory in full just to have most

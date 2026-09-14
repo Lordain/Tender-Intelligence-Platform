@@ -119,7 +119,19 @@ export type TenderDocumentIntake = {
 
 export function extractPdfText(filePath: string): string {
   // -q keeps poppler's warnings off stdout; "-" writes text to stdout.
-  return execFileSync("pdftotext", ["-q", filePath, "-"], {
+  //
+  // -layout preserves the page's column positions, and it is not cosmetic:
+  // without it poppler emits a table one cell per line, so a cronograma
+  // becomes an alternating list of labels and dates separated by blank
+  // lines, and which date belongs to which row is left for the model to
+  // guess. Confirmed on a two-column fixture — "Presentacion de ofertas"
+  // and "02/10/2026" land on one line with -layout and on two lines
+  // several blank lines apart without it. A real cronograma has three or
+  // four columns (etapa / inicio / fin / hora), where the same loss is
+  // worse. Added 2026-09-13 after a real extraction returned a full
+  // 3/2/11/4 of requirements and risks and ZERO key dates — the one field
+  // that is shaped like a table.
+  return execFileSync("pdftotext", ["-q", "-layout", filePath, "-"], {
     encoding: "utf-8",
     maxBuffer: 64 * 1024 * 1024,
   });

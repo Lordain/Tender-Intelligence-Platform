@@ -393,6 +393,25 @@ async function main() {
     }
   });
 
+  // ---- 7e. The DashScope path sends text, never the PDF ----
+  await group("7e 文本优先", async () => {
+    const big = join(TMP, "big.pdf");
+    const { client, calls } = stubClient([FULL_RESPONSE]);
+    // preferExtractedText: true — what extractTenderRequirementsQwenAnthropic passes.
+    const result = await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", client, false, 20, true);
+    check("only one call is made — no doomed native-PDF attempt first", calls.length === 1);
+    check("and it carries no document block at all", !calls[0].contentTypes.includes("document"));
+    check("the PDF's own text is what was sent", calls[0].promptChars > 200 && calls[0].docBytes === 0);
+    check("and the result still comes through", result.keyDates.length === 2);
+  });
+
+  await group("7e' 未开启时仍然先走原生 PDF", async () => {
+    const big = join(TMP, "big.pdf");
+    const { run, calls } = manual(big, [FULL_RESPONSE], 20);
+    await run();
+    check("the Claude path is untouched — still native PDF", calls[0].contentTypes.includes("document"));
+  });
+
   // ---- 8. The money question: does a repeating failure stop the batch? ----
   check(
     "a schema failure is classified as systematic — the 2026-09-13 case",

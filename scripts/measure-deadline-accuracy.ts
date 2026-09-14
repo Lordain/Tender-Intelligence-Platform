@@ -17,20 +17,30 @@
  * same extraction with write:false and comparing the two turns that into a
  * score. No official page has to be opened by hand for a single one of them.
  *
- * What counts as ground truth, and why the bar is this high. Only two kinds
- * of stored deadline can score an extraction:
+ * What counts as ground truth. The exclusion matters more than the inclusion:
+ * a deadline that a PREVIOUS run of this very extraction wrote would score
+ * the model against itself, return 100%, and prove nothing. That is the one
+ * failure this script exists to avoid.
  *
- *   1. The tender has NO tender_documents row at all. Then no document
- *      extraction has ever run on it, so its deadline came from the source
- *      feed — structured data an entity published as a field.
- *   2. A key date of type `submission` carries the cronograma paste's own
- *      source reference, i.e. an admin read it off the official ficha page.
+ * The test for it is exact rather than circumstantial. writeExtractedKeyDates()
+ * fills the column only when it is empty — and in that same call it inserts
+ * the cronograma row it read, `submission` included, with
+ * extracted_from_document = true (it drops the submission row only when the
+ * column was ALREADY filled, i.e. when it did not write the column). So:
  *
- * Anything else is excluded, and the exclusion matters more than the
- * inclusion: a deadline that a PREVIOUS run of this very extraction wrote
- * would score the model against itself and return 100% while proving
- * nothing. That is the failure mode this script exists to avoid, so it
- * refuses the sample rather than reporting a flattering number.
+ *   a `submission` key date with extracted_from_document = true
+ *     ⟺ this tender's deadline is the model's own reading
+ *
+ * Those are excluded. Every other stored deadline came either from the source
+ * feed or from an admin pasting the official SEACE ficha, and both can judge.
+ *
+ * An earlier version of this script tested two circumstantial proxies instead
+ * — "no tender_documents row, therefore the feed supplied it" and "a
+ * submission key date carrying the paste's source reference". The first is
+ * false for Peru, whose feed supplies no deadline at all; the second can
+ * never match, because the paste deliberately does not insert a submission
+ * row (syncKeyDatesForTopLevelFields owns that row, to keep exactly one
+ * 交标截止 on the timeline). Both are replaced by the test above.
  *
  * Nothing is written. Every call is write:false — the analysis is discarded
  * after being compared.
@@ -58,7 +68,7 @@ type Candidate = {
   slug: string;
   files: string[];
   storedDeadline: string;
-  /** Why this stored date is allowed to judge the model. */
+  /** Where the stored date came from — reported so a score can be read per source. */
   truthSource: "数据源字段" | "官方 ficha（人工粘贴）";
 };
 
@@ -125,35 +135,41 @@ async function main() {
       continue;
     }
 
-    const { data: fichaRow } = await supabase
+    // The one disqualifying signal: the stored deadline IS the model's own
+    // reading, so comparing the two would measure nothing.
+    const { data: selfWritten } = await supabase
       .from("tender_key_dates")
       .select("id")
       .eq("tender_id", tender.id)
       .eq("type", "submission")
-      .eq("source_reference", CRONOGRAMA_SOURCE_REFERENCE)
+      .eq("extracted_from_document", true)
       .maybeSingle();
 
-    if (fichaRow) {
-      candidates.push({ slug, files: group, storedDeadline, truthSource: "官方 ficha（人工粘贴）" });
-      continue;
-    }
-
-    // No ficha row: the date is only trustworthy if document extraction has
-    // never run on this tender, since that is the one thing that could have
-    // written it from a document.
-    const { count } = await supabase
-      .from("tender_documents")
-      .select("id", { count: "exact", head: true })
-      .eq("tender_id", tender.id);
-
-    if ((count ?? 0) > 0) {
+    if (selfWritten) {
       excluded.push({
         slug,
-        reason: `已有 ${count} 份文档分析记录，交标截止日可能就是提取自己写的——拿它判分等于自己考自己，排除`,
+        reason: "交标截止日就是上一轮标书提取自己写的——拿它判分等于自己考自己，排除",
       });
       continue;
     }
-    candidates.push({ slug, files: group, storedDeadline, truthSource: "数据源字段" });
+
+    // Not self-written, so it came from the feed or from a pasted ficha. Which
+    // one does not affect whether it can judge; it is reported because a score
+    // is worth reading per source.
+    const { data: pastedRow } = await supabase
+      .from("tender_key_dates")
+      .select("id")
+      .eq("tender_id", tender.id)
+      .eq("source_reference", CRONOGRAMA_SOURCE_REFERENCE)
+      .limit(1)
+      .maybeSingle();
+
+    candidates.push({
+      slug,
+      files: group,
+      storedDeadline,
+      truthSource: pastedRow ? "官方 ficha（人工粘贴）" : "数据源字段",
+    });
   }
 
   console.log(`可判分的项目：${candidates.length} 个`);
@@ -225,6 +241,11 @@ async function main() {
     for (const item of off) {
       console.log(`    ${item.slug}：标书 ${item.extractedDeadline}，官方 ${item.storedDeadline}，差 ${item.offByDays} 天`);
     }
+  }
+  const byFicha = agree.concat(off).filter((s) => s.truthSource === "官方 ficha（人工粘贴）");
+  if (byFicha.length > 0) {
+    const fichaAgree = byFicha.filter((s) => s.verdict === "一致").length;
+    console.log(`  （其中以官方 ficha 为准的 ${byFicha.length} 份：一致 ${fichaAgree}）`);
   }
   console.log(`标书未载明（没给日期）：${silent.length}`);
   for (const item of silent) console.log(`    ${item.slug}（提取到 ${item.extractedCount} 条其他日程）`);

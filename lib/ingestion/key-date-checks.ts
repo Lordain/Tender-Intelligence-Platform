@@ -40,7 +40,9 @@ import type { TenderKeyDate } from "@/types/tender";
  *   imports documents for tenders that have since closed.
  */
 
-type ExtractedType = Exclude<TenderKeyDate["type"], "publication" | "validity_end">;
+/** Exported as ExtractedKeyDateType for seace-cronograma.ts, which produces exactly this set. */
+export type ExtractedType = Exclude<TenderKeyDate["type"], "publication" | "validity_end">;
+export type { ExtractedType as ExtractedKeyDateType };
 
 /**
  * Where each row sits in the one ordering a procurement procedure cannot

@@ -20,6 +20,7 @@ import {
   INDUSTRY_LABELS,
   RELEVANCE_TIER_LABELS,
 } from "@/lib/tender-labels";
+import { CronogramaPasteForm } from "@/components/admin/CronogramaPasteForm";
 import { KeyDatesEditor } from "@/components/admin/KeyDatesEditor";
 import { RequirementsEditor } from "@/components/admin/RequirementsEditor";
 import { RisksEditor } from "@/components/admin/RisksEditor";
@@ -461,6 +462,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
             </p>
             <div className="mt-3">
               <KeyDatesEditor tenderSlug={tender!.slug} initialKeyDates={tender!.keyDates} />
+              <CronogramaPasteForm tenderSlug={tender!.slug} />
             </div>
           </div>
         )}

@@ -17,6 +17,7 @@
  */
 import { ExtractionSchema, JSON_SHAPE_INSTRUCTIONS, normalizeRawExtraction, toCalendarDay } from "../lib/ingestion/extract-requirements";
 import { findKeyDateProblems, submissionIsSuspect, swapDayAndMonth } from "../lib/ingestion/key-date-checks";
+import { parseSeaceCronograma } from "../lib/ingestion/seace-cronograma";
 import { isPastSubmissionDeadline } from "../lib/ingestion/recency";
 import { deriveTenderStatus, platformDay } from "../lib/tender-status";
 
@@ -347,6 +348,84 @@ check(
 check(
   "the manual-JSON prompt actually asks for the key it requires",
   JSON_SHAPE_INSTRUCTIONS.includes('"keyDates"'),
+);
+
+// parseSeaceCronograma: the SEACE ficha table an admin pastes in. This is
+// the ONLY place a Peru bid deadline is published (see the file's header),
+// so a mis-read column or a month/day swap here writes a wrong deadline
+// straight onto the tender.
+//
+// The fixture is the real table for LP-SM-1-2026-MPDAC-YHCA-1, copied as a
+// browser hands it over: tab-separated, with three cells wrapping onto a
+// second line.
+const REAL_FICHA = [
+  "Etapa\tFecha Inicio\tFecha Fin",
+  "Convocatoria\t10/09/2026\t10/09/2026",
+  "Registro de participantes(Electronica)\t11/09/2026 00:01\t12/10/2026 23:59",
+  "Formulación de consultas y observaciones(Electronica)\t11/09/2026 00:01\t21/09/2026 23:59",
+  "Absolución de consultas y observaciones(Electronica)\t22/09/2026\t22/09/2026",
+  "Integración de las Bases",
+  "MUNICIPALIDAD PROVINCIAL DANIEL ALCIDES CARRION\t22/09/2026\t22/09/2026",
+  "Presentación de propuestas(Electronica)\t13/10/2026 00:01\t13/10/2026 23:59",
+  "Calificación y Evaluación de propuestas",
+  "MUNICIPALIDAD PROVINCIAL DANIEL ALCIDES CARRION\t14/10/2026\t14/10/2026",
+  "Otorgamiento de la Buena Pro",
+  "MUNICIPALIDAD PROVINCIAL DANIEL ALCIDES CARRION\t14/10/2026 08:30\t14/10/2026",
+].join("\n");
+
+const ficha = parseSeaceCronograma(REAL_FICHA);
+const fichaDate = (type: string) => ficha.rows.find((r) => r.type === type)?.date;
+
+check("the bid deadline is read — the whole reason this parser exists", fichaDate("submission") === "2026-10-13", String(fichaDate("submission")));
+check("13/10/2026 is 13 October, not 10 December", fichaDate("submission") === "2026-10-13");
+check(
+  "the questions deadline matches what the OCDS feed independently says (enquiryPeriod 2026-09-21)",
+  fichaDate("questions_deadline") === "2026-09-21",
+);
+check("absolución is a clarification, not a second questions deadline", fichaDate("clarification") === "2026-09-22");
+check("the buena pro row survives wrapping onto two lines", fichaDate("award") === "2026-10-14");
+check("exactly the four storable stages are stored", ficha.rows.length === 4);
+check("nothing in a real table is left unparsed", ficha.unparsed.length === 0, ficha.unparsed.join(" | "));
+check("the four unstorable stages are reported, not silently dropped", ficha.ignored.length === 4);
+check(
+  "Convocatoria is refused — publication_date is the feed's and is protected",
+  ficha.ignored.some((i) => /Convocatoria/.test(i.label)) && !ficha.rows.some((r) => /Convocatoria/.test(r.label)),
+);
+
+// Fecha Fin, not Fecha Inicio. A window whose start and end differ is the
+// only case that can tell the two columns apart, and taking the start on
+// "Presentación de propuestas" would move a real deadline weeks early.
+const window = parseSeaceCronograma("Presentación de propuestas(Electronica)\t01/10/2026 00:01\t13/10/2026 23:59");
+check("a window resolves to its END date, never its start", window.rows[0]?.date === "2026-10-13");
+
+// Whitespace-aligned paste (what copying a rendered table sometimes gives).
+const aligned = parseSeaceCronograma("Presentación de propuestas       13/10/2026 00:01     13/10/2026 23:59");
+check("a whitespace-aligned paste parses too, not just tab-separated", aligned.rows[0]?.date === "2026-10-13");
+
+check(
+  "an impossible day is refused rather than rolled into March",
+  parseSeaceCronograma("Presentación de propuestas\t31/02/2026\t31/02/2026").rows.length === 0,
+);
+check(
+  "a stage this parser does not know is reported, never guessed at",
+  (() => {
+    const out = parseSeaceCronograma("Etapa inventada por la entidad\t13/10/2026\t13/10/2026");
+    return out.rows.length === 0 && out.unparsed.length === 1;
+  })(),
+);
+check("an empty paste is not an error", parseSeaceCronograma("").rows.length === 0);
+check(
+  "a single-day stage uses that day for both columns",
+  parseSeaceCronograma("Absolución de consultas\t22/09/2026\t22/09/2026").rows[0]?.date === "2026-09-22",
+);
+// The parsed schedule must also survive the checker that guards every other
+// key-date write — a real table has to come out clean.
+check(
+  "the real ficha passes findKeyDateProblems with no complaint",
+  findKeyDateProblems(
+    ficha.rows.map((r) => ({ type: r.type, date: r.date })),
+    { publicationDate: "2026-09-10" },
+  ).length === 0,
 );
 
 function daysBetweenForTest(day: string): number {

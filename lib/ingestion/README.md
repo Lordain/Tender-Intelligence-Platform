@@ -4477,3 +4477,72 @@ against building connectors for deliberately anti-automation-gated portals.
 The honest options are the ones already in place — SourcePanel points the
 reader at the official page — plus manual entry through the key-dates
 editor for tenders worth it.
+
+### The cronograma the ficha shows, pasted rather than scraped (2026-09-14)
+
+The user opened the ficha for the tender above and sent the table:
+Convocatoria 10/09, Registro de participantes 11/09→12/10, Consultas
+11/09→21/09, Absolución 22/09, Integración 22/09, **Presentación de
+propuestas 13/10/2026**, Calificación 14/10, Buena Pro 14/10 08:30. The
+deadline exists, published, exact — just not anywhere reachable from the
+data.
+
+The URL settles why: `fichaSeleccion.xhtml?id=5aeb5f38-860e-424c-bfa4-…`,
+while the only UUID in the OCDS record is a document download code
+(`fileCode=5da1ea91-…`). Different values. The ficha URL **cannot be
+constructed** from the record, so reaching it means driving SEACE's own
+search — the part this project does not automate.
+
+So the human stays in the loop for the one step that needs them, and the
+machine does the rest: `lib/ingestion/seace-cronograma.ts` parses that table
+pasted straight out of the browser. No model call, no request to SEACE,
+exact published dates rather than an inference. Per tender it is one copy
+and one paste.
+
+What the parser has to survive, all real properties of that table:
+
+- **Two date columns**, and the deadline is the END. Registro de
+  participantes runs 11/09 → 12/10; reading the start column there would be
+  a month wrong.
+- **DD/MM/YYYY** — 13/10/2026 is 13 October. The dates are split by hand
+  rather than given to `new Date()`, which would read several rows as a
+  different month without complaint.
+- **Cells wrapping onto a second line** (Integración de las Bases, then the
+  municipality's name). Rows are found by looking for *dates*, not by
+  assuming one row per line: a line without a date is carried forward as
+  more label.
+- **Ordered stage rules.** "Absolución de consultas y observaciones"
+  contains "consultas y observaciones", so absolución is tested first — the
+  other order would file a clarification date as the questions deadline.
+
+Four stages are deliberately not stored and are **reported** rather than
+dropped: Convocatoria (publication_date is the feed's and is protected by
+migration 0030 — a paste must not overwrite it) and the three this platform
+has no type for (Registro de participantes, Integración de las Bases,
+Calificación y Evaluación). Someone pasting an eight-row table needs to see
+why four rows are missing, or they will file a bug.
+
+Two integration details that are easy to get wrong:
+
+- **`submission` is never inserted as a row.** It has its own column, and
+  `syncKeyDatesForTopLevelFields()` owns the row mirroring it — that
+  function deletes *every* row of the type and rebuilds one from the column.
+  Writing both would put two 交标截止 entries on the public timeline until
+  the next admin save quietly removed one. The route sets the column and
+  calls the same sync the admin form's own save calls.
+- **Fill, never overwrite.** A deadline already on the tender came from
+  somewhere; the paste reports the disagreement and leaves it alone, the
+  same rule `writeExtractedKeyDates()` follows.
+
+Preview is mandatory before writing — the admin sees the parsed rows, the
+skipped rows with reasons, anything unparsed, and `findKeyDateProblems()`'s
+verdict, before anything touches the tender. A wrong bid deadline either
+hides a live tender or holds an expired one open, so it is not written from
+a paste nobody looked at.
+
+`npm run test:key-dates` is at 84 checks, fixtured on that exact real table.
+One of them is worth naming: the parsed questions deadline (2026-09-21)
+matches what the OCDS feed independently publishes as `enquiryPeriod.endDate`
+— two unrelated sources agreeing is the check that the right column is being
+read, and it is the first real-data validation the key-date machinery from
+#31/#34 has ever had.

@@ -209,7 +209,11 @@ async function main() {
   // ---- 4. Bug 2: DashScope's body-byte cap must reach the splitter ----
   await group("4 请求体上限触发分块", async () => {
     const big = join(TMP, "big.pdf");
-    writeTestPdf(big, { pages: 200 });
+    // ~300 characters a page, so this 200-page fixture reads as a genuinely
+    // text-bearing document under the per-page text-layer bar. One short line
+    // a page — what this fixture used to carry — is what a SCAN looks like,
+    // and the fallback correctly refuses those now (see 扫描件没有可回退的文本).
+    writeTestPdf(big, { pages: 200, linesPerPage: 40 });
     const bodyCap = new Error("400 Exceeded limit on max bytes to request body : 16777216");
     const { run, calls } = manual(big, [bodyCap, FULL_RESPONSE]);
     const result = await run();
@@ -523,6 +527,20 @@ async function main() {
     check("a real document's text passes", isTextLayerSubstantial("a".repeat(500)));
     check("a scanned PDF's stray caption text does not", !isTextLayerSubstantial("Figura 1. Planta general"));
     check("whitespace is not text", !isTextLayerSubstantial(" ".repeat(5000)));
+
+    // The 2026-09-16 case: a 61-page scanned pliego whose thin OCR layer
+    // cleared the old flat 500-character bar, got routed to the text path,
+    // and returned 0/0/0/0 on a document that is nothing but requirements.
+    check(
+      "a 61-page scan with a thin OCR layer no longer counts as text-bearing",
+      !isTextLayerSubstantial("a".repeat(4_000), 61),
+    );
+    check(
+      "…while a genuinely text-bearing 61-page document still does",
+      isTextLayerSubstantial("a".repeat(61 * 2_000), 61),
+    );
+    check("a real two-pager is unaffected by the per-page bar", isTextLayerSubstantial("a".repeat(3_000), 2));
+    check("an unknown page count falls back to the absolute floor", isTextLayerSubstantial("a".repeat(600)));
   });
 
   // ---- Who reads a scanned document ----

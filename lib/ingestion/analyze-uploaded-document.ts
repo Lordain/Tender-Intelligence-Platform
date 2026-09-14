@@ -322,7 +322,28 @@ export async function analyzeUploadedDocument(
     // wipe a good previous analysis and replace it with nothing. An empty
     // result is never worth more than what's already there.
     if (requirementRows.length === 0 && fields.risks.length === 0) {
-      warnings.push("本次分析没有提取到任何要求或风险，已保留该项目原有的分析结果（不覆盖）。");
+      // 0/0/0/0 has more than one cause and the counts alone cannot separate
+      // them, which is what the old single message left the operator to do
+      // (user, 2026-09-16: 这种内容是0的我要怎么识别？也是需要补文件吗？).
+      //
+      // The first guess — "you fetched an announcement, not the pliego" — was
+      // WRONG on the case that prompted it: secop-890399025-n-lp-si-001-2026
+      // is a 61-page DOCUMENTO BASE, a document that is nothing but
+      // requirements. What had happened is that it is a SCAN whose thin OCR
+      // layer cleared the old flat 500-character text-layer bar, so it was
+      // routed to the text path and the model saw fragments — enough for a
+      // correct summary, nothing like enough to find a qualification.
+      //
+      // So the message states the evidence rather than a conclusion: how many
+      // characters were actually extracted, against how many a real document
+      // of this length would carry. A human reads that in one glance and knows
+      // which of the two it is.
+      const extractedChars = perFile.reduce((sum, p) => sum + p.intake.textLength, 0);
+      warnings.push(
+        fields.oneLineSummary.trim()
+          ? `本次分析读懂了文档（一句话总结已生成），但没有提取到任何资质、业绩、文件要求或风险。本次一共从文件里提取到 ${extractedChars.toLocaleString("en-US")} 个字符——如果这个数字相对文档页数明显偏小，说明它是扫描件、文字层很薄，模型只看到了片段，值得重跑一次（路由会把它交给能读图像的模型）；如果数字正常，那更可能是拿到了公告或摘要类文件，要求写在主标书里。已保留该项目原有的分析结果（不覆盖）。`
+          : "本次分析没有从文档读到任何内容——可能是扫描件、加密件或读取失败，值得重跑一次。已保留该项目原有的分析结果（不覆盖）。",
+      );
     } else {
       for (const kind of ["qualification", "experience", "document"] as const) {
         assertWritten(`清除旧的${kind}要求`, await supabase.from("tender_requirements").delete().eq("tender_id", tenderId).eq("kind", kind));

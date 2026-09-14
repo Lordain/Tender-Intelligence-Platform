@@ -95,24 +95,39 @@ export function CronogramaPasteForm({ tenderSlug }: { tenderSlug: string }) {
         className="w-full rounded-xl border border-[#d8e0e3] bg-white p-3 font-mono text-xs text-[#071826] outline-none focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10"
       />
 
-      <div className="flex flex-wrap gap-2">
+      {/* Two-step on purpose, and the labels have to say so. The write button
+          first read "写入这 0 条" before a preview had ever run, which a user
+          reasonably read as "your table parsed to nothing" rather than "not
+          your turn yet" — they asked why it could not be clicked while the
+          paste was in fact parsing perfectly. A disabled control must say
+          what would enable it. */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           disabled={busy || !pasted.trim()}
           onClick={() => send(true)}
-          className="rounded-xl border border-[#d8e0e3] bg-white px-4 py-2 text-sm font-black text-[#071826] disabled:opacity-50"
+          className={`rounded-xl px-4 py-2 text-sm font-black disabled:opacity-50 ${
+            preview ? "border border-[#d8e0e3] bg-white text-[#071826]" : "bg-[#071826] text-white"
+          }`}
         >
-          {busy ? "处理中…" : "先预览"}
+          {busy ? "处理中…" : preview ? "重新预览" : "第一步：先预览"}
         </button>
         <button
           type="button"
           disabled={busy || !preview || preview.rows.length === 0}
           onClick={() => send(false)}
           className="rounded-xl bg-[#ffb21c] px-4 py-2 text-sm font-black text-[#071826] disabled:opacity-40"
-          title={preview ? undefined : "先预览，确认解析结果后再写入"}
+          title={preview ? undefined : "先点左边的「先预览」，确认解析结果后这里才会亮"}
         >
-          写入这 {preview?.rows.length ?? 0} 条
+          {!preview
+            ? "第二步：写入（预览后可点）"
+            : preview.rows.length === 0
+              ? "没有可写入的日期"
+              : `写入这 ${preview.rows.length} 条`}
         </button>
+        {!preview && !busy && (
+          <span className="text-xs text-[#52636e]">先预览，看清解析结果后写入按钮才会亮。</span>
+        )}
       </div>
 
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">{error}</p>}

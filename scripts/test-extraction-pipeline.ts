@@ -34,6 +34,7 @@ import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shoul
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { dispatcherForTimeout } from "../lib/ingestion/http-dispatcher";
+import { runPool } from "../lib/ingestion/run-pool";
 import { writeTestPdf } from "./fixtures/make-pdf";
 
 let passed = 0;
@@ -410,6 +411,57 @@ async function main() {
     const { run, calls } = manual(big, [FULL_RESPONSE], 20);
     await run();
     check("the Claude path is untouched — still native PDF", calls[0].contentTypes.includes("document"));
+  });
+
+  // ---- 7f. The worker pool that makes a 66-document backlog finishable ----
+  await group("7f 并发池", async () => {
+    const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+    let inFlight = 0;
+    let peak = 0;
+    const seen: number[] = [];
+    const { completed } = await runPool([...Array(12).keys()], 4, async (item) => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await sleep(5);
+      seen.push(item);
+      inFlight -= 1;
+    });
+    check("never exceeds its width", peak === 4, `peak ${peak}`);
+    check("runs every item exactly once", completed === 12 && new Set(seen).size === 12);
+
+    // A pool is faster than sequence or it is pointless. 12 items of 30ms
+    // at width 4 must land far under the 360ms a sequential run would take.
+    const startedAt = Date.now();
+    await runPool([...Array(12).keys()], 4, () => sleep(30));
+    const elapsed = Date.now() - startedAt;
+    check("is genuinely concurrent, not sequential in disguise", elapsed < 240, `${elapsed}ms for 12×30ms at width 4`);
+
+    // The guarantee that protects money: once a stop is decided, nothing
+    // NEW starts, but work already in flight is awaited rather than
+    // abandoned — an abandoned model call is paid for and thrown away.
+    let started = 0;
+    let finished = 0;
+    let stop = false;
+    const res = await runPool(
+      [...Array(20).keys()],
+      4,
+      async () => {
+        started += 1;
+        await sleep(10);
+        finished += 1;
+        if (started >= 4) stop = true;
+      },
+      () => stop,
+    );
+    check("stops claiming new work once asked", started < 20, `started ${started} of 20`);
+    check("but finishes everything already in flight", finished === started && res.completed === started);
+
+    // The number the admin UI turns into "N 个项目未处理（不产生费用）".
+    check("reports how many actually completed", res.completed === finished);
+
+    const empty = await runPool([], 4, async () => {});
+    check("an empty run is not an error", empty.completed === 0);
   });
 
   // ---- 8. The money question: does a repeating failure stop the batch? ----

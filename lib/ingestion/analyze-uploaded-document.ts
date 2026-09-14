@@ -127,7 +127,7 @@ export async function analyzeUploadedDocument(
     // slug burned every model call in the upload first.
     const { data: tender, error: tenderError } = await supabase
       .from("tenders")
-      .select("id, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
+      .select("id, title, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
       .eq("slug", tenderSlug)
       .maybeSingle();
     if (tenderError || !tender) {
@@ -135,6 +135,15 @@ export async function analyzeUploadedDocument(
     }
     const tenderId = tender.id as string;
     const relevanceTier = (tender.relevance_tier ?? null) as TenderRelevanceTier | null;
+    // The tender's own Chinese title, handed to the extraction so its
+    // oneLineSummary can REUSE the proper nouns the site already shows
+    // rather than inventing its own. Real report 2026-09-14: a tender
+    // titled 亚纳万卡区（Yanahuanca） got a summary saying 扬阿万卡 — same
+    // place, two transliterations, because the two came from two unrelated
+    // model calls and the extraction was being handed the FILE NAME as its
+    // "title" and never saw the tender at all.
+    const tenderTitle = (tender.title as { zh?: string; es?: string } | null) ?? null;
+    const titleForModel = tenderTitle?.zh?.trim() || tenderTitle?.es?.trim() || tenderSlug;
 
     for (const file of files) {
       // basename(), not the raw name: file.fileName is whatever the
@@ -165,7 +174,7 @@ export async function analyzeUploadedDocument(
         // option was removed from this upload flow per the user's explicit
         // request (2026-09-04); extract-tender-document.ts's CLI --precise
         // flag is a separate code path and is unaffected.
-        const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: intake.fileName, buyer: "" };
+        const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: titleForModel, buyer: "" };
         const hasText = await hasRealTextLayer(tempPath);
         const model: ExtractionModel = chooseExtractionModel(hasText, relevanceTier);
         // Only the first N pages are read, N by tier — real tenders reach

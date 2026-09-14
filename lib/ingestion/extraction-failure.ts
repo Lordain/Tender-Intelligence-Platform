@@ -100,3 +100,18 @@ export const BATCH_BUDGET_MS = 60 * 60 * 1000;
 export function batchBudgetExhausted(startedAt: number, now: number = Date.now()): boolean {
   return now - startedAt >= BATCH_BUDGET_MS;
 }
+
+/**
+ * How many tenders a batch analyses at once.
+ *
+ * Measured 2026-09-14: a document's model call is ~99s, nearly all of it
+ * spent waiting on the provider rather than working this machine. Strictly
+ * sequential, 66 Peru documents is over two hours of idle waiting; at this
+ * width it is closer to half an hour.
+ *
+ * Four, not forty. Each worker holds a tender's files in memory and shells
+ * out to poppler, and DashScope is a shared rate limit whose 429s would
+ * arrive as per-document failures — a width that turns one slow provider
+ * into a thundering herd trades a real speedup for a batch that fails.
+ */
+export const ANALYSIS_CONCURRENCY = 4;

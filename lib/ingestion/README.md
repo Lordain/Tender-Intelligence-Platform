@@ -4319,3 +4319,60 @@ another call.
 `npm run test:extraction-pipeline` is at 50 checks, including that the
 DashScope path makes exactly one call with no document block, and that the
 Claude path still sends native PDF.
+
+### Two transliterations of one town, and a backlog that would take a day
+
+**The name.** A tender titled 亚纳万卡区（Yanahuanca） got the one-line
+summary 秘鲁**扬阿万卡**区河岸防御扩建改善工程. Same place, two Chinese
+renderings, on the same page — which reads to a customer as two places.
+
+Root cause, `analyze-uploaded-document.ts:168`:
+
+```ts
+const context = { tenderNumber: …, title: intake.fileName, buyer: "" };
+```
+
+The extraction's `title` was **the file name**
+(`peru-ocds-…__Bases Administrativas.pdf`). The model never saw the tender's
+own Chinese title, so it transliterated Yanahuanca from scratch with no way
+to know the platform already renders it 亚纳万卡. The title translation
+(task #24) and the document extraction are two unrelated model calls with no
+shared vocabulary between them.
+
+Now the tender's stored `title.zh` is selected and passed as the context
+title, and SYSTEM_PROMPT carries an explicit rule: reuse the proper nouns —
+places, entities, rivers, project names — exactly as the given title writes
+them, never re-transliterate a name that already appears there. The title is
+the anchor because it is what the site shows.
+
+**The throughput.** One document at ~99s and a strictly sequential batch is
+about six per hour; 66 Peru documents is over two hours of mostly *idle*
+waiting, since nearly all of that 99s is spent waiting on the provider
+rather than working the machine. (The 10-minute figure that prompted this
+predates `preferExtractedText` — it included the 734.5s native-PDF attempt
+that path no longer makes.)
+
+`analyzeLocalFolder()` now runs `ANALYSIS_CONCURRENCY = 4` tenders at once,
+which puts the same 66 closer to half an hour. Four rather than forty: each
+worker holds a tender's files in memory and shells out to poppler, and
+DashScope is a shared rate limit whose 429s would arrive as per-document
+failures — a width that turns one slow provider into a thundering herd
+trades a real speedup for a batch that fails.
+
+The pool itself is extracted to `run-pool.ts` rather than left inline,
+because a worker pool's bugs are all silent and all of these would cost
+money or results: exceeding its width, dropping the last item, starting new
+work after a stop was decided, or abandoning work already in flight. Each of
+its three guarantees is asserted in `test:extraction-pipeline` (now 57
+checks), including that it is genuinely concurrent rather than sequential in
+disguise, and — the one that protects money — that once a stop is decided
+nothing NEW starts while everything already running is awaited to
+completion. A model call abandoned mid-flight is paid for and thrown away.
+
+Two details the concurrency changed in meaning rather than mechanics: the
+give-up rule counts failures *with no success yet* rather than
+*consecutive* ones (with four workers in flight "consecutive" has no
+definition), and "N 个项目未处理" is now computed from how many actually
+finished rather than from the aborting task's index, since tenders no longer
+complete in order. Results and failures are sorted back into the folder's
+order before reporting.

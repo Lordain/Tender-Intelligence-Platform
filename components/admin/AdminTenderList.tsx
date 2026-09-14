@@ -65,7 +65,7 @@ const selectClass =
   "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
 
 const dateClass =
-  "h-10 min-w-0 flex-1 rounded-xl border border-[#d8e0e3] bg-white px-2.5 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
+  "h-10 min-w-0 flex-1 rounded-xl border border-[#d8e0e3] bg-white px-2.5 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c] disabled:cursor-not-allowed disabled:bg-[#f2f4f3] disabled:text-[#a7b1b7]";
 
 export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) {
   const router = useRouter();
@@ -75,6 +75,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const [status, setStatus] = useState("all");
   const [relevance, setRelevance] = useState("all");
   const [analysis, setAnalysis] = useState("all");
+  const [deadlinePresence, setDeadlinePresence] = useState("all");
   const [deadlineFrom, setDeadlineFrom] = useState("");
   const [deadlineTo, setDeadlineTo] = useState("");
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
@@ -164,13 +165,19 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       const matchesDeadline =
         (!deadlineFrom && !deadlineTo) ||
         (day !== null && (!deadlineFrom || day >= deadlineFrom) && (!deadlineTo || day <= deadlineTo));
+      // Separate from the range on purpose: a range can only ever narrow to
+      // tenders that HAVE a deadline, so "which ones are still missing one"
+      // — the list an admin works through when filling Peru deadlines in by
+      // hand from the SEACE ficha — was unaskable with the range alone.
+      const matchesPresence =
+        deadlinePresence === "all" || (deadlinePresence === "missing" ? day === null : day !== null);
 
-      return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline;
+      return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
     });
-  }, [analysis, country, deadlineFrom, deadlineTo, query, relevance, status, tenders]);
+  }, [analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, relevance, status, tenders]);
 
   const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all" || analysis !== "all"
-    || Boolean(deadlineFrom) || Boolean(deadlineTo);
+    || Boolean(deadlineFrom) || Boolean(deadlineTo) || deadlinePresence !== "all";
 
   function clearFilters() {
     setDraftQuery("");
@@ -179,6 +186,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     setStatus("all");
     setRelevance("all");
     setAnalysis("all");
+    setDeadlinePresence("all");
     setDeadlineFrom("");
     setDeadlineTo("");
   }
@@ -245,6 +253,18 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               <option value="with_analysis">已有标书分析</option>
             </select>
           </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-black text-[#52636e]">交标日期</span>
+            <select
+              value={deadlinePresence}
+              onChange={(event) => setDeadlinePresence(event.target.value)}
+              className={selectClass}
+            >
+              <option value="all">不限</option>
+              <option value="missing">缺交标日期</option>
+              <option value="present">已有交标日期</option>
+            </select>
+          </label>
           <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
             <span className="text-xs font-black text-[#52636e]">交标截止日期</span>
             <div className="flex items-center gap-1.5">
@@ -253,6 +273,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                 aria-label="交标截止日期起"
                 value={deadlineFrom}
                 max={deadlineTo || undefined}
+                disabled={deadlinePresence === "missing"}
                 onChange={(event) => setDeadlineFrom(event.target.value)}
                 className={dateClass}
               />
@@ -262,6 +283,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                 aria-label="交标截止日期止"
                 value={deadlineTo}
                 min={deadlineFrom || undefined}
+                disabled={deadlinePresence === "missing"}
                 onChange={(event) => setDeadlineTo(event.target.value)}
                 className={dateClass}
               />

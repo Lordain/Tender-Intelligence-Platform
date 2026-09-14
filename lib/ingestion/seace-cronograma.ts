@@ -42,6 +42,14 @@ import type { ExtractedKeyDateType } from "@/lib/ingestion/key-date-checks";
  * will assume a bug the first time they look.
  */
 
+/**
+ * Marks every key-date row the cronograma paste endpoint writes, so a
+ * re-paste replaces exactly its own previous rows — and so anything else
+ * can recognise a date that came off the official ficha page rather than
+ * out of a document or a feed.
+ */
+export const CRONOGRAMA_SOURCE_REFERENCE = "SEACE ficha de selección · Cronograma";
+
 export type ParsedCronogramaRow = {
   /** The stage exactly as the ficha printed it, for the admin to check against. */
   label: string;

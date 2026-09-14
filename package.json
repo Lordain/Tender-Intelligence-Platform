@@ -79,7 +79,8 @@
     "backfill:key-dates-sync": "tsx --env-file-if-exists=.env.local scripts/backfill-key-dates-sync.ts",
     "inspect:dof-notice": "tsx --env-file-if-exists=.env.local scripts/inspect-dof-notice.ts",
     "test:account-devices": "tsx scripts/test-account-devices.ts",
-    "report:account-sharing": "tsx --env-file-if-exists=.env.local scripts/report-account-sharing.ts"
+    "report:account-sharing": "tsx --env-file-if-exists=.env.local scripts/report-account-sharing.ts",
+    "measure:deadlines": "tsx scripts/measure-deadline-accuracy.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

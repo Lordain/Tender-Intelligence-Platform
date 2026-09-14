@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { findKeyDateProblems } from "@/lib/ingestion/key-date-checks";
-import { diffAgainstExisting, parseSeaceCronograma } from "@/lib/ingestion/seace-cronograma";
+import { CRONOGRAMA_SOURCE_REFERENCE, diffAgainstExisting, parseSeaceCronograma } from "@/lib/ingestion/seace-cronograma";
 import { syncKeyDatesForTopLevelFields } from "@/lib/db/key-dates-sync";
 
 /**
@@ -66,7 +66,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
 
   const existing = (existingRaw ?? [])
-    .filter((row) => row.source_reference !== SOURCE_REFERENCE)
+    .filter((row) => row.source_reference !== CRONOGRAMA_SOURCE_REFERENCE)
     .map((row) => ({
       type: row.type as string,
       date: (row.date as string) ?? "",
@@ -120,7 +120,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     .delete()
     .eq("tender_id", tender.id)
     .eq("manually_added", true)
-    .eq("source_reference", SOURCE_REFERENCE);
+    .eq("source_reference", CRONOGRAMA_SOURCE_REFERENCE);
   if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
   // `submission` is deliberately NOT inserted as a row here. It has its own
@@ -141,7 +141,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
         type: row.type,
         date: row.date,
         notes: { es: "", en: "", zh: `SEACE ficha：${row.label}` },
-        source_reference: SOURCE_REFERENCE,
+        source_reference: CRONOGRAMA_SOURCE_REFERENCE,
         // A human read this off the official page, so a re-ingest must never
         // delete it (migration 0033).
         manually_added: true,
@@ -177,6 +177,3 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     deadlineUnchanged: extractedDeadline && storedDeadline && storedDeadline !== extractedDeadline ? storedDeadline : undefined,
   });
 }
-
-/** Marks every row this endpoint writes, so a re-paste replaces exactly its own previous rows. */
-const SOURCE_REFERENCE = "SEACE ficha de selección · Cronograma";

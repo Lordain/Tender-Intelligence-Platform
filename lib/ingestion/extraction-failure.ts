@@ -129,6 +129,44 @@ const TRANSIENT_PATTERNS = [
 
 const NEVER_TRANSIENT = /timed?\s*out|timeout|ETIMEDOUT|aborted/i;
 
+/**
+ * Output the model got slightly wrong, on a request that was fine.
+ *
+ * Only the manual-JSON path can produce these: Claude's structured outputs are
+ * enforced server-side, so a response there is valid by construction. On
+ * DashScope the model writes the JSON itself, and 2026-09-16 produced three in
+ * one run — two where a stray ASCII quote inside a Chinese sentence closed a
+ * string early ("文件“ASPECTOS PARTICULARES"章节"), one where an object was
+ * closed and then continued with more properties.
+ *
+ * None of that is a property of the document or of this code. It is one
+ * sampling of a model that usually gets it right, which makes it exactly as
+ * retriable as a 500 — and a retry is far better than the alternatives, which
+ * are writing a JSON repairer or losing the document.
+ *
+ * "No JSON object found" is deliberately NOT here: it stays systematic. A
+ * response with no JSON at all means the prompt or the provider配置 is wrong,
+ * and every document would do the same.
+ */
+const MALFORMED_OUTPUT_PATTERNS = [
+  /in JSON at position \d+/i,
+  /Unexpected token .* in JSON/i,
+  /Unexpected end of JSON input/i,
+  /Expected (?:',' or|double-quoted property name)/i,
+];
+
+export function isMalformedModelOutput(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/no json object found in response/i.test(message)) return false;
+  if (isValueOnlySchemaFailure(message)) return true;
+  return MALFORMED_OUTPUT_PATTERNS.some((pattern) => pattern.test(message));
+}
+
+/** Worth sending again exactly once — the provider had a bad second, or the model's own output slipped. */
+export function isRetriableExtractionFailure(err: unknown): boolean {
+  return isTransientServerError(err) || isMalformedModelOutput(err);
+}
+
 export function isTransientServerError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
   if (NEVER_TRANSIENT.test(message)) return false;

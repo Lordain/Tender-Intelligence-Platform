@@ -33,7 +33,7 @@ import {
 } from "../lib/ingestion/extract-requirements";
 import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
 import { isTextLayerSubstantial } from "../lib/ingestion/text-layer";
-import { isTransientServerError } from "../lib/ingestion/extraction-failure";
+import { isRetriableExtractionFailure, isTransientServerError } from "../lib/ingestion/extraction-failure";
 import { normalizeRawExtraction } from "../lib/ingestion/extract-requirements";
 import { chooseExtractionModel, maxPagesForTier } from "../lib/ingestion/extraction-routing";
 import { createServer } from "node:http";
@@ -624,6 +624,23 @@ async function main() {
       'Extraction failed schema validation for peru-z: [{ "code": "invalid_value" }, { "code": "invalid_type" }]',
     );
     check("value plus shape is shape", classifyExtractionFailure(mixed).kind === "systematic");
+
+    // The model writing its own JSON gets one more go — 2026-09-16 produced
+    // three of these in one run, all on the DashScope path, all a stray quote
+    // or a stray brace in otherwise complete answers.
+    for (const message of [
+      "Expected ',' or '}' after property value in JSON at position 3502 (line 98 column 63)",
+      "Expected ',' or ']' after array element in JSON at position 2099",
+      "Unexpected end of JSON input",
+    ]) {
+      check(`retried: ${message.slice(0, 44)}`, isRetriableExtractionFailure(new Error(message)));
+    }
+    check("a value-only schema failure is retried too", isRetriableExtractionFailure(valueOnly));
+    check("a wrong shape is NOT retried — it would fail identically", !isRetriableExtractionFailure(shape));
+    check(
+      "no JSON at all is NOT retried — that is the prompt or the provider",
+      !isRetriableExtractionFailure(new Error("No JSON object found in response")),
+    );
   });
 
   console.log(`\n${passed}/${passed + failed} checks passed (0 model calls, 0 cost).`);

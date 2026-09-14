@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { truncatePdfToPages } from "@/lib/ingestion/pdf-pages";
 import { getPdfPageCount } from "@/lib/ingestion/pdf-split";
 import { isTextLayerSubstantial } from "@/lib/ingestion/text-layer";
-import { classifyExtractionFailure, isTransientServerError } from "@/lib/ingestion/extraction-failure";
+import { classifyExtractionFailure, isRetriableExtractionFailure } from "@/lib/ingestion/extraction-failure";
 import { extname } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
@@ -491,7 +491,9 @@ const TRANSIENT_RETRY_DELAY_MS = 3_000;
  * Every model call in this file goes through here, which is why the one
  * retry lives here rather than in each path.
  *
- * ONE retry, and only for a provider-side blip (isTransientServerError). The
+ * ONE retry, and only for something a second attempt can actually fix
+ * (isRetriableExtractionFailure: a provider-side blip, or the model's own
+ * output coming back malformed on the manual-JSON path). The
  * SDK's own retries stay off — see requestOptions() for why, and note that a
  * timeout is excluded by name there and here, since retrying one costs the
  * whole budget again.
@@ -514,9 +516,9 @@ async function runExtraction(
   try {
     return await runExtractionOnce(client, model, content, context, useStructuredOutput, maxPages);
   } catch (err) {
-    if (!isTransientServerError(err)) throw err;
+    if (!isRetriableExtractionFailure(err)) throw err;
     console.warn(
-      `  ${context.tenderNumber}: 模型返回了一次服务端错误（${(err instanceof Error ? err.message : String(err)).slice(0, 160)}），${TRANSIENT_RETRY_DELAY_MS / 1000} 秒后重试一次。`,
+      `  ${context.tenderNumber}: 这一次调用没成功（${(err instanceof Error ? err.message : String(err)).slice(0, 160)}），${TRANSIENT_RETRY_DELAY_MS / 1000} 秒后重试一次。`,
     );
     await new Promise((resolve) => setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS));
     return await runExtractionOnce(client, model, content, context, useStructuredOutput, maxPages);
@@ -593,9 +595,23 @@ async function runExtractionOnce(
   const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
   if (!textBlock) throw new Error(`Extraction returned no text content for ${context.tenderNumber} (stop_reason: ${response.stop_reason})`);
 
-  const parsed = ExtractionSchema.safeParse(normalizeRawExtraction(extractJsonObject(textBlock.text)));
+  const raw = normalizeRawExtraction(extractJsonObject(textBlock.text));
+  const parsed = ExtractionSchema.safeParse(raw);
   if (!parsed.success) {
-    throw new Error(`Extraction failed schema validation for ${context.tenderNumber}: ${parsed.error.message}`);
+    // The zod message lists the values we ACCEPT and never the one that
+    // arrived, which is the only one worth knowing: it is what RISK_LEVEL_
+    // SYNONYMS has to learn before this stops happening.
+    const received = parsed.error.issues
+      .map((issue) => {
+        const at = issue.path.join(".");
+        const value = issue.path.reduce<unknown>((node, key) => (node as Record<string, unknown> | undefined)?.[key as never], raw);
+        return typeof value === "string" ? `${at} = "${value}"` : null;
+      })
+      .filter(Boolean)
+      .join("; ");
+    throw new Error(
+      `Extraction failed schema validation for ${context.tenderNumber}: ${parsed.error.message}${received ? `\n模型实际返回：${received}` : ""}`,
+    );
   }
   return parsed.data;
 }

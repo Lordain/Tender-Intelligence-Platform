@@ -4394,6 +4394,28 @@ finished rather than from the aborting task's index, since tenders no longer
 complete in order. Results and failures are sorted back into the folder's
 order before reporting.
 
+### The document-extraction path for key dates was removed (2026-09-16)
+
+Everything below about reading a cronograma out of a bid document is history,
+kept because the findings are still true and still cost something to establish.
+The code is gone: `ExtractionSchema` no longer has a `keyDates` array, the
+prompts no longer ask for one, and `lib/db/extracted-key-dates.ts`,
+`scripts/review-key-dates.ts`, `scripts/test-key-dates.ts` and
+`scripts/measure-deadline-accuracy.ts` are deleted.
+
+Why, in one line: it was built for Peru, Peru turned out not to publish the
+schedule in the document, and everywhere else the feed already supplies the
+dates — so what it added in practice was a SECOND schedule sitting beside the
+real one. A Proyectos Estratégicos tender showed two 现场踏勘 and two 提问截止,
+the document's pair being an earlier round of the same procedure. User,
+2026-09-16: 既然现在 Peru 是我手工做、Pemex 也是我手工做，建议把全站的分析标书
+提取关键日期的功能都删掉，完全用不到.
+
+What stayed: `key-date-checks.ts` (the 粘贴日程表 tool checks a pasted schedule
+with it), `extracted_from_document` and the importer's protection of those rows
+(so what was already written survives), and `undo:extracted-key-dates` to remove
+them where a human has since entered the real schedule.
+
 ### Peru's bid deadline: the search is over, and the answer is "nowhere" (2026-09-14)
 
 Tasks #31 and #34 both existed to close one gap: SEACE tenders reach this
@@ -4468,6 +4490,21 @@ Two consequences worth stating plainly:
   are all sound and untested against real data only because Peru turned out
   to be the wrong place to test them. Mexico's Convocatorias do print a
   cronograma; that is where this should be validated.
+
+**Third confirmation, from the pipeline itself (2026-09-16).** The note
+above rested on one bases PDF read by hand. The re-run after the two
+extraction bugs were fixed (`c65d629`) put three through the live path —
+1248966, 1249139 and 1249156, via 本地批量分析 — with
+JSON_SHAPE_INSTRUCTIONS now explicitly asking for `keyDates`. All three
+wrote their analysis (3/1/3/4, 2/2/11/4 and 2/0/3/3 qualifications /
+experience / documents / risks) and all three returned an EMPTY schedule.
+
+That combination is what makes it evidence rather than a failure: a run
+that extracts eleven required documents from a PDF and no dates from the
+same PDF is not a run that could not read it. The model was asked, on
+three separate documents, and there was nothing to answer with. Peru's
+bid deadline reaches this platform by hand or not at all, and the paste
+tool plus the ficha URL capture are the whole answer, not a stopgap.
 
 What is NOT being done, and why: deriving the submission date from the
 enquiry window plus the Reglamento's minimum intervals is arithmetic on a

@@ -490,116 +490,39 @@ translated.
 
 The admin 新项目清单 page's 翻译所有标题 button runs the same function.
 
-### Key dates read from a bid document
+### Key dates
 
-```bash
-npm run review:key-dates                 # coverage, plus every schedule that cannot be true
-npm run review:key-dates -- --all        # print every extracted cronograma with its citations
-npm run review:key-dates -- --sample 5   # five to open against the PDF by hand
-```
+Key dates come from two places, and reading them out of the bid document is no
+longer one of them (removed 2026-09-16).
 
-For Peru's OECE the bid deadline exists in no feed and on no list page — only
-inside the bases PDF — so the Layer 2 extraction reads the cronograma and
-`writeExtractedKeyDates()` fills `submission_deadline` from it when the tender
-has none (it never overwrites one a source supplied).
+1. **The source feed**, mirrored into `tender_key_dates` by the importer —
+   publication, PEMEX's `validity_end`, whatever a platform publishes as a
+   field.
+2. **A human**, through the 其他关键日期 editor or the SEACE 粘贴日程表 tool.
+   Those rows carry `manually_added` and nothing automated may touch them.
 
-That makes a misread date consequential rather than cosmetic: the column drives
-已截止 on the site and the digest. `toCalendarDay()` rejects anything that is
-not a real calendar day, but the dangerous input is the day that IS real and is
-wrong — these countries write `10/09/2026` for 10 September, and a model that
-reads it as 9 October returns a date nothing downstream can question.
+The Layer 2 document extraction used to read the cronograma as a third source.
+It was built for Peru, whose bases PDF turned out to delegate the schedule back
+to the SEACE ficha and print no dates at all — confirmed three times, most
+recently by the extraction itself returning an empty schedule on three
+documents while reading eleven required documents out of one of them
+(`lib/ingestion/README.md`). Everywhere else the feed already supplies the
+dates, so what the extraction actually added was a second schedule beside the
+real one: one Proyectos Estratégicos tender ended up showing two 现场踏勘 and
+two 提问截止, the document's being an earlier round of the same procedure
+(user, 2026-09-16: 这些标书不需要导入日期，现在导致日期全乱了).
 
-`findKeyDateProblems()` (`lib/ingestion/key-date-checks.ts`) checks the
-schedule against itself, which is the only evidence there is. A day/month swap
-moves one row and leaves the others where they were, so it shows up as a
-deadline after the opening or an award before the bids are due; the warning
-names the corrected reading rather than only the conflict. It also checks every
-row against the tender's own `publication_date`. When the **submission** row is
-one of the dates in question the cronograma is still written to the timeline —
-labelled, cited, visibly a reading — but the deadline column is left empty and
-the admin is told why. A wrong deadline is worse than none: no deadline falls
-back to the 45-day window, a guess that is visibly a guess.
+So the extraction now writes requirements, experience, documents, risks and the
+one-line summary, and never a date. `findKeyDateProblems()`
+(`lib/ingestion/key-date-checks.ts`) survives the removal because the paste tool
+uses it: a pasted schedule is still checked against itself and against the
+tender's `publication_date`, since a day/month swap moves one row and leaves the
+others where they were.
 
-Three plausible checks are deliberately absent because each fires on correct
-answers: a schedule where every row falls on one day (normal for a Peruvian
-Adjudicación Simplificada), `questions_deadline` after `clarification` (a
-second session can answer late consultas), and a deadline already in the past
-(this platform imports closed tenders). A warning that fires on a right answer
-teaches the reader to ignore all of them.
-
-Every extracted row carries `source_reference` (migration 0047) — the page and
-section it was read from, which the extraction schema already demanded and this
-table previously discarded. It shows in the admin 其他关键日期 list and in
-`review:key-dates`; the public timeline stays a schedule and shows no page
-numbers. Self-consistency is not correctness — a cronograma read one month late
-in every row passes every check — which is what `--sample` is for.
-
-## Scheduled jobs (Vercel Cron)
-
-`vercel.json` registers the four scheduled runs the product depends on. Until
-it existed, both routes below were reachable but nothing ever called them — the
-twice-daily digest is a paid feature, so on a deployment with no scheduler
-subscribers pay and receive nothing.
-
-| Schedule (UTC) | Path | What it does |
-|---|---|---|
-| `0 15 * * *` | `/api/cron/tender-digest` | 09:00 morning digest |
-| `0 0 * * *` | `/api/cron/tender-digest` | 18:00 evening digest |
-| `0 16 * * *` | `/api/cron/subscription-renewal-reminders` | Warns a subscriber five days before a card renews |
-| `30 3 * * *` | `/api/cron/purge-stale-colombia` | Deletes Colombia rows whose `Modalidad de Contratación` the ingestion gate would reject today, two months after publication |
-
-**The digest times are not arbitrary and cannot be shifted.** The route itself
-only accepts hour 09 or 18 in `America/Mexico_City` and returns 409 otherwise
-(`mexicoSlot()`), so a schedule that misses those hours does not run late — it
-runs and refuses. Mexico has had no DST since 2022, so the zone is UTC-6 all
-year and the conversion is fixed: 09:00 → 15:00 UTC, 18:00 → 00:00 UTC the
-following day. If Mexico ever restores DST, these two entries have to move with
-it.
-
-Auth needs no code: set `CRON_SECRET` in the Vercel project and Vercel sends it
-as `Authorization: Bearer <CRON_SECRET>`, which is exactly what both routes
-already check. A missing `CRON_SECRET` fails closed — `authorized()` requires
-the variable to be set, so every request 401s rather than running unprotected.
-`EMAIL_NOTIFICATIONS_ENABLED` and the Resend variables gate the digest
-separately; without them it 409s.
-
-**On plan limits.** Vercel lifted the per-project cron cap to 100 on every plan
-in January 2026, so three entries is not close to any count limit. Two Hobby
-restrictions still shape this file:
-
-- *Each expression may fire at most once a day.* A twice-daily expression fails
-  at deploy time. This is why the digest is written as two separate once-daily
-  entries rather than the equivalent-looking `0 0,15 * * *` — the combined form
-  is one job firing twice and would be rejected; the split form is two jobs
-  firing once each, which is allowed. Do not "simplify" it back.
-- *Hobby fires anywhere within the scheduled hour*, not at the minute (Pro is
-  minute-accurate). That happens to be safe for the digest: `0 15 * * *` lands
-  somewhere in 15:00–15:59 UTC, which is 09:00–09:59 in Mexico City, so the
-  route's hour check still sees 09. The margin is the full hour and no more —
-  any schedule not aligned to the top of the target hour would drift out of it.
-
-So the cron configuration itself would run on Hobby. The reason this project
-needs Pro is unrelated: Vercel's Hobby plan is licensed for personal,
-non-commercial use only, and this is a paid subscription product. Cron jobs
-carry no separate charge on any plan — their runs bill as ordinary function
-invocations.
-
-**When to upgrade:** on the day Stripe moves out of test mode, not before and
-not later. Until then the deployment is not being run for financial gain and
-Hobby is the right plan for it; from the moment a real Checkout can take a real
-payment, it is. Upgrading is an account-level change — no redeploy, no code
-change, no domain move — so it costs nothing to do it late, and it belongs in
-the same checklist as the live webhook endpoint, `STRIPE_WEBHOOK_SECRET`, and
-the six live Price IDs.
-
-To verify without waiting for a schedule:
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/purge-stale-colombia?dryRun=true
-```
-
-The digest has no dry-run flag and will really send, so test it against a
-staging deployment or a seeded test account rather than production.
+Rows written by the old extraction are still in the database, still marked
+`extracted_from_document`, and still protected from the importer's refresh.
+`npm run undo:extracted-key-dates` removes them from any tender that also has
+hand-entered rows — the case where they are pure noise — and leaves the rest.
 
 ### When one of them breaks
 

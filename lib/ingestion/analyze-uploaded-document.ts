@@ -57,8 +57,8 @@ import {
 import { extractTenderRequirementsQwenAnthropic } from "@/lib/ingestion/extract-requirements-qwen-anthropic";
 import { untranslated } from "@/lib/ingestion/text-utils";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
+import { isNationalPrioritySource } from "@/lib/relevance";
 import { assertWritten } from "@/lib/db/assert-written";
-import { writeExtractedKeyDates } from "@/lib/db/extracted-key-dates";
 
 export type AnalyzeUploadedDocumentResult = {
   /** Every successfully analyzed file name, in upload order — joined for display since this can now be more than one document analyzed together. */
@@ -73,21 +73,6 @@ export type AnalyzeUploadedDocumentResult = {
   experienceRequirements: number;
   requiredDocuments: number;
   risks: number;
-  /** How many cronograma rows the document yielded, and what happened to the bid deadline among them — see writeExtractedKeyDates(). */
-  keyDates: number;
-  /**
-   * The cronograma rows themselves, not just the count.
-   *
-   * Here for measurement rather than display: what a document says the bid
-   * deadline is only becomes checkable against the official date when the
-   * value survives out of this function. writeExtractedKeyDates() drops an
-   * extracted `submission` whenever the column is already filled — which is
-   * precisely the population that HAS a ground truth to score against — so
-   * without this the one comparison worth making is the one thrown away.
-   * See scripts/measure-deadline-accuracy.ts.
-   */
-  extractedKeyDates: { type: string; date: string }[];
-  submissionDeadlineSet?: string;
   status: "written" | "dry-run" | "skipped-opus-precision";
   message?: string;
   /**
@@ -139,7 +124,7 @@ export async function analyzeUploadedDocument(
     // slug burned every model call in the upload first.
     const { data: tender, error: tenderError } = await supabase
       .from("tenders")
-      .select("id, title, summary, one_line_summary, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
+      .select("id, title, summary, one_line_summary, source_name, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
       .eq("slug", tenderSlug)
       .maybeSingle();
     if (tenderError || !tender) {
@@ -279,8 +264,6 @@ export async function analyzeUploadedDocument(
       experienceRequirements: fields.experienceRequirements.length,
       requiredDocuments: fields.requiredDocuments.length,
       risks: fields.risks.length,
-      keyDates: fields.keyDates.length,
-      extractedKeyDates: fields.keyDates.map((item) => ({ type: item.type, date: item.date })),
     };
 
     if (!options.write) return { ...base, status: "dry-run", warnings: warnings.length > 0 ? warnings : undefined };
@@ -377,39 +360,6 @@ export async function analyzeUploadedDocument(
       }
     }
 
-    // The cronograma, written even when the requirement/risk arrays came
-    // back empty — those are separate findings and one being empty says
-    // nothing about the other.
-    //
-    // An empty cronograma is stated out loud rather than left as a blank
-    // cell, because "无" has two completely different meanings and the
-    // admin cannot tell them apart: the analysis went wrong, or the
-    // document genuinely prints no schedule. The second is real and, for
-    // Peru, common — confirmed 2026-09-14 on a live Bases Administrativas
-    // under Ley N° 32069, whose CRONOGRAMA chapter contains no dates at
-    // all, only "Según el cronograma de la ficha de selección de la
-    // convocatoria publicada en el SEACE de la Pladicop". A model that
-    // returns nothing there is CORRECT, and a blank cell that looks like
-    // a failure invites someone to pay for a re-run that cannot help.
-    if (fields.keyDates.length === 0) {
-      warnings.push("标书里没有读到任何日程（可能是标书本身不载明日期，指向平台 ficha；不一定是分析失败）。");
-    }
-
-    const submissionDeadlineSet = await writeExtractedKeyDates(
-      supabase,
-      tenderId,
-      fields.keyDates,
-      {
-        submissionDeadline: (tender.submission_deadline as string | null) ?? null,
-        awardDate: (tender.award_date as string | null) ?? null,
-        // Only read, never written: it is what findKeyDateProblems checks the
-        // cronograma against, and it is protected from this path anyway
-        // (migration 0030).
-        publicationDate: (tender.publication_date as string | null) ?? null,
-      },
-      warnings,
-    );
-
     for (const p of perFile) {
       const existingDoc = existingDocs?.find((d) => d.content_hash === p.intake.contentHash);
       if (existingDoc) {
@@ -456,7 +406,42 @@ export async function analyzeUploadedDocument(
       }
 
       const currentTier = tender.relevance_tier as string | null;
-      if (tender.relevance_manually_overridden) {
+      // A document read may raise, lower or confirm a tier. It may NOT
+      // exclude (2026-09-16). "excluded" is not a judgement about how
+      // important a project is — it is a category the platform's own rules
+      // define (日常性服务采购, lib/relevance.ts), tuned by hand over weeks of
+      // the user reading real rows, and the standing instruction is that
+      // those rules hold: 请一定要保障现在应用的筛选规则.
+      //
+      // The asymmetry is about consequence. Every other tier changes where a
+      // tender ranks; "excluded" removes it from the public feed entirely,
+      // silently, on the strength of one model reading one PDF. It did
+      // exactly that to a 拉古纳 irrigation-district rehabilitation worth
+      // reading — 技术与设计服务 in the title, and the model took the word
+      // 服务 at face value (user: 明明就是大型项目).
+      //
+      // Reported rather than swallowed, because a document that genuinely
+      // reads as routine service work is worth a human glance.
+      // A tier the Proyectos Estratégicos list settled is not ours to revise.
+      // Being on that list is Mexico's own determination that the project is
+      // strategic infrastructure, which is why lib/relevance.ts lets it bypass
+      // every exclusion and value floor. A document read is a weaker piece of
+      // evidence than the determination, so it may not move the tier at all —
+      // only the admin edit form can. User, 2026-09-16: proyectosestrategicos
+      // = 大型项目这个逻辑不能动，除非我手动调整.
+      if (isNationalPrioritySource(tender.source_name as string | null)) {
+        if (relevanceAssessment.suggestedTier !== currentTier) {
+          warnings.push(
+            `标书分析建议把相关度改成「${RELEVANCE_TIER_LABELS[relevanceAssessment.suggestedTier].zh}」，但这是 Proyectos Estratégicos 名录项目，分级只由该名录和人工调整决定，没有改动。理由：${relevanceAssessment.reasoning}`,
+          );
+        }
+      } else if (relevanceAssessment.suggestedTier === "excluded") {
+        if (currentTier !== "excluded") {
+          warnings.push(
+            `标书分析认为这个项目属于「日常服务类（排除）」，但排除只由平台自己的筛选规则决定，没有改动当前的「${RELEVANCE_TIER_LABELS[(currentTier ?? "standard") as keyof typeof RELEVANCE_TIER_LABELS]?.zh ?? currentTier}」。理由：${relevanceAssessment.reasoning}`,
+          );
+        }
+      } else if (tender.relevance_manually_overridden) {
         if (relevanceAssessment.suggestedTier !== currentTier) skippedLockedTier = true;
       } else if (relevanceAssessment.suggestedTier !== currentTier) {
         assertWritten(
@@ -477,7 +462,6 @@ export async function analyzeUploadedDocument(
     return {
       ...base,
       status: "written",
-      submissionDeadlineSet,
       participationScopeSet,
       relevanceTierChanged,
       skippedLockedTier,

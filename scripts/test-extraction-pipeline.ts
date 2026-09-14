@@ -2,11 +2,13 @@
  * Runs the REAL extraction pipeline end to end against a stub model
  * client — no network, no API key, no spend.
  *
- * This exists because of a run that cost real money to learn nothing:
- * five Peru bases PDFs, five identical failures, because `keyDates` was
- * required by ExtractionSchema while JSON_SHAPE_INSTRUCTIONS never asked
- * for it and the manual-JSON path never defaulted it. Every part of that
- * was reproducible offline. Nothing about it needed a live model.
+ * This exists because of a run that cost real money to learn nothing: five
+ * Peru bases PDFs, five identical failures, because an array was required by
+ * ExtractionSchema while JSON_SHAPE_INSTRUCTIONS never asked for it and the
+ * manual-JSON path never defaulted it. (That array was `keyDates`, removed
+ * from the extraction on 2026-09-16 — the defaulting it forced is what
+ * stayed, and group 1 still proves it on a different array.) Every part of
+ * that was reproducible offline. Nothing about it needed a live model.
  *
  * What a stub client can and cannot prove, stated plainly so this file
  * isn't mistaken for more than it is:
@@ -25,11 +27,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ExtractionSchema,
-  JSON_SHAPE_INSTRUCTIONS,
-  SYSTEM_PROMPT,
   extractTenderRequirements,
   mergeExtractions,
-  toTenderFields,
   type TenderExtraction,
 } from "../lib/ingestion/extract-requirements";
 import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
@@ -86,10 +85,6 @@ const FULL_RESPONSE = {
   experienceRequirements: [],
   requiredDocuments: [],
   risks: [{ level: "high", title: "履约保证金", description: "合同额 10%", sourceReference: "página 30" }],
-  keyDates: [
-    { type: "questions_deadline", date: "2026-09-20", notes: null, sourceReference: "página 7, Cronograma" },
-    { type: "submission", date: "2026-10-02", notes: "上午 10:00", sourceReference: "página 7, Cronograma" },
-  ],
 };
 
 const USAGE = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 };
@@ -183,12 +178,12 @@ async function main() {
 
   // ---- 1. The exact 2026-09-13 failure, reproduced and proven fixed ----
   await group("1 schema defaulting", async () => {
-    const withoutKeyDates: Record<string, unknown> = { ...FULL_RESPONSE };
-    delete withoutKeyDates.keyDates;
-    const { run } = manual(small, [withoutKeyDates]);
+    const withoutRisks: Record<string, unknown> = { ...FULL_RESPONSE };
+    delete withoutRisks.risks;
+    const { run } = manual(small, [withoutRisks]);
     const result = await run();
-    check("a response with no keyDates key no longer fails the document", Array.isArray(result.keyDates) && result.keyDates.length === 0);
-    check("...and the requirements it DID return survive", result.qualifications.length === 1 && result.risks.length === 1);
+    check("a response missing a required array no longer fails the document", Array.isArray(result.risks) && result.risks.length === 0);
+    check("...and the requirements it DID return survive", result.qualifications.length === 1);
     check("...and so does the one-line summary", result.oneLineSummary === "为某医院采购医疗设备");
   });
 
@@ -196,26 +191,7 @@ async function main() {
   await group("1b 全部数组缺失", async () => {
     const { run } = manual(small, [{ oneLineSummary: "只有总结" }]);
     const result = await run();
-    check("a response with no array keys at all still validates", result.qualifications.length === 0 && result.keyDates.length === 0);
-  });
-
-  // ---- 2. A schedule the model DID return survives the whole chain ----
-  await group("2 日程直达可写入结构", async () => {
-    const { run } = manual(small, [FULL_RESPONSE]);
-    const fields = toTenderFields(await run(), "peru-test-1");
-    check("both cronograma rows reach the writable field shape", fields.keyDates.length === 2);
-    check(
-      "the bid deadline keeps its exact day",
-      fields.keyDates.find((d) => d.type === "submission")?.date === "2026-10-02",
-    );
-    check("a row's note is carried through", fields.keyDates.find((d) => d.type === "submission")?.notes?.zh === "上午 10:00");
-    check("every row keeps its citation", fields.keyDates.every((d) => d.sourceReference.includes("Cronograma")));
-  });
-
-  // A date the model wrote ambiguously is dropped, not guessed at.
-  await group("2b 歧义日期", async () => {
-    const { run } = manual(small, [{ ...FULL_RESPONSE, keyDates: [{ type: "submission", date: "10/09/2026", notes: null, sourceReference: "página 7" }] }]);
-    check("an ambiguous DD/MM date is dropped rather than read as October", toTenderFields(await run(), "t").keyDates.length === 0);
+    check("a response with no array keys at all still validates", result.qualifications.length === 0 && result.risks.length === 0);
   });
 
   // ---- 3. Shapes that must still fail loudly ----
@@ -224,7 +200,7 @@ async function main() {
   await expectThrow("a top-level array is still rejected", manual(small, [[]]).run, /No JSON object found|schema validation/i);
   await expectThrow(
     "a bad enum value is still rejected",
-    manual(small, [{ ...FULL_RESPONSE, keyDates: [{ type: "firma", date: "2026-10-02", notes: null, sourceReference: "p7" }] }]).run,
+    manual(small, [{ ...FULL_RESPONSE, risks: [{ level: "catastrophic", title: "x", description: "y", sourceReference: "p7" }] }]).run,
     /schema validation/i,
   );
 
@@ -237,7 +213,7 @@ async function main() {
     const result = await run();
     check("the request-body cap triggers chunking instead of throwing", calls.length > 1);
     check("...and every chunk is sent as a real PDF, not extracted text", calls.slice(1).every((c) => c.contentTypes.includes("document")));
-    check("...and the merged result still carries the schedule", result.keyDates.length === 2);
+    check("...and the merged result still carries the requirements", result.qualifications.length === 1);
   });
 
   // The limits that already worked must keep working.
@@ -262,7 +238,7 @@ async function main() {
     const { client, calls } = stubClient([cap, cap, FULL_RESPONSE]);
     const result = await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", client, false);
     check("when every chunk fails, the text fallback runs", calls.at(-1)?.contentTypes.every((t) => t === "text") === true);
-    check("...and still returns a usable result", result.keyDates.length === 2);
+    check("...and still returns a usable result", result.qualifications.length === 1);
     check("...and the fallback really sent the document's text", (calls.at(-1)?.promptChars ?? 0) > 200);
   }
 
@@ -302,7 +278,7 @@ async function main() {
     const a: TenderExtraction = ExtractionSchema.parse({ ...FULL_RESPONSE, oneLineSummary: "" });
     const b: TenderExtraction = ExtractionSchema.parse(FULL_RESPONSE);
     const merged = mergeExtractions([a, b]);
-    check("a date read twice across a chunk boundary is written once", merged.keyDates.length === 2);
+    check("a requirement read twice across a chunk boundary is written once", merged.qualifications.length === 1);
     check("the first non-empty one-line summary wins", merged.oneLineSummary === "为某医院采购医疗设备");
   }
 
@@ -406,7 +382,7 @@ async function main() {
     check("only one call is made — no doomed native-PDF attempt first", calls.length === 1);
     check("and it carries no document block at all", !calls[0].contentTypes.includes("document"));
     check("the PDF's own text is what was sent", calls[0].promptChars > 200 && calls[0].docBytes === 0);
-    check("and the result still comes through", result.keyDates.length === 2);
+    check("and the result still comes through", result.qualifications.length === 1);
   });
 
   await group("7e' 未开启时仍然先走原生 PDF", async () => {
@@ -520,25 +496,7 @@ async function main() {
     shouldAbortBatch({ consecutiveFailures: 3, anySucceeded: true }) === false,
   );
 
-  // ---------------------------------------------------------------------------
-// Mexico writes submission and opening as one act. A model reading "Acto de
-// presentación y apertura de proposiciones" has to pick a type, and the name
-// pushes it toward "opening" — which is how real PEMEX tenders ended up with
-// 开标 2026-10-02 on the timeline and no bid deadline at all (2026-09-14).
-// Both instruction strings have to keep saying so; a prompt rewrite that
-// drops the rule is silent otherwise, and only shows up as missing deadlines.
-// ---------------------------------------------------------------------------
-group("the combined Mexican submission/opening act is spelled out", async () => {
-  for (const [name, text] of [
-    ["SYSTEM_PROMPT", SYSTEM_PROMPT],
-    ["JSON_SHAPE_INSTRUCTIONS", JSON_SHAPE_INSTRUCTIONS],
-  ] as const) {
-    check(`${name} names the combined act`, /presentaci.n y apertura/i.test(text), text.slice(0, 120));
-    check(`${name} asks for both types`, /"submission"/.test(text) && /"opening"/.test(text));
-  }
-});
-
-console.log(`\n${passed}/${passed + failed} checks passed (0 model calls, 0 cost).`);
+  console.log(`\n${passed}/${passed + failed} checks passed (0 model calls, 0 cost).`);
   if (failed > 0) process.exitCode = 1;
 }
 

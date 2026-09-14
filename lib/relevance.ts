@@ -2122,7 +2122,7 @@ export function isDirectAward(procedureType: string | undefined): boolean {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component",
   LocalizedText
 > = {
   no_content: {
@@ -2144,6 +2144,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: "该项目采用比价采购（Comparación de Precios）：这是秘鲁针对小额、标准化货物/服务的简化程序，采购单位收集报价后直接择低价成交，从公告到授标通常只有几天，且多数不公布预估金额；没有技术方案可比，实际上只面向本地现货供应商，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This is a price comparison (Comparación de Precios): Peru's abbreviated procedure for standard, low-value goods and services, where the entity collects quotations and buys the cheapest, usually within days of publishing and often without disclosing a reference value. There is no technical proposal to differentiate and the timetable only suits a local supplier with stock on hand. Filtered from the default feed (metadata is kept, not deleted).",
     es: "Es una comparación de precios: el procedimiento abreviado para bienes y servicios estándar de poca cuantía, en el que la entidad compara cotizaciones y compra la más baja, normalmente pocos días después de la convocatoria y a menudo sin publicar valor referencial. No hay propuesta técnica que diferenciar y el cronograma solo alcanza a un proveedor local con stock. Filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
+  municipal_water_component: {
+    zh: "该项目的标的是既有供水/排水管网里的单体小型构筑物（集水井、增压泵站、地面水池等），通常由本地承包商承建、金额在几十万美元级，数量极多；不属于供水系统、处理厂、输水干线一类的项目，默认不进入推荐列表（数据仍保留，可用于统计）。注：这是按标题里的构筑物名称判断的，如果该项目实际规模较大，可在后台人工锁定相关度。",
+    en: "What is being built here is a single small structure inside an existing water network — a collector box, a pumping sump, a surface tank — typically a few hundred thousand dollars and built by a local contractor. Mexican municipalities tender these constantly. Not a water system, treatment plant or trunk main. Filtered from the default feed (metadata is kept, not deleted); if this particular one is genuinely large, lock its relevance by hand in the admin.",
+    es: "Lo que se construye es una estructura aislada dentro de una red de agua existente — una caja colectora, un cárcamo de rebombeo, un tanque superficial — normalmente de unos cientos de miles de dólares y a cargo de un contratista local. No es un sistema de agua, una planta de tratamiento ni una línea de conducción. Filtrada de la vista predeterminada (los metadatos se conservan).",
   },
   keyword: {
     zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
@@ -2198,6 +2203,7 @@ function reasonFor(
     | "price_only_auction"
     | "price_comparison"
     | "direct_award"
+    | "municipal_water_component"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
   valueThresholdUsd: number = MIN_VALUE_USD,
@@ -2214,7 +2220,8 @@ function reasonFor(
       signal === "consulting" ||
       signal === "price_only_auction" ||
       signal === "price_comparison" ||
-      signal === "direct_award"
+      signal === "direct_award" ||
+      signal === "municipal_water_component"
         ? signal
         : "keyword"
     ];
@@ -2487,12 +2494,21 @@ export function classifyRelevance(input: {
   // commodity construction inputs — see each pattern's own header. These come
   // after the materials gate above because they are the cases that gate lets
   // through: naming the works is what rescued them.
+  // Split out of the group below purely so the stored reason is true. These
+  // are WORKS contracts, and the shared "日常性服务采购" text called them
+  // routine service procurement — which is what an admin reads in the review
+  // CSV when deciding whether an exclusion was right (2026-09-14: this exact
+  // tender was queried on the strength of that sentence, and the sentence was
+  // the only thing wrong with it).
+  if (!hasIncludeOverride && MUNICIPAL_WATER_COMPONENT_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "municipal_water_component") };
+  }
+
   if (
     !hasIncludeOverride &&
     (CONSTRUCTION_INPUT_GOODS.some((pattern) => pattern.test(haystack)) ||
       WORKS_CONSULTANCY_PATTERN.test(haystack) ||
       SUPPORT_VEHICLE_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
-      MUNICIPAL_WATER_COMPONENT_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
       PRODUCTIVE_DEVELOPMENT_PROGRAMME.test(haystack))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };

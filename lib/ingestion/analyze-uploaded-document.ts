@@ -432,13 +432,13 @@ export async function analyzeUploadedDocument(
       if (isNationalPrioritySource(tender.source_name as string | null)) {
         if (relevanceAssessment.suggestedTier !== currentTier) {
           warnings.push(
-            `标书分析建议把相关度改成「${RELEVANCE_TIER_LABELS[relevanceAssessment.suggestedTier]}」，但这是 Proyectos Estratégicos 名录项目，分级只由该名录和人工调整决定，没有改动。理由：${relevanceAssessment.reasoning}`,
+            `标书分析建议把相关度改成「${RELEVANCE_TIER_LABELS[relevanceAssessment.suggestedTier].zh}」，但这是 Proyectos Estratégicos 名录项目，分级只由该名录和人工调整决定，没有改动。理由：${relevanceAssessment.reasoning}`,
           );
         }
       } else if (relevanceAssessment.suggestedTier === "excluded") {
         if (currentTier !== "excluded") {
           warnings.push(
-            `标书分析认为这个项目属于「日常服务类（排除）」，但排除只由平台自己的筛选规则决定，没有改动当前的「${RELEVANCE_TIER_LABELS[(currentTier ?? "standard") as keyof typeof RELEVANCE_TIER_LABELS] ?? currentTier}」。理由：${relevanceAssessment.reasoning}`,
+            `标书分析认为这个项目属于「日常服务类（排除）」，但排除只由平台自己的筛选规则决定，没有改动当前的「${RELEVANCE_TIER_LABELS[(currentTier ?? "standard") as keyof typeof RELEVANCE_TIER_LABELS]?.zh ?? currentTier}」。理由：${relevanceAssessment.reasoning}`,
           );
         }
       } else if (tender.relevance_manually_overridden) {

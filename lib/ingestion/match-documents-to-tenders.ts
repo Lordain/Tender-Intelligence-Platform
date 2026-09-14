@@ -63,19 +63,35 @@ export async function resolveTender(
   const fileName = basename(pdfPath);
   const slugOverride = fileName.match(SLUG_OVERRIDE_PATTERN)?.[1];
 
-  if (slugOverride) {
-    const { data } = await supabase.from("tenders").select("slug, tender_number, title, buyer, relevance_tier").eq("slug", slugOverride).maybeSingle();
-    if (!data) return { skip: `${fileName} — filename names slug "${slugOverride}" but no tender in Supabase has it` };
-    return {
-      tender: {
-        slug: data.slug as string,
-        tenderNumber: data.tender_number as string,
-        title: (data.title as { zh: string }).zh,
-        buyer: data.buyer as string,
-        tier: (data.relevance_tier as TenderRelevanceTier | null) ?? null,
-        matchNote: `filename slug override (${slugOverride})`,
-      },
-    };
+  // A file whose whole name IS a slug, with no `__` suffix, is the same
+  // assertion written the obvious way — and it is what people actually do
+  // when they save a document out of the admin list, which names the file
+  // after the tender. Two real misses on 2026-09-16 were exactly this:
+  // `secop-890399002-cvc-lp-008-2026.pdf`, whose tender is in the database
+  // but whose tender_number is written `CVC LP 008 2026` with spaces, so the
+  // text match could never see it in a hyphenated file name.
+  //
+  // Unlike the `__` form this one FALLS THROUGH when the slug is unknown,
+  // rather than reporting it as the reason: a stem that merely looks
+  // slug-shaped may be a coincidence, and the text match deserves its turn.
+  const stem = basename(pdfPath, extname(pdfPath));
+  const slugCandidate = slugOverride ?? (/^[a-z0-9][a-z0-9-]*$/.test(stem) ? stem : undefined);
+
+  if (slugCandidate) {
+    const { data } = await supabase.from("tenders").select("slug, tender_number, title, buyer, relevance_tier").eq("slug", slugCandidate).maybeSingle();
+    if (!data && slugOverride) return { skip: `${fileName} — filename names slug "${slugOverride}" but no tender in Supabase has it` };
+    if (data) {
+      return {
+        tender: {
+          slug: data.slug as string,
+          tenderNumber: data.tender_number as string,
+          title: (data.title as { zh: string }).zh,
+          buyer: data.buyer as string,
+          tier: (data.relevance_tier as TenderRelevanceTier | null) ?? null,
+          matchNote: slugOverride ? `filename slug override (${slugOverride})` : `file name is the tender slug (${slugCandidate})`,
+        },
+      };
+    }
   }
 
   // Check the file name first (cheap, and a human-chosen name is
@@ -101,7 +117,7 @@ export async function resolveTender(
   const intake = await intakeDocument(pdfPath);
   if (!intake.tenderNumber) {
     return {
-      skip: `${fileName} — no known tender_number found in its file name/text, and no Compras MX-shaped procedure number either (rename it "<slug>__..." if you know which tender it belongs to)`,
+      skip: `${fileName} — no known tender_number found in its file name/text, and no Compras MX-shaped procedure number either (rename it to the tender slug — "<slug>.pdf" or "<slug>__something.pdf" — if you know which tender it belongs to)`,
     };
   }
   const { data } = await supabase.from("tenders").select("slug, title, buyer, relevance_tier").eq("tender_number", intake.tenderNumber).maybeSingle();

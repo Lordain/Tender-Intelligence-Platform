@@ -25,6 +25,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ExtractionSchema,
+  JSON_SHAPE_INSTRUCTIONS,
+  SYSTEM_PROMPT,
   extractTenderRequirements,
   mergeExtractions,
   toTenderFields,
@@ -518,7 +520,25 @@ async function main() {
     shouldAbortBatch({ consecutiveFailures: 3, anySucceeded: true }) === false,
   );
 
-  console.log(`\n${passed}/${passed + failed} checks passed (0 model calls, 0 cost).`);
+  // ---------------------------------------------------------------------------
+// Mexico writes submission and opening as one act. A model reading "Acto de
+// presentación y apertura de proposiciones" has to pick a type, and the name
+// pushes it toward "opening" — which is how real PEMEX tenders ended up with
+// 开标 2026-10-02 on the timeline and no bid deadline at all (2026-09-14).
+// Both instruction strings have to keep saying so; a prompt rewrite that
+// drops the rule is silent otherwise, and only shows up as missing deadlines.
+// ---------------------------------------------------------------------------
+group("the combined Mexican submission/opening act is spelled out", async () => {
+  for (const [name, text] of [
+    ["SYSTEM_PROMPT", SYSTEM_PROMPT],
+    ["JSON_SHAPE_INSTRUCTIONS", JSON_SHAPE_INSTRUCTIONS],
+  ] as const) {
+    check(`${name} names the combined act`, /presentaci.n y apertura/i.test(text), text.slice(0, 120));
+    check(`${name} asks for both types`, /"submission"/.test(text) && /"opening"/.test(text));
+  }
+});
+
+console.log(`\n${passed}/${passed + failed} checks passed (0 model calls, 0 cost).`);
   if (failed > 0) process.exitCode = 1;
 }
 

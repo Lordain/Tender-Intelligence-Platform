@@ -495,7 +495,15 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
             </p>
             <div className="mt-3">
               <KeyDatesEditor tenderSlug={tender!.slug} initialKeyDates={tender!.keyDates} />
-              <CronogramaPasteForm tenderSlug={tender!.slug} />
+              {/* Peru only. The form's whole premise — the deadline lives on a
+                  SEACE ficha page and nowhere else — is a fact about one
+                  country's platform, and its instructions name SEACE outright.
+                  Offering it on a PEMEX tender tells an admin to go copy a
+                  table that does not exist for it; Mexico publishes its
+                  cronograma inside the convocatoria, which the document
+                  extraction reads. Keyed off the CURRENT form value so
+                  correcting a mis-tagged country updates it without a save. */}
+              {form.country === "Peru" && <CronogramaPasteForm tenderSlug={tender!.slug} />}
             </div>
           </div>
         )}

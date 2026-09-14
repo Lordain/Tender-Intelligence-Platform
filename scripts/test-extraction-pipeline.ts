@@ -33,6 +33,7 @@ import {
 } from "../lib/ingestion/extract-requirements";
 import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
 import { isTextLayerSubstantial } from "../lib/ingestion/text-layer";
+import { isTransientServerError } from "../lib/ingestion/extraction-failure";
 import { chooseExtractionModel, maxPagesForTier } from "../lib/ingestion/extraction-routing";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -562,6 +563,37 @@ async function main() {
     }
     check("page caps follow the tier: 40/30/20", maxPagesForTier("flagship") === 40 && maxPagesForTier("significant") === 30 && maxPagesForTier("standard") === 20);
     check("an unclassified tender gets the standard cap", maxPagesForTier(null) === 20);
+  });
+
+  // ---- What earns the one retry ----
+  await group("只有服务端抖动和断线才重试", async () => {
+    for (const message of [
+      "Connection error.",
+      "500 {\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Internal server error\"}}",
+      "529 overloaded_error",
+      "FetchError: request to https://api.anthropic.com failed, reason: ECONNRESET",
+      "socket hang up",
+      "terminated",
+    ]) {
+      check(`retried: ${message.slice(0, 40)}`, isTransientServerError(new Error(message)));
+    }
+
+    for (const message of [
+      // A timeout's retry costs the whole budget again — the 31-minute run.
+      "Request timed out.",
+      "ETIMEDOUT",
+      // 4xx: this request is wrong and will be wrong again.
+      "400 {\"type\":\"invalid_request_error\",\"message\":\"Invalid request data\"}",
+      "413 request_too_large",
+      "400 Exceeded limit on max bytes to request body : 16777216",
+      // Systematic failures are diagnosed elsewhere and must stop the batch.
+      "failed schema validation",
+      "401 authentication_error",
+      // A token count that merely contains "500" is not a 500.
+      "Token usage — input: 15002, output: 1276",
+    ]) {
+      check(`not retried: ${message.slice(0, 40)}`, !isTransientServerError(new Error(message)));
+    }
   });
 
   console.log(`\n${passed}/${passed + failed} checks passed (0 model calls, 0 cost).`);

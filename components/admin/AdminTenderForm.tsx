@@ -21,6 +21,7 @@ import {
   RELEVANCE_TIER_LABELS,
 } from "@/lib/tender-labels";
 import { CronogramaPasteForm } from "@/components/admin/CronogramaPasteForm";
+import { mergeServerChanges } from "@/lib/admin/form-merge";
 import { KeyDatesEditor } from "@/components/admin/KeyDatesEditor";
 import { RequirementsEditor } from "@/components/admin/RequirementsEditor";
 import { RisksEditor } from "@/components/admin/RisksEditor";
@@ -124,6 +125,32 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
   const router = useRouter();
   const isEdit = Boolean(tender);
   const [form, setForm] = useState<FormState>(() => initialStateFrom(tender));
+
+  /**
+   * Adopt fields the SERVER changed, keeping whatever the admin has typed.
+   *
+   * This was losing data, not just looking stale. The cronograma paste writes
+   * submission_deadline and award_date straight to the row and calls
+   * router.refresh(); that re-renders the server components but merges the
+   * payload "without losing unaffected client-side React (e.g. useState)"
+   * (next/dist/docs, use-router) — so this form went on holding the empty
+   * 投标截止日期 it was built with. Pressing 保存修改 then submitted that empty
+   * value and WIPED the date the paste had just stored, unless the admin
+   * happened to reload the page in between (reported 2026-09-14).
+   *
+   * Only the fields whose server value actually changed are taken, rather
+   * than re-seeding the whole form: an admin who edited a title, then pasted
+   * a schedule, must not lose the title edit to a refresh they did not ask
+   * for. Adjusted during render, per React's guidance, so the new dates paint
+   * with the same commit rather than a frame later.
+   */
+  const [seenTender, setSeenTender] = useState(tender);
+  if (tender !== seenTender) {
+    const before = initialStateFrom(seenTender);
+    const after = initialStateFrom(tender);
+    setSeenTender(tender);
+    setForm((prev) => mergeServerChanges(prev, before, after));
+  }
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copiedTenderNumber, setCopiedTenderNumber] = useState(false);

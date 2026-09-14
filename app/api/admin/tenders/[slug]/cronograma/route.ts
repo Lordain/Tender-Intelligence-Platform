@@ -162,7 +162,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
         tender_id: tender.id,
         type: row.type,
         date: row.date,
-        notes: { es: "", en: "", zh: `${sourceReference}：${row.label}` },
+        // Just the stage, verbatim. The row renders its source_reference
+        // beside this already, so prefixing the note with it printed the same
+        // sentence twice across one line.
+        notes: { es: "", en: "", zh: row.label },
         source_reference: sourceReference,
         // A human read this off the official page, so a re-ingest must never
         // delete it (migration 0033).

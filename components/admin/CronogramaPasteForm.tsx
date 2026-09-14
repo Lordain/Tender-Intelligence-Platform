@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 /**
  * Paste a SEACE ficha's Cronograma table; get this tender's key dates.
@@ -63,6 +64,7 @@ export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: strin
   const [result, setResult] = useState<WriteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
 
   async function send(isPreview: boolean) {
     setBusy(true);
@@ -80,6 +82,9 @@ export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: strin
       else {
         setResult(data as WriteResult);
         setPreview(null);
+        // Pull the written rows back down so the key-dates list above updates
+        // in place. The result panel is client state and survives this.
+        router.refresh();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -309,7 +314,7 @@ export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: strin
           {result.deadlineUnchanged && <p className="mt-1">本项目已有交标截止日 {result.deadlineUnchanged}，未覆盖。</p>}
           {result.awardDateSet && <p className="mt-1 font-black">中标日期已设为 {result.awardDateSet}（计划授标日）。</p>}
           {result.awardDateUnchanged && <p className="mt-1">本项目已有中标日期 {result.awardDateUnchanged}，未覆盖。</p>}
-          <p className="mt-1">刷新页面查看关键日期时间线。</p>
+          <p className="mt-1">上方的关键日期列表已同步更新。</p>
         </div>
       )}
     </div>

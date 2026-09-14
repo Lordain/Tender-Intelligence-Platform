@@ -23,6 +23,13 @@
  *   npm run ping:indexnow -- --write        (submits)
  *   npm run ping:indexnow -- --days 7       (widen the window; default 2)
  *   npm run ping:indexnow -- --all          (every indexable URL, including the static pages — for the first run)
+ *   npm run ping:indexnow -- --origin https://latintender.com
+ *
+ * On --origin: the site's address normally comes from APP_URL, which a local
+ * .env.local deliberately does NOT set to production — the same variable
+ * builds Stripe's return URLs and the digest email links, so pointing it at
+ * latintender.com just to run this would send a local Checkout test back to
+ * the live site. Pass the origin for this one command instead.
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { deriveTenderStatus } from "../lib/tender-status";
@@ -54,6 +61,12 @@ function flag(name: string): boolean {
   return process.argv.includes(`--${name}`);
 }
 
+function text(name: string): string | undefined {
+  const index = process.argv.indexOf(`--${name}`);
+  if (index === -1) return undefined;
+  return process.argv[index + 1]?.trim() || undefined;
+}
+
 function option(name: string, fallback: number): number {
   const index = process.argv.indexOf(`--${name}`);
   if (index === -1) return fallback;
@@ -83,12 +96,14 @@ async function main() {
   const write = flag("write");
   const all = flag("all");
   const days = option("days", 2);
-  const origin = siteOrigin();
+  const origin = text("origin") ? new URL(text("origin")!).origin : siteOrigin();
   const now = new Date();
   const cutoff = new Date(now.getTime() - days * 86_400_000);
 
   if (origin.includes("localhost")) {
-    throw new Error("APP_URL 没设置，现在指向 localhost —— 提交本地地址没有意义");
+    throw new Error(
+      "站点地址指向 localhost —— 提交本地地址没有意义。加 --origin https://latintender.com，或在环境里设 APP_URL。",
+    );
   }
 
   const supabase = createSupabaseAdminClient();

@@ -105,8 +105,10 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     }
   }
 
-  async function handleBulkDelete() {
-    const slugs = [...selected];
+  // Takes the slugs the button was rendered for (selectedVisible below)
+  // rather than reading `selected`, so what gets deleted is exactly what the
+  // count on the bar was counting.
+  async function handleBulkDelete(slugs: string[]) {
     if (slugs.length === 0) return;
     if (!confirm(`确定要删除这 ${slugs.length} 条项目吗？此操作无法撤销。`)) return;
 
@@ -175,6 +177,30 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
     });
   }, [analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, relevance, status, tenders]);
+
+  // Changing any filter drops the selection. Without this the red bar
+  // survives a filter change still holding rows that are no longer on screen:
+  // it reads 已选择 1 项 over a list showing something else entirely, and
+  // 批量删除 then deletes a tender the admin never looked at. Deletion is not
+  // undoable, so the selection does not outlive the view it was made in.
+  //
+  // Every filter state has to appear here. selectedVisible below is the guard
+  // for the day one is added and this line is forgotten.
+  const filterKey = [query, country, status, relevance, analysis, deadlinePresence, deadlineFrom, deadlineTo].join("\u0000");
+  const [seenFilterKey, setSeenFilterKey] = useState(filterKey);
+  if (filterKey !== seenFilterKey) {
+    setSeenFilterKey(filterKey);
+    if (selected.size > 0) setSelected(new Set());
+  }
+
+  // What 批量删除 actually acts on, and what the bar counts: never more than
+  // what is on screen right now. Derived from `filtered`, so it narrows with
+  // every filter — including any filter added later — whether or not the key
+  // above knows about it.
+  const selectedVisible = useMemo(
+    () => filtered.filter((tender) => selected.has(tender.slug)).map((tender) => tender.slug),
+    [filtered, selected],
+  );
 
   const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all" || analysis !== "all"
     || Boolean(deadlineFrom) || Boolean(deadlineTo) || deadlinePresence !== "all";
@@ -302,9 +328,9 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
 
       {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      {selected.size > 0 && (
+      {selectedVisible.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
-          <p className="text-xs font-bold text-red-700">已选择 {selected.size} 项</p>
+          <p className="text-xs font-bold text-red-700">已选择 {selectedVisible.length} 项</p>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -315,7 +341,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             </button>
             <button
               type="button"
-              onClick={handleBulkDelete}
+              onClick={() => handleBulkDelete(selectedVisible)}
               disabled={bulkDeleting}
               className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-600 px-3 text-xs font-black text-white transition-colors hover:bg-red-700 disabled:opacity-50"
             >

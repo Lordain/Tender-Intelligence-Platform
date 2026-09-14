@@ -85,7 +85,7 @@ export function MexicoDeadlineBackfillPanel() {
                 <p className="font-bold text-[#071826]">{candidate.title}</p>
                 <p className="mt-0.5 text-xs text-[#8a97a0]">
                   {candidate.slug}
-                  {candidate.sourceName ? ` · ${candidate.sourceName}` : ""} · 发布 {day(candidate.publicationDate)} · 标书 {candidate.documentCount} 份
+                  {candidate.sourceName ? ` · ${candidate.sourceName}` : ""} · 发布 {day(candidate.publicationDate)} · 已存标书 {candidate.documentCount} 份 · 已知下载链接 {candidate.documentLinkCount} 个
                 </p>
                 {candidate.keyDates.length > 0 && (
                   <p className="mt-1 text-xs text-[#52636e]">

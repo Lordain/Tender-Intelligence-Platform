@@ -35,7 +35,10 @@ export type BackfillCandidate = {
   sourceName: string | null;
   sourceUrl: string | null;
   publicationDate: string | null;
+  /** Files this platform actually holds (tender_documents). */
   documentCount: number;
+  /** Official download URLs discovered at ingest (tender_document_links) — see migration 0042 for why the two are different questions. */
+  documentLinkCount: number;
   keyDates: BackfillKeyDate[];
   /** Set when a deadline can be read off an opening. */
   fill?: { date: string; basis: string };
@@ -134,6 +137,13 @@ export async function backfillMexicoDeadlines(
   const documents = await selectByTenderIds<{ tender_id: string }>(ids, (chunk) =>
     supabase.from("tender_documents").select("tender_id").in("tender_id", chunk),
   );
+  // Counted separately on purpose: "we hold the file" and "we know where to
+  // download it" are different questions (migration 0042), and they lead to
+  // completely different next steps — analyse what we have, versus click
+  // 批量下载标书, versus re-run the import that discovers links at all.
+  const documentLinks = await selectByTenderIds<{ tender_id: string }>(ids, (chunk) =>
+    supabase.from("tender_document_links").select("tender_id").in("tender_id", chunk),
+  );
 
   const byTender = new Map<string, KeyDateRow[]>();
   for (const row of keyDates) {
@@ -143,6 +153,8 @@ export async function backfillMexicoDeadlines(
   }
   const documentCounts = new Map<string, number>();
   for (const row of documents) documentCounts.set(row.tender_id, (documentCounts.get(row.tender_id) ?? 0) + 1);
+  const linkCounts = new Map<string, number>();
+  for (const row of documentLinks) linkCounts.set(row.tender_id, (linkCounts.get(row.tender_id) ?? 0) + 1);
 
   for (const tender of tenders) {
     const rows = (byTender.get(tender.id) ?? []).sort((a, b) => a.date.localeCompare(b.date));
@@ -155,6 +167,7 @@ export async function backfillMexicoDeadlines(
       sourceUrl: tender.source_url,
       publicationDate: tender.publication_date,
       documentCount: documentCounts.get(tender.id) ?? 0,
+      documentLinkCount: linkCounts.get(tender.id) ?? 0,
       keyDates: rows.map((row) => ({
         type: row.type,
         date: row.date,

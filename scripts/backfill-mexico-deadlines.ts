@@ -49,7 +49,7 @@ async function main() {
   for (const candidate of result.candidates) {
     console.log(`\n${RULE}\n${candidate.slug}${candidate.sourceName ? `  (${candidate.sourceName})` : ""}`);
     console.log(`  ${candidate.title}`);
-    console.log(`  发布 ${day(candidate.publicationDate)}   现有日期 ${candidate.keyDates.length} 条   标书 ${candidate.documentCount} 份`);
+    console.log(`  发布 ${day(candidate.publicationDate)}   现有日期 ${candidate.keyDates.length} 条   已存标书 ${candidate.documentCount} 份   已知下载链接 ${candidate.documentLinkCount} 个`);
     for (const row of candidate.keyDates) {
       console.log(`    ${day(row.date)}  ${KEY_DATE_TYPE_LABELS[row.type].zh.padEnd(6, "　")}  [${row.origin}]${row.label ? `  ${row.label}` : ""}`);
     }

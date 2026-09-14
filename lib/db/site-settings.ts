@@ -4,11 +4,26 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 const DEFAULT_HOMEPAGE_FEATURED_COUNT = 3;
 const DEFAULT_HOMEPAGE_TICKER_COUNT = 10;
 
+/**
+ * How the homepage's scrolling preview picks its projects.
+ *
+ *   "deadline" — the N tenders whose bid deadline comes soonest, nearest
+ *                first. Nothing to maintain and nothing to schedule: the
+ *                homepage is revalidated every 5 minutes (app/page.tsx), so
+ *                the list moves on its own as deadlines pass.
+ *   "manual"   — the ordered list an admin picked by hand.
+ *
+ * Default is "deadline" (user, 2026-09-16). A manual list stays stored while
+ * this is on, so switching back restores exactly what was there.
+ */
+export type HomepageTickerMode = "deadline" | "manual";
+
 export type HomepageControlSettings = {
   featuredCount: number;
   tickerCount: number;
   featuredSlugs: string[] | null;
   tickerSlugs: string[] | null;
+  tickerMode: HomepageTickerMode;
 };
 
 function parseCount(value: unknown, fallback: number): number {
@@ -53,6 +68,7 @@ export async function fetchHomepageControlSettings(): Promise<HomepageControlSet
     tickerCount: DEFAULT_HOMEPAGE_TICKER_COUNT,
     featuredSlugs: null,
     tickerSlugs: null,
+    tickerMode: "deadline",
   };
   const supabase = getSupabaseServerClient();
   if (!supabase) return fallback;
@@ -65,6 +81,7 @@ export async function fetchHomepageControlSettings(): Promise<HomepageControlSet
       "homepage_ticker_count",
       "homepage_featured_slugs",
       "homepage_ticker_slugs",
+      "homepage_ticker_mode",
     ]);
 
   if (error || !data) return fallback;
@@ -75,5 +92,7 @@ export async function fetchHomepageControlSettings(): Promise<HomepageControlSet
     tickerCount: parseCount(settings.get("homepage_ticker_count"), DEFAULT_HOMEPAGE_TICKER_COUNT),
     featuredSlugs: parseSlugList(settings.get("homepage_featured_slugs")),
     tickerSlugs: parseSlugList(settings.get("homepage_ticker_slugs")),
+    // Anything that is not the explicit opt-out is the default.
+    tickerMode: settings.get("homepage_ticker_mode") === "manual" ? "manual" : "deadline",
   };
 }

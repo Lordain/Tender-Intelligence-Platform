@@ -26,12 +26,14 @@ export function HomepageControlPanel({
   initialTickerSlugs,
   initialFeaturedCount,
   initialTickerCount,
+  initialTickerMode,
 }: {
   tenders: HomepageTenderOption[];
   initialFeaturedSlugs: string[];
   initialTickerSlugs: string[];
   initialFeaturedCount: number;
   initialTickerCount: number;
+  initialTickerMode: "deadline" | "manual";
 }) {
   const bySlug = useMemo(() => new Map(tenders.map((tender) => [tender.slug, tender])), [tenders]);
   const [featuredSlugs, setFeaturedSlugs] = useState(initialFeaturedSlugs.filter((slug) => bySlug.has(slug)));
@@ -40,6 +42,7 @@ export function HomepageControlPanel({
   const [tickerCount, setTickerCount] = useState(initialTickerCount);
   const [featuredInput, setFeaturedInput] = useState("");
   const [tickerInput, setTickerInput] = useState("");
+  const [tickerMode, setTickerMode] = useState(initialTickerMode);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -102,7 +105,7 @@ export function HomepageControlPanel({
       const response = await fetch("/api/admin/homepage-control", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ featuredSlugs, tickerSlugs, featuredCount, tickerCount }),
+        body: JSON.stringify({ featuredSlugs, tickerSlugs, featuredCount, tickerCount, tickerMode }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
@@ -124,6 +127,8 @@ export function HomepageControlPanel({
     setInput,
     count,
     setCount,
+    mode,
+    listDisabled,
   }: {
     kind: ListKind;
     eyebrow: string;
@@ -134,6 +139,10 @@ export function HomepageControlPanel({
     setInput: (value: string) => void;
     count: number;
     setCount: (value: number) => void;
+    /** Mode switch, rendered above the list. Only the ticker has one. */
+    mode?: React.ReactNode;
+    /** The hand-picked list is kept and shown, but greyed out, while it is not what the homepage reads. */
+    listDisabled?: boolean;
   }) {
     return (
       <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_18px_50px_-48px_rgba(6,27,43,.55)] sm:p-7">
@@ -142,6 +151,7 @@ export function HomepageControlPanel({
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#b86e00]">{eyebrow}</p>
             <h2 className="mt-1 text-xl font-black text-[#071826]">{title}</h2>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#64717c]">{description}</p>
+            {mode ? <div className="mt-3">{mode}</div> : null}
           </div>
           <label className="flex shrink-0 items-center gap-3 text-xs font-black text-[#52636e]">
             前台显示数量
@@ -155,6 +165,12 @@ export function HomepageControlPanel({
             />
           </label>
         </div>
+
+        {listDisabled ? (
+          <p className="mt-5 rounded-xl border border-[#e6b13f] bg-[#fff8ea] px-4 py-3 text-xs leading-6 text-[#6d5a31]">
+            下面这份手动清单当前<strong>没有在前台生效</strong>，但会原样保存 —— 切回手动模式即可恢复。
+          </p>
+        ) : null}
 
         <form
           className="mt-5 flex flex-col gap-2 sm:flex-row"
@@ -236,12 +252,34 @@ export function HomepageControlPanel({
         kind: "ticker",
         eyebrow: "Scrolling preview",
         title: "项目滚动设置",
-        description: "建议选择 10 个来自不同国家和行业的项目；不限制墨西哥，国家名称与国旗会按项目数据自动显示。",
+        description: tickerMode === "deadline"
+          ? "当前为自动模式：按交标截止日由近到远取前 N 个，没有交标日期或已截止的项目不参与。首页每 5 分钟重新生成，列表自己会随日期推移滚动，不需要任何维护。"
+          : "手动模式：下面这份有序清单就是前台显示的内容。建议选择来自不同国家和行业的项目；国家名称与国旗会按项目数据自动显示。",
+        mode: (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#dbe2e5] bg-[#fffdf9] p-2">
+            {([
+              ["deadline", "自动：最近要交标的排前面"],
+              ["manual", "手动：用下面这份清单"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTickerMode(value)}
+                className={`h-9 rounded-lg px-3 text-xs font-black transition-colors ${
+                  tickerMode === value ? "bg-[#071826] text-white" : "bg-[#f1f4f5] text-[#52636e] hover:bg-[#e5eaec]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ),
         slugs: tickerSlugs,
         input: tickerInput,
         setInput: setTickerInput,
         count: tickerCount,
         setCount: setTickerCount,
+        listDisabled: tickerMode === "deadline",
       })}
 
       <div className="sticky bottom-4 z-10 flex justify-end rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]/95 p-3 shadow-[0_14px_36px_-20px_rgba(6,27,43,.45)] backdrop-blur">

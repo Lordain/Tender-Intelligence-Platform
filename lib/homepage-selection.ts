@@ -1,5 +1,10 @@
-import { fetchHomepageControlSettings, type HomepageControlSettings } from "@/lib/db/site-settings";
-import { getCachedTenderList } from "@/lib/tenders";
+// Type-only, and the two server modules below are imported lazily inside the
+// one function that needs them. selectHomepageTenders is a pure rule about
+// what the homepage shows; keeping this file's TOP LEVEL free of
+// "server-only" is what lets it be tested offline
+// (scripts/test-homepage-selection.ts) instead of only in production.
+import type { HomepageControlSettings } from "@/lib/db/site-settings";
+import { isClosedTender } from "@/lib/access-control";
 import type { Tender } from "@/types/tender";
 
 function isTender(tender: Tender | undefined): tender is Tender {
@@ -26,13 +31,27 @@ export function selectHomepageTenders(
     : settings.featuredSlugs.map((slug) => bySlug.get(slug)).filter(isTender)
   ).slice(0, settings.featuredCount);
   const featuredSlugSet = new Set(featured.map((tender) => tender.slug));
-  const ticker = (settings.tickerSlugs === null
-    ? sorted.filter((tender) => !featuredSlugSet.has(tender.slug))
-    : settings.tickerSlugs
-        .map((slug) => bySlug.get(slug))
-        .filter(isTender)
-        .filter((tender) => !featuredSlugSet.has(tender.slug))
-  ).slice(0, settings.tickerCount);
+
+  // "Closing soonest, nearest first" — the default (see HomepageTickerMode).
+  //
+  // A tender with no deadline cannot be ranked by one and is left out rather
+  // than parked at either end; a closed one has nothing left to bid on. Both
+  // questions are answered by the same rules the rest of the site uses: the
+  // status here is already derived (deriveTenderStatus runs in toTender), so
+  // a deadline that passed this morning has already made it closed.
+  const byDeadline = tenders
+    .filter((tender) => tender.submissionDeadline && !isClosedTender(tender.status))
+    .sort((a, b) => a.submissionDeadline!.localeCompare(b.submissionDeadline!));
+
+  const tickerSource = settings.tickerMode === "deadline"
+    ? byDeadline
+    : settings.tickerSlugs === null
+      ? sorted
+      : settings.tickerSlugs.map((slug) => bySlug.get(slug)).filter(isTender);
+
+  const ticker = tickerSource
+    .filter((tender) => !featuredSlugSet.has(tender.slug))
+    .slice(0, settings.tickerCount);
 
   return { featured, ticker };
 }
@@ -49,10 +68,12 @@ export function selectHomepageTenders(
  * difference is a full-table read per project view versus none.
  */
 export async function isHomepageFreePreviewSlug(slug: string): Promise<boolean> {
+  const { fetchHomepageControlSettings } = await import("@/lib/db/site-settings");
   const settings = await fetchHomepageControlSettings();
   if (settings.featuredSlugs !== null) {
     return settings.featuredSlugs.slice(0, settings.featuredCount).includes(slug);
   }
+  const { getCachedTenderList } = await import("@/lib/tenders");
   return selectHomepageTenders(await getCachedTenderList(), settings).featured.some(
     (tender) => tender.slug === slug,
   );

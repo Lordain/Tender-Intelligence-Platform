@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { findKeyDateProblems } from "@/lib/ingestion/key-date-checks";
-import { parseSeaceCronograma } from "@/lib/ingestion/seace-cronograma";
+import { diffAgainstExisting, parseSeaceCronograma } from "@/lib/ingestion/seace-cronograma";
 import { syncKeyDatesForTopLevelFields } from "@/lib/db/key-dates-sync";
 
 /**
@@ -56,8 +56,55 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   const storedDeadline = (tender.submission_deadline as string | null)?.slice(0, 10) ?? null;
   const extractedDeadline = parsed.rows.find((row) => row.type === "submission")?.date;
 
+  // What this tender already has, minus whatever a previous paste wrote (those
+  // rows are deleted and rebuilt below, so counting them would make a re-paste
+  // report itself as a duplicate of itself).
+  const { data: existingRaw, error: existingError } = await supabase
+    .from("tender_key_dates")
+    .select("type, date, source_reference, extracted_from_document")
+    .eq("tender_id", tender.id);
+  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
+
+  const existing = (existingRaw ?? [])
+    .filter((row) => row.source_reference !== SOURCE_REFERENCE)
+    .map((row) => ({
+      type: row.type as string,
+      date: (row.date as string) ?? "",
+      sourceReference: row.source_reference as string | null,
+      extractedFromDocument: Boolean(row.extracted_from_document),
+    }));
+
+  // `submission` is handled by the deadline column and its sync, not as a row
+  // here, so it is not part of the row-level diff.
+  const diff = diffAgainstExisting(
+    parsed.rows.filter((row) => row.type !== "submission"),
+    existing,
+  );
+
+  const duplicates = diff.duplicates.map((entry) => ({
+    label: entry.row.label,
+    date: entry.row.date,
+    type: entry.row.type,
+    existingSource: entry.existingSource,
+  }));
+  const conflicts = diff.conflicts.map((entry) => ({
+    label: entry.row.label,
+    type: entry.row.type,
+    fichaDate: entry.row.date,
+    storedDate: entry.storedDate,
+    existingSource: entry.existingSource,
+  }));
+
   if (body.preview) {
-    return NextResponse.json({ ...parsed, problems: problems.map((p) => p.message), storedDeadline, extractedDeadline });
+    return NextResponse.json({
+      ...parsed,
+      problems: problems.map((p) => p.message),
+      storedDeadline,
+      extractedDeadline,
+      duplicates,
+      conflicts,
+      willInsert: diff.toInsert.length,
+    });
   }
 
   if (parsed.rows.length === 0) {
@@ -82,7 +129,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   // one from the column. Writing both would put two 交标截止 entries on the
   // public timeline until the next admin save silently removed one, which a
   // customer would see. The column is set below and the sync builds the row.
-  const timelineRows = parsed.rows.filter((row) => row.type !== "submission");
+  //
+  // Of what is left, only the rows nothing already states get inserted — see
+  // diffAgainstExisting(). A date the bid document already yielded is the
+  // same fact, and the first real paste put it on the page twice.
+  const timelineRows = diff.toInsert;
   if (timelineRows.length > 0) {
     const { error: insertError } = await supabase.from("tender_key_dates").insert(
       timelineRows.map((row) => ({
@@ -120,6 +171,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     ignored: parsed.ignored,
     unparsed: parsed.unparsed,
     problems: problems.map((p) => p.message),
+    duplicates,
+    conflicts,
     deadlineSet,
     deadlineUnchanged: extractedDeadline && storedDeadline && storedDeadline !== extractedDeadline ? storedDeadline : undefined,
   });

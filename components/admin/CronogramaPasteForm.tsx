@@ -25,6 +25,12 @@ type Preview = {
   problems: string[];
   storedDeadline: string | null;
   extractedDeadline?: string;
+  /** Ficha rows an existing entry already states — not written again. */
+  duplicates: { label: string; date: string; type: string; existingSource: string }[];
+  /** Same stage, different day. Both rows end up stored; a person settles it. */
+  conflicts: { label: string; type: string; fichaDate: string; storedDate: string; existingSource: string }[];
+  /** How many rows would actually be inserted. */
+  willInsert: number;
 };
 
 type WriteResult = {
@@ -33,6 +39,8 @@ type WriteResult = {
   deadlineSet?: string;
   deadlineUnchanged?: string;
   problems: string[];
+  duplicates: { label: string; date: string; type: string; existingSource: string }[];
+  conflicts: { label: string; type: string; fichaDate: string; storedDate: string; existingSource: string }[];
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -76,6 +84,11 @@ export function CronogramaPasteForm({ tenderSlug }: { tenderSlug: string }) {
     }
   }
 
+  // A paste whose every row the tender already has is still worth writing when
+  // the deadline column is empty — that is the field the public page shows.
+  const deadlineIsNew = Boolean(preview?.extractedDeadline && !preview?.storedDeadline);
+  const canWrite = Boolean(preview && (preview.willInsert > 0 || deadlineIsNew));
+
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fdfcf8] p-5">
       <div>
@@ -114,16 +127,18 @@ export function CronogramaPasteForm({ tenderSlug }: { tenderSlug: string }) {
         </button>
         <button
           type="button"
-          disabled={busy || !preview || preview.rows.length === 0}
+          disabled={busy || !canWrite}
           onClick={() => send(false)}
           className="rounded-xl bg-[#ffb21c] px-4 py-2 text-sm font-black text-[#071826] disabled:opacity-40"
           title={preview ? undefined : "先点左边的「先预览」，确认解析结果后这里才会亮"}
         >
           {!preview
             ? "第二步：写入（预览后可点）"
-            : preview.rows.length === 0
-              ? "没有可写入的日期"
-              : `写入这 ${preview.rows.length} 条`}
+            : preview.willInsert > 0
+              ? `写入这 ${preview.willInsert} 条`
+              : deadlineIsNew
+                ? "只写入交标截止日"
+                : "无需写入（都已存在）"}
         </button>
         {!preview && !busy && (
           <span className="text-xs text-[#52636e]">先预览，看清解析结果后写入按钮才会亮。</span>
@@ -144,13 +159,23 @@ export function CronogramaPasteForm({ tenderSlug }: { tenderSlug: string }) {
                 </tr>
               </thead>
               <tbody>
-                {preview.rows.map((row) => (
-                  <tr key={`${row.type}-${row.date}`} className="border-b border-[#f0f2f3]">
-                    <td className="py-1.5 pr-3 font-black text-[#071826]">{TYPE_LABELS[row.type] ?? row.type}</td>
-                    <td className="py-1.5 pr-3 font-mono">{row.date}</td>
-                    <td className="py-1.5 text-[#52636e]">{row.label}</td>
-                  </tr>
-                ))}
+                {preview.rows.map((row) => {
+                  const duplicate = preview.duplicates.find((item) => item.type === row.type && item.date === row.date);
+                  return (
+                    <tr key={`${row.type}-${row.date}`} className="border-b border-[#f0f2f3]">
+                      <td className="py-1.5 pr-3 font-black text-[#071826]">{TYPE_LABELS[row.type] ?? row.type}</td>
+                      <td className="py-1.5 pr-3 font-mono">{row.date}</td>
+                      <td className="py-1.5 text-[#52636e]">
+                        {row.label}
+                        {duplicate && (
+                          <span className="ml-2 text-[#52636e]">
+                            —— 已有同日记录（{duplicate.existingSource}），不重复写入
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           ) : (
@@ -166,6 +191,23 @@ export function CronogramaPasteForm({ tenderSlug }: { tenderSlug: string }) {
                 ? `交标截止：ficha 是 ${preview.extractedDeadline}，但本项目已有 ${preview.storedDeadline} —— 不会覆盖，如需更改请用上方的「投标截止日期」字段。`
                 : `交标截止 ${preview.extractedDeadline} 将写入本项目（原为空）。`}
             </p>
+          )}
+
+          {/* The one case a person has to settle: the ficha and something already
+              stored disagree about the same stage. Both rows are kept — nothing
+              deletes a record nobody reviewed — so this has to be loud. */}
+          {preview.conflicts.length > 0 && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-red-900">
+              <p className="font-black">与已有日期不一致，两条都会保留，请人工核对后删掉错的：</p>
+              <ul className="mt-1 list-disc pl-4">
+                {preview.conflicts.map((item) => (
+                  <li key={`${item.type}-${item.fichaDate}`}>
+                    {TYPE_LABELS[item.type] ?? item.type}：ficha 是 {item.fichaDate}，库里已有 {item.storedDate}（
+                    {item.existingSource}）
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {preview.problems.length > 0 && (
@@ -208,6 +250,18 @@ export function CronogramaPasteForm({ tenderSlug }: { tenderSlug: string }) {
       {result && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
           <p className="font-black">已写入 {result.timelineRows} 条时间线日期。</p>
+          {result.duplicates.length > 0 && (
+            <p className="mt-1">
+              {result.duplicates.length} 条已有同日记录，未重复写入（{result.duplicates
+                .map((item) => `${TYPE_LABELS[item.type] ?? item.type} ${item.date}`)
+                .join("、")}）。
+            </p>
+          )}
+          {result.conflicts.length > 0 && (
+            <p className="mt-1 font-black text-red-800">
+              {result.conflicts.length} 条与已有日期不一致，两条都在页面上，请核对后删掉错的。
+            </p>
+          )}
           {result.deadlineSet && <p className="mt-1 font-black">交标截止日已设为 {result.deadlineSet}。</p>}
           {result.deadlineUnchanged && <p className="mt-1">本项目已有交标截止日 {result.deadlineUnchanged}，未覆盖。</p>}
           <p className="mt-1">刷新页面查看关键日期时间线。</p>

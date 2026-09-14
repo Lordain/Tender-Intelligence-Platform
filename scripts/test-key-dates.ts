@@ -17,7 +17,7 @@
  */
 import { ExtractionSchema, JSON_SHAPE_INSTRUCTIONS, normalizeRawExtraction, toCalendarDay } from "../lib/ingestion/extract-requirements";
 import { findKeyDateProblems, submissionIsSuspect, swapDayAndMonth } from "../lib/ingestion/key-date-checks";
-import { parseSeaceCronograma } from "../lib/ingestion/seace-cronograma";
+import { diffAgainstExisting, parseSeaceCronograma } from "../lib/ingestion/seace-cronograma";
 import { isPastSubmissionDeadline } from "../lib/ingestion/recency";
 import { deriveTenderStatus, platformDay } from "../lib/tender-status";
 
@@ -427,6 +427,68 @@ check(
     { publicationDate: "2026-09-10" },
   ).length === 0,
 );
+
+// ---------------------------------------------------------------------------
+// diffAgainstExisting: what a pasted table adds to a tender that already has
+// key dates. The first real paste (2026-09-14) put a second 提问截止 on the
+// page next to the one the bid document had already yielded — same day, same
+// stage, two rows.
+// ---------------------------------------------------------------------------
+{
+  const fichaRows = ficha.rows.filter((row) => row.type !== "submission");
+
+  const noneStored = diffAgainstExisting(fichaRows, []);
+  check("with nothing stored, every ficha row is inserted", noneStored.toInsert.length === fichaRows.length);
+  check("with nothing stored there are no duplicates", noneStored.duplicates.length === 0);
+  check("with nothing stored there are no conflicts", noneStored.conflicts.length === 0);
+
+  // The exact case the user hit: the document pipeline already extracted the
+  // questions deadline, and it agrees with the ficha to the day.
+  const agreeing = diffAgainstExisting(fichaRows, [
+    { type: "questions_deadline", date: "2026-09-21", extractedFromDocument: true },
+  ]);
+  check(
+    "a date the document already yielded is not written a second time",
+    agreeing.toInsert.every((row) => row.type !== "questions_deadline"),
+  );
+  check("the agreeing row is reported as a duplicate", agreeing.duplicates.length === 1);
+  check(
+    "the duplicate names where the existing row came from",
+    agreeing.duplicates[0]?.existingSource === "标书提取",
+  );
+  check("an agreement is not a conflict", agreeing.conflicts.length === 0);
+  check("the other ficha rows still go in", agreeing.toInsert.length === fichaRows.length - 1);
+
+  // Timestamps: Supabase can hand back a full ISO string for a date column.
+  const timestamped = diffAgainstExisting(fichaRows, [
+    { type: "questions_deadline", date: "2026-09-21T00:00:00.000Z", extractedFromDocument: true },
+  ]);
+  check("a stored timestamp still matches the same day", timestamped.duplicates.length === 1);
+
+  // Disagreement: both rows are kept, and it is reported.
+  const clashing = diffAgainstExisting(fichaRows, [
+    { type: "questions_deadline", date: "2026-09-18", sourceReference: "página 7" },
+  ]);
+  check("a different day for the same stage is a conflict", clashing.conflicts.length === 1);
+  check(
+    "the conflict carries both dates",
+    clashing.conflicts[0]?.storedDate === "2026-09-18" && clashing.conflicts[0]?.row.date === "2026-09-21",
+  );
+  check(
+    "a conflicting ficha row is still inserted, so a human can see both",
+    clashing.toInsert.some((row) => row.type === "questions_deadline"),
+  );
+  check("a conflict is not counted as a duplicate", clashing.duplicates.length === 0);
+
+  // A stored date of an unrelated type must not suppress anything.
+  const unrelated = diffAgainstExisting(fichaRows, [{ type: "publication", date: "2026-09-10" }]);
+  check("an unrelated stored type changes nothing", unrelated.toInsert.length === fichaRows.length);
+
+  // Re-pasting: the caller strips this endpoint's own rows first, so a second
+  // paste of the same table must behave exactly like the first.
+  const rePaste = diffAgainstExisting(fichaRows, []);
+  check("re-pasting the same table is idempotent", rePaste.toInsert.length === noneStored.toInsert.length);
+}
 
 function daysBetweenForTest(day: string): number {
   return Math.floor((new Date("2026-09-12T00:00:00.000Z").getTime() - new Date(`${day}T00:00:00.000Z`).getTime()) / 86_400_000);

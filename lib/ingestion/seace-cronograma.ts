@@ -162,3 +162,79 @@ export function parseSeaceCronograma(pasted: string): ParsedCronograma {
 
   return { rows, ignored, unparsed };
 }
+
+/** A key date already stored for the tender, as this module needs to see it. */
+export type ExistingKeyDate = {
+  type: string;
+  /** YYYY-MM-DD. */
+  date: string;
+  /** Where it came from, for telling the admin which row is which. */
+  sourceReference?: string | null;
+  extractedFromDocument?: boolean;
+};
+
+export type CronogramaDiff = {
+  /** Rows to actually insert — the ficha rows nothing already covers. */
+  toInsert: ParsedCronogramaRow[];
+  /** Ficha rows an existing entry already states, to the day. Not re-inserted. */
+  duplicates: { row: ParsedCronogramaRow; existingSource: string }[];
+  /** Same stage, different day: the one case a person has to settle. */
+  conflicts: { row: ParsedCronogramaRow; storedDate: string; existingSource: string }[];
+};
+
+function describeSource(existing: ExistingKeyDate): string {
+  if (existing.extractedFromDocument) return "标书提取";
+  if (existing.sourceReference) return existing.sourceReference;
+  return "已有记录";
+}
+
+/**
+ * Works out what a pasted cronograma actually adds, given what the tender
+ * already has.
+ *
+ * Found the first time this ran on real data (2026-09-14): the tender
+ * already carried a `questions_deadline` of 2026-09-21 extracted from its
+ * bid document, and the paste wrote a second row for the same day — two
+ * identical 提问截止 entries on the admin page, and on the public timeline.
+ * The agreement is the good news (it is the first independent confirmation
+ * the document extraction of #31 was right), but it is one fact and belongs
+ * on one row.
+ *
+ * The three outcomes are deliberately different:
+ *
+ * - **Same stage, same day** — the ficha adds nothing, so nothing is
+ *   inserted. The existing row stays, notes and all; a model-written
+ *   explanation of what the deadline means is worth more to a reader than
+ *   the Spanish stage name this would replace it with.
+ * - **Same stage, different day** — inserted anyway, and reported loudly.
+ *   The ficha is the official page, but a stored row was put there by a
+ *   person or a document, and deleting either from here would destroy a
+ *   record nobody reviewed. Both rows visible, with the disagreement named,
+ *   is the honest state; a human deletes the wrong one.
+ * - **New stage** — inserted.
+ *
+ * Rows this endpoint wrote itself are excluded by the caller before this is
+ * called (they are deleted and rebuilt on every paste), so re-pasting the
+ * same table is idempotent rather than being reported as conflicting with
+ * its own previous run.
+ */
+export function diffAgainstExisting(
+  rows: readonly ParsedCronogramaRow[],
+  existing: readonly ExistingKeyDate[],
+): CronogramaDiff {
+  const diff: CronogramaDiff = { toInsert: [], duplicates: [], conflicts: [] };
+
+  for (const row of rows) {
+    const sameType = existing.filter((entry) => entry.type === row.type);
+    const sameDay = sameType.find((entry) => entry.date.slice(0, 10) === row.date);
+    if (sameDay) {
+      diff.duplicates.push({ row, existingSource: describeSource(sameDay) });
+      continue;
+    }
+    const clash = sameType[0];
+    if (clash) diff.conflicts.push({ row, storedDate: clash.date.slice(0, 10), existingSource: describeSource(clash) });
+    diff.toInsert.push(row);
+  }
+
+  return diff;
+}

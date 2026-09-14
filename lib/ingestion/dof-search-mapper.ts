@@ -3,6 +3,7 @@ import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
 import { inferGovernmentLevel, CFE_BUYER_PATTERN, CFE_MICROSITIO_URL } from "@/lib/ingestion/heuristics";
 import type { DofNoticeDetail } from "@/lib/ingestion/connectors/dof-notice-detail";
+import { deadlineFromOpening } from "@/lib/ingestion/mexico-opening-deadline";
 
 /**
  * One "nota" from DOF's advanced-search endpoint
@@ -101,18 +102,32 @@ const SPANISH_MONTHS: Record<string, string> = {
  * date on the second office's notices silently failed to parse (returned
  * null) and got dropped rather than recorded with the wrong value —
  * caught by comparing that notice's real HTML side by side with the first.
+ *
+ * Two more real shapes, from CFE-0700-CAAAT-0026-2026 (nota 5798464,
+ * 2026-09-14): this notice's own cells read "30/09 /2026 09:00 horas" —
+ * a stray space inside the date, which the strict numeric pattern rejected
+ * outright, so the Apertura Técnica row (the one that IS the bid deadline
+ * for a CFE concurso) vanished while every other row on the same notice
+ * came through — and "09:00 horas" with no comma and the word spelled out,
+ * where the old time group wanted ", 09:00 hrs". A dropped time is not
+ * harmless either: a 00:00 timestamp on a deadline day reads as the
+ * evening BEFORE it in Mexico City time.
+ *
+ * So: whitespace is tolerated around the separators, the comma is
+ * optional, and hrs/horas/hs are all accepted. A date is still either
+ * parsed exactly or returned as null — nothing is guessed.
  */
 function parseDofDetailDate(raw: string | undefined): string | null {
   if (!raw) return null;
 
-  const numeric = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*(\d{1,2}):(\d{2})\s*hrs)?/i);
+  const numeric = raw.match(/^(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})(?:\s*,?\s*(\d{1,2}):(\d{2})\s*(?:hrs|horas|hs)\b)?/i);
   if (numeric) {
     const [, day, month, year, hour, minute] = numeric;
     const parsed = new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${(hour ?? "00").padStart(2, "0")}:${minute ?? "00"}:00`);
     return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
   }
 
-  const written = raw.match(/^(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+de\s+(\d{4})(?:\s+a\s+las\s+(\d{1,2}):(\d{2})\s*horas)?/i);
+  const written = raw.match(/^(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+de\s+(\d{4})(?:\s+a\s+las\s+(\d{1,2}):(\d{2})\s*(?:hrs|horas|hs)\b)?/i);
   if (written) {
     const [, day, monthName, year, hour, minute] = written;
     const month = SPANISH_MONTHS[monthName.toLowerCase()];
@@ -220,6 +235,37 @@ function buildDofDetailFields(fieldsByLabel: Record<string, string>, tenderNumbe
       });
     } else if (/^fallo/i.test(label)) {
       keyDates.push({ id: `${tenderNumber}-award`, type: "award", date: iso });
+    }
+  }
+
+  // No label said "presentación/recepción de proposiciones", but an opening
+  // did: under LAASSP/LOPSRM and CFE's own Disposiciones Generales the
+  // proposals are handed in AT that act, so the opening is the deadline.
+  // Real case, CFE-0700-CAAAT-0026-2026: the table lists Sesión de
+  // Aclaraciones, Apertura Técnica, Resultado Técnico y Apertura Económica
+  // and Fallo — and no row a bidder could read as "submit by". The tender
+  // reached the platform with 交标 empty while the date sat in the notice.
+  //
+  // deadlineFromOpening() is the shared rule (see its header): it takes the
+  // earliest opening that is NOT the economic session, because a
+  // two-envelope procedure opens the economic proposals days AFTER bidding
+  // closed — on this very notice, 02/10 against a real deadline of 30/09.
+  if (!submissionDeadline) {
+    const derived = deadlineFromOpening(keyDates);
+    if (derived.ok) {
+      submissionDeadline = derived.date;
+      keyDates.push({
+        id: `${tenderNumber}-submission-from-opening`,
+        type: "submission",
+        date: derived.date,
+        // Says where it came from, since this one is inferred rather than
+        // read off a row of its own.
+        notes: {
+          es: "Presentación de proposiciones (en el acto de apertura)",
+          en: "Proposals are submitted at the opening act",
+          zh: "递交提案（与开标同一场）",
+        },
+      });
     }
   }
 

@@ -19,6 +19,7 @@ import { ExtractionSchema, JSON_SHAPE_INSTRUCTIONS, normalizeRawExtraction, toCa
 import { findKeyDateProblems, submissionIsSuspect, swapDayAndMonth } from "../lib/ingestion/key-date-checks";
 import { diffAgainstExisting, parseSeaceCronograma } from "../lib/ingestion/seace-cronograma";
 import { parseAnyCronograma, parseProyectosEstrategicosCronograma } from "../lib/ingestion/proyectos-estrategicos-cronograma";
+import { mapDofSearchNotaToTender } from "../lib/ingestion/dof-search-mapper";
 import { deadlineFromOpening } from "../lib/ingestion/mexico-opening-deadline";
 import { isPastSubmissionDeadline } from "../lib/ingestion/recency";
 import { deriveTenderStatus, platformDay } from "../lib/tender-status";
@@ -670,6 +671,75 @@ const pemxDate = (type: string) => pemx.rows.filter((r) => r.type === type).map(
       return !out.ok && out.reason === "economic_only";
     })(),
   );
+}
+
+// ---------------------------------------------------------------------------
+// The real CFE notice behind all of the above: nota 5798464,
+// CFE-0700-CAAAT-0026-2026, fields exactly as inspect:dof-notice printed them
+// on 2026-09-14 — including the stray space in "30/09 /2026", which is not a
+// typo here but what DOF's own HTML contains.
+//
+// Two separate failures put this tender on the platform with no bid deadline:
+// the strict date pattern rejected that one cell outright (so the Apertura
+// Técnica row vanished while every other row on the same notice came
+// through), and no label on this notice reads as "submit by" at all.
+// ---------------------------------------------------------------------------
+{
+  const detail = {
+    procedureNumber: "CFE-0700-CAAAT-0026-2026",
+    title: "Adquisición de Enfriadores de Hidrógeno de Generador Eléctrico de Unidad 1 y 2 con destino a la Central Ciclo Combinado Pdte. Emilio Portes Gil.",
+    fieldsByLabel: {
+      "Fecha de publicación en Micrositio": "04/09/2026",
+      "Sesión de Aclaraciones": "22/09/2026 10:00 horas",
+      "Apertura Técnica": "30/09 /2026 09:00 horas",
+      "Resultado Técnico y Apertura Económica": "02/10/2026 13:00 horas",
+      Fallo: "07/10/2026 12:00 horas",
+    },
+  };
+  const tender = mapDofSearchNotaToTender(
+    { codNota: 5798464, titulo: "COMISION FEDERAL DE ELECTRICIDAD - REF:580187", fecha: "2026/09/10", codDiario: 1, codOrgaUno: "CONVOCATORIAS PARA CONCURSOS DE ADQUISICIONES" },
+    "Diario Oficial de la Federación (DOF) — búsqueda avanzada",
+    detail,
+  );
+
+  // Local-time construction on both sides: parseDofDetailDate builds the
+  // Date without a zone, so comparing whole ISO strings across machines
+  // would only be testing the runner's TZ.
+  const at = (local: string) => new Date(local).toISOString();
+
+  check("the CFE notice maps at all", !!tender);
+  check(
+    "a stray space inside the date no longer drops the row",
+    (tender?.keyDates ?? []).some((kd) => kd.type === "opening" && kd.date === at("2026-09-30T09:00:00")),
+  );
+  check(
+    "the bid deadline is the Apertura Técnica, to the hour",
+    tender?.submissionDeadline === at("2026-09-30T09:00:00"),
+    tender?.submissionDeadline,
+  );
+  check(
+    "…and not the economic session two days later",
+    tender?.submissionDeadline !== at("2026-10-02T13:00:00"),
+  );
+  check(
+    "…and not midnight, which reads as the evening before in Mexico City",
+    tender?.submissionDeadline !== at("2026-09-30T00:00:00"),
+  );
+  check(
+    "the clarification session keeps its hour too",
+    (tender?.keyDates ?? []).some((kd) => kd.type === "clarification" && kd.date === at("2026-09-22T10:00:00")),
+  );
+  check("the fallo is still the award date", (tender?.keyDates ?? []).some((kd) => kd.type === "award" && kd.date === at("2026-10-07T12:00:00")));
+  check("publication comes from the micrositio field", tender?.publicationDate === at("2026-09-04T00:00:00"));
+
+  // The other office's wording must keep working — ", 10:30 hrs", comma and
+  // abbreviation, confirmed real for CFE-0001-CAAAT-0134-2026.
+  const otherOffice = mapDofSearchNotaToTender(
+    { codNota: 1, titulo: "COMISION FEDERAL DE ELECTRICIDAD - REF:1", fecha: "2026/09/01", codDiario: 1, codOrgaUno: "CONVOCATORIAS PARA CONCURSOS" },
+    "dof",
+    { procedureNumber: "CFE-0001-CAAAT-0134-2026", title: "x", fieldsByLabel: { "Apertura Técnica": "11/09/2026, 10:30 hrs" } },
+  );
+  check("the comma/hrs spelling still parses with its hour", otherOffice?.submissionDeadline === at("2026-09-11T10:30:00"), otherOffice?.submissionDeadline);
 }
 
 function daysBetweenForTest(day: string): number {

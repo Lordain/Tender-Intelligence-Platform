@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { truncatePdfToPages } from "@/lib/ingestion/pdf-pages";
+import { isTextLayerSubstantial } from "@/lib/ingestion/text-layer";
 import { extname } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
@@ -775,8 +776,28 @@ export async function extractTenderRequirements(
         // context window for a genuinely huge document (confirmed real
         // 2026-09-03) — runTextExtractionWithOverflowRetry() handles that
         // second failure mode too.
+        // The fallback is only a fallback when there is text to fall back
+        // TO. A scanned/image-only PDF yields a few hundred characters of
+        // stray caption text, and sending that returns a confident, empty,
+        // successful-looking 0/0/0/0 — the operator is told the document
+        // contains nothing, which is a different and much worse claim than
+        // "this failed, run it again". Real case 2026-09-16: a 
+        // Proyectos Estratégicos highway Convocatoria whose chunked call hit
+        // one Anthropic 500 and whose text fallback then ran on 3,025 input
+        // tokens — a whole highway tender cannot be 3,025 tokens.
+        //
+        // Rethrowing puts it where the design already says transient failures
+        // belong (see requestOptions' comment on maxRetries: reported, batch
+        // continues, two in a row stop the run) instead of converting a blip
+        // into a permanent empty answer.
+        const fallbackText = await extractDocumentText(sourcePath);
+        if (!isTextLayerSubstantial(fallbackText)) {
+          throw new Error(
+            `chunked extraction failed and this PDF has no usable text layer (${fallbackText.trim().length} chars), so there is nothing to fall back to — rerun it. Original failure: ${chunkErr instanceof Error ? chunkErr.message : String(chunkErr)}`,
+          );
+        }
         console.log(`  chunked extraction failed (${(chunkErr instanceof Error ? chunkErr.message : String(chunkErr)).slice(0, 800)}) — falling back to extracted text instead.`);
-        return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(sourcePath), context, useStructuredOutput, maxPages);
+        return runTextExtractionWithOverflowRetry(client, model, instruction, fallbackText, context, useStructuredOutput, maxPages);
       }
     }
   } finally {

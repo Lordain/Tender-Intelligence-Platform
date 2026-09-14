@@ -32,6 +32,7 @@ import {
   type TenderExtraction,
 } from "../lib/ingestion/extract-requirements";
 import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
+import { isTextLayerSubstantial } from "../lib/ingestion/text-layer";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { dispatcherForTimeout } from "../lib/ingestion/http-dispatcher";
@@ -495,6 +496,17 @@ async function main() {
     "failures after a success do not stop it — those are per-document",
     shouldAbortBatch({ consecutiveFailures: 3, anySucceeded: true }) === false,
   );
+
+  // ---- A fallback needs something to fall back TO ----
+  // When the chunked native call fails, the code drops to locally-extracted
+  // text. For a scanned PDF that text is a few hundred stray characters, and
+  // sending it returns an empty result that looks like a successful reading of
+  // an empty document. This threshold is what separates the two.
+  await group("扫描件没有可回退的文本", async () => {
+    check("a real document's text passes", isTextLayerSubstantial("a".repeat(500)));
+    check("a scanned PDF's stray caption text does not", !isTextLayerSubstantial("Figura 1. Planta general"));
+    check("whitespace is not text", !isTextLayerSubstantial(" ".repeat(5000)));
+  });
 
   console.log(`\n${passed}/${passed + failed} checks passed (0 model calls, 0 cost).`);
   if (failed > 0) process.exitCode = 1;

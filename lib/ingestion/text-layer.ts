@@ -15,6 +15,11 @@ import { extractDocumentText } from "@/lib/ingestion/document-intake";
  */
 const TEXT_LAYER_MIN_CHARS = 500;
 
+/** The same threshold, applied to text already extracted — see hasRealTextLayer(). */
+export function isTextLayerSubstantial(text: string): boolean {
+  return text.trim().length >= TEXT_LAYER_MIN_CHARS;
+}
+
 /**
  * Used to route a document between providers (see extract-requirements-
  * qwen-anthropic.ts and scripts/extract-tender-document.ts's --provider
@@ -29,6 +34,5 @@ const TEXT_LAYER_MIN_CHARS = 500;
  */
 export async function hasRealTextLayer(filePath: string): Promise<boolean> {
   if ([".docx", ".doc"].includes(extname(filePath).toLowerCase())) return true;
-  const text = await extractDocumentText(filePath);
-  return text.trim().length >= TEXT_LAYER_MIN_CHARS;
+  return isTextLayerSubstantial(await extractDocumentText(filePath));
 }

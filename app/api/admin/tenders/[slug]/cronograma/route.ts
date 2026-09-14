@@ -47,7 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
   const { data: tender, error: tenderError } = await supabase
     .from("tenders")
-    .select("id, submission_deadline, award_date, publication_date, manual_field_overrides, ficha_url")
+    .select("id, submission_deadline, award_date, publication_date, manual_field_overrides, ficha_url, source_url")
     .eq("slug", slug)
     .maybeSingle();
   if (tenderError) return NextResponse.json({ error: tenderError.message }, { status: 500 });
@@ -219,6 +219,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
   const columnUpdate: Record<string, string> = {};
   if (fichaUrlSet && fichaUrlSet !== tender.ficha_url) columnUpdate.ficha_url = fichaUrlSet;
+  // ...and it BECOMES the official entry point, at the user's instruction
+  // (2026-09-15: 请直接用这个替换编辑项目页面最下方的官方标书链接).
+  //
+  // What that changes, since it is not only an admin field: source_url is
+  // what the public 官方入口 button links to. For a Peru tender that button
+  // has always pointed at SEACE's generic search page — the only URL the feed
+  // can produce — so a reader had to search for the procedure themselves.
+  // Now it opens the tender's own ficha.
+  //
+  // Locked in the same breath. Every import writes source_url from its
+  // mapper, so without the lock the next run would put the search page back
+  // and the improvement would last until morning — which is exactly the
+  // failure this route was fixed for hours ago. scripts/protect-manual-
+  // source-urls.ts exists because this column has been overwritten before.
+  //
+  // ficha_url keeps its own copy on purpose: it records where this tender's
+  // schedule was read from, which stays true even if someone later edits
+  // source_url by hand to something else.
+  if (fichaUrlSet && fichaUrlSet !== tender.source_url) columnUpdate.source_url = fichaUrlSet;
   if (extractedDeadline && !storedDeadline) columnUpdate.submission_deadline = extractedDeadline;
   if (extractedAwardDate && !storedAwardDate) columnUpdate.award_date = extractedAwardDate;
 
@@ -245,6 +264,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     // ficha_url is deliberately not locked: no import writes that column, so
     // an entry there would be noise in a list that is read to mean "an import
     // must keep its hands off this".
+    // source_url IS locked (an import would otherwise restore the search
+    // page); ficha_url is not, because no import writes that column and an
+    // entry there would be noise in a list read as "imports keep off".
     for (const column of Object.keys(columnUpdate)) if (column !== "ficha_url") overrides.add(column);
 
     const { error } = await supabase
@@ -282,6 +304,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     deadlineSet,
     awardDateSet,
     fichaUrlSet: columnUpdate.ficha_url,
+    sourceUrlSet: columnUpdate.source_url,
     awardDateUnchanged: extractedAwardDate && storedAwardDate && storedAwardDate !== extractedAwardDate ? storedAwardDate : undefined,
     deadlineUnchanged: extractedDeadline && storedDeadline && storedDeadline !== extractedDeadline ? storedDeadline : undefined,
   });

@@ -44,6 +44,7 @@ type WriteResult = {
   awardDateSet?: string;
   awardDateUnchanged?: string;
   fichaUrlSet?: string;
+  sourceUrlSet?: string;
   problems: string[];
   duplicates: { label: string; date: string; type: string; existingSource: string }[];
   conflicts: { label: string; type: string; fichaDate: string; storedDate: string; existingSource: string }[];
@@ -166,7 +167,9 @@ export function CronogramaPasteForm({
         <span className="text-xs font-bold text-[#52636e]">
           {country === "Mexico" ? "该项目页面链接（选填）" : "ficha 链接（选填）"}
           <span className="ml-1 font-normal text-[#8a97a0]">
-            ——{country === "Mexico" ? "复制浏览器地址栏里这个项目的网址" : "复制浏览器地址栏里 ficha de selección 的网址"}，以后复核不用再搜一遍
+            ——{country === "Mexico" ? "复制浏览器地址栏里这个项目的网址" : "复制浏览器地址栏里 ficha de selección 的网址"}。
+            填了会<span className="font-bold text-[#b86e00]">同时更新最下方的「官方标书链接」</span>，也就是前台那个官方入口按钮——
+            读者点进去就是这个项目本身，而不是平台首页或搜索页。
           </span>
         </span>
         <input
@@ -359,6 +362,7 @@ export function CronogramaPasteForm({
           )}
           {result.deadlineSet && <p className="mt-1 font-black">交标截止日已设为 {result.deadlineSet}。</p>}
           {result.fichaUrlSet && <p className="mt-1">已保存该项目的页面链接，以后复核可直接打开。</p>}
+          {result.sourceUrlSet && <p className="mt-1 font-black">官方标书链接已更新为该链接，前台的官方入口现在直达本项目。</p>}
           {result.deadlineUnchanged && <p className="mt-1">本项目已有交标截止日 {result.deadlineUnchanged}，未覆盖。</p>}
           {result.awardDateSet && <p className="mt-1 font-black">中标日期已设为 {result.awardDateSet}（计划授标日）。</p>}
           {result.awardDateUnchanged && <p className="mt-1">本项目已有中标日期 {result.awardDateUnchanged}，未覆盖。</p>}

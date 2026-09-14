@@ -259,6 +259,7 @@ Ground rules:
 - All title/description fields must be written directly in Chinese (zh), concise and close to the document's own terms — do not copy multi-sentence legal paragraphs verbatim, and do not write a placeholder.
 - You may be given a block headed 本平台已对该项目使用的中文写法 — the tender's title, summary and any earlier one-line summary, as this platform ALREADY displays them. It is reference vocabulary, never a source to extract from. Reuse its renderings of proper nouns — place names, entity names, river and project names — exactly as written there, and do not re-transliterate any name that appears in it. One tender showing 亚纳万卡区 in its title and 扬阿万卡 in its summary reads as two different places to a customer. For a name that appears NOWHERE in that block, transliterate it as you normally would.
 - If a section is genuinely absent from this document (e.g. no Anexo Técnico attached), return an empty array for the corresponding field rather than guessing.
+- Never write an unescaped ASCII double quote inside a value. To quote a Spanish proper noun inside a Chinese sentence use 「」 or no quotes at all — 建设 BRAMONAS 2 堤防, not 建设"BRAMONAS 2"堤防.
 
 Also provide "oneLineSummary": one or two Chinese sentences, at most 100 characters, stating what this tender/project concretely IS — not a category label, not a boilerplate opener. See the schema field description for examples.
 
@@ -321,9 +322,65 @@ function parseContextOverflow(err: unknown): { actualTokens: number; maxTokens: 
 // 2026-09-03 (qwen3.5-plus, first document in a batch run) — every
 // title/description came back in Spanish, not Chinese, despite
 // SYSTEM_PROMPT already saying so once, further up the combined prompt.
-export const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"oneLineSummary": "...", "qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...], "relevanceAssessment": {...}} — no prose, no markdown fences. "oneLineSummary" and the four array keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. "oneLineSummary" is one or two Chinese sentences, at most 100 characters, stating what this tender/project concretely is (not a category label, not a boilerplate opener). Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". "relevanceAssessment" is {"participationScope": "national"|"international_treaty"|"international_open"|null, "suggestedTier": "flagship"|"significant"|"standard"|"excluded", "reasoning": "..."} — include it when you can support it from the document; omit the key entirely rather than guessing if you genuinely cannot. Every "oneLineSummary"/"title"/"description"/"reasoning" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
+export const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"oneLineSummary": "...", "qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...], "relevanceAssessment": {...}} — no prose, no markdown fences. "oneLineSummary" and the four array keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. "oneLineSummary" is one or two Chinese sentences, at most 100 characters, stating what this tender/project concretely is (not a category label, not a boilerplate opener). Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". "relevanceAssessment" is {"participationScope": "national"|"international_treaty"|"international_open"|null, "suggestedTier": "flagship"|"significant"|"standard"|"excluded", "reasoning": "..."} — include it when you can support it from the document; omit the key entirely rather than guessing if you genuinely cannot. Inside a string value, never use an unescaped ASCII double quote — to quote a Spanish proper noun inside Chinese text use 「」 or no quotes at all (建设 BRAMONAS 2 堤防, not 建设"BRAMONAS 2"堤防). An unescaped quote ends the string early and the whole response is discarded. Every "oneLineSummary"/"title"/"description"/"reasoning" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
 
 /** Pulls the first JSON object out of a text response — tolerates a model wrapping it in a ```json fence or prose despite instructions not to, rather than requiring an exact match. */
+/**
+ * Escapes a double quote that is INSIDE a JSON string value rather than
+ * ending it — the one malformed-JSON shape this pipeline actually sees.
+ *
+ * Confirmed twice on real runs (2026-09-16), and it is a habit rather than
+ * noise: writing Chinese, the model quotes a Spanish proper noun with ASCII
+ * double quotes and does not escape them.
+ *
+ *   "oneLineSummary": "…建设"BRAMONAS 2"及"BRAMONAS 5"堤防，工期 91 天。"
+ *   "reasoning": "…但文件“ASPECTOS PARTICULARES"章节明确要求…"
+ *
+ * The rule is narrow on purpose: a quote inside a string closes it only when
+ * the next non-space character is one that can legally follow a closed string
+ * — `:` `,` `}` `]` or the end. Anything else and the quote is part of the
+ * text. That is a heuristic, not a parser, so it runs ONLY after JSON.parse
+ * has already failed and its result has to parse cleanly to be used; a repair
+ * that does not parse is discarded and the original error is reported.
+ */
+export function escapeStrayQuotes(json: string): string {
+  let out = "";
+  let inString = false;
+
+  for (let i = 0; i < json.length; i += 1) {
+    const ch = json[i];
+
+    if (!inString) {
+      out += ch;
+      if (ch === '"') inString = true;
+      continue;
+    }
+
+    if (ch === "\\") {
+      out += ch + (json[i + 1] ?? "");
+      i += 1;
+      continue;
+    }
+
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < json.length && /\s/.test(json[j])) j += 1;
+      const next = json[j];
+      if (j >= json.length || next === ":" || next === "," || next === "}" || next === "]") {
+        out += ch;
+        inString = false;
+      } else {
+        out += '\\"';
+      }
+      continue;
+    }
+
+    out += ch;
+  }
+
+  return out;
+}
+
 function extractJsonObject(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fenced ? fenced[1] : text;
@@ -335,6 +392,17 @@ function extractJsonObject(text: string): unknown {
   try {
     return JSON.parse(jsonText);
   } catch (err) {
+    // One repair attempt, for the shape this actually sees — see
+    // escapeStrayQuotes. It has to parse to be accepted, so a wrong guess
+    // costs nothing but the original error, reported below as before.
+    try {
+      const repaired = JSON.parse(escapeStrayQuotes(jsonText));
+      console.warn("  模型返回的 JSON 里有未转义的引号，已自动修复后解析（内容未改动，只补了转义）。");
+      return repaired;
+    } catch {
+      // Fall through to the diagnostic below.
+    }
+
     // Real gap found 2026-09-03: a model can produce near-valid JSON with
     // one real syntax error (an unescaped quote inside a string value is
     // the classic case) — the generic JSON.parse error alone ("Expected

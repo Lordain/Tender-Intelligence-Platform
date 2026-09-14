@@ -34,7 +34,7 @@ import {
 import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
 import { isTextLayerSubstantial } from "../lib/ingestion/text-layer";
 import { isRetriableExtractionFailure, isTransientServerError } from "../lib/ingestion/extraction-failure";
-import { normalizeRawExtraction } from "../lib/ingestion/extract-requirements";
+import { escapeStrayQuotes, normalizeRawExtraction } from "../lib/ingestion/extract-requirements";
 import { chooseExtractionModel, maxPagesForTier } from "../lib/ingestion/extraction-routing";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -641,6 +641,26 @@ async function main() {
       "no JSON at all is NOT retried — that is the prompt or the provider",
       !isRetriableExtractionFailure(new Error("No JSON object found in response")),
     );
+  });
+
+  // ---- Unescaped quotes inside a value ----
+  // Both fixtures are verbatim from real 2026-09-16 failures: writing Chinese,
+  // the model quotes a Spanish proper noun with ASCII double quotes and does
+  // not escape them, which ends the string early and costs the whole document.
+  await group("字符串里的裸引号能修好", async () => {
+    const bramonas = '{"oneLineSummary": "科蒙杜市地下水回灌项目，建设"BRAMONAS 2"及"BRAMONAS 5"堤防，工期 91 天。", "risks": []}';
+    const repaired = JSON.parse(escapeStrayQuotes(bramonas)) as { oneLineSummary: string; risks: unknown[] };
+    check("the document survives", repaired.oneLineSummary.includes("BRAMONAS 2"));
+    check("...with the quotes kept as text, not dropped", repaired.oneLineSummary.includes('"BRAMONAS 5"'));
+    check("...and the rest of the object intact", Array.isArray(repaired.risks));
+
+    const aspectos = '{"reasoning": "但文件“ASPECTOS PARTICULARES"章节明确要求投标人为墨西哥法人。"}';
+    check("a Chinese opening quote closed by an ASCII one too", (JSON.parse(escapeStrayQuotes(aspectos)) as { reasoning: string }).reasoning.includes("章节"));
+
+    // The repair must not touch JSON that was already correct.
+    for (const valid of ['{"a": "b", "c": ["d", "e"], "f": {"g": 1}}', '{"empty": "", "escaped": "say \\"hi\\""}']) {
+      check(`untouched: ${valid.slice(0, 28)}`, escapeStrayQuotes(valid) === valid);
+    }
   });
 
   console.log(`\n${passed}/${passed + failed} checks passed (0 model calls, 0 cost).`);

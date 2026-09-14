@@ -215,6 +215,13 @@ export type Tender = {
   publicationDateIsEstimated?: boolean;
   submissionDeadline?: string;
   awardDate?: string;
+  /**
+   * Deep link to this tender's page on the source portal (migration 0048),
+   * entered by an admin when they paste its schedule — Peru's ficha URL is
+   * keyed by a UUID the OCDS record does not carry, so nothing can derive it.
+   * Admin-facing only; the public pages link `sourceUrl`.
+   */
+  fichaUrl?: string;
   /** Winning supplier/contractor name — only meaningful once a tender is awarded, from a real source ("Proveedor o contratista" in the Compras MX contracts export). */
   awardedTo?: string;
   /** Actual awarded/contract amount — distinct from estimatedValue (the pre-tender budget estimate, which a real award can differ from). No ingestion source supplies this yet; admin-entered only. */

@@ -529,7 +529,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
                   exist for that tender. Keyed off the CURRENT form value so
                   correcting a mis-tagged country updates it without a save. */}
               {(form.country === "Peru" || form.country === "Mexico") && (
-                <CronogramaPasteForm tenderSlug={tender!.slug} country={form.country} />
+                <CronogramaPasteForm tenderSlug={tender!.slug} country={form.country} initialFichaUrl={tender!.fichaUrl} />
               )}
             </div>
           </div>

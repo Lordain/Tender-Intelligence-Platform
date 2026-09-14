@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
   const { slug } = await params;
-  const body = (await request.json()) as { pasted?: string; preview?: boolean };
+  const body = (await request.json()) as { pasted?: string; preview?: boolean; fichaUrl?: string };
   const pasted = body.pasted?.trim();
   if (!pasted) return NextResponse.json({ error: "pasted 内容为空" }, { status: 400 });
 
@@ -47,7 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
   const { data: tender, error: tenderError } = await supabase
     .from("tenders")
-    .select("id, submission_deadline, award_date, publication_date, manual_field_overrides")
+    .select("id, submission_deadline, award_date, publication_date, manual_field_overrides, ficha_url")
     .eq("slug", slug)
     .maybeSingle();
   if (tenderError) return NextResponse.json({ error: tenderError.message }, { status: 500 });
@@ -189,7 +189,36 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   // date only inside the awarded block, which needs a supplier or an awarded
   // amount; a planned date alone changes nothing a reader sees, and gives the
   // admin the schedule they asked for.
+  // The page the admin is copying from, so the next person does not have to
+  // find it again by typing the procedure number into SEACE's search (which
+  // is what 13 lost deadlines cost on 2026-09-15). Optional, and never
+  // overwritten with an empty box: clearing it is not something the paste
+  // form is for.
+  //
+  // Scheme-checked rather than pattern-matched against a known portal: this
+  // value ends up in an href on the admin page, so `javascript:` and friends
+  // must not survive, but a new source's URL shape is not this route's
+  // business to predict.
+  const fichaUrl = body.fichaUrl?.trim();
+  let fichaUrlSet: string | undefined;
+  if (fichaUrl) {
+    let parsed_url: URL | null = null;
+    try {
+      parsed_url = new URL(fichaUrl);
+    } catch {
+      return NextResponse.json({ error: "ficha 链接不是一个有效的网址" }, { status: 400 });
+    }
+    if (parsed_url.protocol !== "http:" && parsed_url.protocol !== "https:") {
+      return NextResponse.json({ error: "ficha 链接必须是 http/https 网址" }, { status: 400 });
+    }
+    if (fichaUrl.length > 2000) {
+      return NextResponse.json({ error: "ficha 链接过长" }, { status: 400 });
+    }
+    fichaUrlSet = parsed_url.toString();
+  }
+
   const columnUpdate: Record<string, string> = {};
+  if (fichaUrlSet && fichaUrlSet !== tender.ficha_url) columnUpdate.ficha_url = fichaUrlSet;
   if (extractedDeadline && !storedDeadline) columnUpdate.submission_deadline = extractedDeadline;
   if (extractedAwardDate && !storedAwardDate) columnUpdate.award_date = extractedAwardDate;
 
@@ -213,7 +242,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     // and wrote the columns directly, which is how it missed the lock. Merged
     // rather than replaced, so an earlier lock on another column survives.
     const overrides = new Set<string>((tender.manual_field_overrides as string[] | null) ?? []);
-    for (const column of Object.keys(columnUpdate)) overrides.add(column);
+    // ficha_url is deliberately not locked: no import writes that column, so
+    // an entry there would be noise in a list that is read to mean "an import
+    // must keep its hands off this".
+    for (const column of Object.keys(columnUpdate)) if (column !== "ficha_url") overrides.add(column);
 
     const { error } = await supabase
       .from("tenders")
@@ -249,6 +281,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     conflicts,
     deadlineSet,
     awardDateSet,
+    fichaUrlSet: columnUpdate.ficha_url,
     awardDateUnchanged: extractedAwardDate && storedAwardDate && storedAwardDate !== extractedAwardDate ? storedAwardDate : undefined,
     deadlineUnchanged: extractedDeadline && storedDeadline && storedDeadline !== extractedDeadline ? storedDeadline : undefined,
   });

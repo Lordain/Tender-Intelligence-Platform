@@ -43,6 +43,7 @@ type WriteResult = {
   deadlineUnchanged?: string;
   awardDateSet?: string;
   awardDateUnchanged?: string;
+  fichaUrlSet?: string;
   problems: string[];
   duplicates: { label: string; date: string; type: string; existingSource: string }[];
   conflicts: { label: string; type: string; fichaDate: string; storedDate: string; existingSource: string }[];
@@ -58,8 +59,18 @@ const TYPE_LABELS: Record<string, string> = {
   site_visit: "现场踏勘",
 };
 
-export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: string; country: string }) {
+export function CronogramaPasteForm({
+  tenderSlug,
+  country,
+  initialFichaUrl,
+}: {
+  tenderSlug: string;
+  country: string;
+  /** Whatever a previous paste stored (migration 0048), so it is visible and correctable rather than silently overwritten. */
+  initialFichaUrl?: string;
+}) {
   const [pasted, setPasted] = useState("");
+  const [fichaUrl, setFichaUrl] = useState(initialFichaUrl ?? "");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [result, setResult] = useState<WriteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +85,7 @@ export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: strin
       const response = await fetch(`/api/admin/tenders/${tenderSlug}/cronograma`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pasted, preview: isPreview }),
+        body: JSON.stringify({ pasted, preview: isPreview, fichaUrl }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "请求失败");
@@ -144,6 +155,42 @@ export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: strin
         }
         className="w-full rounded-xl border border-[#d8e0e3] bg-white p-3 font-mono text-xs text-[#071826] outline-none focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10"
       />
+
+      {/* The page this table was copied from. A Peru ficha is addressed by a
+          UUID that exists nowhere in the feed, so `source_url` can only ever
+          be SEACE's generic search page — and when 13 pasted deadlines were
+          lost to an import (2026-09-15), every one had to be found again by
+          typing its procedure number into that search. The admin pasting is
+          already on the right page with its URL in the address bar. */}
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-bold text-[#52636e]">
+          {country === "Mexico" ? "该项目页面链接（选填）" : "ficha 链接（选填）"}
+          <span className="ml-1 font-normal text-[#8a97a0]">
+            ——{country === "Mexico" ? "复制浏览器地址栏里这个项目的网址" : "复制浏览器地址栏里 ficha de selección 的网址"}，以后复核不用再搜一遍
+          </span>
+        </span>
+        <input
+          type="url"
+          value={fichaUrl}
+          onChange={(event) => setFichaUrl(event.target.value)}
+          placeholder={
+            country === "Mexico"
+              ? "https://proyectosestrategicosmx.hacienda.gob.mx/sitiopublico/#/…"
+              : "https://prod2.seace.gob.pe/seacebus-uiwd-pub/fichaSeleccion/fichaSeleccion.xhtml?id=…"
+          }
+          className="w-full rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 text-xs text-[#071826] outline-none focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10"
+        />
+        {initialFichaUrl && (
+          <a
+            href={initialFichaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="self-start text-xs font-bold text-[#b86e00] underline"
+          >
+            打开已保存的链接 ↗
+          </a>
+        )}
+      </label>
 
       {/* Two-step on purpose, and the labels have to say so. The write button
           first read "写入这 0 条" before a preview had ever run, which a user
@@ -311,6 +358,7 @@ export function CronogramaPasteForm({ tenderSlug, country }: { tenderSlug: strin
             </p>
           )}
           {result.deadlineSet && <p className="mt-1 font-black">交标截止日已设为 {result.deadlineSet}。</p>}
+          {result.fichaUrlSet && <p className="mt-1">已保存该项目的页面链接，以后复核可直接打开。</p>}
           {result.deadlineUnchanged && <p className="mt-1">本项目已有交标截止日 {result.deadlineUnchanged}，未覆盖。</p>}
           {result.awardDateSet && <p className="mt-1 font-black">中标日期已设为 {result.awardDateSet}（计划授标日）。</p>}
           {result.awardDateUnchanged && <p className="mt-1">本项目已有中标日期 {result.awardDateUnchanged}，未覆盖。</p>}

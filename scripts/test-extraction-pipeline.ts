@@ -32,6 +32,8 @@ import {
   type TenderExtraction,
 } from "../lib/ingestion/extract-requirements";
 import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
+import { isTextLayerSubstantial } from "../lib/ingestion/text-layer";
+import { chooseExtractionModel, maxPagesForTier } from "../lib/ingestion/extraction-routing";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { dispatcherForTimeout } from "../lib/ingestion/http-dispatcher";
@@ -495,6 +497,38 @@ async function main() {
     "failures after a success do not stop it — those are per-document",
     shouldAbortBatch({ consecutiveFailures: 3, anySucceeded: true }) === false,
   );
+
+  // ---- A fallback needs something to fall back TO ----
+  // When the chunked native call fails, the code drops to locally-extracted
+  // text. For a scanned PDF that text is a few hundred stray characters, and
+  // sending it returns an empty result that looks like a successful reading of
+  // an empty document. This threshold is what separates the two.
+  await group("扫描件没有可回退的文本", async () => {
+    check("a real document's text passes", isTextLayerSubstantial("a".repeat(500)));
+    check("a scanned PDF's stray caption text does not", !isTextLayerSubstantial("Figura 1. Planta general"));
+    check("whitespace is not text", !isTextLayerSubstantial(" ".repeat(5000)));
+  });
+
+  // ---- Who reads a scanned document ----
+  // Two questions in a fixed order: can this file be read as text at all
+  // (a scanned PDF goes to Claude whatever the project is worth — it is the
+  // only provider confirmed to read image pages here, and the way around the
+  // DashScope chunked-PDF gap), and only then how much the tender is worth.
+  // Load-bearing and, until now, untested.
+  await group("扫描件必须走 Claude，不受项目分级影响", async () => {
+    for (const tier of ["flagship", "significant", "standard", null] as const) {
+      check(
+        `a scanned PDF on a ${tier ?? "未分级"} tender goes to Claude Haiku`,
+        chooseExtractionModel(false, tier) === "claude-haiku-4-5-20251001",
+      );
+    }
+    check("a flagship text-layer document gets the better Qwen", chooseExtractionModel(true, "flagship") === "qwen3.6-plus");
+    for (const tier of ["significant", "standard", null] as const) {
+      check(`a ${tier ?? "未分级"} text-layer document stays on the cheaper Qwen`, chooseExtractionModel(true, tier) === "qwen3.5-plus");
+    }
+    check("page caps follow the tier: 40/30/20", maxPagesForTier("flagship") === 40 && maxPagesForTier("significant") === 30 && maxPagesForTier("standard") === 20);
+    check("an unclassified tender gets the standard cap", maxPagesForTier(null) === 20);
+  });
 
   console.log(`\n${passed}/${passed + failed} checks passed (0 model calls, 0 cost).`);
   if (failed > 0) process.exitCode = 1;

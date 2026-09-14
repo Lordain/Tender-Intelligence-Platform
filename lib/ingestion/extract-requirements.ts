@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { truncatePdfToPages } from "@/lib/ingestion/pdf-pages";
 import { isTextLayerSubstantial } from "@/lib/ingestion/text-layer";
+import { classifyExtractionFailure } from "@/lib/ingestion/extraction-failure";
 import { extname } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
@@ -606,6 +607,7 @@ async function runChunkedPdfExtraction(
   context: { tenderNumber: string },
   useStructuredOutput: boolean,
   maxPages?: number,
+  onWarning?: (message: string) => void,
 ): Promise<TenderExtraction> {
   const { chunks, cleanup } = splitPdfIntoChunks(filePath);
   try {
@@ -619,6 +621,8 @@ async function runChunkedPdfExtraction(
     const pagesPerChunk = chunks[0] ? chunks[0].endPage - chunks[0].startPage + 1 : 0;
     console.log(`  splitting into ${chunks.length} chunk(s) of ${pagesPerChunk} page(s) each (native PDF understanding per chunk, not a text fallback)...`);
     const parts: TenderExtraction[] = [];
+    const failures: { startPage: number; endPage: number; message: string }[] = [];
+
     for (const chunk of chunks) {
       const chunkInstruction = `${instruction}\n\n(This excerpt is pages ${chunk.startPage}-${chunk.endPage} of a ${chunk.totalPages}-page document, split to fit — a requirement or cross-reference spanning outside this page range may not be visible here.)`;
       const content: ExtractionContent = [
@@ -628,8 +632,57 @@ async function runChunkedPdfExtraction(
         },
         { type: "text", text: chunkInstruction },
       ];
-      parts.push(await runExtraction(client, model, content, context, useStructuredOutput, maxPages));
+      // One chunk's failure must not discard the chunks that already
+      // succeeded — they are real, already-billed model calls, and on a
+      // scanned document they are the only reading of those pages there is.
+      //
+      // Real case 2026-09-16: three Proyectos Estratégicos Convocatorias
+      // were split five ways, four chunks answered, one hit an Anthropic 500
+      // or an "Invalid request data", and the whole document was reported as
+      // read-nothing — throwing away four paid calls and sending the
+      // operator to re-run all five, with the same odds of one more blip.
+      // A five-chunk document is five chances to fail, so being all-or-
+      // nothing makes big scanned tenders the least likely to ever succeed,
+      // which is backwards: they are the ones worth reading.
+      //
+      // A systematic failure still stops everything, one level up:
+      // classifyExtractionFailure() sees the rethrow when NOTHING succeeded,
+      // which is what a schema or credential fault looks like.
+      try {
+        parts.push(await runExtraction(client, model, content, context, useStructuredOutput, maxPages));
+      } catch (err) {
+        // Two failures that must not be treated alike. A SYSTEMATIC one — a
+        // schema mismatch, a bad credential — would repeat identically on
+        // every remaining chunk and bill for each, which is the exact waste
+        // the fail-fast design exists to prevent (five documents, five
+        // identical schema failures, five paid calls, 2026-09-13). It still
+        // aborts the document immediately, as before.
+        //
+        // A per-chunk one (a 500, an oversized or malformed chunk) is the
+        // case this salvage is for, and continuing costs nothing extra: the
+        // remaining chunks were going to be called anyway.
+        if (classifyExtractionFailure(err).kind === "systematic") throw err;
+        failures.push({
+          startPage: chunk.startPage,
+          endPage: chunk.endPage,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
+
+    if (parts.length === 0) {
+      throw new Error(
+        `all ${chunks.length} chunk(s) failed. First failure (pages ${failures[0]?.startPage}-${failures[0]?.endPage}): ${failures[0]?.message ?? "unknown"}`,
+      );
+    }
+
+    if (failures.length > 0) {
+      const ranges = failures.map((f) => `${f.startPage}-${f.endPage}`).join("、");
+      const note = `标书分块读取时有 ${failures.length}/${chunks.length} 块失败（第 ${ranges} 页），本次分析只覆盖了其余 ${chunks.length - failures.length} 块。失败原因：${failures[0].message.slice(0, 200)}`;
+      console.warn(`  ${note}`);
+      onWarning?.(note);
+    }
+
     return mergeExtractions(parts);
   } finally {
     cleanup();
@@ -697,6 +750,8 @@ export async function extractTenderRequirements(
    * silently.
    */
   preferExtractedText?: boolean,
+  /** Called with anything the operator should see that is not a failure — currently a partially-read chunked document. */
+  onWarning?: (message: string) => void,
 ): Promise<TenderExtraction> {
   // Word documents — .docx and legacy .doc alike (2026-09-03, per the
   // user's report that many real tender documents arrive as Word files,
@@ -772,7 +827,7 @@ export async function extractTenderRequirements(
       console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 300)}) — splitting into chunks.`);
 
       try {
-        return await runChunkedPdfExtraction(client, model, sourcePath, instruction, context, useStructuredOutput, maxPages);
+        return await runChunkedPdfExtraction(client, model, sourcePath, instruction, context, useStructuredOutput, maxPages, onWarning);
       } catch (chunkErr) {
         // Chunking needs poppler's pdfinfo/pdfseparate/pdfunite on PATH —
         // if any is missing (ENOENT) or a chunk call itself errors, this

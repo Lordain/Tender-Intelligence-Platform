@@ -2226,4 +2226,16 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Mexico", scopeType: "works", estimatedValue: 400_000_000, currency: "USD",
     procedureType: "Invitación a Cuando Menos Tres Personas (Subdirección de Contrataciones)",
   },
+  {
+    // "Contratación Pública Especial" shares two words with "Contratación
+    // Directa" and must not be caught by it: PEC is an OPEN call under DS
+    // 071-2018-PCM (Reconstrucción con Cambios) with a public registration
+    // window — 11 days of it on this real ficha — and is exactly the kind of
+    // works contract this platform exists to surface.
+    title: "EJECUCIÓN DEL SALDO DE OBRA: REHABILITACIÓN DE LA CARRETERA",
+    expectedTier: "significant",
+    note: "Peru PEC-NCPD-PROC-5-2026-MTC/21-3, real. S/ 18.1M of roadworks for PROVIAS Descentralizado, convocatoria 10/09 with registration open 11/09–21/09. Pinned as INCLUDED so a widening of the direct-award patterns cannot swallow it.",
+    country: "Peru", scopeType: "works", estimatedValue: 4_835_000, currency: "USD", governmentLevel: "federal",
+    procedureType: "Procedimiento de Contratación Pública Especial para la Reconstrucción con Cambios",
+  },
 ];

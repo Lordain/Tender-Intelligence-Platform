@@ -64,7 +64,19 @@ export const metadata: Metadata = {
     title: "拉美招投标信息平台",
     description: "墨西哥、哥伦比亚、秘鲁的政府招标信息，结构化中文情报。",
   },
-  alternates: { canonical: "/" },
+  // NO `alternates` here, deliberately. Metadata fields are inherited WHOLE by
+  // any route that does not set its own (Next's own docs: "All openGraph
+  // fields from app/layout.js are inherited in app/about/page.js because
+  // app/about/page.js doesn't set openGraph metadata"). A canonical of "/" on
+  // this layout therefore made every page without its own alternates —
+  // /pricing, /guides and each guide, /tenders, the policy pages — declare
+  // itself a duplicate of the homepage, which tells a crawler to index the
+  // homepage INSTEAD of them. The seven 参标指南 pages are the only real
+  // long-tail content this site has, and they were signing themselves away
+  // (found 2026-09-14, while asking why the site could not be found at all).
+  //
+  // Every indexable page now names its own canonical. scripts/test-canonical-
+  // urls.ts fails the build if a new one forgets.
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

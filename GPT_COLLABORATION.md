@@ -4,11 +4,11 @@
 
 ## 项目是什么
 
-**Tender Intelligence Platform**（招标情报平台）——一个帮助中国企业评估拉美（目前聚焦墨西哥）政府招标项目的中文 B2B SaaS。核心价值：把西语招标信息翻译、结构化、按"是否值得中资企业关注"分级，帮企业快速做投标决策。
+**Tender Intelligence Platform**（招标情报平台）——一个帮助中国企业评估拉美（**墨西哥、哥伦比亚、秘鲁**，三国均已上线）政府招标项目的中文 B2B SaaS。线上地址 latintender.com。核心价值：把西语招标信息翻译、结构化、按"是否值得中资企业关注"分级，帮企业快速做投标决策。
 
 - UI 面向中国企业，中文为主要语言（`types/tender.ts` 里几乎所有文本字段都是 `LocalizedText = { es, en, zh }` 三语结构，但产品实际只渲染 zh）
 - 数据来源：政府招标网站的公开导出（Excel/CSV/JSON），不是标准 API——每个数据源都有自己的抓取脚本，细节见 `lib/ingestion/README.md`（这个文件很长，但记录了大量真实踩过的坑，改动相关代码前建议先搜索关键词）
-- 商业模式正在往"免费标准分析 + 付费精度分析"的两档模式走（Claude Sonnet 5 标准 / Claude Opus 5 精度），目前也在评估用更便宜的 Qwen/Gemini 做翻译和标书分析
+- 商业模式：**已上线收费**。Stripe 订阅，个人版 / 企业版，注册送 5 天免费试用（不绑卡）。标书分析分标准档（Claude Sonnet 5）和精度档（Claude Opus 5），翻译和常规提取走 Qwen/DashScope —— **Gemini 已于 2026-09 移除，不要再往回加**
 
 ## 技术栈
 
@@ -30,7 +30,7 @@ components/
   tenders/      面向客户的招标列表/详情组件
   layout/       导航栏等公共布局组件
 lib/
-  ingestion/    数据抓取/映射/入库脚本的核心逻辑（29 个文件，最大最复杂的目录）
+  ingestion/    数据抓取/映射/入库脚本的核心逻辑（60 个文件，最大最复杂的目录）
   db/           从 Supabase 读数据的封装（tenders.ts）
   relevance.ts  核心筛选/分级规则引擎（见下文，改动需极其谨慎）
   admin-auth.ts 后台管理员权限校验
@@ -38,9 +38,26 @@ lib/
   industry.ts   行业分类枚举 + 关键词分类逻辑
   tender-labels.ts  各种枚举值的中/英/西文标签映射（写 UI 下拉框时先看这里有没有现成的）
 scripts/        用 tsx 直接运行的 CLI 脚本（数据抓取、翻译、重新分类、迁移等）
-supabase/migrations/  按编号递增的 SQL 迁移文件（0001_init.sql, 0002_..., 目前到 0009）
+supabase/migrations/  按编号递增的 SQL 迁移文件（0001_init.sql, 0002_..., 目前到 0047）
 types/tender.ts 全项目最核心的类型定义，改之前务必搜索所有引用
 ```
+
+## 测试现状
+
+没有标准测试框架，全部是 `scripts/test-*.ts`（tsx 直接跑，自写 `check()` 断言和计数）。改完代码这些都必须全绿：
+
+```
+npx tsc --noEmit          npx eslint .
+test:relevance       296  ← 相关度分级规则
+test:key-dates       141  ← 日期解析 / 日程表 / 墨西哥开标推导
+test:extraction-pipeline 65（0 次模型调用，0 成本）
+test:translation-inputs 61   test:access-control 37   test:reserved-domains 25
+test:colombia-titles 22      test:account-devices 14  test:admin-form-merge 13
+test:download 9              test:upsert-protection 8
+npm run check:deps        ← 确认 import 的包都在 package.json 里
+```
+
+**加新规则的做法**：判断逻辑抽成纯函数放 `lib/`，用**真实项目**钉在对应的 fixtures/测试脚本里，并且**一定要加反向对照**。
 
 ## 权限模型（写后台/API 代码时必读）
 
@@ -59,7 +76,7 @@ types/tender.ts 全项目最核心的类型定义，改之前务必搜索所有�
 - **不要过度设计**——不需要的抽象、配置项、"以防未来需要"的扩展点，一律不要加。三行重复代码比一个只用一次的抽象更好。
 - **不要为不可能发生的情况写防御性代码**——只在真正的系统边界（用户输入、外部 API 返回）做校验，内部函数之间的调用信任类型系统。
 - **绝不凭记忆猜第三方 API/SDK 的用法**，尤其是模型 ID、请求参数格式这种容易过时的细节——如果不确定，去搜官方文档确认，或者在代码里写明"未实测/待确认"，参考 `lib/ingestion/translate-titles-qwen.ts` 和 `translate-titles-gemini.ts` 的写法（那两个文件的模型是训练数据之后发布的，所有 API 细节都是联网搜索核实过的，不是猜的）。
-- **改动后必须自查**：`npx tsc --noEmit -p .`、`npx eslint <改动的文件>`、如果碰了 `lib/relevance.ts` 相关逻辑，跑 `npm run test:relevance`（40 个真实案例的回归测试，全部必须 PASS）。
+- **改动后必须自查**：`npx tsc --noEmit -p .`、`npx eslint <改动的文件>`、如果碰了 `lib/relevance.ts` 相关逻辑，跑 `npm run test:relevance`（**296** 个真实案例的回归测试，全部必须 PASS）。改完整套测试都要跑一遍，见下面「测试现状」。
 
 ## 分工建议（用户的原话，供参考）
 
@@ -68,7 +85,7 @@ types/tender.ts 全项目最核心的类型定义，改之前务必搜索所有�
 
 **具体到这个仓库，建议 GPT 优先接手这些任务：**
 
-1. **补单元测试**：目前仓库里没有 Jest/Vitest 之类的测试框架，只有 `scripts/test-relevance.ts` 这种针对 `lib/relevance.ts` 的自定义回归测试（不是标准单测框架）。`lib/currency.ts`、`lib/industry.ts`、`lib/format.ts`、`lib/tender-labels.ts` 这些都是纯函数、逻辑稳定，是很好的单测起点。如果要引入测试框架，建议用 **Vitest**（和 Next.js/TS 生态配合最顺、启动快），装好后把已有的 `npm run test:relevance` 保留（那个是特意设计的"每加一个真实案例就永久保留"的规则回归测试，不要用 Vitest 重写它，两者并存即可）。
+1. **补单元测试（至今未做，仍然是你的首要任务）**：仓库里依然**没有安装 Jest/Vitest**。现有的是 11 个 `scripts/test-*.ts` 自定义回归脚本（自写 `check()` 计数，不是标准框架）——见下面「测试现状」。`lib/currency.ts`、`lib/industry.ts`、`lib/format.ts`、`lib/tender-labels.ts` 这些都是纯函数、逻辑稳定，是很好的单测起点。如果要引入测试框架，建议用 **Vitest**（和 Next.js/TS 生态配合最顺、启动快），装好后把现有的 11 个脚本**全部保留**。它们钉的是真实政府数据的怪癖（带空格的日期 `30/09 /2026`、DD/MM 陷阱、墨西哥两信封开标），**用 Vitest 重写一遍就会把这些丢掉**。Vitest 只用来覆盖上面那四个纯函数即可，两者并存。
 2. **标准 CRUD API 路由**：照抄 `app/api/admin/tenders/route.ts` 和 `app/api/admin/tenders/[slug]/route.ts` 的模式（`getAdminUser()` 校验 + `createSupabaseAdminClient()` 读写 + Next.js 16 的 `params: Promise<{...}>` 写法）。
 3. **数据库迁移 SQL**：按上面"数据库迁移规范"来写，写完后运行一次 `npx tsc --noEmit -p .` 确认相关 TypeScript 类型（如果新增字段需要同步更新 `types/tender.ts` 和 `lib/db/tenders.ts` 的行映射）没有漏改。
 4. **视觉/样式打磨**：现有组件的 Tailwind class 写法可以直接抄，配色、圆角、间距都已经有固定风格（看 `components/admin/DocumentsNeededView.tsx` 或 `components/tenders/` 下的组件即可）。**不要改动组件里的业务逻辑/数据获取逻辑**，只调整样式/布局。
@@ -76,10 +93,12 @@ types/tender.ts 全项目最核心的类型定义，改之前务必搜索所有�
 
 **不建议 GPT 单独动的部分（除非明确被要求）：**
 
-- `lib/relevance.ts` 的分级规则本身（阈值、关键词列表）——这是产品的核心筛选逻辑，改动需要理解大量业务背景，且必须跑通 `npm run test:relevance` 的 40 个真实回归案例。
+- `lib/relevance.ts` 的分级规则本身（阈值、关键词列表）——这是产品的核心筛选逻辑，改动需要理解大量业务背景，且必须跑通 `npm run test:relevance` 的 **296** 个真实回归案例。里面有大量**反向对照**（一个几乎命中某条排除规则、但必须保留的真实项目），加规则时必须同时加反向对照。
 - `lib/admin-auth.ts` 的权限校验逻辑（fail-closed 设计是刻意的安全决策）。
 - `lib/ingestion/` 下各数据源的映射/抓取逻辑——每一行几乎都对应一个真实调试出来的坑（编码问题、字段名误解、单位换算等），改之前务必先读该文件的头部注释。
 - 涉及金额/货币的字段——本项目的约定是**始终存源货币原始数值 + 货币代码，让 `lib/currency.ts` 统一转换成 USD**，不要信任某个数据源自己算好的 USD 换算值（历史上因为这个踩过坑）。
+- `classifyRelevance` / `classifyStoredTender` 的 `procedureType` 参数**故意是必填而不是可选**：这样新增数据源时，tsc 会把全部 14 个 mapper 调用点都报出来，漏传一个都编译不过。**不要为了少写几行把它改成可选** —— 产品负责人的硬要求是「新加的筛选规则在导入新项目时必须一样生效」，这个必填就是执行手段。
+- `lib/ingestion/mexico-opening-deadline.ts`——墨西哥「递交和开标同一场」的推导规则。它会**拒绝**两信封程序里的「商务标开标」（那是交标之后的第二场，拿它当截止日会晚好几天，等于给用户发一个错的截止时间）。改这个文件前先读它的头部注释。
 
 ## 协作流程建议
 

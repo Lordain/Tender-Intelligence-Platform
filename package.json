@@ -49,6 +49,7 @@
     "test:relevance": "tsx scripts/test-relevance.ts",
     "test:download": "tsx scripts/test-download-file.ts",
     "test:key-dates": "tsx scripts/test-key-dates.ts",
+    "test:extraction-pipeline": "tsx scripts/test-extraction-pipeline.ts",
     "review:key-dates": "tsx --env-file-if-exists=.env.local scripts/review-key-dates.ts",
     "test:colombia-titles": "tsx scripts/test-colombia-titles.ts",
     "test:translation-inputs": "tsx scripts/test-translation-inputs.ts",
@@ -78,7 +79,13 @@
     "backfill:key-dates-sync": "tsx --env-file-if-exists=.env.local scripts/backfill-key-dates-sync.ts",
     "inspect:dof-notice": "tsx --env-file-if-exists=.env.local scripts/inspect-dof-notice.ts",
     "test:account-devices": "tsx scripts/test-account-devices.ts",
-    "report:account-sharing": "tsx --env-file-if-exists=.env.local scripts/report-account-sharing.ts"
+    "report:account-sharing": "tsx --env-file-if-exists=.env.local scripts/report-account-sharing.ts",
+    "measure:deadlines": "tsx scripts/measure-deadline-accuracy.ts",
+    "test:admin-form-merge": "tsx scripts/test-admin-form-merge.ts",
+    "backfill:mx-deadlines": "tsx --env-file-if-exists=.env.local scripts/backfill-mexico-deadlines.ts",
+    "test:canonical-urls": "tsx scripts/test-canonical-urls.ts",
+    "protect:pasted-deadlines": "tsx --env-file-if-exists=.env.local scripts/protect-pasted-deadlines.ts",
+    "ping:indexnow": "tsx --env-file-if-exists=.env.local scripts/ping-indexnow.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

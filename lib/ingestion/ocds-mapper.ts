@@ -103,7 +103,9 @@ export function mapOcdsReleaseToTender(
   // The OCDS item classification description is dropped for the same reason
   // Compras MX's "Descripción Ramo" was: it is not stored on the row, so any
   // tag it produced would be undone by the next reclassify.
+  const procedureType = tender.procurementMethodDetails ?? tender.procurementMethod ?? "Unknown";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title: tender.title,
     summary: tender.description ?? tender.title,
     buyer: buyerName,
@@ -126,7 +128,7 @@ export function mapOcdsReleaseToTender(
     governmentLevel,
     industries,
     scopeType,
-    procedureType: tender.procurementMethodDetails ?? tender.procurementMethod ?? "Unknown",
+    procedureType,
     publicationDate,
     submissionDeadline: tender.tenderPeriod?.endDate,
     awardDate: release.awards?.[0]?.date,

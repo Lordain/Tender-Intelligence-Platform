@@ -1,10 +1,11 @@
 import { cache } from "react";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { getTenderBySlug } from "@/lib/tenders";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerRole } from "@/lib/access-control-server";
-import { canOpenTenderDetail, tenderDetailPrompt } from "@/lib/access-control";
+import { canOpenTenderDetail, isClosedTender, tenderDetailPrompt } from "@/lib/access-control";
 import { isHomepageFreePreviewSlug } from "@/lib/homepage-selection";
 import { AccessPrompt } from "@/components/access/AccessPrompt";
 
@@ -30,13 +31,23 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const [tender, isFreePreview] = await Promise.all([loadTender(slug), loadIsFreePreview(slug)]);
   if (!tender) return { title: "项目不存在" };
+  // Indexable exactly when it is readable without an account: the free-preview
+  // slugs, and every closed tender. Anything still biddable stays out of the
+  // index, because what a crawler would get is the access prompt.
+  const indexable = isFreePreview || isClosedTender(tender.status);
 
   const summary = tender.summary.zh.trim();
   return {
-    title: tender.title.zh,
-    description: summary.length > 155 ? `${summary.slice(0, 154)}…` : summary,
-    robots: isFreePreview ? undefined : { index: false, follow: true },
-    alternates: { canonical: `/tenders/${slug}` },
+    ...pageMetadata({
+      title: tender.title.zh,
+      description: summary.length > 155 ? `${summary.slice(0, 154)}…` : summary,
+      path: `/tenders/${slug}`,
+    }),
+    // Only the free-preview slugs are indexable; every other one renders an
+    // access prompt, and a crawler must not be told that page is the tender.
+    // Its share card still carries the real title and summary — a paywalled
+    // page is still worth forwarding to a colleague.
+    robots: indexable ? undefined : { index: false, follow: true },
   };
 }
 
@@ -59,7 +70,12 @@ export default async function TenderDetailPage({
     notFound();
   }
 
-  if (!canOpenTenderDetail(viewerRole, isHomepageFreePreview)) {
+  // A closed tender is readable by anyone — see canOpenTenderDetail(). The
+  // status here is the DERIVED one (lib/db/tenders.ts runs deriveTenderStatus
+  // when it maps the row), so a deadline that passed this morning counts.
+  const isClosed = isClosedTender(tender.status);
+
+  if (!canOpenTenderDetail(viewerRole, isHomepageFreePreview, isClosed)) {
     return (
       <main className="min-h-[65vh] bg-[#f6f4ef]">
         <AccessPrompt open kind={tenderDetailPrompt(viewerRole)} nextPath={`/tenders/${slug}`} />
@@ -67,5 +83,11 @@ export default async function TenderDetailPage({
     );
   }
 
-  return <TenderDetailView tender={tender} showTrialCta={viewerRole === "guest" && isHomepageFreePreview && from === "homepage"} />;
+  // The CTA now also covers the visitor this change exists for: someone who
+  // arrived from a search engine on a closed tender, read the whole analysis,
+  // and has no other reason to learn that live projects exist here.
+  const showTrialCta =
+    viewerRole === "guest" && ((isHomepageFreePreview && from === "homepage") || isClosed);
+
+  return <TenderDetailView tender={tender} showTrialCta={showTrialCta} />;
 }

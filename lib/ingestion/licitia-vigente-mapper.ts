@@ -105,7 +105,9 @@ export function mapLicitiaVigenteRowToTender(
   const scopeType = "services" as const;
   const governmentLevel = inferGovernmentLevelFromProcedureNumber(tenderNumber, buyer);
   // summary is the title again because that is what this row stores below.
+  const procedureType = row.tipo?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary: title,
     buyer,
@@ -131,7 +133,7 @@ export function mapLicitiaVigenteRowToTender(
     governmentLevel,
     industries,
     scopeType,
-    procedureType: row.tipo?.trim() || "Unknown",
+    procedureType,
     participationScope: undefined,
     publicationDate,
     publicationDateIsEstimated: !row.publicacion,

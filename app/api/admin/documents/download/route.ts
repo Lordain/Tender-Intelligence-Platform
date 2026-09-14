@@ -23,15 +23,31 @@ import { downloadFile } from "@/lib/ingestion/download-file";
  *
  * Coverage is per-source and honest about it: only tenders whose ingestion
  * captured real per-document URLs have anything to download. Today that is
- * Peru's SEACE/OECE feed, whose OCDS records carry them inline. Compras MX
- * is anti-bot gated and will never be automatable this way; Colombia's SECOP
- * II is automatable but its proceso-id matching against our stored tenders is
- * still unproven (0 of 499 candidates matched on the first real run), so it
- * is not wired up yet rather than wired up and silently returning nothing.
+ * Peru's SEACE/OECE feed, whose OCDS records carry them inline, and PEMEX,
+ * whose Concurso Abierto items carry the Convocatoria and Bases as real
+ * SharePoint attachments that importPemexLive() records after the upsert
+ * (lib/ingestion/import-pemex-live.ts). A PEMEX tender imported BEFORE that
+ * pass existed has no links until its list is imported again — which is the
+ * fix for an empty worklist row, not a reason to go back to the browser
+ * Console. Compras MX is anti-bot gated and will never be automatable this
+ * way; Colombia's SECOP II is automatable but its proceso-id matching against
+ * our stored tenders is still unproven (0 of 499 candidates matched on the
+ * first real run), so it is not wired up yet rather than wired up and
+ * silently returning nothing.
  */
 export const maxDuration = 60;
 
-/** Mirrors MAX_DOWNLOAD_SELECTION on the client — a bigger batch does not fit in maxDuration. */
+/**
+ * A bigger batch does not fit in maxDuration.
+ *
+ * Matches MAX_DOWNLOAD_SELECTION on the client, but note that ten is not
+ * what an operator can actually select: /admin/documents-needed keeps ONE
+ * selection for both of its buttons, and the checkbox enforces the analysis
+ * cap (MAX_BATCH_SELECTION = 5, a limit on model cost per batch, not on
+ * download time). So downloads arrive in fives and this ceiling is never
+ * reached through the UI — worth knowing before reading the number here as
+ * the batch size a person gets.
+ */
 const MAX_TENDERS = 10;
 const MAX_FILES = 40;
 /**

@@ -2,6 +2,7 @@ import { ImportTendersForm } from "@/components/admin/ImportTendersForm";
 import { ImportPemexForm } from "@/components/admin/ImportPemexForm";
 import { ImportDofSearchForm } from "@/components/admin/ImportDofSearchForm";
 import { LicitiaRefreshPanel } from "@/components/admin/LicitiaRefreshPanel";
+import { MexicoDeadlineBackfillPanel } from "@/components/admin/MexicoDeadlineBackfillPanel";
 
 export default function AdminImportTendersMexicoPage() {
   return (
@@ -32,6 +33,7 @@ export default function AdminImportTendersMexicoPage() {
       <ImportPemexForm />
       <ImportDofSearchForm />
       <LicitiaRefreshPanel />
+      <MexicoDeadlineBackfillPanel />
     </div>
   );
 }

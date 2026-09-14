@@ -5,12 +5,15 @@ import { getViewerRole } from "@/lib/access-control-server";
 import { canInteractWithTenderList } from "@/lib/access-control";
 import { buildTenderListPage, LOCKED_TENDER_PAGE_SIZE, TENDER_PAGE_SIZE, type TenderListSearchParams } from "@/lib/tender-list-page";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "招标项目列表",
-  description: "浏览墨西哥、哥伦比亚、秘鲁政府公开招标项目，按行业、金额与项目规模筛选，全部信息已整理为中文。",
-};
+  description:
+    "浏览墨西哥、哥伦比亚、秘鲁政府公开招标项目，按行业、金额与项目规模筛选，全部信息已整理为中文。",
+  path: "/tenders",
+});
 
 /**
  * This page is DYNAMIC, and not by choice: getViewerRole() reads the session

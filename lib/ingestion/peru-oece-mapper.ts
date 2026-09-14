@@ -65,6 +65,84 @@ import { safeFileName, type TenderDocumentLink as SharedTenderDocumentLink } fro
  *   date from the enquiry window would be arithmetic on the Reglamento's
  *   minimum intervals, i.e. a guess, so it is not done; SourcePanel tells
  *   the reader where on the official page to look instead.
+ * - AND THE BID DOCUMENT DOES NOT CARRY IT EITHER (2026-09-14). Reading
+ *   the bases PDF was the whole plan for closing this gap (tasks #31/#34),
+ *   on the premise that a cronograma the feed omits must at least be
+ *   printed in the document. It is not, at least under the current
+ *   template: a live Bases Administrativas for
+ *   peru-ocds-dgv273-seacev3-1248966, issued under Ley N° 32069 / DS
+ *   009-2025-EF, devotes a whole chapter to the schedule and prints no
+ *   date in it —
+ *
+ *     2.1. CRONOGRAMA DEL PROCEDIMIENTO DE SELECCIÓN
+ *          Según el cronograma de la ficha de selección de la
+ *          convocatoria publicada en el SEACE de la Pladicop.
+ *
+ *   Every other "presentación de ofertas" in those 129 pages is a rule
+ *   (submission runs 00:01–23:59; not less than seven working days after
+ *   the integrated bases), never a date. So an extraction returning no
+ *   key dates for such a document is CORRECT, not a miss — which is why
+ *   analyze-uploaded-document.ts now says so in a warning instead of
+ *   leaving a blank cell that reads as failure.
+ *
+ *   That leaves the deadline in exactly one place, the ficha HTML, behind
+ *   the UUID this record does not contain. Confirmed on one document so
+ *   far; the template wording suggests it generalises to every tender
+ *   under the new law, but that is worth re-checking against a second
+ *   bases PDF before treating it as settled.
+ * - THE REST OF THE OECE API DOES NOT CARRY IT EITHER — settled
+ *   2026-09-14, month-wide rather than per-record, so this line of
+ *   investigation does not need reopening:
+ *
+ *   The same month is published as CSV as well as JSON
+ *   (`/file/seace_v3/csv/2026/08`), and that CSV is a FULL flattening of
+ *   the OCDS structure — one table per array: com_awards, com_contracts,
+ *   com_parties, com_ten_documents, com_ten_items, com_ten_tenderers,
+ *   records, releases, and so on. There is **no com_ten_milestones.csv**.
+ *   `tender.milestones` is OCDS's own field for exactly these cronograma
+ *   rows, so its table being absent means NO record in the entire month
+ *   has one. Every date column in records.csv is one of four:
+ *   tenderPeriod start/end and enquiryPeriod start/end.
+ *
+ *   Nor do the linked releases hold anything back. A compiled release is
+ *   the MERGE of every release for that ocid — merging preserves fields,
+ *   it does not drop them — so a milestone present in any release would
+ *   appear in the compiled one. Absent there means absent everywhere,
+ *   and the two linked releases on ocds-dgv273-seacev3-1248966 need not
+ *   be fetched to know it.
+ *
+ *   A live 2026-09 record re-confirms the degenerate tenderPeriod on
+ *   current data: start and end both 2026-09-10T00:00:00, the
+ *   publication day. Its enquiryPeriod (2026-09-11 00:01 → 2026-09-21
+ *   23:59, durationInDays 10) is the only real window the source gives.
+ *   `GET /records?page=1` re-confirms both on 2024 records too, so this
+ *   is the source's steady behaviour and not a quirk of one month.
+ *
+ *   One correction worth keeping, because the first version of this note
+ *   got it wrong: that 2026-09 record lists exactly ONE document, but
+ *   that is a property of its AGE, not of this source. `documents[]`
+ *   grows as the procedure runs — a completed 2024 record in the same
+ *   response carries four (Bases Administrativas, Resumen ejecutivo, and
+ *   two ZIPs, Documentos de Presentación de Propuestas and Documentos de
+ *   Otorgamiento de Buena Pro). A tender published four days ago simply
+ *   has not reached those stages. So "no second attachment to try" is
+ *   true today for that tender and false in general, and re-reading a
+ *   tender's document list later genuinely yields more.
+ *
+ *   What that does NOT change is the deadline conclusion: none of those
+ *   later documents exists yet at the moment a bidder needs the
+ *   deadline, which is before the bid is due. The one document type that
+ *   would arrive in time — bases integradas, published after the
+ *   consultas window — has not been checked for whether it prints the
+ *   cronograma the original bases delegates to the ficha; under the same
+ *   Ley 32069 template it probably does not, but that is a guess and is
+ *   labelled as one.
+ *
+ *   Conclusion: across every format (json/csv/xlsx), every endpoint
+ *   (file/record/release), and the bid document itself, this source
+ *   publishes publication and the consultas window and nothing else.
+ *   计划交标 being blank on a SEACE tender is a property of the source,
+ *   not something left to find.
  * - `tender.documents[]` carries real per-document download URLs
  *   (`prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=...`)
  *   and real type labels (biddingDocuments/evaluationReports/
@@ -292,7 +370,9 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
   const currency = compiled.tender?.value?.currency;
   const governmentLevel = inferGovernmentLevel(buyer);
   // summary is the title again because that is what this row stores below.
+  const procedureType = compiled.tender?.procurementMethodDetails?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary: title,
     buyer,
@@ -328,7 +408,7 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
     governmentLevel,
     industries,
     scopeType,
-    procedureType: compiled.tender?.procurementMethodDetails?.trim() || "Unknown",
+    procedureType,
     publicationDate,
     estimatedValue,
     currency: estimatedValue ? currency : undefined,

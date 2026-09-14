@@ -74,7 +74,9 @@ export function mapEcopetrolContractRowToTender(row: EcopetrolContractRow, sourc
   // "Ecopetrol S.A." this row writes — classifyStoredTender() must see both,
   // because reclassify-tenders.ts reads them back and would otherwise
   // classify the same row from more text than the import did.
+  const procedureType = String(row["Tipo Movimiento"] ?? "Unknown");
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary: title,
     buyer: "Ecopetrol S.A.",
@@ -104,7 +106,7 @@ export function mapEcopetrolContractRowToTender(row: EcopetrolContractRow, sourc
     governmentLevel: "public_company",
     industries,
     scopeType,
-    procedureType: String(row["Tipo Movimiento"] ?? "Unknown"),
+    procedureType,
     publicationDate,
     awardDate: publicationDate,
     awardedTo,

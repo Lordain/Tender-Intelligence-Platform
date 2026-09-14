@@ -157,7 +157,9 @@ export function mapCompranet5RowToTender(
   // same function reclassify-tenders.ts calls, fed the same values this row
   // will actually store — so `npm run reclassify:tenders` and the next import
   // of this file cannot land on different answers.
+  const procedureType = row["Tipo de procedimiento"]?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary,
     buyer,
@@ -180,7 +182,7 @@ export function mapCompranet5RowToTender(
     governmentLevel,
     industries,
     scopeType,
-    procedureType: row["Tipo de procedimiento"]?.trim() || "Unknown",
+    procedureType,
     participationScope: inferParticipationScope(row["Carácter del procedimiento"]),
     publicationDate,
     awardDate: parseDate(row["Fecha de fallo"]) ?? undefined,

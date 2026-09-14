@@ -86,3 +86,32 @@ jobs:
           path: exports/
           if-no-files-found: ignore
           retention-days: 14
+
+  # Tells Bing about the pages that became public today, after the imports
+  # that may have created them. Bing's index is what ChatGPT and Copilot read,
+  # so this is the only channel through which an AI assistant learns this site
+  # exists — Google Search Console covers Google and nothing else.
+  #
+  # Needs the imports to have finished, but must not be skipped when one of
+  # them fails: a PEMEX outage has nothing to do with yesterday's Colombia
+  # tenders crossing their deadline, and those pages are the point.
+  indexnow:
+    needs: ingest
+    if: always() && (github.event_name == 'schedule' || inputs.write)
+    runs-on: ubuntu-latest
+    name: IndexNow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Submit
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Public information (it is the site's own address), so it is stated
+          # here rather than kept as a secret nobody can read back.
+          APP_URL: https://latintender.com
+        run: npm run ping:indexnow -- --write

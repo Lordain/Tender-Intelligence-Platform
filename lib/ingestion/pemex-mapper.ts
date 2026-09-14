@@ -193,7 +193,9 @@ export function mapPemexConcursoItemToTender(
   // mention petróleo/gas/etc. — "Pemex Exploración y Producción" alone
   // matches the \bpemex\b pattern.
   // Both title and summary store `description`, so both get it here.
+  const procedureType = item.areacontratante?.trim() ? `${procedureLabel} (${item.areacontratante.trim()})` : procedureLabel;
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title: description,
     summary: description,
     buyer,
@@ -224,7 +226,7 @@ export function mapPemexConcursoItemToTender(
     governmentLevel: "public_company",
     industries,
     scopeType,
-    procedureType: item.areacontratante?.trim() ? `${procedureLabel} (${item.areacontratante.trim()})` : procedureLabel,
+    procedureType,
     participationScope: inferParticipationScope(item.tipoevento),
     publicationDate,
     // Deliberately NOT populating submissionDeadline from `vencimiento`:

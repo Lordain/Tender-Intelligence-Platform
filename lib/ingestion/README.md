@@ -3946,3 +3946,603 @@ the same entry are a separate finding and still worth writing.
 The result now carries a `keyDates` count and any warnings, and both the CLI
 and the admin table show them. A count that was silently zero is a count
 that was not being looked at.
+
+### The same field then failed the other half of the pipeline (2026-09-13)
+
+With the write path fixed, the first real run — 5 Peru bases PDFs through
+`/admin/documents-needed` — came back **5 of 5 failed**, and not partially:
+"没有任何文件分析成功". The requirements and risks were lost too. Two
+distinct causes, both introduced by adding `keyDates` to `ExtractionSchema`
+and neither caught by anything that existed at the time.
+
+**1. A required key nobody was ever asked for.** `runExtraction()` has two
+modes. Claude gets `output_config.format` (structured outputs, the schema
+enforced server-side). DashScope's Anthropic-compat endpoint does not —
+`useStructuredOutput: false` bypasses it and asks for the JSON shape in the
+prompt instead, then parses and validates by hand. That hand path had a
+literal list of keys to default to `[]` when a provider omitted them:
+
+```ts
+for (const key of ["qualifications", "experienceRequirements", "requiredDocuments", "risks"]) {
+```
+
+`keyDates` was added to the schema as a **required** array and added to
+neither that list nor `JSON_SHAPE_INSTRUCTIONS`. So the model was never
+told to return it, didn't, and `ExtractionSchema.safeParse()` rejected the
+whole object:
+
+```
+Extraction failed schema validation for peru-ocds-dgv273-seacev3-1249120:
+  path: ["keyDates"], expected array, received undefined
+```
+
+One missing key threw away a fully successful extraction of everything
+else. Four of the five failures were exactly this, on every path the
+document took — native PDF, chunked, and the plain-text fallback all
+validate through the same function.
+
+The fix is not "add `keyDates` to the list". The list is now **derived from
+`ExtractionSchema.shape`** — every field whose Zod type is an array gets
+defaulted, so the next array added to the schema cannot repeat this. That
+lives in the exported `normalizeRawExtraction()`, which
+`extract-requirements-qwen.ts` (the OpenAI-compat comparison path, which had
+the identical hole) now also calls. `JSON_SHAPE_INSTRUCTIONS` gained a real
+`keyDates` description — defaulting to `[]` only stops the crash; without
+asking for the field, this provider would have gone on returning empty
+schedules forever, which is the failure that looks like success.
+`extract-requirements-qwen.ts` had drifted to its own paraphrase of that
+prompt, so it now imports the shared constant instead of carrying a copy.
+
+**2. A size limit the splitter was already sized for, but never saw.**
+The fifth failure:
+
+```
+400 Exceeded limit on max bytes to request body : 16777216
+```
+
+`MAX_CHUNK_BYTES` in `pdf-split.ts` was set to 8MB **specifically** for this
+16MB body cap — the comment there names the exact error string. But
+`isPdfNativeLimitError()`, the matcher that decides whether to split at all,
+tested for `/maximum of \d+ pdf pages/` and
+`/request_too_large|exceeds the maximum (size|allowed)/`. DashScope words
+this one "Exceeded limit on max bytes to request body", which matches
+neither. So the splitter that was built for this limit never ran for it:
+the document threw straight out, past the chunking fallback and past the
+text fallback both. Matcher widened.
+
+Worth stating plainly: the ceiling was known, documented, and engineered
+around — and the code still didn't reach the workaround, because the
+recognition step and the mitigation step were written against the error at
+different times and never checked against each other.
+
+**Regression coverage** (`npm run test:key-dates`, 61 → 68): every array
+field the schema declares is defaulted (derived, so it fails if a new one
+is forgotten); a schedule the model *did* return passes through untouched;
+a genuinely malformed value still fails loudly rather than being repaired;
+a top-level array — a real DashScope response shape — is still rejected;
+and `JSON_SHAPE_INSTRUCTIONS` actually contains the key it requires.
+
+### Why both of those cost money to find, and what now stops that
+
+Both bugs above were fully reproducible with no network and no API key. A
+provider omitting one key, and a provider wording a size limit differently,
+are both just *strings* — nothing about either needed a live model. They
+were found instead by a real run over five real Peru documents, which
+billed five model calls and produced nothing.
+
+Two things were missing, and both now exist.
+
+**1. The pipeline can be run end to end offline** —
+`npm run test:extraction-pipeline` (`scripts/test-extraction-pipeline.ts`).
+It drives the real `extractTenderRequirements()` against a stub client that
+returns scripted responses and scripted errors, over synthetic PDFs
+(`scripts/fixtures/make-pdf.ts` — genuinely valid files, so poppler's
+`pdfinfo`/`pdftotext`/`pdfseparate` do real work on them). 35 checks, 0
+model calls, 0 cost. It covers:
+
+- a response with no `keyDates` key (**the exact failure**), and one with no
+  array keys at all;
+- a schedule the model *did* return surviving parse → merge → `toTenderFields`
+  with its day, note and citation intact;
+- an ambiguous `10/09/2026` being dropped rather than read as October;
+- a top-level array and a bad enum still being rejected;
+- all three size limits — page count, base64 field length, and DashScope's
+  request-body cap (**the second failure**) — reaching the splitter;
+- chunking failing over into the text fallback, and that fallback
+  overflowing the context window and retrying with less text;
+- the per-tier page cap actually sending a smaller document;
+- a duplicate cronograma row across a chunk boundary being written once.
+
+Verified the only way a test is worth anything: both bugs were
+re-introduced, and the harness named both (`1 schema defaulting`,
+`4 请求体上限触发分块`) while the other 32 checks still reported.
+
+What it deliberately does **not** claim: nothing here proves a real model
+reads a real cronograma correctly. That is task #34's live check, and no
+stub substitutes for it. What it proves is that a *given response* survives
+the code — which is the half that was broken.
+
+**2. A batch stops instead of confirming a verdict it already has.**
+`lib/ingestion/extraction-failure.ts` splits a failure two ways:
+
+- **systematic** — a property of the code or the account, identical for
+  every document: schema/shape rejection, a bad or missing API key, an
+  exhausted quota, an unknown model id, a missing poppler binary. The next
+  document cannot do better. `analyzeUploadedDocument()` throws on the first
+  one, which stops the surrounding batch.
+- **document** — a property of *this* file: too large, too many pages,
+  corrupt, a context overflow, a 429/529. The next file is a different file.
+  Keep going.
+
+Unrecognised failures count as **document**, not systematic: guessing wrong
+there costs one extra call, while guessing wrong the other way silently
+abandons a batch the user asked for. The gap that leaves —
+genuinely-systematic failures this list doesn't name — is covered by
+`shouldAbortBatch()`: two consecutive failures with nothing succeeding ends
+the run. Two rather than one, because a batch whose first document happens
+to be corrupt is ordinary, and stopping over it would be its own waste.
+
+`analyzeLocalFolder()` returns `aborted: { reason, remaining }` when it
+stops early, and `LocalBatchAnalysisForm` renders it as a red banner saying
+how many tenders were **never attempted and never billed** — a distinction
+"3 failed" alone cannot make. That form's result table also gained a 关键日期
+column (count, plus the deadline when one was set), since a run that wrote
+no schedule at all was previously invisible without opening each tender.
+
+### 31 minutes, nothing to show for it (2026-09-13)
+
+The first run after the circuit breaker landed stopped correctly — 2 tenders
+failed, 3 were never attempted and never billed — but the two that ran took
+**31 minutes** between them and both ended the same way:
+
+```
+「peru-ocds-dgv273-seacev3-1248966__Bases Administrativas.pdf」分析失败，已跳过：Request timed out.
+```
+
+That number is not arbitrary. The extraction calls were **non-streaming**,
+and for a non-streaming request the Anthropic SDK sets its own timeout —
+`_calculateNonstreamingTimeout` in `client.js`: 10 minutes at
+`max_tokens: 16000` — then retries a timeout `maxRetries` (default **2**)
+more times. One slow document can therefore occupy 30 minutes, and each
+attempt may be billed for work the server had in fact done.
+
+The SDK states the rule plainly in the error it raises one notch higher:
+
+> Streaming is required for operations that may take longer than 10 minutes.
+
+A 30-page native PDF at 16,000 max output tokens is squarely that, and this
+code was not streaming. Three changes:
+
+1. **Both call sites stream** — `client.messages.stream(...).finalMessage()`.
+   Structured outputs are not sacrificed: `stream()` accepts
+   `output_config.format` and `finalMessage()` still carries `parsed_output`,
+   so the Claude path is unchanged in behaviour. (The DashScope path already
+   ran `useStructuredOutput: false` and uses the plain branch.)
+2. **`maxRetries: 1`, explicitly.** A retried *timeout* is the least useful
+   retry there is: if the provider needs longer than the budget, asking again
+   changes nothing and doubles the wait. One retry still covers what is worth
+   retrying — 429, 529, a dropped connection.
+3. **Elapsed time is printed per call** (`模型调用耗时 N s`). Nobody here knows
+   how long DashScope actually needs for a 30-page PDF, and choosing a
+   tighter timeout without that measurement is how a legitimate slow
+   extraction gets cut off. Two real runs answer it; until then the number is
+   measured, not guessed.
+
+And a ceiling on the run itself, not just the call: `BATCH_BUDGET_MS`
+(20 minutes) in `extraction-failure.ts`, checked **between** tenders in
+`analyzeLocalFolder()`. Between, never mid-call — interrupting a call already
+paid for throws away the result and the money both — so the true ceiling is
+the budget plus however long the last tender takes, which is what the code
+comment says rather than pretending otherwise. The first tender is exempt: a
+run that does nothing at all is not a useful way to respect a budget.
+
+**The harness caught this change the moment it was made**, which is the
+point of having it: the stub client implements only `stream()`, and
+`create()`/`parse()` throw `非流式调用` on purpose. A revert to non-streaming
+fails `npm run test:extraction-pipeline` (now 39 checks) instead of being
+discovered on the bill.
+
+### 609 seconds — the number that was missing (2026-09-13)
+
+The single-document re-run printed it:
+
+```
+peru-ocds-dgv273-seacev3-1248966: 模型调用耗时 609.0s
+… 分析失败，已跳过：Request timed out.
+```
+
+**609 seconds is 10 minutes.** The model was not failing — we were hanging
+up on it. Streaming fixed only half the problem: it lifts the extra
+restriction the SDK puts on *non-streaming* calls, but the SDK's
+**client-level** default (`opts.timeout = 10 minutes`) applies to streaming
+requests just the same, and this code inherited it. `REQUEST_OPTIONS` now
+sets the timeout explicitly (20 minutes).
+
+`maxRetries` also drops from 1 to **0**. Every failure actually observed on
+this path repeats on a retry — a size limit, a schema mismatch, a provider
+slower than the budget — so retrying doubles the wall clock and can be
+billed again for work the server already did. That is precisely what turned
+one batch into 31 minutes. Transient failures are handled a level up
+instead: the document is reported, the batch continues, two in a row stop
+the run.
+
+**Correction, same day.** 20 minutes was a number picked without evidence,
+and it punishes exactly the documents most worth reading — a 40-page
+flagship Convocatoria legitimately takes longer than a 20-page routine one.
+The timeout now scales with the tier's own page cap (`requestOptions()`:
+`max(20 min, maxPages × 60s)` — 20 min / 30 min / 40 min for standard /
+significant / flagship), because that cap is already this platform's
+statement of how much document a tender is worth reading. 60s per page is
+triple the only real measurement available (30 pages was still working at
+609s when the old default cut it off, i.e. more than ~20s/page) — headroom,
+not a stopwatch. **Do not tighten it from a failure**: a timeout only ever
+proves a lower bound on how long the work takes. Revise it when a
+successful run prints a real completion time.
+
+`BATCH_BUDGET_MS` goes from 20 minutes to **an hour** for the same reason: a
+run budget that cannot fit one legitimate flagship document is not a budget,
+it is a bug. What actually protects against waste is cheaper and sits
+elsewhere — `maxRetries: 0` means nothing is attempted three times, and two
+consecutive failures end the run. The 31-minute incident was three attempts
+at one doomed call, not one call doing real work; those are different
+problems and only the first is worth spending a timeout on.
+
+**The second finding is the one that matters more,** and it is not a bug —
+it is a design question the measurement exposed. This document has a real
+text layer (that is *why* it routed to qwen3.5-plus at all —
+`chooseExtractionModel(hasTextLayer: true, …)`), and it is nonetheless sent
+as a **native PDF document block**: 30 pages of a file large enough to have
+hit DashScope's 16MB request-body cap earlier the same day. Ten-plus minutes
+is what uploading and processing that costs.
+
+The contradiction is already written down elsewhere in this file. The Word
+branch of `extractTenderRequirements()` reasons: *"unlike a scanned PDF page,
+a real Word file is already machine-readable text, so there's nothing
+meaningful for native document understanding to add here."* A PDF whose text
+layer we verified with `pdftotext` — which is how the model was chosen — is
+in the same position, and does not get the same treatment.
+
+The real cost of switching it: `extractPdfText()` runs `pdftotext -q` with
+no `-layout`, so a cronograma **table** can come back with its columns
+interleaved — and a cronograma table is exactly what task #34 is chasing.
+That is a genuine tradeoff, not a free win, so it is not being changed
+unilaterally. At ~10 minutes per document, 66 Peru documents is ~11 hours,
+so the current path does not scale either.
+
+### 304.8s — Node's own ceiling, hiding under the SDK's (2026-09-13)
+
+Third measurement, same document, SDK timeout now 30 minutes:
+
+```
+peru-ocds-dgv273-seacev3-1248966: 模型调用耗时 304.8s
+… 分析失败，已跳过：Request timed out.
+```
+
+**304.8s is not 30 minutes.** Nothing in this codebase asked for it. It is
+Node's built-in `fetch` (undici) hitting its own default **`headersTimeout`
+of 300 seconds** — a second ceiling, underneath the SDK's, that no setting
+here ever touched.
+
+It also explains the previous number. **609.0s ≈ 2 × 304s**: the same 300s
+ceiling hit twice, because `maxRetries` was still 1 at the time. Two
+failures, three measurements, one cause — and the SDK timeout, which is what
+both earlier commits adjusted, was never the binding constraint at all.
+
+Fixed in `http-dispatcher.ts`, which builds an undici `Agent` whose
+`headersTimeout`/`bodyTimeout` match whatever the SDK timeout is for that
+call, so there is exactly **one** authority over how long a call may run —
+the deliberate, page-scaled, documented one.
+
+Two things about that file are worth stating rather than burying:
+
+- **It reaches the `Agent` class off Node's global dispatcher** instead of
+  importing `undici`, which is not a dependency here (and `npm install`
+  could not add one from this sandbox anyway). That is a Node internal, so
+  every step is guarded and any surprise returns `undefined`, leaving the
+  old default behaviour rather than throwing. `npm run test:extraction-
+  pipeline` verifies the mechanism against a local server that withholds
+  headers for 1.2s: a deliberately 300ms dispatcher **must** fail (proving
+  it is honoured, not ignored) and a generous one must let the slow response
+  through. Without that first assertion the second proves nothing.
+- **`headersTimeout` measures time to the first response HEADER**, and a
+  genuinely streaming endpoint sends headers immediately. So this limit
+  firing at all is evidence that DashScope's Anthropic-compatible endpoint
+  **buffers the whole answer before replying** — meaning the switch to
+  streaming bought nothing there. That is a finding about the provider, not
+  a setting, and raising the ceiling does not change it.
+
+So the log line now reports what a total alone cannot:
+
+```
+模型调用耗时 304.8s（响应头始终未到达（对方在缓冲，不是真流式），没有收到任何流式事件）
+```
+
+Time-to-first-header and time-to-first-stream-event. If the next run prints
+a header time under a second, the endpoint does stream and the earlier
+reading was wrong. If it prints 响应头始终未到达 again, the buffering is
+confirmed, and the architecture question above — sending a text-layer PDF as
+text rather than as a multi-megabyte native PDF — stops being optional.
+
+### It worked — and the same log settled the architecture question (2026-09-13)
+
+The run completed. `已写入`, with `3/2/11/4` requirements and risks and a
+correct one-line summary (秘鲁扬阿万卡区河岸防御扩建改善工程). Two calls, and
+the pair of them answers everything the previous three days were guessing at:
+
+```
+调用1（原生 PDF）: 734.5s（响应头始终未到达（对方在缓冲，不是真流式），没有收到任何流式事件）
+                 → 400 String value length (28049408) exceeds the maximum allowed
+调用2（文本兜底）: 98.9s（首个响应头 4.6s，首个流式事件 4.7s）→ 成功
+```
+
+Same document, same model, same provider, minutes apart.
+
+- The dispatcher fix worked: 734.5s is well past the old 300s ceiling, so
+  the call ran to a **real provider error** instead of a timeout. The
+  failures were never the model's.
+- **Native PDF: no response header for 734 seconds.** The endpoint buffers.
+  Streaming bought nothing on that path, exactly as the header timeout
+  implied.
+- **Text: first header at 4.6s, first event at 4.7s.** It streams properly,
+  finishes in 98.9s, and succeeds. Seven times faster and the difference
+  between working and not.
+
+So `extractTenderRequirementsQwenAnthropic` now passes
+`preferExtractedText: true`: on that provider a PDF's text is sent, never
+the PDF. This is the same branch Word documents already took, for the same
+stated reason, plus one more — a provider that holds a multi-megabyte
+document for twelve minutes and then rejects it on size is not one to send a
+document to. The Claude path is untouched and still uses native PDF vision,
+which is what scanned tenders are routed to it for.
+
+**The one thing that did not work: 关键日期 was 无.** Everything else came
+back — 3 qualifications, 2 experience, 11 documents, 4 risks — and the single
+field shaped like a **table** came back empty. `extractPdfText()` was running
+`pdftotext -q` with no `-layout`, and on a two-column fixture that is the
+difference between:
+
+```
+Presentacion de ofertas          ← -q: label and date on separate lines,
+                                    blank lines between, pairing left to
+02/10/2026                          the model to guess
+
+Presentacion de ofertas    02/10/2026    ← -layout
+```
+
+A real cronograma has three or four columns (etapa / inicio / fin / hora),
+where the same loss is worse. `-layout` is now passed. Whether it is
+sufficient is the next run's answer, not an assumption — if 关键日期 is still
+无, the schedule is either outside the 30-page cap or printed as an image,
+and both are diagnosable from the document itself rather than by spending
+another call.
+
+`npm run test:extraction-pipeline` is at 50 checks, including that the
+DashScope path makes exactly one call with no document block, and that the
+Claude path still sends native PDF.
+
+### Two transliterations of one town, and a backlog that would take a day
+
+**The name.** A tender titled 亚纳万卡区（Yanahuanca） got the one-line
+summary 秘鲁**扬阿万卡**区河岸防御扩建改善工程. Same place, two Chinese
+renderings, on the same page — which reads to a customer as two places.
+
+Root cause, `analyze-uploaded-document.ts:168`:
+
+```ts
+const context = { tenderNumber: …, title: intake.fileName, buyer: "" };
+```
+
+The extraction's `title` was **the file name**
+(`peru-ocds-…__Bases Administrativas.pdf`). The model never saw the tender's
+own Chinese title, so it transliterated Yanahuanca from scratch with no way
+to know the platform already renders it 亚纳万卡. The title translation
+(task #24) and the document extraction are two unrelated model calls with no
+shared vocabulary between them.
+
+The fix is not the title alone. The title does not name every place (user,
+same day: 有些地名标题没有，摘要里面有) — a river, a neighbouring district, the
+buyer's own municipality routinely appear only in the summary, and each of
+those is a name the extraction would still transliterate afresh.
+
+So everything the site already displays in Chinese for that tender goes in:
+`title.zh`, `summary.zh`, and any `one_line_summary` an earlier analysis
+wrote. They reach the model as a labelled block after the task sentence —
+
+```
+本平台已对该项目使用的中文写法（仅供统一术语，不是提取来源）：
+标题：…
+摘要：…
+已有一句话总结：…
+```
+
+— and SYSTEM_PROMPT requires reusing its renderings of proper nouns exactly,
+never re-transliterating a name that appears in it, while transliterating
+normally any name that does not. The label matters as much as the content:
+this is the platform's own prior output, and without saying so it reads as
+more document to extract requirements from. A tender with no established
+Chinese gets no block at all rather than an empty header.
+
+**The throughput.** One document at ~99s and a strictly sequential batch is
+about six per hour; 66 Peru documents is over two hours of mostly *idle*
+waiting, since nearly all of that 99s is spent waiting on the provider
+rather than working the machine. (The 10-minute figure that prompted this
+predates `preferExtractedText` — it included the 734.5s native-PDF attempt
+that path no longer makes.)
+
+`analyzeLocalFolder()` now runs `ANALYSIS_CONCURRENCY = 4` tenders at once,
+which puts the same 66 closer to half an hour. Four rather than forty: each
+worker holds a tender's files in memory and shells out to poppler, and
+DashScope is a shared rate limit whose 429s would arrive as per-document
+failures — a width that turns one slow provider into a thundering herd
+trades a real speedup for a batch that fails.
+
+The pool itself is extracted to `run-pool.ts` rather than left inline,
+because a worker pool's bugs are all silent and all of these would cost
+money or results: exceeding its width, dropping the last item, starting new
+work after a stop was decided, or abandoning work already in flight. Each of
+its three guarantees is asserted in `test:extraction-pipeline` (now 57
+checks), including that it is genuinely concurrent rather than sequential in
+disguise, and — the one that protects money — that once a stop is decided
+nothing NEW starts while everything already running is awaited to
+completion. A model call abandoned mid-flight is paid for and thrown away.
+
+Two details the concurrency changed in meaning rather than mechanics: the
+give-up rule counts failures *with no success yet* rather than
+*consecutive* ones (with four workers in flight "consecutive" has no
+definition), and "N 个项目未处理" is now computed from how many actually
+finished rather than from the aborting task's index, since tenders no longer
+complete in order. Results and failures are sorted back into the folder's
+order before reporting.
+
+### Peru's bid deadline: the search is over, and the answer is "nowhere" (2026-09-14)
+
+Tasks #31 and #34 both existed to close one gap: SEACE tenders reach this
+platform with 计划交标 blank while the official ficha shows a full cronograma.
+The plan was to read the deadline out of the bases PDF. Three checks, run
+in one afternoon, close the question in the other direction.
+
+**1. The bid document does not print it.** Chapter 2.1 of a live *Bases
+Administrativas* (ocds-dgv273-seacev3-1248966, Ley N° 32069 / DS
+009-2025-EF) is titled CRONOGRAMA DEL PROCEDIMIENTO DE SELECCIÓN and reads,
+in full: *"Según el cronograma de la ficha de selección de la convocatoria
+publicada en el SEACE de la Pladicop."* Every other mention of
+*presentación de ofertas* in its 129 pages is a rule — submission runs
+00:01–23:59, not less than seven working days after the integrated bases —
+never a date.
+
+**2. The API does not carry it, in any format.** The decisive test was the
+CSV rather than the JSON: `/file/seace_v3/csv/2026/08` is a **full
+flattening** of the OCDS structure, one table per array — `com_awards`,
+`com_contracts`, `com_parties`, `com_ten_documents`, `com_ten_items`,
+`com_ten_tenderers`, `records`, `releases`. There is **no
+`com_ten_milestones.csv`**. `tender.milestones` is OCDS's own field for
+cronograma rows, so its table being absent means no record in the entire
+month has one. `records.csv`'s complete set of date columns is four:
+tenderPeriod start/end, enquiryPeriod start/end. This is a month-wide
+answer, far stronger than the per-record checks that preceded it.
+
+**3. The linked releases hold nothing back** — and this corrects a guess
+made earlier the same day. A compiled release is the **merge** of every
+release for an ocid, and merging preserves fields rather than dropping
+them, so a milestone present in any release would appear in the compiled
+one. Absent there is absent everywhere; the two linked releases on that
+record did not need fetching.
+
+A live 2026-09 record re-confirms the rest on current data: `tenderPeriod`
+start and end are both `2026-09-10T00:00:00`, the publication day, not a
+deadline; `enquiryPeriod` (09-11 00:01 → 09-21 23:59, `durationInDays: 10`)
+is the only real window published. `GET /records?page=1` shows the same on
+2024 records, so this is steady behaviour rather than one month's quirk.
+
+**Correction to the first version of this note:** that 2026-09 record lists
+exactly one document, and the note took it as "there is no second attachment
+to try." That is true of the tender and false of the source. `documents[]`
+grows with the procedure — a completed 2024 record in the same response
+carries four (Bases Administrativas, Resumen ejecutivo, and two ZIPs for
+Presentación de Propuestas and Otorgamiento de Buena Pro). A tender
+published four days ago has not reached those stages, so **re-reading a
+tender's document list later does yield more**.
+
+It does not rescue the deadline, though: none of those later documents
+exists yet at the moment a bidder needs one, which is *before* the bid is
+due. The single document type that would arrive in time — *bases
+integradas*, published after the consultas window closes — has not been
+checked for whether it prints the cronograma the original bases delegates to
+the ficha. Under the same Ley 32069 template it probably does not; that is a
+guess, and it is the only thread left unpulled.
+
+So: across every format, every endpoint, and the document itself, this
+source publishes publication and the consultas window. **计划交标 blank on a
+SEACE tender is a property of the source, not something left to find**, and
+this note exists so the next person does not spend another afternoon
+finding that out.
+
+Two consequences worth stating plainly:
+
+- **Reading Peru bid documents is still worth doing** — the one analysed
+  returned 3 qualifications, 2 experience requirements, 11 required
+  documents and 4 risks, all cited. It is the *deadline* that is not in
+  there, not the value.
+- **#34's premise was wrong, not its machinery.** The cronograma checking
+  (`key-date-checks.ts`), the day/month-swap detection and the write path
+  are all sound and untested against real data only because Peru turned out
+  to be the wrong place to test them. Mexico's Convocatorias do print a
+  cronograma; that is where this should be validated.
+
+What is NOT being done, and why: deriving the submission date from the
+enquiry window plus the Reglamento's minimum intervals is arithmetic on a
+rule, i.e. a guess presented as a date, and a wrong deadline is worse than a
+blank one. Scraping the ficha HTML is out under the project's standing rule
+against building connectors for deliberately anti-automation-gated portals.
+The honest options are the ones already in place — SourcePanel points the
+reader at the official page — plus manual entry through the key-dates
+editor for tenders worth it.
+
+### The cronograma the ficha shows, pasted rather than scraped (2026-09-14)
+
+The user opened the ficha for the tender above and sent the table:
+Convocatoria 10/09, Registro de participantes 11/09→12/10, Consultas
+11/09→21/09, Absolución 22/09, Integración 22/09, **Presentación de
+propuestas 13/10/2026**, Calificación 14/10, Buena Pro 14/10 08:30. The
+deadline exists, published, exact — just not anywhere reachable from the
+data.
+
+The URL settles why: `fichaSeleccion.xhtml?id=5aeb5f38-860e-424c-bfa4-…`,
+while the only UUID in the OCDS record is a document download code
+(`fileCode=5da1ea91-…`). Different values. The ficha URL **cannot be
+constructed** from the record, so reaching it means driving SEACE's own
+search — the part this project does not automate.
+
+So the human stays in the loop for the one step that needs them, and the
+machine does the rest: `lib/ingestion/seace-cronograma.ts` parses that table
+pasted straight out of the browser. No model call, no request to SEACE,
+exact published dates rather than an inference. Per tender it is one copy
+and one paste.
+
+What the parser has to survive, all real properties of that table:
+
+- **Two date columns**, and the deadline is the END. Registro de
+  participantes runs 11/09 → 12/10; reading the start column there would be
+  a month wrong.
+- **DD/MM/YYYY** — 13/10/2026 is 13 October. The dates are split by hand
+  rather than given to `new Date()`, which would read several rows as a
+  different month without complaint.
+- **Cells wrapping onto a second line** (Integración de las Bases, then the
+  municipality's name). Rows are found by looking for *dates*, not by
+  assuming one row per line: a line without a date is carried forward as
+  more label.
+- **Ordered stage rules.** "Absolución de consultas y observaciones"
+  contains "consultas y observaciones", so absolución is tested first — the
+  other order would file a clarification date as the questions deadline.
+
+Four stages are deliberately not stored and are **reported** rather than
+dropped: Convocatoria (publication_date is the feed's and is protected by
+migration 0030 — a paste must not overwrite it) and the three this platform
+has no type for (Registro de participantes, Integración de las Bases,
+Calificación y Evaluación). Someone pasting an eight-row table needs to see
+why four rows are missing, or they will file a bug.
+
+Two integration details that are easy to get wrong:
+
+- **`submission` is never inserted as a row.** It has its own column, and
+  `syncKeyDatesForTopLevelFields()` owns the row mirroring it — that
+  function deletes *every* row of the type and rebuilds one from the column.
+  Writing both would put two 交标截止 entries on the public timeline until
+  the next admin save quietly removed one. The route sets the column and
+  calls the same sync the admin form's own save calls.
+- **Fill, never overwrite.** A deadline already on the tender came from
+  somewhere; the paste reports the disagreement and leaves it alone, the
+  same rule `writeExtractedKeyDates()` follows.
+
+Preview is mandatory before writing — the admin sees the parsed rows, the
+skipped rows with reasons, anything unparsed, and `findKeyDateProblems()`'s
+verdict, before anything touches the tender. A wrong bid deadline either
+hides a live tender or holds an expired one open, so it is not written from
+a paste nobody looked at.
+
+`npm run test:key-dates` is at 84 checks, fixtured on that exact real table.
+One of them is worth naming: the parsed questions deadline (2026-09-21)
+matches what the OCDS feed independently publishes as `enquiryPeriod.endDate`
+— two unrelated sources agreeing is the check that the right column is being
+read, and it is the first real-data validation the key-date machinery from
+#31/#34 has ever had.

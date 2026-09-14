@@ -62,10 +62,10 @@ function deadlineDay(value: string | undefined): string | null {
 }
 
 const selectClass =
-  "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
+  "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-2 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
 
 const dateClass =
-  "h-10 min-w-0 flex-1 rounded-xl border border-[#d8e0e3] bg-white px-2.5 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
+  "h-10 min-w-0 flex-1 rounded-xl border border-[#d8e0e3] bg-white px-1.5 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c] disabled:cursor-not-allowed disabled:bg-[#f2f4f3] disabled:text-[#a7b1b7]";
 
 export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) {
   const router = useRouter();
@@ -75,6 +75,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const [status, setStatus] = useState("all");
   const [relevance, setRelevance] = useState("all");
   const [analysis, setAnalysis] = useState("all");
+  const [deadlinePresence, setDeadlinePresence] = useState("all");
   const [deadlineFrom, setDeadlineFrom] = useState("");
   const [deadlineTo, setDeadlineTo] = useState("");
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
@@ -104,8 +105,10 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     }
   }
 
-  async function handleBulkDelete() {
-    const slugs = [...selected];
+  // Takes the slugs the button was rendered for (selectedVisible below)
+  // rather than reading `selected`, so what gets deleted is exactly what the
+  // count on the bar was counting.
+  async function handleBulkDelete(slugs: string[]) {
     if (slugs.length === 0) return;
     if (!confirm(`确定要删除这 ${slugs.length} 条项目吗？此操作无法撤销。`)) return;
 
@@ -164,13 +167,43 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       const matchesDeadline =
         (!deadlineFrom && !deadlineTo) ||
         (day !== null && (!deadlineFrom || day >= deadlineFrom) && (!deadlineTo || day <= deadlineTo));
+      // Separate from the range on purpose: a range can only ever narrow to
+      // tenders that HAVE a deadline, so "which ones are still missing one"
+      // — the list an admin works through when filling Peru deadlines in by
+      // hand from the SEACE ficha — was unaskable with the range alone.
+      const matchesPresence =
+        deadlinePresence === "all" || (deadlinePresence === "missing" ? day === null : day !== null);
 
-      return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline;
+      return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
     });
-  }, [analysis, country, deadlineFrom, deadlineTo, query, relevance, status, tenders]);
+  }, [analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, relevance, status, tenders]);
+
+  // Changing any filter drops the selection. Without this the red bar
+  // survives a filter change still holding rows that are no longer on screen:
+  // it reads 已选择 1 项 over a list showing something else entirely, and
+  // 批量删除 then deletes a tender the admin never looked at. Deletion is not
+  // undoable, so the selection does not outlive the view it was made in.
+  //
+  // Every filter state has to appear here. selectedVisible below is the guard
+  // for the day one is added and this line is forgotten.
+  const filterKey = [query, country, status, relevance, analysis, deadlinePresence, deadlineFrom, deadlineTo].join("\u0000");
+  const [seenFilterKey, setSeenFilterKey] = useState(filterKey);
+  if (filterKey !== seenFilterKey) {
+    setSeenFilterKey(filterKey);
+    if (selected.size > 0) setSelected(new Set());
+  }
+
+  // What 批量删除 actually acts on, and what the bar counts: never more than
+  // what is on screen right now. Derived from `filtered`, so it narrows with
+  // every filter — including any filter added later — whether or not the key
+  // above knows about it.
+  const selectedVisible = useMemo(
+    () => filtered.filter((tender) => selected.has(tender.slug)).map((tender) => tender.slug),
+    [filtered, selected],
+  );
 
   const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all" || analysis !== "all"
-    || Boolean(deadlineFrom) || Boolean(deadlineTo);
+    || Boolean(deadlineFrom) || Boolean(deadlineTo) || deadlinePresence !== "all";
 
   function clearFilters() {
     setDraftQuery("");
@@ -179,6 +212,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     setStatus("all");
     setRelevance("all");
     setAnalysis("all");
+    setDeadlinePresence("all");
     setDeadlineFrom("");
     setDeadlineTo("");
   }
@@ -214,23 +248,23 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
           </p>
         </div>
 
-        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.7fr)_auto] lg:items-end">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-black text-[#52636e]">国家/地区</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">国家/地区</span>
             <select value={country} onChange={(event) => setCountry(event.target.value)} className={selectClass}>
               <option value="all">全部国家</option>
               {countries.map((item) => <option key={item} value={item}>{countryLabel(item, "zh")}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-black text-[#52636e]">项目状态</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">项目状态</span>
             <select value={status} onChange={(event) => setStatus(event.target.value)} className={selectClass}>
               <option value="all">全部状态</option>
               {STATUS_KEYS.map((key) => <option key={key} value={key}>{STATUS_LABELS[key].zh}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-black text-[#52636e]">相关度</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">相关度</span>
             <select value={relevance} onChange={(event) => setRelevance(event.target.value)} className={selectClass}>
               <option value="all">全部相关度</option>
               {RELEVANCE_KEYS.map((key) => <option key={key} value={key}>{RELEVANCE_TIER_LABELS[key].zh}</option>)}
@@ -238,21 +272,34 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-black text-[#52636e]">标书分析（仅限已中标）</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">标书分析（仅限已中标）</span>
             <select value={analysis} onChange={(event) => setAnalysis(event.target.value)} className={selectClass}>
               <option value="all">不限</option>
               <option value="without_analysis">无标书分析</option>
               <option value="with_analysis">已有标书分析</option>
             </select>
           </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">交标日期</span>
+            <select
+              value={deadlinePresence}
+              onChange={(event) => setDeadlinePresence(event.target.value)}
+              className={selectClass}
+            >
+              <option value="all">不限</option>
+              <option value="missing">缺交标日期</option>
+              <option value="present">已有交标日期</option>
+            </select>
+          </label>
           <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
-            <span className="text-xs font-black text-[#52636e]">交标截止日期</span>
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">交标截止日期</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="date"
                 aria-label="交标截止日期起"
                 value={deadlineFrom}
                 max={deadlineTo || undefined}
+                disabled={deadlinePresence === "missing"}
                 onChange={(event) => setDeadlineFrom(event.target.value)}
                 className={dateClass}
               />
@@ -262,6 +309,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                 aria-label="交标截止日期止"
                 value={deadlineTo}
                 min={deadlineFrom || undefined}
+                disabled={deadlinePresence === "missing"}
                 onChange={(event) => setDeadlineTo(event.target.value)}
                 className={dateClass}
               />
@@ -271,7 +319,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             type="button"
             onClick={clearFilters}
             disabled={!hasFilters}
-            className="h-10 rounded-xl border border-[#d8e0e3] bg-white px-4 text-xs font-black text-[#52636e] transition-colors hover:border-[#9aa5ab] hover:text-[#071826] disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-10 whitespace-nowrap rounded-xl border border-[#d8e0e3] bg-white px-3 text-xs font-black text-[#52636e] transition-colors hover:border-[#9aa5ab] hover:text-[#071826] disabled:cursor-not-allowed disabled:opacity-40"
           >
             清除筛选
           </button>
@@ -280,9 +328,9 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
 
       {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      {selected.size > 0 && (
+      {selectedVisible.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
-          <p className="text-xs font-bold text-red-700">已选择 {selected.size} 项</p>
+          <p className="text-xs font-bold text-red-700">已选择 {selectedVisible.length} 项</p>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -293,7 +341,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             </button>
             <button
               type="button"
-              onClick={handleBulkDelete}
+              onClick={() => handleBulkDelete(selectedVisible)}
               disabled={bulkDeleting}
               className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-600 px-3 text-xs font-black text-white transition-colors hover:bg-red-700 disabled:opacity-50"
             >

@@ -44,6 +44,7 @@ import { join, extname, basename } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { intakeDocument } from "@/lib/ingestion/document-intake";
 import { hasRealTextLayer } from "@/lib/ingestion/text-layer";
+import { SYSTEMATIC_FAILURE_PREFIX, classifyExtractionFailure } from "@/lib/ingestion/extraction-failure";
 import { maxPagesForTier, chooseExtractionModel } from "@/lib/ingestion/extraction-routing";
 import type { TenderRelevanceTier } from "@/types/tender";
 import {
@@ -74,6 +75,18 @@ export type AnalyzeUploadedDocumentResult = {
   risks: number;
   /** How many cronograma rows the document yielded, and what happened to the bid deadline among them — see writeExtractedKeyDates(). */
   keyDates: number;
+  /**
+   * The cronograma rows themselves, not just the count.
+   *
+   * Here for measurement rather than display: what a document says the bid
+   * deadline is only becomes checkable against the official date when the
+   * value survives out of this function. writeExtractedKeyDates() drops an
+   * extracted `submission` whenever the column is already filled — which is
+   * precisely the population that HAS a ground truth to score against — so
+   * without this the one comparison worth making is the one thrown away.
+   * See scripts/measure-deadline-accuracy.ts.
+   */
+  extractedKeyDates: { type: string; date: string }[];
   submissionDeadlineSet?: string;
   status: "written" | "dry-run" | "skipped-opus-precision";
   message?: string;
@@ -126,7 +139,7 @@ export async function analyzeUploadedDocument(
     // slug burned every model call in the upload first.
     const { data: tender, error: tenderError } = await supabase
       .from("tenders")
-      .select("id, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
+      .select("id, title, summary, one_line_summary, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
       .eq("slug", tenderSlug)
       .maybeSingle();
     if (tenderError || !tender) {
@@ -134,6 +147,29 @@ export async function analyzeUploadedDocument(
     }
     const tenderId = tender.id as string;
     const relevanceTier = (tender.relevance_tier ?? null) as TenderRelevanceTier | null;
+    // The tender's own Chinese title, handed to the extraction so its
+    // oneLineSummary can REUSE the proper nouns the site already shows
+    // rather than inventing its own. Real report 2026-09-14: a tender
+    // titled 亚纳万卡区（Yanahuanca） got a summary saying 扬阿万卡 — same
+    // place, two transliterations, because the two came from two unrelated
+    // model calls and the extraction was being handed the FILE NAME as its
+    // "title" and never saw the tender at all.
+    const tenderTitle = (tender.title as { zh?: string; es?: string } | null) ?? null;
+    const titleForModel = tenderTitle?.zh?.trim() || tenderTitle?.es?.trim() || tenderSlug;
+    // Title alone is not enough (user, 2026-09-14: 有些地名标题没有，摘要里面有).
+    // The summary routinely names a river, a neighbouring district or the
+    // buyer's municipality that the title never mentions, and each of those
+    // is a name the extraction would otherwise transliterate afresh.
+    const tenderSummary = (tender.summary as { zh?: string } | null) ?? null;
+    const existingChineseText = [
+      tenderTitle?.zh?.trim() ? `标题：${tenderTitle.zh.trim()}` : null,
+      tenderSummary?.zh?.trim() ? `摘要：${tenderSummary.zh.trim()}` : null,
+      typeof tender.one_line_summary === "string" && tender.one_line_summary.trim()
+        ? `已有一句话总结：${tender.one_line_summary.trim()}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     for (const file of files) {
       // basename(), not the raw name: file.fileName is whatever the
@@ -164,7 +200,7 @@ export async function analyzeUploadedDocument(
         // option was removed from this upload flow per the user's explicit
         // request (2026-09-04); extract-tender-document.ts's CLI --precise
         // flag is a separate code path and is unaffected.
-        const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: intake.fileName, buyer: "" };
+        const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: titleForModel, buyer: "", existingChineseText };
         const hasText = await hasRealTextLayer(tempPath);
         const model: ExtractionModel = chooseExtractionModel(hasText, relevanceTier);
         // Only the first N pages are read, N by tier — real tenders reach
@@ -181,6 +217,19 @@ export async function analyzeUploadedDocument(
         // paid for in this same batch — those are real API spend, and a
         // Pliego that analyzed fine is still worth writing. Reported as a
         // warning instead; only an all-files-failed batch throws.
+        //
+        // A SYSTEMATIC failure is the opposite case and gets no such
+        // tolerance: it is a property of the code or the account, so every
+        // remaining file would fail identically and bill for the privilege
+        // (confirmed 2026-09-13 — five documents, five identical schema
+        // failures, five paid model calls). Thrown immediately, which also
+        // stops the surrounding batch rather than only this tender.
+        const classified = classifyExtractionFailure(err);
+        if (classified.kind === "systematic") {
+          throw new Error(
+            `${SYSTEMATIC_FAILURE_PREFIX}${classified.reason}。已在第一个文件就停止，没有继续调用模型。原始报错：${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
         warnings.push(`「${safeName || file.fileName}」分析失败，已跳过：${err instanceof Error ? err.message : String(err)}`);
       } finally {
         try {
@@ -231,6 +280,7 @@ export async function analyzeUploadedDocument(
       requiredDocuments: fields.requiredDocuments.length,
       risks: fields.risks.length,
       keyDates: fields.keyDates.length,
+      extractedKeyDates: fields.keyDates.map((item) => ({ type: item.type, date: item.date })),
     };
 
     if (!options.write) return { ...base, status: "dry-run", warnings: warnings.length > 0 ? warnings : undefined };
@@ -327,10 +377,24 @@ export async function analyzeUploadedDocument(
       }
     }
 
-    // The cronograma. For Peru this is the ONLY place a bid deadline exists
-    // (see KeyDateSchema in extract-requirements.ts), so it is written even
-    // when the requirement/risk arrays came back empty — those are separate
-    // findings and one being empty says nothing about the other.
+    // The cronograma, written even when the requirement/risk arrays came
+    // back empty — those are separate findings and one being empty says
+    // nothing about the other.
+    //
+    // An empty cronograma is stated out loud rather than left as a blank
+    // cell, because "无" has two completely different meanings and the
+    // admin cannot tell them apart: the analysis went wrong, or the
+    // document genuinely prints no schedule. The second is real and, for
+    // Peru, common — confirmed 2026-09-14 on a live Bases Administrativas
+    // under Ley N° 32069, whose CRONOGRAMA chapter contains no dates at
+    // all, only "Según el cronograma de la ficha de selección de la
+    // convocatoria publicada en el SEACE de la Pladicop". A model that
+    // returns nothing there is CORRECT, and a blank cell that looks like
+    // a failure invites someone to pay for a re-run that cannot help.
+    if (fields.keyDates.length === 0) {
+      warnings.push("标书里没有读到任何日程（可能是标书本身不载明日期，指向平台 ficha；不一定是分析失败）。");
+    }
+
     const submissionDeadlineSet = await writeExtractedKeyDates(
       supabase,
       tenderId,

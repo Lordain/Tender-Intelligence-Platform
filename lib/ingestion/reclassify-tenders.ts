@@ -57,6 +57,7 @@ type TenderRow = {
   source_url: string;
   publication_date: string;
   source_name: string;
+  procedure_type: string | null;
   structured_duration_days: number | null;
 };
 
@@ -111,7 +112,7 @@ export async function reclassifyTenders(
     const { data, error } = await supabase
       .from("tenders")
       .select(
-        "slug, tender_number, title, summary, buyer, country, government_level, industries, scope_type, estimated_value, currency, structured_duration_days, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden, source_url, publication_date, source_name",
+        "slug, tender_number, title, summary, buyer, country, government_level, industries, scope_type, estimated_value, currency, procedure_type, structured_duration_days, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden, source_url, publication_date, source_name",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
@@ -154,6 +155,7 @@ export async function reclassifyTenders(
       summary: row.summary.es,
       buyer: row.buyer,
       country: row.country,
+      procedureType: row.procedure_type ?? undefined,
       governmentLevel: row.government_level,
       scopeType: row.scope_type,
       estimatedValue: row.estimated_value ?? undefined,
@@ -186,6 +188,7 @@ export async function reclassifyTenders(
       row.summary.es,
       recomputedIndustries.join("; "),
       row.scope_type,
+      row.procedure_type ?? "",
       row.estimated_value ?? "",
       row.currency ?? "",
       row.relevance_tier ?? "",

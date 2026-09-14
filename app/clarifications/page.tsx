@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "问题澄清",
-  description: "说明数据来源、中文整理的边界，以及投标判断中最容易被误解的问题。",
-};
+  description:
+    "说明数据来源、中文整理的边界，以及投标判断中最容易被误解的问题。",
+  path: "/clarifications",
+});
 
 const questions = [
   ["可以直接在本站提交投标吗？", "不可以。本站是招投标信息整理与分析服务，不是采购机构、招标代理或官方投标系统，不接收投标文件，也不代办投标。请通过项目详情页标明的官方投标入口核对要求，并在采购方指定的官方渠道完成正式流程。"],

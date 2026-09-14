@@ -48,6 +48,7 @@ type TenderRow = {
   documents_unavailable: boolean | null;
   source_name: string;
   source_url: string;
+  ficha_url?: string | null;
   created_at: string;
   updated_at: string;
   // Optional: TENDER_LIST_SELECT (used for list/notification views that
@@ -107,7 +108,7 @@ const TENDER_FLAT_FIELDS = `
   publication_date, publication_date_is_estimated,
   submission_deadline, award_date, awarded_to, awarded_value, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden,
-  homepage_featured, documents_unavailable, source_name, source_url, created_at, updated_at
+  homepage_featured, documents_unavailable, source_name, source_url, ficha_url, created_at, updated_at
 `;
 
 /** One tender's full detail, including its qualifications/keyDates/risks — for fetchTenderBySlugFromDb (a single row). */
@@ -177,6 +178,7 @@ function toRelevance(row: TenderRow): TenderRelevance {
     summary: row.summary.es,
     buyer: row.buyer,
     country: row.country,
+    procedureType: row.procedure_type,
     governmentLevel: row.government_level,
     scopeType: row.scope_type,
     estimatedValue: row.estimated_value ?? undefined,
@@ -232,6 +234,7 @@ function toTender(row: TenderRow): Tender {
     documentsUnavailable: row.documents_unavailable ?? false,
     sourceName: row.source_name,
     sourceUrl: row.source_url,
+    fichaUrl: row.ficha_url ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

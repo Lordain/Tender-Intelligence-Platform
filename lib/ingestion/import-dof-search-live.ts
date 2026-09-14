@@ -36,29 +36,48 @@ const TENDER_SECTION = /CONVOCATORIAS PARA CONCURSOS/i;
 // process.exit(1), since this runs inside a live web request.
 const ERROR_CIRCUIT_BREAKER_THRESHOLD = 5;
 
+/**
+ * A few at a time, not one after another.
+ *
+ * A real CFE search for 13 days returns 33 notices, and fetching their detail
+ * pages one by one took 30 seconds — long enough that the run is racing the
+ * platform's own request limit rather than DOF (2026-09-14). Three at a time
+ * is still gentle on a public page with no gate, and turns that into roughly
+ * a third of the wall clock.
+ *
+ * Deliberately not higher: the point is to stop losing whole imports to the
+ * clock, not to extract the last second out of a government website.
+ */
+const DETAIL_FETCH_CONCURRENCY = 3;
+
 async function fetchDetailsForNotas(notas: DofSearchNota[]): Promise<Map<number, DofNoticeDetail>> {
   const details = new Map<number, DofNoticeDetail>();
-  const tenderNotas = notas.filter((n) => n.titulo?.trim() && TENDER_SECTION.test(n.codOrgaUno ?? ""));
+  const tenderNotas = notas
+    .filter((n) => n.titulo?.trim() && TENDER_SECTION.test(n.codOrgaUno ?? ""))
+    .map((nota) => ({ nota, fecha: toDetailPageFecha(nota.fecha) }))
+    .filter((entry): entry is { nota: DofSearchNota; fecha: string } => !!entry.fecha);
 
   let consecutiveErrors = 0;
-  for (const nota of tenderNotas) {
-    const fecha = toDetailPageFecha(nota.fecha);
-    if (!fecha) continue;
+  for (let i = 0; i < tenderNotas.length; i += DETAIL_FETCH_CONCURRENCY) {
+    const batch = tenderNotas.slice(i, i + DETAIL_FETCH_CONCURRENCY);
+    const results = await Promise.all(batch.map((entry) => fetchDofNoticeDetail(entry.nota.codNota, entry.fecha)));
 
-    const result = await fetchDofNoticeDetail(nota.codNota, fecha);
-
-    if (result.status === "error") {
-      consecutiveErrors++;
-      if (consecutiveErrors >= ERROR_CIRCUIT_BREAKER_THRESHOLD) {
-        throw new Error(
-          `${consecutiveErrors} DOF detail-page fetches in a row failed with an error — this looks systemic (network reaching dof.gob.mx), not "these notices just don't have detail pages." Stopped early instead of grinding through the rest.`,
-        );
+    // Walked in batch order so "in a row" keeps meaning what it meant when
+    // this was sequential.
+    for (let j = 0; j < results.length; j += 1) {
+      const result = results[j];
+      if (result.status === "error") {
+        consecutiveErrors++;
+        if (consecutiveErrors >= ERROR_CIRCUIT_BREAKER_THRESHOLD) {
+          throw new Error(
+            `${consecutiveErrors} DOF detail-page fetches in a row failed with an error — this looks systemic (network reaching dof.gob.mx), not "these notices just don't have detail pages." Stopped early instead of grinding through the rest. Last error: ${result.message}`,
+          );
+        }
+        continue;
       }
-      continue;
+      consecutiveErrors = 0;
+      if (result.status === "found") details.set(batch[j].nota.codNota, result.detail);
     }
-    consecutiveErrors = 0;
-
-    if (result.status === "found") details.set(nota.codNota, result.detail);
   }
 
   return details;

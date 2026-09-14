@@ -75,6 +75,23 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
   // add/edit left a freshly-loaded page showing dates out of chronological
   // order until an admin touched one (real report, 2026-09-05).
   const [keyDates, setKeyDates] = useState<TenderKeyDate[]>(() => [...initialKeyDates].sort(byDateAsc));
+
+  // Re-seed when the SERVER sends a different set. router.refresh() — which
+  // the cronograma paste form calls after it writes — re-renders the server
+  // components and merges the new payload "without losing unaffected
+  // client-side React (e.g. useState)" (next/dist/docs, use-router). That is
+  // usually the point of it, and here it was the bug: a paste wrote three
+  // rows, the refresh delivered them, and this list went on showing the old
+  // ones until the admin reloaded the page by hand.
+  //
+  // Adjusting state during render rather than in an effect, per React's own
+  // guidance for this case — it re-renders immediately with the new list
+  // instead of painting the stale one first.
+  const [seenInitial, setSeenInitial] = useState(initialKeyDates);
+  if (initialKeyDates !== seenInitial) {
+    setSeenInitial(initialKeyDates);
+    setKeyDates([...initialKeyDates].sort(byDateAsc));
+  }
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<DraftState>(EMPTY_DRAFT);
   const [addDraft, setAddDraft] = useState<DraftState>(EMPTY_DRAFT);

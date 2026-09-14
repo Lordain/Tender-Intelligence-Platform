@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { truncatePdfToPages } from "@/lib/ingestion/pdf-pages";
 import { extname } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
+import type { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { TenderRequirement, TenderRisk } from "@/types/tender";
 import { extractDocumentText } from "@/lib/ingestion/document-intake";
+import { dispatcherForTimeout } from "@/lib/ingestion/http-dispatcher";
 import { splitPdfIntoChunks } from "@/lib/ingestion/pdf-split";
 
 /**
@@ -203,6 +205,42 @@ export const ExtractionSchema = z.object({
 
 export type TenderExtraction = z.infer<typeof ExtractionSchema>;
 
+/**
+ * Fills in required keys a manual-JSON-parse provider left out entirely,
+ * so an omitted empty category degrades to `[]` instead of hard-failing
+ * the whole document (see runExtraction()'s header comment for the real
+ * responses that made this necessary).
+ *
+ * The array key list is derived FROM the schema rather than written out
+ * by hand, because the hand-written version caused a real, confirmed
+ * outage: `keyDates` was added to ExtractionSchema as a required array
+ * (task #34) and never added to the list, so every DashScope extraction
+ * whose model didn't volunteer the key — which was all of them, since
+ * JSON_SHAPE_INSTRUCTIONS never asked for it either — failed schema
+ * validation and threw away its qualifications, experience, documents and
+ * risks along with it. Five real Peru bases PDFs, all five lost, on
+ * 2026-09-13. Deriving the list means the next array added to the schema
+ * cannot repeat that.
+ *
+ * Note what this deliberately does NOT do: it never invents a *value*.
+ * Only a missing key becomes an empty array; a key the model actually
+ * returned is passed through untouched, wrong shape and all, so a genuine
+ * schema violation still fails loudly instead of being papered over.
+ */
+export function normalizeRawExtraction(input: unknown): unknown {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) return input;
+  const raw = input as Record<string, unknown>;
+  if (raw.oneLineSummary === undefined) raw.oneLineSummary = "";
+  for (const [key, field] of Object.entries(ExtractionSchema.shape)) {
+    if (raw[key] === undefined && isArrayField(field)) raw[key] = [];
+  }
+  return raw;
+}
+
+function isArrayField(field: unknown): boolean {
+  return (field as { _zod?: { def?: { type?: string } } })?._zod?.def?.type === "array";
+}
+
 export const SYSTEM_PROMPT = `You are extracting bid-qualification information from a real Mexican government tender document (Convocatoria, Anexo Técnico, or similar) for a platform that helps Chinese enterprises decide whether to bid.
 
 Ground rules:
@@ -210,9 +248,10 @@ Ground rules:
 - Every item needs a sourceReference citing where it came from (page number and/or numeral/section) — an item you cannot cite, you cannot include.
 - These documents are long and mostly procedural boilerplate (the same legal citations appear in nearly every Compras MX tender). Extract only tender-specific, actionable content — skip generic restatements of the procurement law itself.
 - All title/description fields must be written directly in Chinese (zh), concise and close to the document's own terms — do not copy multi-sentence legal paragraphs verbatim, and do not write a placeholder.
+- You may be given a block headed 本平台已对该项目使用的中文写法 — the tender's title, summary and any earlier one-line summary, as this platform ALREADY displays them. It is reference vocabulary, never a source to extract from. Reuse its renderings of proper nouns — place names, entity names, river and project names — exactly as written there, and do not re-transliterate any name that appears in it. One tender showing 亚纳万卡区 in its title and 扬阿万卡 in its summary reads as two different places to a customer. For a name that appears NOWHERE in that block, transliterate it as you normally would.
 - If a section is genuinely absent from this document (e.g. no Anexo Técnico attached), return an empty array for the corresponding field rather than guessing.
 
-Also extract "keyDates": the document's cronograma / calendario de actividades, one entry per dated row. For several of the sources this platform reads (Peru's OECE above all) the bid deadline exists NOWHERE else — not in any feed, not on any list page, only in this document — so a cronograma read correctly here is the only deadline a bidder will ever see. Dates are DAY/MONTH/YEAR in every one of these countries; return YYYY-MM-DD. An addendum/circular that moves a date supersedes the original schedule — use the moved date. Never derive a date from the publication date or from how these procedures usually run.
+Also extract "keyDates": the document's cronograma / calendario de actividades, one entry per dated row. For several of the sources this platform reads (Peru's OECE above all) the bid deadline exists NOWHERE else — not in any feed, not on any list page, only in this document — so a cronograma read correctly here is the only deadline a bidder will ever see. Dates are DAY/MONTH/YEAR in every one of these countries; return YYYY-MM-DD. Mexico schedules submission and opening as ONE act — "Acto de presentación y apertura de proposiciones" (also "…y apertura de ofertas"/"…de propuestas"). For that single row emit TWO entries with the same date, one "submission" and one "opening": both are true of that act, and typing it only as "opening" — which its own name invites — leaves the tender with no bid deadline at all. An addendum/circular that moves a date supersedes the original schedule — use the moved date. Never derive a date from the publication date or from how these procedures usually run.
 
 Also provide "oneLineSummary": one Chinese sentence, at most 30 characters, stating what this tender/project concretely IS — not a category label, not a boilerplate opener. See the schema field description for examples.
 
@@ -244,7 +283,17 @@ type ExtractionContent = Array<{ type: "text"; text: string } | { type: "documen
  */
 function isPdfNativeLimitError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
-  return /maximum of \d+ pdf pages/i.test(message) || /request_too_large|exceeds the maximum (size|allowed)/i.test(message);
+  return (
+    /maximum of \d+ pdf pages/i.test(message) ||
+    /request_too_large|exceeds the maximum (size|allowed)/i.test(message) ||
+    // DashScope's overall request-BODY cap, worded nothing like the other
+    // two: "Exceeded limit on max bytes to request body : 16777216".
+    // pdf-split.ts's MAX_CHUNK_BYTES was already sized against this exact
+    // ceiling, but this matcher never recognised the message, so the
+    // splitter it was sized for never ran — the document just threw
+    // (confirmed 2026-09-13 on a real Peru bases PDF).
+    /exceeded limit on max bytes to request body/i.test(message)
+  );
 }
 
 /** Real second-order failure found the same day: the SAME oversized PDF that hit isPdfNativeLimitError() above, once its pdftotext fallback text was sent instead, overflowed the model's own context window too ("prompt is too long: 298943 tokens > 200000 maximum") — a multi-hundred-page real Convocatoria is long enough as plain text alone. Parses the exact actual/max token counts the API itself reports rather than guessing a chars-per-token ratio for Spanish text. */
@@ -265,7 +314,7 @@ function parseContextOverflow(err: unknown): { actualTokens: number; maxTokens: 
 // 2026-09-03 (qwen3.5-plus, first document in a batch run) — every
 // title/description came back in Spanish, not Chinese, despite
 // SYSTEM_PROMPT already saying so once, further up the combined prompt.
-const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"oneLineSummary": "...", "qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...], "relevanceAssessment": {...}} — no prose, no markdown fences. "oneLineSummary" and the four array keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. "oneLineSummary" is one Chinese sentence, at most 30 characters, stating what this tender/project concretely is (not a category label, not a boilerplate opener). Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". "relevanceAssessment" is {"participationScope": "national"|"international_treaty"|"international_open"|null, "suggestedTier": "flagship"|"significant"|"standard"|"excluded", "reasoning": "..."} — include it when you can support it from the document; omit the key entirely rather than guessing if you genuinely cannot. Every "oneLineSummary"/"title"/"description"/"reasoning" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
+export const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"oneLineSummary": "...", "qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...], "keyDates": [...], "relevanceAssessment": {...}} — no prose, no markdown fences. "oneLineSummary" and the five array keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks/keyDates, never omit a key. "oneLineSummary" is one Chinese sentence, at most 30 characters, stating what this tender/project concretely is (not a category label, not a boilerplate opener). Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". Each "keyDates" item is {"type", "date", "notes", "sourceReference"} — one entry per dated row of the document's cronograma / calendario de actividades, with "type" one of "site_visit"/"questions_deadline"/"clarification"/"submission"/"opening"/"award"/"contract_signing", "date" as YYYY-MM-DD (the document writes DAY/MONTH/YEAR — 10/09/2026 is 10 September, never 9 October), and "notes" a short Chinese note or null. The "submission" row is the bid deadline and matters most; for some sources it exists nowhere but this document. A Mexican "Acto de presentación y apertura de proposiciones" is one act covering both — emit it twice, as "submission" AND as "opening", same date. Return [] only if the document genuinely prints no schedule — never reconstruct one from the publication date. "relevanceAssessment" is {"participationScope": "national"|"international_treaty"|"international_open"|null, "suggestedTier": "flagship"|"significant"|"standard"|"excluded", "reasoning": "..."} — include it when you can support it from the document; omit the key entirely rather than guessing if you genuinely cannot. Every "oneLineSummary"/"title"/"description"/"reasoning" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
 
 /** Pulls the first JSON object out of a text response — tolerates a model wrapping it in a ```json fence or prose despite instructions not to, rather than requiring an exact match. */
 function extractJsonObject(text: string): unknown {
@@ -294,6 +343,123 @@ function extractJsonObject(text: string): unknown {
 }
 
 /**
+ * Every model call below streams, and these bound what one call may cost in
+ * wall-clock time.
+ *
+ * Confirmed live 2026-09-13: a batch spent 31 MINUTES and produced nothing.
+ * The calls were non-streaming, and for a non-streaming request the SDK pins
+ * its own timeout — `_calculateNonstreamingTimeout`, 10 minutes for
+ * max_tokens 16000 — then retries a timeout `maxRetries` (default 2) more
+ * times. One slow document therefore burns up to 30 minutes, and each
+ * attempt can be billed for work the server may well have completed.
+ *
+ * The SDK states the real rule outright: "Streaming is required for
+ * operations that may take longer than 10 minutes." A 30-page native PDF at
+ * 16,000 max output tokens is exactly that, and this code was not streaming.
+ * It is now.
+ *
+ * Streaming alone was NOT enough, and the first fix here was incomplete.
+ * Measured 2026-09-13 on peru-...-1248966: `模型调用耗时 609.0s`, then
+ * "Request timed out". 609s is 10 minutes — the SDK's CLIENT-level default
+ * timeout (`opts.timeout=10 minutes`), which applies to streaming requests
+ * too. Streaming only lifts the extra restriction the SDK imposes on
+ * non-streaming calls; the plain default still cut the call off. So the
+ * model was not failing — we were hanging up on it. The timeout is now set
+ * explicitly rather than inherited.
+ *
+ * maxRetries is 0, not the default 2. Every failure mode actually seen on
+ * this path is one that repeats: a size limit, a schema mismatch, a
+ * provider slower than the budget. Retrying any of them doubles or triples
+ * the wall clock and can be billed again for work the server already did —
+ * that is what turned one batch into 31 minutes. Transient failures (429,
+ * 529) are instead handled a level up: the document is reported, the batch
+ * continues, and two in a row stop the run (extraction-failure.ts).
+ */
+const MIN_TIMEOUT_MS = 20 * 60 * 1000;
+/**
+ * Seconds of budget per page read. Calibrated from the one real
+ * measurement available: 30 pages of a real Peru bases PDF was still
+ * working at 609s (10:09) when the old default cut it off, i.e. it needed
+ * MORE than ~20s/page. 60s/page is triple that — headroom, not a stopwatch.
+ * Revise it when a successful run prints a real completion time; do not
+ * tighten it from a failure, which only ever proves a lower bound.
+ */
+const TIMEOUT_MS_PER_PAGE = 60 * 1000;
+
+/**
+ * A backstop against a dead connection — deliberately NOT a performance
+ * budget. It scales with the tier's own page cap (maxPagesForTier: 20
+ * standard / 30 significant / 40 flagship), because that cap is already
+ * this platform's statement of how much document a tender is worth
+ * reading, and a 40-page flagship Convocatoria legitimately takes longer
+ * than a 20-page routine one. An uncapped call (the offline comparison
+ * scripts) gets the floor.
+ *
+ * What bounds the wall clock is NOT this number: maxRetries is 0, so a
+ * call is attempted once rather than three times, and analyzeLocalFolder()
+ * stops the run at BATCH_BUDGET_MS. Those two are why this can afford to
+ * be generous — the 31-minute run was three attempts at one doomed call,
+ * not one call doing real work.
+ */
+function requestOptions(maxPages: number | undefined) {
+  const timeout = Math.max(MIN_TIMEOUT_MS, (maxPages ?? 0) * TIMEOUT_MS_PER_PAGE);
+  return {
+    maxRetries: 0,
+    timeout,
+    // Node's own fetch stops at 300s by default regardless of the above —
+    // the real cause of both the 304.8s and 609.0s failures. Matching its
+    // limits to this one leaves a single authority over call duration.
+    // See http-dispatcher.ts.
+    fetchOptions: { dispatcher: dispatcherForTimeout(timeout) } as Record<string, unknown>,
+  };
+}
+
+/**
+ * Prints how long a call actually took.
+ *
+ * Added rather than guessing a tighter timeout: nobody here knows how long
+ * DashScope really needs for a 30-page PDF, and picking a number without
+ * that measurement is how a legitimate slow extraction gets cut off. Two
+ * real runs of this log answer it.
+ */
+async function withElapsed<T>(tenderNumber: string, run: (marks: StreamMarks) => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  const marks: StreamMarks = {};
+  try {
+    return await run(marks);
+  } finally {
+    const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+    // The two marks answer the question a total alone cannot: did the
+    // provider actually stream? Headers on a real streaming response arrive
+    // in under a second. Headers that never arrive at all mean the answer
+    // was being buffered server-side and "streaming" bought nothing —
+    // which is what Node's 300s header timeout was really reporting.
+    const detail = [
+      marks.connectedAt === undefined ? "响应头始终未到达（对方在缓冲，不是真流式）" : `首个响应头 ${secs(marks.connectedAt - startedAt)}`,
+      marks.firstEventAt === undefined ? "没有收到任何流式事件" : `首个流式事件 ${secs(marks.firstEventAt - startedAt)}`,
+    ].join("，");
+    console.log(`  ${tenderNumber}: 模型调用耗时 ${secs(Date.now() - startedAt)}（${detail}）`);
+  }
+}
+
+type StreamMarks = { connectedAt?: number; firstEventAt?: number };
+
+/**
+ * Attaches the timing marks above to a stream without consuming it. Typed
+ * on MessageStream's own generic so the caller keeps its parsed_output
+ * type — a widened `{ on }` shape would erase it.
+ */
+function markStream<ParsedT>(stream: MessageStream<ParsedT>, marks: StreamMarks): MessageStream<ParsedT> {
+  stream.on("connect", () => {
+    marks.connectedAt ??= Date.now();
+  });
+  stream.on("streamEvent", () => {
+    marks.firstEventAt ??= Date.now();
+  });
+  return stream;
+}
+
+/**
  * Real gap found 2026-09-03 (qwen3.5-plus via DashScope's Anthropic-
  * compatible endpoint, see extract-requirements-qwen-anthropic.ts): its
  * translation of `output_config.format` doesn't reliably produce the
@@ -317,15 +483,28 @@ async function runExtraction(
   content: ExtractionContent,
   context: { tenderNumber: string },
   useStructuredOutput: boolean,
+  /** Only used to size the request timeout — see requestOptions(). */
+  maxPages?: number,
 ) {
   if (useStructuredOutput) {
-    const response = await client.messages.parse({
-      model,
-      max_tokens: 16000,
-      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content }],
-      output_config: { format: zodOutputFormat(ExtractionSchema) },
-    });
+    const response = await withElapsed(context.tenderNumber, (marks) =>
+      markStream(
+        client.messages.stream(
+          {
+            model,
+            max_tokens: 16000,
+            system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+            messages: [{ role: "user", content }],
+            output_config: { format: zodOutputFormat(ExtractionSchema) },
+          },
+          requestOptions(maxPages),
+        ),
+        marks,
+      )
+        // Streaming still returns parsed_output when output_config.format is
+        // set — structured outputs are not given up by streaming here.
+        .finalMessage(),
+    );
 
     // Printed so a real cost is visible per run, not just guessed at — the
     // user asked directly after the first two live-test calls whether
@@ -344,12 +523,20 @@ async function runExtraction(
     return response.parsed_output;
   }
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: 16000,
-    system: [{ type: "text", text: `${SYSTEM_PROMPT}\n\n${JSON_SHAPE_INSTRUCTIONS}`, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content }],
-  });
+  const response = await withElapsed(context.tenderNumber, (marks) =>
+    markStream(
+      client.messages.stream(
+        {
+          model,
+          max_tokens: 16000,
+          system: [{ type: "text", text: `${SYSTEM_PROMPT}\n\n${JSON_SHAPE_INSTRUCTIONS}`, cache_control: { type: "ephemeral" } }],
+          messages: [{ role: "user", content }],
+        },
+        requestOptions(maxPages),
+      ),
+      marks,
+    ).finalMessage(),
+  );
 
   const u = response.usage;
   console.log(
@@ -361,12 +548,7 @@ async function runExtraction(
   const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
   if (!textBlock) throw new Error(`Extraction returned no text content for ${context.tenderNumber} (stop_reason: ${response.stop_reason})`);
 
-  const raw = extractJsonObject(textBlock.text) as Record<string, unknown>;
-  if (raw.oneLineSummary === undefined) raw.oneLineSummary = "";
-  for (const key of ["qualifications", "experienceRequirements", "requiredDocuments", "risks"]) {
-    if (raw[key] === undefined) raw[key] = [];
-  }
-  const parsed = ExtractionSchema.safeParse(raw);
+  const parsed = ExtractionSchema.safeParse(normalizeRawExtraction(extractJsonObject(textBlock.text)));
   if (!parsed.success) {
     throw new Error(`Extraction failed schema validation for ${context.tenderNumber}: ${parsed.error.message}`);
   }
@@ -391,10 +573,11 @@ async function runTextExtractionWithOverflowRetry(
   documentText: string,
   context: { tenderNumber: string },
   useStructuredOutput: boolean,
+  maxPages?: number,
 ) {
   const content: ExtractionContent = [{ type: "text", text: `${instruction}\n\n---\n\n${documentText}` }];
   try {
-    return await runExtraction(client, model, content, context, useStructuredOutput);
+    return await runExtraction(client, model, content, context, useStructuredOutput, maxPages);
   } catch (err) {
     const overflow = parseContextOverflow(err);
     if (!overflow) throw err;
@@ -407,7 +590,7 @@ async function runTextExtractionWithOverflowRetry(
     const truncatedContent: ExtractionContent = [
       { type: "text", text: `${instruction}\n\n---\n\n${truncatedText}\n\n[... document truncated to fit the model's context window; content past this point was not seen ...]` },
     ];
-    return runExtraction(client, model, truncatedContent, context, useStructuredOutput);
+    return runExtraction(client, model, truncatedContent, context, useStructuredOutput, maxPages);
   }
 }
 
@@ -478,6 +661,7 @@ async function runChunkedPdfExtraction(
   instruction: string,
   context: { tenderNumber: string },
   useStructuredOutput: boolean,
+  maxPages?: number,
 ): Promise<TenderExtraction> {
   const { chunks, cleanup } = splitPdfIntoChunks(filePath);
   try {
@@ -492,7 +676,7 @@ async function runChunkedPdfExtraction(
         },
         { type: "text", text: chunkInstruction },
       ];
-      parts.push(await runExtraction(client, model, content, context, useStructuredOutput));
+      parts.push(await runExtraction(client, model, content, context, useStructuredOutput, maxPages));
     }
     return mergeExtractions(parts);
   } finally {
@@ -502,7 +686,25 @@ async function runChunkedPdfExtraction(
 
 export async function extractTenderRequirements(
   filePath: string,
-  context: { tenderNumber: string; title: string; buyer: string },
+  context: {
+    tenderNumber: string;
+    title: string;
+    buyer: string;
+    /**
+     * Chinese this platform ALREADY shows for this tender — its title, its
+     * summary, and any one-line summary a previous analysis wrote.
+     *
+     * Handed to the model purely as a vocabulary anchor. Real report
+     * 2026-09-14: a tender titled 亚纳万卡区（Yanahuanca） was summarised as
+     * 扬阿万卡 — one town, two transliterations, on one page. The title
+     * alone does not fix it, because a place named only in the summary
+     * (a river, a neighbouring district, the buyer's own municipality)
+     * still gets re-transliterated from scratch. Everything the site
+     * already displays goes in, so there is one established spelling per
+     * name rather than one per model call.
+     */
+    existingChineseText?: string;
+  },
   model: ExtractionModel = "claude-sonnet-5",
   // Defaults to a real Anthropic client; extract-requirements-qwen-
   // anthropic.ts passes one pointed at DashScope's Anthropic-compatible
@@ -518,6 +720,31 @@ export async function extractTenderRequirements(
    * which is what the offline comparison scripts want.
    */
   maxPages?: number,
+  /**
+   * Send a PDF's locally-extracted text instead of the PDF itself, for a
+   * provider where native document input is the wrong tool.
+   *
+   * Set by extract-requirements-qwen-anthropic.ts, on three days of real
+   * evidence rather than a preference. DashScope's Anthropic-compatible
+   * endpoint rejected the same real Peru bases PDF three different ways —
+   * a 16MB request-body cap, a 28,000,000-character base64 field cap, and
+   * chunks that still exceeded the second — and, measured 2026-09-13, sent
+   * NO response header for 734.5 seconds before failing, which means it
+   * buffers the whole answer rather than streaming it. The text of the very
+   * same document, on the very same model, returned in 98.9s with its first
+   * header at 4.6s and succeeded. Seven times faster, and the difference
+   * between working and not.
+   *
+   * This costs what native document understanding would have given: a table
+   * rendered as an IMAGE inside an otherwise text-bearing PDF is invisible
+   * to pdftotext. A text table is not — extractPdfText() now passes
+   * -layout, which keeps a cronograma's columns on one line. The route is
+   * only ever taken for a file hasRealTextLayer() has already confirmed,
+   * and an empty 关键日期 in the batch table is the visible symptom if a
+   * schedule was nonetheless lost, so this fails loudly rather than
+   * silently.
+   */
+  preferExtractedText?: boolean,
 ): Promise<TenderExtraction> {
   // Word documents — .docx and legacy .doc alike (2026-09-03, per the
   // user's report that many real tender documents arrive as Word files,
@@ -535,9 +762,36 @@ export async function extractTenderRequirements(
   // must contain the word 'json' in some form") when nothing in the
   // messages array says so — this file's SYSTEM_PROMPT never happened to.
   // Harmless for Claude's own structured outputs either way.
-  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}, and respond with a valid JSON object matching the required schema.`;
+  // Placed AFTER the task sentence and clearly labelled, so it reads as
+  // reference material rather than as content to extract from — it is the
+  // platform's own prior output, not the tender document.
+  const established = context.existingChineseText?.trim()
+    ? `\n\n本平台已对该项目使用的中文写法（仅供统一术语，不是提取来源）：\n${context.existingChineseText.trim()}`
+    : "";
+  const instruction = `Tender ${context.tenderNumber} — "${context.title}" (${context.buyer}). Extract qualifications, experience requirements, required documents, and risks from the ${isWord ? "document text below" : "attached document"}, and respond with a valid JSON object matching the required schema.${established}`;
 
-  if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context, useStructuredOutput);
+  if (isWord) return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(filePath), context, useStructuredOutput, maxPages);
+
+  // Same branch as Word, for the same reason and one more: a provider that
+  // buffers a multi-megabyte native PDF for 12 minutes and then rejects it
+  // on size is not one to send a PDF to at all. See preferExtractedText.
+  if (preferExtractedText) {
+    const capped = maxPages === undefined ? null : truncatePdfToPages(filePath, maxPages);
+    try {
+      const textInstruction = instruction.replace("attached document", "document text below");
+      return await runTextExtractionWithOverflowRetry(
+        client,
+        model,
+        textInstruction,
+        await extractDocumentText(capped?.path ?? filePath),
+        context,
+        useStructuredOutput,
+        maxPages,
+      );
+    } finally {
+      capped?.cleanup();
+    }
+  }
 
   // Cap the pages BEFORE reading the file, not after: a 100MB, 900-page
   // tender would otherwise be base64'd into memory in full just to have most
@@ -560,13 +814,13 @@ export async function extractTenderRequirements(
     ];
 
     try {
-      return await runExtraction(client, model, pdfContent, context, useStructuredOutput);
+      return await runExtraction(client, model, pdfContent, context, useStructuredOutput, maxPages);
     } catch (err) {
       if (!isPdfNativeLimitError(err)) throw err;
       console.log(`  PDF exceeds Claude's native document limits (${(err instanceof Error ? err.message : String(err)).slice(0, 300)}) — splitting into chunks.`);
 
       try {
-        return await runChunkedPdfExtraction(client, model, sourcePath, instruction, context, useStructuredOutput);
+        return await runChunkedPdfExtraction(client, model, sourcePath, instruction, context, useStructuredOutput, maxPages);
       } catch (chunkErr) {
         // Chunking needs poppler's pdfinfo/pdfseparate/pdfunite on PATH —
         // if any is missing (ENOENT) or a chunk call itself errors, this
@@ -579,7 +833,7 @@ export async function extractTenderRequirements(
         // 2026-09-03) — runTextExtractionWithOverflowRetry() handles that
         // second failure mode too.
         console.log(`  chunked extraction failed (${(chunkErr instanceof Error ? chunkErr.message : String(chunkErr)).slice(0, 800)}) — falling back to extracted text instead.`);
-        return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(sourcePath), context, useStructuredOutput);
+        return runTextExtractionWithOverflowRetry(client, model, instruction, await extractDocumentText(sourcePath), context, useStructuredOutput, maxPages);
       }
     }
   } finally {

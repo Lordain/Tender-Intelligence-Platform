@@ -5,6 +5,12 @@ import { FeaturedTenders } from "@/components/tenders/FeaturedTenders";
 import { ValuePropositions } from "@/components/home/ValuePropositions";
 import { ParticipationGuidesPreview } from "@/components/home/ParticipationGuidesPreview";
 import { selectHomepageTenders } from "@/lib/homepage-selection";
+import type { Metadata } from "next";
+
+/** Title and description come from the root layout; only the canonical is this page's own. See app/layout.tsx for why no route inherits one any more. */
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 /** Same reasoning as app/tenders/page.tsx — see its comment. This page reads the same service-role data and was prerendered at build time with no revalidation, so a newly featured tender never reached the homepage until the next deploy. */
 export const revalidate = 300;

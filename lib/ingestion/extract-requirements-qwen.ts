@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { extractDocumentText } from "@/lib/ingestion/document-intake";
-import { ExtractionSchema, SYSTEM_PROMPT, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
+import { ExtractionSchema, JSON_SHAPE_INSTRUCTIONS, SYSTEM_PROMPT, normalizeRawExtraction, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
 
 /**
  * Cost-comparison alternative to extract-requirements.ts's Claude
@@ -58,7 +58,13 @@ export async function extractTenderRequirementsQwen(
     messages: [
       {
         role: "system",
-        content: `${SYSTEM_PROMPT}\n\nRespond with ONLY a JSON object matching {"oneLineSummary": "...", "qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...]} — no prose, no markdown fences. "oneLineSummary" is one Chinese sentence, at most 30 characters, stating what this tender/project concretely is (not a category label, not a boilerplate opener). Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical".`,
+        // The shared constant, not a local copy of it: this file's own
+        // paraphrase had already drifted — it never asked for `keyDates`,
+        // added to ExtractionSchema for task #34, so this provider could
+        // only ever fail validation or (post-normalizeRawExtraction) come
+        // back with an empty schedule. A provider comparison is only
+        // meaningful if every provider is asked the same question.
+        content: `${SYSTEM_PROMPT}\n\n${JSON_SHAPE_INSTRUCTIONS}`,
       },
       {
         role: "user",
@@ -70,7 +76,7 @@ export async function extractTenderRequirementsQwen(
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error(`Qwen extraction returned no content for ${context.tenderNumber} (finish_reason: ${response.choices[0]?.finish_reason})`);
 
-  const parsed = ExtractionSchema.safeParse(JSON.parse(content));
+  const parsed = ExtractionSchema.safeParse(normalizeRawExtraction(JSON.parse(content)));
   if (!parsed.success) throw new Error(`Qwen extraction failed schema validation for ${context.tenderNumber}: ${parsed.error.message}`);
 
   return parsed.data;

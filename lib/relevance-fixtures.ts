@@ -36,6 +36,8 @@ export type RelevanceFixture = {
   governmentLevel?: Tender["governmentLevel"];
   isNationalPriorityProject?: boolean;
   structuredDurationDays?: number;
+  /** tenders.procedure_type — set only by fixtures that exercise the procedure rule (see PRICE_ONLY_AUCTION_PROCEDURES). */
+  procedureType?: string;
 };
 
 export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
@@ -2157,5 +2159,124 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "excluded",
     note: "Peru, 2026-09-12 — diesel for a programme's own vehicles.",
     country: "Peru", scopeType: "equipment", governmentLevel: "state",
+  },
+
+  // --- Subasta Inversa Electrónica: the procedure decides (2026-09-14) ---
+  // The user's instruction, given against the first of these. A reverse
+  // auction may only be used for goods on the state's list of bienes y
+  // servicios comunes, each with a published ficha técnica, so every bid is
+  // for an identical item and the award goes to the lowest price in the
+  // auction window. Nothing to analyse, and nothing a foreign bidder can win.
+  {
+    title: 'ADQUISICIÓN DE AGREGADOS PARA LA META 364: "MEJORAMIENTO DEL SERVICIO DE TRANSITABILIDAD VIAL MEDIANTE EL PUENTE CARROZABLE CCENTABAMBA DE LOS DISTRITOS DE SIVIA Y AYNA DE LAS PROVINCIAS DE HUANTA Y LA MAR DEL DEPARTAMENTO DE AYACUCHO".',
+    expectedTier: "excluded",
+    note: "Peru SIE-SIE-105-2026-GRA-SEDECENTRAL-1, real. Gravel for a bridge project; published 10/09, proposals due 18/09, awarded 21/09. Excluded on the procedure — bare 'agregados' matches no CONSTRUCTION_INPUT_GOODS pattern, so without procedureType this row was reaching the feed.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "state",
+    procedureType: "Subasta Inversa Electrónica",
+  },
+  {
+    // The procedure beats every positive signal there is: this title would
+    // otherwise be flagship on the airport keyword AND the value floor.
+    title: "CONSTRUCCIÓN DEL NUEVO AEROPUERTO INTERNACIONAL",
+    expectedTier: "excluded",
+    note: "Synthetic. A subasta inversa is never a construction contract, so a row that says it is one is mis-stated either way — and the procedure the entity declared outranks anything read out of the title.",
+    country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
+    procedureType: "Subasta Inversa Electrónica",
+  },
+  {
+    // The control: same country and shape, an ordinary procedure.
+    title: "CONSTRUCCIÓN DEL NUEVO AEROPUERTO INTERNACIONAL",
+    expectedTier: "flagship",
+    note: "Synthetic control for the row above — proves the exclusion comes from the procedure and not from anything else that changed with it.",
+    country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
+    procedureType: "Licitación Pública",
+  },
+
+  // --- Contratación Directa: invited, not published (2026-09-14) ---
+  // The user's instruction, given against the first of these. Invited by
+  // email on 10/09, proposals due 11/09, awarded 14/09 — a one-day window,
+  // because the invitation list is the competition.
+  {
+    title: "CONTRATACION PARA LA EJECUCIÓN DEL SALDO DE OBRA: ¿MEJORAMIENTO, AMPLIACIÓN DEL SERVICIO DE AGUA POTABLE Y SANEAMIENTO EN LA COMUNIDAD NATIVA PUERTO ALEGRE, DISTRITO DE ANDOAS, PROVINCIA DEL DATEM DEL MARAÑÓN, REGIÓN LORETO",
+    expectedTier: "excluded",
+    note: "Peru DIRECTA-DIRECTA-14-2026-PNSR-1, real. S/ 4.2M of works, causal 'Derivado de contrato resuelto o nulo'. Nothing in the title excludes it — a water/sanitation works at this value is otherwise a normal row; the procedure is the whole reason.",
+    country: "Peru", scopeType: "works", estimatedValue: 1_120_000, currency: "USD",
+    procedureType: "Contratación Directa",
+  },
+  {
+    title: "ADJUDICACIÓN DIRECTA PARA SUMINISTRO DE EQUIPO DE BOMBEO",
+    expectedTier: "excluded",
+    note: "Synthetic — Mexico's and Colombia's name for the same figure.",
+    country: "Mexico", scopeType: "equipment",
+    procedureType: "Adjudicación Directa",
+  },
+  {
+    title: "CONSTRUCCIÓN DE PLANTA DE GENERACIÓN ELÉCTRICA DE CICLO COMBINADO",
+    expectedTier: "excluded",
+    note: "Synthetic. OCDS's bare `direct` method code, which ocds-mapper stores when a feed publishes no local label — it has to exclude exactly as the spelled-out name does.",
+    country: "Peru", scopeType: "works", estimatedValue: 400_000_000, currency: "USD",
+    procedureType: "direct",
+  },
+  {
+    // The restricted-but-real procedure that must NOT be swept up with these:
+    // several PEMEX lists publish it, and nobody asked for it to go.
+    title: "CONSTRUCCIÓN DE PLANTA DE GENERACIÓN ELÉCTRICA DE CICLO COMBINADO",
+    expectedTier: "flagship",
+    note: "Synthetic control. 'Invitación a Cuando Menos Tres Personas' is a restricted competition, not a direct award — it stays in the feed.",
+    country: "Mexico", scopeType: "works", estimatedValue: 400_000_000, currency: "USD",
+    procedureType: "Invitación a Cuando Menos Tres Personas (Subdirección de Contrataciones)",
+  },
+  {
+    // "Contratación Pública Especial" shares two words with "Contratación
+    // Directa" and must not be caught by it: PEC is an OPEN call under DS
+    // 071-2018-PCM (Reconstrucción con Cambios) with a public registration
+    // window — 11 days of it on this real ficha — and is exactly the kind of
+    // works contract this platform exists to surface.
+    title: "EJECUCIÓN DEL SALDO DE OBRA: REHABILITACIÓN DE LA CARRETERA",
+    expectedTier: "significant",
+    note: "Peru PEC-NCPD-PROC-5-2026-MTC/21-3, real. S/ 18.1M of roadworks for PROVIAS Descentralizado, convocatoria 10/09 with registration open 11/09–21/09. Pinned as INCLUDED so a widening of the direct-award patterns cannot swallow it.",
+    country: "Peru", scopeType: "works", estimatedValue: 4_835_000, currency: "USD", governmentLevel: "federal",
+    procedureType: "Procedimiento de Contratación Pública Especial para la Reconstrucción con Cambios",
+  },
+
+  // --- Comparación de Precios: six days for an off-the-shelf item (2026-09-14) ---
+  // The user's instruction, given against the first of these. Convocatoria
+  // 09/09, registration open for one day, proposals 14/09, buena pro 15/09.
+  {
+    // Truncated in the ficha itself ("...ADQUISICIÓN DE GRUPO EL…"), so the
+    // description is as much of it as the page shows.
+    title: "CONTRATACIÓN PARA LA ADQUISICIÓN DE GRUPO ELECTRÓGENO",
+    expectedTier: "excluded",
+    note: "Peru COMPRE-COMPRE-56-2026-MDM/DEC-1, real. Municipalidad Distrital de Megantoni, Ley 32069, no reference value published. A value-less generator purchase would likely fall out on other grounds too — the two synthetic rows below are what prove the procedure is doing the work.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+    procedureType: "Comparación de Precios",
+  },
+  {
+    // The procedure beats every positive signal there is, as it does for a
+    // subasta inversa above: nothing bought this way is a half-billion-dollar
+    // airport, so a row that says both is mis-stated either way.
+    title: "CONSTRUCCIÓN DEL NUEVO AEROPUERTO INTERNACIONAL",
+    expectedTier: "excluded",
+    note: "Synthetic. Pins that the exclusion is absolute — no value floor or flagship keyword rescues a comparación de precios.",
+    country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
+    procedureType: "Comparación de Precios",
+  },
+  {
+    // The control: same row, an ordinary procedure.
+    title: "CONSTRUCCIÓN DEL NUEVO AEROPUERTO INTERNACIONAL",
+    expectedTier: "flagship",
+    note: "Synthetic control for the row above — proves the exclusion comes from the procedure and nothing else that changed with it.",
+    country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
+    procedureType: "Licitación Pública Abreviada",
+  },
+  {
+    // The near-miss that must NOT be caught: the bare SEACE code pattern is
+    // /^compre\b/, and "Compra por Catálogo" starts with the same five
+    // letters. It is arguably the same family, but nobody has ruled on it.
+    title: "CONSTRUCCIÓN DEL NUEVO AEROPUERTO INTERNACIONAL",
+    expectedTier: "flagship",
+    note: "Synthetic control. 'Compra por Catálogo Electrónico' (Acuerdo Marco) is a separate procedure that no instruction covers — pinned as INCLUDED so the comparación-de-precios patterns cannot quietly swallow it.",
+    country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
+    procedureType: "Compra por Catálogo Electrónico de Acuerdo Marco",
   },
 ];

@@ -20,6 +20,8 @@ import {
   INDUSTRY_LABELS,
   RELEVANCE_TIER_LABELS,
 } from "@/lib/tender-labels";
+import { CronogramaPasteForm } from "@/components/admin/CronogramaPasteForm";
+import { mergeServerChanges } from "@/lib/admin/form-merge";
 import { KeyDatesEditor } from "@/components/admin/KeyDatesEditor";
 import { RequirementsEditor } from "@/components/admin/RequirementsEditor";
 import { RisksEditor } from "@/components/admin/RisksEditor";
@@ -123,6 +125,32 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
   const router = useRouter();
   const isEdit = Boolean(tender);
   const [form, setForm] = useState<FormState>(() => initialStateFrom(tender));
+
+  /**
+   * Adopt fields the SERVER changed, keeping whatever the admin has typed.
+   *
+   * This was losing data, not just looking stale. The cronograma paste writes
+   * submission_deadline and award_date straight to the row and calls
+   * router.refresh(); that re-renders the server components but merges the
+   * payload "without losing unaffected client-side React (e.g. useState)"
+   * (next/dist/docs, use-router) — so this form went on holding the empty
+   * 投标截止日期 it was built with. Pressing 保存修改 then submitted that empty
+   * value and WIPED the date the paste had just stored, unless the admin
+   * happened to reload the page in between (reported 2026-09-14).
+   *
+   * Only the fields whose server value actually changed are taken, rather
+   * than re-seeding the whole form: an admin who edited a title, then pasted
+   * a schedule, must not lose the title edit to a refresh they did not ask
+   * for. Adjusted during render, per React's guidance, so the new dates paint
+   * with the same commit rather than a frame later.
+   */
+  const [seenTender, setSeenTender] = useState(tender);
+  if (tender !== seenTender) {
+    const before = initialStateFrom(seenTender);
+    const after = initialStateFrom(tender);
+    setSeenTender(tender);
+    setForm((prev) => mergeServerChanges(prev, before, after));
+  }
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copiedTenderNumber, setCopiedTenderNumber] = useState(false);
@@ -236,10 +264,43 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
         </p>
       )}
 
+      {/* The tender number is repeated up here, next to the slug, because of
+          what an admin actually does on this page: to fill in a Peru
+          cronograma they need the number to search SEACE with, and it lives
+          in the very last section of a long form. Scrolling to the bottom to
+          copy it and back to the top to work is the whole interaction, 65
+          times over. Same handler and same state as the button down there. */}
       {isEdit && (
-        <p className="w-fit rounded-lg bg-[#f2f4f3] px-3 py-2 text-xs text-[#7a878f]">
-          项目标识：<code className="font-bold text-[#425461]">{tender!.slug}</code>（不可修改）
-        </p>
+        <div className="flex w-fit flex-wrap items-center gap-x-3 gap-y-2 rounded-lg bg-[#f2f4f3] px-3 py-2 text-xs text-[#7a878f]">
+          <span>
+            项目标识：<code className="font-bold text-[#425461]">{tender!.slug}</code>（不可修改）
+          </span>
+          {form.tenderNumber.trim() && (
+            <>
+              <span aria-hidden="true" className="text-[#c3cdd3]">|</span>
+              <span>
+                标书编号：<code className="font-bold text-[#425461]">{form.tenderNumber.trim()}</code>
+              </span>
+              <button
+                type="button"
+                onClick={copyTenderNumber}
+                className="inline-flex items-center rounded-lg border border-[#cbd6da] bg-white px-2.5 py-1 text-xs font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
+              >
+                {copiedTenderNumber ? "已复制" : "复制"}
+              </button>
+            </>
+          )}
+          {officialEntryUrl && (
+            <a
+              href={officialEntryUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-lg border border-[#cbd6da] bg-white px-2.5 py-1 text-xs font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
+            >
+              官方入口 <span aria-hidden="true">↗</span>
+            </a>
+          )}
+        </div>
       )}
 
       <FormSection title="项目名称与摘要" description="保留西语原文，并提供面向中文用户的标题与简要说明。">
@@ -461,6 +522,15 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
             </p>
             <div className="mt-3">
               <KeyDatesEditor tenderSlug={tender!.slug} initialKeyDates={tender!.keyDates} />
+              {/* Only where a schedule page exists to copy from, and the form
+                  names the right one: Peru's SEACE ficha de selección, and
+                  Mexico's Proyectos Estratégicos procedure page. Offering it
+                  elsewhere tells an admin to go copy a page that does not
+                  exist for that tender. Keyed off the CURRENT form value so
+                  correcting a mis-tagged country updates it without a save. */}
+              {(form.country === "Peru" || form.country === "Mexico") && (
+                <CronogramaPasteForm tenderSlug={tender!.slug} country={form.country} initialFichaUrl={tender!.fichaUrl} />
+              )}
             </div>
           </div>
         )}

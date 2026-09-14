@@ -482,7 +482,9 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
   const submissionDeadline = parseDate(row.fecha_de_recepcion_de) ?? undefined;
   const structuredDurationDays = normalizeDurationDays(row.duracion, row.unidad_de_duracion);
   const governmentLevel = inferGovernmentLevel(row.ordenentidad, buyer);
+  const procedureType = row.modalidad_de_contratacion?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary,
     buyer,
@@ -517,7 +519,7 @@ export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): T
     governmentLevel,
     industries,
     scopeType,
-    procedureType: row.modalidad_de_contratacion?.trim() || "Unknown",
+    procedureType,
     publicationDate,
     submissionDeadline,
     // Colombian public procurement is denominated in COP by law/convention

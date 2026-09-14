@@ -1,11 +1,14 @@
 import { PolicyPage, type PolicySection } from "@/components/content/PolicyPage";
 import { LEGAL_CONTACT_EMAIL } from "@/lib/legal";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "退款政策",
-  description: "订阅退款的适用情形、例外情况与申请方式。",
-};
+  description:
+    "订阅退款的适用情形、例外情况与申请方式。",
+  path: "/refund-policy",
+});
 
 const sections: PolicySection[] = [
   {

@@ -11,7 +11,14 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
  * for why this can hit sidof.segob.gob.mx directly (confirmed only a
  * routine `ci_session` cookie, no anti-bot gate) instead of needing the
  * manual "Copy as cURL" capture npm run ingest:dof-search still documents.
+ *
+ * Long by design: the search returns every CFE/PEMEX notice in the window and
+ * each one's own detail page is fetched (three at a time — see
+ * import-dof-search-live.ts). A 13-day CFE range is ~33 notices, so the
+ * platform default would cut the run off partway and write nothing.
  */
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });

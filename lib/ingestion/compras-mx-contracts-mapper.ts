@@ -151,7 +151,9 @@ export function mapComprasMxContractRowToTender(
   // that cannot survive a round-trip through the database is worse than no
   // signal — it makes the two paths disagree, which is exactly the bug that
   // turned 193 rows into 486 on 2026-09-08.
+  const procedureType = row["Tipo Procedimiento"]?.trim() || row["Ley"]?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
+    procedureType,
     title,
     summary,
     buyer,
@@ -174,7 +176,7 @@ export function mapComprasMxContractRowToTender(
     governmentLevel,
     industries,
     scopeType,
-    procedureType: row["Tipo Procedimiento"]?.trim() || row["Ley"]?.trim() || "Unknown",
+    procedureType,
     participationScope: inferParticipationScope(row["Carácter del procedimiento"]),
     publicationDate,
     awardDate: parseDate(row["Fecha de fallo"]) ?? undefined,

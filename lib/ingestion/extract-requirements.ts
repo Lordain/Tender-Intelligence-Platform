@@ -609,7 +609,15 @@ async function runChunkedPdfExtraction(
 ): Promise<TenderExtraction> {
   const { chunks, cleanup } = splitPdfIntoChunks(filePath);
   try {
-    console.log(`  splitting into ${chunks.length} chunk(s) of up to 80 pages each (native PDF understanding per chunk, not a text fallback)...`);
+    // The real pages-per-chunk, not MAX_PAGES_PER_CHUNK. Those are almost
+    // never the same number: the tier cap means the file being split is at
+    // most 40 pages, so 80 can never bind, and what actually decides the
+    // split is MAX_CHUNK_BYTES against this document's bytes-per-page. A run
+    // that reported "5 chunks of up to 80 pages each" for a 40-page file was
+    // stating a constant, not a fact — and it is the fact that says whether
+    // a scanned document is being cut into eight-page slivers.
+    const pagesPerChunk = chunks[0] ? chunks[0].endPage - chunks[0].startPage + 1 : 0;
+    console.log(`  splitting into ${chunks.length} chunk(s) of ${pagesPerChunk} page(s) each (native PDF understanding per chunk, not a text fallback)...`);
     const parts: TenderExtraction[] = [];
     for (const chunk of chunks) {
       const chunkInstruction = `${instruction}\n\n(This excerpt is pages ${chunk.startPage}-${chunk.endPage} of a ${chunk.totalPages}-page document, split to fit — a requirement or cross-reference spanning outside this page range may not be visible here.)`;

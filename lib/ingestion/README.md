@@ -4431,9 +4431,25 @@ record did not need fetching.
 A live 2026-09 record re-confirms the rest on current data: `tenderPeriod`
 start and end are both `2026-09-10T00:00:00`, the publication day, not a
 deadline; `enquiryPeriod` (09-11 00:01 → 09-21 23:59, `durationInDays: 10`)
-is the only real window published. That record lists exactly **one**
-document, the same Bases Administrativas — there is no second attachment to
-try either.
+is the only real window published. `GET /records?page=1` shows the same on
+2024 records, so this is steady behaviour rather than one month's quirk.
+
+**Correction to the first version of this note:** that 2026-09 record lists
+exactly one document, and the note took it as "there is no second attachment
+to try." That is true of the tender and false of the source. `documents[]`
+grows with the procedure — a completed 2024 record in the same response
+carries four (Bases Administrativas, Resumen ejecutivo, and two ZIPs for
+Presentación de Propuestas and Otorgamiento de Buena Pro). A tender
+published four days ago has not reached those stages, so **re-reading a
+tender's document list later does yield more**.
+
+It does not rescue the deadline, though: none of those later documents
+exists yet at the moment a bidder needs one, which is *before* the bid is
+due. The single document type that would arrive in time — *bases
+integradas*, published after the consultas window closes — has not been
+checked for whether it prints the cronograma the original bases delegates to
+the ficha. Under the same Ley 32069 template it probably does not; that is a
+guess, and it is the only thread left unpulled.
 
 So: across every format, every endpoint, and the document itself, this
 source publishes publication and the consultas window. **计划交标 blank on a

@@ -115,8 +115,28 @@ import { safeFileName, type TenderDocumentLink as SharedTenderDocumentLink } fro
  *   current data: start and end both 2026-09-10T00:00:00, the
  *   publication day. Its enquiryPeriod (2026-09-11 00:01 → 2026-09-21
  *   23:59, durationInDays 10) is the only real window the source gives.
- *   That record also lists exactly ONE document — the same Bases
- *   Administrativas — so there is no second attachment to try either.
+ *   `GET /records?page=1` re-confirms both on 2024 records too, so this
+ *   is the source's steady behaviour and not a quirk of one month.
+ *
+ *   One correction worth keeping, because the first version of this note
+ *   got it wrong: that 2026-09 record lists exactly ONE document, but
+ *   that is a property of its AGE, not of this source. `documents[]`
+ *   grows as the procedure runs — a completed 2024 record in the same
+ *   response carries four (Bases Administrativas, Resumen ejecutivo, and
+ *   two ZIPs, Documentos de Presentación de Propuestas and Documentos de
+ *   Otorgamiento de Buena Pro). A tender published four days ago simply
+ *   has not reached those stages. So "no second attachment to try" is
+ *   true today for that tender and false in general, and re-reading a
+ *   tender's document list later genuinely yields more.
+ *
+ *   What that does NOT change is the deadline conclusion: none of those
+ *   later documents exists yet at the moment a bidder needs the
+ *   deadline, which is before the bid is due. The one document type that
+ *   would arrive in time — bases integradas, published after the
+ *   consultas window — has not been checked for whether it prints the
+ *   cronograma the original bases delegates to the ficha; under the same
+ *   Ley 32069 template it probably does not, but that is a guess and is
+ *   labelled as one.
  *
  *   Conclusion: across every format (json/csv/xlsx), every endpoint
  *   (file/record/release), and the bid document itself, this source

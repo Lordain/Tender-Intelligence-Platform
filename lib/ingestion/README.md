@@ -4393,3 +4393,71 @@ definition), and "N 个项目未处理" is now computed from how many actually
 finished rather than from the aborting task's index, since tenders no longer
 complete in order. Results and failures are sorted back into the folder's
 order before reporting.
+
+### Peru's bid deadline: the search is over, and the answer is "nowhere" (2026-09-14)
+
+Tasks #31 and #34 both existed to close one gap: SEACE tenders reach this
+platform with 计划交标 blank while the official ficha shows a full cronograma.
+The plan was to read the deadline out of the bases PDF. Three checks, run
+in one afternoon, close the question in the other direction.
+
+**1. The bid document does not print it.** Chapter 2.1 of a live *Bases
+Administrativas* (ocds-dgv273-seacev3-1248966, Ley N° 32069 / DS
+009-2025-EF) is titled CRONOGRAMA DEL PROCEDIMIENTO DE SELECCIÓN and reads,
+in full: *"Según el cronograma de la ficha de selección de la convocatoria
+publicada en el SEACE de la Pladicop."* Every other mention of
+*presentación de ofertas* in its 129 pages is a rule — submission runs
+00:01–23:59, not less than seven working days after the integrated bases —
+never a date.
+
+**2. The API does not carry it, in any format.** The decisive test was the
+CSV rather than the JSON: `/file/seace_v3/csv/2026/08` is a **full
+flattening** of the OCDS structure, one table per array — `com_awards`,
+`com_contracts`, `com_parties`, `com_ten_documents`, `com_ten_items`,
+`com_ten_tenderers`, `records`, `releases`. There is **no
+`com_ten_milestones.csv`**. `tender.milestones` is OCDS's own field for
+cronograma rows, so its table being absent means no record in the entire
+month has one. `records.csv`'s complete set of date columns is four:
+tenderPeriod start/end, enquiryPeriod start/end. This is a month-wide
+answer, far stronger than the per-record checks that preceded it.
+
+**3. The linked releases hold nothing back** — and this corrects a guess
+made earlier the same day. A compiled release is the **merge** of every
+release for an ocid, and merging preserves fields rather than dropping
+them, so a milestone present in any release would appear in the compiled
+one. Absent there is absent everywhere; the two linked releases on that
+record did not need fetching.
+
+A live 2026-09 record re-confirms the rest on current data: `tenderPeriod`
+start and end are both `2026-09-10T00:00:00`, the publication day, not a
+deadline; `enquiryPeriod` (09-11 00:01 → 09-21 23:59, `durationInDays: 10`)
+is the only real window published. That record lists exactly **one**
+document, the same Bases Administrativas — there is no second attachment to
+try either.
+
+So: across every format, every endpoint, and the document itself, this
+source publishes publication and the consultas window. **计划交标 blank on a
+SEACE tender is a property of the source, not something left to find**, and
+this note exists so the next person does not spend another afternoon
+finding that out.
+
+Two consequences worth stating plainly:
+
+- **Reading Peru bid documents is still worth doing** — the one analysed
+  returned 3 qualifications, 2 experience requirements, 11 required
+  documents and 4 risks, all cited. It is the *deadline* that is not in
+  there, not the value.
+- **#34's premise was wrong, not its machinery.** The cronograma checking
+  (`key-date-checks.ts`), the day/month-swap detection and the write path
+  are all sound and untested against real data only because Peru turned out
+  to be the wrong place to test them. Mexico's Convocatorias do print a
+  cronograma; that is where this should be validated.
+
+What is NOT being done, and why: deriving the submission date from the
+enquiry window plus the Reglamento's minimum intervals is arithmetic on a
+rule, i.e. a guess presented as a date, and a wrong deadline is worse than a
+blank one. Scraping the ficha HTML is out under the project's standing rule
+against building connectors for deliberately anti-automation-gated portals.
+The honest options are the ones already in place — SourcePanel points the
+reader at the official page — plus manual entry through the key-dates
+editor for tenders worth it.

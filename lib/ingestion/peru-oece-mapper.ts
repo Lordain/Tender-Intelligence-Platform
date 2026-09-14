@@ -90,6 +90,39 @@ import { safeFileName, type TenderDocumentLink as SharedTenderDocumentLink } fro
  *   far; the template wording suggests it generalises to every tender
  *   under the new law, but that is worth re-checking against a second
  *   bases PDF before treating it as settled.
+ * - THE REST OF THE OECE API DOES NOT CARRY IT EITHER — settled
+ *   2026-09-14, month-wide rather than per-record, so this line of
+ *   investigation does not need reopening:
+ *
+ *   The same month is published as CSV as well as JSON
+ *   (`/file/seace_v3/csv/2026/08`), and that CSV is a FULL flattening of
+ *   the OCDS structure — one table per array: com_awards, com_contracts,
+ *   com_parties, com_ten_documents, com_ten_items, com_ten_tenderers,
+ *   records, releases, and so on. There is **no com_ten_milestones.csv**.
+ *   `tender.milestones` is OCDS's own field for exactly these cronograma
+ *   rows, so its table being absent means NO record in the entire month
+ *   has one. Every date column in records.csv is one of four:
+ *   tenderPeriod start/end and enquiryPeriod start/end.
+ *
+ *   Nor do the linked releases hold anything back. A compiled release is
+ *   the MERGE of every release for that ocid — merging preserves fields,
+ *   it does not drop them — so a milestone present in any release would
+ *   appear in the compiled one. Absent there means absent everywhere,
+ *   and the two linked releases on ocds-dgv273-seacev3-1248966 need not
+ *   be fetched to know it.
+ *
+ *   A live 2026-09 record re-confirms the degenerate tenderPeriod on
+ *   current data: start and end both 2026-09-10T00:00:00, the
+ *   publication day. Its enquiryPeriod (2026-09-11 00:01 → 2026-09-21
+ *   23:59, durationInDays 10) is the only real window the source gives.
+ *   That record also lists exactly ONE document — the same Bases
+ *   Administrativas — so there is no second attachment to try either.
+ *
+ *   Conclusion: across every format (json/csv/xlsx), every endpoint
+ *   (file/record/release), and the bid document itself, this source
+ *   publishes publication and the consultas window and nothing else.
+ *   计划交标 being blank on a SEACE tender is a property of the source,
+ *   not something left to find.
  * - `tender.documents[]` carries real per-document download URLs
  *   (`prod1.seace.gob.pe/SeaceWeb-PRO/SdescargarArchivoAlfresco?fileCode=...`)
  *   and real type labels (biddingDocuments/evaluationReports/

@@ -18,7 +18,6 @@
 import { mergeExtractions, toTenderFields, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { assertWritten } from "@/lib/db/assert-written";
-import { writeExtractedKeyDates } from "@/lib/db/extracted-key-dates";
 
 export type ImportBatchAnalysisResult = {
   slug: string;
@@ -27,18 +26,7 @@ export type ImportBatchAnalysisResult = {
   experienceRequirements: number;
   requiredDocuments: number;
   risks: number;
-  /**
-   * Cronograma rows this entry carried.
-   *
-   * Reported separately from the four above because it is the count that
-   * was silently zero: this path computed fields.keyDates from 2026-09-12
-   * and never wrote them, so a batch could report a tender fully analysed
-   * while its bid deadline — the only one Peru publishes anywhere — was
-   * dropped on the floor. Found 2026-09-13 by review:key-dates answering
-   * "0 of 285", which is exactly the question it was built to ask.
-   */
-  keyDates: number;
-  /** Anything writeExtractedKeyDates() wants the operator to look at — a schedule that contradicts itself, a date it refused to write. */
+  /** Anything the operator should look at for this tender. */
   warnings?: string[];
   /**
    * "skipped-empty" and "failed" exist so a batch tells the truth about
@@ -85,7 +73,6 @@ export async function importBatchAnalysis(
       experienceRequirements: fields.experienceRequirements.length,
       requiredDocuments: fields.requiredDocuments.length,
       risks: fields.risks.length,
-      keyDates: fields.keyDates.length,
     };
 
     if (!options.write) {
@@ -95,7 +82,7 @@ export async function importBatchAnalysis(
 
     const { data: tender, error: tenderError } = await supabase!
       .from("tenders")
-      .select("id, submission_deadline, award_date, publication_date")
+      .select("id")
       .eq("slug", slug)
       .maybeSingle();
     if (tenderError || !tender) {
@@ -133,32 +120,7 @@ export async function importBatchAnalysis(
       ...fields.requiredDocuments.map((r, i) => ({ kind: "document" as const, sort_order: i, ...r })),
     ];
 
-    // The cronograma is written before the requirements/risks guard below,
-    // not after, and deliberately outside it: an export that found a
-    // schedule but no requirements is a real and useful result for Peru,
-    // where the deadline is the whole reason the document is read. Treating
-    // it as "nothing to write" would have kept dropping exactly the dates
-    // this path already lost once.
     const warnings: string[] = [];
-    let keyDatesFailed: string | undefined;
-    try {
-      await writeExtractedKeyDates(
-        supabase!,
-        tenderId,
-        fields.keyDates,
-        {
-          submissionDeadline: (tender.submission_deadline as string | null) ?? null,
-          awardDate: (tender.award_date as string | null) ?? null,
-          publicationDate: (tender.publication_date as string | null) ?? null,
-        },
-        warnings,
-      );
-    } catch (err) {
-      // Reported, never fatal: the requirements and risks in this entry are
-      // a separate finding and are still worth writing.
-      keyDatesFailed = err instanceof Error ? err.message : String(err);
-      warnings.push(`关键日期写入失败：${keyDatesFailed}`);
-    }
     const withWarnings = warnings.length > 0 ? { warnings } : {};
 
     // An export entry that produced nothing at all is never worth more
@@ -169,7 +131,7 @@ export async function importBatchAnalysis(
         ...base,
         ...withWarnings,
         status: "skipped-empty",
-        message: fields.keyDates.length > 0 ? "没有要求或风险，但日程已写入" : "没有提取到任何要求或风险，已保留该项目原有的分析结果",
+        message: "没有提取到任何要求或风险，已保留该项目原有的分析结果",
       });
       continue;
     }

@@ -2883,6 +2883,19 @@ export function explainKeptSignal(input: {
 export const NATIONAL_PRIORITY_SOURCE_NAME = "Proyectos Estratégicos MX (Hacienda)";
 
 /**
+ * Whether a tender's tier was settled by a government determination rather
+ * than by anything this platform inferred.
+ *
+ * Being on the Proyectos Estratégicos list IS the finding — Mexico's own
+ * decision that this is strategic infrastructure — so nothing automated may
+ * revise it afterwards. User, 2026-09-16, after a document analysis lowered
+ * one of them: proyectosestrategicos = 大型项目这个逻辑不能动，除非我手动调整.
+ */
+export function isNationalPrioritySource(sourceName: string | null | undefined): boolean {
+  return sourceName === NATIONAL_PRIORITY_SOURCE_NAME;
+}
+
+/**
  * Exactly the fields of a tender ROW — the shape that gets written to and
  * read back from Supabase — that any relevance decision is allowed to depend
  * on. Anything a connector knows but does not store (Compras MX's "Descripción

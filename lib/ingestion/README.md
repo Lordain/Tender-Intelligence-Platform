@@ -4394,6 +4394,28 @@ finished rather than from the aborting task's index, since tenders no longer
 complete in order. Results and failures are sorted back into the folder's
 order before reporting.
 
+### The document-extraction path for key dates was removed (2026-09-16)
+
+Everything below about reading a cronograma out of a bid document is history,
+kept because the findings are still true and still cost something to establish.
+The code is gone: `ExtractionSchema` no longer has a `keyDates` array, the
+prompts no longer ask for one, and `lib/db/extracted-key-dates.ts`,
+`scripts/review-key-dates.ts`, `scripts/test-key-dates.ts` and
+`scripts/measure-deadline-accuracy.ts` are deleted.
+
+Why, in one line: it was built for Peru, Peru turned out not to publish the
+schedule in the document, and everywhere else the feed already supplies the
+dates — so what it added in practice was a SECOND schedule sitting beside the
+real one. A Proyectos Estratégicos tender showed two 现场踏勘 and two 提问截止,
+the document's pair being an earlier round of the same procedure. User,
+2026-09-16: 既然现在 Peru 是我手工做、Pemex 也是我手工做，建议把全站的分析标书
+提取关键日期的功能都删掉，完全用不到.
+
+What stayed: `key-date-checks.ts` (the 粘贴日程表 tool checks a pasted schedule
+with it), `extracted_from_document` and the importer's protection of those rows
+(so what was already written survives), and `undo:extracted-key-dates` to remove
+them where a human has since entered the real schedule.
+
 ### Peru's bid deadline: the search is over, and the answer is "nowhere" (2026-09-14)
 
 Tasks #31 and #34 both existed to close one gap: SEACE tenders reach this

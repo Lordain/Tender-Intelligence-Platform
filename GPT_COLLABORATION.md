@@ -49,9 +49,8 @@ types/tender.ts 全项目最核心的类型定义，改之前务必搜索所有�
 ```
 npx tsc --noEmit          npx eslint .
 test:relevance       296  ← 相关度分级规则
-test:key-dates       141  ← 日期解析 / 日程表 / 墨西哥开标推导
-test:extraction-pipeline 65（0 次模型调用，0 成本）
-test:translation-inputs 61   test:access-control 37   test:reserved-domains 25
+test:extraction-pipeline 56（0 次模型调用，0 成本）
+test:translation-inputs 61   test:access-control 67   test:reserved-domains 25
 test:colombia-titles 22      test:account-devices 14  test:admin-form-merge 13
 test:download 9              test:upsert-protection 8
 npm run check:deps        ← 确认 import 的包都在 package.json 里

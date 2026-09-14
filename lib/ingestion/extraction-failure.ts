@@ -57,6 +57,44 @@ export function classifyExtractionFailure(err: unknown): { kind: ExtractionFailu
  */
 export const MAX_CONSECUTIVE_FAILURES = 2;
 
+/**
+ * A failure that is the provider having a bad second, not this request being
+ * wrong — the one class worth sending again.
+ *
+ * The extraction path sets maxRetries: 0 deliberately, and that stays right:
+ * every failure it was written against repeats (a size limit, a schema
+ * mismatch, a provider slower than the budget), and retrying a TIMEOUT is
+ * what turned one batch into 31 minutes. This is the narrow exception the
+ * evidence since then demands. On 2026-09-16 a single Anthropic 500 cost
+ * three 90MB Convocatorias and one Peru OXI document a complete analysis,
+ * while other documents — and other chunks of the SAME document — went
+ * through in the same minutes. That is not a failure that repeats.
+ *
+ * Deliberately narrow:
+ *   - Server-side 5xx and explicit overload only. A 4xx is this request being
+ *     wrong and will be wrong again.
+ *   - A timeout is excluded by name, whatever status it carries with it. It
+ *     is the one failure whose retry cost is the full budget over again.
+ *   - Anything already classified systematic never reaches here.
+ */
+const TRANSIENT_PATTERNS = [
+  /50[0234]/,
+  /529/,
+  /internal server error/i,
+  /overloaded_error|overloaded/i,
+  /api_error/i,
+  /bad gateway|service unavailable/i,
+];
+
+const NEVER_TRANSIENT = /timed?\s*out|timeout|ETIMEDOUT|aborted/i;
+
+export function isTransientServerError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  if (NEVER_TRANSIENT.test(message)) return false;
+  if (classifyExtractionFailure(err).kind === "systematic") return false;
+  return TRANSIENT_PATTERNS.some((pattern) => pattern.test(message));
+}
+
 export function shouldAbortBatch(state: { consecutiveFailures: number; anySucceeded: boolean }): boolean {
   return !state.anySucceeded && state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES;
 }

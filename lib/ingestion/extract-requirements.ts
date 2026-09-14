@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { truncatePdfToPages } from "@/lib/ingestion/pdf-pages";
+import { getPdfPageCount } from "@/lib/ingestion/pdf-split";
 import { isTextLayerSubstantial } from "@/lib/ingestion/text-layer";
-import { classifyExtractionFailure } from "@/lib/ingestion/extraction-failure";
+import { classifyExtractionFailure, isTransientServerError } from "@/lib/ingestion/extraction-failure";
 import { extname } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
@@ -437,6 +438,24 @@ function markStream<ParsedT>(stream: MessageStream<ParsedT>, marks: StreamMarks)
  * genuinely wrong top-level shape (e.g. an array, not an object) still
  * throws rather than guessing how to reinterpret it.
  */
+/** Waits between the one retry below. Short: a 500 comes back in seconds, not minutes. */
+const TRANSIENT_RETRY_DELAY_MS = 3_000;
+
+/**
+ * Every model call in this file goes through here, which is why the one
+ * retry lives here rather than in each path.
+ *
+ * ONE retry, and only for a provider-side blip (isTransientServerError). The
+ * SDK's own retries stay off — see requestOptions() for why, and note that a
+ * timeout is excluded by name there and here, since retrying one costs the
+ * whole budget again.
+ *
+ * What this is worth, measured rather than assumed: on 2026-09-16 a single
+ * Anthropic 500 cost three 90MB Convocatorias and a Peru OXI document their
+ * entire analysis, while other documents — and other chunks of the same
+ * document — answered normally in the same minutes. One extra call is a much
+ * smaller price than a re-run of a five-chunk document.
+ */
 async function runExtraction(
   client: Anthropic,
   model: ExtractionModel,
@@ -444,6 +463,26 @@ async function runExtraction(
   context: { tenderNumber: string },
   useStructuredOutput: boolean,
   /** Only used to size the request timeout — see requestOptions(). */
+  maxPages?: number,
+) {
+  try {
+    return await runExtractionOnce(client, model, content, context, useStructuredOutput, maxPages);
+  } catch (err) {
+    if (!isTransientServerError(err)) throw err;
+    console.warn(
+      `  ${context.tenderNumber}: 模型返回了一次服务端错误（${(err instanceof Error ? err.message : String(err)).slice(0, 160)}），${TRANSIENT_RETRY_DELAY_MS / 1000} 秒后重试一次。`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS));
+    return await runExtractionOnce(client, model, content, context, useStructuredOutput, maxPages);
+  }
+}
+
+async function runExtractionOnce(
+  client: Anthropic,
+  model: ExtractionModel,
+  content: ExtractionContent,
+  context: { tenderNumber: string },
+  useStructuredOutput: boolean,
   maxPages?: number,
 ) {
   if (useStructuredOutput) {
@@ -854,7 +893,13 @@ export async function extractTenderRequirements(
         // continues, two in a row stop the run) instead of converting a blip
         // into a permanent empty answer.
         const fallbackText = await extractDocumentText(sourcePath);
-        if (!isTextLayerSubstantial(fallbackText)) {
+        let fallbackPages: number | undefined;
+        try {
+          fallbackPages = getPdfPageCount(sourcePath);
+        } catch {
+          fallbackPages = undefined;
+        }
+        if (!isTextLayerSubstantial(fallbackText, fallbackPages)) {
           throw new Error(
             `chunked extraction failed and this PDF has no usable text layer (${fallbackText.trim().length} chars), so there is nothing to fall back to — rerun it. Original failure: ${chunkErr instanceof Error ? chunkErr.message : String(chunkErr)}`,
           );

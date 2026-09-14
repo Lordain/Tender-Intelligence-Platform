@@ -11,8 +11,24 @@ import { writeFileSync } from "node:fs";
  * pages and how many bytes a case needs (the chunking and page-cap paths
  * are both decided by those two numbers alone).
  */
-export function writeTestPdf(path: string, options: { pages: number; lineText?: string; padBytes?: number }): void {
-  const { pages, lineText = "CRONOGRAMA", padBytes = 0 } = options;
+export function writeTestPdf(
+  path: string,
+  options: {
+    pages: number;
+    lineText?: string;
+    padBytes?: number;
+    /**
+     * Lines of text per page. One (the default) is what a SCANNED page looks
+     * like to pdftotext — a stray fragment — and the text-layer check now
+     * measures characters PER PAGE, so a fixture standing in for a real
+     * text-bearing document has to carry a real page's worth. Written as
+     * separate lines rather than one long one because poppler drops text that
+     * runs off the 612pt page width.
+     */
+    linesPerPage?: number;
+  },
+): void {
+  const { pages, lineText = "CRONOGRAMA", padBytes = 0, linesPerPage = 1 } = options;
   const objects: string[] = [];
   const kids: string[] = [];
 
@@ -29,7 +45,12 @@ export function writeTestPdf(path: string, options: { pages: number; lineText?: 
   for (let i = 0; i < pages; i += 1) {
     const pageObj = 4 + i * 2;
     const contentObj = pageObj + 1;
-    const stream = `BT /F1 12 Tf 72 720 Td (${lineText} page ${i + 1}) Tj ET`;
+    const lines: string[] = [];
+    for (let line = 0; line < linesPerPage; line += 1) {
+      const y = 720 - line * 14;
+      lines.push(`BT /F1 12 Tf 72 ${y} Td (${lineText} page ${i + 1} line ${line + 1}) Tj ET`);
+    }
+    const stream = lines.join("\n");
     objects[pageObj - 1] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents ${contentObj} 0 R /Resources << /Font << /F1 3 0 R >> >> >>`;
     objects[contentObj - 1] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
   }

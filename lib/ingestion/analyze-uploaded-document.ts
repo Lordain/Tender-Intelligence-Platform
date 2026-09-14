@@ -75,6 +75,18 @@ export type AnalyzeUploadedDocumentResult = {
   risks: number;
   /** How many cronograma rows the document yielded, and what happened to the bid deadline among them — see writeExtractedKeyDates(). */
   keyDates: number;
+  /**
+   * The cronograma rows themselves, not just the count.
+   *
+   * Here for measurement rather than display: what a document says the bid
+   * deadline is only becomes checkable against the official date when the
+   * value survives out of this function. writeExtractedKeyDates() drops an
+   * extracted `submission` whenever the column is already filled — which is
+   * precisely the population that HAS a ground truth to score against — so
+   * without this the one comparison worth making is the one thrown away.
+   * See scripts/measure-deadline-accuracy.ts.
+   */
+  extractedKeyDates: { type: string; date: string }[];
   submissionDeadlineSet?: string;
   status: "written" | "dry-run" | "skipped-opus-precision";
   message?: string;
@@ -268,6 +280,7 @@ export async function analyzeUploadedDocument(
       requiredDocuments: fields.requiredDocuments.length,
       risks: fields.risks.length,
       keyDates: fields.keyDates.length,
+      extractedKeyDates: fields.keyDates.map((item) => ({ type: item.type, date: item.date })),
     };
 
     if (!options.write) return { ...base, status: "dry-run", warnings: warnings.length > 0 ? warnings : undefined };

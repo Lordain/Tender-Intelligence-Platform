@@ -2,11 +2,10 @@ import { Suspense } from "react";
 import { getCachedTenderList } from "@/lib/tenders";
 import { TenderExplorer } from "@/components/tenders/TenderExplorer";
 import { getViewerRole } from "@/lib/access-control-server";
-import { canInteractWithTenderList } from "@/lib/access-control";
-import { buildTenderListPage, LOCKED_TENDER_PAGE_SIZE, TENDER_PAGE_SIZE, type TenderListSearchParams } from "@/lib/tender-list-page";
+import { canUseTenderListMemberFeatures } from "@/lib/access-control";
+import { buildTenderListPage, TENDER_PAGE_SIZE, type TenderListSearchParams } from "@/lib/tender-list-page";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
-import { redirect } from "next/navigation";
 
 export const metadata: Metadata = pageMetadata({
   title: "招标项目列表",
@@ -18,8 +17,8 @@ export const metadata: Metadata = pageMetadata({
 /**
  * This page is DYNAMIC, and not by choice: getViewerRole() reads the session
  * cookie, which opts the whole route into request-time rendering. It has to —
- * what a guest, a trial user and a lapsed free user may do on this list
- * differs, and a shared prerendered HTML file cannot hold three answers.
+ * account-specific tools still differ for guests, trials and subscribers,
+ * even though discovery itself is now public.
  *
  * It used to carry `export const revalidate = 300`. That export is gone
  * because a dynamic segment ignores it: keeping it would have read as five
@@ -40,15 +39,12 @@ export default async function TendersPage({
     searchParams,
   ]);
 
-  // A locked visitor/free account must always receive the same initial list.
-  // UI capture below handles ordinary clicks; this redirect closes the
-  // server-side bypass where someone types ?q=, ?page= or filter params into
-  // the address bar directly.
-  if (!canInteractWithTenderList(viewerRole) && Object.keys(params).length > 0) {
-    redirect("/tenders");
-  }
   const pageData = buildTenderListPage(allTenders, params, {
-    pageSize: canInteractWithTenderList(viewerRole) ? TENDER_PAGE_SIZE : LOCKED_TENDER_PAGE_SIZE,
+    pageSize: TENDER_PAGE_SIZE,
+    // The publisher is withheld from guests and lapsed free accounts both
+    // visually and from the serialized React payload.
+    includeBuyer: canUseTenderListMemberFeatures(viewerRole),
+    searchPublicFieldsOnly: !canUseTenderListMemberFeatures(viewerRole),
   });
 
   return (

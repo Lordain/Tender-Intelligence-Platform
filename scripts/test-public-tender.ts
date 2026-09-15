@@ -67,8 +67,22 @@ if (publicTender.publicSlug !== "p-7a3c91e4b6d82f05") {
 }
 
 const publicListItem = toTenderListItem(fullTender);
-if (JSON.stringify(publicListItem).includes("SECRET_SOURCE_DERIVED_SLUG")) {
-  throw new Error("公开项目列表泄露了内部 slug");
+const serializedListItem = JSON.stringify(publicListItem);
+for (const marker of ["SECRET_SOURCE_DERIVED_SLUG", "SECRET_ORIGINAL_TITLE", "SECRET_TENDER_CODE", "采购单位"]) {
+  if (serializedListItem.includes(marker)) {
+    throw new Error(`公开项目列表泄露了受保护字段：${marker}`);
+  }
+}
+const memberListItem = toTenderListItem(fullTender, { includeBuyer: true });
+if (memberListItem.buyer !== "采购单位") {
+  throw new Error("登录用户的项目列表缺少发布机构");
+}
+const untranslatedPublicItem = toTenderListItem({
+  ...fullTender,
+  title: { zh: "SECRET_ORIGINAL_TITLE", es: "SECRET_ORIGINAL_TITLE", en: "" },
+});
+if (untranslatedPublicItem.titleZh !== "政府采购项目") {
+  throw new Error("未翻译的公开列表标题泄露了发布机构或原文名称");
 }
 if (publicTenderPath(fullTender) !== "/tenders/p-7a3c91e4b6d82f05") {
   throw new Error("公开项目链接没有使用不可反推的公开网址标识");

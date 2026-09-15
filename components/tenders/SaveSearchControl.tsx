@@ -32,7 +32,7 @@ export function SaveSearchControl({ href, disabled = false }: { href: string; di
   }
 
   return (
-    <div className="relative shrink-0">
+    <div data-member-feature="save-search" className="relative shrink-0">
       <button
         type="button"
         disabled={disabled}

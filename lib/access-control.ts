@@ -135,8 +135,12 @@ export function canViewTenderProtectedContent(
   return role === "trial" || role === "subscriber" || (isHomepageFreePreview && enteredFromHomepage);
 }
 
-/** Search, filters, pagination and saves share the same list-page paywall. */
-export function canInteractWithTenderList(role: ViewerRole): boolean {
+/**
+ * Public discovery (search, filters, views and pagination) is open to every
+ * visitor. Only account-specific list tools — saving a tender or a search —
+ * remain an entitled feature.
+ */
+export function canUseTenderListMemberFeatures(role: ViewerRole): boolean {
   return role === "trial" || role === "subscriber";
 }
 

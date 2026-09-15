@@ -19,7 +19,7 @@ import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { isObrasPorImpuestos, OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
 import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
-import { canInteractWithTenderList, TRIAL_DAYS, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
+import { canUseTenderListMemberFeatures, TRIAL_DAYS, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
 import { AccessPrompt } from "@/components/access/AccessPrompt";
 import { AVAILABLE_COUNTRIES, DEFAULT_TENDER_LIST_STATUSES, type TenderListItem } from "@/lib/tender-list-page";
 
@@ -94,7 +94,7 @@ function TenderSearchForm({
           type="search"
           value={draftQuery}
           onChange={(event) => setDraftQuery(event.target.value)}
-          placeholder="搜索项目名称、摘要、编号或发布机构"
+          placeholder="搜索项目名称或摘要"
           className="h-11 w-full rounded-xl border border-[#d8e0e3] bg-white pl-12 pr-4 text-sm placeholder:text-[#919ca2] focus:border-[#ffb21c] focus:outline-none"
         />
       </label>
@@ -106,9 +106,8 @@ function TenderSearchForm({
   );
 }
 
-function TenderRow({ tender, showOriginalTitle }: { tender: TenderListItem; showOriginalTitle: boolean }) {
+function TenderRow({ tender }: { tender: TenderListItem }) {
   const { locale } = useLocale();
-  const hasRealTranslation = tender.title.zh !== tender.title.es;
   const value = tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null;
 
   return (
@@ -129,13 +128,12 @@ function TenderRow({ tender, showOriginalTitle }: { tender: TenderListItem; show
         </div>
         <h2 className="text-base font-black leading-6 text-black sm:text-lg">
           <Link href={`/tenders/${tender.publicSlug}`} data-public-tender-link className="after:absolute after:inset-0">
-            {hasRealTranslation ? tender.title.zh : showOriginalTitle ? tender.title.es : `${tender.buyer}采购项目`}
+            {tender.titleZh}
           </Link>
         </h2>
-        {showOriginalTitle && hasRealTranslation && <p className="mt-1 truncate text-xs text-[#75838c]">{tender.title.es}</p>}
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-[#52636e]">
           <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
-          <span className="truncate">发布机构：{tender.buyer}</span>
+          {tender.buyer && <span className="truncate">发布机构：{tender.buyer}</span>}
         </div>
       </div>
       <div className="flex items-center justify-between gap-4 border-t border-[#e5e9eb] pt-4 md:border-l md:border-t-0 md:pl-5 md:pt-0">
@@ -184,7 +182,7 @@ function SavedTenderReminders({ savedIds }: { savedIds: string[] }) {
       {reminders.map((tender) => (
         <Link key={tender.id} href={`/tenders/${tender.publicSlug}`} className="block py-3 first:pt-0 last:pb-0">
           <span className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#64717c]"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
-          <p className="line-clamp-2 text-sm font-bold leading-5 text-[#172c3b]">{tender.title.zh || tender.title.es}</p>
+          <p className="line-clamp-2 text-sm font-bold leading-5 text-[#172c3b]">{tender.titleZh}</p>
           <p className="mt-1.5 text-xs font-semibold text-[#b86e00]">{formatDate(tender.submissionDeadline!, locale)}</p>
         </Link>
       ))}
@@ -289,20 +287,16 @@ export function TenderExplorer({
 
   function promptForInteraction(target: EventTarget | null): AccessPromptKind | null {
     if (!(target instanceof Element)) return null;
-    const interactive = target.closest("a, button, input, select, textarea, label, [role='button'], [role='switch']");
-    if (!interactive) return null;
+    const memberFeature = target.closest("[data-member-feature]");
+    if (!memberFeature) return null;
+    const disabledButton = target.closest("button:disabled");
+    if (disabledButton) return null;
 
-    // Every project now has a public, indexable summary page. Opening that
-    // page is not a list interaction and must stay available to guests/free
-    // users; the detail route itself protects the analysis fields.
-    if (interactive.matches("a[data-public-tender-link]")) return null;
-
-    // Guests may inspect the initial list, but every list-page interaction is
-    // a member feature except opening a project's public summary page.
+    // Search, filters, views, pagination and detail links are public. Only
+    // saving tenders/searches and opening the saved-items area are gated.
     if (viewerRole === "guest") return "login";
 
-    // An expired trial gets the same read-only initial list as a visitor,
-    // but every attempted action leads to subscription rather than login.
+    // An expired trial is sent to subscription for those member tools.
     if (viewerRole === "free") return "subscription";
 
     return null;
@@ -321,17 +315,17 @@ export function TenderExplorer({
   }
 
   const accessNotice = viewerRole === "guest"
-    ? "当前可查看项目清单和公开摘要；登录后即可使用搜索、筛选、翻页、收藏和完整项目分析。"
+    ? "项目搜索、筛选和公开信息可直接查看；注册后可收藏项目，并免费试用完整项目分析。"
     : viewerRole === "free"
-      ? `您的 ${TRIAL_DAYS} 天免费试用已结束；当前仍可查看项目公开摘要，订阅后即可使用搜索、筛选、翻页、收藏和完整项目分析。`
+      ? `您的 ${TRIAL_DAYS} 天免费试用已结束；仍可搜索、筛选和浏览项目公开信息，订阅后可收藏并查看完整项目分析。`
       : null;
 
-  const listIsLocked = !canInteractWithTenderList(viewerRole);
+  const memberFeaturesLocked = !canUseTenderListMemberFeatures(viewerRole);
 
   return (
     <>
     <div
-      className={`space-y-5 ${listIsLocked ? "[&_a]:cursor-not-allowed [&_a[data-public-tender-link]]:cursor-pointer [&_button]:cursor-not-allowed [&_input]:cursor-not-allowed" : ""}`}
+      className={`space-y-5 ${memberFeaturesLocked ? "[&_[data-member-feature]]:cursor-not-allowed [&_[data-member-feature]_button]:cursor-not-allowed" : ""}`}
       onPointerDownCapture={(event) => {
         if (promptForInteraction(event.target)) event.preventDefault();
       }}
@@ -501,7 +495,7 @@ export function TenderExplorer({
             <p className="rounded-2xl border border-dashed border-[#bdc8cd] bg-[#fffdf9] p-10 text-center text-sm text-[#64717c]">{localize(uiText.noResults, locale)}</p>
           ) : (
             <div className="space-y-3">
-              {tenders.map((tender) => <TenderRow key={tender.id} tender={tender} showOriginalTitle={!listIsLocked} />)}
+              {tenders.map((tender) => <TenderRow key={tender.publicSlug} tender={tender} />)}
             </div>
           )}
 
@@ -560,7 +554,7 @@ export function TenderExplorer({
             </div>
           </section>
           <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5">
-            <div className="flex items-center justify-between"><h2 className="font-bold text-[#071826]">交标提醒</h2><Link href="/saved" className="text-xs font-semibold text-[#24465a]">查看关注</Link></div>
+            <div className="flex items-center justify-between"><h2 className="font-bold text-[#071826]">交标提醒</h2><Link href="/saved" data-member-feature="saved-tenders" className="text-xs font-semibold text-[#24465a]">查看关注</Link></div>
             <SavedTenderReminders savedIds={savedIds} />
           </section>
         </aside>

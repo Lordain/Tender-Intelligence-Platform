@@ -13,7 +13,7 @@
  * one before fixing it.
  */
 import {
-  canInteractWithTenderList,
+  canUseTenderListMemberFeatures,
   canViewTenderProtectedContent,
   isClosedTender,
   isSubscriptionEntitled,
@@ -68,10 +68,10 @@ check("cancelled never counts", isSubscriptionEntitled("cancelled", iso(-1), iso
 // Tender discovery access. Every project has a public summary page; these
 // checks govern only the protected analysis below that summary.
 // ---------------------------------------------------------------------------
-check("guest list is read-only", canInteractWithTenderList("guest"), false);
-check("expired free list is read-only", canInteractWithTenderList("free"), false);
-check("trial list is interactive", canInteractWithTenderList("trial"), true);
-check("subscriber list is interactive", canInteractWithTenderList("subscriber"), true);
+check("guest save tools stay protected", canUseTenderListMemberFeatures("guest"), false);
+check("expired free save tools stay protected", canUseTenderListMemberFeatures("free"), false);
+check("trial may use list member tools", canUseTenderListMemberFeatures("trial"), true);
+check("subscriber may use list member tools", canUseTenderListMemberFeatures("subscriber"), true);
 check("guest ordinary page keeps analysis protected", canViewTenderProtectedContent("guest", false, false), false);
 check("guest cannot forge homepage entry for an unfeatured slug", canViewTenderProtectedContent("guest", false, true), false);
 check("guest gets a selected homepage free entry", canViewTenderProtectedContent("guest", true, true), true);

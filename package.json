@@ -64,6 +64,7 @@
     "purge:mis-sourced": "tsx --env-file-if-exists=.env.local scripts/purge-mis-sourced-duplicates.ts",
     "restore:deleted": "tsx --env-file-if-exists=.env.local scripts/restore-deleted-tenders.ts",
     "test:access-control": "tsx scripts/test-access-control.ts",
+    "test:public-tender": "tsx scripts/test-public-tender.ts",
     "test:homepage-selection": "tsx scripts/test-homepage-selection.ts",
     "test:ingestion-dates": "tsx scripts/test-ingestion-dates.ts",
     "test:supplier-matching": "tsx scripts/test-supplier-matching.ts",

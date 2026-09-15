@@ -289,3 +289,30 @@ export type Tender = {
   createdAt: string;
   updatedAt: string;
 };
+
+/**
+ * The exact tender fields that may cross the server/client boundary for an
+ * unauthenticated or non-entitled detail view. Keep this as an explicit
+ * allow-list: adding a field to Tender must never make it public by accident.
+ */
+export type PublicTenderDetail = Pick<
+  Tender,
+  | "slug"
+  | "buyer"
+  | "country"
+  | "governmentLevel"
+  | "industries"
+  | "scopeType"
+  | "procedureType"
+  | "participationScope"
+  | "publicationDate"
+  | "publicationDateIsEstimated"
+  | "submissionDeadline"
+  | "estimatedValue"
+  | "currency"
+  | "location"
+  | "status"
+> & {
+  titleZh: string;
+  summaryZh: string;
+};

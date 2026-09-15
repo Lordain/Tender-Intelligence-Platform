@@ -106,7 +106,7 @@ function TenderSearchForm({
   );
 }
 
-function TenderRow({ tender }: { tender: TenderListItem }) {
+function TenderRow({ tender, showOriginalTitle }: { tender: TenderListItem; showOriginalTitle: boolean }) {
   const { locale } = useLocale();
   const hasRealTranslation = tender.title.zh !== tender.title.es;
   const value = tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null;
@@ -128,11 +128,11 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
           )}
         </div>
         <h2 className="text-base font-black leading-6 text-black sm:text-lg">
-          <Link href={`/tenders/${tender.slug}`} className="after:absolute after:inset-0">
-            {hasRealTranslation ? tender.title.zh : tender.title.es}
+          <Link href={`/tenders/${tender.slug}`} data-public-tender-link className="after:absolute after:inset-0">
+            {hasRealTranslation ? tender.title.zh : showOriginalTitle ? tender.title.es : `${tender.buyer}采购项目`}
           </Link>
         </h2>
-        {hasRealTranslation && <p className="mt-1 truncate text-xs text-[#75838c]">{tender.title.es}</p>}
+        {showOriginalTitle && hasRealTranslation && <p className="mt-1 truncate text-xs text-[#75838c]">{tender.title.es}</p>}
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-[#52636e]">
           <span className="inline-flex items-center gap-1.5"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
           <span className="truncate">发布机构：{tender.buyer}</span>
@@ -292,9 +292,13 @@ export function TenderExplorer({
     const interactive = target.closest("a, button, input, select, textarea, label, [role='button'], [role='switch']");
     if (!interactive) return null;
 
+    // Every project now has a public, indexable summary page. Opening that
+    // page is not a list interaction and must stay available to guests/free
+    // users; the detail route itself protects the analysis fields.
+    if (interactive.matches("a[data-public-tender-link]")) return null;
+
     // Guests may inspect the initial list, but every list-page interaction is
-    // a member feature, including opening a project that happens to be free
-    // from the homepage entry point.
+    // a member feature except opening a project's public summary page.
     if (viewerRole === "guest") return "login";
 
     // An expired trial gets the same read-only initial list as a visitor,
@@ -317,9 +321,9 @@ export function TenderExplorer({
   }
 
   const accessNotice = viewerRole === "guest"
-    ? "当前可预览项目清单；登录后即可使用搜索、筛选、翻页、收藏和查看项目。"
+    ? "当前可查看项目清单和公开摘要；登录后即可使用搜索、筛选、翻页、收藏和完整项目分析。"
     : viewerRole === "free"
-      ? `您的 ${TRIAL_DAYS} 天免费试用已结束；当前可预览项目清单，订阅后即可使用搜索、筛选、翻页、收藏和查看项目。`
+      ? `您的 ${TRIAL_DAYS} 天免费试用已结束；当前仍可查看项目公开摘要，订阅后即可使用搜索、筛选、翻页、收藏和完整项目分析。`
       : null;
 
   const listIsLocked = !canInteractWithTenderList(viewerRole);
@@ -327,7 +331,7 @@ export function TenderExplorer({
   return (
     <>
     <div
-      className={`space-y-5 ${listIsLocked ? "[&_a]:cursor-not-allowed [&_button]:cursor-not-allowed [&_input]:cursor-not-allowed" : ""}`}
+      className={`space-y-5 ${listIsLocked ? "[&_a]:cursor-not-allowed [&_a[data-public-tender-link]]:cursor-pointer [&_button]:cursor-not-allowed [&_input]:cursor-not-allowed" : ""}`}
       onPointerDownCapture={(event) => {
         if (promptForInteraction(event.target)) event.preventDefault();
       }}
@@ -497,7 +501,7 @@ export function TenderExplorer({
             <p className="rounded-2xl border border-dashed border-[#bdc8cd] bg-[#fffdf9] p-10 text-center text-sm text-[#64717c]">{localize(uiText.noResults, locale)}</p>
           ) : (
             <div className="space-y-3">
-              {tenders.map((tender) => <TenderRow key={tender.id} tender={tender} />)}
+              {tenders.map((tender) => <TenderRow key={tender.id} tender={tender} showOriginalTitle={!listIsLocked} />)}
             </div>
           )}
 

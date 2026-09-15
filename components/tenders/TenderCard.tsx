@@ -83,7 +83,7 @@ export function TenderCard({
       {hasRealTranslation ? (
         <>
           <h3 className="text-base font-black leading-snug text-black">
-            <Link href={detailHref} className="after:absolute after:inset-0">
+            <Link href={detailHref} data-public-tender-link className="after:absolute after:inset-0">
               {tender.title.zh}
             </Link>
           </h3>
@@ -91,7 +91,7 @@ export function TenderCard({
         </>
       ) : (
         <h3 className="text-sm font-bold leading-snug text-black">
-          <Link href={detailHref} className="after:absolute after:inset-0">
+          <Link href={detailHref} data-public-tender-link className="after:absolute after:inset-0">
             {tender.title.es}
           </Link>
         </h3>
@@ -132,7 +132,7 @@ export function TenderCard({
         {"："}
         {tender.buyer}</span>
       </p>
-      <Link href={detailHref} className="relative z-10 mt-1 inline-flex w-full items-center justify-center rounded-xl bg-[#071826] px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-[#163b52]">
+      <Link href={detailHref} data-public-tender-link className="relative z-10 mt-1 inline-flex w-full items-center justify-center rounded-xl bg-[#071826] px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-[#163b52]">
         查看招标信息
       </Link>
     </article>

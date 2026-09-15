@@ -407,6 +407,40 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
     .map(toTender);
 });
 
+export type TenderSitemapEntry = {
+  slug: string;
+  updatedAt: string;
+};
+
+/**
+ * Minimal, unfiltered inventory for sitemap generation. Unlike the public
+ * list query, this intentionally includes closed rows without document
+ * analysis: every tender now has a useful public summary landing page, so
+ * hiding those slugs from discovery would contradict the detail-page policy.
+ */
+export async function fetchTenderSitemapEntriesFromDb(): Promise<TenderSitemapEntry[] | null> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+
+  const entries: TenderSitemapEntry[] = [];
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const data = await retrySupabaseRead(
+      () => supabase
+        .from("tenders")
+        .select("slug, updated_at")
+        .order("updated_at", { ascending: false })
+        .range(from, from + SUPABASE_PAGE_SIZE - 1),
+      "Failed to fetch tender sitemap entries from Supabase",
+    );
+
+    const page = data as unknown as Array<{ slug: string; updated_at: string }>;
+    entries.push(...page.map((row) => ({ slug: row.slug, updatedAt: row.updated_at })));
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+  }
+
+  return entries;
+}
+
 /** Returns undefined when configured but no row matches; null when Supabase isn't configured. */
 export async function fetchTenderBySlugFromDb(
   slug: string,

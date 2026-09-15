@@ -116,80 +116,23 @@ export function selectPreferredSubscription<T extends SubscriptionEntitlementCan
     })[0];
 }
 
-/**
- * A tender nobody can bid on any more.
- *
- * `submission_closed` is derived, not stored — deriveTenderStatus() sets it
- * once the deadline day has passed (lib/tender-status.ts), so a tender with
- * no deadline at all never reaches it and stays behind the paywall, which is
- * the conservative direction.
- */
 const CLOSED_TENDER_STATUSES: readonly TenderStatus[] = ["submission_closed", "awarded", "cancelled"];
 
 export function isClosedTender(status: TenderStatus): boolean {
   return CLOSED_TENDER_STATUSES.includes(status);
 }
 
-/** How much analysis a tender has, counted from the rows an admin has logged. */
-export type AnalysisPresence = {
-  /** qualifications + experienceRequirements + requiredDocuments — all one table. */
-  requirementCount: number;
-  riskCount: number;
-};
-
 /**
- * Whether there is anything on this page worth reading.
- *
- * Same test the awarded-tender visibility rule has used since 2026-09-05
- * (fetchAllTendersFromDb): at least one requirement or one risk logged. The
- * title, the summary and the schedule arrive with the import and are true of
- * every row; requirements and risks only exist once someone — the extraction
- * pipeline or an admin — has actually read the bid documents. That is the
- * line between a page and a stub.
+ * Full analysis remains protected even though every tender now has an
+ * indexable public summary page. The homepage's selected free cards are the
+ * only exception, and only when the visitor actually follows that entry.
  */
-export function hasPublishedAnalysis(counts: AnalysisPresence): boolean {
-  return counts.requirementCount > 0 || counts.riskCount > 0;
-}
-
-/**
- * A closed tender that is worth showing the world.
- *
- * Opening closed tenders to everyone was a deliberate product decision (user,
- * 2026-09-15): the deadline has passed, so the page is worth nothing to a
- * subscriber and is the entire pitch to someone who has never heard of this
- * platform — a Chinese engineering company in Mexico searching a project name
- * lands on the full Chinese analysis and knows within seconds what this is.
- *
- * The analysis half of the test is the correction that followed (2026-09-16).
- * The user had been deleting tenders the moment they closed, and the reason
- * was not tidiness: 因为缺少大量标书分析内容. A closed tender with no analysis
- * logged is an empty page, and a few hundred empty pages under real project
- * names is worse for both search and the brand than not being indexed at all.
- * So the rule that already governed awarded tenders now governs every closed
- * one: no analysis, no public page — which means the ones that DO have
- * analysis no longer have to be deleted to keep the stubs out.
- *
- * Both parameters required rather than optional on purpose: they decide who
- * may read a page, so tsc naming every call site is the point. A default
- * would be the same "protection nobody remembered to opt into" that cost 13
- * bid deadlines.
- */
-export function isPublicArchive(status: TenderStatus, counts: AnalysisPresence): boolean {
-  return isClosedTender(status) && hasPublishedAnalysis(counts);
-}
-
-export function canOpenTenderDetail(
+export function canViewTenderProtectedContent(
   role: ViewerRole,
   isHomepageFreePreview: boolean,
-  /** isPublicArchive() — closed AND carrying analysis. */
-  isArchived: boolean,
+  enteredFromHomepage: boolean,
 ): boolean {
-  if (isArchived) return true;
-  // Homepage previews are a visitor acquisition surface, not a permanent
-  // free-account entitlement. Once the three-day trial has ended, every
-  // project detail requires a subscription — including a slug that happens
-  // to be featured on the homepage.
-  return role === "trial" || role === "subscriber" || (role === "guest" && isHomepageFreePreview);
+  return role === "trial" || role === "subscriber" || (isHomepageFreePreview && enteredFromHomepage);
 }
 
 /** Search, filters, pagination and saves share the same list-page paywall. */

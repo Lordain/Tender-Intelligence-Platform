@@ -452,6 +452,7 @@ export async function fetchTendersBySlugsFromDb(slugs: string[]): Promise<Map<st
 
 type DocumentsNeededRow = {
   slug: string;
+  tender_number: string;
   title: LocalizedText;
   country: string;
   estimated_value: number | null;
@@ -473,7 +474,7 @@ type DocumentsNeededRow = {
 // PEMEX validity_end is the only end date some rows have). Same narrow
 // type/date join TENDER_LIST_SELECT uses over the whole table.
 const DOCUMENTS_NEEDED_SELECT = `
-  slug, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url, source_name, status,
+  slug, tender_number, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url, source_name, status,
   tender_documents ( id ), tender_document_links ( id ), submission_deadline, documents_downloaded_at,
   tender_key_dates ( type, date )
 `;
@@ -540,6 +541,7 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
     .filter((row) => row.tender_documents.length === 0)
     .map((row) => ({
       slug: row.slug,
+      tenderNumber: row.tender_number,
       title: row.title,
       country: row.country,
       estimatedValue: row.estimated_value ?? undefined,

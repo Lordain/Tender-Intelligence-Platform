@@ -62,6 +62,8 @@
     "test:access-control": "tsx scripts/test-access-control.ts",
     "test:homepage-selection": "tsx scripts/test-homepage-selection.ts",
     "test:ingestion-dates": "tsx scripts/test-ingestion-dates.ts",
+    "test:supplier-matching": "tsx scripts/test-supplier-matching.ts",
+    "test:recently-added": "tsx scripts/test-recently-added.ts",
     "test:upsert-protection": "tsx scripts/test-upsert-protection.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",

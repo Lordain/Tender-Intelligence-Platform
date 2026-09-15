@@ -542,7 +542,7 @@ export function TenderExplorer({
                 onClick={() => updateParams({ view: view === "new" ? null : "new", sort: view === "new" ? null : "publication_desc" })}
                 className={`rounded-lg px-1 py-1.5 transition-colors ${view === "new" ? "bg-white/15" : "hover:bg-white/10"}`}
               >
-                <p className="text-[11px] font-medium text-white/58">本日新增</p>
+                <p className="text-[11px] font-medium text-white/58">24小时新增</p>
                 <p className="mt-1.5 text-[1.65rem] font-black leading-none text-[#ffb21c]">{newTodayCount}</p>
               </button>
               <button

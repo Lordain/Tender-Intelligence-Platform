@@ -45,6 +45,7 @@
  *   npm run find:chinese-suppliers -- --keyword=HUAWEI         (probe one name)
  */
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { join } from "node:path";
 import { toCsv } from "../lib/ingestion/review-csv";
 
@@ -58,28 +59,76 @@ const OUT_DIR = "exports";
 const PER_KEYWORD_LIMIT = 5000;
 
 /**
- * `generic: true` means the token is a real Spanish substring risk and has to
- * survive a word-boundary re-check below. The brand tokens do not: no Spanish
- * word contains "HUAWEI".
+ * WHAT THE FIRST REAL RUN TAUGHT (2026-09-15, 672 contracts, 147 companies,
+ * roughly seven of them actually Chinese).
+ *
+ * The word-boundary re-check was applied only to CHINA/CHINESE, on the
+ * reasoning that no Spanish word contains "HUAWEI". True — and irrelevant,
+ * because the tokens that generate the noise are the SHORT ones, and short
+ * brand names are substrings of ordinary Spanish words and Colombian given
+ * names constantly:
+ *
+ *   GREE  → GREEN anything (459 of 550 rows; ~100 of the 147 companies)
+ *   TRINA → DOCTRINA, VITRINA, NUTRINAR, DISTRINAS, COTRINA
+ *   ZTE   → AZTECA, PREZTEL, HAZTEMARINO
+ *   CATL  → CATLEYA, a common Colombian given name
+ *   CHERY → CHERYL, VINCHERY
+ *   SANY  → ROSANY, LISANYURY, SANYI, Lesanye
+ *   TCL   → DENTCLASS, NETCLOUD, SMARTCLARITY
+ *   CMEC  → SICMECI, TECMECMOTRIZ
+ *   FOTON → FOTONES     JA SOLAR → PANTOJA SOLARTE     DAHUA → PEREZ DAHUA
+ *
+ * So the boundary check now runs on EVERY token. That alone removes almost
+ * all of it: SANY COLOMBIA SAS survives while ROSANY does not, HEFEI JA SOLAR
+ * survives while PANTOJA SOLARTE does not.
+ *
+ * What it cannot remove is a Colombian company that genuinely IS called
+ * "BYD MULTIPROYECTOS" or "CONSORCIO TRINA", or the several Colombian places
+ * named Hong Kong. Those are irreducible from a name alone, which is why the
+ * output still says every row is a guess.
+ *
+ * `strong` marks the tokens that were right every time they fired — long
+ * enough that a coincidence is implausible. They are listed first and the
+ * output separates them, so the rows worth reading come before the rows worth
+ * skimming.
  */
-const KEYWORDS: { token: string; generic?: boolean }[] = [
-  { token: "CHINA", generic: true },
-  { token: "CHINESE", generic: true },
-  { token: "SINOHYDRO" }, { token: "SINOPEC" }, { token: "SINOMA" }, { token: "SINOSTEEL" },
-  { token: "POWERCHINA" }, { token: "ENERGYCHINA" }, { token: "NORINCO" }, { token: "CITIC" },
-  { token: "HUAWEI" }, { token: "ZTE" }, { token: "HIKVISION" }, { token: "DAHUA" },
-  { token: "BYD" }, { token: "CATL" }, { token: "YUTONG" }, { token: "FOTON" },
-  { token: "SINOTRUK" }, { token: "SHACMAN" }, { token: "DONGFENG" }, { token: "CHERY" },
-  { token: "GEELY" }, { token: "SANY" }, { token: "XCMG" }, { token: "ZOOMLION" },
-  { token: "LIUGONG" }, { token: "SHANTUI" }, { token: "GOLDWIND" }, { token: "MINGYANG" },
-  { token: "ENVISION" }, { token: "LONGI" }, { token: "JINKO" }, { token: "TRINA" },
-  { token: "JA SOLAR" }, { token: "RISEN" }, { token: "SUNGROW" }, { token: "TBEA" },
-  { token: "CHINT" }, { token: "HAIER" }, { token: "MIDEA" }, { token: "GREE" },
-  { token: "LENOVO" }, { token: "XIAOMI" }, { token: "TCL" }, { token: "TRANSSION" },
+const KEYWORDS: { token: string; strong?: boolean }[] = [
+  // Long enough to be self-evident.
+  { token: "CHINA", strong: true }, { token: "CHINESE", strong: true },
+  { token: "SINOHYDRO", strong: true }, { token: "SINOPEC", strong: true },
+  { token: "SINOMA", strong: true }, { token: "SINOSTEEL", strong: true },
+  { token: "POWERCHINA", strong: true }, { token: "ENERGYCHINA", strong: true },
+  { token: "HUAWEI", strong: true }, { token: "HIKVISION", strong: true },
+  { token: "GOLDWIND", strong: true }, { token: "MINGYANG", strong: true },
+  { token: "SINOTRUK", strong: true }, { token: "SHACMAN", strong: true },
+  { token: "DONGFENG", strong: true }, { token: "ZOOMLION", strong: true },
+  { token: "LIUGONG", strong: true }, { token: "SHANTUI", strong: true },
+  { token: "GEZHOUBA", strong: true }, { token: "SUNGROW", strong: true },
+  { token: "JINKO", strong: true }, { token: "LONGI", strong: true },
+  { token: "TRANSSION", strong: true }, { token: "NORINCO", strong: true },
+  { token: "JA SOLAR", strong: true }, { token: "XCMG", strong: true },
+  { token: "SHANGHAI", strong: true }, { token: "BEIJING", strong: true },
+  { token: "SHENZHEN", strong: true }, { token: "GUANGZHOU", strong: true },
+  { token: "HONG KONG", strong: true },
+  // Short. Kept because the real hits live here too (BYD Motor Colombia,
+  // Chint Electric, SANY Colombia) — but expect company names that merely
+  // happen to contain them.
+  { token: "ZTE" }, { token: "BYD" }, { token: "CATL" }, { token: "GREE" },
+  { token: "SANY" }, { token: "TRINA" }, { token: "CHINT" }, { token: "TCL" },
+  { token: "CHERY" }, { token: "FOTON" }, { token: "DAHUA" }, { token: "MIDEA" },
+  { token: "HAIER" }, { token: "LENOVO" }, { token: "XIAOMI" }, { token: "CITIC" },
   { token: "CRRC" }, { token: "CRCC" }, { token: "CCCC" }, { token: "CMEC" },
-  { token: "GEZHOUBA" }, { token: "HARBOUR ENGINEERING" }, { token: "SHANGHAI" },
-  { token: "BEIJING" }, { token: "SHENZHEN" }, { token: "GUANGZHOU" }, { token: "HONG KONG" },
+  { token: "TBEA" }, { token: "RISEN" }, { token: "ENVISION" },
 ];
+
+/**
+ * A second, independent signal: the legal-entity suffix a mainland Chinese
+ * company registers under. It fires on the name alone with no keyword at all,
+ * and it is what makes CHINA UNITED ENGINEERING CORPORATION LIMITED and
+ * HEFEI JA SOLAR TECHNOLOGY CO., LTD read as obviously foreign rather than as
+ * two more rows in a list of 147.
+ */
+export const CHINESE_ENTITY_SUFFIX = /\bCO[.,\s]*LTD\b\.?|\bCORPORATION\s+LIMITED\b|\bCO[.,\s]*LIMITED\b/i;
 
 type SecopRow = {
   entidad?: string;
@@ -97,6 +146,7 @@ type SecopRow = {
 type Award = {
   supplier: string;
   matchedOn: string;
+  strong: boolean;
   buyer: string;
   department: string;
   procedure: string;
@@ -122,21 +172,25 @@ async function fetchKeyword(token: string): Promise<SecopRow[]> {
   return (await response.json()) as SecopRow[];
 }
 
-/** The second stage: a generic token has to appear as a WORD, not a substring. */
-function survivesWordCheck(supplier: string, token: string, generic: boolean | undefined): boolean {
-  if (!generic) return true;
-  return new RegExp(`(^|[^A-Z])${token}([^A-Z]|$)`, "i").test(supplier.toUpperCase());
+/**
+ * Every token has to appear as a WORD, not a substring — the lesson of the
+ * first run. Digits count as word characters here too, so CCCC does not match
+ * CCCCC.
+ */
+export function survivesWordCheck(supplier: string, token: string): boolean {
+  const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^A-Z0-9])${escaped}([^A-Z0-9]|$)`, "i").test(supplier.toUpperCase());
 }
 
 const money = (value: number) => (value > 0 ? `COP ${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—");
 
 async function main() {
-  const keywords = ONE_KEYWORD ? [{ token: ONE_KEYWORD }] : KEYWORDS;
+  const keywords = ONE_KEYWORD ? [{ token: ONE_KEYWORD, strong: true }] : KEYWORDS;
   console.log(`向 datos.gov.co 查询 ${keywords.length} 个关键词（SECOP II 全部历史，不限于本站数据库）...\n`);
 
   // Keyed by process id so the same award found by two keywords is counted once.
   const awardById = new Map<string, Award>();
-  for (const { token, generic } of keywords) {
+  for (const { token, strong } of keywords) {
     let rows: SecopRow[];
     try {
       rows = await fetchKeyword(token);
@@ -148,7 +202,7 @@ async function main() {
     for (const row of rows) {
       const supplier = (row.nombre_del_proveedor ?? "").trim();
       if (!supplier || supplier === "No Definido") continue;
-      if (!survivesWordCheck(supplier, token, generic)) continue;
+      if (!survivesWordCheck(supplier, token)) continue;
       const value = Number(row.valor_total_adjudicacion ?? 0) || 0;
       if (value < MIN_VALUE) continue;
       const id = row.id_del_proceso ?? `${supplier}|${row.nombre_del_procedimiento ?? ""}`;
@@ -156,6 +210,10 @@ async function main() {
       awardById.set(id, {
         supplier,
         matchedOn: token,
+        // A Chinese legal-entity suffix promotes a short token on its own:
+        // "CHINT ELECTRIC CO., LTD" is not a Colombian firm that happens to
+        // contain CHINT.
+        strong: Boolean(strong) || CHINESE_ENTITY_SUFFIX.test(supplier),
         buyer: (row.entidad ?? "").trim(),
         department: (row.departamento_entidad ?? "").trim(),
         procedure: (row.nombre_del_procedimiento ?? "").trim(),
@@ -180,23 +238,36 @@ async function main() {
   }
 
   // One line per COMPANY, not per contract: the sales target is the company.
-  const bySupplier = new Map<string, { awards: Award[]; total: number }>();
+  const bySupplier = new Map<string, { awards: Award[]; total: number; strong: boolean }>();
   for (const award of awards) {
-    const entry = bySupplier.get(award.supplier) ?? { awards: [], total: 0 };
+    const entry = bySupplier.get(award.supplier) ?? { awards: [], total: 0, strong: false };
     entry.awards.push(award);
     entry.total += award.value;
+    entry.strong = entry.strong || award.strong;
     bySupplier.set(award.supplier, entry);
   }
   const ranked = [...bySupplier.entries()].sort((a, b) => b[1].total - a[1].total);
+  const strong = ranked.filter(([, entry]) => entry.strong);
+  const weak = ranked.filter(([, entry]) => !entry.strong);
 
-  console.log(`\n疑似中国供应商 ${ranked.length} 家，合计 ${awards.length} 份合同：\n`);
-  for (const [supplier, entry] of ranked) {
+  const describe = ([supplier, entry]: (typeof ranked)[number]) => {
     const latest = entry.awards.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
     console.log(`  ${supplier}`);
     console.log(`      ${entry.awards.length} 份合同  ·  合计 ${money(entry.total)}  ·  命中「${latest.matchedOn}」`);
     console.log(`      最近一份：${latest.date || "无日期"}  ${latest.buyer}${latest.department ? `（${latest.department}）` : ""}`);
     if (latest.procedure) console.log(`      ${latest.procedure.slice(0, 90)}`);
     console.log("");
+  };
+
+  console.log(`\n疑似中国供应商 ${ranked.length} 家，合计 ${awards.length} 份合同。\n`);
+
+  if (strong.length > 0) {
+    console.log(`━━ 强信号 ${strong.length} 家 —— 先看这些 ━━\n`);
+    strong.forEach(describe);
+  }
+  if (weak.length > 0) {
+    console.log(`━━ 弱信号 ${weak.length} 家 —— 短关键词命中，多数是碰巧重名，扫一眼就行 ━━\n`);
+    weak.forEach(describe);
   }
 
   if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
@@ -204,10 +275,10 @@ async function main() {
   writeFileSync(
     path,
     toCsv(
-      ["supplier", "contracts", "total_cop", "matched_on", "latest_date", "latest_buyer", "department", "latest_procedure", "url"],
+      ["signal", "supplier", "contracts", "total_cop", "matched_on", "latest_date", "latest_buyer", "department", "latest_procedure", "url"],
       ranked.map(([supplier, entry]) => {
         const latest = entry.awards.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
-        return [supplier, entry.awards.length, entry.total, latest.matchedOn, latest.date, latest.buyer, latest.department, latest.procedure, latest.url];
+        return [entry.strong ? "strong" : "weak", supplier, entry.awards.length, entry.total, latest.matchedOn, latest.date, latest.buyer, latest.department, latest.procedure, latest.url];
       }),
     ),
     "utf8",
@@ -217,7 +288,13 @@ async function main() {
   console.log("对得上的，就是已经在哥伦比亚中过标的中国企业：市场不用你教育，他们已经自己付过「找标看标」的成本。");
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+// Only when RUN, never when imported. test-supplier-matching.ts imports the
+// two matching helpers from here, and without this guard that import fired
+// fifty-odd live queries at datos.gov.co before the first assertion ran.
+const runDirectly = process.argv[1] ? pathToFileURL(process.argv[1]).href === import.meta.url : false;
+if (runDirectly) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}

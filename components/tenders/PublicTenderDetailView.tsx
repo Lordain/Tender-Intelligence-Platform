@@ -13,10 +13,10 @@ import {
   SCOPE_TYPE_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
-  countryFlag,
   countryLabel,
   industryLabel,
 } from "@/lib/tender-labels";
+import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { STALE_WITHOUT_END_DATE_DAYS } from "@/lib/tender-status";
 import type { PublicTenderDetail } from "@/types/tender";
 
@@ -80,8 +80,8 @@ export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicT
 
         <article className="flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#061b2b] px-2.5 py-1 text-xs font-semibold text-white">
-              <span className="mr-1" aria-hidden="true">{countryFlag(tender.country)}</span>
+            <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-semibold text-[#536772]">
+              <CountryFlag country={tender.country} />
               {countryLabel(tender.country, locale)}
             </span>
             {tender.industries.map((industry) => (

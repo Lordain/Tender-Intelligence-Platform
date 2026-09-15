@@ -2,7 +2,7 @@ export function MexicoFlag({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={`relative inline-grid h-3.5 w-5 shrink-0 grid-cols-3 overflow-hidden rounded-[2px] border border-black/10 shadow-[0_1px_2px_rgba(0,0,0,.08)] ${className}`}
+      className={`relative inline-grid h-3.5 w-5 shrink-0 grid-cols-3 overflow-hidden ${className}`}
     >
       <span className="bg-[#006847]" />
       <span className="relative bg-white">
@@ -17,7 +17,7 @@ export function ColombiaFlag({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={`inline-grid h-3.5 w-5 shrink-0 grid-rows-[2fr_1fr_1fr] overflow-hidden rounded-[2px] border border-black/10 shadow-[0_1px_2px_rgba(0,0,0,.08)] ${className}`}
+      className={`inline-grid h-3.5 w-5 shrink-0 grid-rows-[2fr_1fr_1fr] overflow-hidden ${className}`}
     >
       <span className="bg-[#fcd116]" />
       <span className="bg-[#003893]" />
@@ -31,7 +31,7 @@ export function PeruFlag({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={`inline-grid h-3.5 w-5 shrink-0 grid-cols-3 overflow-hidden rounded-[2px] border border-black/10 shadow-[0_1px_2px_rgba(0,0,0,.08)] ${className}`}
+      className={`inline-grid h-3.5 w-5 shrink-0 grid-cols-3 overflow-hidden ${className}`}
     >
       <span className="bg-[#d91023]" />
       <span className="bg-white" />

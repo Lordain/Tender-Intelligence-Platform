@@ -113,6 +113,13 @@ export type TenderParticipationScope = "national" | "international_treaty" | "in
 /** The /admin/documents-needed worklist row shape — see lib/db/tenders.ts's fetchTendersNeedingDocumentsFromDb(). Kept here (not in that server-only file) so client components can import the type without pulling in server-only code. */
 export type TenderNeedingDocuments = {
   slug: string;
+  /**
+   * The procedure number the GOVERNMENT portal uses, e.g.
+   * "LO-77-005-...-N-16" or "IA-38-91Q-...". What an admin types into Compras
+   * MX or SEACE to find this tender, and what the downloaded file is named
+   * after — unlike the slug, which is ours and means nothing on the far side.
+   */
+  tenderNumber: string;
   title: LocalizedText;
   country: string;
   estimatedValue?: number;

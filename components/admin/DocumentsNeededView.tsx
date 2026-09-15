@@ -189,6 +189,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
         !normalizedQuery ||
         localize(tender.title, locale).toLowerCase().includes(normalizedQuery) ||
         tender.title.es.toLowerCase().includes(normalizedQuery) ||
+        tender.tenderNumber.toLowerCase().includes(normalizedQuery) ||
         tender.slug.toLowerCase().includes(normalizedQuery);
       const matchesCountry = country === "all" || tender.country === country;
       const matchesRelevance = relevance === "all" || tender.relevanceTier === relevance;
@@ -262,7 +263,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                 type="search"
                 value={draftQuery}
                 onChange={(event) => setDraftQuery(event.target.value)}
-                placeholder="按项目标题或标书 ID 搜索…"
+                placeholder="按项目标题、标书编号或 slug 搜索…"
                 className="h-11 w-full rounded-xl border border-[#d8e0e3] bg-white pl-11 pr-4 text-sm text-[#071826] outline-none placeholder:text-[#9aa5ab] focus:border-[#ffb21c]"
               />
             </label>
@@ -397,7 +398,21 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                     <td className="whitespace-nowrap px-2 py-2">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${STATUS_COLORS[tender.status]}`}>{STATUS_LABELS[tender.status][locale]}</span>
                     </td>
-                    <td title={tender.slug} className="truncate whitespace-nowrap px-2 py-2 font-mono text-[10px] text-[#5d6d77]">{tender.slug}</td>
+                    {/*
+                      The government's own procedure number, not our slug
+                      (2026-09-15, user: 把标书id改成标书编号 而不是 slug).
+                      This column exists to be copied into Compras MX or SEACE
+                      to find the tender and download its attachments, and a
+                      slug means nothing on the far side. The slug is still in
+                      the title attribute, since it is what the batch-analysis
+                      box below takes.
+                    */}
+                    <td
+                      title={`标书编号 ${tender.tenderNumber}\nslug ${tender.slug}`}
+                      className="truncate whitespace-nowrap px-2 py-2 font-mono text-[10px] text-[#5d6d77]"
+                    >
+                      {tender.tenderNumber}
+                    </td>
                     <td className="whitespace-nowrap px-2 py-2 text-[#5d6d77]">{formatDate(tender.publicationDate, locale)}</td>
                     <td className="whitespace-nowrap px-2 py-2">
                       <div className="flex items-center justify-center gap-1.5">

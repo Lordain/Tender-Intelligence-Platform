@@ -9,6 +9,7 @@
  *
  * Usage:
  *   npm run ingest:colombia-live -- [--months 1] [--max-pages 20]
+ *   npm run ingest:colombia-live -- --days 5            (滚动天数窗口，--months 失效)
  *   npm run ingest:colombia-live -- --write [--fetch-documents]
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
@@ -30,7 +31,12 @@ async function main() {
   // through any other door (2026-09-13: months-old PEMEX rows in the admin
   // list). Pass --months explicitly for a deliberate backfill.
   const months = argNumber(args, "--months", 1);
+  // Wins over --months when set, rather than being reconciled with it — see
+  // IngestColombiaOptions.days. Asking for 5 days and 1 month used to be
+  // expressible and meant neither.
+  const days = argNumber(args, "--days", 0);
   const maxPages = argNumber(args, "--max-pages", 20);
+  const windowLabel = days > 0 ? `${days} day(s)` : `${months} month(s)`;
 
   const supabase = shouldWrite ? createSupabaseAdminClient() : null;
   if (shouldWrite && !supabase) {
@@ -38,13 +44,36 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Fetching real SECOP II rows published within the last ${months} month(s) (up to ${maxPages * 1000} rows)...`);
-  const result = await ingestColombia(supabase!, { months, maxPages, write: shouldWrite, fetchDocuments });
+  console.log(`Fetching real SECOP II rows published within the last ${windowLabel} (up to ${maxPages * 1000} rows)...`);
+  const result = await ingestColombia(supabase!, { months, days, maxPages, write: shouldWrite, fetchDocuments });
 
-  console.log(`Fetched ${result.fetchedCount} real row(s), mapped ${result.mappedCount}, kept ${result.keptAfterRecencyCount} within the last ${months} month(s).`);
+  console.log(`Fetched ${result.fetchedCount} real row(s), mapped ${result.mappedCount}, kept ${result.keptAfterRecencyCount} within the last ${windowLabel}.`);
 
   if (!shouldWrite) {
-    console.log("\ndry run (pass --write to actually upsert) — nothing was written to Supabase.");
+    console.log(
+      `\n真正会写进库的：${result.dryRunWouldWriteCount ?? 0} 条` +
+        `（${result.dryRunExcludedCount ?? 0} 条被规则排除，${result.dryRunClosedCount ?? 0} 条交标已截止）。`,
+    );
+    const tiers = result.dryRunTierCounts ?? {};
+    const tierOrder = ["flagship", "significant", "standard"] as const;
+    const tierLabel: Record<string, string> = { flagship: "大型项目", significant: "中型项目", standard: "常规项目" };
+    const tierLine = tierOrder
+      .filter((t) => tiers[t])
+      .map((t) => `${tierLabel[t]} ${tiers[t]}`)
+      .join(" · ");
+    if (tierLine) console.log(`  档位：${tierLine}`);
+
+    const reasons = Object.entries(result.dryRunExcludedReasons ?? {}).sort((a, b) => b[1] - a[1]);
+    if (reasons.length > 0) {
+      console.log(`  排除原因：`);
+      for (const [reason, count] of reasons) console.log(`    ${String(count).padStart(5)}  ${reason.slice(0, 60)}…`);
+    }
+    // Said plainly because the number above is the one someone decides on.
+    console.log(
+      `\n（不含“此前被管理员手动删除”的那道检查 —— 它要查数据库，空跑看不到，` +
+        `所以实际写入只会等于或略少于这个数，不会更多。）`,
+    );
+    console.log("dry run (pass --write to actually upsert) — nothing was written to Supabase.");
     return;
   }
 

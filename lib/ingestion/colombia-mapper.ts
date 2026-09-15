@@ -447,12 +447,33 @@ export function isIngestedColombiaModalidad(modalidad: string | null | undefined
   return normalizeModalidad(modalidad).startsWith(INGESTED_MODALIDAD_PREFIX);
 }
 
-export function mapSecopRowToTender(row: SecopProcesoRow, sourceName: string): Tender | null {
+export type MapSecopRowOptions = {
+  /**
+   * Skips the modalidad gate below and maps the row anyway. ONLY for the
+   * read-only what-if diagnostic (`scripts/survey-colombia.ts`), which has
+   * to answer "how many tenders would widening the gate actually add" and
+   * cannot do that by re-implementing this mapper's own field handling —
+   * a second copy would drift and then quietly report numbers for rules
+   * that are not the ones in force.
+   *
+   * No ingestion path passes this. A row mapped with it set still goes
+   * through every other rule unchanged (relevance, value floor,
+   * direct-award), so what comes back is what WOULD be ingested if the
+   * gate were widened to that modalidad — not a bypass of the filtering.
+   */
+  ignoreModalidadGate?: boolean;
+};
+
+export function mapSecopRowToTender(
+  row: SecopProcesoRow,
+  sourceName: string,
+  options: MapSecopRowOptions = {},
+): Tender | null {
   // First gate, before anything else is parsed: a modalidad this platform
   // does not carry is not a tender we have any use for, whatever its value
   // or keywords say. The existing value/keyword rules (lib/relevance.ts)
   // still run afterwards, on what survives this.
-  if (!isIngestedColombiaModalidad(row.modalidad_de_contratacion)) return null;
+  if (!options.ignoreModalidadGate && !isIngestedColombiaModalidad(row.modalidad_de_contratacion)) return null;
 
   const rawName = stripProcessPhaseSuffix(row.nombre_del_procedimiento?.trim() ?? "");
   const buyer = row.entidad?.trim();

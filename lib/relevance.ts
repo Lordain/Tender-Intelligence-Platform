@@ -1900,8 +1900,27 @@ function extractAnchoredDurationDays(text: string): number | undefined {
 
 /** 长工期或长交期项目(360天以上) — a major-project signal on its own, independent of MAJOR_PROJECT_KEYWORDS/value. */
 const LONG_DURATION_DAYS = 360;
-/** 短工期或短交期项目(180天以下) — blacklisted per the user's explicit call, same extraction helper as the long-duration signal above. */
-const SHORT_DURATION_DAYS = 180;
+/**
+ * 短工期或短交期项目(150天以下) — blacklisted per the user's explicit call,
+ * same extraction helper as the long-duration signal above.
+ *
+ * Lowered 180 → 150 on 2026-09-15, after the first survey of what this rule
+ * actually rejects. It was excluding 87 of the 267 in-gate Colombia tenders
+ * in a 60-day window — four times what the value floor rejected — including a
+ * $2.9M departmental road improvement, because Colombia is the one country
+ * whose rows carry a real `duracion` field for this rule to read. Mexico and
+ * Peru mostly do not, and their title text almost never carries the phrase
+ * DURATION_ANCHOR scans for, so a rule meant to apply platform-wide was in
+ * practice a Colombia-only filter.
+ *
+ * Deliberately still VALUE-BLIND (user's explicit call, same day, offered the
+ * alternative and declined it: 可以调整成工期 < 150 天，但是不让位). A large
+ * disclosed value does NOT rescue a short-duration tender. The threshold
+ * moved; the rule's shape did not. A project a foreign bidder must mobilise
+ * for is a project with a real schedule, and that is true of a $3M one as
+ * much as a $300k one.
+ */
+const SHORT_DURATION_DAYS = 150;
 
 /**
  * Real gap found 2026-09-04: a bare "puente"/"puentes" mention in

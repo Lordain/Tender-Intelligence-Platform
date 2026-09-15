@@ -6,13 +6,30 @@ import { fetchSecopProcesos, fetchSecopProcesosByReference } from "@/lib/ingesti
 import { fetchSecopDocumentsForProcess, fetchSecopDocumentsSample, downloadSecopDocument, isPreAwardDocument } from "@/lib/ingestion/connectors/colombia-documents-connector";
 import { mapSecopRowToTender, extractNoticeUidFromUrl, type SecopProcesoRow } from "@/lib/ingestion/colombia-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
-import { filterRecentTenders } from "@/lib/ingestion/recency";
+import { filterRecentTenders, filterTendersPublishedWithinDays, isPastSubmissionDeadline } from "@/lib/ingestion/recency";
 import type { Tender } from "@/types/tender";
 
 const SOURCE_NAME = "SECOP II — Colombia Compra Eficiente";
 
 export type IngestColombiaOptions = {
   months: number;
+  /**
+   * Rolling window in days. Decides BOTH how far back the SECOP query
+   * reaches and what survives the recency filter — `months` is ignored when
+   * this is set. 0/undefined = use `months`.
+   *
+   * Same knob `ingest-peru.ts` already carries, and added here for the same
+   * reason (2026-09-15, user: 我只想拉最近5天): once a country's rules are
+   * settled, a re-import should bring in only what is genuinely new, because
+   * the expensive part of an import is not the fetch — it is a human reading
+   * several hundred fresh rows.
+   *
+   * Deliberately not expressed as a fraction of `months`: that arithmetic
+   * runs through setMonth(), which clamps day-of-month (31 March minus one
+   * month is 3 March, not 28 February), and a day count has no business
+   * inheriting that.
+   */
+  days?: number;
   maxPages: number;
   write: boolean;
   /** Also downloads pre-award bid documents for every tender actually written this run — see the "documents" fields below. Ignored when write is false (there'd be no tender_id to attach a document to). */
@@ -40,6 +57,21 @@ export type IngestColombiaResult = {
   /** How many candidates got a metadata match via the noticeUID parsed from their own sourceUrl vs. the older id_del_proceso fallback — see extractNoticeUidFromUrl's header comment (2026-09-04 finding). */
   documentsFoundViaNoticeUid?: number;
   documentsFoundViaIdDelProceso?: number;
+  /**
+   * Dry-run only (write: false). What a real run WOULD do, computed by
+   * applying upsertTendersBatched's own two gates — both pure functions over
+   * a Tender — rather than estimating from `keptAfterRecencyCount`, which
+   * counts rows that merely mapped. Excludes the manual-deletion tombstone
+   * check, which needs the database, so the real count is this or slightly
+   * lower, never higher.
+   */
+  dryRunWouldWriteCount?: number;
+  dryRunExcludedCount?: number;
+  dryRunClosedCount?: number;
+  /** Excluded rows grouped by the reason text, so a dry run says WHY, not just how many. */
+  dryRunExcludedReasons?: Record<string, number>;
+  /** The would-be-written rows by relevance tier. */
+  dryRunTierCounts?: Record<string, number>;
 };
 
 const DOCUMENTS_PAGE_SIZE = 500;
@@ -48,6 +80,29 @@ function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
   return chunks;
+}
+
+/**
+ * How far back this run reaches, and which recency filter the mapped rows
+ * then go through. Split out of `ingestColombia` purely so it can be tested
+ * without a network call — the failure it guards against is silent: a 5-day
+ * request that quietly fetches and writes two months of rows reads, in the
+ * output, exactly like a 5-day request that worked.
+ *
+ * `days` wins outright when set. The two are NOT reconciled: asking for 5
+ * days with 1 month used to be expressible and meant neither of them.
+ */
+export function resolveIngestWindow(
+  options: Pick<IngestColombiaOptions, "months" | "days">,
+  now: Date = new Date(),
+): { sinceDate: Date; useDays: boolean } {
+  const useDays = !!options.days && options.days > 0;
+  const sinceDate = new Date(now);
+  if (useDays) sinceDate.setDate(sinceDate.getDate() - options.days!);
+  // The 6-month fallback is for months <= 0 only — a caller that passed
+  // nothing meaningful, not a caller that asked for a narrow window.
+  else sinceDate.setMonth(sinceDate.getMonth() - (options.months > 0 ? options.months : 6));
+  return { sinceDate, useDays };
 }
 
 /**
@@ -71,8 +126,7 @@ function chunk<T>(items: T[], size: number): T[][] {
  * fetched for it.
  */
 export async function ingestColombia(supabase: SupabaseClient, options: IngestColombiaOptions): Promise<IngestColombiaResult> {
-  const sinceDate = new Date();
-  sinceDate.setMonth(sinceDate.getMonth() - (options.months > 0 ? options.months : 6));
+  const { sinceDate, useDays } = resolveIngestWindow(options);
 
   const rows = await fetchSecopProcesos({ sinceDate, maxPages: options.maxPages });
 
@@ -82,7 +136,15 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
     if (tender) mapped.push({ row, tender });
   }
 
-  const keptSlugs = new Set(filterRecentTenders(mapped.map((m) => m.tender), options.months).map((t) => t.slug));
+  // Same window on both sides. The server-side `$where` above already cut
+  // the fetch to it, so this is belt-and-braces rather than the real gate —
+  // but a row whose publication date is ESTIMATED passes every window
+  // (see recency.ts's known blind spot), and letting the two disagree is
+  // how a 5-day import quietly writes two months of rows.
+  const keptTenders = useDays
+    ? filterTendersPublishedWithinDays(mapped.map((m) => m.tender), options.days!)
+    : filterRecentTenders(mapped.map((m) => m.tender), options.months);
+  const keptSlugs = new Set(keptTenders.map((t) => t.slug));
   const kept = mapped.filter((m) => keptSlugs.has(m.tender.slug));
 
   const result: IngestColombiaResult = {
@@ -92,7 +154,39 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
     months: options.months,
   };
 
-  if (!options.write) return result;
+  // A dry run's whole job is "show me what a write would do before I do it",
+  // and it used to stop here — reporting `kept`, the count of rows that
+  // MAPPED. That number is roughly ten times the number that would actually
+  // be written, because both gates that reject a tender live inside
+  // upsertTendersBatched, past this early return. A real run of this on
+  // 2026-09-15 printed "kept 1222" for a window whose real write count was
+  // in the low hundreds; the dry run was answering a different question
+  // than the one it was being asked.
+  //
+  // Both gates are pure functions over a Tender, so the dry run can apply
+  // them exactly rather than estimating. The ONE thing it still cannot see
+  // is the manual-deletion tombstone check, which needs the database — so
+  // the real write count is this number or slightly lower, never higher,
+  // and the caller says so.
+  if (!options.write) {
+    const closed = kept.filter((m) => isPastSubmissionDeadline(m.tender));
+    const open = kept.filter((m) => !isPastSubmissionDeadline(m.tender));
+    const excluded = open.filter((m) => m.tender.relevance.tier === "excluded");
+    result.dryRunClosedCount = closed.length;
+    result.dryRunExcludedCount = excluded.length;
+    result.dryRunWouldWriteCount = open.length - excluded.length;
+    result.dryRunExcludedReasons = {};
+    for (const m of excluded) {
+      const reason = m.tender.relevance.reason.zh;
+      result.dryRunExcludedReasons[reason] = (result.dryRunExcludedReasons[reason] ?? 0) + 1;
+    }
+    result.dryRunTierCounts = {};
+    for (const m of open) {
+      if (m.tender.relevance.tier === "excluded") continue;
+      result.dryRunTierCounts[m.tender.relevance.tier] = (result.dryRunTierCounts[m.tender.relevance.tier] ?? 0) + 1;
+    }
+    return result;
+  }
 
   const { upsertedCount, skippedExcludedCount, protectedCount, skippedManuallyDeletedCount, failed } = await upsertTendersBatched(
     supabase,

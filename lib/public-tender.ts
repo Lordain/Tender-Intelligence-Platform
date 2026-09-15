@@ -1,4 +1,5 @@
 import type { PublicTenderDetail, Tender } from "@/types/tender";
+import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 
 /**
  * Convert a full tender to the public search landing-page contract.
@@ -13,7 +14,7 @@ export function toPublicTenderDetail(tender: Tender): PublicTenderDetail {
   const hasChineseSummary = tender.summary.zh.trim() && tender.summary.zh.trim() !== tender.summary.es.trim();
 
   return {
-    slug: tender.slug,
+    publicSlug: requirePublicTenderSlug(tender),
     // Imported rows temporarily mirror the source text into `zh` before the
     // translation job runs. Never mistake that placeholder for approved
     // public Chinese copy, because it would expose the protected original.

@@ -3,6 +3,7 @@ import { getCachedTenderList } from "@/lib/tenders";
 import { siteOrigin } from "@/lib/site-url";
 import { fetchTenderSitemapEntriesFromDb } from "@/lib/db/tenders";
 import { participationGuides } from "@/lib/participation-guides";
+import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 
 /**
  * What a crawler is allowed to know about.
@@ -47,14 +48,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const fromDb = await fetchTenderSitemapEntriesFromDb();
     const tenders = fromDb ?? (await getCachedTenderList()).map((tender) => ({
-      slug: tender.slug,
+      publicSlug: requirePublicTenderSlug(tender),
       updatedAt: tender.updatedAt,
     }));
 
     return [
       ...staticPages,
       ...tenders.map((tender) => ({
-        url: `${origin}/tenders/${tender.slug}`,
+        url: `${origin}/tenders/${tender.publicSlug}`,
         lastModified: new Date(tender.updatedAt),
         changeFrequency: "weekly" as const,
         priority: 0.7,

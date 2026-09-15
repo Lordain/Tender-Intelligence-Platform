@@ -14,6 +14,7 @@ import {
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { isObrasPorImpuestos, OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
+import { publicTenderPath } from "@/lib/public-tender-url";
 
 function preferredRequirement(items: Tender["qualifications"]) {
   return items.find((item) => item.mandatory) ?? items[0];
@@ -29,7 +30,7 @@ export function TenderCard({
   showOneLineSummary?: boolean;
 }) {
   const { locale } = useLocale();
-  const detailHref = `/tenders/${tender.slug}${showOneLineSummary ? "?from=homepage" : ""}`;
+  const detailHref = `${publicTenderPath(tender)}${showOneLineSummary ? "?from=homepage" : ""}`;
   // Only a real translation (Layer 2 AI, not the es/zh mirror untranslated()
   // produces) makes Chinese worth treating as the primary heading — until
   // then the Spanish original is all there is to show.

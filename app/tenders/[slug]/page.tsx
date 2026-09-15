@@ -2,13 +2,14 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
-import { getTenderBySlug } from "@/lib/tenders";
+import { getTenderByPublicSlug } from "@/lib/tenders";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerRole } from "@/lib/access-control-server";
 import { canViewTenderProtectedContent, tenderDetailPrompt } from "@/lib/access-control";
 import { isHomepageFreePreviewSlug } from "@/lib/homepage-selection";
 import { PublicTenderDetailView } from "@/components/tenders/PublicTenderDetailView";
 import { toPublicTenderDetail } from "@/lib/public-tender";
+import { publicTenderPath } from "@/lib/public-tender-url";
 
 // generateMetadata and the page itself both need these two answers, and
 // neither underlying function is request-cached — without this the detail
@@ -16,7 +17,7 @@ import { toPublicTenderDetail } from "@/lib/public-tender";
 // round-trips per view just to fill in a <title>. Wrapped here rather than at
 // the source because lib/tenders.ts is also reachable from plain tsx scripts,
 // where React's cache() has no request to scope itself to.
-const loadTender = cache(getTenderBySlug);
+const loadTender = cache(getTenderByPublicSlug);
 const loadIsFreePreview = cache(isHomepageFreePreviewSlug);
 
 /**
@@ -35,7 +36,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     ...pageMetadata({
       title: tender.title.zh,
       description: summary.length > 155 ? `${summary.slice(0, 154)}…` : summary,
-      path: `/tenders/${slug}`,
+      path: publicTenderPath(tender),
     }),
   };
 }
@@ -49,15 +50,16 @@ export default async function TenderDetailPage({
 }) {
   const { slug } = await params;
   const { from } = await searchParams;
-  const [tender, isHomepageFreePreview, viewerRole] = await Promise.all([
+  const [tender, viewerRole] = await Promise.all([
     loadTender(slug),
-    loadIsFreePreview(slug),
     getViewerRole(),
   ]);
 
   if (!tender) {
     notFound();
   }
+
+  const isHomepageFreePreview = await loadIsFreePreview(tender.slug);
 
   const enteredFromHomepage = from === "homepage";
   const mayViewProtectedContent = canViewTenderProtectedContent(

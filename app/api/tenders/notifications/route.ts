@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Locale, TenderScopeType, TenderStatus } from "@/types/tender";
 import { filterTenders, type TenderFilterOptions } from "@/lib/filter-tenders";
 import { getCachedTenderList } from "@/lib/tenders";
+import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 
 type SavedSearchInput = {
   id: string;
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
       .map((tender) => ({
         tender: {
           id: tender.id,
-          slug: tender.slug,
+          publicSlug: requirePublicTenderSlug(tender),
           title: tender.title,
           publicationDate: tender.publicationDate,
           createdAt: tender.createdAt,

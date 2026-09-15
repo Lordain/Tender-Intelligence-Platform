@@ -128,7 +128,7 @@ function TenderRow({ tender, showOriginalTitle }: { tender: TenderListItem; show
           )}
         </div>
         <h2 className="text-base font-black leading-6 text-black sm:text-lg">
-          <Link href={`/tenders/${tender.slug}`} data-public-tender-link className="after:absolute after:inset-0">
+          <Link href={`/tenders/${tender.publicSlug}`} data-public-tender-link className="after:absolute after:inset-0">
             {hasRealTranslation ? tender.title.zh : showOriginalTitle ? tender.title.es : `${tender.buyer}采购项目`}
           </Link>
         </h2>
@@ -182,7 +182,7 @@ function SavedTenderReminders({ savedIds }: { savedIds: string[] }) {
   return (
     <div className="mt-4 divide-y divide-[#e5e9eb]">
       {reminders.map((tender) => (
-        <Link key={tender.id} href={`/tenders/${tender.slug}`} className="block py-3 first:pt-0 last:pb-0">
+        <Link key={tender.id} href={`/tenders/${tender.publicSlug}`} className="block py-3 first:pt-0 last:pb-0">
           <span className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#64717c]"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
           <p className="line-clamp-2 text-sm font-bold leading-5 text-[#172c3b]">{tender.title.zh || tender.title.es}</p>
           <p className="mt-1.5 text-xs font-semibold text-[#b86e00]">{formatDate(tender.submissionDeadline!, locale)}</p>

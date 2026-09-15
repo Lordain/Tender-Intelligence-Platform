@@ -65,7 +65,7 @@ function ProtectedContentPrompt({ kind, nextPath }: { kind: AccessPromptKind; ne
 /** Search-indexable landing view. Receives only the public field allow-list. */
 export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicTenderDetail; promptKind: AccessPromptKind }) {
   const { locale } = useLocale();
-  const nextPath = `/tenders/${tender.slug}`;
+  const nextPath = `/tenders/${tender.publicSlug}`;
   const fieldCount = 8 + (tender.participationScope ? 1 : 0);
   const desktopGrid = fieldCount % 4 === 0 ? "xl:grid-cols-4" : "xl:grid-cols-3";
 

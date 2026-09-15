@@ -38,7 +38,7 @@ lib/
   industry.ts   行业分类枚举 + 关键词分类逻辑
   tender-labels.ts  各种枚举值的中/英/西文标签映射（写 UI 下拉框时先看这里有没有现成的）
 scripts/        用 tsx 直接运行的 CLI 脚本（数据抓取、翻译、重新分类、迁移等）
-supabase/migrations/  按编号递增的 SQL 迁移文件（0001_init.sql, 0002_..., 目前到 0047）
+supabase/migrations/  按编号递增的 SQL 迁移文件（0001_init.sql, 0002_..., 目前到 0050）
 types/tender.ts 全项目最核心的类型定义，改之前务必搜索所有引用
 ```
 

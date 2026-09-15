@@ -2,6 +2,7 @@ import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from 
 import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { ALL_SCOPE_TYPES } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders } from "@/lib/filter-tenders";
+import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 
 export const TENDER_PAGE_SIZE = 20;
 export const LOCKED_TENDER_PAGE_SIZE = 10;
@@ -62,7 +63,6 @@ export type TenderListSearchParams = Record<string, string | string[] | undefine
 export type TenderListItem = Pick<
   Tender,
   | "id"
-  | "slug"
   | "title"
   | "buyer"
   | "country"
@@ -76,7 +76,7 @@ export type TenderListItem = Pick<
   // ordinary tender that finding out only after opening the detail page
   // wastes the click.
   | "sourceName"
->;
+> & { publicSlug: string };
 
 export type TenderListPageData = {
   tenders: TenderListItem[];
@@ -134,7 +134,7 @@ export type TenderListPageData = {
 export function toTenderListItem(tender: Tender): TenderListItem {
   return {
     id: tender.id,
-    slug: tender.slug,
+    publicSlug: requirePublicTenderSlug(tender),
     title: tender.title,
     buyer: tender.buyer,
     country: tender.country,

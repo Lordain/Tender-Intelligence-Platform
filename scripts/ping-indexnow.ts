@@ -30,7 +30,7 @@ import { participationGuides } from "../lib/participation-guides";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = {
-  slug: string;
+  public_slug: string;
   publication_date: string | null;
   updated_at: string | null;
 };
@@ -57,7 +57,7 @@ async function readAllTenders(supabase: SupabaseClient): Promise<Row[]> {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, publication_date, updated_at")
+      .select("public_slug, publication_date, updated_at")
       .order("publication_date", { ascending: false })
       .range(from, from + PAGE_SIZE - 1)
       .returns<Row[]>();
@@ -133,7 +133,7 @@ async function main() {
 
   const urls = [
     ...(all ? STATIC_PATHS.map((path) => `${origin}${path === "/" ? "" : path}` || origin) : []),
-    ...tenders.map((row) => `${origin}/tenders/${row.slug}`),
+    ...tenders.map((row) => `${origin}/tenders/${row.public_slug}`),
   ];
 
   console.log(`站点：${origin}`);

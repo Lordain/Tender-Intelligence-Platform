@@ -1,9 +1,12 @@
 import { toPublicTenderDetail } from "../lib/public-tender";
+import { toTenderListItem } from "../lib/tender-list-page";
+import { publicTenderPath } from "../lib/public-tender-url";
 import type { Tender } from "../types/tender";
 
 const fullTender = {
   id: "SECRET_INTERNAL_ID",
-  slug: "public-slug",
+  slug: "SECRET_SOURCE_DERIVED_SLUG",
+  publicSlug: "p-7a3c91e4b6d82f05",
   tenderNumber: "SECRET_TENDER_CODE",
   title: { zh: "中文标题", es: "SECRET_ORIGINAL_TITLE", en: "English title" },
   summary: { zh: "中文摘要", es: "Resumen", en: "Summary" },
@@ -38,6 +41,7 @@ const serialized = JSON.stringify(publicTender);
 
 const protectedMarkers = [
   "SECRET_INTERNAL_ID",
+  "SECRET_SOURCE_DERIVED_SLUG",
   "SECRET_TENDER_CODE",
   "SECRET_ORIGINAL_TITLE",
   "SECRET_ONE_LINE_SUMMARY",
@@ -58,4 +62,16 @@ if (publicTender.titleZh !== "中文标题" || publicTender.summaryZh !== "中�
   throw new Error("公开项目数据缺少中文标题或中文摘要");
 }
 
-console.log("OK  public tender projection contains only the approved field allow-list");
+if (publicTender.publicSlug !== "p-7a3c91e4b6d82f05") {
+  throw new Error("公开项目数据缺少不可反推的公开网址标识");
+}
+
+const publicListItem = toTenderListItem(fullTender);
+if (JSON.stringify(publicListItem).includes("SECRET_SOURCE_DERIVED_SLUG")) {
+  throw new Error("公开项目列表泄露了内部 slug");
+}
+if (publicTenderPath(fullTender) !== "/tenders/p-7a3c91e4b6d82f05") {
+  throw new Error("公开项目链接没有使用不可反推的公开网址标识");
+}
+
+console.log("OK  public tender detail, list and URL expose no source-derived identifier");

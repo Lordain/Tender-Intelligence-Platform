@@ -16,6 +16,7 @@ import {
   industryLabel,
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
+import { publicTenderPath } from "@/lib/public-tender-url";
 
 function Field({ label, value, emphasized = false, note }: { label: string; value: string; emphasized?: boolean; note?: string | null }) {
   return (
@@ -64,7 +65,7 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {showTrialCta && (
-            <Link href={`/register?next=${encodeURIComponent(`/tenders/${tender.slug}`)}`} className="inline-flex h-10 items-center rounded-xl bg-[#ffb21c] px-4 text-xs font-black text-[#071826] hover:bg-[#ffc247]">
+            <Link href={`/register?next=${encodeURIComponent(publicTenderPath(tender))}`} className="inline-flex h-10 items-center rounded-xl bg-[#ffb21c] px-4 text-xs font-black text-[#071826] hover:bg-[#ffc247]">
               注册即可免费试用{TRIAL_DAYS}天
             </Link>
           )}

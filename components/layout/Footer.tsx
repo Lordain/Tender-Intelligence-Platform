@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/layout/BrandLogo";
-import { SUPPORT_EMAIL } from "@/lib/support";
+import { SUPPORT_EMAIL, SUPPORT_WECHAT } from "@/lib/support";
 
 const columns = [
   { title: "产品", links: [["招标项目", "/tenders"], ["我的收藏", "/saved"], ["订阅服务", "/pricing"]] },
@@ -29,6 +29,11 @@ export function Footer() {
           <a href={`mailto:${SUPPORT_EMAIL}`} className="mt-4 block text-sm text-white/58 transition-colors hover:text-white">
             {SUPPORT_EMAIL}
           </a>
+          {SUPPORT_WECHAT && (
+            <p className="mt-3 text-sm text-white/58">
+              微信 <span className="select-all font-mono tracking-wide text-white/85">{SUPPORT_WECHAT}</span>
+            </p>
+          )}
         </div>
       </div>
       <div className="border-t border-white/10">

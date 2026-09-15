@@ -79,6 +79,7 @@
     "inspect:dof-notice": "tsx --env-file-if-exists=.env.local scripts/inspect-dof-notice.ts",
     "test:account-devices": "tsx scripts/test-account-devices.ts",
     "report:account-sharing": "tsx --env-file-if-exists=.env.local scripts/report-account-sharing.ts",
+    "find:chinese-bidders": "tsx --env-file-if-exists=.env.local scripts/find-chinese-bidders.ts",
     "test:admin-form-merge": "tsx scripts/test-admin-form-merge.ts",
     "backfill:mx-deadlines": "tsx --env-file-if-exists=.env.local scripts/backfill-mexico-deadlines.ts",
     "test:canonical-urls": "tsx scripts/test-canonical-urls.ts",

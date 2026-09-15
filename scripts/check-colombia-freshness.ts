@@ -65,6 +65,8 @@ async function main() {
   const wouldBeWritten = new Map<string, number>();
   const excluded: Tender[] = [];
   const keptBySlug = new Map<string, Tender>();
+  /** Source rows that were a later phase of a procurement already counted — see the comment at the bump below. */
+  let phaseDuplicateRows = 0;
 
   for (const row of rows) {
     const day = dayOf(row.fecha_de_publicacion_del);
@@ -74,7 +76,22 @@ async function main() {
     const tender = mapSecopRowToTender(row, SOURCE_NAME);
     if (!tender) continue;
     if (tender.relevance.tier !== "excluded") {
-      bump(wouldBeWritten, day);
+      // Counted ONCE per slug, not once per row. SECOP II publishes the same
+      // procurement several times as it moves through its phases — the
+      // reference picks up a suffix ("JBB-LP-004-2026 (Presentación de
+      // oferta)") that colombia-mapper.ts strips, so several source rows,
+      // often on DIFFERENT days, collapse to one tender.
+      //
+      // Counting rows here made this column structurally incomparable with
+      // 「已在库里」, which counts stored rows and therefore counts each
+      // procurement once. A real run (2026-09-15, 7-day window) printed 27
+      // against 0 for a single day and read as "27 tenders went missing";
+      // the real figure was 35 rows collapsing to 13 procurements, 8 of them
+      // already stored under the earlier publication date one of their own
+      // phase rows carried. Nothing was missing. Two columns that cannot be
+      // subtracted from each other must not be printed side by side.
+      if (!keptBySlug.has(tender.slug)) bump(wouldBeWritten, day);
+      else phaseDuplicateRows += 1;
       keptBySlug.set(tender.slug, tender);
     } else {
       excluded.push(tender);
@@ -136,6 +153,12 @@ async function main() {
   if (totalPassed > 0) {
     console.log(`\n分级规则留下 ${totalKept} / ${totalPassed} 条（${((totalKept / totalPassed) * 100).toFixed(1)}%），其余 ${totalPassed - totalKept} 条被排除。`);
   }
+  if (phaseDuplicateRows > 0) {
+    console.log(
+      `另有 ${phaseDuplicateRows} 行是同一标书的后续阶段（编号带 “(Presentación de oferta)” 之类的后缀，` +
+        `mapper 会剥掉），已并入上面对应的那一条，没有重复计数。`,
+    );
+  }
 
   const newestAtSource = allDays.find((d) => (fetched.get(d) ?? 0) > 0);
   const newestInDb = allDays.find((d) => (inSupabase.get(d) ?? 0) > 0);
@@ -194,6 +217,22 @@ async function main() {
     const neverImported = missing.filter((t) => !blocked.has(t.slug));
     const wasDeleted = missing.filter((t) => blocked.has(t.slug));
 
+    // The reconciliation, stated as arithmetic, because the per-day columns
+    // still cannot be subtracted even after the phase-row dedup above: a
+    // procurement is attributed here to the day of the first source row seen
+    // for it (rows arrive publication-date DESC, so the latest), while the
+    // stored row carries whichever date the import that wrote it used. Same
+    // procurement, two different days, one in each column. Only these totals
+    // line up, so these are the numbers to read.
+    console.log(
+      `\n对账：源头这个窗口里有 ${keptBySlug.size} 个不同标书是规则要留的，` +
+        `其中 ${keptBySlug.size - missing.length} 个已经在库里，${missing.length} 个不在。`,
+    );
+    console.log(
+      `（上面那张表按天分，同一标书可能在表里算在某一天、在库里存着另一天，` +
+        `所以第 3 列和第 4 列逐天相减没有意义 —— 看这一行的总数。）`,
+    );
+
     console.log(`\n规则要留、库里没有：${missing.length} 条。分成两种：`);
 
     console.log(`\n  A. 从没写过库：${neverImported.length} 条 —— 重新导入这段时间就能拿回来。`);
@@ -233,7 +272,7 @@ async function main() {
   console.log(
     "\n怎么读这张表：「源头有」和「通过采购方式闸门」差很多 = 大部分是我们本来就不要的采购方式；" +
       "\n「通过闸门」和「规则判定值得写」差很多 = 分级规则筛掉的（值得导出来看一眼是不是漏了关键词）；" +
-      "\n「规则判定值得写」有数但「已在库里」是 0 = 单纯没导入，去后台点一下。",
+      "\n「规则判定值得写」有数但「已在库里」是 0 = 不要直接下结论，看上面「对账」那一行 —— 同一标书在两列里可能落在不同的天。",
   );
 }
 

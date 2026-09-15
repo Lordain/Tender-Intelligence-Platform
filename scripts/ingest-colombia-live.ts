@@ -50,7 +50,30 @@ async function main() {
   console.log(`Fetched ${result.fetchedCount} real row(s), mapped ${result.mappedCount}, kept ${result.keptAfterRecencyCount} within the last ${windowLabel}.`);
 
   if (!shouldWrite) {
-    console.log("\ndry run (pass --write to actually upsert) — nothing was written to Supabase.");
+    console.log(
+      `\n真正会写进库的：${result.dryRunWouldWriteCount ?? 0} 条` +
+        `（${result.dryRunExcludedCount ?? 0} 条被规则排除，${result.dryRunClosedCount ?? 0} 条交标已截止）。`,
+    );
+    const tiers = result.dryRunTierCounts ?? {};
+    const tierOrder = ["flagship", "significant", "standard"] as const;
+    const tierLabel: Record<string, string> = { flagship: "大型项目", significant: "中型项目", standard: "常规项目" };
+    const tierLine = tierOrder
+      .filter((t) => tiers[t])
+      .map((t) => `${tierLabel[t]} ${tiers[t]}`)
+      .join(" · ");
+    if (tierLine) console.log(`  档位：${tierLine}`);
+
+    const reasons = Object.entries(result.dryRunExcludedReasons ?? {}).sort((a, b) => b[1] - a[1]);
+    if (reasons.length > 0) {
+      console.log(`  排除原因：`);
+      for (const [reason, count] of reasons) console.log(`    ${String(count).padStart(5)}  ${reason.slice(0, 60)}…`);
+    }
+    // Said plainly because the number above is the one someone decides on.
+    console.log(
+      `\n（不含“此前被管理员手动删除”的那道检查 —— 它要查数据库，空跑看不到，` +
+        `所以实际写入只会等于或略少于这个数，不会更多。）`,
+    );
+    console.log("dry run (pass --write to actually upsert) — nothing was written to Supabase.");
     return;
   }
 

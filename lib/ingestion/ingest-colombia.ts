@@ -6,7 +6,7 @@ import { fetchSecopProcesos, fetchSecopProcesosByReference } from "@/lib/ingesti
 import { fetchSecopDocumentsForProcess, fetchSecopDocumentsSample, downloadSecopDocument, isPreAwardDocument } from "@/lib/ingestion/connectors/colombia-documents-connector";
 import { mapSecopRowToTender, extractNoticeUidFromUrl, type SecopProcesoRow } from "@/lib/ingestion/colombia-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
-import { filterRecentTenders, filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
+import { filterRecentTenders, filterTendersPublishedWithinDays, isPastSubmissionDeadline } from "@/lib/ingestion/recency";
 import type { Tender } from "@/types/tender";
 
 const SOURCE_NAME = "SECOP II — Colombia Compra Eficiente";
@@ -57,6 +57,21 @@ export type IngestColombiaResult = {
   /** How many candidates got a metadata match via the noticeUID parsed from their own sourceUrl vs. the older id_del_proceso fallback — see extractNoticeUidFromUrl's header comment (2026-09-04 finding). */
   documentsFoundViaNoticeUid?: number;
   documentsFoundViaIdDelProceso?: number;
+  /**
+   * Dry-run only (write: false). What a real run WOULD do, computed by
+   * applying upsertTendersBatched's own two gates — both pure functions over
+   * a Tender — rather than estimating from `keptAfterRecencyCount`, which
+   * counts rows that merely mapped. Excludes the manual-deletion tombstone
+   * check, which needs the database, so the real count is this or slightly
+   * lower, never higher.
+   */
+  dryRunWouldWriteCount?: number;
+  dryRunExcludedCount?: number;
+  dryRunClosedCount?: number;
+  /** Excluded rows grouped by the reason text, so a dry run says WHY, not just how many. */
+  dryRunExcludedReasons?: Record<string, number>;
+  /** The would-be-written rows by relevance tier. */
+  dryRunTierCounts?: Record<string, number>;
 };
 
 const DOCUMENTS_PAGE_SIZE = 500;
@@ -139,7 +154,39 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
     months: options.months,
   };
 
-  if (!options.write) return result;
+  // A dry run's whole job is "show me what a write would do before I do it",
+  // and it used to stop here — reporting `kept`, the count of rows that
+  // MAPPED. That number is roughly ten times the number that would actually
+  // be written, because both gates that reject a tender live inside
+  // upsertTendersBatched, past this early return. A real run of this on
+  // 2026-09-15 printed "kept 1222" for a window whose real write count was
+  // in the low hundreds; the dry run was answering a different question
+  // than the one it was being asked.
+  //
+  // Both gates are pure functions over a Tender, so the dry run can apply
+  // them exactly rather than estimating. The ONE thing it still cannot see
+  // is the manual-deletion tombstone check, which needs the database — so
+  // the real write count is this number or slightly lower, never higher,
+  // and the caller says so.
+  if (!options.write) {
+    const closed = kept.filter((m) => isPastSubmissionDeadline(m.tender));
+    const open = kept.filter((m) => !isPastSubmissionDeadline(m.tender));
+    const excluded = open.filter((m) => m.tender.relevance.tier === "excluded");
+    result.dryRunClosedCount = closed.length;
+    result.dryRunExcludedCount = excluded.length;
+    result.dryRunWouldWriteCount = open.length - excluded.length;
+    result.dryRunExcludedReasons = {};
+    for (const m of excluded) {
+      const reason = m.tender.relevance.reason.zh;
+      result.dryRunExcludedReasons[reason] = (result.dryRunExcludedReasons[reason] ?? 0) + 1;
+    }
+    result.dryRunTierCounts = {};
+    for (const m of open) {
+      if (m.tender.relevance.tier === "excluded") continue;
+      result.dryRunTierCounts[m.tender.relevance.tier] = (result.dryRunTierCounts[m.tender.relevance.tier] ?? 0) + 1;
+    }
+    return result;
+  }
 
   const { upsertedCount, skippedExcludedCount, protectedCount, skippedManuallyDeletedCount, failed } = await upsertTendersBatched(
     supabase,

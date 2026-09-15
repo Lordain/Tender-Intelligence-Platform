@@ -94,6 +94,37 @@ async function fetchRows(sinceDate: Date): Promise<{ rows: SecopProcesoRow[]; tr
   return { rows, truncated: true };
 }
 
+/**
+ * The TRUE modalidad histogram for the window, from one server-side
+ * aggregate — not from counting the rows this script managed to page in.
+ *
+ * This exists because the paged count was wrong and looked right. A 60-day
+ * `--all-modalidades` run hits the page cap at 60,000 rows, and since the
+ * order is publication-date DESC those 60,000 are the most RECENT slice of
+ * the window, not a sample of it. The first real run counted 267 Licitación
+ * Pública rows that way; the actual 60-day figure is about 1,222, because
+ * the slice covered roughly the last two weeks. Every absolute number
+ * downstream inherited that factor, and nothing in the output said so
+ * beyond a generic "truncated" warning.
+ *
+ * $group is answered by Socrata over the whole window in one request, so
+ * this is both exact and cheaper than the paging it replaces.
+ */
+async function fetchModalidadHistogram(sinceDate: Date): Promise<Map<string, number> | null> {
+  const url = new URL(ENDPOINT);
+  url.searchParams.set("$select", "modalidad_de_contratacion, count(1) as n");
+  url.searchParams.set("$where", `fecha_de_publicacion_del >= '${soqlTimestamp(sinceDate)}'`);
+  url.searchParams.set("$group", "modalidad_de_contratacion");
+  url.searchParams.set("$limit", "500");
+
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!response.ok) return null; // Not fatal — the paged histogram below still prints, just labelled as a sample.
+  const rows = (await response.json()) as { modalidad_de_contratacion?: string; n?: string }[];
+  const histogram = new Map<string, number>();
+  for (const row of rows) histogram.set(row.modalidad_de_contratacion?.trim() || "(空)", Number(row.n ?? 0));
+  return histogram;
+}
+
 function normalizeModalidad(value: string | undefined): string {
   return value?.trim() || "(空)";
 }
@@ -183,25 +214,41 @@ async function main() {
       `，${ALL_MODALIDADES ? "不加 modalidad 门槛（what-if）" : "当前 modalidad 门槛（%icitaci%）"}\n`,
   );
 
+  const trueHistogram = await fetchModalidadHistogram(since);
   const { rows, truncated } = await fetchRows(since);
-  if (truncated) {
+  console.log(`本次拉到 ${rows.length} 行。\n`);
+
+  // 1. What the source actually holds, before any of our rules — from the
+  //    server-side aggregate, so it is the whole window whatever the page
+  //    cap did to the rows we hold in memory.
+  if (trueHistogram) {
+    const trueTotal = [...trueHistogram.values()].reduce((a, b) => a + b, 0);
+    printCounts(`【1】源头 modalidad 分布（整个窗口的真实全量，服务端聚合）`, trueHistogram, trueTotal);
+
+    const gateTrue = [...trueHistogram.entries()]
+      .filter(([modalidad]) => isIngestedColombiaModalidad(modalidad))
+      .reduce((sum, [, count]) => sum + count, 0);
     console.log(
-      `\n⚠️  拉到 ${MAX_PAGES} 页上限就停了，下面的数字是“至少这么多”，不是全量。` +
-        `加 --max-pages=<更大的数> 重跑才能看到完整分布。\n`,
+      `\n  窗口内共 ${trueTotal.toLocaleString()} 行。当前门槛只收 “Licitación pública / Licitación pública Obra Pública”：` +
+        `${gateTrue.toLocaleString()} 行通过（${((gateTrue / Math.max(1, trueTotal)) * 100).toFixed(2)}%）。`,
     );
+
+    if (truncated) {
+      const coverage = (rows.length / Math.max(1, trueTotal)) * 100;
+      console.log(
+        `\n⚠️  下面【2】之后的每一个数字，都是在这 ${rows.length.toLocaleString()} 行上算的，` +
+          `而窗口真实有 ${trueTotal.toLocaleString()} 行 —— 只覆盖了 ${coverage.toFixed(1)}%。\n` +
+          `   而且不是随机抽样：排序是发布日期倒序，所以这是窗口里最近的一小截。\n` +
+          `   要看真实全量，加 --max-pages=${Math.ceil(trueTotal / PAGE_SIZE)} 重跑（会慢很多）。\n` +
+          `   【1】不受影响 —— 它走的是服务端聚合。`,
+      );
+    }
+  } else {
+    // Aggregate refused; fall back to counting what we paged, and say so.
+    const byModalidad = new Map<string, number>();
+    for (const row of rows) bump(byModalidad, normalizeModalidad(row.modalidad_de_contratacion));
+    printCounts(`【1】源头 modalidad 分布（⚠️ 服务端聚合失败，这是本次拉到的 ${rows.length} 行的分布，不是全量）`, byModalidad, rows.length);
   }
-  console.log(`源头共 ${rows.length} 行。\n`);
-
-  // 1. What the source actually holds, before any of our rules.
-  const byModalidad = new Map<string, number>();
-  for (const row of rows) bump(byModalidad, normalizeModalidad(row.modalidad_de_contratacion));
-  printCounts(`【1】源头 modalidad 分布（这是哥伦比亚政府实际在发什么）`, byModalidad, rows.length);
-
-  const gatePassed = rows.filter((r) => isIngestedColombiaModalidad(r.modalidad_de_contratacion));
-  console.log(
-    `\n  当前门槛只收 “Licitación pública / Licitación pública Obra Pública”：` +
-      `${gatePassed.length} / ${rows.length} 行通过（${((gatePassed.length / Math.max(1, rows.length)) * 100).toFixed(1)}%）。`,
-  );
 
   // 2. Run the REAL pipeline over every row — gate ignored — so the tier
   //    breakdown per modalidad says what widening the gate would actually

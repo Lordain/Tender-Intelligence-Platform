@@ -40,7 +40,10 @@ function check(label: string, condition: boolean, detail?: string) {
 /** A live tender that entered the database at `createdAt`. */
 function tender(slug: string, createdAt: string): Tender {
   return {
+    id: slug,
     slug,
+    publicSlug: slug,
+    tenderNumber: slug,
     title: { zh: slug, es: slug },
     summary: { zh: "", es: "" },
     industries: ["construction"],

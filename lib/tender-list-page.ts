@@ -40,6 +40,13 @@ const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"
 const RECENTLY_ADDED_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * The 招标概览 deadline card is intentionally a short action window, not a
+ * count of every tender with any future deadline. Five rolling days keeps the
+ * number useful throughout the day and matches the list opened by the card.
+ */
+export const UPCOMING_DEADLINE_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
+
+/**
  * Countries the public list offers as a filter — and, because an absent
  * country param means "all of these", the countries the default feed shows
  * AT ALL. A country missing from this list is invisible on /tenders no matter
@@ -216,14 +223,19 @@ export function buildTenderListPage(
     return Number.isFinite(added) && nowMs - added < RECENTLY_ADDED_WINDOW_MS && added <= nowMs;
   };
   const newTodayCount = filtered.filter(isRecentlyAdded).length;
-  const upcomingCount = filtered.filter(
-    (tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= nowMs,
-  ).length;
+  const isUpcomingDeadline = (tender: Tender) => {
+    if (!LIVE_TENDER_STATUSES.includes(tender.status) || !tender.submissionDeadline) return false;
+    const deadline = new Date(tender.submissionDeadline).getTime();
+    return Number.isFinite(deadline)
+      && deadline >= nowMs
+      && deadline <= nowMs + UPCOMING_DEADLINE_WINDOW_MS;
+  };
+  const upcomingCount = filtered.filter(isUpcomingDeadline).length;
 
   const viewed = view === "new"
     ? filtered.filter(isRecentlyAdded)
     : view === "deadline"
-      ? filtered.filter((tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= nowMs)
+      ? filtered.filter(isUpcomingDeadline)
       : filtered;
   const sorted = sortTenders(viewed, sort, nowMs);
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));

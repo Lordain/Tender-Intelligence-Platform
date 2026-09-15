@@ -548,7 +548,7 @@ export function TenderExplorer({
                 onClick={() => updateParams({ view: view === "deadline" ? null : "deadline", sort: view === "deadline" ? null : "deadline_asc" })}
                 className={`rounded-lg px-1 py-1.5 transition-colors ${view === "deadline" ? "bg-white/15" : "hover:bg-white/10"}`}
               >
-                <p className="text-[11px] font-medium text-white/58">即将交标</p>
+                <p className="text-[11px] font-medium text-white/58">5天内交标</p>
                 <p className="mt-1.5 text-[1.65rem] font-black leading-none text-[#ffb21c]">{upcomingCount}</p>
               </button>
             </div>

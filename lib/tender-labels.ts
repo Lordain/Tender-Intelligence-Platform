@@ -29,10 +29,22 @@ export const COUNTRY_LABELS: Record<(typeof ALL_COUNTRIES)[number], LocalizedTex
   Peru: { en: "Peru", es: "Perú", zh: "秘鲁" },
 };
 
+export const COUNTRY_FLAGS: Record<(typeof ALL_COUNTRIES)[number], string> = {
+  Mexico: "🇲🇽",
+  Brazil: "🇧🇷",
+  Chile: "🇨🇱",
+  Colombia: "🇨🇴",
+  Peru: "🇵🇪",
+};
+
 /** tender.country is typed as string (matches the Postgres text column), not narrowed to ALL_COUNTRIES — every real mapper writes a known value, but this stays defensive (falls back to the raw string) against any stale/unrecognized value rather than crashing on an unknown lookup, same posture as industryLabel(). */
 export function countryLabel(country: string, locale: Locale): string {
   const label = COUNTRY_LABELS[country as (typeof ALL_COUNTRIES)[number]];
   return label ? label[locale] : country;
+}
+
+export function countryFlag(country: string): string {
+  return COUNTRY_FLAGS[country as (typeof ALL_COUNTRIES)[number]] ?? "🌎";
 }
 
 export const INDUSTRY_LABELS: Record<IndustryKey, LocalizedText> = {

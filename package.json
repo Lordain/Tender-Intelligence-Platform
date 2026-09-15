@@ -69,6 +69,7 @@
     "test:ingestion-dates": "tsx scripts/test-ingestion-dates.ts",
     "test:supplier-matching": "tsx scripts/test-supplier-matching.ts",
     "test:recently-added": "tsx scripts/test-recently-added.ts",
+    "test:upcoming-deadlines": "tsx scripts/test-upcoming-deadlines.ts",
     "test:upsert-protection": "tsx scripts/test-upsert-protection.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",

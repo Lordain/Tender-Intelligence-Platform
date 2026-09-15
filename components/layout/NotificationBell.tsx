@@ -74,7 +74,7 @@ export function NotificationBell() {
               {items.map((item) => (
                 <li key={`${item.searchId}-${item.tender.id}`}>
                   <Link
-                    href={`/tenders/${item.tender.slug}`}
+                    href={`/tenders/${item.tender.publicSlug}`}
                     onClick={() => setOpen(false)}
                     className="block px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800"
                   >

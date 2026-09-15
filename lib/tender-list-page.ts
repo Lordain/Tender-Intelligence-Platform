@@ -2,9 +2,9 @@ import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from 
 import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { ALL_SCOPE_TYPES } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders } from "@/lib/filter-tenders";
+import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 
 export const TENDER_PAGE_SIZE = 20;
-export const LOCKED_TENDER_PAGE_SIZE = 10;
 export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "awarded"];
 
 /**
@@ -40,6 +40,13 @@ const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"
 const RECENTLY_ADDED_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * The 招标概览 deadline card is intentionally a short action window, not a
+ * count of every tender with any future deadline. Five rolling days keeps the
+ * number useful throughout the day and matches the list opened by the card.
+ */
+export const UPCOMING_DEADLINE_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
+
+/**
  * Countries the public list offers as a filter — and, because an absent
  * country param means "all of these", the countries the default feed shows
  * AT ALL. A country missing from this list is invisible on /tenders no matter
@@ -58,13 +65,15 @@ export const AVAILABLE_COUNTRIES = ["Mexico", "Colombia", "Peru"] as const;
 
 export type TenderListSearchParams = Record<string, string | string[] | undefined>;
 
-/** Only fields rendered by a list card/reminder; full tender detail never crosses this page boundary. */
+/**
+ * Only fields rendered by a list card/reminder; full tender detail never
+ * crosses this page boundary. In particular, the original-language title is
+ * deliberately replaced by one safe Chinese display string before the data
+ * reaches the browser.
+ */
 export type TenderListItem = Pick<
   Tender,
   | "id"
-  | "slug"
-  | "title"
-  | "buyer"
   | "country"
   | "industries"
   | "status"
@@ -76,7 +85,7 @@ export type TenderListItem = Pick<
   // ordinary tender that finding out only after opening the detail page
   // wastes the click.
   | "sourceName"
->;
+> & { publicSlug: string; titleZh: string; buyer?: string };
 
 export type TenderListPageData = {
   tenders: TenderListItem[];
@@ -131,12 +140,22 @@ export type TenderListPageData = {
   upcomingCount: number;
 };
 
-export function toTenderListItem(tender: Tender): TenderListItem {
+export function toTenderListItem(
+  tender: Tender,
+  options: { includeBuyer?: boolean } = {},
+): TenderListItem {
+  const translatedTitle = tender.title.zh.trim();
+  const originalTitle = tender.title.es.trim();
+
   return {
     id: tender.id,
-    slug: tender.slug,
-    title: tender.title,
-    buyer: tender.buyer,
+    publicSlug: requirePublicTenderSlug(tender),
+    // Some unreviewed rows temporarily copy the source title into `zh`.
+    // Treat those as untranslated rather than leaking the original title.
+    titleZh: translatedTitle && translatedTitle !== originalTitle
+      ? translatedTitle
+      : options.includeBuyer ? `${tender.buyer}采购项目` : "政府采购项目",
+    ...(options.includeBuyer ? { buyer: tender.buyer } : {}),
     country: tender.country,
     industries: tender.industries,
     status: tender.status,
@@ -158,13 +177,14 @@ function parseList(value: string | null): string[] {
 /**
  * Applies the public list's search, facets, views, sorting and pagination on
  * the server. The underlying shared list stays cached for five minutes, but
- * only the role-appropriate page (20 rows for members, 10 for locked
- * visitor/free previews) is serialized into the browser's React payload.
+ * only the current 20-row page is serialized into the browser's React
+ * payload. Discovery is public; protected analysis stays behind the detail
+ * page entitlement boundary.
  */
 export function buildTenderListPage(
   allTenders: Tender[],
   params: TenderListSearchParams,
-  options: { now?: Date; pageSize?: number } = {},
+  options: { now?: Date; pageSize?: number; includeBuyer?: boolean; searchPublicFieldsOnly?: boolean } = {},
 ): TenderListPageData {
   const now = options.now ?? new Date();
   const pageSize = options.pageSize ?? TENDER_PAGE_SIZE;
@@ -189,7 +209,7 @@ export function buildTenderListPage(
 
   const filtered = filterTenders(
     allTenders,
-    { query, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers },
+    { query, searchPublicFieldsOnly: options.searchPublicFieldsOnly, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers },
     "zh",
   );
   const presentIndustries = new Set(allTenders.flatMap((tender) => tender.industries));
@@ -203,14 +223,19 @@ export function buildTenderListPage(
     return Number.isFinite(added) && nowMs - added < RECENTLY_ADDED_WINDOW_MS && added <= nowMs;
   };
   const newTodayCount = filtered.filter(isRecentlyAdded).length;
-  const upcomingCount = filtered.filter(
-    (tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= nowMs,
-  ).length;
+  const isUpcomingDeadline = (tender: Tender) => {
+    if (!LIVE_TENDER_STATUSES.includes(tender.status) || !tender.submissionDeadline) return false;
+    const deadline = new Date(tender.submissionDeadline).getTime();
+    return Number.isFinite(deadline)
+      && deadline >= nowMs
+      && deadline <= nowMs + UPCOMING_DEADLINE_WINDOW_MS;
+  };
+  const upcomingCount = filtered.filter(isUpcomingDeadline).length;
 
   const viewed = view === "new"
     ? filtered.filter(isRecentlyAdded)
     : view === "deadline"
-      ? filtered.filter((tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= nowMs)
+      ? filtered.filter(isUpcomingDeadline)
       : filtered;
   const sorted = sortTenders(viewed, sort, nowMs);
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
@@ -219,7 +244,9 @@ export function buildTenderListPage(
   const offset = (currentPage - 1) * pageSize;
 
   return {
-    tenders: sorted.slice(offset, offset + pageSize).map(toTenderListItem),
+    tenders: sorted
+      .slice(offset, offset + pageSize)
+      .map((tender) => toTenderListItem(tender, { includeBuyer: options.includeBuyer })),
     totalResults: sorted.length,
     totalPages,
     currentPage,

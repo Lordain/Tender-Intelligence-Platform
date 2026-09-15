@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     .filter((tender) => wanted.has(tender.id) && tender.submissionDeadline)
     .sort((a, b) => a.submissionDeadline!.localeCompare(b.submissionDeadline!))
     .slice(0, MAX_REMINDERS)
-    .map(toTenderListItem);
+    .map((tender) => toTenderListItem(tender));
 
   return NextResponse.json(reminders);
 }

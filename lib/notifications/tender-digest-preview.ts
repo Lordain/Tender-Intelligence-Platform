@@ -10,7 +10,7 @@ import {
 export const previewTenders: DigestTender[] = [
   {
     id: "preview-1",
-    slug: "preview-metro-equipment",
+    public_slug: "p-1111111111111111",
     title: { zh: "墨西哥城地铁车辆通信设备采购", es: "Adquisición de equipos de comunicación", en: "" },
     summary: { zh: "采购地铁车辆通信与控制设备。", es: "", en: "" },
     buyer: "墨西哥城公共交通系统",
@@ -24,7 +24,7 @@ export const previewTenders: DigestTender[] = [
   },
   {
     id: "preview-2",
-    slug: "preview-water-infrastructure",
+    public_slug: "p-2222222222222222",
     title: { zh: "供水管网更新与泵站改造工程", es: "Rehabilitación de red de agua", en: "" },
     summary: { zh: "更新城市供水管网并改造泵站。", es: "", en: "" },
     buyer: "国家水务委员会",

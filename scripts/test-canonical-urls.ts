@@ -100,15 +100,19 @@ for (const route of routes) {
 }
 
 // The two dynamic routes build theirs from the slug, so they are checked by
-// shape rather than by literal. Both are real indexable pages: a guide always,
-// a tender detail only when it is a free preview (the rest set robots.index
-// false, which is deliberate — see that file).
+// shape rather than by literal. Both are real indexable pages: guides expose
+// their full article, while every tender exposes an approved public summary
+// and keeps its protected analysis out of the visitor payload.
 for (const [file, label] of [
   ["app/guides/[slug]/page.tsx", "guide detail"],
   ["app/tenders/[slug]/page.tsx", "tender detail"],
 ] as const) {
   const source = readFileSync(file, "utf-8");
-  check(`${label} builds its metadata from its slug`, /pageMetadata\(\{[\s\S]{0,400}?path:\s*`/.test(source), file);
+  check(
+    `${label} builds its metadata from its slug`,
+    /pageMetadata\(\{[\s\S]{0,500}?path:\s*(?:`|publicTenderPath\()/.test(source),
+    file,
+  );
 }
 
 // The guides are the reason this matters most, so they are named explicitly.

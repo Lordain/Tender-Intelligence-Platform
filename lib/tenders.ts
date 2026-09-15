@@ -3,7 +3,7 @@ import { TENDERS_CACHE_TAG } from "@/lib/cache-tags";
 import { unstable_cache } from "next/cache";
 import { tenders as mockTenders } from "@/data/tenders";
 import type { Tender } from "@/types/tender";
-import { fetchAllTendersFromDb, fetchTenderBySlugFromDb, fetchTendersBySlugsFromDb } from "@/lib/db/tenders";
+import { fetchAllTendersFromDb, fetchTenderByPublicSlugFromDb, fetchTenderBySlugFromDb, fetchTendersBySlugsFromDb } from "@/lib/db/tenders";
 
 /** Supabase-backed when configured; bundled mock data is used only when Supabase is not configured. Query failures throw so a transient outage is never cached as mock production data. */
 export async function getAllTenders(): Promise<Tender[]> {
@@ -16,6 +16,13 @@ export async function getTenderBySlug(slug: string): Promise<Tender | undefined>
   const fromDb = await fetchTenderBySlugFromDb(slug);
   if (fromDb !== null) return fromDb;
   return mockTenders.find((tender) => tender.slug === slug);
+}
+
+/** Public route lookup only; never falls back to matching the internal slug. */
+export async function getTenderByPublicSlug(publicSlug: string): Promise<Tender | undefined> {
+  const fromDb = await fetchTenderByPublicSlugFromDb(publicSlug);
+  if (fromDb !== null) return fromDb;
+  return mockTenders.find((tender) => tender.publicSlug === publicSlug);
 }
 
 /** Slug-keyed full detail for many tenders in one query — see fetchTendersBySlugsFromDb. A slug with no matching tender is simply absent from the map. */

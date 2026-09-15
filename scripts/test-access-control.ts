@@ -13,11 +13,9 @@
  * one before fixing it.
  */
 import {
-  canInteractWithTenderList,
-  canOpenTenderDetail,
-  hasPublishedAnalysis,
+  canUseTenderListMemberFeatures,
+  canViewTenderProtectedContent,
   isClosedTender,
-  isPublicArchive,
   isSubscriptionEntitled,
   selectPreferredSubscription,
   subscriptionStatusFromStripe,
@@ -67,70 +65,23 @@ check("trialing inside its period", isSubscriptionEntitled("trialing", iso(-2), 
 check("cancelled never counts", isSubscriptionEntitled("cancelled", iso(-1), iso(30), NOW), false);
 
 // ---------------------------------------------------------------------------
-// Tender discovery access. Homepage previews stay available to unsigned
-// visitors, but an account whose trial expired must subscribe before using
-// any list interaction or opening any project.
+// Tender discovery access. Every project has a public summary page; these
+// checks govern only the protected analysis below that summary.
 // ---------------------------------------------------------------------------
-check("guest list is read-only", canInteractWithTenderList("guest"), false);
-check("expired free list is read-only", canInteractWithTenderList("free"), false);
-check("trial list is interactive", canInteractWithTenderList("trial"), true);
-check("subscriber list is interactive", canInteractWithTenderList("subscriber"), true);
-check("guest may open homepage preview", canOpenTenderDetail("guest", true, false), true);
-check("guest may not open ordinary detail", canOpenTenderDetail("guest", false, false), false);
-check("expired free may not open homepage preview", canOpenTenderDetail("free", true, false), false);
-check("expired free may not open ordinary detail", canOpenTenderDetail("free", false, false), false);
-check("trial may open ordinary detail", canOpenTenderDetail("trial", false, false), true);
-check("subscriber may open ordinary detail", canOpenTenderDetail("subscriber", false, false), true);
-
-// ── A closed tender is public; anything still biddable is not ──────────────
-// The paywall's whole job is the tenders someone can still bid on. Opening
-// the finished ones (user, 2026-09-15) is what turns several hundred dead
-// rows into the only long-tail content this site has — and the direction
-// these checks guard is the other one: that nothing OPEN slipped out with
-// them.
-check("guest may open a closed tender", canOpenTenderDetail("guest", false, true), true);
-check("an expired free account may too", canOpenTenderDetail("free", false, true), true);
-for (const status of ["submission_closed", "awarded", "cancelled"] as const) {
-  check(`${status} counts as closed`, isClosedTender(status), true);
-}
-for (const status of ["planned", "open", "clarification"] as const) {
-  check(`${status} does NOT count as closed`, isClosedTender(status), false);
-  check(`…so a guest still cannot open a ${status} tender`, canOpenTenderDetail("guest", false, isClosedTender(status)), false);
-  check(`…nor an expired free account`, canOpenTenderDetail("free", false, isClosedTender(status)), false);
-}
-
-// ── …and only if there is something on the page ────────────────────────────
-// The correction of 2026-09-16. The user had been deleting tenders the day
-// they closed, and the reason was 因为缺少大量标书分析内容 — a closed tender
-// with no requirements and no risks is a title over an empty page, and a few
-// hundred of those under real project names is worse than not being indexed.
-// So "closed" alone no longer opens anything; "closed AND analysed" does.
-const ANALYSED = { requirementCount: 3, riskCount: 1 };
-const STUB = { requirementCount: 0, riskCount: 0 };
-
-check("a requirement alone counts as analysis", hasPublishedAnalysis({ requirementCount: 1, riskCount: 0 }), true);
-check("a risk alone counts as analysis", hasPublishedAnalysis({ requirementCount: 0, riskCount: 1 }), true);
-check("neither does not", hasPublishedAnalysis(STUB), false);
-
-for (const status of ["submission_closed", "awarded", "cancelled"] as const) {
-  check(`an analysed ${status} tender is a public archive`, isPublicArchive(status, ANALYSED), true);
-  check(`a ${status} tender with no analysis is NOT`, isPublicArchive(status, STUB), false);
-  check(
-    `…so a guest cannot open the ${status} stub`,
-    canOpenTenderDetail("guest", false, isPublicArchive(status, STUB)),
-    false,
-  );
-}
-
-// Analysis does not open a tender that is still biddable — the paywall's
-// actual job. Only the deadline passing does that.
-for (const status of ["open", "clarification"] as const) {
-  check(`an analysed ${status} tender stays behind the paywall`, isPublicArchive(status, ANALYSED), false);
-}
-
-// A subscriber still gets everything, analysed or not.
-check("a subscriber may open a closed stub", canOpenTenderDetail("subscriber", false, isPublicArchive("submission_closed", STUB)), true);
-check("so may a trial account", canOpenTenderDetail("trial", false, isPublicArchive("submission_closed", STUB)), true);
+check("guest save tools stay protected", canUseTenderListMemberFeatures("guest"), false);
+check("expired free save tools stay protected", canUseTenderListMemberFeatures("free"), false);
+check("trial may use list member tools", canUseTenderListMemberFeatures("trial"), true);
+check("subscriber may use list member tools", canUseTenderListMemberFeatures("subscriber"), true);
+check("guest ordinary page keeps analysis protected", canViewTenderProtectedContent("guest", false, false), false);
+check("guest cannot forge homepage entry for an unfeatured slug", canViewTenderProtectedContent("guest", false, true), false);
+check("guest gets a selected homepage free entry", canViewTenderProtectedContent("guest", true, true), true);
+check("direct visit to a selected slug stays protected", canViewTenderProtectedContent("guest", true, false), false);
+check("expired free account gets a selected homepage free entry", canViewTenderProtectedContent("free", true, true), true);
+check("expired free ordinary page keeps analysis protected", canViewTenderProtectedContent("free", false, false), false);
+check("trial may view protected analysis", canViewTenderProtectedContent("trial", false, false), true);
+check("subscriber may view protected analysis", canViewTenderProtectedContent("subscriber", false, false), true);
+check("submission_closed counts as closed for homepage selection", isClosedTender("submission_closed"), true);
+check("an open tender does not count as closed", isClosedTender("open"), false);
 
 check(
   `past_due on day ${PAYMENT_GRACE_DAYS - 1} of grace`,

@@ -7,7 +7,7 @@ import { countryLabel, industryLabel } from "@/lib/tender-labels";
 
 export type DigestTender = {
   id: string;
-  slug: string;
+  public_slug: string;
   title: { zh?: string; es?: string; en?: string };
   summary: { zh?: string; es?: string; en?: string };
   buyer: string;
@@ -70,7 +70,7 @@ export async function getNewTenders(windowStart: Date, windowEnd: Date): Promise
 
   const { data, error } = await supabase
     .from("tenders")
-    .select("id, slug, title, summary, buyer, tender_number, country, industries, status, relevance_tier, publication_date, created_at")
+    .select("id, public_slug, title, summary, buyer, tender_number, country, industries, status, relevance_tier, publication_date, created_at")
     .gte("created_at", windowStart.toISOString())
     .lt("created_at", windowEnd.toISOString())
     .order("created_at", { ascending: false })
@@ -89,7 +89,7 @@ export async function getStatusChanges(windowStart: Date, windowEnd: Date): Prom
 
   const { data, error } = await supabase
     .from("tender_status_history")
-    .select("previous_status, next_status, changed_at, tenders ( id, slug, title, summary, buyer, tender_number, country, industries, status, relevance_tier, publication_date, created_at )")
+    .select("previous_status, next_status, changed_at, tenders ( id, public_slug, title, summary, buyer, tender_number, country, industries, status, relevance_tier, publication_date, created_at )")
     .gte("changed_at", windowStart.toISOString())
     .lt("changed_at", windowEnd.toISOString())
     .order("changed_at", { ascending: false })
@@ -170,7 +170,7 @@ function renderPreferenceSummary(preference: DigestPreferenceSummary): string {
 function renderTenderRows(tenders: DigestTender[], appUrl: string): string {
   return tenders.map((tender) => {
     const title = tender.title.zh || tender.title.es || tender.title.en || "新招标项目";
-    const url = escapeHtml(new URL(`/tenders/${tender.slug}`, appUrl).toString());
+    const url = escapeHtml(new URL(`/tenders/${tender.public_slug}`, appUrl).toString());
     const meta = [tender.country, ...tender.industries].filter(Boolean).join(" · ");
     return `<tr><td style="padding:0 0 12px">`
       + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #dbe2e5;border-radius:14px;background:#fffdf9">`
@@ -187,7 +187,7 @@ function renderTenderRows(tenders: DigestTender[], appUrl: string): string {
 function renderStatusRows(statusChanges: StatusChange[], appUrl: string): string {
   return statusChanges.map(({ tender, previousStatus, nextStatus, changedAt }) => {
     const title = tender.title.zh || tender.title.es || tender.title.en || "招标项目";
-    const url = escapeHtml(new URL(`/tenders/${tender.slug}`, appUrl).toString());
+    const url = escapeHtml(new URL(`/tenders/${tender.public_slug}`, appUrl).toString());
     return `<tr><td style="padding:0 0 12px">`
       + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #dbe2e5;border-radius:14px;background:#fffdf9">`
       + `<tr><td style="padding:20px">`
@@ -223,7 +223,7 @@ function renderTenderDigestText(
     [
       `- ${tender.title.zh || tender.title.es || tender.tender_number}`,
       `  ${tender.country}｜${tender.buyer}｜${tender.tender_number}`,
-      `  ${new URL(`/tenders/${tender.slug}`, appUrl).toString()}`,
+      `  ${new URL(`/tenders/${tender.public_slug}`, appUrl).toString()}`,
     ].join("\n");
 
   const blocks: string[] = ["您的招标动态", "以下内容符合您当前设置的通知条件。"];

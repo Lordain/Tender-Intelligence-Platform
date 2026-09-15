@@ -38,8 +38,8 @@ export const participationGuides: ParticipationGuide[] = [
     countryCode: "MX",
     platform: "Compras MX",
     title: "怎么参与 Compras MX 的政府采购项目？",
-    summary: "从平台注册、寻找项目到提交响应，了解墨西哥联邦政府采购平台的基本参与路径。",
-    whatIs: "Compras MX 是墨西哥联邦政府公共采购数字平台，由墨西哥反腐与良政部主管，并由原 CompraNet 系统转型而来。政府机构通过该平台发布和管理货物、服务、租赁及公共工程等采购程序，供应商可以查找公告、获取文件并依具体程序参与。",
+    summary: "先确认采购单位、项目状态和参与范围，再决定是否注册并准备墨西哥联邦政府采购项目。",
+    whatIs: "Compras MX 是墨西哥联邦公共行政体系使用的政府采购数字平台，由原 CompraNet 系统转型而来。联邦政府机构通过该平台发布和管理货物、服务、租赁及公共工程等采购程序，供应商和公众可以查询公告与文件。CFE、Pemex，以及部分州、市和其他公共机构可能使用自己的采购入口，不能默认所有墨西哥政府项目都集中在这里。",
     audience: "希望参与墨西哥联邦政府采购的境内外自然人或企业",
     quickFacts: [
       { label: "官方平台", value: "Compras MX" },
@@ -48,13 +48,34 @@ export const participationGuides: ParticipationGuide[] = [
     ],
     sections: [
       {
+        id: "scope",
+        title: "这份指南适用于什么？",
+        items: [
+          "主要用于核对墨西哥联邦公共行政体系在 Compras MX 发布的采购程序",
+          "不替代 CFE Micrositio、Pemex SISCeP、Proyectos Estratégicos MX 或州、市采购平台的核查",
+          "公开查询通常不需要先注册；需要加入程序或提交响应时，再按项目要求办理企业账户",
+        ],
+        note: "先确认采购方和官方入口，再决定是否注册。平台注册成功不代表已经符合具体项目的投标资格。",
+      },
+      {
+        id: "first-check",
+        title: "注册前先看这些字段",
+        items: [
+          "Siglas dependencia o entidad：确认采购单位，不要只看项目标题",
+          "Carácter：区分国内、国际条约覆盖或开放国际等参与范围",
+          "Estatus：确认项目仍在进行，并留意终止、取消或已结束状态",
+          "Tipo de publicación：确认当前页面属于公告、修改、通知或其他发布信息",
+          "Fecha de presentación y apertura de proposiciones：核对文件递交及开标时间，并继续检查后续更正",
+        ],
+      },
+      {
         id: "process",
         title: "参与流程",
         steps: [
-          { title: "创建平台账户", detail: "进入 Compras MX，按平台注册页面填写必填的基本资料并完成账户启用。境外企业应按页面实际提供的身份类型和字段填写。" },
-          { title: "搜索并筛选项目", detail: "在公开查询入口按采购单位、关键词、程序编号和日期查找项目，先确认项目仍在有效期内。" },
-          { title: "阅读完整公告", detail: "下载 convocatoria、bases、anexos 和后续澄清文件，核对参与范围、时间表、技术规格、担保和提交方式。" },
-          { title: "准备并提交响应", detail: "按照具体程序指定的格式、签署方式和渠道提交法律、技术及经济文件；不要只依据平台摘要准备标书。" },
+          { title: "搜索并确认项目", detail: "在公开查询入口按采购单位、关键词、程序编号和日期查找项目，先确认采购方、程序类型、参与范围、状态和截止时间。" },
+          { title: "阅读完整公告", detail: "下载 convocatoria、bases、anexos 和后续澄清文件，核对企业国籍、货物原产地、时间表、技术规格、担保和提交方式。" },
+          { title: "确认值得参与后再注册", detail: "按企业实际情况选择本国或境外注册路径。境外企业通常需要填写原属国税务识别码，并按要求提交经过认证及西班牙语翻译的企业文件。" },
+          { title: "准备并提交响应", detail: "按照具体程序指定的格式、签署方式和渠道提交法律、技术及经济文件；不要只依据搜索结果页的摘要准备标书。" },
           { title: "持续跟进更正与结果", detail: "在截止前检查答疑、澄清、延期和更正；提交后继续查看开标、评审、授标和合同通知。" },
         ],
       },
@@ -76,7 +97,9 @@ export const participationGuides: ParticipationGuide[] = [
         id: "foreign",
         title: "中国企业重点核对",
         items: [
-          "程序的参与范围是否允许外国企业，或是否限定墨西哥企业、条约国供应商或本地制造比例",
+          "国内采购通常限定墨西哥主体；国内货物采购现行规则通常要求墨西哥生产并达到至少 65% 的本地含量，例外及证明方式以项目文件和适用规则为准",
+          "国际条约覆盖程序只对公告所适用条约的国家和来源开放；中国大陆不在目前列明的政府采购条约伙伴中，不能仅凭“国际”二字判断可以直接参与",
+          "开放国际程序可能允许其他外国企业参与，但仍需核对企业国籍、货物原产地和项目文件中的限制",
           "是否需要墨西哥税号、本地代表、送达地址、联合体或当地合作伙伴",
           "中国出具的公司文件是否需要公证、附加证明书（Apostille）或领事认证及西班牙语宣誓翻译",
           "报价币种、税费、进口责任、履约担保及付款条件是否可接受",
@@ -86,7 +109,9 @@ export const participationGuides: ParticipationGuide[] = [
     sources: [
       { label: "Compras MX 官方平台", href: "https://comprasmx.buengobierno.gob.mx/" },
       { label: "Compras MX 公开项目查询", href: "https://comprasmx.buengobierno.gob.mx/sitiopublico/#/" },
-      { label: "RUPC 官方说明与办理流程", href: "https://comprasmx.buengobierno.gob.mx/rupc" },
+      { label: "Compras MX 企业注册官方指南", href: "https://upcp-compranet.buengobierno.gob.mx/publicas/guias/Guia_de_registro_de_empresas_0125.pdf" },
+      { label: "墨西哥现行联邦采购法", href: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LAASSP.pdf" },
+      { label: "RUPC 官方说明与办理流程", href: "https://canvas-compranet.buengobierno.gob.mx/modulos_compranet/RUPC.html" },
     ],
   },
   {
@@ -105,14 +130,25 @@ export const participationGuides: ParticipationGuide[] = [
     ],
     sections: [
       {
+        id: "scope",
+        title: "这份指南适用于什么？",
+        items: [
+          "适用于 CFE 通过 Micrositio de Concursos 开展的货物、租赁、服务及工程采购程序",
+          "不代表所有墨西哥电力或能源项目都在该平台进行，仍应先确认采购单位和公告来源",
+          "注册路径区分墨西哥境内或境外、自然人或法人，以及一般供应商或工程承包商",
+        ],
+        note: "先确认项目仍在进行、允许相应主体参与且准备时间可行，再处理账户和电子签名。",
+      },
+      {
         id: "process",
         title: "参与流程",
         steps: [
+          { title: "先核对具体项目", detail: "确认采购方确为 CFE，阅读项目日历和 Pliego de Requisitos，核对参与范围、提问窗口、提交截止及电子递交要求。" },
           { title: "确认供应商类别", detail: "注册时选择境内或境外、自然人或法人，并确认属于货物／租赁／服务供应商，还是工程承包商。" },
           { title: "创建供应商账户", detail: "在 CFE Micrositio 的新供应商入口录入企业、联系人和税务等资料，并按系统提示完成账户配置。" },
           { title: "配置电子签名（e.firma）", detail: "注册页面要求上传证书（.cer）与私钥（.key）文件并输入密码，系统会与墨西哥税务局（SAT）校验；法人须使用企业本身的 e.firma，而不是个人的。这实际上意味着注册前需要先有墨西哥税号（RFC）。没有 RFC 的境外企业应先向 CFE 服务台确认当前是否存在适用于境外主体的替代安排，不要假设一定有。" },
           { title: "查找并加入具体程序", detail: "检索采购程序，阅读公告和日历，按系统指引表达参与意向或加入程序，并关注提问与答疑窗口。" },
-          { title: "提交方案并跟进", detail: "依 bases 与附件分别准备法律／行政、技术和经济方案，在指定时间内完成电子提交并保存回执。" },
+          { title: "提交方案并跟进", detail: "依 Pliego de Requisitos 与附件分别准备法律／行政、技术和经济方案，在指定时间内完成电子提交并保存回执。" },
         ],
       },
       {
@@ -136,7 +172,7 @@ export const participationGuides: ParticipationGuide[] = [
           "技术标准、墨西哥本地含量、现场能力、保修和备件要求",
           "所有关键日期，包括说明会、现场踏勘、问题提交、开标与提交截止时间",
         ],
-        note: "CFE 官方教程提供检索、加入程序、提问、联合参与和通知等操作说明。实际文件清单仍由每个项目的 bases、anexos 与后续澄清决定。",
+        note: "CFE 官方教程提供检索、加入程序、提问、联合参与和通知等操作说明。是否允许联合参与及各方责任，仍由每个项目的 Pliego de Requisitos、anexos 与后续澄清决定。",
       },
     ],
     sources: [
@@ -149,26 +185,35 @@ export const participationGuides: ParticipationGuide[] = [
     slug: "mexico-pemex-siscep",
     country: "墨西哥",
     countryCode: "MX",
-    platform: "Pemex SISCEP",
+    platform: "Pemex SISCeP",
     title: "怎么参与 Pemex 的采购项目？",
-    summary: "了解 Pemex 供应商登记、SISCEP 联系人开通、表达参与意向及逐项响应的主要步骤。",
-    whatIs: "SISCEP 是 Pemex 用于电子采购活动和供应商互动的系统。企业通常需要先完成 Pemex 供应商资料登记，再通过获授权的企业联系人进入系统，对具体采购事件表达参与意向、接收通知并提交相应资料。",
+    summary: "先核对 Pemex 采购事件，再了解 HIIP 2.0 登记、SISCeP 联系人开通和逐项响应流程。",
+    whatIs: "SISCeP 是 Pemex 用于电子采购活动和供应商互动的系统。企业通常需要先在 HIIP 2.0 完成供应商资料登记，再通过获授权的企业联系人进入系统，对具体采购事件表达参与意向、接收通知并提交相应资料。",
     audience: "油气、石化、工程、设备、运维与专业服务供应商",
     quickFacts: [
       { label: "采购单位", value: "Pemex" },
-      { label: "参与系统", value: "SISCEP" },
-      { label: "前置动作", value: "完成 HIIP 供应商登记" },
+      { label: "参与系统", value: "SISCeP" },
+      { label: "前置动作", value: "完成 HIIP 2.0 供应商登记" },
     ],
     sections: [
+      {
+        id: "scope",
+        title: "这份指南适用于什么？",
+        items: [
+          "适用于 Pemex 及其相关主体通过电子采购活动开展的供应商参与流程",
+          "不替代 Compras MX、CFE 或其他墨西哥公共机构的采购入口",
+          "企业需要对每一个采购程序单独表达参与意向，完成供应商登记不等于自动加入所有事件",
+        ],
+      },
       {
         id: "process",
         title: "参与流程",
         steps: [
-          { title: "完成供应商登记", detail: "先在 Pemex 的供应商信息整合工具（HIIP，Herramienta de Información Integral de Proveedores）登记，取得六位供应商编号及相应登记证明。公开竞赛通常要求完成该登记。" },
-          { title: "开通 SISCEP 联系人", detail: "为企业建立或启用可进入 SISCEP 的公司联系人账户，确保邮箱与授权关系有效。" },
-          { title: "查找项目并表达意向", detail: "阅读公开采购程序；对希望参加的项目按公告指定方式提交 manifestación de interés（参与意向）——Pemex 现行流程通常要求以邮件提交，且提交时 HIIP 登记须处于有效状态。" },
-          { title: "通过邀请链接进入事件", detail: "Pemex 通常向已表达意向且符合系统流程的联系人发送加入采购事件的链接，企业再在 SISCEP 内继续操作。" },
-          { title: "提交响应并跟进结果", detail: "按项目 bases、附件、答疑与更正准备和提交方案，持续查看事件通知与评审结果。" },
+          { title: "先核对采购程序", detail: "确认项目仍在进行、参与意向提交期限尚未截止，并阅读该程序的 bases、附件和联系要求。" },
+          { title: "完成供应商登记", detail: "参与 Pemex 电子采购事件前，应在 HIIP 2.0 完成供应商登记，取得六位供应商编号及相应登记证明。公开竞赛通常要求登记保持有效。" },
+          { title: "开通 SISCeP 联系人", detail: "使用有效的 HIIP 登记、六位供应商编号，以及 HIIP 中登记的法定代表人邮箱，为企业建立或启用可进入 SISCeP 的公司联系人。" },
+          { title: "表达参与意向", detail: "按公告指定方式提交 manifestación de interés（参与意向）。现行流程通常要求发送至 SISCeP 为该程序生成的指定邮箱，并同步公告列明的联系人。" },
+          { title: "进入事件并提交响应", detail: "Pemex 通常向指定联系人邮箱发送加入采购事件的链接。企业进入 SISCeP 后，按 bases、附件、答疑与更正提交方案并跟进结果。" },
         ],
       },
       {
@@ -191,14 +236,16 @@ export const participationGuides: ParticipationGuide[] = [
           "是否可作为境外供应商直接登记，或需墨西哥本地税务、代表与合同安排",
           "项目是否有本地含量、能源行业、安全、环境或现场准入要求",
           "境外文件的西班牙语翻译、公证、附加证明书或其他认证要求",
-          "供应商资料需保持更新；Pemex 官方说明建议至少每年复核更新一次",
+          "及时维护 HIIP 2.0 中的企业、联系人、税务、合规和证明资料，确保信息持续有效",
         ],
+        note: "Pemex 供应商登记属于免费自助流程。不要向个人或第三方支付注册、维护或更新费用，也不要通过非官方渠道发送敏感资料。",
       },
     ],
     sources: [
       { label: "Pemex 采购程序与参与步骤", href: "https://www.pemex.com/procura/procedimientos-de-contratacion/contratacion/Paginas/procedimiento.aspx" },
-      { label: "Pemex SISCEP 采购程序入口", href: "https://www.pemex.com/procura/procedimientos-de-contratacion/contratacion/Paginas/default.aspx" },
-      { label: "Pemex 供应商常见问题", href: "https://www.pemex.com/ayuda/preguntas_frecuentes/Paginas/proveedores-contratistas.aspx" },
+      { label: "Pemex SISCeP 采购程序入口", href: "https://www.pemex.com/procura/procedimientos-de-contratacion/contratacion/Paginas/default.aspx" },
+      { label: "Pemex HIIP 2.0 供应商登记", href: "https://www.pemex.com/procura/relacion-con-proveedores/registro-de-proveedores/Paginas/proceso-registro.aspx" },
+      { label: "Pemex 供应商安全提醒", href: "https://www.pemex.com/procura/Paginas/aviso-proveedores.aspx" },
     ],
   },
   {
@@ -217,10 +264,21 @@ export const participationGuides: ParticipationGuide[] = [
     ],
     sections: [
       {
+        id: "scope",
+        title: "这份指南适用于什么？",
+        items: [
+          "适用于采购实体在 SECOP II 内开展的线上公共采购程序",
+          "不代表所有哥伦比亚公共采购都采用完全相同的参与条件，仍要逐项阅读采购实体发布的文件",
+          "供应商账户与个人用户是两层结构；企业已有账户时，应申请访问而不是重复创建",
+        ],
+        note: "先查看公开项目、采购实体、时间表和 pliego de condiciones，再决定是否创建或加入供应商账户。",
+      },
+      {
         id: "process",
         title: "参与流程",
         steps: [
-          { title: "注册个人用户", detail: "先创建个人用户并通过邮件激活。该用户代表本人操作，不应多人共用。" },
+          { title: "先核对项目要求", detail: "通过公开查询确认采购实体、项目状态、时间表、参与方式，以及外国供应商和 RUP 是否适用于该程序。" },
+          { title: "注册个人用户", detail: "创建个人用户并通过邮件激活。该用户代表本人操作，不应多人共用；时区应按用户所在地设置。" },
           { title: "创建或加入供应商账户", detail: "为企业创建供应商账户；如果企业已存在账户，则申请访问，避免重复创建。" },
           { title: "填写资料并上传文件", detail: "补全供应商基本资料、分类与相关证明文件。完成后账户自动启用，但这不代表 Colombia Compra Eficiente 已审核或认可全部资料。" },
           { title: "寻找并关注采购程序", detail: "按实体、关键词、分类和地区检索项目，订阅或关注感兴趣的程序并查看消息、时间表和文件。" },
@@ -270,8 +328,8 @@ export const participationGuides: ParticipationGuide[] = [
     countryCode: "MX",
     platform: "Proyectos Estratégicos MX",
     title: "怎么参与 Proyectos Estratégicos MX 的项目？",
-    summary: "面向墨西哥战略基础设施新机制，说明如何识别项目适用规则、获取文件并按公告指定渠道参与。",
-    whatIs: "Proyectos Estratégicos MX 是墨西哥财政与公共信贷部面向战略基础设施投资项目设立的官方公开平台，用于展示和管理新制度下的相关采购与项目程序。它与 Compras MX 是不同入口，参与方式应以每个项目发布的公告和基础文件为准。",
+    summary: "先确认项目是否属于专项战略基础设施制度，再按公告核对参与条件、文件和提交渠道。",
+    whatIs: "Proyectos Estratégicos MX 是墨西哥用于发布和查询特定战略基础设施采购程序的官方入口，服务于依据专项制度认定并推进的项目。它不是普通联邦采购平台 Compras MX 的替代入口，也不覆盖所有墨西哥基础设施项目；参与方式应以每个项目的 convocatoria、bases 和采购单位正式通知为准。",
     audience: "基础设施、工程、设备、能源、交通与大型项目供应商",
     quickFacts: [
       { label: "官方平台", value: "Proyectos Estratégicos MX" },
@@ -280,13 +338,23 @@ export const participationGuides: ParticipationGuide[] = [
     ],
     sections: [
       {
+        id: "scope",
+        title: "这份指南适用于什么？",
+        items: [
+          "适用于依据战略基础设施专项制度认定并发布的特定项目",
+          "不适用于所有联邦、州、市基础设施采购，也不能替代 CFE、Pemex 或 Compras MX 的核查",
+          "外国资本、能源等行业项目还会继续受到外商投资法和相应行业法律约束",
+        ],
+        note: "先确认项目确实属于该专项制度，并找到采购单位发布的 convocatoria 和 bases；不要只根据平台名称或项目规模判断。",
+      },
+      {
         id: "process",
         title: "参与流程",
         steps: [
           { title: "从官方平台找到具体项目", detail: "按采购实体、项目名称或编号搜索，打开项目详情，确认程序阶段和当前有效版本。" },
-          { title: "先核对参与范围", detail: "查看项目的 Carácter 等字段，确认属于国内、国际或适用国际条约的程序，并判断中国企业能否直接参与。" },
+          { title: "先核对参与范围", detail: "阅读 convocatoria 和 bases，确认采购方式、外国资本或境外企业是否可以参与，以及项目适用的专项、行业和外商投资规则。" },
           { title: "下载公告、基础文件与附件", detail: "完整阅读 convocatoria、bases、anexos、技术规格、时间表与所有后续澄清，不要只看公开列表中的摘要字段。" },
-          { title: "按该项目指定渠道登记和提交", detail: "新机制下，不应默认 Compras MX 账户或提交路径可以直接通用。以该项目公告列明的平台、邮箱、现场或电子提交渠道为准。" },
+          { title: "按项目指定渠道登记和提交", detail: "不应默认 Compras MX 账户或提交路径可以直接通用。程序可能采用电子、现场或混合方式，以项目公告列明的平台注册、递交和签署要求为准。" },
           { title: "跟进答疑、更正与里程碑", detail: "检查说明会、现场踏勘、问题截止、澄清会议、方案提交和开标时间；基础设施项目的时间表可能通过正式更正调整。" },
         ],
       },
@@ -299,8 +367,9 @@ export const participationGuides: ParticipationGuide[] = [
           "大型或同类项目经验、业绩合同与履约证明",
           "项目团队、关键人员、设备、施工或供货能力",
           "财务报表、融资能力、保险、担保和风险安排",
+          "股权控制结构、最终受益所有人、关联关系及利益冲突声明",
           "技术方案、进度计划、环境与社会影响、安全和质量文件",
-          "经济报价、成本模型及项目公告要求的本地含量或供应链材料",
+          "经济报价、长期融资与风险分配方案，以及项目要求的本地含量或供应链材料",
         ],
       },
       {

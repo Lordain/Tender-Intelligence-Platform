@@ -3,6 +3,7 @@ import Link from "next/link";
 import { fetchTenderBySlugFromDb } from "@/lib/db/tenders";
 import { AdminTenderForm } from "@/components/admin/AdminTenderForm";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { publicTenderPath } from "@/lib/public-tender-url";
 
 export default async function EditAdminTenderPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -19,7 +20,7 @@ export default async function EditAdminTenderPage({ params }: { params: Promise<
         backHref="/admin/tenders"
         actions={
           <Link
-            href={`/tenders/${tender.slug}`}
+            href={publicTenderPath(tender)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#cbd6da] bg-white px-4 text-sm font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"

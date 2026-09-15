@@ -6,7 +6,7 @@ import { useSavedSearches } from "@/lib/saved";
 
 type NotificationTender = {
   id: string;
-  slug: string;
+  publicSlug: string;
   title: LocalizedText;
   publicationDate: string;
   createdAt: string;

@@ -24,8 +24,8 @@ const PRIVATE_PATHS = ["/admin", "/account", "/api", "/auth", "/saved", "/notifi
  *
  * Written out so the decision is visible and survives the next person who
  * tightens the `*` rule for some unrelated reason. There is nothing here to
- * protect: every page these can reach is one a guest can already read, and
- * the paywalled ones return an access prompt to everybody equally.
+ * protect: every tender page exposes only its approved public summary fields;
+ * the protected analysis is omitted server-side for crawlers and guests.
  */
 const AI_AGENTS = [
   // OpenAI: training, ChatGPT search, and user-initiated fetches.

@@ -5,6 +5,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
   {
     id: "t-001",
     slug: "cfe-subestacion-electrica-oaxaca",
+    publicSlug: "p-7a3c91e4b6d82f05",
     tenderNumber: "LO-018TOQ001-E123-2026",
     title: {
       es: "Suministro e Instalación de Subestación Eléctrica en Oaxaca",
@@ -126,6 +127,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
   {
     id: "t-002",
     slug: "pemex-mantenimiento-ductos-veracruz",
+    publicSlug: "p-18d6b4a70c9e2f53",
     tenderNumber: "18575028-501-26",
     title: {
       es: "Servicio de Mantenimiento de Ductos en Veracruz",
@@ -232,6 +234,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
   {
     id: "t-003",
     slug: "sct-carretera-jalisco-tramo-2",
+    publicSlug: "p-c42e8051a79d36bf",
     tenderNumber: "SICT-OP-2026-0447",
     title: {
       es: "Construcción de Carretera Federal, Tramo 2 — Jalisco",
@@ -322,6 +325,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
   {
     id: "t-004",
     slug: "imss-datacenter-nube-hibrida",
+    publicSlug: "p-5f8a13c6e2d9407b",
     tenderNumber: "IMSS-HGZ-2026-0912",
     title: {
       es: "Modernización de Datacenter y Nube Híbrida para IMSS",
@@ -430,6 +434,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
   {
     id: "t-005",
     slug: "municipio-monterrey-red-fibra-optica",
+    publicSlug: "p-b903e71d4c6a285f",
     tenderNumber: "MTY-DTI-2026-058",
     title: {
       es: "Despliegue de Red de Fibra Óptica Municipal en Monterrey",
@@ -515,6 +520,7 @@ const rawTenders: Omit<Tender, "relevance">[] = [
   {
     id: "t-006",
     slug: "cfe-consultoria-estudio-interconexion",
+    publicSlug: "p-2e6c80a4f1975bd3",
     tenderNumber: "LO-018TOQ099-E018-2026",
     title: {
       es: "Estudio de Interconexión para Planta Solar en Sonora",

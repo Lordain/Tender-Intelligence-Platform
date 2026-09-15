@@ -14,6 +14,7 @@ import {
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { isObrasPorImpuestos, OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
+import { publicTenderPath } from "@/lib/public-tender-url";
 
 function preferredRequirement(items: Tender["qualifications"]) {
   return items.find((item) => item.mandatory) ?? items[0];
@@ -29,7 +30,7 @@ export function TenderCard({
   showOneLineSummary?: boolean;
 }) {
   const { locale } = useLocale();
-  const detailHref = `/tenders/${tender.slug}${showOneLineSummary ? "?from=homepage" : ""}`;
+  const detailHref = `${publicTenderPath(tender)}${showOneLineSummary ? "?from=homepage" : ""}`;
   // Only a real translation (Layer 2 AI, not the es/zh mirror untranslated()
   // produces) makes Chinese worth treating as the primary heading — until
   // then the Spanish original is all there is to show.
@@ -83,7 +84,7 @@ export function TenderCard({
       {hasRealTranslation ? (
         <>
           <h3 className="text-base font-black leading-snug text-black">
-            <Link href={detailHref} className="after:absolute after:inset-0">
+            <Link href={detailHref} data-public-tender-link className="after:absolute after:inset-0">
               {tender.title.zh}
             </Link>
           </h3>
@@ -91,7 +92,7 @@ export function TenderCard({
         </>
       ) : (
         <h3 className="text-sm font-bold leading-snug text-black">
-          <Link href={detailHref} className="after:absolute after:inset-0">
+          <Link href={detailHref} data-public-tender-link className="after:absolute after:inset-0">
             {tender.title.es}
           </Link>
         </h3>
@@ -132,7 +133,7 @@ export function TenderCard({
         {"："}
         {tender.buyer}</span>
       </p>
-      <Link href={detailHref} className="relative z-10 mt-1 inline-flex w-full items-center justify-center rounded-xl bg-[#071826] px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-[#163b52]">
+      <Link href={detailHref} data-public-tender-link className="relative z-10 mt-1 inline-flex w-full items-center justify-center rounded-xl bg-[#071826] px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-[#163b52]">
         查看招标信息
       </Link>
     </article>

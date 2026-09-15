@@ -151,6 +151,14 @@ export type TenderNeedingDocuments = {
 export type Tender = {
   id: string;
   slug: string;
+  /**
+   * Stable, opaque token used only in public-facing URLs. The internal slug
+   * above intentionally remains the ingestion/admin identity because it is
+   * derived from source procedure numbers and must never be exposed in a
+   * visitor URL. Database rows always have this after migration 0050;
+   * ingestion objects may omit it before they are written.
+   */
+  publicSlug?: string;
   tenderNumber: string;
   title: LocalizedText;
   summary: LocalizedText;
@@ -288,4 +296,30 @@ export type Tender = {
   sourceUrl: string;
   createdAt: string;
   updatedAt: string;
+};
+
+/**
+ * The exact tender fields that may cross the server/client boundary for an
+ * unauthenticated or non-entitled detail view. Keep this as an explicit
+ * allow-list: adding a field to Tender must never make it public by accident.
+ */
+export type PublicTenderDetail = Pick<
+  Tender,
+  | "country"
+  | "governmentLevel"
+  | "industries"
+  | "scopeType"
+  | "procedureType"
+  | "participationScope"
+  | "publicationDate"
+  | "publicationDateIsEstimated"
+  | "submissionDeadline"
+  | "estimatedValue"
+  | "currency"
+  | "location"
+  | "status"
+> & {
+  publicSlug: string;
+  titleZh: string;
+  summaryZh: string;
 };

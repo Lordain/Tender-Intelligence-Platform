@@ -13,9 +13,12 @@ import {
   SCOPE_TYPE_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
+  countryFlag,
+  countryLabel,
   industryLabel,
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
+import { publicTenderPath } from "@/lib/public-tender-url";
 
 function Field({ label, value, emphasized = false, note }: { label: string; value: string; emphasized?: boolean; note?: string | null }) {
   return (
@@ -47,6 +50,10 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
     <section className="flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
+          <span className="shrink-0 whitespace-nowrap rounded-full bg-[#061b2b] px-2.5 py-1 text-xs font-semibold text-white">
+            <span className="mr-1" aria-hidden="true">{countryFlag(tender.country)}</span>
+            {countryLabel(tender.country, locale)}
+          </span>
           {tender.industries.map((industry) => (
             <span
               key={industry}
@@ -64,7 +71,7 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {showTrialCta && (
-            <Link href={`/register?next=${encodeURIComponent(`/tenders/${tender.slug}`)}`} className="inline-flex h-10 items-center rounded-xl bg-[#ffb21c] px-4 text-xs font-black text-[#071826] hover:bg-[#ffc247]">
+            <Link href={`/register?next=${encodeURIComponent(publicTenderPath(tender))}`} className="inline-flex h-10 items-center rounded-xl bg-[#ffb21c] px-4 text-xs font-black text-[#071826] hover:bg-[#ffc247]">
               注册即可免费试用{TRIAL_DAYS}天
             </Link>
           )}

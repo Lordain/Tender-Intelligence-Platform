@@ -3,6 +3,8 @@ import { localize } from "@/lib/localize";
 
 export type TenderFilterOptions = {
   query?: string;
+  /** Restrict keyword matching to approved Chinese public copy. */
+  searchPublicFieldsOnly?: boolean;
   industries?: string[];
   /**
    * A tender can carry multiple industries.ts tags (e.g. a power-plant
@@ -28,6 +30,7 @@ export function filterTenders(
   allTenders: Tender[],
   {
     query,
+    searchPublicFieldsOnly,
     industries,
     industryMatchMode = "any",
     scopeTypes,
@@ -71,13 +74,17 @@ export function filterTenders(
       // same text as the slug (e.g. Proyectos Estratégicos MX's slug is a
       // slugified transform of its own reference number, not identical to
       // the tenderNumber field's real formatting).
-      const haystack = [
-        localize(tender.title, locale),
-        ...Object.values(tender.summary),
-        tender.buyer,
-        tender.tenderNumber,
-        tender.slug,
-      ]
+      const hasChineseTitle = tender.title.zh.trim() && tender.title.zh.trim() !== tender.title.es.trim();
+      const hasChineseSummary = tender.summary.zh.trim() && tender.summary.zh.trim() !== tender.summary.es.trim();
+      const haystack = (searchPublicFieldsOnly
+        ? [hasChineseTitle ? tender.title.zh : "", hasChineseSummary ? tender.summary.zh : ""]
+        : [
+            localize(tender.title, locale),
+            ...Object.values(tender.summary),
+            tender.buyer,
+            tender.tenderNumber,
+            tender.slug,
+          ])
         .join(" ")
         .toLowerCase();
       if (!haystack.includes(normalizedQuery)) return false;

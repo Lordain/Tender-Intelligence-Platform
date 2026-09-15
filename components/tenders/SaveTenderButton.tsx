@@ -38,6 +38,7 @@ export function SaveTenderButton({
 
   return (
     <button
+      data-member-feature="save-tender"
       type="button"
       onClick={(event) => {
         event.preventDefault();

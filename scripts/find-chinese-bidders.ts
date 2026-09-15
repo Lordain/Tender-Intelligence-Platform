@@ -74,6 +74,7 @@ const SIGNALS: { label: string; test: RegExp }[] = [
 
 type Row = {
   slug: string;
+  public_slug: string;
   tender_number: string;
   title: { zh?: string; es?: string } | null;
   buyer: string;
@@ -104,7 +105,7 @@ async function main() {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await admin
       .from("tenders")
-      .select("slug, tender_number, title, buyer, country, status, awarded_to, awarded_value, award_date, currency")
+      .select("slug, public_slug, tender_number, title, buyer, country, status, awarded_to, awarded_value, award_date, currency")
       .not("awarded_to", "is", null)
       .order("award_date", { ascending: false, nullsFirst: false })
       .order("slug", { ascending: true })
@@ -144,7 +145,7 @@ async function main() {
       console.log(`      命中：${signal}`);
       console.log(`      项目：${row.title?.zh ?? row.title?.es ?? row.slug}`);
       console.log(`      采购方：${row.buyer}（${row.country}）  中标金额：${money(row.awarded_value, row.currency)}  ${row.award_date ?? "无授标日期"}`);
-      console.log(`      https://latintender.com/tenders/${row.slug}`);
+      console.log(`      https://latintender.com/tenders/${row.public_slug}`);
       console.log("");
     }
     console.log("以上是按名称特征猜的，不是结论 —— 逐条看一眼再用。");

@@ -18,6 +18,7 @@ import { deriveTenderStatus } from "@/lib/tender-status";
 type TenderRow = {
   id: string;
   slug: string;
+  public_slug: string;
   tender_number: string;
   title: LocalizedText;
   summary: LocalizedText;
@@ -103,7 +104,7 @@ type RiskRow = {
  * own query level" (the second failure of that same 2026-09-11 change).
  */
 const TENDER_FLAT_FIELDS = `
-  id, slug, tender_number, title, summary, one_line_summary, buyer, country, government_level,
+  id, slug, public_slug, tender_number, title, summary, one_line_summary, buyer, country, government_level,
   industries, subcategory, scope_type, procedure_type, participation_scope,
   publication_date, publication_date_is_estimated,
   submission_deadline, award_date, awarded_to, awarded_value, estimated_value, currency, location,
@@ -195,6 +196,7 @@ function toTender(row: TenderRow): Tender {
   return {
     id: row.id,
     slug: row.slug,
+    publicSlug: row.public_slug,
     tenderNumber: row.tender_number,
     title: row.title,
     summary: row.summary,
@@ -407,6 +409,40 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
     .map(toTender);
 });
 
+export type TenderSitemapEntry = {
+  publicSlug: string;
+  updatedAt: string;
+};
+
+/**
+ * Minimal, unfiltered inventory for sitemap generation. Unlike the public
+ * list query, this intentionally includes closed rows without document
+ * analysis: every tender now has a useful public summary landing page, so
+ * hiding those slugs from discovery would contradict the detail-page policy.
+ */
+export async function fetchTenderSitemapEntriesFromDb(): Promise<TenderSitemapEntry[] | null> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+
+  const entries: TenderSitemapEntry[] = [];
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const data = await retrySupabaseRead(
+      () => supabase
+        .from("tenders")
+        .select("public_slug, updated_at")
+        .order("updated_at", { ascending: false })
+        .range(from, from + SUPABASE_PAGE_SIZE - 1),
+      "Failed to fetch tender sitemap entries from Supabase",
+    );
+
+    const page = data as unknown as Array<{ public_slug: string; updated_at: string }>;
+    entries.push(...page.map((row) => ({ publicSlug: row.public_slug, updatedAt: row.updated_at })));
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+  }
+
+  return entries;
+}
+
 /** Returns undefined when configured but no row matches; null when Supabase isn't configured. */
 export async function fetchTenderBySlugFromDb(
   slug: string,
@@ -421,6 +457,30 @@ export async function fetchTenderBySlugFromDb(
       .eq("slug", slug)
       .maybeSingle(),
     "Failed to fetch tender from Supabase",
+  );
+
+  if (!data) return undefined;
+  return toTender(data as unknown as TenderRow);
+}
+
+/**
+ * Public detail lookup. Deliberately does not accept the internal slug: an old
+ * URL containing a government project code must become a 404 rather than a
+ * redirect that confirms the code-to-page mapping.
+ */
+export async function fetchTenderByPublicSlugFromDb(
+  publicSlug: string,
+): Promise<Tender | null | undefined> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+
+  const data = await retrySupabaseRead(
+    () => supabase
+      .from("tenders")
+      .select(TENDER_SELECT)
+      .eq("public_slug", publicSlug)
+      .maybeSingle(),
+    "Failed to fetch tender by public slug from Supabase",
   );
 
   if (!data) return undefined;

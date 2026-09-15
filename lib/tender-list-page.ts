@@ -17,6 +17,29 @@ export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", 
 const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"];
 
 /**
+ * 最近新增 is a ROLLING 24 hours, not the calendar day.
+ *
+ * Mexican sources publish in the evening, so a calendar-day counter spent
+ * most of its life at or near zero and only filled up at night — and then
+ * reset at midnight, throwing the number away a few hours after it finally
+ * meant something. The user watching it (2026-09-15) saw exactly that: a
+ * figure that "只有晚上看得到，然后一下子又刷新了".
+ *
+ * A rolling window costs nothing and is what the label was always trying to
+ * say: what arrived since about this time yesterday. It also removes the
+ * timezone question entirely — a duration needs no calendar — so the reader
+ * no longer has to know the count is kept on Mexico City's clock rather than
+ * their own.
+ *
+ * Measured from createdAt, the ingestion instant (a timestamptz), NOT from
+ * publication_date: two of the Mexican mappers fabricate a publication date
+ * when the source carries none, so publication date answers "when did the
+ * government publish this" only sometimes, while createdAt always answers
+ * "when did this appear on the site" — which is the question 新增 asks.
+ */
+const RECENTLY_ADDED_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
  * Countries the public list offers as a filter — and, because an absent
  * country param means "all of these", the countries the default feed shows
  * AT ALL. A country missing from this list is invisible on /tenders no matter
@@ -32,12 +55,6 @@ const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"
  * and the failure mode of that is a country a user can tick but never see.
  */
 export const AVAILABLE_COUNTRIES = ["Mexico", "Colombia", "Peru"] as const;
-const PLATFORM_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Mexico_City",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
 
 export type TenderListSearchParams = Record<string, string | string[] | undefined>;
 
@@ -138,17 +155,6 @@ function parseList(value: string | null): string[] {
   return value ? value.split(",").filter(Boolean) : [];
 }
 
-/** Calendar-day key in the platform's business timezone, independent of the server timezone. */
-function platformDateKey(value: string | number | Date): string | null {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  const parts = PLATFORM_DATE_FORMATTER.formatToParts(date);
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-  return year && month && day ? `${year}-${month}-${day}` : null;
-}
-
 /**
  * Applies the public list's search, facets, views, sorting and pagination on
  * the server. The underlying shared list stays cached for five minutes, but
@@ -191,15 +197,18 @@ export function buildTenderListPage(
   const presentScopeTypes = new Set(allTenders.map((tender) => tender.scopeType));
   const availableScopeTypes = ALL_SCOPE_TYPES.filter((scopeType) => presentScopeTypes.has(scopeType));
 
-  const today = platformDateKey(now);
   const nowMs = now.getTime();
-  const newTodayCount = filtered.filter((tender) => platformDateKey(tender.createdAt) === today).length;
+  const isRecentlyAdded = (tender: Tender) => {
+    const added = new Date(tender.createdAt).getTime();
+    return Number.isFinite(added) && nowMs - added < RECENTLY_ADDED_WINDOW_MS && added <= nowMs;
+  };
+  const newTodayCount = filtered.filter(isRecentlyAdded).length;
   const upcomingCount = filtered.filter(
     (tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= nowMs,
   ).length;
 
   const viewed = view === "new"
-    ? filtered.filter((tender) => platformDateKey(tender.createdAt) === today)
+    ? filtered.filter(isRecentlyAdded)
     : view === "deadline"
       ? filtered.filter((tender) => tender.submissionDeadline && new Date(tender.submissionDeadline).getTime() >= nowMs)
       : filtered;

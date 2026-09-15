@@ -19,6 +19,21 @@
  * judgement to a person. Reading twenty false positives costs a minute;
  * missing the one real lead costs the lead.
  *
+ * WHAT IT ACTUALLY FOUND (2026-09-15): nothing — awarded_to is empty across
+ * the whole table, and for a structural reason rather than a bug. This table
+ * holds what is biddable NOW: awards land after a deadline, an awarded row is
+ * old by publication date, and purge:old-tenders deletes by publication date.
+ * Four mappers do populate awardedTo (compranet5, compras-mx-contracts,
+ * colombia, ecopetrol-contracts) and the import gate deliberately exempts
+ * status "awarded" (recency.ts), so the plumbing is real — but none of those
+ * contract importers runs in the daily workflow, which imports open
+ * procedures only.
+ *
+ * So this stays as the check against our own data, and find:chinese-suppliers
+ * is the one that answers the question: it asks SECOP II's public API across
+ * Colombia's entire award history instead of across the couple of hundred
+ * live rows here.
+ *
  * Read-only. Writes nothing, to Postgres or anywhere else.
  *
  * Usage:
@@ -102,7 +117,11 @@ async function main() {
 
   if (rows.length === 0) {
     console.log("数据库里没有任何项目记录了中标方（awarded_to 全是空的）。");
-    console.log("中标结果目前只在人工录入或数据源带出时才有 —— 先确认已截止项目有没有补过中标信息。");
+    console.log("这是正常的：本表只装「现在还能投」的项目，而中标发生在截止之后，");
+    console.log("授标记录按发布日期算又属于旧数据，会被 purge:old-tenders 清掉。");
+    console.log("");
+    console.log("要找已经中标的中国企业，用 npm run find:chinese-suppliers —— 它直接问");
+    console.log("SECOP II 的公开接口，覆盖哥伦比亚全部授标历史，而不是本库这两百来条。");
     return;
   }
 

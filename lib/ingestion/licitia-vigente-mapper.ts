@@ -1,3 +1,4 @@
+import { platformDay } from "@/lib/tender-status";
 import type { Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevelFromProcedureNumber } from "@/lib/ingestion/heuristics";
@@ -120,7 +121,11 @@ export function mapLicitiaVigenteRowToTender(
   // Real publication date, unlike compras-mx-open-tenders-mapper.ts's
   // ingestion-timestamp placeholder — the manual export has no publication
   // column at all, this bulk row does ("publicacion").
-  const publicationDate = row.publicacion ?? now;
+  // Falling back to the ingestion instant means falling back to the Mexico
+  // City calendar day, not the UTC one — same fix as
+  // compras-mx-open-tenders-mapper.ts, same reason: publication_date is a
+  // `date`, so a UTC timestamp files an evening import under tomorrow.
+  const publicationDate = row.publicacion ?? platformDay(now) ?? now.slice(0, 10);
 
   return {
     id: crypto.randomUUID(),

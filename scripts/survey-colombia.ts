@@ -132,6 +132,9 @@ const NOT_BIDDABLE_MODALIDADES: [RegExp, string][] = [
   [/subasta de prueba/i, "字面意思是“测试用的拍卖”，SECOP 的测试数据，不是真实项目。"],
 ];
 
+/** The phrase unique to relevance.ts's short_duration reason. Same regex-not-equality reasoning as VALUE_REASON_MARKER below: the day count is interpolated into that text. */
+const DURATION_REASON_MARKER = /执行\/交付周期低于/;
+
 /** The phrase unique to relevance.ts's valueExcludedReason() — see its use below for why this is a regex and not an equality check. */
 const VALUE_REASON_MARKER = /预估金额低于/;
 
@@ -340,6 +343,38 @@ async function main() {
     }
   }
   console.log(`  想多拿标，该先看上面【3】里条数最多的那一组，不是这里。`);
+
+  // 5. The duration rule, measured the same way — because on the first real
+  //    run it excluded four times as many rows as the value floor did, and
+  //    among them a $2.9M road improvement. The rule reads
+  //    `durationDays < 180` and returns excluded without ever consulting the
+  //    value, so a large project on a five-month schedule is dropped for its
+  //    schedule. Duration is a PROXY for scale; value is the direct measure.
+  //    This prints what it would cost to let the direct measure win, so that
+  //    decision is a number rather than an intuition.
+  const durationExcluded = excludedInGate
+    .filter((m) => DURATION_REASON_MARKER.test(m.tender.relevance.reason.zh))
+    .map((m) => ({ usd: usdValue(m.tender), title: m.tender.title.zh, buyer: m.tender.buyer }))
+    .sort((a, b) => (b.usd ?? -1) - (a.usd ?? -1));
+
+  console.log(`\n【5】工期规则（< 180 天）拦下的 ${durationExcluded.length} 条 —— 它完全不看金额：`);
+  if (durationExcluded.length === 0) {
+    console.log(`  （没有。）`);
+  } else {
+    const withValue = durationExcluded.filter((d) => d.usd !== undefined);
+    console.log(
+      `  其中 ${withValue.length} 条是有金额的，${durationExcluded.length - withValue.length} 条没金额` +
+        `（没金额的一律留在排除里 —— 没有直接指标可以推翻代理指标）。`,
+    );
+    for (const candidate of [800_000, 1_000_000, 2_000_000]) {
+      const saved = withValue.filter((d) => (d.usd ?? 0) >= candidate).length;
+      console.log(`    若「金额 ≥ $${candidate.toLocaleString()} 时工期规则让位」→ 救回 ${saved} 条`);
+    }
+    console.log(`\n  金额最高的 10 条（这些就是这条规则现在正在扔掉的东西）：`);
+    for (const d of durationExcluded.slice(0, 10)) {
+      console.log(`    ${(d.usd ? `$${Math.round(d.usd).toLocaleString()}` : "无金额").padStart(14)}  ${d.buyer} — ${d.title.slice(0, 90)}`);
+    }
+  }
 
   // 5. The full excluded list on disk, because a five-example sample is for
   //    deciding WHICH bucket to read, not for reading the bucket.

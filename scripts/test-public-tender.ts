@@ -52,6 +52,7 @@ const protectedMarkers = [
   "SECRET_RISK",
   "SECRET_SOURCE_NAME",
   "SECRET_SOURCE_URL",
+  "采购单位",
 ];
 
 for (const marker of protectedMarkers) {

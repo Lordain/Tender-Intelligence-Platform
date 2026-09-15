@@ -6,11 +6,12 @@ import { canUseTenderListMemberFeatures } from "@/lib/access-control";
 import { buildTenderListPage, TENDER_PAGE_SIZE, type TenderListSearchParams } from "@/lib/tender-list-page";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
+import { TenderListStructuredData } from "@/components/seo/TenderStructuredData";
 
 export const metadata: Metadata = pageMetadata({
-  title: "招标项目列表",
+  title: "拉美政府招标项目｜墨西哥、哥伦比亚、秘鲁采购信息",
   description:
-    "浏览墨西哥、哥伦比亚、秘鲁政府公开招标项目，按行业、金额与项目规模筛选，全部信息已整理为中文。",
+    "查找墨西哥、哥伦比亚和秘鲁政府招标项目，查看中文标题、项目摘要、采购方式、金额与计划交标时间，并按国家、行业和项目类型筛选。",
   path: "/tenders",
 });
 
@@ -49,6 +50,7 @@ export default async function TendersPage({
 
   return (
     <div className="mx-auto w-full max-w-[94rem] px-5 py-6 sm:px-8 sm:py-8">
+      <TenderListStructuredData tenders={pageData.tenders} />
       <Suspense>
         <TenderExplorer {...pageData} viewerRole={viewerRole} />
       </Suspense>

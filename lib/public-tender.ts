@@ -18,11 +18,10 @@ export function toPublicTenderDetail(tender: Tender): PublicTenderDetail {
     // Imported rows temporarily mirror the source text into `zh` before the
     // translation job runs. Never mistake that placeholder for approved
     // public Chinese copy, because it would expose the protected original.
-    titleZh: hasChineseTitle ? tender.title.zh : `${tender.buyer}采购项目`,
+    titleZh: hasChineseTitle ? tender.title.zh : "政府采购项目",
     summaryZh: hasChineseSummary
       ? tender.summary.zh
-      : `这是由${tender.buyer}发布的政府采购项目，可先查看采购方式、参与范围、地点和计划交标时间。`,
-    buyer: tender.buyer,
+      : "这是一个政府采购项目，可先查看采购方式、参与范围、地点和计划交标时间。",
     country: tender.country,
     governmentLevel: tender.governmentLevel,
     industries: tender.industries,

@@ -31,7 +31,7 @@ export function Footer() {
           </a>
           {SUPPORT_WECHAT && (
             <p className="mt-3 text-sm text-white/58">
-              微信 <span className="select-all font-mono tracking-wide text-white/85">{SUPPORT_WECHAT}</span>
+              微信ID：<span className="select-all font-mono tracking-wide text-white/85">{SUPPORT_WECHAT}</span>
             </p>
           )}
         </div>

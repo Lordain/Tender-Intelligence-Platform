@@ -66,7 +66,7 @@ function ProtectedContentPrompt({ kind, nextPath }: { kind: AccessPromptKind; ne
 export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicTenderDetail; promptKind: AccessPromptKind }) {
   const { locale } = useLocale();
   const nextPath = `/tenders/${tender.publicSlug}`;
-  const fieldCount = 8 + (tender.participationScope ? 1 : 0);
+  const fieldCount = 7 + (tender.participationScope ? 1 : 0);
   const desktopGrid = fieldCount % 4 === 0 ? "xl:grid-cols-4" : "xl:grid-cols-3";
 
   return (
@@ -100,7 +100,6 @@ export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicT
           )}
 
           <dl className={`grid grid-cols-1 gap-3 border-t border-[#e4e9eb] pt-5 sm:grid-cols-2 ${desktopGrid}`}>
-            <Field label={localize(uiText.buyer, locale)} value={tender.buyer} />
             <Field label={localize(uiText.governmentLevelLabel, locale)} value={localize(GOVERNMENT_LEVEL_LABELS[tender.governmentLevel], locale)} />
             <Field label={localize(uiText.scopeLabel, locale)} value={localize(SCOPE_TYPE_LABELS[tender.scopeType], locale)} />
             <Field label={localize(uiText.procedureType, locale)} value={tender.procedureType} />

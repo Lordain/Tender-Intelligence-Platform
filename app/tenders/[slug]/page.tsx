@@ -10,6 +10,8 @@ import { isHomepageFreePreviewSlug } from "@/lib/homepage-selection";
 import { PublicTenderDetailView } from "@/components/tenders/PublicTenderDetailView";
 import { toPublicTenderDetail } from "@/lib/public-tender";
 import { publicTenderPath } from "@/lib/public-tender-url";
+import { countryLabel } from "@/lib/tender-labels";
+import { TenderStructuredData } from "@/components/seo/TenderStructuredData";
 
 // generateMetadata and the page itself both need these two answers, and
 // neither underlying function is request-cached — without this the detail
@@ -31,13 +33,34 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const tender = await loadTender(slug);
   if (!tender) return { title: "项目不存在" };
 
-  const summary = tender.summary.zh.trim();
+  // Metadata is public too. Build it from the exact same allow-list as the
+  // visitor page so an untranslated source title or protected publisher can
+  // never leak through <title>, Open Graph or a search-result snippet.
+  const publicTender = toPublicTenderDetail(tender);
+  const country = countryLabel(publicTender.country, "zh");
+  const title = `${publicTender.titleZh}｜${country}政府招标`;
+  const descriptionSource = `${publicTender.summaryZh} ${country}政府采购；${publicTender.procedureType}${publicTender.location ? `；地点：${publicTender.location}` : ""}`;
+  const description = descriptionSource.length > 155
+    ? `${descriptionSource.slice(0, 154)}…`
+    : descriptionSource;
+
   return {
     ...pageMetadata({
-      title: tender.title.zh,
-      description: summary.length > 155 ? `${summary.slice(0, 154)}…` : summary,
+      title,
+      description,
       path: publicTenderPath(tender),
     }),
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
+    },
   };
 }
 
@@ -62,6 +85,7 @@ export default async function TenderDetailPage({
   const isHomepageFreePreview = await loadIsFreePreview(tender.slug);
 
   const enteredFromHomepage = from === "homepage";
+  const publicTender = toPublicTenderDetail(tender);
   const mayViewProtectedContent = canViewTenderProtectedContent(
     viewerRole,
     isHomepageFreePreview,
@@ -69,10 +93,20 @@ export default async function TenderDetailPage({
   );
 
   if (!mayViewProtectedContent) {
-    return <PublicTenderDetailView tender={toPublicTenderDetail(tender)} promptKind={tenderDetailPrompt(viewerRole)} />;
+    return (
+      <>
+        <TenderStructuredData tender={publicTender} />
+        <PublicTenderDetailView tender={publicTender} promptKind={tenderDetailPrompt(viewerRole)} />
+      </>
+    );
   }
 
   const showTrialCta = viewerRole === "guest" && isHomepageFreePreview && enteredFromHomepage;
 
-  return <TenderDetailView tender={tender} showTrialCta={showTrialCta} />;
+  return (
+    <>
+      <TenderStructuredData tender={publicTender} />
+      <TenderDetailView tender={tender} showTrialCta={showTrialCta} />
+    </>
+  );
 }

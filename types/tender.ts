@@ -305,7 +305,6 @@ export type Tender = {
  */
 export type PublicTenderDetail = Pick<
   Tender,
-  | "buyer"
   | "country"
   | "governmentLevel"
   | "industries"

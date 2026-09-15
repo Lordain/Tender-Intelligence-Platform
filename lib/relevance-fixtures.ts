@@ -1186,6 +1186,58 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Colombia",
   },
 
+  // --- SHORT_DURATION_DAYS lowered 180 -> 150 (2026-09-15). These three
+  // pin the new boundary from both sides, because a threshold with no
+  // fixture either side of it can be moved again by accident and nothing
+  // fails. The 160-day case is the one that changes behaviour: it was
+  // excluded before this and must survive now. ---
+  {
+    title: "MEJORAMIENTO DE LA INFRAESTRUCTURA VIAL DEPARTAMENTAL",
+    expectedTier: "standard",
+    note: "160 days — inside the old 180-day blacklist, outside the new 150-day one. THIS is the fixture that fails if the threshold is ever moved back up; the two either side of it only pin that the rule still exists at all. Modelled on the real row the 2026-09-15 survey surfaced: a $2,900,769 departmental road improvement that was being excluded for its schedule. `standard`, not `significant`, and that is the real row's real tier — $2.9M lands just under SIGNIFICANT_VALUE_USD ($3,000,000), and the title matches no flagship-industry keyword. Written expecting `significant` first; the suite caught it. What this fixture asserts is that the row is no longer EXCLUDED — which non-excluded tier it then earns is a different rule's business.",
+    scopeType: "works",
+    structuredDurationDays: 160,
+    estimatedValue: 2_900_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "MEJORAMIENTO DE LA INFRAESTRUCTURA VIAL MUNICIPAL",
+    expectedTier: "excluded",
+    note: "140 days — still inside the new 150-day blacklist, and carrying a $2.9M value to pin the other half of the same decision: the rule stays VALUE-BLIND. The user was offered a 'large value overrides short duration' exception on 2026-09-15 and explicitly declined it (但是不让位), so a big disclosed value must NOT rescue this row. If someone later adds that exception, this fixture is what tells them it was a deliberate no.",
+    scopeType: "works",
+    structuredDurationDays: 140,
+    estimatedValue: 2_900_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  // The boundary pair. IDENTICAL in every field but the day count, so the
+  // only thing that can move one of them without the other is the threshold
+  // itself. The $2.9M value is not decoration: a contentless synthetic title
+  // with no value is excluded by the no-industry-and-no-value rule whatever
+  // its duration, which made the first attempt at this pair pass on the
+  // wrong side of the boundary for the wrong reason.
+  {
+    title: "MEJORAMIENTO VIAL DE FRONTERA UN DIA ANTES",
+    expectedTier: "excluded",
+    note: "149 days — one day inside the blacklist, so excluded despite a $2.9M value (the rule is value-blind by design; see SHORT_DURATION_DAYS). Pairs with the 150-day fixture below: the rule reads `< SHORT_DURATION_DAYS`, and the two together pin WHICH SIDE of the boundary is open — an off-by-one flips that silently and neither fixture alone would notice.",
+    scopeType: "works",
+    structuredDurationDays: 149,
+    estimatedValue: 2_900_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+  {
+    title: "MEJORAMIENTO VIAL DE FRONTERA EXACTA",
+    expectedTier: "standard",
+    note: "Exactly 150 days — the threshold day itself, which `<` leaves OUT of the blacklist. Survives. Identical to the 149-day case above in every other field, so a failure here can only be the threshold.",
+    scopeType: "works",
+    structuredDurationDays: 150,
+    estimatedValue: 2_900_000,
+    currency: "USD",
+    country: "Colombia",
+  },
+
   // --- "subestación" narrowed to require a construction/equipment
   // qualifier (2026-09-04) after a real CFE example was found live in
   // production: a fauna-protection materials purchase was wrongly

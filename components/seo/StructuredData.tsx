@@ -30,7 +30,11 @@ export function StructuredData() {
         name: "拉美招投标信息平台",
         alternateName: "Latin Tender",
         url: origin,
-        logo: `${origin}/opengraph-image.png`,
+        // A square brand mark is a better organization identity than the
+        // wide social-share cover. Search-result favicons are controlled by
+        // <link rel="icon">, but keeping structured data aligned avoids a
+        // second, conflicting visual identity for other Google surfaces.
+        logo: `${origin}/apple-icon.png`,
         description:
           "把墨西哥、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投。",
         areaServed: [

@@ -44,6 +44,18 @@ export const metadata: Metadata = {
   },
   description:
     "把墨西哥、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/中型项目。",
+  // Use stable, explicit URLs instead of relying only on Next's generated
+  // file-metadata URLs. Google may keep a search-result favicon cached for
+  // days or weeks, so the hostname should always advertise one canonical
+  // square brand image at the same address across deployments.
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
+      { url: "/icon.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/favicon.ico"],
+  },
   // Without these, a link pasted into WeChat, 企业微信, Slack or anywhere else
   // renders as a bare URL — no title, no description, no image. For a B2B
   // product that spreads by being forwarded to a colleague, that costs more

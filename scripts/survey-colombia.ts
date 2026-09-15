@@ -110,6 +110,31 @@ function usdValue(tender: Tender): number | undefined {
  * would actually rescue. A band ending exactly at 800k and one starting
  * there make that readable at a glance.
  */
+/**
+ * Modalidades whose rows can pass every relevance rule and still not be a
+ * thing anyone can bid on. relevance.ts cannot catch these: its rules read
+ * the subject matter, and the subject matter of an RFI is a genuine, often
+ * large project — the problem is the legal figure, not the content.
+ *
+ * Kept here as a warning rather than as a filter because this script only
+ * measures; deciding what to do about one is the user's call.
+ */
+const NOT_BIDDABLE_MODALIDADES: [RegExp, string][] = [
+  [
+    /solicitud de informaci[óo]n/i,
+    "这是 RFI（市场问询），不是招标 —— 采购单位在摸市场行情，没有可提交的标。它常常是真实大项目的前奏，" +
+      "所以当“早期信号”有价值，但按标书导进来，订阅者点进去会发现无标可投。",
+  ],
+  [
+    /enajenaci[óo]n de bienes/i,
+    "这是政府在【卖】资产（拍卖处置），不是采购 —— 方向反了，中国企业是买方不是卖方。",
+  ],
+  [/subasta de prueba/i, "字面意思是“测试用的拍卖”，SECOP 的测试数据，不是真实项目。"],
+];
+
+/** The phrase unique to relevance.ts's valueExcludedReason() — see its use below for why this is a regex and not an equality check. */
+const VALUE_REASON_MARKER = /预估金额低于/;
+
 const VALUE_BANDS: [string, number, number][] = [
   ["< $100k", 0, 100_000],
   ["$100k – $300k", 100_000, 300_000],
@@ -218,6 +243,15 @@ async function main() {
     const survivorsByModalidad = new Map<string, number>();
     for (const m of outOfGate) if (keepable(m)) bump(survivorsByModalidad, m.modalidad);
     printCounts(`  按 modalidad 看，放宽后能真正进库的条数：`, survivorsByModalidad, outOfGate.filter(keepable).length);
+
+    // Surviving every relevance rule is not the same as being biddable, and
+    // nothing in relevance.ts knows the difference — its rules judge what a
+    // tender is ABOUT, never what legal figure it is. A modalidad named here
+    // would arrive looking exactly like a real tender.
+    for (const [modalidad, count] of survivorsByModalidad) {
+      const warning = NOT_BIDDABLE_MODALIDADES.find(([pattern]) => pattern.test(modalidad))?.[1];
+      if (warning) console.log(`\n  ⚠️  「${modalidad}」那 ${count} 条：${warning}`);
+    }
   }
 
   // 3. The excluded list for what we ingest TODAY, grouped by the reason
@@ -268,11 +302,44 @@ async function main() {
     (sum, band) => sum + (valueBands.get(band) ?? 0),
     0,
   );
-  const nearFloor = valueBands.get("$500k – $800k") ?? 0;
+
+  // The band table above counts EVERY in-gate row, whatever tier it landed
+  // in, so "144 rows under $800k" does NOT mean 144 rows the floor rejected.
+  // In classifyRelevance()'s precedence the keyword and duration rules run
+  // BEFORE the value floor, so most sub-floor rows were already gone by the
+  // time the floor was consulted and lowering it would not bring back one of
+  // them. The only rows a lower floor rescues are the ones excluded FOR the
+  // value reason — counted here directly instead of inferred from the bands.
+  // (The first version of this script inferred it, and reported ~35 rescuable
+  // when the real answer was a handful.)
   console.log(
-    `\n  有金额的 ${inGate.length - noValue} 条里，${belowFloor} 条在 $800k 以下；` +
-      `其中 ${nearFloor} 条落在 $500k–$800k —— 下限退回 $500k 就能救回这一格，别的格不受影响。`,
+    `\n  有金额的 ${inGate.length - noValue} 条里，${belowFloor} 条在 $800k 以下 —— ` +
+      `但这不等于“下限拦下了 ${belowFloor} 条”。关键词和工期规则排在金额下限前面，` +
+      `绝大多数低于下限的行在轮到金额之前就已经出局了。`,
   );
+  // Identified by the one phrase only valueExcludedReason() produces. The
+  // threshold number is interpolated into that text, so an equality check
+  // against a hardcoded string would break the day MIN_VALUE_USD moves —
+  // which is precisely the day someone runs this script.
+  const rescuable = excludedInGate
+    .filter((m) => VALUE_REASON_MARKER.test(m.tender.relevance.reason.zh))
+    .map((m) => usdValue(m.tender))
+    .filter((usd): usd is number => usd !== undefined)
+    .sort((a, b) => b - a);
+  if (rescuable.length === 0) {
+    console.log(`  真正因为“金额太小”被拦下的：0 条 —— 调下限不会救回任何一条。`);
+  } else {
+    console.log(
+      `  真正因为“金额太小”被拦下的只有 ${rescuable.length} 条，金额从高到低：` +
+        `${rescuable.slice(0, 10).map((v) => `$${Math.round(v).toLocaleString()}`).join("、")}` +
+        `${rescuable.length > 10 ? " …" : ""}`,
+    );
+    for (const candidate of [500_000, 300_000, 100_000]) {
+      const saved = rescuable.filter((v) => v >= candidate).length;
+      console.log(`    下限退到 $${candidate.toLocaleString()} → 救回 ${saved} 条`);
+    }
+  }
+  console.log(`  想多拿标，该先看上面【3】里条数最多的那一组，不是这里。`);
 
   // 5. The full excluded list on disk, because a five-example sample is for
   //    deciding WHICH bucket to read, not for reading the bucket.

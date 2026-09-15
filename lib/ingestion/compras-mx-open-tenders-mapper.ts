@@ -1,3 +1,4 @@
+import { platformDay } from "@/lib/tender-status";
 import type { Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { inferGovernmentLevelFromProcedureNumber, inferParticipationScope } from "@/lib/ingestion/heuristics";
@@ -198,6 +199,20 @@ export function mapComprasMxOpenTenderRowToTender(
   // first saw this" proxy rather than a fabricated publication date; see
   // README.md for why this can't be sourced any other way right now.
   const now = new Date().toISOString();
+  // The ingestion instant as a MEXICO CITY calendar day, not a UTC one.
+  //
+  // publication_date is a `date` column, and handing it a UTC timestamp made
+  // Postgres take the UTC day: any import run after 18:00 in Mexico City was
+  // filed under TOMORROW. The user hit it on 2026-09-14 — an evening import
+  // showed 发布 2026年9月15日 on every row, all of them carrying the 估
+  // badge that says this date is ours rather than the government's.
+  //
+  // Wrong by a day in the direction that matters: this date feeds
+  // filterRecentTenders and purge:old-tenders, and a tender dated in the
+  // future is a tender whose age those rules cannot reason about.
+  //
+  // createdAt/updatedAt keep the full UTC timestamp below — those are
+  // timestamptz and an instant is the right thing for them.
 
   return {
     id: crypto.randomUUID(),
@@ -223,7 +238,7 @@ export function mapComprasMxOpenTenderRowToTender(
     scopeType,
     procedureType,
     participationScope: inferParticipationScope(row["CARÁCTER"]),
-    publicationDate: now,
+    publicationDate: platformDay(now) ?? now.slice(0, 10),
     publicationDateIsEstimated: true,
     submissionDeadline: submissionDeadline ?? undefined,
     location: row["ENTIDAD FEDERATIVA"]?.trim(),

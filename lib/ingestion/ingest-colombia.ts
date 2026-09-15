@@ -6,13 +6,30 @@ import { fetchSecopProcesos, fetchSecopProcesosByReference } from "@/lib/ingesti
 import { fetchSecopDocumentsForProcess, fetchSecopDocumentsSample, downloadSecopDocument, isPreAwardDocument } from "@/lib/ingestion/connectors/colombia-documents-connector";
 import { mapSecopRowToTender, extractNoticeUidFromUrl, type SecopProcesoRow } from "@/lib/ingestion/colombia-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
-import { filterRecentTenders } from "@/lib/ingestion/recency";
+import { filterRecentTenders, filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import type { Tender } from "@/types/tender";
 
 const SOURCE_NAME = "SECOP II — Colombia Compra Eficiente";
 
 export type IngestColombiaOptions = {
   months: number;
+  /**
+   * Rolling window in days. Decides BOTH how far back the SECOP query
+   * reaches and what survives the recency filter — `months` is ignored when
+   * this is set. 0/undefined = use `months`.
+   *
+   * Same knob `ingest-peru.ts` already carries, and added here for the same
+   * reason (2026-09-15, user: 我只想拉最近5天): once a country's rules are
+   * settled, a re-import should bring in only what is genuinely new, because
+   * the expensive part of an import is not the fetch — it is a human reading
+   * several hundred fresh rows.
+   *
+   * Deliberately not expressed as a fraction of `months`: that arithmetic
+   * runs through setMonth(), which clamps day-of-month (31 March minus one
+   * month is 3 March, not 28 February), and a day count has no business
+   * inheriting that.
+   */
+  days?: number;
   maxPages: number;
   write: boolean;
   /** Also downloads pre-award bid documents for every tender actually written this run — see the "documents" fields below. Ignored when write is false (there'd be no tender_id to attach a document to). */
@@ -51,6 +68,29 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 /**
+ * How far back this run reaches, and which recency filter the mapped rows
+ * then go through. Split out of `ingestColombia` purely so it can be tested
+ * without a network call — the failure it guards against is silent: a 5-day
+ * request that quietly fetches and writes two months of rows reads, in the
+ * output, exactly like a 5-day request that worked.
+ *
+ * `days` wins outright when set. The two are NOT reconciled: asking for 5
+ * days with 1 month used to be expressible and meant neither of them.
+ */
+export function resolveIngestWindow(
+  options: Pick<IngestColombiaOptions, "months" | "days">,
+  now: Date = new Date(),
+): { sinceDate: Date; useDays: boolean } {
+  const useDays = !!options.days && options.days > 0;
+  const sinceDate = new Date(now);
+  if (useDays) sinceDate.setDate(sinceDate.getDate() - options.days!);
+  // The 6-month fallback is for months <= 0 only — a caller that passed
+  // nothing meaningful, not a caller that asked for a narrow window.
+  else sinceDate.setMonth(sinceDate.getMonth() - (options.months > 0 ? options.months : 6));
+  return { sinceDate, useDays };
+}
+
+/**
  * Combines what used to be two separate manual CLI steps (ingest-colombia-
  * live.ts for the tender list, ingest-colombia-documents.ts run once per
  * tender for its documents) into one admin action — per the user's
@@ -71,8 +111,7 @@ function chunk<T>(items: T[], size: number): T[][] {
  * fetched for it.
  */
 export async function ingestColombia(supabase: SupabaseClient, options: IngestColombiaOptions): Promise<IngestColombiaResult> {
-  const sinceDate = new Date();
-  sinceDate.setMonth(sinceDate.getMonth() - (options.months > 0 ? options.months : 6));
+  const { sinceDate, useDays } = resolveIngestWindow(options);
 
   const rows = await fetchSecopProcesos({ sinceDate, maxPages: options.maxPages });
 
@@ -82,7 +121,15 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
     if (tender) mapped.push({ row, tender });
   }
 
-  const keptSlugs = new Set(filterRecentTenders(mapped.map((m) => m.tender), options.months).map((t) => t.slug));
+  // Same window on both sides. The server-side `$where` above already cut
+  // the fetch to it, so this is belt-and-braces rather than the real gate —
+  // but a row whose publication date is ESTIMATED passes every window
+  // (see recency.ts's known blind spot), and letting the two disagree is
+  // how a 5-day import quietly writes two months of rows.
+  const keptTenders = useDays
+    ? filterTendersPublishedWithinDays(mapped.map((m) => m.tender), options.days!)
+    : filterRecentTenders(mapped.map((m) => m.tender), options.months);
+  const keptSlugs = new Set(keptTenders.map((t) => t.slug));
   const kept = mapped.filter((m) => keptSlugs.has(m.tender.slug));
 
   const result: IngestColombiaResult = {

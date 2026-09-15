@@ -9,6 +9,7 @@
  *
  * Usage:
  *   npm run ingest:colombia-live -- [--months 1] [--max-pages 20]
+ *   npm run ingest:colombia-live -- --days 5            (滚动天数窗口，--months 失效)
  *   npm run ingest:colombia-live -- --write [--fetch-documents]
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
@@ -30,7 +31,12 @@ async function main() {
   // through any other door (2026-09-13: months-old PEMEX rows in the admin
   // list). Pass --months explicitly for a deliberate backfill.
   const months = argNumber(args, "--months", 1);
+  // Wins over --months when set, rather than being reconciled with it — see
+  // IngestColombiaOptions.days. Asking for 5 days and 1 month used to be
+  // expressible and meant neither.
+  const days = argNumber(args, "--days", 0);
   const maxPages = argNumber(args, "--max-pages", 20);
+  const windowLabel = days > 0 ? `${days} day(s)` : `${months} month(s)`;
 
   const supabase = shouldWrite ? createSupabaseAdminClient() : null;
   if (shouldWrite && !supabase) {
@@ -38,10 +44,10 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Fetching real SECOP II rows published within the last ${months} month(s) (up to ${maxPages * 1000} rows)...`);
-  const result = await ingestColombia(supabase!, { months, maxPages, write: shouldWrite, fetchDocuments });
+  console.log(`Fetching real SECOP II rows published within the last ${windowLabel} (up to ${maxPages * 1000} rows)...`);
+  const result = await ingestColombia(supabase!, { months, days, maxPages, write: shouldWrite, fetchDocuments });
 
-  console.log(`Fetched ${result.fetchedCount} real row(s), mapped ${result.mappedCount}, kept ${result.keptAfterRecencyCount} within the last ${months} month(s).`);
+  console.log(`Fetched ${result.fetchedCount} real row(s), mapped ${result.mappedCount}, kept ${result.keptAfterRecencyCount} within the last ${windowLabel}.`);
 
   if (!shouldWrite) {
     console.log("\ndry run (pass --write to actually upsert) — nothing was written to Supabase.");

@@ -6,6 +6,23 @@ export const SUPPORT_EMAIL = clean(process.env.NEXT_PUBLIC_SUPPORT_EMAIL) || "su
 export const BILLING_EMAIL = clean(process.env.NEXT_PUBLIC_BILLING_EMAIL) || "billing@latintender.com";
 export const SUPPORT_WHATSAPP = clean(process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP)?.replace(/[^\d]/g, "") || "525519103724";
 
+/**
+ * The WeChat ID, shown ahead of WhatsApp everywhere both appear.
+ *
+ * WhatsApp was the only chat channel until 2026-09-15, and it is a Mexican
+ * number — right for the supplier side of this business and wrong for the
+ * customers, who are mainland Chinese enterprises that do not use WhatsApp.
+ * A buyer who wanted to ask a question before paying US$800 a month had no
+ * way to reach anyone in the app they actually use.
+ *
+ * Deliberately not a link. weixin:// only resolves on a phone with the app
+ * installed and does nothing on desktop, where most of this traffic reads
+ * the pricing page, so a dead link would be worse than plain text. The id is
+ * rendered select-all instead: one click takes the whole string, ready to
+ * paste into WeChat's search.
+ */
+export const SUPPORT_WECHAT = clean(process.env.NEXT_PUBLIC_SUPPORT_WECHAT) || "Latin-tender";
+
 export function invoiceEmailHref(accountEmail?: string | null) {
   if (!BILLING_EMAIL) return null;
   const subject = "申请 CFDI 发票";

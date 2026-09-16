@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import type { AnalyticsDashboardData, AnalyticsPeriod } from "@/lib/db/analytics";
+import { InternalTrafficControl } from "@/components/admin/InternalTrafficControl";
+import type { AnalyticsDashboardData, AnalyticsPeriod, TrafficScope } from "@/lib/db/analytics";
+
+const TRAFFIC_SCOPE_LABELS: Record<TrafficScope, string> = {
+  external: "外部访问",
+  internal: "内部访问",
+  all: "全部访问",
+};
 
 const DIMENSION_LABELS: Record<string, string> = {
   country: "国家/地区",
@@ -60,12 +67,27 @@ function formatUsd(value: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 }
 
+function geographyLabel(countryCode: string, regionCode: string) {
+  if (countryCode === "UNKNOWN") return "历史数据 / 未知地区";
+  let country = countryCode;
+  try {
+    country = new Intl.DisplayNames(["zh-CN"], { type: "region" }).of(countryCode) ?? countryCode;
+  } catch {
+    // Keep the stable ISO code when the runtime cannot format it.
+  }
+  return regionCode === "UNKNOWN" ? country : `${country} · ${regionCode}`;
+}
+
 function MetricCard({ label, period }: { label: string; period: AnalyticsPeriod }) {
   return (
     <article className="rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5">
       <p className="text-xs font-black tracking-[0.08em] text-[#64717c]">{label}</p>
       <p className="mt-3 text-3xl font-black tracking-[-0.04em] text-[#071826]">{formatNumber(period.pageViews)}</p>
       <p className="mt-1 text-xs text-[#7b8991]">{formatNumber(period.visitors)} 位访客</p>
+      <p className="mt-3 border-t border-[#e5eaec] pt-3 text-[11px] leading-5 text-[#7b8991]">
+        外部 {formatNumber(period.externalPageViews)} 次 / {formatNumber(period.externalVisitors)} 人<br />
+        内部 {formatNumber(period.internalPageViews)} 次 / {formatNumber(period.internalVisitors)} 人
+      </p>
     </article>
   );
 }
@@ -74,14 +96,29 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   return <p className="rounded-xl border border-dashed border-[#cbd4d8] px-4 py-8 text-center text-sm text-[#7a878f]">{children}</p>;
 }
 
-export function AdminAnalyticsDashboard({ data, selectedDays }: { data: AnalyticsDashboardData | null; selectedDays: number }) {
+export function AdminAnalyticsDashboard({
+  data,
+  selectedDays,
+  trafficScope,
+  internalDeviceMarked,
+}: {
+  data: AnalyticsDashboardData | null;
+  selectedDays: number;
+  trafficScope: TrafficScope;
+  internalDeviceMarked: boolean;
+}) {
   const trackingReady = data !== null;
   const dashboard: AnalyticsDashboardData = data ?? {
     generatedAt: "",
     selectedDays,
-    periods: { today: { pageViews: 0, visitors: 0 }, week: { pageViews: 0, visitors: 0 }, month: { pageViews: 0, visitors: 0 } },
+    trafficScope,
+    periods: {
+      today: { pageViews: 0, visitors: 0, externalPageViews: 0, externalVisitors: 0, internalPageViews: 0, internalVisitors: 0 },
+      week: { pageViews: 0, visitors: 0, externalPageViews: 0, externalVisitors: 0, internalPageViews: 0, internalVisitors: 0 },
+      month: { pageViews: 0, visitors: 0, externalPageViews: 0, externalVisitors: 0, internalPageViews: 0, internalVisitors: 0 },
+    },
     trend: Array.from({ length: selectedDays }, () => ({ day: "", views: 0, visitors: 0 })),
-    filters: [], projectClicks: [], favorites: [],
+    geography: [], filters: [], projectClicks: [], favorites: [],
     subscriptions: { activeUsers: 0, trialingUsers: 0, registeredUsers: 0, byPlan: [] },
     payments: { activeStripeSubscriptions: 0, activeManualSubscriptions: 0, pastDueSubscriptions: 0, monthlyListValueUsd: 0, manualCollectedUsd: 0, manualPendingUsd: 0, manualPendingRequests: 0 },
   };
@@ -94,16 +131,36 @@ export function AdminAnalyticsDashboard({ data, selectedDays }: { data: Analytic
       <AdminPageHeader
         eyebrow="Operations"
         title="运营看板"
-        description="查看访问趋势、用户筛选偏好、热门项目、收藏与订阅情况。数据从埋点启用后开始积累。"
+        description="查看外部与内部访问、访客国家和地区、用户筛选偏好、热门项目、收藏与订阅情况。"
         actions={<p className="text-xs font-semibold text-[#7a878f]">{trackingReady ? `更新于 ${new Date(dashboard.generatedAt).toLocaleString("zh-CN")}` : "等待启用"}</p>}
       />
 
       {!trackingReady && <section className="rounded-2xl border border-[#eed18c] bg-[#fff8e7] px-5 py-4"><p className="text-sm font-black text-[#6d4c0d]">尚未连接统计数据</p><p className="mt-1 text-xs leading-5 text-[#7c6943]">请在 Supabase 执行迁移 0016_product_analytics.sql。看板布局可先预览，启用后数据将从零开始积累。</p></section>}
 
+      <section className="grid gap-4 rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] xl:items-center">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#b86e00]">Traffic scope</p>
+          <h2 className="mt-1 text-xl font-black text-[#071826]">区分自己与真实访客</h2>
+          <nav className="mt-4 inline-flex rounded-xl bg-[#edf1f2] p-1">
+            {(Object.keys(TRAFFIC_SCOPE_LABELS) as TrafficScope[]).map((scope) => (
+              <Link
+                key={scope}
+                href={`/admin/analytics?days=${selectedDays}&scope=${scope}`}
+                className={`rounded-lg px-3 py-2 text-xs font-black ${trafficScope === scope ? "bg-white text-[#071826] shadow-sm" : "text-[#71808a]"}`}
+              >
+                {TRAFFIC_SCOPE_LABELS[scope]}
+              </Link>
+            ))}
+          </nav>
+          <p className="mt-3 text-xs leading-5 text-[#7a878f]">当前展示：{TRAFFIC_SCOPE_LABELS[trafficScope]}。历史记录没有内部标记，会暂列为外部访问；新分类从本次部署后开始生效。</p>
+        </div>
+        <InternalTrafficControl initiallyMarked={internalDeviceMarked} />
+      </section>
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="近 24 小时浏览" period={dashboard.periods.today} />
-        <MetricCard label="近 7 天浏览" period={dashboard.periods.week} />
-        <MetricCard label="近 30 天浏览" period={dashboard.periods.month} />
+        <MetricCard label={`近 24 小时 · ${TRAFFIC_SCOPE_LABELS[trafficScope]}`} period={dashboard.periods.today} />
+        <MetricCard label={`近 7 天 · ${TRAFFIC_SCOPE_LABELS[trafficScope]}`} period={dashboard.periods.week} />
+        <MetricCard label={`近 30 天 · ${TRAFFIC_SCOPE_LABELS[trafficScope]}`} period={dashboard.periods.month} />
         <article className="rounded-2xl bg-[#061b2b] p-5 text-white">
           <p className="text-xs font-black tracking-[0.08em] text-white/58">当前订阅用户</p>
           <p className="mt-3 text-3xl font-black tracking-[-0.04em] text-[#ffb21c]">{formatNumber(activeSubscribers)}</p>
@@ -135,7 +192,7 @@ export function AdminAnalyticsDashboard({ data, selectedDays }: { data: Analytic
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div><p className="text-xs font-black uppercase tracking-[0.16em] text-[#b86e00]">Traffic trend</p><h2 className="mt-1 text-xl font-black text-[#071826]">浏览趋势</h2></div>
           <nav className="flex rounded-xl bg-[#edf1f2] p-1">
-            {[7, 30, 90].map((days) => <Link key={days} href={`/admin/analytics?days=${days}`} className={`rounded-lg px-3 py-2 text-xs font-black ${selectedDays === days ? "bg-white text-[#071826] shadow-sm" : "text-[#71808a]"}`}>{days} 天</Link>)}
+            {[7, 30, 90].map((days) => <Link key={days} href={`/admin/analytics?days=${days}&scope=${trafficScope}`} className={`rounded-lg px-3 py-2 text-xs font-black ${selectedDays === days ? "bg-white text-[#071826] shadow-sm" : "text-[#71808a]"}`}>{days} 天</Link>)}
           </nav>
         </div>
         <div className="mt-6 flex h-52 items-end gap-1 border-b border-[#dbe2e5] px-1">
@@ -146,6 +203,22 @@ export function AdminAnalyticsDashboard({ data, selectedDays }: { data: Analytic
           ))}
         </div>
         <div className="mt-2 flex justify-between text-[10px] font-semibold text-[#8a969d]"><span>{dashboard.trend[0]?.day}</span><span>{dashboard.trend.at(-1)?.day}</span></div>
+      </section>
+
+      <section className="rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><p className="text-xs font-black uppercase tracking-[0.16em] text-[#b86e00]">Visitor geography</p><h2 className="mt-1 text-xl font-black text-[#071826]">访客国家与地区</h2></div>
+          <p className="max-w-lg text-right text-xs leading-5 text-[#7a878f]">按所选时间和访问类型统计；地区来自网络出口位置，VPN或移动网络可能造成偏差。</p>
+        </div>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {dashboard.geography.length === 0 ? <div className="sm:col-span-2 xl:col-span-3"><EmptyState>新版本部署并产生访问后，这里会显示国家和地区</EmptyState></div> : dashboard.geography.map((item, index) => (
+            <div key={`${item.countryCode}-${item.regionCode}`} className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-xl bg-[#f3f5f4] px-3 py-3">
+              <span className="text-xs font-black text-[#9a6a12]">{index + 1}</span>
+              <p className="truncate text-sm font-bold text-[#203847]">{geographyLabel(item.countryCode, item.regionCode)}</p>
+              <span className="text-right text-xs font-black text-[#071826]">{formatNumber(item.visitors)} 人<span className="block font-medium text-[#8a969d]">{formatNumber(item.views)} 次</span></span>
+            </div>
+          ))}
+        </div>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-2">

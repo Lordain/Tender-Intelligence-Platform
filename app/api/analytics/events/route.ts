@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { isAdminEmail } from "@/lib/admin-auth";
+import { INTERNAL_TRAFFIC_COOKIE } from "@/lib/analytics-internal";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { clientIp, createRateLimiter } from "@/lib/security/rate-limit";
@@ -25,6 +27,11 @@ const ALLOWED_FILTER_DIMENSIONS = new Set(["country", "industry", "scope", "stat
  * lib/security/rate-limit.ts for what this does and does not cover.
  */
 const isRateLimited = createRateLimiter({ windowMs: 60_000, max: 60 });
+
+function normalizedGeoCode(value: string | null, pattern: RegExp): string | null {
+  const normalized = value?.trim().toUpperCase() ?? "";
+  return pattern.test(normalized) ? normalized : null;
+}
 
 export async function POST(request: NextRequest) {
   if (/bot|crawler|spider|slurp|preview/i.test(request.headers.get("user-agent") ?? "")) {
@@ -71,6 +78,12 @@ export async function POST(request: NextRequest) {
   }
 
   const user = await getCurrentUser().catch(() => null);
+  const countryCode = normalizedGeoCode(
+    request.headers.get("x-vercel-ip-country") ?? request.headers.get("cf-ipcountry"),
+    /^[A-Z]{2}$/,
+  );
+  const regionCode = normalizedGeoCode(request.headers.get("x-vercel-ip-country-region"), /^[A-Z0-9-]{1,8}$/);
+  const isInternal = isAdminEmail(user?.email) || request.cookies.get(INTERNAL_TRAFFIC_COOKIE)?.value === "1";
   const { error } = await supabase.from("analytics_events").insert({
     event_type: eventType,
     session_id: sessionId,
@@ -78,6 +91,9 @@ export async function POST(request: NextRequest) {
     path: path?.slice(0, 500) ?? null,
     tender_id: tenderId ?? null,
     properties,
+    country_code: countryCode,
+    region_code: regionCode,
+    is_internal: isInternal,
   });
 
   if (error) return NextResponse.json({ accepted: false }, { status: 503 });

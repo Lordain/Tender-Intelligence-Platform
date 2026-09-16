@@ -3,12 +3,22 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { BILLING_MONTHS, PLAN_PRICES_USD, type PaidPlan } from "@/lib/billing-catalog";
 import type { BillingInterval } from "@/lib/access-control";
 
-export type AnalyticsPeriod = { pageViews: number; visitors: number };
+export type TrafficScope = "external" | "internal" | "all";
+export type AnalyticsPeriod = {
+  pageViews: number;
+  visitors: number;
+  externalPageViews: number;
+  externalVisitors: number;
+  internalPageViews: number;
+  internalVisitors: number;
+};
 export type AnalyticsDashboardData = {
   generatedAt: string;
   selectedDays: number;
+  trafficScope: TrafficScope;
   periods: { today: AnalyticsPeriod; week: AnalyticsPeriod; month: AnalyticsPeriod };
   trend: { day: string; views: number; visitors: number }[];
+  geography: { countryCode: string; regionCode: string; views: number; visitors: number }[];
   filters: { dimension: string; value: string; count: number }[];
   projectClicks: { tenderId: string; title: string; slug: string; count: number; visitors: number }[];
   favorites: { tenderId: string; title: string; slug: string; count: number }[];
@@ -29,16 +39,23 @@ export type AnalyticsDashboardData = {
   };
 };
 
-type DailyEventRow = { day: string; event_count: number | string; visitor_count: number | string };
-type DailyFilterRow = { dimension: string; value: string; use_count: number | string };
+type DailyEventRow = { day: string; is_internal: boolean | null; event_count: number | string; visitor_count: number | string };
+type DailyFilterRow = { dimension: string; value: string; is_internal: boolean | null; use_count: number | string };
 type DailyTenderRow = {
   tender_id: string;
   tender_title: string;
   slug: string;
+  is_internal: boolean | null;
   open_count: number | string;
   visitor_count: number | string;
 };
-type FavoriteRow = { tender_id: string; tender_title: string; slug: string; favorite_count: number | string };
+type FavoriteRow = { tender_id: string; tender_title: string; slug: string; is_internal: boolean; favorite_count: number | string };
+type GeographyRow = {
+  country_code: string;
+  region_code: string;
+  page_views: number | string;
+  visitors: number | string;
+};
 type SubscriptionRow = {
   user_id: string;
   plan: string;
@@ -96,41 +113,70 @@ function periodStart(days: number): string {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
-async function fetchPeriodSummary(days: number): Promise<AnalyticsPeriod> {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return { pageViews: 0, visitors: 0 };
-  const { data, error } = await supabase.rpc("analytics_period_summary", { period_start: periodStart(days) });
-  if (error) throw error;
-  const row = Array.isArray(data) ? data[0] : data;
-  return { pageViews: number(row?.page_views), visitors: number(row?.visitors) };
+function scopeMatches(isInternal: boolean | null, scope: TrafficScope): boolean {
+  return scope === "all" ? isInternal === null : isInternal === (scope === "internal");
 }
 
-export async function fetchAnalyticsDashboard(days: number): Promise<AnalyticsDashboardData | null> {
+async function fetchPeriodSummary(days: number, scope: TrafficScope): Promise<AnalyticsPeriod> {
+  const supabase = createSupabaseAdminClient();
+  const empty = {
+    pageViews: 0,
+    visitors: 0,
+    externalPageViews: 0,
+    externalVisitors: 0,
+    internalPageViews: 0,
+    internalVisitors: 0,
+  };
+  if (!supabase) return empty;
+  const { data, error } = await supabase.rpc("analytics_period_summary_v2", { period_start: periodStart(days) });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  const allPageViews = number(row?.page_views);
+  const allVisitors = number(row?.visitors);
+  const externalPageViews = number(row?.external_page_views);
+  const externalVisitors = number(row?.external_visitors);
+  const internalPageViews = number(row?.internal_page_views);
+  const internalVisitors = number(row?.internal_visitors);
+  return {
+    pageViews: scope === "external" ? externalPageViews : scope === "internal" ? internalPageViews : allPageViews,
+    visitors: scope === "external" ? externalVisitors : scope === "internal" ? internalVisitors : allVisitors,
+    externalPageViews,
+    externalVisitors,
+    internalPageViews,
+    internalVisitors,
+  };
+}
+
+export async function fetchAnalyticsDashboard(days: number, requestedScope: TrafficScope = "external"): Promise<AnalyticsDashboardData | null> {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return null;
 
   const selectedDays = [7, 30, 90].includes(days) ? days : 30;
+  const trafficScope: TrafficScope = ["external", "internal", "all"].includes(requestedScope) ? requestedScope : "external";
   const sinceDay = dateKey(new Date(Date.now() - (selectedDays - 1) * 24 * 60 * 60 * 1000));
 
-  const [today, week, month, dailyResult, filterResult, clickResult, favoriteResult, subscriptionResult, profileResult, manualPaymentResult] = await Promise.all([
-    fetchPeriodSummary(1),
-    fetchPeriodSummary(7),
-    fetchPeriodSummary(30),
-    supabase.from("analytics_daily_events").select("day,event_count,visitor_count").eq("event_type", "page_view").gte("day", sinceDay).order("day"),
-    supabase.from("analytics_daily_filters").select("dimension,value,use_count").gte("day", sinceDay),
-    supabase.from("analytics_daily_tender_opens").select("tender_id,tender_title,slug,open_count,visitor_count").gte("day", sinceDay),
-    supabase.from("analytics_current_favorites").select("tender_id,tender_title,slug,favorite_count").order("favorite_count", { ascending: false }).limit(10),
+  const [today, week, month, dailyResult, geographyResult, filterResult, clickResult, favoriteResult, subscriptionResult, profileResult, manualPaymentResult] = await Promise.all([
+    fetchPeriodSummary(1, trafficScope),
+    fetchPeriodSummary(7, trafficScope),
+    fetchPeriodSummary(30, trafficScope),
+    supabase.from("analytics_daily_events").select("day,is_internal,event_count,visitor_count").eq("event_type", "page_view").gte("day", sinceDay).order("day"),
+    supabase.rpc("analytics_geography_summary", { period_start: periodStart(selectedDays), traffic_scope: trafficScope }),
+    supabase.from("analytics_daily_filters").select("dimension,value,is_internal,use_count").gte("day", sinceDay),
+    supabase.from("analytics_daily_tender_opens").select("tender_id,tender_title,slug,is_internal,open_count,visitor_count").gte("day", sinceDay),
+    supabase.from("analytics_current_favorites").select("tender_id,tender_title,slug,is_internal,favorite_count").order("favorite_count", { ascending: false }),
     fetchSubscriptionRows(supabase),
     supabase.from("profiles").select("id", { count: "exact", head: true }),
     fetchManualPaymentRows(supabase),
   ]);
 
-  const analyticsError = dailyResult.error ?? filterResult.error ?? clickResult.error ?? favoriteResult.error
+  const analyticsError = dailyResult.error ?? geographyResult.error ?? filterResult.error ?? clickResult.error ?? favoriteResult.error
     ?? profileResult.error;
   if (analyticsError) return null;
 
   const dailyByDay = new Map(
-    ((dailyResult.data ?? []) as DailyEventRow[]).map((row) => [row.day, { views: number(row.event_count), visitors: number(row.visitor_count) }]),
+    ((dailyResult.data ?? []) as DailyEventRow[])
+      .filter((row) => scopeMatches(row.is_internal, trafficScope))
+      .map((row) => [row.day, { views: number(row.event_count), visitors: number(row.visitor_count) }]),
   );
   const trend = Array.from({ length: selectedDays }, (_, index) => {
     const day = dateKey(new Date(Date.now() - (selectedDays - 1 - index) * 24 * 60 * 60 * 1000));
@@ -139,6 +185,7 @@ export async function fetchAnalyticsDashboard(days: number): Promise<AnalyticsDa
 
   const filterTotals = new Map<string, { dimension: string; value: string; count: number }>();
   for (const row of (filterResult.data ?? []) as DailyFilterRow[]) {
+    if (!scopeMatches(row.is_internal, trafficScope)) continue;
     const key = `${row.dimension}\u0000${row.value}`;
     const current = filterTotals.get(key) ?? { dimension: row.dimension, value: row.value, count: 0 };
     current.count += number(row.use_count);
@@ -147,6 +194,7 @@ export async function fetchAnalyticsDashboard(days: number): Promise<AnalyticsDa
 
   const clickTotals = new Map<string, AnalyticsDashboardData["projectClicks"][number]>();
   for (const row of (clickResult.data ?? []) as DailyTenderRow[]) {
+    if (!scopeMatches(row.is_internal, trafficScope)) continue;
     const current = clickTotals.get(row.tender_id) ?? {
       tenderId: row.tender_id,
       title: row.tender_title,
@@ -157,6 +205,19 @@ export async function fetchAnalyticsDashboard(days: number): Promise<AnalyticsDa
     current.count += number(row.open_count);
     current.visitors += number(row.visitor_count);
     clickTotals.set(row.tender_id, current);
+  }
+
+  const favoriteTotals = new Map<string, AnalyticsDashboardData["favorites"][number]>();
+  for (const row of (favoriteResult.data ?? []) as FavoriteRow[]) {
+    if (trafficScope !== "all" && row.is_internal !== (trafficScope === "internal")) continue;
+    const current = favoriteTotals.get(row.tender_id) ?? {
+      tenderId: row.tender_id,
+      title: row.tender_title,
+      slug: row.slug,
+      count: 0,
+    };
+    current.count += number(row.favorite_count);
+    favoriteTotals.set(row.tender_id, current);
   }
 
   const subscriptions = subscriptionResult;
@@ -188,16 +249,18 @@ export async function fetchAnalyticsDashboard(days: number): Promise<AnalyticsDa
   return {
     generatedAt: new Date().toISOString(),
     selectedDays,
+    trafficScope,
     periods: { today, week, month },
     trend,
+    geography: ((geographyResult.data ?? []) as GeographyRow[]).slice(0, 20).map((row) => ({
+      countryCode: row.country_code,
+      regionCode: row.region_code,
+      views: number(row.page_views),
+      visitors: number(row.visitors),
+    })),
     filters: [...filterTotals.values()].sort((a, b) => b.count - a.count).slice(0, 10),
     projectClicks: [...clickTotals.values()].sort((a, b) => b.count - a.count).slice(0, 10),
-    favorites: ((favoriteResult.data ?? []) as FavoriteRow[]).map((row) => ({
-      tenderId: row.tender_id,
-      title: row.tender_title,
-      slug: row.slug,
-      count: number(row.favorite_count),
-    })),
+    favorites: [...favoriteTotals.values()].sort((a, b) => b.count - a.count).slice(0, 10),
     subscriptions: {
       activeUsers,
       trialingUsers,

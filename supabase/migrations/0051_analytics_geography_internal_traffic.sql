@@ -152,8 +152,8 @@ as $$
   select
     coalesce(event.country_code, 'UNKNOWN'),
     coalesce(event.region_code, 'UNKNOWN'),
-    count(*)::bigint,
-    count(distinct coalesce(event.user_id::text, event.session_id::text))::bigint
+    count(*)::bigint as page_views,
+    count(distinct coalesce(event.user_id::text, event.session_id::text))::bigint as visitors
   from public.analytics_events event
   where event.event_type = 'page_view'
     and event.created_at >= period_start
@@ -163,7 +163,7 @@ as $$
       else not event.is_internal
     end
   group by 1, 2
-  order by visitors desc, page_views desc;
+  order by 4 desc, 3 desc;
 $$;
 
 revoke all on public.analytics_daily_events from anon, authenticated;

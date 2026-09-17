@@ -53,8 +53,6 @@ export default function CountryInsightsPage() {
                 </div>
                 <div className="p-6 sm:p-8">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-[#7b878e]">
-                    <span>{insight.updatedAt}更新</span>
-                    <span>{insight.readTime}</span>
                     <span>作者：{insight.author}</span>
                   </div>
                   <h2 className="mt-4 text-2xl font-black leading-9 tracking-[-0.03em] sm:text-3xl">{insight.title}</h2>

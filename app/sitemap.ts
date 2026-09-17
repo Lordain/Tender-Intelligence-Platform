@@ -30,6 +30,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: origin, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${origin}/tenders`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    { url: `${origin}/insights`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${origin}/insights/mexico`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${origin}/insights/colombia`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${origin}/insights/peru`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${origin}/guides`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     ...participationGuides.map((guide) => ({
       url: `${origin}/guides/${guide.slug}`,

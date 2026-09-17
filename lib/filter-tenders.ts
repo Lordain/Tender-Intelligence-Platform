@@ -1,5 +1,6 @@
 import type { Locale, Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { localize } from "@/lib/localize";
+import { calendarDateBucket, interleaveCountriesWithinEqualGroups } from "@/lib/country-interleave";
 
 export type TenderFilterOptions = {
   query?: string;
@@ -125,7 +126,7 @@ export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SOR
         return 4;
       };
 
-      return sorted.sort((a, b) => {
+      const deadlineSorted = sorted.sort((a, b) => {
         const aDeadline = deadlineOf(a);
         const bDeadline = deadlineOf(b);
         const priorityDifference = priorityOf(a, aDeadline) - priorityOf(b, bDeadline);
@@ -139,9 +140,21 @@ export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SOR
         }
         return b.publicationDate.localeCompare(a.publicationDate);
       });
+
+      return interleaveCountriesWithinEqualGroups(deadlineSorted, (tender) => {
+        const deadline = deadlineOf(tender);
+        const priority = priorityOf(tender, deadline);
+        if (deadline !== null && deadline >= now) {
+          return `${priority}:deadline:${calendarDateBucket(tender.submissionDeadline)}`;
+        }
+        return `${priority}:publication:${calendarDateBucket(tender.publicationDate)}`;
+      });
     }
     case "publication_desc":
     default:
-      return sorted.sort((a, b) => b.publicationDate.localeCompare(a.publicationDate));
+      return interleaveCountriesWithinEqualGroups(
+        sorted.sort((a, b) => b.publicationDate.localeCompare(a.publicationDate)),
+        (tender) => calendarDateBucket(tender.publicationDate),
+      );
   }
 }

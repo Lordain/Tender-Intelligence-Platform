@@ -15,7 +15,7 @@ function check(label: string, condition: boolean) {
   }
 }
 
-function tender(slug: string, deadline: string | undefined, status: TenderStatus = "open"): Tender {
+function tender(slug: string, deadline: string | undefined, status: TenderStatus = "open", country = "Mexico"): Tender {
   return {
     id: slug,
     slug,
@@ -24,7 +24,7 @@ function tender(slug: string, deadline: string | undefined, status: TenderStatus
     title: { zh: slug, es: slug, en: slug },
     summary: { zh: "", es: "", en: "" },
     buyer: "buyer",
-    country: "Mexico",
+    country,
     governmentLevel: "federal",
     industries: ["construction"],
     scopeType: "works",
@@ -69,6 +69,20 @@ check("deadline view shows exactly the tenders counted", deadlineView.totalResul
 check(
   "deadline view keeps both window boundaries",
   deadlineView.tenders.map((item) => item.id).join(",") === "in-one-hour,at-five-days",
+);
+
+const sameDay = [
+  tender("pe-1", "2026-09-18T09:00:00.000Z", "open", "Peru"),
+  tender("pe-2", "2026-09-18T12:00:00.000Z", "open", "Peru"),
+  tender("pe-3", "2026-09-18T17:00:00.000Z", "open", "Peru"),
+  tender("mx-1", "2026-09-18T10:00:00.000Z", "open", "Mexico"),
+  tender("mx-2", "2026-09-18T15:00:00.000Z", "open", "Mexico"),
+  tender("co-1", "2026-09-18T11:00:00.000Z", "open", "Colombia"),
+];
+const mixedPage = buildTenderListPage(sameDay, {}, { now, pageSize: 10 });
+check(
+  "same-day tender-list results round-robin countries before pagination",
+  mixedPage.tenders.map((item) => item.id).join(",") === "pe-1,mx-1,co-1,pe-2,mx-2,pe-3",
 );
 
 console.log(`\n${passed}/${passed + failed} checks passed.`);

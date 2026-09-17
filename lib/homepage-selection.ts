@@ -5,6 +5,7 @@
 // (scripts/test-homepage-selection.ts) instead of only in production.
 import type { HomepageControlSettings } from "@/lib/db/site-settings";
 import { isClosedTender } from "@/lib/access-control";
+import { calendarDateBucket, interleaveCountriesWithinEqualGroups } from "@/lib/country-interleave";
 import type { Tender } from "@/types/tender";
 
 function isTender(tender: Tender | undefined): tender is Tender {
@@ -49,9 +50,19 @@ export function selectHomepageTenders(
       ? sorted
       : settings.tickerSlugs.map((slug) => bySlug.get(slug)).filter(isTender);
 
-  const ticker = tickerSource
-    .filter((tender) => !featuredSlugSet.has(tender.slug))
-    .slice(0, settings.tickerCount);
+  const tickerCandidates = tickerSource.filter((tender) => !featuredSlugSet.has(tender.slug));
+  // Automatic mode still ranks by the nearest deadline first. Only projects
+  // closing on the same calendar day are round-robined by country, so ten
+  // same-day Peru rows no longer hide Mexico and Colombia below the fold.
+  // Manual mode is deliberately untouched: an administrator's order is an
+  // explicit editorial decision, not something this display rule may alter.
+  const ticker = (settings.tickerMode === "deadline"
+    ? interleaveCountriesWithinEqualGroups(
+        tickerCandidates,
+        (tender) => calendarDateBucket(tender.submissionDeadline),
+      )
+    : tickerCandidates
+  ).slice(0, settings.tickerCount);
 
   return { featured, ticker };
 }

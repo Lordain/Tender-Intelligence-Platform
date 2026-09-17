@@ -24,9 +24,10 @@ function check(label: string, condition: boolean, detail?: string) {
   }
 }
 
-function tender(slug: string, options: { deadline?: string; status?: TenderStatus; published?: string } = {}): Tender {
+function tender(slug: string, options: { deadline?: string; status?: TenderStatus; published?: string; country?: string } = {}): Tender {
   return {
     slug,
+    country: options.country ?? "Mexico",
     publicationDate: options.published ?? "2026-09-01",
     submissionDeadline: options.deadline,
     status: options.status ?? "open",
@@ -41,6 +42,23 @@ const settings = (overrides: Partial<HomepageControlSettings> = {}): HomepageCon
   tickerMode: "deadline",
   ...overrides,
 });
+
+{
+  const sameDay = [
+    tender("pe-1", { deadline: "2026-09-20T09:00:00Z", country: "Peru" }),
+    tender("pe-2", { deadline: "2026-09-20T12:00:00Z", country: "Peru" }),
+    tender("pe-3", { deadline: "2026-09-20T17:00:00Z", country: "Peru" }),
+    tender("mx-1", { deadline: "2026-09-20T10:00:00Z", country: "Mexico" }),
+    tender("mx-2", { deadline: "2026-09-20T15:00:00Z", country: "Mexico" }),
+    tender("co-1", { deadline: "2026-09-20T11:00:00Z", country: "Colombia" }),
+  ];
+  const { ticker } = selectHomepageTenders(sameDay, settings({ tickerCount: 6 }));
+  check(
+    "same-day homepage projects round-robin countries",
+    ticker.map((t) => t.slug).join(",") === "pe-1,mx-1,co-1,pe-2,mx-2,pe-3",
+    ticker.map((t) => t.slug).join(","),
+  );
+}
 
 const pool = [
   tender("far", { deadline: "2026-12-31" }),

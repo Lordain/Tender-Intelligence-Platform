@@ -59,7 +59,24 @@
  * a date bound it is an import rather than a crawl.
  *
  * `tipos_documento` filters too (`edital` → 4.08M, `ata` → 1,170,148 = 28.7%,
- * measured in run one) and remains the positive control.
+ * measured in run one) and is one of the two positive controls.
+ *
+ * ── FOURTH RUN (2026-09-18) — the repeated key drops the first value ──────
+ *
+ *                       status 基准     q 基准
+ *   modalidades=4          143,723      47,431
+ *   modalidades=6        1,063,519      46,636
+ *   modalidades=4&6      1,063,522      46,636
+ *
+ * `4&6` equals `6` alone on both baselines, to three rows out of a million.
+ * **It is not a union — the server keeps the last value and silently drops
+ * the first.** A two-modality query therefore looks like it worked while
+ * returning half the intended scope, which is why this was worth three
+ * numbers instead of two. One modality per request; there is no multi-select.
+ *
+ * The comma, semicolon and JSON-array spellings return zero rows, and
+ * `modalidades[]=` is ignored. So the full set of working spellings is: one
+ * bare numeric id.
  *
  * Read-only. No Supabase, no writes, no model calls.
  *
@@ -300,16 +317,35 @@ async function main() {
 
   console.log("\n" + "─".repeat(72));
   const row = (needle: string) => table.find((t) => t.label.startsWith(needle));
-  const positive = row("tipos_documento=ata");
+  // TWO positive controls, and "could not be measured" is not "failed".
+  //
+  // Run four blocked a report whose data was fine, because the single
+  // positive control (tipos_documento=ata) was reset on both baselines by
+  // the same intermittent throttle documented above — after it had measured
+  // cleanly in the two previous runs. A control that is itself flaky turns
+  // the gate into a coin toss, and treating an unmeasured control as a failed
+  // one is the same conflation this file keeps having to correct elsewhere.
   const negative = row("zzz_nao_existe");
-  const controlsOk = positive?.cells.some((c) => c.verdict === "有效") === true && negative?.cells.every((c) => c.verdict === "被忽略") === true;
+  const positives = [row("tipos_documento=ata"), row("modalidades=4（已知有效）")].filter((r): r is NonNullable<typeof r> => r !== undefined);
+  const narrowed = positives.filter((p) => p.cells.some((c) => c.verdict === "有效"));
+  const unmeasured = positives.filter((p) => p.cells.every((c) => c.verdict === "被拒" || c.verdict === "读不到"));
+  const negativeOk = negative?.cells.every((c) => c.verdict === "被忽略") === true;
 
-  if (!controlsOk) {
-    console.log("对照组不成立 —— 正对照（tipos_documento）没缩小，或者假参数反而被判成有效。");
-    console.log("测量方法本身有问题，上面每一行都不能当结论。把整段发我。");
+  if (narrowed.length === 0) {
+    console.log(
+      unmeasured.length === positives.length
+        ? "正对照一个都没量到（全被连接重置）—— 这不是「对照失败」，是这一轮没测成。隔一会儿重跑。"
+        : "正对照都没缩小结果 —— 测量方法本身有问题，上面每一行都不能当结论。把整段发我。",
+    );
     return;
   }
-  console.log("对照组通过：tipos_documento 会缩小结果，假参数不会。下面的判断可信。\n");
+  if (!negativeOk) {
+    console.log("假参数居然改变了总数 —— 判定门槛定低了或者索引在剧烈变动。上面每一行都不能当结论。把整段发我。");
+    return;
+  }
+  console.log(`对照组通过：${narrowed.map((p) => p.label.split("（")[0]).join(" 和 ")} 会缩小结果，假参数不会。下面的判断可信。`);
+  if (unmeasured.length > 0) console.log(`（${unmeasured.map((p) => p.label.split("（")[0]).join("、")} 这一轮被连接重置，没量到 —— 不影响结论。）`);
+  console.log();
 
   const effective = table.filter((t) => !t.role && t.cells.some((c) => c.verdict === "有效"));
   const rejected = table.filter((t) => !t.role && t.cells.every((c) => c.verdict === "被拒"));

@@ -2761,16 +2761,52 @@ encoding wearing a filter's clothes, and the most expensive kind of wrong
 available here, because a connector built on it would query happily, import
 nothing, and report success. Zero is now its own verdict.
 
-**The repeated-key result is still ambiguous, and that matters.**
-`modalidades=4&modalidades=6` returned 1,063,497 on the `status` baseline —
-far more than `4` alone, which reads like a union — but 46,633 on the `q`
-baseline, which is *fewer* than `4` alone's 47,430. Both numbers fit two
-different servers: one that ORs the values, and one that keeps only the last
-and silently drops the first. The run never measured `modalidades=6` alone, so
-it cannot tell them apart. It does now, and prints the three numbers side by
-side: `both ≈ 4 + 6` is a union, `both ≈ 6` means the first value was thrown
-away. A last-wins server would make a two-modality query look like it worked
-while quietly returning half the intended scope.
+**The repeated-key result was ambiguous, and the fourth run settled it — badly.**
+
+| | `status` baseline | `q` baseline |
+|---|---|---|
+| `modalidades=4` | 143,723 | 47,431 |
+| `modalidades=6` | 1,063,519 | 46,636 |
+| `modalidades=4&modalidades=6` | 1,063,522 | 46,636 |
+
+`4&6` equals `6` alone on both baselines, to three rows in a million. **It is
+not a union: the server keeps the last value and silently drops the first.**
+A two-modality query looks like it worked while returning half the intended
+scope — which is exactly why it was worth measuring the third number instead
+of reading the first two as a union. Comma, semicolon and JSON-array
+spellings return zero rows; `modalidades[]=` is ignored. **One bare numeric
+id per request is the only working spelling, so the connector queries one
+modality at a time.**
+
+**The control gate blocked that run, and it should not have.**
+`tipos_documento=ata` was reset on both baselines by the intermittent
+throttle, after measuring cleanly in the two runs before it — and the gate
+reported "对照组不成立", i.e. a broken measurement, for data that was fine.
+A control that is itself flaky turns the gate into a coin toss, and
+"could not be measured" is not "failed" — the same conflation this file keeps
+having to correct elsewhere. There are now two positive controls
+(`tipos_documento=ata` and `modalidades=4`), one narrowing is enough, and a
+control lost to a reset is reported as unmeasured rather than as a failure.
+
+#### The settled query shape
+
+```
+GET https://pncp.gov.br/api/search
+    ?tipos_documento=edital
+    &status=em_recebimento_de_proposta   # exactly one of status / q
+    &modalidades=<one numeric id>        # repeated keys drop all but the last
+    &ordenacao=-data                     # = update time, not publication
+    &pagina=<n>&tam_pagina=100           # 100 is the ceiling
+```
+
+Rows arrive under `items`. Filters AND together (`modalidades=4&ufs=SP` →
+15,714). There is no date lower bound, so a daily import sweeps each modality
+it cares about, newest-updated first, and stops at its own watermark on
+`data_atualizacao_pncp`. Reset the connection on any request and retry — a
+reset is a throttle, never a verdict. `valor_global` is always null, so the
+amount still has to be resolved per tender elsewhere, and open-versus-closed
+is decided on our side from `situacao_nome`, `cancelado` and
+`data_fim_vigencia`.
 
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against

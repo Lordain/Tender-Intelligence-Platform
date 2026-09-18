@@ -169,6 +169,14 @@ async function main() {
   const wantTitles = Math.max(1, Number(arg("--titles") ?? 50) || 50);
   const paceMs = Math.max(0, Number(arg("--pace") ?? 1200) || 1200);
   const q = arg("--q");
+  // One bare numeric id. The fourth filter-probe run proved repeated keys keep
+  // only the LAST value and silently drop the rest, so accepting a list here
+  // would quietly harvest the wrong modality.
+  const modalidade = arg("--modalidades");
+  if (modalidade !== undefined && !/^\d+$/.test(modalidade)) {
+    console.error(`--modalidades 只能给一个数字 id（收到 "${modalidade}"）。逗号/分号/JSON 数组都返回 0 条，重复键只认最后一个。`);
+    process.exit(1);
+  }
 
   console.log(`PNCP /api/search 取数 — 每条最多等 ${Math.round(timeoutMs / 1000)}s，间隔 ${paceMs}ms\n`);
 
@@ -219,7 +227,7 @@ async function main() {
   let pageSize = 10;
   for (const size of [500, 100, 50, 10]) {
     await sleep(paceMs);
-    const result = await get(url({ tipos_documento: "edital", status: open.status, ordenacao: "-data", pagina: 1, tam_pagina: size }), timeoutMs);
+    const result = await get(url({ tipos_documento: "edital", status: open.status, modalidades: modalidade, ordenacao: "-data", pagina: 1, tam_pagina: size }), timeoutMs);
     console.log(`  ${result.ok ? "OK  " : "FAIL"}  ${String(result.status).padEnd(12)} ${String(result.ms).padStart(6)}ms  tam_pagina=${String(size).padEnd(5)} ${result.ok ? `实际返回 ${result.rows.length} 行` : result.note.slice(0, 90)}`);
     if (result.ok && result.rows.length > 0) {
       pageSize = result.rows.length;
@@ -229,11 +237,11 @@ async function main() {
   console.log(`\n  用 ${pageSize} 条一页。\n`);
 
   // ── 3. 抓行 ──────────────────────────────────────────────────────────────
-  console.log(`【3】抓 ${wantTitles} 行${q ? `（关键词 "${q}"）` : "（不带关键词，这才是每日全量导入的形状）"}\n`);
+  console.log(`【3】抓 ${wantTitles} 行${q ? `（关键词 "${q}"）` : "（不带关键词，这才是每日全量导入的形状）"}${modalidade ? `，只看采购方式 ${modalidade}` : ""}\n`);
   const collected: Row[] = [];
   for (let pagina = 1; collected.length < wantTitles; pagina += 1) {
     await sleep(paceMs);
-    const result = await get(url({ q, tipos_documento: "edital", status: open.status, ordenacao: "-data", pagina, tam_pagina: pageSize }), timeoutMs);
+    const result = await get(url({ q, tipos_documento: "edital", status: open.status, modalidades: modalidade, ordenacao: "-data", pagina, tam_pagina: pageSize }), timeoutMs);
     if (!result.ok) {
       console.log(`  第 ${pagina} 页没取到：${result.status} ${result.note}`);
       break;

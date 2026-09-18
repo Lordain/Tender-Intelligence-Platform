@@ -103,8 +103,19 @@ export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide |
         "点击 Búsqueda Avanzada",
         "把招标编号粘贴到 Sigla Nomenclatura",
         "点击 Buscar",
+        // Steps 6 and 7 come from the user walking the path on 2026-09-18
+        // after reading the panel as it shipped: 我发现步骤没有写全. Buscar
+        // does not move the viewport, so the results appear below the fold
+        // and the page looks unchanged to someone who does not scroll — the
+        // same "nothing happened" that the empty landing tab produces two
+        // steps earlier, and the same reason to spell it out.
+        "往下滚到页面下半部分的结果清单",
+        "点第一条记录最右边 Acciones 栏里的日历图标",
       ],
-      note: "进入项目的 Ficha de Selección 后，右边的 Cronograma 里有完整时间表——包括本站拿不到的交标截止日（Presentación de propuestas）。这个 ficha 页面不要收藏：它的网址只在当前这次浏览会话里有效，下次打开会是一张空表，得从检索页重新走一遍。",
+      // Reworded with step 7: the schedule is reached by that calendar icon,
+      // so describing it as something found after entering the ficha named a
+      // route the reader was no longer on.
+      note: "第 7 步那个日历图标打开的就是 Cronograma——完整时间表，包括本站拿不到的交标截止日（Presentación de propuestas）。这个页面不要收藏：它的网址只在当前这次浏览会话里有效，下次打开是一张空表，得从检索页重新走一遍。",
     };
   }
 

@@ -82,8 +82,8 @@ async function main() {
   if (!write) {
     console.log("\n试运行 —— 一条都没写进 Supabase。确认上面的分级和金额之后，用：");
     console.log("  npm run ingest:brazil-live -- --write");
-    console.log("\n注意 lib/currency.ts 里的 BRL 汇率还没核对过。巴西的金额全按它折成美元，");
-    console.log("而 80 万／300 万／600 万美元都是档位悬崖 —— 写库之前先确认一下当前汇率。");
+    console.log("\n金额按 lib/currency.ts 里的 1 USD = 5.16 BRL 折成美元（2026-09-18 核对）。");
+    console.log("80 万／300 万／600 万美元是档位悬崖，汇率变动超过 5% 时上面的分级会跟着变。");
     return;
   }
   console.log(`\n已写入 ${result.written ?? 0} 条${result.failed ? `，失败 ${result.failed} 条` : ""}。`);

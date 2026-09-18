@@ -2874,11 +2874,13 @@ three path segments.
 — reais. `lib/currency.ts` had no BRL row, so `convertToUsd()` would have
 returned null and `lib/relevance.ts` would have read a real R$7.5M contract as
 "no value published", exactly what that table's EUR/GBP note exists to
-prevent. BRL is added, **flagged UNVERIFIED**: every other rate there was
-cross-checked against Wise/XE/Investing.com and this one could not be. It must
-be checked before the first Brazilian import — `MIN_VALUE_USD` 800k,
-`SIGNIFICANT` 3M and `FLAGSHIP` 6M are cliffs, and a 10% FX error moves
-tenders across them.
+prevent. BRL was added as a 5.4 placeholder flagged UNVERIFIED, then
+**corrected to 1 USD = 5.16 BRL on 2026-09-18** from a rate the user supplied
+— this sandbox reaches no FX host, so unlike every other row in that table it
+was not cross-checked here. The placeholder was ~4.5% off. That margin matters
+because `MIN_VALUE_USD` 800k, `SIGNIFICANT` 3M and `FLAGSHIP` 6M are cliffs:
+at 5.4 this contract read as US$1.39M and at 5.16 it reads as US$1.45M — both
+standard, but a row sitting near a threshold would have crossed it.
 
 The item record carries three fields that matter to the mapper as much as the
 amount:

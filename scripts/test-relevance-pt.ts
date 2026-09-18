@@ -127,7 +127,7 @@ const road = classifyStoredTender({
 });
 check("巴西公路同时拿到 transportation 和 construction", [road.industries.includes("transportation"), road.industries.includes("construction")], [true, true]);
 check("有真标签时不再残留 general", road.industries.includes("general"), false);
-// R$7,494,680.99 at 1 USD ≈ 5.4 BRL is US$1.39M — above MIN_VALUE_USD (800k)
+// R$7,494,680.99 at 1 USD = 5.16 BRL is US$1.45M — above MIN_VALUE_USD (800k)
 // and below SIGNIFICANT_VALUE_USD (3M), so "standard". This expectation was
 // written as "significant" first, which was simply wrong arithmetic on my
 // part; it is pinned here because it is also the answer to "where will
@@ -135,7 +135,7 @@ check("有真标签时不再残留 general", road.industries.includes("general")
 // contract lands in 常规, not 中型. Note this is the tier AFTER commit
 // 3568cf1 removed the clause that promoted any works contract above the
 // minimum — before that, this row would have been significant.
-check("R$749 万 ≈ US$139 万 → 常规（standard），不是中型", road.relevance.tier, "standard");
+check("R$749 万 ≈ US$145 万 → 常规（standard），不是中型", road.relevance.tier, "standard");
 const mexicanRoad = classifyStoredTender({
   title: "Construcción y pavimentación de la carretera estatal",
   summary: "",

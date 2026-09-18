@@ -225,10 +225,33 @@ export function parsePncpItemUrl(itemUrl: string | undefined): { cnpj: string; a
   return { cnpj: match[1], ano: match[2], sequencial: match[3] };
 }
 
+/**
+ * Strips a relaying platform's own tag from the front of an object text.
+ *
+ * Real row, 2026-09-18: "[Portal de Compras Públicas] - CONTRATAÇÃO DE
+ * EMPRESA ESPECIALIZADA PARA A EXECUÇÃO DE OBRA DE ENGENHARIA...". Municipal
+ * entities publish through intermediaries (Portal de Compras Públicas,
+ * Licitações-e, BLL) and some stamp their name into the description before it
+ * reaches PNCP. It is not part of what is being bought, and `description`
+ * becomes the reader-facing title.
+ *
+ * Deliberately NOT "strip any leading [...]": Brazilian titles use brackets
+ * for real content, and "[LOTE 1] CONSTRUÇÃO DE..." would lose which lot the
+ * tender is for. So both conditions must hold — the bracket carries no digit,
+ * and a " - " separator follows it. A platform name has neither a lot number
+ * nor a bare juxtaposition; a lot marker has both.
+ *
+ * One group only. A title beginning with two bracketed tags keeps the second,
+ * which is the safe direction: showing one stray tag beats eating real text.
+ */
+export function stripRelayPlatformTag(text: string): string {
+  return text.replace(/^\s*\[[^\]\d]{1,60}\]\s+[-–—]\s+/, "").trim();
+}
+
 export function mapPncpSearchRowToTender(row: PncpSearchRow, items: PncpItem[] | undefined, sourceName: string, now: Date = new Date()): Tender | null {
   // `description` is the object text; `title` is the notice number. Getting
   // these the wrong way round would fill the feed with "Edital nº 044/2026".
-  const description = row.description?.trim();
+  const description = row.description ? stripRelayPlatformTag(row.description) : undefined;
   const tenderNumber = row.numero_controle_pncp?.trim();
   const buyer = row.orgao_nome?.trim() || row.unidade_nome?.trim();
   const publicationDate = parsePncpDate(row.data_publicacao_pncp);

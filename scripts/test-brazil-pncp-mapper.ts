@@ -16,7 +16,7 @@
  *
  * Usage: npm run test:brazil-pncp-mapper
  */
-import { inferGovernmentLevel, inferScopeType, inferStatus, mapPncpSearchRowToTender, parsePncpDate, parsePncpItemUrl, sumPncpItemValues, type PncpSearchRow } from "@/lib/ingestion/brazil-pncp-mapper";
+import { inferGovernmentLevel, inferScopeType, inferStatus, mapPncpSearchRowToTender, parsePncpDate, parsePncpItemUrl, stripRelayPlatformTag, sumPncpItemValues, type PncpSearchRow } from "@/lib/ingestion/brazil-pncp-mapper";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -136,6 +136,28 @@ const noItems = mapPncpSearchRowToTender(ROAD, undefined, "PNCP");
 check("取不到明细时不写 0，而是不写金额", [noItems?.estimatedValue, noItems?.currency], [undefined, undefined]);
 
 console.log();
+
+// --- relaying platforms' own tags, from a real excluded-CSV row -------------
+check(
+  "去掉转发平台标签",
+  stripRelayPlatformTag("[Portal de Compras P\u00fablicas] - CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA PARA A EXECU\u00c7\u00c3O DE OBRA"),
+  "CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA PARA A EXECU\u00c7\u00c3O DE OBRA",
+);
+// The over-breadth pins. A lot marker carries real information and must
+// survive — losing it would merge two different lots into one indistinct
+// title.
+check(
+  "[LOTE 1] \u4e0d\u80fd\u88ab\u5f53\u6210\u5e73\u53f0\u6807\u7b7e\u53bb\u6389",
+  stripRelayPlatformTag("[LOTE 1] - CONSTRU\u00c7\u00c3O DE PONTE"),
+  "[LOTE 1] - CONSTRU\u00c7\u00c3O DE PONTE",
+);
+check(
+  "\u6ca1\u6709\u5206\u9694\u7b26\u7684\u65b9\u62ec\u53f7\u4e5f\u4e0d\u52a8",
+  stripRelayPlatformTag("[Anexo] CONSTRU\u00c7\u00c3O DE PONTE"),
+  "[Anexo] CONSTRU\u00c7\u00c3O DE PONTE",
+);
+check("\u6ca1\u6709\u65b9\u62ec\u53f7\u7684\u539f\u6837\u8fd4\u56de", stripRelayPlatformTag("CONSTRU\u00c7\u00c3O DE PONTE"), "CONSTRU\u00c7\u00c3O DE PONTE");
+
 if (failures > 0) {
   console.log(`${failures} 项没过。`);
   process.exit(1);

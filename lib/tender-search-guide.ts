@@ -93,13 +93,14 @@ export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide |
       url: SEACE_PUBLIC_SEARCH_URL,
       steps: [
         "打开 SEACE 公开检索页（下面的链接）",
-        // The landing tab is called out because the page opens on it with an
-        // empty result table reading "No se encontraron Datos" (verified in
-        // the user's browser, 2026-09-18). A reader who takes that as "the
-        // link is broken" leaves before reaching the search — which is the
-        // failure this whole panel exists to prevent, since for Peru these
-        // steps are the only route to the tender.
-        "页面默认停在第一个标签 Anuncio de Contratación Futura，表是空的——那不是这里，改点第二个标签 Buscador de Procedimientos de Selección",
+        // "第二个" earns its place: the page lands on a different tab showing
+        // an empty table, and a reader who cannot find this one quickly reads
+        // that emptiness as a broken link. Naming the position gets them past
+        // it in one glance — which is all that was needed. An earlier version
+        // also described the landing tab and warned it was the wrong one;
+        // that was commentary inside a numbered instruction, and it explained
+        // a dead end the instruction already walks around.
+        "点击第二个标签 Buscador de Procedimientos de Selección",
         "点击 Búsqueda Avanzada",
         "把招标编号粘贴到 Sigla Nomenclatura",
         "点击 Buscar",

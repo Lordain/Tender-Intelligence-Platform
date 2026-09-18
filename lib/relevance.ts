@@ -1,7 +1,7 @@
 import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
-import { classifyPortugueseExclusion, isBrazil } from "@/lib/relevance-pt";
+import { classifyPortugueseExclusion, classifyPortugueseIndustries, isBrazil } from "@/lib/relevance-pt";
 
 /**
  * Pre-Screening / relevance classification (rule-based, not AI — see
@@ -3181,7 +3181,17 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   industries: ReturnType<typeof classifyIndustries>;
   relevance: TenderRelevance;
 } {
-  const industries = classifyIndustries(input.title, input.summary, input.buyer);
+  // The Spanish pass always runs; the Portuguese one is added for Brazil and
+  // merged rather than substituted, since a title can match both (proper
+  // nouns, SCADA, "km 42+300"). Without it a Brazilian road contract carries
+  // no transport tag at all — `rodovia`, `paralelepípedo` and `bloquete` have
+  // no Spanish equivalents in lib/industry.ts.
+  const spanish = classifyIndustries(input.title, input.summary, input.buyer);
+  const portuguese = isBrazil(input.country) ? classifyPortugueseIndustries([input.title, input.summary, input.buyer].filter(Boolean).join(" ")) : [];
+  // "general" is lib/industry.ts's no-match fallback, so it must not survive
+  // alongside a real tag it would otherwise sit next to as a phantom category.
+  const merged = [...new Set([...spanish, ...portuguese])];
+  const industries = merged.length > 1 ? merged.filter((tag) => tag !== "general") : merged;
   return {
     industries,
     relevance: classifyRelevance({

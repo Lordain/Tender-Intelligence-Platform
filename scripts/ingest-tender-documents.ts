@@ -21,6 +21,7 @@ import { join, extname } from "node:path";
 import { intakeDocument, type TenderDocumentIntake } from "../lib/ingestion/document-intake";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { slugify } from "../lib/ingestion/text-utils";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const SUPPORTED_EXTENSIONS = [".pdf", ".docx", ".doc"];
 
@@ -80,7 +81,7 @@ async function record(intakes: TenderDocumentIntake[]) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const dir = args.find((a) => !a.startsWith("--"));
 
   if (!dir) {

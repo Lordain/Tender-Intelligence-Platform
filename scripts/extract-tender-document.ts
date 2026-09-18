@@ -41,6 +41,7 @@ import { hasRealTextLayer } from "../lib/ingestion/text-layer";
 import { maxPagesForTier, chooseExtractionModel, describeExtractionRouting } from "../lib/ingestion/extraction-routing";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import type { TenderRelevanceTier } from "../types/tender";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 /**
  * The tender's scale tag, which decides between qwen3.6-plus and
@@ -150,7 +151,7 @@ async function writeToSupabase(
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const positional = args.filter((a) => !a.startsWith("--"));
   const [pdfPath, tenderSlug] = positional;
 

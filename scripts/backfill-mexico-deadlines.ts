@@ -15,6 +15,7 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { backfillMexicoDeadlines } from "../lib/ingestion/backfill-mexico-deadlines";
 import { KEY_DATE_TYPE_LABELS } from "../lib/tender-labels";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const RULE = "─".repeat(78);
 const day = (value: string | null | undefined) => value?.slice(0, 10) ?? "—";
@@ -26,7 +27,7 @@ function argValue(args: string[], flag: string): string | undefined {
 
 async function main() {
   const args = process.argv.slice(2);
-  const write = args.includes("--write");
+  const write = hasWriteFlag();
   const country = argValue(args, "--country") ?? "Mexico";
 
   const supabase = createSupabaseAdminClient();

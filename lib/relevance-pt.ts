@@ -1,3 +1,5 @@
+import type { IndustryKey } from "@/lib/industry";
+
 /**
  * Portuguese exclusion rules — Brazil only.
  *
@@ -154,4 +156,51 @@ export function classifyPortugueseExclusion(text: string): PortugueseExclusion |
   if (PT_MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(text))) return "maintenance_only";
   if (PT_EXCLUDE_KEYWORDS.some((pattern) => pattern.test(text))) return "keyword";
   return null;
+}
+
+/**
+ * Industry tags from Portuguese text.
+ *
+ * Separate from lib/industry.ts's Spanish patterns for the same structural
+ * reason the exclusions are: those patterns are live for three countries, and
+ * a Portuguese alternative bolted into a 400-character regex can only break
+ * them. Merged into the Spanish result rather than replacing it — a title can
+ * legitimately match both (proper nouns, "SCADA", "km 42+300"), and dropping
+ * the Spanish pass would lose those.
+ *
+ * Tag keys must stay in step with lib/industry.ts's IndustryKey union; the
+ * public filter chips are built from that list, and a tag not in it would
+ * render as an untranslated string.
+ *
+ * Deliberately narrower than the Spanish set. Only the categories that
+ * actually appear in Brazilian Concorrência are here, each written from the
+ * 2026-09-18 corpus. Adding "healthcare" for a UBS (basic health unit) would
+ * be wrong, for instance: lib/relevance.ts excludes medical services, and
+ * building a clinic is construction — which is how the corpus's many UBS and
+ * ESF contracts should read.
+ */
+const PT_INDUSTRY_PATTERNS: [IndustryKey, RegExp][] = [
+  // Roads are the single largest category in the corpus. `rodovia`, `via
+  // pública`, `paralelepípedo` and `bloquete` (both paving stone types) have
+  // no Spanish equivalents in lib/industry.ts, so without these a Brazilian
+  // road contract carries no transport tag at all.
+  ["transportation", /\brodovias?\b|\brodovi[áa]ri[oa]\b|pavimenta[çc][ãa]o|capeamento\s+asf[áa]ltico|asf[áa]ltic[oa]|\bvias?\s+p[úu]blicas?\b|paralelep[íi]pedo(s)?|\bbloquete(s)?\b|sinaliza[çc][ãa]o\s+vi[áa]ria|terminal\s+rodovi[áa]rio|\bponte(s)?\b|\bviaduto(s)?\b|transporte\s+(p[úu]blico|aquavi[áa]rio)|\bestradas?\s+(rurais|vicinais)\b/i],
+  // `pavimenta[çc][ãa]o` is here as well as under transportation on purpose:
+  // lib/industry.ts's Spanish `construction` pattern likewise carries
+  // `pavimentaci[óo]n`, and a road contract genuinely is both. Without it the
+  // real title "execução da obra de implantação e pavimentação da Rodovia
+  // MT-403" carried a transport tag and no construction tag — caught by the
+  // corpus test.
+  ["construction", /\bobras?\s+de\s+(engenharia|implanta[çc][ãa]o|amplia[çc][ãa]o|reforma)\b|constru[çc][ãa]o|edifica[çc][õo]es|pavimenta[çc][ãa]o|recapeamento|reforma\s+e\s+amplia[çc][ãa]o|requalifica[çc][ãa]o|urbaniza[çc][ãa]o|terraplanagem|empreitada|\bengenharia\s+civil\b/i],
+  // `esgoto` (sewerage), `drenagem pluvial` (storm drainage) and `bueiro`
+  // (culvert) are the words a Brazilian title uses; none of them appear in
+  // the Spanish water pattern.
+  ["water", /\besgotos?\b|saneamento\s+b[áa]sico|drenagem(\s+pluvial)?|\b[áa]gua\s+(pot[áa]vel|para\s+consumo\s+humano)\b|esta[çc][ãa]o\s+de\s+tratamento|\bbueiro(s)?\b|\bre?servat[óo]rios?\b|barragem|\bdragagem\b/i],
+  ["power", /energia\s+el[ée]trica|rede\s+de\s+distribui[çc][ãa]o\s+de\s+energia|subesta[çc][ãa]o|ilumina[çc][ãa]o\s+p[úu]blica|projetos?\s+el[ée]tricos?|luminot[ée]cnic[oa]/i],
+  ["ict_telecom", /fibra\s+[óo]ptica|conex[ãa]o\s+dedicada\s+[àa]\s+internet|videomonitoramento|\bdatacenter\b|intelig[êe]ncia\s+urbana/i],
+];
+
+/** Portuguese-only industry tags. Returns [] rather than ["general"] — the caller merges this with the Spanish pass, which already supplies that fallback. */
+export function classifyPortugueseIndustries(text: string): IndustryKey[] {
+  return PT_INDUSTRY_PATTERNS.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
 }

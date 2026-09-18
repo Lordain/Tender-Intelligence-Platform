@@ -20,10 +20,11 @@
 import { readFileSync } from "node:fs";
 import { importBatchAnalysis } from "../lib/ingestion/import-batch-analysis";
 import type { TenderExtraction } from "../lib/ingestion/extract-requirements";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const force = args.includes("--force");
   const exportPaths = args.filter((a) => !a.startsWith("--"));
 

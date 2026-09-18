@@ -26,6 +26,7 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { translateAllTenders } from "../lib/ingestion/translate-all-tenders";
 import { findDroppedIdentifiers } from "../lib/ingestion/translate-titles";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -34,7 +35,7 @@ function argValue(args: string[], flag: string): string | undefined {
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const limitArg = argValue(args, "--limit");
   const limit = limitArg ? Number(limitArg) : undefined;
   const sampleArg = argValue(args, "--sample");

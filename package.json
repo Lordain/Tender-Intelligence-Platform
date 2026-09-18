@@ -42,6 +42,7 @@
     "purge:since": "tsx --env-file-if-exists=.env.local scripts/purge-tenders-since.ts",
     "ingest:peru": "tsx --env-file-if-exists=.env.local scripts/ingest-peru.ts",
     "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts",
+    "ingest:brazil-live": "tsx --env-file-if-exists=.env.local scripts/ingest-brazil-live.ts",
     "ingest:peru-oxi": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-oxi.ts",
     "backfill:peru-documents": "tsx --env-file-if-exists=.env.local scripts/backfill-peru-document-links.ts",
     "protect:source-urls": "tsx --env-file-if-exists=.env.local scripts/protect-manual-source-urls.ts",

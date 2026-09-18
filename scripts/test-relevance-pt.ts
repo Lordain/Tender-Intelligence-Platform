@@ -17,8 +17,8 @@
  *
  * Usage: npm run test:relevance-pt
  */
-import { classifyPortugueseExclusion, isBrazil } from "@/lib/relevance-pt";
-import { classifyRelevance } from "@/lib/relevance";
+import { classifyPortugueseExclusion, classifyPortugueseIndustries, isBrazil } from "@/lib/relevance-pt";
+import { classifyRelevance, classifyStoredTender } from "@/lib/relevance";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -92,6 +92,63 @@ check("单独一个 inscrição 不触发", classifyPortugueseExclusion("Reforma
 // Likewise "mão de obra" must not read as a public work.
 check("「人工」不算工程信号 —— 保洁合同照排除", classifyPortugueseExclusion("PRESTAÇÃO DE SERVIÇOS DE LIMPEZA COM DEDICAÇÃO EXCLUSIVA DE MÃO DE OBRA") !== null, true);
 check("「材料与人工」的真工程照留", classifyPortugueseExclusion("empreitada por preço global (materiais e mão de obra) para Construção de 14 Unidades Habitacionais"), null);
+
+console.log("\n行业标签 —— 葡语路桥水电词，西语规则里一个都没有");
+const INDUSTRY_CASES: [string, string, string][] = [
+  ["州级公路", " obra de Implantação e Pavimentação da rodovia MT-020/251 do km 42 ao km 48.", "transportation"],
+  ["石块铺装", "SERVIÇOS DE PAVIMENTAÇÃO EM PARALELEPÍPEDOS GRANÍTICOS NAS RUAS", "transportation"],
+  ["六角砖铺装", "PAVIMENTAÇAO DE VIAS PÚBLICAS EM BLOQUETE SEXTAVADO DE 25x25(cm)", "transportation"],
+  ["客运站", "REFORMA E AMPLIAÇÃO DO TERMINAL RODOVIÁRIO OLÍMPIO VARGAS", "transportation"],
+  ["箱涵排水", "EXECUÇÃO DE DRENAGEM PARA TRANSPOSIÇÃO DE TALVEGUES: BUEIRO QUÁDRUPLO CELULAR DE CONCRETO", "water"],
+  ["市政基本卫生", "revisar, atualizar e consolidar o Plano Municipal de Saneamento Básico", "water"],
+  ["饮用水处理", "CONTROLE, MONITORAMENTO E TRATAMENTO DE ÁGUA PARA CONSUMO HUMANO NOS RESERVATÓRIOS", "water"],
+  ["配电网", "OBRAS DE ADEQUAÇÃO DA REDE DE DISTRIBUIÇÃO DE ENERGIA ELÉTRICA NA LINHA SÃO LUIZ", "power"],
+  ["照明设计", "elaboração dos Projetos Elétricos e Luminotécnicos para o Parque Ciliar", "power"],
+  ["房建", "CONSTRUÇÃO DE UM CRAS NO MUNICÍPIO DE ITAITINGA/CE", "construction"],
+  ["光纤专线", "prestação de serviço continuado de conexão dedicada à Internet, por fibra óptica", "ict_telecom"],
+];
+for (const [label, title, expected] of INDUSTRY_CASES) {
+  check(label, classifyPortugueseIndustries(title).includes(expected as never), true);
+}
+check("没命中就返回空数组，不是 general", classifyPortugueseIndustries("APRESENTAÇÃO ARTÍSTICA MUSICAL"), []);
+
+console.log("\n标签合并 —— 走的是 classifyStoredTender 这条真实路径");
+const road = classifyStoredTender({
+  title: " Contratação de empresa de engenharia para execução da obra de implantação e pavimentação da Rodovia: MT-403",
+  summary: "",
+  buyer: "SECRETARIA DE ESTADO DE INFRAESTRUTURA E LOGISTICA DE MATO GROSSO",
+  country: "Brazil",
+  procedureType: "Concorrência - Eletrônica",
+  governmentLevel: "state",
+  scopeType: "works",
+  estimatedValue: 7_494_680.99,
+  currency: "BRL",
+  sourceName: "PNCP",
+});
+check("巴西公路同时拿到 transportation 和 construction", [road.industries.includes("transportation"), road.industries.includes("construction")], [true, true]);
+check("有真标签时不再残留 general", road.industries.includes("general"), false);
+// R$7,494,680.99 at 1 USD ≈ 5.4 BRL is US$1.39M — above MIN_VALUE_USD (800k)
+// and below SIGNIFICANT_VALUE_USD (3M), so "standard". This expectation was
+// written as "significant" first, which was simply wrong arithmetic on my
+// part; it is pinned here because it is also the answer to "where will
+// Brazilian tenders land", and the answer is that a typical municipal works
+// contract lands in 常规, not 中型. Note this is the tier AFTER commit
+// 3568cf1 removed the clause that promoted any works contract above the
+// minimum — before that, this row would have been significant.
+check("R$749 万 ≈ US$139 万 → 常规（standard），不是中型", road.relevance.tier, "standard");
+const mexicanRoad = classifyStoredTender({
+  title: "Construcción y pavimentación de la carretera estatal",
+  summary: "",
+  buyer: "Secretaría de Infraestructura",
+  country: "Mexico",
+  procedureType: "Licitación Pública",
+  governmentLevel: "state",
+  scopeType: "works",
+  estimatedValue: 7_000_000,
+  currency: "USD",
+  sourceName: "test",
+});
+check("墨西哥的路照常打标签，没被葡语这条影响", mexicanRoad.industries.includes("transportation"), true);
 
 console.log("\n国家门禁 —— 这些规则碰不到墨西哥／哥伦比亚／秘鲁");
 check("isBrazil 只认 Brazil", [isBrazil("Brazil"), isBrazil("Mexico"), isBrazil(undefined)], [true, false, false]);

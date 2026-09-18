@@ -29,11 +29,12 @@
  *   npm run purge:mis-sourced -- --write
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 type Row = { id: string; slug: string; tender_number: string; title: { zh?: string; es?: string } | null };
 
 async function main() {
-  const write = process.argv.slice(2).includes("--write");
+  const write = hasWriteFlag();
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     console.error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). See .env.example.");

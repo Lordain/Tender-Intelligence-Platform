@@ -26,6 +26,7 @@
  */
 import { importPemexLive } from "../lib/ingestion/import-pemex-live";
 import { KNOWN_BUYER_NAMES, PEMEX_LIST_TITLES, type PemexListTitle } from "../lib/ingestion/pemex-sources";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -34,7 +35,7 @@ function argValue(args: string[], flag: string): string | undefined {
 
 async function main() {
   const args = process.argv.slice(2);
-  const write = args.includes("--write");
+  const write = hasWriteFlag();
   // One month, not six. The six-month default was the widest window in the
   // codebase and the only one a caller got by saying nothing — the admin
   // forms all default to 1 and the scheduled runs now do too, so a plain

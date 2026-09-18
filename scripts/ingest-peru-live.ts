@@ -26,6 +26,7 @@
 import { ingestPeruOece, refreshPeruOeceStatuses } from "../lib/ingestion/ingest-peru";
 import { reportClassificationPreview } from "../lib/ingestion/preview-report";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -34,7 +35,7 @@ function argValue(args: string[], flag: string): string | undefined {
 
 async function main() {
   const args = process.argv.slice(2);
-  const write = args.includes("--write");
+  const write = hasWriteFlag();
   const supabase = createSupabaseAdminClient();
   if (write && !supabase) {
     console.error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). See .env.example.");

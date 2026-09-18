@@ -26,10 +26,11 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ALL_COUNTRIES } from "../lib/tender-labels";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
-const WRITE = args.includes("--write");
+const WRITE = hasWriteFlag();
 const TOMBSTONE = args.includes("--tombstone");
 const COUNTRY = flag("country");
 const SINCE = flag("since");

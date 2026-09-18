@@ -2899,6 +2899,48 @@ in the wrong tier, the quietest way to be wrong here. The probe now prints the
 item count and flags a suspiciously round one; point it at a multi-item
 procurement before trusting a sum.
 
+#### The Brazil connector as built (2026-09-18)
+
+```
+npm run ingest:brazil-live                       dry run, Concorrência 4+5, 2 months
+npm run ingest:brazil-live -- --write
+npm run ingest:brazil-live -- --skip-amounts     shape only, half the requests
+```
+
+`lib/ingestion/ingest-brazil.ts` sweeps one modality at a time (repeated
+`modalidades` keys drop all but the last), pages `ordenacao=-data` at 100 rows
+with a 1.2s pace, de-dupes on `numero_controle_pncp` — the index is written to
+while we page it, so the same notice can appear twice and two rows sharing a
+slug in one upsert is the "ON CONFLICT DO UPDATE command cannot affect row a
+second time" error Colombia already hit — then filters by publication date
+**before** the amount lookup, because each lookup is a request against
+infrastructure that has been unreliable all week and the cheapest one is the
+one not sent.
+
+Portuguese rules live in `lib/relevance-pt.ts`, gated on `country === "Brazil"`
+so they cannot change a Mexican, Colombian or Peruvian verdict by
+construction. They cover exclusions (routine services that reach a
+Concorrência) and industry tags (`rodovia`, `paralelepípedo`, `bloquete`,
+`esgoto`, `bueiro` — none of which have Spanish equivalents in
+`lib/industry.ts`, so without them a Brazilian road contract carried no
+transport tag at all). `npm run test:relevance-pt` runs both against the real
+corpus; its keep list is the regression net, since an excluded tender is never
+written and a rule broader than its own name loses real work permanently.
+
+Two bugs that test caught and review had not: a bare `\bobras?\b` read
+"MÃO DE OBRA" (Portuguese for *labour*) as a public work, so the works guard
+fired on every service contract containing it and refused to exclude any; and
+a first fix for the registration rule put the alternation around the whole
+pattern instead of inside the word, leaving a bare "inscrição" that would have
+swallowed "inscrição imobiliária".
+
+**Where Brazilian tenders land.** The MT-020/251 road contract is
+R$7,494,680.99 ≈ US$1.39M at the placeholder rate — above `MIN_VALUE_USD`
+(800k), below `SIGNIFICANT_VALUE_USD` (3M), so **standard (常规), not
+significant**. Worth knowing before the first import: a typical Brazilian
+municipal works contract is not going to arrive in the default feed, because
+the default feed shows flagship + significant only.
+
 **One request per tender, against a service that has been down all week.** The
 cost is as much the finding as the path: discovery is cheap and reliable on
 the search index, and every amount costs a second call to infrastructure that

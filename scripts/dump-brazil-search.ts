@@ -280,7 +280,9 @@ async function main() {
   }
 
   // ── 3. 抓行 ──────────────────────────────────────────────────────────────
-  console.log(`【3】抓 ${wantTitles} 行${q ? `（关键词 "${q}"）` : "（不带关键词，这才是每日全量导入的形状）"}${modalidade ? `，只看采购方式 ${modalidade}` : ""}\n`);
+  // Whole pages, so the harvest usually overshoots --titles. Say so: the run
+  // that printed "抓 50 行" and then "累计 100" read like a bug.
+  console.log(`【3】抓至少 ${wantTitles} 行（整页整页地取，所以实际会多一些）${q ? `，关键词 "${q}"` : "，不带关键词 —— 这才是每日全量导入的形状"}${modalidade ? `，只看采购方式 ${modalidade}` : ""}\n`);
   const collected: Row[] = [];
   for (let pagina = 1; collected.length < wantTitles; pagina += 1) {
     await sleep(paceMs);

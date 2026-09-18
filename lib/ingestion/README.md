@@ -2824,6 +2824,44 @@ corrupted it. Both are skipped by default and re-measurable with
 `--probe-status` / `--probe-page-size`. A harvest that loses a page mid-way now
 keeps the pages it already has instead of discarding the run.
 
+#### `modalidades=4` changes the data, not just its size
+
+100 rows of Concorrência Eletrônica, against the same 100 rows unfiltered:
+
+| | unfiltered | `modalidades=4` |
+|---|---|---|
+| `data_inicio_vigencia` / `data_fim_vigencia` | 58% | **100%** |
+| government level | Municipal 70, Estadual 16, Federal 11 | Municipal 81, Estadual 16, none federal |
+| `situacao_nome` | Divulgada 99, Revogada 1 | Divulgada 89, **Suspensa 7**, Revogada 4 |
+| what the titles are | pink highlighter pens, vehicle parts, artistic performances | roads, pavement, drainage, bridges, schools, health units, parks |
+
+Three things follow.
+
+**The modality filter does most of the work the Portuguese exclusion rules
+would have had to do.** Dispensa and Inexigibilidade are 61% of the index and
+are direct awards, which `classifyRelevance` excludes anyway — but excluding
+them by not querying them is free, and it removes exactly the micro-purchase
+long tail the README worried Portuguese rules would mishandle "in the
+dangerous direction". Scope worth deciding before the connector is written:
+Concorrência Eletrônica (4) and Presencial (5) are unambiguously this
+platform's market; Pregão Eletrônico (6) is 1,063,519 rows of mostly goods
+and services, and is where Portuguese exclusion rules would actually earn
+their keep.
+
+**`Suspensa` exists and the unfiltered sample never showed it.** Open-versus-
+closed is decided on our side, so the set of `situacao_nome` values matters,
+and it was measured on a sample that happened to contain only two of them. A
+suspended procurement is not accepting bids.
+
+**`tem_resultado` marks an already-decided tender.** The very first row —
+top of `ordenacao=-data` because it was updated today — was published
+2026-04-07, closed its window 2026-05-18, and carries `tem_resultado: true`.
+That is the incremental-import trap in one row: newest-updated is not newest,
+and the feed contains finished procurements. Combined with rule 6 in
+`lib/tender-status.ts` (nobody is awarded a contract that is still taking
+bids), `tem_resultado` plus `data_fim_vigencia` is what a Brazil mapper
+should set status from.
+
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against
 the same procurement written the Brazilian way, agreed on tier 6/10 and on

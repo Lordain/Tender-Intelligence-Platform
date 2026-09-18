@@ -15,11 +15,41 @@
  * `procurementMethodDetails`), needing no value at all — the same shape as
  * the Subasta Inversa and Comparación de Precios rules already in force.
  *
- * So: excluding Adjudicación Simplificada is probably right. This script
- * exists because "probably" is not a number, and because the Colombia survey
+ * So: excluding Adjudicación Simplificada looked right. This script exists
+ * because "looked right" is not a number, and because the Colombia survey
  * taught the same lesson twice — a filter decided on a guessed count gets
  * decided wrongly, and a survey that quietly samples while sounding like a
  * census is worse than no survey.
+ *
+ * ── THE ANSWER (2026-09-18, run over 2026-08 and 2026-09, 10,177 records) ──
+ *
+ * The rule was NOT shipped. The premise was obsolete.
+ *
+ *   Adjudicación Simplificada:  12 of 10,177 source rows (0.1%).
+ *   Excluding it would have removed TWO tenders from the feed.
+ *
+ * SEACE has renamed the tier. The two largest procedures in the window are
+ * `Licitación Pública Abreviada` (3,289, 32.3%) and `Concurso Público
+ * Abreviado` (2,734, 26.9%) — 59% of the source between them — and one row
+ * in the same histogram cites `Ley N°32069` by name. Adjudicación
+ * Simplificada is vestigial; the abbreviated procedures are the live tier.
+ *
+ * And the obvious follow-up — "then exclude the Abreviada ones instead" —
+ * is refuted by the same run, which is why sections 3 and 5 exist:
+ *
+ *   Licitación Pública Abreviada contributes 184 of the 453 kept tenders
+ *   (40.6%, the largest single contributor), 130 of them disclose a value,
+ *   and their MEDIAN is $1,129,745 — well above the $800k floor.
+ *
+ * Excluding it would delete 40% of the Peru feed, most of it real money the
+ * value floor is already judging correctly. Procedure type is not the lever
+ * for Peru. Do not re-propose this without re-running the survey.
+ *
+ * What the run did establish: 159 of the 453 kept tenders (35%) disclose no
+ * value at all, spread across procedures rather than concentrated in one, so
+ * no procedure-name rule can reach them. The number is in the bid document —
+ * a valor referencial is mandatory there — and the extraction schema does not
+ * capture it. That is the remaining lever.
  *
  * Read-only. It fetches the source and classifies in memory; it writes
  * nothing, touches no database, and makes no model calls.

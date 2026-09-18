@@ -313,32 +313,46 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
     scopeType,
     sourceName,
   });
-  // A DOF notice carries a SCHEDULE, not an outcome. Every other source
-  // this codebase reads states the outcome outright — peru-oece-mapper.ts's
-  // `awards` array, colombia-mapper.ts's "Adjudicado = Sí",
-  // compras-mx-open-tenders-mapper.ts's ADJUDICADO status — and this mapper
-  // was written to match them by looking for a "Fallo" key date. That was
-  // wrong in a way the other sources cannot be: "Fallo" is a row on the
-  // convocatoria's published timetable, printed the day bidding OPENS, so
-  // its presence marked every CFE convocatoria as awarded before bids
-  // could even be submitted. Reported 2026-09-08 on
-  // CFE-0001-CAAAT-0134-2026, shown as 已中标 with a Fallo date of 25/09
-  // and a submission deadline of 11/09 still in the future.
+  // A DOF notice carries a SCHEDULE, not an outcome — so this mapper does not
+  // report outcomes. It never returns "awarded", whatever its timetable says.
   //
-  // So read the timetable against today instead. Note what this still is:
-  // an inference from a schedule. A fallo date in the past means the
-  // ruling was DUE, not that it was published or that it happened on time —
-  // a real award confirmation for these buyers comes from the Compras MX
-  // contracts export, which states a winner and an amount. Nothing here
-  // ever fills awardedTo/awardedValue, and it should not.
+  // It took three reports to land on that. Every other source states the
+  // outcome outright — peru-oece-mapper.ts's `awards` array,
+  // colombia-mapper.ts's "Adjudicado = Sí",
+  // compras-mx-open-tenders-mapper.ts's ADJUDICADO status — and this mapper
+  // was originally written to match them by looking for a "Fallo" key date.
+  //   2026-09-08, CFE-0001-CAAAT-0134-2026: "Fallo" is a row on the
+  //     convocatoria's published timetable, printed the day bidding OPENS, so
+  //     every CFE convocatoria was marked awarded before bids could be
+  //     submitted. Fix attempt #1 kept the inference and compared the fallo
+  //     date against today.
+  //   2026-09-18, dof-5799003: published 15/09, 交标 26/10 — and still shown
+  //     已中标, because the timetable's fallo date was already past while
+  //     bidding had not opened. A fallo BEFORE the deadline is not a schedule
+  //     any real procedure runs, so the date itself is untrustworthy, and
+  //     comparing an untrustworthy date against today cannot rescue it
+  //     (user: 都还没交标怎么就已中标了？).
+  //
+  // Fix attempt #1 was the wrong shape: it left this mapper asserting a fact
+  // it has no source for and only narrowed when it would assert it. The
+  // honest answer for a source that publishes convocatorias is 已截止 —
+  // bidding closed, outcome unknown — which is also what the reader can act
+  // on. A real award confirmation for these buyers comes from the Compras MX
+  // contracts export, which states a winner and an amount; when that lands on
+  // the same tender it sets "awarded" with awarded_to filled in, which is
+  // what an award claim should always have behind it.
+  //
+  // The fallo date itself is still stored as a key date. It is real published
+  // information and belongs on the timeline — it just no longer decides the
+  // status column.
+  //
+  // This is not the only guard: lib/tender-status.ts rule 6 refuses any
+  // stored "awarded" whose deadline has not passed, from any mapper. Both
+  // exist on purpose — rule 6 is the backstop for the next source to get this
+  // wrong, and this is the source that already did.
   const nowMs = Date.now();
-  const dateOf = (type: TenderKeyDate["type"]) => detailKeyDates.find((kd) => kd.type === type)?.date;
   const isPast = (iso: string | undefined) => iso !== undefined && new Date(iso).getTime() < nowMs;
-  const status: TenderStatus = isPast(dateOf("award"))
-    ? "awarded"
-    : isPast(submissionDeadline)
-      ? "submission_closed"
-      : "open";
+  const status: TenderStatus = isPast(submissionDeadline) ? "submission_closed" : "open";
 
   return {
     id: crypto.randomUUID(),

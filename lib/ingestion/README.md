@@ -2388,6 +2388,33 @@ Eletrônica, the modality carrying the large public works this platform
 actually sells, has never been tried in the shape that works. The script
 sweeps every modality without it.
 
+**First `dump:brazil-pncp` run, hours later the same day: the whole service
+was down.** One `fetch failed` at 9.7s, then nineteen straight 503s — "No
+server is available to handle this request" — each answered in under 250ms.
+`/modalidades` replied in 5.3s in the same run, so the domain, the network
+and this machine were all fine; that endpoint lives on `/api/pncp/`, a
+different service from the `/api/consulta/` one that was down. A sub-250ms
+503 from a load balancer with no healthy backend is not our query shape, and
+it is not "nothing is open for bidding today" — the modality codes are
+confirmed real and complete (all 19 listed by that same control call, with
+`4` = Concorrência Eletrônica and `6` = Pregão Eletrônico).
+
+So the real operating picture is: PNCP's consultas service alternates between
+slow-but-working (63s) and hard-down, within the same day. Three consequences
+for the connector, all of them things to build in from the start rather than
+discover in production:
+
+- Retry transient failures (502/503/504, connection errors) with backoff.
+  A 400 is our parameters and a 500 is their database; neither improves on a
+  second ask. `dump-brazil-pncp-rows.ts` now does exactly this.
+- **A failed run must never be recorded as an empty one.** An import that
+  reads "0 tenders" from a dead service and acts on it is how a feed silently
+  empties out. The dump script reports those two outcomes as different
+  findings in different words, and the connector must too.
+- Give up early. Three hard failures in a row is the service being down, not
+  three unlucky modalities — the sweep stops there instead of spending twenty
+  minutes collecting sixteen more copies of the same 503.
+
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against
 the same procurement written the Brazilian way, agreed on tier 6/10 and on

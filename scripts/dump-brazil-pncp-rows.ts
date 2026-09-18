@@ -112,6 +112,31 @@ async function get(url: string, timeoutMs: number): Promise<Fetched> {
   }
 }
 
+/**
+ * 502/503/504 and outright connection failures are the load balancer saying
+ * it has no healthy backend behind it, which PNCP's consultas service does
+ * intermittently — on 2026-09-18 a run that had succeeded hours earlier came
+ * back `fetch failed` once and then 503 "No server is available to handle
+ * this request" nineteen times in a row, each in under 250ms, while
+ * /modalidades (a different service) still answered. Those are worth waiting
+ * out; a 400 is our parameters and a 500 is their database, and neither gets
+ * better by asking again.
+ */
+const TRANSIENT = new Set([502, 503, 504]);
+const BACKOFF_MS = [5_000, 20_000];
+
+async function getResilient(url: string, timeoutMs: number): Promise<Fetched> {
+  let last = await get(url, timeoutMs);
+  for (const wait of BACKOFF_MS) {
+    const transient = last.status === "连接失败" || (typeof last.status === "number" && TRANSIENT.has(last.status));
+    if (last.ok || !transient) return last;
+    console.log(`        ${last.status} —— 等 ${wait / 1000}s 再试一次`);
+    await new Promise((resolve) => setTimeout(resolve, wait));
+    last = await get(url, timeoutMs);
+  }
+  return last;
+}
+
 type Page = { data?: unknown[]; totalRegistros?: number; totalPaginas?: number; numeroPagina?: number; empty?: boolean };
 
 /**
@@ -125,11 +150,11 @@ type Page = { data?: unknown[]; totalRegistros?: number; totalPaginas?: number; 
 async function fetchPage(modalidade: number, dataFinal: string, pagina: number, size: number, timeoutMs: number): Promise<{ page: Page | null; size: number; result: Fetched }> {
   const url = (s: number) => `${BASE}/proposta?dataFinal=${dataFinal}&codigoModalidadeContratacao=${modalidade}&pagina=${pagina}&tamanhoPagina=${s}`;
   let used = size;
-  let result = await get(url(used), timeoutMs);
+  let result = await getResilient(url(used), timeoutMs);
   if (!result.ok && result.status === 400 && used > 10) {
     console.log(`        tamanhoPagina=${used} 被拒（${result.note}）—— 退回 10 重试`);
     used = 10;
-    result = await get(url(used), timeoutMs);
+    result = await getResilient(url(used), timeoutMs);
   }
   return { page: result.ok ? (result.body as Page) : null, size: used, result };
 }
@@ -194,7 +219,13 @@ async function main() {
 
   type Count = { id: number; nome: string; ok: boolean; status: number | string; ms: number; total: number | null; note: string };
   const counts: Count[] = [];
-  for (const m of targets) {
+  // Three hard failures in a row is the service being down, not three
+  // unlucky modalities — and each of those three already cost its own
+  // retries. Walking the remaining sixteen just to collect sixteen more
+  // copies of the same 503 wastes twenty minutes and teaches nothing.
+  let consecutiveFailures = 0;
+  let abandoned = 0;
+  for (const [index, m] of targets.entries()) {
     const { page, result } = await fetchPage(m.id, dataFinal, 1, 10, timeoutMs);
     const total = page?.totalRegistros ?? null;
     counts.push({ id: m.id, nome: m.nome, ok: result.ok, status: result.status, ms: result.ms, total, note: result.note });
@@ -202,12 +233,28 @@ async function main() {
       `  ${result.ok ? "OK  " : "FAIL"}  ${String(result.status).padEnd(12)} ${String(result.ms).padStart(7)}ms  ${String(m.id).padStart(3)} ${m.nome}` +
         (result.ok ? `  →  ${total ?? "?"} 条` : `  ${result.note}`),
     );
+    consecutiveFailures = result.ok ? 0 : consecutiveFailures + 1;
+    if (consecutiveFailures >= 3) {
+      abandoned = targets.length - index - 1;
+      if (abandoned > 0) console.log(`\n  连续 3 次都没通（每次都已经重试过）。剩下 ${abandoned} 种不试了 —— 是服务不可用，不是这几种采购方式的问题。`);
+      break;
+    }
   }
   console.log();
 
   const answered = counts.filter((c) => c.ok && (c.total ?? 0) > 0).sort((a, b) => (b.total ?? 0) - (a.total ?? 0));
   if (answered.length === 0) {
-    console.log("没有一种采购方式返回数据。要么 PNCP 这会儿又坏了，要么今天确实没有开放收标的项目 —— 隔天再跑一次再下结论。");
+    // These two look identical in a "0 rows" summary and mean opposite
+    // things: one is a fact about Brazil's procurement calendar, the other
+    // is a fact about PNCP's uptime. Never report them as the same outcome.
+    const replied = counts.filter((c) => c.ok);
+    if (replied.length === 0) {
+      const statuses = [...new Set(counts.map((c) => String(c.status)))].join(", ");
+      console.log(`一条都没答上来（${statuses}）。/modalidades 在同一次运行里 ${control.ms}ms 就回了，所以域名是通的、这台机器也没问题 —— 是 /api/consulta 这个服务本身下线了。`);
+      console.log("跟查询形状无关，也不是「今天没项目」。过几个小时或者隔天再跑一次。");
+    } else {
+      console.log(`${replied.length} 种采购方式正常返回了，但开放收标的都是 0 条。这是巴西今天确实没有在收标的项目，不是 PNCP 坏了 —— 隔天再跑一次确认。`);
+    }
     return;
   }
 

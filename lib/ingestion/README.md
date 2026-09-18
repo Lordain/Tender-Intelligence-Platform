@@ -3330,6 +3330,37 @@ next steps:
 `scripts/test-block-page.ts` pinning the three real bodies that caused the
 false ★ — F5's rejection page above all, because it arrives as HTTP 200.
 
+#### Run five: a real browser does not get in either, and the fix is a network not a client
+
+I said a real browser would pass git.aneel's challenge. It does not. The user
+opened the transmission URL in their own Chrome and got Cloudflare's **hard
+block** — "Sorry, you have been blocked. You are unable to access
+aneel.gov.br" — not the "Just a moment…" interstitial a script sees. That is
+the 1020-class rule: decided on the caller's IP or ASN, not a bot check that
+running JavaScript satisfies.
+
+The distinction is the whole difference in what fixes it. **A challenge is
+answered by a better client; a block of that class is answered only by a
+different network.** So "download it in a browser" was wrong advice on its
+own — it has to be a browser on an egress that host will talk to. Worth
+noting: the deployment saw the *challenge* page, not the block, so its address
+is not on the same list, which makes it the machine with a chance here.
+
+Two ANEEL hosts nothing had knocked on, found while looking for a way around
+it, now in both probes. **Cloudflare rules are configured per host, not per
+agency**, so these are not long shots by association:
+
+- **`www2.aneel.gov.br/aplicacoes_liferay/editais_transmissao/edital_transmissao.cfm`**
+  — a standalone Liferay application holding the transmission *editais*, i.e.
+  the upcoming side. `www2` completed a TCP handshake from the laptop, and it
+  is not the host git.aneel's rule applies to.
+- **`portalrelatorios.aneel.gov.br/resultadosLeiloes/leiloesTransmissao`** —
+  ANEEL's own reports portal, a *third* copy of the same results data. The
+  first two are unreachable in two different ways (open-data portal: TCP
+  timeout; GitLab: hard block), and this subdomain has never been tried.
+
+If either answers, no VPN is needed for that half of the problem.
+
 #### Run four (2026-09-18): the URLs are exact, and every automated path to them is refused
 
 The link printer's wider limit paid off immediately — the three spreadsheets

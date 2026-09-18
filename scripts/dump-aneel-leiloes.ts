@@ -11,12 +11,20 @@
  *   dadosabertos.aneel.gov.br         TCP timeout from two continents
  *   leilao.aneel.gov.br               TCP timeout from two continents
  *
- * So the data is public, the URLs are exact, and every automated path to them
- * is refused. A real browser passes the challenge, which makes this the same
- * shape as Compras MX, Ecopetrol and Proyectos México: the person downloads
- * the file, and a mapper is written against the real capture. That is not a
- * fallback — it is the route this repo has used three times and the only one
- * that is honest about what a Cloudflare challenge is asking for.
+ * So the data is public and the URLs are exact. What refuses them turned out
+ * to be stronger than a bot check: run five opened the transmission URL in the
+ * user's own Chrome and got Cloudflare's **hard block** — "Sorry, you have
+ * been blocked. You are unable to access aneel.gov.br" — not the "Just a
+ * moment…" challenge a script sees. A challenge is answered by a better
+ * client; a block of that class is decided on the caller's IP or ASN and is
+ * answered only by a different network. So "download it in a browser" is not
+ * enough on its own; it has to be a browser on an egress that host will talk
+ * to. (The deployment saw the challenge rather than the block, so its address
+ * is not on the same list.)
+ *
+ * The shape is still the one this repo has used three times — Compras MX,
+ * Ecopetrol, Proyectos México: a person obtains the file, and the mapper is
+ * written against the real capture.
  *
  * The three files, exactly as gov.br links them:
  *
@@ -91,7 +99,8 @@ async function main() {
 
   if (!file) {
     console.error("用法：npm run dump:aneel-leiloes -- <文件>.xlsx [--rows 5]\n");
-    console.error("文件从这三个地址之一下载（用浏览器打开，Cloudflare 的验证浏览器能过，脚本过不了）：");
+    console.error("文件从这三个地址之一下载。注意 git.aneel 对中国出口是硬封锁（Sorry, you have been blocked），");
+    console.error("真浏览器也过不去 —— 要换一个网络出口，或者看 E2d/E2e 那两个 ANEEL 子域名通不通：");
     console.error("  https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes/Resultado_leiloes_transmissao.xlsx");
     console.error("  https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes/Resultado_leiloes_geracao.xlsx");
     console.error("  https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes/Resultado_leiloes_sistemas_isolados.xlsx");

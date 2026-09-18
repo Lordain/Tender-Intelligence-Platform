@@ -181,12 +181,17 @@ const ANEEL_GENERATION_RESOURCE = "a1328fc1-f06b-437d-8893-57ac2c8103df";
 /**
  * The three spreadsheets gov.br links, in full, as read off run four's output.
  *
- * `git.aneel.gov.br` answers 403 "Just a moment…" — Cloudflare's JS challenge
- * — from the laptop and the deployment alike, and a browser User-Agent does
- * not move it, as it should not: that challenge wants a browser that runs
- * JavaScript, not a string claiming to be one. A real browser passes it, so
- * these are download-by-hand URLs, and `npm run dump:aneel-leiloes` reads what
- * comes back.
+ * `git.aneel.gov.br` answers 403 "Just a moment…" to a script. **A real browser
+ * does NOT get in either** — run five, from the user's own Chrome, returned
+ * Cloudflare's hard block: "Sorry, you have been blocked. You are unable to
+ * access aneel.gov.br". That is the 1020-class rule, decided on the client's
+ * IP or ASN, not a bot check a browser can satisfy by running JavaScript.
+ *
+ * The distinction matters because it changes what would fix it. A challenge is
+ * answered by a better client; a block is answered only by a different
+ * network. Note the deployment saw the CHALLENGE page rather than the block,
+ * which means its address is not on the same list — so of the two machines,
+ * it is the one with a chance here.
  */
 const ANEEL_GITLAB_RAW = "https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes";
 export const ANEEL_RESULT_SPREADSHEETS = [
@@ -610,6 +615,7 @@ async function main() {
     // result spreadsheets from its GitLab, and www2 hosts its document store.
     "git.aneel.gov.br",
     "www2.aneel.gov.br",
+    "portalrelatorios.aneel.gov.br",
     "www.gov.br",
     // Not a .gov.br host: ANEEL's open data is mirrored on Esri's ArcGIS Hub,
     // which is a commercial CDN on AWS. If the refusals are geographic, this
@@ -883,6 +889,29 @@ async function main() {
   );
   await sleep(1500);
 
+  // Two ANEEL hosts that nothing had tried, both found by web search after the
+  // hard block. They matter because the block is per-host Cloudflare
+  // configuration, not per-agency: www2 answered a TCP handshake from the
+  // laptop, and neither of these sits behind the git.aneel rule as far as
+  // anything here knows.
+  await probeHtml(
+    "E2d. www2 上的输电 edital 应用（在招场次，老 Liferay 应用）",
+    "搜索翻出来的：ANEEL 的输电招标文件有个独立的老应用挂在 www2 上。www2 在你机器上 TCP 是通的，而且它跟 git.aneel 不是同一套 Cloudflare 规则",
+    "https://www2.aneel.gov.br/aplicacoes_liferay/editais_transmissao/edital_transmissao.cfm",
+    /\.pdf|edital|lote|leil/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  await probeHtml(
+    "E2e. ANEEL 报表门户的输电拍卖结果",
+    "同一批结果数据的第三份：ANEEL 自己的报表门户。又一个独立子域名 —— 前面两个（开放数据、GitLab）一个 TCP 不通一个被硬封，这个还没试过",
+    "https://portalrelatorios.aneel.gov.br/resultadosLeiloes/leiloesTransmissao",
+    /leil|lote|transmiss/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
   await probeHtml(
     "E2b. ANEEL 旧站（对照组）",
     "旧站还在，而且历史 edital 大多挂在这边 —— 同时也是上一轮那个 403 的对照",
@@ -983,14 +1012,15 @@ async function main() {
     console.log("    dadosabertos.aneel.gov.br  socket 层 ETIMEDOUT，这条是网络真的不通，不是策略");
     console.log("    PPI              换 UA 能拿到 200，但四个不同网址返回同一个 266 字的空壳");
   }
-  console.log("\n下一步（2026-09-18 四轮之后定下来的）：三个 xlsx 用浏览器下下来。");
-  console.log("  Cloudflare 的验证浏览器能过、脚本过不了，而这三个文件的地址是精确的：");
+  console.log("\n下一步：这三个 xlsx 的地址是精确的，但 git.aneel 对你那边是【硬封锁】——");
+  console.log("  真浏览器打开也是 Sorry, you have been blocked，所以换客户端没用，只能换网络出口：");
   for (const url of ANEEL_RESULT_SPREADSHEETS) console.log(`    ${url}`);
-  console.log("  下完跑 `npm run dump:aneel-leiloes -- <文件>.xlsx`，它会把真实列名打出来，");
+  console.log("  （换个出口的浏览器下下来就行）。下完跑 `npm run dump:aneel-leiloes -- <文件>.xlsx`，它会把真实列名打出来，");
   console.log("  映射器照着那个写 —— 跟 Compras MX、Ecopetrol、Proyectos México 是同一条路子。");
   console.log("\n  在招的场次（不是结果）在这三页，但那个域名两个大洲都连不上：");
   for (const url of ANEEL_EDITAL_PAGES) console.log(`    ${url}`);
-  console.log("  同样用浏览器打开，有在招的就把 edital 存下来。");
+  console.log("  同样要换出口。另外 E2d / E2e 那两个 ANEEL 子域名是新加的 —— Cloudflare 的封锁是按主机配的，");
+  console.log("  不是按机构配的，所以它们完全可能是开的，那就不用换网络了。");
   console.log("\n输电标段的金额按【预估总投资 CAPEX】走（2026-09-18 已确认），RAP 放摘要正文点名。");
   console.log("见 lib/ingestion/README.md 的「Three traps that are new…」。");
 }

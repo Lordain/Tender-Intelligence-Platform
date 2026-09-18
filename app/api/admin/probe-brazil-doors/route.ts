@@ -70,6 +70,12 @@ const DOORS: { id: string; what: string; url: string }[] = [
     url: "https://git.aneel.gov.br/api/v4/projects/publico%2Fcentralconteudo/repository/tree?path=relatorioseindicadores%2Fleiloes&ref=main&per_page=100",
   },
   { id: "E2d", what: "同上，直接取一个原始文件（看 raw 路径要不要登录）", url: "https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes/Resultado_leiloes_transmissao.xlsx" },
+  // Added after the hard block on git.aneel: two more ANEEL hosts, because a
+  // Cloudflare block is configured per host, not per agency. The deployment
+  // saw git.aneel's CHALLENGE page rather than the block the user's browser
+  // got, so of the two machines this is the one with a chance.
+  { id: "E2e", what: "www2 上的输电 edital 应用（在招场次）", url: "https://www2.aneel.gov.br/aplicacoes_liferay/editais_transmissao/edital_transmissao.cfm" },
+  { id: "E2f", what: "ANEEL 报表门户的输电拍卖结果（同一批数据的第三份）", url: "https://portalrelatorios.aneel.gov.br/resultadosLeiloes/leiloesTransmissao" },
   { id: "E3", what: "CCEE 开放数据（发电侧拍卖）", url: "https://dadosabertos.ccee.org.br/api/3/action/status_show" },
   // Static PDF under /wp-content/uploads/, in English, no session and no
   // challenge — the least defended thing on this list if it answers at all.

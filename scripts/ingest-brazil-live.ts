@@ -73,6 +73,24 @@ async function main() {
   }
   console.log(`\n抓到 ${result.fetchedRows} 条，映射成 ${result.mappedCount} 条。`);
   console.log(`  进入推荐：${result.keptCount} 条　被规则排除：${result.excludedCount} 条`);
+
+  // Broken out rather than left as one number, because "excluded" covers two
+  // completely different events and only one of them is good news. Under the
+  // value threshold is the rule working as designed on a feed of small
+  // municipal contracts. Dropped on a Portuguese keyword is an untested rule
+  // deleting work, permanently — nothing excluded is ever written, so there
+  // is no table to audit afterwards. The line below is the only place that
+  // distinction is visible before a decision to write.
+  if (result.excludedByReason.length > 0) {
+    console.log(`\n  排除原因（多到少）：`);
+    for (const { reason, count } of result.excludedByReason) {
+      console.log(`    ${String(count).padStart(4)} 条  ${reason}`);
+    }
+  }
+  if (result.excludedCsvPath) {
+    console.log(`\n  被排除的 ${result.excludedCount} 条完整清单：${result.excludedCsvPath}`);
+    console.log(`  写库前请扫一眼「关键词」那几类 —— 葡语规则还没被真实语料检验过，误杀是永久的。`);
+  }
   // Reported prominently because a Brazilian tender without an amount cannot
   // be tiered on value at all — it falls through to the keyword path, and how
   // many do that is the single most useful number for judging whether this

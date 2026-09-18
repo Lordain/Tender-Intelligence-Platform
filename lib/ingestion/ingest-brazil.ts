@@ -4,6 +4,7 @@ import { mapPncpSearchRowToTender, parsePncpDate, type PncpItem, type PncpSearch
 import { filterRecentTenders } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import type { Tender } from "@/types/tender";
+import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "./review-csv";
 
 export const BRAZIL_PNCP_SOURCE_NAME = "Portal Nacional de Contratações Públicas (PNCP) — busca de editais";
 
@@ -42,6 +43,20 @@ export type BrazilIngestResult = {
   withoutAmount: number;
   /** How many of those were a sealed estimate (orcamentoSigiloso) rather than a failed lookup. The first is lawful and permanent; the second is worth retrying. */
   sealedBudget: number;
+  /**
+   * Every distinct exclusion reason with its count, commonest first.
+   *
+   * Reported because the total alone cannot answer the only question that
+   * matters on a new source: a row dropped for being under US$800k is the
+   * rule working, and a row dropped on a Portuguese keyword is a rule nobody
+   * has checked yet. Those two have looked identical in a summary line twice
+   * before (see upsert-tenders.ts on the COP 380bn port programme lost to the
+   * word "mantenimiento"), and an excluded row is never written, so a wrong
+   * call here is permanent and silent.
+   */
+  excludedByReason: { reason: string; count: number }[];
+  /** Where the full excluded list was written for review. Produced on a DRY RUN too — the run that is supposed to be inspected before anything is written is exactly the one that needs it. */
+  excludedCsvPath?: string;
   byModality: { modalidade: number; rows: number; pages: number }[];
   written?: number;
   failed?: number;
@@ -157,20 +172,44 @@ export async function ingestBrazilPncp(
   // pre-filter above — the two agree, and the shared one is what the rest of
   // this codebase's behaviour is defined against.
   const kept = filterRecentTenders(mapped, months);
-  const excludedCount = kept.filter((tender) => tender.relevance.tier === "excluded").length;
+  const excluded = kept.filter((tender) => tender.relevance.tier === "excluded");
+  const excludedCount = excluded.length;
+
+  const reasonCounts = new Map<string, number>();
+  for (const tender of excluded) {
+    const reason = tender.relevance.reason?.zh ?? "(无理由)";
+    reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+  }
 
   const result: BrazilIngestResult = {
     fetchedRows: rows.length,
     mappedCount: mapped.length,
     keptCount: kept.length - excludedCount,
     excludedCount,
+    excludedByReason: [...reasonCounts.entries()]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count),
     withoutAmount,
     sealedBudget,
     byModality,
     write: options.write,
   };
 
-  if (!options.write) return result;
+  // The write path gets this CSV from upsertTendersBatched. A dry run never
+  // reaches that line, which left the one run whose whole purpose is review
+  // as the only one with nothing to review — so it is written here instead,
+  // through the same helpers, so both runs produce the same file.
+  if (!options.write) {
+    if (excluded.length === 0) return result;
+    const path = writeReviewCsv({
+      dir: "exports",
+      baseName: `excluded-brazil-pncp-dryrun-${new Date().toISOString().slice(0, 10)}`,
+      csv: toCsv(REVIEW_CSV_HEADERS, excluded.map(reviewCsvRow)),
+      label: "ingest-brazil",
+      failureNote: "干跑本身不受影响",
+    });
+    return { ...result, excludedCsvPath: path ?? undefined };
+  }
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
   const written = await upsertTendersBatched(supabase, kept);
   return { ...result, written: written.upsertedCount, failed: written.failed.length };

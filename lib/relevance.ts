@@ -120,6 +120,15 @@ const EXCLUDE_KEYWORDS = [
   /aire acondicionado|climatizaci[óo]n/i, // MTTO AIRE ACONDICIONADO — routine HVAC maintenance
   /embanquetado|banquetas?\b/i, // EMBANQUETADO EN CALLE PABLO GONZALEZ — one street's sidewalk work
   /productos alimenticios/i, // ADQUISICIÓN DE PRODUCTOS ALIMENTICIOS PARA PERSONAS — food supply, different phrasing from "alimentos" above
+  // Named staples (2026-09-18, per the user). The "alimentos"/"productos
+  // alimenticios" entries above only catch a title that says the WORD food;
+  // a title that names the product does not match either. Real case:
+  // "ADQUISICIÓN DE LECHE FRESCA PARA LOS TRABAJADORES OPERATIVOS DE LA
+  // MUNICIPALIDAD DISTRITAL DE PUENTE PIEDRA" — municipal workers' milk
+  // ration, which reached 中型项目 because the district is called Puente
+  // Piedra (fixed in industry.ts's place-name stripper too, but the milk is
+  // the real reason this does not belong in the feed).
+  /\bleche\s+(fresca|evaporada|entera|en\s+polvo)\b|\bv[íi]veres\b|\bcanasta(s)?\s+b[áa]sica(s)?\b|\braci[óo]n(es)?\s+aliment(icia|aria)s?\b|\bdesayuno(s)?\s+escolar(es)?\b/i,
   /circuito hidr[áa]ulico/i, // CONSTRUCCIÓN CIRCUITO HIDRAULICO DEL SECTOR 3A — one small neighborhood's local pipe network, would otherwise hit the "construcción" FLAGSHIP_INDUSTRY_KEYWORDS match
   /alberca(s)?/i, // SV. MANTO. ALBERCAS — swimming pool maintenance
   // "ARTÍCULOS DE ASEO GRUPO DE SUMINISTRO 350" from this same batch is
@@ -717,6 +726,36 @@ const WATER_NETWORK_KEYWORDS = [
   /tuber[íi]a(s)? (de )?pvc|pozos? y descargas|estaci[óo]n(es)? de bombeo de aguas residuales|estaciones de medici[óo]n/i,
 ];
 
+/**
+ * Peru's lowest road class — the rural network (2026-09-18, per the user:
+ * CAMINO VECINAL 乡村道路不要).
+ *
+ * `camino vecinal`, `vía vecinal` and `trocha carrozable` are not loose
+ * descriptions, they are the statutory tiers of Peru's road network
+ * (Red Vial Vecinal, below Nacional and Departamental). A contract naming
+ * one is a single-span village crossing or a few kilometres of gravel
+ * surface, built by a provincial contractor.
+ *
+ * These were reaching 中型项目 in numbers. `puente` is a MAJOR_PROJECT_
+ * KEYWORDS term, so every "RENOVACION DE PUENTE; EN EL(LA) CAMINO VECINAL
+ * ..." row was promoted to flagship on the word and then demoted only as far
+ * as significant by MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT. Four of the five
+ * titles the user sent as examples were exactly this shape.
+ *
+ * Deliberately the road CLASS, not the word "puente" or "camino". A
+ * departmental or national highway, and a bridge on one, matches none of
+ * these and is untouched — which is the whole reason to key on the tier the
+ * source itself states rather than on how rural the title sounds.
+ *
+ * Bypassable by hasIncludeOverride, like every other exclusion here.
+ */
+const RURAL_ROAD_KEYWORDS = [
+  /\bcamino(s)?\s+vecinal(es)?\b/i,
+  /\bv[íi]a(s)?\s+vecinal(es)?\b/i,
+  /\btrocha(s)?\s+carrozable(s)?\b/i,
+  /\bred\s+vial\s+vecinal\b/i,
+];
+
 const MUNICIPAL_AMENITY_KEYWORDS = [
   /centro de alto rendimiento|pista de patinaje|parques? (ecol[óo]gico|recreativo|de proximidad|deportivo)|infraestructura deportiva|escenarios? deportivos?|complejos? deportivos?|pr[áa]ctica deportiva/i,
   /centro de integraci[óo]n social|centro vida\b|centro de bienestar animal|casa de la cultura|teatro al aire libre/i,
@@ -860,6 +899,13 @@ const MAJOR_PROJECT_LOCATION_ONLY = [
  * flagship — for the same thing bought the same way from the same buyer.
  */
 const OVERRIDE_NOT_FLAGSHIP = [
+  // Body-worn cameras (2026-09-18, per the user: 从中型项目改成常规项目 —
+  // the same shape of decision as the three above). Paired with the entry in
+  // INCLUDE_OVERRIDE_KEYWORDS: the override is what stops Peru's
+  // undisclosed-value rule deleting the tender outright, this is what stops
+  // the same override promoting it to the top tier. Together they land it on
+  // 常规项目, which is what was asked for — not 中型, and not gone.
+  /\bbodycam(s)?\b|c[áa]mara(s)? (de video )?corporal(es)?/i,
   /incendio/i,
   /firewall/i,
   /ciberseguridad|cybersecurity/i,
@@ -1095,6 +1141,13 @@ const MATERIALS_SUPPLY_PATTERN = /^\W*materiales?\b|suministro (de )?material(es
 const CONSTRUCTION_INPUT_GOODS = [
   /\bbarras?\s+de\s+acero\b|acero\s+corrugado|fierro\s+corrugado/i,
   /\bmaterial(es)?\s+(granular(es)?|de\s+cantera|de\s+pr[ée]stamo|de\s+afirmado)\b|\bagregados?\s+(p[ée]treos|de\s+cantera)\b/i,
+  // Crushed stone, sand and gravel by the cubic metre (2026-09-18, per the
+  // user). Same category as the aggregate line above, different words:
+  // "ADQUISICIÓN DE PIEDRA CHANCADA DE 3\" Y 1 1/2\" PUESTA EN OBRA PARA EL
+  // SUB PROYECTO: ... PRESA PARCCO" came out 大型项目 — the top tier — because
+  // the quarry order names the dam it will be delivered to and `presa` is a
+  // MAJOR_PROJECT_KEYWORDS term. What is being bought is gravel.
+  /\bpiedra\s+(chancada|zarandeada|seleccionada|chanchada)\b|\bhormig[óo]n\s+de\s+r[íi]o\b|\barena\s+(gruesa|fina)\b|\bafirmado\s+(granular|compactado)\b/i,
   /\basfalto\b|\bemulsi[óo]n(es)?\s+asf[áa]ltica/i,
   /\bcemento\b|\bconcreto\s+premezclado\b|\bhormig[óo]n\s+premezclado\b/i,
   /\btuber[íi]as?\b|\btubos?\b/i,
@@ -1334,6 +1387,13 @@ const NO_CONTENT_TITLE = [
 
 const INCLUDE_OVERRIDE_KEYWORDS = [
   /videovigilancia|video surveillance/i,
+  // Body-worn cameras. Real police electronics that a Chinese manufacturer
+  // genuinely supplies, so it must survive Peru's "no disclosed value is not
+  // a keep signal" rule — but see OVERRIDE_NOT_FLAGSHIP, which caps where it
+  // can land. Deliberately its own entry rather than widening
+  // `videovigilancia`: a fixed city CCTV installation and a box of officer
+  // cameras are different purchases and now reach different tiers.
+  /\bbodycam(s)?\b|c[áa]mara(s)? (de video )?corporal(es)?/i,
   // Narrowed (2026-09-04, real counter-example found): the bare phrase
   // also matched a real Colombia SECOP II summary — "PRESTACIÓN DE
   // SERVICIOS DE APOYO A LA GESTIÓN PARA EL DESARROLLO DE ACTIVIDADES DE
@@ -1500,7 +1560,17 @@ const INCLUDE_OVERRIDE_KEYWORDS = [
 // INCLUDE_OVERRIDE_KEYWORDS — confirmed via the fixture suite, not assumed.
 const EQUIPMENT_SCALE_CAPPED_KEYWORDS = [
   /(modernizaci[óo]n|rehabilitaci[óo]n|equipamiento).{0,40}subestaci[óo]n|subestaci[óo]n.{0,40}(modernizaci[óo]n|rehabilitaci[óo]n|equipamiento)/i,
-  /c[áa]maras? de video( ?vigilancia)?|circuito(s)? cerrado(s)? de televisi[óo]n|\bcctv\b/i,
+  // The negative lookahead is body-worn cameras (2026-09-18, per the user:
+  // 从中型项目改成常规项目). A fixed CCTV/videovigilancia installation is an
+  // infrastructure project and belongs at 中型 with no value disclosed; a box
+  // of cameras issued to municipal police officers is a goods purchase.
+  // "ADQUISICIÓN DE DISPOSITIVOS DE INMOVILIZACIÓN ELÉCTRICA Y CÁMARAS DE
+  // VIDEO CORPORALES ACTIVAS (BODYCAM) PARA EL SERVICIO DE SEGURIDAD
+  // CIUDADANA DE LA MUNICIPALIDAD PROVINCIAL DE TAMBOPATA" matched on
+  // "cámaras de video" alone. Note the title says seguridad CIUDADANA, not
+  // seguridad ELECTRÓNICA, so it never had an INCLUDE_OVERRIDE match to fall
+  // back on — dropping the cap demotes it rather than promoting it.
+  /c[áa]maras? de video(?!s?\s+corporal)( ?vigilancia)?|circuito(s)? cerrado(s)? de televisi[óo]n|\bcctv\b/i,
   /videovigilancia|video surveillance|seguridad electr[óo]nica|electronic security/i,
 ];
 
@@ -2141,7 +2211,7 @@ export function isDirectAward(procedureType: string | undefined): boolean {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "rural_road",
   LocalizedText
 > = {
   no_content: {
@@ -2163,6 +2233,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: "该项目采用比价采购（Comparación de Precios）：这是秘鲁针对小额、标准化货物/服务的简化程序，采购单位收集报价后直接择低价成交，从公告到授标通常只有几天，且多数不公布预估金额；没有技术方案可比，实际上只面向本地现货供应商，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This is a price comparison (Comparación de Precios): Peru's abbreviated procedure for standard, low-value goods and services, where the entity collects quotations and buys the cheapest, usually within days of publishing and often without disclosing a reference value. There is no technical proposal to differentiate and the timetable only suits a local supplier with stock on hand. Filtered from the default feed (metadata is kept, not deleted).",
     es: "Es una comparación de precios: el procedimiento abreviado para bienes y servicios estándar de poca cuantía, en el que la entidad compara cotizaciones y compra la más baja, normalmente pocos días después de la convocatoria y a menudo sin publicar valor referencial. No hay propuesta técnica que diferenciar y el cronograma solo alcanza a un proveedor local con stock. Filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
+  rural_road: {
+    zh: "该项目位于乡道/村道（camino vecinal、vía vecinal、trocha carrozable）——秘鲁公路网中等级最低的一类，通常是一座单跨桥或几公里砂石路面，由本地承包商承建，默认不进入推荐列表（数据仍保留，可用于统计）。省道、国道及其桥梁不受此规则影响。",
+    en: "This contract is on Peru's rural road network (camino vecinal / vía vecinal / trocha carrozable), the lowest statutory tier — typically a single-span crossing or a few kilometres of gravel surface, built by a provincial contractor. Departmental and national highways, and bridges on them, are unaffected. Filtered from the default feed (metadata is kept, not deleted).",
+    es: "Este contrato pertenece a la red vial vecinal (camino vecinal / vía vecinal / trocha carrozable), el nivel más bajo de la red peruana — normalmente un puente de un solo tramo o unos kilómetros de afirmado, a cargo de un contratista provincial. Las vías departamentales y nacionales, y sus puentes, no se ven afectadas. Filtrada de la vista predeterminada (los metadatos se conservan).",
   },
   municipal_water_component: {
     zh: "该项目的标的是既有供水/排水管网里的单体小型构筑物（集水井、增压泵站、地面水池等），通常由本地承包商承建、金额在几十万美元级，数量极多；不属于供水系统、处理厂、输水干线一类的项目，默认不进入推荐列表（数据仍保留，可用于统计）。注：这是按标题里的构筑物名称判断的，如果该项目实际规模较大，可在后台人工锁定相关度。",
@@ -2223,27 +2298,26 @@ function reasonFor(
     | "price_comparison"
     | "direct_award"
     | "municipal_water_component"
+    | "rural_road"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
   valueThresholdUsd: number = MIN_VALUE_USD,
 ): LocalizedText {
   if (tier === "excluded") {
     if (signal === "value") return valueExcludedReason(valueThresholdUsd);
-    return EXCLUDED_REASON_BY_SIGNAL[
-      signal === "industry" ||
-      signal === "undisclosed_value" ||
-      signal === "no_content" ||
-      signal === "short_duration" ||
-      signal === "short_bridge" ||
-      signal === "buyer" ||
-      signal === "consulting" ||
-      signal === "price_only_auction" ||
-      signal === "price_comparison" ||
-      signal === "direct_award" ||
-      signal === "municipal_water_component"
-        ? signal
-        : "keyword"
-    ];
+    // Was a hand-written list of the signals allowed to speak for themselves,
+    // with everything else falling through to "keyword" — so adding a signal
+    // in the three places that declare it and forgetting the fourth produced
+    // an exclusion that CONFIDENTLY NAMED THE WRONG RULE rather than failing.
+    // "rural_road" did exactly that on the day it was added (2026-09-18):
+    // village-road bridges came out excluded, correctly, reading
+    // 「日常性服务采购」 — routine service procurement, which is what an admin
+    // reads in the review CSV when deciding whether an exclusion was right.
+    // This file has already paid for that once; see the note above
+    // municipal_water_component's own gate.
+    //
+    // The map is keyed by every excluded signal, so ask the map.
+    return EXCLUDED_REASON_BY_SIGNAL[signal in EXCLUDED_REASON_BY_SIGNAL ? (signal as keyof typeof EXCLUDED_REASON_BY_SIGNAL) : "keyword"];
   }
   if (tier === "flagship") {
     return {
@@ -2519,6 +2593,13 @@ export function classifyRelevance(input: {
   // CSV when deciding whether an exclusion was right (2026-09-14: this exact
   // tender was queried on the strength of that sentence, and the sentence was
   // the only thing wrong with it).
+  // See RURAL_ROAD_KEYWORDS. Placed here, after the materials gate and before
+  // any promotion, because `puente` would otherwise have already carried
+  // these to significant.
+  if (!hasIncludeOverride && RURAL_ROAD_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "rural_road") };
+  }
+
   if (!hasIncludeOverride && MUNICIPAL_WATER_COMPONENT_KEYWORDS.some((pattern) => pattern.test(haystack))) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "municipal_water_component") };
   }

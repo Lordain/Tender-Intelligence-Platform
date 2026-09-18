@@ -32,6 +32,25 @@ function SectorIcon({ name, className = "size-6" }: { name: IconName; className?
   );
 }
 
+/**
+ * The horizontal scale every part of the APP-portfolio chart is drawn from.
+ *
+ * Named and shared because it used to be three different coordinate systems
+ * in one figure (fixed 2026-09-18): the tick labels were four equal grid
+ * cells reading 0 / 10 / 20 / 31, the gridlines were three equal columns at
+ * 33% and 67%, and the bars were drawn at amount/31. So the label "10" sat
+ * at about 37% of the track while the value 10 was at 32%, and the lines
+ * marked neither. A reader comparing a bar against a tick was reading a
+ * number that was not there.
+ *
+ * Max is 32 rather than the largest value (30.59) so the longest bar does
+ * not run to the very end of its track, and so the ticks can be round
+ * numbers. Anything that positions something in this chart uses axisPct().
+ */
+const AXIS_MAX_USD_ZY = 32;
+const AXIS_TICKS_ZY = [10, 20, 30];
+const axisPct = (value: number) => `${(value / AXIS_MAX_USD_ZY) * 100}%`;
+
 const appPortfolio = [
   { name: "能源与矿业", projects: "19个项目", amount: 30.59, color: "bg-[#c85c43]" },
   { name: "水务与卫生", projects: "6个项目", amount: 25.51, color: "bg-[#59a8d8]" },
@@ -149,10 +168,10 @@ export default function PeruInsightPage() {
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b54f39]">2026 transaction portfolio</p><h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">2026年APP组合，水务、能源和交通最值得关注</h2>
               <p className="mt-4 text-sm leading-7 text-[#64717c]">PROINVERSIÓN计划推动44个项目和8项合同增补，目标投资197.97亿美元。下列为官方单独披露的主要行业金额，并非各行业占全部组合的百分比。</p>
               <div className="mt-7 rounded-2xl border border-[#e0e6e8] bg-[#fafbf9] p-4 sm:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-[#64717c]"><span>横条表示披露投资金额</span><span className="rounded-full bg-[#e8edef] px-3 py-1 text-[#445762]">单位：亿美元｜统一刻度 0—31</span></div>
-                <div className="mt-3 grid grid-cols-4 text-[10px] font-bold text-[#8a969d]"><span>0</span><span className="text-center">10</span><span className="text-center">20</span><span className="text-right">31</span></div>
-                <div className="mt-2 space-y-5">{appPortfolio.map((item) => <div key={item.name}><div className="flex flex-wrap items-baseline justify-between gap-2 text-sm"><p className="font-black">{item.name} <span className="ml-2 text-[#b54f39]">{item.projects}</span></p><p className="font-bold text-[#445762]">{item.amount.toFixed(2)}亿美元</p></div><div className="relative mt-2 h-3 overflow-hidden rounded-full bg-[#e6ecef]"><div className="pointer-events-none absolute inset-0 z-10 grid grid-cols-3"><i className="border-r border-white/70" /><i className="border-r border-white/70" /><i /></div><div className={`h-full rounded-full ${item.color}`} style={{ width: `${(item.amount / 31) * 100}%` }} /></div></div>)}</div>
-                <p className="mt-5 border-t border-[#e0e6e8] pt-4 text-xs leading-6 text-[#71808a]">读图示例：水务与卫生披露金额为25.51亿美元，因此横条延伸至约25.5的位置。横条不是百分比，也不能据此推算完整行业占比。</p>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-[#64717c]"><span>横条表示披露投资金额</span><span className="rounded-full bg-[#e8edef] px-3 py-1 text-[#445762]">单位：亿美元｜统一刻度 0—32</span></div>
+                <div className="relative mt-3 h-4 text-[10px] font-bold text-[#8a969d]"><span className="absolute left-0">0</span>{AXIS_TICKS_ZY.map((tick) => <span key={tick} className="absolute -translate-x-1/2" style={{ left: axisPct(tick) }}>{tick}</span>)}</div>
+                <div className="mt-2 space-y-5">{appPortfolio.map((item) => <div key={item.name}><div className="flex flex-wrap items-baseline justify-between gap-2 text-sm"><p className="font-black">{item.name} <span className="ml-2 text-[#b54f39]">{item.projects}</span></p><p className="font-bold text-[#445762]">{item.amount.toFixed(2)}亿美元</p></div><div className="relative mt-2 h-3 overflow-hidden rounded-full bg-[#e6ecef]"><div className="pointer-events-none absolute inset-0 z-10">{AXIS_TICKS_ZY.map((tick) => <i key={tick} className="absolute top-0 h-full border-l border-white/70" style={{ left: axisPct(tick) }} />)}</div><div className={`h-full rounded-full ${item.color}`} style={{ width: axisPct(item.amount) }} /></div></div>)}</div>
+                <p className="mt-5 border-t border-[#e0e6e8] pt-4 text-xs leading-6 text-[#71808a]">读图示例：水务与卫生披露金额为25.51亿美元，因此横条越过20的刻度线、停在接近30的位置。横条不是百分比，也不能据此推算完整行业占比。</p>
               </div>
               <div className="mt-10 border-t border-[#dbe2e5] pt-8"><h3 className="text-xl font-black">投资趋势分析</h3><div className="mt-5 grid gap-4 md:grid-cols-3">{[
                 ["01","港口不再是孤立资产","Chancay、Callao及区域港口正与公路、铁路、仓储、工业园和海关能力形成组合需求。"],

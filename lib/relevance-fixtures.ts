@@ -2331,4 +2331,57 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Peru", scopeType: "works", estimatedValue: 500_000_000, currency: "USD",
     procedureType: "Compra por Catálogo Electrónico de Acuerdo Marco",
   },
+
+  // --- 2026-09-18, all eight from the user's own review of the live Peru
+  // feed. Each one names the rule it pins; together they are the whole of
+  // that day's relevance change.
+
+  {
+    title: "ADQUISICIÓN DE DISPOSITIVOS DE INMOVILIZACIÓN ELÉCTRICA Y CÁMARAS DE VIDEO CORPORALES ACTIVAS (BODYCAM) PARA EL SERVICIO DE SEGURIDAD CIUDADANA DE LA MUNICIPALIDAD PROVINCIAL DE TAMBOPATA",
+    expectedTier: "standard",
+    note: "Real title (2026-09-18, per the user: 从中型项目改成常规项目). It reached 中型 through EQUIPMENT_SCALE_CAPPED_KEYWORDS' bare `cámaras de video`, which exists for FIXED city CCTV installations — a real infrastructure project — and a box of cameras issued to police officers is not that. 常规 rather than excluded takes two rules together: the body-camera entry in INCLUDE_OVERRIDE_KEYWORDS stops Peru's undisclosed-value rule deleting it, and the matching entry in OVERRIDE_NOT_FLAGSHIP stops that same override promoting it to the top tier. Remove either one and this fixture fails in a different direction.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+  },
+  {
+    title: "AMPLIACIÓN Y MODERNIZACIÓN DEL SISTEMA DE VIDEOVIGILANCIA DE LA CIUDAD",
+    expectedTier: "significant",
+    note: "The control for the fixture above, and the reason the cámara rule was narrowed with a lookahead rather than deleted. A city-wide CCTV installation with no disclosed value stays 中型 — what changed is only that a body-worn camera is no longer read as one of these.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+  },
+  {
+    title: "ADQUISICIÓN DE PIEDRA CHANCADA DE 3\" Y 1 1/2\" PUESTA EN OBRA PARA EL SUB PROYECTO: MEJORAMIENTO Y AMPLIACIÓN DEL SERVICIO DE AGUA DE RIEGO, PRESA PARCCO, DISTRITO DE SAN JERÓNIMO, PROVINCIA DE ANDAHUAYLAS - REGIÓN APURIMAC.",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-18, per the user: 秘鲁应排除). It came out 大型项目 — the TOP tier — because the quarry order names the dam it is delivered to and `presa` is a MAJOR_PROJECT_KEYWORDS term. What is being bought is gravel. Added to CONSTRUCTION_INPUT_GOODS, which is an exclusion and therefore beats the dam keyword, exactly as that list's header says it should.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+  },
+  {
+    title: "ADQUISICIÓN DE LECHE FRESCA PARA LOS TRABAJADORES OPERATIVOS DE LA MUNICIPALIDAD DISTRITAL DE PUENTE PIEDRA",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-18, per the user: 秘鲁应排除). Milk for municipal workers, which reached 中型项目 because the district is named PUENTE PIEDRA and `puente` is the 建桥 keyword. Two independent fixes, both needed: the district is now in industry.ts's place-name stripper, and the named-staples entry in EXCLUDE_KEYWORDS covers the milk itself. The place name alone would have left the next milk order in the feed.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+  },
+  {
+    title: "EJECUCIÓN DE LA OBRA: ¿RENOVACION DE PUENTE; EN EL(LA) CAMINO VECINAL R 0907112 ¿PUENTE SURAPUCRO¿ TRAMO: CCALALINLI - SURAPUCRO EN CENTRO POBLADO UCHUY SUNE DISTRITO DE COCHABAMBA, PROVINCIA TAYACAJA, DEPARTAMENTO HUANCAVELICA¿ CON CÓDIGO UNICO DE INVERSION N°2671638",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-18, per the user: CAMINO VECINAL 乡村道路不要). See RURAL_ROAD_KEYWORDS. Four of the five examples sent that day were this exact shape — `puente` promoted them to flagship on the word, and MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT then let them down only as far as 中型.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "CONTRATACIÓN PARA LA EJECUCIÓN DE LA OBRA: \"RENOVACION DE PUENTE; EN EL(LA) CAMINO VECINAL EMP. AYA-920 KURMA, EN LA LOCALIDAD TOTOS, DISTRITO DE TOTOS, PROVINCIA CANGALLO, DEPARTAMENTO AYACUCHO\" ¿ CUI N° 2678583",
+    expectedTier: "excluded",
+    note: "Real title, same rule, kept as a second instance on purpose: this one carries none of the other exclusion signals (no consultancy framing, no materials clause), so it fails the moment RURAL_ROAD_KEYWORDS stops firing. The Surapucro fixture above does not — it is also caught by a works-consultancy pattern.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "MEJORAMIENTO DE LA CARRETERA DEPARTAMENTAL PE-3S, TRAMO KM 12+000 AL KM 38+500, PROVINCIA DE ANTA, DEPARTAMENTO CUSCO",
+    expectedTier: "significant",
+    note: "The control for the rural-road rule, and the one that says it did not go too far. A DEPARTAMENTAL highway matches none of camino vecinal / vía vecinal / trocha carrozable, so it is untouched. Carries a disclosed value because that is what a departmental contract normally publishes; without one Peru's undisclosed-value rule would decide this, not the road rule.",
+    country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 4_200_000, currency: "USD",
+  },
+  {
+    title: "EJECUCIÓN DE LA OBRA: ELABORACIÓN DE EXPEDIENTE TÉCNICO DEFINITIVO Y EJECUCIÓN DE OBRA DE LA INVERSIÓN ¿CONSTRUCCIÓN DE OBRAS DE ARTE; EN EL(LA) SISTEMA DE RIEGO CHAVIMOCHIC I Y II ETAPA DISTRITO DE CHAO, PROVINCIA VIRU, DEPARTAMENTO LA LIBERTAD¿ ITEM 02: COMPONENTE OBRAS HIDROMECÁNICAS Y ELECTROMEC",
+    expectedTier: "significant",
+    note: "Real title (2026-09-18, per the user: 灌溉系统都加水工程的标签). The ASK was a tag, and the tag is pinned in test:industry-tags — this fixture exists because the tag changes the tier too: `water` is a target industry, so with a disclosed value the row is 中型 instead of falling through. With NO disclosed value it is still excluded by Peru's undisclosed-value rule, which is that rule working as specified, not this one failing.",
+    country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 3_500_000, currency: "USD",
+  },
 ];

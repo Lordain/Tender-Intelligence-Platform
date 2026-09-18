@@ -559,8 +559,8 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           its own CRUD call), so it works in create mode too.
         */}
         <label className={labelClass}>
-          <span className={labelTextClass}>一句话总结（不超过30字；通常由标书文件分析自动生成，也可手动填写/修改）</span>
-          <input className={inputClass} maxLength={30} value={form.oneLineSummary} onChange={(e) => update("oneLineSummary", e.target.value)} />
+          <span className={labelTextClass}>一句话总结（不超过100字；通常由标书文件分析自动生成，也可手动填写/修改）</span>
+          <input className={inputClass} maxLength={100} value={form.oneLineSummary} onChange={(e) => update("oneLineSummary", e.target.value)} />
         </label>
 
         {isEdit ? (

@@ -166,7 +166,21 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // generation) alongside "energy" (its existing tag via the bare
   // "fotovoltaic[ao]" term above) — real title "IMPLEMENTACIÓN DE SISTEMAS
   // DE ENERGÍA FOTOVOLTAICA EN INSTITUCIONES EDUCATIVAS".
-  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|generador(es)?|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar/i],
+  // Grid hardware and plant control (2026-09-18, from an audit over the whole
+  // fixture corpus — the user asked for a full pass on the tag system, and
+  // "which kept tenders carry no tag at all" is the version of that question
+  // real data can answer). Four real fixtures came out with NO tag:
+  //   "SUMINISTRO DE INTERRUPTORES DE POTENCIA 115 KV Y SECCIONADORES"
+  //   "SUMINISTRO DE CELDAS DE MEDIA TENSIÓN Y CENTRO DE TRANSFORMACIÓN"
+  //   "IMPLEMENTACION DE UNIDAD TERMINAL REMOTA REDUNDANTE PARA EL ENLACE
+  //    DEL SISTEMA DE CONTROL DISTRIBUIDO"
+  //   "Central de Generación Co-Localizada Los Cabos"
+  // The last is a generating station the pattern could not see because it
+  // only knew "generación eléctrica" and the title says "Central de
+  // Generación". The others are exactly the substation equipment a Chinese
+  // manufacturer supplies, and none of them was reachable under the 电力
+  // filter a buyer browses by.
+  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|generador(es)?|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to
   // INCLUDE_OVERRIDE_KEYWORDS in lib/relevance.ts (a real batch of 29
@@ -198,7 +212,31 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // would not have appeared under the 行业 filter the user actually browses
   // by. `centro(s)?` for the same reason it was fixed there: the real title
   // said CENTROS DE DATOS, and the singular never matched it.
-  ["ict_telecom", /telecomunicaci|datacenter|centro(s)? de datos|cibern[ée]tic[oa]s?|ciberataque(s)?|ciberdefensa|cuentas privilegiadas|gesti[óo]n de identidades|protecci[óo]n de (la )?informaci[óo]n|seguridad de la informaci[óo]n|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|(?<![\d+]\s?)\b5g\b(?!\s*[\/x×])|ciberseguridad|seguridad electr[óo]nica|videovigilancia|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito|monitoreo (de )?veh[íi]culos|inhibidor(es)? de se[ñn]al|video ?wall|intelig[ée]ncia artificial|big ?data|circuito(s)? cerrado(s)? de televisi[óo]n|\bcctv\b|sistema de informaci[óo]n hospitalaria|sistema inteligente de transporte/i],
+  // "bodycam"/"cámara corporal" (2026-09-18): body-worn cameras are real
+  // electronics and belong under this tag, but they are deliberately NOT part
+  // of relevance.ts's videovigilancia concept — see EQUIPMENT_SCALE_CAPPED_
+  // KEYWORDS there. A fixed city CCTV installation is an infrastructure
+  // project; a box of cameras issued to municipal police officers is a goods
+  // purchase, and the user asked for exactly that one demoted to 常规项目.
+  // Electronic security and plant control (2026-09-18, same audit). Real
+  // fixtures with no tag: a biometric access-control purchase, a fire alarm
+  // and suppression system, a managed perimeter-security service. Same
+  // electronics family as the videovigilancia/CCTV terms already here.
+  //
+  // "seguridad perimetral" carries the SAME anchor relevance.ts uses for it
+  // in INCLUDE_OVERRIDE_KEYWORDS, and for the same reason: bare, the phrase
+  // means an outsourced guard/fencing contract as often as it means a sensor
+  // and camera system, and the fixture corpus holds one of each — one
+  // expected excluded, one flagship. Tagging the bare phrase turned the
+  // routine guard contract into a tagged, kept tender and broke that fixture.
+  // Copied rather than re-derived so the two files cannot disagree about
+  // which one is which.
+  //
+  // SCADA/DCS/RTU are tagged BOTH here and under "power" on purpose — this
+  // file's own header names "a power-plant SCADA upgrade is both power and
+  // ict_telecom" as the reason tags are an array, and until now neither tag
+  // was actually produced for one.
+  ["ict_telecom", /telecomunicaci|datacenter|centro(s)? de datos|cibern[ée]tic[oa]s?|ciberataque(s)?|ciberdefensa|cuentas privilegiadas|gesti[óo]n de identidades|protecci[óo]n de (la )?informaci[óo]n|seguridad de la informaci[óo]n|fibra [óo]ptica|red de comunicaciones|software|sistema inform[áa]tico|\btic\b|(?<![\d+]\s?)\b5g\b(?!\s*[\/x×])|ciberseguridad|seguridad electr[óo]nica|videovigilancia|\bran\b|\bbts\b|ruteador(es)?|\brouter(es)?\b|\bmifi\b|nube privada|red metropolitana|red de agregaci[óo]n|red terrestre core|\bwdm\b|\bdwdm\b|microondas|antiddos|caseta(s)? integral(es)? de comunicaciones|torres? (arriostrad|autosoportad)|\baicc\b|firewall|\bixp\b|internet gratuito|monitoreo (de )?veh[íi]culos|inhibidor(es)? de se[ñn]al|video ?wall|intelig[ée]ncia artificial|big ?data|circuito(s)? cerrado(s)? de televisi[óo]n|\bcctv\b|sistema de informaci[óo]n hospitalaria|sistema inteligente de transporte|bodycam(s)?|c[áa]mara(s)? (de video )?corporal(es)?|seguridad perimetral.{0,80}(instalaci[óo]n(es)? estrat[ée]gica(s)?|infraestructura (cr[íi]tica|estrat[ée]gica))|control de acceso biom[ée]trico|biom[ée]tric[oa]s?|sistema(s)? de alarma|detecci[óo]n (y supresi[óo]n )?de incendio|sistema de control distribuido|\bdcs\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|\bscada\b/i],
   // "tren ferroviario"/"tramo ... ferroviario"/"eje prioritario"/"ancho de
   // corona" added (2026-09-04, real gaps): real SICT/rail titles like
   // "CONSTRUCCIÓN Y DISEÑO DE 82.00 KM DEL TRAMO II FERROVIARIO DEL TREN DE
@@ -211,7 +249,46 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // DE VIAS TERCIARIAS CON LA CONSTRUCCION DE PLACA HUELLA" — rural
   // tertiary-road improvement, a distinct real Colombian road-network
   // category ("vías terciarias") from the urban/highway terms already here.
-  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|metro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona|v[íi]as? terciarias?|placa huella/i],
+  // Roads and bridges (2026-09-18, per the user: 很多道路工程、桥梁工程没有交通
+  // 标签). Every one of these terms was already in the "construction" pattern
+  // below and ONLY there, so a highway improvement or a bridge build came out
+  // tagged 土建 and nothing else — invisible under the 交通 filter, which is
+  // the one a road contractor actually browses by. A road is both: it is a
+  // civil works contract AND it is transport infrastructure, exactly the
+  // "a railway project is both transportation and construction" case this
+  // file's header names as the reason tags are an array.
+  //
+  // Real misses that motivated it: "MEJORAMIENTO DE LA CARRETERA
+  // DEPARTAMENTAL PIURA - CHULUCANAS, TRAMO KM 12+000 AL KM 38+500" and
+  // "CONSTRUCCIÓN DEL PUENTE VEHICULAR SOBRE EL RÍO MAGDALENA Y SUS ACCESOS",
+  // both tagged [construction] alone.
+  //
+  // "transitabilidad" is Peru's own standard word for road serviceability and
+  // appears in a large share of SEACE road titles ("MEJORAMIENTO DEL SERVICIO
+  // DE TRANSITABILIDAD VIAL"); without it those rows carry no transport
+  // signal at all. Bare "puente" is safe here for the reason it is safe in
+  // the construction pattern: classifyIndustries() runs
+  // stripKnownFalsePositivePlaceNames() over its haystack first, so
+  // "Puente Piedra" and friends are gone before any pattern sees them.
+  //
+  // Airports, rail and terminals came from the same 2026-09-18 audit.
+  // "aeropuerto" was narrowed out of the construction pattern deliberately —
+  // buying screening equipment is not building an airport — but it was never
+  // added anywhere else, so "ADQUISICIÓN DE EQUIPOS DE SEGURIDAD PARA
+  // REVISIÓN DE EQUIPAJE EN EL AEROPUERTO INTERNACIONAL" carried no transport
+  // signal at all. Bare is right HERE: an airport is transport
+  // infrastructure whether or not it is being built. "ferrocarril" was
+  // likewise only in construction, beside a transportation pattern that
+  // already had "ferroviario" and "tren de pasajeros" — the same asset under
+  // a third name. Bare "vial" for the same reason: the pattern knew
+  // "señalización vial" and "vialidad" but not "MEJORAMIENTO VIAL".
+  //
+  // Bare "puerto" is deliberately NOT here. It is the single worst
+  // false-positive term in this file (see the place-name stripper below —
+  // Puerto Rico, Puerto Peñasco, Puerto Boyacá, Puerto López, Felipe
+  // Carrillo Puerto), and adding it for a tag would widen a problem the rest
+  // of the file spends its length containing.
+  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|metro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|\bvial(es)?\b|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona|v[íi]as? terciarias?|placa huella|carreter[ao]s?\b|\bpuentes?\b|camino(s)? (vecinal(es)?|rural(es)?)|v[íi]a(s)? (vecinal(es)?|nacional(es)?|departamental(es)?|regional(es)?)|trocha(s)? carrozable(s)?|transitabilidad|pavimentaci[óo]n|asfaltado|doble calzada|intercambio vial|paso a desnivel|\bt[úu]nel(es)?\b|\bpeaje(s)?\b|\baeropuertos?\b|aeroportuari[oa]s?|ferrocarril(es)?|terminal(es)? terrestre(s)?|\bmuelle(s)?\b/i],
   // The "\bkm\s*\d+\+\d{3}\b" alternative is a real kilometer-marker
   // notation ("DEL KM 150+000 AL KM 170+000") — standard Mexican federal
   // highway-alignment notation, seen on a real road-engineering-study
@@ -268,7 +345,14 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // relevance.ts's own MAJOR_PROJECT_KEYWORDS dam pattern, added here too
   // so the same real dam/reservoir titles also get the water TAG, not
   // just the flagship tier.
-  ["water", /agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora|\bptar\b|dragado|desazolve|acueducto(s)?|canal principal|\br[íi]o\b|margen (derecha|izquierda)|zona de riego|\bpresas?\b/i],
+  // Irrigation (2026-09-18, per the user: 灌溉系统都加水工程的标签). The pattern
+  // had "zona de riego" — the SITING phrase — but not irrigation itself, so
+  // "CONSTRUCCIÓN DE OBRAS DE ARTE; EN EL(LA) SISTEMA DE RIEGO CHAVIMOCHIC
+  // I Y II ETAPA ... COMPONENTE OBRAS HIDROMECÁNICAS" came out [construction]
+  // with no water tag at all, which is most of what Peru's water works are.
+  // "hidromec[áa]nic" covers the gates, screens and penstocks that are the
+  // actual scope of half these contracts.
+  ["water", /agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora|\bptar\b|dragado|desazolve|acueducto(s)?|canal principal|\br[íi]o\b|margen (derecha|izquierda)|zona de riego|\briego\b|irrigaci[óo]n|canal(es)? de riego|bocatoma(s)?|reservorio(s)?|hidromec[áa]nic[oa]s?|\bpresas?\b|\brepresas?\b/i],
   // Real batch the user flagged as legitimate opportunities: bulk vehicle
   // and heavy-machinery acquisitions ("ADQS. DE 22 VEHS. CISTERNA...",
   // "ADQUISICION DE VEHICULOS PARA EL CONVENIO CONASAMA 2026",
@@ -341,6 +425,15 @@ export function stripKnownFalsePositivePlaceNames(text: string): string {
     // so stripping it changes nothing today — it is listed because the next
     // Puerto Peñasco tender will not necessarily carry that other signal.
     /puerto rico\b|puerto pe[ñn]asco\b/gi,
+    "",
+  ).replace(
+    // Peru (2026-09-18). "Puente Piedra" is one of Lima's 43 districts, and
+    // its name alone was enough to tag a MILK purchase as construction and
+    // promote it to 中型项目 on relevance.ts's 建桥 keyword: "ADQUISICIÓN DE
+    // LECHE FRESCA PARA LOS TRABAJADORES OPERATIVOS DE LA MUNICIPALIDAD
+    // DISTRITAL DE PUENTE PIEDRA". Same class as "Puente Ospina" above, and
+    // a far bigger district than that one.
+    /puente piedra\b/gi,
     "",
   ).replace(
     // "REHABILITACION DE LINEA DE AGUA POTABLE EN CALLE 16 ENTRE CALLE 9 Y

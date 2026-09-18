@@ -5,7 +5,6 @@ export type CountryInsightSummary = {
   title: string;
   description: string;
   author: string;
-  updatedAt: string;
   readTime: string;
   heroImage: string;
   highlights: string[];
@@ -20,7 +19,6 @@ export const countryInsights: CountryInsightSummary[] = [
     description:
       "从5.6万亿比索（约2,902亿美元）基础设施计划出发，拆解能源、铁路、公路、港口、水务等重点行业，以及项目区域分布和中国企业需要关注的进入条件。",
     author: "拉美招投标指南针",
-    updatedAt: "2026年9月17日",
     readTime: "约 15 分钟",
     heroImage: "/insights/mexico-infrastructure-hero.webp",
     highlights: ["5.6万亿比索（约2,902亿美元）规划投资", "超过1,500个项目", "八个战略行业"],
@@ -33,7 +31,6 @@ export const countryInsights: CountryInsightSummary[] = [
     description:
       "从1,154.8万亿哥伦比亚比索（约3,691亿美元）国家投资计划出发，梳理铁路、公路、港口、电网、水务与数字基础设施的跨周期项目管线。",
     author: "拉美招投标指南针",
-    updatedAt: "2026年9月17日",
     readTime: "约 16 分钟",
     heroImage: "/insights/colombia-infrastructure-hero.webp",
     highlights: ["1,154.8万亿比索（约3,691亿美元）国家投资计划", "321.3万亿比索（约1,027亿美元）交通项目", "跨周期项目延伸至2055年"],
@@ -46,7 +43,6 @@ export const countryInsights: CountryInsightSummary[] = [
     description:
       "从2024—2030竞争力规划、2032物流走廊和2026项目组合出发，梳理交通、矿业、能源、水务与社会基础设施的区域机会。",
     author: "拉美招投标指南针",
-    updatedAt: "2026年9月17日",
     readTime: "约 17 分钟",
     heroImage: "/insights/peru-infrastructure-hero.webp",
     highlights: ["561.57亿索尔（约166.8亿美元）公共投资", "44个APP/资产项目与8项增补", "66个矿业投资项目"],

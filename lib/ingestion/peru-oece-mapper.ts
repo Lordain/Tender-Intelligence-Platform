@@ -2,6 +2,7 @@ import type { GovernmentLevel, Tender, TenderScopeType, TenderStatus } from "@/t
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
 import { safeFileName, type TenderDocumentLink as SharedTenderDocumentLink } from "@/lib/ingestion/document-links";
+import { correctedSeaceSourceUrl, SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
 
 /**
  * One record from Peru's real OCDS "record package" — the OECE
@@ -151,12 +152,15 @@ import { safeFileName, type TenderDocumentLink as SharedTenderDocumentLink } fro
  *   mapper only produces `Tender`s); a follow-up `ingest-peru-documents`
  *   connector analogous to Colombia's could reuse this directly without
  *   a second live request, unlike Colombia.
- * - No confirmed real human-browsable deep link to one specific tender
- *   was found in this sample — `sources[0].url` is only the generic
- *   SEACE search portal, not a per-tender page. `sourceUrl` below uses
- *   the real OCDS release detail URL instead (genuinely resolves to
- *   real JSON content, just not a pretty HTML page) until a real
- *   human-facing deep-link pattern is confirmed.
+ * - No human-browsable deep link to one specific tender exists that a
+ *   reader can actually open. `sources[0].url` is only the generic SEACE
+ *   search portal. SEACE does have a per-tender ficha page, and it was
+ *   tried by hand in September 2026 — it resolves only inside the browser
+ *   session that reached it through the buscador, so it works for whoever
+ *   pastes it and for no reader afterwards (lib/peru-seace-url.ts has the
+ *   evidence). The search portal is therefore not a placeholder waiting
+ *   for something better; it is the best link that survives being clicked
+ *   by a stranger.
  */
 export type OeceRecord = {
   ocid: string;
@@ -421,7 +425,11 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
     risks: [],
     relevance,
     sourceName,
-    sourceUrl: platformUrl || "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml",
+    // Normalized rather than used raw: OECE's own sources[0].url spells the
+    // host `prodapp2` and the user browses `prod2`. Left alone, an import
+    // would put the other spelling back over every row that
+    // scripts/fix-peru-ficha-source-urls.ts just corrected.
+    sourceUrl: correctedSeaceSourceUrl(platformUrl) ?? platformUrl ?? SEACE_PUBLIC_SEARCH_URL,
     createdAt: now,
     updatedAt: now,
   };

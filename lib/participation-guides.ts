@@ -1,3 +1,5 @@
+import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
+
 export type GuideStep = {
   title: string;
   detail: string;
@@ -451,7 +453,7 @@ export const participationGuides: ParticipationGuide[] = [
       { label: "OECE 官方机构页", href: "https://www.gob.pe/oece" },
       { label: "RNP 登记（境外无住所主体）官方指引", href: "https://www.gob.pe/22020-inscribirme-en-el-registro-nacional-de-proveedores-rnp-como-extranjero-no-domiciliado" },
       { label: "Ley N.° 32069 及其条例合集（OECE）", href: "https://www.gob.pe/institucion/oece/colecciones/45029-ley-n-32069-ley-general-de-contrataciones-publicas-y-su-reglamento" },
-      { label: "SEACE 公开项目检索", href: "https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml" },
+      { label: "SEACE 公开项目检索", href: SEACE_PUBLIC_SEARCH_URL },
     ],
   },
   {

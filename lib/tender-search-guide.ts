@@ -1,4 +1,5 @@
 import type { Tender } from "@/types/tender";
+import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
 
 /**
  * How to find one tender's bid documents on the platform that holds them,
@@ -82,11 +83,10 @@ export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide |
     return {
       platform: "SEACE — Sistema Electrónico de Contrataciones del Estado",
       // The only branch that carries its own link. A Peru tender's stored
-      // 官方入口 is whatever host OECE's own `sources[].url` names (prodapp2),
-      // while the path the user actually walked — and the one the ficha in
-      // their screenshot lives on — is prod2. Same system, and rather than
-      // guess which alias stays up, the verified one is spelled out here.
-      url: "https://prod2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml",
+      // One constant, because SEACE has moved its public route before and the
+      // old host survived here for months only by being written in four
+      // places. See lib/peru-seace-url.ts.
+      url: SEACE_PUBLIC_SEARCH_URL,
       steps: [
         "打开 SEACE 公开检索页（下面的链接）",
         "点击 Buscador de Procedimiento de Selección",

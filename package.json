@@ -117,7 +117,9 @@
     "undo:extracted-key-dates": "tsx --env-file-if-exists=.env.local scripts/undo-extracted-key-dates.ts",
     "ping:indexnow": "tsx --env-file-if-exists=.env.local scripts/ping-indexnow.ts",
     "accounts": "tsx --env-file-if-exists=.env.local scripts/accounts.ts",
-    "purge:analytics": "tsx --env-file-if-exists=.env.local scripts/purge-analytics.ts"
+    "purge:analytics": "tsx --env-file-if-exists=.env.local scripts/purge-analytics.ts",
+    "fix:peru-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-peru-ficha-source-urls.ts",
+    "test:peru-seace-url": "tsx scripts/test-peru-seace-url.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

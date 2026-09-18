@@ -1,5 +1,6 @@
 import { ImportPeruForm } from "@/components/admin/ImportPeruForm";
 import { PeruDocumentLinksForm } from "@/components/admin/PeruDocumentLinksForm";
+import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
 
 export default function AdminImportTendersPeruPage() {
   return (
@@ -10,7 +11,7 @@ export default function AdminImportTendersPeruPage() {
       </p>
       <div className="flex flex-wrap gap-3">
         <a
-          href="https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+          href={SEACE_PUBLIC_SEARCH_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8e0e3] bg-white px-4 py-2 text-sm font-bold text-[#071826] transition-colors hover:border-[#ffb21c] hover:bg-[#fff9ec]"

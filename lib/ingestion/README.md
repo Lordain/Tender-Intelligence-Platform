@@ -3133,9 +3133,9 @@ over unchanged:
    number and not the same order of magnitude. Putting RAP into
    `estimatedValue` would print an annual revenue cap next to municipal
    contract values on the same list, under the same label, and nothing on the
-   page would say they mean different things. Decision to take before a mapper
-   is written, not after: `estimatedValue` = estimated investment; RAP belongs
-   in the summary text where it can be named.
+   page would say they mean different things. **Settled with the user
+   2026-09-18: `estimatedValue` = estimated investment (CAPEX); RAP belongs
+   in the summary text where it can be named.**
 2. **There is no buyer paying us.** In a concession the winner *receives*
    revenue (from tariffs or from the transmission charge) rather than being
    paid by the granting authority. Mapping ANEEL into `buyer` is defensible —
@@ -3256,6 +3256,46 @@ and is **not** verified against the live service, so `ckanAction` now carries
 the response headers on its error and the probe prints `www-authenticate`,
 `server` and `cf-ray` — that is how the next run corrects the guess rather
 than repeating it.
+
+#### Run two (2026-09-18, same machine, after the three fixes): the retry answered, and mostly with "no"
+
+- **`www-authenticate: Bearer`.** dados.gov.br stated in a header exactly what
+  it wants, and it is not the `chave-api-dados-abertos` this repo had guessed
+  from documentation. Corrected to `Authorization: Bearer <key>`, with the
+  documented spelling kept as a one-shot fallback (the catalogue has more than
+  one API generation behind the same hostname) and the probe reporting which
+  one was accepted. That single line is what printing response headers was
+  for: run one's 401 had an empty body and would have produced a second guess.
+- **The ★ mechanism overstated its own result, and the bug was mine.** ANTT's
+  F5 appliance serves `Request Rejected` as **HTTP 200**, so a retry judged by
+  status code alone printed "browser headers got us in" for a block notice —
+  three of run two's four ★ were that. The retry now checks the body against a
+  list of block-page signatures before calling anything a pass, and prints the
+  page's `<title>` and first 300 characters so a reader can see the page
+  rather than trust a verdict. A tool that overstates its findings is worse
+  than one that fails.
+- **PPI answers a browser User-Agent and there is nothing in the page.** 16KB,
+  266 characters of text, zero links — and the *same body for all four URLs*,
+  `sitemap.xml` included. That is either a single-page-app shell or an
+  interstitial; the probe could not tell which, which is the other reason the
+  body is now printed. Either way P1's question is answered in the negative:
+  **the portfolio is not scrapeable from plain HTML.**
+- **`dadosabertos.aneel.gov.br` is genuinely unreachable from that network**,
+  confirmed at the socket — ETIMEDOUT after 21 seconds with no handshake,
+  while eight other hosts connected in under 400ms in the same pass. The one
+  failure that is a network fact rather than a policy, and the TCP pass added
+  after run one is what established it.
+- **A Cloudflare JS challenge is not a header problem.** ANEEL's and ANTAQ's
+  403s are unchanged by a browser UA, as they should be: those want a browser
+  that runs the challenge, not a string claiming to be one. So the honest
+  reading of run two is that the User-Agent was *not* the answer — which is
+  worth stating as plainly as a pass would have been.
+
+**Where that leaves the two connectors**: `dados.gov.br` with a key is the one
+door that is a credential away, and it is the national catalogue, so it covers
+ANTT, ANTAQ, ANAC and ANEEL datasets without depending on any single agency's
+WAF. Everything else on that list needs either a real browser or a different
+network path, and neither is a thing to build blind.
 
 `lib/ingestion/connectors/ckan.ts` was written ahead of the probe because
 CKAN's Action API is a published standard identical across installs, so it is

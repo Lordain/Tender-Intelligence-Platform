@@ -96,6 +96,35 @@
  *     Absence of a marker is not presence of content. The verdict now reads
  *     the amount of text and the number of links first.
  *
+ * ── RUN TWO (2026-09-18, same machine, after the three fixes above) ──────
+ *
+ * The retry answered its question, and the answer was mostly "no":
+ *
+ *  - **`www-authenticate: Bearer`.** dados.gov.br said, in a header, exactly
+ *    what it wants — and it is not the `chave-api-dados-abertos` this file
+ *    had guessed. Corrected. This one line is what printing headers was for.
+ *  - **The ★ mechanism overstated its own result, and that was my bug.**
+ *    ANTT's F5 serves "Request Rejected" as **HTTP 200**, so judging the
+ *    retry by status code alone printed "browser headers got us in" for a
+ *    block notice; three of the four ★ were that. Content is now checked
+ *    before anything is called a pass, and the page's <title> and first 300
+ *    characters are printed so the next reader can see it rather than trust
+ *    a verdict.
+ *  - **PPI answers a browser UA, and there is nothing in the page.** 16KB,
+ *    266 characters of text, zero links — and the SAME body for all four
+ *    URLs including `sitemap.xml`. That is either a single-page-app shell or
+ *    an interstitial, and the probe could not tell which, which is the other
+ *    reason the body is now printed.
+ *  - **`dadosabertos.aneel.gov.br` is genuinely unreachable**, confirmed at
+ *    the socket: ETIMEDOUT after 21 seconds with no handshake, while eight
+ *    other hosts connected in under 400ms in the same pass. This is the one
+ *    failure that is a network fact rather than a policy, and the TCP pass
+ *    added after run one is what established it.
+ *  - **Cloudflare's JS challenge is not a header problem.** ANEEL's and
+ *    ANTAQ's 403s are unchanged by a browser UA, as they should be — those
+ *    want a browser that runs the challenge, not a string that claims to be
+ *    one.
+ *
  * ── DNS (measured from the sandbox, where HTTP is blocked but DNS is not) ──
  *
  *   ppi.gov.br · dados.gov.br · dadosabertos.aneel.gov.br ·
@@ -147,16 +176,26 @@ const BROWSER_HEADERS = {
 } as const;
 
 /**
- * dados.gov.br answered 401 with an empty body — which means the path is
- * real and wants a credential, the most actionable result of the whole first
- * run. The national catalogue issues free keys on registration. The header
- * name below is from its documentation and has NOT been verified against the
- * live service, so when a key is set and the call still fails, the response
- * headers printed alongside (`www-authenticate` above all) are what corrects
- * it — that is why they are printed rather than swallowed.
+ * The credential dados.gov.br asked for, in its own words.
+ *
+ * Run one returned 401 with an EMPTY body, and this file guessed the header
+ * from documentation: `chave-api-dados-abertos`. Run two printed the response
+ * headers instead of swallowing them, and the server settled it —
+ *
+ *     www-authenticate: Bearer
+ *     x-cache: Error from cloudfront
+ *
+ * — so the guess was wrong and `Authorization: Bearer <key>` is right. The
+ * documented header is kept as a fallback rather than deleted, because the
+ * catalogue has more than one API generation behind the same hostname and
+ * the 401 came from the CKAN-style path specifically; if Bearer is refused,
+ * the probe tries the other one and reports which was accepted. That is the
+ * whole point of printing headers: the next run corrects the guess instead
+ * of repeating it.
  */
 const DADOS_GOV_KEY = process.env.DADOS_GOV_BR_API_KEY;
-const DADOS_GOV_HEADERS = DADOS_GOV_KEY ? { "chave-api-dados-abertos": DADOS_GOV_KEY } : undefined;
+const DADOS_GOV_HEADERS = DADOS_GOV_KEY ? { Authorization: `Bearer ${DADOS_GOV_KEY}` } : undefined;
+const DADOS_GOV_FALLBACK_HEADERS = DADOS_GOV_KEY ? { "chave-api-dados-abertos": DADOS_GOV_KEY } : undefined;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -226,6 +265,36 @@ async function fetchText(url: string, timeoutMs: number, headers: Record<string,
 }
 
 /**
+ * Is this 200 actually a refusal?
+ *
+ * Measured the hard way on run two: ANTT's F5 appliance serves
+ * "The requested URL was rejected" as **HTTP 200**, so a retry that judged
+ * success by status code alone printed a ★ — "browser headers got us in" —
+ * for a page that is a block notice. Three of that run's four ★ were this.
+ * A tool that overstates its own findings is worse than one that fails, so
+ * the signatures below are checked before anything is called a pass.
+ */
+const BLOCK_PAGE_SIGNATURES = [
+  /Request Rejected/i,
+  /Your support ID is/i,
+  /Acesso bloqueado/i,
+  /Attention Required/i,
+  /Just a moment/i,
+  /__cf_chl|cf-browser-verification|cf_chl_opt/i,
+  /Access Denied/i,
+];
+
+function blockPageReason(text: string): string | null {
+  const hit = BLOCK_PAGE_SIGNATURES.find((pattern) => pattern.test(text));
+  return hit ? (text.match(hit)?.[0] ?? "拦截页").slice(0, 40) : null;
+}
+
+/** The page's own title, which is usually the fastest way to see what a 200 really is. */
+function pageTitle(text: string): string {
+  return (text.match(/<title[^>]*>([\s\S]{0,160}?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim();
+}
+
+/**
  * Server-rendered page or JavaScript shell?
  *
  * The distinction decides whether a scraper is possible at all, and it is not
@@ -276,7 +345,22 @@ async function browserRetry(url: string, timeoutMs: number, linkPattern: RegExp,
     console.log(`   ↳ 换成浏览器请求头再试：一样不行（${status}，${ms}ms）—— 所以问题不在 User-Agent\n`);
     return;
   }
-  console.log(`   ★ 换成浏览器请求头就通了（${status}，${ms}ms）：${describeHtml(text, linkPattern).note}`);
+  // A 200 is not a pass. F5 serves its rejection page with one, and a
+  // Cloudflare challenge can too — see BLOCK_PAGE_SIGNATURES.
+  const blocked = blockPageReason(text);
+  const title = pageTitle(text);
+  const described = describeHtml(text, linkPattern);
+  if (blocked !== null) {
+    console.log(`   ↳ 换成浏览器请求头：拿到 200，但正文是拦截页（「${blocked}」${title ? ` · <title> ${title}` : ""}）—— 不算通\n`);
+    return;
+  }
+  console.log(`   ★ 换成浏览器请求头就通了（${status}，${ms}ms）：${described.note}`);
+  if (title) console.log(`     <title> ${title}`);
+  // Printed because the verdict alone cannot tell a single-page-app shell
+  // from an interstitial, and on run two four different PPI URLs all came
+  // back as the same 266-character body — which is one or the other.
+  const body = text.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (body) console.log(`     正文开头：${body.slice(0, 300)}`);
   console.log("     这是个要拿回来讨论的结论，不是可以悄悄写进连接器的 header —— 见本文件开头的说明。\n");
 }
 
@@ -335,6 +419,8 @@ async function probeCkan(
   rows: number,
   collected: { portal: string; pkg: CkanPackage }[],
   extraHeaders?: Record<string, string>,
+  /** Tried once if `extraHeaders` is refused — see DADOS_GOV_FALLBACK_HEADERS. */
+  fallbackHeaders?: Record<string, string>,
 ): Promise<void> {
   console.log(label);
   console.log(`   为什么试它：${why}`);
@@ -360,7 +446,21 @@ async function probeCkan(
     if (status === 401 || status === 403) {
       console.log("     401/403 的意思是这个路径是真的、对方认得它 —— 缺的是凭证或者被当成机器人了，不是「没有这个接口」。");
       if (base.includes("dados.gov.br") && !DADOS_GOV_KEY) {
-        console.log("     dados.gov.br 的开放数据 API 要免费注册一个 key。拿到后设 DADOS_GOV_BR_API_KEY 再跑一次这条。");
+        console.log("     dados.gov.br 要免费注册一个 key（用 gov.br 账号登录后在账户里申请）。");
+        console.log("     拿到后设 DADOS_GOV_BR_API_KEY 再跑一次这条 —— 上一轮它自己说了要 Bearer。");
+      }
+      // The credential was sent and still refused: try the other header
+      // spelling once before concluding the key is wrong.
+      if (fallbackHeaders !== undefined) {
+        try {
+          const retried = await ckanStatus(base, { timeoutMs, headers: fallbackHeaders });
+          console.log(`   ★ 换成 ${Object.keys(fallbackHeaders).join("/")} 这个请求头就通了 —— CKAN ${retried.ckanVersion ?? "?"}。`);
+          console.log("     也就是说 Bearer 不是它要的，文档里那个老写法才是。记下来，连接器按这个写。\n");
+          return;
+        } catch (second) {
+          console.log(`     换成 ${Object.keys(fallbackHeaders).join("/")} 也不行：${(second as Error).message.slice(0, 160)}`);
+          console.log("     两种写法都被拒 —— 那多半是 key 本身的问题（没激活 / 抄漏了 / 权限没勾），不是写法。");
+        }
       }
     }
     // Same single variable as the HTML steps. status_show is a JSON endpoint,
@@ -514,6 +614,7 @@ async function main() {
     rows,
     collected,
     DADOS_GOV_HEADERS,
+    DADOS_GOV_FALLBACK_HEADERS,
   );
 
   console.log("─".repeat(72));
@@ -644,26 +745,24 @@ async function main() {
   console.log("要发我的东西，按重要性排：\n");
   console.log("  1. 【列名】那几行 —— datastore_search 打出来的 `列名：…` 和 `第一行全文`。");
   console.log("     映射器是照着它写的，不是照着我记忆里的字段名写的。");
-  console.log("  2. 任何一行以 ★ 开头的 —— 那是「换成浏览器请求头就通了」。");
-  console.log("     如果出现了，那它就是这一轮最大的结论：挡我们的是 User-Agent，不是没有数据。");
-  console.log("     这件事要先摆到台面上讨论，我不会直接把浏览器 UA 写进连接器。");
-  console.log("  3. 最上面那张 TCP 表 —— 「通」而底下还是失败的那几个，是对方在应用层拒绝，");
-  console.log("     跟「不通」是两回事，改的东西完全不一样。");
+  console.log("  2. 任何一行以 ★ 开头的，连同它下面的 <title> 和正文开头。");
+  console.log("     ★ 现在只在正文不是拦截页时才打 —— 上一轮它判过三个假阳性（F5 的拒绝页是 200）。");
+  console.log("  3. 最上面那张 TCP 表 —— 「通」而底下还是失败的是应用层拒绝；「不通」才是真够不着。");
   if (!ckanOk) {
-    console.log("\n  这一轮仍然没有任何门户确认是 CKAN。上一轮的失败长这样，可以对照着看是不是变了：");
-    console.log("    dados.gov.br 401（路径是真的，缺 key）· ANTT 200 但返回 F5 的 Request Rejected");
-    console.log("    · ANTAQ / ANEEL / CCEE 403（Cloudflare 和一个手写的封锁页）· ANEEL 开放数据 10 秒连不上");
-    console.log("  这些没有一条说「巴西没有开放数据」—— 说的都是「这个客户端进不来」。");
+    console.log("\n  仍然没有任何门户确认是 CKAN。上一轮站到哪儿了，可以对照：");
+    console.log("    dados.gov.br     401，且应答头写明要 Bearer —— 唯一差一个免费 key 就能进的门");
+    console.log("    ANTT             F5 把拒绝页当 200 发，换 UA 没用");
+    console.log("    ANTAQ / ANEEL    Cloudflare 的 JS 验证 —— 换 UA 没用，它要的是真能跑 JS 的浏览器");
+    console.log("    dadosabertos.aneel.gov.br  socket 层 ETIMEDOUT，这条是网络真的不通，不是策略");
+    console.log("    PPI              换 UA 能拿到 200，但四个不同网址返回同一个 266 字的空壳");
   }
   if (DADOS_GOV_KEY === undefined) {
-    console.log("\n  dados.gov.br 那条最值得先解决：401 说明路径是对的，只差一个免费注册的 key。");
-    console.log("  拿到后 setx DADOS_GOV_BR_API_KEY <key>（或写进 .env.local）再跑一次，");
-    console.log("  国家目录一个门就能覆盖 ANTT / ANTAQ / ANAC / ANEEL 四家的数据集。");
+    console.log("\n  下一步就一件事：dados.gov.br 的 key。它是唯一一个「路径是真的、只差凭证」的门，");
+    console.log("  而且一个 key 覆盖 ANTT / ANTAQ / ANAC / ANEEL 四家的数据集。");
+    console.log("  设好 DADOS_GOV_BR_API_KEY 再跑这条即可，Bearer 和文档里的老写法都会试。");
   }
-  console.log("\n还有一件跟接口无关、但会影响结果的事 —— 见 lib/ingestion/README.md 的");
-  console.log("「Three traps that are new, and the first one changes displayed numbers」：");
-  console.log("输电标段的「金额」到底指 RAP（每年允许收的钱）还是 CAPEX（总投资），这两个数差着量级。");
-  console.log("定错了的话，接口写得再对，前台显示的数字也是错的。");
+  console.log("\n输电标段的金额按【预估总投资 CAPEX】走（2026-09-18 已确认），RAP 放摘要正文点名。");
+  console.log("见 lib/ingestion/README.md 的「Three traps that are new…」。");
 }
 
 main().catch((err) => {

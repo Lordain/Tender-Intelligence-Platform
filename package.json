@@ -90,6 +90,7 @@
     "probe:brazil-amount": "tsx scripts/probe-brazil-amount.ts",
     "test:cli-write-flag": "tsx scripts/test-cli-write-flag.ts",
     "test:brazil-pncp-mapper": "tsx scripts/test-brazil-pncp-mapper.ts",
+    "test:ckan-client": "tsx scripts/test-ckan-client.ts",
     "test:source-language": "tsx scripts/test-source-language.ts",
     "test:text-fold": "tsx scripts/test-text-fold.ts",
     "test:relevance-pt": "tsx scripts/test-relevance-pt.ts",
@@ -122,7 +123,8 @@
     "purge:analytics": "tsx --env-file-if-exists=.env.local scripts/purge-analytics.ts",
     "fix:peru-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-peru-ficha-source-urls.ts",
     "test:peru-seace-url": "tsx scripts/test-peru-seace-url.ts",
-    "probe:brazil-docs": "tsx scripts/probe-brazil-docs.ts"
+    "probe:brazil-docs": "tsx scripts/probe-brazil-docs.ts",
+    "probe:brazil-concessions": "tsx scripts/probe-brazil-concessions.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

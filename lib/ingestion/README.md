@@ -3082,6 +3082,136 @@ aeropuerto/aeroporto. Rules must land before the first import, because an
 excluded tender is never written to Supabase: getting it wrong fills the
 database with rows that then have to be removed by hand.
 
+### Brazil's other market — PPI concessions and ANEEL transmission auctions (surveyed 2026-09-18)
+
+Everything the Brazil connector reads today is PNCP: Lei 14.133 procurement,
+where a government body buys a work or a service and pays for it. The user
+asked for two sources that are a different animal.
+
+- **PPI** (ppi.gov.br, *Programa de Parcerias de Investimentos*) — the federal
+  concession/PPP pipeline: highways, ports, airports, railways. A project
+  enters it when the Conselho do PPI qualifies it, which is typically **one to
+  three years before any edital exists**.
+- **ANEEL's *leilões de transmissão*** — auctions for the right to build, own
+  and operate a transmission line for 30 years. One lot runs to billions of
+  reais against the single-digit millions the municipal PNCP feed carries, and
+  this is the arena the large Chinese utilities actually compete in. Not in
+  PNCP: a concession under Lei 8.987/11.079 is not a Lei 14.133 contratação.
+
+#### This is not a new problem — Mexico hit it first
+
+The two Mexican pipeline sources above (Proyectos México, then Proyectos
+Estratégicos MX) already answered most of the design, and their answers carry
+over unchanged:
+
+1. **Filter to the bidding stage inside the mapper.** Proyectos México lists
+   every lifecycle stage and the mapper keeps only `Etapa === "Licitación"`.
+   PPI's own status field is the analogue. A project in *em estruturação* has
+   no edital, no deadline and no contract value; pushed into `tenders` it
+   would fail every gate and arrive as noise.
+2. **Do not derive `status` from the stage label.** That was a real, user-
+   caught bug: `Etapa === "Licitación"` means the project's current stage is
+   procurement, *not* that a bidding window is open right now. Status comes
+   from the real dates or not at all.
+3. **Store the native-currency figure**, never the portal's own USD
+   conversion — unknown rate, unknown as-of date. `convertToUsd()` normalises.
+4. **`isNationalPriorityProject: true`.** Appearing in PPI's portfolio is
+   itself the flagship signal, stronger than any keyword or value proxy —
+   exactly the reasoning both Mexican sources use.
+5. **No shared key, so duplicates are accepted rather than fuzzy-merged.** A
+   PPI project, the sector agency's edital and any PNCP row for the same work
+   have no identifier in common. Same documented limitation as Mexico's.
+
+#### Three traps that are new, and the first one changes displayed numbers
+
+1. **"The amount" is two different quantities, and the wrong one is the
+   easier one to reach.** A transmission lot is bid on **RAP** (*Receita
+   Anual Permitida*) — the annual revenue cap the winner may collect for 30
+   years, awarded to whoever bids it **lowest**. What a Chinese EPC or
+   investor is sizing the opportunity by is the **estimated investment
+   (CAPEX)**, a separate figure in the same edital. They are not the same
+   number and not the same order of magnitude. Putting RAP into
+   `estimatedValue` would print an annual revenue cap next to municipal
+   contract values on the same list, under the same label, and nothing on the
+   page would say they mean different things. Decision to take before a mapper
+   is written, not after: `estimatedValue` = estimated investment; RAP belongs
+   in the summary text where it can be named.
+2. **There is no buyer paying us.** In a concession the winner *receives*
+   revenue (from tariffs or from the transmission charge) rather than being
+   paid by the granting authority. Mapping ANEEL into `buyer` is defensible —
+   it is the *poder concedente* and it is who publishes the edital — but the
+   commercial relationship the field implies everywhere else on the platform
+   is inverted, and that is worth one line of copy on the tender page rather
+   than a silent reuse of the field.
+3. **The deadline is not the auction date.** Two dates matter: the deadline
+   for submitting proposals and the *garantia de proposta*, and the auction
+   session itself, held at B3. `submissionDeadline` must be the first. Using
+   the auction date would leave a lot showing as open for weeks after it
+   stopped being biddable — the same class of error as the award-before-
+   deadline bug, and invisible without checking.
+
+One thing already **confirmed safe**: `isPriceOnlyAuction()` matches
+`subasta inversa` only, so a `procedureType` of "Leilão de Transmissão" is not
+caught by the price-only-auction exclusion. Worth having checked — a rule
+written for Peru's reverse auctions would have silently excluded the single
+largest class of tender on the platform. (PNCP's own modalities 1 and 13,
+*Leilão*, are asset disposal — selling government property — and are a
+different thing that should stay out of the sweep.)
+
+#### Where the doors might be (`npm run probe:brazil-concessions`, not yet run)
+
+Nothing below is verified: every `.gov.br` host answers 403 at this sandbox's
+gateway, so the probe exists for the user to run and its output is what the
+mappers get written against. The last time this repo guessed a path instead of
+measuring one, a live host returned 404 in 1.2 seconds and the "finding" was
+that our URL was wrong (see "Brazil — the other doors" above).
+
+- **PPI** — the single question is whether a machine-readable portfolio exists
+  at all. The probe tests the three possibilities in order: server-rendered
+  HTML (scrapeable), a JavaScript shell (not scrapeable without a browser),
+  or Plone with `plone.restapi` enabled (the same URL returns JSON just for
+  sending `Accept: application/json` — many gov.br portals are Plone). A
+  sitemap read follows, because if the answer is "scrape it" then pagination
+  is the next obstacle and the sitemap goes around it.
+- **The sector agencies may matter more than PPI itself.** PPI publishes the
+  pipeline; the edital for a highway is ANTT's, a port ANTAQ's, an airport
+  ANAC's. An open-data portal at one of those is a better door than scraping a
+  portfolio page.
+- **DNS is not blocked here even though HTTP is**, so every hostname in the
+  probe was at least resolved before being written down — weaker than a 200,
+  stronger than recall, and it caught three of the hostnames this file would
+  otherwise have shipped. `dados.antt.gov.br`, `dadosabertos.aneel.gov.br`,
+  `dadosabertos.ccee.org.br`, `dados.gov.br`, `ppi.gov.br` and
+  `portal.antaq.gov.br` all exist; `web3.antaq.gov.br`, `dados.antaq.gov.br`
+  and `dados.anac.gov.br` are NXDOMAIN. So ANTAQ is probed at its portal page
+  instead, and **ANAC is given no guessed host at all** — it is searched for in
+  the national catalogue, because a step spent on a hostname that does not
+  exist produces a FAIL that says nothing, which is exactly the failure mode
+  recorded in "Brazil — the other doors".
+- **The DOU is the door that does not depend on any agency's website.** An
+  *aviso de licitação* for a federal concession must be published in the
+  Diário Oficial da União by law, whatever the granting agency's portal looks
+  like — and this repo already runs a connector of that exact shape for
+  Mexico's DOF. Probed last, one step, not asked for but cheap.
+- **ANEEL** — the question is which portal is CKAN and what the real column
+  names are. `status_show` confirms the platform instead of assuming it,
+  `package_search` finds the datasets, and `datastore_search` returns the
+  **column contract**, which is the only thing a mapper should be written
+  from. The auction PDFs still come from ANEEL's own pages.
+- **CCEE runs the generation auctions, not the transmission ones.** Worth
+  having — the same Chinese firms bid solar, wind and storage — but it does
+  not answer the question that was asked. Probed last, and labelled.
+
+`lib/ingestion/connectors/ckan.ts` was written ahead of the probe because
+CKAN's Action API is a published standard identical across installs, so it is
+not a guess; it deliberately contains **no hostnames and no dataset ids**,
+which are exactly the parts that have to be measured. Two shape facts it
+enforces, both of which quietly break naive clients: every response is wrapped
+in `{ success, result }` and a failed call can still arrive as HTTP 200 with
+`success: false`; and `package_search` returns `{ count, results }` while
+`datastore_search` returns `{ total, fields, records }` — different envelopes
+from the same API.
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.

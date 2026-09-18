@@ -1,3 +1,5 @@
+import { foldAccents } from "@/lib/text-fold";
+
 /**
  * Multi-tag industry classification (rule-based keyword matching, same
  * posture as lib/relevance.ts's Pre-Screening classifier — a Layer 1
@@ -455,7 +457,10 @@ export function stripKnownFalsePositivePlaceNames(text: string): string {
 
 /** Matches against real Spanish-language text (title/description, plus any real category field a source provides) — never guesses from a buyer name alone. Falls back to ["general"] rather than an empty array, so every tender has at least one tag to display/filter by. */
 export function classifyIndustries(...texts: (string | undefined)[]): IndustryKey[] {
-  const haystack = stripKnownFalsePositivePlaceNames(texts.filter(Boolean).join(" "));
+  // Folded before matching — see lib/text-fold.ts. Without it `\br[íi]o\b`
+  // matches the "rio" inside "Território" and tags a public-relations
+  // contract as water infrastructure, which is exactly what it did.
+  const haystack = stripKnownFalsePositivePlaceNames(foldAccents(texts.filter(Boolean).join(" ")));
   const matched = INDUSTRY_KEYWORDS.filter(([, pattern]) => pattern.test(haystack)).map(([key]) => key);
   return matched.length > 0 ? matched : ["general"];
 }

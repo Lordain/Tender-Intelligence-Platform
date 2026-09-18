@@ -91,6 +91,7 @@
     "test:cli-write-flag": "tsx scripts/test-cli-write-flag.ts",
     "test:brazil-pncp-mapper": "tsx scripts/test-brazil-pncp-mapper.ts",
     "test:source-language": "tsx scripts/test-source-language.ts",
+    "test:text-fold": "tsx scripts/test-text-fold.ts",
     "test:relevance-pt": "tsx scripts/test-relevance-pt.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",

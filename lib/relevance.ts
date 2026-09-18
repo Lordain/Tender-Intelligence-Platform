@@ -1,6 +1,7 @@
 import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
+import { foldAccents } from "@/lib/text-fold";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, isBrazil, isPortugueseMunicipalSportsComponent } from "@/lib/relevance-pt";
 
 /**
@@ -1068,6 +1069,23 @@ const MAINTENANCE_ONLY_KEYWORDS = [
   // works contract and stays; MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT already
   // handles capping those.
   /\breparaci[óo]n\s+(de\s+)?(piezas|partes|componentes)\b/i,
+  // Colombia writes road upkeep without ever using the word "mantenimiento".
+  // Real row, reviewed by the user 2026-09-18 (维护类): "GESTION VIAL INTEGRAL
+  // DE LAS CARRETERAS BOGOTA LOS PATIOS GUASCA RUTA 5009 ... EN EL
+  // DEPARTAMENTO DE CUNDINAMARCA". `gestión vial integral` is INVIAS's own
+  // name for a routine-and-periodic upkeep contract on an existing corridor —
+  // it names highways and route numbers, so every road signal fires and it
+  // came out 常规项目 with nothing to catch it.
+  //
+  // Non-bypassable, like the rest of this list, for the same reason the
+  // turbine-repair rule is: a title naming carreteras trips a transport
+  // include-override, which would wave a bypassable exclusion away. The
+  // concession guard below still applies, so a 4G/5G contract whose object
+  // includes building the corridor is unaffected.
+  //
+  // A phrase, not the bare word `gestión`, which appears in every kind of
+  // Colombian contract.
+  /\bgesti[óo]n\s+vial\s+integral\b/i,
 ];
 
 /**
@@ -2658,8 +2676,12 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "price_comparison") };
   }
 
-  const subjectTitle = purchaseSubject(input.title)!;
-  const subjectSummary = purchaseSubject(input.summary);
+  // Folded here, once, so every rule below — and the haystack they share —
+  // matches accented text the way the patterns were written to. See
+  // lib/text-fold.ts for the real row this was found on. Matching only:
+  // nothing downstream of this point is stored or displayed.
+  const subjectTitle = foldAccents(purchaseSubject(input.title)!);
+  const subjectSummary = purchaseSubject(input.summary) ? foldAccents(purchaseSubject(input.summary)!) : undefined;
   const haystack = stripKnownFalsePositivePlaceNames([subjectTitle, subjectSummary, ...input.industries].filter(Boolean).join(" "));
 
   // See MAINTENANCE_ONLY_KEYWORDS' header comment — deliberately checked
@@ -2687,7 +2709,7 @@ export function classifyRelevance(input: {
 
   if (
     input.isNationalPriorityProject !== true &&
-    (NON_PROCUREMENT_RECORD_KEYWORDS.some((pattern) => pattern.test(haystack)) || isBareInteradministrativeTitle(input.title))
+    (NON_PROCUREMENT_RECORD_KEYWORDS.some((pattern) => pattern.test(haystack)) || isBareInteradministrativeTitle(foldAccents(input.title)))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
@@ -2725,7 +2747,7 @@ export function classifyRelevance(input: {
 
   if (
     !hasIncludeOverride &&
-    (BARE_BUYER_REF_TITLE.test(input.title.trim()) || NO_CONTENT_TITLE.some((pattern) => pattern.test(withoutProcurementPhase(input.title))))
+    (BARE_BUYER_REF_TITLE.test(foldAccents(input.title).trim()) || NO_CONTENT_TITLE.some((pattern) => pattern.test(withoutProcurementPhase(foldAccents(input.title)))))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "no_content") };
   }
@@ -3174,8 +3196,11 @@ export function explainKeptSignal(input: {
   if (input.isNationalPriorityProject) return "国家战略项目（Proyectos Estratégicos MX，绕过全部排除）";
   if (result.tier === "excluded") return "excluded（不该出现在 kept 里）";
 
+  // Folded like classifyRelevance's own haystack — an explanation built from
+  // differently-normalised text would name a different rule than the one that
+  // actually decided.
   const haystack = stripKnownFalsePositivePlaceNames(
-    [input.title, input.summary, ...input.industries].filter(Boolean).join(" "),
+    foldAccents([input.title, input.summary, ...input.industries].filter(Boolean).join(" ")),
   );
   const value = input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
   const show = (pattern: RegExp) => String(pattern).slice(0, 96);

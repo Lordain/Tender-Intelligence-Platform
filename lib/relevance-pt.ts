@@ -1,3 +1,4 @@
+import { foldAccents } from "@/lib/text-fold";
 import type { IndustryKey } from "@/lib/industry";
 
 /**
@@ -93,6 +94,38 @@ export const PT_EXCLUDE_KEYWORDS: RegExp[] = [
   /\bloca[çc][ãa]o\s+de\s+ve[íi]culos?\b|\bpe[çc]as\s+para\s+o\s+ve[íi]culo\b/i,
   /\bfornecimento\s+de\s+combust[íi]ve(l|is)\b/i,
   /\baquisi[çc][ãa]o\s+de\s+medicamentos\b/i,
+  // The four below come from the FIRST real Brazil write (2026-09-18, 20 rows
+  // kept, 17 written), reviewed row by row by the user, who marked all four
+  // 排除. They are the categories a US$2,000,000 floor does not catch: federal
+  // and state-owned buyers sign service contracts far above it, so scale says
+  // nothing about whether a Chinese contractor could bid.
+  //
+  // Real: EMBRATUR 35842428000166-1-000008/2026, "serviços de Comunicação
+  // Corporativa e Relações Públicas em Território Nacional". Communications,
+  // PR and advertising. `publicidade` also earned its place from two rows in
+  // the 2026-09-18 dry run the user reviewed and excluded by hand.
+  /\bcomunica[çc][ãa]o\s+(corporativa|institucional)\b|\brela[çc][õo]es\s+p[úu]blicas\b|\bassessoria\s+de\s+imprensa\b|\bpublicidade\b|\bpropaganda\s+(institucional|legal)\b/i,
+  // Real: CAIXA 00360305000104-1-000741/2026, "SERVIÇOS COMUNS DE TRANSPORTE,
+  // TRATAMENTO E CUSTÓDIA DE VALORES PARA UNIDADES CAIXA". Cash in transit.
+  // The gap is not laziness: the real title puts three verbs between the one
+  // that identifies the service and "DE VALORES". Anchoring on `valores`
+  // alone would be wrong — it is also the ordinary word for "amounts", which
+  // appears throughout price-adjustment prose.
+  /\b(transporte|cust[óo]dia)\b[^.]{0,40}\bde\s+valores\b/i,
+  // Real: CAIXA 00360305000104-1-000742/2026, "DISPONIBILIZAÇÃO, LOCAÇÃO E
+  // OPERAÇÃO DE UNIDADES DE ATENDIMENTO CONCEBIDAS EM SOLUÇÃO CONSTRUTIVA
+  // TIPO OFF SITE COMPOSTAS POR MÓDULOS". Prefabricated branches, rented and
+  // run — the modules stay the lessor's, so nothing is built for the buyer.
+  // Requires an operating verb beside `locação` rather than matching it
+  // alone, which would also take the plant and equipment hire that belongs
+  // inside a genuine works package.
+  /\bloca[çc][ãa]o\b[^.]{0,40}\b(opera[çc][ãa]o|disponibiliza[çc][ãa]o)\b|\b(opera[çc][ãa]o|disponibiliza[çc][ãa]o)\b[^.]{0,40}\bloca[çc][ãa]o\b/i,
+  // Real: Gravataí/RS 87890992000158-1-001012/2026, "Contratação de entidade
+  // para a gestão das Unidades de Pronto Atendimento" — an organização social
+  // takes over running the emergency units. Running a health facility is the
+  // opposite of building one. `gestão` is only excluding when what it manages
+  // is the service itself, hence the required facility word.
+  /\b(gest[ãa]o|gerenciamento)\b[^.]{0,40}\b(unidade(s)?\s+de\s+pronto\s+atendimento|upas?|unidade(s)?\s+b[áa]sica(s)?\s+de\s+sa[úu]de|servi[çc]os?\s+de\s+sa[úu]de|hospital(ar)?)\b/i,
 ];
 
 /**
@@ -116,6 +149,39 @@ export const PT_MAINTENANCE_ONLY_KEYWORDS: RegExp[] = [
   // assumes it is will miss the row it was written for.
   /\bconserva[çc][ãa]o\s+d[eo]s?\s+bens\s+im[óo]veis\b/i,
 ];
+
+/**
+ * An O&M contract: running and maintaining something that already exists.
+ *
+ * Real row, reviewed by the user 2026-09-18 (维护类): "CONTRATAÇÃO DE EMPRESA
+ * ESPECIALIZADA PARA PRESTAÇÃO DE SERVIÇOS CONTINUADOS DE OPERAÇÃO E
+ * MANUTENÇÃO DOS SISTEMAS E OBRAS DO PROJETO RENASCE SALGADINHO."
+ *
+ * It is checked BEFORE PT_REAL_WORKS_SIGNAL, which is the whole point of it
+ * existing separately. That guard fires on a bare `\bobras?\b`, and this
+ * title carries one — but as the OBJECT being maintained ("manutenção DOS
+ * sistemas e OBRAS do projeto"), not as work being built. The guard read the
+ * word and spared the row, so an O&M contract on finished infrastructure came
+ * out 常规项目.
+ *
+ * This mirrors the doctrine the Spanish side already settled on (see
+ * MAINTENANCE_ONLY_KEYWORDS and its concession note in lib/relevance.ts):
+ * "operación y mantenimiento" without a build scope is upkeep, and upkeep
+ * needs a local service presence and a spare-parts stock — not an opportunity
+ * a Chinese contractor can take from abroad.
+ *
+ * The veto is a build VERB, not the noun `obras`, which is exactly the
+ * distinction the works guard cannot make. "CONSTRUÇÃO, OPERAÇÃO E
+ * MANUTENÇÃO DE ..." is a DBO concession — the largest thing Brazil tenders,
+ * and squarely what this platform is for — so a construction verb anywhere in
+ * the title takes the row back out of this rule.
+ */
+const PT_OPERATION_AND_MAINTENANCE =
+  /\bopera[çc][ãa]o\s+e\s+manuten[çc][ãa]o\b|\bmanuten[çc][ãa]o\s+e\s+opera[çc][ãa]o\b/i;
+
+/** Building verbs only — never the bare noun `obras`, which an O&M title carries as its object. */
+const PT_BUILD_VERB =
+  /constru[çc][ãa]o|implanta[çc][ãa]o|amplia[çc][ãa]o|\breforma\b|pavimenta[çc][ãa]o|recapeamento|terraplanagem|requalifica[çc][ãa]o|urbaniza[çc][ãa]o|execu[çc][ãa]o\s+d[aeo]s?\s+obras?\b|\bconcess[ãa]o\b/i;
 
 /**
  * Words that mean a real public work is being built, supplied or designed.
@@ -151,7 +217,13 @@ export type PortugueseExclusion = "keyword" | "maintenance_only";
  * Returns null for anything carrying a real works signal, so the guard is
  * applied in one place rather than negated inside a dozen patterns.
  */
-export function classifyPortugueseExclusion(text: string): PortugueseExclusion | null {
+export function classifyPortugueseExclusion(input: string): PortugueseExclusion | null {
+  // Folded — see lib/text-fold.ts. Portuguese is the language where the
+  // ASCII-only \b bites hardest: every -ário/-ório word looked like a word
+  // boundary to it.
+  const text = foldAccents(input);
+  // Before the works guard on purpose — see PT_OPERATION_AND_MAINTENANCE.
+  if (PT_OPERATION_AND_MAINTENANCE.test(text) && !PT_BUILD_VERB.test(text)) return "maintenance_only";
   if (PT_REAL_WORKS_SIGNAL.test(text)) return null;
   if (PT_MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(text))) return "maintenance_only";
   if (PT_EXCLUDE_KEYWORDS.some((pattern) => pattern.test(text))) return "keyword";
@@ -210,7 +282,8 @@ const PT_INDUSTRY_PATTERNS: [IndustryKey, RegExp][] = [
 ];
 
 /** Portuguese-only industry tags. Returns [] rather than ["general"] — the caller merges this with the Spanish pass, which already supplies that fallback. */
-export function classifyPortugueseIndustries(text: string): IndustryKey[] {
+export function classifyPortugueseIndustries(input: string): IndustryKey[] {
+  const text = foldAccents(input);
   return PT_INDUSTRY_PATTERNS.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
 }
 
@@ -248,7 +321,8 @@ const PT_BUILDING_SCOPE =
   /\bgin[áa]sio\b|\bpiscina\b|\bcomplexo\b|\bedif[íi]cio(s)?\b|\bedifica[çc][õo]es\b|\bsede\b|\bescola\b|\bcreche\b|\bhospital\b|\bunidade\s+b[áa]sica\b|\bcentro\s+(esportivo|comunit[áa]rio|de\s+sa[úu]de)\b|\bpavilh[ãa]o\b|\bquadra\s+coberta\b/i;
 
 /** True only when the object is open-air sport/recreation surfaces AND names no building. */
-export function isPortugueseMunicipalSportsComponent(text: string): boolean {
+export function isPortugueseMunicipalSportsComponent(input: string): boolean {
+  const text = foldAccents(input);
   if (!PT_MUNICIPAL_SPORTS_COMPONENT.test(text)) return false;
   return !PT_BUILDING_SCOPE.test(text);
 }

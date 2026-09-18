@@ -5410,3 +5410,47 @@ Still unverified: the Portuguese prompts have never run against a real row or
 a real Edital. The plumbing is the path the Spanish prompts have used since
 2026-09-08; the text is new. Read the first batch of five, and the first
 extraction field by field against the PDF, before trusting either at scale.
+
+### `\b` is ASCII-only, and it had been tagging accented words for months (2026-09-18)
+
+A Brazilian tender for corporate communications and public relations came
+back tagged **水工程 (water)**. The tag was the only symptom — nothing failed,
+nothing logged.
+
+The cause is one line of JavaScript semantics: `\b` is defined over `\w`,
+which is `[A-Za-z0-9_]`. An accented letter is therefore a NON-word character,
+and `\b` fires **in the middle of a word**. `/\br[íi]o\b/` matches the "rio"
+inside `Território`, because the "ó" in front of it reads as a boundary.
+
+In Portuguese this is not an edge case. Every word ending `-ário` or `-ório`
+matches that one pattern:
+
+```
+relatório  escritório  laboratório  auditório  consultório  observatório
+mobiliário  imobiliário  veterinário  diário  horário  orçamentário
+necessário  complementário  Território
+```
+
+And it is one pattern of 573 `\b` uses across `lib/industry.ts`,
+`lib/relevance.ts` and `lib/relevance-pt.ts`, every one of them matched
+against Spanish and Portuguese text.
+
+**The fix is `foldAccents()` (lib/text-fold.ts) on the classifier haystacks**,
+not a rewrite of the boundaries. Rewriting every `\b` into
+`(?<![\p{L}\p{N}_])`-style lookarounds would also work and would touch 44
+declarations. Folding is one function at six call sites, and it works because
+of something already true: **all 399 regex literals in those files are written
+with the unaccented spelling beside the accented one** — `[áa]`, `[çc]`,
+`[ñn]`, `[íi]` — so every one already matches folded text. That property is
+now enforced by `npm run test:text-fold`, which scans the literals and fails
+on a bare accent; without it, the day someone writes a plain `é` is the day
+that pattern silently stops matching its own rows.
+
+It corrects in both directions: a pattern no longer fires inside an accented
+word, and a pattern anchored `\b` in FRONT of an accented letter now fires
+where it never could (`/\b[óo]leo\b/` against a title starting "ÓLEO").
+
+Measured blast radius on the existing corpus: **zero**. 321/321 relevance
+fixtures, 18/18 industry tags and 22/22 Colombia title cases are unchanged —
+Spanish accents rarely sit next to a `\b`-anchored keyword, which is why this
+survived three countries and only surfaced on the first Portuguese import.

@@ -2450,4 +2450,18 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real title (2026-09-18, user asked why this is 大型). Pinned as the record of what the current thresholds say rather than as an endorsement: $6,929,314 is above FLAGSHIP_VALUE_USD ($6,000,000), so 大型 is this rule working exactly as specified, and the industry tag (power) is right too. The flagship floor was raised to $10,000,000 on 2026-09-18 and this fixture was updated deliberately, as that sentence asked: $6,929,314 is now inside the $5M-$10M band, so 中型.",
     country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 6_929_314, currency: "USD",
   },
+  // --- Upkeep contracts that never say "mantenimiento" (2026-09-18) ---
+  // Both reviewed by the user from a real run and marked 维护类.
+  {
+    title: "GESTION VIAL INTEGRAL DE LAS CARRETERAS BOGOTA LOS PATIOS GUASCA RUTA 5009 EL SALITRE SOPO RUTA 50CN03 Y BOGOTA CHOACHI UBAQUE RUTA 4006A EN EL DEPARTAMENTO DE CUNDINAMARCA",
+    expectedTier: "excluded",
+    note: "Real Colombian title. `gestión vial integral` is INVIAS's own name for routine-and-periodic upkeep of an existing corridor, and the word `mantenimiento` never appears — so the maintenance list missed it while every road signal fired, and it came out 常规项目. Added to the non-bypassable MAINTENANCE_ONLY_KEYWORDS: the title names carreteras, which trips a transport include-override that would wave a bypassable exclusion away.",
+    country: "Colombia", scopeType: "works", governmentLevel: "federal",
+  },
+  {
+    title: "CONTRATACIÓN, CONSTRUCCIÓN, OPERACIÓN Y MANTENIMIENTO DE LA CONCESIÓN VIAL DOBLE CALZADA RUTA DEL SOL SECTOR 2",
+    expectedTier: "flagship",
+    note: "The over-breadth control for the row above, and for the Portuguese O&M rule added the same day. A DBO road concession is the largest thing either country tenders and squarely what this platform exists to surface — the build scope has to keep it in, whatever upkeep words sit beside it. isConcessionWithBuildScope() is what does that; this pins it.",
+    country: "Colombia", scopeType: "works", governmentLevel: "federal", estimatedValue: 400_000_000, currency: "USD",
+  },
 ];

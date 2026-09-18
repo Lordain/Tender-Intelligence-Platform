@@ -71,6 +71,7 @@
     "test:recently-added": "tsx scripts/test-recently-added.ts",
     "test:upcoming-deadlines": "tsx scripts/test-upcoming-deadlines.ts",
     "test:upsert-protection": "tsx scripts/test-upsert-protection.ts",
+    "test:document-matching": "tsx scripts/test-document-matching.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",
     "analyze:batch": "tsx --env-file-if-exists=.env.local scripts/analyze-batch.ts",

@@ -185,7 +185,16 @@ async function main() {
 
   console.log("Loading known tender numbers from Supabase...");
   const knownTenders = await loadKnownTenders(supabase);
-  console.log(`${knownTenders.size} known tender number(s) loaded.\n`);
+  // Shared numbers are normal for Colombia (an entity-local reference — see
+  // match-documents-to-tenders.ts) and they are the reason a document can
+  // fail to resolve. Said up front so the [skip] lines below are expected
+  // rather than surprising.
+  const sharedNumbers = [...knownTenders.entries()].filter(([, list]) => list.length > 1);
+  console.log(`${knownTenders.size} known tender number(s) loaded.`);
+  if (sharedNumbers.length > 0) {
+    console.log(`${sharedNumbers.length} of them are held by more than one tender; a document under those resolves only if its own text names the buyer.`);
+  }
+  console.log();
 
   const results: Record<string, TenderExtraction | { error: string }> = {};
   let run = 0;

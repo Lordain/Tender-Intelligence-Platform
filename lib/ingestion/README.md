@@ -2603,7 +2603,18 @@ Both measured 2026-09-18, on the first 3-day sweep and a probe against a real
 municipal works notice.
 
 The cap announced itself only because the run was made to count: 73 tenders
-returned exactly 10 items and none returned more. `/itens` truncates in
+returned exactly 10 items and none returned more. Two notices opened by hand
+the same day then measured the damage exactly, and it is worse than "a bit
+low":
+
+| tender | summed from `/itens` | portal's VALOR TOTAL ESTIMADO |
+|---|---|---|
+| Tianguá, rural road (`07735178000120/2026/120`) | R$ 1,641,242.81 | R$ 1,641,242.81 |
+| Elói Mendes, education building (`20347225000126/2026/200`) | R$ 372,530.47 | **R$ 2,812,092.09** |
+
+One exact, one 7.5× low, and the only difference between them is how many
+line items the procurement has. Nothing in the first case would have hinted
+that the second was wrong. `/itens` truncates in
 silence, so a registro de preços with hundreds of lines summed to its first
 ten — a confident, smaller, wrong number. With Brazil's floor at $2,000,000
 that is the failure that deletes the largest procurements: understated, under
@@ -2619,6 +2630,12 @@ Attachments are better than any other source here. `GET
 downloads without a session: 200, `application/octet-stream`, 930 KB of
 `Edital_CE15.pdf`. Colombia and Peru both needed workarounds here; Brazil can
 feed `ingest-tender-documents.ts` directly.
+
+`valor_global` on the search row would make all of this unnecessary and does
+not: it was null on 200 of 200 rows across two samples. The portal renders its
+total from the compra record, which lives on the service that spent the week
+returning 500s. Summing `/itens` remains the only route we have measured
+working — correctly, now that it pages.
 
 **The public link is `/app/editais/`, not `/compras/`.** `item_url` in the
 search index is an API path and 404s in a browser. The portal serves a notice

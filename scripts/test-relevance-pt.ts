@@ -1,0 +1,116 @@
+/**
+ * Portuguese exclusion rules, against the real Concorrência corpus captured
+ * 2026-09-18 (100 rows; the titles below are verbatim, truncated only where
+ * the terminal truncated them).
+ *
+ * Two properties are being tested, and the second matters more than the first:
+ *
+ *  1. The handful of routine contracts that reach a Concorrência are excluded.
+ *  2. **Every real public work is kept.** An excluded tender is never written
+ *     to Supabase, so a rule broader than its own name loses a real R$50M
+ *     highway permanently and silently. The keep list below is most of this
+ *     file for that reason — it is the regression net, not the nice-to-have.
+ *
+ * And one safety property that is structural rather than a matter of care:
+ * these rules are gated on country === "Brazil", so a Mexican, Colombian or
+ * Peruvian tender cannot reach them. The last block proves it.
+ *
+ * Usage: npm run test:relevance-pt
+ */
+import { classifyPortugueseExclusion, isBrazil } from "@/lib/relevance-pt";
+import { classifyRelevance } from "@/lib/relevance";
+
+let failures = 0;
+function check(name: string, actual: unknown, expected: unknown) {
+  const ok = JSON.stringify(actual) === JSON.stringify(expected);
+  if (!ok) failures += 1;
+  console.log(`  ${ok ? "✓" : "✗"} ${name}${ok ? "" : `\n      期望 ${JSON.stringify(expected)}，实际 ${JSON.stringify(actual)}`}`);
+}
+
+console.log("relevance-pt\n");
+
+console.log("该排除的（都是真实语料里的 Concorrência）");
+const EXCLUDE_CASES: [string, string][] = [
+  ["城市垃圾清运", "PEC 106/2026 - CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA A PRESTAÇÃO DOS SERVIÇOS DE COLETA, TRANSPORTE E DESTINAÇÃO DE RESÍDUOS SÓLIDOS DOMICILIARES, COMERCIAIS"],
+  ["固废清运（另一种说法）", "RECOLHIMENTO DE RESIDUOS SOLIDOS NO MUNICIPIO DE JAGUARE/ ES"],
+  ["市政清扫", "CONCORRÊNCIA ELETRÔNICA PARA CONTRATAÇÃO DE EMPRESA ESPECIALIZADA COM RESPONSABILIDADE TÉCNICA PARA PRESTAÇÃO DE SERVIÇO DE LIMPEZA URBANA E SANEAMENTO AMBIENTAL"],
+  ["保洁（含专职人力）", "SOLICITAÇAO PARA CONTRATAÇÃO DE SERVIÇOS DE LIMPEZA, CONSERVAÇÃO E HIGIENIZAÇÃO COM DEDICAÇÃO EXCLUSIVA DE MÃO DE OBRA"],
+  ["代发工资的银行特许经营", "Constitui objeto da presente licitação a cessão onerosa do direito à prestação dos serviços de processamento e pagamento da folha de pagamento do Município"],
+  ["车辆维护", "CONTRATAÇÃO DE EMPRESA PARA MANUTENÇÃO DE VEÍCULOS DA FROTA MUNICIPAL"],
+  ["房屋养护", "AQUISIÇÃO DE SERVIÇO DE MANUTENÇÃO E CONSERVAÇÃO DO BENS IMÓVEIS."],
+  ["文艺演出", "APRESENTAÇÃO ARTÍSTICA MUSICAL"],
+  ["培训报名", "Contratação de inscrição para a participação da Chefe de Gabinete no 4° Congresso Brasileiro de Mulheres de RPPS"],
+  ["燃油供应", "Contratação de empresa especializada para fornecimento de combustíveis destinados ao abastecimento dos veículos"],
+  ["药品采购", "Aquisição de medicamentos para atender demandas judiciais"],
+  ["办公用品", "REGISTRO DE PREÇOS PARA AQUISIÇÃO EVENTUAL E FUTURA DE MATERIAL DE EXPEDIENTE E DIDÁTICO"],
+];
+for (const [label, title] of EXCLUDE_CASES) {
+  const verdict = classifyPortugueseExclusion(title);
+  check(label, verdict !== null, true);
+}
+
+console.log("\n绝不能被排除的 —— 真实工程，丢一条就是永久丢失");
+const KEEP_CASES: [string, string][] = [
+  ["州级公路铺装", " Contratação de Empresa (s) Especializada(s) para a execução do Componente Ambiental referente à obra de Implantação e Pavimentação da rodovia MT-020/251 do km 42 ao km 48."],
+  ["公路实施与铺装", " Contratação de empresa de engenharia para execução da obra de implantação e pavimentação da Rodovia: MT-403"],
+  ["学校改扩建", "CONTRATAÇÃO DE EMPRESAS DE ENGENHARIA PARA EXECUÇÃO DE OBRAS DE REFORMA, AMPLIAÇÃO E CONSTRUÇÃO EM UNIDADES EDUCACIONAIS DO MUNICÍPIO DE CAUCAIA/CE."],
+  ["保障房建设", "Contratação de empresa especializada para realizar obra em regime de empreitada por preço global (materiais e mão de obra) para Construção de 14 Unidades Habitacionais"],
+  ["16 座钢筋混凝土桥梁", "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA A CONCLUSÃO DAS OBRAS REMANESCENTES DE 16 (DEZESSEIS) PONTES EM CONCRETO ARMADO"],
+  ["箱涵排水", "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA EXECUÇÃO DE DRENAGEM PARA TRANSPOSIÇÃO DE TALVEGUES: BUEIRO QUÁDRUPLO CELULAR DE CONCRETO"],
+  ["沥青罩面", "CAPEAMENTO ASFÁLTICO SOBRE PAVIMENTAÇAO POLIÉDRICA NA LINHA BOA ESPERANÇA"],
+  ["配电网改造", "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA A EXECUÇÃO DE OBRAS DE ADEQUAÇÃO DA REDE DE DISTRIBUIÇÃO DE ENERGIA ELÉTRICA"],
+  ["警察局建设", "Construção da 10º Delegacia de Policia Civil em Fazendinha no Município de Macapá-AP"],
+  ["设计施工总承包", "CONTRATAÇÃO, SOB O REGIME SEMI-INTEGRADO, DE EMPRESA ESPECIALIZADA PARA ELABORAÇÃO DE PROJETOS EXECUTIVOS E EXECUÇÃO DE OBRA DE CONSTRUÇÃO DE QUADRA POLIESPORTIVA"],
+  ["勘察设计", "Contratação de empresa especializada para a elaboração dos projetos básico e executivo, realização de levantamentos topográficos, sondagens e ensaios geotécnicos"],
+  ["市政基本卫生规划", "Contratação de empresa especializada para revisar, atualizar e consolidar o Plano Municipal de Saneamento Básico – PMSB de Acari/RN"],
+  ["公园一期含市政配套", "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA EXECUÇÃO DA 01ª ETAPA DA CONSTRUÇÃO DO PARQUE DA ZONA NORTE, ABRANGENDO URBANISMO, PAISAGISMO E EDIFICAÇÕES COM INFRAESTRUTURA"],
+  ["客运站改扩建", " EXECUÇÃO DA OBRA DE REFORMA E AMPLIAÇÃO DO TERMINAL RODOVIÁRIO OLÍMPIO VARGAS"],
+  ["人工湖及环湖步道", "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA EM OBRAS E SERVIÇOS DE ENGENHARIA PARA A IMPLANTAÇÃO DE UM LAGO ARTIFICIAL DE USO PÚBLICO E DO RESPECTIVO CALÇADÃO PERIMETRAL"],
+];
+for (const [label, title] of KEEP_CASES) {
+  check(label, classifyPortugueseExclusion(title), null);
+}
+
+console.log("\n带施工信号的养护合同要留下 —— 这就是那个护栏");
+// Real (Crato/CE). The maintenance list would take it; ENGENHARIA and
+// MELHORIA make it a works contract.
+check(
+  "球场养护与改善（含工程）",
+  classifyPortugueseExclusion("CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA OS SERVIÇOS DE ENGENHARIA DE MANUTENÇÃO E MELHORIA DE QUADRAS, ARENINHAS E ARENAS PÚBLICAS DO MUNICÍPIO DE CRATO/CE"),
+  null,
+);
+// A treatment plant carries the waste word; it is infrastructure, not a
+// collection round.
+check("固废处理厂不能被「清运」规则误伤", classifyPortugueseExclusion("CONSTRUÇÃO DE ESTAÇÃO DE TRATAMENTO DE RESÍDUOS SÓLIDOS"), null);
+
+console.log("\n排除规则不能比它的名字更宽");
+// The first version of the registration rule put the alternation around the
+// whole pattern instead of inside the word, making the first branch a bare
+// "inscrição". These pin that it cannot come back.
+check("不动产登记号不是培训报名", classifyPortugueseExclusion("CONSTRUÇÃO DE MURO NO IMÓVEL DE INSCRIÇÃO IMOBILIÁRIA 12.345"), null);
+check("单独一个 inscrição 不触发", classifyPortugueseExclusion("Reforma da sede, conforme inscrição no cadastro municipal"), null);
+// Likewise "mão de obra" must not read as a public work.
+check("「人工」不算工程信号 —— 保洁合同照排除", classifyPortugueseExclusion("PRESTAÇÃO DE SERVIÇOS DE LIMPEZA COM DEDICAÇÃO EXCLUSIVA DE MÃO DE OBRA") !== null, true);
+check("「材料与人工」的真工程照留", classifyPortugueseExclusion("empreitada por preço global (materiais e mão de obra) para Construção de 14 Unidades Habitacionais"), null);
+
+console.log("\n国家门禁 —— 这些规则碰不到墨西哥／哥伦比亚／秘鲁");
+check("isBrazil 只认 Brazil", [isBrazil("Brazil"), isBrazil("Mexico"), isBrazil(undefined)], [true, false, false]);
+const spanishCleaning = {
+  title: "PRESTAÇÃO DE SERVIÇO DE LIMPEZA URBANA",
+  industries: [] as string[],
+  scopeType: "services" as const,
+  estimatedValue: 5_000_000,
+  currency: "USD",
+  governmentLevel: "municipal" as const,
+  procedureType: "Concorrência - Eletrônica",
+  sourceName: "test",
+};
+check("同一条文本，country=Brazil 被排除", classifyRelevance({ ...spanishCleaning, country: "Brazil" }).tier, "excluded");
+check("country=Mexico 时这条葡语规则不生效", classifyRelevance({ ...spanishCleaning, country: "Mexico" }).tier !== "excluded", true);
+
+console.log();
+if (failures > 0) {
+  console.log(`${failures} 项没过。`);
+  process.exit(1);
+}
+console.log("全部通过。");

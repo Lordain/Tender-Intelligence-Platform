@@ -1,6 +1,7 @@
 import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
+import { classifyPortugueseExclusion, isBrazil } from "@/lib/relevance-pt";
 
 /**
  * Pre-Screening / relevance classification (rule-based, not AI — see
@@ -2627,6 +2628,23 @@ export function classifyRelevance(input: {
       GATE_BARRIER_KEYWORDS.some((pattern) => pattern.test(haystack)))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // Brazil's rules, in Portuguese, and above hasIncludeOverride for a reason
+  // beyond the one CHILDCARE_FACILITY_KEYWORDS gives.
+  //
+  // INCLUDE_OVERRIDE_KEYWORDS is a Spanish list. Some of its entries are
+  // proper nouns and bare technical words that a Portuguese title can match by
+  // coincidence rather than by meaning, and an override match bypasses EVERY
+  // exclude check below it. A brand-new language should not be able to walk
+  // through that door on an accident, so the Portuguese verdict is taken
+  // first. classifyPortugueseExclusion() already declines to fire on anything
+  // carrying a real works signal, which is the guard that keeps this narrow.
+  if (input.isNationalPriorityProject !== true && isBrazil(input.country)) {
+    const portuguese = classifyPortugueseExclusion(haystack);
+    if (portuguese !== null) {
+      return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+    }
   }
 
   const hasIncludeOverride =

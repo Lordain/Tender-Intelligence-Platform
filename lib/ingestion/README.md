@@ -2317,6 +2317,51 @@ browser, same as Colombia's original capture:
   session; worth retrying later rather than assuming it's permanently
   broken.
 
+**Retried 2026-09-18 (`npm run probe:brazil-pncp`, user's machine). Still
+broken, and worse than recorded above — it is not one endpoint.**
+
+```
+modalidades (control)              200   3,922ms   19 rows
+/contratacoes/proposta   mod 6     timeout >60s
+/contratacoes/publicacao mod 6     timeout >60s
+/contratacoes/proposta   mod 4     500    52,374ms
+                                   "Erro na comunicação com o banco de dados."
+```
+
+The 500 is what settles it. That is PNCP's own application reporting that
+its database layer failed — not a WAF, not our parameters (PNCP returns a
+separate `RespostaErroValidacaoDTO` for those), and not the caller's
+network, since the control endpoint answered from the same machine in
+under four seconds. The two timeouts are the same fault. So the scope is
+every `contratacoes` consultation endpoint, not `/publicacao` alone.
+
+`/v1/contratacoes/proposta` ("Contratações com Recebimento de Propostas
+Aberto") is new to this note — found in PNCP's own Swagger at
+`/pncp-consulta/v3/api-docs` and untried in the earlier session. It is the
+endpoint this platform actually wants, and it fails the same way.
+
+One hypothesis is left that our own code could act on: dying at 52 seconds
+*inside the database* looks like an unbounded scan, and PNCP holds every
+contracting process in Brazil from federal to municipal. `probe-brazil-
+pncp.ts` now runs a matrix that bounds the query by UF, by page size and by
+a date lower bound, and raises the cutoff to 120s so a slow-but-working
+endpoint is not recorded as a failure. If the whole matrix fails, the query
+shape is not the problem and no connector can be written until PNCP fixes
+its own service.
+
+Portuguese, measured before any of this is built: the existing Spanish
+rules do NOT carry over. Real Spanish titles this platform handles, against
+the same procurement written the Brazilian way, agreed on tier 6/10 and on
+tags 6/10 — and every failure was in the dangerous direction, with office
+cleaning, a pickup truck and school meals each excluded in Spanish and
+landing on 中型项目 in Portuguese. The cause is morphological (Spanish
+`-ción` vs Portuguese `-ção`): 238 occurrences of the `ci[óo]n` word form
+across 160 pattern lines, none of which fire. Whole words differ too —
+carretera/rodovia, alcantarillado/esgoto, camión/caminhão,
+aeropuerto/aeroporto. Rules must land before the first import, because an
+excluded tender is never written to Supabase: getting it wrong fills the
+database with rows that then have to be removed by hand.
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.

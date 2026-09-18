@@ -25,6 +25,30 @@
  * set than "everything published in a date range", so it is the one most
  * likely to answer where /publicacao times out.
  *
+ * ── FIRST RUN (2026-09-18, user's machine) ────────────────────────────────
+ *
+ *   modalidades (control)              200   3,922ms   19 rows
+ *   /contratacoes/proposta   mod 6     timeout >60s
+ *   /contratacoes/publicacao mod 6     timeout >60s
+ *   /contratacoes/proposta   mod 4     500    52,374ms
+ *                                      "Erro na comunicação com o banco de dados."
+ *
+ * The 500 is the useful one. It is PNCP's own application saying its database
+ * layer failed — not a WAF, not our parameters (PNCP has a separate
+ * RespostaErroValidacaoDTO for those), not this machine's network, since the
+ * control answered from it in under four seconds. So the two timeouts are the
+ * same fault, and the README's earlier finding understates it: this is not
+ * /publicacao alone, it is every contratacoes consultation endpoint.
+ *
+ * What that leaves worth testing, and why this script now runs a matrix:
+ * dying at 52s inside the database looks like an unbounded scan. PNCP holds
+ * every contracting process in Brazil, federal through municipal, so a query
+ * bounded only by modality and a date could be reading an enormous table.
+ * Bounding it by UF, by a narrower page, or by both, is the one hypothesis
+ * left that our own code can act on. And a 200 that takes 90 seconds is still
+ * usable by a nightly import, so the timeout is raised to tell "slow" from
+ * "broken" instead of calling both a failure.
+ *
  * This script tries them in that order and reports timings, so a failure
  * says WHICH endpoint failed rather than "Brazil doesn't work".
  *
@@ -67,7 +91,15 @@ function pncpDay(date: Date): string {
 
 type Attempt = { label: string; url: string; ok: boolean; status: number | string; ms: number; note: string };
 
-async function attempt(label: string, url: string, timeoutMs = 60_000): Promise<Attempt> {
+/**
+ * 120s by default, not 60. The first run called a 60s cutoff a failure, and a
+ * response that takes 90 seconds is not a failure for a nightly import that
+ * pages through once — it is a slow endpoint we can schedule around. Telling
+ * those two apart is the whole point of raising it.
+ */
+let TIMEOUT_MS = 120_000;
+
+async function attempt(label: string, url: string, timeoutMs = TIMEOUT_MS): Promise<Attempt> {
   const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -124,73 +156,81 @@ function describe(body: unknown): string {
 
 async function main() {
   const args = process.argv.slice(2);
-  const idx = args.indexOf("--days");
-  const days = Math.max(1, Number(idx >= 0 ? args[idx + 1] : 3) || 3);
+  const arg = (flag: string) => {
+    const i = args.indexOf(flag);
+    return i >= 0 ? args[i + 1] : undefined;
+  };
+  const days = Math.max(1, Number(arg("--days") ?? 3) || 3);
+  const timeoutSeconds = Math.max(10, Number(arg("--timeout") ?? 120) || 120);
+  TIMEOUT_MS = timeoutSeconds * 1000;
+  /** Brazil's largest state by procurement volume — a bound that still returns real rows if anything does. */
+  const uf = (arg("--uf") ?? "SP").toUpperCase();
 
   const now = new Date();
   const from = new Date(now);
   from.setUTCDate(from.getUTCDate() - days);
+  const d0 = pncpDay(from);
+  const d1 = pncpDay(now);
 
-  console.log(`PNCP 探针 — 窗口 ${pncpDay(from)} 到 ${pncpDay(now)}（${days} 天）\n`);
+  console.log(`PNCP 探针 — 窗口 ${d0} 到 ${d1}（${days} 天），每条最多等 ${timeoutSeconds}s\n`);
 
   const results: Attempt[] = [];
+  const run = async (label: string, url: string) => {
+    const r = await attempt(label, url);
+    results.push(r);
+    console.log(`  ${r.ok ? "OK  " : "FAIL"}  ${String(r.status).padEnd(12)} ${String(r.ms).padStart(7)}ms`);
+    console.log(`        ${r.note.replace(/\n/g, "\n        ")}\n`);
+    return r;
+  };
 
-  // 1. Control. Known to answer instantly in a previous real run.
+  // The control. Known to answer; if it stops answering, nothing below means
+  // anything and the report has to say so rather than let a timeout read as a
+  // fact about PNCP.
   console.log("【对照组】modalidades —— 已知可用。这条挂了，下面全部作废。");
-  const control = await attempt("modalidades（对照组）", MODALIDADES_URL, 30_000);
-  results.push(control);
-  console.log(`  ${control.ok ? "OK" : "FAIL"}  ${control.status}  ${control.ms}ms\n      ${control.note}\n`);
-
+  const control = await run("modalidades（对照组）", MODALIDADES_URL);
   if (!control.ok) {
-    console.log("对照组失败 —— 这台机器连 PNCP 已知可用的端点都读不到，所以下面无论出什么都说明不了 PNCP 的问题。先解决网络/WAF，再跑一次。\n");
+    console.log("对照组失败 —— 这台机器连 PNCP 已知可用的端点都读不到。先解决网络，再跑一次。\n");
+    return;
   }
 
-  // 2. The new candidate: tenders with an OPEN proposal window.
-  console.log("【1】/v1/contratacoes/proposta —— 正在接收投标的采购（截图里新发现的端点）");
-  const proposta = await attempt(
-    "contratacoes/proposta",
-    `${BASE}/v1/contratacoes/proposta?dataFinal=${pncpDay(now)}&codigoModalidadeContratacao=6&pagina=1&tamanhoPagina=10`,
-  );
-  results.push(proposta);
-  console.log(`  ${proposta.ok ? "OK" : "FAIL"}  ${proposta.status}  ${proposta.ms}ms\n      ${proposta.note}\n`);
+  // The matrix. Each row removes one more degree of freedom from the query, so
+  // whichever row first answers names the bound that made it answerable.
+  const base = `${BASE}/v1/contratacoes`;
+  console.log("【1】原样复测（更长的超时）—— 区分「慢」和「坏」");
+  await run("proposta mod=6 (120s)", `${base}/proposta?dataFinal=${d1}&codigoModalidadeContratacao=6&pagina=1&tamanhoPagina=10`);
 
-  // 3. The one that timed out before. Same narrow request, to see whether the
-  //    504 is still there — "worth retrying later rather than assuming it's
-  //    permanently broken" is what the README says, so this retries it.
-  console.log("【2】/v1/contratacoes/publicacao —— 之前两次都 504，这里复测");
-  const publicacao = await attempt(
-    "contratacoes/publicacao",
-    `${BASE}/v1/contratacoes/publicacao?dataInicial=${pncpDay(from)}&dataFinal=${pncpDay(now)}&codigoModalidadeContratacao=6&pagina=1&tamanhoPagina=10`,
-  );
-  results.push(publicacao);
-  console.log(`  ${publicacao.ok ? "OK" : "FAIL"}  ${publicacao.status}  ${publicacao.ms}ms\n      ${publicacao.note}\n`);
+  console.log(`【2】加上州边界 uf=${uf} —— 如果 52s 死在数据库是全表扫描，这一条该活`);
+  await run(`proposta mod=6 uf=${uf}`, `${base}/proposta?dataFinal=${d1}&codigoModalidadeContratacao=6&uf=${uf}&pagina=1&tamanhoPagina=10`);
 
-  // 4. Concorrência Eletrônica — the modality that carries large works, as
-  //    opposed to Pregão Eletrônico (code 6) which carries commodity goods.
-  //    Worth a separate probe because if only ONE modality answers, that
-  //    decides which one the connector starts with.
-  console.log("【3】/v1/contratacoes/proposta，modalidade 4（Concorrência Eletrônica，大工程走这条）");
-  const concorrencia = await attempt(
-    "contratacoes/proposta modalidade=4",
-    `${BASE}/v1/contratacoes/proposta?dataFinal=${pncpDay(now)}&codigoModalidadeContratacao=4&pagina=1&tamanhoPagina=10`,
-  );
-  results.push(concorrencia);
-  console.log(`  ${concorrencia.ok ? "OK" : "FAIL"}  ${concorrencia.status}  ${concorrencia.ms}ms\n      ${concorrencia.note}\n`);
+  console.log("【3】再窄一格：一页只要 1 条");
+  await run(`proposta mod=6 uf=${uf} size=1`, `${base}/proposta?dataFinal=${d1}&codigoModalidadeContratacao=6&uf=${uf}&pagina=1&tamanhoPagina=1`);
+
+  console.log("【4】/proposta 也给日期下界（截图的 Swagger 没写清是否必填）");
+  await run("proposta mod=6 + dataInicial", `${base}/proposta?dataInicial=${d0}&dataFinal=${d1}&codigoModalidadeContratacao=6&uf=${uf}&pagina=1&tamanhoPagina=10`);
+
+  console.log("【5】Concorrência Eletrônica（大工程走这条），带州边界");
+  await run(`proposta mod=4 uf=${uf}`, `${base}/proposta?dataFinal=${d1}&codigoModalidadeContratacao=4&uf=${uf}&pagina=1&tamanhoPagina=10`);
+
+  console.log("【6】/publicacao 带州边界 —— README 里记着它 504 过两次");
+  await run(`publicacao mod=6 uf=${uf}`, `${base}/publicacao?dataInicial=${d0}&dataFinal=${d1}&codigoModalidadeContratacao=6&uf=${uf}&pagina=1&tamanhoPagina=10`);
 
   console.log("─".repeat(72));
   console.log("小结\n");
   for (const r of results) {
-    console.log(`  ${(r.ok ? "OK  " : "FAIL").padEnd(5)} ${String(r.status).padEnd(12)} ${String(r.ms).padStart(6)}ms  ${r.label}`);
+    console.log(`  ${(r.ok ? "OK  " : "FAIL").padEnd(5)} ${String(r.status).padEnd(14)} ${String(r.ms).padStart(7)}ms  ${r.label}`);
   }
   console.log();
-  if (!control.ok) {
-    console.log("对照组挂了 —— 上面的结论一个都不成立。");
-  } else if (proposta.ok || concorrencia.ok) {
-    console.log("至少一个 /proposta 查询通了。把上面打印的【字段】清单发我，mapper 按真实字段写，不按 Swagger 截图写。");
-    console.log("还需要的一步：真实葡语标题。字段清单里会有标题字段名，拿它抓 30~50 条真实标题给我，规则就有了依据。");
+
+  const wins = results.filter((r) => r.ok && r !== control);
+  if (wins.length > 0) {
+    console.log(`有 ${wins.length} 条通了。最窄的那条就是 connector 该用的查询形状：`);
+    for (const w of wins) console.log(`  ${w.ms}ms  ${w.label}`);
+    console.log("\n把上面打印的【字段】清单发我 —— mapper 按真实返回字段写，不按 Swagger 截图写。");
+    console.log("再按那个标题字段抓 30~50 条真实葡语标题，葡语规则就有依据了。");
   } else {
-    console.log("对照组通了但两个 contratacoes 端点都没通 —— 说明 504 还在，而且不只影响 /publicacao。");
-    console.log("那就先不写 connector；这是 PNCP 自己的问题，不是参数问题。");
+    console.log("加了州边界、缩到一页一条、补了日期下界，全都不通 —— 那就不是查询形状的问题。");
+    console.log("PNCP 的 consultas 服务现在读不了它自己的数据库，我们这边写什么代码都没用。");
+    console.log("建议：巴西先搁置，改做智利（任务 #13）；过几天再跑一次这个探针确认。");
   }
 }
 

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { extractTenderRequirements, type TenderExtraction, type ExtractionModel } from "@/lib/ingestion/extract-requirements";
+import type { TenderSourceLanguage } from "@/lib/ingestion/source-language";
 
 /**
  * Second Qwen path (2026-09-03, per the user), via DashScope's
@@ -47,7 +48,7 @@ import { extractTenderRequirements, type TenderExtraction, type ExtractionModel 
  */
 export async function extractTenderRequirementsQwenAnthropic(
   filePath: string,
-  context: { tenderNumber: string; title: string; buyer: string },
+  context: { tenderNumber: string; title: string; buyer: string; existingChineseText?: string; sourceLanguage?: TenderSourceLanguage },
   model: Extract<ExtractionModel, "qwen3.5-plus" | "qwen3.6-plus"> = "qwen3.5-plus",
   /** Per-tier page cap — see maxPagesForTier() in extraction-routing.ts. */
   maxPages?: number,

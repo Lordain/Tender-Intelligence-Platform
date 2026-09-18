@@ -11,7 +11,7 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  * lib/ingestion/translate-all-tenders.ts function the CLI script uses.
  *
  * A real --write run over hundreds of untranslated tenders makes many
- * sequential Anthropic API calls and can run for minutes — pass a small
+ * sequential DashScope (Qwen) API calls and can run for minutes — pass a small
  * `limit` from the form for a single request that stays comfortably
  * under any reverse-proxy/serverless timeout; run it again (already-
  * translated tenders are skipped) to keep chipping away at the rest.

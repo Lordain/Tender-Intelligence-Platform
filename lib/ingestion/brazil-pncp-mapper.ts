@@ -208,7 +208,13 @@ export function sumPncpItemValues(items: PncpItem[] | undefined): { value?: numb
     total += amount;
     sawNumber = true;
   }
-  return { ...(sawNumber ? { value: total } : {}), sealedItems };
+  // Rounded to cents, because this is a sum of up to a few hundred floats
+  // and the drift is real: the Elói Mendes education building (224 items)
+  // totalled 2812092.0900000026 against a portal reading R$ 2.812.092,09.
+  // Nothing downstream is wrong by that much, but the number is written to
+  // Supabase and shown to a customer, and a tender amount ending in
+  // 0900000026 reads as a data-quality fault whatever its true magnitude.
+  return { ...(sawNumber ? { value: Math.round(total * 100) / 100 } : {}), sealedItems };
 }
 
 /**

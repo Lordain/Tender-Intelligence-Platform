@@ -13,7 +13,7 @@ export function TranslateTendersButton() {
   const [result, setResult] = useState<TranslateAllTendersResult | null>(null);
 
   async function run() {
-    if (write && !confirm(`确定要翻译最多 ${limit || "全部"} 条标书标题吗？会调用 Anthropic API 产生真实费用。`)) return;
+    if (write && !confirm(`确定要翻译最多 ${limit || "全部"} 条标书标题吗？会调用 DashScope（Qwen）API 产生真实费用。`)) return;
 
     setSubmitting(true);
     setError(null);
@@ -36,10 +36,16 @@ export function TranslateTendersButton() {
 
   return (
     <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Haiku 4.5</p>
+      {/*
+        Said "Haiku 4.5" and "调用 Anthropic API" until 2026-09-18 — both
+        stale since the 2026-09-08 move to Qwen3.6-Plus via DashScope
+        (lib/ingestion/translate-titles-qwen.ts). An admin reading this panel
+        to decide whether a run is affordable was reading the wrong provider.
+      */}
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Qwen3.6-Plus</p>
       <h2 className="mt-1 text-lg font-black text-[#071826]">翻译所有标题</h2>
       <p className="mt-1 text-sm text-[#52636e]">
-        对还没有真实中文标题的标书（跳过日常服务类），批量调用 Haiku 4.5 把标题/摘要从西语翻译成中文。真实调用 API，会产生费用——建议先用较小的数量试跑。
+        对还没有真实中文标题的标书（跳过日常服务类），批量把标题/摘要翻译成中文。<strong>西语和葡语各走各的提示词，按项目所属国家自动分流</strong>（巴西 = 葡语，其余 = 西语），不需要分开操作。真实调用 API，会产生费用——建议先用较小的数量试跑。
       </p>
 
       {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
@@ -74,6 +80,18 @@ export function TranslateTendersButton() {
           <p>
             共 {result.totalNonExcluded} 条非日常服务类标书，其中 {result.untranslatedCount} 条还没翻译，本次尝试 {result.attemptedCount} 条。
           </p>
+          {/*
+            Which prompt each row went through. The Portuguese prompt has never run
+            against real rows, and a Brazilian title translated by the Spanish
+            prompt comes back fluent and plausible — there is nothing in the
+            Chinese itself to review. This line is the only place the routing
+            is visible.
+          */}
+          {result.attemptedByLanguage.length > 0 && (
+            <p className="mt-1 text-xs text-[#64717c]">
+              按原文语种：{result.attemptedByLanguage.map((row) => `${row.label} ${row.count} 条`).join("、")}
+            </p>
+          )}
           {result.translatedCount !== undefined && (
             <p className="mt-1 font-semibold text-emerald-700">
               已翻译 {result.translatedCount} 条{result.failedCount ? `，失败 ${result.failedCount} 条` : ""}

@@ -95,6 +95,10 @@ check("多条明细累加", sumPncpItemValues([ROAD_ITEM, { valorTotal: 1000 }])
 check("预算保密 → 不是 0，是「未知」", sumPncpItemValues([{ orcamentoSigiloso: true, valorTotal: null }]), { sealedItems: 1 });
 check("空明细 → 未知", sumPncpItemValues([]), { sealedItems: 0 });
 check("没取到明细 → 未知", sumPncpItemValues(undefined), { sealedItems: 0 });
+// Real drift, not a contrived one: these three values are the first three
+// items of the Elói Mendes tender (20347225000126/2026/200), whose 224-item
+// sum came back 2812092.0900000026 against a portal reading 2.812.092,09.
+check("浮点累加取整到分", sumPncpItemValues([{ valorTotal: 0.1 }, { valorTotal: 0.2 }]), { value: 0.3, sealedItems: 0 });
 
 console.log("\n状态");
 const beforeDeadline = new Date("2026-05-01T00:00:00Z");

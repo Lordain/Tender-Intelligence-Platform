@@ -9,10 +9,21 @@
  * user moved this path to Qwen. Both modules keep the same signature over
  * TenderToTranslate/TranslatedTender, so switching back is this import
  * line; scripts/compare-translation-providers.ts still runs both.
+ *
+ * Since 2026-09-18 it drives TWO prompts, not one: Spanish rows go to
+ * translate-titles-qwen.ts and Brazilian Portuguese rows to
+ * translate-titles-pt.ts, picked per row by sourceLanguageFor(country).
+ * The routing lives here rather than in a second admin button on purpose —
+ * this function's whole job is "everything still untranslated", and a
+ * per-language button would make that a claim two buttons have to agree
+ * on. A row cannot be forgotten by a selector that never filtered on
+ * language in the first place.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findDroppedIdentifiers, stripUnverifiedParentheticals, titleIsTruncated, type TenderToTranslate, type TranslatedTender } from "@/lib/ingestion/translate-titles";
 import { translateTenderBatchQwen } from "@/lib/ingestion/translate-titles-qwen";
+import { translateTenderBatchPt } from "@/lib/ingestion/translate-titles-pt";
+import { sourceLanguageFor, SOURCE_LANGUAGE_LABELS, type TenderSourceLanguage } from "@/lib/ingestion/source-language";
 import type { LocalizedText } from "@/types/tender";
 
 // Was 25 — dropped after a real run (2026-09-03) truncated a 25-item
@@ -31,6 +42,76 @@ function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+/**
+ * Batches, never mixed.
+ *
+ * One batch is one system prompt, so a batch holding both a Peruvian and a
+ * Brazilian row would have to be told the text is Spanish or that it is
+ * Portuguese, and would be wrong about half of it. Grouping by language
+ * BEFORE chunking is what makes that impossible rather than unlikely —
+ * a plain chunk() over a mixed list produces a mixed batch at every
+ * boundary, which is both the commonest case and the hardest to notice,
+ * since a model handed one Portuguese row among seven Spanish ones will
+ * cheerfully translate it anyway.
+ */
+export function chunkByLanguage(rows: TranslatableRow[], size: number): TranslatableRow[][] {
+  const groups = new Map<TenderSourceLanguage, TranslatableRow[]>();
+  for (const row of rows) {
+    const language = sourceLanguageFor(row.country);
+    const group = groups.get(language);
+    if (group) group.push(row);
+    else groups.set(language, [row]);
+  }
+  return [...groups.values()].flatMap((group) => chunk(group, size));
+}
+
+function countByLanguage(rows: TranslatableRow[]): { language: TenderSourceLanguage; label: string; count: number }[] {
+  const counts = new Map<TenderSourceLanguage, number>();
+  for (const row of rows) {
+    const language = sourceLanguageFor(row.country);
+    counts.set(language, (counts.get(language) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([language, count]) => ({ language, label: SOURCE_LANGUAGE_LABELS[language], count }));
+}
+
+/**
+ * One batch, through the prompt its language needs.
+ *
+ * Reads the language off the FIRST row and applies it to all of them, which
+ * is safe only because chunkByLanguage() is the only thing that builds these
+ * arrays — hence the check below rather than a comment promising it.
+ */
+async function translateRows(rows: TranslatableRow[]): Promise<TranslatedTender[]> {
+  const language = sourceLanguageFor(rows[0]?.country);
+  if (rows.some((row) => sourceLanguageFor(row.country) !== language)) {
+    throw new Error("translateRows was handed a batch of mixed source languages — chunkByLanguage() is the only thing that should build these");
+  }
+
+  // `title.es` is the ORIGINAL text, not necessarily Spanish — see
+  // lib/ingestion/source-language.ts. For a Brazilian row it is Portuguese,
+  // and the pt module names its own wire fields accordingly.
+  if (language === "pt") {
+    return translateTenderBatchPt(
+      rows.map((t) => ({
+        slug: t.slug,
+        titlePt: t.title.es,
+        summaryPt: t.summary.es,
+        titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
+      })),
+    );
+  }
+
+  const input: TenderToTranslate[] = rows.map((t) => ({
+    slug: t.slug,
+    titleEs: t.title.es,
+    summaryEs: t.summary.es,
+    titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
+  }));
+  return translateTenderBatchQwen(input);
+}
+
 export type TranslateAllTendersResult = {
   totalNonExcluded: number;
   untranslatedCount: number;
@@ -44,16 +125,28 @@ export type TranslateAllTendersResult = {
   droppedIdentifiers?: { slug: string; codes: string[] }[];
   /** Most recent real error message from a failed API call, if any — callers (the admin API route) use this to log an admin_alerts row when translation is failing systemically (quota/connection), not just per one bad row. */
   lastErrorMessage?: string;
+  /**
+   * How the attempted rows split across prompts.
+   *
+   * Reported because the two prompts are not interchangeable and only one of
+   * them has ever run against real rows. If a Brazil import lands and this
+   * still says 葡萄牙语 0, the routing is not working and every Brazilian
+   * title has just been translated by a prompt that was told it was reading
+   * Spanish — which produces fluent, plausible, unreviewable Chinese.
+   */
+  attemptedByLanguage: { language: TenderSourceLanguage; label: string; count: number }[];
   sample: { slug: string; titleEs: string }[];
   /** Real model output for the first `sample` rows, written nowhere — see the `sample` option. */
   preview?: { slug: string; titleEs: string; titleZh: string; summaryEs: string; summaryZh: string }[];
 };
 
-type TranslatableRow = {
+export type TranslatableRow = {
   slug: string;
   title: LocalizedText;
   summary: LocalizedText;
   manual_field_overrides: string[] | null;
+  /** Which prompt this row's text needs — see sourceLanguageFor(). `title.es` holds the ORIGINAL, which for Brazil is Portuguese. */
+  country: string | null;
 };
 
 /**
@@ -122,7 +215,7 @@ export async function translateAllTenders(
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, title, summary, manual_field_overrides")
+      .select("slug, title, summary, manual_field_overrides, country")
       .neq("relevance_tier", "excluded")
       .range(from, from + PAGE_SIZE - 1);
 
@@ -140,6 +233,7 @@ export async function translateAllTenders(
     totalNonExcluded: rows.length,
     untranslatedCount: untranslated.length,
     attemptedCount: toTranslate.length,
+    attemptedByLanguage: countByLanguage(toTranslate),
     sample: toTranslate.slice(0, 5).map((t) => ({ slug: t.slug, titleEs: t.title.es })),
   };
 
@@ -147,14 +241,13 @@ export async function translateAllTenders(
     if (!options.sample || options.sample <= 0) return result;
     const rowsToPreview = toTranslate.slice(0, options.sample);
     try {
-      const translated = await translateTenderBatchQwen(
-        rowsToPreview.map((t) => ({
-          slug: t.slug,
-          titleEs: t.title.es,
-          summaryEs: t.summary.es,
-          titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
-        })),
-      );
+      // Through chunkByLanguage even here: a 5-row sample taken off the top
+      // of a mixed list is exactly the mixed batch this must not build, and
+      // a preview that routes differently from --write is a preview of
+      // nothing.
+      const translated = (
+        await Promise.all(chunkByLanguage(rowsToPreview, BATCH_SIZE).map((group) => translateRows(group)))
+      ).flat();
       const bySlug = new Map(translated.map((r) => [r.slug, r]));
       // Through the same verifier the write path uses: a preview that shows
       // text --write would not store is reviewing the wrong thing.
@@ -182,17 +275,10 @@ export async function translateAllTenders(
   const droppedIdentifiers: { slug: string; codes: string[] }[] = [];
   let lastErrorMessage: string | undefined;
 
-  for (const batch of chunk(toTranslate, BATCH_SIZE)) {
-    const input: TenderToTranslate[] = batch.map((t) => ({
-      slug: t.slug,
-      titleEs: t.title.es,
-      summaryEs: t.summary.es,
-      titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
-    }));
-
+  for (const batch of chunkByLanguage(toTranslate, BATCH_SIZE)) {
     let results: TranslatedTender[];
     try {
-      results = await translateTenderBatchQwen(input);
+      results = await translateRows(batch);
     } catch (err) {
       results = [];
       lastErrorMessage = err instanceof Error ? err.message : String(err);
@@ -205,12 +291,7 @@ export async function translateAllTenders(
     const missing = batch.filter((t) => !bySlug.has(t.slug));
     for (const tender of missing) {
       try {
-        const [single] = await translateTenderBatchQwen([{
-          slug: tender.slug,
-          titleEs: tender.title.es,
-          summaryEs: tender.summary.es,
-          titleIsTruncated: titleIsTruncated(tender.title.es, tender.summary.es),
-        }]);
+        const [single] = await translateRows([tender]);
         if (single) bySlug.set(tender.slug, single);
       } catch (err) {
         lastErrorMessage = err instanceof Error ? err.message : String(err);

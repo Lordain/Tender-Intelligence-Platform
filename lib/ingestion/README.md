@@ -2531,6 +2531,68 @@ unfamiliar User-Agent is a live candidate for A1/A2, and if that turns out to
 be what decides it, that is a finding to discuss rather than a header to
 quietly ship.
 
+### Brazil — `/api/search` is the connector's path (settled 2026-09-18)
+
+Second `probe:brazil-alt` run, same host, same run:
+
+```
+A1/A2  /api/search    200    2,372ms / 949ms    205,272 条
+A4     /api/consulta  502   45,705ms
+```
+
+The returned row says why they fail independently: `"index": "catalog2"`,
+`"doc_type": "_doc"`. **`/api/search` is Elasticsearch, not a second view of
+the relational database whose Hikari pool produces `/api/consulta`'s 500s.**
+It was up and sub-second while `/api/consulta` was failing for the fourth
+distinct reason in two days. It also takes `tam_pagina` well beyond
+`/consulta`'s 50, and supports `q=` server-side keyword filtering, which no
+other source in this project offers.
+
+It is close to a full record. One row carries `orgao_nome` / `unidade_nome`
+(buyer), `esfera_nome` ("Municipal" — the government level, which every other
+source makes us infer), `municipio_nome` + `uf`, `modalidade_licitacao_nome`,
+`situacao_nome`, `numero_controle_pncp`, `item_url`, `data_publicacao_pncp`,
+and a `description` holding the whole object text in Portuguese. Two gaps
+against `/api/consulta`, both measured rather than assumed by
+`npm run dump:brazil-search`:
+
+- `valor_global` was null on the one row seen. Null on a single *revoked*
+  edital proves nothing about live ones. If it is null in general, the money
+  must come from `/api/consulta` or the detail page, and `/api/search` becomes
+  a discovery endpoint rather than a replacement.
+- There is no `dataEncerramentoProposta`, but there is `data_inicio_vigencia`
+  / `data_fim_vigencia` — on that row 2026-03-11 17:00 → 2026-03-30 08:00,
+  exactly the shape of a proposal window. Plausible is not confirmed.
+
+**Two traps in that single row, both of which would have shipped silently:**
+
+- **`situacao_nome` was "Revogada".** The index holds revoked and expired
+  notices, not just live ones, so an import that simply pages through would
+  fill the feed with dead tenders. `status` is the filter for that, and A5
+  established it is MANDATORY when `q` is absent — `400 "O filtro status é
+  obrigatório"`. Its accepted values are documented nowhere we could find, so
+  `dump:brazil-search` measures them by asking the server: a wrong value
+  answers 400 with its own message, a right one answers 200 with a count.
+- **`ordenacao=-data` sorts by UPDATE time, not publication.** The first
+  result was published 2026-03-11 and sorted first because
+  `data_atualizacao_pncp` was that same day. An incremental import keyed on
+  that would re-pull old tenders forever and could mistake a touched old
+  record for a new one.
+
+Two smaller corrections from the same run:
+
+- `/modulo-legado/1_consultarLicitacao` is a real path — it is in
+  dadosabertos' own api-docs, along with
+  `/modulo-contratacoes/1_consultarContratacoes_PNCP_14133` and 12 others —
+  and it still 404s with only `pagina`/`tamanhoPagina`. A 404 on a documented
+  path usually means mandatory filters are missing, so the probe now prints
+  each path's required query parameters straight out of the document instead
+  of guessing a third time.
+- Querido Diário's `api.queridodiario.ok.org.br` failed TLS handshake
+  (alert 40), meaning the name resolves but the server will not negotiate for
+  it — typically a certificate that does not cover it. Its own tooling has
+  been migrating to `api.queridodiario.org.br`, so both are now tried.
+
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against
 the same procurement written the Brazilian way, agreed on tier 6/10 and on

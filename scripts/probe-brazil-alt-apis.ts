@@ -168,22 +168,41 @@ function pncpDay(date: Date): string {
  * ("real returned rows, not a Swagger screenshot") applies just as well to
  * paths: read them out of the OpenAPI document the service publishes.
  */
-async function listPaths(base: string, match: RegExp, timeoutMs: number): Promise<string[] | null> {
+type OpenApiParam = { name?: string; in?: string; required?: boolean; schema?: { type?: string } };
+type OpenApiDoc = {
+  servers?: { url?: string }[];
+  paths?: Record<string, Record<string, { parameters?: OpenApiParam[] }>>;
+};
+
+async function readApiDoc(base: string, timeoutMs: number): Promise<OpenApiDoc | null> {
   for (const docPath of ["/v3/api-docs", "/v2/api-docs", "/openapi.json"]) {
     const { status, text } = await fetchText(`${base}${docPath}`, timeoutMs);
     if (status !== 200 || !text.trim().startsWith("{")) continue;
     try {
-      const doc = JSON.parse(text) as { paths?: Record<string, unknown> };
-      const paths = Object.keys(doc.paths ?? {});
-      if (paths.length > 0) {
-        console.log(`   （从 ${docPath} 读到 ${paths.length} 个路径）`);
-        return paths.filter((p) => match.test(p));
+      const doc = JSON.parse(text) as OpenApiDoc;
+      if (doc.paths && Object.keys(doc.paths).length > 0) {
+        console.log(`   （从 ${docPath} 读到 ${Object.keys(doc.paths).length} 个路径）`);
+        return doc;
       }
     } catch {
       // Not an OpenAPI document after all; try the next candidate.
     }
   }
   return null;
+}
+
+/**
+ * Which query parameters that path insists on.
+ *
+ * The last run called `/modulo-legado/1_consultarLicitacao` with only
+ * pagina/tamanhoPagina and got a 404 in 715ms — from a host that had just
+ * served its own api-docs, and for a path that document lists. A 404 on a
+ * documented path usually means the mandatory filters were missing, and the
+ * document says which they are. Reading that beats a third guess.
+ */
+function requiredParams(doc: OpenApiDoc, path: string): OpenApiParam[] {
+  const get = doc.paths?.[path]?.get;
+  return (get?.parameters ?? []).filter((p) => p.required === true && p.in === "query");
 }
 
 async function main() {
@@ -259,27 +278,44 @@ async function main() {
   console.log("   为什么试它：独立的一套 API。只有联邦，没有州和市 —— 是补充不是替代");
   console.log("   上一轮我猜了个路径，1.2 秒就回了 404 —— 主机是活的，错的是路径。这次先问它自己有哪些路径。");
   const comprasBase = "https://dadosabertos.compras.gov.br";
-  const comprasPaths = await listPaths(comprasBase, /contrata|licita/i, timeoutMs);
-  if (comprasPaths === null) {
-    console.log("   读不到它的 OpenAPI 文档 —— 下面退回用第三方文档里出现过的那条真实路径。\n");
+  const comprasDoc = await readApiDoc(comprasBase, timeoutMs);
+  const wanted = ["/modulo-contratacoes/1_consultarContratacoes_PNCP_14133", "/modulo-legado/1_consultarLicitacao"];
+  if (comprasDoc === null) {
+    console.log("   读不到它的 OpenAPI 文档 —— 下面按上一轮列出来的真实路径试。\n");
   } else {
-    console.log(`   跟招标/合同有关的路径共 ${comprasPaths.length} 条：`);
-    for (const path of comprasPaths.slice(0, 40)) console.log(`     ${path}`);
+    if (comprasDoc.servers?.length) console.log(`   servers: ${comprasDoc.servers.map((srv) => srv.url ?? "").join(", ")}`);
+    for (const path of wanted) {
+      const required = requiredParams(comprasDoc, path);
+      console.log(`   ${path}`);
+      console.log(`     必填查询参数：${required.length === 0 ? "（文档说没有必填的 —— 那 404 就不是缺参数）" : required.map((prm) => `${prm.name}:${prm.schema?.type ?? "?"}`).join(", ")}`);
+    }
     console.log();
   }
   await pause();
-  await run(
-    "B1. Compras.gov.br — modulo-legado/1_consultarLicitacao",
-    "这条路径在第三方文档里出现过实例，不是我猜的",
-    `${comprasBase}/modulo-legado/1_consultarLicitacao?pagina=1&tamanhoPagina=10`,
-  );
+  for (const path of wanted) {
+    // Only pagina/tamanhoPagina are fillable without inventing values. When
+    // the doc says more are required, the call below is expected to fail —
+    // and the printed list above is then the answer, not the failure.
+    await run(
+      `B. ${path.split("/").pop()}`,
+      "路径来自它自己的 api-docs，不是猜的",
+      `${comprasBase}${path}?pagina=1&tamanhoPagina=10`,
+    );
+  }
 
   // ── D. Querido Diário ────────────────────────────────────────────────────
-  await run(
-    "D. Querido Diário（市级公报全文）",
-    "相当于墨西哥的 DOF：够得着根本不上 PNCP 的小城市，但返回的是公报正文不是结构化标讯。上一轮我用错了主机（前端域名），这次用 API 域名",
-    `https://api.queridodiario.ok.org.br/gazettes?querystring=${encodeURIComponent(q)}&size=5`,
-  );
+  // Two hosts, because the last run's TLS alert 40 (handshake_failure) means
+  // the name resolved but the server refused to negotiate for it — typically
+  // a certificate that does not cover that name. Querido Diário's own tooling
+  // has been migrating to a second domain, so both get tried rather than
+  // reporting "Querido Diário is down" from one refused handshake.
+  for (const host of ["api.queridodiario.ok.org.br", "api.queridodiario.org.br"]) {
+    await run(
+      `D. Querido Diário（市级公报全文）— ${host}`,
+      "相当于墨西哥的 DOF：够得着根本不上 PNCP 的小城市，但返回的是公报正文不是结构化标讯。上一轮 TLS 握手被拒（alert 40），八成是证书不覆盖那个域名，所以两个域名都试",
+      `https://${host}/gazettes?querystring=${encodeURIComponent(q)}&size=5`,
+    );
+  }
 
   console.log("─".repeat(72));
   console.log("小结\n");

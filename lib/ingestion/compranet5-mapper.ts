@@ -96,7 +96,16 @@ function parseDate(raw: string | undefined): string | null {
     if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
   }
 
-  const ddmmyyyy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  // `(?!\d)` rather than a bare \d{4}: without it the capture is simply four
+  // digits off the front of whatever is there and the rest is dropped in
+  // silence. DOF really printed a year as "02026" and that read as the year
+  // 202 (2026-09-18, dof-5799003) — see parseDofDetailDate in
+  // dof-search-mapper.ts, which carries the full account. No malformed year
+  // has been seen in THIS source; this is the same one-token guard applied
+  // preventively, because the failure is invisible: a wrong-but-parseable
+  // date looks exactly like a right one, and a publication date in the year
+  // 202 silently drops the row from every recency window instead of erroring.
+  const ddmmyyyy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?!\d)/);
   if (ddmmyyyy) {
     const [, day, month, year] = ddmmyyyy;
     const parsed = new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`);

@@ -74,6 +74,7 @@
     "test:document-matching": "tsx scripts/test-document-matching.ts",
     "test:industry-tags": "tsx scripts/test-industry-tags.ts",
     "test:tender-status": "tsx scripts/test-tender-status.ts",
+    "test:dof-notice-dates": "tsx scripts/test-dof-notice-dates.ts",
     "audit:award-before-deadline": "tsx --env-file-if-exists=.env.local scripts/audit-award-before-deadline.ts",
     "fix:dof-awarded-status": "tsx --env-file-if-exists=.env.local scripts/fix-dof-awarded-status.ts",
     "probe:dof-notice": "tsx --env-file-if-exists=.env.local scripts/probe-dof-notice.ts",

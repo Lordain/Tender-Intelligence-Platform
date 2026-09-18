@@ -120,14 +120,43 @@ const SPANISH_MONTHS: Record<string, string> = {
 function parseDofDetailDate(raw: string | undefined): string | null {
   if (!raw) return null;
 
-  const numeric = raw.match(/^(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})(?:\s*,?\s*(\d{1,2}):(\d{2})\s*(?:hrs|horas|hs)\b)?/i);
+  const numeric = raw.match(/^(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4,})(?:\s*,?\s*(\d{1,2}):(\d{2})\s*(?:hrs|horas|hs)\b)?/i);
   if (numeric) {
-    const [, day, month, year, hour, minute] = numeric;
-    const parsed = new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${(hour ?? "00").padStart(2, "0")}:${minute ?? "00"}:00`);
-    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    const [, day, month, rawYear, hour, minute] = numeric;
+    // The year is captured as \d{4,} and normalised here rather than as a
+    // plain \d{4}, because a plain \d{4} is not a check — it is four digits
+    // off the front of whatever is there, and the rest is dropped in silence.
+    //
+    // Real case, and it reached a customer (2026-09-18, dof-5799003 /
+    // CFE-0001-CAAAT-0148-2026). DOF printed its Fallo row as
+    // "9/11/02026, 12:00 hrs" — a five-digit year, their typo. \d{4} took
+    // "0202", left the "6" behind, and produced 9 November of the year 202.
+    // Being ~1800 years in the past, that date then satisfied every "has the
+    // fallo happened yet?" test, and the tender was published as 已中标 while
+    // bidding had not opened. The reader saw 已中标 against 交标 26/10
+    // (都还没交标怎么就已中标了？). Nothing in the pipeline flagged it: a
+    // wrong-but-parseable date looks exactly like a right one.
+    const year = rawYear.replace(/^0+/, "");
+    const parsed = new Date(`${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${(hour ?? "00").padStart(2, "0")}:${minute ?? "00"}:00`);
+    if (Number.isNaN(parsed.getTime())) return null;
+    // Leading zeros are stripped above because "02026" can only mean 2026.
+    // Everything else malformed is REJECTED rather than repaired — a
+    // procurement date outside this window is not a date this parser should
+    // guess at, and the file's standing rule for something it cannot read is
+    // to skip it (one fewer key date) rather than fabricate one. The guard is
+    // deliberately on the RESULT, not on the spelling: it catches the next
+    // malformation too, whatever shape it arrives in.
+    const parsedYear = parsed.getUTCFullYear();
+    if (parsedYear < 2000 || parsedYear > 2100) {
+      console.warn(`  DOF: ignoring an implausible date "${raw}" (parsed as year ${parsedYear}) — check the notice.`);
+      return null;
+    }
+    return parsed.toISOString();
   }
 
-  const written = raw.match(/^(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+de\s+(\d{4})(?:\s+a\s+las\s+(\d{1,2}):(\d{2})\s*(?:hrs|horas|hs)\b)?/i);
+  // Same guard as the numeric branch above, for the same reason — "9 de
+  // noviembre de 02026" would otherwise truncate to the year 202 too.
+  const written = raw.match(/^(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+de\s+(\d{4})(?!\d)(?:\s+a\s+las\s+(\d{1,2}):(\d{2})\s*(?:hrs|horas|hs)\b)?/i);
   if (written) {
     const [, day, monthName, year, hour, minute] = written;
     const month = SPANISH_MONTHS[monthName.toLowerCase()];

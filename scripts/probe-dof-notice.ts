@@ -17,6 +17,7 @@
  * makes of the page, not what the page looks like.
  *
  *   npm run probe:dof-notice -- 5799003 15/09/2026
+ *   npm run probe:dof-notice -- 5799003 15/09/2026 "PEMEX"   (other buyer)
  */
 import { fetchDofNoticeDetail } from "../lib/ingestion/connectors/dof-notice-detail";
 import { mapDofSearchNotaToTender } from "../lib/ingestion/dof-search-mapper";
@@ -24,7 +25,7 @@ import { mapDofSearchNotaToTender } from "../lib/ingestion/dof-search-mapper";
 async function main() {
   const [codNota, fecha] = process.argv.slice(2);
   if (!codNota || !fecha) {
-    console.error("用法：npm run probe:dof-notice -- <codNota> <DD/MM/YYYY>\n例：npm run probe:dof-notice -- 5799003 15/09/2026");
+    console.error("用法：npm run probe:dof-notice -- <codNota> <DD/MM/YYYY> [买方名]\n例：npm run probe:dof-notice -- 5799003 15/09/2026");
     process.exit(1);
   }
 
@@ -37,6 +38,11 @@ async function main() {
   }
 
   const { procedureNumber, title, fieldsByLabel } = result.detail;
+  // The real search endpoint supplies the buyer; the detail page does not, so
+  // the probe takes it as an optional third argument and otherwise says so
+  // rather than inventing a name that would end up in the printed output.
+  const buyerGuess = process.argv[4] ?? "COMISION FEDERAL DE ELECTRICIDAD";
+
   console.log(`procedureNumber: ${procedureNumber ?? "(none)"}`);
   console.log(`title:           ${title ?? "(none)"}\n`);
   console.log("解析出来的字段表（左边是 DOF 的原始标签，右边是原始取值）：");
@@ -47,12 +53,19 @@ async function main() {
   // Run it through the real mapper, with a search stub shaped like the one the
   // search endpoint returns, so the key dates and status below are the same
   // ones an import would write — not a re-derivation that could disagree.
+  //
+  // Both stub fields matter and the first version of this script got one
+  // wrong: `codOrgaUno` is the DOF SECTION NAME, which the mapper tests
+  // against /CONVOCATORIAS PARA CONCURSOS/ before doing anything else, and a
+  // section code there made every probe report "这条不会被导入" about notices
+  // that had in fact been imported. `titulo` must carry the "- REF:<n>" shape
+  // too, since that is what the buyer is parsed out of.
   const tender = mapDofSearchNotaToTender(
     {
       codNota: Number(codNota),
-      titulo: `${title ?? "DOF"} - REF:${codNota}`,
+      titulo: `${buyerGuess} - REF:${codNota}`,
       fecha: fecha.split("/").reverse().join("/"),
-      codOrgaUno: "0490",
+      codOrgaUno: "CONVOCATORIAS PARA CONCURSOS",
     } as Parameters<typeof mapDofSearchNotaToTender>[0],
     "Diario Oficial de la Federación (DOF) — búsqueda avanzada",
     result.detail,

@@ -16,7 +16,7 @@
  *
  * Usage: npm run test:brazil-pncp-mapper
  */
-import { inferGovernmentLevel, inferScopeType, inferStatus, mapPncpSearchRowToTender, parsePncpDate, parsePncpItemUrl, stripRelayPlatformTag, sumPncpItemValues, type PncpSearchRow } from "@/lib/ingestion/brazil-pncp-mapper";
+import { inferGovernmentLevel, inferScopeType, inferStatus, mapPncpSearchRowToTender, parsePncpDate, parsePncpItemUrl, pncpPublicUrl, stripRelayPlatformTag, sumPncpItemValues, type PncpSearchRow } from "@/lib/ingestion/brazil-pncp-mapper";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -124,7 +124,9 @@ if (!tender) {
   check("金额是雷亚尔", [tender.estimatedValue, tender.currency], [7494680.99, "BRL"]);
   check("交标截止日按巴西利亚时间换算", tender.submissionDeadline, "2026-05-18T12:30:00.000Z");
   check("所在地", tender.location, "Cuiabá/MT");
-  check("来源链接用行里给的 item_url", tender.sourceUrl, "https://pncp.gov.br/compras/57356434000146/2026/66");
+  // Verified against the live portal 2026-09-18: /compras/... is an API path
+  // and 404s in a browser; the reader-facing route is /app/editais/...
+  check("来源链接是前台路由 /app/editais，不是 API 的 /compras", tender.sourceUrl, "https://pncp.gov.br/app/editais/57356434000146/2026/66");
 }
 
 console.log("\n缺必要字段就不要这一行");
@@ -157,6 +159,26 @@ check(
   "[Anexo] CONSTRU\u00c7\u00c3O DE PONTE",
 );
 check("\u6ca1\u6709\u65b9\u62ec\u53f7\u7684\u539f\u6837\u8fd4\u56de", stripRelayPlatformTag("CONSTRU\u00c7\u00c3O DE PONTE"), "CONSTRU\u00c7\u00c3O DE PONTE");
+
+
+console.log("\n\u524d\u53f0\u94fe\u63a5");
+check(
+  "\u4ece item_url \u62fc\u51fa /app/editais",
+  pncpPublicUrl("/compras/35842428000166/2026/8"),
+  "https://pncp.gov.br/app/editais/35842428000166/2026/8",
+);
+check("\u8ba4\u4e0d\u51fa\u6765\u5c31\u56de\u516c\u544a\u5217\u8868\uff0c\u4e0d\u81ea\u5df1\u7f16\u8def\u5f84", pncpPublicUrl("/app/algo"), "https://pncp.gov.br/app/editais");
+check("\u7a7a\u503c\u4e5f\u56de\u5217\u8868", pncpPublicUrl(undefined), "https://pncp.gov.br/app/editais");
+
+
+console.log("\n\u5173\u952e\u65e5\u671f");
+const roadDates = mapPncpSearchRowToTender(ROAD, [ROAD_ITEM], "PNCP")!.keyDates;
+check("\u53d1\u5e03 + \u4ea4\u6807\u622a\u6b62\u4e24\u6761", roadDates.map((d) => d.type), ["publication", "submission"]);
+check("\u4ea4\u6807\u622a\u6b62\u6309\u5df4\u897f\u5229\u4e9a\u65f6\u95f4\u6362\u7b97", roadDates.find((d) => d.type === "submission")?.date, "2026-05-18T12:30:00.000Z");
+// data_inicio_vigencia exists in the feed and is deliberately NOT stored:
+// no TenderKeyDate type means it, and `clarification` would show the reader
+// 「采购方召开的澄清会议」 for something that is not one.
+check("\u6295\u6807\u5f00\u59cb\u65e5\u4e0d\u5b58\uff0c\u5b81\u7f3a\u4e0d\u9519\u6807", roadDates.some((d) => d.date === "2026-04-07T12:00:00.000Z"), false);
 
 if (failures > 0) {
   console.log(`${failures} 项没过。`);

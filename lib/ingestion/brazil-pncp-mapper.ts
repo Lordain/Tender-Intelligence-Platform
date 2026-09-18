@@ -248,6 +248,65 @@ export function stripRelayPlatformTag(text: string): string {
   return text.replace(/^\s*\[[^\]\d]{1,60}\]\s+[-–—]\s+/, "").trim();
 }
 
+/**
+ * The reader-facing page for a tender.
+ *
+ * `item_url` from the search index is `/compras/{cnpj}/{ano}/{seq}` and that
+ * is an API-side path, NOT a front-end route — pasting it into a browser
+ * returns PNCP's 404 page (verified 2026-09-18, which is what a click is for;
+ * the shape looked like a permalink and the path was simply wrong). The
+ * portal serves a notice at `/app/editais/{cnpj}/{ano}/{seq}`: same three
+ * components, different segment. Confirmed against a live page —
+ * "Id contratação PNCP: 35842428000166-1-000008/2026" is served at
+ * /app/editais/35842428000166/2026/8.
+ *
+ * `editais` rather than `compras` is also right for what this connector
+ * queries: every row comes from `tipos_documento=edital`.
+ *
+ * Falls back to the notice listing rather than inventing a path, so an
+ * unparseable row sends the reader somewhere real.
+ */
+/**
+ * The dates PNCP publishes in the search row itself.
+ *
+ * Confirmed against a live notice page 2026-09-18, which labels the same pair
+ * "Data de início de recebimento de propostas" and "Data fim de recebimento
+ * de propostas", both marked horário de Brasília — the offset parsePncpDate
+ * applies.
+ *
+ * Worth noting against Peru, where this connector's sibling gets nothing: a
+ * SEACE cronograma is only on the ficha page, so submission deadlines there
+ * are pasted in by hand through the admin cronograma form. PNCP puts both
+ * ends of the proposal window in the feed, so Brazil needs no such step.
+ *
+ * `data_fim_vigencia` is mapped to `submission` rather than `opening`. In a
+ * Concorrência the two are close but not the same event, and the deadline is
+ * the one a bidder plans around; calling it an opening would misstate it by
+ * whatever gap the entity leaves. No opening row is invented from it.
+ *
+ * `data_inicio_vigencia` — when proposal receipt OPENS — is deliberately not
+ * stored, though the feed carries it. TenderKeyDate has no type for it: the
+ * closest, `clarification`, renders to a reader as 「采购方召开的澄清会议」,
+ * which is a different event entirely. Adding a correct type means touching
+ * the union, the three label sets and the admin editor, and that is worth
+ * doing on purpose rather than smuggling in behind a wrong label — a wrong
+ * date on a tender page is worse than a missing one, because a reader acts
+ * on it.
+ */
+function pncpKeyDates(row: PncpSearchRow, publicationDate: string): Tender["keyDates"] {
+  const id = (row.numero_controle_pncp ?? "").replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase();
+  const dates: Tender["keyDates"] = [{ id: `brazil-${id}-publication`, type: "publication", date: publicationDate }];
+  const end = parsePncpDate(row.data_fim_vigencia);
+  if (end) dates.push({ id: `brazil-${id}-submission`, type: "submission", date: end });
+  return dates;
+}
+
+export function pncpPublicUrl(itemUrl: string | undefined): string {
+  const parts = parsePncpItemUrl(itemUrl);
+  if (!parts) return "https://pncp.gov.br/app/editais";
+  return `https://pncp.gov.br/app/editais/${parts.cnpj}/${parts.ano}/${parts.sequencial}`;
+}
+
 export function mapPncpSearchRowToTender(row: PncpSearchRow, items: PncpItem[] | undefined, sourceName: string, now: Date = new Date()): Tender | null {
   // `description` is the object text; `title` is the notice number. Getting
   // these the wrong way round would fill the feed with "Edital nº 044/2026".
@@ -302,7 +361,7 @@ export function mapPncpSearchRowToTender(row: PncpSearchRow, items: PncpItem[] |
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],
-    keyDates: [],
+    keyDates: pncpKeyDates(row, publicationDate),
     risks: [],
     relevance,
     sourceName,
@@ -310,7 +369,7 @@ export function mapPncpSearchRowToTender(row: PncpSearchRow, items: PncpItem[] |
     // client-side route, and no probe has yet clicked one of these to confirm
     // this exact path renders — worth one click before the first import
     // rather than a derived guess that 404s for every Brazilian tender.
-    sourceUrl: row.item_url ? `https://pncp.gov.br${row.item_url}` : "https://pncp.gov.br/app/editais",
+    sourceUrl: pncpPublicUrl(row.item_url),
     createdAt: nowIso,
     updatedAt: nowIso,
   };

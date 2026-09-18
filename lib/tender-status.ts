@@ -17,10 +17,11 @@
  *      thing about what they could still do.
  *   3. Anything else that has not closed reads 招标中.
  *
- * `awarded` and `cancelled` are terminal facts about the procurement, not
- * stages of an open one, so they always win. A passed submission deadline
- * closes a tender regardless of what the source last said — and so does a
- * passed validity_end, see rule 4.
+ * `cancelled` is a terminal fact about the procurement, not a stage of an
+ * open one, so it always wins. `awarded` is terminal only once bidding has
+ * closed — see rule 6. A passed submission deadline closes a tender
+ * regardless of what the source last said — and so does a passed
+ * validity_end, see rule 4.
  *
  *   4. A passed validity_end closes it too. PEMEX's Concurso Abierto is a
  *      standing invitation with an expiry (`vencimiento`), not a one-shot
@@ -49,6 +50,12 @@
  *      costs every reader their trust in the status column, because a feed
  *      where a third of the rows are eternally "open" is not reporting
  *      anything. 45 days is the tunable part — see STALE_WITHOUT_END_DATE_DAYS.
+ *
+ *   6. 已中标 requires that bidding has actually closed. A row whose source
+ *      says "awarded" while its own submission deadline is still in the
+ *      future contradicts itself, and the deadline wins. See the comment on
+ *      the check itself for why that side, and why the check is here rather
+ *      than in each mapper.
  */
 import type { Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
 
@@ -131,10 +138,44 @@ export function deriveTenderStatus(
   },
   now: Date = new Date(),
 ): TenderStatus {
-  if (stored === "awarded" || stored === "cancelled") return stored;
+  // A procurement really can be called off before its own deadline, so
+  // "cancelled" is terminal on any date and wins outright.
+  if (stored === "cancelled") return "cancelled";
 
   const today = platformDay(now);
   const deadlineDay = fields.submissionDeadline ? platformDay(fields.submissionDeadline) : null;
+
+  // Rule 6 (2026-09-18). "awarded" is terminal too, but only once bidding has
+  // actually closed: nobody can be awarded a contract that is still taking
+  // bids. A row claiming both contradicts itself, and the platform was
+  // printing the contradiction — reported on a CFE row published 15/09 shown
+  // as 已中标 with 交标 26/10 still six weeks away (user: 都还没交标怎么就已中标了？).
+  //
+  // This is the SECOND time that shape reached a reader. The first was
+  // dof-search-mapper.ts reading a "Fallo" row off the published timetable as
+  // an outcome (2026-09-08, CFE-0001-CAAAT-0134-2026); that mapper was fixed
+  // to compare its own dates against today, which stops that one mapper from
+  // writing it and does nothing about the next one. Every source states an
+  // award in its own vocabulary — colombia-mapper's "Adjudicado = Sí",
+  // peru-oece-mapper's `awards` array, compras-mx-open-tenders-mapper's
+  // ADJUDICA substring, compranet5-mapper's "every row in a contracts export
+  // is awarded" — and any of them can be wrong about a row the same way. So
+  // the check lives here, once, where the status is finally decided, instead
+  // of being re-derived correctly in each of thirteen mappers.
+  //
+  // WHICH SIDE LOSES is not a coin flip. Believing a wrong "awarded" hides
+  // the tender from the public list altogether (fetchTendersFromDb drops
+  // awarded rows that have no analysis) — a live opportunity the reader never
+  // sees. Believing a wrong deadline costs them one click on a tender that
+  // turns out to be over. The same asymmetry rule 5 is written on.
+  //
+  // Deliberately NOT gated on awarded_to/award_date being empty: the only
+  // sources that fill those (the Compras MX contracts export, admin entry)
+  // supply no submission deadline at all, so the gate would exclude nothing
+  // real while forcing two more columns into three separate selects.
+  const bidsStillOpen = Boolean(today && deadlineDay && deadlineDay >= today);
+  if (stored === "awarded" && !bidsStillOpen) return "awarded";
+
   // Compared as day strings, not timestamps: a deadline at 14:00 today has
   // not closed the tender for a reader looking at it in the morning, and a
   // date-only deadline column has no time of day to compare against anyway.

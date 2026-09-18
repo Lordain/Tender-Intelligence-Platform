@@ -87,6 +87,14 @@ export type UpsertTendersResult = {
    * up again in a later re-ingest from its original source.
    */
   skippedManuallyDeletedCount: number;
+  /**
+   * Rows that shared a slug with another row in the SAME import and were
+   * collapsed into one before writing (newest publication date wins — see the
+   * comment on the de-dupe itself). Normal for a source that republishes one
+   * procurement under a new id; a signal that the slug rule is wrong if the
+   * collapsed rows are genuinely different projects.
+   */
+  duplicateSlugCount: number;
   /** Where the full list of excluded rows was written, when it could be. */
   excludedCsvPath?: string;
   failed: { slug: string; error: string }[];
@@ -475,6 +483,32 @@ export async function upsertTendersBatched(
   }
   const uniqueBySlug = [...newestBySlug.values()];
 
+  // Say so. De-duping is required (Postgres rejects the statement otherwise)
+  // and "newest publication date wins" is the right call for a source that
+  // republishes one procurement — but it is a real row being dropped, and
+  // until 2026-09-18 nothing anywhere said it had happened. That silence is
+  // the same shape as Colombia's LP-006-2026, where two rows sharing a
+  // reference number turned out to be two different municipalities' projects
+  // and one of them was being overwritten (fixed in
+  // match-documents-to-tenders.ts). One line per import, naming the codes, so
+  // the next one is noticed the day it lands rather than months later.
+  const duplicateSlugCount = includable.length - uniqueBySlug.length;
+  if (duplicateSlugCount > 0) {
+    // Counted in one pass rather than filtering `includable` per slug: a
+    // yearly bulk export runs tens of thousands of rows, where the nested
+    // form is a quadratic scan on the one path that already knows something
+    // is wrong.
+    const seen = new Map<string, number>();
+    for (const tender of includable) seen.set(tender.slug, (seen.get(tender.slug) ?? 0) + 1);
+    const repeated = [...seen].filter(([, count]) => count > 1).map(([slug]) => slug);
+    console.warn(
+      `  ${duplicateSlugCount} row(s) shared a slug with another row in this import and were collapsed ` +
+        `(newest publication date wins): ${repeated.slice(0, 10).join(", ")}` +
+        `${repeated.length > 10 ? ` +${repeated.length - 10} more` : ""}. ` +
+        "Check the source: if two of these are genuinely different projects, the slug rule needs to change.",
+    );
+  }
+
   // Tombstone check — an admin's earlier manual delete (DELETE
   // /api/admin/tenders/[slug]) should never get silently re-inserted by a
   // later re-ingest of the same source. Done as its own pre-pass (not
@@ -659,5 +693,5 @@ export async function upsertTendersBatched(
       ` (of ${tenders.length} mapped: ${closed.length} already past their deadline, ${excludedCount} excluded, ${skippedManuallyDeletedCount} previously deleted by an admin).`,
   );
 
-  return { upsertedCount, skippedExcludedCount: excludedCount, skippedClosedCount: closed.length, protectedCount, skippedManuallyDeletedCount, failed, excludedCsvPath: lastExcludedCsvPath ?? undefined };
+  return { upsertedCount, skippedExcludedCount: excludedCount, skippedClosedCount: closed.length, protectedCount, skippedManuallyDeletedCount, duplicateSlugCount, failed, excludedCsvPath: lastExcludedCsvPath ?? undefined };
 }

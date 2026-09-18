@@ -26,6 +26,8 @@ type PeruResult = {
   failed?: { slug: string; error: string }[];
   /** OECE only — the OxI export carries no per-document URLs. Feeds 批量下载标书 on /admin/documents-needed. */
   documentLinks?: { tenders: number; links: number };
+  /** Source rows sharing one tender number — see PeruIngestResult.duplicateTenderNumbers. */
+  duplicateTenderNumbers?: { slug: string; tenderNumber: string; count: number }[];
   sample: { slug: string; tenderNumber: string; title: { es: string }; estimatedValue?: number; currency?: string; relevance: { tier: string } }[];
 };
 
@@ -69,17 +71,36 @@ function ResultPanel({ result }: { result: PeruResult }) {
       {result.write ? null : <p className="mt-2 text-xs text-[#64717c]">预览模式，没有写入 Supabase。</p>}
       {result.failed && result.failed.length > 0 && (
         <ul className="mt-2 space-y-0.5 text-xs text-red-700">
-          {result.failed.slice(0, 5).map((f) => (
-            <li key={f.slug}>
+          {result.failed.slice(0, 5).map((f, index) => (
+            <li key={`${f.slug}-${index}`}>
               {f.slug}: {f.error}
             </li>
           ))}
         </ul>
       )}
+      {result.duplicateTenderNumbers && result.duplicateTenderNumbers.length > 0 && (
+        <div className="mt-2 rounded-xl border border-[#f0d9a8] bg-[#fff8e9] px-3 py-2 text-xs leading-5 text-[#7a5200]">
+          <p className="font-black">
+            官方数据里有 {result.duplicateTenderNumbers.length} 个编号出现了不止一次：
+            {result.duplicateTenderNumbers.map((d) => `${d.tenderNumber}（${d.count} 条）`).join("、")}
+          </p>
+          <p className="mt-1">
+            写入时同一编号只会保留<strong>发布日期最新</strong>的那一条。如果这几条其实是<strong>不同的项目</strong>
+            （哥伦比亚 LP-006-2026 就是这种情况），那另一条会被顶掉——请到官网核对后告诉我，我来改编号规则。
+          </p>
+        </div>
+      )}
       {result.sample.length > 0 && (
         <ul className="mt-3 space-y-1 border-t border-[#eef1f2] pt-3 text-xs text-[#233846]">
-          {result.sample.map((t) => (
-            <li key={t.slug} className="truncate">
+          {result.sample.map((t, index) => (
+            // Keyed by position, not by slug: a source that publishes the same
+            // code twice puts the same slug in this list twice, and React
+            // answers a duplicate key by dropping or duplicating rows. Which
+            // is how ProInversión returning CONV20262760 twice showed up as a
+            // console error instead of as the 重复编号 warning above
+            // (2026-09-18). The list is rebuilt wholesale on every run and has
+            // no state or inputs in it, so an index key costs nothing here.
+            <li key={`${t.slug}-${index}`} className="truncate">
               <span className="font-mono text-[#64717c]">{t.relevance.tier}</span>{" "}
               {t.estimatedValue ? `${t.currency ?? ""} ${Math.round(t.estimatedValue).toLocaleString()}` : "无金额"} · {t.title.es}
             </li>

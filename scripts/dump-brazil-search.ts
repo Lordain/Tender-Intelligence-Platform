@@ -71,11 +71,11 @@ const HEADERS = {
 } as const;
 
 type Row = Record<string, unknown>;
-type Fetched = { ok: boolean; status: number | string; ms: number; rows: Row[]; total: number | null; note: string; wrapper?: string };
+type Fetched = { ok: boolean; status: number | string; ms: number; rows: Row[]; total: number | null; note: string; wrapper?: string; reset?: boolean };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function get(url: string, timeoutMs: number): Promise<Fetched> {
+async function getOnce(url: string, timeoutMs: number): Promise<Fetched> {
   const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -115,10 +115,31 @@ async function get(url: string, timeoutMs: number): Promise<Fetched> {
       rows: [],
       total: null,
       note: describeFetchFailure(err).slice(0, 220),
+      reset: describeFetchFailure(err).includes("ECONNRESET"),
     };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Retry a reset. This script went without it for a day longer than the filter
+ * probe did, and the cost was a wrong finding rather than a slow run: its
+ * status sweep reported `recebendo_propostas` and `divulgada` as the accepted
+ * values while `em_recebimento_de_proposta` — which had answered 200 twice
+ * before — "failed". The throttle was deciding which values looked valid.
+ * A reset on this endpoint is never a verdict; see lib/ingestion/README.md.
+ */
+const RESET_BACKOFF_MS = [2_000, 5_000, 12_000];
+
+async function get(url: string, timeoutMs: number): Promise<Fetched> {
+  let last = await getOnce(url, timeoutMs);
+  for (const wait of RESET_BACKOFF_MS) {
+    if (!last.reset) return last;
+    await sleep(wait);
+    last = await getOnce(url, timeoutMs);
+  }
+  return last;
 }
 
 function url(params: Record<string, string | number | undefined>): string {
@@ -186,6 +207,22 @@ async function main() {
   // the accepted values. Asking the server is cheaper and more reliable than
   // reading another blog post: a wrong value answers 400 with its own message,
   // a right one answers 200 with a count.
+  // Both of the steps below are now settled facts, and every request they
+  // spend is a request against an endpoint that throttles by resetting the
+  // connection — which is what turned this script's own status sweep into a
+  // wrong answer. They are re-measurable on demand and skipped by default, so
+  // an ordinary harvest costs a handful of calls instead of fifteen.
+  const SETTLED_STATUS = "em_recebimento_de_proposta";
+  const SETTLED_PAGE_SIZE = 100;
+  const probeStatus = args.includes("--probe-status");
+  const probePageSize = args.includes("--probe-page-size");
+
+  let open = { status: SETTLED_STATUS };
+  if (!probeStatus) {
+    console.log(`【1】status —— 跳过（已测定）。用 ${SETTLED_STATUS}。`);
+    console.log("     它是必填的，但完全不过滤：三个互斥状态都返回整个索引。「正在收标」得我们自己按 situacao_nome 和日期筛。");
+    console.log("     要重新测一遍：加 --probe-status\n");
+  } else {
   console.log("【1】status 收哪些值 —— 这个过滤器是必填的，但没有任何文档写它的取值。直接问服务器。\n");
   const candidates = ["recebendo_proposta", "em_recebimento_de_proposta", "recebendo_propostas", "a_receber_ou_recebendo_proposta", "em_julgamento", "encerradas", "encerrada", "divulgada", "todos"];
   const accepted: { status: string; total: number | null; ms: number; wrapper?: string }[] = [];
@@ -203,7 +240,7 @@ async function main() {
   // Prefer whichever accepted value describes an OPEN procurement; that is the
   // only set this platform sells. Falling back to the first accepted value
   // keeps the run useful rather than aborting on a naming surprise.
-  const open = accepted.find((a) => /receb/.test(a.status)) ?? accepted[0];
+  open = accepted.find((a) => /receb/.test(a.status)) ?? accepted[0];
   console.log(`能用的：${accepted.map((a) => `${a.status}(${a.total ?? "?"})`).join("，")}`);
   if (accepted[0].wrapper) console.log(`返回的行装在 "${accepted[0].wrapper}" 这个键里 —— connector 照这个写。`);
 
@@ -221,20 +258,26 @@ async function main() {
     }
   }
   console.log(`下面用 status=${open.status}。\n`);
+  }
 
   // ── 2. 一页最多能要多少 ───────────────────────────────────────────────────
-  console.log("【2】tam_pagina 的上限 —— /api/consulta 最多 50，这边能到多少直接决定要发多少次请求。\n");
-  let pageSize = 10;
-  for (const size of [500, 100, 50, 10]) {
-    await sleep(paceMs);
-    const result = await get(url({ tipos_documento: "edital", status: open.status, modalidades: modalidade, ordenacao: "-data", pagina: 1, tam_pagina: size }), timeoutMs);
-    console.log(`  ${result.ok ? "OK  " : "FAIL"}  ${String(result.status).padEnd(12)} ${String(result.ms).padStart(6)}ms  tam_pagina=${String(size).padEnd(5)} ${result.ok ? `实际返回 ${result.rows.length} 行` : result.note.slice(0, 90)}`);
-    if (result.ok && result.rows.length > 0) {
-      pageSize = result.rows.length;
-      break;
+  let pageSize = SETTLED_PAGE_SIZE;
+  if (!probePageSize) {
+    console.log(`【2】tam_pagina —— 跳过（已测定上限 ${SETTLED_PAGE_SIZE}，500 会被拒）。要重新测：加 --probe-page-size\n`);
+  } else {
+    console.log("【2】tam_pagina 的上限 —— /api/consulta 最多 50，这边能到多少直接决定要发多少次请求。\n");
+    pageSize = 10;
+    for (const size of [500, 100, 50, 10]) {
+      await sleep(paceMs);
+      const result = await get(url({ tipos_documento: "edital", status: open.status, modalidades: modalidade, ordenacao: "-data", pagina: 1, tam_pagina: size }), timeoutMs);
+      console.log(`  ${result.ok ? "OK  " : "FAIL"}  ${String(result.status).padEnd(12)} ${String(result.ms).padStart(6)}ms  tam_pagina=${String(size).padEnd(5)} ${result.ok ? `实际返回 ${result.rows.length} 行` : result.note.slice(0, 90)}`);
+      if (result.ok && result.rows.length > 0) {
+        pageSize = result.rows.length;
+        break;
+      }
     }
+    console.log(`\n  用 ${pageSize} 条一页。\n`);
   }
-  console.log(`\n  用 ${pageSize} 条一页。\n`);
 
   // ── 3. 抓行 ──────────────────────────────────────────────────────────────
   console.log(`【3】抓 ${wantTitles} 行${q ? `（关键词 "${q}"）` : "（不带关键词，这才是每日全量导入的形状）"}${modalidade ? `，只看采购方式 ${modalidade}` : ""}\n`);
@@ -243,7 +286,13 @@ async function main() {
     await sleep(paceMs);
     const result = await get(url({ q, tipos_documento: "edital", status: open.status, modalidades: modalidade, ordenacao: "-data", pagina, tam_pagina: pageSize }), timeoutMs);
     if (!result.ok) {
-      console.log(`  第 ${pagina} 页没取到：${result.status} ${result.note}`);
+      // Keep whatever earlier pages produced. Abandoning a harvest because
+      // page four was reset throws away three pages of real rows, and this
+      // endpoint resets often enough that it happened on the first run with
+      // --modalidades.
+      console.log(`  第 ${pagina} 页没取到（已重试过）：${result.status} ${result.note}`);
+      if (collected.length === 0) break;
+      console.log(`  就用已经拿到的 ${collected.length} 行继续。`);
       break;
     }
     if (result.rows.length === 0) break;

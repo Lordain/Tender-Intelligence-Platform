@@ -2808,6 +2808,22 @@ amount still has to be resolved per tender elsewhere, and open-versus-closed
 is decided on our side from `situacao_nome`, `cancelado` and
 `data_fim_vigencia`.
 
+**A missing retry produced a wrong answer, not a slow run.** `dump:brazil-search`
+kept its status sweep without the reset retries the filter probe had gained,
+and the next run reported `recebendo_propostas` and `divulgada` as the
+accepted values while `em_recebimento_de_proposta` — which had answered 200 in
+the two runs before — "failed". The throttle was deciding which values looked
+valid, and the script published that as a finding. It retries now, on the same
+2s/5s/12s backoff.
+
+The deeper fix is to stop asking. The status sweep and the `tam_pagina`
+ceiling are settled, and each request spent re-confirming them is a request
+against an endpoint that throttles by resetting — the sweep was fifteen calls
+before a single row was harvested, which is what provoked the resets that then
+corrupted it. Both are skipped by default and re-measurable with
+`--probe-status` / `--probe-page-size`. A harvest that loses a page mid-way now
+keeps the pages it already has instead of discarding the run.
+
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against
 the same procurement written the Brazilian way, agreed on tier 6/10 and on

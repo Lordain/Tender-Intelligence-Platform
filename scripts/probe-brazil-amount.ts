@@ -104,7 +104,15 @@ async function main() {
   const seq = arg("--seq") ?? parsed?.[3] ?? "11";
 
   if (itemUrl !== undefined && parsed === null) {
-    console.error(`--item-url 认不出来："${itemUrl}"。它长这样：/compras/<CNPJ>/<年>/<序号>`);
+    // The first version printed the expected format using the same angle
+    // brackets the user had just pasted, so the error read as "that is wrong,
+    // here is the identical thing". An error has to show something you can
+    // copy, not the placeholder you came in with.
+    const isPlaceholder = /[<>]/.test(itemUrl);
+    console.error(isPlaceholder ? `--item-url 收到的是占位符本身："${itemUrl}"` : `--item-url 认不出来："${itemUrl}"`);
+    console.error("要传的是一条真实的 item_url，三段都换成实际数字，比如：\n");
+    console.error("  npm run probe:brazil-amount -- --item-url /compras/83102509000172/2026/11\n");
+    console.error("这个值从 npm run dump:brazil-search 的输出里拿（【6】那段全文里的 item_url 字段）。");
     process.exit(1);
   }
   if (arg("--item-url") === undefined && arg("--cnpj") === undefined) {

@@ -56,11 +56,47 @@
  *    energy/generation auctions** and settles the market. Both are worth
  *    having; only ANEEL answers the question the user asked.
  *
- * ── The one thing measured from here (2026-09-18) ────────────────────────
+ * ── FIRST REAL RUN (2026-09-18, user's machine): 11 FAIL, 1 OK ───────────
  *
- * HTTP is blocked but DNS is not, so every hostname below was at least
- * resolved before being written down. That is weaker than a 200 and stronger
- * than recall, and it already caught three of my own guesses:
+ * And not one of the eleven says "there is no data". Every one is an
+ * ACCESS answer, in five distinct flavours, which is why they are worth
+ * writing down separately rather than as a row of FAILs:
+ *
+ *   P1–P4  ppi.gov.br            ECONNRESET ×4, ~700ms   edge resets us after connect
+ *   P5     dados.gov.br          401                     the path EXISTS and wants a credential
+ *   P6     dados.antt.gov.br     200 "Request Rejected"  F5 BIG-IP ASM block page — host alive
+ *   P7     portal.antaq.gov.br   403 Cloudflare          bot challenge
+ *   P8     in.gov.br             socket closed mid-read
+ *   E1     dadosabertos.aneel    connect timeout 10s     never completed a TCP handshake
+ *   E2     www.aneel.gov.br      403 "Just a moment…"    Cloudflare JS challenge
+ *   E3     dadosabertos.ccee     403 "Acesso bloqueado"  a deliberate, hand-written block page
+ *   E4     b3.com.br             200                     answered, but see below
+ *
+ * Three things follow, and all three changed this file:
+ *
+ *  1. **PNCP works from that same machine**, so this is not a
+ *     China-to-Brazil routing problem. What separates the hosts that answer
+ *     from the ones that do not is that PNCP's is an API and these are
+ *     CMS/portal hosts sitting behind Cloudflare, F5 and one hand-rolled
+ *     block page. That makes the User-Agent the single live variable, so
+ *     every failing step now automatically retries once with browser
+ *     headers and prints both results. Same posture as the PNCP probe's A5:
+ *     if the UA is what decides it, that is a finding to put in front of the
+ *     user, not a header to quietly ship in a connector.
+ *  2. **E1's "timeout" was not our timeout.** `--timeout 90` sets an
+ *     AbortController; undici gives up on the TCP CONNECT after 10s on its
+ *     own, and that is what fired. Reporting it as "network" invited exactly
+ *     the wrong conclusion. There is now a TCP reachability pass before any
+ *     HTTP, on a plain socket with its own timeout, because "cannot reach
+ *     the host" and "the host rejects this request" need completely
+ *     different next moves and only a socket can tell them apart.
+ *  3. **E4's verdict was wrong, and it was my heuristic that was wrong.**
+ *     11KB, 271 characters of body text and ONE link was reported as
+ *     「服务端渲染，可抓」 because the page carried no framework markers.
+ *     Absence of a marker is not presence of content. The verdict now reads
+ *     the amount of text and the number of links first.
+ *
+ * ── DNS (measured from the sandbox, where HTTP is blocked but DNS is not) ──
  *
  *   ppi.gov.br · dados.gov.br · dadosabertos.aneel.gov.br ·
  *   dados.antt.gov.br · dadosabertos.ccee.org.br · portal.antaq.gov.br    存在
@@ -81,6 +117,7 @@
 import { ckanDatastoreSearch, ckanPackageSearch, ckanStatus, type CkanPackage } from "@/lib/ingestion/connectors/ckan";
 import { toCsv, writeReviewCsv, type CsvValue } from "@/lib/ingestion/review-csv";
 import { describeFetchFailure } from "@/lib/fetch-failure";
+import { connect } from "node:net";
 
 const OUT_DIR = "exports";
 
@@ -92,6 +129,35 @@ const HEADERS = {
 
 const JSON_HEADERS = { ...HEADERS, Accept: "application/json" } as const;
 
+/**
+ * Pass two, and only ever pass two.
+ *
+ * Six of the eight failing hosts answered with a WAF page rather than a
+ * network error, which makes "is it our User-Agent?" the one variable worth
+ * isolating. Isolating it is not the same as adopting it: the standing
+ * posture in this repo is to identify honestly to a public open-data service,
+ * so if browser headers turn out to be what works, that is a finding to
+ * discuss before any connector ships with them.
+ */
+const BROWSER_HEADERS = {
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+  "Upgrade-Insecure-Requests": "1",
+} as const;
+
+/**
+ * dados.gov.br answered 401 with an empty body — which means the path is
+ * real and wants a credential, the most actionable result of the whole first
+ * run. The national catalogue issues free keys on registration. The header
+ * name below is from its documentation and has NOT been verified against the
+ * live service, so when a key is set and the call still fails, the response
+ * headers printed alongside (`www-authenticate` above all) are what corrects
+ * it — that is why they are printed rather than swallowed.
+ */
+const DADOS_GOV_KEY = process.env.DADOS_GOV_BR_API_KEY;
+const DADOS_GOV_HEADERS = DADOS_GOV_KEY ? { "chave-api-dados-abertos": DADOS_GOV_KEY } : undefined;
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type Outcome = { label: string; ok: boolean; status: number | string; ms: number; note: string };
@@ -102,6 +168,41 @@ function record(outcome: Outcome): Outcome {
   console.log(`   ${outcome.ok ? "OK  " : "FAIL"}  ${String(outcome.status).padEnd(14)} ${String(outcome.ms).padStart(7)}ms  ${outcome.note}`);
   console.log();
   return outcome;
+}
+
+/**
+ * Does the host accept a TCP connection at all?
+ *
+ * This runs before any HTTP because the first run could not tell two very
+ * different situations apart. `undici` abandons a CONNECT after 10 seconds on
+ * its own — our `--timeout` never reaches that phase — and the resulting
+ * "network" line reads identically whether the packets are being dropped or
+ * the host simply refused us. A plain socket separates them: a completed
+ * handshake means everything after it is the application layer's doing (a
+ * WAF, a challenge, a missing credential), and only a failure HERE is a
+ * reachability problem.
+ *
+ * One caveat, found by running it: behind an intercepting proxy — this
+ * project's sandbox, or a corporate network — the handshake is with the
+ * proxy, so every host reads 通 regardless. The reading above holds on an
+ * ordinary connection, which is where this script is meant to run.
+ */
+function tcpCheck(host: string, timeoutMs: number): Promise<{ ok: boolean; ms: number; note: string }> {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const socket = connect({ host, port: 443 });
+    let settled = false;
+    const done = (ok: boolean, note: string) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve({ ok, ms: Date.now() - started, note });
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => done(true, "握手完成 —— 之后再被拒就是应用层的事"));
+    socket.once("timeout", () => done(false, `${Math.round(timeoutMs / 1000)}s 内连 TCP 都没握上（包被丢了，不是对方拒绝）`));
+    socket.once("error", (err) => done(false, (err as NodeJS.ErrnoException).code ?? err.message));
+  });
 }
 
 async function fetchText(url: string, timeoutMs: number, headers: Record<string, string> = HEADERS): Promise<{ status: number | string; ms: number; text: string; failure?: string }> {
@@ -139,13 +240,44 @@ function describeHtml(text: string, linkPattern: RegExp): { note: string; links:
   const pdfs = anchors.filter(([, href]) => /\.pdf(\?|$)/i.test(href));
   const shell = /__NEXT_DATA__|window\.__NUXT__|id="root"|ng-version/.test(text);
   const text_only = text.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  // Content first, markers second. The first run reported a page with 271
+  // characters and one link as 「服务端渲染，可抓」 purely because it carried
+  // no framework marker — but the absence of a marker is not the presence of
+  // content, and that verdict was the one line the user was told to read.
+  const thin = text_only.length < 800 || anchors.length < 5;
+  const verdict = thin
+    ? "⚠ 答了，但页面上几乎没东西 —— 内容多半是 JS 后填的，或者这只是个跳转壳子。抓不到"
+    : shell
+      ? "⚠ 有内容，但带着前端框架的标记（__NEXT_DATA__ / #root）—— 翻页和筛选可能还是 JS 的事"
+      : "服务端渲染，可抓";
   const note = [
     `${Math.round(text.length / 1024)}KB`,
     `正文 ${text_only.length} 字`,
     `${anchors.length} 个链接（命中 ${matching.length}，PDF ${pdfs.length}）`,
-    shell ? "⚠ 像是前端框架壳子（__NEXT_DATA__ / #root），链接可能是 JS 后填的" : "服务端渲染，可抓",
+    verdict,
   ].join(" · ");
   return { note, links: matching.slice(0, 8).map(([, href, label]) => `${label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 70)} → ${href.slice(0, 110)}`) };
+}
+
+/**
+ * The one variable worth isolating, asked once per failed step.
+ *
+ * Six of the first run's eight failures were WAF pages rather than network
+ * errors, and the honest User-Agent this project sends is the obvious
+ * suspect. Answering it automatically beats asking the user to run a second
+ * command — but note what this does NOT do: it never changes what the next
+ * step sends. A pass here is a finding to bring back, not a default.
+ */
+async function browserRetry(url: string, timeoutMs: number, linkPattern: RegExp, already: boolean): Promise<void> {
+  if (already) return;
+  const { status, ms, text, failure } = await fetchText(url, timeoutMs, BROWSER_HEADERS);
+  const failed = failure !== undefined || (typeof status === "number" && (status < 200 || status >= 300));
+  if (failed) {
+    console.log(`   ↳ 换成浏览器请求头再试：一样不行（${status}，${ms}ms）—— 所以问题不在 User-Agent\n`);
+    return;
+  }
+  console.log(`   ★ 换成浏览器请求头就通了（${status}，${ms}ms）：${describeHtml(text, linkPattern).note}`);
+  console.log("     这是个要拿回来讨论的结论，不是可以悄悄写进连接器的 header —— 见本文件开头的说明。\n");
 }
 
 async function probeHtml(label: string, why: string, url: string, linkPattern: RegExp, timeoutMs: number, headers?: Record<string, string>): Promise<void> {
@@ -153,12 +285,15 @@ async function probeHtml(label: string, why: string, url: string, linkPattern: R
   console.log(`   为什么试它：${why}`);
   console.log(`   ${url}`);
   const { status, ms, text, failure } = await fetchText(url, timeoutMs, headers);
+  const isBrowserPass = headers === BROWSER_HEADERS;
   if (failure !== undefined) {
     record({ label, ok: false, status, ms, note: failure.slice(0, 260) });
+    await browserRetry(url, timeoutMs, linkPattern, isBrowserPass);
     return;
   }
   if (typeof status === "number" && (status < 200 || status >= 300)) {
     record({ label, ok: false, status, ms, note: text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200) });
+    await browserRetry(url, timeoutMs, linkPattern, isBrowserPass);
     return;
   }
   const trimmed = text.trim();
@@ -199,18 +334,39 @@ async function probeCkan(
   timeoutMs: number,
   rows: number,
   collected: { portal: string; pkg: CkanPackage }[],
+  extraHeaders?: Record<string, string>,
 ): Promise<void> {
   console.log(label);
   console.log(`   为什么试它：${why}`);
   console.log(`   ${base}`);
 
   const started = Date.now();
+  const callOptions = { timeoutMs, ...(extraHeaders ? { headers: extraHeaders } : {}) };
   try {
-    const status = await ckanStatus(base, { timeoutMs });
+    const status = await ckanStatus(base, callOptions);
     record({ label: `${label} · status_show`, ok: true, status: 200, ms: Date.now() - started, note: `确认是 CKAN ${status.ckanVersion ?? "?"} —— ${status.siteTitle ?? ""}（扩展：${status.extensions.join(", ") || "无"}）` });
   } catch (err) {
-    record({ label: `${label} · status_show`, ok: false, status: (err as { ckanStatus?: number | string }).ckanStatus ?? "?", ms: Date.now() - started, note: `${(err as Error).message.slice(0, 240)}` });
-    console.log("   → 不是 CKAN（或这个域名不对）。后面几步跳过，省得拿同一个错误刷屏。\n");
+    const status = (err as { ckanStatus?: number | string }).ckanStatus ?? "?";
+    record({ label: `${label} · status_show`, ok: false, status, ms: Date.now() - started, note: `${(err as Error).message.slice(0, 240)}` });
+    // The 401 that started all this had an empty body. These four headers are
+    // where a portal actually says what it wants and who is turning us away.
+    const responseHeaders = (err as { ckanHeaders?: Record<string, string> }).ckanHeaders;
+    if (responseHeaders) {
+      const telling = ["www-authenticate", "server", "cf-ray", "cf-mitigated", "x-cache", "location"]
+        .filter((key) => responseHeaders[key])
+        .map((key) => `${key}: ${responseHeaders[key]}`);
+      if (telling.length > 0) console.log(`     应答头里有话说：${telling.join(" · ")}`);
+    }
+    if (status === 401 || status === 403) {
+      console.log("     401/403 的意思是这个路径是真的、对方认得它 —— 缺的是凭证或者被当成机器人了，不是「没有这个接口」。");
+      if (base.includes("dados.gov.br") && !DADOS_GOV_KEY) {
+        console.log("     dados.gov.br 的开放数据 API 要免费注册一个 key。拿到后设 DADOS_GOV_BR_API_KEY 再跑一次这条。");
+      }
+    }
+    // Same single variable as the HTML steps. status_show is a JSON endpoint,
+    // so the link pattern is irrelevant here and only the status matters.
+    await browserRetry(`${base.replace(/\/+$/, "")}/api/3/action/status_show`, timeoutMs, /never/, extraHeaders !== undefined);
+    console.log("   → 这一步没确认它是 CKAN。后面几步跳过，省得拿同一个错误刷屏。\n");
     return;
   }
 
@@ -220,7 +376,7 @@ async function probeCkan(
     await sleep(800);
     const t0 = Date.now();
     try {
-      const search = await ckanPackageSearch(base, { q, rows }, { timeoutMs });
+      const search = await ckanPackageSearch(base, { q, rows }, callOptions);
       const fresh = search.results.filter((pkg) => pkg.name !== undefined && !seen.has(pkg.name));
       for (const pkg of fresh) {
         seen.add(pkg.name as string);
@@ -253,7 +409,7 @@ async function probeCkan(
   console.log(`   字段实测：${target.title ?? target.name} → 资源「${resource.name ?? resource.id}」`);
   const t1 = Date.now();
   try {
-    const data = await ckanDatastoreSearch(base, { resourceId: resource.id as string, limit: 3 }, { timeoutMs });
+    const data = await ckanDatastoreSearch(base, { resourceId: resource.id as string, limit: 3 }, callOptions);
     record({ label: `${label} · datastore_search`, ok: true, status: 200, ms: Date.now() - t1, note: `${data.total} 行，${data.fields.length} 列` });
     console.log(`     列名：${data.fields.map((f) => `${f.id}:${f.type ?? "?"}`).join(", ")}`);
     console.log("     第一行全文：");
@@ -278,6 +434,30 @@ async function main() {
   console.log("这一轮要回答的就两个问题：");
   console.log("  1. PPI 的项目清单有没有机器可读的形式？没有的话，抓 HTML 行不行？");
   console.log("  2. ANEEL（和 CCEE）的开放数据是不是 CKAN？输电拍卖的表，列名到底叫什么？\n");
+  // Reachability before anything else. On the first run, "network" after 10
+  // seconds and "403 from Cloudflare" printed as the same kind of line, and
+  // they are not the same problem — one is the packets, the other is a
+  // policy. A socket is the only thing that can say which.
+  console.log("─".repeat(72));
+  console.log("\n0. 先分清是网络层还是应用层（只连 TCP 443，不发 HTTP）\n");
+  const hosts = [
+    "www.ppi.gov.br",
+    "dados.gov.br",
+    "dados.antt.gov.br",
+    "portal.antaq.gov.br",
+    "www.in.gov.br",
+    "dadosabertos.aneel.gov.br",
+    "www.aneel.gov.br",
+    "dadosabertos.ccee.org.br",
+    "www.b3.com.br",
+  ];
+  const reach = await Promise.all(hosts.map(async (host) => ({ host, ...(await tcpCheck(host, Math.min(timeoutMs, 30_000))) })));
+  for (const r of reach) {
+    console.log(`  ${(r.ok ? "通  " : "不通").padEnd(4)} ${r.host.padEnd(28)} ${String(r.ms).padStart(6)}ms  ${r.note}`);
+  }
+  console.log("\n  读法：这一栏「通」而下面还是失败 —— 那是对方在应用层拒绝我们（WAF、验证码、缺凭证），");
+  console.log("  网络本身没问题；这一栏「不通」才是真的够不着，两种要改的东西完全不一样。\n");
+
   console.log("─".repeat(72));
   console.log("\nP. PPI —— 联邦特许经营总盘子（公路/港口/机场/铁路）\n");
 
@@ -333,6 +513,7 @@ async function main() {
     timeoutMs,
     rows,
     collected,
+    DADOS_GOV_HEADERS,
   );
 
   console.log("─".repeat(72));
@@ -461,14 +642,23 @@ async function main() {
 
   const ckanOk = outcomes.some((o) => o.ok && /status_show/.test(o.label));
   console.log("要发我的东西，按重要性排：\n");
-  console.log("  1. 【列名】那几行 —— 也就是 datastore_search 打出来的 `列名：…` 和 `第一行全文`。");
+  console.log("  1. 【列名】那几行 —— datastore_search 打出来的 `列名：…` 和 `第一行全文`。");
   console.log("     映射器是照着它写的，不是照着我记忆里的字段名写的。");
-  console.log("  2. P1 那条的判定：「服务端渲染，可抓」还是「前端框架壳子」。PPI 能不能做，就看这一句。");
-  console.log("  3. 所有 FAIL 后面那串错误链（`A ← B ← C`）—— DNS、TLS、连接重置、对方拒绝，");
-  console.log("     这四种要改的地方完全不一样，只有链子能说清是哪种。");
+  console.log("  2. 任何一行以 ★ 开头的 —— 那是「换成浏览器请求头就通了」。");
+  console.log("     如果出现了，那它就是这一轮最大的结论：挡我们的是 User-Agent，不是没有数据。");
+  console.log("     这件事要先摆到台面上讨论，我不会直接把浏览器 UA 写进连接器。");
+  console.log("  3. 最上面那张 TCP 表 —— 「通」而底下还是失败的那几个，是对方在应用层拒绝，");
+  console.log("     跟「不通」是两回事，改的东西完全不一样。");
   if (!ckanOk) {
-    console.log("\n  提醒：这一轮没有任何一个门户确认是 CKAN。先别下「巴西没有开放数据」的结论 ——");
-    console.log("  更可能是域名写错了（这几个域名是我按惯例写的，没能在这里验证过）。错误链会区分这两种。");
+    console.log("\n  这一轮仍然没有任何门户确认是 CKAN。上一轮的失败长这样，可以对照着看是不是变了：");
+    console.log("    dados.gov.br 401（路径是真的，缺 key）· ANTT 200 但返回 F5 的 Request Rejected");
+    console.log("    · ANTAQ / ANEEL / CCEE 403（Cloudflare 和一个手写的封锁页）· ANEEL 开放数据 10 秒连不上");
+    console.log("  这些没有一条说「巴西没有开放数据」—— 说的都是「这个客户端进不来」。");
+  }
+  if (DADOS_GOV_KEY === undefined) {
+    console.log("\n  dados.gov.br 那条最值得先解决：401 说明路径是对的，只差一个免费注册的 key。");
+    console.log("  拿到后 setx DADOS_GOV_BR_API_KEY <key>（或写进 .env.local）再跑一次，");
+    console.log("  国家目录一个门就能覆盖 ANTT / ANTAQ / ANAC / ANEEL 四家的数据集。");
   }
   console.log("\n还有一件跟接口无关、但会影响结果的事 —— 见 lib/ingestion/README.md 的");
   console.log("「Three traps that are new, and the first one changes displayed numbers」：");

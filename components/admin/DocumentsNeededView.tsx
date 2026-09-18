@@ -58,15 +58,6 @@ function CheckIcon() {
   );
 }
 
-function BanIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-3.5">
-      <circle cx="12" cy="12" r="9" />
-      <path d="m5.5 5.5 13 13" />
-    </svg>
-  );
-}
-
 const selectClass =
   "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
 
@@ -82,9 +73,8 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
   const [source, setSource] = useState("all");
   /** Only some sources publish machine-readable document URLs, so "which of these can I actually batch-download" is a different question from "which source is this" — and the one the admin is really asking. */
   const [downloadableOnly, setDownloadableOnly] = useState(false);
-  /** "I already fetched this one's files" — see supabase/migrations/0043_documents_downloaded_at.sql. Not the same as 无法获取, which removes the row. */
+  /** "I already fetched this one's files" — see supabase/migrations/0043_documents_downloaded_at.sql. Not the same as 无法获取, which removes the row and now lives only on the tender's edit page. */
   const [pendingDownloadOnly, setPendingDownloadOnly] = useState(false);
-  const [dismissingSlug, setDismissingSlug] = useState<string | null>(null);
   const [markingSlug, setMarkingSlug] = useState<string | null>(null);
   // The selected tenders themselves, not just their slugs (2026-09-06): a
   // written tender is dropped from `tenders` immediately, and a panel that
@@ -147,25 +137,6 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
       alert("标记失败，请稍后重试。");
     } finally {
       setMarkingSlug(null);
-    }
-  }
-
-  async function dismissTender(slug: string) {
-    if (!confirm("确定要把这条标书标记为「无法获取附件」吗？之后不会再出现在这个清单里（不影响它的相关度判定），后台项目管理里随时能再改回来。")) return;
-    setDismissingSlug(slug);
-    try {
-      const res = await fetch(`/api/admin/tenders/${slug}/documents-unavailable`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ unavailable: true }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setTenders((prev) => prev.filter((tender) => tender.slug !== slug));
-      setSelectedTenders((prev) => prev.filter((item) => item.slug !== slug));
-    } catch {
-      alert("标记失败，请稍后重试。");
-    } finally {
-      setDismissingSlug(null);
     }
   }
 
@@ -360,12 +331,20 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                   2026-09-12, user: 更紧凑一点，比如标书ID可以再窄一点.
                 */}
                 <th className="w-9 px-3 py-2.5 font-black" title={`勾选最多 ${MAX_BATCH_SELECTION} 个项目一起批量分析`}>选</th>
-                <th className="w-[34%] px-3 py-2.5 font-black">{localize(uiText.colTitle, locale)}</th>
+                {/*
+                  2026-09-18, user: 太挤了 …… 标题可以窄一点. Both halves of
+                  that: the 无法获取 button is gone from the row (the edit
+                  page it now links to still carries the same checkbox), and
+                  the title gives 9 points to 操作. The title is truncated
+                  with a full-text tooltip either way, so it loses the least
+                  by being narrow; the buttons lose the most by being tight.
+                */}
+                <th className="w-[25%] px-3 py-2.5 font-black">{localize(uiText.colTitle, locale)}</th>
                 <th className="w-[7%] px-2 py-2.5 font-black">{localize(uiText.countryLabel, locale)}</th>
                 <th className="w-[7%] px-2 py-2.5 font-black">状态</th>
-                <th className="w-[11%] px-2 py-2.5 font-black">{localize(uiText.colTenderId, locale)}</th>
-                <th className="w-[9%] px-2 py-2.5 font-black">{localize(uiText.colPublicationDate, locale)}</th>
-                <th className="w-[29%] px-2 py-2.5 text-center font-black">操作</th>
+                <th className="w-[12%] px-2 py-2.5 font-black">{localize(uiText.colTenderId, locale)}</th>
+                <th className="w-[10%] px-2 py-2.5 font-black">{localize(uiText.colPublicationDate, locale)}</th>
+                <th className="w-[35%] px-2 py-2.5 text-center font-black">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e9eb]">
@@ -474,15 +453,6 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                         >
                           <CheckIcon />
                           {tender.documentsDownloadedAt ? "已下载" : "标记下载"}
-                        </button>
-                        <button
-                          type="button"
-                          title="标记为无法获取附件——不再出现在此清单，不影响相关度判定"
-                          disabled={dismissingSlug === tender.slug}
-                          onClick={() => dismissTender(tender.slug)}
-                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#8a5a00] transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <BanIcon />
                         </button>
                       </div>
                     </td>

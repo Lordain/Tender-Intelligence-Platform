@@ -93,13 +93,29 @@ export type CkanDatastoreSearch = {
   records: Record<string, unknown>[];
 };
 
-export type CkanError = Error & { ckanStatus?: number | string };
+export type CkanError = Error & {
+  ckanStatus?: number | string;
+  /**
+   * The response headers, when there was a response.
+   *
+   * Carried on the error because the diagnostic that matters most is usually
+   * there and nowhere else: a 401 with an empty body says nothing, while its
+   * `WWW-Authenticate` says exactly which credential the portal wants, and a
+   * WAF block page is identified by `server` / `cf-ray` rather than by its
+   * HTML. Both are how a caller learns what to send next.
+   */
+  ckanHeaders?: Record<string, string>;
+};
 
-function fail(message: string, status?: number | string): CkanError {
+function fail(message: string, status?: number | string, headers?: Record<string, string>): CkanError {
   const error = new Error(message) as CkanError;
   if (status !== undefined) error.ckanStatus = status;
+  if (headers !== undefined) error.ckanHeaders = headers;
   return error;
 }
+
+/** Options every call takes. `headers` overrides or adds to the defaults — see the note on HEADERS above. */
+export type CkanRequestOptions = { timeoutMs?: number; headers?: Record<string, string> };
 
 /**
  * One Action API call.
@@ -112,7 +128,7 @@ export async function ckanAction<T>(
   base: string,
   action: string,
   params: Record<string, string | number | undefined> = {},
-  options: { timeoutMs?: number } = {},
+  options: CkanRequestOptions = {},
 ): Promise<T> {
   const query = Object.entries(params)
     .filter(([, value]) => value !== undefined && value !== "")
@@ -125,9 +141,11 @@ export async function ckanAction<T>(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let text: string;
   let httpStatus: number;
+  let responseHeaders: Record<string, string> = {};
   try {
-    const response = await fetch(url, { headers: HEADERS, signal: controller.signal });
+    const response = await fetch(url, { headers: { ...HEADERS, ...options.headers }, signal: controller.signal });
     httpStatus = response.status;
+    responseHeaders = Object.fromEntries(response.headers.entries());
     text = await response.text();
   } catch (err) {
     // The whole cause chain, never the bare "fetch failed" — DNS, TLS refusal,
@@ -139,7 +157,7 @@ export async function ckanAction<T>(
   }
 
   if (httpStatus < 200 || httpStatus >= 300) {
-    throw fail(`${action}: HTTP ${httpStatus} — ${text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200)}`, httpStatus);
+    throw fail(`${action}: HTTP ${httpStatus} — ${text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200)}`, httpStatus, responseHeaders);
   }
 
   let body: unknown;
@@ -148,19 +166,19 @@ export async function ckanAction<T>(
   } catch {
     // A CKAN portal that is really a CMS page answers 200 with HTML. Saying so
     // is the finding; "invalid JSON" is not.
-    throw fail(`${action}: answered ${httpStatus} with something that is not JSON (${text.trim().slice(0, 120)})`, httpStatus);
+    throw fail(`${action}: answered ${httpStatus} with something that is not JSON (${text.trim().slice(0, 120)})`, httpStatus, responseHeaders);
   }
 
   const envelope = body as { success?: boolean; result?: unknown; error?: unknown };
   if (envelope.success !== true) {
     const detail = typeof envelope.error === "object" && envelope.error !== null ? JSON.stringify(envelope.error).slice(0, 200) : String(envelope.error ?? "no error object");
-    throw fail(`${action}: CKAN answered HTTP ${httpStatus} but success=false — ${detail}`, httpStatus);
+    throw fail(`${action}: CKAN answered HTTP ${httpStatus} but success=false — ${detail}`, httpStatus, responseHeaders);
   }
   return envelope.result as T;
 }
 
 /** Confirms the host really is CKAN before anything else is read into it. */
-export async function ckanStatus(base: string, options?: { timeoutMs?: number }): Promise<CkanStatus> {
+export async function ckanStatus(base: string, options?: CkanRequestOptions): Promise<CkanStatus> {
   const result = await ckanAction<{ ckan_version?: string; site_title?: string; extensions?: string[] }>(base, "status_show", {}, options);
   return {
     ckanVersion: result.ckan_version ?? null,
@@ -172,7 +190,7 @@ export async function ckanStatus(base: string, options?: { timeoutMs?: number })
 export async function ckanPackageSearch(
   base: string,
   params: { q?: string; rows?: number; start?: number; sort?: string },
-  options?: { timeoutMs?: number },
+  options?: CkanRequestOptions,
 ): Promise<CkanPackageSearch> {
   const result = await ckanAction<{ count?: number; results?: CkanPackage[] }>(
     base,
@@ -183,7 +201,7 @@ export async function ckanPackageSearch(
   return { count: result.count ?? 0, results: Array.isArray(result.results) ? result.results : [] };
 }
 
-export async function ckanPackageShow(base: string, id: string, options?: { timeoutMs?: number }): Promise<CkanPackage> {
+export async function ckanPackageShow(base: string, id: string, options?: CkanRequestOptions): Promise<CkanPackage> {
   return ckanAction<CkanPackage>(base, "package_show", { id }, options);
 }
 
@@ -197,7 +215,7 @@ export async function ckanPackageShow(base: string, id: string, options?: { time
 export async function ckanDatastoreSearch(
   base: string,
   params: { resourceId: string; limit?: number; q?: string },
-  options?: { timeoutMs?: number },
+  options?: CkanRequestOptions,
 ): Promise<CkanDatastoreSearch> {
   const result = await ckanAction<{ total?: number; fields?: { id?: string; type?: string }[]; records?: Record<string, unknown>[] }>(
     base,

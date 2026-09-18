@@ -3202,6 +3202,61 @@ that our URL was wrong (see "Brazil — the other doors" above).
   having — the same Chinese firms bid solar, wind and storage — but it does
   not answer the question that was asked. Probed last, and labelled.
 
+#### First real run (2026-09-18, user's machine): 11 FAIL, 1 OK — and none of them says "no data"
+
+```
+P1–P4  ppi.gov.br            ECONNRESET ×4, ~700ms   edge resets us after connect
+P5     dados.gov.br          401                     the path EXISTS and wants a credential
+P6     dados.antt.gov.br     200 "Request Rejected"  F5 BIG-IP ASM block page — host alive
+P7     portal.antaq.gov.br   403 Cloudflare          bot challenge
+P8     in.gov.br             socket closed mid-read
+E1     dadosabertos.aneel    connect timeout 10s     never completed a TCP handshake
+E2     www.aneel.gov.br      403 "Just a moment…"    Cloudflare JS challenge
+E3     dadosabertos.ccee     403 "Acesso bloqueado"  a deliberate, hand-written block page
+E4     b3.com.br             200                     answered — but see 3 below
+```
+
+Read as a table of FAILs this looks like "Brazil has no usable open data",
+and that is not what happened. **Every one of the eleven is an access answer,
+in five distinct flavours**, and the flavours are the finding:
+
+1. **PNCP works from that same machine**, so this is not a China-to-Brazil
+   routing problem. What separates the hosts that answer from the ones that
+   do not is that PNCP's is an API while these are CMS/portal hosts sitting
+   behind Cloudflare, F5 and one hand-rolled block page. That makes the
+   User-Agent the single live variable, so **every failing step now retries
+   once with browser headers automatically and prints both results**. Same
+   posture the PNCP probe's A5 step established: if the UA is what decides
+   it, that is a finding to put in front of the user, not a header to quietly
+   ship in a connector.
+2. **E1's "timeout" was not our timeout.** `--timeout 90` sets an
+   AbortController; undici abandons the TCP CONNECT after 10s on its own, and
+   that is what fired. Reporting it as `network` invited exactly the wrong
+   conclusion — that the host is down. There is now a **TCP reachability pass
+   before any HTTP**, on a plain socket with its own timeout, because "cannot
+   reach the host" and "the host rejects this request" need completely
+   different next moves and only a socket can tell them apart. (Caveat found
+   by running it: behind an intercepting proxy the handshake is with the
+   proxy, so everything reads reachable. True on an ordinary connection,
+   which is where the script runs.)
+3. **E4's verdict was wrong, and the heuristic was mine.** 11KB, 271
+   characters of body text and ONE link was reported as 「服务端渲染，可抓」
+   because the page carried no framework marker — but absence of a marker is
+   not presence of content, and that verdict is the single line the user was
+   told decides whether PPI is feasible. It now reads text volume and link
+   count first.
+
+**`dados.gov.br`'s 401 is the most actionable result of the run**: a 401,
+unlike a 404, means the path is real and the service recognises it — the
+national catalogue issues free API keys on registration. One key there covers
+ANTT, ANTAQ, ANAC and ANEEL datasets in one place, which is the door the
+per-agency hostnames were only approximating. The probe reads
+`DADOS_GOV_BR_API_KEY` and sends it; the header name comes from documentation
+and is **not** verified against the live service, so `ckanAction` now carries
+the response headers on its error and the probe prints `www-authenticate`,
+`server` and `cf-ray` — that is how the next run corrects the guess rather
+than repeating it.
+
 `lib/ingestion/connectors/ckan.ts` was written ahead of the probe because
 CKAN's Action API is a published standard identical across installs, so it is
 not a guess; it deliberately contains **no hostnames and no dataset ids**,

@@ -29,12 +29,13 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ingestColombia, refreshColombiaTenders } from "../lib/ingestion/ingest-colombia";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const DISCOVER_MONTHS = 1;
 const DISCOVER_MAX_PAGES = 5;
 
 async function main() {
-  const write = process.argv.includes("--write");
+  const write = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

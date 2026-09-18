@@ -44,6 +44,18 @@ Every `ingest:*` command also accepts `--fixture` (runs against the small
 real sample already committed under `__fixtures__/`, no capture needed)
 and `--months N` (default 6 — see "Recency filter" below).
 
+**The two dashes before `--write` are not optional.** `npm run x -- --write`
+passes the flag to the script; `npm run x --write` gives it to *npm*, which
+prints one grey `npm warn Unknown cli config "--write"` and then runs the
+script with an empty argv — a dry run whose own footer then says, correctly,
+that nothing was written. On 2026-09-18 that cost a reclassify twice over: 21
+tier changes and 6 deletions were reported as pending, believed as done, and
+never applied. Since then `lib/cli-write-flag.ts` catches it (npm leaks the
+swallowed flag as `npm_config_write=true`) and every `--write` script stops
+with the correct command instead of dry-running in silence. It refuses rather
+than infers: these scripts delete rows, and a silent deletion is worse than a
+visible no-op. Covered by `npm run test:cli-write-flag`.
+
 ### How current is each source's *own* data — separate question from the `--months` filter
 
 `--months`/`filterRecentTenders()` only controls what this platform
@@ -2317,6 +2329,759 @@ browser, same as Colombia's original capture:
   session; worth retrying later rather than assuming it's permanently
   broken.
 
+**Retried 2026-09-18 (`npm run probe:brazil-pncp`, user's machine, 6-row
+matrix). PNCP works. Everything above about it being down is retracted.**
+
+```
+modalidades (control)            200    1,398ms   19 rows
+proposta   mod=6                 200   63,101ms   totalRegistros=1457, 146 pages
+proposta   mod=6 uf=SP           500   54,135ms   "Failed to obtain JDBC Connection ... Hikari"
+proposta   mod=6 uf=SP size=1    400      628ms   "deve ser maior que ou igual à 10"
+proposta   mod=6 + dataInicial   500   30,449ms   "Erro na comunicação com o banco de dados."
+proposta   mod=4 uf=SP           500   61,448ms   Hikari
+publicacao mod=6 uf=SP           500   47,000ms   Hikari
+```
+
+Three findings, two of them the opposite of what the matrix was built to
+test:
+
+1. **It is slow, not broken.** 63 seconds is acceptable for a nightly import
+   that pages through once. Every earlier "504 / timeout" was our own 60s
+   cutoff, so the note above ("the scope is every `contratacoes` endpoint")
+   was wrong. Raising the cutoff to 120s is what distinguished the two.
+2. **Narrowing the query is what kills it.** `uf` never helped; it turned a
+   working call into a 500 three times out of three, across two modalities
+   and two endpoints, while the one call that omitted it succeeded. Hikari
+   is a JDBC connection *pool*, so the 500 means "no database connection was
+   free", not "your query was too broad". **The connector must therefore
+   send the BROAD query and filter on our side** — backwards from every
+   other source in this project, and the thing most likely to get
+   re-litigated by someone later trying to "optimise" the request.
+3. **`dataInicial` is poison too** (500). The working call sent `dataFinal`
+   alone.
+
+So the proven shape is:
+
+```
+GET /api/consulta/v1/contratacoes/proposta
+    ?dataFinal=YYYYMMDD&codigoModalidadeContratacao=N&pagina=N&tamanhoPagina=>=10
+```
+
+`tamanhoPagina` has a floor of 10 (the 400 says so); the ceiling is still
+unmeasured.
+
+**What is still missing before a connector can be written.** The probe
+printed top-level field names only, and a name is not a contract:
+`orgaoEntidade` and `unidadeOrgao` are nested objects nobody here has seen
+inside, and they are where the buyer, the UF, the municipality and the
+federal/state/municipal split have to come from. No date, money or status
+field has had a real value looked at either. Writing a mapper from a field
+list is the shortcut that cost a bulk run matching 0 of 440 Colombian
+candidates, so `npm run dump:brazil-pncp` (scripts/dump-brazil-pncp-rows.ts)
+exists to close that gap in one run: it prints the first row as complete raw
+JSON, and exports 30–50 real `objetoCompra` titles to
+`exports/brazil-pncp-titles-<date>.csv`.
+
+It also fills the one cell the matrix left empty. Both `mod=4` attempts
+carried `uf` — now known to be the failing ingredient — so Concorrência
+Eletrônica, the modality carrying the large public works this platform
+actually sells, has never been tried in the shape that works. The script
+sweeps every modality without it.
+
+**First `dump:brazil-pncp` run, hours later the same day: the whole service
+was down.** One `fetch failed` at 9.7s, then nineteen straight 503s — "No
+server is available to handle this request" — each answered in under 250ms.
+`/modalidades` replied in 5.3s in the same run, so the domain, the network
+and this machine were all fine; that endpoint lives on `/api/pncp/`, a
+different service from the `/api/consulta/` one that was down. A sub-250ms
+503 from a load balancer with no healthy backend is not our query shape, and
+it is not "nothing is open for bidding today" — the modality codes are
+confirmed real and complete (all 19 listed by that same control call, with
+`4` = Concorrência Eletrônica and `6` = Pregão Eletrônico).
+
+So the real operating picture is: PNCP's consultas service alternates between
+slow-but-working (63s) and hard-down, within the same day. Three consequences
+for the connector, all of them things to build in from the start rather than
+discover in production:
+
+- Retry transient failures (502/503/504, connection errors) with backoff.
+  A 400 is our parameters and a 500 is their database; neither improves on a
+  second ask. `dump-brazil-pncp-rows.ts` now does exactly this.
+- **A failed run must never be recorded as an empty one.** An import that
+  reads "0 tenders" from a dead service and acts on it is how a feed silently
+  empties out. The dump script reports those two outcomes as different
+  findings in different words, and the connector must too.
+- Give up early. Three hard failures in a row is the service being down, not
+  three unlucky modalities — the sweep stops there instead of spending twenty
+  minutes collecting sixteen more copies of the same 503.
+
+**Third run, same day: healthy, and it answered in under a second.** Counts of
+what is open for bidding, by modality (`dataFinal=20260918`):
+
+| code | modality | open | latency |
+|---|---|---|---|
+| 8 | Dispensa | 362 | 493ms |
+| 6 | Pregão - Eletrônico | 314 | 672ms |
+| 4 | **Concorrência - Eletrônica** | **60** | 418ms |
+| 7 | Pregão - Presencial | 8 | 622ms |
+| 5 | Concorrência - Presencial | 6 | 241ms |
+| 1 / 3 | Leilão - Eletrônico / Concurso | 2 each | <1s |
+| 10 / 11 | Manifestação de Interesse / Pré-qualificação | 1 each | <1s |
+| 2 / 9 | Diálogo Competitivo / Inexigibilidade | 204 — none open | <1s |
+
+So the 63s measured earlier was a degraded service, not its normal speed, and
+the cell the matrix left empty is now filled: **Concorrência Eletrônica works
+and carries 60 open procurements** — that is the modality for large public
+works, and it was only ever failing because every previous attempt at it
+carried `uf`. Dispensa (direct award, 362) is the largest bucket and is
+mostly noise for this platform, which excludes direct awards outright.
+
+That run also produced two findings the script was reporting wrongly, both
+now fixed:
+
+- **204 No Content is an answer, not a failure.** It is how `/proposta` says
+  a modality has nothing open. `JSON.parse("")` throws, so the script called
+  PNCP's correct empty answer `FAIL 204 返回的不是 JSON` — dressing a real
+  result up as a fault, the exact confusion the point above is about.
+- **PNCP rate-limits, and it is our request rate that trips it.** Fourteen
+  counts in roughly five seconds of wall clock earned `429 Limite de
+  requisições excedido` from the twelfth on. The script paces itself now
+  (1.5s between calls, `--pace` to change it) and waits 15s/45s on a 429
+  rather than the 5s/20s used for a 5xx. Its early-abort message used to
+  blame PNCP for being down when the last three failures were 429s; a
+  limiter and an outage call for opposite responses, so it says which.
+
+### Brazil — the other doors (surveyed 2026-09-18, `probe:brazil-alt`)
+
+`/api/consulta` has now failed three different ways in two days, so what else
+exists is worth knowing before a connector is built on it. None of this is
+verified from here — every `.gov.br` host is blocked from this sandbox — so
+`scripts/probe-brazil-alt-apis.ts` exists for the user to run, and the field
+lists it prints are what decides between them.
+
+- **`pncp.gov.br/api/search` — the one to beat.** What the PNCP website's own
+  search box calls (`pncp.gov.br/app/editais`), and what several third-party
+  collectors use directly: `?q=<termo>&tipos_documento=edital&ordenacao=-data
+  &pagina=1&tam_pagina=100`, plus `municipios=` / `ufs=`. It matters for
+  three reasons, not one: it is almost certainly a search index rather than
+  the relational database whose Hikari pool produces `/api/consulta`'s 500s,
+  so the two should fail independently; `tam_pagina=100` is a quarter of the
+  requests for the same coverage, which is the direct answer to the rate
+  limiter; and `q=` is server-side keyword filtering, which no other source
+  in this project offers. The open question is whether it returns whole
+  records or search summaries — if `valorTotalEstimado` and the cronograma
+  are absent it is a discovery endpoint that still needs `/api/consulta` for
+  the money, which is a usable design but a different one.
+- **`dadosabertos.compras.gov.br`** — Compras.gov.br / SIASG open data, its
+  own Swagger, no auth. **Federal only**: no state or municipal procurement,
+  which PNCP does carry. A complement and a cross-check, never a replacement.
+- **`contratos.comprasnet.gov.br/api`** — federal contracts already signed.
+  Wrong half of the lifecycle for the main feed; relevant later for award
+  outcomes.
+- **`api.queridodiario.ok.org.br`** — municipal official gazettes, full text,
+  open, self-declared ~60 req/min. The Brazilian analogue of the DOF
+  connector: it reaches municipalities that never publish to PNCP at all, but
+  it returns gazette prose rather than structured tenders, so it carries the
+  same extraction problem the DOF mapper solves — in Portuguese.
+- **`pncp.gov.br/api/pncp`** is *not* an alternative read path. It is the
+  maintenance/integration API (insert, correct, delete) and needs credentials;
+  the one part of it we use is `/v1/modalidades`, the unauthenticated
+  reference-data call that has served as the control group throughout.
+
+**First `probe:brazil-alt` run (2026-09-18): five of five failed, and three of
+those were bad questions rather than findings.** Worth recording in that shape,
+because a table of five FAILs reads like "Brazil has no usable API" and that
+is not what happened.
+
+```
+A1/A2  /api/search      连接失败  fetch failed   1,137ms / 577ms
+A3     /api/consulta    504                     70,762ms
+B      dadosabertos     404                      1,202ms  "Resource not found"
+D      Querido Diário   520                     31,802ms  Cloudflare
+```
+
+- **Only A3 was a finding** — `/api/consulta` timing out again, consistent
+  with everything above.
+- **B's 404 arrived in 1.2 seconds**, which means the host is up and
+  answering; the PATH was wrong, and it was a path this repo guessed. The
+  probe now reads the service's own OpenAPI document (`/v3/api-docs`) and
+  prints its real contract/licitação paths before calling one. Same rule as
+  mappers: take it from what the service publishes, not from recall.
+  The one real path third-party documentation shows is
+  `/modulo-legado/1_consultarLicitacao?pagina=1&tamanhoPagina=10`.
+- **D used the front-end host.** The API is `api.queridodiario.ok.org.br/gazettes`,
+  not `queridodiario.ok.org.br/api/gazettes`; the 520 was Cloudflare on a host
+  that does not serve that path.
+- **A1/A2's `fetch failed` said nothing**, and that is the one worth keeping.
+  Node reports DNS failure, TLS rejection, connection reset, refused
+  connection and connect timeout with the same five characters, and puts the
+  real reason in `err.cause` — which nothing prints unless asked. It matters
+  most precisely here: A3 reached the SAME HOST in the same run and got an
+  HTTP response, so whatever stopped A1 was specific to that path or that
+  connection. `lib/fetch-failure.ts` now unwraps the whole chain (including
+  `AggregateError`, one entry per address tried) and both PNCP scripts print
+  it. This is the same lesson as the earlier `UnhandledPromiseRejection` that
+  turned out to be "Host not in allowlist": an error generalised before it is
+  printed is worse than no error, because it looks like a finding.
+
+The re-run also isolates one variable deliberately: `A5` sends browser
+headers to `/api/search`. The standing posture is still to identify honestly
+rather than impersonate a browser — but a WAF closing the connection on an
+unfamiliar User-Agent is a live candidate for A1/A2, and if that turns out to
+be what decides it, that is a finding to discuss rather than a header to
+quietly ship.
+
+### Brazil — `/api/search` is the connector's path (settled 2026-09-18)
+
+Second `probe:brazil-alt` run, same host, same run:
+
+```
+A1/A2  /api/search    200    2,372ms / 949ms    205,272 条
+A4     /api/consulta  502   45,705ms
+```
+
+The returned row says why they fail independently: `"index": "catalog2"`,
+`"doc_type": "_doc"`. **`/api/search` is Elasticsearch, not a second view of
+the relational database whose Hikari pool produces `/api/consulta`'s 500s.**
+It was up and sub-second while `/api/consulta` was failing for the fourth
+distinct reason in two days. It also takes `tam_pagina` well beyond
+`/consulta`'s 50, and supports `q=` server-side keyword filtering, which no
+other source in this project offers.
+
+It is close to a full record. One row carries `orgao_nome` / `unidade_nome`
+(buyer), `esfera_nome` ("Municipal" — the government level, which every other
+source makes us infer), `municipio_nome` + `uf`, `modalidade_licitacao_nome`,
+`situacao_nome`, `numero_controle_pncp`, `item_url`, `data_publicacao_pncp`,
+and a `description` holding the whole object text in Portuguese. Two gaps
+against `/api/consulta`, both measured rather than assumed by
+`npm run dump:brazil-search`:
+
+- `valor_global` was null on the one row seen. Null on a single *revoked*
+  edital proves nothing about live ones. If it is null in general, the money
+  must come from `/api/consulta` or the detail page, and `/api/search` becomes
+  a discovery endpoint rather than a replacement.
+- There is no `dataEncerramentoProposta`, but there is `data_inicio_vigencia`
+  / `data_fim_vigencia` — on that row 2026-03-11 17:00 → 2026-03-30 08:00,
+  exactly the shape of a proposal window. Plausible is not confirmed.
+
+**Two traps in that single row, both of which would have shipped silently:**
+
+- **`situacao_nome` was "Revogada".** The index holds revoked and expired
+  notices, not just live ones, so an import that simply pages through would
+  fill the feed with dead tenders. `status` is the filter for that, and A5
+  established it is MANDATORY when `q` is absent — `400 "O filtro status é
+  obrigatório"`. Its accepted values are documented nowhere we could find, so
+  `dump:brazil-search` measures them by asking the server: a wrong value
+  answers 400 with its own message, a right one answers 200 with a count.
+- **`ordenacao=-data` sorts by UPDATE time, not publication.** The first
+  result was published 2026-03-11 and sorted first because
+  `data_atualizacao_pncp` was that same day. An incremental import keyed on
+  that would re-pull old tenders forever and could mistake a touched old
+  record for a new one.
+
+  That same property turns out to be what makes coverage PROVABLE, which no
+  date parameter could (five names were tried; all ignored). Sorting is
+  strictly descending on `data_atualizacao_pncp`, and a record cannot be
+  updated before it is published — so once a page's last row was updated
+  before the publication cutoff, no later page can hold anything published
+  inside the window. `ingestBrazilPncp` stops there and reports which
+  condition ended each modality's sweep; a run stopped by `--max` instead has
+  covered an unknown fraction, and every number under it is a floor.
+
+  **Measured 2026-09-18, a 3-day window:** modality 4 needed **14 pages
+  (1,400 rows)** and modality 5 **1 page (100 rows)**, both ending on the
+  window. 1,496 unique rows yielded 802 published inside the 3 days — the gap
+  is old tenders that were merely touched recently, which is the same
+  UPDATE-time property seen from the cost side. The defaults follow that
+  measurement: a 3-day window, and `--max 3000` purely as a runaway guard
+  rather than as the thing that ends the sweep. The earlier 600 silently
+  truncated modality 4 at page 6.
+
+**`/itens` caps at 10, and `/arquivos` hands over the documents.**
+
+Both measured 2026-09-18, on the first 3-day sweep and a probe against a real
+municipal works notice.
+
+The cap announced itself only because the run was made to count: 73 tenders
+returned exactly 10 items and none returned more. Two notices opened by hand
+the same day then measured the damage exactly, and it is worse than "a bit
+low":
+
+| tender | summed from `/itens` | portal's VALOR TOTAL ESTIMADO |
+|---|---|---|
+| Tianguá, rural road (`07735178000120/2026/120`) | R$ 1,641,242.81 | R$ 1,641,242.81 |
+| Elói Mendes, education building (`20347225000126/2026/200`) | R$ 372,530.47 | **R$ 2,812,092.09** |
+
+One exact, one 7.5× low, and the only difference between them is how many
+line items the procurement has. Nothing in the first case would have hinted
+that the second was wrong. `/itens` truncates in
+silence, so a registro de preços with hundreds of lines summed to its first
+ten — a confident, smaller, wrong number. With Brazil's floor at $2,000,000
+that is the failure that deletes the largest procurements: understated, under
+the floor, excluded, never written, no row to audit. `fetchPncpItems` now
+pages, ending on a short page rather than on a page smaller than requested
+(so a server keeping its own limit is still walked correctly), and
+fingerprints each page's first item so that a `pagina` parameter that turns
+out to be ignored leaves the sum incomplete rather than double-counted.
+
+Attachments are better than any other source here. `GET
+/api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos` returns a list with
+`titulo`, `tipoDocumentoNome` ("Edital", …) and a direct `url`, and that URL
+downloads without a session: 200, `application/octet-stream`, 930 KB of
+`Edital_CE15.pdf`. Colombia and Peru both needed workarounds here; Brazil can
+feed `ingest-tender-documents.ts` directly.
+
+`valor_global` on the search row would make all of this unnecessary and does
+not: it was null on 200 of 200 rows across two samples. The portal renders its
+total from the compra record, which lives on the service that spent the week
+returning 500s. Summing `/itens` remains the only route we have measured
+working — correctly, now that it pages.
+
+**The public link is `/app/editais/`, not `/compras/`.** `item_url` in the
+search index is an API path and 404s in a browser. The portal serves a notice
+at `/app/editais/{cnpj}/{ano}/{seq}` — same three components, confirmed
+against a live page whose "Id contratação PNCP: 35842428000166-1-000008/2026"
+is served at `/app/editais/35842428000166/2026/8`.
+
+**Key dates come in the search row**, unlike Peru: publication, and the
+submission deadline from `data_fim_vigencia`, which the portal labels "Data
+fim de recebimento de propostas" in horário de Brasília. `data_inicio_vigencia`
+is in the feed and deliberately unstored — `TenderKeyDate` has no type meaning
+"proposal receipt opens", and the nearest, `clarification`, would show a
+reader 「采购方召开的澄清会议」.
+
+**A three-band scheme, per country (2026-09-18).**
+
+| | 常规 | 中型 | 大型 |
+|---|---|---|---|
+| Brazil | $2M – $5M | $5M – $10M | $10M+ |
+| Mexico / Colombia / Peru | $1M – $5M | $5M – $10M | $10M+ |
+
+Set by the user after a measured Brazil sweep. At the old $800,000 floor PNCP
+produced 117 tenders in three days (~39/day) against a target of 每天20条左右;
+the kept rows fell in bands of 35 ($0.8M–$1.5M), 28 ($1.5M–$3M), 17 ($3M–$6M),
+23 ($6M+) and 14 with no amount. Brazil's $2M floor lands around 24/day.
+
+Why Brazil needs a different floor: PNCP carries direct-administration
+procurement for 5,570 municipalities, so R$4.13M was an ordinary small-town
+contract there in a way it is not in Peru or Colombia.
+
+`MIN_VALUE_USD_BY_COUNTRY` is reintroduced for it (removed in September when
+Mexico's floor was unified with Colombia's), resolved through one
+`minValueUsdFor()` so the threshold cannot differ between an import and a
+reclassify — the failure that produced the 193 → 486 jump on 2026-09-08.
+
+**One rule had to be uncoupled first.** The municipal-amenity value exception
+(`isLargeWorksBuild`) read `FLAGSHIP_VALUE_USD`, because when the user made
+that call on 2026-09-11 the two numbers were both $6,000,000. Raising the
+flagship band to $10M would have carried the exception with it and put the
+COP 28bn ≈ USD 8.9M high-performance sports centre back into the excluded
+pile — reversing an explicit decision as a side effect of an unrelated one. It
+now has its own constant, `LARGE_WORKS_BUILD_USD`, still $6,000,000.
+
+**Ten of 319 fixtures changed tier**, every one a band shift rather than a
+rule fault, each updated with the arithmetic in its own note. Two are worth
+knowing: the Colombian $802,548 road row and the Peruvian $973,907 sports
+IOARR both fall under the new $1M floor and are now excluded outright — the
+second being the row the user had queried for being 中型. And the tender this
+Brazilian connector was built against, MT-020/251 at R$7,494,680.99 ≈ US$1.45M,
+no longer qualifies either; `test:relevance-pt` pins it excluded as the
+reference for how big is big enough in Brazil.
+
+
+Two smaller corrections from the same run:
+
+- `/modulo-legado/1_consultarLicitacao` is a real path — it is in
+  dadosabertos' own api-docs, along with
+  `/modulo-contratacoes/1_consultarContratacoes_PNCP_14133` and 12 others —
+  and it still 404s with only `pagina`/`tamanhoPagina`. A 404 on a documented
+  path usually means mandatory filters are missing, so the probe now prints
+  each path's required query parameters straight out of the document instead
+  of guessing a third time.
+- Querido Diário's `api.queridodiario.ok.org.br` failed TLS handshake
+  (alert 40), meaning the name resolves but the server will not negotiate for
+  it — typically a certificate that does not cover it. Its own tooling has
+  been migrating to `api.queridodiario.org.br`, so both are now tried.
+
+#### What `dump:brazil-search` actually measured (2026-09-18, 100 real rows)
+
+Everything below is from one run against live data, not inference.
+
+**`status` is mandatory and inert.** Three mutually exclusive states each
+returned essentially the whole index:
+
+```
+status=em_recebimento_de_proposta   4,081,735
+status=em_julgamento                4,081,733
+status=encerrada                    4,081,733
+```
+
+Those differences are rows indexed between requests. Omit `status` without a
+`q` and the request is rejected (`"O filtro status é obrigatório"`); supply it
+and nothing is filtered. The rows confirm it from the other side — one of the
+100 fetched under `em_recebimento_de_proposta` came back `situacao_nome:
+"Revogada"`. **So "open for bidding" has to be decided on our side**, from
+`situacao_nome`, `cancelado` and the dates.
+
+**An invalid parameter value is answered with a connection reset, not a 400.**
+`status=todos`, `status=encerradas`, `status=recebendo_proposta` and
+`tam_pagina=500` all came back `ECONNRESET`. A reset from this endpoint is a
+finding about the value, not about the network — the opposite of how a reset
+normally reads, and the reason `probe:brazil-search-filters` reports it as
+`值被拒(RST)`.
+
+**`tam_pagina` maxes at 100** (500 resets; 100 returns exactly 100). Rows
+arrive under the `items` key.
+
+**`ordenacao=-data` sorts by update time, confirmed.** Across 100 rows
+`data_atualizacao_pncp` was strictly descending and `data_publicacao_pncp` was
+not — the third row was published 2026-09-01 and sat above one published
+2026-09-17. An incremental import keyed on this re-reads old tenders, and must
+never treat "arrived at the top" as "new".
+
+**`valor_global` is empty on 100 of 100 rows.** That settles the design
+question: **`/api/search` is a discovery endpoint, not a replacement for
+`/api/consulta`.** Every tier this platform assigns runs off the amount
+(`MIN_VALUE_USD`, `SIGNIFICANT_VALUE_USD`, `FLAGSHIP_VALUE_USD`), so the money
+has to come from `/api/consulta` or the notice detail, per tender, after
+discovery.
+
+Coverage of everything else is what a mapper needs: `orgao_nome`,
+`unidade_nome`, `municipio_nome`, `uf`, `esfera_nome`,
+`modalidade_licitacao_nome`, `situacao_nome`, `description` and `item_url` at
+100%; `data_inicio_vigencia` / `data_fim_vigencia` at 58%, of which 42 of 58
+are in the future — consistent with that pair being the proposal window, with
+the past ones being what the inert `status` let through.
+
+**The feed's real composition is the problem to solve next.** Of 100
+consecutive rows:
+
+| | |
+|---|---|
+| Dispensa 46, Inexigibilidade 15 | **61% direct award / no-bid — excluded outright by `classifyRelevance`** |
+| Pregão Eletrônico 28 | mixed |
+| Concorrência Eletrônica 4, Presencial 2 | the large works this platform sells |
+| Municipal 70, Estadual 16, Federal 11 | |
+
+And the titles are the long tail of municipal micro-procurement: *CANETA
+SALIENTADORA ROSA*, *MATERIAL DE COPA E COZINHA*, vehicle parts by licence
+plate, artistic performances, course registrations. Against ~4.08 million
+documents, paging the unfiltered index is a crawl, not an import.
+
+`q=` is the only filter proven to narrow (`q=obra` → 205,272, a twentieth of
+the index) and it matches text, not modality or money.
+`probe:brazil-search-filters` measures whether any of the site's other filter
+parameters (`ufs`, `esferas`, `modalidades`, `municipios`, date bounds, in
+both singular and plural spellings) actually change the count — with `q=obra`
+as a positive control and a deliberately fake parameter as a negative one,
+because an ignored parameter returns 200 and looks exactly like a working one.
+That is the lesson `status` taught: **ask whether a parameter FILTERS, not
+whether it is ACCEPTED.**
+
+**First filter-probe run (2026-09-18): the controls failed, correctly, and
+the report refused itself.** It had printed `uf=SP` as "✅ 有效 — 4,081,820
+条（基准的 100.0%）", which is self-contradictory on its face. Three faults,
+all in the probe, all fixed — and one real finding that survived:
+
+1. **The index is written to continuously.** Totals drifted by dozens between
+   consecutive identical requests, and the deliberately fake parameter came
+   back *higher* than the baseline (4,081,830 vs 4,081,821). A bare
+   `total < baseline` test therefore reads ordinary drift as filtering, and
+   the negative control's exact-equality test can never pass. The probe now
+   samples the baseline three times to MEASURE the drift and requires a
+   candidate to remove more than ten times that band (floor: 0.5% of the
+   index) before calling it a filter.
+2. **`q` and `status` are mutually exclusive.** `q=obra` answered normally in
+   `probe:brazil-alt` and was reset here — the difference being that here it
+   was sent alongside `status`. So the rule is not "status is mandatory", it
+   is "exactly one of `q` / `status`". There is no single baseline, and the
+   probe now measures every candidate against both.
+3. ~~A reset means the server KNOWS the parameter name.~~ **Retracted by the
+   second run — see below.**
+
+The one finding that survived: **`tipos_documento` genuinely filters** —
+`edital` → 4.08M, `ata` → 1,170,148 (28.7%). It is now the probe's positive
+control, since a control has to be something measured rather than assumed.
+
+#### Second filter-probe run — what actually filters, and a retraction
+
+**ECONNRESET on `/api/search` is intermittent. It is a connection throttle,
+not a verdict on the request.** The theory above — that a reset identified a
+parameter the server recognised — is wrong, and the second run killed it
+three ways: `tipos_documento=ata`, which had answered 200 in 292ms, came back
+reset; `zzz_nao_existe`, a parameter invented for this file, came back reset;
+and `ufs`, `esferas`, `modalidades` and `orgaos`, all "rejected" in run one,
+all answered and filtered properly in run two. An entire earlier invocation
+failed at both baselines and then succeeded a moment later. So a reset has to
+be RETRIED, not recorded — anything else turns PNCP's rate limiting into
+fabricated findings about our own parameters, which is what run one published.
+
+With that corrected, the measurement stands on its own. Baseline 4,081,903
+with **zero drift across three samples** (the index is quiet at some hours and
+busy at others, which is exactly why the drift is measured per run rather than
+assumed):
+
+| parameter | rows | share of index |
+|---|---|---|
+| `esferas=M` | 2,795,508 | 68.5% |
+| `ufs=SP` | 819,310 | 20.1% |
+| **`modalidades=4`** | **143,719** | **3.5%** |
+| `orgaos=40314` | 383 | 0.0% |
+
+`modalidades` is what makes a Brazil connector viable: a **bare numeric id**,
+matching `modalidade_licitacao_id` in the returned rows, taking 4.08 million
+documents down to 143 thousand for Concorrência Eletrônica. Date bounds under
+both names tried (`dataPublicacaoInicial`, `data_inicial`) were silently
+ignored.
+
+Two questions decide the connector's request count, and the probe now spends
+its requests on them instead of re-confirming the four above: whether
+`modalidades` accepts **more than one value** (repeated key, comma, semicolon,
+JSON array, `[]` suffix — the pipe form reset in run one, which no longer
+means anything), and whether **any** date lower bound exists. Without a date
+bound, a daily import has to sweep the modality and decide what is new from
+`data_atualizacao_pncp` itself.
+
+#### Third filter-probe run — controls passed, and the query shape is settled
+
+Both baselines measured cleanly this time (`status` 4,081,976 with 6 rows of
+drift; `q=obra` 205,301 with 1), the positive control narrowed, the fake
+parameter did not, so the table below is readable.
+
+| parameter | on `status` baseline | on `q=obra` baseline |
+|---|---|---|
+| `modalidades=4` | 143,720 (3.5%) | 47,430 (23.1%) |
+| `ufs=SP` | 819,319 (20.1%) | 36,749 (17.9%) |
+| `esferas=M` | 2,795,583 (68.5%) | 163,760 (79.8%) |
+| `modalidades=4` + `ufs=SP` | 15,714 (0.4%) | 5,147 (2.5%) |
+| `tipos_documento=ata` | reset ×4 | 10,472 (5.1%) |
+
+Filters **combine as AND** (`modalidades=4&ufs=SP` lands below either alone),
+and **no date lower bound exists** — `dataPublicacaoPncpInicial`,
+`data_publicacao_pncp_inicial`, `dataInicial`, `data_inicio` and
+`modalidades[]=` were all accepted and ignored. So a daily import sweeps by
+modality ordered on `-data` (update time) and stops at its own watermark;
+there is nothing server-side to bound the window with.
+
+**`0 条` is not a filter, and the probe said it was.** `modalidades=4,6`,
+`4;6` and `[4,6]` each returned ZERO rows, and the verdict logic called all
+three "✅ 有效" because zero is fewer than the baseline. A comma-separated
+list read as one literal string matches no modality at all — a rejected
+encoding wearing a filter's clothes, and the most expensive kind of wrong
+available here, because a connector built on it would query happily, import
+nothing, and report success. Zero is now its own verdict.
+
+**The repeated-key result was ambiguous, and the fourth run settled it — badly.**
+
+| | `status` baseline | `q` baseline |
+|---|---|---|
+| `modalidades=4` | 143,723 | 47,431 |
+| `modalidades=6` | 1,063,519 | 46,636 |
+| `modalidades=4&modalidades=6` | 1,063,522 | 46,636 |
+
+`4&6` equals `6` alone on both baselines, to three rows in a million. **It is
+not a union: the server keeps the last value and silently drops the first.**
+A two-modality query looks like it worked while returning half the intended
+scope — which is exactly why it was worth measuring the third number instead
+of reading the first two as a union. Comma, semicolon and JSON-array
+spellings return zero rows; `modalidades[]=` is ignored. **One bare numeric
+id per request is the only working spelling, so the connector queries one
+modality at a time.**
+
+**The control gate blocked that run, and it should not have.**
+`tipos_documento=ata` was reset on both baselines by the intermittent
+throttle, after measuring cleanly in the two runs before it — and the gate
+reported "对照组不成立", i.e. a broken measurement, for data that was fine.
+A control that is itself flaky turns the gate into a coin toss, and
+"could not be measured" is not "failed" — the same conflation this file keeps
+having to correct elsewhere. There are now two positive controls
+(`tipos_documento=ata` and `modalidades=4`), one narrowing is enough, and a
+control lost to a reset is reported as unmeasured rather than as a failure.
+
+#### The settled query shape
+
+```
+GET https://pncp.gov.br/api/search
+    ?tipos_documento=edital
+    &status=em_recebimento_de_proposta   # exactly one of status / q
+    &modalidades=<one numeric id>        # repeated keys drop all but the last
+    &ordenacao=-data                     # = update time, not publication
+    &pagina=<n>&tam_pagina=100           # 100 is the ceiling
+```
+
+Rows arrive under `items`. Filters AND together (`modalidades=4&ufs=SP` →
+15,714). There is no date lower bound, so a daily import sweeps each modality
+it cares about, newest-updated first, and stops at its own watermark on
+`data_atualizacao_pncp`. Reset the connection on any request and retry — a
+reset is a throttle, never a verdict. `valor_global` is always null, so the
+amount still has to be resolved per tender elsewhere, and open-versus-closed
+is decided on our side from `situacao_nome`, `cancelado` and
+`data_fim_vigencia`.
+
+**A missing retry produced a wrong answer, not a slow run.** `dump:brazil-search`
+kept its status sweep without the reset retries the filter probe had gained,
+and the next run reported `recebendo_propostas` and `divulgada` as the
+accepted values while `em_recebimento_de_proposta` — which had answered 200 in
+the two runs before — "failed". The throttle was deciding which values looked
+valid, and the script published that as a finding. It retries now, on the same
+2s/5s/12s backoff.
+
+The deeper fix is to stop asking. The status sweep and the `tam_pagina`
+ceiling are settled, and each request spent re-confirming them is a request
+against an endpoint that throttles by resetting — the sweep was fifteen calls
+before a single row was harvested, which is what provoked the resets that then
+corrupted it. Both are skipped by default and re-measurable with
+`--probe-status` / `--probe-page-size`. A harvest that loses a page mid-way now
+keeps the pages it already has instead of discarding the run.
+
+#### `modalidades=4` changes the data, not just its size
+
+100 rows of Concorrência Eletrônica, against the same 100 rows unfiltered:
+
+| | unfiltered | `modalidades=4` |
+|---|---|---|
+| `data_inicio_vigencia` / `data_fim_vigencia` | 58% | **100%** |
+| government level | Municipal 70, Estadual 16, Federal 11 | Municipal 81, Estadual 16, none federal |
+| `situacao_nome` | Divulgada 99, Revogada 1 | Divulgada 89, **Suspensa 7**, Revogada 4 |
+| what the titles are | pink highlighter pens, vehicle parts, artistic performances | roads, pavement, drainage, bridges, schools, health units, parks |
+
+Three things follow.
+
+**The modality filter does most of the work the Portuguese exclusion rules
+would have had to do.** Dispensa and Inexigibilidade are 61% of the index and
+are direct awards, which `classifyRelevance` excludes anyway — but excluding
+them by not querying them is free, and it removes exactly the micro-purchase
+long tail the README worried Portuguese rules would mishandle "in the
+dangerous direction". Scope worth deciding before the connector is written:
+Concorrência Eletrônica (4) and Presencial (5) are unambiguously this
+platform's market; Pregão Eletrônico (6) is 1,063,519 rows of mostly goods
+and services, and is where Portuguese exclusion rules would actually earn
+their keep.
+
+**`Suspensa` exists and the unfiltered sample never showed it.** Open-versus-
+closed is decided on our side, so the set of `situacao_nome` values matters,
+and it was measured on a sample that happened to contain only two of them. A
+suspended procurement is not accepting bids.
+
+#### Where the amount comes from (measured 2026-09-18, `probe:brazil-amount`)
+
+```
+A  /api/consulta/v1/orgaos/{cnpj}/compras/{ano}/{seq}        500  35.0s  (JDBC pool)
+B  /api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}            301  → A
+C  /api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens      200   3.7s  ✅
+D  /api/consulta/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens  404
+```
+
+The compra RECORD was moved off `/api/pncp` onto `/api/consulta` — B says so
+in its own 301 body — and `/api/consulta` is the service that keeps failing
+with Hikari JDBC pool errors, so that record is effectively unreachable. The
+ITEM LIST was **not** moved, still lives on `/api/pncp`, and answered in 3.7
+seconds. The money is in the items, so the one path that works is the one this
+needs. The search row's `item_url` (`/compras/{cnpj}/{ano}/{seq}`) supplies all
+three path segments.
+
+`valorTotal` on the MT-020/251 road contract's single item: **7,494,680.99**
+— reais. `lib/currency.ts` had no BRL row, so `convertToUsd()` would have
+returned null and `lib/relevance.ts` would have read a real R$7.5M contract as
+"no value published", exactly what that table's EUR/GBP note exists to
+prevent. BRL was added as a 5.4 placeholder flagged UNVERIFIED, then
+**corrected to 1 USD = 5.16 BRL on 2026-09-18** from a rate the user supplied
+— this sandbox reaches no FX host, so unlike every other row in that table it
+was not cross-checked here. The placeholder was ~4.5% off. That margin matters
+because `MIN_VALUE_USD` 800k, `SIGNIFICANT` 3M and `FLAGSHIP` 6M are cliffs:
+at 5.4 this contract read as US$1.39M and at 5.16 it reads as US$1.45M — both
+standard, but a row sitting near a threshold would have crossed it.
+
+The item record carries three fields that matter to the mapper as much as the
+amount:
+
+- **`orcamentoSigiloso`** — Brazilian law allows a sealed estimate. When true
+  the amount is withheld *by design*, which is a different thing from a failed
+  lookup, and must not be retried or reported as an error.
+- **`situacaoCompraItemNome`** (`"Homologado"`) and **`temResultado`** — the
+  procurement is already decided. With rule 6 in `lib/tender-status.ts`, this
+  is what a Brazil mapper sets status from.
+- **`descricao`** — the object text again, often fuller than the search row's,
+  and a second source for the Portuguese ruleset.
+
+**Still unmeasured: whether `/itens` paginates.** The probed tender had one
+item. A registro de preços can carry hundreds, and a silently truncated item
+list understates the tender's value rather than failing — which lands the row
+in the wrong tier, the quietest way to be wrong here. The probe now prints the
+item count and flags a suspiciously round one; point it at a multi-item
+procurement before trusting a sum.
+
+#### The Brazil connector as built (2026-09-18)
+
+```
+npm run ingest:brazil-live                       dry run, Concorrência 4+5, 2 months
+npm run ingest:brazil-live -- --write
+npm run ingest:brazil-live -- --skip-amounts     shape only, half the requests
+```
+
+`lib/ingestion/ingest-brazil.ts` sweeps one modality at a time (repeated
+`modalidades` keys drop all but the last), pages `ordenacao=-data` at 100 rows
+with a 1.2s pace, de-dupes on `numero_controle_pncp` — the index is written to
+while we page it, so the same notice can appear twice and two rows sharing a
+slug in one upsert is the "ON CONFLICT DO UPDATE command cannot affect row a
+second time" error Colombia already hit — then filters by publication date
+**before** the amount lookup, because each lookup is a request against
+infrastructure that has been unreliable all week and the cheapest one is the
+one not sent.
+
+Portuguese rules live in `lib/relevance-pt.ts`, gated on `country === "Brazil"`
+so they cannot change a Mexican, Colombian or Peruvian verdict by
+construction. They cover exclusions (routine services that reach a
+Concorrência) and industry tags (`rodovia`, `paralelepípedo`, `bloquete`,
+`esgoto`, `bueiro` — none of which have Spanish equivalents in
+`lib/industry.ts`, so without them a Brazilian road contract carried no
+transport tag at all). `npm run test:relevance-pt` runs both against the real
+corpus; its keep list is the regression net, since an excluded tender is never
+written and a rule broader than its own name loses real work permanently.
+
+Two bugs that test caught and review had not: a bare `\bobras?\b` read
+"MÃO DE OBRA" (Portuguese for *labour*) as a public work, so the works guard
+fired on every service contract containing it and refused to exclude any; and
+a first fix for the registration rule put the alternation around the whole
+pattern instead of inside the word, leaving a bare "inscrição" that would have
+swallowed "inscrição imobiliária".
+
+**Where Brazilian tenders land.** The MT-020/251 road contract is
+R$7,494,680.99 ≈ US$1.39M at the placeholder rate — above `MIN_VALUE_USD`
+(800k), below `SIGNIFICANT_VALUE_USD` (3M), so **standard (常规), not
+significant**. Worth knowing before the first import: a typical Brazilian
+municipal works contract is not going to arrive in the default feed, because
+the default feed shows flagship + significant only.
+
+**One request per tender, against a service that has been down all week.** The
+cost is as much the finding as the path: discovery is cheap and reliable on
+the search index, and every amount costs a second call to infrastructure that
+has produced 500s, 502s, 503s, 504s and 63-second responses over two days. A
+Brazil connector has to treat a missing amount as an ordinary outcome to retry
+later, not as a failed import.
+
+**`tem_resultado` marks an already-decided tender.** The very first row —
+top of `ordenacao=-data` because it was updated today — was published
+2026-04-07, closed its window 2026-05-18, and carries `tem_resultado: true`.
+That is the incremental-import trap in one row: newest-updated is not newest,
+and the feed contains finished procurements. Combined with rule 6 in
+`lib/tender-status.ts` (nobody is awarded a contract that is still taking
+bids), `tem_resultado` plus `data_fim_vigencia` is what a Brazil mapper
+should set status from.
+
+Portuguese, measured before any of this is built: the existing Spanish
+rules do NOT carry over. Real Spanish titles this platform handles, against
+the same procurement written the Brazilian way, agreed on tier 6/10 and on
+tags 6/10 — and every failure was in the dangerous direction, with office
+cleaning, a pickup truck and school meals each excluded in Spanish and
+landing on 中型项目 in Portuguese. The cause is morphological (Spanish
+`-ción` vs Portuguese `-ção`): 238 occurrences of the `ci[óo]n` word form
+across 160 pattern lines, none of which fire. Whole words differ too —
+carretera/rodovia, alcantarillado/esgoto, camión/caminhão,
+aeropuerto/aeroporto. Rules must land before the first import, because an
+excluded tender is never written to Supabase: getting it wrong fills the
+database with rows that then have to be removed by hand.
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.
@@ -4583,3 +5348,65 @@ matches what the OCDS feed independently publishes as `enquiryPeriod.endDate`
 — two unrelated sources agreeing is the check that the right column is being
 read, and it is the first real-data validation the key-date machinery from
 #31/#34 has ever had.
+
+### The pipeline only spoke Spanish (2026-09-18)
+
+Brazil is the first source that does not publish in Spanish, and both model
+paths had a Spanish prompt compiled into them: `translate-titles-qwen.ts` for
+titles and summaries, `extract-requirements.ts`'s `SYSTEM_PROMPT` for bid
+documents.
+
+Neither would have failed on a Brazilian row. That is the whole problem. The
+translator would have returned fluent Chinese and the extractor a well-formed
+extraction, and **nothing in either output carries a sign of having been read
+as the wrong language** — there is no malformed field to catch, no exception
+to log, no count that moves.
+
+It is not a matter of a model coping with Portuguese anyway. Roughly half of
+each Spanish prompt is rules about specific Spanish strings:
+
+| Spanish rule | In Portuguese |
+|---|---|
+| `5/A.` is short for 5ª — an ordinal on the FOLLOWING noun | doesn't occur; Brazilian titles write 1ª/2ª directly |
+| `OTE`/`PTE` are Oriente/Poniente — never read PTE as puente | **wrong**: "PTE" in a Brazilian title really can be ponte |
+| `Ciudad Bolívar` is a Bogotá locality, not Bogotá | no counterpart |
+| Extract from a Convocatoria / Anexo Técnico | **no such documents**: an Edital carries a Termo de Referência or Projeto Básico |
+| `carácter`: NACIONAL / INTERNACIONAL BAJO TRATADOS / ABIERTA | no counterpart; Brazil is not a WTO GPA party |
+
+The last two matter most for the document path: a prompt that names sections
+the document does not have invites citations to sections that do not exist,
+and `sourceReference` is the one field that is supposed to make an extraction
+checkable.
+
+**What decides the language.** `lib/ingestion/source-language.ts`, keyed on
+`country`, used by both paths so they cannot disagree. Not by sniffing the
+text: strip the accents and "CONSTRUCAO DE PONTE" and "CONSTRUCCION DE
+PUENTE" are three characters apart, and a short procurement title is both the
+commonest row and the one a classifier is least able to call.
+
+`LocalizedText.es` holds the ORIGINAL, not "the Spanish" — for Brazil that is
+Portuguese. Renaming the field would mean rewriting every stored JSON column,
+so the language is derived instead of read off the field name. The Portuguese
+translation module therefore sends its own wire keys, `titlePt`/`summaryPt`:
+the model reads its input keys, and a field named `titleEs` tells it the text
+is Spanish.
+
+**Batches group by language before chunking.** One batch is one system
+prompt. A plain `chunk()` over a mixed list produces a mixed batch at every
+boundary — the commonest case, and invisible, since a model handed one
+Portuguese row among seven Spanish ones simply translates it.
+
+**One button, not two.** `translateAllTenders`'s whole job is "everything
+still untranslated"; a per-language button would turn that into a claim two
+buttons have to agree on. The result now reports the split by language,
+because `葡萄牙语 0` after a Brazil import is the only visible symptom that
+the routing is not working.
+
+`npm run test:source-language` pins the routing, including the cases that
+must NOT change behaviour: an unknown country stays Spanish (what every row
+did before this existed), and `"Brazilia"` is not Brazil.
+
+Still unverified: the Portuguese prompts have never run against a real row or
+a real Edital. The plumbing is the path the Spanish prompts have used since
+2026-09-08; the text is new. Read the first batch of five, and the first
+extraction field by field against the PDF, before trusting either at scale.

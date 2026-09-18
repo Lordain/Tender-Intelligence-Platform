@@ -39,8 +39,10 @@ import { extractTenderRequirements, toTenderFields, type ExtractionModel, type T
 import { extractTenderRequirementsQwenAnthropic } from "../lib/ingestion/extract-requirements-qwen-anthropic";
 import { hasRealTextLayer } from "../lib/ingestion/text-layer";
 import { maxPagesForTier, chooseExtractionModel, describeExtractionRouting } from "../lib/ingestion/extraction-routing";
+import { sourceLanguageFor } from "../lib/ingestion/source-language";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import type { TenderRelevanceTier } from "../types/tender";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 /**
  * The tender's scale tag, which decides between qwen3.6-plus and
@@ -49,11 +51,18 @@ import type { TenderRelevanceTier } from "../types/tender";
  * a document offline. An unreachable tender routes as not-flagship, and
  * the log line below says so rather than implying the tag was checked.
  */
-async function lookUpTier(slug: string): Promise<TenderRelevanceTier | null> {
+async function lookUpTender(slug: string): Promise<{ tier: TenderRelevanceTier | null; country: string | null }> {
   const supabase = createSupabaseAdminClient();
-  if (!supabase) return null;
-  const { data } = await supabase.from("tenders").select("relevance_tier").eq("slug", slug).maybeSingle();
-  return (data?.relevance_tier ?? null) as TenderRelevanceTier | null;
+  if (!supabase) return { tier: null, country: null };
+  // `country` rides along on the lookup that was already happening: it picks
+  // the extraction prompt (Spanish vs Brazilian Portuguese), and an
+  // unreachable tender falls back to Spanish, which is what this CLI did
+  // before the prompt was split at all.
+  const { data } = await supabase.from("tenders").select("relevance_tier, country").eq("slug", slug).maybeSingle();
+  return {
+    tier: (data?.relevance_tier ?? null) as TenderRelevanceTier | null,
+    country: (data?.country ?? null) as string | null,
+  };
 }
 
 async function writeToSupabase(
@@ -150,7 +159,7 @@ async function writeToSupabase(
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const positional = args.filter((a) => !a.startsWith("--"));
   const [pdfPath, tenderSlug] = positional;
 
@@ -171,10 +180,16 @@ async function main() {
   }
 
   const intake = await intakeDocument(pdfPath);
+  // Hoisted above the --precise branch, which used to skip this lookup
+  // entirely: the tier only affects routing, which --precise overrides, but
+  // the COUNTRY picks the prompt, and --precise needs the right one as much
+  // as any other path does.
+  const tender = await lookUpTender(tenderSlug);
   const context = {
     tenderNumber: intake.tenderNumber ?? tenderSlug,
     title: intake.fileName,
     buyer: "",
+    sourceLanguage: sourceLanguageFor(tender.country),
   };
 
   let model: ExtractionModel;
@@ -185,7 +200,7 @@ async function main() {
     extraction = await extractTenderRequirements(pdfPath, context, model);
   } else {
     const hasText = await hasRealTextLayer(pdfPath);
-    const tier = await lookUpTier(tenderSlug);
+    const tier = tender.tier;
     model = chooseExtractionModel(hasText, tier);
     console.log(
       `Document: ${intake.fileName} (${intake.documentType}), tender number in text: ${intake.tenderNumber ?? "not found"}, model: ${model} (auto — ${hasText ? "has a real text layer" : "no real text layer (scanned)"}, ${describeExtractionRouting(hasText, tier)})`,

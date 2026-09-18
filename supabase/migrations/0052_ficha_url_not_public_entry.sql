@@ -1,0 +1,24 @@
+-- Reverses 0049 for Peru, and says why, because this column's comment has now
+-- been wrong in both directions and the reason is the useful part.
+--
+-- 0048 stored the pasted ficha link as an admin-side convenience. 0049 made it
+-- the public 官方入口 as well, on the user's instruction the same day
+-- (2026-09-15) — the complaint being that our official link was only the
+-- platform's search page, never the tender itself.
+--
+-- That worked when tested and stopped working afterwards. Reported 2026-09-18:
+-- 这些链接都是我手动加的，加的时候能用，但是现在再点击用不了. SEACE's
+-- fichaSeleccion page is keyed on server-side session state — the UUID in the
+-- URL resolves only for a browser that reached it through the buscador in the
+-- same session. So the link works for the admin pasting it and is a blank form
+-- for every reader after, which is worse than the search page it replaced.
+--
+-- The tenders' source_url is put back by scripts/fix-peru-ficha-source-urls.ts,
+-- and app/api/admin/tenders/[slug]/cronograma/route.ts no longer performs the
+-- copy for a SEACE ficha link. Mexico's Proyectos Estratégicos links are
+-- unaffected: that portal's `#/` routes resolve client-side and deep-link.
+--
+-- Nothing to migrate here either: ficha_url keeps its value, which is still a
+-- true record of where a pasted cronograma was read from.
+comment on column tenders.ficha_url is
+  'Deep link to this tender''s page on the source portal, entered by an admin alongside a pasted cronograma; the record of where that schedule was read from. Copied into source_url only when it is a link a reader can actually open — NOT for SEACE fichaSeleccion URLs, which resolve only inside the session that created them (see lib/peru-seace-url.ts).';

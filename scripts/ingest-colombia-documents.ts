@@ -33,6 +33,7 @@ import {
   isPreAwardDocument,
 } from "../lib/ingestion/connectors/colombia-documents-connector";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -41,7 +42,7 @@ function argValue(args: string[], flag: string): string | undefined {
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const procesoId = argValue(args, "--proceso");
   const tenderSlug = argValue(args, "--tender-slug");
   const outDir = argValue(args, "--out") ?? join("downloads", "colombia", tenderSlug ?? procesoId ?? "unknown");

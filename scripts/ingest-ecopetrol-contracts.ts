@@ -18,6 +18,7 @@ import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
 import { filterRecentTenders } from "../lib/ingestion/recency";
 import type { Tender } from "../types/tender";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SOURCE_NAME = "Ecopetrol — Contratación asignada a la fecha";
@@ -49,7 +50,7 @@ function argValue(args: string[], flag: string): string | undefined {
 async function main() {
   const args = process.argv.slice(2);
   const useFixture = args.includes("--fixture");
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const filePath = args.find((a, i) => !a.startsWith("--") && args[i - 1] !== "--sheet" && args[i - 1] !== "--months");
   const sheet = argValue(args, "--sheet");
   // One month, not six. The six-month default was the widest window in the

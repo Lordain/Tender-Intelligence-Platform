@@ -15,6 +15,7 @@ import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
 import { filterRecentTenders } from "../lib/ingestion/recency";
 import type { Tender } from "../types/tender";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SOURCE_NAME = "SECOP II — Colombia Compra Eficiente";
@@ -38,7 +39,7 @@ async function upsertTenders(tenders: Tender[]) {
 async function main() {
   const args = process.argv.slice(2);
   const useFixture = args.includes("--fixture");
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const filePath = args.find((a) => !a.startsWith("--"));
   const monthsIdx = args.indexOf("--months");
   const months = monthsIdx >= 0 ? Number(args[monthsIdx + 1]) : 6;

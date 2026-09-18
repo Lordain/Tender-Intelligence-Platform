@@ -15,13 +15,14 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, basename } from "node:path";
 import { importNewTenders } from "../lib/ingestion/import-new-tenders";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 async function main() {
   const args = process.argv.slice(2);
   const useFixture = args.includes("--fixture");
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const filePath = args.find((a) => !a.startsWith("--"));
   const monthsIdx = args.indexOf("--months");
   const months = monthsIdx >= 0 ? Number(args[monthsIdx + 1]) : 6;

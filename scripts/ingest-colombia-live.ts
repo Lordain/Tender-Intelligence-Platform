@@ -14,6 +14,7 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ingestColombia } from "../lib/ingestion/ingest-colombia";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 function argNumber(args: string[], flag: string, fallback: number): number {
   const idx = args.indexOf(flag);
@@ -22,7 +23,7 @@ function argNumber(args: string[], flag: string, fallback: number): number {
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const fetchDocuments = args.includes("--fetch-documents");
   // One month, not six. The six-month default was the widest window in the
   // codebase and the only one a caller got by saying nothing — the admin

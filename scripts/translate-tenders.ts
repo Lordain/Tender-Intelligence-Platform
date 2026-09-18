@@ -26,6 +26,7 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { translateAllTenders } from "../lib/ingestion/translate-all-tenders";
 import { findDroppedIdentifiers } from "../lib/ingestion/translate-titles";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -34,7 +35,7 @@ function argValue(args: string[], flag: string): string | undefined {
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const limitArg = argValue(args, "--limit");
   const limit = limitArg ? Number(limitArg) : undefined;
   const sampleArg = argValue(args, "--sample");
@@ -65,6 +66,13 @@ async function main() {
 
   console.log(`${result.untranslatedCount} of ${result.totalNonExcluded} non-excluded tenders still need translation.`);
   console.log(`Translating ${result.attemptedCount}...`);
+  // Which prompt each row is going through. Two prompts run here now
+  // (Spanish and Brazilian Portuguese) and only the Spanish one has seen
+  // real rows, so a run that silently sends Brazilian text through the
+  // Spanish prompt is the failure worth being able to see at a glance.
+  if (result.attemptedByLanguage.length > 0) {
+    console.log(`  按原文语种：${result.attemptedByLanguage.map((r) => `${r.label} ${r.count} 条`).join("、")}`);
+  }
 
   if (!shouldWrite) {
     if (result.preview) {

@@ -30,6 +30,7 @@ import { readPemexAttachmentsFile, downloadPemexDocument } from "../lib/ingestio
 import { detectDocumentType } from "../lib/ingestion/document-intake";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { slugify } from "../lib/ingestion/text-utils";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const PEMEX_SITE_ORIGIN = "https://www.pemex.com";
 
@@ -130,7 +131,7 @@ async function record(entries: ReturnType<typeof readPemexAttachmentsFile>, shou
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const shouldDownload = args.includes("--download");
   const filePath = args.find((a) => !a.startsWith("--"));
   const outDir = argValue(args, "--out") ?? join("downloads", "pemex");

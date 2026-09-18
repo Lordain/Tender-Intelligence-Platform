@@ -31,10 +31,11 @@
  *   npm run purge:analytics -- --all --write         (everything)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.split("=").slice(1).join("=") ?? "";
-const WRITE = args.includes("--write");
+const WRITE = hasWriteFlag();
 const ALL = args.includes("--all");
 const BEFORE = flag("before");
 

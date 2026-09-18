@@ -21,11 +21,12 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { CFE_BUYER_PATTERN, CFE_MICROSITIO_URL } from "../lib/ingestion/heuristics";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const DOF_SOURCE_NAMES = ["Diario Oficial de la Federación (DOF)", "Diario Oficial de la Federación (DOF) — búsqueda avanzada"];
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

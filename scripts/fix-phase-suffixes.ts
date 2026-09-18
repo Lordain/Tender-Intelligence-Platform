@@ -28,6 +28,7 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { stripProcessPhaseSuffix } from "../lib/ingestion/colombia-mapper";
 import type { LocalizedText } from "../types/tender";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 type Row = {
   slug: string;
@@ -39,7 +40,7 @@ type Row = {
 const hand = (row: Row, field: string) => (row.manual_field_overrides ?? []).includes(field);
 
 async function main() {
-  const write = process.argv.includes("--write");
+  const write = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

@@ -130,7 +130,12 @@ export async function translateTenderBatchQwen(items: TenderToTranslate[]): Prom
  * reader a tender that is not the tender.
  */
 export function mapBatchResultsToSlugs(
-  items: TenderToTranslate[],
+  // Generic over the input shape rather than TenderToTranslate, because the
+  // Portuguese path (translate-titles-pt.ts) sends titlePt/summaryPt and
+  // shares this pairing logic — which reads nothing but `slug` and the array
+  // length. Two copies of the one function where a silent mistake is
+  // unreviewable would be the worst possible thing to duplicate.
+  items: { slug: string }[],
   results: { id: string; titleZh: string; summaryZh: string }[],
 ): TranslatedTender[] {
   const claimed = new Set<number>();

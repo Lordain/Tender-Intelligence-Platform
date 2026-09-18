@@ -10,9 +10,10 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { reclassifyTenders } from "../lib/ingestion/reclassify-tenders";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
@@ -30,7 +31,10 @@ async function main() {
     } else {
       console.log(`\nUpdated ${result.updatedCount} row(s), deleted ${result.deletedCount} newly-excluded row(s) in Supabase (${result.failedCount} failed).`);
       if (result.protectedSkippedCount > 0) {
-        console.log(`Left ${result.protectedSkippedCount} manually-protected row(s) untouched (see the "manually_protected" CSV column for which ones).`);
+        // "untouched" would be a lie: reclassifyTenders() deliberately still
+        // refreshes a locked row's industries. The 🔒 checkbox freezes the
+        // relevance TIER a human corrected, not the industry tag.
+        console.log(`Kept ${result.protectedSkippedCount} manually-protected row(s) at their locked tier — their industry tags still refreshed (see the "manually_protected" CSV column for which ones).`);
       }
     }
   } catch (err) {

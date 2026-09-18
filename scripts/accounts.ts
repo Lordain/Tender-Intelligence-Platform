@@ -31,10 +31,11 @@
  *   npm run accounts -- --delete=a@b.com,c@d.com --write      (actually deletes)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.split("=").slice(1).join("=") ?? "";
-const WRITE = args.includes("--write");
+const WRITE = hasWriteFlag();
 const DELETE_LIST = flag("delete")
   .split(",")
   .map((email) => email.trim().toLowerCase())

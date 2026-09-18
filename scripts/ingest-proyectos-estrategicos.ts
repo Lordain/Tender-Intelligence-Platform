@@ -15,10 +15,11 @@
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { importNewTenders } from "../lib/ingestion/import-new-tenders";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const filePath = args.find((a) => !a.startsWith("--"));
 
   if (!filePath) {

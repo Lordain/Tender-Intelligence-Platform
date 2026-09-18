@@ -1,4 +1,5 @@
 import type { Tender } from "@/types/tender";
+import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
 
 /**
  * How to find one tender's bid documents on the platform that holds them,
@@ -81,20 +82,41 @@ export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide |
   if (SEACE.test(origin)) {
     return {
       platform: "SEACE — Sistema Electrónico de Contrataciones del Estado",
-      // The only branch that carries its own link. A Peru tender's stored
-      // 官方入口 is whatever host OECE's own `sources[].url` names (prodapp2),
-      // while the path the user actually walked — and the one the ficha in
-      // their screenshot lives on — is prod2. Same system, and rather than
-      // guess which alias stays up, the verified one is spelled out here.
-      url: "https://prod2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml",
+      // The only branch that carries its own link, and the reason this guide
+      // matters more for Peru than anywhere else: a SEACE ficha URL cannot be
+      // shared at all (lib/peru-seace-url.ts), so these five steps are not a
+      // fallback for readers who lost the deep link — they ARE the route.
+      //
+      // One constant, because SEACE has moved its public route before and the
+      // old host survived here for months only by being written in four
+      // places.
+      url: SEACE_PUBLIC_SEARCH_URL,
       steps: [
         "打开 SEACE 公开检索页（下面的链接）",
-        "点击 Buscador de Procedimiento de Selección",
+        // "第二个" earns its place: the page lands on a different tab showing
+        // an empty table, and a reader who cannot find this one quickly reads
+        // that emptiness as a broken link. Naming the position gets them past
+        // it in one glance — which is all that was needed. An earlier version
+        // also described the landing tab and warned it was the wrong one;
+        // that was commentary inside a numbered instruction, and it explained
+        // a dead end the instruction already walks around.
+        "点击第二个标签 Buscador de Procedimientos de Selección",
         "点击 Búsqueda Avanzada",
         "把招标编号粘贴到 Sigla Nomenclatura",
         "点击 Buscar",
+        // Steps 6 and 7 come from the user walking the path on 2026-09-18
+        // after reading the panel as it shipped: 我发现步骤没有写全. Buscar
+        // does not move the viewport, so the results appear below the fold
+        // and the page looks unchanged to someone who does not scroll — the
+        // same "nothing happened" that the empty landing tab produces two
+        // steps earlier, and the same reason to spell it out.
+        "往下滚到页面下半部分的结果清单",
+        "点第一条记录最右边 Acciones 栏里的日历图标",
       ],
-      note: "进入项目的 Ficha de Selección 后，右边的 Cronograma 里有完整时间表——包括本站拿不到的交标截止日（Presentación de propuestas）。",
+      // Reworded with step 7: the schedule is reached by that calendar icon,
+      // so describing it as something found after entering the ficha named a
+      // route the reader was no longer on.
+      note: "第 7 步那个日历图标打开的就是 Cronograma——完整时间表，包括本站拿不到的交标截止日（Presentación de propuestas）。这个页面不要收藏：它的网址只在当前这次浏览会话里有效，下次打开是一张空表，得从检索页重新走一遍。",
     };
   }
 

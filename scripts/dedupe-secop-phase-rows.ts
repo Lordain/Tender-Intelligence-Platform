@@ -41,6 +41,7 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { stripProcessPhaseSuffix } from "../lib/ingestion/colombia-mapper";
 import { slugify } from "../lib/ingestion/text-utils";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 type Row = {
   slug: string;
@@ -52,7 +53,7 @@ type Row = {
 };
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     console.error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). See .env.example.");

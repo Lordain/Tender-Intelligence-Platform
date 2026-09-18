@@ -39,6 +39,7 @@
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const OUT_DIR = "exports";
 
@@ -53,7 +54,7 @@ function toCsv(headers: string[], rows: (string | number | null | undefined)[][]
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const beforeArg = args.find((a) => a.startsWith("--before="));
   const monthsArg = args.find((a) => a.startsWith("--months="));
 

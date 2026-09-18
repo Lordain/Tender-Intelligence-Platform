@@ -125,6 +125,19 @@ const cases: Case[] = [
     expect: ["transportation", "construction"],
     note: "The control for the stripper: it must remove the PLACE name without removing the real bridge in the same title. Puerto Boyacá goes; puente vehicular stays.",
   },
+
+  // --- a plain passenger car is a vehicle ---------------------------------
+  {
+    title: "ADQUISICIÓN DE AUTOMÓVIL TIPO SEDAN PARA LA COORDINACIÓN ESTATAL DEL SERVICIO NACIONAL DE EMPLEO",
+    expect: ["vehicles"],
+    note: "Real title (2026-09-18, per the user: 增加车辆). Carried no tag at all: the list had every kind of WORK vehicle — camión, camioneta, autobús, excavadora, grúa — and not the plain passenger car, which is the one word a government car order actually uses.",
+  },
+  {
+    title: "SERVICIO DE ASESORÍA JURÍDICA PARA LA ELABORACIÓN DEL AUTO DE APERTURA DEL PROCEDIMIENTO ADMINISTRATIVO",
+    expect: [],
+    reject: ["vehicles"],
+    note: "Why the vehicle pattern says automóvil and not a bare auto: in Spanish an `auto` is also a court ruling, and legal-services procurement says so in the title. A filter that answers a car query with a lawsuit is a filter people stop using.",
+  },
 ];
 
 let failures = 0;

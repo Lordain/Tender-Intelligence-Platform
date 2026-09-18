@@ -19,8 +19,9 @@
  *   npm run purge:manually-deleted -- --write
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
-const WRITE = process.argv.includes("--write");
+const WRITE = hasWriteFlag();
 const PAGE = 1000;
 /**
  * Slugs per `.in()` filter. That filter goes in the GET query string, and

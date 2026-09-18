@@ -22,6 +22,7 @@ import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { discoverComprasMxVigente } from "../lib/ingestion/discover-comprasmx-vigente";
 import { resolveComprasMxLinks } from "../lib/ingestion/resolve-comprasmx-links";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 /**
  * One month, matching Colombia's and the admin forms' own default.
@@ -35,7 +36,7 @@ import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 const DISCOVER_MONTHS = 1;
 
 async function main() {
-  const write = process.argv.includes("--write");
+  const write = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

@@ -35,6 +35,7 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { CRONOGRAMA_SOURCE_REFERENCES } from "../lib/ingestion/seace-cronograma";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 type TenderRow = {
   id: string;
@@ -58,7 +59,7 @@ function argValue(args: string[], flag: string): string | undefined {
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const country = argValue(args, "--country") ?? "Peru";
 
   const supabase = createSupabaseAdminClient();

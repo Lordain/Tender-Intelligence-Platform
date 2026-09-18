@@ -8,6 +8,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import type { TenderSourceLanguage } from "@/lib/ingestion/source-language";
 import type { TenderRequirement, TenderRisk } from "@/types/tender";
 import { extractDocumentText } from "@/lib/ingestion/document-intake";
 import { dispatcherForTimeout } from "@/lib/ingestion/http-dispatcher";
@@ -250,6 +251,31 @@ function isArrayField(field: unknown): boolean {
   return (field as { _zod?: { def?: { type?: string } } })?._zod?.def?.type === "array";
 }
 
+/**
+ * What the model needs to know to pick a prompt.
+ *
+ * `sourceLanguage` is threaded all the way down rather than read from a
+ * module-level variable because these functions are re-entered per chunk of
+ * a split PDF and per retry, and a document's language must not be able to
+ * change between two chunks of the same document.
+ */
+export type ExtractionPromptContext = { tenderNumber: string; sourceLanguage?: TenderSourceLanguage };
+
+/**
+ * The SPANISH-language prompt. Written for Compras MX and still carrying
+ * Mexican specifics (`carácter` of the procedure, contenido nacional), which
+ * Peru and Colombia documents also run through — a known, separate
+ * imprecision, not the one this split addresses.
+ *
+ * Brazil gets its own (SYSTEM_PROMPT_PT) rather than a line bolted onto this
+ * one, at the user's explicit instruction (2026-09-18: 标书分析需要加入葡语
+ * 部分，建议单独功能，不要和西班牙语混淆). The reason it has to be a separate
+ * prompt and not a conditional sentence: nearly every concrete instruction
+ * here names a Spanish-language artefact that has no Brazilian counterpart —
+ * Convocatoria, Anexo Técnico, the three `carácter` values. A Brazilian Edital
+ * read against them produces an extraction that cites sections the document
+ * does not have.
+ */
 export const SYSTEM_PROMPT = `You are extracting bid-qualification information from a real Mexican government tender document (Convocatoria, Anexo Técnico, or similar) for a platform that helps Chinese enterprises decide whether to bid.
 
 Ground rules:
@@ -323,6 +349,82 @@ function parseContextOverflow(err: unknown): { actualTokens: number; maxTokens: 
 // title/description came back in Spanish, not Chinese, despite
 // SYSTEM_PROMPT already saying so once, further up the combined prompt.
 export const JSON_SHAPE_INSTRUCTIONS = `Respond with ONLY a JSON object matching {"oneLineSummary": "...", "qualifications": [...], "experienceRequirements": [...], "requiredDocuments": [...], "risks": [...], "relevanceAssessment": {...}} — no prose, no markdown fences. "oneLineSummary" and the four array keys are required even when a category is empty — use [] for qualifications/experienceRequirements/requiredDocuments/risks, never omit a key. "oneLineSummary" is one or two Chinese sentences, at most 100 characters, stating what this tender/project concretely is (not a category label, not a boilerplate opener). Each requirement item is {"title", "description", "mandatory", "sourceReference"}; each risk item is {"level", "title", "description", "sourceReference"} with level one of "low"/"medium"/"high"/"critical". "relevanceAssessment" is {"participationScope": "national"|"international_treaty"|"international_open"|null, "suggestedTier": "flagship"|"significant"|"standard"|"excluded", "reasoning": "..."} — include it when you can support it from the document; omit the key entirely rather than guessing if you genuinely cannot. Inside a string value, never use an unescaped ASCII double quote — to quote a Spanish proper noun inside Chinese text use 「」 or no quotes at all (建设 BRAMONAS 2 堤防, not 建设"BRAMONAS 2"堤防). An unescaped quote ends the string early and the whole response is discarded. Every "oneLineSummary"/"title"/"description"/"reasoning" value MUST be written in Chinese (中文) — never Spanish or English, even though the source document is in Spanish.`;
+
+/**
+ * The BRAZILIAN PORTUGUESE prompt.
+ *
+ * Not a translation of the Spanish one. The four things it has to get right
+ * that the Spanish prompt cannot say at all:
+ *
+ *  1. The document names. A Brazilian procurement publishes an Edital with a
+ *     Termo de Referência or Projeto Básico annexed, plus a Planilha
+ *     Orçamentária and a Minuta de Contrato. "Convocatoria" and "Anexo
+ *     Técnico" do not exist, so a prompt naming them invites invented
+ *     citations.
+ *  2. Where the qualification requirements live. Lei 14.133 art. 62-67 fixes
+ *     four habilitação headings, and every real requirement sits under one of
+ *     them. Naming them turns extraction into lookup.
+ *  3. The atestado de capacidade técnica, registered as a CAT at CREA/CAU.
+ *     This is the single requirement most likely to decide whether a Chinese
+ *     firm can bid at all — experience must be registered with a Brazilian
+ *     professional council — and it is exactly the kind of thing a generic
+ *     prompt records as an ordinary "experience requirement" without noting
+ *     that it cannot be satisfied with foreign project history alone.
+ *  4. participationScope. The enum was designed around Mexico's three
+ *     `carácter` values and does not map onto Brazil, so the prompt says so
+ *     in the model's own terms rather than leaving it to guess — including
+ *     that `international_treaty` essentially never applies, since Brazil is
+ *     not a party to the WTO GPA.
+ *
+ * NOT LIVE-TESTED against a real Edital. The plumbing is the same path the
+ * Spanish prompt has run on for weeks; this text has not been through a
+ * document. Read the first Brazilian extraction field by field against the
+ * PDF before trusting a batch.
+ */
+export const SYSTEM_PROMPT_PT = `You are extracting bid-qualification information from a real Brazilian government tender document (Edital, Termo de Referência, Projeto Básico, or an annex to one) for a platform that helps Chinese enterprises decide whether to bid.
+
+The document is in Brazilian Portuguese, not Spanish. Brazilian procurement runs under Lei 14.133/2021 (or, for older procedures, Lei 8.666/1993), which structures these documents differently from the Spanish-language systems elsewhere in Latin America.
+
+Ground rules:
+- Extract only what THIS document actually says. Never infer, generalize, or fill in a plausible-sounding requirement that isn't stated.
+- Every item needs a sourceReference citing where it came from — a Brazilian Edital is numbered throughout, so cite the item number as written ("item 9.3.2", "subitem 11.4", "Anexo I, item 5") and/or the page. An item you cannot cite, you cannot include.
+- These documents are long and mostly procedural boilerplate: the same statutory citations (Lei 14.133/2021, LC 123/2006, IN SEGES) appear in nearly every Edital. Extract only tender-specific, actionable content — skip generic restatements of the procurement law itself.
+- The qualification requirements are almost always under the habilitação headings. Look there first and keep the document's own structure: habilitação jurídica (constitutive documents, CNPJ), regularidade fiscal, social e trabalhista (CND federal/estadual/municipal, FGTS, CNDT), qualificação econômico-financeira (balanço patrimonial, índices de liquidez and the exact thresholds, capital social or patrimônio líquido mínimo, certidão negativa de falência, garantia de proposta), and qualificação técnica (atestados de capacidade técnica, registro no CREA/CAU, responsável técnico, visita técnica or declaração de dispensa de visita).
+- An atestado de capacidade técnica registered as a CAT with CREA or CAU is a qualification a foreign bidder cannot satisfy with foreign project history alone — it requires experience registered with a Brazilian professional council, usually through a locally registered responsável técnico. Whenever the document requires one, record it under experienceRequirements AND state the quantitative parcela de maior relevância it demands (the minimum quantities, e.g. m² of pavement, m³ of concrete, km of network), because that quantity is what decides whether a firm qualifies.
+- Record any requirement that restricts who may bid, in its own words: participação exclusiva de ME/EPP (LC 123/2006 art. 48), cota reservada, margem de preferência for national products, consórcio permitted or forbidden and its composition rules, subcontratação limits, registro/inscrição no SICAF, and any requirement for a representante legal or filial in Brazil.
+- Record the contracting regime as stated — empreitada por preço global, empreitada por preço unitário, contratação integrada, contratação semi-integrada — and, if the document says so, whether it is a registro de preços (the published value is a ceiling for the period, not a committed quantity).
+- All title/description fields must be written directly in Chinese (zh), concise and close to the document's own terms — do not copy multi-sentence legal paragraphs verbatim, and do not write a placeholder.
+- You may be given a block headed 本平台已对该项目使用的中文写法 — the tender's title, summary and any earlier one-line summary, as this platform ALREADY displays them. It is reference vocabulary, never a source to extract from. Reuse its renderings of proper nouns — município and state names, agency names, river and project names — exactly as written there, and do not re-transliterate any name that appears in it. One tender showing two spellings of one município reads as two different places to a customer. For a name that appears NOWHERE in that block, transliterate it as you normally would.
+- Brazilian numbers use "." for thousands and "," for decimals: "R$ 2.812.092,09" is roughly 2.8 million reais. Read every value that way; misreading one as a decimal point understates it by a factor of a million.
+- If a section is genuinely absent from this document (e.g. the Projeto Básico is a separate annex that was not provided), return an empty array for the corresponding field rather than guessing.
+- Never write an unescaped ASCII double quote inside a value. To quote a Portuguese proper noun inside a Chinese sentence use 「」 or no quotes at all — 建设 ELÓI MENDES 教育楼, not 建设"ELÓI MENDES"教育楼.
+
+Also provide "oneLineSummary": one or two Chinese sentences, at most 100 characters, stating what this tender/project concretely IS — not a category label, not a boilerplate opener. See the schema field description for examples.
+
+Additionally, provide a "relevanceAssessment": this tender was already given a rough priority tier from its TITLE ALONE before anyone had read the actual document — you have now read the real thing, so give your own independent, grounded assessment of participationScope and suggestedTier, citing concrete content in your reasoning rather than a generic template.
+
+participationScope in a Brazilian document, specifically. The schema's three values were defined for a different country's procurement law, so map them as follows and do not read the schema's own Spanish-language descriptions as if they applied here:
+- "national" — the document effectively closes the procedure to a foreign bidder: participação exclusiva de ME/EPP, a requirement to be a Brazilian-registered company or to hold registrations only a domestic firm can hold, or an equivalent restriction. Brazilian law does NOT generally bar foreign bidders, so use this only where the document states a real restriction, not merely because it is silent about foreigners.
+- "international_open" — the document states it is a licitação internacional, or otherwise expressly admits empresas estrangeiras (typically requiring a representante legal no Brasil and documents consularized or apostilled, plus a sworn translation). Those conditions are participation requirements to record, not a reason to call it national.
+- "international_treaty" — essentially does not occur in Brazil, which is not a party to the WTO Government Procurement Agreement. Do not use it unless this document literally restricts participation to bidders from countries covered by a named treaty.
+- null — the document genuinely never addresses who may participate. This is the normal answer for an ordinary municipal Edital, and it is a better answer than a guess.`;
+
+/** Same JSON contract as the Spanish path, with the two sentences that name the source language corrected. A copy rather than a template because the last line's redundancy is deliberate (see the comment above JSON_SHAPE_INSTRUCTIONS) and a template would invite editing one and not the other. */
+export const JSON_SHAPE_INSTRUCTIONS_PT = JSON_SHAPE_INSTRUCTIONS
+  .replace(
+    'to quote a Spanish proper noun inside Chinese text use 「」 or no quotes at all (建设 BRAMONAS 2 堤防, not 建设"BRAMONAS 2"堤防)',
+    'to quote a Portuguese proper noun inside Chinese text use 「」 or no quotes at all (建设 ELÓI MENDES 教育楼, not 建设"ELÓI MENDES"教育楼)',
+  )
+  .replace("even though the source document is in Spanish.", "even though the source document is in Portuguese.");
+
+/** Defaults to Spanish for an absent language, which is both the overwhelmingly likely answer and the behaviour every caller had before this existed. */
+export function systemPromptFor(language: TenderSourceLanguage | undefined): string {
+  return language === "pt" ? SYSTEM_PROMPT_PT : SYSTEM_PROMPT;
+}
+
+export function jsonShapeInstructionsFor(language: TenderSourceLanguage | undefined): string {
+  return language === "pt" ? JSON_SHAPE_INSTRUCTIONS_PT : JSON_SHAPE_INSTRUCTIONS;
+}
 
 /** Pulls the first JSON object out of a text response — tolerates a model wrapping it in a ```json fence or prose despite instructions not to, rather than requiring an exact match. */
 /**
@@ -576,7 +678,7 @@ async function runExtraction(
   client: Anthropic,
   model: ExtractionModel,
   content: ExtractionContent,
-  context: { tenderNumber: string },
+  context: ExtractionPromptContext,
   useStructuredOutput: boolean,
   /** Only used to size the request timeout — see requestOptions(). */
   maxPages?: number,
@@ -597,7 +699,7 @@ async function runExtractionOnce(
   client: Anthropic,
   model: ExtractionModel,
   content: ExtractionContent,
-  context: { tenderNumber: string },
+  context: ExtractionPromptContext,
   useStructuredOutput: boolean,
   maxPages?: number,
 ) {
@@ -608,7 +710,7 @@ async function runExtractionOnce(
           {
             model,
             max_tokens: 16000,
-            system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+            system: [{ type: "text", text: systemPromptFor(context.sourceLanguage), cache_control: { type: "ephemeral" } }],
             messages: [{ role: "user", content }],
             output_config: { format: zodOutputFormat(ExtractionSchema) },
           },
@@ -644,7 +746,7 @@ async function runExtractionOnce(
         {
           model,
           max_tokens: 16000,
-          system: [{ type: "text", text: `${SYSTEM_PROMPT}\n\n${JSON_SHAPE_INSTRUCTIONS}`, cache_control: { type: "ephemeral" } }],
+          system: [{ type: "text", text: `${systemPromptFor(context.sourceLanguage)}\n\n${jsonShapeInstructionsFor(context.sourceLanguage)}`, cache_control: { type: "ephemeral" } }],
           messages: [{ role: "user", content }],
         },
         requestOptions(maxPages),
@@ -700,7 +802,7 @@ async function runTextExtractionWithOverflowRetry(
   model: ExtractionModel,
   instruction: string,
   documentText: string,
-  context: { tenderNumber: string },
+  context: ExtractionPromptContext,
   useStructuredOutput: boolean,
   maxPages?: number,
 ) {
@@ -773,7 +875,7 @@ async function runChunkedPdfExtraction(
   model: ExtractionModel,
   filePath: string,
   instruction: string,
-  context: { tenderNumber: string },
+  context: ExtractionPromptContext,
   useStructuredOutput: boolean,
   maxPages?: number,
   onWarning?: (message: string) => void,
@@ -864,6 +966,12 @@ export async function extractTenderRequirements(
     tenderNumber: string;
     title: string;
     buyer: string;
+    /**
+     * Which prompt to extract with — sourceLanguageFor(tender.country).
+     * Optional, defaulting to Spanish, so the offline comparison scripts
+     * that predate it keep working unchanged.
+     */
+    sourceLanguage?: TenderSourceLanguage;
     /**
      * Chinese this platform ALREADY shows for this tender — its title, its
      * summary, and any one-line summary a previous analysis wrote.

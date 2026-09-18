@@ -46,6 +46,7 @@ import { intakeDocument } from "@/lib/ingestion/document-intake";
 import { hasRealTextLayer } from "@/lib/ingestion/text-layer";
 import { SYSTEMATIC_FAILURE_PREFIX, classifyExtractionFailure } from "@/lib/ingestion/extraction-failure";
 import { maxPagesForTier, chooseExtractionModel } from "@/lib/ingestion/extraction-routing";
+import { sourceLanguageFor } from "@/lib/ingestion/source-language";
 import type { TenderRelevanceTier } from "@/types/tender";
 import {
   extractTenderRequirements,
@@ -124,13 +125,19 @@ export async function analyzeUploadedDocument(
     // slug burned every model call in the upload first.
     const { data: tender, error: tenderError } = await supabase
       .from("tenders")
-      .select("id, title, summary, one_line_summary, source_name, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
+      .select("id, title, summary, one_line_summary, source_name, country, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
       .eq("slug", tenderSlug)
       .maybeSingle();
     if (tenderError || !tender) {
       throw new Error(`No ingested tender found for slug "${tenderSlug}": ${tenderError?.message ?? "not found"}`);
     }
     const tenderId = tender.id as string;
+    // Which extraction prompt this tender's documents need. A Brazilian
+    // Edital run through the Spanish prompt is asked to cite a Convocatoria
+    // and an Anexo Técnico — sections it does not have — and the resulting
+    // extraction reads perfectly well while citing nothing real. See
+    // lib/ingestion/source-language.ts.
+    const sourceLanguage = sourceLanguageFor(tender.country as string | null);
     const relevanceTier = (tender.relevance_tier ?? null) as TenderRelevanceTier | null;
     // The tender's own Chinese title, handed to the extraction so its
     // oneLineSummary can REUSE the proper nouns the site already shows
@@ -185,7 +192,7 @@ export async function analyzeUploadedDocument(
         // option was removed from this upload flow per the user's explicit
         // request (2026-09-04); extract-tender-document.ts's CLI --precise
         // flag is a separate code path and is unaffected.
-        const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: titleForModel, buyer: "", existingChineseText };
+        const context = { tenderNumber: intake.tenderNumber ?? tenderSlug, title: titleForModel, buyer: "", existingChineseText, sourceLanguage };
         const hasText = await hasRealTextLayer(tempPath);
         const model: ExtractionModel = chooseExtractionModel(hasText, relevanceTier);
         // Only the first N pages are read, N by tier — real tenders reach

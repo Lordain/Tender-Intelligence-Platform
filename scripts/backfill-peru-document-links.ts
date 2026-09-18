@@ -18,6 +18,7 @@
  */
 import { backfillPeruDocumentLinks } from "../lib/ingestion/ingest-peru";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -26,7 +27,7 @@ function argValue(args: string[], flag: string): string | undefined {
 
 async function main() {
   const args = process.argv.slice(2);
-  const write = args.includes("--write");
+  const write = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (write && !supabase) {

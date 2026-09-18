@@ -371,7 +371,15 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // name the machines directly, and without a matching tag here such a
   // tender still falls to the no-industry/no-value exclusion — the
   // whitelist entry would match and change nothing.
-  ["vehicles", /veh[íi]culo(s)?|vehs\.?\b|cami[óo]n(es)?\b|autob[úu]s(es)?|maquinaria pesada|(retro)?excavadora(s)?|gr[úu]a(s)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?/i],
+  // "automóvil"/"sedán" added 2026-09-18 (user: 增加车辆) — "ADQUISICIÓN DE
+  // AUTOMÓVIL TIPO SEDAN PARA LA COORDINACIÓN ESTATAL DEL SERVICIO NACIONAL DE
+  // EMPLEO" carried no tag at all. The list had every kind of work vehicle
+  // (camión, camioneta, autobús, excavadora, grúa) and not the plain passenger
+  // car, which is the one word a government car order actually uses.
+  // Deliberately not bare "auto": in Spanish that is also a court ruling
+  // ("auto judicial", "auto de apertura"), which appears in real procurement
+  // text for legal services.
+  ["vehicles", /veh[íi]culo(s)?|vehs\.?\b|autom[óo]vil(es)?|\bsed[áa]n(es)?\b|cami[óo]n(es)?\b|autob[úu]s(es)?|maquinaria pesada|(retro)?excavadora(s)?|gr[úu]a(s)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?/i],
 ];
 
 /**

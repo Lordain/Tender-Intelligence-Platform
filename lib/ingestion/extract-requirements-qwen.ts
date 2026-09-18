@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { extractDocumentText } from "@/lib/ingestion/document-intake";
-import { ExtractionSchema, JSON_SHAPE_INSTRUCTIONS, SYSTEM_PROMPT, normalizeRawExtraction, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
+import { ExtractionSchema, jsonShapeInstructionsFor, systemPromptFor, normalizeRawExtraction, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
+import type { TenderSourceLanguage } from "@/lib/ingestion/source-language";
 
 /**
  * Cost-comparison alternative to extract-requirements.ts's Claude
@@ -36,14 +37,15 @@ import { ExtractionSchema, JSON_SHAPE_INSTRUCTIONS, SYSTEM_PROMPT, normalizeRawE
  * capability — factor this in when reading compare:extraction's output,
  * don't just compare the three columns as if they saw the same input.
  *
- * Same ExtractionSchema/SYSTEM_PROMPT as the Claude path.
+ * Same ExtractionSchema and same per-language prompt selection as the
+ * Claude path (systemPromptFor / jsonShapeInstructionsFor).
  *
  * NOT LIVE-TESTED — no DASHSCOPE_API_KEY configured yet (2026-09-03). Run
  * `npm run compare:extraction <file.pdf>` once a key is added.
  */
 export async function extractTenderRequirementsQwen(
   filePath: string,
-  context: { tenderNumber: string; title: string; buyer: string },
+  context: { tenderNumber: string; title: string; buyer: string; sourceLanguage?: TenderSourceLanguage },
 ): Promise<TenderExtraction> {
   const client = new OpenAI({
     apiKey: process.env.DASHSCOPE_API_KEY,
@@ -64,7 +66,7 @@ export async function extractTenderRequirementsQwen(
         // only ever fail validation or (post-normalizeRawExtraction) come
         // back with an empty schedule. A provider comparison is only
         // meaningful if every provider is asked the same question.
-        content: `${SYSTEM_PROMPT}\n\n${JSON_SHAPE_INSTRUCTIONS}`,
+        content: `${systemPromptFor(context.sourceLanguage)}\n\n${jsonShapeInstructionsFor(context.sourceLanguage)}`,
       },
       {
         role: "user",

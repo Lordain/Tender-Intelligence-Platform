@@ -17,9 +17,10 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { resolveComprasMxLinks } from "../lib/ingestion/resolve-comprasmx-links";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

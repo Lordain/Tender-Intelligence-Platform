@@ -24,6 +24,7 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import type { LocalizedText } from "../types/tender";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 type Row = {
   slug: string;
@@ -44,7 +45,7 @@ function slugArgs(args: string[]): string[] {
 
 async function main() {
   const args = process.argv.slice(2);
-  const write = args.includes("--write");
+  const write = hasWriteFlag();
   const all = args.includes("--all");
   const slugs = slugArgs(args);
 

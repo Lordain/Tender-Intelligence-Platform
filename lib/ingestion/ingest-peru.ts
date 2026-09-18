@@ -45,6 +45,22 @@ export type PeruIngestResult = {
    * lib/ingestion/document-links.ts.
    */
   documentLinks?: { tenders: number; links: number };
+  /**
+   * Source rows that arrived carrying a tender number another row in the same
+   * fetch already used, so they collapse onto one slug.
+   *
+   * Reported rather than quietly deduplicated, because this is a fact about
+   * the SOURCE and it has to reach a human. Surfaced 2026-09-18 when
+   * ProInversión's OxI export returned CONV20262760 twice — visible only as a
+   * React duplicate-key warning in the browser console, which is not where
+   * "the government portal published two different projects under one code"
+   * belongs. upsert-tenders.ts does collapse them on write (newest publication
+   * date wins), and that is the right call for a source that republishes one
+   * procurement — but wrong, and silent, if the two rows are genuinely two
+   * different projects, which is exactly what Colombia's LP-006-2026 turned
+   * out to be. So the import says so and leaves the judgement to a person.
+   */
+  duplicateTenderNumbers?: { slug: string; tenderNumber: string; count: number }[];
   sample: Tender[];
 };
 
@@ -63,6 +79,26 @@ export type PeruIngestOptions = {
   preview?: boolean;
 };
 
+/**
+ * Rows sharing a slug within one fetch — see duplicateTenderNumbers.
+ *
+ * Counted over EVERYTHING kept, excluded rows included: a duplicate code is a
+ * source defect whether or not either copy would have surfaced, and finding
+ * out about it only when the surviving copy happens to be interesting is how
+ * it stayed invisible until a React key warning surfaced it.
+ */
+function findDuplicateSlugs(kept: Tender[]): { slug: string; tenderNumber: string; count: number }[] {
+  const bySlug = new Map<string, Tender[]>();
+  for (const tender of kept) {
+    const held = bySlug.get(tender.slug);
+    if (held) held.push(tender);
+    else bySlug.set(tender.slug, [tender]);
+  }
+  return [...bySlug.entries()]
+    .filter(([, group]) => group.length > 1)
+    .map(([slug, group]) => ({ slug, tenderNumber: group[0].tenderNumber, count: group.length }));
+}
+
 function summarize(
   source: "oece" | "oxi",
   fetchedCount: number,
@@ -72,6 +108,7 @@ function summarize(
 ): PeruIngestResult {
   const tierCounts: Record<TenderRelevanceTier, number> = { flagship: 0, significant: 0, standard: 0, excluded: 0 };
   for (const tender of kept) tierCounts[tender.relevance.tier] += 1;
+  const duplicates = findDuplicateSlugs(kept);
   return {
     source,
     fetchedCount,
@@ -82,6 +119,7 @@ function summarize(
     segments: options.segments,
     write: options.write,
     ...(options.preview ? { preview: kept } : {}),
+    ...(duplicates.length > 0 ? { duplicateTenderNumbers: duplicates } : {}),
     // Ranked so the preview shows what is actually worth looking at, not
     // whichever rows the source happened to return first.
     sample: kept

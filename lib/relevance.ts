@@ -1,6 +1,7 @@
 import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
+import { classifyPortugueseExclusion, classifyPortugueseIndustries, isBrazil, isPortugueseMunicipalSportsComponent } from "@/lib/relevance-pt";
 
 /**
  * Pre-Screening / relevance classification (rule-based, not AI — see
@@ -175,6 +176,18 @@ const EXCLUDE_KEYWORDS = [
 
   // Repair, refurbishment and upkeep of what already exists.
   /obras de reparaci[óo]n y rehabilitaci[óo]n|conservaci[óo]n de la malla vial|muro de contenci[óo]n|canal pluvial|obras diversas|art[íi]culos met[áa]licos/i,
+  // A one- or two-storey building with its toilets and connecting walkways —
+  // the smallest thing a municipality tenders as an "obra" (2026-09-18, per
+  // the user): "CONSTRUCCIÓN DE UN EDIFICIO DE DOS NIVELES, SANITARIOS,
+  // ANDADORES DE CONEXION, S...". Nothing in it says small except the storey
+  // count and the walkways, which is why it survived every scale rule and
+  // came out 常规项目.
+  //
+  // Keyed on the storey count being SPELLED OUT, and on "andadores", rather
+  // than on "edificio": a hospital block, a terminal building and a school
+  // are all edificios, and a title that bothers to say "de dos niveles" is
+  // describing something whose size is the point.
+  /\bedificio\s+de\s+(un|dos|1|2)\s+niveles?\b|\bandadores?\s+de\s+conexi[óo]n\b/i,
 
   // Colombian one-offs the user confirmed, each narrow on purpose.
   /interventor[íi]a|envase de vidrio|helic[óo]ptero|inhibidor de se[ñn]al|pintura termopl[áa]stica/i,
@@ -761,6 +774,42 @@ const MUNICIPAL_AMENITY_KEYWORDS = [
   /centro de integraci[óo]n social|centro vida\b|centro de bienestar animal|casa de la cultura|teatro al aire libre/i,
 ];
 
+/**
+ * Gate furniture — a turnstile, a boom or a sliding barrier at the entrance
+ * to a campus, a car park or a yard. 警卫室, in the user's words (2026-09-18).
+ *
+ * Checked BEFORE `hasIncludeOverride` and not bypassable by it, and that
+ * placement is the entire reason this is its own list rather than an
+ * EXCLUDE_KEYWORDS entry. The real title —
+ *
+ *   "CONTRATACIÓN DEL SERVICIO A TODO COSTO DEL ACONDICIONAMIENTO E
+ *    INSTALACIÓN DE EQUIPO DE CONTROL DE ACCESO CON BARRERA DESLIZANTE
+ *    (MOLINETE - TORNIQUETE) EN LA SEDE ACADÉMICA DE CCOYAHUACHO DE LA
+ *    UNIVERSIDAD NACIONAL JOSÉ MARÍA ARGUEDAS"
+ *
+ * — reached FLAGSHIP, the top tier, because "EQUIPO DE CONTROL DE ACCESO"
+ * matches INCLUDE_OVERRIDE_KEYWORDS' access-control-system pattern, and the
+ * override both waives every exclusion and lifts Peru's undisclosed-value
+ * gate. An exclusion anywhere below it would have changed nothing.
+ *
+ * The override itself stays as it is: it was written for a real class of
+ * purchase — biometric readers, vehicular access systems, campus-wide
+ * electronic control — that a Chinese manufacturer genuinely supplies, and
+ * the narrowing it already carries (a system/equipment qualifier, added
+ * 2026-09-04 against a janitorial contract) is still right. What this list
+ * says is narrower and does not contradict it: when the thing being installed
+ * IS the barrier, it is a gatehouse fitting, whatever the sentence around it
+ * calls it. A genuine "SISTEMA DE CONTROL DE ACCESO BIOMÉTRICO" names no
+ * barrier and is unaffected.
+ *
+ * Like the childcare and maintenance lists it sits beside, a real government
+ * national-priority designation still overrides it.
+ */
+const GATE_BARRIER_KEYWORDS = [
+  /\bmolinete(s)?\b|\btorniquete(s)?\b/i,
+  /\bbarrera(s)?\s+(deslizante(s)?|levadiza(s)?|vehicular(es)?)\b|\bpluma(s)?\s+vehicular(es)?\b/i,
+];
+
 const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
 
 /**
@@ -826,7 +875,15 @@ const RENEWAL_ONLY_KEYWORDS = [
   // Vehicle rental was already excluded by a narrower pattern; this covers
   // renting anything, including a commercial unit ("Arrendar a título
   // oneroso el local comercial").
-  /\barrendamiento\b|\barrendar\b/i,
+  // "alquiler" is the same word in Peru, and it needed the same non-bypassable
+  // placement for exactly the same reason (2026-09-18, per the user, 租赁):
+  // "SERVICIO DE ALQUILER Y PUESTA EN OPERACION DE GRUPO ELECTROGENO DE
+  // RESPALDO PARA EL SISTEMA ELECTRICO ORCOPAMPA - COTAHUASI" names a power
+  // system and a genset, so a bypassable rule would have been overridden.
+  // EXCLUDE_KEYWORDS' existing `alquiler de maquinaria` only covered plant
+  // hire by the hour. Renting equipment out is not a supply contract a
+  // foreign bidder can win, whatever the equipment is.
+  /\barrendamiento\b|\barrendar\b|\balquiler\b/i,
   /renovaci[óo]n del? licenciamiento|renovaci[óo]n de (la )?(suscripci[óo]n|licencia(s)?)|renovaci[óo]n de (la )?plataforma/i,
 ];
 
@@ -992,6 +1049,25 @@ const MAINTENANCE_ONLY_KEYWORDS = [
   // no-industry/no-value gate — which meant the same title WITH an
   // industry tag survived as a maintenance job.
   /\bmantenimiento\b|\bmtto\b|\bmantto\b|\bmto\b|servicio t[ée]cnico (preventivo|correctivo)/i,
+  // Fixing PARTS of a machine that is already installed and running — the
+  // same class as upkeep, in the words a repair order actually uses
+  // (2026-09-18, per the user, 电力维修): "CONTRATACIÓN DE SERVICIO DE
+  // REPARACIÓN DE PIEZAS MECÁNICAS DE TURBINA HIDRÁULICA FRANCIS DE LAS
+  // UNIDADES DE GENERACIÓN ... DE LA CENTRAL HIDROELÉCTRICA CÁCLIC". It named
+  // a hydro plant and its generating units and came out 常规项目; what is being
+  // bought is a repair of worn parts on machines commissioned decades ago,
+  // which needs the turbine's own OEM or a local workshop.
+  //
+  // Belongs in the non-bypassable list rather than EXCLUDE_KEYWORDS for the
+  // reason the whole list exists: anything named "central hidroeléctrica" or
+  // "unidades de generación" trips a power include-override, which would wave
+  // a bypassable exclusion away.
+  //
+  // Narrow on purpose — "reparación DE PIEZAS/PARTES/COMPONENTES", not bare
+  // "reparación". Rebuilding a structure ("REPARACIÓN DEL PUENTE ...") is a
+  // works contract and stays; MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT already
+  // handles capping those.
+  /\breparaci[óo]n\s+(de\s+)?(piezas|partes|componentes)\b/i,
 ];
 
 /**
@@ -1159,6 +1235,28 @@ const CONSTRUCTION_INPUT_GOODS = [
   // on the word 桥 inside its own product name. Narrow on purpose — building a
   // bridge is kept, buying a prefabricated span is not.
   /\bpuente(s)?\s+met[áa]lico(s)?\s+modular(es)?\b/i,
+  // Steel structures fabricated off site and erected — the same purchase as
+  // the modular span above, written out longhand (2026-09-18, per the user,
+  // 钢铁结构): "SERVICIO DE SUMINISTRO, FABRICACION, TRANSPORTE, MONTAJE Y
+  // LANZAMIENTO DE ESTRUCTURA METALICAS DEL PUENTE MANDOR, PARA LA OBRA:
+  // MEJORAMIENTO DE LA CARRETERA MARANURA - MANDOR - PAVAYOC". It came out
+  // 中型项目 on the highway named as the parent work; the contract is a
+  // steelwork package inside someone else's road project.
+  //
+  // Anchored on the supply verbs rather than matching "estructura metálica"
+  // anywhere, because an excluded row is never written to Supabase: a real
+  // building whose title merely mentions its steel frame has to survive, and
+  // the thing being described here is the fabricate-and-deliver scope.
+  /(suministro|fabricaci[óo]n|montaje|lanzamiento|habilitaci[óo]n)[^.]{0,90}\bestructuras?\s+met[áa]lica(s)?\b/i,
+  // Precast concrete units bought by the piece, with their dimensions in the
+  // title (2026-09-18, per the user): "ADQUISICIÓN DE PLACA DE CONCRETO
+  // ARMADO DE 15CM X 28CM X 2.40M PREFABRICADO PARA LA CONSTRUCCIÓN DEL CERCO
+  // PERIMÉTRICO ... DEL PROYECTO: MEJORAMIENTO Y AMPLIACIÓN DE LOS SERVICIOS
+  // DE SALUD ...". Same shape as the piedra chancada case added the same day:
+  // a catalogue order that reaches a high tier on the name of the hospital
+  // project it will be delivered to. `postes de concreto` was already
+  // excluded one list up; these are its siblings off the same casting yard.
+  /\b(placas?|paneles?|losas?|bloques?|adoquines?|viguetas?)\s+(de\s+)?(concreto|hormig[óo]n)\b/i,
 ];
 
 /**
@@ -1258,11 +1356,29 @@ const PRODUCTIVE_DEVELOPMENT_PROGRAMME = /cadena(s)? productiva(s)?|servicios? d
 const WORKS_CONTRACT_CONTEXT =
   /\b(obras?\s+(de|p[úu]blicas?)|construcci[óo]n|edificaci[óo]n|ejecuci[óo]n\s+de\s+(la\s+)?obra|llave en mano|epc)\b/i;
 
+/**
+ * The amenity exception's own floor — NOT FLAGSHIP_VALUE_USD, though it was
+ * spelled that way until 2026-09-18.
+ *
+ * The two numbers were both $6,000,000 and the exception simply borrowed the
+ * constant. They answer different questions: FLAGSHIP_VALUE_USD is "which
+ * tier does this belong in", while this is "is a municipal sports/park
+ * contract big enough to be real structural work a foreign contractor bids
+ * on" — the user's call on 2026-09-11, made on a COP 28bn ≈ USD 8.9M high-
+ * performance sports centre, against a USD 2.5M skating rink that stays out.
+ *
+ * Raising the flagship band to $10,000,000 for the new three-tier scheme
+ * would have dragged this to $10M with it and put that 8.9M centre back into
+ * the excluded pile — reversing an explicit decision as a side effect of an
+ * unrelated one. Separated here so each moves only when it is meant to.
+ */
+const LARGE_WORKS_BUILD_USD = 6_000_000;
+
 function isLargeWorksBuild(input: { scopeType: TenderScopeType; estimatedValue?: number; currency?: string }): boolean {
   if (input.scopeType !== "works") return false;
   if (input.estimatedValue === undefined) return false;
   const usd = convertToUsd(input.estimatedValue, input.currency);
-  return usd !== null && usd !== undefined && usd >= FLAGSHIP_VALUE_USD;
+  return usd !== null && usd !== undefined && usd >= LARGE_WORKS_BUILD_USD;
 }
 
 /**
@@ -1877,8 +1993,8 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
 // disclosed value alone is worth. Paired with MAJOR_PROJECT_KEYWORDS
 // below, which promotes to flagship on a keyword/duration match alone,
 // independent of value.
-const FLAGSHIP_VALUE_USD = 6_000_000;
-const SIGNIFICANT_VALUE_USD = 3_000_000;
+const FLAGSHIP_VALUE_USD = 10_000_000;
+const SIGNIFICANT_VALUE_USD = 5_000_000;
 
 /**
  * "大项目" (major-project) keyword signal — promotes straight to flagship
@@ -2058,7 +2174,56 @@ const SHORT_BRIDGE_METERS = 30;
  */
 const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru"]);
 
-const MIN_VALUE_USD = 800_000;
+const MIN_VALUE_USD = 1_000_000;
+
+/**
+ * Countries whose floor is not the platform default.
+ *
+ * Reintroduced 2026-09-18 for Brazil, from a measured 3-day sweep of PNCP
+ * rather than a feeling. At $800,000 the source produced 117 tenders in three
+ * days (~39/day), which the user judged too many against a stated target of
+ * 每天20条左右. The kept rows fell out like this:
+ *
+ *     35  $0.8M – $1.5M        28  $1.5M – $3M
+ *     17  $3M – $6M            23  $6M+          14  no amount
+ *
+ * so $3,000,000 is not an estimate — it is a band edge. It removes the first
+ * two rows, leaving 54 per three days, ~18/day.
+ *
+ * Why Brazil needs its own floor at all: PNCP is direct-administration
+ * procurement for 5,570 municipalities, so R$4.13M (the old floor) is an
+ * ordinary small-town contract there in a way it is not in Peru or Colombia.
+ * The same number means different things in different procurement systems,
+ * which is the entire reason this map exists.
+ *
+ * Set to $2,000,000 on 2026-09-18, a few hours after $3,000,000, when the
+ * user rewrote all three bands rather than just the floor:
+ *
+ *     Brazil   常规 $2M–$5M   中型 $5M–$10M   大型 $10M+
+ *     其他     常规 $1M–$5M   中型 $5M–$10M   大型 $10M+
+ *
+ * $3M had collided with SIGNIFICANT_VALUE_USD and left Brazil with no
+ * standard band at all; $2M restores one and costs roughly 24/day against
+ * 18/day, which the new scheme accepts deliberately.
+ */
+const MIN_VALUE_USD_BY_COUNTRY: Record<string, number> = {
+  Brazil: 2_000_000,
+};
+
+/**
+ * The floor this tender is judged against.
+ *
+ * One function because `input.country` reaching it is the whole risk: this
+ * codebase has already shipped a bug where a row got one tier from an import
+ * and another from a reclassify because the two disagreed about what was
+ * passed (the 193 → 486 jump of 2026-09-08). `country` is a REQUIRED field on
+ * ClassifyRelevanceInput for that reason — tsc, not production, is what tells
+ * a call site it forgot.
+ */
+function minValueUsdFor(country: string | undefined): number {
+  if (country === undefined) return MIN_VALUE_USD;
+  return MIN_VALUE_USD_BY_COUNTRY[country] ?? MIN_VALUE_USD;
+}
 
 // zh tier names renamed 2026-09-05 per explicit user request
 // ("重点项目"->"中型项目", "旗舰项目"->"大型项目") — see the same-day comment
@@ -2211,7 +2376,7 @@ export function isDirectAward(procedureType: string | undefined): boolean {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "rural_road",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "municipal_sports_component" | "rural_road",
   LocalizedText
 > = {
   no_content: {
@@ -2243,6 +2408,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: "该项目的标的是既有供水/排水管网里的单体小型构筑物（集水井、增压泵站、地面水池等），通常由本地承包商承建、金额在几十万美元级，数量极多；不属于供水系统、处理厂、输水干线一类的项目，默认不进入推荐列表（数据仍保留，可用于统计）。注：这是按标题里的构筑物名称判断的，如果该项目实际规模较大，可在后台人工锁定相关度。",
     en: "What is being built here is a single small structure inside an existing water network — a collector box, a pumping sump, a surface tank — typically a few hundred thousand dollars and built by a local contractor. Mexican municipalities tender these constantly. Not a water system, treatment plant or trunk main. Filtered from the default feed (metadata is kept, not deleted); if this particular one is genuinely large, lock its relevance by hand in the admin.",
     es: "Lo que se construye es una estructura aislada dentro de una red de agua existente — una caja colectora, un cárcamo de rebombeo, un tanque superficial — normalmente de unos cientos de miles de dólares y a cargo de un contratista local. No es un sistema de agua, una planta de tratamiento ni una línea de conducción. Filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
+  municipal_sports_component: {
+    zh: "该项目的标的是市政小型室外运动/休闲设施（足球场、人造草坪、儿童游乐场、健走步道等），通常由本地承包商承建、金额较小，默认不进入推荐列表（数据仍保留，可用于统计）。注：如标的中含体育馆、游泳池、场馆或其他房建内容，则不适用此规则。",
+    en: "This tender's object is a small open-air municipal sport/recreation facility (football pitch, synthetic turf, children's playground, walking track) — usually built by a local contractor at modest value, filtered from the default feed (metadata is kept, not deleted). Does not apply when the object also includes a gymnasium, pool or other building work.",
+    es: "El objeto de esta licitación es una instalación deportiva/recreativa municipal pequeña y al aire libre (cancha de fútbol, césped sintético, juegos infantiles, sendero peatonal) — normalmente ejecutada por un contratista local y de monto modesto, filtrada de la vista predeterminada (los metadatos se conservan). No aplica cuando el objeto incluye gimnasio, piscina u otra obra de edificación.",
   },
   keyword: {
     zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
@@ -2298,6 +2468,7 @@ function reasonFor(
     | "price_comparison"
     | "direct_award"
     | "municipal_water_component"
+    | "municipal_sports_component"
     | "rural_road"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
@@ -2526,9 +2697,27 @@ export function classifyRelevance(input: {
   // must not rescue a daycare.
   if (
     input.isNationalPriorityProject !== true &&
-    CHILDCARE_FACILITY_KEYWORDS.some((pattern) => pattern.test(haystack))
+    (CHILDCARE_FACILITY_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
+      GATE_BARRIER_KEYWORDS.some((pattern) => pattern.test(haystack)))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // Brazil's rules, in Portuguese, and above hasIncludeOverride for a reason
+  // beyond the one CHILDCARE_FACILITY_KEYWORDS gives.
+  //
+  // INCLUDE_OVERRIDE_KEYWORDS is a Spanish list. Some of its entries are
+  // proper nouns and bare technical words that a Portuguese title can match by
+  // coincidence rather than by meaning, and an override match bypasses EVERY
+  // exclude check below it. A brand-new language should not be able to walk
+  // through that door on an accident, so the Portuguese verdict is taken
+  // first. classifyPortugueseExclusion() already declines to fire on anything
+  // carrying a real works signal, which is the guard that keeps this narrow.
+  if (input.isNationalPriorityProject !== true && isBrazil(input.country)) {
+    const portuguese = classifyPortugueseExclusion(haystack);
+    if (portuguese !== null) {
+      return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+    }
   }
 
   const hasIncludeOverride =
@@ -2600,6 +2789,15 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "rural_road") };
   }
 
+  // Brazil-gated sibling of the water rule above — see
+  // isPortugueseMunicipalSportsComponent for why it needs a building veto
+  // rather than a word list. It must run BEFORE the industry gate below:
+  // these rows carry `construção`, so once that gate reads Portuguese they
+  // are tagged `construction` and would otherwise sail through.
+  if (!hasIncludeOverride && isBrazil(input.country) && isPortugueseMunicipalSportsComponent(haystack)) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "municipal_sports_component") };
+  }
+
   if (!hasIncludeOverride && MUNICIPAL_WATER_COMPONENT_KEYWORDS.some((pattern) => pattern.test(haystack))) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "municipal_water_component") };
   }
@@ -2643,7 +2841,7 @@ export function classifyRelevance(input: {
   const normalizedValue =
     input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
 
-  const minValueUsd = MIN_VALUE_USD;
+  const minValueUsd = minValueUsdFor(input.country);
   // Deliberately NOT gated by hasIncludeOverride (2026-09-04, per explicit
   // user request after a real batch of tiny-value Colombia tenders —
   // "SERVICIO DE INTERNET" $571, "QPAR S.A.S" $8,185, "CPS INFRAESTRUCTURA
@@ -2750,9 +2948,25 @@ export function classifyRelevance(input: {
   // disclosed value, even one that doesn't clear SIGNIFICANT_VALUE_USD on
   // its own, still combines with the keyword match to promote — only a
   // completely undisclosed value caps this at "standard".
+  //
+  // Narrowed 2026-09-18. The middle clause used to be
+  // `matchesFlagshipIndustry && normalizedValue !== undefined` — ANY
+  // target-industry keyword plus ANY disclosed amount above the $800,000
+  // floor. Since `construcción` is one of those keywords, that promoted
+  // essentially every works contract in the feed to 中型 and made
+  // SIGNIFICANT_VALUE_USD unreachable as a band: a $973,907 municipal sports
+  // court came out 中型项目 (user, 2026-09-18: 这项目金额 US$973,907 但被标为
+  // 中型项目？) and so would an $800,001 one.
+  //
+  // The principle is already written down twice in this file — "a proxy must
+  // lose to a measurement" on the duration rule, and "a disclosed amount is
+  // not an estimate at all" on the flagship demotion. A keyword is a guess
+  // about scale. Once the notice states the scale, the guess has nothing left
+  // to add, so the bands decide alone. With NO amount disclosed the keyword is
+  // the only signal there is, and it still speaks — that is the clause below
+  // and the allowlist gate further down, both untouched.
   if (
     (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) ||
-    (matchesFlagshipIndustry && normalizedValue !== undefined) ||
     (isEquipmentScaleCapped && normalizedValue === undefined)
   ) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
@@ -2880,8 +3094,21 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
 
+  // classifyIndustries is the SPANISH classifier, and this gate deletes a
+  // tender outright when it finds nothing. For Brazil that meant a real
+  // "Construção de Complexo Poliesportivo" carried no industry at all —
+  // `construcción` is not `construção` — and was excluded with the reason
+  // "未匹配到任何重点行业". Two such rows were found by hand in the first
+  // dry run (2026-09-18) and both were keepers.
+  //
+  // classifyStoredTender already merged the Portuguese pass into the STORED
+  // industries; this gate recomputes its own and so never saw it. A tag good
+  // enough to display is good enough to save the row from deletion.
   const contentIndustries = classifyIndustries(subjectTitle, subjectSummary);
-  const hasTargetIndustry = contentIndustries.some((i) => i !== "general");
+  const portugueseIndustries = isBrazil(input.country)
+    ? classifyPortugueseIndustries([subjectTitle, subjectSummary].filter(Boolean).join(" "))
+    : [];
+  const hasTargetIndustry = [...contentIndustries, ...portugueseIndustries].some((i) => i !== "general");
   // Same correction: this gate's comment says everything reaching it failed
   // every positive signal, which stopped being true once demotions began
   // routing keyword-matched tenders past the flagship branch.
@@ -3049,7 +3276,17 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   industries: ReturnType<typeof classifyIndustries>;
   relevance: TenderRelevance;
 } {
-  const industries = classifyIndustries(input.title, input.summary, input.buyer);
+  // The Spanish pass always runs; the Portuguese one is added for Brazil and
+  // merged rather than substituted, since a title can match both (proper
+  // nouns, SCADA, "km 42+300"). Without it a Brazilian road contract carries
+  // no transport tag at all — `rodovia`, `paralelepípedo` and `bloquete` have
+  // no Spanish equivalents in lib/industry.ts.
+  const spanish = classifyIndustries(input.title, input.summary, input.buyer);
+  const portuguese = isBrazil(input.country) ? classifyPortugueseIndustries([input.title, input.summary, input.buyer].filter(Boolean).join(" ")) : [];
+  // "general" is lib/industry.ts's no-match fallback, so it must not survive
+  // alongside a real tag it would otherwise sit next to as a phantom category.
+  const merged = [...new Set([...spanish, ...portuguese])];
+  const industries = merged.length > 1 ? merged.filter((tag) => tag !== "general") : merged;
   return {
     industries,
     relevance: classifyRelevance({

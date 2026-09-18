@@ -268,46 +268,60 @@ async function retrySupabaseRead<T>(
   throw new Error(`${label}: ${lastMessage}`);
 }
 
-type AwardedAnalysisProbeRow = {
+/**
+ * Ids of every tender that has analysis logged against it — at least one
+ * qualification/experience/document requirement, or one risk. The same
+ * "标书分析结果" data the Layer 2 extraction writes and the admin CRUD
+ * editors edit, and the same thing the detail page renders under 标书分析.
+ *
+ * Read from the CHILD tables rather than by joining them onto `tenders`,
+ * which is what the awarded-only version of this did. The join is what forced
+ * that one to be awarded-only: fetchAllTendersFromDb's own comment records
+ * joining these children onto every row of an unbounded full-table query as a
+ * real cost that had to be undone once the table held thousands of rows.
+ * These two tables only have rows for tenders that HAVE been analysed, so
+ * reading them directly stays proportional to the analysed set — a few
+ * hundred — no matter how large `tenders` grows.
+ *
+ * Ids, not slugs, because that is the column the child tables carry.
+ */
+async function fetchTenderIdsWithAnalysis(supabase: SupabaseClient): Promise<Set<string>> {
+  const ids = new Set<string>();
+  for (const table of ["tender_requirements", "tender_risks"] as const) {
+    for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+      const data = await retrySupabaseRead(
+        () => supabase
+          .from(table)
+          .select("tender_id")
+          // Explicit order: .range() paging over an unspecified row order
+          // drops and repeats rows between pages, and a dropped page here
+          // would hide real tenders from the public feed.
+          .order("tender_id", { ascending: true })
+          .range(from, from + SUPABASE_PAGE_SIZE - 1),
+        `Failed to read ${table} while checking which tenders have analysis`,
+      );
+
+      const page = data as unknown as { tender_id: string | null }[];
+      for (const row of page) {
+        if (row.tender_id) ids.add(row.tender_id);
+      }
+      if (page.length < SUPABASE_PAGE_SIZE) break;
+    }
+  }
+  return ids;
+}
+
+/** One tender with just enough of its analysis children joined to answer "is there any?". */
+type AnalysisProbeRow = {
   slug: string;
   tender_requirements: { id: string }[];
   tender_risks: { id: string }[];
 };
 
 /**
- * Slugs of "awarded" tenders that already have analysis logged (at least
- * one qualification/experience/document requirement or risk — the same
- * "标书分析结果" data the admin CRUD editors write). Scoped to
- * `status = "awarded"` only, so this stays a small, cheap query regardless
- * of how large the full tenders table gets — it never touches the
- * thousands of non-awarded rows the main list query already avoids
- * joining (see fetchAllTendersFromDb's own comment below).
- */
-async function fetchAwardedSlugsWithAnalysis(supabase: SupabaseClient): Promise<Set<string>> {
-  const slugs = new Set<string>();
-  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
-    const data = await retrySupabaseRead(
-      () => supabase
-        .from("tenders")
-        .select("slug, tender_requirements ( id ), tender_risks ( id )")
-        .eq("status", "awarded")
-        .range(from, from + SUPABASE_PAGE_SIZE - 1),
-      "Failed to check awarded-tender analysis status from Supabase",
-    );
-
-    const page = data as unknown as AwardedAnalysisProbeRow[];
-    for (const row of page) {
-      if (row.tender_requirements.length > 0 || row.tender_risks.length > 0) slugs.add(row.slug);
-    }
-    if (page.length < SUPABASE_PAGE_SIZE) break;
-  }
-  return slugs;
-}
-
-/**
  * Of the slugs given, the ones with analysis logged — at least one
- * requirement or risk, the same test fetchAwardedSlugsWithAnalysis applies to
- * awarded tenders.
+ * requirement or risk — the same test fetchTenderIdsWithAnalysis applies to
+ * the whole table, asked of a known set of slugs instead.
  *
  * Takes an explicit slug list rather than scanning the table because the only
  * caller (app/sitemap.ts) needs it for CLOSED tenders, and closed is derived
@@ -333,7 +347,7 @@ export async function fetchSlugsWithAnalysis(slugs: readonly string[]): Promise<
         .in("slug", chunk as string[]),
       "Failed to check which tenders have analysis logged",
     );
-    for (const row of data as unknown as AwardedAnalysisProbeRow[]) {
+    for (const row of data as unknown as AnalysisProbeRow[]) {
       if (row.tender_requirements.length > 0 || row.tender_risks.length > 0) withAnalysis.add(row.slug);
     }
   }
@@ -363,15 +377,39 @@ export async function fetchSlugsWithAnalysis(slugs: readonly string[]): Promise<
  *    empty. fetchTenderBySlugFromDb (the single-tender detail page,
  *    which does need them) is untouched.
  *
- * Visibility rule (2026-09-05, explicit request): an "awarded" tender with
- * no analysis logged yet is hidden here. This is the one function behind
- * every public-facing surface — the main /tenders feed (via
- * lib/tenders.ts), the homepage teaser (app/page.tsx also calls
- * getAllTenders()), and the notification digest — so gating it here covers
- * all of them at once. Admin's own list (fetchAdminTenderListFromDb,
- * below) is a separate query with the SAME awarded-with-no-analysis
- * exception NOT applied — admins still need to see every awarded-but-
- * unanalyzed row to fix it.
+ * VISIBILITY RULE: a tender is public only once it has analysis logged —
+ * at least one requirement or one risk. Nothing else changes what appears on
+ * the site, so this one line is worth reading carefully.
+ *
+ * Widened 2026-09-18 on the user's request (标书分析还没处理完的项目，前台不显示)
+ * from the 2026-09-05 rule it replaces, which said the same thing about
+ * "awarded" tenders only. The old rule is not lost, it is subsumed: every
+ * tender the old one hid, this one hides too.
+ *
+ * "Analysis logged" is deliberately the SAME test the reader can apply
+ * themselves — it is exactly the 标书分析 section on the detail page. A tender
+ * whose documents were processed and yielded nothing counts as not analysed,
+ * because "extraction finished and found nothing" and "extraction has not
+ * run" produce the identical empty page, and the complaint this rule answers
+ * is about that page. (/admin/documents-needed's own view distinguishes the
+ * two, which is where that distinction is useful.)
+ *
+ * This is the one function behind every public-facing surface — the main
+ * /tenders feed (via lib/tenders.ts), the homepage teaser (app/page.tsx also
+ * calls getAllTenders()), the 项目总数 shown on the site (siteTenderCount
+ * derives from this list) and the notification digest — so gating it here
+ * covers all of them at once.
+ *
+ * What it deliberately does NOT cover, because neither is a feed:
+ *   - a tender's own detail page (fetchTenderBySlugFromDb) and a saved
+ *     tender (fetchTendersBySlugsFromDb), so an existing link or bookmark
+ *     keeps working rather than 404ing;
+ *   - the admin list (fetchAdminTenderListFromDb), which has to show every
+ *     unanalysed row — that is the queue of work this rule creates.
+ *
+ * It follows that the size of the public feed is now bounded by how much
+ * analysis has been run. `npm run audit:public-visibility` reports that
+ * number before and after; run it before deploying this.
  *
  * Retired 2026-09-11: a second visibility rule used to hide any Colombia
  * tender with no submission deadline. It was the indirect way of keeping
@@ -403,10 +441,8 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
     if (page.length < SUPABASE_PAGE_SIZE) break;
   }
 
-  const awardedWithAnalysis = await fetchAwardedSlugsWithAnalysis(supabase);
-  return rows
-    .filter((row) => row.status !== "awarded" || awardedWithAnalysis.has(row.slug))
-    .map(toTender);
+  const withAnalysis = await fetchTenderIdsWithAnalysis(supabase);
+  return rows.filter((row) => withAnalysis.has(row.id)).map(toTender);
 });
 
 export type TenderSitemapEntry = {
@@ -626,6 +662,21 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
     }));
 }
 
+/**
+ * The two summary strings worth searching, once each, lowercased.
+ *
+ * `zh` is skipped when it is byte-for-byte the `es` — that is the
+ * untranslated() mirror every mapper writes (lib/ingestion/text-utils.ts),
+ * not a translation, and shipping it twice doubles this field on exactly the
+ * rows that gain nothing from it.
+ */
+function flattenSummaryForSearch(summary: LocalizedText | null): string {
+  if (!summary) return "";
+  const es = summary.es ?? "";
+  const zh = summary.zh ?? "";
+  return (zh && zh !== es ? `${zh} ${es}` : es).toLowerCase();
+}
+
 /** Used only for the rare legacy row with a stored tier but somehow no stored label — classifyRelevance() itself always sets both together, so this is a defensive fallback, not an expected path. */
 const LABELS_FALLBACK: LocalizedText = { en: "Standard Project", es: "Proyecto Estándar", zh: "常规项目" };
 
@@ -674,6 +725,22 @@ export type AdminTenderListRow = {
   /** Undefined when the source has not published one — not every tender has a deadline. */
   submissionDeadline?: string;
   updatedAt: string;
+  /**
+   * The summary, flattened and lowercased, for the search box only — never
+   * rendered.
+   *
+   * The admin search matched title/buyer/slug/tenderNumber while the public
+   * list (lib/filter-tenders.ts) also matched the summary, so a word that
+   * appears only in the description found the tender on the public site and
+   * nothing in 项目管理 (2026-09-18, the user's request to align the two).
+   *
+   * A flattened string rather than the LocalizedText: this table is over
+   * 1000 rows and every byte is shipped to the browser, so it carries the zh
+   * and the es once each and drops `en`, which every mapper mirrors from
+   * `es` and no writer ever fills. Lowercased here rather than per keystroke
+   * per row, since it exists for exactly one comparison.
+   */
+  searchSummary: string;
 };
 
 type AdminTenderListDbRow = {
@@ -681,6 +748,7 @@ type AdminTenderListDbRow = {
   slug: string;
   tender_number: string;
   title: LocalizedText;
+  summary: LocalizedText | null;
   buyer: string;
   industries: Tender["industries"];
   country: string;
@@ -765,7 +833,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
       .select(
         // tender_key_dates joined for deriveTenderStatus only — see
         // DOCUMENTS_NEEDED_SELECT's comment for why it cannot be skipped.
-        "id, slug, tender_number, title, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, tender_key_dates ( type, date )",
+        "id, slug, tender_number, title, summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, tender_key_dates ( type, date )",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
@@ -812,5 +880,6 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     publicationDateIsEstimated: row.publication_date_is_estimated ?? undefined,
     submissionDeadline: row.submission_deadline ?? undefined,
     updatedAt: row.updated_at,
+    searchSummary: flattenSummaryForSearch(row.summary),
   }));
 }

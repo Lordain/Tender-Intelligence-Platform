@@ -31,6 +31,7 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { NATIONAL_PRIORITY_SOURCE_NAME } from "../lib/relevance";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 /**
  * source_name -> the single URL that source's mapper writes for every row.
@@ -48,7 +49,7 @@ type Row = { slug: string; source_name: string | null; source_url: string | null
 
 async function main() {
   const args = process.argv.slice(2);
-  const write = args.includes("--write");
+  const write = hasWriteFlag();
   const sourceFilterIdx = args.indexOf("--source");
   const sourceFilter = sourceFilterIdx >= 0 ? args[sourceFilterIdx + 1] : undefined;
 

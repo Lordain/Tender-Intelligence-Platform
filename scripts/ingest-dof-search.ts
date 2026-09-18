@@ -29,6 +29,7 @@ import { filterRecentTenders } from "../lib/ingestion/recency";
 import type { Tender } from "../types/tender";
 import type { DofSearchNota } from "../lib/ingestion/dof-search-mapper";
 import type { DofNoticeDetail } from "../lib/ingestion/connectors/dof-notice-detail";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 // Same reasoning as resolve-comprasmx-links.ts / discover-comprasmx-vigente.ts:
 // a real systemic failure (network/firewall/DNS) should stop the run
@@ -90,7 +91,7 @@ async function upsertTenders(tenders: Tender[]) {
 async function main() {
   const args = process.argv.slice(2);
   const useFixture = args.includes("--fixture");
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const filePath = args.find((a) => !a.startsWith("--"));
   const monthsIdx = args.indexOf("--months");
   const months = monthsIdx >= 0 ? Number(args[monthsIdx + 1]) : 6;

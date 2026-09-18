@@ -21,6 +21,7 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { syncKeyDatesForTopLevelFields } from "../lib/db/key-dates-sync";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 type Row = {
   id: string;
@@ -31,7 +32,7 @@ type Row = {
 };
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

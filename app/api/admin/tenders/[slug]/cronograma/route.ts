@@ -11,6 +11,7 @@ import {
 } from "@/lib/ingestion/seace-cronograma";
 import { parseAnyCronograma } from "@/lib/ingestion/proyectos-estrategicos-cronograma";
 import { syncKeyDatesForTopLevelFields } from "@/lib/db/key-dates-sync";
+import { isSeaceFichaUrl } from "@/lib/peru-seace-url";
 
 /**
  * Turns a SEACE ficha Cronograma table, pasted by an admin, into this
@@ -219,25 +220,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
   const columnUpdate: Record<string, string> = {};
   if (fichaUrlSet && fichaUrlSet !== tender.ficha_url) columnUpdate.ficha_url = fichaUrlSet;
-  // ...and it BECOMES the official entry point, at the user's instruction
-  // (2026-09-15: 请直接用这个替换编辑项目页面最下方的官方标书链接).
+  // ...and it becomes the public 官方入口 too — EXCEPT for a SEACE ficha
+  // link, which cannot survive being clicked by a reader.
   //
-  // What that changes, since it is not only an admin field: source_url is
-  // what the public 官方入口 button links to. For a Peru tender that button
-  // has always pointed at SEACE's generic search page — the only URL the feed
-  // can produce — so a reader had to search for the procedure themselves.
-  // Now it opens the tender's own ficha.
+  // This route used to copy every pasted link into source_url, on the user's
+  // 2026-09-15 instruction (请直接用这个替换编辑项目页面最下方的官方标书链接),
+  // and for Mexico's Proyectos Estratégicos it still does — that portal's
+  // `#/` routes are resolved in the browser and deep-link fine.
   //
-  // Locked in the same breath. Every import writes source_url from its
-  // mapper, so without the lock the next run would put the search page back
-  // and the improvement would last until morning — which is exactly the
-  // failure this route was fixed for hours ago. scripts/protect-manual-
-  // source-urls.ts exists because this column has been overwritten before.
+  // SEACE does not. Its ficha page is keyed on server-side session state, so
+  // a pasted link works for the person who just walked through the buscador
+  // and is blank for everyone after (reported 2026-09-18: 加的时候能用，但是
+  // 现在再点击用不了; evidence in lib/peru-seace-url.ts). Copying one into
+  // source_url therefore does not give readers a deep link, it replaces a
+  // working search page with a dead page — so the copy is refused here
+  // rather than left for a cleanup script to undo again.
   //
-  // ficha_url keeps its own copy on purpose: it records where this tender's
-  // schedule was read from, which stays true even if someone later edits
-  // source_url by hand to something else.
-  if (fichaUrlSet && fichaUrlSet !== tender.source_url) columnUpdate.source_url = fichaUrlSet;
+  // ficha_url still keeps it: that column records where this tender's
+  // schedule was read from, and that stays true after the link stops
+  // resolving.
+  const fichaIsSessionScoped = isSeaceFichaUrl(fichaUrlSet);
+  if (fichaUrlSet && !fichaIsSessionScoped && fichaUrlSet !== tender.source_url) columnUpdate.source_url = fichaUrlSet;
   if (extractedDeadline && !storedDeadline) columnUpdate.submission_deadline = extractedDeadline;
   if (extractedAwardDate && !storedAwardDate) columnUpdate.award_date = extractedAwardDate;
 
@@ -305,6 +308,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     awardDateSet,
     fichaUrlSet: columnUpdate.ficha_url,
     sourceUrlSet: columnUpdate.source_url,
+    // Told to the admin, not swallowed: they pasted a link expecting the
+    // public button to change, and it deliberately did not.
+    fichaNotUsedAsPublicLink: fichaIsSessionScoped || undefined,
     awardDateUnchanged: extractedAwardDate && storedAwardDate && storedAwardDate !== extractedAwardDate ? storedAwardDate : undefined,
     deadlineUnchanged: extractedDeadline && storedDeadline && storedDeadline !== extractedDeadline ? storedDeadline : undefined,
   });

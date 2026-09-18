@@ -16,10 +16,11 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { discoverComprasMxVigente } from "../lib/ingestion/discover-comprasmx-vigente";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 async function main() {
   const args = process.argv.slice(2);
-  const shouldWrite = args.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const monthsIdx = args.indexOf("--months");
   const months = monthsIdx >= 0 ? Number(args[monthsIdx + 1]) : 6;
 

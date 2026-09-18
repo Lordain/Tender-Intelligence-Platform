@@ -3330,6 +3330,48 @@ next steps:
 `scripts/test-block-page.ts` pinning the three real bodies that caused the
 false ★ — F5's rejection page above all, because it arrives as HTTP 200.
 
+#### The saved page, read (2026-09-18) — and where the money actually is
+
+The user saved `edital_transmissao.cfm` for Leilão 001/2026 and it is now
+`__fixtures__/aneel-edital-transmissao-2026.html`, with
+`lib/ingestion/connectors/aneel-editais-file.ts` reading it and
+`npm run test:aneel-edital` pinning 25 assertions against it.
+
+**The encoding is the assertion that matters most.** The file is Windows-1252
+ColdFusion output with no charset declaration — `file(1)` says "ISO-8859 text",
+and a UTF-8 decode throws on the first `ç`. The danger is not the throw: a
+*lenient* UTF-8 decode succeeds and turns every accent into U+FFFD, so
+"Leilão", "São Paulo" and "Ceará" become strings that still look like text,
+still pass every truthiness check, and match nothing. It is decoded as
+windows-1252 explicitly and a test asserts no U+FFFD survives.
+
+**Three things the page carries that the pasted text did not:**
+
+1. **Identity** — "LEILÃO DE TRANSMISSÃO ANEEL Nº 001/2026" at the top,
+   "Leilão nº 1/2026-ANEEL" in the Objeto. Zero-padded in one place, not the
+   other; normalised to an integer so the two spellings cannot become two
+   auctions.
+2. **A year selector, 1999–2026, posting back to the same URL.** That is the
+   entire pagination story: every past auction is one POST away, so history is
+   enumerable rather than scattered — 28 auctions' worth.
+3. **Document links, which is where the money is.** The page carries **no RAP
+   ceiling and no investment estimate**. Two links do:
+   `documentos_editais.cfm?IdProgramaEdital=220` (the edital and its annexes)
+   and `frmcdt.cfm?leilao=1&ano=2026` (reports **R1–R5**, ANEEL's per-lot
+   technical and economic studies). `estimatedValue` — the CAPEX figure the
+   user chose — has to come from one of those, so their ids are extracted
+   rather than left in the prose.
+
+One honest gap the reader surfaces rather than papers over: only **lot 1**
+carries the explicit `Continuidade` / `Novas instalações` headings. Lots 2–10
+say neither, so `hasNewInstallations` and `hasContinuity` are both false for
+them and the dump prints 未标注. Defaulting them to "new" would be a guess
+about the single fact that decides whether a lot is an EPC opportunity or an
+income stream; the answer is in the edital.
+
+`npm run dump:aneel-edital -- <saved>.html` prints the whole reading — lots,
+UFs, kV, installations and the document links — for any year's page.
+
 #### Run six: one door opens in a browser, and the lots are parsed
 
 `www2.aneel.gov.br/aplicacoes_liferay/editais_transmissao/edital_transmissao.cfm`

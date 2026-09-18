@@ -119,7 +119,8 @@
     "accounts": "tsx --env-file-if-exists=.env.local scripts/accounts.ts",
     "purge:analytics": "tsx --env-file-if-exists=.env.local scripts/purge-analytics.ts",
     "fix:peru-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-peru-ficha-source-urls.ts",
-    "test:peru-seace-url": "tsx scripts/test-peru-seace-url.ts"
+    "test:peru-seace-url": "tsx scripts/test-peru-seace-url.ts",
+    "probe:brazil-docs": "tsx scripts/probe-brazil-docs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

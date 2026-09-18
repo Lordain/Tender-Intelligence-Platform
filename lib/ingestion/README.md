@@ -2668,6 +2668,37 @@ because an ignored parameter returns 200 and looks exactly like a working one.
 That is the lesson `status` taught: **ask whether a parameter FILTERS, not
 whether it is ACCEPTED.**
 
+**First filter-probe run (2026-09-18): the controls failed, correctly, and
+the report refused itself.** It had printed `uf=SP` as "✅ 有效 — 4,081,820
+条（基准的 100.0%）", which is self-contradictory on its face. Three faults,
+all in the probe, all fixed — and one real finding that survived:
+
+1. **The index is written to continuously.** Totals drifted by dozens between
+   consecutive identical requests, and the deliberately fake parameter came
+   back *higher* than the baseline (4,081,830 vs 4,081,821). A bare
+   `total < baseline` test therefore reads ordinary drift as filtering, and
+   the negative control's exact-equality test can never pass. The probe now
+   samples the baseline three times to MEASURE the drift and requires a
+   candidate to remove more than ten times that band (floor: 0.5% of the
+   index) before calling it a filter.
+2. **`q` and `status` are mutually exclusive.** `q=obra` answered normally in
+   `probe:brazil-alt` and was reset here — the difference being that here it
+   was sent alongside `status`. So the rule is not "status is mandatory", it
+   is "exactly one of `q` / `status`". There is no single baseline, and the
+   probe now measures every candidate against both.
+3. **A reset means the server KNOWS the parameter name.** Unknown names
+   (`zzz_nao_existe`, `modalidade`, `modalidade_licitacao_id`,
+   `data_publicacao_inicial`) were silently ignored and returned 200. The
+   plural names — `ufs`, `esferas`, `modalidades`, `municipios`, `orgaos` —
+   were reset. A service does not reject a name it has never heard of while
+   ignoring others, so **those five are almost certainly the real filter
+   names and the value encoding is what they refused.** They now get several
+   encodings each (bare, pipe-separated, IBGE codes, display names).
+
+The one finding that survived: **`tipos_documento` genuinely filters** —
+`edital` → 4.08M, `ata` → 1,170,148 (28.7%). It is now the probe's positive
+control, since a control has to be something measured rather than assumed.
+
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against
 the same procurement written the Brazilian way, agreed on tier 6/10 and on

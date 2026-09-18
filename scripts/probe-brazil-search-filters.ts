@@ -1,54 +1,56 @@
 /**
  * Which /api/search parameters actually narrow anything?
  *
- * `dump:brazil-search` (2026-09-18) produced one result that changes the
- * whole shape of a Brazil connector, and it was not the one being looked for:
+ * ── Why this file exists ──────────────────────────────────────────────────
  *
- *   status=em_recebimento_de_proposta   4,081,735
- *   status=em_julgamento                4,081,733
- *   status=encerrada                    4,081,733
+ * `dump:brazil-search` (2026-09-18) found that `status` is simultaneously
+ * MANDATORY (omit it and the request is refused, "O filtro status é
+ * obrigatório") and INERT — three mutually exclusive states each returned
+ * ~4,081,73X rows, the whole index. The index holds ~4.08 million documents
+ * and this platform wants a few hundred, so whether anything narrows
+ * server-side decides whether a Brazil connector is an import or a crawl.
  *
- * Three mutually exclusive states cannot each hold the entire index. Those
- * are the same number, give or take rows indexed between requests — so
- * **`status` is accepted and then ignored.** It is simultaneously MANDATORY
- * (omit it without `q` and the request is rejected, "O filtro status é
- * obrigatório") and inert. The 100 rows fetched under
- * `em_recebimento_de_proposta` confirm it from the other side: one of them
- * came back `situacao_nome: "Revogada"`, which is not a procurement that is
- * receiving proposals.
+ * The method is: do not ask whether a parameter is ACCEPTED, ask whether it
+ * FILTERS. An ignored parameter returns 200 and looks exactly like a working
+ * one; only the total gives it away.
  *
- * That matters because the index holds ~4.08 million documents and this
- * platform wants a few hundred. If nothing narrows server-side, a Brazil
- * connector has to page through four million rows at 100 per request to find
- * them, which is not an import, it is a crawl. `q=` is the one filter proven
- * to work (`q=obra` → 205,272, a twentieth of the index), and `q` alone is a
- * blunt instrument: it matches text, not modality or money.
+ * ── FIRST RUN (2026-09-18) — the controls failed, correctly ───────────────
  *
- * So this script asks the only question left: of the parameters the PNCP
- * website's own filter UI exposes, which ones change the count?
+ * The run reported `uf=SP` as "✅ 有效 —— 4,081,820 条（基准的 100.0%）",
+ * which is self-contradictory on its face, and the control check refused the
+ * whole report rather than let those lines be read as findings. Three
+ * separate faults, all in this file, all now fixed:
  *
- * The method is the one that caught `status`, and it is the point of this
- * file: **do not ask whether a parameter is ACCEPTED, ask whether it
- * FILTERS.** An ignored parameter returns 200 and looks exactly like a
- * working one. Only the total gives it away. Two controls make the report
- * self-checking:
+ *   1. **The index is written to continuously.** Totals drifted by dozens
+ *      between consecutive requests, and the fake parameter came back HIGHER
+ *      than the baseline (4,081,830 vs 4,081,821). A bare `total < baseline`
+ *      test therefore called ordinary drift "filtering", and the negative
+ *      control's exact-equality test could never pass. The baseline is now
+ *      sampled repeatedly to MEASURE the drift, and a parameter counts as
+ *      filtering only if it removes far more than the drift band.
+ *   2. **`q` and `status` are mutually exclusive.** `q=obra` answered fine in
+ *      probe:brazil-alt and came back ECONNRESET here — the difference being
+ *      that here it was sent alongside `status`. So there is no single
+ *      baseline: this now measures against BOTH a `q` baseline and a `status`
+ *      baseline, and a parameter is judged separately under each.
+ *   3. **A reset means the server KNOWS the parameter.** Unknown names
+ *      (`zzz_nao_existe`, `modalidade`, `data_publicacao_inicial`) were
+ *      silently ignored and returned 200. The plural names — `ufs`,
+ *      `esferas`, `modalidades`, `municipios`, `orgaos` — were reset. A
+ *      service does not reject a name it has never heard of while ignoring
+ *      others, so those five are almost certainly the REAL filter names and
+ *      the value format is what they refused. They get several encodings
+ *      tried here rather than one.
  *
- *   · positive control `q=obra` — known to narrow. If it stops narrowing, the
- *     measurement is broken and nothing else here means anything.
- *   · negative control `status=em_julgamento` — known to be inert. If it
- *     suddenly narrows, PNCP changed something and this file is stale.
- *
- * One more behaviour worth knowing, found the same day: this endpoint answers
- * a bad parameter VALUE by resetting the connection rather than returning
- * 400. `status=todos`, `status=encerradas` and `tam_pagina=500` all came back
- * `ECONNRESET`. So a reset here is a finding about the value, not about the
- * network — which is the opposite of how a reset normally reads, and is why
- * the report below says so rather than printing "连接失败".
+ * The one parameter proven to filter so far is `tipos_documento`
+ * (`edital` → 4.08M, `ata` → 1,170,148 = 28.7%), which is why it serves as
+ * the positive control below.
  *
  * Read-only. No Supabase, no writes, no model calls.
  *
  * Usage:
  *   npm run probe:brazil-search-filters
+ *   npm run probe:brazil-search-filters -- --pace 2000
  */
 import { describeFetchFailure } from "@/lib/fetch-failure";
 
@@ -60,14 +62,14 @@ const HEADERS = {
   "User-Agent": "TenderIntelligencePlatform/1.0 (+https://github.com/lordain/tender-intelligence-platform; open-data ingestion)",
 } as const;
 
-/** Everything a request needs before any candidate is added. `status` is mandatory even though it does nothing. */
-const BASE_PARAMS: Record<string, string> = { tipos_documento: "edital", status: "em_recebimento_de_proposta", ordenacao: "-data", pagina: "1", tam_pagina: "10" };
+/** Shared by both baselines. Exactly one of `q` / `status` is added on top — they cannot be sent together. */
+const COMMON: Record<string, string> = { tipos_documento: "edital", ordenacao: "-data", pagina: "1", tam_pagina: "10" };
 
-type Probe = { label: string; params: Record<string, string>; total: number | null; rows: number; status: number | string; ms: number; note: string };
+type Measured = { total: number | null; rows: number; status: number | string; ms: number; note: string; rejected: boolean };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function count(params: Record<string, string>, timeoutMs: number): Promise<Omit<Probe, "label" | "params">> {
+async function count(params: Record<string, string>, timeoutMs: number): Promise<Measured> {
   const query = Object.entries(params)
     .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
     .join("&");
@@ -79,12 +81,17 @@ async function count(params: Record<string, string>, timeoutMs: number): Promise
     const ms = Date.now() - started;
     const text = await response.text();
     if (!response.ok) {
-      return { total: null, rows: 0, status: response.status, ms, note: text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 140) };
+      return { total: null, rows: 0, status: response.status, ms, note: text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 140), rejected: true };
     }
     const body = JSON.parse(text) as Record<string, unknown>;
-    const items = Array.isArray(body.items) ? (body.items as unknown[]) : [];
-    const total = typeof body.total === "number" ? body.total : null;
-    return { total, rows: items.length, status: response.status, ms, note: "" };
+    return {
+      total: typeof body.total === "number" ? body.total : null,
+      rows: Array.isArray(body.items) ? (body.items as unknown[]).length : 0,
+      status: response.status,
+      ms,
+      note: "",
+      rejected: false,
+    };
   } catch (err) {
     const ms = Date.now() - started;
     const message = err instanceof Error ? err.message : String(err);
@@ -92,15 +99,48 @@ async function count(params: Record<string, string>, timeoutMs: number): Promise
     return {
       total: null,
       rows: 0,
-      // A reset from THIS endpoint means the value was rejected, not that the
-      // network failed. Saying "连接失败" here would file a finding as noise.
-      status: message.includes("abort") ? `超时` : reset ? "值被拒(RST)" : "连接失败",
+      // A reset from THIS endpoint is a statement about the request, not the
+      // network — and specifically it means the server recognised enough of
+      // the request to object to it.
+      status: message.includes("abort") ? "超时" : reset ? "被拒(RST)" : "连接失败",
       ms,
-      note: reset ? "服务器直接断开连接 —— 这个端点就是这么拒绝非法参数值的，不是网络问题" : describeFetchFailure(err).slice(0, 160),
+      note: reset ? "服务器认识这个参数，但不接受这个写法/组合" : describeFetchFailure(err).slice(0, 160),
+      rejected: reset,
     };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * How much the total moves on its own.
+ *
+ * PNCP indexes continuously, so two identical requests a second apart return
+ * different totals. Without this number every comparison below is noise
+ * dressed as a finding — which is exactly what the first run produced.
+ */
+async function measureDrift(base: Record<string, string>, timeoutMs: number, paceMs: number): Promise<{ total: number; drift: number } | null> {
+  const samples: number[] = [];
+  for (let i = 0; i < 3; i += 1) {
+    if (i > 0) await sleep(paceMs);
+    const measured = await count(base, timeoutMs);
+    if (measured.total === null) return null;
+    samples.push(measured.total);
+  }
+  const max = Math.max(...samples);
+  const min = Math.min(...samples);
+  console.log(`    三次同样的请求：${samples.join(" / ")}   自然漂移 ${max - min} 条`);
+  return { total: Math.round(samples.reduce((a, b) => a + b, 0) / samples.length), drift: max - min };
+}
+
+type Verdict = "有效" | "被忽略" | "被拒" | "读不到";
+
+function judge(measured: Measured, baseline: number, threshold: number): { verdict: Verdict; detail: string } {
+  if (measured.rejected) return { verdict: "被拒", detail: measured.note };
+  if (measured.total === null) return { verdict: "读不到", detail: `${measured.status} ${measured.note}` };
+  const removed = baseline - measured.total;
+  if (removed <= threshold) return { verdict: "被忽略", detail: `${measured.total} 条（跟基准差 ${removed} 条，在漂移范围内）` };
+  return { verdict: "有效", detail: `${measured.total} 条 —— 基准的 ${((measured.total / baseline) * 100).toFixed(1)}%` };
 }
 
 async function main() {
@@ -113,86 +153,99 @@ async function main() {
   const paceMs = Math.max(0, Number(arg("--pace") ?? 1200) || 1200);
 
   console.log("PNCP /api/search — 哪些参数是真的在过滤\n");
-  console.log("方法：先量一个基准总数，再逐个加参数看总数变不变。");
-  console.log("被忽略的参数一样返回 200，长得和生效的一模一样 —— 只有总数会露馅。\n");
+  console.log("被忽略的参数一样返回 200，长得和生效的一模一样 —— 只有总数会露馅。");
+  console.log("但这个索引一直在写入，两次一样的请求总数就不同，所以先量「自然漂移」，再拿它当噪声底线。\n");
 
-  const measuredBaseline = await count(BASE_PARAMS, timeoutMs);
-  console.log(`基准（只有必填项）：${measuredBaseline.total ?? "读不到"} 条   ${measuredBaseline.ms}ms`);
-  if (measuredBaseline.total === null) {
-    console.log(`\n基准就没拿到（${measuredBaseline.status} ${measuredBaseline.note}）。下面全部作废 —— 先把这条修好。`);
-    return;
-  }
-  // Narrowed to a plain number so every comparison below is against a value
-  // the compiler knows exists — the baseline is the one number the whole
-  // report leans on.
-  const baselineTotal: number = measuredBaseline.total;
-  console.log();
-
-  // Candidate names come from the PNCP site's own filter UI and from
-  // third-party collectors, in both singular and plural spellings, because
-  // nothing documents them and a near-miss name is silently ignored rather
-  // than rejected.
-  const candidates: { label: string; extra: Record<string, string>; role?: "正对照" | "负对照" }[] = [
-    { label: "q=obra（关键词）", extra: { q: "obra" }, role: "正对照" },
-    { label: "status=em_julgamento（已知无效）", extra: { status: "em_julgamento" }, role: "负对照" },
-    { label: "ufs=SP", extra: { ufs: "SP" } },
-    { label: "uf=SP", extra: { uf: "SP" } },
-    { label: "esferas=M（市级）", extra: { esferas: "M" } },
-    { label: "esfera=M", extra: { esfera: "M" } },
-    { label: "modalidades=4（Concorrência 电子）", extra: { modalidades: "4" } },
-    { label: "modalidade=4", extra: { modalidade: "4" } },
-    { label: "modalidade_licitacao_id=4", extra: { modalidade_licitacao_id: "4" } },
-    { label: "modalidades_licitacao=4", extra: { modalidades_licitacao: "4" } },
-    { label: "municipios=4464", extra: { municipios: "4464" } },
-    { label: "orgaos=40314", extra: { orgaos: "40314" } },
-    { label: "data_publicacao_inicial=2026-09-17", extra: { data_publicacao_inicial: "2026-09-17" } },
-    { label: "dataInicial=20260917", extra: { dataInicial: "20260917" } },
-    { label: "tipos_documento=ata（换文档类型）", extra: { tipos_documento: "ata" } },
-    { label: "zzz_nao_existe=1（假参数，必须无效）", extra: { zzz_nao_existe: "1" }, role: "负对照" },
+  const baselines: { name: string; extra: Record<string, string> }[] = [
+    { name: "status 基准（不带 q）", extra: { status: "em_recebimento_de_proposta" } },
+    { name: "q 基准（不带 status）", extra: { q: "obra" } },
   ];
 
-  const results: Probe[] = [];
-  for (const [index, candidate] of candidates.entries()) {
+  const measuredBaselines: { name: string; params: Record<string, string>; total: number; threshold: number }[] = [];
+  for (const [index, baseline] of baselines.entries()) {
     if (index > 0) await sleep(paceMs);
-    const params = { ...BASE_PARAMS, ...candidate.extra };
-    const measured = await count(params, timeoutMs);
-    results.push({ label: candidate.label, params, ...measured });
-    const narrowed = measured.total !== null && measured.total < baselineTotal;
-    const verdict =
-      measured.total === null
-        ? `${measured.status}  ${measured.note}`
-        : narrowed
-          ? `✅ 有效 —— ${measured.total} 条（基准的 ${((measured.total / baselineTotal) * 100).toFixed(1)}%）`
-          : `❌ 没过滤 —— ${measured.total} 条，跟基准一样`;
-    console.log(`  ${(candidate.role ?? "").padEnd(4)} ${candidate.label.padEnd(36)} ${String(measured.ms).padStart(6)}ms  ${verdict}`);
+    console.log(`  ${baseline.name}`);
+    const drift = await measureDrift({ ...COMMON, ...baseline.extra }, timeoutMs, paceMs);
+    if (drift === null) {
+      console.log("    这条基准没量到 —— 它下面的判断全部跳过。\n");
+      continue;
+    }
+    // Ten times the observed drift, floored at 0.5% of the index. A real
+    // filter on four million documents removes percentages, not dozens; this
+    // band is deliberately generous so nothing marginal gets called a finding.
+    const threshold = Math.max(drift.drift * 10, Math.round(drift.total * 0.005));
+    console.log(`    基准 ${drift.total} 条，判定门槛：要比基准少 ${threshold} 条以上才算「有效」\n`);
+    measuredBaselines.push({ name: baseline.name, params: { ...COMMON, ...baseline.extra }, total: drift.total, threshold });
+  }
+  if (measuredBaselines.length === 0) {
+    console.log("两条基准都没量到。先修这个，其他都没意义。");
+    return;
+  }
+
+  // Candidate names come from the PNCP site's own filter UI and third-party
+  // collectors. The plural spellings are tried in several encodings because
+  // the first run's resets say the server knows those names and objected to
+  // the values, not to the names.
+  const candidates: { label: string; extra: Record<string, string>; role?: "正对照" | "负对照" }[] = [
+    { label: "tipos_documento=ata", extra: { tipos_documento: "ata" }, role: "正对照" },
+    { label: "zzz_nao_existe=1（假参数）", extra: { zzz_nao_existe: "1" }, role: "负对照" },
+    { label: "ufs=SP", extra: { ufs: "SP" } },
+    { label: "ufs=SP|RJ（竖线分隔）", extra: { ufs: "SP|RJ" } },
+    { label: "ufs=35（IBGE 州代码）", extra: { ufs: "35" } },
+    { label: "esferas=M", extra: { esferas: "M" } },
+    { label: "esferas=Municipal", extra: { esferas: "Municipal" } },
+    { label: "modalidades=4", extra: { modalidades: "4" } },
+    { label: "modalidades=4|6", extra: { modalidades: "4|6" } },
+    { label: "modalidades=Concorrência - Eletrônica", extra: { modalidades: "Concorrência - Eletrônica" } },
+    { label: "municipios=4464（PNCP 内部 id）", extra: { municipios: "4464" } },
+    { label: "municipios=3550308（IBGE 码）", extra: { municipios: "3550308" } },
+    { label: "orgaos=40314", extra: { orgaos: "40314" } },
+    { label: "dataPublicacaoInicial=2026-09-17", extra: { dataPublicacaoInicial: "2026-09-17" } },
+    { label: "data_inicial=2026-09-17", extra: { data_inicial: "2026-09-17" } },
+  ];
+
+  const table: { label: string; role?: string; cells: { verdict: Verdict; detail: string; ms: number }[] }[] = [];
+  for (const candidate of candidates) {
+    const cells: { verdict: Verdict; detail: string; ms: number }[] = [];
+    for (const baseline of measuredBaselines) {
+      await sleep(paceMs);
+      const measured = await count({ ...baseline.params, ...candidate.extra }, timeoutMs);
+      cells.push({ ...judge(measured, baseline.total, baseline.threshold), ms: measured.ms });
+    }
+    table.push({ label: candidate.label, ...(candidate.role ? { role: candidate.role } : {}), cells });
+    const rendered = cells.map((c, i) => `${measuredBaselines[i].name.split("（")[0]}: ${c.verdict}`).join("   |   ");
+    console.log(`  ${(candidate.role ?? "").padEnd(4)} ${candidate.label.padEnd(38)} ${rendered}`);
+    for (const [i, cell] of cells.entries()) {
+      if (cell.verdict === "有效" || cell.verdict === "被拒") console.log(`         └ ${measuredBaselines[i].name}：${cell.detail}`);
+    }
   }
 
   console.log("\n" + "─".repeat(72));
-  const byLabel = (needle: string) => results.find((r) => r.label.startsWith(needle));
-  const positive = byLabel("q=obra");
-  const negativeStatus = byLabel("status=em_julgamento");
-  const negativeFake = byLabel("zzz_nao_existe");
-  const controlsOk =
-    positive?.total !== null && positive !== undefined && positive.total < baselineTotal &&
-    negativeFake?.total !== null && negativeFake !== undefined && negativeFake.total === baselineTotal;
+  const row = (needle: string) => table.find((t) => t.label.startsWith(needle));
+  const positive = row("tipos_documento=ata");
+  const negative = row("zzz_nao_existe");
+  const controlsOk = positive?.cells.some((c) => c.verdict === "有效") === true && negative?.cells.every((c) => c.verdict === "被忽略") === true;
 
   if (!controlsOk) {
-    console.log("对照组不成立 —— 正对照没缩小，或者假参数反而改变了总数。");
-    console.log("这说明这套测量方法本身有问题，上面每一行的结论都不能信。把整段发我。");
+    console.log("对照组不成立 —— 正对照（tipos_documento）没缩小，或者假参数反而被判成有效。");
+    console.log("测量方法本身有问题，上面每一行都不能当结论。把整段发我。");
     return;
   }
-  console.log("对照组通过：q 会缩小结果，假参数不会。所以下面的判断是可信的。");
-  if (negativeStatus?.total === baselineTotal) console.log("（status 依旧是「必填但不起作用」—— 跟 2026-09-18 量到的一致。）");
+  console.log("对照组通过：tipos_documento 会缩小结果，假参数不会。下面的判断可信。\n");
 
-  const working = results.filter((r) => r.total !== null && r.total < baselineTotal && !r.label.startsWith("zzz"));
-  console.log(`\n真正能缩小结果的参数：${working.length === 0 ? "一个都没有" : working.map((r) => r.label.split("（")[0]).join("，")}`);
+  const effective = table.filter((t) => !t.role && t.cells.some((c) => c.verdict === "有效"));
+  const rejected = table.filter((t) => !t.role && t.cells.every((c) => c.verdict === "被拒"));
+  const ignored = table.filter((t) => !t.role && t.cells.every((c) => c.verdict === "被忽略"));
+
+  console.log(`真的能缩小结果的：${effective.length === 0 ? "一个都没有" : effective.map((t) => t.label).join("，")}`);
+  console.log(`被服务器直接拒掉的（说明它认识这个名字，只是不接受这个写法）：${rejected.length === 0 ? "无" : rejected.map((t) => t.label).join("，")}`);
+  console.log(`收下但完全不起作用的：${ignored.length === 0 ? "无" : ignored.map((t) => t.label).join("，")}`);
   console.log();
-  if (working.filter((r) => !r.label.startsWith("q=")).length === 0) {
-    console.log("只有 q 能过滤 —— 那 connector 就只能靠关键词收窄，而关键词匹配的是文本，不是采购方式，也不是金额。");
-    console.log("下一步要定的是用哪几个葡语词做这个 q，以及漏掉的项目能不能接受。");
+  if (effective.length === 0) {
+    console.log("除了 tipos_documento 和 q，没有任何服务端过滤器 —— 那 connector 只能靠关键词收窄。");
+    console.log("下一步要定的是用哪几个葡语词，以及漏掉的项目能不能接受。");
   } else {
-    console.log("除了 q 之外还有能用的过滤器 —— 这几个直接决定 connector 每天发多少次请求。");
-    console.log("把上面这张表发我，我按能生效的那几个来写查询形状。");
+    console.log("把这张表发我 —— 能生效的那几个直接决定 connector 每天要发多少次请求。");
   }
 }
 

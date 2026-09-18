@@ -56,6 +56,7 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { fetchSecopProcesosByReference } from "../lib/ingestion/connectors/colombia-secop-live";
 import { buildSecopSlug, stripProcessPhaseSuffix, mapSecopRowToTender, type SecopProcesoRow } from "../lib/ingestion/colombia-mapper";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const SOURCE_NAME = "SECOP II — Colombia Compra Eficiente";
 const PAGE = 1000;
@@ -102,7 +103,7 @@ async function readAll<T>(build: (from: number, to: number) => PagedResult, labe
 }
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     console.error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). See .env.example.");

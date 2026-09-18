@@ -42,6 +42,7 @@ import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { toCsv } from "../lib/ingestion/review-csv";
 import { isPastSubmissionDeadline } from "../lib/ingestion/recency";
 import type { TenderStatus } from "../types/tender";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const OUT_DIR = "exports";
 
@@ -58,7 +59,7 @@ type Row = {
 };
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

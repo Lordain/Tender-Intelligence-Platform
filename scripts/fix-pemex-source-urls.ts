@@ -25,6 +25,7 @@
  *   npm run fix:pemex-source-urls -- --write     (writes to Supabase)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const SOURCE_NAME = "PEMEX — Concursos Abiertos";
 const PEMEX_SITE_ORIGIN = "https://www.pemex.com";
@@ -65,7 +66,7 @@ function inferListTitle(buyer: string, procedureType: string | null): string | u
 }
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

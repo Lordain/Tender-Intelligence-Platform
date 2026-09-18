@@ -27,6 +27,7 @@
  *   npm run fix:dof-awarded-status -- --write     (writes to Supabase)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const PAGE_SIZE = 1000;
 
@@ -41,7 +42,7 @@ type Row = {
 };
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

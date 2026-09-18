@@ -32,6 +32,7 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { KEY_DATE_TYPE_LABELS } from "../lib/tender-labels";
 import type { TenderKeyDate } from "../types/tender";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 type Row = {
   id: string;
@@ -57,7 +58,7 @@ function label(type: TenderKeyDate["type"]): string {
 }
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
   const onlySlugs = slugsFromArgv();
 
   const supabase = createSupabaseAdminClient();

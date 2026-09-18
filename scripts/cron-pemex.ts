@@ -21,6 +21,7 @@ import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { importPemexLive } from "../lib/ingestion/import-pemex-live";
 import { PEMEX_LIST_TITLES, KNOWN_BUYER_NAMES } from "../lib/ingestion/pemex-sources";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 /**
  * One month, matching Colombia's and the admin forms' own default.
@@ -34,7 +35,7 @@ import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 const RECENCY_MONTHS = 1;
 
 async function main() {
-  const write = process.argv.includes("--write");
+  const write = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

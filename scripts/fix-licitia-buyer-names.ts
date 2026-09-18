@@ -19,9 +19,10 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { fixLicitiaBuyerNames } from "../lib/ingestion/fix-licitia-buyer-names";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

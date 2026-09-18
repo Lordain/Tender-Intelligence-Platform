@@ -24,9 +24,10 @@
  *   npm run fix:colombia-awarded-status -- --write     (writes to Supabase)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 async function main() {
-  const shouldWrite = process.argv.includes("--write");
+  const shouldWrite = hasWriteFlag();
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

@@ -44,6 +44,18 @@ Every `ingest:*` command also accepts `--fixture` (runs against the small
 real sample already committed under `__fixtures__/`, no capture needed)
 and `--months N` (default 6 — see "Recency filter" below).
 
+**The two dashes before `--write` are not optional.** `npm run x -- --write`
+passes the flag to the script; `npm run x --write` gives it to *npm*, which
+prints one grey `npm warn Unknown cli config "--write"` and then runs the
+script with an empty argv — a dry run whose own footer then says, correctly,
+that nothing was written. On 2026-09-18 that cost a reclassify twice over: 21
+tier changes and 6 deletions were reported as pending, believed as done, and
+never applied. Since then `lib/cli-write-flag.ts` catches it (npm leaks the
+swallowed flag as `npm_config_write=true`) and every `--write` script stops
+with the correct command instead of dry-running in silence. It refuses rather
+than infers: these scripts delete rows, and a silent deletion is worse than a
+visible no-op. Covered by `npm run test:cli-write-flag`.
+
 ### How current is each source's *own* data — separate question from the `--months` filter
 
 `--months`/`filterRecentTenders()` only controls what this platform
@@ -2317,37 +2329,64 @@ browser, same as Colombia's original capture:
   session; worth retrying later rather than assuming it's permanently
   broken.
 
-**Retried 2026-09-18 (`npm run probe:brazil-pncp`, user's machine). Still
-broken, and worse than recorded above — it is not one endpoint.**
+**Retried 2026-09-18 (`npm run probe:brazil-pncp`, user's machine, 6-row
+matrix). PNCP works. Everything above about it being down is retracted.**
 
 ```
-modalidades (control)              200   3,922ms   19 rows
-/contratacoes/proposta   mod 6     timeout >60s
-/contratacoes/publicacao mod 6     timeout >60s
-/contratacoes/proposta   mod 4     500    52,374ms
-                                   "Erro na comunicação com o banco de dados."
+modalidades (control)            200    1,398ms   19 rows
+proposta   mod=6                 200   63,101ms   totalRegistros=1457, 146 pages
+proposta   mod=6 uf=SP           500   54,135ms   "Failed to obtain JDBC Connection ... Hikari"
+proposta   mod=6 uf=SP size=1    400      628ms   "deve ser maior que ou igual à 10"
+proposta   mod=6 + dataInicial   500   30,449ms   "Erro na comunicação com o banco de dados."
+proposta   mod=4 uf=SP           500   61,448ms   Hikari
+publicacao mod=6 uf=SP           500   47,000ms   Hikari
 ```
 
-The 500 is what settles it. That is PNCP's own application reporting that
-its database layer failed — not a WAF, not our parameters (PNCP returns a
-separate `RespostaErroValidacaoDTO` for those), and not the caller's
-network, since the control endpoint answered from the same machine in
-under four seconds. The two timeouts are the same fault. So the scope is
-every `contratacoes` consultation endpoint, not `/publicacao` alone.
+Three findings, two of them the opposite of what the matrix was built to
+test:
 
-`/v1/contratacoes/proposta` ("Contratações com Recebimento de Propostas
-Aberto") is new to this note — found in PNCP's own Swagger at
-`/pncp-consulta/v3/api-docs` and untried in the earlier session. It is the
-endpoint this platform actually wants, and it fails the same way.
+1. **It is slow, not broken.** 63 seconds is acceptable for a nightly import
+   that pages through once. Every earlier "504 / timeout" was our own 60s
+   cutoff, so the note above ("the scope is every `contratacoes` endpoint")
+   was wrong. Raising the cutoff to 120s is what distinguished the two.
+2. **Narrowing the query is what kills it.** `uf` never helped; it turned a
+   working call into a 500 three times out of three, across two modalities
+   and two endpoints, while the one call that omitted it succeeded. Hikari
+   is a JDBC connection *pool*, so the 500 means "no database connection was
+   free", not "your query was too broad". **The connector must therefore
+   send the BROAD query and filter on our side** — backwards from every
+   other source in this project, and the thing most likely to get
+   re-litigated by someone later trying to "optimise" the request.
+3. **`dataInicial` is poison too** (500). The working call sent `dataFinal`
+   alone.
 
-One hypothesis is left that our own code could act on: dying at 52 seconds
-*inside the database* looks like an unbounded scan, and PNCP holds every
-contracting process in Brazil from federal to municipal. `probe-brazil-
-pncp.ts` now runs a matrix that bounds the query by UF, by page size and by
-a date lower bound, and raises the cutoff to 120s so a slow-but-working
-endpoint is not recorded as a failure. If the whole matrix fails, the query
-shape is not the problem and no connector can be written until PNCP fixes
-its own service.
+So the proven shape is:
+
+```
+GET /api/consulta/v1/contratacoes/proposta
+    ?dataFinal=YYYYMMDD&codigoModalidadeContratacao=N&pagina=N&tamanhoPagina=>=10
+```
+
+`tamanhoPagina` has a floor of 10 (the 400 says so); the ceiling is still
+unmeasured.
+
+**What is still missing before a connector can be written.** The probe
+printed top-level field names only, and a name is not a contract:
+`orgaoEntidade` and `unidadeOrgao` are nested objects nobody here has seen
+inside, and they are where the buyer, the UF, the municipality and the
+federal/state/municipal split have to come from. No date, money or status
+field has had a real value looked at either. Writing a mapper from a field
+list is the shortcut that cost a bulk run matching 0 of 440 Colombian
+candidates, so `npm run dump:brazil-pncp` (scripts/dump-brazil-pncp-rows.ts)
+exists to close that gap in one run: it prints the first row as complete raw
+JSON, and exports 30–50 real `objetoCompra` titles to
+`exports/brazil-pncp-titles-<date>.csv`.
+
+It also fills the one cell the matrix left empty. Both `mod=4` attempts
+carried `uf` — now known to be the failing ingredient — so Concorrência
+Eletrônica, the modality carrying the large public works this platform
+actually sells, has never been tried in the shape that works. The script
+sweeps every modality without it.
 
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against

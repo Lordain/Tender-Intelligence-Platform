@@ -58,6 +58,23 @@
  * meaningless — the report says so rather than letting you read timeouts as
  * findings.
  *
+ * ── SECOND RUN (2026-09-18, the matrix below) ─────────────────────────────
+ *
+ * The matrix answered, and it overturned the conclusion above: PNCP is slow,
+ * not broken. `proposta mod=6` returned 200 in 63,101ms with
+ * totalRegistros=1457 — every earlier "timeout" was this script's own 60s
+ * cutoff. And the hypothesis the matrix was built to test is backwards: `uf`
+ * is what BREAKS it (500, "Failed to obtain JDBC Connection ... Hikari",
+ * three for three across two modalities and two endpoints), as is
+ * `dataInicial`. Hikari is a connection pool, so the 500 means no database
+ * connection was free, not that the query was too broad. A connector must
+ * send the BROAD query and filter on our side.
+ *
+ * Follow-on work lives in scripts/dump-brazil-pncp-rows.ts, which fetches the
+ * real row values a mapper has to be written from, and sweeps every modality
+ * WITHOUT `uf` — including Concorrência Eletrônica, which this matrix only
+ * ever tried in the shape now known to fail.
+ *
  * Read-only. No Supabase, no writes, no model calls.
  *
  * Usage:

@@ -2384,4 +2384,46 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real title (2026-09-18, per the user: 灌溉系统都加水工程的标签). The ASK was a tag, and the tag is pinned in test:industry-tags — this fixture exists because the tag changes the tier too: `water` is a target industry, so with a disclosed value the row is 中型 instead of falling through. With NO disclosed value it is still excluded by Peru's undisclosed-value rule, which is that rule working as specified, not this one failing.",
     country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 3_500_000, currency: "USD",
   },
+  {
+    title: "CONSTRUCCIÓN DE UN EDIFICIO DE DOS NIVELES, SANITARIOS, ANDADORES DE CONEXION, S",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-18, per the user: 新增排除). A two-storey municipal building with its toilets and walkways, previously 常规项目 — nothing in it reads as small except the storey count and the word `andadores`, which is what the rule keys on. Deliberately not keyed on `edificio`: a hospital block and a terminal building are edificios too.",
+    country: "Mexico", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "CONTRATACIÓN DEL SERVICIO A TODO COSTO DEL ACONDICIONAMIENTO E INSTALACIÓN DE EQUIPO DE CONTROL DE ACCESO CON BARRERA DESLIZANTE (MOLINETE - TORNIQUETE) EN LA SEDE ACADÉMICA DE CCOYAHUACHO DE LA UNIVERSIDAD NACIONAL JOSÉ MARÍA ARGUEDAS",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-18, per the user: 秘鲁，警卫室). Reached FLAGSHIP — the top tier — because `EQUIPO DE CONTROL DE ACCESO` matches INCLUDE_OVERRIDE_KEYWORDS, which both waives every exclusion and lifts Peru's undisclosed-value gate. The only fix that works is a check ABOVE the override, which is what GATE_BARRIER_KEYWORDS is; an EXCLUDE_KEYWORDS entry would have done nothing at all to this title.",
+    country: "Peru", scopeType: "equipment_services", governmentLevel: "federal",
+  },
+  {
+    title: "ADQUISICIÓN E INSTALACIÓN DE SISTEMA DE CONTROL DE ACCESO BIOMÉTRICO PARA LAS SEDES DE LA ENTIDAD",
+    expectedTier: "flagship",
+    note: "The control for the gate-barrier rule, and it has to stay FLAGSHIP: a genuine electronic access-control purchase names no barrier, so GATE_BARRIER_KEYWORDS does not touch it and the include-override carries it all the way, undisclosed value and all. That is the whole point of putting the barrier words in their own list instead of narrowing the override — narrowing it would have cost this title its tier. (Adding `Y VIDEOVIGILANCIA` drops it to 中型 via OVERRIDE_NOT_FLAGSHIP, which is a different rule doing its own job; left out so this fixture tests one thing.)",
+    country: "Peru", scopeType: "equipment_services", governmentLevel: "federal",
+  },
+  {
+    title: "CONTRATACIÓN DE SERVICIO DE REPARACIÓN DE PIEZAS MECÁNICAS DE TURBINA HIDRÁULICA FRANCIS DE LAS UNIDADES DE GENERACIÓN DEL GRUPO HIDRÁULICO G2 Y G3 DE LA CENTRAL HIDROELÉCTRICA CÁCLIC, DEL DEPARTAMENTO DE GENERACIÓN TRANSMISIÓN DE GERENCIA REGIONAL AMAZONAS CAJAMARCA DE ELECTRO ORIENTE S.A.",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-18, per the user: 秘鲁，电力维修). Repairing worn parts on generating units commissioned decades ago. Sits with MAINTENANCE_ONLY_KEYWORDS and not in EXCLUDE_KEYWORDS because `central hidroeléctrica` trips a power include-override that would wave a bypassable rule away.",
+    country: "Peru", scopeType: "services", governmentLevel: "federal",
+  },
+  {
+    title: "CONTRATACION DE SERVICIO: SERVICIO DE SUMINISTRO, FABRICACION, TRANSPORTE, MONTAJE Y LANZAMIENTO DE ESTRUCTURA METALICAS DEL PUENTE MANDOR, PARA LA OBRA: MEJORAMIENTO DE LA CARRETERA MARANURA - MANDOR - PAVAYOC - EN EL DISTRITO DE MARANURA, LA CONVENCION, CUSCO",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-18, per the user: 钢铁结构). Was 中型项目 on the highway named as the parent work; the contract itself is a steelwork package inside someone else's road project. Same category as the `puente metálico modular` entry already in CONSTRUCTION_INPUT_GOODS, written out longhand. Anchored on the supply verbs so a building whose title merely mentions its steel frame survives.",
+    country: "Peru", scopeType: "equipment_services", governmentLevel: "state",
+  },
+  {
+    title: "SERVICIO DE ALQUILER Y PUESTA EN OPERACION DE GRUPO ELECTROGENO DE RESPALDO PARA EL SISTEMA ELECTRICO ORCOPAMPA - COTAHUASI",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-18, per the user: 租赁). `arrendamiento` was already non-bypassable; `alquiler` is the same word in Peru and was not. It needs the same placement for the same reason — the title names a power system and a genset, so any bypassable rule would have been overridden.",
+    country: "Peru", scopeType: "services", governmentLevel: "federal",
+  },
+  {
+    title: "ADQUISICIÓN DE PLACA DE CONCRETO ARMADO DE 15CM X 28CM X 2.40M PREFABRICADO PARA LA CONSTRUCCIÓN DEL CERCO PERIMÉTRICO TIPO UNI (CON MEDIDAS DE 0.27 X 0.14M H=2.40M Y ANCLAJE 3/8\" DEL PROYECTO: \"MEJORAMIENTO Y AMPLIACIÓN DE LOS SERVICIOS DE SALUD EN EL ESTABLECIMIENTO DE SALUD ESTRATÉGICO CENTRO DE",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-18, per the user). Precast panels bought by the piece, with their dimensions in the title, for a fence — reaching a tier on the name of the hospital project they will be delivered to. Exactly the shape of the piedra chancada case added the same day.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "state",
+  },
 ];

@@ -77,6 +77,7 @@
     "audit:award-before-deadline": "tsx --env-file-if-exists=.env.local scripts/audit-award-before-deadline.ts",
     "fix:dof-awarded-status": "tsx --env-file-if-exists=.env.local scripts/fix-dof-awarded-status.ts",
     "probe:dof-notice": "tsx --env-file-if-exists=.env.local scripts/probe-dof-notice.ts",
+    "audit:public-visibility": "tsx --env-file-if-exists=.env.local scripts/audit-public-visibility.ts",
     "survey:peru-procedures": "tsx scripts/survey-peru-procedures.ts",
     "probe:brazil-pncp": "tsx scripts/probe-brazil-pncp.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",

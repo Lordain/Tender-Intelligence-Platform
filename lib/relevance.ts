@@ -175,6 +175,18 @@ const EXCLUDE_KEYWORDS = [
 
   // Repair, refurbishment and upkeep of what already exists.
   /obras de reparaci[óo]n y rehabilitaci[óo]n|conservaci[óo]n de la malla vial|muro de contenci[óo]n|canal pluvial|obras diversas|art[íi]culos met[áa]licos/i,
+  // A one- or two-storey building with its toilets and connecting walkways —
+  // the smallest thing a municipality tenders as an "obra" (2026-09-18, per
+  // the user): "CONSTRUCCIÓN DE UN EDIFICIO DE DOS NIVELES, SANITARIOS,
+  // ANDADORES DE CONEXION, S...". Nothing in it says small except the storey
+  // count and the walkways, which is why it survived every scale rule and
+  // came out 常规项目.
+  //
+  // Keyed on the storey count being SPELLED OUT, and on "andadores", rather
+  // than on "edificio": a hospital block, a terminal building and a school
+  // are all edificios, and a title that bothers to say "de dos niveles" is
+  // describing something whose size is the point.
+  /\bedificio\s+de\s+(un|dos|1|2)\s+niveles?\b|\bandadores?\s+de\s+conexi[óo]n\b/i,
 
   // Colombian one-offs the user confirmed, each narrow on purpose.
   /interventor[íi]a|envase de vidrio|helic[óo]ptero|inhibidor de se[ñn]al|pintura termopl[áa]stica/i,
@@ -761,6 +773,42 @@ const MUNICIPAL_AMENITY_KEYWORDS = [
   /centro de integraci[óo]n social|centro vida\b|centro de bienestar animal|casa de la cultura|teatro al aire libre/i,
 ];
 
+/**
+ * Gate furniture — a turnstile, a boom or a sliding barrier at the entrance
+ * to a campus, a car park or a yard. 警卫室, in the user's words (2026-09-18).
+ *
+ * Checked BEFORE `hasIncludeOverride` and not bypassable by it, and that
+ * placement is the entire reason this is its own list rather than an
+ * EXCLUDE_KEYWORDS entry. The real title —
+ *
+ *   "CONTRATACIÓN DEL SERVICIO A TODO COSTO DEL ACONDICIONAMIENTO E
+ *    INSTALACIÓN DE EQUIPO DE CONTROL DE ACCESO CON BARRERA DESLIZANTE
+ *    (MOLINETE - TORNIQUETE) EN LA SEDE ACADÉMICA DE CCOYAHUACHO DE LA
+ *    UNIVERSIDAD NACIONAL JOSÉ MARÍA ARGUEDAS"
+ *
+ * — reached FLAGSHIP, the top tier, because "EQUIPO DE CONTROL DE ACCESO"
+ * matches INCLUDE_OVERRIDE_KEYWORDS' access-control-system pattern, and the
+ * override both waives every exclusion and lifts Peru's undisclosed-value
+ * gate. An exclusion anywhere below it would have changed nothing.
+ *
+ * The override itself stays as it is: it was written for a real class of
+ * purchase — biometric readers, vehicular access systems, campus-wide
+ * electronic control — that a Chinese manufacturer genuinely supplies, and
+ * the narrowing it already carries (a system/equipment qualifier, added
+ * 2026-09-04 against a janitorial contract) is still right. What this list
+ * says is narrower and does not contradict it: when the thing being installed
+ * IS the barrier, it is a gatehouse fitting, whatever the sentence around it
+ * calls it. A genuine "SISTEMA DE CONTROL DE ACCESO BIOMÉTRICO" names no
+ * barrier and is unaffected.
+ *
+ * Like the childcare and maintenance lists it sits beside, a real government
+ * national-priority designation still overrides it.
+ */
+const GATE_BARRIER_KEYWORDS = [
+  /\bmolinete(s)?\b|\btorniquete(s)?\b/i,
+  /\bbarrera(s)?\s+(deslizante(s)?|levadiza(s)?|vehicular(es)?)\b|\bpluma(s)?\s+vehicular(es)?\b/i,
+];
+
 const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
 
 /**
@@ -826,7 +874,15 @@ const RENEWAL_ONLY_KEYWORDS = [
   // Vehicle rental was already excluded by a narrower pattern; this covers
   // renting anything, including a commercial unit ("Arrendar a título
   // oneroso el local comercial").
-  /\barrendamiento\b|\barrendar\b/i,
+  // "alquiler" is the same word in Peru, and it needed the same non-bypassable
+  // placement for exactly the same reason (2026-09-18, per the user, 租赁):
+  // "SERVICIO DE ALQUILER Y PUESTA EN OPERACION DE GRUPO ELECTROGENO DE
+  // RESPALDO PARA EL SISTEMA ELECTRICO ORCOPAMPA - COTAHUASI" names a power
+  // system and a genset, so a bypassable rule would have been overridden.
+  // EXCLUDE_KEYWORDS' existing `alquiler de maquinaria` only covered plant
+  // hire by the hour. Renting equipment out is not a supply contract a
+  // foreign bidder can win, whatever the equipment is.
+  /\barrendamiento\b|\barrendar\b|\balquiler\b/i,
   /renovaci[óo]n del? licenciamiento|renovaci[óo]n de (la )?(suscripci[óo]n|licencia(s)?)|renovaci[óo]n de (la )?plataforma/i,
 ];
 
@@ -992,6 +1048,25 @@ const MAINTENANCE_ONLY_KEYWORDS = [
   // no-industry/no-value gate — which meant the same title WITH an
   // industry tag survived as a maintenance job.
   /\bmantenimiento\b|\bmtto\b|\bmantto\b|\bmto\b|servicio t[ée]cnico (preventivo|correctivo)/i,
+  // Fixing PARTS of a machine that is already installed and running — the
+  // same class as upkeep, in the words a repair order actually uses
+  // (2026-09-18, per the user, 电力维修): "CONTRATACIÓN DE SERVICIO DE
+  // REPARACIÓN DE PIEZAS MECÁNICAS DE TURBINA HIDRÁULICA FRANCIS DE LAS
+  // UNIDADES DE GENERACIÓN ... DE LA CENTRAL HIDROELÉCTRICA CÁCLIC". It named
+  // a hydro plant and its generating units and came out 常规项目; what is being
+  // bought is a repair of worn parts on machines commissioned decades ago,
+  // which needs the turbine's own OEM or a local workshop.
+  //
+  // Belongs in the non-bypassable list rather than EXCLUDE_KEYWORDS for the
+  // reason the whole list exists: anything named "central hidroeléctrica" or
+  // "unidades de generación" trips a power include-override, which would wave
+  // a bypassable exclusion away.
+  //
+  // Narrow on purpose — "reparación DE PIEZAS/PARTES/COMPONENTES", not bare
+  // "reparación". Rebuilding a structure ("REPARACIÓN DEL PUENTE ...") is a
+  // works contract and stays; MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT already
+  // handles capping those.
+  /\breparaci[óo]n\s+(de\s+)?(piezas|partes|componentes)\b/i,
 ];
 
 /**
@@ -1159,6 +1234,28 @@ const CONSTRUCTION_INPUT_GOODS = [
   // on the word 桥 inside its own product name. Narrow on purpose — building a
   // bridge is kept, buying a prefabricated span is not.
   /\bpuente(s)?\s+met[áa]lico(s)?\s+modular(es)?\b/i,
+  // Steel structures fabricated off site and erected — the same purchase as
+  // the modular span above, written out longhand (2026-09-18, per the user,
+  // 钢铁结构): "SERVICIO DE SUMINISTRO, FABRICACION, TRANSPORTE, MONTAJE Y
+  // LANZAMIENTO DE ESTRUCTURA METALICAS DEL PUENTE MANDOR, PARA LA OBRA:
+  // MEJORAMIENTO DE LA CARRETERA MARANURA - MANDOR - PAVAYOC". It came out
+  // 中型项目 on the highway named as the parent work; the contract is a
+  // steelwork package inside someone else's road project.
+  //
+  // Anchored on the supply verbs rather than matching "estructura metálica"
+  // anywhere, because an excluded row is never written to Supabase: a real
+  // building whose title merely mentions its steel frame has to survive, and
+  // the thing being described here is the fabricate-and-deliver scope.
+  /(suministro|fabricaci[óo]n|montaje|lanzamiento|habilitaci[óo]n)[^.]{0,90}\bestructuras?\s+met[áa]lica(s)?\b/i,
+  // Precast concrete units bought by the piece, with their dimensions in the
+  // title (2026-09-18, per the user): "ADQUISICIÓN DE PLACA DE CONCRETO
+  // ARMADO DE 15CM X 28CM X 2.40M PREFABRICADO PARA LA CONSTRUCCIÓN DEL CERCO
+  // PERIMÉTRICO ... DEL PROYECTO: MEJORAMIENTO Y AMPLIACIÓN DE LOS SERVICIOS
+  // DE SALUD ...". Same shape as the piedra chancada case added the same day:
+  // a catalogue order that reaches a high tier on the name of the hospital
+  // project it will be delivered to. `postes de concreto` was already
+  // excluded one list up; these are its siblings off the same casting yard.
+  /\b(placas?|paneles?|losas?|bloques?|adoquines?|viguetas?)\s+(de\s+)?(concreto|hormig[óo]n)\b/i,
 ];
 
 /**
@@ -2526,7 +2623,8 @@ export function classifyRelevance(input: {
   // must not rescue a daycare.
   if (
     input.isNationalPriorityProject !== true &&
-    CHILDCARE_FACILITY_KEYWORDS.some((pattern) => pattern.test(haystack))
+    (CHILDCARE_FACILITY_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
+      GATE_BARRIER_KEYWORDS.some((pattern) => pattern.test(haystack)))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }

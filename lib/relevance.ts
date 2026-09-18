@@ -2158,6 +2158,52 @@ const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru"]);
 
 const MIN_VALUE_USD = 800_000;
 
+/**
+ * Countries whose floor is not the platform default.
+ *
+ * Reintroduced 2026-09-18 for Brazil, from a measured 3-day sweep of PNCP
+ * rather than a feeling. At $800,000 the source produced 117 tenders in three
+ * days (~39/day), which the user judged too many against a stated target of
+ * 每天20条左右. The kept rows fell out like this:
+ *
+ *     35  $0.8M – $1.5M        28  $1.5M – $3M
+ *     17  $3M – $6M            23  $6M+          14  no amount
+ *
+ * so $3,000,000 is not an estimate — it is a band edge. It removes the first
+ * two rows, leaving 54 per three days, ~18/day.
+ *
+ * Why Brazil needs its own floor at all: PNCP is direct-administration
+ * procurement for 5,570 municipalities, so R$4.13M (the old floor) is an
+ * ordinary small-town contract there in a way it is not in Peru or Colombia.
+ * The same number means different things in different procurement systems,
+ * which is the entire reason this map exists.
+ *
+ * KNOWN CONSEQUENCE, not an oversight: $3M is also SIGNIFICANT_VALUE_USD, so
+ * no Brazilian tender WITH a published amount can be "standard" any more —
+ * anything that clears the floor is at least significant. 常规 does not go
+ * empty for Brazil (the ~14 sealed-budget rows per sweep still land there),
+ * but it is now a small tier. Lower this to $2,000,000 for a real standard
+ * band at roughly 24/day; it is one number.
+ */
+const MIN_VALUE_USD_BY_COUNTRY: Record<string, number> = {
+  Brazil: 3_000_000,
+};
+
+/**
+ * The floor this tender is judged against.
+ *
+ * One function because `input.country` reaching it is the whole risk: this
+ * codebase has already shipped a bug where a row got one tier from an import
+ * and another from a reclassify because the two disagreed about what was
+ * passed (the 193 → 486 jump of 2026-09-08). `country` is a REQUIRED field on
+ * ClassifyRelevanceInput for that reason — tsc, not production, is what tells
+ * a call site it forgot.
+ */
+function minValueUsdFor(country: string | undefined): number {
+  if (country === undefined) return MIN_VALUE_USD;
+  return MIN_VALUE_USD_BY_COUNTRY[country] ?? MIN_VALUE_USD;
+}
+
 // zh tier names renamed 2026-09-05 per explicit user request
 // ("重点项目"->"中型项目", "旗舰项目"->"大型项目") — see the same-day comment
 // in lib/tender-labels.ts. This LABELS object is written into each
@@ -2774,7 +2820,7 @@ export function classifyRelevance(input: {
   const normalizedValue =
     input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
 
-  const minValueUsd = MIN_VALUE_USD;
+  const minValueUsd = minValueUsdFor(input.country);
   // Deliberately NOT gated by hasIncludeOverride (2026-09-04, per explicit
   // user request after a real batch of tiny-value Colombia tenders —
   // "SERVICIO DE INTERNET" $571, "QPAR S.A.S" $8,185, "CPS INFRAESTRUCTURA

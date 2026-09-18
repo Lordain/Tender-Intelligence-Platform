@@ -127,15 +127,35 @@ const road = classifyStoredTender({
 });
 check("巴西公路同时拿到 transportation 和 construction", [road.industries.includes("transportation"), road.industries.includes("construction")], [true, true]);
 check("有真标签时不再残留 general", road.industries.includes("general"), false);
-// R$7,494,680.99 at 1 USD = 5.16 BRL is US$1.45M — above MIN_VALUE_USD (800k)
-// and below SIGNIFICANT_VALUE_USD (3M), so "standard". This expectation was
-// written as "significant" first, which was simply wrong arithmetic on my
-// part; it is pinned here because it is also the answer to "where will
-// Brazilian tenders land", and the answer is that a typical municipal works
-// contract lands in 常规, not 中型. Note this is the tier AFTER commit
-// 3568cf1 removed the clause that promoted any works contract above the
-// minimum — before that, this row would have been significant.
-check("R$749 万 ≈ US$145 万 → 常规（standard），不是中型", road.relevance.tier, "standard");
+// R$7,494,680.99 at 1 USD = 5.16 BRL is US$1.45M, and as of 2026-09-18 that
+// is BELOW Brazil's own floor of $3,000,000 — so the tender this entire
+// connector was built against is now excluded from the Brazilian feed.
+//
+// That is the clearest statement of what the per-country floor does, which is
+// why it is pinned rather than quietly deleted. The row was correctly read,
+// correctly valued and correctly tagged; it is simply a routine municipal
+// road contract, and at ~39 of those a day the user asked for 20. It stays
+// here as the reference for "how big is big enough in Brazil".
+check("R$749 万 ≈ US$145 万 → 低于巴西 300 万门槛，被排除", road.relevance.tier, "excluded");
+check("排除理由说的是金额门槛", road.relevance.reason.zh.includes("3,000,000"), true);
+
+// The floor must not leak. Same amount, same words, a different country: Peru
+// keeps the platform default of $800,000, so this one stays in. 319 Spanish
+// fixtures in test:relevance cover this from the other side; this is the
+// direct statement of it.
+const peruvianRoad = classifyStoredTender({
+  title: "Mejoramiento de la carretera departamental",
+  summary: "",
+  buyer: "GOBIERNO REGIONAL",
+  country: "Peru",
+  procedureType: "Licitación Pública",
+  governmentLevel: "state",
+  scopeType: "works",
+  estimatedValue: 1_450_000,
+  currency: "USD",
+  sourceName: "OECE",
+});
+check("同样金额在秘鲁不受巴西门槛影响", peruvianRoad.relevance.tier !== "excluded", true);
 const mexicanRoad = classifyStoredTender({
   title: "Construcción y pavimentación de la carretera estatal",
   summary: "",

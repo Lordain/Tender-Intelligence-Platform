@@ -2597,6 +2597,42 @@ against `/api/consulta`, both measured rather than assumed by
   rather than as the thing that ends the sweep. The earlier 600 silently
   truncated modality 4 at page 6.
 
+**Brazil gets its own value floor: $3,000,000.**
+
+A full 3-day sweep with amounts kept 117 tenders (~39/day) against a stated
+target of 每天20条左右. The kept rows by USD band:
+
+| band | kept |
+|---|---|
+| $0.8M – $1.5M | 35 |
+| $1.5M – $3M | 28 |
+| $3M – $6M | 17 |
+| $6M+ | 23 |
+| no amount (sealed estimates) | 14 |
+
+$3,000,000 is a band edge rather than an estimate: it drops the first two
+rows and leaves 54 per three days, ~18/day. `MIN_VALUE_USD_BY_COUNTRY` is
+reintroduced for it (the map was removed in September when Mexico's floor was
+unified with Colombia's), resolved through one `minValueUsdFor()` so the
+threshold cannot differ between an import and a reclassify — the failure that
+produced the 193 → 486 jump on 2026-09-08.
+
+Why Brazil needs a different number at all: PNCP carries direct-administration
+procurement for 5,570 municipalities, so R$4.13M is an ordinary small-town
+contract there in a way it is not in Peru or Colombia.
+
+Two consequences worth stating rather than discovering later:
+
+- **$3M is also `SIGNIFICANT_VALUE_USD`**, so no Brazilian tender with a
+  published amount can be "standard" any more. 常规 does not go empty — the
+  ~14 sealed-budget rows per sweep still land there — but it is a small tier.
+  $2,000,000 would restore a real standard band at roughly 24/day.
+- **The tender this connector was built against no longer qualifies.** The
+  MT-020/251 road contract, R$7,494,680.99 ≈ US$1.45M, is now excluded. It was
+  read, valued and tagged correctly; it is simply a routine municipal road
+  contract, and routine is what the floor is for. `test:relevance-pt` pins it
+  in that state as the reference for how big is big enough in Brazil.
+
 Two smaller corrections from the same run:
 
 - `/modulo-legado/1_consultarLicitacao` is a real path — it is in

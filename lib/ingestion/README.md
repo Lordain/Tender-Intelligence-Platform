@@ -3330,6 +3330,67 @@ next steps:
 `scripts/test-block-page.ts` pinning the three real bodies that caused the
 false ★ — F5's rejection page above all, because it arrives as HTTP 200.
 
+#### Run four (2026-09-18): the URLs are exact, and every automated path to them is refused
+
+The link printer's wider limit paid off immediately — the three spreadsheets
+came back in full, and the guessed filename in run three's probe turned out to
+be exactly right:
+
+```
+https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes/
+    Resultado_leiloes_transmissao.xlsx
+    Resultado_leiloes_geracao.xlsx
+    Resultado_leiloes_sistemas_isolados.xlsx
+```
+
+`gov.br/aneel/pt-br/empreendedores/leiloes` — the page written for bidders
+rather than for statistics — gave the other half, the **upcoming** side:
+
+```
+https://leilao.aneel.gov.br/editalTransmissao      （还有 editalGeracao / editalDistribuicao）
+https://leilao.aneel.gov.br/inscricao/             报名
+https://leilao.aneel.gov.br/esclarecimento/        澄清问答
+```
+
+**And both of those hosts are unreachable.** `git.aneel.gov.br` answers 403
+"Just a moment…" — Cloudflare's JS challenge — from the laptop and the
+deployment alike, and a browser User-Agent does not move it, as it should not:
+that challenge wants a browser that runs JavaScript, not a string claiming to
+be one. `leilao.aneel.gov.br` times out at the TCP layer from two continents,
+same as `dadosabertos.aneel.gov.br`.
+
+So the position is now precise rather than merely bad: **the data is public,
+the URLs are exact, and every unattended path to them is refused.** That is
+the same shape as Compras MX, Ecopetrol and Proyectos México, and it has the
+same answer — a person opens the URL in a real browser, the challenge passes,
+and a mapper is written against the real capture.
+
+`npm run dump:aneel-leiloes -- <file>.xlsx` is that step. It prints the sheet
+names, the real column headers with the type read from the first DATA row (a
+column called "Data" holding a string is a different mapping job from one
+holding a real date), and the first rows as records. It also finds the header
+row rather than assuming row 1 — government spreadsheets routinely open with a
+title banner and a blank line, and taking row 1 on faith produces a mapper
+keyed on `""` and `Column2` that fails in a way that looks like the file being
+wrong.
+
+**Confirmed this round, and left undecided on purpose:** CCEE's portal is
+**CKAN 2.10.0, "Dados CCEE"**, and it opens to a browser User-Agent while
+refusing an honest one (the JSON fix above is what finally surfaced this —
+run three had the same result and reported it as an empty page). That is a
+posture question for the user, not a header to ship, and nothing in the
+connectors has been changed on account of it.
+
+**What is left on each side of the ANEEL problem:**
+
+- *Results* (who won, at what RAP, with what investment) — three spreadsheets,
+  download by hand, mapper from the dump. Feeds `awardedValue`, the winning
+  supplier and the Chinese-bidder reports.
+- *Opportunities* (what is being auctioned next) — `leilao.aneel.gov.br`'s
+  edital pages, also by hand, and the edital PDF then goes through the same
+  document-extraction pipeline every other source uses. `estimatedValue` takes
+  the estimated investment, never RAP.
+
 #### Run three (2026-09-18): two networks, and the door was inside a page we could already read
 
 The probe ran from the laptop and, for the first time, from the deployment.

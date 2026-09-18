@@ -86,6 +86,7 @@
     "dump:brazil-pncp": "tsx scripts/dump-brazil-pncp-rows.ts",
     "probe:brazil-alt": "tsx scripts/probe-brazil-alt-apis.ts",
     "dump:brazil-search": "tsx scripts/dump-brazil-search.ts",
+    "dump:aneel-leiloes": "tsx scripts/dump-aneel-leiloes.ts",
     "probe:brazil-search-filters": "tsx scripts/probe-brazil-search-filters.ts",
     "probe:brazil-amount": "tsx scripts/probe-brazil-amount.ts",
     "test:cli-write-flag": "tsx scripts/test-cli-write-flag.ts",

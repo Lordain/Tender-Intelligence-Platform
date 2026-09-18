@@ -178,6 +178,35 @@ const OUT_DIR = "exports";
 const ANEEL_DATASET = "resultado-de-leiloes";
 const ANEEL_TRANSMISSION_RESOURCE = "453cb742-8089-4c16-aaf2-42088b5553dc";
 const ANEEL_GENERATION_RESOURCE = "a1328fc1-f06b-437d-8893-57ac2c8103df";
+/**
+ * The three spreadsheets gov.br links, in full, as read off run four's output.
+ *
+ * `git.aneel.gov.br` answers 403 "Just a moment…" — Cloudflare's JS challenge
+ * — from the laptop and the deployment alike, and a browser User-Agent does
+ * not move it, as it should not: that challenge wants a browser that runs
+ * JavaScript, not a string claiming to be one. A real browser passes it, so
+ * these are download-by-hand URLs, and `npm run dump:aneel-leiloes` reads what
+ * comes back.
+ */
+const ANEEL_GITLAB_RAW = "https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes";
+export const ANEEL_RESULT_SPREADSHEETS = [
+  `${ANEEL_GITLAB_RAW}/Resultado_leiloes_transmissao.xlsx`,
+  `${ANEEL_GITLAB_RAW}/Resultado_leiloes_geracao.xlsx`,
+  `${ANEEL_GITLAB_RAW}/Resultado_leiloes_sistemas_isolados.xlsx`,
+] as const;
+
+/**
+ * Where an UPCOMING auction's edital lives, found on run four inside
+ * gov.br/aneel/pt-br/empreendedores/leiloes — which is reachable from both
+ * machines even though these three are not (leilao.aneel.gov.br times out at
+ * the TCP layer from two continents).
+ */
+export const ANEEL_EDITAL_PAGES = [
+  "https://leilao.aneel.gov.br/editalTransmissao",
+  "https://leilao.aneel.gov.br/editalGeracao",
+  "https://leilao.aneel.gov.br/editalDistribuicao",
+] as const;
+
 /** ANEEL publishes a per-dataset data dictionary as a PDF; this is the transmission one. */
 const ANEEL_TRANSMISSION_DICTIONARY =
   "https://dadosabertos.aneel.gov.br/dataset/593537c6-9e0e-4ed9-817a-2c5d5de05147/resource/c8d16a2e-f738-43cc-9dbe-efa95e5056c1/download/dm-resultados-dos-leiloes-de-transmissao.pdf";
@@ -954,11 +983,14 @@ async function main() {
     console.log("    dadosabertos.aneel.gov.br  socket 层 ETIMEDOUT，这条是网络真的不通，不是策略");
     console.log("    PPI              换 UA 能拿到 200，但四个不同网址返回同一个 266 字的空壳");
   }
-  if (DADOS_GOV_KEY === undefined) {
-    console.log("\n  下一步就一件事：dados.gov.br 的 key。它是唯一一个「路径是真的、只差凭证」的门，");
-    console.log("  而且一个 key 覆盖 ANTT / ANTAQ / ANAC / ANEEL 四家的数据集。");
-    console.log("  设好 DADOS_GOV_BR_API_KEY 再跑这条即可，Bearer 和文档里的老写法都会试。");
-  }
+  console.log("\n下一步（2026-09-18 四轮之后定下来的）：三个 xlsx 用浏览器下下来。");
+  console.log("  Cloudflare 的验证浏览器能过、脚本过不了，而这三个文件的地址是精确的：");
+  for (const url of ANEEL_RESULT_SPREADSHEETS) console.log(`    ${url}`);
+  console.log("  下完跑 `npm run dump:aneel-leiloes -- <文件>.xlsx`，它会把真实列名打出来，");
+  console.log("  映射器照着那个写 —— 跟 Compras MX、Ecopetrol、Proyectos México 是同一条路子。");
+  console.log("\n  在招的场次（不是结果）在这三页，但那个域名两个大洲都连不上：");
+  for (const url of ANEEL_EDITAL_PAGES) console.log(`    ${url}`);
+  console.log("  同样用浏览器打开，有在招的就把 edital 存下来。");
   console.log("\n输电标段的金额按【预估总投资 CAPEX】走（2026-09-18 已确认），RAP 放摘要正文点名。");
   console.log("见 lib/ingestion/README.md 的「Three traps that are new…」。");
 }

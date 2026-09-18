@@ -33,6 +33,40 @@
  * from a fresh `dump:brazil-search` run rather than relying on the default,
  * which will age out.
  *
+ * ── FIRST RUN (2026-09-18) — found, and on the healthy host ───────────────
+ *
+ *   A  /api/consulta/v1/orgaos/{cnpj}/compras/{ano}/{seq}        500  35.0s
+ *   B  /api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}            301  →  A
+ *   C  /api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens      200   3.7s  ✅
+ *   D  /api/consulta/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens  404
+ *
+ * The compra RECORD was moved off `/api/pncp` onto `/api/consulta` (B says so
+ * in its own 301 body) and `/api/consulta` is the service failing with JDBC
+ * pool errors — so that record is effectively unreachable. The ITEM LIST was
+ * not moved, still lives on `/api/pncp`, and answered in 3.7 seconds. The
+ * money is in the items, so the one path that works is the one we need.
+ *
+ * `valorTotal` on the single item of the MT-020/251 road contract came back
+ * 7,494,680.99 — reais, which is why lib/currency.ts needed a BRL row.
+ *
+ * The item record carries more than money, and three fields matter to the
+ * mapper as much as the amount does:
+ *
+ *   · `orcamentoSigiloso` — Brazilian law allows a sealed estimate. When it
+ *     is true the amount is withheld BY DESIGN, which is a different thing
+ *     from a failed lookup and must not be retried or treated as an error.
+ *   · `situacaoCompraItemNome` ("Homologado") and `temResultado` — the
+ *     procurement is already decided. With rule 6 in lib/tender-status.ts,
+ *     this is what a Brazil mapper sets status from.
+ *   · `descricao` — the object text again, often fuller than the search
+ *     row's, and a second source for the Portuguese ruleset.
+ *
+ * Still unmeasured, and the reason `--seq` can be pointed anywhere: whether
+ * `/itens` PAGINATES. The probed tender had one item. A registro de preços
+ * can carry hundreds, and a silently truncated item list means a silently
+ * understated tender value — which lands the row in the wrong tier rather
+ * than failing. Point this at a multi-item procurement before trusting a sum.
+ *
  * Read-only. No Supabase, no writes, no model calls.
  *
  * Usage:
@@ -156,6 +190,19 @@ async function main() {
   console.log("─".repeat(72));
   console.log("小结\n");
   for (const r of results) console.log(`  ${(r.ok ? "OK  " : "FAIL").padEnd(5)} ${String(r.status).padEnd(12)} ${String(r.ms).padStart(7)}ms  ${r.label}`);
+  console.log();
+  // How many items came back, and whether anything looks like a page wrapper.
+  // A truncated item list understates the tender's value instead of failing,
+  // which puts the row in the wrong tier — the quietest way to be wrong here.
+  for (const result of results) {
+    if (Array.isArray(result.body)) {
+      const items = result.body as Record<string, unknown>[];
+      const sum = items.reduce((total, item) => total + (typeof item.valorTotal === "number" ? item.valorTotal : 0), 0);
+      const sealed = items.filter((item) => item.orcamentoSigiloso === true).length;
+      console.log(`  ${result.label.split(".")[0]}：${items.length} 个明细项，valorTotal 合计 R$ ${sum.toLocaleString("pt-BR")}${sealed > 0 ? `，其中 ${sealed} 项预算保密（orcamentoSigiloso）` : ""}`);
+      if (items.length >= 10 && items.length % 10 === 0) console.log(`     ⚠️  正好是 ${items.length} 个，像是被分页截断了。换一个明细多的项目再试，确认 /itens 会不会分页。`);
+    }
+  }
   console.log();
   const withMoney = results.filter((r) => r.body !== undefined && findAmounts(r.body).some(([, v]) => v !== null && v !== 0));
   if (withMoney.length > 0) {

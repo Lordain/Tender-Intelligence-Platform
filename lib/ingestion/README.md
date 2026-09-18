@@ -2853,6 +2853,59 @@ closed is decided on our side, so the set of `situacao_nome` values matters,
 and it was measured on a sample that happened to contain only two of them. A
 suspended procurement is not accepting bids.
 
+#### Where the amount comes from (measured 2026-09-18, `probe:brazil-amount`)
+
+```
+A  /api/consulta/v1/orgaos/{cnpj}/compras/{ano}/{seq}        500  35.0s  (JDBC pool)
+B  /api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}            301  → A
+C  /api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens      200   3.7s  ✅
+D  /api/consulta/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens  404
+```
+
+The compra RECORD was moved off `/api/pncp` onto `/api/consulta` — B says so
+in its own 301 body — and `/api/consulta` is the service that keeps failing
+with Hikari JDBC pool errors, so that record is effectively unreachable. The
+ITEM LIST was **not** moved, still lives on `/api/pncp`, and answered in 3.7
+seconds. The money is in the items, so the one path that works is the one this
+needs. The search row's `item_url` (`/compras/{cnpj}/{ano}/{seq}`) supplies all
+three path segments.
+
+`valorTotal` on the MT-020/251 road contract's single item: **7,494,680.99**
+— reais. `lib/currency.ts` had no BRL row, so `convertToUsd()` would have
+returned null and `lib/relevance.ts` would have read a real R$7.5M contract as
+"no value published", exactly what that table's EUR/GBP note exists to
+prevent. BRL is added, **flagged UNVERIFIED**: every other rate there was
+cross-checked against Wise/XE/Investing.com and this one could not be. It must
+be checked before the first Brazilian import — `MIN_VALUE_USD` 800k,
+`SIGNIFICANT` 3M and `FLAGSHIP` 6M are cliffs, and a 10% FX error moves
+tenders across them.
+
+The item record carries three fields that matter to the mapper as much as the
+amount:
+
+- **`orcamentoSigiloso`** — Brazilian law allows a sealed estimate. When true
+  the amount is withheld *by design*, which is a different thing from a failed
+  lookup, and must not be retried or reported as an error.
+- **`situacaoCompraItemNome`** (`"Homologado"`) and **`temResultado`** — the
+  procurement is already decided. With rule 6 in `lib/tender-status.ts`, this
+  is what a Brazil mapper sets status from.
+- **`descricao`** — the object text again, often fuller than the search row's,
+  and a second source for the Portuguese ruleset.
+
+**Still unmeasured: whether `/itens` paginates.** The probed tender had one
+item. A registro de preços can carry hundreds, and a silently truncated item
+list understates the tender's value rather than failing — which lands the row
+in the wrong tier, the quietest way to be wrong here. The probe now prints the
+item count and flags a suspiciously round one; point it at a multi-item
+procurement before trusting a sum.
+
+**One request per tender, against a service that has been down all week.** The
+cost is as much the finding as the path: discovery is cheap and reliable on
+the search index, and every amount costs a second call to infrastructure that
+has produced 500s, 502s, 503s, 504s and 63-second responses over two days. A
+Brazil connector has to treat a missing amount as an ordinary outcome to retry
+later, not as a failed import.
+
 **`tem_resultado` marks an already-decided tender.** The very first row —
 top of `ordenacao=-data` because it was updated today — was published
 2026-04-07, closed its window 2026-05-18, and carries `tem_resultado: true`.

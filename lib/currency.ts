@@ -37,6 +37,20 @@ export const USD_RATES: Record<string, number> = {
   // hence no reciprocal.
   EUR: 1.16,
   GBP: 1.354,
+  // Added 2026-09-18 for Brazil. PNCP quotes everything in reais, and without
+  // a rate here convertToUsd() returns null — so a real R$ 7,494,680.99 road
+  // contract would reach lib/relevance.ts as "no value published", the exact
+  // outcome the EUR/GBP note above exists to prevent.
+  //
+  // ⚠️ UNVERIFIED. Every other row in this table was cross-checked against
+  // Wise/XE/Investing.com on the date in its comment. This one could not be:
+  // no FX host is reachable from where it was written. It is a placeholder
+  // that must be checked before the first Brazilian import, because the
+  // thresholds it feeds (MIN_VALUE_USD 800k, SIGNIFICANT 3M, FLAGSHIP 6M) are
+  // cliffs — a 10% error moves tenders across them. The monthly FX Routine
+  // will correct it on its next run; do not wait for that if Brazil ships
+  // sooner.
+  BRL: 1 / 5.4,
 };
 
 /** Returns null (not the raw value) when the currency isn't in the rate table, so callers can distinguish "genuinely converted" from "unknown currency, don't display a number that looks precise but isn't even the right unit." */

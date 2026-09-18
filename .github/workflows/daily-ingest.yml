@@ -18,12 +18,40 @@
 #
 # The public tender list is cached for five minutes (lib/cache-tags.ts) and a
 # CLI write cannot invalidate it, so new tenders appear up to five minutes
-# after a run. At 04:00 UTC nobody is watching.
+# after a run.
+#
+# WHEN THIS RUNS, AND WHY IT MOVED (2026-09-18, 04:00 -> 11:17 UTC).
+#
+# Colombia and Peru are UTC-5, Mexico City UTC-6. At 04:00 UTC the run landed
+# at 23:00 the PREVIOUS EVENING in Bogotá and Lima — the very end of the day
+# whose publications it was trying to collect, giving the open-data mirrors
+# essentially no time to sync them. A tender an entity published on the
+# evening of the 15th was therefore not in datos.gov.co when that night's run
+# read it, and waited for the next one, 24 hours later — which is exactly the
+# "published 9/15, only appeared in the 9/17 import" the user reported for
+# both countries.
+#
+# 11:17 UTC is 06:17 in Bogotá and Lima, 05:17 in Mexico City: the morning
+# AFTER, with the whole night for the source to catch up. Nothing else
+# changes — the import window is a month wide, so this only moves WHEN a
+# given day's tenders are first seen, never which ones are eligible.
+#
+# The cost, stated plainly: fresh rows now land at 19:17 Beijing rather than
+# 12:17, so a Chinese customer checking at lunchtime sees data imported the
+# previous evening instead of that morning. That is one day's worth either
+# way; being a day late to the tender itself is the larger loss.
+#
+# :17 rather than :00 because GitHub's scheduler is best-effort and the top of
+# the hour is the most contended minute there is.
+#
+# NOT fixed by this: Peru has no scheduled import at all. cron:colombia and
+# cron:pemex are the only cron entrypoints that exist, so every Peru row is
+# still imported by hand.
 name: Daily ingest
 
 on:
   schedule:
-    - cron: "0 4 * * *"
+    - cron: "17 11 * * *"
   workflow_dispatch:
     inputs:
       write:

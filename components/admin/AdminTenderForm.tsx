@@ -11,6 +11,7 @@ import type {
   TenderRelevanceTier,
 } from "@/types/tender";
 import { ALL_INDUSTRIES } from "@/lib/industry";
+import { USD_RATES } from "@/lib/currency";
 import {
   ALL_COUNTRIES,
   STATUS_LABELS,
@@ -120,6 +121,9 @@ function initialStateFrom(tender?: Tender): FormState {
     sourceUrl: tender?.sourceUrl ?? "",
   };
 }
+
+/** Exactly the currencies lib/currency.ts can convert — see the field's own comment. */
+const SUPPORTED_CURRENCIES = Object.keys(USD_RATES);
 
 export function AdminTenderForm({ tender }: { tender?: Tender }) {
   const router = useRouter();
@@ -456,8 +460,27 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           <input type="number" className={inputClass} value={form.estimatedValue} onChange={(e) => update("estimatedValue", e.target.value)} />
         </label>
         <label className={labelClass}>
-          <span className={labelTextClass}>币种（如 MXN / USD）</span>
-          <input className={inputClass} value={form.currency} onChange={(e) => update("currency", e.target.value.toUpperCase())} />
+          {/*
+            A picker, not a text box (2026-09-18). The site stores the amount
+            in its source currency and converts to USD for display with
+            lib/currency.ts's rate table — so a currency code that is not IN
+            that table makes convertToUsd() return null, and the tender then
+            reads as "no estimated value published" everywhere: on the page,
+            and in lib/relevance.ts, where an undisclosed value is the single
+            strongest filter there is. Typing MNX, or PESOS, or leaving it
+            blank after filling in the amount, silently threw the amount away.
+            The options are the keys of USD_RATES, so the list cannot claim a
+            currency the converter does not know.
+          */}
+          <span className={labelTextClass}>币种（填了金额就必须选，系统按静态汇率折算美元显示）</span>
+          <select className={inputClass} value={form.currency} onChange={(e) => update("currency", e.target.value)}>
+            <option value="">（未填写金额时留空）</option>
+            {SUPPORTED_CURRENCIES.map((code) => (
+              <option key={code} value={code}>
+                {code}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       <div className="border-t border-[#e5e9eb] pt-4">

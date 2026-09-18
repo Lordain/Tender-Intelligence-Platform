@@ -66,7 +66,13 @@ const PNCP_REQUIRED_STATUS = "em_recebimento_de_proposta";
  */
 export const PNCP_WORKS_MODALITIES = [4, 5] as const;
 
-const RESET_BACKOFF_MS = [2_000, 5_000, 12_000];
+// Extended 2026-09-18 after a 15-page sweep died on page 2: three tries
+// spanning 19 seconds was not enough for a throttle that has previously
+// cleared only after a minute or more. A reset on /api/search is PNCP
+// declining to talk right now, never a statement about the request — the
+// same URL that resets has come back 200 two hundred seconds later — so the
+// only wrong response to one is to record it as an answer.
+const RESET_BACKOFF_MS = [2_000, 5_000, 12_000, 30_000, 60_000];
 const REQUEST_TIMEOUT_MS = 60_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

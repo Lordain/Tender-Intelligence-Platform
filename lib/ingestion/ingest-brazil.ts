@@ -78,7 +78,7 @@ export type BrazilIngestResult = {
    * floor, not a count. Those two were indistinguishable before, which made
    * "发布时间窗：2 个月" a claim the run could not support.
    */
-  byModality: { modalidade: number; rows: number; pages: number; stoppedBy: "window" | "cap" | "end" }[];
+  byModality: { modalidade: number; rows: number; pages: number; stoppedBy: "window" | "cap" | "end" | "error" }[];
   written?: number;
   failed?: number;
   write: boolean;
@@ -182,10 +182,26 @@ export async function ingestBrazilPncp(
   for (const modalidade of modalities) {
     let pages = 0;
     let seen = 0;
-    let stoppedBy: "window" | "cap" | "end" = "cap";
+    let stoppedBy: "window" | "cap" | "end" | "error" = "cap";
     for (let pagina = 1; seen < maxRows; pagina += 1) {
       if (pagina > 1) await sleep(PACE_MS);
-      const page = await fetchPncpSearchPage(modalidade, pagina, PNCP_MAX_PAGE_SIZE);
+      // A failed page ends THIS modality and keeps what came before it.
+      // Previously the error propagated out and the whole run died — a sweep
+      // that got 14 of 15 pages threw all 14 away, and one that died on page 2
+      // threw away page 1. PNCP resets are a throttle, so a later page failing
+      // says nothing about the rows already in hand.
+      //
+      // It is recorded as its own stop reason rather than folded into "cap",
+      // because the two are not equally bad: a cap means the period was not
+      // covered, an error means it was not covered AND something is wrong.
+      let page: Awaited<ReturnType<typeof fetchPncpSearchPage>>;
+      try {
+        page = await fetchPncpSearchPage(modalidade, pagina, PNCP_MAX_PAGE_SIZE);
+      } catch (err) {
+        stoppedBy = "error";
+        onProgress?.(`采购方式 ${modalidade}：第 ${pagina} 页取不到（${err instanceof Error ? err.message : String(err)}），保留已取到的 ${seen} 条`);
+        break;
+      }
       pages += 1;
       if (page.items.length === 0) {
         stoppedBy = "end";

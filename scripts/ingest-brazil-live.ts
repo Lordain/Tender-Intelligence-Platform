@@ -88,18 +88,26 @@ async function main() {
   // "发布时间窗：2 个月", which without this would be a claim the run cannot
   // support.
   let cappedAny = false;
+  let erroredAny = false;
   for (const entry of result.byModality) {
     const how =
       entry.stoppedBy === "window"
         ? "已覆盖整个时间窗"
         : entry.stoppedBy === "end"
           ? "索引翻到底了"
-          : "⚠ 被 --max 截断，时间窗没取完";
-    if (entry.stoppedBy === "cap") cappedAny = true;
+          : entry.stoppedBy === "error"
+            ? "⚠ 翻页中途取不到，只拿到前面这些"
+            : "⚠ 被 --max 截断，时间窗没取完";
+    if (entry.stoppedBy === "cap" || entry.stoppedBy === "error") cappedAny = true;
+    if (entry.stoppedBy === "error") erroredAny = true;
     console.log(`  采购方式 ${entry.modalidade}：${entry.rows} 条，翻了 ${entry.pages} 页 —— ${how}`);
   }
   if (cappedAny) {
-    console.log(`\n  ⚠ 本次是抽样，不是全量：下面所有数字都是下限。要取完整个时间窗，把 --max 调大（或去掉）再跑。`);
+    console.log(`\n  ⚠ 本次是抽样，不是全量：下面所有数字都是下限。`);
+    // Separated because the two have different fixes, and telling someone to
+    // raise --max when PNCP hung up on them is advice that cannot work.
+    if (erroredAny) console.log(`     PNCP 中途没应答（通常是限流，不是请求有问题）—— 隔几分钟重跑一次，它一般自己就好了。`);
+    else console.log(`     要取完整个时间窗，把 --max 调大（或去掉）再跑。`);
   }
   console.log(`\n抓到 ${result.fetchedRows} 条，映射成 ${result.mappedCount} 条。`);
   console.log(`  进入推荐：${result.keptCount} 条　被规则排除：${result.excludedCount} 条`);

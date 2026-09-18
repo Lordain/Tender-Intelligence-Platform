@@ -358,8 +358,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "SUMINISTRO DE TRANSFORMADORES PARA SUBESTACIÓN ELÉCTRICA S.A.S.",
-    expectedTier: "significant",
-    note: "The control for that pattern: a real description that merely ENDS in a company name must survive. Any procurement verb in the title means it says what is being bought.",
+    expectedTier: "standard",
+    note: "The control for that pattern: a real description that merely ENDS in a company name must survive. Any procurement verb in the title means it says what is being bought. Tier moved significant -> standard on 2026-09-18 when the bands were rewritten: $3M is inside the new standard band ($1M-$5M). What this fixture is for — the row is not excluded as a bare company name — is untouched.",
     scopeType: "equipment",
     estimatedValue: 3_000_000,
     currency: "USD",
@@ -1034,8 +1034,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "CONSTRUCCIÓN DE INFRAESTRUCTURA VIAL EN EL MUNICIPIO",
-    expectedTier: "standard",
-    note: "Regression check — a Colombia tender genuinely at/above the country-specific floor must still CLEAR it rather than be excluded. 2,520,000,000 COP / 3140 ≈ $802,548 USD (COP rate refreshed 2026-09-05). Tier changed from significant to standard on 2026-09-18, intentionally: `construcción` matches FLAGSHIP_INDUSTRY_KEYWORDS, and that keyword used to promote any disclosed amount above the floor to 中型, which is what put a $973,907 sports court there. $802,548 is nowhere near SIGNIFICANT_VALUE_USD. What this fixture is actually for — the row clears the floor instead of being dropped — is unchanged.",
+    expectedTier: "excluded",
+    note: "Regression check — a Colombia tender genuinely at/above the country-specific floor must still CLEAR it rather than be excluded. 2,520,000,000 COP / 3140 ≈ $802,548 USD (COP rate refreshed 2026-09-05). Tier changed from significant to standard on 2026-09-18, intentionally: `construcción` matches FLAGSHIP_INDUSTRY_KEYWORDS, and that keyword used to promote any disclosed amount above the floor to 中型, which is what put a $973,907 sports court there. $802,548 is nowhere near SIGNIFICANT_VALUE_USD. 2026-09-18: the floor moved 800k -> $1,000,000 and $802,548 no longer clears it, so this row is now excluded. Its old job (proving a row at/above the floor is not dropped) has therefore ended — it is kept as the record of where the new floor cuts, and the Peruvian $4.2M and Colombian $8.3M rows below carry the clears-the-floor case now.",
     scopeType: "works",
     estimatedValue: 2_520_000_000,
     currency: "COP",
@@ -1661,8 +1661,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "FORTALECIMIENTO DE LA INFRAESTRUCTURA VIAL DEL MUNICIPIO DE SOACHA",
-    expectedTier: "flagship",
-    note: "Guards the leading-fortalecimiento rule: the same word introduces real roadworks, which is why it carries a lookahead for the infrastructure nouns.",
+    expectedTier: "significant",
+    note: "Guards the leading-fortalecimiento rule: the same word introduces real roadworks, which is why it carries a lookahead for the infrastructure nouns. flagship -> significant on 2026-09-18: COP 26bn is ~$8.28M, inside the new $5M-$10M band. The guard is that this is NOT excluded, which still holds.（2026-09-18 起：常规 $1M–$5M、中型 $5M–$10M、大型 $10M+；巴西下限 $2M）",
     country: "Colombia", scopeType: "works", estimatedValue: 26_000_000_000, currency: "COP",
   },
   {
@@ -1679,8 +1679,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "CONSTRUCCIÓN DE CENTRO DE ALTO RENDIMIENTO DEPORTIVO EN LA CIUDAD DE MONTERÍA; DEPARTAMENTO DE CÓRDOBA; FASE II",
-    expectedTier: "flagship",
-    note: "The row that produced the municipal-amenity value exception (user's call, 2026-09-11). Real value, COP 28,037,383,178 ≈ USD 8.9M — a structural works contract at a scale a foreign contractor bids on, which the flat amenity rule was excluding alongside a USD 2.5M skating rink. The three fixtures below are its guards: the exception must not widen the class.",
+    expectedTier: "significant",
+    note: "The row that produced the municipal-amenity value exception (user's call, 2026-09-11). Real value, COP 28,037,383,178 ≈ USD 8.9M — a structural works contract at a scale a foreign contractor bids on, which the flat amenity rule was excluding alongside a USD 2.5M skating rink. The three fixtures below are its guards: the exception must not widen the class. flagship -> significant on 2026-09-18 ($8.9M is inside the new $5M-$10M band). This one nearly broke silently: the exception read FLAGSHIP_VALUE_USD, so raising that band to $10M would have put this row back in the excluded pile and reversed the 2026-09-11 decision as a side effect. It now has its own constant, LARGE_WORKS_BUILD_USD, still $6,000,000.",
     country: "Colombia", scopeType: "works", estimatedValue: 28_037_383_178, currency: "COP",
   },
   {
@@ -2285,8 +2285,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     // window — 11 days of it on this real ficha — and is exactly the kind of
     // works contract this platform exists to surface.
     title: "EJECUCIÓN DEL SALDO DE OBRA: REHABILITACIÓN DE LA CARRETERA",
-    expectedTier: "significant",
-    note: "Peru PEC-NCPD-PROC-5-2026-MTC/21-3, real. S/ 18.1M of roadworks for PROVIAS Descentralizado, convocatoria 10/09 with registration open 11/09–21/09. Pinned as INCLUDED so a widening of the direct-award patterns cannot swallow it.",
+    expectedTier: "standard",
+    note: "Peru PEC-NCPD-PROC-5-2026-MTC/21-3, real. S/ 18.1M of roadworks for PROVIAS Descentralizado, convocatoria 10/09 with registration open 11/09–21/09. Pinned as INCLUDED so a widening of the direct-award patterns cannot swallow it. significant -> standard on 2026-09-18: $4.835M is under the new $5M significant floor. Included is what this pins, and it still is.（2026-09-18 起：常规 $1M–$5M、中型 $5M–$10M、大型 $10M+；巴西下限 $2M）",
     country: "Peru", scopeType: "works", estimatedValue: 4_835_000, currency: "USD", governmentLevel: "federal",
     procedureType: "Procedimiento de Contratación Pública Especial para la Reconstrucción con Cambios",
   },
@@ -2374,14 +2374,14 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "MEJORAMIENTO DE LA CARRETERA DEPARTAMENTAL PE-3S, TRAMO KM 12+000 AL KM 38+500, PROVINCIA DE ANTA, DEPARTAMENTO CUSCO",
-    expectedTier: "significant",
-    note: "The control for the rural-road rule, and the one that says it did not go too far. A DEPARTAMENTAL highway matches none of camino vecinal / vía vecinal / trocha carrozable, so it is untouched. Carries a disclosed value because that is what a departmental contract normally publishes; without one Peru's undisclosed-value rule would decide this, not the road rule.",
+    expectedTier: "standard",
+    note: "The control for the rural-road rule, and the one that says it did not go too far. A DEPARTAMENTAL highway matches none of camino vecinal / vía vecinal / trocha carrozable, so it is untouched. Carries a disclosed value because that is what a departmental contract normally publishes; without one Peru's undisclosed-value rule would decide this, not the road rule. significant -> standard on 2026-09-18: $4.2M is inside the new standard band. Untouched by the rural-road rule is the point, and it still is.",
     country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 4_200_000, currency: "USD",
   },
   {
     title: "EJECUCIÓN DE LA OBRA: ELABORACIÓN DE EXPEDIENTE TÉCNICO DEFINITIVO Y EJECUCIÓN DE OBRA DE LA INVERSIÓN ¿CONSTRUCCIÓN DE OBRAS DE ARTE; EN EL(LA) SISTEMA DE RIEGO CHAVIMOCHIC I Y II ETAPA DISTRITO DE CHAO, PROVINCIA VIRU, DEPARTAMENTO LA LIBERTAD¿ ITEM 02: COMPONENTE OBRAS HIDROMECÁNICAS Y ELECTROMEC",
-    expectedTier: "significant",
-    note: "Real title (2026-09-18, per the user: 灌溉系统都加水工程的标签). The ASK was a tag, and the tag is pinned in test:industry-tags — this fixture exists because the tag changes the tier too: `water` is a target industry, so with a disclosed value the row is 中型 instead of falling through. With NO disclosed value it is still excluded by Peru's undisclosed-value rule, which is that rule working as specified, not this one failing.",
+    expectedTier: "standard",
+    note: "Real title (2026-09-18, per the user: 灌溉系统都加水工程的标签). The ASK was a tag, and the tag is pinned in test:industry-tags — this fixture exists because the tag changes the tier too: `water` is a target industry, so with a disclosed value the row is 中型 instead of falling through. With NO disclosed value it is still excluded by Peru's undisclosed-value rule, which is that rule working as specified, not this one failing. significant -> standard on 2026-09-18: $3.5M is inside the new standard band. The tag carrying the row past the industry gate is what this fixture is for, and that is unchanged.",
     country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 3_500_000, currency: "USD",
   },
   {
@@ -2434,20 +2434,20 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "CONTRATACIÓN PARA LA EJECUCIÓN DE LA OBRA - IOARR: CONSTRUCCION DE COBERTURA DE INSTALACIONES DEPORTIVAS; REMODELACION DE AMBIENTE DE RECREACION ACTIVA; RENOVACION DE LOSA DEPORTIVA Y MOBILIARIO DEPORTIVO - RECREATIVO; EN EL(LA) PARQUE A LADO DE LA MZ M SECTOR V DE LA ASOCIACION JOSE LUIS BUSTAMANTE",
-    expectedTier: "standard",
-    note: "Real title (2026-09-18, user: 这项目金额 US$973,907 但被标为中型项目？). It was 中型, and not because of the sports words — ANY works contract above the $800,000 floor was, because `construcción` matched FLAGSHIP_INDUSTRY_KEYWORDS and that promoted on a disclosed value of any size. SIGNIFICANT_VALUE_USD was unreachable as a band. Now the bands decide whenever an amount is disclosed.",
+    expectedTier: "excluded",
+    note: "Real title (2026-09-18, user: 这项目金额 US$973,907 但被标为中型项目？). It was 中型, and not because of the sports words — ANY works contract above the $800,000 floor was, because `construcción` matched FLAGSHIP_INDUSTRY_KEYWORDS and that promoted on a disclosed value of any size. SIGNIFICANT_VALUE_USD was unreachable as a band. Now the bands decide whenever an amount is disclosed. 2026-09-18: the floor moved to $1,000,000 and $973,907 is under it, so the row the user queried as wrongly-中型 is now out of the feed entirely.",
     country: "Peru", scopeType: "works", governmentLevel: "municipal", estimatedValue: 973_907, currency: "USD",
   },
   {
     title: "CONSTRUCCION DE LA PLANTA DE TRATAMIENTO DE AGUAS RESIDUALES DE LA CIUDAD DE TACNA",
-    expectedTier: "significant",
-    note: "The control for that narrowing, and the reason it is safe: a works contract that DOES clear SIGNIFICANT_VALUE_USD still reaches 中型 on the value alone. Removing the keyword clause took nothing away above the band, only below it. A PTAR rather than a water NETWORK on purpose — WATER_NETWORK_KEYWORDS excludes pipework below flagship scale, which would have made this fixture assert the wrong rule.",
+    expectedTier: "standard",
+    note: "The control for that narrowing, and the reason it is safe: a works contract that DOES clear SIGNIFICANT_VALUE_USD still reaches 中型 on the value alone. Removing the keyword clause took nothing away above the band, only below it. A PTAR rather than a water NETWORK on purpose — WATER_NETWORK_KEYWORDS excludes pipework below flagship scale, which would have made this fixture assert the wrong rule. significant -> standard on 2026-09-18: $3.4M no longer clears the significant floor, which moved to $5M — so this row can no longer demonstrate 'clears the band on value alone'. The Colombian $8.28M and $8.9M rows above carry that case now. What survives here is the other half: `construcción` does NOT promote it, the band does.",
     country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 3_400_000, currency: "USD",
   },
   {
     title: "EJECUCIÓN DE OBRA MEJORAMIENTO DEL SERVICIO DE DISTRIBUCION DE ENERGIA ELECTRICA EN SUBESTACIONES DE DISTRIBUCION, REDES SECUNDARIAS Y ALUMBRADO PUBLICO SUBTERRANEAS ALIMENTADAS POR LAS SET LAMBRAMANI, SET PARQUE INDUSTRIAL, SET PORONGOCHE Y SET SAN LAZARO DISTRITO DE AREQUIPA DE LA PROVINCIA DE AREQUIPA",
-    expectedTier: "flagship",
-    note: "Real title (2026-09-18, user asked why this is 大型). Pinned as the record of what the current thresholds say rather than as an endorsement: $6,929,314 is above FLAGSHIP_VALUE_USD ($6,000,000), so 大型 is this rule working exactly as specified, and the industry tag (power) is right too. If the flagship floor is raised, this fixture is the one that should be updated deliberately and not discovered.",
+    expectedTier: "significant",
+    note: "Real title (2026-09-18, user asked why this is 大型). Pinned as the record of what the current thresholds say rather than as an endorsement: $6,929,314 is above FLAGSHIP_VALUE_USD ($6,000,000), so 大型 is this rule working exactly as specified, and the industry tag (power) is right too. The flagship floor was raised to $10,000,000 on 2026-09-18 and this fixture was updated deliberately, as that sentence asked: $6,929,314 is now inside the $5M-$10M band, so 中型.",
     country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 6_929_314, currency: "USD",
   },
 ];

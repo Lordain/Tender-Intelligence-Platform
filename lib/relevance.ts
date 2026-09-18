@@ -1356,11 +1356,29 @@ const PRODUCTIVE_DEVELOPMENT_PROGRAMME = /cadena(s)? productiva(s)?|servicios? d
 const WORKS_CONTRACT_CONTEXT =
   /\b(obras?\s+(de|p[úu]blicas?)|construcci[óo]n|edificaci[óo]n|ejecuci[óo]n\s+de\s+(la\s+)?obra|llave en mano|epc)\b/i;
 
+/**
+ * The amenity exception's own floor — NOT FLAGSHIP_VALUE_USD, though it was
+ * spelled that way until 2026-09-18.
+ *
+ * The two numbers were both $6,000,000 and the exception simply borrowed the
+ * constant. They answer different questions: FLAGSHIP_VALUE_USD is "which
+ * tier does this belong in", while this is "is a municipal sports/park
+ * contract big enough to be real structural work a foreign contractor bids
+ * on" — the user's call on 2026-09-11, made on a COP 28bn ≈ USD 8.9M high-
+ * performance sports centre, against a USD 2.5M skating rink that stays out.
+ *
+ * Raising the flagship band to $10,000,000 for the new three-tier scheme
+ * would have dragged this to $10M with it and put that 8.9M centre back into
+ * the excluded pile — reversing an explicit decision as a side effect of an
+ * unrelated one. Separated here so each moves only when it is meant to.
+ */
+const LARGE_WORKS_BUILD_USD = 6_000_000;
+
 function isLargeWorksBuild(input: { scopeType: TenderScopeType; estimatedValue?: number; currency?: string }): boolean {
   if (input.scopeType !== "works") return false;
   if (input.estimatedValue === undefined) return false;
   const usd = convertToUsd(input.estimatedValue, input.currency);
-  return usd !== null && usd !== undefined && usd >= FLAGSHIP_VALUE_USD;
+  return usd !== null && usd !== undefined && usd >= LARGE_WORKS_BUILD_USD;
 }
 
 /**
@@ -1975,8 +1993,8 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
 // disclosed value alone is worth. Paired with MAJOR_PROJECT_KEYWORDS
 // below, which promotes to flagship on a keyword/duration match alone,
 // independent of value.
-const FLAGSHIP_VALUE_USD = 6_000_000;
-const SIGNIFICANT_VALUE_USD = 3_000_000;
+const FLAGSHIP_VALUE_USD = 10_000_000;
+const SIGNIFICANT_VALUE_USD = 5_000_000;
 
 /**
  * "大项目" (major-project) keyword signal — promotes straight to flagship
@@ -2156,7 +2174,7 @@ const SHORT_BRIDGE_METERS = 30;
  */
 const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru"]);
 
-const MIN_VALUE_USD = 800_000;
+const MIN_VALUE_USD = 1_000_000;
 
 /**
  * Countries whose floor is not the platform default.
@@ -2178,15 +2196,18 @@ const MIN_VALUE_USD = 800_000;
  * The same number means different things in different procurement systems,
  * which is the entire reason this map exists.
  *
- * KNOWN CONSEQUENCE, not an oversight: $3M is also SIGNIFICANT_VALUE_USD, so
- * no Brazilian tender WITH a published amount can be "standard" any more —
- * anything that clears the floor is at least significant. 常规 does not go
- * empty for Brazil (the ~14 sealed-budget rows per sweep still land there),
- * but it is now a small tier. Lower this to $2,000,000 for a real standard
- * band at roughly 24/day; it is one number.
+ * Set to $2,000,000 on 2026-09-18, a few hours after $3,000,000, when the
+ * user rewrote all three bands rather than just the floor:
+ *
+ *     Brazil   常规 $2M–$5M   中型 $5M–$10M   大型 $10M+
+ *     其他     常规 $1M–$5M   中型 $5M–$10M   大型 $10M+
+ *
+ * $3M had collided with SIGNIFICANT_VALUE_USD and left Brazil with no
+ * standard band at all; $2M restores one and costs roughly 24/day against
+ * 18/day, which the new scheme accepts deliberately.
  */
 const MIN_VALUE_USD_BY_COUNTRY: Record<string, number> = {
-  Brazil: 3_000_000,
+  Brazil: 2_000_000,
 };
 
 /**

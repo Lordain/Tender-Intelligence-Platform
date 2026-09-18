@@ -321,10 +321,9 @@ export async function ingestBrazilPncp(
   // lib/currency.ts rate the classifier used, so the bands and the tiers
   // cannot disagree.
   const BANDS: { band: string; min: number; max?: number }[] = [
-    { band: "80 万 – 150 万美元", min: 800_000, max: 1_500_000 },
-    { band: "150 万 – 300 万美元", min: 1_500_000, max: 3_000_000 },
-    { band: "300 万 – 600 万美元", min: 3_000_000, max: 6_000_000 },
-    { band: "600 万美元以上", min: 6_000_000 },
+    { band: "200 万 – 500 万美元（常规）", min: 2_000_000, max: 5_000_000 },
+    { band: "500 万 – 1000 万美元（中型）", min: 5_000_000, max: 10_000_000 },
+    { band: "1000 万美元以上（大型）", min: 10_000_000 },
   ];
   const bandCounts = new Map<string, number>();
   let keptWithoutValue = 0;

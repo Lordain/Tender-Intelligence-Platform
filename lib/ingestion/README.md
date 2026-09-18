@@ -2686,18 +2686,51 @@ all in the probe, all fixed — and one real finding that survived:
    was sent alongside `status`. So the rule is not "status is mandatory", it
    is "exactly one of `q` / `status`". There is no single baseline, and the
    probe now measures every candidate against both.
-3. **A reset means the server KNOWS the parameter name.** Unknown names
-   (`zzz_nao_existe`, `modalidade`, `modalidade_licitacao_id`,
-   `data_publicacao_inicial`) were silently ignored and returned 200. The
-   plural names — `ufs`, `esferas`, `modalidades`, `municipios`, `orgaos` —
-   were reset. A service does not reject a name it has never heard of while
-   ignoring others, so **those five are almost certainly the real filter
-   names and the value encoding is what they refused.** They now get several
-   encodings each (bare, pipe-separated, IBGE codes, display names).
+3. ~~A reset means the server KNOWS the parameter name.~~ **Retracted by the
+   second run — see below.**
 
 The one finding that survived: **`tipos_documento` genuinely filters** —
 `edital` → 4.08M, `ata` → 1,170,148 (28.7%). It is now the probe's positive
 control, since a control has to be something measured rather than assumed.
+
+#### Second filter-probe run — what actually filters, and a retraction
+
+**ECONNRESET on `/api/search` is intermittent. It is a connection throttle,
+not a verdict on the request.** The theory above — that a reset identified a
+parameter the server recognised — is wrong, and the second run killed it
+three ways: `tipos_documento=ata`, which had answered 200 in 292ms, came back
+reset; `zzz_nao_existe`, a parameter invented for this file, came back reset;
+and `ufs`, `esferas`, `modalidades` and `orgaos`, all "rejected" in run one,
+all answered and filtered properly in run two. An entire earlier invocation
+failed at both baselines and then succeeded a moment later. So a reset has to
+be RETRIED, not recorded — anything else turns PNCP's rate limiting into
+fabricated findings about our own parameters, which is what run one published.
+
+With that corrected, the measurement stands on its own. Baseline 4,081,903
+with **zero drift across three samples** (the index is quiet at some hours and
+busy at others, which is exactly why the drift is measured per run rather than
+assumed):
+
+| parameter | rows | share of index |
+|---|---|---|
+| `esferas=M` | 2,795,508 | 68.5% |
+| `ufs=SP` | 819,310 | 20.1% |
+| **`modalidades=4`** | **143,719** | **3.5%** |
+| `orgaos=40314` | 383 | 0.0% |
+
+`modalidades` is what makes a Brazil connector viable: a **bare numeric id**,
+matching `modalidade_licitacao_id` in the returned rows, taking 4.08 million
+documents down to 143 thousand for Concorrência Eletrônica. Date bounds under
+both names tried (`dataPublicacaoInicial`, `data_inicial`) were silently
+ignored.
+
+Two questions decide the connector's request count, and the probe now spends
+its requests on them instead of re-confirming the four above: whether
+`modalidades` accepts **more than one value** (repeated key, comma, semicolon,
+JSON array, `[]` suffix — the pipe form reset in run one, which no longer
+means anything), and whether **any** date lower bound exists. Without a date
+bound, a daily import has to sweep the modality and decide what is new from
+`data_atualizacao_pncp` itself.
 
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against

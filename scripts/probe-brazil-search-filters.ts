@@ -33,18 +33,33 @@
  *      that here it was sent alongside `status`. So there is no single
  *      baseline: this now measures against BOTH a `q` baseline and a `status`
  *      baseline, and a parameter is judged separately under each.
- *   3. **A reset means the server KNOWS the parameter.** Unknown names
- *      (`zzz_nao_existe`, `modalidade`, `data_publicacao_inicial`) were
- *      silently ignored and returned 200. The plural names — `ufs`,
- *      `esferas`, `modalidades`, `municipios`, `orgaos` — were reset. A
- *      service does not reject a name it has never heard of while ignoring
- *      others, so those five are almost certainly the REAL filter names and
- *      the value format is what they refused. They get several encodings
- *      tried here rather than one.
+ *   3. ~~A reset means the server KNOWS the parameter.~~ **Retracted after
+ *      the second run — a reset means almost nothing.** The theory was that
+ *      unknown names were ignored while real ones were rejected. The second
+ *      run killed it: `tipos_documento=ata`, which had answered 200 in
+ *      292ms, came back reset, and so did `zzz_nao_existe` — a parameter
+ *      invented for this file. Meanwhile `ufs`, `esferas`, `modalidades` and
+ *      `orgaos`, all "rejected" in run one, all answered and filtered
+ *      properly in run two. An entire earlier invocation had also failed at
+ *      both baselines and then succeeded on a retry a moment later.
+ *      **`ECONNRESET` on this endpoint is intermittent — a connection-level
+ *      throttle, not a verdict on the request.** So it must be RETRIED, not
+ *      recorded. Anything else turns PNCP's rate limiting into fabricated
+ *      findings about our parameters, which is exactly what run one did.
  *
- * The one parameter proven to filter so far is `tipos_documento`
- * (`edital` → 4.08M, `ata` → 1,170,148 = 28.7%), which is why it serves as
- * the positive control below.
+ * ── SECOND RUN (2026-09-18) — what actually filters ───────────────────────
+ *
+ *   ufs=SP              819,310   20.1%
+ *   esferas=M         2,795,508   68.5%
+ *   modalidades=4       143,719    3.5%   ← Concorrência Eletrônica
+ *   orgaos=40314            383    0.0%
+ *
+ * `modalidades` is the one that makes a Brazil connector viable: bare numeric
+ * id, and it takes 4.08 million documents down to 143 thousand. Combined with
+ * a date bound it is an import rather than a crawl.
+ *
+ * `tipos_documento` filters too (`edital` → 4.08M, `ata` → 1,170,148 = 28.7%,
+ * measured in run one) and remains the positive control.
  *
  * Read-only. No Supabase, no writes, no model calls.
  *
@@ -63,16 +78,23 @@ const HEADERS = {
 } as const;
 
 /** Shared by both baselines. Exactly one of `q` / `status` is added on top — they cannot be sent together. */
-const COMMON: Record<string, string> = { tipos_documento: "edital", ordenacao: "-data", pagina: "1", tam_pagina: "10" };
+const COMMON: Params = { tipos_documento: "edital", ordenacao: "-data", pagina: "1", tam_pagina: "10" };
 
 type Measured = { total: number | null; rows: number; status: number | string; ms: number; note: string; rejected: boolean };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function count(params: Record<string, string>, timeoutMs: number): Promise<Measured> {
-  const query = Object.entries(params)
-    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+type Params = Record<string, string | string[]>;
+
+/** A value may be an array, which becomes a repeated key — the other way a multi-select filter is usually spelled. */
+function toQuery(params: Params): string {
+  return Object.entries(params)
+    .flatMap(([k, v]) => (Array.isArray(v) ? v.map((one) => `${k}=${encodeURIComponent(one)}`) : [`${k}=${encodeURIComponent(v)}`]))
     .join("&");
+}
+
+async function countOnce(params: Params, timeoutMs: number): Promise<Measured> {
+  const query = toQuery(params);
   const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -102,14 +124,37 @@ async function count(params: Record<string, string>, timeoutMs: number): Promise
       // A reset from THIS endpoint is a statement about the request, not the
       // network — and specifically it means the server recognised enough of
       // the request to object to it.
-      status: message.includes("abort") ? "超时" : reset ? "被拒(RST)" : "连接失败",
+      status: message.includes("abort") ? "超时" : reset ? "连接被重置" : "连接失败",
       ms,
-      note: reset ? "服务器认识这个参数，但不接受这个写法/组合" : describeFetchFailure(err).slice(0, 160),
+      note: reset ? "连接被重置" : describeFetchFailure(err).slice(0, 160),
       rejected: reset,
     };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Retry a reset instead of recording it.
+ *
+ * Run two proved ECONNRESET here is intermittent: `tipos_documento=ata`
+ * answered 200 in one run and reset in the next, an invented parameter reset
+ * too, and four parameters "rejected" in run one filtered perfectly in run
+ * two. Treating a reset as a verdict turns PNCP's connection throttle into
+ * fabricated findings about our own parameters — which is precisely what run
+ * one published. Only a value that resets on every attempt, several seconds
+ * apart, has said anything about itself.
+ */
+const RESET_BACKOFF_MS = [2_000, 5_000, 12_000];
+
+async function count(params: Params, timeoutMs: number): Promise<Measured & { attempts: number }> {
+  let last = await countOnce(params, timeoutMs);
+  for (const [index, wait] of RESET_BACKOFF_MS.entries()) {
+    if (!last.rejected) return { ...last, attempts: index + 1 };
+    await sleep(wait);
+    last = await countOnce(params, timeoutMs);
+  }
+  return { ...last, attempts: RESET_BACKOFF_MS.length + 1 };
 }
 
 /**
@@ -119,7 +164,7 @@ async function count(params: Record<string, string>, timeoutMs: number): Promise
  * different totals. Without this number every comparison below is noise
  * dressed as a finding — which is exactly what the first run produced.
  */
-async function measureDrift(base: Record<string, string>, timeoutMs: number, paceMs: number): Promise<{ total: number; drift: number } | null> {
+async function measureDrift(base: Params, timeoutMs: number, paceMs: number): Promise<{ total: number; drift: number } | null> {
   const samples: number[] = [];
   for (let i = 0; i < 3; i += 1) {
     if (i > 0) await sleep(paceMs);
@@ -136,7 +181,7 @@ async function measureDrift(base: Record<string, string>, timeoutMs: number, pac
 type Verdict = "有效" | "被忽略" | "被拒" | "读不到";
 
 function judge(measured: Measured, baseline: number, threshold: number): { verdict: Verdict; detail: string } {
-  if (measured.rejected) return { verdict: "被拒", detail: measured.note };
+  if (measured.rejected) return { verdict: "被拒", detail: "重试 4 次全部被重置 —— 这才算这个写法真的不被接受" };
   if (measured.total === null) return { verdict: "读不到", detail: `${measured.status} ${measured.note}` };
   const removed = baseline - measured.total;
   if (removed <= threshold) return { verdict: "被忽略", detail: `${measured.total} 条（跟基准差 ${removed} 条，在漂移范围内）` };
@@ -150,18 +195,18 @@ async function main() {
     return i >= 0 ? args[i + 1] : undefined;
   };
   const timeoutMs = Math.max(10, Number(arg("--timeout") ?? 60) || 60) * 1000;
-  const paceMs = Math.max(0, Number(arg("--pace") ?? 1200) || 1200);
+  const paceMs = Math.max(0, Number(arg("--pace") ?? 2500) || 2500);
 
   console.log("PNCP /api/search — 哪些参数是真的在过滤\n");
   console.log("被忽略的参数一样返回 200，长得和生效的一模一样 —— 只有总数会露馅。");
   console.log("但这个索引一直在写入，两次一样的请求总数就不同，所以先量「自然漂移」，再拿它当噪声底线。\n");
 
-  const baselines: { name: string; extra: Record<string, string> }[] = [
+  const baselines: { name: string; extra: Params }[] = [
     { name: "status 基准（不带 q）", extra: { status: "em_recebimento_de_proposta" } },
     { name: "q 基准（不带 status）", extra: { q: "obra" } },
   ];
 
-  const measuredBaselines: { name: string; params: Record<string, string>; total: number; threshold: number }[] = [];
+  const measuredBaselines: { name: string; params: Params; total: number; threshold: number }[] = [];
   for (const [index, baseline] of baselines.entries()) {
     if (index > 0) await sleep(paceMs);
     console.log(`  ${baseline.name}`);
@@ -186,22 +231,39 @@ async function main() {
   // collectors. The plural spellings are tried in several encodings because
   // the first run's resets say the server knows those names and objected to
   // the values, not to the names.
-  const candidates: { label: string; extra: Record<string, string>; role?: "正对照" | "负对照" }[] = [
+  // Run two already established that ufs / esferas / modalidades / orgaos all
+  // filter with a bare value. What is still unknown, and is what decides the
+  // connector's request count, is whether they take MORE THAN ONE value and
+  // whether a date bound exists at all — so those are what this list spends
+  // its requests on now.
+  const candidates: { label: string; extra: Params; role?: "正对照" | "负对照" }[] = [
     { label: "tipos_documento=ata", extra: { tipos_documento: "ata" }, role: "正对照" },
     { label: "zzz_nao_existe=1（假参数）", extra: { zzz_nao_existe: "1" }, role: "负对照" },
-    { label: "ufs=SP", extra: { ufs: "SP" } },
-    { label: "ufs=SP|RJ（竖线分隔）", extra: { ufs: "SP|RJ" } },
-    { label: "ufs=35（IBGE 州代码）", extra: { ufs: "35" } },
-    { label: "esferas=M", extra: { esferas: "M" } },
-    { label: "esferas=Municipal", extra: { esferas: "Municipal" } },
-    { label: "modalidades=4", extra: { modalidades: "4" } },
-    { label: "modalidades=4|6", extra: { modalidades: "4|6" } },
-    { label: "modalidades=Concorrência - Eletrônica", extra: { modalidades: "Concorrência - Eletrônica" } },
-    { label: "municipios=4464（PNCP 内部 id）", extra: { municipios: "4464" } },
-    { label: "municipios=3550308（IBGE 码）", extra: { municipios: "3550308" } },
-    { label: "orgaos=40314", extra: { orgaos: "40314" } },
-    { label: "dataPublicacaoInicial=2026-09-17", extra: { dataPublicacaoInicial: "2026-09-17" } },
-    { label: "data_inicial=2026-09-17", extra: { data_inicial: "2026-09-17" } },
+
+    // Known to work with one value — re-measured as the anchors everything
+    // below is compared against.
+    { label: "modalidades=4（已知有效）", extra: { modalidades: "4" } },
+    { label: "ufs=SP（已知有效）", extra: { ufs: "SP" } },
+    { label: "esferas=M（已知有效）", extra: { esferas: "M" } },
+
+    // Multi-value spellings. If one works, the whole of Concorrência +
+    // Pregão comes back in a single query instead of two passes.
+    { label: "modalidades=4&modalidades=6（重复键）", extra: { modalidades: ["4", "6"] } },
+    { label: "modalidades=4,6（逗号）", extra: { modalidades: "4,6" } },
+    { label: "modalidades=4;6（分号）", extra: { modalidades: "4;6" } },
+    { label: "modalidades=[4,6]（JSON 数组）", extra: { modalidades: "[4,6]" } },
+    { label: "modalidades[]=4&modalidades[]=6", extra: { "modalidades[]": ["4", "6"] } },
+
+    // A date bound is what turns a full sweep into a daily increment. Nothing
+    // documents its name, and the two tried in run two were silently ignored.
+    { label: "dataPublicacaoPncpInicial=2026-09-17", extra: { dataPublicacaoPncpInicial: "2026-09-17" } },
+    { label: "data_publicacao_pncp_inicial=2026-09-17", extra: { data_publicacao_pncp_inicial: "2026-09-17" } },
+    { label: "dataInicial=2026-09-17", extra: { dataInicial: "2026-09-17" } },
+    { label: "data_inicio=2026-09-17", extra: { data_inicio: "2026-09-17" } },
+    { label: "periodo_inicial=2026-09-17", extra: { periodo_inicial: "2026-09-17" } },
+
+    // The combination the connector would actually send.
+    { label: "modalidades=4 + ufs=SP（组合）", extra: { modalidades: "4", ufs: "SP" } },
   ];
 
   const table: { label: string; role?: string; cells: { verdict: Verdict; detail: string; ms: number }[] }[] = [];
@@ -210,7 +272,8 @@ async function main() {
     for (const baseline of measuredBaselines) {
       await sleep(paceMs);
       const measured = await count({ ...baseline.params, ...candidate.extra }, timeoutMs);
-      cells.push({ ...judge(measured, baseline.total, baseline.threshold), ms: measured.ms });
+      const judged = judge(measured, baseline.total, baseline.threshold);
+      cells.push({ ...judged, ms: measured.ms, ...(measured.attempts > 1 ? { detail: `${judged.detail}（重试了 ${measured.attempts - 1} 次）` } : {}) });
     }
     table.push({ label: candidate.label, ...(candidate.role ? { role: candidate.role } : {}), cells });
     const rendered = cells.map((c, i) => `${measuredBaselines[i].name.split("（")[0]}: ${c.verdict}`).join("   |   ");
@@ -238,12 +301,19 @@ async function main() {
   const ignored = table.filter((t) => !t.role && t.cells.every((c) => c.verdict === "被忽略"));
 
   console.log(`真的能缩小结果的：${effective.length === 0 ? "一个都没有" : effective.map((t) => t.label).join("，")}`);
-  console.log(`被服务器直接拒掉的（说明它认识这个名字，只是不接受这个写法）：${rejected.length === 0 ? "无" : rejected.map((t) => t.label).join("，")}`);
+  console.log(`重试 4 次仍然被重置的（这才算这个写法真的不被接受）：${rejected.length === 0 ? "无" : rejected.map((t) => t.label).join("，")}`);
   console.log(`收下但完全不起作用的：${ignored.length === 0 ? "无" : ignored.map((t) => t.label).join("，")}`);
+  console.log();
+  const multi = table.filter((t) => t.label.includes("重复键") || t.label.includes("逗号") || t.label.includes("分号") || t.label.includes("JSON"));
+  const multiWorks = multi.filter((t) => t.cells.some((c) => c.verdict === "有效"));
+  const dates = table.filter((t) => /data|periodo/i.test(t.label));
+  const dateWorks = dates.filter((t) => t.cells.some((c) => c.verdict === "有效"));
+
+  console.log(`modalidades 能不能一次传多个：${multiWorks.length === 0 ? "不能 —— 每种采购方式得单独发一轮" : `能，用这种写法：${multiWorks.map((t) => t.label).join("，")}`}`);
+  console.log(`有没有日期下界：${dateWorks.length === 0 ? "没找到 —— 每天得整轮扫一遍，靠 data_atualizacao_pncp 自己判断哪些是新的" : `有：${dateWorks.map((t) => t.label).join("，")}`}`);
   console.log();
   if (effective.length === 0) {
     console.log("除了 tipos_documento 和 q，没有任何服务端过滤器 —— 那 connector 只能靠关键词收窄。");
-    console.log("下一步要定的是用哪几个葡语词，以及漏掉的项目能不能接受。");
   } else {
     console.log("把这张表发我 —— 能生效的那几个直接决定 connector 每天要发多少次请求。");
   }

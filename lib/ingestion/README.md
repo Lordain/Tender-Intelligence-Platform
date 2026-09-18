@@ -3330,6 +3330,90 @@ next steps:
 `scripts/test-block-page.ts` pinning the three real bodies that caused the
 false ★ — F5's rejection page above all, because it arrives as HTTP 200.
 
+#### What the third parties actually do (web search, 2026-09-18)
+
+The user's question — *do the aggregator sites read this data, or not?* — has a
+different answer for each of the two sources, and the difference is the whole
+commercial picture.
+
+**PNCP is a solved, commoditised feed.** There is an off-the-shelf Apify actor
+("Brazil Procurement & Tenders Scraper") reading the same endpoint this
+project reads, with the same reasoning written on the tin: publication moved
+to PNCP under Lei 14.133/2021, so PNCP gives the broadest coverage and some
+legacy-only procedures remain on ComprasNet. It exports CSV/XLSX/JSON. Useful
+confirmation that the Brazil connector's architecture is the normal one rather
+than a workaround — and it notes the licence, **CC BY 4.0**, which matters for
+republishing records commercially.
+
+**ANEEL's transmission auctions are, essentially, not scraped by anybody.**
+The outfits that track them — ESI's policy-intelligence pages, Enerdata, Canal
+Solar, Brazil Stock Guide — publish *analyst write-ups*: a human reads the
+edital and the MME/ANEEL announcement and summarises the lots, the RAP ceiling
+and the investment figure. No open-source collector for it surfaced at all.
+That is worth stating plainly because it cuts both ways: there is no library
+to borrow, and there is also no commodity feed competing with what this
+platform would offer a Chinese bidder.
+
+**What ANEEL does publish in structured form is the RESULTS**, and search
+found the exact identifiers, which removes the discovery half of the problem:
+
+```
+dataset   resultado-de-leiloes        （1999 年至今的发电 + 输电拍卖结果）
+resource  453cb742-8089-4c16-aaf2-42088b5553dc   resultado-leiloes-transmissao.csv
+resource  a1328fc1-f06b-437d-8893-57ac2c8103df   resultado-leiloes-geracao.csv
+字典      dm-resultados-dos-leiloes-de-transmissao.pdf  （ANEEL 自己发的数据字典）
+标签      leilão · RAP · preço teto · deságio · energia vendida ·
+          investimento · empreendimento · garantia física · potência instalada
+```
+
+Two things follow. First, `datastore_search` against a known resource id is
+one request, so the column contract is one reachable call away rather than
+three — both probes now go straight at it. Second, `investimento` is in the
+tag list, which means **the CAPEX the user chose for `estimatedValue` is a
+column in the data** and does not have to be derived from RAP.
+
+But note what the dataset is: **results, not opportunities.** It feeds the
+award side of this platform — `awardedValue`, the winning supplier, and the
+"which Brazilian contracts have Chinese firms won" reports — not the feed of
+things still open. An upcoming auction lives in its edital, and the edital
+lives on ANEEL's own site and, for the larger lots, on PPI's.
+
+**PPI is WordPress, not Plone, and my earlier probe asked the wrong CMS.** The
+proof came from a URL on PPI's own site:
+`ppi.gov.br/wp-content/uploads/2025/02/Edital_LT_4-2025_ingles.pdf` —
+`/wp-content/uploads/` is WordPress's upload path and nothing else's. So the
+`@@search` step was testing a CMS that is not there, and it has been replaced
+with `/wp-json/` (WordPress ships a REST API enabled by default) plus a look
+at whatever routes PPI's own plugin registered — the portfolio pages use a
+query-string action, `?acao=exibeficha`, which is a custom plugin rather than
+WordPress routing.
+
+That same URL is the most useful single find of the round for a different
+reason: **PPI republishes the larger ANEEL transmission editais in English**,
+as static PDFs with no session and no challenge in front of them. If anything
+on this list is reachable, that is the one — and it skips a translation step
+for the document-analysis pipeline as well.
+
+Four doors nobody had knocked on, now in both probes:
+
+- **`dadosabertos-aneel.opendata.arcgis.com`** — ANEEL's open data mirrored on
+  Esri's ArcGIS Hub. **Not a `.gov.br` host**: a commercial CDN on AWS, so if
+  the refusals are geographic this has the best odds of any door on the list.
+- **`leilao.aneel.gov.br`** — ANEEL's actual auction system, where the
+  upcoming and finished sessions live. The open-data portal only has results.
+- **`www.gov.br/aneel/...`** — ANEEL's site moved onto the gov.br platform;
+  `www.aneel.gov.br` is the old address, which is what Cloudflare was
+  challenging. "The page moved" and "the page is defended" look identical from
+  a single 403, so both are tried.
+- **`hubdeprojetos.bndes.gov.br`** — BNDES structures and finances these
+  concessions and keeps its own project hub, with an English edition.
+
+One more lead, not yet probed: PPI has been moving its portfolio onto
+**SOURCE**, the multilateral project-preparation platform, to put its pipeline
+"in a single place". If that migration is real and public, it is a non-
+Brazilian host holding the same data, which would make the whole PPI scraping
+question moot.
+
 `lib/ingestion/connectors/ckan.ts` was written ahead of the probe because
 CKAN's Action API is a published standard identical across installs, so it is
 not a guess; it deliberately contains **no hostnames and no dataset ids**,

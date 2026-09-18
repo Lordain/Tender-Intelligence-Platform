@@ -43,14 +43,30 @@ const HEADERS = {
 
 /** One check per door. `note` is written for the person reading the page. */
 const DOORS: { id: string; what: string; url: string }[] = [
-  { id: "E1", what: "ANEEL 开放数据（CKAN status_show）— 输电拍卖的表在这里", url: "https://dadosabertos.aneel.gov.br/api/3/action/status_show" },
-  { id: "E2", what: "ANEEL 拍卖专页 — edital 原文", url: "https://www.aneel.gov.br/leiloes-de-transmissao" },
+  // The first one is the whole point of the round. Web search (which reaches
+  // ANEEL even where HTTP from here does not) named the dataset and the
+  // resource id, so this is not discovery — it is the column contract a
+  // mapper gets written from, one request away.
+  {
+    id: "E1",
+    what: "ANEEL 输电拍卖结果表 —— 直接按已知 resource id 取字段（1999 年至今的中标结果）",
+    url: "https://dadosabertos.aneel.gov.br/api/3/action/datastore_search?resource_id=453cb742-8089-4c16-aaf2-42088b5553dc&limit=3",
+  },
+  // Not a .gov.br host: Esri's ArcGIS Hub on AWS. If the refusals are
+  // geographic, this mirror has the best odds of any door on the list.
+  { id: "E1b", what: "ANEEL 开放数据的 ArcGIS 镜像（商业 CDN，不是 .gov.br）", url: "https://dadosabertos-aneel.opendata.arcgis.com/api/feed/dcat-us/1.1.json" },
+  { id: "E1c", what: "ANEEL 拍卖系统 —— 在招的场次在这儿，不在开放数据里", url: "https://leilao.aneel.gov.br/listaLeiloesFinalizados" },
+  { id: "E2", what: "ANEEL 拍卖专页（gov.br 现址）— edital 原文", url: "https://www.gov.br/aneel/pt-br/centrais-de-conteudos/relatorios-e-indicadores/leiloes" },
   { id: "E3", what: "CCEE 开放数据（发电侧拍卖）", url: "https://dadosabertos.ccee.org.br/api/3/action/status_show" },
+  // Static PDF under /wp-content/uploads/, in English, no session and no
+  // challenge — the least defended thing on this list if it answers at all.
+  { id: "E3b", what: "PPI 上的英文版 ANEEL 输电拍卖 edital（静态 PDF）", url: "https://ppi.gov.br/wp-content/uploads/2025/02/Edital_LT_4-2025_ingles.pdf" },
   { id: "P1", what: "PPI 项目清单", url: "https://www.ppi.gov.br/projetos" },
-  { id: "P5", what: "dados.gov.br 国家目录 — 已知要巴西身份，作为对照留着", url: "https://dados.gov.br/api/3/action/status_show" },
+  { id: "P3", what: "PPI 的 WordPress REST 接口（它是 WordPress，不是 Plone）", url: "https://www.ppi.gov.br/wp-json/" },
   { id: "P6", what: "ANTT 开放数据（公路 + 铁路）", url: "https://dados.antt.gov.br/api/3/action/status_show" },
   { id: "P7", what: "ANTAQ 门户（港口）", url: "https://portal.antaq.gov.br" },
-  { id: "P8", what: "DOU 联邦公报检索", url: "https://www.in.gov.br/consulta/-/buscar/dou?q=leil%C3%A3o+de+transmiss%C3%A3o&s=todos&exactDate=all&sortType=0" },
+  { id: "P9", what: "BNDES 项目中心（特许项目的结构化方）", url: "https://hubdeprojetos.bndes.gov.br/en/setores/Rodovias" },
+  { id: "P5", what: "dados.gov.br 国家目录 —— 已知要巴西身份，留作对照", url: "https://dados.gov.br/api/3/action/status_show" },
 ];
 
 const TIMEOUT_MS = 12_000;

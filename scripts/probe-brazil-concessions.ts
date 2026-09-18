@@ -151,6 +151,37 @@ import { connect } from "node:net";
 
 const OUT_DIR = "exports";
 
+/**
+ * Found by web search 2026-09-18, not by recall, and not by discovery calls.
+ *
+ * Search reaches ANEEL's portal from here even though HTTP to it does not, so
+ * the discovery half of this probe is already answered and the resource ids
+ * below can be queried directly. That collapses three CKAN calls into one and
+ * — more importantly — means the FIELD NAMES are one reachable request away
+ * rather than three.
+ *
+ * What the dataset is, stated plainly because it decides how it is used:
+ * **results, not opportunities.** `resultado-de-leiloes` holds the outcome of
+ * every generation and transmission auction since 1999 — who won, at what
+ * RAP, with what deságio. That is the award side of this platform
+ * (awardedValue, awardedSupplier, and the Chinese-bidder reports), not the
+ * feed of things still open for bidding. An upcoming auction lives in its
+ * edital, which is a PDF on ANEEL's own site and, for the larger ones, in
+ * English on PPI's.
+ *
+ * The dataset's own tag list is the column preview: leilão · RAP · preço teto
+ * · deságio · energia vendida · **investimento** · empreendimento · garantia
+ * física · potência instalada. `investimento` being present is the thing to
+ * note — that is the CAPEX the user chose for `estimatedValue`, so it does
+ * not have to be derived from RAP.
+ */
+const ANEEL_DATASET = "resultado-de-leiloes";
+const ANEEL_TRANSMISSION_RESOURCE = "453cb742-8089-4c16-aaf2-42088b5553dc";
+const ANEEL_GENERATION_RESOURCE = "a1328fc1-f06b-437d-8893-57ac2c8103df";
+/** ANEEL publishes a per-dataset data dictionary as a PDF; this is the transmission one. */
+const ANEEL_TRANSMISSION_DICTIONARY =
+  "https://dadosabertos.aneel.gov.br/dataset/593537c6-9e0e-4ed9-817a-2c5d5de05147/resource/c8d16a2e-f738-43cc-9dbe-efa95e5056c1/download/dm-resultados-dos-leiloes-de-transmissao.pdf";
+
 const HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "pt-BR,pt;q=0.9",
@@ -518,7 +549,14 @@ async function main() {
     "portal.antaq.gov.br",
     "www.in.gov.br",
     "dadosabertos.aneel.gov.br",
-    "www.aneel.gov.br",
+    "leilao.aneel.gov.br",
+    "antigo.aneel.gov.br",
+    "www.gov.br",
+    // Not a .gov.br host: ANEEL's open data is mirrored on Esri's ArcGIS Hub,
+    // which is a commercial CDN on AWS. If the refusals are geographic, this
+    // is the one with the best odds.
+    "dadosabertos-aneel.opendata.arcgis.com",
+    "hubdeprojetos.bndes.gov.br",
     "dadosabertos.ccee.org.br",
     "www.b3.com.br",
   ];
@@ -551,11 +589,34 @@ async function main() {
   );
   await sleep(1500);
 
+  // Corrected 2026-09-18: PPI is WordPress, not Plone. The proof is a URL
+  // search turned up on PPI's own site —
+  // ppi.gov.br/wp-content/uploads/2025/02/Edital_LT_4-2025_ingles.pdf — and
+  // `/wp-content/uploads/` is WordPress's upload path, nothing else's. So the
+  // previous Plone `@@search` step was asking the wrong CMS entirely, which
+  // is worth more than the step it replaces: WordPress ships a REST API at
+  // /wp-json that is enabled by default.
   await probeHtml(
-    "P3. Plone 的搜索接口 @@search",
-    "如果 P2 通了，这个才是真正能翻页拉全量的入口；如果 P2 没通，这条会一起告诉我们 restapi 是不是根本没装",
-    "https://www.ppi.gov.br/@@search?portal_type=Document&b_size=5&metadata_fields=modified",
+    "P3. WordPress 的 REST 接口（PPI 其实是 WordPress，不是 Plone）",
+    "上一轮我按 Plone 试的，方向错了 —— PPI 自己的 edital 挂在 /wp-content/uploads/ 下面，那只能是 WordPress。WordPress 默认就开 /wp-json，通了就直接有结构化数据",
+    "https://www.ppi.gov.br/wp-json/wp/v2/pages?search=projeto&per_page=5",
     /projeto/i,
+    timeoutMs,
+    JSON_HEADERS,
+  );
+  await sleep(1500);
+
+  // The second WordPress question, and the one that decides whether the
+  // portfolio is enumerable: search also turned up `ppi.gov.br/?acao=exibeficha`
+  // — a query-string "show the fact sheet" action, which is a custom plugin
+  // rather than WordPress routing. If the plugin registered a REST route, it
+  // is listed here; if it did not, the portfolio has no API and the answer is
+  // a manual export.
+  await probeHtml(
+    "P3b. WordPress 有哪些 REST 路由（含 PPI 自己插件注册的）",
+    "PPI 的项目页是 ?acao=exibeficha 这种老式写法 —— 那是个自定义插件。它有没有顺手注册 REST 路由，这一条就能看出来",
+    "https://www.ppi.gov.br/wp-json/",
+    /projeto|ficha/i,
     timeoutMs,
     JSON_HEADERS,
   );
@@ -639,20 +700,76 @@ async function main() {
   console.log("   拍卖当天在 B3 交易所开），**CCEE 办的是发电侧的能源拍卖**并负责市场结算。");
   console.log("   用户问的那个（国网、三峡在巴西的主战场）是前者。\n");
 
-  await probeCkan(
-    "E1. ANEEL 开放数据",
-    "输电拍卖的标段、RAP 上限、中标方 —— 如果有表，字段名就在这里；这一步先确认它是不是 CKAN",
-    "https://dadosabertos.aneel.gov.br",
-    ["leilão transmissão", "transmissão lote", "leilão", "concessão transmissão"],
-    timeoutMs,
-    rows,
-    collected,
-  );
+  // E1 no longer searches. Web search already named the dataset and both
+  // resource ids, so the only question left is the column contract — and
+  // datastore_search answers it in one call.
+  console.log("E1. ANEEL 输电拍卖结果表 —— 直接按已知 resource id 取字段");
+  console.log(`   为什么这么问：数据集和两个 resource id 是搜出来的，不是猜的（dataset ${ANEEL_DATASET}）。`);
+  console.log("   注意这张表是【结果】不是【在招】：1999 年以来每场拍卖谁中的标、RAP 多少、折价多少。");
+  console.log("   它对应的是本平台的中标方/中标金额那一侧，以及「中资企业在巴西中过哪些标」的报表。");
+  console.log(`   ${"https://dadosabertos.aneel.gov.br/api/3/action/datastore_search"}?resource_id=${ANEEL_TRANSMISSION_RESOURCE}&limit=3`);
+  // Generation goes in the same pass: the same Chinese firms bid solar, wind
+  // and storage, and it is one more request against a host that either
+  // answers or does not.
+  for (const [what, resourceId] of [
+    ["输电", ANEEL_TRANSMISSION_RESOURCE],
+    ["发电", ANEEL_GENERATION_RESOURCE],
+  ] as const) {
+    const started = Date.now();
+    const label = `E1. ANEEL ${what}拍卖结果表`;
+    try {
+      const data = await ckanDatastoreSearch("https://dadosabertos.aneel.gov.br", { resourceId, limit: 3 }, { timeoutMs });
+      record({ label, ok: true, status: 200, ms: Date.now() - started, note: `${data.total} 行，${data.fields.length} 列 —— 这就是映射器要照抄的字段表` });
+      console.log(`     列名：${data.fields.map((f) => `${f.id}:${f.type ?? "?"}`).join(", ")}`);
+      console.log("     第一行全文：");
+      console.log(JSON.stringify(data.records[0] ?? null, null, 2).split("\n").map((line) => `       ${line}`).join("\n"));
+      console.log();
+    } catch (err) {
+      record({ label, ok: false, status: (err as { ckanStatus?: number | string }).ckanStatus ?? "?", ms: Date.now() - started, note: (err as Error).message.slice(0, 220) });
+      if (what === "输电") {
+        console.log("     取不到的话，字段还有一条路：ANEEL 自己发的数据字典 PDF");
+        console.log(`     ${ANEEL_TRANSMISSION_DICTIONARY}`);
+        console.log("     用浏览器下下来发我也行 —— 映射器照着它写，跟照着真实行写是一个效果。\n");
+      }
+    }
+    await sleep(1500);
+  }
 
   await probeHtml(
-    "E2. ANEEL 拍卖专页（找 edital 原文）",
-    "就算 E1 有表，招标文件本身还是 PDF —— 这一步看链接拿不拿得到，以及是不是需要登录",
-    "https://www.aneel.gov.br/leiloes-de-transmissao",
+    "E1b. ANEEL 开放数据的 ArcGIS 镜像（不是 .gov.br 主机）",
+    "同一批数据还有一份挂在 Esri 的 ArcGIS Hub 上 —— 那是 AWS 上的商业 CDN，跟 .gov.br 完全两条网络。前面那些拒绝如果是地域性的，这个门最有可能是开的",
+    "https://dadosabertos-aneel.opendata.arcgis.com/api/feed/dcat-us/1.1.json",
+    /leil|transmiss/i,
+    timeoutMs,
+    JSON_HEADERS,
+  );
+  await sleep(1500);
+
+  await probeHtml(
+    "E1c. ANEEL 的拍卖系统（在招的场次在这儿，不在开放数据里）",
+    "开放数据那张表是历史结果。真正「下一场拍什么」在这个子域名上 —— 上一轮压根没试过它",
+    "https://leilao.aneel.gov.br/listaLeiloesFinalizados",
+    /leil|edital|lote/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // ANEEL's site moved onto the gov.br platform; www.aneel.gov.br is the old
+  // address and is what Cloudflare was challenging. Both are tried, because
+  // "the page moved" and "the page is defended" look identical from one 403.
+  await probeHtml(
+    "E2. ANEEL 拍卖专页（gov.br 上的现址）",
+    "招标文件本身是 PDF。ANEEL 的网站已经搬到 gov.br 平台上了 —— 上一轮我敲的 www.aneel.gov.br 是旧地址，被 Cloudflare 挡住时看不出「搬走了」和「被防住了」的区别",
+    "https://www.gov.br/aneel/pt-br/centrais-de-conteudos/relatorios-e-indicadores/leiloes",
+    /\.pdf|edital|leil/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  await probeHtml(
+    "E2b. ANEEL 旧站（对照组）",
+    "旧站还在，而且历史 edital 大多挂在这边 —— 同时也是上一轮那个 403 的对照",
+    "https://antigo.aneel.gov.br/leiloes",
     /\.pdf|edital|leil/i,
     timeoutMs,
   );
@@ -667,6 +784,28 @@ async function main() {
     rows,
     collected,
   );
+
+  // Three doors found by web search that nothing had knocked on. The first is
+  // the most useful single fact of the round: PPI republishes the larger
+  // ANEEL transmission editais **in English**, as static PDFs under
+  // /wp-content/uploads/ — no challenge, no session, and no translation step.
+  await probeHtml(
+    "E3b. PPI 上的英文版 ANEEL 输电拍卖 edital",
+    "搜索时撞到的：PPI 把大场次的 edital 出了英文版，而且就是 /wp-content/uploads/ 下的静态 PDF —— 没有验证、没有会话，还省掉一道翻译",
+    "https://ppi.gov.br/wp-content/uploads/2025/02/Edital_LT_4-2025_ingles.pdf",
+    /\.pdf/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  await probeHtml(
+    "E3c. BNDES 项目中心",
+    "BNDES 是这些特许项目的结构化方和出资方，它自己有个项目库（还有英文版）—— 又一个不依赖 PPI 页面的入口",
+    "https://hubdeprojetos.bndes.gov.br/en/setores/Rodovias",
+    /projet|concess|rodovi/i,
+    timeoutMs,
+  );
+  await sleep(1500);
 
   await probeHtml(
     "E4. B3 拍卖页",

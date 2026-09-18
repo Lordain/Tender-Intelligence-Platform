@@ -39,14 +39,20 @@ async function main() {
     process.exit(1);
   }
 
-  const months = Number(argValue(args, "--months") ?? 2) || 2;
+  const monthsRaw = argValue(args, "--months");
+  const months = Number(monthsRaw ?? 2) || 2;
   const daysRaw = argValue(args, "--days");
-  const days = daysRaw === undefined ? undefined : Number(daysRaw);
+  // Default 3 days, not 2 months. The window condition now pages until the
+  // period is exhausted, so a 2-month default with the raised --max would
+  // sweep for hours on a bare `npm run ingest:brazil-live` — and 3 days is
+  // what this source is actually for (user, 2026-09-18: 我只想看最近3天的，
+  // 我不想要导入大量项目处理). --months still overrides it for a backfill.
+  const days = daysRaw !== undefined ? Number(daysRaw) : monthsRaw !== undefined ? undefined : 3;
   if (daysRaw !== undefined && (!Number.isFinite(days) || (days as number) < 1)) {
     console.error(`--days 认不出来："${daysRaw}"。给一个 1 以上的整数，例如 --days 3`);
     process.exit(1);
   }
-  const maxRowsPerModality = Number(argValue(args, "--max") ?? 600) || 600;
+  const maxRowsPerModality = Number(argValue(args, "--max") ?? 3000) || 3000;
   const raw = argValue(args, "--modalities");
   // One bare numeric id per value. A comma list is accepted HERE and expanded
   // into separate passes — what must never happen is passing a list to PNCP,

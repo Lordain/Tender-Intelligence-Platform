@@ -131,7 +131,14 @@ export async function ingestBrazilPncp(
 ): Promise<BrazilIngestResult> {
   const months = options.months ?? 2;
   const days = options.days;
-  const maxRows = options.maxRowsPerModality ?? 600;
+  // 3000, raised from 600, because --max changed jobs. It used to be the ONLY
+  // thing that ended a sweep, so a low value was the safe one; now the window
+  // condition ends it and this is purely a runaway guard. Measured 2026-09-18:
+  // a 3-day window took 14 pages (1400 rows) for modality 4 and 1 page for
+  // modality 5, both stopping on the window. A cap below that silently
+  // truncates the period — which is the failure this number now exists to
+  // avoid, not to cause.
+  const maxRows = options.maxRowsPerModality ?? 3000;
   const modalities = options.modalities ?? PNCP_WORKS_MODALITIES;
 
   const rows: PncpSearchRow[] = [];

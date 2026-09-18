@@ -2579,6 +2579,24 @@ against `/api/consulta`, both measured rather than assumed by
   that would re-pull old tenders forever and could mistake a touched old
   record for a new one.
 
+  That same property turns out to be what makes coverage PROVABLE, which no
+  date parameter could (five names were tried; all ignored). Sorting is
+  strictly descending on `data_atualizacao_pncp`, and a record cannot be
+  updated before it is published — so once a page's last row was updated
+  before the publication cutoff, no later page can hold anything published
+  inside the window. `ingestBrazilPncp` stops there and reports which
+  condition ended each modality's sweep; a run stopped by `--max` instead has
+  covered an unknown fraction, and every number under it is a floor.
+
+  **Measured 2026-09-18, a 3-day window:** modality 4 needed **14 pages
+  (1,400 rows)** and modality 5 **1 page (100 rows)**, both ending on the
+  window. 1,496 unique rows yielded 802 published inside the 3 days — the gap
+  is old tenders that were merely touched recently, which is the same
+  UPDATE-time property seen from the cost side. The defaults follow that
+  measurement: a 3-day window, and `--max 3000` purely as a runaway guard
+  rather than as the thing that ends the sweep. The earlier 600 silently
+  truncated modality 4 at page 6.
+
 Two smaller corrections from the same run:
 
 - `/modulo-legado/1_consultarLicitacao` is a real path — it is in

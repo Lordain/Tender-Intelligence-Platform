@@ -96,6 +96,7 @@
     "test:block-page": "tsx scripts/test-block-page.ts",
     "test:aneel-lotes": "tsx scripts/test-aneel-lote-parser.ts",
     "test:aneel-edital": "tsx scripts/test-aneel-edital-file.ts",
+    "test:aneel-stage": "tsx scripts/test-aneel-auction-stage.ts",
     "test:source-language": "tsx scripts/test-source-language.ts",
     "test:text-fold": "tsx scripts/test-text-fold.ts",
     "test:relevance-pt": "tsx scripts/test-relevance-pt.ts",

@@ -3330,6 +3330,53 @@ next steps:
 `scripts/test-block-page.ts` pinning the three real bodies that caused the
 false ★ — F5's rejection page above all, because it arrives as HTTP 200.
 
+#### The edital does not exist yet — which is the product, not a problem (2026-09-18)
+
+Opening the two document links found the opposite of what they were opened
+for. `documentos_editais.cfm?IdProgramaEdital=220`, for Leilão 001/2026, holds
+exactly one file under "Edital":
+
+> **Despacho 3.323, de 11/11/2025** — Autorização de envio da minuta do Edital
+> do Leilão nº 1/2026 para apreciação do TCU e abertura de prazo para visitas
+> técnicas
+
+Anexos, Comunicado, Impugnações e Recursos, and Relatórios/Atas/Resultados are
+all *"Não existe nenhum arquivo"*. Adendos holds one: the list of substations
+and contacts for scheduling visits to the existing installations, updated
+16/12/2025.
+
+So the **edital has not been published**. What exists is an order authorising
+the *draft* to go to the TCU — the federal audit court — for review, with the
+site-visit window opened in the same act. Two consequences:
+
+1. **There is no RAP ceiling and no investment figure to find for this
+   auction, anywhere.** Not hidden behind the other link — not yet written. A
+   mapper that treats a missing `estimatedValue` here as a fetch failure will
+   retry forever against a number that does not exist.
+2. **This is the earliest formal signal a bidder can get**, months before the
+   edital, and lead time is exactly what a foreign consortium needs: partner
+   selection, local incorporation, equipment planning. Marking it 招标中 would
+   put something nobody can bid on into the feed; dropping it for having no
+   amount would throw away the reason to watch ANEEL at all. It is `planned`.
+
+`lib/ingestion/aneel-auction-stage.ts` reads the stage from the document list,
+and the trap it exists for is that **the "Edital" section is not empty**. Any
+rule that counts files calls this auction open. The file's own title is what
+separates a despacho about a draft from a published edital, so the function
+reads titles: *minuta*, *despacho* and *autorização* mark a draft, and a real
+edital names itself without them. `npm run test:aneel-stage` pins that against
+the verbatim strings, including that a published edital must still win once
+the older despacho is sitting beside it in the same section — the two coexist
+on ANEEL's page for the rest of the auction.
+
+**The R1–R5 link is gated, mildly.** `frmcdt.cfm?leilao=1&ano=2026` asks for a
+company name before continuing — *"Para dar continuidade é necesario informar
+sua empresa, caso nao tenha empresa favor 'pessoa física'"* — a free-text
+field with a submit button, no account and no validation. It is a
+self-declaration for ANEEL's own statistics, so the honest way through is the
+real company name; there is nothing to work around and nothing that would be
+improved by inventing one.
+
 #### The saved page, read (2026-09-18) — and where the money actually is
 
 The user saved `edital_transmissao.cfm` for Leilão 001/2026 and it is now

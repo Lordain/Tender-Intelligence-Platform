@@ -83,6 +83,7 @@
     "survey:peru-procedures": "tsx scripts/survey-peru-procedures.ts",
     "probe:brazil-pncp": "tsx scripts/probe-brazil-pncp.ts",
     "dump:brazil-pncp": "tsx scripts/dump-brazil-pncp-rows.ts",
+    "probe:brazil-alt": "tsx scripts/probe-brazil-alt-apis.ts",
     "test:cli-write-flag": "tsx scripts/test-cli-write-flag.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",

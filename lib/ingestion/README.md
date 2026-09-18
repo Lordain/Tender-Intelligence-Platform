@@ -2415,6 +2415,79 @@ discover in production:
   three unlucky modalities — the sweep stops there instead of spending twenty
   minutes collecting sixteen more copies of the same 503.
 
+**Third run, same day: healthy, and it answered in under a second.** Counts of
+what is open for bidding, by modality (`dataFinal=20260918`):
+
+| code | modality | open | latency |
+|---|---|---|---|
+| 8 | Dispensa | 362 | 493ms |
+| 6 | Pregão - Eletrônico | 314 | 672ms |
+| 4 | **Concorrência - Eletrônica** | **60** | 418ms |
+| 7 | Pregão - Presencial | 8 | 622ms |
+| 5 | Concorrência - Presencial | 6 | 241ms |
+| 1 / 3 | Leilão - Eletrônico / Concurso | 2 each | <1s |
+| 10 / 11 | Manifestação de Interesse / Pré-qualificação | 1 each | <1s |
+| 2 / 9 | Diálogo Competitivo / Inexigibilidade | 204 — none open | <1s |
+
+So the 63s measured earlier was a degraded service, not its normal speed, and
+the cell the matrix left empty is now filled: **Concorrência Eletrônica works
+and carries 60 open procurements** — that is the modality for large public
+works, and it was only ever failing because every previous attempt at it
+carried `uf`. Dispensa (direct award, 362) is the largest bucket and is
+mostly noise for this platform, which excludes direct awards outright.
+
+That run also produced two findings the script was reporting wrongly, both
+now fixed:
+
+- **204 No Content is an answer, not a failure.** It is how `/proposta` says
+  a modality has nothing open. `JSON.parse("")` throws, so the script called
+  PNCP's correct empty answer `FAIL 204 返回的不是 JSON` — dressing a real
+  result up as a fault, the exact confusion the point above is about.
+- **PNCP rate-limits, and it is our request rate that trips it.** Fourteen
+  counts in roughly five seconds of wall clock earned `429 Limite de
+  requisições excedido` from the twelfth on. The script paces itself now
+  (1.5s between calls, `--pace` to change it) and waits 15s/45s on a 429
+  rather than the 5s/20s used for a 5xx. Its early-abort message used to
+  blame PNCP for being down when the last three failures were 429s; a
+  limiter and an outage call for opposite responses, so it says which.
+
+### Brazil — the other doors (surveyed 2026-09-18, `probe:brazil-alt`)
+
+`/api/consulta` has now failed three different ways in two days, so what else
+exists is worth knowing before a connector is built on it. None of this is
+verified from here — every `.gov.br` host is blocked from this sandbox — so
+`scripts/probe-brazil-alt-apis.ts` exists for the user to run, and the field
+lists it prints are what decides between them.
+
+- **`pncp.gov.br/api/search` — the one to beat.** What the PNCP website's own
+  search box calls (`pncp.gov.br/app/editais`), and what several third-party
+  collectors use directly: `?q=<termo>&tipos_documento=edital&ordenacao=-data
+  &pagina=1&tam_pagina=100`, plus `municipios=` / `ufs=`. It matters for
+  three reasons, not one: it is almost certainly a search index rather than
+  the relational database whose Hikari pool produces `/api/consulta`'s 500s,
+  so the two should fail independently; `tam_pagina=100` is a quarter of the
+  requests for the same coverage, which is the direct answer to the rate
+  limiter; and `q=` is server-side keyword filtering, which no other source
+  in this project offers. The open question is whether it returns whole
+  records or search summaries — if `valorTotalEstimado` and the cronograma
+  are absent it is a discovery endpoint that still needs `/api/consulta` for
+  the money, which is a usable design but a different one.
+- **`dadosabertos.compras.gov.br`** — Compras.gov.br / SIASG open data, its
+  own Swagger, no auth. **Federal only**: no state or municipal procurement,
+  which PNCP does carry. A complement and a cross-check, never a replacement.
+- **`contratos.comprasnet.gov.br/api`** — federal contracts already signed.
+  Wrong half of the lifecycle for the main feed; relevant later for award
+  outcomes.
+- **`api.queridodiario.ok.org.br`** — municipal official gazettes, full text,
+  open, self-declared ~60 req/min. The Brazilian analogue of the DOF
+  connector: it reaches municipalities that never publish to PNCP at all, but
+  it returns gazette prose rather than structured tenders, so it carries the
+  same extraction problem the DOF mapper solves — in Portuguese.
+- **`pncp.gov.br/api/pncp`** is *not* an alternative read path. It is the
+  maintenance/integration API (insert, correct, delete) and needs credentials;
+  the one part of it we use is `/v1/modalidades`, the unauthenticated
+  reference-data call that has served as the control group throughout.
+
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against
 the same procurement written the Brazilian way, agreed on tier 6/10 and on

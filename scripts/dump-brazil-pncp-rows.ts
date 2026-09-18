@@ -98,6 +98,15 @@ async function get(url: string, timeoutMs: number): Promise<Fetched> {
     if (!response.ok) {
       return { ok: false, status: response.status, ms, body: null, note: text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160) };
     }
+    // 204 No Content, with an empty body, is how /proposta says "this
+    // modality has nothing open right now". JSON.parse("") throws, so the
+    // first version of this script reported PNCP's correct answer as
+    // `FAIL 204 返回的不是 JSON` — a real, empty result dressed up as a
+    // failure, which is the exact confusion this file spends a page warning
+    // about elsewhere. An empty page is a finding; say so.
+    if (response.status === 204 || text.trim() === "") {
+      return { ok: true, status: response.status, ms, body: { data: [], totalRegistros: 0, totalPaginas: 0, empty: true }, note: "" };
+    }
     try {
       return { ok: true, status: response.status, ms, body: JSON.parse(text), note: "" };
     } catch {
@@ -125,13 +134,32 @@ async function get(url: string, timeoutMs: number): Promise<Fetched> {
 const TRANSIENT = new Set([502, 503, 504]);
 const BACKOFF_MS = [5_000, 20_000];
 
+/**
+ * 429 is a different animal and needs its own, longer wait.
+ *
+ * PNCP rate-limits, which the first successful run found the hard way: with
+ * the service healthy, fourteen modality counts went through in about five
+ * seconds of wall clock and the twelfth came back "Limite de requisições
+ * excedido. Aguarde alguns instantes". That is not PNCP being unwell — it is
+ * this script asking too fast — so it is on us to slow down (see PACE_MS)
+ * and, when we do trip it, to actually wait rather than immediately ask
+ * again.
+ */
+const RATE_LIMITED = 429;
+const RATE_LIMIT_BACKOFF_MS = [15_000, 45_000];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function getResilient(url: string, timeoutMs: number): Promise<Fetched> {
   let last = await get(url, timeoutMs);
-  for (const wait of BACKOFF_MS) {
+  for (let attempt = 0; attempt < BACKOFF_MS.length; attempt += 1) {
+    if (last.ok) return last;
+    const rateLimited = last.status === RATE_LIMITED;
     const transient = last.status === "连接失败" || (typeof last.status === "number" && TRANSIENT.has(last.status));
-    if (last.ok || !transient) return last;
-    console.log(`        ${last.status} —— 等 ${wait / 1000}s 再试一次`);
-    await new Promise((resolve) => setTimeout(resolve, wait));
+    if (!rateLimited && !transient) return last;
+    const wait = rateLimited ? RATE_LIMIT_BACKOFF_MS[attempt] : BACKOFF_MS[attempt];
+    console.log(`        ${last.status}${rateLimited ? "（限流，是我们问得太快）" : ""} —— 等 ${wait / 1000}s 再试一次`);
+    await sleep(wait);
     last = await get(url, timeoutMs);
   }
   return last;
@@ -176,6 +204,10 @@ async function main() {
   const timeoutMs = Math.max(10, Number(arg("--timeout") ?? 180) || 180) * 1000;
   const wantTitles = Math.max(1, Number(arg("--titles") ?? 50) || 50);
   const pageSize = Math.max(10, Number(arg("--size") ?? 50) || 50);
+  // Deliberate throttle. PNCP's limiter tripped at roughly ten requests in
+  // five seconds; a pause between calls costs half a minute across the whole
+  // sweep and buys back the retries and the abandoned modalities it caused.
+  const paceMs = Math.max(0, Number(arg("--pace") ?? 1500) || 1500);
   const only = (arg("--only") ?? "")
     .split(",")
     .map((s) => Number(s.trim()))
@@ -213,7 +245,12 @@ async function main() {
   // alongside `uf`, so Concorrência Eletrônica — where the large public works
   // live — has never been tried in the shape that works. A count is also the
   // cheapest possible question (page 1, read totalRegistros, discard the rows).
-  console.log(`【1】每种采购方式当前开放收标的数量 —— ${targets.length} 次请求，按上次的 63s 算，预计 ${Math.ceil((targets.length * 63) / 60)} 分钟左右。`);
+  // Timing swings by two orders of magnitude depending on PNCP's mood —
+  // 63s per call on a degraded day, under a second on a healthy one — so a
+  // single number here would be wrong most of the time. Give the range.
+  const paceSeconds = (targets.length * paceMs) / 1000;
+  console.log(`【1】每种采购方式当前开放收标的数量 —— ${targets.length} 次请求，间隔 ${paceMs}ms。`);
+  console.log(`     服务状态好的时候每条不到 1 秒（约 ${Math.ceil(paceSeconds + targets.length)} 秒跑完），发病的时候每条 60 秒以上（${Math.ceil((targets.length * 63) / 60)} 分钟）。`);
   if (only.length === 0) console.log("     只想快速看两种的话：npm run dump:brazil-pncp -- --only 6,4\n");
   else console.log();
 
@@ -226,6 +263,7 @@ async function main() {
   let consecutiveFailures = 0;
   let abandoned = 0;
   for (const [index, m] of targets.entries()) {
+    if (index > 0 && paceMs > 0) await sleep(paceMs);
     const { page, result } = await fetchPage(m.id, dataFinal, 1, 10, timeoutMs);
     const total = page?.totalRegistros ?? null;
     counts.push({ id: m.id, nome: m.nome, ok: result.ok, status: result.status, ms: result.ms, total, note: result.note });
@@ -236,7 +274,19 @@ async function main() {
     consecutiveFailures = result.ok ? 0 : consecutiveFailures + 1;
     if (consecutiveFailures >= 3) {
       abandoned = targets.length - index - 1;
-      if (abandoned > 0) console.log(`\n  连续 3 次都没通（每次都已经重试过）。剩下 ${abandoned} 种不试了 —— 是服务不可用，不是这几种采购方式的问题。`);
+      // Why it stopped matters, and the first version got this wrong: it
+      // announced "服务不可用" at three consecutive 429s, which blamed PNCP
+      // for this script's own request rate. A limiter and an outage call for
+      // opposite responses.
+      const recent = counts.slice(-3);
+      const allRateLimited = recent.every((c) => c.status === RATE_LIMITED);
+      if (abandoned > 0) {
+        console.log(
+          allRateLimited
+            ? `\n  连续 3 次被限流（每次都已经等过了）。剩下 ${abandoned} 种不试了 —— 这是我们问得太快，不是 PNCP 坏了。把间隔调大重跑：npm run dump:brazil-pncp -- --pace 4000`
+            : `\n  连续 3 次都没通（每次都已经重试过）。剩下 ${abandoned} 种不试了 —— 是服务不可用，不是这几种采购方式的问题。`,
+        );
+      }
       break;
     }
   }
@@ -247,7 +297,7 @@ async function main() {
     // These two look identical in a "0 rows" summary and mean opposite
     // things: one is a fact about Brazil's procurement calendar, the other
     // is a fact about PNCP's uptime. Never report them as the same outcome.
-    const replied = counts.filter((c) => c.ok);
+    const replied = counts.filter((c) => c.ok);  // includes 204 — an answered "nothing open", not a failure
     if (replied.length === 0) {
       const statuses = [...new Set(counts.map((c) => String(c.status)))].join(", ");
       console.log(`一条都没答上来（${statuses}）。/modalidades 在同一次运行里 ${control.ms}ms 就回了，所以域名是通的、这台机器也没问题 —— 是 /api/consulta 这个服务本身下线了。`);
@@ -265,10 +315,20 @@ async function main() {
   // federal/state/municipal split all have to come from in there.
   const richest = answered[0];
   console.log(`【2】原始行全文（${richest.id} ${richest.nome}，共 ${richest.total} 条）—— mapper 按这个写，不按 Swagger 截图写。\n`);
-  const { page: firstPage, size: usedSize } = await fetchPage(richest.id, dataFinal, 1, pageSize, timeoutMs);
+  await sleep(paceMs);
+  const { page: firstPage, size: usedSize, result: firstResult } = await fetchPage(richest.id, dataFinal, 1, pageSize, timeoutMs);
   const firstRow = firstPage?.data?.[0] as Record<string, unknown> | undefined;
   if (!firstRow) {
-    console.log("  这一页是空的 —— 上面数出来有数据，翻页却拿不到。把这行贴给我。");
+    // The first version asserted a contradiction here — "the count said there
+    // was data and the page came back empty" — when the real answer was
+    // sitting in the HTTP status it never printed. It was a 429 from the
+    // sweep that had just run. Print what actually happened.
+    if (!firstResult.ok) {
+      console.log(`  这一页没取到：${firstResult.status}${firstResult.status === RATE_LIMITED ? "（限流，是我们问得太快）" : ""} ${firstResult.note}`);
+      console.log(`  把间隔调大重跑，或者只看这一种：npm run dump:brazil-pncp -- --only ${richest.id} --pace 4000`);
+    } else {
+      console.log(`  服务器答了 ${firstResult.status}，但这一页一行都没有 —— 上面数出来是 ${richest.total} 条。把这两行发我。`);
+    }
     return;
   }
   console.log(JSON.stringify(firstRow, null, 2).split("\n").map((line) => `  ${line}`).join("\n"));
@@ -280,6 +340,7 @@ async function main() {
   const collected: Record<string, unknown>[] = [];
   outer: for (const modality of answered) {
     for (let pagina = 1; ; pagina += 1) {
+      await sleep(paceMs);
       const { page } = await fetchPage(modality.id, dataFinal, pagina, pageSize, timeoutMs);
       const rows = (page?.data ?? []) as Record<string, unknown>[];
       for (const row of rows) {

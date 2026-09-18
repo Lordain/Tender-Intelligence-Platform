@@ -91,6 +91,7 @@
     "test:cli-write-flag": "tsx scripts/test-cli-write-flag.ts",
     "test:brazil-pncp-mapper": "tsx scripts/test-brazil-pncp-mapper.ts",
     "test:ckan-client": "tsx scripts/test-ckan-client.ts",
+    "test:block-page": "tsx scripts/test-block-page.ts",
     "test:source-language": "tsx scripts/test-source-language.ts",
     "test:text-fold": "tsx scripts/test-text-fold.ts",
     "test:relevance-pt": "tsx scripts/test-relevance-pt.ts",

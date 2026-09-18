@@ -3297,6 +3297,39 @@ ANTT, ANTAQ, ANAC and ANEEL datasets without depending on any single agency's
 WAF. Everything else on that list needs either a real browser or a different
 network path, and neither is a thing to build blind.
 
+#### dados.gov.br needs a CPF, so the question changed (2026-09-18)
+
+The one door that was only a credential away turned out to require a Brazilian
+identity: `dados.gov.br` issues its API key through **Acesso gov.br**, the
+federal single sign-on, and the user has no CPF. That closes it — not a
+"try again later", a dead end for this account.
+
+With it closed, every remaining door fails for a reason that plausibly depends
+on **where the request comes from**: a socket-level ETIMEDOUT to
+`dadosabertos.aneel.gov.br`, Cloudflare challenges at ANEEL and ANTAQ, F5 at
+ANTT, a hand-written block page at CCEE. So the open question is no longer
+"does a machine-readable source exist" — it is **"can anything we control
+reach it"**, and this platform already owns a second network with a different
+egress that demonstrably reaches PNCP.
+
+`GET /api/admin/probe-brazil-doors` (admin-only, read-only, plain text) knocks
+on the same eight doors from the deployment and prints the same verdicts. It
+costs one route to answer, and the answer decides between two very different
+next steps:
+
+- **Something opens from there** → the connector runs on a schedule in the
+  deployment and the laptop's network stops mattering at all.
+- **Nothing opens** → the refusal is not about geography, and the honest path
+  is the one this repo has already used three times (Compras MX, Ecopetrol,
+  Proyectos México): the user exports the file from a real browser by hand and
+  a `-file.ts` mapper is written against the real capture. A headless browser
+  would be a lot of machinery to reach the same place, on sites whose
+  anti-bot rules change without notice.
+
+`lib/ingestion/block-page.ts` holds the signatures both probes share, with
+`scripts/test-block-page.ts` pinning the three real bodies that caused the
+false ★ — F5's rejection page above all, because it arrives as HTTP 200.
+
 `lib/ingestion/connectors/ckan.ts` was written ahead of the probe because
 CKAN's Action API is a published standard identical across installs, so it is
 not a guess; it deliberately contains **no hostnames and no dataset ids**,

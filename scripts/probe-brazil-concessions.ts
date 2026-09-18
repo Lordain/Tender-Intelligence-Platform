@@ -146,6 +146,7 @@
 import { ckanDatastoreSearch, ckanPackageSearch, ckanStatus, type CkanPackage } from "@/lib/ingestion/connectors/ckan";
 import { toCsv, writeReviewCsv, type CsvValue } from "@/lib/ingestion/review-csv";
 import { describeFetchFailure } from "@/lib/fetch-failure";
+import { blockPageReason, pageTitle, visibleText } from "@/lib/ingestion/block-page";
 import { connect } from "node:net";
 
 const OUT_DIR = "exports";
@@ -265,36 +266,6 @@ async function fetchText(url: string, timeoutMs: number, headers: Record<string,
 }
 
 /**
- * Is this 200 actually a refusal?
- *
- * Measured the hard way on run two: ANTT's F5 appliance serves
- * "The requested URL was rejected" as **HTTP 200**, so a retry that judged
- * success by status code alone printed a ★ — "browser headers got us in" —
- * for a page that is a block notice. Three of that run's four ★ were this.
- * A tool that overstates its own findings is worse than one that fails, so
- * the signatures below are checked before anything is called a pass.
- */
-const BLOCK_PAGE_SIGNATURES = [
-  /Request Rejected/i,
-  /Your support ID is/i,
-  /Acesso bloqueado/i,
-  /Attention Required/i,
-  /Just a moment/i,
-  /__cf_chl|cf-browser-verification|cf_chl_opt/i,
-  /Access Denied/i,
-];
-
-function blockPageReason(text: string): string | null {
-  const hit = BLOCK_PAGE_SIGNATURES.find((pattern) => pattern.test(text));
-  return hit ? (text.match(hit)?.[0] ?? "拦截页").slice(0, 40) : null;
-}
-
-/** The page's own title, which is usually the fastest way to see what a 200 really is. */
-function pageTitle(text: string): string {
-  return (text.match(/<title[^>]*>([\s\S]{0,160}?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim();
-}
-
-/**
  * Server-rendered page or JavaScript shell?
  *
  * The distinction decides whether a scraper is possible at all, and it is not
@@ -359,7 +330,7 @@ async function browserRetry(url: string, timeoutMs: number, linkPattern: RegExp,
   // Printed because the verdict alone cannot tell a single-page-app shell
   // from an interstitial, and on run two four different PPI URLs all came
   // back as the same 266-character body — which is one or the other.
-  const body = text.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  const body = visibleText(text);
   if (body) console.log(`     正文开头：${body.slice(0, 300)}`);
   console.log("     这是个要拿回来讨论的结论，不是可以悄悄写进连接器的 header —— 见本文件开头的说明。\n");
 }

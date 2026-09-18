@@ -191,7 +191,16 @@ const PT_INDUSTRY_PATTERNS: [IndustryKey, RegExp][] = [
   // real title "execução da obra de implantação e pavimentação da Rodovia
   // MT-403" carried a transport tag and no construction tag — caught by the
   // corpus test.
-  ["construction", /\bobras?\s+de\s+(engenharia|implanta[çc][ãa]o|amplia[çc][ãa]o|reforma)\b|constru[çc][ãa]o|edifica[çc][õo]es|pavimenta[çc][ãa]o|recapeamento|reforma\s+e\s+amplia[çc][ãa]o|requalifica[çc][ãa]o|urbaniza[çc][ãa]o|terraplanagem|empreitada|\bengenharia\s+civil\b/i],
+  // `(?<!m[ãa]o\s+de\s+)\bobras?\b` replaced a narrower
+  // `obras? de (engenharia|implantação|ampliação|reforma)`, which a real
+  // excluded row walked straight past: "execução de obras, referente à
+  // ampliação da Escola Coronel Francisco Ferreira de Carvalho" — a school
+  // extension, judged a keeper by the user (2026-09-18), tagged with nothing
+  // because a comma sits where the narrow pattern wanted "de". `obra` on its
+  // own IS the Portuguese word for a public work, so the right pattern is the
+  // bare one carrying the same MÃO DE OBRA guard PT_REAL_WORKS_SIGNAL already
+  // proved it needs — not a longer list of the phrasings seen so far.
+  ["construction", /(?<!m[ãa]o\s+de\s+)\bobras?\b|constru[çc][ãa]o|edifica[çc][õo]es|pavimenta[çc][ãa]o|recapeamento|reforma\s+e\s+amplia[çc][ãa]o|requalifica[çc][ãa]o|urbaniza[çc][ãa]o|terraplanagem|empreitada|\bengenharia\s+civil\b/i],
   // `esgoto` (sewerage), `drenagem pluvial` (storm drainage) and `bueiro`
   // (culvert) are the words a Brazilian title uses; none of them appear in
   // the Spanish water pattern.
@@ -203,4 +212,43 @@ const PT_INDUSTRY_PATTERNS: [IndustryKey, RegExp][] = [
 /** Portuguese-only industry tags. Returns [] rather than ["general"] — the caller merges this with the Spanish pass, which already supplies that fallback. */
 export function classifyPortugueseIndustries(text: string): IndustryKey[] {
   return PT_INDUSTRY_PATTERNS.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
+}
+
+/**
+ * Small open-air municipal sport and recreation facilities.
+ *
+ * The same shape as MUNICIPAL_WATER_COMPONENT_KEYWORDS in lib/relevance.ts: a
+ * category a Brazilian municipality buys constantly, builds with a local
+ * contractor, and that carries the word `construção` — so once the industry
+ * gate learned Portuguese, these arrive tagged `construction` and read like
+ * building work.
+ *
+ * Fitted on ONE row, which is thin and worth saying plainly:
+ *   "CONSTRUÇÃO DE CAMPO DE FUTEBOL COM GRAMA SINTÉTICA, MEIA QUADRA DE
+ *    BASQUETE, PARQUINHO INFANTIL E PISTA DE CAMINHADA (TIPO B)"
+ * excluded by the user, 2026-09-18, in the same pass that rescued two others.
+ *
+ * PT_BUILDING_SCOPE is the veto, and the reason this is not just a word list.
+ * The row the user KEPT in that same review is also a sports project —
+ * "Construção de Complexo Poliesportivo … Ginásio Esportivo … Piscina
+ * Desportiva … Nova Sede da Secretaria" — so "mentions sport" cannot be the
+ * test. A pitch, a playground and a walking track are surfaces; a ginásio, a
+ * piscina and a sede are buildings, and the buildings are the work worth
+ * flying for.
+ *
+ * `parquinho` is matched, `parque` deliberately is not: the kept row contains
+ * "Parque Municipal" and the excluded one "PARQUINHO INFANTIL". The
+ * diminutive is the whole difference between a municipal park and a
+ * children's playground.
+ */
+const PT_MUNICIPAL_SPORTS_COMPONENT =
+  /\bcampo\s+de\s+futebol\b|\bgrama\s+sint[ée]tica\b|\bparquinho\b|\bpista\s+de\s+caminhada\b|\bacademia\s+ao\s+ar\s+livre\b|\bareninha(s)?\b/i;
+
+const PT_BUILDING_SCOPE =
+  /\bgin[áa]sio\b|\bpiscina\b|\bcomplexo\b|\bedif[íi]cio(s)?\b|\bedifica[çc][õo]es\b|\bsede\b|\bescola\b|\bcreche\b|\bhospital\b|\bunidade\s+b[áa]sica\b|\bcentro\s+(esportivo|comunit[áa]rio|de\s+sa[úu]de)\b|\bpavilh[ãa]o\b|\bquadra\s+coberta\b/i;
+
+/** True only when the object is open-air sport/recreation surfaces AND names no building. */
+export function isPortugueseMunicipalSportsComponent(text: string): boolean {
+  if (!PT_MUNICIPAL_SPORTS_COMPONENT.test(text)) return false;
+  return !PT_BUILDING_SCOPE.test(text);
 }

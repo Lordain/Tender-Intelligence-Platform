@@ -1,7 +1,7 @@
 import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
-import { classifyPortugueseExclusion, classifyPortugueseIndustries, isBrazil } from "@/lib/relevance-pt";
+import { classifyPortugueseExclusion, classifyPortugueseIndustries, isBrazil, isPortugueseMunicipalSportsComponent } from "@/lib/relevance-pt";
 
 /**
  * Pre-Screening / relevance classification (rule-based, not AI — see
@@ -2309,7 +2309,7 @@ export function isDirectAward(procedureType: string | undefined): boolean {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "rural_road",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "municipal_sports_component" | "rural_road",
   LocalizedText
 > = {
   no_content: {
@@ -2341,6 +2341,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: "该项目的标的是既有供水/排水管网里的单体小型构筑物（集水井、增压泵站、地面水池等），通常由本地承包商承建、金额在几十万美元级，数量极多；不属于供水系统、处理厂、输水干线一类的项目，默认不进入推荐列表（数据仍保留，可用于统计）。注：这是按标题里的构筑物名称判断的，如果该项目实际规模较大，可在后台人工锁定相关度。",
     en: "What is being built here is a single small structure inside an existing water network — a collector box, a pumping sump, a surface tank — typically a few hundred thousand dollars and built by a local contractor. Mexican municipalities tender these constantly. Not a water system, treatment plant or trunk main. Filtered from the default feed (metadata is kept, not deleted); if this particular one is genuinely large, lock its relevance by hand in the admin.",
     es: "Lo que se construye es una estructura aislada dentro de una red de agua existente — una caja colectora, un cárcamo de rebombeo, un tanque superficial — normalmente de unos cientos de miles de dólares y a cargo de un contratista local. No es un sistema de agua, una planta de tratamiento ni una línea de conducción. Filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
+  municipal_sports_component: {
+    zh: "该项目的标的是市政小型室外运动/休闲设施（足球场、人造草坪、儿童游乐场、健走步道等），通常由本地承包商承建、金额较小，默认不进入推荐列表（数据仍保留，可用于统计）。注：如标的中含体育馆、游泳池、场馆或其他房建内容，则不适用此规则。",
+    en: "This tender's object is a small open-air municipal sport/recreation facility (football pitch, synthetic turf, children's playground, walking track) — usually built by a local contractor at modest value, filtered from the default feed (metadata is kept, not deleted). Does not apply when the object also includes a gymnasium, pool or other building work.",
+    es: "El objeto de esta licitación es una instalación deportiva/recreativa municipal pequeña y al aire libre (cancha de fútbol, césped sintético, juegos infantiles, sendero peatonal) — normalmente ejecutada por un contratista local y de monto modesto, filtrada de la vista predeterminada (los metadatos se conservan). No aplica cuando el objeto incluye gimnasio, piscina u otra obra de edificación.",
   },
   keyword: {
     zh: "该项目属于日常性服务采购，通常不属于中资企业出海投标的重点范围，默认不进入推荐列表（数据仍保留，可用于统计）。",
@@ -2396,6 +2401,7 @@ function reasonFor(
     | "price_comparison"
     | "direct_award"
     | "municipal_water_component"
+    | "municipal_sports_component"
     | "rural_road"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
@@ -2716,6 +2722,15 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "rural_road") };
   }
 
+  // Brazil-gated sibling of the water rule above — see
+  // isPortugueseMunicipalSportsComponent for why it needs a building veto
+  // rather than a word list. It must run BEFORE the industry gate below:
+  // these rows carry `construção`, so once that gate reads Portuguese they
+  // are tagged `construction` and would otherwise sail through.
+  if (!hasIncludeOverride && isBrazil(input.country) && isPortugueseMunicipalSportsComponent(haystack)) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "municipal_sports_component") };
+  }
+
   if (!hasIncludeOverride && MUNICIPAL_WATER_COMPONENT_KEYWORDS.some((pattern) => pattern.test(haystack))) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "municipal_water_component") };
   }
@@ -3012,8 +3027,21 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
 
+  // classifyIndustries is the SPANISH classifier, and this gate deletes a
+  // tender outright when it finds nothing. For Brazil that meant a real
+  // "Construção de Complexo Poliesportivo" carried no industry at all —
+  // `construcción` is not `construção` — and was excluded with the reason
+  // "未匹配到任何重点行业". Two such rows were found by hand in the first
+  // dry run (2026-09-18) and both were keepers.
+  //
+  // classifyStoredTender already merged the Portuguese pass into the STORED
+  // industries; this gate recomputes its own and so never saw it. A tag good
+  // enough to display is good enough to save the row from deletion.
   const contentIndustries = classifyIndustries(subjectTitle, subjectSummary);
-  const hasTargetIndustry = contentIndustries.some((i) => i !== "general");
+  const portugueseIndustries = isBrazil(input.country)
+    ? classifyPortugueseIndustries([subjectTitle, subjectSummary].filter(Boolean).join(" "))
+    : [];
+  const hasTargetIndustry = [...contentIndustries, ...portugueseIndustries].some((i) => i !== "general");
   // Same correction: this gate's comment says everything reaching it failed
   // every positive signal, which stopped being true once demotions began
   // routing keyword-matched tenders past the flagship branch.

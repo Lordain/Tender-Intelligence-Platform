@@ -166,6 +166,79 @@ check("同一条文本，country=Brazil 被排除", classifyRelevance({ ...spani
 check("country=Mexico 时这条葡语规则不生效", classifyRelevance({ ...spanishCleaning, country: "Mexico" }).tier !== "excluded", true);
 
 console.log();
+
+// ---------------------------------------------------------------------------
+// The five rows the first Brazil dry run excluded for "no industry, no amount",
+// verbatim from exports/excluded-brazil-pncp-dryrun-2026-09-18.csv, with the
+// user's own verdict on each (2026-09-18). All five have NO published amount,
+// which is why they reached that gate at all — so each is decided purely on
+// its words, which is exactly what these rules are.
+// ---------------------------------------------------------------------------
+
+function brazilTender(title: string) {
+  return classifyStoredTender({
+    title,
+    summary: "",
+    buyer: "PREFEITURA MUNICIPAL",
+    country: "Brazil",
+    procedureType: "Concorr\u00eancia - Eletr\u00f4nica",
+    governmentLevel: "municipal",
+    scopeType: "works",
+    sourceName: "PNCP",
+  });
+}
+
+// KEEP. A multi-lot sports complex: gymnasium, pool, park revitalisation and a
+// new secretariat building. The row that proved the industry gate was deaf to
+// Portuguese.
+const poliesportivo = brazilTender(
+  "Edital Retificado (Lote 01) - Constru\u00e7\u00e3o de Complexo Poliesportivo, compreendendo a Constru\u00e7\u00e3o do Gin\u00e1sio Esportivo, inclu\u00eddo a Reforma da Piscina Desportiva (LOTE 1), Reforma e Revitaliza\u00e7\u00e3o do Parque Municipal (Parque Ara\u00e7ariguama) (LOTE 2) e a Constru\u00e7\u00e3o da Nova Sede da Secretaria Municipal de Esportes (LOTE 3",
+);
+check("\u4f53\u80b2\u7efc\u5408\u4f53\u4e0d\u518d\u88ab\u6392\u9664", poliesportivo.relevance.tier !== "excluded", true);
+check("\u4f53\u80b2\u7efc\u5408\u4f53\u62ff\u5230 construction \u6807\u7b7e", poliesportivo.industries.includes("construction"), true);
+
+// KEEP. The comma after "obras" is the entire reason this one was lost: the
+// old pattern wanted "obras de amplia\u00e7\u00e3o" and the real title says
+// "execu\u00e7\u00e3o de obras, referente \u00e0 amplia\u00e7\u00e3o".
+const escola = brazilTender(
+  "Contrata\u00e7\u00e3o de empresa habilitada para a execu\u00e7\u00e3o de obras, referente \u00e0 amplia\u00e7\u00e3o da Escola Coronel Francisco Ferreira de Carvalho - Rua Coronel S\u00e9rgio Amaral - Oliveira Fortes, destinados ao atendimento de alunos matriculados em escolas da rede municipal de ensino",
+);
+check("\u5b66\u6821\u6269\u5efa\u4e0d\u518d\u88ab\u6392\u9664", escola.relevance.tier !== "excluded", true);
+check("\u5b66\u6821\u6269\u5efa\u62ff\u5230 construction \u6807\u7b7e", escola.industries.includes("construction"), true);
+
+// EXCLUDE. Open-air pitches, a playground and a walking track. Carries
+// "CONSTRU\u00c7\u00c3O", so nothing above may be allowed to rescue it.
+const campo = brazilTender(
+  "CONSTRU\u00c7\u00c3O DE CAMPO DE FUTEBOL COM GRAMA SINT\u00c9TICA, MEIA QUADRA DE BASQUETE, PARQUINHO INFANTIL E PISTA DE CAMINHADA (TIPO B) NO MUNIC\u00cdPIO DE COQUEIRO SECO/AL",
+);
+check("\u5c0f\u578b\u5ba4\u5916\u8fd0\u52a8\u8bbe\u65bd\u4ecd\u88ab\u6392\u9664", campo.relevance.tier, "excluded");
+// The reason must be the new one. Falling through to the shared keyword text
+// would tell a reviewer "\u65e5\u5e38\u6027\u670d\u52a1\u91c7\u8d2d" about a construction contract — the
+// exact failure reasonFor's own comment records paying for once.
+check("\u6392\u9664\u7406\u7531\u8bf4\u7684\u662f\u8fd9\u6761\u89c4\u5219\u672c\u8eab", campo.relevance.reason.zh.includes("\u5ba4\u5916\u8fd0\u52a8"), true);
+
+// EXCLUDE (both). Advertising agency contracts.
+const publicidade: [string, string][] = [
+  ["\u5c0f\u5199", "O objeto da presente Concorr\u00eancia \u00e9 a contrata\u00e7\u00e3o de servi\u00e7os de publicidade prestados por interm\u00e9dio de ag\u00eancia de propaganda, compreendendo o conjunto atividades realizadas integradamente que tenham por objetivo o estudo, o planejamento, a conceitua\u00e7\u00e3o, a concep\u00e7\u00e3o, a cria\u00e7\u00e3o, a execu\u00e7\u00e3o interna, a intermedia\u00e7\u00e3o e supervis\u00e3o da execu\u00e7\u00e3o externa e a distribui\u00e7\u00e3o de a\u00e7\u00f5es publicit\u00e1rias junto a p\u00fablicos de interesse."],
+  ["\u5168\u5927\u5199", "CONTRATA\u00c7\u00c3O DE SERVI\u00c7O DE PUBLICIDADE, PRESTADO POR INTERM\u00c9DIO DE UMA AG\u00caNCIA DE PROPAGANDA, COMPREENDENDO O CONJUNTO DE ATIVIDADES REALIZADAS INTEGRADAMENTE QUE TENHAM POR OBJETIVO O ESTUDO, O PLANEJAMENTO, A CONCEITUA\u00c7\u00c3O, A CONCEP\u00c7\u00c3O, A CRIA\u00c7\u00c3O, A EXECU\u00c7\u00c3O INTERNA, A INTERMEDIA\u00c7\u00c3O E A SUPERVIS\u00c3O DA EXECU\u00c7\u00c3O EXTERNA E A DISTRIBUI\u00c7\u00c3O DE PUBLICIDADE AOS VE\u00cdCULOS E DEMAIS MEIOS DE DIVULGA\u00c7\u00c3O"],
+];
+for (const [label, title] of publicidade) {
+  check(`\u5e7f\u544a\u4ee3\u7406\uff08${label}\uff09\u4ecd\u88ab\u6392\u9664`, brazilTender(title).relevance.tier, "excluded");
+}
+
+// Over-breadth pins for the sports rule. A municipal PARQUE is not a
+// PARQUINHO, and a covered court is a building.
+check(
+  "\u300c\u516c\u56ed\u6539\u9020\u300d\u4e0d\u88ab\u5c0f\u578b\u8fd0\u52a8\u8bbe\u65bd\u89c4\u5219\u6253\u6389",
+  brazilTender("Reforma e revitaliza\u00e7\u00e3o do Parque Municipal com pavimenta\u00e7\u00e3o de passeios").relevance.tier !== "excluded",
+  true,
+);
+check(
+  "\u300c\u6709\u9876\u68da\u7403\u573a\u300d\u4e0d\u88ab\u5c0f\u578b\u8fd0\u52a8\u8bbe\u65bd\u89c4\u5219\u6253\u6389",
+  brazilTender("Constru\u00e7\u00e3o de quadra coberta e pista de caminhada na Escola Municipal").relevance.tier !== "excluded",
+  true,
+);
+
 if (failures > 0) {
   console.log(`${failures} 项没过。`);
   process.exit(1);

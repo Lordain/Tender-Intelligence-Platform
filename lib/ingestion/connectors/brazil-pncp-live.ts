@@ -157,21 +157,86 @@ export async function fetchPncpSearchPage(modalidade: number, pagina: number, pa
  * amount, the second is one whose amount we should try again for later, and
  * conflating them would silently freeze a wrong tier onto a real tender.
  */
+/**
+ * Every line item of a procurement, paged.
+ *
+ * MEASURED 2026-09-18, and the reason this is no longer one request: a 3-day
+ * sweep found 73 tenders returning exactly 10 items and none returning more.
+ * `/itens` caps at 10 and says nothing about it — so a registro de preços
+ * with 300 lines came back as its first 10, and `sumPncpItemValues` summed
+ * them into a confident, wrong, much smaller number. With Brazil's floor at
+ * $2,000,000 that lands the largest procurements under it, where they are
+ * excluded and never written. A truncation that understates is the worst
+ * failure shape available here, because nothing about it looks like an error.
+ *
+ * Two things this deliberately does NOT do:
+ *
+ * It does not trust `tamanhoPagina` to have been honoured. The page size is
+ * requested, but the loop ends on a SHORT page rather than on a page smaller
+ * than requested — so a server that silently keeps its own limit is walked
+ * through correctly instead of being assumed to have obeyed.
+ *
+ * It does not assume `pagina` works either. If the parameter is ignored,
+ * page 2 is page 1 again, and appending it would DOUBLE-count the amount —
+ * turning an understatement into an overstatement, which is not an
+ * improvement. So each page's first item is fingerprinted and a repeat ends
+ * the walk, leaving the total merely incomplete, the way it already was.
+ */
+const ITEMS_PAGE_SIZE = 100;
+const ITEMS_MAX_PAGES = 30;
+const ITEMS_PAGE_PACE_MS = 300;
+/**
+ * Below this, a page is definitely the last one.
+ *
+ * It is the observed cap (10), not the requested size, on purpose: if PNCP
+ * keeps its own limit the walk still terminates correctly, and if the cap
+ * ever rises the only cost is one extra empty request per long tender. Erring
+ * toward one wasted request beats erring toward a truncated sum.
+ */
+const ITEMS_MIN_FULL_PAGE = 10;
+
 export async function fetchPncpItems(itemUrl: string | undefined): Promise<PncpItem[] | null> {
   const parts = parsePncpItemUrl(itemUrl);
   if (!parts) return null;
-  try {
-    const body = await getJson(`${ITEMS_BASE}/${parts.cnpj}/compras/${parts.ano}/${parts.sequencial}/itens`, `PNCP items (${parts.cnpj}/${parts.ano}/${parts.sequencial})`);
-    if (Array.isArray(body)) return body as PncpItem[];
+  const base = `${ITEMS_BASE}/${parts.cnpj}/compras/${parts.ano}/${parts.sequencial}/itens`;
+  const label = `PNCP items (${parts.cnpj}/${parts.ano}/${parts.sequencial})`;
+
+  const collected: PncpItem[] = [];
+  const seenFirstItem = new Set<string>();
+  let asked = false;
+
+  for (let pagina = 1; pagina <= ITEMS_MAX_PAGES; pagina += 1) {
+    if (pagina > 1) await sleep(ITEMS_PAGE_PACE_MS);
+    let body: unknown;
+    try {
+      body = await getJson(`${base}?pagina=${pagina}&tamanhoPagina=${ITEMS_PAGE_SIZE}`, `${label} p${pagina}`);
+      asked = true;
+    } catch {
+      // One tender's amount failing is not an import failing. Whatever was
+      // already collected is still real — returning it beats discarding it,
+      // and returning null on page 1 keeps "we could not ask" distinct from
+      // "there are no items".
+      return collected.length > 0 ? collected : null;
+    }
+
+    let page: PncpItem[] | null = null;
+    if (Array.isArray(body)) page = body as PncpItem[];
     // The search index wraps rows in `items`; this endpoint returned a bare
     // array in every probe. Handle both rather than assume, but do not invent
     // a third shape — an unrecognised body is "could not ask", not "no items".
-    if (body && typeof body === "object" && Array.isArray((body as { items?: unknown }).items)) return (body as { items: PncpItem[] }).items;
-    return null;
-  } catch {
-    // One tender's amount failing is not an import failing. /api/pncp has been
-    // the reliable host, but it sits on the same infrastructure as the one
-    // that has been down all week.
-    return null;
+    else if (body && typeof body === "object" && Array.isArray((body as { items?: unknown }).items)) page = (body as { items: PncpItem[] }).items;
+    if (page === null) return collected.length > 0 ? collected : null;
+    if (page.length === 0) break;
+
+    const first = page[0] as { numeroItem?: unknown } | undefined;
+    const fingerprint = first?.numeroItem !== undefined ? String(first.numeroItem) : JSON.stringify(first).slice(0, 120);
+    if (seenFirstItem.has(fingerprint)) break;
+    seenFirstItem.add(fingerprint);
+
+    collected.push(...page);
+    if (page.length < ITEMS_MIN_FULL_PAGE) break;
   }
+
+  return collected.length > 0 ? collected : asked ? [] : null;
 }
+

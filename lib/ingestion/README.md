@@ -2597,6 +2597,42 @@ against `/api/consulta`, both measured rather than assumed by
   rather than as the thing that ends the sweep. The earlier 600 silently
   truncated modality 4 at page 6.
 
+**`/itens` caps at 10, and `/arquivos` hands over the documents.**
+
+Both measured 2026-09-18, on the first 3-day sweep and a probe against a real
+municipal works notice.
+
+The cap announced itself only because the run was made to count: 73 tenders
+returned exactly 10 items and none returned more. `/itens` truncates in
+silence, so a registro de preços with hundreds of lines summed to its first
+ten — a confident, smaller, wrong number. With Brazil's floor at $2,000,000
+that is the failure that deletes the largest procurements: understated, under
+the floor, excluded, never written, no row to audit. `fetchPncpItems` now
+pages, ending on a short page rather than on a page smaller than requested
+(so a server keeping its own limit is still walked correctly), and
+fingerprints each page's first item so that a `pagina` parameter that turns
+out to be ignored leaves the sum incomplete rather than double-counted.
+
+Attachments are better than any other source here. `GET
+/api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos` returns a list with
+`titulo`, `tipoDocumentoNome` ("Edital", …) and a direct `url`, and that URL
+downloads without a session: 200, `application/octet-stream`, 930 KB of
+`Edital_CE15.pdf`. Colombia and Peru both needed workarounds here; Brazil can
+feed `ingest-tender-documents.ts` directly.
+
+**The public link is `/app/editais/`, not `/compras/`.** `item_url` in the
+search index is an API path and 404s in a browser. The portal serves a notice
+at `/app/editais/{cnpj}/{ano}/{seq}` — same three components, confirmed
+against a live page whose "Id contratação PNCP: 35842428000166-1-000008/2026"
+is served at `/app/editais/35842428000166/2026/8`.
+
+**Key dates come in the search row**, unlike Peru: publication, and the
+submission deadline from `data_fim_vigencia`, which the portal labels "Data
+fim de recebimento de propostas" in horário de Brasília. `data_inicio_vigencia`
+is in the feed and deliberately unstored — `TenderKeyDate` has no type meaning
+"proposal receipt opens", and the nearest, `clarification`, would show a
+reader 「采购方召开的澄清会议」.
+
 **A three-band scheme, per country (2026-09-18).**
 
 | | 常规 | 中型 | 大型 |

@@ -2848,9 +2848,25 @@ export function classifyRelevance(input: {
   // disclosed value, even one that doesn't clear SIGNIFICANT_VALUE_USD on
   // its own, still combines with the keyword match to promote — only a
   // completely undisclosed value caps this at "standard".
+  //
+  // Narrowed 2026-09-18. The middle clause used to be
+  // `matchesFlagshipIndustry && normalizedValue !== undefined` — ANY
+  // target-industry keyword plus ANY disclosed amount above the $800,000
+  // floor. Since `construcción` is one of those keywords, that promoted
+  // essentially every works contract in the feed to 中型 and made
+  // SIGNIFICANT_VALUE_USD unreachable as a band: a $973,907 municipal sports
+  // court came out 中型项目 (user, 2026-09-18: 这项目金额 US$973,907 但被标为
+  // 中型项目？) and so would an $800,001 one.
+  //
+  // The principle is already written down twice in this file — "a proxy must
+  // lose to a measurement" on the duration rule, and "a disclosed amount is
+  // not an estimate at all" on the flagship demotion. A keyword is a guess
+  // about scale. Once the notice states the scale, the guess has nothing left
+  // to add, so the bands decide alone. With NO amount disclosed the keyword is
+  // the only signal there is, and it still speaks — that is the clause below
+  // and the allowlist gate further down, both untouched.
   if (
     (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) ||
-    (matchesFlagshipIndustry && normalizedValue !== undefined) ||
     (isEquipmentScaleCapped && normalizedValue === undefined)
   ) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };

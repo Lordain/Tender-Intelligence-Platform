@@ -1034,8 +1034,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "CONSTRUCCIÓN DE INFRAESTRUCTURA VIAL EN EL MUNICIPIO",
-    expectedTier: "significant",
-    note: "Regression check — a Colombia tender genuinely at/above the $500,000 country-specific floor must still clear it (and 'construcción' also matches FLAGSHIP_INDUSTRY_KEYWORDS on its own, but this confirms the value path alone works too). 2,520,000,000 COP / 3140 ≈ $802,548 USD (COP rate refreshed 2026-09-05), a real-magnitude COP figure same as the fixture above.",
+    expectedTier: "standard",
+    note: "Regression check — a Colombia tender genuinely at/above the country-specific floor must still CLEAR it rather than be excluded. 2,520,000,000 COP / 3140 ≈ $802,548 USD (COP rate refreshed 2026-09-05). Tier changed from significant to standard on 2026-09-18, intentionally: `construcción` matches FLAGSHIP_INDUSTRY_KEYWORDS, and that keyword used to promote any disclosed amount above the floor to 中型, which is what put a $973,907 sports court there. $802,548 is nowhere near SIGNIFICANT_VALUE_USD. What this fixture is actually for — the row clears the floor instead of being dropped — is unchanged.",
     scopeType: "works",
     estimatedValue: 2_520_000_000,
     currency: "COP",
@@ -1637,8 +1637,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "CONSTRUCCION DE VIVIENDA DE INTERES PRIORITARIO; VIP; VIVIENDA BIFAMILIAR EN EL MUNICIPIO DE SALAMINA",
-    expectedTier: "significant",
-    note: "User decided 不排除 in the 2026-09-11 Colombia round — social housing is real construction. Pinned so a later housing exclusion cannot take it silently.",
+    expectedTier: "standard",
+    note: "User decided 不排除 in the 2026-09-11 Colombia round — social housing is real construction. Pinned so a later housing exclusion cannot take it silently, which is what this fixture guards and which still holds. Tier moved significant -> standard on 2026-09-18 with the rest of the sub-$3M band: $1.6M is a real project and a small one, and calling it 中型 was the same overstatement the user caught on a $973,907 sports court.",
     country: "Colombia",
     scopeType: "works",
     estimatedValue: 1_600_000,
@@ -2425,5 +2425,29 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "excluded",
     note: "Real title (2026-09-18, per the user). Precast panels bought by the piece, with their dimensions in the title, for a fence — reaching a tier on the name of the hospital project they will be delivered to. Exactly the shape of the piedra chancada case added the same day.",
     country: "Peru", scopeType: "equipment", governmentLevel: "state",
+  },
+  {
+    title: "ADQUISICIÓN DE AUTOMÓVIL TIPO SEDAN PARA LA COORDINACIÓN ESTATAL DEL SERVICIO NACIONAL DE EMPLEO",
+    expectedTier: "standard",
+    note: "Real title (2026-09-18, per the user: 增加车辆). The ASK was the tag — industry.ts had every kind of work vehicle (camión, camioneta, autobús, excavadora, grúa) and not the plain passenger car. The tag is pinned in test:industry-tags; this fixture is here because adding a FLAGSHIP_INDUSTRY_KEYWORDS-adjacent tag is exactly the kind of change that moves a tier by accident. With no disclosed value it must stay 常规.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "state",
+  },
+  {
+    title: "CONTRATACIÓN PARA LA EJECUCIÓN DE LA OBRA - IOARR: CONSTRUCCION DE COBERTURA DE INSTALACIONES DEPORTIVAS; REMODELACION DE AMBIENTE DE RECREACION ACTIVA; RENOVACION DE LOSA DEPORTIVA Y MOBILIARIO DEPORTIVO - RECREATIVO; EN EL(LA) PARQUE A LADO DE LA MZ M SECTOR V DE LA ASOCIACION JOSE LUIS BUSTAMANTE",
+    expectedTier: "standard",
+    note: "Real title (2026-09-18, user: 这项目金额 US$973,907 但被标为中型项目？). It was 中型, and not because of the sports words — ANY works contract above the $800,000 floor was, because `construcción` matched FLAGSHIP_INDUSTRY_KEYWORDS and that promoted on a disclosed value of any size. SIGNIFICANT_VALUE_USD was unreachable as a band. Now the bands decide whenever an amount is disclosed.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal", estimatedValue: 973_907, currency: "USD",
+  },
+  {
+    title: "CONSTRUCCION DE LA PLANTA DE TRATAMIENTO DE AGUAS RESIDUALES DE LA CIUDAD DE TACNA",
+    expectedTier: "significant",
+    note: "The control for that narrowing, and the reason it is safe: a works contract that DOES clear SIGNIFICANT_VALUE_USD still reaches 中型 on the value alone. Removing the keyword clause took nothing away above the band, only below it. A PTAR rather than a water NETWORK on purpose — WATER_NETWORK_KEYWORDS excludes pipework below flagship scale, which would have made this fixture assert the wrong rule.",
+    country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 3_400_000, currency: "USD",
+  },
+  {
+    title: "EJECUCIÓN DE OBRA MEJORAMIENTO DEL SERVICIO DE DISTRIBUCION DE ENERGIA ELECTRICA EN SUBESTACIONES DE DISTRIBUCION, REDES SECUNDARIAS Y ALUMBRADO PUBLICO SUBTERRANEAS ALIMENTADAS POR LAS SET LAMBRAMANI, SET PARQUE INDUSTRIAL, SET PORONGOCHE Y SET SAN LAZARO DISTRITO DE AREQUIPA DE LA PROVINCIA DE AREQUIPA",
+    expectedTier: "flagship",
+    note: "Real title (2026-09-18, user asked why this is 大型). Pinned as the record of what the current thresholds say rather than as an endorsement: $6,929,314 is above FLAGSHIP_VALUE_USD ($6,000,000), so 大型 is this rule working exactly as specified, and the industry tag (power) is right too. If the flagship floor is raised, this fixture is the one that should be updated deliberately and not discovered.",
+    country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 6_929_314, currency: "USD",
   },
 ];

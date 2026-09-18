@@ -57,6 +57,22 @@ export type BrazilIngestResult = {
    */
   excludedByReason: { reason: string; count: number }[];
   /**
+   * The largest `/itens` list seen, and how many tenders returned exactly that
+   * many.
+   *
+   * `/itens` is requested with no paging parameters, so if PNCP caps the
+   * response the amount is UNDERSTATED rather than failed — the one failure
+   * shape that cannot announce itself. A cap shows as a pile of tenders
+   * returning exactly the same round count; genuinely varied counts with an
+   * odd maximum mean no cap. Costs nothing: these lists are already in hand.
+   *
+   * It matters more since the floor became $2,000,000. An understated
+   * registro de preços drops below it and is silently excluded, and excluded
+   * rows are never written.
+   */
+  maxItemsSeen: number;
+  tendersAtMaxItems: number;
+  /**
    * The kept rows by tier, and by USD band within the value rules.
    *
    * "118 条进入推荐" cannot be acted on: it does not say whether that is a
@@ -264,6 +280,7 @@ export async function ingestBrazilPncp(
   let withoutAmount = 0;
   let sealedBudget = 0;
 
+  const itemCounts: number[] = [];
   let nextSlotAt = 0;
   async function takeSlot() {
     const now = Date.now();
@@ -291,6 +308,7 @@ export async function ingestBrazilPncp(
       if (!tender) continue;
       results[index] = tender;
       sealedFlags[index] = items?.some((item) => item.orcamentoSigiloso === true) === true;
+      if (items) itemCounts.push(items.length);
     }
   }
 
@@ -353,7 +371,12 @@ export async function ingestBrazilPncp(
     if (band) bandCounts.set(band.band, (bandCounts.get(band.band) ?? 0) + 1);
   }
 
+  const maxItemsSeen = itemCounts.length === 0 ? 0 : Math.max(...itemCounts);
+  const tendersAtMaxItems = itemCounts.filter((n) => n === maxItemsSeen).length;
+
   const result: BrazilIngestResult = {
+    maxItemsSeen,
+    tendersAtMaxItems,
     fetchedRows: rows.length,
     mappedCount: mapped.length,
     keptByTier: [...tierCounts.entries()].map(([tier, count]) => ({ tier, count })).sort((a, b) => b.count - a.count),

@@ -140,6 +140,19 @@ async function main() {
       console.log(`    ${String(count).padStart(4)} 条  ${reason}`);
     }
   }
+  // Printed next to the amount counts because it qualifies them: if /itens is
+  // capped, every amount above the cap is too low and the tiers above are
+  // wrong in one direction only.
+  if (result.maxItemsSeen > 0) {
+    const suspicious = [10, 20, 25, 50, 100, 200, 500].includes(result.maxItemsSeen) && result.tendersAtMaxItems > 1;
+    console.log(
+      `  单个项目最多 ${result.maxItemsSeen} 个标的（有 ${result.tendersAtMaxItems} 条正好是这个数）` +
+        (suspicious
+          ? ` —— ⚠ 这是个整数且不止一条撞上，像是 /itens 有分页上限。若如此，超过它的项目金额会被少算，不会报错。`
+          : ` —— 没有分页截断的迹象。`),
+    );
+  }
+
   if (result.excludedCsvPath) {
     console.log(`\n  被排除的 ${result.excludedCount} 条完整清单：${result.excludedCsvPath}`);
     console.log(`  写库前请扫一眼「关键词」那几类 —— 葡语规则还没被真实语料检验过，误杀是永久的。`);

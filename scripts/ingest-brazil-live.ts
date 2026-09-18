@@ -104,6 +104,21 @@ async function main() {
   console.log(`\n抓到 ${result.fetchedRows} 条，映射成 ${result.mappedCount} 条。`);
   console.log(`  进入推荐：${result.keptCount} 条　被规则排除：${result.excludedCount} 条`);
 
+  // The composition of what was KEPT, for the same reason the exclusion
+  // breakdown exists: a single total cannot tell "a few large projects" from
+  // "a wall of contracts a hair over the floor", and those call for opposite
+  // responses.
+  if (result.keptByTier.length > 0) {
+    const TIER_ZH: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规" };
+    console.log(`\n  进入推荐的构成：`);
+    for (const { tier, count } of result.keptByTier) {
+      console.log(`    ${String(count).padStart(4)} 条  ${TIER_ZH[tier] ?? tier}`);
+    }
+    for (const { band, count } of result.keptByValueBand) {
+      console.log(`    ${String(count).padStart(4)} 条  └ ${band}`);
+    }
+  }
+
   // Broken out rather than left as one number, because "excluded" covers two
   // completely different events and only one of them is good news. Under the
   // value threshold is the rule working as designed on a feed of small

@@ -5,6 +5,7 @@ import { filterRecentTenders } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import type { Tender } from "@/types/tender";
 import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "./review-csv";
+import { convertToUsd } from "@/lib/currency";
 
 export const BRAZIL_PNCP_SOURCE_NAME = "Portal Nacional de Contratações Públicas (PNCP) — busca de editais";
 
@@ -55,6 +56,17 @@ export type BrazilIngestResult = {
    * call here is permanent and silent.
    */
   excludedByReason: { reason: string; count: number }[];
+  /**
+   * The kept rows by tier, and by USD band within the value rules.
+   *
+   * "118 条进入推荐" cannot be acted on: it does not say whether that is a
+   * handful of large projects or a wall of contracts sitting just over the
+   * floor. The bands are cut at the thresholds themselves, so the answer to
+   * "what if the minimum were higher" can be read straight off the table
+   * instead of being guessed or re-run.
+   */
+  keptByTier: { tier: string; count: number }[];
+  keptByValueBand: { band: string; count: number }[];
   /** Where the full excluded list was written for review. Produced on a DRY RUN too — the run that is supposed to be inspected before anything is written is exactly the one that needs it. */
   excludedCsvPath?: string;
   /**
@@ -97,6 +109,9 @@ export type BrazilIngestOptions = {
 
 /** PNCP throttles by resetting connections. The connector retries, but pacing means it has less to retry. */
 const PACE_MS = 1_200;
+/** Shared minimum gap between amount-request STARTS — see the worker pool below for why it is shared rather than per-worker. */
+const AMOUNT_PACE_MS = 500;
+const AMOUNT_CONCURRENCY = 4;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -210,21 +225,72 @@ export async function ingestBrazilPncp(
   });
   onProgress?.(`发布时间在 ${windowLabel}内的：${withinWindow.length} / ${unique.length} 条`);
 
-  const mapped: Tender[] = [];
+  // Amounts are one request per tender and the slowest part of the run by a
+  // wide margin — 804 of them at the old one-at-a-time 1,200ms pace is 16
+  // minutes of a 17-minute run.
+  //
+  // Strictly sequential was the right shape while PNCP's limits were unknown:
+  // an early sweep tripped its rate limiter at 14 requests in ~5 seconds and
+  // took 429s, so ~2.8 req/s is roughly where it objects. That measurement is
+  // also what says 0.83 req/s leaves most of the budget unused.
+  //
+  // So: a fixed number of workers pulling from one queue, with a SHARED pace
+  // between request starts rather than a per-worker sleep. The shared clock is
+  // the point — per-worker pacing multiplies by the worker count and would
+  // walk straight into the limiter as concurrency rose. 500ms gives 2 req/s,
+  // below the observed objection point, and four workers keep that rate
+  // sustained while individual requests take seconds.
+  //
+  // getJson already retries 429 with backoff, so being slightly wrong here
+  // costs time rather than data.
+  const results = new Array<Tender | null>(withinWindow.length).fill(null);
+  const sealedFlags = new Array<boolean>(withinWindow.length).fill(false);
   let withoutAmount = 0;
   let sealedBudget = 0;
-  for (const [index, row] of withinWindow.entries()) {
-    let items: PncpItem[] | null = null;
-    if (!options.skipAmounts) {
-      if (index > 0) await sleep(PACE_MS);
-      items = await fetchPncpItems(row.item_url);
-      if (index % 25 === 0) onProgress?.(`取金额：${index + 1} / ${withinWindow.length}`);
+
+  let nextSlotAt = 0;
+  async function takeSlot() {
+    const now = Date.now();
+    const at = Math.max(now, nextSlotAt);
+    nextSlotAt = at + AMOUNT_PACE_MS;
+    if (at > now) await sleep(at - now);
+  }
+
+  let cursor = 0;
+  let done = 0;
+  async function worker() {
+    for (;;) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= withinWindow.length) return;
+      const row = withinWindow[index];
+      let items: PncpItem[] | null = null;
+      if (!options.skipAmounts) {
+        await takeSlot();
+        items = await fetchPncpItems(row.item_url);
+        done += 1;
+        if (done % 50 === 0 || done === withinWindow.length) onProgress?.(`取金额：${done} / ${withinWindow.length}`);
+      }
+      const tender = mapPncpSearchRowToTender(row, items ?? undefined, BRAZIL_PNCP_SOURCE_NAME);
+      if (!tender) continue;
+      results[index] = tender;
+      sealedFlags[index] = items?.some((item) => item.orcamentoSigiloso === true) === true;
     }
-    const tender = mapPncpSearchRowToTender(row, items ?? undefined, BRAZIL_PNCP_SOURCE_NAME);
-    if (!tender) continue;
+  }
+
+  await Promise.all(
+    Array.from({ length: options.skipAmounts ? 1 : AMOUNT_CONCURRENCY }, () => worker()),
+  );
+
+  // Rebuilt in the original order rather than in completion order, so two runs
+  // over the same rows produce the same list and a diff between them means
+  // something.
+  const mapped: Tender[] = [];
+  for (const [index, tender] of results.entries()) {
+    if (tender === null) continue;
     if (tender.estimatedValue === undefined) {
       withoutAmount += 1;
-      if (items?.some((item) => item.orcamentoSigiloso === true)) sealedBudget += 1;
+      if (sealedFlags[index]) sealedBudget += 1;
     }
     mapped.push(tender);
   }
@@ -246,9 +312,40 @@ export async function ingestBrazilPncp(
     reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
   }
 
+  const keptTenders = kept.filter((tender) => tender.relevance.tier !== "excluded");
+  const tierCounts = new Map<string, number>();
+  for (const tender of keptTenders) tierCounts.set(tender.relevance.tier, (tierCounts.get(tender.relevance.tier) ?? 0) + 1);
+
+  // Bands cut at MIN/SIGNIFICANT/FLAGSHIP, because those are the numbers a
+  // decision about "too many" would actually move. Converted with the same
+  // lib/currency.ts rate the classifier used, so the bands and the tiers
+  // cannot disagree.
+  const BANDS: { band: string; min: number; max?: number }[] = [
+    { band: "80 万 – 150 万美元", min: 800_000, max: 1_500_000 },
+    { band: "150 万 – 300 万美元", min: 1_500_000, max: 3_000_000 },
+    { band: "300 万 – 600 万美元", min: 3_000_000, max: 6_000_000 },
+    { band: "600 万美元以上", min: 6_000_000 },
+  ];
+  const bandCounts = new Map<string, number>();
+  let keptWithoutValue = 0;
+  for (const tender of keptTenders) {
+    const usd = tender.estimatedValue === undefined ? null : convertToUsd(tender.estimatedValue, tender.currency);
+    if (usd === null) {
+      keptWithoutValue += 1;
+      continue;
+    }
+    const band = BANDS.find((b) => usd >= b.min && (b.max === undefined || usd < b.max));
+    if (band) bandCounts.set(band.band, (bandCounts.get(band.band) ?? 0) + 1);
+  }
+
   const result: BrazilIngestResult = {
     fetchedRows: rows.length,
     mappedCount: mapped.length,
+    keptByTier: [...tierCounts.entries()].map(([tier, count]) => ({ tier, count })).sort((a, b) => b.count - a.count),
+    keptByValueBand: [
+      ...BANDS.filter((b) => bandCounts.has(b.band)).map((b) => ({ band: b.band, count: bandCounts.get(b.band) as number })),
+      ...(keptWithoutValue > 0 ? [{ band: "无金额（法定保密等）", count: keptWithoutValue }] : []),
+    ],
     keptCount: kept.length - excludedCount,
     excludedCount,
     excludedByReason: [...reasonCounts.entries()]

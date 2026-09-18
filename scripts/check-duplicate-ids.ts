@@ -3,9 +3,18 @@
  *
  * Two checks, because the damage happens in two different places.
  *
- * 1. SUPABASE — one tender_number used by more than one row. The 招标编号 is
- *    what an admin searches by and what a customer quotes back, so the same
- *    number on two unrelated projects is wrong on its own.
+ * 1. SUPABASE — one tender_number used by more than one row. This is NOT a
+ *    defect to be fixed, and the first version of this comment said it was.
+ *    A Colombian `referencia_del_proceso` is issued per entity: LP-006-2026
+ *    belongs to Samacá and to Ayapel at the same time, and neither is
+ *    wrong. What it is, is a hazard — anything that looks a tender up BY
+ *    NUMBER has to cope with getting two. The one thing that did not was
+ *    lib/ingestion/match-documents-to-tenders.ts, which filed a downloaded
+ *    document against whichever of the two Supabase happened to return
+ *    first (fixed 2026-09-18; it now resolves on the buyer's name in the
+ *    document, or abstains). So this section is a WATCH LIST, not a defect
+ *    count: a number appearing here means a document for it needs its file
+ *    named `<slug>__…` to be certain where it lands.
  *
  * 2. THE SOURCE — more than one live SECOP II procurement mapping to ONE slug.
  *    This is the dangerous one, and it was silent. Colombia's slug USED TO BE
@@ -63,7 +72,11 @@ async function checkSupabase() {
   }
   const dupes = [...bySlugCount.entries()].filter(([, list]) => list.length > 1);
 
-  console.log(`【库里】${rows.length} 条项目，${dupes.length} 个招标编号被不止一条项目占用。`);
+  console.log(
+    `【库里】${rows.length} 条项目，${dupes.length} 个招标编号被不止一条项目占用。\n` +
+      `这不是错误——哥伦比亚的编号是各单位自己发的，LP-006-2026 同时属于萨马卡和阿亚佩尔很正常。\n` +
+      `它的意义是：给下面这些编号做标书分析时，文件名要写成「<项目slug>__原文件名」，否则只能靠文件里出现的采购单位名称来定位。`,
+  );
   for (const [number, list] of dupes.slice(0, 30)) {
     console.log(`\n  ${number}  (${list.length} 条)`);
     for (const row of list) console.log(`    ${row.slug}\n      ${(row.title?.zh || row.title?.es || "").slice(0, 88)}`);

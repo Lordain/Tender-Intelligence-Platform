@@ -34,10 +34,12 @@ export function pageMetadata({
   description,
   /** Path only, e.g. "/guides/peru-seace-oece" — resolved against metadataBase. */
   path,
+  image,
 }: {
   title: string;
   description: string;
   path: string;
+  image?: string;
 }): Metadata {
   return {
     title,
@@ -50,11 +52,13 @@ export function pageMetadata({
       url: path,
       title,
       description,
+      ...(image ? { images: [{ url: image }] } : {}),
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      ...(image ? { images: [image] } : {}),
     },
   };
 }

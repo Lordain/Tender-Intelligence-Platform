@@ -1,4 +1,5 @@
 import { participationGuides } from "@/lib/participation-guides";
+import { countryInsights } from "@/lib/country-insights";
 import { siteOrigin } from "@/lib/site-url";
 import { TRIAL_DAYS } from "@/lib/access-control";
 
@@ -39,8 +40,12 @@ export async function GET(): Promise<Response> {
 ## 参标指南（免费，无需注册）
 ${participationGuides.map((guide) => `- [${guide.title}](${origin}/guides/${guide.slug})：${guide.summary}`).join("\n")}
 
+## 国家洞察（免费，无需注册）
+${countryInsights.map((insight) => `- [${insight.title}](${origin}/insights/${insight.slug})：${insight.description}`).join("\n")}
+
 ## 主要页面
 - [招标项目列表](${origin}/tenders)：按国家、行业、金额与项目规模筛选。
+- [国家洞察](${origin}/insights)：各国战略投资、行业预算、区域布局和项目机会。
 - [订阅方案与价格](${origin}/pricing)：个人版与企业版，注册即享 ${TRIAL_DAYS} 天免费试用，无需绑定银行卡。
 - [参标指南总览](${origin}/guides)
 - [服务条款](${origin}/terms) ｜ [隐私政策](${origin}/privacy)

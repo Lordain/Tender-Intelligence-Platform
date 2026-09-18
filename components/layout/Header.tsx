@@ -15,6 +15,7 @@ export function Header() {
   const links = [
     ["/", localize(uiText.navHome, locale)],
     ["/tenders", localize(uiText.navTenders, locale)],
+    ["/insights", localize(uiText.navInsights, locale)],
     ["/guides", localize(uiText.navGuides, locale)],
     ["/saved", localize(uiText.navSaved, locale)],
     ["/pricing", localize(uiText.navPricing, locale)],
@@ -33,7 +34,7 @@ export function Header() {
                   <span className="hidden text-[10px] tracking-[0.12em] text-white/60 sm:block">拉美市场 · 投标更有把握</span>
                 </span>
               </Link>
-              <nav className="hidden items-center gap-6 lg:flex xl:gap-8">
+              <nav className="hidden items-center gap-5 lg:flex xl:gap-7">
                 {links.map(([href, label]) => {
                   const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
                   return (

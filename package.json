@@ -85,6 +85,7 @@
     "dump:brazil-pncp": "tsx scripts/dump-brazil-pncp-rows.ts",
     "probe:brazil-alt": "tsx scripts/probe-brazil-alt-apis.ts",
     "dump:brazil-search": "tsx scripts/dump-brazil-search.ts",
+    "probe:brazil-search-filters": "tsx scripts/probe-brazil-search-filters.ts",
     "test:cli-write-flag": "tsx scripts/test-cli-write-flag.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",

@@ -2593,6 +2593,81 @@ Two smaller corrections from the same run:
   it — typically a certificate that does not cover it. Its own tooling has
   been migrating to `api.queridodiario.org.br`, so both are now tried.
 
+#### What `dump:brazil-search` actually measured (2026-09-18, 100 real rows)
+
+Everything below is from one run against live data, not inference.
+
+**`status` is mandatory and inert.** Three mutually exclusive states each
+returned essentially the whole index:
+
+```
+status=em_recebimento_de_proposta   4,081,735
+status=em_julgamento                4,081,733
+status=encerrada                    4,081,733
+```
+
+Those differences are rows indexed between requests. Omit `status` without a
+`q` and the request is rejected (`"O filtro status é obrigatório"`); supply it
+and nothing is filtered. The rows confirm it from the other side — one of the
+100 fetched under `em_recebimento_de_proposta` came back `situacao_nome:
+"Revogada"`. **So "open for bidding" has to be decided on our side**, from
+`situacao_nome`, `cancelado` and the dates.
+
+**An invalid parameter value is answered with a connection reset, not a 400.**
+`status=todos`, `status=encerradas`, `status=recebendo_proposta` and
+`tam_pagina=500` all came back `ECONNRESET`. A reset from this endpoint is a
+finding about the value, not about the network — the opposite of how a reset
+normally reads, and the reason `probe:brazil-search-filters` reports it as
+`值被拒(RST)`.
+
+**`tam_pagina` maxes at 100** (500 resets; 100 returns exactly 100). Rows
+arrive under the `items` key.
+
+**`ordenacao=-data` sorts by update time, confirmed.** Across 100 rows
+`data_atualizacao_pncp` was strictly descending and `data_publicacao_pncp` was
+not — the third row was published 2026-09-01 and sat above one published
+2026-09-17. An incremental import keyed on this re-reads old tenders, and must
+never treat "arrived at the top" as "new".
+
+**`valor_global` is empty on 100 of 100 rows.** That settles the design
+question: **`/api/search` is a discovery endpoint, not a replacement for
+`/api/consulta`.** Every tier this platform assigns runs off the amount
+(`MIN_VALUE_USD`, `SIGNIFICANT_VALUE_USD`, `FLAGSHIP_VALUE_USD`), so the money
+has to come from `/api/consulta` or the notice detail, per tender, after
+discovery.
+
+Coverage of everything else is what a mapper needs: `orgao_nome`,
+`unidade_nome`, `municipio_nome`, `uf`, `esfera_nome`,
+`modalidade_licitacao_nome`, `situacao_nome`, `description` and `item_url` at
+100%; `data_inicio_vigencia` / `data_fim_vigencia` at 58%, of which 42 of 58
+are in the future — consistent with that pair being the proposal window, with
+the past ones being what the inert `status` let through.
+
+**The feed's real composition is the problem to solve next.** Of 100
+consecutive rows:
+
+| | |
+|---|---|
+| Dispensa 46, Inexigibilidade 15 | **61% direct award / no-bid — excluded outright by `classifyRelevance`** |
+| Pregão Eletrônico 28 | mixed |
+| Concorrência Eletrônica 4, Presencial 2 | the large works this platform sells |
+| Municipal 70, Estadual 16, Federal 11 | |
+
+And the titles are the long tail of municipal micro-procurement: *CANETA
+SALIENTADORA ROSA*, *MATERIAL DE COPA E COZINHA*, vehicle parts by licence
+plate, artistic performances, course registrations. Against ~4.08 million
+documents, paging the unfiltered index is a crawl, not an import.
+
+`q=` is the only filter proven to narrow (`q=obra` → 205,272, a twentieth of
+the index) and it matches text, not modality or money.
+`probe:brazil-search-filters` measures whether any of the site's other filter
+parameters (`ufs`, `esferas`, `modalidades`, `municipios`, date bounds, in
+both singular and plural spellings) actually change the count — with `q=obra`
+as a positive control and a deliberately fake parameter as a negative one,
+because an ignored parameter returns 200 and looks exactly like a working one.
+That is the lesson `status` taught: **ask whether a parameter FILTERS, not
+whether it is ACCEPTED.**
+
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against
 the same procurement written the Brazilian way, agreed on tier 6/10 and on

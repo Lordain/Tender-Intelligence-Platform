@@ -198,6 +198,20 @@ async function main() {
   const open = accepted.find((a) => /receb/.test(a.status)) ?? accepted[0];
   console.log(`能用的：${accepted.map((a) => `${a.status}(${a.total ?? "?"})`).join("，")}`);
   if (accepted[0].wrapper) console.log(`返回的行装在 "${accepted[0].wrapper}" 这个键里 —— connector 照这个写。`);
+
+  // Accepted is not the same as effective, and on 2026-09-18 it was not:
+  // three mutually exclusive states each reported ~4,081,73X rows. A state
+  // filter that returns the whole index is inert, and the connector has to
+  // know that, because it means "open for bidding" must be decided from
+  // situacao_nome and the dates on our side.
+  const totals = accepted.map((a) => a.total).filter((t): t is number => typeof t === "number");
+  if (totals.length > 1) {
+    const spread = (Math.max(...totals) - Math.min(...totals)) / Math.max(...totals);
+    if (spread < 0.001) {
+      console.log("\n  ⚠️  这几个互斥的状态返回的条数几乎一模一样 —— status 是「必填但不过滤」。");
+      console.log("      也就是说：不能靠它拿到「正在收标」的集合，得我们自己按 situacao_nome 和日期筛。");
+    }
+  }
   console.log(`下面用 status=${open.status}。\n`);
 
   // ── 2. 一页最多能要多少 ───────────────────────────────────────────────────
@@ -260,9 +274,15 @@ async function main() {
   }
   const nowIso = new Date().toISOString();
   const futureEnd = collected.filter((r) => value(r, "data_fim_vigencia") > nowIso).length;
-  console.log(`\n  data_fim_vigencia 还在未来的：${pct(futureEnd)}`);
-  console.log("  —— 如果绝大多数都在未来，那它就是收标截止日期，可以直接当 submissionDeadline 用；");
-  console.log("     如果一半在过去，那 status 过滤没起作用，或者这个字段根本不是截止日期。\n");
+  const withEnd = filled("data_fim_vigencia");
+  console.log(`\n  data_fim_vigencia 还在未来的：${pct(futureEnd)}${withEnd > 0 ? `（在有值的 ${withEnd} 条里占 ${Math.round((futureEnd / withEnd) * 100)}%）` : ""}`);
+  console.log("  —— 有值的里面绝大多数在未来 → 它就是收标窗口的结束时间，可以当 submissionDeadline；");
+  console.log("     过去的那些是 status 不过滤漏进来的（见上面），不是这个字段的问题。\n");
+
+  if (filled("valor_global") === 0) {
+    console.log("  ⚠️  valor_global 一条都没有值。金额是这个平台的分级依据（MIN_VALUE_USD / SIGNIFICANT / FLAGSHIP 全靠它），");
+    console.log("      所以 /api/search 只能当发现层：金额得回 /api/consulta 或者详情页取。\n");
+  }
 
   const tally = (key: string) => {
     const counts = new Map<string, number>();

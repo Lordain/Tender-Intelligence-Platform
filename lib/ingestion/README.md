@@ -5348,3 +5348,65 @@ matches what the OCDS feed independently publishes as `enquiryPeriod.endDate`
 — two unrelated sources agreeing is the check that the right column is being
 read, and it is the first real-data validation the key-date machinery from
 #31/#34 has ever had.
+
+### The pipeline only spoke Spanish (2026-09-18)
+
+Brazil is the first source that does not publish in Spanish, and both model
+paths had a Spanish prompt compiled into them: `translate-titles-qwen.ts` for
+titles and summaries, `extract-requirements.ts`'s `SYSTEM_PROMPT` for bid
+documents.
+
+Neither would have failed on a Brazilian row. That is the whole problem. The
+translator would have returned fluent Chinese and the extractor a well-formed
+extraction, and **nothing in either output carries a sign of having been read
+as the wrong language** — there is no malformed field to catch, no exception
+to log, no count that moves.
+
+It is not a matter of a model coping with Portuguese anyway. Roughly half of
+each Spanish prompt is rules about specific Spanish strings:
+
+| Spanish rule | In Portuguese |
+|---|---|
+| `5/A.` is short for 5ª — an ordinal on the FOLLOWING noun | doesn't occur; Brazilian titles write 1ª/2ª directly |
+| `OTE`/`PTE` are Oriente/Poniente — never read PTE as puente | **wrong**: "PTE" in a Brazilian title really can be ponte |
+| `Ciudad Bolívar` is a Bogotá locality, not Bogotá | no counterpart |
+| Extract from a Convocatoria / Anexo Técnico | **no such documents**: an Edital carries a Termo de Referência or Projeto Básico |
+| `carácter`: NACIONAL / INTERNACIONAL BAJO TRATADOS / ABIERTA | no counterpart; Brazil is not a WTO GPA party |
+
+The last two matter most for the document path: a prompt that names sections
+the document does not have invites citations to sections that do not exist,
+and `sourceReference` is the one field that is supposed to make an extraction
+checkable.
+
+**What decides the language.** `lib/ingestion/source-language.ts`, keyed on
+`country`, used by both paths so they cannot disagree. Not by sniffing the
+text: strip the accents and "CONSTRUCAO DE PONTE" and "CONSTRUCCION DE
+PUENTE" are three characters apart, and a short procurement title is both the
+commonest row and the one a classifier is least able to call.
+
+`LocalizedText.es` holds the ORIGINAL, not "the Spanish" — for Brazil that is
+Portuguese. Renaming the field would mean rewriting every stored JSON column,
+so the language is derived instead of read off the field name. The Portuguese
+translation module therefore sends its own wire keys, `titlePt`/`summaryPt`:
+the model reads its input keys, and a field named `titleEs` tells it the text
+is Spanish.
+
+**Batches group by language before chunking.** One batch is one system
+prompt. A plain `chunk()` over a mixed list produces a mixed batch at every
+boundary — the commonest case, and invisible, since a model handed one
+Portuguese row among seven Spanish ones simply translates it.
+
+**One button, not two.** `translateAllTenders`'s whole job is "everything
+still untranslated"; a per-language button would turn that into a claim two
+buttons have to agree on. The result now reports the split by language,
+because `葡萄牙语 0` after a Brazil import is the only visible symptom that
+the routing is not working.
+
+`npm run test:source-language` pins the routing, including the cases that
+must NOT change behaviour: an unknown country stays Spanish (what every row
+did before this existed), and `"Brazilia"` is not Brazil.
+
+Still unverified: the Portuguese prompts have never run against a real row or
+a real Edital. The plumbing is the path the Spanish prompts have used since
+2026-09-08; the text is new. Read the first batch of five, and the first
+extraction field by field against the PDF, before trusting either at scale.

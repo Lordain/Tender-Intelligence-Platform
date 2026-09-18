@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { TenderNeedingDocuments } from "@/types/tender";
 import { useUser } from "@/lib/auth";
@@ -29,6 +30,14 @@ function ExternalLinkIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-3.5">
       <path d="M14 5h5v5M13 11l6-6M19 13v6H5V5h6" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-3.5">
+      <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" />
     </svg>
   );
 }
@@ -416,6 +425,22 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                     <td className="whitespace-nowrap px-2 py-2 text-[#5d6d77]">{formatDate(tender.publicationDate, locale)}</td>
                     <td className="whitespace-nowrap px-2 py-2">
                       <div className="flex items-center justify-center gap-1.5">
+                        {/*
+                          Straight into the tender's edit page (2026-09-18,
+                          the user's request). Everything this worklist is
+                          for — pasting a ficha link, fixing a deadline,
+                          correcting a title before the documents arrive —
+                          happens there, and the only route to it was
+                          copying the slug out of a tooltip and building the
+                          URL by hand.
+                        */}
+                        <Link
+                          href={`/admin/tenders/${tender.slug}`}
+                          title="打开这条项目的后台编辑页"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
+                        >
+                          <PencilIcon />编辑
+                        </Link>
                         <a
                           href={tender.sourceUrl}
                           target="_blank"

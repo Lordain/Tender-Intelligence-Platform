@@ -662,6 +662,21 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
     }));
 }
 
+/**
+ * The two summary strings worth searching, once each, lowercased.
+ *
+ * `zh` is skipped when it is byte-for-byte the `es` — that is the
+ * untranslated() mirror every mapper writes (lib/ingestion/text-utils.ts),
+ * not a translation, and shipping it twice doubles this field on exactly the
+ * rows that gain nothing from it.
+ */
+function flattenSummaryForSearch(summary: LocalizedText | null): string {
+  if (!summary) return "";
+  const es = summary.es ?? "";
+  const zh = summary.zh ?? "";
+  return (zh && zh !== es ? `${zh} ${es}` : es).toLowerCase();
+}
+
 /** Used only for the rare legacy row with a stored tier but somehow no stored label — classifyRelevance() itself always sets both together, so this is a defensive fallback, not an expected path. */
 const LABELS_FALLBACK: LocalizedText = { en: "Standard Project", es: "Proyecto Estándar", zh: "常规项目" };
 
@@ -710,6 +725,22 @@ export type AdminTenderListRow = {
   /** Undefined when the source has not published one — not every tender has a deadline. */
   submissionDeadline?: string;
   updatedAt: string;
+  /**
+   * The summary, flattened and lowercased, for the search box only — never
+   * rendered.
+   *
+   * The admin search matched title/buyer/slug/tenderNumber while the public
+   * list (lib/filter-tenders.ts) also matched the summary, so a word that
+   * appears only in the description found the tender on the public site and
+   * nothing in 项目管理 (2026-09-18, the user's request to align the two).
+   *
+   * A flattened string rather than the LocalizedText: this table is over
+   * 1000 rows and every byte is shipped to the browser, so it carries the zh
+   * and the es once each and drops `en`, which every mapper mirrors from
+   * `es` and no writer ever fills. Lowercased here rather than per keystroke
+   * per row, since it exists for exactly one comparison.
+   */
+  searchSummary: string;
 };
 
 type AdminTenderListDbRow = {
@@ -717,6 +748,7 @@ type AdminTenderListDbRow = {
   slug: string;
   tender_number: string;
   title: LocalizedText;
+  summary: LocalizedText | null;
   buyer: string;
   industries: Tender["industries"];
   country: string;
@@ -801,7 +833,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
       .select(
         // tender_key_dates joined for deriveTenderStatus only — see
         // DOCUMENTS_NEEDED_SELECT's comment for why it cannot be skipped.
-        "id, slug, tender_number, title, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, tender_key_dates ( type, date )",
+        "id, slug, tender_number, title, summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, tender_key_dates ( type, date )",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
@@ -848,5 +880,6 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     publicationDateIsEstimated: row.publication_date_is_estimated ?? undefined,
     submissionDeadline: row.submission_deadline ?? undefined,
     updatedAt: row.updated_at,
+    searchSummary: flattenSummaryForSearch(row.summary),
   }));
 }

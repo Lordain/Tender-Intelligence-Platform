@@ -1,0 +1,54 @@
+- LOTE 1, composto pelas seguintes instalações nos Estados do Rio de Janeiro, São Paulo e Minas Gerais:
+Continuidade da prestação de serviço:
+- LT 230 kV Santa Cabeça - Nilo Peçanha C1, CS;
+- SE 230/138 kV Nilo Peçanha. (Instalações existentes em fim de Concessão da Light-T - Contrato nº 32/2018)
+Novas instalações de transmissão:
+- SE 500/138 kV Nova Extrema;
+- Trechos de LT 500 kV entre a SE Nova Extrema e a LT 500 kV Estreito - Fernão Dias C2;
+- Trechos de LT 138 kV entre a SE Nova Extrema e a LT 138 kV Extrema - Extrema II C1;
+- Trechos de LT 138 kV entre a SE Nova Extrema e a LT 138 kV Frum - Rexam C1.
+
+- LOTE 2, composto pelas seguintes instalações nos Estados do Paraná e Santa Catarina: - LT 230 kV Ponta Grossa - Canoinhas C1, CS.
+
+- LOTE 3, composto pelas seguintes instalações nos Estados do Rio Grande do Norte e Ceará:
+Sublote 3A:
+- SE 500 kV Ceará Mirim II - Compensação Síncrona;
+Sublote 3B:
+- SE 500 kV Quixadá - Compensação Síncrona;
+Sublote 3C:
+- SE 500 kV Morada Nova - Compensações Síncronas;
+Sublote 3D:
+- SE 500 kV Açú III - Compensação Síncrona.
+
+- LOTE 4, composto pelas seguintes instalações nos Estados da Bahia e Sergipe:
+- LT 230 kV Olindina - Itabaianinha C1, CS;
+- SE 500 kV Olindina II - transformação 500/230 kV e conexão entre os setores de 500 e 230 kV.
+- SE 230/69 kV Nossa Senhora da Glória II;
+- Trechos de LT 230 kV entre a SE Nossa Senhora da Glória II e a LT 230 kV Paulo Afonso III - Itabaiana C2.
+
+- LOTE 5, composto pelas seguintes instalações nos Estados de Mato Grosso e Pará:
+- LT 230 kV Cláudia - Cachimbo C1, CS;
+- LT 230 kV Cachimbo - Novo Progresso C1, CS;
+- SE 500/230/138 kV Cláudia - novo pátio 230 kV e transformação 500/230 kV, e novo pátio 138 kV e transformação 230/138 kV;
+- SE 230 kV Cachimbo e Compensação Síncrona;
+- SE 230/138 kV Novo Progresso e Compensação Síncrona.
+
+- LOTE 6, composto pelas seguintes instalações no Estado de São Paulo:
+- LT 345 kV Norte - Miguel Reale, C3 e C4, Subterrâneas.
+
+- LOTE 7, composto pelas seguintes instalações no Estado de São Paulo:
+- LT 345 kV Norte - São Miguel, C1 e C2, subterrâneas;
+- LT 345 kV São Miguel - Ramon, C1 e C2, subterrâneas;
+- SE 345/88 kV São Miguel.
+
+- LOTE 8, composto pelas seguintes instalações no Estado do Mato Grosso do Sul:
+- SE 230/138 kV Iguatemi 2;
+- Trechos de LT em 230 kV entre a SE Iguatemi 2 e a LT Guaíra - Dourados C1.
+
+- LOTE 9, composto pelas seguintes instalações no Estado de São Paulo:
+- SE 230/88 kV Dom Pedro I;
+- Trechos de LT 230 kV entre a SE Dom Pedro I e a LT 230 kV São José dos Campos - Mogi das Cruzes.
+
+- LOTE 10, composto pelas seguintes instalações nos Estado do Mato Grosso:
+- SE 500/138 kV Cuiabá Norte;
+- Trechos de LT 500 kV entre a SE Cuiabá Norte e a LT Jauru - Cuiabá C2.

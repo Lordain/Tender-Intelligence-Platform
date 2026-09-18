@@ -897,6 +897,12 @@ async function main() {
   await probeHtml(
     "E2d. www2 上的输电 edital 应用（在招场次，老 Liferay 应用）",
     "搜索翻出来的：ANEEL 的输电招标文件有个独立的老应用挂在 www2 上。www2 在你机器上 TCP 是通的，而且它跟 git.aneel 不是同一套 Cloudflare 规则",
+    // Run six settled this one: the script gets Cloudflare's challenge, and the
+    // user's own browser gets THROUGH — the ten lots of a live transmission
+    // auction came back in full. So www2 is a challenge (a browser passes),
+    // unlike git.aneel which is a hard block (a browser does not). That makes
+    // this the working door to the opportunity side, by hand.
+    // lib/ingestion/aneel-lote-parser.ts parses what it returns.
     "https://www2.aneel.gov.br/aplicacoes_liferay/editais_transmissao/edital_transmissao.cfm",
     /\.pdf|edital|lote|leil/i,
     timeoutMs,

@@ -3330,6 +3330,62 @@ next steps:
 `scripts/test-block-page.ts` pinning the three real bodies that caused the
 false ★ — F5's rejection page above all, because it arrives as HTTP 200.
 
+#### Run six: one door opens in a browser, and the lots are parsed
+
+`www2.aneel.gov.br/aplicacoes_liferay/editais_transmissao/edital_transmissao.cfm`
+answers Cloudflare's challenge to a script — and lets the **user's own browser
+straight through**. The ten lots of a live transmission auction came back in
+full. So the two ANEEL hosts behind Cloudflare are configured differently and
+the difference is the whole outcome:
+
+| host | to a script | to a real browser |
+|---|---|---|
+| `git.aneel.gov.br` | "Just a moment…" | **hard block** — "Sorry, you have been blocked" |
+| `www2.aneel.gov.br` | "Just a moment…" | **passes** |
+
+`portalrelatorios.aneel.gov.br` joined `dadosabertos.aneel` and `leilao.aneel`
+in the TCP-timeout column, from both machines. Three ANEEL subdomains now
+answer nothing at the socket, which is consistent enough to look like one
+routing or firewall rule rather than three coincidences.
+
+So the **opportunity side is obtainable today**, by hand, and
+`lib/ingestion/aneel-lote-parser.ts` turns what comes back into rows.
+
+**A lot is a row, not an auction.** One auction is bid lot by lot; each lot is
+a separate concession contract with its own RAP ceiling, its own investment
+estimate and its own winner, and a bidder takes lot 3 while ignoring the other
+nine. Storing the auction as one tender would merge ten unrelated
+opportunities into an unreadable row.
+
+**The flag that decides whether a lot is interesting at all** is in the text:
+`Continuidade da prestação de serviço` means existing lines whose concession is
+expiring — you are buying an income stream and an O&M obligation, with almost
+no construction — while `Novas instalações de transmissão` is greenfield. For a
+Chinese EPC or equipment maker those are opposite propositions, and lot 1 of
+this auction is both at once, so the parser carries `hasContinuity` and
+`hasNewInstallations` separately rather than guessing one scope type.
+
+Two traps in the real text, both pinned by `npm run test:aneel-lotes` (24
+assertions, all against the captured fixture):
+
+1. **Lot 2 keeps its only installation on the header line**, after the colon. A
+   header-then-bullets parser returns zero installations for it, and zero
+   reads like missing data rather than a parsing bug.
+2. **Lot 10 says "nos Estado do Mato Grosso"** — plural preposition, singular
+   noun, a typo in the source. A state pattern anchored on "no Estado de" /
+   "nos Estados de" drops that lot's states entirely. The pattern accepts
+   either ending on either form, because the page is typed by hand.
+
+Also pinned: `SE 500/230/138 kV` is three voltages behind one unit, so reading
+the number adjacent to `kV` would file a 500 kV lot as a 138 kV one; and
+"Mato Grosso do Sul" must not match as "Mato Grosso" — different UF, 1,500 km
+apart, and the longer name contains the shorter.
+
+Still missing from the capture, and the reason the page itself is wanted
+rather than the pasted text: the auction number and date, the RAP ceiling and
+the estimated investment per lot, and the edital PDF links. Those are
+elsewhere on the same page.
+
 #### Run five: a real browser does not get in either, and the fix is a network not a client
 
 I said a real browser would pass git.aneel's challenge. It does not. The user

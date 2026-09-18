@@ -93,12 +93,18 @@ export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide |
       url: SEACE_PUBLIC_SEARCH_URL,
       steps: [
         "打开 SEACE 公开检索页（下面的链接）",
-        "点击 Buscador de Procedimiento de Selección",
+        // The landing tab is called out because the page opens on it with an
+        // empty result table reading "No se encontraron Datos" (verified in
+        // the user's browser, 2026-09-18). A reader who takes that as "the
+        // link is broken" leaves before reaching the search — which is the
+        // failure this whole panel exists to prevent, since for Peru these
+        // steps are the only route to the tender.
+        "页面默认停在第一个标签 Anuncio de Contratación Futura，表是空的——那不是这里，改点第二个标签 Buscador de Procedimientos de Selección",
         "点击 Búsqueda Avanzada",
         "把招标编号粘贴到 Sigla Nomenclatura",
         "点击 Buscar",
       ],
-      note: "进入项目的 Ficha de Selección 后，右边的 Cronograma 里有完整时间表——包括本站拿不到的交标截止日（Presentación de propuestas）。",
+      note: "进入项目的 Ficha de Selección 后，右边的 Cronograma 里有完整时间表——包括本站拿不到的交标截止日（Presentación de propuestas）。这个 ficha 页面不要收藏：它的网址只在当前这次浏览会话里有效，下次打开会是一张空表，得从检索页重新走一遍。",
     };
   }
 

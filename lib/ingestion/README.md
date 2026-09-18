@@ -2732,6 +2732,46 @@ means anything), and whether **any** date lower bound exists. Without a date
 bound, a daily import has to sweep the modality and decide what is new from
 `data_atualizacao_pncp` itself.
 
+#### Third filter-probe run — controls passed, and the query shape is settled
+
+Both baselines measured cleanly this time (`status` 4,081,976 with 6 rows of
+drift; `q=obra` 205,301 with 1), the positive control narrowed, the fake
+parameter did not, so the table below is readable.
+
+| parameter | on `status` baseline | on `q=obra` baseline |
+|---|---|---|
+| `modalidades=4` | 143,720 (3.5%) | 47,430 (23.1%) |
+| `ufs=SP` | 819,319 (20.1%) | 36,749 (17.9%) |
+| `esferas=M` | 2,795,583 (68.5%) | 163,760 (79.8%) |
+| `modalidades=4` + `ufs=SP` | 15,714 (0.4%) | 5,147 (2.5%) |
+| `tipos_documento=ata` | reset ×4 | 10,472 (5.1%) |
+
+Filters **combine as AND** (`modalidades=4&ufs=SP` lands below either alone),
+and **no date lower bound exists** — `dataPublicacaoPncpInicial`,
+`data_publicacao_pncp_inicial`, `dataInicial`, `data_inicio` and
+`modalidades[]=` were all accepted and ignored. So a daily import sweeps by
+modality ordered on `-data` (update time) and stops at its own watermark;
+there is nothing server-side to bound the window with.
+
+**`0 条` is not a filter, and the probe said it was.** `modalidades=4,6`,
+`4;6` and `[4,6]` each returned ZERO rows, and the verdict logic called all
+three "✅ 有效" because zero is fewer than the baseline. A comma-separated
+list read as one literal string matches no modality at all — a rejected
+encoding wearing a filter's clothes, and the most expensive kind of wrong
+available here, because a connector built on it would query happily, import
+nothing, and report success. Zero is now its own verdict.
+
+**The repeated-key result is still ambiguous, and that matters.**
+`modalidades=4&modalidades=6` returned 1,063,497 on the `status` baseline —
+far more than `4` alone, which reads like a union — but 46,633 on the `q`
+baseline, which is *fewer* than `4` alone's 47,430. Both numbers fit two
+different servers: one that ORs the values, and one that keeps only the last
+and silently drops the first. The run never measured `modalidades=6` alone, so
+it cannot tell them apart. It does now, and prints the three numbers side by
+side: `both ≈ 4 + 6` is a union, `both ≈ 6` means the first value was thrown
+away. A last-wins server would make a two-modality query look like it worked
+while quietly returning half the intended scope.
+
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against
 the same procurement written the Brazilian way, agreed on tier 6/10 and on

@@ -178,11 +178,22 @@ async function measureDrift(base: Params, timeoutMs: number, paceMs: number): Pr
   return { total: Math.round(samples.reduce((a, b) => a + b, 0) / samples.length), drift: max - min };
 }
 
-type Verdict = "有效" | "被忽略" | "被拒" | "读不到";
+type Verdict = "有效" | "被忽略" | "写法无效" | "被拒" | "读不到";
 
+/**
+ * Narrowing and matching nothing are not the same outcome.
+ *
+ * Run three reported `modalidades=4,6`, `4;6` and `[4,6]` as "✅ 有效" because
+ * each returned fewer rows than the baseline — all three returned ZERO. A
+ * comma-separated list taken as one literal string matches no modality at
+ * all, which is a rejected encoding wearing a filter's clothes, and the most
+ * expensive kind of wrong here: a connector built on it would query happily,
+ * import nothing, and report success. Zero is its own verdict.
+ */
 function judge(measured: Measured, baseline: number, threshold: number): { verdict: Verdict; detail: string } {
   if (measured.rejected) return { verdict: "被拒", detail: "重试 4 次全部被重置 —— 这才算这个写法真的不被接受" };
   if (measured.total === null) return { verdict: "读不到", detail: `${measured.status} ${measured.note}` };
+  if (measured.total === 0) return { verdict: "写法无效", detail: "0 条 —— 服务器收下了，但一条都没匹配上。这不是过滤，是这个写法它读不懂" };
   const removed = baseline - measured.total;
   if (removed <= threshold) return { verdict: "被忽略", detail: `${measured.total} 条（跟基准差 ${removed} 条，在漂移范围内）` };
   return { verdict: "有效", detail: `${measured.total} 条 —— 基准的 ${((measured.total / baseline) * 100).toFixed(1)}%` };
@@ -243,6 +254,10 @@ async function main() {
     // Known to work with one value — re-measured as the anchors everything
     // below is compared against.
     { label: "modalidades=4（已知有效）", extra: { modalidades: "4" } },
+    // 6 alone is what makes the repeated-key result readable at all. Run
+    // three measured `4` and `4&6` but never `6`, and both OR and
+    // last-wins fit those two numbers — see the disambiguation below.
+    { label: "modalidades=6（单独，用来对照）", extra: { modalidades: "6" } },
     { label: "ufs=SP（已知有效）", extra: { ufs: "SP" } },
     { label: "esferas=M（已知有效）", extra: { esferas: "M" } },
 
@@ -309,7 +324,36 @@ async function main() {
   const dates = table.filter((t) => /data|periodo/i.test(t.label));
   const dateWorks = dates.filter((t) => t.cells.some((c) => c.verdict === "有效"));
 
-  console.log(`modalidades 能不能一次传多个：${multiWorks.length === 0 ? "不能 —— 每种采购方式得单独发一轮" : `能，用这种写法：${multiWorks.map((t) => t.label).join("，")}`}`);
+  // A repeated key that returns more rows than either value alone is a union.
+  // One that returns exactly what the LAST value returns alone is the server
+  // overwriting the first — which looks like success and silently drops half
+  // the query. Only the third number tells them apart.
+  const totalOf = (needle: string, cell: number) => {
+    const found = table.find((t) => t.label.startsWith(needle))?.cells[cell];
+    const match = found?.detail.match(/^([\d]+) 条/);
+    return match ? Number(match[1]) : null;
+  };
+  console.log("\nmodalidades 传两个值时到底怎么解释的：");
+  for (const [index, baseline] of measuredBaselines.entries()) {
+    const only4 = totalOf("modalidades=4（已知有效）", index);
+    const only6 = totalOf("modalidades=6", index);
+    const both = totalOf("modalidades=4&modalidades=6", index);
+    if (only4 === null || only6 === null || both === null) {
+      console.log(`  ${baseline.name}：三个数没凑齐，判断不了`);
+      continue;
+    }
+    const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(baseline.threshold, Math.round(b * 0.02));
+    const reading = near(both, only4 + only6)
+      ? "并集（OR）—— 可以一次把两种采购方式都拉回来 ✅"
+      : near(both, only6)
+        ? "只认最后一个值 —— 前面那个被悄悄丢了 ⚠️ 必须分开发请求"
+        : near(both, only4)
+          ? "只认第一个值 —— 后面那个被悄悄丢了 ⚠️ 必须分开发请求"
+          : "三个数对不上任何一种解释 —— 把这一行发我";
+    console.log(`  ${baseline.name}：4 单独 ${only4}，6 单独 ${only6}，两个一起 ${both}  →  ${reading}`);
+  }
+  console.log();
+  console.log(`modalidades 能不能一次传多个：${multiWorks.length === 0 ? "不能 —— 每种采购方式得单独发一轮" : `写法上能用的：${multiWorks.map((t) => t.label).join("，")}（语义看上面那几行）`}`);
   console.log(`有没有日期下界：${dateWorks.length === 0 ? "没找到 —— 每天得整轮扫一遍，靠 data_atualizacao_pncp 自己判断哪些是新的" : `有：${dateWorks.map((t) => t.label).join("，")}`}`);
   console.log();
   if (effective.length === 0) {

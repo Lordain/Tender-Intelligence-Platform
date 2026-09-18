@@ -40,6 +40,12 @@ async function main() {
   }
 
   const months = Number(argValue(args, "--months") ?? 2) || 2;
+  const daysRaw = argValue(args, "--days");
+  const days = daysRaw === undefined ? undefined : Number(daysRaw);
+  if (daysRaw !== undefined && (!Number.isFinite(days) || (days as number) < 1)) {
+    console.error(`--days 认不出来："${daysRaw}"。给一个 1 以上的整数，例如 --days 3`);
+    process.exit(1);
+  }
   const maxRowsPerModality = Number(argValue(args, "--max") ?? 600) || 600;
   const raw = argValue(args, "--modalities");
   // One bare numeric id per value. A comma list is accepted HERE and expanded
@@ -53,13 +59,15 @@ async function main() {
   }
 
   console.log(`来源：${BRAZIL_PNCP_SOURCE_NAME}`);
-  console.log(`采购方式：${(modalities ?? [4, 5]).join("、")}　发布时间窗：${months} 个月　每种最多取 ${maxRowsPerModality} 条\n`);
+  const windowLabel = days === undefined ? `${months} 个月` : `${days} 天`;
+  console.log(`采购方式：${(modalities ?? [4, 5]).join("、")}　发布时间窗：${windowLabel}　每种最多取 ${maxRowsPerModality} 条\n`);
 
   const result = await ingestBrazilPncp(
     supabase,
     {
       write,
       months,
+      ...(days === undefined ? {} : { days }),
       maxRowsPerModality,
       ...(modalities ? { modalities } : {}),
       skipAmounts: args.includes("--skip-amounts"),
@@ -68,8 +76,24 @@ async function main() {
   );
 
   console.log("\n" + "─".repeat(72));
+  // Whether the window was covered or merely sampled is the first thing to
+  // read here. A run stopped by --max saw an unknown fraction of the period,
+  // so every number under it is a floor — and the header line above says
+  // "发布时间窗：2 个月", which without this would be a claim the run cannot
+  // support.
+  let cappedAny = false;
   for (const entry of result.byModality) {
-    console.log(`  采购方式 ${entry.modalidade}：${entry.rows} 条，翻了 ${entry.pages} 页`);
+    const how =
+      entry.stoppedBy === "window"
+        ? "已覆盖整个时间窗"
+        : entry.stoppedBy === "end"
+          ? "索引翻到底了"
+          : "⚠ 被 --max 截断，时间窗没取完";
+    if (entry.stoppedBy === "cap") cappedAny = true;
+    console.log(`  采购方式 ${entry.modalidade}：${entry.rows} 条，翻了 ${entry.pages} 页 —— ${how}`);
+  }
+  if (cappedAny) {
+    console.log(`\n  ⚠ 本次是抽样，不是全量：下面所有数字都是下限。要取完整个时间窗，把 --max 调大（或去掉）再跑。`);
   }
   console.log(`\n抓到 ${result.fetchedRows} 条，映射成 ${result.mappedCount} 条。`);
   console.log(`  进入推荐：${result.keptCount} 条　被规则排除：${result.excludedCount} 条`);

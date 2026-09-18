@@ -82,10 +82,14 @@ export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide |
   if (SEACE.test(origin)) {
     return {
       platform: "SEACE — Sistema Electrónico de Contrataciones del Estado",
-      // The only branch that carries its own link. A Peru tender's stored
+      // The only branch that carries its own link, and the reason this guide
+      // matters more for Peru than anywhere else: a SEACE ficha URL cannot be
+      // shared at all (lib/peru-seace-url.ts), so these five steps are not a
+      // fallback for readers who lost the deep link — they ARE the route.
+      //
       // One constant, because SEACE has moved its public route before and the
       // old host survived here for months only by being written in four
-      // places. See lib/peru-seace-url.ts.
+      // places.
       url: SEACE_PUBLIC_SEARCH_URL,
       steps: [
         "打开 SEACE 公开检索页（下面的链接）",

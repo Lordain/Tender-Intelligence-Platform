@@ -1509,7 +1509,16 @@ const NO_CONTENT_TITLE = [
   // all means the title says what is being bought, so it is not a bare name.
   /^(?!.*\b(?:SUMINISTRO|ADQUISICI[ÓO]N|ADQUIRIR|CONSTRUCCI[ÓO]N|COMPRA|CONTRATAR|PRESTACI[ÓO]N|MANTENIMIENTO|REHABILITACI[ÓO]N|MODERNIZACI[ÓO]N|AMPLIACI[ÓO]N|SERVICIO)\b)[^a-z]{2,90}(?:S\.?A\.?S\.?|LTDA\.?|S\.?A\.? DE C\.?V\.?|S\.?A\.?)\s*$/,
   // A generic noun standing alone, with at most a leading verb/article.
-  /^\s*(?:contrato de |contratar (?:la |el )?)?(?:obra|obras|servicio|servicios|suministro|suministros|compra|adquisici[óo]n|mantenimiento|convenio|proyecto)\s*$/i,
+  // The qualifier group was added 2026-09-18 for a real PNCP row whose entire
+  // object text was "Obras comuns" — it came out 常规项目 with a construction
+  // tag, on a title that says nothing at all. `comum`/`comuns` is Lei
+  // 14.133's own category name (obras comuns vs. obras especiais), so it adds
+  // no information about what is being built.
+  //
+  // Only a generic adjective qualifies. "Obras comuns de reforma da Escola
+  // Municipal X" still says what it is and is untouched, because the pattern
+  // is anchored to the end of the title.
+  /^\s*(?:contrato de |contratar (?:la |el )?)?(?:obra|obras|servicio|servicios|servi[çc]os?|suministro|suministros|compra|adquisici[óo]n|mantenimiento|convenio|proyecto|projetos?)(?:\s+(?:comun(?:es|s)?|comum|diversos?|diversas?|varios?|varias?|gerais?|geral|generales?|general))?\s*$/i,
   // A bare reference code: "EP 0058-2026", "CAS-SS-LP-001-2026",
   // "AHLPOB05-026". Judged by shape rather than by a letter-count that any
   // new source's numbering scheme would break — a single token, no spaces,
@@ -2738,7 +2747,15 @@ export function classifyRelevance(input: {
   if (input.isNationalPriorityProject !== true && isBrazil(input.country)) {
     const portuguese = classifyPortugueseExclusion(haystack);
     if (portuguese !== null) {
-      return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+      // The verdict picks the reason. It is not cosmetic: the excluded list is
+      // reviewed BY reason (that is the whole workflow the CSV exists for),
+      // and a works-supervision contract filed under 日常性服务采购 is filed
+      // where nobody checking the consulting rules would look for it.
+      return {
+        tier: "excluded",
+        label: LABELS.excluded,
+        reason: reasonFor("excluded", portuguese === "consulting" ? "consulting" : "keyword"),
+      };
     }
   }
 

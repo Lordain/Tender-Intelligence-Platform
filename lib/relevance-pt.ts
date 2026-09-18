@@ -151,6 +151,61 @@ export const PT_MAINTENANCE_ONLY_KEYWORDS: RegExp[] = [
 ];
 
 /**
+ * Repainting a building.
+ *
+ * Real, reviewed 2026-09-18: "Registro de Preços para serviços comuns de
+ * engenharia destinados à execução de serviços de pintura predial interna e
+ * externa." A local decorating contract.
+ *
+ * It was already excluded, but by accident rather than by rule — the
+ * no-industry-AND-no-amount gate caught it, and this is a registro de preços:
+ * the day one publishes a ceiling value the row walks straight in.
+ *
+ * Checked before the works guard like the two rules above, and for a third
+ * variant of the same trap. Here the word that spares it is `engenharia`:
+ * "serviços comuns de engenharia" is Lei 14.133's own category name for minor
+ * engineering services, so it appears on the most trivial contracts there are
+ * and is not evidence that anything is being built. (PT_REAL_WORKS_SIGNAL's
+ * bare `\bengenharia\b` is weak for exactly that reason — narrowing it would
+ * change which rows every other exclude rule can reach, so it is left alone
+ * and noted here rather than adjusted blind.)
+ *
+ * `predial`, or the interna/externa pair, is required — road marking
+ * (`pintura de sinalização horizontal`) is a real highway work item and is
+ * untouched.
+ */
+const PT_BUILDING_PAINTING =
+  /\bpintura\s+predial\b|\bpintura\s+(interna\s+e\s+externa|externa\s+e\s+interna)\b/i;
+
+/**
+ * Managing, supervising or inspecting somebody else's works.
+ *
+ * Two real rows, reviewed by the user 2026-09-18:
+ *   - SEINFRA/AL: "elaboração de estudos e projetos, gerenciamento,
+ *     supervisão e apoio à fiscalização de obras de responsabilidade da
+ *     Secretaria de Estado da Infraestrutura";
+ *   - AGETO/TO: "serviços técnicos de gerenciamento e assessoria técnica,
+ *     para projetos e obras rodoviárias na malha rodoviária do estado".
+ *
+ * Both are the consultant sitting BESIDE the contract, not the contractor.
+ * Brazilian states tender these separately from the works themselves, and
+ * they need a local engineering firm with CREA-registered staff on site.
+ *
+ * Neither reached the consulting rules at all. `inferScopeType` reads the
+ * word `obras` and calls them works (verified: both come back scopeType
+ * "works"), and the Portuguese works guard reads the same word and spares
+ * them — the same trap PT_OPERATION_AND_MAINTENANCE exists for, and for the
+ * same reason: `obras` here is what is being SUPERVISED, not what is being
+ * built. So this is checked ahead of that guard too, vetoed by a build verb.
+ *
+ * Deliberately not anchored on "elaboração de projetos", which is pure design
+ * consultancy that inferScopeType already classifies as consulting on its own
+ * — adding it here would widen this rule to cover something already handled.
+ */
+const PT_WORKS_SUPERVISION =
+  /\bgerenciamento\b|\bsupervis[ãa]o\b|\bfiscaliza[çc][ãa]o\b|\bassessoria\s+t[ée]cnica\b|\bgerenciadora\b/i;
+
+/**
  * An O&M contract: running and maintaining something that already exists.
  *
  * Real row, reviewed by the user 2026-09-18 (维护类): "CONTRATAÇÃO DE EMPRESA
@@ -209,7 +264,7 @@ export function isBrazil(country: string | undefined): boolean {
   return country === "Brazil";
 }
 
-export type PortugueseExclusion = "keyword" | "maintenance_only";
+export type PortugueseExclusion = "keyword" | "maintenance_only" | "consulting";
 
 /**
  * Whether a Brazilian tender is routine enough to keep out of the feed.
@@ -224,6 +279,9 @@ export function classifyPortugueseExclusion(input: string): PortugueseExclusion 
   const text = foldAccents(input);
   // Before the works guard on purpose — see PT_OPERATION_AND_MAINTENANCE.
   if (PT_OPERATION_AND_MAINTENANCE.test(text) && !PT_BUILD_VERB.test(text)) return "maintenance_only";
+  // Same placement, same reason — see PT_WORKS_SUPERVISION.
+  if (PT_WORKS_SUPERVISION.test(text) && !PT_BUILD_VERB.test(text)) return "consulting";
+  if (PT_BUILDING_PAINTING.test(text) && !PT_BUILD_VERB.test(text)) return "keyword";
   if (PT_REAL_WORKS_SIGNAL.test(text)) return null;
   if (PT_MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(text))) return "maintenance_only";
   if (PT_EXCLUDE_KEYWORDS.some((pattern) => pattern.test(text))) return "keyword";

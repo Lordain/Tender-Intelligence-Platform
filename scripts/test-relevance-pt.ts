@@ -343,6 +343,60 @@ check(
   null,
 );
 
+// Three more reviewed by the user 2026-09-18. All three carry a works word
+// that the guard reads as "this is a real work" — obras, obras rodoviárias,
+// engenharia — while what is being bought is a service ABOUT those works.
+const SEINFRA =
+  "O objeto da presente licita\u00e7\u00e3o \u00e9 a contrata\u00e7\u00e3o de empresa de engenharia especializada para a elabora\u00e7\u00e3o de estudos e projetos, gerenciamento, supervis\u00e3o e apoio \u00e0 fiscaliza\u00e7\u00e3o de obras de responsabilidade da Secretaria de Estado da Infraestrutura \u2013 SEINFRA/AL, conforme condi\u00e7\u00f5es, quantidades e exig\u00eancias estabelecidas neste Edital e seus anexos.";
+const AGETO =
+  "Contrata\u00e7\u00e3o de empresa especializada para presta\u00e7\u00e3o de servi\u00e7os t\u00e9cnicos de gerenciamento e assessoria t\u00e9cnica, para projetos e obras rodovi\u00e1rias na malha rodovi\u00e1ria do estado do Tocantins, sob responsabilidade da Ag\u00eancia de Transportes, Obras e Infraestrutura - AGETO.";
+const PINTURA =
+  "Registro de Pre\u00e7os para servi\u00e7os comuns de engenharia destinados \u00e0 execu\u00e7\u00e3o de servi\u00e7os de pintura predial interna e externa.";
+
+check("SEINFRA 监理咨询判为咨询类", classifyPortugueseExclusion(SEINFRA), "consulting");
+check("AGETO 公路项目管理判为咨询类", classifyPortugueseExclusion(AGETO), "consulting");
+check("建筑涂装被排除", classifyPortugueseExclusion(PINTURA), "keyword");
+for (const [label, title] of [["SEINFRA", SEINFRA], ["AGETO", AGETO], ["\u5efa\u7b51\u6d82\u88c5", PINTURA]] as [string, string][]) {
+  check(`${label} 端到端被排除`, brazilTender(title).relevance.tier, "excluded");
+}
+// The reason is not cosmetic: the excluded CSV is reviewed BY reason, and a
+// supervision contract filed under 日常性服务 is filed where nobody checking
+// the consulting rules would look.
+check("咨询类用的是咨询理由，不是日常服务", brazilTender(SEINFRA).relevance.reason.zh.includes("\u7eaf\u54a8\u8be2"), true);
+
+// Over-breadth pins. Each is a genuine work carrying the same trigger word;
+// the build verb is the only thing separating them.
+const SUPERVISION_MUST_SURVIVE: [string, string][] = [
+  ["改扩建学校（标书里提到监理）", "REFORMA E AMPLIA\u00c7\u00c3O DA ESCOLA MUNICIPAL, COM ACOMPANHAMENTO E FISCALIZA\u00c7\u00c3O DA SECRETARIA DE OBRAS"],
+  ["铺装工程（提到项目管理）", "EXECU\u00c7\u00c3O DE OBRA DE PAVIMENTA\u00c7\u00c3O ASF\u00c1LTICA COM GERENCIAMENTO DA FISCALIZA\u00c7\u00c3O MUNICIPAL"],
+  ["新建学校含内外墙涂装", "CONSTRU\u00c7\u00c3O DE ESCOLA MUNICIPAL INCLUINDO PINTURA INTERNA E EXTERNA"],
+];
+for (const [label, title] of SUPERVISION_MUST_SURVIVE) {
+  check(`${label}：葡语规则不开火`, classifyPortugueseExclusion(title), null);
+}
+// Road marking is a real highway work item and shares the word `pintura`.
+check(
+  "\u9053\u8def\u6807\u7ebf\u4e0d\u53d7\u5f71\u54cd",
+  classifyPortugueseExclusion("EXECU\u00c7\u00c3O DE SINALIZA\u00c7\u00c3O HORIZONTAL COM PINTURA DE FAIXAS NA RODOVIA ESTADUAL"),
+  null,
+);
+
+// A title whose entire object text is "Obras comuns" — Lei 14.133's own
+// category name, which says nothing about what is being built. It came out
+// 常规项目 with a construction tag.
+check("「Obras comuns」按「信息过少」排除", brazilTender("Obras comuns").relevance.tier, "excluded");
+check(
+  "「Obras comuns」的理由是信息过少，不是关键词",
+  brazilTender("Obras comuns").relevance.reason.zh.includes("\u6ca1\u6709\u4efb\u4f55\u63cf\u8ff0"),
+  true,
+);
+// The same two words, followed by something that does say what it is.
+check(
+  "「Obras comuns de reforma da Escola」仍然保留",
+  brazilTender("Obras comuns de reforma da Escola Municipal Santa Rita").relevance.tier !== "excluded",
+  true,
+);
+
 // The row that exposed the ASCII word-boundary bug: `\br[íi]o\b` matched the
 // "rio" inside "Território", so a public-relations contract was tagged as
 // water infrastructure. See lib/text-fold.ts and npm run test:text-fold.

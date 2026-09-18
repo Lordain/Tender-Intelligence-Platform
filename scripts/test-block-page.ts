@@ -35,6 +35,9 @@ check("F5 的 support ID 也认", blockPageReason("Your support ID is: 998877") 
 check("Cloudflare 403", blockPageReason(CLOUDFLARE_403) !== null, true);
 check("Cloudflare 的 JS 验证页", blockPageReason(CLOUDFLARE_CHALLENGE) !== null, true);
 check("CCEE 手写的 Acesso bloqueado", blockPageReason(CCEE) !== null, true);
+// PPI's file host: HTTP 200, 364 characters, "Acesso Negado!". Missing this
+// made a blocked PDF read as "answered but nearly empty" on run three.
+check("PPI 静态文件主机的 Acesso Negado!（也是 200）", blockPageReason('<html><body><h1>Acesso Negado!</h1></body></html>') !== null, true);
 
 console.log("\n正常页面：一个都不能误伤");
 check("一条普通的葡语标讯正文", blockPageReason("Contratação de empresa para execução de obras de pavimentação asfáltica."), null);

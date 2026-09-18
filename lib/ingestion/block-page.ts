@@ -19,6 +19,12 @@ const BLOCK_PAGE_SIGNATURES = [
   /Request Rejected/i,
   /Your support ID is/i,
   /Acesso bloqueado/i,
+  // Added after run three: PPI's static-file host answers a blocked request
+  // with "Acesso Negado!" at HTTP 200 and a 364-character body. Without this
+  // line the English edital PDF read as "answered, but nearly empty" — which
+  // is a different diagnosis leading to a different, wrong next step.
+  /Acesso Negado/i,
+  /Acesso Denegado/i,
   /Attention Required/i,
   /Just a moment/i,
   /__cf_chl|cf-browser-verification|cf_chl_opt/i,

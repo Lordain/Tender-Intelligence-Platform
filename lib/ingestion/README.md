@@ -3330,6 +3330,81 @@ next steps:
 `scripts/test-block-page.ts` pinning the three real bodies that caused the
 false ★ — F5's rejection page above all, because it arrives as HTTP 200.
 
+#### Run three (2026-09-18): two networks, and the door was inside a page we could already read
+
+The probe ran from the laptop and, for the first time, from the deployment.
+Reading the two together is what produced the answer, and the answer was not
+on the list of doors either run set out to knock on.
+
+**`www.gov.br/aneel/…/leiloes` answers from BOTH machines** — 212KB,
+~22,000 characters, 777 links, genuinely server-rendered. Three of those links
+are labelled *Planilha em Excel* and point at **`git.aneel.gov.br`**:
+
+```
+https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/
+    relatorioseindicadores/leiloes/Resultado_leiloes_{g,t,s}…
+```
+
+That is a **GitLab instance serving raw files**, and it beats the CKAN portal
+on every axis that matters here: a different host from the one that times out,
+static paths, versioned content, and a folder listing available through
+GitLab's own API with no credential (`/api/v4/projects/publico%2Fcentralconteudo
+/repository/tree?path=relatorioseindicadores/leiloes&ref=main`). The project
+path is read out of the raw URL, not recalled. Both probes now go there first.
+
+It also nearly slipped past: the run-three output truncated hrefs at 110
+characters, which cut the filenames off. The link printer now allows 240 and
+shows 12 links instead of 8. A probe that hides the thing it found is the same
+class of bug as one that overstates a finding.
+
+**The CKAN portal is off the table regardless of network.**
+`dadosabertos.aneel.gov.br` and `leilao.aneel.gov.br` both time out at the TCP
+layer from the laptop (ETIMEDOUT at 21–22s) *and* from the deployment
+(UND_ERR_CONNECT_TIMEOUT). Two networks on two continents, no handshake — so
+this is not geography and not a WAF, and the resource ids search handed us are
+unusable until it comes back. That is exactly why the GitLab copy matters: it
+is the same data by another road.
+
+**Two corrections to my own reporting, both found in this run's output:**
+
+1. **CCEE is CKAN, and browser headers open it — I reported the opposite.**
+   The retry came back with real CKAN JSON (`"success": true`,
+   `"site_title": "Dados CCEE"`), and `browserRetry`, being HTML-shaped,
+   described it as "answered, but almost nothing on the page". That buried the
+   round's second-best finding under a wrong verdict. JSON is now checked
+   before the HTML description, as `probeHtml` already did.
+2. **PPI's English edital is not reachable; it is "Acesso Negado!" at HTTP 200.**
+   1KB, 364 characters, from both machines. Without a signature for that
+   string it read as "answered but nearly empty", which is a different
+   diagnosis leading to a different, wrong next step. Added to
+   `lib/ingestion/block-page.ts` and pinned in its test.
+
+**Where each door now stands:**
+
+| door | laptop | deployment | reading |
+|---|---|---|---|
+| `www.gov.br/aneel/…` | 200, 777 links | 200, 804 links | **open from both — and it links the GitLab files** |
+| `git.aneel.gov.br` | untested | untested | the next thing to test, and the likely data path |
+| ArcGIS Hub mirror | 200 JSON | 200 JSON | open, but its DCAT feed is BDGD distribution geodata — probably the wrong dataset family |
+| `dadosabertos.aneel.gov.br` | TCP timeout | TCP timeout | unreachable from two continents |
+| `leilao.aneel.gov.br` | TCP timeout | TCP timeout | same |
+| CCEE open data | opens with browser headers | 403 honest UA | CKAN, confirmed; the UA question is live and unresolved |
+| ANTT | F5 block page (200) | F5 block page (200) | closed |
+| ANTAQ | Cloudflare 403 | Cloudflare 403 | closed |
+| PPI (all paths) | F5 "Your support ID is" | ECONNRESET | closed; the portfolio is not scrapeable |
+| dados.gov.br | 401 Bearer | 401 | closed — needs a CPF |
+
+So the shape of the work changed. The transmission-results connector is no
+longer blocked on a portal nobody can reach: it reads a page that answers, and
+follows the spreadsheet links that page publishes. What is still open is the
+*opportunity* side — an upcoming auction's edital — for which
+`gov.br/aneel/pt-br/empreendedores/leiloes` is the next candidate, added to
+both probes.
+
+One thing that has NOT been decided, and should not be decided quietly: CCEE
+opens to a browser User-Agent and refuses an honest one. That is a finding to
+weigh, not a header to ship.
+
 #### What the third parties actually do (web search, 2026-09-18)
 
 The user's question — *do the aggregator sites read this data, or not?* — has a

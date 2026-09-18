@@ -57,6 +57,19 @@ const DOORS: { id: string; what: string; url: string }[] = [
   { id: "E1b", what: "ANEEL 开放数据的 ArcGIS 镜像（商业 CDN，不是 .gov.br）", url: "https://dadosabertos-aneel.opendata.arcgis.com/api/feed/dcat-us/1.1.json" },
   { id: "E1c", what: "ANEEL 拍卖系统 —— 在招的场次在这儿，不在开放数据里", url: "https://leilao.aneel.gov.br/listaLeiloesFinalizados" },
   { id: "E2", what: "ANEEL 拍卖专页（gov.br 现址）— edital 原文", url: "https://www.gov.br/aneel/pt-br/centrais-de-conteudos/relatorios-e-indicadores/leiloes" },
+  { id: "E2b", what: "ANEEL 给投标人看的拍卖页 —— 在招场次更可能在这里", url: "https://www.gov.br/aneel/pt-br/empreendedores/leiloes" },
+  // Run three's find, and the reason this list changed shape: E2's page (which
+  // answers from BOTH machines) links three "Planilha em Excel" files on
+  // git.aneel.gov.br — a GitLab instance serving raw files. Different host
+  // from the one that times out, stable paths, versioned, and enumerable
+  // through GitLab's own credential-free API. The project path is read out of
+  // the raw URL rather than recalled.
+  {
+    id: "E2c",
+    what: "ANEEL 的 GitLab —— 拍卖结果 Excel 的目录（这条最可能就是连接器的取数路径）",
+    url: "https://git.aneel.gov.br/api/v4/projects/publico%2Fcentralconteudo/repository/tree?path=relatorioseindicadores%2Fleiloes&ref=main&per_page=100",
+  },
+  { id: "E2d", what: "同上，直接取一个原始文件（看 raw 路径要不要登录）", url: "https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes/Resultado_leiloes_transmissao.xlsx" },
   { id: "E3", what: "CCEE 开放数据（发电侧拍卖）", url: "https://dadosabertos.ccee.org.br/api/3/action/status_show" },
   // Static PDF under /wp-content/uploads/, in English, no session and no
   // challenge — the least defended thing on this list if it answers at all.

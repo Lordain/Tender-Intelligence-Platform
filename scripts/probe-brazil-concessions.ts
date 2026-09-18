@@ -327,7 +327,7 @@ function describeHtml(text: string, linkPattern: RegExp): { note: string; links:
     `${anchors.length} 个链接（命中 ${matching.length}，PDF ${pdfs.length}）`,
     verdict,
   ].join(" · ");
-  return { note, links: matching.slice(0, 8).map(([, href, label]) => `${label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 70)} → ${href.slice(0, 110)}`) };
+  return { note, links: matching.slice(0, 12).map(([, href, label]) => `${label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 70)} → ${href.slice(0, 240)}`) };
 }
 
 /**
@@ -350,6 +350,32 @@ async function browserRetry(url: string, timeoutMs: number, linkPattern: RegExp,
   // A 200 is not a pass. F5 serves its rejection page with one, and a
   // Cloudflare challenge can too — see BLOCK_PAGE_SIGNATURES.
   const blocked = blockPageReason(text);
+  // …and a 200 that IS a pass can be missed the other way. On run three CCEE
+  // answered browser headers with real CKAN JSON — `"success": true`,
+  // `"site_title": "Dados CCEE"` — and this function, being HTML-shaped,
+  // reported it as "answered, but almost nothing on the page". That buried
+  // the round's second-best finding. JSON is checked before the HTML verdict
+  // now, for the same reason probeHtml already does it.
+  const trimmedBody = text.trim();
+  if (blocked === null && (trimmedBody.startsWith("{") || trimmedBody.startsWith("["))) {
+    let shape = "";
+    try {
+      const parsed = JSON.parse(trimmedBody) as unknown;
+      const record_ = parsed as Record<string, unknown>;
+      const ckan = (record_.result as Record<string, unknown> | undefined)?.ckan_version;
+      shape = Array.isArray(parsed)
+        ? `数组，${parsed.length} 项`
+        : ckan
+          ? `CKAN ${String(ckan)} —— ${String((record_.result as Record<string, unknown>).site_title ?? "")}`
+          : `外层键 ${Object.keys(record_).slice(0, 12).join(", ")}`;
+    } catch {
+      shape = "（解析失败）";
+    }
+    console.log(`   ★ 换成浏览器请求头就通了，而且返回的是 JSON（${status}，${ms}ms）：${shape}`);
+    console.log(`     正文开头：${trimmedBody.slice(0, 300)}`);
+    console.log("     这是个要拿回来讨论的结论，不是可以悄悄写进连接器的 header —— 见本文件开头的说明。\n");
+    return;
+  }
   const title = pageTitle(text);
   const described = describeHtml(text, linkPattern);
   if (blocked !== null) {
@@ -551,6 +577,10 @@ async function main() {
     "dadosabertos.aneel.gov.br",
     "leilao.aneel.gov.br",
     "antigo.aneel.gov.br",
+    // Found on run three inside gov.br's own page: ANEEL serves the auction
+    // result spreadsheets from its GitLab, and www2 hosts its document store.
+    "git.aneel.gov.br",
+    "www2.aneel.gov.br",
     "www.gov.br",
     // Not a .gov.br host: ANEEL's open data is mirrored on Esri's ArcGIS Hub,
     // which is a commercial CDN on AWS. If the refusals are geographic, this
@@ -762,6 +792,64 @@ async function main() {
     "招标文件本身是 PDF。ANEEL 的网站已经搬到 gov.br 平台上了 —— 上一轮我敲的 www.aneel.gov.br 是旧地址，被 Cloudflare 挡住时看不出「搬走了」和「被防住了」的区别",
     "https://www.gov.br/aneel/pt-br/centrais-de-conteudos/relatorios-e-indicadores/leiloes",
     /\.pdf|edital|leil/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // ── E2c. The find of run three ───────────────────────────────────────────
+  //
+  // E2's page came back server-rendered with 777 links, and three of them
+  // were "Planilha em Excel" pointing at **git.aneel.gov.br** —
+  // `/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes/
+  // Resultado_leiloes_{g,t,s}…`. That is a GitLab instance serving raw files,
+  // and it is a better door than the CKAN portal in every way that matters
+  // here: a different host from the one that times out, static files with
+  // stable paths, versioned, and enumerable through GitLab's own API without
+  // any credential. The project path is read straight out of the raw URL
+  // (`/publico/centralconteudo/-/raw/…` → project `publico/centralconteudo`),
+  // not recalled.
+  //
+  // Printed in full and downloaded here because the run-three output cut the
+  // URLs off at 110 characters, which is also fixed above.
+  console.log("E2c. ANEEL 的 GitLab —— 拍卖结果的 Excel 就挂在这儿（上一轮从 E2 页面里翻出来的）");
+  console.log("   为什么它比开放数据门户还好：不同的主机（那个是 socket 超时的）、静态文件、路径稳定、");
+  console.log("   有版本、而且 GitLab 自己的 API 不要任何凭证就能列目录。");
+  const gitlabBase = "https://git.aneel.gov.br";
+  const gitlabProject = encodeURIComponent("publico/centralconteudo");
+  const gitlabDir = "relatorioseindicadores/leiloes";
+
+  // First: what is actually in that folder, by asking GitLab rather than
+  // guessing filenames off three truncated links.
+  await probeHtml(
+    "E2c-1. 列出 leiloes 目录里所有文件（GitLab API）",
+    "三个链接是被截断的，与其猜文件名不如问 GitLab —— 这一条直接把目录列出来",
+    `${gitlabBase}/api/v4/projects/${gitlabProject}/repository/tree?path=${encodeURIComponent(gitlabDir)}&ref=main&per_page=100`,
+    /never/,
+    timeoutMs,
+    JSON_HEADERS,
+  );
+  await sleep(1500);
+
+  // Then: does a raw file actually download. `_t` is transmission, which is
+  // the one the user asked about; the name is a prefix because the suffix was
+  // cut off, so a 404 here is expected and the listing above is what corrects
+  // it.
+  await probeHtml(
+    "E2c-2. 直接下一个原始文件试试",
+    "文件名后半截被截掉了，这条大概率 404 —— 但它要回答的是另一个问题：raw 路径本身通不通、要不要登录",
+    `${gitlabBase}/publico/centralconteudo/-/raw/main/${gitlabDir}/Resultado_leiloes_transmissao.xlsx`,
+    /never/,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // And the page that links them, in case the folder moved: gov.br is
+  // reachable from both machines, so this is the one path known to work.
+  await probeHtml(
+    "E2c-3. ANEEL 的 empreendedores/leiloes（在招场次更可能在这一页）",
+    "E2 那页是「报表与指标」，偏历史。这一页是给投标人看的 —— 在招的场次和 edital 更可能挂这儿",
+    "https://www.gov.br/aneel/pt-br/empreendedores/leiloes",
+    /\.pdf|\.xlsx?|edital|leil|git\.aneel/i,
     timeoutMs,
   );
   await sleep(1500);

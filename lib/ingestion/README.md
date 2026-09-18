@@ -2488,6 +2488,49 @@ lists it prints are what decides between them.
   the one part of it we use is `/v1/modalidades`, the unauthenticated
   reference-data call that has served as the control group throughout.
 
+**First `probe:brazil-alt` run (2026-09-18): five of five failed, and three of
+those were bad questions rather than findings.** Worth recording in that shape,
+because a table of five FAILs reads like "Brazil has no usable API" and that
+is not what happened.
+
+```
+A1/A2  /api/search      连接失败  fetch failed   1,137ms / 577ms
+A3     /api/consulta    504                     70,762ms
+B      dadosabertos     404                      1,202ms  "Resource not found"
+D      Querido Diário   520                     31,802ms  Cloudflare
+```
+
+- **Only A3 was a finding** — `/api/consulta` timing out again, consistent
+  with everything above.
+- **B's 404 arrived in 1.2 seconds**, which means the host is up and
+  answering; the PATH was wrong, and it was a path this repo guessed. The
+  probe now reads the service's own OpenAPI document (`/v3/api-docs`) and
+  prints its real contract/licitação paths before calling one. Same rule as
+  mappers: take it from what the service publishes, not from recall.
+  The one real path third-party documentation shows is
+  `/modulo-legado/1_consultarLicitacao?pagina=1&tamanhoPagina=10`.
+- **D used the front-end host.** The API is `api.queridodiario.ok.org.br/gazettes`,
+  not `queridodiario.ok.org.br/api/gazettes`; the 520 was Cloudflare on a host
+  that does not serve that path.
+- **A1/A2's `fetch failed` said nothing**, and that is the one worth keeping.
+  Node reports DNS failure, TLS rejection, connection reset, refused
+  connection and connect timeout with the same five characters, and puts the
+  real reason in `err.cause` — which nothing prints unless asked. It matters
+  most precisely here: A3 reached the SAME HOST in the same run and got an
+  HTTP response, so whatever stopped A1 was specific to that path or that
+  connection. `lib/fetch-failure.ts` now unwraps the whole chain (including
+  `AggregateError`, one entry per address tried) and both PNCP scripts print
+  it. This is the same lesson as the earlier `UnhandledPromiseRejection` that
+  turned out to be "Host not in allowlist": an error generalised before it is
+  printed is worse than no error, because it looks like a finding.
+
+The re-run also isolates one variable deliberately: `A5` sends browser
+headers to `/api/search`. The standing posture is still to identify honestly
+rather than impersonate a browser — but a WAF closing the connection on an
+unfamiliar User-Agent is a live candidate for A1/A2, and if that turns out to
+be what decides it, that is a finding to discuss rather than a header to
+quietly ship.
+
 Portuguese, measured before any of this is built: the existing Spanish
 rules do NOT carry over. Real Spanish titles this platform handles, against
 the same procurement written the Brazilian way, agreed on tier 6/10 and on

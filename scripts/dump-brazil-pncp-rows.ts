@@ -66,6 +66,7 @@
  *   npm run dump:brazil-pncp -- --titles 50 --timeout 180
  */
 import { toCsv, writeReviewCsv, type CsvValue } from "@/lib/ingestion/review-csv";
+import { describeFetchFailure } from "@/lib/fetch-failure";
 
 const BASE = "https://pncp.gov.br/api/consulta/v1/contratacoes";
 const MODALIDADES_URL = "https://pncp.gov.br/api/pncp/v1/modalidades?statusAtivo=true";
@@ -115,7 +116,9 @@ async function get(url: string, timeoutMs: number): Promise<Fetched> {
   } catch (err) {
     const ms = Date.now() - started;
     const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, status: message.includes("abort") ? `超时 >${Math.round(timeoutMs / 1000)}s` : "连接失败", ms, body: null, note: message.slice(0, 160) };
+    // describeFetchFailure, not err.message: Node reports DNS failures, TLS
+    // rejections, resets and refused connections all as "fetch failed".
+    return { ok: false, status: message.includes("abort") ? `超时 >${Math.round(timeoutMs / 1000)}s` : "连接失败", ms, body: null, note: describeFetchFailure(err).slice(0, 220) };
   } finally {
     clearTimeout(timer);
   }

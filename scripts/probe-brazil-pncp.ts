@@ -81,11 +81,10 @@
  *   npm run probe:brazil-pncp
  *   npm run probe:brazil-pncp -- --days 3
  */
-// This file imports nothing, which without the export below would make it a
-// global script rather than a module — and its `main` would then collide at
-// compile time with probe-colombia-sources.ts's. tsc caught it; the fix is to
-// say out loud that this is a module.
-export {};
+// The import below is what makes this file a module. Without one it would be
+// a global script, and its `main` would collide at compile time with
+// probe-colombia-sources.ts's — which is what `export {}` used to be here for.
+import { describeFetchFailure } from "@/lib/fetch-failure";
 
 const BASE = "https://pncp.gov.br/api/consulta";
 /** Not under /api/consulta — it is the reference-data service, and that difference is why the earlier session could reach one and not the other. */
@@ -137,7 +136,7 @@ async function attempt(label: string, url: string, timeoutMs = TIMEOUT_MS): Prom
   } catch (err) {
     const ms = Date.now() - started;
     const message = err instanceof Error ? err.message : String(err);
-    return { label, url, ok: false, status: message.includes("abort") ? `超时 >${timeoutMs / 1000}s` : "连接失败", ms, note: message.slice(0, 200) };
+    return { label, url, ok: false, status: message.includes("abort") ? `超时 >${timeoutMs / 1000}s` : "连接失败", ms, note: describeFetchFailure(err).slice(0, 220) };
   } finally {
     clearTimeout(timer);
   }

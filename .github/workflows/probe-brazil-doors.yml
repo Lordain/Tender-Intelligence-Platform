@@ -28,7 +28,7 @@ on:
         description: "敲门（能不能连上）还是看门后面（有没有能投的标）"
         type: choice
         default: both
-        options: [doors, behind, pipeline, both]
+        options: [doors, behind, pipeline, capture, both]
 
 jobs:
   probe:
@@ -63,3 +63,20 @@ jobs:
       - name: Dig the pipeline
         if: inputs.what == 'pipeline' || inputs.what == 'both'
         run: npm run probe:brazil-pipeline -- "GitHub Actions 跑批机"
+
+      # The mapper gets written against the real bytes, and the real bytes are
+      # only reachable from here — every .gov.br host is outside the sandbox
+      # the code is written in. So the capture runs on the runner and the HTML
+      # comes back as an artifact.
+      - name: Capture the ANTAQ pages
+        if: inputs.what == 'capture'
+        run: npm run capture:antaq
+
+      - name: Upload the capture
+        if: inputs.what == 'capture'
+        uses: actions/upload-artifact@v7
+        with:
+          name: antaq-capture-${{ github.run_id }}
+          path: exports/
+          if-no-files-found: error
+          retention-days: 14

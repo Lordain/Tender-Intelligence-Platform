@@ -4,6 +4,7 @@ import { ALL_SCOPE_TYPES } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders } from "@/lib/filter-tenders";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
+import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 
 export const TENDER_PAGE_SIZE = 20;
 export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "awarded"];
@@ -90,12 +91,17 @@ export type TenderListItem = Pick<
   | "status"
   | "currency"
   | "submissionDeadline"
-  // Carried purely so a list row can be marked as Obras por Impuestos
-  // (isObrasPorImpuestos) — that mechanism is different enough from an
-  // ordinary tender that finding out only after opening the detail page
-  // wastes the click.
-  | "sourceName"
 > & {
+  /**
+   * Obras por Impuestos is different enough from an ordinary tender that
+   * finding out only after opening the detail page wastes the click.
+   *
+   * Carried as the answer rather than as the `sourceName` it is computed
+   * from (2026-09-19): the source name tells a reader which portal to go
+   * and search, and knowing where to look is most of what they subscribe
+   * for. Nothing public rendered the name itself.
+   */
+  isObrasPorImpuestos: boolean;
   publicSlug: string;
   titleZh: string;
   buyer?: string;
@@ -208,7 +214,7 @@ export function toTenderListItem(
     submissionDeadline: memberView
       ? tender.submissionDeadline
       : toMonthPrecisionOptional(tender.submissionDeadline),
-    sourceName: tender.sourceName,
+    isObrasPorImpuestos: isObrasPorImpuestos(tender),
   };
 }
 

@@ -1,5 +1,6 @@
 import { toPublicTenderDetail } from "../lib/public-tender";
 import { toTenderListItem } from "../lib/tender-list-page";
+import { toTenderCardData } from "../lib/tender-card";
 import { publicTenderPath } from "../lib/public-tender-url";
 import type { Tender } from "../types/tender";
 
@@ -87,7 +88,7 @@ if (publicTender.publicationDate !== "2026-09" || publicTender.submissionDeadlin
 
 const publicListItem = toTenderListItem(fullTender);
 const serializedListItem = JSON.stringify(publicListItem);
-for (const marker of ["SECRET_SOURCE_DERIVED_SLUG", "SECRET_ORIGINAL_TITLE", "SECRET_TENDER_CODE", "采购单位"]) {
+for (const marker of ["SECRET_SOURCE_DERIVED_SLUG", "SECRET_ORIGINAL_TITLE", "SECRET_TENDER_CODE", "SECRET_SOURCE_NAME", "采购单位"]) {
   if (serializedListItem.includes(marker)) {
     throw new Error(`公开项目列表泄露了受保护字段：${marker}`);
   }
@@ -133,4 +134,63 @@ if (publicTenderPath(fullTender) !== "/tenders/p-7a3c91e4b6d82f05") {
   throw new Error("公开项目链接没有使用不可反推的公开网址标识");
 }
 
-console.log("OK  public tender detail, list and URL expose no source-derived identifier");
+// --- The card projection (homepage, 收藏) ----------------------------------
+// TenderCard is a client component, so whatever it receives is serialized
+// into the HTML of whichever page renders it. It used to receive a whole
+// Tender — on the homepage, the most crawled page on the site, and on
+// /saved, which had no server-side gate and therefore returned the entire
+// tender table to an unauthenticated request.
+const guestCard = toTenderCardData(fullTender);
+const serializedGuestCard = JSON.stringify(guestCard);
+// The opaque row id is not a protected value — it is what SaveTenderButton
+// posts, it is already in every list row, and nothing about it points back
+// to the source. Every other marker must be absent.
+const cardMarkers = protectedMarkers.filter((marker) => marker !== "SECRET_INTERNAL_ID");
+for (const marker of cardMarkers) {
+  if (serializedGuestCard.includes(marker)) {
+    throw new Error(`访客项目卡片泄露了受保护字段：${marker}`);
+  }
+}
+if (guestCard.titleOriginal !== undefined) {
+  throw new Error("访客项目卡片泄露了原文标题");
+}
+if (guestCard.estimatedValueBand !== "$1M – $5M USD" || guestCard.estimatedValue !== undefined) {
+  throw new Error("访客项目卡片未按区间脱敏金额");
+}
+if (guestCard.submissionDeadline !== "2026-10") {
+  throw new Error("访客项目卡片交标日期未截断到年月");
+}
+
+// The paywalled 投标重点预览 is opt-in, so the deadline ticker — which is not
+// the admin-picked free-preview list — never carries it.
+if (guestCard.qualification !== undefined || guestCard.risk !== undefined || guestCard.oneLineSummary !== undefined) {
+  throw new Error("默认的项目卡片不应携带受保护的投标重点预览");
+}
+const previewCard = toTenderCardData(fullTender, { includeAnalysisPreview: true });
+if (previewCard.qualification === undefined || previewCard.risk === undefined) {
+  throw new Error("首页免费预览卡片缺少投标重点预览");
+}
+// Even then, the preview carries our analysis — never a source identifier.
+for (const marker of ["SECRET_ORIGINAL_TITLE", "SECRET_SOURCE_URL", "SECRET_TENDER_CODE", "SECRET_SOURCE_DERIVED_SLUG", "47382915"]) {
+  if (JSON.stringify(previewCard).includes(marker)) {
+    throw new Error(`首页免费预览卡片泄露了可反查的字段：${marker}`);
+  }
+}
+
+const memberCard = toTenderCardData(fullTender, { memberView: true, includeAnalysisPreview: true });
+if (memberCard.titleOriginal !== "SECRET_ORIGINAL_TITLE" || memberCard.buyer !== "采购单位") {
+  throw new Error("订阅用户的项目卡片缺少原文标题或发布机构");
+}
+if (memberCard.estimatedValue !== 47382915 || memberCard.submissionDeadline !== "2026-10-01T00:00:00.000Z") {
+  throw new Error("订阅用户的项目卡片应显示精确金额与日期");
+}
+// The source URL and the ingestion slug are withheld from EVERY audience,
+// members included: nothing on a card renders them, and a field nothing
+// renders is a field that only travels.
+for (const marker of ["SECRET_SOURCE_URL", "SECRET_SOURCE_DERIVED_SLUG", "SECRET_TENDER_CODE"]) {
+  if (JSON.stringify(memberCard).includes(marker)) {
+    throw new Error(`项目卡片不应携带 ${marker}`);
+  }
+}
+
+console.log("OK  public tender detail, list, card and URL expose no source-derived identifier");

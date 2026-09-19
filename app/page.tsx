@@ -6,6 +6,7 @@ import { ValuePropositions } from "@/components/home/ValuePropositions";
 import { CountryInsightsPreview } from "@/components/home/CountryInsightsPreview";
 import { ParticipationGuidesPreview } from "@/components/home/ParticipationGuidesPreview";
 import { selectHomepageTenders } from "@/lib/homepage-selection";
+import { toTenderCardData } from "@/lib/tender-card";
 import type { Metadata } from "next";
 
 /** Title and description come from the root layout; only the canonical is this page's own. See app/layout.tsx for why no route inherits one any more. */
@@ -26,8 +27,20 @@ export default async function Home() {
   // single-row queries (13 at the defaults), each joining three child
   // tables, for what is one `.in("slug", …)`.
   const detailBySlug = await getTendersBySlugs([...featured, ...ticker].map((tender) => tender.slug));
-  const featuredWithPreviews = featured.map((tender) => detailBySlug.get(tender.slug) ?? tender);
-  const tickerWithPreviews = ticker.map((tender) => detailBySlug.get(tender.slug) ?? tender);
+  // Projected, not passed through. Both components below are "use client", so
+  // whatever they receive is serialized into this page's HTML — and this page
+  // is the most crawled one on the site. Handing them a whole Tender put the
+  // original-language title, the publishing body, the source URL, the
+  // procedure number and the ingestion slug in front of every visitor and
+  // every crawler, which is the paywall's entire contents (2026-09-19).
+  //
+  // Always the guest projection, never a role check: this route is ISR
+  // (revalidate = 300 above), so one cached HTML document is served to
+  // everybody. Reading the session here would make the homepage dynamic for
+  // all visitors to personalize a card, and serving a crawler anything a
+  // visitor does not get is cloaking.
+  const featuredWithPreviews = featured.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { includeAnalysisPreview: true }));
+  const tickerWithPreviews = ticker.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender));
 
   return (
     <div className="flex flex-col">

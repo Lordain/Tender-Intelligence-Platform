@@ -16,7 +16,7 @@ import { InlineTogglePills } from "@/components/tenders/InlineTogglePills";
 import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
-import { isObrasPorImpuestos, OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
+import { OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
 import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
 import { canUseTenderListMemberFeatures, TRIAL_DAYS, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
@@ -126,7 +126,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
           <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_COLORS[tender.status]}`}>
             {localize(STATUS_LABELS[tender.status], locale)}
           </span>
-          {isObrasPorImpuestos(tender) && (
+          {tender.isObrasPorImpuestos && (
             <span className="rounded-full bg-[#e2eef5] px-2.5 py-1 text-[11px] font-black text-[#155573]">{OBRAS_POR_IMPUESTOS_BADGE}</span>
           )}
         </div>

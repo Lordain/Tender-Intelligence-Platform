@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Tender } from "@/types/tender";
+import type { TenderCardData } from "@/lib/tender-card";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { useSavedSearches, useSavedTenderIds } from "@/lib/saved";
 import { TenderCard } from "@/components/tenders/TenderCard";
@@ -44,7 +44,7 @@ function ArrowIcon() {
   );
 }
 
-export function SavedView({ tenders }: { tenders: Tender[] }) {
+export function SavedView({ tenders }: { tenders: TenderCardData[] }) {
   const { locale } = useLocale();
   const { user, loading } = useUser();
   const { savedIds } = useSavedTenderIds();

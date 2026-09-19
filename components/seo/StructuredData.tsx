@@ -36,9 +36,10 @@ export function StructuredData() {
         // second, conflicting visual identity for other Google surfaces.
         logo: `${origin}/apple-icon.png`,
         description:
-          "把墨西哥、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投。",
+          "把墨西哥、巴西、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投。",
         areaServed: [
           { "@type": "Country", name: "Mexico" },
+          { "@type": "Country", name: "Brazil" },
           { "@type": "Country", name: "Colombia" },
           { "@type": "Country", name: "Peru" },
         ],

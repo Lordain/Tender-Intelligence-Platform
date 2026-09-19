@@ -259,6 +259,153 @@ check(
   true,
 );
 
+// The first real Brazil write (2026-09-18, 20 kept / 17 written). The user
+// read every kept row and marked these four 排除. Each is a service contract
+// well over the US$2,000,000 floor — federal and state-owned buyers sign them
+// routinely — which is exactly why scale could not catch them.
+const REVIEWED_AND_REJECTED: [string, string][] = [
+  [
+    "EMBRATUR 公关传播",
+    "Contrata\u00e7\u00e3o de empresa prestadora de servi\u00e7os de Comunica\u00e7\u00e3o Corporativa e Rela\u00e7\u00f5es P\u00fablicas em Territ\u00f3rio Nacional para a Ag\u00eancia Brasileira de Promo\u00e7\u00e3o Internacional do Turismo - EMBRATUR",
+  ],
+  [
+    "CAIXA 押运与贵重物品保管",
+    "PRESTA\u00c7\u00c3O DE SERVI\u00c7OS COMUNS DE TRANSPORTE, TRATAMENTO E CUST\u00d3DIA DE VALORES PARA UNIDADES CAIXA, UNIDADES LOT\u00c9RICAS (UL), CORRESPONDENTES CAIXA AQUI (CCA) E CLIENTES, NO \u00c2MBITO DO ESTADO DA BAHIA, REGI\u00c3O DE SALVADOR",
+  ],
+  [
+    "CAIXA 模块化网点租赁与运营",
+    "CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA PARA PRESTA\u00c7\u00c3O DE SERVI\u00c7O CONT\u00cdNUO DE DISPONIBILIZA\u00c7\u00c3O, LOCA\u00c7\u00c3O E OPERA\u00c7\u00c3O DE UNIDADES DE ATENDIMENTO CONCEBIDAS EM SOLU\u00c7\u00c3O CONSTRUTIVA TIPO OFF SITE COMPOSTAS POR M\u00d3DULOS",
+  ],
+  [
+    "Gravata\u00ed 急诊单元运营外包",
+    "Contrata\u00e7\u00e3o de entidade para a gest\u00e3o das Unidades de Pronto Atendimento",
+  ],
+];
+for (const [label, title] of REVIEWED_AND_REJECTED) {
+  check(`${label} 被排除`, brazilTender(title).relevance.tier, "excluded");
+}
+
+// Over-breadth pins, one per rule above. Each is the nearest thing that must
+// NOT be lost — an excluded row is never written to Supabase, so a rule that
+// reaches one step too far deletes real work permanently and in silence.
+//
+// Asserted against classifyPortugueseExclusion rather than the final tier,
+// deliberately: the tier is decided by every rule in lib/relevance.ts, and two
+// of these three titles are excluded by a SPANISH rule that predates this
+// file (verified 2026-09-18 by running them against the previous commit).
+// Pinning the tier here would silently turn this into a test of that rule
+// instead of the one it is named after.
+const PT_RULE_MUST_NOT_FIRE: [string, string][] = [
+  // Building a UPA is construction; running one is not. Same three words.
+  ["建 UPA 不是运营 UPA", "CONTRATA\u00c7\u00c3O DE EMPRESA PARA CONSTRU\u00c7\u00c3O DA UNIDADE DE PRONTO ATENDIMENTO - UPA NO MUNIC\u00cdPIO"],
+  // Plant hire inside a works package carries locação AND operação, which is
+  // the exact shape of the CAIXA leasing rule — the works signal is what
+  // separates them.
+  ["工程包里的设备租赁", "LOCA\u00c7\u00c3O DE USINA DE ASFALTO COM OPERA\u00c7\u00c3O PARA EXECU\u00c7\u00c3O DE OBRA DE PAVIMENTA\u00c7\u00c3O"],
+  // `valores` is also the ordinary word for "amounts".
+  ["调价文里的 valores", "REEQUIL\u00cdBRIO ECON\u00d4MICO-FINANCEIRO E REVIS\u00c3O DE VALORES DO CONTRATO DE OBRA"],
+];
+for (const [label, title] of PT_RULE_MUST_NOT_FIRE) {
+  check(`${label}：葡语规则不开火`, classifyPortugueseExclusion(title), null);
+}
+// This one must also survive the whole classifier, not just this file's rules.
+check(
+  "建 UPA 端到端保留",
+  brazilTender(PT_RULE_MUST_NOT_FIRE[0][1]).relevance.tier !== "excluded",
+  true,
+);
+
+// O&M on finished infrastructure. Real row, reviewed by the user 2026-09-18
+// and marked 维护类: the works guard spared it because the title contains
+// `OBRAS` — as the object being maintained, not as work to be built.
+const RENASCE =
+  "CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA PARA PRESTA\u00c7\u00c3O DE SERVI\u00c7OS CONTINUADOS DE OPERA\u00c7\u00c3O E MANUTEN\u00c7\u00c3O DOS SISTEMAS E OBRAS DO PROJETO RENASCE SALGADINHO.";
+check("运维合同被判为维护类", classifyPortugueseExclusion(RENASCE), "maintenance_only");
+check("运维合同端到端被排除", brazilTender(RENASCE).relevance.tier, "excluded");
+
+// The control that decides whether that rule is safe. A DBO concession is the
+// largest thing Brazil tenders; the same two upkeep words appear, and a build
+// verb is the only thing separating them.
+check(
+  "「建设、运营与维护」是 DBO，不能排除",
+  classifyPortugueseExclusion(
+    "CONCESS\u00c3O PARA CONSTRU\u00c7\u00c3O, OPERA\u00c7\u00c3O E MANUTEN\u00c7\u00c3O DA ESTA\u00c7\u00c3O DE TRATAMENTO DE ESGOTO",
+  ),
+  null,
+);
+// The row this file's works guard was written for must still survive: its
+// maintenance word is paired with 改善, not with 运营.
+check(
+  "「维护与改善球场」仍然保留",
+  classifyPortugueseExclusion(
+    "CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA PARA OS SERVI\u00c7OS DE ENGENHARIA DE MANUTEN\u00c7\u00c3O E MELHORIA DE QUADRAS, ARENINHAS E ARENAS P\u00daBLICAS",
+  ),
+  null,
+);
+
+// Three more reviewed by the user 2026-09-18. All three carry a works word
+// that the guard reads as "this is a real work" — obras, obras rodoviárias,
+// engenharia — while what is being bought is a service ABOUT those works.
+const SEINFRA =
+  "O objeto da presente licita\u00e7\u00e3o \u00e9 a contrata\u00e7\u00e3o de empresa de engenharia especializada para a elabora\u00e7\u00e3o de estudos e projetos, gerenciamento, supervis\u00e3o e apoio \u00e0 fiscaliza\u00e7\u00e3o de obras de responsabilidade da Secretaria de Estado da Infraestrutura \u2013 SEINFRA/AL, conforme condi\u00e7\u00f5es, quantidades e exig\u00eancias estabelecidas neste Edital e seus anexos.";
+const AGETO =
+  "Contrata\u00e7\u00e3o de empresa especializada para presta\u00e7\u00e3o de servi\u00e7os t\u00e9cnicos de gerenciamento e assessoria t\u00e9cnica, para projetos e obras rodovi\u00e1rias na malha rodovi\u00e1ria do estado do Tocantins, sob responsabilidade da Ag\u00eancia de Transportes, Obras e Infraestrutura - AGETO.";
+const PINTURA =
+  "Registro de Pre\u00e7os para servi\u00e7os comuns de engenharia destinados \u00e0 execu\u00e7\u00e3o de servi\u00e7os de pintura predial interna e externa.";
+
+check("SEINFRA 监理咨询判为咨询类", classifyPortugueseExclusion(SEINFRA), "consulting");
+check("AGETO 公路项目管理判为咨询类", classifyPortugueseExclusion(AGETO), "consulting");
+check("建筑涂装被排除", classifyPortugueseExclusion(PINTURA), "keyword");
+for (const [label, title] of [["SEINFRA", SEINFRA], ["AGETO", AGETO], ["\u5efa\u7b51\u6d82\u88c5", PINTURA]] as [string, string][]) {
+  check(`${label} 端到端被排除`, brazilTender(title).relevance.tier, "excluded");
+}
+// The reason is not cosmetic: the excluded CSV is reviewed BY reason, and a
+// supervision contract filed under 日常性服务 is filed where nobody checking
+// the consulting rules would look.
+check("咨询类用的是咨询理由，不是日常服务", brazilTender(SEINFRA).relevance.reason.zh.includes("\u7eaf\u54a8\u8be2"), true);
+
+// Over-breadth pins. Each is a genuine work carrying the same trigger word;
+// the build verb is the only thing separating them.
+const SUPERVISION_MUST_SURVIVE: [string, string][] = [
+  ["改扩建学校（标书里提到监理）", "REFORMA E AMPLIA\u00c7\u00c3O DA ESCOLA MUNICIPAL, COM ACOMPANHAMENTO E FISCALIZA\u00c7\u00c3O DA SECRETARIA DE OBRAS"],
+  ["铺装工程（提到项目管理）", "EXECU\u00c7\u00c3O DE OBRA DE PAVIMENTA\u00c7\u00c3O ASF\u00c1LTICA COM GERENCIAMENTO DA FISCALIZA\u00c7\u00c3O MUNICIPAL"],
+  ["新建学校含内外墙涂装", "CONSTRU\u00c7\u00c3O DE ESCOLA MUNICIPAL INCLUINDO PINTURA INTERNA E EXTERNA"],
+];
+for (const [label, title] of SUPERVISION_MUST_SURVIVE) {
+  check(`${label}：葡语规则不开火`, classifyPortugueseExclusion(title), null);
+}
+// Road marking is a real highway work item and shares the word `pintura`.
+check(
+  "\u9053\u8def\u6807\u7ebf\u4e0d\u53d7\u5f71\u54cd",
+  classifyPortugueseExclusion("EXECU\u00c7\u00c3O DE SINALIZA\u00c7\u00c3O HORIZONTAL COM PINTURA DE FAIXAS NA RODOVIA ESTADUAL"),
+  null,
+);
+
+// A title whose entire object text is "Obras comuns" — Lei 14.133's own
+// category name, which says nothing about what is being built. It came out
+// 常规项目 with a construction tag.
+check("「Obras comuns」按「信息过少」排除", brazilTender("Obras comuns").relevance.tier, "excluded");
+check(
+  "「Obras comuns」的理由是信息过少，不是关键词",
+  brazilTender("Obras comuns").relevance.reason.zh.includes("\u6ca1\u6709\u4efb\u4f55\u63cf\u8ff0"),
+  true,
+);
+// The same two words, followed by something that does say what it is.
+check(
+  "「Obras comuns de reforma da Escola」仍然保留",
+  brazilTender("Obras comuns de reforma da Escola Municipal Santa Rita").relevance.tier !== "excluded",
+  true,
+);
+
+// The row that exposed the ASCII word-boundary bug: `\br[íi]o\b` matched the
+// "rio" inside "Território", so a public-relations contract was tagged as
+// water infrastructure. See lib/text-fold.ts and npm run test:text-fold.
+check(
+  "EMBRATUR 不再被打上水工程标签",
+  brazilTender(REVIEWED_AND_REJECTED[0][1]).industries.includes("water"),
+  false,
+);
+
 if (failures > 0) {
   console.log(`${failures} 项没过。`);
   process.exit(1);

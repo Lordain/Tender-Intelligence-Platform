@@ -3082,6 +3082,730 @@ aeropuerto/aeroporto. Rules must land before the first import, because an
 excluded tender is never written to Supabase: getting it wrong fills the
 database with rows that then have to be removed by hand.
 
+### Brazil's other market — PPI concessions and ANEEL transmission auctions (surveyed 2026-09-18)
+
+Everything the Brazil connector reads today is PNCP: Lei 14.133 procurement,
+where a government body buys a work or a service and pays for it. The user
+asked for two sources that are a different animal.
+
+- **PPI** (ppi.gov.br, *Programa de Parcerias de Investimentos*) — the federal
+  concession/PPP pipeline: highways, ports, airports, railways. A project
+  enters it when the Conselho do PPI qualifies it, which is typically **one to
+  three years before any edital exists**.
+- **ANEEL's *leilões de transmissão*** — auctions for the right to build, own
+  and operate a transmission line for 30 years. One lot runs to billions of
+  reais against the single-digit millions the municipal PNCP feed carries, and
+  this is the arena the large Chinese utilities actually compete in. Not in
+  PNCP: a concession under Lei 8.987/11.079 is not a Lei 14.133 contratação.
+
+#### This is not a new problem — Mexico hit it first
+
+The two Mexican pipeline sources above (Proyectos México, then Proyectos
+Estratégicos MX) already answered most of the design, and their answers carry
+over unchanged:
+
+1. **Filter to the bidding stage inside the mapper.** Proyectos México lists
+   every lifecycle stage and the mapper keeps only `Etapa === "Licitación"`.
+   PPI's own status field is the analogue. A project in *em estruturação* has
+   no edital, no deadline and no contract value; pushed into `tenders` it
+   would fail every gate and arrive as noise.
+2. **Do not derive `status` from the stage label.** That was a real, user-
+   caught bug: `Etapa === "Licitación"` means the project's current stage is
+   procurement, *not* that a bidding window is open right now. Status comes
+   from the real dates or not at all.
+3. **Store the native-currency figure**, never the portal's own USD
+   conversion — unknown rate, unknown as-of date. `convertToUsd()` normalises.
+4. **`isNationalPriorityProject: true`.** Appearing in PPI's portfolio is
+   itself the flagship signal, stronger than any keyword or value proxy —
+   exactly the reasoning both Mexican sources use.
+5. **No shared key, so duplicates are accepted rather than fuzzy-merged.** A
+   PPI project, the sector agency's edital and any PNCP row for the same work
+   have no identifier in common. Same documented limitation as Mexico's.
+
+#### Three traps that are new, and the first one changes displayed numbers
+
+1. **"The amount" is two different quantities, and the wrong one is the
+   easier one to reach.** A transmission lot is bid on **RAP** (*Receita
+   Anual Permitida*) — the annual revenue cap the winner may collect for 30
+   years, awarded to whoever bids it **lowest**. What a Chinese EPC or
+   investor is sizing the opportunity by is the **estimated investment
+   (CAPEX)**, a separate figure in the same edital. They are not the same
+   number and not the same order of magnitude. Putting RAP into
+   `estimatedValue` would print an annual revenue cap next to municipal
+   contract values on the same list, under the same label, and nothing on the
+   page would say they mean different things. **Settled with the user
+   2026-09-18: `estimatedValue` = estimated investment (CAPEX); RAP belongs
+   in the summary text where it can be named.**
+2. **There is no buyer paying us.** In a concession the winner *receives*
+   revenue (from tariffs or from the transmission charge) rather than being
+   paid by the granting authority. Mapping ANEEL into `buyer` is defensible —
+   it is the *poder concedente* and it is who publishes the edital — but the
+   commercial relationship the field implies everywhere else on the platform
+   is inverted, and that is worth one line of copy on the tender page rather
+   than a silent reuse of the field.
+3. **The deadline is not the auction date.** Two dates matter: the deadline
+   for submitting proposals and the *garantia de proposta*, and the auction
+   session itself, held at B3. `submissionDeadline` must be the first. Using
+   the auction date would leave a lot showing as open for weeks after it
+   stopped being biddable — the same class of error as the award-before-
+   deadline bug, and invisible without checking.
+
+One thing already **confirmed safe**: `isPriceOnlyAuction()` matches
+`subasta inversa` only, so a `procedureType` of "Leilão de Transmissão" is not
+caught by the price-only-auction exclusion. Worth having checked — a rule
+written for Peru's reverse auctions would have silently excluded the single
+largest class of tender on the platform. (PNCP's own modalities 1 and 13,
+*Leilão*, are asset disposal — selling government property — and are a
+different thing that should stay out of the sweep.)
+
+#### Where the doors might be (`npm run probe:brazil-concessions`, not yet run)
+
+Nothing below is verified: every `.gov.br` host answers 403 at this sandbox's
+gateway, so the probe exists for the user to run and its output is what the
+mappers get written against. The last time this repo guessed a path instead of
+measuring one, a live host returned 404 in 1.2 seconds and the "finding" was
+that our URL was wrong (see "Brazil — the other doors" above).
+
+- **PPI** — the single question is whether a machine-readable portfolio exists
+  at all. The probe tests the three possibilities in order: server-rendered
+  HTML (scrapeable), a JavaScript shell (not scrapeable without a browser),
+  or Plone with `plone.restapi` enabled (the same URL returns JSON just for
+  sending `Accept: application/json` — many gov.br portals are Plone). A
+  sitemap read follows, because if the answer is "scrape it" then pagination
+  is the next obstacle and the sitemap goes around it.
+- **The sector agencies may matter more than PPI itself.** PPI publishes the
+  pipeline; the edital for a highway is ANTT's, a port ANTAQ's, an airport
+  ANAC's. An open-data portal at one of those is a better door than scraping a
+  portfolio page.
+- **DNS is not blocked here even though HTTP is**, so every hostname in the
+  probe was at least resolved before being written down — weaker than a 200,
+  stronger than recall, and it caught three of the hostnames this file would
+  otherwise have shipped. `dados.antt.gov.br`, `dadosabertos.aneel.gov.br`,
+  `dadosabertos.ccee.org.br`, `dados.gov.br`, `ppi.gov.br` and
+  `portal.antaq.gov.br` all exist; `web3.antaq.gov.br`, `dados.antaq.gov.br`
+  and `dados.anac.gov.br` are NXDOMAIN. So ANTAQ is probed at its portal page
+  instead, and **ANAC is given no guessed host at all** — it is searched for in
+  the national catalogue, because a step spent on a hostname that does not
+  exist produces a FAIL that says nothing, which is exactly the failure mode
+  recorded in "Brazil — the other doors".
+- **The DOU is the door that does not depend on any agency's website.** An
+  *aviso de licitação* for a federal concession must be published in the
+  Diário Oficial da União by law, whatever the granting agency's portal looks
+  like — and this repo already runs a connector of that exact shape for
+  Mexico's DOF. Probed last, one step, not asked for but cheap.
+- **ANEEL** — the question is which portal is CKAN and what the real column
+  names are. `status_show` confirms the platform instead of assuming it,
+  `package_search` finds the datasets, and `datastore_search` returns the
+  **column contract**, which is the only thing a mapper should be written
+  from. The auction PDFs still come from ANEEL's own pages.
+- **CCEE runs the generation auctions, not the transmission ones.** Worth
+  having — the same Chinese firms bid solar, wind and storage — but it does
+  not answer the question that was asked. Probed last, and labelled.
+
+#### First real run (2026-09-18, user's machine): 11 FAIL, 1 OK — and none of them says "no data"
+
+```
+P1–P4  ppi.gov.br            ECONNRESET ×4, ~700ms   edge resets us after connect
+P5     dados.gov.br          401                     the path EXISTS and wants a credential
+P6     dados.antt.gov.br     200 "Request Rejected"  F5 BIG-IP ASM block page — host alive
+P7     portal.antaq.gov.br   403 Cloudflare          bot challenge
+P8     in.gov.br             socket closed mid-read
+E1     dadosabertos.aneel    connect timeout 10s     never completed a TCP handshake
+E2     www.aneel.gov.br      403 "Just a moment…"    Cloudflare JS challenge
+E3     dadosabertos.ccee     403 "Acesso bloqueado"  a deliberate, hand-written block page
+E4     b3.com.br             200                     answered — but see 3 below
+```
+
+Read as a table of FAILs this looks like "Brazil has no usable open data",
+and that is not what happened. **Every one of the eleven is an access answer,
+in five distinct flavours**, and the flavours are the finding:
+
+1. **PNCP works from that same machine**, so this is not a China-to-Brazil
+   routing problem. What separates the hosts that answer from the ones that
+   do not is that PNCP's is an API while these are CMS/portal hosts sitting
+   behind Cloudflare, F5 and one hand-rolled block page. That makes the
+   User-Agent the single live variable, so **every failing step now retries
+   once with browser headers automatically and prints both results**. Same
+   posture the PNCP probe's A5 step established: if the UA is what decides
+   it, that is a finding to put in front of the user, not a header to quietly
+   ship in a connector.
+2. **E1's "timeout" was not our timeout.** `--timeout 90` sets an
+   AbortController; undici abandons the TCP CONNECT after 10s on its own, and
+   that is what fired. Reporting it as `network` invited exactly the wrong
+   conclusion — that the host is down. There is now a **TCP reachability pass
+   before any HTTP**, on a plain socket with its own timeout, because "cannot
+   reach the host" and "the host rejects this request" need completely
+   different next moves and only a socket can tell them apart. (Caveat found
+   by running it: behind an intercepting proxy the handshake is with the
+   proxy, so everything reads reachable. True on an ordinary connection,
+   which is where the script runs.)
+3. **E4's verdict was wrong, and the heuristic was mine.** 11KB, 271
+   characters of body text and ONE link was reported as 「服务端渲染，可抓」
+   because the page carried no framework marker — but absence of a marker is
+   not presence of content, and that verdict is the single line the user was
+   told decides whether PPI is feasible. It now reads text volume and link
+   count first.
+
+**`dados.gov.br`'s 401 is the most actionable result of the run**: a 401,
+unlike a 404, means the path is real and the service recognises it — the
+national catalogue issues free API keys on registration. One key there covers
+ANTT, ANTAQ, ANAC and ANEEL datasets in one place, which is the door the
+per-agency hostnames were only approximating. The probe reads
+`DADOS_GOV_BR_API_KEY` and sends it; the header name comes from documentation
+and is **not** verified against the live service, so `ckanAction` now carries
+the response headers on its error and the probe prints `www-authenticate`,
+`server` and `cf-ray` — that is how the next run corrects the guess rather
+than repeating it.
+
+#### Run two (2026-09-18, same machine, after the three fixes): the retry answered, and mostly with "no"
+
+- **`www-authenticate: Bearer`.** dados.gov.br stated in a header exactly what
+  it wants, and it is not the `chave-api-dados-abertos` this repo had guessed
+  from documentation. Corrected to `Authorization: Bearer <key>`, with the
+  documented spelling kept as a one-shot fallback (the catalogue has more than
+  one API generation behind the same hostname) and the probe reporting which
+  one was accepted. That single line is what printing response headers was
+  for: run one's 401 had an empty body and would have produced a second guess.
+- **The ★ mechanism overstated its own result, and the bug was mine.** ANTT's
+  F5 appliance serves `Request Rejected` as **HTTP 200**, so a retry judged by
+  status code alone printed "browser headers got us in" for a block notice —
+  three of run two's four ★ were that. The retry now checks the body against a
+  list of block-page signatures before calling anything a pass, and prints the
+  page's `<title>` and first 300 characters so a reader can see the page
+  rather than trust a verdict. A tool that overstates its findings is worse
+  than one that fails.
+- **PPI answers a browser User-Agent and there is nothing in the page.** 16KB,
+  266 characters of text, zero links — and the *same body for all four URLs*,
+  `sitemap.xml` included. That is either a single-page-app shell or an
+  interstitial; the probe could not tell which, which is the other reason the
+  body is now printed. Either way P1's question is answered in the negative:
+  **the portfolio is not scrapeable from plain HTML.**
+- **`dadosabertos.aneel.gov.br` is genuinely unreachable from that network**,
+  confirmed at the socket — ETIMEDOUT after 21 seconds with no handshake,
+  while eight other hosts connected in under 400ms in the same pass. The one
+  failure that is a network fact rather than a policy, and the TCP pass added
+  after run one is what established it.
+- **A Cloudflare JS challenge is not a header problem.** ANEEL's and ANTAQ's
+  403s are unchanged by a browser UA, as they should be: those want a browser
+  that runs the challenge, not a string claiming to be one. So the honest
+  reading of run two is that the User-Agent was *not* the answer — which is
+  worth stating as plainly as a pass would have been.
+
+**Where that leaves the two connectors**: `dados.gov.br` with a key is the one
+door that is a credential away, and it is the national catalogue, so it covers
+ANTT, ANTAQ, ANAC and ANEEL datasets without depending on any single agency's
+WAF. Everything else on that list needs either a real browser or a different
+network path, and neither is a thing to build blind.
+
+#### dados.gov.br needs a CPF, so the question changed (2026-09-18)
+
+The one door that was only a credential away turned out to require a Brazilian
+identity: `dados.gov.br` issues its API key through **Acesso gov.br**, the
+federal single sign-on, and the user has no CPF. That closes it — not a
+"try again later", a dead end for this account.
+
+With it closed, every remaining door fails for a reason that plausibly depends
+on **where the request comes from**: a socket-level ETIMEDOUT to
+`dadosabertos.aneel.gov.br`, Cloudflare challenges at ANEEL and ANTAQ, F5 at
+ANTT, a hand-written block page at CCEE. So the open question is no longer
+"does a machine-readable source exist" — it is **"can anything we control
+reach it"**, and this platform already owns a second network with a different
+egress that demonstrably reaches PNCP.
+
+`GET /api/admin/probe-brazil-doors` (admin-only, read-only, plain text) knocks
+on the same eight doors from the deployment and prints the same verdicts. It
+costs one route to answer, and the answer decides between two very different
+next steps:
+
+- **Something opens from there** → the connector runs on a schedule in the
+  deployment and the laptop's network stops mattering at all.
+- **Nothing opens** → the refusal is not about geography, and the honest path
+  is the one this repo has already used three times (Compras MX, Ecopetrol,
+  Proyectos México): the user exports the file from a real browser by hand and
+  a `-file.ts` mapper is written against the real capture. A headless browser
+  would be a lot of machinery to reach the same place, on sites whose
+  anti-bot rules change without notice.
+
+`lib/ingestion/block-page.ts` holds the signatures both probes share, with
+`scripts/test-block-page.ts` pinning the three real bodies that caused the
+false ★ — F5's rejection page above all, because it arrives as HTTP 200.
+
+#### The edital does not exist yet — which is the product, not a problem (2026-09-18)
+
+Opening the two document links found the opposite of what they were opened
+for. `documentos_editais.cfm?IdProgramaEdital=220`, for Leilão 001/2026, holds
+exactly one file under "Edital":
+
+> **Despacho 3.323, de 11/11/2025** — Autorização de envio da minuta do Edital
+> do Leilão nº 1/2026 para apreciação do TCU e abertura de prazo para visitas
+> técnicas
+
+Anexos, Comunicado, Impugnações e Recursos, and Relatórios/Atas/Resultados are
+all *"Não existe nenhum arquivo"*. Adendos holds one: the list of substations
+and contacts for scheduling visits to the existing installations, updated
+16/12/2025.
+
+So the **edital has not been published**. What exists is an order authorising
+the *draft* to go to the TCU — the federal audit court — for review, with the
+site-visit window opened in the same act. Two consequences:
+
+1. **There is no RAP ceiling and no investment figure to find for this
+   auction, anywhere.** Not hidden behind the other link — not yet written. A
+   mapper that treats a missing `estimatedValue` here as a fetch failure will
+   retry forever against a number that does not exist.
+2. **This is the earliest formal signal a bidder can get**, months before the
+   edital, and lead time is exactly what a foreign consortium needs: partner
+   selection, local incorporation, equipment planning. Marking it 招标中 would
+   put something nobody can bid on into the feed; dropping it for having no
+   amount would throw away the reason to watch ANEEL at all. It is `planned`.
+
+`lib/ingestion/aneel-auction-stage.ts` reads the stage from the document list,
+and the trap it exists for is that **the "Edital" section is not empty**. Any
+rule that counts files calls this auction open. The file's own title is what
+separates a despacho about a draft from a published edital, so the function
+reads titles: *minuta*, *despacho* and *autorização* mark a draft, and a real
+edital names itself without them. `npm run test:aneel-stage` pins that against
+the verbatim strings, including that a published edital must still win once
+the older despacho is sitting beside it in the same section — the two coexist
+on ANEEL's page for the rest of the auction.
+
+**The R1–R5 link is gated, mildly.** `frmcdt.cfm?leilao=1&ano=2026` asks for a
+company name before continuing — *"Para dar continuidade é necesario informar
+sua empresa, caso nao tenha empresa favor 'pessoa física'"* — a free-text
+field with a submit button, no account and no validation. It is a
+self-declaration for ANEEL's own statistics, so the honest way through is the
+real company name; there is nothing to work around and nothing that would be
+improved by inventing one.
+
+#### The saved page, read (2026-09-18) — and where the money actually is
+
+The user saved `edital_transmissao.cfm` for Leilão 001/2026 and it is now
+`__fixtures__/aneel-edital-transmissao-2026.html`, with
+`lib/ingestion/connectors/aneel-editais-file.ts` reading it and
+`npm run test:aneel-edital` pinning 25 assertions against it.
+
+**The encoding is the assertion that matters most.** The file is Windows-1252
+ColdFusion output with no charset declaration — `file(1)` says "ISO-8859 text",
+and a UTF-8 decode throws on the first `ç`. The danger is not the throw: a
+*lenient* UTF-8 decode succeeds and turns every accent into U+FFFD, so
+"Leilão", "São Paulo" and "Ceará" become strings that still look like text,
+still pass every truthiness check, and match nothing. It is decoded as
+windows-1252 explicitly and a test asserts no U+FFFD survives.
+
+**Three things the page carries that the pasted text did not:**
+
+1. **Identity** — "LEILÃO DE TRANSMISSÃO ANEEL Nº 001/2026" at the top,
+   "Leilão nº 1/2026-ANEEL" in the Objeto. Zero-padded in one place, not the
+   other; normalised to an integer so the two spellings cannot become two
+   auctions.
+2. **A year selector, 1999–2026, posting back to the same URL.** That is the
+   entire pagination story: every past auction is one POST away, so history is
+   enumerable rather than scattered — 28 auctions' worth.
+3. **Document links, which is where the money is.** The page carries **no RAP
+   ceiling and no investment estimate**. Two links do:
+   `documentos_editais.cfm?IdProgramaEdital=220` (the edital and its annexes)
+   and `frmcdt.cfm?leilao=1&ano=2026` (reports **R1–R5**, ANEEL's per-lot
+   technical and economic studies). `estimatedValue` — the CAPEX figure the
+   user chose — has to come from one of those, so their ids are extracted
+   rather than left in the prose.
+
+One honest gap the reader surfaces rather than papers over: only **lot 1**
+carries the explicit `Continuidade` / `Novas instalações` headings. Lots 2–10
+say neither, so `hasNewInstallations` and `hasContinuity` are both false for
+them and the dump prints 未标注. Defaulting them to "new" would be a guess
+about the single fact that decides whether a lot is an EPC opportunity or an
+income stream; the answer is in the edital.
+
+`npm run dump:aneel-edital -- <saved>.html` prints the whole reading — lots,
+UFs, kV, installations and the document links — for any year's page.
+
+#### Run six: one door opens in a browser, and the lots are parsed
+
+`www2.aneel.gov.br/aplicacoes_liferay/editais_transmissao/edital_transmissao.cfm`
+answers Cloudflare's challenge to a script — and lets the **user's own browser
+straight through**. The ten lots of a live transmission auction came back in
+full. So the two ANEEL hosts behind Cloudflare are configured differently and
+the difference is the whole outcome:
+
+| host | to a script | to a real browser |
+|---|---|---|
+| `git.aneel.gov.br` | "Just a moment…" | **hard block** — "Sorry, you have been blocked" |
+| `www2.aneel.gov.br` | "Just a moment…" | **passes** |
+
+`portalrelatorios.aneel.gov.br` joined `dadosabertos.aneel` and `leilao.aneel`
+in the TCP-timeout column, from both machines. Three ANEEL subdomains now
+answer nothing at the socket, which is consistent enough to look like one
+routing or firewall rule rather than three coincidences.
+
+So the **opportunity side is obtainable today**, by hand, and
+`lib/ingestion/aneel-lote-parser.ts` turns what comes back into rows.
+
+**A lot is a row, not an auction.** One auction is bid lot by lot; each lot is
+a separate concession contract with its own RAP ceiling, its own investment
+estimate and its own winner, and a bidder takes lot 3 while ignoring the other
+nine. Storing the auction as one tender would merge ten unrelated
+opportunities into an unreadable row.
+
+**The flag that decides whether a lot is interesting at all** is in the text:
+`Continuidade da prestação de serviço` means existing lines whose concession is
+expiring — you are buying an income stream and an O&M obligation, with almost
+no construction — while `Novas instalações de transmissão` is greenfield. For a
+Chinese EPC or equipment maker those are opposite propositions, and lot 1 of
+this auction is both at once, so the parser carries `hasContinuity` and
+`hasNewInstallations` separately rather than guessing one scope type.
+
+Two traps in the real text, both pinned by `npm run test:aneel-lotes` (24
+assertions, all against the captured fixture):
+
+1. **Lot 2 keeps its only installation on the header line**, after the colon. A
+   header-then-bullets parser returns zero installations for it, and zero
+   reads like missing data rather than a parsing bug.
+2. **Lot 10 says "nos Estado do Mato Grosso"** — plural preposition, singular
+   noun, a typo in the source. A state pattern anchored on "no Estado de" /
+   "nos Estados de" drops that lot's states entirely. The pattern accepts
+   either ending on either form, because the page is typed by hand.
+
+Also pinned: `SE 500/230/138 kV` is three voltages behind one unit, so reading
+the number adjacent to `kV` would file a 500 kV lot as a 138 kV one; and
+"Mato Grosso do Sul" must not match as "Mato Grosso" — different UF, 1,500 km
+apart, and the longer name contains the shorter.
+
+Still missing from the capture, and the reason the page itself is wanted
+rather than the pasted text: the auction number and date, the RAP ceiling and
+the estimated investment per lot, and the edital PDF links. Those are
+elsewhere on the same page.
+
+#### Run five: a real browser does not get in either, and the fix is a network not a client
+
+I said a real browser would pass git.aneel's challenge. It does not. The user
+opened the transmission URL in their own Chrome and got Cloudflare's **hard
+block** — "Sorry, you have been blocked. You are unable to access
+aneel.gov.br" — not the "Just a moment…" interstitial a script sees. That is
+the 1020-class rule: decided on the caller's IP or ASN, not a bot check that
+running JavaScript satisfies.
+
+The distinction is the whole difference in what fixes it. **A challenge is
+answered by a better client; a block of that class is answered only by a
+different network.** So "download it in a browser" was wrong advice on its
+own — it has to be a browser on an egress that host will talk to. Worth
+noting: the deployment saw the *challenge* page, not the block, so its address
+is not on the same list, which makes it the machine with a chance here.
+
+Two ANEEL hosts nothing had knocked on, found while looking for a way around
+it, now in both probes. **Cloudflare rules are configured per host, not per
+agency**, so these are not long shots by association:
+
+- **`www2.aneel.gov.br/aplicacoes_liferay/editais_transmissao/edital_transmissao.cfm`**
+  — a standalone Liferay application holding the transmission *editais*, i.e.
+  the upcoming side. `www2` completed a TCP handshake from the laptop, and it
+  is not the host git.aneel's rule applies to.
+- **`portalrelatorios.aneel.gov.br/resultadosLeiloes/leiloesTransmissao`** —
+  ANEEL's own reports portal, a *third* copy of the same results data. The
+  first two are unreachable in two different ways (open-data portal: TCP
+  timeout; GitLab: hard block), and this subdomain has never been tried.
+
+If either answers, no VPN is needed for that half of the problem.
+
+#### Run four (2026-09-18): the URLs are exact, and every automated path to them is refused
+
+The link printer's wider limit paid off immediately — the three spreadsheets
+came back in full, and the guessed filename in run three's probe turned out to
+be exactly right:
+
+```
+https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes/
+    Resultado_leiloes_transmissao.xlsx
+    Resultado_leiloes_geracao.xlsx
+    Resultado_leiloes_sistemas_isolados.xlsx
+```
+
+`gov.br/aneel/pt-br/empreendedores/leiloes` — the page written for bidders
+rather than for statistics — gave the other half, the **upcoming** side:
+
+```
+https://leilao.aneel.gov.br/editalTransmissao      （还有 editalGeracao / editalDistribuicao）
+https://leilao.aneel.gov.br/inscricao/             报名
+https://leilao.aneel.gov.br/esclarecimento/        澄清问答
+```
+
+**And both of those hosts are unreachable.** `git.aneel.gov.br` answers 403
+"Just a moment…" — Cloudflare's JS challenge — from the laptop and the
+deployment alike, and a browser User-Agent does not move it, as it should not:
+that challenge wants a browser that runs JavaScript, not a string claiming to
+be one. `leilao.aneel.gov.br` times out at the TCP layer from two continents,
+same as `dadosabertos.aneel.gov.br`.
+
+So the position is now precise rather than merely bad: **the data is public,
+the URLs are exact, and every unattended path to them is refused.** That is
+the same shape as Compras MX, Ecopetrol and Proyectos México, and it has the
+same answer — a person opens the URL in a real browser, the challenge passes,
+and a mapper is written against the real capture.
+
+`npm run dump:aneel-leiloes -- <file>.xlsx` is that step. It prints the sheet
+names, the real column headers with the type read from the first DATA row (a
+column called "Data" holding a string is a different mapping job from one
+holding a real date), and the first rows as records. It also finds the header
+row rather than assuming row 1 — government spreadsheets routinely open with a
+title banner and a blank line, and taking row 1 on faith produces a mapper
+keyed on `""` and `Column2` that fails in a way that looks like the file being
+wrong.
+
+**Confirmed this round, and left undecided on purpose:** CCEE's portal is
+**CKAN 2.10.0, "Dados CCEE"**, and it opens to a browser User-Agent while
+refusing an honest one (the JSON fix above is what finally surfaced this —
+run three had the same result and reported it as an empty page). That is a
+posture question for the user, not a header to ship, and nothing in the
+connectors has been changed on account of it.
+
+**What is left on each side of the ANEEL problem:**
+
+- *Results* (who won, at what RAP, with what investment) — three spreadsheets,
+  download by hand, mapper from the dump. Feeds `awardedValue`, the winning
+  supplier and the Chinese-bidder reports.
+- *Opportunities* (what is being auctioned next) — `leilao.aneel.gov.br`'s
+  edital pages, also by hand, and the edital PDF then goes through the same
+  document-extraction pipeline every other source uses. `estimatedValue` takes
+  the estimated investment, never RAP.
+
+#### Run three (2026-09-18): two networks, and the door was inside a page we could already read
+
+The probe ran from the laptop and, for the first time, from the deployment.
+Reading the two together is what produced the answer, and the answer was not
+on the list of doors either run set out to knock on.
+
+**`www.gov.br/aneel/…/leiloes` answers from BOTH machines** — 212KB,
+~22,000 characters, 777 links, genuinely server-rendered. Three of those links
+are labelled *Planilha em Excel* and point at **`git.aneel.gov.br`**:
+
+```
+https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/
+    relatorioseindicadores/leiloes/Resultado_leiloes_{g,t,s}…
+```
+
+That is a **GitLab instance serving raw files**, and it beats the CKAN portal
+on every axis that matters here: a different host from the one that times out,
+static paths, versioned content, and a folder listing available through
+GitLab's own API with no credential (`/api/v4/projects/publico%2Fcentralconteudo
+/repository/tree?path=relatorioseindicadores/leiloes&ref=main`). The project
+path is read out of the raw URL, not recalled. Both probes now go there first.
+
+It also nearly slipped past: the run-three output truncated hrefs at 110
+characters, which cut the filenames off. The link printer now allows 240 and
+shows 12 links instead of 8. A probe that hides the thing it found is the same
+class of bug as one that overstates a finding.
+
+**The CKAN portal is off the table regardless of network.**
+`dadosabertos.aneel.gov.br` and `leilao.aneel.gov.br` both time out at the TCP
+layer from the laptop (ETIMEDOUT at 21–22s) *and* from the deployment
+(UND_ERR_CONNECT_TIMEOUT). Two networks on two continents, no handshake — so
+this is not geography and not a WAF, and the resource ids search handed us are
+unusable until it comes back. That is exactly why the GitLab copy matters: it
+is the same data by another road.
+
+**Two corrections to my own reporting, both found in this run's output:**
+
+1. **CCEE is CKAN, and browser headers open it — I reported the opposite.**
+   The retry came back with real CKAN JSON (`"success": true`,
+   `"site_title": "Dados CCEE"`), and `browserRetry`, being HTML-shaped,
+   described it as "answered, but almost nothing on the page". That buried the
+   round's second-best finding under a wrong verdict. JSON is now checked
+   before the HTML description, as `probeHtml` already did.
+2. **PPI's English edital is not reachable; it is "Acesso Negado!" at HTTP 200.**
+   1KB, 364 characters, from both machines. Without a signature for that
+   string it read as "answered but nearly empty", which is a different
+   diagnosis leading to a different, wrong next step. Added to
+   `lib/ingestion/block-page.ts` and pinned in its test.
+
+**Where each door now stands:**
+
+| door | laptop | deployment | reading |
+|---|---|---|---|
+| `www.gov.br/aneel/…` | 200, 777 links | 200, 804 links | **open from both — and it links the GitLab files** |
+| `git.aneel.gov.br` | untested | untested | the next thing to test, and the likely data path |
+| ArcGIS Hub mirror | 200 JSON | 200 JSON | open, but its DCAT feed is BDGD distribution geodata — probably the wrong dataset family |
+| `dadosabertos.aneel.gov.br` | TCP timeout | TCP timeout | unreachable from two continents |
+| `leilao.aneel.gov.br` | TCP timeout | TCP timeout | same |
+| CCEE open data | opens with browser headers | 403 honest UA | CKAN, confirmed; the UA question is live and unresolved |
+| ANTT | F5 block page (200) | F5 block page (200) | closed |
+| ANTAQ | Cloudflare 403 | Cloudflare 403 | closed |
+| PPI (ppi.gov.br) | F5 "Your support ID is" | ECONNRESET | closed — and it was the wrong host; see 2026-09-19 below |
+| `dadosabertos.presidencia.gov.br` | untested | untested | the PPI portfolio is a CKAN dataset here — untried until 2026-09-19 |
+| dados.gov.br | 401 Bearer | 401 | closed — needs a CPF |
+
+So the shape of the work changed. The transmission-results connector is no
+longer blocked on a portal nobody can reach: it reads a page that answers, and
+follows the spreadsheet links that page publishes. What is still open is the
+*opportunity* side — an upcoming auction's edital — for which
+`gov.br/aneel/pt-br/empreendedores/leiloes` is the next candidate, added to
+both probes.
+
+One thing that has NOT been decided, and should not be decided quietly: CCEE
+opens to a browser User-Agent and refuses an honest one. That is a finding to
+weigh, not a header to ship.
+
+#### What the third parties actually do (web search, 2026-09-18)
+
+The user's question — *do the aggregator sites read this data, or not?* — has a
+different answer for each of the two sources, and the difference is the whole
+commercial picture.
+
+**PNCP is a solved, commoditised feed.** There is an off-the-shelf Apify actor
+("Brazil Procurement & Tenders Scraper") reading the same endpoint this
+project reads, with the same reasoning written on the tin: publication moved
+to PNCP under Lei 14.133/2021, so PNCP gives the broadest coverage and some
+legacy-only procedures remain on ComprasNet. It exports CSV/XLSX/JSON. Useful
+confirmation that the Brazil connector's architecture is the normal one rather
+than a workaround — and it notes the licence, **CC BY 4.0**, which matters for
+republishing records commercially.
+
+**ANEEL's transmission auctions are, essentially, not scraped by anybody.**
+The outfits that track them — ESI's policy-intelligence pages, Enerdata, Canal
+Solar, Brazil Stock Guide — publish *analyst write-ups*: a human reads the
+edital and the MME/ANEEL announcement and summarises the lots, the RAP ceiling
+and the investment figure. No open-source collector for it surfaced at all.
+That is worth stating plainly because it cuts both ways: there is no library
+to borrow, and there is also no commodity feed competing with what this
+platform would offer a Chinese bidder.
+
+**What ANEEL does publish in structured form is the RESULTS**, and search
+found the exact identifiers, which removes the discovery half of the problem:
+
+```
+dataset   resultado-de-leiloes        （1999 年至今的发电 + 输电拍卖结果）
+resource  453cb742-8089-4c16-aaf2-42088b5553dc   resultado-leiloes-transmissao.csv
+resource  a1328fc1-f06b-437d-8893-57ac2c8103df   resultado-leiloes-geracao.csv
+字典      dm-resultados-dos-leiloes-de-transmissao.pdf  （ANEEL 自己发的数据字典）
+标签      leilão · RAP · preço teto · deságio · energia vendida ·
+          investimento · empreendimento · garantia física · potência instalada
+```
+
+Two things follow. First, `datastore_search` against a known resource id is
+one request, so the column contract is one reachable call away rather than
+three — both probes now go straight at it. Second, `investimento` is in the
+tag list, which means **the CAPEX the user chose for `estimatedValue` is a
+column in the data** and does not have to be derived from RAP.
+
+But note what the dataset is: **results, not opportunities.** It feeds the
+award side of this platform — `awardedValue`, the winning supplier, and the
+"which Brazilian contracts have Chinese firms won" reports — not the feed of
+things still open. An upcoming auction lives in its edital, and the edital
+lives on ANEEL's own site and, for the larger lots, on PPI's.
+
+**PPI is WordPress, not Plone, and my earlier probe asked the wrong CMS.** The
+proof came from a URL on PPI's own site:
+`ppi.gov.br/wp-content/uploads/2025/02/Edital_LT_4-2025_ingles.pdf` —
+`/wp-content/uploads/` is WordPress's upload path and nothing else's. So the
+`@@search` step was testing a CMS that is not there, and it has been replaced
+with `/wp-json/` (WordPress ships a REST API enabled by default) plus a look
+at whatever routes PPI's own plugin registered — the portfolio pages use a
+query-string action, `?acao=exibeficha`, which is a custom plugin rather than
+WordPress routing.
+
+That same URL is the most useful single find of the round for a different
+reason: **PPI republishes the larger ANEEL transmission editais in English**,
+as static PDFs with no session and no challenge in front of them. If anything
+on this list is reachable, that is the one — and it skips a translation step
+for the document-analysis pipeline as well.
+
+Four doors nobody had knocked on, now in both probes:
+
+- **`dadosabertos-aneel.opendata.arcgis.com`** — ANEEL's open data mirrored on
+  Esri's ArcGIS Hub. **Not a `.gov.br` host**: a commercial CDN on AWS, so if
+  the refusals are geographic this has the best odds of any door on the list.
+- **`leilao.aneel.gov.br`** — ANEEL's actual auction system, where the
+  upcoming and finished sessions live. The open-data portal only has results.
+- **`www.gov.br/aneel/...`** — ANEEL's site moved onto the gov.br platform;
+  `www.aneel.gov.br` is the old address, which is what Cloudflare was
+  challenging. "The page moved" and "the page is defended" look identical from
+  a single 403, so both are tried.
+- **`hubdeprojetos.bndes.gov.br`** — BNDES structures and finances these
+  concessions and keeps its own project hub, with an English edition.
+
+One more lead, not yet probed: PPI has been moving its portfolio onto
+**SOURCE**, the multilateral project-preparation platform, to put its pipeline
+"in a single place". If that migration is real and public, it is a non-
+Brazilian host holding the same data, which would make the whole PPI scraping
+question moot.
+
+`lib/ingestion/connectors/ckan.ts` was written ahead of the probe because
+CKAN's Action API is a published standard identical across installs, so it is
+not a guess; it deliberately contains **no hostnames and no dataset ids**,
+which are exactly the parts that have to be measured. Two shape facts it
+enforces, both of which quietly break naive clients: every response is wrapped
+in `{ success, result }` and a failed call can still arrive as HTTP 200 with
+`success: false`; and `package_search` returns `{ count, results }` while
+`datastore_search` returns `{ total, fields, records }` — different envelopes
+from the same API.
+
+#### PPI: I closed it on two hosts, and there is a third (2026-09-19)
+
+Four probe rounds put PPI in the table as **closed**, and the evidence for
+that was real: `ppi.gov.br` serves an F5 `Request Rejected` page (HTTP 200,
+"Your support ID is…") from one machine and ECONNRESETs from the other; a
+browser User-Agent gets 16KB with 266 characters of text and zero links — the
+*same body for all four URLs including `sitemap.xml`* — so the portfolio is
+genuinely not in the HTML; and `dados.gov.br` answers 401 with
+`www-authenticate: Bearer` and issues keys only against a CPF.
+
+All of that still holds. **It was also the wrong question**, because both
+rounds knocked on the same two hostnames, and the PPI portfolio is published
+on a third:
+
+```
+dadosabertos.presidencia.gov.br/dataset/ppi-projetos-qualificados
+dadosabertos.presidencia.gov.br/dataset/ppi-projetos-concluidos
+resource  bfe11dee-119e-4790-a980-3fde61035b96   （projetos qualificados）
+mirrored  dados.gov.br/dataset/ppi-projetos-qualificados
+```
+
+The Presidency runs its own CKAN install. The dataset's own description says
+it holds every project qualified into the PPI since May 2016 with **winning
+company, investment value, sector, modality, and auction/bidding dates** —
+which is most of the `Tender` shape, and includes the one field ANEEL never
+publishes per lot.
+
+**Not verified, and the probe exists to verify it** (`P5b` in
+`scripts/probe-brazil-concessions.ts`, plus the host in the TCP pass). Three
+things decide whether this is a connector or a dead end, in this order:
+
+1. **Does it answer without a credential?** It is a different CKAN install
+   from `dados.gov.br`, so its 401 does not transfer — but neither does its
+   absence. `status_show` settles it in one request.
+2. **Is `metadata_modified` recent?** The dataset page itself notes that the
+   Casa Civil stopped overseeing SPPI data after Decreto 10.366/2020. If the
+   file stopped updating in 2021 this is a **history table**, not a feed: good
+   for the award side (which Chinese firms won what), useless for the
+   opportunity side, which is what the user actually asked for.
+3. **Is the resource datastore-backed or a bare XLSX?** `datastore_active`
+   decides whether the column contract is one query away or a download-and-
+   guess job. The probe reads it either way; only the first is worth a mapper
+   written blind.
+
+**What PPI would add that PNCP and ANEEL do not.** PPI is the pipeline for
+federal concessions — highways, ports, airports, railways — and those do not
+appear on PNCP at all (a concession is not a `contratação` under Lei
+14.133/2021) and are outside ANEEL's remit entirely. Press reporting for the
+2026 calendar puts **~100 federal assets at ~R$247bn**: 13 highway auctions,
+19 port terminal leases, 21 airport auctions (20 of them regional), 8 rail
+projects, 5 energy. That is the largest single block of Brazilian
+opportunity this platform currently cannot see.
+
+**What it would not add**: the edital. PPI publishes the portfolio; the bid
+documents come from the sector regulator — ANTT (highways, rail), ANTAQ
+(ports), ANAC (airports) — and of those three, ANTT is an F5 block page and
+ANTAQ is a Cloudflare 403 from both machines tried. So even a working PPI
+connector lands in the same posture as ANEEL: **early warning with dates and
+investment figures, no attachments, no document analysis.** Worth saying
+before building it, because it is the same limitation the user already
+pushed back on for ANEEL.
+
+**The SOURCE lead is real but not a shortcut.** PPI has publicly joined
+SOURCE (the Sustainable Infrastructure Foundation's platform, backed by the
+World Bank, IDB, ADB, EIB and EBRD, with AFD funding) to host its pipeline —
+a non-Brazilian host holding the same data, which would make the WAF question
+moot. The announced migration runs **15 months**, so it is a 2027 door, not a
+2026 one.
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.
@@ -5410,3 +6134,148 @@ Still unverified: the Portuguese prompts have never run against a real row or
 a real Edital. The plumbing is the path the Spanish prompts have used since
 2026-09-08; the text is new. Read the first batch of five, and the first
 extraction field by field against the PDF, before trusting either at scale.
+
+### `\b` is ASCII-only, and it had been tagging accented words for months (2026-09-18)
+
+A Brazilian tender for corporate communications and public relations came
+back tagged **水工程 (water)**. The tag was the only symptom — nothing failed,
+nothing logged.
+
+The cause is one line of JavaScript semantics: `\b` is defined over `\w`,
+which is `[A-Za-z0-9_]`. An accented letter is therefore a NON-word character,
+and `\b` fires **in the middle of a word**. `/\br[íi]o\b/` matches the "rio"
+inside `Território`, because the "ó" in front of it reads as a boundary.
+
+In Portuguese this is not an edge case. Every word ending `-ário` or `-ório`
+matches that one pattern:
+
+```
+relatório  escritório  laboratório  auditório  consultório  observatório
+mobiliário  imobiliário  veterinário  diário  horário  orçamentário
+necessário  complementário  Território
+```
+
+And it is one pattern of 573 `\b` uses across `lib/industry.ts`,
+`lib/relevance.ts` and `lib/relevance-pt.ts`, every one of them matched
+against Spanish and Portuguese text.
+
+**The fix is `foldAccents()` (lib/text-fold.ts) on the classifier haystacks**,
+not a rewrite of the boundaries. Rewriting every `\b` into
+`(?<![\p{L}\p{N}_])`-style lookarounds would also work and would touch 44
+declarations. Folding is one function at six call sites, and it works because
+of something already true: **all 399 regex literals in those files are written
+with the unaccented spelling beside the accented one** — `[áa]`, `[çc]`,
+`[ñn]`, `[íi]` — so every one already matches folded text. That property is
+now enforced by `npm run test:text-fold`, which scans the literals and fails
+on a bare accent; without it, the day someone writes a plain `é` is the day
+that pattern silently stops matching its own rows.
+
+It corrects in both directions: a pattern no longer fires inside an accented
+word, and a pattern anchored `\b` in FRONT of an accented letter now fires
+where it never could (`/\b[óo]leo\b/` against a title starting "ÓLEO").
+
+Measured blast radius on the existing corpus: **zero**. 321/321 relevance
+fixtures, 18/18 industry tags and 22/22 Colombia title cases are unchanged —
+Spanish accents rarely sit next to a `\b`-anchored keyword, which is why this
+survived three countries and only surfaced on the first Portuguese import.
+
+## ANEEL's real entry point is the *consulta pública*, not the edital (2026-09-19)
+
+Everything written above about ANEEL was measured on one page — Leilão 1/2026's
+document list — and it produced a conclusion that was locally true and globally
+wrong:
+
+> There is no RAP ceiling and no investment figure to find, anywhere, for this
+> auction. Not hidden on another page — not yet written.
+
+True of that auction at that moment. False as a general rule, and the
+correction reverses the product judgement that followed from it.
+
+### The stage the earlier survey missed
+
+Before the minuta goes to the TCU, it goes to the public. ANEEL opens a
+numbered **consulta pública**, publishes the draft edital with its annexes and
+the draft contract, and takes written contributions for six to eight weeks.
+Three consultations were open or had just closed on the day this was written:
+
+| CP | Auction | Window | Auction date | Announced CAPEX |
+|---|---|---|---|---|
+| 032/2026 | Transmissão 1/2027 | 2026-09-10 → **2026-10-26** | 2027-04-30 (B3, SP) | **R$ 12,9 bi**, 12 lots |
+| 022/2026 | LRCAP 5/2026 (Armazenamento Nacional) | 2026-07-30 → 2026-09-14 | 2 or 4 Dec 2026 | not announced |
+| 023/2026 | LRCAP 6/2026 (Armazenamento) | 2026-07-30 → 2026-09-14 | 2 or 4 Dec 2026 | not announced |
+
+Two things fall out of that table, and both matter more than the stage name.
+
+**The investment figure exists at this stage.** R$ 12,9 bi was public when
+CP 032/2026 opened — seven months before the auction, and long before any
+edital. The "no number exists" claim was an artefact of looking only at the
+document page of an auction that happened to be past its own consultation.
+
+**"Once a year" was wrong.** 2026 alone carries transmission 1/2026, LRCAP
+5/2026 and 6/2026 in December, and the consultation for transmission 1/2027.
+The auctions are infrequent; the *decision points* are not.
+
+### Why the window is the product, not the auction
+
+A contribution sent inside the window is the only formal way to argue about a
+technical specification before it becomes binding — round-trip efficiency
+floors, standalone-operation requirements, local content. For a supplier whose
+question is "does my equipment qualify at all", the answer is decided here and
+is unappealable afterwards. Lot 5 of Transmissão 1/2027 is the first battery
+storage lot in the SIN (Cruzeiro do Sul and Feijó, Acre) and runs 18 years
+against the other lots' 30, because that is the life ANEEL assigns a battery —
+exactly the kind of parameter a consultation is for.
+
+So the stage model gained `consulta_publica`, below `tcu_review` and above
+`announced`, and the reading distinguishes a window that is **open** (the spec
+can still be argued) from one that has **closed** (the spec is now what you
+build to). The two produce different sentences on purpose.
+
+### What is still NOT set, and why
+
+`estimatedValue` stays empty. R$ 12,9 bi is the whole auction's CAPEX across
+twelve lots and ANEEL publishes no split; dividing it would put a fabricated
+amount on twelve rows. It is named in the summary and nowhere else. The
+standing rule is unchanged: **a per-lot amount is only ever set from a per-lot
+source.**
+
+The contribution deadline reuses the `questions_deadline` key-date type rather
+than adding one. A consultation *is* the window for written questions about a
+draft; a new type would need a migration for no semantic gain.
+
+### Provenance, marked in the data
+
+Every field in `ANEEL_CONSULTAS` was read from trade press, not from ANEEL —
+the sandbox reaches no `.gov.br` host and `www2.aneel.gov.br` refuses a script.
+Each record therefore carries `confirmed: false` and the URL it came from,
+`npm run ingest:aneel -- --consultas` prints that warning on every line, and
+the warning is repeated in the summary of any tender built from an unconfirmed
+record. A capture of the consultation's own page is what clears the flag.
+
+### The code is no longer inert
+
+`npm run ingest:aneel` is the wiring that was missing:
+
+```
+npm run ingest:aneel -- --consultas                              # what is open, and how long is left
+npm run ingest:aneel -- page.html                                # dry run
+npm run ingest:aneel -- page.html --published 2025-11-11 --write # upsert
+npm run ingest:aneel -- page.html --documents docs.json          # add the documentos_editais list
+```
+
+### The year selector is a POST, and this cost a capture
+
+Choosing a year in the dropdown does nothing by itself — the form POSTs back
+to the same URL. **Click "Pesquisar" and wait for the reload before saving.**
+A capture taken straight after changing the dropdown came back byte-identical
+to the year already on screen (`md5sum` matched the earlier file exactly), and
+looked like a successful save of a different year.
+
+### Where the battery auctions live
+
+LRCAP is not on the transmission application. Its sibling is
+`www2.aneel.gov.br/aplicacoes_liferay/editais_geracao/edital_geracao.cfm`,
+the same ColdFusion shape with the same `documentos_editais.cfm?IdProgramaEdital=<id>`
+popup. Unverified from here for the usual access reason; the reader is
+segment-agnostic apart from its `LEILÃO DE TRANSMISSÃO` heading regex, so the
+first captured generation page is what decides whether one reader serves both.

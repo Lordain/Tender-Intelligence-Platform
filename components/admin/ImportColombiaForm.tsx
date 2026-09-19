@@ -130,10 +130,10 @@ export function ImportColombiaForm() {
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Colombia</p>
       <h2 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black text-[#071826]">
         SECOP II — 哥伦比亚标书 + 附件
-        <AutoRunBadge schedule="每天 04:00 UTC，GitHub Actions" />
+        <AutoRunBadge schedule="每天 11:17 UTC（北京时间 19:17），GitHub Actions" />
       </h2>
       <AutoRunNote>
-        每天 04:00 UTC 自动跑一次（拉取新标 + 刷新已有标书状态，<strong>不下载附件</strong>）。这里只在需要提前跑、或者要一并下载附件时用。
+        每天 11:17 UTC（北京时间 19:17）自动跑一次（拉取新标 + 刷新已有标书状态，<strong>不下载附件</strong>）。这里只在需要提前跑、或者要一并下载附件时用。
       </AutoRunNote>
       <p className="mt-1 text-sm text-[#52636e]">
         直接从 SECOP II 官方公开接口实时拉取（不需要手动导出文件），可以同时把每条新写入项目的招标附件一并下载并记录。

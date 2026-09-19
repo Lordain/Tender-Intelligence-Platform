@@ -55,13 +55,23 @@ export const UPCOMING_DEADLINE_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
  *
  * So this is the switch that turns a country on for users, and it belongs
  * next to a real connector: ALL_COUNTRIES (lib/tender-labels.ts) also carries
- * Brazil and Chile, which have no source yet and would only ever return zero.
+ * Chile, which has no source yet and would only ever return zero.
+ *
+ * Brazil was added 2026-09-19. Its PNCP connector had been importing since
+ * 2026-09-16 and every one of those rows was invisible on /tenders — the same
+ * failure Peru had between its first import and 2026-09-11, which is what
+ * this comment was written about the first time. A connector that ships
+ * without its entry here produces a database full of tenders nobody can see.
+ *
+ * The ORDER is the user's (2026-09-19: 墨西哥、巴西、哥伦比亚、秘鲁) and it is
+ * the display order too — TenderExplorer maps these pills straight off this
+ * array, so sorting here is sorting in the UI.
  *
  * Exported because TenderExplorer draws the filter pills from the very same
  * list: two copies would let the pills and the server-side filter disagree,
  * and the failure mode of that is a country a user can tick but never see.
  */
-export const AVAILABLE_COUNTRIES = ["Mexico", "Colombia", "Peru"] as const;
+export const AVAILABLE_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru"] as const;
 
 export type TenderListSearchParams = Record<string, string | string[] | undefined>;
 

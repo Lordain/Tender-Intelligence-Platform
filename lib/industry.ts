@@ -1,3 +1,5 @@
+import { foldAccents } from "@/lib/text-fold";
+
 /**
  * Multi-tag industry classification (rule-based keyword matching, same
  * posture as lib/relevance.ts's Pre-Screening classifier — a Layer 1
@@ -444,6 +446,25 @@ export function stripKnownFalsePositivePlaceNames(text: string): string {
     /puente piedra\b/gi,
     "",
   ).replace(
+    // Brazil (2026-09-18). Three of the 27 states are named after a river,
+    // and `\br[íi]o\b` in the water pattern matches the word inside the state
+    // name — so EVERY tender in them carried a water tag, whatever it bought.
+    // Measured on the real ANEEL transmission auction: lot 1 (Rio de Janeiro)
+    // and lot 3 (Rio Grande do Norte) both came out ["power","water"] while
+    // the identical lots elsewhere came out ["power"]. This is not an ANEEL
+    // problem — it is every Brazilian row in those states, and the PNCP feed
+    // is full of them.
+    //
+    // Rio Grande do Sul is included without its own measured case: it is the
+    // same phrase, the same construction, and Brazil's fifth-largest state,
+    // so waiting for it to be observed would be waiting for a bug already
+    // proven twice. Other "Rio ..." place names (Rio Branco, Rio Verde,
+    // Rio Claro) are deliberately NOT here — the file's own rule is to name
+    // what has been seen rather than guess a list, and municipality names
+    // have not produced a false positive yet.
+    /rio de janeiro\b|rio grande do (norte|sul)\b/gi,
+    "",
+  ).replace(
     // "REHABILITACION DE LINEA DE AGUA POTABLE EN CALLE 16 ENTRE CALLE 9 Y
     // GASODUCTO" — Gasoducto is the name of the cross street, and it was
     // matching the oleoducto/gasoducto major-project pattern. Anchored on
@@ -455,7 +476,10 @@ export function stripKnownFalsePositivePlaceNames(text: string): string {
 
 /** Matches against real Spanish-language text (title/description, plus any real category field a source provides) — never guesses from a buyer name alone. Falls back to ["general"] rather than an empty array, so every tender has at least one tag to display/filter by. */
 export function classifyIndustries(...texts: (string | undefined)[]): IndustryKey[] {
-  const haystack = stripKnownFalsePositivePlaceNames(texts.filter(Boolean).join(" "));
+  // Folded before matching — see lib/text-fold.ts. Without it `\br[íi]o\b`
+  // matches the "rio" inside "Território" and tags a public-relations
+  // contract as water infrastructure, which is exactly what it did.
+  const haystack = stripKnownFalsePositivePlaceNames(foldAccents(texts.filter(Boolean).join(" ")));
   const matched = INDUSTRY_KEYWORDS.filter(([, pattern]) => pattern.test(haystack)).map(([key]) => key);
   return matched.length > 0 ? matched : ["general"];
 }

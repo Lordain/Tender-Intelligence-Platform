@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     months?: number;
     write?: boolean;
     skipAmounts?: boolean;
+    downloadDocuments?: boolean;
   };
   const write = body.write === true;
   const supabase = createSupabaseAdminClient();
@@ -53,6 +54,9 @@ export async function POST(request: Request) {
     days: Number.isFinite(body.days) ? Number(body.days) : undefined,
     months: Number.isFinite(body.months) ? Number(body.months) : undefined,
     skipAmounts: body.skipAmounts === true,
+    // Only meaningful on a write run — there is no tender to hang a link on
+    // otherwise — so the flag is ANDed rather than trusted from the client.
+    downloadDocuments: write && body.downloadDocuments === true,
   };
 
   try {
@@ -64,6 +68,7 @@ export async function POST(request: Request) {
     const flags = [
       options.days ? `--days ${options.days}` : options.months ? `--months ${options.months}` : "--days 1",
       options.skipAmounts ? "--skip-amounts" : "",
+    options.downloadDocuments ? "--documents" : "",
       write ? "--write" : "",
     ]
       .filter(Boolean)

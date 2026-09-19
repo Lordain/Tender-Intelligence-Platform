@@ -1,4 +1,5 @@
 import { parsePncpItemUrl, type PncpItem, type PncpSearchRow } from "@/lib/ingestion/brazil-pncp-mapper";
+import { safeFileName, type TenderDocumentLink } from "@/lib/ingestion/document-links";
 
 /**
  * Live reads against Brazil's PNCP.
@@ -240,3 +241,103 @@ export async function fetchPncpItems(itemUrl: string | undefined): Promise<PncpI
   return collected.length > 0 ? collected : asked ? [] : null;
 }
 
+
+/**
+ * The official bid documents attached to one PNCP procurement.
+ *
+ * ── Why this exists ───────────────────────────────────────────────────────
+ *
+ * /admin/documents-needed offers a one-click batch download for any tender
+ * that has rows in `tender_document_links`, and until now only Peru's OCDS
+ * feed and PEMEX's SharePoint scrape wrote any. Every Brazilian tender
+ * therefore showed up on that page with nothing to click, and the admin had
+ * to open PNCP by hand for each one (user, 2026-09-19: 巴西待补文件增加标书
+ * 下载按钮和相关功能（同秘鲁、Pemex）).
+ *
+ * ── Stated plainly: this shape is from PNCP's published API, NOT measured ──
+ *
+ * Every other rule in this file was written against four real measurement
+ * runs. This one could not be: no `.gov.br` host is reachable from the
+ * sandbox this was written in, so `/arquivos` has never answered here. The
+ * parser is therefore written to accept what the documentation describes AND
+ * the obvious variants, and to return null rather than guess when it gets
+ * something else:
+ *
+ *  - the URL from `url`, `uri`, or rebuilt from the path when neither is
+ *    present (the endpoint's own route is a valid download URL);
+ *  - the name from `titulo`, `nomeArquivo` or `tipoDocumentoNome`, in that
+ *    order, since a title is the most specific and a type name the most
+ *    likely to exist;
+ *  - `statusAtivo === false` rows dropped — PNCP keeps superseded documents
+ *    listed, and downloading a withdrawn edital is worse than downloading
+ *    nothing.
+ *
+ * The first real run is the measurement. `ingestBrazilPncp` reports the link
+ * count precisely so that run says whether this reading was right, rather
+ * than the count silently being zero.
+ */
+const ARQUIVOS_PAGE_SIZE = 50;
+
+type PncpArquivo = {
+  url?: unknown;
+  uri?: unknown;
+  titulo?: unknown;
+  nomeArquivo?: unknown;
+  tipoDocumentoNome?: unknown;
+  sequencialDocumento?: unknown;
+  dataPublicacaoPncp?: unknown;
+  statusAtivo?: unknown;
+};
+
+function str(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
+}
+
+/** Null means "could not ask"; an empty array means "asked, and there are none". */
+export async function fetchPncpArquivos(itemUrl: string | undefined): Promise<TenderDocumentLink[] | null> {
+  const parts = parsePncpItemUrl(itemUrl);
+  if (!parts) return null;
+  const base = `${ITEMS_BASE}/${parts.cnpj}/compras/${parts.ano}/${parts.sequencial}/arquivos`;
+  const label = `PNCP arquivos (${parts.cnpj}/${parts.ano}/${parts.sequencial})`;
+
+  let body: unknown;
+  try {
+    body = await getJson(`${base}?pagina=1&tamanhoPagina=${ARQUIVOS_PAGE_SIZE}`, label);
+  } catch {
+    // One tender's attachments failing is not an import failing — the tender
+    // itself is already written by the time this runs.
+    return null;
+  }
+
+  const rows: PncpArquivo[] | null = Array.isArray(body)
+    ? (body as PncpArquivo[])
+    : body && typeof body === "object" && Array.isArray((body as { items?: unknown }).items)
+      ? ((body as { items: PncpArquivo[] }).items)
+      : null;
+  if (rows === null) return null;
+
+  const links: TenderDocumentLink[] = [];
+  for (const row of rows) {
+    // A superseded document is still listed. Downloading a withdrawn edital
+    // is worse than downloading nothing, so only an explicit false drops it —
+    // a missing flag is not evidence of withdrawal.
+    if (row.statusAtivo === false) continue;
+
+    const sequencial = row.sequencialDocumento === undefined ? undefined : String(row.sequencialDocumento);
+    const sourceUrl = str(row.url) ?? str(row.uri) ?? (sequencial ? `${base}/${sequencial}` : undefined);
+    if (!sourceUrl) continue;
+
+    const name = str(row.titulo) ?? str(row.nomeArquivo) ?? str(row.tipoDocumentoNome) ?? `documento-${sequencial ?? links.length + 1}`;
+    links.push({
+      sourceUrl,
+      fileName: safeFileName(name),
+      documentType: str(row.tipoDocumentoNome),
+      // The name usually carries the extension; the API does not publish a
+      // separate format field, and inventing "pdf" would be a guess that the
+      // download route would then act on.
+      format: /\.([a-z0-9]{2,5})$/i.exec(name)?.[1]?.toLowerCase(),
+      publishedAt: str(row.dataPublicacaoPncp),
+    });
+  }
+  return links;
+}

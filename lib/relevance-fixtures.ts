@@ -42,6 +42,43 @@ export type RelevanceFixture = {
 
 export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
 
+  // --- ANEEL federal concession auctions (2026-09-19) ---------------------
+  // The first real ANEEL import produced ten lots of 500 kV line and
+  // substation construction, every one "standard". Nothing was broken: the
+  // tier system is value-driven, ANEEL publishes no per-lot amount on the
+  // auction page, and download.aneel.gov.br — where reports R1–R5 live, the
+  // per-lot economic studies — times out from every network tried. So the
+  // procedure the buyer declared is the only scale statement available, and
+  // for a 30-year federal concession it is a decisive one.
+  {
+    title: "Leilão de Transmissão ANEEL nº 1/2026 — Lote 1 (RJ/SP/MG): LT 230 kV Santa Cabeça - Nilo Peçanha C1, CS; SE 230/138 kV Nilo Peçanha; SE 500/138 kV Nova Extrema",
+    expectedTier: "flagship",
+    note: "Real, from the captured Leilão 001/2026 page. Leilão de Transmissão 1/2027 is R$ 12,9 bi over twelve lots — about R$ 1 bi each — and this auction is the same shape. No estimatedValue exists to say so, which is exactly why the procedure has to.",
+    country: "Brazil", scopeType: "works", governmentLevel: "federal", industries: ["power"],
+    procedureType: "Leilão de Transmissão",
+  },
+  {
+    title: "Leilão de Reserva de Capacidade na forma de Potência de 2026 — LRCAP, armazenamento em baterias",
+    expectedTier: "flagship",
+    note: "The storage side of the same rule: LRCAP 5 e 6/2026, ~R$ 20 bi between them, held 2 and 4 December 2026. Lives on editais_geracao, not the transmission application, so it reaches the classifier through a different reader and must not depend on one.",
+    country: "Brazil", scopeType: "works", governmentLevel: "federal", industries: ["power"],
+    procedureType: "Leilão de Reserva de Capacidade",
+  },
+  {
+    title: "Leilão de bens inservíveis — veículos e sucata da frota municipal",
+    expectedTier: "excluded",
+    note: "THE GUARD. A Brazilian município also holds leilões — to sell off scrap and seized vehicles. That is why the rule matches full procedure phrases and requires governmentLevel federal, instead of a bare /leilão/ which would promote this.",
+    country: "Brazil", scopeType: "equipment", governmentLevel: "municipal",
+    procedureType: "Leilão",
+  },
+  {
+    title: "Leilão de Transmissão — alienação de lote de equipamentos usados",
+    expectedTier: "excluded",
+    note: "The other half of the guard: the procedure phrase matches but the level is not federal, so the phrase alone promotes nothing and the row falls through to what it actually is — a disposal sale of used equipment, which this corpus excludes. Written expecting 'standard' and corrected on the run: the expectation was arbitrary, the classifier was right. What it locks either way is that the two conditions are AND, not OR — drop the federal test and this becomes flagship.",
+    country: "Brazil", scopeType: "equipment", governmentLevel: "state", industries: ["power"],
+    procedureType: "Leilão de Transmissão",
+  },
+
   // --- Mexico + undisclosed value: keyword-only logic (2026-09-07) ---
   // Every one of these is a real title from the 2026-09-07 Compras MX
   // import that put 619 new Mexican tenders in the list, 597 of them
@@ -2449,5 +2486,19 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "significant",
     note: "Real title (2026-09-18, user asked why this is 大型). Pinned as the record of what the current thresholds say rather than as an endorsement: $6,929,314 is above FLAGSHIP_VALUE_USD ($6,000,000), so 大型 is this rule working exactly as specified, and the industry tag (power) is right too. The flagship floor was raised to $10,000,000 on 2026-09-18 and this fixture was updated deliberately, as that sentence asked: $6,929,314 is now inside the $5M-$10M band, so 中型.",
     country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 6_929_314, currency: "USD",
+  },
+  // --- Upkeep contracts that never say "mantenimiento" (2026-09-18) ---
+  // Both reviewed by the user from a real run and marked 维护类.
+  {
+    title: "GESTION VIAL INTEGRAL DE LAS CARRETERAS BOGOTA LOS PATIOS GUASCA RUTA 5009 EL SALITRE SOPO RUTA 50CN03 Y BOGOTA CHOACHI UBAQUE RUTA 4006A EN EL DEPARTAMENTO DE CUNDINAMARCA",
+    expectedTier: "excluded",
+    note: "Real Colombian title. `gestión vial integral` is INVIAS's own name for routine-and-periodic upkeep of an existing corridor, and the word `mantenimiento` never appears — so the maintenance list missed it while every road signal fired, and it came out 常规项目. Added to the non-bypassable MAINTENANCE_ONLY_KEYWORDS: the title names carreteras, which trips a transport include-override that would wave a bypassable exclusion away.",
+    country: "Colombia", scopeType: "works", governmentLevel: "federal",
+  },
+  {
+    title: "CONTRATACIÓN, CONSTRUCCIÓN, OPERACIÓN Y MANTENIMIENTO DE LA CONCESIÓN VIAL DOBLE CALZADA RUTA DEL SOL SECTOR 2",
+    expectedTier: "flagship",
+    note: "The over-breadth control for the row above, and for the Portuguese O&M rule added the same day. A DBO road concession is the largest thing either country tenders and squarely what this platform exists to surface — the build scope has to keep it in, whatever upkeep words sit beside it. isConcessionWithBuildScope() is what does that; this pins it.",
+    country: "Colombia", scopeType: "works", governmentLevel: "federal", estimatedValue: 400_000_000, currency: "USD",
   },
 ];

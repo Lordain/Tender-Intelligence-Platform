@@ -1,6 +1,7 @@
 import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
+import { foldAccents } from "@/lib/text-fold";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, isBrazil, isPortugueseMunicipalSportsComponent } from "@/lib/relevance-pt";
 
 /**
@@ -1068,6 +1069,23 @@ const MAINTENANCE_ONLY_KEYWORDS = [
   // works contract and stays; MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT already
   // handles capping those.
   /\breparaci[óo]n\s+(de\s+)?(piezas|partes|componentes)\b/i,
+  // Colombia writes road upkeep without ever using the word "mantenimiento".
+  // Real row, reviewed by the user 2026-09-18 (维护类): "GESTION VIAL INTEGRAL
+  // DE LAS CARRETERAS BOGOTA LOS PATIOS GUASCA RUTA 5009 ... EN EL
+  // DEPARTAMENTO DE CUNDINAMARCA". `gestión vial integral` is INVIAS's own
+  // name for a routine-and-periodic upkeep contract on an existing corridor —
+  // it names highways and route numbers, so every road signal fires and it
+  // came out 常规项目 with nothing to catch it.
+  //
+  // Non-bypassable, like the rest of this list, for the same reason the
+  // turbine-repair rule is: a title naming carreteras trips a transport
+  // include-override, which would wave a bypassable exclusion away. The
+  // concession guard below still applies, so a 4G/5G contract whose object
+  // includes building the corridor is unaffected.
+  //
+  // A phrase, not the bare word `gestión`, which appears in every kind of
+  // Colombian contract.
+  /\bgesti[óo]n\s+vial\s+integral\b/i,
 ];
 
 /**
@@ -1491,7 +1509,16 @@ const NO_CONTENT_TITLE = [
   // all means the title says what is being bought, so it is not a bare name.
   /^(?!.*\b(?:SUMINISTRO|ADQUISICI[ÓO]N|ADQUIRIR|CONSTRUCCI[ÓO]N|COMPRA|CONTRATAR|PRESTACI[ÓO]N|MANTENIMIENTO|REHABILITACI[ÓO]N|MODERNIZACI[ÓO]N|AMPLIACI[ÓO]N|SERVICIO)\b)[^a-z]{2,90}(?:S\.?A\.?S\.?|LTDA\.?|S\.?A\.? DE C\.?V\.?|S\.?A\.?)\s*$/,
   // A generic noun standing alone, with at most a leading verb/article.
-  /^\s*(?:contrato de |contratar (?:la |el )?)?(?:obra|obras|servicio|servicios|suministro|suministros|compra|adquisici[óo]n|mantenimiento|convenio|proyecto)\s*$/i,
+  // The qualifier group was added 2026-09-18 for a real PNCP row whose entire
+  // object text was "Obras comuns" — it came out 常规项目 with a construction
+  // tag, on a title that says nothing at all. `comum`/`comuns` is Lei
+  // 14.133's own category name (obras comuns vs. obras especiais), so it adds
+  // no information about what is being built.
+  //
+  // Only a generic adjective qualifies. "Obras comuns de reforma da Escola
+  // Municipal X" still says what it is and is untouched, because the pattern
+  // is anchored to the end of the title.
+  /^\s*(?:contrato de |contratar (?:la |el )?)?(?:obra|obras|servicio|servicios|servi[çc]os?|suministro|suministros|compra|adquisici[óo]n|mantenimiento|convenio|proyecto|projetos?)(?:\s+(?:comun(?:es|s)?|comum|diversos?|diversas?|varios?|varias?|gerais?|geral|generales?|general))?\s*$/i,
   // A bare reference code: "EP 0058-2026", "CAS-SS-LP-001-2026",
   // "AHLPOB05-026". Judged by shape rather than by a letter-count that any
   // new source's numbering scheme would break — a single token, no spaces,
@@ -2300,6 +2327,59 @@ export function isPriceOnlyAuction(procedureType: string | undefined): boolean {
 }
 
 /**
+ * ANEEL's federal concession and capacity auctions — the OPPOSITE of a
+ * price-only auction above, and the reason this predicate is written next to
+ * it: both are `leilão`, and only the procedure name tells them apart.
+ *
+ * Brazil does not auction a 30-year federal public-service concession for
+ * anything small. Leilão de Transmissão 1/2027 is R$ 12,9 bi across twelve
+ * lots — roughly R$ 1 bi a lot — and the LRCAP capacity auctions are the same
+ * order. There is no such thing as a minor one.
+ *
+ * ── Why this is a procedure rule and not a keyword ────────────────────────
+ *
+ * The first ANEEL import (2026-09-19) produced ten lots of 500 kV line and
+ * substation construction, every one of them `standard`, reading 「常规规模
+ * 项目，未触发重点筛选条件」. Nothing was broken: the tier system is
+ * value-driven, ANEEL publishes no per-lot amount on the auction page, and
+ * this corpus already settled that a bare "LÍNEA DE TRANSMISIÓN 400 KV Y
+ * SUBESTACIÓN" with no value is `standard`. That ruling stands — it is about
+ * a supply contract whose title happens to name grid equipment.
+ *
+ * A concession auction is a different object. Widening the grid VOCABULARY to
+ * catch it would promote every substation purchase in three countries along
+ * with it; reading the PROCEDURE the buyer itself declared catches exactly
+ * the auctions and nothing else. Same posture as the price-only rule: what
+ * the buyer says it is doing beats what a keyword suggests.
+ *
+ * ── Two guards ───────────────────────────────────────────────────────────
+ *
+ *  1. **Federal only.** A Brazilian município also holds `leilões` — to sell
+ *     scrap vehicles and seized goods. Those are municipal, and are not this.
+ *  2. **Full phrases, never a bare `leilão`.** For the same reason.
+ *
+ * `download.aneel.gov.br` times out from every network tried (2026-09-19,
+ * two more dead ANEEL hosts on top of dadosabertos/leilao/portalrelatorios),
+ * so the per-lot investment in reports R1–R5 cannot be fetched to decide this
+ * the way a number would. When one is disclosed the value bands take over
+ * normally; this rule only stops a billion-real concession reading as 常规.
+ */
+const FEDERAL_CONCESSION_AUCTION_PROCEDURES = [
+  /leil[ãa]o\s+de\s+transmiss[ãa]o/i,
+  /leil[ãa]o\s+de\s+gera[çc][ãa]o/i,
+  /leil[ãa]o\s+de\s+reserva\s+de\s+capacidade/i,
+];
+
+/** Exported for the same reason isPriceOnlyAuction is. */
+export function isFederalConcessionAuction(
+  procedureType: string | undefined,
+  governmentLevel: Tender["governmentLevel"] | undefined,
+): boolean {
+  if (governmentLevel !== "federal") return false;
+  return !!procedureType && FEDERAL_CONCESSION_AUCTION_PROCEDURES.some((pattern) => pattern.test(procedureType));
+}
+
+/**
  * Peru's *Comparación de Precios* (SEACE numbers these COMPRE-…), the
  * abbreviated procedure for standard, low-value goods and services under
  * arts. 93–95 of the Reglamento of Ley 32069: the entity collects quotations
@@ -2658,8 +2738,12 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "price_comparison") };
   }
 
-  const subjectTitle = purchaseSubject(input.title)!;
-  const subjectSummary = purchaseSubject(input.summary);
+  // Folded here, once, so every rule below — and the haystack they share —
+  // matches accented text the way the patterns were written to. See
+  // lib/text-fold.ts for the real row this was found on. Matching only:
+  // nothing downstream of this point is stored or displayed.
+  const subjectTitle = foldAccents(purchaseSubject(input.title)!);
+  const subjectSummary = purchaseSubject(input.summary) ? foldAccents(purchaseSubject(input.summary)!) : undefined;
   const haystack = stripKnownFalsePositivePlaceNames([subjectTitle, subjectSummary, ...input.industries].filter(Boolean).join(" "));
 
   // See MAINTENANCE_ONLY_KEYWORDS' header comment — deliberately checked
@@ -2687,7 +2771,7 @@ export function classifyRelevance(input: {
 
   if (
     input.isNationalPriorityProject !== true &&
-    (NON_PROCUREMENT_RECORD_KEYWORDS.some((pattern) => pattern.test(haystack)) || isBareInteradministrativeTitle(input.title))
+    (NON_PROCUREMENT_RECORD_KEYWORDS.some((pattern) => pattern.test(haystack)) || isBareInteradministrativeTitle(foldAccents(input.title)))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
@@ -2716,7 +2800,15 @@ export function classifyRelevance(input: {
   if (input.isNationalPriorityProject !== true && isBrazil(input.country)) {
     const portuguese = classifyPortugueseExclusion(haystack);
     if (portuguese !== null) {
-      return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+      // The verdict picks the reason. It is not cosmetic: the excluded list is
+      // reviewed BY reason (that is the whole workflow the CSV exists for),
+      // and a works-supervision contract filed under 日常性服务采购 is filed
+      // where nobody checking the consulting rules would look for it.
+      return {
+        tier: "excluded",
+        label: LABELS.excluded,
+        reason: reasonFor("excluded", portuguese === "consulting" ? "consulting" : "keyword"),
+      };
     }
   }
 
@@ -2725,7 +2817,7 @@ export function classifyRelevance(input: {
 
   if (
     !hasIncludeOverride &&
-    (BARE_BUYER_REF_TITLE.test(input.title.trim()) || NO_CONTENT_TITLE.some((pattern) => pattern.test(withoutProcurementPhase(input.title))))
+    (BARE_BUYER_REF_TITLE.test(foldAccents(input.title).trim()) || NO_CONTENT_TITLE.some((pattern) => pattern.test(withoutProcurementPhase(foldAccents(input.title)))))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "no_content") };
   }
@@ -2914,6 +3006,11 @@ export function classifyRelevance(input: {
 
   if (
     (matchesMajorProject && !majorIsLocationOnly) ||
+    // A federal concession/capacity auction is flagship by construction —
+    // see isFederalConcessionAuction. Placed first among the value-free
+    // signals because it is the only one that is a statement by the buyer
+    // rather than an inference from words.
+    isFederalConcessionAuction(input.procedureType, input.governmentLevel) ||
     // Long duration only speaks when nothing better does. It is a proxy for
     // scale, and a proxy must lose to a measurement: structured_duration_days
     // is written by exactly one mapper (Colombia's, from SECOP's
@@ -3174,8 +3271,11 @@ export function explainKeptSignal(input: {
   if (input.isNationalPriorityProject) return "国家战略项目（Proyectos Estratégicos MX，绕过全部排除）";
   if (result.tier === "excluded") return "excluded（不该出现在 kept 里）";
 
+  // Folded like classifyRelevance's own haystack — an explanation built from
+  // differently-normalised text would name a different rule than the one that
+  // actually decided.
   const haystack = stripKnownFalsePositivePlaceNames(
-    [input.title, input.summary, ...input.industries].filter(Boolean).join(" "),
+    foldAccents([input.title, input.summary, ...input.industries].filter(Boolean).join(" ")),
   );
   const value = input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
   const show = (pattern: RegExp) => String(pattern).slice(0, 96);

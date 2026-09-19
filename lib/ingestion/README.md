@@ -6788,3 +6788,84 @@ the CKAN envelope, identical for every CKAN call ever made. It proved the host
 answered and said nothing about what it answered with. `datastore_search` is
 now unwrapped one level further, so the next run prints the row count and the
 column names, which is the thing a mapper is actually written from.
+
+## 43 minutes to learn nothing (2026-09-19)
+
+A real run, `--days 1 --write`: 78 rows in the window, 2585 seconds in the
+amount pass, **zero amounts resolved**. The output then reported
+「没有金额：78 条」 and, in the composition, 「62 条 └ 无金额（法定保密等）」.
+
+Both numbers were true and the sentence they formed was false. Nothing in
+Brazil was sealed that day. PNCP was refusing this client for the whole run —
+the search pass says so too, `modalidade 5` page 1 died on a connection reset
+— and the amount pass turned 78 refusals into a claim about Brazilian
+procurement law.
+
+### The arithmetic, because it is exact
+
+`fetchPncpItems` used the default retry chain, `RESET_BACKOFF_MS` =
+`[2, 5, 12, 30, 60]` seconds = 109 seconds of sleeping before giving up.
+
+    78 rows × 109s ÷ 4 workers = 2125s
+
+Observed: 2585s. The rest is request time. So the run was not slow, and not
+throttled in any interesting way: it was **sleeping**, on a ladder built for a
+different job.
+
+### The part worth being uncomfortable about
+
+That ladder was already known to be wrong for this shape of call. Three hours
+earlier, one pass further down the same file, `OPTIONAL_BACKOFF_MS` was added
+with this reasoning: the tender is already written, so failing costs a missing
+link while retrying is paid by every row in series — one retry, then move on.
+
+Every word of that applies to the amount pass. `DOCUMENT_FAILURE_STREAK` was
+added in the same commit, for the same reason, and the amount pass sitting
+directly above it got neither. The fix was written, and then applied to one of
+the two places that needed it.
+
+So this round adds, to the amount pass, exactly what the document pass already
+had:
+
+- `AMOUNT_BACKOFF_MS = [2_000, 6_000]` — two retries, not eleven. Worst case
+  per row drops from 109s to about 8s.
+- `AMOUNT_FAILURE_STREAK = 12`, counted **across workers**, because four
+  workers failing three times each is the same fact as one worker failing
+  twelve times. On trip, the pass stops; rows are still written, without
+  amounts, and the run says so.
+
+Worst case for that 78-row run goes from 43 minutes to roughly 25 seconds.
+
+### And the reporting, which is the more expensive bug
+
+A failed lookup and a sealed estimate (`orcamentoSigiloso`) are opposite
+facts. One is permanent and means the value will never be known; the other is
+this afternoon's network and is fixed by re-running. The old output collapsed
+them into one label, so the run's headline number pointed at the wrong
+continent.
+
+`fetchPncpItems` now takes an `onFailure` callback, the result carries
+`amountLookupFailed`, `amountsStoppedEarly` and `amountFailureReasons`, and
+the band label only says 法定保密 when the sealed count actually exceeds the
+refusal count.
+
+### What this does NOT settle
+
+The same run wrote 60 tenders, all without a value, and the user asked whether
+that contradicts the daily volume estimated the day before. It probably does
+not: **every one of those 60 lacks a value because of the failure above**, not
+because Brazil published 60 valueless notices. The value filter — the single
+strongest rule this classifier has — never ran on any of them.
+
+The policy question underneath is real and stays open: when a Brazilian tender
+*genuinely* has no amount, should an industry match alone carry it into the
+recommendation list? Mexico answered a version of this with a structural rule
+(`governmentLevel === "municipal"` + undisclosed value + nothing but the bare
+works word), and Brazil's mapper does populate `governmentLevel` from
+`esfera_id`, so the same shape of answer is available.
+
+It is deliberately not answered here. Calibrating a relevance rule against a
+run whose amount data was 100% missing would be fitting rules to a network
+failure. Re-run first — the upsert is keyed by slug, so the same command over
+the same window backfills those 60 rows — then decide from the real
+distribution.

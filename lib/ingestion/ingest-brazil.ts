@@ -45,6 +45,12 @@ export type BrazilIngestResult = {
   withoutAmount: number;
   /** How many of those were a sealed estimate (orcamentoSigiloso) rather than a failed lookup. The first is lawful and permanent; the second is worth retrying. */
   sealedBudget: number;
+  /** How many amount lookups PNCP refused outright. Distinct from sealedBudget and from "this tender has no items": a refusal is a fact about the network, not about the tender, and re-running fixes it. */
+  amountLookupFailed: number;
+  /** Set when the amount pass stopped on AMOUNT_FAILURE_STREAK. Every row after the stop has no amount for a reason that has nothing to do with the row. */
+  amountsStoppedEarly: boolean;
+  /** The distinct refusal reasons, commonest first. Printed verbatim because guessing at PNCP's mood from a count is how the 43-minute run got mistaken for sealed budgets. */
+  amountFailureReasons: string[];
   /**
    * Every distinct exclusion reason with its count, commonest first.
    *
@@ -164,6 +170,21 @@ const AMOUNT_PACE_MS = 500;
  * than the half hour it cost once.
  */
 const DOCUMENT_FAILURE_STREAK = 10;
+/**
+ * How many amount lookups may fail in a row before the pass gives up.
+ *
+ * Added 2026-09-19, and it is the same lesson as DOCUMENT_FAILURE_STREAK one
+ * pass earlier — which is the point worth recording. That breaker was written
+ * because a dead endpoint cost half an hour, and the amount pass, sitting
+ * directly above it with the identical failure mode, was left without one. A
+ * run then spent 43 minutes resolving zero amounts, and nothing stopped it.
+ *
+ * Twelve rather than ten only because an amount is worth more than an
+ * attachment link: a handful of tenders genuinely publish no items, and the
+ * breaker must not fire on those. Twelve consecutive failures is not a
+ * coincidence of empty tenders — it is PNCP refusing this client.
+ */
+const AMOUNT_FAILURE_STREAK = 12;
 /** Row-count and wall-clock triggers for the amount pass's progress line. */
 const AMOUNT_PROGRESS_EVERY = 10;
 const AMOUNT_HEARTBEAT_MS = 10_000;
@@ -331,6 +352,14 @@ export async function ingestBrazilPncp(
 
   let cursor = 0;
   let done = 0;
+  // Counted across workers on purpose. Four workers each failing three times
+  // in a row is the same fact as one worker failing twelve times — the host is
+  // refusing us — and a per-worker counter would need four times the evidence
+  // to notice it.
+  let amountFailureStreak = 0;
+  let amountLookupFailed = 0;
+  let amountsStoppedEarly = false;
+  const amountFailureReasons = new Set<string>();
   // Every 50 rows was the only trigger until 2026-09-19, when a 97-row run
   // printed 「发布时间在 1 天内的：97 / 300 条」 and then said nothing for long
   // enough that the user asked whether it had hung. It had not — the first
@@ -354,11 +383,28 @@ export async function ingestBrazilPncp(
       if (index >= withinWindow.length) return;
       const row = withinWindow[index];
       let items: PncpItem[] | null = null;
-      if (!options.skipAmounts) {
+      if (!options.skipAmounts && !amountsStoppedEarly) {
         await takeSlot();
-        items = await fetchPncpItems(row.item_url);
+        let refused: string | null = null;
+        items = await fetchPncpItems(row.item_url, (reason) => {
+          refused = reason;
+        });
+        if (refused !== null) {
+          amountLookupFailed += 1;
+          amountFailureStreak += 1;
+          amountFailureReasons.add(refused);
+        } else {
+          amountFailureStreak = 0;
+        }
         done += 1;
         beat(done === withinWindow.length);
+        if (amountFailureStreak >= AMOUNT_FAILURE_STREAK) {
+          amountsStoppedEarly = true;
+          onProgress?.(
+            `取金额：连续 ${amountFailureStreak} 条都被拒，停在第 ${done} / ${withinWindow.length} 条 —— ` +
+              "项目照常写入，只是没有金额。这是 PNCP 在拒绝我们，不是这些项目没有预算，过几分钟重跑就会补上",
+          );
+        }
       }
       const tender = mapPncpSearchRowToTender(row, items ?? undefined, BRAZIL_PNCP_SOURCE_NAME);
       if (!tender) continue;
@@ -444,7 +490,15 @@ export async function ingestBrazilPncp(
     keptByTier: [...tierCounts.entries()].map(([tier, count]) => ({ tier, count })).sort((a, b) => b.count - a.count),
     keptByValueBand: [
       ...BANDS.filter((b) => bandCounts.has(b.band)).map((b) => ({ band: b.band, count: bandCounts.get(b.band) as number })),
-      ...(keptWithoutValue > 0 ? [{ band: "无金额（法定保密等）", count: keptWithoutValue }] : []),
+      // The label used to read 「无金额（法定保密等）」 unconditionally, which
+      // told a reader that 62 Brazilian tenders had lawfully sealed budgets on
+      // a run where the real answer was that PNCP never answered once. A
+      // refusal and a sealed estimate are opposite facts: one is permanent and
+      // means the value will never be known, the other is this afternoon's
+      // network and is fixed by re-running.
+      ...(keptWithoutValue > 0
+        ? [{ band: amountLookupFailed > sealedBudget ? "无金额（多数是没取到，不是保密）" : "无金额（法定保密等）", count: keptWithoutValue }]
+        : []),
     ],
     keptCount: kept.length - excludedCount,
     excludedCount,
@@ -453,6 +507,9 @@ export async function ingestBrazilPncp(
       .sort((a, b) => b.count - a.count),
     withoutAmount,
     sealedBudget,
+    amountLookupFailed,
+    amountsStoppedEarly,
+    amountFailureReasons: [...amountFailureReasons],
     byModality,
     write: options.write,
   };

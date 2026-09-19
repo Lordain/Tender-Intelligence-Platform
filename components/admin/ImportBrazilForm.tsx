@@ -329,7 +329,10 @@ export function ImportBrazilForm() {
       */}
       <p className={`mt-3 rounded-xl border px-3 py-2 text-xs leading-5 ${tooLong ? "border-[#f0d9a8] bg-[#fff8e9] text-[#7a5200]" : "border-[#d8e0e3] bg-[#f7f9f9] text-[#52636e]"}`}>
         {dayCount} 天大约 {dayCount * ROWS_PER_DAY} 条，预计耗时 <strong>{estimated.total} 秒</strong>
-        （按 2026-09-18 实测：3 天 795 条；取金额受 PNCP 限流约束，快不了）。
+        （按 2026-09-18 实测：3 天 795 条）。这个数字是 <strong>PNCP 正常应答时</strong>的耗时。
+        {" "}它被当成保证过一次：2026-09-19 一次 78 条的导入跑了 43 分钟，因为 PNCP 全程拒绝取金额的请求，
+        而当时每条都要重试到 109 秒才放弃。现在重试缩到两次，连续 12 条被拒就整趟停下，
+        所以「PNCP 心情不好」这件事最多让它慢一两分钟，不会再变成半小时。
         {estimated.documents > 0 && (
           <>
             {" "}

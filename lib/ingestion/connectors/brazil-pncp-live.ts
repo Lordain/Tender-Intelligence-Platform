@@ -106,6 +106,24 @@ const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
  */
 const OPTIONAL_BACKOFF_MS = [2_000];
 
+/**
+ * The amount lookup's budget, and the correction to the paragraph above.
+ *
+ * That paragraph reasoned about the attachment pass and stopped there, so
+ * `fetchPncpItems` kept the full 109-second chain. It should not have: an
+ * amount is enrichment on a row that gets written either way, exactly like an
+ * attachment link. The difference is only that an amount is worth more, which
+ * argues for one extra retry — not for eleven.
+ *
+ * What the omission cost, measured on a real run (2026-09-19, 78 rows):
+ * PNCP was refusing this client for the whole run, so every row walked the
+ * whole chain and returned nothing. 78 x 109s / 4 workers = 35 minutes of
+ * pure sleeping, inside a 43-minute run that resolved ZERO amounts. Two
+ * retries cap the same worst case at about 2 minutes, and the streak breaker
+ * in ingest-brazil.ts stops it long before that.
+ */
+const AMOUNT_BACKOFF_MS = [2_000, 6_000];
+
 async function getJson(url: string, label: string, backoff: readonly number[] = RESET_BACKOFF_MS): Promise<unknown> {
   let lastError: PncpFetchError | undefined;
   for (let attempt = 0; attempt <= backoff.length; attempt += 1) {
@@ -209,9 +227,21 @@ const ITEMS_PAGE_PACE_MS = 300;
  */
 const ITEMS_MIN_FULL_PAGE = 10;
 
-export async function fetchPncpItems(itemUrl: string | undefined): Promise<PncpItem[] | null> {
+/**
+ * @param onFailure receives the reason when the lookup could not be made at
+ *   all. Without it a refusal and a genuinely empty item list are the same
+ *   `null`, which is how a run once reported 78 tenders as "no amount (sealed
+ *   budget etc.)" when the truth was that PNCP never answered once.
+ */
+export async function fetchPncpItems(
+  itemUrl: string | undefined,
+  onFailure?: (reason: string) => void,
+): Promise<PncpItem[] | null> {
   const parts = parsePncpItemUrl(itemUrl);
-  if (!parts) return null;
+  if (!parts) {
+    onFailure?.(`item_url 解析不了：${itemUrl ?? "（空）"}`);
+    return null;
+  }
   const base = `${ITEMS_BASE}/${parts.cnpj}/compras/${parts.ano}/${parts.sequencial}/itens`;
   const label = `PNCP items (${parts.cnpj}/${parts.ano}/${parts.sequencial})`;
 
@@ -223,9 +253,10 @@ export async function fetchPncpItems(itemUrl: string | undefined): Promise<PncpI
     if (pagina > 1) await sleep(ITEMS_PAGE_PACE_MS);
     let body: unknown;
     try {
-      body = await getJson(`${base}?pagina=${pagina}&tamanhoPagina=${ITEMS_PAGE_SIZE}`, `${label} p${pagina}`);
+      body = await getJson(`${base}?pagina=${pagina}&tamanhoPagina=${ITEMS_PAGE_SIZE}`, `${label} p${pagina}`, AMOUNT_BACKOFF_MS);
       asked = true;
-    } catch {
+    } catch (err) {
+      if (collected.length === 0) onFailure?.(err instanceof Error ? err.message : String(err));
       // One tender's amount failing is not an import failing. Whatever was
       // already collected is still real — returning it beats discarding it,
       // and returning null on page 1 keeps "we could not ask" distinct from
@@ -239,7 +270,10 @@ export async function fetchPncpItems(itemUrl: string | undefined): Promise<PncpI
     // array in every probe. Handle both rather than assume, but do not invent
     // a third shape — an unrecognised body is "could not ask", not "no items".
     else if (body && typeof body === "object" && Array.isArray((body as { items?: unknown }).items)) page = (body as { items: PncpItem[] }).items;
-    if (page === null) return collected.length > 0 ? collected : null;
+    if (page === null) {
+      if (collected.length === 0) onFailure?.(`响应不是预期的数组结构（${label} p${pagina}）`);
+      return collected.length > 0 ? collected : null;
+    }
     if (page.length === 0) break;
 
     const first = page[0] as { numeroItem?: unknown } | undefined;

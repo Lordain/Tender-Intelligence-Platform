@@ -268,6 +268,18 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 type Outcome = { label: string; ok: boolean; status: number | string; ms: number; note: string };
 const outcomes: Outcome[] = [];
 
+/**
+ * Compact by default, added 2026-09-19 at the user's request.
+ *
+ * Eight rounds in, the report had grown to roughly 700 lines, and most of it
+ * repeated on every run: a two-to-four-line rationale per step (thirty
+ * steps), a 40-line JSON dump, a 小结 block restating every line already
+ * printed, and a closing page of standing advice. The findings are a handful
+ * of lines inside that. `--verbose` brings the full version back when a step
+ * genuinely needs explaining.
+ */
+const VERBOSE = process.argv.includes("--verbose");
+
 function record(outcome: Outcome): Outcome {
   outcomes.push(outcome);
   console.log(`   ${outcome.ok ? "OK  " : "FAIL"}  ${String(outcome.status).padEnd(14)} ${String(outcome.ms).padStart(7)}ms  ${outcome.note}`);
@@ -398,9 +410,17 @@ function describeHtml(text: string, linkPattern: RegExp): { note: string; links:
     .sort((a, b) => b.score - a.score);
   const seen = new Set<string>();
   const printable = scored.filter(({ href }) => !seen.has(href) && seen.add(href));
+  // P11e (run eight) fetched ANAC's EDITAL directory, matched zero links
+  // against the document-extension pattern, and therefore printed NOTHING —
+  // so an empty directory and one full of files with an unexpected extension
+  // looked identical. On a small page there is no mega-menu to drown anything
+  // out, so when nothing matched, show what IS there.
+  const fallback = text_only.length < 5_000 && printable.length === 0
+    ? anchors.map(([, href, label]) => ({ href, label })).filter(({ href }) => !seen.has(href) && seen.add(href))
+    : printable;
   return {
     note,
-    links: printable.slice(0, 25).map(({ href, label }) => `${label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 70)} → ${href.slice(0, 240)}`),
+    links: fallback.slice(0, 25).map(({ href, label }) => `${label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 70)} → ${href.slice(0, 240)}`),
   };
 }
 
@@ -468,7 +488,7 @@ async function browserRetry(url: string, timeoutMs: number, linkPattern: RegExp,
 
 async function probeHtml(label: string, why: string, url: string, linkPattern: RegExp, timeoutMs: number, headers?: Record<string, string>): Promise<void> {
   console.log(label);
-  console.log(`   为什么试它：${why}`);
+  if (VERBOSE) console.log(`   为什么试它：${why}`);
   console.log(`   ${url}`);
   const { status, ms, text, failure } = await fetchText(url, timeoutMs, headers);
   const isBrowserPass = headers === BROWSER_HEADERS;
@@ -494,7 +514,7 @@ async function probeHtml(label: string, why: string, url: string, linkPattern: R
       keys = "（解析失败）";
     }
     record({ label, ok: true, status, ms, note: `★ 返回的是 JSON 不是 HTML —— 外层键：${keys}` });
-    console.log(trimmed.slice(0, 1200).split("\n").map((line) => `     ${line}`).join("\n"));
+    console.log(trimmed.slice(0, VERBOSE ? 1200 : 300).split("\n").map((line) => `     ${line}`).join("\n"));
     console.log();
     return;
   }
@@ -545,7 +565,7 @@ async function probeCkan(
   fallbackHeaders?: Record<string, string>,
 ): Promise<void> {
   console.log(label);
-  console.log(`   为什么试它：${why}`);
+  if (VERBOSE) console.log(`   为什么试它：${why}`);
   console.log(`   ${base}`);
 
   const started = Date.now();
@@ -1284,9 +1304,21 @@ async function main() {
 
   // ── Summary ──────────────────────────────────────────────────────────────
   console.log("─".repeat(72));
-  console.log("小结\n");
-  for (const outcome of outcomes) {
-    console.log(`  ${(outcome.ok ? "OK  " : "FAIL").padEnd(5)} ${String(outcome.status).padEnd(14)} ${String(outcome.ms).padStart(7)}ms  ${outcome.label}`);
+  const passed = outcomes.filter((o) => o.ok);
+  if (VERBOSE) {
+    console.log("小结\n");
+    for (const outcome of outcomes) {
+      console.log(`  ${(outcome.ok ? "OK  " : "FAIL").padEnd(5)} ${String(outcome.status).padEnd(14)} ${String(outcome.ms).padStart(7)}ms  ${outcome.label}`);
+    }
+  } else {
+    // Every one of these lines was already printed above, verbatim, next to
+    // its own result. Compact prints the tally and the pass list only — a
+    // FAIL is already visible where it happened, and the ones that opened are
+    // what a reader acts on.
+    console.log(`小结：${passed.length} / ${outcomes.length} 通\n`);
+    for (const outcome of passed) {
+      console.log(`  OK   ${String(outcome.ms).padStart(6)}ms  ${outcome.label}`);
+    }
   }
   console.log();
 
@@ -1318,32 +1350,20 @@ async function main() {
     console.log();
   }
 
-  const ckanOk = outcomes.some((o) => o.ok && /status_show/.test(o.label));
-  console.log("要发我的东西，按重要性排：\n");
-  console.log("  1. 【列名】那几行 —— datastore_search 打出来的 `列名：…` 和 `第一行全文`。");
-  console.log("     映射器是照着它写的，不是照着我记忆里的字段名写的。");
-  console.log("  2. 任何一行以 ★ 开头的，连同它下面的 <title> 和正文开头。");
-  console.log("     ★ 现在只在正文不是拦截页时才打 —— 上一轮它判过三个假阳性（F5 的拒绝页是 200）。");
-  console.log("  3. 最上面那张 TCP 表 —— 「通」而底下还是失败的是应用层拒绝；「不通」才是真够不着。");
-  if (!ckanOk) {
-    console.log("\n  仍然没有任何门户确认是 CKAN。上一轮站到哪儿了，可以对照：");
-    console.log("    dados.gov.br     401，且应答头写明要 Bearer —— 唯一差一个免费 key 就能进的门");
-    console.log("    ANTT             F5 把拒绝页当 200 发，换 UA 没用");
-    console.log("    ANTAQ / ANEEL    Cloudflare 的 JS 验证 —— 换 UA 没用，它要的是真能跑 JS 的浏览器");
-    console.log("    dadosabertos.aneel.gov.br  socket 层 ETIMEDOUT，这条是网络真的不通，不是策略");
-    console.log("    PPI              换 UA 能拿到 200，但四个不同网址返回同一个 266 字的空壳");
+  // Standing advice, not findings. It had not changed in four rounds and was
+  // costing about forty lines a run, so it lives behind --verbose now; the
+  // three lines below are the part that is still a decision.
+  if (VERBOSE) {
+    const ckanOk = outcomes.some((o) => o.ok && /status_show/.test(o.label));
+    if (!ckanOk) console.log("仍然没有任何门户确认是 CKAN（dados.gov.br 要 CPF；ANTT 是 F5；ANTAQ/ANEEL 是 Cloudflare 验证）。");
+    console.log("\ngit.aneel 的三个 xlsx 地址精确但硬封锁，只能换出口下载，然后 `npm run dump:aneel-leiloes -- <文件>.xlsx`：");
+    for (const url of ANEEL_RESULT_SPREADSHEETS) console.log(`  ${url}`);
+    console.log("\n在招场次（不是结果）在这三页，域名两个大洲都连不上：");
+    for (const url of ANEEL_EDITAL_PAGES) console.log(`  ${url}`);
+    console.log("\n输电标段金额按【预估总投资 CAPEX】，RAP 放摘要正文。见 lib/ingestion/README.md。");
+  } else {
+    console.log("完整说明（每步的理由、全部 FAIL 明细、ANEEL 的待办网址）：加 --verbose。");
   }
-  console.log("\n下一步：这三个 xlsx 的地址是精确的，但 git.aneel 对你那边是【硬封锁】——");
-  console.log("  真浏览器打开也是 Sorry, you have been blocked，所以换客户端没用，只能换网络出口：");
-  for (const url of ANEEL_RESULT_SPREADSHEETS) console.log(`    ${url}`);
-  console.log("  （换个出口的浏览器下下来就行）。下完跑 `npm run dump:aneel-leiloes -- <文件>.xlsx`，它会把真实列名打出来，");
-  console.log("  映射器照着那个写 —— 跟 Compras MX、Ecopetrol、Proyectos México 是同一条路子。");
-  console.log("\n  在招的场次（不是结果）在这三页，但那个域名两个大洲都连不上：");
-  for (const url of ANEEL_EDITAL_PAGES) console.log(`    ${url}`);
-  console.log("  同样要换出口。另外 E2d / E2e 那两个 ANEEL 子域名是新加的 —— Cloudflare 的封锁是按主机配的，");
-  console.log("  不是按机构配的，所以它们完全可能是开的，那就不用换网络了。");
-  console.log("\n输电标段的金额按【预估总投资 CAPEX】走（2026-09-18 已确认），RAP 放摘要正文点名。");
-  console.log("见 lib/ingestion/README.md 的「Three traps that are new…」。");
 }
 
 main().catch((err) => {

@@ -4218,6 +4218,40 @@ difference is attributable to the egress rather than to the host. If the
 deployment reaches them, the connectors run there on a schedule and the
 laptop's network stops mattering.
 
+#### P11e came back empty, and the probe got quiet (2026-09-19)
+
+```
+P11e  …/DADOS_067_20220713_EDITAL_E_CONTRATO_INGLES_ENGLISH/
+      OK 200 · 1KB · 302 字 · 3 个链接（命中 0，PDF 0）
+```
+
+**Not the confirmation the previous entry expected.** 302 characters and three
+links is a near-empty directory, not a folder of editais — so
+`sistemas.anac.gov.br` is browsable and the round-level listing is real, but
+the English edital and contract were NOT demonstrated. What P11d proved is
+that ANAC keeps per-round open directories on a reachable host; what the
+directory NAMES promise has not been checked, and the name is not the
+evidence.
+
+**And the probe could not tell an empty directory from a full one**, which is
+the underlying defect. `describeHtml` prints only links that match the step's
+pattern, so zero matches printed zero lines, and a folder of `.p7s` or
+extensionless files would look exactly like this one. On a small page there is
+no mega-menu to drown anything out, so when nothing matches and the body is
+under 5,000 characters, every link is printed now.
+
+**The report itself was the other problem, and the user named it.** Eight
+rounds in it had grown to roughly 700 lines, of which the findings were maybe
+twenty. The repeats: a two-to-four-line rationale per step across thirty
+steps, a 40-line JSON dump, a 小结 block restating every line already printed
+beside its own result, and a closing page of standing advice that had not
+changed in four rounds.
+
+Compact is now the default. `--verbose` restores the rationales, the full
+FAIL detail and the ANEEL to-do URLs. The compact run prints each step's
+verdict and its content links, then a tally and the list of doors that opened
+— which is what a reader acts on.
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.

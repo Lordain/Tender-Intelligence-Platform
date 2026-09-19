@@ -4,6 +4,11 @@ import { classifyStoredTender } from "@/lib/relevance";
 import { readAneelAuctionStage, type AneelAuctionReading, type AneelDocumentEntry } from "@/lib/ingestion/aneel-auction-stage";
 import type { AneelEdital } from "@/lib/ingestion/connectors/aneel-editais-file";
 import type { AneelLote } from "@/lib/ingestion/aneel-lote-parser";
+import {
+  findConsultaForAuction,
+  consultaLabel,
+  type AneelConsultaPublica,
+} from "@/lib/ingestion/aneel-consulta-publica";
 
 export const ANEEL_SOURCE_NAME = "ANEEL — Leilão de Transmissão";
 
@@ -23,12 +28,18 @@ const AUCTION_PAGE = "https://www2.aneel.gov.br/aplicacoes_liferay/editais_trans
  *
  * Measured on Leilão 001/2026 (2026-09-18): the edital is not published — the
  * only document is a despacho authorising the DRAFT to go to the TCU — so the
- * RAP ceiling and the investment estimate do not exist yet, anywhere. This
+ * RAP ceiling and the per-lot investment estimate do not exist yet. This
  * mapper therefore never invents one, and specifically never falls back to
  * RAP once that number does appear: RAP is an annual revenue cap and the
  * figure this platform shows is the estimated investment (user, 2026-09-18).
  * Setting it to 0 would be worse than leaving it out, because 0 reads as
  * "worth nothing" to the value floor.
+ *
+ * A consulta pública DOES announce a figure — R$ 12,9 bi for Leilão 1/2027 —
+ * but it is the whole auction's CAPEX across twelve lots, and ANEEL does not
+ * publish the split. Dividing it would put a fabricated number on every row,
+ * so it is named in the summary and `estimatedValue` still stays empty. The
+ * rule is unchanged: a per-lot amount is only ever set from a per-lot source.
  *
  * ── A sublote is not a row, yet ───────────────────────────────────────────
  *
@@ -49,6 +60,13 @@ export type AneelMappingInput = {
    * same convention Compras MX's dateless export uses.
    */
   publicationDate?: string;
+  /**
+   * The consultation whose draft edital this is, when one is known. Passing
+   * `null` explicitly suppresses the lookup; leaving it out looks the auction
+   * up in ANEEL_CONSULTAS, so a captured page for an auction already in
+   * consultation is staged correctly without the caller knowing about it.
+   */
+  consulta?: AneelConsultaPublica | null;
 };
 
 function loteTitle(edital: AneelEdital, lote: AneelLote): string {
@@ -69,6 +87,15 @@ function loteSummary(lote: AneelLote, reading: AneelAuctionReading): string {
   else if (lote.hasNewInstallations) parts.push("Novas instalações de transmissão.");
   if (lote.maxVoltageKv) parts.push(`Tensão máxima ${lote.maxVoltageKv} kV.`);
   parts.push(lote.text.replace(/\s*\n\s*/g, " ").trim());
+  const consulta = reading.consulta;
+  if (consulta) {
+    parts.push(
+      `${consultaLabel(consulta)}：${consulta.opensOn} 至 ${consulta.closesOn} 征询意见${consulta.contributionsEmail ? `（${consulta.contributionsEmail}）` : ""}。${consulta.note}`,
+    );
+    if (!consulta.confirmed) {
+      parts.push("（公众咨询的日期与金额来自行业媒体，尚未与 ANEEL 官网核对。）");
+    }
+  }
   parts.push(reading.note);
   return parts.join(" ");
 }
@@ -77,7 +104,11 @@ export function mapAneelEditalToTenders(input: AneelMappingInput, now: Date = ne
   const { edital } = input;
   if (edital.auctionNumber === null || edital.year === null) return [];
 
-  const reading = readAneelAuctionStage(input.documents ?? []);
+  const consulta =
+    input.consulta !== undefined
+      ? input.consulta
+      : findConsultaForAuction(edital.auctionNumber, edital.year, "transmissao");
+  const reading = readAneelAuctionStage(input.documents ?? [], consulta, now);
   const nowIso = now.toISOString();
   const publicationDate = input.publicationDate ?? nowIso;
   const publicationDateIsEstimated = input.publicationDate === undefined;
@@ -119,7 +150,35 @@ export function mapAneelEditalToTenders(input: AneelMappingInput, now: Date = ne
       qualifications: [],
       experienceRequirements: [],
       requiredDocuments: [],
-      keyDates: [{ id: `${slugify(tenderNumber)}-publication`, type: "publication", date: publicationDate }],
+      keyDates: [
+        { id: `${slugify(tenderNumber)}-publication`, type: "publication", date: publicationDate },
+        // A consulta pública takes written contributions until a stated day.
+        // That is a questions deadline in everything but name — it is the
+        // window in which a bidder can still argue a technical spec — and it
+        // reuses `questions_deadline` rather than adding a key-date type,
+        // which would need a migration for no semantic gain.
+        ...(consulta
+          ? [{
+              id: `${slugify(tenderNumber)}-consulta`,
+              type: "questions_deadline" as const,
+              date: consulta.closesOn,
+              notes: {
+                es: `${consultaLabel(consulta)} — plazo para contribuciones sobre la minuta del edital`,
+                en: `${consultaLabel(consulta)} — deadline for contributions on the draft edital`,
+                zh: `${consultaLabel(consulta)} —— 标书草案意见征询截止`,
+              },
+            }]
+          : []),
+        // The auction session itself, when the schedule names a single day.
+        ...(consulta?.auctionDate
+          ? [{
+              id: `${slugify(tenderNumber)}-leilao`,
+              type: "opening" as const,
+              date: consulta.auctionDate,
+              notes: { es: "Sesión del leilão", en: "Auction session", zh: "拍卖日" },
+            }]
+          : []),
+      ],
       risks: [],
       relevance,
       sourceName: ANEEL_SOURCE_NAME,

@@ -6108,3 +6108,104 @@ Measured blast radius on the existing corpus: **zero**. 321/321 relevance
 fixtures, 18/18 industry tags and 22/22 Colombia title cases are unchanged —
 Spanish accents rarely sit next to a `\b`-anchored keyword, which is why this
 survived three countries and only surfaced on the first Portuguese import.
+
+## ANEEL's real entry point is the *consulta pública*, not the edital (2026-09-19)
+
+Everything written above about ANEEL was measured on one page — Leilão 1/2026's
+document list — and it produced a conclusion that was locally true and globally
+wrong:
+
+> There is no RAP ceiling and no investment figure to find, anywhere, for this
+> auction. Not hidden on another page — not yet written.
+
+True of that auction at that moment. False as a general rule, and the
+correction reverses the product judgement that followed from it.
+
+### The stage the earlier survey missed
+
+Before the minuta goes to the TCU, it goes to the public. ANEEL opens a
+numbered **consulta pública**, publishes the draft edital with its annexes and
+the draft contract, and takes written contributions for six to eight weeks.
+Three consultations were open or had just closed on the day this was written:
+
+| CP | Auction | Window | Auction date | Announced CAPEX |
+|---|---|---|---|---|
+| 032/2026 | Transmissão 1/2027 | 2026-09-10 → **2026-10-26** | 2027-04-30 (B3, SP) | **R$ 12,9 bi**, 12 lots |
+| 022/2026 | LRCAP 5/2026 (Armazenamento Nacional) | 2026-07-30 → 2026-09-14 | 2 or 4 Dec 2026 | not announced |
+| 023/2026 | LRCAP 6/2026 (Armazenamento) | 2026-07-30 → 2026-09-14 | 2 or 4 Dec 2026 | not announced |
+
+Two things fall out of that table, and both matter more than the stage name.
+
+**The investment figure exists at this stage.** R$ 12,9 bi was public when
+CP 032/2026 opened — seven months before the auction, and long before any
+edital. The "no number exists" claim was an artefact of looking only at the
+document page of an auction that happened to be past its own consultation.
+
+**"Once a year" was wrong.** 2026 alone carries transmission 1/2026, LRCAP
+5/2026 and 6/2026 in December, and the consultation for transmission 1/2027.
+The auctions are infrequent; the *decision points* are not.
+
+### Why the window is the product, not the auction
+
+A contribution sent inside the window is the only formal way to argue about a
+technical specification before it becomes binding — round-trip efficiency
+floors, standalone-operation requirements, local content. For a supplier whose
+question is "does my equipment qualify at all", the answer is decided here and
+is unappealable afterwards. Lot 5 of Transmissão 1/2027 is the first battery
+storage lot in the SIN (Cruzeiro do Sul and Feijó, Acre) and runs 18 years
+against the other lots' 30, because that is the life ANEEL assigns a battery —
+exactly the kind of parameter a consultation is for.
+
+So the stage model gained `consulta_publica`, below `tcu_review` and above
+`announced`, and the reading distinguishes a window that is **open** (the spec
+can still be argued) from one that has **closed** (the spec is now what you
+build to). The two produce different sentences on purpose.
+
+### What is still NOT set, and why
+
+`estimatedValue` stays empty. R$ 12,9 bi is the whole auction's CAPEX across
+twelve lots and ANEEL publishes no split; dividing it would put a fabricated
+amount on twelve rows. It is named in the summary and nowhere else. The
+standing rule is unchanged: **a per-lot amount is only ever set from a per-lot
+source.**
+
+The contribution deadline reuses the `questions_deadline` key-date type rather
+than adding one. A consultation *is* the window for written questions about a
+draft; a new type would need a migration for no semantic gain.
+
+### Provenance, marked in the data
+
+Every field in `ANEEL_CONSULTAS` was read from trade press, not from ANEEL —
+the sandbox reaches no `.gov.br` host and `www2.aneel.gov.br` refuses a script.
+Each record therefore carries `confirmed: false` and the URL it came from,
+`npm run ingest:aneel -- --consultas` prints that warning on every line, and
+the warning is repeated in the summary of any tender built from an unconfirmed
+record. A capture of the consultation's own page is what clears the flag.
+
+### The code is no longer inert
+
+`npm run ingest:aneel` is the wiring that was missing:
+
+```
+npm run ingest:aneel -- --consultas                              # what is open, and how long is left
+npm run ingest:aneel -- page.html                                # dry run
+npm run ingest:aneel -- page.html --published 2025-11-11 --write # upsert
+npm run ingest:aneel -- page.html --documents docs.json          # add the documentos_editais list
+```
+
+### The year selector is a POST, and this cost a capture
+
+Choosing a year in the dropdown does nothing by itself — the form POSTs back
+to the same URL. **Click "Pesquisar" and wait for the reload before saving.**
+A capture taken straight after changing the dropdown came back byte-identical
+to the year already on screen (`md5sum` matched the earlier file exactly), and
+looked like a successful save of a different year.
+
+### Where the battery auctions live
+
+LRCAP is not on the transmission application. Its sibling is
+`www2.aneel.gov.br/aplicacoes_liferay/editais_geracao/edital_geracao.cfm`,
+the same ColdFusion shape with the same `documentos_editais.cfm?IdProgramaEdital=<id>`
+popup. Unverified from here for the usual access reason; the reader is
+segment-agnostic apart from its `LEILÃO DE TRANSMISSÃO` heading regex, so the
+first captured generation page is what decides whether one reader serves both.

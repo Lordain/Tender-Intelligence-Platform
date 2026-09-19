@@ -9,6 +9,7 @@
  * sent to the TCU for review. Marking it 招标中 would put a tender in the feed
  * that nobody can bid on, with an amount that does not exist yet.
  */
+import { findConsultaForAuction } from "../lib/ingestion/aneel-consulta-publica";
 import { readAneelAuctionStage, type AneelDocumentEntry } from "@/lib/ingestion/aneel-auction-stage";
 
 let failures = 0;
@@ -75,6 +76,82 @@ check(
   "announced",
 );
 check("没有踏勘字样时不谎报", readAneelAuctionStage([{ section: "adendos", title: "Relação das subestações" }]).technicalVisitsOpen, false);
+
+console.log("\n公众咨询：比送 TCU 更早的一站");
+// Measured 2026-09-19 against CP 032/2026, the draft edital of Leilão de
+// Transmissão 1/2027 — the stage the user asked to track, and the first one
+// that carries an investment figure at all.
+const CP_1_2027 = findConsultaForAuction(1, 2027, "transmissao");
+check("注册表里有 1/2027 的公众咨询", CP_1_2027 !== null, true);
+check(
+  "有公众咨询、没有别的文件 → consulta_publica",
+  readAneelAuctionStage([], CP_1_2027, new Date("2026-09-19T00:00:00Z")).stage,
+  "consulta_publica",
+);
+check(
+  "公众咨询阶段仍然是 planned",
+  readAneelAuctionStage([], CP_1_2027, new Date("2026-09-19T00:00:00Z")).status,
+  "planned",
+);
+// The window is what a bidder acts on, so the note has to carry the date.
+check(
+  "窗口开着时说明里有截止日",
+  /2026-10-26/.test(readAneelAuctionStage([], CP_1_2027, new Date("2026-09-19T00:00:00Z")).note),
+  true,
+);
+check(
+  "窗口开着时说明里有金额",
+  /12,9 bi/.test(readAneelAuctionStage([], CP_1_2027, new Date("2026-09-19T00:00:00Z")).note),
+  true,
+);
+// Same consultation read after it closes must not still say "进行中" — a
+// closed window is the difference between "you can still object to the spec"
+// and "the spec is now what you have to build to".
+check(
+  "过了截止日 → 说明改口",
+  /已结束/.test(readAneelAuctionStage([], CP_1_2027, new Date("2026-11-01T00:00:00Z")).note),
+  true,
+);
+check(
+  "还没开始 → 说明也改口",
+  /尚未开始/.test(readAneelAuctionStage([], CP_1_2027, new Date("2026-08-01T00:00:00Z")).note),
+  true,
+);
+// Ordering: everything the document page evidences happened AFTER the
+// consultation, so it must win. A consultation that stays visible on the page
+// must never drag a published edital back to `planned`.
+check(
+  "已发标时公众咨询不能把它拉回 planned",
+  readAneelAuctionStage(
+    [{ section: "edital", title: "Edital do Leilão nº 1/2026" }],
+    CP_1_2027,
+    new Date("2026-09-19T00:00:00Z"),
+  ).stage,
+  "edital_published",
+);
+check(
+  "送 TCU 审优先于公众咨询",
+  readAneelAuctionStage(LEILAO_1_2026, CP_1_2027, new Date("2026-09-19T00:00:00Z")).stage,
+  "tcu_review",
+);
+// ANEEL also names the consultation in its own document titles, so the stage
+// is reachable without the seeded record.
+check(
+  "文档标题里写了 consulta pública 也能认出来",
+  readAneelAuctionStage([{ section: "edital", title: "Consulta Pública nº 032/2026 — minuta do edital" }]).stage,
+  "consulta_publica",
+);
+check(
+  "CP 032/2026 这种缩写也认",
+  readAneelAuctionStage([{ section: "anexos", title: "Contribuições recebidas — CP 032/2026" }]).stage,
+  "consulta_publica",
+);
+// And the stage must not fire on an unrelated title that merely mentions the public.
+check(
+  "普通文件不会被误判成公众咨询",
+  readAneelAuctionStage([{ section: "anexos", title: "Relação das subestações" }]).stage,
+  "announced",
+);
 
 if (failures > 0) {
   console.error(`\n${failures} 项没通过。`);

@@ -7,6 +7,7 @@
  * were carrying for no reason but the name of their state.
  */
 import { readAneelEditalFile } from "@/lib/ingestion/connectors/aneel-editais-file";
+import { findConsultaForAuction } from "../lib/ingestion/aneel-consulta-publica";
 import { mapAneelEditalToTenders } from "@/lib/ingestion/aneel-transmissao-mapper";
 import type { AneelDocumentEntry } from "@/lib/ingestion/aneel-auction-stage";
 
@@ -71,6 +72,38 @@ console.log("\n子标段：暂不拆成四条");
 // Four invented rows would be four wrong tenders instead of one honest one.
 check("标段 3 仍是一条", rows.filter((row) => row.slug.endsWith("lote-3")).length, 1);
 check("但摘要里点了名", /sublotes 3A, 3B, 3C, 3D/.test(rows[2]?.summary.es ?? ""), true);
+
+console.log("\n公众咨询阶段");
+// No page for Leilão 1/2027 has been captured yet — www2.aneel.gov.br refuses
+// a script and its year selector stops at 2026 — so CP 032/2026's real record
+// is attached to the only page we do have. The pairing is artificial on
+// purpose; what is under test is the mapper's handling of a consultation, and
+// every value in the record is the real one.
+const CP = findConsultaForAuction(1, 2027, "transmissao");
+const consultaRows = mapAneelEditalToTenders(
+  { edital, documents: [], consulta: CP, publicationDate: "2026-09-10" },
+  new Date("2026-09-19T00:00:00Z"),
+);
+check("公众咨询阶段仍是 planned", [...new Set(consultaRows.map((r) => r.status))], ["planned"]);
+// The deadline is the only date a reader can still act on, so it has to be a
+// key date rather than a sentence buried in the summary.
+const consultaDate = consultaRows[0]?.keyDates.find((d) => d.type === "questions_deadline");
+check("意见征询截止日进了关键日期", consultaDate?.date, "2026-10-26");
+check("截止日有中文说明", /意见征询截止/.test(consultaDate?.notes?.zh ?? ""), true);
+const leilaoDate = consultaRows[0]?.keyDates.find((d) => d.type === "opening");
+check("拍卖日进了关键日期", leilaoDate?.date, "2027-04-30");
+check("摘要里有咨询编号和截止日", /Consulta P[úu]blica n[ºo] 032\/2026/.test(consultaRows[0]?.summary.es ?? "") && /2026-10-26/.test(consultaRows[0]?.summary.es ?? ""), true);
+// The figure is the whole auction's, across twelve lots, and ANEEL publishes
+// no split. Putting it on each row would be twelve fabricated amounts.
+check("每条都没有 estimatedValue", consultaRows.every((r) => r.estimatedValue === undefined), true);
+check("金额只出现在摘要里", /12,9 bi/.test(consultaRows[0]?.summary.es ?? ""), true);
+// Provenance is press, not ANEEL. A reader must be told that before acting.
+check("未核对的来源要写明", /尚未与 ANEEL 官网核对/.test(consultaRows[0]?.summary.es ?? ""), true);
+
+// The lookup happens on its own when the caller says nothing: 1/2026 has no
+// consultation in the registry, so nothing must appear on those rows.
+const noConsulta = mapAneelEditalToTenders({ edital, documents }, new Date("2026-09-19T00:00:00Z"));
+check("1/2026 没有公众咨询记录时不凭空加日期", noConsulta[0]?.keyDates.some((d) => d.type === "questions_deadline"), false);
 
 if (failures > 0) {
   console.error(`\n${failures} 项没通过。`);

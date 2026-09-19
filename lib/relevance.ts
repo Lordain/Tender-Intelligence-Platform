@@ -2327,6 +2327,59 @@ export function isPriceOnlyAuction(procedureType: string | undefined): boolean {
 }
 
 /**
+ * ANEEL's federal concession and capacity auctions — the OPPOSITE of a
+ * price-only auction above, and the reason this predicate is written next to
+ * it: both are `leilão`, and only the procedure name tells them apart.
+ *
+ * Brazil does not auction a 30-year federal public-service concession for
+ * anything small. Leilão de Transmissão 1/2027 is R$ 12,9 bi across twelve
+ * lots — roughly R$ 1 bi a lot — and the LRCAP capacity auctions are the same
+ * order. There is no such thing as a minor one.
+ *
+ * ── Why this is a procedure rule and not a keyword ────────────────────────
+ *
+ * The first ANEEL import (2026-09-19) produced ten lots of 500 kV line and
+ * substation construction, every one of them `standard`, reading 「常规规模
+ * 项目，未触发重点筛选条件」. Nothing was broken: the tier system is
+ * value-driven, ANEEL publishes no per-lot amount on the auction page, and
+ * this corpus already settled that a bare "LÍNEA DE TRANSMISIÓN 400 KV Y
+ * SUBESTACIÓN" with no value is `standard`. That ruling stands — it is about
+ * a supply contract whose title happens to name grid equipment.
+ *
+ * A concession auction is a different object. Widening the grid VOCABULARY to
+ * catch it would promote every substation purchase in three countries along
+ * with it; reading the PROCEDURE the buyer itself declared catches exactly
+ * the auctions and nothing else. Same posture as the price-only rule: what
+ * the buyer says it is doing beats what a keyword suggests.
+ *
+ * ── Two guards ───────────────────────────────────────────────────────────
+ *
+ *  1. **Federal only.** A Brazilian município also holds `leilões` — to sell
+ *     scrap vehicles and seized goods. Those are municipal, and are not this.
+ *  2. **Full phrases, never a bare `leilão`.** For the same reason.
+ *
+ * `download.aneel.gov.br` times out from every network tried (2026-09-19,
+ * two more dead ANEEL hosts on top of dadosabertos/leilao/portalrelatorios),
+ * so the per-lot investment in reports R1–R5 cannot be fetched to decide this
+ * the way a number would. When one is disclosed the value bands take over
+ * normally; this rule only stops a billion-real concession reading as 常规.
+ */
+const FEDERAL_CONCESSION_AUCTION_PROCEDURES = [
+  /leil[ãa]o\s+de\s+transmiss[ãa]o/i,
+  /leil[ãa]o\s+de\s+gera[çc][ãa]o/i,
+  /leil[ãa]o\s+de\s+reserva\s+de\s+capacidade/i,
+];
+
+/** Exported for the same reason isPriceOnlyAuction is. */
+export function isFederalConcessionAuction(
+  procedureType: string | undefined,
+  governmentLevel: Tender["governmentLevel"] | undefined,
+): boolean {
+  if (governmentLevel !== "federal") return false;
+  return !!procedureType && FEDERAL_CONCESSION_AUCTION_PROCEDURES.some((pattern) => pattern.test(procedureType));
+}
+
+/**
  * Peru's *Comparación de Precios* (SEACE numbers these COMPRE-…), the
  * abbreviated procedure for standard, low-value goods and services under
  * arts. 93–95 of the Reglamento of Ley 32069: the entity collects quotations
@@ -2953,6 +3006,11 @@ export function classifyRelevance(input: {
 
   if (
     (matchesMajorProject && !majorIsLocationOnly) ||
+    // A federal concession/capacity auction is flagship by construction —
+    // see isFederalConcessionAuction. Placed first among the value-free
+    // signals because it is the only one that is a statement by the buyer
+    // rather than an inference from words.
+    isFederalConcessionAuction(input.procedureType, input.governmentLevel) ||
     // Long duration only speaks when nothing better does. It is a proxy for
     // scale, and a proxy must lose to a measurement: structured_duration_days
     // is written by exactly one mapper (Colombia's, from SECOP's

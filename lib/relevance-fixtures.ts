@@ -42,6 +42,43 @@ export type RelevanceFixture = {
 
 export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
 
+  // --- ANEEL federal concession auctions (2026-09-19) ---------------------
+  // The first real ANEEL import produced ten lots of 500 kV line and
+  // substation construction, every one "standard". Nothing was broken: the
+  // tier system is value-driven, ANEEL publishes no per-lot amount on the
+  // auction page, and download.aneel.gov.br — where reports R1–R5 live, the
+  // per-lot economic studies — times out from every network tried. So the
+  // procedure the buyer declared is the only scale statement available, and
+  // for a 30-year federal concession it is a decisive one.
+  {
+    title: "Leilão de Transmissão ANEEL nº 1/2026 — Lote 1 (RJ/SP/MG): LT 230 kV Santa Cabeça - Nilo Peçanha C1, CS; SE 230/138 kV Nilo Peçanha; SE 500/138 kV Nova Extrema",
+    expectedTier: "flagship",
+    note: "Real, from the captured Leilão 001/2026 page. Leilão de Transmissão 1/2027 is R$ 12,9 bi over twelve lots — about R$ 1 bi each — and this auction is the same shape. No estimatedValue exists to say so, which is exactly why the procedure has to.",
+    country: "Brazil", scopeType: "works", governmentLevel: "federal", industries: ["power"],
+    procedureType: "Leilão de Transmissão",
+  },
+  {
+    title: "Leilão de Reserva de Capacidade na forma de Potência de 2026 — LRCAP, armazenamento em baterias",
+    expectedTier: "flagship",
+    note: "The storage side of the same rule: LRCAP 5 e 6/2026, ~R$ 20 bi between them, held 2 and 4 December 2026. Lives on editais_geracao, not the transmission application, so it reaches the classifier through a different reader and must not depend on one.",
+    country: "Brazil", scopeType: "works", governmentLevel: "federal", industries: ["power"],
+    procedureType: "Leilão de Reserva de Capacidade",
+  },
+  {
+    title: "Leilão de bens inservíveis — veículos e sucata da frota municipal",
+    expectedTier: "excluded",
+    note: "THE GUARD. A Brazilian município also holds leilões — to sell off scrap and seized vehicles. That is why the rule matches full procedure phrases and requires governmentLevel federal, instead of a bare /leilão/ which would promote this.",
+    country: "Brazil", scopeType: "equipment", governmentLevel: "municipal",
+    procedureType: "Leilão",
+  },
+  {
+    title: "Leilão de Transmissão — alienação de lote de equipamentos usados",
+    expectedTier: "excluded",
+    note: "The other half of the guard: the procedure phrase matches but the level is not federal, so the phrase alone promotes nothing and the row falls through to what it actually is — a disposal sale of used equipment, which this corpus excludes. Written expecting 'standard' and corrected on the run: the expectation was arbitrary, the classifier was right. What it locks either way is that the two conditions are AND, not OR — drop the federal test and this becomes flagship.",
+    country: "Brazil", scopeType: "equipment", governmentLevel: "state", industries: ["power"],
+    procedureType: "Leilão de Transmissão",
+  },
+
   // --- Mexico + undisclosed value: keyword-only logic (2026-09-07) ---
   // Every one of these is a real title from the 2026-09-07 Compras MX
   // import that put 619 new Mexican tenders in the list, 597 of them

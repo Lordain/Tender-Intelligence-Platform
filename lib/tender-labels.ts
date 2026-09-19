@@ -19,7 +19,11 @@ import type { Locale } from "@/types/tender";
  * Values match the real `country` field every mapper already writes
  * (`country: "Mexico"`, English canonical).
  */
-export const ALL_COUNTRIES = ["Mexico", "Brazil", "Chile", "Colombia", "Peru"] as const;
+// Ordered as the user asked for the country pills (2026-09-19: 墨西哥、巴西、
+// 哥伦比亚、秘鲁), with Chile last because it has no connector — this array
+// also feeds the admin tender form's country <select>, and an option nobody
+// can import belongs at the bottom rather than third.
+export const ALL_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile"] as const;
 
 export const COUNTRY_LABELS: Record<(typeof ALL_COUNTRIES)[number], LocalizedText> = {
   Mexico: { en: "Mexico", es: "México", zh: "墨西哥" },

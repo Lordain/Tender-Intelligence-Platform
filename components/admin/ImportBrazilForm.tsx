@@ -35,6 +35,8 @@ type BrazilResult = {
   byModality: { modalidade: number; rows: number; pages: number; stoppedBy: "window" | "cap" | "end" | "error" }[];
   written?: number;
   failed?: number;
+  /** Mirrors BrazilIngestResult.documentLinks — see that field for why both counts are reported. */
+  documentLinks?: { tendersAsked: number; tendersWithLinks: number; linkCount: number; failed: number };
   write: boolean;
 };
 
@@ -138,9 +140,29 @@ function ResultPanel({ result }: { result: BrazilResult }) {
         <p className="mt-2 text-xs text-[#233846]">
           已写入 Supabase {result.written ?? 0} 条{result.failed ? `，失败 ${result.failed} 条` : ""}。
         </p>
-      ) : (
+      ) : null}
+
+      {/*
+        Both numbers, always. This is the first real measurement of PNCP's
+        /arquivos response — it was parsed from the published API, never from
+        a live answer — so "asked 120, found 0 links" is the reading being
+        wrong, and printing only the link count would make that look like
+        "these tenders publish no documents".
+      */}
+      {result.documentLinks ? (
+        <p className="mt-2 text-xs text-[#233846]">
+          标书链接：查了 {result.documentLinks.tendersAsked} 条项目，
+          {result.documentLinks.tendersWithLinks} 条有附件，共记录 {result.documentLinks.linkCount} 个下载链接
+          {result.documentLinks.failed ? `，${result.documentLinks.failed} 条没问到` : ""}。
+          {result.documentLinks.tendersAsked > 0 && result.documentLinks.linkCount === 0
+            ? "（一个都没有——这很可能是 PNCP 的返回格式和预期不符，不是这些项目真的没有标书，请告诉我。）"
+            : ""}
+        </p>
+      ) : null}
+
+      {!result.write ? (
         <p className="mt-2 text-xs text-[#64717c]">预览模式，一条都没有写入 Supabase。</p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -151,6 +173,10 @@ export function ImportBrazilForm() {
   const [days, setDays] = useState("1");
   const [write, setWrite] = useState(false);
   const [skipAmounts, setSkipAmounts] = useState(false);
+  // Defaults ON, unlike the two above: an imported tender with no document
+  // links reaches 待补文件 with nothing to click, which is the whole problem
+  // this pass exists to fix. Only does anything on a write run.
+  const [downloadDocuments, setDownloadDocuments] = useState(true);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<BrazilResult | null>(null);
   const [error, setError] = useState<{ message: string; cliCommand?: string } | null>(null);
@@ -160,7 +186,7 @@ export function ImportBrazilForm() {
   const estimated = estimateSeconds(dayCount, skipAmounts);
   const tooLong = estimated > SERVERLESS_CEILING_SECONDS;
 
-  const cliCommand = `npm run ingest:brazil-live -- --days ${dayCount}${skipAmounts ? " --skip-amounts" : ""}${write ? " --write" : ""}`;
+  const cliCommand = `npm run ingest:brazil-live -- --days ${dayCount}${skipAmounts ? " --skip-amounts" : ""}${write && downloadDocuments ? " --documents" : ""}${write ? " --write" : ""}`;
 
   async function copyCommand(command: string) {
     try {
@@ -181,7 +207,7 @@ export function ImportBrazilForm() {
       const res = await fetch("/api/admin/import-brazil", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ days: dayCount, write, skipAmounts }),
+        body: JSON.stringify({ days: dayCount, write, skipAmounts, downloadDocuments }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -226,6 +252,16 @@ export function ImportBrazilForm() {
         <label className="flex items-center gap-2 pb-2 text-xs text-[#233846]">
           <input type="checkbox" checked={write} onChange={(e) => setWrite(e.target.checked)} className="size-4 accent-[#ffb21c]" />
           写入 Supabase（不勾选则只预览）
+        </label>
+        <label className={`flex items-center gap-2 pb-2 pl-5 text-xs ${write ? "text-[#233846]" : "text-[#9aa7b0]"}`}>
+          <input
+            type="checkbox"
+            checked={downloadDocuments}
+            disabled={!write}
+            onChange={(e) => setDownloadDocuments(e.target.checked)}
+            className="size-4 accent-[#ffb21c]"
+          />
+          同时记录新写入项目的标书下载链接（之后在「待补文件」页可一键打包下载）
         </label>
         <label className="flex items-center gap-2 pb-2 text-xs text-[#233846]">
           <input type="checkbox" checked={skipAmounts} onChange={(e) => setSkipAmounts(e.target.checked)} className="size-4 accent-[#ffb21c]" />

@@ -26,6 +26,32 @@ export function ColombiaFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/**
+ * Green field, yellow rhombus, blue disc.
+ *
+ * Same simplification the other three already make: the real flag carries a
+ * celestial sphere, a white band and the motto ORDEM E PROGRESSO, and at
+ * 20x14 px all of that is a smudge. Mexico's eagle is one dot here and Peru's
+ * escudo is left off entirely, so the disc is drawn plain for the same reason.
+ *
+ * The rhombus is a rotated square rather than a clip-path so it renders the
+ * same in every browser the rest of this file already targets. It is sized
+ * under the flag's width on purpose — at 45° a square of side s spans s*1.41,
+ * so 9px reads as a rhombus touching the edges rather than one clipped by
+ * them, and `overflow-hidden` on the field catches the corners either way.
+ */
+export function BrazilFlag({ className = "" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`relative inline-block h-3.5 w-5 shrink-0 overflow-hidden bg-[#009739] ${className}`}
+    >
+      <span className="absolute left-1/2 top-1/2 size-[9px] -translate-x-1/2 -translate-y-1/2 rotate-45 bg-[#fedd00]" />
+      <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#012169]" />
+    </span>
+  );
+}
+
 /** Three vertical bands, red-white-red. The plain civil flag, without the coat of arms — at 20x14 px an escudo is noise, same reasoning as Mexico's eagle being one dot above. */
 export function PeruFlag({ className = "" }: { className?: string }) {
   return (
@@ -42,6 +68,7 @@ export function PeruFlag({ className = "" }: { className?: string }) {
 
 export function CountryFlag({ country, className = "" }: { country: string; className?: string }) {
   if (country === "Mexico") return <MexicoFlag className={className} />;
+  if (country === "Brazil") return <BrazilFlag className={className} />;
   if (country === "Colombia") return <ColombiaFlag className={className} />;
   if (country === "Peru") return <PeruFlag className={className} />;
   return null;

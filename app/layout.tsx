@@ -27,23 +27,26 @@ const geistMono = Geist_Mono({
 // It drifted once already — those three said 拉美 while this still said
 // 墨西哥 only, long after Colombia and Peru were live.
 //
-// The three countries are named rather than rolled up into 拉美 because
-// that is what people search for; when a fourth connector ships, this list
-// and AVAILABLE_COUNTRIES (lib/tender-list-page.ts) both need the addition.
+// The countries are named rather than rolled up into 拉美 because that is
+// what people search for; when the next connector ships, this list and
+// AVAILABLE_COUNTRIES (lib/tender-list-page.ts) both need the addition.
+// Brazil was the fourth (2026-09-19) and proved the warning above: its PNCP
+// connector had been importing for three days while every one of those rows
+// stayed invisible, because AVAILABLE_COUNTRIES had not been touched.
 export const metadata: Metadata = {
   // Absolute base for canonical URLs and any relative metadata a page sets;
   // without it Next warns and emits relative canonicals, which crawlers
   // resolve against whatever host served the page — including preview hosts.
   metadataBase: new URL(siteOrigin()),
   title: {
-    default: "拉美招投标信息平台 | 中国企业出海墨西哥、哥伦比亚、秘鲁",
+    default: "拉美招投标信息平台 | 中国企业出海墨西哥、巴西、哥伦比亚、秘鲁",
     // Every page below sets a short, page-specific title; this keeps the
     // brand on the end of it so search results stay attributable without
     // each page repeating it.
     template: "%s | 拉美招投标信息平台",
   },
   description:
-    "把墨西哥、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/中型项目。",
+    "把墨西哥、巴西、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/中型项目。",
   // Use stable, explicit URLs instead of relying only on Next's generated
   // file-metadata URLs. Google may keep a search-result favicon cached for
   // days or weeks, so the hostname should always advertise one canonical
@@ -67,14 +70,14 @@ export const metadata: Metadata = {
     siteName: "拉美招投标信息平台",
     locale: "zh_CN",
     url: siteOrigin(),
-    title: "拉美招投标信息平台 | 中国企业出海墨西哥、哥伦比亚、秘鲁",
+    title: "拉美招投标信息平台 | 中国企业出海墨西哥、巴西、哥伦比亚、秘鲁",
     description:
-      "把墨西哥、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投。",
+      "把墨西哥、巴西、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投。",
   },
   twitter: {
     card: "summary_large_image",
     title: "拉美招投标信息平台",
-    description: "墨西哥、哥伦比亚、秘鲁的政府招标信息，结构化中文情报。",
+    description: "墨西哥、巴西、哥伦比亚、秘鲁的政府招标信息，结构化中文情报。",
   },
   // NO `alternates` here, deliberately. Metadata fields are inherited WHOLE by
   // any route that does not set its own (Next's own docs: "All openGraph

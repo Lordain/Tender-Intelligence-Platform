@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchPncpItems, fetchPncpSearchPage, PNCP_MAX_PAGE_SIZE, PNCP_WORKS_MODALITIES } from "@/lib/ingestion/connectors/brazil-pncp-live";
+import { fetchPncpArquivos, fetchPncpItems, fetchPncpSearchPage, PNCP_MAX_PAGE_SIZE, PNCP_WORKS_MODALITIES } from "@/lib/ingestion/connectors/brazil-pncp-live";
+import { saveDocumentLinks, type DocumentLinksForSlug } from "@/lib/ingestion/document-links";
 import { mapPncpSearchRowToTender, parsePncpDate, type PncpItem, type PncpSearchRow } from "@/lib/ingestion/brazil-pncp-mapper";
 import { filterRecentTenders } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
@@ -56,6 +57,15 @@ export type BrazilIngestResult = {
    * call here is permanent and silent.
    */
   excludedByReason: { reason: string; count: number }[];
+  /**
+   * The attachment pass, when it ran. Reported in full rather than as a
+   * boolean because this is the FIRST measurement of PNCP's /arquivos shape —
+   * it was written from the published API, not from a real response, since no
+   * .gov.br host is reachable from where it was written. `tendersAsked` with
+   * `linkCount: 0` is the signal that the reading is wrong; without both
+   * numbers a silent zero would look like "these tenders have no documents".
+   */
+  documentLinks?: { tendersAsked: number; tendersWithLinks: number; linkCount: number; failed: number };
   /**
    * The largest `/itens` list seen, and how many tenders returned exactly that
    * many.
@@ -121,6 +131,16 @@ export type BrazilIngestOptions = {
   modalities?: readonly number[];
   /** Skip the per-tender amount lookup. Halves the request count for a shape-only dry run; every row then reports no amount, which is NOT how they should be judged. */
   skipAmounts?: boolean;
+  /**
+   * After the upsert, ask PNCP for each written tender's attached documents
+   * and record their URLs in `tender_document_links`.
+   *
+   * Off by default and a separate pass on purpose, the same shape Colombia's
+   * import uses: it is one extra request per WRITTEN tender, it only makes
+   * sense on a write run (there is no tender to attach links to otherwise),
+   * and a failure here must not cost the import. See fetchPncpArquivos.
+   */
+  downloadDocuments?: boolean;
 };
 
 /** PNCP throttles by resetting connections. The connector retries, but pacing means it has less to retry. */
@@ -320,12 +340,18 @@ export async function ingestBrazilPncp(
   // over the same rows produce the same list and a diff between them means
   // something.
   const mapped: Tender[] = [];
+  // Slug -> the row's item_url. /arquivos hangs off the same cnpj/ano/
+  // sequencial triple that item_url carries, and by the time the attachment
+  // pass runs the only handle left on a tender is its slug.
+  const itemUrlBySlug = new Map<string, string>();
   for (const [index, tender] of results.entries()) {
     if (tender === null) continue;
     if (tender.estimatedValue === undefined) {
       withoutAmount += 1;
       if (sealedFlags[index]) sealedBudget += 1;
     }
+    const itemUrl = withinWindow[index]?.item_url;
+    if (itemUrl) itemUrlBySlug.set(tender.slug, itemUrl);
     mapped.push(tender);
   }
 
@@ -412,5 +438,37 @@ export async function ingestBrazilPncp(
   }
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
   const written = await upsertTendersBatched(supabase, kept);
-  return { ...result, written: written.upsertedCount, failed: written.failed.length };
+  const writeResult = { ...result, written: written.upsertedCount, failed: written.failed.length };
+  if (!options.downloadDocuments) return writeResult;
+
+  // Attachments, after the write: a link row needs a tender_id, and
+  // saveDocumentLinks resolves it by slug. Paced through the same slot
+  // limiter the amount pass uses — this is the same host, and hammering it
+  // is what gets connections reset.
+  const candidates = kept.filter((tender) => itemUrlBySlug.has(tender.slug));
+  const entries: DocumentLinksForSlug[] = [];
+  let linkFailures = 0;
+  for (const [index, tender] of candidates.entries()) {
+    await takeSlot();
+    const links = await fetchPncpArquivos(itemUrlBySlug.get(tender.slug));
+    // null is "could not ask" and [] is "asked, none published". Only the
+    // first is a failure, and conflating them would report every
+    // document-less tender as a broken request.
+    if (links === null) linkFailures += 1;
+    else if (links.length > 0) entries.push({ slug: tender.slug, links });
+    if ((index + 1) % 50 === 0 || index + 1 === candidates.length) {
+      onProgress?.(`取标书链接：${index + 1} / ${candidates.length}`);
+    }
+  }
+
+  const saved = await saveDocumentLinks(supabase, entries);
+  return {
+    ...writeResult,
+    documentLinks: {
+      tendersAsked: candidates.length,
+      tendersWithLinks: saved.tendersWithLinks,
+      linkCount: saved.linkCount,
+      failed: linkFailures + saved.failed.length,
+    },
+  };
 }

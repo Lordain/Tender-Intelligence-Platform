@@ -13,7 +13,7 @@ import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
 const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
 const TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
 /** The countries a digest can be narrowed to — same set the public list offers (AVAILABLE_COUNTRIES in lib/tender-list-page.ts). An empty selection means every country, so a country missing here is only missing as a CHOICE, not from the mail. */
-const NOTIFICATION_COUNTRIES = ["Mexico", "Colombia", "Peru"] as const;
+const NOTIFICATION_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru"] as const;
 
 function ToggleList({ values, selected, onChange, render }: { values: string[]; selected: string[]; onChange: (next: string[]) => void; render: (value: string) => string }) {
   const allSelected = selected.length === 0;

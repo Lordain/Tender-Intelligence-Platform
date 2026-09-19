@@ -18,6 +18,7 @@
  *   npm run ingest:brazil-live -- --months 3
  *   npm run ingest:brazil-live -- --max 200                 (fewer pages per modality)
  *   npm run ingest:brazil-live -- --skip-amounts            (shape only — every row then reports no amount)
+ *   npm run ingest:brazil-live -- --documents --write       (also record each written tender's bid-document links)
  *   npm run ingest:brazil-live -- --modalities 4            (just Concorrência Eletrônica)
  *   npm run ingest:brazil-live -- --write
  */
@@ -77,6 +78,9 @@ async function main() {
       maxRowsPerModality,
       ...(modalities ? { modalities } : {}),
       skipAmounts: args.includes("--skip-amounts"),
+      // Needs a write: a link row hangs off a tender_id, so there is nothing
+      // to attach to on a dry run. Same AND the API route applies.
+      downloadDocuments: args.includes("--documents") && hasWriteFlag(),
     },
     (message) => console.log(`  ${message}`),
   );
@@ -171,6 +175,19 @@ async function main() {
     return;
   }
   console.log(`\n已写入 ${result.written ?? 0} 条${result.failed ? `，失败 ${result.failed} 条` : ""}。`);
+  if (result.documentLinks) {
+    const { tendersAsked, tendersWithLinks, linkCount, failed } = result.documentLinks;
+    console.log(`标书链接：查了 ${tendersAsked} 条，${tendersWithLinks} 条有附件，共 ${linkCount} 个链接${failed ? `，${failed} 条没问到` : ""}。`);
+    // Both numbers, because this is the first time PNCP's /arquivos has
+    // actually answered anywhere — the parser was written from the published
+    // API, never from a live response. A silent zero would read as "these
+    // tenders have no documents" rather than "the reading is wrong".
+    if (tendersAsked > 0 && linkCount === 0) {
+      console.log("  ⚠ 一个链接都没拿到。这更像是 /arquivos 的返回格式和预期不符，而不是这些项目真的没有标书 —— 见 fetchPncpArquivos 的注释。");
+    }
+  } else if (args.includes("--documents")) {
+    console.log("（--documents 只在 --write 时生效：链接要挂在已写入的项目上。）");
+  }
 }
 
 main().catch((err) => {

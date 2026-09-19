@@ -1,6 +1,6 @@
 import { blockPageReason, pageTitle, visibleText } from "@/lib/ingestion/block-page";
 import { describeFetchFailure } from "@/lib/fetch-failure";
-import { ckanAction, ckanPackageSearch, ckanPackageShow, type CkanPackage, type CkanResource } from "@/lib/ingestion/connectors/ckan";
+import { ckanAction, ckanPackageSearch, ckanPackageShow, type CkanPackage, type CkanPackageSearch, type CkanResource } from "@/lib/ingestion/connectors/ckan";
 import { collectLinks, isInteresting, type PageLink } from "@/lib/ingestion/brazil-behind-doors";
 
 /**
@@ -121,6 +121,52 @@ async function readDatastore(base: string, resourceId: string): Promise<string[]
   }
 }
 
+const ANTT_ATTEMPTS = 6;
+const ANTT_GAP_MS = 3_000;
+
+/**
+ * How often ANTT actually answers, rather than whether it answered once.
+ *
+ * Measured across three runs minutes apart from three runners: rejected,
+ * then four calls in a row accepted, then rejected again — the same URL each
+ * time, and `status_show` passing in the run where `package_search` did not.
+ * The F5 appliance in front of it is refusing some requests and not others.
+ *
+ * One sample of that is not a finding, it is a coin toss written down. A
+ * connector's retry policy is decided by the rate, so this reports the rate:
+ * N attempts, spaced, with the successes and the failures counted. It also
+ * means a run no longer reports "ANTT unreachable" because the first call
+ * lost the toss.
+ */
+async function searchAnttWithRetries(): Promise<{ found: CkanPackageSearch | null; report: string[] }> {
+  const verdicts: string[] = [];
+  let found: CkanPackageSearch | null = null;
+  for (let attempt = 1; attempt <= ANTT_ATTEMPTS; attempt += 1) {
+    try {
+      const result = await ckanPackageSearch(ANTT_CKAN, { q: "Projetos de Concessão", rows: 10 }, { timeoutMs: TIMEOUT_MS });
+      verdicts.push(`${attempt}:通`);
+      if (found === null) found = result;
+    } catch (err) {
+      const message = describeFetchFailure(err);
+      verdicts.push(`${attempt}:${/Request Rejected/i.test(message) ? "F5拒" : "错"}`);
+    }
+    if (attempt < ANTT_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, ANTT_GAP_MS));
+  }
+  const passes = verdicts.filter((v) => v.endsWith("通")).length;
+  return {
+    found,
+    report: [
+      `  package_search 连打 ${ANTT_ATTEMPTS} 次（间隔 ${ANTT_GAP_MS / 1000}s）：${passes} 次通 / ${ANTT_ATTEMPTS - passes} 次被拒`,
+      `    ${verdicts.join("  ")}`,
+      passes === 0
+        ? "    一次都没通 —— 这次当它是关的。"
+        : passes === ANTT_ATTEMPTS
+          ? "    次次都通 —— 之前那次被拒是偶发，连接器照常建，带重试就行。"
+          : "    时通时不通 —— 能建，但连接器必须带重试，且单次失败不能当作「没有数据」。",
+    ],
+  };
+}
+
 async function digPackage(base: string, pkg: CkanPackage): Promise<string[]> {
   let full: CkanPackage = pkg;
   try {
@@ -190,7 +236,7 @@ async function digAntaqConsultations(): Promise<string[]> {
 
   const candidates = page.links.filter((l) => isInteresting(l) && !/compartilhe|termo de uso|aviso de privacidade/i.test(l.text));
   const reachable = candidates.filter((l) => l.reach !== "closed");
-  return [
+  const out = [
     `  「${live.text}」`,
     `  ${live.href}`,
     `  ${page.note} · ${candidates.length} 条值得跟，其中 ${reachable.length} 条够得着`,
@@ -200,6 +246,36 @@ async function digAntaqConsultations(): Promise<string[]> {
       ? ["", `    取不到的 ${candidates.length - reachable.length} 条：`, ...candidates.filter((l) => l.reach === "closed").slice(0, 5).map((l) => `      · ${truncate(l.text, 60)} → ${l.host}`)]
       : []),
   ];
+
+  // The index listing consultations is not the same as the documents being
+  // fetchable, and B7 only proved it for one of them. These open the
+  // consultations themselves and count what is actually attached.
+  const hearings = reachable.filter((l) => /audi[êe]ncia\s+p[úu]blica\s+n/i.test(l.text));
+  const govBr = hearings.filter((l) => l.host === "www.gov.br").slice(0, 3);
+  // One from ANTAQ's own hearing system too: it appeared in the listing and
+  // has never been knocked, so its verdict is unknown rather than closed.
+  const sisap = hearings.find((l) => l.host === "sisapinternet.antaq.gov.br");
+  const toOpen = [...govBr, ...(sisap ? [sisap] : [])];
+
+  out.push("", `  ── 打开其中 ${toOpen.length} 场，看附件到底取不取得到 ──`);
+  for (const hearing of toOpen) {
+    out.push("", `  ▸ ${truncate(hearing.text, 90)}`, `    ${hearing.host}`);
+    const detail = await readPage(hearing.href);
+    if (!detail.ok) {
+      out.push(`    ${detail.note}`);
+      continue;
+    }
+    const files = detail.links.filter((l) => /^(pdf|docx?|xlsx?|zip|rar|7z)$/i.test(l.ext));
+    const gettable = files.filter((l) => l.reach !== "closed");
+    out.push(`    ${detail.note} · 附件 ${files.length} 个，够得着 ${gettable.length} 个`);
+    for (const file of gettable.slice(0, 6)) {
+      out.push(`      · ${truncate(file.text, 74) || "（无文字）"}  [${file.ext}]`);
+    }
+    if (files.length === 0) {
+      out.push(`      没有直接挂附件 —— 页面上值得跟的链接：${detail.links.filter(isInteresting).slice(0, 4).map((l) => truncate(l.text, 40)).join(" / ") || "（无）"}`);
+    }
+  }
+  return out;
 }
 
 export async function digPipeline(where: string): Promise<string> {
@@ -216,16 +292,15 @@ export async function digPipeline(where: string): Promise<string> {
     "",
   ];
 
-  try {
-    const found = await ckanPackageSearch(ANTT_CKAN, { q: "Projetos de Concessão", rows: 10 }, { timeoutMs: TIMEOUT_MS });
-    const wanted = found.results.filter((p) => /projetos?\s+de\s+concess/i.test(p.title ?? p.name ?? ""));
-    const packages = wanted.length > 0 ? wanted : found.results.slice(0, 2);
-    out.push(`  「Projetos de Concessão」命中 ${found.count} 个，其中标题对得上的 ${wanted.length} 个`, "");
+  const antt = await searchAnttWithRetries();
+  out.push(...antt.report, "");
+  if (antt.found !== null) {
+    const wanted = antt.found.results.filter((p) => /projetos?\s+de\s+concess/i.test(p.title ?? p.name ?? ""));
+    const packages = wanted.length > 0 ? wanted : antt.found.results.slice(0, 2);
+    out.push(`  命中 ${antt.found.count} 个，其中标题对得上的 ${wanted.length} 个`, "");
     for (const pkg of packages.slice(0, 3)) {
       out.push(...(await digPackage(ANTT_CKAN, pkg)), "");
     }
-  } catch (err) {
-    out.push(`  读不到 —— ${describeFetchFailure(err).slice(0, 200)}`, "");
   }
 
   out.push("────────────────────────────────────────────────────────────────────────", "", "二、ANTAQ —— 正在征询的项目（标书草案比拍卖公告早一步）", "");

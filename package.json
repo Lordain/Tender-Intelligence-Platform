@@ -140,7 +140,8 @@
     "capture:antaq": "tsx scripts/capture-antaq-audiencias.ts",
     "purge:awarded-closed": "tsx --env-file-if-exists=.env.local scripts/purge-awarded-closed.ts",
     "test:bid-window": "tsx scripts/test-bid-window.ts",
-    "test:brazil-links": "tsx scripts/test-brazil-links.ts"
+    "test:brazil-links": "tsx scripts/test-brazil-links.ts",
+    "test:antaq-parser": "tsx scripts/test-antaq-parser.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

@@ -164,6 +164,9 @@ const AMOUNT_PACE_MS = 500;
  * than the half hour it cost once.
  */
 const DOCUMENT_FAILURE_STREAK = 10;
+/** Row-count and wall-clock triggers for the amount pass's progress line. */
+const AMOUNT_PROGRESS_EVERY = 10;
+const AMOUNT_HEARTBEAT_MS = 10_000;
 const AMOUNT_CONCURRENCY = 4;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -328,6 +331,22 @@ export async function ingestBrazilPncp(
 
   let cursor = 0;
   let done = 0;
+  // Every 50 rows was the only trigger until 2026-09-19, when a 97-row run
+  // printed 「发布时间在 1 天内的：97 / 300 条」 and then said nothing for long
+  // enough that the user asked whether it had hung. It had not — the first
+  // progress line simply was not due until row 50. Two triggers now, because
+  // they answer different questions: the count says how far along it is, and
+  // the clock says it is still alive. A run being throttled by PNCP is slow,
+  // not stuck, and only a heartbeat can tell a reader which one they have.
+  let lastBeatAt = Date.now();
+  function beat(force: boolean) {
+    const now = Date.now();
+    if (!force && done % AMOUNT_PROGRESS_EVERY !== 0 && now - lastBeatAt < AMOUNT_HEARTBEAT_MS) return;
+    lastBeatAt = now;
+    const elapsed = Math.round((now - startedAmountsAt) / 1000);
+    onProgress?.(`取金额：${done} / ${withinWindow.length}（已用 ${elapsed}s）`);
+  }
+  const startedAmountsAt = Date.now();
   async function worker() {
     for (;;) {
       const index = cursor;
@@ -339,7 +358,7 @@ export async function ingestBrazilPncp(
         await takeSlot();
         items = await fetchPncpItems(row.item_url);
         done += 1;
-        if (done % 50 === 0 || done === withinWindow.length) onProgress?.(`取金额：${done} / ${withinWindow.length}`);
+        beat(done === withinWindow.length);
       }
       const tender = mapPncpSearchRowToTender(row, items ?? undefined, BRAZIL_PNCP_SOURCE_NAME);
       if (!tender) continue;

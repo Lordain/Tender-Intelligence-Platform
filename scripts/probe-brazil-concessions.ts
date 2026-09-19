@@ -339,7 +339,26 @@ async function fetchText(url: string, timeoutMs: number, headers: Record<string,
  * returned bytes is the whole test: a CMS listing has dozens, a shell has a
  * handful of nav links or none.
  */
+/** `%PDF-` is the first five bytes of every PDF, and PDFs are the point here. */
+function describeFile(text: string): string | null {
+  if (text.startsWith("%PDF-")) {
+    const version = /^%PDF-(\d+\.\d+)/.exec(text)?.[1] ?? "?";
+    return `★ 这是一个真的 PDF（v${version}，${Math.round(text.length / 1024)}KB）—— 文件下下来了，不是页面`;
+  }
+  return null;
+}
+
 function describeHtml(text: string, linkPattern: RegExp): { note: string; links: string[] } {
+  // Run four, and the third wrong verdict this function has produced — all
+  // three from the same root: it assumes everything it is handed is a page.
+  // P12 fetched a real 659KB ANTAQ minuta de edital and got
+  // 「答了，但页面上几乎没东西」, because a PDF has no <a> tags and the thin
+  // test counts anchors. That verdict is the opposite of the truth on the one
+  // step the whole round existed to answer, and "an SPA we cannot scrape"
+  // and "the document downloaded" lead to completely different next moves.
+  const asFile = describeFile(text);
+  if (asFile) return { note: asFile, links: [] };
+
   const anchors = [...text.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]{0,120}?)<\/a>/gi)];
   const matching = anchors.filter(([, href]) => linkPattern.test(href));
   const pdfs = anchors.filter(([, href]) => /\.pdf(\?|$)/i.test(href));
@@ -651,6 +670,9 @@ async function main() {
     // ANAC's own data-search host, found 2026-09-19. Separate from gov.br and
     // never tried; ANAC was skipped in every earlier round.
     "datasearch.anac.gov.br",
+    // Named by ANTAQ's own auction index in run four: every one of its 88
+    // matching links points here, so this is where the port editais live.
+    "leilao.antaq.gov.br",
     "dadosabertos.ccee.org.br",
     "www.b3.com.br",
   ];
@@ -882,6 +904,30 @@ async function main() {
     "ANEEL 的教训是「能读目录」和「能下文件」是两个问题：gov.br/aneel 通，download.aneel.gov.br 两个大洲都超时，所以那些项目永远没有附件。这条是 ANTAQ 挂在 gov.br 自己域名下的 minuta de edital —— 下得下来，港口这条线就是完整数据源（能下标书、能进 AI 分析）；下不来，就跟 ANEEL 一样只能当信号",
     "https://www.gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/audiencias-e-consultas-publicas/audiencias/teste/04-2026-vdc04/minuta-de-edital.pdf",
     /never/,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // Run four answered P9-P12 with four OKs, which moves the question from
+  // "can we reach them" to "where exactly is the edital". Both of these come
+  // from links the pages themselves printed, not from guesses.
+  await probeHtml(
+    "P9b. ANTT「novos projetos em rodovias」（P9 那页自己给的下一层）",
+    "P9 通了（614 个链接、命中 43），而它列出的子页里这一个就是在招的公路项目 —— 2026 年 13 场公路拍卖的 edital 应该挂在这儿",
+    "https://www.gov.br/antt/pt-br/assuntos/rodovias/novos-projetos-em-rodovias",
+    /edital|leil|concess|projeto|anexo/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // ANTAQ's index printed 88 matching links and every one of them is an
+  // `audiencia=` id on a host nobody has tested. 175 is Leilão 01/2026-ANTAQ
+  // (MCP01, Santana/AP) — a real, current auction rather than an example.
+  await probeHtml(
+    "P10b. ANTAQ 某一场拍卖的详情页（P10 列出来的 88 个链接都指向这台主机）",
+    "P10 通了，但它的每个拍卖链接都指向 leilao.antaq.gov.br 这个没测过的子域名。这条取的是 Leilão 01/2026-ANTAQ（MCP01，阿马帕州 Santana 港）—— 真实在招的一场。这一层通不通，决定港口这条线是「看得见清单」还是「拿得到标书」",
+    "https://leilao.antaq.gov.br/default.aspx?audiencia=175",
+    /edital|anexo|minuta|contrato|\.pdf/i,
     timeoutMs,
   );
   await sleep(1500);

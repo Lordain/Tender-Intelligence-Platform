@@ -3944,6 +3944,70 @@ auctions (20 regional), 19 port terminal leases, 13 highways, 8 rail, 5
 energy. None of it reaches PNCP, because a concession is not a *contratação*
 under Lei 14.133/2021.
 
+#### Run four's answer: the regulators are open, and the document downloads
+
+P9-P12 all came back 200 from the user's machine, with an honest
+User-Agent and no browser tricks:
+
+```
+P9   gov.br/antt/…/rodovias        195KB · 17518 字 · 614 链接（命中 43，PDF 4）· 服务端渲染
+P10  gov.br/antaq/…/leiloes        208KB · 36288 字 · 650 链接（命中 88，PDF 0）· 服务端渲染
+P11  gov.br/anac/…/concessoes      145KB · 12700 字 · 418 链接（PDF 10）· 服务端渲染
+P12  gov.br/antaq/…/minuta-de-edital.pdf   659KB
+```
+
+**P12 is the one that mattered and it downloaded.** 659 KB of real PDF, from
+`gov.br` itself, unauthenticated. That is the thing ANEEL can never do:
+`download.aneel.gov.br` times out from two continents, so ANEEL rows are
+signal-only by construction. Ports — and on this evidence highways and
+airports — are a **full** source: index, documents, and the existing
+document-analysis pipeline.
+
+**The probe reported that success as a failure, and it is the third wrong
+verdict from the same function.** `describeHtml` printed
+「答了，但页面上几乎没东西 —— 内容多半是 JS 后填的」 for a 659KB PDF, because
+its thin test counts `<a>` tags and a PDF has none. Run one called a
+271-character page server-rendered for want of a framework marker; run three
+read `Acesso Negado!` as an empty page; this one called a downloaded document
+an unscrapeable shell. Same root every time: the function assumes whatever it
+is handed is a page. It now checks for `%PDF-` first and reports the file, its
+version and its size. On the single step the whole round existed to answer,
+the verdict was the exact opposite of the truth.
+
+**What run four says about each sector:**
+
+- **ANTAQ (ports)** — the index printed real, current auctions with ids:
+  `leilao.antaq.gov.br/default.aspx?audiencia=175` is Leilão 01/2026 (MCP01,
+  Santana/AP), 176 is NAT01, 177 is TMP-Recife. All 88 matching links point at
+  `leilao.antaq.gov.br`, **a host nobody has tested** — so P10b now fetches
+  one. The index is reachable; whether the per-auction document list is, is
+  the open question.
+- **ANTT (highways)** — the page named its own next layer,
+  `/assuntos/rodovias/novos-projetos-em-rodovias`, which is where the 13
+  auctions should be. Added as P9b.
+- **ANAC (airports)** — 10 PDFs on the landing page alone, and it was skipped
+  entirely in every earlier round for want of a hostname.
+- **DOU** — `in.gov.br` still closes the socket mid-read on both paths, HTML
+  and JSON alike. Not a User-Agent problem.
+
+**PPI itself stays closed and now says so in words.** With the block-page
+check running on first attempts, E3B's refusal came back readable:
+
+```
+Acesso Negado! Esta requisição foi bloqueada. Em caso de dúvida, por favor
+envie o código 13376840596295746456 … para bloqueio.de.aplicacoes@presidencia.gov.br
+```
+
+That is the **Presidency's** application blocker — the same family as
+`dadosabertos.presidencia.gov.br`, which is consistent with PPI's own host
+being an F5 page. It also names an appeals channel, which is a different kind
+of lead than a WAF usually leaves: a real address, a real reference code.
+
+So the shape of the Brazil concession work has changed. It does not need PPI,
+and it does not need a different network egress. It needs a connector per
+regulator, starting with whichever of P9b/P10b comes back with a document
+list.
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.

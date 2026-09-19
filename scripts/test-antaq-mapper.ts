@@ -49,7 +49,11 @@ for (const file of files) {
   check(`${tag} 归为工程`, tender.scopeType, "works");
   // Nobody can bid on a consultation. `open` would put a customer on a
   // deadline that does not exist.
-  check(`${tag} 状态不是「开放投标」`, tender.status === "open", false);
+  check(`${tag} 状态是「计划中」`, tender.status, "planned");
+  // The one that would have made the connector write nothing:
+  // upsertTendersBatched drops every tender whose submissionDeadline has
+  // passed, and all five comment periods had closed before the capture.
+  check(`${tag} 不设交标截止日（征询截止不是交标截止）`, tender.submissionDeadline, undefined);
   check(`${tag} slug 有 antaq 前缀`, tender.slug.startsWith("antaq-"), true);
   check(`${tag} 标题不是纯编号`, /^\s*audi[êe]ncia\s+p[úu]blica\s+n[º°]?\s*\d+\/\d{4}\s*-?\s*ANTAQ\s*$/i.test(tender.title.es), false);
   check(`${tag} 有发布日期`, /^\d{4}-\d{2}-\d{2}$/.test(tender.publicationDate), true);
@@ -63,11 +67,11 @@ if (itj) {
   check("ITJ01 标号", itj.tenderNumber, "AP 07/2026");
   check("ITJ01 标题就是项目本身", itj.title.es, "ARRENDAMENTO DA ÁREA ITJ01 LOCALIZADA NO PORTO ORGANIZADO DE ITAJAÍ/SC");
   check("ITJ01 发布日期", itj.publicationDate, "2026-06-25");
-  check("ITJ01 截止日期", itj.submissionDeadline, "2026-08-13");
-  // 截止 2026-08-13，跑批时间 2026-09-19，已经过了
-  check("ITJ01 征询已结束", itj.status, "submission_closed");
+  check("ITJ01 征询截止日在关键日期里，类型是「问询截止」", itj.keyDates.find((d) => d.type === "questions_deadline")?.date, "2026-08-13");
+  // 征询截止 2026-08-13，跑批时间 2026-09-19，已经过了 —— 摘要里要说清楚
+  check("ITJ01 摘要写明征询已结束", itj.summary.es.includes("Consulta pública encerrada em 2026-08-13"), true);
   check("ITJ01 摘要里带上了日程原文", itj.summary.es.includes("29/06/2026 a 13/08/2026"), true);
-  check("ITJ01 关键日期两条（发布 + 截止）", itj.keyDates.map((d) => d.type), ["publication", "submission"]);
+  check("ITJ01 关键日期两条（发布 + 问询截止）", itj.keyDates.map((d) => d.type), ["publication", "questions_deadline"]);
   // The whole point of the flag: no amount, and still not 常规.
   check("ITJ01 没有金额但没被压成常规", itj.relevance.tier === "standard", false);
   console.log(`      → 档位 ${itj.relevance.tier} / 行业 ${itj.industries.join(",")}`);

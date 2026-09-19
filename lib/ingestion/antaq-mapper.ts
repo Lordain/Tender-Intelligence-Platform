@@ -1,4 +1,4 @@
-import type { Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
+import type { Tender, TenderKeyDate } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender, ANTAQ_SOURCE_NAME } from "@/lib/relevance";
 import type { AntaqHearing } from "@/lib/ingestion/antaq-audiencia-parser";
@@ -18,10 +18,33 @@ import type { AntaqHearing } from "@/lib/ingestion/antaq-audiencia-parser";
  * to Vercel and to the runner alike), so this is also the only ANTAQ stage
  * that can be imported at all.
  *
- * The status therefore stays `planned` while contributions are open and
- * becomes `submission_closed` afterwards. It is never `open`: nobody can bid
- * on a hearing, and showing one as open would put a customer on a deadline
- * that does not exist.
+ * ── Why the contributions deadline is NOT submissionDeadline ─────────────
+ *
+ * It was, for one commit, and the connector would have written nothing. All
+ * five captured hearings are listed by ANTAQ as "em andamento" and every one
+ * of their comment periods had already closed — the latest on 2026-08-15,
+ * captured on 2026-09-19. `upsertTendersBatched` drops any tender whose
+ * `submissionDeadline` has passed, from every source, so all five would have
+ * been silently discarded and the import would have reported success.
+ *
+ * The mechanical fix and the correct one are the same. A comment period is
+ * not a bid deadline: bidding has not opened, and the auction that will open
+ * it has no published date yet. So the date goes into `keyDates` as a
+ * `questions_deadline` — the closest thing this platform has to a comment
+ * window — and `submissionDeadline` stays empty, which is the truth.
+ *
+ * That also keeps the 12-day bidding-window rule from firing on these rows.
+ * It should not: there is no bidding window here to be too short.
+ *
+ * ── Status is always `planned` ────────────────────────────────────────────
+ *
+ * Never `open` — nobody can bid on a consultation, and showing one as open
+ * puts a customer on a deadline that does not exist. And never
+ * `submission_closed` either, even once the comment period ends: that reads
+ * as "bidding has closed" and would bury the project exactly when it is
+ * closest to being tendered, which is the opposite of why this source is
+ * worth having. Whether comments are still open is said in the summary,
+ * where it is a sentence rather than a status a filter acts on.
  *
  * ── Why estimatedValue is absent, always ──────────────────────────────────
  *
@@ -61,19 +84,22 @@ const GOVERNMENT_LEVEL = "federal" as const;
  */
 const SCOPE_TYPE = "works" as const;
 
-function statusFor(hearing: AntaqHearing, now: Date): TenderStatus {
-  if (hearing.contributionsDeadline === undefined) return "planned";
+/** Whether the comment period is still open, for the sentence in the summary. */
+function contributionsClosed(hearing: AntaqHearing, now: Date): boolean {
+  if (hearing.contributionsDeadline === undefined) return false;
   // Compared as calendar days in UTC, matching how the deadline was parsed —
   // see parseBrazilianDate on why no clock time survives.
-  return new Date(`${hearing.contributionsDeadline}T23:59:59Z`).getTime() < now.getTime() ? "submission_closed" : "planned";
+  return new Date(`${hearing.contributionsDeadline}T23:59:59Z`).getTime() < now.getTime();
 }
 
 function keyDatesFor(hearing: AntaqHearing, slug: string, publicationDate: string): TenderKeyDate[] {
   const dates: TenderKeyDate[] = [{ id: `${slug}-publication`, type: "publication", date: publicationDate }];
   if (hearing.contributionsDeadline !== undefined) {
     dates.push({
+      // `questions_deadline`, not `submission`: this is the last day to send
+      // comments on a draft, not the last day to bid. See the header.
       id: `${slug}-contributions`,
-      type: "submission",
+      type: "questions_deadline",
       date: hearing.contributionsDeadline,
       notes: untranslated("Prazo final para contribuições à consulta pública"),
     });
@@ -116,7 +142,16 @@ export function mapAntaqHearingToTender(hearing: AntaqHearing, now: Date = new D
   const slug = `antaq-${slugify(`${hearing.number}${hearing.projectCode ? `-${hearing.projectCode}` : ""}`)}`;
 
   const title = hearing.subject ?? hearing.heading;
-  const summary = `${what}${scheduleProse(hearing)}`;
+  // Said in words because it is not said by the status. A reader needs to
+  // know whether there is still time to comment, and a closed consultation
+  // is the MORE interesting one — it means the auction is next.
+  const windowSentence =
+    hearing.contributionsDeadline === undefined
+      ? ""
+      : contributionsClosed(hearing, now)
+        ? ` Consulta pública encerrada em ${hearing.contributionsDeadline}; o leilão ainda não foi publicado.`
+        : ` Consulta pública aberta para contribuições até ${hearing.contributionsDeadline}.`;
+  const summary = `${what}${windowSentence}${scheduleProse(hearing)}`;
 
   const { industries, relevance } = classifyStoredTender({
     sourceName: ANTAQ_SOURCE_NAME,
@@ -143,8 +178,9 @@ export function mapAntaqHearingToTender(hearing: AntaqHearing, now: Date = new D
     scopeType: SCOPE_TYPE,
     procedureType: "Audiência e Consulta Pública",
     publicationDate,
-    ...(hearing.contributionsDeadline === undefined ? {} : { submissionDeadline: hearing.contributionsDeadline }),
-    status: statusFor(hearing, now),
+    // No submissionDeadline, deliberately — see the header. Setting it to the
+    // comment deadline made upsertTendersBatched drop every row.
+    status: "planned",
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],

@@ -136,6 +136,7 @@
     "probe:brazil-concessions": "tsx --env-file-if-exists=.env.local scripts/probe-brazil-concessions.ts",
     "probe:brazil-doors": "tsx scripts/probe-brazil-doors.ts",
     "probe:brazil-behind-doors": "tsx scripts/probe-brazil-behind-doors.ts",
+    "probe:brazil-pipeline": "tsx scripts/probe-brazil-pipeline.ts",
     "purge:awarded-closed": "tsx --env-file-if-exists=.env.local scripts/purge-awarded-closed.ts",
     "test:bid-window": "tsx scripts/test-bid-window.ts",
     "test:brazil-links": "tsx scripts/test-brazil-links.ts"

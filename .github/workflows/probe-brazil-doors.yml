@@ -28,7 +28,7 @@ on:
         description: "敲门（能不能连上）还是看门后面（有没有能投的标）"
         type: choice
         default: both
-        options: [doors, behind, both]
+        options: [doors, behind, pipeline, both]
 
 jobs:
   probe:
@@ -56,3 +56,10 @@ jobs:
       - name: Look behind
         if: inputs.what == 'behind' || inputs.what == 'both'
         run: npm run probe:brazil-behind-doors -- "GitHub Actions 跑批机"
+
+      # The two routes that survived the scoring, followed to the column
+      # contract — see lib/ingestion/brazil-pipeline-dig.ts. A dataset
+      # existing is not a dataset being usable.
+      - name: Dig the pipeline
+        if: inputs.what == 'pipeline' || inputs.what == 'both'
+        run: npm run probe:brazil-pipeline -- "GitHub Actions 跑批机"

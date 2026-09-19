@@ -145,20 +145,37 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
     if (!user) router.push("/login");
   }, [loading, user, router]);
 
-  const countries = useMemo(
-    () => [...new Set(tenders.map((tender) => tender.country))].sort((a, b) => countryLabel(a, locale).localeCompare(countryLabel(b, locale), locale)),
-    [locale, tenders],
-  );
+  /**
+   * Counted, not just listed.
+   *
+   * These options are built from the rows actually on this page, so a country
+   * with nothing left to collect is ABSENT rather than showing zero — and the
+   * page gave no hint that was the rule. Asked directly (2026-09-19: 国家地区
+   * 下拉选项没有秘鲁？来源下拉选项也不全). Nothing was broken: Peru simply had
+   * no tender still waiting for documents. But "my country vanished from a
+   * filter" reads as a bug every time, so each option now carries its count
+   * and a line under the filters says where the list comes from.
+   */
+  const countries = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tender of tenders) counts.set(tender.country, (counts.get(tender.country) ?? 0) + 1);
+    return [...counts.entries()]
+      .sort(([a], [b]) => countryLabel(a, locale).localeCompare(countryLabel(b, locale), locale))
+      .map(([value, count]) => ({ value, count }));
+  }, [locale, tenders]);
 
   // Built from the rows actually present rather than a hardcoded list, so a
   // new connector shows up here the day its first tender lands.
-  const sources = useMemo(
-    () =>
-      [...new Set(tenders.map((tender) => tender.sourceName).filter(Boolean))].sort((a, b) =>
-        a.localeCompare(b, locale),
-      ),
-    [locale, tenders],
-  );
+  const sources = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tender of tenders) {
+      if (!tender.sourceName) continue;
+      counts.set(tender.sourceName, (counts.get(tender.sourceName) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, locale))
+      .map(([value, count]) => ({ value, count }));
+  }, [locale, tenders]);
   const downloadableCount = useMemo(() => tenders.filter((tender) => tender.documentLinkCount > 0).length, [tenders]);
   const pendingDownloadCount = useMemo(() => tenders.filter((tender) => !tender.documentsDownloadedAt).length, [tenders]);
 
@@ -258,7 +275,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
             <span className="text-xs font-black text-[#52636e]">国家/地区</span>
             <select value={country} onChange={(event) => setCountry(event.target.value)} className={selectClass}>
               <option value="all">全部国家</option>
-              {countries.map((item) => <option key={item} value={item}>{countryLabel(item, locale)}</option>)}
+              {countries.map((item) => <option key={item.value} value={item.value}>{countryLabel(item.value, locale)}（{item.count}）</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
@@ -272,7 +289,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
             <span className="text-xs font-black text-[#52636e]">来源</span>
             <select value={source} onChange={(event) => setSource(event.target.value)} className={selectClass}>
               <option value="all">全部来源</option>
-              {sources.map((item) => <option key={item} value={item}>{item}</option>)}
+              {sources.map((item) => <option key={item.value} value={item.value}>{item.value}（{item.count}）</option>)}
             </select>
           </label>
           <button
@@ -284,6 +301,17 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
             清除筛选
           </button>
         </div>
+        {/*
+          Why a country or a source can be missing from those two lists —
+          asked directly (2026-09-19: 下拉选项没有秘鲁？来源下拉选项也不全).
+          The options are the rows on this page, so a source that has nothing
+          left to collect drops out entirely rather than showing zero, and
+          without this line that is indistinguishable from a broken filter.
+        */}
+        <p className="mt-2 text-[11px] text-[#64717c]">
+          下拉里只列出<strong>当前这份清单里真实存在的</strong>国家和来源（括号里是条数）。某个国家/来源不在列表里，
+          说明它没有还在等标书的项目 —— 要么都补齐了，要么都被标成「无法获取」，要么这次导入没带进新项目。
+        </p>
         {/* One row, wrapping only when it must (2026-09-12, user: 这两个选项并排 / 放在同一行). The explanatory tails move into title= so the two stay side by side at ordinary widths. */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label

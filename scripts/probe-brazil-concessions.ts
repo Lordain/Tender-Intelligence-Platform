@@ -458,6 +458,26 @@ async function probeHtml(label: string, why: string, url: string, linkPattern: R
     console.log();
     return;
   }
+  // Found in run four, and it is the same mistake this probe already fixed
+  // once — in the wrong place. `browserRetry` checks the body against the
+  // block-page signatures before calling anything a pass; this path, the
+  // FIRST attempt, never did. So a refusal served as HTTP 200 reached
+  // `describeHtml`, which has no notion of a block page and correctly
+  // described what it saw: "answered, but almost nothing on the page —
+  // probably JS-filled". That reads as "an SPA we cannot scrape", and the
+  // fix for an SPA (a real browser) is not the fix for a refusal (a
+  // different egress). Run four printed exactly that for PPI's English
+  // edital, whose body is `Acesso Negado!` and whose signature has been in
+  // block-page.ts since run three.
+  const blocked = blockPageReason(text);
+  if (blocked !== null) {
+    const title = pageTitle(text);
+    record({ label, ok: false, status, ms, note: `拦截页（「${blocked}」${title ? ` · <title> ${title}` : ""}）—— HTTP ${status} 是假的` });
+    console.log(`     正文开头：${visibleText(text).slice(0, 300)}`);
+    console.log("     这不是「页面是空的」，是对方在拒绝我们。空壳要换浏览器，拒绝要换出口 —— 两件事。\n");
+    await browserRetry(url, timeoutMs, linkPattern, isBrowserPass);
+    return;
+  }
   const { note, links } = describeHtml(text, linkPattern);
   record({ label, ok: true, status, ms, note });
   for (const link of links) console.log(`     ${link}`);

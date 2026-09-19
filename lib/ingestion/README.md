@@ -3629,7 +3629,7 @@ is the same data by another road.
 | ANTT | F5 block page (200) | F5 block page (200) | closed |
 | ANTAQ | Cloudflare 403 | Cloudflare 403 | closed |
 | PPI (ppi.gov.br) | F5 "Your support ID is" | ECONNRESET | closed — and it was the wrong host; see 2026-09-19 below |
-| `dadosabertos.presidencia.gov.br` | untested | untested | the PPI portfolio is a CKAN dataset here — untried until 2026-09-19 |
+| `dadosabertos.presidencia.gov.br` | F5 "Your support ID is" | untested | **measured 2026-09-19 — same F5 policy as ppi.gov.br; closed** |
 | dados.gov.br | 401 Bearer | 401 | closed — needs a CPF |
 
 So the shape of the work changed. The transmission-results connector is no
@@ -3805,6 +3805,68 @@ World Bank, IDB, ADB, EIB and EBRD, with AFD funding) to host its pipeline —
 a non-Brazilian host holding the same data, which would make the WAF question
 moot. The announced migration runs **15 months**, so it is a 2027 door, not a
 2026 one.
+
+#### Run four (2026-09-19, user's machine): the third host is the same appliance
+
+P5b was the whole point of the round, and it came back **closed**:
+
+```
+dadosabertos.presidencia.gov.br   TCP 通 675ms
+  honest UA   ECONNRESET
+  browser UA  HTTP 200, body = F5 「Your support ID is」
+```
+
+Byte-for-byte the response `ppi.gov.br` gives. The Presidency's open data
+portal is behind the same F5 appliance as PPI itself, so **the hope that a
+third hostname would route around the first two is dead** — and it was my
+hope, stated here one commit earlier. PPI is closed, and it is closed for one
+reason rather than three: not "the portfolio is not published in machine-
+readable form" (it is — `ppi-projetos-qualificados`, with winning company,
+investment value, sector, modality and auction dates) but **this network is
+refused by the federal F5 policy.** Same verdict, better diagnosis, and a
+different next move: nothing about a connector changes this, only an egress.
+
+The three doors that share it, so far: `ppi.gov.br`,
+`dadosabertos.presidencia.gov.br`, `dados.antt.gov.br`. `dados.gov.br` is
+*not* in that family — it answers 401 `www-authenticate: Bearer` and needs a
+CPF, which is a credential problem, not a WAF one.
+
+**A probe bug found by the same run, and it is the mistake this file already
+records fixing — in the wrong place.** Run two added
+`lib/ingestion/block-page.ts` because ANTT's F5 page is HTTP 200 and a
+status-code verdict called it a pass. The signature check went into
+`browserRetry` only. `probeHtml`'s **first** attempt never ran it, so a
+refusal served as 200 fell through to `describeHtml`, which has no notion of
+a block page and reported exactly what it saw:
+
+```
+E3b. PPI 上的英文版 ANEEL 输电拍卖 edital
+   OK  200  1KB · 正文 364 字 · ⚠ 答了，但页面上几乎没东西 —— 内容多半是 JS 后填的
+```
+
+That body is `Acesso Negado!`, whose signature has been in `block-page.ts`
+since run three. The two diagnoses lead to opposite next moves — an SPA shell
+wants a real browser, a refusal wants a different egress — so the check now
+runs on the first attempt too. Worth noting that `E3c` (BNDES, 559 chars) and
+`E4` (B3, 271 chars) carry the same verdict string and are, as far as this
+run can tell, genuine SPA shells; only the check distinguishes them.
+
+**What run four leaves open, in order of what it would buy:**
+
+1. **`git.aneel.gov.br` — three exact xlsx URLs, hard-blocked.** Cloudflare
+   1020-class on this IP; a real browser gets "Sorry, you have been blocked"
+   too, so no client change helps. A different egress downloads them in a
+   click, and `npm run dump:aneel-leiloes` then prints the real column names.
+2. **`leilao.aneel.gov.br` — the live auctions, TCP timeout from two
+   continents.** Not a policy, a route.
+3. **CCEE, still undecided.** `dadosabertos.ccee.org.br` is confirmed CKAN
+   2.10.0 and opens to a browser User-Agent while refusing an honest one.
+   That is a posture question for the user, not a header to ship.
+
+And what is confirmed open from that network, unchanged: `www.gov.br/aneel`
+(both auction pages, ~22k characters, 777/778 links, server-rendered) and the
+ArcGIS mirror (DCAT JSON, but BDGD distribution geodata — the wrong dataset
+family).
 
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 

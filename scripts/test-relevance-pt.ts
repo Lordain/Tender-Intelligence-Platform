@@ -248,6 +248,12 @@ for (const [label, title] of publicidade) {
 
 // Over-breadth pins for the sports rule. A municipal PARQUE is not a
 // PARQUINHO, and a covered court is a building.
+//
+// Both of these named an "Escola Municipal" as their innocent site until
+// 2026-09-19, when the user made village schools an exclusion class of their
+// own (see PT_SMALL_FACILITY_LIST). The site was incidental to what each case
+// pins, so the site changed and the assertion did not — and the school
+// version is now asserted separately, below, as an exclusion.
 check(
   "\u300c\u516c\u56ed\u6539\u9020\u300d\u4e0d\u88ab\u5c0f\u578b\u8fd0\u52a8\u8bbe\u65bd\u89c4\u5219\u6253\u6389",
   brazilTender("Reforma e revitaliza\u00e7\u00e3o do Parque Municipal com pavimenta\u00e7\u00e3o de passeios").relevance.tier !== "excluded",
@@ -255,7 +261,7 @@ check(
 );
 check(
   "\u300c\u6709\u9876\u68da\u7403\u573a\u300d\u4e0d\u88ab\u5c0f\u578b\u8fd0\u52a8\u8bbe\u65bd\u89c4\u5219\u6253\u6389",
-  brazilTender("Constru\u00e7\u00e3o de quadra coberta e pista de caminhada na Escola Municipal").relevance.tier !== "excluded",
+  brazilTender("Constru\u00e7\u00e3o de quadra coberta e pista de caminhada no Centro de Conven\u00e7\u00f5es Municipal").relevance.tier !== "excluded",
   true,
 );
 
@@ -393,7 +399,7 @@ check(
 // The same two words, followed by something that does say what it is.
 check(
   "「Obras comuns de reforma da Escola」仍然保留",
-  brazilTender("Obras comuns de reforma da Escola Municipal Santa Rita").relevance.tier !== "excluded",
+  brazilTender("Obras comuns de reforma da Esta\u00e7\u00e3o de Tratamento de Esgoto do munic\u00edpio").relevance.tier !== "excluded",
   true,
 );
 
@@ -404,6 +410,73 @@ check(
   "EMBRATUR 不再被打上水工程标签",
   brazilTender(REVIEWED_AND_REJECTED[0][1]).industries.includes("water"),
   false,
+);
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// 小型工程 (2026-09-19). The user reviewed a day of real rows and named the
+// class: 小学校(幼儿园、小型小学、乡村学校、社区学校、托儿所、学前教育)、
+// 小体育场、小广场、社区广场、社区体育场、社区道路、小型道路、社区医院、
+// 农村医院 —— 这些中国公司(即使已经在本地有实体了)一般不会参加.
+//
+// Every title below is verbatim from that review. Before the rule, the
+// existing logic excluded 0 of 23 — each one carries a real works word, and
+// PT_REAL_WORKS_SIGNAL is a guard that returns "keep" the moment it sees one.
+// ─────────────────────────────────────────────────────────────────────────
+console.log("\n\u5c0f\u578b\u5de5\u7a0b\uff08\u7528\u6237 2026-09-19 \u9010\u6761\u5ba1\u8fc7\u7684\u771f\u5b9e\u6807\u9898\uff09");
+const SMALL_WORKS_CASES: [string, string][] = [
+  ["\u5e7c\u513f\u56ed\uff08creche\uff09", "CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA PARA EXECU\u00c7\u00c3O DA OBRA DE CONSTRU\u00c7\u00c3O DE CRECHE TIPO 2, PADR\u00c3O FNDE, NO BAIRRO DE TIBIRI, NO MUNIC\u00cdPIO DE SANTA RITA, PB."],
+  ["\u5e7c\u513f\u56ed\uff08CMEI\uff09", "contrata\u00e7\u00e3o de empresa especializada para execu\u00e7\u00e3o de muro e requalifica\u00e7\u00e3o da fachada do CMEI GOTINHAS DO SABER"],
+  ["\u5b66\u524d\u73ed\u98df\u5802", "CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA EM OBRAS E SERVI\u00c7OS DE ENGENHARIA PARA EXECU\u00c7\u00c3O DE COBERTURA EM ESTRUTURA MET\u00c1LICA, DESTINADA \u00c0 IMPLANTA\u00c7\u00c3O DE REFEIT\u00d3RIO PARA ATENDIMENTO DAS TURMAS DO PR\u00c9 I, COM \u00c1REA APROXIMADA DE 93,00 M\u00b2."],
+  ["\u4e61\u6751\u5c0f\u5b66\u7403\u573a", "CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA PARA A CONSTRU\u00c7\u00c3O DE UMA QUADRA ESPORTIVA NA ESCOLA MUNICIPAL S\u00c3O BENTO, POVOADO GAMELEIRA NA ZONA RURAL"],
+  ["\u5e02\u7acb\u5b66\u6821\u6539\u6269\u5efa", "Contrata\u00e7\u00e3o de empresa especializada no ramo de engenharia para reforma e amplia\u00e7\u00e3o da Escola Municipal Professora Z\u00e9lia de Barros Carneiro, bairro Aeroporto - Muria\u00e9 - MG"],
+  ["\u793e\u533a\u536b\u751f\u7ad9", "Contrata\u00e7\u00e3o de empresa especializada para execu\u00e7\u00e3o da reforma e amplia\u00e7\u00e3o da Unidade B\u00e1sica de Sa\u00fade Vila Maria"],
+  ["\u793e\u533a\u7403\u573a\uff0b\u5e7f\u573a", "Contrata\u00e7\u00e3o de empresa especializada para execu\u00e7\u00e3o de obra de engenharia destinada \u00e0 constru\u00e7\u00e3o de espa\u00e7o esportivo, incluindo campo society, pra\u00e7a de conviv\u00eancia, quiosque de apoio"],
+  ["\u5dde\u7ea7\u5c0f\u7403\u573a\u9879\u76ee", "Constru\u00e7\u00e3o das obras do Programa MEU CAMPINHO no Lago IV \u2013 Londrina/PR"],
+  ["\u8857\u9053\u6cbe\u9752", "Contrata\u00e7\u00e3o de empresa de engenharia para execu\u00e7\u00e3o de servi\u00e7os de recapeamento asf\u00e1ltico na Rua Renato Azeredo, bairro Gameleira, munic\u00edpio de Felixl\u00e2ndia/MG"],
+  ["\u8857\u9053\u94fa\u88c5", "CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA PARA EXECU\u00c7\u00c3O DE OBRA DE PAVIMENTA\u00c7\u00c3O ASF\u00c1LTICA DA RUA ALCIDES SERAFIM, BAIRRO SANGA FUNDA"],
+  ["\u793e\u533a\u94fa\u88c5", "CONTRATACAO DE EMPRESA DO RAMO PARA EXECUCAO DE PAVIMENTACAO DO BAIRRO PORTAL DA ALVORADA I DO MUNICIPIO DE GUAPIRAMA"],
+  ["\u5e26\u957f\u5ea6\u6570\u5b57\u7684\u8857\u9053", "Constitui objeto da presente licita\u00e7\u00e3o a contrata\u00e7\u00e3o de empresa especializada para pavimenta\u00e7\u00e3o asf\u00e1ltica Rua 558 \u2013 Osvaldo Lenzi, com extens\u00e3o de 114,00 metros, no Bairro Schroeder I"],
+  ["\u4e61\u6751\u77f3\u5757\u8def", "CONTRATA\u00c7\u00c3O DE EMPRESA DE ENGENHARIA PARA PAVIMENTA\u00c7\u00c3O EM PARALELEP\u00cdPEDO DE 3.396,00 M\u00b2 NA ZONA RURAL NO MUNICIPIO DE BOA HORA \u2013 PI"],
+  ["\u4e61\u9053", "CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA NA RECUPERA\u00c7\u00c3O E PAVIMENTA\u00c7\u00c3O EM PEDRA TOSCA COM REJUNTAMENTO DA ESTRADA VICINAL QUE LIGA A SEDE DE TIANGU\u00c1 AO DISTRITO DE OITICICAS"],
+  ["\u8def\u9762\u517b\u62a4", "O objeto consiste na contrata\u00e7\u00e3o de empresa especializada para a execu\u00e7\u00e3o de servi\u00e7os de conserva\u00e7\u00e3o preventiva de pavimentos asf\u00e1lticos, Lote 112 do Programa Goi\u00e1s em Movimento"],
+  ["\u8fb9\u5761\u6321\u5899", "CONTRATA\u00c7\u00c3O DE EMPRESA ESPECIALIZADA PARA EXECU\u00c7\u00c3O DE OBRA DE CONTEN\u00c7\u00c3O DE ENCOSTA, LOCALIZADA NA AVENIDA PERI PERI, NO MUNIC\u00cdPIO DE NIL\u00d3POLIS \u2013 RJ"],
+  ["\u4e61\u6751\u4f9b\u6c34", "CONTRATA\u00c7\u00c3O SEMI-INTEGRADA DE EMPRESA ESPECIALIZADA DE ENGENHARIA PARA IMPLANTA\u00c7\u00c3O, AMPLIA\u00c7\u00c3O E REFORMA DE SISTEMAS DE ABASTECIMENTO DE \u00c1GUA EM \u00c1REA RURAL, LOCALIZADOS NO MUNIC\u00cdPIO DE MARITUBA/PA"],
+  ["\u6d3b\u52a8\u516c\u56ed\u94fa\u88c5", "A presente licita\u00e7\u00e3o tem por objeto obras de pavimenta\u00e7\u00e3o em parte do Parque de Eventos At\u00edlio Sirote, no Munic\u00edpio de Atalaia/PR"],
+];
+for (const [label, title] of SMALL_WORKS_CASES) {
+  check(label, brazilTender(title).relevance.tier, "excluded");
+}
+
+// OVER-BREADTH PINS. This is the half that matters: an excluded tender is
+// never written, so a rule broader than its own name loses a real contract
+// permanently and silently. Every one of these carries a word the rules above
+// key on, and every one must survive.
+console.log("\n\u5c0f\u578b\u5de5\u7a0b\u89c4\u5219\u7684\u8fb9\u754c\uff08\u8fd9\u4e9b\u5fc5\u987b\u4fdd\u7559\uff09");
+const SMALL_WORKS_KEEPS: [string, string][] = [
+  ["\u8054\u90a6\u516c\u8def\u590d\u7ebf\uff08\u5e26 Rua \u4e5f\u4e0d\u80fd\u6740\uff09", "Duplica\u00e7\u00e3o da Rodovia BR-101, trecho entre a Rua Marginal e o Anel Vi\u00e1rio, com 42 km de extens\u00e3o"],
+  ["\u5dde\u9053\u94fa\u88c5", "Execu\u00e7\u00e3o de pavimenta\u00e7\u00e3o asf\u00e1ltica na rodovia MG-050, bairro industrial de Divin\u00f3polis"],
+  ["\u533a\u57df\u533b\u9662\uff08\u4e0d\u662f\u793e\u533a\u536b\u751f\u7ad9\uff09", "Constru\u00e7\u00e3o do Hospital Regional de Sobral com 200 leitos, incluindo centro cir\u00fargico e UTI"],
+  ["\u5e02\u653f\u4f9b\u6c34\u7cfb\u7edf\uff08\u4e0d\u662f\u4e61\u6751\uff09", "Implanta\u00e7\u00e3o do sistema de abastecimento de \u00e1gua do munic\u00edpio de Feira de Santana, incluindo esta\u00e7\u00e3o de tratamento"],
+  ["\u6c61\u6c34\u5904\u7406\u5382", "Constru\u00e7\u00e3o da Esta\u00e7\u00e3o de Tratamento de Esgoto do munic\u00edpio, com rede coletora tronco"],
+  ["\u957f\u9014\u5ba2\u8fd0\u7ad9", "Constru\u00e7\u00e3o do Terminal Rodovi\u00e1rio Municipal e do viaduto de acesso"],
+];
+for (const [label, title] of SMALL_WORKS_KEEPS) {
+  check(label, brazilTender(title).relevance.tier !== "excluded", true);
+}
+
+// The value exception, which is the whole reason this class uses
+// isLargeWorksBuild() rather than a flat word list: a creche at R$50M is not
+// the thing the user described, and the rule must let go of it.
+check(
+  "\u91d1\u989d\u5230\u4e86\u5927\u578b\u5de5\u7a0b\u9608\u503c\u7684\uff0c\u89c4\u5219\u4e0d\u518d\u9002\u7528",
+  classifyStoredTender({
+    title: "CONTRATA\u00c7\u00c3O DE EMPRESA PARA CONSTRU\u00c7\u00c3O DE CRECHE TIPO 2, PADR\u00c3O FNDE",
+    summary: "", buyer: "PREFEITURA MUNICIPAL", country: "Brazil",
+    procedureType: "Concorr\u00eancia - Eletr\u00f4nica", governmentLevel: "municipal",
+    scopeType: "works", estimatedValue: 60_000_000, currency: "BRL", sourceName: "PNCP",
+  }).relevance.tier !== "excluded",
+  true,
 );
 
 if (failures > 0) {

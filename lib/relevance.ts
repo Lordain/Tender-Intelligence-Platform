@@ -2,7 +2,8 @@ import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
 import { foldAccents } from "@/lib/text-fold";
-import { classifyPortugueseExclusion, classifyPortugueseIndustries, isBrazil, isPortugueseMunicipalSportsComponent } from "@/lib/relevance-pt";
+import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
+import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
 
 /**
  * Pre-Screening / relevance classification (rule-based, not AI — see
@@ -770,6 +771,41 @@ const RURAL_ROAD_KEYWORDS = [
   /\bred\s+vial\s+vecinal\b/i,
 ];
 
+/**
+ * Hiring a machine (with or without an operator) BY THE HOUR, for someone
+ * else's construction contract — 租赁, in the user's words (2026-09-19).
+ *
+ * Why this is checked above every promotion and above hasIncludeOverride:
+ * these titles are written as "ALQUILER DE <machine> ... PARA LA OBRA:
+ * <the entity's real project>", and the real project is usually large. One
+ * reviewed row named a dam and came out FLAGSHIP — the top tier — on the
+ * strength of a noun describing a job the bidder is not bidding for. Reading
+ * the project as scope is reading the wrong noun in the sentence.
+ *
+ * Anchored on the hire word plus the machine, not on `alquiler` alone: an
+ * "ALQUILER DE LOCAL" is a lease and a different exclusion's business, and a
+ * plant-and-equipment line inside a real works contract says `incluye` or
+ * `con equipos`, never `servicio de alquiler de`.
+ */
+const EQUIPMENT_RENTAL_KEYWORDS = [
+  /alquiler\s+de\s+(maquinaria|equipo(s)?\s+(pesado|de\s+construcci[óo]n)|excavadora(s)?|retroexcavadora(s)?|cargador(es)?\s+frontal|motoniveladora(s)?|tractor(es)?|rodillo(s)?|volquete(s)?|cami[óo]n(es)?|cisterna(s)?|gr[úu]a(s)?)/i,
+  // Not a bare `servicio de alquiler de`: an "ALQUILER DE LOCAL PARA ALMACÉN"
+  // is a premises lease, which is a different thing and would be filed under
+  // a reason that does not describe it. The stored reason is read by an admin
+  // deciding whether an exclusion was right, so it has to be true.
+  /servicio\s+de\s+alquiler\s+de\s+(?!local\b|inmueble|oficina|almac[ée]n|terreno)/i,
+  // Same contract shape written without the hire word: "Contratación de
+  // volquetes y camión cisterna para la obra <X>" is a haulage fleet hired
+  // onto someone else's site.
+  /contrataci[óo]n\s+de\s+(volquete(s)?|cami[óo]n(es)?\s+cisterna|maquinaria)\b/i,
+  // Portuguese equivalent, for the same reason the PT exclusion module exists.
+  /\bloca[çc][ãa]o\s+de\s+(m[áa]quina(s)?|equipamento(s)?|ve[íi]culo(s)?|caminh[õo]es|escavadeira(s)?)\b/i,
+];
+
+/** One pole-mounted unit — see the call site for why the phase qualifier is required. */
+const SMALL_TRANSFORMER_PATTERN =
+  /transformador(es)?\s+de\s+distribuci[óo]n\s+(mono|bi|tri)f[áa]sico/i;
+
 const MUNICIPAL_AMENITY_KEYWORDS = [
   /centro de alto rendimiento|pista de patinaje|parques? (ecol[óo]gico|recreativo|de proximidad|deportivo)|infraestructura deportiva|escenarios? deportivos?|complejos? deportivos?|pr[áa]ctica deportiva/i,
   /centro de integraci[óo]n social|centro vida\b|centro de bienestar animal|casa de la cultura|teatro al aire libre/i,
@@ -1040,7 +1076,14 @@ const MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT = [
  * include-override must not rescue it, only a real government national-
  * priority designation.
  */
-const PERU_MARGINAL_INVESTMENT = /\bioa[ar]r\b/i;
+// `\bioa[ar]r\b` until 2026-09-19, which demanded FIVE characters — i,o,a,
+// one of [a|r], r — and so never matched the four-letter "IOAR" that Peru
+// actually prints. Caught on a real title the user sent ("EJECUCIÓN DE OBRA
+// IOAR: ¿RENOVACION DE PUENTE…"), which reached 中型项目 because `puente`
+// promoted it and the gate meant to catch it could not fire. Both spellings
+// are in the wild — IOAR and the full IOARR — so the middle letter is now
+// optional instead of required.
+const PERU_MARGINAL_INVESTMENT = /\bioa[ar]?r\b/i;
 
 const MAINTENANCE_ONLY_KEYWORDS = [
   // The abbreviations are how Compras MX titles actually write it —
@@ -2159,6 +2202,90 @@ function extractAnchoredBridgeLengthMeters(text: string): number | undefined {
 const SHORT_BRIDGE_METERS = 30;
 
 /**
+ * Fibre-optic projects get their tier from the ROUTE, not from the money.
+ *
+ * The user's scale, given in three parts over 2026-09-19:
+ *
+ *   ≥ 30,000 km                        大型项目
+ *   ≥ 10,000 km, or 骨干, or 海缆       中型项目
+ *   everything else                     常规项目
+ *
+ * 「非这些条件，都算常规项目」, so this is a determination and not only a cap:
+ * a backbone or a submarine system IS 中型 even with no amount disclosed, and
+ * a 40 km regional ring is 常规 even at $20M. Almost every fibre tender in
+ * this feed lands in the bottom band, which is the intended effect — the
+ * platform's readers do not bid campus cabling.
+ *
+ * Deliberately value-blind. That is unusual here and it is what was asked
+ * for: the length of the route is the thing that makes a fibre contract
+ * interesting or not, and a large number attached to a short route is a
+ * large number attached to a short route.
+ *
+ * Exclusions all run BEFORE this, so a fibre row that a rule already threw
+ * out stays thrown out — this only decides between the three kept tiers.
+ *
+ * Distance is read with the same anchored discipline as BRIDGE_LENGTH_ANCHOR:
+ * a number counts only when a distance unit follows it, never by scanning the
+ * title for digits. A contract stating no distance falls to the keyword test,
+ * because "unstated" is not "thirty thousand kilometres".
+ */
+const FIBRE_OPTIC_PATTERN = /fibra\s+[óo]ptica|fibra\s+[óo]tica|fibre?\s+optic/i;
+
+/** 骨干 and 海缆 — the two shapes that qualify without stating a length. */
+const FIBRE_BACKBONE_PATTERN =
+  /\bcable\s+submarino\b|\bcabo\s+submarino\b|\bsubmarine\s+cable\b|\bred\s+(troncal|dorsal)\b|\bespinha\s+dorsal\b|\bbackbone\b|\bred\s+nacional\s+de\s+fibra\b|\bcolumna\s+vertebral\b/i;
+
+const FIBRE_FLAGSHIP_KM = 30_000;
+const FIBRE_SIGNIFICANT_KM = 10_000;
+
+const DISTANCE_KM_ANCHOR = /(\d[\d.,]*)\s*(?:km\b|kil[óo]metros?\b|quil[óo]metros?\b)/gi;
+
+/**
+ * One number, written in whichever convention the notice used.
+ *
+ * "12.000 KM" is twelve thousand kilometres in Portuguese and Spanish, and the
+ * first version of this read it as twelve — a submarine cable demoted to a
+ * campus job by a full stop. So a separator is only decimal when what follows
+ * it is NOT a three-digit group, which is the one rule that separates
+ * "12.000" (thousands) from "12.5" (decimal) without knowing the locale.
+ * Mixed separators are unambiguous on their own: the last one is the decimal.
+ */
+function parseDistanceNumber(raw: string): number {
+  const hasDot = raw.includes(".");
+  const hasComma = raw.includes(",");
+  if (hasDot && hasComma) {
+    const decimalAt = Math.max(raw.lastIndexOf("."), raw.lastIndexOf(","));
+    return Number(`${raw.slice(0, decimalAt).replace(/[.,]/g, "")}.${raw.slice(decimalAt + 1)}`);
+  }
+  if (!hasDot && !hasComma) return Number(raw);
+  const separator = hasDot ? "." : ",";
+  const parts = raw.split(separator);
+  const tail = parts[parts.length - 1];
+  // Several separators, or a clean three-digit tail: thousands grouping.
+  if (parts.length > 2 || tail.length === 3) return Number(parts.join(""));
+  return Number(`${parts[0]}.${tail}`);
+}
+
+/** The longest distance the text states, in km, or undefined when it states none. */
+function longestStatedKm(text: string): number | undefined {
+  let longest: number | undefined;
+  for (const match of text.matchAll(DISTANCE_KM_ANCHOR)) {
+    const km = parseDistanceNumber(match[1]);
+    if (Number.isFinite(km) && (longest === undefined || km > longest)) longest = km;
+  }
+  return longest;
+}
+
+/** The tier a fibre contract gets, or null when this is not a fibre contract. */
+function fibreTier(text: string): TenderRelevance["tier"] | null {
+  if (!FIBRE_OPTIC_PATTERN.test(text)) return null;
+  const km = longestStatedKm(text);
+  if (km !== undefined && km >= FIBRE_FLAGSHIP_KM) return "flagship";
+  if ((km !== undefined && km >= FIBRE_SIGNIFICANT_KM) || FIBRE_BACKBONE_PATTERN.test(text)) return "significant";
+  return "standard";
+}
+
+/**
  * A real, known contract value under this floor isn't worth a Chinese
  * enterprise's time to fly out and bid on, regardless of industry.
  * Raised to 500,000 (2026-09-05, per the user's explicit call: "墨西哥
@@ -2456,7 +2583,7 @@ export function isDirectAward(procedureType: string | undefined): boolean {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "municipal_sports_component" | "rural_road",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "municipal_sports_component" | "rural_road" | "small_local_works" | "equipment_rental" | "short_bid_window",
   LocalizedText
 > = {
   no_content: {
@@ -2478,6 +2605,21 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: "该项目采用比价采购（Comparación de Precios）：这是秘鲁针对小额、标准化货物/服务的简化程序，采购单位收集报价后直接择低价成交，从公告到授标通常只有几天，且多数不公布预估金额；没有技术方案可比，实际上只面向本地现货供应商，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This is a price comparison (Comparación de Precios): Peru's abbreviated procedure for standard, low-value goods and services, where the entity collects quotations and buys the cheapest, usually within days of publishing and often without disclosing a reference value. There is no technical proposal to differentiate and the timetable only suits a local supplier with stock on hand. Filtered from the default feed (metadata is kept, not deleted).",
     es: "Es una comparación de precios: el procedimiento abreviado para bienes y servicios estándar de poca cuantía, en el que la entidad compara cotizaciones y compra la más baja, normalmente pocos días después de la convocatoria y a menudo sin publicar valor referencial. No hay propuesta técnica que diferenciar y el cronograma solo alcanza a un proveedor local con stock. Filtrada de la vista predeterminada (los metadatos se conservan).",
+  },
+  small_local_works: {
+    zh: "该项目的标的是社区/乡镇一级的小型工程——幼儿园、托儿所、村小、社区卫生站、社区球场或小广场、街巷路面、乡村供水等。这类项目通常由本地承包商承建、金额有限，中资企业（即使在当地已设实体）一般不会参与，默认不进入推荐列表（数据仍保留，可用于统计）。注：若该项目披露的预估金额达到大型工程门槛，本规则不适用；公路（rodovia、BR-xxx 等）不受影响。",
+    en: "The object here is a community-scale public work — a daycare or village school, a neighbourhood health post, a local pitch or square, street surfacing, a rural water scheme. These are built by local contractors at limited value and are not contracts a Chinese company would enter, even with a local entity. Filtered from the default feed (metadata is kept, not deleted). Does not apply once a disclosed value reaches the large-works threshold, and never applies to numbered highways.",
+    es: "El objeto es una obra de escala comunitaria — una guardería o escuela rural, un puesto de salud de barrio, una cancha o plaza local, pavimentación de calles, un sistema de agua rural. Las ejecuta un contratista local por montos limitados y no son contratos a los que entraría una empresa china, incluso con filial local. Filtrada de la vista predeterminada (los metadatos se conservan). No aplica cuando el valor declarado alcanza el umbral de obra mayor, ni a carreteras numeradas.",
+  },
+  short_bid_window: {
+    zh: `该项目从发布到交标不足 ${SHORT_BID_WINDOW_DAYS} 个自然日。读标书、核价、办投标保函，多数平台还要求先完成供应商注册，这个时间窗内中资企业实际上无法参与；加之该项目未披露预估金额、规模也无从判断，默认不进入推荐列表（数据仍保留，可用于统计）。注：中型/大型项目，或已披露金额的项目，不适用本规则。`,
+    en: `Fewer than ${SHORT_BID_WINDOW_DAYS} calendar days separate publication from the bid deadline. Reading the tender documents in Portuguese or Spanish, pricing the work and arranging a bid bond — most of these platforms also require supplier registration first — does not fit in that window for a foreign bidder, and with no estimated value published there is nothing to size the opportunity by either. Filtered from the default feed (metadata is kept, not deleted). Does not apply to 中型/大型 tenders or to any tender with a disclosed value.`,
+    es: `Menos de ${SHORT_BID_WINDOW_DAYS} días naturales separan la convocatoria del cierre de propuestas. Leer las bases, cotizar la obra y gestionar la garantía de seriedad — y en la mayoría de estas plataformas registrarse antes como proveedor — no cabe en ese plazo para un postor extranjero, y sin valor referencial publicado tampoco hay con qué dimensionarla. Filtrada de la vista predeterminada (los metadatos se conservan). No aplica a licitaciones 中型/大型 ni a ninguna con valor declarado.`,
+  },
+  equipment_rental: {
+    zh: "该项目是按工时/台班出租施工机械或运输车辆（挖掘机、自卸车、水车、吊车等），承租方是别人那份工程合同的承包商。标题里出现的大型工程名称是「租给谁用」，不是本标的标的物，默认不进入推荐列表（数据仍保留，可用于统计）。",
+    en: "This contract hires out construction plant or haulage — an excavator, tipper trucks, a water bowser, a crane — by the hour onto someone else's works contract. The large project named in the title is who the machine is going to, not what is being bought here. Filtered from the default feed (metadata is kept, not deleted).",
+    es: "Este contrato alquila maquinaria de construcción o transporte — una excavadora, volquetes, un camión cisterna, una grúa — por hora para la obra de otro contratista. El proyecto grande que menciona el título es a dónde va la máquina, no lo que se está contratando aquí. Filtrada de la vista predeterminada (los metadatos se conservan).",
   },
   rural_road: {
     zh: "该项目位于乡道/村道（camino vecinal、vía vecinal、trocha carrozable）——秘鲁公路网中等级最低的一类，通常是一座单跨桥或几公里砂石路面，由本地承包商承建，默认不进入推荐列表（数据仍保留，可用于统计）。省道、国道及其桥梁不受此规则影响。",
@@ -2531,6 +2673,19 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
   },
 };
 
+/**
+ * The stored reason for a row excluded by the bidding-window rule.
+ *
+ * Exported because the same rule has two homes and they must agree.
+ * upsertTendersBatched() applies it at import by simply not writing the row —
+ * nothing is stored, so nothing needs a reason. A MANUAL deadline edit in the
+ * admin is the other case: the row already exists, so it has to be marked, and
+ * the mark is what lib/db/bid-window-gate.ts both writes and later recognises
+ * when a corrected date lets the row back in.
+ */
+export const SHORT_BID_WINDOW_EXCLUSION_REASON: LocalizedText =
+  EXCLUDED_REASON_BY_SIGNAL.short_bid_window;
+
 function reasonFor(
   tier: TenderRelevance["tier"],
   signal:
@@ -2550,6 +2705,9 @@ function reasonFor(
     | "municipal_water_component"
     | "municipal_sports_component"
     | "rural_road"
+    | "small_local_works"
+    | "equipment_rental"
+    | "short_bid_window"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
   valueThresholdUsd: number = MIN_VALUE_USD,
@@ -2812,6 +2970,42 @@ export function classifyRelevance(input: {
     }
   }
 
+  // 小型工程 for Brazil — see classifyPortugueseSmallWorks. Above
+  // hasIncludeOverride for the same reason the block before it is: the
+  // override list is Spanish, and a Portuguese title matching one of its bare
+  // technical words by coincidence would waive every exclusion below.
+  //
+  // Carries the value exception the municipal-amenity and water-network
+  // classes carry, with the same helper and the same threshold: a works build
+  // at LARGE_WORKS_BUILD_USD is not the small thing this class is about. A row
+  // with no amount has no exception to claim, which is the user's own point
+  // about them (「特别是没有预算金额的，根本辨识不了」).
+  if (input.isNationalPriorityProject !== true && isBrazil(input.country) && !isLargeWorksBuild(input)) {
+    if (isPortugueseNoObjectTitle(input.title)) {
+      return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "no_content") };
+    }
+    const small = classifyPortugueseSmallWorks(haystack);
+    if (small !== null) {
+      return {
+        tier: "excluded",
+        label: LABELS.excluded,
+        reason: reasonFor("excluded", small === "consulting" ? "consulting" : "small_local_works"),
+      };
+    }
+  }
+
+  // Equipment HIRE, above the override because that is where it reached from.
+  // "CONTRATACION DEL SERVICIO DE ALQUILER DE EXCAVADORA SOBRE ORUGA ... PARA
+  // LA OBRA: AMPLIACION DEL SERVICIO DE AGUA ... REPRESA SAPANCCOTA" came out
+  // FLAGSHIP — the top tier — because it names a dam. It is a machine rental
+  // by the hour for someone else's contract (user, 2026-09-19: 租赁), and the
+  // works context that promoted it is the works context of the OTHER
+  // company's job. Naming the project is how these titles are written, so
+  // reading it as scope is reading the wrong noun.
+  if (input.isNationalPriorityProject !== true && EQUIPMENT_RENTAL_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "equipment_rental") };
+  }
+
   const hasIncludeOverride =
     INCLUDE_OVERRIDE_KEYWORDS.some((pattern) => pattern.test(haystack)) || input.isNationalPriorityProject === true;
 
@@ -2831,6 +3025,16 @@ export function classifyRelevance(input: {
   }
 
   if (!hasIncludeOverride && EXCLUDE_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // A single pole-mounted distribution transformer (user, 2026-09-19:
+  // 小型变压器). Deliberately requires the PHASE qualifier: "transformador de
+  // distribución monofásico" is one unit on one pole, while a substation
+  // transformer, a power transformer or a batch purchase for a distribution
+  // programme names none of these and is untouched. Electrical equipment is a
+  // priority industry here, so the narrowing is the whole rule.
+  if (!hasIncludeOverride && SMALL_TRANSFORMER_PATTERN.test(haystack)) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
 
@@ -2955,6 +3159,13 @@ export function classifyRelevance(input: {
   const matchesMajorProject = MAJOR_PROJECT_KEYWORDS.some((pattern) => pattern.test(haystack));
   const hasLongDuration = durationDays !== undefined && durationDays >= LONG_DURATION_DAYS;
   const isEquipmentScaleCapped = EQUIPMENT_SCALE_CAPPED_KEYWORDS.some((pattern) => pattern.test(haystack));
+  // See fibreTier. Returned outright rather than used to guard the promotions
+  // below, because the user's rule is a determination — 非这些条件，都算常规
+  // 项目 — and a guard would only ever lower a tier, never set one.
+  const fibre = fibreTier(haystack);
+  if (fibre !== null) {
+    return { tier: fibre, label: LABELS[fibre], reason: reasonFor(fibre, "scope") };
+  }
 
   // Previously also promoted any scopeType "works"/"equipment_services"
   // tender with an unknown value straight to flagship (isWorksLike),

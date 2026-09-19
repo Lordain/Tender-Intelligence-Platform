@@ -225,6 +225,12 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
 
+      // An automatic tier change has to be said out loud, and this form
+      // redirects on save — so a panel would never be read. The change is
+      // that the tender leaves the public feed and the 待补文件 worklist, and
+      // an admin who is not told will report it as a disappearing tender.
+      if (typeof data.bidWindowNote === "string") alert(data.bidWindowNote);
+
       // Real complaint, 2026-09-06: a newly-created tender has no id yet,
       // so "标书分析结果"/"其他关键日期" can't render on this form (see the
       // placeholder text above) — sending the admin back to the list after

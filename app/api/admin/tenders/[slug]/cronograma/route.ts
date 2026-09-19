@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { findKeyDateProblems } from "@/lib/ingestion/key-date-checks";
+import { decideBidWindow } from "@/lib/db/bid-window-gate";
+import type { LocalizedText, TenderRelevanceTier } from "@/types/tender";
 import {
   CRONOGRAMA_SOURCE_REFERENCE,
   CRONOGRAMA_SOURCE_REFERENCES,
@@ -48,7 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
   const { data: tender, error: tenderError } = await supabase
     .from("tenders")
-    .select("id, submission_deadline, award_date, publication_date, manual_field_overrides, ficha_url, source_url")
+    .select("id, submission_deadline, award_date, publication_date, publication_date_is_estimated, estimated_value, relevance_tier, relevance_reason, relevance_manually_overridden, manual_field_overrides, ficha_url, source_url")
     .eq("slug", slug)
     .maybeSingle();
   if (tenderError) return NextResponse.json({ error: tenderError.message }, { status: 500 });
@@ -279,6 +281,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     deadlineSet = columnUpdate.submission_deadline;
     awardDateSet = columnUpdate.award_date;
+  }
+
+  // The bidding-window rule, applied where Peru's deadlines actually arrive.
+  //
+  // This is the route the user meant (2026-09-19: 秘鲁都是我手动补的). SEACE
+  // publishes the cronograma only on the ficha page, so a Peru OECE row lands
+  // with no deadline at all and upsertTendersBatched()'s gate has nothing to
+  // measure. The window comes into existence here, on the paste.
+  //
+  // Runs even when this request wrote no column, because the tier can be stale
+  // from an earlier paste: a row excluded by this rule and then corrected by a
+  // separate edit has to be let back in. decideBidWindow() is a no-op unless
+  // something actually needs changing.
+  const bidWindowDeadline = storedDeadline ?? deadlineSet ?? null;
+  const bidWindow = decideBidWindow({
+    currentTier: tender.relevance_tier as TenderRelevanceTier | null,
+    currentReason: (tender.relevance_reason as LocalizedText | null) ?? null,
+    manuallyOverridden: tender.relevance_manually_overridden === true,
+    estimatedValue: (tender.estimated_value as number | null) ?? null,
+    publicationDate: (tender.publication_date as string | null) ?? null,
+    publicationDateIsEstimated: tender.publication_date_is_estimated === true,
+    submissionDeadline: bidWindowDeadline,
+  });
+  if (bidWindow) {
+    const { error } = await supabase.from("tenders").update(bidWindow.patch).eq("id", tender.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   // The same call the admin form's own save makes, so the timeline rows and

@@ -6788,3 +6788,376 @@ the CKAN envelope, identical for every CKAN call ever made. It proved the host
 answered and said nothing about what it answered with. `datastore_search` is
 now unwrapped one level further, so the next run prints the row count and the
 column names, which is the thing a mapper is actually written from.
+
+## 43 minutes to learn nothing (2026-09-19)
+
+A real run, `--days 1 --write`: 78 rows in the window, 2585 seconds in the
+amount pass, **zero amounts resolved**. The output then reported
+「没有金额：78 条」 and, in the composition, 「62 条 └ 无金额（法定保密等）」.
+
+Both numbers were true and the sentence they formed was false. Nothing in
+Brazil was sealed that day. PNCP was refusing this client for the whole run —
+the search pass says so too, `modalidade 5` page 1 died on a connection reset
+— and the amount pass turned 78 refusals into a claim about Brazilian
+procurement law.
+
+### The arithmetic, because it is exact
+
+`fetchPncpItems` used the default retry chain, `RESET_BACKOFF_MS` =
+`[2, 5, 12, 30, 60]` seconds = 109 seconds of sleeping before giving up.
+
+    78 rows × 109s ÷ 4 workers = 2125s
+
+Observed: 2585s. The rest is request time. So the run was not slow, and not
+throttled in any interesting way: it was **sleeping**, on a ladder built for a
+different job.
+
+### The part worth being uncomfortable about
+
+That ladder was already known to be wrong for this shape of call. Three hours
+earlier, one pass further down the same file, `OPTIONAL_BACKOFF_MS` was added
+with this reasoning: the tender is already written, so failing costs a missing
+link while retrying is paid by every row in series — one retry, then move on.
+
+Every word of that applies to the amount pass. `DOCUMENT_FAILURE_STREAK` was
+added in the same commit, for the same reason, and the amount pass sitting
+directly above it got neither. The fix was written, and then applied to one of
+the two places that needed it.
+
+So this round adds, to the amount pass, exactly what the document pass already
+had:
+
+- `AMOUNT_BACKOFF_MS = [2_000, 6_000]` — two retries, not eleven. Worst case
+  per row drops from 109s to about 8s.
+- `AMOUNT_FAILURE_STREAK = 12`, counted **across workers**, because four
+  workers failing three times each is the same fact as one worker failing
+  twelve times. On trip, the pass stops; rows are still written, without
+  amounts, and the run says so.
+
+Worst case for that 78-row run goes from 43 minutes to roughly 25 seconds.
+
+### And the reporting, which is the more expensive bug
+
+A failed lookup and a sealed estimate (`orcamentoSigiloso`) are opposite
+facts. One is permanent and means the value will never be known; the other is
+this afternoon's network and is fixed by re-running. The old output collapsed
+them into one label, so the run's headline number pointed at the wrong
+continent.
+
+`fetchPncpItems` now takes an `onFailure` callback, the result carries
+`amountLookupFailed`, `amountsStoppedEarly` and `amountFailureReasons`, and
+the band label only says 法定保密 when the sealed count actually exceeds the
+refusal count.
+
+### What this does NOT settle
+
+The same run wrote 60 tenders, all without a value, and the user asked whether
+that contradicts the daily volume estimated the day before. It probably does
+not: **every one of those 60 lacks a value because of the failure above**, not
+because Brazil published 60 valueless notices. The value filter — the single
+strongest rule this classifier has — never ran on any of them.
+
+The policy question underneath is real and stays open: when a Brazilian tender
+*genuinely* has no amount, should an industry match alone carry it into the
+recommendation list? Mexico answered a version of this with a structural rule
+(`governmentLevel === "municipal"` + undisclosed value + nothing but the bare
+works word), and Brazil's mapper does populate `governmentLevel` from
+`esfera_id`, so the same shape of answer is available.
+
+It is deliberately not answered here. Calibrating a relevance rule against a
+run whose amount data was 100% missing would be fitting rules to a network
+failure. Re-run first — the upsert is keyed by slug, so the same command over
+the same window backfills those 60 rows — then decide from the real
+distribution.
+
+## 已中标, no value, 交标 last October (2026-09-19)
+
+Three Brazilian rows in 项目管理, all published 2026-09-18:
+
+    A Contratada obriga-se a prestar Serviços …   已中标  常规项目  —  交标 2025-10-02
+    CONTRATAÇÃO DE EMPRESA ESPECIALIZAD…          已中标  常规项目  —  交标 2026-03-18
+    Execução de obra de melhorias, adequaçõe…     已中标  常规项目  —  交标 2026-08-26
+
+A deadline eleven months before the publication date, and no value in the
+column either way.
+
+### How they got past the gate
+
+`upsertTendersBatched` refuses to write any tender whose deadline has passed,
+from any source, by any path — the standing rule the user set in so many words
+(「请一定要保障现在应用的筛选规则，在我们导入新项目时，一样适用」). But
+`isPastSubmissionDeadline` opens with:
+
+    if (tender.status === "awarded") return false;
+
+which is correct and deliberate: an award result necessarily arrives after the
+deadline, and award intelligence is worth keeping. `purge:closed-tenders` says
+the same thing in its header.
+
+**The exemption assumes the awarded row carries the result.** Brazil's does
+not. `inferStatus` reads `row.tem_resultado === true` and returns `"awarded"`,
+and that is the entire transaction: `tem_resultado` is a boolean. No winner,
+no awarded amount, no award date, and nothing in the PNCP search row to read
+them from — grep the mapper for `awardedValue` and there is no match.
+
+So the exemption admitted rows that are, by construction, empty of the exact
+thing the exemption exists to preserve. The reader gets a tender they cannot
+bid on and cannot learn anything from. Both audiences, missed, by one row.
+
+### What changed
+
+`ingest-brazil.ts` drops rows that arrive already awarded with the proposal
+deadline behind them, counted and reported. Narrow on purpose:
+
+- a result published while the window is still open is KEPT — unusual, real,
+  and still actionable;
+- a row with no parseable deadline is KEPT, because "cannot tell" is not
+  "stale";
+- `isPastSubmissionDeadline` itself is UNCHANGED. Ecopetrol, CompraNet and the
+  Compras MX contract feeds exist to carry award results, and widening the
+  platform gate on the strength of one source's shape is how a fix for one
+  connector silently empties three others.
+
+`npm run purge:awarded-closed` is the one-off cleanup for rows written before
+this. Its test is "awarded, deadline passed, **and no award payload**" — a row
+with `awarded_value` or `awarded_to` is kept whatever its deadline, because
+that is the case the exemption is for and it is working. Dry run by default,
+CSV first, `--write` to delete.
+
+### Brazil joined the nightly matrix
+
+Separately, and for the other half of the same day: PNCP refused the user's
+laptop twice. First every amount lookup in a 78-row run; then page 1 of both
+modalities, on a connection reset, before a single row was read — 0 fetched,
+0 written.
+
+`daily-ingest.yml` now runs `ingest:brazil-live` alongside Colombia, PEMEX and
+LicitIA. The runner is a third egress, untested against PNCP, and that is the
+point of finding out from a job with a log and a re-run button rather than
+from a terminal someone is watching. Peru still has no scheduled import.
+
+## 小型工程 (2026-09-19)
+
+The user reviewed a day of real rows across four countries and named a class
+the rules had no concept of:
+
+> 我感觉所有国家都很多小学校(幼儿园、小型小学、乡村学校、社区学校、托儿所、
+> 学前教育)、小体育场、小广场、社区广场、社区体育场、社区道路、小型道路、
+> 社区医院、农村医院的标了，这些中国公司(即使已经在本地有实体了)一般不会参加…
+> 特别是没有预算金额的，根本辨识不了
+
+Measured before writing anything, against the 33 titles they listed:
+
+    before   6 excluded, 27 kept   (Brazil: 0 of 23)
+    after   33 excluded,  0 kept
+
+### Why Brazil was 0 for 23
+
+`classifyPortugueseExclusion()` checks `PT_REAL_WORKS_SIGNAL` and returns
+"keep" the moment it sees `obra`, `construção`, `pavimentação` or
+`engenharia`. That guard is right and was written on purpose: a rule broader
+than its own name loses a real R$50M highway permanently and silently.
+
+But a creche IS construction. A village football pitch IS a work. The guard
+was doing its job on every one of these rows. So the verdict had to be taken
+BEFORE the guard, on **what is being built** rather than on whether something
+is — which is `classifyPortugueseSmallWorks()`, a new function rather than
+another entry in a list the guard already protects.
+
+The classes, each from a title in the review: daycare under all of Brazil's
+names for it (creche, CMEI, CEMEI, EMEI, pré-escola, educação infantil),
+village schools (the qualifier carries the size claim — bare `escola` is NOT
+matched, because a federal institute is a real contract), neighbourhood health
+(UBS, posto de saúde, ESF — `hospital` is NOT matched), community sport and
+squares, street and rural paving, pavement upkeep, slope retaining walls,
+rural water schemes.
+
+### 街道路面不做，只做公路
+
+Street surfacing needs all three of a paving verb, a street-or-village marker,
+and the ABSENCE of a highway marker. Any two is not enough: `pavimentação`
+alone is half the Brazilian corpus, and a named street appears in genuine
+works as the site address.
+
+One bug worth keeping in the record. The first highway marker was
+`\b[a-z]{2}[\s-]\d{3}\b`, which matched **"de 114"** inside "com extensão de
+114,00 metros" — so a 114-metre residential street rescued itself by stating
+its own length. Brazilian highway designations always carry the hyphen
+(BR-101, MG-050, SP-270), so requiring it costs nothing and closes the hole.
+
+### The value exception
+
+None of this fires at or above `LARGE_WORKS_BUILD_USD`, using the same helper
+and threshold the municipal-amenity and water-network classes use. A row with
+NO amount has no exception to claim, which is the user's own point about them:
+an unpriced village school is exactly the row that cannot be told apart from
+anything else, and a classifier that keeps it is guessing in its own favour
+rather than the reader's.
+
+### Three Spanish gaps the same review exposed
+
+- **Plant hire** reached FLAGSHIP. "ALQUILER DE EXCAVADORA … PARA LA OBRA:
+  … REPRESA SAPANCCOTA" is an excavator hired by the hour onto someone else's
+  contract, and the dam that promoted it is the dam it is being hired TO.
+  Reading the project as scope is reading the wrong noun in the sentence.
+- **`PERU_MARGINAL_INVESTMENT` never matched anything.** The pattern was
+  `/\bioa[ar]r\b/`, which demands FIVE characters — i, o, a, one of [a|r], r —
+  and Peru prints the four-letter IOAR. A rule written to catch marginal
+  investments had been structurally unable to fire since it was added. Both
+  spellings are in the wild, so the middle letter is optional now.
+- **A single pole-mounted transformer.** Narrowed on the phase qualifier,
+  because electrical equipment is a priority industry here and the narrowing
+  is the whole rule.
+
+### The fibre cap
+
+Per the user: 光纤项目除非有距离> 10000公里，不然都列常规项目. A cap, not an
+exclusion — the rows stay readable. Distance-only and deliberately
+value-blind, as asked. Almost every fibre tender in this feed is therefore
+capped, which is the intended effect.
+
+`12.000 KM` is twelve THOUSAND kilometres in Portuguese and Spanish. The first
+parser read it as twelve and demoted a submarine cable to a campus job on a
+full stop. A separator is only decimal when what follows it is not a
+three-digit group.
+
+### Two existing tests had to change, and why that is not the usual reason
+
+`test-relevance-pt.ts` pinned two over-breadth cases — "a covered court is a
+building" and "Obras comuns plus a real object is kept" — and both had picked
+an **Escola Municipal** as their innocent example. The site was incidental to
+what each case was pinning, and it is now an exclusion class in its own right.
+So the site changed and the assertion did not, and the school version is
+asserted separately as an exclusion.
+
+Totals: 330/330 Spanish fixtures, all Portuguese cases, 33/33 of the review.
+
+## The bidding window, and the fibre scale settled (2026-09-19)
+
+### 少于 12 个自然日就不写
+
+> 常规项目(没有金额的)，如果有交标日期，而且交标日期减发布日期小于12个自然日，
+> 就自动被排除，也应用于所有国家的项目
+
+The reasoning is mobilisation, not scale. A Chinese enterprise bidding in
+Latin America has to read the edital in Portuguese or Spanish, price it,
+arrange a bid bond, and in most of these systems register with the platform
+first. Under twelve calendar days that is not a competition a foreign bidder
+can enter — the same observation the `price_comparison` exclusion already
+makes about Peru's abbreviated procedure.
+
+**It lives in `upsertTendersBatched()`, not in `lib/relevance.ts`**, and that
+was the whole design decision. `classifyRelevance()` has no dates, and giving
+it two would mean threading them through nineteen mappers. That file states
+the hazard itself: a signal a mapper forgets to pass is "right at import and
+wrong forever after", and it is not hypothetical — it is the 193 → 486 jump of
+2026-09-08. The upsert is the one line every import path passes through, which
+is exactly why the past-deadline gate was put there, and the same reasoning
+applies unchanged.
+
+Four guards, each load-bearing:
+
+| guard | why |
+|---|---|
+| tier is `standard` | the user scoped it to 常规项目; a 中型/大型 row with a tight window is still worth seeing |
+| no disclosed amount | 没有金额的 — with a value the row was sized on something better than a calendar |
+| publication date is REAL | `publicationDateIsEstimated` means the ingest timestamp. Measuring a window from it would reject rows for having been imported late, and would do it to whole sources at once |
+| deadline parses | 如果有交标日期 — no deadline, no window, no verdict |
+
+The boundary is the user's word 小于: twelve days exactly stays.
+
+Dropped rows are listed, not just counted (first 10 with both dates). These
+are 常规项目 with no amount, the population an admin can least reconstruct
+afterwards — the same lesson the excluded CSV exists for.
+
+### The fibre scale, in three bands
+
+Settled over three messages:
+
+    ≥ 30,000 km                        大型项目
+    ≥ 10,000 km, or 骨干, or 海缆       中型项目
+    everything else                     常规项目
+
+A **determination, not a cap** — 非这些条件，都算常规项目. The first
+implementation was a cap, and a cap can only ever lower a tier: it could not
+express 骨干、海缆算中型项目, because a submarine cable with no stated length
+and no amount has to be RAISED to 中型 from the 常规 the other rules give it.
+
+Deliberately value-blind, which is unusual here and is what was asked for: a
+large number attached to a short route is a large number attached to a short
+route. The 12,000 km fixture at $400M is 中型, not 大型, and that is the rule
+working as specified.
+
+### Existing rows are deliberately untouched
+
+Per the user: 库里的不动了，我手动调整，只应用于未来新导入的. So there is no
+`reclassify:tenders` run behind any of this. Everything in this section and
+the one above applies at import time only.
+
+Totals: 332/332 Spanish fixtures, all Portuguese cases, 11/11 bid-window cases
+(`npm run test:bid-window`).
+
+### The rules, on the page where the button is (2026-09-19)
+
+Per the user, when turning the scheduled Brazil import on: 请帮我在后台->新项目
+清单->巴西里面写清楚现在的规则.
+
+`ImportBrazilForm.tsx` now carries a 当前生效的规则 panel covering the schedule
+(11:17 UTC daily, 3-day window, writes), slug-overwrite behaviour, what is
+scanned, the Brazil-specific value floor and bands, the four categories that
+are never written, the 小型工程 class with both of its exceptions, the routine
+Portuguese exclusions, the fibre bands, and the fact that existing rows are
+untouched.
+
+It is on this page rather than only in this file because this is where someone
+decides whether a day's import looked right. A rule they cannot see is a rule
+they re-report as a bug, which has already happened twice in one day — once
+for the 43-minute amount pass, once for three 已中标 rows nobody could account
+for.
+
+Maintained by hand with one exception: the bidding window renders
+`SHORT_BID_WINDOW_DAYS` directly, because that number is the one most likely
+to be tuned and the one whose drift would be least visible.
+
+### The bidding window has a second home (2026-09-19)
+
+> 这条能不能也应用到我手动补交标日期的项目？比如说秘鲁，都是我手动比的
+
+It had to. `upsertTendersBatched()`'s gate covers every automated source, and
+it cannot cover Peru at all: SEACE publishes the cronograma only on the ficha
+page, so an OECE row arrives with **no deadline**, the gate has nothing to
+measure, and the window only comes into existence when an admin pastes the
+date. `lib/db/bid-window-gate.ts` is that second home, called from both admin
+write paths — the tender edit form and the cronograma paste.
+
+**Both directions, on purpose.** A one-way rule makes a typo permanent: enter
+09-05 for 09-25, the row is excluded, fix the date and it stays excluded with
+nothing to show why. So it also restores — but only a row it excluded itself,
+which it recognises by the reason it wrote. A row excluded for being a routine
+service, or by an admin's own hand, is never touched. Restoring to `standard`
+is exact rather than a guess: the rule only ever fires on `standard`, so that
+is the only tier it can have taken away.
+
+Two things it refuses to touch: `relevance_manually_overridden` (that flag
+already beats the importer and the reclassifier; a date edit is not the place
+to start ignoring it), and a tier the admin is setting in the same save.
+
+**Where the row goes.** `excluded` was already honoured by both surfaces that
+matter — `filterTenders()` drops it from the public feed, and the
+documents-needed query carries `.neq("relevance_tier", "excluded")`. 项目管理
+still shows it, deliberately: that page is the full inventory, and hiding a
+row there would make a mistyped date unrecoverable.
+
+The save says so out loud (an `alert`, because the form redirects and a panel
+would never be read). An automatic tier change nobody is told about gets
+reported as a disappearing tender a week later.
+
+One note on the stored reason. The user described the outcome as 改成日常服务
+类排除, and it is NOT filed under that reason — 日常性服务采购 would be untrue
+here, and this file has already recorded once that the stored reason is what
+an admin reads when deciding whether an exclusion was right. It gets its own
+`short_bid_window` reason naming the window, the registration requirement and
+the missing value.
+
+20/20 cases in `npm run test:bid-window`, 11 for the import gate and 9 for the
+manual one.

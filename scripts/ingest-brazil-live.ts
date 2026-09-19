@@ -166,6 +166,21 @@ async function main() {
   // many do that is the single most useful number for judging whether this
   // source is worth writing.
   console.log(`  没有金额：${result.withoutAmount} 条${result.sealedBudget > 0 ? `（其中 ${result.sealedBudget} 条是法定预算保密，不是取不到）` : ""}`);
+  // A run reported 78/78 as "no amount" and said nothing else, and the number
+  // was read as a fact about Brazilian procurement. It was a fact about the
+  // network: PNCP refused every one of the 78 lookups. A count that cannot
+  // distinguish those two is worse than no count.
+  if (result.skippedAwardedClosed > 0) {
+    console.log(`  跳过 ${result.skippedAwardedClosed} 条已中标且早就截止的记录（PNCP 只给布尔值，没有中标方和金额）。`);
+  }
+  if (result.amountLookupFailed > 0) {
+    console.log(`  ⚠ 其中 ${result.amountLookupFailed} 条是 PNCP 拒绝了取金额的请求 —— 这些项目不是没有预算，是我们没问到。`);
+    if (result.amountsStoppedEarly) {
+      console.log("     连续被拒太多次，取金额那一趟提前停了。剩下的项目一律显示无金额，跟项目本身无关。");
+    }
+    console.log("     隔几分钟重跑同一条命令，写入会按 slug 覆盖，金额就补上了。");
+    for (const reason of result.amountFailureReasons.slice(0, 5)) console.log(`       ${reason}`);
+  }
 
   if (!write) {
     console.log("\n试运行 —— 一条都没写进 Supabase。确认上面的分级和金额之后，用：");

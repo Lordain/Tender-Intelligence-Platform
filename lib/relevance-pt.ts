@@ -384,3 +384,171 @@ export function isPortugueseMunicipalSportsComponent(input: string): boolean {
   if (!PT_MUNICIPAL_SPORTS_COMPONENT.test(text)) return false;
   return !PT_BUILDING_SCOPE.test(text);
 }
+
+/**
+ * 小型工程 —— the class the user named on 2026-09-19, after reviewing a day of
+ * real rows:
+ *
+ *   「我感觉所有国家都很多小学校(幼儿园、小型小学、乡村学校、社区学校、托儿所、
+ *     学前教育)、小体育场、小广场、社区广场、社区体育场、社区道路、小型道路、
+ *     社区医院、农村医院的标了，这些中国公司(即使已经在本地有实体了)一般不会参加…
+ *     特别是没有预算金额的，根本辨识不了」
+ *
+ * ── Why this could not be another PT_EXCLUDE_KEYWORDS entry ───────────────
+ *
+ * Because every one of these titles carries a real works word.
+ * classifyPortugueseExclusion() checks PT_REAL_WORKS_SIGNAL and returns null
+ * the moment it sees `obra`, `construção`, `pavimentação` or `engenharia` —
+ * a guard that exists so a rule broader than its own name cannot lose a real
+ * R$50M highway. A creche IS construction. A village football pitch IS a
+ * work. The guard is doing its job and the row still should not be in the
+ * feed, so the verdict has to be taken before the guard, on what is BEING
+ * BUILT rather than on whether something is.
+ *
+ * Measured, not assumed: of 23 Brazilian titles the user listed, the existing
+ * rules excluded 0.
+ *
+ * ── The value exception ───────────────────────────────────────────────────
+ *
+ * None of this fires on a tender at or above LARGE_WORKS_BUILD_USD — the
+ * caller applies isLargeWorksBuild(), the same helper and the same threshold
+ * the municipal-amenity and water-network classes use. One rule ("a works
+ * build at that scale is not the small thing this class is about"), not three
+ * that drift apart. A row with NO amount therefore falls in, which is the
+ * user's point: 没有预算金额的，根本辨识不了 — an unpriced village school is
+ * exactly the row that cannot be told apart from anything else, and a
+ * classifier that keeps it is guessing in the user's favour rather than
+ * theirs.
+ */
+
+/**
+ * Buildings whose class caps their size: schools of every Brazilian name,
+ * daycare, neighbourhood health posts, community sport and squares.
+ *
+ * `escola` alone is deliberately NOT here. A federal institute or a technical
+ * campus is a real building contract; `escola municipal`, `escola estadual`
+ * and the rural/field variants are the village school the user means. The
+ * qualifier is what makes the size claim, so the qualifier is required.
+ */
+const PT_SMALL_FACILITY =
+  // Daycare and pre-school under all of Brazil's names for it. CMEI/CEMEI/
+  // EMEI are the municipal acronyms and appear in titles without expansion,
+  // so they are anchored on both sides rather than left loose.
+  /\bcreche(s)?\b|\bcmei\b|\bcemei\b|\bemei\b|\bpre[\s-]?escola|\beducacao\s+infantil\b|\bbercario\b|\bturmas?\s+do\s+pre\b/i;
+
+const PT_SMALL_FACILITY_LIST: RegExp[] = [
+  PT_SMALL_FACILITY,
+  // Village/municipal schools. The qualifier carries the size claim.
+  /\bescola(s)?\s+(municipal|municipais|estadual|estaduais|rural(is)?|do\s+campo)\b|\bescola\s+m\.?\s/i,
+  // Neighbourhood health: UBS, ESF and the posto. A hospital is NOT here —
+  // a real hospital build is a contract a Chinese contractor would look at,
+  // and the user named 社区医院/农村医院, not hospitals.
+  /\bunidade(s)?\s+basica(s)?\s+de\s+saude\b|\bubs\b|\bposto(s)?\s+de\s+saude\b|\bestrategia\s+saude\s+da\s+familia\b/i,
+  // Community sport and squares. `quadra` covers 小体育场/社区体育场,
+  // `praça` the 小广场/社区广场, and MEU CAMPINHO is a named state programme
+  // that builds exactly these (Paraná) — the programme name is the object.
+  /\bquadra(s)?\s+(poli)?esportiva(s)?\b|\bcampo\s+society\b|\bespaco\s+esportivo\b|\bareninha(s)?\b|\bmeu\s+campinho\b/i,
+  /\bpraca(s)?\s+(publica|de\s+convivencia|de\s+eventos|municipal)\b|\bparque\s+de\s+eventos\b/i,
+  // School canteen, and the wall-and-facade job on one of the buildings above.
+  /\brefeitorio\b|\bmuro\s+e\s+requalificacao\b|\brequalificacao\s+da\s+fachada\b/i,
+  // Municipal slope protection — a retaining wall on a named street, which is
+  // what every one of these is in practice.
+  /\bcontencao\s+de\s+encosta(s)?\b/i,
+];
+
+/**
+ * A street, not a road.
+ *
+ * The user's rule, in their own words: 街道路面不做，只做公路 — street
+ * surfacing no, highways yes. So this needs all three of a paving verb, a
+ * street-or-village marker, and the ABSENCE of a highway marker. Any two of
+ * them is not enough: "pavimentação" alone is half the Brazilian corpus, and
+ * a named street alone appears in genuine works as the site address.
+ */
+const PT_PAVING_VERB =
+  /\bpavimenta[cç][aã]o\b|\bpavimentacao\b|\brecapeamento\b|\brepavimentacao\b|\bcapeamento\s+asfaltico\b|\bparalelepipedo\b|\bpedra\s+tosca\b|\bbloquete\b|\bc\.?\s?b\.?\s?u\.?\s?q\b/i;
+
+const PT_LOCAL_SITE =
+  /\brua\s+[a-z0-9]|\bavenida\s+[a-z0-9]|\bav\.\s*[a-z0-9]|\btravessa\b|\bbairro\b|\bloteamento\b|\bvila\s+[a-z]|\bzona\s+rural\b|\bestrada(s)?\s+vicinal(is|ais)?\b|\bpovoado\b|\bcomunidade\b|\bdistrito\s+de\b|\bquarteirao\b/i;
+
+/**
+ * What rescues a paving contract: the statutory road network.
+ *
+ * `BR-101`, `MG-050`, `SP-270` are federal and state highway designations —
+ * two letters, a hyphen, three digits — and a contract naming one is not a
+ * residential street however many `bairro`s the address also names.
+ */
+// `\b[a-z]{2}[\s-]\d{3}\b` was the first attempt and it was wrong in a way
+// worth keeping: it matched "de 114" inside "com extensão de 114,00 metros",
+// so a 114-metre residential street rescued itself by stating its own length.
+// A Brazilian highway designation always carries the hyphen — BR-101, MG-050,
+// SP-270 — so requiring it costs nothing and closes the hole.
+const PT_HIGHWAY_MARKER =
+  /\brodovia(s)?\b|\bbr[\s-]?\d{3}\b|\b[a-z]{2}-\d{3}\b|\banel\s+viario\b|\bduplicacao\b|\bcontorno\s+(rodoviario|viario)\b|\bvia\s+expressa\b|\brodoanel\b/i;
+
+/**
+ * Rural water-supply systems — the Portuguese half of WATER_NETWORK_KEYWORDS,
+ * which is a Spanish list and therefore matched none of these.
+ *
+ * `área rural` is required. A municipal water system for a city of 200,000 is
+ * a real contract; the same words with `em área rural` on the end is a set of
+ * village standpipes.
+ */
+const PT_RURAL_WATER =
+  /\b(sistemas?\s+de\s+)?abastecimento\s+de\s+agua\b[\s\S]{0,120}?\b(area|zona)\s+rural\b|\bsaneamento\s+rural\b/i;
+
+/**
+ * Keeping an existing asphalt surface alive, rather than building one.
+ *
+ * Separate from PT_PAVING_VERB because the words overlap and the verdict does
+ * not: `pavimentação` builds a road, `conservação de pavimentos` patches one.
+ * Real title this exists for names a whole state programme across three
+ * municipalities and is still a maintenance retainer.
+ */
+const PT_PAVEMENT_UPKEEP =
+  /\bconservacao\s+(preventiva|periodica|rotineira|de\s+pavimentos?)\b|\bmanutencao\s+de\s+pavimentos?\b|\btapa[\s-]?buraco(s)?\b/i;
+
+/** A plan, a diagnosis or a study — engineering thinking, not engineering. */
+const PT_PLAN_STUDY =
+  /\bplano\s+diretor\b|\bestudo\s+de\s+viabilidade\b|\bdiagnostico\s+da\s+situacao\b/i;
+
+/**
+ * A title with no object in it.
+ *
+ * "OBRAS E INSTALAÇÕES" is a budget line item, not a description of anything
+ * (user, 2026-09-19: 不清晰，直接排除). Length-bounded on purpose — the same
+ * words inside a real 400-character object statement describe a real work.
+ */
+const PT_NO_OBJECT_TITLE = /^\s*obras?\s+e\s+instalacoes\b[\s.;,-]*$/i;
+
+/**
+ * Checked against the TITLE, never the haystack.
+ *
+ * classifyRelevance's haystack is title + summary + industry TAGS joined, so
+ * "OBRAS E INSTALAÇÕES" arrives as "obras e instalacoes construction" and an
+ * end-anchored pattern can never match it. The existing Spanish
+ * NO_CONTENT_TITLE check reads input.title for exactly this reason; this is
+ * the same rule in Portuguese, so it reads the same field.
+ */
+export function isPortugueseNoObjectTitle(title: string): boolean {
+  return PT_NO_OBJECT_TITLE.test(foldAccents(title));
+}
+
+export type PortugueseSmallWorks = "small_local_works" | "consulting";
+
+/**
+ * The 小型工程 verdict for a Brazilian tender, taken BEFORE the works guard.
+ *
+ * Returns null for anything it does not recognise, so it can only ever
+ * subtract from the feed on a class the user named — never on a shape it
+ * happens to resemble.
+ */
+export function classifyPortugueseSmallWorks(input: string): PortugueseSmallWorks | null {
+  const text = foldAccents(input);
+  if (PT_PLAN_STUDY.test(text)) return "consulting";
+  if (PT_PAVEMENT_UPKEEP.test(text)) return "small_local_works";
+  if (PT_SMALL_FACILITY_LIST.some((pattern) => pattern.test(text))) return "small_local_works";
+  if (PT_RURAL_WATER.test(text)) return "small_local_works";
+  if (PT_PAVING_VERB.test(text) && PT_LOCAL_SITE.test(text) && !PT_HIGHWAY_MARKER.test(text)) return "small_local_works";
+  return null;
+}

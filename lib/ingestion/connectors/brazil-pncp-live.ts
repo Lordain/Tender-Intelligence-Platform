@@ -93,10 +93,23 @@ function isReset(err: unknown): boolean {
 /** 5xx and 429 are transient on both PNCP hosts; a 400 or 404 is our request and retrying it only wastes time. */
 const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
-async function getJson(url: string, label: string): Promise<unknown> {
+/**
+ * A shorter budget for calls whose failure costs nothing.
+ *
+ * Added 2026-09-19 after a real run. The full chain above sleeps up to 109
+ * seconds before giving up, which is the right trade for a search page —
+ * losing one costs a slice of the import. It is the wrong trade for a
+ * tender's attachment list: the tender is already written by then, so the
+ * whole cost of failing is a missing link, while the cost of retrying is
+ * paid by every one of a few hundred tenders in series. One retry, then move
+ * on.
+ */
+const OPTIONAL_BACKOFF_MS = [2_000];
+
+async function getJson(url: string, label: string, backoff: readonly number[] = RESET_BACKOFF_MS): Promise<unknown> {
   let lastError: PncpFetchError | undefined;
-  for (let attempt = 0; attempt <= RESET_BACKOFF_MS.length; attempt += 1) {
-    if (attempt > 0) await sleep(RESET_BACKOFF_MS[attempt - 1]);
+  for (let attempt = 0; attempt <= backoff.length; attempt += 1) {
+    if (attempt > 0) await sleep(backoff[attempt - 1]);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
@@ -294,18 +307,32 @@ function str(value: unknown): string | undefined {
 }
 
 /** Null means "could not ask"; an empty array means "asked, and there are none". */
-export async function fetchPncpArquivos(itemUrl: string | undefined): Promise<TenderDocumentLink[] | null> {
+export async function fetchPncpArquivos(
+  itemUrl: string | undefined,
+  /**
+   * Why a null came back. Without it a run that asked 265 times and was
+   * refused 265 times is indistinguishable from 265 tenders that genuinely
+   * publish no attachments — and this endpoint's shape was written from
+   * PNCP's documentation, never measured, so "refused" is the likelier of
+   * the two and the one worth seeing.
+   */
+  onFailure?: (reason: string) => void,
+): Promise<TenderDocumentLink[] | null> {
   const parts = parsePncpItemUrl(itemUrl);
-  if (!parts) return null;
+  if (!parts) {
+    onFailure?.("这条项目没有可解析的 PNCP 链接");
+    return null;
+  }
   const base = `${ITEMS_BASE}/${parts.cnpj}/compras/${parts.ano}/${parts.sequencial}/arquivos`;
   const label = `PNCP arquivos (${parts.cnpj}/${parts.ano}/${parts.sequencial})`;
 
   let body: unknown;
   try {
-    body = await getJson(`${base}?pagina=1&tamanhoPagina=${ARQUIVOS_PAGE_SIZE}`, label);
-  } catch {
+    body = await getJson(`${base}?pagina=1&tamanhoPagina=${ARQUIVOS_PAGE_SIZE}`, label, OPTIONAL_BACKOFF_MS);
+  } catch (err) {
     // One tender's attachments failing is not an import failing — the tender
     // itself is already written by the time this runs.
+    onFailure?.(err instanceof Error ? err.message : String(err));
     return null;
   }
 
@@ -314,7 +341,10 @@ export async function fetchPncpArquivos(itemUrl: string | undefined): Promise<Te
     : body && typeof body === "object" && Array.isArray((body as { items?: unknown }).items)
       ? ((body as { items: PncpArquivo[] }).items)
       : null;
-  if (rows === null) return null;
+  if (rows === null) {
+    onFailure?.(`${label}: 应答不是文件列表的形状（${JSON.stringify(body).slice(0, 120)}）`);
+    return null;
+  }
 
   const links: TenderDocumentLink[] = [];
   for (const row of rows) {

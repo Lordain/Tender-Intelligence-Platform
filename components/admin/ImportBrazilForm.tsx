@@ -36,7 +36,14 @@ type BrazilResult = {
   written?: number;
   failed?: number;
   /** Mirrors BrazilIngestResult.documentLinks — see that field for why both counts are reported. */
-  documentLinks?: { tendersAsked: number; tendersWithLinks: number; linkCount: number; failed: number };
+  documentLinks?: {
+    tendersAsked: number;
+    tendersWithLinks: number;
+    linkCount: number;
+    failed: number;
+    stoppedEarly: boolean;
+    failureReasons: string[];
+  };
   write: boolean;
 };
 
@@ -51,10 +58,31 @@ const STOPPED_BY_LABELS: Record<BrazilResult["byModality"][number]["stoppedBy"],
 const ROWS_PER_DAY = 265;
 const SECONDS_PER_AMOUNT = 0.5;
 const SERVERLESS_CEILING_SECONDS = 300;
+/**
+ * The attachment pass, which this estimate used to ignore entirely.
+ *
+ * On 2026-09-19 a run with the checkbox ticked sat past thirty minutes
+ * against a box that said 136 秒 — because 136 秒 was the amount pass alone
+ * and the estimate did not change when the checkbox did. It is a second
+ * serial loop, one request per KEPT tender, through the same 0.5s pacing
+ * slot plus a round trip.
+ *
+ * Both numbers below are honest about what they are. The kept share is a
+ * rough upper bound rather than a measurement — the exclusion rules decide
+ * it and it moves with the day's mix — so the estimate is presented as
+ * "at least", never as a figure to plan around.
+ */
+const KEPT_SHARE_CEILING = 0.5;
+const SECONDS_PER_DOCUMENT_LOOKUP = 1.5;
 
-function estimateSeconds(days: number, skipAmounts: boolean): number {
-  const pagingSeconds = Math.ceil((days * ROWS_PER_DAY) / 100) * 1.2;
-  return Math.round(pagingSeconds + (skipAmounts ? 0 : days * ROWS_PER_DAY * SECONDS_PER_AMOUNT));
+type Estimate = { total: number; amounts: number; documents: number };
+
+function estimateSeconds(days: number, skipAmounts: boolean, withDocuments: boolean): Estimate {
+  const rows = days * ROWS_PER_DAY;
+  const pagingSeconds = Math.ceil(rows / 100) * 1.2;
+  const amounts = Math.round(pagingSeconds + (skipAmounts ? 0 : rows * SECONDS_PER_AMOUNT));
+  const documents = withDocuments ? Math.round(rows * KEPT_SHARE_CEILING * SECONDS_PER_DOCUMENT_LOOKUP) : 0;
+  return { total: amounts + documents, amounts, documents };
 }
 
 function ResultPanel({ result }: { result: BrazilResult }) {
@@ -154,10 +182,27 @@ function ResultPanel({ result }: { result: BrazilResult }) {
           标书链接：查了 {result.documentLinks.tendersAsked} 条项目，
           {result.documentLinks.tendersWithLinks} 条有附件，共记录 {result.documentLinks.linkCount} 个下载链接
           {result.documentLinks.failed ? `，${result.documentLinks.failed} 条没问到` : ""}。
-          {result.documentLinks.tendersAsked > 0 && result.documentLinks.linkCount === 0
-            ? "（一个都没有——这很可能是 PNCP 的返回格式和预期不符，不是这些项目真的没有标书，请告诉我。）"
-            : ""}
+          {result.documentLinks.stoppedEarly
+            ? "（连续失败太多，这一步提前停了——项目本身已经写入，只是没拿到附件链接。）"
+            : result.documentLinks.tendersAsked > 0 && result.documentLinks.linkCount === 0
+              ? "（一个都没有——这很可能是 PNCP 的返回格式和预期不符，不是这些项目真的没有标书，请告诉我。）"
+              : ""}
         </p>
+      ) : null}
+      {/*
+        The refusals, verbatim. A zero with no reason next to it is what sent
+        a real run into a silent half hour on 2026-09-19: "asked 265, got 0"
+        reads as a fact about Brazil's tenders when it is a fact about our
+        request.
+      */}
+      {result.documentLinks && result.documentLinks.failureReasons.length > 0 ? (
+        <ul className="mt-1 space-y-0.5 text-[11px] leading-4 text-[#7a5200]">
+          {result.documentLinks.failureReasons.map((reason) => (
+            <li key={reason} className="font-mono break-all">
+              {reason}
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       {!result.write ? (
@@ -183,8 +228,8 @@ export function ImportBrazilForm() {
   const [copied, setCopied] = useState<string | null>(null);
 
   const dayCount = Number(days) || 1;
-  const estimated = estimateSeconds(dayCount, skipAmounts);
-  const tooLong = estimated > SERVERLESS_CEILING_SECONDS;
+  const estimated = estimateSeconds(dayCount, skipAmounts, write && downloadDocuments);
+  const tooLong = estimated.total > SERVERLESS_CEILING_SECONDS;
 
   const cliCommand = `npm run ingest:brazil-live -- --days ${dayCount}${skipAmounts ? " --skip-amounts" : ""}${write && downloadDocuments ? " --documents" : ""}${write ? " --write" : ""}`;
 
@@ -283,8 +328,16 @@ export function ImportBrazilForm() {
         difference between a button that works and one that silently dies.
       */}
       <p className={`mt-3 rounded-xl border px-3 py-2 text-xs leading-5 ${tooLong ? "border-[#f0d9a8] bg-[#fff8e9] text-[#7a5200]" : "border-[#d8e0e3] bg-[#f7f9f9] text-[#52636e]"}`}>
-        {dayCount} 天大约 {dayCount * ROWS_PER_DAY} 条，预计耗时 <strong>{estimated} 秒</strong>
+        {dayCount} 天大约 {dayCount * ROWS_PER_DAY} 条，预计耗时 <strong>{estimated.total} 秒</strong>
         （按 2026-09-18 实测：3 天 795 条；取金额受 PNCP 限流约束，快不了）。
+        {estimated.documents > 0 && (
+          <>
+            {" "}
+            其中<strong>取标书链接约 {estimated.documents} 秒</strong>，而且这是<strong>下限</strong>——
+            这一步是逐条串行请求，PNCP 的接口形状还没实测过。连续 10 条失败就会自动停下并告诉你原因，
+            那时项目本身已经写进库了，只是没拿到附件链接。
+          </>
+        )}
         {tooLong ? (
           <>
             {" "}

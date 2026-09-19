@@ -7096,3 +7096,25 @@ the one above applies at import time only.
 
 Totals: 332/332 Spanish fixtures, all Portuguese cases, 11/11 bid-window cases
 (`npm run test:bid-window`).
+
+### The rules, on the page where the button is (2026-09-19)
+
+Per the user, when turning the scheduled Brazil import on: 请帮我在后台->新项目
+清单->巴西里面写清楚现在的规则.
+
+`ImportBrazilForm.tsx` now carries a 当前生效的规则 panel covering the schedule
+(11:17 UTC daily, 3-day window, writes), slug-overwrite behaviour, what is
+scanned, the Brazil-specific value floor and bands, the four categories that
+are never written, the 小型工程 class with both of its exceptions, the routine
+Portuguese exclusions, the fibre bands, and the fact that existing rows are
+untouched.
+
+It is on this page rather than only in this file because this is where someone
+decides whether a day's import looked right. A rule they cannot see is a rule
+they re-report as a bug, which has already happened twice in one day — once
+for the 43-minute amount pass, once for three 已中标 rows nobody could account
+for.
+
+Maintained by hand with one exception: the bidding window renders
+`SHORT_BID_WINDOW_DAYS` directly, because that number is the one most likely
+to be tuned and the one whose drift would be least visible.

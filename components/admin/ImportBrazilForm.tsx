@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 
 /**
  * The 巴西 tab of 新项目清单, over PNCP's live search index.
@@ -282,6 +283,97 @@ export function ImportBrazilForm() {
       <p className="mt-2 text-sm text-[#52636e]">
         每条项目都有直达标书页的链接（<code className="font-mono text-xs">pncp.gov.br/app/editais/…</code>），附件可以远程直接下载，不用一个个手点。
       </p>
+
+      {/*
+        The rules, on the page where the button is (user, 2026-09-19:
+        请帮我在后台->新项目清单->巴西里面写清楚现在的规则).
+
+        Written here rather than only in lib/ingestion/README.md because this
+        is where someone decides whether a day's import looked right. A rule
+        they cannot see is a rule they will re-report as a bug — which has
+        already happened twice, once for the 43-minute amount pass and once
+        for three 已中标 rows nobody could account for.
+
+        Kept in step with the code by hand, with one exception: the bidding
+        window reads its own constant, because that number is the one most
+        likely to be tuned.
+      */}
+      <section className="mt-4 rounded-xl border border-[#d8e0e3] bg-[#f7f9f9] px-4 py-3 text-xs leading-6 text-[#52636e]">
+        <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-[#b86e00]">当前生效的规则</h3>
+
+        <p className="mt-2 text-[#233846]">
+          <strong>每天 11:17 UTC（北京 19:17）自动跑一次</strong>，窗口 3 天，直接写入 Supabase。
+          上面的按钮是额外的手动触发，不影响定时任务。两者规则完全一样。
+        </p>
+        <p className="mt-1">
+          按 <code className="font-mono">slug</code> 覆盖写入 —— 同一个窗口重跑一次，会用新数据覆盖旧行（金额没取到的话，重跑就能补上）。
+        </p>
+
+        <h4 className="mt-3 font-black text-[#071826]">一、扫哪些</h4>
+        <p>
+          只扫<strong>公开招标 Concorrência</strong>（电子 4 + 现场 5）两种采购方式。
+          国有企业（Petrobras、各州电力公司，走 Lei 13.303/2016）和特许经营（PPI、ANEEL 输电拍卖）
+          <strong>不在 PNCP 上</strong>，走别的渠道。
+        </p>
+
+        <h4 className="mt-3 font-black text-[#071826]">二、金额门槛（巴西单独一套）</h4>
+        <p>
+          低于 <strong>200 万美元</strong>的项目不进推荐列表。分档：
+          常规 200–500 万 · 中型 500–1000 万 · 大型 1000 万以上（美元，按 1 USD = 5.16 BRL 折算）。
+          巴西比其他国家高（其他国家 100 万起），因为 PNCP 覆盖 5,570 个市，R$400 万在那边只是一个普通小镇合同。
+        </p>
+
+        <h4 className="mt-3 font-black text-[#071826]">三、这几类一条都不会写进库</h4>
+        <ul className="mt-1 list-disc space-y-1 pl-5">
+          <li><strong>交标日期已过的</strong> —— 平台级规则，所有来源通用。</li>
+          <li>
+            <strong>已中标、而且交标日期也过了的</strong> —— PNCP 只给一个「有结果」的布尔值，
+            没有中标方、没有中标金额，投标投不了、情报也读不到。
+          </li>
+          <li>
+            <strong>投标窗口少于 {SHORT_BID_WINDOW_DAYS} 个自然日的</strong>（仅限常规项目 + 没有金额的）——
+            读标书、报价、办保函、还要先在平台注册，{SHORT_BID_WINDOW_DAYS} 天以内中资企业进不去。
+            中型/大型项目，或者已经披露金额的，不受此规则影响。
+          </li>
+          <li><strong>被相关度规则排除的</strong> —— 完整清单每次运行都会导出 CSV，可以复核有没有误杀。</li>
+        </ul>
+
+        <h4 className="mt-3 font-black text-[#071826]">四、小型工程（2026-09-19 新增）</h4>
+        <p>
+          这几类默认不进推荐列表 —— 通常由本地承包商承建、金额有限，中资企业即使在当地有实体也一般不参与：
+        </p>
+        <ul className="mt-1 list-disc space-y-1 pl-5">
+          <li>幼儿园 / 托儿所 / 学前（creche、CMEI、CEMEI、EMEI、pré-escola、educação infantil）</li>
+          <li>村小、市立/州立学校（<code className="font-mono">escola municipal / estadual / rural</code>）</li>
+          <li>社区卫生站（UBS、posto de saúde、ESF）</li>
+          <li>社区球场、小广场（quadra esportiva、campo society、praça、MEU CAMPINHO）</li>
+          <li>街巷路面、乡村石块路、乡道（pavimentação/recapeamento + 街名或村落）、路面养护、边坡挡墙</li>
+          <li>乡村供水（abastecimento de água em área rural、saneamento rural）</li>
+        </ul>
+        <p className="mt-1">
+          <strong>两个例外</strong>：① 披露的金额达到大型工程门槛（600 万美元）时本规则不适用；
+          ② <strong>公路不受影响</strong> —— 标题里出现 rodovia、BR-101、MG-050 这类编号的，
+          就算同时写了街名也照常保留。另外「hospital」不在名单里（说的是社区/乡村卫生站，不是医院），
+          单写 <code className="font-mono">escola</code> 也不算（联邦理工学院是真项目）。
+        </p>
+
+        <h4 className="mt-3 font-black text-[#071826]">五、葡语常规排除</h4>
+        <p>
+          垃圾清运、市政保洁、车辆维护、房屋养护、监理/造价咨询、广告传播、工资代发特许等，
+          都不进推荐列表。<strong>真的工程一律保留</strong> —— 这条守卫是专门写的，宁可放过也不误杀。
+        </p>
+
+        <h4 className="mt-3 font-black text-[#071826]">六、光纤项目的分档</h4>
+        <p>
+          只看线路长度，不看金额：<strong>3 万公里以上 = 大型项目</strong>；
+          <strong>1 万公里以上、或骨干网、或海缆 = 中型项目</strong>；其余一律常规项目。
+        </p>
+
+        <h4 className="mt-3 font-black text-[#071826]">七、已经在库里的行不受影响</h4>
+        <p>
+          以上规则<strong>只在导入时生效</strong>。库里已有的行保持原样，需要调整请在「项目管理」里手动改。
+        </p>
+      </section>
 
       <div className="mt-4 flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-xs">

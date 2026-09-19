@@ -100,6 +100,44 @@ export function consultaLabel(consulta: AneelConsultaPublica): string {
 }
 
 /**
+ * Where to look, on the one ANEEL host that answers.
+ *
+ * Read out of a capture of ANEEL's own homepage (2026-09-19, user's browser),
+ * not guessed: these are the hrefs the site's own navigation carries. That
+ * matters because of which host they are on. `www.gov.br/aneel` answered 200
+ * with ~22k characters and 777 links from BOTH the user's laptop and the
+ * deployment, while every other ANEEL door is shut — `www2` and `git.aneel`
+ * behind a Cloudflare challenge, `leilao.aneel`, `dadosabertos.aneel` and
+ * `portalrelatorios.aneel` at TCP timeout from two continents. So the
+ * consultation stage is the one part of the auction lifecycle reachable
+ * without changing network egress.
+ *
+ * ANEEL runs three distinct participation instruments and they are not
+ * synonyms, which is why all three are listed:
+ *
+ *  - **Tomada de subsídios** — the earliest, before a draft exists at all;
+ *    ANEEL asks the market what the rules should say.
+ *  - **Consulta pública** — the draft edital itself, with annexes and draft
+ *    contract, open for written contributions. This is the one that carries
+ *    the investment figure and the technical spec.
+ *  - **Audiência pública** — an oral session, usually inside a consulta's
+ *    window rather than instead of it.
+ *
+ * `aneel-auction-stage.ts`'s CONSULTATION pattern already matches the first
+ * two by name; this capture is what confirms they are formally separate
+ * instruments rather than one thing ANEEL words two ways.
+ *
+ * None of these pages has been captured yet — only their addresses are
+ * confirmed. A save of the consultas-publicas index is what would turn
+ * ANEEL_CONSULTAS below from typed to measured.
+ */
+export const ANEEL_PARTICIPATION_URLS = {
+  tomadaDeSubsidios: "https://www.gov.br/aneel/pt-br/acesso-a-informacao/participacao-social/tomada-de-subsidios",
+  consultasPublicas: "https://www.gov.br/aneel/pt-br/acesso-a-informacao/participacao-social/consultas-publicas",
+  audienciasPublicas: "https://www.gov.br/aneel/pt-br/acesso-a-informacao/participacao-social/audiencias-publicas",
+} as const;
+
+/**
  * The consultations open or recently closed as of 2026-09-19.
  *
  * Seeded rather than fetched, for the access reason in the header. Kept small

@@ -694,6 +694,9 @@ async function main() {
     // Named by ANTAQ's own auction index in run four: every one of its 88
     // matching links points here, so this is where the port editais live.
     "leilao.antaq.gov.br",
+    // Surfaced by P11c in run seven, from ANAC's own 7th-round page: an open
+    // data host with a per-round directory. Never tested.
+    "sistemas.anac.gov.br",
     "dadosabertos.ccee.org.br",
     "www.b3.com.br",
   ];
@@ -1017,6 +1020,25 @@ async function main() {
     "机场是 2026 年场次最多的一块（21 场），而 ANAC 把每一轮的招标文件挂在轮次页下面。这条取第七轮 —— 要的是看它把 edital 和附件放在哪种路径下，好照着找 2026 那几轮",
     "https://www.gov.br/anac/pt-br/assuntos/concessoes/andamento/setima-rodada",
     /edital|leil|concess|anexo|rodada|aeroporto|\.pdf/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // The best lead of run seven, and it came from ANAC's own round page rather
+  // than from a search. Among P11c's 460 links:
+  //
+  //   Estudos de Viabilidade Técnica, Econômica e Ambiental (EVTEA)
+  //     → sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/
+  //
+  // A directory, on a host nobody has touched, named after the concession
+  // round. If ANAC keeps one of these per round and it lists files, airports
+  // stop being "an index with 12 institutional PDFs on it" and become a
+  // document source — the sector with the most 2026 auctions of any.
+  await probeHtml(
+    "P11d. ★ ANAC 的开放数据目录（P11c 从自己页面里带出来的新主机）",
+    "P11c 那 12 个 PDF 大多是机构样板（责任人名册、价值链、监管准则），不是 edital。但它的链接里有这个：sistemas.anac.gov.br 上按轮次分的目录。新主机、没测过，而且如果它每轮一个目录并且能列文件，机场就从「只有索引」变成「有文件」—— 那是 2026 年场次最多的一块",
+    "https://sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/",
+    /\.(pdf|zip|xlsx?|docx?)|edital|anexo|evtea|estudo/i,
     timeoutMs,
   );
   await sleep(1500);

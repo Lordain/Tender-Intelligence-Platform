@@ -4110,6 +4110,66 @@ matches were real findings that the printer threw away.
 `leilao.aneel.gov.br` (the auction systems), `in.gov.br` on both paths, PPI
 everywhere, and the three ANEEL hosts that time out at the socket.
 
+#### Run seven: the link ranking paid, and it is time to stop probing
+
+Sorting content links above the mega-menu turned P10 from twelve menu entries
+into the actual feed:
+
+```
+Leilão N° 03/2026-ANTAQ - TMP - Recife      audiencia=177
+Leilão N° 02/2026-ANTAQ - NAT01             audiencia=176
+Leilão N° 01/2026-ANTAQ - MCP01             audiencia=175
+Leilão Nº 05/2025-ANTAQ - Canal de acesso…  audiencia=173
+…25 rows, back through 2023
+```
+
+Auction number, year, terminal code, port, and a stable id, in server-rendered
+HTML. **That is a scrapeable index** — and it was there in every run since
+four, hidden behind twelve slots of navigation.
+
+**Two things run seven settled that the earlier rounds had left me
+over-optimistic about.**
+
+*P12's PDF is in a `teste` folder.* Its path reads
+`…/audiencias-e-consultas-publicas/audiencias/teste/04-2026-vdc04/minuta-de-edital.pdf`.
+The generalizable fact still holds and is the important one: **gov.br serves
+PDFs to an honest client, unauthenticated, and ANEEL's file host does not.**
+But that particular URL is a staging artifact, so it says nothing about where
+production hearing documents live — and P10c (parent) and P10d (the
+`/audiencias` folder itself, 52KB, 90 links, zero matches) did not find them.
+
+*ANAC's 12 PDFs are boilerplate.* P11c's round page carries 12 PDFs, and
+reading them shows what they are: Rol de Responsáveis, Cadeia de Valor,
+Diretrizes Regulatórias, Modelo de Governança — the institutional footer every
+gov.br page carries. Not the edital.
+
+**The one genuinely new lead came from ANAC's own page**, not from a search:
+
+```
+Estudos de Viabilidade Técnica, Econômica e Ambiental (EVTEA)
+  → sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/
+```
+
+A per-round directory on an untouched host. P11d fetches it; the host joins
+the TCP pass.
+
+**Recommendation, after seven rounds: stop probing and decide.** The access
+map is no longer changing — the same hosts answer and the same hosts refuse,
+run after run. What is left is a choice, not another probe:
+
+1. **Build the ANTAQ index connector on what is proven.** It yields auction
+   number, terminal, port, year and a deep link per row, with no value, no
+   deadline and no documents, because those live on `leilao.antaq.gov.br`.
+   Signal-only, like ANEEL — honest, and the rows are real and current.
+2. **Get a different network egress.** One change opens `leilao.antaq`,
+   `leilao.aneel`, `git.aneel`'s three xlsx, PPI, ANTT's F5 hosts and
+   `in.gov.br`. Every remaining blocker on this list is the same kind of
+   blocker, and no amount of connector code addresses any of them.
+
+P11d is the last probe worth running before that choice, because a directory
+listing of per-round documents would move airports from column one to a full
+source on its own.
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.

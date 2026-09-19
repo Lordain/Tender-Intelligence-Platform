@@ -127,7 +127,7 @@
     "@anthropic-ai/sdk": "^0.125.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.116.0",
-    "adm-zip": "^0.6.0",
+    "adm-zip": "^0.6.1",
     "csv-parse": "^7.0.2",
     "exceljs": "^4.4.0",
     "mammoth": "^1.12.2",

@@ -6725,3 +6725,66 @@ the same ColdFusion shape with the same `documentos_editais.cfm?IdProgramaEdital
 popup. Unverified from here for the usual access reason; the reader is
 segment-agnostic apart from its `LEILÃO DE TRANSMISSÃO` heading regex, so the
 first captured generation page is what decides whether one reader serves both.
+
+## The deployment answered, and it opened two doors (2026-09-19)
+
+`/api/admin/probe-brazil-doors` was run for the first time, from Vercel. The
+result settles the question eight rounds of laptop probing could not: **the
+egress is a real variable, not an excuse.** Two doors flipped.
+
+| door | laptop | Vercel |
+|---|---|---|
+| `dadosabertos.aneel.gov.br` datastore_search | TCP timeout, no handshake in 21s | **JSON in 1473ms** |
+| `dados.antt.gov.br` CKAN | 200 + F5 "Request Rejected" page | **CKAN 2.8.3** |
+
+Those two are the open-data APIs for electricity transmission and for roads +
+railways — the structured half of everything this line of work was after. From
+the laptop neither existed. From Vercel both answer in about a second.
+
+### What did NOT flip, and it is the half that matters more
+
+Every host that serves an actual *edital* is still shut from Vercel too:
+
+    leilao.aneel.gov.br          TCP timeout      (same as laptop)
+    portalrelatorios.aneel       TCP timeout      (same as laptop)
+    git.aneel.gov.br             Cloudflare       (raw .xlsx and API both)
+    www2.aneel.gov.br            Cloudflare       ← the connector's own source
+    portal.antaq.gov.br          Cloudflare
+    dadosabertos.ccee.org.br     "Acesso bloqueado"
+    ppi.gov.br                   ECONNRESET / "Acesso Negado!"
+
+So the shape of the answer is: **indexes and results, yes; bid documents, no.**
+Which is the ANEEL lesson again (`www.gov.br/aneel` answers, `download.aneel`
+does not), now confirmed to hold from a second network.
+
+One distinction inside the Cloudflare column is worth keeping. From Vercel
+these are `Just a moment…` — the JS challenge, which a real browser passes.
+From the laptop `git.aneel` was `Sorry, you have been blocked` — the 1020 hard
+block, which a real browser does not pass. Same vendor, different verdict,
+decided by where the request came from. If a headless browser is ever built
+for this, Vercel's egress is the one where it could work.
+
+### The trap this creates, and what was built to avoid it
+
+`scripts/ingest-aneel.ts` reads `www2.aneel.gov.br` — which Vercel refuses
+too. So "run it on the server" does not rescue the connector that exists. What
+Vercel opened is a *different* path to the same facts: `dadosabertos.aneel`'s
+datastore holds the transmission auction results directly.
+
+But the nightly ingest does not run on Vercel. It runs on a GitHub Actions
+runner (`daily-ingest.yml`, and that file records why it moved off Vercel).
+That is a **third** network, with no relationship to the second. Writing a
+connector against `dadosabertos.aneel` because Vercel reached it would be a
+guess about a machine nobody has asked.
+
+Hence `lib/ingestion/brazil-doors.ts`: one door list, two callers — the admin
+route (Vercel) and `.github/workflows/probe-brazil-doors.yml` (the runner,
+manual dispatch). Whatever the runner says is what decides, because that is
+where a connector would live.
+
+Also fixed while extracting it: the JSON describer reported E1 — the one door
+the whole exercise aimed at — as `JSON，外层键 help, success, result`. That is
+the CKAN envelope, identical for every CKAN call ever made. It proved the host
+answered and said nothing about what it answered with. `datastore_search` is
+now unwrapped one level further, so the next run prints the row count and the
+column names, which is the thing a mapper is actually written from.

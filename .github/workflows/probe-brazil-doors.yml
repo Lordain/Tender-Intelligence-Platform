@@ -1,0 +1,44 @@
+# Asks the machine that actually runs the imports whether it can reach Brazil.
+#
+# WHY THIS IS SEPARATE FROM THE LAPTOP PROBE AND FROM THE VERCEL ROUTE.
+#
+# Three networks are in play and they agree about nothing:
+#
+#   laptop          dadosabertos.aneel.gov.br  TCP timeout, no handshake
+#                   dados.antt.gov.br          200 + F5 rejection page
+#   Vercel          dadosabertos.aneel.gov.br  JSON in 1473ms          ★
+#                   dados.antt.gov.br          CKAN 2.8.3              ★
+#   GitHub runner   ?                          ← this workflow
+#
+# The nightly ingest runs HERE, not on Vercel (see daily-ingest.yml for why it
+# moved). So Vercel opening a door is not permission to build a connector
+# against it: the connector would run on a runner, fail every night, and the
+# failure would be a network refusal buried in a log nobody reads. A door
+# counts as open when the machine that will use it says so.
+#
+# No secrets, no writes, no database. It fetches public URLs and prints a
+# report. Manual only — there is nothing here worth a schedule; run it when
+# the answer is about to decide what gets built.
+name: Probe Brazil doors
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The label is part of the report. Two reports that do not say which
+      # machine produced them are worse than one.
+      - name: Knock
+        run: npm run probe:brazil-doors -- "GitHub Actions 跑批机"

@@ -133,7 +133,8 @@
     "fix:peru-source-urls": "tsx --env-file-if-exists=.env.local scripts/fix-peru-ficha-source-urls.ts",
     "test:peru-seace-url": "tsx scripts/test-peru-seace-url.ts",
     "probe:brazil-docs": "tsx scripts/probe-brazil-docs.ts",
-    "probe:brazil-concessions": "tsx --env-file-if-exists=.env.local scripts/probe-brazil-concessions.ts"
+    "probe:brazil-concessions": "tsx --env-file-if-exists=.env.local scripts/probe-brazil-concessions.ts",
+    "probe:brazil-doors": "tsx scripts/probe-brazil-doors.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

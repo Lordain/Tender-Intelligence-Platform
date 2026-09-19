@@ -28,6 +28,7 @@
  *   npm run ingest:aneel -- <saved-page> --write                     (upserts)
  *   npm run ingest:aneel -- <saved-page> --published 2025-11-11      (real publication date)
  *   npm run ingest:aneel -- <saved-page> --documents docs.json       (the documentos_editais list)
+ *   npm run ingest:aneel -- <saved-page> --include-finished          (import a concluded auction anyway)
  *
  * `--documents` takes a JSON array of { section, title, url? } read off
  * `documentos_editais.cfm?IdProgramaEdital=<id>`; without it the auction is
@@ -35,8 +36,9 @@
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import { readAneelEditalFile } from "../lib/ingestion/connectors/aneel-editais-file";
-import { mapAneelEditalToTenders, ANEEL_SOURCE_NAME } from "../lib/ingestion/aneel-transmissao-mapper";
+import { decodeAneelPage, readAneelEditalFile, readAneelGeracaoFile } from "../lib/ingestion/connectors/aneel-editais-file";
+import { mapAneelEditalToTenders, aneelAuctionLiveness, ANEEL_SOURCE_NAME } from "../lib/ingestion/aneel-transmissao-mapper";
+import { mapAneelGeracaoToTenders, ANEEL_GERACAO_SOURCE_NAME } from "../lib/ingestion/aneel-geracao-mapper";
 import {
   ANEEL_CONSULTAS,
   consultaLabel,
@@ -124,6 +126,55 @@ function printConsultas(now: Date): void {
   }
 }
 
+/**
+ * `editais_geracao/edital_geracao.cfm` — several auctions per page, no lots,
+ * one tender each. See lib/ingestion/aneel-geracao-mapper.ts for why the
+ * transmission path cannot be reused.
+ */
+async function ingestGeracao(path: string, flags: Map<string, string | true>, now: Date): Promise<void> {
+  const editais = readAneelGeracaoFile(path);
+  if (editais.length === 0) {
+    console.error("这一页读不出任何场次 —— 保存时可能丢了内容，或者页面结构变了。");
+    process.exit(1);
+  }
+
+  console.log(`ANEEL 发电/容量拍卖 —— 这一页有 ${editais.length} 场\n`);
+  const publicationDate = typeof flags.get("published") === "string" ? (flags.get("published") as string) : undefined;
+
+  const tenders = [];
+  for (const edital of editais) {
+    const rows = mapAneelGeracaoToTenders({ edital, publicationDate }, now);
+    // The same rule as transmission: 只要正在招标、未发标的. A past-year page
+    // renders identically to this year's, so the year is the evidence when no
+    // document list was captured.
+    const stale = edital.year !== null && edital.year < now.getFullYear();
+    const mark = stale && !flags.has("include-finished") ? "跳过（往年场次）" : rows[0]?.status ?? "—";
+    console.log(`  ${edital.heading ?? `Leilão ${edital.auctionNumber}/${edital.year}`}`);
+    console.log(`    ${rows[0]?.title.es ?? "（读不出标题）"}`);
+    console.log(`    ${mark} · ${rows[0]?.scopeType === "works" ? "含新建，有设备/EPC 机会" : "仅面向已有项目，无新建采购"} · ${rows[0]?.relevance.tier ?? "—"}`);
+    console.log(`    标书与附件：${edital.links.documentosUrl ?? "（页面没给）"}`);
+    if (stale && !flags.has("include-finished")) continue;
+    tenders.push(...rows);
+  }
+
+  const excluded = tenders.filter((t) => t.relevance.tier === "excluded");
+  if (excluded.length > 0) console.log(`\n⚠ ${excluded.length} 条被相关度判为 excluded，不会写入。`);
+
+  if (!hasWriteFlag()) {
+    console.log(`\n共 ${tenders.length} 条。dry run（加 --write 才写库）—— 什么都没写入 Supabase。`);
+    return;
+  }
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
+  const { upsertedCount, skippedExcludedCount, failed } = await upsertTendersBatched(supabase, tenders);
+  if (failed && failed.length > 0) {
+    console.error(`${failed.length} 条写入失败：`);
+    for (const f of failed.slice(0, 20)) console.error(`  ${f.slug}: ${f.error}`);
+  }
+  if (skippedExcludedCount) console.log(`跳过 ${skippedExcludedCount} 条 excluded。`);
+  console.log(`\n写入 ${upsertedCount} / ${tenders.length} 条，来源 "${ANEEL_GERACAO_SOURCE_NAME}"。`);
+}
+
 async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
   const now = new Date();
@@ -147,6 +198,17 @@ async function main() {
     process.exit(1);
   }
 
+  // Which of ANEEL's two applications this page came from, read from the page
+  // itself rather than asked for as a flag. They are genuinely different
+  // documents — the generation page carries SEVERAL auctions and no lots — so
+  // getting this wrong silently imports nothing (measured: the transmission
+  // mapper over the generation page returns zero rows).
+  const rawHtml = decodeAneelPage(resolvedPath);
+  if (/LEIL[ÃA]O\s+DE\s+GERA[ÇC][ÃA]O/i.test(rawHtml)) {
+    await ingestGeracao(resolvedPath, flags, now);
+    return;
+  }
+
   const edital = readAneelEditalFile(resolvedPath);
   if (edital.auctionNumber === null || edital.year === null) {
     console.error("读不出场次号/年份 —— 这份文件多半不是 edital_transmissao.cfm 的保存页，或者保存时丢了内容。");
@@ -163,6 +225,19 @@ async function main() {
   }
 
   const consulta = findConsultaForAuction(edital.auctionNumber, edital.year, "transmissao");
+
+  // 只要正在招标、未发标的（user, 2026-09-19）. See aneelAuctionLiveness for
+  // why a past YEAR counts as evidence when no document list was captured:
+  // every past year renders in the same template, so without documents a
+  // decade-old auction reads as ten upcoming opportunities.
+  const liveness = aneelAuctionLiveness(edital, documents, consulta, now);
+  if (!liveness.live && !flags.has("include-finished")) {
+    console.log(`${edital.heading ?? `Leilão ${edital.auctionNumber}/${edital.year}`}`);
+    console.log(`\n跳过：${liveness.reason}`);
+    console.log("一条都没有导入。确实要导入这场已结束的拍卖，加 --include-finished。");
+    return;
+  }
+
   const tenders = mapAneelEditalToTenders(
     {
       edital,
@@ -184,7 +259,9 @@ async function main() {
   if (consulta) {
     console.log(`匹配到 ${consultaLabel(consulta)}（${consultaWindowState(consulta, now)}）${consulta.confirmed ? "" : " —— 未与 ANEEL 官网核对"}`);
   }
-  console.log(`状态：${[...new Set(tenders.map((t) => t.status))].join(", ") || "（无）"}\n`);
+  console.log(`状态：${[...new Set(tenders.map((t) => t.status))].join(", ") || "（无）"}`);
+  if (!liveness.live) console.log(`⚠ 这场按判断已经结束（${liveness.reason}），是 --include-finished 强行导入的。`);
+  console.log("");
 
   const excluded = tenders.filter((t) => t.relevance.tier === "excluded");
   if (excluded.length > 0) {

@@ -8,6 +8,7 @@
  */
 import { readAneelEditalFile } from "@/lib/ingestion/connectors/aneel-editais-file";
 import { findConsultaForAuction } from "../lib/ingestion/aneel-consulta-publica";
+import { aneelAuctionLiveness } from "../lib/ingestion/aneel-transmissao-mapper";
 import { mapAneelEditalToTenders } from "@/lib/ingestion/aneel-transmissao-mapper";
 import type { AneelDocumentEntry } from "@/lib/ingestion/aneel-auction-stage";
 
@@ -104,6 +105,52 @@ check("未核对的来源要写明", /尚未与 ANEEL 官网核对/.test(consult
 // consultation in the registry, so nothing must appear on those rows.
 const noConsulta = mapAneelEditalToTenders({ edital, documents }, new Date("2026-09-19T00:00:00Z"));
 check("1/2026 没有公众咨询记录时不凭空加日期", noConsulta[0]?.keyDates.some((d) => d.type === "questions_deadline"), false);
+
+console.log("\n只要正在招标、未发标的");
+// The user's rule (2026-09-19: 已经逾期的项目我不要). The trap is the year
+// selector: edital_transmissao.cfm renders 1999 through 2026 in the SAME
+// template with no dates anywhere, so a decade-old auction parses into ten
+// perfectly good lots and — with no document list — reads as `announced` ->
+// `planned`. Ten upcoming opportunities that concluded in 2015.
+check("今年的场次：导", aneelAuctionLiveness(edital, [], null, new Date("2026-06-01T00:00:00Z")).live, true);
+check(
+  "往年的场次、没有文档清单：不导",
+  aneelAuctionLiveness(edital, [], null, new Date("2031-01-01T00:00:00Z")).live,
+  false,
+);
+check(
+  "不导的理由要点明是年份，不是阶段",
+  /没有传入文档清单/.test(aneelAuctionLiveness(edital, [], null, new Date("2031-01-01T00:00:00Z")).reason),
+  true,
+);
+// A captured document list IS a reading, and it beats the year guess — an
+// edital published late in year N can legitimately still be open in N+1.
+check(
+  "有文档清单说还在发标：年份不再压倒它",
+  aneelAuctionLiveness(
+    edital,
+    [{ section: "edital", title: "Edital do Leilão nº 1/2026" }],
+    null,
+    new Date("2027-02-01T00:00:00Z"),
+  ).live,
+  true,
+);
+// And results are results whatever the year says.
+check(
+  "已出结果：不导",
+  aneelAuctionLiveness(
+    edital,
+    [{ section: "relatorios", title: "Ata do Leilão nº 1/2026" }],
+    null,
+    new Date("2026-06-01T00:00:00Z"),
+  ).live,
+  false,
+);
+check(
+  "送 TCU 审、当年：导（这正是「未发标」）",
+  aneelAuctionLiveness(edital, documents, null, new Date("2026-06-01T00:00:00Z")).live,
+  true,
+);
 
 if (failures > 0) {
   console.error(`\n${failures} 项没通过。`);

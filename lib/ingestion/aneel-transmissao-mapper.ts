@@ -1,4 +1,4 @@
-import type { Tender } from "@/types/tender";
+import type { Tender, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
 import { readAneelAuctionStage, type AneelAuctionReading, type AneelDocumentEntry } from "@/lib/ingestion/aneel-auction-stage";
@@ -190,4 +190,59 @@ export function mapAneelEditalToTenders(input: AneelMappingInput, now: Date = ne
       updatedAt: nowIso,
     } satisfies Tender;
   });
+}
+
+/**
+ * Is this auction still worth writing — or is it history?
+ *
+ * The user's rule (2026-09-19: 已经逾期的项目我不要，只要正在招标、未发标的):
+ * keep `planned` and `open`, drop anything already decided.
+ *
+ * ── Why the status alone is not enough, and this is the trap ──────────────
+ *
+ * `edital_transmissao.cfm` has a year selector going back to 1999, and every
+ * past year renders in the SAME template as the current one. Save 2015's page
+ * and the reader returns ten perfectly good lots with no dates on them
+ * anywhere — the page carries no publication date at all, which is why the
+ * mapper stamps the capture time and flags it estimated.
+ *
+ * Feed that to readAneelAuctionStage with no document list and it returns
+ * `announced` -> `planned`, because "no files captured" is genuinely
+ * indistinguishable from "no files uploaded yet" when all you have is the
+ * auction page. So a 2015 auction, concluded a decade ago, would import as
+ * ten upcoming opportunities. That is the single most expensive thing this
+ * source can do: a fabricated pipeline is worse than an empty one.
+ *
+ * The year is the missing evidence. An auction numbered for a past year whose
+ * documents were NOT captured is finished — not planned — and the only thing
+ * that can overturn that is a real document list saying otherwise (an edital
+ * published late in year N can legitimately still be open in N+1, and the
+ * reading sees that because a document list was captured).
+ */
+export type AneelLiveness = { live: boolean; status: TenderStatus; reason: string };
+
+export function aneelAuctionLiveness(
+  edital: AneelEdital,
+  documents: AneelDocumentEntry[] = [],
+  consulta: AneelConsultaPublica | null = null,
+  now: Date = new Date(),
+): AneelLiveness {
+  const reading = readAneelAuctionStage(documents, consulta, now);
+
+  if (reading.stage === "results_published") {
+    return { live: false, status: reading.status, reason: "已出结果/会议纪要 —— 这场拍完了。" };
+  }
+
+  // The year guard, and only where it is actually evidence: with a document
+  // list captured, the reading is a reading and it wins.
+  const currentYear = now.getFullYear();
+  if (documents.length === 0 && edital.year !== null && edital.year < currentYear) {
+    return {
+      live: false,
+      status: "awarded",
+      reason: `${edital.year} 年的场次，且没有传入文档清单 —— 按已结束处理。往年页面和今年长得一模一样，没有文档清单时「planned」只是默认值，不是判断。要导入请补 --documents。`,
+    };
+  }
+
+  return { live: true, status: reading.status, reason: reading.note };
 }

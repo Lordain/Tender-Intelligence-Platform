@@ -99,6 +99,7 @@
     "test:aneel-edital": "tsx scripts/test-aneel-edital-file.ts",
     "test:aneel-stage": "tsx scripts/test-aneel-auction-stage.ts",
     "test:aneel-mapper": "tsx scripts/test-aneel-mapper.ts",
+    "test:aneel-geracao": "tsx scripts/test-aneel-geracao.ts",
     "test:source-language": "tsx scripts/test-source-language.ts",
     "test:text-fold": "tsx scripts/test-text-fold.ts",
     "test:relevance-pt": "tsx scripts/test-relevance-pt.ts",

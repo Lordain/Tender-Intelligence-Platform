@@ -1043,6 +1043,24 @@ async function main() {
   );
   await sleep(1500);
 
+  // P11d hit. It is an Apache directory index, and the last entry is the one
+  // that matters:
+  //
+  //   DADOS_067_20220713_EDITAL_E_CONTRATO_INGLES_ENGLISH/
+  //
+  // The edital and the contract, in English, in an open directory on a host
+  // that answers an honest client. That is the thing ANEEL cannot do at all.
+  // This step descends into it: a listing proves the directory is browsable,
+  // and the file names tell the connector what to fetch.
+  await probeHtml(
+    "P11e. ★★ ANAC 那个目录里的「EDITAL 和合同（英文）」子目录",
+    "P11d 是个开放目录列表，最后一条写着 EDITAL_E_CONTRATO_INGLES_ENGLISH —— 标书和合同，英文版，开放目录，诚实客户端就能读。这正是 ANEEL 死活做不到的事。这一条钻进去看文件名",
+    "https://sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/DADOS_067_20220713_EDITAL_E_CONTRATO_INGLES_ENGLISH/",
+    /\.(pdf|zip|docx?|xlsx?)/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
   // The DOU again, but at the address the National Press's own reader uses.
   // P8 asks the HTML search UI and gets a socket closed mid-read; this one
   // embeds each section's contents in a <script type="application/json">,

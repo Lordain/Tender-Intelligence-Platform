@@ -4170,6 +4170,54 @@ P11d is the last probe worth running before that choice, because a directory
 listing of per-round documents would move airports from column one to a full
 source on its own.
 
+#### Run eight: ANAC publishes the edital in an open directory
+
+P11d hit, and it is the best result of the whole survey:
+
+```
+sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/
+  DADOS_036_20210921_EVTEA_pre_AP/
+  DADOS_041_20211221_EVTEA_pos_AP/
+  DADOS_047_20220223_EVTEA_pos_AP_novos_blocos/
+  DADOS_063_20220603_EVTEA_pos_TCU/
+  DADOS_067_20220713_EDITAL_E_CONTRATO_INGLES_ENGLISH/   ←
+```
+
+An Apache directory index, on a host that answers an honest client, holding
+the **edital and the contract in English**, plus the feasibility studies at
+four stages (pre-hearing, post-hearing, post-new-blocks, post-TCU). No
+credential, no challenge, no session. P11e descends into it.
+
+This is the thing ANEEL cannot do at any price: `download.aneel.gov.br` and
+`git.aneel.gov.br` refuse every client from every network tried. **Airports
+are a full source** — index on gov.br, documents here, and the
+document-analysis pipeline already exists.
+
+**Answering the two questions the user asked with this run:**
+
+*How many port auctions a year?* From P10's own rows: 2023 had 10, 2024 had
+9, 2025 had 5, 2026 has 3 so far (MCP01, NAT01, TMP-Recife). So **roughly
+5–10 ANTAQ auctions a year**, with the press's "19 terminals in 2026" mostly
+bundled inside those numbers rather than added to them. Small, and each one is
+large.
+
+*Are the port documents unreachable by hand too?* **No — and the distinction
+is one this file has drawn before.** `leilao.antaq.gov.br` returns
+「Attention Required! | Cloudflare」, which is the JS challenge: a real browser
+solves it and gets in. `git.aneel.gov.br` returns 「Sorry, you have been
+blocked」, which is a 1020-class rule against the IP and which a real browser
+does **not** pass — the user confirmed that one by hand. So ports are
+manually downloadable today; only the automation is blocked.
+
+**And the deployment route is option B, already built.**
+`/api/admin/probe-brazil-doors` was written in an earlier round for exactly
+this question and knocks from a second egress. It now carries the four hosts
+the laptop cannot open (`leilao.antaq`, `leilao.aneel`, `git.aneel`,
+`in.gov.br`) marked ★, plus three controls the laptop *can* open, so a
+difference is attributable to the egress rather than to the host. If the
+deployment reaches them, the connectors run there on a schedule and the
+laptop's network stops mattering.
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.

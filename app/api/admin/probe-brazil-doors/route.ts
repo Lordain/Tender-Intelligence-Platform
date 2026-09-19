@@ -86,6 +86,20 @@ const DOORS: { id: string; what: string; url: string }[] = [
   { id: "P7", what: "ANTAQ 门户（港口）", url: "https://portal.antaq.gov.br" },
   { id: "P9", what: "BNDES 项目中心（特许项目的结构化方）", url: "https://hubdeprojetos.bndes.gov.br/en/setores/Rodovias" },
   { id: "P5", what: "dados.gov.br 国家目录 —— 已知要巴西身份，留作对照", url: "https://dados.gov.br/api/3/action/status_show" },
+  // Added 2026-09-19 after seven CLI rounds. These are the doors the laptop
+  // CAN open (gov.br) and the two it cannot (the auction systems), asked from
+  // here so the difference is attributable to the egress rather than to the
+  // host. The two blocked ones are the point of the exercise: if this
+  // deployment reaches leilao.antaq and leilao.aneel, the ports and
+  // transmission connectors can run here on a schedule and the laptop's
+  // network stops mattering at all.
+  { id: "B1", what: "★ ANTAQ 拍卖系统详情页 —— 笔记本上是 Cloudflare 403", url: "https://leilao.antaq.gov.br/default.aspx?audiencia=175" },
+  { id: "B2", what: "★ ANEEL 拍卖系统 —— 笔记本上两个大洲都 TCP 超时", url: "https://leilao.aneel.gov.br/editalTransmissao" },
+  { id: "B3", what: "★ ANEEL 的 GitLab xlsx —— 笔记本上是 Cloudflare 硬封", url: "https://git.aneel.gov.br/publico/centralconteudo/-/raw/main/relatorioseindicadores/leiloes/Resultado_leiloes_transmissao.xlsx" },
+  { id: "B4", what: "★ DOU 看报接口 —— 笔记本上两条路都被掐断", url: "https://www.in.gov.br/leiturajornal?secao=do3" },
+  { id: "B5", what: "对照：ANTAQ 拍卖索引（笔记本能开，25 场真实拍卖）", url: "https://www.gov.br/antaq/pt-br/assuntos/leiloes" },
+  { id: "B6", what: "对照：ANAC 开放数据目录（笔记本能开，里面有英文版 edital）", url: "https://sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/" },
+  { id: "B7", what: "对照：gov.br 上的 ANTAQ 标书草案 PDF（笔记本 659KB 下到了）", url: "https://www.gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/audiencias-e-consultas-publicas/audiencias/teste/04-2026-vdc04/minuta-de-edital.pdf" },
 ];
 
 const TIMEOUT_MS = 12_000;

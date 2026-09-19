@@ -4063,6 +4063,53 @@ page already carries 10 PDFs — the highest PDF count of any index here).
 | PPI portfolio | F5 refusal, with an appeals code | — |
 | DOU | socket closed on both paths | — |
 
+#### Run six: three OKs, and two of them were worth nothing
+
+```
+P10c  …/audiencias-e-consultas-publicas   OK  168KB · 568 链接（命中 6，PDF 0）
+P11b  …/ferrovias/novos-projetos-ferroviarios   OK  194KB · 614 链接（命中 66，PDF 4）
+P11c  …/concessoes/concessoes             OK  145KB · 418 链接 — 和 P11 一模一样
+```
+
+Counting OKs would call that three wins. Two of them are not.
+
+**P11c fetched the same page twice.** `concessoes/concessoes` is byte-identical
+to `concessoes` — same 145KB, same 12700 characters, same 418 links. It came
+from P11's own printed link list, which is normally the right instinct, but a
+menu entry that points back at its own section is not a next layer. Replaced
+with a real round page, `…/concessoes/andamento/setima-rodada`, which is an
+address search returned rather than a pattern invented here.
+
+**P10c answered and told us nothing**: 6 matches out of 568 links, all six
+navigation, zero PDFs. The reason is written in P12's own working path:
+
+```
+…/audiencias-e-consultas-publicas/audiencias/teste/04-2026-vdc04/minuta-de-edital.pdf
+                                  ^^^^^^^^^^
+```
+
+The hearings are in an `/audiencias` **folder** and P10c fetched its parent.
+That is the legacy-hostname mistake again, one directory level down. P10d
+fetches the folder.
+
+**The probe's own reporting was hiding the answer, and that is the fix that
+matters most this round.** Every gov.br Plone site ships the same ~600-link
+mega-menu. So a page with 614 links and **66 matches** spent all twelve
+printed slots on menu entries — Rodovias, Ferrovias, SUFER, Compor — and
+showed none of its content. The one page that did print real rows (ANTAQ's
+auction index) managed it only because its auctions sit on a different
+hostname and sorted to the front by accident.
+
+A content link is distinguishable without knowing the site: it ends in a
+document extension, or it carries a number — an auction number, a year, an id.
+Menu entries are bare slugs. Links are now deduped, scored on exactly that,
+and 25 are printed instead of 12. Run six's 66 rail matches and 43 highway
+matches were real findings that the printer threw away.
+
+**Still dead after six rounds**: `leilao.antaq.gov.br` and
+`leilao.aneel.gov.br` (the auction systems), `in.gov.br` on both paths, PPI
+everywhere, and the three ANEEL hosts that time out at the socket.
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.

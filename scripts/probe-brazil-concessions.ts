@@ -380,7 +380,28 @@ function describeHtml(text: string, linkPattern: RegExp): { note: string; links:
     `${anchors.length} 个链接（命中 ${matching.length}，PDF ${pdfs.length}）`,
     verdict,
   ].join(" · ");
-  return { note, links: matching.slice(0, 12).map(([, href, label]) => `${label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 70)} → ${href.slice(0, 240)}`) };
+  // Run six is why this is not just `.slice(0, 12)`.
+  //
+  // Every gov.br Plone site ships the same ~600-link mega-menu, so a page with
+  // 614 links and 66 matches spent all twelve printed slots on menu entries —
+  // Rodovias, Ferrovias, SUFER, Compor — and showed none of the content. The
+  // one page that did show real rows (ANTAQ's auction index) only managed it
+  // because its auctions live on a different hostname and sorted to the front
+  // by accident.
+  //
+  // A content link on these sites is distinguishable without knowing the site:
+  // it ends in a document extension, or it carries a number — an auction
+  // number, a year, an id. Menu entries are bare slugs. So sort by that and
+  // print more of them.
+  const scored = matching
+    .map(([, href, label]) => ({ href, label, score: (/\.(pdf|docx?|xlsx?|zip)(\?|$)/i.test(href) ? 2 : 0) + (/\d{2,}/.test(href) ? 1 : 0) }))
+    .sort((a, b) => b.score - a.score);
+  const seen = new Set<string>();
+  const printable = scored.filter(({ href }) => !seen.has(href) && seen.add(href));
+  return {
+    note,
+    links: printable.slice(0, 25).map(({ href, label }) => `${label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 70)} → ${href.slice(0, 240)}`),
+  };
 }
 
 /**
@@ -958,6 +979,20 @@ async function main() {
   );
   await sleep(1500);
 
+  // P10c answered 200 and told us nothing: 568 links, 6 matches, and all six
+  // were navigation. The reason is in P12's own path —
+  //   …/audiencias-e-consultas-publicas/audiencias/teste/04-2026-vdc04/minuta-de-edital.pdf
+  // The hearings live in an `/audiencias` FOLDER; P10c fetched its parent.
+  // Same mistake as the legacy-hostname one, one directory level down.
+  await probeHtml(
+    "P10d. ★ ANTAQ 听证的那个目录本身（P10c 取的是它的上一级）",
+    "P10c 通了但什么也没给：568 个链接里只有 6 个命中，而且全是菜单。原因在 P12 自己的路径里 —— 那份 PDF 在 /audiencias/ 这个子目录下面，P10c 取的是它的父级。往下一层",
+    "https://www.gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/audiencias-e-consultas-publicas/audiencias",
+    /audienc|minuta|edital|anexo|\d{2}-\d{4}|\.pdf/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
   // Rail, named by P9b's own link list. Eight projects in the 2026 calendar,
   // and a sector this probe had never looked at separately.
   await probeHtml(
@@ -969,14 +1004,19 @@ async function main() {
   );
   await sleep(1500);
 
-  // ANAC's own next layer, taken from P11's printed links rather than guessed.
-  // P11's landing page already carried 10 PDFs, which is the most promising
-  // PDF count of any index in this probe.
+  // Corrected after run six. `concessoes/concessoes` came back byte-identical
+  // to `concessoes` — 145KB, 12700 字, 418 links, the same page behind a
+  // redirect. It was taken from P11's own link list, which is normally the
+  // safe move, but a self-referential menu entry is not a next layer.
+  //
+  // This is a real round's page instead: ANAC numbers its concession rounds
+  // and publishes each one's licitação documents under it. `setima-rodada` is
+  // an address search returned, not a pattern invented here.
   await probeHtml(
-    "P11c. ANAC 特许的下一层（P11 那页自己给的链接，而且它首页就挂了 10 个 PDF）",
-    "机场是 2026 年场次最多的一块（21 场）。P11 的落地页就有 10 个 PDF，说明 ANAC 习惯把文件直接挂出来 —— 这一条往下钻一层看有没有 edital",
-    "https://www.gov.br/anac/pt-br/assuntos/concessoes/concessoes",
-    /edital|leil|concess|anexo|rodada|aeroporto/i,
+    "P11c. ANAC 第七轮特许（上一轮取的 concessoes/concessoes 是同一页的跳转，白跑了）",
+    "机场是 2026 年场次最多的一块（21 场），而 ANAC 把每一轮的招标文件挂在轮次页下面。这条取第七轮 —— 要的是看它把 edital 和附件放在哪种路径下，好照着找 2026 那几轮",
+    "https://www.gov.br/anac/pt-br/assuntos/concessoes/andamento/setima-rodada",
+    /edital|leil|concess|anexo|rodada|aeroporto|\.pdf/i,
     timeoutMs,
   );
   await sleep(1500);

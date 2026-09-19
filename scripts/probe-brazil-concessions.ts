@@ -648,6 +648,9 @@ async function main() {
     // is the one with the best odds.
     "dadosabertos-aneel.opendata.arcgis.com",
     "hubdeprojetos.bndes.gov.br",
+    // ANAC's own data-search host, found 2026-09-19. Separate from gov.br and
+    // never tried; ANAC was skipped in every earlier round.
+    "datasearch.anac.gov.br",
     "dadosabertos.ccee.org.br",
     "www.b3.com.br",
   ];
@@ -810,6 +813,88 @@ async function main() {
     "所有联邦特许的招标公告依法都要登公报 —— 这条路不依赖哪个机构的网站做得好不好，而且墨西哥的 DOF 连接器已经是同一个形状了",
     "https://www.in.gov.br/consulta/-/buscar/dou?q=leil%C3%A3o+de+transmiss%C3%A3o&s=todos&exactDate=all&sortType=0",
     /leil|edital|aviso/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Added 2026-09-19, and it corrects the same mistake twice over.
+  //
+  // ANEEL taught this already: `www.aneel.gov.br` is a Cloudflare challenge
+  // and `www.gov.br/aneel` answers 200 with 777 links from BOTH machines,
+  // because the agency MOVED and the old address is what is defended. P6 and
+  // P7 above knock on `dados.antt.gov.br` and `portal.antaq.gov.br` — both
+  // legacy hosts, both refused — and ANAC was skipped entirely for want of a
+  // hostname. All three are on gov.br now, and search found their pages:
+  //
+  //   gov.br/antt/pt-br/assuntos/…      ANTT publishes concession editais
+  //                                     under rodovias › novos projetos
+  //   gov.br/antaq/pt-br/assuntos/leiloes   ANTAQ's auction index
+  //   gov.br/anac/pt-br/assuntos/concessoes ANAC's concession rounds
+  //
+  // This matters more than the portfolio question. PPI publishes the pipeline
+  // and its own host is an F5 block page — but the EDITAL was never on PPI.
+  // It belongs to the sector regulator, and the regulators appear to live on
+  // the one Brazilian host this network can read.
+  console.log("─".repeat(72));
+  console.log("\nP9–P12. 三个监管机构在 gov.br 上的现址（上面 P6/P7 敲的是旧域名）\n");
+  console.log("   ANEEL 已经证明过一次：旧域名被防住、gov.br 上的现址 200 且能抓。");
+  console.log("   ANTT / ANTAQ / ANAC 同样都搬到 gov.br 了 —— 而 edital 本来就是它们发的，不是 PPI 发的。\n");
+
+  await probeHtml(
+    "P9. ANTT 公路（gov.br 现址）",
+    "P6 敲的 dados.antt.gov.br 是 F5 拦截页。ANTT 的特许 edital 发在 gov.br/antt 的「rodovias › novos projetos」下面 —— 2026 年 13 场公路拍卖都在这儿",
+    "https://www.gov.br/antt/pt-br/assuntos/rodovias",
+    /rodovia|concess|edital|leil/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  await probeHtml(
+    "P10. ANTAQ 拍卖索引（gov.br 现址）",
+    "P7 敲的 portal.antaq.gov.br 是 Cloudflare 403。这一页是 ANTAQ 自己的拍卖索引 —— 2026 年 19 个码头租赁",
+    "https://www.gov.br/antaq/pt-br/assuntos/leiloes",
+    /leil|edital|arrendamento|concess/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  await probeHtml(
+    "P11. ANAC 特许（gov.br 现址，之前整个跳过了）",
+    "机场是 2026 年 PPI 盘子里场次最多的一块（21 场，20 个支线），而上一轮因为猜不到域名直接没试 —— 这是漏掉的最大一块",
+    "https://www.gov.br/anac/pt-br/assuntos/concessoes",
+    /concess|leil|edital|rodada/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // The decisive one, and it is deliberately a PDF rather than a page.
+  //
+  // ANEEL's whole lesson was that reading the index and downloading the
+  // document are different questions with different answers: www.gov.br/aneel
+  // answers, and `download.aneel.gov.br` times out from every network tried,
+  // so those rows can never carry an attachment. This URL is a real ANTAQ
+  // draft edital served from gov.br itself. If it downloads, the ports
+  // pipeline is a full source — index AND documents AND the analysis pipeline
+  // — rather than the signal-only shape ANEEL is stuck in.
+  await probeHtml(
+    "P12. ★ 决定性的一条：gov.br 上的 ANTAQ 标书草案 PDF 能不能直接下",
+    "ANEEL 的教训是「能读目录」和「能下文件」是两个问题：gov.br/aneel 通，download.aneel.gov.br 两个大洲都超时，所以那些项目永远没有附件。这条是 ANTAQ 挂在 gov.br 自己域名下的 minuta de edital —— 下得下来，港口这条线就是完整数据源（能下标书、能进 AI 分析）；下不来，就跟 ANEEL 一样只能当信号",
+    "https://www.gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/audiencias-e-consultas-publicas/audiencias/teste/04-2026-vdc04/minuta-de-edital.pdf",
+    /never/,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // The DOU again, but at the address the National Press's own reader uses.
+  // P8 asks the HTML search UI and gets a socket closed mid-read; this one
+  // embeds each section's contents in a <script type="application/json">,
+  // which is a shape rather than a page.
+  await probeHtml(
+    "P13. DOU 的看报接口（P8 那个检索页是 HTML 界面，这个是 JSON）",
+    "P8 读到一半被掐断。in.gov.br/leiturajornal 这一路会把当天各版的内容塞在一个 <script type=\"application/json\"> 里 —— 那是个数据形状，不是个页面。секão 3 是合同与公告版",
+    "https://www.in.gov.br/leiturajornal?secao=do3",
+    /leil|edital|aviso|concess/i,
     timeoutMs,
   );
   await sleep(1500);

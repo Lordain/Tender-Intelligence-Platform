@@ -3868,6 +3868,82 @@ And what is confirmed open from that network, unchanged: `www.gov.br/aneel`
 ArcGIS mirror (DCAT JSON, but BDGD distribution geodata — the wrong dataset
 family).
 
+#### The edital was never on PPI, and the regulators moved (2026-09-19)
+
+Two corrections, both of the same shape, and the second one reopens PPI as a
+source after four rounds of closing it.
+
+**ANEEL: the participation pages on gov.br are signposts, not data.** One
+commit earlier this file said the consultation stage was "the one part of the
+auction lifecycle reachable without changing network egress", on the strength
+of three URLs in ANEEL's homepage navigation. A capture of one of them settles
+it the other way:
+
+```
+www.gov.br/aneel/…/participacao-social/tomada-de-subsidios
+  Atualizado em 17/03/2022
+  body: one paragraph of definition, and one link —
+  「Consulte aqui as Tomadas de Subsídios abertas」 → antigo.aneel.gov.br/tomadas-de-subsidios
+```
+
+`antigo.aneel.gov.br` is the Cloudflare 403 from the probe's E2b. The same
+pattern holds on the generation page, whose per-auction *Consulta Pública*
+links point at `antigo.aneel.gov.br/web/guest/consultas-publicas?…&ideParticipacaoPublica=3970`.
+So every ANEEL road to consultation data ends on a host that refuses this
+network, and the claim above was wrong. (The geração capture itself was
+byte-identical to the stored fixture — 6009 bytes both — so nothing on
+ANEEL's side had changed.)
+
+Note for whenever access does come back: those consulta URLs carry
+`p_auth=AjLhe87I`, a Liferay CSRF token. It is session-bound and will not
+survive being replayed, so the durable identifier is `ideParticipacaoPublica`,
+not the URL.
+
+**PPI: I kept probing the wrong hostnames, and the edital was never there
+anyway.** `ppi.gov.br` is an F5 block page,
+`dadosabertos.presidencia.gov.br` is the same appliance, `dados.gov.br` wants
+a CPF — all measured, all still true. But the probe asked
+`dados.antt.gov.br` (F5) and `portal.antaq.gov.br` (Cloudflare 403), which
+are both **legacy** hosts, and skipped ANAC entirely for want of a hostname.
+ANEEL had already demonstrated exactly this trap: `www.aneel.gov.br` is
+defended, `www.gov.br/aneel` answers 200 with 777 links, because the agency
+moved and the old address is what carries the WAF rule.
+
+All three sector regulators are on gov.br now:
+
+```
+gov.br/antt/pt-br/assuntos/…           concession editais under rodovias › novos projetos
+gov.br/antaq/pt-br/assuntos/leiloes    the auction index
+gov.br/anac/pt-br/assuntos/concessoes  the concession rounds
+```
+
+That reframes the whole question. **PPI publishes the pipeline; the regulator
+publishes the edital.** PPI's own host being shut costs the portfolio view —
+useful, not essential — while the documents a bidder actually needs belong to
+ANTT, ANTAQ and ANAC, and those appear to sit on the one Brazilian host this
+network can read. Probed as P9–P11.
+
+**P12 is the step that decides how much this is worth**, and it is a PDF on
+purpose. ANEEL's lesson was that reading an index and downloading a document
+are separate questions: `www.gov.br/aneel` answers and
+`download.aneel.gov.br` times out from two continents, which is why ANEEL
+rows can never carry an attachment. P12 fetches a real ANTAQ *minuta de
+edital* served from `gov.br` itself. If it downloads, ports (and probably
+highways and airports) are a **full** source — index, documents, and the
+existing document-analysis pipeline — rather than the signal-only shape ANEEL
+is stuck in. If it does not, the sectors land exactly where ANEEL did.
+
+P13 adds the DOU at the address the National Press's own reader uses:
+`in.gov.br/leiturajornal?secao=do3` embeds each section in a
+`<script type="application/json">`, which is a shape rather than a page. P8's
+HTML search UI died with the socket closed mid-read; this is a different
+question, not a retry.
+
+**2026's federal calendar, for scale**: ~100 assets at ~R$247bn — 21 airport
+auctions (20 regional), 19 port terminal leases, 13 highways, 8 rail, 5
+energy. None of it reaches PNCP, because a concession is not a *contratação*
+under Lei 14.133/2021.
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.

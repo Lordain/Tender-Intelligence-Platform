@@ -103,14 +103,28 @@ export function consultaLabel(consulta: AneelConsultaPublica): string {
  * Where to look, on the one ANEEL host that answers.
  *
  * Read out of a capture of ANEEL's own homepage (2026-09-19, user's browser),
- * not guessed: these are the hrefs the site's own navigation carries. That
- * matters because of which host they are on. `www.gov.br/aneel` answered 200
- * with ~22k characters and 777 links from BOTH the user's laptop and the
- * deployment, while every other ANEEL door is shut — `www2` and `git.aneel`
- * behind a Cloudflare challenge, `leilao.aneel`, `dadosabertos.aneel` and
- * `portalrelatorios.aneel` at TCP timeout from two continents. So the
- * consultation stage is the one part of the auction lifecycle reachable
- * without changing network egress.
+ * not guessed: these are the hrefs the site's own navigation carries.
+ *
+ * ── CORRECTED the same day, before anything was built on it ───────────────
+ *
+ * This block first said these were the one part of the auction lifecycle
+ * reachable without changing network egress, because `www.gov.br/aneel`
+ * answers 200 while every other ANEEL host is shut. A capture of
+ * tomada-de-subsidios settles it the other way: the page is one paragraph of
+ * definition, last updated **17/03/2022**, whose only actionable element is a
+ * link to `antigo.aneel.gov.br/tomadas-de-subsidios` — the Cloudflare 403
+ * from the probe's E2b. The generation page does the same thing, linking each
+ * auction's consultation to `antigo.aneel.gov.br/web/guest/consultas-publicas`.
+ *
+ * So these three are **signposts, not data**. Every ANEEL road to
+ * consultation content ends on a host that refuses this network, and nothing
+ * here is reachable without a different egress. They are kept because they
+ * are still the correct addresses to open in a browser, and because the
+ * distinction they document below is real.
+ *
+ * One thing to know before replaying any consultation URL: they carry
+ * `p_auth=…`, a Liferay CSRF token that is session-bound. The durable
+ * identifier is `ideParticipacaoPublica`, not the URL.
  *
  * ANEEL runs three distinct participation instruments and they are not
  * synonyms, which is why all three are listed:

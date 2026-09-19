@@ -135,7 +135,8 @@
     "probe:brazil-docs": "tsx scripts/probe-brazil-docs.ts",
     "probe:brazil-concessions": "tsx --env-file-if-exists=.env.local scripts/probe-brazil-concessions.ts",
     "probe:brazil-doors": "tsx scripts/probe-brazil-doors.ts",
-    "purge:awarded-closed": "tsx --env-file-if-exists=.env.local scripts/purge-awarded-closed.ts"
+    "purge:awarded-closed": "tsx --env-file-if-exists=.env.local scripts/purge-awarded-closed.ts",
+    "test:bid-window": "tsx scripts/test-bid-window.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

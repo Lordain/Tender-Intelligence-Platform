@@ -2201,26 +2201,41 @@ function extractAnchoredBridgeLengthMeters(text: string): number | undefined {
 const SHORT_BRIDGE_METERS = 30;
 
 /**
- * Fibre-optic projects are capped at 常规项目 unless the route is genuinely
- * long-haul (user, 2026-09-19: 光纤项目除非有距离> 10000公里，不然都列常规项目).
+ * Fibre-optic projects get their tier from the ROUTE, not from the money.
  *
- * The reasoning behind the number is the user's, not this file's: at that
- * length a fibre contract is a national backbone or a submarine system, and
- * everything shorter — a municipal ring, a campus build, a last-mile
- * extension — is ordinary work whatever the notice calls it. Almost every
- * fibre tender in this feed is therefore capped, which is the intended effect.
+ * The user's scale, given in three parts over 2026-09-19:
  *
- * Same anchored-extraction discipline as BRIDGE_LENGTH_ANCHOR: a number is
- * only read when a distance unit follows it, never by scanning the title for
- * digits. A contract that states no distance is capped, because "unstated" is
- * not "over ten thousand kilometres".
+ *   ≥ 30,000 km                        大型项目
+ *   ≥ 10,000 km, or 骨干, or 海缆       中型项目
+ *   everything else                     常规项目
  *
- * A cap, not an exclusion: these rows stay in the feed and stay readable. The
- * user asked for a tier, so this changes a tier.
+ * 「非这些条件，都算常规项目」, so this is a determination and not only a cap:
+ * a backbone or a submarine system IS 中型 even with no amount disclosed, and
+ * a 40 km regional ring is 常规 even at $20M. Almost every fibre tender in
+ * this feed lands in the bottom band, which is the intended effect — the
+ * platform's readers do not bid campus cabling.
+ *
+ * Deliberately value-blind. That is unusual here and it is what was asked
+ * for: the length of the route is the thing that makes a fibre contract
+ * interesting or not, and a large number attached to a short route is a
+ * large number attached to a short route.
+ *
+ * Exclusions all run BEFORE this, so a fibre row that a rule already threw
+ * out stays thrown out — this only decides between the three kept tiers.
+ *
+ * Distance is read with the same anchored discipline as BRIDGE_LENGTH_ANCHOR:
+ * a number counts only when a distance unit follows it, never by scanning the
+ * title for digits. A contract stating no distance falls to the keyword test,
+ * because "unstated" is not "thirty thousand kilometres".
  */
 const FIBRE_OPTIC_PATTERN = /fibra\s+[óo]ptica|fibra\s+[óo]tica|fibre?\s+optic/i;
 
-const FIBRE_LONG_HAUL_KM = 10_000;
+/** 骨干 and 海缆 — the two shapes that qualify without stating a length. */
+const FIBRE_BACKBONE_PATTERN =
+  /\bcable\s+submarino\b|\bcabo\s+submarino\b|\bsubmarine\s+cable\b|\bred\s+(troncal|dorsal)\b|\bespinha\s+dorsal\b|\bbackbone\b|\bred\s+nacional\s+de\s+fibra\b|\bcolumna\s+vertebral\b/i;
+
+const FIBRE_FLAGSHIP_KM = 30_000;
+const FIBRE_SIGNIFICANT_KM = 10_000;
 
 const DISTANCE_KM_ANCHOR = /(\d[\d.,]*)\s*(?:km\b|kil[óo]metros?\b|quil[óo]metros?\b)/gi;
 
@@ -2260,10 +2275,13 @@ function longestStatedKm(text: string): number | undefined {
   return longest;
 }
 
-function isFibreCappedToStandard(text: string): boolean {
-  if (!FIBRE_OPTIC_PATTERN.test(text)) return false;
+/** The tier a fibre contract gets, or null when this is not a fibre contract. */
+function fibreTier(text: string): TenderRelevance["tier"] | null {
+  if (!FIBRE_OPTIC_PATTERN.test(text)) return null;
   const km = longestStatedKm(text);
-  return km === undefined || km <= FIBRE_LONG_HAUL_KM;
+  if (km !== undefined && km >= FIBRE_FLAGSHIP_KM) return "flagship";
+  if ((km !== undefined && km >= FIBRE_SIGNIFICANT_KM) || FIBRE_BACKBONE_PATTERN.test(text)) return "significant";
+  return "standard";
 }
 
 /**
@@ -3121,10 +3139,13 @@ export function classifyRelevance(input: {
   const matchesMajorProject = MAJOR_PROJECT_KEYWORDS.some((pattern) => pattern.test(haystack));
   const hasLongDuration = durationDays !== undefined && durationDays >= LONG_DURATION_DAYS;
   const isEquipmentScaleCapped = EQUIPMENT_SCALE_CAPPED_KEYWORDS.some((pattern) => pattern.test(haystack));
-  // See isFibreCappedToStandard. Guards both promotions below rather than
-  // demoting afterwards, so there is one place to read for what a fibre
-  // contract can reach.
-  const fibreCapped = isFibreCappedToStandard(haystack);
+  // See fibreTier. Returned outright rather than used to guard the promotions
+  // below, because the user's rule is a determination — 非这些条件，都算常规
+  // 项目 — and a guard would only ever lower a tier, never set one.
+  const fibre = fibreTier(haystack);
+  if (fibre !== null) {
+    return { tier: fibre, label: LABELS[fibre], reason: reasonFor(fibre, "scope") };
+  }
 
   // Previously also promoted any scopeType "works"/"equipment_services"
   // tender with an unknown value straight to flagship (isWorksLike),
@@ -3196,7 +3217,7 @@ export function classifyRelevance(input: {
       !isEquipmentScaleCapped &&
       !OVERRIDE_NOT_FLAGSHIP.some((pattern) => pattern.test(haystack)))
   ) {
-    if (!fibreCapped) return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
+    return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
   }
 
   // A target-industry keyword match counts toward "significant" on its
@@ -3236,8 +3257,7 @@ export function classifyRelevance(input: {
     (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) ||
     (isEquipmentScaleCapped && normalizedValue === undefined)
   ) {
-    if (!fibreCapped) return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
-    return { tier: "standard", label: LABELS.standard, reason: reasonFor("standard", "scope") };
+    return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
   }
 
   // Allowlist gate (hybrid with the EXCLUDE_KEYWORDS blocklist above — see

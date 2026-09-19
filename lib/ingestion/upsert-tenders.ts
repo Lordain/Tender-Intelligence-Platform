@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
 import { assertWritten } from "@/lib/db/assert-written";
 import { classifyStoredTender } from "@/lib/relevance";
-import { isPastSubmissionDeadline } from "@/lib/ingestion/recency";
+import { hasShortBidWindow, isPastSubmissionDeadline, SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "@/lib/ingestion/review-csv";
 import { slugify } from "@/lib/ingestion/text-utils";
 
@@ -65,6 +65,8 @@ export type UpsertTendersResult = {
    * still bid on it.
    */
   skippedClosedCount: number;
+  /** Rows dropped because publication → deadline was under SHORT_BID_WINDOW_DAYS. See hasShortBidWindow(). */
+  skippedShortWindowCount: number;
   /**
    * Count of existing rows that carried at least one protected column, so
    * this import left part of them untouched. Two independent sources of
@@ -418,9 +420,30 @@ export async function upsertTendersBatched(
   // recency window, however narrow, can reject a row whose publication date
   // is the moment we ingested it.
   const closed = tenders.filter((t) => isPastSubmissionDeadline(t));
-  const open = tenders.filter((t) => !isPastSubmissionDeadline(t));
+  const stillOpen = tenders.filter((t) => !isPastSubmissionDeadline(t));
   if (closed.length > 0) {
     console.log(`Skipping ${closed.length} tender(s) whose submission deadline has already passed — not written to Supabase.`);
+  }
+
+  // The bidding window, sibling of the gate above and here for the same
+  // reason: it needs the tender's dates, every import path passes through
+  // this function, and a rule placed here cannot be missed by a path that
+  // forgets to call it. See hasShortBidWindow() for the four guards and why
+  // this is not in lib/relevance.ts.
+  const rushed = stillOpen.filter((t) => hasShortBidWindow(t));
+  const open = stillOpen.filter((t) => !hasShortBidWindow(t));
+  if (rushed.length > 0) {
+    console.log(
+      `Skipping ${rushed.length} tender(s) with under ${SHORT_BID_WINDOW_DAYS} calendar days between publication and deadline — not written to Supabase.`,
+    );
+    // Listed, not just counted. These are 常规项目 with no amount, which is
+    // the population an admin is least able to reconstruct afterwards: an
+    // excluded row is never stored, so a count alone leaves nothing to check
+    // a rule against. The same lesson the excluded CSV below exists for.
+    for (const tender of rushed.slice(0, 10)) {
+      console.log(`    ${tender.publicationDate} → ${tender.submissionDeadline}  ${(tender.title.zh || tender.title.es || "").slice(0, 70)}`);
+    }
+    if (rushed.length > 10) console.log(`    …以及另外 ${rushed.length - 10} 条`);
   }
 
   let lastExcludedCsvPath: string | null = null;
@@ -690,8 +713,8 @@ export async function upsertTendersBatched(
   console.log(
     `Upserted ${upsertedCount} tender(s)` +
       (failed.length > 0 ? `, ${failed.length} failed` : "") +
-      ` (of ${tenders.length} mapped: ${closed.length} already past their deadline, ${excludedCount} excluded, ${skippedManuallyDeletedCount} previously deleted by an admin).`,
+      ` (of ${tenders.length} mapped: ${closed.length} already past their deadline, ${rushed.length} with a bidding window under ${SHORT_BID_WINDOW_DAYS} days, ${excludedCount} excluded, ${skippedManuallyDeletedCount} previously deleted by an admin).`,
   );
 
-  return { upsertedCount, skippedExcludedCount: excludedCount, skippedClosedCount: closed.length, protectedCount, skippedManuallyDeletedCount, duplicateSlugCount, failed, excludedCsvPath: lastExcludedCsvPath ?? undefined };
+  return { upsertedCount, skippedExcludedCount: excludedCount, skippedClosedCount: closed.length, skippedShortWindowCount: rushed.length, protectedCount, skippedManuallyDeletedCount, duplicateSlugCount, failed, excludedCsvPath: lastExcludedCsvPath ?? undefined };
 }

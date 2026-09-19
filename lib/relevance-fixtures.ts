@@ -2529,8 +2529,20 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "INSTALACION DE CABLE SUBMARINO DE FIBRA OPTICA DE 12.000 KM",
-    expectedTier: "flagship",
-    note: "The over-breadth control for the fibre cap, and for the number parser inside it. `12.000` is twelve THOUSAND in Spanish and Portuguese; the first version of parseDistanceNumber() read it as twelve and demoted a submarine cable to a campus job on a full stop.",
+    expectedTier: "significant",
+    note: "The over-breadth control for the fibre bands, and for the number parser inside them. `12.000` is twelve THOUSAND in Spanish and Portuguese; the first version of parseDistanceNumber() read it as twelve and demoted a submarine cable to a campus job on a full stop. 中型 rather than 大型 at $400M is the rule working as specified: the user set 大型 at 30,000 km, and the bands are value-blind on purpose.",
     country: "Peru", scopeType: "works", governmentLevel: "federal", estimatedValue: 400_000_000, currency: "USD",
+  },
+  {
+    title: "INSTALACION DE SISTEMA DE CABLE SUBMARINO DE FIBRA OPTICA DE 35.000 KM",
+    expectedTier: "flagship",
+    note: "The top fibre band (user, 2026-09-19: 3万公里以上算大型项目). Pinned beside the 12,000 km row so the boundary between 中型 and 大型 is a fixture rather than a reading of the code.",
+    country: "Peru", scopeType: "works", governmentLevel: "federal", estimatedValue: 400_000_000, currency: "USD",
+  },
+  {
+    title: "INSTALACION DE CABLE SUBMARINO DE FIBRA OPTICA ENTRE LIMA Y VALPARAISO",
+    expectedTier: "significant",
+    note: "骨干、海缆算中型项目 — qualifies with NO distance stated at all, and with no amount either. This is why the fibre rule is a determination and not a cap: a cap could only ever lower a tier, and this row has to be RAISED to 中型 from the 常规 the rest of the rules would give it.",
+    country: "Peru", scopeType: "works", governmentLevel: "federal",
   },
 ];

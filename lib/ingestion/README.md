@@ -7031,3 +7031,68 @@ So the site changed and the assertion did not, and the school version is
 asserted separately as an exclusion.
 
 Totals: 330/330 Spanish fixtures, all Portuguese cases, 33/33 of the review.
+
+## The bidding window, and the fibre scale settled (2026-09-19)
+
+### 少于 12 个自然日就不写
+
+> 常规项目(没有金额的)，如果有交标日期，而且交标日期减发布日期小于12个自然日，
+> 就自动被排除，也应用于所有国家的项目
+
+The reasoning is mobilisation, not scale. A Chinese enterprise bidding in
+Latin America has to read the edital in Portuguese or Spanish, price it,
+arrange a bid bond, and in most of these systems register with the platform
+first. Under twelve calendar days that is not a competition a foreign bidder
+can enter — the same observation the `price_comparison` exclusion already
+makes about Peru's abbreviated procedure.
+
+**It lives in `upsertTendersBatched()`, not in `lib/relevance.ts`**, and that
+was the whole design decision. `classifyRelevance()` has no dates, and giving
+it two would mean threading them through nineteen mappers. That file states
+the hazard itself: a signal a mapper forgets to pass is "right at import and
+wrong forever after", and it is not hypothetical — it is the 193 → 486 jump of
+2026-09-08. The upsert is the one line every import path passes through, which
+is exactly why the past-deadline gate was put there, and the same reasoning
+applies unchanged.
+
+Four guards, each load-bearing:
+
+| guard | why |
+|---|---|
+| tier is `standard` | the user scoped it to 常规项目; a 中型/大型 row with a tight window is still worth seeing |
+| no disclosed amount | 没有金额的 — with a value the row was sized on something better than a calendar |
+| publication date is REAL | `publicationDateIsEstimated` means the ingest timestamp. Measuring a window from it would reject rows for having been imported late, and would do it to whole sources at once |
+| deadline parses | 如果有交标日期 — no deadline, no window, no verdict |
+
+The boundary is the user's word 小于: twelve days exactly stays.
+
+Dropped rows are listed, not just counted (first 10 with both dates). These
+are 常规项目 with no amount, the population an admin can least reconstruct
+afterwards — the same lesson the excluded CSV exists for.
+
+### The fibre scale, in three bands
+
+Settled over three messages:
+
+    ≥ 30,000 km                        大型项目
+    ≥ 10,000 km, or 骨干, or 海缆       中型项目
+    everything else                     常规项目
+
+A **determination, not a cap** — 非这些条件，都算常规项目. The first
+implementation was a cap, and a cap can only ever lower a tier: it could not
+express 骨干、海缆算中型项目, because a submarine cable with no stated length
+and no amount has to be RAISED to 中型 from the 常规 the other rules give it.
+
+Deliberately value-blind, which is unusual here and is what was asked for: a
+large number attached to a short route is a large number attached to a short
+route. The 12,000 km fixture at $400M is 中型, not 大型, and that is the rule
+working as specified.
+
+### Existing rows are deliberately untouched
+
+Per the user: 库里的不动了，我手动调整，只应用于未来新导入的. So there is no
+`reclassify:tenders` run behind any of this. Everything in this section and
+the one above applies at import time only.
+
+Totals: 332/332 Spanish fixtures, all Portuguese cases, 11/11 bid-window cases
+(`npm run test:bid-window`).

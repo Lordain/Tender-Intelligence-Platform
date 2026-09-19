@@ -161,6 +161,21 @@ export type Tender = {
   publicSlug?: string;
   tenderNumber: string;
   title: LocalizedText;
+  /**
+   * The title published to guests, crawlers and search snippets — country +
+   * industry + works type, with the place names, agency names and
+   * procurement codes stripped (migration 0053).
+   *
+   * Exists because `title.zh` is deliberately NOT safe to publish: the
+   * translation prompt keeps the source proper noun in full-width
+   * parentheses (马塔德罗（Matadero）泵站) so a bidder can match the title
+   * against a map and the bid documents. That is right for a subscriber and
+   * is a ready-made search key back to the source portal for everyone else.
+   *
+   * Undefined for a row the generator has not reached yet; every public
+   * surface reads it through publicTitleOf(), which falls back to title.zh.
+   */
+  titleZhPublic?: string;
   summary: LocalizedText;
   /**
    * One or two Chinese sentences (≤100 characters) answering "what is this

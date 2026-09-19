@@ -144,7 +144,9 @@
     "test:brazil-links": "tsx scripts/test-brazil-links.ts",
     "test:antaq-parser": "tsx scripts/test-antaq-parser.ts",
     "test:antaq-mapper": "tsx scripts/test-antaq-mapper.ts",
-    "test:public-redaction": "tsx scripts/test-public-redaction.ts"
+    "test:public-redaction": "tsx scripts/test-public-redaction.ts",
+    "titles:public": "tsx scripts/generate-public-titles.ts",
+    "test:public-title": "tsx scripts/test-public-title.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

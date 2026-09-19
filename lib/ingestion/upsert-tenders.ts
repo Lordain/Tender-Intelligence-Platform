@@ -169,6 +169,19 @@ function enforceStoredFieldParity(tenders: Tender[]): void {
   );
 }
 
+/**
+ * NOTE: `title_zh_public` is deliberately absent from this object, and must
+ * stay absent.
+ *
+ * PostgREST's upsert writes `ON CONFLICT DO UPDATE SET` for the keys this
+ * builds and no others, so a column that never appears here survives a
+ * re-import untouched. That is the whole protection for the generated public
+ * title (migration 0053): a mapper has no idea what it should be, so adding
+ * it here — even as `?? null` for symmetry with its neighbours — would reset
+ * every public title to NULL on the next import of a still-open tender, and
+ * the site would quietly go back to publishing the identifying one. Enforced
+ * by scripts/test-public-title.ts rather than left to this comment.
+ */
 function buildRow(fields: Tender) {
   return {
     slug: fields.slug,

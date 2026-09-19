@@ -490,6 +490,54 @@ translated.
 
 The admin 新项目清单 page's 翻译所有标题 button runs the same function.
 
+### Public titles
+
+```bash
+npm run titles:public                          # dry run, no API calls
+npm run titles:public -- --sample 20           # generate 20 for real and print them, write nothing
+npm run titles:public -- --limit 200 --write   # generate up to 200 and save
+npm run titles:public -- --write               # every row still publishing its full title
+```
+
+A second pass over the **Chinese** title, filling `tenders.title_zh_public`
+(migration 0053) — the de-identified title shown to guests, crawlers and
+search snippets, while subscribers keep `title.zh`.
+
+It exists because the translation above is right to do something that is
+unsafe to publish. Both prompts keep the source proper noun in full-width
+parentheses after a transliterated place, facility or project name —
+`马塔德罗（Matadero）泵站`, `埃洛伊门德斯（Elói Mendes）市` — because "a
+transliteration on its own appears in neither [the map nor the bid
+documents]". That is exactly right for a bidder, and it makes `title.zh` the
+best search key back to the official notice anywhere on this platform: paste
+the parenthesised name into a search engine and you are on the source portal,
+with no reason left to subscribe.
+
+So the public title keeps what these pages actually rank for — the country,
+the industry, the works type, the asset — and drops what identifies the row:
+municipalities, districts, rivers, facilities, agency names, procurement
+codes, Brazilian UF state codes and every Latin-script proper noun. Nobody
+searches `瓜纳华托州莱昂市第三环路` by name unless they already know the
+project; everybody searches `墨西哥 变电站 招标`.
+
+One pass covers Spanish and Portuguese both. The two translation prompts are
+separate and must be, but they converge here — by the time this runs, a
+Peruvian row and a Brazilian one are both Chinese carrying the same
+parenthesis anchor, and rows are never selected by language.
+
+Read `--sample` before any `--write`. This string becomes the `<title>`, the
+meta description and the JSON-LD name of every public page, so it is both the
+de-identification *and* what those pages rank on — a prompt that over-strips
+(`墨西哥 工程项目` on every row) is as bad as one that under-strips: safe, and
+ranking for nothing. Every candidate goes through `publicTitleProblems()`
+(`lib/public-title.ts`) and is **refused rather than written** if it still
+carries a Latin parenthetical, a procurement code, a chainage, a state code
+or a masking artefact — a refused row simply keeps falling back to `title.zh`,
+which is the behaviour that was already there.
+
+`title_zh_public` is deliberately absent from the importer's row builder, so a
+re-import cannot reset it; `scripts/test-public-title.ts` enforces that.
+
 ### Key dates
 
 Key dates come from two places, and reading them out of the bid document is no

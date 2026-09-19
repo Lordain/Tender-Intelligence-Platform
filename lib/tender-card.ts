@@ -2,6 +2,7 @@ import type { LocalizedText, Tender, TenderRequirement, TenderRisk } from "@/typ
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
 import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
+import { publicTitleOf } from "@/lib/public-title";
 
 /**
  * What a <TenderCard> needs, and nothing else.
@@ -110,7 +111,7 @@ export function toTenderCardData(
     id: tender.id,
     publicSlug: requirePublicTenderSlug(tender),
     titleZh: hasRealTranslation
-      ? tender.title.zh
+      ? (memberView ? tender.title.zh : publicTitleOf(tender))
       : memberView ? `${tender.buyer}采购项目` : "政府采购项目",
     ...(memberView && hasRealTranslation ? { titleOriginal: tender.title.es } : {}),
     summaryZh: hasRealSummary

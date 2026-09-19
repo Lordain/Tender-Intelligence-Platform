@@ -9,7 +9,8 @@ const fullTender = {
   slug: "SECRET_SOURCE_DERIVED_SLUG",
   publicSlug: "p-7a3c91e4b6d82f05",
   tenderNumber: "SECRET_TENDER_CODE",
-  title: { zh: "中文标题", es: "SECRET_ORIGINAL_TITLE", en: "English title" },
+  title: { zh: "SECRET_PLACE_NAME变电站扩建工程", es: "SECRET_ORIGINAL_TITLE", en: "English title" },
+  titleZhPublic: "墨西哥 变电站扩建工程（输配电）",
   summary: { zh: "中文摘要", es: "Resumen", en: "Summary" },
   oneLineSummary: "SECRET_ONE_LINE_SUMMARY",
   buyer: "采购单位",
@@ -58,6 +59,10 @@ const protectedMarkers = [
   // each precise enough to find the original notice in one search — the
   // reason a reader could reach the source portal without subscribing.
   "SECRET_LOCATION_LEON_GUANAJUATO",
+  // The translated title itself. It keeps the source proper noun in
+  // parentheses by design (see lib/public-title.ts), which makes it the best
+  // search key back to the source portal on the whole platform.
+  "SECRET_PLACE_NAME",
   "47382915",
   "2026-09-15",
   "2026-10-01",
@@ -67,8 +72,8 @@ for (const marker of protectedMarkers) {
   if (serialized.includes(marker)) throw new Error(`公开项目数据泄露了受保护字段：${marker}`);
 }
 
-if (publicTender.titleZh !== "中文标题" || publicTender.summaryZh !== "中文摘要") {
-  throw new Error("公开项目数据缺少中文标题或中文摘要");
+if (publicTender.titleZh !== "墨西哥 变电站扩建工程（输配电）" || publicTender.summaryZh !== "中文摘要") {
+  throw new Error("公开项目详情没有使用去标识化的公开标题");
 }
 
 if (publicTender.publicSlug !== "p-7a3c91e4b6d82f05") {
@@ -113,9 +118,18 @@ for (const marker of ["SECRET_LOCATION_LEON_GUANAJUATO", "47382915", "2026-10-01
 
 // A paying member loses none of it — the redaction is an entitlement
 // boundary, not a data change.
+if (publicListItem.titleZh !== "墨西哥 变电站扩建工程（输配电）") {
+  throw new Error("访客项目列表没有使用去标识化的公开标题");
+}
+
 const memberListItem = toTenderListItem(fullTender, { memberView: true });
 if (memberListItem.buyer !== "采购单位") {
   throw new Error("登录用户的项目列表缺少发布机构");
+}
+// The subscriber keeps the precise translation — the redaction is an
+// entitlement boundary, not a downgrade of the data.
+if (memberListItem.titleZh !== "SECRET_PLACE_NAME变电站扩建工程") {
+  throw new Error("订阅用户的项目列表应显示完整翻译标题");
 }
 if (memberListItem.estimatedValue !== 47382915 || memberListItem.estimatedValueBand !== undefined) {
   throw new Error("订阅用户的项目列表应显示精确金额");
@@ -154,6 +168,9 @@ for (const marker of cardMarkers) {
 if (guestCard.titleOriginal !== undefined) {
   throw new Error("访客项目卡片泄露了原文标题");
 }
+if (guestCard.titleZh !== "墨西哥 变电站扩建工程（输配电）") {
+  throw new Error("访客项目卡片没有使用去标识化的公开标题");
+}
 if (guestCard.estimatedValueBand !== "$1M – $5M USD" || guestCard.estimatedValue !== undefined) {
   throw new Error("访客项目卡片未按区间脱敏金额");
 }
@@ -180,6 +197,9 @@ for (const marker of ["SECRET_ORIGINAL_TITLE", "SECRET_SOURCE_URL", "SECRET_TEND
 const memberCard = toTenderCardData(fullTender, { memberView: true, includeAnalysisPreview: true });
 if (memberCard.titleOriginal !== "SECRET_ORIGINAL_TITLE" || memberCard.buyer !== "采购单位") {
   throw new Error("订阅用户的项目卡片缺少原文标题或发布机构");
+}
+if (memberCard.titleZh !== "SECRET_PLACE_NAME变电站扩建工程") {
+  throw new Error("订阅用户的项目卡片应显示完整翻译标题");
 }
 if (memberCard.estimatedValue !== 47382915 || memberCard.submissionDeadline !== "2026-10-01T00:00:00.000Z") {
   throw new Error("订阅用户的项目卡片应显示精确金额与日期");

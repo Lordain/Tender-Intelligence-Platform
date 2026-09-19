@@ -1,6 +1,7 @@
 import type { PublicTenderDetail, Tender } from "@/types/tender";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecision, toMonthPrecisionOptional } from "@/lib/public-redaction";
+import { publicTitleOf } from "@/lib/public-title";
 
 /**
  * Convert a full tender to the public search landing-page contract.
@@ -19,7 +20,12 @@ export function toPublicTenderDetail(tender: Tender): PublicTenderDetail {
     // Imported rows temporarily mirror the source text into `zh` before the
     // translation job runs. Never mistake that placeholder for approved
     // public Chinese copy, because it would expose the protected original.
-    titleZh: hasChineseTitle ? tender.title.zh : "政府采购项目",
+    // publicTitleOf(), not title.zh. The translated title keeps the source
+    // proper noun in parentheses on purpose (马塔德罗（Matadero）泵站) so a
+    // subscriber can match it against the bid documents — which is exactly
+    // what makes it a search key back to the source portal for everyone
+    // else. Falls back to title.zh for a row the generator has not reached.
+    titleZh: hasChineseTitle ? publicTitleOf(tender) : "政府采购项目",
     summaryZh: hasChineseSummary
       ? tender.summary.zh
       : "这是一个政府采购项目，可先查看采购方式、参与范围、所属国家和计划交标时间。",

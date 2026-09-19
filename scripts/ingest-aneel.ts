@@ -41,6 +41,7 @@ import { mapAneelEditalToTenders, aneelAuctionLiveness, ANEEL_SOURCE_NAME } from
 import { mapAneelGeracaoToTenders, ANEEL_GERACAO_SOURCE_NAME } from "../lib/ingestion/aneel-geracao-mapper";
 import {
   ANEEL_CONSULTAS,
+  ANEEL_PARTICIPATION_URLS,
   consultaLabel,
   consultaWindowState,
   daysUntilConsultaCloses,
@@ -124,6 +125,19 @@ function printConsultas(now: Date): void {
     if (!consulta.confirmed) console.log(`         ⚠ 未与 ANEEL 官网核对，来源：${consulta.provenanceUrl}`);
     console.log("");
   }
+  // Added 2026-09-19 from a capture of ANEEL's own homepage. Every consulta
+  // above is typed from trade press; these three addresses are the site's own
+  // navigation, and they sit on www.gov.br/aneel — the one ANEEL host that
+  // answered 200 from both the laptop and the deployment while www2,
+  // git.aneel, leilao.aneel and the two report portals were all shut. So this
+  // is the part of the lifecycle that needs no change of network egress, only
+  // a saved page.
+  console.log("这三页在 gov.br 上打得开，但它们只是路标 —— 正文都指回 antigo.aneel.gov.br（Cloudflare 403）。");
+  console.log("换句话说：ANEEL 的公众咨询内容，不换网络出口拿不到。地址列在这里是给浏览器用的：");
+  console.log(`  标书草案征询（正式稿，含投资额和技术指标）  ${ANEEL_PARTICIPATION_URLS.consultasPublicas}`);
+  console.log(`  规则意见征集（更早，草案都还没有）          ${ANEEL_PARTICIPATION_URLS.tomadaDeSubsidios}`);
+  console.log(`  公开听证（一般在征询窗口之内，不是替代）    ${ANEEL_PARTICIPATION_URLS.audienciasPublicas}`);
+  console.log("");
 }
 
 /**

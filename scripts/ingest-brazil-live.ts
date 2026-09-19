@@ -176,8 +176,16 @@ async function main() {
   }
   console.log(`\n已写入 ${result.written ?? 0} 条${result.failed ? `，失败 ${result.failed} 条` : ""}。`);
   if (result.documentLinks) {
-    const { tendersAsked, tendersWithLinks, linkCount, failed } = result.documentLinks;
+    const { tendersAsked, tendersWithLinks, linkCount, failed, stoppedEarly, failureReasons } = result.documentLinks;
     console.log(`标书链接：查了 ${tendersAsked} 条，${tendersWithLinks} 条有附件，共 ${linkCount} 个链接${failed ? `，${failed} 条没问到` : ""}。`);
+    if (stoppedEarly) {
+      console.log("  ⚠ 连续失败过多，这一步提前停了 —— 项目本身已经写入，只是没拿到附件链接。");
+    }
+    // The refusals themselves. Added after a run on 2026-09-19 spent past
+    // thirty minutes in this loop with nothing on screen to say why: a count
+    // of zero is a fact about our request, and the message is the only thing
+    // that says which request.
+    for (const reason of failureReasons) console.log(`  ↳ ${reason}`);
     // Both numbers, because this is the first time PNCP's /arquivos has
     // actually answered anywhere — the parser was written from the published
     // API, never from a live response. A silent zero would read as "these

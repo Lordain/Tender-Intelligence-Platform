@@ -3629,7 +3629,7 @@ is the same data by another road.
 | ANTT | F5 block page (200) | F5 block page (200) | closed |
 | ANTAQ | Cloudflare 403 | Cloudflare 403 | closed |
 | PPI (ppi.gov.br) | F5 "Your support ID is" | ECONNRESET | closed — and it was the wrong host; see 2026-09-19 below |
-| `dadosabertos.presidencia.gov.br` | untested | untested | the PPI portfolio is a CKAN dataset here — untried until 2026-09-19 |
+| `dadosabertos.presidencia.gov.br` | F5 "Your support ID is" | untested | **measured 2026-09-19 — same F5 policy as ppi.gov.br; closed** |
 | dados.gov.br | 401 Bearer | 401 | closed — needs a CPF |
 
 So the shape of the work changed. The transmission-results connector is no
@@ -3805,6 +3805,452 @@ World Bank, IDB, ADB, EIB and EBRD, with AFD funding) to host its pipeline —
 a non-Brazilian host holding the same data, which would make the WAF question
 moot. The announced migration runs **15 months**, so it is a 2027 door, not a
 2026 one.
+
+#### Run four (2026-09-19, user's machine): the third host is the same appliance
+
+P5b was the whole point of the round, and it came back **closed**:
+
+```
+dadosabertos.presidencia.gov.br   TCP 通 675ms
+  honest UA   ECONNRESET
+  browser UA  HTTP 200, body = F5 「Your support ID is」
+```
+
+Byte-for-byte the response `ppi.gov.br` gives. The Presidency's open data
+portal is behind the same F5 appliance as PPI itself, so **the hope that a
+third hostname would route around the first two is dead** — and it was my
+hope, stated here one commit earlier. PPI is closed, and it is closed for one
+reason rather than three: not "the portfolio is not published in machine-
+readable form" (it is — `ppi-projetos-qualificados`, with winning company,
+investment value, sector, modality and auction dates) but **this network is
+refused by the federal F5 policy.** Same verdict, better diagnosis, and a
+different next move: nothing about a connector changes this, only an egress.
+
+The three doors that share it, so far: `ppi.gov.br`,
+`dadosabertos.presidencia.gov.br`, `dados.antt.gov.br`. `dados.gov.br` is
+*not* in that family — it answers 401 `www-authenticate: Bearer` and needs a
+CPF, which is a credential problem, not a WAF one.
+
+**A probe bug found by the same run, and it is the mistake this file already
+records fixing — in the wrong place.** Run two added
+`lib/ingestion/block-page.ts` because ANTT's F5 page is HTTP 200 and a
+status-code verdict called it a pass. The signature check went into
+`browserRetry` only. `probeHtml`'s **first** attempt never ran it, so a
+refusal served as 200 fell through to `describeHtml`, which has no notion of
+a block page and reported exactly what it saw:
+
+```
+E3b. PPI 上的英文版 ANEEL 输电拍卖 edital
+   OK  200  1KB · 正文 364 字 · ⚠ 答了，但页面上几乎没东西 —— 内容多半是 JS 后填的
+```
+
+That body is `Acesso Negado!`, whose signature has been in `block-page.ts`
+since run three. The two diagnoses lead to opposite next moves — an SPA shell
+wants a real browser, a refusal wants a different egress — so the check now
+runs on the first attempt too. Worth noting that `E3c` (BNDES, 559 chars) and
+`E4` (B3, 271 chars) carry the same verdict string and are, as far as this
+run can tell, genuine SPA shells; only the check distinguishes them.
+
+**What run four leaves open, in order of what it would buy:**
+
+1. **`git.aneel.gov.br` — three exact xlsx URLs, hard-blocked.** Cloudflare
+   1020-class on this IP; a real browser gets "Sorry, you have been blocked"
+   too, so no client change helps. A different egress downloads them in a
+   click, and `npm run dump:aneel-leiloes` then prints the real column names.
+2. **`leilao.aneel.gov.br` — the live auctions, TCP timeout from two
+   continents.** Not a policy, a route.
+3. **CCEE, still undecided.** `dadosabertos.ccee.org.br` is confirmed CKAN
+   2.10.0 and opens to a browser User-Agent while refusing an honest one.
+   That is a posture question for the user, not a header to ship.
+
+And what is confirmed open from that network, unchanged: `www.gov.br/aneel`
+(both auction pages, ~22k characters, 777/778 links, server-rendered) and the
+ArcGIS mirror (DCAT JSON, but BDGD distribution geodata — the wrong dataset
+family).
+
+#### The edital was never on PPI, and the regulators moved (2026-09-19)
+
+Two corrections, both of the same shape, and the second one reopens PPI as a
+source after four rounds of closing it.
+
+**ANEEL: the participation pages on gov.br are signposts, not data.** One
+commit earlier this file said the consultation stage was "the one part of the
+auction lifecycle reachable without changing network egress", on the strength
+of three URLs in ANEEL's homepage navigation. A capture of one of them settles
+it the other way:
+
+```
+www.gov.br/aneel/…/participacao-social/tomada-de-subsidios
+  Atualizado em 17/03/2022
+  body: one paragraph of definition, and one link —
+  「Consulte aqui as Tomadas de Subsídios abertas」 → antigo.aneel.gov.br/tomadas-de-subsidios
+```
+
+`antigo.aneel.gov.br` is the Cloudflare 403 from the probe's E2b. The same
+pattern holds on the generation page, whose per-auction *Consulta Pública*
+links point at `antigo.aneel.gov.br/web/guest/consultas-publicas?…&ideParticipacaoPublica=3970`.
+So every ANEEL road to consultation data ends on a host that refuses this
+network, and the claim above was wrong. (The geração capture itself was
+byte-identical to the stored fixture — 6009 bytes both — so nothing on
+ANEEL's side had changed.)
+
+Note for whenever access does come back: those consulta URLs carry
+`p_auth=AjLhe87I`, a Liferay CSRF token. It is session-bound and will not
+survive being replayed, so the durable identifier is `ideParticipacaoPublica`,
+not the URL.
+
+**PPI: I kept probing the wrong hostnames, and the edital was never there
+anyway.** `ppi.gov.br` is an F5 block page,
+`dadosabertos.presidencia.gov.br` is the same appliance, `dados.gov.br` wants
+a CPF — all measured, all still true. But the probe asked
+`dados.antt.gov.br` (F5) and `portal.antaq.gov.br` (Cloudflare 403), which
+are both **legacy** hosts, and skipped ANAC entirely for want of a hostname.
+ANEEL had already demonstrated exactly this trap: `www.aneel.gov.br` is
+defended, `www.gov.br/aneel` answers 200 with 777 links, because the agency
+moved and the old address is what carries the WAF rule.
+
+All three sector regulators are on gov.br now:
+
+```
+gov.br/antt/pt-br/assuntos/…           concession editais under rodovias › novos projetos
+gov.br/antaq/pt-br/assuntos/leiloes    the auction index
+gov.br/anac/pt-br/assuntos/concessoes  the concession rounds
+```
+
+That reframes the whole question. **PPI publishes the pipeline; the regulator
+publishes the edital.** PPI's own host being shut costs the portfolio view —
+useful, not essential — while the documents a bidder actually needs belong to
+ANTT, ANTAQ and ANAC, and those appear to sit on the one Brazilian host this
+network can read. Probed as P9–P11.
+
+**P12 is the step that decides how much this is worth**, and it is a PDF on
+purpose. ANEEL's lesson was that reading an index and downloading a document
+are separate questions: `www.gov.br/aneel` answers and
+`download.aneel.gov.br` times out from two continents, which is why ANEEL
+rows can never carry an attachment. P12 fetches a real ANTAQ *minuta de
+edital* served from `gov.br` itself. If it downloads, ports (and probably
+highways and airports) are a **full** source — index, documents, and the
+existing document-analysis pipeline — rather than the signal-only shape ANEEL
+is stuck in. If it does not, the sectors land exactly where ANEEL did.
+
+P13 adds the DOU at the address the National Press's own reader uses:
+`in.gov.br/leiturajornal?secao=do3` embeds each section in a
+`<script type="application/json">`, which is a shape rather than a page. P8's
+HTML search UI died with the socket closed mid-read; this is a different
+question, not a retry.
+
+**2026's federal calendar, for scale**: ~100 assets at ~R$247bn — 21 airport
+auctions (20 regional), 19 port terminal leases, 13 highways, 8 rail, 5
+energy. None of it reaches PNCP, because a concession is not a *contratação*
+under Lei 14.133/2021.
+
+#### Run four's answer: the regulators are open, and the document downloads
+
+P9-P12 all came back 200 from the user's machine, with an honest
+User-Agent and no browser tricks:
+
+```
+P9   gov.br/antt/…/rodovias        195KB · 17518 字 · 614 链接（命中 43，PDF 4）· 服务端渲染
+P10  gov.br/antaq/…/leiloes        208KB · 36288 字 · 650 链接（命中 88，PDF 0）· 服务端渲染
+P11  gov.br/anac/…/concessoes      145KB · 12700 字 · 418 链接（PDF 10）· 服务端渲染
+P12  gov.br/antaq/…/minuta-de-edital.pdf   659KB
+```
+
+**P12 is the one that mattered and it downloaded.** 659 KB of real PDF, from
+`gov.br` itself, unauthenticated. That is the thing ANEEL can never do:
+`download.aneel.gov.br` times out from two continents, so ANEEL rows are
+signal-only by construction. Ports — and on this evidence highways and
+airports — are a **full** source: index, documents, and the existing
+document-analysis pipeline.
+
+**The probe reported that success as a failure, and it is the third wrong
+verdict from the same function.** `describeHtml` printed
+「答了，但页面上几乎没东西 —— 内容多半是 JS 后填的」 for a 659KB PDF, because
+its thin test counts `<a>` tags and a PDF has none. Run one called a
+271-character page server-rendered for want of a framework marker; run three
+read `Acesso Negado!` as an empty page; this one called a downloaded document
+an unscrapeable shell. Same root every time: the function assumes whatever it
+is handed is a page. It now checks for `%PDF-` first and reports the file, its
+version and its size. On the single step the whole round existed to answer,
+the verdict was the exact opposite of the truth.
+
+**What run four says about each sector:**
+
+- **ANTAQ (ports)** — the index printed real, current auctions with ids:
+  `leilao.antaq.gov.br/default.aspx?audiencia=175` is Leilão 01/2026 (MCP01,
+  Santana/AP), 176 is NAT01, 177 is TMP-Recife. All 88 matching links point at
+  `leilao.antaq.gov.br`, **a host nobody has tested** — so P10b now fetches
+  one. The index is reachable; whether the per-auction document list is, is
+  the open question.
+- **ANTT (highways)** — the page named its own next layer,
+  `/assuntos/rodovias/novos-projetos-em-rodovias`, which is where the 13
+  auctions should be. Added as P9b.
+- **ANAC (airports)** — 10 PDFs on the landing page alone, and it was skipped
+  entirely in every earlier round for want of a hostname.
+- **DOU** — `in.gov.br` still closes the socket mid-read on both paths, HTML
+  and JSON alike. Not a User-Agent problem.
+
+**PPI itself stays closed and now says so in words.** With the block-page
+check running on first attempts, E3B's refusal came back readable:
+
+```
+Acesso Negado! Esta requisição foi bloqueada. Em caso de dúvida, por favor
+envie o código 13376840596295746456 … para bloqueio.de.aplicacoes@presidencia.gov.br
+```
+
+That is the **Presidency's** application blocker — the same family as
+`dadosabertos.presidencia.gov.br`, which is consistent with PPI's own host
+being an F5 page. It also names an appeals channel, which is a different kind
+of lead than a WAF usually leaves: a real address, a real reference code.
+
+So the shape of the Brazil concession work has changed. It does not need PPI,
+and it does not need a different network egress. It needs a connector per
+regulator, starting with whichever of P9b/P10b comes back with a document
+list.
+
+#### Run five: the auction system is shut, the consultation area is not
+
+The `%PDF-` fix confirmed run four's reading in the probe's own words:
+
+```
+P12   ★ 这是一个真的 PDF（v1.4，659KB）—— 文件下下来了，不是页面
+P9b   gov.br/antt/…/novos-projetos-em-rodovias   204KB · 19578 字 · 614 链接（命中 21，PDF 4）
+P10b  leilao.antaq.gov.br/default.aspx?audiencia=175   403 Cloudflare（浏览器头无效）
+```
+
+**P10b's failure is the useful result of the round**, because it splits the
+ports question in two and the half that works is the half this project was
+originally asked for.
+
+ANTAQ's index on `gov.br` is open and lists real current auctions, but every
+one of its 88 links points at `leilao.antaq.gov.br`, which is a Cloudflare 403
+— TCP fine at 470ms, browser headers no help. Exactly the shape of
+`leilao.aneel.gov.br`. **The auction system is shut.**
+
+But P12's PDF is not on that host. Look at where it lives:
+
+```
+gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/
+   audiencias-e-consultas-publicas/audiencias/…/minuta-de-edital.pdf
+```
+
+**The consultation area is on gov.br, and it carries the draft edital.** So
+for ANTAQ the split is: final edital unreachable, *minuta* reachable — and the
+minuta is the document the original brief asked for, the one published while a
+technical spec (efficiency floors, standalone operation, local content) can
+still be argued with. P10c now fetches the index that PDF hangs under.
+
+This is the same lifecycle position as ANEEL's consulta pública, with the
+opposite access answer. ANEEL's consultation content sits on
+`antigo.aneel.gov.br` behind Cloudflare; ANTAQ's sits on gov.br and downloads.
+Same stage, same kind of document, different host, and the host is the whole
+difference.
+
+Two more doors, both taken from links the pages themselves printed rather than
+guessed: **rail** (`gov.br/antt/…/ferrovias/novos-projetos-ferroviarios`, 8
+projects in the 2026 calendar and a sector this probe had never looked at) and
+**ANAC's next layer** (`gov.br/anac/…/concessoes/concessoes`, whose landing
+page already carries 10 PDFs — the highest PDF count of any index here).
+
+**Where Brazil's concession sectors stand after five rounds:**
+
+| sector | index | documents |
+|---|---|---|
+| ports (ANTAQ) | **open** on gov.br | minuta **downloads**; final edital on a blocked host |
+| highways (ANTT) | **open**, two layers deep | 4 PDFs on the index; not yet fetched |
+| airports (ANAC) | **open** | 10 PDFs on the index; not yet fetched |
+| rail (ANTT) | untested until P11b | — |
+| PPI portfolio | F5 refusal, with an appeals code | — |
+| DOU | socket closed on both paths | — |
+
+#### Run six: three OKs, and two of them were worth nothing
+
+```
+P10c  …/audiencias-e-consultas-publicas   OK  168KB · 568 链接（命中 6，PDF 0）
+P11b  …/ferrovias/novos-projetos-ferroviarios   OK  194KB · 614 链接（命中 66，PDF 4）
+P11c  …/concessoes/concessoes             OK  145KB · 418 链接 — 和 P11 一模一样
+```
+
+Counting OKs would call that three wins. Two of them are not.
+
+**P11c fetched the same page twice.** `concessoes/concessoes` is byte-identical
+to `concessoes` — same 145KB, same 12700 characters, same 418 links. It came
+from P11's own printed link list, which is normally the right instinct, but a
+menu entry that points back at its own section is not a next layer. Replaced
+with a real round page, `…/concessoes/andamento/setima-rodada`, which is an
+address search returned rather than a pattern invented here.
+
+**P10c answered and told us nothing**: 6 matches out of 568 links, all six
+navigation, zero PDFs. The reason is written in P12's own working path:
+
+```
+…/audiencias-e-consultas-publicas/audiencias/teste/04-2026-vdc04/minuta-de-edital.pdf
+                                  ^^^^^^^^^^
+```
+
+The hearings are in an `/audiencias` **folder** and P10c fetched its parent.
+That is the legacy-hostname mistake again, one directory level down. P10d
+fetches the folder.
+
+**The probe's own reporting was hiding the answer, and that is the fix that
+matters most this round.** Every gov.br Plone site ships the same ~600-link
+mega-menu. So a page with 614 links and **66 matches** spent all twelve
+printed slots on menu entries — Rodovias, Ferrovias, SUFER, Compor — and
+showed none of its content. The one page that did print real rows (ANTAQ's
+auction index) managed it only because its auctions sit on a different
+hostname and sorted to the front by accident.
+
+A content link is distinguishable without knowing the site: it ends in a
+document extension, or it carries a number — an auction number, a year, an id.
+Menu entries are bare slugs. Links are now deduped, scored on exactly that,
+and 25 are printed instead of 12. Run six's 66 rail matches and 43 highway
+matches were real findings that the printer threw away.
+
+**Still dead after six rounds**: `leilao.antaq.gov.br` and
+`leilao.aneel.gov.br` (the auction systems), `in.gov.br` on both paths, PPI
+everywhere, and the three ANEEL hosts that time out at the socket.
+
+#### Run seven: the link ranking paid, and it is time to stop probing
+
+Sorting content links above the mega-menu turned P10 from twelve menu entries
+into the actual feed:
+
+```
+Leilão N° 03/2026-ANTAQ - TMP - Recife      audiencia=177
+Leilão N° 02/2026-ANTAQ - NAT01             audiencia=176
+Leilão N° 01/2026-ANTAQ - MCP01             audiencia=175
+Leilão Nº 05/2025-ANTAQ - Canal de acesso…  audiencia=173
+…25 rows, back through 2023
+```
+
+Auction number, year, terminal code, port, and a stable id, in server-rendered
+HTML. **That is a scrapeable index** — and it was there in every run since
+four, hidden behind twelve slots of navigation.
+
+**Two things run seven settled that the earlier rounds had left me
+over-optimistic about.**
+
+*P12's PDF is in a `teste` folder.* Its path reads
+`…/audiencias-e-consultas-publicas/audiencias/teste/04-2026-vdc04/minuta-de-edital.pdf`.
+The generalizable fact still holds and is the important one: **gov.br serves
+PDFs to an honest client, unauthenticated, and ANEEL's file host does not.**
+But that particular URL is a staging artifact, so it says nothing about where
+production hearing documents live — and P10c (parent) and P10d (the
+`/audiencias` folder itself, 52KB, 90 links, zero matches) did not find them.
+
+*ANAC's 12 PDFs are boilerplate.* P11c's round page carries 12 PDFs, and
+reading them shows what they are: Rol de Responsáveis, Cadeia de Valor,
+Diretrizes Regulatórias, Modelo de Governança — the institutional footer every
+gov.br page carries. Not the edital.
+
+**The one genuinely new lead came from ANAC's own page**, not from a search:
+
+```
+Estudos de Viabilidade Técnica, Econômica e Ambiental (EVTEA)
+  → sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/
+```
+
+A per-round directory on an untouched host. P11d fetches it; the host joins
+the TCP pass.
+
+**Recommendation, after seven rounds: stop probing and decide.** The access
+map is no longer changing — the same hosts answer and the same hosts refuse,
+run after run. What is left is a choice, not another probe:
+
+1. **Build the ANTAQ index connector on what is proven.** It yields auction
+   number, terminal, port, year and a deep link per row, with no value, no
+   deadline and no documents, because those live on `leilao.antaq.gov.br`.
+   Signal-only, like ANEEL — honest, and the rows are real and current.
+2. **Get a different network egress.** One change opens `leilao.antaq`,
+   `leilao.aneel`, `git.aneel`'s three xlsx, PPI, ANTT's F5 hosts and
+   `in.gov.br`. Every remaining blocker on this list is the same kind of
+   blocker, and no amount of connector code addresses any of them.
+
+P11d is the last probe worth running before that choice, because a directory
+listing of per-round documents would move airports from column one to a full
+source on its own.
+
+#### Run eight: ANAC publishes the edital in an open directory
+
+P11d hit, and it is the best result of the whole survey:
+
+```
+sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/
+  DADOS_036_20210921_EVTEA_pre_AP/
+  DADOS_041_20211221_EVTEA_pos_AP/
+  DADOS_047_20220223_EVTEA_pos_AP_novos_blocos/
+  DADOS_063_20220603_EVTEA_pos_TCU/
+  DADOS_067_20220713_EDITAL_E_CONTRATO_INGLES_ENGLISH/   ←
+```
+
+An Apache directory index, on a host that answers an honest client, holding
+the **edital and the contract in English**, plus the feasibility studies at
+four stages (pre-hearing, post-hearing, post-new-blocks, post-TCU). No
+credential, no challenge, no session. P11e descends into it.
+
+This is the thing ANEEL cannot do at any price: `download.aneel.gov.br` and
+`git.aneel.gov.br` refuse every client from every network tried. **Airports
+are a full source** — index on gov.br, documents here, and the
+document-analysis pipeline already exists.
+
+**Answering the two questions the user asked with this run:**
+
+*How many port auctions a year?* From P10's own rows: 2023 had 10, 2024 had
+9, 2025 had 5, 2026 has 3 so far (MCP01, NAT01, TMP-Recife). So **roughly
+5–10 ANTAQ auctions a year**, with the press's "19 terminals in 2026" mostly
+bundled inside those numbers rather than added to them. Small, and each one is
+large.
+
+*Are the port documents unreachable by hand too?* **No — and the distinction
+is one this file has drawn before.** `leilao.antaq.gov.br` returns
+「Attention Required! | Cloudflare」, which is the JS challenge: a real browser
+solves it and gets in. `git.aneel.gov.br` returns 「Sorry, you have been
+blocked」, which is a 1020-class rule against the IP and which a real browser
+does **not** pass — the user confirmed that one by hand. So ports are
+manually downloadable today; only the automation is blocked.
+
+**And the deployment route is option B, already built.**
+`/api/admin/probe-brazil-doors` was written in an earlier round for exactly
+this question and knocks from a second egress. It now carries the four hosts
+the laptop cannot open (`leilao.antaq`, `leilao.aneel`, `git.aneel`,
+`in.gov.br`) marked ★, plus three controls the laptop *can* open, so a
+difference is attributable to the egress rather than to the host. If the
+deployment reaches them, the connectors run there on a schedule and the
+laptop's network stops mattering.
+
+#### P11e came back empty, and the probe got quiet (2026-09-19)
+
+```
+P11e  …/DADOS_067_20220713_EDITAL_E_CONTRATO_INGLES_ENGLISH/
+      OK 200 · 1KB · 302 字 · 3 个链接（命中 0，PDF 0）
+```
+
+**Not the confirmation the previous entry expected.** 302 characters and three
+links is a near-empty directory, not a folder of editais — so
+`sistemas.anac.gov.br` is browsable and the round-level listing is real, but
+the English edital and contract were NOT demonstrated. What P11d proved is
+that ANAC keeps per-round open directories on a reachable host; what the
+directory NAMES promise has not been checked, and the name is not the
+evidence.
+
+**And the probe could not tell an empty directory from a full one**, which is
+the underlying defect. `describeHtml` prints only links that match the step's
+pattern, so zero matches printed zero lines, and a folder of `.p7s` or
+extensionless files would look exactly like this one. On a small page there is
+no mega-menu to drown anything out, so when nothing matches and the body is
+under 5,000 characters, every link is printed now.
+
+**The report itself was the other problem, and the user named it.** Eight
+rounds in it had grown to roughly 700 lines, of which the findings were maybe
+twenty. The repeats: a two-to-four-line rationale per step across thirty
+steps, a 40-line JSON dump, a 小结 block restating every line already printed
+beside its own result, and a closing page of standing advice that had not
+changed in four rounds.
+
+Compact is now the default. `--verbose` restores the rationales, the full
+FAIL detail and the ANEEL to-do URLs. The compact run prints each step's
+verdict and its content links, then a tally and the list of doors that opened
+— which is what a reader acts on.
 
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
@@ -6279,3 +6725,66 @@ the same ColdFusion shape with the same `documentos_editais.cfm?IdProgramaEdital
 popup. Unverified from here for the usual access reason; the reader is
 segment-agnostic apart from its `LEILÃO DE TRANSMISSÃO` heading regex, so the
 first captured generation page is what decides whether one reader serves both.
+
+## The deployment answered, and it opened two doors (2026-09-19)
+
+`/api/admin/probe-brazil-doors` was run for the first time, from Vercel. The
+result settles the question eight rounds of laptop probing could not: **the
+egress is a real variable, not an excuse.** Two doors flipped.
+
+| door | laptop | Vercel |
+|---|---|---|
+| `dadosabertos.aneel.gov.br` datastore_search | TCP timeout, no handshake in 21s | **JSON in 1473ms** |
+| `dados.antt.gov.br` CKAN | 200 + F5 "Request Rejected" page | **CKAN 2.8.3** |
+
+Those two are the open-data APIs for electricity transmission and for roads +
+railways — the structured half of everything this line of work was after. From
+the laptop neither existed. From Vercel both answer in about a second.
+
+### What did NOT flip, and it is the half that matters more
+
+Every host that serves an actual *edital* is still shut from Vercel too:
+
+    leilao.aneel.gov.br          TCP timeout      (same as laptop)
+    portalrelatorios.aneel       TCP timeout      (same as laptop)
+    git.aneel.gov.br             Cloudflare       (raw .xlsx and API both)
+    www2.aneel.gov.br            Cloudflare       ← the connector's own source
+    portal.antaq.gov.br          Cloudflare
+    dadosabertos.ccee.org.br     "Acesso bloqueado"
+    ppi.gov.br                   ECONNRESET / "Acesso Negado!"
+
+So the shape of the answer is: **indexes and results, yes; bid documents, no.**
+Which is the ANEEL lesson again (`www.gov.br/aneel` answers, `download.aneel`
+does not), now confirmed to hold from a second network.
+
+One distinction inside the Cloudflare column is worth keeping. From Vercel
+these are `Just a moment…` — the JS challenge, which a real browser passes.
+From the laptop `git.aneel` was `Sorry, you have been blocked` — the 1020 hard
+block, which a real browser does not pass. Same vendor, different verdict,
+decided by where the request came from. If a headless browser is ever built
+for this, Vercel's egress is the one where it could work.
+
+### The trap this creates, and what was built to avoid it
+
+`scripts/ingest-aneel.ts` reads `www2.aneel.gov.br` — which Vercel refuses
+too. So "run it on the server" does not rescue the connector that exists. What
+Vercel opened is a *different* path to the same facts: `dadosabertos.aneel`'s
+datastore holds the transmission auction results directly.
+
+But the nightly ingest does not run on Vercel. It runs on a GitHub Actions
+runner (`daily-ingest.yml`, and that file records why it moved off Vercel).
+That is a **third** network, with no relationship to the second. Writing a
+connector against `dadosabertos.aneel` because Vercel reached it would be a
+guess about a machine nobody has asked.
+
+Hence `lib/ingestion/brazil-doors.ts`: one door list, two callers — the admin
+route (Vercel) and `.github/workflows/probe-brazil-doors.yml` (the runner,
+manual dispatch). Whatever the runner says is what decides, because that is
+where a connector would live.
+
+Also fixed while extracting it: the JSON describer reported E1 — the one door
+the whole exercise aimed at — as `JSON，外层键 help, success, result`. That is
+the CKAN envelope, identical for every CKAN call ever made. It proved the host
+answered and said nothing about what it answered with. `datastore_search` is
+now unwrapped one level further, so the next run prints the row count and the
+column names, which is the thing a mapper is actually written from.

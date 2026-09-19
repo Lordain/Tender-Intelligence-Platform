@@ -65,7 +65,16 @@ export type BrazilIngestResult = {
    * `linkCount: 0` is the signal that the reading is wrong; without both
    * numbers a silent zero would look like "these tenders have no documents".
    */
-  documentLinks?: { tendersAsked: number; tendersWithLinks: number; linkCount: number; failed: number };
+  documentLinks?: {
+    tendersAsked: number;
+    tendersWithLinks: number;
+    linkCount: number;
+    failed: number;
+    /** True when the failure streak tripped and the rest were never asked. */
+    stoppedEarly: boolean;
+    /** The first few refusals, verbatim, so a run of zeros says why. */
+    failureReasons: string[];
+  };
   /**
    * The largest `/itens` list seen, and how many tenders returned exactly that
    * many.
@@ -147,6 +156,17 @@ export type BrazilIngestOptions = {
 const PACE_MS = 1_200;
 /** Shared minimum gap between amount-request STARTS — see the worker pool below for why it is shared rather than per-worker. */
 const AMOUNT_PACE_MS = 500;
+/**
+ * How many attachment lookups may fail in a row before the pass gives up.
+ *
+ * Ten is enough to rule out a handful of tenders that genuinely have no
+ * document page, and small enough that a dead endpoint costs seconds rather
+ * than the half hour it cost once.
+ */
+const DOCUMENT_FAILURE_STREAK = 10;
+/** Row-count and wall-clock triggers for the amount pass's progress line. */
+const AMOUNT_PROGRESS_EVERY = 10;
+const AMOUNT_HEARTBEAT_MS = 10_000;
 const AMOUNT_CONCURRENCY = 4;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -311,6 +331,22 @@ export async function ingestBrazilPncp(
 
   let cursor = 0;
   let done = 0;
+  // Every 50 rows was the only trigger until 2026-09-19, when a 97-row run
+  // printed 「发布时间在 1 天内的：97 / 300 条」 and then said nothing for long
+  // enough that the user asked whether it had hung. It had not — the first
+  // progress line simply was not due until row 50. Two triggers now, because
+  // they answer different questions: the count says how far along it is, and
+  // the clock says it is still alive. A run being throttled by PNCP is slow,
+  // not stuck, and only a heartbeat can tell a reader which one they have.
+  let lastBeatAt = Date.now();
+  function beat(force: boolean) {
+    const now = Date.now();
+    if (!force && done % AMOUNT_PROGRESS_EVERY !== 0 && now - lastBeatAt < AMOUNT_HEARTBEAT_MS) return;
+    lastBeatAt = now;
+    const elapsed = Math.round((now - startedAmountsAt) / 1000);
+    onProgress?.(`取金额：${done} / ${withinWindow.length}（已用 ${elapsed}s）`);
+  }
+  const startedAmountsAt = Date.now();
   async function worker() {
     for (;;) {
       const index = cursor;
@@ -322,7 +358,7 @@ export async function ingestBrazilPncp(
         await takeSlot();
         items = await fetchPncpItems(row.item_url);
         done += 1;
-        if (done % 50 === 0 || done === withinWindow.length) onProgress?.(`取金额：${done} / ${withinWindow.length}`);
+        beat(done === withinWindow.length);
       }
       const tender = mapPncpSearchRowToTender(row, items ?? undefined, BRAZIL_PNCP_SOURCE_NAME);
       if (!tender) continue;
@@ -448,16 +484,40 @@ export async function ingestBrazilPncp(
   const candidates = kept.filter((tender) => itemUrlBySlug.has(tender.slug));
   const entries: DocumentLinksForSlug[] = [];
   let linkFailures = 0;
+  let consecutiveFailures = 0;
+  let stoppedEarly = false;
+  const failureReasons: string[] = [];
+  let asked = 0;
   for (const [index, tender] of candidates.entries()) {
     await takeSlot();
-    const links = await fetchPncpArquivos(itemUrlBySlug.get(tender.slug));
+    asked += 1;
+    const links = await fetchPncpArquivos(itemUrlBySlug.get(tender.slug), (reason) => {
+      if (failureReasons.length < 3) failureReasons.push(reason);
+    });
     // null is "could not ask" and [] is "asked, none published". Only the
     // first is a failure, and conflating them would report every
     // document-less tender as a broken request.
-    if (links === null) linkFailures += 1;
-    else if (links.length > 0) entries.push({ slug: tender.slug, links });
-    if ((index + 1) % 50 === 0 || index + 1 === candidates.length) {
-      onProgress?.(`取标书链接：${index + 1} / ${candidates.length}`);
+    if (links === null) {
+      linkFailures += 1;
+      consecutiveFailures += 1;
+    } else {
+      consecutiveFailures = 0;
+      if (links.length > 0) entries.push({ slug: tender.slug, links });
+    }
+    // Added 2026-09-19 after a real run sat in this loop past thirty minutes.
+    // This endpoint's shape was written from PNCP's published API and has
+    // never been measured, so the case where it simply does not answer is
+    // live — and in that case every remaining tender costs its pacing slot
+    // and a round trip to learn the same thing the first ten already said.
+    // Attachments are optional; the tenders are already written. Stopping and
+    // saying so beats a silent half hour.
+    if (consecutiveFailures >= DOCUMENT_FAILURE_STREAK) {
+      stoppedEarly = true;
+      onProgress?.(`取标书链接：连续 ${consecutiveFailures} 条都失败，停在第 ${index + 1} / ${candidates.length} 条 —— 项目本身已经写入，只是没拿到附件链接`);
+      break;
+    }
+    if ((index + 1) % 10 === 0 || index + 1 === candidates.length) {
+      onProgress?.(`取标书链接：${index + 1} / ${candidates.length}${linkFailures > 0 ? `（失败 ${linkFailures}）` : ""}`);
     }
   }
 
@@ -465,7 +525,9 @@ export async function ingestBrazilPncp(
   return {
     ...writeResult,
     documentLinks: {
-      tendersAsked: candidates.length,
+      tendersAsked: asked,
+      stoppedEarly,
+      failureReasons,
       tendersWithLinks: saved.tendersWithLinks,
       linkCount: saved.linkCount,
       failed: linkFailures + saved.failed.length,

@@ -268,6 +268,18 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 type Outcome = { label: string; ok: boolean; status: number | string; ms: number; note: string };
 const outcomes: Outcome[] = [];
 
+/**
+ * Compact by default, added 2026-09-19 at the user's request.
+ *
+ * Eight rounds in, the report had grown to roughly 700 lines, and most of it
+ * repeated on every run: a two-to-four-line rationale per step (thirty
+ * steps), a 40-line JSON dump, a 小结 block restating every line already
+ * printed, and a closing page of standing advice. The findings are a handful
+ * of lines inside that. `--verbose` brings the full version back when a step
+ * genuinely needs explaining.
+ */
+const VERBOSE = process.argv.includes("--verbose");
+
 function record(outcome: Outcome): Outcome {
   outcomes.push(outcome);
   console.log(`   ${outcome.ok ? "OK  " : "FAIL"}  ${String(outcome.status).padEnd(14)} ${String(outcome.ms).padStart(7)}ms  ${outcome.note}`);
@@ -339,7 +351,26 @@ async function fetchText(url: string, timeoutMs: number, headers: Record<string,
  * returned bytes is the whole test: a CMS listing has dozens, a shell has a
  * handful of nav links or none.
  */
+/** `%PDF-` is the first five bytes of every PDF, and PDFs are the point here. */
+function describeFile(text: string): string | null {
+  if (text.startsWith("%PDF-")) {
+    const version = /^%PDF-(\d+\.\d+)/.exec(text)?.[1] ?? "?";
+    return `★ 这是一个真的 PDF（v${version}，${Math.round(text.length / 1024)}KB）—— 文件下下来了，不是页面`;
+  }
+  return null;
+}
+
 function describeHtml(text: string, linkPattern: RegExp): { note: string; links: string[] } {
+  // Run four, and the third wrong verdict this function has produced — all
+  // three from the same root: it assumes everything it is handed is a page.
+  // P12 fetched a real 659KB ANTAQ minuta de edital and got
+  // 「答了，但页面上几乎没东西」, because a PDF has no <a> tags and the thin
+  // test counts anchors. That verdict is the opposite of the truth on the one
+  // step the whole round existed to answer, and "an SPA we cannot scrape"
+  // and "the document downloaded" lead to completely different next moves.
+  const asFile = describeFile(text);
+  if (asFile) return { note: asFile, links: [] };
+
   const anchors = [...text.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]{0,120}?)<\/a>/gi)];
   const matching = anchors.filter(([, href]) => linkPattern.test(href));
   const pdfs = anchors.filter(([, href]) => /\.pdf(\?|$)/i.test(href));
@@ -361,7 +392,36 @@ function describeHtml(text: string, linkPattern: RegExp): { note: string; links:
     `${anchors.length} 个链接（命中 ${matching.length}，PDF ${pdfs.length}）`,
     verdict,
   ].join(" · ");
-  return { note, links: matching.slice(0, 12).map(([, href, label]) => `${label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 70)} → ${href.slice(0, 240)}`) };
+  // Run six is why this is not just `.slice(0, 12)`.
+  //
+  // Every gov.br Plone site ships the same ~600-link mega-menu, so a page with
+  // 614 links and 66 matches spent all twelve printed slots on menu entries —
+  // Rodovias, Ferrovias, SUFER, Compor — and showed none of the content. The
+  // one page that did show real rows (ANTAQ's auction index) only managed it
+  // because its auctions live on a different hostname and sorted to the front
+  // by accident.
+  //
+  // A content link on these sites is distinguishable without knowing the site:
+  // it ends in a document extension, or it carries a number — an auction
+  // number, a year, an id. Menu entries are bare slugs. So sort by that and
+  // print more of them.
+  const scored = matching
+    .map(([, href, label]) => ({ href, label, score: (/\.(pdf|docx?|xlsx?|zip)(\?|$)/i.test(href) ? 2 : 0) + (/\d{2,}/.test(href) ? 1 : 0) }))
+    .sort((a, b) => b.score - a.score);
+  const seen = new Set<string>();
+  const printable = scored.filter(({ href }) => !seen.has(href) && seen.add(href));
+  // P11e (run eight) fetched ANAC's EDITAL directory, matched zero links
+  // against the document-extension pattern, and therefore printed NOTHING —
+  // so an empty directory and one full of files with an unexpected extension
+  // looked identical. On a small page there is no mega-menu to drown anything
+  // out, so when nothing matched, show what IS there.
+  const fallback = text_only.length < 5_000 && printable.length === 0
+    ? anchors.map(([, href, label]) => ({ href, label })).filter(({ href }) => !seen.has(href) && seen.add(href))
+    : printable;
+  return {
+    note,
+    links: fallback.slice(0, 25).map(({ href, label }) => `${label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 70)} → ${href.slice(0, 240)}`),
+  };
 }
 
 /**
@@ -428,7 +488,7 @@ async function browserRetry(url: string, timeoutMs: number, linkPattern: RegExp,
 
 async function probeHtml(label: string, why: string, url: string, linkPattern: RegExp, timeoutMs: number, headers?: Record<string, string>): Promise<void> {
   console.log(label);
-  console.log(`   为什么试它：${why}`);
+  if (VERBOSE) console.log(`   为什么试它：${why}`);
   console.log(`   ${url}`);
   const { status, ms, text, failure } = await fetchText(url, timeoutMs, headers);
   const isBrowserPass = headers === BROWSER_HEADERS;
@@ -454,8 +514,28 @@ async function probeHtml(label: string, why: string, url: string, linkPattern: R
       keys = "（解析失败）";
     }
     record({ label, ok: true, status, ms, note: `★ 返回的是 JSON 不是 HTML —— 外层键：${keys}` });
-    console.log(trimmed.slice(0, 1200).split("\n").map((line) => `     ${line}`).join("\n"));
+    console.log(trimmed.slice(0, VERBOSE ? 1200 : 300).split("\n").map((line) => `     ${line}`).join("\n"));
     console.log();
+    return;
+  }
+  // Found in run four, and it is the same mistake this probe already fixed
+  // once — in the wrong place. `browserRetry` checks the body against the
+  // block-page signatures before calling anything a pass; this path, the
+  // FIRST attempt, never did. So a refusal served as HTTP 200 reached
+  // `describeHtml`, which has no notion of a block page and correctly
+  // described what it saw: "answered, but almost nothing on the page —
+  // probably JS-filled". That reads as "an SPA we cannot scrape", and the
+  // fix for an SPA (a real browser) is not the fix for a refusal (a
+  // different egress). Run four printed exactly that for PPI's English
+  // edital, whose body is `Acesso Negado!` and whose signature has been in
+  // block-page.ts since run three.
+  const blocked = blockPageReason(text);
+  if (blocked !== null) {
+    const title = pageTitle(text);
+    record({ label, ok: false, status, ms, note: `拦截页（「${blocked}」${title ? ` · <title> ${title}` : ""}）—— HTTP ${status} 是假的` });
+    console.log(`     正文开头：${visibleText(text).slice(0, 300)}`);
+    console.log("     这不是「页面是空的」，是对方在拒绝我们。空壳要换浏览器，拒绝要换出口 —— 两件事。\n");
+    await browserRetry(url, timeoutMs, linkPattern, isBrowserPass);
     return;
   }
   const { note, links } = describeHtml(text, linkPattern);
@@ -485,7 +565,7 @@ async function probeCkan(
   fallbackHeaders?: Record<string, string>,
 ): Promise<void> {
   console.log(label);
-  console.log(`   为什么试它：${why}`);
+  if (VERBOSE) console.log(`   为什么试它：${why}`);
   console.log(`   ${base}`);
 
   const started = Date.now();
@@ -628,6 +708,15 @@ async function main() {
     // is the one with the best odds.
     "dadosabertos-aneel.opendata.arcgis.com",
     "hubdeprojetos.bndes.gov.br",
+    // ANAC's own data-search host, found 2026-09-19. Separate from gov.br and
+    // never tried; ANAC was skipped in every earlier round.
+    "datasearch.anac.gov.br",
+    // Named by ANTAQ's own auction index in run four: every one of its 88
+    // matching links points here, so this is where the port editais live.
+    "leilao.antaq.gov.br",
+    // Surfaced by P11c in run seven, from ANAC's own 7th-round page: an open
+    // data host with a per-round directory. Never tested.
+    "sistemas.anac.gov.br",
     "dadosabertos.ccee.org.br",
     "www.b3.com.br",
   ];
@@ -790,6 +879,217 @@ async function main() {
     "所有联邦特许的招标公告依法都要登公报 —— 这条路不依赖哪个机构的网站做得好不好，而且墨西哥的 DOF 连接器已经是同一个形状了",
     "https://www.in.gov.br/consulta/-/buscar/dou?q=leil%C3%A3o+de+transmiss%C3%A3o&s=todos&exactDate=all&sortType=0",
     /leil|edital|aviso/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Added 2026-09-19, and it corrects the same mistake twice over.
+  //
+  // ANEEL taught this already: `www.aneel.gov.br` is a Cloudflare challenge
+  // and `www.gov.br/aneel` answers 200 with 777 links from BOTH machines,
+  // because the agency MOVED and the old address is what is defended. P6 and
+  // P7 above knock on `dados.antt.gov.br` and `portal.antaq.gov.br` — both
+  // legacy hosts, both refused — and ANAC was skipped entirely for want of a
+  // hostname. All three are on gov.br now, and search found their pages:
+  //
+  //   gov.br/antt/pt-br/assuntos/…      ANTT publishes concession editais
+  //                                     under rodovias › novos projetos
+  //   gov.br/antaq/pt-br/assuntos/leiloes   ANTAQ's auction index
+  //   gov.br/anac/pt-br/assuntos/concessoes ANAC's concession rounds
+  //
+  // This matters more than the portfolio question. PPI publishes the pipeline
+  // and its own host is an F5 block page — but the EDITAL was never on PPI.
+  // It belongs to the sector regulator, and the regulators appear to live on
+  // the one Brazilian host this network can read.
+  console.log("─".repeat(72));
+  console.log("\nP9–P12. 三个监管机构在 gov.br 上的现址（上面 P6/P7 敲的是旧域名）\n");
+  console.log("   ANEEL 已经证明过一次：旧域名被防住、gov.br 上的现址 200 且能抓。");
+  console.log("   ANTT / ANTAQ / ANAC 同样都搬到 gov.br 了 —— 而 edital 本来就是它们发的，不是 PPI 发的。\n");
+
+  await probeHtml(
+    "P9. ANTT 公路（gov.br 现址）",
+    "P6 敲的 dados.antt.gov.br 是 F5 拦截页。ANTT 的特许 edital 发在 gov.br/antt 的「rodovias › novos projetos」下面 —— 2026 年 13 场公路拍卖都在这儿",
+    "https://www.gov.br/antt/pt-br/assuntos/rodovias",
+    /rodovia|concess|edital|leil/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  await probeHtml(
+    "P10. ANTAQ 拍卖索引（gov.br 现址）",
+    "P7 敲的 portal.antaq.gov.br 是 Cloudflare 403。这一页是 ANTAQ 自己的拍卖索引 —— 2026 年 19 个码头租赁",
+    "https://www.gov.br/antaq/pt-br/assuntos/leiloes",
+    /leil|edital|arrendamento|concess/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  await probeHtml(
+    "P11. ANAC 特许（gov.br 现址，之前整个跳过了）",
+    "机场是 2026 年 PPI 盘子里场次最多的一块（21 场，20 个支线），而上一轮因为猜不到域名直接没试 —— 这是漏掉的最大一块",
+    "https://www.gov.br/anac/pt-br/assuntos/concessoes",
+    /concess|leil|edital|rodada/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // The decisive one, and it is deliberately a PDF rather than a page.
+  //
+  // ANEEL's whole lesson was that reading the index and downloading the
+  // document are different questions with different answers: www.gov.br/aneel
+  // answers, and `download.aneel.gov.br` times out from every network tried,
+  // so those rows can never carry an attachment. This URL is a real ANTAQ
+  // draft edital served from gov.br itself. If it downloads, the ports
+  // pipeline is a full source — index AND documents AND the analysis pipeline
+  // — rather than the signal-only shape ANEEL is stuck in.
+  await probeHtml(
+    "P12. ★ 决定性的一条：gov.br 上的 ANTAQ 标书草案 PDF 能不能直接下",
+    "ANEEL 的教训是「能读目录」和「能下文件」是两个问题：gov.br/aneel 通，download.aneel.gov.br 两个大洲都超时，所以那些项目永远没有附件。这条是 ANTAQ 挂在 gov.br 自己域名下的 minuta de edital —— 下得下来，港口这条线就是完整数据源（能下标书、能进 AI 分析）；下不来，就跟 ANEEL 一样只能当信号",
+    "https://www.gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/audiencias-e-consultas-publicas/audiencias/teste/04-2026-vdc04/minuta-de-edital.pdf",
+    /never/,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // Run four answered P9-P12 with four OKs, which moves the question from
+  // "can we reach them" to "where exactly is the edital". Both of these come
+  // from links the pages themselves printed, not from guesses.
+  await probeHtml(
+    "P9b. ANTT「novos projetos em rodovias」（P9 那页自己给的下一层）",
+    "P9 通了（614 个链接、命中 43），而它列出的子页里这一个就是在招的公路项目 —— 2026 年 13 场公路拍卖的 edital 应该挂在这儿",
+    "https://www.gov.br/antt/pt-br/assuntos/rodovias/novos-projetos-em-rodovias",
+    /edital|leil|concess|projeto|anexo/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // ANTAQ's index printed 88 matching links and every one of them is an
+  // `audiencia=` id on a host nobody has tested. 175 is Leilão 01/2026-ANTAQ
+  // (MCP01, Santana/AP) — a real, current auction rather than an example.
+  await probeHtml(
+    "P10b. ANTAQ 某一场拍卖的详情页（P10 列出来的 88 个链接都指向这台主机）",
+    "P10 通了，但它的每个拍卖链接都指向 leilao.antaq.gov.br 这个没测过的子域名。这条取的是 Leilão 01/2026-ANTAQ（MCP01，阿马帕州 Santana 港）—— 真实在招的一场。这一层通不通，决定港口这条线是「看得见清单」还是「拿得到标书」",
+    "https://leilao.antaq.gov.br/default.aspx?audiencia=175",
+    /edital|anexo|minuta|contrato|\.pdf/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // Run five split the ports question in two, and the half that works is the
+  // half the user asked for first.
+  //
+  // P10b failed: leilao.antaq.gov.br is a Cloudflare 403, TCP fine, browser
+  // headers no help — the same shape as leilao.aneel.gov.br. So ANTAQ's
+  // AUCTION SYSTEM is shut.
+  //
+  // But P12 downloaded a 659KB minuta de edital, and look where it lives:
+  //   gov.br/antaq/…/participacao-social/audiencias-e-consultas-publicas/audiencias/…
+  // The CONSULTATION area is on gov.br, the open host, and it carries the
+  // draft edital with its annexes. That is the stage this whole project was
+  // asked to track — the window where a technical spec can still be argued
+  // with — and for ANTAQ it is reachable while the final edital is not.
+  //
+  // This step fetches the index that PDF hangs under. If it lists the
+  // audiências, ports are a real source for draft editais without any change
+  // of network egress.
+  await probeHtml(
+    "P10c. ★ ANTAQ 的听证/咨询索引（P12 那份 PDF 就挂在这个目录下）",
+    "P10b 证明 ANTAQ 的拍卖系统（leilao.antaq）被 Cloudflare 挡着，但 P12 下下来的那份 minuta 在 gov.br 的「participacao-social/audiencias-e-consultas-publicas」下面 —— 也就是说：正式 edital 拿不到，标书草案拿得到。这一条取的是那份 PDF 所在的索引页，它要是列出了各场听证，港口这条线就能在不换出口的情况下做「标书草案 + 技术指标核对」",
+    "https://www.gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/audiencias-e-consultas-publicas",
+    /audienc|consulta|minuta|edital|\.pdf/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // P10c answered 200 and told us nothing: 568 links, 6 matches, and all six
+  // were navigation. The reason is in P12's own path —
+  //   …/audiencias-e-consultas-publicas/audiencias/teste/04-2026-vdc04/minuta-de-edital.pdf
+  // The hearings live in an `/audiencias` FOLDER; P10c fetched its parent.
+  // Same mistake as the legacy-hostname one, one directory level down.
+  await probeHtml(
+    "P10d. ★ ANTAQ 听证的那个目录本身（P10c 取的是它的上一级）",
+    "P10c 通了但什么也没给：568 个链接里只有 6 个命中，而且全是菜单。原因在 P12 自己的路径里 —— 那份 PDF 在 /audiencias/ 这个子目录下面，P10c 取的是它的父级。往下一层",
+    "https://www.gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/audiencias-e-consultas-publicas/audiencias",
+    /audienc|minuta|edital|anexo|\d{2}-\d{4}|\.pdf/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // Rail, named by P9b's own link list. Eight projects in the 2026 calendar,
+  // and a sector this probe had never looked at separately.
+  await probeHtml(
+    "P11b. ANTT 铁路新项目（P9b 自己列出来的，之前没单独看过铁路）",
+    "P9b 的链接里有这一条 —— 2026 年盘子里铁路是 8 个项目，而之前每一轮都只盯着公路",
+    "https://www.gov.br/antt/pt-br/assuntos/ferrovias/novos-projetos-ferroviarios",
+    /edital|leil|concess|projeto|anexo|ferrovia/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // Corrected after run six. `concessoes/concessoes` came back byte-identical
+  // to `concessoes` — 145KB, 12700 字, 418 links, the same page behind a
+  // redirect. It was taken from P11's own link list, which is normally the
+  // safe move, but a self-referential menu entry is not a next layer.
+  //
+  // This is a real round's page instead: ANAC numbers its concession rounds
+  // and publishes each one's licitação documents under it. `setima-rodada` is
+  // an address search returned, not a pattern invented here.
+  await probeHtml(
+    "P11c. ANAC 第七轮特许（上一轮取的 concessoes/concessoes 是同一页的跳转，白跑了）",
+    "机场是 2026 年场次最多的一块（21 场），而 ANAC 把每一轮的招标文件挂在轮次页下面。这条取第七轮 —— 要的是看它把 edital 和附件放在哪种路径下，好照着找 2026 那几轮",
+    "https://www.gov.br/anac/pt-br/assuntos/concessoes/andamento/setima-rodada",
+    /edital|leil|concess|anexo|rodada|aeroporto|\.pdf/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // The best lead of run seven, and it came from ANAC's own round page rather
+  // than from a search. Among P11c's 460 links:
+  //
+  //   Estudos de Viabilidade Técnica, Econômica e Ambiental (EVTEA)
+  //     → sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/
+  //
+  // A directory, on a host nobody has touched, named after the concession
+  // round. If ANAC keeps one of these per round and it lists files, airports
+  // stop being "an index with 12 institutional PDFs on it" and become a
+  // document source — the sector with the most 2026 auctions of any.
+  await probeHtml(
+    "P11d. ★ ANAC 的开放数据目录（P11c 从自己页面里带出来的新主机）",
+    "P11c 那 12 个 PDF 大多是机构样板（责任人名册、价值链、监管准则），不是 edital。但它的链接里有这个：sistemas.anac.gov.br 上按轮次分的目录。新主机、没测过，而且如果它每轮一个目录并且能列文件，机场就从「只有索引」变成「有文件」—— 那是 2026 年场次最多的一块",
+    "https://sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/",
+    /\.(pdf|zip|xlsx?|docx?)|edital|anexo|evtea|estudo/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // P11d hit. It is an Apache directory index, and the last entry is the one
+  // that matters:
+  //
+  //   DADOS_067_20220713_EDITAL_E_CONTRATO_INGLES_ENGLISH/
+  //
+  // The edital and the contract, in English, in an open directory on a host
+  // that answers an honest client. That is the thing ANEEL cannot do at all.
+  // This step descends into it: a listing proves the directory is browsable,
+  // and the file names tell the connector what to fetch.
+  await probeHtml(
+    "P11e. ★★ ANAC 那个目录里的「EDITAL 和合同（英文）」子目录",
+    "P11d 是个开放目录列表，最后一条写着 EDITAL_E_CONTRATO_INGLES_ENGLISH —— 标书和合同，英文版，开放目录，诚实客户端就能读。这正是 ANEEL 死活做不到的事。这一条钻进去看文件名",
+    "https://sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/DADOS_067_20220713_EDITAL_E_CONTRATO_INGLES_ENGLISH/",
+    /\.(pdf|zip|docx?|xlsx?)/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // The DOU again, but at the address the National Press's own reader uses.
+  // P8 asks the HTML search UI and gets a socket closed mid-read; this one
+  // embeds each section's contents in a <script type="application/json">,
+  // which is a shape rather than a page.
+  await probeHtml(
+    "P13. DOU 的看报接口（P8 那个检索页是 HTML 界面，这个是 JSON）",
+    "P8 读到一半被掐断。in.gov.br/leiturajornal 这一路会把当天各版的内容塞在一个 <script type=\"application/json\"> 里 —— 那是个数据形状，不是个页面。секão 3 是合同与公告版",
+    "https://www.in.gov.br/leiturajornal?secao=do3",
+    /leil|edital|aviso|concess/i,
     timeoutMs,
   );
   await sleep(1500);
@@ -1004,9 +1304,21 @@ async function main() {
 
   // ── Summary ──────────────────────────────────────────────────────────────
   console.log("─".repeat(72));
-  console.log("小结\n");
-  for (const outcome of outcomes) {
-    console.log(`  ${(outcome.ok ? "OK  " : "FAIL").padEnd(5)} ${String(outcome.status).padEnd(14)} ${String(outcome.ms).padStart(7)}ms  ${outcome.label}`);
+  const passed = outcomes.filter((o) => o.ok);
+  if (VERBOSE) {
+    console.log("小结\n");
+    for (const outcome of outcomes) {
+      console.log(`  ${(outcome.ok ? "OK  " : "FAIL").padEnd(5)} ${String(outcome.status).padEnd(14)} ${String(outcome.ms).padStart(7)}ms  ${outcome.label}`);
+    }
+  } else {
+    // Every one of these lines was already printed above, verbatim, next to
+    // its own result. Compact prints the tally and the pass list only — a
+    // FAIL is already visible where it happened, and the ones that opened are
+    // what a reader acts on.
+    console.log(`小结：${passed.length} / ${outcomes.length} 通\n`);
+    for (const outcome of passed) {
+      console.log(`  OK   ${String(outcome.ms).padStart(6)}ms  ${outcome.label}`);
+    }
   }
   console.log();
 
@@ -1038,32 +1350,20 @@ async function main() {
     console.log();
   }
 
-  const ckanOk = outcomes.some((o) => o.ok && /status_show/.test(o.label));
-  console.log("要发我的东西，按重要性排：\n");
-  console.log("  1. 【列名】那几行 —— datastore_search 打出来的 `列名：…` 和 `第一行全文`。");
-  console.log("     映射器是照着它写的，不是照着我记忆里的字段名写的。");
-  console.log("  2. 任何一行以 ★ 开头的，连同它下面的 <title> 和正文开头。");
-  console.log("     ★ 现在只在正文不是拦截页时才打 —— 上一轮它判过三个假阳性（F5 的拒绝页是 200）。");
-  console.log("  3. 最上面那张 TCP 表 —— 「通」而底下还是失败的是应用层拒绝；「不通」才是真够不着。");
-  if (!ckanOk) {
-    console.log("\n  仍然没有任何门户确认是 CKAN。上一轮站到哪儿了，可以对照：");
-    console.log("    dados.gov.br     401，且应答头写明要 Bearer —— 唯一差一个免费 key 就能进的门");
-    console.log("    ANTT             F5 把拒绝页当 200 发，换 UA 没用");
-    console.log("    ANTAQ / ANEEL    Cloudflare 的 JS 验证 —— 换 UA 没用，它要的是真能跑 JS 的浏览器");
-    console.log("    dadosabertos.aneel.gov.br  socket 层 ETIMEDOUT，这条是网络真的不通，不是策略");
-    console.log("    PPI              换 UA 能拿到 200，但四个不同网址返回同一个 266 字的空壳");
+  // Standing advice, not findings. It had not changed in four rounds and was
+  // costing about forty lines a run, so it lives behind --verbose now; the
+  // three lines below are the part that is still a decision.
+  if (VERBOSE) {
+    const ckanOk = outcomes.some((o) => o.ok && /status_show/.test(o.label));
+    if (!ckanOk) console.log("仍然没有任何门户确认是 CKAN（dados.gov.br 要 CPF；ANTT 是 F5；ANTAQ/ANEEL 是 Cloudflare 验证）。");
+    console.log("\ngit.aneel 的三个 xlsx 地址精确但硬封锁，只能换出口下载，然后 `npm run dump:aneel-leiloes -- <文件>.xlsx`：");
+    for (const url of ANEEL_RESULT_SPREADSHEETS) console.log(`  ${url}`);
+    console.log("\n在招场次（不是结果）在这三页，域名两个大洲都连不上：");
+    for (const url of ANEEL_EDITAL_PAGES) console.log(`  ${url}`);
+    console.log("\n输电标段金额按【预估总投资 CAPEX】，RAP 放摘要正文。见 lib/ingestion/README.md。");
+  } else {
+    console.log("完整说明（每步的理由、全部 FAIL 明细、ANEEL 的待办网址）：加 --verbose。");
   }
-  console.log("\n下一步：这三个 xlsx 的地址是精确的，但 git.aneel 对你那边是【硬封锁】——");
-  console.log("  真浏览器打开也是 Sorry, you have been blocked，所以换客户端没用，只能换网络出口：");
-  for (const url of ANEEL_RESULT_SPREADSHEETS) console.log(`    ${url}`);
-  console.log("  （换个出口的浏览器下下来就行）。下完跑 `npm run dump:aneel-leiloes -- <文件>.xlsx`，它会把真实列名打出来，");
-  console.log("  映射器照着那个写 —— 跟 Compras MX、Ecopetrol、Proyectos México 是同一条路子。");
-  console.log("\n  在招的场次（不是结果）在这三页，但那个域名两个大洲都连不上：");
-  for (const url of ANEEL_EDITAL_PAGES) console.log(`    ${url}`);
-  console.log("  同样要换出口。另外 E2d / E2e 那两个 ANEEL 子域名是新加的 —— Cloudflare 的封锁是按主机配的，");
-  console.log("  不是按机构配的，所以它们完全可能是开的，那就不用换网络了。");
-  console.log("\n输电标段的金额按【预估总投资 CAPEX】走（2026-09-18 已确认），RAP 放摘要正文点名。");
-  console.log("见 lib/ingestion/README.md 的「Three traps that are new…」。");
 }
 
 main().catch((err) => {

@@ -100,6 +100,58 @@ export function consultaLabel(consulta: AneelConsultaPublica): string {
 }
 
 /**
+ * Where to look, on the one ANEEL host that answers.
+ *
+ * Read out of a capture of ANEEL's own homepage (2026-09-19, user's browser),
+ * not guessed: these are the hrefs the site's own navigation carries.
+ *
+ * ── CORRECTED the same day, before anything was built on it ───────────────
+ *
+ * This block first said these were the one part of the auction lifecycle
+ * reachable without changing network egress, because `www.gov.br/aneel`
+ * answers 200 while every other ANEEL host is shut. A capture of
+ * tomada-de-subsidios settles it the other way: the page is one paragraph of
+ * definition, last updated **17/03/2022**, whose only actionable element is a
+ * link to `antigo.aneel.gov.br/tomadas-de-subsidios` — the Cloudflare 403
+ * from the probe's E2b. The generation page does the same thing, linking each
+ * auction's consultation to `antigo.aneel.gov.br/web/guest/consultas-publicas`.
+ *
+ * So these three are **signposts, not data**. Every ANEEL road to
+ * consultation content ends on a host that refuses this network, and nothing
+ * here is reachable without a different egress. They are kept because they
+ * are still the correct addresses to open in a browser, and because the
+ * distinction they document below is real.
+ *
+ * One thing to know before replaying any consultation URL: they carry
+ * `p_auth=…`, a Liferay CSRF token that is session-bound. The durable
+ * identifier is `ideParticipacaoPublica`, not the URL.
+ *
+ * ANEEL runs three distinct participation instruments and they are not
+ * synonyms, which is why all three are listed:
+ *
+ *  - **Tomada de subsídios** — the earliest, before a draft exists at all;
+ *    ANEEL asks the market what the rules should say.
+ *  - **Consulta pública** — the draft edital itself, with annexes and draft
+ *    contract, open for written contributions. This is the one that carries
+ *    the investment figure and the technical spec.
+ *  - **Audiência pública** — an oral session, usually inside a consulta's
+ *    window rather than instead of it.
+ *
+ * `aneel-auction-stage.ts`'s CONSULTATION pattern already matches the first
+ * two by name; this capture is what confirms they are formally separate
+ * instruments rather than one thing ANEEL words two ways.
+ *
+ * None of these pages has been captured yet — only their addresses are
+ * confirmed. A save of the consultas-publicas index is what would turn
+ * ANEEL_CONSULTAS below from typed to measured.
+ */
+export const ANEEL_PARTICIPATION_URLS = {
+  tomadaDeSubsidios: "https://www.gov.br/aneel/pt-br/acesso-a-informacao/participacao-social/tomada-de-subsidios",
+  consultasPublicas: "https://www.gov.br/aneel/pt-br/acesso-a-informacao/participacao-social/consultas-publicas",
+  audienciasPublicas: "https://www.gov.br/aneel/pt-br/acesso-a-informacao/participacao-social/audiencias-publicas",
+} as const;
+
+/**
  * The consultations open or recently closed as of 2026-09-19.
  *
  * Seeded rather than fetched, for the access reason in the header. Kept small

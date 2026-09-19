@@ -3,6 +3,7 @@ import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { ALL_SCOPE_TYPES } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders } from "@/lib/filter-tenders";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
+import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
 
 export const TENDER_PAGE_SIZE = 20;
 export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "awarded"];
@@ -87,7 +88,6 @@ export type TenderListItem = Pick<
   | "country"
   | "industries"
   | "status"
-  | "estimatedValue"
   | "currency"
   | "submissionDeadline"
   // Carried purely so a list row can be marked as Obras por Impuestos
@@ -95,7 +95,19 @@ export type TenderListItem = Pick<
   // ordinary tender that finding out only after opening the detail page
   // wastes the click.
   | "sourceName"
-> & { publicSlug: string; titleZh: string; buyer?: string };
+> & {
+  publicSlug: string;
+  titleZh: string;
+  buyer?: string;
+  /** The exact budget — members only. Absent for guests; see estimatedValueBand. */
+  estimatedValue?: number;
+  /**
+   * Present instead of `estimatedValue` for a guest or a lapsed free
+   * account: the USD range containing the budget rather than the budget.
+   * Exactly one of the two is ever set — see toTenderListItem.
+   */
+  estimatedValueBand?: string | null;
+};
 
 export type TenderListPageData = {
   tenders: TenderListItem[];
@@ -150,10 +162,26 @@ export type TenderListPageData = {
   upcomingCount: number;
 };
 
+/**
+ * One list row, projected for the audience that will receive it.
+ *
+ * `memberView` is a single flag rather than one per field on purpose: every
+ * difference between what a subscriber and a visitor may see on this list is
+ * decided here, from one boolean derived from one call to
+ * canUseTenderListMemberFeatures(). Two independent options would eventually
+ * be passed inconsistently by some third call site, and the failure mode of
+ * that mistake is silent — a page that looks right while serving protected
+ * values into its own HTML.
+ *
+ * It defaults to false so a new caller redacts by default. The saved-
+ * reminders route was exactly that caller: it had no entitlement check at
+ * all, and defaulting the other way would have kept it leaking.
+ */
 export function toTenderListItem(
   tender: Tender,
-  options: { includeBuyer?: boolean } = {},
+  options: { memberView?: boolean } = {},
 ): TenderListItem {
+  const memberView = options.memberView ?? false;
   const translatedTitle = tender.title.zh.trim();
   const originalTitle = tender.title.es.trim();
 
@@ -164,14 +192,22 @@ export function toTenderListItem(
     // Treat those as untranslated rather than leaking the original title.
     titleZh: translatedTitle && translatedTitle !== originalTitle
       ? translatedTitle
-      : options.includeBuyer ? `${tender.buyer}采购项目` : "政府采购项目",
-    ...(options.includeBuyer ? { buyer: tender.buyer } : {}),
+      : memberView ? `${tender.buyer}采购项目` : "政府采购项目",
+    ...(memberView ? { buyer: tender.buyer } : {}),
     country: tender.country,
     industries: tender.industries,
     status: tender.status,
-    estimatedValue: tender.estimatedValue,
+    // The exact figure for a member, a band for everyone else. An exact
+    // budget is the single most identifying value a tender carries — it
+    // matches one row worldwide — so it never reaches a page that a crawler
+    // or a logged-out visitor can read.
+    ...(memberView
+      ? { estimatedValue: tender.estimatedValue }
+      : { estimatedValueBand: estimatedValueBand(tender.estimatedValue, tender.currency) }),
     currency: tender.currency,
-    submissionDeadline: tender.submissionDeadline,
+    submissionDeadline: memberView
+      ? tender.submissionDeadline
+      : toMonthPrecisionOptional(tender.submissionDeadline),
     sourceName: tender.sourceName,
   };
 }
@@ -194,7 +230,7 @@ function parseList(value: string | null): string[] {
 export function buildTenderListPage(
   allTenders: Tender[],
   params: TenderListSearchParams,
-  options: { now?: Date; pageSize?: number; includeBuyer?: boolean; searchPublicFieldsOnly?: boolean } = {},
+  options: { now?: Date; pageSize?: number; memberView?: boolean; searchPublicFieldsOnly?: boolean } = {},
 ): TenderListPageData {
   const now = options.now ?? new Date();
   const pageSize = options.pageSize ?? TENDER_PAGE_SIZE;
@@ -256,7 +292,7 @@ export function buildTenderListPage(
   return {
     tenders: sorted
       .slice(offset, offset + pageSize)
-      .map((tender) => toTenderListItem(tender, { includeBuyer: options.includeBuyer })),
+      .map((tender) => toTenderListItem(tender, { memberView: options.memberView })),
     totalResults: sorted.length,
     totalPages,
     currentPage,

@@ -7,6 +7,8 @@ const DATE_LOCALES: Record<Locale, string> = {
   zh: "zh-CN",
 };
 
+const YEAR_MONTH_ONLY = /^\d{4}-\d{2}$/;
+
 /**
  * Every date this platform stores is a calendar day with no meaningful
  * time-of-day (parseDate() in the mappers stores UTC midnight for a
@@ -21,12 +23,19 @@ const DATE_LOCALES: Record<Locale, string> = {
  * dates were all off by exactly one day from the official portal.
  */
 export function formatDate(isoDate: string, locale: Locale): string {
-  const date = new Date(isoDate);
+  // A guest-facing date arrives already truncated to "YYYY-MM" by
+  // toMonthPrecision() (lib/public-redaction.ts). Detecting that here, rather
+  // than threading a precision flag down to every caller, is what makes the
+  // redaction impossible to render wrongly: there is no call site that can
+  // forget the flag and print "2026年9月1日" for a tender whose real day was
+  // the 18th — inventing a day we deliberately removed, and a wrong one.
+  const monthOnly = YEAR_MONTH_ONLY.test(isoDate);
+  const date = new Date(monthOnly ? `${isoDate}-01` : isoDate);
   if (Number.isNaN(date.getTime())) return isoDate;
   return new Intl.DateTimeFormat(DATE_LOCALES[locale], {
     year: "numeric",
     month: "short",
-    day: "numeric",
+    ...(monthOnly ? {} : { day: "numeric" }),
     timeZone: "UTC",
   }).format(date);
 }

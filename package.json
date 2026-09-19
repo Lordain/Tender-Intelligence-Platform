@@ -143,7 +143,8 @@
     "test:bid-window": "tsx scripts/test-bid-window.ts",
     "test:brazil-links": "tsx scripts/test-brazil-links.ts",
     "test:antaq-parser": "tsx scripts/test-antaq-parser.ts",
-    "test:antaq-mapper": "tsx scripts/test-antaq-mapper.ts"
+    "test:antaq-mapper": "tsx scripts/test-antaq-mapper.ts",
+    "test:public-redaction": "tsx scripts/test-public-redaction.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

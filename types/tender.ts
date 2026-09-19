@@ -303,6 +303,28 @@ export type Tender = {
  * unauthenticated or non-entitled detail view. Keep this as an explicit
  * allow-list: adding a field to Tender must never make it public by accident.
  */
+/**
+ * The guest-facing contract. Everything a visitor, a search crawler and an
+ * assistant reading the page on a visitor's behalf are allowed to see —
+ * these are the same audience, because none of them sends a session cookie.
+ *
+ * Three fields that look missing are missing on purpose (2026-09-19). They
+ * are the values precise enough to serve as a search key back to the source
+ * notice, which is how a reader reaches the official portal without ever
+ * subscribing:
+ *
+ * - `estimatedValue` is replaced by `estimatedValueBand`. An exact figure is
+ *   the strongest fingerprint a tender has — stronger than its name, since
+ *   $47,382,915 matches exactly one row on earth.
+ * - `location` is gone entirely, per the user's explicit instruction
+ *   (2026-09-19: 这个无论如何需要隐藏). `country` deliberately stays: it is a
+ *   core SEO keyword and far too coarse to identify anything.
+ * - `publicationDate` and `submissionDeadline` carry "YYYY-MM", not a day.
+ *
+ * Everything the paywall already withheld — the original-language title, the
+ * publishing body, the procedure number, key dates, requirements, risks and
+ * the source URL — was never in this type and must not be added to it.
+ */
 export type PublicTenderDetail = Pick<
   Tender,
   | "country"
@@ -314,12 +336,12 @@ export type PublicTenderDetail = Pick<
   | "publicationDate"
   | "publicationDateIsEstimated"
   | "submissionDeadline"
-  | "estimatedValue"
   | "currency"
-  | "location"
   | "status"
 > & {
   publicSlug: string;
   titleZh: string;
   summaryZh: string;
+  /** A USD range containing the real budget, or null when there is none to show. */
+  estimatedValueBand: string | null;
 };

@@ -4008,6 +4008,61 @@ and it does not need a different network egress. It needs a connector per
 regulator, starting with whichever of P9b/P10b comes back with a document
 list.
 
+#### Run five: the auction system is shut, the consultation area is not
+
+The `%PDF-` fix confirmed run four's reading in the probe's own words:
+
+```
+P12   ★ 这是一个真的 PDF（v1.4，659KB）—— 文件下下来了，不是页面
+P9b   gov.br/antt/…/novos-projetos-em-rodovias   204KB · 19578 字 · 614 链接（命中 21，PDF 4）
+P10b  leilao.antaq.gov.br/default.aspx?audiencia=175   403 Cloudflare（浏览器头无效）
+```
+
+**P10b's failure is the useful result of the round**, because it splits the
+ports question in two and the half that works is the half this project was
+originally asked for.
+
+ANTAQ's index on `gov.br` is open and lists real current auctions, but every
+one of its 88 links points at `leilao.antaq.gov.br`, which is a Cloudflare 403
+— TCP fine at 470ms, browser headers no help. Exactly the shape of
+`leilao.aneel.gov.br`. **The auction system is shut.**
+
+But P12's PDF is not on that host. Look at where it lives:
+
+```
+gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/
+   audiencias-e-consultas-publicas/audiencias/…/minuta-de-edital.pdf
+```
+
+**The consultation area is on gov.br, and it carries the draft edital.** So
+for ANTAQ the split is: final edital unreachable, *minuta* reachable — and the
+minuta is the document the original brief asked for, the one published while a
+technical spec (efficiency floors, standalone operation, local content) can
+still be argued with. P10c now fetches the index that PDF hangs under.
+
+This is the same lifecycle position as ANEEL's consulta pública, with the
+opposite access answer. ANEEL's consultation content sits on
+`antigo.aneel.gov.br` behind Cloudflare; ANTAQ's sits on gov.br and downloads.
+Same stage, same kind of document, different host, and the host is the whole
+difference.
+
+Two more doors, both taken from links the pages themselves printed rather than
+guessed: **rail** (`gov.br/antt/…/ferrovias/novos-projetos-ferroviarios`, 8
+projects in the 2026 calendar and a sector this probe had never looked at) and
+**ANAC's next layer** (`gov.br/anac/…/concessoes/concessoes`, whose landing
+page already carries 10 PDFs — the highest PDF count of any index here).
+
+**Where Brazil's concession sectors stand after five rounds:**
+
+| sector | index | documents |
+|---|---|---|
+| ports (ANTAQ) | **open** on gov.br | minuta **downloads**; final edital on a blocked host |
+| highways (ANTT) | **open**, two layers deep | 4 PDFs on the index; not yet fetched |
+| airports (ANAC) | **open** | 10 PDFs on the index; not yet fetched |
+| rail (ANTT) | untested until P11b | — |
+| PPI portfolio | F5 refusal, with an appeals code | — |
+| DOU | socket closed on both paths | — |
+
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 
 Per explicit user direction ("我感觉当前Kept的项目太多，我想再加大筛选，减少投标项目数量。也不要常规规模项目"), `lib/relevance.ts` was tightened in several ways at once. All of this is live-testable against production data via `npm run reclassify:tenders` (dry run — exports `exports/tenders-kept-<date>.csv`/`tenders-excluded-<date>.csv`; add `--write` to actually update Supabase). Run from the user's own machine — this sandbox can't reach production Supabase.

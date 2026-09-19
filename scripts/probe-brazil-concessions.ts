@@ -932,6 +932,55 @@ async function main() {
   );
   await sleep(1500);
 
+  // Run five split the ports question in two, and the half that works is the
+  // half the user asked for first.
+  //
+  // P10b failed: leilao.antaq.gov.br is a Cloudflare 403, TCP fine, browser
+  // headers no help — the same shape as leilao.aneel.gov.br. So ANTAQ's
+  // AUCTION SYSTEM is shut.
+  //
+  // But P12 downloaded a 659KB minuta de edital, and look where it lives:
+  //   gov.br/antaq/…/participacao-social/audiencias-e-consultas-publicas/audiencias/…
+  // The CONSULTATION area is on gov.br, the open host, and it carries the
+  // draft edital with its annexes. That is the stage this whole project was
+  // asked to track — the window where a technical spec can still be argued
+  // with — and for ANTAQ it is reachable while the final edital is not.
+  //
+  // This step fetches the index that PDF hangs under. If it lists the
+  // audiências, ports are a real source for draft editais without any change
+  // of network egress.
+  await probeHtml(
+    "P10c. ★ ANTAQ 的听证/咨询索引（P12 那份 PDF 就挂在这个目录下）",
+    "P10b 证明 ANTAQ 的拍卖系统（leilao.antaq）被 Cloudflare 挡着，但 P12 下下来的那份 minuta 在 gov.br 的「participacao-social/audiencias-e-consultas-publicas」下面 —— 也就是说：正式 edital 拿不到，标书草案拿得到。这一条取的是那份 PDF 所在的索引页，它要是列出了各场听证，港口这条线就能在不换出口的情况下做「标书草案 + 技术指标核对」",
+    "https://www.gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/audiencias-e-consultas-publicas",
+    /audienc|consulta|minuta|edital|\.pdf/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // Rail, named by P9b's own link list. Eight projects in the 2026 calendar,
+  // and a sector this probe had never looked at separately.
+  await probeHtml(
+    "P11b. ANTT 铁路新项目（P9b 自己列出来的，之前没单独看过铁路）",
+    "P9b 的链接里有这一条 —— 2026 年盘子里铁路是 8 个项目，而之前每一轮都只盯着公路",
+    "https://www.gov.br/antt/pt-br/assuntos/ferrovias/novos-projetos-ferroviarios",
+    /edital|leil|concess|projeto|anexo|ferrovia/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
+  // ANAC's own next layer, taken from P11's printed links rather than guessed.
+  // P11's landing page already carried 10 PDFs, which is the most promising
+  // PDF count of any index in this probe.
+  await probeHtml(
+    "P11c. ANAC 特许的下一层（P11 那页自己给的链接，而且它首页就挂了 10 个 PDF）",
+    "机场是 2026 年场次最多的一块（21 场）。P11 的落地页就有 10 个 PDF，说明 ANAC 习惯把文件直接挂出来 —— 这一条往下钻一层看有没有 edital",
+    "https://www.gov.br/anac/pt-br/assuntos/concessoes/concessoes",
+    /edital|leil|concess|anexo|rodada|aeroporto/i,
+    timeoutMs,
+  );
+  await sleep(1500);
+
   // The DOU again, but at the address the National Press's own reader uses.
   // P8 asks the HTML search UI and gets a socket closed mid-read; this one
   // embeds each section's contents in a <script type="application/json">,

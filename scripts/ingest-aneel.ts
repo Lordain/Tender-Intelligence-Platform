@@ -22,18 +22,19 @@
  * byte-identical copy of the year you were already on — which is exactly what
  * happened on the first attempt at capturing 2025.
  *
- * Usage:
- *   npm run ingest:aneel -- path/to/edital_transmissao.cfm.html             (dry run)
- *   npm run ingest:aneel -- path/to/page.html --write                       (upserts)
- *   npm run ingest:aneel -- path/to/page.html --published 2025-11-11        (real publication date)
- *   npm run ingest:aneel -- path/to/page.html --documents docs.json         (the documentos_editais list)
- *   npm run ingest:aneel -- --consultas                                     (just list the tracked consultations)
+ * Usage — `<saved-page>` is YOUR saved file, not a literal name:
+ *   npm run ingest:aneel -- --consultas                              (no file needed)
+ *   npm run ingest:aneel -- "C:\\Users\\me\\Downloads\\Empreendimentos.html"
+ *   npm run ingest:aneel -- <saved-page> --write                     (upserts)
+ *   npm run ingest:aneel -- <saved-page> --published 2025-11-11      (real publication date)
+ *   npm run ingest:aneel -- <saved-page> --documents docs.json       (the documentos_editais list)
  *
  * `--documents` takes a JSON array of { section, title, url? } read off
  * `documentos_editais.cfm?IdProgramaEdital=<id>`; without it the auction is
  * staged from its consultation alone, which is correct but coarser.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import { readAneelEditalFile } from "../lib/ingestion/connectors/aneel-editais-file";
 import { mapAneelEditalToTenders, ANEEL_SOURCE_NAME } from "../lib/ingestion/aneel-transmissao-mapper";
 import {
@@ -48,9 +49,60 @@ import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
 
-function flagValue(args: string[], name: string): string | undefined {
-  const index = args.indexOf(`--${name}`);
-  return index >= 0 ? args[index + 1] : undefined;
+/** Flags that consume the next argument, so its value is never mistaken for the file path. */
+const VALUE_FLAGS = new Set(["published", "documents"]);
+
+function parseArgs(argv: string[]): { positional: string[]; flags: Map<string, string | true> } {
+  const positional: string[] = [];
+  const flags = new Map<string, string | true>();
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (!arg.startsWith("--")) {
+      positional.push(arg);
+      continue;
+    }
+    const name = arg.slice(2);
+    if (VALUE_FLAGS.has(name)) {
+      flags.set(name, argv[i + 1] ?? "");
+      i += 1;
+    } else {
+      flags.set(name, true);
+    }
+  }
+  return { positional, flags };
+}
+
+function usage(): void {
+  console.error("用法（<保存的页面> 换成你自己保存的文件，不是字面量）：");
+  console.error("  npm run ingest:aneel -- --consultas                          看哪场公众咨询开着");
+  console.error('  npm run ingest:aneel -- "C:\\Users\\你\\Downloads\\Empreendimentos.html"');
+  console.error("  npm run ingest:aneel -- <保存的页面> --write                  写入 Supabase");
+  console.error("  npm run ingest:aneel -- <保存的页面> --published YYYY-MM-DD   用真实发布日期");
+  console.error("  npm run ingest:aneel -- <保存的页面> --documents docs.json    带上文档清单");
+}
+
+/** Where the file comes from, printed whenever one cannot be found. */
+function captureSteps(): void {
+  console.error("");
+  console.error("怎么拿到这个文件：");
+  console.error("  1. 浏览器打开 https://www2.aneel.gov.br/aplicacoes_liferay/editais_transmissao/edital_transmissao.cfm");
+  console.error("  2. 要往年的就先选年份，然后【点 Pesquisar，等页面刷新】—— 只选不点，存下来还是原来那一年");
+  console.error("  3. Ctrl+S 保存为「网页，仅 HTML」");
+  console.error("  4. 把保存下来的文件路径传给本命令（路径有空格就加引号）");
+}
+
+/** Reports a missing or unreadable path in one line instead of an ENOENT stack trace. */
+function requireFile(path: string, what: string): string {
+  const full = resolve(path);
+  if (!existsSync(full)) {
+    console.error(`找不到${what}：${full}`);
+    return "";
+  }
+  if (statSync(full).isDirectory()) {
+    console.error(`${what}是个目录，不是文件：${full}`);
+    return "";
+  }
+  return full;
 }
 
 function printConsultas(now: Date): void {
@@ -73,35 +125,51 @@ function printConsultas(now: Date): void {
 }
 
 async function main() {
-  const args = process.argv.slice(2);
+  const { positional, flags } = parseArgs(process.argv.slice(2));
   const now = new Date();
 
-  if (args.includes("--consultas")) {
+  if (flags.has("consultas")) {
     printConsultas(now);
     return;
   }
 
-  const filePath = args.find((a) => !a.startsWith("--") && /\.html?$/i.test(a));
+  const filePath = positional[0];
   if (!filePath) {
-    console.error("Usage: npm run ingest:aneel -- <saved-edital_transmissao.html> [--write] [--published YYYY-MM-DD] [--documents docs.json]");
-    console.error("       npm run ingest:aneel -- --consultas");
+    console.error("没传文件。");
+    usage();
+    captureSteps();
     process.exit(1);
   }
 
-  const edital = readAneelEditalFile(filePath);
+  const resolvedPath = requireFile(filePath, "保存的页面");
+  if (!resolvedPath) {
+    captureSteps();
+    process.exit(1);
+  }
+
+  const edital = readAneelEditalFile(resolvedPath);
   if (edital.auctionNumber === null || edital.year === null) {
     console.error("读不出场次号/年份 —— 这份文件多半不是 edital_transmissao.cfm 的保存页，或者保存时丢了内容。");
     process.exit(1);
   }
 
-  const documentsPath = flagValue(args, "documents");
-  const documents: AneelDocumentEntry[] = documentsPath
-    ? (JSON.parse(readFileSync(documentsPath, "utf8")) as AneelDocumentEntry[])
-    : [];
+  const documentsFlag = flags.get("documents");
+  const documentsPath = typeof documentsFlag === "string" && documentsFlag.length > 0 ? documentsFlag : undefined;
+  let documents: AneelDocumentEntry[] = [];
+  if (documentsPath) {
+    const resolvedDocuments = requireFile(documentsPath, "文档清单 JSON");
+    if (!resolvedDocuments) process.exit(1);
+    documents = JSON.parse(readFileSync(resolvedDocuments, "utf8")) as AneelDocumentEntry[];
+  }
 
   const consulta = findConsultaForAuction(edital.auctionNumber, edital.year, "transmissao");
   const tenders = mapAneelEditalToTenders(
-    { edital, documents, publicationDate: flagValue(args, "published"), consulta },
+    {
+      edital,
+      documents,
+      publicationDate: typeof flags.get("published") === "string" ? (flags.get("published") as string) : undefined,
+      consulta,
+    },
     now,
   );
 

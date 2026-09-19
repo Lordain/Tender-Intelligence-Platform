@@ -30,6 +30,12 @@ on:
         default: both
         options: [doors, behind, pipeline, capture, both]
 
+# The capture step commits the trimmed sample back to the branch, because an
+# artifact expires and cannot be fetched from the sandbox the parser is
+# written in. Everything else here is read-only.
+permissions:
+  contents: write
+
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -80,3 +86,19 @@ jobs:
           path: exports/
           if-no-files-found: error
           retention-days: 14
+
+      # The artifact above expires in 14 days and lives on a host the sandbox
+      # cannot reach. The trimmed sample is what the parser gets written
+      # against, so it goes into the branch next to the other fixtures.
+      - name: Commit the sample
+        if: inputs.what == 'capture'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/ingestion/__fixtures__/antaq
+          if git diff --cached --quiet; then
+            echo "样本没有变化，不提交。"
+            exit 0
+          fi
+          git commit -m "Capture: ANTAQ hearing pages, run ${{ github.run_id }}"
+          git push origin HEAD:${{ github.ref_name }}

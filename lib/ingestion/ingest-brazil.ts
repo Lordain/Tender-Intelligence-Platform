@@ -45,6 +45,8 @@ export type BrazilIngestResult = {
   withoutAmount: number;
   /** How many of those were a sealed estimate (orcamentoSigiloso) rather than a failed lookup. The first is lawful and permanent; the second is worth retrying. */
   sealedBudget: number;
+  /** Rows that arrived already awarded with the proposal deadline behind them. Dropped: PNCP's `tem_resultado` is a boolean with no winner, amount or date behind it, so the row can neither be bid on nor read as award intelligence. */
+  skippedAwardedClosed: number;
   /** How many amount lookups PNCP refused outright. Distinct from sealedBudget and from "this tender has no items": a refusal is a fact about the network, not about the tender, and re-running fixes it. */
   amountLookupFailed: number;
   /** Set when the amount pass stopped on AMOUNT_FAILURE_STREAK. Every row after the stop has no amount for a reason that has nothing to do with the row. */
@@ -308,7 +310,7 @@ export async function ingestBrazilPncp(
   // lookup is a request against infrastructure that has been unreliable all
   // week, and spending one on a tender that the months filter will drop
   // anyway is the easiest request not to send.
-  const withinWindow = unique.filter((row) => {
+  const recentRows = unique.filter((row) => {
     const published = parsePncpDate(row.data_publicacao_pncp);
     if (!published) return false;
     // windowCutoff, not a second one computed here: this filter and the
@@ -316,7 +318,47 @@ export async function ingestBrazilPncp(
     // page correctly and then filter by months.
     return new Date(published).getTime() >= windowCutoff.getTime();
   });
-  onProgress?.(`发布时间在 ${windowLabel}内的：${withinWindow.length} / ${unique.length} 条`);
+  onProgress?.(`发布时间在 ${windowLabel}内的：${recentRows.length} / ${unique.length} 条`);
+
+  // Rows that arrive ALREADY AWARDED with their proposal deadline behind
+  // them, dropped here (2026-09-19, after the user found three of them in
+  // 项目管理 — 已中标, 常规项目, no value, and 交标 dates of 2025-10-02,
+  // 2026-03-18 and 2026-08-26 against a publication date of 2026-09-18).
+  //
+  // How they got in. upsertTendersBatched refuses to write any tender whose
+  // deadline has passed, from any source — except that isPastSubmissionDeadline
+  // exempts `status === "awarded"`, so award intelligence survives the gate.
+  // That exemption is right, and it is not what happened here.
+  //
+  // For Brazil the exemption admits rows carrying NO award intelligence at
+  // all. `tem_resultado` is a boolean: it says a result exists and not one
+  // fact about it. This mapper reads no winner, no awarded amount, no award
+  // date — there is nowhere in the search row to read them from. So the row
+  // reaches a reader as "已中标, no value, deadline last October": it cannot
+  // be bid on, and it says nothing about who won or for how much. Neither
+  // audience this platform has is served by it.
+  //
+  // Deliberately narrow. A result published while the proposal window is
+  // still open is kept (unusual, but it is real and a reader can still act).
+  // A row with no parseable deadline is kept, because "we cannot tell" is not
+  // "it is stale". And this is a Brazil-local rule, not a change to
+  // isPastSubmissionDeadline: Ecopetrol, CompraNet and the Compras MX
+  // contract feeds exist precisely to carry award results, and widening the
+  // platform gate on the strength of one source's shape is how a fix for one
+  // connector silently empties three others.
+  const nowMs = Date.now();
+  const staleAwarded = recentRows.filter((row) => {
+    if (row.tem_resultado !== true) return false;
+    const deadline = parsePncpDate(row.data_fim_vigencia);
+    return deadline !== null && deadline !== undefined && new Date(deadline).getTime() < nowMs;
+  });
+  const withinWindow = recentRows.filter((row) => !staleAwarded.includes(row));
+  if (staleAwarded.length > 0) {
+    onProgress?.(
+      `跳过 ${staleAwarded.length} 条「已中标且投标截止日期已过」的记录 —— ` +
+        "PNCP 只给了一个「有结果」的布尔值，没有中标方、没有中标金额，投标投不了、情报也读不到",
+    );
+  }
 
   // Amounts are one request per tender and the slowest part of the run by a
   // wide margin — 804 of them at the old one-at-a-time 1,200ms pace is 16
@@ -507,6 +549,7 @@ export async function ingestBrazilPncp(
       .sort((a, b) => b.count - a.count),
     withoutAmount,
     sealedBudget,
+    skippedAwardedClosed: staleAwarded.length,
     amountLookupFailed,
     amountsStoppedEarly,
     amountFailureReasons: [...amountFailureReasons],

@@ -170,6 +170,9 @@ async function main() {
   // was read as a fact about Brazilian procurement. It was a fact about the
   // network: PNCP refused every one of the 78 lookups. A count that cannot
   // distinguish those two is worse than no count.
+  if (result.skippedAwardedClosed > 0) {
+    console.log(`  跳过 ${result.skippedAwardedClosed} 条已中标且早就截止的记录（PNCP 只给布尔值，没有中标方和金额）。`);
+  }
   if (result.amountLookupFailed > 0) {
     console.log(`  ⚠ 其中 ${result.amountLookupFailed} 条是 PNCP 拒绝了取金额的请求 —— 这些项目不是没有预算，是我们没问到。`);
     if (result.amountsStoppedEarly) {

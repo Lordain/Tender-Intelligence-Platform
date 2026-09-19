@@ -6869,3 +6869,69 @@ run whose amount data was 100% missing would be fitting rules to a network
 failure. Re-run first — the upsert is keyed by slug, so the same command over
 the same window backfills those 60 rows — then decide from the real
 distribution.
+
+## 已中标, no value, 交标 last October (2026-09-19)
+
+Three Brazilian rows in 项目管理, all published 2026-09-18:
+
+    A Contratada obriga-se a prestar Serviços …   已中标  常规项目  —  交标 2025-10-02
+    CONTRATAÇÃO DE EMPRESA ESPECIALIZAD…          已中标  常规项目  —  交标 2026-03-18
+    Execução de obra de melhorias, adequaçõe…     已中标  常规项目  —  交标 2026-08-26
+
+A deadline eleven months before the publication date, and no value in the
+column either way.
+
+### How they got past the gate
+
+`upsertTendersBatched` refuses to write any tender whose deadline has passed,
+from any source, by any path — the standing rule the user set in so many words
+(「请一定要保障现在应用的筛选规则，在我们导入新项目时，一样适用」). But
+`isPastSubmissionDeadline` opens with:
+
+    if (tender.status === "awarded") return false;
+
+which is correct and deliberate: an award result necessarily arrives after the
+deadline, and award intelligence is worth keeping. `purge:closed-tenders` says
+the same thing in its header.
+
+**The exemption assumes the awarded row carries the result.** Brazil's does
+not. `inferStatus` reads `row.tem_resultado === true` and returns `"awarded"`,
+and that is the entire transaction: `tem_resultado` is a boolean. No winner,
+no awarded amount, no award date, and nothing in the PNCP search row to read
+them from — grep the mapper for `awardedValue` and there is no match.
+
+So the exemption admitted rows that are, by construction, empty of the exact
+thing the exemption exists to preserve. The reader gets a tender they cannot
+bid on and cannot learn anything from. Both audiences, missed, by one row.
+
+### What changed
+
+`ingest-brazil.ts` drops rows that arrive already awarded with the proposal
+deadline behind them, counted and reported. Narrow on purpose:
+
+- a result published while the window is still open is KEPT — unusual, real,
+  and still actionable;
+- a row with no parseable deadline is KEPT, because "cannot tell" is not
+  "stale";
+- `isPastSubmissionDeadline` itself is UNCHANGED. Ecopetrol, CompraNet and the
+  Compras MX contract feeds exist to carry award results, and widening the
+  platform gate on the strength of one source's shape is how a fix for one
+  connector silently empties three others.
+
+`npm run purge:awarded-closed` is the one-off cleanup for rows written before
+this. Its test is "awarded, deadline passed, **and no award payload**" — a row
+with `awarded_value` or `awarded_to` is kept whatever its deadline, because
+that is the case the exemption is for and it is working. Dry run by default,
+CSV first, `--write` to delete.
+
+### Brazil joined the nightly matrix
+
+Separately, and for the other half of the same day: PNCP refused the user's
+laptop twice. First every amount lookup in a 78-row run; then page 1 of both
+modalities, on a connection reset, before a single row was read — 0 fetched,
+0 written.
+
+`daily-ingest.yml` now runs `ingest:brazil-live` alongside Colombia, PEMEX and
+LicitIA. The runner is a third egress, untested against PNCP, and that is the
+point of finding out from a job with a log and a re-run button rather than
+from a terminal someone is watching. Peru still has no scheduled import.

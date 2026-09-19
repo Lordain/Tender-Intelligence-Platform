@@ -44,9 +44,8 @@
 # :17 rather than :00 because GitHub's scheduler is best-effort and the top of
 # the hour is the most contended minute there is.
 #
-# NOT fixed by this: Peru has no scheduled import at all. cron:colombia and
-# cron:pemex are the only cron entrypoints that exist, so every Peru row is
-# still imported by hand.
+# NOT fixed by this: Peru has no scheduled import at all, so every Peru row is
+# still imported by hand. Brazil joined the matrix on 2026-09-19.
 name: Daily ingest
 
 on:
@@ -80,6 +79,18 @@ jobs:
             command: cron:pemex
           - name: LicitIA (Compras MX)
             command: licitia:daily
+          # Added 2026-09-19. Brazil had no scheduled import and was run by
+          # hand from the user's laptop, which PNCP has now refused twice in
+          # one day — a 78-row run where every amount lookup was rejected, and
+          # then a run where page 1 of both modalities died on a connection
+          # reset before a single row was read. The deployment reaches PNCP
+          # from a different egress; this runner is a third one, and the point
+          # of putting the job here is that a refused night is visible in a log
+          # with a re-run button instead of being a terminal the user is
+          # watching. The script's default window is 3 days, which also covers
+          # a night that fails outright.
+          - name: Brazil (PNCP)
+            command: ingest:brazil-live
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v7

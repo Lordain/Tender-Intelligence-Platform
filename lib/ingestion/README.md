@@ -6935,3 +6935,99 @@ modalities, on a connection reset, before a single row was read — 0 fetched,
 LicitIA. The runner is a third egress, untested against PNCP, and that is the
 point of finding out from a job with a log and a re-run button rather than
 from a terminal someone is watching. Peru still has no scheduled import.
+
+## 小型工程 (2026-09-19)
+
+The user reviewed a day of real rows across four countries and named a class
+the rules had no concept of:
+
+> 我感觉所有国家都很多小学校(幼儿园、小型小学、乡村学校、社区学校、托儿所、
+> 学前教育)、小体育场、小广场、社区广场、社区体育场、社区道路、小型道路、
+> 社区医院、农村医院的标了，这些中国公司(即使已经在本地有实体了)一般不会参加…
+> 特别是没有预算金额的，根本辨识不了
+
+Measured before writing anything, against the 33 titles they listed:
+
+    before   6 excluded, 27 kept   (Brazil: 0 of 23)
+    after   33 excluded,  0 kept
+
+### Why Brazil was 0 for 23
+
+`classifyPortugueseExclusion()` checks `PT_REAL_WORKS_SIGNAL` and returns
+"keep" the moment it sees `obra`, `construção`, `pavimentação` or
+`engenharia`. That guard is right and was written on purpose: a rule broader
+than its own name loses a real R$50M highway permanently and silently.
+
+But a creche IS construction. A village football pitch IS a work. The guard
+was doing its job on every one of these rows. So the verdict had to be taken
+BEFORE the guard, on **what is being built** rather than on whether something
+is — which is `classifyPortugueseSmallWorks()`, a new function rather than
+another entry in a list the guard already protects.
+
+The classes, each from a title in the review: daycare under all of Brazil's
+names for it (creche, CMEI, CEMEI, EMEI, pré-escola, educação infantil),
+village schools (the qualifier carries the size claim — bare `escola` is NOT
+matched, because a federal institute is a real contract), neighbourhood health
+(UBS, posto de saúde, ESF — `hospital` is NOT matched), community sport and
+squares, street and rural paving, pavement upkeep, slope retaining walls,
+rural water schemes.
+
+### 街道路面不做，只做公路
+
+Street surfacing needs all three of a paving verb, a street-or-village marker,
+and the ABSENCE of a highway marker. Any two is not enough: `pavimentação`
+alone is half the Brazilian corpus, and a named street appears in genuine
+works as the site address.
+
+One bug worth keeping in the record. The first highway marker was
+`\b[a-z]{2}[\s-]\d{3}\b`, which matched **"de 114"** inside "com extensão de
+114,00 metros" — so a 114-metre residential street rescued itself by stating
+its own length. Brazilian highway designations always carry the hyphen
+(BR-101, MG-050, SP-270), so requiring it costs nothing and closes the hole.
+
+### The value exception
+
+None of this fires at or above `LARGE_WORKS_BUILD_USD`, using the same helper
+and threshold the municipal-amenity and water-network classes use. A row with
+NO amount has no exception to claim, which is the user's own point about them:
+an unpriced village school is exactly the row that cannot be told apart from
+anything else, and a classifier that keeps it is guessing in its own favour
+rather than the reader's.
+
+### Three Spanish gaps the same review exposed
+
+- **Plant hire** reached FLAGSHIP. "ALQUILER DE EXCAVADORA … PARA LA OBRA:
+  … REPRESA SAPANCCOTA" is an excavator hired by the hour onto someone else's
+  contract, and the dam that promoted it is the dam it is being hired TO.
+  Reading the project as scope is reading the wrong noun in the sentence.
+- **`PERU_MARGINAL_INVESTMENT` never matched anything.** The pattern was
+  `/\bioa[ar]r\b/`, which demands FIVE characters — i, o, a, one of [a|r], r —
+  and Peru prints the four-letter IOAR. A rule written to catch marginal
+  investments had been structurally unable to fire since it was added. Both
+  spellings are in the wild, so the middle letter is optional now.
+- **A single pole-mounted transformer.** Narrowed on the phase qualifier,
+  because electrical equipment is a priority industry here and the narrowing
+  is the whole rule.
+
+### The fibre cap
+
+Per the user: 光纤项目除非有距离> 10000公里，不然都列常规项目. A cap, not an
+exclusion — the rows stay readable. Distance-only and deliberately
+value-blind, as asked. Almost every fibre tender in this feed is therefore
+capped, which is the intended effect.
+
+`12.000 KM` is twelve THOUSAND kilometres in Portuguese and Spanish. The first
+parser read it as twelve and demoted a submarine cable to a campus job on a
+full stop. A separator is only decimal when what follows it is not a
+three-digit group.
+
+### Two existing tests had to change, and why that is not the usual reason
+
+`test-relevance-pt.ts` pinned two over-breadth cases — "a covered court is a
+building" and "Obras comuns plus a real object is kept" — and both had picked
+an **Escola Municipal** as their innocent example. The site was incidental to
+what each case was pinning, and it is now an exclusion class in its own right.
+So the site changed and the assertion did not, and the school version is
+asserted separately as an exclusion.
+
+Totals: 330/330 Spanish fixtures, all Portuguese cases, 33/33 of the review.

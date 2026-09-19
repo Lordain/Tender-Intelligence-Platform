@@ -2501,4 +2501,36 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "The over-breadth control for the row above, and for the Portuguese O&M rule added the same day. A DBO road concession is the largest thing either country tenders and squarely what this platform exists to surface — the build scope has to keep it in, whatever upkeep words sit beside it. isConcessionWithBuildScope() is what does that; this pins it.",
     country: "Colombia", scopeType: "works", governmentLevel: "federal", estimatedValue: 400_000_000, currency: "USD",
   },
+  // --- 小型工程 and the rules it needed (2026-09-19) ---
+  // All four titles are verbatim from the user's own review of a real day.
+  {
+    title: "CONTRATACION DEL SERVICIO DE ALQUILER DE EXCAVADORA SOBRE ORUGA, SEG\u00daN TERMINOS DE REFERENCIA PARA LA OBRA: \"AMPLIACION DEL SERVICIO DE AGUA PARA RIEGO MEDIANTE LA CONSTRUCCION DE LA REPRESA SAPANCCOTA DEL DISTRITO DE PUCARA - PROVINCIA DE LAMPA - DEPARTAMENTO DE PUNO\", CORRESPONDIENTE A LA META: 00",
+    expectedTier: "excluded",
+    note: "Came out FLAGSHIP \u2014 the top tier \u2014 before EQUIPMENT_RENTAL_KEYWORDS, because the title names a dam. It is an excavator hired by the hour onto someone else's contract (user, 2026-09-19: \u79df\u8d41). These titles are always written as ALQUILER DE <machine> PARA LA OBRA <the entity's real project>, so reading the project as scope is reading the wrong noun in the sentence. Checked above hasIncludeOverride, which is where it reached from.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "EJECUCI\u00d3N DE OBRA IOAR: RENOVACION DE PUENTE; EN EL(LA) PUENTE RUMICHACA EN EL CENTRO POBLADO QUEROBAMBA, DISTRITO DE QUEROBAMBA, PROVINCIA SUCRE, DEPARTAMENTO AYACUCHO",
+    expectedTier: "excluded",
+    note: "Reached \u4e2d\u578b\u9879\u76ee on the word `puente`. PERU_MARGINAL_INVESTMENT was meant to catch exactly this and could not: the pattern was /\\bioa[ar]r\\b/, which demands FIVE characters \u2014 i, o, a, one of [a|r], r \u2014 and Peru prints the four-letter IOAR. The middle letter is optional now, so both IOAR and IOARR match.",
+    country: "Peru", scopeType: "works", governmentLevel: "municipal",
+  },
+  {
+    title: "CONTRATACION DE TRANSFORMADOR DE DISTRIBUCION MONOFASICO (META: 006)",
+    expectedTier: "excluded",
+    note: "One pole-mounted unit (user: \u5c0f\u578b\u53d8\u538b\u5668). The phase qualifier is required by SMALL_TRANSFORMER_PATTERN and is the whole rule \u2014 electrical equipment is a priority industry here, so a substation transformer, a power transformer or a distribution-programme batch purchase names none of these and is untouched.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
+  },
+  {
+    title: "MEJORAMIENTO DE LA RED DE FIBRA OPTICA DE 40 KM EN LA REGION LORETO",
+    expectedTier: "standard",
+    note: "The fibre cap (user, 2026-09-19: \u5149\u7ea4\u9879\u76ee\u9664\u975e\u6709\u8ddd\u79bb> 10000\u516c\u91cc\uff0c\u4e0d\u7136\u90fd\u5217\u5e38\u89c4\u9879\u76ee). $20M would otherwise put this in \u5927\u578b\u9879\u76ee on value alone; at 40 km it is a regional ring. The cap is distance-only and deliberately ignores value, which is what was asked for.",
+    country: "Peru", scopeType: "works", governmentLevel: "state", estimatedValue: 20_000_000, currency: "USD",
+  },
+  {
+    title: "INSTALACION DE CABLE SUBMARINO DE FIBRA OPTICA DE 12.000 KM",
+    expectedTier: "flagship",
+    note: "The over-breadth control for the fibre cap, and for the number parser inside it. `12.000` is twelve THOUSAND in Spanish and Portuguese; the first version of parseDistanceNumber() read it as twelve and demoted a submarine cable to a campus job on a full stop.",
+    country: "Peru", scopeType: "works", governmentLevel: "federal", estimatedValue: 400_000_000, currency: "USD",
+  },
 ];

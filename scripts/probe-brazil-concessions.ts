@@ -605,6 +605,12 @@ async function main() {
   const hosts = [
     "www.ppi.gov.br",
     "dados.gov.br",
+    // Added 2026-09-19. Every earlier round knocked on ppi.gov.br (F5 block)
+    // and dados.gov.br (401, needs a CPF) and concluded the portfolio is not
+    // reachable. Both are true and both were the wrong hosts: the PPI
+    // portfolio is also published by the PRESIDENCY's own CKAN install, a
+    // third hostname nobody had tried.
+    "dadosabertos.presidencia.gov.br",
     "dados.antt.gov.br",
     "portal.antaq.gov.br",
     "www.in.gov.br",
@@ -712,6 +718,35 @@ async function main() {
     collected,
     DADOS_GOV_HEADERS,
     DADOS_GOV_FALLBACK_HEADERS,
+  );
+
+  // Added 2026-09-19, after four rounds that all asked the wrong two hosts.
+  // ppi.gov.br is an F5 block page and dados.gov.br wants a CPF — both real,
+  // both dead ends, and both led to "the PPI portfolio is not scrapeable",
+  // which a web search then contradicted with a third hostname: the
+  // Presidency runs its OWN CKAN install, and the PPI portfolio is a dataset
+  // on it. Two dataset slugs are already known, so this step does not have to
+  // discover them; what it has to establish is whether this host answers at
+  // all without a credential, and whether the resources are datastore-backed
+  // (typed columns, one query) or a bare XLSX (download and guess).
+  //
+  //   dadosabertos.presidencia.gov.br/dataset/ppi-projetos-qualificados
+  //   dadosabertos.presidencia.gov.br/dataset/ppi-projetos-concluidos
+  //   resource bfe11dee-119e-4790-a980-3fde61035b96  （projetos qualificados）
+  //
+  // Caveat worth carrying into the run: the dataset's own description says
+  // the Casa Civil stopped overseeing SPPI data after Decreto 10.366/2020, so
+  // `metadata_modified` is the first thing to read. A portfolio that stopped
+  // updating in 2021 is a history file, not a feed — and it would still be
+  // useful for the award side, just not for the opportunity side.
+  await probeCkan(
+    "P5b. dadosabertos.presidencia.gov.br（总统府自己的开放数据门户）",
+    "前四轮敲的是 ppi.gov.br（F5 挡）和 dados.gov.br（要 CPF），结论是「抓不到」—— 但 PPI 的项目库同时发在总统府自己的 CKAN 上，这是第三个域名，一直没试过。它要不要凭证、资源是不是 datastore（有列名）还是裸 XLSX（得下载猜），这一条就能定",
+    "https://dadosabertos.presidencia.gov.br",
+    ["PPI", "parcerias investimentos", "projetos qualificados"],
+    timeoutMs,
+    rows,
+    collected,
   );
 
   console.log("─".repeat(72));

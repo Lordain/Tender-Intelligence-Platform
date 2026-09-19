@@ -3628,7 +3628,8 @@ is the same data by another road.
 | CCEE open data | opens with browser headers | 403 honest UA | CKAN, confirmed; the UA question is live and unresolved |
 | ANTT | F5 block page (200) | F5 block page (200) | closed |
 | ANTAQ | Cloudflare 403 | Cloudflare 403 | closed |
-| PPI (all paths) | F5 "Your support ID is" | ECONNRESET | closed; the portfolio is not scrapeable |
+| PPI (ppi.gov.br) | F5 "Your support ID is" | ECONNRESET | closed — and it was the wrong host; see 2026-09-19 below |
+| `dadosabertos.presidencia.gov.br` | untested | untested | the PPI portfolio is a CKAN dataset here — untried until 2026-09-19 |
 | dados.gov.br | 401 Bearer | 401 | closed — needs a CPF |
 
 So the shape of the work changed. The transmission-results connector is no
@@ -3735,6 +3736,75 @@ in `{ success, result }` and a failed call can still arrive as HTTP 200 with
 `success: false`; and `package_search` returns `{ count, results }` while
 `datastore_search` returns `{ total, fields, records }` — different envelopes
 from the same API.
+
+#### PPI: I closed it on two hosts, and there is a third (2026-09-19)
+
+Four probe rounds put PPI in the table as **closed**, and the evidence for
+that was real: `ppi.gov.br` serves an F5 `Request Rejected` page (HTTP 200,
+"Your support ID is…") from one machine and ECONNRESETs from the other; a
+browser User-Agent gets 16KB with 266 characters of text and zero links — the
+*same body for all four URLs including `sitemap.xml`* — so the portfolio is
+genuinely not in the HTML; and `dados.gov.br` answers 401 with
+`www-authenticate: Bearer` and issues keys only against a CPF.
+
+All of that still holds. **It was also the wrong question**, because both
+rounds knocked on the same two hostnames, and the PPI portfolio is published
+on a third:
+
+```
+dadosabertos.presidencia.gov.br/dataset/ppi-projetos-qualificados
+dadosabertos.presidencia.gov.br/dataset/ppi-projetos-concluidos
+resource  bfe11dee-119e-4790-a980-3fde61035b96   （projetos qualificados）
+mirrored  dados.gov.br/dataset/ppi-projetos-qualificados
+```
+
+The Presidency runs its own CKAN install. The dataset's own description says
+it holds every project qualified into the PPI since May 2016 with **winning
+company, investment value, sector, modality, and auction/bidding dates** —
+which is most of the `Tender` shape, and includes the one field ANEEL never
+publishes per lot.
+
+**Not verified, and the probe exists to verify it** (`P5b` in
+`scripts/probe-brazil-concessions.ts`, plus the host in the TCP pass). Three
+things decide whether this is a connector or a dead end, in this order:
+
+1. **Does it answer without a credential?** It is a different CKAN install
+   from `dados.gov.br`, so its 401 does not transfer — but neither does its
+   absence. `status_show` settles it in one request.
+2. **Is `metadata_modified` recent?** The dataset page itself notes that the
+   Casa Civil stopped overseeing SPPI data after Decreto 10.366/2020. If the
+   file stopped updating in 2021 this is a **history table**, not a feed: good
+   for the award side (which Chinese firms won what), useless for the
+   opportunity side, which is what the user actually asked for.
+3. **Is the resource datastore-backed or a bare XLSX?** `datastore_active`
+   decides whether the column contract is one query away or a download-and-
+   guess job. The probe reads it either way; only the first is worth a mapper
+   written blind.
+
+**What PPI would add that PNCP and ANEEL do not.** PPI is the pipeline for
+federal concessions — highways, ports, airports, railways — and those do not
+appear on PNCP at all (a concession is not a `contratação` under Lei
+14.133/2021) and are outside ANEEL's remit entirely. Press reporting for the
+2026 calendar puts **~100 federal assets at ~R$247bn**: 13 highway auctions,
+19 port terminal leases, 21 airport auctions (20 of them regional), 8 rail
+projects, 5 energy. That is the largest single block of Brazilian
+opportunity this platform currently cannot see.
+
+**What it would not add**: the edital. PPI publishes the portfolio; the bid
+documents come from the sector regulator — ANTT (highways, rail), ANTAQ
+(ports), ANAC (airports) — and of those three, ANTT is an F5 block page and
+ANTAQ is a Cloudflare 403 from both machines tried. So even a working PPI
+connector lands in the same posture as ANEEL: **early warning with dates and
+investment figures, no attachments, no document analysis.** Worth saying
+before building it, because it is the same limitation the user already
+pushed back on for ANEEL.
+
+**The SOURCE lead is real but not a shortcut.** PPI has publicly joined
+SOURCE (the Sustainable Infrastructure Foundation's platform, backed by the
+World Bank, IDB, ADB, EIB and EBRD, with AFD funding) to host its pipeline —
+a non-Brazilian host holding the same data, which would make the WAF question
+moot. The announced migration runs **15 months**, so it is a 2027 door, not a
+2026 one.
 
 ## Tightening pass (2026-09-02) — fewer, larger kept tenders
 

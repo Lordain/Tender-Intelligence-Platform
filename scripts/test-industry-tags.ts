@@ -31,6 +31,42 @@ type Case = {
 };
 
 const cases: Case[] = [
+  // --- Brazil's river-named states (2026-09-18) ---------------------------
+  // Three of the 27 states are named after a river, and the water pattern's
+  // `\br[íi]o\b` matches the word inside the state name — so every tender in
+  // them carried a water tag whatever it bought. Found on the real ANEEL
+  // transmission auction: lot 1 (Rio de Janeiro) and lot 3 (Rio Grande do
+  // Norte) came out ["power","water"] while identical lots elsewhere came out
+  // ["power"]. Never an ANEEL problem — the PNCP feed is full of rows there.
+  {
+    title: "LOTE 1, composto pelas seguintes instalações nos Estados do Rio de Janeiro, São Paulo e Minas Gerais: SE 500/138 kV Nova Extrema",
+    expect: ["power"],
+    note: "Real, from the captured Leilão 001/2026 page. The州名 must not become a water signal.",
+  },
+  {
+    title: "LOTE 3, instalações nos Estados do Rio Grande do Norte e Ceará: SE 500 kV Ceará Mirim II - Compensação Síncrona",
+    expect: ["power"],
+    note: "Same auction, second measured case.",
+  },
+  {
+    // Spanish vocabulary on purpose: classifyIndustries() is the Spanish pass,
+    // and the Portuguese one is merged in only by classifyStoredTender(). A
+    // fully Portuguese title returns ["general"] here by design, which would
+    // have made this case prove nothing about the strip.
+    title: "Pavimentación de vías urbanas en Rio Grande do Sul",
+    expect: ["construction", "transportation"],
+    note: "Rio Grande do Sul was not separately measured — same phrase, same construction, Brazil's fifth-largest state. Waiting for it would be waiting for a bug already proven twice on the other two.",
+  },
+  {
+    title: "Construcción de planta de tratamiento de aguas residuales en Rio de Janeiro",
+    expect: ["water"],
+    note: "The strip removes the state name, not the tender: a real water project in Rio keeps its tag.",
+  },
+  {
+    title: "Recuperação das margens do rio Tietê",
+    expect: ["water"],
+    note: "And a real river anywhere else still counts as water.",
+  },
   // --- roads and bridges are transport, not only civil works --------------
   {
     title: "MEJORAMIENTO DE LA CARRETERA DEPARTAMENTAL PE-3S, TRAMO KM 12+000 AL KM 38+500",
@@ -158,3 +194,4 @@ for (const c of cases) {
 }
 console.log(`\n${cases.length - failures}/${cases.length} checks passed.`);
 if (failures > 0) process.exit(1);
+

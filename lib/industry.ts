@@ -446,6 +446,25 @@ export function stripKnownFalsePositivePlaceNames(text: string): string {
     /puente piedra\b/gi,
     "",
   ).replace(
+    // Brazil (2026-09-18). Three of the 27 states are named after a river,
+    // and `\br[íi]o\b` in the water pattern matches the word inside the state
+    // name — so EVERY tender in them carried a water tag, whatever it bought.
+    // Measured on the real ANEEL transmission auction: lot 1 (Rio de Janeiro)
+    // and lot 3 (Rio Grande do Norte) both came out ["power","water"] while
+    // the identical lots elsewhere came out ["power"]. This is not an ANEEL
+    // problem — it is every Brazilian row in those states, and the PNCP feed
+    // is full of them.
+    //
+    // Rio Grande do Sul is included without its own measured case: it is the
+    // same phrase, the same construction, and Brazil's fifth-largest state,
+    // so waiting for it to be observed would be waiting for a bug already
+    // proven twice. Other "Rio ..." place names (Rio Branco, Rio Verde,
+    // Rio Claro) are deliberately NOT here — the file's own rule is to name
+    // what has been seen rather than guess a list, and municipality names
+    // have not produced a false positive yet.
+    /rio de janeiro\b|rio grande do (norte|sul)\b/gi,
+    "",
+  ).replace(
     // "REHABILITACION DE LINEA DE AGUA POTABLE EN CALLE 16 ENTRE CALLE 9 Y
     // GASODUCTO" — Gasoducto is the name of the cross street, and it was
     // matching the oleoducto/gasoducto major-project pattern. Anchored on

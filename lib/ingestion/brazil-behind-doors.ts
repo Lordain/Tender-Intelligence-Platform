@@ -178,6 +178,20 @@ const PAGES: { id: string; what: string; url: string }[] = [
   { id: "E2", what: "ANEEL 拍卖专页（资料中心）", url: "https://www.gov.br/aneel/pt-br/centrais-de-conteudos/relatorios-e-indicadores/leiloes" },
   { id: "B5", what: "ANTAQ 拍卖索引", url: "https://www.gov.br/antaq/pt-br/assuntos/leiloes" },
   { id: "B6", what: "ANAC 机场特许开放数据目录", url: "https://sistemas.anac.gov.br/dadosabertos/AeroportosConcedidos/SETIMA_RODADA/" },
+  // Round one's finding, followed one level down. Every auction on the ANTAQ
+  // index (80 of its 89 useful links) lives on leilao.antaq.gov.br, and all
+  // three ANEEL auction categories live on leilao.aneel.gov.br — both shut.
+  // What survived the scoring, on both agencies, was the same pair of paths:
+  // the public-consultation section and the notices page, BOTH on www.gov.br.
+  // B7 already proved that route carries a real 659KB draft edital. So these
+  // four are not more of the same list — they are the only candidate route
+  // left that is reachable end to end, and a consultation is EARLIER than an
+  // auction, which for a foreign bidder reading Portuguese is the better end
+  // of the funnel anyway.
+  { id: "E4", what: "ANEEL 公开听证（草案 edital 在这一层）", url: "https://www.gov.br/aneel/pt-br/acesso-a-informacao/participacao-social/audiencias-publicas" },
+  { id: "E5", what: "ANEEL 给投标人的公告页", url: "https://www.gov.br/aneel/pt-br/empreendedores/avisos" },
+  { id: "B8", what: "ANTAQ 特许经营项目（不是拍卖索引）", url: "https://www.gov.br/antaq/pt-br/assuntos/projetos-de-concessao" },
+  { id: "B9", what: "ANTAQ 听证与公开征询 —— B7 那份 659KB 标书草案就在这一层", url: "https://www.gov.br/antaq/pt-br/acesso-a-informacao/participacao-social/audiencias-e-consultas-publicas" },
 ];
 
 const ANEEL_CKAN = "https://dadosabertos.aneel.gov.br";
@@ -239,6 +253,44 @@ async function searchCkan(id: string, what: string, base: string, q: string): Pr
   } catch (err) {
     return { id, what, ok: false, note: describeFetchFailure(err).slice(0, 200), lines: [] };
   }
+}
+
+/**
+ * Which ANTT request shapes the F5 appliance in front of it will pass.
+ *
+ * Its verdict decides whether the ANTT portal is a source or a dead end, and
+ * one rejected call is not enough to say. `status_show` passed minutes
+ * earlier from this same runner, so the difference is in the request, not the
+ * route.
+ */
+async function probeAnttRequestShapes(): Promise<CkanReading[]> {
+  const shapes: { id: string; what: string; action: string; params: Record<string, string | number | undefined> }[] = [
+    { id: "P6b", what: "ANTT · package_search，带重音查询词 concessão", action: "package_search", params: { q: "concessão", rows: 5 } },
+    { id: "P6c", what: "ANTT · package_search，纯 ASCII 查询词 rodovia", action: "package_search", params: { q: "rodovia", rows: 5 } },
+    { id: "P6d", what: "ANTT · package_search，不带任何查询词", action: "package_search", params: { rows: 5 } },
+    { id: "P6e", what: "ANTT · package_list，换一个动作", action: "package_list", params: {} },
+  ];
+  const readings: CkanReading[] = [];
+  for (const shape of shapes) {
+    try {
+      const result = await ckanAction<unknown>(ANTT_CKAN, shape.action, shape.params, { timeoutMs: TIMEOUT_MS });
+      if (Array.isArray(result)) {
+        readings.push({ id: shape.id, what: shape.what, ok: true, note: `通了 —— ${result.length} 项`, lines: result.slice(0, 8).map((v) => String(v)) });
+        continue;
+      }
+      const search = result as { count?: number; results?: CkanPackage[] };
+      readings.push({
+        id: shape.id,
+        what: shape.what,
+        ok: true,
+        note: `通了 —— 命中 ${search.count ?? 0} 个数据集`,
+        lines: describePackages(Array.isArray(search.results) ? search.results : []),
+      });
+    } catch (err) {
+      readings.push({ id: shape.id, what: shape.what, ok: false, note: describeFetchFailure(err).slice(0, 150), lines: [] });
+    }
+  }
+  return readings;
 }
 
 function tally(values: string[]): [string, number][] {
@@ -311,8 +363,16 @@ export async function lookBehindDoors(where: string): Promise<string> {
   const ckan: CkanReading[] = [
     await readAneelDatastore(),
     await searchCkan("E1d", "ANEEL 开放数据里还有什么跟拍卖有关的", ANEEL_CKAN, "leilão"),
-    await searchCkan("P6b", "ANTT 开放数据里的特许经营", ANTT_CKAN, "concessão"),
-    await searchCkan("P6c", "ANTT 开放数据里的公路", ANTT_CKAN, "rodovia"),
+    await searchCkan("E1e", "ANEEL 开放数据里的扩建计划（在招之前的那一步）", ANEEL_CKAN, "expansão transmissão"),
+    // Round one turned up a contradiction worth resolving rather than
+    // recording: `status_show` on this host answers "CKAN 2.8.3" while
+    // `package_search` comes back as an F5 "Request Rejected" page — a 200
+    // carrying a block, which lib/ingestion/block-page.ts exists for. The host
+    // is not shut; something about THAT request shape is refused. These three
+    // vary one thing at a time — an accented query, a plain ASCII one, no
+    // query at all, and a different action entirely — because "ANTT is
+    // blocked" and "ANTT rejects a `q` parameter" lead to different work.
+    ...(await probeAnttRequestShapes()),
   ];
 
   const allInteresting = pages.flatMap((p) => p.links.filter(isInteresting));

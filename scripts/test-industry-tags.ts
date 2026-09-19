@@ -174,6 +174,39 @@ const cases: Case[] = [
     reject: ["vehicles"],
     note: "Why the vehicle pattern says automóvil and not a bare auto: in Spanish an `auto` is also a court ruling, and legal-services procurement says so in the title. A filter that answers a car query with a lawsuit is a filter people stop using.",
   },
+
+  // Portuguese, added with the ANTAQ connector (2026-09-19). The first three
+  // are real ANTAQ hearing sub-headings; the rest guard the narrowness the
+  // pattern was written with.
+  {
+    title: "ARRENDAMENTO DA ÁREA ITJ01 LOCALIZADA NO PORTO ORGANIZADO DE ITAJAÍ/SC",
+    expect: ["transportation"],
+  },
+  {
+    title: "CONCESSÃO DO SISTEMA AQUAVIÁRIO INTEGRADO DO SUL E LAGOA MIRIM, DENOMINADO SAIP SUL-MIRIM",
+    expect: ["transportation"],
+  },
+  {
+    title: "CONCESSÃO DO CANAL DE ACESSO DO PORTO ORGANIZADO DE PARANAGUÁ",
+    expect: ["transportation"],
+  },
+  {
+    title: "Dragagem de manutenção do berço de atracação do terminal portuário",
+    expect: ["transportation"],
+  },
+  // Bare "porto" is a city name as often as a port — the same judgement the
+  // Spanish list already records for "puerto".
+  {
+    title: "AQUISIÇÃO DE MOBILIÁRIO PARA A SECRETARIA MUNICIPAL DE PORTO ALEGRE",
+    expect: [],
+    reject: ["transportation"],
+  },
+  // And a bare "terminal" is a bus stop, a computer or a point of sale.
+  {
+    title: "CONTRATAÇÃO DE EMPRESA PARA MANUTENÇÃO DE TERMINAL DE AUTOATENDIMENTO BANCÁRIO",
+    expect: [],
+    reject: ["transportation"],
+  },
 ];
 
 let failures = 0;

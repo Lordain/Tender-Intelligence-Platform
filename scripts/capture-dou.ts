@@ -148,6 +148,57 @@ function topKeys(raw: string): string {
   }
 }
 
+/** How many of each kind the committed sample keeps. */
+const PER_KIND = 2;
+
+/**
+ * A representative slice of a day's edition, not its first N items.
+ *
+ * One weekday of Seção 3 is 2,139 notices and 2.5MB of JSON, which has no
+ * business sitting in the repository — but neither does its first hundred
+ * rows. The edition is ordered by publishing body, so the head of it is all
+ * Prefeitura notices, and a sample made of those would teach a parser that
+ * every notice is municipal and that the federal shapes do not exist.
+ *
+ * So it keeps a couple of each `artType` and a couple from each top-level
+ * organ, and records what it cut. The whole edition stays available as the
+ * run's artifact for anyone who needs to count rather than to parse.
+ */
+function sampled(parsed: unknown, sourceUrl: string): unknown {
+  if (parsed === null || typeof parsed !== "object") return parsed;
+  const doc = parsed as Record<string, unknown>;
+  const array = doc.jsonArray;
+  if (!Array.isArray(array) || array.length <= 300) return parsed;
+
+  const kept: Record<string, unknown>[] = [];
+  const seen = new Set<unknown>();
+  const counts = new Map<string, number>();
+  const take = (item: Record<string, unknown>, bucket: string) => {
+    const used = counts.get(bucket) ?? 0;
+    if (used >= PER_KIND || seen.has(item.urlTitle)) return;
+    counts.set(bucket, used + 1);
+    seen.add(item.urlTitle);
+    kept.push(item);
+  };
+  for (const raw of array as Record<string, unknown>[]) take(raw, `type:${String(raw.artType ?? "?")}`);
+  for (const raw of array as Record<string, unknown>[]) {
+    const hierarchy = raw.hierarchyList;
+    take(raw, `org:${Array.isArray(hierarchy) ? String(hierarchy[0]) : "?"}`);
+  }
+
+  return {
+    ...doc,
+    jsonArray: kept,
+    _sample: {
+      note: `裁过的样本，不是完整的一天。原共 ${array.length} 条，这里留 ${kept.length} 条：每个 artType 取 ${PER_KIND} 条、每个一级机构取 ${PER_KIND} 条。版面是按发布机构排序的，直接取前 N 条会全是市政公告，会把 parser 教错。完整原页见对应 Actions run 的 artifact。`,
+      originalCount: array.length,
+      source: sourceUrl,
+      capturedAt: new Date().toISOString().slice(0, 10),
+      recapture: "Actions → Probe Brazil doors → what=dou",
+    },
+  };
+}
+
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
   await mkdir(FIXTURE_DIR, { recursive: true });
@@ -176,13 +227,10 @@ async function main() {
         lines.push(`    内嵌 JSON ${blobs.length} 块：`);
         for (const [i, blob] of blobs.entries()) {
           lines.push(`      ${i + 1}. ${blob.label}　${Math.round(blob.json.length / 1024)}KB`, `         ${topKeys(blob.json)}`);
-          // Written whole rather than truncated: the column contract is the
-          // point, and a JSON file cut in the middle cannot be parsed by the
-          // test that will read it.
           const name = `${door.keep.replace(/\.html$/, "")}-json-${i + 1}.json`;
           const decoded = blob.json.replace(/&quot;/g, '"').replace(/&amp;/g, "&");
           try {
-            await writeFile(`${FIXTURE_DIR}/${name}`, JSON.stringify(JSON.parse(decoded), null, 2));
+            await writeFile(`${FIXTURE_DIR}/${name}`, JSON.stringify(sampled(JSON.parse(decoded), door.url), null, 2));
             lines.push(`         → ${FIXTURE_DIR}/${name}`);
           } catch {
             await writeFile(`${FIXTURE_DIR}/${name}.txt`, decoded);

@@ -23,6 +23,12 @@ name: Probe Brazil doors
 
 on:
   workflow_dispatch:
+    inputs:
+      what:
+        description: "敲门（能不能连上）还是看门后面（有没有能投的标）"
+        type: choice
+        default: both
+        options: [doors, behind, both]
 
 jobs:
   probe:
@@ -41,4 +47,12 @@ jobs:
       # The label is part of the report. Two reports that do not say which
       # machine produced them are worse than one.
       - name: Knock
+        if: inputs.what == 'doors' || inputs.what == 'both'
         run: npm run probe:brazil-doors -- "GitHub Actions 跑批机"
+
+      # An open page is not an open source. This step reads the links on the
+      # pages that answered and scores them against the hosts this same
+      # runner cannot reach — see lib/ingestion/brazil-behind-doors.ts.
+      - name: Look behind
+        if: inputs.what == 'behind' || inputs.what == 'both'
+        run: npm run probe:brazil-behind-doors -- "GitHub Actions 跑批机"

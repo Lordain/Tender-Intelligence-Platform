@@ -28,7 +28,7 @@ on:
         description: "敲门（能不能连上）还是看门后面（有没有能投的标）"
         type: choice
         default: both
-        options: [doors, behind, pipeline, capture, both]
+        options: [doors, behind, pipeline, capture, dou, both]
 
 # The capture step commits the trimmed sample back to the branch, because an
 # artifact expires and cannot be fetched from the sandbox the parser is
@@ -78,11 +78,19 @@ jobs:
         if: inputs.what == 'capture'
         run: npm run capture:antaq
 
+      # Brazilian law requires every federal tender notice, edital and award
+      # in the DOU, which makes it the one Brazilian source that is complete
+      # by statute rather than by an agency's choice. Same shape this repo
+      # already runs for Mexico's DOF. Door B4 answered from here.
+      - name: Capture the DOU
+        if: inputs.what == 'dou'
+        run: npm run capture:dou -- "GitHub Actions 跑批机"
+
       - name: Upload the capture
-        if: inputs.what == 'capture'
+        if: inputs.what == 'capture' || inputs.what == 'dou'
         uses: actions/upload-artifact@v7
         with:
-          name: antaq-capture-${{ github.run_id }}
+          name: brazil-capture-${{ github.run_id }}
           path: exports/
           if-no-files-found: error
           retention-days: 14
@@ -91,14 +99,14 @@ jobs:
       # cannot reach. The trimmed sample is what the parser gets written
       # against, so it goes into the branch next to the other fixtures.
       - name: Commit the sample
-        if: inputs.what == 'capture'
+        if: inputs.what == 'capture' || inputs.what == 'dou'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/ingestion/__fixtures__/antaq
+          git add lib/ingestion/__fixtures__/antaq lib/ingestion/__fixtures__/dou
           if git diff --cached --quiet; then
             echo "样本没有变化，不提交。"
             exit 0
           fi
-          git commit -m "Capture: ANTAQ hearing pages, run ${{ github.run_id }}"
+          git commit -m "Capture: ${{ inputs.what }}, run ${{ github.run_id }}"
           git push origin HEAD:${{ github.ref_name }}

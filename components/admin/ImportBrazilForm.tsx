@@ -334,6 +334,10 @@ export function ImportBrazilForm() {
             <strong>投标窗口少于 {SHORT_BID_WINDOW_DAYS} 个自然日的</strong>（仅限常规项目 + 没有金额的）——
             读标书、报价、办保函、还要先在平台注册，{SHORT_BID_WINDOW_DAYS} 天以内中资企业进不去。
             中型/大型项目，或者已经披露金额的，不受此规则影响。
+            <br />
+            这一条<strong>也适用于手动补交标日期</strong>（秘鲁那种）：在后台补完日期保存后，
+            如果窗口不足 {SHORT_BID_WINDOW_DAYS} 天，该项目会自动改为「排除」，前台和「待补文件」不再显示，
+            保存时会弹窗告诉你。日期填错了改回来，排除会自动撤销。勾了「相关度手动锁定」的项目不受影响。
           </li>
           <li><strong>被相关度规则排除的</strong> —— 完整清单每次运行都会导出 CSV，可以复核有没有误杀。</li>
         </ul>

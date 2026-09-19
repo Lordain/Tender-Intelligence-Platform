@@ -2,6 +2,7 @@ import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
 import { foldAccents } from "@/lib/text-fold";
+import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
 
 /**
@@ -2582,7 +2583,7 @@ export function isDirectAward(procedureType: string | undefined): boolean {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "municipal_sports_component" | "rural_road" | "small_local_works" | "equipment_rental",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "municipal_sports_component" | "rural_road" | "small_local_works" | "equipment_rental" | "short_bid_window",
   LocalizedText
 > = {
   no_content: {
@@ -2609,6 +2610,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: "该项目的标的是社区/乡镇一级的小型工程——幼儿园、托儿所、村小、社区卫生站、社区球场或小广场、街巷路面、乡村供水等。这类项目通常由本地承包商承建、金额有限，中资企业（即使在当地已设实体）一般不会参与，默认不进入推荐列表（数据仍保留，可用于统计）。注：若该项目披露的预估金额达到大型工程门槛，本规则不适用；公路（rodovia、BR-xxx 等）不受影响。",
     en: "The object here is a community-scale public work — a daycare or village school, a neighbourhood health post, a local pitch or square, street surfacing, a rural water scheme. These are built by local contractors at limited value and are not contracts a Chinese company would enter, even with a local entity. Filtered from the default feed (metadata is kept, not deleted). Does not apply once a disclosed value reaches the large-works threshold, and never applies to numbered highways.",
     es: "El objeto es una obra de escala comunitaria — una guardería o escuela rural, un puesto de salud de barrio, una cancha o plaza local, pavimentación de calles, un sistema de agua rural. Las ejecuta un contratista local por montos limitados y no son contratos a los que entraría una empresa china, incluso con filial local. Filtrada de la vista predeterminada (los metadatos se conservan). No aplica cuando el valor declarado alcanza el umbral de obra mayor, ni a carreteras numeradas.",
+  },
+  short_bid_window: {
+    zh: `该项目从发布到交标不足 ${SHORT_BID_WINDOW_DAYS} 个自然日。读标书、核价、办投标保函，多数平台还要求先完成供应商注册，这个时间窗内中资企业实际上无法参与；加之该项目未披露预估金额、规模也无从判断，默认不进入推荐列表（数据仍保留，可用于统计）。注：中型/大型项目，或已披露金额的项目，不适用本规则。`,
+    en: `Fewer than ${SHORT_BID_WINDOW_DAYS} calendar days separate publication from the bid deadline. Reading the tender documents in Portuguese or Spanish, pricing the work and arranging a bid bond — most of these platforms also require supplier registration first — does not fit in that window for a foreign bidder, and with no estimated value published there is nothing to size the opportunity by either. Filtered from the default feed (metadata is kept, not deleted). Does not apply to 中型/大型 tenders or to any tender with a disclosed value.`,
+    es: `Menos de ${SHORT_BID_WINDOW_DAYS} días naturales separan la convocatoria del cierre de propuestas. Leer las bases, cotizar la obra y gestionar la garantía de seriedad — y en la mayoría de estas plataformas registrarse antes como proveedor — no cabe en ese plazo para un postor extranjero, y sin valor referencial publicado tampoco hay con qué dimensionarla. Filtrada de la vista predeterminada (los metadatos se conservan). No aplica a licitaciones 中型/大型 ni a ninguna con valor declarado.`,
   },
   equipment_rental: {
     zh: "该项目是按工时/台班出租施工机械或运输车辆（挖掘机、自卸车、水车、吊车等），承租方是别人那份工程合同的承包商。标题里出现的大型工程名称是「租给谁用」，不是本标的标的物，默认不进入推荐列表（数据仍保留，可用于统计）。",
@@ -2667,6 +2673,19 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
   },
 };
 
+/**
+ * The stored reason for a row excluded by the bidding-window rule.
+ *
+ * Exported because the same rule has two homes and they must agree.
+ * upsertTendersBatched() applies it at import by simply not writing the row —
+ * nothing is stored, so nothing needs a reason. A MANUAL deadline edit in the
+ * admin is the other case: the row already exists, so it has to be marked, and
+ * the mark is what lib/db/bid-window-gate.ts both writes and later recognises
+ * when a corrected date lets the row back in.
+ */
+export const SHORT_BID_WINDOW_EXCLUSION_REASON: LocalizedText =
+  EXCLUDED_REASON_BY_SIGNAL.short_bid_window;
+
 function reasonFor(
   tier: TenderRelevance["tier"],
   signal:
@@ -2688,6 +2707,7 @@ function reasonFor(
     | "rural_road"
     | "small_local_works"
     | "equipment_rental"
+    | "short_bid_window"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
   valueThresholdUsd: number = MIN_VALUE_USD,

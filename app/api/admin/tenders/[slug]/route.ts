@@ -4,6 +4,8 @@ import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 import { syncKeyDatesForTopLevelFields } from "@/lib/db/key-dates-sync";
+import { decideBidWindow } from "@/lib/db/bid-window-gate";
+import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import type {
   TenderRelevanceTier,
   TenderScopeType,
@@ -131,7 +133,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   const { data: existing, error: fetchError } = await supabase
     .from("tenders")
     .select(`
-      id, title, summary, relevance_tier, manual_field_overrides,
+      id, title, summary, relevance_tier, relevance_reason, manual_field_overrides,
       one_line_summary, tender_number, buyer, country, government_level, industries,
       scope_type, procedure_type, participation_scope, publication_date,
       publication_date_is_estimated, submission_deadline, award_date, awarded_to,
@@ -185,6 +187,36 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     row.relevance_tier = body.relevanceTier;
     row.relevance_label = RELEVANCE_TIER_LABELS[body.relevanceTier!];
     row.relevance_reason = MANUAL_OVERRIDE_REASON;
+  }
+
+  // The bidding-window rule, on the save that CREATES the window. Peru's
+  // deadlines are typed in by hand (SEACE publishes the cronograma only on the
+  // ficha page), so at import those rows have no deadline for
+  // upsertTendersBatched()'s gate to measure — this is the first moment the
+  // window exists. See lib/db/bid-window-gate.ts for both directions and for
+  // the two things it refuses to touch.
+  //
+  // Skipped when the admin changed the tier in this same request: having a
+  // hand-picked tier overwritten by a side effect of the date field in the
+  // same form submission would be indistinguishable from a bug.
+  let bidWindowNote: string | null = null;
+  if (body.relevanceTier === existing.relevance_tier) {
+    const decision = decideBidWindow({
+      currentTier: existing.relevance_tier,
+      currentReason: existing.relevance_reason ?? null,
+      manuallyOverridden: body.relevanceManuallyOverridden === true,
+      estimatedValue: body.estimatedValue ?? null,
+      publicationDate: body.publicationDate,
+      publicationDateIsEstimated: body.publicationDateIsEstimated === true,
+      submissionDeadline: body.submissionDeadline || null,
+    });
+    if (decision) {
+      Object.assign(row, decision.patch);
+      bidWindowNote =
+        decision.action === "exclude"
+          ? `发布到交标不足 ${SHORT_BID_WINDOW_DAYS} 个自然日，已自动改为「排除」，前台和「待补文件」都不再显示。`
+          : `交标日期已满 ${SHORT_BID_WINDOW_DAYS} 个自然日，之前因窗口过短的排除已自动撤销，恢复为常规项目。`;
+    }
   }
 
   // relevance_manually_overridden is a separate, independently-toggleable
@@ -242,7 +274,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
 
   // The public list is cached; drop it so this edit shows up now.
   revalidateTenders();
-  return NextResponse.json({ ok: true });
+  // Returned so the form can say what the save did beyond what was typed. An
+  // automatic tier change the admin is not told about is the kind of thing
+  // that gets reported as a disappearing tender a week later.
+  return NextResponse.json({ ok: true, ...(bidWindowNote ? { bidWindowNote } : {}) });
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ slug: string }> }) {

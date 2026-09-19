@@ -7118,3 +7118,46 @@ for.
 Maintained by hand with one exception: the bidding window renders
 `SHORT_BID_WINDOW_DAYS` directly, because that number is the one most likely
 to be tuned and the one whose drift would be least visible.
+
+### The bidding window has a second home (2026-09-19)
+
+> 这条能不能也应用到我手动补交标日期的项目？比如说秘鲁，都是我手动比的
+
+It had to. `upsertTendersBatched()`'s gate covers every automated source, and
+it cannot cover Peru at all: SEACE publishes the cronograma only on the ficha
+page, so an OECE row arrives with **no deadline**, the gate has nothing to
+measure, and the window only comes into existence when an admin pastes the
+date. `lib/db/bid-window-gate.ts` is that second home, called from both admin
+write paths — the tender edit form and the cronograma paste.
+
+**Both directions, on purpose.** A one-way rule makes a typo permanent: enter
+09-05 for 09-25, the row is excluded, fix the date and it stays excluded with
+nothing to show why. So it also restores — but only a row it excluded itself,
+which it recognises by the reason it wrote. A row excluded for being a routine
+service, or by an admin's own hand, is never touched. Restoring to `standard`
+is exact rather than a guess: the rule only ever fires on `standard`, so that
+is the only tier it can have taken away.
+
+Two things it refuses to touch: `relevance_manually_overridden` (that flag
+already beats the importer and the reclassifier; a date edit is not the place
+to start ignoring it), and a tier the admin is setting in the same save.
+
+**Where the row goes.** `excluded` was already honoured by both surfaces that
+matter — `filterTenders()` drops it from the public feed, and the
+documents-needed query carries `.neq("relevance_tier", "excluded")`. 项目管理
+still shows it, deliberately: that page is the full inventory, and hiding a
+row there would make a mistyped date unrecoverable.
+
+The save says so out loud (an `alert`, because the form redirects and a panel
+would never be read). An automatic tier change nobody is told about gets
+reported as a disappearing tender a week later.
+
+One note on the stored reason. The user described the outcome as 改成日常服务
+类排除, and it is NOT filed under that reason — 日常性服务采购 would be untrue
+here, and this file has already recorded once that the stored reason is what
+an admin reads when deciding whether an exclusion was right. It gets its own
+`short_bid_window` reason naming the window, the registration requirement and
+the missing value.
+
+20/20 cases in `npm run test:bid-window`, 11 for the import gate and 9 for the
+manual one.

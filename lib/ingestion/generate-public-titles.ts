@@ -17,7 +17,24 @@ import type { LocalizedText } from "@/types/tender";
  * translated, and clearing these three columns returns the site to its
  * previous behaviour.
  */
-const BATCH_SIZE = 8;
+/**
+ * Deliberately larger than translate-all-tenders.ts's 8, which is NOT an
+ * oversight to copy.
+ *
+ * That 8 was set after a real run truncated a 25-item batch, because a
+ * translation's output is as long as the source summary and a few
+ * multi-paragraph specs in one batch blow the cap. This pass has the opposite
+ * shape: every field it returns is hard-capped by its own validator (60 / 25
+ * / 100 characters), so twenty rows is about 4k tokens of output no matter
+ * what comes in.
+ *
+ * What the small batch cost was the system prompt, which is ~2,800 tokens and
+ * is re-sent on every call. At 8 a 300-row run spent ~106k tokens restating
+ * the rules and ~17k on the actual rows; at 20 that first number is ~42k. The
+ * per-item retry below still covers the one risk a bigger batch adds — a
+ * model returning fewer items than it was sent.
+ */
+const BATCH_SIZE = 20;
 
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -132,19 +149,41 @@ export type GenerateDisplayTextResult = {
   preview?: DisplayTextPreview[];
 };
 
-async function loadCandidates(supabase: SupabaseClient): Promise<DisplayTextRow[]> {
-  const { data, error } = await supabase
-    .from("tenders")
-    .select("slug, title, summary, title_zh_short, title_zh_public, summary_zh_public, country, manual_field_overrides")
-    // Newest IMPORTED first, not newest published. `limit` exists so a run can
-    // be kept to "the rows that arrived since last time", and publication_date
-    // answers a different question: a tender published in August but imported
-    // yesterday sorts near the bottom by that key and a --limit 100 run would
-    // miss exactly the row that needs this most.
-    .order("created_at", { ascending: false });
+/** Same 1000-row-per-request PostgREST cap every other full-table scan in this codebase pages around (see lib/db/tenders.ts's SUPABASE_PAGE_SIZE comment). */
+const PAGE_SIZE = 1000;
 
-  if (error) throw new Error(`读取待生成公开文案的项目失败：${error.message}`);
-  return ((data ?? []) as DisplayTextRow[]).filter(needsDisplayText);
+async function loadCandidates(supabase: SupabaseClient): Promise<DisplayTextRow[]> {
+  const rows: DisplayTextRow[] = [];
+
+  // Paged. An unranged select stops silently at 1000 rows, and this one is
+  // ordered newest-first, so the truncation is invisible in exactly the
+  // workflow this function is built for: the newest rows DO come back, the run
+  // looks right, and `candidateCount` quietly under-reports while everything
+  // older than the newest thousand becomes permanently unreachable.
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("slug, title, summary, title_zh_short, title_zh_public, summary_zh_public, country, manual_field_overrides")
+      // Newest IMPORTED first, not newest published. `limit` exists so a run
+      // can be kept to "the rows that arrived since last time", and
+      // publication_date answers a different question: a tender published in
+      // August but imported yesterday sorts near the bottom by that key and a
+      // --limit 100 run would miss exactly the row that needs this most.
+      //
+      // `slug` breaks ties: created_at alone is not unique across a bulk
+      // import, and .range() paging over a non-deterministic order can repeat
+      // or skip rows between requests.
+      .order("created_at", { ascending: false })
+      .order("slug", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw new Error(`读取待生成公开文案的项目失败：${error.message}`);
+    const page = (data ?? []) as DisplayTextRow[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+
+  return rows.filter(needsDisplayText);
 }
 
 function toInput(row: DisplayTextRow): DisplayTextInput {

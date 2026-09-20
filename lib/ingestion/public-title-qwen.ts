@@ -180,6 +180,14 @@ export async function generateDisplayTextBatch(items: DisplayTextInput[]): Promi
 
   const response = await client.chat.completions.create({
     model: "qwen3.6-plus",
+    // Set explicitly rather than left to DashScope's unmeasured default. Every
+    // field this returns is hard-capped by its validator (60 / 25 / 100
+    // characters), so a full BATCH_SIZE of rows is roughly 4k tokens — this
+    // leaves headroom for a long batch without letting a runaway reply bill
+    // for one. It is also what makes the batch size safe to raise: the failure
+    // this guards against is a truncated reply, and a truncated reply here is
+    // invalid JSON, which the zod parse rejects rather than half-writes.
+    max_tokens: 8000,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },

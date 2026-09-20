@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateDisplayTextBatch, type DisplayTextInput } from "@/lib/ingestion/public-title-qwen";
 import { publicSummaryProblems, publicTitleProblems, shortTitleProblems } from "@/lib/public-title";
+import { stripUnverifiedParentheticals } from "@/lib/ingestion/translate-titles";
 import type { LocalizedText } from "@/types/tender";
 
 /**
@@ -200,10 +201,32 @@ export function checkGenerated(
   row: Pick<DisplayTextRow, "slug" | "title">,
   generated: { titleZhShort: string; titleZhPublic: string; summaryZhPublic: string },
 ): DisplayTextPreview {
+  // Strip a Latin parenthetical the full title does not contain, rather than
+  // refusing the whole short title over it (2026-09-20). Three of six
+  // rejections in a real 100-row run were this, all Peru:
+  //
+  //   卡鲁阿帕塔（Carhuapata）HU-712乡村道路桥梁翻新
+  //   阿亚瓦卡区（Ayavaca）7个聚居区农村饮水与卫生改善扩建
+  //   帕乌卡坦博区（Paucartambo）帕乌卡坦博河护岸改善
+  //
+  // The rule is right to fire: an unverified spelling is a guess, and one of
+  // those three proves it — Peru's province is Ayabaca, not Ayavaca, so the
+  // model invented a plausible misspelling that would have been published as
+  // a matching key against the bid documents. But refusing the row is the
+  // wrong remedy. The Chinese is correct and the rest of the title is good;
+  // only the guessed spelling has to go, and without it each of these is a
+  // perfectly usable short title. Refusing instead falls the column back to
+  // the full administrative title, which serves the member worse.
+  //
+  // Same function and the same reasoning as the translation pass, which meets
+  // this problem first and solves it this way (translate-titles.ts). The
+  // haystack is the full Chinese title, because a parenthetical here must be
+  // copied verbatim from it — this pass never re-translates.
+  const shortTitle = stripUnverifiedParentheticals(generated.titleZhShort, row.title.zh).trim();
   return {
     slug: row.slug,
     titleZh: row.title.zh,
-    short: { value: generated.titleZhShort, problems: shortTitleProblems(generated.titleZhShort, row.title.zh) },
+    short: { value: shortTitle, problems: shortTitleProblems(shortTitle, row.title.zh) },
     publicTitle: { value: generated.titleZhPublic, problems: publicTitleProblems(generated.titleZhPublic) },
     publicSummary: { value: generated.summaryZhPublic, problems: publicSummaryProblems(generated.summaryZhPublic) },
   };

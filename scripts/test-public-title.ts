@@ -9,7 +9,7 @@ import {
   shortTitleProblems,
 } from "../lib/public-title";
 import { mapDisplayTextToSlugs } from "../lib/ingestion/public-title-qwen";
-import { needsDisplayText } from "../lib/ingestion/generate-public-titles";
+import { checkGenerated, needsDisplayText } from "../lib/ingestion/generate-public-titles";
 import { buildRowWithProtectedValues } from "../lib/ingestion/upsert-tenders";
 import type { Tender } from "../types/tender";
 
@@ -142,6 +142,18 @@ function acceptsShort(candidate: string): void {
   const problems = shortTitleProblems(candidate, fullTitle);
   if (problems.length > 0) failures.push(`短标题应当通过却被拒绝：「${candidate}」——${problems.join("；")}`);
 }
+/** Same, against an explicit source title — the real rows below each have their own. */
+function acceptsShortFrom(candidate: string, sourceTitleZh: string): void {
+  ran += 1;
+  const problems = shortTitleProblems(candidate, sourceTitleZh);
+  if (problems.length > 0) failures.push(`短标题应当通过却被拒绝：「${candidate}」——${problems.join("；")}`);
+}
+function rejectsShortFrom(candidate: string, sourceTitleZh: string, because: string): void {
+  ran += 1;
+  if (shortTitleProblems(candidate, sourceTitleZh).length === 0) {
+    failures.push(`短标题应当被拒绝（${because}）却通过了：「${candidate}」`);
+  }
+}
 function rejectsShort(candidate: string, because: string): void {
   ran += 1;
   if (shortTitleProblems(candidate, fullTitle).length === 0) failures.push(`短标题应当被拒绝（${because}）却通过了：「${candidate}」`);
@@ -158,13 +170,79 @@ ran += 1;
 if (shortTitleProblems("实验室设备采购", "采购实验室设备").length > 0) {
   failures.push(`原标题本来就短时不应要求再变短：${shortTitleProblems("实验室设备采购", "采购实验室设备").join("；")}`);
 }
-rejectsShort("马托格罗索州卢卡斯-杜里奥韦尔德市MT-449号公路6.93公里路段修复与新建工程", "正文超过 30 字");
+// Accepted since the backstops were loosened to 42/80 (2026-09-20). Its prose
+// is 37 characters, the same order as the three real titles below that were
+// being wrongly refused, and it is a readable list row — the prompt still asks
+// for 12–30 and would return the shorter 卢卡斯-杜里奥韦尔德（Lucas do Rio
+// Verde）市MT-449公路修复与新建. This backstop is not the target, and a title
+// this shape is not the failure it exists to catch.
+acceptsShort("马托格罗索州卢卡斯-杜里奥韦尔德市MT-449号公路6.93公里路段修复与新建工程");
 // The parenthetical is excluded from the readability budget, but it cannot be
 // used to smuggle an unbounded title past the check.
 rejectsShort(`卢卡斯市公路修复（${"Lucas do Rio Verde ".repeat(4)}）`, "整体超过 60 字");
 rejectsShort("███ 市MT-449公路修复", "用了遮挡符号");
 // The dangerous failure: a name carried in from another row of the same batch.
 rejectsShort("福塔莱萨（Fortaleza）市MT-449公路修复", "原标题里没有 Fortaleza，属于凭空生成");
+
+// The length backstops, against the real rejections from the first 100-row
+// --write run (2026-09-20). Three good titles were refused because the Chinese
+// TRANSLITERATION of a Spanish proper noun ate the whole budget before the
+// description began. All three must pass now: refusing them falls the column
+// back to the full administrative title, which is longer than what was
+// rejected.
+acceptsShortFrom(
+  "贝利萨里奥·多明格斯安戈斯图拉（Belisario Domínguez Angostura）水电站自用断路器及配电盘供货与安装",
+  "贝利萨里奥·多明格斯安戈斯图拉（Belisario Domínguez Angostura）水电站自用断路器及配电盘的供货与安装，公开招标第LO-018T0O999-N7-2026号",
+);
+acceptsShortFrom(
+  "拉玛丽亚-托维亚-埃尔雷霍山口-尼迈马-诺凯迈路段旅游主干道改善与修复",
+  "拉玛丽亚-托维亚-埃尔雷霍山口-尼迈马-诺凯迈路段旅游主干道的改善与修复工程施工，合同编号 ICCU-LP-055-2025",
+);
+acceptsShortFrom(
+  "费尔南多·伊里亚尔特·巴尔德拉马（Ing. Fernando Hiriart Balderrama）水电站计量系统采购与改造",
+  "费尔南多·伊里亚尔特·巴尔德拉马（Ing. Fernando Hiriart Balderrama）水电站计量系统的采购与现代化改造服务",
+);
+// Loosening is not removing. A "short" title that kept the whole
+// administrative sentence is what these backstops exist for.
+const ADMIN_SENTENCE = "公开招标（电子）第023/2026号——专业工程公司承建专业社会救助参考中心，位于塞乌阿祖尔社区，技术及条件详见基本项目文件及其附件";
+rejectsShortFrom(ADMIN_SENTENCE, ADMIN_SENTENCE, "原封不动照抄了整句行政标题");
+
+// --- Stripping a guessed spelling instead of refusing the row -------------
+// Three of six rejections in the first real --write run were an invented Latin
+// parenthetical, all Peru. The rule is right to fire — one of the three was
+// 阿亚瓦卡区（Ayavaca）, and Peru's province is AyaBaca, so the model produced a
+// plausible misspelling that would have been published as a matching key
+// against the bid documents. But the Chinese was correct and the rest of the
+// title was good, so the remedy is to drop the guess, not the row: refusing
+// falls the column back to the full administrative title.
+function checkedShort(candidate: string, sourceTitleZh: string) {
+  return checkGenerated(
+    { slug: "s", title: { zh: sourceTitleZh, es: "FUENTE", en: "" } },
+    { titleZhShort: candidate, titleZhPublic: "秘鲁 乡村道路桥梁翻新工程", summaryZhPublic: "乡村道路桥梁的翻新工程，含桥梁本身的技术改造施工。" },
+  ).short;
+}
+
+const guessed = checkedShort("卡鲁阿帕塔（Carhuapata）HU-712乡村道路桥梁翻新", "卡鲁阿帕塔乡村道路HU-712号桥梁翻新工程");
+check("原标题没有的拉丁拼写会被摘掉", guessed.value, "卡鲁阿帕塔HU-712乡村道路桥梁翻新");
+check("摘掉之后这条短标题就合格了", guessed.problems.length, 0);
+
+const misspelled = checkedShort("阿亚瓦卡区（Ayavaca）7个聚居区农村饮水与卫生改善扩建", "阿亚瓦卡区7个聚居区的农村饮水与卫生服务改善扩建工程");
+check("拼错的地名也当成没有依据的拼写摘掉", misspelled.value, "阿亚瓦卡区7个聚居区农村饮水与卫生改善扩建");
+check("摘掉之后不再报外文词", misspelled.problems.length, 0);
+
+// The other direction matters more. A parenthetical the full title DOES carry
+// is the anchor a member matches against the bid documents — stripping that
+// would quietly destroy the one thing the short title exists to keep.
+const verified = checkedShort(
+  "卢卡斯-杜里奥韦尔德（Lucas do Rio Verde）市MT-449公路修复",
+  "马托格罗索州卢卡斯-杜里奥韦尔德（Lucas do Rio Verde）市MT-449号公路6.93公里路段修复与新建工程服务采购",
+);
+check("原标题里有的括号原文必须保留", verified.value, "卢卡斯-杜里奥韦尔德（Lucas do Rio Verde）市MT-449公路修复");
+check("保留括号原文的短标题依然合格", verified.problems.length, 0);
+
+// Accents and case must not make a real anchor look invented.
+const accented = checkedShort("埃洛伊门德斯（Elói Mendes）市教育局办公楼建设", "米纳斯吉拉斯州埃洛伊门德斯（Eloi Mendes）市教育局办公楼建设工程");
+check("重音差异不算凭空生成", accented.value, "埃洛伊门德斯（Elói Mendes）市教育局办公楼建设");
 
 // --- Checking a public summary --------------------------------------------
 // Same audience and same surfaces as the public title, so the same rules.

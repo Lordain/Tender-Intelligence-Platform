@@ -204,9 +204,38 @@ export function publicSummaryOf(tender: Pick<Tender, "summaryZhPublic">): string
  * the countries whose names need the anchor most, so the reference tag is
  * excluded from the readability budget and the whole string gets a separate,
  * looser ceiling so it still cannot run away.
+ *
+ * These are BACKSTOPS, not the target. The prompt asks for 12–30 characters
+ * and should keep asking; this rejects disasters. They were 30/60 and rejected
+ * three good titles in a real 100-row run (2026-09-20):
+ *
+ *   贝利萨里奥·多明格斯安戈斯图拉（Belisario Domínguez Angostura）水电站自用
+ *   断路器及配电盘供货与安装                                  — 32 prose, 63 total
+ *   拉玛丽亚-托维亚-埃尔雷霍山口-尼迈马-诺凯迈路段旅游主干道改善与修复  — 35 prose
+ *   费尔南多·伊里亚尔特·巴尔德拉马（Ing. Fernando Hiriart Balderrama）水电站
+ *   计量系统采购与改造                                                — 62 total
+ *
+ * Every one of them is a good list row. What eats the budget is the Chinese
+ * TRANSLITERATION of a long Spanish proper noun — 贝利萨里奥·多明格斯安戈斯图拉
+ * is fourteen characters of name before the description starts, and a Colombian
+ * road can chain five places — and that text is not inside a parenthetical, so
+ * stripping the parenthetical does not help.
+ *
+ * Detecting the name and discounting it was tried and rejected: the obvious
+ * regex (a CJK run chained by ·/-) is greedy at its tail and swallowed
+ * 路段旅游主干道改善与修复 as part of the name, scoring that title 6. A rule
+ * that silently eats the description is worse than a loose number, because it
+ * would pass anything with a hyphen in it.
+ *
+ * So the numbers are loose enough to fit real names. The protection that
+ * actually matters is elsewhere and unchanged: 没有变短 catches a title that
+ * did not condense, and the masking and invented-word rules catch the two ways
+ * the output can be wrong rather than merely long. Rejecting here is not free
+ * — a refused column falls back to the full administrative title, which is
+ * longer than anything this would have rejected.
  */
-const MAX_SHORT_TITLE_PROSE = 30;
-const MAX_SHORT_TITLE_LENGTH = 60;
+const MAX_SHORT_TITLE_PROSE = 42;
+const MAX_SHORT_TITLE_LENGTH = 80;
 /** Long enough to say what the works are and at what scale; short enough to survive a 155-character meta description with the country and industries appended. */
 const MAX_PUBLIC_SUMMARY_LENGTH = 100;
 

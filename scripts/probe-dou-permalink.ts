@@ -25,21 +25,69 @@
  * about the URL. So this has to run where in.gov.br actually answers: the
  * GitHub runner, or Vercel.
  *
- * Reports only. Writes nothing, anywhere.
+ * ── Why it can also SAVE the pages ───────────────────────────────────────
+ *
+ * The first run (runner, 2026-09-20) answered 5 of 5 at 200, with readable
+ * lengths of 1044, 1054 and 1105 characters against a 403-character snippet.
+ * That settles the URL shape. It does NOT settle what is on the page: the
+ * length was measured inside a content region this script GUESSES at
+ * (`texto-dou`, then `<article>`, then `<main>`, then the whole document), and
+ * a number produced by a guessed selector is not a reading of the notice. The
+ * three lengths also came back suspiciously close together, which is what page
+ * chrome looks like.
+ *
+ * So `--save` writes the pages into `__fixtures__/dou/detail/` and the
+ * workflow commits them, and the parser gets written against those bytes. This
+ * repo's rule, paid for three times (Compras MX, Ecopetrol, Proyectos México):
+ * a mapper is written against a real capture, never against an expectation of
+ * one — and "the detail page has the full text" is, until those bytes are
+ * read, exactly an expectation.
+ *
+ * Without `--save` it writes nothing, anywhere.
  *
  * Usage:
- *   Actions → Probe Brazil doors → what=dou-link
- *   npm run probe:dou-link -- --count 5 --section do3
+ *   Actions → Probe Brazil doors → what=dou-link            （只报告）
+ *   Actions → Probe Brazil doors → what=dou-link，args=--save （顺便把页面存回分支）
+ *   npm run probe:dou-link -- --count 5 --section do3 --save
  */
+import { mkdir, writeFile } from "node:fs/promises";
 import { fetchDouEdition, lastWeekday, isDouUnreachable } from "../lib/ingestion/connectors/dou-live";
 import { douNoticeUrl, DOU_SECTIONS, type DouSection } from "../lib/ingestion/dou-edition";
 
 const TIMEOUT_MS = 45_000;
+const FIXTURE_DIR = "lib/ingestion/__fixtures__/dou/detail";
 const HEADERS = {
   Accept: "text/html,application/xhtml+xml,*/*;q=0.8",
   "Accept-Language": "pt-BR,pt;q=0.9",
   "User-Agent": "TenderIntelligencePlatform/1.0 (+https://github.com/lordain/tender-intelligence-platform; open-data ingestion)",
 } as const;
+
+/**
+ * Scripts and styles out, everything else kept.
+ *
+ * Deliberately NOT cut to a content region, unlike the ANTAQ capture. That one
+ * could name `<main>` because five real pages had been seen first. These have
+ * not been seen by anyone here — the whole reason to save them — and trimming
+ * to a guessed container risks removing the notice and leaving no trace that
+ * it happened, which is the same mistake as trusting the guessed length above.
+ */
+function trimForFixture(html: string, url: string, snippetLength: number): string {
+  const stripped = html
+    .replace(/<script\b[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, "");
+  const note = [
+    "<!--",
+    "  DOU 单条公告详情页。已删除 <script> 和 <style>，正文和结构一律没动 ——",
+    "  这种页面这边谁都没解析过，按猜出来的容器裁反而可能把公告正文裁掉。",
+    `  版面摘要 ${snippetLength} 字（leiturajornal 的 JSON 里被砍到 403 字上限）。`,
+    `  原页 ${Math.round(html.length / 1024)}KB，这里 ${Math.round(stripped.length / 1024)}KB。`,
+    `  来源：${url}`,
+    `  抓取：${new Date().toISOString().slice(0, 10)}（npm run probe:dou-link -- --save，在 GitHub Actions 跑批机上）`,
+    "  重抓：Actions → Probe Brazil doors → what=dou-link，args=--save",
+    "-->",
+  ].join("\n");
+  return `${note}\n${stripped}\n`;
+}
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -75,6 +123,7 @@ async function main() {
     process.exit(1);
   }
 
+  const save = args.includes("--save");
   const day = lastWeekday(new Date()).toISOString().slice(0, 10);
   console.log(`DOU 详情页探测 —— ${section} ${day}，取前 ${count} 条\n`);
 
@@ -94,9 +143,12 @@ async function main() {
   const sample = result.edition.notices.slice(0, count);
   console.log(`当天 ${result.edition.notices.length} 条公告（${result.url}）。\n`);
 
+  if (save) await mkdir(FIXTURE_DIR, { recursive: true });
+
   let resolved = 0;
   let longer = 0;
-  for (const notice of sample) {
+  let saved = 0;
+  for (const [index, notice] of sample.entries()) {
     const url = douNoticeUrl(notice);
     const stub = notice.snippet.length;
     let line: string;
@@ -109,9 +161,16 @@ async function main() {
         const full = readableLength(html);
         resolved += 1;
         // The only comparison that matters. A 200 that returns the same 403
-        // characters is a page that exists and does not help.
+        // characters is a page that exists and does not help. It is still a
+        // guessed region — see trimForFixture on why --save exists.
         if (full > stub * 1.5) longer += 1;
         line = `200 · 正文 ${full} 字（摘要 ${stub} 字）${full > stub * 1.5 ? "  ← 比摘要长，值得再抓一层" : "  ← 没比摘要长多少"}`;
+        if (save) {
+          const name = `${String(index + 1).padStart(2, "0")}-${notice.urlTitle.replace(/[^a-z0-9._-]/gi, "_").slice(0, 70)}.html`;
+          await writeFile(`${FIXTURE_DIR}/${name}`, trimForFixture(html, url, stub));
+          saved += 1;
+          line += `  → ${name}`;
+        }
       }
     } catch (err) {
       line = `连不上：${err instanceof Error ? err.message : String(err)}`;
@@ -121,6 +180,7 @@ async function main() {
   }
 
   console.log(`\n── ${resolved} / ${sample.length} 条详情页打得开，其中 ${longer} 条正文明显比摘要长 ──`);
+  if (save) console.log(`样本 ${saved} 份写在 ${FIXTURE_DIR}/，workflow 会提交回分支。`);
   if (resolved === 0) {
     console.log("链接形状不对。`https://www.in.gov.br/web/dou/-/<urlTitle>` 是当初推断的，不是量出来的 ——");
     console.log("换别的路子找详情页，或者 DOU 就只能停在「每天给几条线索」。");
@@ -131,7 +191,13 @@ async function main() {
     console.log("详情页打得开，但正文没比那 403 字的摘要多多少 —— 再抓一层不划算，DOU 维持「线索雷达」。");
     return;
   }
-  console.log("详情页有完整正文 —— 可以对 watch 命中的那几条各补一次抓取，把 DOU 升级成能进库的来源。");
+  console.log("详情页比摘要长得多 —— 值得再抓一层。");
+  if (!save) {
+    // The length came from a guessed selector. Writing a parser on that number
+    // alone is exactly the mistake this repo has paid for three times.
+    console.log("但上面那个字数是从「猜出来的正文区域」量的，不等于看过这些页面。");
+    console.log("加 --save 把页面存回分支，解析器照真实页面写。");
+  }
 }
 
 main().catch((err) => {

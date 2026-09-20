@@ -7559,3 +7559,36 @@ status and the readable length of the article region **against the length of
 the snippet it came from** — because a 200 that returns the same 403 characters
 is a page that exists and does not help, and only the comparison separates
 those two.
+
+### It ran, and the URL shape is right
+
+Runner, 2026-09-20, Seção 3:
+
+```
+── 5 / 5 条详情页打得开，其中 5 条正文明显比摘要长 ──
+  AVISO DE LICITAÇÃO        200 · 正文 1044 字（摘要 403 字）
+  AVISO DE SUSPENSÃO        200 · 正文 1105 字（摘要 403 字）
+  AVISA DE DISPENSA …       200 · 正文 1054 字（摘要 403 字）
+```
+
+Five of five at 200, every one about 2.6× the snippet. `https://www.in.gov.br/
+web/dou/-/<urlTitle>` resolves, and it stops being the one thing in this
+source that was written down rather than measured.
+
+**What it does NOT settle is what is on those pages.** The length was measured
+inside a content region the script GUESSES at — `texto-dou`, then `<article>`,
+then `<main>`, then the whole document — and a number produced by a guessed
+selector is not a reading of the notice. The three lengths also came back
+within 60 characters of each other, which is what page chrome looks like.
+
+So the script gained `--save`, which writes the pages into
+`__fixtures__/dou/detail/` for the workflow to commit, with scripts and styles
+removed and **nothing else trimmed** — unlike the ANTAQ capture, which could
+name `<main>` because five real pages had been seen first. Nobody here has seen
+one of these, so a guessed container could remove the notice and leave no trace
+that it happened, which is the same error as trusting the guessed length.
+
+The parser gets written against those bytes and not before. Rule of this file,
+paid for three times: a mapper is written against a real capture, never against
+an expectation of one — and "the detail page carries the full notice" is,
+until those bytes are read, exactly an expectation.

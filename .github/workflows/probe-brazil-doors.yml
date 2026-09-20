@@ -154,7 +154,7 @@ jobs:
       # cannot reach. The trimmed sample is what the parser gets written
       # against, so it goes into the branch next to the other fixtures.
       - name: Commit the sample
-        if: inputs.what == 'capture' || inputs.what == 'capture-sisap' || inputs.what == 'dou'
+        if: inputs.what == 'capture' || inputs.what == 'capture-sisap' || inputs.what == 'dou' || inputs.what == 'dou-link'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

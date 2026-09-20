@@ -490,6 +490,111 @@ translated.
 
 The admin 新项目清单 page's 翻译所有标题 button runs the same function.
 
+### Display text (short title + public title + public summary)
+
+```bash
+npm run titles:public                          # dry run, no API calls
+npm run titles:public -- --sample 20           # generate 20 for real and print them, write nothing
+npm run titles:public -- --limit 200 --write   # generate up to 200 and save
+npm run titles:public -- --write               # every row still missing one of the three
+```
+
+A second pass over the **Chinese** title and summary, filling three columns in
+one model call:
+
+| Column | Audience | What it is |
+| --- | --- | --- |
+| `title_zh_short` (0054) | members | the condensed title shown in list rows and as the detail-page heading — place, asset, works type, with the procurement shell removed |
+| `title_zh_public` (0053) | guests, crawlers | the de-identified category title |
+| `summary_zh_public` (0054) | guests, crawlers | the de-identified summary |
+
+One call rather than three passes: all three are rewrites of the same two
+strings for different audiences, and separate passes can disagree with
+themselves — a public title saying `隧道` above a public summary saying `公路`
+describes two different projects on one page.
+
+Candidates come back **newest-imported first** (`created_at`), not
+newest-published, so `--limit 100` means "the hundred rows that arrived most
+recently". Ordering by `publication_date` would answer a different question: a
+tender published in August but imported yesterday sorts near the bottom by
+that key, and a limited run would miss exactly the row that needs this most.
+
+The admin 生成公开文案 panel (import-tenders → 维护) runs the same function
+through a web form. It is a **separate** panel from 翻译所有标题 and runs
+after it: the two passes select different rows — that one takes tenders with
+no Chinese translation yet, this one takes translated tenders with no
+generated display text — so one button doing both would make each row count
+mean something other than what it says. Leaving the write box unchecked runs a
+real sample (at most 20 rows, one model call) and prints all three strings
+with their verdicts, writing nothing.
+
+`title.zh` and `summary.zh` are never written by this pass. They stay exactly
+as translated — they are what `findDroppedIdentifiers()` guards, what the
+admin screens edit, and the input this pass regenerates from — and clearing
+the three columns returns the site to its previous behaviour. Since 0054 the
+full Chinese title is no longer rendered anywhere on the front end: members
+read the short title plus the original-language line underneath it, which is
+the text that actually matches the official documents.
+
+It exists because the translation above is right to do something that is
+unsafe to publish. Both prompts keep the source proper noun in full-width
+parentheses after a transliterated place, facility or project name —
+`马塔德罗（Matadero）泵站`, `埃洛伊门德斯（Elói Mendes）市` — because "a
+transliteration on its own appears in neither [the map nor the bid
+documents]". That is exactly right for a bidder, and it makes `title.zh` the
+best search key back to the official notice anywhere on this platform: paste
+the parenthesised name into a search engine and you are on the source portal,
+with no reason left to subscribe.
+
+So the public title keeps what these pages actually rank for — the country,
+the industry, the works type, the asset — and drops what identifies the row:
+municipalities, districts, rivers, facilities, agency names, procurement
+codes, Brazilian UF state codes and every Latin-script proper noun. Nobody
+searches `瓜纳华托州莱昂市第三环路` by name unless they already know the
+project; everybody searches `墨西哥 变电站 招标`.
+
+One pass covers Spanish and Portuguese both. The two translation prompts are
+separate and must be, but they converge here — by the time this runs, a
+Peruvian row and a Brazilian one are both Chinese carrying the same
+parenthesis anchor, and rows are never selected by language.
+
+Read `--sample` before any `--write`. This string becomes the `<title>`, the
+meta description and the JSON-LD name of every public page, so it is both the
+de-identification *and* what those pages rank on — a prompt that over-strips
+(`墨西哥 工程项目` on every row) is as bad as one that under-strips: safe, and
+ranking for nothing. Every candidate goes through `publicTitleProblems()`
+(`lib/public-title.ts`) and is **refused rather than written** if it still
+carries a Latin parenthetical, a procurement code, a chainage, a state code
+or a masking artefact — a refused row simply keeps falling back to `title.zh`,
+which is the behaviour that was already there.
+
+#### The summary is the half that was missed
+
+0053 stopped publishing `title.zh` and left `summary.zh` alone, which undid
+most of it: the summary is a faithful translation of the source `objeto`, and
+every portal we ingest restates the project name, the municipality and often
+the street there. It reached four surfaces at once — the card, the detail
+page, the JSON-LD description, and the meta description, which is the
+search-result snippet a reader sees *without opening the page*. Fixed in 0054
+by generating `summary_zh_public` in the same pass.
+
+The two public columns are read through different fallbacks, on purpose:
+
+- `publicTitleOf()` **falls open** to `title.zh`. It has to — the title is the
+  `<h1>`, the `<title>` and the JSON-LD name, so a fallback that returns
+  nothing blanks the page.
+- `publicSummaryOf()` **fails closed**. A row with no generated summary shows
+  the generic placeholder; it never falls back to `summary.zh`. Every surface
+  that renders the summary already makes it conditional, so failing closed
+  costs a sentence rather than a page.
+
+`scripts/test-public-tender.ts` asserts both directions by value, because
+"fall back to `summary.zh` so the page isn't empty" is the single most likely
+way this gets quietly undone and it would look reasonable in review.
+
+All three columns are deliberately absent from the importer's row builder, so
+a re-import cannot reset them; `scripts/test-public-title.ts` enforces that.
+
 ### Key dates
 
 Key dates come from two places, and reading them out of the bid document is no

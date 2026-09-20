@@ -290,7 +290,24 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // Puerto Rico, Puerto Peñasco, Puerto Boyacá, Puerto López, Felipe
   // Carrillo Puerto), and adding it for a tag would widen a problem the rest
   // of the file spends its length containing.
-  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|metro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|\bvial(es)?\b|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona|v[íi]as? terciarias?|placa huella|carreter[ao]s?\b|\bpuentes?\b|camino(s)? (vecinal(es)?|rural(es)?)|v[íi]a(s)? (vecinal(es)?|nacional(es)?|departamental(es)?|regional(es)?)|trocha(s)? carrozable(s)?|transitabilidad|pavimentaci[óo]n|asfaltado|doble calzada|intercambio vial|paso a desnivel|\bt[úu]nel(es)?\b|\bpeaje(s)?\b|\baeropuertos?\b|aeroportuari[oa]s?|ferrocarril(es)?|terminal(es)? terrestre(s)?|\bmuelle(s)?\b/i],
+  // Portuguese, added 2026-09-19 with the ANTAQ connector. Every keyword in
+  // this file was Spanish, so "ARRENDAMENTO DA ÁREA ITJ01 LOCALIZADA NO PORTO
+  // ORGANIZADO DE ITAJAÍ/SC" — a container-terminal concession — carried no
+  // transport signal at all and was tagged `general`. A port concession that
+  // does not answer the 交通 filter is invisible to the customer who came for
+  // exactly that, which is worse than not importing it.
+  //
+  // `portuári|aquaviári|hidroviári` also match their Spanish spellings
+  // (portuaria, hidroviaria), which is correct rather than incidental:
+  // lib/relevance.ts already treats "portuari" as port-works infrastructure,
+  // and this file disagreeing with it was the older bug.
+  //
+  // Bare "porto" and bare "terminal" are deliberately absent, the same
+  // judgement the comment above records for bare "puerto": Porto Alegre is a
+  // city and a bus terminal is not a port. Every entry here is anchored to a
+  // word that only appears in waterway infrastructure, or to "porto" with
+  // "organizado" — the legal term for a federally administered port.
+  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|metro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|\bvial(es)?\b|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona|v[íi]as? terciarias?|placa huella|carreter[ao]s?\b|\bpuentes?\b|camino(s)? (vecinal(es)?|rural(es)?)|v[íi]a(s)? (vecinal(es)?|nacional(es)?|departamental(es)?|regional(es)?)|trocha(s)? carrozable(s)?|transitabilidad|pavimentaci[óo]n|asfaltado|doble calzada|intercambio vial|paso a desnivel|\bt[úu]nel(es)?\b|\bpeaje(s)?\b|\baeropuertos?\b|aeroportuari[oa]s?|ferrocarril(es)?|terminal(es)? terrestre(s)?|\bmuelle(s)?\b|portu[áa]ri[oa]s?|aquavi[áa]ri[oa]s?|hidrovi[áa]ri[oa]s?|\bhidrovias?\b|porto(s)? organizado(s)?|terminal (portu|de contêiner|de conteiner)|\bcais\b|ber[çc]o(s)? de atraca|dragagem|canal de acesso aquavi|arrendamento (portu|da [áa]rea)/i],
   // The "\bkm\s*\d+\+\d{3}\b" alternative is a real kilometer-marker
   // notation ("DEL KM 150+000 AL KM 170+000") — standard Mexican federal
   // highway-alignment notation, seen on a real road-engineering-study

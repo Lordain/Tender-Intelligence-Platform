@@ -3521,6 +3521,30 @@ export function explainKeptSignal(input: {
 export const NATIONAL_PRIORITY_SOURCE_NAME = "Proyectos Estratégicos MX (Hacienda)";
 
 /**
+ * ANTAQ's port-concession public consultations.
+ *
+ * Added as a second national-priority source on 2026-09-19 (user's decision),
+ * for a reason specific to what these pages are rather than to how big the
+ * projects sound. A hearing is ANTAQ — a federal regulator — putting a port
+ * concession to national public consultation before it is tendered. The
+ * determination that this is major infrastructure has already been made by
+ * the government, which is the same test Proyectos Estratégicos meets, and
+ * the field's own comment sets: a real, government-verified major-project
+ * designation, never a keyword or value proxy.
+ *
+ * The practical half matters as much. These pages carry no money at all —
+ * the投资额 lives inside the EVTEA, a separate PDF behind a separate link —
+ * so without this flag every port concession would land as 常规项目·无金额,
+ * indistinguishable from the municipal kindergarten works the small-works
+ * rule exists to remove. Sorting a container-terminal concession into the
+ * same bucket as a village school because neither states a number is the
+ * failure this platform's value floor was never meant to produce.
+ */
+export const ANTAQ_SOURCE_NAME = "ANTAQ — Audiência Pública (concessão portuária)";
+
+const NATIONAL_PRIORITY_SOURCE_NAMES: readonly string[] = [NATIONAL_PRIORITY_SOURCE_NAME, ANTAQ_SOURCE_NAME];
+
+/**
  * Whether a tender's tier was settled by a government determination rather
  * than by anything this platform inferred.
  *
@@ -3528,9 +3552,10 @@ export const NATIONAL_PRIORITY_SOURCE_NAME = "Proyectos Estratégicos MX (Hacien
  * decision that this is strategic infrastructure — so nothing automated may
  * revise it afterwards. User, 2026-09-16, after a document analysis lowered
  * one of them: proyectosestrategicos = 大型项目这个逻辑不能动，除非我手动调整.
+ * The same holds for an ANTAQ hearing, for the reason above.
  */
 export function isNationalPrioritySource(sourceName: string | null | undefined): boolean {
-  return sourceName === NATIONAL_PRIORITY_SOURCE_NAME;
+  return typeof sourceName === "string" && NATIONAL_PRIORITY_SOURCE_NAMES.includes(sourceName);
 }
 
 /**
@@ -3611,7 +3636,12 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
       buyer: input.buyer,
       country: input.country,
       governmentLevel: input.governmentLevel,
-      isNationalPriorityProject: input.sourceName === NATIONAL_PRIORITY_SOURCE_NAME,
+      // Via the helper, not a second comparison against the one constant:
+      // this line WAS that second comparison, and it is exactly the drift
+      // NATIONAL_PRIORITY_SOURCE_NAME's own comment was written to prevent —
+      // it would have kept answering "Mexico only" after a second source was
+      // added three hundred lines above it.
+      isNationalPriorityProject: isNationalPrioritySource(input.sourceName),
       structuredDurationDays: input.structuredDurationDays,
     }),
   };

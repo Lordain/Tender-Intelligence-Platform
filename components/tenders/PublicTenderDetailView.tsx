@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { AccessPromptKind } from "@/lib/access-control";
 import { TRIAL_DAYS } from "@/lib/access-control";
 import { loginPathFor } from "@/lib/auth-redirect";
-import { formatDate, formatEstimatedValueUsd } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { exchangeRateNote } from "@/lib/currency";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import {
@@ -69,6 +69,13 @@ export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicT
   const { locale } = useLocale();
   const nextPath = `/tenders/${tender.publicSlug}`;
   const fieldCount = 7 + (tender.participationScope ? 1 : 0);
+  // The FX disclaimer still applies to a band — the range itself is in USD,
+  // converted from the source currency at the same fixed rate — so it stays,
+  // with the subscription note appended rather than replacing it.
+  const fxNote = exchangeRateNote(tender.currency, locale);
+  const valueNote = tender.estimatedValueBand === null
+    ? null
+    : fxNote === null ? "订阅后可见精确金额" : `${fxNote} 订阅后可见精确金额。`;
   const desktopGrid = fieldCount % 4 === 0 ? "xl:grid-cols-4" : "xl:grid-cols-3";
 
   return (
@@ -112,11 +119,22 @@ export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicT
             {tender.participationScope && (
               <Field label={localize(uiText.participationScopeLabel, locale)} value={localize(PARTICIPATION_SCOPE_LABELS[tender.participationScope], locale)} emphasized />
             )}
-            <Field label={localize(uiText.locationLabel, locale)} value={tender.location ?? tender.country} />
+            {/*
+              The four fields below are the redacted ones, and each says so.
+              A field that silently loses precision reads as a broken or
+              low-quality page — which costs a search ranking as well as a
+              visitor — whereas one that names what it is holding back is an
+              honest statement of where the subscription begins.
+            */}
+            <Field
+              label={localize(uiText.locationLabel, locale)}
+              value={countryLabel(tender.country, locale)}
+              note="订阅后可见具体州/市"
+            />
             <Field
               label={localize(uiText.estimatedValue, locale)}
-              value={(tender.estimatedValue !== undefined ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, locale) : null) ?? "—"}
-              note={tender.estimatedValue !== undefined ? exchangeRateNote(tender.currency, locale) : null}
+              value={tender.estimatedValueBand ?? "—"}
+              note={valueNote}
             />
             <Field
               label={localize(tender.publicationDateIsEstimated ? uiText.ingestedDateLabel : uiText.publicationDateLabel, locale)}
@@ -129,6 +147,7 @@ export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicT
                 : tender.status === "submission_closed"
                   ? `数据源未提供 · 已按发布满 ${STALE_WITHOUT_END_DATE_DAYS} 天推定截止`
                   : "数据源未提供"}
+              note={tender.submissionDeadline ? "订阅后可见具体日期" : null}
               emphasized
             />
           </dl>

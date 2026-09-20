@@ -42,9 +42,10 @@ export default async function TendersPage({
 
   const pageData = buildTenderListPage(allTenders, params, {
     pageSize: TENDER_PAGE_SIZE,
-    // The publisher is withheld from guests and lapsed free accounts both
-    // visually and from the serialized React payload.
-    includeBuyer: canUseTenderListMemberFeatures(viewerRole),
+    // One flag for every member/guest difference on this list: the publisher,
+    // the exact budget and the exact deadline are all withheld from guests
+    // and lapsed free accounts, visually AND in the serialized React payload.
+    memberView: canUseTenderListMemberFeatures(viewerRole),
     searchPublicFieldsOnly: !canUseTenderListMemberFeatures(viewerRole),
   });
 

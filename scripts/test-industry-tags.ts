@@ -174,6 +174,45 @@ const cases: Case[] = [
     reject: ["vehicles"],
     note: "Why the vehicle pattern says automóvil and not a bare auto: in Spanish an `auto` is also a court ruling, and legal-services procurement says so in the title. A filter that answers a car query with a lawsuit is a filter people stop using.",
   },
+
+  // Portuguese, added with the ANTAQ connector (2026-09-19). The first three
+  // are real ANTAQ hearing sub-headings; the rest guard the narrowness the
+  // pattern was written with.
+  {
+    title: "ARRENDAMENTO DA ÁREA ITJ01 LOCALIZADA NO PORTO ORGANIZADO DE ITAJAÍ/SC",
+    note: "ANTAQ 07/2026 的真实副标题：伊塔雅伊港集装箱码头特许",
+    expect: ["transportation"],
+  },
+  {
+    title: "CONCESSÃO DO SISTEMA AQUAVIÁRIO INTEGRADO DO SUL E LAGOA MIRIM, DENOMINADO SAIP SUL-MIRIM",
+    note: "ANTAQ 06/2026：内河航道系统特许",
+    expect: ["transportation"],
+  },
+  {
+    title: "CONCESSÃO DO CANAL DE ACESSO DO PORTO ORGANIZADO DE PARANAGUÁ",
+    note: "ANTAQ 02/2026 一类：港口进港航道特许",
+    expect: ["transportation"],
+  },
+  {
+    title: "Dragagem de manutenção do berço de atracação do terminal portuário",
+    note: "疏浚 + 泊位 + portuário，三个词各自都该命中",
+    expect: ["transportation"],
+  },
+  // Bare "porto" is a city name as often as a port — the same judgement the
+  // Spanish list already records for "puerto".
+  {
+    title: "AQUISIÇÃO DE MOBILIÁRIO PARA A SECRETARIA MUNICIPAL DE PORTO ALEGRE",
+    note: "阿雷格里港是城市名，不是港口 —— 和西语 puerto 一样的判断",
+    expect: [],
+    reject: ["transportation"],
+  },
+  // And a bare "terminal" is a bus stop, a computer or a point of sale.
+  {
+    title: "CONTRATAÇÃO DE EMPRESA PARA MANUTENÇÃO DE TERMINAL DE AUTOATENDIMENTO BANCÁRIO",
+    note: "银行自助终端，光一个 terminal 不算交通",
+    expect: [],
+    reject: ["transportation"],
+  },
 ];
 
 let failures = 0;

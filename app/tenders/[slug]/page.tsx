@@ -10,7 +10,7 @@ import { isHomepageFreePreviewSlug } from "@/lib/homepage-selection";
 import { PublicTenderDetailView } from "@/components/tenders/PublicTenderDetailView";
 import { toPublicTenderDetail } from "@/lib/public-tender";
 import { publicTenderPath } from "@/lib/public-tender-url";
-import { countryLabel } from "@/lib/tender-labels";
+import { countryLabel, industryLabel } from "@/lib/tender-labels";
 import { TenderStructuredData } from "@/components/seo/TenderStructuredData";
 
 // generateMetadata and the page itself both need these two answers, and
@@ -39,7 +39,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const publicTender = toPublicTenderDetail(tender);
   const country = countryLabel(publicTender.country, "zh");
   const title = `${publicTender.titleZh}｜${country}政府招标`;
-  const descriptionSource = `${publicTender.summaryZh} ${country}政府采购；${publicTender.procedureType}${publicTender.location ? `；地点：${publicTender.location}` : ""}`;
+  // The place name used to sit at the end of this description. It came out
+  // (2026-09-19) because a town plus a budget plus a month is enough to find
+  // the original notice, and a search snippet is the one place a visitor
+  // reads without even opening the page. Industry tags took its slot rather
+  // than leaving the description shorter: they are the words this page is
+  // actually meant to rank for ("墨西哥 输配电 招标"), whereas nobody searches
+  // for a specific municipality by name unless they already know the project.
+  const industries = publicTender.industries.map((industry) => industryLabel(industry, "zh")).join("、");
+  const descriptionSource = `${publicTender.summaryZh} ${country}政府采购；${publicTender.procedureType}${industries ? `；行业：${industries}` : ""}`;
   const description = descriptionSource.length > 155
     ? `${descriptionSource.slice(0, 154)}…`
     : descriptionSource;

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import type { Tender } from "@/types/tender";
+import type { TenderCardData } from "@/lib/tender-card";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import {
   SCOPE_TYPE_LABELS,
   STATUS_COLORS,
@@ -13,38 +13,32 @@ import {
 } from "@/lib/tender-labels";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
-import { isObrasPorImpuestos, OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
+import { OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
 import { publicTenderPath } from "@/lib/public-tender-url";
-
-function preferredRequirement(items: Tender["qualifications"]) {
-  return items.find((item) => item.mandatory) ?? items[0];
-}
-
-const RISK_PRIORITY = { critical: 0, high: 1, medium: 2, low: 3 } as const;
 
 export function TenderCard({
   tender,
   showOneLineSummary = false,
 }: {
-  tender: Tender;
+  tender: TenderCardData;
   showOneLineSummary?: boolean;
 }) {
   const { locale } = useLocale();
   const detailHref = `${publicTenderPath(tender)}${showOneLineSummary ? "?from=homepage" : ""}`;
-  // Only a real translation (Layer 2 AI, not the es/zh mirror untranslated()
-  // produces) makes Chinese worth treating as the primary heading — until
-  // then the Spanish original is all there is to show.
-  const hasRealTranslation = tender.title.zh !== tender.title.es;
-  const qualification = preferredRequirement(tender.qualifications);
-  const experience = preferredRequirement(tender.experienceRequirements);
-  const document = preferredRequirement(tender.requiredDocuments);
-  const risk = tender.risks.slice().sort((a, b) => RISK_PRIORITY[a.level] - RISK_PRIORITY[b.level])[0];
+  // The original-language title is present only for a member (see
+  // toTenderCardData) — which is also exactly the condition under which the
+  // Chinese heading is a real translation rather than the safe placeholder,
+  // so this one field answers both questions.
+  const titleOriginal = tender.titleOriginal;
+  // Band first: if a future change ever set both, the safe one must win.
+  const value = tender.estimatedValueBand
+    ?? (tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null);
   const previews = [
     showOneLineSummary && tender.oneLineSummary && { label: "一句话总结", text: tender.oneLineSummary, strong: false, summary: true },
-    qualification && { label: "资质要求", text: localize(qualification.title, locale), strong: qualification.mandatory, summary: false },
-    experience && { label: "经验要求", text: localize(experience.title, locale), strong: experience.mandatory, summary: false },
-    document && { label: "所需文件", text: localize(document.title, locale), strong: document.mandatory, summary: false },
-    risk && { label: "风险提示", text: localize(risk.title, locale), strong: risk.level === "critical", summary: false },
+    tender.qualification && { label: "资质要求", text: localize(tender.qualification.title, locale), strong: tender.qualification.strong, summary: false },
+    tender.experience && { label: "经验要求", text: localize(tender.experience.title, locale), strong: tender.experience.strong, summary: false },
+    tender.document && { label: "所需文件", text: localize(tender.document.title, locale), strong: tender.document.strong, summary: false },
+    tender.risk && { label: "风险提示", text: localize(tender.risk.title, locale), strong: tender.risk.strong, summary: false },
   ].filter(Boolean) as { label: string; text: string; strong: boolean; summary: boolean }[];
 
   return (
@@ -67,7 +61,7 @@ export function TenderCard({
           <span className="shrink-0 whitespace-nowrap rounded-full border border-[#d8e0e3] px-2.5 py-1 text-[11px] font-medium text-[#566773]">
             {localize(SCOPE_TYPE_LABELS[tender.scopeType], locale)}
           </span>
-          {isObrasPorImpuestos(tender) && (
+          {tender.isObrasPorImpuestos && (
             <span className="shrink-0 whitespace-nowrap rounded-full bg-[#e2eef5] px-2.5 py-1 text-[11px] font-black text-[#155573]">
               {OBRAS_POR_IMPUESTOS_BADGE}
             </span>
@@ -76,30 +70,19 @@ export function TenderCard({
         <SaveTenderButton tenderId={tender.id} className="relative z-10 shrink-0" />
       </div>
 
-      {/* Chinese leads when a real translation exists (this platform's
-          readers work in Chinese first) — Spanish stays visible as the
-          small reference line underneath, since that's the text that
-          actually matches the official documents. Without a translation
-          yet, Spanish is all there is, so it carries the heading alone. */}
-      {hasRealTranslation ? (
-        <>
-          <h3 className="text-base font-black leading-snug text-black">
-            <Link href={detailHref} data-public-tender-link className="after:absolute after:inset-0">
-              {tender.title.zh}
-            </Link>
-          </h3>
-          <p className="line-clamp-1 text-xs text-[#75838c]">{tender.title.es}</p>
-        </>
-      ) : (
-        <h3 className="text-sm font-bold leading-snug text-black">
-          <Link href={detailHref} data-public-tender-link className="after:absolute after:inset-0">
-            {tender.title.es}
-          </Link>
-        </h3>
-      )}
+      {/* Chinese always leads. The original-language line underneath is the
+          text that matches the official documents, which is precisely why it
+          is a member-only field: it is the shortest path from this card to
+          the source portal. A guest gets the Chinese heading alone. */}
+      <h3 className="text-base font-black leading-snug text-black">
+        <Link href={detailHref} data-public-tender-link className="after:absolute after:inset-0">
+          {tender.titleZh}
+        </Link>
+      </h3>
+      {titleOriginal && <p className="line-clamp-1 text-xs text-[#75838c]">{titleOriginal}</p>}
 
       <p className="line-clamp-2 text-xs leading-5 text-[#61717c]">
-        {localize(tender.summary, locale)}
+        {tender.summaryZh}
       </p>
 
       {previews.length > 0 && (
@@ -128,10 +111,13 @@ export function TenderCard({
       <p className="flex items-start gap-1.5 border-t border-[#e6eaec] pt-3 text-xs leading-5 text-[#586873]">
         <CountryFlag country={tender.country} className="mt-[3px]" />
         <span>{countryLabel(tender.country, locale)}
-        {" · "}
-        {localize(uiText.buyerLabelCard, locale)}
-        {"："}
-        {tender.buyer}</span>
+        {tender.buyer !== undefined && <>
+          {" · "}
+          {localize(uiText.buyerLabelCard, locale)}
+          {"："}
+          {tender.buyer}
+        </>}
+        {value !== null && <>{" · "}{value}</>}</span>
       </p>
       <Link href={detailHref} data-public-tender-link className="relative z-10 mt-1 inline-flex w-full items-center justify-center rounded-xl bg-[#071826] px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-[#163b52]">
         查看招标信息

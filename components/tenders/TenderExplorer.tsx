@@ -16,7 +16,7 @@ import { InlineTogglePills } from "@/components/tenders/InlineTogglePills";
 import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
-import { isObrasPorImpuestos, OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
+import { OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
 import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
 import { canUseTenderListMemberFeatures, TRIAL_DAYS, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
@@ -108,7 +108,11 @@ function TenderSearchForm({
 
 function TenderRow({ tender }: { tender: TenderListItem }) {
   const { locale } = useLocale();
-  const value = tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null;
+  // Exactly one of these two is ever set (toTenderListItem): the exact
+  // figure for a member, the USD band for a guest. Reading the band FIRST
+  // matters — if a future change ever sent both, the safe one wins.
+  const value = tender.estimatedValueBand
+    ?? (tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null);
 
   return (
     <article className="group relative grid gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 transition-all hover:border-[#a9b8bf] hover:shadow-[0_18px_45px_-35px_rgba(6,27,43,.5)] md:grid-cols-[minmax(0,1fr)_14rem] md:items-center">
@@ -122,7 +126,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
           <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_COLORS[tender.status]}`}>
             {localize(STATUS_LABELS[tender.status], locale)}
           </span>
-          {isObrasPorImpuestos(tender) && (
+          {tender.isObrasPorImpuestos && (
             <span className="rounded-full bg-[#e2eef5] px-2.5 py-1 text-[11px] font-black text-[#155573]">{OBRAS_POR_IMPUESTOS_BADGE}</span>
           )}
         </div>

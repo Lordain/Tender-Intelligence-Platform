@@ -21,7 +21,13 @@ type TenderRow = {
   public_slug: string;
   tender_number: string;
   title: LocalizedText;
+  /** Migration 0053. NULL until the generator reaches the row — see publicTitleOf(). */
+  title_zh_public: string | null;
+  /** Migration 0054. NULL until the generator reaches the row — see shortTitleOf(). */
+  title_zh_short: string | null;
   summary: LocalizedText;
+  /** Migration 0054. NULL until the generator reaches the row — see publicSummaryOf(), which fails closed rather than falling back. */
+  summary_zh_public: string | null;
   one_line_summary: string | null;
   buyer: string;
   country: string;
@@ -104,7 +110,7 @@ type RiskRow = {
  * own query level" (the second failure of that same 2026-09-11 change).
  */
 const TENDER_FLAT_FIELDS = `
-  id, slug, public_slug, tender_number, title, summary, one_line_summary, buyer, country, government_level,
+  id, slug, public_slug, tender_number, title, title_zh_public, title_zh_short, summary, summary_zh_public, one_line_summary, buyer, country, government_level,
   industries, subcategory, scope_type, procedure_type, participation_scope,
   publication_date, publication_date_is_estimated,
   submission_deadline, award_date, awarded_to, awarded_value, estimated_value, currency, location,
@@ -199,7 +205,10 @@ function toTender(row: TenderRow): Tender {
     publicSlug: row.public_slug,
     tenderNumber: row.tender_number,
     title: row.title,
+    titleZhPublic: row.title_zh_public ?? undefined,
+    titleZhShort: row.title_zh_short ?? undefined,
     summary: row.summary,
+    summaryZhPublic: row.summary_zh_public ?? undefined,
     oneLineSummary: row.one_line_summary ?? undefined,
     buyer: row.buyer,
     country: row.country,

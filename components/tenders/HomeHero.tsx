@@ -4,7 +4,7 @@ import Image from "next/image";
 import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { INDUSTRY_LABELS } from "@/lib/tender-labels";
 import Link from "next/link";
-import type { Tender } from "@/types/tender";
+import type { TenderCardData } from "@/lib/tender-card";
 import { formatDate } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
@@ -103,7 +103,7 @@ function IndustryLogoRail() {
   );
 }
 
-function TenderPreview({ tenders }: { tenders: Tender[] }) {
+function TenderPreview({ tenders }: { tenders: TenderCardData[] }) {
   const { locale } = useLocale();
   const rows = Array.from({ length: 4 }, () => tenders).flat();
 
@@ -129,7 +129,7 @@ function TenderPreview({ tenders }: { tenders: Tender[] }) {
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#53636e] xl:text-xs">
                   <CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}
                 </span>
-                <p className="line-clamp-2 text-xs font-bold leading-5 text-black xl:text-sm">{tender.title.zh || tender.title.es}</p>
+                <p className="line-clamp-2 text-xs font-bold leading-5 text-black xl:text-sm">{tender.titleZh}</p>
                 <p className="text-right text-[10px] font-bold text-[#071826] xl:text-xs">
                   {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "未提供"}
                 </p>
@@ -142,7 +142,7 @@ function TenderPreview({ tenders }: { tenders: Tender[] }) {
   );
 }
 
-export function HomeHero({ tenders }: { tenders: Tender[] }) {
+export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
   const { user } = useUser();
 
   return (

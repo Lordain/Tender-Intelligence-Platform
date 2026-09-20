@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { Tender } from "@/types/tender";
+import type { TenderCardData } from "@/lib/tender-card";
 import { TenderCard } from "@/components/tenders/TenderCard";
 
-export function FeaturedTenders({ tenders }: { tenders: Tender[] }) {
+export function FeaturedTenders({ tenders }: { tenders: TenderCardData[] }) {
   return (
     <section className="w-full border-t border-[#dbe2e5] bg-[#f7f4ee] px-5 py-4 sm:px-8">
       <div className="mx-auto max-w-[94rem]">

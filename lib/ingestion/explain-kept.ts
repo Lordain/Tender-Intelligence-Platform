@@ -15,7 +15,7 @@
  * misattributes it.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { explainKeptSignal, NATIONAL_PRIORITY_SOURCE_NAME } from "@/lib/relevance";
+import { explainKeptSignal, isNationalPrioritySource } from "@/lib/relevance";
 import type { LocalizedText, Tender, TenderRelevanceTier, TenderScopeType } from "@/types/tender";
 
 export const MANUALLY_PROTECTED_BUCKET = "管理员手动设置（分类规则未参与）";
@@ -112,7 +112,7 @@ export async function explainKeptFromDb(
           industries: row.industries ?? [],
           estimatedValue: row.estimated_value ?? undefined,
           currency: row.currency ?? undefined,
-          isNationalPriorityProject: row.source_name === NATIONAL_PRIORITY_SOURCE_NAME,
+          isNationalPriorityProject: isNationalPrioritySource(row.source_name),
         });
 
     const bucket = buckets.get(signal) ?? { signal, count: 0, byCountry: [], examples: [] };

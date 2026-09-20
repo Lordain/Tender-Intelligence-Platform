@@ -34,7 +34,7 @@ const fullTender = {
   requiredDocuments: [{ id: "d", title: { zh: "SECRET_DOCUMENT", es: "d", en: "d" }, description: { zh: "d", es: "d", en: "d" }, mandatory: true }],
   keyDates: [{ id: "k", type: "clarification", date: "2026-09-20T00:00:00.000Z", notes: { zh: "SECRET_KEY_DATE", es: "k", en: "k" } }],
   risks: [{ id: "r", level: "high", title: { zh: "SECRET_RISK", es: "r", en: "r" }, description: { zh: "r", es: "r", en: "r" } }],
-  relevance: { tier: "significant", label: { zh: "重要", es: "Importante", en: "Significant" }, reason: { zh: "原因", es: "Razón", en: "Reason" } },
+  relevance: { tier: "significant", label: { zh: "重要", es: "Importante", en: "Significant" }, reason: { zh: "SECRET_RELEVANCE_REASON", es: "Razón", en: "Reason" } },
   sourceName: "SECRET_SOURCE_NAME",
   sourceUrl: "https://SECRET_SOURCE_URL.example",
   createdAt: "2026-09-15T00:00:00.000Z",
@@ -46,6 +46,13 @@ const serialized = JSON.stringify(publicTender);
 
 const protectedMarkers = [
   "SECRET_INTERNAL_ID",
+  // The relevance REASON, which now travels next to a tier that three
+  // projections do carry (2026-09-20). It is a paragraph written for the
+  // admin screens: it names the rule that fired and quotes its thresholds by
+  // number, so publishing it would hand a reader the filter's source code.
+  // Listed here rather than checked once, so the detail, the card and the
+  // list row are all held to it.
+  "SECRET_RELEVANCE_REASON",
   "SECRET_SOURCE_DERIVED_SLUG",
   "SECRET_TENDER_CODE",
   "SECRET_ORIGINAL_TITLE",
@@ -153,6 +160,28 @@ for (const marker of ["SECRET_LOCATION_LEON_GUANAJUATO", "47382915", "2026-10-01
   }
 }
 
+// 项目规模 and 项目类型 are on the row now (2026-09-20). Both are already
+// public filter controls on this page, so neither is new information — but
+// the tier must arrive as the TIER and not as the whole `relevance` object,
+// which also carries `reason`: a paragraph written for the admin screens that
+// names the rule that fired and its thresholds by number.
+if (publicListItem.relevanceTier !== "significant") {
+  throw new Error(`访客项目列表缺少项目规模：${publicListItem.relevanceTier}`);
+}
+if (publicListItem.scopeType !== "equipment") {
+  throw new Error(`访客项目列表缺少项目类型：${publicListItem.scopeType}`);
+}
+// Same two on the card and on the public detail page, which render the same
+// pill row (components/tenders/TenderTagRow.tsx).
+if (toTenderCardData(fullTender).relevanceTier !== "significant") {
+  throw new Error("访客项目卡片缺少项目规模");
+}
+if (publicTender.relevanceTier !== "significant") {
+  throw new Error("访客详情页缺少项目规模");
+}
+if (publicTender.scopeType !== "equipment") {
+  throw new Error("访客详情页缺少项目类型");
+}
 // A paying member loses none of it — the redaction is an entitlement
 // boundary, not a data change.
 if (publicListItem.titleZh !== "墨西哥 变电站扩建工程（输配电）") {

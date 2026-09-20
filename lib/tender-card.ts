@@ -31,6 +31,18 @@ export type TenderCardData = Pick<
   "id" | "country" | "industries" | "status" | "scopeType" | "currency"
 > & {
   /**
+   * 项目规模, beside the 项目类型 this card has always carried (user,
+   * 2026-09-20: 首页也是，增加项目规模的标签).
+   *
+   * The TIER, never the `relevance` object it comes from — that also holds
+   * `reason`, a paragraph written for the admin screens which names the rule
+   * that fired and its thresholds by number. The tier itself is a band
+   * (大型/中型/常规) and is already a public filter control on /tenders, so
+   * it reveals nothing the site did not already let a visitor derive; the
+   * exact budget stays member-only, below.
+   */
+  relevanceTier: Tender["relevance"]["tier"];
+  /**
    * The badge, not the source name it is derived from. Shipping `sourceName`
    * to render a boolean told the reader which portal to search — a real hint
    * in a platform whose whole value is knowing where to look.
@@ -211,6 +223,7 @@ export function toTenderCardData(
     industries: tender.industries,
     status: tender.status,
     scopeType: tender.scopeType,
+    relevanceTier: tender.relevance.tier,
     ...(memberView
       ? { estimatedValue: tender.estimatedValue }
       : { estimatedValueBand: estimatedValueBand(tender.estimatedValue, tender.currency) }),

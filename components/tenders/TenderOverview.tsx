@@ -11,12 +11,10 @@ import {
   GOVERNMENT_LEVEL_LABELS,
   PARTICIPATION_SCOPE_LABELS,
   SCOPE_TYPE_LABELS,
-  STATUS_COLORS,
-  STATUS_LABELS,
   countryLabel,
-  industryLabel,
 } from "@/lib/tender-labels";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
+import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { publicTenderPath } from "@/lib/public-tender-url";
 import { shortTitleOf } from "@/lib/public-title";
@@ -56,19 +54,13 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
             <CountryFlag country={tender.country} />
             {countryLabel(tender.country, locale)}
           </span>
-          {tender.industries.map((industry) => (
-            <span
-              key={industry}
-              className="shrink-0 whitespace-nowrap rounded-full bg-[#edf2f3] px-2.5 py-1 text-xs font-semibold text-[#24465a]"
-            >
-              {industryLabel(industry, locale)}
-            </span>
-          ))}
-          <span
-            className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[tender.status]}`}
-          >
-            {localize(STATUS_LABELS[tender.status], locale)}
-          </span>
+          <TenderTagRow
+            relevanceTier={tender.relevance.tier}
+            industries={tender.industries}
+            status={tender.status}
+            scopeType={tender.scopeType}
+            size="md"
+          />
           <span className="text-xs text-[#849098]">{tender.tenderNumber}</span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">

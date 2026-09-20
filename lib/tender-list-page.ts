@@ -92,7 +92,22 @@ export type TenderListItem = Pick<
   | "status"
   | "currency"
   | "submissionDeadline"
+  /**
+   * The two facts the list already filters on but never showed on a row
+   * (user, 2026-09-20: 项目卡片上面增加项目规模标签、项目类型标签).
+   *
+   * Neither is new information reaching a guest. 项目规模 and 项目类型 are
+   * both public filter controls on this very page, so anyone could already
+   * read a tender's tier and scope by narrowing to one value and seeing
+   * whether the row survived. Rendering them saves the round trip; it does
+   * not widen what is knowable. The tier in particular is a BAND
+   * (大型/中型/常规), never the budget — the exact figure is still
+   * member-only, a few lines below.
+   */
+  | "scopeType"
 > & {
+  /** Just the tier — `relevance` also carries the reason text, which names the rule and is an admin-facing string. */
+  relevanceTier: Tender["relevance"]["tier"];
   /**
    * Obras por Impuestos is different enough from an ordinary tender that
    * finding out only after opening the detail page wastes the click.
@@ -210,6 +225,11 @@ export function toTenderListItem(
     country: tender.country,
     industries: tender.industries,
     status: tender.status,
+    scopeType: tender.scopeType,
+    // The tier alone, not the whole `relevance` object: that carries
+    // `reason`, a paragraph written for the admin screens that names the
+    // rule and its thresholds by number.
+    relevanceTier: tender.relevance.tier,
     // The exact figure for a member, a band for everyone else. An exact
     // budget is the single most identifying value a tender carries — it
     // matches one row worldwide — so it never reaches a page that a crawler

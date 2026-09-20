@@ -4,16 +4,10 @@ import Link from "next/link";
 import type { TenderCardData } from "@/lib/tender-card";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
-import {
-  SCOPE_TYPE_LABELS,
-  STATUS_COLORS,
-  STATUS_LABELS,
-  countryLabel,
-  industryLabel,
-} from "@/lib/tender-labels";
+import { countryLabel } from "@/lib/tender-labels";
+import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
-import { OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
 import { publicTenderPath } from "@/lib/public-tender-url";
 
 export function TenderCard({
@@ -45,27 +39,13 @@ export function TenderCard({
     <article className="group relative flex h-full flex-col gap-3 rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 transition-all hover:-translate-y-0.5 hover:border-[#aebdc3] hover:shadow-[0_18px_50px_-32px_rgba(6,27,43,0.45)]">
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          {tender.industries.map((industry) => (
-            <span
-              key={industry}
-              className="shrink-0 whitespace-nowrap rounded-full bg-[#edf2f3] px-2.5 py-1 text-[11px] font-semibold text-[#24465a]"
-            >
-              {industryLabel(industry, locale)}
-            </span>
-          ))}
-          <span
-            className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_COLORS[tender.status]}`}
-          >
-            {localize(STATUS_LABELS[tender.status], locale)}
-          </span>
-          <span className="shrink-0 whitespace-nowrap rounded-full border border-[#d8e0e3] px-2.5 py-1 text-[11px] font-medium text-[#566773]">
-            {localize(SCOPE_TYPE_LABELS[tender.scopeType], locale)}
-          </span>
-          {tender.isObrasPorImpuestos && (
-            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#e2eef5] px-2.5 py-1 text-[11px] font-black text-[#155573]">
-              {OBRAS_POR_IMPUESTOS_BADGE}
-            </span>
-          )}
+          <TenderTagRow
+            relevanceTier={tender.relevanceTier}
+            industries={tender.industries}
+            status={tender.status}
+            scopeType={tender.scopeType}
+            isObrasPorImpuestos={tender.isObrasPorImpuestos}
+          />
         </div>
         <SaveTenderButton tenderId={tender.id} className="relative z-10 shrink-0" />
       </div>

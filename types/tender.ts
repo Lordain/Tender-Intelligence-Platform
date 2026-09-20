@@ -406,4 +406,17 @@ export type PublicTenderDetail = Pick<
   summaryZh: string;
   /** A USD range containing the real budget, or null when there is none to show. */
   estimatedValueBand: string | null;
+  /**
+   * 项目规模, as a pill beside the industries (user, 2026-09-20: 项目详情页，
+   * 增加项目规模和项目类型的标签).
+   *
+   * The TIER only. `relevance` also carries `reason` — a paragraph written
+   * for the admin screens that names the rule that fired and its thresholds
+   * by number — and this type is the whitelist that keeps such a field from
+   * reaching a public page by accident. The tier itself is a band
+   * (大型/中型/常规), already a public filter control on /tenders, so it
+   * reveals nothing a visitor could not already derive; the exact budget is
+   * still redacted to estimatedValueBand above.
+   */
+  relevanceTier: TenderRelevanceTier;
 };

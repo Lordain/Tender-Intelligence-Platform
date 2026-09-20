@@ -8,7 +8,8 @@ import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
 import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { ALL_SCOPE_TYPES, COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, countryLabel, industryLabel } from "@/lib/tender-labels";
+import { ALL_SCOPE_TYPES, COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_LABELS, countryLabel, industryLabel } from "@/lib/tender-labels";
+import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { isSortKey, type SortKey } from "@/lib/filter-tenders";
 import { useSavedTenderIds } from "@/lib/saved";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
@@ -16,7 +17,6 @@ import { InlineTogglePills } from "@/components/tenders/InlineTogglePills";
 import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
-import { OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
 import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
 import { canUseTenderListMemberFeatures, TRIAL_DAYS, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
@@ -118,17 +118,13 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
     <article className="group relative grid gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 transition-all hover:border-[#a9b8bf] hover:shadow-[0_18px_45px_-35px_rgba(6,27,43,.5)] md:grid-cols-[minmax(0,1fr)_14rem] md:items-center">
       <div className="min-w-0">
         <div className="mb-2.5 flex flex-wrap gap-2">
-          {tender.industries.map((industry) => (
-            <span key={industry} className="rounded-full bg-[#edf2f3] px-2.5 py-1 text-[11px] font-semibold text-[#24465a]">
-              {industryLabel(industry, locale)}
-            </span>
-          ))}
-          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_COLORS[tender.status]}`}>
-            {localize(STATUS_LABELS[tender.status], locale)}
-          </span>
-          {tender.isObrasPorImpuestos && (
-            <span className="rounded-full bg-[#e2eef5] px-2.5 py-1 text-[11px] font-black text-[#155573]">{OBRAS_POR_IMPUESTOS_BADGE}</span>
-          )}
+          <TenderTagRow
+            relevanceTier={tender.relevanceTier}
+            industries={tender.industries}
+            status={tender.status}
+            scopeType={tender.scopeType}
+            isObrasPorImpuestos={tender.isObrasPorImpuestos}
+          />
         </div>
         <h2 className="text-base font-black leading-6 text-black sm:text-lg">
           <Link href={`/tenders/${tender.publicSlug}`} data-public-tender-link className="after:absolute after:inset-0">

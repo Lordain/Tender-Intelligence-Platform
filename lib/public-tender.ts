@@ -41,6 +41,8 @@ export function toPublicTenderDetail(tender: Tender): PublicTenderDetail {
     governmentLevel: tender.governmentLevel,
     industries: tender.industries,
     scopeType: tender.scopeType,
+    // The tier, not tender.relevance — see PublicTenderDetail.relevanceTier.
+    relevanceTier: tender.relevance.tier,
     procedureType: tender.procedureType,
     participationScope: tender.participationScope,
     // The two dates are treated DIFFERENTLY, on purpose (2026-09-20, the

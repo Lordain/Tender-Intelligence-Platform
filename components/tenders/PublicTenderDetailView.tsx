@@ -11,11 +11,9 @@ import {
   GOVERNMENT_LEVEL_LABELS,
   PARTICIPATION_SCOPE_LABELS,
   SCOPE_TYPE_LABELS,
-  STATUS_COLORS,
-  STATUS_LABELS,
   countryLabel,
-  industryLabel,
 } from "@/lib/tender-labels";
+import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { STALE_WITHOUT_END_DATE_DAYS } from "@/lib/tender-status";
 import type { PublicTenderDetail } from "@/types/tender";
@@ -91,14 +89,13 @@ export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicT
               <CountryFlag country={tender.country} />
               {countryLabel(tender.country, locale)}
             </span>
-            {tender.industries.map((industry) => (
-              <span key={industry} className="shrink-0 whitespace-nowrap rounded-full bg-[#edf2f3] px-2.5 py-1 text-xs font-semibold text-[#24465a]">
-                {industryLabel(industry, locale)}
-              </span>
-            ))}
-            <span className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[tender.status]}`}>
-              {localize(STATUS_LABELS[tender.status], locale)}
-            </span>
+            <TenderTagRow
+              relevanceTier={tender.relevanceTier}
+              industries={tender.industries}
+              status={tender.status}
+              scopeType={tender.scopeType}
+              size="md"
+            />
           </div>
 
           <h1 className="max-w-4xl text-2xl font-black leading-[1.25] tracking-[-0.035em] text-[#071826] sm:text-3xl">

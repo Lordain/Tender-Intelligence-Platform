@@ -255,7 +255,7 @@ if (guestCard.submissionDeadline !== "2026-10") {
 if (guestCard.qualification !== undefined || guestCard.risk !== undefined || guestCard.oneLineSummary !== undefined) {
   throw new Error("默认的项目卡片不应携带受保护的投标重点预览");
 }
-const previewCard = toTenderCardData(fullTender, { includeAnalysisPreview: true });
+const previewCard = toTenderCardData(fullTender, { includeAnalysisPreview: true, showOneLineSummary: true });
 if (previewCard.qualification === undefined || previewCard.risk === undefined) {
   throw new Error("首页免费预览卡片缺少投标重点预览");
 }
@@ -266,9 +266,20 @@ if (previewCard.summaryZh !== undefined) {
   throw new Error("带一句话总结的卡片不应再携带摘要");
 }
 // …but only when there is actually a one-line summary to replace it with.
-const previewCardWithoutOneLine = toTenderCardData({ ...fullTender, oneLineSummary: undefined }, { includeAnalysisPreview: true });
+const previewCardWithoutOneLine = toTenderCardData({ ...fullTender, oneLineSummary: undefined }, { includeAnalysisPreview: true, showOneLineSummary: true });
 if (previewCardWithoutOneLine.summaryZh === undefined) {
   throw new Error("没有一句话总结时，卡片不能连摘要也没有");
+}
+// /saved renders TenderCard WITHOUT showOneLineSummary while still passing
+// includeAnalysisPreview for a member. Tying the summary's removal to the
+// preview flag instead of this one left those cards with no description line
+// at all — the one-liner was not rendered and the summary was not sent.
+const savedCard = toTenderCardData(fullTender, { memberView: true, includeAnalysisPreview: true });
+if (savedCard.summaryZh === undefined) {
+  throw new Error("不展示一句话总结的卡片必须保留摘要，否则卡片没有任何描述");
+}
+if (savedCard.oneLineSummary !== undefined) {
+  throw new Error("不展示一句话总结的卡片不应携带一句话总结");
 }
 // Even then, the preview carries our analysis — never a source identifier.
 for (const marker of ["SECRET_ORIGINAL_TITLE", "SECRET_SOURCE_URL", "SECRET_TENDER_CODE", "SECRET_SOURCE_DERIVED_SLUG", "47382915"]) {

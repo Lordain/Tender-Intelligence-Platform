@@ -97,7 +97,7 @@ function topRisk(risks: readonly TenderRisk[]): PreviewItem | undefined {
  */
 export function toTenderCardData(
   tender: Tender,
-  options: { memberView?: boolean; includeAnalysisPreview?: boolean; memberTitle?: boolean } = {},
+  options: { memberView?: boolean; includeAnalysisPreview?: boolean; memberTitle?: boolean; showOneLineSummary?: boolean } = {},
 ): TenderCardData {
   const memberView = options.memberView ?? false;
   /**
@@ -138,7 +138,21 @@ export function toTenderCardData(
   // because it decides whether `summaryZh` is projected at all, and because a
   // card whose one-line summary is missing must keep the summary rather than
   // end up with neither line.
-  const oneLineSummary = includeAnalysisPreview
+  // Mirrors <TenderCard showOneLineSummary> — the caller that renders the
+  // 一句话总结 is the caller that says so here, and only then is the summary
+  // dropped as a duplicate of it.
+  //
+  // Keyed on this rather than on `includeAnalysisPreview`, which was wrong
+  // and briefly shipped that way: /saved passes includeAnalysisPreview for a
+  // member but renders the card WITHOUT showOneLineSummary, so tying the two
+  // together left those cards with no description line at all — neither the
+  // 一句话总结 (not rendered) nor the summary (no longer projected). The two
+  // flags answer different questions: one is "may this card carry paywalled
+  // analysis", the other is "does this card lead with the one-liner".
+  //
+  // It also keeps `oneLineSummary` out of the payload wherever nothing
+  // renders it, which /saved was shipping to every member for nothing.
+  const oneLineSummary = includeAnalysisPreview && (options.showOneLineSummary ?? false)
     ? (tender.oneLineSummary?.trim() === "" ? undefined : tender.oneLineSummary)
     : undefined;
 

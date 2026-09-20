@@ -49,7 +49,7 @@ export default async function Home() {
   // and this page is the one crawlers read most — so it is set HERE, per call,
   // and nowhere else. /tenders, every detail page and every other card stay on
   // publicTitleOf.
-  const featuredWithPreviews = featured.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { includeAnalysisPreview: true, memberTitle: true }));
+  const featuredWithPreviews = featured.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { includeAnalysisPreview: true, showOneLineSummary: true, memberTitle: true }));
   const tickerWithPreviews = ticker.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { memberTitle: true }));
 
   return (

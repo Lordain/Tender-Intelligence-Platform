@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { LocalizedText } from "@/types/tender";
 import { useSavedSearches } from "@/lib/saved";
 
+/**
+ * Mirrors the projection in app/api/tenders/notifications/route.ts. One safe
+ * Chinese display string, not the source LocalizedText the bell used to
+ * receive and never render.
+ */
 type NotificationTender = {
   id: string;
   publicSlug: string;
-  title: LocalizedText;
+  titleZh: string;
   publicationDate: string;
   createdAt: string;
 };

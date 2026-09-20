@@ -1,5 +1,5 @@
 import { toPublicTenderDetail } from "../lib/public-tender";
-import { toTenderListItem } from "../lib/tender-list-page";
+import { toNotificationTender, toTenderListItem } from "../lib/tender-list-page";
 import { toTenderCardData } from "../lib/tender-card";
 import { publicTenderPath } from "../lib/public-tender-url";
 import { GENERIC_PUBLIC_SUMMARY } from "../lib/public-title";
@@ -199,6 +199,32 @@ if (publicTenderPath(fullTender) !== "/tenders/p-7a3c91e4b6d82f05") {
 // Tender — on the homepage, the most crawled page on the site, and on
 // /saved, which had no server-side gate and therefore returned the entire
 // tender table to an unauthenticated request.
+// The header bell. Its endpoint takes no credential — saved searches live in
+// localStorage and the bell renders for logged-out visitors — so the row it
+// returns has to be the guest projection by default. It used to send
+// `title: tender.title`, the whole LocalizedText, so every one of up to fifty
+// items carried the original Spanish title that nothing ever rendered.
+const guestNotification = toNotificationTender(fullTender);
+for (const marker of protectedMarkers.filter((m) => m !== "SECRET_INTERNAL_ID")) {
+  if (JSON.stringify(guestNotification).includes(marker)) {
+    throw new Error(`通知条目泄露了受保护字段：${marker}`);
+  }
+}
+if (guestNotification.titleZh !== "墨西哥 变电站扩建工程（输配电）") {
+  throw new Error("访客的通知条目没有使用去标识化的公开标题");
+}
+const memberNotification = toNotificationTender(fullTender, { memberView: true });
+if (memberNotification.titleZh !== "SECRET_PLACE_NAME变电站扩建") {
+  throw new Error("订阅用户的通知条目应显示短标题");
+}
+const untranslatedNotification = toNotificationTender({
+  ...fullTender,
+  title: { zh: "SECRET_ORIGINAL_TITLE", es: "SECRET_ORIGINAL_TITLE", en: "" },
+});
+if (untranslatedNotification.titleZh !== "政府采购项目") {
+  throw new Error("还没翻译的项目不能把原文标题当成中文标题发给访客");
+}
+
 const guestCard = toTenderCardData(fullTender);
 const serializedGuestCard = JSON.stringify(guestCard);
 // The opaque row id is not a protected value — it is what SaveTenderButton

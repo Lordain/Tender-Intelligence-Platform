@@ -225,6 +225,47 @@ export function toTenderListItem(
   };
 }
 
+/**
+ * One notification row for the header bell, projected for its audience.
+ *
+ * Lives here rather than in the route so it is testable beside the two
+ * projections it shares a rule with — and so the rule itself is written once.
+ * The route used to inline `title: tender.title`, shipping the whole
+ * LocalizedText: every item carried `title.es`, the original Spanish or
+ * Portuguese name of the project, on an endpoint with no authentication, in
+ * batches of fifty (2026-09-20). The bell has only ever rendered the Chinese,
+ * so nothing displayed changes.
+ */
+export type NotificationTenderItem = {
+  id: string;
+  publicSlug: string;
+  titleZh: string;
+  publicationDate: string;
+  createdAt: string;
+};
+
+export function toNotificationTender(
+  tender: Tender,
+  options: { memberView?: boolean } = {},
+): NotificationTenderItem {
+  const memberView = options.memberView ?? false;
+  const translatedTitle = tender.title.zh.trim();
+  const originalTitle = tender.title.es.trim();
+  // Same rule as toTenderListItem: an unreviewed row mirrors the source text
+  // into `zh` until the translation job runs, and publishing that would hand
+  // over the original title under a different field name.
+  const hasRealTranslation = translatedTitle !== "" && translatedTitle !== originalTitle;
+  return {
+    id: tender.id,
+    publicSlug: requirePublicTenderSlug(tender),
+    titleZh: hasRealTranslation
+      ? (memberView ? shortTitleOf(tender) : publicTitleOf(tender))
+      : memberView ? `${tender.buyer}采购项目` : "政府采购项目",
+    publicationDate: tender.publicationDate,
+    createdAt: tender.createdAt,
+  };
+}
+
 function firstValue(value: string | string[] | undefined): string | null {
   return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }

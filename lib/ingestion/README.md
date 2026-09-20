@@ -7488,3 +7488,74 @@ a real row (`--years 1` drops AP 07/2025 by its number and its own 2026-01-27
 schedule brings it back), and the AP 03/2024 shape is asserted on a synthetic
 one, built rather than captured because that page was never fetched — what is
 pinned there is the rule, not that page's contents.
+
+
+## ANTAQ got a button, and the panel is mostly about what it cannot get (2026-09-20)
+
+`lib/ingestion/ingest-antaq.ts` is the work, called by both
+`scripts/ingest-antaq.ts` and `app/api/admin/import-antaq/route.ts` — the rule
+`ingest-brazil.ts` already states: one code path, so the page and the command
+cannot drift into disagreeing about the same source.
+
+### Why the panel spends more space on the absences than on the fields
+
+On every other source in this admin, 无金额 means "we did not manage to read
+it" and the fix is to re-run — PNCP's `amountLookupFailed` exists precisely
+because a refusal and a sealed budget looked identical in one total until
+2026-09-20. On ANTAQ it means the page **states no money at all**: no ceiling,
+no reference price, no CAPEX, verified on all five captures. The investment
+figure is inside the EVTEA PDF, behind a separate link. Re-running a hundred
+times changes nothing. A panel that showed 「没有金额：5 条」 the way PNCP's does
+would send someone hunting a bug that is not there.
+
+Same for the bid deadline: there is none because bidding has not opened, so
+`status` is `planned` and `submissionDeadline` stays empty — which is also the
+only thing keeping `upsertTendersBatched`'s past-deadline gate from discarding
+every row, the mistake that cost one commit when the contributions deadline
+was briefly used for it.
+
+### The third row is the one people will ask about
+
+`Minutas de Edital e Contrato`, `EVTEA` and `Diretrizes do projeto` have URLs,
+and the import still does not save them as document links, because those URLs
+are landing PAGES. One behind a subscriber's download button hands them HTML.
+They are rendered as links labelled （页）, and harvesting what sits behind them
+needs one more fetch layer written against a real capture of such a page —
+which does not exist, so it is not written.
+
+### How often, and why weekly
+
+ANTAQ opens seven or eight hearings a year on gov.br: a new one every six to
+eight weeks. Daily would re-read the same six pages. But months apart is wrong
+too — ANTAQ keeps adding files to a hearing page after the fact (Itajaí gained
+`Documentação revisada pós TCU` and a Data Room in July 2026) and a comment
+period is only six to eight weeks long. Weekly meets a new hearing within a
+week of it opening, leaving five or six weeks to prepare, and refreshes the
+cronograma and attachments on the ones already in. Writes are by `slug`, so
+re-running is safe.
+
+The panel's default is `--years 3`, not the CLI's 2: three keeps AP 03/2024
+Itajaí, which is arguably the most advanced of the six, and the ⚠ line now
+explains why an old-numbered hearing is in the list rather than leaving it
+looking like a bug.
+
+## The DOU permalink is still the one thing stated and not measured (2026-09-20)
+
+`douNoticeUrl()` builds `https://www.in.gov.br/web/dou/-/<urlTitle>` and that
+shape was **written down, never verified**. It decides what the DOU can ever
+be: if the detail page carries the full text, the watch narrows a day to a
+handful of hits and a handful of extra fetches turns them into real rows; if
+it does not, the DOU stays a lead radar because 403 characters is not a tender.
+
+A browser test from the laptop on 2026-09-20 returned
+`ERR_HTTP2_PROTOCOL_ERROR`. That is **not** a verdict on the URL — it is
+in.gov.br's known behaviour toward that network, which closes the socket
+mid-read there, and it is why the DOU watch runs on the runner in the first
+place. The test has to happen where in.gov.br answers.
+
+`scripts/probe-dou-permalink.ts` (`what=dou-link`) is that test. It fetches the
+first N notices' permalinks from a real edition and reports, per notice, the
+status and the readable length of the article region **against the length of
+the snippet it came from** — because a 200 that returns the same 403 characters
+is a page that exists and does not help, and only the comparison separates
+those two.

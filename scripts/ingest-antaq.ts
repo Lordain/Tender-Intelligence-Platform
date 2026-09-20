@@ -1,13 +1,12 @@
 /**
  * CLI for ANTAQ's port-concession public hearings.
  *
- * The parser (lib/ingestion/antaq-audiencia-parser.ts) and the mapper
- * (lib/ingestion/antaq-mapper.ts) were written on 2026-09-19 against five real
- * captured pages and then referenced by nothing runnable. This and
- * lib/ingestion/connectors/antaq-live.ts are the wiring that makes the source
- * exist. Read the connector's header before changing anything here: which
- * hosts are fetched, and which are deliberately not, is the whole story of
- * what this source covers.
+ * The work is in lib/ingestion/ingest-antaq.ts, shared with the 巴西 tab's
+ * button on 新项目清单 — one code path, so the page and this command cannot
+ * drift into disagreeing about the same source. That file's header lists what
+ * a run obtains and what it structurally cannot (no money, no bid deadline,
+ * and the draft edital only as a link to follow). Everything below is
+ * printing.
  *
  * ── Why a hearing and not an auction ──────────────────────────────────────
  *
@@ -50,20 +49,11 @@
  *   npm run ingest:antaq -- --write
  *   npm run ingest:antaq -- --documents --write         （顺便把公告 PDF 记成文档链接）
  */
-import {
-  fetchAntaqHearings,
-  hearingDocumentLinks,
-  isAntaqUnreachable,
-  type AntaqHarvest,
-} from "../lib/ingestion/connectors/antaq-live";
-import { mapAntaqHearingToTender } from "../lib/ingestion/antaq-mapper";
-import { judgeAntaqWindow, type AntaqWindowVerdict } from "../lib/ingestion/antaq-window";
-import { upsertTendersBatched } from "../lib/ingestion/upsert-tenders";
-import { saveDocumentLinks } from "../lib/ingestion/document-links";
+import { ingestAntaq, type AntaqIngestResult } from "../lib/ingestion/ingest-antaq";
+import { isAntaqUnreachable } from "../lib/ingestion/connectors/antaq-live";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ANTAQ_SOURCE_NAME } from "@/lib/relevance";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
-import type { Tender } from "@/types/tender";
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -71,21 +61,14 @@ function argValue(args: string[], flag: string): string | undefined {
 }
 
 /** A count per bucket, so "what this source does not cover" is a number and not an impression. */
-function reportCoverage(harvest: AntaqHarvest): void {
-  console.log(`\nANTAQ 列出 ${harvest.listed.length} 场听证：`);
-  console.log(`  ${String(harvest.hearings.length).padStart(3)} 场读到了（www.gov.br）`);
-  if (harvest.failed.length > 0) console.log(`  ${String(harvest.failed.length).padStart(3)} 场取到页面但没读成`);
-
-  const byHost = new Map<string, { count: number; why: string }>();
-  for (const skip of harvest.skipped) {
-    const seen = byHost.get(skip.host);
-    if (seen) seen.count += 1;
-    else byHost.set(skip.host, { count: 1, why: skip.why });
-  }
-  for (const [host, { count, why }] of [...byHost].sort((a, b) => b[1].count - a[1].count)) {
+function reportCoverage(result: AntaqIngestResult): void {
+  console.log(`\nANTAQ 列出 ${result.listedCount} 场听证：`);
+  console.log(`  ${String(result.readCount).padStart(3)} 场读到了（www.gov.br）`);
+  if (result.failed.length > 0) console.log(`  ${String(result.failed.length).padStart(3)} 场取到页面但没读成`);
+  for (const { host, count, why } of result.skippedByHost) {
     console.log(`  ${String(count).padStart(3)} 场没去取 —— ${host}：${why}`);
   }
-  for (const f of harvest.failed) console.log(`      ✗ ${f.title.slice(0, 60)} —— ${f.why}`);
+  for (const f of result.failed) console.log(`      ✗ ${f.title.slice(0, 60)} —— ${f.why}`);
 }
 
 async function main() {
@@ -123,9 +106,11 @@ async function main() {
 
   console.log(`ANTAQ 港口特许经营 —— 公开听证阶段（来源 "${ANTAQ_SOURCE_NAME}"）`);
 
-  let harvest: AntaqHarvest;
+  let result: AntaqIngestResult;
   try {
-    harvest = await fetchAntaqHearings({ limit, onProgress: (m) => console.log(m) });
+    result = await ingestAntaq(supabase, { write, years, limit, documents: args.includes("--documents") }, (m) =>
+      console.log(m),
+    );
   } catch (err) {
     // An unreachable index is not an empty source, and the difference decides
     // what the operator does next: change where the request comes from, or
@@ -141,92 +126,57 @@ async function main() {
     throw err;
   }
 
-  reportCoverage(harvest);
+  reportCoverage(result);
 
-  const now = new Date();
-  const mapped: {
-    tender: Tender;
-    verdict: AntaqWindowVerdict;
-    sections: { title: string; url: string }[];
-    notices: number;
-  }[] = [];
-  const unmappable: string[] = [];
-  for (const hearing of harvest.hearings) {
-    const tender = mapAntaqHearingToTender(hearing, now);
-    if (tender === null) {
-      // The mapper refuses a hearing with no publication date or with nothing
-      // but a reference number for a title. Both are correct refusals; naming
-      // them keeps a template change from looking like a quiet source.
-      unmappable.push(`${hearing.number}${hearing.projectCode ? ` ${hearing.projectCode}` : ""} —— 没有发布日期，或者只有一个编号当标题`);
-      continue;
-    }
-    mapped.push({
-      tender,
-      verdict: judgeAntaqWindow(hearing, years, now),
-      sections: hearing.documentSections,
-      notices: hearing.notices.length,
-    });
+  if (result.unmappable.length > 0) {
+    console.log(`\n${result.unmappable.length} 场读到了但映射不出项目：`);
+    for (const line of result.unmappable) console.log(`  ${line}`);
   }
-  if (unmappable.length > 0) {
-    console.log(`\n${unmappable.length} 场读到了但映射不出项目：`);
-    for (const line of unmappable) console.log(`  ${line}`);
-  }
-
-  const kept = mapped.filter((m) => m.verdict.inWindow).map((m) => m.tender);
-  const dropped = mapped.length - kept.length;
 
   console.log(
-    `\n── ${kept.length} 条项目${years > 0 ? `（${now.getUTCFullYear() - (years - 1)} 年及以后的场次；窗口外 ${dropped} 条已丢）` : "（未设窗口）"} ──`,
+    `\n── ${result.keptCount} 条项目${result.cutoffYear !== undefined ? `（${result.cutoffYear} 年及以后的场次；窗口外 ${result.droppedByWindow} 条已丢）` : "（未设窗口）"} ──`,
   );
-  for (const { tender, verdict, sections, notices } of mapped) {
-    const inWindow = verdict.inWindow;
-    console.log(`${inWindow ? " " : "·"} ${tender.tenderNumber.padEnd(11)} ${tender.relevance.tier.padEnd(9)} 日程到 ${verdict.lastStatedDay ?? "  没排  "}  ${(tender.title.es ?? "").slice(0, 58)}`);
+  for (const row of result.rows) {
+    console.log(
+      `${row.inWindow ? " " : "·"} ${row.tenderNumber.padEnd(11)} ${row.tier.padEnd(9)} 日程到 ${row.lastStatedDay ?? "  没排  "}  ${row.title.slice(0, 58)}`,
+    );
     // Plone's date decides nothing here, so when it disagrees with the
     // hearing's own dates the run says so rather than letting the operator
     // read `发布 2026-07-06` on a hearing from 2024 and believe it.
-    if (verdict.pageStampWarning !== undefined) console.log(`    ⚠ ${verdict.pageStampWarning}`);
-    if (!inWindow) {
-      console.log(`    ${verdict.why}`);
+    if (row.pageStampWarning !== undefined) console.log(`    ⚠ ${row.pageStampWarning}`);
+    if (!row.inWindow) {
+      console.log(`    ${row.why}`);
       continue;
     }
-    if (verdict.rescuedBySchedule) console.log(`    ${verdict.why}`);
-    console.log(`    ${tender.sourceUrl}`);
-    console.log(`    公告附件 ${notices} 个${sections.length > 0 ? `；文档分栏：${sections.map((s) => s.title).join(" / ")}` : "；页面没给文档分栏"}`);
+    console.log(`    ${row.sourceUrl}`);
+    console.log(
+      `    公告附件 ${row.noticeCount} 个${row.documentSections.length > 0 ? `；文档分栏：${row.documentSections.map((s) => s.title).join(" / ")}` : "；页面没给文档分栏"}`,
+    );
     // Printed rather than stored: these are landing PAGES, and the draft
     // edital and the EVTEA sit behind them. See hearingDocumentLinks() for
     // why they are not written into tender_document_links.
-    for (const section of sections) console.log(`      ${section.title} → ${section.url}`);
+    for (const section of row.documentSections) console.log(`      ${section.title} → ${section.url}`);
   }
 
-  if (!write) {
+  if (!result.write) {
     console.log(`\ndry run（加 --write 才写库）—— 什么都没写入 Supabase。`);
     if (args.includes("--documents")) console.log("（--documents 只在 --write 时生效：链接要挂在已写入的项目上。）");
     return;
   }
 
-  const { upsertedCount, skippedExcludedCount, skippedClosedCount, failed } = await upsertTendersBatched(supabase!, kept);
-  if (failed && failed.length > 0) {
-    console.error(`${failed.length} 条写入失败：`);
-    for (const f of failed.slice(0, 20)) console.error(`  ${f.slug}: ${f.error}`);
-  }
-  if (skippedExcludedCount) console.log(`跳过 ${skippedExcludedCount} 条 excluded。`);
-  if (skippedClosedCount) console.log(`跳过 ${skippedClosedCount} 条已过交标日期。`);
-  console.log(`写入 ${upsertedCount} / ${kept.length} 条。`);
+  if (result.writeFailed) console.error(`${result.writeFailed} 条写入失败。`);
+  if (result.skippedExcluded) console.log(`跳过 ${result.skippedExcluded} 条 excluded。`);
+  if (result.skippedClosed) console.log(`跳过 ${result.skippedClosed} 条已过交标日期。`);
+  console.log(`写入 ${result.written ?? 0} / ${result.keptCount} 条。`);
 
-  if (!args.includes("--documents")) {
+  if (result.documentLinks === undefined) {
     console.log("（想把公告 PDF 一并记下来，加 --documents。）");
     return;
   }
-  const entries = harvest.hearings
-    .map((hearing) => {
-      const tender = mapped.find((m) => m.tender.sourceUrl === hearing.sourceUrl)?.tender;
-      if (tender === undefined || !kept.some((k) => k.slug === tender.slug)) return null;
-      return { slug: tender.slug, links: hearingDocumentLinks(hearing) };
-    })
-    .filter((e): e is { slug: string; links: ReturnType<typeof hearingDocumentLinks> } => e !== null);
-  const saved = await saveDocumentLinks(supabase!, entries);
-  console.log(`文档链接：${saved.linkCount} 条，挂在 ${saved.tendersWithLinks} 个项目上${saved.unmatchedSlugs > 0 ? `；${saved.unmatchedSlugs} 个 slug 没对上已存项目（excluded 的行本来就不写）` : ""}。`);
-  for (const f of saved.failed) console.error(`  文档链接写入失败 ${f.slug}: ${f.error}`);
+  const d = result.documentLinks;
+  console.log(
+    `文档链接：${d.linkCount} 条，挂在 ${d.tendersWithLinks} 个项目上${d.unmatchedSlugs > 0 ? `；${d.unmatchedSlugs} 个 slug 没对上已存项目（excluded 的行本来就不写）` : ""}${d.failed > 0 ? `；${d.failed} 条写入失败` : ""}。`,
+  );
 }
 
 main().catch((error) => {

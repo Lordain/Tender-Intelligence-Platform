@@ -28,7 +28,7 @@ on:
         description: "敲门（能不能连上）还是看门后面（有没有能投的标）"
         type: choice
         default: both
-        options: [doors, behind, pipeline, capture, capture-sisap, dou, watch-dou, antaq, both]
+        options: [doors, behind, pipeline, capture, capture-sisap, dou, watch-dou, dou-link, antaq, both]
       args:
         description: "额外参数，原样传给上面选的那条命令（例如 --days 5 --all-organs）"
         type: string
@@ -117,6 +117,19 @@ jobs:
         env:
           ARGS: ${{ inputs.args }}
         run: npm run watch:dou -- --days 1 $ARGS
+
+      # The one thing about the DOU that was stated and never measured: does
+      # `https://www.in.gov.br/web/dou/-/<urlTitle>` resolve, and does that
+      # page carry more than the 403 characters the edition payload gives?
+      # That answer decides whether the DOU can ever become an import source
+      # or stays a lead radar. It has to run here: the laptop's browser test
+      # returned ERR_HTTP2_PROTOCOL_ERROR, which is in.gov.br's known
+      # behaviour toward that network and says nothing about the URL.
+      - name: Check the DOU detail-page link
+        if: inputs.what == 'dou-link'
+        env:
+          ARGS: ${{ inputs.args }}
+        run: npm run probe:dou-link -- $ARGS
 
       # ANTAQ's hearings, DRY RUN — no --write, and none is reachable from
       # here without one. gov.br opens to the laptop too, so this is for

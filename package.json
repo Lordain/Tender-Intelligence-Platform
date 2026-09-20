@@ -157,6 +157,7 @@
     "audit:region-names": "tsx --env-file-if-exists=.env.local scripts/audit-region-names.ts",
     "test:antaq-live": "tsx scripts/test-antaq-live.ts",
     "watch:dou": "tsx scripts/watch-dou.ts",
+    "probe:dou-link": "tsx scripts/probe-dou-permalink.ts",
     "test:dou-watch": "tsx scripts/test-dou-watch.ts"
   },
   "dependencies": {

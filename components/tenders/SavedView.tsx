@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { TenderCardData } from "@/lib/tender-card";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { useSavedSearches, useSavedTenderIds } from "@/lib/saved";
@@ -44,12 +45,47 @@ function ArrowIcon() {
   );
 }
 
-export function SavedView({ tenders }: { tenders: TenderCardData[] }) {
+export function SavedView({ canLoadTenders = false }: { canLoadTenders?: boolean }) {
   const { locale } = useLocale();
   const { user, loading } = useUser();
   const { savedIds } = useSavedTenderIds();
   const { searches, removeSearch } = useSavedSearches();
-  const savedTenders = tenders.filter((tender) => savedIds.includes(tender.id));
+  // null means "not answered yet" and is NOT the same as []. The page used to
+  // arrive with every tender already in its HTML, so the cards were there on
+  // first paint; now they take a round-trip, and showing 还没有收藏项目 during
+  // it would tell someone with a full list that it is empty.
+  const [fetched, setFetched] = useState<TenderCardData[] | null>(null);
+
+  const savedKey = savedIds.join(",");
+  useEffect(() => {
+    // Nothing saved means nothing to ask for. The empty answer is DERIVED
+    // below rather than written into state here: setting state directly in an
+    // effect is a lint error and an extra render for a value already known.
+    if (!canLoadTenders || savedKey === "") return;
+    const ids = savedKey.split(",");
+    const controller = new AbortController();
+    fetch("/api/tenders/saved", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ids }),
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to load saved tenders");
+        return response.json() as Promise<TenderCardData[]>;
+      })
+      .then(setFetched)
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error(error);
+        // An empty list rather than a stuck spinner: the count above still
+        // reads off savedIds, so the page says how many are saved even when
+        // this request failed.
+        setFetched([]);
+      });
+    return () => controller.abort();
+  }, [canLoadTenders, savedKey]);
+  const savedTenders = savedKey === "" ? [] : fetched;
 
   if (loading) {
     return <main className="min-h-[65vh] bg-[#f6f4ef]" aria-busy="true" />;
@@ -72,7 +108,7 @@ export function SavedView({ tenders }: { tenders: TenderCardData[] }) {
           description="集中管理常用筛选与重点项目，快速返回正在评估和持续跟进的招标机会。"
           metrics={[
             { label: "已保存搜索", value: searches.length, suffix: "项" },
-            { label: "已收藏项目", value: savedTenders.length, suffix: "个" },
+            { label: "已收藏项目", value: savedIds.length, suffix: "个" },
           ]}
         />
 
@@ -129,10 +165,16 @@ export function SavedView({ tenders }: { tenders: TenderCardData[] }) {
               <h2 className="text-2xl font-black tracking-[-0.025em] text-[#071826]">{localize(uiText.savedTenders, locale)}</h2>
               <p className="mt-1.5 text-sm text-[#75838c]">保留重点机会，集中查看交标时间与项目进展。</p>
             </div>
-            {savedTenders.length > 0 && <span className="text-xs font-semibold text-[#64717c]">共 {savedTenders.length} 项</span>}
+            {savedIds.length > 0 && <span className="text-xs font-semibold text-[#64717c]">共 {savedIds.length} 项</span>}
           </div>
 
-          {savedTenders.length === 0 ? (
+          {savedTenders === null ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+              {Array.from({ length: Math.min(savedIds.length, 3) }, (_, index) => (
+                <div key={index} className="h-72 animate-pulse rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]" />
+              ))}
+            </div>
+          ) : savedTenders.length === 0 ? (
             <div className="flex flex-col items-center rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-6 py-10 text-center">
               <span className="text-[#b86e00]"><BookmarkIcon /></span>
               <h3 className="mt-4 text-lg font-black text-[#071826]">还没有收藏项目</h3>

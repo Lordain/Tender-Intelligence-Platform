@@ -1,8 +1,5 @@
-import { getCachedTenderList } from "@/lib/tenders";
 import { SavedView } from "@/components/tenders/SavedView";
 import { getViewerRole } from "@/lib/access-control-server";
-import { canUseTenderListMemberFeatures } from "@/lib/access-control";
-import { toTenderCardData } from "@/lib/tender-card";
 
 /**
  * Dynamic, because it reads the session. It has to be: this page used to
@@ -16,36 +13,20 @@ import { toTenderCardData } from "@/lib/tender-card";
  *
  * Which tenders a visitor saved is known only to their browser
  * (useSavedTenderIds reads localStorage), so the server cannot send just
- * those and has to send the set to filter from. What it can decide is who
- * gets a set at all, and in what shape.
+ * those from here. It no longer sends the alternative either: the page ships
+ * no tender data at all, and SavedView posts its ids to
+ * /api/tenders/saved, which returns only those cards (2026-09-20). The
+ * projection and the entitlement rule live in that route now; all this page
+ * decides is whether there is anything to ask for.
  *
- * The bar for getting one is a signed-in account, NOT a subscription, even
- * though every other list tool is entitled: SaveTenderButton has only ever
- * required a login, so a lapsed account already has saved tenders, and
- * raising the bar here would empty their list without explaining why. They
- * get the same redacted projection a guest gets on /tenders instead.
+ * The bar is a signed-in account, NOT a subscription, even though every other
+ * list tool is entitled: SaveTenderButton has only ever required a login, so a
+ * lapsed account already has saved tenders, and raising the bar here would
+ * empty their list without explaining why. They get the same redacted
+ * projection a guest gets on /tenders.
  */
 export default async function SavedPage() {
-  const role = await getViewerRole();
   // A guest has saved nothing and can filter nothing. SavedView renders its
-  // own login prompt from this empty list.
-  if (role === "guest") return <SavedView tenders={[]} />;
-
-  // The projection follows the entitlement, not the login: a lapsed account
-  // keeps its saved list, at the same level of detail a guest sees on
-  // /tenders, but not the paywalled 投标重点预览.
-  const memberView = canUseTenderListMemberFeatures(role);
-  // getCachedTenderList(), not getAllTenders(). This route reads the session,
-  // so it is dynamic and nothing above it caches: every visit was re-running
-  // an unbounded full-table read, paged a thousand rows at a time, to hand
-  // back a list identical for every viewer. The same five-minute cache
-  // /tenders uses, invalidated by revalidateTenders() on any write, so the
-  // data is no more stale here than there.
-  const tenders = await getCachedTenderList();
-  const cards = tenders.map((tender) => toTenderCardData(tender, {
-    memberView,
-    includeAnalysisPreview: memberView,
-  }));
-
-  return <SavedView tenders={cards} />;
+  // own login prompt when it sees no signed-in user.
+  return <SavedView canLoadTenders={(await getViewerRole()) !== "guest"} />;
 }

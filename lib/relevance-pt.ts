@@ -449,12 +449,67 @@ const PT_SMALL_FACILITY_LIST: RegExp[] = [
   // that builds exactly these (Paraná) — the programme name is the object.
   /\bquadra(s)?\s+(poli)?esportiva(s)?\b|\bcampo\s+society\b|\bespaco\s+esportivo\b|\bareninha(s)?\b|\bmeu\s+campinho\b/i,
   /\bpraca(s)?\s+(publica|de\s+convivencia|de\s+eventos|municipal)\b|\bparque\s+de\s+eventos\b/i,
+  // A square that is the OBJECT of the contract, under whatever name it
+  // carries (2026-09-20, two real titles the user rejected: "CONSTRUCAO DA
+  // PRACA DA FIGUEIRA NA AV. EUCLIDES DA CUNHA" and "URBANIZAÇÃO,
+  // REVITALIZAÇÃO E PAISAGISMO DE PRAÇAS, PARQUES E CANTEIROS PÚBLICOS").
+  //
+  // The line above could not reach either, because it requires the square to
+  // be qualified — `praça pública`, `praça municipal` — and a real one is
+  // named after a tree or a person instead. What replaces that qualifier here
+  // is the VERB: a build/renovate/landscape verb immediately governing the
+  // square is the square being bought, whereas the bare word is usually an
+  // address ("obras na Praça Central"), which must keep passing.
+  /\b(construcao|reforma|revitalizacao|requalificacao|reurbanizacao|urbanizacao|implantacao|paisagismo|ajardinamento)\s+(de\s+|da\s+|das\s+|do\s+|dos\s+)?praca(s)?\b/i,
+  // Street furniture as the object of the contract.
+  //
+  // Two neighbours of it were written here and taken out again before this
+  // shipped, and the reason is worth keeping: `canteiro central` is the
+  // central reservation of a DUAL CARRIAGEWAY, so "duplicação da BR-101 com
+  // canteiro central" — the largest kind of road work this platform wants —
+  // would have excluded itself on the word. `meio-fio` (kerb) fails the same
+  // way inside a real highway job. Both appear in the Cachoeira Dourada title
+  // that prompted this, and both are already covered there by the square rule
+  // above, so nothing was gained by the risk.
+  //
+  // `paisagismo` on its own is not here either: it is one line item among
+  // many in genuine heavy civil works. It excludes only when it governs a
+  // square, which is the rule above.
+  /\bmobiliario\s+urbano\b/i,
   // School canteen, and the wall-and-facade job on one of the buildings above.
   /\brefeitorio\b|\bmuro\s+e\s+requalificacao\b|\brequalificacao\s+da\s+fachada\b/i,
   // Municipal slope protection — a retaining wall on a named street, which is
-  // what every one of these is in practice.
-  /\bcontencao\s+de\s+encosta(s)?\b/i,
+  // what every one of these is in practice. `talude` joined `encosta`
+  // 2026-09-20 (real title: "CONTENÇÃO DE TALUDE E CALÇADA DE PASSEIO ...
+  // SOLO GRAMPEADO ... MURO DE GABIÃO, MURO DE ARRIMO"): they are the same
+  // job under the two words Brazilian engineering uses for a slope, and the
+  // gabion/soil-nail wall is how it is always built, so naming the method
+  // catches the ones that describe the work without naming the slope.
+  /\bcontencao\s+de\s+(encosta|talude)(s)?\b|\bmuro\s+de\s+(arrimo|gabiao)\b|\bsolo\s+grampeado\b/i,
 ];
+
+/**
+ * A municipal road NETWORK, not a road.
+ *
+ * The user's standing rule is 街道路面不做，只做公路, and this is the shape
+ * that slips past PT_HIGHWAY_MARKER while still being the street side of it:
+ * the object is the local road system around a site, and a `rodovia` appears
+ * in it only as the thing being crossed or joined. Real title (2026-09-20):
+ * "MELHORIA DO SISTEMA VIÁRIO NO ENTORNO DO SÃO PAULO EXPO, COM IMPLANTAÇÃO
+ * DE NOVOS ACESSOS VIÁRIOS, PASSAGEM SUPERIOR SOBRE A RODOVIA DOS IMIGRANTES
+ * E CICLOPASSARELA".
+ *
+ * Narrow on purpose, and narrower than the class it sits in. It requires the
+ * phrase `sistema viário` to be governed by an improvement verb or carry an
+ * urban/municipal qualifier — a highway contract says `duplicação da rodovia
+ * BR-101`, never `melhoria do sistema viário`. And it is the one member of
+ * this list that can refuse a genuinely large contract: the São Paulo one is
+ * an overpass over a federal highway. It is excluded because the user
+ * reviewed it and said so, and the value exception above still applies — at
+ * or above LARGE_WORKS_BUILD_USD with a published amount it comes back.
+ */
+const PT_LOCAL_ROAD_SYSTEM =
+  /\b(melhoria(s)?|adequacao|reestruturacao|requalificacao|reordenamento)\s+(d[oa]s?\s+)?sistema(s)?\s+viario(s)?\b|\bsistema(s)?\s+viario(s)?\s+(urbano|municipal)\b/i;
 
 /**
  * A street, not a road.
@@ -465,11 +520,22 @@ const PT_SMALL_FACILITY_LIST: RegExp[] = [
  * them is not enough: "pavimentação" alone is half the Brazilian corpus, and
  * a named street alone appears in genuine works as the site address.
  */
+// `pavimentação intertravada` / `blocos sextavados` are the interlocking
+// concrete paver, which is laid on streets and squares and never on a
+// highway — added 2026-09-20 with the real title the user rejected,
+// "pavimentação intertravada com blocos sextavados de concreto em trechos
+// das Ruas Beira Mar, Forquilhinha, ...".
 const PT_PAVING_VERB =
-  /\bpavimenta[cç][aã]o\b|\bpavimentacao\b|\brecapeamento\b|\brepavimentacao\b|\bcapeamento\s+asfaltico\b|\bparalelepipedo\b|\bpedra\s+tosca\b|\bbloquete\b|\bc\.?\s?b\.?\s?u\.?\s?q\b/i;
+  /\bpavimenta[cç][aã]o\b|\bpavimentacao\b|\brecapeamento\b|\brepavimentacao\b|\bcapeamento\s+asfaltico\b|\bparalelepipedo\b|\bpedra\s+tosca\b|\bbloquete\b|\bintertravad[ao]\b|\bbloco(s)?\s+sextavado(s)?\b|\bc\.?\s?b\.?\s?u\.?\s?q\b/i;
 
+// `rua`/`avenida` are matched in the PLURAL too, and that was a real hole
+// rather than a tidy-up: a contract that paves ONE street says "na Rua X"
+// and was excluded, while the same contract over six streets says "em
+// trechos das Ruas Beira Mar, Forquilhinha, ..." and was kept — so the
+// bigger version of exactly the thing the user does not want was the one
+// that survived. Measured on the 2026-09-20 title the user rejected.
 const PT_LOCAL_SITE =
-  /\brua\s+[a-z0-9]|\bavenida\s+[a-z0-9]|\bav\.\s*[a-z0-9]|\btravessa\b|\bbairro\b|\bloteamento\b|\bvila\s+[a-z]|\bzona\s+rural\b|\bestrada(s)?\s+vicinal(is|ais)?\b|\bpovoado\b|\bcomunidade\b|\bdistrito\s+de\b|\bquarteirao\b/i;
+  /\brua(s)?\s+[a-z0-9]|\bavenida(s)?\s+[a-z0-9]|\bav\.\s*[a-z0-9]|\btravessa\b|\bbairro\b|\bloteamento\b|\bvila\s+[a-z]|\bzona\s+rural\b|\bestrada(s)?\s+vicinal(is|ais)?\b|\bpovoado\b|\bcomunidade\b|\bdistrito\s+de\b|\bquarteirao\b/i;
 
 /**
  * What rescues a paving contract: the statutory road network.
@@ -519,7 +585,11 @@ const PT_PLAN_STUDY =
  * (user, 2026-09-19: 不清晰，直接排除). Length-bounded on purpose — the same
  * words inside a real 400-character object statement describe a real work.
  */
-const PT_NO_OBJECT_TITLE = /^\s*obras?\s+e\s+instalacoes\b[\s.;,-]*$/i;
+// "OBRAS E SERVIÇOS DE ENGENHARIA" joined it 2026-09-20 (user: 太短了) — the
+// same nothing, in the words the budget law uses. End-anchored like its
+// sibling, so the identical phrase inside a real 400-character object
+// statement still describes a real work.
+const PT_NO_OBJECT_TITLE = /^\s*obras?\s+e\s+(instalacoes|servicos\s+de\s+engenharia)\b[\s.;,-]*$/i;
 
 /**
  * Checked against the TITLE, never the haystack.
@@ -549,6 +619,7 @@ export function classifyPortugueseSmallWorks(input: string): PortugueseSmallWork
   if (PT_PAVEMENT_UPKEEP.test(text)) return "small_local_works";
   if (PT_SMALL_FACILITY_LIST.some((pattern) => pattern.test(text))) return "small_local_works";
   if (PT_RURAL_WATER.test(text)) return "small_local_works";
+  if (PT_LOCAL_ROAD_SYSTEM.test(text)) return "small_local_works";
   if (PT_PAVING_VERB.test(text) && PT_LOCAL_SITE.test(text) && !PT_HIGHWAY_MARKER.test(text)) return "small_local_works";
   return null;
 }

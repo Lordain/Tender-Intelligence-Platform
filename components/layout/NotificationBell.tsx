@@ -79,7 +79,7 @@ export function NotificationBell() {
                     className="block px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800"
                   >
                     <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                      {item.tender.title[locale]}
+                      {item.tender.titleZh}
                     </p>
                     <p className="mt-0.5 text-xs text-zinc-500">
                       {localize(uiText.matchedSearch, locale)} “{item.searchName}” ·{" "}

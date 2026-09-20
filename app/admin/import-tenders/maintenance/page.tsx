@@ -1,5 +1,4 @@
-import { TranslateTendersButton } from "@/components/admin/TranslateTendersButton";
-import { GeneratePublicTextButton } from "@/components/admin/GeneratePublicTextButton";
+import { RefreshDisplayTextButton } from "@/components/admin/RefreshDisplayTextButton";
 import { ReclassifyButton } from "@/components/admin/ReclassifyButton";
 import { ExplainKeptPanel } from "@/components/admin/ExplainKeptPanel";
 
@@ -22,10 +21,9 @@ export default function AdminImportTendersMaintenancePage() {
     <div className="flex flex-col gap-6">
       <p className="text-sm text-[#52636e]">
         这些操作<strong>对所有国家的标书统一生效</strong>，跟当前选中的国家无关。不是每天要做的事——
-        翻译在导入新数据之后跑，公开文案在翻译之后跑，重新分类只在改过筛选规则之后跑，保留原因分析随时可看（只读）。
+        更新项目文案在导入新数据之后跑（翻译和公开文案已经合成一个按钮，按顺序自动跑完两步），重新分类只在改过筛选规则之后跑，保留原因分析随时可看（只读）。
       </p>
-      <TranslateTendersButton />
-      <GeneratePublicTextButton />
+      <RefreshDisplayTextButton />
       <ReclassifyButton />
       <ExplainKeptPanel />
     </div>

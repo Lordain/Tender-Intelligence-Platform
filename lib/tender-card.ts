@@ -31,6 +31,18 @@ export type TenderCardData = Pick<
   "id" | "country" | "industries" | "status" | "scopeType" | "currency"
 > & {
   /**
+   * 项目规模, beside the 项目类型 this card has always carried (user,
+   * 2026-09-20: 首页也是，增加项目规模的标签).
+   *
+   * The TIER, never the `relevance` object it comes from — that also holds
+   * `reason`, a paragraph written for the admin screens which names the rule
+   * that fired and its thresholds by number. The tier itself is a band
+   * (大型/中型/常规) and is already a public filter control on /tenders, so
+   * it reveals nothing the site did not already let a visitor derive; the
+   * exact budget stays member-only, below.
+   */
+  relevanceTier: Tender["relevance"]["tier"];
+  /**
    * The badge, not the source name it is derived from. Shipping `sourceName`
    * to render a boolean told the reader which portal to search — a real hint
    * in a platform whose whole value is knowing where to look.
@@ -45,13 +57,36 @@ export type TenderCardData = Pick<
    * for guests rather than hidden from them.
    */
   titleOriginal?: string;
-  summaryZh: string;
+  /**
+   * Absent when the card also carries `oneLineSummary`: the two say the same
+   * thing twice on the one card that shows both (2026-09-20, the user:
+   * 考虑跟一句话总结有点重复就不展示摘要了). Dropped at the projection rather
+   * than hidden in the component, so it is out of the React payload too —
+   * a "use client" component is handed this whole object regardless of what
+   * it chooses to render.
+   */
+  summaryZh?: string;
   /** Members only — the publishing body names the project almost as well as its title does. */
   buyer?: string;
   /** Members only. Exactly one of this and `estimatedValueBand` is ever set. */
   estimatedValue?: number;
   estimatedValueBand?: string | null;
   submissionDeadline?: string;
+  /**
+   * Always the full day, for every audience. The publication date is a weak
+   * key — every portal publishes hundreds of notices on the same day — and a
+   * dateline is what tells a reader the listing is current; see
+   * toPublicTenderDetail for the reasoning and for why the DEADLINE is the
+   * one that keeps month precision.
+   */
+  publicationDate: string;
+  /**
+   * The stored date is when this platform first saw the tender, not when the
+   * government published it, so the card must label it 收录日期 instead. Carried
+   * rather than inferred because getting it wrong prints a date under a claim
+   * the source never made.
+   */
+  publicationDateIsEstimated?: boolean;
   oneLineSummary?: string;
   /**
    * One preview item per category rather than the whole array. These are
@@ -89,9 +124,37 @@ function topRisk(risks: readonly TenderRisk[]): PreviewItem | undefined {
  */
 export function toTenderCardData(
   tender: Tender,
-  options: { memberView?: boolean; includeAnalysisPreview?: boolean } = {},
+  options: { memberView?: boolean; includeAnalysisPreview?: boolean; shopfront?: boolean; showOneLineSummary?: boolean } = {},
 ): TenderCardData {
   const memberView = options.memberView ?? false;
+  /**
+   * The homepage shopfront exception: show this card the way a member sees
+   * it — the condensed title that keeps the place name, and the exact
+   * submission deadline — without opening any other member field.
+   *
+   * ONE flag rather than one per field, deliberately, and the same reasoning
+   * toTenderListItem's `memberView` comment gives: two independent options
+   * would eventually be passed inconsistently by some third call site, and
+   * the failure mode of that mistake is silent — a page that looks right
+   * while serving protected values into its own HTML. Everything this opens,
+   * it opens together, at one call site.
+   *
+   * Set on app/page.tsx and nowhere else (2026-09-20, the user: 首页(仅限首页)
+   * ……都用订阅用户看到的项目名称, then 计划交标日期展示完整). The homepage is
+   * the shopfront: a visitor who reads six interchangeable 墨西哥
+   * 变电站扩建工程 rows with a month for a deadline has no reason to believe
+   * there is a product behind them, and the free-preview cards there already
+   * publish paywalled analysis on purpose for exactly that reason.
+   *
+   * It is a real, bounded cost and not a free win: these titles carry the
+   * source proper noun, an exact deadline narrows a search, this page is the
+   * one crawlers read most, and the ticker is NOT the admin's free-preview
+   * allow-list. So it is scoped to one route and the dozen-odd rows that
+   * route shows — every list row, every detail page and every other card
+   * keeps publicTitleOf and month precision. Defaults to memberView so no
+   * existing caller changes behaviour and a new one has to ask.
+   */
+  const shopfront = options.shopfront ?? memberView;
   // The 投标重点预览 block is paywalled analysis that the homepage shows on
   // purpose — but only for the tenders an admin picked as free previews,
   // which is the same allow-list isHomepageFreePreviewSlug() enforces on the
@@ -106,6 +169,29 @@ export function toTenderCardData(
   const hasRealTranslation = translatedTitle !== "" && translatedTitle !== originalTitle;
   const translatedSummary = tender.summary.zh.trim();
   const hasRealSummary = translatedSummary !== "" && translatedSummary !== tender.summary.es.trim();
+  // The 一句话总结 leads the 投标重点预览 block on the free-preview cards, and
+  // it says what the summary underneath it says — twice, on the same card, in
+  // two slightly different wordings. Computed here rather than in the view
+  // because it decides whether `summaryZh` is projected at all, and because a
+  // card whose one-line summary is missing must keep the summary rather than
+  // end up with neither line.
+  // Mirrors <TenderCard showOneLineSummary> — the caller that renders the
+  // 一句话总结 is the caller that says so here, and only then is the summary
+  // dropped as a duplicate of it.
+  //
+  // Keyed on this rather than on `includeAnalysisPreview`, which was wrong
+  // and briefly shipped that way: /saved passes includeAnalysisPreview for a
+  // member but renders the card WITHOUT showOneLineSummary, so tying the two
+  // together left those cards with no description line at all — neither the
+  // 一句话总结 (not rendered) nor the summary (no longer projected). The two
+  // flags answer different questions: one is "may this card carry paywalled
+  // analysis", the other is "does this card lead with the one-liner".
+  //
+  // It also keeps `oneLineSummary` out of the payload wherever nothing
+  // renders it, which /saved was shipping to every member for nothing.
+  const oneLineSummary = includeAnalysisPreview && (options.showOneLineSummary ?? false)
+    ? (tender.oneLineSummary?.trim() === "" ? undefined : tender.oneLineSummary)
+    : undefined;
 
   return {
     id: tender.id,
@@ -116,7 +202,7 @@ export function toTenderCardData(
     // screens and for regenerating this, and the original-language line below
     // is what actually matches the official documents anyway.
     titleZh: hasRealTranslation
-      ? (memberView ? shortTitleOf(tender) : publicTitleOf(tender))
+      ? (shopfront ? shortTitleOf(tender) : publicTitleOf(tender))
       : memberView ? `${tender.buyer}采购项目` : "政府采购项目",
     ...(memberView && hasRealTranslation ? { titleOriginal: tender.title.es } : {}),
     // The guest branch reads the generated public summary and does NOT fall
@@ -125,24 +211,31 @@ export function toTenderCardData(
     // shipping it beside a redacted title handed back everything the title
     // had just removed, line-clamped in the UI but present in full in the
     // DOM and in this component's React payload.
-    summaryZh: memberView
-      ? (hasRealSummary ? tender.summary.zh : GENERIC_PUBLIC_SUMMARY)
-      : publicSummaryOf(tender) ?? GENERIC_PUBLIC_SUMMARY,
+    ...(oneLineSummary === undefined
+      ? {
+        summaryZh: memberView
+          ? (hasRealSummary ? tender.summary.zh : GENERIC_PUBLIC_SUMMARY)
+          : publicSummaryOf(tender) ?? GENERIC_PUBLIC_SUMMARY,
+      }
+      : {}),
     ...(memberView ? { buyer: tender.buyer } : {}),
     country: tender.country,
     industries: tender.industries,
     status: tender.status,
     scopeType: tender.scopeType,
+    relevanceTier: tender.relevance.tier,
     ...(memberView
       ? { estimatedValue: tender.estimatedValue }
       : { estimatedValueBand: estimatedValueBand(tender.estimatedValue, tender.currency) }),
     currency: tender.currency,
-    submissionDeadline: memberView
+    submissionDeadline: shopfront
       ? tender.submissionDeadline
       : toMonthPrecisionOptional(tender.submissionDeadline),
+    publicationDate: tender.publicationDate,
+    ...(tender.publicationDateIsEstimated ? { publicationDateIsEstimated: true } : {}),
     ...(includeAnalysisPreview
       ? {
-        oneLineSummary: tender.oneLineSummary,
+        oneLineSummary,
         qualification: firstPreview(tender.qualifications),
         experience: firstPreview(tender.experienceRequirements),
         document: firstPreview(tender.requiredDocuments),

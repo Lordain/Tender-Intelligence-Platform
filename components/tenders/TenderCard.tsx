@@ -4,16 +4,10 @@ import Link from "next/link";
 import type { TenderCardData } from "@/lib/tender-card";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
-import {
-  SCOPE_TYPE_LABELS,
-  STATUS_COLORS,
-  STATUS_LABELS,
-  countryLabel,
-  industryLabel,
-} from "@/lib/tender-labels";
+import { countryLabel } from "@/lib/tender-labels";
+import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
-import { OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
 import { publicTenderPath } from "@/lib/public-tender-url";
 
 export function TenderCard({
@@ -45,27 +39,13 @@ export function TenderCard({
     <article className="group relative flex h-full flex-col gap-3 rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 transition-all hover:-translate-y-0.5 hover:border-[#aebdc3] hover:shadow-[0_18px_50px_-32px_rgba(6,27,43,0.45)]">
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          {tender.industries.map((industry) => (
-            <span
-              key={industry}
-              className="shrink-0 whitespace-nowrap rounded-full bg-[#edf2f3] px-2.5 py-1 text-[11px] font-semibold text-[#24465a]"
-            >
-              {industryLabel(industry, locale)}
-            </span>
-          ))}
-          <span
-            className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_COLORS[tender.status]}`}
-          >
-            {localize(STATUS_LABELS[tender.status], locale)}
-          </span>
-          <span className="shrink-0 whitespace-nowrap rounded-full border border-[#d8e0e3] px-2.5 py-1 text-[11px] font-medium text-[#566773]">
-            {localize(SCOPE_TYPE_LABELS[tender.scopeType], locale)}
-          </span>
-          {tender.isObrasPorImpuestos && (
-            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#e2eef5] px-2.5 py-1 text-[11px] font-black text-[#155573]">
-              {OBRAS_POR_IMPUESTOS_BADGE}
-            </span>
-          )}
+          <TenderTagRow
+            relevanceTier={tender.relevanceTier}
+            industries={tender.industries}
+            status={tender.status}
+            scopeType={tender.scopeType}
+            isObrasPorImpuestos={tender.isObrasPorImpuestos}
+          />
         </div>
         <SaveTenderButton tenderId={tender.id} className="relative z-10 shrink-0" />
       </div>
@@ -74,16 +54,26 @@ export function TenderCard({
           text that matches the official documents, which is precisely why it
           is a member-only field: it is the shortest path from this card to
           the source portal. A guest gets the Chinese heading alone. */}
-      <h3 className="text-base font-black leading-snug text-black">
+      {/* min-h reserves two lines. Titles run one to three lines depending on
+          the project, and without a floor every block below sat at a different
+          height across a row of cards — the 高高矮矮 the user reported
+          (2026-09-20). Nothing is clamped, so a three-line title still shows
+          in full; this only stops a short one from pulling its card up. */}
+      <h3 className="min-h-[2.75rem] text-base font-black leading-snug text-black">
         <Link href={detailHref} data-public-tender-link className="after:absolute after:inset-0">
           {tender.titleZh}
         </Link>
       </h3>
       {titleOriginal && <p className="line-clamp-1 text-xs text-[#75838c]">{titleOriginal}</p>}
 
-      <p className="line-clamp-2 text-xs leading-5 text-[#61717c]">
-        {tender.summaryZh}
-      </p>
+      {/* Absent on the free-preview cards, where 一句话总结 already leads the
+          block below and says the same thing. Not a CSS hide: toTenderCardData
+          does not project the field at all in that case. */}
+      {tender.summaryZh && (
+        <p className="line-clamp-2 text-xs leading-5 text-[#61717c]">
+          {tender.summaryZh}
+        </p>
+      )}
 
       {previews.length > 0 && (
         <div className="rounded-xl border border-[#e2e7e9] bg-[#f7f9f8] px-3 py-2.5">
@@ -92,21 +82,38 @@ export function TenderCard({
             {previews.map((preview) => (
               <li key={preview.label} className={`grid min-w-0 grid-cols-[4.75rem_minmax(0,1fr)] gap-2 text-xs leading-5 ${preview.summary ? "border-b border-[#e1e7e9] pb-2" : ""}`}>
                 <span className={`font-bold ${preview.summary ? "text-[#a96100]" : preview.strong ? "text-[#b42318]" : "text-[#586b77]"}`}>{preview.label}</span>
-                <span className={preview.summary ? "line-clamp-2 font-semibold text-[#172c3b]" : "truncate text-[#425461]"}>{preview.text}</span>
+                <span className={preview.summary ? "line-clamp-2 min-h-[2.5rem] font-semibold text-[#172c3b]" : "truncate text-[#425461]"}>{preview.text}</span>
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      {tender.submissionDeadline && (
-        <div className="mt-auto rounded-xl bg-[#fff6df] px-3 py-2.5">
-          <p className="text-[11px] font-medium text-[#966000]">计划交标</p>
+      {/* Two dates side by side, publication left and deadline right
+          (2026-09-20). mt-auto on the row rather than on one card inside it,
+          so the pair is what gets pushed to the bottom and both stay aligned
+          across a row of cards whatever happened above them.
+
+          The deadline keeps the amber treatment because it is the date a
+          bidder acts on; the publication date is the quieter one, and it is
+          labelled 收录日期 when the stored value is when we first saw the
+          tender rather than when it was published. */}
+      <div className="mt-auto grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-[#f1f4f5] px-3 py-2.5">
+          <p className="text-[11px] font-medium text-[#66757f]">
+            {localize(tender.publicationDateIsEstimated ? uiText.ingestedDateLabel : uiText.publicationDateLabel, locale)}
+          </p>
           <span className="mt-0.5 block text-sm font-bold text-[#071826]">
-            {formatDate(tender.submissionDeadline, locale)}
+            {formatDate(tender.publicationDate, locale)}
           </span>
         </div>
-      )}
+        <div className="rounded-xl bg-[#fff6df] px-3 py-2.5">
+          <p className="text-[11px] font-medium text-[#966000]">计划交标</p>
+          <span className="mt-0.5 block text-sm font-bold text-[#071826]">
+            {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "未提供"}
+          </span>
+        </div>
+      </div>
 
       <p className="flex items-start gap-1.5 border-t border-[#e6eaec] pt-3 text-xs leading-5 text-[#586873]">
         <CountryFlag country={tender.country} className="mt-[3px]" />

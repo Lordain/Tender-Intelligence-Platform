@@ -291,6 +291,73 @@ for (const [label, title] of REVIEWED_AND_REJECTED) {
   check(`${label} 被排除`, brazilTender(title).relevance.tier, "excluded");
 }
 
+// The second review round (2026-09-20). Six more titles the user read on the
+// live site and marked 排除, each one a shape that walked past the rules
+// written in the first round.
+const REVIEWED_AND_REJECTED_2: [string, string][] = [
+  [
+    // The plural. `\brua\s` matched "na Rua X" and missed "das Ruas X, Y, Z"
+    // — so the SIX-street version of a job excluded at one street survived.
+    "六条街的连锁砖铺装",
+    "Seleção e contratação de empresa do ramo de engenharia e/ou construção civil, para a escolha da proposta mais vantajosa, em regime de empreitada global (material e mão-de-obra especializada) para a Execução de pavimentação intertravada com blocos sextavados de concreto em trechos das Ruas Beira Mar, Forquilhinha, Francisco Pedro Vicente, Gonçalves Marques Teixeira, Hermes Pavei de Lucca e Lindomar Bernardo.",
+  ],
+  [
+    // 广场/公园绿化。The old rule wanted `praça pública`; a real one is called
+    // after a tree.
+    "广场公园绿化与城市家具",
+    "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA NA EXECUÇÃO DE OBRAS COMUNS DE ENGENHARIA DE URBANIZAÇÃO, REVITALIZAÇÃO E PAISAGISMO DE PRAÇAS, PARQUES E CANTEIROS PÚBLICOS DO MUNICÍPIO DE CACHOEIRA DOURADA, COMPREENDENDO SERVIÇOS DE PAISAGISMO, INSTALAÇÃO DE MOBILIÁRIO URBANO E EXECUÇÃO DE PISOS, PASSEIOS E MEIOS FIOS.",
+  ],
+  [
+    "新建一座广场",
+    "CONTRATACAO DE EMPRESA ESPECIALIZADA PARA EXECUCAO DE OBRA DE ENGENHARIA CONSISTENTE NA CONSTRUCAO DA PRACA DA FIGUEIRA NA AV. EUCLIDES DA CUNHA S N EM EUCLIDES DA CUNHA PAULISTA.",
+  ],
+  [
+    // 边坡防护。The list knew `contenção de encosta`; Brazilian engineering
+    // says `talude` just as often, and names the method rather than the slope.
+    "边坡防护与挡土墙",
+    "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA DE ENGENHARIA PARA A ELABORAÇÃO DE PROJETO EXECUTIVO E A EXECUÇÃO COMPLETA DAS OBRAS DE CONTENÇÃO DE TALUDE E CALÇADA DE PASSEIO E PAVIMENTO EM VIA PÚBLICA, ESTABILIZAÇÃO EM SOLO GRAMPEADO (CONCRETO PROJETADO E VERDE), MURO DE GABIÃO, MURO DE ARRIMO, SISTEMA DE DRENAGEM, PAISAGISMO E URBANIZAÇÃO E LEVANTAMENTO CADASTRAL DE ÁREAS PERMEÁVEIS NATURAIS E ELEMENTOS DRENANTES,",
+  ],
+  [
+    // 市政路网。Mentions a `rodovia`, which is why PT_HIGHWAY_MARKER could not
+    // be the gate — the highway is what the work crosses, not what it builds.
+    "会展中心周边市政路网改善",
+    "CONTRATAÇÃO DE EMPRESA OU CONSÓRCIO DE EMPRESAS ESPECIALIZADAS EM ENGENHARIA PARA EXECUÇÃO DAS OBRAS E SERVIÇOS DE MELHORIA DO SISTEMA VIÁRIO NO ENTORNO DO SÃO PAULO EXPO, COM IMPLANTAÇÃO DE NOVOS ACESSOS VIÁRIOS, PASSAGEM SUPERIOR SOBRE A RODOVIA DOS IMIGRANTES E CICLOPASSARELA, NA REGIÃO DO JABAQUARA, SÃO PAULO/SP",
+  ],
+];
+for (const [label, title] of REVIEWED_AND_REJECTED_2) {
+  check(`${label} 被排除`, brazilTender(title).relevance.tier, "excluded");
+}
+
+// The sixth is a TITLE rule, not a haystack rule — end-anchored, so it has to
+// be asserted through the title field rather than through the joined text.
+check(
+  "「工程与工程服务」这种没有对象的标题被排除",
+  brazilTender("OBRAS E SERVIÇOS DE ENGENHARIA").relevance.tier,
+  "excluded",
+);
+
+// Over-breadth pins for the six above. Each one is a real work that shares a
+// word with a rule and must survive it.
+const ROUND_2_KEEPS: [string, string][] = [
+  // The two patterns deliberately NOT added: `canteiro central` is the median
+  // of a dual carriageway and `meio-fio` its kerb, so a rule built on either
+  // would have excluded the largest road work in the corpus on the word.
+  ["双向四车道复线（带中央分隔带和路缘石）", "Duplicação da Rodovia BR-101 com execução de canteiro central, meio-fio e drenagem, trecho de 42 km"],
+  // `praça` as an ADDRESS, not as the object. The verb governs the terminal.
+  ["以广场为地址的客运站工程", "Construção do Terminal Rodoviário Municipal e do viaduto de acesso, na Praça da Bandeira"],
+  // The no-object title is end-anchored: the identical words opening a real
+  // object statement describe a real work.
+  ["同样开头但写清了对象的工程", "OBRAS E SERVIÇOS DE ENGENHARIA PARA CONSTRUÇÃO DA PONTE SOBRE O RIO PARANÁ, COM 1.200 METROS DE EXTENSÃO"],
+  // `sistema viário` is required to be the object. A highway duplication says
+  // something else entirely.
+  ["州道复线（不含市政路网措辞）", "Contratação para duplicação e restauração da rodovia MG-050, incluindo obras de arte especiais"],
+  // `paisagismo` as one line item among many in genuine heavy civil works.
+  ["含绿化条目的污水处理厂", "Construção da Estação de Tratamento de Esgoto do município, com rede coletora tronco, urbanização e paisagismo da área externa"],
+];
+for (const [label, title] of ROUND_2_KEEPS) {
+  check(`${label} 不能被排除`, brazilTender(title).relevance.tier !== "excluded", true);
+}
+
 // Over-breadth pins, one per rule above. Each is the nearest thing that must
 // NOT be lost — an excluded row is never written to Supabase, so a rule that
 // reaches one step too far deletes real work permanently and in silence.

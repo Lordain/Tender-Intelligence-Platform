@@ -378,7 +378,10 @@ export type Tender = {
  * - `location` is gone entirely, per the user's explicit instruction
  *   (2026-09-19: 这个无论如何需要隐藏). `country` deliberately stays: it is a
  *   core SEO keyword and far too coarse to identify anything.
- * - `publicationDate` and `submissionDeadline` carry "YYYY-MM", not a day.
+ * - `submissionDeadline` carries "YYYY-MM", not a day. `publicationDate`
+ *   keeps its day: it is a weak key (hundreds of notices share one) and a
+ *   real freshness signal, where the deadline is the value a bidder acts on
+ *   and the one the subscription sells. See toPublicTenderDetail.
  *
  * Everything the paywall already withheld — the original-language title, the
  * publishing body, the procedure number, key dates, requirements, risks and
@@ -403,4 +406,17 @@ export type PublicTenderDetail = Pick<
   summaryZh: string;
   /** A USD range containing the real budget, or null when there is none to show. */
   estimatedValueBand: string | null;
+  /**
+   * 项目规模, as a pill beside the industries (user, 2026-09-20: 项目详情页，
+   * 增加项目规模和项目类型的标签).
+   *
+   * The TIER only. `relevance` also carries `reason` — a paragraph written
+   * for the admin screens that names the rule that fired and its thresholds
+   * by number — and this type is the whitelist that keeps such a field from
+   * reaching a public page by accident. The tier itself is a band
+   * (大型/中型/常规), already a public filter control on /tenders, so it
+   * reveals nothing a visitor could not already derive; the exact budget is
+   * still redacted to estimatedValueBand above.
+   */
+  relevanceTier: TenderRelevanceTier;
 };

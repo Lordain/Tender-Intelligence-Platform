@@ -11,11 +11,13 @@ export const TENDER_PAGE_SIZE = 20;
 export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "awarded"];
 
 /**
- * Statuses a bidder can still act on — what 全站在招 counts.
+ * Statuses a bidder can still act on — now only the 5天内交标 gate.
  *
- * NOT the complement of "awarded + cancelled", which is what siteTenderCount
- * used to subtract: that left 已截止 (submission_closed) in, so the number
- * was neither the whole site nor the live pipeline, and matched no label.
+ * It used to be what the sidebar's first cell counted, under the label
+ * 全站在招. That cell is 全站项目 as of 2026-09-20 and counts the whole
+ * public catalogue, so this list has nothing to do with it any more: a
+ * deadline five days out only means something while the tender is still
+ * live, which is the one question these three statuses are left answering.
  */
 const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"];
 
@@ -92,7 +94,22 @@ export type TenderListItem = Pick<
   | "status"
   | "currency"
   | "submissionDeadline"
+  /**
+   * The two facts the list already filters on but never showed on a row
+   * (user, 2026-09-20: 项目卡片上面增加项目规模标签、项目类型标签).
+   *
+   * Neither is new information reaching a guest. 项目规模 and 项目类型 are
+   * both public filter controls on this very page, so anyone could already
+   * read a tender's tier and scope by narrowing to one value and seeing
+   * whether the row survived. Rendering them saves the round trip; it does
+   * not widen what is knowable. The tier in particular is a BAND
+   * (大型/中型/常规), never the budget — the exact figure is still
+   * member-only, a few lines below.
+   */
+  | "scopeType"
 > & {
+  /** Just the tier — `relevance` also carries the reason text, which names the rule and is an admin-facing string. */
+  relevanceTier: Tender["relevance"]["tier"];
   /**
    * Obras por Impuestos is different enough from an ordinary tender that
    * finding out only after opening the detail page wastes the click.
@@ -146,8 +163,26 @@ export type TenderListPageData = {
    */
   availableScopeTypes: TenderScopeType[];
   /**
-   * Live opportunities across the WHOLE site, ignoring the viewer's filters —
-   * the sidebar's 全站在招. Deliberately on a different basis from
+   * Country filter options, narrowed to the countries that have a publicly
+   * visible tender behind them right now.
+   *
+   * AVAILABLE_COUNTRIES stays the allowlist and the display order — a
+   * country still needs a real connector to appear at all. This is that
+   * list minus the countries whose rows are, today, all screened out.
+   *
+   * Brazil is why (user, 2026-09-20: 巴西前台如果现在看到的项目数 = 0，就先
+   * 隐藏这个国家，如果 > 0 就展示). A connector can be importing every day
+   * while every row it writes lands in the excluded tier, and a country pill
+   * that can only ever return zero reads as a broken site rather than as an
+   * empty country — the same complaint that produced availableIndustries.
+   *
+   * Derived, not a hide list: the pill comes back by itself the day one
+   * Brazilian tender survives the filter, with nothing to remember to undo.
+   */
+  availableCountries: (typeof AVAILABLE_COUNTRIES)[number][];
+  /**
+   * Every tender on the site a visitor could reach, ignoring the viewer's
+   * filters — the sidebar's 全站项目. Deliberately on a different basis from
    * newTodayCount/upcomingCount, which are scoped to the current filters
    * because clicking them filters the list to exactly that set.
    *
@@ -163,6 +198,20 @@ export type TenderListPageData = {
    * Now it runs the same filterTenders() gate the feed does, so it is always
    * a superset of totalResults on the status dimension and can never be
    * undercut by it.
+   *
+   * It stopped being the LIVE slice on 2026-09-20 (user: 把全站在招改成全站
+   * 项目，因为在招把已截止都算入了). It never did count 已截止 — the three
+   * LIVE_TENDER_STATUSES are what it summed. But printed beside a 当前结果 of
+   * the same size, on a feed whose default preset shows 已中标 too, 在招 read
+   * as a claim about what was IN the number rather than as a narrower count
+   * beside a wider one. Wording cannot fix both readings at once, so the cell
+   * now counts what its new label says: the catalogue. 全站项目 is a superset
+   * of 当前结果 on every dimension, not just on status — which is the one
+   * relationship a visitor checks between two numbers printed side by side.
+   *
+   * The excluded tier is still out, as on every public surface: those rows
+   * are unreachable through any filter combination, and counting them would
+   * advertise a catalogue nobody can open.
    */
   siteTenderCount: number;
   newTodayCount: number;
@@ -210,6 +259,11 @@ export function toTenderListItem(
     country: tender.country,
     industries: tender.industries,
     status: tender.status,
+    scopeType: tender.scopeType,
+    // The tier alone, not the whole `relevance` object: that carries
+    // `reason`, a paragraph written for the admin screens that names the
+    // rule and its thresholds by number.
+    relevanceTier: tender.relevance.tier,
     // The exact figure for a member, a band for everyone else. An exact
     // budget is the single most identifying value a tender carries — it
     // matches one row worldwide — so it never reaches a page that a crawler
@@ -222,6 +276,47 @@ export function toTenderListItem(
       ? tender.submissionDeadline
       : toMonthPrecisionOptional(tender.submissionDeadline),
     isObrasPorImpuestos: isObrasPorImpuestos(tender),
+  };
+}
+
+/**
+ * One notification row for the header bell, projected for its audience.
+ *
+ * Lives here rather than in the route so it is testable beside the two
+ * projections it shares a rule with — and so the rule itself is written once.
+ * The route used to inline `title: tender.title`, shipping the whole
+ * LocalizedText: every item carried `title.es`, the original Spanish or
+ * Portuguese name of the project, on an endpoint with no authentication, in
+ * batches of fifty (2026-09-20). The bell has only ever rendered the Chinese,
+ * so nothing displayed changes.
+ */
+export type NotificationTenderItem = {
+  id: string;
+  publicSlug: string;
+  titleZh: string;
+  publicationDate: string;
+  createdAt: string;
+};
+
+export function toNotificationTender(
+  tender: Tender,
+  options: { memberView?: boolean } = {},
+): NotificationTenderItem {
+  const memberView = options.memberView ?? false;
+  const translatedTitle = tender.title.zh.trim();
+  const originalTitle = tender.title.es.trim();
+  // Same rule as toTenderListItem: an unreviewed row mirrors the source text
+  // into `zh` until the translation job runs, and publishing that would hand
+  // over the original title under a different field name.
+  const hasRealTranslation = translatedTitle !== "" && translatedTitle !== originalTitle;
+  return {
+    id: tender.id,
+    publicSlug: requirePublicTenderSlug(tender),
+    titleZh: hasRealTranslation
+      ? (memberView ? shortTitleOf(tender) : publicTitleOf(tender))
+      : memberView ? `${tender.buyer}采购项目` : "政府采购项目",
+    publicationDate: tender.publicationDate,
+    createdAt: tender.createdAt,
   };
 }
 
@@ -271,10 +366,21 @@ export function buildTenderListPage(
     { query, searchPublicFieldsOnly: options.searchPublicFieldsOnly, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers },
     "zh",
   );
-  const presentIndustries = new Set(allTenders.flatMap((tender) => tender.industries));
+  // Every row a visitor could reach through SOME combination of filters:
+  // the whole table minus the excluded tier, which no public surface
+  // renders. All three facet lists and the site total are computed off this
+  // one set — a facet derived from the raw table can offer a value that only
+  // excluded rows carry, and clicking it returns zero.
+  //
+  // Deliberately NOT `filtered`: a facet computed from the current result
+  // set would delete its own option the moment you ticked it.
+  const visibleTenders = filterTenders(allTenders, {}, "zh");
+  const presentIndustries = new Set(visibleTenders.flatMap((tender) => tender.industries));
   const availableIndustries = ALL_INDUSTRIES.filter((industry) => presentIndustries.has(industry));
-  const presentScopeTypes = new Set(allTenders.map((tender) => tender.scopeType));
+  const presentScopeTypes = new Set(visibleTenders.map((tender) => tender.scopeType));
   const availableScopeTypes = ALL_SCOPE_TYPES.filter((scopeType) => presentScopeTypes.has(scopeType));
+  const presentCountries = new Set(visibleTenders.map((tender) => tender.country));
+  const availableCountries = AVAILABLE_COUNTRIES.filter((country) => presentCountries.has(country));
 
   const nowMs = now.getTime();
   const isRecentlyAdded = (tender: Tender) => {
@@ -311,7 +417,8 @@ export function buildTenderListPage(
     currentPage,
     availableIndustries,
     availableScopeTypes,
-    siteTenderCount: filterTenders(allTenders, { statuses: LIVE_TENDER_STATUSES }, "zh").length,
+    availableCountries,
+    siteTenderCount: visibleTenders.length,
     newTodayCount,
     upcomingCount,
   };

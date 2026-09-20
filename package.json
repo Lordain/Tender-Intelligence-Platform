@@ -70,6 +70,7 @@
     "test:ingestion-dates": "tsx scripts/test-ingestion-dates.ts",
     "test:supplier-matching": "tsx scripts/test-supplier-matching.ts",
     "test:recently-added": "tsx scripts/test-recently-added.ts",
+    "test:list-facets": "tsx scripts/test-list-facets.ts",
     "test:upcoming-deadlines": "tsx scripts/test-upcoming-deadlines.ts",
     "test:upsert-protection": "tsx scripts/test-upsert-protection.ts",
     "test:document-matching": "tsx scripts/test-document-matching.ts",
@@ -147,7 +148,10 @@
     "test:public-redaction": "tsx scripts/test-public-redaction.ts",
     "titles:public": "tsx --env-file-if-exists=.env.local scripts/generate-public-titles.ts",
     "test:public-title": "tsx scripts/test-public-title.ts",
-    "test:script-env": "tsx scripts/test-script-env-flags.ts"
+    "test:script-env": "tsx scripts/test-script-env-flags.ts",
+    "test:cron-auth": "tsx scripts/test-cron-auth.ts",
+    "test:region-names": "tsx scripts/test-region-names.ts",
+    "audit:region-names": "tsx --env-file-if-exists=.env.local scripts/audit-region-names.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

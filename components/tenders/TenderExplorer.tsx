@@ -8,7 +8,8 @@ import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
 import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import { localize, uiText, useLocale } from "@/lib/i18n";
-import { ALL_SCOPE_TYPES, COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS, countryLabel, industryLabel } from "@/lib/tender-labels";
+import { ALL_SCOPE_TYPES, COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_LABELS, countryLabel, industryLabel } from "@/lib/tender-labels";
+import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { isSortKey, type SortKey } from "@/lib/filter-tenders";
 import { useSavedTenderIds } from "@/lib/saved";
 import { MultiSelectPills } from "@/components/tenders/MultiSelectPills";
@@ -16,7 +17,6 @@ import { InlineTogglePills } from "@/components/tenders/InlineTogglePills";
 import { SaveSearchControl } from "@/components/tenders/SaveSearchControl";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
-import { OBRAS_POR_IMPUESTOS_BADGE } from "@/lib/obras-por-impuestos";
 import { PageIntro } from "@/components/layout/PageIntro";
 import { trackAnalyticsEvent } from "@/lib/analytics-client";
 import { canUseTenderListMemberFeatures, TRIAL_DAYS, type AccessPromptKind, type ViewerRole } from "@/lib/access-control";
@@ -118,17 +118,13 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
     <article className="group relative grid gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 transition-all hover:border-[#a9b8bf] hover:shadow-[0_18px_45px_-35px_rgba(6,27,43,.5)] md:grid-cols-[minmax(0,1fr)_14rem] md:items-center">
       <div className="min-w-0">
         <div className="mb-2.5 flex flex-wrap gap-2">
-          {tender.industries.map((industry) => (
-            <span key={industry} className="rounded-full bg-[#edf2f3] px-2.5 py-1 text-[11px] font-semibold text-[#24465a]">
-              {industryLabel(industry, locale)}
-            </span>
-          ))}
-          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_COLORS[tender.status]}`}>
-            {localize(STATUS_LABELS[tender.status], locale)}
-          </span>
-          {tender.isObrasPorImpuestos && (
-            <span className="rounded-full bg-[#e2eef5] px-2.5 py-1 text-[11px] font-black text-[#155573]">{OBRAS_POR_IMPUESTOS_BADGE}</span>
-          )}
+          <TenderTagRow
+            relevanceTier={tender.relevanceTier}
+            industries={tender.industries}
+            status={tender.status}
+            scopeType={tender.scopeType}
+            isObrasPorImpuestos={tender.isObrasPorImpuestos}
+          />
         </div>
         <h2 className="text-base font-black leading-6 text-black sm:text-lg">
           <Link href={`/tenders/${tender.publicSlug}`} data-public-tender-link className="after:absolute after:inset-0">
@@ -202,6 +198,7 @@ export function TenderExplorer({
   currentPage,
   availableIndustries,
   availableScopeTypes,
+  availableCountries,
   siteTenderCount,
   newTodayCount,
   upcomingCount,
@@ -213,6 +210,7 @@ export function TenderExplorer({
   currentPage: number;
   availableIndustries: IndustryKey[];
   availableScopeTypes: TenderScopeType[];
+  availableCountries: (typeof AVAILABLE_COUNTRIES)[number][];
   siteTenderCount: number;
   newTodayCount: number;
   upcomingCount: number;
@@ -230,12 +228,20 @@ export function TenderExplorer({
   // Same fallback rule as industries: offer everything only when the data
   // carries nothing, since an empty filter is worse than an over-broad one.
   const scopeTypeOptions = availableScopeTypes.length > 0 ? availableScopeTypes : ALL_SCOPE_TYPES;
+  // And again for countries — a country whose every row is screened out is
+  // dropped rather than offered as a pill that can only return zero (user,
+  // 2026-09-20, about Brazil). Memoized because `countries` below depends on
+  // this array's IDENTITY, not just its contents.
+  const countryOptions = useMemo(
+    () => (availableCountries.length > 0 ? availableCountries : [...AVAILABLE_COUNTRIES]),
+    [availableCountries],
+  );
 
   const query = searchParams.get("q") ?? "";
   const countryParam = searchParams.get("country");
   const countries = useMemo(
-    () => countryParam ? parseList(countryParam) : [...AVAILABLE_COUNTRIES],
-    [countryParam],
+    () => countryParam ? parseList(countryParam) : [...countryOptions],
+    [countryParam, countryOptions],
   );
   const industries = parseList(searchParams.get("industry"));
   const industryMatchMode = searchParams.get("industryMode") === "all" ? "all" : "any";
@@ -375,8 +381,8 @@ export function TenderExplorer({
           <div className="xl:pr-5">
             <MultiSelectPills
               label="国家/地区"
-              maxVisible={AVAILABLE_COUNTRIES.length}
-              options={AVAILABLE_COUNTRIES.map((country) => ({
+              maxVisible={countryOptions.length}
+              options={countryOptions.map((country) => ({
                 value: country,
                 label: localize(COUNTRY_LABELS[country], locale),
                 icon: <CountryFlag country={country} />,
@@ -532,13 +538,15 @@ export function TenderExplorer({
             <h2 className="text-base font-bold">招标概览</h2>
             <div className="mt-4 grid grid-cols-3 divide-x divide-white/20 text-center">
               {/*
-                全站在招, not 全站项目: this cell is site-wide (it ignores the
-                filters the other two respect) AND live-only (已截止/已中标/
-                已取消 are out). Labelling it 全站项目 promised a total that
-                the header's 当前结果 could exceed, since the default feed
-                shows 已中标 too — see siteTenderCount in lib/tender-list-page.ts.
+                全站项目, not 全站在招 (user, 2026-09-20: 因为在招把已截止都
+                算入了). It never did count 已截止 — it summed the live
+                statuses only. But printed beside a 当前结果 of the same size,
+                on a feed whose default preset shows 已中标 too, 在招 read as a
+                claim about what was in the number. The cell now counts the
+                whole public catalogue, which 当前结果 is always a subset of —
+                see siteTenderCount in lib/tender-list-page.ts.
               */}
-              <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">全站在招</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{formatTenderCount(siteTenderCount)}</p></div>
+              <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">全站项目</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{formatTenderCount(siteTenderCount)}</p></div>
               <button
                 type="button"
                 onClick={() => updateParams({ view: view === "new" ? null : "new", sort: view === "new" ? null : "publication_desc" })}

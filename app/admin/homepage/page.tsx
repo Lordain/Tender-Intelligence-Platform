@@ -1,10 +1,15 @@
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { HomepageControlPanel } from "@/components/admin/HomepageControlPanel";
 import { fetchHomepageControlSettings } from "@/lib/db/site-settings";
-import { getAllTenders } from "@/lib/tenders";
+import { getCachedTenderList } from "@/lib/tenders";
 
 export default async function AdminHomepagePage() {
-  const [tenders, settings] = await Promise.all([getAllTenders(), fetchHomepageControlSettings()]);
+  // Cached, for the same reason app/saved/page.tsx is: this page is dynamic
+  // (it is behind the admin gate), so nothing above it caches, and it was
+  // re-reading the whole tender table on every visit to populate a picker.
+  // revalidateTenders() invalidates the tag on any write, so an admin never
+  // picks from a stale list.
+  const [tenders, settings] = await Promise.all([getCachedTenderList(), fetchHomepageControlSettings()]);
   const sorted = tenders.slice().sort((a, b) => b.publicationDate.localeCompare(a.publicationDate));
 
   const legacyFeatured = [

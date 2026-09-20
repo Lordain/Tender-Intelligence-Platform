@@ -112,6 +112,17 @@ const SYSTEM_PROMPT = `你要为一条已经翻译好的中文招标信息生成
 - 不许补工期、资金来源、政策背景、验收方式。
 - 原文写了的可以展开，例如原文说「含材料与人工」，写成「由承包方包工包料实施」是可以的。
 
+【同样重要的一条】只介绍项目，不谈论我们手上的资料。
+摘要是写给一个想了解这个项目的人看的，不是写给审阅数据的人看的。读者不知道、也不需要知道我们是从哪一段文字整理出来的，一提「原文」反而会让他怀疑这份信息是不是不完整。
+- 不许出现「原文」「原标题」「本摘要」「本平台」这些词。
+- 不许写「原文未列明具体设备」「原文未载明其他配件」「原文未提及配套设施」「原文只交代到这一层」「摘要到此为止」「采购范围以此为准」。
+- 信息少就直接写短，写完就停，不要解释为什么短。
+  ✗ 供水企业采购一辆罐式卡车，原文未载明其他设备或配件。
+  ✓ 供水企业的罐式运水车采购项目，用于供水保障。
+  ✗ 乡村道路桥梁的更新工程。原文未提及配套引道或附属设施，摘要到此为止。
+  ✓ 乡村道路桥梁的更新工程，含桥梁本身的技术改造施工。
+- 也不要替读者下判断：「采购范围以此为准」「以招标文件为准」这类话我们没有资格说，删掉。
+
 要求：
 - 25 到 90 个汉字。原文信息少就写短的，**宁可只有 25 个字，也不要靠编造凑到 90 个字**。
 - 必须比 titleZhPublic 多给出信息。把标题换个说法重复一遍是不合格的——读者已经在标题里看过了。原文实在只有标题那一句时，就把标题里的类别、标的物和工程类型讲清楚，然后停。
@@ -135,13 +146,15 @@ const SYSTEM_PROMPT = `你要为一条已经翻译好的中文招标信息生成
 输出：
   titleZhShort：塞乌阿祖尔社区（Bairro Céu Azul）社会救助中心新建
   titleZhPublic：巴西 社会救助设施建设工程
-  summaryZhPublic：社会救助服务设施的新建工程，由工程公司承建。原文只交代到这一层，所以摘要到此为止——这是一条合格的短摘要。
+  summaryZhPublic：社会救助服务设施的新建工程，由工程公司承建。
+（注：这条只有 24 个字，是合格的。给定的信息就这么多，写到这里停住是对的——但注意输出里没有任何一句在交代「为什么这么短」。）
 
 输入：country=秘鲁；titleZh=卡哈马卡区（Cajamarca）卫生站医疗设备采购；summaryZh=为卡哈马卡区卫生站采购医疗设备。
 输出：
   titleZhShort：卡哈马卡区（Cajamarca）卫生站医疗设备采购
   titleZhPublic：秘鲁 医疗设备采购
-  summaryZhPublic：基层卫生机构的医疗设备采购项目。原文没有列出设备清单，所以不要编造采购范围。
+  summaryZhPublic：基层卫生机构的医疗设备采购项目。
+（注：没有设备清单就不写设备清单，直接停。不要补一句「未列出详细清单」——那是在替读者解释我们的数据，不是在介绍项目。）
 
 只返回 JSON，形如 {"items":[{"id":"1","titleZhShort":"...","titleZhPublic":"...","summaryZhPublic":"..."}]}，不要有任何其他文字或 markdown 代码块。`;
 
@@ -167,6 +180,14 @@ export async function generateDisplayTextBatch(items: DisplayTextInput[]): Promi
 
   const response = await client.chat.completions.create({
     model: "qwen3.6-plus",
+    // Set explicitly rather than left to DashScope's unmeasured default. Every
+    // field this returns is hard-capped by its validator (60 / 25 / 100
+    // characters), so a full BATCH_SIZE of rows is roughly 4k tokens — this
+    // leaves headroom for a long batch without letting a runaway reply bill
+    // for one. It is also what makes the batch size safe to raise: the failure
+    // this guards against is a truncated reply, and a truncated reply here is
+    // invalid JSON, which the zod parse rejects rather than half-writes.
+    max_tokens: 8000,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },

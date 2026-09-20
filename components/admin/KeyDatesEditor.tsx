@@ -63,7 +63,7 @@ function sameDaySubmissionOpeningIds(keyDates: TenderKeyDate[]): Set<string> {
  * edit mode (a new, unsaved tender has no id for these rows to reference).
  * Each action persists immediately via its own API call (not bundled into
  * the surrounding form's single submit) — same posture as the rest of this
- * admin surface (ReclassifyButton, TranslateTendersButton, etc.).
+ * admin surface (ReclassifyButton, RefreshDisplayTextButton, etc.).
  */
 function byDateAsc(a: TenderKeyDate, b: TenderKeyDate) {
   return a.date.localeCompare(b.date);

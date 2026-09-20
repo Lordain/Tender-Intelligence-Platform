@@ -9,7 +9,7 @@ import {
   shortTitleProblems,
 } from "../lib/public-title";
 import { mapDisplayTextToSlugs } from "../lib/ingestion/public-title-qwen";
-import { needsDisplayText } from "../lib/ingestion/generate-public-titles";
+import { checkGenerated, needsDisplayText } from "../lib/ingestion/generate-public-titles";
 import { buildRowWithProtectedValues } from "../lib/ingestion/upsert-tenders";
 import type { Tender } from "../types/tender";
 
@@ -142,6 +142,18 @@ function acceptsShort(candidate: string): void {
   const problems = shortTitleProblems(candidate, fullTitle);
   if (problems.length > 0) failures.push(`短标题应当通过却被拒绝：「${candidate}」——${problems.join("；")}`);
 }
+/** Same, against an explicit source title — the real rows below each have their own. */
+function acceptsShortFrom(candidate: string, sourceTitleZh: string): void {
+  ran += 1;
+  const problems = shortTitleProblems(candidate, sourceTitleZh);
+  if (problems.length > 0) failures.push(`短标题应当通过却被拒绝：「${candidate}」——${problems.join("；")}`);
+}
+function rejectsShortFrom(candidate: string, sourceTitleZh: string, because: string): void {
+  ran += 1;
+  if (shortTitleProblems(candidate, sourceTitleZh).length === 0) {
+    failures.push(`短标题应当被拒绝（${because}）却通过了：「${candidate}」`);
+  }
+}
 function rejectsShort(candidate: string, because: string): void {
   ran += 1;
   if (shortTitleProblems(candidate, fullTitle).length === 0) failures.push(`短标题应当被拒绝（${because}）却通过了：「${candidate}」`);
@@ -158,13 +170,120 @@ ran += 1;
 if (shortTitleProblems("实验室设备采购", "采购实验室设备").length > 0) {
   failures.push(`原标题本来就短时不应要求再变短：${shortTitleProblems("实验室设备采购", "采购实验室设备").join("；")}`);
 }
-rejectsShort("马托格罗索州卢卡斯-杜里奥韦尔德市MT-449号公路6.93公里路段修复与新建工程", "正文超过 30 字");
+// Accepted since the backstops were loosened to 42/80 (2026-09-20). Its prose
+// is 37 characters, the same order as the three real titles below that were
+// being wrongly refused, and it is a readable list row — the prompt still asks
+// for 12–30 and would return the shorter 卢卡斯-杜里奥韦尔德（Lucas do Rio
+// Verde）市MT-449公路修复与新建. This backstop is not the target, and a title
+// this shape is not the failure it exists to catch.
+acceptsShort("马托格罗索州卢卡斯-杜里奥韦尔德市MT-449号公路6.93公里路段修复与新建工程");
 // The parenthetical is excluded from the readability budget, but it cannot be
 // used to smuggle an unbounded title past the check.
 rejectsShort(`卢卡斯市公路修复（${"Lucas do Rio Verde ".repeat(4)}）`, "整体超过 60 字");
 rejectsShort("███ 市MT-449公路修复", "用了遮挡符号");
 // The dangerous failure: a name carried in from another row of the same batch.
 rejectsShort("福塔莱萨（Fortaleza）市MT-449公路修复", "原标题里没有 Fortaleza，属于凭空生成");
+
+// The length backstops, against the real rejections from the first 100-row
+// --write run (2026-09-20). Three good titles were refused because the Chinese
+// TRANSLITERATION of a Spanish proper noun ate the whole budget before the
+// description began. All three must pass now: refusing them falls the column
+// back to the full administrative title, which is longer than what was
+// rejected.
+acceptsShortFrom(
+  "贝利萨里奥·多明格斯安戈斯图拉（Belisario Domínguez Angostura）水电站自用断路器及配电盘供货与安装",
+  "贝利萨里奥·多明格斯安戈斯图拉（Belisario Domínguez Angostura）水电站自用断路器及配电盘的供货与安装，公开招标第LO-018T0O999-N7-2026号",
+);
+acceptsShortFrom(
+  "拉玛丽亚-托维亚-埃尔雷霍山口-尼迈马-诺凯迈路段旅游主干道改善与修复",
+  "拉玛丽亚-托维亚-埃尔雷霍山口-尼迈马-诺凯迈路段旅游主干道的改善与修复工程施工，合同编号 ICCU-LP-055-2025",
+);
+acceptsShortFrom(
+  "费尔南多·伊里亚尔特·巴尔德拉马（Ing. Fernando Hiriart Balderrama）水电站计量系统采购与改造",
+  "费尔南多·伊里亚尔特·巴尔德拉马（Ing. Fernando Hiriart Balderrama）水电站计量系统的采购与现代化改造服务",
+);
+// Loosening is not removing. A "short" title that kept the whole
+// administrative sentence is what these backstops exist for.
+const ADMIN_SENTENCE = "公开招标（电子）第023/2026号——专业工程公司承建专业社会救助参考中心，位于塞乌阿祖尔社区，技术及条件详见基本项目文件及其附件";
+rejectsShortFrom(ADMIN_SENTENCE, ADMIN_SENTENCE, "原封不动照抄了整句行政标题");
+
+// --- Stripping a guessed spelling instead of refusing the row -------------
+// Three of six rejections in the first real --write run were an invented Latin
+// parenthetical, all Peru. The rule is right to fire — one of the three was
+// 阿亚瓦卡区（Ayavaca）, and Peru's province is AyaBaca, so the model produced a
+// plausible misspelling that would have been published as a matching key
+// against the bid documents. But the Chinese was correct and the rest of the
+// title was good, so the remedy is to drop the guess, not the row: refusing
+// falls the column back to the full administrative title.
+function checkedShort(candidate: string, sourceTitleZh: string, sourceSummaryZh = "") {
+  return checkGenerated(
+    {
+      slug: "s",
+      title: { zh: sourceTitleZh, es: "FUENTE", en: "" },
+      summary: { zh: sourceSummaryZh, es: "FUENTE", en: "" },
+    },
+    { titleZhShort: candidate, titleZhPublic: "秘鲁 乡村道路桥梁翻新工程", summaryZhPublic: "乡村道路桥梁的翻新工程，含桥梁本身的技术改造施工。" },
+  ).short;
+}
+
+const guessed = checkedShort("卡鲁阿帕塔（Carhuapata）HU-712乡村道路桥梁翻新", "卡鲁阿帕塔乡村道路HU-712号桥梁翻新工程");
+check("原标题没有的拉丁拼写会被摘掉", guessed.value, "卡鲁阿帕塔HU-712乡村道路桥梁翻新");
+check("摘掉之后这条短标题就合格了", guessed.problems.length, 0);
+
+const misspelled = checkedShort("阿亚瓦卡区（Ayavaca）7个聚居区农村饮水与卫生改善扩建", "阿亚瓦卡区7个聚居区的农村饮水与卫生服务改善扩建工程");
+check("拼错的地名也当成没有依据的拼写摘掉", misspelled.value, "阿亚瓦卡区7个聚居区农村饮水与卫生改善扩建");
+check("摘掉之后不再报外文词", misspelled.problems.length, 0);
+
+// The other direction matters more. A parenthetical the full title DOES carry
+// is the anchor a member matches against the bid documents — stripping that
+// would quietly destroy the one thing the short title exists to keep.
+const verified = checkedShort(
+  "卢卡斯-杜里奥韦尔德（Lucas do Rio Verde）市MT-449公路修复",
+  "马托格罗索州卢卡斯-杜里奥韦尔德（Lucas do Rio Verde）市MT-449号公路6.93公里路段修复与新建工程服务采购",
+);
+check("原标题里有的括号原文必须保留", verified.value, "卢卡斯-杜里奥韦尔德（Lucas do Rio Verde）市MT-449公路修复");
+check("保留括号原文的短标题依然合格", verified.problems.length, 0);
+
+// Accents and case must not make a real anchor look invented.
+const accented = checkedShort("埃洛伊门德斯（Elói Mendes）市教育局办公楼建设", "米纳斯吉拉斯州埃洛伊门德斯（Eloi Mendes）市教育局办公楼建设工程");
+check("重音差异不算凭空生成", accented.value, "埃洛伊门德斯（Elói Mendes）市教育局办公楼建设");
+
+// --- The haystack is everything the prompt saw, not just the title ---------
+// Real rejection, 2026-09-20: 夸乌特拉（Cuautla）至特拉帕（Tlapa）MEX-160公路干线
+// 升级改造 was refused for 原标题里没有的外文词：MEX. The prompt is handed
+// titleZh AND summaryZh, so a designation the summary states is copied, not
+// guessed — checking against less than the model was given manufactures an
+// invention and costs the row its short title.
+const fromSummary = checkedShort(
+  "夸乌特拉至特拉帕MEX-160公路干线升级改造",
+  "夸乌特拉至特拉帕公路干线的升级改造工程",
+  "本项目为MEX-160号联邦公路干线的升级改造，路线连接夸乌特拉与特拉帕。",
+);
+check("摘要里出现过的编号不算凭空生成", fromSummary.problems.length, 0);
+
+// And the protection it must NOT weaken: an invented spelling appears in
+// neither input, so widening the haystack changes nothing about it.
+const stillInvented = checkedShort(
+  "阿亚瓦卡区（Ayavaca）农村饮水改善",
+  "阿亚瓦卡区农村饮水服务改善工程",
+  "阿亚瓦卡区7个聚居区的农村饮水与卫生服务改善。",
+);
+check("两份原文里都没有的拼写照样摘掉", stillInvented.value, "阿亚瓦卡区农村饮水改善");
+
+// --- A single Latin letter is not a word ----------------------------------
+// Real rejection: 「I-3型卫生中心的重建工程…」 refused over the letter I, which
+// is Peru's primary-care level marker. One letter names no place, no agency
+// and no facility, so it cannot leak what this rule protects.
+acceptsSummary("I-3型卫生中心的重建工程，属于基层医疗机构基础设施的翻新与建设。");
+accepts("秘鲁 I-3型卫生中心重建工程");
+// Two letters still count — that is where real acronyms start.
+rejectsSummary("CS型卫生中心的重建工程，属于基层医疗机构基础设施的翻新与建设。", "含有原文词：CS");
+
+// --- BRT names a kind of system, not a project ----------------------------
+// Both halves of a real rejection: the summary called it an 原文词 and the
+// short title called it invented, on a Bogotá TransMilenio tender.
+acceptsSummary("快速公交系统BRT组件基础设施的改造与建设工程，用于加强系统并更新物理条件。");
+acceptsShortFrom("BRT系统配套工程改造与建设", "波哥大快速公交系统配套组件基础设施的改造与建设工程");
 
 // --- Checking a public summary --------------------------------------------
 // Same audience and same surfaces as the public title, so the same rules.
@@ -187,6 +306,22 @@ rejectsSummary("项目编号 20241301010259 的公路修复工程。", "留了�
 rejectsSummary("███ 市的公路修复工程，包含路面与排水。", "用了遮挡符号");
 rejectsSummary("某某市的公路修复工程，包含路面与排水。", "用了占位符号");
 rejectsSummary(`公路修复工程。${"很长的描述".repeat(20)}`, "超过 100 字");
+// Talking about the notice instead of about the project. Every one of these
+// reached production before this rule existed (2026-09-20), because two of
+// the prompt's own worked examples had the annotation written inside the
+// example OUTPUT — so the model was shown the commentary as copy to imitate.
+rejectsSummary("配电变电站的改善工程，旨在提升区域供电能力。原文未列明具体设备，仅交代至这一层。", "在交代原文而不是介绍项目");
+rejectsSummary("供水企业采购一辆罐式卡车，原文未载明其他设备或配件。", "在交代原文而不是介绍项目");
+rejectsSummary("乡村道路桥梁的更新工程。原文未提及配套引道或附属设施，摘要到此为止。", "在交代原文而不是介绍项目");
+rejectsSummary("市政安全部门的执法记录仪采购项目，采购范围以此为准。", "替读者下了我们没资格下的判断");
+rejectsSummary("国家高中学校的新建工程，本平台仅收录到这一层。", "提到了本平台");
+// The rewrite of each — same facts, no meta-commentary, and still short.
+acceptsSummary("配电变电站及二级电网的供电改善工程，包含配电设施的升级与优化。");
+acceptsSummary("供水企业的罐式运水车采购项目，用于供水保障。");
+acceptsSummary("乡村道路桥梁的更新工程，含桥梁本身的技术改造施工。");
+// The rule must not swallow ordinary prose that happens to contain 说明 or
+// 交代 as part of a real word.
+acceptsSummary("高中学校的新建工程，包含校舍主体施工，设计说明与施工图由承包方编制。");
 
 // --- Which rows are worth a model call ------------------------------------
 const base = {
@@ -215,6 +350,18 @@ check("人工改过的公开标题不覆盖", needsDisplayText({ ...filled, titl
 // Pinning one column must not stop the other two being generated — they are
 // independent strings with independent failure modes.
 check("人工改过一列不影响其他列生成", needsDisplayText({ ...base, manual_field_overrides: ["title_zh_public"] }), true);
+// A filled column whose text the CURRENT rules would refuse counts as needing
+// work. Without this, tightening a rule fixes nothing already published: the
+// hundred rows carrying 原文未列明具体设备 would have needed a hand-written
+// UPDATE … SET summary_zh_public = NULL to become eligible again.
+check("存量摘要违反新规则要重生成", needsDisplayText({ ...filled, summary_zh_public: "变电站改善工程。原文未列明具体设备。" }), true);
+check("存量公开标题带原文地名要重生成", needsDisplayText({ ...filled, title_zh_public: "墨西哥 莱昂市（León）变电站扩建工程" }), true);
+// …but a human's decision still wins over a validator.
+check("人工钉住的列即使违反规则也不动", needsDisplayText({
+  ...filled,
+  summary_zh_public: "变电站改善工程。原文未列明具体设备。",
+  manual_field_overrides: ["summary_zh_public"],
+}), false);
 
 // --- Pairing model output back to rows ------------------------------------
 // A misattributed public title publishes one tender under another's name,

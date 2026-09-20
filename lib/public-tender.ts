@@ -1,6 +1,6 @@
 import type { PublicTenderDetail, Tender } from "@/types/tender";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
-import { estimatedValueBand, toMonthPrecision, toMonthPrecisionOptional } from "@/lib/public-redaction";
+import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
 import { GENERIC_PUBLIC_SUMMARY, publicSummaryOf, publicTitleOf } from "@/lib/public-title";
 
 /**
@@ -41,14 +41,29 @@ export function toPublicTenderDetail(tender: Tender): PublicTenderDetail {
     governmentLevel: tender.governmentLevel,
     industries: tender.industries,
     scopeType: tender.scopeType,
+    // The tier, not tender.relevance — see PublicTenderDetail.relevanceTier.
+    relevanceTier: tender.relevance.tier,
     procedureType: tender.procedureType,
     participationScope: tender.participationScope,
-    // Deliberately month-precision, and deliberately redacted HERE rather
-    // than in the view. This projection feeds generateMetadata() and the
-    // JSON-LD as well as the visitor page, so redacting at the single point
-    // they share is what keeps the three consistent — and a crawler reads
-    // all three.
-    publicationDate: toMonthPrecision(tender.publicationDate),
+    // The two dates are treated DIFFERENTLY, on purpose (2026-09-20, the
+    // user: 把发布日期的「日」展示……只隐藏交标日期的「日」).
+    //
+    // A publication date is a weak key and a load-bearing signal. Every
+    // portal we ingest publishes hundreds of notices on the same day, so
+    // 2026-09-18 narrows nothing by itself — while a dateline is what tells
+    // a reader, and a crawler ranking this page on freshness, that the
+    // listing is current rather than a scrape from last year. Withholding it
+    // cost us the signal and bought no protection.
+    //
+    // The deadline is the opposite on both counts: it is the value a bidder
+    // acts on, and combined with a country and an industry it narrows a
+    // search hard. It is also what the page sells — 订阅后可见具体日期 sits
+    // directly under it. So it keeps month precision.
+    //
+    // Both are decided HERE rather than in the view: this projection feeds
+    // generateMetadata() and the JSON-LD as well as the visitor page, and a
+    // crawler reads all three.
+    publicationDate: tender.publicationDate,
     publicationDateIsEstimated: tender.publicationDateIsEstimated,
     submissionDeadline: toMonthPrecisionOptional(tender.submissionDeadline),
     // The band, never the figure. `currency` stays so the page can still say

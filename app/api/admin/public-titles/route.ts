@@ -6,16 +6,27 @@ import { generateDisplayText } from "@/lib/ingestion/generate-public-titles";
 import { logAdminAlert } from "@/lib/admin-alerts";
 
 /**
- * Web-form counterpart to `npm run titles:public` (the 生成公开文案 panel on
- * app/admin/import-tenders/maintenance/page.tsx) — same shared
+ * Web-form counterpart to `npm run titles:public` (step ② of the 更新项目文案
+ * panel on app/admin/import-tenders/maintenance/page.tsx) — same shared
  * lib/ingestion/generate-public-titles.ts function the CLI script uses.
  *
- * Deliberately a SEPARATE endpoint from /api/admin/translate-tenders rather
- * than another step inside it. The two passes select different rows — that one
- * takes tenders with no Chinese translation yet, this one takes translated
- * tenders with no generated display text — so chaining them would make each
- * button's row count mean something other than what it says, and would double
- * the wall time of a request that already has to stay under a proxy timeout.
+ * Still a SEPARATE endpoint from /api/admin/translate-tenders, and the panel
+ * being one button since 2026-09-20 does not change that. It calls the two in
+ * order from the browser instead. Both reasons this was written for hold, and
+ * the client-side sequence honours them:
+ *
+ *  - the wall time. Chaining the passes INSIDE one request would double the
+ *    length of a request that already has to stay under a proxy timeout; two
+ *    requests are each as long as they are today;
+ *  - the row counts. The passes select different rows — that one takes
+ *    tenders with no Chinese translation yet, this one takes translated
+ *    tenders with no generated display text — so the panel reports the two
+ *    results under their own headings rather than summing them into a number
+ *    that answers neither question.
+ *
+ * Running second also means this pass reads rows Supabase has already
+ * COMMITTED, which is what it needs: it re-reads from the table rather than
+ * being handed the first pass's output.
  */
 
 /**

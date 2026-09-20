@@ -1,5 +1,5 @@
 import { toPublicTenderDetail } from "../lib/public-tender";
-import { toTenderListItem } from "../lib/tender-list-page";
+import { toNotificationTender, toTenderListItem } from "../lib/tender-list-page";
 import { toTenderCardData } from "../lib/tender-card";
 import { publicTenderPath } from "../lib/public-tender-url";
 import { GENERIC_PUBLIC_SUMMARY } from "../lib/public-title";
@@ -34,7 +34,7 @@ const fullTender = {
   requiredDocuments: [{ id: "d", title: { zh: "SECRET_DOCUMENT", es: "d", en: "d" }, description: { zh: "d", es: "d", en: "d" }, mandatory: true }],
   keyDates: [{ id: "k", type: "clarification", date: "2026-09-20T00:00:00.000Z", notes: { zh: "SECRET_KEY_DATE", es: "k", en: "k" } }],
   risks: [{ id: "r", level: "high", title: { zh: "SECRET_RISK", es: "r", en: "r" }, description: { zh: "r", es: "r", en: "r" } }],
-  relevance: { tier: "significant", label: { zh: "重要", es: "Importante", en: "Significant" }, reason: { zh: "原因", es: "Razón", en: "Reason" } },
+  relevance: { tier: "significant", label: { zh: "重要", es: "Importante", en: "Significant" }, reason: { zh: "SECRET_RELEVANCE_REASON", es: "Razón", en: "Reason" } },
   sourceName: "SECRET_SOURCE_NAME",
   sourceUrl: "https://SECRET_SOURCE_URL.example",
   createdAt: "2026-09-15T00:00:00.000Z",
@@ -46,6 +46,13 @@ const serialized = JSON.stringify(publicTender);
 
 const protectedMarkers = [
   "SECRET_INTERNAL_ID",
+  // The relevance REASON, which now travels next to a tier that three
+  // projections do carry (2026-09-20). It is a paragraph written for the
+  // admin screens: it names the rule that fired and quotes its thresholds by
+  // number, so publishing it would hand a reader the filter's source code.
+  // Listed here rather than checked once, so the detail, the card and the
+  // list row are all held to it.
+  "SECRET_RELEVANCE_REASON",
   "SECRET_SOURCE_DERIVED_SLUG",
   "SECRET_TENDER_CODE",
   "SECRET_ORIGINAL_TITLE",
@@ -74,7 +81,12 @@ const protectedMarkers = [
   // page ever being opened.
   "SECRET_SUMMARY_PLACE",
   "47382915",
-  "2026-09-15",
+  // The exact publication DAY is deliberately NOT here any more (2026-09-20).
+  // It was withheld with the rest on 2026-09-19 and put back on purpose: a
+  // publication date is shared by hundreds of notices on the same portal, so
+  // it identifies nothing on its own, while a dateline is what tells a reader
+  // and a crawler the listing is current. The exact DEADLINE below stays —
+  // that one a bidder acts on, and the page sells it.
   "2026-10-01",
 ];
 
@@ -113,8 +125,14 @@ if (publicTender.publicSlug !== "p-7a3c91e4b6d82f05") {
 if (publicTender.estimatedValueBand !== "$1M – $5M USD") {
   throw new Error(`公开项目金额未按区间脱敏：${publicTender.estimatedValueBand}`);
 }
-if (publicTender.publicationDate !== "2026-09" || publicTender.submissionDeadline !== "2026-10") {
-  throw new Error("公开项目日期未截断到年月");
+// Asymmetric on purpose: the deadline loses its day, the publication date
+// keeps it. Asserted by value in both directions, because the interesting
+// regression is either one silently adopting the other's rule.
+if (publicTender.submissionDeadline !== "2026-10") {
+  throw new Error(`公开项目的交标日期未截断到年月：${publicTender.submissionDeadline}`);
+}
+if (publicTender.publicationDate !== "2026-09-15T00:00:00.000Z") {
+  throw new Error(`公开项目的发布日期不应被截断：${publicTender.publicationDate}`);
 }
 
 const publicListItem = toTenderListItem(fullTender);
@@ -142,6 +160,28 @@ for (const marker of ["SECRET_LOCATION_LEON_GUANAJUATO", "47382915", "2026-10-01
   }
 }
 
+// 项目规模 and 项目类型 are on the row now (2026-09-20). Both are already
+// public filter controls on this page, so neither is new information — but
+// the tier must arrive as the TIER and not as the whole `relevance` object,
+// which also carries `reason`: a paragraph written for the admin screens that
+// names the rule that fired and its thresholds by number.
+if (publicListItem.relevanceTier !== "significant") {
+  throw new Error(`访客项目列表缺少项目规模：${publicListItem.relevanceTier}`);
+}
+if (publicListItem.scopeType !== "equipment") {
+  throw new Error(`访客项目列表缺少项目类型：${publicListItem.scopeType}`);
+}
+// Same two on the card and on the public detail page, which render the same
+// pill row (components/tenders/TenderTagRow.tsx).
+if (toTenderCardData(fullTender).relevanceTier !== "significant") {
+  throw new Error("访客项目卡片缺少项目规模");
+}
+if (publicTender.relevanceTier !== "significant") {
+  throw new Error("访客详情页缺少项目规模");
+}
+if (publicTender.scopeType !== "equipment") {
+  throw new Error("访客详情页缺少项目类型");
+}
 // A paying member loses none of it — the redaction is an entitlement
 // boundary, not a data change.
 if (publicListItem.titleZh !== "墨西哥 变电站扩建工程（输配电）") {
@@ -188,6 +228,32 @@ if (publicTenderPath(fullTender) !== "/tenders/p-7a3c91e4b6d82f05") {
 // Tender — on the homepage, the most crawled page on the site, and on
 // /saved, which had no server-side gate and therefore returned the entire
 // tender table to an unauthenticated request.
+// The header bell. Its endpoint takes no credential — saved searches live in
+// localStorage and the bell renders for logged-out visitors — so the row it
+// returns has to be the guest projection by default. It used to send
+// `title: tender.title`, the whole LocalizedText, so every one of up to fifty
+// items carried the original Spanish title that nothing ever rendered.
+const guestNotification = toNotificationTender(fullTender);
+for (const marker of protectedMarkers.filter((m) => m !== "SECRET_INTERNAL_ID")) {
+  if (JSON.stringify(guestNotification).includes(marker)) {
+    throw new Error(`通知条目泄露了受保护字段：${marker}`);
+  }
+}
+if (guestNotification.titleZh !== "墨西哥 变电站扩建工程（输配电）") {
+  throw new Error("访客的通知条目没有使用去标识化的公开标题");
+}
+const memberNotification = toNotificationTender(fullTender, { memberView: true });
+if (memberNotification.titleZh !== "SECRET_PLACE_NAME变电站扩建") {
+  throw new Error("订阅用户的通知条目应显示短标题");
+}
+const untranslatedNotification = toNotificationTender({
+  ...fullTender,
+  title: { zh: "SECRET_ORIGINAL_TITLE", es: "SECRET_ORIGINAL_TITLE", en: "" },
+});
+if (untranslatedNotification.titleZh !== "政府采购项目") {
+  throw new Error("还没翻译的项目不能把原文标题当成中文标题发给访客");
+}
+
 const guestCard = toTenderCardData(fullTender);
 const serializedGuestCard = JSON.stringify(guestCard);
 // The opaque row id is not a protected value — it is what SaveTenderButton
@@ -208,11 +274,45 @@ if (guestCard.titleZh !== "墨西哥 变电站扩建工程（输配电）") {
 if (guestCard.summaryZh !== "配电变电站的扩建工程，包含开关柜安装与配套土建施工。") {
   throw new Error("访客项目卡片没有使用去标识化的公开摘要");
 }
+// The homepage, and ONLY the homepage, publishes the member title to guests
+// (app/page.tsx). It opens that one field and nothing else: the original
+// title, the buyer, the exact budget and the exact deadline all stay
+// withheld, which is the whole reason it is a separate flag from memberView
+// rather than a second caller passing memberView: true.
+const shopfrontCard = toTenderCardData(fullTender, { shopfront: true });
+if (shopfrontCard.titleZh !== "SECRET_PLACE_NAME变电站扩建") {
+  throw new Error("首页卡片应显示订阅用户的短标题");
+}
+// The exception opens the title and the deadline, and stops there. The
+// original title, the publishing body and the exact budget stay withheld —
+// that is the whole reason it is a flag of its own rather than a second
+// caller passing memberView: true.
+if (shopfrontCard.submissionDeadline !== "2026-10-01T00:00:00.000Z") {
+  throw new Error("首页卡片应显示完整的交标日期");
+}
+if (shopfrontCard.titleOriginal !== undefined || shopfrontCard.buyer !== undefined || shopfrontCard.estimatedValue !== undefined) {
+  throw new Error("首页卡片只开放标题与交标日期，不得连带开放其他订阅字段");
+}
+if (shopfrontCard.estimatedValueBand !== "$1M – $5M USD") {
+  throw new Error("首页卡片的金额仍应按区间脱敏");
+}
+// Every other card keeps month precision — the exception is one route, not a
+// new default.
+if (guestCard.submissionDeadline !== "2026-10") {
+  throw new Error("非首页的访客卡片交标日期仍应截断到年月");
+}
+// The publication date is public at day precision for everyone now.
+if (guestCard.publicationDate !== "2026-09-15T00:00:00.000Z") {
+  throw new Error("项目卡片的发布日期不应被截断");
+}
 // Same fail-closed rule as the detail page. The card is the worse of the two
 // to get wrong: it renders on the homepage, the most crawled page on the site.
 const guestCardWithoutSummary = toTenderCardData({ ...fullTender, summaryZhPublic: undefined });
-if (guestCardWithoutSummary.summaryZh.includes("SECRET_SUMMARY_PLACE")) {
+if (guestCardWithoutSummary.summaryZh?.includes("SECRET_SUMMARY_PLACE")) {
   throw new Error("没有公开摘要的项目卡片回落到了原摘要——脱敏被绕过");
+}
+if (guestCardWithoutSummary.summaryZh !== GENERIC_PUBLIC_SUMMARY) {
+  throw new Error(`没有公开摘要的项目卡片应显示占位文案，实际是：${guestCardWithoutSummary.summaryZh}`);
 }
 if (guestCard.estimatedValueBand !== "$1M – $5M USD" || guestCard.estimatedValue !== undefined) {
   throw new Error("访客项目卡片未按区间脱敏金额");
@@ -226,9 +326,31 @@ if (guestCard.submissionDeadline !== "2026-10") {
 if (guestCard.qualification !== undefined || guestCard.risk !== undefined || guestCard.oneLineSummary !== undefined) {
   throw new Error("默认的项目卡片不应携带受保护的投标重点预览");
 }
-const previewCard = toTenderCardData(fullTender, { includeAnalysisPreview: true });
+const previewCard = toTenderCardData(fullTender, { includeAnalysisPreview: true, showOneLineSummary: true });
 if (previewCard.qualification === undefined || previewCard.risk === undefined) {
   throw new Error("首页免费预览卡片缺少投标重点预览");
+}
+// 一句话总结 and 摘要 said the same thing twice on the one card that shows
+// both. The summary is dropped at the PROJECTION, not hidden in the view, so
+// asserting on the object is asserting on the payload.
+if (previewCard.summaryZh !== undefined) {
+  throw new Error("带一句话总结的卡片不应再携带摘要");
+}
+// …but only when there is actually a one-line summary to replace it with.
+const previewCardWithoutOneLine = toTenderCardData({ ...fullTender, oneLineSummary: undefined }, { includeAnalysisPreview: true, showOneLineSummary: true });
+if (previewCardWithoutOneLine.summaryZh === undefined) {
+  throw new Error("没有一句话总结时，卡片不能连摘要也没有");
+}
+// /saved renders TenderCard WITHOUT showOneLineSummary while still passing
+// includeAnalysisPreview for a member. Tying the summary's removal to the
+// preview flag instead of this one left those cards with no description line
+// at all — the one-liner was not rendered and the summary was not sent.
+const savedCard = toTenderCardData(fullTender, { memberView: true, includeAnalysisPreview: true });
+if (savedCard.summaryZh === undefined) {
+  throw new Error("不展示一句话总结的卡片必须保留摘要，否则卡片没有任何描述");
+}
+if (savedCard.oneLineSummary !== undefined) {
+  throw new Error("不展示一句话总结的卡片不应携带一句话总结");
 }
 // Even then, the preview carries our analysis — never a source identifier.
 for (const marker of ["SECRET_ORIGINAL_TITLE", "SECRET_SOURCE_URL", "SECRET_TENDER_CODE", "SECRET_SOURCE_DERIVED_SLUG", "47382915"]) {
@@ -244,8 +366,11 @@ if (memberCard.titleOriginal !== "SECRET_ORIGINAL_TITLE" || memberCard.buyer !==
 if (memberCard.titleZh !== "SECRET_PLACE_NAME变电站扩建") {
   throw new Error("订阅用户的项目卡片应显示短标题");
 }
-// The member keeps the real summary; only the guest branch is redacted.
-if (!memberCard.summaryZh.includes("SECRET_SUMMARY_PLACE")) {
+// The member keeps the real summary; only the guest branch is redacted. Read
+// off a card without the preview block, since a card carrying 一句话总结 no
+// longer projects the summary at all.
+const memberCardPlain = toTenderCardData(fullTender, { memberView: true });
+if (!memberCardPlain.summaryZh?.includes("SECRET_SUMMARY_PLACE")) {
   throw new Error("订阅用户的项目卡片应显示完整摘要");
 }
 if (memberCard.estimatedValue !== 47382915 || memberCard.submissionDeadline !== "2026-10-01T00:00:00.000Z") {

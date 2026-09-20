@@ -1,14 +1,19 @@
 /**
- * The /tenders filter facets, computed from the rows a visitor can reach.
+ * The /tenders facets and the 招标概览 total, both computed from the rows a
+ * visitor can actually reach.
  *
- * The user's report (2026-09-20): 巴西前台如果现在看到的项目数 = 0，就先隐藏
- * 这个国家，如果 > 0 就展示. A connector can import every day while every row
- * it writes lands in the excluded tier. The country pill was drawn from
- * AVAILABLE_COUNTRIES, a hardcoded list, so it stayed up regardless — a
- * filter that can only return zero, which reads as a broken site rather than
- * as an empty country.
+ * Two user reports on 2026-09-20 meet in one function:
  *
- * The trap is the BASIS. `allTenders` carries excluded-tier rows;
+ *  - 巴西前台如果现在看到的项目数 = 0，就先隐藏这个国家，如果 > 0 就展示.
+ *    A connector can import every day while every row it writes lands in the
+ *    excluded tier. The country pill was drawn from AVAILABLE_COUNTRIES, a
+ *    hardcoded list, so it stayed up regardless — a filter that can only
+ *    return zero, which reads as a broken site rather than an empty country.
+ *  - 把全站在招改成全站项目，因为在招把已截止都算入了. It did not include
+ *    已截止 — but beside a 当前结果 of the same size it read as if it did, so
+ *    the cell now counts the catalogue and the label says so.
+ *
+ * The trap both share is the BASIS. `allTenders` carries excluded-tier rows;
  * `filtered` carries only what the viewer's current filters left. A facet
  * built on the first offers options that return nothing; a facet built on
  * the second deletes its own option the moment you tick it. Everything here
@@ -137,6 +142,45 @@ check(
   "the industry a visible row carries is still offered",
   page(onlyExcludedCarriesWater).availableIndustries.includes("construction"),
 );
+
+// ── 全站项目 ────────────────────────────────────────────────────────────────
+
+const wholeCatalogue = [
+  tender("mx-5", "Mexico", "standard", { status: "open" }),
+  tender("mx-6", "Mexico", "standard", { status: "clarification" }),
+  tender("mx-7", "Mexico", "standard", { status: "submission_closed" }),
+  tender("mx-8", "Mexico", "standard", { status: "awarded" }),
+  tender("mx-9", "Mexico", "standard", { status: "cancelled" }),
+  tender("mx-10", "Mexico", "excluded", { status: "open" }),
+];
+
+check(
+  "全站项目 counts every status a filter can reach — 已截止/已中标/已取消 included",
+  page(wholeCatalogue).siteTenderCount === 5,
+  String(page(wholeCatalogue).siteTenderCount),
+);
+
+check(
+  "全站项目 still leaves the excluded tier out",
+  page(wholeCatalogue).siteTenderCount < wholeCatalogue.length,
+);
+
+// The relationship the label now promises: whatever the viewer filters to,
+// the number beside it is never smaller. This is what 全站在招 could not
+// guarantee — the default preset shows 已中标, which 在招 did not count.
+for (const params of [
+  {},
+  { status: "awarded" },
+  { status: "planned,open,clarification,awarded,cancelled" },
+  { country: "Mexico" },
+]) {
+  const result = page(wholeCatalogue, params);
+  check(
+    `全站项目 ≥ 当前结果 under ${JSON.stringify(params)}`,
+    result.siteTenderCount >= result.totalResults,
+    `${result.siteTenderCount} < ${result.totalResults}`,
+  );
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

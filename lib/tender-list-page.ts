@@ -11,11 +11,13 @@ export const TENDER_PAGE_SIZE = 20;
 export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "awarded"];
 
 /**
- * Statuses a bidder can still act on — what 全站在招 counts.
+ * Statuses a bidder can still act on — now only the 5天内交标 gate.
  *
- * NOT the complement of "awarded + cancelled", which is what siteTenderCount
- * used to subtract: that left 已截止 (submission_closed) in, so the number
- * was neither the whole site nor the live pipeline, and matched no label.
+ * It used to be what the sidebar's first cell counted, under the label
+ * 全站在招. That cell is 全站项目 as of 2026-09-20 and counts the whole
+ * public catalogue, so this list has nothing to do with it any more: a
+ * deadline five days out only means something while the tender is still
+ * live, which is the one question these three statuses are left answering.
  */
 const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"];
 
@@ -179,8 +181,8 @@ export type TenderListPageData = {
    */
   availableCountries: (typeof AVAILABLE_COUNTRIES)[number][];
   /**
-   * Live opportunities across the WHOLE site, ignoring the viewer's filters —
-   * the sidebar's 全站在招. Deliberately on a different basis from
+   * Every tender on the site a visitor could reach, ignoring the viewer's
+   * filters — the sidebar's 全站项目. Deliberately on a different basis from
    * newTodayCount/upcomingCount, which are scoped to the current filters
    * because clicking them filters the list to exactly that set.
    *
@@ -196,6 +198,20 @@ export type TenderListPageData = {
    * Now it runs the same filterTenders() gate the feed does, so it is always
    * a superset of totalResults on the status dimension and can never be
    * undercut by it.
+   *
+   * It stopped being the LIVE slice on 2026-09-20 (user: 把全站在招改成全站
+   * 项目，因为在招把已截止都算入了). It never did count 已截止 — the three
+   * LIVE_TENDER_STATUSES are what it summed. But printed beside a 当前结果 of
+   * the same size, on a feed whose default preset shows 已中标 too, 在招 read
+   * as a claim about what was IN the number rather than as a narrower count
+   * beside a wider one. Wording cannot fix both readings at once, so the cell
+   * now counts what its new label says: the catalogue. 全站项目 is a superset
+   * of 当前结果 on every dimension, not just on status — which is the one
+   * relationship a visitor checks between two numbers printed side by side.
+   *
+   * The excluded tier is still out, as on every public surface: those rows
+   * are unreachable through any filter combination, and counting them would
+   * advertise a catalogue nobody can open.
    */
   siteTenderCount: number;
   newTodayCount: number;
@@ -402,7 +418,7 @@ export function buildTenderListPage(
     availableIndustries,
     availableScopeTypes,
     availableCountries,
-    siteTenderCount: filterTenders(allTenders, { statuses: LIVE_TENDER_STATUSES }, "zh").length,
+    siteTenderCount: visibleTenders.length,
     newTodayCount,
     upcomingCount,
   };

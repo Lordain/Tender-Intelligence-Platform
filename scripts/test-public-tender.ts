@@ -250,15 +250,31 @@ if (guestCard.summaryZh !== "配电变电站的扩建工程，包含开关柜安
 // title, the buyer, the exact budget and the exact deadline all stay
 // withheld, which is the whole reason it is a separate flag from memberView
 // rather than a second caller passing memberView: true.
-const shopfrontCard = toTenderCardData(fullTender, { memberTitle: true });
+const shopfrontCard = toTenderCardData(fullTender, { shopfront: true });
 if (shopfrontCard.titleZh !== "SECRET_PLACE_NAME变电站扩建") {
   throw new Error("首页卡片应显示订阅用户的短标题");
 }
-if (shopfrontCard.titleOriginal !== undefined || shopfrontCard.buyer !== undefined || shopfrontCard.estimatedValue !== undefined) {
-  throw new Error("首页卡片只开放标题，不得连带开放其他订阅字段");
+// The exception opens the title and the deadline, and stops there. The
+// original title, the publishing body and the exact budget stay withheld —
+// that is the whole reason it is a flag of its own rather than a second
+// caller passing memberView: true.
+if (shopfrontCard.submissionDeadline !== "2026-10-01T00:00:00.000Z") {
+  throw new Error("首页卡片应显示完整的交标日期");
 }
-if (shopfrontCard.submissionDeadline !== "2026-10") {
-  throw new Error("首页卡片的交标日期仍应截断到年月");
+if (shopfrontCard.titleOriginal !== undefined || shopfrontCard.buyer !== undefined || shopfrontCard.estimatedValue !== undefined) {
+  throw new Error("首页卡片只开放标题与交标日期，不得连带开放其他订阅字段");
+}
+if (shopfrontCard.estimatedValueBand !== "$1M – $5M USD") {
+  throw new Error("首页卡片的金额仍应按区间脱敏");
+}
+// Every other card keeps month precision — the exception is one route, not a
+// new default.
+if (guestCard.submissionDeadline !== "2026-10") {
+  throw new Error("非首页的访客卡片交标日期仍应截断到年月");
+}
+// The publication date is public at day precision for everyone now.
+if (guestCard.publicationDate !== "2026-09-15T00:00:00.000Z") {
+  throw new Error("项目卡片的发布日期不应被截断");
 }
 // Same fail-closed rule as the detail page. The card is the worse of the two
 // to get wrong: it renders on the homepage, the most crawled page on the site.

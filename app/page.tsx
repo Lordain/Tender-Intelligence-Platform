@@ -40,17 +40,17 @@ export default async function Home() {
   // all visitors to personalize a card, and serving a crawler anything a
   // visitor does not get is cloaking.
   //
-  // `memberTitle` is the one place on the site where a guest reads the
+  // `shopfront` is the one place on the site where a guest reads the
   // subscriber's title (2026-09-20, the user: 首页(仅限首页)……都用订阅用户看到
-  // 的项目名称). The homepage is the shopfront and a column of 墨西哥
+  // 的项目名称，计划交标日期展示完整). The homepage is the shopfront and a column of 墨西哥
   // 变电站扩建工程 sells nothing; these dozen-odd rows are the sample, the same
   // way the free-preview cards already publish paywalled analysis on purpose.
   // It buys that with a real cost — those titles carry the source proper noun
   // and this page is the one crawlers read most — so it is set HERE, per call,
   // and nowhere else. /tenders, every detail page and every other card stay on
   // publicTitleOf.
-  const featuredWithPreviews = featured.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { includeAnalysisPreview: true, showOneLineSummary: true, memberTitle: true }));
-  const tickerWithPreviews = ticker.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { memberTitle: true }));
+  const featuredWithPreviews = featured.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { includeAnalysisPreview: true, showOneLineSummary: true, shopfront: true }));
+  const tickerWithPreviews = ticker.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { shopfront: true }));
 
   return (
     <div className="flex flex-col">

@@ -60,6 +60,21 @@ export type TenderCardData = Pick<
   estimatedValue?: number;
   estimatedValueBand?: string | null;
   submissionDeadline?: string;
+  /**
+   * Always the full day, for every audience. The publication date is a weak
+   * key — every portal publishes hundreds of notices on the same day — and a
+   * dateline is what tells a reader the listing is current; see
+   * toPublicTenderDetail for the reasoning and for why the DEADLINE is the
+   * one that keeps month precision.
+   */
+  publicationDate: string;
+  /**
+   * The stored date is when this platform first saw the tender, not when the
+   * government published it, so the card must label it 收录日期 instead. Carried
+   * rather than inferred because getting it wrong prints a date under a claim
+   * the source never made.
+   */
+  publicationDateIsEstimated?: boolean;
   oneLineSummary?: string;
   /**
    * One preview item per category rather than the whole array. These are
@@ -97,27 +112,37 @@ function topRisk(risks: readonly TenderRisk[]): PreviewItem | undefined {
  */
 export function toTenderCardData(
   tender: Tender,
-  options: { memberView?: boolean; includeAnalysisPreview?: boolean; memberTitle?: boolean; showOneLineSummary?: boolean } = {},
+  options: { memberView?: boolean; includeAnalysisPreview?: boolean; shopfront?: boolean; showOneLineSummary?: boolean } = {},
 ): TenderCardData {
   const memberView = options.memberView ?? false;
   /**
-   * Publish the MEMBER title — the condensed one that keeps the place and its
-   * full-width parenthesis — without opening any other member field.
+   * The homepage shopfront exception: show this card the way a member sees
+   * it — the condensed title that keeps the place name, and the exact
+   * submission deadline — without opening any other member field.
    *
-   * Set on the homepage and nowhere else (2026-09-20, the user: 首页(仅限首页)
-   * ……都用订阅用户看到的项目名称). The homepage is the shopfront: a visitor who
-   * lands on 墨西哥 变电站扩建工程 six times in a row has no reason to believe
-   * there is a product behind it, and the free-preview cards there already
+   * ONE flag rather than one per field, deliberately, and the same reasoning
+   * toTenderListItem's `memberView` comment gives: two independent options
+   * would eventually be passed inconsistently by some third call site, and
+   * the failure mode of that mistake is silent — a page that looks right
+   * while serving protected values into its own HTML. Everything this opens,
+   * it opens together, at one call site.
+   *
+   * Set on app/page.tsx and nowhere else (2026-09-20, the user: 首页(仅限首页)
+   * ……都用订阅用户看到的项目名称, then 计划交标日期展示完整). The homepage is
+   * the shopfront: a visitor who reads six interchangeable 墨西哥
+   * 变电站扩建工程 rows with a month for a deadline has no reason to believe
+   * there is a product behind them, and the free-preview cards there already
    * publish paywalled analysis on purpose for exactly that reason.
    *
    * It is a real, bounded cost and not a free win: these titles carry the
-   * source proper noun, they are indexed, and the ticker is NOT the admin's
-   * free-preview allow-list. So it is scoped to one route, one flag, and the
-   * dozen-odd rows that route shows — every list row, every detail page and
-   * every other surface stays on publicTitleOf. Defaults to memberView so no
+   * source proper noun, an exact deadline narrows a search, this page is the
+   * one crawlers read most, and the ticker is NOT the admin's free-preview
+   * allow-list. So it is scoped to one route and the dozen-odd rows that
+   * route shows — every list row, every detail page and every other card
+   * keeps publicTitleOf and month precision. Defaults to memberView so no
    * existing caller changes behaviour and a new one has to ask.
    */
-  const memberTitle = options.memberTitle ?? memberView;
+  const shopfront = options.shopfront ?? memberView;
   // The 投标重点预览 block is paywalled analysis that the homepage shows on
   // purpose — but only for the tenders an admin picked as free previews,
   // which is the same allow-list isHomepageFreePreviewSlug() enforces on the
@@ -165,7 +190,7 @@ export function toTenderCardData(
     // screens and for regenerating this, and the original-language line below
     // is what actually matches the official documents anyway.
     titleZh: hasRealTranslation
-      ? (memberTitle ? shortTitleOf(tender) : publicTitleOf(tender))
+      ? (shopfront ? shortTitleOf(tender) : publicTitleOf(tender))
       : memberView ? `${tender.buyer}采购项目` : "政府采购项目",
     ...(memberView && hasRealTranslation ? { titleOriginal: tender.title.es } : {}),
     // The guest branch reads the generated public summary and does NOT fall
@@ -190,9 +215,11 @@ export function toTenderCardData(
       ? { estimatedValue: tender.estimatedValue }
       : { estimatedValueBand: estimatedValueBand(tender.estimatedValue, tender.currency) }),
     currency: tender.currency,
-    submissionDeadline: memberView
+    submissionDeadline: shopfront
       ? tender.submissionDeadline
       : toMonthPrecisionOptional(tender.submissionDeadline),
+    publicationDate: tender.publicationDate,
+    ...(tender.publicationDateIsEstimated ? { publicationDateIsEstimated: true } : {}),
     ...(includeAnalysisPreview
       ? {
         oneLineSummary,

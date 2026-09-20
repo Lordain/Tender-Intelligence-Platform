@@ -74,7 +74,12 @@ export function TenderCard({
           text that matches the official documents, which is precisely why it
           is a member-only field: it is the shortest path from this card to
           the source portal. A guest gets the Chinese heading alone. */}
-      <h3 className="text-base font-black leading-snug text-black">
+      {/* min-h reserves two lines. Titles run one to three lines depending on
+          the project, and without a floor every block below sat at a different
+          height across a row of cards — the 高高矮矮 the user reported
+          (2026-09-20). Nothing is clamped, so a three-line title still shows
+          in full; this only stops a short one from pulling its card up. */}
+      <h3 className="min-h-[2.75rem] text-base font-black leading-snug text-black">
         <Link href={detailHref} data-public-tender-link className="after:absolute after:inset-0">
           {tender.titleZh}
         </Link>
@@ -97,21 +102,38 @@ export function TenderCard({
             {previews.map((preview) => (
               <li key={preview.label} className={`grid min-w-0 grid-cols-[4.75rem_minmax(0,1fr)] gap-2 text-xs leading-5 ${preview.summary ? "border-b border-[#e1e7e9] pb-2" : ""}`}>
                 <span className={`font-bold ${preview.summary ? "text-[#a96100]" : preview.strong ? "text-[#b42318]" : "text-[#586b77]"}`}>{preview.label}</span>
-                <span className={preview.summary ? "line-clamp-2 font-semibold text-[#172c3b]" : "truncate text-[#425461]"}>{preview.text}</span>
+                <span className={preview.summary ? "line-clamp-2 min-h-[2.5rem] font-semibold text-[#172c3b]" : "truncate text-[#425461]"}>{preview.text}</span>
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      {tender.submissionDeadline && (
-        <div className="mt-auto rounded-xl bg-[#fff6df] px-3 py-2.5">
-          <p className="text-[11px] font-medium text-[#966000]">计划交标</p>
+      {/* Two dates side by side, publication left and deadline right
+          (2026-09-20). mt-auto on the row rather than on one card inside it,
+          so the pair is what gets pushed to the bottom and both stay aligned
+          across a row of cards whatever happened above them.
+
+          The deadline keeps the amber treatment because it is the date a
+          bidder acts on; the publication date is the quieter one, and it is
+          labelled 收录日期 when the stored value is when we first saw the
+          tender rather than when it was published. */}
+      <div className="mt-auto grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-[#f1f4f5] px-3 py-2.5">
+          <p className="text-[11px] font-medium text-[#66757f]">
+            {localize(tender.publicationDateIsEstimated ? uiText.ingestedDateLabel : uiText.publicationDateLabel, locale)}
+          </p>
           <span className="mt-0.5 block text-sm font-bold text-[#071826]">
-            {formatDate(tender.submissionDeadline, locale)}
+            {formatDate(tender.publicationDate, locale)}
           </span>
         </div>
-      )}
+        <div className="rounded-xl bg-[#fff6df] px-3 py-2.5">
+          <p className="text-[11px] font-medium text-[#966000]">计划交标</p>
+          <span className="mt-0.5 block text-sm font-bold text-[#071826]">
+            {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "未提供"}
+          </span>
+        </div>
+      </div>
 
       <p className="flex items-start gap-1.5 border-t border-[#e6eaec] pt-3 text-xs leading-5 text-[#586873]">
         <CountryFlag country={tender.country} className="mt-[3px]" />

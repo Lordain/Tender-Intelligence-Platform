@@ -148,7 +148,9 @@
     "titles:public": "tsx --env-file-if-exists=.env.local scripts/generate-public-titles.ts",
     "test:public-title": "tsx scripts/test-public-title.ts",
     "test:script-env": "tsx scripts/test-script-env-flags.ts",
-    "test:cron-auth": "tsx scripts/test-cron-auth.ts"
+    "test:cron-auth": "tsx scripts/test-cron-auth.ts",
+    "test:region-names": "tsx scripts/test-region-names.ts",
+    "audit:region-names": "tsx --env-file-if-exists=.env.local scripts/audit-region-names.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

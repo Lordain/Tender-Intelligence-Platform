@@ -7198,9 +7198,13 @@ a parser that was never written for them.
 `sisapinternet` is deliberately **not fetched**. It has never been captured,
 and this file's own rule — paid for three times, Compras MX, Ecopetrol,
 Proyectos México — is that a mapper is written against a real capture. It is
-also the single biggest thing that could be done for this source: capturing it
-would roughly triple the coverage. That is a follow-up, not a guess to make
-here.
+also the single biggest thing that could be done for this source — but not by
+as much as 11 of 20 suggests. Counted by year, only **3 of those 11** are 2025
+or later (05/2026, 01/2026, 06/2025); the other eight are 2024 and 2022 and any
+sane window drops them anyway. Measured against the hearings still in process,
+the real numbers are **5 of 10** today and **8 of 10** with sisapinternet
+captured — the remaining two are the Cloudflare ones. That is a follow-up, not
+a guess to make here.
 
 ### "Em andamento" is the archive
 
@@ -7209,9 +7213,9 @@ with `audiencias-encerradas` in the path. Every one of the five captured
 hearings had a comment period that had already closed — which is not a reason
 to drop them (a closed consultation is the one nearest to becoming an auction;
 `antaq-mapper.ts` argues that at length) but it does mean the page will not
-window anything for you. So the window lives in the CLI as `--months`,
-defaulting to 12, rather than as a constant inside a fetch layer: how far back
-is worth importing is a product call.
+window anything for you. So the window lives in the CLI rather than as a
+constant inside a fetch layer: how far back is worth importing is a product
+call. It was `--months 12` for one day, and the next section is why it is not.
 
 ### What becomes a downloadable document, and what must not
 
@@ -7365,3 +7369,74 @@ which *is* the captured address. The first run from a machine that can reach
 in.gov.br should check one.
 
 `npm run test:dou-watch` — 74 checks, no network.
+
+## The window was measuring Plone, not the hearing (2026-09-20)
+
+`npm run ingest:antaq` shipped in the morning with `--months 12`, windowing on
+`publicationDate`, which for this source is gov.br's byline date. The user's
+first live run printed this row:
+
+```
+AP 03/2024  flagship  发布 2026-07-06  CONCESSÃO DO PORTO ORGANIZADO DE ITAJAÍ/SC
+  .../audiencias-encerradas/audiencia-publica-ndeg-03-2024
+```
+
+A 2024 hearing, inside a twelve-month window, under a URL that says
+`encerradas`. It was not a near miss. The byline is Plone's *effective date*
+for the PAGE, and ANTAQ re-stamps it whenever the page is edited, so the
+window was counting twelve months of ANTAQ's editing, not twelve months of
+hearings. Two more of the five captures say the same thing without being asked:
+
+| hearing | what the hearing says about itself | what the page says |
+|---|---|---|
+| AP 07/2025 SSB01 | comment period 29/12/2025 – **27/01/2026** | published **08/06/2026** — five months after it closed |
+| AP 04/2026 VDC04 | comment period opened **23/04/2026** | published **25/05/2026** — a month after it opened |
+
+That AP 03/2024 survived turned out to be lucky: its page carries a Data Room
+and `Documentação revisada pós TCU`, which makes it arguably the most advanced
+of the six. But it survived by having been *edited*, not by being live, and
+the next re-stamped page will be a 2022 one nobody wants.
+
+### Three sources of truth, ranked, in `lib/ingestion/antaq-window.ts`
+
+1. **The hearing's own number.** `07/2026` carries its year, ANTAQ numbers per
+   calendar year, and nothing re-stamps a number. This decides.
+2. **The dates the hearing states about itself** — the cronograma cells and the
+   contributions deadline (`statedDays()`). These can only **rescue**: a 2024
+   consultation still running sessions in 2026 is live whatever its number
+   says, and ANTAQ does keep old numbers alive for years while a project clears
+   the TCU. They never drop anything the number kept.
+3. **Plone's byline decides nothing.** It is read only to *warn* — when its
+   year differs from the hearing's, or when it is later than every date the
+   hearing states, the run prints ⚠ and says the stamp does not count. Two of
+   the five captures trip it; the other three do not.
+
+Both of (2)'s sources are needed, and each covers for the other. AP 02/2026's
+`até … dia` sentence says 02/05/2026 while its cronograma runs the comment
+period to 29/09/2026 — the sentence predates an extension, so reading only it
+ages the hearing by four months. And AP 07/2026's schedule cell is
+`29/06/2026 a 13/08/2026`: one cell, two dates, of which `parseBrazilianDate`
+returns the first. A range silently becoming its start date is the quiet lie
+this file has already paid for once with deadlines, so every date in the cell
+is taken.
+
+### The flag counts years now, and `--months` is refused
+
+Because a hearing number carries a year and not a month, and a window in months
+applied to a year-granular signal has to invent eleven months of precision it
+does not have. `--years 2` (the default) means this year and last; `--years 0`
+means no window. A command line that still says `--months` **exits 1 with the
+AP 07/2025 dates in the error**, rather than quietly accepting a flag that used
+to mean something different — the failure mode being avoided is a stale
+workflow input silently getting a window it did not ask for.
+
+Two years rather than one, deliberately: a port concession runs a consultation,
+a TCU review and then an auction, and the whole point of reading the hearing
+instead of the auction is to meet the project early enough to prepare. A
+twelve-month window throws away the ones about to be tendered.
+
+`npm run test:antaq-window` — 42 checks, no network. The rescue is asserted on
+a real row (`--years 1` drops AP 07/2025 by its number and its own 2026-01-27
+schedule brings it back), and the AP 03/2024 shape is asserted on a synthetic
+one, built rather than captured because that page was never fetched — what is
+pinned there is the rule, not that page's contents.

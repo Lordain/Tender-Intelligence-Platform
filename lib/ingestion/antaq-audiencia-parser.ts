@@ -200,3 +200,44 @@ export function parseAntaqHearingIndex(html: string, baseUrl: string): AntaqLink
   }
   return found;
 }
+
+/**
+ * Every calendar day the hearing ITSELF states, in ascending order.
+ *
+ * Read from the cronograma's free-text `when` column plus the contributions
+ * deadline — the two places on the page where ANTAQ writes a date about the
+ * hearing rather than about the web page. Both are needed and neither is
+ * enough alone, measured across the five captures:
+ *
+ *   - AP 02/2026's `até … dia` sentence says 02/05/2026, while its cronograma
+ *     runs the comment period to 29/09/2026 and schedules the virtual session
+ *     for 01/09/2026. The deadline sentence caught the round before the
+ *     extension, so it understates the hearing by four months.
+ *   - AP 07/2026's schedule cell reads `29/06/2026 a 13/08/2026` — two dates
+ *     in one string, of which parseBrazilianDate returns only the first. A
+ *     range read as its start date is the quiet lie this platform has already
+ *     paid for once with deadlines, so here every date in the cell is taken.
+ *
+ * Deliberately NOT including publishedAt or updatedAt. Those are Plone's
+ * dates for the PAGE, and ANTAQ re-stamps them: AP 07/2025's comment period
+ * ran 29/12/2025 to 27/01/2026 and its page says published 08/06/2026, and AP
+ * 04/2026's period opened 23/04/2026 on a page that says published
+ * 25/05/2026 — published a month after it opened. See antaq-window.ts.
+ */
+export function statedDays(hearing: AntaqHearing): string[] {
+  const days = new Set<string>();
+  if (hearing.contributionsDeadline !== undefined) days.add(hearing.contributionsDeadline);
+  for (const row of hearing.schedule) {
+    for (const match of row.when.matchAll(/\d{2}\/\d{2}\/\d{4}/g)) {
+      const day = parseBrazilianDate(match[0]);
+      if (day !== undefined) days.add(day);
+    }
+  }
+  return [...days].sort();
+}
+
+/** The last day the hearing states about itself, or undefined if it states none. */
+export function latestStatedDay(hearing: AntaqHearing): string | undefined {
+  const days = statedDays(hearing);
+  return days.length === 0 ? undefined : days[days.length - 1];
+}

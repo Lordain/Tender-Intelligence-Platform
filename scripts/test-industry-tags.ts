@@ -213,6 +213,48 @@ const cases: Case[] = [
     expect: [],
     reject: ["transportation"],
   },
+  // --- renewable generation is 电力, never 能矿 (2026-09-20) ---------------
+  // The user's call on the real Colombian title below: 不要有太阳能相关词都加
+  // 能矿标签，都用电力. These rows used to carry BOTH tags, and 能矿 was the
+  // half that said nothing true — it put a rural PV array in the same filter
+  // as a refinery, for a reader who selects 能矿 precisely to avoid it.
+  {
+    title: "INSTALACIÓN DE SISTEMAS DE ENERGÍA SOLAR FOTOVOLTAICA EN ZONAS NO INTERCONECTADAS",
+    note: "真实哥伦比亚标题，用户指出的那条",
+    expect: ["power"],
+    reject: ["energy_mining"],
+  },
+  {
+    title: "CONSTRUCCIÓN DE PLANTA SOLAR DE 50 MW Y SU LÍNEA DE EVACUACIÓN",
+    note: "光伏电站本身也是发电资产",
+    expect: ["power"],
+    reject: ["energy_mining"],
+  },
+  {
+    title: "SUMINISTRO Y MONTAJE DE AEROGENERADORES PARA PARQUE EÓLICO",
+    note: "风电同理——否则风电归能矿、光伏归电力，两种发电资产落在两个筛选里",
+    expect: ["power"],
+    reject: ["energy_mining"],
+  },
+  // The other half of the move: extraction and fuels keep the tag, which is
+  // what 能矿 is for. A rule that dropped these would have emptied it.
+  {
+    title: "SERVICIOS DE MANTENIMIENTO INDUSTRIAL EN LA REFINERÍA DE TULA",
+    note: "炼油厂仍然是能矿",
+    expect: ["energy_mining"],
+    reject: ["power"],
+  },
+  {
+    title: "CONSTRUCCIÓN DE GASODUCTO Y ESTACIÓN DE COMPRESIÓN DE GAS NATURAL",
+    note: "天然气管道仍然是能矿",
+    expect: ["energy_mining"],
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPOS PARA PLANTA DE BIOCOMBUSTIBLE",
+    note: "生物燃料是燃料生产，不是发电，留在能矿",
+    expect: ["energy_mining"],
+    reject: ["power"],
+  },
 ];
 
 let failures = 0;

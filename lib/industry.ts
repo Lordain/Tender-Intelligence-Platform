@@ -153,7 +153,24 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // (forklift) is included: it is materials-handling plant, bought the same
   // way and by the same buyers.
   ["heavy_equipment", /excavadora|retroexcavadora|motoniveladora|cargador frontal|minicargador|bulldozer|topadora|tractor de orugas|compactadora|rodillo vibratorio|pavimentadora|montacargas|maquinaria pesada|maquinaria para construcci[óo]n|gr[úu]a(s)? (torre|hidr[áa]ulica|telesc[óo]pica|sobre|m[óo]vil|articulada)|planta de asfalto|revolvedora de concreto|olla revolvedora/i],
-  ["energy_mining", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|(?<!para (uso en |usarse en )?(la |el )?)refiner[íi]a|gas natural|\bducto\b|oleoducto|gasoducto|yacimiento|pozo petrolero|energ[íi]a renovable|planta solar|e[óo]lic[ao]|fotovoltaic[ao]|geot[ée]rmic[ao]|biocombustible|resistividad|miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
+  // Renewable GENERATION is not here, and that is the user's call (2026-09-20,
+  // on the real Colombian title "INSTALACIÓN DE SISTEMAS DE ENERGÍA SOLAR
+  // FOTOVOLTAICA EN ZONAS NO INTERCONECTADA"): 不要有太阳能相关词都加能矿标
+  // 签，都用电力. `planta solar`, `fotovoltaic[ao]`, `eólica` and
+  // `geotérmica` moved wholesale to "power" below.
+  //
+  // It is the right line rather than only the instructed one. This category
+  // is extraction and fuels — PEMEX-shaped, per this file's header — and a
+  // solar array or a wind farm is an electricity-generation asset bought by
+  // a utility, which is the other category exactly. The tags are not
+  // exclusive, so these rows used to carry BOTH, and 能矿 was the half that
+  // said nothing true: it put a rural PV installation in the same filter as
+  // a refinery, for a reader who filters 能矿 precisely to avoid seeing it.
+  //
+  // `energía renovable` and `biocombustible` stay. The first is a policy
+  // phrase that attaches to fuels and generation alike, and the second is
+  // fuel production, not electricity.
+  ["energy_mining", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|(?<!para (uso en |usarse en )?(la |el )?)refiner[íi]a|gas natural|\bducto\b|oleoducto|gasoducto|yacimiento|pozo petrolero|energ[íi]a renovable|biocombustible|resistividad|miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
   // "generador(es)?"/"\bups\b" added (2026-09-05, same real gap as the
   // "hospital(es)?" fix above): relevance.ts's FLAGSHIP_INDUSTRY_KEYWORDS
   // already recognizes a generator/UPS purchase as power-grid key
@@ -182,7 +199,7 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // Generación". The others are exactly the substation equipment a Chinese
   // manufacturer supplies, and none of them was reachable under the 电力
   // filter a buyer browses by.
-  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|generador(es)?|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
+  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|generador(es)?|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|fotovoltaic[ao]|planta solar|parque (solar|e[óo]lico)|e[óo]lic[ao]|geot[ée]rmic[ao]|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to
   // INCLUDE_OVERRIDE_KEYWORDS in lib/relevance.ts (a real batch of 29

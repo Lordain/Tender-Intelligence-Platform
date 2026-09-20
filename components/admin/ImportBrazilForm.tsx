@@ -27,6 +27,17 @@ type BrazilResult = {
   excludedCount: number;
   withoutAmount: number;
   sealedBudget: number;
+  /**
+   * Three fields the CLI has printed since the connector was built and this
+   * panel silently dropped, which is how 「没有金额：62 条」 came to be read as
+   * a fact about Brazilian budgets (user, 2026-09-20: 最近两天导入的巴西项目
+   * 都没有项目金额，这是正常的吗?). It is usually not: a refusal is PNCP
+   * declining to answer us, it is fixed by re-running, and it looks exactly
+   * like a sealed budget in a total that merges them.
+   */
+  amountLookupFailed: number;
+  amountsStoppedEarly: boolean;
+  amountFailureReasons: string[];
   excludedByReason: { reason: string; count: number }[];
   maxItemsSeen: number;
   tendersAtMaxItems: number;
@@ -140,6 +151,27 @@ function ResultPanel({ result }: { result: BrazilResult }) {
         <p className="mt-1 text-xs text-[#64717c]">
           没有金额：{result.withoutAmount} 条{result.sealedBudget > 0 ? `（其中 ${result.sealedBudget} 条是法定预算保密，不是取不到）` : ""}
         </p>
+      )}
+
+      {/*
+        A refusal and a sealed budget are opposite facts — one is permanent
+        and about the tender, the other is temporary and about the network —
+        so they get their own line rather than a share of the total above.
+        Warning-coloured because it is the one number here that means "re-run
+        this command", and a run that stopped early has every row after the
+        stop missing an amount for a reason unrelated to the row.
+      */}
+      {result.amountLookupFailed > 0 && (
+        <div className="mt-2 rounded-lg border border-[#f0d9a8] bg-[#fff8e9] px-2.5 py-1.5 text-[11px] leading-5 text-[#7a5200]">
+          <p>
+            ⚠ 其中 <strong>{result.amountLookupFailed} 条</strong>是 PNCP 拒绝了取金额的请求 —— 这些项目<strong>不是没有预算，是我们没问到</strong>。
+          </p>
+          {result.amountsStoppedEarly && <p className="mt-0.5">连续被拒太多次，取金额那一趟提前停了，后面的项目一律显示无金额，跟项目本身无关。</p>}
+          <p className="mt-0.5">隔几分钟重跑同一次导入，写入按 slug 覆盖，金额就补上了。</p>
+          {result.amountFailureReasons.slice(0, 3).map((reason) => (
+            <p key={reason} className="mt-0.5 font-mono text-[10px] text-[#8a5a00]">{reason}</p>
+          ))}
+        </div>
       )}
 
       {result.excludedByReason.length > 0 && (

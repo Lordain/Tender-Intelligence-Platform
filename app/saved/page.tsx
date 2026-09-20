@@ -1,4 +1,4 @@
-import { getAllTenders } from "@/lib/tenders";
+import { getCachedTenderList } from "@/lib/tenders";
 import { SavedView } from "@/components/tenders/SavedView";
 import { getViewerRole } from "@/lib/access-control-server";
 import { canUseTenderListMemberFeatures } from "@/lib/access-control";
@@ -35,7 +35,13 @@ export default async function SavedPage() {
   // keeps its saved list, at the same level of detail a guest sees on
   // /tenders, but not the paywalled 投标重点预览.
   const memberView = canUseTenderListMemberFeatures(role);
-  const tenders = await getAllTenders();
+  // getCachedTenderList(), not getAllTenders(). This route reads the session,
+  // so it is dynamic and nothing above it caches: every visit was re-running
+  // an unbounded full-table read, paged a thousand rows at a time, to hand
+  // back a list identical for every viewer. The same five-minute cache
+  // /tenders uses, invalidated by revalidateTenders() on any write, so the
+  // data is no more stale here than there.
+  const tenders = await getCachedTenderList();
   const cards = tenders.map((tender) => toTenderCardData(tender, {
     memberView,
     includeAnalysisPreview: memberView,

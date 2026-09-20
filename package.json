@@ -153,7 +153,9 @@
     "test:cron-auth": "tsx scripts/test-cron-auth.ts",
     "test:region-names": "tsx scripts/test-region-names.ts",
     "audit:region-names": "tsx --env-file-if-exists=.env.local scripts/audit-region-names.ts",
-    "test:antaq-live": "tsx scripts/test-antaq-live.ts"
+    "test:antaq-live": "tsx scripts/test-antaq-live.ts",
+    "watch:dou": "tsx scripts/watch-dou.ts",
+    "test:dou-watch": "tsx scripts/test-dou-watch.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

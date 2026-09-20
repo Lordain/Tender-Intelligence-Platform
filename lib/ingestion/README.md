@@ -7235,3 +7235,104 @@ change, not a quiet source.
 `npm run test:antaq-live` — 48 checks, none of them touching the network. The
 triage runs against the committed capture instead, so the 6-of-20 ratio is a
 number that fails when it moves rather than an impression somebody formed once.
+
+## DOU 定向监控 —— a watch, not an import (2026-09-20)
+
+Brazilian law requires every federal notice, edital and award to appear in the
+Diário Oficial da União, which makes it the one Brazilian source that is
+complete **by statute** rather than by an agency's choice to publish. Three
+things reach it and never reach PNCP: concessions (not a *contratação* under
+Lei 14.133/2021, so the portal never sees one — and 2026's federal calendar is
+~100 assets at ~R$247bn), Seção 1 acts that authorise an auction weeks ahead of
+any notice, and the state enterprises that run their own procurement.
+
+### Why it reports instead of importing
+
+`content` is cut at **403 characters**. Measured on the captured edition: 211
+of 216 notices end in an ellipsis, and the median snippet length equals the
+maximum. A DOU notice carries no deadline, no value and half an object
+description — it is a LEAD, not a tender. Mapping one into `Tender` would
+manufacture exactly the row this platform has already paid for twice, a
+truncated summary with no submission date, and it would do it worst to the
+highest-value rows because a concession notice is the longest.
+
+So `npm run watch:dou` narrows the day and prints it. Importing stays a human
+decision, or a second fetch of the full text, which is a separate build.
+
+### The search is not merely noisy — it misses the target entirely
+
+The obvious build was `consulta/-/buscar/dou?q=…`, the way the DOF connector
+searches Mexico's gazette. Both captured searches were run through these rules:
+
+| query | rows | kept | what they actually were |
+|---|---|---|---|
+| `concessão` | 20 | **0** | 9 ANTT `DECISÃO SUROD` rulings on concessions that *already exist*; top hit an Instrução Normativa on CSLL tax credits |
+| `aviso de licitação` | 20 | 4 | 3 Petrobras spare parts, 1 real CODEVASF Concorrência |
+
+Every row scored `0`, and the highlight markup shows why: the engine matches
+the word anywhere, including inside the boilerplate every federal notice
+carries. Precision is therefore no better than reading the edition — and
+**recall settles it**: both captures returned exactly 20 rows, no paging
+parameter was measured, and one weekday of Seção 3 alone is 2,139 notices. A
+20-row answer is a sample of unknown coverage; the edition listing is the whole
+day by construction.
+
+### Four axes, and each one was measured holding something back
+
+216 sampled notices → 3. Remove one axis at a time:
+
+| what is removed | kept | what comes back |
+|---|---|---|
+| nothing (default) | **3** | the DNIT Ceará highway-duplication design-build, and two Petrobras parts |
+| the stage axis | 24 | contract extracts, aditivos, homologations |
+| the organ axis | 6 | other ministries' notices |
+| the procurement-form axis | 8 | 20-litre bottled water, pool chemicals, an Army scrap auction |
+| the organ axis *and* Prefeituras | 19 | municipal notices PNCP already carries in full |
+
+**The fourth axis is the one PNCP never needed.** `lib/relevance-pt.ts` was
+tuned against PNCP rows, and this platform only ever queries PNCP for
+*Concorrência* — so the commodity long tail never reached those rules and they
+were never given a reason to learn it. The DOU has no such filter in front of
+it. The fix is the same one the PNCP query already makes, applied to the text
+instead of to a query parameter, and it is law rather than heuristic: Lei
+14.133/2021 forbids Pregão for obras and reserves it for *bens e serviços
+comuns*, so the instrument names the category. `Leilão` is checked first and
+separately, because the same word covers the state **selling** scrap and the
+state buying thirty years of investment.
+
+The subject axis calls `classifyPortugueseExclusion` and
+`classifyPortugueseSmallWorks` rather than growing a second keyword list. Two
+lists would drift within a month and then disagree about the same tender
+depending on which door it came in through.
+
+### What is deliberately left loose, and where it gets tightened
+
+`unknown` — no instrument named in the 403 characters that survived — is kept
+by default, and that is what lets two Petrobras spare-part notices through.
+Kept anyway for the reason `relevance-pt.ts` states in its own words:
+under-exclusion is the cheaper mistake, and a dropped concession is a project
+this platform never hears about.
+
+**It is not tuned further here on purpose.** The committed sample is flattened
+two-rows-per-organ, so it cannot say how many notices Petrobras really files in
+a day — and tuning a threshold against a sample known to be unrepresentative is
+how a filter gets confidently wrong. The first run against a full edition, from
+a machine that can reach in.gov.br, is where that default gets calibrated.
+
+### Reaching it
+
+`in.gov.br` opened to the GitHub runner and to Vercel on 2026-09-19 while
+closing the socket mid-read on the user's laptop, and it is outside the agent
+sandbox's allowlist. So `npm run watch:dou -- --fixture` runs the entire
+pipeline against the committed capture with no network at all — the rules can
+be read and changed from any machine, and a fetch failure is reported as
+够不着 rather than as an empty gazette.
+
+One thing stated rather than measured: the notice permalink,
+`in.gov.br/web/dou/-/<urlTitle>`. `urlTitle` exists in the payload for no other
+purpose — it is a slug ending in the notice's own numeric id — but no machine
+here can confirm it resolves, so every report prints the edition URL beside it,
+which *is* the captured address. The first run from a machine that can reach
+in.gov.br should check one.
+
+`npm run test:dou-watch` — 74 checks, no network.

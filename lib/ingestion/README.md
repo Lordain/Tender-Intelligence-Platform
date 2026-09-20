@@ -7161,3 +7161,77 @@ the missing value.
 
 20/20 cases in `npm run test:bid-window`, 11 for the import gate and 9 for the
 manual one.
+
+## ANTAQ became runnable, and covers 6 of 20 (2026-09-20)
+
+The hearing parser and the mapper were both finished on 2026-09-19 and
+referenced by nothing. `lib/ingestion/connectors/antaq-live.ts` and
+`scripts/ingest-antaq.ts` are the wiring — the same gap `scripts/ingest-aneel.ts`
+closed for ANEEL a day earlier, and the same lesson: a mapper nothing calls is
+not a source.
+
+### The route is followed, not composed
+
+`index → the "Audiências Públicas em andamento" link → hearing pages`. That
+middle step is a link the connector FINDS. Its real address ends
+`/audiencias-publicas-em-andamento`; the obvious guess,
+`/audiencias-em-andamento`, 404s — and a 404 there reads as "there are no live
+hearings", which is a wrong answer wearing a right one's clothes.
+
+### Three hosts, three different problems, and only one is ours to fix
+
+The 20 hearings that page lists are spread over three hosts. Counted from the
+committed capture:
+
+| host | hearings | what is wrong |
+|---|---|---|
+| `www.gov.br` | **6** | nothing — Plone, and what the parser was written for |
+| `sisapinternet.antaq.gov.br` | **11** | a different ASP.NET application; never captured, so no parser |
+| `leilao.antaq.gov.br` | **3** | Cloudflare challenge, measured shut from all three machines |
+
+So this source covers under a third of what ANTAQ publishes, and every run
+says so per host. The two failure modes that were available and rejected: keep
+the six quietly, which makes a two-thirds gap look like the whole source; or
+fetch the other fourteen and report "unparseable", which blames the pages for
+a parser that was never written for them.
+
+`sisapinternet` is deliberately **not fetched**. It has never been captured,
+and this file's own rule — paid for three times, Compras MX, Ecopetrol,
+Proyectos México — is that a mapper is written against a real capture. It is
+also the single biggest thing that could be done for this source: capturing it
+would roughly triple the coverage. That is a follow-up, not a guess to make
+here.
+
+### "Em andamento" is the archive
+
+Not the live list. It goes back to 2022, and one of its entries points at a URL
+with `audiencias-encerradas` in the path. Every one of the five captured
+hearings had a comment period that had already closed — which is not a reason
+to drop them (a closed consultation is the one nearest to becoming an auction;
+`antaq-mapper.ts` argues that at length) but it does mean the page will not
+window anything for you. So the window lives in the CLI as `--months`,
+defaulting to 12, rather than as a constant inside a fetch layer: how far back
+is worth importing is a product call.
+
+### What becomes a downloadable document, and what must not
+
+The `Comunicados` attachments do — direct PDF URLs, 6/6/9/5/6 across the five
+captured pages, measured fetchable 21 of 21. The `Documentação` buttons do
+**not**, and they are the ones holding the draft edital and the EVTEA. They
+are landing PAGES: writing them into `tender_document_links` would put HTML
+behind a subscriber's download button. Harvesting the files behind them needs
+one more fetch layer written against a real capture of such a page, and no
+such capture exists — so the CLI prints those URLs where a person can follow
+them, and the test asserts that not one of them reaches the links table.
+
+### Unreachable is not empty
+
+Every `.gov.br` host is outside the agent sandbox's egress allowlist, so
+`npm run ingest:antaq` fails there with a 403 — and it says, in as many words,
+that this is 够不着 rather than 没有听证, because the two need opposite fixes.
+The index-link-missing case throws the same way: that is a page-structure
+change, not a quiet source.
+
+`npm run test:antaq-live` — 48 checks, none of them touching the network. The
+triage runs against the committed capture instead, so the 6-of-20 ratio is a
+number that fails when it moves rather than an impression somebody formed once.

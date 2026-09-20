@@ -90,6 +90,7 @@
     "dump:aneel-leiloes": "tsx scripts/dump-aneel-leiloes.ts",
     "dump:aneel-edital": "tsx scripts/dump-aneel-edital.ts",
     "ingest:aneel": "tsx --env-file-if-exists=.env.local scripts/ingest-aneel.ts",
+    "ingest:antaq": "tsx --env-file-if-exists=.env.local scripts/ingest-antaq.ts",
     "probe:brazil-search-filters": "tsx scripts/probe-brazil-search-filters.ts",
     "probe:brazil-amount": "tsx scripts/probe-brazil-amount.ts",
     "test:cli-write-flag": "tsx scripts/test-cli-write-flag.ts",
@@ -151,7 +152,8 @@
     "test:script-env": "tsx scripts/test-script-env-flags.ts",
     "test:cron-auth": "tsx scripts/test-cron-auth.ts",
     "test:region-names": "tsx scripts/test-region-names.ts",
-    "audit:region-names": "tsx --env-file-if-exists=.env.local scripts/audit-region-names.ts"
+    "audit:region-names": "tsx --env-file-if-exists=.env.local scripts/audit-region-names.ts",
+    "test:antaq-live": "tsx scripts/test-antaq-live.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

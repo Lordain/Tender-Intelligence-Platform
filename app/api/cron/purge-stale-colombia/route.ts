@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { recordCronHeartbeat } from "@/lib/ops/cron-heartbeat";
 import { reportOpsFailure } from "@/lib/notifications/ops-alert";
+import { isAuthorizedCronRequest } from "@/lib/security/cron-auth";
 
 export const runtime = "nodejs";
 // Pages the whole table 1000 rows at a time and deletes in chunks of 200.
@@ -38,10 +39,6 @@ export const maxDuration = 60;
  * Same auth pattern as app/api/cron/tender-digest/route.ts (Bearer
  * CRON_SECRET).
  */
-function authorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  return Boolean(secret) && request.headers.get("authorization") === `Bearer ${secret}`;
-}
 
 const PAGE_SIZE = 1000;
 const CHUNK_SIZE = 200;
@@ -55,7 +52,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 type Candidate = { slug: string; tender_number: string | null; title: { es?: string } | null };
 
 async function runPurge(request: NextRequest) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAuthorizedCronRequest(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "true";
 

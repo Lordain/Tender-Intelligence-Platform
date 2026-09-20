@@ -7,6 +7,7 @@ import { getStripeClient, stripeSubscriptionPeriod } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { recordCronHeartbeat } from "@/lib/ops/cron-heartbeat";
 import { reportOpsFailure } from "@/lib/notifications/ops-alert";
+import { isAuthorizedCronRequest } from "@/lib/security/cron-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -21,11 +22,6 @@ type Candidate = {
   stripe_subscription_id: string;
   current_period_end: string;
 };
-
-function authorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  return Boolean(secret) && request.headers.get("authorization") === `Bearer ${secret}`;
-}
 
 function reminderWindowEnd(now: Date): Date {
   // The daily job normally sends around seven to eight days before renewal.
@@ -67,7 +63,7 @@ async function recordFailureAlert(
 }
 
 async function runReminders(request: NextRequest) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAuthorizedCronRequest(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const stripe = getStripeClient();
   const admin = createSupabaseAdminClient();
   if (!stripe || !admin) return NextResponse.json({ error: "Billing service is not configured" }, { status: 503 });

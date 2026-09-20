@@ -12,6 +12,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { recordCronHeartbeat } from "@/lib/ops/cron-heartbeat";
 import { reportOpsFailure, resolveOpsFailure } from "@/lib/notifications/ops-alert";
 import { isReservedEmailDomain } from "@/lib/notifications/reserved-domains";
+import { isAuthorizedCronRequest } from "@/lib/security/cron-auth";
 
 export const runtime = "nodejs";
 // This route sends one email per matching recipient in a loop, so it scales
@@ -32,11 +33,6 @@ function mexicoSlot(now: Date) {
   return { slot, key: slot ? `${values.year}-${values.month}-${values.day}-${slot}` : null, hoursBack: slot === "morning" ? 15 : 9 };
 }
 
-function authorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  return Boolean(secret) && request.headers.get("authorization") === `Bearer ${secret}`;
-}
-
 /**
  * The scheduler reaching this route is what a heartbeat records — including
  * the two ways a run legitimately does nothing (notifications switched off,
@@ -46,7 +42,7 @@ function authorized(request: NextRequest) {
  * tell apart. See lib/ops/cron-heartbeat.ts.
  */
 async function runDigest(request: NextRequest, heartbeatClient: ReturnType<typeof createSupabaseAdminClient>) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAuthorizedCronRequest(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!notificationsEnabled()) {
     await recordCronHeartbeat(heartbeatClient, "tender-digest", "skipped", "EMAIL_NOTIFICATIONS_ENABLED is off");
     return NextResponse.json({ error: "Email notifications are disabled" }, { status: 409 });

@@ -81,9 +81,14 @@ export function TenderCard({
       </h3>
       {titleOriginal && <p className="line-clamp-1 text-xs text-[#75838c]">{titleOriginal}</p>}
 
-      <p className="line-clamp-2 text-xs leading-5 text-[#61717c]">
-        {tender.summaryZh}
-      </p>
+      {/* Absent on the free-preview cards, where 一句话总结 already leads the
+          block below and says the same thing. Not a CSS hide: toTenderCardData
+          does not project the field at all in that case. */}
+      {tender.summaryZh && (
+        <p className="line-clamp-2 text-xs leading-5 text-[#61717c]">
+          {tender.summaryZh}
+        </p>
+      )}
 
       {previews.length > 0 && (
         <div className="rounded-xl border border-[#e2e7e9] bg-[#f7f9f8] px-3 py-2.5">

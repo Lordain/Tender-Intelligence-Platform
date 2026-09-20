@@ -45,7 +45,15 @@ export type TenderCardData = Pick<
    * for guests rather than hidden from them.
    */
   titleOriginal?: string;
-  summaryZh: string;
+  /**
+   * Absent when the card also carries `oneLineSummary`: the two say the same
+   * thing twice on the one card that shows both (2026-09-20, the user:
+   * 考虑跟一句话总结有点重复就不展示摘要了). Dropped at the projection rather
+   * than hidden in the component, so it is out of the React payload too —
+   * a "use client" component is handed this whole object regardless of what
+   * it chooses to render.
+   */
+  summaryZh?: string;
   /** Members only — the publishing body names the project almost as well as its title does. */
   buyer?: string;
   /** Members only. Exactly one of this and `estimatedValueBand` is ever set. */
@@ -89,9 +97,27 @@ function topRisk(risks: readonly TenderRisk[]): PreviewItem | undefined {
  */
 export function toTenderCardData(
   tender: Tender,
-  options: { memberView?: boolean; includeAnalysisPreview?: boolean } = {},
+  options: { memberView?: boolean; includeAnalysisPreview?: boolean; memberTitle?: boolean } = {},
 ): TenderCardData {
   const memberView = options.memberView ?? false;
+  /**
+   * Publish the MEMBER title — the condensed one that keeps the place and its
+   * full-width parenthesis — without opening any other member field.
+   *
+   * Set on the homepage and nowhere else (2026-09-20, the user: 首页(仅限首页)
+   * ……都用订阅用户看到的项目名称). The homepage is the shopfront: a visitor who
+   * lands on 墨西哥 变电站扩建工程 six times in a row has no reason to believe
+   * there is a product behind it, and the free-preview cards there already
+   * publish paywalled analysis on purpose for exactly that reason.
+   *
+   * It is a real, bounded cost and not a free win: these titles carry the
+   * source proper noun, they are indexed, and the ticker is NOT the admin's
+   * free-preview allow-list. So it is scoped to one route, one flag, and the
+   * dozen-odd rows that route shows — every list row, every detail page and
+   * every other surface stays on publicTitleOf. Defaults to memberView so no
+   * existing caller changes behaviour and a new one has to ask.
+   */
+  const memberTitle = options.memberTitle ?? memberView;
   // The 投标重点预览 block is paywalled analysis that the homepage shows on
   // purpose — but only for the tenders an admin picked as free previews,
   // which is the same allow-list isHomepageFreePreviewSlug() enforces on the
@@ -106,6 +132,15 @@ export function toTenderCardData(
   const hasRealTranslation = translatedTitle !== "" && translatedTitle !== originalTitle;
   const translatedSummary = tender.summary.zh.trim();
   const hasRealSummary = translatedSummary !== "" && translatedSummary !== tender.summary.es.trim();
+  // The 一句话总结 leads the 投标重点预览 block on the free-preview cards, and
+  // it says what the summary underneath it says — twice, on the same card, in
+  // two slightly different wordings. Computed here rather than in the view
+  // because it decides whether `summaryZh` is projected at all, and because a
+  // card whose one-line summary is missing must keep the summary rather than
+  // end up with neither line.
+  const oneLineSummary = includeAnalysisPreview
+    ? (tender.oneLineSummary?.trim() === "" ? undefined : tender.oneLineSummary)
+    : undefined;
 
   return {
     id: tender.id,
@@ -116,7 +151,7 @@ export function toTenderCardData(
     // screens and for regenerating this, and the original-language line below
     // is what actually matches the official documents anyway.
     titleZh: hasRealTranslation
-      ? (memberView ? shortTitleOf(tender) : publicTitleOf(tender))
+      ? (memberTitle ? shortTitleOf(tender) : publicTitleOf(tender))
       : memberView ? `${tender.buyer}采购项目` : "政府采购项目",
     ...(memberView && hasRealTranslation ? { titleOriginal: tender.title.es } : {}),
     // The guest branch reads the generated public summary and does NOT fall
@@ -125,9 +160,13 @@ export function toTenderCardData(
     // shipping it beside a redacted title handed back everything the title
     // had just removed, line-clamped in the UI but present in full in the
     // DOM and in this component's React payload.
-    summaryZh: memberView
-      ? (hasRealSummary ? tender.summary.zh : GENERIC_PUBLIC_SUMMARY)
-      : publicSummaryOf(tender) ?? GENERIC_PUBLIC_SUMMARY,
+    ...(oneLineSummary === undefined
+      ? {
+        summaryZh: memberView
+          ? (hasRealSummary ? tender.summary.zh : GENERIC_PUBLIC_SUMMARY)
+          : publicSummaryOf(tender) ?? GENERIC_PUBLIC_SUMMARY,
+      }
+      : {}),
     ...(memberView ? { buyer: tender.buyer } : {}),
     country: tender.country,
     industries: tender.industries,
@@ -142,7 +181,7 @@ export function toTenderCardData(
       : toMonthPrecisionOptional(tender.submissionDeadline),
     ...(includeAnalysisPreview
       ? {
-        oneLineSummary: tender.oneLineSummary,
+        oneLineSummary,
         qualification: firstPreview(tender.qualifications),
         experience: firstPreview(tender.experienceRequirements),
         document: firstPreview(tender.requiredDocuments),

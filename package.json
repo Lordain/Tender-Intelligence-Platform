@@ -154,7 +154,7 @@
     "audit:region-names": "tsx --env-file-if-exists=.env.local scripts/audit-region-names.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.125.0",
+    "@anthropic-ai/sdk": "^0.126.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.116.0",
     "adm-zip": "^0.6.0",

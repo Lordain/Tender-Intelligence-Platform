@@ -28,7 +28,11 @@ on:
         description: "敲门（能不能连上）还是看门后面（有没有能投的标）"
         type: choice
         default: both
-        options: [doors, behind, pipeline, capture, dou, both]
+        options: [doors, behind, pipeline, capture, dou, watch-dou, antaq, both]
+      args:
+        description: "额外参数，原样传给上面选的那条命令（例如 --days 5 --all-organs）"
+        type: string
+        default: ""
 
 # The capture step commits the trimmed sample back to the branch, because an
 # artifact expires and cannot be fetched from the sandbox the parser is
@@ -85,6 +89,32 @@ jobs:
       - name: Capture the DOU
         if: inputs.what == 'dou'
         run: npm run capture:dou -- "GitHub Actions 跑批机"
+
+      # The watch, on the only network it works from. in.gov.br opens to this
+      # runner and to Vercel, closes the socket mid-read on the user's laptop,
+      # and is outside the agent sandbox's allowlist entirely — so this step
+      # is not a convenience, it is the only place a real edition can be read.
+      # Reports only; `scripts/watch-dou.ts` writes nothing anywhere.
+      #
+      # `args` goes through the environment rather than into the command line,
+      # so a workflow_dispatch input cannot become a shell command. Left
+      # unquoted on purpose: word splitting is what turns "--days 5
+      # --all-organs" into two flags, and an env expansion is not re-evaluated.
+      - name: Watch the DOU
+        if: inputs.what == 'watch-dou'
+        env:
+          ARGS: ${{ inputs.args }}
+        run: npm run watch:dou -- --days 1 $ARGS
+
+      # ANTAQ's hearings, DRY RUN — no --write, and none is reachable from
+      # here without one. gov.br opens to the laptop too, so this is for
+      # seeing the run without one; `npm run ingest:antaq` locally is the
+      # same thing.
+      - name: Read the ANTAQ hearings
+        if: inputs.what == 'antaq'
+        env:
+          ARGS: ${{ inputs.args }}
+        run: npm run ingest:antaq -- $ARGS
 
       - name: Upload the capture
         if: inputs.what == 'capture' || inputs.what == 'dou'

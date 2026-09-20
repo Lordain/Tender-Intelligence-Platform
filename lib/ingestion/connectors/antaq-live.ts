@@ -34,7 +34,7 @@ import {
  * one of them can be read (counted from the captured index, 2026-09-19):
  *
  *   www.gov.br                   6   Plone. What the parser was written for.
- *   sisapinternet.antaq.gov.br  11   A different application, and shut too.
+ *   sisapinternet.antaq.gov.br  11   Cloudflare challenge too. Measured shut.
  *   leilao.antaq.gov.br          3   Cloudflare challenge, measured shut.
  *
  * So this connector covers under a third of what ANTAQ lists, and the only
@@ -43,17 +43,25 @@ import {
  * source; fetching the other fourteen and reporting "unparseable" would blame
  * the pages for a parser that was never written for them.
  *
- * `sisapinternet` is not fetched for two reasons now, and each is sufficient.
- * It has never been captured, so no parser exists for it, and this repo's rule
- * — lib/ingestion/README.md, paid for three times — is that a mapper is
- * written against a real capture and not against an expectation of one. And on
- * 2026-09-20 the capture was attempted from the runner and got nothing: the
- * three in-window hearings returned one Cloudflare challenge and two 502s, the
- * 502s meaning the edge reached ANTAQ's own server and it did not answer. So
- * this is not a parser that is merely unwritten; it is a door that has not
- * opened yet. scripts/capture-antaq-sisap.ts is standing by for the day it
- * does, and the laptop — the one network never asked about this host — is the
- * remaining vote.
+ * `sisapinternet` is SHUT, and that is now measured rather than assumed. The
+ * capture was attempted twice on 2026-09-20, against the three in-window
+ * hearings each time:
+ *
+ *   GitHub runner   1 Cloudflare challenge, 2× 502 (retried 3× each)
+ *   laptop          3 Cloudflare challenges
+ *
+ * The runner's 502s read at the time as "their application is down", which
+ * would have been worth waiting out. The laptop settled it: all three came
+ * back as challenge pages, so the 502s were the same edge having a bad moment
+ * and the real answer is a block. Two machines, six attempts, nothing through
+ * — the same verdict leilao.antaq already carries, and for the same reason.
+ * No header has ever moved one of these; this repo has now measured that three
+ * times (ANEEL, leilao.antaq, here).
+ *
+ * So the eleven hearings behind it are not a parser waiting to be written.
+ * scripts/capture-antaq-sisap.ts stays in the tree because the day ANTAQ
+ * changes its WAF the answer changes with one command, and because a source
+ * that was investigated and closed should say so rather than look forgotten.
  *
  * ── What "em andamento" turns out to mean ─────────────────────────────────
  *
@@ -108,13 +116,14 @@ export function classifyAntaqHost(host: string): { verdict: AntaqHostVerdict; wh
     return { verdict: "refuses-us", why: "Cloudflare 验证页 —— 笔记本、Vercel、GitHub 跑批机三边都过不去（2026-09-19 实测）" };
   }
   if (host === "sisapinternet.antaq.gov.br") {
-    // Still `other-system` rather than `refuses-us`: only one of the three
-    // failures measured was an actual block, the other two were ANTAQ's own
-    // server not answering, and only one machine has voted. The type stays
-    // honest; the sentence carries what was measured.
+    // `refuses-us` as of 2026-09-20, promoted from `other-system` by
+    // measurement rather than by assumption: the laptop returned a challenge
+    // page on all three attempts, which reclassified the runner's two 502s as
+    // the same edge misbehaving. It is still another application with no
+    // parser, but that has stopped being the binding constraint.
     return {
-      verdict: "other-system",
-      why: "SisapInternet（另一套 ASP.NET 系统），没有解析器；2026-09-20 从跑批机抓过一次，3 场里 1 场验证页、2 场 502，一场没拿到",
+      verdict: "refuses-us",
+      why: "SisapInternet —— Cloudflare 验证页，跑批机和笔记本两边六次全没过（2026-09-20 实测）；就算过了也还是另一套 ASP.NET 系统，没有解析器",
     };
   }
   return { verdict: "other-system", why: "没见过的域名，没有解析器" };

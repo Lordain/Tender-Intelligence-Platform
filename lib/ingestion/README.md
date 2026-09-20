@@ -7210,34 +7210,44 @@ the probe workflow as `what=capture-sisap`. Its first job was not to capture
 anything: it was to answer whether that host answers **at all**, since no
 machine here had ever fetched it, and to name which kind of "no" it gets.
 
-**It ran on the runner on 2026-09-20 and the answer was no.** Three in-window
-hearings, three failures:
+**It ran twice on 2026-09-20 and the answer is no.** Three in-window hearings,
+asked from both machines:
 
-| hearing | id | what came back |
-|---|---|---|
-| AP 05/2026 | 640 | **403, Cloudflare challenge page** |
-| AP 01/2026 | 639 | **502 Bad Gateway** |
-| AP 06/2025 | 638 | **502 Bad Gateway** |
+| hearing | id | GitHub runner | laptop |
+|---|---|---|---|
+| AP 05/2026 | 640 | **403, Cloudflare challenge** | **403, challenge** |
+| AP 01/2026 | 639 | **502 Bad Gateway** | **403, challenge** |
+| AP 06/2025 | 638 | **502 Bad Gateway** | **403, challenge** |
 
-Those two answers are not the same answer, which is the whole reason the
-script separates them. A challenge is a decision about us and no header has
-ever changed one — this file records that measurement twice already, on ANEEL
-and on leilao.antaq. A 502 is the opposite: Cloudflare's edge reached ANTAQ's
-own server and it did not reply. Nobody is blocking that one; their
-application is down.
+The runner's two answers were not the same answer, which is the whole reason
+the script separates them. A challenge is a decision about us and no header
+has ever changed one. A 502 is the opposite: Cloudflare's edge reached ANTAQ's
+own server and it did not reply — nobody blocking, their application down,
+worth waiting out. On the runner's evidence alone the honest verdict was "one
+block, two outages, come back tomorrow".
 
-The first version called it after **one attempt each**, which is not enough to
-tell a dead origin from an app that fell over for a second, and those have
-opposite next steps. It now retries the gateway class three times with backoff
-and never retries a challenge, because asking a decision three times only
-makes the log look like a flake.
+**The laptop settled it.** Three challenges out of three, on the machine that
+opens gov.br without trouble. So the runner's 502s were the same edge having a
+bad moment, and the real answer is a block. Six attempts, two machines,
+nothing through — `classifyAntaqHost` moved this host from `other-system` to
+`refuses-us`, the verdict `leilao.antaq` already carries, and it moved because
+it was measured and not because it was assumed.
 
-So ANTAQ's coverage stays where it was: **5 of 10** still-live hearings, not
-the 8 of 10 that capturing this host would have bought. The laptop is the one
-network in this project that has never been asked about `sisapinternet`, and
-it is the network that opens gov.br, so it is the remaining vote — the run
-report says so in as many words rather than declaring the source closed on one
-machine's evidence.
+That is the third time this repo has measured that no header moves one of
+these: ANEEL, leilao.antaq, and now here.
+
+The first version of the script called it after **one attempt each**, which
+cannot tell a dead origin from an app that fell over for a second, and those
+have opposite next steps. It now retries the gateway class three times with
+backoff and never retries a challenge, because asking a decision three times
+only makes the log look like a flake. That change is what made the runner's
+and the laptop's runs comparable.
+
+So ANTAQ's coverage is final at **5 of 10** still-live hearings, not the 8 of
+10 that capturing this host would have bought. The eleven behind it are not a
+parser waiting to be written; they are behind a door. The script stays in the
+tree so the day ANTAQ changes its WAF the answer costs one command, and so a
+source that was investigated and closed says so rather than looking forgotten.
 
 It strips `__VIEWSTATE` and friends before committing, for the day it does
 answer: WebForms serialises the whole server-side control tree into base64

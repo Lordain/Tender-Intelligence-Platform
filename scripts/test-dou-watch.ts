@@ -101,8 +101,7 @@ ok("其中 9 条是 ANTT 对现有公路特许的裁决，不是新项目", conc
 // works competition is a CODEVASF Concorrência the edition filter catches
 // anyway.
 const fromLicitacao = watchDouEdition(licitacao.notices).kept;
-check("搜「aviso de licitação」20 条里留 4 条", fromLicitacao.length, 4);
-check("这 4 条里只有 1 条是真正的工程类竞争性招标", fromLicitacao.filter((v) => v.form === "works_or_concession").length, 1);
+check("搜「aviso de licitação」20 条里只留 1 条", fromLicitacao.length, 1);
 ok("那 1 条是 CODEVASF 的 Concorrência Eletrônica", fromLicitacao.some((v) => /CODEVASF|Vales do S[ãa]o Francisco/i.test(v.notice.organPath) && v.form === "works_or_concession"));
 
 console.log("\n── 阶段分类 ──");
@@ -143,7 +142,19 @@ check("Tomada de Preços → 普通货物服务", classifyDouForm("TOMADA DE PRE
 // selling, a concession auction is the state buying thirty years of
 // investment. Only the object tells them apart.
 check("拍卖废旧物资 → 处置，不是采购", classifyDouForm("LEILÃO ONLINE Nº 1/2026 alienação de bens móveis inservíveis"), "disposal");
-check("正文里没提方式的，老实说 unknown", classifyDouForm("AVISO DE LICITAÇÃO Nº 7004653067 Objeto: Aquisição de Damper corta fogo"), "unknown");
+// 2026-09-18 全量版面校准出来的那条规则：Petrobras 一个机构就占了 37 条命中里的 27 条，
+// 而它的公告从不写采购方式，只写 `Objeto: Aquisição de <零件>`。没写方式就看标的物。
+check("没写方式、但标的物是买东西 → commodity", classifyDouForm("AVISO DE LICITAÇÃO Nº 7004653067 Objeto: Aquisição de Damper corta fogo"), "commodity");
+check("没写方式、但标的物是工程 → works_or_concession", classifyDouForm("Objeto: execução de obra de engenharia civil, reforma estrutural do cais"), "works_or_concession");
+check("两样都没写，才是 unknown", classifyDouForm("AVISO DE LICITAÇÃO Nº 12/2026 - UASG 710300"), "unknown");
+// 地名不算工程信号：Transpetro 的化验合同提到了 Terminal de Cabiunas，那说的是在哪儿干，不是干什么。
+check("标的物里的地名不当成工程信号", classifyDouForm("Objeto: Serviços de ensaios físico químicos de petróleo para o Terminal de Cabiunas"), "commodity");
+// 14.133 把 credenciamento 归在 inexigibilidade —— 谁合格谁进名录，没有竞争可言。
+check("credenciamento 是入围登记，不是竞争性招标", classifyDouForm("AVISO DE CREDENCIAMENTO Nº 1/2024 OPERAÇÃO CARRO-PIPA"), "registration");
+check("带 credenciamento 的 chamamento público 也算入围登记", classifyDouForm("AVISO DE CHAMAMENTO PÚBLICO Nº 1/2024 o credenciamento de prestadores de serviços"), "registration");
+check("habilitação institucional 同理", classifyDouForm("EDITAL DE CHAMAMENTO PÚBLICO PERMANENTE Nº 1/2026 Habilitação institucional de fundações de apoio"), "registration");
+// 但干净的 chamamento público（PMI 那种征集意向）仍然要留。
+check("干净的 chamamento público 仍算工程/特许", classifyDouForm("AVISO DE CHAMAMENTO PÚBLICO para manifestação de interesse"), "works_or_concession");
 check("先看工程再看普通：两个词都在时按工程算", classifyDouForm("CONCORRÊNCIA ELETRÔNICA, em substituição ao PREGÃO"), "works_or_concession");
 
 console.log("\n── 机构清单 ──");
@@ -154,7 +165,7 @@ ok("法院、检察院、审计院也不看", ["Poder Judiciário", "Ministério
 console.log("\n── 四条轴，每条都在挡东西 ──");
 const all = edition.notices;
 const base = watchDouEdition(all);
-check("默认规则：216 条里留 3 条", base.kept.length, 3);
+check("默认规则：216 条里留 1 条", base.kept.length, 1);
 ok("留下来的第一条是 DNIT 那个公路复线设计施工总包", base.kept.some((v) => /duplica/i.test(v.notice.snippet) && v.notice.organs[0] === "Ministério dos Transportes"));
 ok("每条判定都写得出理由", [...base.kept, ...base.dropped].every((v) => v.why.length > 4));
 ok("留下 + 丢掉 = 全部", base.kept.length + base.dropped.length === all.length);
@@ -183,6 +194,45 @@ check("读一个空对象不炸", readDouPayload({}).notices.length, 0);
 check("读 null 不炸", readDouPayload(null).notices.length, 0);
 const bare: DouNotice = { pubName: "", urlTitle: "x-1", title: "", artType: "", organs: [], organPath: "", snippet: "" };
 ok("什么都没有的一条也能判，不会抛", watchDouEdition([bare]).dropped.length === 1);
+
+console.log("\n── 完整一天的校准（2026-09-18 第三节 2139 条里，旧规则放行的那 37 条）──");
+// This is the only fixture taken from a WHOLE edition rather than a flattened
+// sample, which is why the numbers here are the ones that decide whether the
+// rules are usable: 37 hits a day is not a watch anyone reads.
+const calibration = JSON.parse(readFileSync(`${DIR}/watch-kept-2026-09-18.json`, "utf8")) as {
+  notices: { organPath: string; title: string; snippet: string }[];
+};
+const realDay: DouNotice[] = calibration.notices.map((row) => ({
+  pubName: "DO3",
+  urlTitle: "captured-from-run-35536478669",
+  title: row.title,
+  // Empty on purpose — that run printed the verdict, not the artType. The
+  // stage axis falls back to the title, which is what it does for the generic
+  // buckets anyway, and the form axis never reads artType at all.
+  artType: "",
+  organs: row.organPath.split("/"),
+  organPath: row.organPath,
+  snippet: row.snippet,
+}));
+check("抄回来的是 37 条", realDay.length, 37);
+const recalibrated = watchDouEdition(realDay);
+check("收紧后从 37 条收到 5 条", recalibrated.kept.length, 5);
+ok("留下的全是工程或特许，没有一条是 unknown 混进来的", recalibrated.kept.every((v) => v.form === "works_or_concession"));
+// The five, named. If a rule change quietly drops one of these, the watch has
+// stopped doing its job and a count alone would not say so.
+ok("DNIT 塞阿拉的公路复线（Concorrência 51/2026）还在", recalibrated.kept.some((v) => /Concorr[êe]ncia 51\/2026/.test(v.notice.snippet)));
+ok("DNIT 总部的港口 IP4 工程（Concorrência 307/2026）还在", recalibrated.kept.some((v) => /Concorr[êe]ncia 307\/2026/.test(v.notice.snippet)));
+ok("海军圣佩德罗的防雷工程（Concorrência 133/2026）还在", recalibrated.kept.some((v) => /Concorr[êe]ncia 133\/2026/.test(v.notice.snippet)));
+ok("海军 IEAPM 的码头改造（Concorrência 151/2025）还在", recalibrated.kept.some((v) => /Concorr[êe]ncia 151\/2025/.test(v.notice.snippet)));
+ok("巴西林业局的森林特许经营还在", recalibrated.kept.some((v) => /Concess[ãa]o Florestal/i.test(v.notice.snippet)));
+// And the two things that were drowning it.
+const droppedForms = new Map<string, number>();
+for (const v of recalibrated.dropped) droppedForms.set(v.form, (droppedForms.get(v.form) ?? 0) + 1);
+check("28 条被判为普通货物服务采购", droppedForms.get("commodity"), 28);
+check("4 条被判为入围登记", droppedForms.get("registration"), 4);
+const petrobras = realDay.filter((n) => /Petr[óo]leo Brasileiro|Petrobras/i.test(n.organPath));
+check("这 37 条里 Petrobras 系占 27 条", petrobras.length, 27);
+ok("Petrobras 那 27 条现在一条都不留", watchDouEdition(petrobras).kept.length === 0);
 
 console.log(failures === 0 ? `\n全部 ${ran} 项通过` : `\n${ran} 项里 ${failures} 项没过`);
 process.exitCode = failures === 0 ? 0 : 1;

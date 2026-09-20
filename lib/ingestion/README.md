@@ -7305,19 +7305,48 @@ The subject axis calls `classifyPortugueseExclusion` and
 lists would drift within a month and then disagree about the same tender
 depending on which door it came in through.
 
-### What is deliberately left loose, and where it gets tightened
+### Calibrated against a whole edition, and the answer was 37 → 5
 
-`unknown` — no instrument named in the 403 characters that survived — is kept
-by default, and that is what lets two Petrobras spare-part notices through.
-Kept anyway for the reason `relevance-pt.ts` states in its own words:
-under-exclusion is the cheaper mistake, and a dropped concession is a project
-this platform never hears about.
+The flattened sample said 216 → 3 and could not say more: two rows per organ
+cannot reveal how many notices any one body really files. So the default was
+left loose and the first full-edition run was made the calibration step. It ran
+on 2026-09-20 against Friday 2026-09-18 — **2,139 notices → 37 hits**, which is
+not a watch anyone reads. `__fixtures__/dou/watch-kept-2026-09-18.json` is
+those 37 rows, copied out of the run's log, and it is the only fixture here
+taken from a whole edition rather than a sample.
 
-**It is not tuned further here on purpose.** The committed sample is flattened
-two-rows-per-organ, so it cannot say how many notices Petrobras really files in
-a day — and tuning a threshold against a sample known to be unrepresentative is
-how a filter gets confidently wrong. The first run against a full edition, from
-a machine that can reach in.gov.br, is where that default gets calibrated.
+Two findings, and each has a rule:
+
+**Petrobras alone was 27 of the 37.** Fire damper, welding rod, mechanical
+seal, relay, concrete post, 75kVA transformer — and it names no instrument at
+all. Its notices read `AVISO DE LICITAÇÃO Nº 70046xxxxx Objeto: Aquisição de
+<part>`, so the modality axis had nothing to bite on and `unknown` let every
+one through. The rule is now: **no instrument named → read the object.** A
+purchase verb with no works verb anywhere is a purchase. `unknown` survives
+only for a stub that names neither.
+
+The works verbs are all ACTIONS and no PLACES, and that was learned the same
+day: `porto`, `terminal` and `aeroporto` were in the first draft and had to
+come out, because Transpetro's "Serviços de ensaios físico químicos … para o
+Terminal de Cabiunas" is a laboratory contract that happens to mention a
+terminal. In a 403-character stub a place name says where the work happens,
+never what it is — and every genuine works notice in that edition carried a
+verb anyway.
+
+**Four more were registers, not competitions.** Three Operação Carro-Pipa
+water-truck credenciamentos and one AGU call for research foundations. Lei
+14.133/2021 files credenciamento under *inexigibilidade*: every qualified
+applicant is admitted, there is no dispute, and the notice stays open
+indefinitely. They had been passing as `opening` because they say "chamamento
+público", which is otherwise a works signal — so `registration` is now its own
+form, checked before works, and out of the default.
+
+**37 → 5, and the five are the whole point**: DNIT's Ceará highway duplication
+(Concorrência 51/2026, Contratação Integrada), DNIT's port IP4 rebuild
+(307/2026), two Navy engineering works, and a Serviço Florestal Brasileiro
+**forest concession** — the concession type PNCP structurally cannot carry. The
+test names all five, so a later rule change that quietly drops one fails rather
+than shrinking a number nobody checks.
 
 ### Reaching it
 

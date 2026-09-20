@@ -144,25 +144,72 @@ export function classifyDouStage(notice: Pick<DouNotice, "artType" | "title">): 
 export type DouProcurementForm =
   /** Works, complex engineering, or a concession/PPP/lease. What this platform exists for. */
   | "works_or_concession"
-  /** Ordinary goods and common services — the instrument itself says so. */
+  /** Ordinary goods and common services — the instrument or the object says so. */
   | "commodity"
+  /**
+   * Joining a register, not winning a competition: credenciamento,
+   * habilitação institucional, a standing chamamento público.
+   *
+   * Lei 14.133/2021 files credenciamento under *inexigibilidade* — there is
+   * no dispute, every qualified applicant is admitted, and the notice stays
+   * open indefinitely. It is not an opportunity a bidder can win, so it is
+   * not one worth waking someone up for. Measured: four of the 37 rows the
+   * first full-edition run kept were these — three Operação Carro-Pipa
+   * water-truck registers and one AGU call for research foundations.
+   */
+  | "registration"
   /** The state selling something: surplus, scrap, seized goods. */
   | "disposal"
-  /** No instrument named in the 403 characters that survived truncation. */
+  /** Neither the instrument nor the object was named in the 403 characters that survived truncation. */
   | "unknown";
 
 const FORM_DISPOSAL = /\b(leil[ãa]o|leiloeir[ao])\b[\s\S]{0,200}?\b(aliena|venda|vender|desfazimento|sucata|inserv[íi]ve|bens? m[óo]veis|semoventes|apreendid)/i;
 const FORM_WORKS =
   /\b(concorr[êe]ncia|di[áa]logo competitivo|regime diferenciado de contrata|\bRDC\b|contrata[çc][ãa]o (integrada|semi-?integrada)|chamamento p[úu]blico|pr[ée]-?qualifica[çc][ãa]o|manifesta[çc][ãa]o de interesse|\bPMI\b|\bPPP\b|parceria p[úu]blico-?privada|concess[ãa]o (comum|patrocinada|administrativa|de servi|florestal|real de uso)|arrendamento|permiss[ãa]o de servi[çc]o)\b/i;
 const FORM_COMMODITY = /\b(preg[ãa]o|tomada de pre[çc]os|convite|cota[çc][ãa]o eletr[ôo]nica|dispensa (eletr[ôo]nica|de licita)|inexigibilidade)\b/i;
+const FORM_REGISTRATION = /\b(credenciamento|habilita[çc][ãa]o institucional|chamamento p[úu]blico permanente|pr[ée]-?cadastramento)\b/i;
+
+/**
+ * The object is a purchase of goods or of an ordinary service.
+ *
+ * Needed because Petrobras — which files more DOU notices than anyone — names
+ * no instrument at all. Its notices read `AVISO DE LICITAÇÃO Nº 70046xxxxx
+ * Objeto: Aquisição de <part>`, and 27 of the 37 rows the first full-edition
+ * run kept were exactly that: a fire damper, a welding rod, a mechanical
+ * seal, a relay, a concrete post, a 75kVA transformer.
+ */
+const OBJECT_IS_A_PURCHASE = /\b(aquisi[çc][ãa]o|servi[çc]os? de|fornecimento de)\b/i;
+
+/**
+ * The object is work done ON infrastructure.
+ *
+ * Deliberately all ACTIONS and no PLACES. `porto`, `terminal` and `aeroporto`
+ * were in an earlier draft and had to come out: Transpetro's "Serviços de
+ * ensaios físico químicos … para o Terminal de Cabiunas" is a laboratory
+ * contract that mentions a terminal, and a place name in a 403-character stub
+ * says where the work happens, never what it is. Every real works notice in
+ * the measured edition carries one of these verbs anyway — DNIT's two both
+ * say `obras`, the Navy's two say `Obra` and `obra de engenharia civil`.
+ */
+const OBJECT_IS_WORKS =
+  /\b(obras?|engenharia|constru[çc][ãa]o|duplica[çc][ãa]o|pavimenta|restaura[çc][ãa]o|reforma|amplia[çc][ãa]o|recupera[çc][ãa]o|readequa[çc][ãa]o|implanta[çc][ãa]o|terraplen|dragagem|derroca|saneamento)\b/i;
 
 export function classifyDouForm(text: string): DouProcurementForm {
   if (FORM_DISPOSAL.test(text)) return "disposal";
+  // Before works, because these notices say "chamamento público" too and that
+  // phrase is otherwise a works signal. A register is not a competition.
+  if (FORM_REGISTRATION.test(text)) return "registration";
   // Works before commodity, on purpose: a notice reading "Concorrência
   // Eletrônica … em substituição ao Pregão" must land on the instrument
   // actually being used, and that is the one named first in these notices.
   if (FORM_WORKS.test(text)) return "works_or_concession";
   if (FORM_COMMODITY.test(text)) return "commodity";
+  // No instrument named. Fall back to the object, which is the only other
+  // thing the stub reliably carries — and for the single biggest filer in the
+  // gazette it is the ONLY thing. A purchase with no works verb anywhere is a
+  // purchase; `unknown` is kept for a stub that says neither.
+  if (OBJECT_IS_WORKS.test(text)) return "works_or_concession";
+  if (OBJECT_IS_A_PURCHASE.test(text)) return "commodity";
   return "unknown";
 }
 

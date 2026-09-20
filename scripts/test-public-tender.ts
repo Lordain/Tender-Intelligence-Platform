@@ -74,7 +74,12 @@ const protectedMarkers = [
   // page ever being opened.
   "SECRET_SUMMARY_PLACE",
   "47382915",
-  "2026-09-15",
+  // The exact publication DAY is deliberately NOT here any more (2026-09-20).
+  // It was withheld with the rest on 2026-09-19 and put back on purpose: a
+  // publication date is shared by hundreds of notices on the same portal, so
+  // it identifies nothing on its own, while a dateline is what tells a reader
+  // and a crawler the listing is current. The exact DEADLINE below stays —
+  // that one a bidder acts on, and the page sells it.
   "2026-10-01",
 ];
 
@@ -113,8 +118,14 @@ if (publicTender.publicSlug !== "p-7a3c91e4b6d82f05") {
 if (publicTender.estimatedValueBand !== "$1M – $5M USD") {
   throw new Error(`公开项目金额未按区间脱敏：${publicTender.estimatedValueBand}`);
 }
-if (publicTender.publicationDate !== "2026-09" || publicTender.submissionDeadline !== "2026-10") {
-  throw new Error("公开项目日期未截断到年月");
+// Asymmetric on purpose: the deadline loses its day, the publication date
+// keeps it. Asserted by value in both directions, because the interesting
+// regression is either one silently adopting the other's rule.
+if (publicTender.submissionDeadline !== "2026-10") {
+  throw new Error(`公开项目的交标日期未截断到年月：${publicTender.submissionDeadline}`);
+}
+if (publicTender.publicationDate !== "2026-09-15T00:00:00.000Z") {
+  throw new Error(`公开项目的发布日期不应被截断：${publicTender.publicationDate}`);
 }
 
 const publicListItem = toTenderListItem(fullTender);
@@ -208,11 +219,29 @@ if (guestCard.titleZh !== "墨西哥 变电站扩建工程（输配电）") {
 if (guestCard.summaryZh !== "配电变电站的扩建工程，包含开关柜安装与配套土建施工。") {
   throw new Error("访客项目卡片没有使用去标识化的公开摘要");
 }
+// The homepage, and ONLY the homepage, publishes the member title to guests
+// (app/page.tsx). It opens that one field and nothing else: the original
+// title, the buyer, the exact budget and the exact deadline all stay
+// withheld, which is the whole reason it is a separate flag from memberView
+// rather than a second caller passing memberView: true.
+const shopfrontCard = toTenderCardData(fullTender, { memberTitle: true });
+if (shopfrontCard.titleZh !== "SECRET_PLACE_NAME变电站扩建") {
+  throw new Error("首页卡片应显示订阅用户的短标题");
+}
+if (shopfrontCard.titleOriginal !== undefined || shopfrontCard.buyer !== undefined || shopfrontCard.estimatedValue !== undefined) {
+  throw new Error("首页卡片只开放标题，不得连带开放其他订阅字段");
+}
+if (shopfrontCard.submissionDeadline !== "2026-10") {
+  throw new Error("首页卡片的交标日期仍应截断到年月");
+}
 // Same fail-closed rule as the detail page. The card is the worse of the two
 // to get wrong: it renders on the homepage, the most crawled page on the site.
 const guestCardWithoutSummary = toTenderCardData({ ...fullTender, summaryZhPublic: undefined });
-if (guestCardWithoutSummary.summaryZh.includes("SECRET_SUMMARY_PLACE")) {
+if (guestCardWithoutSummary.summaryZh?.includes("SECRET_SUMMARY_PLACE")) {
   throw new Error("没有公开摘要的项目卡片回落到了原摘要——脱敏被绕过");
+}
+if (guestCardWithoutSummary.summaryZh !== GENERIC_PUBLIC_SUMMARY) {
+  throw new Error(`没有公开摘要的项目卡片应显示占位文案，实际是：${guestCardWithoutSummary.summaryZh}`);
 }
 if (guestCard.estimatedValueBand !== "$1M – $5M USD" || guestCard.estimatedValue !== undefined) {
   throw new Error("访客项目卡片未按区间脱敏金额");
@@ -230,6 +259,17 @@ const previewCard = toTenderCardData(fullTender, { includeAnalysisPreview: true 
 if (previewCard.qualification === undefined || previewCard.risk === undefined) {
   throw new Error("首页免费预览卡片缺少投标重点预览");
 }
+// 一句话总结 and 摘要 said the same thing twice on the one card that shows
+// both. The summary is dropped at the PROJECTION, not hidden in the view, so
+// asserting on the object is asserting on the payload.
+if (previewCard.summaryZh !== undefined) {
+  throw new Error("带一句话总结的卡片不应再携带摘要");
+}
+// …but only when there is actually a one-line summary to replace it with.
+const previewCardWithoutOneLine = toTenderCardData({ ...fullTender, oneLineSummary: undefined }, { includeAnalysisPreview: true });
+if (previewCardWithoutOneLine.summaryZh === undefined) {
+  throw new Error("没有一句话总结时，卡片不能连摘要也没有");
+}
 // Even then, the preview carries our analysis — never a source identifier.
 for (const marker of ["SECRET_ORIGINAL_TITLE", "SECRET_SOURCE_URL", "SECRET_TENDER_CODE", "SECRET_SOURCE_DERIVED_SLUG", "47382915"]) {
   if (JSON.stringify(previewCard).includes(marker)) {
@@ -244,8 +284,11 @@ if (memberCard.titleOriginal !== "SECRET_ORIGINAL_TITLE" || memberCard.buyer !==
 if (memberCard.titleZh !== "SECRET_PLACE_NAME变电站扩建") {
   throw new Error("订阅用户的项目卡片应显示短标题");
 }
-// The member keeps the real summary; only the guest branch is redacted.
-if (!memberCard.summaryZh.includes("SECRET_SUMMARY_PLACE")) {
+// The member keeps the real summary; only the guest branch is redacted. Read
+// off a card without the preview block, since a card carrying 一句话总结 no
+// longer projects the summary at all.
+const memberCardPlain = toTenderCardData(fullTender, { memberView: true });
+if (!memberCardPlain.summaryZh?.includes("SECRET_SUMMARY_PLACE")) {
   throw new Error("订阅用户的项目卡片应显示完整摘要");
 }
 if (memberCard.estimatedValue !== 47382915 || memberCard.submissionDeadline !== "2026-10-01T00:00:00.000Z") {

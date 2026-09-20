@@ -378,7 +378,10 @@ export type Tender = {
  * - `location` is gone entirely, per the user's explicit instruction
  *   (2026-09-19: 这个无论如何需要隐藏). `country` deliberately stays: it is a
  *   core SEO keyword and far too coarse to identify anything.
- * - `publicationDate` and `submissionDeadline` carry "YYYY-MM", not a day.
+ * - `submissionDeadline` carries "YYYY-MM", not a day. `publicationDate`
+ *   keeps its day: it is a weak key (hundreds of notices share one) and a
+ *   real freshness signal, where the deadline is the value a bidder acts on
+ *   and the one the subscription sells. See toPublicTenderDetail.
  *
  * Everything the paywall already withheld — the original-language title, the
  * publishing body, the procedure number, key dates, requirements, risks and

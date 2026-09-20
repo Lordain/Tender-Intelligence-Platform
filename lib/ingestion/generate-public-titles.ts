@@ -96,7 +96,12 @@ async function loadCandidates(supabase: SupabaseClient): Promise<DisplayTextRow[
   const { data, error } = await supabase
     .from("tenders")
     .select("slug, title, summary, title_zh_short, title_zh_public, summary_zh_public, country, manual_field_overrides")
-    .order("publication_date", { ascending: false });
+    // Newest IMPORTED first, not newest published. `limit` exists so a run can
+    // be kept to "the rows that arrived since last time", and publication_date
+    // answers a different question: a tender published in August but imported
+    // yesterday sorts near the bottom by that key and a --limit 100 run would
+    // miss exactly the row that needs this most.
+    .order("created_at", { ascending: false });
 
   if (error) throw new Error(`读取待生成公开文案的项目失败：${error.message}`);
   return ((data ?? []) as DisplayTextRow[]).filter(needsDisplayText);

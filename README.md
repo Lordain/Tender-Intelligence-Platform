@@ -513,6 +513,21 @@ strings for different audiences, and separate passes can disagree with
 themselves — a public title saying `隧道` above a public summary saying `公路`
 describes two different projects on one page.
 
+Candidates come back **newest-imported first** (`created_at`), not
+newest-published, so `--limit 100` means "the hundred rows that arrived most
+recently". Ordering by `publication_date` would answer a different question: a
+tender published in August but imported yesterday sorts near the bottom by
+that key, and a limited run would miss exactly the row that needs this most.
+
+The admin 生成公开文案 panel (import-tenders → 维护) runs the same function
+through a web form. It is a **separate** panel from 翻译所有标题 and runs
+after it: the two passes select different rows — that one takes tenders with
+no Chinese translation yet, this one takes translated tenders with no
+generated display text — so one button doing both would make each row count
+mean something other than what it says. Leaving the write box unchecked runs a
+real sample (at most 20 rows, one model call) and prints all three strings
+with their verdicts, writing nothing.
+
 `title.zh` and `summary.zh` are never written by this pass. They stay exactly
 as translated — they are what `findDroppedIdentifiers()` guards, what the
 admin screens edit, and the input this pass regenerates from — and clearing

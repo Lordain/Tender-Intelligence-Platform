@@ -87,7 +87,12 @@ export function needsDisplayText(row: DisplayTextRow): boolean {
 function storedProblems(row: DisplayTextRow, column: GeneratedColumn): string[] {
   const value = (row[column] ?? "").trim();
   if (value === "") return [];
-  if (column === "title_zh_short") return shortTitleProblems(value, row.title.zh);
+  // Through the same haystack checkGenerated builds, and that matters more
+  // than it looks: this function decides what gets RE-generated, and the
+  // write path clears a stored value whose replacement is also refused. A
+  // narrower haystack here would read good stored titles as broken, clear
+  // them, and fall every one of them back to the administrative title.
+  if (column === "title_zh_short") return shortTitleProblems(value, row.title.zh, generatorSourceText(row));
   if (column === "title_zh_public") return publicTitleProblems(value);
   return publicSummaryProblems(value);
 }
@@ -197,8 +202,19 @@ function toInput(row: DisplayTextRow): DisplayTextInput {
  * Exported so the sample path and the write path cannot drift: a preview that
  * shows text --write would refuse is reviewing the wrong thing.
  */
+/**
+ * Everything the generator was shown for this row, as one haystack.
+ *
+ * Must stay in step with toInput() — a validator that checks the model
+ * against less than the prompt gave it reports copying as invention. See the
+ * `sourceZh` note on shortTitleProblems.
+ */
+function generatorSourceText(row: Pick<DisplayTextRow, "title" | "summary">): string {
+  return `${row.title.zh}\n${row.summary.zh}`;
+}
+
 export function checkGenerated(
-  row: Pick<DisplayTextRow, "slug" | "title">,
+  row: Pick<DisplayTextRow, "slug" | "title" | "summary">,
   generated: { titleZhShort: string; titleZhPublic: string; summaryZhPublic: string },
 ): DisplayTextPreview {
   // Strip a Latin parenthetical the full title does not contain, rather than
@@ -220,13 +236,17 @@ export function checkGenerated(
   //
   // Same function and the same reasoning as the translation pass, which meets
   // this problem first and solves it this way (translate-titles.ts). The
-  // haystack is the full Chinese title, because a parenthetical here must be
-  // copied verbatim from it — this pass never re-translates.
-  const shortTitle = stripUnverifiedParentheticals(generated.titleZhShort, row.title.zh).trim();
+  // haystack is every Chinese string the prompt was given — title AND summary
+  // — because a parenthetical here must be copied verbatim from one of them;
+  // this pass never re-translates. It was the title alone until 2026-09-20:
+  // see the `sourceZh` note on shortTitleProblems for the run that showed
+  // what checking against less than the prompt saw costs.
+  const source = generatorSourceText(row);
+  const shortTitle = stripUnverifiedParentheticals(generated.titleZhShort, source).trim();
   return {
     slug: row.slug,
     titleZh: row.title.zh,
-    short: { value: shortTitle, problems: shortTitleProblems(shortTitle, row.title.zh) },
+    short: { value: shortTitle, problems: shortTitleProblems(shortTitle, row.title.zh, source) },
     publicTitle: { value: generated.titleZhPublic, problems: publicTitleProblems(generated.titleZhPublic) },
     publicSummary: { value: generated.summaryZhPublic, problems: publicSummaryProblems(generated.summaryZhPublic) },
   };

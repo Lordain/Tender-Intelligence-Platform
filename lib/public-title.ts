@@ -68,6 +68,13 @@ const ALLOWED_LATIN_TOKENS: ReadonlySet<string> = new Set([
   // UF state codes are deliberately NOT here: MG and SP name one state each,
   // and a state is exactly what the public title drops.
   "eta", "ete", "ubs", "esf", "cbuq", "tsd",
+  // Transport modes written in Latin in Chinese prose. 快速公交（BRT）is how
+  // Chinese transport writing spells it, and BRT names a KIND of system that
+  // dozens of Latin American cities have — it narrows nothing, exactly like
+  // the Brazilian facility classes above. Added 2026-09-20 after a real run
+  // refused both the summary and the short title of a Bogotá TransMilenio
+  // tender over the three letters.
+  "brt",
 ]);
 
 const LATIN_RUN = /[A-Za-z]+/g;
@@ -136,10 +143,12 @@ export function publicTitleProblems(candidate: string): string[] {
     problems.push("保留了括号内的原文名称");
   }
 
-  const unexpected = [...new Set(
-    (text.match(LATIN_RUN) ?? [])
-      .filter((run) => !ALLOWED_LATIN_TOKENS.has(run.toLowerCase())),
-  )];
+  // Through the same helper the summary and the short title use, with no
+  // source to verify against — which is what makes it the strict one. It was
+  // an inlined copy of that filter until 2026-09-20, and a copy is how the
+  // three rules drift: the single-letter allowance added there would have
+  // landed in two of the three and refused I-3 in the public title alone.
+  const unexpected = foreignLatinRuns(text);
   if (unexpected.length > 0) problems.push(`含有原文词：${unexpected.join("、")}`);
 
   if (MASKING.test(text)) problems.push("含有遮挡或占位符号");
@@ -239,11 +248,30 @@ const MAX_SHORT_TITLE_LENGTH = 80;
 /** Long enough to say what the works are and at what scale; short enough to survive a 155-character meta description with the country and industries appended. */
 const MAX_PUBLIC_SUMMARY_LENGTH = 100;
 
-/** Latin runs in `text` that are neither an allowed unit nor present in `source`. */
+/**
+ * Latin runs in `text` that are neither an allowed unit nor present in
+ * `source`.
+ *
+ * A ONE-LETTER run never counts. It cannot be a place name, an agency or a
+ * facility name, which is the entire thing this rule exists to keep off a
+ * public page — a single letter is not searchable and identifies nothing.
+ * What it actually is, in this corpus, is a category or grade marker glued to
+ * a digit: Peru writes its primary-care levels I-1 … I-4, and a real run
+ * (2026-09-20) refused the summary 「I-3型卫生中心的重建工程…」 over the
+ * letter I. Refusing there is worse than useless — the column falls back and
+ * the reader gets the full administrative title instead, which carries the
+ * district name this rule was protecting.
+ *
+ * The shape deliberately let through with it is a single-letter road prefix
+ * (an "N-45"). It was weighed and accepted: the number is the identifying
+ * half, it is already unprotected at that length, and no real rejection has
+ * ever been one.
+ */
 function foreignLatinRuns(text: string, source?: string): string[] {
   const haystack = source?.toLowerCase();
   return [...new Set(
     (text.match(LATIN_RUN) ?? []).filter((run) => {
+      if (run.length === 1) return false;
       const lower = run.toLowerCase();
       if (ALLOWED_LATIN_TOKENS.has(lower)) return false;
       return haystack === undefined || !haystack.includes(lower);
@@ -267,7 +295,26 @@ function foreignLatinRuns(text: string, source?: string): string[] {
  * unreadable — and nothing is lost by it: the code stays in `tenderNumber`,
  * and the detail page still renders the full title.
  */
-export function shortTitleProblems(candidate: string, fullTitleZh: string): string[] {
+/**
+ * @param sourceZh every Chinese string the generator was SHOWN — the full
+ *   title and the full summary, joined — against which a Latin run counts as
+ *   copied rather than invented. Defaults to the title alone, which is the
+ *   stricter reading and the right one for a caller that has nothing else.
+ *
+ *   It has to be wider than `fullTitleZh`, and a real run proved it
+ *   (2026-09-20). public-title-qwen.ts is handed `{ titleZh, summaryZh }`,
+ *   so a road designation the SUMMARY states is a fact the model read, not
+ *   one it guessed — yet the check compared against the title alone and
+ *   refused 夸乌特拉（Cuautla）至特拉帕（Tlapa）MEX-160公路干线升级改造 as an
+ *   invention. Checking a model against less than it was given manufactures
+ *   inventions, and the cost lands on the good rows: the column falls back to
+ *   the full administrative title.
+ *
+ *   The protection is not weakened by it, because what it guards against is a
+ *   string that exists in NEITHER input — Peru's province is Ayabaca, and the
+ *   invented 阿亚瓦卡区（Ayavaca）appears in no summary either.
+ */
+export function shortTitleProblems(candidate: string, fullTitleZh: string, sourceZh?: string): string[] {
   const problems: string[] = [];
   const text = candidate.trim();
   const full = fullTitleZh.trim();
@@ -290,7 +337,7 @@ export function shortTitleProblems(candidate: string, fullTitleZh: string): stri
   // Latin script the full title did not contain is invented — a
   // transliteration guessed at, or a name imported from another row in the
   // batch. Either one publishes a different project's name under this tender.
-  const invented = foreignLatinRuns(text, full);
+  const invented = foreignLatinRuns(text, sourceZh ?? full);
   if (invented.length > 0) problems.push(`原标题里没有的外文词：${invented.join("、")}`);
 
   return problems;

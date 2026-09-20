@@ -215,9 +215,13 @@ rejectsShortFrom(ADMIN_SENTENCE, ADMIN_SENTENCE, "原封不动照抄了整句行
 // against the bid documents. But the Chinese was correct and the rest of the
 // title was good, so the remedy is to drop the guess, not the row: refusing
 // falls the column back to the full administrative title.
-function checkedShort(candidate: string, sourceTitleZh: string) {
+function checkedShort(candidate: string, sourceTitleZh: string, sourceSummaryZh = "") {
   return checkGenerated(
-    { slug: "s", title: { zh: sourceTitleZh, es: "FUENTE", en: "" } },
+    {
+      slug: "s",
+      title: { zh: sourceTitleZh, es: "FUENTE", en: "" },
+      summary: { zh: sourceSummaryZh, es: "FUENTE", en: "" },
+    },
     { titleZhShort: candidate, titleZhPublic: "秘鲁 乡村道路桥梁翻新工程", summaryZhPublic: "乡村道路桥梁的翻新工程，含桥梁本身的技术改造施工。" },
   ).short;
 }
@@ -243,6 +247,43 @@ check("保留括号原文的短标题依然合格", verified.problems.length, 0)
 // Accents and case must not make a real anchor look invented.
 const accented = checkedShort("埃洛伊门德斯（Elói Mendes）市教育局办公楼建设", "米纳斯吉拉斯州埃洛伊门德斯（Eloi Mendes）市教育局办公楼建设工程");
 check("重音差异不算凭空生成", accented.value, "埃洛伊门德斯（Elói Mendes）市教育局办公楼建设");
+
+// --- The haystack is everything the prompt saw, not just the title ---------
+// Real rejection, 2026-09-20: 夸乌特拉（Cuautla）至特拉帕（Tlapa）MEX-160公路干线
+// 升级改造 was refused for 原标题里没有的外文词：MEX. The prompt is handed
+// titleZh AND summaryZh, so a designation the summary states is copied, not
+// guessed — checking against less than the model was given manufactures an
+// invention and costs the row its short title.
+const fromSummary = checkedShort(
+  "夸乌特拉至特拉帕MEX-160公路干线升级改造",
+  "夸乌特拉至特拉帕公路干线的升级改造工程",
+  "本项目为MEX-160号联邦公路干线的升级改造，路线连接夸乌特拉与特拉帕。",
+);
+check("摘要里出现过的编号不算凭空生成", fromSummary.problems.length, 0);
+
+// And the protection it must NOT weaken: an invented spelling appears in
+// neither input, so widening the haystack changes nothing about it.
+const stillInvented = checkedShort(
+  "阿亚瓦卡区（Ayavaca）农村饮水改善",
+  "阿亚瓦卡区农村饮水服务改善工程",
+  "阿亚瓦卡区7个聚居区的农村饮水与卫生服务改善。",
+);
+check("两份原文里都没有的拼写照样摘掉", stillInvented.value, "阿亚瓦卡区农村饮水改善");
+
+// --- A single Latin letter is not a word ----------------------------------
+// Real rejection: 「I-3型卫生中心的重建工程…」 refused over the letter I, which
+// is Peru's primary-care level marker. One letter names no place, no agency
+// and no facility, so it cannot leak what this rule protects.
+acceptsSummary("I-3型卫生中心的重建工程，属于基层医疗机构基础设施的翻新与建设。");
+accepts("秘鲁 I-3型卫生中心重建工程");
+// Two letters still count — that is where real acronyms start.
+rejectsSummary("CS型卫生中心的重建工程，属于基层医疗机构基础设施的翻新与建设。", "含有原文词：CS");
+
+// --- BRT names a kind of system, not a project ----------------------------
+// Both halves of a real rejection: the summary called it an 原文词 and the
+// short title called it invented, on a Bogotá TransMilenio tender.
+acceptsSummary("快速公交系统BRT组件基础设施的改造与建设工程，用于加强系统并更新物理条件。");
+acceptsShortFrom("BRT系统配套工程改造与建设", "波哥大快速公交系统配套组件基础设施的改造与建设工程");
 
 // --- Checking a public summary --------------------------------------------
 // Same audience and same surfaces as the public title, so the same rules.

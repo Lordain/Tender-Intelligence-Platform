@@ -37,6 +37,9 @@ const FALLBACK_SOURCE_URL = "https://comprasmx.buengobierno.gob.mx/sitiopublico/
 // Same reasoning as resolve-comprasmx-links.ts: a real systemic failure
 // (network/firewall/DNS) should stop this run immediately instead of
 // grinding through hundreds more doomed requests with identical output.
+/** Same 1000-row-per-request PostgREST cap every other full-table scan in this codebase pages around (see lib/db/tenders.ts's SUPABASE_PAGE_SIZE comment). */
+const PAGE_SIZE = 1000;
+
 const ERROR_CIRCUIT_BREAKER_THRESHOLD = 5;
 
 export type DiscoverComprasMxVigenteResult = {
@@ -76,11 +79,30 @@ export async function discoverComprasMxVigente(
   });
   console.log(`[discover-comprasmx-vigente] Found ${vigenteRows.length} procedure(s) currently marked "vigente".`);
 
-  const { data: existingRows, error: existingError } = await supabase.from("tenders").select("tender_number");
-  if (existingError) {
-    throw new Error(`Failed to query existing tenders: ${existingError.message}`);
+  // Paged, because an unranged select silently stops at 1000 rows (see
+  // lib/db/tenders.ts's SUPABASE_PAGE_SIZE comment — confirmed against
+  // production, no error raised). This set is the ONLY thing standing between
+  // a run and re-resolving every tender it already has: truncated, every row
+  // past the first page reads as new, and the loop below spends one
+  // fetchLicitacionDetail() network round-trip on each of them. The upsert is
+  // keyed on slug so nothing would be duplicated — it would just be hours and
+  // a few hundred requests to arrive back where it started.
+  const existingNumbers = new Set<string>();
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("tender_number")
+      // Explicit order: .range() paging over an unspecified row order can
+      // repeat or skip rows between requests.
+      .order("slug", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) {
+      throw new Error(`Failed to query existing tenders: ${error.message}`);
+    }
+    const page = data ?? [];
+    for (const row of page) existingNumbers.add((row.tender_number as string).toUpperCase());
+    if (page.length < PAGE_SIZE) break;
   }
-  const existingNumbers = new Set((existingRows ?? []).map((r) => (r.tender_number as string).toUpperCase()));
 
   const newRows = vigenteRows.filter((row) => !existingNumbers.has(row.numero.toUpperCase()));
   console.log(`[discover-comprasmx-vigente] ${vigenteRows.length - newRows.length} already in Supabase (any source), ${newRows.length} new.`);

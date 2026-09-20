@@ -34,7 +34,7 @@ import {
  * one of them can be read (counted from the captured index, 2026-09-19):
  *
  *   www.gov.br                   6   Plone. What the parser was written for.
- *   sisapinternet.antaq.gov.br  11   A different application entirely.
+ *   sisapinternet.antaq.gov.br  11   A different application, and shut too.
  *   leilao.antaq.gov.br          3   Cloudflare challenge, measured shut.
  *
  * So this connector covers under a third of what ANTAQ lists, and the only
@@ -43,11 +43,17 @@ import {
  * source; fetching the other fourteen and reporting "unparseable" would blame
  * the pages for a parser that was never written for them.
  *
- * `sisapinternet` is deliberately not fetched. It has never been captured, so
- * no parser exists for it, and this repo's rule — lib/ingestion/README.md,
- * paid for three times — is that a mapper is written against a real capture
- * and not against an expectation of one. Capturing it is the follow-up that
- * would roughly triple this source; guessing at it here is not.
+ * `sisapinternet` is not fetched for two reasons now, and each is sufficient.
+ * It has never been captured, so no parser exists for it, and this repo's rule
+ * — lib/ingestion/README.md, paid for three times — is that a mapper is
+ * written against a real capture and not against an expectation of one. And on
+ * 2026-09-20 the capture was attempted from the runner and got nothing: the
+ * three in-window hearings returned one Cloudflare challenge and two 502s, the
+ * 502s meaning the edge reached ANTAQ's own server and it did not answer. So
+ * this is not a parser that is merely unwritten; it is a door that has not
+ * opened yet. scripts/capture-antaq-sisap.ts is standing by for the day it
+ * does, and the laptop — the one network never asked about this host — is the
+ * remaining vote.
  *
  * ── What "em andamento" turns out to mean ─────────────────────────────────
  *
@@ -102,7 +108,14 @@ export function classifyAntaqHost(host: string): { verdict: AntaqHostVerdict; wh
     return { verdict: "refuses-us", why: "Cloudflare 验证页 —— 笔记本、Vercel、GitHub 跑批机三边都过不去（2026-09-19 实测）" };
   }
   if (host === "sisapinternet.antaq.gov.br") {
-    return { verdict: "other-system", why: "SisapInternet（另一套 ASP.NET 系统），没抓过样本，也就没有解析器" };
+    // Still `other-system` rather than `refuses-us`: only one of the three
+    // failures measured was an actual block, the other two were ANTAQ's own
+    // server not answering, and only one machine has voted. The type stays
+    // honest; the sentence carries what was measured.
+    return {
+      verdict: "other-system",
+      why: "SisapInternet（另一套 ASP.NET 系统），没有解析器；2026-09-20 从跑批机抓过一次，3 场里 1 场验证页、2 场 502，一场没拿到",
+    };
   }
   return { verdict: "other-system", why: "没见过的域名，没有解析器" };
 }

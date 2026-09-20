@@ -7205,15 +7205,44 @@ sane window drops them anyway. Measured against the hearings still in process,
 the real numbers are **5 of 10** today and **8 of 10** with sisapinternet
 captured — the remaining two are the Cloudflare ones.
 
-`scripts/capture-antaq-sisap.ts` is that follow-up, wired into the probe
-workflow as `what=capture-sisap`. Its first job is not to capture anything: it
-is to answer whether that host answers **at all**, since no machine here has
-ever fetched it, and to name which kind of "no" it gets — a challenge page, a
-network failure and an HTTP status are three situations with three different
-next steps, and a run that calls all of them "failed" says nothing. It strips
-`__VIEWSTATE` and friends before committing, because WebForms serialises the
-whole server-side control tree into base64 hidden inputs and committing those
-buries the 10KB a parser reads under state that changes on every fetch.
+`scripts/capture-antaq-sisap.ts` was written to be that follow-up, wired into
+the probe workflow as `what=capture-sisap`. Its first job was not to capture
+anything: it was to answer whether that host answers **at all**, since no
+machine here had ever fetched it, and to name which kind of "no" it gets.
+
+**It ran on the runner on 2026-09-20 and the answer was no.** Three in-window
+hearings, three failures:
+
+| hearing | id | what came back |
+|---|---|---|
+| AP 05/2026 | 640 | **403, Cloudflare challenge page** |
+| AP 01/2026 | 639 | **502 Bad Gateway** |
+| AP 06/2025 | 638 | **502 Bad Gateway** |
+
+Those two answers are not the same answer, which is the whole reason the
+script separates them. A challenge is a decision about us and no header has
+ever changed one — this file records that measurement twice already, on ANEEL
+and on leilao.antaq. A 502 is the opposite: Cloudflare's edge reached ANTAQ's
+own server and it did not reply. Nobody is blocking that one; their
+application is down.
+
+The first version called it after **one attempt each**, which is not enough to
+tell a dead origin from an app that fell over for a second, and those have
+opposite next steps. It now retries the gateway class three times with backoff
+and never retries a challenge, because asking a decision three times only
+makes the log look like a flake.
+
+So ANTAQ's coverage stays where it was: **5 of 10** still-live hearings, not
+the 8 of 10 that capturing this host would have bought. The laptop is the one
+network in this project that has never been asked about `sisapinternet`, and
+it is the network that opens gov.br, so it is the remaining vote — the run
+report says so in as many words rather than declaring the source closed on one
+machine's evidence.
+
+It strips `__VIEWSTATE` and friends before committing, for the day it does
+answer: WebForms serialises the whole server-side control tree into base64
+hidden inputs, and committing those buries the 10KB a parser reads under state
+that changes on every fetch.
 
 ### "Em andamento" is the archive
 

@@ -56,6 +56,19 @@ const SISAP_HOST = "sisapinternet.antaq.gov.br";
 const OUT_DIR = "exports/antaq-sisap";
 const FIXTURE_DIR = "lib/ingestion/__fixtures__/antaq-sisap";
 const TIMEOUT_MS = 45_000;
+/**
+ * A 502 gets retried; a challenge does not.
+ *
+ * The first run of this script (2026-09-20, runner) called it after one
+ * attempt each and reported two 502s as a verdict. That is not enough to tell
+ * a permanently dead origin from an ASP.NET app that fell over for a second,
+ * and those two situations have opposite next steps. A challenge page is the
+ * opposite case: it is a decision, not a hiccup, and retrying it just asks the
+ * same question three times.
+ */
+const RETRYABLE_STATUSES = [408, 429, 500, 502, 503, 504];
+const MAX_ATTEMPTS = 3;
+const BACKOFF_MS = [2_000, 5_000];
 const HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
   "Accept-Language": "pt-BR,pt;q=0.9",
@@ -72,33 +85,76 @@ function argValue(args: string[], flag: string): string | undefined {
   return idx >= 0 ? args[idx + 1] : undefined;
 }
 
-type Fetched = { html: string } | { failure: string; kind: "challenge" | "refused" | "network" | "http" };
+type FailureKind = "challenge" | "gateway" | "refused" | "network" | "http";
+type Fetched = { html: string } | { failure: string; kind: FailureKind };
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Names which kind of "no" this was.
+ * Names which kind of "no" this was, and retries only the kinds that can
+ * change their mind.
  *
- * Distinguished because the next step differs: a challenge means the host is
- * up and screening us (nothing a header will fix — this repo has measured
- * that twice on ANEEL and on leilao.antaq), a network error means try another
- * machine, and an HTTP status means the URL or the app changed.
+ * Five outcomes, five different next steps, which is the whole reason this
+ * script exists:
+ *
+ *   challenge  the host is up and screening us. No header fixes this — the
+ *              repo has measured exactly that twice, on ANEEL and on
+ *              leilao.antaq. This route is closed from this machine.
+ *   gateway    Cloudflare's edge answered but ANTAQ's own server behind it
+ *              did not. Not a block: their application is down or falling
+ *              over. Worth retrying, and worth trying again another day.
+ *   network    nothing answered at all. Try another machine — the three
+ *              networks in this project agree about nothing (see the header
+ *              of .github/workflows/probe-brazil-doors.yml).
+ *   http       a status that means the URL or the application changed.
+ *   ok         bytes.
  */
 async function get(url: string): Promise<Fetched> {
-  let response: Response;
-  try {
-    response = await fetch(url, { headers: HEADERS, redirect: "follow", signal: AbortSignal.timeout(TIMEOUT_MS) });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { failure: `连不上：${message}`, kind: "network" };
-  }
-  if (response.status === 403 || response.status === 503) {
+  let last: { failure: string; kind: FailureKind } = { failure: "没试过", kind: "network" };
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch(url, { headers: HEADERS, redirect: "follow", signal: AbortSignal.timeout(TIMEOUT_MS) });
+    } catch (err) {
+      last = { failure: `连不上：${err instanceof Error ? err.message : String(err)}`, kind: "network" };
+      if (attempt < MAX_ATTEMPTS) await sleep(BACKOFF_MS[attempt - 1]);
+      continue;
+    }
+
+    if (response.ok) return { html: await response.text() };
+
+    // The body is read for every failure, because it is the only thing that
+    // separates "Cloudflare is blocking us" from "Cloudflare reached ANTAQ and
+    // ANTAQ did not answer". The status code alone says neither.
     const body = await response.text().catch(() => "");
-    const challenged = /cloudflare|cf-browser-verification|just a moment|challenge-platform/i.test(body);
-    return challenged
-      ? { failure: `${response.status} —— Cloudflare 验证页，主机是活的，但它不让我们进（换 header 没用，这个仓库在 ANEEL 和 leilao.antaq 上各试过一次）`, kind: "challenge" }
-      : { failure: `${response.status} ${response.statusText}`, kind: "refused" };
+    const cloudflare = /cloudflare|cf-ray|__cf_chl|challenge-platform/i.test(body);
+    const challenged = /cf-browser-verification|just a moment|challenge-platform|__cf_chl|attention required/i.test(body);
+
+    if (challenged && (response.status === 403 || response.status === 503)) {
+      // A challenge is a decision, not a hiccup. Asking twice more just gets
+      // the same answer three times and makes the log look like a flake.
+      return {
+        failure: `${response.status} —— Cloudflare 验证页，主机是活的，但它不让我们进（换 header 没用，这个仓库在 ANEEL 和 leilao.antaq 上各试过一次）`,
+        kind: "challenge",
+      };
+    }
+
+    const gateway = response.status === 502 || response.status === 504 || (response.status === 503 && !challenged);
+    last = gateway
+      ? {
+          failure: cloudflare
+            ? `${response.status} ${response.statusText} —— Cloudflare 的边缘返的，说明它连上了 ANTAQ 的服务器而对方没应答（不是在挡我们，是他们那套应用没起来）`
+            : `${response.status} ${response.statusText} —— 网关错误，源站没应答`,
+          kind: "gateway",
+        }
+      : response.status === 403
+        ? { failure: `403 Forbidden（不是验证页）`, kind: "refused" }
+        : { failure: `${response.status} ${response.statusText}`, kind: "http" };
+
+    if (!RETRYABLE_STATUSES.includes(response.status) || attempt === MAX_ATTEMPTS) return last;
+    await sleep(BACKOFF_MS[attempt - 1]);
   }
-  if (!response.ok) return { failure: `${response.status} ${response.statusText}`, kind: "http" };
-  return { html: await response.text() };
+  return last;
 }
 
 /** `Audiência Pública n° 05/2026` → 2026. The year on the number, which nothing re-stamps. */
@@ -207,10 +263,16 @@ async function main() {
     // The whole point of the run. An unreachable host and an empty source need
     // opposite fixes, and the kind of refusal says which one.
     const kinds = new Set(failures.map((f) => f.kind));
-    console.log(`${SISAP_HOST} 一场都没抓到。这是「够不着」，不是「没有听证」——`);
-    if (kinds.has("challenge")) console.log("  它返的是验证页：主机活着，但它在挡我们。换 header 没用，这条路和 leilao.antaq 一样要算关着。");
-    if (kinds.has("network")) console.log("  网络层就没通：换台机器再试（这个仓库里三张网互不相同，见 probe-brazil-doors.yml 的抬头）。");
-    if (kinds.has("http") || kinds.has("refused")) console.log("  HTTP 状态码不对：链接或这套应用变了，先人工打开一条看看。");
+    console.log(`${SISAP_HOST} 一场都没抓到（每条都试了 ${MAX_ATTEMPTS} 次）。这是「够不着」，不是「没有听证」——`);
+    if (kinds.has("challenge")) console.log("  · 验证页：主机活着，但它在挡我们。换 header 没用，这条路和 leilao.antaq 一样要算关着。");
+    if (kinds.has("gateway")) console.log("  · 网关错误：挡我们的不是验证，是 ANTAQ 自己的服务器没应答。重试三次仍然如此，说明不是一下子抽风 —— 但换个时间、换台机器还值得再试一次。");
+    if (kinds.has("network")) console.log("  · 网络层就没通：换台机器再试（这个仓库里三张网互不相同，见 probe-brazil-doors.yml 的抬头）。");
+    if (kinds.has("http") || kinds.has("refused")) console.log("  · HTTP 状态码不对：链接或这套应用变了，先人工打开一条看看。");
+    // The laptop is the one network in this project that has never been asked
+    // about this host, and it is the network that opens gov.br. A source is
+    // not closed until the machines that would use it have all said so.
+    console.log("\n  笔记本是这个项目里唯一还没问过这台主机的网络，而且 gov.br 对它是开的。");
+    console.log("  在笔记本上跑 `npm run capture:antaq-sisap` 就是最后一票。");
     process.exitCode = 1;
     return;
   }

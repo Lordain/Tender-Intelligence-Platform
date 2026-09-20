@@ -38,10 +38,14 @@ console.log("── 域名分诊 ──");
 check("gov.br 能读", classifyAntaqHost("www.gov.br").verdict, "readable");
 check("leilao.antaq 明确拒绝我们", classifyAntaqHost("leilao.antaq.gov.br").verdict, "refuses-us");
 check("portal.antaq 也是", classifyAntaqHost("portal.antaq.gov.br").verdict, "refuses-us");
-// Not "refuses-us": it may well answer. It is a different application with no
-// parser, and conflating the two would make "write a parser" look like "change
-// where the request comes from".
+// Still not "refuses-us" after the 2026-09-20 capture attempt, and the reason
+// is narrower than it was: of the three hearings tried from the runner, only
+// one was an actual block (Cloudflare challenge) and two were 502s — ANTAQ's
+// own server not answering, which is not a decision about us. One machine has
+// voted. Conflating the two verdicts would make "write a parser" look like
+// "change where the request comes from", and they are different jobs.
 check("sisapinternet 是另一套系统，不是拒绝", classifyAntaqHost("sisapinternet.antaq.gov.br").verdict, "other-system");
+ok("但它的理由里记着 2026-09-20 那次实测", /2026-09-20/.test(classifyAntaqHost("sisapinternet.antaq.gov.br").why));
 check("没见过的域名不假装能读", classifyAntaqHost("example.org").verdict, "other-system");
 check("空 host 也不假装能读", classifyAntaqHost("").verdict, "other-system");
 ok("每个判断都带一句为什么", ["www.gov.br", "leilao.antaq.gov.br", "sisapinternet.antaq.gov.br", "x"].every((h) => classifyAntaqHost(h).why.length > 5));

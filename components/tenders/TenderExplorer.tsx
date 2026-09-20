@@ -198,6 +198,7 @@ export function TenderExplorer({
   currentPage,
   availableIndustries,
   availableScopeTypes,
+  availableCountries,
   siteTenderCount,
   newTodayCount,
   upcomingCount,
@@ -209,6 +210,7 @@ export function TenderExplorer({
   currentPage: number;
   availableIndustries: IndustryKey[];
   availableScopeTypes: TenderScopeType[];
+  availableCountries: (typeof AVAILABLE_COUNTRIES)[number][];
   siteTenderCount: number;
   newTodayCount: number;
   upcomingCount: number;
@@ -226,12 +228,20 @@ export function TenderExplorer({
   // Same fallback rule as industries: offer everything only when the data
   // carries nothing, since an empty filter is worse than an over-broad one.
   const scopeTypeOptions = availableScopeTypes.length > 0 ? availableScopeTypes : ALL_SCOPE_TYPES;
+  // And again for countries — a country whose every row is screened out is
+  // dropped rather than offered as a pill that can only return zero (user,
+  // 2026-09-20, about Brazil). Memoized because `countries` below depends on
+  // this array's IDENTITY, not just its contents.
+  const countryOptions = useMemo(
+    () => (availableCountries.length > 0 ? availableCountries : [...AVAILABLE_COUNTRIES]),
+    [availableCountries],
+  );
 
   const query = searchParams.get("q") ?? "";
   const countryParam = searchParams.get("country");
   const countries = useMemo(
-    () => countryParam ? parseList(countryParam) : [...AVAILABLE_COUNTRIES],
-    [countryParam],
+    () => countryParam ? parseList(countryParam) : [...countryOptions],
+    [countryParam, countryOptions],
   );
   const industries = parseList(searchParams.get("industry"));
   const industryMatchMode = searchParams.get("industryMode") === "all" ? "all" : "any";
@@ -371,8 +381,8 @@ export function TenderExplorer({
           <div className="xl:pr-5">
             <MultiSelectPills
               label="国家/地区"
-              maxVisible={AVAILABLE_COUNTRIES.length}
-              options={AVAILABLE_COUNTRIES.map((country) => ({
+              maxVisible={countryOptions.length}
+              options={countryOptions.map((country) => ({
                 value: country,
                 label: localize(COUNTRY_LABELS[country], locale),
                 icon: <CountryFlag country={country} />,

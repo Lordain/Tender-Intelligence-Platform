@@ -161,6 +161,24 @@ export type TenderListPageData = {
    */
   availableScopeTypes: TenderScopeType[];
   /**
+   * Country filter options, narrowed to the countries that have a publicly
+   * visible tender behind them right now.
+   *
+   * AVAILABLE_COUNTRIES stays the allowlist and the display order — a
+   * country still needs a real connector to appear at all. This is that
+   * list minus the countries whose rows are, today, all screened out.
+   *
+   * Brazil is why (user, 2026-09-20: 巴西前台如果现在看到的项目数 = 0，就先
+   * 隐藏这个国家，如果 > 0 就展示). A connector can be importing every day
+   * while every row it writes lands in the excluded tier, and a country pill
+   * that can only ever return zero reads as a broken site rather than as an
+   * empty country — the same complaint that produced availableIndustries.
+   *
+   * Derived, not a hide list: the pill comes back by itself the day one
+   * Brazilian tender survives the filter, with nothing to remember to undo.
+   */
+  availableCountries: (typeof AVAILABLE_COUNTRIES)[number][];
+  /**
    * Live opportunities across the WHOLE site, ignoring the viewer's filters —
    * the sidebar's 全站在招. Deliberately on a different basis from
    * newTodayCount/upcomingCount, which are scoped to the current filters
@@ -332,10 +350,21 @@ export function buildTenderListPage(
     { query, searchPublicFieldsOnly: options.searchPublicFieldsOnly, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers },
     "zh",
   );
-  const presentIndustries = new Set(allTenders.flatMap((tender) => tender.industries));
+  // Every row a visitor could reach through SOME combination of filters:
+  // the whole table minus the excluded tier, which no public surface
+  // renders. All three facet lists and the site total are computed off this
+  // one set — a facet derived from the raw table can offer a value that only
+  // excluded rows carry, and clicking it returns zero.
+  //
+  // Deliberately NOT `filtered`: a facet computed from the current result
+  // set would delete its own option the moment you ticked it.
+  const visibleTenders = filterTenders(allTenders, {}, "zh");
+  const presentIndustries = new Set(visibleTenders.flatMap((tender) => tender.industries));
   const availableIndustries = ALL_INDUSTRIES.filter((industry) => presentIndustries.has(industry));
-  const presentScopeTypes = new Set(allTenders.map((tender) => tender.scopeType));
+  const presentScopeTypes = new Set(visibleTenders.map((tender) => tender.scopeType));
   const availableScopeTypes = ALL_SCOPE_TYPES.filter((scopeType) => presentScopeTypes.has(scopeType));
+  const presentCountries = new Set(visibleTenders.map((tender) => tender.country));
+  const availableCountries = AVAILABLE_COUNTRIES.filter((country) => presentCountries.has(country));
 
   const nowMs = now.getTime();
   const isRecentlyAdded = (tender: Tender) => {
@@ -372,6 +401,7 @@ export function buildTenderListPage(
     currentPage,
     availableIndustries,
     availableScopeTypes,
+    availableCountries,
     siteTenderCount: filterTenders(allTenders, { statuses: LIVE_TENDER_STATUSES }, "zh").length,
     newTodayCount,
     upcomingCount,

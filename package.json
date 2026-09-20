@@ -70,6 +70,7 @@
     "test:ingestion-dates": "tsx scripts/test-ingestion-dates.ts",
     "test:supplier-matching": "tsx scripts/test-supplier-matching.ts",
     "test:recently-added": "tsx scripts/test-recently-added.ts",
+    "test:list-facets": "tsx scripts/test-list-facets.ts",
     "test:upcoming-deadlines": "tsx scripts/test-upcoming-deadlines.ts",
     "test:upsert-protection": "tsx scripts/test-upsert-protection.ts",
     "test:document-matching": "tsx scripts/test-document-matching.ts",

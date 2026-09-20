@@ -161,6 +161,79 @@ export function toWordHaystack(text: string): string {
 }
 
 /**
+ * Alphanumerics only, uppercased — every separator gone, not collapsed to a
+ * space like toWordHaystack does.
+ *
+ * This exists for ONE job: recognising a tender number in a file name that
+ * an operating system rewrote. `05639268000191-1-000015/2026` is a real
+ * Brazilian numeroControlePNCP, and Windows forbids `/` in a file name, so
+ * saving that document produces `05639268000191-1-0000152026` — the exact
+ * substring test below cannot see the number any more, and neither can the
+ * Compras MX-shaped regex fallback, so the document is skipped. Browsers
+ * and ZIP tools substitute `_`, `-` or nothing for the same character with
+ * no agreement between them, so matching on any one substitution would fix
+ * one tool and miss the next.
+ */
+export function squashSeparators(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]+/g, "");
+}
+
+/**
+ * How many alphanumerics a number needs before it may be matched with its
+ * separators removed.
+ *
+ * Squashing throws away information, and a short mostly-numeric key is
+ * where that becomes dangerous: `LP-006-2026` squashes to `LP0062026`, and
+ * a file name is full of digit runs (dates, counters, a CNPJ) that could
+ * contain it by accident. A Brazilian numeroControlePNCP squashes to 25
+ * characters and a Compras MX procedure number to 24 — both far past any
+ * plausible coincidence — so the pass covers the numbers that actually get
+ * mangled while leaving the short ones on the exact test alone.
+ *
+ * 12 is also where `CVC LP 008 2026` lands, the real Colombian number
+ * (stored WITH spaces) whose document went unmatched on 2026-09-16.
+ */
+const MIN_SQUASHED_NUMBER_LENGTH = 12;
+
+/**
+ * The separator-insensitive pass: run only when the exact test has already
+ * failed, and only against the FILE NAME.
+ *
+ * Not against the document text. Squashing a 50-page pliego yields one
+ * unbroken alphanumeric run in which page numbers, table cells and dates
+ * sit directly against each other, inventing adjacencies the document never
+ * contained. A file name is short, deliberate, and the only place the
+ * mangling this fixes actually happens.
+ *
+ * Abstains when two DIFFERENT numbers match — same rule as
+ * chooseAmongCandidates. A number nested inside a longer match is not a
+ * second answer, so it is dropped rather than counted; two unrelated ones
+ * are a question this cannot answer.
+ */
+export function matchNumberInMangledFileName(
+  fileName: string,
+  knownNumbers: Iterable<string>,
+): { number: string } | { ambiguous: string[] } | null {
+  const squashedName = squashSeparators(fileName);
+  const hits = [...knownNumbers].filter((number) => {
+    const squashed = squashSeparators(number);
+    return squashed.length >= MIN_SQUASHED_NUMBER_LENGTH && squashedName.includes(squashed);
+  });
+  const distinct = hits.filter(
+    (number) =>
+      !hits.some(
+        (other) =>
+          other !== number &&
+          squashSeparators(other).length > squashSeparators(number).length &&
+          squashSeparators(other).includes(squashSeparators(number)),
+      ),
+  );
+  if (distinct.length === 1) return { number: distinct[0] };
+  if (distinct.length > 1) return { ambiguous: distinct.sort() };
+  return null;
+}
+
+/**
  * Four, so "DE", "DEL", "LA", "Y" and friends never count as evidence. They
  * are usually shared between two Colombian entity names anyway and dropped
  * as non-distinguishing — but not always, and a match on "DE" would be the
@@ -290,6 +363,24 @@ export async function resolveTender(
     if (haystack.includes(tenderNumber) && (!bestMatch || tenderNumber.length > bestMatch.length)) bestMatch = tenderNumber;
   }
 
+  // Nothing matched literally — try the file name again with its
+  // separators removed, in case the one in the tender number is a
+  // character the operator's file system would not store. See
+  // squashSeparators().
+  let numberWasMangled = false;
+  if (!bestMatch) {
+    const mangled = matchNumberInMangledFileName(fileName, knownTenders.keys());
+    if (mangled && "ambiguous" in mangled) {
+      return {
+        skip: `${fileName} — 文件名去掉分隔符后同时命中 ${mangled.ambiguous.length} 个招标编号（${mangled.ambiguous.join("、")}），无法判断属于哪个项目，已跳过（没有分析、没有计费、没有改动任何项目）。把文件改名成「<项目slug>.pdf」可以直接定位。`,
+      };
+    }
+    if (mangled) {
+      bestMatch = mangled.number;
+      numberWasMangled = true;
+    }
+  }
+
   if (bestMatch) {
     // A number can name more than one tender — see the header. Which one
     // this document belongs to is decided by the document, or by nobody.
@@ -302,8 +393,10 @@ export async function resolveTender(
         tenderNumber: bestMatch,
         matchNote:
           choice.evidence.length > 0
-            ? `matched known tender_number ${bestMatch}; ${candidates.length} tenders share it, resolved by buyer name in the document (${choice.evidence.join(", ")})`
-            : `matched known tender_number ${bestMatch} in file name/text`,
+            ? `matched known tender_number ${bestMatch}${numberWasMangled ? " (file name had its separators stripped)" : ""}; ${candidates.length} tenders share it, resolved by buyer name in the document (${choice.evidence.join(", ")})`
+            : numberWasMangled
+              ? `matched known tender_number ${bestMatch} in the file name, ignoring separators the file system could not store`
+              : `matched known tender_number ${bestMatch} in file name/text`,
       },
     };
   }

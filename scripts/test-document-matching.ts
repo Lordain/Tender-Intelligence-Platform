@@ -17,7 +17,7 @@
  *
  * Usage: npm run test:document-matching
  */
-import { chooseAmongCandidates, describeAmbiguity, indexKnownTenders, toWordHaystack, type KnownTender } from "../lib/ingestion/match-documents-to-tenders";
+import { chooseAmongCandidates, describeAmbiguity, indexKnownTenders, matchNumberInMangledFileName, squashSeparators, toWordHaystack, type KnownTender } from "../lib/ingestion/match-documents-to-tenders";
 
 type Check = { label: string; pass: boolean; detail?: string };
 const checks: Check[] = [];
@@ -117,6 +117,57 @@ check(
 // --- toWordHaystack ----------------------------------------------------
 check("整词匹配：SAMACA 不会命中 SAMACANDO 这种更长的词", !toWordHaystack("SAMACANDO ALGO").includes(" SAMACA "));
 check("标点被当成分隔符（SAMACÁ, BOYACÁ → 两个词）", toWordHaystack("SAMACÁ, BOYACÁ").includes(" SAMACA ") && toWordHaystack("SAMACÁ, BOYACÁ").includes(" BOYACA "));
+
+// --- a file name the operating system rewrote --------------------------
+// The user's report (2026-09-20): a Brazilian tender is numbered
+// 05639268000191-1-000015/2026, and Windows forbids `/` in a file name, so
+// the document saves as 05639268000191-1-0000152026. The exact substring
+// test cannot see the number any more, and the Compras MX-shaped regex
+// fallback never could — so a correctly named Brazilian document was
+// skipped with "no known tender_number found".
+const PNCP = "05639268000191-1-000015/2026";
+const OTHER_PNCP = "05639268000191-1-000016/2026";
+const COLOMBIA = "CVC LP 008 2026";
+const SHORT = "LP-006-2026";
+const numbers = [PNCP, OTHER_PNCP, COLOMBIA, SHORT];
+
+const windowsName = "05639268000191-1-0000152026.pdf";
+check(
+  "Windows 去掉斜杠后的文件名仍然认得出是哪个项目",
+  (matchNumberInMangledFileName(windowsName, numbers) as { number: string })?.number === PNCP,
+  JSON.stringify(matchNumberInMangledFileName(windowsName, numbers)),
+);
+check("认的是同一个项目，不是编号只差一位的隔壁项目", (matchNumberInMangledFileName(windowsName, numbers) as { number: string })?.number !== OTHER_PNCP);
+
+// Whatever the tool substituted — browsers, ZIP utilities and operators all
+// pick differently, and none of them is the stored spelling.
+for (const [label, name] of [["下划线", "05639268000191-1-000015_2026.pdf"], ["连字符", "05639268000191-1-000015-2026.pdf"], ["空格", "05639268000191 1 000015 2026.pdf"], ["整串数字", "056392680001911000015 2026 edital.pdf"]] as const) {
+  check(`分隔符换成${label}也认得出`, (matchNumberInMangledFileName(name, numbers) as { number: string })?.number === PNCP, name);
+}
+
+check(
+  "编号前后还有别的字也认得出（真实文件名很少是光秃秃的编号）",
+  (matchNumberInMangledFileName("Edital_05639268000191-1-0000152026_anexo1.pdf", numbers) as { number: string })?.number === PNCP,
+);
+
+// The 2026-09-16 Colombian miss, recovered by the same pass: the number is
+// stored WITH spaces (`CVC LP 008 2026`) and the file name hyphenates it.
+check(
+  "带空格存储的哥伦比亚编号，连字符文件名也认得出",
+  (matchNumberInMangledFileName("secop-890399002-cvc-lp-008-2026.pdf", numbers) as { number: string })?.number === COLOMBIA,
+);
+
+// The guard rails.
+check(
+  "太短的编号不参加这一轮（LP-006-2026 挤在一串数字里会误伤）",
+  matchNumberInMangledFileName("informe-lp0062026-final.pdf", [SHORT]) === null,
+);
+check(
+  "文件名同时命中两个不同编号时弃权，不猜",
+  "ambiguous" in (matchNumberInMangledFileName("05639268000191-1-0000152026-e-05639268000191-1-0000162026.pdf", numbers) ?? {}),
+);
+check("完全对不上的文件名返回 null", matchNumberInMangledFileName("convocatoria-final.pdf", numbers) === null);
+check("squashSeparators 只留字母数字并大写", squashSeparators("05639268000191-1-000015/2026") === "0563926800019110000152026");
 
 // --- describeAmbiguity: the operator has to be able to act on it -------
 const message = describeAmbiguity("Pliego.pdf", "LP-006-2026", [SAMACA, AYAPEL]);

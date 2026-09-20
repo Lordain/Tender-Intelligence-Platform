@@ -32,6 +32,7 @@ function Field({ label, value, emphasized = false, note }: { label: string; valu
 }
 
 export function TenderOverview({ tender, showTrialCta = false }: { tender: Tender; showTrialCta?: boolean }) {
+  const heading = shortTitleOf(tender);
   const { locale } = useLocale();
   // awardDate renders ONLY inside the awarded block below, so it only counts
   // when that block renders. It used to be counted unconditionally, which was
@@ -96,7 +97,7 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
       {tender.title.zh !== tender.title.es ? (
         <>
           <h1 className="max-w-4xl text-2xl font-black leading-[1.25] tracking-[-0.035em] text-[#071826] sm:text-3xl">
-            {shortTitleOf(tender)}
+            {heading}
           </h1>
           <div className="-mt-1 flex items-start gap-2 text-sm leading-6 text-[#7a878f]">
             <span className="shrink-0 text-[11px] font-black uppercase tracking-[0.08em] text-[#9aa5ab]">原文</span>
@@ -109,7 +110,17 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
         </h1>
       )}
 
-      {![tender.title.zh, tender.title.es].includes(localize(tender.summary, locale).trim()) && (
+      {/*
+        Compared against what is actually RENDERED above, not against
+        title.zh. This block exists so the same sentence is not printed
+        twice, and most rows carry a summary that is a verbatim copy of the
+        title because the source published no separate description (see
+        translate-titles-qwen.ts). Comparing against the full translation
+        while the heading shows the condensed one hid the summary on exactly
+        those rows — where it had just become the only place the full text
+        appeared, and therefore new information rather than a repeat.
+      */}
+      {![heading, tender.title.es].includes(localize(tender.summary, locale).trim()) && (
         <div className="rounded-xl border-l-4 border-[#ffb21c] bg-[#fff8e9] px-4 py-3">
           <p className="text-[11px] font-black uppercase tracking-[0.1em] text-[#9a6200]">项目摘要</p>
           <p className="mt-1 text-sm leading-6 text-[#425461]">{localize(tender.summary, locale)}</p>

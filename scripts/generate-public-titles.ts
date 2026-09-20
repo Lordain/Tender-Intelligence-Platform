@@ -112,6 +112,18 @@ async function main() {
     }
   }
 
+  const clearedTotal = Object.values(result.clearedByColumn ?? {}).reduce((sum, count) => sum + count, 0);
+  if (clearedTotal > 0) {
+    // A column that held text the current rules refuse, whose replacement was
+    // refused too. Leaving it would republish the bad text; clearing it falls
+    // back (placeholder for the summary, title.zh for the two titles) until a
+    // later run produces something acceptable.
+    console.log(`\n清空了 ${clearedTotal} 条不再合规的存量文案（回落到默认值，等下次重试）`);
+    for (const [column, count] of Object.entries(result.clearedByColumn ?? {})) {
+      if (count > 0) console.log(`  ${COLUMN_LABELS[column] ?? column}：${count} 条`);
+    }
+  }
+
   if (result.rejected && result.rejected.length > 0) {
     console.log(`\n被拒绝（该列保持为空，沿用回退值）：${result.rejected.length} 项`);
     for (const row of result.rejected.slice(0, 20)) {

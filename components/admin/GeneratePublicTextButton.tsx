@@ -133,6 +133,12 @@ export function GeneratePublicTextButton() {
             </p>
           )}
 
+          {Object.values(result.clearedByColumn ?? {}).some((count) => count > 0) && (
+            <p className="mt-1 text-[#8a5a00]">
+              清空了 {Object.values(result.clearedByColumn ?? {}).reduce((sum, count) => sum + count, 0)} 条不再合规的存量文案
+              （已回落到默认文案，下次运行会重试）
+            </p>
+          )}
           {result.rejected && result.rejected.length > 0 && (
             <div className="mt-2 text-xs text-[#a5560b]">
               <p className="font-semibold">被拒绝 {result.rejected.length} 项（该列保持为空，沿用回退值）：</p>

@@ -92,6 +92,26 @@ const LONG_DIGIT_RUN = /\d{6,}/;
  */
 const MASKING = /[█▓▒░]|\*{2,}|某某|[xX]{2,}|已隐藏|已屏蔽|保密处理/;
 
+/**
+ * Talking ABOUT the notice instead of reporting what it says.
+ *
+ * Every one of these came out of production (2026-09-20, the user: 不要提原文
+ * 怎样怎样，增加阅读人的不信任感) — 「原文未列明具体设备，仅交代至这一层」,
+ * 「采购范围以此为准」, 「摘要到此为止」. The cause was in this repo, not in
+ * the model: two of the prompt's worked examples had their annotation written
+ * INSIDE the example output string, so the one thing the model could not tell
+ * apart from the copy it was asked to imitate was the note explaining it.
+ * Both are fixed in public-title-qwen.ts; this rule is here so the same shape
+ * cannot reach a page again by some other route.
+ *
+ * It is a real defect and not only a style one. A summary that says what the
+ * source did NOT contain tells a reader, in a search-result snippet, that our
+ * data is partial — and 「采购范围以此为准」 claims an authority over a
+ * government procurement scope that this platform does not have. One costs
+ * trust we have; the other asserts trust we are not owed.
+ */
+const SOURCE_META = /原文|原标题|本摘要|本平台|未(?:列明|载明|提及|列出|交代|说明)|摘要到此|交代到这一层|以此为准|以招标文件为准|仅交代/;
+
 /** Longer than a title, and it is no longer a title. Real translated titles run well under this. */
 const MAX_LENGTH = 60;
 
@@ -274,6 +294,7 @@ export function publicSummaryProblems(candidate: string): string[] {
   if (MASKING.test(text)) problems.push("含有遮挡或占位符号");
   if (CHAINAGE.test(text)) problems.push("含有桩号或编号");
   if (LONG_DIGIT_RUN.test(text)) problems.push("含有项目编号");
+  if (SOURCE_META.test(text)) problems.push("在谈论原文本身，而不是介绍项目");
 
   return problems;
 }

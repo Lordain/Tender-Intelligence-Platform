@@ -187,6 +187,22 @@ rejectsSummary("项目编号 20241301010259 的公路修复工程。", "留了�
 rejectsSummary("███ 市的公路修复工程，包含路面与排水。", "用了遮挡符号");
 rejectsSummary("某某市的公路修复工程，包含路面与排水。", "用了占位符号");
 rejectsSummary(`公路修复工程。${"很长的描述".repeat(20)}`, "超过 100 字");
+// Talking about the notice instead of about the project. Every one of these
+// reached production before this rule existed (2026-09-20), because two of
+// the prompt's own worked examples had the annotation written inside the
+// example OUTPUT — so the model was shown the commentary as copy to imitate.
+rejectsSummary("配电变电站的改善工程，旨在提升区域供电能力。原文未列明具体设备，仅交代至这一层。", "在交代原文而不是介绍项目");
+rejectsSummary("供水企业采购一辆罐式卡车，原文未载明其他设备或配件。", "在交代原文而不是介绍项目");
+rejectsSummary("乡村道路桥梁的更新工程。原文未提及配套引道或附属设施，摘要到此为止。", "在交代原文而不是介绍项目");
+rejectsSummary("市政安全部门的执法记录仪采购项目，采购范围以此为准。", "替读者下了我们没资格下的判断");
+rejectsSummary("国家高中学校的新建工程，本平台仅收录到这一层。", "提到了本平台");
+// The rewrite of each — same facts, no meta-commentary, and still short.
+acceptsSummary("配电变电站及二级电网的供电改善工程，包含配电设施的升级与优化。");
+acceptsSummary("供水企业的罐式运水车采购项目，用于供水保障。");
+acceptsSummary("乡村道路桥梁的更新工程，含桥梁本身的技术改造施工。");
+// The rule must not swallow ordinary prose that happens to contain 说明 or
+// 交代 as part of a real word.
+acceptsSummary("高中学校的新建工程，包含校舍主体施工，设计说明与施工图由承包方编制。");
 
 // --- Which rows are worth a model call ------------------------------------
 const base = {
@@ -215,6 +231,18 @@ check("人工改过的公开标题不覆盖", needsDisplayText({ ...filled, titl
 // Pinning one column must not stop the other two being generated — they are
 // independent strings with independent failure modes.
 check("人工改过一列不影响其他列生成", needsDisplayText({ ...base, manual_field_overrides: ["title_zh_public"] }), true);
+// A filled column whose text the CURRENT rules would refuse counts as needing
+// work. Without this, tightening a rule fixes nothing already published: the
+// hundred rows carrying 原文未列明具体设备 would have needed a hand-written
+// UPDATE … SET summary_zh_public = NULL to become eligible again.
+check("存量摘要违反新规则要重生成", needsDisplayText({ ...filled, summary_zh_public: "变电站改善工程。原文未列明具体设备。" }), true);
+check("存量公开标题带原文地名要重生成", needsDisplayText({ ...filled, title_zh_public: "墨西哥 莱昂市（León）变电站扩建工程" }), true);
+// …but a human's decision still wins over a validator.
+check("人工钉住的列即使违反规则也不动", needsDisplayText({
+  ...filled,
+  summary_zh_public: "变电站改善工程。原文未列明具体设备。",
+  manual_field_overrides: ["summary_zh_public"],
+}), false);
 
 // --- Pairing model output back to rows ------------------------------------
 // A misattributed public title publishes one tender under another's name,

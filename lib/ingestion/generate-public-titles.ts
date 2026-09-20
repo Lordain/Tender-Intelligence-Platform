@@ -57,12 +57,44 @@ type GeneratedColumn = (typeof GENERATED_COLUMNS)[number];
  */
 export function needsDisplayText(row: DisplayTextRow): boolean {
   if (row.title.zh.trim() === row.title.es.trim()) return false;
-  return missingColumns(row).length > 0;
+  return columnsToFill(row).length > 0;
 }
 
-function missingColumns(row: DisplayTextRow): GeneratedColumn[] {
+/**
+ * Why a stored value would not be written today, or [] if it still passes.
+ *
+ * The same three validators the write path runs, pointed at the column
+ * instead of at the model's reply.
+ */
+function storedProblems(row: DisplayTextRow, column: GeneratedColumn): string[] {
+  const value = (row[column] ?? "").trim();
+  if (value === "") return [];
+  if (column === "title_zh_short") return shortTitleProblems(value, row.title.zh);
+  if (column === "title_zh_public") return publicTitleProblems(value);
+  return publicSummaryProblems(value);
+}
+
+/**
+ * The columns this row still needs — empty ones, AND ones holding text that
+ * the current rules would no longer accept.
+ *
+ * The second half is what makes tightening a rule actionable. When 原文未列明
+ * 具体设备 became a rejection (SOURCE_META in lib/public-title.ts, 2026-09-20)
+ * there were already a hundred rows carrying exactly that sentence, published
+ * as their meta description. Without this they would have sat there until
+ * someone hand-wrote an UPDATE … SET summary_zh_public = NULL, because a pass
+ * that only fills blanks can never fix what it wrote when its own rules were
+ * looser. With it, re-running the same button is the fix.
+ *
+ * Pinned columns are still excluded: manual_field_overrides means a human
+ * decided, and a validator does not get to overrule that.
+ */
+function columnsToFill(row: DisplayTextRow): GeneratedColumn[] {
   const pinned = new Set(row.manual_field_overrides ?? []);
-  return GENERATED_COLUMNS.filter((column) => !pinned.has(column) && (row[column] ?? "").trim() === "");
+  return GENERATED_COLUMNS.filter((column) => {
+    if (pinned.has(column)) return false;
+    return (row[column] ?? "").trim() === "" || storedProblems(row, column).length > 0;
+  });
 }
 
 /** One generated field, its verdict, and the text it was derived from. */
@@ -83,6 +115,14 @@ export type GenerateDisplayTextResult = {
   writtenCount?: number;
   /** Per-column write counts — a prompt can be fine on two fields and broken on the third. */
   writtenByColumn?: Record<GeneratedColumn, number>;
+  /**
+   * Per-column counts of values set back to NULL: a stored string that no
+   * longer passes and whose replacement did not pass either. Reported
+   * separately from writes because it is the opposite outcome — a page that
+   * loses its generated text and falls back — and a run that clears a lot is
+   * a prompt still failing the rule that selected those rows.
+   */
+  clearedByColumn?: Record<GeneratedColumn, number>;
   /** Returned by the model but refused, with reasons. A prompt failing one rule across many rows is a prompt to fix, and a bare count says nothing about which. */
   rejected?: { slug: string; column: GeneratedColumn; value: string; problems: string[] }[];
   /** Rows the model never returned, or whose write failed. */
@@ -183,6 +223,11 @@ export async function generateDisplayText(
     title_zh_public: 0,
     summary_zh_public: 0,
   };
+  const clearedByColumn: Record<GeneratedColumn, number> = {
+    title_zh_short: 0,
+    title_zh_public: 0,
+    summary_zh_public: 0,
+  };
   const rejected: NonNullable<GenerateDisplayTextResult["rejected"]> = [];
   const failedSlugs: string[] = [];
   let lastErrorMessage: string | undefined;
@@ -224,8 +269,8 @@ export async function generateDisplayText(
       // later "just write it anyway". A refused column stays NULL, which is
       // the safe state for each of the three by construction.
       const checked = checkGenerated(row, got);
-      const wanted = new Set(missingColumns(row));
-      const update: Record<string, string> = {};
+      const wanted = new Set(columnsToFill(row));
+      const update: Record<string, string | null> = {};
 
       const fields: [GeneratedColumn, FieldOutcome][] = [
         ["title_zh_short", checked.short],
@@ -236,6 +281,17 @@ export async function generateDisplayText(
         if (!wanted.has(column)) continue;
         if (outcome.problems.length > 0) {
           rejected.push({ slug: row.slug, column, value: outcome.value, problems: outcome.problems });
+          // A refused replacement for a column that was EMPTY leaves it empty,
+          // which is the safe state. A refused replacement for a column that
+          // was selected because what it holds no longer passes is different:
+          // doing nothing republishes the bad text on every page it feeds.
+          // So clear it and let the reader fall back — to the placeholder for
+          // the summary, to title.zh for the two titles — until a later run
+          // produces something the rules accept.
+          if (storedProblems(row, column).length > 0) {
+            update[column] = null;
+            clearedByColumn[column] += 1;
+          }
           continue;
         }
         update[column] = outcome.value;
@@ -254,7 +310,9 @@ export async function generateDisplayText(
         continue;
       }
       writtenCount += 1;
-      for (const column of Object.keys(update) as GeneratedColumn[]) writtenByColumn[column] += 1;
+      for (const [column, value] of Object.entries(update) as [GeneratedColumn, string | null][]) {
+        if (value !== null) writtenByColumn[column] += 1;
+      }
     }
 
     options.onProgress?.(done, selected.length);
@@ -265,6 +323,7 @@ export async function generateDisplayText(
     attemptedCount: selected.length,
     writtenCount,
     writtenByColumn,
+    clearedByColumn,
     rejected,
     failedSlugs,
     lastErrorMessage,

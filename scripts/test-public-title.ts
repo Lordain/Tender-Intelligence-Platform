@@ -150,6 +150,14 @@ acceptsShort("卢卡斯-杜里奥韦尔德（Lucas do Rio Verde）市MT-449公�
 acceptsShort("卢卡斯市MT-449号公路修复与新建");
 rejectsShort("", "空标题");
 rejectsShort(fullTitle, "跟原标题一样长，等于没有压缩");
+// A title that was already short has nothing to condense, and the model
+// reordering it is the right answer. Flagging that would reject the rows this
+// pass has the least to do with, and the flagged column would then fall back
+// to the text the model just agreed with.
+ran += 1;
+if (shortTitleProblems("实验室设备采购", "采购实验室设备").length > 0) {
+  failures.push(`原标题本来就短时不应要求再变短：${shortTitleProblems("实验室设备采购", "采购实验室设备").join("；")}`);
+}
 rejectsShort("马托格罗索州卢卡斯-杜里奥韦尔德市MT-449号公路6.93公里路段修复与新建工程", "正文超过 30 字");
 // The parenthetical is excluded from the readability budget, but it cannot be
 // used to smuggle an unbounded title past the check.

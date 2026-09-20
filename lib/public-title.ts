@@ -227,9 +227,15 @@ export function shortTitleProblems(candidate: string, fullTitleZh: string): stri
   const prose = text.replace(LATIN_PARENTHETICAL_GLOBAL, "");
   if (prose.length > MAX_SHORT_TITLE_PROSE) problems.push(`正文超过 ${MAX_SHORT_TITLE_PROSE} 字（${prose.length} 字，不含括号原文）`);
   if (text.length > MAX_SHORT_TITLE_LENGTH) problems.push(`整体超过 ${MAX_SHORT_TITLE_LENGTH} 字（${text.length} 字）`);
-  // A "condensed" title at least as long as its input did not condense. Cheap,
-  // and it catches the failure mode where the model echoes the input back.
-  if (text.length >= full.length) problems.push("没有变短");
+  // A "condensed" title at least as long as its input did not condense — but
+  // only when the input had something to condense. 采购实验室设备 is already a
+  // short title, and the correct output 实验室设备采购 is a reorder of the same
+  // seven characters; rejecting that would flag the rows this pass has the
+  // least to do with, and the flagged column would fall back to the very text
+  // the model just agreed with. So the rule applies from the point where
+  // shortening is actually being asked for.
+  const fullProse = full.replace(LATIN_PARENTHETICAL_GLOBAL, "");
+  if (fullProse.length > MAX_SHORT_TITLE_PROSE && text.length >= full.length) problems.push("没有变短");
   if (MASKING.test(text)) problems.push("含有遮挡或占位符号");
 
   // Latin script the full title did not contain is invented — a

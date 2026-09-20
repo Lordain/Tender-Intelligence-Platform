@@ -4,7 +4,7 @@ import { ALL_SCOPE_TYPES } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders } from "@/lib/filter-tenders";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
-import { publicTitleOf } from "@/lib/public-title";
+import { publicTitleOf, shortTitleOf } from "@/lib/public-title";
 import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 
 export const TENDER_PAGE_SIZE = 20;
@@ -197,11 +197,14 @@ export function toTenderListItem(
     publicSlug: requirePublicTenderSlug(tender),
     // Some unreviewed rows temporarily copy the source title into `zh`.
     // Treat those as untranslated rather than leaking the original title.
-    // A member reads the precise translation; everyone else reads the
-    // de-identified one, which keeps the industry and works keywords and
-    // drops the place, the agency and the procurement code.
+    // A member reads the condensed title — place, asset and works type, with
+    // the procurement shell removed; everyone else reads the de-identified
+    // one, which keeps the industry and works keywords and drops the place,
+    // the agency and the procurement code. Neither is the raw translation:
+    // that stays in title.zh for the admin screens and as the input this pass
+    // regenerates from, and is no longer rendered anywhere on the front end.
     titleZh: translatedTitle && translatedTitle !== originalTitle
-      ? (memberView ? translatedTitle : publicTitleOf(tender))
+      ? (memberView ? shortTitleOf(tender) : publicTitleOf(tender))
       : memberView ? `${tender.buyer}采购项目` : "政府采购项目",
     ...(memberView ? { buyer: tender.buyer } : {}),
     country: tender.country,

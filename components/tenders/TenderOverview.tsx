@@ -19,6 +19,7 @@ import {
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { publicTenderPath } from "@/lib/public-tender-url";
+import { shortTitleOf } from "@/lib/public-title";
 
 function Field({ label, value, emphasized = false, note }: { label: string; value: string; emphasized?: boolean; note?: string | null }) {
   return (
@@ -83,11 +84,19 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
           readers work in Chinese first) — Spanish stays visible as the
           smaller reference line, since that's the text that actually
           matches the official documents. Without a translation yet,
-          Spanish is all there is, so it carries the heading alone. */}
+          Spanish is all there is, so it carries the heading alone.
+
+          shortTitleOf(), not title.zh. A faithful translation of a source
+          title is a faithful translation of an administrative sentence
+          （公开招标（电子）第023/2026号——…，位于卡瓦柳街与火烈鸟大道交汇处）,
+          and nothing is lost by condensing it here: the procurement number
+          has its own field, the full translation stays in the database for
+          the admin screens, and the 原文 line directly below is the text a
+          bidder actually matches against the documents. */}
       {tender.title.zh !== tender.title.es ? (
         <>
           <h1 className="max-w-4xl text-2xl font-black leading-[1.25] tracking-[-0.035em] text-[#071826] sm:text-3xl">
-            {tender.title.zh}
+            {shortTitleOf(tender)}
           </h1>
           <div className="-mt-1 flex items-start gap-2 text-sm leading-6 text-[#7a878f]">
             <span className="shrink-0 text-[11px] font-black uppercase tracking-[0.08em] text-[#9aa5ab]">原文</span>

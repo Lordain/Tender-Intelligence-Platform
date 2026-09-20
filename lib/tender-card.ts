@@ -2,7 +2,7 @@ import type { LocalizedText, Tender, TenderRequirement, TenderRisk } from "@/typ
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
 import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
-import { publicTitleOf } from "@/lib/public-title";
+import { GENERIC_PUBLIC_SUMMARY, publicSummaryOf, publicTitleOf, shortTitleOf } from "@/lib/public-title";
 
 /**
  * What a <TenderCard> needs, and nothing else.
@@ -110,13 +110,24 @@ export function toTenderCardData(
   return {
     id: tender.id,
     publicSlug: requirePublicTenderSlug(tender),
+    // A member gets the condensed title, not the full translation. The full
+    // one is an administrative sentence — correct, archival, and unreadable
+    // as a list row — and it is not lost: it stays in title.zh for the admin
+    // screens and for regenerating this, and the original-language line below
+    // is what actually matches the official documents anyway.
     titleZh: hasRealTranslation
-      ? (memberView ? tender.title.zh : publicTitleOf(tender))
+      ? (memberView ? shortTitleOf(tender) : publicTitleOf(tender))
       : memberView ? `${tender.buyer}采购项目` : "政府采购项目",
     ...(memberView && hasRealTranslation ? { titleOriginal: tender.title.es } : {}),
-    summaryZh: hasRealSummary
-      ? tender.summary.zh
-      : "这是一个政府采购项目，可先查看采购方式、参与范围、所属国家和计划交标时间。",
+    // The guest branch reads the generated public summary and does NOT fall
+    // back to summary.zh. That summary is a translation of the source
+    // `objeto`, which restates the project name and the municipality — so
+    // shipping it beside a redacted title handed back everything the title
+    // had just removed, line-clamped in the UI but present in full in the
+    // DOM and in this component's React payload.
+    summaryZh: memberView
+      ? (hasRealSummary ? tender.summary.zh : GENERIC_PUBLIC_SUMMARY)
+      : publicSummaryOf(tender) ?? GENERIC_PUBLIC_SUMMARY,
     ...(memberView ? { buyer: tender.buyer } : {}),
     country: tender.country,
     industries: tender.industries,

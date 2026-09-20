@@ -1,7 +1,7 @@
 import type { PublicTenderDetail, Tender } from "@/types/tender";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecision, toMonthPrecisionOptional } from "@/lib/public-redaction";
-import { publicTitleOf } from "@/lib/public-title";
+import { GENERIC_PUBLIC_SUMMARY, publicSummaryOf, publicTitleOf } from "@/lib/public-title";
 
 /**
  * Convert a full tender to the public search landing-page contract.
@@ -13,7 +13,6 @@ import { publicTitleOf } from "@/lib/public-title";
  */
 export function toPublicTenderDetail(tender: Tender): PublicTenderDetail {
   const hasChineseTitle = tender.title.zh.trim() && tender.title.zh.trim() !== tender.title.es.trim();
-  const hasChineseSummary = tender.summary.zh.trim() && tender.summary.zh.trim() !== tender.summary.es.trim();
 
   return {
     publicSlug: requirePublicTenderSlug(tender),
@@ -26,9 +25,18 @@ export function toPublicTenderDetail(tender: Tender): PublicTenderDetail {
     // what makes it a search key back to the source portal for everyone
     // else. Falls back to title.zh for a row the generator has not reached.
     titleZh: hasChineseTitle ? publicTitleOf(tender) : "政府采购项目",
-    summaryZh: hasChineseSummary
-      ? tender.summary.zh
-      : "这是一个政府采购项目，可先查看采购方式、参与范围、所属国家和计划交标时间。",
+    // publicSummaryOf(), never summary.zh — and no fallback to it.
+    //
+    // summary.zh is a faithful translation of the source `objeto`, and every
+    // portal we ingest restates the project name, the municipality and often
+    // the street there. Published under a redacted title it undid the
+    // redaction completely, in four places at once: this page, the card, the
+    // meta description (the search-result snippet, read without the page ever
+    // being opened) and the JSON-LD description. A row whose public summary
+    // has not been generated shows the placeholder instead; unlike the title,
+    // this block is optional everywhere it renders, so failing closed costs a
+    // sentence rather than a page.
+    summaryZh: publicSummaryOf(tender) ?? GENERIC_PUBLIC_SUMMARY,
     country: tender.country,
     governmentLevel: tender.governmentLevel,
     industries: tender.industries,

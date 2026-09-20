@@ -490,18 +490,36 @@ translated.
 
 The admin 新项目清单 page's 翻译所有标题 button runs the same function.
 
-### Public titles
+### Display text (short title + public title + public summary)
 
 ```bash
 npm run titles:public                          # dry run, no API calls
 npm run titles:public -- --sample 20           # generate 20 for real and print them, write nothing
 npm run titles:public -- --limit 200 --write   # generate up to 200 and save
-npm run titles:public -- --write               # every row still publishing its full title
+npm run titles:public -- --write               # every row still missing one of the three
 ```
 
-A second pass over the **Chinese** title, filling `tenders.title_zh_public`
-(migration 0053) — the de-identified title shown to guests, crawlers and
-search snippets, while subscribers keep `title.zh`.
+A second pass over the **Chinese** title and summary, filling three columns in
+one model call:
+
+| Column | Audience | What it is |
+| --- | --- | --- |
+| `title_zh_short` (0054) | members | the condensed title shown in list rows and as the detail-page heading — place, asset, works type, with the procurement shell removed |
+| `title_zh_public` (0053) | guests, crawlers | the de-identified category title |
+| `summary_zh_public` (0054) | guests, crawlers | the de-identified summary |
+
+One call rather than three passes: all three are rewrites of the same two
+strings for different audiences, and separate passes can disagree with
+themselves — a public title saying `隧道` above a public summary saying `公路`
+describes two different projects on one page.
+
+`title.zh` and `summary.zh` are never written by this pass. They stay exactly
+as translated — they are what `findDroppedIdentifiers()` guards, what the
+admin screens edit, and the input this pass regenerates from — and clearing
+the three columns returns the site to its previous behaviour. Since 0054 the
+full Chinese title is no longer rendered anywhere on the front end: members
+read the short title plus the original-language line underneath it, which is
+the text that actually matches the official documents.
 
 It exists because the translation above is right to do something that is
 unsafe to publish. Both prompts keep the source proper noun in full-width
@@ -535,8 +553,32 @@ carries a Latin parenthetical, a procurement code, a chainage, a state code
 or a masking artefact — a refused row simply keeps falling back to `title.zh`,
 which is the behaviour that was already there.
 
-`title_zh_public` is deliberately absent from the importer's row builder, so a
-re-import cannot reset it; `scripts/test-public-title.ts` enforces that.
+#### The summary is the half that was missed
+
+0053 stopped publishing `title.zh` and left `summary.zh` alone, which undid
+most of it: the summary is a faithful translation of the source `objeto`, and
+every portal we ingest restates the project name, the municipality and often
+the street there. It reached four surfaces at once — the card, the detail
+page, the JSON-LD description, and the meta description, which is the
+search-result snippet a reader sees *without opening the page*. Fixed in 0054
+by generating `summary_zh_public` in the same pass.
+
+The two public columns are read through different fallbacks, on purpose:
+
+- `publicTitleOf()` **falls open** to `title.zh`. It has to — the title is the
+  `<h1>`, the `<title>` and the JSON-LD name, so a fallback that returns
+  nothing blanks the page.
+- `publicSummaryOf()` **fails closed**. A row with no generated summary shows
+  the generic placeholder; it never falls back to `summary.zh`. Every surface
+  that renders the summary already makes it conditional, so failing closed
+  costs a sentence rather than a page.
+
+`scripts/test-public-tender.ts` asserts both directions by value, because
+"fall back to `summary.zh` so the page isn't empty" is the single most likely
+way this gets quietly undone and it would look reasonable in review.
+
+All three columns are deliberately absent from the importer's row builder, so
+a re-import cannot reset them; `scripts/test-public-title.ts` enforces that.
 
 ### Key dates
 

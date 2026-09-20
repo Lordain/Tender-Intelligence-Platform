@@ -2,6 +2,7 @@ import { toPublicTenderDetail } from "../lib/public-tender";
 import { toTenderListItem } from "../lib/tender-list-page";
 import { toTenderCardData } from "../lib/tender-card";
 import { publicTenderPath } from "../lib/public-tender-url";
+import { GENERIC_PUBLIC_SUMMARY } from "../lib/public-title";
 import type { Tender } from "../types/tender";
 
 const fullTender = {
@@ -11,7 +12,9 @@ const fullTender = {
   tenderNumber: "SECRET_TENDER_CODE",
   title: { zh: "SECRET_PLACE_NAME变电站扩建工程", es: "SECRET_ORIGINAL_TITLE", en: "English title" },
   titleZhPublic: "墨西哥 变电站扩建工程（输配电）",
-  summary: { zh: "中文摘要", es: "Resumen", en: "Summary" },
+  titleZhShort: "SECRET_PLACE_NAME变电站扩建",
+  summary: { zh: "SECRET_SUMMARY_PLACE的变电站扩建工程", es: "Resumen", en: "Summary" },
+  summaryZhPublic: "配电变电站的扩建工程，包含开关柜安装与配套土建施工。",
   oneLineSummary: "SECRET_ONE_LINE_SUMMARY",
   buyer: "采购单位",
   country: "Mexico",
@@ -63,6 +66,13 @@ const protectedMarkers = [
   // parentheses by design (see lib/public-title.ts), which makes it the best
   // search key back to the source portal on the whole platform.
   "SECRET_PLACE_NAME",
+  // The translated SUMMARY, added 2026-09-20. It is a faithful rendering of
+  // the source `objeto`, which restates the project name and the municipality
+  // — so shipping it under a redacted title handed back everything the title
+  // had just removed, and it reached further than the title did: the meta
+  // description built from it is the search-result snippet, read without the
+  // page ever being opened.
+  "SECRET_SUMMARY_PLACE",
   "47382915",
   "2026-09-15",
   "2026-10-01",
@@ -72,8 +82,24 @@ for (const marker of protectedMarkers) {
   if (serialized.includes(marker)) throw new Error(`公开项目数据泄露了受保护字段：${marker}`);
 }
 
-if (publicTender.titleZh !== "墨西哥 变电站扩建工程（输配电）" || publicTender.summaryZh !== "中文摘要") {
+if (publicTender.titleZh !== "墨西哥 变电站扩建工程（输配电）") {
   throw new Error("公开项目详情没有使用去标识化的公开标题");
+}
+if (publicTender.summaryZh !== "配电变电站的扩建工程，包含开关柜安装与配套土建施工。") {
+  throw new Error("公开项目详情没有使用去标识化的公开摘要");
+}
+
+// The summary fails closed, and this is the assertion that keeps it that way.
+// A future "fall back to summary.zh so the page isn't empty" is the single
+// most likely way this protection gets undone, and it would look reasonable
+// in review — so the placeholder is asserted by value rather than merely
+// checked for not containing the marker.
+const withoutPublicSummary = toPublicTenderDetail({ ...fullTender, summaryZhPublic: undefined });
+if (withoutPublicSummary.summaryZh.includes("SECRET_SUMMARY_PLACE")) {
+  throw new Error("没有公开摘要的项目回落到了原摘要——脱敏被绕过");
+}
+if (withoutPublicSummary.summaryZh !== GENERIC_PUBLIC_SUMMARY) {
+  throw new Error(`没有公开摘要时应当显示占位文案，实际是：${withoutPublicSummary.summaryZh}`);
 }
 
 if (publicTender.publicSlug !== "p-7a3c91e4b6d82f05") {
@@ -126,10 +152,18 @@ const memberListItem = toTenderListItem(fullTender, { memberView: true });
 if (memberListItem.buyer !== "采购单位") {
   throw new Error("登录用户的项目列表缺少发布机构");
 }
-// The subscriber keeps the precise translation — the redaction is an
-// entitlement boundary, not a downgrade of the data.
-if (memberListItem.titleZh !== "SECRET_PLACE_NAME变电站扩建工程") {
-  throw new Error("订阅用户的项目列表应显示完整翻译标题");
+// The subscriber keeps the place name — the redaction is an entitlement
+// boundary, not a downgrade of the data — but reads it in the condensed form
+// rather than the full administrative sentence.
+if (memberListItem.titleZh !== "SECRET_PLACE_NAME变电站扩建") {
+  throw new Error("订阅用户的项目列表应显示短标题");
+}
+// Until the short title is generated, the member still sees the full
+// translation. Falling open is right here and wrong for the public summary;
+// both directions are asserted so neither can be "tidied up" into the other.
+const memberWithoutShort = toTenderListItem({ ...fullTender, titleZhShort: undefined }, { memberView: true });
+if (memberWithoutShort.titleZh !== "SECRET_PLACE_NAME变电站扩建工程") {
+  throw new Error("没有短标题时订阅用户应回落到完整翻译标题");
 }
 if (memberListItem.estimatedValue !== 47382915 || memberListItem.estimatedValueBand !== undefined) {
   throw new Error("订阅用户的项目列表应显示精确金额");
@@ -171,6 +205,15 @@ if (guestCard.titleOriginal !== undefined) {
 if (guestCard.titleZh !== "墨西哥 变电站扩建工程（输配电）") {
   throw new Error("访客项目卡片没有使用去标识化的公开标题");
 }
+if (guestCard.summaryZh !== "配电变电站的扩建工程，包含开关柜安装与配套土建施工。") {
+  throw new Error("访客项目卡片没有使用去标识化的公开摘要");
+}
+// Same fail-closed rule as the detail page. The card is the worse of the two
+// to get wrong: it renders on the homepage, the most crawled page on the site.
+const guestCardWithoutSummary = toTenderCardData({ ...fullTender, summaryZhPublic: undefined });
+if (guestCardWithoutSummary.summaryZh.includes("SECRET_SUMMARY_PLACE")) {
+  throw new Error("没有公开摘要的项目卡片回落到了原摘要——脱敏被绕过");
+}
 if (guestCard.estimatedValueBand !== "$1M – $5M USD" || guestCard.estimatedValue !== undefined) {
   throw new Error("访客项目卡片未按区间脱敏金额");
 }
@@ -198,8 +241,12 @@ const memberCard = toTenderCardData(fullTender, { memberView: true, includeAnaly
 if (memberCard.titleOriginal !== "SECRET_ORIGINAL_TITLE" || memberCard.buyer !== "采购单位") {
   throw new Error("订阅用户的项目卡片缺少原文标题或发布机构");
 }
-if (memberCard.titleZh !== "SECRET_PLACE_NAME变电站扩建工程") {
-  throw new Error("订阅用户的项目卡片应显示完整翻译标题");
+if (memberCard.titleZh !== "SECRET_PLACE_NAME变电站扩建") {
+  throw new Error("订阅用户的项目卡片应显示短标题");
+}
+// The member keeps the real summary; only the guest branch is redacted.
+if (!memberCard.summaryZh.includes("SECRET_SUMMARY_PLACE")) {
+  throw new Error("订阅用户的项目卡片应显示完整摘要");
 }
 if (memberCard.estimatedValue !== 47382915 || memberCard.submissionDeadline !== "2026-10-01T00:00:00.000Z") {
   throw new Error("订阅用户的项目卡片应显示精确金额与日期");

@@ -140,6 +140,7 @@
     "probe:brazil-behind-doors": "tsx scripts/probe-brazil-behind-doors.ts",
     "probe:brazil-pipeline": "tsx scripts/probe-brazil-pipeline.ts",
     "capture:antaq": "tsx scripts/capture-antaq-audiencias.ts",
+    "capture:antaq-sisap": "tsx scripts/capture-antaq-sisap.ts",
     "capture:dou": "tsx scripts/capture-dou.ts",
     "purge:awarded-closed": "tsx --env-file-if-exists=.env.local scripts/purge-awarded-closed.ts",
     "test:bid-window": "tsx scripts/test-bid-window.ts",

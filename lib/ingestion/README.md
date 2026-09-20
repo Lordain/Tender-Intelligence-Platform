@@ -7203,8 +7203,17 @@ as much as 11 of 20 suggests. Counted by year, only **3 of those 11** are 2025
 or later (05/2026, 01/2026, 06/2025); the other eight are 2024 and 2022 and any
 sane window drops them anyway. Measured against the hearings still in process,
 the real numbers are **5 of 10** today and **8 of 10** with sisapinternet
-captured — the remaining two are the Cloudflare ones. That is a follow-up, not
-a guess to make here.
+captured — the remaining two are the Cloudflare ones.
+
+`scripts/capture-antaq-sisap.ts` is that follow-up, wired into the probe
+workflow as `what=capture-sisap`. Its first job is not to capture anything: it
+is to answer whether that host answers **at all**, since no machine here has
+ever fetched it, and to name which kind of "no" it gets — a challenge page, a
+network failure and an HTTP status are three situations with three different
+next steps, and a run that calls all of them "failed" says nothing. It strips
+`__VIEWSTATE` and friends before committing, because WebForms serialises the
+whole server-side control tree into base64 hidden inputs and committing those
+buries the 10KB a parser reads under state that changes on every fetch.
 
 ### "Em andamento" is the archive
 

@@ -28,7 +28,7 @@ on:
         description: "敲门（能不能连上）还是看门后面（有没有能投的标）"
         type: choice
         default: both
-        options: [doors, behind, pipeline, capture, dou, watch-dou, antaq, both]
+        options: [doors, behind, pipeline, capture, capture-sisap, dou, watch-dou, antaq, both]
       args:
         description: "额外参数，原样传给上面选的那条命令（例如 --days 5 --all-organs）"
         type: string
@@ -82,6 +82,18 @@ jobs:
         if: inputs.what == 'capture'
         run: npm run capture:antaq
 
+      # The other eleven hearings ANTAQ lists — SisapInternet, an ASP.NET
+      # application that is not gov.br and has no parser. This host has never
+      # been fetched from ANY machine, so the run's first job is to say
+      # whether it answers and which kind of "no" it gives if it does not.
+      # Defaults to the three hearings numbered 2025 or later, per the user's
+      # rule 招标中就保留，以逾期就不要; pass `--years 0` for all eleven.
+      - name: Capture the ANTAQ SisapInternet pages
+        if: inputs.what == 'capture-sisap'
+        env:
+          ARGS: ${{ inputs.args }}
+        run: npm run capture:antaq-sisap -- $ARGS
+
       # Brazilian law requires every federal tender notice, edital and award
       # in the DOU, which makes it the one Brazilian source that is complete
       # by statute rather than by an agency's choice. Same shape this repo
@@ -117,7 +129,7 @@ jobs:
         run: npm run ingest:antaq -- $ARGS
 
       - name: Upload the capture
-        if: inputs.what == 'capture' || inputs.what == 'dou'
+        if: inputs.what == 'capture' || inputs.what == 'capture-sisap' || inputs.what == 'dou'
         uses: actions/upload-artifact@v7
         with:
           name: brazil-capture-${{ github.run_id }}
@@ -129,11 +141,11 @@ jobs:
       # cannot reach. The trimmed sample is what the parser gets written
       # against, so it goes into the branch next to the other fixtures.
       - name: Commit the sample
-        if: inputs.what == 'capture' || inputs.what == 'dou'
+        if: inputs.what == 'capture' || inputs.what == 'capture-sisap' || inputs.what == 'dou'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/ingestion/__fixtures__/antaq lib/ingestion/__fixtures__/dou
+          git add lib/ingestion/__fixtures__/antaq lib/ingestion/__fixtures__/antaq-sisap lib/ingestion/__fixtures__/dou
           if git diff --cached --quiet; then
             echo "样本没有变化，不提交。"
             exit 0

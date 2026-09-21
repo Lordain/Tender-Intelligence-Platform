@@ -61,9 +61,9 @@
  * the watch first and probes its hits.
  */
 import { mkdir, writeFile } from "node:fs/promises";
-import { fetchLatestDouEdition, isDouFailure, douFailureKind } from "../lib/ingestion/connectors/dou-live";
+import { fetchLatestDouEdition, fetchDouEdition, recentWeekdays, isDouFailure, douFailureKind } from "../lib/ingestion/connectors/dou-live";
 import { douNoticeUrl, DOU_SECTIONS, type DouSection } from "../lib/ingestion/dou-edition";
-import { watchDouEdition } from "../lib/ingestion/dou-watch";
+import { watchDouEdition, FORM_CONCESSION } from "../lib/ingestion/dou-watch";
 
 const TIMEOUT_MS = 45_000;
 const FIXTURE_DIR = "lib/ingestion/__fixtures__/dou/detail";
@@ -144,15 +144,24 @@ async function main() {
   }
 
   const save = args.includes("--save");
-  console.log(`DOU 详情页探测 —— ${section}，取最近一期的前 ${count} 条\n`);
+  const onlyKept = args.includes("--kept");
+  const onlyConcession = args.includes("--concession");
+  // A concession is about ONE row in a full 2,139-notice edition, and the only
+  // one in the 2026-09-18 calibration set is an AVISO DE RETIFICAÇÃO, which
+  // --concession excludes on purpose. So a single edition answers nothing: the
+  // expected result of any one day is zero. --days walks weekdays back so that
+  // one dispatch is a search rather than a die roll. Every other use of this
+  // probe still reads one edition.
+  const days = Math.max(1, Math.trunc(Number(argValue(args, "--days") ?? (onlyConcession ? 10 : 1))));
+  console.log(`DOU 详情页探测 —— ${section}，${days > 1 ? `往回扫 ${days} 个工作日` : "最近一期"}，取前 ${count} 条\n`);
 
   // Not "today": the latest edition that exists. Run #13 asked for 21-09-2026
   // at 00:41 UTC — Brasília was still on Sunday evening, Monday's edition was
   // not out, and the empty page was reported as a template change. See
   // fetchLatestDouEdition.
-  let result;
+  let latest;
   try {
-    result = await fetchLatestDouEdition(section);
+    latest = await fetchLatestDouEdition(section);
   } catch (err) {
     if (isDouFailure(err)) {
       console.error(`${err instanceof Error ? err.message : String(err)}`);
@@ -167,22 +176,85 @@ async function main() {
     }
     throw err;
   }
-  const day = result.day;
-  for (const skip of result.skipped) {
+  for (const skip of latest.skipped) {
     console.log(`  跳过 ${skip.day}：${skip.kind === "unreachable" ? "没取到页面" : "还没出版或是节假日"}`);
   }
 
-  const all = result.edition.notices;
-  const onlyKept = args.includes("--kept");
-  // The watch's own hits, not the day's first N. See the header.
-  const pool = onlyKept ? watchDouEdition(all).kept.map((v) => v.notice) : all;
-  const sample = pool.slice(0, count);
-  console.log(
-    `${day} 这一期 ${all.length} 条公告（${result.url}）。${onlyKept ? `watch 命中 ${pool.length} 条，取前 ${sample.length} 条。` : ""}\n`,
-  );
-  if (sample.length === 0) {
-    console.log("这一天 watch 一条都没命中 —— 换一天再试（--section do1 或往前找个工作日）。");
+  // Weekdays back from the edition that actually exists, not from today.
+  const wanted = days > 1 ? recentWeekdays(days, new Date(`${latest.day}T12:00:00Z`)) : [latest.day];
+  let scannedNotices = 0;
+  let scannedDays = 0;
+  let missedDays = 0;
+  /** Every notice that survived the filters, across every day scanned. */
+  const picked: { day: string; url: string; verdict: ReturnType<typeof watchDouEdition>["kept"][number] }[] = [];
+  /** Only used when neither --kept nor --concession is given: the latest day's first N. */
+  let plainPool: { day: string; url: string; notice: (typeof latest.edition.notices)[number] }[] = [];
+
+  for (const wantedDay of wanted) {
+    let dayResult;
+    try {
+      dayResult = wantedDay === latest.day ? latest : await fetchDouEdition(section, wantedDay);
+    } catch (err) {
+      if (!isDouFailure(err)) throw err;
+      // One missing day is a calendar fact (holiday, not published yet). All
+      // of them missing is a different thing entirely, and is reported below
+      // rather than silently read as "no concessions exist".
+      missedDays += 1;
+      console.log(`  ${wantedDay}：${douFailureKind(err) === "unreachable" ? "没取到页面" : "没出版或是节假日"}`);
+      continue;
+    }
+    scannedDays += 1;
+    const notices = dayResult.edition.notices;
+    scannedNotices += notices.length;
+
+    if (!onlyKept && !onlyConcession) {
+      plainPool = notices.map((notice) => ({ day: dayResult.day, url: dayResult.url, notice }));
+      break; // the plain mode has always been "the latest edition's first N"
+    }
+
+    const kept = watchDouEdition(notices).kept;
+    const hits = onlyConcession
+      ? // Two filters, and the second matters as much as the first. The one
+        // concession captured so far (Flona do Bom Futuro) is an AVISO DE
+        // RETIFICAÇÃO — an amendment to a notice nobody here has seen. An
+        // erratum cannot answer "can an original concession notice be
+        // parsed", because a field it omits may be omitted only because the
+        // original already carried it. So stage must be `opening`.
+        kept.filter((v) => v.form === "works_or_concession" && v.stage === "opening" && FORM_CONCESSION.test(`${v.notice.title} ${v.notice.snippet}`))
+      : kept;
+    console.log(`  ${dayResult.day}：${notices.length} 条公告，watch 留下 ${kept.length} 条${onlyConcession ? `，其中特许类原始通告 ${hits.length} 条` : ""}`);
+    for (const v of hits) picked.push({ day: dayResult.day, url: dayResult.url, verdict: v });
+    if (picked.length >= count) break;
+  }
+
+  if (scannedDays === 0) {
+    console.log(`\n${wanted.length} 个工作日一期都没取到。这是「够不着」，不是「DOU 里没有特许」。`);
+    process.exitCode = 1;
     return;
+  }
+
+  const sample =
+    !onlyKept && !onlyConcession ? plainPool.slice(0, count) : picked.slice(0, count).map((p) => ({ day: p.day, url: p.url, notice: p.verdict.notice }));
+
+  console.log(`\n扫了 ${scannedDays} 个工作日、${scannedNotices} 条公告${missedDays > 0 ? `（${missedDays} 天没取到）` : ""}，取 ${sample.length} 条。\n`);
+
+  if (sample.length === 0) {
+    if (onlyConcession) {
+      // The discriminator, stated rather than left to be guessed at later.
+      console.log(`${scannedDays} 个工作日、${scannedNotices} 条公告里没有一条特许类原始通告。`);
+      console.log("特许本来就稀疏 —— 2026-09-18 那份完整版面 2,139 条里，watch 留下 37 条，命中特许的只有 1 条，");
+      console.log("而且那 1 条是 AVISO DE RETIFICAÇÃO，正好被 stage=opening 这道闸挡掉。所以少数几天是 0 很正常。");
+      console.log("但扫了十几个工作日还是 0，那就不是稀疏了 —— 是 FORM_CONCESSION 那条正则和 DOU 实际印的词对不上，回来改它。");
+      console.log("想看看这些天 watch 到底留了什么，把 --concession 换成 --kept。");
+      return;
+    }
+    console.log("watch 一条都没命中 —— 换一天再试（--section do1 或加 --days）。");
+    return;
+  }
+  if (onlyConcession) {
+    console.log("── 要抓的这几条 ──");
+    for (const p of picked.slice(0, count)) console.log(`  · ${p.day}  ${p.verdict.notice.title.slice(0, 70)}`);
+    console.log("");
   }
 
   if (save) await mkdir(FIXTURE_DIR, { recursive: true });
@@ -190,7 +262,8 @@ async function main() {
   let resolved = 0;
   let longer = 0;
   let saved = 0;
-  for (const [index, notice] of sample.entries()) {
+  for (const [index, entry] of sample.entries()) {
+    const notice = entry.notice;
     const url = douNoticeUrl(notice);
     const stub = notice.snippet.length;
     let line: string;
@@ -216,7 +289,12 @@ async function main() {
         );
         line = `200 · 正文 ${full} 字（摘要 ${stub} 字）${instruments.size > 1 ? `  ⚠ 这一条里有 ${instruments.size} 个标` : ""}${full > stub * 1.5 ? "  ← 比摘要长" : "  ← 没比摘要长多少"}`;
         if (save) {
-          const name = `${String(index + 1).padStart(2, "0")}-${notice.urlTitle.replace(/[^a-z0-9._-]/gi, "_").slice(0, 70)}.html`;
+          // Prefixed with the edition day. The two batches already in this
+          // directory both number from 01, which was tolerable while each
+          // came from one day; a scan across ten weekdays would collide on
+          // every run. The day also makes a fixture's provenance readable
+          // without opening it.
+          const name = `${entry.day}-${String(index + 1).padStart(2, "0")}-${notice.urlTitle.replace(/[^a-z0-9._-]/gi, "_").slice(0, 60)}.html`;
           await writeFile(`${FIXTURE_DIR}/${name}`, trimForFixture(html, url, stub));
           saved += 1;
           line += `  → ${name}`;

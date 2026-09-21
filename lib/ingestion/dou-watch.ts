@@ -166,6 +166,29 @@ export type DouProcurementForm =
 const FORM_DISPOSAL = /\b(leil[ãa]o|leiloeir[ao])\b[\s\S]{0,200}?\b(aliena|venda|vender|desfazimento|sucata|inserv[íi]ve|bens? m[óo]veis|semoventes|apreendid)/i;
 const FORM_WORKS =
   /\b(concorr[êe]ncia|di[áa]logo competitivo|regime diferenciado de contrata|\bRDC\b|contrata[çc][ãa]o (integrada|semi-?integrada)|chamamento p[úu]blico|pr[ée]-?qualifica[çc][ãa]o|manifesta[çc][ãa]o de interesse|\bPMI\b|\bPPP\b|parceria p[úu]blico-?privada|concess[ãa]o (comum|patrocinada|administrativa|de servi|florestal|real de uso)|arrendamento|permiss[ãa]o de servi[çc]o)\b/i;
+/**
+ * The concession half of FORM_WORKS, on its own.
+ *
+ * FORM_WORKS deliberately holds works AND concessions, because the watch wants
+ * to wake someone for both. This separates them, because after run #17 they
+ * are no longer the same question: federal works measurably duplicate PNCP
+ * (3 of 4 confirmed, same dates, PNCP carrying more), while concessions are
+ * the class PNCP structurally cannot hold — a concession is not a
+ * *contratação* under Lei 14.133/2021 — and nothing here has yet shown one can
+ * be parsed.
+ *
+ * Wider than FORM_WORKS's concession clause on purpose: that one requires a
+ * qualifier (`concessão florestal`, `concessão de serviço`), which is right
+ * when the job is to avoid waking someone for the word "concessão" in a
+ * sentence about an existing contract. Here the job is to FIND candidates to
+ * read by hand, so a false positive costs one fetch and a miss costs the
+ * whole question. Calibrated against 2026-09-18: 1 of the 37 rows the watch
+ * kept from a 2,139-notice edition matches, and it is the Flona do Bom Futuro
+ * forest concession.
+ */
+export const FORM_CONCESSION =
+  /\b(concess[ãa]o|concession[áa]ri|\bPPP\b|parceria p[úu]blico-?privada|arrendamento|permiss[ãa]o de servi[çc]o|\bPMI\b|manifesta[çc][ãa]o de interesse|desestatiza[çc][ãa]o)\b/i;
+
 const FORM_COMMODITY = /\b(preg[ãa]o|tomada de pre[çc]os|convite|cota[çc][ãa]o eletr[ôo]nica|dispensa (eletr[ôo]nica|de licita)|inexigibilidade)\b/i;
 const FORM_REGISTRATION = /\b(credenciamento|habilita[çc][ãa]o institucional|chamamento p[úu]blico permanente|pr[ée]-?cadastramento)\b/i;
 

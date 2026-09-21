@@ -125,6 +125,12 @@ jobs:
       # or stays a lead radar. It has to run here: the laptop's browser test
       # returned ERR_HTTP2_PROTOCOL_ERROR, which is in.gov.br's known
       # behaviour toward that network and says nothing about the URL.
+      #
+      # `args=--concession --save` is the one that matters now: run #17 settled
+      # that the notices this parser handles duplicate PNCP, so the open
+      # question is the class PNCP cannot hold. A concession is about one row
+      # in a 2,139-notice edition and the only one captured so far is an
+      # erratum, so that mode scans ten weekdays by default rather than one.
       - name: Check the DOU detail-page link
         if: inputs.what == 'dou-link'
         env:

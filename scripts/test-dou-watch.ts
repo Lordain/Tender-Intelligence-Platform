@@ -29,6 +29,7 @@ import {
   classifyDouForm,
   classifyDouStage,
   watchDouEdition,
+  FORM_CONCESSION,
   DOU_NEVER_WATCHED_ORGANS,
   DOU_WATCHED_ORGANS,
   type DouStage,
@@ -241,6 +242,31 @@ ok("DNIT 总部的港口 IP4 工程（Concorrência 307/2026）还在", recalibr
 ok("海军圣佩德罗的防雷工程（Concorrência 133/2026）还在", recalibrated.kept.some((v) => /Concorr[êe]ncia 133\/2026/.test(v.notice.snippet)));
 ok("海军 IEAPM 的码头改造（Concorrência 151/2025）还在", recalibrated.kept.some((v) => /Concorr[êe]ncia 151\/2025/.test(v.notice.snippet)));
 ok("巴西林业局的森林特许经营还在", recalibrated.kept.some((v) => /Concess[ãa]o Florestal/i.test(v.notice.snippet)));
+// ── --concession 这道闸，按真实一天点名 ────────────────────────────────────
+//
+// 用来回答「特许能不能解析」的那一份样本还没有。这道闸决定去抓哪一条，所以它
+// 挑中什么、挡掉什么，都得按真实版面钉住，而不是跑一次看着像就算了。
+console.log("\n── 特许筛选闸（probe:dou-link --concession 用的就是这个）──");
+const concessionRows = recalibrated.kept.filter((v) => FORM_CONCESSION.test(`${v.notice.title} ${v.notice.snippet}`));
+check("2,139 条的一整期里，watch 留下的 5 条中只有 1 条是特许", concessionRows.length, 1);
+ok("就是 Flona do Bom Futuro 那条森林特许", /Concess[ãa]o Florestal/i.test(concessionRows[0].notice.snippet));
+// The whole reason --concession exists: this one is an AVISO DE RETIFICAÇÃO,
+// an amendment to an original notice nobody here has ever seen. A field it
+// omits may be omitted only because the original carried it, so it cannot
+// answer whether an original concession notice is parseable.
+check("而它是勘误，不是原始通告", concessionRows[0].stage, "amendment");
+ok(
+  "所以 --concession 在 2026-09-18 这天取 0 条 —— 这是对的，不是筛错了",
+  concessionRows.filter((v) => v.stage === "opening").length === 0,
+);
+// The discriminator, pinned: a few empty days is scarcity, a dozen is a broken
+// regex. If FORM_CONCESSION ever stops matching the one row we know it should,
+// this fails instead of quietly turning the probe into a no-op.
+ok(
+  "闸子本身没有失灵：那条勘误确实被 FORM_CONCESSION 认出来了",
+  FORM_CONCESSION.test(concessionRows[0].notice.snippet),
+);
+
 // And the two things that were drowning it.
 const droppedForms = new Map<string, number>();
 for (const v of recalibrated.dropped) droppedForms.set(v.form, (droppedForms.get(v.form) ?? 0) + 1);

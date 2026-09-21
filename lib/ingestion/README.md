@@ -7651,3 +7651,48 @@ instrument+number pairs per notice and flags a body carrying more than one, so
 the seven-in-one shape announces itself in the log rather than waiting to be
 found by a mapper. The detail parser gets written once those pages are in hand,
 and not before.
+
+## 跑批机凌晨跑，问的是巴西还没到的那一天（2026-09-21）
+
+第 13 次 workflow 失败了，退出码 1，21 秒。它报的是：
+
+> DOU 2026-09-21 do3 页面取到了，但里面没有带 jsonArray 的 JSON 块 —— in.gov.br 多半改了页面结构
+
+**这句话是错的，而且是我写的。** 那一刻是 UTC 周一 00:41，巴西利亚还是**周日晚上 21:41**，周一那期根本还没出版。in.gov.br 老老实实返回了一个没有内容的页面，脚本把它翻译成了「国家出版局改版了」。
+
+日期是 `lastWeekday()` 算的，而它按 **UTC** 数日子：
+
+```ts
+const day = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+```
+
+巴西是 UTC−3，所以**每天 00:00–03:00 UTC 之间跑的任何一次，问的都是巴西的明天**。周一凌晨最严重：往前退周末的逻辑看到「周一」是工作日，不退，于是要了一期不存在的报。
+
+### 改了三处
+
+**一、日子按巴西利亚算。** 新的 `brasiliaDay()` 用 `Intl` 加时区名，不是写死 −3 —— 巴西 2019 年取消了夏令时，写死的偏移量离「国会改一次法就悄悄错掉」只差一步。`lastWeekday()` 和 `recentWeekdays()` 都从它起算。`scripts/capture-dou.ts` 里那份**复制出来的同样有 bug 的** `lastWeekday` 删掉了，改成共用一份。
+
+**二、「取不到」和「取到了但没内容」分成两种错。** 以前都叫 `douUnreachable`。现在是 `DouFailureKind`：
+
+| kind | 意思 | 该做什么 |
+|---|---|---|
+| `unreachable` | 页面没到手：拒了、读一半断了、拦截页 | 换台能开 in.gov.br 的机器跑 |
+| `no-payload` | 页面完整到手，里面没有那块 JSON | **三种可能**，见下 |
+
+`no-payload` 单独一天**说明不了任何事**：还没出版、法定假日、改版，长得一模一样。所以它现在只陈述看见了什么，不下结论。
+
+**三、往前走着问，直到问到真的有的那一期。** 新的 `fetchLatestDouEdition()` 从今天起往前数工作日（默认最多 3 个）：
+
+- 任何一天有内容 → 就是它，`skipped` 里记下跳过了哪几天、为什么，节假日不会无声消失
+- 每天都 `unreachable` → 网络问题，和以前一样
+- 每天都取到页面、每天都没有 JSON → **到这一步才配说「in.gov.br 改版了」**
+
+这就是那条判据：**一天空是日历问题，连着三个工作日空才是结构问题。** 结论是走出来的，不是断言出来的。
+
+`probe:dou-link` 改用它了，不再问「今天」。`watch:dou` 一天都没读到时，会按 `unreachable` 还是 `no-payload` 说两段不同的话 —— 对着节假日喊「够不着」会把人支去查网络。
+
+`test-dou-watch` 从 92 项加到 97 项，新的 5 项钉死了这个时刻：`brasiliaDay("2026-09-21T00:41:53Z")` 必须是 `2026-09-20`，02:59 UTC 还没跨天，03:01 才跨，而那一刻的 `lastWeekday()` 要给出 **2026-09-18**（上周五）。
+
+### 还没被咬到的那一次
+
+`watch-dou.ts` 有同一个 bug，只是还没排进定时任务。`daily-ingest.yml` 跑在 11:17 UTC（巴西 08:17），在出版之后，所以它一直是对的 —— 纯属运气。DOU 监控哪天排进 cron，凌晨那一档就会天天误报「改版了」。现在提前拆了。

@@ -45,7 +45,7 @@
  *   npm run watch:dou -- --show-dropped             （连丢掉的也列出来，调规则时用）
  */
 import { readFileSync } from "node:fs";
-import { fetchDouEdition, isDouUnreachable, recentWeekdays, type DouDayResult } from "../lib/ingestion/connectors/dou-live";
+import { fetchDouEdition, isDouFailure, douFailureKind, recentWeekdays, type DouDayResult } from "../lib/ingestion/connectors/dou-live";
 import { douEditionUrl, douNoticeUrl, readDouPayload, DOU_SECTIONS, type DouSection } from "../lib/ingestion/dou-edition";
 import {
   watchDouEdition,
@@ -156,13 +156,20 @@ async function main() {
 
   let total = 0;
   let reached = 0;
+  let unreachableDays = 0;
+  let emptyDays = 0;
+  // recentWeekdays counts in Brasília now. Before that it counted in UTC, and a
+  // run between 00:00 and 03:00 UTC asked the National Press for tomorrow —
+  // run #13, 2026-09-21.
   for (const day of recentWeekdays(days)) {
     try {
       const result = await fetchDouEdition(section, day);
       reached += 1;
       total += reportDay(result, options, showDropped);
     } catch (err) {
-      if (!isDouUnreachable(err)) throw err;
+      if (!isDouFailure(err)) throw err;
+      if (douFailureKind(err) === "unreachable") unreachableDays += 1;
+      else emptyDays += 1;
       console.error(`\n${err instanceof Error ? err.message : String(err)}`);
     }
   }
@@ -170,10 +177,18 @@ async function main() {
   if (reached === 0) {
     // Never report an unreachable source as an empty one — the two need
     // opposite fixes, and in.gov.br is reachable from the runner and from
-    // Vercel while refusing the laptop and this sandbox outright.
-    console.error("\n一天都没读到。这是「够不着」，不是「公报里没东西」：");
-    console.error("  in.gov.br 对 GitHub 跑批机和 Vercel 是开的，对笔记本会读到一半断开，沙箱里根本不在白名单。");
-    console.error("  想在本机看规则跑得对不对：npm run watch:dou -- --fixture");
+    // Vercel while refusing the laptop and this sandbox outright. A day whose
+    // page arrived carrying no payload is a third thing again, and saying
+    // "够不着" about it would send someone to check the network for a holiday.
+    if (unreachableDays > 0) {
+      console.error("\n一天都没读到。这是「够不着」，不是「公报里没东西」：");
+      console.error("  in.gov.br 对 GitHub 跑批机和 Vercel 是开的，对笔记本会读到一半断开，沙箱里根本不在白名单。");
+      console.error("  想在本机看规则跑得对不对：npm run watch:dou -- --fixture");
+    } else {
+      console.error(`\n${emptyDays} 个工作日的页面都取到了，但都没有那块 JSON。页面是通的，内容不在：`);
+      console.error("  可能是节假日（巴西的法定假日没有普通版），也可能 in.gov.br 改了页面结构。");
+      console.error("  多问几天分得清：--days 3 还全是这样，就是结构变了，改 parseDouEdition()。");
+    }
     process.exit(1);
   }
   console.log(`\n${reached} 个工作日，合计命中 ${total} 条。什么都没有写入数据库 —— 这是监控，不是导入。`);

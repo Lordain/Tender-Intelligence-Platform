@@ -61,7 +61,7 @@
  * the watch first and probes its hits.
  */
 import { mkdir, writeFile } from "node:fs/promises";
-import { fetchDouEdition, lastWeekday, isDouUnreachable } from "../lib/ingestion/connectors/dou-live";
+import { fetchLatestDouEdition, isDouFailure, douFailureKind } from "../lib/ingestion/connectors/dou-live";
 import { douNoticeUrl, DOU_SECTIONS, type DouSection } from "../lib/ingestion/dou-edition";
 import { watchDouEdition } from "../lib/ingestion/dou-watch";
 
@@ -144,20 +144,32 @@ async function main() {
   }
 
   const save = args.includes("--save");
-  const day = lastWeekday(new Date()).toISOString().slice(0, 10);
-  console.log(`DOU 详情页探测 —— ${section} ${day}，取前 ${count} 条\n`);
+  console.log(`DOU 详情页探测 —— ${section}，取最近一期的前 ${count} 条\n`);
 
+  // Not "today": the latest edition that exists. Run #13 asked for 21-09-2026
+  // at 00:41 UTC — Brasília was still on Sunday evening, Monday's edition was
+  // not out, and the empty page was reported as a template change. See
+  // fetchLatestDouEdition.
   let result;
   try {
-    result = await fetchDouEdition(section, day);
+    result = await fetchLatestDouEdition(section);
   } catch (err) {
-    if (isDouUnreachable(err)) {
+    if (isDouFailure(err)) {
       console.error(`${err instanceof Error ? err.message : String(err)}`);
-      console.error("\n这是「够不着」，不是「当天没有公告」。in.gov.br 只对 GitHub 跑批机和 Vercel 开；");
-      console.error("笔记本上它会读到一半断连（浏览器里表现为 ERR_HTTP2_PROTOCOL_ERROR）。");
+      if (douFailureKind(err) === "unreachable") {
+        console.error("\n这是「够不着」，不是「当天没有公告」。in.gov.br 只对 GitHub 跑批机和 Vercel 开；");
+        console.error("笔记本上它会读到一半断连（浏览器里表现为 ERR_HTTP2_PROTOCOL_ERROR）。");
+      } else {
+        console.error("\n页面是取到了的，连着几个工作日都没有那块 JSON —— 这回才是 in.gov.br 改了页面结构，");
+        console.error("要改的是 lib/ingestion/dou-edition.ts 里的 parseDouEdition()。");
+      }
       process.exit(1);
     }
     throw err;
+  }
+  const day = result.day;
+  for (const skip of result.skipped) {
+    console.log(`  跳过 ${skip.day}：${skip.kind === "unreachable" ? "没取到页面" : "还没出版或是节假日"}`);
   }
 
   const all = result.edition.notices;
@@ -166,7 +178,7 @@ async function main() {
   const pool = onlyKept ? watchDouEdition(all).kept.map((v) => v.notice) : all;
   const sample = pool.slice(0, count);
   console.log(
-    `当天 ${all.length} 条公告（${result.url}）。${onlyKept ? `watch 命中 ${pool.length} 条，取前 ${sample.length} 条。` : ""}\n`,
+    `${day} 这一期 ${all.length} 条公告（${result.url}）。${onlyKept ? `watch 命中 ${pool.length} 条，取前 ${sample.length} 条。` : ""}\n`,
   );
   if (sample.length === 0) {
     console.log("这一天 watch 一条都没命中 —— 换一天再试（--section do1 或往前找个工作日）。");

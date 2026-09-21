@@ -24,7 +24,7 @@ import {
   readDouPayload,
   type DouNotice,
 } from "@/lib/ingestion/dou-edition";
-import { recentWeekdays, lastWeekday } from "@/lib/ingestion/connectors/dou-live";
+import { recentWeekdays, lastWeekday, brasiliaDay } from "@/lib/ingestion/connectors/dou-live";
 import {
   classifyDouForm,
   classifyDouStage,
@@ -59,6 +59,22 @@ check("版面地址用的是巴西日序", douEditionUrl("do3", "2026-09-18"), "
 check("周六往前退到周五", lastWeekday(new Date("2026-09-19T12:00:00Z")).toISOString().slice(0, 10), "2026-09-18");
 check("周日也退到周五", lastWeekday(new Date("2026-09-20T12:00:00Z")).toISOString().slice(0, 10), "2026-09-18");
 check("连着取 3 个工作日会跳过周末", recentWeekdays(3, new Date("2026-09-21T12:00:00Z")), ["2026-09-21", "2026-09-18", "2026-09-17"]);
+// Run #13 (2026-09-21 00:41 UTC) asked in.gov.br for the Monday edition while
+// Brasília was still on Sunday evening, got a page with no payload, and
+// reported it as "in.gov.br 改了页面结构". The day the DOU has is Brasília's.
+check("UTC 周一 00:41，巴西还是周日", brasiliaDay(new Date("2026-09-21T00:41:53Z")), "2026-09-20");
+check("UTC 02:59 还没跨天", brasiliaDay(new Date("2026-09-21T02:59:00Z")), "2026-09-20");
+check("UTC 03:01 才跨天", brasiliaDay(new Date("2026-09-21T03:01:00Z")), "2026-09-21");
+check(
+  "跑批机凌晨跑，要的是上周五那期，不是还没出的周一",
+  lastWeekday(new Date("2026-09-21T00:41:53Z")).toISOString().slice(0, 10),
+  "2026-09-18",
+);
+check(
+  "巴西时间的周一白天，才轮到周一",
+  lastWeekday(new Date("2026-09-21T12:00:00Z")).toISOString().slice(0, 10),
+  "2026-09-21",
+);
 
 console.log("\n── 读版面 ──");
 const edition = load("do3-data-json-1.json");

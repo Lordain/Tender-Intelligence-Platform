@@ -30,10 +30,15 @@
  *               393024, modalidade 03, Concorrência 51, 2026.
  *
  * UASG is not CNPJ and PNCP's sequencial is not the edital number, so a DOU
- * import today would create a SECOND row for every tender PNCP already has —
- * and duplicates in this feed are not cosmetic: the same tender appears twice
- * with different deadlines, because the DOU gives Data de Abertura and PNCP
- * gives data_fim_vigencia.
+ * import today would create a SECOND row for every tender PNCP already has.
+ *
+ * I wrote here that the duplicate would at least carry a DIFFERENT deadline —
+ * Data de Abertura against data_fim_vigencia. Run #17 disproved it on the one
+ * row where both sides are visible: DOU 2026-12-17 against PNCP
+ * 2026-12-17T09:30, the same day and PNCP carrying the time the DOU omits. So
+ * the duplicate is not even a more informative row; it is a worse copy. That
+ * comparison is now printed per hit below instead of being asserted up here,
+ * because the reason it was wrong is that nothing checked it.
  *
  * This prints the whole field list of a matched PNCP row, so the answer to
  * "is there any join key at all" comes from the payload rather than from
@@ -77,6 +82,41 @@ function editalNumberOf(row: Record<string, unknown>): string | undefined {
   return /(\d{1,6}\s*\/\s*\d{4})/.exec(title)?.[1].replace(/\s+/g, "");
 }
 
+/** PNCP writes `2026-12-17T09:30`; the DOU writes a day. Compared as days, since that is all the DOU has. */
+function dayOf(value: unknown): string | undefined {
+  return typeof value === "string" ? /^(\d{4}-\d{2}-\d{2})/.exec(value)?.[1] : undefined;
+}
+
+/**
+ * Does the duplicate at least carry something PNCP does not?
+ *
+ * This existed only as an assertion in the header of this file — "the DOU
+ * gives Data de Abertura, PNCP gives data_fim_vigencia, so the two rows would
+ * disagree" — and it was wrong. Printed per hit now. brazil-pncp-mapper maps
+ * data_fim_vigencia to submissionDeadline, so that is the field the DOU's
+ * Data de Abertura would be competing with.
+ */
+function compareDates(detail: DouDetail, row: Record<string, unknown>): string {
+  const pncpEnd = dayOf(row.data_fim_vigencia);
+  const pncpStart = dayOf(row.data_inicio_vigencia);
+  const parts: string[] = [];
+  if (detail.openingOn !== undefined || pncpEnd !== undefined) {
+    const same = detail.openingOn !== undefined && detail.openingOn === pncpEnd;
+    parts.push(`开标 DOU ${detail.openingOn ?? "—"} / PNCP ${row.data_fim_vigencia ?? "—"} ${same ? "＝同一天" : "≠ 不一样"}`);
+  }
+  if (detail.proposalsOpenOn !== undefined || pncpStart !== undefined) {
+    const same = detail.proposalsOpenOn !== undefined && detail.proposalsOpenOn === pncpStart;
+    parts.push(`收件 DOU ${detail.proposalsOpenOn ?? "—"} / PNCP ${row.data_inicio_vigencia ?? "—"} ${same ? "＝同一天" : "≠ 不一样"}`);
+  }
+  if (detail.proposalsMovedFrom !== undefined) {
+    // The erratum case: if PNCP already shows the NEW date, PNCP tracked the
+    // change too, and the DOU is not even fresher.
+    const tracked = dayOf(row.data_inicio_vigencia) === detail.proposalsOpenOn;
+    parts.push(`这条是更正（原 ${detail.proposalsMovedFrom}）→ PNCP ${tracked ? "已经是新日期，改期它也跟上了" : "还是旧日期，这里 DOU 更快"}`);
+  }
+  return parts.join("\n      ");
+}
+
 /** The first words of the object — long enough to be this tender, short enough that PNCP's index still matches it. */
 function objectQuery(detail: DouDetail): string {
   return (detail.object ?? "").split(/\s+/).slice(0, 12).join(" ");
@@ -94,6 +134,8 @@ async function main() {
   let inconclusive = 0;
   let unreachable = 0;
   let firstHit: Record<string, unknown> | undefined;
+  /** Of the confirmed duplicates, how many carry dates PNCP already has. */
+  let sameDates = 0;
 
   let asked = 0;
   for (const [file, detail] of labelled) {
@@ -130,7 +172,9 @@ async function main() {
     if (sameTender.length > 0) {
       found += 1;
       firstHit ??= sameTender[0];
-      console.log(`   PNCP 里确实有这一条：UASG ${compras?.uasg} + 标号 ${detail.number} 对上了 → 会重复\n`);
+      console.log(`   PNCP 里确实有这一条：UASG ${compras?.uasg} + 标号 ${detail.number} 对上了 → 会重复`);
+      console.log(`      ${compareDates(detail, sameTender[0])}\n`);
+      if (detail.openingOn !== undefined && detail.openingOn === dayOf(sameTender[0].data_fim_vigencia)) sameDates += 1;
     } else if (sameUnit.length > 0) {
       inconclusive += 1;
       console.log(`   检索回了 ${result.items.length} 条，其中 ${sameUnit.length} 条是同一个采购单位，但没有这个标号 → 说不准\n`);
@@ -162,6 +206,12 @@ async function main() {
   }
   if (found > 0) {
     console.log(`\n${found} 条确认会和 PNCP 撞车。DOU 导入必须带去重键，或者只导 PNCP 结构上装不下的那些（特许、第一节的批复、自建门户的国企）。`);
+    if (sameDates === found) {
+      // Not just a duplicate — a duplicate with nothing extra in it.
+      console.log(`而且这 ${found} 条的开标日 PNCP 全都已经有了，还带着 DOU 没有的时分。重复进来的那一行不是「多一个信息源」，是同一条更差的副本。`);
+    } else {
+      console.log(`其中 ${found - sameDates} 条的开标日和 PNCP 对不上，那几条要单独看是谁错了，别直接丢。`);
+    }
   }
   console.log("\n去重键：PNCP 的 unidade_codigo 就是 UASG，title 里带着「Edital nº <号>/<年>」——");
   console.log("DOU 的 compra 号正好给出 UASG + 标号 + 年，两边能对上，不用靠标题文字猜。");

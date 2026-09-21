@@ -7780,3 +7780,50 @@ Endereço eletrônico do Edital: https://cnetmobile.estaleiro.serpro.gov.br/…?
 ### 不管探针结果如何，有条底线先立着
 
 DOU 导入**只导 PNCP 结构上装不下的那些**：特许经营（不是 Lei 14.133 意义上的 *contratação*）、第一节的批复、自建门户的国企。这本来就是当初要读 DOU 的理由 —— 联邦工程是 PNCP 的活，让它干。
+
+## 重叠探针第一次跑：结论是我的 bug，但连接键找到了（2026-09-21）
+
+第 15 次跑批打出「3 条会和 PNCP 撞车」。**这句话不成立，是匹配逻辑写错了。**
+
+### 错在哪
+
+判重那一句是：
+
+```ts
+JSON.stringify(row).includes(detail.number.split("/")[0])   // ← "151"
+```
+
+**这会在整行 JSON 的任何位置匹配那串数字** —— 时间戳里、内部 id 里、CNPJ 里都算。证据就在它自己打印的那一行里：号称对上海军 Concorrência 151/2025（UASG 753000，里约州阿拉亚尔杜卡布的码头）的，是
+
+```
+orgao_nome     UNIVERSIDADE TECNOLOGICA FEDERAL DO PARANA
+municipio_nome Pato Branco
+title          Edital nº 109/2026
+unidade_codigo 153177
+```
+
+**帕拉纳州的一所大学。** 这不是「匹配得松」，是根本没匹配上。和这个仓库反复记的那条是同一件事：**用猜出来的比较算出的数字，不是测量。**
+
+### 但这一跑拿到了真东西：连接键存在
+
+就在那行被错认的数据里：
+
+| | DOU 给的 | PNCP 给的 |
+|---|---|---|
+| 采购单位 | `compra` 号前 6 位 = **UASG** | **`unidade_codigo`**（那行是 `153177`） |
+| 标号 | `compra` 号第 9–13 位 | **`title`** 里的「Edital nº 109/2026」 |
+| 年份 | `compra` 号后 4 位 | `ano` |
+
+**两边都有，能对上，不用靠标题文字猜。** 上一节写的「两边没有一个字段是共用的」，现在要改：PNCP 那个 search 端点返回的字段比 mapper 里定义的 `PncpRow` 多，`unidade_codigo` 一直在，只是没被读进来。
+
+### 改了什么
+
+判重改成 **UASG 对上 + 标号对上**，并且结果分三档：
+
+- **确认 PNCP 已有** —— UASG 和标号都对上
+- **说不准** —— 检索结果里没这个 UASG，或有这个单位但不是这个标
+- **没问到** —— PNCP 连不上
+
+第二档特意不叫「DOU 独有」。**全文检索找不到，不等于 PNCP 里没有** —— 这和「够不着不等于空的」是同一条规矩。这个探针能证明「有」，**证明不了「没有」**。
+
+（另外那一跑里 Concorrência 307/2026 是 `fetch failed`，如实报成「没问到」，没被算进任何一边。）

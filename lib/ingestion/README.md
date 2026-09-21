@@ -7696,3 +7696,55 @@ const day = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.ge
 ### 还没被咬到的那一次
 
 `watch-dou.ts` 有同一个 bug，只是还没排进定时任务。`daily-ingest.yml` 跑在 11:17 UTC（巴西 08:17），在出版之后，所以它一直是对的 —— 纯属运气。DOU 监控哪天排进 cron，凌晨那一档就会天天误报「改版了」。现在提前拆了。
+
+## DOU 详情页有两种形状，发布机构决定是哪种（2026-09-21）
+
+第 14 次跑批拿到了 watch 真正命中的那 5 条。加上上一批当天头 8 条，一共 **13 份真实详情页**，`lib/ingestion/dou-detail.ts` 是照着它们写的。
+
+### 形状 A：Comprasnet 标签式 —— 13 份里 4 份
+
+走 Compras.gov.br 发布的机构，一个字段一段，**机器直接能读**：
+
+```
+Modalidade: Concorrência 51/2026
+Número do processo: 50603.001604/2026-08
+Objeto: Contratação Integrada … duplicação … Rodovia BR-116/CE (km 75,50 ao km 114,10) …
+Data de início de recebimento de propostas: 18/09/2026, 08:00
+Data de Abertura: 17/12/2026, 09:30
+Endereço eletrônico do Edital: https://cnetmobile.estaleiro.serpro.gov.br/…?compra=39302403000512026
+```
+
+**这就是一个项目。** `Data de Abertura` 正是那 403 字摘要里永远没有的开标日期，标书地址是带 `compra` 号的深链，不是门户首页。
+
+### 形状 B：散文式 —— 13 份里 9 份
+
+其他人都写成句子。日期至少三种写法，标号混在句子里，其中瓜鲁柳斯那条**一条装七个标**。
+
+### 4 份标签式全是联邦、全是 watch 留下的那几条
+
+这是个有用的相关性 —— **平台真正盯的那类公告，恰好是机器可读的那类** —— 但它是一天的观测，不是国家出版局公布的规则。
+
+### 这个模块拒绝做的事
+
+**不解析散文。** 散文公告返回 `shape: "prose"` 加一句原因，继续当线索。拿九种市政写法去猜开标日，正是这个仓库付过三次学费的「照预期写 mapper」，而且失败是无声的 —— 错的截止日和对的一样能排序、能筛选、能渲染。
+
+**一条里有多个标号就拒绝映射**，标签式也一样。留一个丢六个比一个都不留更糟，因为没人会发现那六个。
+
+### 写这个模块时自己踩的坑（测试抓出来的）
+
+勘误页写的是：
+
+> `Nova data de início de recebimento de propostas: de 16/09/2026 para 18/09/2026`
+
+第一版把 `Data de início de recebimento de propostas` 当子串匹配进了 `Nova data de…`，再取值里第一个日期 —— 返回 **09-16，也就是被取消掉的那个日期**。这是最坏的一类错：它是个真日期、在合理范围内、排序和渲染都正常，只是会把人送到一个已经不存在的日子。
+
+修法两条：标签匹配**锚定**在段首或 ` / ` 之后；`de X para Y` 取 `para` 后面那个，并把改之前的日期留在 `proposalsMovedFrom` 里，**让改期这件事看得见，而不是被悄悄覆盖**。
+
+### 对「DOU 能不能抓 PNCP 没有的项目」的回答，要分开说
+
+- **联邦工程类：能。** DNIT 的 BR-116 公路复线、Eirunepé 港口 IP4、海军两个工程 —— 标的、开标日、标书深链全有，可以直接入库。
+- **特许经营：这一批没证明。** 唯一那条森林特许（Bom Futuro 国家森林，Concorrência 03/2026）是**散文**，而且它是一份 `AVISO DE RETIFICAÇÃO`（勘误），不是原始招标公告。所以它既没证明特许能自动入库，也没证明不能 —— **要抓一条特许的原始 AVISO DE LICITAÇÃO 才算数。** 而特许恰恰是 DOU 相对 PNCP 最值钱的那部分。
+
+### 样本目录现在有点乱
+
+`__fixtures__/dou/detail/` 里 13 份来自两批，编号前缀 01–05 各撞了一次，靠 slug 区分。暂时不动 —— 改名会让这两批各自的来源说明对不上号。

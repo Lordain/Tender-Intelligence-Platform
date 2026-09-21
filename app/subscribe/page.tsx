@@ -8,7 +8,20 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { parseStripeSelection } from "@/lib/stripe";
 import { internationalWireEnabled } from "@/lib/manual-wire";
 
-export const metadata: Metadata = { title: "确认订阅与付款" };
+/**
+ * The one crawlable page here that should NOT be indexed, rather than one that
+ * needs a canonical.
+ *
+ * It redirects to /pricing without a valid plan and to /login without a
+ * session, so a crawler can never see anything but a redirect. It is left out
+ * of robots.ts's disallow list on purpose: blocking it in robots.txt would
+ * stop Google reading this noindex, and a URL it already knows would sit in
+ * the report forever. Blocked and noindex are not the same instruction.
+ */
+export const metadata: Metadata = {
+  title: "确认订阅与付款",
+  robots: { index: false, follow: false },
+};
 
 export default async function SubscribePage({
   searchParams,

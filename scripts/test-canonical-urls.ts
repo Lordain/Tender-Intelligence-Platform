@@ -30,7 +30,7 @@
  *
  * Static analysis only: no build, no network, no Supabase.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 
 let passed = 0;
 let failed = 0;
@@ -129,6 +129,65 @@ check(
   const seo = readFileSync("lib/seo.ts", "utf-8");
   for (const field of ["siteName", "locale", "type", "url"]) {
     check(`pageMetadata restates openGraph.${field}`, seo.includes(`${field}:`), "lib/seo.ts");
+  }
+}
+
+/**
+ * The gap the sitemap list cannot see: a page that is CRAWLABLE but not in the
+ * sitemap.
+ *
+ * Google Search Console, 2026-09-21: one page reported as 「重複網頁；使用者未
+ * 選取標準網頁」 — a duplicate that names no canonical of its own. Every route
+ * in the sitemap was fine, because those are the ones this file already
+ * checked. /login and /register are not in the sitemap and are allowed by
+ * robots.ts on purpose ("a person searching for the product by name should be
+ * able to land on them"), and they declared no metadata at all: no title of
+ * their own, no description, no canonical. Two pages inheriting the root
+ * layout's title and description verbatim are, to a crawler, two copies of the
+ * same page.
+ *
+ * So the check is now the complement of robots.ts rather than a reading of the
+ * sitemap: every page under app/ that a crawler is ALLOWED to reach must name
+ * its own canonical, whether or not it is offered in the sitemap. Being absent
+ * from the sitemap is not a way to opt out of being indexed — it only means
+ * Google was not handed the URL, which says nothing about whether it found it.
+ */
+{
+  // Read from robots.ts rather than repeated here: a path removed from the
+  // disallow list silently becomes crawlable, and this check has to follow it.
+  const robots = readFileSync("app/robots.ts", "utf-8");
+  const privateBlock = /const PRIVATE_PATHS = \[([^\]]*)\]/.exec(robots);
+  const privatePaths = privateBlock === null ? [] : [...privateBlock[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  check("robots.ts still declares PRIVATE_PATHS for this check to read", privatePaths.length > 0, "app/robots.ts");
+
+  function pagesUnder(dir: string): string[] {
+    const found: string[] = [];
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) found.push(...pagesUnder(`${dir}/${entry.name}`));
+      else if (entry.name === "page.tsx") found.push(`${dir}/${entry.name}`);
+    }
+    return found;
+  }
+
+  for (const file of pagesUnder("app").sort()) {
+    const dir = file.slice(0, -"/page.tsx".length);
+    const route = `/${dir.slice("app/".length)}`.replace(/\/$/, "") || "/";
+    // Dynamic segments are covered by the shape checks above.
+    if (route.includes("[")) continue;
+    if (privatePaths.some((prefix) => route === prefix || route.startsWith(`${prefix}/`))) continue;
+    // A Client Component cannot export `metadata` at all, so the declaration
+    // legitimately lives in a sibling layout.tsx — which is exactly how /login
+    // and /register got theirs. Reading only page.tsx would report a page that
+    // IS fixed as broken.
+    const layout = `${dir}/layout.tsx`;
+    const source = readFileSync(file, "utf-8") + (existsSync(layout) ? readFileSync(layout, "utf-8") : "");
+    const namesCanonical = source.includes("pageMetadata(") || /alternates\s*:\s*\{[^}]*canonical/.test(source);
+    const optsOut = /robots\s*:\s*\{[\s\S]{0,120}index:\s*false/.test(source);
+    check(
+      `${route} is crawlable, so it names its own canonical (or opts out with robots.index=false)`,
+      namesCanonical || optsOut,
+      `${file} — 允许被抓，却没有自己的 canonical：对爬虫来说它是首页的复制品`,
+    );
   }
 }
 

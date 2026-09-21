@@ -1,3 +1,4 @@
+import { ImportAntaqForm } from "@/components/admin/ImportAntaqForm";
 import { ImportBrazilForm } from "@/components/admin/ImportBrazilForm";
 import { ManualOnlyBadge, ManualOnlyNote } from "@/components/admin/AutoRunBadge";
 
@@ -5,7 +6,7 @@ export default function AdminImportTendersBrazilPage() {
   return (
     <div className="flex flex-col gap-6">
       <p className="text-sm text-[#52636e]">
-        巴西只有一个来源，是<strong>实时接口</strong>，不需要手动导出文件——直接拉取。先不勾选&quot;写入
+        巴西有<strong>两个来源</strong>，都是实时接口，不需要手动导出文件——直接拉取。先不勾选&quot;写入
         Supabase&quot;预览一遍，确认数量和分级没问题再写入。
       </p>
       {/*
@@ -17,12 +18,13 @@ export default function AdminImportTendersBrazilPage() {
       */}
       <div className="rounded-xl border border-[#f0dcae] bg-[#fffbf0] px-4 py-3">
         <p className="text-sm font-black text-[#071826]">
-          <ManualOnlyBadge hint="巴西 PNCP 没有进每日自动导入，需要在这一页手动拉取" /> 巴西不会自动下载
+          <ManualOnlyBadge hint="巴西两个来源都没有进每日自动导入，需要在这一页手动拉取" /> 巴西不会自动下载
         </p>
         <ManualOnlyNote>
-          哥伦比亚、PEMEX、Compras MX 每天 11:17 UTC（北京时间 19:17）自动跑；<strong>巴西没有</strong>，
-          每一条巴西项目都是在这一页手动拉进来的。建议每天或每周固定跑一次，否则库里的巴西数据会悄悄变旧——
-          而「很久没导入」和「最近没有新标」在前台看起来一模一样。
+          哥伦比亚、PEMEX、Compras MX 每天 11:17 UTC（北京时间 19:17）自动跑；<strong>巴西两个来源都没有</strong>，
+          每一条巴西项目都是在这一页手动拉进来的。<strong>PNCP 建议每天或每隔几天跑一次</strong>（它每天有几百条新公告），
+          <strong>ANTAQ 每周一次就够</strong>（一年才七八场听证，理由写在下面那一栏里）。
+          隔太久不跑，库里的巴西数据会悄悄变旧——而「很久没导入」和「最近没有新标」在前台看起来一模一样。
         </ManualOnlyNote>
       </div>
       <div className="flex flex-wrap gap-3">
@@ -36,6 +38,14 @@ export default function AdminImportTendersBrazilPage() {
         </a>
       </div>
       <ImportBrazilForm />
+      {/*
+        ANTAQ is below PNCP, not beside it, because it is not an alternative:
+        PNCP is the wide net (5,570 municipalities, every direct-administration
+        notice by statute) and ANTAQ is a handful of very large concessions a
+        procurement registry structurally cannot carry, since a concession is
+        not a purchase. Someone importing "Brazil" wants both, in that order.
+      */}
+      <ImportAntaqForm />
     </div>
   );
 }

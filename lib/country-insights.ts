@@ -24,6 +24,18 @@ export const countryInsights: CountryInsightSummary[] = [
     highlights: ["5.6万亿比索（约2,902亿美元）规划投资", "超过1,500个项目", "八个战略行业"],
   },
   {
+    slug: "brazil",
+    country: "巴西",
+    countryCode: "BR",
+    title: "巴西国家洞察：Novo PAC、特许经营与区域基础设施机会",
+    description:
+      "从Novo PAC的1.9万亿雷亚尔（约3,684亿美元）投资与4.11万个项目出发，梳理交通、能源、港口、水务、城市建设及PPI特许经营机会。",
+    author: "拉美招投标指南针",
+    readTime: "约 17 分钟",
+    heroImage: "/insights/brazil-infrastructure-hero.webp",
+    highlights: ["1.9万亿雷亚尔（约3,684亿美元）", "4.11万个Novo PAC项目", "192项PPI项目"],
+  },
+  {
     slug: "colombia",
     country: "哥伦比亚",
     countryCode: "CO",

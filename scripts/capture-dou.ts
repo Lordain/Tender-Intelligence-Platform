@@ -33,6 +33,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { blockPageReason, pageTitle, visibleText } from "@/lib/ingestion/block-page";
 import { describeFetchFailure } from "@/lib/fetch-failure";
+import { lastWeekday } from "@/lib/ingestion/connectors/dou-live";
 
 const OUT_DIR = "exports/dou";
 const FIXTURE_DIR = "lib/ingestion/__fixtures__/dou";
@@ -49,16 +50,10 @@ function brDate(d: Date): string {
   return `${String(d.getUTCDate()).padStart(2, "0")}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${d.getUTCFullYear()}`;
 }
 
-/**
- * The most recent weekday. The DOU publishes on business days; asking for a
- * Sunday returns an empty edition, which would read as "this source is empty".
- */
-function lastWeekday(now: Date): Date {
-  const d = new Date(now);
-  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() - 1);
-  return d;
-}
-
+// Shared with the connector rather than copied. The copy that used to live
+// here counted the weekend in UTC, so a run before 03:00 UTC asked for a day
+// Brazil had not reached yet — run #13, 2026-09-21. One implementation means
+// the probe and the connector cannot disagree about what "today" is.
 const TODAY = lastWeekday(new Date());
 
 type Door = { id: string; what: string; url: string; keep?: string };

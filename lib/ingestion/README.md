@@ -7161,3 +7161,827 @@ the missing value.
 
 20/20 cases in `npm run test:bid-window`, 11 for the import gate and 9 for the
 manual one.
+
+## ANTAQ became runnable, and covers 6 of 20 (2026-09-20)
+
+The hearing parser and the mapper were both finished on 2026-09-19 and
+referenced by nothing. `lib/ingestion/connectors/antaq-live.ts` and
+`scripts/ingest-antaq.ts` are the wiring — the same gap `scripts/ingest-aneel.ts`
+closed for ANEEL a day earlier, and the same lesson: a mapper nothing calls is
+not a source.
+
+### The route is followed, not composed
+
+`index → the "Audiências Públicas em andamento" link → hearing pages`. That
+middle step is a link the connector FINDS. Its real address ends
+`/audiencias-publicas-em-andamento`; the obvious guess,
+`/audiencias-em-andamento`, 404s — and a 404 there reads as "there are no live
+hearings", which is a wrong answer wearing a right one's clothes.
+
+### Three hosts, three different problems, and only one is ours to fix
+
+The 20 hearings that page lists are spread over three hosts. Counted from the
+committed capture:
+
+| host | hearings | what is wrong |
+|---|---|---|
+| `www.gov.br` | **6** | nothing — Plone, and what the parser was written for |
+| `sisapinternet.antaq.gov.br` | **11** | a different ASP.NET application; never captured, so no parser |
+| `leilao.antaq.gov.br` | **3** | Cloudflare challenge, measured shut from all three machines |
+
+So this source covers under a third of what ANTAQ publishes, and every run
+says so per host. The two failure modes that were available and rejected: keep
+the six quietly, which makes a two-thirds gap look like the whole source; or
+fetch the other fourteen and report "unparseable", which blames the pages for
+a parser that was never written for them.
+
+`sisapinternet` is deliberately **not fetched**. It has never been captured,
+and this file's own rule — paid for three times, Compras MX, Ecopetrol,
+Proyectos México — is that a mapper is written against a real capture. It is
+also the single biggest thing that could be done for this source — but not by
+as much as 11 of 20 suggests. Counted by year, only **3 of those 11** are 2025
+or later (05/2026, 01/2026, 06/2025); the other eight are 2024 and 2022 and any
+sane window drops them anyway. Measured against the hearings still in process,
+the real numbers are **5 of 10** today and **8 of 10** with sisapinternet
+captured — the remaining two are the Cloudflare ones.
+
+`scripts/capture-antaq-sisap.ts` was written to be that follow-up, wired into
+the probe workflow as `what=capture-sisap`. Its first job was not to capture
+anything: it was to answer whether that host answers **at all**, since no
+machine here had ever fetched it, and to name which kind of "no" it gets.
+
+**It ran twice on 2026-09-20 and the answer is no.** Three in-window hearings,
+asked from both machines:
+
+| hearing | id | GitHub runner | laptop |
+|---|---|---|---|
+| AP 05/2026 | 640 | **403, Cloudflare challenge** | **403, challenge** |
+| AP 01/2026 | 639 | **502 Bad Gateway** | **403, challenge** |
+| AP 06/2025 | 638 | **502 Bad Gateway** | **403, challenge** |
+
+The runner's two answers were not the same answer, which is the whole reason
+the script separates them. A challenge is a decision about us and no header
+has ever changed one. A 502 is the opposite: Cloudflare's edge reached ANTAQ's
+own server and it did not reply — nobody blocking, their application down,
+worth waiting out. On the runner's evidence alone the honest verdict was "one
+block, two outages, come back tomorrow".
+
+**The laptop settled it.** Three challenges out of three, on the machine that
+opens gov.br without trouble. So the runner's 502s were the same edge having a
+bad moment, and the real answer is a block. Six attempts, two machines,
+nothing through — `classifyAntaqHost` moved this host from `other-system` to
+`refuses-us`, the verdict `leilao.antaq` already carries, and it moved because
+it was measured and not because it was assumed.
+
+That is the third time this repo has measured that no header moves one of
+these: ANEEL, leilao.antaq, and now here.
+
+The first version of the script called it after **one attempt each**, which
+cannot tell a dead origin from an app that fell over for a second, and those
+have opposite next steps. It now retries the gateway class three times with
+backoff and never retries a challenge, because asking a decision three times
+only makes the log look like a flake. That change is what made the runner's
+and the laptop's runs comparable.
+
+So ANTAQ's coverage is final at **5 of 10** still-live hearings, not the 8 of
+10 that capturing this host would have bought. The eleven behind it are not a
+parser waiting to be written; they are behind a door. The script stays in the
+tree so the day ANTAQ changes its WAF the answer costs one command, and so a
+source that was investigated and closed says so rather than looking forgotten.
+
+It strips `__VIEWSTATE` and friends before committing, for the day it does
+answer: WebForms serialises the whole server-side control tree into base64
+hidden inputs, and committing those buries the 10KB a parser reads under state
+that changes on every fetch.
+
+### "Em andamento" is the archive
+
+Not the live list. It goes back to 2022, and one of its entries points at a URL
+with `audiencias-encerradas` in the path. Every one of the five captured
+hearings had a comment period that had already closed — which is not a reason
+to drop them (a closed consultation is the one nearest to becoming an auction;
+`antaq-mapper.ts` argues that at length) but it does mean the page will not
+window anything for you. So the window lives in the CLI rather than as a
+constant inside a fetch layer: how far back is worth importing is a product
+call. It was `--months 12` for one day, and the next section is why it is not.
+
+### What becomes a downloadable document, and what must not
+
+The `Comunicados` attachments do — direct PDF URLs, 6/6/9/5/6 across the five
+captured pages, measured fetchable 21 of 21. The `Documentação` buttons do
+**not**, and they are the ones holding the draft edital and the EVTEA. They
+are landing PAGES: writing them into `tender_document_links` would put HTML
+behind a subscriber's download button. Harvesting the files behind them needs
+one more fetch layer written against a real capture of such a page, and no
+such capture exists — so the CLI prints those URLs where a person can follow
+them, and the test asserts that not one of them reaches the links table.
+
+### Unreachable is not empty
+
+Every `.gov.br` host is outside the agent sandbox's egress allowlist, so
+`npm run ingest:antaq` fails there with a 403 — and it says, in as many words,
+that this is 够不着 rather than 没有听证, because the two need opposite fixes.
+The index-link-missing case throws the same way: that is a page-structure
+change, not a quiet source.
+
+`npm run test:antaq-live` — 48 checks, none of them touching the network. The
+triage runs against the committed capture instead, so the 6-of-20 ratio is a
+number that fails when it moves rather than an impression somebody formed once.
+
+## DOU 定向监控 —— a watch, not an import (2026-09-20)
+
+Brazilian law requires every federal notice, edital and award to appear in the
+Diário Oficial da União, which makes it the one Brazilian source that is
+complete **by statute** rather than by an agency's choice to publish. Three
+things reach it and never reach PNCP: concessions (not a *contratação* under
+Lei 14.133/2021, so the portal never sees one — and 2026's federal calendar is
+~100 assets at ~R$247bn), Seção 1 acts that authorise an auction weeks ahead of
+any notice, and the state enterprises that run their own procurement.
+
+### Why it reports instead of importing
+
+`content` is cut at **403 characters**. Measured on the captured edition: 211
+of 216 notices end in an ellipsis, and the median snippet length equals the
+maximum. A DOU notice carries no deadline, no value and half an object
+description — it is a LEAD, not a tender. Mapping one into `Tender` would
+manufacture exactly the row this platform has already paid for twice, a
+truncated summary with no submission date, and it would do it worst to the
+highest-value rows because a concession notice is the longest.
+
+So `npm run watch:dou` narrows the day and prints it. Importing stays a human
+decision, or a second fetch of the full text, which is a separate build.
+
+### The search is not merely noisy — it misses the target entirely
+
+The obvious build was `consulta/-/buscar/dou?q=…`, the way the DOF connector
+searches Mexico's gazette. Both captured searches were run through these rules:
+
+| query | rows | kept | what they actually were |
+|---|---|---|---|
+| `concessão` | 20 | **0** | 9 ANTT `DECISÃO SUROD` rulings on concessions that *already exist*; top hit an Instrução Normativa on CSLL tax credits |
+| `aviso de licitação` | 20 | 4 | 3 Petrobras spare parts, 1 real CODEVASF Concorrência |
+
+Every row scored `0`, and the highlight markup shows why: the engine matches
+the word anywhere, including inside the boilerplate every federal notice
+carries. Precision is therefore no better than reading the edition — and
+**recall settles it**: both captures returned exactly 20 rows, no paging
+parameter was measured, and one weekday of Seção 3 alone is 2,139 notices. A
+20-row answer is a sample of unknown coverage; the edition listing is the whole
+day by construction.
+
+### Four axes, and each one was measured holding something back
+
+216 sampled notices → 3. Remove one axis at a time:
+
+| what is removed | kept | what comes back |
+|---|---|---|
+| nothing (default) | **3** | the DNIT Ceará highway-duplication design-build, and two Petrobras parts |
+| the stage axis | 24 | contract extracts, aditivos, homologations |
+| the organ axis | 6 | other ministries' notices |
+| the procurement-form axis | 8 | 20-litre bottled water, pool chemicals, an Army scrap auction |
+| the organ axis *and* Prefeituras | 19 | municipal notices PNCP already carries in full |
+
+**The fourth axis is the one PNCP never needed.** `lib/relevance-pt.ts` was
+tuned against PNCP rows, and this platform only ever queries PNCP for
+*Concorrência* — so the commodity long tail never reached those rules and they
+were never given a reason to learn it. The DOU has no such filter in front of
+it. The fix is the same one the PNCP query already makes, applied to the text
+instead of to a query parameter, and it is law rather than heuristic: Lei
+14.133/2021 forbids Pregão for obras and reserves it for *bens e serviços
+comuns*, so the instrument names the category. `Leilão` is checked first and
+separately, because the same word covers the state **selling** scrap and the
+state buying thirty years of investment.
+
+The subject axis calls `classifyPortugueseExclusion` and
+`classifyPortugueseSmallWorks` rather than growing a second keyword list. Two
+lists would drift within a month and then disagree about the same tender
+depending on which door it came in through.
+
+### Calibrated against a whole edition, and the answer was 37 → 5
+
+The flattened sample said 216 → 3 and could not say more: two rows per organ
+cannot reveal how many notices any one body really files. So the default was
+left loose and the first full-edition run was made the calibration step. It ran
+on 2026-09-20 against Friday 2026-09-18 — **2,139 notices → 37 hits**, which is
+not a watch anyone reads. `__fixtures__/dou/watch-kept-2026-09-18.json` is
+those 37 rows, copied out of the run's log, and it is the only fixture here
+taken from a whole edition rather than a sample.
+
+Two findings, and each has a rule:
+
+**Petrobras alone was 27 of the 37.** Fire damper, welding rod, mechanical
+seal, relay, concrete post, 75kVA transformer — and it names no instrument at
+all. Its notices read `AVISO DE LICITAÇÃO Nº 70046xxxxx Objeto: Aquisição de
+<part>`, so the modality axis had nothing to bite on and `unknown` let every
+one through. The rule is now: **no instrument named → read the object.** A
+purchase verb with no works verb anywhere is a purchase. `unknown` survives
+only for a stub that names neither.
+
+The works verbs are all ACTIONS and no PLACES, and that was learned the same
+day: `porto`, `terminal` and `aeroporto` were in the first draft and had to
+come out, because Transpetro's "Serviços de ensaios físico químicos … para o
+Terminal de Cabiunas" is a laboratory contract that happens to mention a
+terminal. In a 403-character stub a place name says where the work happens,
+never what it is — and every genuine works notice in that edition carried a
+verb anyway.
+
+**Four more were registers, not competitions.** Three Operação Carro-Pipa
+water-truck credenciamentos and one AGU call for research foundations. Lei
+14.133/2021 files credenciamento under *inexigibilidade*: every qualified
+applicant is admitted, there is no dispute, and the notice stays open
+indefinitely. They had been passing as `opening` because they say "chamamento
+público", which is otherwise a works signal — so `registration` is now its own
+form, checked before works, and out of the default.
+
+**37 → 5, and the five are the whole point**: DNIT's Ceará highway duplication
+(Concorrência 51/2026, Contratação Integrada), DNIT's port IP4 rebuild
+(307/2026), two Navy engineering works, and a Serviço Florestal Brasileiro
+**forest concession** — the concession type PNCP structurally cannot carry. The
+test names all five, so a later rule change that quietly drops one fails rather
+than shrinking a number nobody checks.
+
+### Reaching it
+
+`in.gov.br` opened to the GitHub runner and to Vercel on 2026-09-19 while
+closing the socket mid-read on the user's laptop, and it is outside the agent
+sandbox's allowlist. So `npm run watch:dou -- --fixture` runs the entire
+pipeline against the committed capture with no network at all — the rules can
+be read and changed from any machine, and a fetch failure is reported as
+够不着 rather than as an empty gazette.
+
+One thing stated rather than measured: the notice permalink,
+`in.gov.br/web/dou/-/<urlTitle>`. `urlTitle` exists in the payload for no other
+purpose — it is a slug ending in the notice's own numeric id — but no machine
+here can confirm it resolves, so every report prints the edition URL beside it,
+which *is* the captured address. The first run from a machine that can reach
+in.gov.br should check one.
+
+`npm run test:dou-watch` — 74 checks, no network.
+
+## The window was measuring Plone, not the hearing (2026-09-20)
+
+`npm run ingest:antaq` shipped in the morning with `--months 12`, windowing on
+`publicationDate`, which for this source is gov.br's byline date. The user's
+first live run printed this row:
+
+```
+AP 03/2024  flagship  发布 2026-07-06  CONCESSÃO DO PORTO ORGANIZADO DE ITAJAÍ/SC
+  .../audiencias-encerradas/audiencia-publica-ndeg-03-2024
+```
+
+A 2024 hearing, inside a twelve-month window, under a URL that says
+`encerradas`. It was not a near miss. The byline is Plone's *effective date*
+for the PAGE, and ANTAQ re-stamps it whenever the page is edited, so the
+window was counting twelve months of ANTAQ's editing, not twelve months of
+hearings. Two more of the five captures say the same thing without being asked:
+
+| hearing | what the hearing says about itself | what the page says |
+|---|---|---|
+| AP 07/2025 SSB01 | comment period 29/12/2025 – **27/01/2026** | published **08/06/2026** — five months after it closed |
+| AP 04/2026 VDC04 | comment period opened **23/04/2026** | published **25/05/2026** — a month after it opened |
+
+That AP 03/2024 survived turned out to be lucky: its page carries a Data Room
+and `Documentação revisada pós TCU`, which makes it arguably the most advanced
+of the six. But it survived by having been *edited*, not by being live, and
+the next re-stamped page will be a 2022 one nobody wants.
+
+### Three sources of truth, ranked, in `lib/ingestion/antaq-window.ts`
+
+1. **The hearing's own number.** `07/2026` carries its year, ANTAQ numbers per
+   calendar year, and nothing re-stamps a number. This decides.
+2. **The dates the hearing states about itself** — the cronograma cells and the
+   contributions deadline (`statedDays()`). These can only **rescue**: a 2024
+   consultation still running sessions in 2026 is live whatever its number
+   says, and ANTAQ does keep old numbers alive for years while a project clears
+   the TCU. They never drop anything the number kept.
+3. **Plone's byline decides nothing.** It is read only to *warn* — when its
+   year differs from the hearing's, or when it is later than every date the
+   hearing states, the run prints ⚠ and says the stamp does not count. Two of
+   the five captures trip it; the other three do not.
+
+Both of (2)'s sources are needed, and each covers for the other. AP 02/2026's
+`até … dia` sentence says 02/05/2026 while its cronograma runs the comment
+period to 29/09/2026 — the sentence predates an extension, so reading only it
+ages the hearing by four months. And AP 07/2026's schedule cell is
+`29/06/2026 a 13/08/2026`: one cell, two dates, of which `parseBrazilianDate`
+returns the first. A range silently becoming its start date is the quiet lie
+this file has already paid for once with deadlines, so every date in the cell
+is taken.
+
+### The flag counts years now, and `--months` is refused
+
+Because a hearing number carries a year and not a month, and a window in months
+applied to a year-granular signal has to invent eleven months of precision it
+does not have. `--years 2` (the default) means this year and last; `--years 0`
+means no window. A command line that still says `--months` **exits 1 with the
+AP 07/2025 dates in the error**, rather than quietly accepting a flag that used
+to mean something different — the failure mode being avoided is a stale
+workflow input silently getting a window it did not ask for.
+
+Two years rather than one, deliberately: a port concession runs a consultation,
+a TCU review and then an auction, and the whole point of reading the hearing
+instead of the auction is to meet the project early enough to prepare. A
+twelve-month window throws away the ones about to be tendered.
+
+`npm run test:antaq-window` — 42 checks, no network. The rescue is asserted on
+a real row (`--years 1` drops AP 07/2025 by its number and its own 2026-01-27
+schedule brings it back), and the AP 03/2024 shape is asserted on a synthetic
+one, built rather than captured because that page was never fetched — what is
+pinned there is the rule, not that page's contents.
+
+
+## ANTAQ got a button, and the panel is mostly about what it cannot get (2026-09-20)
+
+`lib/ingestion/ingest-antaq.ts` is the work, called by both
+`scripts/ingest-antaq.ts` and `app/api/admin/import-antaq/route.ts` — the rule
+`ingest-brazil.ts` already states: one code path, so the page and the command
+cannot drift into disagreeing about the same source.
+
+### Why the panel spends more space on the absences than on the fields
+
+On every other source in this admin, 无金额 means "we did not manage to read
+it" and the fix is to re-run — PNCP's `amountLookupFailed` exists precisely
+because a refusal and a sealed budget looked identical in one total until
+2026-09-20. On ANTAQ it means the page **states no money at all**: no ceiling,
+no reference price, no CAPEX, verified on all five captures. The investment
+figure is inside the EVTEA PDF, behind a separate link. Re-running a hundred
+times changes nothing. A panel that showed 「没有金额：5 条」 the way PNCP's does
+would send someone hunting a bug that is not there.
+
+Same for the bid deadline: there is none because bidding has not opened, so
+`status` is `planned` and `submissionDeadline` stays empty — which is also the
+only thing keeping `upsertTendersBatched`'s past-deadline gate from discarding
+every row, the mistake that cost one commit when the contributions deadline
+was briefly used for it.
+
+### The third row is the one people will ask about
+
+`Minutas de Edital e Contrato`, `EVTEA` and `Diretrizes do projeto` have URLs,
+and the import still does not save them as document links, because those URLs
+are landing PAGES. One behind a subscriber's download button hands them HTML.
+They are rendered as links labelled （页）, and harvesting what sits behind them
+needs one more fetch layer written against a real capture of such a page —
+which does not exist, so it is not written.
+
+### How often, and why weekly
+
+ANTAQ opens seven or eight hearings a year on gov.br: a new one every six to
+eight weeks. Daily would re-read the same six pages. But months apart is wrong
+too — ANTAQ keeps adding files to a hearing page after the fact (Itajaí gained
+`Documentação revisada pós TCU` and a Data Room in July 2026) and a comment
+period is only six to eight weeks long. Weekly meets a new hearing within a
+week of it opening, leaving five or six weeks to prepare, and refreshes the
+cronograma and attachments on the ones already in. Writes are by `slug`, so
+re-running is safe.
+
+The panel's default is `--years 3`, not the CLI's 2: three keeps AP 03/2024
+Itajaí, which is arguably the most advanced of the six, and the ⚠ line now
+explains why an old-numbered hearing is in the list rather than leaving it
+looking like a bug.
+
+## The DOU permalink is still the one thing stated and not measured (2026-09-20)
+
+`douNoticeUrl()` builds `https://www.in.gov.br/web/dou/-/<urlTitle>` and that
+shape was **written down, never verified**. It decides what the DOU can ever
+be: if the detail page carries the full text, the watch narrows a day to a
+handful of hits and a handful of extra fetches turns them into real rows; if
+it does not, the DOU stays a lead radar because 403 characters is not a tender.
+
+A browser test from the laptop on 2026-09-20 returned
+`ERR_HTTP2_PROTOCOL_ERROR`. That is **not** a verdict on the URL — it is
+in.gov.br's known behaviour toward that network, which closes the socket
+mid-read there, and it is why the DOU watch runs on the runner in the first
+place. The test has to happen where in.gov.br answers.
+
+`scripts/probe-dou-permalink.ts` (`what=dou-link`) is that test. It fetches the
+first N notices' permalinks from a real edition and reports, per notice, the
+status and the readable length of the article region **against the length of
+the snippet it came from** — because a 200 that returns the same 403 characters
+is a page that exists and does not help, and only the comparison separates
+those two.
+
+### It ran, and the URL shape is right
+
+Runner, 2026-09-20, Seção 3:
+
+```
+── 5 / 5 条详情页打得开，其中 5 条正文明显比摘要长 ──
+  AVISO DE LICITAÇÃO        200 · 正文 1044 字（摘要 403 字）
+  AVISO DE SUSPENSÃO        200 · 正文 1105 字（摘要 403 字）
+  AVISA DE DISPENSA …       200 · 正文 1054 字（摘要 403 字）
+```
+
+Five of five at 200, every one about 2.6× the snippet. `https://www.in.gov.br/
+web/dou/-/<urlTitle>` resolves, and it stops being the one thing in this
+source that was written down rather than measured.
+
+**What it does NOT settle is what is on those pages.** The length was measured
+inside a content region the script GUESSES at — `texto-dou`, then `<article>`,
+then `<main>`, then the whole document — and a number produced by a guessed
+selector is not a reading of the notice. The three lengths also came back
+within 60 characters of each other, which is what page chrome looks like.
+
+So the script gained `--save`, which writes the pages into
+`__fixtures__/dou/detail/` for the workflow to commit, with scripts and styles
+removed and **nothing else trimmed** — unlike the ANTAQ capture, which could
+name `<main>` because five real pages had been seen first. Nobody here has seen
+one of these, so a guessed container could remove the notice and leave no trace
+that it happened, which is the same error as trusting the guessed length.
+
+The parser gets written against those bytes and not before. Rule of this file,
+paid for three times: a mapper is written against a real capture, never against
+an expectation of one — and "the detail page carries the full notice" is,
+until those bytes are read, exactly an expectation.
+
+
+## The eight saved DOU pages, and the one that holds seven tenders (2026-09-20)
+
+`what=dou-link --save --count 8` brought back eight real detail pages from the
+2026-09-18 Seção 3 edition. They answer three things, and the third changes the
+design.
+
+### First: the number I reported the run before was wrong
+
+That run said the detail bodies were 1044, 1054 and 1105 characters. They are
+897, 1544 and 2751. The reading regex matched `texto-dou` with a lazy `</div>`
+stop, which ends at the **first** closing div — inside the wrapper, not at the
+end of it. Three notices of obviously different sizes landing within 60
+characters of each other was the tell, and it is exactly the failure this file
+keeps writing down: a number produced by a guessed selector is not a reading.
+
+The saved pages show the real container: in.gov.br wraps every paragraph of a
+notice in `<p class="dou-paragraph">`, **1 to 8 of them**. So nothing has to be
+guessed about where a body ends, and `noticeText()` reads those.
+
+### Second: the detail page carries the notice whole
+
+Bodies measured 539 to 3763 characters against the payload's 403-character cap
+— 2× to 9×. The object description is complete rather than cut mid-word. The
+opening date is there, though in prose and in at least three phrasings:
+`Abertura: 05/10/26 às 09h`, `dia 30 de setembro de 2026, às 08 horas`, and
+`O recebimento das propostas será das 13h30min do dia 21/09/2026 até as
+13h00min do dia 05/10/2026`. Where to obtain the edital is named
+(`www.guarulhos.sp.gov.br`, Comprasnet, a Pregão app).
+
+A **value** appears in exactly **one of the eight**: `Valor máximo estimado de
+R$ 991.670,82`. So money is occasional here, not reliable — closer to ANTAQ
+than to PNCP, and a mapper must not treat its absence as a failure.
+
+### Third: one notice is not one tender
+
+`02-avisos-de-licitacao-732452192.html` is a single DOU notice from Guarulhos
+carrying **seven separate tenders** — CP 95034/26, CP 95035/26, CP 95036/26,
+PE 90159/26, PE 90160/26, PE 90161/26 and a reprogrammed PE 90155/26 — each
+with its own number, its own object and its own opening date, one per
+`dou-paragraph`. A mapper written on "one notice, one tender" would keep one of
+the seven and silently lose six, or worse, merge them into a row whose title
+belongs to one and whose deadline belongs to another.
+
+That is a municipal habit — a city hall publishing its week's schedule in one
+notice — and `dou-watch.ts` drops Prefeituras. But **that these eight contain
+none of the watch's actual hits is the point**: they are the day's first eight,
+which was the right sample for "does the URL resolve" and the wrong one for
+"can these become tenders". The rows a parser has to be written against are the
+five the watch keeps out of 2,139 — the DNIT highway, the Navy quay, the forest
+concession — and none of them is here.
+
+So the probe gained `--kept`, which runs `watchDouEdition()` first and follows
+its hits instead of the day's opening. It also now counts distinct
+instrument+number pairs per notice and flags a body carrying more than one, so
+the seven-in-one shape announces itself in the log rather than waiting to be
+found by a mapper. The detail parser gets written once those pages are in hand,
+and not before.
+
+## 跑批机凌晨跑，问的是巴西还没到的那一天（2026-09-21）
+
+第 13 次 workflow 失败了，退出码 1，21 秒。它报的是：
+
+> DOU 2026-09-21 do3 页面取到了，但里面没有带 jsonArray 的 JSON 块 —— in.gov.br 多半改了页面结构
+
+**这句话是错的，而且是我写的。** 那一刻是 UTC 周一 00:41，巴西利亚还是**周日晚上 21:41**，周一那期根本还没出版。in.gov.br 老老实实返回了一个没有内容的页面，脚本把它翻译成了「国家出版局改版了」。
+
+日期是 `lastWeekday()` 算的，而它按 **UTC** 数日子：
+
+```ts
+const day = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+```
+
+巴西是 UTC−3，所以**每天 00:00–03:00 UTC 之间跑的任何一次，问的都是巴西的明天**。周一凌晨最严重：往前退周末的逻辑看到「周一」是工作日，不退，于是要了一期不存在的报。
+
+### 改了三处
+
+**一、日子按巴西利亚算。** 新的 `brasiliaDay()` 用 `Intl` 加时区名，不是写死 −3 —— 巴西 2019 年取消了夏令时，写死的偏移量离「国会改一次法就悄悄错掉」只差一步。`lastWeekday()` 和 `recentWeekdays()` 都从它起算。`scripts/capture-dou.ts` 里那份**复制出来的同样有 bug 的** `lastWeekday` 删掉了，改成共用一份。
+
+**二、「取不到」和「取到了但没内容」分成两种错。** 以前都叫 `douUnreachable`。现在是 `DouFailureKind`：
+
+| kind | 意思 | 该做什么 |
+|---|---|---|
+| `unreachable` | 页面没到手：拒了、读一半断了、拦截页 | 换台能开 in.gov.br 的机器跑 |
+| `no-payload` | 页面完整到手，里面没有那块 JSON | **三种可能**，见下 |
+
+`no-payload` 单独一天**说明不了任何事**：还没出版、法定假日、改版，长得一模一样。所以它现在只陈述看见了什么，不下结论。
+
+**三、往前走着问，直到问到真的有的那一期。** 新的 `fetchLatestDouEdition()` 从今天起往前数工作日（默认最多 3 个）：
+
+- 任何一天有内容 → 就是它，`skipped` 里记下跳过了哪几天、为什么，节假日不会无声消失
+- 每天都 `unreachable` → 网络问题，和以前一样
+- 每天都取到页面、每天都没有 JSON → **到这一步才配说「in.gov.br 改版了」**
+
+这就是那条判据：**一天空是日历问题，连着三个工作日空才是结构问题。** 结论是走出来的，不是断言出来的。
+
+`probe:dou-link` 改用它了，不再问「今天」。`watch:dou` 一天都没读到时，会按 `unreachable` 还是 `no-payload` 说两段不同的话 —— 对着节假日喊「够不着」会把人支去查网络。
+
+`test-dou-watch` 从 92 项加到 97 项，新的 5 项钉死了这个时刻：`brasiliaDay("2026-09-21T00:41:53Z")` 必须是 `2026-09-20`，02:59 UTC 还没跨天，03:01 才跨，而那一刻的 `lastWeekday()` 要给出 **2026-09-18**（上周五）。
+
+### 还没被咬到的那一次
+
+`watch-dou.ts` 有同一个 bug，只是还没排进定时任务。`daily-ingest.yml` 跑在 11:17 UTC（巴西 08:17），在出版之后，所以它一直是对的 —— 纯属运气。DOU 监控哪天排进 cron，凌晨那一档就会天天误报「改版了」。现在提前拆了。
+
+## DOU 详情页有两种形状，发布机构决定是哪种（2026-09-21）
+
+第 14 次跑批拿到了 watch 真正命中的那 5 条。加上上一批当天头 8 条，一共 **13 份真实详情页**，`lib/ingestion/dou-detail.ts` 是照着它们写的。
+
+### 形状 A：Comprasnet 标签式 —— 13 份里 4 份
+
+走 Compras.gov.br 发布的机构，一个字段一段，**机器直接能读**：
+
+```
+Modalidade: Concorrência 51/2026
+Número do processo: 50603.001604/2026-08
+Objeto: Contratação Integrada … duplicação … Rodovia BR-116/CE (km 75,50 ao km 114,10) …
+Data de início de recebimento de propostas: 18/09/2026, 08:00
+Data de Abertura: 17/12/2026, 09:30
+Endereço eletrônico do Edital: https://cnetmobile.estaleiro.serpro.gov.br/…?compra=39302403000512026
+```
+
+**这就是一个项目。** `Data de Abertura` 正是那 403 字摘要里永远没有的开标日期，标书地址是带 `compra` 号的深链，不是门户首页。
+
+### 形状 B：散文式 —— 13 份里 9 份
+
+其他人都写成句子。日期至少三种写法，标号混在句子里，其中瓜鲁柳斯那条**一条装七个标**。
+
+### 4 份标签式全是联邦、全是 watch 留下的那几条
+
+这是个有用的相关性 —— **平台真正盯的那类公告，恰好是机器可读的那类** —— 但它是一天的观测，不是国家出版局公布的规则。
+
+### 这个模块拒绝做的事
+
+**不解析散文。** 散文公告返回 `shape: "prose"` 加一句原因，继续当线索。拿九种市政写法去猜开标日，正是这个仓库付过三次学费的「照预期写 mapper」，而且失败是无声的 —— 错的截止日和对的一样能排序、能筛选、能渲染。
+
+**一条里有多个标号就拒绝映射**，标签式也一样。留一个丢六个比一个都不留更糟，因为没人会发现那六个。
+
+### 写这个模块时自己踩的坑（测试抓出来的）
+
+勘误页写的是：
+
+> `Nova data de início de recebimento de propostas: de 16/09/2026 para 18/09/2026`
+
+第一版把 `Data de início de recebimento de propostas` 当子串匹配进了 `Nova data de…`，再取值里第一个日期 —— 返回 **09-16，也就是被取消掉的那个日期**。这是最坏的一类错：它是个真日期、在合理范围内、排序和渲染都正常，只是会把人送到一个已经不存在的日子。
+
+修法两条：标签匹配**锚定**在段首或 ` / ` 之后；`de X para Y` 取 `para` 后面那个，并把改之前的日期留在 `proposalsMovedFrom` 里，**让改期这件事看得见，而不是被悄悄覆盖**。
+
+### 对「DOU 能不能抓 PNCP 没有的项目」的回答，要分开说
+
+- **联邦工程类：能。** DNIT 的 BR-116 公路复线、Eirunepé 港口 IP4、海军两个工程 —— 标的、开标日、标书深链全有，可以直接入库。
+- **特许经营：这一批没证明。** 唯一那条森林特许（Bom Futuro 国家森林，Concorrência 03/2026）是**散文**，而且它是一份 `AVISO DE RETIFICAÇÃO`（勘误），不是原始招标公告。所以它既没证明特许能自动入库，也没证明不能 —— **要抓一条特许的原始 AVISO DE LICITAÇÃO 才算数。** 而特许恰恰是 DOU 相对 PNCP 最值钱的那部分。
+
+### 样本目录现在有点乱
+
+`__fixtures__/dou/detail/` 里 13 份来自两批，编号前缀 01–05 各撞了一次，靠 slug 区分。暂时不动 —— 改名会让这两批各自的来源说明对不上号。
+
+## DOU 要入库，先解决和 PNCP 撞车（2026-09-21）
+
+### 两边的主键没有一个字段是共用的
+
+| | 键 | 去重方式 |
+|---|---|---|
+| **PNCP** | `numero_controle_pncp` = `<CNPJ>-1-<顺序号>/<年>` | slug = `brazil-<它>`，`upsert onConflict: "slug"` |
+| **DOU** | 标书链接里的 Comprasnet `compra` 号 = **UASG(6) + 模式(2) + 标号(5) + 年(4)** | 没有 |
+
+`compra=39302403000512026` → UASG 393024、模式 03、Concorrência 第 51 号、2026 年。**4 份标签式页面全部验证过**，不是从一个例子推的。
+
+**UASG 不是 CNPJ，PNCP 的顺序号也不是标书编号。** 所以今天直接导 DOU，PNCP 已有的每一条都会**多出一行**。而且这种重复不是难看而已：**同一个标会以两个不同的截止日出现两次** —— DOU 给的是 `Data de Abertura`，PNCP 给的是 `data_fim_vigencia`。
+
+### 而且很可能撞得很厉害
+
+能解析的那 4 条，全是**走 Compras.gov.br 发布的联邦工程** —— 而 Lei 14.133/2021 要求的就是这类必须上 PNCP。
+
+反过来，PNCP 结构上装不下的那条（Bom Futuro 森林特许），恰恰是**散文式、解析器拒绝映射**的那条。
+
+> 也就是说：**能读的多半是已经有的，没有的多半读不了。** 这句话目前是推理，不是测量 —— `scripts/probe-pncp-overlap.ts` 就是去把它证实或证伪的。
+
+### 探针问两件事
+
+1. **这 4 条 PNCP 里有没有？** 拿标的前 12 个词去 PNCP 检索，**只有返回行里带着同一个标号才算命中** —— 光靠标的文字匹配，会把巴西所有公路工程都认成同一个标。
+2. **PNCP 命中行的全部字段打出来**，看有没有 UASG / 采购单位编号之类能当连接键的东西。有 → 能按号去重；没有 → 只能靠规则不让两边抓同一类。
+
+跑法：Actions → Probe Brazil doors → `what=pncp-overlap`。它只读已提交的样本文件加 PNCP，**不碰 DOU、不写库**。
+
+### 不管探针结果如何，有条底线先立着
+
+DOU 导入**只导 PNCP 结构上装不下的那些**：特许经营（不是 Lei 14.133 意义上的 *contratação*）、第一节的批复、自建门户的国企。这本来就是当初要读 DOU 的理由 —— 联邦工程是 PNCP 的活，让它干。
+
+## 重叠探针第一次跑：结论是我的 bug，但连接键找到了（2026-09-21）
+
+第 15 次跑批打出「3 条会和 PNCP 撞车」。**这句话不成立，是匹配逻辑写错了。**
+
+### 错在哪
+
+判重那一句是：
+
+```ts
+JSON.stringify(row).includes(detail.number.split("/")[0])   // ← "151"
+```
+
+**这会在整行 JSON 的任何位置匹配那串数字** —— 时间戳里、内部 id 里、CNPJ 里都算。证据就在它自己打印的那一行里：号称对上海军 Concorrência 151/2025（UASG 753000，里约州阿拉亚尔杜卡布的码头）的，是
+
+```
+orgao_nome     UNIVERSIDADE TECNOLOGICA FEDERAL DO PARANA
+municipio_nome Pato Branco
+title          Edital nº 109/2026
+unidade_codigo 153177
+```
+
+**帕拉纳州的一所大学。** 这不是「匹配得松」，是根本没匹配上。和这个仓库反复记的那条是同一件事：**用猜出来的比较算出的数字，不是测量。**
+
+### 但这一跑拿到了真东西：连接键存在
+
+就在那行被错认的数据里：
+
+| | DOU 给的 | PNCP 给的 |
+|---|---|---|
+| 采购单位 | `compra` 号前 6 位 = **UASG** | **`unidade_codigo`**（那行是 `153177`） |
+| 标号 | `compra` 号第 9–13 位 | **`title`** 里的「Edital nº 109/2026」 |
+| 年份 | `compra` 号后 4 位 | `ano` |
+
+**两边都有，能对上，不用靠标题文字猜。** 上一节写的「两边没有一个字段是共用的」，现在要改：PNCP 那个 search 端点返回的字段比 mapper 里定义的 `PncpRow` 多，`unidade_codigo` 一直在，只是没被读进来。
+
+### 改了什么
+
+判重改成 **UASG 对上 + 标号对上**，并且结果分三档：
+
+- **确认 PNCP 已有** —— UASG 和标号都对上
+- **说不准** —— 检索结果里没这个 UASG，或有这个单位但不是这个标
+- **没问到** —— PNCP 连不上
+
+第二档特意不叫「DOU 独有」。**全文检索找不到，不等于 PNCP 里没有** —— 这和「够不着不等于空的」是同一条规矩。这个探针能证明「有」，**证明不了「没有」**。
+
+（另外那一跑里 Concorrência 307/2026 是 `fetch failed`，如实报成「没问到」，没被算进任何一边。）
+
+## PNCP 会限流，而我给探针写了条没有重试的新路（2026-09-21）
+
+第 16 次跑批：**4 条全是 `fetch failed`，一条都没问到。** 十分钟前第 15 次，同一台跑批机把 4 条里的 3 条问通了。
+
+**PNCP 不是挂了，是在限流。** 而这是最该重试的一种失败 —— 恰好是两处都没覆盖到的那种。
+
+### 两个洞，一个原因
+
+**一、探针自己开了一条 `fetch()`，零重试。** 这个仓库的规矩写得很清楚（`ingest-brazil.ts` 里那句「一条代码路径」），我写探针时没守。改成走 `fetchPncpSearchByText()`，和真正的连接器同一条路、同一套退避（5 次，约 109 秒）、同一组请求头。顺带每条之间隔 3 秒，不再连着轰四发。
+
+**二、连接器的重试判据只认 `ECONNRESET`。**
+
+```ts
+if ((current as NodeJS.ErrnoException).code === "ECONNRESET") return true;
+```
+
+而 Node 报告「连不上」用的是裸的 `TypeError: fetch failed`，真正的原因藏在 `cause.code` 里，有些 TLS 错误连 `cause` 都没有。于是它落到 `throw err`，**第一次就放弃**。
+
+**这个洞在生产路径上也有** —— 每天那趟 PNCP 导入，碰到一次限流就直接报错退出。改成 `isTransientNetwork()`，认 `ECONNRESET / ECONNREFUSED / ENOTFOUND / EAI_AGAIN / ETIMEDOUT / EPIPE` 和 undici 那几个 `UND_ERR_*`，外加裸的 `fetch failed`。
+
+**400 和 404 仍然不重试** —— 那是我们自己的请求写错了，重试只是花 109 秒睡到同一个 400。
+
+`test-brazil-pncp-mapper` 加了 8 项把这条钉死，包括「裸 `fetch failed` 要重试」和「自己写错的请求不重试」这一正一反。
+
+### 记下来
+
+这是这个仓库第三次付同一笔学费：**一次尝试分不清「对方死了」和「对方这会儿不理你」，而这两件事的下一步是相反的。** 前两次是 sisapinternet（跑批机 1 次验证页 + 2 次 502 就下了结论）和 ANEEL。
+
+## 量出来了：DOU 能解析的那批，PNCP 全都已经有（2026-09-21）
+
+第 17 次跑（`2c114b9`，重试和限速进去之后）终于拿到了真数字。4 份标签式详情页：
+
+| DOU 通告                     | UASG   | PNCP                                  |
+| ---------------------------- | ------ | ------------------------------------- |
+| Concorrência 51/2026（更正） | 393024 | **有** — DNIT-CE，`Edital nº 51/2026` |
+| Concorrência 307/2026        | 393003 | 说不准（全文检索回了 0 条）           |
+| Concorrência 133/2026        | 791181 | **有**                                |
+| Concorrência 151/2025        | 753000 | **有**                                |
+
+**3 条确认撞车，1 条说不准，0 条没问到。**
+
+「说不准」那条是**说不准**，不是「DOU 独有」。PNCP 的全文索引没把它按这几个词捞出来，不等于库里没有 —— 跟「够不着 ≠ 空的」是同一条规矩。想坐实只能按 UASG 直查，不能靠检索落空反推。
+
+### 比撞车更要紧的：我之前写的「重复行至少日期不一样」是错的
+
+这句话原本躺在 `probe-pncp-overlap.ts` 的文件头，理由是「DOU 给 Data de Abertura，PNCP 给 data_fim_vigencia，两边字段不同名」。命中行一打出来就不成立了：
+
+```
+开标   DOU 2026-12-17   PNCP 2026-12-17T09:30   同一天，PNCP 还多给了时分
+收件   DOU 2026-09-18   PNCP 2026-09-18T08:00   同一天
+```
+
+而且这一条恰好是**更正通告**（收件日从 09-16 改到 09-18）—— PNCP 的 `data_inicio_vigencia` 已经是 09-18。**改期 PNCP 也跟上了，DOU 连「更快」都算不上。**
+
+所以这一类 DOU 行不是「多一个信息源」，是**同一条更差的副本**：少时分、少 `orgao_cnpj`、少 `numero_controle_pncp`、少 `valor_global`。
+
+这句错话之所以能活到今天，是因为**没有任何东西检查它**。现在每次命中都把两边日期并排打出来，并统计「开标日和 PNCP 一致」的条数：全部一致就直说副本更差，有对不上的就点名让人去看。断言搬进了输出里。
+
+### 去重键确实存在
+
+PNCP 行上的 `unidade_codigo` **就是 UASG**（命中行 393024，和 DOU 的 compra 号一致），`title` 里带着 `Edital nº 51/2026`。DOU 的 compra 号给出 UASG + 标号 + 年。两边对得上，不用靠标题文字猜。
+
+但要注意：命中行的 `numero_sequencial` 是 **15**，`numero` 是 **null**，而标号是 **51**。**PNCP 的 sequencial 不是标号**，入库用的 `numero_controle_pncp` = `04892707001697-1-000015/2026` 里那个 `000015` 也不是。所以 DOU 侧拿不到现成的 slug —— 要去重，得先拿 UASG + 标号反查一次 PNCP 换出 `numero_controle_pncp`。也就是说：**DOU 的联邦工程要入库，必须先问一次 PNCP，那还不如直接用 PNCP。**
+
+### 结论：DOU 连接器不碰带 Comprasnet 链接的联邦工程
+
+这一类是 Lei 14.133/2021 强制进 PNCP 的，PNCP 那边更全、更准、还能去重。DOU 只留给 PNCP 结构上装不下的：特许（不是 _contratação_）、第一节的批复、按 Lei 13.303/2016 走自家门户的国企。
+
+**而这恰好是现在还没验证能不能解析的那一类。** 唯一抓到的特许（Flona do Bom Futuro，Concorrência 03/2026）是散文式的，`dou-detail.ts` 拒绝映射，而且它还是一份 `AVISO DE RETIFICAÇÃO` 而不是原始通告。下一步是抓一份特许的原始 `AVISO DE LICITAÇÃO` —— 在那之前，DOU 导入器该不该写都还是没答案的。
+
+## 要抓的那一条，一天只有一条，而且那天那条是勘误（2026-09-21）
+
+定下「DOU 只留 PNCP 装不下的那几类」之后，下一步是抓一份**特许的原始通告**。本来打算让用户跑 `dou-link --kept --save` 碰运气，先按真实数据算了一下，发现那是在掷骰子：
+
+2026-09-18 那份**完整版面 2,139 条**（`watch-kept-2026-09-18.json`，不是样本）：
+
+- watch 放行 **37** 条 → 收紧后 **5** 条
+- 这 5 条里，命中特许词的 **只有 1 条**
+- 而那 1 条是 **`AVISO DE RETIFICAÇÃO`**
+
+`--kept` 取的是当天前 5 条命中，特许一天就这么一条，还未必是原始通告 —— 按一次按钮期望值就是 0，而 0 什么也说明不了。
+
+### 所以加了 `--concession`，并且默认往回扫 10 个工作日
+
+两道闸，第二道和第一道一样重要：
+
+1. `form === "works_or_concession"` 且命中 `FORM_CONCESSION`
+2. **`stage === "opening"`** —— 勘误不算
+
+第二道是重点。勘误是对一份**这里没人见过的原始通告**的修改：它没有的字段，可能只是因为原件已经写了。**拿勘误回答「原始特许通告能不能解析」，答案是假的。**
+
+`FORM_CONCESSION` 挪进了 `dou-watch.ts`，比 `FORM_WORKS` 里那半句**故意更宽**：`FORM_WORKS` 要求带限定词（`concessão florestal`、`concessão de serviço`），因为它的任务是别为「concessão」这个词乱叫人；这里的任务是**把候选找出来人工读**，误报只花一次抓取，漏报丢掉的是整个问题。
+
+### 0 条是什么意思，先写清楚再跑
+
+- **几天是 0** → 特许本来就稀疏，正常。
+- **扫了十几个工作日还是 0** → 不是稀疏，是 `FORM_CONCESSION` 和 DOU 实际印的词对不上，回来改正则。
+- **一期都没取到** → 「够不着」，退出码 1，不当成「没有特许」。
+
+`test:dou-watch` 加了 5 项按真实那天钉住：37 条里特许恰好 1 条、就是 Flona、它的 stage 是 `amendment`、所以那天 `--concession` 取 0 条**是对的**、以及闸子本身没失灵。最后一项是防止正则哪天改坏了、探针悄悄变成永远返回 0。92 → 102。
+
+顺带：存下来的文件名前面加了版面日期。原来两批都从 `01` 开始编号，一天一批还能忍，扫十个工作日就每次都撞。
+
+### 还是没答案的
+
+**DOU 唯一有价值的那一类，恰好是现在还没验证能不能解析的那一类。** 抓到一份原始特许通告之前，「DOU 导入器该不该写」没有答案 —— 也不该动手写。
+
+## 特许通告抓到了，五份。答案是「能看，不能自动入库」（2026-09-21）
+
+第 18 次跑，`dou-link --concession --save`：**扫了 9 个工作日、19,707 条公告，筛出 5 条，全部存回了分支。**
+
+筛子是对的 —— 这 5 条里 4 条是 `AVISO DE LICITAÇÃO`，正是之前缺的**原始通告**。
+
+| 日期  | 是什么                                                           | 形状 | 解析器读出什么 |
+| ----- | ---------------------------------------------------------------- | ---- | -------------- |
+| 09-16 | Infraero 五个机场的保税物流仓特许（5 个标段）                    | 散文 | **什么都没有** |
+| 09-14 | 土地租赁 Concorrência 41/2026                                    | 标签 | 全部读出       |
+| 09-10 | **Flona do Bom Futuro 第 2 标段森林特许**（碳信用 + 原生林木材） | 散文 | **什么都没有** |
+| 09-09 | 阿尔塔米拉森林特许的**听证会**公告                               | 散文 | **什么都没有** |
+| 09-08 | ICMBio 卡拉雅斯露营与便利服务特许                                | 散文 | **什么都没有** |
+
+### 第一个结论：「PNCP 装不下」这条判断是对的
+
+- Infraero 走 **licitacoes-e.com.br**（巴西银行的平台），不是 Comprasnet
+- Flona 的标书在 **林业局自己的门户**，依据是 Lei 11.284/2006，投标信封要送到 **B3 交易所**
+- ICMBio 那条引的是 Lei 14.133 + **Lei 8.987/1995（特许法）**
+
+这三条 PNCP 里都不会有。DOU 确实是唯一的公开渠道。
+
+而唯一那条**标签式**的（土地租赁 41/2026）带着 Comprasnet 链接 —— 按 run #17 定下的规矩，它是 PNCP 的活，不从 DOU 进。**规矩和数据对上了。**
+
+### 第二个结论：形状还是发布机构决定的，特许全是散文
+
+四条特许，四条散文，解析器一个字段都给不出来。之前「发布机构决定形状」的判断在特许上也成立 —— 而且**恰好全落在不利的那一边**。
+
+### 第三个结论，也是最要紧的：这些正文里的日期会骗人
+
+ICMBio 那份正文里有 **4 个葡文长日期**：
+
+```
+1 de abril de 2021      ← Lei nº 14.133 的颁布日
+28 de agosto de 2007    ← Lei nº 11.516 的颁布日
+13 de fevereiro de 1995 ← Lei nº 8.987 的颁布日
+20 de outubro de 2026   ← 真正的开标日
+```
+
+**一个「取第一个长日期」的解析器，会把截标日写成 2021-04-01。** 格式没错、日期真实、排序渲染都正常 —— 完全错误，而且错得看不出来。这正是这个仓库反复付学费的那个形状。
+
+Flona 那份也一样：`04 de novembro de 2026`（交信封）和 `18 de novembro de 2026`（开技术标和价格标）是**两个不同的日期**，哪个是「截标日」要读懂流程才知道，不是挑一个就行。
+
+`test:dou-detail` 加了 19 项按这五份页面钉住，包括那四个长日期的顺序、以及「解析器现在不给开标日 —— 宁可没有，也不要那个 2021」。69 → 88。
+
+### 所以：DOU 导入器现在不写
+
+要写就得做一个**葡文散文日期解析器**，而且要能分清法条颁布日、交件日、开标日。这不是正则能干净解决的事 —— 更像该走文档抽取那条路（仓库里已经有 Qwen 抽关键日期的管线）。
+
+在那之前，DOU 对特许的正确用法是**线索雷达**：每天把这几条推给人看，人点进 in.gov.br 读原文。这也正是 `watch:dou` 现在在做的事。

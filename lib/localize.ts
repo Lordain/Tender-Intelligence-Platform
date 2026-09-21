@@ -21,7 +21,7 @@ export const uiText = {
   heroSubtitle: {
     en: "Break through the Spanish-language barrier: understand government tender requirements from Mexico, Colombia and Peru in your own language, and decide bid or no-bid with confidence.",
     es: "Licitaciones públicas de México, Colombia y Perú, traducidas y estructuradas para que proveedores internacionales entiendan los requisitos de calificación en minutos y decidan si participar con confianza.",
-    zh: "看不懂西语标书、搞不清资质要求？我们把墨西哥、巴西、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮您快速判断能不能投、该不该投。",
+    zh: "看不懂外语标书、搞不清资质要求？我们把墨西哥、巴西、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮您快速判断能不能投、该不该投。",
   },
   browseTenders: {
     en: "Browse Tenders",

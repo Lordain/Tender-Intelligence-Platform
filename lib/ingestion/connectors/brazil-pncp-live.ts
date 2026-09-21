@@ -80,11 +80,45 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export type PncpFetchError = Error & { pncpStatus?: number | string };
 
-function isReset(err: unknown): boolean {
+/**
+ * A network failure that is worth trying again, as opposed to a bad request.
+ *
+ * It used to check ECONNRESET and nothing else, which left the commonest
+ * refusal unretried: Node reports a connect-level failure as a bare
+ * `TypeError: fetch failed` whose real reason hides in `cause.code`, and that
+ * fell through to `throw err` on the first attempt.
+ *
+ * Measured, 2026-09-21: probe run #15 got three of four PNCP queries answered;
+ * run #16, ten minutes later from the same runner, got `fetch failed` on all
+ * four. PNCP was throttling, not down — the single most retryable thing there
+ * is, and the one case this function did not cover. Same lesson as
+ * sisapinternet: one attempt cannot tell a dead origin from a momentary
+ * refusal, and the two need opposite responses.
+ *
+ * A 400 or a 404 still does not come through here; those are our request.
+ */
+const TRANSIENT_NETWORK_CODES = new Set([
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "EPIPE",
+  "ETIMEDOUT",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_SOCKET",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+]);
+
+export function isTransientNetwork(err: unknown): boolean {
   let current: unknown = err;
   for (let depth = 0; depth < 4 && current instanceof Error; depth += 1) {
-    if ((current as NodeJS.ErrnoException).code === "ECONNRESET") return true;
-    if (/ECONNRESET/.test(current.message)) return true;
+    const code = (current as NodeJS.ErrnoException).code;
+    if (typeof code === "string" && TRANSIENT_NETWORK_CODES.has(code)) return true;
+    if (new RegExp([...TRANSIENT_NETWORK_CODES].join("|")).test(current.message)) return true;
+    // Node's own wording for a connect-level failure, whose cause may be
+    // absent entirely on some TLS errors.
+    if (current.message === "fetch failed") return true;
     current = (current as Error & { cause?: unknown }).cause;
   }
   return false;
@@ -147,9 +181,9 @@ async function getJson(url: string, label: string, backoff: readonly number[] = 
     } catch (err) {
       if (err instanceof Error && (err as PncpFetchError).pncpStatus !== undefined && !RETRYABLE_STATUSES.has((err as PncpFetchError).pncpStatus as number)) throw err;
       const aborted = err instanceof Error && err.name === "AbortError";
-      if (!isReset(err) && !aborted && !(err instanceof SyntaxError)) throw err;
-      const error = new Error(`${label}: ${aborted ? `no response within ${REQUEST_TIMEOUT_MS / 1000}s` : err instanceof SyntaxError ? "PNCP returned a body that is not JSON" : "PNCP reset the connection"}`) as PncpFetchError;
-      error.pncpStatus = aborted ? "timeout" : "ECONNRESET";
+      if (!isTransientNetwork(err) && !aborted && !(err instanceof SyntaxError)) throw err;
+      const error = new Error(`${label}: ${aborted ? `no response within ${REQUEST_TIMEOUT_MS / 1000}s` : err instanceof SyntaxError ? "PNCP returned a body that is not JSON" : `PNCP 没有接受连接（${err instanceof Error ? err.message : String(err)}）`}`) as PncpFetchError;
+      error.pncpStatus = aborted ? "timeout" : "network";
       lastError = error;
     } finally {
       clearTimeout(timer);
@@ -178,6 +212,26 @@ export async function fetchPncpSearchPage(modalidade: number, pagina: number, pa
     items: Array.isArray(body.items) ? (body.items as PncpSearchRow[]) : [],
     total: typeof body.total === "number" ? body.total : null,
   };
+}
+
+/**
+ * One page of free-text search results.
+ *
+ * Same endpoint, same retry budget and same headers as the modality sweep
+ * above — the point is that a probe asking PNCP a question goes through the
+ * connector rather than its own bare fetch(). The first version of
+ * scripts/probe-pncp-overlap.ts had its own, with no retries at all, and
+ * reported "4 条没问到" on a run where PNCP was merely throttling.
+ *
+ * Rows come back untyped on purpose: the search endpoint returns more fields
+ * than PncpRow declares — `unidade_codigo` (the UASG) among them — and a
+ * caller comparing identities needs the whole row, not the mapper's subset.
+ */
+export async function fetchPncpSearchByText(q: string, pageSize = 50): Promise<{ items: Record<string, unknown>[] }> {
+  const size = Math.min(Math.max(pageSize, 10), PNCP_MAX_PAGE_SIZE);
+  const url = `${SEARCH_URL}?q=${encodeURIComponent(q)}&tipos_documento=edital&ordenacao=-data&pagina=1&tam_pagina=${size}`;
+  const body = (await getJson(url, `PNCP 全文检索「${q.slice(0, 40)}」`)) as { items?: unknown };
+  return { items: Array.isArray(body.items) ? (body.items as Record<string, unknown>[]) : [] };
 }
 
 /**

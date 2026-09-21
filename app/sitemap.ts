@@ -3,6 +3,7 @@ import { getCachedTenderList } from "@/lib/tenders";
 import { siteOrigin } from "@/lib/site-url";
 import { fetchTenderSitemapEntriesFromDb } from "@/lib/db/tenders";
 import { participationGuides } from "@/lib/participation-guides";
+import { countryInsights } from "@/lib/country-insights";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 
 /**
@@ -31,9 +32,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: origin, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${origin}/tenders`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
     { url: `${origin}/insights`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
-    { url: `${origin}/insights/mexico`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
-    { url: `${origin}/insights/colombia`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
-    { url: `${origin}/insights/peru`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    ...countryInsights.map((insight) => ({
+      url: `${origin}/insights/${insight.slug}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
     { url: `${origin}/guides`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     ...participationGuides.map((guide) => ({
       url: `${origin}/guides/${guide.slug}`,

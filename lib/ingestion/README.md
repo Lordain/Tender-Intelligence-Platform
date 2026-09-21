@@ -7592,3 +7592,62 @@ The parser gets written against those bytes and not before. Rule of this file,
 paid for three times: a mapper is written against a real capture, never against
 an expectation of one — and "the detail page carries the full notice" is,
 until those bytes are read, exactly an expectation.
+
+
+## The eight saved DOU pages, and the one that holds seven tenders (2026-09-20)
+
+`what=dou-link --save --count 8` brought back eight real detail pages from the
+2026-09-18 Seção 3 edition. They answer three things, and the third changes the
+design.
+
+### First: the number I reported the run before was wrong
+
+That run said the detail bodies were 1044, 1054 and 1105 characters. They are
+897, 1544 and 2751. The reading regex matched `texto-dou` with a lazy `</div>`
+stop, which ends at the **first** closing div — inside the wrapper, not at the
+end of it. Three notices of obviously different sizes landing within 60
+characters of each other was the tell, and it is exactly the failure this file
+keeps writing down: a number produced by a guessed selector is not a reading.
+
+The saved pages show the real container: in.gov.br wraps every paragraph of a
+notice in `<p class="dou-paragraph">`, **1 to 8 of them**. So nothing has to be
+guessed about where a body ends, and `noticeText()` reads those.
+
+### Second: the detail page carries the notice whole
+
+Bodies measured 539 to 3763 characters against the payload's 403-character cap
+— 2× to 9×. The object description is complete rather than cut mid-word. The
+opening date is there, though in prose and in at least three phrasings:
+`Abertura: 05/10/26 às 09h`, `dia 30 de setembro de 2026, às 08 horas`, and
+`O recebimento das propostas será das 13h30min do dia 21/09/2026 até as
+13h00min do dia 05/10/2026`. Where to obtain the edital is named
+(`www.guarulhos.sp.gov.br`, Comprasnet, a Pregão app).
+
+A **value** appears in exactly **one of the eight**: `Valor máximo estimado de
+R$ 991.670,82`. So money is occasional here, not reliable — closer to ANTAQ
+than to PNCP, and a mapper must not treat its absence as a failure.
+
+### Third: one notice is not one tender
+
+`02-avisos-de-licitacao-732452192.html` is a single DOU notice from Guarulhos
+carrying **seven separate tenders** — CP 95034/26, CP 95035/26, CP 95036/26,
+PE 90159/26, PE 90160/26, PE 90161/26 and a reprogrammed PE 90155/26 — each
+with its own number, its own object and its own opening date, one per
+`dou-paragraph`. A mapper written on "one notice, one tender" would keep one of
+the seven and silently lose six, or worse, merge them into a row whose title
+belongs to one and whose deadline belongs to another.
+
+That is a municipal habit — a city hall publishing its week's schedule in one
+notice — and `dou-watch.ts` drops Prefeituras. But **that these eight contain
+none of the watch's actual hits is the point**: they are the day's first eight,
+which was the right sample for "does the URL resolve" and the wrong one for
+"can these become tenders". The rows a parser has to be written against are the
+five the watch keeps out of 2,139 — the DNIT highway, the Navy quay, the forest
+concession — and none of them is here.
+
+So the probe gained `--kept`, which runs `watchDouEdition()` first and follows
+its hits instead of the day's opening. It also now counts distinct
+instrument+number pairs per notice and flags a body carrying more than one, so
+the seven-in-one shape announces itself in the log rather than waiting to be
+found by a mapper. The detail parser gets written once those pages are in hand,
+and not before.

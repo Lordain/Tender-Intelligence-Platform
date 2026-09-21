@@ -46,13 +46,24 @@
  * Without `--save` it writes nothing, anywhere.
  *
  * Usage:
- *   Actions → Probe Brazil doors → what=dou-link            （只报告）
- *   Actions → Probe Brazil doors → what=dou-link，args=--save （顺便把页面存回分支）
+ *   Actions → Probe Brazil doors → what=dou-link                    （只报告）
+ *   Actions → Probe Brazil doors → what=dou-link，args=--kept --save （抓 watch 真正命中的那几条）
  *   npm run probe:dou-link -- --count 5 --section do3 --save
+ *
+ * ── Why --kept exists ────────────────────────────────────────────────────
+ *
+ * Without it this takes the day's FIRST N notices, which is the right sample
+ * for "does the URL resolve" and the wrong one for "can these become tenders".
+ * The first eight of 2026-09-18 were municipal: a truck purchase, dental
+ * prostheses, a suspension notice. The rows a parser has to be written against
+ * are the ones dou-watch.ts actually keeps — the DNIT highway, the Navy quay,
+ * the forest concession — and those are five in a day of 2,139. `--kept` runs
+ * the watch first and probes its hits.
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { fetchDouEdition, lastWeekday, isDouUnreachable } from "../lib/ingestion/connectors/dou-live";
 import { douNoticeUrl, DOU_SECTIONS, type DouSection } from "../lib/ingestion/dou-edition";
+import { watchDouEdition } from "../lib/ingestion/dou-watch";
 
 const TIMEOUT_MS = 45_000;
 const FIXTURE_DIR = "lib/ingestion/__fixtures__/dou/detail";
@@ -94,20 +105,29 @@ function argValue(args: string[], flag: string): string | undefined {
   return idx >= 0 ? args[idx + 1] : undefined;
 }
 
-/** The article body, without the in.gov.br chrome, so the length compared is text and not navigation. */
-function readableLength(html: string): number {
-  const article =
-    /<div[^>]*class="[^"]*texto-dou[^"]*"[\s\S]*?<\/div>/i.exec(html)?.[0] ??
-    /<article\b[\s\S]*?<\/article>/i.exec(html)?.[0] ??
-    /<main\b[\s\S]*?<\/main>/i.exec(html)?.[0] ??
-    html;
-  return article
-    .replace(/<script\b[\s\S]*?<\/script>/gi, "")
-    .replace(/<style\b[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim().length;
+/**
+ * The notice's own text, read from the `dou-paragraph` elements.
+ *
+ * The first version of this matched `texto-dou` with a lazy `</div>` stop,
+ * which ends at the FIRST closing div — inside the wrapper, not at the end of
+ * it. It reported 1044, 1054 and 1105 characters for three notices whose real
+ * bodies are 897, 1544 and 2751, and three numbers landing within 60 of each
+ * other is what a fixed-size cut looks like, not what three different notices
+ * look like. The saved pages (2026-09-20) settled it: in.gov.br wraps every
+ * paragraph of a notice in `<p class="dou-paragraph">`, 1 to 8 of them per
+ * notice, so they are what gets read and nothing has to be guessed about where
+ * the body ends.
+ */
+function noticeText(html: string): string {
+  const paragraphs = [...html.matchAll(/<p[^>]*class="[^"]*dou-paragraph[^"]*"[^>]*>([\s\S]*?)<\/p>/gi)].map((m) =>
+    m[1]
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+  return paragraphs.filter((p) => p !== "").join("\n");
 }
 
 async function main() {
@@ -140,8 +160,18 @@ async function main() {
     throw err;
   }
 
-  const sample = result.edition.notices.slice(0, count);
-  console.log(`当天 ${result.edition.notices.length} 条公告（${result.url}）。\n`);
+  const all = result.edition.notices;
+  const onlyKept = args.includes("--kept");
+  // The watch's own hits, not the day's first N. See the header.
+  const pool = onlyKept ? watchDouEdition(all).kept.map((v) => v.notice) : all;
+  const sample = pool.slice(0, count);
+  console.log(
+    `当天 ${all.length} 条公告（${result.url}）。${onlyKept ? `watch 命中 ${pool.length} 条，取前 ${sample.length} 条。` : ""}\n`,
+  );
+  if (sample.length === 0) {
+    console.log("这一天 watch 一条都没命中 —— 换一天再试（--section do1 或往前找个工作日）。");
+    return;
+  }
 
   if (save) await mkdir(FIXTURE_DIR, { recursive: true });
 
@@ -158,13 +188,21 @@ async function main() {
         line = `HTTP ${response.status} ${response.statusText}`;
       } else {
         const html = await response.text();
-        const full = readableLength(html);
+        const body = noticeText(html);
+        const full = body.length;
         resolved += 1;
         // The only comparison that matters. A 200 that returns the same 403
         // characters is a page that exists and does not help. It is still a
         // guessed region — see trimForFixture on why --save exists.
         if (full > stub * 1.5) longer += 1;
-        line = `200 · 正文 ${full} 字（摘要 ${stub} 字）${full > stub * 1.5 ? "  ← 比摘要长，值得再抓一层" : "  ← 没比摘要长多少"}`;
+        // How many tenders this ONE notice holds. Measured on the saved
+        // pages: a single "Avisos de Licitação" from Guarulhos carried seven,
+        // each with its own number, object and opening date. A mapper that
+        // assumes one notice is one tender would keep one of the seven.
+        const instruments = new Set(
+          [...body.matchAll(/\b(?:CP|PE|PP|TP|RDC|Concorr[êe]ncia|Preg[ãa]o(?:\s+Eletr[ôo]nico)?|Tomada de Pre[çc]os|Dispensa|Inexigibilidade)\b[^\d]{0,20}(\d{1,6}\s*\/\s*\d{2,4})/gi)].map((m) => m[1].replace(/\s+/g, "")),
+        );
+        line = `200 · 正文 ${full} 字（摘要 ${stub} 字）${instruments.size > 1 ? `  ⚠ 这一条里有 ${instruments.size} 个标` : ""}${full > stub * 1.5 ? "  ← 比摘要长" : "  ← 没比摘要长多少"}`;
         if (save) {
           const name = `${String(index + 1).padStart(2, "0")}-${notice.urlTitle.replace(/[^a-z0-9._-]/gi, "_").slice(0, 70)}.html`;
           await writeFile(`${FIXTURE_DIR}/${name}`, trimForFixture(html, url, stub));

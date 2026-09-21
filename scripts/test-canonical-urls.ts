@@ -63,13 +63,39 @@ function staticRoutesFromSitemap(source: string): string[] {
   return [...routes];
 }
 
+/**
+ * The sitemap used to list `/insights/mexico|colombia|peru` one literal per
+ * line, so the regex above found them. On 2026-09-21 they became
+ * `countryInsights.map(...)` — correct for the sitemap (Brazil was added and
+ * a fourth literal would have been forgotten sooner or later), and it silently
+ * took six checks out of this file: no country insight page was canonical-
+ * checked any more, the new one included. A refactor that turns a check into a
+ * no-op is the regression this file was written about, so the slugs are read
+ * from the same array the sitemap maps over — still no hand-copied list.
+ *
+ * Each of these is its own `app/insights/<slug>/page.tsx`, not a `[slug]`
+ * route, which is why they belong with the static routes and not with the two
+ * dynamic ones below.
+ */
+function insightRoutesFromSitemap(sitemapSource: string): string[] {
+  if (!/countryInsights\.map\(/.test(sitemapSource)) return [];
+  const insights = readFileSync("lib/country-insights.ts", "utf-8");
+  return [...insights.matchAll(/^\s*slug:\s*"([a-z0-9-]+)"/gm)].map((m) => `/insights/${m[1]}`);
+}
+
 /** "/" -> app/page.tsx, "/refund-policy" -> app/refund-policy/page.tsx */
 function pageFileFor(route: string): string {
   return route === "/" ? "app/page.tsx" : `app${route}/page.tsx`;
 }
 
-const routes = staticRoutesFromSitemap(sitemap);
+const insightRoutes = insightRoutesFromSitemap(sitemap);
+const routes = [...new Set([...staticRoutesFromSitemap(sitemap), ...insightRoutes])];
 check("the sitemap's static routes were readable", routes.length >= 9, `found ${routes.length}`);
+check(
+  "the country insight pages are still in the route list",
+  insightRoutes.length >= 4,
+  `found ${insightRoutes.length} —— sitemap 不再 map countryInsights，或 lib/country-insights.ts 的 slug 写法变了`,
+);
 
 for (const route of routes) {
   const file = pageFileFor(route);

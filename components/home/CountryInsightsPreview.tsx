@@ -23,7 +23,7 @@ export function CountryInsightsPreview() {
           </div>
         </div>
 
-        <div className="mt-9 grid gap-5 lg:grid-cols-3">
+        <div className="mt-9 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {countryInsights.map((insight) => (
             <Link
               key={insight.slug}
@@ -35,7 +35,7 @@ export function CountryInsightsPreview() {
                   src={insight.heroImage}
                   alt={`${insight.country}战略投资与基础设施`}
                   fill
-                  sizes="(min-width: 1024px) 33vw, 100vw"
+                  sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
                   className="object-cover transition duration-500 group-hover:scale-[1.03]"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#061b2b]/70 via-transparent to-transparent" />

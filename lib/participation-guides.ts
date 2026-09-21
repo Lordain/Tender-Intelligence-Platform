@@ -251,6 +251,99 @@ export const participationGuides: ParticipationGuide[] = [
     ],
   },
   {
+    slug: "brazil-pncp",
+    country: "巴西",
+    countryCode: "BR",
+    platform: "Portal Nacional de Contratações Públicas (PNCP)",
+    title: "怎么参与 PNCP 发布的巴西政府采购项目？",
+    summary: "从参与条件、供应商注册到文件递交，了解境外企业参与巴西政府采购需要完成的关键步骤。",
+    whatIs: "Portal Nacional de Contratações Públicas（PNCP）是巴西《第14.133/2021号法律》第174条设立的全国政府采购官方门户，用于集中、强制公开新采购法要求披露的采购计划、公告、合同及相关文件。PNCP首先是全国信息公开与检索入口，并不意味着所有项目都在PNCP页面直接提交投标；实际递交可能发生在Compras.gov.br、州或市系统、采购机构自有平台或公告指定的其他电子系统。",
+    audience: "准备参与巴西联邦、州、市及其他公共机构采购项目的境内外企业",
+    quickFacts: [
+      { label: "官方入口", value: "PNCP（全国集中发布与检索）" },
+      { label: "常用语言", value: "葡萄牙语" },
+      { label: "实际投标", value: "以公告指定的电子系统为准" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "参与前先确认三个入口",
+        items: [
+          "PNCP是公告和文件入口：先取得完整edital、附件、澄清与更正，确认采购机关、资格条件和截止时间",
+          "电子投标系统是实际操作入口：可能是Compras.gov.br，也可能是州、市、采购机构或第三方平台",
+          "SICAF是联邦采购常用的供应商登记系统：外国企业应按境外供应商路径准备企业和负责人资料",
+          "如果项目属于特许经营、PPP或国有企业采购，还要遵循相应主管机构、项目公司或企业采购门户的规则",
+        ],
+        note: "PNCP公布项目并不等于在PNCP页面直接递交投标。参与企业必须以edital指定的电子系统、账户要求和递交方式为准。",
+      },
+      {
+        id: "first-check",
+        title: "参与前必须核对的项目要求",
+        items: [
+          "Órgão ou entidade：采购机关或实体，决定后续沟通和资格核验对象",
+          "Unidade compradora / UASG：具体采购单位；联邦项目常用UASG识别机构与Compras.gov.br程序",
+          "Número de controle PNCP：PNCP唯一控制编号，适合跨页面核对项目、附件和更新",
+          "Modalidade：程序类型，例如Pregão、Concorrência、Concurso、Leilão或直接采购",
+          "Modo de disputa：公开、封闭或组合方式，影响报价与竞价过程",
+          "Situação：当前状态，并继续检查暂停、撤销、更正、结果及合同信息",
+          "Data de abertura / encerramento：接收提案的起止时间；以最新公告和更正为准",
+          "Local de realização：线上或线下，以及实际使用的电子系统和项目链接",
+        ],
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "确认参与资格与递交入口", detail: "从edital核对项目是否允许外国企业、联合体或分包参与，并确认实际使用Compras.gov.br、地方系统还是其他电子平台。" },
+          { title: "确定企业参与身份", detail: "判断以境外企业、巴西子公司、联合体成员、分包商还是设备供应商进入，并确认是否需要CNPJ、本地代表或巴西送达地址。" },
+          { title: "完成供应商和操作人员注册", detail: "若项目使用Compras.gov.br，按要求办理SICAF及操作账户；境外供应商应提前确认负责人CPF、采购机关录入及账户启用流程。其他平台需要分别注册。" },
+          { title: "准备法律、技术和财务资料", detail: "逐项对应edital整理企业文件、业绩、人员、设备、财务能力、声明、技术方案、价格以及保证文件，并处理葡萄牙语翻译和认证。" },
+          { title: "递交方案并保存凭证", detail: "严格按照edital规定的格式、语言、签署、时区、报价币种和电子操作步骤递交；保存系统回执和每次更新记录。" },
+          { title: "跟进竞价、资格审查与合同", detail: "监控在线竞价、消息、补件、意向申诉、结果及合同签署。中标前后所需的正式翻译、认证、税务和担保文件可能不同。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "常见资料清单",
+        intro: "巴西项目的文件要求由edital决定。以下是境外企业通常需要提前建立的资料框架：",
+        items: [
+          "企业成立、存续、章程、注册地址和税务识别文件",
+          "法定代表人、授权代理人、签字权限及负责人身份证明",
+          "SICAF或实际电子平台要求的企业和用户资料",
+          "税务、劳动、社会保障及诚信合规证明；境外无对应文件时的等效说明",
+          "同类合同、客户证明、技术能力、关键人员、设备和质量认证",
+          "财务报表、经济财务能力、报价、税费、进口与本地履约安排",
+          "投标保证、履约保证、声明书及公告要求的其他附件",
+        ],
+        note: "Compras.gov.br现行官方说明允许境外企业在SICAF登记时先提交自由翻译的等效文件；签署合同或价格登记文件时，通常需要替换为巴西宣誓翻译并完成海牙认证或领事认证的文件。仍应以现行SICAF规则和具体edital为准。",
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "项目是否允许未在巴西设立实体的外国企业参与，还是要求巴西CNPJ、本地授权代表或当地经营资格",
+          "SICAF境外供应商流程由谁发起；负责人是否需要有效CPF，以及采购机关需要提前录入哪些资料",
+          "中国出具的公司、业绩和授权文件在投标阶段是否可用自由翻译，何时必须宣誓翻译、Apostille或领事认证",
+          "技术标准是否引用ABNT、INMETRO、ANVISA、ANEEL、ANATEL或其他巴西认证，认证周期是否赶得上截止日期",
+          "是否存在本国产品、可持续采购、中小企业优惠或本地服务要求，以及外国企业如何适用",
+          "报价是否包含ICMS、IPI、ISS、PIS/COFINS、进口税和物流成本，付款、汇率及税务处理能否执行",
+          "保证金或保险由哪类巴西机构出具，联合体、分包和本地售后是否允许",
+        ],
+        note: "外国供应商能够登记或进入系统，不代表自动符合某个项目。应在投入前向采购单位提出书面澄清，确认境外文件、税务、担保、技术认证和合同签署要求。",
+      },
+    ],
+    sources: [
+      { label: "PNCP官方平台", href: "https://pncp.gov.br/" },
+      { label: "PNCP官方说明", href: "https://www.gov.br/pncp/pt-br/pncp/sobre-o-pncp/sobre-o-pncp" },
+      { label: "PNCP手册与开放数据说明", href: "https://www.gov.br/pncp/pt-br/pncp/manuais" },
+      { label: "Compras.gov.br供应商入口", href: "https://www.gov.br/compras/pt-br/fornecedor" },
+      { label: "Compras.gov.br现行操作手册", href: "https://www.gov.br/compras/pt-br/acesso-a-informacao/manuais" },
+      { label: "SICAF境外供应商常见问题", href: "https://www.gov.br/compras/pt-br/acesso-a-informacao/perguntas-frequentes/sicaf-normativo" },
+      { label: "巴西《第14.133/2021号采购法》", href: "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm" },
+      { label: "巴西联邦官方公报（DOU）", href: "https://www.gov.br/pt-br/servicos/acessar-o-diario-oficial-da-uniao" },
+    ],
+  },
+  {
     slug: "colombia-secop-ii",
     country: "哥伦比亚",
     countryCode: "CO",
@@ -520,19 +613,18 @@ export const participationGuides: ParticipationGuide[] = [
 ];
 
 /**
- * The four guides the homepage strip shows, in this order (user, 2026-09-11:
- * 只展示4个：墨西哥2个(CompraMx, CFE Micrositio)、哥伦比亚1个、秘鲁1个).
+ * The four guides the homepage strip shows, in this order (updated 2026-09-21:
+ * one guide each for Mexico, Brazil, Colombia and Peru).
  *
- * A teaser, not an index — /guides carries all of them. One per country plus
- * a second Mexican one keeps the row to a single line of four at every
- * breakpoint, which is what went wrong when it simply rendered everything:
- * seven cards wrapped to 4+3 and left a hole.
+ * A teaser, not an index — /guides carries all of them. Keeping one guide per
+ * country gives the homepage a balanced four-market overview and prevents the
+ * row from wrapping unpredictably as the full guide library grows.
  *
  * Peru is represented by SEACE rather than Obras por Impuestos because SEACE
  * is where nearly every Peruvian tender on this site comes from; OxI is a
  * separate financing mechanism most readers meet later.
  */
-const HOMEPAGE_GUIDE_SLUGS = ["mexico-compras-mx", "mexico-cfe-micrositio", "colombia-secop-ii", "peru-seace-oece"] as const;
+const HOMEPAGE_GUIDE_SLUGS = ["mexico-compras-mx", "brazil-pncp", "colombia-secop-ii", "peru-seace-oece"] as const;
 
 /** Resolved in HOMEPAGE_GUIDE_SLUGS order, skipping any slug that no longer exists rather than rendering a hole. */
 export function homepageGuides(): ParticipationGuide[] {
@@ -550,6 +642,11 @@ export const guideCountries = [
     name: "墨西哥",
     code: "MX",
     description: "联邦采购、电力、油气与战略基础设施项目",
+  },
+  {
+    name: "巴西",
+    code: "BR",
+    description: "PNCP全国公开入口、Compras.gov.br与境外供应商SICAF准备",
   },
   {
     name: "哥伦比亚",

@@ -7827,3 +7827,31 @@ unidade_codigo 153177
 第二档特意不叫「DOU 独有」。**全文检索找不到，不等于 PNCP 里没有** —— 这和「够不着不等于空的」是同一条规矩。这个探针能证明「有」，**证明不了「没有」**。
 
 （另外那一跑里 Concorrência 307/2026 是 `fetch failed`，如实报成「没问到」，没被算进任何一边。）
+
+## PNCP 会限流，而我给探针写了条没有重试的新路（2026-09-21）
+
+第 16 次跑批：**4 条全是 `fetch failed`，一条都没问到。** 十分钟前第 15 次，同一台跑批机把 4 条里的 3 条问通了。
+
+**PNCP 不是挂了，是在限流。** 而这是最该重试的一种失败 —— 恰好是两处都没覆盖到的那种。
+
+### 两个洞，一个原因
+
+**一、探针自己开了一条 `fetch()`，零重试。** 这个仓库的规矩写得很清楚（`ingest-brazil.ts` 里那句「一条代码路径」），我写探针时没守。改成走 `fetchPncpSearchByText()`，和真正的连接器同一条路、同一套退避（5 次，约 109 秒）、同一组请求头。顺带每条之间隔 3 秒，不再连着轰四发。
+
+**二、连接器的重试判据只认 `ECONNRESET`。**
+
+```ts
+if ((current as NodeJS.ErrnoException).code === "ECONNRESET") return true;
+```
+
+而 Node 报告「连不上」用的是裸的 `TypeError: fetch failed`，真正的原因藏在 `cause.code` 里，有些 TLS 错误连 `cause` 都没有。于是它落到 `throw err`，**第一次就放弃**。
+
+**这个洞在生产路径上也有** —— 每天那趟 PNCP 导入，碰到一次限流就直接报错退出。改成 `isTransientNetwork()`，认 `ECONNRESET / ECONNREFUSED / ENOTFOUND / EAI_AGAIN / ETIMEDOUT / EPIPE` 和 undici 那几个 `UND_ERR_*`，外加裸的 `fetch failed`。
+
+**400 和 404 仍然不重试** —— 那是我们自己的请求写错了，重试只是花 109 秒睡到同一个 400。
+
+`test-brazil-pncp-mapper` 加了 8 项把这条钉死，包括「裸 `fetch failed` 要重试」和「自己写错的请求不重试」这一正一反。
+
+### 记下来
+
+这是这个仓库第三次付同一笔学费：**一次尝试分不清「对方死了」和「对方这会儿不理你」，而这两件事的下一步是相反的。** 前两次是 sisapinternet（跑批机 1 次验证页 + 2 次 502 就下了结论）和 ANEEL。

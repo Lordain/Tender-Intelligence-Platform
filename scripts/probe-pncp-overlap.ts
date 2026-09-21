@@ -46,25 +46,30 @@
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { parseDouDetail, decodeComprasnetId, type DouDetail } from "@/lib/ingestion/dou-detail";
+import { fetchPncpSearchByText } from "@/lib/ingestion/connectors/brazil-pncp-live";
 
 const DETAIL_DIR = "lib/ingestion/__fixtures__/dou/detail";
-const SEARCH_URL = "https://pncp.gov.br/api/search";
-const TIMEOUT_MS = 45_000;
+/** PNCP throttles a burst. Run #16 asked four questions back to back and got `fetch failed` on all four, ten minutes after run #15 had three of them answered. */
+const PACE_MS = 3_000;
 
+/**
+ * Asks PNCP, through the connector.
+ *
+ * The first version of this had its own bare fetch() with no retries, and run
+ * #16 duly reported "4 条没问到" while PNCP was merely throttling — the same
+ * source had answered three of four ten minutes earlier. The connector's
+ * getJson already backs off five times over ~109 seconds, so the fix is to
+ * stop having a second code path, which is this repo's standing rule anyway.
+ */
 async function search(q: string): Promise<{ items: Record<string, unknown>[]; error?: string }> {
-  const url = `${SEARCH_URL}?q=${encodeURIComponent(q)}&tipos_documento=edital&ordenacao=-data&pagina=1&tam_pagina=10`;
   try {
-    const response = await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "TenderIntelligencePlatform/1.0 (open-data ingestion)" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    if (!response.ok) return { items: [], error: `HTTP ${response.status} ${response.statusText}` };
-    const body = (await response.json()) as { items?: unknown };
-    return { items: Array.isArray(body.items) ? (body.items as Record<string, unknown>[]) : [] };
+    return await fetchPncpSearchByText(q);
   } catch (err) {
     return { items: [], error: err instanceof Error ? err.message : String(err) };
   }
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** `Edital nº 109/2026` → `109/2026`. PNCP puts the edital number in `title`, which is the other half of the join key. */
 function editalNumberOf(row: Record<string, unknown>): string | undefined {
@@ -90,7 +95,11 @@ async function main() {
   let unreachable = 0;
   let firstHit: Record<string, unknown> | undefined;
 
+  let asked = 0;
   for (const [file, detail] of labelled) {
+    // Spaced out rather than fired in a burst. See PACE_MS.
+    if (asked > 0) await sleep(PACE_MS);
+    asked += 1;
     const compras = decodeComprasnetId(detail.editalUrl);
     const label = `${detail.instrument ?? "?"} ${detail.number ?? "?"}`;
     console.log(`── ${label}  (${file})`);

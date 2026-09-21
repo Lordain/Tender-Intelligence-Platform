@@ -17,6 +17,7 @@
  * Usage: npm run test:brazil-pncp-mapper
  */
 import { inferGovernmentLevel, inferScopeType, inferStatus, mapPncpSearchRowToTender, parsePncpDate, parsePncpItemUrl, pncpPublicUrl, stripRelayPlatformTag, sumPncpItemValues, type PncpSearchRow } from "@/lib/ingestion/brazil-pncp-mapper";
+import { isTransientNetwork } from "@/lib/ingestion/connectors/brazil-pncp-live";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -183,6 +184,23 @@ check("\u4ea4\u6807\u622a\u6b62\u6309\u5df4\u897f\u5229\u4e9a\u65f6\u95f4\u6362\
 // no TenderKeyDate type means it, and `clarification` would show the reader
 // 「采购方召开的澄清会议」 for something that is not one.
 check("\u6295\u6807\u5f00\u59cb\u65e5\u4e0d\u5b58\uff0c\u5b81\u7f3a\u4e0d\u9519\u6807", roadDates.some((d) => d.date === "2026-04-07T12:00:00.000Z"), false);
+
+// Retrying the right failures. The predicate used to check ECONNRESET alone,
+// so Node's bare `TypeError: fetch failed` — which is how a connect-level
+// refusal actually arrives — was thrown on the first attempt instead of
+// retried. Probe run #16 (2026-09-21) hit exactly that: four of four queries
+// "failed" while PNCP was throttling, ten minutes after three of the same four
+// had been answered.
+check("裸 fetch failed 要重试", isTransientNetwork(new TypeError("fetch failed")), true);
+check("带 cause 的连接被拒要重试", isTransientNetwork(Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }) })), true);
+check("undici 连接超时要重试", isTransientNetwork(Object.assign(new Error("x"), { code: "UND_ERR_CONNECT_TIMEOUT" })), true);
+check("ECONNRESET 还是要重试", isTransientNetwork(Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" })), true);
+check("DNS 查不到要重试", isTransientNetwork(Object.assign(new Error("getaddrinfo EAI_AGAIN"), { code: "EAI_AGAIN" })), true);
+// Not everything is transient: a request we got wrong must not be retried, or
+// a 400 turns into 109 seconds of sleeping before the same 400.
+check("自己写错的请求不重试", isTransientNetwork(new Error("PNCP responded 400 — bad request")), false);
+check("随便一个错不重试", isTransientNetwork(new Error("something else")), false);
+check("不是 Error 的东西不重试", isTransientNetwork("fetch failed"), false);
 
 if (failures > 0) {
   console.log(`${failures} 项没过。`);

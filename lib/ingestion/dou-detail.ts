@@ -250,6 +250,31 @@ export function parseDouDetail(html: string): DouDetail {
 }
 
 /**
+ * The Comprasnet `compra` id inside the edital link, taken apart.
+ *
+ * `…?compra=39302403000512026` is UASG 393024, modalidade 03, Concorrência 51,
+ * year 2026. Confirmed on all four labelled captures — 39300303003072026
+ * (307/2026), 79118103001332026 (133/2026), 75300003001512025 (151/2025) — so
+ * the 6+2+5+4 split is measured rather than inferred from one example.
+ *
+ * It matters for one reason: it is the only structured identity a DOU notice
+ * carries, and whether it can be matched against a PNCP row decides whether
+ * the two sources can be deduplicated at all. PNCP keys on CNPJ + its own
+ * sequencial; UASG is neither. See scripts/probe-pncp-overlap.ts.
+ *
+ * Returns undefined rather than a partial decode when the id is not 17 digits,
+ * because a half-parsed identity used as a dedup key is worse than none.
+ */
+export function decodeComprasnetId(
+  url: string | undefined,
+): { uasg: string; modalidade: string; numero: string; ano: string } | undefined {
+  if (url === undefined) return undefined;
+  const raw = /[?&]compra=(\d{15,20})/.exec(url)?.[1];
+  if (raw === undefined || raw.length !== 17) return undefined;
+  return { uasg: raw.slice(0, 6), modalidade: raw.slice(6, 8), numero: String(Number(raw.slice(8, 13))), ano: raw.slice(13) };
+}
+
+/**
  * Whether this notice may become a Tender row.
  *
  * Deliberately narrow. A `true` here means the object and the deadline were

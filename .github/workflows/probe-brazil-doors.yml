@@ -28,7 +28,7 @@ on:
         description: "敲门（能不能连上）还是看门后面（有没有能投的标）"
         type: choice
         default: both
-        options: [doors, behind, pipeline, capture, capture-sisap, dou, watch-dou, dou-link, antaq, both]
+        options: [doors, behind, pipeline, capture, capture-sisap, dou, watch-dou, dou-link, pncp-overlap, antaq, both]
       args:
         description: "额外参数，原样传给上面选的那条命令（例如 --days 5 --all-organs）"
         type: string
@@ -130,6 +130,15 @@ jobs:
         env:
           ARGS: ${{ inputs.args }}
         run: npm run probe:dou-link -- $ARGS
+
+      # Does PNCP already have the notices the DOU would import? Reads the
+      # committed detail fixtures and asks PNCP about each one, so it needs no
+      # DOU access — only PNCP. Writes nothing.
+      - name: Ask whether PNCP already has them
+        if: inputs.what == 'pncp-overlap'
+        env:
+          ARGS: ${{ inputs.args }}
+        run: npm run probe:pncp-overlap -- $ARGS
 
       # ANTAQ's hearings, DRY RUN — no --write, and none is reachable from
       # here without one. gov.br opens to the laptop too, so this is for

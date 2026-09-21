@@ -159,7 +159,8 @@
     "watch:dou": "tsx scripts/watch-dou.ts",
     "probe:dou-link": "tsx scripts/probe-dou-permalink.ts",
     "test:dou-watch": "tsx scripts/test-dou-watch.ts",
-    "test:dou-detail": "tsx scripts/test-dou-detail.ts"
+    "test:dou-detail": "tsx scripts/test-dou-detail.ts",
+    "probe:pncp-overlap": "tsx scripts/probe-pncp-overlap.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

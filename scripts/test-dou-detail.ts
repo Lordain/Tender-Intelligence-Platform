@@ -9,7 +9,7 @@
  *   npm run test:dou-detail
  */
 import { readFileSync, readdirSync } from "node:fs";
-import { parseDouDetail, canBecomeTender, tenderNumbersIn } from "@/lib/ingestion/dou-detail";
+import { parseDouDetail, canBecomeTender, tenderNumbersIn, decodeComprasnetId } from "@/lib/ingestion/dou-detail";
 
 const DIR = "lib/ingestion/__fixtures__/dou/detail";
 const load = (file: string) => parseDouDetail(readFileSync(`${DIR}/${file}`, "utf8"));
@@ -118,6 +118,25 @@ console.log("\n── 拆标号这件事本身 ──");
 check("同一个标写成 2026 和 26 只算一个", tenderNumbersIn("Concorrência 51/2026 e CP 51/26"), ["51/26"]);
 check("前导零不算另一个标", tenderNumbersIn("PE 090159/26 e PE 90159/26"), ["90159/26"]);
 check("没有标号就是空的，不是瞎猜一个", tenderNumbersIn("Aviso de suspensão sem número"), []);
+
+console.log("\n── Comprasnet 编号拆解（4 份标签式全部对过）──");
+// The only structured identity a DOU notice carries. Whether it can be matched
+// to a PNCP row decides whether the two sources can be deduplicated at all.
+check("51/2026 的 UASG 和标号", decodeComprasnetId("x?compra=39302403000512026"), { uasg: "393024", modalidade: "03", numero: "51", ano: "2026" });
+check("307/2026", decodeComprasnetId("x?compra=39300303003072026"), { uasg: "393003", modalidade: "03", numero: "307", ano: "2026" });
+check("133/2026", decodeComprasnetId("x?compra=79118103001332026"), { uasg: "791181", modalidade: "03", numero: "133", ano: "2026" });
+check("151/2025（标号年份和公告年份不同）", decodeComprasnetId("x?compra=75300003001512025"), { uasg: "753000", modalidade: "03", numero: "151", ano: "2025" });
+check("位数不对就整个不认，不半解析", decodeComprasnetId("x?compra=3930240300051"), undefined);
+check("没有 compra 参数就是 undefined", decodeComprasnetId("https://example.test/"), undefined);
+for (const file of ["01-aviso-de-alteracao-de-edital-732539652.html", "02-aviso-de-licitacao-732643349.html", "03-aviso-de-licitacao-732474171.html", "04-aviso-de-licitacao-732503010.html"]) {
+  const d = load(file);
+  const decoded = decodeComprasnetId(d.editalUrl);
+  ok(`${file.slice(0, 34)} 的标书链接里解得出 UASG`, decoded !== undefined);
+  // The number in the Comprasnet id and the number on the Modalidade line are
+  // the same tender, stated twice. If they ever disagree, one of the two is
+  // being read wrong.
+  check(`${file.slice(0, 34)} 两处标号一致`, decoded?.numero, d.number?.split("/")[0]);
+}
 
 console.log("\n── 散文式一律不产出日期 ──");
 for (const [file, shape] of shapes) {

@@ -26,14 +26,14 @@ function ok(name: string, condition: boolean) {
   check(name, condition, true);
 }
 
-console.log("── 两种形状，按 13 份真实页面点名 ──");
+console.log("── 两种形状，按 18 份真实页面点名 ──");
 const shapes = readdirSync(DIR)
   .filter((f) => f.endsWith(".html"))
   .sort()
   .map((f) => [f, load(f).shape] as const);
-check("13 份页面全部读到", shapes.length, 13);
-check("其中 4 份是 Comprasnet 标签式", shapes.filter(([, s]) => s === "comprasnet").length, 4);
-check("其余 9 份是散文式", shapes.filter(([, s]) => s === "prose").length, 9);
+check("18 份页面全部读到", shapes.length, 18);
+check("其中 5 份是 Comprasnet 标签式", shapes.filter(([, s]) => s === "comprasnet").length, 5);
+check("其余 13 份是散文式", shapes.filter(([, s]) => s === "prose").length, 13);
 
 console.log("\n── DNIT 塞阿拉 BR-116 公路复线（Concorrência 51/2026，第 1 次勘误）──");
 {
@@ -143,6 +143,56 @@ for (const [file, shape] of shapes) {
   if (shape !== "prose") continue;
   const d = load(file);
   ok(`${file.slice(0, 40)} 没有编造开标日`, d.openingOn === undefined);
+}
+
+
+// ── 五份特许通告，run #18 抓回来的 ────────────────────────────────────────
+//
+// 这五份是用来回答「PNCP 装不下的那一类能不能解析」的。答案是「基本不能，而且
+// 危险」，下面逐条钉住，免得以后谁凭印象以为能。
+console.log("\n── 特许类（run #18，9 个工作日、19,707 条里筛出来的 5 条）──");
+{
+  // Infraero 五个机场的保税物流仓特许 —— 走 licitacoes-e.com.br（巴西银行的
+  // 平台），不是 Comprasnet，PNCP 里不会有。正是「结构上装不下」的那一类。
+  const infraero = load("2026-09-16-01-aviso-de-licitacao-731959235.html");
+  check("Infraero 机场物流仓特许是散文式", infraero.shape, "prose");
+  ok("解析器没编出标号", infraero.number === undefined);
+  ok("也没编出开标日", infraero.openingOn === undefined);
+  ok("正文里其实有 8/10/2026，只是没写在标签里", /8\/10\/2026/.test(infraero.paragraphs.join("\n")));
+
+  // 巴西林业局 Flona do Bom Futuro 第 2 标段 —— 找的就是这个：原始
+  // AVISO DE LICITAÇÃO，不是之前那份勘误。碳信用 + 原生林木材。
+  const flona = load("2026-09-10-03-aviso-de-licitacao-730839082.html");
+  check("Flona Bom Futuro 第 2 标段（原始通告）是散文式", flona.shape, "prose");
+  ok("解析器一个字段都没给出来", flona.number === undefined && flona.openingOn === undefined && flona.object === undefined);
+  ok("日期写在叙述里：04 de novembro de 2026", /04 de novembro de 2026/.test(flona.paragraphs.join("\n")));
+  ok("标书在林业局自己的门户，不是 Comprasnet", /gov\.br\/florestal/.test(flona.paragraphs.join("\n")));
+
+  // ICMBio 卡拉雅斯的露营与便利服务特许。这一份是这批里最该记住的。
+  const icmbio = load("2026-09-08-05-aviso-de-licitacao-730459931.html");
+  check("ICMBio 卡拉雅斯特许是散文式", icmbio.shape, "prose");
+  const icmbioBody = icmbio.paragraphs.join("\n");
+  // 正文里四个葡文长日期，只有最后一个是开标日，前三个是「Lei nº X, de <日期>」
+  // 里的法条颁布日。一个「取第一个长日期」的解析器会把截标日写成 2021-04-01
+  // —— 格式没错、日期真实、完全错误，而且错得看不出来。
+  const longDates = [...icmbioBody.matchAll(/\d{1,2} de [a-zç]+ de \d{4}/gi)].map((m) => m[0]);
+  check("正文里有 4 个葡文长日期", longDates.length, 4);
+  check("头一个是法条颁布日，不是开标日", longDates[0], "1 de abril de 2021");
+  check("真正的开标日排在最后", longDates[3], "20 de outubro de 2026");
+  ok("解析器现在不给开标日 —— 宁可没有，也不要那个 2021", icmbio.openingOn === undefined);
+
+  // 唯一一条走 Comprasnet 的「特许」，解析器反倒全读得出来 —— 但按 run #17
+  // 定下的规矩，带 Comprasnet 链接的就是 PNCP 的活，不该从 DOU 进。
+  const arrend = load("2026-09-14-02-aviso-de-licitacao-731541687.html");
+  check("那条土地租赁是标签式", arrend.shape, "comprasnet");
+  check("标号读得出来", arrend.number, "41/2026");
+  check("开标日读得出来", arrend.openingOn, "2026-10-20");
+  ok("但它带 Comprasnet 链接，按规矩归 PNCP", decodeComprasnetId(arrend.editalUrl) !== undefined);
+
+  // 第五条是听证会公告，不是招标 —— 对「线索雷达」有用，对「入库」没用。
+  const hearing = load("2026-09-09-04-aviso-de-audiencia-publica-730636742.html");
+  check("阿尔塔米拉那条是听证会公告", hearing.shape, "prose");
+  ok("标的还没定，自然也没有标号", hearing.number === undefined);
 }
 
 console.log(`\n全部 ${ran} 项${failures === 0 ? "通过" : `，失败 ${failures} 项`}`);

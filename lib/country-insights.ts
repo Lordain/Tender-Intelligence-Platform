@@ -17,11 +17,11 @@ export const countryInsights: CountryInsightSummary[] = [
     countryCode: "MX",
     title: "墨西哥国家洞察：2026—2030战略投资与项目机会",
     description:
-      "从5.6万亿比索（约2,902亿美元）基础设施计划出发，拆解能源、铁路、公路、港口、水务等重点行业，以及项目区域分布和中国企业需要关注的进入条件。",
+      "从约5.7万亿比索（约3,310亿美元）最新滚动规划出发，拆解能源、铁路、公路、港口、水务、ICT与医疗等重点行业，以及区域分布和中国企业可参与空间。",
     author: "拉美招投标指南针",
     readTime: "约 15 分钟",
     heroImage: "/insights/mexico-infrastructure-hero.webp",
-    highlights: ["5.6万亿比索（约2,902亿美元）规划投资", "超过1,500个项目", "八个战略行业"],
+    highlights: ["约5.7万亿比索（约3,310亿美元）滚动规划", "超过1,500个项目", "八个战略行业"],
   },
   {
     slug: "brazil",

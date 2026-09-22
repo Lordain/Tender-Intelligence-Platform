@@ -9,23 +9,23 @@ const insight = getCountryInsight("mexico")!;
 export const metadata: Metadata = pageMetadata({
   title: "墨西哥国家洞察：2026—2030战略投资与项目机会",
   description:
-    "全面拆解墨西哥2026—2030基础设施投资计划、行业预算、重点项目、区域分布及中国企业需要关注的参与条件。",
+    "基于墨西哥2026年最新官方资料，拆解约5.7万亿比索基础设施投资、行业配置、重点项目、区域分布及中国企业可参与空间。",
   path: "/insights/mexico",
   image: insight.heroImage,
 });
 
 const sectorInvestment = [
-  { name: "能源", share: 54.15, estimate: "约3.03万亿比索（约1,571亿美元）", color: "bg-[#f5a20b]" },
-  { name: "铁路", share: 15.63, estimate: "约8,753亿比索（约454亿美元）", color: "bg-[#4e9ad4]" },
-  { name: "公路", share: 13.94, estimate: "约7,806亿比索（约404亿美元）", color: "bg-[#6db8e8]" },
-  { name: "港口", share: 6.48, estimate: "约3,629亿比索（约188亿美元）", color: "bg-[#e2702a]" },
-  { name: "医疗卫生", share: 6.23, estimate: "约3,489亿比索（约181亿美元）", color: "bg-[#67a98d]" },
-  { name: "水务", share: 2.83, estimate: "约1,585亿比索（约82亿美元）", color: "bg-[#5aa8ba]" },
-  { name: "教育", share: 0.34, estimate: "约190亿比索（约9.9亿美元）", color: "bg-[#a58ac4]" },
-  { name: "机场", share: 0.04, estimate: "约22亿比索（约1.16亿美元）", color: "bg-[#8998a1]" },
+  { name: "能源", share: 54.15, estimate: "约3.03万亿比索（约1,761亿美元）", color: "bg-[#f5a20b]" },
+  { name: "铁路", share: 15.63, estimate: "约8,753亿比索（约508亿美元）", color: "bg-[#4e9ad4]" },
+  { name: "公路", share: 13.94, estimate: "约7,806亿比索（约453亿美元）", color: "bg-[#6db8e8]" },
+  { name: "港口", share: 6.48, estimate: "约3,629亿比索（约211亿美元）", color: "bg-[#e2702a]" },
+  { name: "医疗卫生", share: 6.23, estimate: "约3,489亿比索（约203亿美元）", color: "bg-[#67a98d]" },
+  { name: "水务", share: 2.83, estimate: "约1,585亿比索（约92亿美元）", color: "bg-[#5aa8ba]" },
+  { name: "教育", share: 0.34, estimate: "约190亿比索（约11亿美元）", color: "bg-[#a58ac4]" },
+  { name: "机场", share: 0.04, estimate: "约22亿比索（约1.3亿美元）", color: "bg-[#8998a1]" },
 ];
 
-type InfrastructureIconName = "energy" | "rail" | "road" | "port" | "water" | "industry";
+type InfrastructureIconName = "energy" | "rail" | "road" | "port" | "water" | "industry" | "ict" | "health";
 
 function InfrastructureIcon({ name, className = "size-6" }: { name: InfrastructureIconName; className?: string }) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -38,6 +38,8 @@ function InfrastructureIcon({ name, className = "size-6" }: { name: Infrastructu
       {name === "port" && <><path d="M4 20h16M7 17V5h8v12M7 8h8M15 6h3v6M18 12l-2 2" /><path d="M3 20c2 1.3 4 .7 5 0 2 1.3 4 .7 5 0 2 1.3 4 .7 5 0" /></>}
       {name === "water" && <path d="M12 2.5c3.5 4.5 6 7.5 6 11A6 6 0 1 1 6 13.5c0-3.5 2.5-6.5 6-11Z" />}
       {name === "industry" && <><path d="M3 21V10l6 3V9l6 4V5h4v16H3Z" /><path d="M7 17h2m3 0h2m3 0h2" /></>}
+      {name === "ict" && <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8m-4-4v4M7 9h2m2 0h2m2 0h2" /></>}
+      {name === "health" && <><path d="M8 3h8v5h5v8h-5v5H8v-5H3V8h5V3Z" /><path d="M12 8v8m-4-4h8" /></>}
     </svg>
   );
 }
@@ -70,33 +72,37 @@ const regions = [
 ];
 
 const opportunityRows: Array<{ icon: InfrastructureIconName; sector: string; scope: string; buyers: string }> = [
-  { icon: "energy", sector: "能源", scope: "发电、储能、输电线路、变电站、配电设备、工程服务", buyers: "CFE、SENER、CENACE及项目专门载体" },
+  { icon: "energy", sector: "能源", scope: "发电、储能、输电线路、变电站、配电设备、工程服务", buyers: "CFE、SENER、CENACE及项目主体" },
   { icon: "rail", sector: "铁路", scope: "轨道、桥隧、信号、通信、车辆、站房、施工设备与运维", buyers: "SICT、铁路主管机构及专项项目公司" },
-  { icon: "road", sector: "公路与桥梁", scope: "EPC、钢结构、桩基、路面、交通安全设施、机械与材料", buyers: "SICT、公路总局、州政府及特许经营项目" },
+  { icon: "road", sector: "公路与桥梁", scope: "EPC、钢结构、桩基、路面、交通安全设备、机械与材料", buyers: "SICT、CAPUFE、州政府及特许经营项目" },
   { icon: "port", sector: "港口与物流", scope: "疏浚、码头、堆场、装卸设备、仓储、铁路与道路连接", buyers: "SEMAR、各港口ASIPONA及码头运营商" },
-  { icon: "water", sector: "水务", scope: "输水、处理、泵站、管网、防洪、节水灌溉与监测", buyers: "CONAGUA、州和市级水务机构" },
-  { icon: "industry", sector: "工业园区", scope: "园区基础设施、电力与水务配套、厂房、物流与运营服务", buyers: "经济部、州政府、发展极运营主体与入园企业" },
+  { icon: "water", sector: "水务", scope: "输水、处理、泵站、管网、防洪、节水灌溉与监测", buyers: "CONAGUA、州及市级水务机构" },
+  { icon: "industry", sector: "工业园区", scope: "园区基础设施、电力与水务配套、厂房、物流与运营服务", buyers: "经济部、州政府、发展极运营主体及入园企业" },
+  { icon: "ict", sector: "信息通信技术", scope: "数据中心、云平台、通信网络、网络安全、智慧城市、政务系统", buyers: "ATDT、CRT、CFE Telecom及公共机构" },
+  { icon: "health", sector: "医疗卫生", scope: "医疗设备、影像诊断、实验室、医院信息化、耗材与维保", buyers: "卫生部、IMSS、ISSSTE、IMSS-Bienestar及州级卫生机构" },
 ];
 
 const pipelineDirections: Array<{ icon: InfrastructureIconName; title: string; text: string }> = [
-  { icon: "energy", title: "能源与电网", text: "电力扩张计划持续加码。官方材料包括新增约29,000MW级发电能力的早期口径，以及后续接近32GW、约7,400亿比索（约383亿美元）的更新口径；输电侧另公布81.77亿美元计划，用于275条新输电线路和524项变电站工程。机会不仅在电站，也在储能、变压器、导线、控制保护、施工和运维。" },
+  { icon: "energy", title: "能源与电网", text: "电力扩张计划持续加码。官方材料包括新增约29,000MW级发电能力的早期口径，以及后续接近32GW、约7,400亿比索（约430亿美元）的更新口径；输电侧另公布81.77亿美元计划，用于275条新输电线路和524项变电站工程。机会不仅在电站，也在储能、变压器、导线、控制保护、施工和运维。" },
   { icon: "rail", title: "铁路", text: "SICT提出2025—2030年建设超过3,000公里客运铁路，覆盖墨西哥城—Pachuca、墨西哥城—Querétaro—Nuevo Laredo以及向Nogales延伸的北向走廊，并推进Tren Maya货运能力。项目会带动轨道、桥隧、信号、通信、车辆、站房和施工设备需求。" },
-  { icon: "road", title: "公路与桥梁", text: "2026年3月公布的计划提出以3,970.46亿比索（约206亿美元）干预4,937公里公路和高速公路，并建设或改造21座桥梁。重点不只是新建道路，还包括既有道路现代化、养护、互通、桥梁和港口集疏运连接。" },
-  { icon: "port", title: "港口", text: "九个重点港口的公开计划涉及551.79亿比索（约28.6亿美元）公共投资和2,410.51亿比索（约124.9亿美元）私人投资，重点包括Ensenada、Manzanillo、Lázaro Cárdenas、Acapulco、Veracruz、Progreso、Guaymas、Topolobampo和Altamira。疏浚、码头、堆场、装卸设备、道路与铁路连接会同步释放需求。" },
-  { icon: "water", title: "水务", text: "全国水务计划覆盖供水、输水、处理、防洪和农业节水。官方曾公布2025—2030年1,865.67亿比索（约96.7亿美元）投入，其中17个优先项目约1,226亿比索（约63.5亿美元）。水务项目往往由联邦、州和地方共同推进，采购入口也更分散。" },
+  { icon: "road", title: "公路与桥梁", text: "截至2026年9月，公路基础设施计划总投资更新为6,478.32亿比索（约376亿美元），覆盖11,366公里；已完成1,796公里，另有4,223公里在建。Banobras另跟踪19个项目、约2,138.68亿比索（约124亿美元）。重点包括新建、现代化、养护、互通、桥梁和港口集疏运连接。" },
+  { icon: "port", title: "港口", text: "九个重点港口的公开计划涉及551.79亿比索（约32亿美元）公共投资和2,410.51亿比索（约140亿美元）私人投资，重点包括Ensenada、Manzanillo、Lázaro Cárdenas、Acapulco、Veracruz、Progreso、Guaymas、Topolobampo和Altamira。疏浚、码头、堆场、装卸设备、道路与铁路连接会同步释放需求。" },
+  { icon: "water", title: "水务", text: "截至2026年9月，CONAGUA正在推进17个战略水务项目，同时有约2.4万项饮用水与排水工程覆盖2,183个市镇。输水、处理、泵站、管网、防洪、农业节水和监测需求通常由联邦、州与地方共同推进，采购入口也更分散。" },
   { icon: "industry", title: "产业发展极", text: "首批15个经济发展极分布在14个州，配套100%新固定资产加速扣除，以及培训和创新支出额外扣除等政策。随后官方又提出15个全国发展极加11个东南部发展极的26个节点网络。园区建设会带来土地开发、电力、水务、道路、厂房和物流的组合需求。" },
+  { icon: "ict", title: "信息通信技术", text: "2026年数字基础设施重点包括Nube MX、Aguascalientes与Tulancingo数据中心扩容、公共云GPU能力、Supercomputadora Coatlicue，以及骨干网、农村站点和光节点建设。潜在项目横跨云服务、服务器、网络设备、网络安全、系统集成和政务数字化。" },
+  { icon: "health", title: "医疗卫生", text: "2026年三大公共医疗体系约投入200亿比索（约12亿美元）推进设备更新，包括磁共振、病床、手术室和高端设备；国家卫生基础设施与高技术医疗设备总体规划也已成为项目登记和跟踪入口。机会覆盖设备、医院信息化、实验室、耗材与维保。" },
 ];
 
 const sources = [
   {
-    label: "墨西哥总统府：2027经济方案与基础设施计划更新",
-    href: "https://www.gob.mx/presidencia/prensa/paquete-economico-2027-es-responsable-garantiza-bienestar-sin-nuevos-impuestos-ni-gasolinazos-y-mantiene-incentivos-presidenta?idiom=es-MX",
-    note: "后续公开材料使用约5.7万亿比索（约2,953亿美元）的更新口径。",
+    label: "墨西哥财政部：2027经济方案与基础设施计划更新",
+    href: "https://www.gob.mx/shcp/prensa/comunicado-no-71-la-secretaria-de-hacienda-y-credito-publico-entrega-el-paquete-economico-2027-al-h-congreso-de-la-union?idiom=es-MX",
+    note: "2026年9月最新公开材料使用约5.7万亿比索（约3,310亿美元）的滚动口径。",
   },
   {
     label: "墨西哥总统府：2026—2030基础设施投资计划",
     href: "https://www.gob.mx/presidencia/prensa/el-plan-de-inversion-en-infraestructura-para-el-desarrollo-con-bienestar-contempla-en-2026-2-adicional-del-pib-y-5-6-bdp-al-2030?idiom=es-MX",
-    note: "5.6万亿比索（约2,902亿美元）、2026年新增7,220亿比索（约374亿美元）与八个战略行业。",
+    note: "最初公布的5.6万亿比索（约3,252亿美元）基准、2026年新增7,220亿比索（约419亿美元）与八个战略行业。",
   },
   {
     label: "墨西哥财政部：基础设施投资计划演示文件",
@@ -130,8 +136,8 @@ const sources = [
   },
   {
     label: "SICT：公路与桥梁投资计划",
-    href: "https://www.gob.mx/sict/prensa/invertira-gobierno-de-mexico-397-mil-46-mdp-en-obras-de-infraestructura-carretera-sict",
-    note: "4,937公里公路和高速公路、21座桥梁及3,970.46亿比索（约206亿美元）投资。",
+    href: "https://www.gob.mx/presidencia/prensa/mejor-comunicacion-es-desarrollo-y-bienestar-presidenta-avanza-programa-de-infraestructura-carretera-con-inversion-de-647-mil-832-mdp",
+    note: "截至2026年9月的6,478.32亿比索投资、11,366公里干预范围与最新进度。",
   },
   {
     label: "墨西哥总统府：九个港口重点工程",
@@ -140,13 +146,28 @@ const sources = [
   },
   {
     label: "CONAGUA：国家水务战略项目",
-    href: "https://www.gob.mx/presidencia/prensa/plan-mexico-se-invertiran-30-mil-885-mdp-en-2025-para-37-proyectos-hidricos-estrategicos-en-todo-el-pais-se-crearan-65-mil-empleos",
-    note: "2025—2030水务投入、重点工程和全国覆盖范围。",
+    href: "https://www.gob.mx/conagua/prensa/el-gobierno-de-mexico-desarrolla-obras-estrategicas-para-mejorar-los-servicios-de-agua-drenaje-y-saneamiento-para-el-bienestar-del-pueblo?idiom=es",
+    note: "截至2026年9月的17个战略项目、约2.4万项水务工程与覆盖范围。",
   },
   {
     label: "Proyectos México：跨洋走廊CIIT",
     href: "https://www.proyectosmexico.gob.mx/ppp03-ciit/",
     note: "Veracruz、Oaxaca、Tabasco与Chiapas的港口、铁路和产业发展极。",
+  },
+  {
+    label: "ATDT：2026数字基础设施议程",
+    href: "https://www.gob.mx/atdt/agendas/2030/infraestructura-digital",
+    note: "Nube MX、公共数据中心、Supercomputadora Coatlicue及2026年实施节点。",
+  },
+  {
+    label: "墨西哥总统府：公共医疗设备更新",
+    href: "https://www.gob.mx/presidencia/prensa/se-invierten-20-mil-mdp-en-el-salto-tecnologico-en-el-imss-issste-e-imss-bienestar-presidenta-claudia-sheinbaum?idiom=es",
+    note: "2026年约200亿比索医疗设备投资及IMSS、ISSSTE、IMSS-Bienestar采购方向。",
+  },
+  {
+    label: "墨西哥央行：FIX汇率",
+    href: "https://www.banxico.org.mx/tipcamb/tipCamMIAction.do?idioma=sp",
+    note: "美元换算采用2026年9月21日公布的FIX：1美元＝17.2203墨西哥比索。",
   },
 ];
 
@@ -157,7 +178,7 @@ export default function MexicoInsightPage() {
     headline: insight.title,
     description: insight.description,
     image: insight.heroImage,
-    dateModified: "2026-09-17",
+    dateModified: "2026-09-22",
     datePublished: "2026-09-17",
     author: { "@type": "Organization", name: insight.author },
     publisher: { "@type": "Organization", name: "拉美招投标信息平台" },
@@ -197,7 +218,7 @@ export default function MexicoInsightPage() {
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { number: "01", title: "五年规划投资总额", value: "5.6万亿", unit: "墨西哥比索", secondary: "约2,902亿美元", description: "2026—2030年公共及混合投资基准" },
+            { number: "01", title: "最新滚动规划规模", value: "约5.7万亿", unit: "墨西哥比索", secondary: "约3,310亿美元", description: "2026年9月公布的公共及混合投资口径" },
             { number: "02", title: "已分析项目储备", value: "1,500+", unit: "个基础设施项目", description: "已进入财务与技术分析范围" },
             { number: "03", title: "三大领域资金占比", value: "83.72%", unit: "投向能源、铁路与公路", description: "资金集中度最高的三个方向" },
             { number: "04", title: "重点投资范围", value: "8", unit: "个战略行业", description: "覆盖能源、交通、港口、医疗与水务等" },
@@ -223,7 +244,7 @@ export default function MexicoInsightPage() {
         <div className="mt-8 rounded-2xl border border-[#e6b13f] bg-[#fff3cf] p-5 sm:p-6">
           <p className="font-black text-[#6d4900]">先理解数字口径</p>
           <p className="mt-2 text-sm leading-7 text-[#6d5a31]">
-            5.6万亿比索（约2,902亿美元）是2026年2月公布的五年规划基准；2026年9月公布的后续政府材料已使用约5.7万亿比索（约2,953亿美元）的表述，说明项目池仍在滚动调整。本文行业估算仍按最初公布的5.6万亿比索（约2,902亿美元）和行业占比计算。各专项计划的时间范围、资金来源和统计口径不同，不能与总盘子机械相加。
+            2026年2月首次公布的五年规划基准为5.6万亿比索（约3,252亿美元）；2026年9月财政部材料已更新为约5.7万亿比索（约3,310亿美元），说明项目池仍在滚动调整。由于八个行业的占比图表对应最初5.6万亿基准，本文行业金额仍按该基准估算，不把新总额直接套入旧比例。各专项计划的时间范围、资金来源和统计口径不同，也不能与总盘子机械相加。
           </p>
         </div>
 
@@ -252,7 +273,7 @@ export default function MexicoInsightPage() {
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Investment framework</p>
               <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">这不是一张项目清单，而是一条投资主线</h2>
               <div className="mt-5 space-y-4 text-sm leading-8 text-[#52636e] sm:text-base">
-                <p>墨西哥政府公布的《2026—2030年促进福祉基础设施投资计划》，目标是在五年内通过公共投资和混合投资投入约5.6万亿比索（约2,902亿美元）。2026年计划在已批准预算之外再增加7,220亿比索（约374亿美元），官方称其相当于约2%的GDP。</p>
+                <p>墨西哥政府2026年2月公布的《2026—2030年促进福祉基础设施投资计划》，最初基准为5.6万亿比索（约3,252亿美元）；2026年9月财政部已将公共及混合投资的滚动口径更新为约5.7万亿比索（约3,310亿美元）。2026年计划在已批准预算之外增加7,220亿比索（约419亿美元），官方称其相当于约2%的GDP。</p>
                 <p>项目池覆盖全国超过1,500个基础设施项目。这里的“混合投资”并不等于所有项目都会采用同一种PPP模式，而是可能包含政府与私人资本、社会组织、土地共同体或专门投资工具的不同组合。具体法律结构、采购方式和风险分配，要等项目进入实施阶段后逐项确认。</p>
                 <p>对于供应商和承包商，更重要的信息是：能源、铁路和公路三项占比达到83.72%。这意味着未来几年大量采购需求不仅出现在主合同，也会向输配电设备、轨道系统、钢结构、工程机械、材料、检测、数字化和本地施工服务延伸。</p>
               </div>
@@ -261,7 +282,7 @@ export default function MexicoInsightPage() {
             <section id="sectors" className="scroll-mt-8 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Allocation by sector</p>
               <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">八个战略行业，资金高度集中</h2>
-              <p className="mt-4 text-sm leading-7 text-[#64717c]">下列金额是用官方行业占比乘以5.6万亿比索（约2,902亿美元）得到的近似值，用于理解量级，不代表每个行业已经获得同额预算授权。</p>
+              <p className="mt-4 text-sm leading-7 text-[#64717c]">下列金额是用官方行业占比乘以最初5.6万亿比索（约3,252亿美元）基准得到的近似值，用于理解量级，不代表每个行业已经获得同额预算授权；最新5.7万亿滚动总额尚未公布同口径的新版行业分配表。</p>
               <div className="mt-7 space-y-5">
                 {sectorInvestment.map((sector) => (
                   <div key={sector.name}>
@@ -343,20 +364,20 @@ export default function MexicoInsightPage() {
             <section id="opportunities" className="scroll-mt-8 overflow-hidden rounded-3xl border border-[#dbe2e5] bg-[#fffdf9]">
               <div className="p-6 sm:p-8">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Opportunity map</p>
-                <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">中国企业可以从哪些位置进入？</h2>
-                <p className="mt-4 text-sm leading-7 text-[#64717c]">并不是每家企业都要直接竞标总包。设备、专业分包、技术合作和本地联合履约，往往是更现实的第一步。</p>
+                <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">中国企业可参与空间</h2>
+                <p className="mt-4 text-sm leading-7 text-[#64717c]">规划规模不等于可以直接获得的订单。更实际的做法是按行业识别潜在项目机会，并持续跟踪可能发布采购、建设或运营需求的主体。</p>
               </div>
               <div className="overflow-x-auto border-t border-[#dbe2e5]">
                 <table className="min-w-[760px] w-full text-left text-sm">
                   <thead className="bg-[#edf1f2] text-xs uppercase tracking-[0.08em] text-[#62727b]">
-                    <tr><th className="px-6 py-4">行业</th><th className="px-6 py-4">潜在供应链机会</th><th className="px-6 py-4">优先跟踪主体</th></tr>
+                    <tr><th className="px-6 py-4">行业</th><th className="px-6 py-4">潜在项目机会</th><th className="px-6 py-4">优先跟踪主体</th></tr>
                   </thead>
                   <tbody className="divide-y divide-[#e2e7e9]">
                     {opportunityRows.map(({ icon, sector, scope, buyers }) => (
                       <tr key={sector} className="align-top">
-                        <th className="px-6 py-5 font-black"><span className="flex items-center gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#fff1c9] text-[#a96800]"><InfrastructureIcon name={icon} className="size-5" /></span>{sector}</span></th>
-                        <td className="px-6 py-5 leading-7 text-[#586873]">{scope}</td>
-                        <td className="px-6 py-5 leading-7 text-[#586873]">{buyers}</td>
+                        <th className="px-6 py-7 font-black"><span className="flex items-center gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#fff1c9] text-[#a96800]"><InfrastructureIcon name={icon} className="size-5" /></span>{sector}</span></th>
+                        <td className="px-6 py-7 leading-7 text-[#586873]">{scope}</td>
+                        <td className="px-6 py-7 leading-7 text-[#586873]">{buyers}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -418,7 +439,7 @@ export default function MexicoInsightPage() {
                 ))}
               </div>
               <div className="mt-6 rounded-xl border border-[#dbe2e5] bg-[#f4f6f6] px-4 py-4 text-xs leading-6 text-[#71808a]">
-                <strong className="text-[#52636e]">美元换算口径：</strong>本文统一按1美元＝19.30墨西哥比索计算，仅用于横向理解金额量级，非实时汇率，不构成报价、投资或财务依据。
+                <strong className="text-[#52636e]">美元换算口径：</strong>本文统一按墨西哥央行2026年9月21日公布的FIX汇率1美元＝17.2203墨西哥比索换算，并在正文中取整，仅用于理解金额量级，不构成报价、投资或财务依据。
               </div>
               <p className="mt-6 text-xs leading-6 text-[#87939a]">本文不构成投资、法律、税务或投标资格意见。具体项目的采购文件、澄清、更正和合同条件具有最终效力。</p>
             </section>

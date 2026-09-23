@@ -14,6 +14,7 @@
 // tsx, which resolves paths without the Next.js bundler.
 import { createSupabaseAdminClient } from "../supabase/admin-client";
 import { selectPreferredSubscription } from "../access-control";
+import { digestCadence, type DigestCadence } from "./digest-cadence";
 
 type Preference = {
   user_id: string;
@@ -26,7 +27,10 @@ type Preference = {
 };
 
 
-export type DigestRecipient = Preference & { email: string };
+export type DigestRecipient = Preference & {
+  email: string;
+  cadence: DigestCadence;
+};
 
 /**
  * Who gets the twice-daily mail: current subscribers, users still inside the
@@ -81,7 +85,7 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
 
   const { data: subscriptions, error: subscriptionsError } = await supabase
     .from("subscriptions")
-    .select("user_id, plan, status, created_at, current_period_start, current_period_end")
+    .select("id, user_id, plan, status, created_at, current_period_start, current_period_end")
     .in("user_id", [...new Set([...optedInIds, ...ownerByMember.values()])])
     .in("status", ["active", "trialing", "past_due"])
     .order("created_at", { ascending: false });
@@ -96,10 +100,16 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
     const selected = selectPreferredSubscription(userSubscriptions);
     return selected ? [selected] : [];
   });
-  const subscriberIds = new Set(current.map((subscription) => subscription.user_id as string));
   const enterpriseOwnerIds = new Set(
     current.filter((subscription) => subscription.plan === "enterprise").map((subscription) => subscription.user_id as string),
   );
+  const basicSubscriptions = current.filter((subscription) => subscription.plan === "basic");
+  const { data: basicCountries, error: countryError } = basicSubscriptions.length
+    ? await supabase.from("basic_plan_countries").select("subscription_id, country").in("subscription_id", basicSubscriptions.map((subscription) => subscription.id))
+    : { data: [], error: null };
+  if (countryError) throw new Error(`基础版国家读取失败：${countryError.message}`);
+  const countryBySubscription = new Map((basicCountries ?? []).map((row) => [row.subscription_id, row.country]));
+  const subscriptionByUser = new Map(current.map((subscription) => [subscription.user_id, subscription]));
 
   const { data: trialProfiles, error: trialProfilesError } = await supabase
     .from("profiles")
@@ -109,14 +119,7 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
   if (trialProfilesError) throw new Error(`试用状态读取失败：${trialProfilesError.message}`);
   const trialIds = new Set((trialProfiles ?? []).map((profile) => profile.id as string));
 
-  const eligible = enabled.filter((preference) => {
-    const ownerId = ownerByMember.get(preference.user_id);
-    return (
-      subscriberIds.has(preference.user_id) ||
-      trialIds.has(preference.user_id) ||
-      (ownerId !== undefined && enterpriseOwnerIds.has(ownerId))
-    );
-  });
+  const eligible = enabled;
   if (eligible.length === 0) return [];
 
   const usersById = new Map<string, string>();
@@ -129,8 +132,18 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
     if (data.users.length < 1000) break;
   }
 
-  return eligible.flatMap((preference) => {
+  return eligible.flatMap<DigestRecipient>((preference) => {
     const email = usersById.get(preference.user_id);
-    return email ? [{ ...preference, email }] : [];
+    if (!email) return [];
+    const ownerId = ownerByMember.get(preference.user_id);
+    const subscription = subscriptionByUser.get(preference.user_id);
+    const isEnterpriseMember = ownerId !== undefined && enterpriseOwnerIds.has(ownerId);
+    const cadence = digestCadence(subscription?.plan ?? null, isEnterpriseMember, trialIds.has(preference.user_id));
+    if (subscription?.plan === "basic") {
+      const country = countryBySubscription.get(subscription.id);
+      if (!country) return [];
+      return [{ ...preference, countries: [country], keywords: [], email, cadence }];
+    }
+    return [{ ...preference, keywords: cadence === "weekly" ? [] : preference.keywords, email, cadence }];
   });
 }

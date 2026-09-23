@@ -136,12 +136,12 @@ export function AdminBillingPanel() {
 
       <section className="mt-6 rounded-2xl border border-[#dbe2e5] bg-white p-5">
         <h2 className="text-lg font-black text-[#071826]">人工开通订阅</h2>
-        <p className="mt-1 text-xs leading-5 text-[#64717c]">用于线下已确认收款、赠送或补偿。若账号已有 Stripe 订阅，系统会拒绝操作。</p>
+        <p className="mt-1 text-xs leading-5 text-[#64717c]">微信付款、国际电汇等线下款项，请先独立核对实际到账，再按客户登录邮箱开通；在备注中写明付款方式及交易编号。若账号已有 Stripe 订阅，系统会拒绝操作。</p>
         <form onSubmit={activate} className="mt-4 grid gap-3 sm:grid-cols-[minmax(14rem,1fr)_10rem_10rem_minmax(12rem,1fr)_auto]">
           <input required type="email" placeholder="客户登录邮箱" value={activation.email} onChange={(event) => setActivation((value) => ({ ...value, email: event.target.value }))} className={inputClass} />
-          <select value={activation.plan} onChange={(event) => setActivation((value) => ({ ...value, plan: event.target.value as PaidPlan }))} className={inputClass}><option value="professional">个人版</option><option value="enterprise">企业版</option></select>
-          <select value={activation.interval} onChange={(event) => setActivation((value) => ({ ...value, interval: event.target.value as BillingInterval }))} className={inputClass}><option value="monthly">按月</option><option value="semiannual">半年</option><option value="annual">年度</option></select>
-          <input maxLength={1000} placeholder="原因 / 到账凭证编号" value={activation.note} onChange={(event) => setActivation((value) => ({ ...value, note: event.target.value }))} className={inputClass} />
+          <select value={activation.plan} onChange={(event) => setActivation((value) => ({ ...value, plan: event.target.value as PaidPlan }))} className={inputClass}><option value="basic">基础个人版</option><option value="professional">专业个人版</option><option value="enterprise">专业企业版</option></select>
+          <select value={activation.interval} onChange={(event) => setActivation((value) => ({ ...value, interval: event.target.value as BillingInterval }))} className={inputClass}><option value="monthly">按月</option></select>
+          <input maxLength={1000} placeholder="付款方式＋到账交易编号／其他原因" value={activation.note} onChange={(event) => setActivation((value) => ({ ...value, note: event.target.value }))} className={inputClass} />
           <button disabled={busy !== null} className="rounded-xl bg-[#071826] px-5 text-sm font-black text-white disabled:opacity-50">开通</button>
         </form>
       </section>

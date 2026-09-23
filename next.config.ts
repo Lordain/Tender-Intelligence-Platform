@@ -45,6 +45,9 @@ const contentSecurityPolicy = [
   .concat(";");
 
 const nextConfig: NextConfig = {
+  // Allow an isolated local preview to run beside another dev server without
+  // sharing its build cache or lock file.
+  distDir: process.env.LATINTENDER_DEV_DIST_DIR || ".next",
   async headers() {
     return [
       {

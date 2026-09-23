@@ -12,7 +12,7 @@ export const SUPPORT_WHATSAPP = clean(process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP)?
  * WhatsApp was the only chat channel until 2026-09-15, and it is a Mexican
  * number — right for the supplier side of this business and wrong for the
  * customers, who are mainland Chinese enterprises that do not use WhatsApp.
- * A buyer who wanted to ask a question before paying US$800 a month had no
+ * A buyer who wants to ask a question before paying a monthly subscription has no
  * way to reach anyone in the app they actually use.
  *
  * Deliberately not a link. weixin:// only resolves on a phone with the app

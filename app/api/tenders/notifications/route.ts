@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Locale, TenderScopeType, TenderStatus } from "@/types/tender";
 import { filterTenders, type TenderFilterOptions } from "@/lib/filter-tenders";
 import { getCachedTenderList } from "@/lib/tenders";
-import { getViewerRole } from "@/lib/access-control-server";
-import { canUseTenderListMemberFeatures } from "@/lib/access-control";
+import { getViewerEntitlement } from "@/lib/access-control-server";
+import { canViewCountry, canUseTenderListMemberFeatures } from "@/lib/access-control";
 import { toNotificationTender } from "@/lib/tender-list-page";
 
 type SavedSearchInput = {
@@ -61,14 +61,15 @@ export async function POST(request: NextRequest) {
   const searches = (body?.searches ?? []).filter(isSavedSearchInput).slice(0, MAX_SEARCHES);
   if (searches.length === 0) return NextResponse.json([]);
 
-  const memberView = canUseTenderListMemberFeatures(await getViewerRole());
+  const entitlement = await getViewerEntitlement();
+  const memberView = canUseTenderListMemberFeatures(entitlement.role);
   const tenders = await getCachedTenderList();
   const locale: Locale = "zh";
   const items = searches.flatMap((search) =>
     filterTenders(tenders, { ...parseFiltersFromHref(search.href), searchPublicFieldsOnly: !memberView }, locale)
       .filter((tender) => tender.createdAt > search.lastCheckedAt)
       .map((tender) => ({
-        tender: toNotificationTender(tender, { memberView }),
+        tender: toNotificationTender(tender, { memberView: memberView && canViewCountry(entitlement, tender.country) }),
         searchId: search.id,
         searchName: search.name,
       })),

@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCachedTenderList } from "@/lib/tenders";
 import { toTenderCardData } from "@/lib/tender-card";
-import { getViewerRole } from "@/lib/access-control-server";
-import { canUseTenderListMemberFeatures } from "@/lib/access-control";
+import { getViewerEntitlement } from "@/lib/access-control-server";
+import { canViewCountry, canUseTenderListMemberFeatures } from "@/lib/access-control";
 
 /**
  * The cards for the tenders this browser has saved.
@@ -28,7 +28,8 @@ import { canUseTenderListMemberFeatures } from "@/lib/access-control";
 const MAX_SAVED_IDS = 200;
 
 export async function POST(request: NextRequest) {
-  const role = await getViewerRole();
+  const entitlement = await getViewerEntitlement();
+  const role = entitlement.role;
   // A guest has saved nothing the server should resolve. SavedView renders
   // its own login prompt and never reaches this.
   if (role === "guest") return NextResponse.json([], { status: 401 });
@@ -46,7 +47,10 @@ export async function POST(request: NextRequest) {
   // order this page showed before it stopped receiving the whole list.
   const cards = (await getCachedTenderList())
     .filter((tender) => wanted.has(tender.id))
-    .map((tender) => toTenderCardData(tender, { memberView, includeAnalysisPreview: memberView }));
+    .map((tender) => {
+      const visible = memberView && canViewCountry(entitlement, tender.country);
+      return toTenderCardData(tender, { memberView: visible, includeAnalysisPreview: visible });
+    });
 
   return NextResponse.json(cards);
 }

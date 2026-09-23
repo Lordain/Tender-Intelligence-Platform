@@ -10,8 +10,8 @@ import { getCurrentUser } from "@/lib/supabase/server-client";
 export const runtime = "nodejs";
 
 const profileSchema = z.object({
-  plan: z.enum(["professional", "enterprise"]),
-  interval: z.enum(["monthly", "semiannual", "annual"]),
+  plan: z.enum(["basic", "professional", "enterprise"]),
+  interval: z.literal("monthly"),
   requestId: z.uuid(),
   buyerType: z.enum(["individual", "business"]),
   legalName: z.string().trim().min(1).max(160),
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
   if (existingError) return NextResponse.json({ error: "暂时无法检查电汇申请。" }, { status: 500 });
   if (existing) return NextResponse.json({ url: "/account?wire=pending" });
 
-  const amountMinor = Math.round(PLAN_PRICES_USD[parsed.data.plan][parsed.data.interval] * 100);
+  const amountMinor = Math.round(PLAN_PRICES_USD[parsed.data.plan].monthly * 100);
   const paymentId = parsed.data.requestId;
   const reference = makeReference();
   const now = new Date().toISOString();

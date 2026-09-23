@@ -54,7 +54,8 @@ async function runDigest(request: NextRequest, heartbeatClient: ReturnType<typeo
     await recordCronHeartbeat(heartbeatClient, "tender-digest", "skipped", "Fired outside the 09:00/18:00 America/Mexico_City slots");
     return NextResponse.json({ error: "Digest only runs at 09:00 or 18:00 America/Mexico_City" }, { status: 409 });
   }
-  const windowStart = new Date(now.getTime() - slot.hoursBack * 60 * 60 * 1000);
+  const isMondayMorning = slot.slot === "morning" && new Intl.DateTimeFormat("en-US", { timeZone: "America/Mexico_City", weekday: "short" }).format(now) === "Mon";
+  const windowStart = new Date(now.getTime() - (isMondayMorning ? 7 * 24 : slot.slot === "morning" ? 24 : slot.hoursBack) * 60 * 60 * 1000);
   const tenders = await getNewTenders(windowStart, now);
   const statusChanges = await getStatusChanges(windowStart, now);
   const recipients = await getDigestRecipients();
@@ -67,6 +68,8 @@ async function runDigest(request: NextRequest, heartbeatClient: ReturnType<typeo
   let undeliverable = 0;
   const recovered: string[] = [];
   for (const recipient of recipients) {
+    if (recipient.cadence === "weekly" && !isMondayMorning) continue;
+    if (recipient.cadence === "daily" && slot.slot !== "morning") continue;
     // Before any work for this recipient: an RFC 2606 reserved domain can
     // never receive mail, so attempting it is not a test of anything — it is
     // a guaranteed failure that files an alert and reddens the heartbeat
@@ -82,8 +85,10 @@ async function runDigest(request: NextRequest, heartbeatClient: ReturnType<typeo
       continue;
     }
 
-    const matches = matchingTenders(tenders, recipient);
-    const matchingUpdates = matchingStatusChanges(statusChanges, recipient);
+    const recipientStart = recipient.cadence === "weekly" ? windowStart
+      : new Date(now.getTime() - (recipient.cadence === "daily" ? 24 : slot.hoursBack) * 60 * 60 * 1000);
+    const matches = matchingTenders(tenders.filter((tender) => new Date(tender.created_at) >= recipientStart), recipient);
+    const matchingUpdates = matchingStatusChanges(statusChanges.filter((change) => new Date(change.changedAt) >= recipientStart), recipient);
     if (matches.length === 0 && matchingUpdates.length === 0) continue;
 
     const { data: existing } = await supabase.from("tender_digest_deliveries")

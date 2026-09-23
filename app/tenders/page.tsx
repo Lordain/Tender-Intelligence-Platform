@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { getCachedTenderList } from "@/lib/tenders";
 import { TenderExplorer } from "@/components/tenders/TenderExplorer";
-import { getViewerRole } from "@/lib/access-control-server";
-import { canUseTenderListMemberFeatures } from "@/lib/access-control";
+import { getViewerEntitlement } from "@/lib/access-control-server";
+import { canExportTenders, canUseTenderListMemberFeatures } from "@/lib/access-control";
 import { buildTenderListPage, TENDER_PAGE_SIZE, type TenderListSearchParams } from "@/lib/tender-list-page";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
@@ -34,9 +34,9 @@ export default async function TendersPage({
 }: {
   searchParams: Promise<TenderListSearchParams>;
 }) {
-  const [allTenders, viewerRole, params] = await Promise.all([
+  const [allTenders, entitlement, params] = await Promise.all([
     getCachedTenderList(),
-    getViewerRole(),
+    getViewerEntitlement(),
     searchParams,
   ]);
 
@@ -45,15 +45,22 @@ export default async function TendersPage({
     // One flag for every member/guest difference on this list: the publisher,
     // the exact budget and the exact deadline are all withheld from guests
     // and lapsed free accounts, visually AND in the serialized React payload.
-    memberView: canUseTenderListMemberFeatures(viewerRole),
-    searchPublicFieldsOnly: !canUseTenderListMemberFeatures(viewerRole),
+    memberView: canUseTenderListMemberFeatures(entitlement.role),
+    memberCountry: entitlement.plan === "basic" ? entitlement.selectedCountry ?? "__none__" : null,
+    searchPublicFieldsOnly: !canUseTenderListMemberFeatures(entitlement.role) || entitlement.plan === "basic",
   });
+  const exportParams = new URLSearchParams();
+  for (const key of ["q", "country", "industry"] as const) {
+    const value = params[key];
+    if (typeof value === "string") exportParams.set(key, value);
+  }
 
   return (
     <div className="mx-auto w-full max-w-[94rem] px-5 py-6 sm:px-8 sm:py-8">
+      {canExportTenders(entitlement) && <div className="mb-4 flex justify-end"><a href={`/api/tenders/export?${exportParams.toString()}`} className="rounded-xl border border-[#d8e0e3] bg-white px-4 py-2 text-xs font-bold text-[#16415a] hover:border-[#b86e00]">导出当前项目清单 CSV</a></div>}
       <TenderListStructuredData tenders={pageData.tenders} />
       <Suspense>
-        <TenderExplorer {...pageData} viewerRole={viewerRole} />
+        <TenderExplorer {...pageData} viewerRole={entitlement.role} />
       </Suspense>
     </div>
   );

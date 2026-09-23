@@ -338,7 +338,7 @@ function parseList(value: string | null): string[] {
 export function buildTenderListPage(
   allTenders: Tender[],
   params: TenderListSearchParams,
-  options: { now?: Date; pageSize?: number; memberView?: boolean; searchPublicFieldsOnly?: boolean } = {},
+  options: { now?: Date; pageSize?: number; memberView?: boolean; memberCountry?: string | null; searchPublicFieldsOnly?: boolean } = {},
 ): TenderListPageData {
   const now = options.now ?? new Date();
   const pageSize = options.pageSize ?? TENDER_PAGE_SIZE;
@@ -411,7 +411,7 @@ export function buildTenderListPage(
   return {
     tenders: sorted
       .slice(offset, offset + pageSize)
-      .map((tender) => toTenderListItem(tender, { memberView: options.memberView })),
+      .map((tender) => toTenderListItem(tender, { memberView: options.memberView && (!options.memberCountry || tender.country === options.memberCountry) })),
     totalResults: sorted.length,
     totalPages,
     currentPage,

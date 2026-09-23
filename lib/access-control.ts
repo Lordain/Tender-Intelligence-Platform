@@ -8,6 +8,7 @@ export type AccessPromptKind = "login" | "subscription";
 export type ViewerEntitlement = {
   role: ViewerRole;
   plan: SubscriptionPlan;
+  selectedCountry: string | null;
   trialEndsAt: string | null;
   subscriptionOwnerUserId: string | null;
   isEnterpriseOwner: boolean;
@@ -32,7 +33,7 @@ export const BILLING_INTERVAL_LABELS: Record<BillingInterval, string> = {
   annual: "年度",
 };
 
-export const TRIAL_DAYS = 5;
+export const TRIAL_DAYS = 7;
 export const PAYMENT_GRACE_DAYS = 3;
 
 export type SubscriptionEntitlementCandidate = {
@@ -144,10 +145,20 @@ export function canUseTenderListMemberFeatures(role: ViewerRole): boolean {
   return role === "trial" || role === "subscriber";
 }
 
+export function canViewCountry(entitlement: ViewerEntitlement, country: string): boolean {
+  if (entitlement.role === "trial") return true;
+  if (entitlement.role !== "subscriber") return false;
+  return entitlement.plan !== "basic" || entitlement.selectedCountry === country;
+}
+
+export function canExportTenders(entitlement: ViewerEntitlement): boolean {
+  return entitlement.role === "subscriber" && (entitlement.plan === "professional" || entitlement.plan === "enterprise");
+}
+
 export function tenderDetailPrompt(role: ViewerRole): AccessPromptKind {
   return role === "guest" ? "login" : "subscription";
 }
 
 export function canConfigureEmailNotifications(role: ViewerRole): boolean {
-  return role === "trial" || role === "subscriber";
+  return role !== "guest";
 }

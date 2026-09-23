@@ -1,7 +1,6 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
-import { BILLING_MONTHS, PLAN_PRICES_USD, type PaidPlan } from "@/lib/billing-catalog";
-import type { BillingInterval } from "@/lib/access-control";
+import { PLAN_PRICES_USD, type PaidPlan } from "@/lib/billing-catalog";
 
 export type TrafficScope = "external" | "internal" | "all";
 export type AnalyticsPeriod = {
@@ -236,9 +235,8 @@ export async function fetchAnalyticsDashboard(days: number, requestedScope: Traf
   }
   const monthlyListValueUsd = activeSubscriptions.reduce((total, row) => {
     const plan = row.plan as PaidPlan;
-    const interval = row.billing_interval as BillingInterval;
-    const price = PLAN_PRICES_USD[plan]?.[interval];
-    return price ? total + price / BILLING_MONTHS[interval] : total;
+    const price = row.billing_interval === "monthly" ? PLAN_PRICES_USD[plan]?.monthly : null;
+    return price ? total + price : total;
   }, 0);
   const manualPayments = manualPaymentResult;
   const manualCollectedUsd = manualPayments

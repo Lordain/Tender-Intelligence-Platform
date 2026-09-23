@@ -52,7 +52,7 @@ export async function sendSubscriptionRenewalReminder(input: {
     + `<p style="margin:0 0 8px"><strong>计费周期：</strong>${escapeHtml(INTERVAL_NAMES[input.interval])}</p>`
     + `<p style="margin:0 0 8px"><strong>预计扣款金额：</strong>${escapeHtml(amount)}</p>`
     + `<p style="margin:0"><strong>预计扣款日期：</strong>${escapeHtml(date)}</p></div>`
-    + `<p>该金额来自 Stripe 当前下一期账单预览；如果你在扣款前更改套餐、获得折扣或税费发生变化，最终账单可能相应调整。</p>`
+    + `<p>该金额来自 Stripe 当前下一期账单预览；如果你在扣款前更改套餐或适用税费发生变化，最终账单可能相应调整。</p>`
     + `<p>如不希望续费，可在扣款前进入账户页面取消自动续费，不收取取消费用。取消后，当前已付费权限仍保留至本周期结束。</p>`
     + `<p style="margin:28px 0"><a href="${escapeHtml(accountUrl)}" style="display:inline-block;background:#ffb21c;color:#071826;padding:11px 18px;border-radius:8px;font-weight:700;text-decoration:none">管理订阅</a></p>`
     + `<p style="margin-top:28px;font-size:12px">拉美招投标信息平台自动通知，请勿直接回复本邮件。</p></main>`;

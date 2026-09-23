@@ -75,7 +75,7 @@ async function runReminders(request: NextRequest) {
     .select("id,user_id,plan,billing_interval,stripe_subscription_id,current_period_end")
     .eq("payment_source", "stripe")
     .in("status", ["active", "trialing"])
-    .in("plan", ["professional", "enterprise"])
+    .in("plan", ["basic", "professional", "enterprise"])
     .eq("cancel_at_period_end", false)
     .not("stripe_subscription_id", "is", null)
     .gt("current_period_end", now.toISOString())

@@ -3,6 +3,7 @@ import { fetchHomepageControlSettings } from "@/lib/db/site-settings";
 import { HomeHero } from "@/components/tenders/HomeHero";
 import { FeaturedTenders } from "@/components/tenders/FeaturedTenders";
 import { ValuePropositions } from "@/components/home/ValuePropositions";
+import { HumanReviewedDifference } from "@/components/home/HumanReviewedDifference";
 import { CountryInsightsPreview } from "@/components/home/CountryInsightsPreview";
 import { ParticipationGuidesPreview } from "@/components/home/ParticipationGuidesPreview";
 import { selectHomepageTenders } from "@/lib/homepage-selection";
@@ -57,6 +58,7 @@ export default async function Home() {
       <HomeHero tenders={tickerWithPreviews} />
       <FeaturedTenders tenders={featuredWithPreviews} />
       <ValuePropositions />
+      <HumanReviewedDifference />
       <CountryInsightsPreview />
       <ParticipationGuidesPreview />
     </div>

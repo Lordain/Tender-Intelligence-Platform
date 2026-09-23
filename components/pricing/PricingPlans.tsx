@@ -5,10 +5,10 @@ import { TRIAL_DAYS } from "@/lib/access-control";
 import { PLAN_PRICES_USD, USD_CNY_REFERENCE_RATE, type PaidPlan } from "@/lib/billing-catalog";
 
 const plans: { id: "free" | PaidPlan; name: string; audience: string; features: string[] }[] = [
-  { id: "free", name: "免费版", audience: "初步了解拉美市场", features: ["1 个账号", "全部国家的公开项目标题", "每月查看 5 个完整中文项目详情", "每周 1 次项目提醒", "可阅读历史项目"] },
-  { id: "basic", name: "基础个人版", audience: "外贸经理、市场负责人", features: ["1 个账号", "选择 1 个国家，查看该国全部项目详情", "其他国家可浏览公开项目标题", "每日 1 次行业项目提醒", "收藏与跟踪项目", "可阅读历史项目"] },
-  { id: "professional", name: "专业个人版", audience: "拉美负责人", features: ["1 个账号", "全部国家完整中文项目详情", "每日 2 次项目提醒", "自定义提醒关键词", "收藏与跟踪项目", "导出项目数据"] },
-  { id: "enterprise", name: "专业企业版", audience: "拉美拓展小组", features: ["3 个账号，各自设置项目提醒", "全部国家完整中文项目详情", "收藏与跟踪、导出项目数据", "导出历史项目清单", "每月标准化行业分析报告"] },
+  { id: "free", name: "免费版", audience: "初步了解拉美市场", features: ["1 个账号", "全部国家的公开项目标题", "每月可查看 5 个项目的完整详情和标书分析", "每周 1 次项目提醒", "可阅读历史项目"] },
+  { id: "basic", name: "基础个人版", audience: "外贸经理、市场负责人", features: ["1 个账号", "选择 1 个国家，查看该国全部项目详情", "可查看所选国家的完整标书分析", "其他国家可浏览公开项目标题", "每日 1 次行业项目提醒", "收藏与跟踪项目", "可阅读历史项目"] },
+  { id: "professional", name: "专业个人版", audience: "拉美负责人", features: ["1 个账号", "全部国家完整中文项目详情", "可查看完整标书分析", "每日 2 次项目提醒", "自定义提醒关键词", "收藏与跟踪项目", "导出当前项目清单 CSV"] },
+  { id: "enterprise", name: "专业企业版", audience: "拉美拓展小组", features: ["3 个账号，各自设置项目提醒", "全部国家完整中文项目详情", "可查看完整标书分析", "收藏与跟踪项目", "导出当前及历史项目清单 CSV", "每月标准化行业分析报告"] },
 ];
 
 export function PricingPlans() {

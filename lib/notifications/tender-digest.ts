@@ -167,9 +167,15 @@ function renderPreferenceSummary(preference: DigestPreferenceSummary): string {
   return rows.map(([label, value]) => `<tr><td style="width:74px;padding:4px 10px 4px 0;vertical-align:top;font-size:12px;font-weight:700;color:#64717c">${label}</td><td style="padding:4px 0;font-size:12px;line-height:1.55;color:#071826">${escapeHtml(value)}</td></tr>`).join("");
 }
 
-function renderTenderRows(tenders: DigestTender[], appUrl: string): string {
+function emailTenderTitle(tender: DigestTender, limited: boolean): string {
+  if (!limited) return tender.title.zh || tender.title.es || tender.title.en || "新招标项目";
+  const industries = tender.industries.slice(0, 2).map((value) => industryLabel(value, "zh")).join("、");
+  return `${countryLabel(tender.country, "zh")} · ${industries || "政府采购"}项目`;
+}
+
+function renderTenderRows(tenders: DigestTender[], appUrl: string, limited: boolean): string {
   return tenders.map((tender) => {
-    const title = tender.title.zh || tender.title.es || tender.title.en || "新招标项目";
+    const title = emailTenderTitle(tender, limited);
     const url = escapeHtml(new URL(`/tenders/${tender.public_slug}`, appUrl).toString());
     const meta = [tender.country, ...tender.industries].filter(Boolean).join(" · ");
     return `<tr><td style="padding:0 0 12px">`
@@ -177,16 +183,16 @@ function renderTenderRows(tenders: DigestTender[], appUrl: string): string {
       + `<tr><td style="padding:20px">`
       + `<div style="font-size:17px;font-weight:800;line-height:1.55;color:#071826">${escapeHtml(title)}</div>`
       + `<div style="margin-top:9px;font-size:13px;line-height:1.6;color:#64717c">${escapeHtml(meta)}</div>`
-      + `<div style="margin-top:5px;font-size:13px;line-height:1.6;color:#64717c">${escapeHtml(tender.buyer)} · ${escapeHtml(tender.tender_number)}</div>`
+      + (limited ? "" : `<div style="margin-top:5px;font-size:13px;line-height:1.6;color:#64717c">${escapeHtml(tender.buyer)} · ${escapeHtml(tender.tender_number)}</div>`)
       + `<div style="margin-top:5px;font-size:13px;line-height:1.6;color:#64717c">发布日期：${escapeHtml(formatEmailDate(tender.publication_date))}</div>`
       + `<a href="${url}" style="display:inline-block;margin-top:15px;border-radius:9px;background:#ffb21c;padding:10px 16px;font-size:13px;font-weight:800;text-decoration:none;color:#071826">查看项目 →</a>`
       + `</td></tr></table></td></tr>`;
   }).join("");
 }
 
-function renderStatusRows(statusChanges: StatusChange[], appUrl: string): string {
+function renderStatusRows(statusChanges: StatusChange[], appUrl: string, limited: boolean): string {
   return statusChanges.map(({ tender, previousStatus, nextStatus, changedAt }) => {
-    const title = tender.title.zh || tender.title.es || tender.title.en || "招标项目";
+    const title = emailTenderTitle(tender, limited);
     const url = escapeHtml(new URL(`/tenders/${tender.public_slug}`, appUrl).toString());
     return `<tr><td style="padding:0 0 12px">`
       + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #dbe2e5;border-radius:14px;background:#fffdf9">`
@@ -218,11 +224,12 @@ function renderTenderDigestText(
   tenders: DigestTender[],
   statusChanges: StatusChange[],
   appUrl: string,
+  limited: boolean,
 ): string {
   const line = (tender: DigestTender) =>
     [
-      `- ${tender.title.zh || tender.title.es || tender.tender_number}`,
-      `  ${tender.country}｜${tender.buyer}｜${tender.tender_number}`,
+      `- ${emailTenderTitle(tender, limited)}`,
+      ...(limited ? [] : [`  ${tender.country}｜${tender.buyer}｜${tender.tender_number}`]),
       `  ${new URL(`/tenders/${tender.public_slug}`, appUrl).toString()}`,
     ].join("\n");
 
@@ -248,6 +255,7 @@ export function renderTenderDigestEmail(
   statusChanges: StatusChange[],
   appUrl: string,
   preference: DigestPreferenceSummary,
+  limited = false,
 ): { subject: string; html: string; text: string } {
   const subjectParts = [
     tenders.length > 0 ? `${tenders.length} 个新标` : "",
@@ -255,15 +263,15 @@ export function renderTenderDigestEmail(
   ].filter(Boolean).join("，") || "招标动态";
   const settingsUrl = escapeHtml(new URL("/notifications", appUrl).toString());
   const tenderSection = tenders.length > 0
-    ? `<h2 style="margin:0 0 14px;font-size:18px;color:#071826">新发布项目 <span style="display:inline-block;margin-left:6px;border-radius:999px;background:#fff0ca;padding:3px 9px;font-size:12px;color:#8a5700">${tenders.length} 个</span></h2><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${renderTenderRows(tenders, appUrl)}</table>`
+    ? `<h2 style="margin:0 0 14px;font-size:18px;color:#071826">新发布项目 <span style="display:inline-block;margin-left:6px;border-radius:999px;background:#fff0ca;padding:3px 9px;font-size:12px;color:#8a5700">${tenders.length} 个</span></h2><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${renderTenderRows(tenders, appUrl, limited)}</table>`
     : "";
   const statusSection = statusChanges.length > 0
-    ? `<h2 style="margin:28px 0 14px;font-size:18px;color:#071826">项目状态更新 <span style="display:inline-block;margin-left:6px;border-radius:999px;background:#fff0ca;padding:3px 9px;font-size:12px;color:#8a5700">${statusChanges.length} 个</span></h2><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${renderStatusRows(statusChanges, appUrl)}</table>`
+    ? `<h2 style="margin:28px 0 14px;font-size:18px;color:#071826">项目状态更新 <span style="display:inline-block;margin-left:6px;border-radius:999px;background:#fff0ca;padding:3px 9px;font-size:12px;color:#8a5700">${statusChanges.length} 个</span></h2><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${renderStatusRows(statusChanges, appUrl, limited)}</table>`
     : "";
 
   return {
     subject: `拉美招投标信息平台｜${subjectParts}`,
-    text: renderTenderDigestText(tenders, statusChanges, appUrl),
+    text: renderTenderDigestText(tenders, statusChanges, appUrl, limited),
     html: `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>`
       + `<body style="margin:0;background:#f4f1eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',Arial,sans-serif;color:#52636e">`
       + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:28px 14px;background:#f4f1eb"><tr><td align="center">`
@@ -272,7 +280,7 @@ export function renderTenderDigestEmail(
       + `<tr><td style="padding:30px 32px"><h1 style="margin:0;font-size:26px;line-height:1.4;color:#071826">您的招标动态</h1><p style="margin:10px 0 18px;font-size:15px;line-height:1.7;color:#64717c">以下内容符合您当前设置的通知条件。</p>`
       + `<div style="margin:0 0 28px;border-radius:12px;background:#f1f4f4;padding:16px 18px"><div style="margin-bottom:7px;font-size:13px;font-weight:800;color:#071826">当前通知设置</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${renderPreferenceSummary(preference)}</table></div>`
       + `${tenderSection}${statusSection}`
-      + `<div style="margin-top:26px;border-radius:12px;background:#f1f4f4;padding:16px;font-size:12px;line-height:1.7;color:#70808a">通知时间：墨西哥城时间每日 09:00 与 18:00。您可以随时前往 <a href="${settingsUrl}" style="font-weight:700;color:#24465a">通知设置</a> 调整条件或停止接收。</div>`
+      + `<div style="margin-top:26px;border-radius:12px;background:#f1f4f4;padding:16px;font-size:12px;line-height:1.7;color:#70808a">您可以随时前往 <a href="${settingsUrl}" style="font-weight:700;color:#24465a">通知设置</a> 调整条件或停止接收。</div>`
       + `</td></tr><tr><td style="border-top:1px solid #e5e9eb;padding:20px 32px;font-size:11px;color:#87949c">本邮件由 latintender.com 根据您的通知设置自动发送。</td></tr>`
       + `</table></td></tr></table></body></html>`,
   };
@@ -289,7 +297,7 @@ export async function sendTenderDigestEmail(
   const appUrl = process.env.APP_URL;
   if (!apiKey || !from || !appUrl) throw new Error("Email delivery is not fully configured");
 
-  const email = renderTenderDigestEmail(tenders, statusChanges, appUrl, recipient);
+  const email = renderTenderDigestEmail(tenders, statusChanges, appUrl, recipient, recipient.cadence === "weekly");
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",

@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCachedTenderList } from "@/lib/tenders";
 import { toTenderListItem } from "@/lib/tender-list-page";
-import { getViewerRole } from "@/lib/access-control-server";
-import { canUseTenderListMemberFeatures } from "@/lib/access-control";
+import { getViewerEntitlement } from "@/lib/access-control-server";
+import { canViewCountry, canUseTenderListMemberFeatures } from "@/lib/access-control";
 
 const MAX_SAVED_IDS = 100;
 const MAX_REMINDERS = 6;
@@ -24,12 +24,13 @@ export async function GET(request: NextRequest) {
   // rejecting the request outright: a guest with stale localStorage ids
   // still gets a working (redacted) reminder list instead of an error.
   const wanted = new Set(ids);
-  const memberView = canUseTenderListMemberFeatures(await getViewerRole());
+  const entitlement = await getViewerEntitlement();
+  const memberView = canUseTenderListMemberFeatures(entitlement.role);
   const reminders = (await getCachedTenderList())
     .filter((tender) => wanted.has(tender.id) && tender.submissionDeadline)
     .sort((a, b) => a.submissionDeadline!.localeCompare(b.submissionDeadline!))
     .slice(0, MAX_REMINDERS)
-    .map((tender) => toTenderListItem(tender, { memberView }));
+    .map((tender) => toTenderListItem(tender, { memberView: memberView && canViewCountry(entitlement, tender.country) }));
 
   return NextResponse.json(reminders);
 }

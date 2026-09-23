@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type { AccessPromptKind } from "@/lib/access-control";
 import { TRIAL_DAYS } from "@/lib/access-control";
 import { loginPathFor } from "@/lib/auth-redirect";
 import { formatDate } from "@/lib/format";
@@ -28,24 +27,40 @@ function Field({ label, value, emphasized = false, note }: { label: string; valu
   );
 }
 
-function ProtectedContentPrompt({ kind, nextPath }: { kind: AccessPromptKind; nextPath: string }) {
+export type TenderDetailPromptKind = "login" | "free-limit" | "basic-select-country" | "basic-other-country";
+
+function ProtectedContentPrompt({ kind, nextPath }: { kind: TenderDetailPromptKind; nextPath: string }) {
   const isGuest = kind === "login";
-  const actionHref = isGuest ? `/register?next=${encodeURIComponent(nextPath)}` : "/pricing";
+  const isBasicWithoutCountry = kind === "basic-select-country";
+  const isBasicOtherCountry = kind === "basic-other-country";
+  const actionHref = isGuest ? `/register?next=${encodeURIComponent(nextPath)}` : isBasicWithoutCountry ? "/account" : "/pricing";
+  const title = isGuest ? "注册后查看完整项目分析"
+    : isBasicWithoutCountry ? "先选择基础版覆盖的国家"
+    : isBasicOtherCountry ? "该项目不在基础版所选国家内"
+    : "本月免费详情额度已用完";
+  const description = isBasicWithoutCountry
+    ? "基础个人版可选择一个国家查看完整项目分析。请先到账户页选择国家，选择后本订阅期内不可更换。"
+    : isBasicOtherCountry
+      ? "基础个人版只开放所选国家的完整项目详情；其他国家仍可浏览公开项目标题和摘要。若需查看全部国家，可升级至专业个人版。"
+      : "完整页面包括项目编号与原文名称、关键日期、资质与经验要求、所需文件、风险提示，以及官方投标入口和检索说明。";
 
   return (
     <section className="overflow-hidden rounded-3xl border border-[#d8e0e3] bg-[#fffdf9] shadow-[0_24px_70px_-55px_rgba(6,27,43,.65)]">
       <div className="bg-[#061b2b] px-6 py-7 text-white sm:px-8 sm:py-8">
         <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#ffb21c]">完整参标情报</p>
         <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] sm:text-3xl">
-          {isGuest ? "注册后查看完整项目分析" : "订阅后查看完整项目分析"}
+          {title}
         </h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-white/68">
-          完整页面包括项目编码与原文名称、关键日期、一句话总结、资质与经验要求、所需文件、风险提示，以及官方投标入口和检索说明。
+          {description}
         </p>
       </div>
       <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <p className="text-sm leading-6 text-[#64717c]">
-          {isGuest ? `新用户可免费试用 ${TRIAL_DAYS} 天，无需绑定银行卡。` : "您的免费试用已结束，可选择适合的订阅方案继续查看。"}
+          {isGuest ? `新用户可免费试用 ${TRIAL_DAYS} 天，无需绑定银行卡。`
+            : isBasicWithoutCountry ? "选定国家后即可查看该国完整项目分析。"
+              : isBasicOtherCountry ? "现有基础版权限不受影响。"
+                : "免费版每月可查看 5 个完整项目，下月额度自动恢复。"}
         </p>
         <div className="flex shrink-0 flex-wrap gap-3">
           {isGuest && (
@@ -54,7 +69,7 @@ function ProtectedContentPrompt({ kind, nextPath }: { kind: AccessPromptKind; ne
             </Link>
           )}
           <Link href={actionHref} className="inline-flex h-11 items-center justify-center rounded-xl bg-[#ffb21c] px-5 text-sm font-black text-[#071826] hover:bg-[#ffc247]">
-            {isGuest ? "免费注册" : "查看订阅方案"}
+            {isGuest ? "免费注册" : isBasicWithoutCountry ? "选择国家" : isBasicOtherCountry ? "查看升级方案" : "查看订阅方案"}
           </Link>
         </div>
       </div>
@@ -63,7 +78,7 @@ function ProtectedContentPrompt({ kind, nextPath }: { kind: AccessPromptKind; ne
 }
 
 /** Search-indexable landing view. Receives only the public field allow-list. */
-export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicTenderDetail; promptKind: AccessPromptKind }) {
+export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicTenderDetail; promptKind: TenderDetailPromptKind }) {
   const { locale } = useLocale();
   const nextPath = `/tenders/${tender.publicSlug}`;
   const fieldCount = 7 + (tender.participationScope ? 1 : 0);

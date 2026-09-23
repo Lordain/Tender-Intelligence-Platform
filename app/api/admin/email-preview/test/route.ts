@@ -59,6 +59,7 @@ export async function POST(request: Request) {
         user_id: admin.id,
         email: admin.email,
         enabled: true,
+        cadence: "twice_daily",
         ...previewPreference,
       },
       previewTenders,

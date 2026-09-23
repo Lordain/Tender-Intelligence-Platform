@@ -9,13 +9,13 @@ const COPY = {
   login: {
     eyebrow: "Member access",
     title: "登录后继续",
-    description: "登录或免费注册后，即可使用搜索、筛选、翻页和收藏等功能；所有项目的基础信息可公开查看，首页免费展示项目可直接浏览完整分析。",
+    description: "项目搜索、筛选和公开信息无需登录；免费注册后可试用完整分析，试用结束仍可每月查看 5 个完整项目。",
     action: "登录 / 注册",
   },
   subscription: {
     eyebrow: "Subscriber access",
     title: "订阅后使用项目功能",
-    description: `您的 ${TRIAL_DAYS} 天免费试用已结束。项目基础信息仍可公开查看；订阅后即可使用搜索、筛选、翻页、收藏，并查看完整项目分析。`,
+    description: `您的 ${TRIAL_DAYS} 天免费试用已结束。免费版每月可查看 5 个完整项目；订阅后可查看更多，并使用收藏与跟踪功能。`,
     action: "查看订阅方案",
   },
 } as const;

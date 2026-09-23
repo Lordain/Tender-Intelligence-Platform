@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { BILLING_INTERVAL_LABELS, type BillingInterval } from "@/lib/access-control";
-import { PLAN_NAMES, type PaidPlan } from "@/lib/billing-catalog";
+import { PLAN_NAMES, USD_CNY_REFERENCE_RATE, type PaidPlan } from "@/lib/billing-catalog";
+import { SUPPORT_WECHAT } from "@/lib/support";
 
 type BillingProfile = {
   buyerType: "individual" | "business";
@@ -23,6 +24,7 @@ type Props = {
   interval: BillingInterval;
   usdAmount: number;
   bankQuote: { mxnAmount: number; rate: number; validDays: number } | null;
+  stripeReady: boolean;
   internationalWireEnabled: boolean;
   initialProfile: BillingProfile;
 };
@@ -30,9 +32,9 @@ type Props = {
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const mxn = new Intl.NumberFormat("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote, internationalWireEnabled, initialProfile }: Props) {
+export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote, stripeReady, internationalWireEnabled, initialProfile }: Props) {
   const [profile, setProfile] = useState(initialProfile);
-  const [method, setMethod] = useState<"card" | "bank_transfer" | "international_wire">("card");
+  const [method, setMethod] = useState<"card" | "bank_transfer" | "international_wire" | null>(stripeReady ? "card" : internationalWireEnabled ? "international_wire" : null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recoveryUrl, setRecoveryUrl] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (!method) return;
     setSubmitting(true);
     setError(null);
     setRecoveryUrl(null);
@@ -121,23 +124,29 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
         <h2 className="mt-3 text-2xl font-black">{PLAN_NAMES[plan]} · {BILLING_INTERVAL_LABELS[interval]}</h2>
         <p className="mt-3 text-3xl font-black">{usd.format(usdAmount)}</p>
         <p className="mt-1 text-xs leading-5 text-white/55">美元标价，已包含依法适用的税费。</p>
+        <p className="mt-2 text-sm font-bold text-[#ffd16f]">约 ¥{Math.round(usdAmount * USD_CNY_REFERENCE_RATE).toLocaleString("zh-CN")} RMB / 月 <span className="text-xs font-normal text-white/55">仅供参考，按 1 USD ≈ ¥{USD_CNY_REFERENCE_RATE} 估算</span></p>
+
+        <div className="mt-6 rounded-2xl border border-[#ffb21c]/60 bg-[#ffb21c]/10 p-4">
+          <p className="text-sm font-black text-[#ffd16f]">希望使用微信付款？</p>
+          <p className="mt-2 text-xs leading-6 text-white/85">请添加微信 <span className="select-all font-black text-white">{SUPPORT_WECHAT}</span>，说明所选方案并提供注册邮箱。我们会确认实际应付金额与收款方式；核实到账后，由后台人工开通相应权限。添加微信或发送付款截图不会自动开通。</p>
+        </div>
 
         <fieldset className="mt-7 space-y-3">
           <legend className="mb-3 text-xs font-bold text-white/65">选择付款方式</legend>
-          <label className={`block cursor-pointer rounded-2xl border p-4 ${method === "card" ? "border-[#ffb21c] bg-[#ffb21c]/10" : "border-white/15"}`}>
-            <input type="radio" name="payment-method" value="card" checked={method === "card"} onChange={() => setMethod("card")} className="mr-3" />
+          <label className={`block rounded-2xl border p-4 ${stripeReady ? "cursor-pointer" : "cursor-not-allowed opacity-55"} ${method === "card" ? "border-[#ffb21c] bg-[#ffb21c]/10" : "border-white/15"}`}>
+            <input type="radio" name="payment-method" value="card" disabled={!stripeReady} checked={method === "card"} onChange={() => setMethod("card")} className="mr-3" />
             <span className="text-sm font-black">信用卡 / 借记卡</span>
-            <span className="mt-1 block pl-6 text-xs leading-5 text-white/55">Stripe安全结账，以USD付款并自动续费。</span>
+            <span className="mt-1 block pl-6 text-xs leading-5 text-white/55">{stripeReady ? "Stripe 安全结账，以 USD 付款并自动续费。" : "当前方案的 Stripe 月度价格尚未更新，暂不可用。"}</span>
           </label>
-          <label className={`block rounded-2xl border p-4 ${bankQuote ? "cursor-pointer" : "cursor-not-allowed opacity-55"} ${method === "bank_transfer" ? "border-[#ffb21c] bg-[#ffb21c]/10" : "border-white/15"}`}>
-            <input type="radio" name="payment-method" value="bank_transfer" disabled={!bankQuote} checked={method === "bank_transfer"} onChange={() => setMethod("bank_transfer")} className="mr-3" />
+          <label className={`block rounded-2xl border p-4 ${stripeReady && bankQuote ? "cursor-pointer" : "cursor-not-allowed opacity-55"} ${method === "bank_transfer" ? "border-[#ffb21c] bg-[#ffb21c]/10" : "border-white/15"}`}>
+            <input type="radio" name="payment-method" value="bank_transfer" disabled={!stripeReady || !bankQuote} checked={method === "bank_transfer"} onChange={() => setMethod("bank_transfer")} className="mr-3" />
             <span className="text-sm font-black">SPEI 银行转账（仅限墨西哥境内银行）</span>
-            {bankQuote ? (
+            {stripeReady && bankQuote ? (
               <span className="mt-2 block pl-6 text-xs leading-5 text-white/65">
                 应付 {mxn.format(bankQuote.mxnAmount)} 墨西哥比索（MXN）。请从墨西哥银行账户通过 SPEI 转账；境外客户请使用银行卡付款。参考汇率 1 USD = {bankQuote.rate.toFixed(2)} MXN，Stripe账单生成后金额锁定 {bankQuote.validDays} 天。
               </span>
             ) : (
-              <span className="mt-1 block pl-6 text-xs leading-5 text-white/55">上线前配置当期USD/MXN转账汇率后开放。</span>
+              <span className="mt-1 block pl-6 text-xs leading-5 text-white/55">{!stripeReady ? "当前方案的 Stripe 月度价格尚未更新，暂不可用。" : "配置当期 USD/MXN 转账汇率后开放。"}</span>
             )}
           </label>
           <label className={`block rounded-2xl border p-4 ${internationalWireEnabled ? "cursor-pointer" : "cursor-not-allowed opacity-55"} ${method === "international_wire" ? "border-[#ffb21c] bg-[#ffb21c]/10" : "border-white/15"}`}>
@@ -159,8 +168,8 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
             {recoveryUrl && <Link href={recoveryUrl} className="mt-2 inline-block text-[#ffd16f] underline underline-offset-4">前往账户页处理旧的待付款 →</Link>}
           </div>
         )}
-        <button disabled={submitting} type="submit" className="mt-6 w-full rounded-xl bg-[#ffb21c] px-5 py-3.5 text-sm font-black text-[#071826] hover:bg-[#ffc247] disabled:opacity-50">
-          {submitting ? "正在创建付款申请…" : method === "international_wire" ? "提交国际电汇联系申请" : method === "bank_transfer" ? "生成 Stripe 转账账单" : "前往 Stripe 安全付款"}
+        <button disabled={submitting || !method} type="submit" className="mt-6 w-full rounded-xl bg-[#ffb21c] px-5 py-3.5 text-sm font-black text-[#071826] hover:bg-[#ffc247] disabled:opacity-50">
+          {submitting ? "正在创建付款申请…" : !method ? "当前在线付款暂未开放" : method === "international_wire" ? "提交国际电汇联系申请" : method === "bank_transfer" ? "生成 Stripe 转账账单" : "前往 Stripe 安全付款"}
         </button>
       </aside>
     </form>

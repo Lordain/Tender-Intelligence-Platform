@@ -98,6 +98,7 @@ export function SavedView({ canLoadTenders = false }: { canLoadTenders?: boolean
       </main>
     );
   }
+  if (!canLoadTenders) return <main className="min-h-[65vh] bg-[#f6f4ef]"><AccessPrompt open kind="subscription" nextPath="/saved" /></main>;
 
   return (
     <main className="bg-[#f6f4ef] px-5 py-6 sm:px-8 sm:py-8">

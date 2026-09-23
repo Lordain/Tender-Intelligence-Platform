@@ -4,10 +4,12 @@ import { pageMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { getTenderByPublicSlug } from "@/lib/tenders";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
-import { getViewerRole } from "@/lib/access-control-server";
-import { canViewTenderProtectedContent, tenderDetailPrompt } from "@/lib/access-control";
+import { getViewerEntitlement } from "@/lib/access-control-server";
+import { canViewCountry, canViewTenderProtectedContent } from "@/lib/access-control";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { getCurrentUser } from "@/lib/supabase/server-client";
 import { isHomepageFreePreviewSlug } from "@/lib/homepage-selection";
-import { PublicTenderDetailView } from "@/components/tenders/PublicTenderDetailView";
+import { PublicTenderDetailView, type TenderDetailPromptKind } from "@/components/tenders/PublicTenderDetailView";
 import { toPublicTenderDetail } from "@/lib/public-tender";
 import { publicTenderPath } from "@/lib/public-tender-url";
 import { countryLabel, industryLabel } from "@/lib/tender-labels";
@@ -81,9 +83,9 @@ export default async function TenderDetailPage({
 }) {
   const { slug } = await params;
   const { from } = await searchParams;
-  const [tender, viewerRole] = await Promise.all([
+  const [tender, entitlement] = await Promise.all([
     loadTender(slug),
-    getViewerRole(),
+    getViewerEntitlement(),
   ]);
 
   if (!tender) {
@@ -94,22 +96,35 @@ export default async function TenderDetailPage({
 
   const enteredFromHomepage = from === "homepage";
   const publicTender = toPublicTenderDetail(tender);
-  const mayViewProtectedContent = canViewTenderProtectedContent(
-    viewerRole,
+  let mayViewProtectedContent = canViewTenderProtectedContent(
+    entitlement.role,
     isHomepageFreePreview,
     enteredFromHomepage,
-  );
+  ) && (entitlement.role !== "subscriber" || canViewCountry(entitlement, tender.country));
+
+  if (entitlement.role === "free") {
+    const [user, admin] = await Promise.all([getCurrentUser(), Promise.resolve(createSupabaseAdminClient())]);
+    if (user && admin) {
+      const { data, error } = await admin.rpc("claim_free_tender_view", { p_user_id: user.id, p_tender_id: tender.id });
+      if (error) throw new Error(`免费项目额度读取失败：${error.message}`);
+      mayViewProtectedContent = data === true;
+    }
+  }
 
   if (!mayViewProtectedContent) {
+    const promptKind: TenderDetailPromptKind = entitlement.role === "guest" ? "login"
+      : entitlement.role === "subscriber" && entitlement.plan === "basic"
+        ? entitlement.selectedCountry ? "basic-other-country" : "basic-select-country"
+        : "free-limit";
     return (
       <>
         <TenderStructuredData tender={publicTender} />
-        <PublicTenderDetailView tender={publicTender} promptKind={tenderDetailPrompt(viewerRole)} />
+        <PublicTenderDetailView tender={publicTender} promptKind={promptKind} />
       </>
     );
   }
 
-  const showTrialCta = viewerRole === "guest" && isHomepageFreePreview && enteredFromHomepage;
+  const showTrialCta = entitlement.role === "guest" && isHomepageFreePreview && enteredFromHomepage;
 
   return (
     <>

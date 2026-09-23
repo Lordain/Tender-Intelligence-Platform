@@ -327,7 +327,7 @@ export function TenderExplorer({
   const accessNotice = viewerRole === "guest"
     ? "项目搜索、筛选和公开信息可直接查看；注册后可收藏项目，并免费试用完整项目分析。"
     : viewerRole === "free"
-      ? `您的 ${TRIAL_DAYS} 天免费试用已结束；仍可搜索、筛选和浏览项目公开信息，订阅后可收藏并查看完整项目分析。`
+      ? `您的 ${TRIAL_DAYS} 天免费试用已结束；仍可搜索、筛选并每月查看 5 个完整项目，订阅后可收藏与跟踪。`
       : null;
 
   const memberFeaturesLocked = !canUseTenderListMemberFeatures(viewerRole);

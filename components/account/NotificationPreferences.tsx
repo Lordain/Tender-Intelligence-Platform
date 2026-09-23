@@ -8,6 +8,7 @@ import { localize, useLocale } from "@/lib/i18n";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import type { TenderRelevanceTier, TenderStatus } from "@/types/tender";
 import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
+import type { SubscriptionPlan, ViewerRole } from "@/lib/access-control";
 
 // "planned"/计划中 is deliberately absent — see lib/tender-status.ts.
 const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
@@ -48,11 +49,22 @@ export function NotificationPreferences({
   userId,
   locked = false,
   lockReason = "订阅后即可设置项目邮件通知。",
+  lockActionHref = "/pricing",
+  plan,
+  role,
+  selectedCountry,
 }: {
   userId: string;
   locked?: boolean;
   lockReason?: string;
+  lockActionHref?: string;
+  plan?: SubscriptionPlan;
+  role?: ViewerRole;
+  selectedCountry?: string | null;
 }) {
+  const canUseKeywords = role === "trial" || plan === "professional" || plan === "enterprise";
+  const basicCountry = role === "subscriber" && plan === "basic" ? selectedCountry : null;
+  const frequency = role === "free" ? "每周一 09:00" : role === "subscriber" && plan === "basic" ? "每日 09:00" : "每日 09:00 / 18:00";
   const { locale } = useLocale();
   const [enabled, setEnabled] = useState(false);
   const [countries, setCountries] = useState<string[]>([]);
@@ -84,7 +96,7 @@ export function NotificationPreferences({
     setSaving(true);
     setSaved(false);
     setError(null);
-    const { error: saveError } = await getSupabaseBrowserClient().from("email_notification_preferences").upsert({ user_id: userId, enabled, countries, industries, statuses, relevance_tiers: tiers, keywords, timezone: "America/Mexico_City", updated_at: new Date().toISOString() });
+    const { error: saveError } = await getSupabaseBrowserClient().from("email_notification_preferences").upsert({ user_id: userId, enabled, countries: basicCountry ? [basicCountry] : countries, industries, statuses, relevance_tiers: tiers, keywords: canUseKeywords ? keywords : [], timezone: "America/Mexico_City", updated_at: new Date().toISOString() });
     setSaving(false);
     if (saveError) {
       setError("通知设置保存失败，请稍后重试。");
@@ -117,7 +129,7 @@ export function NotificationPreferences({
               <p className="mt-2 text-sm leading-7 text-[#64717c]">{lockReason}</p>
             </div>
           </div>
-          <Link href="/pricing" className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-[#0a2b40] px-5 text-sm font-black text-[#0a2b40] hover:bg-[#0a2b40] hover:text-white">查看订阅服务</Link>
+          <Link href={lockActionHref} className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-[#0a2b40] px-5 text-sm font-black text-[#0a2b40] hover:bg-[#0a2b40] hover:text-white">{lockActionHref === "/account" ? "前往账户选择国家" : "查看订阅服务"}</Link>
         </div>
       </section>
     );
@@ -133,7 +145,7 @@ export function NotificationPreferences({
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-xl font-black text-[#071826]">邮件通知</h2>
-              <span className="rounded-full bg-[#edf2f3] px-3 py-1 text-[10px] font-bold text-[#52636e]">每日 09:00 / 18:00</span>
+                <span className="rounded-full bg-[#edf2f3] px-3 py-1 text-[10px] font-bold text-[#52636e]">{frequency}</span>
             </div>
             <p className="mt-2 max-w-3xl text-sm leading-7 text-[#64717c]">按墨西哥城时间发送符合条件的新标与项目状态更新汇总。没有符合条件的内容时，不会发送邮件。</p>
           </div>
@@ -144,13 +156,13 @@ export function NotificationPreferences({
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <PreferenceGroup title="国家"><ToggleList values={[...NOTIFICATION_COUNTRIES]} selected={countries} onChange={(next) => { setCountries(next); setSaved(false); }} render={(value) => localize(COUNTRY_LABELS[value as keyof typeof COUNTRY_LABELS], locale)} /></PreferenceGroup>
+        <PreferenceGroup title="国家">{basicCountry ? <p className="mt-3 text-sm font-bold">{localize(COUNTRY_LABELS[basicCountry as keyof typeof COUNTRY_LABELS], locale)}（基础版国家）</p> : <ToggleList values={[...NOTIFICATION_COUNTRIES]} selected={countries} onChange={(next) => { setCountries(next); setSaved(false); }} render={(value) => localize(COUNTRY_LABELS[value as keyof typeof COUNTRY_LABELS], locale)} />}</PreferenceGroup>
         <PreferenceGroup title="相关度"><ToggleList values={TIERS} selected={tiers} onChange={(next) => { setTiers(next); setSaved(false); }} render={(value) => localize(RELEVANCE_TIER_LABELS[value as TenderRelevanceTier], locale)} /></PreferenceGroup>
         <PreferenceGroup title="项目阶段"><ToggleList values={STATUSES} selected={statuses} onChange={(next) => { setStatuses(next); setSaved(false); }} render={(value) => localize(STATUS_LABELS[value as TenderStatus], locale)} /></PreferenceGroup>
         <PreferenceGroup title="行业"><ToggleList values={ALL_INDUSTRIES} selected={industries} onChange={(next) => { setIndustries(next); setSaved(false); }} render={(value) => localize(INDUSTRY_LABELS[value as keyof typeof INDUSTRY_LABELS], locale)} /></PreferenceGroup>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-[#e1e7e9] p-4 sm:p-5">
+      {canUseKeywords && <div className="mt-4 rounded-2xl border border-[#e1e7e9] p-4 sm:p-5">
         <p className="text-xs font-black tracking-[0.04em] text-[#425461]">关键词</p>
         <p className="mt-1 text-xs leading-5 text-[#64717c]">命中任一关键词的项目才会纳入通知，可匹配标题、摘要、采购单位或项目编号。</p>
         <div className="mt-3 flex gap-2">
@@ -159,7 +171,7 @@ export function NotificationPreferences({
         </div>
         {keywords.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{keywords.map((keyword) => <button key={keyword} type="button" onClick={() => { setKeywords(keywords.filter((item) => item !== keyword)); setSaved(false); }} className="rounded-full border border-[#d8e0e3] bg-white px-3 py-2 text-xs font-bold text-[#425461] hover:border-[#ffb21c]">{keyword} <span aria-hidden="true">×</span></button>)}</div>}
         <p className="mt-3 text-[11px] text-[#7a878f]">最多 20 个关键词；未添加关键词时，不限制关键词匹配。</p>
-      </div>
+      </div>}
 
       <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[#e4e9eb] pt-6">
         <button type="button" onClick={save} disabled={saving} className="rounded-xl bg-[#ffb21c] px-5 py-3 text-xs font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50">{saving ? "保存中…" : "保存通知设置"}</button>

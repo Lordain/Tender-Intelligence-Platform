@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SubscriptionCheckoutForm } from "@/components/pricing/SubscriptionCheckoutForm";
 import { loginPathFor } from "@/lib/auth-redirect";
-import { bankTransferQuote, PLAN_LIST_PRICES_USD, PLAN_PRICES_USD, PROMOTION, promotionSavingPercent } from "@/lib/billing-catalog";
+import { bankTransferQuote, parsePaidPlanSelection, PLAN_PRICES_USD } from "@/lib/billing-catalog";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
-import { parseStripeSelection } from "@/lib/stripe";
+import { hasCurrentStripePrice } from "@/lib/stripe";
 import { internationalWireEnabled } from "@/lib/manual-wire";
 
 /**
@@ -31,7 +31,7 @@ export default async function SubscribePage({
   const query = await searchParams;
   const plan = typeof query.plan === "string" ? query.plan : null;
   const interval = typeof query.interval === "string" ? query.interval : null;
-  const selected = parseStripeSelection(plan, interval);
+  const selected = parsePaidPlanSelection(plan, interval);
   if (!selected) redirect("/pricing");
 
   const user = await getCurrentUser();
@@ -45,7 +45,8 @@ export default async function SubscribePage({
 
   const rate = Number(process.env.USD_MXN_BANK_TRANSFER_RATE);
   const validDays = Math.min(30, Math.max(1, Number(process.env.BANK_TRANSFER_DAYS_UNTIL_DUE) || 3));
-  const quote = Number.isFinite(rate) && rate > 0 ? bankTransferQuote(selected.plan, selected.interval, rate) : null;
+  const quote = Number.isFinite(rate) && rate > 0 ? bankTransferQuote(selected.plan, rate) : null;
+  const stripeReady = await hasCurrentStripePrice(selected.plan);
 
   return (
     <main className="bg-[#f6f4ef] px-5 py-10 sm:px-8 sm:py-14">
@@ -53,25 +54,14 @@ export default async function SubscribePage({
         <header className="mb-8 border-b border-[#d8e0e3] pb-7">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Secure checkout</p>
           <h1 className="mt-3 text-4xl font-black tracking-[-0.045em] text-[#071826]">确认订阅</h1>
-          {/* The promotion is stated again here rather than only on /pricing:
-              this is the page where the decision is actually made, and the
-              part that matters to that decision — that the rate is kept on
-              renewal — is not something a buyer should have to remember from
-              the previous page. */}
-          {promotionSavingPercent(selected.plan, selected.interval) > 0 && (
-            <p className="mt-4 rounded-xl border border-[#f3c2bd] bg-[#fff5f4] px-4 py-3 text-sm font-bold text-[#a3261f]">
-              {PROMOTION.label}：原价 ${PLAN_LIST_PRICES_USD[selected.plan][selected.interval].toLocaleString("en-US")}，
-              现价 ${PLAN_PRICES_USD[selected.plan][selected.interval].toLocaleString("en-US")}
-              （省 {promotionSavingPercent(selected.plan, selected.interval)}%）。
-              <span className="font-black">现在订阅，续费一直按此价。</span>
-            </p>
-          )}
+          <p className="mt-4 text-sm font-bold text-[#425461]">{selected.plan === "basic" ? "基础个人版" : selected.plan === "professional" ? "专业个人版" : "专业企业版"} · ${PLAN_PRICES_USD[selected.plan].monthly} USD / 月</p>
         </header>
         <SubscriptionCheckoutForm
           plan={selected.plan}
           interval={selected.interval}
-          usdAmount={PLAN_PRICES_USD[selected.plan][selected.interval]}
+          usdAmount={PLAN_PRICES_USD[selected.plan].monthly}
           bankQuote={quote ? { mxnAmount: quote.mxnAmount, rate, validDays } : null}
+          stripeReady={stripeReady}
           internationalWireEnabled={internationalWireEnabled()}
           initialProfile={{
             buyerType: profile?.buyer_type === "individual" ? "individual" : "business",

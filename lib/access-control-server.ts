@@ -6,9 +6,10 @@ import { selectPreferredSubscription, TRIAL_DAYS, type BillingInterval, type Sub
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 
-const EMPTY: ViewerEntitlement = { role: "guest", plan: null, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
+const EMPTY: ViewerEntitlement = { role: "guest", plan: null, selectedCountry: null, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
 
 type SubscriptionRow = {
+  id: string;
   user_id: string;
   plan: string;
   status: string;
@@ -21,9 +22,9 @@ type SubscriptionRow = {
 };
 
 const SUBSCRIPTION_COLUMNS =
-  "user_id, plan, status, created_at, current_period_end, current_period_start, cancel_at_period_end, billing_interval, stripe_subscription_id";
+  "id, user_id, plan, status, created_at, current_period_end, current_period_start, cancel_at_period_end, billing_interval, stripe_subscription_id";
 /** Migrations 0026 and 0027 add the columns above; this is what came before them. */
-const SUBSCRIPTION_COLUMNS_LEGACY = "user_id, plan, status, created_at, current_period_end";
+const SUBSCRIPTION_COLUMNS_LEGACY = "id, user_id, plan, status, created_at, current_period_end";
 
 type SubscriptionLookup = {
   /** The one row that grants access today, or undefined. */
@@ -124,10 +125,17 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
 
   const own = await findCurrentSubscription(admin, user.id);
   if (own.selected) {
+    let selectedCountry: string | null = null;
+    if (own.selected.plan === "basic") {
+      const { data, error } = await admin.from("basic_plan_countries").select("country").eq("subscription_id", own.selected.id).maybeSingle();
+      if (error) throw new Error(`基础版国家读取失败：${error.message}`);
+      selectedCountry = data?.country ?? null;
+    }
     return {
       ...EMPTY,
       role: "subscriber",
       plan: own.selected.plan as SubscriptionPlan,
+      selectedCountry,
       subscriptionOwnerUserId: user.id,
       isEnterpriseOwner: own.selected.plan === "enterprise",
       ...periodOf(own.selected),

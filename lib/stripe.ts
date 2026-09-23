@@ -1,20 +1,14 @@
 import "server-only";
 import Stripe from "stripe";
 import type { BillingInterval } from "@/lib/access-control";
+import { parsePaidPlanSelection, PLAN_PRICES_USD } from "@/lib/billing-catalog";
 
-export type StripePlan = "professional" | "enterprise";
+export type StripePlan = "basic" | "professional" | "enterprise";
 
-const PRICE_IDS: Record<StripePlan, Record<BillingInterval, string | undefined>> = {
-  professional: {
-    monthly: process.env.STRIPE_PRICE_PROFESSIONAL_MONTHLY,
-    semiannual: process.env.STRIPE_PRICE_PROFESSIONAL_SEMIANNUAL,
-    annual: process.env.STRIPE_PRICE_PROFESSIONAL_ANNUAL,
-  },
-  enterprise: {
-    monthly: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY,
-    semiannual: process.env.STRIPE_PRICE_ENTERPRISE_SEMIANNUAL,
-    annual: process.env.STRIPE_PRICE_ENTERPRISE_ANNUAL,
-  },
+const PRICE_IDS: Record<StripePlan, string | undefined> = {
+  basic: process.env.STRIPE_PRICE_BASIC_MONTHLY,
+  professional: process.env.STRIPE_PRICE_PROFESSIONAL_MONTHLY,
+  enterprise: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY,
 };
 
 let stripeClient: Stripe | null | undefined;
@@ -28,25 +22,36 @@ export function getStripeClient(): Stripe | null {
 
 export function parseStripeSelection(plan: string | null, interval: string | null): {
   plan: StripePlan;
-  interval: BillingInterval;
+  interval: "monthly";
   priceId: string;
 } | null {
-  if (plan !== "professional" && plan !== "enterprise") return null;
-  if (interval !== "monthly" && interval !== "semiannual" && interval !== "annual") return null;
-  const priceId = PRICE_IDS[plan][interval]?.trim();
-  return priceId ? { plan, interval, priceId } : null;
+  const selection = parsePaidPlanSelection(plan, interval);
+  if (!selection) return null;
+  const priceId = PRICE_IDS[selection.plan]?.trim();
+  return priceId ? { ...selection, priceId } : null;
+}
+
+export async function hasCurrentStripePrice(plan: StripePlan): Promise<boolean> {
+  const selected = parseStripeSelection(plan, "monthly");
+  const stripe = getStripeClient();
+  if (!selected || !stripe) return false;
+  try {
+    const price = await stripe.prices.retrieve(selected.priceId);
+    return price.active && price.currency === "usd" && price.recurring?.interval === "month"
+      && price.recurring.interval_count === 1
+      && price.unit_amount === PLAN_PRICES_USD[plan].monthly * 100;
+  } catch {
+    return false;
+  }
 }
 
 export function stripeSelectionFromPriceId(priceId: string): {
   plan: StripePlan;
   interval: BillingInterval;
 } | null {
-  const plans: StripePlan[] = ["professional", "enterprise"];
-  const intervals: BillingInterval[] = ["monthly", "semiannual", "annual"];
+  const plans: StripePlan[] = ["basic", "professional", "enterprise"];
   for (const plan of plans) {
-    for (const interval of intervals) {
-      if (PRICE_IDS[plan][interval]?.trim() === priceId) return { plan, interval };
-    }
+    if (PRICE_IDS[plan]?.trim() === priceId) return { plan, interval: "monthly" };
   }
   return null;
 }

@@ -1,5 +1,6 @@
 import { SavedView } from "@/components/tenders/SavedView";
 import { getViewerRole } from "@/lib/access-control-server";
+import { canUseTenderListMemberFeatures } from "@/lib/access-control";
 
 /**
  * Dynamic, because it reads the session. It has to be: this page used to
@@ -28,5 +29,5 @@ import { getViewerRole } from "@/lib/access-control-server";
 export default async function SavedPage() {
   // A guest has saved nothing and can filter nothing. SavedView renders its
   // own login prompt when it sees no signed-in user.
-  return <SavedView canLoadTenders={(await getViewerRole()) !== "guest"} />;
+  return <SavedView canLoadTenders={canUseTenderListMemberFeatures(await getViewerRole())} />;
 }

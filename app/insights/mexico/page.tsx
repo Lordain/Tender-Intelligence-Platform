@@ -9,7 +9,7 @@ const insight = getCountryInsight("mexico")!;
 export const metadata: Metadata = pageMetadata({
   title: "墨西哥国家洞察：2026—2030战略投资与项目机会",
   description:
-    "基于墨西哥2026年最新官方资料，拆解约5.7万亿比索基础设施投资、行业配置、重点项目、区域分布及中国企业可参与空间。",
+    "基于墨西哥2026年官方资料，拆解5.6万亿比索基础设施投资基准、行业配置、重点项目、区域分布及中国企业可参与空间。",
   path: "/insights/mexico",
   image: insight.heroImage,
 });
@@ -94,11 +94,6 @@ const pipelineDirections: Array<{ icon: InfrastructureIconName; title: string; t
 ];
 
 const sources = [
-  {
-    label: "墨西哥财政部：2027经济方案与基础设施计划更新",
-    href: "https://www.gob.mx/shcp/prensa/comunicado-no-71-la-secretaria-de-hacienda-y-credito-publico-entrega-el-paquete-economico-2027-al-h-congreso-de-la-union?idiom=es-MX",
-    note: "2026年9月最新公开材料使用约5.7万亿比索（约3,310亿美元）的滚动口径。",
-  },
   {
     label: "墨西哥总统府：2026—2030基础设施投资计划",
     href: "https://www.gob.mx/presidencia/prensa/el-plan-de-inversion-en-infraestructura-para-el-desarrollo-con-bienestar-contempla-en-2026-2-adicional-del-pib-y-5-6-bdp-al-2030?idiom=es-MX",
@@ -218,7 +213,7 @@ export default function MexicoInsightPage() {
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { number: "01", title: "最新滚动规划规模", value: "约5.7万亿", unit: "墨西哥比索", secondary: "约3,310亿美元", description: "2026年9月公布的公共及混合投资口径" },
+            { number: "01", title: "五年规划投资基准", value: "5.6万亿", unit: "墨西哥比索", secondary: "约3,252亿美元", description: "2026—2030年公共及混合投资基准" },
             { number: "02", title: "已分析项目储备", value: "1,500+", unit: "个基础设施项目", description: "已进入财务与技术分析范围" },
             { number: "03", title: "三大领域资金占比", value: "83.72%", unit: "投向能源、铁路与公路", description: "资金集中度最高的三个方向" },
             { number: "04", title: "重点投资范围", value: "8", unit: "个战略行业", description: "覆盖能源、交通、港口、医疗与水务等" },
@@ -244,7 +239,7 @@ export default function MexicoInsightPage() {
         <div className="mt-8 rounded-2xl border border-[#e6b13f] bg-[#fff3cf] p-5 sm:p-6">
           <p className="font-black text-[#6d4900]">先理解数字口径</p>
           <p className="mt-2 text-sm leading-7 text-[#6d5a31]">
-            2026年2月首次公布的五年规划基准为5.6万亿比索（约3,252亿美元）；2026年9月财政部材料已更新为约5.7万亿比索（约3,310亿美元），说明项目池仍在滚动调整。由于八个行业的占比图表对应最初5.6万亿基准，本文行业金额仍按该基准估算，不把新总额直接套入旧比例。各专项计划的时间范围、资金来源和统计口径不同，也不能与总盘子机械相加。
+            本文统一采用2026年2月公布的5.6万亿比索（约3,252亿美元）五年规划基准。八个行业的投资占比及金额估算均对应这一口径。各专项计划的时间范围、资金来源和统计范围不同，不能与总盘子机械相加；超过1,500个项目也表示已进入财务与技术分析范围，并不等于全部已经公开招标。
           </p>
         </div>
 
@@ -273,7 +268,7 @@ export default function MexicoInsightPage() {
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Investment framework</p>
               <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">这不是一张项目清单，而是一条投资主线</h2>
               <div className="mt-5 space-y-4 text-sm leading-8 text-[#52636e] sm:text-base">
-                <p>墨西哥政府2026年2月公布的《2026—2030年促进福祉基础设施投资计划》，最初基准为5.6万亿比索（约3,252亿美元）；2026年9月财政部已将公共及混合投资的滚动口径更新为约5.7万亿比索（约3,310亿美元）。2026年计划在已批准预算之外增加7,220亿比索（约419亿美元），官方称其相当于约2%的GDP。</p>
+                <p>墨西哥政府2026年2月公布的《2026—2030年促进福祉基础设施投资计划》，目标是在五年内通过公共及混合投资投入5.6万亿比索（约3,252亿美元）。2026年计划在已批准预算之外增加7,220亿比索（约419亿美元），官方称其相当于约2%的GDP。</p>
                 <p>项目池覆盖全国超过1,500个基础设施项目。这里的“混合投资”并不等于所有项目都会采用同一种PPP模式，而是可能包含政府与私人资本、社会组织、土地共同体或专门投资工具的不同组合。具体法律结构、采购方式和风险分配，要等项目进入实施阶段后逐项确认。</p>
                 <p>对于供应商和承包商，更重要的信息是：能源、铁路和公路三项占比达到83.72%。这意味着未来几年大量采购需求不仅出现在主合同，也会向输配电设备、轨道系统、钢结构、工程机械、材料、检测、数字化和本地施工服务延伸。</p>
               </div>
@@ -282,7 +277,7 @@ export default function MexicoInsightPage() {
             <section id="sectors" className="scroll-mt-8 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Allocation by sector</p>
               <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">八个战略行业，资金高度集中</h2>
-              <p className="mt-4 text-sm leading-7 text-[#64717c]">下列金额是用官方行业占比乘以最初5.6万亿比索（约3,252亿美元）基准得到的近似值，用于理解量级，不代表每个行业已经获得同额预算授权；最新5.7万亿滚动总额尚未公布同口径的新版行业分配表。</p>
+              <p className="mt-4 text-sm leading-7 text-[#64717c]">下列金额是用官方行业占比乘以5.6万亿比索（约3,252亿美元）基准得到的近似值，用于理解资金量级，不代表每个行业已经获得同额预算授权。</p>
               <div className="mt-7 space-y-5">
                 {sectorInvestment.map((sector) => (
                   <div key={sector.name}>

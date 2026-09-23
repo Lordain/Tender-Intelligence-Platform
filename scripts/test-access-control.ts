@@ -13,7 +13,9 @@
  * one before fixing it.
  */
 import {
+  canExportTenders,
   canUseTenderListMemberFeatures,
+  canViewCountry,
   canViewTenderProtectedContent,
   isClosedTender,
   isSubscriptionEntitled,
@@ -21,7 +23,10 @@ import {
   subscriptionStatusFromStripe,
   PAYMENT_GRACE_DAYS,
   TRIAL_DAYS,
+  type ViewerEntitlement,
 } from "../lib/access-control";
+import { parsePaidPlanSelection, PLAN_PRICES_USD } from "../lib/billing-catalog";
+import { digestCadence } from "../lib/notifications/digest-cadence";
 
 const NOW = Date.parse("2026-06-15T12:00:00Z");
 const DAY = 86_400_000;
@@ -57,7 +62,16 @@ check("an unknown future status grants nothing", subscriptionStatusFromStripe("s
 // ---------------------------------------------------------------------------
 // Entitlement.
 // ---------------------------------------------------------------------------
-check("no-card trial lasts five days", TRIAL_DAYS, 5);
+check("no-card trial lasts seven days", TRIAL_DAYS, 7);
+check("basic monthly price has no promotion", PLAN_PRICES_USD.basic.monthly, 99);
+check("professional monthly price has no promotion", PLAN_PRICES_USD.professional.monthly, 199);
+check("enterprise monthly price has no promotion", PLAN_PRICES_USD.enterprise.monthly, 399);
+check("basic plan opens checkout without a Stripe Price ID", parsePaidPlanSelection("basic", "monthly"), { plan: "basic", interval: "monthly" });
+check("legacy annual selection is rejected", parsePaidPlanSelection("basic", "annual"), null);
+check("free reminder is weekly", digestCadence(null, false, false), "weekly");
+check("basic reminder is daily", digestCadence("basic", false, false), "daily");
+check("professional reminder is twice daily", digestCadence("professional", false, false), "twice_daily");
+check("enterprise member reminder is twice daily", digestCadence(null, true, false), "twice_daily");
 check("active inside its period", isSubscriptionEntitled("active", iso(-10), iso(20), NOW), true);
 check("active past its period", isSubscriptionEntitled("active", iso(-40), iso(-1), NOW), false);
 check("active with no period end", isSubscriptionEntitled("active", iso(-10), null, NOW), true);
@@ -80,6 +94,21 @@ check("expired free account gets a selected homepage free entry", canViewTenderP
 check("expired free ordinary page keeps analysis protected", canViewTenderProtectedContent("free", false, false), false);
 check("trial may view protected analysis", canViewTenderProtectedContent("trial", false, false), true);
 check("subscriber may view protected analysis", canViewTenderProtectedContent("subscriber", false, false), true);
+const entitlement: ViewerEntitlement = {
+  role: "subscriber", plan: "basic", selectedCountry: "Mexico", trialEndsAt: null,
+  subscriptionOwnerUserId: "qa", isEnterpriseOwner: false, periodStart: null,
+  periodEnd: null, cancelAtPeriodEnd: false, billingInterval: "monthly",
+  paymentPastDue: false, hasBillingLink: false,
+};
+check("basic sees selected country", canViewCountry(entitlement, "Mexico"), true);
+check("basic cannot see other countries", canViewCountry(entitlement, "Brazil"), false);
+check("basic without a selection fails closed", canViewCountry({ ...entitlement, selectedCountry: null }, "Mexico"), false);
+check("basic cannot export", canExportTenders(entitlement), false);
+check("professional sees all countries", canViewCountry({ ...entitlement, plan: "professional" }, "Brazil"), true);
+check("professional can export", canExportTenders({ ...entitlement, plan: "professional" }), true);
+check("enterprise can export", canExportTenders({ ...entitlement, plan: "enterprise" }), true);
+check("trial sees all countries", canViewCountry({ ...entitlement, role: "trial", plan: null }, "Peru"), true);
+check("free cannot export", canExportTenders({ ...entitlement, role: "free", plan: null }), false);
 check("submission_closed counts as closed for homepage selection", isClosedTender("submission_closed"), true);
 check("an open tender does not count as closed", isClosedTender("open"), false);
 

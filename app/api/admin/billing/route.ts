@@ -9,7 +9,7 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("approve"), requestId: z.uuid(), note: z.string().trim().max(1000).optional() }),
   z.object({ action: z.literal("contacted"), requestId: z.uuid(), note: z.string().trim().max(1000).optional() }),
   z.object({ action: z.literal("reject"), requestId: z.uuid(), note: z.string().trim().min(1).max(1000) }),
-  z.object({ action: z.literal("activate"), email: z.email(), plan: z.enum(["professional", "enterprise"]), interval: z.enum(["monthly", "semiannual", "annual"]), note: z.string().trim().max(1000).optional() }),
+  z.object({ action: z.literal("activate"), email: z.email(), plan: z.enum(["basic", "professional", "enterprise"]), interval: z.literal("monthly"), note: z.string().trim().max(1000).optional() }),
   z.object({ action: z.enum(["cancel_now", "cancel_period_end", "resume", "extend", "undo_extend"]), subscriptionId: z.uuid(), note: z.string().trim().max(1000).optional() }),
 ]);
 

@@ -11,6 +11,7 @@ import { BILLING_INTERVAL_LABELS, TRIAL_DAYS } from "@/lib/access-control";
 import { EnterpriseAccounts } from "@/components/account/EnterpriseAccounts";
 import { AccountDevices } from "@/components/account/AccountDevices";
 import { PendingInvitations } from "@/components/account/PendingInvitations";
+import { BasicCountrySelection } from "@/components/account/BasicCountrySelection";
 import { InvoiceContact } from "@/components/billing/InvoiceContact";
 
 const SUPABASE_CONFIGURED = Boolean(
@@ -29,7 +30,7 @@ type BillingStatus = {
     request: {
       id: string;
       reference: string;
-      plan: "professional" | "enterprise";
+      plan: "basic" | "professional" | "enterprise";
       billing_interval: "monthly" | "semiannual" | "annual";
       currency: "USD";
       amount_minor: number;
@@ -374,7 +375,7 @@ export default function AccountPage() {
               <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#ffb21c]">Subscription</div>
               <h2 className="mt-3 text-xl font-black">{localize(uiText.currentPlan, locale)}</h2>
               <div className="mt-5 rounded-2xl border border-white/12 bg-white/5 p-4 text-lg font-black">
-                {entitlement?.role === "trial" ? `${TRIAL_DAYS} 天免费试用` : entitlement?.plan === "enterprise" ? "企业版" : entitlement?.role === "subscriber" ? "个人版" : localize(uiText.freePlan, locale)}
+                {entitlement?.role === "trial" ? `${TRIAL_DAYS} 天免费试用` : entitlement?.plan === "enterprise" ? "专业企业版" : entitlement?.plan === "professional" ? "专业个人版" : entitlement?.plan === "basic" ? "基础个人版" : localize(uiText.freePlan, locale)}
               </div>
               {(entitlement?.periodStart || entitlement?.periodEnd) && (
                 <dl className="mt-4 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.035] px-4 text-xs">
@@ -389,7 +390,7 @@ export default function AccountPage() {
                 {entitlement?.role === "trial" && entitlement.trialEndsAt
                   ? `试用有效期至 ${new Date(entitlement.trialEndsAt).toLocaleDateString("zh-CN")}；到期后自动转为免费版。`
                     : entitlement?.role === "free"
-                      ? "免费试用已结束，订阅后可恢复项目详情与邮件通知。"
+                      ? "免费版可每月查看 5 个完整项目，并接收每周项目提醒。"
                     : entitlement?.role === "subscriber" && entitlement.hasBillingLink && !entitlement.cancelAtPeriodEnd && isBankTransfer
                       ? `将于 ${formatPeriodDate(entitlement.periodEnd)} 生成新的 MXN 转账账单，到账后续期。`
                     : entitlement?.role === "subscriber" && entitlement.hasBillingLink && !entitlement.cancelAtPeriodEnd
@@ -445,7 +446,10 @@ export default function AccountPage() {
             accepts or declines a seat someone offered them. */}
         <PendingInvitations />
 
+        {entitlement?.role === "subscriber" && entitlement.plan === "basic" && <BasicCountrySelection selectedCountry={entitlement.selectedCountry} />}
+
         {entitlement?.isEnterpriseOwner && <EnterpriseAccounts />}
+        {entitlement?.role === "subscriber" && entitlement.plan === "enterprise" && <div className="mt-6 rounded-2xl border border-[#dbe2e5] bg-white p-5"><h2 className="text-lg font-black">行业月报与历史数据</h2><div className="mt-3 flex flex-wrap gap-4 text-sm font-bold text-[#a96100]"><Link href="/reports/industry">查看本月行业月报 →</Link><a href="/api/tenders/export?history=1">导出历史项目清单 →</a></div></div>}
 
         {/* Everyone sees this, not just enterprise owners: the device cap
             applies to every account, and the person who most needs to free

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { selectPreferredSubscription } from "@/lib/access-control";
 import { loginPathFor } from "@/lib/auth-redirect";
-import { bankTransferQuote, BILLING_MONTHS } from "@/lib/billing-catalog";
+import { bankTransferQuote, parsePaidPlanSelection, PLAN_PRICES_USD } from "@/lib/billing-catalog";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { appOrigin, getStripeClient, parseStripeSelection } from "@/lib/stripe";
@@ -10,8 +10,8 @@ import { appOrigin, getStripeClient, parseStripeSelection } from "@/lib/stripe";
 export const runtime = "nodejs";
 
 const checkoutSchema = z.object({
-  plan: z.enum(["professional", "enterprise"]),
-  interval: z.enum(["monthly", "semiannual", "annual"]),
+  plan: z.enum(["basic", "professional", "enterprise"]),
+  interval: z.literal("monthly"),
   paymentMethod: z.enum(["card", "bank_transfer"]),
   quotedRate: z.number().positive().optional(),
   requestId: z.uuid(),
@@ -42,7 +42,7 @@ async function findBlockingSubscription(admin: NonNullable<ReturnType<typeof cre
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
-  const selected = parseStripeSelection(requestUrl.searchParams.get("plan"), requestUrl.searchParams.get("interval"));
+  const selected = parsePaidPlanSelection(requestUrl.searchParams.get("plan"), requestUrl.searchParams.get("interval"));
   if (!selected) return NextResponse.redirect(new URL("/pricing", requestUrl.origin), 303);
   const destination = `/subscribe?plan=${selected.plan}&interval=${selected.interval}`;
   const user = await getCurrentUser();
@@ -58,6 +58,12 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient();
   const selected = parseStripeSelection(parsed.data.plan, parsed.data.interval);
   if (!stripe || !admin || !selected) return NextResponse.json({ error: "支付服务暂未完成配置。" }, { status: 503 });
+  // A stale Stripe Price must never charge the old amount after the pricing
+  // page has changed. Check cards as well as bank transfers before checkout.
+  const configuredPrice = await stripe.prices.retrieve(selected.priceId);
+  if (configuredPrice.currency !== "usd" || configuredPrice.unit_amount !== PLAN_PRICES_USD[selected.plan].monthly * 100 || configuredPrice.recurring?.interval !== "month" || configuredPrice.recurring?.interval_count !== 1 || !configuredPrice.active) {
+    return NextResponse.json({ error: "支付价格尚未更新，请联系客服。" }, { status: 503 });
+  }
 
   const transferRate = Number(process.env.USD_MXN_BANK_TRANSFER_RATE);
   if (parsed.data.paymentMethod === "bank_transfer") {
@@ -94,6 +100,12 @@ export async function POST(request: Request) {
           .eq("pending_payment_request_id", savedProfile.pending_payment_request_id);
         if (error) throw new Error(error.message);
       } else {
+        if (savedProfile.pending_payment_kind !== parsed.data.paymentMethod) {
+          return NextResponse.json({
+            error: "账户已有其他付款方式的待付款申请。请先在账户页放弃旧申请，再重新选择付款方式。",
+            url: "/account",
+          }, { status: 409 });
+        }
         if (savedProfile.pending_payment_url) return NextResponse.json({ url: savedProfile.pending_payment_url });
         return NextResponse.json({ error: "付款页面正在创建，请稍后再试。" }, { status: 409 });
       }
@@ -168,9 +180,15 @@ export async function POST(request: Request) {
     if (!claimedRows?.length) {
       const { data: currentPending } = await admin
         .from("billing_profiles")
-        .select("pending_payment_url")
+        .select("pending_payment_kind, pending_payment_url")
         .eq("user_id", user.id)
         .maybeSingle();
+      if (currentPending?.pending_payment_kind && currentPending.pending_payment_kind !== parsed.data.paymentMethod) {
+        return NextResponse.json({
+          error: "账户已有其他付款方式的待付款申请。请先在账户页放弃旧申请，再重新选择付款方式。",
+          url: "/account",
+        }, { status: 409 });
+      }
       if (currentPending?.pending_payment_url) return NextResponse.json({ url: currentPending.pending_payment_url });
       return NextResponse.json({ error: "付款页面正在创建，请稍后再试。" }, { status: 409 });
     }
@@ -213,7 +231,7 @@ export async function POST(request: Request) {
     }
 
     const validDays = Math.min(30, Math.max(1, Number(process.env.BANK_TRANSFER_DAYS_UNTIL_DUE) || 3));
-    const quote = bankTransferQuote(selected.plan, selected.interval, transferRate);
+    const quote = bankTransferQuote(selected.plan, transferRate);
     const price = await stripe.prices.retrieve(selected.priceId);
     const productId = typeof price.product === "string" ? price.product : price.product.id;
 
@@ -241,7 +259,7 @@ export async function POST(request: Request) {
         customer: customerId,
         collection_method: "send_invoice",
         days_until_due: validDays,
-        items: [{ price_data: { currency: "mxn", product: productId, unit_amount: quote.mxnAmountCentavos, recurring: { interval: "month", interval_count: BILLING_MONTHS[selected.interval] } }, quantity: 1 }],
+        items: [{ price_data: { currency: "mxn", product: productId, unit_amount: quote.mxnAmountCentavos, recurring: { interval: "month", interval_count: 1 } }, quantity: 1 }],
         payment_settings: {
           payment_method_types: ["customer_balance"],
           payment_method_options: { customer_balance: { funding_type: "bank_transfer", bank_transfer: { type: "mx_bank_transfer" } } },

@@ -40,11 +40,17 @@ export function SaveTenderButton({
     <button
       data-member-feature="save-tender"
       type="button"
-      onClick={(event) => {
+      onClick={async (event) => {
         event.preventDefault();
         event.stopPropagation();
         if (!user) {
           router.push(loginPathFor(currentPathWithSearch()));
+          return;
+        }
+        const response = await fetch("/api/account/entitlement");
+        const entitlement = response.ok ? await response.json() as { role?: string } : null;
+        if (entitlement?.role !== "trial" && entitlement?.role !== "subscriber") {
+          router.push("/pricing");
           return;
         }
         toggle(tenderId);

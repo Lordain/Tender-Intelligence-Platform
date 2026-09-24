@@ -54,3 +54,31 @@
 `npm run probe:chile-doors -- --save` 存的真实响应。它们记录的是**探门那一刻**的状态（C1 当时回了 500、
 C1b 回了 429 的并发限流），跟上面第二轮那六份不矛盾——同一个接口在不同时刻回了不同的东西，
 而这本身就是「一次响应不等于一个结论」的证据。凭证那一问的确定答案在 `servicios-ticket-required.json`。
+
+## 第三轮：公开搜索门（`busca-*`，2026-09-24）
+
+`npm run capture:chile-busca` 抓的，`scripts/test-chile-busca.ts` 按这些字节钉住。
+来源是 `www.mercadopublico.cl/BuscarLicitacion/` —— 不要凭证的公开搜索页。
+
+**四份是陷阱，全部是 HTTP 200。**
+
+| 文件 | 是什么 | 为什么留着 |
+| ---- | ------ | ---------- |
+| `busca-export-small.csv` | 真 CSV，9 行，金额已公布 | 正常路径。UTF-8 带 BOM、`;` 分隔、CRLF、11 列 |
+| `busca-export-unpriced.csv` | 真 CSV，21 行，金额**未**公布 | `MontoLicitacion` 这一列在这里**不是数字**，是「Igual o superior a 5.000 UTM」这种档位文字 |
+| `busca-export-empty.csv` | 200，只有一行表头（131 字节） | 真的「翻过头了」。**也是** `idTipoFecha:"-1"` 的应答——同样的字节，两个相反的含义 |
+| `busca-generar-archivo.json` | 200 `{"estado":true,…}` | 导出的句柄，不是文件本身。两步式 |
+| `busca-generar-refused.json` | 200 `{"estado":false}` | **拒绝**——而且**照样带一个 FileGuid**。「拿到 GUID 了吗」这种校验会放行它 |
+| `busca-descargar-empty.bin` | 200，**0 字节** | 下载没带会话 cookie。**这一份是故意用一个全新会话去要另一个会话的 GUID 抓的** |
+| `busca-search-page.html` | 结果片段，10 张卡，39KB | **交标截止日只有这里有**，CSV 里没有这一列。另有两个采购方信誉计数 |
+
+`busca-descargar-empty.bin` 那一份值得单说：它是 0 字节，而 `busca-export-empty.csv` 是 131 字节。
+**「下载失败了」和「这一页没有结果」在这扇门上是两种不同的字节**，混为一谈的后果是导入器永远报告
+「成功导入 0 条」。两份都留着，就是为了让这条区分有据可依。
+
+`busca-search-page.html` 里的日期会随抓取时间变化。测试断言的是**结构和陷阱**（10 张卡、
+每张都有截止日、实体解码、类名 `monto-dis` 和标签文字的不一致），**不是**某一条具体标的内容。
+
+这批 fixture 比其他任何一组都更需要定期重抓：它们来自 ChileCompra 的**前台页面**，
+不是一个发布出来的数据接口，一次发版就可能让解析器失效且不会有人通知。
+脚本包版本号 `?v=202502171638` 记在 `CHILE_BUSCA_SCRIPT_VERSION` 里，它一变就该重抓。

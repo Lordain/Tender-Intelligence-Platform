@@ -8389,3 +8389,351 @@ C3 那个门问成了：**CKAN 2.10.4**，「Portal de Datos Abiertos」，仓�
 
 **结论：datos.gob.cl 上没有全国性的招标数据集**，那些是零散的市政历史归档。CKAN 这条线不是入口，
 把它写成「智利有 CKAN 可以接」会误导下一个人。
+
+## 智利（第三轮）：第三扇门开了，不要凭证、当天的数据、而且能导出 CSV（2026-09-24）
+
+上两节一个字都不用改。第一节说的是「这台机器什么都没量到」，第二节说的是「OCDS 这扇门开了但它停更了」，
+两句在各自的时间点上都是事实。**这一节讲的是第三扇门，以及为什么它让智利重新变成一个能用的源。**
+
+一句话结论：**`www.mercadopublico.cl/BuscarLicitacion/` 的公开搜索，不要任何凭证，导出的是真 CSV，
+数据是当天的。15 个请求拿到全量 4,055 条在招项目。**
+
+### 先回答最重要的那个问题：导出能用，而且比想象中好
+
+任务书说「先量导出，如果它能用，整件事就从『解析 UI 的 HTML』变成『读结构化文件』」。**它能用。**
+
+真实 URL 在 `busqueda.js` 第 138–139 行，是两步：
+
+```
+POST /BuscarLicitacion//Home/GenerarArchivo   → {"FileGuid":"…","nombreArchivo":"ListaLicitaciones.csv","estado":true}
+GET  /BuscarLicitacion//Home/Descargar?fileGuid=…&nombreArchivo=…   → CSV 正文
+```
+
+那个**双斜杠不是笔误**：`rutaInicial` 是 `/BuscarLicitacion/`，而这两个控制器是按 `url + '/Home/…'` 拼的。
+照抄。
+
+回来的是什么：**UTF-8 带 BOM、`;` 分隔、CRLF 换行、11 列**。
+
+```
+IDLicitacion;NombreLicitacion;Tipo;Estado;FechaPublicacion;Descripcion;Moneda;TipoPresupuesto;TipoMonto;MontoLicitacion;Organismo
+```
+
+4,055 行实测：**0 个引号字符、0 个裸 LF、每一行正好 11 个字段**。服务端在写文件之前把自己的分隔符
+从自由文本列里剔掉了。所以按 `;` 切是诚实的，不是偷懒——但「4,055 行没出过」不等于「永远不会出」，
+所以 `parseChileBuscaCsv()` 里字段数不是 11 的行**进 malformed 列表被报出来，绝不猜着对齐**。
+错位的后果是把描述的尾巴塞进 `Moneda`、后面每一列跟着错一格，然后产出一条看着很完整、买方和金额都是错的记录。
+
+**1,000 条不是上限，是页大小。** UI 把 `pagina` 写死成 1 并且在界面上说「Se descargán los primeros 1.000
+resultados」，所以看着像服务端限制。实测 `pagina=2` 又回了 47 条，和第 1 页**零重叠**；`pagina=3` 只回表头。
+1000 + 47 = **1047**，正好等于页面自己那个 `hdnTotalPresupuestoPublico=1047`。**全量是够得着的，
+只是不能按那个按钮的方式够。**
+
+`registrosPorPagina` 在**两个接口上都被忽略**（10 / 100 / 500 / 1000 都试过：CSV 恒定 1000 行，HTML 恒定 10 张卡）。
+
+### 两个「-1」，两种完全不同的含义 —— 这是这扇门最贵的一个坑
+
+任务书给的那份 payload 是能跑的，但它只看到了全量的 **26%**。两个字段各埋了一个。
+
+**`esPublicoMontoEstimado`**：`-1` 看着像「全部」，因为 `codigoRegion`、`idTipoLicitacion`、`idEstado`
+的 `-1` 都是那个意思。**这里不是。** 其他条件全部不变：
+
+| 取值 | 条数 | 关系 |
+| ---- | ---- | ---- |
+| `-1` | 1047 | 和 `1` **完全相同**（差集两边都是 0） |
+| `1`（金额已公布） | 1047 | |
+| `0`（金额未公布） | 770 | 与上面**完全不相交**（交集 0） |
+
+**`-1` 是 `1` 的别名。**那 770 条只有显式问 `0` 才拿得到，而 `-1` 的应答里没有任何迹象表明它们存在。
+
+**`idTipoFecha`**：这个字段是「Fecha de cierre」那组复选框（1 = 本月、2 = 下月、3 = 三个月以上），
+**它是必填的，而且只能填一个值**：
+
+```
+""       → {"estado":false}     被拒
+"1,2,3"  → {"estado":false}     被拒（JS 收集成数组，服务端只吃一个）
+"-1"     → 200，只有表头         零行，长得和「翻过头了」一模一样
+"1"/"2"/"3" → 1041 / 1197 / 9 条（金额公开那一半）
+```
+
+**没有「全部日期」这个取值。**任务书那份 payload 里的 `idTipoFecha:"1"` 意思是「本月截止的」——
+所以它默默地只看了九月份到期的标。
+
+于是覆盖全量要走 **3 个关闭月份桶 × 2 个金额可见性 = 6 组查询**：
+
+| | 金额公开=1 | 金额公开=0 |
+| --- | --- | --- |
+| 本月截止 | 1041 | 768 |
+| 下月截止 | 1197 | 1019 |
+| 三个月以上 | 9 | 21 |
+
+**合计 4,055 条，六组两两不相交（跨组重复 0 条），15 个请求。**
+
+### 新鲜度：不是「比较新」，是**当天**
+
+这是这一轮存在的理由，所以单独量了分布，不是看一条。
+
+全量 4,055 条的 `FechaPublicacion`：**最新 2026-09-24（就是今天），最旧 2025-07-15，中位数 2026-09-15。**
+
+```
+2026-09-17  210 条
+2026-09-18    1
+2026-09-20    2        ← 周日
+2026-09-21  388
+2026-09-22  351
+2026-09-23  351
+2026-09-24  168        ← 今天，而且这是当天下午的快照
+```
+
+**延迟是零。**对比 OCDS 那扇门：它最新的一条是 `2026-07-29T18:48Z`，到今天已经**将近两个月**。
+这扇门比 OCDS 停更的位置往前走了六周多，而且还在走。
+
+（顺带一条旁证：同一组查询隔二十分钟跑两次，`hdnTotalPresupuestoPublico` 从 1047 变成 1041。
+这是个活的源，标会在你读它的时候关掉。所以那两个 hidden input **不能当翻页的边界用**，代码里也没用。）
+
+### 字段覆盖率（全量 4,055 条 + 120 张 HTML 卡片，不是抽样）
+
+CSV 这 11 列**每一列都是 4,055/4,055 非空**。但「非空」不等于「有用」，所以分开说：
+
+| 要的东西 | 在哪 | 覆盖率 | 备注 |
+| -------- | ---- | ------ | ---- |
+| 稳定 id | `IDLicitacion` | 4055/4055 | `NNNN-NN-<Tipo><YY>`，全部 4,055 条匹配，且后缀永远等于 `Tipo` 列 |
+| 标题 | `NombreLicitacion` | 4055/4055 | |
+| 描述 | `Descripcion` | 4055/4055 | 比 OCDS 的丰富 |
+| 采购单位 | `Organismo` | 4055/4055 | **0 条带 `" | "`** —— OCDS 那个脏字段在这里是干净的 |
+| 发布日期 | `FechaPublicacion` | 4055/4055 | `dd/mm/yyyy HH:MM:SS` |
+| **状态** | `Estado` | 4055/4055 | **是活的**，不是快照，见下 |
+| 采购方式 | `Tipo` | 4055/4055 | 两字母码 |
+| 金额 | `MontoLicitacion` | **2247/4055** | 另外 1808 条**不是数字**，见下 |
+| 币种 | `Moneda` | 4055/4055 | CLP 3918、CLF 47、USD 45、UF 37、UTM 6、EUR 2 |
+| **交标截止** | **CSV 里没有** | **0/4055** | 只有 HTML 有，见下 |
+| 地区 | **两边都没有** | **0/4055** | 见下 |
+
+**缺的字段，一条条说清楚（这些是发现，不是可以抹平的东西）：**
+
+- **交标截止日：CSV 里一列都没有。** 这是这扇门最大的缺口，而且缺的偏偏是这个产品最需要的那个字段——
+  「用户要的是还能投的标」。它在 **HTML 卡片**上（`<strong>Fecha de cierre</strong>`，120/120 张卡都有），
+  但 HTML 每页只有 10 条。所以补全 4,055 条要 ~406 个请求，而导出全量只要 15 个。
+  取舍写在 `ingest-chile.ts` 里：**先按 recency 过滤，再只给留下来的行补截止日**，`--enrich N` 控制上限。
+  没补到的行**就没有 `submissionDeadline`，不编一个** —— 在一个投标平台上编造截止日是最坏的一种错。
+- **地区：这扇门根本不发。** OCDS 有 `parties[].address.region`（120/120），这里没有任何一个字段是地区。
+  HTML 卡片上那行买方单位（「Subsecretaria de las Culturas y las Artes Región del Biobio」）里会**提到**
+  地区，但那是自由文本不是字段，从里面正则出一个地区是猜。`codigoRegion` 这个**查询**参数倒是存在，
+  理论上可以一个区一个区地问再反推——**没做，也没量**，留作下一步。所以 busca 这条线映射出来的 Tender
+  **没有 `location`**，列表页的地区筛选对它是空的。**这是 OCDS 那扇门唯一还明确更强的地方。**
+- **采购类别：还是 0。** OCDS 至少有 `tender.items[].classification` 的 UNSPSC 编码，这扇门连那个都没有。
+  所以 `scopeType` 依旧**全部落在 `services` 这个默认值**上，实跑输出里「采购类型：services 1802」
+  就是这么来的——它不是测出来的，是没测到。这个缺口比第二轮更大，不是更小。
+- **答疑截止：没有。** OCDS 有 `enquiryPeriod.endDate`，这里没有。
+- **标书文件链接：没有。** 和 OCDS 一样，一个都没有。
+
+### `MontoLicitacion` 是一列**两种东西**，而 `TipoPresupuesto` 决定是哪种
+
+这是解析上最容易安静出错的地方：
+
+```
+TipoPresupuesto = PUBLICADO      2,247 行   一个数字："100.933.572"、"70.063,00"
+TipoPresupuesto = NO PUBLICADO   1,808 行   一句话："Entre 100 y 1000 UTM"、"Menor a 100 UTM"、
+                                            "Igual o superior a 5.000 UTM"、"No público"…
+```
+
+两个计数和 `TipoPresupuesto` 的分布**精确吻合**，所以这条规则是干净的而不是近似的。
+那 9 种档位文案自己都不自洽（「Entre 100 y 1000 UTM」和「Igual o superior a 100 UTM e inferior a 1000 UTM」
+说的是同一档；「1000 UTM」和「1.000 UTM」都出现过）。
+
+**危险在于：一个抓数字的解析器不会报错。** `Number(raw.replace(/\./g,""))` 对大部分文案返回 NaN，
+但一个「把数字抠出来」的变体会从「Igual o superior a 5.000 UTM」里愉快地得到 **5000**——
+于是一个大型公共工程被分级器当成五千比索的小采购。`parseChileBuscaAmount()` **按声明的类型判断，
+不按「长得像不像数字」判断**，所以哪怕内容全是数字，只要声明是 NO PUBLICADO 就当档位。
+UTM 折成比索需要一个真实数字，**没编**，档位原样带出来给人看。
+
+数字格式是 es-CL：`.` 是千分位，`,` 是小数点（CLP 都是整数，USD 那些带 `,00`）。
+
+### 状态：这扇门的 `Estado` 是活的，OCDS 的不是 —— 而且这次是**量出来的**
+
+第二轮说 OCDS 的 `tender.status` 是发布那一刻的快照。这一轮不是推断，是直接撞上了：
+
+**一条搜索页报「Cancelada por el organismo」（idEstado=15）的标，去 OCDS 问，回的是
+`status: "active"`、`statusDetails: "5-Publicada"`。** 同一条标、同一天、两个源，只有一个是当前的。
+
+所以 busca 这条线**读 `Estado` 文案**，但仍然**和截止日交叉**：一行可以写着「Publicada y disponible
+para ofertar」而截止日已经过了（站点的 estado 按自己的节奏刷新）。截止日优先。
+没见过的 estado 文案**返回 undefined，那一行被丢掉，绝不默认成 `open`**——把一个没人能投的标显示成招标中，
+比少一条更坏。
+
+### estado 码表：任务书给的那张，六个码全部对上了
+
+第二轮明写着这个缺口没量（「码表没量过，所以一个字都没读」）。**现在闭合了，而且是两个独立来源。**
+
+每个码都实发了一次，看回来的 `Estado` 列——每个码都只产出**一种**文案：
+
+| 码 | `busqueda.filtros.js` 里的名字 | 服务端实际回的 `Estado` 文案 |
+| -- | ------------------------------ | ---------------------------- |
+| 5 | publicadas | Publicada y disponible para ofertar |
+| 6 | cerradas | Cerrada a recibir más ofertas |
+| 7 | desiertas | Sin ofertas recibidas |
+| 8 | adjudicadas | Adjudicada a uno o varios proveedores |
+| 15 | revocadas | Cancelada por el organismo |
+| -1 | todos | 以上五种 + **Suspendida** |
+
+**`5` 还额外和 OCDS 对上了**：join 上的那些记录 `statusDetails` 全是 `"5-Publicada"`。
+两个独立来源在同一个码上一致。
+
+两条附带发现：`-1` 在**这个**字段上是真的「全部」（和 `idTipoFecha` 相反），而且它翻出了第七种文案
+**`Suspendida`**，这个文案**在站点自己的码表里没有对应的码**。它只出现在 `-1` 底下，
+所以映射表里那一行是最弱的一行，注释里写明了。
+
+### 两个源能不能 join：能，24/25
+
+两边都用 `NNNN-NN-XXNN` 这个编号。拿 CSV 语料里发布日期落在 OCDS 覆盖窗口内（≤ 2026-07-29）的行，
+抽 25 条去问 OCDS 单条记录接口：
+
+**24 条命中，`tender.id` 和 `IDLicitacion` 逐字节相同**，`ocid` 就是它加 `ocds-70d2nz-` 前缀。
+唯一没命中的那条（`2239-5-LR26`）发布于 **2026-07-29**——正是 OCDS 停更的那一天，
+回的是 `{"status":404,"detail":"No se encontraron resultados."}`。
+
+所以**去重是成立的**：两个映射器对同一个编号生成**同一个 `chile-<编号>` slug**，
+一条被两扇门都看到的标会 upsert 到同一行，而不是进两次。测试里钉着这一条。
+
+顺带，这个 join 还证实了 OCDS 那扇门**并没有坏**，它只是不再有新东西——老记录照样答得好好的。
+所以第二轮那句「恢复了它自己就会有数据，不用改代码」仍然成立。
+
+### HTML 有多脆，什么会弄坏它
+
+**HTML 只用来补一个字段（交标截止日），加上两个采购方信誉计数。**其余全部走 CSV。这是有意的收窄：
+解析面越小，能坏的地方越少。
+
+**稳的（解析器钉在这些上）：**
+- `<div class="lic-bloq-wrap …">` —— 服务端按标输出的结果块，切卡片只切这个前缀
+- `<strong>Fecha de cierre</strong>`、`<strong>Cantidad de compras …</strong>` —— **人能看见的标签文字**
+- `class="col-sm-6 id-licitacion"`、`class="lic-bloq-footer"` —— 语义化的类名
+- `verFicha('…?idlicitacion=…')` —— 120/120 张卡都是这个形式，编号和卡片 id 逐字相同
+
+**不稳的（解析器**故意不用**）：**
+- `col-md-4` / `row` / `margin-bottom-md` 这类 Bootstrap 栅格类。一张卡里出现好几次，
+  而且是改版第一个动的东西。**两个日期格子就是靠标签文字区分的，不是靠「本行第二个 col-md-4」**——
+  截止日那格是条件渲染的，位置会动。
+- **`class="monto-dis"`**。它看着像「monto disponible」的意思，实际上 120/120 张卡都是这个类，
+  包括那 23 张写着「Monto estimado」的。**类名是死的，标签文字才是活的。**
+  所以金额干脆不从 HTML 读——CSV 里有 `TipoMonto` 这一列，是明确分好的。
+
+**什么会弄坏它，怎么早点知道：** 脚本包的版本号 `?v=202502171638`（`busqueda.js`、`busqueda.filtros.js`、
+`resultadobusqueda.css` 全带这个）记在 `CHILE_BUSCA_SCRIPT_VERSION` 常量里。
+**这个串一变，HTML 解析器就该被怀疑，fixture 该重抓。**它**没有**做成自动断言——版本号变了不等于解析坏了，
+为一次版本号跳动让导入失败，比它防的漂移更糟。
+
+另外两道保险：
+- 片段里**有** `lic-bloq-wrap` 结果块却**一条都没解析出来** → **抛错**，不返回空数组。
+  从导入器那边看，「今天没结果」和「标记变了所以什么都不匹配」长得一模一样。
+- CSV 表头**按列名逐个核**，不按位置也不按个数。对方换了列顺序，读到的是一句能看懂的话，
+  而不是 11 个悄悄错位的字段。
+
+### 状态码不是它的意思：这扇门有四个，全是 HTTP 200
+
+| 应答 | 真实含义 | 钉在哪 |
+| ---- | -------- | ------ |
+| 200 + `{"estado":false}` | **拒绝**——而且**照样给一个 FileGuid** | `busca-generar-refused.json` |
+| 200 + `content-length: 0` | 下载没带会话 cookie（或 GUID 过期） | `busca-descargar-empty.bin` |
+| 200 + 只有表头（131 字节） | 真的翻过头了，**也是** `idTipoFecha:"-1"` 的应答 | `busca-export-empty.csv` |
+| 200 + CSV 里金额是一句话 | 对方没公布金额 | `busca-export-unpriced.csv` |
+
+第一条值得单说：**被拒的应答里 `FileGuid` 是有的**（只是 `nombreArchivo` 退化成 `".csv"`、`estado` 是 `false`）。
+一个「拿到 GUID 了吗」的校验会放行它，然后下一步下载回 0 字节，导入器报告「成功导入 0 条」。
+
+第二条是这一轮**真的差点写错**的那个：生成的文件存在服务端会话里，`Descargar` 必须带上
+`GenerarArchivo` 那一步设的 cookie（还有负载均衡器那个 `GCLB` 粘连 cookie）。不带就是 200 + 0 字节。
+所以 `warmSession()` 不是可选的，`ChileBuscaSession` 是个调用方必须拿着的对象而不是全局变量。
+这份 0 字节的 fixture 是**故意用一个全新会话去要另一个会话的 GUID** 抓下来的。
+
+### 这一轮建的东西
+
+```
+lib/ingestion/connectors/chile-busca-live.ts   只管抓：诚实 UA、cookie 会话、限速、有界重试、egressDenial()
+lib/ingestion/chile-busca-parser.ts            纯函数：CSV → 行、HTML → 卡片。不联网
+lib/ingestion/chile-busca-mapper.ts            纯函数：行 → Tender，country 写死 "Chile"
+lib/ingestion/ingest-chile.ts                  加了 door: "ocds" | "busca"，两个调用方共用的唯一路径
+scripts/ingest-chile-live.ts                   加了 --door / --enrich
+scripts/capture-chile-busca.ts                 npm run capture:chile-busca —— 7 份 fixture 的来源，可重跑
+scripts/test-chile-busca.ts                    npm run test:chile-busca —— 86 项，全部打在真实字节上
+```
+
+**OCDS 那条线一行没动**，`test:chile-ocds` 原样通过。两扇门共用 `ingest-chile.ts`，
+默认仍是 `ocds`，所以已有的调用方行为不变。
+
+**实跑一次**（`npm run ingest:chile-live -- --door busca --max 1200 --enrich 60`）：
+
+```
+导出共 1808 条不重复招标（3 个 CSV 页），格式异常行 0 条
+Mapped 1808 tender(s) from 1808 record(s).
+  flagship 7 · significant 15 · standard 483 · excluded 1297  → 进入推荐 505
+交标截止日：60 / 1802 条有
+金额是 UTM 档位而不是数字的：762 条
+金额覆盖率：1040 条有金额（57.7%）  币种：CLP 1014、USD 13、UF 12、UTM 1
+```
+
+**注意每一条仍然显示「无金额」**，哪怕其中 1,014 条带着真实的 CLP 数字——因为 `lib/currency.ts` 里
+没有 CLP，`convertToUsd()` 返回 null。第二轮预判、第二轮在 28 条上看到、**这一轮在 1,014 条上看到**。
+规模变了，结论没变。
+
+### 要放行的域名（所有者要收窄成 Custom 白名单的话）
+
+这一轮实际给出过响应的主机，一个不漏：
+
+| 主机 | 干什么的 | 连接器要不要 |
+| ---- | -------- | ------------ |
+| `www.mercadopublico.cl` | 搜索落地页、`Home/GenerarArchivo`、`Home/Descargar`、`Home/Buscar`、脚本文件 | **busca 门必须** |
+| `apis.mercadopublico.cl` | OCDS 月度索引 | **ocds 门必须** |
+| `api.mercadopublico.cl` | OCDS 单条记录 | **ocds 门必须** |
+
+**重定向：一次都没有。** 搜索落地页、`GenerarArchivo`、`Descargar`、`Buscar` 全是 0 次跳转的直接 200，
+`num_redirects=0`。整条 busca 链路**只碰 `www.mercadopublico.cl` 一个主机，没有任何第三方 CDN**。
+（页面 HTML 里引了一个 `cdnjs.cloudflare.com` 的 jQuery mask 插件，但那是给浏览器的，连接器从不加载它。）
+
+第二轮那张表里的 `www.chilecompra.cl`、`datos.gob.cl`、`desarrolladores.mercadopublico.cl` 这一轮**一次都没碰**。
+
+**跑两扇门只需要上面三个主机。只跑 busca 门，只需要 `www.mercadopublico.cl` 一个。**
+
+### 这是别人的前台，不是发布出来的数据接口 —— 说清楚
+
+这一点必须写明白，因为它决定了这条线该被怎么对待：
+
+`/BuscarLicitacion/` 是**任何公民都能打开的公开页面**，数据本身是 CC0（ChileCompra 在 OCDS 应答里
+自己声明的），抓它不需要凭证也没绕过任何东西。**但它是 ChileCompra 的 UI，不是一个公布出来的数据 API。**
+它没有版本承诺、没有弃用通知、没有变更日志。**一次发版就可能让解析器失效，而且不会有人通知我们。**
+
+所以这条线按「借用别人的前台」来写，而不是按「调用一个接口」：
+
+- **诚实的 User-Agent**，写明产品名和一个联系 URL，**绝不伪装浏览器**——对方要限我们的流，
+  应该能一眼认出是谁
+- **严格串行**，请求之间固定间隔 1.5 秒，没有并发
+- **有界重试**（4 次，指数退避），只对 429/5xx 重试，404 不重试
+- **单独的抓取脚本**，fixture 是有意刷新的，不是靠反复捶页面攒出来的
+- 全量走导出（15 个请求）而不是走 HTML（406 个请求）——**这本身就是最讲礼貌的那个理由**
+
+OCDS 那扇门**保持原样、继续可用**，正是因为它是相反的东西：结构化、有版本、CC0、明确发布出来的。
+它现在停更着，但它一恢复就自己有数据。**两扇门都留着，是因为它们的失效方式不一样。**
+
+### 所以现在需要所有者决定的
+
+1. **CLP 汇率，还是那一行。** 现在的代价是 1,014 条真实比索报价在分级器眼里是「未披露金额」，
+   不是第二轮的 28 条。汇率**必须是所有者核过来的真实数字**，这台机器够不着任何汇率源。
+   **这一轮仍然没加**，理由和上一轮一样：编一个比没有更坏。
+2. **UF / CLF / UTM 这三个还要一个折算口径。** 4,055 条里 90 条用的是这三种（UF 和 CLF 是同一个东西的
+   两种写法，源自己混着用）。它们是**指数化单位**，汇率每天变，比 CLP 更需要一个真实数据源。
+3. **智利的前台可见性**（`AVAILABLE_COUNTRIES`）和后台导入按钮——**这一轮两处都没动**，
+   `scripts/test-list-facets.ts:110` 那条「智利不出现」的断言原样保留。这是所有者的闸。
+4. **要不要给 busca 门做地区。** 现在没有地区，列表页的地区筛选对智利是空的。
+   可能的路子是按 `codigoRegion` 一个区一个区地问再反推——**没量过，成本未知**。
+5. **ticket 那件事可以彻底放下了。** 第二轮说「如果 OCDS 迟迟不恢复，这就从可选变成唯一」——
+   现在有第三条路，而且它给的是实时数据，**所以 Clave Única 这道坎不再挡任何东西。**
+
+### 这一轮没做的事，以及为什么
+
+- **没动 `AVAILABLE_COUNTRIES`、没加后台按钮。** 那是所有者的闸，不是我的。
+- **没加 CLP（或 UF/CLF/UTM）汇率。** 编一个数字出来，比没有更坏。
+- **没碰 OCDS 那条线的任何代码。** 它是有测试的、结构化的、CC0 的那条路，任务也明确要求别削弱它。
+- **没做 UNSPSC / 采购类别映射。** 这扇门连 UNSPSC 都没有，比上一轮更没得做。`scopeType` 全是 `services`，明写。
+- **没从买方单位的自由文本里正则地区。** 那是猜，不是测量。
+- **没给全部 4,055 条补截止日。** 那要 ~406 个请求打在别人的前台上。补的是这一轮会留下的那些，`--enrich` 控制上限。
+- **没用 `codigoRegion` / `rubros` / `compradores` 这些筛选器。** 它们存在，没量过，所以一个字都没读。
+- **没碰那四个同源控制器**（`BuscarComprador`、`BuscarRubros`、`BuscarProveedor`、`cargaFiltro*`）。
+  它们是给自动补全用的，这一轮用不上。

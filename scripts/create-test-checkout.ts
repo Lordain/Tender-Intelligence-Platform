@@ -20,9 +20,13 @@
  * What it does NOT cover, and nothing here pretends otherwise: /subscribe,
  * the checkout route's own price guard, and the MXN bank-transfer quote.
  *
- * Refuses a price above --max-usd (default 5) so a slip cannot charge $399,
+ * Refuses a price above --max-amount (default 5) so a slip cannot charge $399,
  * and says so loudly if the price is one of the three configured production
- * prices.
+ * prices. The cap is read in the PRICE'S OWN currency, not converted: a test
+ * price is not always USD (a card that only does domestic MXN declines a USD
+ * charge with currency_not_supported), and this script has no FX source, so
+ * pretending to convert would be a guessed number. Nothing downstream cares
+ * about currency — the webhook resolves the plan from metadata.
  *
  * Requires STRIPE_SECRET_KEY. Creates a real, payable session in whichever
  * mode that key belongs to.
@@ -30,6 +34,7 @@
  * Usage:
  *   npm run create:test-checkout -- --user <uuid> --price price_XXX
  *   npm run create:test-checkout -- --user <uuid> --price price_XXX --plan professional
+ *   npm run create:test-checkout -- --user <uuid> --price price_XXX --max-amount 25
  */
 import Stripe from "stripe";
 
@@ -45,7 +50,7 @@ async function main() {
   const userId = argValue("--user");
   const priceId = argValue("--price");
   const plan = (argValue("--plan") ?? "basic") as Plan;
-  const maxUsd = Number(argValue("--max-usd") ?? 5);
+  const maxAmount = Number(argValue("--max-amount") ?? argValue("--max-usd") ?? 5);
   const site = (argValue("--site") ?? "https://latintender.com").replace(/\/$/, "");
 
   if (!userId || !priceId) {
@@ -74,8 +79,8 @@ async function main() {
     console.error(`${priceId} 不是「每月一次」的循环价格（拿到 ${price.recurring?.interval_count ?? "?"} × ${price.recurring?.interval ?? "one-time"}）。订阅测试需要月度循环价。`);
     process.exit(1);
   }
-  if (amount > maxUsd) {
-    console.error(`${priceId} 是 ${amount} ${price.currency.toUpperCase()}，超过上限 ${maxUsd}。\n这是防手滑的闸：测试要的是 1 块钱的价格，不是正价那三个。确要如此就加 --max-usd。`);
+  if (amount > maxAmount) {
+    console.error(`${priceId} 是 ${amount} ${price.currency.toUpperCase()}，超过上限 ${maxAmount}（上限按该价格自己的币种读，不换算）。\n这是防手滑的闸：测试要的是 1 块钱的价格，不是正价那三个。确要如此就加 --max-amount。`);
     process.exit(1);
   }
   const configured = [process.env.STRIPE_PRICE_BASIC_MONTHLY, process.env.STRIPE_PRICE_PROFESSIONAL_MONTHLY, process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY];

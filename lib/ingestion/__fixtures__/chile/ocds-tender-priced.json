@@ -1,0 +1,1598 @@
+{
+  "uri": "https://api.mercadopublico.cl/APISOCDS/OCDS/tender/1211839-44-LE26",
+  "version": "1.1",
+  "publishedDate": "2026-07-09T17:56:11Z",
+  "releases": [
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "id": "94c117ce-1211839-44-LE26",
+      "date": "2026-07-03T14:56:43Z",
+      "tag": [
+        "tender"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839",
+          "identifier": {
+            "id": "708564001",
+            "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gandarillas 93",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Jessica Serrano"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1211839",
+              "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/1211839"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "1211839-44-LE26",
+        "title": "MAQUINARIAS DE ASEO CLÍNICO",
+        "description": "Las presentes Bases Administrativas, en adelante las Bases, forman parte de la propuesta pública denominada ADQUISICIÓN DE MAQUINARIAS DE ASEO CLINICO EN LOS CENTROS DE SALUD DEPENDIENTES DE LA CORPORACION MUNICIPAL DE PUENTE ALTO las cuales contienen las disposiciones que regirán las relaciones entre la Corporación y el o los proveedores.",
+        "status": "active",
+        "statusDetails": "5-Publicada",
+        "value": {
+          "amount": 50000000.0,
+          "currency": "CLP"
+        },
+        "procuringEntity": {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839"
+        },
+        "items": [
+          {
+            "id": "43563358",
+            "description": "Equipos y suministros de limpieza / Equipo de limpieza / Máquinas y accesorios para suelos / Aspiradoras",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "47121602",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+        "tenderPeriod": {
+          "startDate": "2026-07-03T14:56:43Z",
+          "endDate": "2026-07-08T16:00:00Z",
+          "durationInDays": 5
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-08T16:05:00Z",
+          "endDate": "2026-07-09T18:00:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-03T15:30:00Z",
+          "endDate": "2026-07-05T15:30:00Z",
+          "durationInDays": 2
+        }
+      },
+      "language": "es"
+    },
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "id": "ec9626e2-1211839-44-LE26",
+      "date": "2026-07-03T14:56:43Z",
+      "tag": [
+        "tender"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839",
+          "identifier": {
+            "id": "708564001",
+            "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gandarillas 93",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Jessica Serrano"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1211839",
+              "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/1211839"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "1211839-44-LE26",
+        "title": "MAQUINARIAS DE ASEO CLÍNICO",
+        "description": "Las presentes Bases Administrativas, en adelante las Bases, forman parte de la propuesta pública denominada ADQUISICIÓN DE MAQUINARIAS DE ASEO CLINICO EN LOS CENTROS DE SALUD DEPENDIENTES DE LA CORPORACION MUNICIPAL DE PUENTE ALTO las cuales contienen las disposiciones que regirán las relaciones entre la Corporación y el o los proveedores.",
+        "status": "active",
+        "statusDetails": "5-Publicada",
+        "value": {
+          "amount": 50000000.0,
+          "currency": "CLP"
+        },
+        "procuringEntity": {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839"
+        },
+        "items": [
+          {
+            "id": "43563358",
+            "description": "Equipos y suministros de limpieza / Equipo de limpieza / Máquinas y accesorios para suelos / Aspiradoras",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "47121602",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+        "tenderPeriod": {
+          "startDate": "2026-07-03T14:56:43Z",
+          "endDate": "2026-07-08T16:00:00Z",
+          "durationInDays": 5
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-08T16:05:00Z",
+          "endDate": "2026-07-09T18:00:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-03T15:30:00Z",
+          "endDate": "2026-07-05T15:30:00Z",
+          "durationInDays": 2
+        }
+      },
+      "language": "es"
+    },
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "id": "82712ed7-1211839-44-LE26",
+      "date": "2026-07-03T14:56:43Z",
+      "tag": [
+        "tender"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839",
+          "identifier": {
+            "id": "708564001",
+            "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gandarillas 93",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Jessica Serrano"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1211839",
+              "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/1211839"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "1211839-44-LE26",
+        "title": "MAQUINARIAS DE ASEO CLÍNICO",
+        "description": "Las presentes Bases Administrativas, en adelante las Bases, forman parte de la propuesta pública denominada ADQUISICIÓN DE MAQUINARIAS DE ASEO CLINICO EN LOS CENTROS DE SALUD DEPENDIENTES DE LA CORPORACION MUNICIPAL DE PUENTE ALTO las cuales contienen las disposiciones que regirán las relaciones entre la Corporación y el o los proveedores.",
+        "status": "active",
+        "statusDetails": "5-Publicada",
+        "value": {
+          "amount": 50000000.0,
+          "currency": "CLP"
+        },
+        "procuringEntity": {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839"
+        },
+        "items": [
+          {
+            "id": "43563358",
+            "description": "Equipos y suministros de limpieza / Equipo de limpieza / Máquinas y accesorios para suelos / Aspiradoras",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "47121602",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+        "tenderPeriod": {
+          "startDate": "2026-07-03T14:56:43Z",
+          "endDate": "2026-07-08T16:00:00Z",
+          "durationInDays": 5
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-08T16:05:00Z",
+          "endDate": "2026-07-09T18:00:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-03T15:30:00Z",
+          "endDate": "2026-07-05T15:30:00Z",
+          "durationInDays": 2
+        }
+      },
+      "language": "es"
+    },
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "id": "cee8a28b-1211839-44-LE26",
+      "date": "2026-07-03T14:56:43Z",
+      "tag": [
+        "tender",
+        "tenderUpdate"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839",
+          "identifier": {
+            "id": "708564001",
+            "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gandarillas 93",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Jessica Serrano"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1211839",
+              "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/1211839"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "1211839-44-LE26",
+        "title": "MAQUINARIAS DE ASEO CLÍNICO",
+        "description": "Las presentes Bases Administrativas, en adelante las Bases, forman parte de la propuesta pública denominada ADQUISICIÓN DE MAQUINARIAS DE ASEO CLINICO EN LOS CENTROS DE SALUD DEPENDIENTES DE LA CORPORACION MUNICIPAL DE PUENTE ALTO las cuales contienen las disposiciones que regirán las relaciones entre la Corporación y el o los proveedores.",
+        "status": "active",
+        "statusDetails": "6-Cerrada",
+        "value": {
+          "amount": 50000000.0,
+          "currency": "CLP"
+        },
+        "procuringEntity": {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839"
+        },
+        "items": [
+          {
+            "id": "43563358",
+            "description": "Equipos y suministros de limpieza / Equipo de limpieza / Máquinas y accesorios para suelos / Aspiradoras",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "47121602",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+        "tenderPeriod": {
+          "startDate": "2026-07-03T14:56:43Z",
+          "endDate": "2026-07-08T16:00:00Z",
+          "durationInDays": 5
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-08T16:05:00Z",
+          "endDate": "2026-07-09T18:00:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-03T15:30:00Z",
+          "endDate": "2026-07-05T15:30:00Z",
+          "durationInDays": 2
+        }
+      },
+      "language": "es"
+    },
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "id": "77311803-1211839-44-LE26",
+      "date": "2026-07-03T14:56:43Z",
+      "tag": [
+        "tender",
+        "tenderUpdate"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839",
+          "identifier": {
+            "id": "708564001",
+            "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gandarillas 93",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Jessica Serrano"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1211839",
+              "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/1211839"
+            }
+          ]
+        },
+        {
+          "name": "Humberto Alfonso | VERAELEC",
+          "id": "CL-MP-909482",
+          "identifier": {
+            "id": "765786223",
+            "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "18 SEPTIEMBRE 90 N° No hay Dato",
+            "region": "Región del Ñuble",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "HUMBERTO ALFONSO VERA SÁNCHEZ"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "909482",
+              "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/909482"
+            }
+          ]
+        },
+        {
+          "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+          "id": "CL-MP-1287953",
+          "identifier": {
+            "id": "777415026",
+            "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "SANTA MAGDALENA 75 OF 304 N° No hay Dato",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Victoria Del Castillo"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1287953",
+              "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1287953"
+            }
+          ]
+        },
+        {
+          "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+          "id": "CL-MP-1064726",
+          "identifier": {
+            "id": "769240829",
+            "legalName": "INMOBILIARIA INNOVA SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gran Avenida Jose Miguel Carrera 9312, oficina 503",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "NACARI COROMOTO SANCHEZ MORENO"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1064726",
+              "legalName": "INMOBILIARIA INNOVA SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1064726"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "1211839-44-LE26",
+        "title": "MAQUINARIAS DE ASEO CLÍNICO",
+        "description": "Las presentes Bases Administrativas, en adelante las Bases, forman parte de la propuesta pública denominada ADQUISICIÓN DE MAQUINARIAS DE ASEO CLINICO EN LOS CENTROS DE SALUD DEPENDIENTES DE LA CORPORACION MUNICIPAL DE PUENTE ALTO las cuales contienen las disposiciones que regirán las relaciones entre la Corporación y el o los proveedores.",
+        "status": "active",
+        "statusDetails": "6-Cerrada",
+        "value": {
+          "amount": 50000000.0,
+          "currency": "CLP"
+        },
+        "procuringEntity": {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839"
+        },
+        "items": [
+          {
+            "id": "43563358",
+            "description": "Equipos y suministros de limpieza / Equipo de limpieza / Máquinas y accesorios para suelos / Aspiradoras",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "47121602",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+        "tenderPeriod": {
+          "startDate": "2026-07-03T14:56:43Z",
+          "endDate": "2026-07-08T16:00:00Z",
+          "durationInDays": 5
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-08T16:05:00Z",
+          "endDate": "2026-07-09T18:00:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-03T15:30:00Z",
+          "endDate": "2026-07-05T15:30:00Z",
+          "durationInDays": 2
+        },
+        "tenderers": [
+          {
+            "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+            "id": "CL-MP-1064726"
+          },
+          {
+            "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+            "id": "CL-MP-1287953"
+          },
+          {
+            "name": "Humberto Alfonso | VERAELEC",
+            "id": "CL-MP-909482"
+          }
+        ]
+      },
+      "language": "es"
+    },
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "id": "97a843d2-1211839-44-LE26",
+      "date": "2026-07-03T14:56:43Z",
+      "tag": [
+        "tender",
+        "tenderUpdate"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839",
+          "identifier": {
+            "id": "708564001",
+            "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gandarillas 93",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Jessica Serrano"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1211839",
+              "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/1211839"
+            }
+          ]
+        },
+        {
+          "name": "Humberto Alfonso | VERAELEC",
+          "id": "CL-MP-909482",
+          "identifier": {
+            "id": "765786223",
+            "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "18 SEPTIEMBRE 90 N° No hay Dato",
+            "region": "Región del Ñuble",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "HUMBERTO ALFONSO VERA SÁNCHEZ"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "909482",
+              "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/909482"
+            }
+          ]
+        },
+        {
+          "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+          "id": "CL-MP-1287953",
+          "identifier": {
+            "id": "777415026",
+            "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "SANTA MAGDALENA 75 OF 304 N° No hay Dato",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Victoria Del Castillo"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1287953",
+              "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1287953"
+            }
+          ]
+        },
+        {
+          "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+          "id": "CL-MP-1064726",
+          "identifier": {
+            "id": "769240829",
+            "legalName": "INMOBILIARIA INNOVA SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gran Avenida Jose Miguel Carrera 9312, oficina 503",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "NACARI COROMOTO SANCHEZ MORENO"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1064726",
+              "legalName": "INMOBILIARIA INNOVA SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1064726"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "1211839-44-LE26",
+        "title": "MAQUINARIAS DE ASEO CLÍNICO",
+        "description": "Las presentes Bases Administrativas, en adelante las Bases, forman parte de la propuesta pública denominada ADQUISICIÓN DE MAQUINARIAS DE ASEO CLINICO EN LOS CENTROS DE SALUD DEPENDIENTES DE LA CORPORACION MUNICIPAL DE PUENTE ALTO las cuales contienen las disposiciones que regirán las relaciones entre la Corporación y el o los proveedores.",
+        "status": "active",
+        "statusDetails": "6-Cerrada",
+        "value": {
+          "amount": 50000000.0,
+          "currency": "CLP"
+        },
+        "procuringEntity": {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839"
+        },
+        "items": [
+          {
+            "id": "43563358",
+            "description": "Equipos y suministros de limpieza / Equipo de limpieza / Máquinas y accesorios para suelos / Aspiradoras",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "47121602",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+        "tenderPeriod": {
+          "startDate": "2026-07-03T14:56:43Z",
+          "endDate": "2026-07-08T16:00:00Z",
+          "durationInDays": 5
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-08T16:05:00Z",
+          "endDate": "2026-07-09T18:00:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-03T15:30:00Z",
+          "endDate": "2026-07-05T15:30:00Z",
+          "durationInDays": 2
+        },
+        "tenderers": [
+          {
+            "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+            "id": "CL-MP-1064726"
+          },
+          {
+            "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+            "id": "CL-MP-1287953"
+          },
+          {
+            "name": "Humberto Alfonso | VERAELEC",
+            "id": "CL-MP-909482"
+          }
+        ]
+      },
+      "language": "es"
+    },
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "id": "a167b1b1-1211839-44-LE26",
+      "date": "2026-07-03T14:56:43Z",
+      "tag": [
+        "tender",
+        "tenderUpdate"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839",
+          "identifier": {
+            "id": "708564001",
+            "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gandarillas 93",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Jessica Serrano"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1211839",
+              "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/1211839"
+            }
+          ]
+        },
+        {
+          "name": "Humberto Alfonso | VERAELEC",
+          "id": "CL-MP-909482",
+          "identifier": {
+            "id": "765786223",
+            "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "18 SEPTIEMBRE 90 N° No hay Dato",
+            "region": "Región del Ñuble",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "HUMBERTO ALFONSO VERA SÁNCHEZ"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "909482",
+              "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/909482"
+            }
+          ]
+        },
+        {
+          "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+          "id": "CL-MP-1287953",
+          "identifier": {
+            "id": "777415026",
+            "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "SANTA MAGDALENA 75 OF 304 N° No hay Dato",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Victoria Del Castillo"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1287953",
+              "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1287953"
+            }
+          ]
+        },
+        {
+          "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+          "id": "CL-MP-1064726",
+          "identifier": {
+            "id": "769240829",
+            "legalName": "INMOBILIARIA INNOVA SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gran Avenida Jose Miguel Carrera 9312, oficina 503",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "NACARI COROMOTO SANCHEZ MORENO"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1064726",
+              "legalName": "INMOBILIARIA INNOVA SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1064726"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "1211839-44-LE26",
+        "title": "MAQUINARIAS DE ASEO CLÍNICO",
+        "description": "Las presentes Bases Administrativas, en adelante las Bases, forman parte de la propuesta pública denominada ADQUISICIÓN DE MAQUINARIAS DE ASEO CLINICO EN LOS CENTROS DE SALUD DEPENDIENTES DE LA CORPORACION MUNICIPAL DE PUENTE ALTO las cuales contienen las disposiciones que regirán las relaciones entre la Corporación y el o los proveedores.",
+        "status": "active",
+        "statusDetails": "6-Cerrada",
+        "value": {
+          "amount": 50000000.0,
+          "currency": "CLP"
+        },
+        "procuringEntity": {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839"
+        },
+        "items": [
+          {
+            "id": "43563358",
+            "description": "Equipos y suministros de limpieza / Equipo de limpieza / Máquinas y accesorios para suelos / Aspiradoras",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "47121602",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+        "tenderPeriod": {
+          "startDate": "2026-07-03T14:56:43Z",
+          "endDate": "2026-07-08T16:00:00Z",
+          "durationInDays": 5
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-08T16:05:00Z",
+          "endDate": "2026-07-09T18:00:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-03T15:30:00Z",
+          "endDate": "2026-07-05T15:30:00Z",
+          "durationInDays": 2
+        },
+        "tenderers": [
+          {
+            "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+            "id": "CL-MP-1064726"
+          },
+          {
+            "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+            "id": "CL-MP-1287953"
+          },
+          {
+            "name": "Humberto Alfonso | VERAELEC",
+            "id": "CL-MP-909482"
+          }
+        ]
+      },
+      "language": "es"
+    },
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "id": "830d700b-1211839-44-LE26",
+      "date": "2026-07-03T14:56:43Z",
+      "tag": [
+        "tender",
+        "tenderUpdate"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839",
+          "identifier": {
+            "id": "708564001",
+            "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gandarillas 93",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Jessica Serrano"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1211839",
+              "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/1211839"
+            }
+          ]
+        },
+        {
+          "name": "Humberto Alfonso | VERAELEC",
+          "id": "CL-MP-909482",
+          "identifier": {
+            "id": "765786223",
+            "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "18 SEPTIEMBRE 90 N° No hay Dato",
+            "region": "Región del Ñuble",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "HUMBERTO ALFONSO VERA SÁNCHEZ"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "909482",
+              "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/909482"
+            }
+          ]
+        },
+        {
+          "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+          "id": "CL-MP-1287953",
+          "identifier": {
+            "id": "777415026",
+            "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "SANTA MAGDALENA 75 OF 304 N° No hay Dato",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Victoria Del Castillo"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1287953",
+              "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1287953"
+            }
+          ]
+        },
+        {
+          "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+          "id": "CL-MP-1064726",
+          "identifier": {
+            "id": "769240829",
+            "legalName": "INMOBILIARIA INNOVA SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gran Avenida Jose Miguel Carrera 9312, oficina 503",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "NACARI COROMOTO SANCHEZ MORENO"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1064726",
+              "legalName": "INMOBILIARIA INNOVA SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1064726"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "1211839-44-LE26",
+        "title": "MAQUINARIAS DE ASEO CLÍNICO",
+        "description": "Las presentes Bases Administrativas, en adelante las Bases, forman parte de la propuesta pública denominada ADQUISICIÓN DE MAQUINARIAS DE ASEO CLINICO EN LOS CENTROS DE SALUD DEPENDIENTES DE LA CORPORACION MUNICIPAL DE PUENTE ALTO las cuales contienen las disposiciones que regirán las relaciones entre la Corporación y el o los proveedores.",
+        "status": "active",
+        "statusDetails": "6-Cerrada",
+        "value": {
+          "amount": 50000000.0,
+          "currency": "CLP"
+        },
+        "procuringEntity": {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839"
+        },
+        "items": [
+          {
+            "id": "43563358",
+            "description": "Equipos y suministros de limpieza / Equipo de limpieza / Máquinas y accesorios para suelos / Aspiradoras",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "47121602",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+        "tenderPeriod": {
+          "startDate": "2026-07-03T14:56:43Z",
+          "endDate": "2026-07-08T16:00:00Z",
+          "durationInDays": 5
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-08T16:05:00Z",
+          "endDate": "2026-07-09T18:00:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-03T15:30:00Z",
+          "endDate": "2026-07-05T15:30:00Z",
+          "durationInDays": 2
+        },
+        "tenderers": [
+          {
+            "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+            "id": "CL-MP-1064726"
+          },
+          {
+            "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+            "id": "CL-MP-1287953"
+          },
+          {
+            "name": "Humberto Alfonso | VERAELEC",
+            "id": "CL-MP-909482"
+          }
+        ]
+      },
+      "language": "es"
+    },
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "id": "035399e5-1211839-44-LE26",
+      "date": "2026-07-03T14:56:43Z",
+      "tag": [
+        "tender",
+        "tenderUpdate"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839",
+          "identifier": {
+            "id": "708564001",
+            "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gandarillas 93",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Jessica Serrano"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1211839",
+              "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/1211839"
+            }
+          ]
+        },
+        {
+          "name": "Humberto Alfonso | VERAELEC",
+          "id": "CL-MP-909482",
+          "identifier": {
+            "id": "765786223",
+            "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "18 SEPTIEMBRE 90 N° No hay Dato",
+            "region": "Región del Ñuble",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "HUMBERTO ALFONSO VERA SÁNCHEZ"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "909482",
+              "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/909482"
+            }
+          ]
+        },
+        {
+          "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+          "id": "CL-MP-1287953",
+          "identifier": {
+            "id": "777415026",
+            "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "SANTA MAGDALENA 75 OF 304 N° No hay Dato",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Victoria Del Castillo"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1287953",
+              "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1287953"
+            }
+          ]
+        },
+        {
+          "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+          "id": "CL-MP-1064726",
+          "identifier": {
+            "id": "769240829",
+            "legalName": "INMOBILIARIA INNOVA SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gran Avenida Jose Miguel Carrera 9312, oficina 503",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "NACARI COROMOTO SANCHEZ MORENO"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1064726",
+              "legalName": "INMOBILIARIA INNOVA SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1064726"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "1211839-44-LE26",
+        "title": "MAQUINARIAS DE ASEO CLÍNICO",
+        "description": "Las presentes Bases Administrativas, en adelante las Bases, forman parte de la propuesta pública denominada ADQUISICIÓN DE MAQUINARIAS DE ASEO CLINICO EN LOS CENTROS DE SALUD DEPENDIENTES DE LA CORPORACION MUNICIPAL DE PUENTE ALTO las cuales contienen las disposiciones que regirán las relaciones entre la Corporación y el o los proveedores.",
+        "status": "active",
+        "statusDetails": "6-Cerrada",
+        "value": {
+          "amount": 50000000.0,
+          "currency": "CLP"
+        },
+        "procuringEntity": {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839"
+        },
+        "items": [
+          {
+            "id": "43563358",
+            "description": "Equipos y suministros de limpieza / Equipo de limpieza / Máquinas y accesorios para suelos / Aspiradoras",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "47121602",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+        "tenderPeriod": {
+          "startDate": "2026-07-03T14:56:43Z",
+          "endDate": "2026-07-08T16:00:00Z",
+          "durationInDays": 5
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-08T16:05:00Z",
+          "endDate": "2026-07-09T18:00:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-03T15:30:00Z",
+          "endDate": "2026-07-05T15:30:00Z",
+          "durationInDays": 2
+        },
+        "tenderers": [
+          {
+            "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+            "id": "CL-MP-1064726"
+          },
+          {
+            "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+            "id": "CL-MP-1287953"
+          },
+          {
+            "name": "Humberto Alfonso | VERAELEC",
+            "id": "CL-MP-909482"
+          }
+        ]
+      },
+      "language": "es"
+    },
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "id": "e1e4c11d-1211839-44-LE26",
+      "date": "2026-07-03T14:56:43Z",
+      "tag": [
+        "tender",
+        "tenderUpdate"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839",
+          "identifier": {
+            "id": "708564001",
+            "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gandarillas 93",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Jessica Serrano"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1211839",
+              "legalName": "CORP MUNIC EDUC SALUD Y ATENCION",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/1211839"
+            }
+          ]
+        },
+        {
+          "name": "Humberto Alfonso | VERAELEC",
+          "id": "CL-MP-909482",
+          "identifier": {
+            "id": "765786223",
+            "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "18 SEPTIEMBRE 90 N° No hay Dato",
+            "region": "Región del Ñuble",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "HUMBERTO ALFONSO VERA SÁNCHEZ"
+          },
+          "roles": [
+            "supplier",
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "909482",
+              "legalName": "HUMBERTO ALFONSO VERA SÁNCHEZ, SERVICIO ELÉCTRICO, SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/909482"
+            }
+          ],
+          "details": {
+            "scale": "small"
+          }
+        },
+        {
+          "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+          "id": "CL-MP-1287953",
+          "identifier": {
+            "id": "777415026",
+            "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "SANTA MAGDALENA 75 OF 304 N° No hay Dato",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "Victoria Del Castillo"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1287953",
+              "legalName": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1287953"
+            }
+          ]
+        },
+        {
+          "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+          "id": "CL-MP-1064726",
+          "identifier": {
+            "id": "769240829",
+            "legalName": "INMOBILIARIA INNOVA SPA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "Gran Avenida Jose Miguel Carrera 9312, oficina 503",
+            "region": "Región Metropolitana de Santiago",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "NACARI COROMOTO SANCHEZ MORENO"
+          },
+          "roles": [
+            "tenderer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "1064726",
+              "legalName": "INMOBILIARIA INNOVA SPA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Empresa/BuscarProveedor/1064726"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "1211839-44-LE26",
+        "title": "MAQUINARIAS DE ASEO CLÍNICO",
+        "description": "Las presentes Bases Administrativas, en adelante las Bases, forman parte de la propuesta pública denominada ADQUISICIÓN DE MAQUINARIAS DE ASEO CLINICO EN LOS CENTROS DE SALUD DEPENDIENTES DE LA CORPORACION MUNICIPAL DE PUENTE ALTO las cuales contienen las disposiciones que regirán las relaciones entre la Corporación y el o los proveedores.",
+        "status": "complete",
+        "statusDetails": "8-Adjudicada",
+        "value": {
+          "amount": 50000000.0,
+          "currency": "CLP"
+        },
+        "procuringEntity": {
+          "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+          "id": "CL-MP-1211839"
+        },
+        "items": [
+          {
+            "id": "43563358",
+            "description": "Equipos y suministros de limpieza / Equipo de limpieza / Máquinas y accesorios para suelos / Aspiradoras",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "47121602",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+        "tenderPeriod": {
+          "startDate": "2026-07-03T14:56:43Z",
+          "endDate": "2026-07-08T16:00:00Z",
+          "durationInDays": 5
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-08T16:05:00Z",
+          "endDate": "2026-07-09T18:00:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-03T15:30:00Z",
+          "endDate": "2026-07-05T15:30:00Z",
+          "durationInDays": 2
+        },
+        "tenderers": [
+          {
+            "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+            "id": "CL-MP-1064726"
+          },
+          {
+            "name": "IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA | CHIVENSU SPA",
+            "id": "CL-MP-1287953"
+          },
+          {
+            "name": "Humberto Alfonso | VERAELEC",
+            "id": "CL-MP-909482"
+          }
+        ]
+      },
+      "bids": {
+        "details": [
+          {
+            "id": "78130356",
+            "submissionType": "bid",
+            "date": "2026-07-06T14:32:26Z",
+            "status": "valid",
+            "items": [
+              {
+                "id": "43563358",
+                "description": "VALORIZAR EL TOTAL DE TODOS LOS ITEM SOLICITADOS SEGUN FORMULARIO N°2 \"OFERTA ECONOMICA\"",
+                "quantity": 1.0,
+                "unit": {
+                  "name": "Unidad"
+                },
+                "classification": {
+                  "id": "47121602",
+                  "scheme": "UNSPSC",
+                  "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+                }
+              }
+            ],
+            "tenderers": [
+              {
+                "name": "CHIVENSU SPA | IMPORTADORA Y COMERCIALIZADORA CHIVENSU SPA",
+                "id": "CL-MP-1287953"
+              }
+            ],
+            "value": {
+              "amount": 42175623.0,
+              "currency": "CLP"
+            }
+          },
+          {
+            "id": "78130806",
+            "submissionType": "bid",
+            "date": "2026-07-06T16:13:30Z",
+            "status": "valid",
+            "items": [
+              {
+                "id": "43563358",
+                "description": "VALORIZAR EL TOTAL DE TODOS LOS ITEM SOLICITADOS SEGUN FORMULARIO N°2 \"OFERTA ECONOMICA\"",
+                "quantity": 1.0,
+                "unit": {
+                  "name": "Unidad"
+                },
+                "classification": {
+                  "id": "47121602",
+                  "scheme": "UNSPSC",
+                  "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+                }
+              }
+            ],
+            "tenderers": [
+              {
+                "name": "Inmobiliaria Innova SpA | Inmobiliaria Innova SpA",
+                "id": "CL-MP-1064726"
+              }
+            ],
+            "value": {
+              "amount": 34200000.0,
+              "currency": "CLP"
+            }
+          },
+          {
+            "id": "78133543",
+            "submissionType": "bid",
+            "date": "2026-07-08T12:40:16Z",
+            "status": "valid",
+            "items": [
+              {
+                "id": "43563358",
+                "description": "VALORIZAR EL TOTAL DE TODOS LOS ITEM SOLICITADOS SEGUN FORMULARIO N°2 \"OFERTA ECONOMICA\"",
+                "quantity": 1.0,
+                "unit": {
+                  "name": "Unidad"
+                },
+                "classification": {
+                  "id": "47121602",
+                  "scheme": "UNSPSC",
+                  "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/47121602"
+                }
+              }
+            ],
+            "tenderers": [
+              {
+                "name": "VERAELEC | Humberto Alfonso",
+                "id": "CL-MP-909482"
+              }
+            ],
+            "value": {
+              "amount": 30487800.0,
+              "currency": "CLP"
+            }
+          }
+        ]
+      },
+      "language": "es"
+    }
+  ],
+  "publisher": {
+    "name": "Dirección de Compras y Contratación Pública"
+  },
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "publicationPolicy": "http://api.mercadopublico.cl/APISOCDS/Utilidades/Politicas/Actualizacion"
+}

@@ -255,6 +255,57 @@ const cases: Case[] = [
     expect: ["energy_mining"],
     reject: ["power"],
   },
+  // Two keywords were written without a LEFT word boundary, so they matched
+  // inside longer Spanish words. Found 2026-09-24 by sweeping one live 5-day
+  // Chilean import (1,270 rows) rather than by reading the patterns: every
+  // instrument whose name ends in -metro was filed as public transport, and a
+  // tissue-regeneration membrane as power generation. Both directions are
+  // pinned here — the false positives AND the real matches that must survive
+  // the boundary, which is the half a boundary fix usually breaks.
+  {
+    title: "Turbidimetro Laboratorio Clinico",
+    note: "浊度计不是地铁 —— 「metro」曾匹配到 turbidí-metro 里面",
+    expect: ["general"],
+    reject: ["transportation"],
+  },
+  {
+    title: "ADQUISICIÓN DE BALANZA CON TALLÍMETRO PARA EL HOSPITAL",
+    note: "身高尺同理。healthcare 是对的（医院采购），要拦的是 transportation",
+    expect: ["healthcare"],
+    reject: ["transportation"],
+  },
+  {
+    title: "SERVICIO DE CONTROL Y MANTENCION DE PLAGAS EN EL PERÍMETRO",
+    note: "周界灭虫同理",
+    expect: ["general"],
+    reject: ["transportation"],
+  },
+  {
+    title: "Ampliación de la red del Metro de Santiago",
+    note: "真正的地铁必须留住",
+    expect: ["transportation"],
+  },
+  {
+    title: "CONVENIO LAMINAS REGENERADORAS DE TEJIDO",
+    note: "组织再生膜不是发电 —— 「generador」曾匹配到 re-generadoras 里面",
+    expect: ["general"],
+    reject: ["power"],
+  },
+  {
+    title: "SUMINISTRO DE GENERADORES DE EMERGENCIA",
+    note: "真正的发电机必须留住（复数）",
+    expect: ["power"],
+  },
+  {
+    title: "PLANTA GENERADORA TERMOELECTRICA",
+    note: "阴性形式也必须留住 —— 加边界最容易漏掉的就是它",
+    expect: ["power"],
+  },
+  {
+    title: "MANTENCION DE TURBOGENERADOR",
+    note: "汽轮发电机是真的复合词，显式保留",
+    expect: ["power"],
+  },
 ];
 
 let failures = 0;

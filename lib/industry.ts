@@ -199,7 +199,13 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // Generación". The others are exactly the substation equipment a Chinese
   // manufacturer supplies, and none of them was reachable under the 电力
   // filter a buyer browses by.
-  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|generador(es)?|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|fotovoltaic[ao]|planta solar|parque (solar|e[óo]lico)|e[óo]lic[ao]|geot[ée]rmic[ao]|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
+  // `generador` had NO boundary on either side, so "láminas REGENERADORAS de
+  // tejido" — a tissue-regeneration membrane — was filed as power generation
+  // (2026-09-24, same sweep as the -metro note above). Bounded now, with the
+  // feminine forms spelled out because `\bgenerador\b` alone would have
+  // dropped "planta generadora", and `turbo` kept explicitly because it is a
+  // real compound rather than a prefix accident.
+  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|\b(?:turbo)?generador(a|as|es)?\b|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|fotovoltaic[ao]|planta solar|parque (solar|e[óo]lico)|e[óo]lic[ao]|geot[ée]rmic[ao]|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to
   // INCLUDE_OVERRIDE_KEYWORDS in lib/relevance.ts (a real batch of 29
@@ -324,7 +330,14 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // city and a bus terminal is not a port. Every entry here is anchored to a
   // word that only appears in waterway infrastructure, or to "porto" with
   // "organizado" — the legal term for a federally administered port.
-  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|metro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|\bvial(es)?\b|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona|v[íi]as? terciarias?|placa huella|carreter[ao]s?\b|\bpuentes?\b|camino(s)? (vecinal(es)?|rural(es)?)|v[íi]a(s)? (vecinal(es)?|nacional(es)?|departamental(es)?|regional(es)?)|trocha(s)? carrozable(s)?|transitabilidad|pavimentaci[óo]n|asfaltado|doble calzada|intercambio vial|paso a desnivel|\bt[úu]nel(es)?\b|\bpeaje(s)?\b|\baeropuertos?\b|aeroportuari[oa]s?|ferrocarril(es)?|terminal(es)? terrestre(s)?|\bmuelle(s)?\b|portu[áa]ri[oa]s?|aquavi[áa]ri[oa]s?|hidrovi[áa]ri[oa]s?|\bhidrovias?\b|porto(s)? organizado(s)?|terminal (portu|de contêiner|de conteiner)|\bcais\b|ber[çc]o(s)? de atraca|dragagem|canal de acesso aquavi|arrendamento (portu|da [áa]rea)/i],
+  // `\bmetro\b` carries a LEFT boundary as well as a right one. Without it the
+  // keyword matched inside every Spanish instrument name that ends in -metro —
+  // turbidímetro, tallímetro, diámetro, perímetro all arrived tagged as public
+  // transport, found 2026-09-24 in one live 5-day Chilean import. Pinned in
+  // scripts/test-industry-tags.ts in both directions; "metrobús" and
+  // "metropolitano" never matched anyway, since the right boundary already
+  // stopped them.
+  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|\bmetro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|\bvial(es)?\b|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona|v[íi]as? terciarias?|placa huella|carreter[ao]s?\b|\bpuentes?\b|camino(s)? (vecinal(es)?|rural(es)?)|v[íi]a(s)? (vecinal(es)?|nacional(es)?|departamental(es)?|regional(es)?)|trocha(s)? carrozable(s)?|transitabilidad|pavimentaci[óo]n|asfaltado|doble calzada|intercambio vial|paso a desnivel|\bt[úu]nel(es)?\b|\bpeaje(s)?\b|\baeropuertos?\b|aeroportuari[oa]s?|ferrocarril(es)?|terminal(es)? terrestre(s)?|\bmuelle(s)?\b|portu[áa]ri[oa]s?|aquavi[áa]ri[oa]s?|hidrovi[áa]ri[oa]s?|\bhidrovias?\b|porto(s)? organizado(s)?|terminal (portu|de contêiner|de conteiner)|\bcais\b|ber[çc]o(s)? de atraca|dragagem|canal de acesso aquavi|arrendamento (portu|da [áa]rea)/i],
   // The "\bkm\s*\d+\+\d{3}\b" alternative is a real kilometer-marker
   // notation ("DEL KM 150+000 AL KM 170+000") — standard Mexican federal
   // highway-alignment notation, seen on a real road-engineering-study

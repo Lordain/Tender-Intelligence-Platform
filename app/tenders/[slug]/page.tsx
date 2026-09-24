@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { getTenderByPublicSlug } from "@/lib/tenders";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerEntitlement } from "@/lib/access-control-server";
-import { canViewCountry, canViewTenderProtectedContent } from "@/lib/access-control";
+import { canViewCountry, canViewTenderProtectedContent, shouldClaimFreeTenderView } from "@/lib/access-control";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { isHomepageFreePreviewSlug } from "@/lib/homepage-selection";
@@ -102,7 +102,7 @@ export default async function TenderDetailPage({
     enteredFromHomepage,
   ) && (entitlement.role !== "subscriber" || canViewCountry(entitlement, tender.country));
 
-  if (entitlement.role === "free") {
+  if (shouldClaimFreeTenderView(entitlement.role, isHomepageFreePreview, enteredFromHomepage)) {
     const [user, admin] = await Promise.all([getCurrentUser(), Promise.resolve(createSupabaseAdminClient())]);
     if (user && admin) {
       const { data, error } = await admin.rpc("claim_free_tender_view", { p_user_id: user.id, p_tender_id: tender.id });

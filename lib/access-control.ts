@@ -141,6 +141,30 @@ export function canViewTenderProtectedContent(
  * visitor. Only account-specific list tools — saving a tender or a search —
  * remain an entitled feature.
  */
+/**
+ * Whether this visit spends one of a free account's five monthly detail views.
+ *
+ * The homepage free preview is a preview for EVERYONE, and
+ * canViewTenderProtectedContent above already says so — it grants the same
+ * slug to a guest and to a free account alike (both pinned in
+ * scripts/test-access-control.ts). The detail page then re-decided the free
+ * case on its own and overwrote that answer with the monthly quota, which
+ * charged a view for the preview and, once the five were gone, refused it.
+ * The result was that registering made a reader strictly worse off: the very
+ * same tender stayed open to an anonymous visitor and closed to a member.
+ *
+ * So the rule lives here, next to the rule it must not contradict, rather
+ * than being re-derived at the call site.
+ */
+export function shouldClaimFreeTenderView(
+  role: ViewerRole,
+  isHomepageFreePreview: boolean,
+  enteredFromHomepage: boolean,
+): boolean {
+  if (role !== "free") return false;
+  return !(isHomepageFreePreview && enteredFromHomepage);
+}
+
 export function canUseTenderListMemberFeatures(role: ViewerRole): boolean {
   return role === "trial" || role === "subscriber";
 }

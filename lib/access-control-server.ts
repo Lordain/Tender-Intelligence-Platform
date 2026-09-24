@@ -50,6 +50,14 @@ type SubscriptionLookup = {
  * something they already bought, and leaves nothing in the logs to explain
  * it. And it does not swallow the second error either: a 500 from an error
  * boundary is recoverable and visible; a wrong entitlement is neither.
+ *
+ * MIRRORED in scripts/check-subscription-state.ts. That script reconciles an
+ * account after a live Stripe payment and cannot call this function — it is
+ * `server-only` and reads the caller's session — so it restates this query:
+ * the same status filter, the same ordering, the same
+ * selectPreferredSubscription(). If this query changes and that one does
+ * not, the script reports a confident wrong answer about who is entitled,
+ * which is the single thing it exists to catch. Change one, change both.
  */
 async function findCurrentSubscription(
   admin: SupabaseClient,

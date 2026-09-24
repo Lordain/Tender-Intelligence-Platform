@@ -1,15 +1,33 @@
 import type { Locale } from "@/types/tender";
 
 /**
- * Approximate, static currency-to-USD rates. NOT live/real-time — this
- * platform's environment can't reach a live FX API (see
- * lib/ingestion/README.md for the broader "this sandbox can't reach
- * arbitrary external hosts" constraint), so these are hand-set
- * approximations, refreshed occasionally, not a precise conversion. Good
+ * Approximate, static currency-to-USD rates. NOT live/real-time — nothing
+ * here is fetched at request time; these are hand-set approximations,
+ * refreshed occasionally, not a precise conversion. Good
  * enough for a consistent USD-only display and for "is this a big-ticket
  * tender" triage (lib/relevance.ts), not for anything that needs exact
  * figures — the UI should read as "approximately" even where it doesn't
  * say so literally.
+ *
+ * Refreshed 2026-09-24 against two independent live sources on the same day
+ * (open.er-api.com and frankfurter.app/ECB), taking the midpoint where both
+ * carry the pair. Four rows moved, two deliberately did not:
+ *
+ *   MXN 16.9  -> 17.53   (was -3.6% off; the largest gap, and Mexico is the
+ *                         biggest source, so it mattered most)
+ *   COP 3140  -> 3200    (-2.0%; single-source, ECB carries no COP)
+ *   EUR 1.16  -> 1.138   (+1.9%)
+ *   GBP 1.354 -> 1.324   (+2.3%)
+ *
+ * PEN (0.9% off) and BRL (0.2%) were LEFT ALONE on this file's own precedent:
+ * the 2026-09-11 note below kept every row inside ~1.3% rather than chase
+ * noise. BRL earns a second reason — the two sources disagreed with each
+ * other by 1.24%, six times the drift being corrected, so there is no
+ * measurement here that justifies moving a number the platform owner quoted
+ * by hand.
+ *
+ * Note the environment changed: this container CAN now reach an FX host, so
+ * a future refresh no longer has to be quoted in by hand.
  *
  * Re-verified 2026-09-11 (Wise/XE/Investing.com, cross-checked): PEN 3.3545,
  * MXN 16.94, COP 3,099 spot against a 7-day average of 3,140 — every existing
@@ -26,8 +44,8 @@ import type { Locale } from "@/types/tender";
  */
 export const USD_RATES: Record<string, number> = {
   USD: 1,
-  MXN: 1 / 16.9,
-  COP: 1 / 3140,
+  MXN: 1 / 17.53,
+  COP: 1 / 3200,
   PEN: 1 / 3.35,
   // Added 2026-09-11: Peru's OECE data is genuinely multi-currency and a real
   // import turned up 7 EUR and 2 GBP tenders. Without a rate, convertToUsd()
@@ -35,8 +53,8 @@ export const USD_RATES: Record<string, number> = {
   // published" — the one outcome that table is meant to prevent. Quoted the
   // other way round from the rows above (these are worth MORE than a dollar),
   // hence no reciprocal.
-  EUR: 1.16,
-  GBP: 1.354,
+  EUR: 1.138,
+  GBP: 1.324,
   // Added 2026-09-18 for Brazil. PNCP quotes everything in reais, and without
   // a rate here convertToUsd() returns null — so a real R$ 7,494,680.99 road
   // contract would reach lib/relevance.ts as "no value published", the exact

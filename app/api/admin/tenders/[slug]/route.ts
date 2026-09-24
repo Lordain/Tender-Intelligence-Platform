@@ -6,6 +6,7 @@ import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 import { syncKeyDatesForTopLevelFields } from "@/lib/db/key-dates-sync";
 import { decideBidWindow } from "@/lib/db/bid-window-gate";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
+import { generatedTextRefusals, releaseClearedGeneratedText } from "@/lib/admin/generated-text";
 import type {
   TenderRelevanceTier,
   TenderScopeType,
@@ -20,6 +21,15 @@ type UpdateTenderBody = {
   titleZh: string;
   summaryEs: string;
   summaryZh: string;
+  /**
+   * The two strings visitors and search engines see, normally written by
+   * lib/ingestion/generate-public-titles.ts. Editable here since 2026-09-24
+   * (task #59) because a generated title can be clean, publishable and simply
+   * wrong about the project, and nothing could fix one. Empty hands the column
+   * back to the generator — see lib/admin/generated-text.ts.
+   */
+  titleZhPublic?: string | null;
+  summaryZhPublic?: string | null;
   /** See types/tender.ts's Tender.oneLineSummary — usually written by document analysis, also settable by hand from the admin form (2026-09-06). */
   oneLineSummary?: string | null;
   buyer: string;
@@ -127,13 +137,28 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     return NextResponse.json({ error: `missing required field(s): ${missing.join(", ")}` }, { status: 400 });
   }
 
+  // Checked before Supabase is even reached: the reply has to be about the
+  // text, not about a database that was never the problem. Same validators the
+  // generator's own write path runs — a value typed by hand is published on
+  // exactly the same pages as a generated one, so it clears the same bar. A
+  // rule that refuses a legitimate title is a rule to fix in
+  // lib/public-title.ts, which is why the message names the offending token.
+  const refusals = generatedTextRefusals({
+    title_zh_public: body.titleZhPublic,
+    summary_zh_public: body.summaryZhPublic,
+  });
+  if (refusals.length > 0) {
+    return NextResponse.json({ error: `访客文案不能这样发布：${refusals.join("｜")}` }, { status: 400 });
+  }
+
   const supabase = createSupabaseAdminClient();
   if (!supabase) return NextResponse.json({ error: "supabase not configured" }, { status: 500 });
 
   const { data: existing, error: fetchError } = await supabase
     .from("tenders")
     .select(`
-      id, title, summary, relevance_tier, relevance_reason, manual_field_overrides,
+      id, title, summary, title_zh_public, summary_zh_public,
+      relevance_tier, relevance_reason, manual_field_overrides,
       one_line_summary, tender_number, buyer, country, government_level, industries,
       scope_type, procedure_type, participation_scope, publication_date,
       publication_date_is_estimated, submission_deadline, award_date, awarded_to,
@@ -151,6 +176,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   const row: Record<string, unknown> = {
     title: { ...currentTitle, es: body.titleEs!.trim(), zh: body.titleZh!.trim() },
     summary: { ...currentSummary, es: body.summaryEs?.trim() ?? "", zh: body.summaryZh?.trim() ?? body.summaryEs?.trim() ?? "" },
+    title_zh_public: body.titleZhPublic?.trim() || null,
+    summary_zh_public: body.summaryZhPublic?.trim() || null,
     one_line_summary: body.oneLineSummary?.trim() || null,
     tender_number: body.tenderNumber?.trim() || slug,
     buyer: body.buyer!.trim(),
@@ -261,7 +288,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     previousOverrides.add("publication_date");
     previousOverrides.add("publication_date_is_estimated");
   }
-  row.manual_field_overrides = [...previousOverrides].sort();
+  // A cleared public title/summary is a release, not a lock. Without this the
+  // diff above would pin an EMPTY column the generator may never refill, and
+  // publicTitleOf() falls back to the administrative title — the Spanish
+  // project name, published. See lib/admin/generated-text.ts.
+  row.manual_field_overrides = releaseClearedGeneratedText([...previousOverrides], {
+    title_zh_public: body.titleZhPublic,
+    summary_zh_public: body.summaryZhPublic,
+  });
 
   const { error } = await supabase.from("tenders").update(row).eq("slug", slug);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

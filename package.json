@@ -164,7 +164,8 @@
     "probe:pncp-overlap": "tsx scripts/probe-pncp-overlap.ts",
     "check:subscription-state": "tsx --env-file-if-exists=.env.local scripts/check-subscription-state.ts",
     "create:qa-account": "tsx --env-file-if-exists=.env.local scripts/create-qa-account.ts",
-    "create:test-checkout": "tsx --env-file-if-exists=.env.local scripts/create-test-checkout.ts"
+    "create:test-checkout": "tsx --env-file-if-exists=.env.local scripts/create-test-checkout.ts",
+    "test:admin-generated-text": "tsx scripts/test-admin-generated-text.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

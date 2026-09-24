@@ -11,7 +11,20 @@ export type TenderScopeType =
   | "services"
   | "equipment_services"
   | "works"
-  | "consulting";
+  | "consulting"
+  /**
+   * The SOURCE published no procurement category — not a sixth kind of
+   * contract, a statement that this field is unknown (migration 0056).
+   *
+   * Added 2026-09-24 for Chile, whose two doors carry no category field at
+   * all: both mappers were writing "services", so a motorway and seven PPP
+   * lots claimed to be service contracts and the 采购类型 filter returned
+   * nothing for 工程 while works were sitting in the data. Nothing in
+   * lib/relevance.ts reads this value positively — every rule there tests for
+   * a specific category ("works", "consulting", "equipment") — so a row moving
+   * from "services" to "unknown" is classified exactly as before.
+   */
+  | "unknown";
 
 export type TenderStatus =
   | "planned"

@@ -80,10 +80,12 @@ export const SCOPE_TYPE_LABELS: Record<TenderScopeType, LocalizedText> = {
   },
   works: { en: "Works / EPC", es: "Obra / EPC", zh: "工程/EPC" },
   consulting: { en: "Consulting", es: "Consultoría", zh: "咨询" },
+  // Says what is true rather than picking a category — see TenderScopeType.
+  unknown: { en: "Category not published", es: "Categoría no publicada", zh: "类别未公布" },
 };
 
 /**
- * Display order for the scope filter. Two of these five effectively never
+ * Display order for the scope filter. Two of these six effectively never
  * reach the public feed, which is why the filter offers only what the data
  * actually contains (availableScopeTypes in lib/tender-list-page.ts) rather
  * than this list:
@@ -99,6 +101,13 @@ export const SCOPE_TYPE_LABELS: Record<TenderScopeType, LocalizedText> = {
  * Both stay in the union: they are real values the data can hold, and
  * deleting them would mean a hand-set or override-rescued tender could not be
  * filtered for at all.
+ *
+ * `unknown` is the odd one out and belongs LAST for that reason: it is not a
+ * kind of contract but the absence of one (migration 0056). Chile's two doors
+ * publish no category field at all, so both mappers emit it, and the chip it
+ * produces is the honest answer to "what kind of procurement is this" — which
+ * is better than the "服务" those rows claimed until 2026-09-24, because that
+ * answer made the 工程 filter silently hide a motorway.
  */
 export const ALL_SCOPE_TYPES: TenderScopeType[] = [
   "equipment",
@@ -106,6 +115,7 @@ export const ALL_SCOPE_TYPES: TenderScopeType[] = [
   "equipment_services",
   "works",
   "consulting",
+  "unknown",
 ];
 
 export const STATUS_LABELS: Record<TenderStatus, LocalizedText> = {

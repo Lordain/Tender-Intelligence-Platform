@@ -92,6 +92,22 @@ const EXCLUDE_KEYWORDS = [
   /osteos[íi]ntesis|endopr[óo]tesis|pr[óo]tesis|implante|ortopedia/i, // ADQUISICIÓN Y SUMINISTRO DE INSUMOS DE OSTEOSÍNTESIS Y ENDOPRÓTESIS
   /reactivo/i,
   /medicamento|f[áa]rmaco|insumo m[ée]dico|material de curaci[óo]n/i,
+  // A drug named by its OWN name plus a dose, which is how a pharmacy
+  // tender is written when nobody says "medicamento": ELTROMBOPAG 25MG CM
+  // REC, SERTRALINA 50 MG CMCM REC, CALCITRIOL 05 MCG CP, TENECTEPLASA
+  // 10.000 U LIOF PSOL INY FA. There is no closed list of international
+  // nonproprietary names, so the SHAPE is the rule — a strength followed by
+  // a pharmaceutical dosage form — not the substance.
+  //
+  // Both halves are required, which is what keeps it off engineering copy: a
+  // water-quality spec says "cloro residual 0,5 mg/l" and a generator plate
+  // says "500 KVA", and neither is followed by a dosage form. The unit is
+  // also refused when a slash follows it, so mg/l cannot start the match at
+  // all. Added 2026-09-24 alongside the CENABAST buyer rule, for the
+  // hospitals and municipalities that buy drugs directly rather than through
+  // it; on the 5-day Chilean import it caught 12 of the same 17 rows and
+  // nothing else, so it is the generalisable half rather than the whole rule.
+  /\b\d[\d.,]*\s*(mg|mcg|ug|ui|u)\b(?!\s*\/)[^,;]{0,24}\b(cm\s*rec|cmcm|cpcm|cp|caps?|comp|grag|jbe|jrp|sol\.?\s*iny|liof|psol|supos|blister|lib\s*sost)\b/i,
   // Real observed titles, second batch. Two of these are the same class
   // of bug as "refacciones"/"sanitarios rurales" above — a SERVICE or
   // small-scale local work that happens to contain a word
@@ -847,7 +863,27 @@ const GATE_BARRIER_KEYWORDS = [
   /\bbarrera(s)?\s+(deslizante(s)?|levadiza(s)?|vehicular(es)?)\b|\bpluma(s)?\s+vehicular(es)?\b/i,
 ];
 
-const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
+/**
+ * Buyers whose entire remit is outside what this platform is for.
+ *
+ * CENABAST — Chile's CENTRAL DE ABASTECIMIENTO DEL SISTEMA NACIONAL DE
+ * SERVICIOS DE SALUD — added 2026-09-24 at the platform owner's decision
+ * (不要药品). It is the national health supply agency: buying drugs and
+ * medical consumables for the whole public health system IS its remit, so
+ * this is a fact about the institution rather than a guess about a title.
+ *
+ * It mattered because its tenders are large and priced, which is exactly what
+ * this classifier promotes. In one live 5-day Chilean import, ALL 17
+ * pharmaceutical and consumable rows came from this one buyer, and they took
+ * four of the five flagship slots — enoxaparina, dutasterida/tamsulosina,
+ * eltrombopag — pushing the AVO II motorway and seven PPP lots down the page.
+ * Measured on the 60 rows that import wrote: this pattern catches 17 of 17
+ * and none of the other 43.
+ */
+const EXCLUDE_BUYER_KEYWORDS = [
+  /alimentaci[óo]n para el bienestar/i,
+  /central de abastecimiento/i,
+];
 
 /**
  * Broad "this is fundamentally a maintenance/support SERVICE contract on

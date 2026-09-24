@@ -2433,6 +2433,51 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real title (2026-09-18, per the user: 秘鲁，警卫室). Reached FLAGSHIP — the top tier — because `EQUIPO DE CONTROL DE ACCESO` matches INCLUDE_OVERRIDE_KEYWORDS, which both waives every exclusion and lifts Peru's undisclosed-value gate. The only fix that works is a check ABOVE the override, which is what GATE_BARRIER_KEYWORDS is; an EXCLUDE_KEYWORDS entry would have done nothing at all to this title.",
     country: "Peru", scopeType: "equipment_services", governmentLevel: "federal",
   },
+  // ── Chile: the platform owner's 2026-09-24 decision, 不要药品 ──────────
+  //
+  // Both halves are pinned, because the buyer rule and the dosage-shape rule
+  // catch overlapping but different sets and each would look redundant alone.
+  {
+    title: "ENOXAPARINA 40 MG04ML SOL.INY. JRP 1000023217",
+    expectedTier: "excluded",
+    note: "Real title from the first live Chilean import (2026-09-24), and it arrived FLAGSHIP: CENABAST's drug tenders are large and priced, which is exactly what this classifier promotes, so four of that import's five flagship slots were drugs and the AVO II motorway sat below them. Caught by the dosage shape — a strength followed by a dosage form — since no list of substance names could ever be complete.",
+    buyer: "CENTRAL DE ABASTECIMIENTO DEL SISTEMA NACIONAL DE SERVICIO DE SALUD",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal",
+    estimatedValue: 13_000_000_000, currency: "CLP",
+  },
+  {
+    title: "GUANTE EXAMEN LATEX MEDIANO X UN 1000022999",
+    expectedTier: "excluded",
+    note: "The half the dosage shape CANNOT catch — examination gloves carry no strength and no dosage form. Only the buyer rule reaches it, which is why CENABAST is named in EXCLUDE_BUYER_KEYWORDS rather than the title rule being stretched to cover consumables.",
+    buyer: "CENTRAL DE ABASTECIMIENTO DEL SISTEMA NACIONAL DE SERVICIO DE SALUD",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal",
+    estimatedValue: 2_200_000_000, currency: "CLP",
+  },
+  {
+    title: "CALCITRIOL 05 MCG CP 1000022933",
+    expectedTier: "excluded",
+    note: "The mirror: a drug bought by a hospital directly rather than through CENABAST still has to go, so the buyer here is deliberately NOT the central agency. This is the case the dosage shape exists for.",
+    buyer: "SERVICIO DE SALUD ARAUCANIA SUR HOSPITAL DE NUEVA IMPERIAL",
+    country: "Chile", scopeType: "unknown", governmentLevel: "state",
+    estimatedValue: 1_240_000_000, currency: "CLP",
+  },
+  {
+    title: "AIF A. VESPUCIO ORIENTE - AVO II",
+    summary: "El presente contrato de asesoría está diseñado para prestar apoyo al Inspector Fiscal en la labor de gestión y seguimiento del cumplimiento del contrato de concesión en la Construcción y apoyo en la fiscalización y control del cumplimiento de las obligaciones",
+    expectedTier: "standard",
+    note: "The control, copied from the row the first live import actually wrote rather than invented: Santiago's Américo Vespucio Oriente motorway must survive both new rules, naming no dose and no central supply agency. The SUMMARY is load-bearing and has to be carried in FULL: the word holding this row in the feed is Construcción, ~180 characters in, and two drafts of this fixture failed — one with no summary, one with it truncated at 150 characters — because Chile's undisclosed-value gate excludes an unpriced row with no industry tag. Both times the gate was working and the fixture was wrong, which is the whole argument for copying real rows instead of writing plausible ones.",
+    buyer: "MOP Dirección General de Concesiones",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal",
+  },
+  {
+    title: "CONCESION DE RECOLECCIÓN Y TRANSPORTE DE RESIDUOS SÓLIDOS DOMICILIARIOS COMERCIAL Y PUBLICOS PLAN Y PLACILLA DE PEÑUELAS COMUNA DE VALPARAISO",
+    summary: "CONCESION DE RECOLECCIÓN Y TRANSPORTE DE RESIDUOS SÓLIDOS DOMICILIARIOS, COMERCIAL Y PUBLICOS, PLAN Y PLACILLA DE PEÑUELAS, COMUNA DE VALPARAISO",
+    expectedTier: "flagship",
+    note: "The priced control, also a real written row: 19.2 billion pesos, the largest thing in that import, and the one flagship left standing once the four CENABAST drug tenders are gone. It carries an amount, so it also pins the CLP rate — at 953 CLP/USD this is 20.15M USD and stays flagship; a rate wrong by an order of magnitude would move it.",
+    buyer: "I MUNICIPALIDAD DE VALPARAISO",
+    country: "Chile", scopeType: "unknown", governmentLevel: "municipal",
+    estimatedValue: 19_200_000_000, currency: "CLP",
+  },
   {
     title: "ADQUISICIÓN E INSTALACIÓN DE SISTEMA DE CONTROL DE ACCESO BIOMÉTRICO PARA LAS SEDES DE LA ENTIDAD",
     expectedTier: "flagship",

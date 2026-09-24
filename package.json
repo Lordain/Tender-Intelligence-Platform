@@ -161,7 +161,9 @@
     "probe:dou-link": "tsx scripts/probe-dou-permalink.ts",
     "test:dou-watch": "tsx scripts/test-dou-watch.ts",
     "test:dou-detail": "tsx scripts/test-dou-detail.ts",
-    "probe:pncp-overlap": "tsx scripts/probe-pncp-overlap.ts"
+    "probe:pncp-overlap": "tsx scripts/probe-pncp-overlap.ts",
+    "probe:chile-doors": "tsx scripts/probe-chile-doors.ts",
+    "test:chile-doors": "tsx scripts/test-chile-doors.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

@@ -161,7 +161,8 @@
     "probe:dou-link": "tsx scripts/probe-dou-permalink.ts",
     "test:dou-watch": "tsx scripts/test-dou-watch.ts",
     "test:dou-detail": "tsx scripts/test-dou-detail.ts",
-    "probe:pncp-overlap": "tsx scripts/probe-pncp-overlap.ts"
+    "probe:pncp-overlap": "tsx scripts/probe-pncp-overlap.ts",
+    "check:subscription-state": "tsx --env-file-if-exists=.env.local scripts/check-subscription-state.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

@@ -1,0 +1,2137 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head id="Head2">
+
+    <style>
+        .sustentClass1 {
+            font-size: 12px;
+            color: #666666;
+            font-weight: bolder;
+            font-family: "gobCL";
+        }
+
+        .sustentClass2 {
+            font-size: 12px;
+            color: #666666;
+            font-family: "gobCL";
+        }
+    </style>
+
+    <meta http-equiv="X-UA-Compatible" content="IE=9" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><title>
+	Ficha Licitación
+</title>
+        <script type="text/javascript" src="/Procurement/ruxitagentjs_ICA15789NPRTUVXfhqrux_10345260810170330.js" data-dtconfig="rid=RID_1695367194|rpid=-1504988064|domain=mercadopublico.cl|reportUrl=/Procurement/rb_bf05087xfy|app=4924b1c0758a4d86|owasp=1|featureHash=ICA15789NPRTUVXfhqrux|rdnt=1|uxrgce=1|cuc=hz1tvft0|mel=100000|expw=1|dpvc=1|md=mdcc1=a#_LblUser|lastModification=1790247097130|postfix=hz1tvft0|tp=500,50,0|srbbv=2|agentUri=/Procurement/ruxitagentjs_ICA15789NPRTUVXfhqrux_10345260810170330.js" data-config='{"revision":1790247097130,"beaconUri":"/Procurement/rb_bf05087xfy","agentUri":"/Procurement/ruxitagentjs_ICA15789NPRTUVXfhqrux_10345260810170330.js","environmentId":"hz1tvft0","modules":"ICA15789NPRTUVXfhqrux"}' data-envconfig='{"tracestateKeyPrefix":"1db1a0-d80b97c5"}' data-appconfig='{"app":"4924b1c0758a4d86","disableUserTracking":true}'></script><script async src="https://www.googletagmanager.com/gtag/js?id=UA-51338325-2"></script>
+        
+
+    
+
+    <script src="../../Includes/scripts/JQuery/jquery-1.7.2.min.js" type="text/javascript"></script>
+    <script src="../../Includes/scripts/JQuery/jquery.blockUI.js" type="text/javascript"></script>
+    <!-- Global Site Tag (gtag.js) - Google Analytics -->
+    <!--<script async src="https://www.googletagmanager.com/gtag/js?id=UA-51338325-2"></script>-->
+    <script src="../../Includes/scripts/analytics.js" type="text/javascript"></script>
+    <script src="../../Includes/scripts/hotjar.js" type="text/javascript"></script>
+
+    <!-- Hotjar Tracking Code for https://www.mercadopublico.cl--> 
+    <script> 
+        (function (h, o, t, j, a, r) {
+            h.hj = h.hj || function () { (h.hj.q = h.hj.q || []).push(arguments) };
+            h._hjSettings = { hjid: 637179, hjsv: 6 };
+            a = o.getElementsByTagName('head')[0];
+            r = o.createElement('script'); r.async = 1;
+            r.src = t + h._hjSettings.hjid + j + h._hjSettings.hjsv;
+            a.appendChild(r);
+        })(window, document, 'https://static.hotjar.com/c/hotjar-', '.js?sv=');
+    </script> 
+
+    
+    <link href="../../Includes/styles/FichaLight/style_principal.css" rel="stylesheet" type="text/css" /><link href="../../Includes/styles/FichaLight/textos.css" rel="stylesheet" type="text/css" /><link href="../../Includes/styles/FichaLight/estilo_tabla.css" rel="stylesheet" type="text/css" /><link href="../../Includes/styles/MOP/mop.css" rel="stylesheet" type="text/css" /><link rel="shortcut icon" href="/favicon.ico" />
+    
+
+    
+    
+    
+    <script src="../../Includes/scripts/fancybox/v2.1.1/jquery.fancybox.pack.js" type="text/javascript"></script>
+    <link href="../../Includes/scripts/fancybox/v2.1.1/jquery.fancybox.css" rel="stylesheet" type="text/css" />
+    <script src="../../Includes/scripts/geo-cgr.js?v=1" type="text/javascript"></script>
+    <script src="../../Includes/scripts/jszip.min.js" type="text/javascript"></script>
+    <script type="text/javascript">        
+
+        function init() {
+            document.addEventListener('evento-inter-direccion-ficha',
+                function (event) {
+                    document.getElementById("lblFicha2Direccion").innerHTML = event.detail.direccion;
+                    var parametros = "?rbhCode=" + event.detail.codigo;
+                    parametros += "&direccion=" + encodeURIComponent(event.detail.direccion);
+                    var strURL = event.detail.url + parametros;
+                    document.getElementById("lnkFicha2EditarDireccion").setAttribute("href", strURL);
+                },
+                false);
+            document.addEventListener('evento-inter-monto-estimado',
+                function (event) {
+                    document.getElementById("lblFicha7MontoEstimado").innerHTML = event.detail.monto;
+                    var parametros = "?rbhCode=" + event.detail.codigo;
+                    parametros += "&rbhTypeLC=" + event.detail.tipoLC;
+                    parametros += "&montoLC=" + event.detail.monto;
+                    parametros += "&moneda=" + event.detail.moneda;
+                    var strURL = event.detail.url + parametros;
+                    document.getElementById("lnkFicha7MontoEstimado").setAttribute("href", strURL);
+                },
+                false);
+            document.addEventListener('evento-inter-fecha-licitacion',
+                function (event) {
+                    document.getElementById("lblFicha3Inicio").innerHTML = event.detail.fechainiciopregunta;
+                    document.getElementById("lblFicha3Fin").innerHTML = event.detail.fechafinalpreguntas;
+                    document.getElementById("lblFicha3PublicacionRespuestas").innerHTML = event.detail.fechapublicacionrespuesta;
+                    document.getElementById("lblFicha3ActoAperturaTecnica").innerHTML = event.detail.fechaaperturatecnica;
+                    document.getElementById("lblFicha3ActoAperturaEconomica").innerHTML = event.detail.fechaaperturaeconomica;
+                    //document.getElementById("lblFicha3Adjudicacion").innerHTML = event.detail.fechaAdjudicacion;
+                    document.getElementById("lblFicha3SoporteFisico").innerHTML = event.detail.fechaentregasoporte;
+                    document.getElementById("lblFicha3FirmaContrato").innerHTML = event.detail.fechaestimadafirma;
+                    document.getElementById("lblFicha3EvaluacionOfertas").innerHTML = event.detail.tiempoestimadoevaluacion;
+                    var parametros = "?rbhCode=" + event.detail.codigo;
+                    var strURL = event.detail.url + parametros;
+                    document.getElementById("lnkEditarFechas").setAttribute("href", strURL);
+                },
+                false);
+        }
+        function OpenValidationMessagePopup() {
+            var alink = document.getElementById("hiddenlink_confirm");
+            alink.click();
+        }
+        $(document).ready(function () {
+            init();
+            $("td").removeAttr("noWrap");
+
+            $("#imgRegistro").removeClass('fancy');
+            $("#imgCuadroOferta").removeClass('cuadroOferta');
+
+
+            $(".fancy").fancybox({
+                width: '60%',
+                height: '60%',
+                fitToView: false,
+                autoSize: false,
+                closeClick: false,
+                type: 'iframe',
+                padding: 0,
+                keys: null,
+                helpers: { overlay: { closeClick: false } }
+            });
+
+            $(".fancyAdjunto").fancybox({
+                'width': '58%',
+                'height': '30%',
+                'autoScale': false,
+                'transitionIn': 'fade',
+                'transitionOut': 'fade',
+                'type': 'iframe',
+                'overlayOpacity': 0.9,
+                hideOnOverlayClick: false
+            });
+            $(".fancyFechas").fancybox({
+                'width': '58%',
+                'height': '30%',
+                'autoScale': false,
+                'transitionIn': 'fade',
+                'transitionOut': 'fade',
+                'type': 'iframe',
+                'overlayOpacity': 0.9,
+                hideOnOverlayClick: false
+            });
+
+            $(".cuadroOferta").fancybox({
+                width: '90%',
+                heigh: '90%',
+                autoSize: false,
+                'autoScale': false,
+                'transitionIn': 'fade',
+                'transitionOut': 'fade',
+                'type': 'iframe',
+                'overlayOpacity': 0.9,
+                hideOnOverlayClick: false
+            });
+
+            $(".ofertarFB").fancybox({
+                'width': 440,
+                'height': 290,
+                'autoScale': false,
+                'transitionIn': 'none',
+                'transitionOut': 'none',
+                'type': 'iframe',
+                'scrolling': 'no',
+                hideOnOverlayClick: false
+            });
+
+            $(".fancyNBA").fancybox({
+                'width': 800,
+                'height': 1150,
+                'autoScale': false,
+                'transitionIn': 'fade',
+                'transitionOut': 'fade',
+                'type': 'iframe',
+                'overlayOpacity': 0.9,
+                hideOnOverlayClick: false
+            });
+
+            $(".fancyMontoLC").fancybox({
+                'width': '58%',
+                'height': '30%',
+                'autoScale': false,
+                'transitionIn': 'fade',
+                'transitionOut': 'fade',
+                'type': 'iframe',
+                'overlayOpacity': 0.9,
+                hideOnOverlayClick: false
+            });
+            //Solución para eliminar texto: "I18n entry not found:" En paso 5 Requisitos para contratar al proveedor adjudicado.
+            //Obtener los textos para modificar su valor.
+            $("span[id*=lblDocument]").each(function (index) {
+                //Reemplazar el texto.
+                var value = $(this).text().replace("I18n entry not found: ", "");
+                //Incorporar el cambio en el control Label.
+                $(this).text(value);
+            })
+
+        });
+    </script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $(".fancyFechas").fancybox({
+                'width': 700,
+                'height': 600,
+                'autoScale': false,
+                'transitionIn': 'fade',
+                'transitionOut': 'fade',
+                'type': 'iframe',
+                'overlayOpacity': 0.9,
+                'hideOnOverlayClick': false
+            });
+        });
+    </script>
+    <script type="text/javascript">
+        $(document).ready((function () {
+            $(".fancyMonto").fancybox({
+                'title': 'Editar monto de licitación',
+                'width': 700,
+                'height': 600,
+                'autoScale': false,
+                'transitionIn': 'fade',
+                'transitionOut': 'fade',
+                'type': 'iframe',
+                'overlayOpacity': 0.9,
+                'hideOnOverlayClick': false
+            });
+            $("#hidden_link").fancybox().trigger('click');
+        });
+    </script>
+
+    <script type="text/javascript">
+
+        function openPopupFicha(obj) {
+            var url = $(obj).attr("href");
+            console.log(url);
+            radopen(url, "PopupFicha");
+        }
+
+        function openPopupCHP(obj) {
+            var url = $(obj).attr("href");
+            window.open(url, "", "width=850,height=700,scrollbars=yes,resizable=yes");
+        }
+
+        function BloquearFicha(titulo, msg) {
+
+            $("#bTitulo").html(titulo);
+            $("#lblTextoCuerpo").html(msg);
+
+            $.blockUI({
+                message: '', css: {
+                    border: 'none',
+                    height: '1px',
+                    width: '0px',
+                    padding: '0px 0px 0px',
+                    top: '35%',
+                    left: '28%'
+                }
+            });
+
+            $("#frmABM_Productos").hide();
+            alert(msg);
+
+            location.href = location.protocol + '//' + location.hostname + '/portal'
+        }
+
+        function cerrarpagina() {
+            window.open('', '_parent', '');
+            window.close();
+            window.event.returnValue = false;
+            //return false;
+        }
+
+
+        function cargarEspecialidades() {
+            var totRegistros = 0;
+            $.ajax({
+                type: 'POST',
+                url: 'DetailsAcquisition.aspx/ObtenerEspecialidades',
+                contentType: "application/json; charset=utf-8",
+                async: false,
+                datatype: 'json',
+                success: function (result) {
+                    if (result.d.length > 0) {
+                        totRegistros = result.d.length;
+                        $("#tblEspecialidades tbody tr td").remove();
+                        $.each(result.d, function (i, item) {
+                            var dato = item.Descripcion;
+                            var datos = dato.split("|");
+                            var especialidad = datos[0];
+                            var subespecialidad = datos[1];
+                            var categoria = datos[2];
+                            var id = 'sc_' + item.CodigoProducto + '_';
+                            if ($('#tblEspecialidades tbody tr').length == 0) {
+                                $('#tblEspecialidades tbody').append('<tr id="' + id + '" ><td>' + especialidad + '</td><td>' + subespecialidad + '</td><td>' + categoria + '</td> </tr>');
+                            }
+                            else {
+                                $('#tblEspecialidades tr:last').after('<tr id="' + id + '" ><td>' + especialidad + '</td><td>' + subespecialidad + '</td><td>' + categoria + '</td> </tr>');
+                            }
+                        });
+
+                    }
+                },
+                error: function (xhr, textStatus, exceptionThrown) {
+                    var obj = JSON.parse(xhr.responseText);
+                    alert(obj.data);
+                    return null;
+                }
+            });
+
+            if (totRegistros > 0) {
+                $('#tblEspecialidades').DataTable({
+                    "paging": (totRegistros <= 5) ? false : true,
+                    "bSort": false,
+                    "bFilter": false,
+                    "bInfo": false,
+                    "bLengthChange": false,
+                    "pageLength": 5,
+                    "language": {
+                        "oPaginate": {
+                            "sFirst": "&laquo;&laquo;",
+                            "sLast": "&raquo&raquo",
+                            "sNext": "&raquo;",
+                            "sPrevious": "&laquo;"
+                        }
+                    }
+                });
+            }
+        }
+
+        function abrirFancyOrg(p_rut, p_clave, p_url, p_sigueLic, p_sessionId, p_seguimiento, p_externalCode, p_intCode) {
+            $.fancybox({
+                width: '40%',
+                height: '60%',
+                'autoScale': false,
+                'transitionIn': 'none',
+                'transitionOut': 'none',
+                'type': 'iframe',
+                'scrolling': 'no',
+                hideOnOverlayClick: false,
+                href: '/Portal/LoginOrganizaciones.aspx?rut=' + p_rut + '&clave=' + p_clave + '&url=' + p_url + '&sigueLic=' + p_sigueLic + '&session=' + p_sessionId + '&seguimiento=' + p_seguimiento + '&externalCode=' + p_externalCode + '&intCode=' + p_intCode
+            });
+        }
+
+        function toContractSheet(idContrato, esPublico, idContratoEncriptado) {
+            if (esPublico == "True") {
+                window.opener.location = '/Contratos/Ciudadania/DetalleContrato?qs=' + idContratoEncriptado;
+                window.close();
+            }
+            else {
+                window.opener.location = '/Contratos/GestionContratos/DetalleContrato?idContrato=' + idContrato;
+                window.close();
+            }
+        }
+
+        function toCreateContract(idLicitacion) {
+            window.opener.location = '/Contratos/Comprador/ElaborarFichaDesdeDocumento?idDocumento=' + idLicitacion + '&tipoDocumento=LC';
+            window.close();
+        }
+
+    </script>
+
+
+    <script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+    <style type="text/css">
+        .tituloCriterioIzq {
+            text-align: left !important;
+        }
+
+        .tituloCriterio {
+            text-align: left !important;
+        }
+
+        ul li {
+            margin-top: 1.8px !important;
+        }
+
+        td {
+            white-space: normal !important;
+        }
+
+        p {
+            text-indent: 0 !important
+        }
+
+        .modal-open {
+            overflow: hidden;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 1050;
+            display: none;
+            overflow: hidden;
+            -webkit-overflow-scrolling: touch;
+            outline: 0;
+        }
+
+        .modal-dialog {
+            position: relative;
+            width: auto;
+            margin: 10px;
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: #fff;
+            -webkit-background-clip: padding-box;
+            background-clip: padding-box;
+            border: 1px solid #999;
+            border: 1px solid rgba(0, 0, 0, .2);
+            border-radius: 6px;
+            outline: 0;
+            -webkit-box-shadow: 0 3px 9px rgba(0, 0, 0, .5);
+            box-shadow: 0 3px 9px rgba(0, 0, 0, .5);
+        }
+
+        .modal-header {
+            min-height: 16.42857143px;
+            padding: 15px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        .modal-title {
+            margin: 0;
+            line-height: 1.42857143;
+        }
+
+        .modal-body {
+            position: relative;
+            padding: 15px;
+        }
+
+        @media (min-width: 768px) {
+            .modal-dialog {
+                width: 600px;
+                margin: 30px auto;
+            }
+
+            .modal-content {
+                -webkit-box-shadow: 0 5px 15px rgba(0, 0, 0, .5);
+                box-shadow: 0 5px 15px rgba(0, 0, 0, .5);
+            }
+
+            .modal-sm {
+                width: 300px;
+            }
+        }
+
+        .modal-footer {
+            padding: 15px;
+            text-align: right;
+            border-top: 1px solid #e5e5e5;
+        }
+
+        .btn-primary {
+            color: #fff;
+            background-color: #428bca;
+            border-color: #357ebd;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 6px 12px;
+            margin-bottom: 0;
+            font-size: 14px;
+            font-weight: normal;
+            line-height: 1.42857143;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            cursor: pointer;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            background-image: none;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+
+            .btn:focus,
+            .btn:active:focus,
+            .btn.active:focus {
+                outline: thin dotted;
+                outline: 5px auto -webkit-focus-ring-color;
+                outline-offset: -2px;
+            }
+
+            .btn:hover,
+            .btn:focus {
+                color: #333;
+                text-decoration: none;
+            }
+
+            .btn:active,
+            .btn.active {
+                background-image: none;
+                outline: 0;
+                -webkit-box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125);
+                box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125);
+            }
+
+        .alert.alerta-info {
+            background-color: #E7F0F8;
+            border-color: #83b3DA;
+        }
+
+        .alert {
+            padding: 16px 16px 16px 54px;
+            margin: 0 0 10px 0;
+            min-height: 53px;
+            border-radius: 0;
+            border-width: 0 0 0 4px;
+            border-style: solid;
+        }
+    </style>
+    
+    <!-- Modificación de Ficha Licitación -->
+    <style>
+        .img-csv img {
+            position: absolute;
+            display: inline;
+            background: #f00;
+            width: 25px;
+            height: 25px;
+            float: right;
+            margin: 0 0 0 0;
+            z-index: 3;
+        }
+
+        .img-api img {
+            position: absolute;
+            display: inline;
+            background: #0f0;
+            width: 25px;
+            height: 25px;
+            float: right;
+            margin: 0 0 0 90px;
+            z-index: 3;
+        }
+
+        .img-ocds img {
+            position: absolute;
+            display: inline;
+            background: #00f;
+            width: 25px;
+            height: 25px;
+            float: right;
+            margin: 0 0 0 180px;
+            z-index: 3;
+        }
+
+        .links-descargas-archivo {
+            position: absolute;
+            background-color: rgba(255, 247, 228, 0);
+            top: 182px;
+            left: 50vw;
+            margin: 0 0 0 230px;
+            z-index: 9999;
+            padding: 0px;
+            width: 105px;
+            height: 25px;
+            z-index: 3;
+        }
+
+        .img-csv {
+            position: relative;
+            width: 25px;
+            z-index: 3;
+        }
+
+        .img-api {
+            position: relative;
+            width: 25px;
+            z-index: 3;
+        }
+
+        .img-ocds {
+            position: relative;
+            width: 25px;
+            z-index: 3;
+        }
+    </style>
+    <!-- Popover iconos descarga -->
+
+    <style>
+        .popover__title {
+        }
+
+        .popover__wrapper {
+            position: absolute;
+            margin-top: 0px;
+            margin-left: 0px;
+            display: inline-block;
+        }
+
+        .popover__wrapper2 {
+            position: absolute;
+            margin-top: 0px;
+            margin-left: 30px;
+            display: inline-block;
+        }
+
+        .popover__wrapper3 {
+            position: absolute;
+            margin-top: 0px;
+            margin-left: 60px;
+            display: inline-block;
+        }
+
+
+        .popover__content {
+            opacity: 0;
+            visibility: hidden;
+            position: relative;
+            z-index: 9999999 !important;
+            top: 30px;
+            left: -97px !important;
+            transform: translate(0,10px);
+            background-color: #ffffff;
+            padding: 5px 0px;
+            border: 1px solid #c5cad2;
+            /*box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.26);*/
+            width: 220px;
+            font-family: inherit;
+            color: inherit;
+        }
+
+            .popover__content:before, .popover__content2:before, .popover__content3:before {
+                position: absolute;
+                z-index: -1;
+                content: '';
+                right: calc(50% - 10px);
+                top: -8px;
+                border-style: solid;
+                border-width: 0 10px 10px 10px;
+                border-color: transparent transparent #c5cad2 transparent;
+                transition-duration: 0.3s;
+                transition-property: transform;
+            }
+
+        .popover__content2 {
+            opacity: 0;
+            visibility: hidden;
+            position: relative;
+            z-index: 9999999 !important;
+            top: 30px;
+            left: -97px !important;
+            transform: translate(0,10px);
+            background-color: #ffffff;
+            padding: 5px 0px;
+            border: 1px solid #c5cad2;
+            /*box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.26);*/
+            width: 220px;
+        }
+
+
+        .popover__content3 {
+            opacity: 0;
+            visibility: hidden;
+            position: relative;
+            z-index: 9999999 !important;
+            top: 30px;
+            left: -97px !important;
+            transform: translate(0,10px);
+            background-color: #ffffff;
+            padding: 5px 0px;
+            border: 1px solid #c5cad2;
+            /*box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.26);*/
+            width: 220px;
+        }
+
+
+        .popover__wrapper:hover .popover__content, .popover__wrapper2:hover .popover__content2, .popover__wrapper3:hover .popover__content3 {
+            z-index: 999999 !important;
+            opacity: 1;
+            visibility: visible;
+            transform: translate(0,-20px);
+            transition: all 0.5s cubic-bezier(0.75, -0.02, 0.2, 0.97);
+        }
+
+        .popover__message {
+            position: relative;
+            width: 200px;
+            margin: auto;
+            text-align: justify;
+            z-index: 999999 !important;
+            padding: 5px 0 5px 0 !important;
+            font-family: inherit;
+            color: inherit;
+            font-size: 13px;
+            line-height: 16px;
+        }
+
+            .popover__message a {
+                color: #0667b4;
+                text-decoration: none;
+                font-weight: 400;
+            }
+    </style>
+
+<link href="../../Includes/styles/ChileCompra.css" type="text/css" rel="stylesheet" /><script id="ChileCompra" src="/Procurement/Includes/scripts/ChileCompra.js" type="text/javascript"></script><link href="/Procurement/WebResource.axd?d=8wuCdJcqNkLidmVxrSGRWgzSZ8VFNMcR8EJFt7TMNsVFwoXrfm0_xeq3gWMFW6NdxhG3Erlp2WVy5UEqjzRsK8lk38_osI8h6zuch5fEP6YrRKXe2jwMg-LynzToWmiKC10yag2&amp;t=639250960720000000" type="text/css" rel="stylesheet" class="Telerik_stylesheet" /><link href="/Procurement/WebResource.axd?d=n2vlsog0lB6hwmRZk_Ry5PorXAItvBtM-HVby7rv1WP3A3DhFF0vnTO-IifkkOn6dtG6TuxEpDvAgf8pR62hnMid7IIOuFkM_mYqvIAAQ7nX0w1Awo1uhMm4aaVP8SPnsFLXQbJcQ8Ften6rTLPinafi0Mc1&amp;t=639250960720000000" type="text/css" rel="stylesheet" class="Telerik_stylesheet" /></head>
+<body>
+    <form name="frmABM_Productos" method="post" action="./DetailsAcquisition.aspx?qs=1211839-44-LE26" id="frmABM_Productos">
+<input type="hidden" name="RadScriptManager1_TSM" id="RadScriptManager1_TSM" value="" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJMjQyOTAzNzAzDxYEHg1FbnRMaWNpdGFjaW9uMuhLAAEAAAD/////AQAAAAAAAAAMAgAAAEZXZWIuUHJvY3VyZW1lbnQsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsDAMAAABBTVAuTmVnb2NpbywgVmVyc2lvbj0xLjAuMC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPW51bGwFAQAAACVXZWIuUHJvY3VyZW1lbnQuRmljaGFMaWNpdGFjaW9uRW50aXR5XQAAAApVc2VyRW50aXR5B19jb2RpZ28OX2NvZGlnb0V4dGVybm8MX3Jlc3BvbnNhYmxlDF9mZWNoYWNpZXJyZQ9fY29udGFkb3JjaWVycmUKX2luZm9ybWFkYQ9fY29kaWdvVGVtcGxhdGUUX3RpcG9Fc3BlY2lhbGlkYWRNT1AcX2VzcGVjaWFsaWRhZGVzTU9QUmVxdWVyaWRhcwdfbm9tYnJlDV9jb2RpZ29lc3RhZG8LX3RpcG9Fc3RhZG8HX2VzdGFkbwxfZGVzY3JpcGNpb24PX3RpcG9MaWNpdGFjaW9uEl9zdWJUaXBvTGljaXRhY2lvbhVfY29kaWdvVGlwb0xpY2l0YWNpb24YX2NvZGlnb1N1YlRpcG9MaWNpdGFjaW9uHV9zdWJUaXBvTGljaXRhY2lvbkRlc2NyaXBjaW9uE19jb2RpZ29Db252b2NhdG9yaWENX2NvbnZvY2F0b3JpYQdfbW9uZWRhB19ldGFwYXMNX2VzdGFkb0V0YXBhcwlfY29udHJhdG8QX2NvZGlnb1RvbWFSYXpvbhhfY29kaWdvUHVibGljaWRhZE9mZXJ0YXMYX2p1c3RpZmljYWNpb25QdWJsaWNpZGFkHF9qdXN0aWZpY2FjaW9uUmVhZGp1ZGljYWNpb24VX29wY2lvblJlYWRqdWRpY2FjaW9uE19jb2RpZ29Pcmdhbml6YWNpb24MX3Jhem9uc29jaWFsB191bmlkYWQEX3J1dApfZGlyZWNjaW9uB19jb211bmEHX3JlZ2lvbglfcmVjbGFtb3MLX2VzdGltYWNpb24PX2ZpbmFuY2lhbWllbnRvEV92aXNpYmlsaWRhZE1vbnRvDl9tb250b0VzdGltYWRvG19qdXN0aWZpY2FjaW9uTW9udG9Fc3RpbWFkbwxfb2JzZXJ2YWNpb24KX21vZGFsaWRhZAlfb3BjaW9uZXMWX25vbWJyZVJlc3BvbnNhYmxlUGFnbxVfZW1haWxSZXNwb25zYWJsZVBhZ28aX25vbWJyZVJlc3BvbnNhYmxlQ29udHJhdG8ZX2VtYWlsUmVzcG9uc2FibGVDb250cmF0bxxfdGVsZWZvbm9SZXNwb25zYWJsZUNvbnRyYXRvG19wcm9oaWJpY2lvbnN1YmNvbnRyYXRhY2lvbhBfc3ViY29udHJhdGFjaW9uEV9kdXJhY2lvbkNvbnRyYXRvD190aWVtcG9Db250cmF0bx9fanVzdGlmaWNhY2lvbkNvbnRyYXRvUmVub3ZhYmxlGF9vcHRpb25Db250cmF0b1Jlbm92YWJsZRtfanVzdGlmaWNhY2lvbkV4dGllbmRlUGxhem8FX2VzTFMPX2VzUHVibGljb01vbnRvFl9jYW50aWRhZGZlY2hhc1VzdWFyaW8TX3RpZW5lRmVjaGFzVXN1YXJpbwtfZXJyb3JGaWNoYQlfZXN0YWRvQ1MPX0V4dGVuc2lvblBsYXpvEV9SZWdsYW1lbnRvQWN0aXZvBl9lc01vcA9fZXNDb250cmF0b09icmEKX2NvZGlnb0JJUBFib29sRXNPZmVydGFDaWVnYRtib29sRXNBcnF1aXRlY3R1cmFVcmJhbmlzbW8GX2l0ZW1zDV9hbnRlY2VkZW50ZXMLX3JlcXVpc2l0b3MKX2NyaXRlcmlvcwxfY3JpdGVyaW9zTFMKX2dhcmFudGlhcwpfY2xhdXN1bGFzDl9vYnNlcnZhY2lvbmVzB19mZWNoYXMJX2ZlY2hhc0xTDl9mZWNoYXNVc3VhcmlvCV9lc1ZhbGlkYQtfZXNCYXNlVGlwbxZfX1ZlcmlmaWNhSGFiaWxpZGFkQ0hQFV9UaXBvRHVyYWNpb25Db250cmF0bxdfdGllbXBvRHVyYWNpb25Db250cmF0bx1fVW5pZGFkVGllbXBvRHVyYWNpb25Db250cmF0bxVfVW5pZGFkVGllbXBvQ29udHJhdG8WX1ZhbG9yVGllbXBvUmVub3ZhY2lvbhhfUGVyaW9kb1RpZW1wb1Jlbm92YWNpb24MX0VzUmVub3ZhYmxlBAABAQEAAQAAAAEABAEBAQQAAAEAAQEAAAAAAAEBAAEBAQEBAQEBAQEEAQEBAQQBAQEBAQEEAAABAAEAAAAAAQAAAAAAAQAAAwQEAwMDAwQEBAMAAAABAQEBAQEBJ01QLk5lZ29jaW8uQ2hpbGVDb21wcmFXZWIuRW50aXRpZXMuVXNlcgMAAAAICAgIAQgnTVAuTmVnb2Npby5VdGlscy5BcHBFbnVtcytSRkJTdGF0dXNFbnVtAwAAADdNUC5OZWdvY2lvLlV0aWxzLkFwcEVudW1zK1Byb2N1cmVtZW50UHJvY2Vzc1N1YlR5cGVFbnVtAwAAAAgICAgICAgICElNUC5OZWdvY2lvLkNoaWxlQ29tcHJhV2ViLlV0aWxzLkFwcENvbnN0YW50c0VudW1GaWNoYUxpZ2h0K1ZhbG9yUmVxdWlzaXRvAwAAAEhNUC5OZWdvY2lvLkNoaWxlQ29tcHJhV2ViLlV0aWxzLkFwcENvbnN0YW50c0VudW1GaWNoYUxpZ2h0K09wY2lvbmVzUGFnb3MDAAAASk1QLk5lZ29jaW8uQ2hpbGVDb21wcmFXZWIuVXRpbHMuQXBwQ29uc3RhbnRzRW51bUZpY2hhTGlnaHQrU3ViQ29udHJhdGFjaW9uAwAAAAgICAEBCAEICAgBAQEBlgFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5MaXN0YDFbW1dlYi5Qcm9jdXJlbWVudC5GaWNoYUl0ZW1MaWNpdGFjaW9uRW50aXR5LCBXZWIuUHJvY3VyZW1lbnQsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsXV0xV2ViLlByb2N1cmVtZW50LkZpY2hhTGljaXRhY2lvbkFudGVjZWRlbnRlc0VudGl0eQIAAAAoV2ViLlByb2N1cmVtZW50LkZpY2hhTGljaXRhY2lvblJlcXVpc2l0bwIAAACZAVN5c3RlbS5Db2xsZWN0aW9ucy5HZW5lcmljLkxpc3RgMVtbV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkF3YXJkQ3JpdGVyaWFFbnRpdHksIFdlYi5Qcm9jdXJlbWVudCwgVmVyc2lvbj0xLjAuMC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPW51bGxdXZkBU3lzdGVtLkNvbGxlY3Rpb25zLkdlbmVyaWMuTGlzdGAxW1tXZWIuUHJvY3VyZW1lbnQuRW50aXRpZXMuQXdhcmRDcml0ZXJpYUVudGl0eSwgV2ViLlByb2N1cmVtZW50LCBWZXJzaW9uPTEuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49bnVsbF1djwFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5MaXN0YDFbW1dlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5HdWFyYW50ZWUsIFdlYi5Qcm9jdXJlbWVudCwgVmVyc2lvbj0xLjAuMC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPW51bGxdXZIBU3lzdGVtLkNvbGxlY3Rpb25zLkdlbmVyaWMuTGlzdGAxW1tXZWIuUHJvY3VyZW1lbnQuRW50aXRpZXMuQ2xhdXNlRW50aXR5LCBXZWIuUHJvY3VyZW1lbnQsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsXV00V2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkxlZ2FsUHJlY2VkZW50Q29tbWVudEVudGl0eQIAAAAmV2ViLlByb2N1cmVtZW50LkZlY2hhc0xpY2l0YWNpb25FbnRpdHkCAAAAKFdlYi5Qcm9jdXJlbWVudC5GZWNoYXNMaWNpdGFjaW9uTFNFbnRpdHkCAAAAngFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5MaXN0YDFbW1dlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5EYXRlc0RlZmluZWRCeVVzZXJFbnRpdHksIFdlYi5Qcm9jdXJlbWVudCwgVmVyc2lvbj0xLjAuMC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPW51bGxdXQEBAQIAAAAKAAAAAAoKCgAAAAAKAAAAAAAAAAAACgAAAAAF/P///ydNUC5OZWdvY2lvLlV0aWxzLkFwcEVudW1zK1JGQlN0YXR1c0VudW0BAAAAB3ZhbHVlX18ACAMAAAAAAAAACgoKBfv///83TVAuTmVnb2Npby5VdGlscy5BcHBFbnVtcytQcm9jdXJlbWVudFByb2Nlc3NTdWJUeXBlRW51bQEAAAAHdmFsdWVfXwAIAwAAAAAAAAAAAAAAAAAAAAoAAAAACgoAAAAAAAAAAAAAAAAAAAAAAAAAAAoKAAAAAAoKCgoKCgoKCgoF+v///0lNUC5OZWdvY2lvLkNoaWxlQ29tcHJhV2ViLlV0aWxzLkFwcENvbnN0YW50c0VudW1GaWNoYUxpZ2h0K1ZhbG9yUmVxdWlzaXRvAQAAAAd2YWx1ZV9fAAgDAAAAAAAAAAoKCgoF+f///0hNUC5OZWdvY2lvLkNoaWxlQ29tcHJhV2ViLlV0aWxzLkFwcENvbnN0YW50c0VudW1GaWNoYUxpZ2h0K09wY2lvbmVzUGFnb3MBAAAAB3ZhbHVlX18ACAMAAAAAAAAACgoKCgoKBfj///9KTVAuTmVnb2Npby5DaGlsZUNvbXByYVdlYi5VdGlscy5BcHBDb25zdGFudHNFbnVtRmljaGFMaWdodCtTdWJDb250cmF0YWNpb24BAAAAB3ZhbHVlX18ACAMAAAAAAAAAAAAAAAAAAAAKAAAAAAoAAAAAAAAACgAAAAAAAAAAAAAAAAAACgAACQkAAAAJCgAAAAkLAAAACQwAAAAJDQAAAAkOAAAACQ8AAAAJEAAAAAkRAAAACRIAAAAJEwAAAAAAAAoKCgoKCgoECQAAAJYBU3lzdGVtLkNvbGxlY3Rpb25zLkdlbmVyaWMuTGlzdGAxW1tXZWIuUHJvY3VyZW1lbnQuRmljaGFJdGVtTGljaXRhY2lvbkVudGl0eSwgV2ViLlByb2N1cmVtZW50LCBWZXJzaW9uPTEuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49bnVsbF1dAwAAAAZfaXRlbXMFX3NpemUIX3ZlcnNpb24EAAArV2ViLlByb2N1cmVtZW50LkZpY2hhSXRlbUxpY2l0YWNpb25FbnRpdHlbXQIAAAAICAkUAAAAAAAAAAAAAAAFCgAAADFXZWIuUHJvY3VyZW1lbnQuRmljaGFMaWNpdGFjaW9uQW50ZWNlZGVudGVzRW50aXR5BQAAABBfYWRtaW5pc3RyYXRpdm9zCV90ZWNuaWNvcwtfZWNvbm9taWNvcxFfdGVjbmljb3NQcml2YWRvcxFfdGVjbmljb3NQdWJsaWNvcwMDAwMDnQFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5MaXN0YDFbW1dlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5BbnRlY2VkZW50ZU9mZXJ0YUVudGl0eSwgV2ViLlByb2N1cmVtZW50LCBWZXJzaW9uPTEuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49bnVsbF1dnQFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5MaXN0YDFbW1dlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5BbnRlY2VkZW50ZU9mZXJ0YUVudGl0eSwgV2ViLlByb2N1cmVtZW50LCBWZXJzaW9uPTEuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49bnVsbF1dnQFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5MaXN0YDFbW1dlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5BbnRlY2VkZW50ZU9mZXJ0YUVudGl0eSwgV2ViLlByb2N1cmVtZW50LCBWZXJzaW9uPTEuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49bnVsbF1dnQFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5MaXN0YDFbW1dlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5BbnRlY2VkZW50ZU9mZXJ0YUVudGl0eSwgV2ViLlByb2N1cmVtZW50LCBWZXJzaW9uPTEuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49bnVsbF1dnQFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5MaXN0YDFbW1dlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5BbnRlY2VkZW50ZU9mZXJ0YUVudGl0eSwgV2ViLlByb2N1cmVtZW50LCBWZXJzaW9uPTEuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49bnVsbF1dAgAAAAkVAAAACRYAAAAJFwAAAAkYAAAACRkAAAAFCwAAAChXZWIuUHJvY3VyZW1lbnQuRmljaGFMaWNpdGFjaW9uUmVxdWlzaXRvBQAAAAlfanVyaWRpY2EIX25hdHVyYWwSX2RvY3VtZW50b0p1cmlkaWNvEV9kb2N1bWVudG9OYXR1cmFsDl9yZXF1aXNpdG9zQ0hQAwMDAwOaAVN5c3RlbS5Db2xsZWN0aW9ucy5HZW5lcmljLkxpc3RgMVtbV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkxlZ2FsUHJlY2VkZW50RW50aXR5LCBXZWIuUHJvY3VyZW1lbnQsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsXV2aAVN5c3RlbS5Db2xsZWN0aW9ucy5HZW5lcmljLkxpc3RgMVtbV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkxlZ2FsUHJlY2VkZW50RW50aXR5LCBXZWIuUHJvY3VyZW1lbnQsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsXV2aAVN5c3RlbS5Db2xsZWN0aW9ucy5HZW5lcmljLkxpc3RgMVtbV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkxlZ2FsUHJlY2VkZW50RW50aXR5LCBXZWIuUHJvY3VyZW1lbnQsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsXV2aAVN5c3RlbS5Db2xsZWN0aW9ucy5HZW5lcmljLkxpc3RgMVtbV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkxlZ2FsUHJlY2VkZW50RW50aXR5LCBXZWIuUHJvY3VyZW1lbnQsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsXV2aAVN5c3RlbS5Db2xsZWN0aW9ucy5HZW5lcmljLkxpc3RgMVtbV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkxlZ2FsUHJlY2VkZW50RW50aXR5LCBXZWIuUHJvY3VyZW1lbnQsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsXV0CAAAACRoAAAAJGwAAAAkcAAAACR0AAAAJHgAAAAQMAAAAmQFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5MaXN0YDFbW1dlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5Bd2FyZENyaXRlcmlhRW50aXR5LCBXZWIuUHJvY3VyZW1lbnQsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsXV0DAAAABl9pdGVtcwVfc2l6ZQhfdmVyc2lvbgQAAC5XZWIuUHJvY3VyZW1lbnQuRW50aXRpZXMuQXdhcmRDcml0ZXJpYUVudGl0eVtdAgAAAAgICR8AAAAAAAAAAAAAAAENAAAADAAAAAkfAAAAAAAAAAAAAAAEDgAAAI8BU3lzdGVtLkNvbGxlY3Rpb25zLkdlbmVyaWMuTGlzdGAxW1tXZWIuUHJvY3VyZW1lbnQuRW50aXRpZXMuR3VhcmFudGVlLCBXZWIuUHJvY3VyZW1lbnQsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsXV0DAAAABl9pdGVtcwVfc2l6ZQhfdmVyc2lvbgQAACRXZWIuUHJvY3VyZW1lbnQuRW50aXRpZXMuR3VhcmFudGVlW10CAAAACAgJIAAAAAAAAAAAAAAABA8AAACSAVN5c3RlbS5Db2xsZWN0aW9ucy5HZW5lcmljLkxpc3RgMVtbV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkNsYXVzZUVudGl0eSwgV2ViLlByb2N1cmVtZW50LCBWZXJzaW9uPTEuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49bnVsbF1dAwAAAAZfaXRlbXMFX3NpemUIX3ZlcnNpb24EAAAnV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkNsYXVzZUVudGl0eVtdAgAAAAgICSEAAAAAAAAAAAAAAAwiAAAAPk1QLlV0aWwsIFZlcnNpb249MS4wLjkuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsBRAAAAA0V2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkxlZ2FsUHJlY2VkZW50Q29tbWVudEVudGl0eQcAAAAGX3JiaElkCF9yYmhDb2RlF19yYmhMZWdhbFJlY29yZENvbW1lbnRzGF9yYmhPYnNlcnZhdGlvbkNoZWNrVGV4dBZfcmJoT2JzZXJ2YXRpb25Db21tZW50C19TdGVwU3RhdHVzBF91cmwAAAEBAQQBCAhBTVAuVXRpbC5WYXRlc0ZyYW1ld29yay5XaXphcmQuV2l6YXJkRW51bXMrV2l6YXJkU3RlcERhdGFTdGF0ZUVudW0iAAAAAgAAAAAAAAAAAAAACgoKBd3///9BTVAuVXRpbC5WYXRlc0ZyYW1ld29yay5XaXphcmQuV2l6YXJkRW51bXMrV2l6YXJkU3RlcERhdGFTdGF0ZUVudW0BAAAAB3ZhbHVlX18ACCIAAAAAAAAACgURAAAAJldlYi5Qcm9jdXJlbWVudC5GZWNoYXNMaWNpdGFjaW9uRW50aXR5DgAAAAxfUHVibGljYWNpb24QX0NpZXJyZUlkb25laWRhZAdfSW5pY2lvBF9GaW4WX1B1YmxpY2FjaW9uUmVzcHVlc3RhcwdfQ2llcnJlFF9BY3RvQXBlcnR1cmFUZWNuaWNhFl9BY3RvQXBlcnR1cmFFY29ub21pY2ENX0FkanVkaWNhY2lvbhVfRXN0aW1hZGFBZGp1ZGljYWNpb24OX1NvcG9ydGVGaXNpY28RX1RpZW1wb0V2YWx1YWNpb24XX1VuaWRhZFRpZW1wb0V2YWx1YWNpb24OX0Zpcm1hQ29udHJhdG8BAQEBAQEBAQEBAQEBAQIAAAAKCgoKCgoKCgoKCgoKCgUSAAAAKFdlYi5Qcm9jdXJlbWVudC5GZWNoYXNMaWNpdGFjaW9uTFNFbnRpdHkbAAAAEF9jaWVycmVJZG9uZWlkYWQPX3ByZVB1YmxpY2FjaW9uF19wdWJsaWNhY2lvblJlc3B1ZXN0YUlUCV9pbmljaW9MUwZfZmluTFMSX2RpYUZlY2hhUHJlQ2llcnJlE19ob3JhRmVjaGFQcmVDaWVycmUQX2luaWNpb1ByZWd1bnRhcxNfaG9yYUluaWNpb1ByZWd1bnRhDV9maW5QcmVndW50YXMRX2hvcmFGaW5QcmVndW50YXMWX3B1YmxpY2FjaW9uUmVzcHVlc3RhcxpfaG9yYVB1YmxpY2FjaW9uUmVzcHVlc3Rhcw5fY2llcnJlT2ZlcnRhcxJfaG9yYUNpZXJyZU9mZXJ0YXMJX2FwZXJ0dXJhDV9ob3JhQXBlcnR1cmEVX2VzdGltYWRhQWRqdWRpY2FjaW9uFl9lc3RpbWFkYUZpcm1hQ29udHJhdG8RX2hvcmFBZGp1ZGljYWNpb24OX3NvcG9ydGVGaXNpY28TX2RpYUluaWNpb0lkb25laWRhZBRfaG9yYUluaWNpb0lkb25laWRhZBJfZGlhRmluYWxJZG9uZWlkYWQTX2hvcmFGaW5hbElkb25laWRhZBdfZGlhUmVzcHVlc3Rhc0lkb25laWRhZBhfaG9yYVJlc3B1ZXN0YXNJZG9uZWlkYWQBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQECAAAACgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKBBMAAACeAVN5c3RlbS5Db2xsZWN0aW9ucy5HZW5lcmljLkxpc3RgMVtbV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkRhdGVzRGVmaW5lZEJ5VXNlckVudGl0eSwgV2ViLlByb2N1cmVtZW50LCBWZXJzaW9uPTEuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49bnVsbF1dAwAAAAZfaXRlbXMFX3NpemUIX3ZlcnNpb24EAAAzV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkRhdGVzRGVmaW5lZEJ5VXNlckVudGl0eVtdAgAAAAgICSQAAAAAAAAAAAAAAAcUAAAAAAEAAAAAAAAABClXZWIuUHJvY3VyZW1lbnQuRmljaGFJdGVtTGljaXRhY2lvbkVudGl0eQIAAAAEFQAAAJ0BU3lzdGVtLkNvbGxlY3Rpb25zLkdlbmVyaWMuTGlzdGAxW1tXZWIuUHJvY3VyZW1lbnQuRW50aXRpZXMuQW50ZWNlZGVudGVPZmVydGFFbnRpdHksIFdlYi5Qcm9jdXJlbWVudCwgVmVyc2lvbj0xLjAuMC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPW51bGxdXQMAAAAGX2l0ZW1zBV9zaXplCF92ZXJzaW9uBAAAMldlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5BbnRlY2VkZW50ZU9mZXJ0YUVudGl0eVtdAgAAAAgICSUAAAAAAAAAAAAAAAEWAAAAFQAAAAklAAAAAAAAAAAAAAABFwAAABUAAAAJJQAAAAAAAAAAAAAAARgAAAAVAAAACSUAAAAAAAAAAAAAAAEZAAAAFQAAAAklAAAAAAAAAAAAAAAEGgAAAJoBU3lzdGVtLkNvbGxlY3Rpb25zLkdlbmVyaWMuTGlzdGAxW1tXZWIuUHJvY3VyZW1lbnQuRW50aXRpZXMuTGVnYWxQcmVjZWRlbnRFbnRpdHksIFdlYi5Qcm9jdXJlbWVudCwgVmVyc2lvbj0xLjAuMC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPW51bGxdXQMAAAAGX2l0ZW1zBV9zaXplCF92ZXJzaW9uBAAAL1dlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5MZWdhbFByZWNlZGVudEVudGl0eVtdAgAAAAgICSYAAAAAAAAAAAAAAAEbAAAAGgAAAAkmAAAAAAAAAAAAAAABHAAAABoAAAAJJgAAAAAAAAAAAAAAAR0AAAAaAAAACSYAAAAAAAAAAAAAAAEeAAAAGgAAAAkmAAAAAAAAAAAAAAAHHwAAAAABAAAAAAAAAAQsV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkF3YXJkQ3JpdGVyaWFFbnRpdHkCAAAAByAAAAAAAQAAAAAAAAAEIldlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5HdWFyYW50ZWUCAAAAByEAAAAAAQAAAAAAAAAEJVdlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5DbGF1c2VFbnRpdHkCAAAAByQAAAAAAQAAAAAAAAAEMVdlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5EYXRlc0RlZmluZWRCeVVzZXJFbnRpdHkCAAAAByUAAAAAAQAAAAAAAAAEMFdlYi5Qcm9jdXJlbWVudC5FbnRpdGllcy5BbnRlY2VkZW50ZU9mZXJ0YUVudGl0eQIAAAAHJgAAAAABAAAAAAAAAAQtV2ViLlByb2N1cmVtZW50LkVudGl0aWVzLkxlZ2FsUHJlY2VkZW50RW50aXR5AgAAAAseE1ZhbGlkYXRlUmVxdWVzdE1vZGUCARYCAgMPZBZIAgQPFCsAAhQrAAMPFgIeF0VuYWJsZUFqYXhTa2luUmVuZGVyaW5naGRkZBAWAWYWARQrAAMPFgIfAmhkZGQPFgFmFgEFclRlbGVyaWsuV2ViLlVJLlJhZFdpbmRvdywgVGVsZXJpay5XZWIuVUksIFZlcnNpb249MjAxMC4zLjEyMTUuMjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49MTIxZmFlNzgxNjViYTNkNBYCZg8UKwADDxYCHwJoZGRkZAIFDxYCHgVzdHlsZQUbZGlzcGxheTppbmxpbmU7d2lkdGg6NjMxcHg7ZAIGDxYCHgdWaXNpYmxlaGQCBw8WAh8EaGQCCA8WAh8DBQ5lbmFibGVkOmZhbHNlO2QCCQ8WAh8DBQ5lbmFibGVkOmZhbHNlOxYEAgEPZBYCAgEPZBYCAgEPD2QWAh4EaHJlZgVCL1BvcnRhbC9Mb2dpbkZpY2hhTGljaXRhY2lvbi5hc3B4P3JiaENvZGU9blhRK0tQYmhqYjluYXJUd2FsUkNkQT09ZAIDD2QWAgIDDw8WAh8EaGRkAgoPZBYCZg9kFgRmD2QWAgIBDw9kFgIfAwUOZW5hYmxlZDpmYWxzZTtkAgEPZBYCAgEPFgIfAwUOZW5hYmxlZDpmYWxzZTtkAg8PDxYCHgdFbmFibGVkaGRkAhAPDxYCHwZoZGQCEQ8PFgIfBmhkZAISDw8WAh8GaGRkAhMPZBYCAgEPDxYCHwZoZGQCFA9kFgICAQ8PFgIfBmhkZAIVDw8WAh8GaGRkAhYPZBYCAgEPDxYCHwZoZGQCFw8PFgIfBmhkZAIYD2QWAgIBDw8WAh8GaGRkAhkPFgIfAwUNZGlzcGxheTpub25lOxYCAgEPDxYCHwZoZGQCGg8WAh8DBQ1kaXNwbGF5Om5vbmU7FgICAQ8PFgIfBmhkZAIbDw8WAh8GaGRkAhwPDxYCHwZoZGQCHQ8WBB8DBQ1kaXNwbGF5Om5vbmU7HwRoFgICAQ8PFgQfBmgfBGhkZAIeDw8WAh8GaGRkAiMPDxYCHwZoZGQCJA88KwARAwAPFgIfBmhkARAWABYAFgAMFCsAAGQCJw8WAh8DBQ5lbmFibGVkOmZhbHNlOxYCZg8PFgIfBmhkZAIoDxYCHwRoZAIqDxYCHwMFDmVuYWJsZWQ6ZmFsc2U7ZAIsDxYCHwMFDmVuYWJsZWQ6ZmFsc2U7ZAIuDxYCHwMFDmVuYWJsZWQ6ZmFsc2U7FgICGQ9kFgICAQ88KwARAgEQFgAWABYADBQrAABkAi8PFgIfAwUOZW5hYmxlZDpmYWxzZTsWAgICD2QWBgIBDzwrABECARAWABYAFgAMFCsAAGQCAw88KwARAgEQFgAWABYADBQrAABkAgUPPCsAEQIBEBYAFgAWAAwUKwAAZAIxDxYCHwMFDmVuYWJsZWQ6ZmFsc2U7FggCBw88KwARAgEQFgAWABYADBQrAABkAgsPPCsAEQIBEBYAFgAWAAwUKwAAZAIRDzwrABECARAWABYAFgAMFCsAAGQCFQ88KwARAgEQFgAWABYADBQrAABkAjMPFgIfAwUOZW5hYmxlZDpmYWxzZTsWBAICDzwrABECARAWABYAFgAMFCsAAGQCBQ88KwARAgEQFgAWABYADBQrAABkAjUPFgIfAwUOZW5hYmxlZDpmYWxzZTtkAjcPFgIfAwUOZW5hYmxlZDpmYWxzZTsWAgIED2QWAgIBDzwrABECARAWABYAFgAMFCsAAGQCOQ8WAh8DBSJwYWRkaW5nLWJvdHRvbToxMHB4O2VuYWJsZWQ6ZmFsc2U7FgICBA88KwARAgEQFgAWABYADBQrAABkGA4FC2dydlByb2R1Y3RvD2dkBQxncnZFY29ub21pY28PZ2QFCmdydk5hdHVyYWwPZ2QFHl9fQ29udHJvbHNSZXF1aXJlUG9zdEJhY2tLZXlfXxYaBRFSYWRXaW5kb3dNYW5hZ2VyMQUKUG9wdXBGaWNoYQULaWJ0bk9mZXJ0YXIFDmlidFNlZ3VpbWllbnRvBQZidG5DU1YFBmJ0bkFQSQUHYnRuT0NEUwULaW1nQWRqdW50b3MFFmltZ1ByZWd1bnRhc0xpY2l0YWNpb24FDGltZ0hpc3RvcmlhbAUWaW1nQXBlcnR1cmFFbGVjdHJvbmljYQUSaW1nQXBlcnR1cmFUZWNuaWNhBQ9pbWdDdWFkcm9PZmVydGEFE2ltZ0FjbGFyYWNpb25PZmVydGEFD2ltZ0FkanVkaWNhY2lvbgUMaW1nRGVzZXJjaW9uBQ5pbWdPcmRlbkNvbXByYQULaW1nUmVnaXN0cm8FC2ltZ0NvbnRyYXRvBQhidG5DbG9zZQUQaW1nRG9jdW1lbnRBbmV4eAUXaW1nVmlld0hpc3RvcnlTaWduYXR1cmUFCmltZ0hpc3RvcnkFDkltZ0NvbnRyYXRvb2xkBRhpbWFWaWV3UHJldmlld01ha2VSYXpvbjAFBmltZ1BERgUMZ3J2Q3JpdGVyaW9zD2dkBRBncnZGZWNoYXNVc3VhcmlvD2dkBQxncnZHYXJhbnRpYXMPZ2QFFmdydkRvY3VtZW50b3NKdXJpZGljb3MPZ2QFC2dydkp1cmlkaWNhD2dkBQ5ncnZDcml0ZXJpb3NMUw9nZAURZ3J2QWRtaW5pc3RyYXRpdm8PPCsADAIGFQEISXNBY3RpdmUIAv////8PZAUKZ3J2VGVjbmljbw9nZAUWZ3J2RG9jdW1lbnRvc05hdHVyYWxlcw9nZAUZZ3J2UmVxdWVyaW1pZW50b3NUZWNuaWNvcw9nZAU45BDtNOl8Yx5T/JMLAcOusWv+" />
+
+
+<script src="/Procurement/Telerik.Web.UI.WebResource.axd?_TSM_HiddenField_=RadScriptManager1_TSM&amp;compress=1&amp;_TSM_CombinedScripts_=%3b%3bSystem.Web.Extensions%2c+Version%3d4.0.0.0%2c+Culture%3dneutral%2c+PublicKeyToken%3d31bf3856ad364e35%3aen-US%3add3ac3d5-1e29-4112-8fed-529caffa8f24%3aea597d4b%3bTelerik.Web.UI%2c+Version%3d2010.3.1215.20%2c+Culture%3dneutral%2c+PublicKeyToken%3d121fae78165ba3d4%3aen-US%3ac7e43360-cbc8-4666-85f6-c5101371c559%3a16e4e7cd%3a874f8ea2%3af7645509%3a24ee1bba%3af46195d3%3a19620875%3a490a9d4e%3abd8f85e4" type="text/javascript"></script>
+<script type="text/javascript">
+//<![CDATA[
+if (typeof(Sys) === 'undefined') throw new Error('ASP.NET Ajax client-side framework failed to load.');
+//]]>
+</script>
+
+<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="13285B56" />
+        <input type="hidden" name="HddienLinkGeoCgrViewer" id="HddienLinkGeoCgrViewer" value="https://www.contraloria.cl/opencgrapp/sisgeobPasarela/chileCompraViewer?" />
+
+        <input type="hidden" name="hidEsPublico" id="hidEsPublico" />
+        <input type="hidden" name="hidCryptedConId" id="hidCryptedConId" />
+
+        <div class="modal-dialog" id="divPrimerMensaje" style="display: none; cursor: default">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title"><b id="bTitulo"></b></h4>
+                </div>
+                <div class="modal-body">
+                    <label id="lblTextoCuerpo"></label>
+                    <br />
+                    <br />
+                    <br />
+                </div>
+                <div class="modal-footer">
+                    <button id="btnAceptarPopUp" type="button" class="btn btn-primary" onclick="cerrarpagina();">Aceptar</button>
+                </div>
+            </div>
+        </div>
+
+        
+        <div id="RadWindowManager1" style="display:none;">
+	<!-- 2010.3.1215.20 --><div id="PopupFicha" style="display:none;">
+		<div id="PopupFicha_C">
+
+		</div><input id="PopupFicha_ClientState" name="PopupFicha_ClientState" type="hidden" />
+	</div><div id="RadWindowManager1_alerttemplate" style="display:none;">
+		<div class="rwDialogPopup radalert">			
+			<div class="rwDialogText">
+			{1}				
+			</div>
+			
+			<div>
+				<a  onclick="$find('{0}').close();"
+				class="rwPopupButton" href="javascript:void(0);">
+					<span class="rwOuterSpan">
+						<span class="rwInnerSpan">##LOC[OK]##</span>
+					</span>
+				</a>				
+			</div>
+		</div>
+		</div><div id="RadWindowManager1_prompttemplate" style="display:none;">
+		 <div class="rwDialogPopup radprompt">			
+			    <div class="rwDialogText">
+			    {1}				
+			    </div>		
+			    <div>
+				    <script type="text/javascript">
+				    function RadWindowprompt_detectenter(id, ev, input)
+				    {							
+					    if (!ev) ev = window.event;                
+					    if (ev.keyCode == 13)
+					    {															        
+					        var but = input.parentNode.parentNode.getElementsByTagName("A")[0];					        
+					        if (but)
+						    {							
+							    if (but.click) but.click();
+							    else if (but.onclick)
+							    {
+							        but.focus(); var click = but.onclick; but.onclick = null; if (click) click.call(but);							 
+							    }
+						    }
+					       return false;
+					    } 
+					    else return true;
+				    }	 
+				    </script>
+				    <input title="Eneter Value" onkeydown="return RadWindowprompt_detectenter('{0}', event, this);" type="text"  class="rwDialogInput" value="{2}" />
+			    </div>
+			    <div>
+				    <a onclick="$find('{0}').close(this.parentNode.parentNode.getElementsByTagName('input')[0].value);"				
+					    class="rwPopupButton" href="javascript:void(0);" ><span class="rwOuterSpan"><span class="rwInnerSpan">##LOC[OK]##</span></span></a>
+				    <a onclick="$find('{0}').close(null);" class="rwPopupButton"  href="javascript:void(0);"><span class="rwOuterSpan"><span class="rwInnerSpan">##LOC[Cancel]##</span></span></a>
+			    </div>
+		    </div>				       
+		</div><div id="RadWindowManager1_confirmtemplate" style="display:none;">
+		<div class="rwDialogPopup radconfirm">			
+			<div class="rwDialogText">
+			{1}				
+			</div>						
+			<div>
+				<a onclick="$find('{0}').close(true);"  class="rwPopupButton" href="javascript:void(0);" ><span class="rwOuterSpan"><span class="rwInnerSpan">##LOC[OK]##</span></span></a>
+				<a onclick="$find('{0}').close(false);" class="rwPopupButton"  href="javascript:void(0);"><span class="rwOuterSpan"><span class="rwInnerSpan">##LOC[Cancel]##</span></span></a>
+			</div>
+		</div>		
+		</div><input id="RadWindowManager1_ClientState" name="RadWindowManager1_ClientState" type="hidden" />
+</div>
+        <div style="text-align: center">
+            <div id="divGeneralError" class="contError" style="display:inline;width:631px;">
+                <span id="lblMensajeError" class="cssmensaje"></span>
+            </div>
+            <a id="anchor"></a>
+        </div>
+
+        
+        <div class="FichaLight">
+            
+            
+            
+
+            <div id="box_a2">
+                <div id="box_a_text_00" style="enabled:false;">
+                    <span id="lblLicitacion" class="texto01"></span><span id="lblID" class="texto03"></span><span id="lblNumLicitacion" class="texto02"></span>
+                    <div id="box_a_text_00a">
+                        <span id="lblNombreLicitacion" class="texto04"></span>
+                    </div>
+                    <div id="box_a_text_00b">
+                        <span id="lblResponsableTitulo" class="texto03"></span>
+                        <a id="lnkResponsable" class="link-style" target="_blank"></a>
+                    </div>
+                    <div id="box_a_text_00c">
+                        <span id="lblFechaCierreTitulo" class="texto03"></span><span id="lblCierre" class="texto02"></span>
+                    </div>
+                    <div style="border: 1px solid white;">
+                        <span id="lblFicha2TituloReclamo" class="texto03"></span>
+                        <span id="lblFicha2Reclamo" class="texto02"></span>
+                        <div id="tabla2_texto" class="alert alerta-info">
+                            <span id="lblFicha2MensajeReclamo" class="texto09"></span>
+                        </div>
+                    </div>
+                </div>
+                <div id="caja_ofertar" style="enabled:false;">
+                    <div id="boton_ofertar">
+                        <a id="Ofertar">
+                            <input type="image" name="ibtnOfertar" id="ibtnOfertar" onmouseover="this.src=&#39;../../Includes/images/FichaLight/icofertar-press.png&#39;;" onmouseout="this.src=&#39;../../Includes/images/FichaLight/icofertar.png&#39;;" href="/Portal/LoginFichaLicitacion.aspx?rbhCode=nXQ+KPbhjb9narTwalRCdA==" src="../../Includes/images/FichaLight/icofertar.png" border="0" />
+                        </a>
+                    </div>
+                    <div id="caja_descargar00">
+                        <a id="descargar_pdf" class="lnkFicha" href="javascript:__doPostBack(&#39;descargar_pdf&#39;,&#39;&#39;)"></a>
+                        
+                    </div>
+                </div>
+                <div style="border: 1px solid white;">
+                    <table class="tabla_estado_fecha2" border="0">
+	<tr>
+		<td width="40px">
+                                <img id="imgEstado" src="" border="0" style="enabled:false;" /></td>
+		<td style="width: 280px; margin-top: 0px; vertical-align: text-top; padding-top: 0px">
+                                <table id="caja_fecha" class="td_caja_tiempo" cellpadding="0" cellspacing="0" style="enabled:false;">
+			<tr>
+				<td style="vertical-align: middle;">
+                                            <img src="../../Includes/images/FichaLight/reloj.png" style="padding-left: 5px; padding-bottom: 5px;" alt="" /></td>
+				<td style="float: left; vertical-align: middle; width: 320px; height: 18px; margin-left: 4px; padding: 3px;">Faltan
+                                            <span id="lblContadorCierre"></span>
+                                            días para que cierre esta licitación.</td>
+			</tr>
+		</table>
+		
+                            </td>
+	</tr>
+</table>
+
+                    
+                </div>
+            </div>
+            <div class="box_a_pie">
+                <img src="../../Includes/images/FichaLight/pie_fondo.png" width="762" height="37" alt="" />
+            </div>
+            <div class="box_a_pie">
+                <img src="../../Includes/images/FichaLight/top_fondo.png" width="762" height="37" alt="" />
+            </div>
+            <div id="box_b">
+                <div id="caja_iconos_licitacion">
+                    <div class="caja_iconos02">
+                        <div id="alerta"></div>
+                        <div class="iconos00">
+                            <input type="image" name="imgAdjuntos" id="imgAdjuntos" disabled="disabled" src="../../Includes/images/FichaLight/iconos_licitacion/ic-21.png" border="0" style="width: 43; height: 60;" />
+                        </div>
+                    </div>
+                    <div class="caja_iconos02">
+                        <div></div>
+                        <div class="iconos00">
+                            <input type="image" name="imgPreguntasLicitacion" id="imgPreguntasLicitacion" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/ic-22.png" border="0" style="width: 45; height: 56;" />
+                        </div>
+                    </div>
+                    
+                    <div id="divHistorial" class="caja_iconos00a">
+                        <div class="iconos00">
+                            <input type="image" name="imgHistorial" id="imgHistorial" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/ic-24.png" border="0" style="width: 42; height: 56;" />
+                        </div>
+                    </div>
+                    <div class="caja_iconos02">
+                        <div class="iconos00">
+                            <input type="image" name="imgAperturaElectronica" id="imgAperturaElectronica" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/apertura-02.png" border="0" />
+                        </div>
+                    </div>
+                    <div id="divAperturaTecnica" class="caja_iconos02">
+                        <div class="iconos00">
+                            <input type="image" name="imgAperturaTecnica" id="imgAperturaTecnica" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/apertura-46.png" border="0" style="width: 18; height: 57;" />
+                        </div>
+                    </div>
+
+
+                    <div class="caja_iconos02">
+                        <div class="iconos00">
+                            <input type="image" name="imgCuadroOferta" id="imgCuadroOferta" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/ic-32.png" border="0" style="width: 46; height: 58;" />
+                        </div>
+                    </div>
+                    <div id="divAclaracionOferta" class="caja_iconos00a">
+                        <div class="iconos00">
+                            <input type="image" name="imgAclaracionOferta" id="imgAclaracionOferta" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/ic-25.png" border="0" style="width: 46; height: 57;" />
+                        </div>
+                    </div>
+                    <div id="divAdjudicacion" class="caja_iconos02" style="display:none;">
+                        <div class="iconos00">
+                            <input type="image" name="imgAdjudicacion" id="imgAdjudicacion" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/ic-27.png" border="0" style="width: 41; height: 60;" />
+                        </div>
+                    </div>
+                    <div id="divDesercion" class="caja_iconos02" style="display:none;">
+                        <div class="iconos00">
+                            <input type="image" name="imgDesercion" id="imgDesercion" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/ic-30.png" border="0" style="width: 41; height: 60;" />
+                        </div>
+                    </div>
+                    <div class="caja_iconos02b" style="padding-left: 4px;">
+                        <div class="iconos00">
+                            <input type="image" name="imgOrdenCompra" id="imgOrdenCompra" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/ic-26.png" border="0" style="width: 41; height: 60;" />
+                        </div>
+                    </div>
+                    <div class="caja_iconos02b">
+                        <div class="iconos00">
+                            <input type="image" name="imgRegistro" id="imgRegistro" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/cert-31.png" border="0" />
+                        </div>
+                    </div>
+                    
+                    <div class="caja_iconos02">
+                        <div class="iconos00">
+                            
+                            <input type="image" name="imgContrato" id="imgContrato" disabled="disabled" alt="" src="../../Includes/images/FichaLight/iconos_licitacion/ic-28.png" border="0" style="width: 38; height: 51;" />
+                        </div>
+                    </div>
+                    <div class="caja_iconos02">
+                        <div class="iconos00">
+                            
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+
+            <div class="box_a_pie">
+                <img src="../../Includes/images/FichaLight/pie_peq_fondo.png" width="762" height="37" alt="" />
+            </div>
+            <div class="box_a_pie">
+                <img src="../../Includes/images/FichaLight/top_fondo.png" width="762" height="37" alt="" />
+            </div>
+            <div id="box_c">
+                
+                
+                <div>
+                    <span id="lblProductoTitulo" disabled="disabled" class="texto05"></span>
+                </div>
+                <div class="caja_ficha00">
+                    <div>
+
+</div>
+                    <input type="hidden" name="MostrarEspecialidades" id="MostrarEspecialidades" />
+                    
+                </div>
+            </div>
+            <div class="box_a_pie">
+                <img src="../../Includes/images/FichaLight/pie_fondo.png" width="762" height="37">
+            </div>
+            <a name="contenidoentero"></a>
+            <div id="box_ficha_1">
+                <div id="box_ficha_a" style="enabled:false;">
+                    <div id="titulo_ficha00" class="texto08">
+                        <span id="lblTituloFicha" disabled="disabled" class="texto05"></span>
+                    </div>
+                    <table class="caja_contenido">
+                        <tr>
+                            <td>
+                                <ul id="caja_contenido_a" style="width: 357px;">
+                                    <li>
+                                        <span id="lblNumeroFicha1" class="link"></span><a><span id="lblTitulo1" class="link_activado" onclick="javascript:mostrarPaso(1);"></span></a></li>
+                                    <li>
+                                        <span id="lblNumeroFicha2" class="link"></span><a><span id="lblTitulo2" class="link" onclick="javascript:mostrarPaso(2);"></span></a></li>
+                                    <li>
+                                        <span id="lblNumeroFicha3" class="link"></span><a><span id="lblTitulo3" class="link" onclick="javascript:mostrarPaso(3);"></span></a></li>
+                                    <li>
+                                        <span id="lblNumeroFicha4" class="link"></span><a><span id="lblTitulo4" class="link" onclick="javascript:mostrarPaso(4);"></span></a></li>
+                                    <li>
+                                        <span id="lblNumeroFicha5" class="link"></span><a><span id="lblTitulo5" class="link" onclick="javascript:mostrarPaso(5);"></span></a></li>
+                                </ul>
+                            </td>
+                            <td>
+                                <ul id="caja_contenido_b" style="width: 300px; margin-left: 21px;">
+                                    <li>
+                                        <span id="lblNumeroFicha6" class="link"></span><a><span id="lblTitulo6" class="link" onclick="javascript:mostrarPaso(6);"></span></a></li>
+                                    <li>
+                                        <span id="lblNumeroFicha7" class="link"></span><a><span id="lblTitulo7" class="link" onclick="javascript:mostrarPaso(7);"></span></a></li>
+                                    <li>
+                                        <span id="lblNumeroFicha8" class="link"></span><a><span id="lblTitulo8" class="link" onclick="javascript:mostrarPaso(8);"></span></a></li>
+                                    <li>
+                                        <span id="lblNumeroFicha9" class="link"></span><a><span id="lblTitulo9" class="link" onclick="javascript:mostrarPaso(9);"></span></a></li>
+                                    
+                                </ul>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div id="caja_bt_vertodo">
+                    <div class="caja_bt00">
+                        <img src="../../Includes/images/FichaLight/parte00.png" width="343" height="44" alt="" />
+                    </div>
+                    <a>
+                        <div class="caja_bt00">
+                            <img src="../../Includes/images/FichaLight/bt_ver.png" border="0" width="81" height="44" onmouseover="this.src='../../Includes/images/FichaLight/bt_ver_sobre.png';" onclick="javascript:mostrarTodo();" onmouseout="this.src='../../Includes/images/FichaLight/bt_ver.png';" style="border: 0pt none;" alt="" />
+                        </div>
+                        <div class="caja_bt00">
+                            <img src="../../Includes/images/FichaLight/parte02.png" width="341" height="44" alt="" />
+                        </div>
+                    </a>
+                </div>
+                <div class="box_ficha">
+                    <div id="Ficha1" class="ficha" style="enabled:false;">
+                        <div class="titulo_ficha01">
+                            <span id="lblFicha1" class="titulo00"></span>
+                        </div>
+                        <div class="tabla_ficha_00">
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TituloNombre" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha1Nombre" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TituloEstado" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha1Estado" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TituloDescripcion" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha1Descripcion" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TituloTipo" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha1Tipo" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TituloConvocatoria" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha1Convocatoria" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            
+                            
+                            
+                            
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TituloMoneda" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha1Moneda" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TituloEtapas" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha1Etapas" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="divTomaRazonInfo" class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TituloTR" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TR" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="divCodigoBIP" class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TituloCodigoBIP" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha1CodigoBIP" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+	                            <div class="row_a">
+		                            <div class="cell_a">
+			                            <span id="lblProvenienteDe" class="texto05"></span>
+		                            </div>
+		                            <div class="cell_a">
+			                            <a id="lnkProvenienteDe" class="link-style" target="_blank"></a>
+		                            </div>
+	                            </div>
+                            </div>
+                            <div class="contenedor_sep">
+                                <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" alt="" />
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha1TituloPublicidad" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha1Publicidad" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="bt_subir1" style="width: 701px; margin-bottom: 18px;" align="right">
+                        <a href="#contenidoentero" class="subir">Subir</a>
+                    </div>
+
+                    <div id="Ficha2" class="ficha" style="enabled:false;">
+                        <div class="titulo_ficha01 titulo00">
+                            <span id="lblFicha2" class="titulo00"></span>
+                        </div>
+                        <div class="tabla_ficha_00">
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha2TituloRazon" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <a id="lnkFicha2Razon" class="link-style" target="_blank"></a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha2TituloUnidad" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha2Unidad" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha2TituloRUT" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha2RUT" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha2TituloDireccion" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha2Direccion" class="texto09"></span>
+                                        <a id="lnkFicha2EditarDireccion" class="fancy" href="javascript:__doPostBack(&#39;lnkFicha2EditarDireccion&#39;,&#39;&#39;)" style="font-size: 12px; color: #333333;">Editar Dirección</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha2TituloComuna" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha2Comuna" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha2TituloRegion" class="texto05"></span>
+                                    </div>
+                                    <div class="cell_a">
+                                        <span id="lblFicha2Region" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="bt_subir2" style="width: 701px; margin-bottom: 18px;" align="right">
+                        <a href="#contenidoentero" class="subir">Subir</a>
+                    </div>
+
+                    <div id="Ficha3" class="ficha" style="enabled:false;">
+                        <div class="titulo_ficha01">
+                            <span id="lblFicha3" class="titulo00"></span>
+                        </div>
+                        <div class="tabla_ficha_00">
+                            <div id="CierreIdoneidad" class="contenedor_00" style="text-align: center !important;">
+                                <div>
+                                    <div>
+                                        
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="Cierre" class="contenedor_00">
+                                <div>
+                                    <div>
+                                        <span id="lblFicha3TituloCierre" class="texto05"></span>
+                                        <span id="lblFicha3Cierre" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha3TituloPublicacion" class="texto05"></span>
+                                        <span id="lblFicha3Publicacion" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha3TituloInicio" class="texto05"></span>
+                                        <span id="lblFicha3Inicio" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha3TituloFin" class="texto05"></span>
+                                        <span id="lblFicha3Fin" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha3TituloPublicacionRespuestas" class="texto05"></span>
+                                        <span id="lblFicha3PublicacionRespuestas" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha3TituloActoAperturaTecnica" class="texto05"></span>
+                                        <span id="lblFicha3ActoAperturaTecnica" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="AperturaEconomica" class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha3TituloActoAperturaEconomica" class="texto05"></span>
+                                        <span id="lblFicha3ActoAperturaEconomica" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="divFechaAdjInfo" class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha3TituloAdjudicacion" class="texto05"></span>
+                                        <span id="lblFicha3Adjudicacion" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="sepLS" class="contenedor_sep">
+                                <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" alt="" />
+                            </div>
+                            <div id="InicioPreguntasLS" class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="FinalPreguntasLS" class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="PublicacionRespuestasLS" class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="SoporteFisico" class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha3TituloSoporteFisico" class="texto05"></span>
+                                        <span id="lblFicha3SoporteFisico" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="FirmaContrato" class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha3TituloFirmaContrato" class="texto05"></span>
+                                        <span id="lblFicha3FirmaContrato" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="EvaluacionOfertas" class="contenedor_00">
+                                <div class="row_a">
+                                    <div class="cell_a">
+                                        <span id="lblFicha3TituloEvaluacionOfertas" class="texto05"></span>
+                                        <span id="lblFicha3EvaluacionOfertas" class="texto09"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="contenedor_sep">
+                                <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" alt="" />
+                            </div>
+                            <div id="btnEditarFechas" class="fancybox" style="width: 640px; margin-bottom: 18px;" align="right">
+                                <a id="lnkEditarFechas" href="javascript:__doPostBack(&#39;lnkEditarFechas&#39;,&#39;&#39;)">Editar fechas</a>
+
+                            </div>
+                            
+                            <div id="FechasUsuario" class="contenedor_00">
+                                <div>
+
+</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="bt_subir3" style="width: 701px; margin-bottom: 18px;" align="right">
+                        <a href="#contenidoentero" class="subir">Subir</a>
+                    </div>
+
+                    <div id="Ficha4" class="ficha" style="enabled:false;">
+
+                        <div class="titulo_ficha01">
+                            <span id="lblFicha4" class="titulo00"></span>
+                        </div>
+
+                        <div class="tabla_ficha_00">
+                            
+                            <div id="IdAntecedentes">
+                                
+                                <div class="contenedor_00">
+                                    <div class="row_a">
+                                        <span id="lblAdministrativo" style="font-size: 12px; color: #333333; line-height: 30px;"></span>
+                                        <div>
+
+</div>
+                                    </div>
+                                </div>
+
+                                <div class="contenedor_sep">
+                                    <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" alt="" />
+                                </div>
+
+                                
+                                <div class="contenedor_00">
+                                    <div class="row_a">
+                                        <span id="lblTecnico" style="font-size: 12px; color: #333333; line-height: 30px;"></span>
+                                        <div>
+
+</div>
+                                    </div>
+                                </div>
+
+                                <div class="contenedor_sep">
+                                    <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" alt="" />
+                                </div>
+
+                                
+                                <div class="contenedor_00">
+                                    <div class="row_a">
+                                        <span id="lblEconomico" style="font-size: 12px; color: #333333; line-height: 30px;"></span>
+                                        <div>
+
+</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+
+                    <div id="bt_subir4" style="width: 701px; margin-bottom: 18px;" align="right">
+                        <a href="#contenidoentero" class="subir">Subir</a>
+                    </div>
+
+                    <div id="Ficha5" class="ficha" style="enabled:false;">
+                        <div class="titulo_ficha01">
+                            <span id="lblFicha5" class="titulo00"></span>
+                        </div>
+                        <div class="tabla_ficha_00">
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <span id="lblNatural" style="font-size: 12px; color: #333333; line-height: 30px; font-weight: bolder;"></span><br />
+                                    <span id="lblNaturalCHP" style="font-size: 12px; color: #333333; font-family: Verdana, regular;"></span><br />
+                                    <br />
+                                    <div>
+
+</div>
+                                </div>
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <span id="lblDocumentosNaturales" style="font-size: 12px; color: #333333; font-weight: bolder;"></span>
+                                    <div>
+
+</div>
+                                </div>
+                            </div>
+                            <div class="contenedor_sep">
+                                <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" alt="" />
+                            </div>
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <span id="lblJuridica" style="font-size: 12px; color: #333333; line-height: 30px; font-weight: bolder;"></span><br />
+                                    <span id="lblJuridicaCHP" style="font-size: 12px; color: #333333; font-family: Verdana, regular;"></span>
+                                    <div>
+
+</div>
+                                </div>
+                            </div>
+                            <br />
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <span id="lblDocumentosJuridicos" style="font-size: 12px; color: #333333; font-weight: bolder;"></span>
+                                    
+                                    <div>
+
+</div>
+                                </div>
+                            </div>
+                            
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <table>
+                                        <tr>
+                                            <td>
+                                                </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                </td>
+                                            <td>
+                                                </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                </td>
+                                            <td>
+                                                </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                </td>
+                                            <td>
+                                                </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div id="bt_subir5" style="width: 701px; margin-bottom: 18px;" align="right">
+                        <a href="#contenidoentero" class="subir">Subir</a>
+                    </div>
+
+                    <div id="Ficha6" class="ficha" style="enabled:false;">
+                        <div class="titulo_ficha01">
+                            <span id="lblFicha6" class="titulo00"></span>
+                        </div>
+                        <div class="tabla_ficha_00">
+                            
+                            <div class="contenedor_00">
+                                
+                                <div>
+
+</div>
+                                <br />
+                                
+                                
+                                <div>
+
+</div>
+                            </div>
+                            
+                        </div>
+                    </div>
+
+                    <div id="bt_subir6" style="width: 701px; margin-bottom: 18px;" align="right">
+                        <a href="#contenidoentero" class="subir">Subir</a>
+                    </div>
+
+                    <div id="Ficha7" class="ficha" style="enabled:false;">
+                        <div class="titulo_ficha01">
+                            <span id="lblFicha7" class="titulo00"></span>
+                        </div>
+                        <div class="tabla_ficha_00">
+                            <table>
+                                <div id="divEstimacion">
+                                    <tr>
+                                        <td style="padding: 4px; width: 280px;">
+                                            <span id="lblFicha7TituloEstimacion" class="texto05"></span>
+                                        </td>
+                                        <td class="cell_a">
+                                            <span id="lblFicha7Estimacion" class="texto09"></span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" class="contenedor_sep">
+                                            <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" />
+                                        </td>
+                                    </tr>
+                                </div>
+                                
+                                <tr>
+                                    <td style="padding: 4px;">
+                                        <span id="lblFicha7TituloFinanciamiento" class="texto05"></span>
+                                    </td>
+                                    <td class="cell_a">
+                                        <span id="lblFicha7Financiamiento" class="texto09"></span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <div id="monto">
+                                        <td style="padding: 4px;">
+                                            
+                                        </td>
+                                        <td class="cell_a">
+                                            
+                                            <div style="margin-bottom: 18px;" align="left">
+                                                <a id="lnkFicha7MontoEstimado" class="fancyMontoLC" href="javascript:__doPostBack(&#39;lnkFicha7MontoEstimado&#39;,&#39;&#39;)" style="font-size: 12px; color: #333333;">Editar Monto Estimado</a>
+                                            </div> 
+                                        </td>
+                                    </div>
+                                </tr>
+                                <tr>   
+                                    <td></td>
+                                    <td> <div style="float:left;">
+                                    </div>
+                                    </td>
+                                </tr>
+                                <tr id="filaJustificacionMontoEstimado">
+	<td style="padding: 4px;">
+                                        <span id="lblFicha7TituloJustificacionMontoEstimado" class="texto05"></span>
+                                    </td>
+	<td class="cell_a">
+                                        <span id="lblFicha7JustificacionMontoEstimado" class="texto09"></span>
+                                    </td>
+</tr>
+
+                                <tr id="SeparadorfilaContratoRenovable">
+	<td colspan="2" class="contenedor_sep">
+                                        <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" />
+                                    </td>
+</tr>
+
+                                <tr id="filaContratoRenovable">
+	<td style="padding: 4px;">
+                                        <span id="lblFicha7TituloContratoRenovacion" class="texto05"></span>
+                                    </td>
+	<td class="cell_a">
+                                        <span id="lblFicha7ContratoRenovacion" class="texto09"></span>
+                                    </td>
+</tr>
+
+                                <tr id="filaJustificacionContratoRenovable">
+	<td style="padding: 4px;">
+                                        <span id="lblFicha7TituloJustificacionRenovacion" class="texto05"></span>
+                                    </td>
+	<td class="cell_a">
+                                        <span id="lblFicha7JustificacionRenovacion" class="texto09"></span>
+                                    </td>
+</tr>
+
+                                <tr>
+                                    <td colspan="2" class="contenedor_sep">
+                                        <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" />
+                                    </td>
+                                </tr>
+                                <div id="divObservaciones">
+                                    <tr id="filaObservaciones">
+	<td style="padding: 4px;">
+                                            <span id="lblFicha7TituloObservacion" class="texto05"></span>
+                                        </td>
+	<td class="cell_a">
+                                            <span id="lblFicha7Observacion" class="texto09"></span>
+                                        </td>
+</tr>
+
+                                    <tr id="filaSeparadoraDuracionContrato">
+	<td colspan="2" class="contenedor_sep">
+                                            <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" />
+                                        </td>
+</tr>
+
+                                </div>
+                                <div id="divDuracionContrato">
+                                    <tr id="filaDuracionContrato">
+	<td style="padding: 4px;">
+                                            <span id="lblFicha7TituloDuracionContrato" class="texto05"></span>
+                                        </td>
+	<td class="cell_a">
+                                            <span id="lblFicha7DuracionContrato" class="texto09"></span>
+                                        </td>
+</tr>
+
+                                    <tr id="filaTiempoDuracionContrato">
+	<td style="padding: 4px;">
+                                            <span id="lblFicha7TituloTiempoContrato" class="texto05"></span>
+                                        </td>
+	<td class="cell_a">
+                                            <span id="lblFicha7TiempoContrato" class="texto09"></span>
+                                        </td>
+</tr>
+
+                                    <tr>
+                                        <td colspan="2" class="contenedor_sep">
+                                            <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" />
+                                        </td>
+                                    </tr>
+                                </div>
+                                <div id="divPlazos">
+                                    <tr>
+                                        <td style="padding: 4px;">
+                                            <span id="lblFicha7TituloPlazos" class="texto05"></span>
+                                        </td>
+                                        <td class="cell_a">
+                                            <span id="lblFicha7Plazos" class="texto09"></span>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td style="padding: 4px;">
+                                            <span id="lblFicha7TituloOpciones" class="texto05"></span>
+                                        </td>
+                                        <td class="cell_a">
+                                            <span id="lblFicha7Opciones" class="texto09"></span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" class="contenedor_sep">
+                                            <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" />
+                                        </td>
+                                    </tr>
+                                </div>
+                                <div id="divResponsablePago">
+                                    <tr>
+                                        <td style="padding: 4px;">
+                                            <span id="lblFicha7TituloNombreResponsablePago" class="texto05"></span>
+                                        </td>
+                                        <td class="cell_a">
+                                            <span id="lblFicha7NombreResponsablePago" class="texto09"></span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 4px;">
+                                            <span id="lblFicha7TituloEmailResponsablePago" class="texto05"></span>
+                                        </td>
+                                        <td class="cell_a">
+                                            <span id="lblFicha7EmailResponsablePago" class="texto09"></span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" class="contenedor_sep">
+                                            <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" />
+                                        </td>
+                                    </tr>
+                                </div>
+                                <div id="divResponsableContrato">
+                                    <tr>
+                                        <td style="padding: 4px;">
+                                            <span id="lblFicha7TituloNombreResponsableContrato" class="texto05"></span>
+                                        </td>
+                                        <td class="cell_a">
+                                            <span id="lblFicha7NombreResponsableContrato" class="texto09"></span>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td style="padding: 4px;">
+                                            <span id="lblFicha7TituloEmailResponsableContrato" class="texto05"></span>
+                                        </td>
+                                        <td class="cell_a">
+                                            <span id="lblFicha7EmailResponsableContrato" class="texto09"></span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 4px;">
+                                            <span id="lblFicha7TituloTelefonoResponsableContrato" class="texto05"></span>
+                                        </td>
+                                        <td class="cell_a">
+                                            <span id="lblFicha7TelefonoResponsableContrato" class="texto09"></span>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td colspan="2" class="contenedor_sep">
+                                            <img src="../../Includes/images/FichaLight/separacion00.png" width="646" height="1" />
+                                        </td>
+                                    </tr>
+                                </div>
+                                <tr>
+                                    <td style="padding: 4px;">
+                                        <span id="lblFicha7TituloSubcontratacion" class="texto05"></span>
+                                    </td>
+                                    <td class="cell_a">
+                                        <span id="lblFicha7Subcontratacion" class="texto09"></span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                    </div>
+
+                    <div id="bt_subir7" style="width: 701px; margin-bottom: 18px;" align="right">
+                        <a href="#contenidoentero" class="subir">Subir</a>
+                    </div>
+
+                    <div id="Ficha8" class="ficha" style="enabled:false;">
+                        <div class="titulo_ficha01">
+                            <span id="lblFicha8" class="titulo00"></span>
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                            
+                            <input type="hidden" name="hdModReglamento" id="hdModReglamento" />
+                            <div id="divGrillaGarantias" class="">
+                                <div>
+
+</div>
+                            </div>
+                            
+                        </div>
+                    </div>
+
+                    <div id="bt_subir8" style="width: 701px; margin-bottom: 18px;" align="right">
+                        <a href="#contenidoentero" class="subir">Subir</a>
+                    </div>
+
+                    <div id="Ficha9" style="padding-bottom:10px;enabled:false;">
+                        <div class="titulo_ficha01">
+                            <span id="lblFicha9" class="titulo00"></span>
+                        </div>
+                        <div class="tabla_ficha_00">
+                            <div class="contenedor_00">
+                                <div class="row_a">
+                                    <div id="divReadjudicacion" class="contenedor_00">
+                                        <div class="row_a">
+                                            <span id="lblFichaTituloReadjudicacion" style="font-size: 12px; color: #333333; font-weight: bolder;"></span><br />
+                                        </div>
+                                        <div class="row_a">
+                                            <div>
+                                                <span id="lblFichaReadjudicacion" class="texto09a"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <img src="../../Includes/images/FichaLight/separacion00.png" id="imagenSeparadoraReadjudicacion" width="646" height="1" style="padding: 10px 0 10px 0" />
+                                    
+                                    <div>
+
+</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="bt_subir9" style="width: 701px; margin-bottom: 18px;" align="right">
+                        <a href="#contenidoentero" class="subir">Subir</a>
+                    </div>
+
+                    <div id="Ficha11" style="padding-bottom: 10px;">
+                            <div class="titulo_ficha01">
+                                <span id="lblFicha10" class="titulo00"></span>
+                            </div>
+                            
+                            <div class="tabla_ficha_00">
+                                <div class="contenedor_00">
+                                    <div class="row_a">
+                                        <!-- Aquí se muestra el mensaje general de demandas -->
+                                        <span id="lblMensajeDemandasGeneral" style="font-size: 12px; color: #333333; line-height: 30px;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="Div11" style="width: 701px; margin-bottom: 18px;" align="right">
+                            <a href="#contenidoentero" class="subir">Subir</a>
+                        </div>                        
+                    
+                    <br />
+                </div>
+                <div id="pie_abajo">
+                    <img src="../../Includes/images/FichaLight/pie_fondo.png" width="762" height="37">
+                </div>
+                <div style="text-align: right; width: 620; padding-right: 19px; padding-bottom: 15px">
+                    <input type="image" name="btnClose" id="btnClose" onmouseover="this.src=&#39;../../Includes/images/FichaLight/cerrar_sobre.png&#39;;" onmouseout="this.src=&#39;../../Includes/images/FichaLight/cerrar.png&#39;;" border="0" src="../../Includes/images/FichaLight/cerrar.png" border="0" style="border: 0pt none;" />
+                </div>
+            </div>
+            <input type="hidden" name="IndicadorEsMOP" id="IndicadorEsMOP" value="0" />
+            
+        </div>
+
+        <div class="FichaAntigua">
+            <table width="631px" style="height: 100%;" align="center">
+                <tr>
+                    <td valign="top" colspan="3">
+                        <table width="631px" border="0" align="center" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td>
+                                    <div class="adquisicionTitulo">
+                                        <table>
+                                            <tr>
+                                                <td>
+                                                    <span id="Span1">
+                                                        <span id="lblTitlePage"></span><span id="lblTitleNumberAq"></span>
+                                                    </span>
+                                                    <span id="lblTitleNameAq"></span>
+                                                    <br />
+                                                    <span id="lblFechaCierreAq" class="cssDetailAdquisitionSubtitle"></span>
+                                                    <br />
+                                                    <br />
+                                                    
+                                                    <div style="font-size: 12px; width: 100%; background: #FFFFCC; padding: 10px 20px">
+                                                        <span id="lblresponsabilidad"></span>
+                                                    </div>
+                                                    <br />
+                                                                                
+                                                </td>
+                                                
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </td>
+                                <td>&nbsp;
+                                </td>
+                            </tr>
+
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 45%">
+                        <table border="0" cellpadding="0" cellspacing="0" align="center" width="315px" style="height: 280px;">
+                            <tr>
+                                <td>
+                                    <img src="../../Includes/Images/menu_sup.jpg" alt="" style="vertical-align: bottom; width: 315px" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <table width="315px" cellpadding="0" cellspacing="0" border="0" style="height: 280px;"
+                                        class="TableDetailAdquisition">
+                                        <tr>
+                                            <td align="center" class="adquisicionTitulo" style="height: 30px;">
+                                                <span id="lblTituloContenidos"></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="vertical-align: top;">
+                                                <table cellpadding="0" cellspacing="0" border="0">
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <img src="../../Includes/Images/menu_inf.jpg" alt="" style="width: 315px; vertical-align: top;" />
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td style="width: 10%">&nbsp;&nbsp;&nbsp;&nbsp;
+                    </td>
+                    <td style="width: 45%">
+                        <table border="0" cellpadding="0" cellspacing="0" align="center" width="315px" style="height: 250px;">
+                            <tr>
+                                <td>
+                                    <img src="../../Includes/Images/menu_sup.jpg" alt="" style="vertical-align: bottom; width: 315px" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <table width="315px" style="height: 280px;" cellpadding="0" cellspacing="0" border="0"
+                                        class="TableDetailAdquisition">
+                                        <tr style="vertical-align: top; height: 25px;">
+                                            <td align="center" class="adquisicionTitulo">
+                                                <span id="lblTituloDocumentacion"></span>
+                                            </td>
+                                        </tr>
+                                        <tr style="vertical-align: top; height: 175px;">
+                                            <td style="vertical-align: top; padding-left: 30px;">
+                                                <input type="image" name="imgDocumentAnexx" id="imgDocumentAnexx" class="cssIconoFichaDigital" src="../../Includes/images/Ficha/adjunto.gif" border="0" />
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                <input type="image" name="imgViewHistorySignature" id="imgViewHistorySignature" class="cssIconoFichaDigital" src="../../Includes/images/Ficha/historico_firmas.gif" border="0" />
+                                                <input type="image" name="imgHistory" id="imgHistory" class="cssIconoFichaDigital" src="../../Includes/images/Ficha/historial.gif" border="0" />
+
+                                                
+                                                
+                                                
+                                                <input type="image" name="ImgContratoold" id="ImgContratoold" class="cssIconoFichaDigital" src="../../Includes/images/Ficha/ver_contratos.gif" border="0" />
+
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                &nbsp;<input type="image" name="imaViewPreviewMakeRazon0" id="imaViewPreviewMakeRazon0" class="cssIconoFichaDigital" src="../../Includes/images/Ficha/certificado.gif" border="0" />
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <img src="../../Includes/Images/menu_inf.jpg" alt="" style="width: 315px; vertical-align: top" />
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            <table width="631px" border="0" align="center" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td style="width: 100%">
+
+                        <table id="tblContenedor" cellspacing="0" cellpadding="0" border="0" width="100%">
+                            <!-- PASO 10: PRODUCTOS Y SERVICIOS-->
+                            <tr>
+                                <td style="width: 100%">
+                                    <div class="cssFwkLabelTitleAzulSinUnderLine">
+                                        <table width="100%">
+                                            <tr>
+                                                <td>
+                                                    <span id="lblPrincipalTitleS10"></span>
+                                                </td>
+                                                <td align="right">
+                                                    <input type="image" name="imgPDF" id="imgPDF" class="cssIconoFichaDigital" src="../../Includes/images/Ficha/pdf.gif" border="0" />
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    
+
+                                </td>
+                            </tr>
+                        </table>
+                        <br />
+                        <div class="cssFwkLabelTitleAzulSinUnderLine">
+                            
+                        </div>
+                        
+                        <br />
+                        <table id="tableFichaElectronica" border="0">
+
+</table>
+                        <div class="gralTitulos">
+                            <span id="lblTitle"></span>
+                        </div>
+
+                        <table width="100%">
+                            <tr id="trBack">
+	<td style="width: 100%">
+                                    <input type="submit" name="btnBack" value="" id="btnBack" class="cssBtnVolver" />
+                                </td>
+</tr>
+
+                        </table>
+                        <div id="blanket" style="display: none;">
+                        </div>
+                        <div id="popUpDiv" style="display: none; width: 500px;">
+                            <table>
+                                <tr>
+                                    <td>
+                                        
+                                    </td>
+                                    <td style="vertical-align: top">&nbsp; <b><a id="hpClose" href="#" onclick="popup('popUpDiv')" style="font-size: 20px; color: #000000;">x</a></b>
+                                    </td>
+                                </tr>
+                            </table>
+                            <div id="divButton" style="display: none">
+                            </div>
+                            <br />
+                            <br />
+                            <br />
+                        </div>
+                        <input type="hidden" name="HdnEnvironment" id="HdnEnvironment" />
+                        <input type="hidden" name="HdnNumberAq" id="HdnNumberAq" />
+        </div>
+    
+<script>javascript:FnShowErrorAccess('divGeneralError','Lo sentimos, en estos momentos el servicio no se encuentra disponible. Inténtelo nuevamente más tarde.');</script>
+<script type="text/javascript">
+//<![CDATA[
+BloquearFicha('Problemas al visualizar la ficha', 'No Tiene los Permiso suficientes para visualizar la ficha.');Sys.Application.add_init(function() {
+    $create(Telerik.Web.UI.RadWindow, {"_dockMode":false,"behaviors":20,"clientStateFieldID":"PopupFicha_ClientState","enableShadow":true,"formID":"frmABM_Productos","height":"700px","iconUrl":"","minimizeIconUrl":"","modal":true,"name":"PopupFicha","showContentDuringLoad":false,"skin":"Sitefinity","visibleStatusbar":false,"width":"850px"}, null, null, $get("PopupFicha"));
+});
+Sys.Application.add_init(function() {
+    $create(Telerik.Web.UI.RadWindowManager, {"clientStateFieldID":"RadWindowManager1_ClientState","enableShadow":true,"formID":"frmABM_Productos","iconUrl":"","minimizeIconUrl":"","modal":true,"name":"RadWindowManager1","skin":"Sitefinity","windowControls":"['PopupFicha']"}, null, {"child":"PopupFicha"}, $get("RadWindowManager1"));
+});
+//]]>
+</script>
+</form>
+
+    
+
+</body>
+<script type="text/javascript">
+    var Mostrar = $("#MostrarEspecialidades").val();
+    if (Mostrar = "1") { cargarEspecialidades(); }
+</script>
+</html>
+<script type="text/javascript">
+
+    function mostrarPaso(paso) {
+        var topePasos = CalcularTopePasos();
+        for (i = 1; i <= topePasos; i++) {
+            $("#lblTitulo" + i).removeClass("link_activado");
+            if (i == 1) {
+                $("#lblTitulo" + i).addClass("link");
+            }
+            $("#Ficha" + i).fadeOut();
+            $("#bt_subir" + i).fadeOut();
+        }
+        $("#lblTitulo" + paso).addClass("link_activado");
+        $("#Ficha" + paso).fadeIn();
+        $("#Ficha" + paso).focus();
+    }
+
+    function mostrarTodo() {
+        var topePasos = CalcularTopePasos();
+        for (i = 1; i <= topePasos; i++) {
+            $("#Ficha" + i).show();
+            $("#bt_subir" + i).show();
+        }
+    }
+
+    function cerrarVentana() {
+        $.fancybox.close()
+    }
+
+    function CalcularTopePasos() {
+        var mop = $("#IndicadorEsMOP").val();
+        var topePasos = 0;
+        if (mop = "1") topePasos = 4;
+        if (mop = "0") topePasos = 10;
+        return topePasos;
+    }
+
+</script>

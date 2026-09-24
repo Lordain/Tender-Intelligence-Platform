@@ -10,6 +10,15 @@ export type OcdsParty = {
   id?: string;
   name?: string;
   roles?: string[];
+  /**
+   * Added 2026-09-24 for Chile, where it is the only clean copy of the buyer
+   * name: `name` carries a `" | "`-joined pair on every record measured, and
+   * the two halves are not always equal. See chile-ocds-mapper.ts.
+   * Optional and purely additive — no existing reader looks at it.
+   */
+  identifier?: { id?: string; legalName?: string; scheme?: string };
+  /** Chile publishes the buying entity's region here; it is the only place a region appears in their OCDS. */
+  address?: { streetAddress?: string; region?: string; countryName?: string };
 };
 
 export type OcdsValue = {
@@ -52,6 +61,14 @@ export type OcdsRelease = {
     title?: string;
     description?: string;
     status?: string; // planning | active | complete | cancelled | unsuccessful | withdrawn
+    /**
+     * Chile's own estado string, e.g. "5-Publicada" / "6-Cerrada". Carried so
+     * a reader can see it; deliberately NOT mapped — the numeric code table
+     * was never measured, and one sighting of "6-Cerrada" is not a mapping.
+     */
+    statusDetails?: string;
+    /** Chile sets this; its `name` has the same `" | "` problem as parties[].name. */
+    procuringEntity?: { id?: string; name?: string };
     procurementMethod?: string; // open | selective | limited | direct
     procurementMethodDetails?: string;
     mainProcurementCategory?: string; // goods | services | works

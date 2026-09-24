@@ -1,0 +1,56 @@
+{
+  "creationDate": "2026-09-24T13:14:05.145",
+  "version": "1.2",
+  "pagination": {
+    "offset": 0,
+    "limit": 10,
+    "total": 8004
+  },
+  "data": [
+    {
+      "ocid": "ocds-70d2nz-1211839-44-LE26",
+      "urlTender": "http://api.mercadopublico.cl/APISOCDS/OCDS/tender/1211839-44-LE26",
+      "urlAward": "http://api.mercadopublico.cl/APISOCDS/OCDS/award/1211839-44-LE26"
+    },
+    {
+      "ocid": "ocds-70d2nz-729-133-LE26",
+      "urlTender": "http://api.mercadopublico.cl/APISOCDS/OCDS/tender/729-133-LE26",
+      "urlAward": "http://api.mercadopublico.cl/APISOCDS/OCDS/award/729-133-LE26"
+    },
+    {
+      "ocid": "ocds-70d2nz-1057547-295-LE26",
+      "urlTender": "http://api.mercadopublico.cl/APISOCDS/OCDS/tender/1057547-295-LE26",
+      "urlAward": "http://api.mercadopublico.cl/APISOCDS/OCDS/award/1057547-295-LE26"
+    },
+    {
+      "ocid": "ocds-70d2nz-1057513-12-L126",
+      "urlTender": "http://api.mercadopublico.cl/APISOCDS/OCDS/tender/1057513-12-L126",
+      "urlAward": "http://api.mercadopublico.cl/APISOCDS/OCDS/award/1057513-12-L126"
+    },
+    {
+      "ocid": "ocds-70d2nz-3108-1-L126",
+      "urlTender": "http://api.mercadopublico.cl/APISOCDS/OCDS/tender/3108-1-L126",
+      "urlAward": "http://api.mercadopublico.cl/APISOCDS/OCDS/award/3108-1-L126"
+    },
+    {
+      "ocid": "ocds-70d2nz-5839-3-LP26",
+      "urlTender": "http://api.mercadopublico.cl/APISOCDS/OCDS/tender/5839-3-LP26"
+    },
+    {
+      "ocid": "ocds-70d2nz-1057049-238-LP26",
+      "urlTender": "http://api.mercadopublico.cl/APISOCDS/OCDS/tender/1057049-238-LP26"
+    },
+    {
+      "ocid": "ocds-70d2nz-898-128-LP26",
+      "urlTender": "http://api.mercadopublico.cl/APISOCDS/OCDS/tender/898-128-LP26"
+    },
+    {
+      "ocid": "ocds-70d2nz-2258-143-LP26",
+      "urlTender": "http://api.mercadopublico.cl/APISOCDS/OCDS/tender/2258-143-LP26"
+    },
+    {
+      "ocid": "ocds-70d2nz-1058071-18-LP26",
+      "urlTender": "http://api.mercadopublico.cl/APISOCDS/OCDS/tender/1058071-18-LP26"
+    }
+  ]
+}

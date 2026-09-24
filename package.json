@@ -162,7 +162,8 @@
     "test:dou-watch": "tsx scripts/test-dou-watch.ts",
     "test:dou-detail": "tsx scripts/test-dou-detail.ts",
     "probe:pncp-overlap": "tsx scripts/probe-pncp-overlap.ts",
-    "check:subscription-state": "tsx --env-file-if-exists=.env.local scripts/check-subscription-state.ts"
+    "check:subscription-state": "tsx --env-file-if-exists=.env.local scripts/check-subscription-state.ts",
+    "create:qa-account": "tsx --env-file-if-exists=.env.local scripts/create-qa-account.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

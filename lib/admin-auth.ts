@@ -1,4 +1,5 @@
 import "server-only";
+import { isAdminEmail } from "@/lib/admin-emails";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 
 /**
@@ -9,23 +10,12 @@ import { getCurrentUser } from "@/lib/supabase/server-client";
  * or delete a tender needs a real allowlist, since /register lets anyone
  * create an account.
  *
- * Fails CLOSED: an unset or empty ADMIN_EMAILS means nobody is admin, not
- * "everyone is admin" — a misconfigured env var should never silently open
- * write access. Add real addresses to ADMIN_EMAILS in .env.local
- * (comma-separated) to grant access; see .env.example.
+ * The predicate itself now lives in lib/admin-emails.ts, which carries no
+ * `server-only` marker so a CLI script can ask the same question — see that
+ * file. Re-exported here so every existing import keeps working, and so
+ * there stays exactly one answer to "is this person staff".
  */
-function adminEmailAllowlist(): string[] {
-  return (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-export function isAdminEmail(email: string | undefined | null): boolean {
-  if (!email) return false;
-  const allowlist = adminEmailAllowlist();
-  return allowlist.length > 0 && allowlist.includes(email.toLowerCase());
-}
+export { isAdminEmail } from "@/lib/admin-emails";
 
 /** For Route Handlers, which only need a single yes/no check (unlike app/admin/tenders/layout.tsx, which also needs the plain "is anyone logged in at all" case to pick between a login redirect and an "unauthorized" message). */
 export async function getAdminUser() {

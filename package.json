@@ -163,7 +163,10 @@
     "test:dou-detail": "tsx scripts/test-dou-detail.ts",
     "probe:pncp-overlap": "tsx scripts/probe-pncp-overlap.ts",
     "probe:chile-doors": "tsx scripts/probe-chile-doors.ts",
-    "test:chile-doors": "tsx scripts/test-chile-doors.ts"
+    "capture:chile-ocds": "tsx scripts/capture-chile-ocds.ts",
+    "test:chile-doors": "tsx scripts/test-chile-doors.ts",
+    "test:chile-ocds": "tsx scripts/test-chile-ocds-mapper.ts",
+    "ingest:chile-live": "tsx --env-file-if-exists=.env.local scripts/ingest-chile-live.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

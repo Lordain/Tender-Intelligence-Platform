@@ -1,0 +1,97 @@
+{
+  "uri": "https://api.mercadopublico.cl/APISOCDS/OCDS/tender/5839-3-LP26",
+  "version": "1.1",
+  "publishedDate": "2026-07-10T10:54:57Z",
+  "releases": [
+    {
+      "ocid": "ocds-70d2nz-5839-3-LP26",
+      "id": "e1a338df-5839-3-LP26",
+      "date": "2026-07-10T10:50:12Z",
+      "tag": [
+        "tender"
+      ],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "DIRECCION DE ABASTECIMIENTO DE LA ARMADA | DIRECCION DE SANIDAD DE LA ARMADA (GESTION LOGIST)",
+          "id": "CL-MP-296972",
+          "identifier": {
+            "id": "611020163",
+            "legalName": "DIRECCION DE SANIDAD DE LA ARMADA",
+            "scheme": "CL-RUT"
+          },
+          "address": {
+            "streetAddress": "AVDA. ALMIRANTE MONTT 11.700",
+            "region": "Región de Valparaíso ",
+            "countryName": "Chile"
+          },
+          "contactPoint": {
+            "name": "MANUEL ALBERTO MOLINA URRA"
+          },
+          "roles": [
+            "procuringEntity",
+            "buyer"
+          ],
+          "additionalIdentifiers": [
+            {
+              "id": "296972",
+              "legalName": "DIRECCION DE SANIDAD DE LA ARMADA",
+              "scheme": "CL-MP",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Comprador/Unidad/296972"
+            }
+          ]
+        }
+      ],
+      "tender": {
+        "id": "5839-3-LP26",
+        "title": "ADQUISICION TEST MULTIDRUG SUMERGIBLE CON FRASCO CLINICO PARA RECOLECCION DE ORINA                                                                                                      ",
+        "description": "SATISFACER NECESIDADES DEL PROGRAMA DE CONTROL DE DROGAS DE ABUSO.",
+        "status": "active",
+        "statusDetails": "5-Publicada",
+        "procuringEntity": {
+          "name": "DIRECCION DE ABASTECIMIENTO DE LA ARMADA | DIRECCION DE SANIDAD DE LA ARMADA (GESTION LOGIST)",
+          "id": "CL-MP-296972"
+        },
+        "items": [
+          {
+            "id": "43570378",
+            "description": "Salud, servicios sanitarios y alimentación / Medicina y servicios de salud / Laboratorios clínicos / Test de detección de drogas o alcohol",
+            "quantity": 1.0,
+            "unit": {
+              "name": "Unidad"
+            },
+            "classification": {
+              "id": "85121810",
+              "scheme": "UNSPSC",
+              "uri": "http://api.mercadopublico.cl/APISOCDS/Productos/Categoria/85121810"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Licitación Pública Mayor 1000 UTM (LP)",
+        "tenderPeriod": {
+          "startDate": "2026-07-10T10:50:12Z",
+          "endDate": "2026-07-30T15:30:00Z",
+          "durationInDays": 20
+        },
+        "awardPeriod": {
+          "startDate": "2026-07-30T16:00:00Z",
+          "endDate": "2026-08-31T15:30:00Z",
+          "durationInDays": 1
+        },
+        "hasEnquiries": false,
+        "enquiryPeriod": {
+          "startDate": "2026-07-10T12:30:00Z",
+          "endDate": "2026-07-17T15:00:00Z",
+          "durationInDays": 7
+        }
+      },
+      "language": "es"
+    }
+  ],
+  "publisher": {
+    "name": "Dirección de Compras y Contratación Pública"
+  },
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "publicationPolicy": "http://api.mercadopublico.cl/APISOCDS/Utilidades/Politicas/Actualizacion"
+}

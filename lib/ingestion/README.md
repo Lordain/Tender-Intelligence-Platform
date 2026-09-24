@@ -8118,3 +8118,274 @@ npm run probe:chile-doors -- --save "跑批机"     # 报告里写清是哪台�
 按仓库的规矩「用猜的选择器或猜的比较算出来的数字，不是测量」。
 照假设写出来的映射器会编译、会通过自己编的测试、会看着挺像那么回事——然后在第一次真实数据上全线错开。
 这是这个仓库反复付学费的那个形状，这次不再付一遍。
+
+## 智利（第二轮）：门开了，是一个不要凭证的 OCDS 出口 —— 但它 2026-07-29 就停更了（2026-09-24）
+
+上一节是网络没放开时写的，**那一节的结论一个字都不用改**：它说的是「这台机器什么都没量到」，
+那是当时的事实，而那个判别器（本机 403 vs 对方 403）是一条会反复用到的教训，不是脚手架。
+
+这一节是同一天、网络改成 Full 之后重跑的结果。**这一次量到了真东西。**
+
+### 对照先立住
+
+```
+C0   github.com                          通了 ★   200    307ms
+C0b  pncp.gov.br（巴西，生产在用）        通了 ★   200   1246ms   ← 这条让下面的结果可以当数据读
+C0c  contratacionesabiertas.oece.gob.pe   对方拒绝  403    667ms
+```
+
+C0b 通了，所以「同类政府开放数据主机这台机器够得着」成立，智利那几行才有意义。
+
+C0c 那个 403 **不是**本机出口拦的——正文是
+`{"code":"403","message":"Forbidden","RequestId":"${http.request.id}"}`，连模板占位符都没展开，
+正是 `egress-denial.ts` 里那条反向断言钉住的、秘鲁边缘代理**真的**在拒人的那份。秘鲁封机房 IP 段，
+这是早就知道的事（见 `peru-oece-live.ts` 的 `whereAmI()`），跟智利无关。**两批 403 这回同时出现在一份
+报告里，而判别器把它们分开了**——这正是上一轮留下那个东西的用处。
+
+### 门在哪：`apis.mercadopublico.cl` 的 OCDS 出口，**不要凭证**
+
+```
+GET https://apis.mercadopublico.cl/OCDS/data/listaAñoMes/{年}/{月}/{offset}/{limit}   → 月度索引
+GET https://api.mercadopublico.cl/APISOCDS/OCDS/tender/{编号}                          → 单条记录（OCDS 1.1）
+```
+
+两个主机名只差一个 `s`，**不是同一台**，拼错就是 404。路由名里的 `ñ` 是必须的：`listaAnoMes`（ASCII）
+实测 404。索引的 `limit` 上限 1000，`total` 是诚实的（offset 8000 / 共 8004，回了 4 条）。
+
+这两条路径**全程没有用任何 ticket、key，也没有伪装浏览器**。这一点值得说清楚，因为它绕开了下面那个凭证问题。
+
+倒过来说：三个 OCDS 路径的拼法猜测里有两个回的是 `{"statusCode":404,"message":"Resource not found"}`
+（路由不存在），另一个回的是 **HTTP 200** + `{"status":404,"detail":"No se encontraron resultados."}`
+（路由存在，参数没命中）。**这两个 404 只差一个键名，意思完全相反**，是它把路找出来的。
+
+### 凭证这一问：有确定答案了，而且是对方自己说的
+
+不带 ticket 问 `/servicios/v1/publico/licitaciones.json`：
+
+```
+HTTP/1.1 203
+{"Codigo":203,"Mensaje":"Ticket no válido."}
+```
+
+**注意状态码是 203 —— 一个 2xx。** `response.ok` 是 `true`。按状态码判断成败的连接器会把这句拒绝当成数据。
+（这一轮探针第一次问的时候还撞上过 500 和 429「Hemos detectado que existen peticiones simultáneas」的并发限流，
+同一个接口不同时刻回三种东西——所以结论是从**重复问**里来的，不是从一次响应里来的。）
+
+`api.mercadopublico.cl/` 会 302 到 `www.chilecompra.cl/api/`，那页写得很清楚（原文）：
+
+- ticket 是 **免费的**：「Gracias a esta herramienta **gratuita y de uso público**」
+- 怎么拿：「Obtén tu ticket con **Clave Única** … Acepta los Términos de Uso e inicia sesión con Clave Única
+  para solicitar tu ticket vía formulario. El código se generará de manera automática y llegará a tu correo」
+- 申请入口：`https://api.mercadopublico.cl/modules/IniciarSesion.aspx`
+
+**卡点是 Clave Única**——智利的全国数字身份，要智利的 RUN/RUT 才能开。也就是说这个 ticket 实际上需要一个
+智利本地主体。**这是所有者的决定，不是我的。** 没去注册、没绕、没伪装浏览器。
+那页的示例 URL 里印着一个 ticket（`F8537A18-…`），**没有用它**，也不建议用——那是人家文档里的示例，不是发给我们的。
+
+好消息是：**上面那条 OCDS 路不需要这个 ticket**，所以这个决定不挡第一版连接器。ticket 买到的是
+**实时**数据（「datos en tiempo real」+ `estado=activas` 这类查询），而 OCDS 那条路买不到——见下一段。
+
+### 最要命的一条：这个源 2026-07-29 就停更了
+
+索引按月份问，从 2025-06 一路问到 2026-09：
+
+```
+2026-05  total=8247      2026-07  total=8004
+2026-06  total=9302      2026-08  （空）      2026-09  （空）
+```
+
+**今天是 2026-09-24。** 最新一个有数据的月份是 2026-07。
+
+这看着像「两个月延迟」，但不是。把 2026-07 索引的**末尾**几条拉出来看 `publishedDate`：
+
+```
+324-39-L126      release.date=2026-07-29T17:13:28Z   publishedDate=2026-07-29T17:17:30Z   （4 分钟）
+867990-64-L126   release.date=2026-07-29T17:21:36Z   publishedDate=2026-07-29T17:22:34Z   （1 分钟）
+4105-6-LE26      release.date=2026-07-29T17:02:10Z   publishedDate=2026-07-29T17:02:15Z   （5 秒）
+```
+
+**发布延迟是分钟级的。** 整个数据集里最新的 `publishedDate` 是 `2026-07-29T18:48Z`。
+所以这是一个**近实时的源在 2026-07-29 停了**，不是一个有两个月延迟的源。
+
+这个区别决定了连接器的形状，所以它被写进了代码而不是只写在这里：
+`describeIndexFreshness()` 在所有请求的月份都空的时候会打一段警告，
+`ingest:chile-live` 把它印在条数**前面**。因为一个读停更源的导入器，会永远报告「成功导入 0 条」——
+这就是本文件那条老规矩再往前走一步：**够不着 ≠ 空 ≠ 还没发布 ≠ 根本没问 ≠ 源停了但没人发现。**
+
+停更是暂时的还是永久的，**从外面看不出来** —— 这个「不确定」没法消除，只能等着重测。
+
+### 一条真实记录长什么样
+
+`lib/ingestion/__fixtures__/chile/ocds-tender-priced.json`，完整 56KB，这里只摘骨架：
+
+```json
+{ "uri": "...", "version": "1.1", "publishedDate": "2026-07-09T17:56:11Z",
+  "publisher": { "name": "Dirección de Compras y Contratación Pública" },
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "releases": [ { "ocid": "ocds-70d2nz-1211839-44-LE26", "date": "2026-07-03T14:56:43Z",
+    "parties": [ { "name": "CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION",
+                   "identifier": { "id": "708564001", "legalName": "CORP MUNIC EDUC SALUD Y ATENCION", "scheme": "CL-RUT" },
+                   "address": { "region": "Región Metropolitana de Santiago", "countryName": "Chile" },
+                   "roles": ["procuringEntity", "buyer"] } ],
+    "tender": { "id": "1211839-44-LE26", "title": "MAQUINARIAS DE ASEO CLÍNICO",
+      "status": "active", "statusDetails": "5-Publicada",
+      "value": { "amount": 50000000.0, "currency": "CLP" },
+      "procurementMethodDetails": "Licitación Pública Entre 100 y 1000 UTM (LE)",
+      "tenderPeriod": { "startDate": "2026-07-03T14:56:43Z", "endDate": "2026-07-08T16:00:00Z" },
+      "enquiryPeriod": { ... }, "awardPeriod": { ... },
+      "items": [ { "classification": { "id": "47121602", "scheme": "UNSPSC" } } ] } } ] }
+```
+
+许可证是 **CC0**，写在每一份应答里。
+
+### 字段映射（120 条真实记录量出来的，2026-05/06/07 各 40 条，按等距取样）
+
+| 要的东西     | 在哪                                   | 覆盖率   | 备注                                                |
+| ------------ | -------------------------------------- | -------- | --------------------------------------------------- |
+| 稳定 id      | `tender.id` / `ocid` 去前缀            | 120/120  | `1211839-44-LE26`，ficha 链接也用它                 |
+| 标题         | `tender.title`                         | 120/120  |                                                     |
+| 采购单位     | `parties[].identifier.legalName`       | 120/120  | **不能用 `name`**，见下                             |
+| 发布日期     | `releases[].date`                      | 120/120  |                                                     |
+| **交标截止** | `tender.tenderPeriod.endDate`          | 119/120  |                                                     |
+| 金额         | `tender.value.amount`                  | **63/120** | **一半没有**                                      |
+| 币种         | `tender.value.currency`                | 62/120   | CLP 为主，**实测也出现过 USD**                      |
+| 地区         | `parties[].address.region`             | 120/120  | 58/120 带尾随空格，必须 trim                        |
+| 公开链接     | 用编号拼                               | 120/120  | 见下，有陷阱                                        |
+| 答疑截止     | `tender.enquiryPeriod.endDate`         | 高       |                                                     |
+
+**缺的字段，一条条说清楚（这些是发现，不是可以抹平的东西）：**
+
+- **`mainProcurementCategory`：0/120，根本没有。** OCDS 自己的 goods/services/works 信号智利不发。
+  所以 `scopeType` 现在**全部落到 `services` 这个默认值**——实跑 60 条的输出里
+  「采购类型：services 60」就是这么来的，它不是测出来的，是没测到。`tender.items[].classification`
+  倒是有 UNSPSC 编码（`47121602` 这种），能拿来做真映射，但那要 UNSPSC 的段表，**凭记忆编一张出来不算测量**，
+  所以没做。要做的话这是现成的下一步。
+- **`tender.documents`：0/120，一个标书链接都没有。** 秘鲁那条线的 `批量下载标书` 对智利没有任何东西可下。
+- **`tender.status`：120/120 都是 `active`**，而这 119 条有截止日的里面 119 条截止日**都已经过了**（最迟 2026-08-21）。
+  这个字段是发布那一刻的快照，不是生命周期。**通用的 `ocds-mapper.ts` 会把 `active` 映成 `open`，
+  于是每一条智利记录都会永远显示「招标中」**——这是这次单写一个 `chile-ocds-mapper.ts` 的头号原因。
+  状态只能从截止日推。`statusDetails` 有「5-Publicada」119 次、「6-Cerrada」1 次，
+  那串数字是智利自己的 estado 码表，**码表没量过，所以一个字都没读**。
+- **采购单位名有个 `" | "`。** 120/120 条的 `parties[].name`（和 `tender.procuringEntity.name`，两者永远相同）
+  长这样：`"CORP MUNIC EDUC SALUD Y ATENCION | CORP MUNIC EDUC SALUD Y ATENCION"`。
+  **其中只有 64/120 两半是一样的**——所以「切开去重」这个看着对的规则，在另外 56 条上是在悄悄二选一。
+  两半各是什么含义**没查清**。`identifier.legalName` 是干净的，120/120，还配一个 `CL-RUT`。用那个。
+- **金额有、币种没有**，实测出现过 1 条（`2273-36-LE26`，24,000,000 没有 currency）。默认成 CLP 是对钱的猜测，没做。
+
+### 公开链接：一个 200 的空壳页
+
+- ✅ `https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?idlicitacion=<编号>`
+  对方自己 302 到加密的 `?qs=<token>` 并渲染真页面。两个编号各验一次，
+  `lblNombreLicitacion` 分别是「MAQUINARIAS DE ASEO CLÍNICO」和「COMPRA DE MOTOR PEQUEÑOS FRAGMENTOS BATERIA」——
+  **各是各的**，不是同一页。
+- ❌ `…DetailsAcquisition.aspx?qs=<编号>`（把编号直接当 qs）
+  **也回 200，也是 121KB 真 HTML，正文里也有那个招标编号**（因为编号被回显进了 query string 和 viewstate）。
+  而 `lblNombreLicitacion` 是个**空 span**。两个不同编号抓下来 121,624B 和 121,625B——只差编号那一个字符。
+
+第二条正是「用猜的选择器算出来的数字不是测量」的那个形状：一个「页面回来了吗、里面提到这个标了吗」的校验
+会放行它。`qs` 的 token 是服务端加密签发的，离线拼不出来——所以我们发 `idlicitacion`，让对方自己去签。
+这份空壳页存成了 fixture，测试里钉着。
+
+### 量：每月 8000–10000 条，能过 10 万美元线的是少数
+
+| 月份    | 条数  |
+| ------- | ----- |
+| 2026-05 | 8,247 |
+| 2026-06 | 9,302 |
+| 2026-07 | 8,004 |
+| 2025-06 | 9,667 |
+
+≈ **每天 270–330 条，每周 1,900–2,300 条**（停更之前）。
+
+按 120 条样本：
+
+- **52% 有金额**（63/120），CLP 中位数 2,000 万，p90 约 1.8 亿，最大 6.9 亿
+- 按 **900–1000 CLP/USD 这个仅供估算、未被采纳的比值**，有金额的里面 **11–14% 能到 10 万美元**
+  → 折算成全量约 **6–8%**，即每月 500–800 条、每天 20–27 条
+- 另外 48% 没有金额，**没法按金额筛**——这半边只能靠关键词和行业标签
+
+采购方式分布（120 条）：`LE`（100–1000 UTM）67 条、`LP`（>1000 UTM）20 条、`L1`（<100 UTM）20 条，
+其余是 `LR`/MOP/私标零星几条。**主体是中小额市政采购**，`LP`+`LR` 这种大额的占 20%。
+`procurementMethodDetails` 里的 UTM 档位其实是个比金额更全的规模代理（120/120 都有），
+但 UTM 折成比索要一个真实数字，**没编**。
+
+### 这一轮建的东西
+
+```
+lib/ingestion/connectors/chile-ocds-live.ts   只管抓：诚实 UA、有界重试、三种「状态码不是它的意思」的应答
+lib/ingestion/chile-ocds-mapper.ts            纯函数、不联网、country 写死 "Chile"
+lib/ingestion/ingest-chile.ts                 CLI 和（将来的）后台按钮共用的唯一路径
+scripts/ingest-chile-live.ts                  薄 CLI，默认 dry run，--write 必须跟在 -- 后面
+scripts/capture-chile-ocds.ts                 npm run capture:chile-ocds —— fixture 的来源，可重跑
+scripts/test-chile-ocds-mapper.ts             npm run test:chile-ocds —— 53 项，全部打在真实字节上
+```
+
+`egressDenial()` 这次**接进**新连接器了（上一轮说的那个建议）。只接了智利这一条新路径——
+秘鲁、巴西那两条是有付费用户在跑的线上导入，在一个新源的分支上改它们仍然不合规矩，
+那个单独的 PR 还是该开。
+
+**实跑一次的结果**（`npm run ingest:chile-live -- --month 2026-07 --max 60`）：
+
+```
+Mapped 60 tender(s) from 60 record(s).
+  flagship 1 · significant 1 · standard 18 · excluded 40  → 进入推荐 20
+金额覆盖率：29 条有金额（48.3%）  币种：CLP 28、USD 1
+```
+
+**注意每一条都显示「无金额」**，哪怕其中 28 条带着真实的 CLP 数字——因为 `lib/currency.ts` 里没有 CLP，
+`convertToUsd()` 返回 null。上一轮预判的那件事，这一轮在真实数据上看到了。
+
+顺带在这次实跑里逮到一个自己写的 bug：`--month 2026-07` 抓了 60 条、保留了 **0** 条——
+默认那个两个月的 recency 窗口在一个已经指名道姓的月份上又叠了一层，而且智利最新的月份本来就已经两个月前了，
+**指名去取正是唯一能看到智利数据的方式**，偏偏被这个过滤吃掉。已修：显式 `--month` 就是窗口本身。
+
+### 所以现在需要所有者决定的
+
+1. **CLP 汇率。** `lib/currency.ts` 里必须加一行，**汇率得是个真实数字，由所有者核过来**——
+   这台机器够不着任何汇率源，上面那个 900–1000 是为了给出量级的估算，**不是可以写进代码的值**。
+   没有它，智利一半的行情报价在分级器眼里是「未披露金额」。
+2. **要不要去申请 ticket。** 现在有确定信息了：免费，但要 **Clave Única**（需要智利 RUN/RUT）。
+   买到的是实时数据。**不申请也能跑**——OCDS 那条路不要凭证，只是它现在停更着。
+   如果 OCDS 迟迟不恢复，这就从「可选」变成「唯一」。
+3. **等 OCDS 恢复，还是就此接受这是个历史数据源。** 现在的 `ingest:chile-live` 跑默认窗口会打停更警告并导入 0 条，
+   这是对的行为。恢复了它自己就会有数据，不用改代码。
+4. **智利的前台可见性**（`AVAILABLE_COUNTRIES`）和后台导入按钮——**这一轮两处都没动**，
+   `scripts/test-list-facets.ts:110` 那条「智利不出现」的断言也原样保留。等真有数据、且汇率加上之后再说。
+
+### 这一轮没做的事，以及为什么
+
+- **没动 `AVAILABLE_COUNTRIES`、没加后台按钮。** 那是所有者的闸，不是我的。
+- **没加 CLP 汇率。** 编一个数字出来，比没有更坏。
+- **没做 UNSPSC → scopeType 的映射。** 需要段表，凭记忆写不算测量。现在全部是 `services`，这个缺口是明写的。
+- **没抓 `urlAward`。** 索引里有这个字段，但「有 urlAward」是否等于「已授标」**没验证过**，
+  所以映射器永远不返回 `awarded`。从一个没验过的信号上宣称中标，比不宣称更坏。
+- **没用文档页上印着的那个示例 ticket。**
+
+### 要放行的域名（所有者要收窄成 Custom 白名单的话）
+
+实际给出过响应的主机，一个不漏：
+
+| 主机                            | 干什么的                                                  | 连接器要不要 |
+| ------------------------------- | --------------------------------------------------------- | ------------ |
+| `apis.mercadopublico.cl`        | OCDS 月度索引                                             | **必须**     |
+| `api.mercadopublico.cl`         | OCDS 单条记录；`/servicios/` 凭证接口；根路径 302 到下面那个 | **必须**     |
+| `www.mercadopublico.cl`         | 公开 ficha 页（连接器只**拼**链接，不抓它）               | 可选         |
+| `www.chilecompra.cl`            | API 文档 / ticket 申请说明（`api.` 根路径的 302 目标）    | 可选         |
+| `datos.gob.cl`                  | CKAN 2.10.4 国家开放数据门户（见下，**这条线没用上**）    | 可选         |
+| `desarrolladores.mercadopublico.cl` | 回 503「upstream connect error」，主机在但服务是挂的    | 不要         |
+
+跑连接器**只需要前两个**。重定向情况：`api.mercadopublico.cl/` → `www.chilecompra.cl/api/`；
+`www.mercadopublico.cl/` → `/Home`（同主机）；ficha 的 `?idlicitacion=` → `?qs=`（同主机）。
+没有出现任何第三方 CDN 主机。
+
+（`github.com`、`pncp.gov.br`、`contratacionesabiertas.oece.gob.pe` 是探针的对照，不属于智利这条线。）
+
+### `datos.gob.cl` 是 CKAN，但它不是这扇门
+
+C3 那个门问成了：**CKAN 2.10.4**，「Portal de Datos Abiertos」，仓库里的 `connectors/ckan.ts` 确实能直接接。
+但接了没用——搜 `licitaciones` 出来 20 个数据集，前几个是 2016 年华丘拉瓦市的 CSV、2015 年圣地亚哥大区的
+2012 年 xls；搜 `chilecompra` **0 个**；273 个发布机构里没有 ChileCompra。搜 `compras publicas` 出来的是
+各个市镇自己传的「Actas de Evaluación」。
+
+**结论：datos.gob.cl 上没有全国性的招标数据集**，那些是零散的市政历史归档。CKAN 这条线不是入口，
+把它写成「智利有 CKAN 可以接」会误导下一个人。

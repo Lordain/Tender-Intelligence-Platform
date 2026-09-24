@@ -2323,10 +2323,32 @@ function fibreTier(text: string): TenderRelevance["tier"] | null {
  * were held in by nothing but an industry tag on a no-value row — wooden
  * doors, a generator, nursing-agency staffing, an excavator rental.
  *
+ * Chile joined 2026-09-24 on the same footing, from a live 5-day import of
+ * the Mercado Público search door: 1,270 rows, 532 of them (41.9%) with no
+ * amount at all — Peru's own figure was 43.8%. Of 169 rows that would have
+ * been kept, only 21 had an amount; the other 148 were held in by an industry
+ * tag on an unpriced row. What those 148 were is the argument: dental
+ * supplies, wound dressings, aneurysm clips, hospital printer rental,
+ * staff shuttle services, illuminated signage, car washing, HP monitors, a
+ * Christmas fair, artistic production services. Chile's hospitals and
+ * municipalities publish their weekly operating purchases through the same
+ * door as their public works, and every one of them carries an industry tag.
+ *
+ * Measured effect, same import: 169 kept -> 57 (33.8/day -> 11.4/day), which
+ * is what the platform owner asked for. The 35 unpriced rows that survive do
+ * so through the flagship-industry and include-override exemptions below, and
+ * they are the ones worth surviving — the AVO II motorway, seven lots of the
+ * 34th PPP round, four rural drinking-water works, a traffic-signal upgrade,
+ * a river-channel stage, medical imaging equipment. The debatable losses are
+ * five small municipal works with no published amount (emergency paving, a
+ * road restoration, a paving design study, dust-suppressant maintenance, a
+ * potable-water tank), which is the same trade small_local_works already
+ * makes elsewhere in this file.
+ *
  * Membership is a claim about one SOURCE's publishing habits, so it is
  * decided per country from a real import and never assumed for a new one.
  */
-const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru"]);
+const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru", "Chile"]);
 
 const MIN_VALUE_USD = 1_000_000;
 

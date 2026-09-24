@@ -164,7 +164,18 @@ async function main() {
   console.log(`\n【免费额度】${monthStart} 起本月已用 ${used}/5${entitlement.role === "free" ? "" : "（当前身份不消耗额度）"}`);
 
   // ---- 5. 提醒 ----
-  const { data: pref } = await admin.from("notification_preferences").select("enabled, countries, industries, statuses, relevance_tiers, keywords").eq("user_id", userId).maybeSingle();
+  // email_notification_preferences, not notification_preferences (migration
+  // 0017, and digest-recipients.ts reads the same name). The error is checked
+  // rather than dropped: a wrong table name answers `null` with an error set,
+  // which reads identically to "this account never turned alerts on" — the
+  // reconciliation would then report a real subscriber as having no alerts
+  // and give no hint that it had asked the wrong question.
+  const { data: pref, error: prefError } = await admin
+    .from("email_notification_preferences")
+    .select("enabled, countries, industries, statuses, relevance_tiers, keywords")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (prefError) throw new Error(`提醒偏好读取失败：${prefError.message}`);
   const cadence = digestCadence(entitlement.plan, acceptedOwner !== undefined, entitlement.role === "trial");
   console.log(`\n【提醒】开关=${pref ? (pref.enabled ? "开" : "关") : "没有偏好行"}  频率=${CADENCE_LABEL[cadence]}`);
   if (pref) {

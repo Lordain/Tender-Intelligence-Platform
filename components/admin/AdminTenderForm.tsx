@@ -23,6 +23,8 @@ import {
 } from "@/lib/tender-labels";
 import { CronogramaPasteForm } from "@/components/admin/CronogramaPasteForm";
 import { mergeServerChanges } from "@/lib/admin/form-merge";
+import { generatedTextProblems } from "@/lib/admin/generated-text";
+import { GENERIC_PUBLIC_SUMMARY } from "@/lib/public-title";
 import { KeyDatesEditor } from "@/components/admin/KeyDatesEditor";
 import { RequirementsEditor } from "@/components/admin/RequirementsEditor";
 import { RisksEditor } from "@/components/admin/RisksEditor";
@@ -53,11 +55,31 @@ function FormSection({ title, description, children }: { title: string; descript
   );
 }
 
+/**
+ * The verdict on one hand-written visitor-facing string, under the field.
+ *
+ * Shown live rather than only on save because the API refuses a value that
+ * fails these rules, and an admin who has retyped a title three times deserves
+ * to know which word is the problem before pressing save, not after.
+ */
+function GeneratedTextHint({ problems, fallbackNote }: { problems: string[]; fallbackNote: string }) {
+  if (problems.length > 0) {
+    return (
+      <span className="text-xs font-bold leading-5 text-[#b3261e]">
+        不能这样发布：{problems.join("；")}
+      </span>
+    );
+  }
+  return <span className="text-xs leading-5 text-[#75838c]">{fallbackNote}</span>;
+}
+
 type FormState = {
   titleEs: string;
   titleZh: string;
   summaryEs: string;
   summaryZh: string;
+  titleZhPublic: string;
+  summaryZhPublic: string;
   oneLineSummary: string;
   buyer: string;
   country: string;
@@ -95,6 +117,8 @@ function initialStateFrom(tender?: Tender): FormState {
     titleZh: tender?.title.zh ?? "",
     summaryEs: tender?.summary.es ?? "",
     summaryZh: tender?.summary.zh ?? "",
+    titleZhPublic: tender?.titleZhPublic ?? "",
+    summaryZhPublic: tender?.summaryZhPublic ?? "",
     oneLineSummary: tender?.oneLineSummary ?? "",
     buyer: tender?.buyer ?? "",
     country: tender?.country ?? ALL_COUNTRIES[0],
@@ -180,9 +204,23 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
     window.setTimeout(() => setCopiedTenderNumber(false), 1800);
   }
 
+  // The same two checks the API runs, so a refusal does not cost a round trip
+  // and the reason sits under the field that caused it.
+  const publicTitleProblems = generatedTextProblems("title_zh_public", form.titleZhPublic);
+  const publicSummaryProblems = generatedTextProblems("summary_zh_public", form.summaryZhPublic);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // Stopped here rather than left to the API purely so the message is the
+    // specific one already rendered under the field; the API refuses it too,
+    // and that refusal — not this one — is the actual guard.
+    if (publicTitleProblems.length > 0 || publicSummaryProblems.length > 0) {
+      setError("访客文案还不能发布，请先按字段下方的提示修改。");
+      return;
+    }
+
     setSaving(true);
 
     const payload = {
@@ -190,6 +228,8 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
       titleZh: form.titleZh,
       summaryEs: form.summaryEs,
       summaryZh: form.summaryZh,
+      titleZhPublic: form.titleZhPublic || null,
+      summaryZhPublic: form.summaryZhPublic || null,
       oneLineSummary: form.oneLineSummary || null,
       buyer: form.buyer,
       country: form.country,
@@ -335,6 +375,52 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
           <textarea className={`${inputClass} min-h-24 py-3`} value={form.summaryZh} onChange={(e) => update("summaryZh", e.target.value)} />
         </label>
       </div>
+      </FormSection>
+
+      {/*
+        The visitor-facing pair, kept in its own section immediately below the
+        member-facing one so the two can be read against each other — the whole
+        point of these columns is that they say the same thing WITHOUT the
+        project's own name, and that is only checkable side by side.
+      */}
+      <FormSection
+        title="访客与搜索引擎看到的文案"
+        description="未登录访客、搜索结果和分享卡片上出现的就是这两段——按规则不能含有项目原名。通常由「更新项目文案」自动生成；发现写错了在这里改，留空则交回自动生成。"
+      >
+        <label className={labelClass}>
+          <span className={labelTextClass}>访客标题</span>
+          <input
+            className={inputClass}
+            value={form.titleZhPublic}
+            onChange={(e) => update("titleZhPublic", e.target.value)}
+            placeholder="例：墨西哥 34.5kV 变电站扩建工程（输配电）"
+          />
+          <GeneratedTextHint
+            problems={publicTitleProblems}
+            fallbackNote={
+              form.titleZhPublic.trim()
+                ? "已手写：自动生成不会再覆盖它。清空即交回自动生成。"
+                : `留空中——访客现在看到的是上面那个中文标题（含原文名称）：${form.titleZh.trim() || "（未填写）"}`
+            }
+          />
+        </label>
+
+        <label className={labelClass}>
+          <span className={labelTextClass}>访客摘要</span>
+          <textarea
+            className={`${inputClass} min-h-24 py-3`}
+            value={form.summaryZhPublic}
+            onChange={(e) => update("summaryZhPublic", e.target.value)}
+          />
+          <GeneratedTextHint
+            problems={publicSummaryProblems}
+            fallbackNote={
+              form.summaryZhPublic.trim()
+                ? "已手写：自动生成不会再覆盖它。清空即交回自动生成。"
+                : `留空中——访客现在看到的是通用说明：${GENERIC_PUBLIC_SUMMARY}`
+            }
+          />
+        </label>
       </FormSection>
 
       <FormSection title="采购与分类" description="定义采购主体、所属市场、行业标签和投标范围。">

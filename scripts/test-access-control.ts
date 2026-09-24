@@ -17,6 +17,7 @@ import {
   canUseTenderListMemberFeatures,
   canViewCountry,
   canViewTenderProtectedContent,
+  shouldClaimFreeTenderView,
   isClosedTender,
   isSubscriptionEntitled,
   selectPreferredSubscription,
@@ -92,6 +93,20 @@ check("guest gets a selected homepage free entry", canViewTenderProtectedContent
 check("direct visit to a selected slug stays protected", canViewTenderProtectedContent("guest", true, false), false);
 check("expired free account gets a selected homepage free entry", canViewTenderProtectedContent("free", true, true), true);
 check("expired free ordinary page keeps analysis protected", canViewTenderProtectedContent("free", false, false), false);
+// The monthly five-view quota, and the one visit that must not spend one of
+// them. Line-for-line the mirror of the four guest/free cases above: whatever
+// canViewTenderProtectedContent hands a free account for free, the quota must
+// not then charge for. The gap this closes: the homepage preview used to cost
+// a view, so a free reader who had spent five lost a tender that an anonymous
+// visitor could still open — registering made them worse off.
+check("首页免费预览不花额度 —— 会员不该比访客看得少", shouldClaimFreeTenderView("free", true, true), false);
+check("直接点进首页选中的项目仍然走额度", shouldClaimFreeTenderView("free", true, false), true);
+check("普通项目走额度", shouldClaimFreeTenderView("free", false, false), true);
+check("伪造 from=homepage 也走额度", shouldClaimFreeTenderView("free", false, true), true);
+check("访客没有额度可花", shouldClaimFreeTenderView("guest", true, true), false);
+check("试用期不花免费额度", shouldClaimFreeTenderView("trial", false, false), false);
+check("订阅用户不花免费额度", shouldClaimFreeTenderView("subscriber", false, false), false);
+
 check("trial may view protected analysis", canViewTenderProtectedContent("trial", false, false), true);
 check("subscriber may view protected analysis", canViewTenderProtectedContent("subscriber", false, false), true);
 const entitlement: ViewerEntitlement = {

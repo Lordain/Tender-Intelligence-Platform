@@ -214,11 +214,19 @@ export function mapChileBuscaRowToTender(
   if (!status) return null;
 
   const governmentLevel: GovernmentLevel = chileGovernmentLevel(buyer);
-  // Deliberately the generic default, exactly as in chile-ocds-mapper.ts. This
-  // door publishes no procurement category at all — not even the UNSPSC codes
-  // OCDS carries on tender.items — so there is even less to map from here than
-  // there. Recorded as an open gap in the README rather than papered over.
-  const scopeType = "services" as const;
+  // "unknown", exactly as in chile-ocds-mapper.ts, and NOT the generic
+  // "services" default this used until 2026-09-24. This door publishes no
+  // procurement category at all — not even the UNSPSC codes OCDS carries on
+  // tender.items — so there is even less to map from here than there.
+  //
+  // "services" was a claim, and a false one on the rows that matter most: the
+  // AVO II motorway and seven lots of the 34th PPP round arrived filed as
+  // service contracts, and filtering the site for 工程 returned nothing from
+  // Chile while works were sitting in the data. Missing data displayed as a
+  // confident wrong value is worse than missing data displayed as missing.
+  // See migration 0056 and TenderScopeType; this changes no classification,
+  // because no rule in lib/relevance.ts reads "services" positively.
+  const scopeType = "unknown" as const;
 
   const parsedAmount = parseChileBuscaAmount(row.montoLicitacion, row.tipoPresupuesto);
   const estimatedValue = parsedAmount.kind === "number" ? parsedAmount.amount : undefined;

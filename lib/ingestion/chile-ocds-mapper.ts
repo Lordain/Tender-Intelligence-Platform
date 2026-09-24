@@ -231,13 +231,17 @@ export function mapChileOcdsPackageToTender(
 
   const submissionDeadline = tender.tenderPeriod?.endDate;
   const governmentLevel = chileGovernmentLevel(buyer);
-  // Deliberately the generic default. `mainProcurementCategory` was absent on
-  // 120 of 120 records, so OCDS's own goods/services/works signal simply is
-  // not published by Chile. The UNSPSC classification on tender.items IS
-  // present and could ground a real mapping — but that needs the UNSPSC
-  // segment table, and inventing one from memory is the thing this repo does
-  // not do. Recorded as an open gap in the README rather than papered over.
-  const scopeType = "services" as const;
+  // "unknown" (migration 0056), not the generic "services" this used until
+  // 2026-09-24. `mainProcurementCategory` was absent on 120 of 120 records, so
+  // OCDS's own goods/services/works signal simply is not published by Chile.
+  // The UNSPSC classification on tender.items IS present and could ground a
+  // real mapping — but that needs the UNSPSC segment table, and inventing one
+  // from memory is the thing this repo does not do.
+  //
+  // So the gap stays a gap, and now says so on the page and in the filter
+  // instead of claiming a category nobody published. Classification is
+  // unaffected: no rule in lib/relevance.ts reads "services" positively.
+  const scopeType = "unknown" as const;
   const estimatedValue = tender.value?.amount;
   // Read independently of the amount, not alongside it: one record in the 120
   // carried an amount with NO currency (2273-36-LE26, 24,000,000 and no

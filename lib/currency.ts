@@ -27,7 +27,9 @@ import type { Locale } from "@/types/tender";
  * by hand.
  *
  * Note the environment changed: this container CAN now reach an FX host, so
- * a future refresh no longer has to be quoted in by hand.
+ * a future refresh no longer has to be quoted in by hand. CLP and the two
+ * Chilean indexed units were added 2026-09-24 that way — measured here, not
+ * quoted in — see their own note below.
  *
  * Re-verified 2026-09-11 (Wise/XE/Investing.com, cross-checked): PEN 3.3545,
  * MXN 16.94, COP 3,099 spot against a 7-day average of 3,140 — every existing
@@ -66,6 +68,47 @@ export const USD_RATES: Record<string, number> = {
   // placeholder that was ~4.5% off; the monthly FX Routine re-checks it like
   // every other row from here on.
   BRL: 1 / 5.16,
+  // Added 2026-09-24 for Chile, the last thing blocking that source: the
+  // busca export carries a currency on 4,055 of 4,055 rows, 3,918 of them CLP,
+  // and without a rate convertToUsd() returns null — so a real 690,000,000
+  // peso contract reaches lib/relevance.ts as "no value published", the
+  // outcome the EUR/GBP note above exists to prevent.
+  //
+  // Two independent LIVE sources, both read 2026-09-24:
+  //   open.er-api.com                946.50   (market composite)
+  //   mindicador.cl / Banco Central  959.39   ("dólar observado", the official
+  //                                            figure, one business day behind
+  //                                            by definition)
+  // They disagree by 1.36%, so the midpoint 952.9 is stored as 953 and the
+  // third digit is the last one this measurement can carry. It lands inside
+  // the 900–1000 band the Chile round-2 report used for estimating and
+  // explicitly refused to write into this file without a real measurement.
+  CLP: 1 / 953,
+  // The two Chilean INDEXED UNITS, not currencies — and both appear in the
+  // Moneda column as if they were: CLF 47 rows, UF 37 (the same unit under its
+  // ISO code and its Spanish name), UTM 6. Ninety real amounts that would
+  // otherwise read as "no value published".
+  //
+  // Published in pesos by the Banco Central (mindicador.cl, read 2026-09-24):
+  // UF = 41,008.1 CLP dated the same day, UTM = 71,721 CLP dated 2026-09-01.
+  // Converted through the CLP rate above, so they inherit its 1.36% spread —
+  // 41008.1/953 = 43.03 and 71721/953 = 75.26. Quoted the same way round as
+  // EUR/GBP, since one of either is worth many dollars.
+  //
+  // THESE DRIFT FASTER THAN A CURRENCY, and for a different reason: UF is
+  // re-published DAILY against Chilean inflation and UTM monthly, so they move
+  // even on a day the peso does not. The monthly FX Routine re-checks them
+  // like every other row, which is the right cadence for UTM and a month
+  // behind for UF — acceptable while this table is explicitly a triage aid and
+  // not an accounting figure, and worth knowing before anyone quotes one.
+  //
+  // A UTM RATE DOES NOT RESCUE THE 1,808 BAND ROWS. Those carry a phrase —
+  // "Igual o superior a 5.000 UTM" — which is a floor, not an amount. The
+  // mapper refuses to turn a range into a number, and a rate does not change
+  // that; it would only dress the floor up as a value.
+  CLF: 43.03,
+  UF: 43.03,
+  UTM: 75.26,
 };
 
 /** Returns null (not the raw value) when the currency isn't in the rate table, so callers can distinguish "genuinely converted" from "unknown currency, don't display a number that looks precise but isn't even the right unit." */

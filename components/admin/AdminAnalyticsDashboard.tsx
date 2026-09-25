@@ -39,6 +39,7 @@ const VALUE_LABELS: Record<string, string> = {
   works: "工程/EPC",
   consulting: "咨询",
   deadline_asc: "交标由近到远",
+  deadline_desc: "交标由远到近",
   publication_desc: "最新发布",
   explorer: "探索版",
   professional: "个人版",

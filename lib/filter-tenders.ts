@@ -95,7 +95,8 @@ export function filterTenders(
   });
 }
 
-export const SORT_KEYS = ["publication_desc", "deadline_asc"] as const;
+// deadline_desc added 2026-09-25 (user: 计划交标 … 增加：由远到近).
+export const SORT_KEYS = ["publication_desc", "deadline_asc", "deadline_desc"] as const;
 
 export type SortKey = (typeof SORT_KEYS)[number];
 
@@ -109,7 +110,12 @@ export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SOR
   const sorted = [...allTenders];
 
   switch (sortKey) {
-    case "deadline_asc": {
+    case "deadline_asc":
+    case "deadline_desc": {
+      // 由远到近 flips only the order WITHIN the live band: the groups stay in
+      // the same order, so a far-off live tender still comes before any
+      // closed one rather than the list opening on stale deadlines.
+      const direction = sortKey === "deadline_desc" ? -1 : 1;
       const deadlineOf = (tender: Tender) => {
         if (!tender.submissionDeadline) return null;
         const timestamp = new Date(tender.submissionDeadline).getTime();
@@ -136,7 +142,7 @@ export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SOR
         // ordering. Historical/no-date rows fall back to newest publication
         // first instead of putting the oldest stale deadline at the top.
         if (aDeadline !== null && bDeadline !== null && aDeadline >= now && bDeadline >= now) {
-          return aDeadline - bDeadline;
+          return (aDeadline - bDeadline) * direction;
         }
         return b.publicationDate.localeCompare(a.publicationDate);
       });

@@ -1356,6 +1356,43 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     tenderNumber: "LA-51-GYN-051GYN010-N-112-2026", buyer: "ISSSTE",
     country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
   },
+  // The user's review of the first twelve rows the rule kept (2026-09-25):
+  // eight 可以, these four 不要. All real, all international, all equipment.
+  {
+    title: "MAQUINARIA Y EQUIPOS DE SEMIPROCESADOS TEXTILES",
+    expectedTier: "excluded",
+    note: "Real open row, LA-07-113-007000998-T-236-2026 (SEDENA). Garment-industry machinery. User: 不要.",
+    tenderNumber: "LA-07-113-007000998-T-236-2026", buyer: "SEDENA",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "MAQUINARIA Y EQUIPOS ESPECIALES CONFECCION PRENDAS ESPECIALES",
+    expectedTier: "excluded",
+    note: "Real open row, LA-07-113-007000998-T-237-2026 (SEDENA). Its twin. User: 不要.",
+    tenderNumber: "LA-07-113-007000998-T-237-2026", buyer: "SEDENA",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPO DE RAPPEL PARA LA SGG",
+    expectedTier: "excluded",
+    note: "Real open row, IA-73-R97-914012998-I-26-2026 (Jalisco). Climbing gear. User: 不要.",
+    tenderNumber: "IA-73-R97-914012998-I-26-2026", buyer: "SECRETARÍA DE ADMINISTRACIÓN (JAL)",
+    country: "Mexico", scopeType: "services", governmentLevel: "state", procedureType: "INVITACIÓN A CUANDO MENOS TRES PERSONAS",
+  },
+  {
+    title: "ADQUISICION DE EQUIPO DE CAMPO",
+    expectedTier: "excluded",
+    note: "Real open row, LA-10-LAU-010LAU001-T-179-2026 (Servicio Geológico Mexicano). Field kit. User: 不要.",
+    tenderNumber: "LA-10-LAU-010LAU001-T-179-2026", buyer: "SGM",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "SISTEMAS FERROVIARIOS QUERÉTARO – SALTILLO",
+    expectedTier: "flagship",
+    note: "Real open row, LO-09-JZO-009JZO001-I-62-2026 (ATTRAPI). A national rail line that came out excluded for 'no keyword', because the major-project entry knew 'ferrocarril' and not the adjective. User: 铁路补上.",
+    tenderNumber: "LO-09-JZO-009JZO001-I-62-2026", buyer: "ATTRAPI",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
 
   // --- "subestación" narrowed to require a construction/equipment
   // qualifier (2026-09-04) after a real CFE example was found live in

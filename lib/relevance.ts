@@ -2230,6 +2230,14 @@ const SIGNIFICANT_VALUE_USD = 5_000_000;
 // which the un-pluralized \bpuerto\b never matched.
 const MAJOR_PROJECT_KEYWORDS = [
   /ferrocarril|v[íi]a f[ée]rrea|tren (de carga|el[ée]ctrico|interurbano)/i, // 建铁路
+  // The adjective, which the line above never matched (user, 2026-09-25:
+  // 铁路补上). Two real open ATTRAPI works procedures came out excluded for
+  // "no keyword": "SISTEMAS FERROVIARIOS QUERÉTARO – SALTILLO" and "SISTEMAS
+  // FERROVIARIOS IRAPUATO - GUADALAJARA" — national passenger lines. Only
+  // with a network noun in front, never bare: "TRANSPORTE FERROVIARIO DE
+  // CARGA" is a freight SERVICE the user deleted, and "vía ferroviaria"
+  // heads track-inspection contracts.
+  /\b(sistemas?|l[íi]neas?|red(es)?|tramos?) ferroviari[oa]s?\b/i,
   /construcci[óo]n de (la )?(carretera|autopista)|autopista de cuota|libramiento carretero/i, // 建长距离公路 — anchored to "construcción", not maintenance
   /\bpresas?\b|\brepresas?\b|\bembalses?\b/i, // 建水库、建水坝
   /plantas? (de generaci[óo]n|termoel[ée]ctrica|hidroel[ée]ctrica|e[óo]lica|fotovoltaica|de ciclo combinado)|central(es)? (el[ée]ctrica|de generaci[óo]n)/i, // 建电站
@@ -2983,6 +2991,11 @@ const MEXICO_INTERNATIONAL_PROCEDURE = /-(?:I|T)-\d+-\d{4}$/i;
  * user said stay out, which are also the most common international Mexican
  * purchases: toner, cartridges and papelería are bought internationally as
  * readily as generators are.
+ *
+ * textil/confección/prendas, rappel and "equipo de campo" were added from
+ * the user's review of the first 12 rows this kept (2026-09-25, 不要):
+ * SEDENA's garment-making machinery, climbing gear, and a geological
+ * survey's field kit.
  */
 const BULK_GOODS_CATEGORY =
   /\bequipos?\b|\bequipamiento\b|\bmaquinaria\b|\bmaquinas?\b|plantas? (?:generadora|de emergencia|de energia)|grupos? electrogenos?|\bgeneradores?\b|quimic|\bcloro\b|hipoclorito|sulfato de aluminio|\bcombustibles?\b|\bdiesel\b|\bgasolinas?\b|turbosina|\blubricantes?\b|\basfalto\b|emulsion asfaltica|\bgas (?:lp|l\.p\.|licuado)|petrolifer/i;
@@ -2997,7 +3010,7 @@ const BULK_GOODS_CATEGORY =
 const GOODS_NOUN_HEAD = /^\W*(?:equipamiento|maquinaria|equipos?)\b/i;
 
 const NOT_BULK_GOODS =
-  /papeleri|oficina|computo|informatic|periferic|\bmonitor|discos? dur|\btoner|cartucho|tecnologias? de la informacion|\btic\b|consumible|\binsumo|materia|refaccion|accesorio|mobiliario|uniforme|vestuario|calzado|\bropa\b|equipo de proteccion|despensa|aliment|medicament|vacuna|curacion|osteosintesis|de consumo|limpieza|\baseo\b|didactic|herramientas? menor|herramientas? de mano|\bvales?\b|audiovisual/i;
+  /papeleri|oficina|computo|informatic|periferic|\bmonitor|discos? dur|\btoner|cartucho|tecnologias? de la informacion|\btic\b|consumible|\binsumo|materia|refaccion|accesorio|mobiliario|uniforme|vestuario|calzado|\bropa\b|equipo de proteccion|despensa|aliment|medicament|vacuna|curacion|osteosintesis|de consumo|limpieza|\baseo\b|didactic|textil|confeccion|prendas|rappel|equipo de campo|herramientas? menor|herramientas? de mano|\bvales?\b|audiovisual/i;
 
 /**
  * The keep signal behind the user's 2026-09-25 decision for Mexico: with no

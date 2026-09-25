@@ -98,6 +98,11 @@ jobs:
           # start keeping thousands; ENRICH_LIMIT caps that.
           - name: Chile (Mercado Público)
             command: cron:chile
+          # Added 2026-09-25. Petrobras and Transpetro publish nothing on PNCP
+          # (Lei 13.303); their own portal serves every open opportunity in
+          # one public request. See scripts/cron-petronect.ts.
+          - name: Petrobras (Petronect)
+            command: cron:petronect
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v7

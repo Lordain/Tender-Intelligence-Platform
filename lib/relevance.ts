@@ -4,6 +4,7 @@ import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/ind
 import { foldAccents } from "@/lib/text-fold";
 import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
+import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
 
 /**
@@ -4074,6 +4075,16 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   // alongside a real tag it would otherwise sit next to as a phantom category.
   const merged = [...new Set([...spanish, ...portuguese])];
   const industries = merged.length > 1 ? merged.filter((tag) => tag !== "general") : merged;
+  // Petrobras / Transpetro, from Petronect: own rules, see lib/relevance-petronect.ts.
+  // Every row is an oil company's purchase, so it is filed under 能源矿业
+  // even when the title is a valve or a relay that no keyword would tag.
+  if (input.sourceName === PETRONECT_SOURCE_NAME) {
+    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    return {
+      industries: withEnergy,
+      relevance: classifyPetronectRelevance({ title: input.title, procedureType: input.procedureType }),
+    };
+  }
   return {
     industries,
     relevance: classifyRelevance({

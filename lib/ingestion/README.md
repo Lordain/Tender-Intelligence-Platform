@@ -8737,3 +8737,29 @@ OCDS 那扇门**保持原样、继续可用**，正是因为它是相反的东�
 - **没用 `codigoRegion` / `rubros` / `compradores` 这些筛选器。** 它们存在，没量过，所以一个字都没读。
 - **没碰那四个同源控制器**（`BuscarComprador`、`BuscarRubros`、`BuscarProveedor`、`cargaFiltro*`）。
   它们是给自动补全用的，这一轮用不上。
+
+## Petrobras / Transpetro：Petronect 一次请求拿到全部在招项目（2026-09-25）
+
+用户要求补电力、石油、矿业公司自己的项目（「基于你的建议做」）。先量了现有入口：
+库里 Petrobras 0 条；PNCP 搜 "petrobras" 返回 301 条，采购方没有一条是 Petrobras
+—— 国企按 13.303 号法采购，不上 PNCP。DOU 上有它的 AVISO DE LICITAÇÃO，但只有
+403 个字符、没有截止日（见 dou-watch.ts）。
+
+**门**：Petronect 公开页「Lista de Oportunidades Abertas para propostas」不用登录，
+页面自己的脚本只发一个请求：
+`/sap/opu/odata/SAP/YPCON_GET_XML_SRV/getXMLSet('01')?$format=json`。
+`d.EvXml` 是一个 JSON 字符串，里面的 `TAB` 就是全部在招项目 —— 2026-09-25 共 309 个，
+2.4 MB，没有分页。附件下载地址（`YPCON_PUB_ATTACHMENT_DOWNLOAD_SRV/attachmentSet('<id>')/$value`）
+无会话直接拿到了 37 页的 edital PDF。没有金额：13.303 号法允许国企不公开预算，
+表头服务（`YPCON_GET_HEADER_INFO_SRV`）里也没有金额字段。
+
+**为什么单独一套规则**（lib/relevance-petronect.ts）：通用规则跑这 309 条，16 个
+国际招标（Mexilhão 压缩机组、SEAP 天然气管道用管、炼厂催化剂、换热器）全部被排除
+—— 没金额、也不命中行业关键词；反而差旅代理被保留。Petronect 自己给出的
+「Nacional / Internacional」（只限巴西供应商 / 外国供应商可直接投）才是这里的规模证据，
+写进 `procedureType`，导入和重分类读的是同一个字段。
+
+结果（309 条）：大型 10、中型 9、常规 47、排除 243。常规里交标期不足 12 天的，按
+全站规则在写入时跳过。回归样本：41 条真实项目，`npm run test:petronect`。
+
+每日任务：`npm run cron:petronect`（daily-ingest.yml），心跳 `import-petronect`。

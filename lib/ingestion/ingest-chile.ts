@@ -46,17 +46,15 @@ import { CHILE_SOURCE_NAME, mapChileOcdsPackageToTender } from "@/lib/ingestion/
 import {
   ChileBuscaSession,
   fetchChileBuscaOpenTenders,
-  fetchChileBuscaSearchHtml,
   warmSession,
-  CHILE_BUSCA_HTML_PAGE_SIZE,
 } from "@/lib/ingestion/connectors/chile-busca-live";
 import {
   parseChileBuscaCsv,
-  parseChileBuscaSearchHtml,
   type ChileBuscaCard,
   type ChileBuscaRow,
 } from "@/lib/ingestion/chile-busca-parser";
 import { CHILE_BUSCA_SOURCE_NAME, mapChileBuscaRowToTender } from "@/lib/ingestion/chile-busca-mapper";
+import { ChileFichaEgressBlockedError, fetchChileFicha } from "@/lib/ingestion/connectors/chile-ficha-live";
 import { filterRecentTenders, filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import type { Tender, TenderRelevanceTier } from "@/types/tender";
@@ -110,13 +108,13 @@ export type ChileIngestOptions = {
   /** Which door. Defaults to "ocds" so every existing caller keeps its behaviour unchanged. */
   door?: ChileDoor;
   /**
-   * busca only: how many of the kept rows to enrich with a closing date from
-   * the HTML fragment.
+   * busca only: how many of the kept rows to read a closing date for, newest
+   * first. One request per row, against that row's OWN ficha.
    *
-   * Bounded on purpose. The HTML serves 10 rows per request against the
-   * export's 1,000, so enriching all 4,055 costs ~406 requests against
-   * someone else's front end, versus 15 for the whole export. Enrichment is
-   * applied to the rows this run is actually going to keep, newest first.
+   * Bounded because it is a request per tender against someone else's front
+   * end — and because a run that stops being polite gets throttled: 600
+   * requests in fifteen minutes drew HTTP 403s and throttle pages a third of
+   * the way through (see chile-ficha-live.ts).
    */
   enrichLimit?: number;
   /** Calendar months back from `now` to fetch, newest first. Ignored when `month` is set. */
@@ -214,49 +212,50 @@ async function fetchBuscaRows(
 }
 
 /**
- * Fetches the HTML fragment for as many of `wanted` as the limit allows and
- * returns the cards, keyed by tender code.
+ * The closing date for each shortlisted row, read from that row's OWN ficha.
  *
- * The page correspondence is measured, not assumed: with the same query and
- * `idOrden=3`, the HTML's 10-row pages and the export's 1,000-row pages walk
- * ONE ordering — 120 of 120 cards matched the export's rows position for
- * position on 2026-09-24. So page N of the fragment covers export rows
- * (N−1)×10 … N×10.
+ * Returns partial cards — only what a ficha carries. `comprasEfectuadas` is
+ * NOT among them: the search card has that counter, the ficha does not, and it
+ * is left undefined rather than filled with something adjacent. Losing it
+ * costs nothing that was ever reliably there, because the card walk this
+ * replaced reached almost none of these rows in the first place.
  *
- * Cards are still joined to rows by code rather than by that position, because
- * the ordering being shared today does not make it a contract, and a
- * position-joined closing date would attach the wrong deadline to the wrong
- * tender in total silence.
+ * ── Why the card walk was wrong ──────────────────────────────────────────
+ *
+ * It read the search-result HTML, ten cards per request, and kept the first N
+ * it met. Its own comment said the enrichment was "applied to the rows this
+ * run is actually going to keep". It was not: it walked the search pages in
+ * the site's own order, and the kept rows are a relevance-filtered subset
+ * scattered through a 1,309-row shortlist. A run asking for 60 closing dates
+ * filled sixty rows that were mostly other people's — which is why 60 stored
+ * Chilean rows reached production with no deadline at all.
+ *
+ * One failed tender does not fail the run — a missing deadline costs a field,
+ * not an import — but failures are reported, because a fetcher that has
+ * quietly stopped matching is what this door is most likely to do.
  */
-async function enrichWithClosingDates(
-  session: ChileBuscaSession,
+async function enrichFromFichas(
+  shortlist: { row: ChileBuscaRow }[],
   limit: number,
   onProgress?: (message: string) => void,
 ): Promise<Map<string, ChileBuscaCard>> {
   const cards = new Map<string, ChileBuscaCard>();
-  const pages = Math.ceil(limit / CHILE_BUSCA_HTML_PAGE_SIZE);
-  for (const idTipoFecha of ["1", "2", "3"]) {
-    for (const esPublicoMontoEstimado of ["1", "0"]) {
-      for (let pagina = 1; pagina <= pages; pagina++) {
-        if (cards.size >= limit) return cards;
-        let parsed: ChileBuscaCard[];
-        try {
-          parsed = parseChileBuscaSearchHtml(
-            await fetchChileBuscaSearchHtml(session, { idTipoFecha, esPublicoMontoEstimado, pagina }),
-          );
-        } catch (err) {
-          // One bad fragment does not fail the run: the closing date is an
-          // enrichment, and losing it costs a field rather than the import.
-          // It IS reported, because a parser that quietly stopped matching is
-          // the thing this whole door is most likely to do.
-          onProgress?.(`⚠ HTML 第 ${pagina} 页解析失败（关闭月份=${idTipoFecha} 金额公开=${esPublicoMontoEstimado}）：${err instanceof Error ? err.message.split("\n")[0] : String(err)}`);
-          break;
-        }
-        if (parsed.length === 0) break;
-        for (const card of parsed) if (!cards.has(card.id)) cards.set(card.id, card);
+  let failed = 0;
+  for (const entry of shortlist.slice(0, limit)) {
+    try {
+      const ficha = await fetchChileFicha(entry.row.id);
+      if (ficha.closing) cards.set(entry.row.id, { id: entry.row.id, submissionDeadline: ficha.closing.date });
+    } catch (err) {
+      failed += 1;
+      if (failed <= 3) {
+        onProgress?.(`⚠ ${entry.row.id} 的 ficha 读不到：${err instanceof Error ? err.message.split("\n")[0] : String(err)}`);
       }
+      // A blocked container is a fact about us and applies to every remaining
+      // row, so there is no point walking the rest one timeout at a time.
+      if (err instanceof ChileFichaEgressBlockedError) break;
     }
   }
+  if (failed > 0) onProgress?.(`⚠ 共 ${failed} 条 ficha 没读到交标截止日（其余 ${cards.size} 条读到了）`);
   return cards;
 }
 
@@ -389,9 +388,9 @@ async function ingestChileViaBusca(
   const enrichLimit = options.enrichLimit ?? 0;
   let cards = new Map<string, ChileBuscaCard>();
   if (enrichLimit > 0 && shortlist.length > 0) {
-    onProgress?.(`开始补交标截止日（HTML 每页 10 条，上限 ${enrichLimit} 条）——CSV 里没有这一列`);
-    cards = await enrichWithClosingDates(session, Math.min(enrichLimit, shortlist.length), onProgress);
-    onProgress?.(`补到 ${cards.size} 张卡片`);
+    onProgress?.(`开始逐条读 ficha 补交标截止日（每条一次请求，上限 ${enrichLimit} 条）——CSV 里没有这一列`);
+    cards = await enrichFromFichas(shortlist, Math.min(enrichLimit, shortlist.length), onProgress);
+    onProgress?.(`补到 ${cards.size} 条交标截止日`);
   }
 
   const mapped: Tender[] = [];

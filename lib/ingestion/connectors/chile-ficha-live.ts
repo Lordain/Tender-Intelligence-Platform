@@ -43,6 +43,7 @@ import { describeEgressDenial, egressDenial } from "@/lib/ingestion/egress-denia
 import {
   type ChileAttachment,
   type ChileFichaClosing,
+  type ChileViewState,
   chileAttachmentIndexRefusal,
   parseChileAttachmentIndex,
   parseChileFichaAttachmentUrls,
@@ -59,11 +60,32 @@ const HEADERS = {
     "TenderIntelligencePlatform/1.0 (+https://github.com/lordain/tender-intelligence-platform; open-data ingestion)",
 } as const;
 
-/** Deliberate spacing between requests. Not a limit we were given — one we chose; this is someone else's front end. */
-export const CHILE_FICHA_REQUEST_SPACING_MS = 1500;
+/**
+ * Deliberate spacing between requests. Not a limit we were given — one we chose.
+ *
+ * Raised from 1500 after a real run: 41 tenders at ~600 requests over fifteen
+ * minutes started drawing HTTP 403s and throttle pages roughly a third of the
+ * way in. The same URLs returned 200 minutes later, untouched, which is what
+ * makes it throttling rather than a block. Halving the request count (see the
+ * view state carried on each attachment below) and widening the gap together
+ * bring the same work to ~230 requests.
+ */
+export const CHILE_FICHA_REQUEST_SPACING_MS = 2500;
 
-const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+/**
+ * 403 is in here on evidence, not on principle.
+ *
+ * Measured 2026-09-24: fichas that answered 403 mid-run answered 200 with
+ * 398 KB of their own content when asked again afterwards. This host uses 403
+ * for "too fast", not for "not allowed" — so retrying is the correct response
+ * and NOT an attempt to get around an authorization decision. Nothing in this
+ * module sends a credential, and no 403 here has ever named one.
+ */
+const RETRYABLE_STATUSES = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
 const MAX_ATTEMPTS = 4;
+
+/** Backoff between retries. Longer than the usual 1s base because the thing being waited out is a rate limiter. */
+const RETRY_BACKOFF_MS = 4000;
 
 /**
  * A ficha under ~50 KB is not a ficha.
@@ -96,7 +118,7 @@ async function request(url: string, init: RequestInit = {}): Promise<{ response:
   await pace();
   let response = await fetch(url, build());
   for (let attempt = 1; attempt < MAX_ATTEMPTS && RETRYABLE_STATUSES.has(response.status); attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
+    await new Promise((resolve) => setTimeout(resolve, RETRY_BACKOFF_MS * 2 ** (attempt - 1)));
     await pace();
     response = await fetch(url, build());
   }
@@ -109,11 +131,22 @@ async function request(url: string, init: RequestInit = {}): Promise<{ response:
   return { response, body };
 }
 
+export type ChileAttachmentRef = ChileAttachment & { indexUrl: string; viewState?: ChileViewState };
+
 export type ChileFichaResult = {
   code: string;
   closing?: ChileFichaClosing;
-  /** One entry per file, each carrying the index page it must be POSTed back to. */
-  attachments: (ChileAttachment & { indexUrl: string })[];
+  /**
+   * One entry per file, each carrying the index page it must be POSTed back to
+   * AND that page's __VIEWSTATE.
+   *
+   * The view state travels with the attachment because it was already read
+   * here: every file sits on its own index page (measured — 8 files on
+   * 1895-33-LE26 meant 8 index pages, one file each), so re-fetching a page
+   * per download doubled the request count of the whole run for nothing, and
+   * that doubling is what tripped the rate limiter.
+   */
+  attachments: ChileAttachmentRef[];
   /**
    * Why an attachment index could not be read, per index page. Kept apart from
    * `attachments` so "this tender published no files" (a fact about the
@@ -138,14 +171,28 @@ export async function fetchChileFicha(code: string): Promise<ChileFichaResult> {
   const attachments: (ChileAttachment & { indexUrl: string })[] = [];
   const refusals: string[] = [];
   for (const indexUrl of parseChileFichaAttachmentUrls(html)) {
-    const page = await request(indexUrl, { headers: { Referer: response.url } });
-    const indexHtml = page.body.toString("utf8");
-    const refusal = chileAttachmentIndexRefusal(indexHtml);
+    let indexHtml = (await request(indexUrl, { headers: { Referer: response.url } })).body.toString("utf8");
+    let refusal = chileAttachmentIndexRefusal(indexHtml);
+    // A throttled index page is neither a file table nor a login wall, so it
+    // arrives here looking exactly like "the page structure changed" — the
+    // same ~7.6 KB body came back for five different tenders mid-run and all
+    // five parsed correctly minutes later. One retry separates the two: a real
+    // structure change survives it, a rate limiter does not. The login-wall
+    // case is NOT retried, because asking a second time cannot make a wrong
+    // URL right.
+    if (refusal && !refusal.includes("登录落地页")) {
+      await new Promise((resolve) => setTimeout(resolve, RETRY_BACKOFF_MS));
+      indexHtml = (await request(indexUrl, { headers: { Referer: response.url } })).body.toString("utf8");
+      refusal = chileAttachmentIndexRefusal(indexHtml);
+    }
     if (refusal) {
       refusals.push(`${code}：${refusal}`);
       continue;
     }
-    for (const file of parseChileAttachmentIndex(indexHtml)) attachments.push({ ...file, indexUrl });
+    const viewState = parseChileViewState(indexHtml);
+    for (const file of parseChileAttachmentIndex(indexHtml)) {
+      attachments.push({ ...file, indexUrl, ...(viewState ? { viewState } : {}) });
+    }
   }
 
   return { code, closing: parseChileFichaClosingDate(html), attachments, refusals, fichaBytes: html.length };
@@ -162,32 +209,28 @@ export type ChileDownloadedFile = { fileName: string; contentType?: string; byte
  * until someone opens it. Hence the content-type check below rather than trust
  * in the status code.
  */
-export async function downloadChileAttachment(
-  attachment: ChileAttachment & { indexUrl: string },
-): Promise<ChileDownloadedFile> {
-  const page = await request(attachment.indexUrl);
-  const state = parseChileViewState(page.body.toString("utf8"));
-  if (!state) throw new ChileFichaError(`附件页没有 __VIEWSTATE，无法回发下载：${attachment.fileName}`);
+export async function downloadChileAttachment(attachment: ChileAttachmentRef): Promise<ChileDownloadedFile> {
+  // Uses the view state read when the ficha was walked. A stale one is not a
+  // silent failure — ASP.NET answers with the page itself — so the one retry
+  // below re-reads the page and tries again rather than trusting it blindly.
+  let state = attachment.viewState;
+  if (!state) state = await refreshViewState(attachment.indexUrl);
 
-  const form = new URLSearchParams({
-    __VIEWSTATE: state.viewState,
-    __VIEWSTATEGENERATOR: state.generator,
-    // An <input type="image"> posts coordinates, not a value. Omit them and
-    // ASP.NET does not raise the click at all — it returns the page again,
-    // with HTTP 200.
-    [`${attachment.control}.x`]: "8",
-    [`${attachment.control}.y`]: "8",
-  });
+  let result = await postForFile(attachment, state);
+  if (result.staleViewState) {
+    result = await postForFile(attachment, await refreshViewState(attachment.indexUrl));
+  }
+  if (result.staleViewState) {
+    throw new ChileFichaError(
+      `下载 ${attachment.fileName} 两次都返回网页（${result.contentType}，${result.body.length} 字节），不是文件。\n` +
+        "  重新取过 __VIEWSTATE 仍然如此。没有写盘。",
+    );
+  }
 
-  const { response, body } = await request(attachment.indexUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: attachment.indexUrl },
-    body: form.toString(),
-  });
-
+  const { body, contentType } = result;
   // Three ways this 200 is not a file, and none of them is the status code.
   //
-  //  - text/html      the page again: a __VIEWSTATE ASP.NET would not accept.
+  //  - text/html      the page again — handled above.
   //  - text/plain, 0B measured 2026-09-24, posting a view state fetched
   //                   without this module's own headers. A zero-byte body is
   //                   the busca door's documented trap (busca-descargar-empty.bin)
@@ -196,13 +239,6 @@ export async function downloadChileAttachment(
   //                   recorded in tender_documents reads as "we hold this
   //                   document" on /admin/documents-needed until someone opens it.
   //  - any text/*     a message about a file is not a file.
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("text/html")) {
-    throw new ChileFichaError(
-      `下载 ${attachment.fileName} 返回的是网页（${contentType}，${body.length} 字节），不是文件。\n` +
-        "  ASP.NET 的 __VIEWSTATE 过期就是这个样子：HTTP 200，内容是页面。没有写盘。",
-    );
-  }
   if (body.length === 0) {
     throw new ChileFichaError(
       `下载 ${attachment.fileName} 返回 HTTP 200 但是零字节（${contentType || "没有 content-type"}）。\n` +
@@ -214,6 +250,7 @@ export async function downloadChileAttachment(
       `下载 ${attachment.fileName} 返回的是文本（${contentType}，${body.length} 字节），不是文件。没有写盘。`,
     );
   }
+
   // The INDEX's filename wins, not Content-Disposition's.
   //
   // The server sends UTF-8 bytes in that header without declaring a charset,
@@ -222,11 +259,39 @@ export async function downloadChileAttachment(
   // same name spelled correctly, so the mojibake is avoidable rather than
   // something to transliterate away. The header is kept only as a fallback
   // for a row whose index cell was empty.
-  const disposition = response.headers.get("content-disposition") ?? "";
+  const disposition = result.headers.get("content-disposition") ?? "";
   const served = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)?.[1]?.trim();
   return {
     fileName: attachment.fileName || (served ?? "sin-nombre"),
     ...(contentType ? { contentType } : {}),
     bytes: body,
   };
+}
+
+async function refreshViewState(indexUrl: string): Promise<ChileViewState> {
+  const page = await request(indexUrl);
+  const state = parseChileViewState(page.body.toString("utf8"));
+  if (!state) throw new ChileFichaError(`附件页没有 __VIEWSTATE，无法回发下载：${indexUrl}`);
+  return state;
+}
+
+type PostResult = { body: Buffer; contentType: string; staleViewState: boolean; headers: Headers };
+
+async function postForFile(attachment: ChileAttachmentRef, state: ChileViewState): Promise<PostResult> {
+  const form = new URLSearchParams({
+    __VIEWSTATE: state.viewState,
+    __VIEWSTATEGENERATOR: state.generator,
+    // An <input type="image"> posts coordinates, not a value. Omit them and
+    // ASP.NET does not raise the click at all — it returns the page again,
+    // with HTTP 200.
+    [`${attachment.control}.x`]: "8",
+    [`${attachment.control}.y`]: "8",
+  });
+  const { response: res, body } = await request(attachment.indexUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: attachment.indexUrl },
+    body: form.toString(),
+  });
+  const contentType = res.headers.get("content-type") ?? "";
+  return { body, contentType, staleViewState: contentType.includes("text/html"), headers: res.headers };
 }

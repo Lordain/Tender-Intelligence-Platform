@@ -25,6 +25,7 @@
 import { ingestBrazilPncp, BRAZIL_PNCP_SOURCE_NAME } from "../lib/ingestion/ingest-brazil";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
+import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -190,6 +191,32 @@ async function main() {
     return;
   }
   console.log(`\n已写入 ${result.written ?? 0} 条${result.failed ? `，失败 ${result.failed} 条` : ""}。`);
+
+  // The heartbeat the admin banner reads (user, 2026-09-25: 建议给巴西 PNCP
+  // 的每日任务加上运行记录 <- OK). Brazil was the one daily job without one,
+  // so a night PNCP refused us looked exactly like a night with nothing new.
+  //
+  // Failed only when the run is actually blind — nothing read at all, every
+  // modality cut off, or rows refused by the database. One modality hanging
+  // up halfway is PNCP's usual rate limiting and the next night's 3-day window
+  // reads those days again, so that is recorded in the detail, not raised.
+  const erroredModalities = result.byModality.filter((entry) => entry.stoppedBy === "error").length;
+  const problem =
+    result.fetchedRows === 0
+      ? "PNCP 一条都没返回（见 GitHub Actions 日志）"
+      : erroredModalities === result.byModality.length
+        ? "每种采购方式都在翻页中途被 PNCP 断开"
+        : result.failed
+          ? `${result.failed} 条写入失败`
+          : null;
+  await writeCronHeartbeat(
+    supabase!,
+    "import-brazil",
+    problem ? "failed" : "ok",
+    problem ??
+      `抓到 ${result.fetchedRows} 条，进入推荐 ${result.keptCount} 条，写入 ${result.written ?? 0} 条` +
+        (erroredModalities > 0 ? `（${erroredModalities} 种采购方式中途被断开，下次运行会补上）` : ""),
+  );
   if (result.documentLinks) {
     const { tendersAsked, tendersWithLinks, linkCount, failed, stoppedEarly, failureReasons } = result.documentLinks;
     console.log(`标书链接：查了 ${tendersAsked} 条，${tendersWithLinks} 条有附件，共 ${linkCount} 个链接${failed ? `，${failed} 条没问到` : ""}。`);
@@ -213,7 +240,11 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
+main().catch(async (err) => {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(message);
+  // A crash is the loudest failure and would otherwise only surface 30 hours
+  // later as "overdue"; say it now, with the reason.
+  if (hasWriteFlag()) await writeCronHeartbeat(createSupabaseAdminClient(), "import-brazil", "failed", message.slice(0, 300));
   process.exit(1);
 });

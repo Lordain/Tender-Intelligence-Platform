@@ -56,11 +56,20 @@ export const SITE_DESCRIPTION =
  * variable. These are public by design (they are printed in the page), so
  * the environment is for convenience, not secrecy.
  */
+/**
+ * Baidu's code for latintender.com, issued 2026-09-25 in 百度搜索资源平台
+ * (HTML标签验证). Committed rather than left to the environment because
+ * Baidu offers no DNS method for this site and the value is printed in every
+ * page anyway; BAIDU_SITE_VERIFICATION still overrides it. Removing it
+ * un-verifies the site — Baidu re-checks.
+ */
+const BAIDU_VERIFICATION_CODE = "codeva-WJtzxoje9L";
+
 export function siteVerification(): Metadata["verification"] {
   const read = (name: string) => process.env[name]?.trim() || undefined;
   const other: Record<string, string> = {};
   const bing = read("BING_SITE_VERIFICATION");
-  const baidu = read("BAIDU_SITE_VERIFICATION");
+  const baidu = read("BAIDU_SITE_VERIFICATION") ?? BAIDU_VERIFICATION_CODE;
   const so360 = read("SO360_SITE_VERIFICATION");
   const sogou = read("SOGOU_SITE_VERIFICATION");
   if (bing) other["msvalidate.01"] = bing;

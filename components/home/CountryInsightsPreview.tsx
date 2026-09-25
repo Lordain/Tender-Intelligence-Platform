@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { countryInsights } from "@/lib/country-insights";
+import { homepageCountryInsights } from "@/lib/country-insights";
 
 export function CountryInsightsPreview() {
   return (
@@ -24,7 +24,7 @@ export function CountryInsightsPreview() {
         </div>
 
         <div className="mt-9 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {countryInsights.map((insight) => (
+          {homepageCountryInsights().map((insight) => (
             <Link
               key={insight.slug}
               href={`/insights/${insight.slug}`}

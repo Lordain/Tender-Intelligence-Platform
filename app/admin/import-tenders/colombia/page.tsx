@@ -1,4 +1,5 @@
 import { ImportColombiaForm } from "@/components/admin/ImportColombiaForm";
+import { ImportCompanySourceForm } from "@/components/admin/ImportCompanySourceForm";
 
 export default function AdminImportTendersColombiaPage() {
   return (
@@ -17,6 +18,13 @@ export default function AdminImportTendersColombiaPage() {
         </a>
       </div>
       <ImportColombiaForm />
+      <ImportCompanySourceForm
+        source="upme"
+        eyebrow="Colombia · 输电"
+        title="UPME — 输电扩建招标（Convocatorias）"
+        description="哥伦比亚矿能规划署 UPME 的新建变电站和输电线路投资人遴选，不在 SECOP 上。只导入仍在投标阶段的。"
+        sourceUrl="https://www.upme.gov.co/"
+      />
     </div>
   );
 }

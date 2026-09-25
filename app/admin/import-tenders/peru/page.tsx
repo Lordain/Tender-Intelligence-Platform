@@ -1,4 +1,5 @@
 import { ImportPeruForm } from "@/components/admin/ImportPeruForm";
+import { ImportCompanySourceForm } from "@/components/admin/ImportCompanySourceForm";
 import { PeruDocumentLinksForm } from "@/components/admin/PeruDocumentLinksForm";
 import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
 import { ManualOnlyBadge, ManualOnlyNote } from "@/components/admin/AutoRunBadge";
@@ -45,6 +46,13 @@ export default function AdminImportTendersPeruPage() {
         </a>
       </div>
       <ImportPeruForm />
+      <ImportCompanySourceForm
+        source="petroperu"
+        eyebrow="Peru · 石油"
+        title="Petroperú — 国际竞争性招标（PCI）"
+        description="秘鲁国家石油公司自己的国际招标，不在 SEACE 上，一年只有一两个。只导入 PCI 开头的正式招标；CAI 开头的是采购完成后的公示，不导入。交标截止日显示「见招标文件」。"
+        sourceUrl="https://www.petroperu.com.pe/proveedores/avisos-y-convocatorias/competencia-internacional/"
+      />
       {/*
         Local dev only, and the route enforces it too — it calls SEACE, which
         refuses Vercel's datacenter range. Rendered conditionally rather than

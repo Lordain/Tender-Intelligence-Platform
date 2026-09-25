@@ -1,5 +1,6 @@
 import { ImportAntaqForm } from "@/components/admin/ImportAntaqForm";
 import { ImportBrazilForm } from "@/components/admin/ImportBrazilForm";
+import { ImportCompanySourceForm } from "@/components/admin/ImportCompanySourceForm";
 import { ManualOnlyBadge, ManualOnlyNote } from "@/components/admin/AutoRunBadge";
 
 export default function AdminImportTendersBrazilPage() {
@@ -46,6 +47,20 @@ export default function AdminImportTendersBrazilPage() {
         not a purchase. Someone importing "Brazil" wants both, in that order.
       */}
       <ImportAntaqForm />
+      <ImportCompanySourceForm
+        source="petronect"
+        eyebrow="Brazil · 石油"
+        title="Petronect — Petrobras / Transpetro"
+        description="Petrobras 和 Transpetro 不在 PNCP 上（Lei 13.303），在自己的 Petronect 门户招标。按石油设备规则筛选，大型 EPC、压缩机、管材等会保留。"
+        sourceUrl="https://www.petronect.com.br/"
+      />
+      <ImportCompanySourceForm
+        source="cemig"
+        eyebrow="Brazil · 电力"
+        title="Cemig — e-Compras"
+        description="米纳斯吉拉斯州电力公司 Cemig 自己的采购门户。只保留电网设备和材料（含电子竞价），服务类、资格登记类不导入。"
+        sourceUrl="https://app2-compras.cemig.com.br/"
+      />
     </div>
   );
 }

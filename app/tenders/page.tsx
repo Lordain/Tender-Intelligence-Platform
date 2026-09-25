@@ -9,9 +9,9 @@ import { pageMetadata } from "@/lib/seo";
 import { TenderListStructuredData } from "@/components/seo/TenderStructuredData";
 
 export const metadata: Metadata = pageMetadata({
-  title: "拉美政府招标项目｜墨西哥、巴西、哥伦比亚、秘鲁采购信息",
+  title: "拉美政府招标项目｜墨西哥、巴西、哥伦比亚、秘鲁、智利采购信息",
   description:
-    "查找墨西哥、巴西、哥伦比亚和秘鲁政府招标项目，查看中文标题、项目摘要、采购方式、金额与计划交标时间，并按国家、行业和项目类型筛选。",
+    "查找墨西哥、巴西、哥伦比亚、秘鲁和智利政府招标项目，查看中文标题、项目摘要、采购方式、金额与计划交标时间，并按国家、行业和项目类型筛选。",
   path: "/tenders",
 });
 

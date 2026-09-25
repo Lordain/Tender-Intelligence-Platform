@@ -241,7 +241,11 @@ async function enrichFromFichas(
 ): Promise<Map<string, ChileBuscaCard>> {
   const cards = new Map<string, ChileBuscaCard>();
   let failed = 0;
-  for (const entry of shortlist.slice(0, limit)) {
+  const batch = shortlist.slice(0, limit);
+  for (const [index, entry] of batch.entries()) {
+    // Otherwise silent for minutes at 2.5 s a request, which in a CI log is
+    // indistinguishable from a hang.
+    if (index > 0 && index % 10 === 0) onProgress?.(`ficha 进度：${index} / ${batch.length}（读到截止日 ${cards.size} 条）`);
     try {
       const ficha = await fetchChileFicha(entry.row.id);
       if (ficha.closing) cards.set(entry.row.id, { id: entry.row.id, submissionDeadline: ficha.closing.date });
@@ -385,11 +389,19 @@ async function ingestChileViaBusca(
   const keptCodes = new Set(applyRecency(firstPass.map((entry) => entry.tender), options).map((t) => t.tenderNumber));
   const shortlist = firstPass.filter((entry) => keptCodes.has(entry.row.id));
 
+  // Only the rows that will be KEPT are worth a ficha request. The shortlist
+  // is every open tender in the window — 3,951 on 2026-09-25, of which 72
+  // were kept — and at CHILE_FICHA_REQUEST_SPACING_MS each request costs
+  // 2.5 s, so enriching in shortlist order spent the budget on rows the
+  // classifier then threw away and would have taken hours uncapped. The
+  // tier does not depend on the closing date, so filtering first changes
+  // nothing about which rows are kept.
+  const toEnrich = shortlist.filter((entry) => entry.tender.relevance.tier !== "excluded");
   const enrichLimit = options.enrichLimit ?? 0;
   let cards = new Map<string, ChileBuscaCard>();
-  if (enrichLimit > 0 && shortlist.length > 0) {
-    onProgress?.(`开始逐条读 ficha 补交标截止日（每条一次请求，上限 ${enrichLimit} 条）——CSV 里没有这一列`);
-    cards = await enrichFromFichas(shortlist, Math.min(enrichLimit, shortlist.length), onProgress);
+  if (enrichLimit > 0 && toEnrich.length > 0) {
+    onProgress?.(`开始逐条读 ficha 补交标截止日（只读会保留的 ${toEnrich.length} 条，上限 ${enrichLimit} 条）——CSV 里没有这一列`);
+    cards = await enrichFromFichas(toEnrich, Math.min(enrichLimit, toEnrich.length), onProgress);
     onProgress?.(`补到 ${cards.size} 条交标截止日`);
   }
 

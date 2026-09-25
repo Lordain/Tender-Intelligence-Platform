@@ -4,7 +4,7 @@ import { getViewerEntitlement } from "@/lib/access-control-server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 
-const schema = z.object({ country: z.enum(["Mexico", "Brazil", "Colombia", "Peru"]) });
+const schema = z.object({ country: z.enum(["Mexico", "Brazil", "Colombia", "Peru", "Chile"]) });
 
 export async function POST(request: Request) {
   const [user, entitlement] = await Promise.all([getCurrentUser(), getViewerEntitlement()]);

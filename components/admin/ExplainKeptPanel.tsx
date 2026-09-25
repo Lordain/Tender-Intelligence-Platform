@@ -39,7 +39,7 @@ const COUNTRY_OPTIONS = [
   { value: "Peru", label: "秘鲁" },
 ];
 
-const COUNTRY_LABELS: Record<string, string> = { Mexico: "墨西哥", Colombia: "哥伦比亚", Peru: "秘鲁" };
+const COUNTRY_LABELS: Record<string, string> = { Mexico: "墨西哥", Colombia: "哥伦比亚", Peru: "秘鲁", Brazil: "巴西", Chile: "智利" };
 
 function countryName(country: string): string {
   return COUNTRY_LABELS[country] ?? country;

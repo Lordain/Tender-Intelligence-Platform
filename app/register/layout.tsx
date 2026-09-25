@@ -17,7 +17,7 @@ import { TRIAL_DAYS } from "@/lib/access-control";
  */
 export const metadata: Metadata = pageMetadata({
   title: "注册",
-  description: `注册拉美招投标信息平台，${TRIAL_DAYS} 天全功能免费试用，无需绑定银行卡。查看墨西哥、巴西、哥伦比亚、秘鲁的政府招标项目中文情报。`,
+  description: `注册拉美招投标信息平台，${TRIAL_DAYS} 天全功能免费试用，无需绑定银行卡。查看墨西哥、巴西、哥伦比亚、秘鲁、智利的政府招标项目中文情报。`,
   path: "/register",
 });
 

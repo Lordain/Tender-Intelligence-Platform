@@ -1,5 +1,6 @@
 import { PolicyPage, type PolicySection } from "@/components/content/PolicyPage";
 import { LEGAL_CONTACT_EMAIL, LEGAL_OPERATOR_ADDRESS, LEGAL_OPERATOR_NAME } from "@/lib/legal";
+import { MAX_ACTIVE_DEVICES } from "@/lib/account-devices";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 
@@ -27,9 +28,10 @@ const sections: PolicySection[] = [
       "订阅或申请付款时，平台还会处理购买者类型、法定姓名或公司名称、账单邮箱、国家或地区、账单地址、城市、州、省、邮编、税号（如提供）、所选方案、币种、金额、付款状态以及交易或账单标识。银行卡资料由 Stripe 直接处理，平台不直接取得完整卡号或安全码。",
       "申请人工国际电汇时，平台会保存汇款人或公司名称、汇出银行、银行交易编号或 SWIFT 参考号、汇款时间和用户备注。收款账户、SWIFT/BIC 与收款人地址不会在网站自动展示或发送，而是在核验后通过人工渠道提供。",
       "为了解产品使用情况，平台会在浏览器中生成随机统计标识，并记录访问页面、所选筛选类别、项目查看以及收藏或取消收藏事件。登录期间产生的统计事件可能与账户标识关联；搜索框中输入的具体文字不会写入运营统计。",
+      `为执行「每个账户最多 ${MAX_ACTIVE_DEVICES} 台设备同时登录」的限制，平台会在浏览器中生成随机设备标识，并在用户登录期间记录该标识、浏览器信息（User-Agent）、首次和最近使用时间以及退出登录时间，与账户关联保存。这些记录仅用于账户安全、设备数量限制和在账户页面向用户展示其已登录设备，不用于统计或广告。`,
     ],
     items: [
-      "账户与身份验证信息，例如邮箱、登录状态和试用或订阅资格。",
+      "账户与身份验证信息，例如邮箱、登录状态、已登录设备记录和试用或订阅资格。",
       "账单与付款记录，例如方案、周期、币种、金额、付款状态和人工核账资料。",
       "产品使用信息，例如项目查看、收藏、筛选类别和通知偏好。",
       "安全与诊断信息，例如访问时间、错误日志和异常活动记录。",
@@ -57,7 +59,7 @@ const sections: PolicySection[] = [
   {
     id: "cookies",
     title: "Cookie 与同类技术",
-    paragraphs: ["平台使用维持登录会话所必需的 Cookie，并使用浏览器本地存储（localStorage）保存统计标识、收藏和搜索设置。统计标识本身不含姓名或邮箱，但登录期间的统计记录可能与账户标识关联。平台不使用广告或跨站追踪类 Cookie。详见独立的《Cookie 政策》页面。"],
+    paragraphs: ["平台使用维持登录会话所必需的 Cookie，并使用浏览器本地存储（localStorage）保存统计标识、设备标识、收藏和搜索设置。统计标识本身不含姓名或邮箱，但登录期间的统计记录可能与账户标识关联。平台不使用广告或跨站追踪类 Cookie。详见独立的《Cookie 政策》页面。"],
   },
   {
     id: "rights",
@@ -71,5 +73,5 @@ const sections: PolicySection[] = [
 ];
 
 export default function PrivacyPage() {
-  return <PolicyPage eyebrow="Privacy" title="隐私政策" intro="本政策概述平台可能处理的信息、使用目的和用户可以作出的选择。" updated="2026年9月9日" sections={sections} />;
+  return <PolicyPage eyebrow="Privacy" title="隐私政策" intro="本政策概述平台可能处理的信息、使用目的和用户可以作出的选择。" updated="2026年9月25日" sections={sections} />;
 }

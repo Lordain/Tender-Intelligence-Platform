@@ -83,7 +83,16 @@ export async function POST(request: NextRequest) {
     /^[A-Z]{2}$/,
   );
   const regionCode = normalizedGeoCode(request.headers.get("x-vercel-ip-country-region"), /^[A-Z0-9-]{1,8}$/);
-  const isInternal = isAdminEmail(user?.email) || request.cookies.get(INTERNAL_TRAFFIC_COOKIE)?.value === "1";
+  // Anything not served by the production deployment is ours: a local
+  // `next dev` (whose .env.local points at the production database) or a
+  // preview deployment. On 2026-09-25 local page checks and screenshots were
+  // 143 of the day's 158 "external" events — none of them carried Vercel's
+  // geo headers, which is how they were told apart. VERCEL_ENV is set on
+  // every Vercel deployment; see lib/notifications/email-config.ts.
+  const isInternal =
+    process.env.VERCEL_ENV !== "production" ||
+    isAdminEmail(user?.email) ||
+    request.cookies.get(INTERNAL_TRAFFIC_COOKIE)?.value === "1";
   const { error } = await supabase.from("analytics_events").insert({
     event_type: eventType,
     session_id: sessionId,

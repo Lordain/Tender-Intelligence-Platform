@@ -5,11 +5,18 @@ function clean(value: string | undefined) {
   return value?.trim() || null;
 }
 
-// Mexican privacy law requires the data controller's identity and domicile
-// in the privacy notice. The name keeps a conspicuous fallback so an
-// incomplete production configuration cannot be mistaken for a finished
-// legal notice.
-export const LEGAL_OPERATOR_NAME = clean(process.env.LEGAL_OPERATOR_NAME) || "【运营主体法定名称，待补充】";
+/**
+ * Mexican privacy law requires the data controller's identity and domicile
+ * in the privacy notice.
+ *
+ * Until the operating company exists the pages name the team behind the
+ * site (2026-09-25, user's choice): the earlier 【运营主体法定名称，待补充】
+ * placeholder was printed on the live terms and privacy pages for every
+ * visitor to read. Setting LEGAL_OPERATOR_NAME in Vercel replaces this
+ * everywhere with no code change — and has to happen once the company is
+ * registered, for the same LFPDPPP reason as the address below.
+ */
+export const LEGAL_OPERATOR_NAME = clean(process.env.LEGAL_OPERATOR_NAME) || "拉美招投标信息平台（latintender.com）运营团队";
 
 /**
  * Null until the operating company exists (2026-09-11, explicit request:

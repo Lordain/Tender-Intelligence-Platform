@@ -33,10 +33,21 @@ function mexicoSlot(now: Date) {
   return { slot, key: slot ? `${values.year}-${values.month}-${values.day}-${slot}` : null, hoursBack: slot === "morning" ? 15 : 9 };
 }
 
+/** Entitled users with the digest on and a deliverable address; null when the list cannot be read. */
+async function countWaitingRecipients(): Promise<number | null> {
+  try {
+    const recipients = await getDigestRecipients();
+    return recipients.filter((recipient) => !isReservedEmailDomain(recipient.email)).length;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The scheduler reaching this route is what a heartbeat records — including
- * the two ways a run legitimately does nothing (notifications switched off,
- * or Vercel firing a few minutes outside the 09:00/18:00 slot). Those write
+ * the two ways a run legitimately does nothing (notifications switched off
+ * with nobody opted in, or Vercel firing a few minutes outside the
+ * 09:00/18:00 slot). Those write
  * 'skipped' rather than nothing at all, because "the job ran and had nothing
  * to do" and "the job never ran" are exactly the two states this is here to
  * tell apart. See lib/ops/cron-heartbeat.ts.
@@ -44,8 +55,20 @@ function mexicoSlot(now: Date) {
 async function runDigest(request: NextRequest, heartbeatClient: ReturnType<typeof createSupabaseAdminClient>) {
   if (!isAuthorizedCronRequest(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!notificationsEnabled()) {
-    await recordCronHeartbeat(heartbeatClient, "tender-digest", "skipped", "EMAIL_NOTIFICATIONS_ENABLED is off");
-    return NextResponse.json({ error: "Email notifications are disabled" }, { status: 409 });
+    // Off with nobody waiting is a legitimate skip. Off while entitled users
+    // have the digest switched on is a failure: they get nothing, and a
+    // 'skipped' heartbeat kept the admin banner quiet about it — the job
+    // looked healthy every run while no customer received a digest.
+    const waiting = await countWaitingRecipients();
+    if (waiting === null || waiting > 0) {
+      const detail = waiting === null
+        ? "每日摘要总开关（EMAIL_NOTIFICATIONS_ENABLED）是关的，且读不到订阅名单，无法确认有没有用户在等摘要"
+        : `每日摘要总开关（EMAIL_NOTIFICATIONS_ENABLED）是关的：${waiting} 位开启了摘要的付费用户收不到邮件。在 Vercel 环境变量里设为 true 并重新部署`;
+      await recordCronHeartbeat(heartbeatClient, "tender-digest", "failed", detail);
+      return NextResponse.json({ error: "Email notifications are disabled", waitingRecipients: waiting }, { status: 409 });
+    }
+    await recordCronHeartbeat(heartbeatClient, "tender-digest", "skipped", "EMAIL_NOTIFICATIONS_ENABLED is off (no user has the digest switched on)");
+    return NextResponse.json({ error: "Email notifications are disabled", waitingRecipients: 0 }, { status: 409 });
   }
 
   const now = new Date();

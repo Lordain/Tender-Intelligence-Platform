@@ -5,6 +5,7 @@ import { TRIAL_DAYS } from "@/lib/access-control";
 import { loginPathFor } from "@/lib/auth-redirect";
 import { formatDate } from "@/lib/format";
 import { exchangeRateNote } from "@/lib/currency";
+import { undisclosedAmountBandNote } from "@/lib/chile-amount-band";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import {
   GOVERNMENT_LEVEL_LABELS,
@@ -88,7 +89,7 @@ export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicT
   // with the subscription note appended rather than replacing it.
   const fxNote = exchangeRateNote(tender.currency, locale);
   const valueNote = tender.estimatedValueBand === null
-    ? null
+    ? (tender.undisclosedValueBand ? undisclosedAmountBandNote(tender.undisclosedValueBand) : null)
     : fxNote === null ? "订阅后可见精确金额" : `${fxNote} 订阅后可见精确金额。`;
 
   return (
@@ -134,7 +135,7 @@ export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicT
             </dl>
             <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label={localize(uiText.locationLabel, locale)} value={countryLabel(tender.country, locale)} note="具体州/市订阅后可见" />
-              <Field label={localize(uiText.estimatedValue, locale)} value={tender.estimatedValueBand ?? "未公开"} note={valueNote} />
+              <Field label={localize(uiText.estimatedValue, locale)} value={tender.estimatedValueBand ?? tender.undisclosedValueBand?.usd ?? "未公开"} note={valueNote} />
             </dl>
           </div>
         </article>

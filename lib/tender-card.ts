@@ -1,6 +1,7 @@
 import type { LocalizedText, Tender, TenderRequirement, TenderRisk } from "@/types/tender";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
+import { undisclosedAmountBand } from "@/lib/chile-amount-band";
 import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 import { GENERIC_PUBLIC_SUMMARY, publicSummaryOf, publicTitleOf, shortTitleOf } from "@/lib/public-title";
 
@@ -71,6 +72,8 @@ export type TenderCardData = Pick<
   /** Members only. Exactly one of this and `estimatedValueBand` is ever set. */
   estimatedValue?: number;
   estimatedValueBand?: string | null;
+  /** Every audience: the USD range a Chilean buyer published instead of an amount. See lib/chile-amount-band.ts. */
+  undisclosedValueBand?: string;
   submissionDeadline?: string;
   /**
    * Always the full day, for every audience. The publication date is a weak
@@ -227,6 +230,7 @@ export function toTenderCardData(
     ...(memberView
       ? { estimatedValue: tender.estimatedValue }
       : { estimatedValueBand: estimatedValueBand(tender.estimatedValue, tender.currency) }),
+    undisclosedValueBand: undisclosedAmountBand(tender)?.usd,
     currency: tender.currency,
     submissionDeadline: shopfront
       ? tender.submissionDeadline

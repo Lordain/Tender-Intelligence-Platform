@@ -1,6 +1,7 @@
 import type { PublicTenderDetail, Tender } from "@/types/tender";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
+import { undisclosedAmountBand } from "@/lib/chile-amount-band";
 import { GENERIC_PUBLIC_SUMMARY, publicSummaryOf, publicTitleOf } from "@/lib/public-title";
 
 /**
@@ -70,7 +71,13 @@ export function toPublicTenderDetail(tender: Tender): PublicTenderDetail {
     // which rate the USD range was converted at; the source currency is
     // implied by the country anyway, so it identifies nothing on its own.
     estimatedValueBand: estimatedValueBand(tender.estimatedValue, tender.currency),
+    ...optionalBand(tender),
     currency: tender.currency,
     status: tender.status,
   };
+}
+
+function optionalBand(tender: Tender): { undisclosedValueBand?: { usd: string; utm: string } } {
+  const band = undisclosedAmountBand(tender);
+  return band ? { undisclosedValueBand: band } : {};
 }

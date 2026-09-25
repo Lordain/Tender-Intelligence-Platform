@@ -26,7 +26,9 @@ export function TenderCard({
   const titleOriginal = tender.titleOriginal;
   // Band first: if a future change ever set both, the safe one must win.
   const value = tender.estimatedValueBand
-    ?? (tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null);
+    ?? (tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null)
+    ?? tender.undisclosedValueBand
+    ?? null;
   const previews = [
     showOneLineSummary && tender.oneLineSummary && { label: "一句话总结", text: tender.oneLineSummary, strong: false, summary: true },
     tender.qualification && { label: "资质要求", text: localize(tender.qualification.title, locale), strong: tender.qualification.strong, summary: false },

@@ -112,7 +112,9 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
   // figure for a member, the USD band for a guest. Reading the band FIRST
   // matters — if a future change ever sent both, the safe one wins.
   const value = tender.estimatedValueBand
-    ?? (tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null);
+    ?? (tender.estimatedValue !== undefined ? formatEstimatedValueUsdMillions(tender.estimatedValue, tender.currency, locale) : null)
+    ?? tender.undisclosedValueBand
+    ?? null;
 
   return (
     <article className="group relative grid gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 transition-all hover:border-[#a9b8bf] hover:shadow-[0_18px_45px_-35px_rgba(6,27,43,.5)] md:grid-cols-[minmax(0,1fr)_14rem] md:items-center">

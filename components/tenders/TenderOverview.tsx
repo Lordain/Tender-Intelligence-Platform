@@ -5,6 +5,7 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatEstimatedValueUsd, formatDate } from "@/lib/format";
 import { exchangeRateNote } from "@/lib/currency";
+import { undisclosedAmountBand, undisclosedAmountBandNote } from "@/lib/chile-amount-band";
 import { TRIAL_DAYS } from "@/lib/access-control";
 import {
   GOVERNMENT_LEVEL_LABELS,
@@ -34,6 +35,7 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
   // A planned award date is not a result; show it in this block only when
   // there is an actual awarded supplier or value.
   const hasAwardResult = Boolean(tender.awardedTo) || tender.awardedValue !== undefined;
+  const undisclosedBand = undisclosedAmountBand(tender);
 
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
@@ -123,8 +125,8 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
         <dl className="mt-3">
           <Field
             label={localize(uiText.estimatedValue, locale)}
-            value={tender.estimatedValue !== undefined ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, locale) ?? "未公开" : "未公开"}
-            note={tender.estimatedValue !== undefined ? exchangeRateNote(tender.currency, locale) : null}
+            value={tender.estimatedValue !== undefined ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, locale) ?? "未公开" : undisclosedBand?.usd ?? "未公开"}
+            note={tender.estimatedValue !== undefined ? exchangeRateNote(tender.currency, locale) : undisclosedBand ? undisclosedAmountBandNote(undisclosedBand) : null}
           />
         </dl>
         {hasAwardResult && (

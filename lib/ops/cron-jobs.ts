@@ -19,7 +19,11 @@ export type CronJobId =
   | "import-colombia"
   | "import-pemex"
   | "licitia-daily"
-  | "import-chile";
+  | "import-chile"
+  | "import-petronect"
+  | "import-upme"
+  | "import-codelco"
+  | "import-cemig";
 
 export type CronJobSpec = {
   id: CronJobId;
@@ -49,6 +53,10 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-pemex", label: "PEMEX 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "licitia-daily", label: "LicitIA 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-chile", label: "智利自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-petronect", label: "Petrobras（Petronect）自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-upme", label: "哥伦比亚 UPME 输电项目自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-codelco", label: "Codelco 公开招标自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-cemig", label: "巴西 Cemig 电力公司自动导入", maxAgeHours: 30, runsOn: "github-actions" },
 ];
 
 export type CronHeartbeatStatus = "ok" | "skipped" | "failed";

@@ -4,6 +4,10 @@ import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/ind
 import { foldAccents } from "@/lib/text-fold";
 import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
+import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
+import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-codelco";
+import { classifyCemigRelevance, CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig";
+import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
 
 /**
@@ -2742,6 +2746,12 @@ const FEDERAL_CONCESSION_AUCTION_PROCEDURES = [
   /leil[ãa]o\s+de\s+transmiss[ãa]o/i,
   /leil[ãa]o\s+de\s+gera[çc][ãa]o/i,
   /leil[ãa]o\s+de\s+reserva\s+de\s+capacidade/i,
+  // Colombia's UPME transmission calls (2026-09-25): the investor designs,
+  // supplies, builds and operates a piece of the national or regional grid
+  // for a regulated annuity — the same long-term grid concession as an ANEEL
+  // transmission lot, and just as silent about its amount. Only
+  // lib/ingestion/upme-mapper.ts writes this procedure.
+  /selecci[óo]n\s+de\s+inversionista/i,
 ];
 
 /** Exported for the same reason isPriceOnlyAuction is. */
@@ -4074,6 +4084,42 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   // alongside a real tag it would otherwise sit next to as a phantom category.
   const merged = [...new Set([...spanish, ...portuguese])];
   const industries = merged.length > 1 ? merged.filter((tag) => tag !== "general") : merged;
+  // Petrobras / Transpetro, from Petronect: own rules, see lib/relevance-petronect.ts.
+  // Every row is an oil company's purchase, so it is filed under 能源矿业
+  // even when the title is a valve or a relay that no keyword would tag.
+  if (input.sourceName === PETRONECT_SOURCE_NAME) {
+    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    return {
+      industries: withEnergy,
+      relevance: classifyPetronectRelevance({ title: input.title, procedureType: input.procedureType }),
+    };
+  }
+  // Codelco's public calls: own rules too, see lib/relevance-codelco.ts. Every
+  // row is the copper company's purchase, so it is filed under 能源矿业.
+  if (input.sourceName === CODELCO_SOURCE_NAME) {
+    const withMining: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    return {
+      industries: withMining,
+      relevance: classifyCodelcoRelevance({ title: input.title, procedureType: input.procedureType, scopeType: input.scopeType }),
+    };
+  }
+  // PEMEX's own lists: own rules, see lib/relevance-pemex.ts (user, 2026-09-25).
+  if (input.sourceName === PEMEX_SOURCE_NAME) {
+    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    return {
+      industries: withEnergy,
+      relevance: classifyPemexRelevance({ title: input.title, procedureType: input.procedureType, scopeType: input.scopeType }),
+    };
+  }
+  // Cemig's e-Compras: own rules, see lib/relevance-cemig.ts — the one source
+  // where a pregão for goods is kept (user, 2026-09-25).
+  if (input.sourceName === CEMIG_SOURCE_NAME) {
+    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    return {
+      industries: withEnergy,
+      relevance: classifyCemigRelevance({ title: input.title, summary: input.summary, procedureType: input.procedureType }),
+    };
+  }
   return {
     industries,
     relevance: classifyRelevance({

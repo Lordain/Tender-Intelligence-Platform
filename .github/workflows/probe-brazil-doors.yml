@@ -28,7 +28,7 @@ on:
         description: "敲门（能不能连上）还是看门后面（有没有能投的标）"
         type: choice
         default: both
-        options: [doors, behind, pipeline, capture, capture-sisap, dou, watch-dou, dou-link, pncp-overlap, antaq, both]
+        options: [doors, behind, pipeline, capture, capture-sisap, dou, watch-dou, dou-link, pncp-overlap, antaq, energy, both]
       args:
         description: "额外参数，原样传给上面选的那条命令（例如 --days 5 --all-organs）"
         type: string
@@ -150,6 +150,14 @@ jobs:
       # here without one. gov.br opens to the laptop too, so this is for
       # seeing the run without one; `npm run ingest:antaq` locally is the
       # same thing.
+      # Not Brazil-only any more (2026-09-25): the power, oil and mining
+      # companies' own sites in Chile and Peru that the agent sandbox cannot
+      # reach, asked from the machine a connector would run on. See
+      # scripts/probe-energy-doors.ts.
+      - name: Knock on the energy companies
+        if: inputs.what == 'energy'
+        run: npm run probe:energy-doors -- "GitHub Actions 跑批机"
+
       - name: Read the ANTAQ hearings
         if: inputs.what == 'antaq'
         env:

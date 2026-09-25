@@ -59,8 +59,29 @@ export const countryInsights: CountryInsightSummary[] = [
     heroImage: "/insights/peru-infrastructure-hero.webp",
     highlights: ["561.57亿索尔（约166.8亿美元）公共投资", "44个APP/资产项目与8项增补", "66个矿业投资项目"],
   },
+  {
+    slug: "chile",
+    country: "智利",
+    countryCode: "CL",
+    title: "智利国家洞察：2025—2055基础设施规划与近期项目机会",
+    description:
+      "区分智利2025—2055国家基础设施规划、矿业投资储备与已经进入采购的项目，梳理能源、交通、水务、矿业和数字基础设施机会。",
+    author: "拉美招投标指南针",
+    readTime: "约 14 分钟",
+    heroImage: "/insights/chile-infrastructure-hero.webp",
+    highlights: ["417万亿智利比索（约4,318亿美元）长期规划组合", "24,589项规划倡议", "四大基础设施方向"],
+  },
 ];
 
 export function getCountryInsight(slug: string) {
   return countryInsights.find((insight) => insight.slug === slug);
+}
+
+// The homepage remains a four-card preview; newer insights live in /insights.
+const HOMEPAGE_INSIGHT_SLUGS = ["mexico", "brazil", "colombia", "peru"] as const;
+
+export function homepageCountryInsights(): CountryInsightSummary[] {
+  return HOMEPAGE_INSIGHT_SLUGS.map(getCountryInsight).filter(
+    (insight): insight is CountryInsightSummary => insight !== undefined,
+  );
 }

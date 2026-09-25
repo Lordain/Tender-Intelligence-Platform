@@ -8737,3 +8737,175 @@ OCDS 那扇门**保持原样、继续可用**，正是因为它是相反的东�
 - **没用 `codigoRegion` / `rubros` / `compradores` 这些筛选器。** 它们存在，没量过，所以一个字都没读。
 - **没碰那四个同源控制器**（`BuscarComprador`、`BuscarRubros`、`BuscarProveedor`、`cargaFiltro*`）。
   它们是给自动补全用的，这一轮用不上。
+
+## Petrobras / Transpetro：Petronect 一次请求拿到全部在招项目（2026-09-25）
+
+用户要求补电力、石油、矿业公司自己的项目（「基于你的建议做」）。先量了现有入口：
+库里 Petrobras 0 条；PNCP 搜 "petrobras" 返回 301 条，采购方没有一条是 Petrobras
+—— 国企按 13.303 号法采购，不上 PNCP。DOU 上有它的 AVISO DE LICITAÇÃO，但只有
+403 个字符、没有截止日（见 dou-watch.ts）。
+
+**门**：Petronect 公开页「Lista de Oportunidades Abertas para propostas」不用登录，
+页面自己的脚本只发一个请求：
+`/sap/opu/odata/SAP/YPCON_GET_XML_SRV/getXMLSet('01')?$format=json`。
+`d.EvXml` 是一个 JSON 字符串，里面的 `TAB` 就是全部在招项目 —— 2026-09-25 共 309 个，
+2.4 MB，没有分页。附件下载地址（`YPCON_PUB_ATTACHMENT_DOWNLOAD_SRV/attachmentSet('<id>')/$value`）
+无会话直接拿到了 37 页的 edital PDF。没有金额：13.303 号法允许国企不公开预算，
+表头服务（`YPCON_GET_HEADER_INFO_SRV`）里也没有金额字段。
+
+**为什么单独一套规则**（lib/relevance-petronect.ts）：通用规则跑这 309 条，16 个
+国际招标（Mexilhão 压缩机组、SEAP 天然气管道用管、炼厂催化剂、换热器）全部被排除
+—— 没金额、也不命中行业关键词；反而差旅代理被保留。Petronect 自己给出的
+「Nacional / Internacional」（只限巴西供应商 / 外国供应商可直接投）才是这里的规模证据，
+写进 `procedureType`，导入和重分类读的是同一个字段。
+
+结果（309 条）：大型 10、中型 9、常规 47、排除 243。常规里交标期不足 12 天的，按
+全站规则在写入时跳过。回归样本：41 条真实项目，`npm run test:petronect`。
+
+每日任务：`npm run cron:petronect`（daily-ingest.yml），心跳 `import-petronect`。
+
+## 哥伦比亚 UPME 输电项目：WordPress 接口直接给，但「开放」标签不可信（2026-09-25）
+
+UPME 按项目选投资人（设计、供货、建设、运营国家/区域电网的一段），不走 SECOP，
+和 ANEEL 输电拍卖是同一类项目。upme.gov.co 是 WordPress，`convocatorias` 这个自定义
+文章类型直接开放在 `/wp-json/wp/v2/convocatorias`，按 `estado_convocatoria`
+（283 = Abierta oficialmente，287 = Prepublicación）过滤，一次请求全部拿到。
+
+**标签不等于阶段**：当天标为开放/预公告的 16 条里，只有 4 条还能投。其余有的已经挂了
+授标纪要（02-2025、04-2024…），有的开过投资人开标会（02-2026），有的宣布流标
+（10-2021），4 条预公告还是 2018–2019 年的。所以阶段从页面上的会议纪要读
+（`upmeCallStage`）：只要出现投资人侧的开标、评标、反报价、授标或流标，就不再导入。
+监理（interventor）的招标是另一条更早的线，不算。
+
+没有截止日：在 DSI 的时间表 PDF 里，补充文件还会改。DSI 和所有补充文件都存成文件链接，
+留给文件关键日期提取去读。档位：`Selección de Inversionista` 加进了
+`FEDERAL_CONCESSION_AUCTION_PROCEDURES`，与 ANEEL 输电拍卖同一条规则，都是大型项目。
+
+每日任务：`npm run cron:upme`，心跳 `import-upme`；测试 `npm run test:upme`。
+
+## Codelco：官网唯一的公开招标表，今天一条都没开着（2026-09-25）
+
+智利国企不适用 19.886 号法，Mercado Público 当天 3,951 个在招项目里没有 Codelco、
+ENAP、ENAMI。Codelco 的采购几乎都在 SAP Ariba 上定向邀请，唯一的公开出口是
+codelco.com/licitaciones-en-proceso：服务端直出的表格，7 列（发布日期、货物/服务、
+标的（链接到公告 PDF）、矿区、标书在哪（都是 Ariba）、标书价格、「Fecha de entrega」）。
+
+「Fecha de entrega」是**报名（表达参与意向）截止**，不是交标截止：之后标书只发给已报名、
+已注册的供应商。它有五种写法（「16 de Julio de 2026」「27-11-2025」「09.01.2025」
+「19/08/2024」、没有年份的「28 de marzo.」），也可能不写（「hasta la recepción de ofertas」）。
+`lastDateIn` 取文本里最后一个日期；不写日期的，发布后 30 天内算开着。报名截止存为截止日，
+摘要里写明它是报名截止、标书在 Ariba。
+
+表格不清理：51 行，最早到 2011 年；最新一条 7-01 发布、7-16 报名截止。所以今天导入 0 条
+是正常的，心跳照常写 ok；只有表格一行都解析不出来才报失败。档位规则在
+lib/relevance-codelco.ts：总部（Casa Matriz，全集团统一采购）的工业品 → 中型，单个矿区 →
+常规，办公/活动/生活/手工具/本地建材和不含施工的服务 → 排除。
+
+**顺带修的日期问题**：网站按墨西哥城时间（UTC-6）显示日期，所以只有日期没有时间的值
+（UPME 的公告日、Petronect 的 DOU 日期）若按当地零点存，会显示成前一天。三个新来源都改为
+按当地中午存。
+
+每日任务：`npm run cron:codelco`，心跳 `import-codelco`；测试 `npm run test:codelco`。
+
+## 新项目清单的「智利」标签（2026-09-25）
+
+用户要求加上（「智利后台没有手动加项目的选项？请加一下」）。两个按钮：Mercado Público
+和 Codelco，走 `app/api/admin/import-chile`，调用的就是每日任务用的 `ingestChile()` /
+`ingestCodelco()`，所以不会跟定时任务不一致。
+
+Mercado Público 要考虑时长：读公开搜索约 25 秒（实测 4,047 条在招，保留 49 条）；
+截止日要逐条打开项目页读，每条 2.5 秒。函数上限 300 秒，所以：
+
+- **预览不读截止日**。档位不依赖截止日，所以预览的数字和写入时一样，只要几十秒。
+- **写入时读项目页，从请求开始算最多 200 秒**（`enrichUntil`）。没读到的先写入，
+  截止日留给下一次每日任务补；导入永远不会把已存的截止日清成空（`NEVER_NULLED_BY_AN_IMPORT`）。
+
+线上部署还从没连过 Mercado Público。连不上时，返回的错误里会附上能在本机跑的命令
+（`npm run cron:chile -- --write`）。
+
+## Cemig：巴西米纳斯电力公司自己的采购平台（2026-09-25）
+
+Cemig 按 13.303 号法采购，在自己的 e-Compras 平台（app2-compras.cemig.com.br）上招标，
+不在 PNCP 上。平台的公开搜索是一个 React 应用，背后的 JSON 接口不需要登录：
+
+- `POST api-manager-compras.cemig.com.br/auction-notice/doSearchAuctionNotice`，
+  过滤 `biddingStageId: 8`（「PUBLICADO」，正在收投标），每页 20 条；
+- `POST …/auction-notice/getAuctionNoticeById`，每个流程一次：规则（「Pregão Eletrônico -
+  Material」）、供应品类、发布日期、竞价会时间。
+
+2026-09-25：历史上共 1,351 个流程，已发布 22 个。招标文件 zip 在
+arquivos-compras.cemig.com.br 上公开下载（输电铁塔那份 79 MB，不需要登录）。没有金额。
+
+**电子竞价的例外（用户决定）**：别的来源一律排除电子竞价（Pregão），但 Cemig 用电子竞价买电网设备：
+550 kV 以下的输电铁塔、345/500 kV 支柱绝缘子、变压器。22 个里有 15 个是电子竞价。
+规则在 lib/relevance-cemig.ts：
+- 资格登记和预审（Credenciamento / Pré-qualificação）→ 排除；
+- 服务 → 排除，除非是建电网的；
+- 办公、IT、空调、手工具、仪器 → 排除；
+- 输电等级（230 kV 以上或输电线路）→ 中型；
+- 其余电网设备和材料 → 常规。
+
+截止日取竞价会开始的时间：平台上这类流程的「投标截止」字段是空的，投标一直收到竞价会开始为止。
+
+**只导入近 3 天发布的**（用户决定，`lib/ingestion/publication-window.ts`，Petronect、UPME、Codelco
+也一样）。一次性补导入更早的：`npm run cron:cemig -- --days 30 --write`（`--days 0` = 不限）。
+
+每日任务：`npm run cron:cemig`，心跳 `import-cemig`；测试 `npm run test:cemig`。
+
+## 近 3 天发布的窗口：Petronect、UPME、Codelco、Cemig（2026-09-25）
+
+用户决定：「我只想要最近3天发布的」。这四个来源列出的是所有还在招的项目，不管多早发布
+（Petronect 有开标期五个月的），所以没有窗口时，第一次运行会把整批存量一次导入。现在每个来源
+都只写入近 3 天发布的（`lib/ingestion/publication-window.ts`，按 72 小时滚动计算）。
+
+2026-09-25 实测：
+- Petronect：309 个在招，近 3 天发布 53 个，保留 7 个（都是常规）；
+- UPME：仍可投标 4 个，近 3 天发布 0 个；
+- Codelco：0 个；
+- Cemig：已发布 22 个，近 3 天发布 1 个，保留 1 个。
+
+代价：今天就在招、但更早发布的大项目不会进库，包括 Petronect 那 10 个大型（RNEST EPC、
+各炼厂焦化改造等）和 UPME 那 4 个输电项目。要一次性补进来，用 `--days 0`（不限）或
+`--days 30` 跑一次写入，例如 `npm run cron:petronect -- --days 0 --write`。
+
+UPME 的项目在正式发布那天，发布日期会从预公告日改成正式发布日，所以预公告过的项目在正式开放时
+还会再落进一次窗口。
+
+## PEMEX 自己的规则（2026-09-25）
+
+用户要求（「要不要给 PEMEX 单独做一套规则（和 Petronect 一样） ← 要，请做」）。起因是一次实测：
+PEMEX 七个列表近一个月发布了 71 个招标，通用规则只保留 3 个。PEMEX 不公布金额，所以
+「没有金额、也没命中行业关键词」这一关把最该保留的都挡掉了：MDEA 溶剂、聚乙烯装置用的烷基铝、
+活性炭、阀门、管材、换热器、自升式钻井平台租赁。
+
+规则在 lib/relevance-pemex.ts，只对来源名「PEMEX — Concursos Abiertos」生效；DOF 来的 PEMEX
+公告仍走通用规则。读的是 PEMEX 自己标注的两项：
+- 招标范围（tipoevento：Nacional / Internacional / Internacional bajo TLC），存在 procedureType
+  末尾，重新分类时能读到；
+- 供应类型（Bienes / Servicios / Obra pública / Arrendamientos），存为 scopeType。
+
+具体规则：
+- **服务** → 排除，钻井、完井、修井等井作业除外；
+- **租赁** → 只保留钻井平台和船舶；
+- **工程**：
+  - EPC → 大型；
+  - 道路、屋面、仓库等小工程和日常维护 → 排除；
+  - 国际招标 → 中型；
+  - 国内招标只保留新建或大修装置、管线、储罐、锅炉的；
+- **货物**：
+  - 钻杆、套管、油管 → 常规；
+  - 实验室、工具、安全防护、备件、车辆、办公用品 → 排除；
+  - 国际招标的化学品、石油制品、设备、管材、板材等工业材料 → 常规；
+  - 国内招标只保留大型设备（压缩机、换热器和管束、汽轮机、变压器、锅炉、转化炉）和催化剂，
+    其余算单个炼厂的零星采购，排除。按「买的是什么」判断，不看「用在哪」：
+    「para mantenimiento en calderas」里的耐火混凝土不算锅炉。
+
+材料在这里算：用户同一条消息里把「大量材料采购」列进了白名单，Cemig 批的也是「设备和材料类」。
+这和 Compras MX 国际招标规则里的「材料不算」不同，那条没有改。
+
+实测（近 120 天发布的 472 个）：保留 64 个（大型 1、中型 2、常规 61）；近一个月 72 个里保留 19 个
+（原来是 3 个）。PEMEX 仍按原来的近 1 个月窗口导入，3 天窗口只用于新接入的四个来源。
+
+库里已有的 PEMEX 行不动。它们的 procedureType 没有招标范围后缀，如果以后在后台重新分类，会按国内招标判断。
+
+测试：`npm run test:pemex-rules`（29 条真实样本）。

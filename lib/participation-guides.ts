@@ -610,6 +610,89 @@ export const participationGuides: ParticipationGuide[] = [
       { label: "MEF：Obras por Impuestos 数据与统计", href: "https://www.mef.gob.pe/es/inversion-privada-sp-21801/612-obras-por-impuestos/3981-estadisticas" },
     ],
   },
+  {
+    slug: "chile-mercado-publico",
+    country: "智利",
+    countryCode: "CL",
+    platform: "Mercado Público / ChileCompra",
+    title: "怎么参与智利 Mercado Público 的政府采购项目？",
+    summary: "从项目筛选、境外供应商登记到核对 bases、提交报价与跟踪授标，梳理智利公共采购的实际参与路径。",
+    whatIs: "Mercado Público 是智利政府采购的公开查询与电子交易平台，由 ChileCompra 管理。公众可查询招标、订单和合同；供应商参与交易前，须按现行规则在 Registro de Proveedores 登记并保持 hábil（可参与）状态。它不是所有基础设施投资的唯一入口：特许经营、国有企业或私人矿业与能源项目，应以各项目主管机构指定的采购渠道为准。",
+    audience: "希望参与智利公共部门货物、服务及部分工程采购的境内外企业",
+    quickFacts: [
+      { label: "官方平台", value: "Mercado Público" },
+      { label: "注册状态", value: "Registro de Proveedores：hábil" },
+      { label: "常用语言", value: "西班牙语" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "先确认项目属于哪个采购体系",
+        items: [
+          "Mercado Público 适用于受智利公共采购制度管理的机构；可先公开检索，再查看每项采购的 bases 和交易入口",
+          "MOP 特许经营项目应到 Dirección General de Concesiones 核查，不能把规划项目或特许经营项目直接当作 Mercado Público 招标",
+          "矿业公司、电力开发商、港口运营商和 EPC 承包商的下游采购，可能通过各自的供应商系统发布",
+        ],
+        note: "先认清采购主体与程序编号，再判断自己的角色是直接投标人、联合参与方，还是设备及专项工程供应商。",
+      },
+      {
+        id: "first-check",
+        title: "打开项目后先核对什么？",
+        items: [
+          "ID de licitación 与 organismo comprador：核对唯一项目编号和采购机构",
+          "Estado 与 cronograma：确认项目状态、提问、答复、提交、开标和预计授标的日期与时区",
+          "Bases、anexos 与 aclaraciones：下载完整标书和附件；问答及更正可能改变技术条件与时间表",
+          "Requisitos para ofertar：核对供应商登记状态、经验、技术认证、现场踏勘、联合体和文件签署要求",
+          "Garantías 与 evaluación：逐项检查投标／履约担保、评分权重、币种、税费及交付地点",
+        ],
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "搜索并筛选机会", detail: "在 Mercado Público 按关键词、行业、机构或项目 ID 找到招标，先排除已关闭、不匹配或准备时间不足的项目。" },
+          { title: "下载并核对完整 bases", detail: "阅读行政、技术和经济条件、附件、时间表，以及平台上的问答、更正和通知；不能只按公告摘要报价。" },
+          { title: "办理供应商登记", detail: "按企业实际身份在 Registro de Proveedores 登记并核实 hábil 状态。境外企业有单独资料要求；如无法使用 ClaveÚnica，应向 ChileCompra 确认当前适用的境外身份与登录路径。" },
+          { title: "准备并发送报价", detail: "按项目要求填写价格和税费，上传行政、技术及经济文件，在截止前完成电子发送并保存系统确认编号。修改已发送的报价后，应再次确认成功提交。" },
+          { title: "跟进开标与合同", detail: "持续查看澄清、开标、评估、授标和订单／合同通知；中标后按 bases 提供履约担保及签约文件。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "常见资料清单",
+        intro: "以下为准备框架，具体文件、有效期和格式由每项 bases 决定：",
+        items: [
+          "企业身份、国籍、地址、设立文件及存续证明",
+          "法定代表人身份证明、授权及授权有效性文件",
+          "股东、管理人员、最终受益所有人与诚信声明",
+          "同类业绩、人员和设备、质量认证及产品技术资料",
+          "报价、税费、运输与交付安排，以及项目要求的担保",
+          "境外文件所需的认证、翻译和电子签署材料",
+        ],
+        note: "ChileCompra 说明，境外主体可登记；但平台注册、税务和履约安排不能混为一谈。境外企业是否需要智利 RUT、当地代表或进口安排，应结合具体项目和交易结构确认。",
+      },
+      {
+        id: "foreign",
+        title: "中国企业特别要核对",
+        items: [
+          "不要把普通用户使用的 ClaveÚnica 步骤直接套用到境外企业；官方帮助中心承认境外供应商使用识别 ID 的登录路径",
+          "确认项目是否允许直接境外供货、联合体或本地代理，以及报关、增值税、售后和现场服务由谁承担",
+          "提前整理公司设立、存续、授权和最终受益所有人资料，核对西班牙语翻译及证明文件要求",
+          "核算担保开立、智利技术标准、币种与汇率、保修及履约周期；公告中的参考金额不等于最终合同金额",
+          "大型道路、机场、港口和矿业相关机会还应跟踪特许经营公司、项目业主及 EPC 承包链，不只看政府公开招标",
+        ],
+        note: "截至2026年9月，智利供应商登记与平台功能仍有更新。正式投标前，请再次核对 ChileCompra 最新指引、项目 bases 与在线系统实际要求。",
+      },
+    ],
+    sources: [
+      { label: "ChileCompra：Mercado Público 平台与公开／交易功能", href: "https://www.chilecompra.cl/mercado-publico/" },
+      { label: "ChileCompra：供应商登记与境外企业资料要求", href: "https://www.chilecompra.cl/registro-proveedores-del-estado/" },
+      { label: "ChileCompra：如何向政府销售", href: "https://www.chilecompra.cl/como-vender-al-estado/" },
+      { label: "Mercado Público：2026年简易招标供应商操作说明", href: "https://ayuda.mercadopublico.cl/preguntasfrecuentes/articulo/?id=KA-02086" },
+      { label: "Mercado Público：境外供应商登录帮助", href: "https://ayuda.mercadopublico.cl/preguntasfrecuentes/articulo/?id=KA-01966" },
+      { label: "ChileCompra：现行担保规则", href: "https://www.chilecompra.cl/garantias/" },
+    ],
+  },
 ];
 
 /**
@@ -657,5 +740,10 @@ export const guideCountries = [
     name: "秘鲁",
     code: "PE",
     description: "SEACE 常规预算采购，以及 Obras por Impuestos 以工程抵税项目",
+  },
+  {
+    name: "智利",
+    code: "CL",
+    description: "Mercado Público 公开采购与境外供应商登记",
   },
 ] as const;

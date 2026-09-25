@@ -66,10 +66,24 @@ export function PeruFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/** White over red, blue canton with the star as a dot — the star at 20x14 px is one white pixel cluster, same reasoning as Mexico's eagle. */
+export function ChileFlag({ className = "" }: { className?: string }) {
+  return (
+    <span aria-hidden="true" className={`relative inline-grid h-3.5 w-5 shrink-0 grid-rows-2 overflow-hidden ${className}`}>
+      <span className="bg-white" />
+      <span className="bg-[#d52b1e]" />
+      <span className="absolute left-0 top-0 h-[7px] w-[7px] bg-[#0039a6]">
+        <span className="absolute left-1/2 top-1/2 size-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
+      </span>
+    </span>
+  );
+}
+
 export function CountryFlag({ country, className = "" }: { country: string; className?: string }) {
   if (country === "Mexico") return <MexicoFlag className={className} />;
   if (country === "Brazil") return <BrazilFlag className={className} />;
   if (country === "Colombia") return <ColombiaFlag className={className} />;
   if (country === "Peru") return <PeruFlag className={className} />;
+  if (country === "Chile") return <ChileFlag className={className} />;
   return null;
 }

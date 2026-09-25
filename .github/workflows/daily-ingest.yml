@@ -98,6 +98,26 @@ jobs:
           # start keeping thousands; ENRICH_LIMIT caps that.
           - name: Chile (Mercado Público)
             command: cron:chile
+          # Added 2026-09-25. Petrobras and Transpetro publish nothing on PNCP
+          # (Lei 13.303); their own portal serves every open opportunity in
+          # one public request. See scripts/cron-petronect.ts.
+          - name: Petrobras (Petronect)
+            command: cron:petronect
+          # Added 2026-09-25. Colombia's transmission-expansion calls (investor
+          # selection for new substations and lines) — UPME's own process, not
+          # on SECOP. See scripts/cron-upme.ts.
+          - name: Colombia (UPME transmission)
+            command: cron:upme
+          # Added 2026-09-25. Codelco is outside Ley 19.886 and absent from
+          # Mercado Público; its site lists the few calls it opens publicly.
+          # See scripts/cron-codelco.ts.
+          - name: Chile (Codelco)
+            command: cron:codelco
+          # Added 2026-09-25. Cemig's own e-Compras portal (Lei 13.303), where
+          # it buys grid equipment by pregão — the one source where a pregão
+          # for goods is kept. See scripts/cron-cemig.ts.
+          - name: Brazil (Cemig)
+            command: cron:cemig
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v7

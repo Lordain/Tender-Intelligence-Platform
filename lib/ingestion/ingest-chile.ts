@@ -2,10 +2,9 @@
  * Shared Chile ingestion — the one path any caller goes through, for BOTH
  * Chilean doors.
  *
- * Right now that is only `npm run ingest:chile-live`. The admin 新项目清单
- * button is deliberately NOT added this pass (see README), and this file is
- * still the shared path rather than living inside the CLI, because the split
- * is what stops the two from drifting the day the button does get added —
+ * Three callers: `npm run ingest:chile-live`, the daily `cron:chile`, and the
+ * 智利 tab's button on 新项目清单 (app/api/admin/import-chile, added
+ * 2026-09-25 at the user's request). One path, so none of them can drift —
  * exactly the reason ingest-peru.ts and ingest-colombia.ts exist.
  *
  * ── Two doors, and why both are kept ──────────────────────────────────────
@@ -117,6 +116,14 @@ export type ChileIngestOptions = {
    * the way through (see chile-ficha-live.ts).
    */
   enrichLimit?: number;
+  /**
+   * busca only: a wall-clock time (epoch ms) after which no further ficha is
+   * read. The admin button runs inside a 300-second function and cannot
+   * afford the CLI's "read every kept row"; rows it runs out of time for are
+   * written without a closing date, and the next daily run fills them in —
+   * an import never erases a stored deadline (NEVER_NULLED_BY_AN_IMPORT).
+   */
+  enrichUntil?: number;
   /** Calendar months back from `now` to fetch, newest first. Ignored when `month` is set. */
   months?: number;
   /** One specific `YYYY-MM`. */
@@ -238,11 +245,16 @@ async function enrichFromFichas(
   shortlist: { row: ChileBuscaRow }[],
   limit: number,
   onProgress?: (message: string) => void,
+  until?: number,
 ): Promise<Map<string, ChileBuscaCard>> {
   const cards = new Map<string, ChileBuscaCard>();
   let failed = 0;
   const batch = shortlist.slice(0, limit);
   for (const [index, entry] of batch.entries()) {
+    if (until !== undefined && Date.now() > until) {
+      onProgress?.(`⏱ 时间用完，剩下 ${batch.length - index} 条没读 ficha（没有截止日，下一次每日任务会补上）`);
+      break;
+    }
     // Otherwise silent for minutes at 2.5 s a request, which in a CI log is
     // indistinguishable from a hang.
     if (index > 0 && index % 10 === 0) onProgress?.(`ficha 进度：${index} / ${batch.length}（读到截止日 ${cards.size} 条）`);
@@ -401,7 +413,7 @@ async function ingestChileViaBusca(
   let cards = new Map<string, ChileBuscaCard>();
   if (enrichLimit > 0 && toEnrich.length > 0) {
     onProgress?.(`开始逐条读 ficha 补交标截止日（只读会保留的 ${toEnrich.length} 条，上限 ${enrichLimit} 条）——CSV 里没有这一列`);
-    cards = await enrichFromFichas(toEnrich, Math.min(enrichLimit, toEnrich.length), onProgress);
+    cards = await enrichFromFichas(toEnrich, Math.min(enrichLimit, toEnrich.length), onProgress, options.enrichUntil);
     onProgress?.(`补到 ${cards.size} 条交标截止日`);
   }
 

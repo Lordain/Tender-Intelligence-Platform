@@ -1,6 +1,7 @@
 import type { Tender, TenderScopeType, TenderParticipationScope, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
+import { pemexProcedureType } from "@/lib/relevance-pemex";
 import { safeFileName, type TenderDocumentLink } from "@/lib/ingestion/document-links";
 import { pemexAttachmentUrl, type PemexAttachmentFile } from "@/lib/ingestion/connectors/pemex-live";
 
@@ -193,7 +194,13 @@ export function mapPemexConcursoItemToTender(
   // mention petróleo/gas/etc. — "Pemex Exploración y Producción" alone
   // matches the \bpemex\b pattern.
   // Both title and summary store `description`, so both get it here.
-  const procedureType = item.areacontratante?.trim() ? `${procedureLabel} (${item.areacontratante.trim()})` : procedureLabel;
+  // The coverage (Nacional / Internacional / Internacional bajo TLC) goes on
+  // the end because lib/relevance-pemex.ts reads it, and a reclassify of the
+  // stored row must see what this import saw.
+  const procedureType = pemexProcedureType(
+    item.areacontratante?.trim() ? `${procedureLabel} (${item.areacontratante.trim()})` : procedureLabel,
+    item.tipoevento,
+  );
   const { industries, relevance } = classifyStoredTender({
     procedureType,
     tenderNumber,

@@ -21,7 +21,7 @@ const differences = [
 
 export function HumanReviewedDifference() {
   return (
-    <section id="human-reviewed" aria-labelledby="human-reviewed-heading" className="scroll-mt-20 bg-[#fffdf9] px-5 py-16 sm:px-8 sm:py-20">
+    <section id="human-reviewed" aria-labelledby="human-reviewed-heading" className="scroll-mt-20 border-t border-[#e7e1d6] bg-[#f7f4ee] px-5 py-16 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-[94rem]">
         <div className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[0.75fr_1.25fr] lg:items-end">
           <div>

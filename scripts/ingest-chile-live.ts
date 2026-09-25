@@ -34,6 +34,8 @@ import { ingestChile } from "../lib/ingestion/ingest-chile";
 import { reportClassificationPreview } from "../lib/ingestion/preview-report";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
+import { USD_RATES } from "@/lib/currency";
+import { AVAILABLE_COUNTRIES } from "@/lib/tender-list-page";
 
 function argValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
@@ -121,12 +123,18 @@ async function main() {
     }
     console.log("\ndry run (pass --write to actually upsert) — nothing was written to Supabase.");
     // Said here too, because a dry run is where someone decides whether Chile
-    // is ready to turn on — and it is not, for a reason that has nothing to do
-    // with this code.
-    console.log(
-      "注意：智利目前还不对外可见（lib/tender-list-page.ts 的 AVAILABLE_COUNTRIES 里没有它），" +
-        "而且 lib/currency.ts 里没有 CLP 汇率 —— 没有汇率，一条真实的比索金额会被分级器读成「没有公布金额」。",
-    );
+    // is ready to turn on. Both halves are CHECKED rather than asserted: the
+    // CLP half was a hardcoded string that went on warning for days after the
+    // rate was added, which is the failure mode this repo keeps meeting —
+    // a sentence that once described a measurement and now just repeats.
+    const blockers: string[] = [];
+    if (!AVAILABLE_COUNTRIES.includes("Chile" as (typeof AVAILABLE_COUNTRIES)[number])) {
+      blockers.push("智利还不对外可见 —— lib/tender-list-page.ts 的 AVAILABLE_COUNTRIES 里没有它，导进来的行访客看不到");
+    }
+    if (!USD_RATES.CLP) {
+      blockers.push("lib/currency.ts 里没有 CLP 汇率 —— 没有汇率，一条真实的比索金额会被分级器读成「没有公布金额」");
+    }
+    if (blockers.length > 0) console.log(`\n注意：\n${blockers.map((b) => `  · ${b}`).join("\n")}`);
     return;
   }
 

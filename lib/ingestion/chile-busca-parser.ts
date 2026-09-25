@@ -216,6 +216,14 @@ export type ChileBuscaCard = {
   id: string;
   /** `dd/mm/yyyy`. THE reason the HTML is read at all — the CSV has no closing date. */
   fechaCierre?: string;
+  /**
+   * `yyyy-mm-dd`, already parsed, from the per-tender ficha door
+   * (chile-ficha-live.ts) rather than from a search card. Wins over
+   * `fechaCierre` where both are present: the ficha belongs to the tender it
+   * was asked about, whereas the search walk fills whichever rows the site
+   * happened to list first.
+   */
+  submissionDeadline?: string;
   /** e.g. "En 5 días" / "Cerrada". The site's own words, carried verbatim rather than recomputed. */
   cierreTexto?: string;
   fechaPublicacion?: string;

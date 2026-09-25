@@ -63,7 +63,9 @@ export function upmeDocumentLinks(call: UpmeCall, publishedAt: string | undefine
 export function mapUpmeCallToTender(call: UpmeCall, now: Date = new Date()): Tender | null {
   if (upmeSkipReason(call, now) !== null || !call.publishedOn) return null;
 
-  const publicationDate = new Date(`${call.publishedOn}T00:00:00-05:00`).toISOString();
+  // Noon, not midnight: the site renders days in Mexico City time (UTC-6),
+  // where midnight in Bogotá is still the previous day.
+  const publicationDate = new Date(`${call.publishedOn}T12:00:00-05:00`).toISOString();
   const procedureType = upmeProcedureType(call.grid);
   const { industries, relevance } = classifyStoredTender({
     title: call.title,

@@ -17,6 +17,7 @@ import { parsePetronectEnvelope, petronectAttachmentUrl } from "@/lib/ingestion/
 import { mapPetronectOpportunityToTender, petronectDocumentLinks, PETRONECT_SOURCE_NAME } from "@/lib/ingestion/petronect-mapper";
 import { describePetronectStaleness } from "@/lib/ingestion/ingest-petronect";
 import { classifyStoredTender } from "@/lib/relevance";
+import { platformDay } from "@/lib/tender-status";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -106,6 +107,7 @@ check("slug", mexilhao.slug, "petronect-7004625825");
 check("国际招标 → international_open", mexilhao.participationScope, "international_open");
 check("国内招标 → national", bySlug.get("7004579659")!.participationScope, "national");
 check("截止时间按巴西利亚时间（UTC-3）", mexilhao.submissionDeadline, "2026-10-07T20:00:00.000Z");
+check("网站显示的截止日", platformDay(mexilhao.submissionDeadline!), "2026-10-07");
 check("没有金额", mexilhao.estimatedValue, undefined);
 check("采购方名称", bySlug.get("7004579659")!.buyer, "Petróleo Brasileiro S.A. (Petrobras)");
 check("行业至少含能源矿业", mexilhao.industries.includes("energy_mining"), true);
@@ -115,7 +117,7 @@ const early = mapPetronectOpportunityToTender(
   { ...rows[0], DOU_PUBL_DATE: "2026-09-01", START_DATE: "2026-09-03", START_HOUR: "08:00:00" },
   now,
 )!;
-check("发布日期取 DOU 公告和开标期起始中较早的一个", early.publicationDate, "2026-09-01T03:00:00.000Z");
+check("发布日期取 DOU 公告和开标期起始中较早的一个", early.publicationDate, "2026-09-01T15:00:00.000Z");
 
 const links = petronectDocumentLinks(rows[0], mexilhao.publicationDate);
 check("标书链接来自同一次响应", links.length, rows[0].ANEXOS.length);

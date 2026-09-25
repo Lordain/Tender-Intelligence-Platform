@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseUpmePost, upmeCallNumber, upmeCallStage, type UpmePost } from "@/lib/ingestion/connectors/upme-live";
 import { mapUpmeCallToTender, upmeDocumentLinks, upmeSkipReason } from "@/lib/ingestion/upme-mapper";
+import { platformDay } from "@/lib/tender-status";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -60,7 +61,8 @@ check("大型项目（与 ANEEL 输电拍卖同一条规则）", heliconia.relev
 check("区域电网的也是大型", mapUpmeCallToTender(byNumber.get("UPME STR 05-2026")!, now)!.relevance.tier, "flagship");
 check("行业含电力", heliconia.industries.includes("power"), true);
 check("摘要取「Objeto」", heliconia.summary.es.startsWith("Selección de un inversionista y un interventor"), true);
-check("发布日期取正式公告日（波哥大时间）", heliconia.publicationDate, "2026-07-10T05:00:00.000Z");
+check("发布日期取正式公告日（波哥大时间）", heliconia.publicationDate, "2026-07-10T17:00:00.000Z");
+check("网站按墨西哥城时间显示为同一天", platformDay(heliconia.publicationDate), "2026-07-10");
 check("没有截止日（在 DSI 的时间表里，会被补充文件改动）", heliconia.submissionDeadline, undefined);
 const links = upmeDocumentLinks(byNumber.get("UPME 08-2026")!, heliconia.publicationDate);
 check("DSI 等文件都存成链接", links.length, byNumber.get("UPME 08-2026")!.documents.length);

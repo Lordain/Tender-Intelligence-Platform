@@ -108,6 +108,11 @@ jobs:
           # on SECOP. See scripts/cron-upme.ts.
           - name: Colombia (UPME transmission)
             command: cron:upme
+          # Added 2026-09-25. Codelco is outside Ley 19.886 and absent from
+          # Mercado Público; its site lists the few calls it opens publicly.
+          # See scripts/cron-codelco.ts.
+          - name: Chile (Codelco)
+            command: cron:codelco
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v7

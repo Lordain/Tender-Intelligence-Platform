@@ -19,7 +19,9 @@ const BRASILIA_OFFSET = "-03:00";
 
 function parsePetronectDate(day: string | undefined, time?: string): string | undefined {
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day) || day.startsWith("0000")) return undefined;
-  const clock = time && /^\d{2}:\d{2}:\d{2}$/.test(time) ? time : "00:00:00";
+  // A bare date is anchored at noon: at midnight Brasília it would read as the
+  // previous day on the site, which renders days in Mexico City time (UTC-6).
+  const clock = time && /^\d{2}:\d{2}:\d{2}$/.test(time) ? time : "12:00:00";
   const parsed = new Date(`${day}T${clock}${BRASILIA_OFFSET}`);
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }

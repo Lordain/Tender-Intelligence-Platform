@@ -5,6 +5,7 @@ import { foldAccents } from "@/lib/text-fold";
 import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
+import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-codelco";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
 
 /**
@@ -4089,6 +4090,15 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
     return {
       industries: withEnergy,
       relevance: classifyPetronectRelevance({ title: input.title, procedureType: input.procedureType }),
+    };
+  }
+  // Codelco's public calls: own rules too, see lib/relevance-codelco.ts. Every
+  // row is the copper company's purchase, so it is filed under 能源矿业.
+  if (input.sourceName === CODELCO_SOURCE_NAME) {
+    const withMining: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    return {
+      industries: withMining,
+      relevance: classifyCodelcoRelevance({ title: input.title, procedureType: input.procedureType, scopeType: input.scopeType }),
     };
   }
   return {

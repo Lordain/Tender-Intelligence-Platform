@@ -21,7 +21,8 @@ export type CronJobId =
   | "licitia-daily"
   | "import-chile"
   | "import-petronect"
-  | "import-upme";
+  | "import-upme"
+  | "import-codelco";
 
 export type CronJobSpec = {
   id: CronJobId;
@@ -53,6 +54,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-chile", label: "智利自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-petronect", label: "Petrobras（Petronect）自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-upme", label: "哥伦比亚 UPME 输电项目自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-codelco", label: "Codelco 公开招标自动导入", maxAgeHours: 30, runsOn: "github-actions" },
 ];
 
 export type CronHeartbeatStatus = "ok" | "skipped" | "failed";

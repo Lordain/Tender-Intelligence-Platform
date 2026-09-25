@@ -8782,3 +8782,27 @@ UPME 按项目选投资人（设计、供货、建设、运营国家/区域电�
 `FEDERAL_CONCESSION_AUCTION_PROCEDURES`，与 ANEEL 输电拍卖同一条规则，都是大型项目。
 
 每日任务：`npm run cron:upme`，心跳 `import-upme`；测试 `npm run test:upme`。
+
+## Codelco：官网唯一的公开招标表，今天一条都没开着（2026-09-25）
+
+智利国企不适用 19.886 号法，Mercado Público 当天 3,951 个在招项目里没有 Codelco、
+ENAP、ENAMI。Codelco 的采购几乎都在 SAP Ariba 上定向邀请，唯一的公开出口是
+codelco.com/licitaciones-en-proceso：服务端直出的表格，7 列（发布日期、货物/服务、
+标的（链接到公告 PDF）、矿区、标书在哪（都是 Ariba）、标书价格、「Fecha de entrega」）。
+
+「Fecha de entrega」是**报名（表达参与意向）截止**，不是交标截止：之后标书只发给已报名、
+已注册的供应商。它有五种写法（「16 de Julio de 2026」「27-11-2025」「09.01.2025」
+「19/08/2024」、没有年份的「28 de marzo.」），也可能不写（「hasta la recepción de ofertas」）。
+`lastDateIn` 取文本里最后一个日期；不写日期的，发布后 30 天内算开着。报名截止存为截止日，
+摘要里写明它是报名截止、标书在 Ariba。
+
+表格不清理：51 行，最早到 2011 年；最新一条 7-01 发布、7-16 报名截止。所以今天导入 0 条
+是正常的，心跳照常写 ok；只有表格一行都解析不出来才报失败。档位规则在
+lib/relevance-codelco.ts：总部（Casa Matriz，全集团统一采购）的工业品 → 中型，单个矿区 →
+常规，办公/活动/生活/手工具/本地建材和不含施工的服务 → 排除。
+
+**顺带修的日期问题**：网站按墨西哥城时间（UTC-6）显示日期，所以只有日期没有时间的值
+（UPME 的公告日、Petronect 的 DOU 日期）若按当地零点存，会显示成前一天。三个新来源都改为
+按当地中午存。
+
+每日任务：`npm run cron:codelco`，心跳 `import-codelco`；测试 `npm run test:codelco`。

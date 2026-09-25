@@ -20,17 +20,21 @@
  * Usage:
  *   npm run cron:chile              (dry run — fetches and classifies, writes nothing)
  *   npm run cron:chile -- --write
+ *   npm run cron:chile -- --days 3 --write    (only the last N days, as the admin page's manual run does)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ingestChile } from "../lib/ingestion/ingest-chile";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
+import { windowDaysFromArgv } from "../lib/ingestion/publication-window";
 
 const WINDOW_MONTHS = 2;
 const ENRICH_LIMIT = 300;
 
 async function main() {
   const write = hasWriteFlag();
+  // 0 = no --days given: the daily job's two-month window.
+  const days = windowDaysFromArgv(process.argv, 0);
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
@@ -40,14 +44,14 @@ async function main() {
 
   const result = await ingestChile(
     supabase,
-    { write, door: "busca", months: WINDOW_MONTHS, enrichLimit: ENRICH_LIMIT, preview: false },
+    { write, door: "busca", months: WINDOW_MONTHS, ...(days > 0 ? { days } : {}), enrichLimit: ENRICH_LIMIT, preview: false },
     (message) => console.log(`  ${message}`),
   );
 
   if (result.staleWarning) console.log(`\n${result.staleWarning}\n`);
   const tiers = result.tierCounts;
   console.log(
-    `源头 ${result.fetchedCount} 行，近 ${WINDOW_MONTHS} 个月 ${result.keptAfterRecencyCount} 条，` +
+    `源头 ${result.fetchedCount} 行，${days > 0 ? `近 ${days} 天` : `近 ${WINDOW_MONTHS} 个月`} ${result.keptAfterRecencyCount} 条，` +
       `进入推荐 ${result.surfacedCount ?? 0} 条（大型 ${tiers?.flagship ?? 0}、中型 ${tiers?.significant ?? 0}、常规 ${tiers?.standard ?? 0}），` +
       `补到交标截止日 ${result.enrichedCount ?? 0} 条。`,
   );

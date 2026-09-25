@@ -1134,6 +1134,46 @@ const MAJOR_PROJECT_DEMOTED_TO_SIGNIFICANT = [
 // optional instead of required.
 const PERU_MARGINAL_INVESTMENT = /\bioa[ar]?r\b/i;
 
+/**
+ * Chilean titles that are not what this platform is for, read on the folded
+ * TITLE only. Chile-only because the vocabulary is Chile's own — MOP's
+ * AIF/ATIF inspection consultancies, SERVIU's Pavimentación Participativa,
+ * "convenio de suministro" — and because the busca door stores every row
+ * as scopeType "unknown", so the scope-based service and consulting rules
+ * the other countries rely on never fire here.
+ *
+ * Measured on the 3,951 open tenders the busca door returned on 2026-09-25,
+ * of which the classifier kept 158; see the commit that added this for the
+ * per-rule counts. Checked before hasIncludeOverride, like the maintenance
+ * list: "Servicio de Internet Firewall y Telefonía IP" and "SERVICIO DE
+ * INSTALACIÓN … VIDEOVIGILANCIA" are services that an override keyword
+ * would otherwise wave through.
+ */
+const CHILE_NOT_A_TARGET_TITLE = [
+  // A SERVICE, by its opening word. Start-anchored, with room for the short
+  // reference codes Chilean buyers put first ("SP 754 Servicio de Arriendo de
+  // Bodegas", "CNG-CONCESIÓN CASINOS", "C.S Servicio de Arriendo").
+  // AIF / ATIF are Asesoría (Técnica) a la Inspección Fiscal and FTO is
+  // Fiscalización Técnica de Obras — the consultant who inspects a works
+  // contract, not the works: "AIF A. VESPUCIO ORIENTE - AVO II" is the
+  // inspection of the motorway concession. E.I. is Estudio de Ingeniería.
+  /^\W*(?:[a-z0-9.°º\/]{1,8}[\s-]+){0,2}(?:servicios?\b|serv\b\.?|prestacion(?:es)?\b|contrat(?:acion|\.)?\s+(?:de\s+)?(?:una?\s+)?(?:servicio|seguro|solucion)|arriendo|concesion|asesoria|consultor|estudio|est\.?\s|e\.\s?i\.|a\.?t?\.?i\.?f\b|fto\b|fiscalizacion|elaboracion|levantamiento|diag\.|compra de procedimientos|administracion|software|licencias|mantencion|adquisicion de (?:servicios|terreno))/i,
+  // What equipment consumes, and blood products. "Convenio de suministro" is
+  // how Chilean hospitals contract recurring consumables — contrast media,
+  // albumin, hardware store stock — never a one-off equipment purchase.
+  /convenio de suministro|\binsumos?\b|medios? de contraste|jeringas?|albumina|clavo de reconstruccion|gasometria/i,
+  // Neighbourhood-scale works: SERVIU's Programa de Pavimentación
+  // Participativa (titled "PPP, 34° LLAMADO …" — not a public-private
+  // partnership), rural drinking-water systems (SSR) and the wells drilled
+  // for them, rural health posts. The user deleted the SSR and posta rows
+  // from the first live import (2026-09-24).
+  // "Conservación" is Chile's ordinary word for upkeep of something that
+  // exists — MOP's "CONSERVACIÓN OBRA FISCAL EMBALSE …" maintains a
+  // reservoir, "Conservación Coliseo Municipal" a gym. 维护类都不要.
+  /\bconservacion\b/i,
+  /pavimentaci[oó]n participativa|pav(?:\.|imentos)?\s+participativos|^\W*ppp,?\s+\d|servicio sanitario rural|\bssr\b|\bsondaje\b|\bposta\b/i,
+];
+
 const MAINTENANCE_ONLY_KEYWORDS = [
   // The abbreviations are how Compras MX titles actually write it —
   // "IA-N-182-2026 MTTO PLANTAS DE EMERGENCIA HOSPITALES" is a real one.
@@ -3179,6 +3219,15 @@ export function classifyRelevance(input: {
     !isConcessionWithBuildScope(haystack) &&
     (MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
       RENEWAL_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack)))
+  ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // See CHILE_NOT_A_TARGET_TITLE.
+  if (
+    input.isNationalPriorityProject !== true &&
+    input.country === "Chile" &&
+    CHILE_NOT_A_TARGET_TITLE.some((pattern) => pattern.test(foldAccents(input.title)))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }

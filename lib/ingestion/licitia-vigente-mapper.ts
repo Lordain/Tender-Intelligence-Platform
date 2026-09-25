@@ -109,6 +109,7 @@ export function mapLicitiaVigenteRowToTender(
   const procedureType = row.tipo?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title,
     summary: title,
     buyer,

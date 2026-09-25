@@ -38,6 +38,8 @@ export type RelevanceFixture = {
   structuredDurationDays?: number;
   /** tenders.procedure_type — set only by fixtures that exercise the procedure rule (see PRICE_ONLY_AUCTION_PROCEDURES). */
   procedureType?: string;
+  /** tenders.tender_number — set only by fixtures that exercise the Mexican procedure-character rule (see isMexicoInternationalBulkPurchase). */
+  tenderNumber?: string;
 };
 
 export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
@@ -1241,7 +1243,7 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "MEJORAMIENTO DE LA INFRAESTRUCTURA VIAL MUNICIPAL",
     expectedTier: "excluded",
-    note: "140 days — still inside the new 150-day blacklist, and carrying a $2.9M value to pin the other half of the same decision: the rule stays VALUE-BLIND. The user was offered a 'large value overrides short duration' exception on 2026-09-15 and explicitly declined it (但是不让位), so a big disclosed value must NOT rescue this row. If someone later adds that exception, this fixture is what tells them it was a deliberate no.",
+    note: "140 days — still inside the new 150-day blacklist, and carrying a $2.9M value to pin the other half of the same decision: the rule stays VALUE-BLIND. The user was offered a 'large value overrides short duration' exception on 2026-09-15 and explicitly declined it (但是不让位), so a big disclosed value must NOT rescue this row. If someone later adds that exception, this fixture is what tells them it was a deliberate no. 2026-09-25: the user DID add an exception, for goods purchases only (放行) — this is a works contract, so it still falls, and it is now also the fixture that proves the exemption did not leak onto works.",
     scopeType: "works",
     structuredDurationDays: 140,
     estimatedValue: 2_900_000,
@@ -1273,6 +1275,33 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     estimatedValue: 2_900_000,
     currency: "USD",
     country: "Colombia",
+  },
+  // Goods purchases over the floor are exempt from the short-duration rule
+  // (user, 2026-09-25: 放行), and a single vehicle over the floor stays
+  // (单台但金额 ≥ 100 万美元的，留). All three are real open SECOP rows,
+  // excluded on 2026-09-25 before the change.
+  {
+    title: "ADQUISICIÓN DE SISTEMAS  TECNOLÓGICOS DE BÚSQUEDA Y LOCALIZACIÓN PARA LAS UNIDADES DE  ATENCIÓN Y PREVENCIÓN DE DESASTRES DEL EJÉRCITO NACIONAL",
+    expectedTier: "standard",
+    note: "Real row, 291-LP-CENACINGENIEROS-2026, COP 4.48bn (~$1.4M), 60-day delivery. A supplier's delivery window, not a small job. Its accented ADQUISICIÓN is the case that needed the title folded before the purchase-verb match — the unfolded pattern does not see it.",
+    buyer: "CENTRAL ADMINISTRATIVA ESPECIALIZADA INGENIEROS CENAC INGENIEROS",
+    scopeType: "equipment", governmentLevel: "federal", industries: ["general"], procedureType: "Licitación pública",
+    structuredDurationDays: 60, estimatedValue: 4_480_000_000, currency: "COP", country: "Colombia",
+  },
+  {
+    title: "ADQUISICION E INSTALACION DE DISPOSITIVOS Y EQUIPOS DE CONECTIVIDAD PARA EL MEJORAMIENTO; MANTENIMIENTO Y AMPLIACION DEL SISTEMA DE CIRCUITO CERRADO DE TELEVISION (CCTV) Y DEL SISTEMA INTEGRADO DE EME",
+    expectedTier: "standard",
+    note: "Real row, STICS-LP-009-2026, COP 3.25bn (~$1.0M), 90 days. The CCTV buildout NEW_BUILD_OR_PURCHASE's comment names as one to keep: that guard got it past the maintenance rule, and the 90-day delivery then dropped it anyway. 常规, not 中型: CCTV is scale-capped.",
+    scopeType: "equipment", governmentLevel: "state", industries: ["ict_telecom"], procedureType: "Licitación pública",
+    structuredDurationDays: 90, estimatedValue: 3_249_120_313, currency: "COP", country: "Colombia",
+  },
+  {
+    title: "ADQUISICIÓN DE UN VEHÍCULO DE BOMBEROS TIPO ESCALERA PARA EL CUERPO DE BOMBEROS OFICIAL DE MONTERÍA",
+    expectedTier: "standard",
+    note: "Real row, CBOM-LP-02-2026, COP 3.84bn (~$1.2M), 90 days. One ladder truck. Had two rules against it — the single-vehicle floor and the short duration — and clears both only because the amount clears the floor. The below-floor singles ('UN VEHICULO TIPO PICK UP', '01 VEHÍCULO TIPO TODO TERRENO') stay excluded; they carry no amount.",
+    buyer: "CUERPO DE BOMBEROS OFICIAL DE MONTERIA",
+    scopeType: "equipment", governmentLevel: "state", industries: ["vehicles"], procedureType: "Licitación pública",
+    structuredDurationDays: 90, estimatedValue: 3_836_666_667, currency: "COP", country: "Colombia",
   },
 
   // --- "subestación" narrowed to require a construction/equipment

@@ -241,6 +241,7 @@ export function mapChileBuscaRowToTender(
 
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber: row.id,
     title: row.title,
     // Must be the same string stored as `summary` below, or a row gets
     // classified from less text at import than at reclassify.

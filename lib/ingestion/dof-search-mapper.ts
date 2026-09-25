@@ -334,6 +334,7 @@ export function mapDofSearchNotaToTender(nota: DofSearchNota, sourceName: string
   const procedureType = "Convocatoria (DOF)";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title,
     summary: title,
     buyer,

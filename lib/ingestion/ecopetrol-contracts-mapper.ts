@@ -77,6 +77,7 @@ export function mapEcopetrolContractRowToTender(row: EcopetrolContractRow, sourc
   const procedureType = String(row["Tipo Movimiento"] ?? "Unknown");
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title,
     summary: title,
     buyer: "Ecopetrol S.A.",

@@ -120,6 +120,7 @@ export function mapAneelEditalToTenders(input: AneelMappingInput, now: Date = ne
 
     const { industries, relevance } = classifyStoredTender({
       procedureType: "Leilão de Transmissão",
+      tenderNumber,
       title,
       summary,
       buyer: "Agência Nacional de Energia Elétrica (ANEEL)",

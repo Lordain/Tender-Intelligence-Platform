@@ -123,6 +123,7 @@ export function mapPeruOxiRowToTender(row: PeruOxiRow, sourceName: string, sourc
   const procedureType = row["Tipo de Convocatoria"]?.trim() || "Obras por Impuestos";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title,
     summary: title,
     buyer,

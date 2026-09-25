@@ -625,13 +625,26 @@ const EXCLUDE_KEYWORDS = [
   // "construcción" industry whitelist was still keeping them.
   /puentes? peatonal(es)?/i,
 
-  // Single-unit vehicle purchases: "ADQUISICIÓN DE UN VEHICULO TIPO PICK UP",
-  // "ADQUISICION DE VEHICULO PARA LA COORDINACION DE PROTECCION CIVIL". The
-  // user keeps fleet buys at low priority (车辆采购: 留，但重要性和优先级都不用
-  // 太高) — this is the 单台下限 they asked for, and it works off the singular
-  // noun: "VEHÍCULOS" and "22 VEHS." both stay in.
-  /adquisici[óo]n de (un |una )?veh[íi]culo\b(?!s)/i,
+  // Single-unit vehicle purchases moved out to SINGLE_VEHICLE_PURCHASE
+  // (2026-09-25), because they now yield to a disclosed amount and nothing in
+  // this list does.
 ];
+
+/**
+ * Single-unit vehicle purchases: "ADQUISICIÓN DE UN VEHICULO TIPO PICK UP",
+ * "ADQUISICION DE VEHICULO PARA LA COORDINACION DE PROTECCION CIVIL". The
+ * user keeps fleet buys at low priority (车辆采购: 留，但重要性和优先级都不用
+ * 太高) — this is the 单台下限 they asked for, and it works off the singular
+ * noun: "VEHÍCULOS" and "22 VEHS." both stay in.
+ *
+ * Lived in EXCLUDE_KEYWORDS until 2026-09-25, when the user decided a single
+ * unit that clears the value floor stays (单台但金额 ≥ 100 万美元的，留). The
+ * real row: "ADQUISICIÓN DE UN VEHÍCULO DE BOMBEROS TIPO ESCALERA PARA EL
+ * CUERPO DE BOMBEROS OFICIAL DE MONTERÍA", about $1.2M — a ladder truck,
+ * which is one unit because nobody buys them by the dozen. Checked beside
+ * SUPPORT_VEHICLE_KEYWORDS, under the same exemption.
+ */
+const SINGLE_VEHICLE_PURCHASE = /adquisici[óo]n de (un |una )?veh[íi]culo\b(?!s)/i;
 
 /**
  * Buyer-name-only exclude list — the inverse problem from the buyer-name
@@ -2928,6 +2941,25 @@ function reasonFor(
 const SUPPLY_PURCHASE_HEAD =
   /^\W*(?:contrataci[óo]n\s+(?:de\s+bienes|para\s+la\s+adquisi\w*n)|adquisi\w*n|adqs?\.|compra|suministro|abastecimiento|(?:servicio\s+de\s+)?alquiler)\b/i;
 
+/**
+ * A tender that BUYS goods, as opposed to building or servicing something:
+ * the source says so (scopeType "equipment" — SECOP's compraventa/suministro,
+ * Compras MX's ADQUISICIONES) or the title opens with a purchase verb.
+ *
+ * Deliberately not SUPPLY_PURCHASE_HEAD, which also accepts "alquiler": a
+ * rental is not a purchase, and EQUIPMENT_RENTAL_KEYWORDS exists to say so.
+ * An optional short reference code in front ("DRM - ADQUISICIÓN …") is
+ * allowed, because Mexican titles carry one.
+ */
+const GOODS_PURCHASE_HEAD =
+  /^\W*(?:[\w.\/]{1,15}\s*[-–:]\s*)?(?:contrataci[óo]n\s+(?:de\s+bienes|para\s+la\s+adquisi\w*n)|adquisi\w*n|adqs?\.|compra|suministro|abastecimiento|aquisi[çc][ãa]o|fornecimento)\b/i;
+
+function isGoodsPurchase(title: string, scopeType: TenderScopeType): boolean {
+  // Folded first: without the u flag, \w does not match "Ó", so the pattern
+  // alone fails on "ADQUISICIÓN" and only matches the unaccented spelling.
+  return scopeType === "equipment" || GOODS_PURCHASE_HEAD.test(foldAccents(title));
+}
+
 const PROJECT_CONTEXT_CONNECTOR =
   /\bpara\s+(?:el|la|los|las)\s+(?:sub\s*)?(?:proyectos?|obras?|ioarr|plan\s+de\s+negocio|meta)\b/i;
 
@@ -3017,6 +3049,15 @@ export function classifyRelevance(input: {
    * user's standing rule that a filter added now must apply to imports too.
    */
   procedureType: string | undefined;
+  /**
+   * Tender.tenderNumber, verbatim. Used for one rule: a Mexican procedure
+   * number carries its character — N(acional), I(nternacional abierta),
+   * T(ratados) — as the letter before its sequence number, and that letter
+   * is the only scale evidence a Mexican row has (see
+   * isMexicoInternationalBulkPurchase). Required with undefined written out,
+   * for the reason governmentLevel gives above.
+   */
+  tenderNumber: string | undefined;
 }): TenderRelevance {
   // stripKnownFalsePositivePlaceNames: see its own header comment in
   // industry.ts — bare "puerto"/"puertos"/"puente(s)" below
@@ -3044,6 +3085,15 @@ export function classifyRelevance(input: {
   const subjectTitle = foldAccents(purchaseSubject(input.title)!);
   const subjectSummary = purchaseSubject(input.summary) ? foldAccents(purchaseSubject(input.summary)!) : undefined;
   const haystack = stripKnownFalsePositivePlaceNames([subjectTitle, subjectSummary, ...input.industries].filter(Boolean).join(" "));
+
+  // Computed up here, not beside the value-floor check further down, because
+  // two exclusions above that check now yield to a purchase that clears the
+  // floor (see purchaseClearsValueFloor). The floor check itself is unchanged.
+  const normalizedValue =
+    input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
+  const minValueUsd = minValueUsdFor(input.country);
+  const clearsValueFloor = normalizedValue !== undefined && normalizedValue >= minValueUsd;
+  const purchaseClearsValueFloor = clearsValueFloor && isGoodsPurchase(input.title, input.scopeType);
 
   // See MAINTENANCE_ONLY_KEYWORDS' header comment — deliberately checked
   // before, and not gated by, hasIncludeOverride below. Only a real,
@@ -3243,8 +3293,19 @@ export function classifyRelevance(input: {
     !hasIncludeOverride &&
     (CONSTRUCTION_INPUT_GOODS.some((pattern) => pattern.test(haystack)) ||
       WORKS_CONSULTANCY_PATTERN.test(haystack) ||
-      SUPPORT_VEHICLE_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
       PRODUCTIVE_DEVELOPMENT_PROGRAMME.test(haystack))
+  ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // One vehicle: excluded unless its disclosed amount clears the floor (user,
+  // 2026-09-25: 单台但金额 ≥ 100 万美元的，留). A pickup never gets there; a
+  // fire ladder truck does. clearsValueFloor rather than
+  // purchaseClearsValueFloor because both patterns are already purchases.
+  if (
+    !hasIncludeOverride &&
+    !clearsValueFloor &&
+    (SUPPORT_VEHICLE_KEYWORDS.some((pattern) => pattern.test(haystack)) || SINGLE_VEHICLE_PURCHASE.test(haystack))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
@@ -3266,7 +3327,14 @@ export function classifyRelevance(input: {
   }
 
   const durationDays = input.structuredDurationDays ?? extractAnchoredDurationDays(haystack);
-  if (!hasIncludeOverride && durationDays !== undefined && durationDays < SHORT_DURATION_DAYS) {
+  // A goods purchase over the floor is exempt (user, 2026-09-25: 放行). The
+  // rule was written for works, where a short schedule means a small job; a
+  // supplier's delivery window is short however big the order is. Real rows
+  // it was dropping: "ADQUISICIÓN DE SISTEMAS TECNOLÓGICOS DE BÚSQUEDA Y
+  // LOCALIZACIÓN ..." ($1.4M) and "ADQUISICION E INSTALACION DE DISPOSITIVOS
+  // Y EQUIPOS DE CONECTIVIDAD ... CCTV" ($1.0M), both Colombian. Works stay
+  // value-blind, as the user set it on 2026-09-15.
+  if (!hasIncludeOverride && !purchaseClearsValueFloor && durationDays !== undefined && durationDays < SHORT_DURATION_DAYS) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "short_duration") };
   }
 
@@ -3275,10 +3343,6 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "short_bridge") };
   }
 
-  const normalizedValue =
-    input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
-
-  const minValueUsd = minValueUsdFor(input.country);
   // Deliberately NOT gated by hasIncludeOverride (2026-09-04, per explicit
   // user request after a real batch of tiny-value Colombia tenders —
   // "SERVICIO DE INTERNET" $571, "QPAR S.A.S" $8,185, "CPS INFRAESTRUCTURA
@@ -3641,6 +3705,8 @@ export function explainKeptSignal(input: {
   isNationalPriorityProject?: boolean;
   /** Optional here only because a diagnostic line may have no stored row behind it; pass it whenever one exists. */
   procedureType?: string;
+  /** Optional for the same reason as procedureType. */
+  tenderNumber?: string;
 }): string {
   // The row's real scopeType matters: hardcoding "works" made 26 rows of a
   // real kept export report themselves as "excluded", because scopeType
@@ -3651,6 +3717,7 @@ export function explainKeptSignal(input: {
     governmentLevel: input.governmentLevel,
     isNationalPriorityProject: input.isNationalPriorityProject,
     procedureType: input.procedureType,
+    tenderNumber: input.tenderNumber,
   });
   // Reported before the tier, because this flag bypasses every exclusion and
   // is the whole reason such a row is in the kept set.
@@ -3764,6 +3831,8 @@ export type StoredTenderClassificationInput = {
   structuredDurationDays?: number;
   /** tenders.procedure_type, verbatim — see classifyRelevance's own field comment. */
   procedureType: string | undefined;
+  /** tenders.tender_number, verbatim — see classifyRelevance's own field comment. */
+  tenderNumber: string | undefined;
 };
 
 /**
@@ -3805,6 +3874,7 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
       summary: input.summary,
       industries,
       procedureType: input.procedureType,
+      tenderNumber: input.tenderNumber,
       scopeType: input.scopeType,
       estimatedValue: input.estimatedValue,
       currency: input.currency,

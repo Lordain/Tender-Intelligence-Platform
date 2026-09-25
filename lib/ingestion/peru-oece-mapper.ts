@@ -377,6 +377,7 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
   const procedureType = compiled.tender?.procurementMethodDetails?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title,
     summary: title,
     buyer,

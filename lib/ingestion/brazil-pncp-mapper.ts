@@ -330,6 +330,7 @@ export function mapPncpSearchRowToTender(row: PncpSearchRow, items: PncpItem[] |
 
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title: description,
     summary: description,
     buyer,

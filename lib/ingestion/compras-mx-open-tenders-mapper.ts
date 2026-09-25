@@ -194,6 +194,7 @@ export function mapComprasMxOpenTenderRowToTender(
   const procedureType = row["TIPO DE PUBLICACIÓN"]?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title,
     summary: title,
     buyer,

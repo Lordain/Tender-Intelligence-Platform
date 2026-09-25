@@ -106,6 +106,7 @@ export function mapOcdsReleaseToTender(
   const procedureType = tender.procurementMethodDetails ?? tender.procurementMethod ?? "Unknown";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber: tender.id ?? release.ocid,
     title: tender.title,
     summary: tender.description ?? tender.title,
     buyer: buyerName,

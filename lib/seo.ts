@@ -65,13 +65,16 @@ export const SITE_DESCRIPTION =
  */
 const BAIDU_VERIFICATION_CODE = "codeva-WJtzxoje9L";
 
+/** Sogou's, issued 2026-09-25 in 搜狗资源平台 (HTML标签验证); same reasoning. The last two characters are zeros. */
+const SOGOU_VERIFICATION_CODE = "zxZwmxeM00";
+
 export function siteVerification(): Metadata["verification"] {
   const read = (name: string) => process.env[name]?.trim() || undefined;
   const other: Record<string, string> = {};
   const bing = read("BING_SITE_VERIFICATION");
   const baidu = read("BAIDU_SITE_VERIFICATION") ?? BAIDU_VERIFICATION_CODE;
   const so360 = read("SO360_SITE_VERIFICATION");
-  const sogou = read("SOGOU_SITE_VERIFICATION");
+  const sogou = read("SOGOU_SITE_VERIFICATION") ?? SOGOU_VERIFICATION_CODE;
   if (bing) other["msvalidate.01"] = bing;
   if (baidu) other["baidu-site-verification"] = baidu;
   if (so360) other["360-site-verification"] = so360;

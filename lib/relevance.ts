@@ -3331,10 +3331,26 @@ export function classifyRelevance(input: {
   // to add, so the bands decide alone. With NO amount disclosed the keyword is
   // the only signal there is, and it still speaks — that is the clause below
   // and the allowlist gate further down, both untouched.
-  if (
-    (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) ||
-    (isEquipmentScaleCapped && normalizedValue === undefined)
-  ) {
+  // 中型 now requires a disclosed amount. Full stop.
+  //
+  // The removed clause was `isEquipmentScaleCapped && normalizedValue ===
+  // undefined` — a fixed CCTV/videovigilancia/substation job with NO amount
+  // was promoted to 中型 on the keyword alone, on the reasoning (2026-09-18,
+  // in this file) that "a fixed CCTV installation is an infrastructure
+  // project". The user reversed it on 2026-09-25: 必须是有金额才定中级，不然
+  // 都定常规，太多小的CCTV项目了.
+  //
+  // The reasoning it replaces was the same guess-about-scale this file
+  // rejects everywhere else: a keyword says what KIND of thing is being
+  // bought, never how much of it. "Sistema de videovigilancia para el almacén
+  // de drogas" and a city-wide camera network are one phrase and two orders
+  // of magnitude, and with no amount published there is nothing to tell them
+  // apart. 常规 is what "we cannot tell" should look like.
+  //
+  // EQUIPMENT_SCALE_CAPPED_KEYWORDS is NOT deleted: it still blocks these
+  // same rows from reaching 大型 through the INCLUDE_OVERRIDE path above,
+  // which is the job it was originally added for.
+  if (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
   }
 
@@ -3450,12 +3466,23 @@ export function classifyRelevance(input: {
   // demoting a fire-alarm or firewall tender out of flagship left it with no
   // whitelist match, and this gate then excluded it outright — turning a
   // requested demotion into a deletion.
+  //
+  // isEquipmentScaleCapped joined them on 2026-09-25, for the same reason on
+  // the same day the significant clause stopped promoting on it. Before that
+  // change the CCTV keyword was BOTH the promote signal and the keep signal;
+  // removing the promotion silently removed the keep too, and two real rows
+  // (LP-SM-20-2026-BCRPLIM-1, LA-07-110-007000999-T-687-2026) went straight
+  // from 中型 to DELETED rather than to 常规. The user asked for 不然都定常规
+  // — 常规, not gone. Same failure mode as the fire-alarm case above, caught
+  // this time by running the two production rows through the classifier
+  // instead of reading the diff.
   if (
     input.country !== undefined &&
     UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL.has(input.country) &&
     normalizedValue === undefined &&
     !matchesFlagshipIndustry &&
-    !hasIncludeOverride
+    !hasIncludeOverride &&
+    !isEquipmentScaleCapped
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
@@ -3478,7 +3505,13 @@ export function classifyRelevance(input: {
   // Same correction: this gate's comment says everything reaching it failed
   // every positive signal, which stopped being true once demotions began
   // routing keyword-matched tenders past the flagship branch.
-  if (!hasTargetIndustry && normalizedValue === undefined && !matchesFlagshipIndustry && !hasIncludeOverride) {
+  if (
+    !hasTargetIndustry &&
+    normalizedValue === undefined &&
+    !matchesFlagshipIndustry &&
+    !hasIncludeOverride &&
+    !isEquipmentScaleCapped
+  ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }
 

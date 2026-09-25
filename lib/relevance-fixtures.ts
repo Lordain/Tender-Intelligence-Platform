@@ -312,8 +312,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "SUMINISTRO E INSTALACIÓN DE UN SISTEMA DE VIDEOVIGILANCIA Y CONTROL DE ACCESO PARA EL DISTRITO",
-    expectedTier: "significant",
-    note: "The control for that change: an override-flagged security project with no renewal wording in it must still be promoted, not dropped. 'significant' rather than 'flagship' because videovigilancia is in EQUIPMENT_SCALE_CAPPED_KEYWORDS, which caps an undisclosed-value match there on purpose — the point of this fixture is that RENEWAL_ONLY_KEYWORDS is narrow enough to leave it alone, taking renewal of an existing licence/subscription/platform rather than security work as a category.",
+    expectedTier: "standard",
+    note: "The control for that change: an override-flagged security project with no renewal wording in it must still be KEPT, not dropped — that is what this fixture guards, and it is why the tier matters less than the fact that it survives. It expected 'significant' until 2026-09-25, when the user made a disclosed amount mandatory for 中型 (必须是有金额才定中级，不然都定常规，太多小的CCTV项目了). EQUIPMENT_SCALE_CAPPED_KEYWORDS still matches videovigilancia and still blocks the flagship path; what it no longer does is promote. With no amount published this is 常规.",
     scopeType: "equipment_services",
     country: "Colombia",
   },
@@ -2380,9 +2380,28 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
   },
   {
+    title: "Adquisión e instalación de equipos para el sistema de CCTV para su reemplazo en los locales del BCRP",
+    expectedTier: "standard",
+    summary: "Adquisión e instalación de equipos para el sistema de CCTV para su reemplazo en los locales del BCRP",
+    note: "Real row, LP-SM-20-2026-BCRPLIM-1, read out of production on 2026-09-25 — one of exactly two rows in the whole database sitting at 中型 with no disclosed amount and a CCTV title, which is what the user was seeing. A central bank replacing the cameras in its own offices is a building's security refit, and nothing in the notice says how big it is. Kept at 常规, not excluded: it is a genuine equipment purchase with an ict_telecom tag.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "federal", industries: ["ict_telecom"],
+  },
+  {
+    title: "IMPLEMENTACIÓN DE SOLUCIÓN DE SISTEMAS DE SEGURIDAD ELECTRÓNICA TIPO VIDEOVIGILA",
+    expectedTier: "standard",
+    note: "Real row, LA-85-W83-926014991-N-91-2026 (ITSON), the other of the two. Its title is TRUNCATED by the source at 80 characters — 'VIDEOVIGILA' — which is its own argument for this rule: the platform was promoting to 中型 off a word the notice did not even finish spelling, with no amount behind it.",
+    country: "Mexico", scopeType: "services", governmentLevel: "state", industries: ["ict_telecom"],
+  },
+  {
+    title: "ADQS CCTV PARA DEPOSITOS DE ARMAMENTO Y SITIOS FORANEOS DE LA GUARDIA NACIONAL",
+    expectedTier: "standard",
+    note: "Real row, LA-07-110-007000999-T-687-2026 (SEDENA). The control: it was ALREADY 常规 before this change, with no amount and a CCTV title, so it pins that the change moved the two rows it was aimed at and left this one where it was.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "federal", industries: ["ict_telecom"],
+  },
+  {
     title: "AMPLIACIÓN Y MODERNIZACIÓN DEL SISTEMA DE VIDEOVIGILANCIA DE LA CIUDAD",
-    expectedTier: "significant",
-    note: "The control for the fixture above, and the reason the cámara rule was narrowed with a lookahead rather than deleted. A city-wide CCTV installation with no disclosed value stays 中型 — what changed is only that a body-worn camera is no longer read as one of these.",
+    expectedTier: "standard",
+    note: "The control for the fixture above, and the reason the cámara rule was narrowed with a lookahead rather than deleted: a city-wide CCTV installation is still KEPT, a body-worn camera is still not read as one. It expected 中型 until 2026-09-25, when the user required a disclosed amount for that tier. This title and the bodycam one now land on the same tier, which is the honest answer: with no amount published, the words alone cannot tell a city-wide network from a box of cameras — and that indistinguishability was the user's complaint (太多小的CCTV项目).",
     country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
   },
   {

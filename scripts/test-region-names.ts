@@ -65,6 +65,13 @@ clean("南下加利福尼亚州（Baja California Sur）港口工程");
 // …but the genuinely crossed version of the same pair still reports.
 flags("南马托格罗索州（Mato Grosso）公路养护", "Mato Grosso", "南马托格罗索");
 
+// Chile. 阿劳卡尼亚 contains Colombia's 阿劳卡 whole — the same containment
+// the Mato Grosso pair tests, across two countries.
+clean("阿劳卡尼亚大区（La Araucanía）学校建设");
+clean("阿劳卡省（Arauca）道路改善工程");
+flags("比奥比奥大区（Maule）医院设备采购", "Maule", "比奥比奥");
+flags("阿劳卡尼亚大区（Arauca）医院设备采购", "Arauca", "阿劳卡尼亚");
+
 // --- The table itself ------------------------------------------------------
 ran += 1;
 const duplicateLatin = REGION_NAMES.map((r) => r.latin.toLowerCase()).filter((v, i, all) => all.indexOf(v) !== i);

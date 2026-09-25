@@ -6,6 +6,7 @@ import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
 import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-codelco";
+import { classifyCemigRelevance, CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
 
 /**
@@ -4099,6 +4100,15 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
     return {
       industries: withMining,
       relevance: classifyCodelcoRelevance({ title: input.title, procedureType: input.procedureType, scopeType: input.scopeType }),
+    };
+  }
+  // Cemig's e-Compras: own rules, see lib/relevance-cemig.ts — the one source
+  // where a pregão for goods is kept (user, 2026-09-25).
+  if (input.sourceName === CEMIG_SOURCE_NAME) {
+    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    return {
+      industries: withEnergy,
+      relevance: classifyCemigRelevance({ title: input.title, summary: input.summary, procedureType: input.procedureType }),
     };
   }
   return {

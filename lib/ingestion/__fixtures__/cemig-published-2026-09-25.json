@@ -1,0 +1,997 @@
+[
+ {
+  "row": {
+   "id": 21984,
+   "auctionType": "E",
+   "auctionNumber": "530-G21984",
+   "simpleDescription": "Terminais e Barramentos",
+   "auctionFile": "21984_ee8488ad-6877-4cc6-8370-ead9fe4d90b7.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Distribuição S/A",
+   "startDateTimeDispute": "2026-10-06T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "530-G21984",
+   "simpleDescription": "Terminais e Barramentos",
+   "publishedDate": "2026-09-24T16:58:47.000Z",
+   "startDateTimeDispute": "2026-10-06T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-24T19:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "CONEXÃO ISOLADA P/RDS E RDA"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Distribuição S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21976,
+   "auctionType": "E",
+   "auctionNumber": "530-G21976",
+   "simpleDescription": "Aparelhos de Ar-condicionado",
+   "auctionFile": "21976_01b0635a-ed58-46e5-8e48-6408423124cd.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Distribuição S/A",
+   "startDateTimeDispute": "2026-10-01T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "530-G21976",
+   "simpleDescription": "Aparelhos de Ar-condicionado",
+   "publishedDate": "2026-09-21T19:28:24.000Z",
+   "startDateTimeDispute": "2026-10-01T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-19T18:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "ACESSÓRIO P/CONDICIONAMENTO AR"
+    },
+    {
+     "categoryName": "CONDICIONADOR AR RESIDENCIAL"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Distribuição S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21979,
+   "auctionType": "E",
+   "auctionNumber": "500-H21979",
+   "simpleDescription": "Sistema Integrado de Gestão Territorial e Socioambiental, conforme Especificação Técnica, anexo deste edital.",
+   "auctionFile": "21979_d2ba0c51-26f3-40d0-8dc3-92203f8af455.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cia Energética de Minas Gerais",
+   "startDateTimeDispute": "2026-10-05T13:00:00.000Z"
+  },
+  "detail": {
+   "processNumber": "500-H21979",
+   "simpleDescription": "Sistema Integrado de Gestão Territorial e Socioambiental, conforme Especificação Técnica, anexo deste edital.",
+   "publishedDate": "2026-09-21T18:17:45.000Z",
+   "startDateTimeDispute": "2026-10-05T13:00:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-21T11:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Serviços"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "INF- SOFTWARE"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cia Energética de Minas Gerais"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21978,
+   "auctionType": "E",
+   "auctionNumber": "530-G21978",
+   "simpleDescription": "Conectores Perfuração",
+   "auctionFile": "21978_72ecac91-a7ca-4c1d-b792-7e8716ece1f8.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Distribuição S/A",
+   "startDateTimeDispute": "2026-10-01T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "530-G21978",
+   "simpleDescription": "Conectores Perfuração",
+   "publishedDate": "2026-09-21T14:03:40.000Z",
+   "startDateTimeDispute": "2026-10-01T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-19T13:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "CONETOR PERFURAÇÃO P/RSI"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Distribuição S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21960,
+   "auctionType": "E",
+   "auctionNumber": "500-H21960",
+   "simpleDescription": "Serviço de impressão corporativa.",
+   "auctionFile": "21960_0ee6b6ca-ec49-432f-b175-a162505a3078.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cia Energética de Minas Gerais",
+   "startDateTimeDispute": "2026-10-02T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "500-H21960",
+   "simpleDescription": "Serviço de impressão corporativa.",
+   "publishedDate": "2026-09-21T13:08:56.000Z",
+   "startDateTimeDispute": "2026-10-02T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-18T11:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Serviços"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "INF- IMPRESSÃO CORPORATIVA"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cia Energética de Minas Gerais"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21959,
+   "auctionType": "E",
+   "auctionNumber": "530-G21959",
+   "simpleDescription": "MONITOR E EXCITADOR PARA TRANSFORMADORES DE POTENCIAL DE FRONTEIRA",
+   "auctionFile": "21959_0e73a993-18c5-4007-93f9-251032071d1f.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Distribuição S/A",
+   "startDateTimeDispute": "2026-09-30T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "530-G21959",
+   "simpleDescription": "MONITOR E EXCITADOR PARA TRANSFORMADORES DE POTENCIAL DE FRONTEIRA",
+   "publishedDate": "2026-09-18T17:10:33.000Z",
+   "startDateTimeDispute": "2026-09-30T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-18T15:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "ACESSÓRIO EM GERAL P/MEDIDOR ENERGIA"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Distribuição S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21974,
+   "auctionType": "C",
+   "auctionNumber": "500-F21974",
+   "simpleDescription": "Contratação de projetos de soluções inovadoras para os Desafios descritos e detalhados no “ANEXO 2 – Lista de Desafios da CEMIG”.\r\nPara inscrição, acesse o link: https://www.zing.iebtinnovation.com/programas/cpsi-cemig-ciclo5",
+   "auctionFile": "21974_0ff0fc72-9a54-4d5d-a488-797f364cafa5.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cia Energética de Minas Gerais",
+   "startDateTimeDispute": null
+  },
+  "detail": {
+   "processNumber": "500-F21974",
+   "simpleDescription": "Contratação de projetos de soluções inovadoras para os Desafios descritos e detalhados no “ANEXO 2 – Lista de Desafios da CEMIG”.\r\nPara inscrição, acesse o link: https://www.zing.iebtinnovation.com/programas/cpsi-cemig-ciclo5",
+   "publishedDate": "2026-09-18T16:50:35.000Z",
+   "startDateTimeDispute": null,
+   "startDateTimeToSendProposal": "2026-10-18T03:00:00.000Z",
+   "endDateTimeToSendProposal": "2026-11-02T02:59:59.000Z",
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Credenciamento"
+   },
+   "legalSupport": {
+    "description": "Lei 14.133/2021, Art. 78, I"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [],
+   "organizationUnit": {
+    "organizationUnitName": "Cia Energética de Minas Gerais"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21919,
+   "auctionType": "E",
+   "auctionNumber": "500-H21919",
+   "simpleDescription": "Seguro de Responsabilidade Civil para Administradores (Seguro DirectorsOfficers Liability – D&amp;O), com abrangência no Brasil e no Exterior",
+   "auctionFile": "21919_7b42440b-82a6-431f-85a4-8ea3d60c6675.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cia Energética de Minas Gerais",
+   "startDateTimeDispute": "2026-09-30T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "500-H21919",
+   "simpleDescription": "Seguro de Responsabilidade Civil para Administradores (Seguro DirectorsOfficers Liability – D&amp;O), com abrangência no Brasil e no Exterior",
+   "publishedDate": "2026-09-16T20:23:48.000Z",
+   "startDateTimeDispute": "2026-09-30T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-12T11:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Serviços"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "SGE- SEGUROS"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cia Energética de Minas Gerais"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21970,
+   "auctionType": "E",
+   "auctionNumber": "500-H21970",
+   "simpleDescription": "Intermediação de estágios curriculares supervisionados",
+   "auctionFile": "21970_f36bcdaf-0504-4ca9-84e6-f34c858ddcb2.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cia Energética de Minas Gerais",
+   "startDateTimeDispute": "2026-10-08T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "500-H21970",
+   "simpleDescription": "Intermediação de estágios curriculares supervisionados",
+   "publishedDate": "2026-09-15T18:25:00.000Z",
+   "startDateTimeDispute": "2026-10-08T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-15T13:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Serviços"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "SAA- RECURSOS HUMANOS"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cia Energética de Minas Gerais"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21958,
+   "auctionType": "E",
+   "auctionNumber": "807-G21958",
+   "simpleDescription": "Transformador Elevador Trifásico",
+   "auctionFile": "21958_56c0783e-9692-420e-8d33-d9833cd276d6.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Geração Oeste S.A.",
+   "startDateTimeDispute": "2026-10-02T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "807-G21958",
+   "simpleDescription": "Transformador Elevador Trifásico",
+   "publishedDate": "2026-09-11T13:51:21.000Z",
+   "startDateTimeDispute": "2026-10-02T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-11T18:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "TRANSFORMADOR POTÊNCIA ACIMA 36,2kV ATÉ 72,5kV"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Geração Oeste S.A."
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21950,
+   "auctionType": "E",
+   "auctionNumber": "860-LS21950",
+   "simpleDescription": "Serviços de pavimentação asfáltica nas vias internas da usina de Pai Joaquim, contemplando a regularização e compactação da base, seguida de lançamento e compactação do CBUQ e execução de sinalização viária horizontal, por meio de pintura com tinta refletiva",
+   "auctionFile": "21950_3896090d-7cd6-4a72-839d-ffb0baaa6e90.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig PCH S/A",
+   "startDateTimeDispute": "2026-09-30T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "860-LS21950",
+   "simpleDescription": "Serviços de pavimentação asfáltica nas vias internas da usina de Pai Joaquim, contemplando a regularização e compactação da base, seguida de lançamento e compactação do CBUQ e execução de sinalização viária horizontal, por meio de pintura com tinta refletiva",
+   "publishedDate": "2026-09-09T20:00:27.000Z",
+   "startDateTimeDispute": "2026-09-30T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-01T11:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Licitação Eletrônica de Serviços"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "CIM- PAVIMENTAÇÃO  ATÉ 10.000m²"
+    },
+    {
+     "categoryName": "CIM- PAVIMENTAÇÃO  ACIMA DE 10.000m²"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig PCH S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21944,
+   "auctionType": "E",
+   "auctionNumber": "530-G21944",
+   "simpleDescription": "Termovisor Portatil LD",
+   "auctionFile": "21944_fd40d619-0c36-4412-93d1-49e6575a3570.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Distribuição S/A",
+   "startDateTimeDispute": "2026-10-02T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "530-G21944",
+   "simpleDescription": "Termovisor Portatil LD",
+   "publishedDate": "2026-09-08T12:54:54.000Z",
+   "startDateTimeDispute": "2026-10-02T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-01T17:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "TERMOVISOR INSPEÇÃO RD E LT"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Distribuição S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21952,
+   "auctionType": "E",
+   "auctionNumber": "500-G21952",
+   "simpleDescription": "Torres Metálicas de Transmissão",
+   "auctionFile": "21952_8b6ade7a-f7ee-4e08-9bb3-a5f068f159fb.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cia Energética de Minas Gerais",
+   "startDateTimeDispute": "2026-10-01T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "500-G21952",
+   "simpleDescription": "Torres Metálicas de Transmissão",
+   "publishedDate": "2026-09-04T13:13:36.000Z",
+   "startDateTimeDispute": "2026-10-01T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-04T19:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "ESTRUTURA METÁLICA P/LINHA TRANSMISSÃO ATÉ 550kV"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cia Energética de Minas Gerais"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21945,
+   "auctionType": "E",
+   "auctionNumber": "510-G21945",
+   "simpleDescription": "Infraestrutura de Tecnologia da Operação para o COI",
+   "auctionFile": "21945_32389536-90b3-46cd-98b9-a71d9e3c1f1b.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Geração e Transm S/A",
+   "startDateTimeDispute": "2026-09-28T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "510-G21945",
+   "simpleDescription": "Infraestrutura de Tecnologia da Operação para o COI",
+   "publishedDate": "2026-09-02T16:48:53.000Z",
+   "startDateTimeDispute": "2026-09-28T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-09-02T17:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "EQUIPAMENTO E MATERIAL P/INFORMÁTICA"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Geração e Transm S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21943,
+   "auctionType": "E",
+   "auctionNumber": "530-G21943",
+   "simpleDescription": "Cortadores de cabos, Decapadores, Ferramentas Isoladas e Equipamentos para Eletricistas",
+   "auctionFile": "21943_70397f44-09be-49b4-83c7-a355fca66a71.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Distribuição S/A",
+   "startDateTimeDispute": "2026-09-30T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "530-G21943",
+   "simpleDescription": "Cortadores de cabos, Decapadores, Ferramentas Isoladas e Equipamentos para Eletricistas",
+   "publishedDate": "2026-08-31T13:53:23.000Z",
+   "startDateTimeDispute": "2026-09-30T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-08-29T13:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "FERRAMENTA MANUAL CORTE"
+    },
+    {
+     "categoryName": "FERRAMENTA MANUAL S/CORTE"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Distribuição S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21935,
+   "auctionType": "E",
+   "auctionNumber": "500-TK21935",
+   "simpleDescription": "Reforços e Melhorias da Transmissão – R&amp;MT 01/2025 - Leste 2 Serviços",
+   "auctionFile": "21935_5c304b6b-e9d6-4ad0-8455-fd16ebbcf11e.docx",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cia Energética de Minas Gerais",
+   "startDateTimeDispute": "2026-10-02T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "500-TK21935",
+   "simpleDescription": "Reforços e Melhorias da Transmissão – R&amp;MT 01/2025 - Leste 2 Serviços",
+   "publishedDate": "2026-08-27T18:58:05.000Z",
+   "startDateTimeDispute": "2026-10-02T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-08-27T11:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Licitação Eletrônica – Soluções Integradas"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "SOLUÇÃO INTEGRADA CLASSE I EM INST. DE TRANSM, MAIOR OU IGUAL A 230 KV"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cia Energética de Minas Gerais"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21934,
+   "auctionType": "E",
+   "auctionNumber": "510-G21934",
+   "simpleDescription": "Isoladores Pedestais para Sistemas de 345 e 500kV",
+   "auctionFile": "21934_e9634e82-82b3-416d-8285-dbc570479153.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Geração e Transm S/A",
+   "startDateTimeDispute": "2026-10-01T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "510-G21934",
+   "simpleDescription": "Isoladores Pedestais para Sistemas de 345 e 500kV",
+   "publishedDate": "2026-08-26T12:47:28.000Z",
+   "startDateTimeDispute": "2026-10-01T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2025-08-26T13:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "ISOLADOR VIDRO OU PORCELANA"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Geração e Transm S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21907,
+   "auctionType": "C",
+   "auctionNumber": "530-F21907",
+   "simpleDescription": "Comunicação digital via rede celular",
+   "auctionFile": "21907_85b8cb0b-d7fe-45b1-b322-9282f8a31525.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Distribuição S/A",
+   "startDateTimeDispute": null
+  },
+  "detail": {
+   "processNumber": "530-F21907",
+   "simpleDescription": "Comunicação digital via rede celular",
+   "publishedDate": "2026-08-14T14:43:55.000Z",
+   "startDateTimeDispute": null,
+   "startDateTimeToSendProposal": "2026-08-14T03:00:00.000Z",
+   "endDateTimeToSendProposal": "2029-08-14T02:59:59.000Z",
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Credenciamento"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016, Art. 30, caput - credenciamento"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "INF- COMUNICAÇÃO DE DADOS"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Distribuição S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21900,
+   "auctionType": "E",
+   "auctionNumber": "530-G21900",
+   "simpleDescription": "Transformadores a seco",
+   "auctionFile": "21900_5c6dec1d-89b7-4b1f-83ec-4ac8f1e2e48b.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Distribuição S/A",
+   "startDateTimeDispute": "2026-09-30T12:30:00.000Z"
+  },
+  "detail": {
+   "processNumber": "530-G21900",
+   "simpleDescription": "Transformadores a seco",
+   "publishedDate": "2026-08-07T11:54:36.000Z",
+   "startDateTimeDispute": "2026-09-30T12:30:00.000Z",
+   "startDateTimeToSendProposal": "2026-08-07T17:00:00.000Z",
+   "endDateTimeToSendProposal": null,
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pregão Eletrônico - Material"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "TRANSFORMADOR À SECO ATÉ 36,2kV"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Distribuição S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21870,
+   "auctionType": "C",
+   "auctionNumber": "530-F21870",
+   "simpleDescription": "Credenciamento de empresas visando a comercialização de motores elétricos e inversores de frequência dentro do Projeto Bônus para Incentivo à Troca de Motores Elétricos do Programa de Eficiência Energética – PEE da CEMIG.",
+   "auctionFile": "21870_541674db-55da-47a6-8711-aaf7ba4e2e2b.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Distribuição S/A",
+   "startDateTimeDispute": null
+  },
+  "detail": {
+   "processNumber": "530-F21870",
+   "simpleDescription": "Credenciamento de empresas visando a comercialização de motores elétricos e inversores de frequência dentro do Projeto Bônus para Incentivo à Troca de Motores Elétricos do Programa de Eficiência Energética – PEE da CEMIG.",
+   "publishedDate": "2026-07-30T19:39:19.000Z",
+   "startDateTimeDispute": null,
+   "startDateTimeToSendProposal": "2026-07-31T03:00:00.000Z",
+   "endDateTimeToSendProposal": "2027-07-31T02:59:59.000Z",
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Credenciamento"
+   },
+   "legalSupport": {
+    "description": "Lei 14.133/2021, Art. 78, I"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "CREDENCIAMENTO"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Distribuição S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21228,
+   "auctionType": "C",
+   "auctionNumber": "500-Z21228",
+   "simpleDescription": "Conforme Aviso 09, a Pré-qualificação nº 500-Z17135 teve seu número de identificação alterado para 500-Z21228.\r\nServiços comuns de advocacia contenciosa no âmbito judicial, arbitral e administrativo, cível e criminal, sem exclusividade e em todas as instâncias e graus de jurisdição, nos ramos do Direito: I) Tributário e Regulatório; II) Imobiliário, Administrativo e Ambiental; III) Trabalhista e Previdenciário; IV) Relações de Consumo; V) Empresarial e Responsabilidade Civil; e na área de atuação de VI) Demandas Qualificadas em Serviços Comuns",
+   "auctionFile": "21228_459b3b3b-fb31-4088-bd28-067584274c50.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cia Energética de Minas Gerais",
+   "startDateTimeDispute": null
+  },
+  "detail": {
+   "processNumber": "500-Z21228",
+   "simpleDescription": "Conforme Aviso 09, a Pré-qualificação nº 500-Z17135 teve seu número de identificação alterado para 500-Z21228.\r\nServiços comuns de advocacia contenciosa no âmbito judicial, arbitral e administrativo, cível e criminal, sem exclusividade e em todas as instâncias e graus de jurisdição, nos ramos do Direito: I) Tributário e Regulatório; II) Imobiliário, Administrativo e Ambiental; III) Trabalhista e Previdenciário; IV) Relações de Consumo; V) Empresarial e Responsabilidade Civil; e na área de atuação de VI) Demandas Qualificadas em Serviços Comuns",
+   "publishedDate": "2025-06-27T18:35:33.000Z",
+   "startDateTimeDispute": null,
+   "startDateTimeToSendProposal": "2025-06-27T03:00:00.000Z",
+   "endDateTimeToSendProposal": "2027-02-04T02:59:59.000Z",
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Pré-Qualificação - Serviço"
+   },
+   "legalSupport": {
+    "description": "Lei 13.303/2016"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "SAA- JURÍDICO"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cia Energética de Minas Gerais"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ },
+ {
+  "row": {
+   "id": 21221,
+   "auctionType": "C",
+   "auctionNumber": "530-F21221",
+   "simpleDescription": "Serviços de arrecadação, pela Instituição Bancária, em todo o Território Nacional, de Notas Fiscais/Contas de Energia Elétrica, faturas e taxas diversas de emissão da CEMIG",
+   "auctionFile": "21221_995528f5-73bf-4b9d-ae2d-5f91d959bfbd.zip",
+   "biddingStageId": 8,
+   "auctionCanceled": 0,
+   "auctionFinished": 0,
+   "organizationUnitName": "Cemig Distribuição S/A",
+   "startDateTimeDispute": null
+  },
+  "detail": {
+   "processNumber": "530-F21221",
+   "simpleDescription": "Serviços de arrecadação, pela Instituição Bancária, em todo o Território Nacional, de Notas Fiscais/Contas de Energia Elétrica, faturas e taxas diversas de emissão da CEMIG",
+   "publishedDate": "2025-06-25T18:34:07.000Z",
+   "startDateTimeDispute": null,
+   "startDateTimeToSendProposal": "2025-06-26T03:00:00.000Z",
+   "endDateTimeToSendProposal": "2027-06-27T02:59:59.000Z",
+   "isCanceled": false,
+   "isFinished": false,
+   "rule": {
+    "description": "Credenciamento"
+   },
+   "legalSupport": {
+    "description": "Lei 14.133/2021, Art. 78, I"
+   },
+   "stage": {
+    "id": 8,
+    "stageName": "PUBLICADO"
+   },
+   "segments": [
+    {
+     "categoryName": "SAA- AGENTES FINANCEIROS"
+    }
+   ],
+   "organizationUnit": {
+    "organizationUnitName": "Cemig Distribuição S/A"
+   },
+   "judgeCriterion": {
+    "description": "Menor preço"
+   }
+  }
+ }
+]

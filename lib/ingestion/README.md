@@ -8822,3 +8822,32 @@ Mercado Público 要考虑时长：读公开搜索约 25 秒（实测 4,047 条�
 
 线上部署还从没连过 Mercado Público。连不上时，返回的错误里会附上能在本机跑的命令
 （`npm run cron:chile -- --write`）。
+
+## Cemig：巴西米纳斯电力公司自己的采购平台（2026-09-25）
+
+Cemig 按 13.303 号法采购，在自己的 e-Compras 平台（app2-compras.cemig.com.br）上招标，
+不在 PNCP 上。平台的公开搜索是一个 React 应用，背后的 JSON 接口不需要登录：
+
+- `POST api-manager-compras.cemig.com.br/auction-notice/doSearchAuctionNotice`，
+  过滤 `biddingStageId: 8`（「PUBLICADO」，正在收投标），每页 20 条；
+- `POST …/auction-notice/getAuctionNoticeById`，每个流程一次：规则（「Pregão Eletrônico -
+  Material」）、供应品类、发布日期、竞价会时间。
+
+2026-09-25：历史上共 1,351 个流程，已发布 22 个。招标文件 zip 在
+arquivos-compras.cemig.com.br 上公开下载（输电铁塔那份 79 MB，不需要登录）。没有金额。
+
+**电子竞价的例外（用户决定）**：别的来源一律排除电子竞价（Pregão），但 Cemig 用电子竞价买电网设备：
+550 kV 以下的输电铁塔、345/500 kV 支柱绝缘子、变压器。22 个里有 15 个是电子竞价。
+规则在 lib/relevance-cemig.ts：
+- 资格登记和预审（Credenciamento / Pré-qualificação）→ 排除；
+- 服务 → 排除，除非是建电网的；
+- 办公、IT、空调、手工具、仪器 → 排除；
+- 输电等级（230 kV 以上或输电线路）→ 中型；
+- 其余电网设备和材料 → 常规。
+
+截止日取竞价会开始的时间：平台上这类流程的「投标截止」字段是空的，投标一直收到竞价会开始为止。
+
+**只导入近 3 天发布的**（用户决定，`lib/ingestion/publication-window.ts`，Petronect、UPME、Codelco
+也一样）。一次性补导入更早的：`npm run cron:cemig -- --days 30 --write`（`--days 0` = 不限）。
+
+每日任务：`npm run cron:cemig`，心跳 `import-cemig`；测试 `npm run test:cemig`。

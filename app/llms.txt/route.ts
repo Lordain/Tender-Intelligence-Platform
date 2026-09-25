@@ -1,5 +1,6 @@
 import { participationGuides } from "@/lib/participation-guides";
 import { countryPages } from "@/lib/country-pages";
+import { industryPages } from "@/lib/industry-pages";
 import { countryLabel } from "@/lib/tender-labels";
 import { countryInsights } from "@/lib/country-insights";
 import { siteOrigin } from "@/lib/site-url";
@@ -48,6 +49,8 @@ ${countryInsights.map((insight) => `- [${insight.title}](${origin}/insights/${in
 ## 主要页面
 - [招标项目列表](${origin}/tenders)：按国家、行业、金额与项目规模筛选。
 ${countryPages.map((page) => `- [${countryLabel(page.country, "zh")}招标项目](${origin}/countries/${page.slug})：${countryLabel(page.country, "zh")}当前在招项目、采购来源与参标指南。`).join("\n")}
+${industryPages.map((page) => `- [拉美${page.name}招标项目](${origin}/industries/${page.slug})：五国当前在招的${page.name}类项目。`).join("\n")}
+- [拉美招标周报](${origin}/weekly)：每周新发布项目，按国家和行业整理。
 - [国家洞察](${origin}/insights)：各国战略投资、行业预算、区域布局和项目机会。
 - [订阅方案与价格](${origin}/pricing)：个人版与企业版，注册即享 ${TRIAL_DAYS} 天免费试用，无需绑定银行卡。
 - [参标指南总览](${origin}/guides)

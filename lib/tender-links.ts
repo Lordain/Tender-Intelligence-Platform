@@ -45,9 +45,9 @@ const TIER_WEIGHT: Record<TenderRelevanceTier, number> = { flagship: 3, signific
  * whose own deadline has already passed — a stale status should not be the
  * thing a new visitor clicks first.
  */
-function liveCandidates(all: Tender[], countries: string[] | undefined, now: Date): Tender[] {
+function liveCandidates(all: Tender[], countries: string[] | undefined, now: Date, industries?: string[]): Tender[] {
   const nowMs = now.getTime();
-  return filterTenders(all, { statuses: LIVE_TENDER_STATUSES, countries }, "zh").filter((tender) => {
+  return filterTenders(all, { statuses: LIVE_TENDER_STATUSES, countries, industries }, "zh").filter((tender) => {
     if (!tender.submissionDeadline) return true;
     const deadline = new Date(tender.submissionDeadline).getTime();
     return !Number.isFinite(deadline) || deadline >= nowMs;
@@ -146,4 +146,36 @@ export function featuredTenderLinksForCountry(all: Tender[], country: string, op
   const candidates = liveCandidates(all, [country], options.now ?? new Date())
     .sort((a, b) => TIER_WEIGHT[b.relevance.tier] - TIER_WEIGHT[a.relevance.tier] || byDeadline(a, b));
   return take(candidates, options.limit ?? 3);
+}
+
+/** Every live tender carrying one industry tag, across all countries, nearest deadline first — the industry page's list. */
+export function liveTenderLinksForIndustry(all: Tender[], industry: string, options: { limit?: number; now?: Date } = {}): TenderLink[] {
+  return take(liveCandidates(all, undefined, options.now ?? new Date(), [industry]).sort(byDeadline), options.limit ?? Number.POSITIVE_INFINITY);
+}
+
+/** How many live tenders an industry has, in total and per country, on the same basis as the list above. */
+export function liveTenderCountsForIndustry(all: Tender[], industry: string, now: Date = new Date()): { total: number; byCountry: Map<string, number> } {
+  const byCountry = new Map<string, number>();
+  const candidates = liveCandidates(all, undefined, now, [industry]);
+  for (const tender of candidates) byCountry.set(tender.country, (byCountry.get(tender.country) ?? 0) + 1);
+  return { total: candidates.length, byCountry };
+}
+
+/**
+ * Tenders first published within [from, to] (inclusive "YYYY-MM-DD" days) —
+ * the weekly digest's list. Every status, not just live ones: the digest
+ * reports what came out that week, and a tender cancelled since still came
+ * out; its status tag says what happened to it. The excluded tier and the
+ * untranslated placeholder titles stay out, as everywhere public.
+ *
+ * Biggest tier first, then nearest deadline, so the head of each country's
+ * list is the part worth reading.
+ */
+export function publishedTenderLinks(all: Tender[], range: { from: string; to: string }): TenderLink[] {
+  const candidates = filterTenders(all, {}, "zh").filter((tender) => {
+    const day = tender.publicationDate?.slice(0, 10);
+    return !!day && day >= range.from && day <= range.to;
+  });
+  candidates.sort((a, b) => TIER_WEIGHT[b.relevance.tier] - TIER_WEIGHT[a.relevance.tier] || byDeadline(a, b));
+  return take(candidates, Number.POSITIVE_INFINITY);
 }

@@ -5,6 +5,9 @@ import { fetchTenderSitemapEntriesFromDb } from "@/lib/db/tenders";
 import { participationGuides } from "@/lib/participation-guides";
 import { countryInsights } from "@/lib/country-insights";
 import { countryPages } from "@/lib/country-pages";
+import { industryPages } from "@/lib/industry-pages";
+import { archiveWeeks } from "@/lib/weekly-digest";
+import { weekSlug } from "@/lib/weekly";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 
 /**
@@ -38,6 +41,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily" as const,
       priority: 0.9,
     })),
+    ...industryPages.map((page) => ({
+      url: `${origin}/industries/${page.slug}`,
+      lastModified: now,
+      changeFrequency: "daily" as const,
+      priority: 0.8,
+    })),
+    { url: `${origin}/weekly`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${origin}/insights`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     ...countryInsights.map((insight) => ({
       url: `${origin}/insights/${insight.slug}`,
@@ -67,8 +77,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       updatedAt: tender.updatedAt,
     }));
 
+    // Only weeks that have something in them: an empty past week 404s.
+    const weeks = archiveWeeks(await getCachedTenderList(), now).filter(({ count }) => count > 0);
+
     return [
       ...staticPages,
+      ...weeks.map(({ week }, index) => ({
+        url: `${origin}/weekly/${weekSlug(week)}`,
+        lastModified: now,
+        changeFrequency: index === 0 ? ("daily" as const) : ("monthly" as const),
+        priority: 0.6,
+      })),
       ...tenders.map((tender) => ({
         url: `${origin}/tenders/${tender.publicSlug}`,
         lastModified: new Date(tender.updatedAt),

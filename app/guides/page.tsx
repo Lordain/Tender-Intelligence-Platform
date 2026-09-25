@@ -6,7 +6,7 @@ import { guideCountries, participationGuides } from "@/lib/participation-guides"
 export const metadata: Metadata = pageMetadata({
   title: "参标指南",
   description:
-    "面向中国企业的拉美政府采购参标指南，免费了解各官方平台的参与流程、常见资料与注意事项。",
+    "面向中国企业的拉美参标指南：墨西哥、巴西、哥伦比亚、秘鲁、智利的政府采购平台，以及 Petrobras、Pemex、CFE、Cemig、Codelco、Petroperú 等国有石油、电力、矿业公司的供应商注册、参与流程、常见资料与注意事项，免费阅读。",
   path: "/guides",
 });
 

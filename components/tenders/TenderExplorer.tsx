@@ -30,6 +30,8 @@ const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
 // but do not crowd the initial discovery view. Awarded projects remain in
 // the default set (the public DB layer already requires them to have analysis).
 const DEFAULT_STATUSES: TenderStatus[] = DEFAULT_TENDER_LIST_STATUSES;
+/** The 项目阶段 selection 当前在招 applies: every stage except 已截止, 已取消 and 已中标. */
+const LIVE_STATUS_PARAM = VISIBLE_TENDER_STATUSES.filter((status) => !["submission_closed", "cancelled", "awarded"].includes(status)).join(",");
 // "excluded" isn't offered here — routine-service tenders stay hidden by
 // default (see includeExcluded in lib/filter-tenders.ts); no UI control
 // exposes showing them. "standard" IS offered (unlike "excluded") since
@@ -203,8 +205,8 @@ export function TenderExplorer({
   availableScopeTypes,
   availableCountries,
   siteTenderCount,
+  liveTenderCount,
   newTodayCount,
-  upcomingCount,
 }: {
   tenders: TenderListItem[];
   viewerRole: ViewerRole;
@@ -215,8 +217,9 @@ export function TenderExplorer({
   availableScopeTypes: TenderScopeType[];
   availableCountries: (typeof AVAILABLE_COUNTRIES)[number][];
   siteTenderCount: number;
+  liveTenderCount: number;
   newTodayCount: number;
-  upcomingCount: number;
+  upcomingCount?: number;
 }) {
   const { locale } = useLocale();
   const router = useRouter();
@@ -273,6 +276,7 @@ export function TenderExplorer({
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "deadline_asc";
   const viewParam = searchParams.get("view");
   const view = viewParam === "new" || viewParam === "deadline" ? viewParam : null;
+  const liveOnly = statusParam === LIVE_STATUS_PARAM;
 
   const hasActiveFilters = countryParam !== null || industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || tierParam !== null || sortParam !== null || query.length > 0 || view !== null;
 
@@ -385,6 +389,9 @@ export function TenderExplorer({
             <MultiSelectPills
               label="国家/地区"
               maxVisible={countryOptions.length}
+              // Room for all five with flags; capped by the viewport so a
+              // phone still gets a trigger that fits its screen.
+              valueWidthClass="max-w-[min(36rem,calc(100vw-13rem))]"
               options={countryOptions.map((country) => ({
                 value: country,
                 label: localize(COUNTRY_LABELS[country], locale),
@@ -440,12 +447,21 @@ export function TenderExplorer({
             <InlineTogglePills
               label="计划交标"
               mode="single"
+              // 由远到近 added and 最新发布 became 24小时新增 (user, 2026-09-25).
+              // 24小时新增 is the same view as the sidebar cell of that name:
+              // the tenders added in the last 24 hours, newest first — so the
+              // pill and the cell cannot disagree about what the words mean.
               options={[
                 { value: "deadline_asc" as const, label: "由近到远" },
-                { value: "publication_desc" as const, label: "最新发布" },
+                { value: "deadline_desc" as const, label: "由远到近" },
+                { value: "new" as const, label: "24小时新增" },
               ]}
-              selected={[sort]}
-              onChange={(next) => updateParams({ sort: next[0] ?? null })}
+              selected={view === "new" ? ["new"] : sort === "publication_desc" ? [] : [sort]}
+              onChange={(next) => {
+                const choice = next[0];
+                if (choice === "new") updateParams({ view: "new", sort: "publication_desc" });
+                else updateParams({ sort: choice ?? null, view: view === "new" ? null : view });
+              }}
             />
           </div>
           {/*
@@ -550,6 +566,20 @@ export function TenderExplorer({
                 see siteTenderCount in lib/tender-list-page.ts.
               */}
               <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">全站项目</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{formatTenderCount(siteTenderCount)}</p></div>
+              {/*
+                当前在招 replaced 5天内交标 (user, 2026-09-25: 招标概览 改成全站项目、
+                当前在招、24小时新增；当前在招 = 全站项目扣除已截止、已取消、已中标).
+                Same catalogue basis as 全站项目 beside it; clicking it narrows the
+                list to the live stages, and clicking again goes back.
+              */}
+              <button
+                type="button"
+                onClick={() => updateParams({ status: liveOnly ? null : LIVE_STATUS_PARAM, view: null })}
+                className={`rounded-lg px-1 py-1.5 transition-colors ${liveOnly ? "bg-white/15" : "hover:bg-white/10"}`}
+              >
+                <p className="text-[11px] font-medium text-white/58">当前在招</p>
+                <p className="mt-1.5 text-[1.65rem] font-black leading-none">{formatTenderCount(liveTenderCount)}</p>
+              </button>
               <button
                 type="button"
                 onClick={() => updateParams({ view: view === "new" ? null : "new", sort: view === "new" ? null : "publication_desc" })}
@@ -557,14 +587,6 @@ export function TenderExplorer({
               >
                 <p className="text-[11px] font-medium text-white/58">24小时新增</p>
                 <p className="mt-1.5 text-[1.65rem] font-black leading-none text-[#ffb21c]">{newTodayCount}</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => updateParams({ view: view === "deadline" ? null : "deadline", sort: view === "deadline" ? null : "deadline_asc" })}
-                className={`rounded-lg px-1 py-1.5 transition-colors ${view === "deadline" ? "bg-white/15" : "hover:bg-white/10"}`}
-              >
-                <p className="text-[11px] font-medium text-white/58">5天内交标</p>
-                <p className="mt-1.5 text-[1.65rem] font-black leading-none text-[#ffb21c]">{upcomingCount}</p>
               </button>
             </div>
           </section>

@@ -23,6 +23,9 @@ export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", 
  */
 const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"];
 
+/** What 当前在招 subtracts from 全站项目, in the user's own words: 扣除已截止、已取消、已中标. */
+const NOT_LIVE_STATUSES: TenderStatus[] = ["submission_closed", "cancelled", "awarded"];
+
 /**
  * 最近新增 is a ROLLING 24 hours, not the calendar day.
  *
@@ -222,6 +225,12 @@ export type TenderListPageData = {
    * advertise a catalogue nobody can open.
    */
   siteTenderCount: number;
+  /**
+   * 当前在招 (user, 2026-09-25): 全站项目 minus 已截止, 已取消 and 已中标 —
+   * the same catalogue basis as siteTenderCount, so the two read as a whole
+   * and a part of it.
+   */
+  liveTenderCount: number;
   newTodayCount: number;
   upcomingCount: number;
 };
@@ -429,6 +438,7 @@ export function buildTenderListPage(
     availableScopeTypes,
     availableCountries,
     siteTenderCount: visibleTenders.length,
+    liveTenderCount: visibleTenders.filter((tender) => !NOT_LIVE_STATUSES.includes(tender.status)).length,
     newTodayCount,
     upcomingCount,
   };

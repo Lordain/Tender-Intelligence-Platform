@@ -16,6 +16,14 @@
  *   npm run ping:indexnow -- --days 7       (widen the window; default 2)
  *   npm run ping:indexnow -- --all          (every indexable URL, including the static pages — for the first run)
  *   npm run ping:indexnow -- --origin https://latintender.com
+ *   npm run ping:indexnow -- --baidu-limit 20  (Baidu's batch size; default 10)
+ *
+ * BAIDU: when BAIDU_PUSH_TOKEN is set, a --write run also pushes to Baidu's
+ * 普通收录 API (lib/baidu-push.ts). Baidu's daily quota is far smaller than
+ * IndexNow's, so it gets the most important URLs only: on --all the static
+ * pages first (the homepage is what a search for 拉美招投标信息平台 should
+ * land on), otherwise the newest tenders. Running out of quota is logged,
+ * not failed — tomorrow's run has a fresh one.
  *
  * On --origin: the site's address normally comes from APP_URL, which a local
  * .env.local deliberately does NOT set to production — the same variable
@@ -26,7 +34,9 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { INDEXNOW_KEY, indexNowKeyPath, submitToIndexNow } from "../lib/indexnow";
 import { siteOrigin } from "../lib/site-url";
+import { submitToBaidu } from "../lib/baidu-push";
 import { participationGuides } from "../lib/participation-guides";
+import { countryInsights } from "../lib/country-insights";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = {
@@ -40,9 +50,14 @@ const STATIC_PATHS = [
   "/tenders",
   "/guides",
   ...participationGuides.map((guide) => `/guides/${guide.slug}`),
+  "/insights",
+  ...countryInsights.map((insight) => `/insights/${insight.slug}`),
   "/pricing",
   "/clarifications",
 ];
+
+/** The pages whose content moves with every import. */
+const DAILY_PATHS = ["/", "/tenders"];
 
 /**
  * Supabase caps an unbounded select at 1000 rows and says nothing about it,
@@ -131,8 +146,12 @@ async function main() {
     return changed || published;
   });
 
+  // The homepage and the list change every day a tender is imported, so they
+  // go with every daily batch that has any new tender — before 2026-09-25
+  // they were submitted once, on the first --all run, and never again.
+  const staticPaths = all ? STATIC_PATHS : tenders.length > 0 ? DAILY_PATHS : [];
   const urls = [
-    ...(all ? STATIC_PATHS.map((path) => `${origin}${path === "/" ? "" : path}` || origin) : []),
+    ...staticPaths.map((path) => `${origin}${path === "/" ? "" : path}`),
     ...tenders.map((row) => `${origin}/tenders/${row.public_slug}`),
   ];
 
@@ -156,6 +175,30 @@ async function main() {
   const result = await submitToIndexNow(origin, urls);
   console.log(`\nIndexNow 返回 ${result.status}${result.body ? `：${result.body}` : ""}`);
   if (!result.ok) process.exitCode = 1;
+
+  await pushToBaidu(origin, urls, option("baidu-limit", 10));
+}
+
+async function pushToBaidu(origin: string, urls: string[], limit: number) {
+  const token = process.env.BAIDU_PUSH_TOKEN?.trim();
+  if (!token) {
+    console.log("\n未设置 BAIDU_PUSH_TOKEN，跳过百度推送。");
+    return;
+  }
+  // `urls` is already in priority order: static pages, then tenders newest first.
+  const batch = urls.slice(0, limit);
+  const result = await submitToBaidu(origin, token, batch);
+  if (result.ok) {
+    console.log(`\n百度推送：提交 ${batch.length} 个，接受 ${result.success ?? 0} 个，今日剩余额度 ${result.remain ?? "未知"}`);
+    if (result.notValid?.length) console.log(`  百度判为无效：${result.notValid.join("、")}`);
+    return;
+  }
+  if (result.overQuota) {
+    console.log(`\n百度推送：今日额度已用完（${result.message}），明天自动再推。`);
+    return;
+  }
+  console.error(`\n百度推送失败：HTTP ${result.status}${result.message ? `，${result.message}` : ""}`);
+  process.exitCode = 1;
 }
 
 main().catch((error) => {

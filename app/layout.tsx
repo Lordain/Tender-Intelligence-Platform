@@ -8,6 +8,7 @@ import { CookieNotice } from "@/components/layout/CookieNotice";
 import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
 import { DeviceGuard } from "@/components/account/DeviceGuard";
 import { siteOrigin } from "@/lib/site-url";
+import { SITE_DESCRIPTION, siteVerification } from "@/lib/seo";
 import { StructuredData } from "@/components/seo/StructuredData";
 
 const geistSans = Geist({
@@ -46,7 +47,7 @@ export const metadata: Metadata = {
     template: "%s | 拉美招投标信息平台",
   },
   description:
-    "专注于拉美五国政府招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，中文翻译，人工精筛，按国家、行业、项目规模筛选。帮企业省时、省力、省钱，快速获取精准拉美项目机会。",
+    SITE_DESCRIPTION,
   // Use stable, explicit URLs instead of relying only on Next's generated
   // file-metadata URLs. Google may keep a search-result favicon cached for
   // days or weeks, so the hostname should always advertise one canonical
@@ -72,12 +73,32 @@ export const metadata: Metadata = {
     url: siteOrigin(),
     title: "拉美招投标信息平台 | 中国企业出海墨西哥、巴西、哥伦比亚、秘鲁、智利",
     description:
-      "专注于拉美五国政府招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，中文翻译，人工精筛，按国家、行业、项目规模筛选。帮企业省时、省力、省钱，快速获取精准拉美项目机会。",
+      SITE_DESCRIPTION,
   },
+  // Baidu, 360 and Sogou still read this; Google ignores it. Kept to the
+  // phrases a Chinese buyer actually types, brand first — the site did not
+  // come up for its own name (user, 2026-09-25: 拉美招投标信息平台 好像搜不到我们).
+  keywords: [
+    "拉美招投标信息平台",
+    "拉美招标",
+    "拉美招投标",
+    "拉美政府采购",
+    "墨西哥招标",
+    "巴西招标",
+    "哥伦比亚招标",
+    "秘鲁招标",
+    "智利招标",
+    "LatinTender",
+  ],
+  // Search-console ownership tags, read from the environment so a code for
+  // Google, Bing, Baidu, 360 or Sogou is pasted into Vercel rather than
+  // committed. An unset variable emits nothing. Baidu in particular will not
+  // take a sitemap or an API push until the site is verified.
+  verification: siteVerification(),
   twitter: {
     card: "summary_large_image",
     title: "拉美招投标信息平台",
-    description: "专注于拉美五国政府招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利。",
+    description: "拉美五国政府及国有石油、电力、矿业公司招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利。",
   },
   // NO `alternates` here, deliberately. Metadata fields are inherited WHOLE by
   // any route that does not set its own (Next's own docs: "All openGraph
@@ -86,7 +107,7 @@ export const metadata: Metadata = {
   // this layout therefore made every page without its own alternates —
   // /pricing, /guides and each guide, /tenders, the policy pages — declare
   // itself a duplicate of the homepage, which tells a crawler to index the
-  // homepage INSTEAD of them. The seven 参标指南 pages are the only real
+  // homepage INSTEAD of them. The 参标指南 pages (fourteen as of 2026-09-25) are the only real
   // long-tail content this site has, and they were signing themselves away
   // (found 2026-09-14, while asking why the site could not be found at all).
   //

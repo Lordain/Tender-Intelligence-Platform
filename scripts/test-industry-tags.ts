@@ -306,6 +306,26 @@ const cases: Case[] = [
     note: "汽轮发电机是真的复合词，显式保留",
     expect: ["power"],
   },
+  // 2026-09-25 — ten live titles the user found tagged 综合.
+  { title: "REHABILITACIÓN DE CARCAMO ESTADIO, COLECTOR SAN CARLOS, NOGALES, SONORA.", expect: ["water"], reject: ["general"], note: "cárcamo（泵井）+ colector（污水干管）是水工程" },
+  { title: "TRABAJOS DE REVESTIMIENTO CON CONCRETO HIDRÁULICO DE CANALES DISPERSOS CHIHUAHUA", expect: ["water"], reject: ["general"], note: "渠道衬砌是水工程" },
+  { title: "OBRAS DE MEJORAMIENTO HIDRÁULICO PRIORIZADAS PARA LOS CUERPOS DE AGUA EN LA JURISDICCIÓN DE LA CORPORACIÒN AUTONOMA REGIONAL DEL CANAL DEL DIQUE", expect: ["water"], reject: ["general"], note: "水体、水利改善工程" },
+  { title: "ADQUISICIÓN DE ALTA TECNOLOGÍA QUIRÚRGICA E IMAGENOLÓGICA, MESA DE OPERACIONES HIDRÁULICA/ELÉCTRICA, EQUIPO ECÓGRAFO-ULTRASONIDO, EQUIPO ECOGRADO Y ELECTROENCEFALÓGRAFO", expect: ["healthcare"], reject: ["general", "water", "power"], note: "手术、影像设备是医疗；「HIDRÁULICA/ELÉCTRICA」只是手术台的规格" },
+  { title: "ADQUISICION DE AMBULANCIA URBANA A NIVEL DISTRITAL EN MARCAVELICA Y CATACAOS-PIURA", expect: ["vehicles", "healthcare"], note: "救护车 = 车辆 + 医疗" },
+  { title: "ADQUISICIÓN DE 31 AMBULANCIAS", expect: ["vehicles", "healthcare"], note: "救护车复数" },
+  { title: "CONTRATACIÓN PARA LA EJECUCIÓN DE LA OBRA: RENOVACION DE RED SECUNDARIA; EN EL (LA) SUMINISTRO ELECTRICO AA.HH. RUTA DEL SOL DISTRITO DE MARCONA", expect: ["power"], reject: ["general"], note: "秘鲁的低压配网按「供电服务」命名" },
+  { title: "AMPLIACIÓN DEL CUERPO EXISTENTE TRAMO ZACUALTIPÁN – TEHUETLÁN", expect: ["transportation", "construction"], note: "公路加宽：cuerpo + 「tramo 甲地 – 乙地」" },
+  { title: "REHABILITACIÓN DE LA PB MATADERO Y PB LAURELES II EN TIJUANA, BAJA CALIFORNIA", expect: ["water"], reject: ["general"], note: "PB = planta de bombeo（提泵站）" },
+  { title: "Registro de Preços para futura e eventual contratação de empresa especializada para execução de serviços de engenharia voltados à manutenção, conservação, recuperação e melhoria da infraestrutura viária urbana e rural dos Municípios Consorciados ao CODAP.", expect: ["transportation", "construction"], reject: ["general"], note: "葡语道路词：infraestrutura viária" },
+  { title: "Pavimentação da Rodovia BA-449, no Trecho: Cotegipe - Acesso ao Distrito de Jupaguá", expect: ["transportation", "construction"], note: "葡语：rodovia / pavimentação" },
+  // …and what those rules must not pull in.
+  { title: "PAVIMENTACIÓN CON CONCRETO HIDRÁULICO DE CALLE 5 DE MAYO", expect: ["construction"], reject: ["water"], note: "concreto hidráulico 也是铺路混凝土，不是水工程" },
+  { title: "REMODELACIÓN DE LA PB DEL EDIFICIO SEDE", expect: ["construction"], reject: ["water"], note: "PB 也是 planta baja（一楼）" },
+  { title: "CONSTRUCCIÓN DE PB Y PLANTA ALTA DE OFICINAS", expect: ["construction"], reject: ["water"], note: "同上" },
+  { title: "ADQUISICIÓN DE MATERIAL QUIRÚRGICO Y DE CURACIÓN", expect: ["general"], reject: ["healthcare"], note: "手术耗材按既定口径不算医疗设备" },
+  { title: "SERVICIO DE TRANSMISIÓN EN CANAL DE TELEVISIÓN ABIERTA", expect: [], reject: ["water"], note: "电视频道不是渠道" },
+  { title: "INSTALACIÓN DE COLECTOR SOLAR EN ALBERCA", expect: [], reject: ["water"], note: "太阳能集热器不是污水干管" },
+  { title: "AMPLIACION CONDUCCION PLANTA DE TRATAMIENTO DE AGUA POTABLE LAS FLORES - TANQUE DE REBOMBEO SALGAR TRAMO LOS MANATIES - PUERTO", expect: ["water"], reject: ["transportation"], note: "输水管线的 tramo 不是公路（全库回放唯一误报）" },
 ];
 
 let failures = 0;

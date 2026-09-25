@@ -398,6 +398,22 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                           已下载
                         </span>
                       )}
+                      {tender.filesOnRecord && tender.filesOnRecord.pdfPending > 0 && (
+                        <span
+                          title={`库里已有 ${tender.filesOnRecord.pdfPending} 个 PDF 还没分析——用「本地批量分析」跑一下即可，不用再下载`}
+                          className="mr-1.5 inline-flex items-center rounded-md bg-[#fff3d6] px-1.5 py-0.5 align-middle text-[10px] font-black text-[#8a5a00]"
+                        >
+                          PDF 待分析 {tender.filesOnRecord.pdfPending}
+                        </span>
+                      )}
+                      {tender.filesOnRecord && tender.filesOnRecord.pdfPending === 0 && tender.filesOnRecord.otherFiles > 0 && (
+                        <span
+                          title={`库里只有 ${tender.filesOnRecord.otherFiles} 个 Word/Excel 表格，没有招标文件 PDF。智利项目的 Bases 在 Mercado Público 的「Ver anexos」里（有人机验证），需要在浏览器下载后上传。`}
+                          className="mr-1.5 inline-flex items-center rounded-md bg-[#fdecea] px-1.5 py-0.5 align-middle text-[10px] font-black text-[#a1321f]"
+                        >
+                          缺 PDF
+                        </span>
+                      )}
                       {tender.documentLinkCount > 0 && (
                         <span
                           title={`这条项目有 ${tender.documentLinkCount} 份官方标书可以自动下载`}

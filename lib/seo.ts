@@ -29,6 +29,58 @@ import type { Metadata } from "next";
  */
 const BRAND = "拉美招投标信息平台";
 
+/**
+ * The site description every metadata surface shares — the root layout's
+ * <meta>, Open Graph, and the Organization JSON-LD. One constant so the three
+ * cannot drift; they had been three hand-kept copies.
+ *
+ * The footer's approved copy (user, 2026-09-20) plus one clause, added when
+ * the state oil, power and mining companies' own portals joined the
+ * government platforms (2026-09-25: 请基于最新状态同步刷新Metadata和SEO) —
+ * Petrobras, Pemex, CFE, Cemig, Codelco, Petroperú and UPME's transmission
+ * calls are a large part of what a searcher for 拉美 石油/电力/矿业 招标 wants.
+ */
+export const SITE_DESCRIPTION =
+  "专注于拉美五国政府招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台及国家石油、电力、矿业公司采购门户，中文翻译，人工精筛，按国家、行业、项目规模筛选。帮企业省时、省力、省钱，快速获取精准拉美项目机会。";
+
+/**
+ * Search-console verification tags from the environment.
+ *
+ *   GOOGLE_SITE_VERIFICATION  → <meta name="google-site-verification">
+ *   BING_SITE_VERIFICATION    → <meta name="msvalidate.01">
+ *   BAIDU_SITE_VERIFICATION   → <meta name="baidu-site-verification">
+ *   SO360_SITE_VERIFICATION   → <meta name="360-site-verification">
+ *   SOGOU_SITE_VERIFICATION   → <meta name="sogou_site_verification">
+ *
+ * Each console hands out a meta tag; only its `content` value goes in the
+ * variable. These are public by design (they are printed in the page), so
+ * the environment is for convenience, not secrecy.
+ */
+/**
+ * Baidu's code for latintender.com, issued 2026-09-25 in 百度搜索资源平台
+ * (HTML标签验证). Committed rather than left to the environment because
+ * Baidu offers no DNS method for this site and the value is printed in every
+ * page anyway; BAIDU_SITE_VERIFICATION still overrides it. Removing it
+ * un-verifies the site — Baidu re-checks.
+ */
+const BAIDU_VERIFICATION_CODE = "codeva-WJtzxoje9L";
+
+export function siteVerification(): Metadata["verification"] {
+  const read = (name: string) => process.env[name]?.trim() || undefined;
+  const other: Record<string, string> = {};
+  const bing = read("BING_SITE_VERIFICATION");
+  const baidu = read("BAIDU_SITE_VERIFICATION") ?? BAIDU_VERIFICATION_CODE;
+  const so360 = read("SO360_SITE_VERIFICATION");
+  const sogou = read("SOGOU_SITE_VERIFICATION");
+  if (bing) other["msvalidate.01"] = bing;
+  if (baidu) other["baidu-site-verification"] = baidu;
+  if (so360) other["360-site-verification"] = so360;
+  if (sogou) other["sogou_site_verification"] = sogou;
+  const google = read("GOOGLE_SITE_VERIFICATION");
+  if (!google && Object.keys(other).length === 0) return undefined;
+  return { ...(google ? { google } : {}), ...(Object.keys(other).length ? { other } : {}) };
+}
+
 export function pageMetadata({
   title,
   description,

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { pageMetadata } from "@/lib/seo";
 import { getCachedTenderList } from "@/lib/tenders";
 import { countryPages, getCountryPage, guidesForCountry } from "@/lib/country-pages";
+import { industryPages } from "@/lib/industry-pages";
 import { getCountryInsight } from "@/lib/country-insights";
 import { liveTenderCountForCountry, liveTenderLinksForCountry } from "@/lib/tender-links";
 import { countryLabel } from "@/lib/tender-labels";
@@ -134,6 +135,19 @@ export default async function CountryTendersPage({ params }: CountryPageProps) {
             </div>
           </section>
         )}
+
+        <section className="mt-14">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">By industry</p>
+          <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">按行业查看拉美招标项目</h2>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {industryPages.map((industry) => (
+              <Link key={industry.slug} href={`/industries/${industry.slug}`} className="rounded-xl border border-[#dbe2e5] bg-[#fffdf9] px-4 py-2.5 text-sm font-black transition hover:-translate-y-0.5 hover:border-[#aebdc3]">
+                {industry.name}
+              </Link>
+            ))}
+            <Link href="/weekly" className="rounded-xl border border-[#f0d58a] bg-[#fff6df] px-4 py-2.5 text-sm font-black text-[#7a4f00] transition hover:-translate-y-0.5 hover:border-[#d29a28]">本周招标周报 →</Link>
+          </div>
+        </section>
 
         {insight && (
           <section className="mt-14 rounded-3xl bg-[#061b2b] p-6 text-white sm:p-8">

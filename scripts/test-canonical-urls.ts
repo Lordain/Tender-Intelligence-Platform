@@ -133,6 +133,8 @@ for (const [file, label] of [
   ["app/guides/[slug]/page.tsx", "guide detail"],
   ["app/tenders/[slug]/page.tsx", "tender detail"],
   ["app/countries/[country]/page.tsx", "country tenders"],
+  ["app/industries/[industry]/page.tsx", "industry tenders"],
+  ["app/weekly/[week]/page.tsx", "weekly digest"],
 ] as const) {
   const source = readFileSync(file, "utf-8");
   check(
@@ -157,7 +159,17 @@ check(
 {
   const sitemap = readFileSync("app/sitemap.ts", "utf-8");
   check("the sitemap lists the country pages", sitemap.includes("countryPages.map"), "app/sitemap.ts");
+  check("the sitemap lists the industry pages", sitemap.includes("industryPages.map"), "app/sitemap.ts");
+  check("the sitemap lists the weekly digests", sitemap.includes("archiveWeeks("), "app/sitemap.ts");
 }
+check(
+  "the industry page canonical is its own path",
+  readFileSync("app/industries/[industry]/page.tsx", "utf-8").includes("path: `/industries/${page.slug}`"),
+);
+check(
+  "the weekly digest canonical is its own week",
+  readFileSync("app/weekly/[week]/page.tsx", "utf-8").includes("path: `/weekly/${weekSlug(week)}`"),
+);
 
 // pageMetadata() must keep restating the fields a page-level openGraph wipes
 // out. Next replaces the layout's whole object rather than merging it, so a

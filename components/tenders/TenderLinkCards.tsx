@@ -4,6 +4,7 @@ import { formatDate } from "@/lib/format";
 import { DEADLINE_IN_DOCUMENTS_LABEL } from "@/lib/deadline-labels";
 import { publicTenderPath } from "@/lib/public-tender-url";
 import { TenderTagRow } from "@/components/tenders/TenderTagRow";
+import { industryLabel, RELEVANCE_TIER_COLORS, RELEVANCE_TIER_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/tender-labels";
 
 /**
  * Short lists of live tenders, in the two looks the site already uses for a
@@ -89,5 +90,42 @@ export function TenderLinkRows({ links, accentText = "text-[#ffb21c]", accentBor
         </Link>
       ))}
     </div>
+  );
+}
+
+/**
+ * Light rows in the look of the insight pages' 资料来源 list — for the weekly
+ * digest, where a country can have dozens of new tenders and a card each
+ * would bury the week under scrolling. Status first, since a digest reader
+ * needs to know which of last week's tenders are still worth opening.
+ */
+export function TenderLinkList({ links }: { links: TenderLink[] }) {
+  return (
+    <ul className="grid gap-2">
+      {links.map((link) => (
+        <li key={link.id}>
+          <Link
+            href={publicTenderPath(link)}
+            prefetch={false}
+            className="group flex flex-col gap-2 rounded-xl border border-[#dbe2e5] bg-[#fffdf9] px-4 py-3 transition hover:border-[#d29a28] hover:bg-[#fff8e8] sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+          >
+            <span className="flex min-w-0 items-start gap-2">
+              <span className={`mt-0.5 shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_COLORS[link.status]}`}>{STATUS_LABELS[link.status].zh}</span>
+              {/* The digest lists biggest first; without the tier on the row that order reads as random dates. */}
+              {(link.relevanceTier === "flagship" || link.relevanceTier === "significant") && (
+                <span className={`mt-0.5 shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-black ${RELEVANCE_TIER_COLORS[link.relevanceTier]}`}>{RELEVANCE_TIER_LABELS[link.relevanceTier].zh}</span>
+              )}
+              <span className="text-sm font-black leading-6 text-black group-hover:text-[#163b52]">{link.titleZh}</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-2 text-xs text-[#71808a]">
+              {link.industries.filter((industry) => industry !== "general").slice(0, 2).map((industry) => (
+                <span key={industry} className="whitespace-nowrap rounded-full bg-[#edf2f3] px-2 py-0.5 text-[11px] font-semibold text-[#24465a]">{industryLabel(industry, "zh")}</span>
+              ))}
+              <span className="whitespace-nowrap rounded-lg bg-[#fff6df] px-2 py-0.5 text-[11px] font-bold text-[#7a4f00]">计划交标 {deadlineText(link)}</span>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }

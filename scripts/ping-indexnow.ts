@@ -22,7 +22,8 @@
  * 普通收录 API (lib/baidu-push.ts). Baidu's daily quota is far smaller than
  * IndexNow's, so it gets the most important URLs only: on --all the static
  * pages first (the homepage is what a search for 拉美招投标信息平台 should
- * land on), otherwise the newest tenders. Running out of quota is logged,
+ * land on), otherwise the homepage, this week's digest, three rotating
+ * overview pages and then the newest tenders (baiduBatch). Running out of quota is logged,
  * not failed — tomorrow's run has a fresh one.
  *
  * On --origin: the site's address normally comes from APP_URL, which a local
@@ -38,6 +39,8 @@ import { submitToBaidu } from "../lib/baidu-push";
 import { participationGuides } from "../lib/participation-guides";
 import { countryInsights } from "../lib/country-insights";
 import { countryPages } from "../lib/country-pages";
+import { industryPages } from "../lib/industry-pages";
+import { isoWeekOf, weekSlug } from "../lib/weekly";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = {
@@ -46,10 +49,16 @@ type Row = {
   updated_at: string | null;
 };
 
+/** This week's digest: the one weekly page whose content still moves. */
+const CURRENT_WEEK_PATH = `/weekly/${weekSlug(isoWeekOf(new Date()))}`;
+
 const STATIC_PATHS = [
   "/",
   "/tenders",
   ...countryPages.map((page) => `/countries/${page.slug}`),
+  ...industryPages.map((page) => `/industries/${page.slug}`),
+  "/weekly",
+  CURRENT_WEEK_PATH,
   "/guides",
   ...participationGuides.map((guide) => `/guides/${guide.slug}`),
   "/insights",
@@ -59,7 +68,38 @@ const STATIC_PATHS = [
 ];
 
 /** The pages whose content moves with every import. */
-const DAILY_PATHS = ["/", "/tenders", ...countryPages.map((page) => `/countries/${page.slug}`)];
+const DAILY_PATHS = [
+  "/",
+  CURRENT_WEEK_PATH,
+  "/tenders",
+  ...countryPages.map((page) => `/countries/${page.slug}`),
+  ...industryPages.map((page) => `/industries/${page.slug}`),
+  "/weekly",
+];
+
+/** How many of Baidu's daily slots go to the rotating overview pages; the rest go to the newest tenders. */
+const BAIDU_ROTATING_SLOTS = 3;
+
+/**
+ * Baidu's batch, which is ten URLs a day against IndexNow's thousands.
+ *
+ * On --all, the static pages in order. On a daily run the homepage and this
+ * week's digest always go; then three of the other overview pages (/tenders,
+ * the country and industry pages), a different three each day; then the
+ * newest tenders. Before the industry pages and the digest existed the
+ * static list was seven long and left three slots for tenders; at sixteen it
+ * would have taken all ten, every day, and no new tender would ever have
+ * reached Baidu this way.
+ */
+function baiduBatch(origin: string, staticPaths: string[], tenderUrls: string[], limit: number, all: boolean): string[] {
+  const url = (path: string) => `${origin}${path === "/" ? "" : path}`;
+  if (all || staticPaths.length === 0) return [...staticPaths.map(url), ...tenderUrls].slice(0, limit);
+  const fixed = staticPaths.filter((path) => path === "/" || path === CURRENT_WEEK_PATH);
+  const rotating = staticPaths.filter((path) => !fixed.includes(path));
+  const dayOfYear = Math.floor((Date.now() - Date.UTC(new Date().getUTCFullYear(), 0, 1)) / 86_400_000);
+  const todays = Array.from({ length: Math.min(BAIDU_ROTATING_SLOTS, rotating.length) }, (_, i) => rotating[(dayOfYear * BAIDU_ROTATING_SLOTS + i) % rotating.length]);
+  return [...fixed.map(url), ...todays.map(url), ...tenderUrls].slice(0, limit);
+}
 
 /**
  * Supabase caps an unbounded select at 1000 rows and says nothing about it,
@@ -152,9 +192,10 @@ async function main() {
   // go with every daily batch that has any new tender — before 2026-09-25
   // they were submitted once, on the first --all run, and never again.
   const staticPaths = all ? STATIC_PATHS : tenders.length > 0 ? DAILY_PATHS : [];
+  const tenderUrls = tenders.map((row) => `${origin}/tenders/${row.public_slug}`);
   const urls = [
     ...staticPaths.map((path) => `${origin}${path === "/" ? "" : path}`),
-    ...tenders.map((row) => `${origin}/tenders/${row.public_slug}`),
+    ...tenderUrls,
   ];
 
   console.log(`站点：${origin}`);
@@ -168,7 +209,11 @@ async function main() {
     console.log("没有变化，不提交。");
     return;
   }
+  const baiduLimit = option("baidu-limit", 10);
+  const baiduUrls = baiduBatch(origin, staticPaths, tenderUrls, baiduLimit, all);
   if (!write) {
+    console.log(`\n百度批次（${baiduUrls.length} 个）：`);
+    for (const url of baiduUrls) console.log(`  ${url}`);
     console.log("\n试运行，没有提交。加 --write 才真的提交。");
     return;
   }
@@ -178,7 +223,7 @@ async function main() {
   console.log(`\nIndexNow 返回 ${result.status}${result.body ? `：${result.body}` : ""}`);
   if (!result.ok) process.exitCode = 1;
 
-  await pushToBaidu(origin, urls, option("baidu-limit", 10));
+  await pushToBaidu(origin, baiduUrls, baiduLimit);
 }
 
 async function pushToBaidu(origin: string, urls: string[], limit: number) {
@@ -187,7 +232,7 @@ async function pushToBaidu(origin: string, urls: string[], limit: number) {
     console.log("\n未设置 BAIDU_PUSH_TOKEN，跳过百度推送。");
     return;
   }
-  // `urls` is already in priority order: static pages, then tenders newest first.
+  // `urls` is already Baidu's batch, in priority order — see baiduBatch().
   const batch = urls.slice(0, limit);
   const result = await submitToBaidu(origin, token, batch);
   if (result.ok) {

@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     template: "%s | 拉美招投标信息平台",
   },
   description:
-    "把墨西哥、巴西、哥伦比亚、秘鲁、智利的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投，专注大型/中型项目。",
+    "专注于拉美五国政府招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，中文翻译，人工精筛，按国家、行业、项目规模筛选。帮企业省时、省力、省钱，快速获取精准拉美项目机会。",
   // Use stable, explicit URLs instead of relying only on Next's generated
   // file-metadata URLs. Google may keep a search-result favicon cached for
   // days or weeks, so the hostname should always advertise one canonical
@@ -72,12 +72,12 @@ export const metadata: Metadata = {
     url: siteOrigin(),
     title: "拉美招投标信息平台 | 中国企业出海墨西哥、巴西、哥伦比亚、秘鲁、智利",
     description:
-      "把墨西哥、巴西、哥伦比亚、秘鲁、智利的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投。",
+      "专注于拉美五国政府招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，中文翻译，人工精筛，按国家、行业、项目规模筛选。帮企业省时、省力、省钱，快速获取精准拉美项目机会。",
   },
   twitter: {
     card: "summary_large_image",
     title: "拉美招投标信息平台",
-    description: "墨西哥、巴西、哥伦比亚、秘鲁、智利的政府招标信息，结构化中文情报。",
+    description: "专注于拉美五国政府招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利。",
   },
   // NO `alternates` here, deliberately. Metadata fields are inherited WHOLE by
   // any route that does not set its own (Next's own docs: "All openGraph

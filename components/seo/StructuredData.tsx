@@ -36,12 +36,13 @@ export function StructuredData() {
         // second, conflicting visual identity for other Google surfaces.
         logo: `${origin}/apple-icon.png`,
         description:
-          "把墨西哥、巴西、哥伦比亚、秘鲁的政府招标信息转化为结构化的中文情报，帮中国企业快速判断能不能投、该不该投。",
+          "专注于拉美五国政府招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，中文翻译，人工精筛，按国家、行业、项目规模筛选。帮企业省时、省力、省钱，快速获取精准拉美项目机会。",
         areaServed: [
           { "@type": "Country", name: "Mexico" },
           { "@type": "Country", name: "Brazil" },
           { "@type": "Country", name: "Colombia" },
           { "@type": "Country", name: "Peru" },
+          { "@type": "Country", name: "Chile" },
         ],
       },
       {

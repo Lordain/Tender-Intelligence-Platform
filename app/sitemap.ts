@@ -4,6 +4,7 @@ import { siteOrigin } from "@/lib/site-url";
 import { fetchTenderSitemapEntriesFromDb } from "@/lib/db/tenders";
 import { participationGuides } from "@/lib/participation-guides";
 import { countryInsights } from "@/lib/country-insights";
+import { countryPages } from "@/lib/country-pages";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 
 /**
@@ -31,6 +32,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: origin, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${origin}/tenders`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    ...countryPages.map((page) => ({
+      url: `${origin}/countries/${page.slug}`,
+      lastModified: now,
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    })),
     { url: `${origin}/insights`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     ...countryInsights.map((insight) => ({
       url: `${origin}/insights/${insight.slug}`,

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
 import { pageMetadata } from "@/lib/seo";
 
@@ -54,6 +55,9 @@ const sources = [
   { label: "ChileCompra：Mercado Público", href: "https://www.chilecompra.cl/mercado-publico/", note: "公共采购的公开查询及交易平台。" },
   { label: "智利央行：观察美元参考汇率", href: "https://si3.bcentral.cl/siete/ES/Siete/Cuadro/CAP_TIPO_CAMBIO/MN_TIPO_CAMBIO4/DOLAR_OBS_ADO?idSerie=F073.TCO.PRE.Z.D", note: "2026年9月25日1美元＝965.71智利比索；仅用于本文美元估算。" },
 ];
+
+/** The insight text is static; the 在招项目精选 inside its closing panel refreshes with the tender list. */
+export const revalidate = 300;
 
 export default function ChileInsightPage() {
   const articleJsonLd = {
@@ -113,7 +117,7 @@ export default function ChileInsightPage() {
 
             <section id="entry" className="scroll-mt-8 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8"><p className="text-xs font-black uppercase tracking-[.18em] text-[#b54f39]">Market entry</p><h2 className="mt-3 text-2xl font-black sm:text-3xl">把规划方向转成参标动作</h2><ol className="mt-7 space-y-5">{[["区分入口", "政府货物与服务采购看Mercado Público；大型特许经营看DGC；矿业、电力和港口业主还可能使用自有供应商系统。"], ["核对项目阶段", "把规划、许可、预算、正式公告、投标、授标和建设逐项标注，避免把项目库当成采购清单。"], ["先读完整标书", "核对境外企业资格、技术标准、担保、交货、税费、评标权重及问答更正。"], ["建立本地履约方案", "提前评估认证、代表、仓储、安装、售后和长期运维需求，以及与本地承包商合作的边界。"]].map(([title, detail], index) => <li key={title} className="grid gap-4 sm:grid-cols-[2.75rem_minmax(0,1fr)]"><span className="flex size-11 items-center justify-center rounded-full bg-[#061b2b] font-mono text-sm font-black text-[#d9a23a]">{index + 1}</span><div className="border-b border-[#e2e7e9] pb-5"><h3 className="font-black">{title}</h3><p className="mt-2 text-sm leading-7 text-[#586873]">{detail}</p></div></li>)}</ol><Link href="/guides/chile-mercado-publico" className="mt-7 inline-flex min-h-12 items-center rounded-xl bg-[#061b2b] px-6 text-sm font-black text-white transition hover:bg-[#123a54]">查看智利参标指南 →</Link></section>
 
-            <section className="rounded-3xl bg-[#061b2b] p-6 text-white sm:p-8"><p className="text-xs font-black uppercase tracking-[.18em] text-[#d9a23a]">From outlook to tenders</p><h2 className="mt-3 text-2xl font-black">继续核对正在发布的智利项目</h2><p className="mt-4 max-w-2xl text-sm leading-7 text-white/68">国家洞察识别长期方向；项目页帮助核对采购方、状态、关键日期及标书要求。我们会继续跟踪项目从规划走向采购的变化。</p><Link href="/tenders?country=Chile" className="mt-6 inline-flex min-h-12 items-center rounded-xl bg-[#d9a23a] px-6 font-black text-[#071826] transition hover:bg-[#e8b957]">浏览智利招标项目 →</Link></section>
+            <section className="rounded-3xl bg-[#061b2b] p-6 text-white sm:p-8"><p className="text-xs font-black uppercase tracking-[.18em] text-[#d9a23a]">From outlook to tenders</p><h2 className="mt-3 text-2xl font-black">继续核对正在发布的智利项目</h2><p className="mt-4 max-w-2xl text-sm leading-7 text-white/68">国家洞察识别长期方向；项目页帮助核对采购方、状态、关键日期及标书要求。我们会继续跟踪项目从规划走向采购的变化。</p><InsightOpenTenders country="Chile" accentText="text-[#d9a23a]" accentBorder="hover:border-[#d9a23a]" /><Link href="/countries/chile" className="mt-6 inline-flex min-h-12 items-center rounded-xl bg-[#d9a23a] px-6 font-black text-[#071826] transition hover:bg-[#e8b957]">浏览智利招标项目 →</Link></section>
 
             <section id="sources" className="scroll-mt-8 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8"><p className="text-xs font-black uppercase tracking-[.18em] text-[#b54f39]">Sources & methodology</p><h2 className="mt-3 text-2xl font-black sm:text-3xl">资料来源与使用说明</h2><p className="mt-4 text-sm leading-7 text-[#64717c]">本文依据截至2026年9月25日可核对的官方资料撰写。PNIP规划数据更新至2026年1月；矿业数据采用Cochilco 2025—2034组合。规划、矿业投资储备、特许经营及公开采购之间可能存在交叉，不能相加。美元金额按智利央行2026年9月25日观察美元参考汇率1美元＝965.71智利比索估算，四舍五入至亿美元；仅作规模参考，并非历史投资实际汇率。</p><div className="mt-7 grid gap-3">{sources.map((source) => <a key={source.href} href={source.href} target="_blank" rel="noreferrer" className="group rounded-xl border border-[#dbe2e5] px-4 py-4 transition hover:border-[#c27863] hover:bg-[#fff2ec]"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-black">{source.label}</p><p className="mt-1 text-xs leading-6 text-[#71808a]">{source.note}</p></div><span className="font-black text-[#b54f39]">↗</span></div></a>)}</div><p className="mt-6 text-xs leading-6 text-[#8d8186]">本文不是投资、法律、税务或投标资格意见。项目进度、预算、资格与合同条件，以主管机构和采购文件的最新有效版本为准。</p></section>
           </div>

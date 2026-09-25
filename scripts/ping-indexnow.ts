@@ -37,6 +37,7 @@ import { siteOrigin } from "../lib/site-url";
 import { submitToBaidu } from "../lib/baidu-push";
 import { participationGuides } from "../lib/participation-guides";
 import { countryInsights } from "../lib/country-insights";
+import { countryPages } from "../lib/country-pages";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = {
@@ -48,6 +49,7 @@ type Row = {
 const STATIC_PATHS = [
   "/",
   "/tenders",
+  ...countryPages.map((page) => `/countries/${page.slug}`),
   "/guides",
   ...participationGuides.map((guide) => `/guides/${guide.slug}`),
   "/insights",
@@ -57,7 +59,7 @@ const STATIC_PATHS = [
 ];
 
 /** The pages whose content moves with every import. */
-const DAILY_PATHS = ["/", "/tenders"];
+const DAILY_PATHS = ["/", "/tenders", ...countryPages.map((page) => `/countries/${page.slug}`)];
 
 /**
  * Supabase caps an unbounded select at 1000 rows and says nothing about it,

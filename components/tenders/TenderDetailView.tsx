@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { Tender } from "@/types/tender";
 import type { ParticipationGuideLink } from "@/lib/participation-guides";
 import { localize, uiText, useLocale } from "@/lib/i18n";
@@ -18,10 +19,13 @@ export function TenderDetailView({
   tender,
   showTrialCta = false,
   participationGuide,
+  related,
 }: {
   tender: Tender;
   showTrialCta?: boolean;
   participationGuide?: ParticipationGuideLink;
+  /** 相关在招项目, rendered on the server and placed last on the page. */
+  related?: ReactNode;
 }) {
   const { locale } = useLocale();
 
@@ -83,6 +87,8 @@ export function TenderDetailView({
         is, next to the official-entry panel it actually qualifies.
       */}
       {isObrasPorImpuestos(tender) && <ObrasPorImpuestosNotice />}
+
+      {related}
     </div>
   );
 }

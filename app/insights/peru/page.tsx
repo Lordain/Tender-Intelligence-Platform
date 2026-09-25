@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
 import { pageMetadata } from "@/lib/seo";
 
@@ -96,6 +97,9 @@ const sources = [
   { label: "MINEM：2026矿业投资项目组合", href: "https://www.gob.pe/institucion/minem/noticias/1415102-minem-publica-cartera-de-proyectos-de-inversion-minera-2026-que-representa-inversiones-superiores-a-us-64-mil-millones", note: "66个项目、19个大区及640.75亿美元投资。" },
   { label: "SBS：官方会计汇率", href: "https://www.sbs.gob.pe/app/pp/SISTIP_PORTAL/Paginas/Publicacion/TipoCambioContable.aspx", note: "2026年9月16日参考汇率：1美元＝3.3660秘鲁索尔。" },
 ];
+
+/** The insight text is static; the 在招项目精选 inside its closing panel refreshes with the tender list. */
+export const revalidate = 300;
 
 export default function PeruInsightPage() {
   const articleJsonLd = {
@@ -209,7 +213,7 @@ export default function PeruInsightPage() {
               <div className="mt-8 grid gap-4 md:grid-cols-2"><div className="flex flex-col items-start rounded-2xl bg-[#eef2f2] p-5 sm:p-6"><p className="font-black">常规公共采购怎么参与？</p><p className="mt-1 text-sm leading-6 text-[#64717c]">查看RNP、SEACE／PLADICOP和境外企业参与路径。</p><Link href="/guides/peru-seace-oece" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-[#061b2b] px-5 text-sm font-black text-white transition hover:bg-[#123a54]">查看秘鲁SEACE指南 →</Link></div><div className="flex flex-col items-start rounded-2xl bg-[#fff0d4] p-5 sm:p-6"><p className="font-black">以工程抵税项目怎么进入？</p><p className="mt-1 text-sm leading-6 text-[#64717c]">先判断是出资企业还是施工、设备和服务执行方。</p><Link href="/guides/peru-obras-por-impuestos" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-[#c85c43] px-5 text-sm font-black text-white transition hover:bg-[#b44f39]">查看Obras por Impuestos指南 →</Link></div></div>
             </section>
 
-            <section className="rounded-3xl bg-[#061b2b] p-6 text-white sm:p-8"><p className="text-xs font-black uppercase tracking-[0.18em] text-[#d9a23a]">From outlook to tenders</p><h2 className="mt-3 text-2xl font-black">继续查看正在发布的秘鲁项目</h2><p className="mt-4 max-w-2xl text-sm leading-7 text-white/66">国家洞察用于判断中长期方向；项目页用于核对采购方、程序状态、截止日期、资格和文件要求。</p><Link href="/tenders?country=Peru" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-[#d9a23a] px-6 font-black text-[#071826] transition hover:bg-[#e8b957]">浏览秘鲁招标项目 →</Link></section>
+            <section className="rounded-3xl bg-[#061b2b] p-6 text-white sm:p-8"><p className="text-xs font-black uppercase tracking-[0.18em] text-[#d9a23a]">From outlook to tenders</p><h2 className="mt-3 text-2xl font-black">继续查看正在发布的秘鲁项目</h2><p className="mt-4 max-w-2xl text-sm leading-7 text-white/66">国家洞察用于判断中长期方向；项目页用于核对采购方、程序状态、截止日期、资格和文件要求。</p><InsightOpenTenders country="Peru" accentText="text-[#d9a23a]" accentBorder="hover:border-[#d9a23a]" /><Link href="/countries/peru" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-[#d9a23a] px-6 font-black text-[#071826] transition hover:bg-[#e8b957]">浏览秘鲁招标项目 →</Link></section>
 
             <section id="sources" className="scroll-mt-8 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b54f39]">Sources & methodology</p><h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">资料来源与使用说明</h2><p className="mt-4 text-sm leading-7 text-[#64717c]">本文优先使用MEF、CNCF、PROINVERSIÓN、MTC、MINEM及SBS公开资料。不同资料分别表示规划、预算、交易组合或行业储备，存在范围重叠，不能直接相加。</p>

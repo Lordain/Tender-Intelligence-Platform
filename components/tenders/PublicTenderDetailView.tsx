@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { TRIAL_DAYS } from "@/lib/access-control";
 import { loginPathFor } from "@/lib/auth-redirect";
 import { formatDate } from "@/lib/format";
@@ -82,7 +83,12 @@ function ProtectedContentPrompt({ kind, nextPath }: { kind: TenderDetailPromptKi
 }
 
 /** Search-indexable landing view. Receives only the public field allow-list. */
-export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicTenderDetail; promptKind: TenderDetailPromptKind }) {
+export function PublicTenderDetailView({ tender, promptKind, related }: {
+  tender: PublicTenderDetail;
+  promptKind: TenderDetailPromptKind;
+  /** 相关在招项目, rendered on the server and placed after the subscription prompt. */
+  related?: ReactNode;
+}) {
   const { locale } = useLocale();
   const nextPath = `/tenders/${tender.publicSlug}`;
   // The FX disclaimer still applies to a band — the range itself is in USD,
@@ -168,6 +174,8 @@ export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicT
         </section>
 
         <ProtectedContentPrompt kind={promptKind} nextPath={nextPath} />
+
+        {related}
       </div>
     </main>
   );

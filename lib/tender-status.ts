@@ -72,6 +72,16 @@ export const VISIBLE_TENDER_STATUSES: TenderStatus[] = [
 ];
 
 /**
+ * The /tenders `status` value for 当前在招 — every visible status minus
+ * 已截止、已取消、已中标 (user, 2026-09-25). The explorer's 当前在招 toggle
+ * compares the URL against this exact string, so a link that wants to land
+ * with that toggle on must build it from here rather than spell it out.
+ */
+export const LIVE_STATUS_FILTER_PARAM = VISIBLE_TENDER_STATUSES
+  .filter((status) => !["submission_closed", "cancelled", "awarded"].includes(status))
+  .join(",");
+
+/**
  * Calendar day in the platform's business timezone. Mexico City is UTC-6
  * year-round (DST abolished in 2022) and every tender here is Mexican or
  * Colombian, so "the day of the meeting" means the day it is where the

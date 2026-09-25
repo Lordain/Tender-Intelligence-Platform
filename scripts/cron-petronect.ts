@@ -12,16 +12,31 @@
  *   npm run cron:petronect              (dry run — fetches and classifies, writes nothing)
  *   npm run cron:petronect -- --write
  *   npm run cron:petronect -- --days 30     (a wider window, for a one-off backfill; 0 = no window)
+ *   npm run cron:petronect -- --days 0 --tier flagship --write   (backfill only the open flagships)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ingestPetronect } from "../lib/ingestion/ingest-petronect";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
 import { windowDaysFromArgv } from "../lib/ingestion/publication-window";
+import type { TenderRelevanceTier } from "@/types/tender";
+
+const TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
+
+/** `--tier flagship` or `--tier flagship,significant`; undefined = every kept tier. */
+function tiersFromArgv(argv: string[] = process.argv): TenderRelevanceTier[] | undefined {
+  const index = argv.indexOf("--tier");
+  if (index < 0) return undefined;
+  const tiers = (argv[index + 1] ?? "").split(",").map((tier) => tier.trim());
+  const unknown = tiers.filter((tier) => !TIERS.includes(tier as TenderRelevanceTier));
+  if (unknown.length > 0) throw new Error(`--tier 只能是 ${TIERS.join(" / ")}（可用逗号连写），收到 "${unknown.join(",")}"`);
+  return tiers as TenderRelevanceTier[];
+}
 
 async function main() {
   const write = hasWriteFlag();
   const days = windowDaysFromArgv();
+  const tiers = tiersFromArgv();
 
   const supabase = createSupabaseAdminClient();
   if (write && !supabase) {
@@ -29,13 +44,13 @@ async function main() {
     process.exit(1);
   }
 
-  const result = await ingestPetronect(supabase, { write, days }, (message) => console.log(`  ${message}`));
+  const result = await ingestPetronect(supabase, { write, days, tiers }, (message) => console.log(`  ${message}`));
 
   if (result.staleWarning) console.log(`\n${result.staleWarning}\n`);
-  const tiers = result.tierCounts;
+  const counts = result.tierCounts;
   console.log(
     `在招 ${result.fetchedCount} 个（国际招标 ${result.internationalCount} 个），${days > 0 ? `近 ${days} 天发布` : "不限发布时间"} ${result.recentCount} 个，` +
-      `进入推荐 ${result.kept.length} 个（大型 ${tiers.flagship}、中型 ${tiers.significant}、常规 ${tiers.standard}），排除 ${tiers.excluded} 个。`,
+      `进入推荐 ${result.kept.length} 个（大型 ${counts.flagship}、中型 ${counts.significant}、常规 ${counts.standard}），排除 ${counts.excluded} 个。`,
   );
   for (const tender of [...result.kept].sort((a, b) => a.relevance.tier.localeCompare(b.relevance.tier))) {
     console.log(`  [${tender.relevance.tier}] ${tender.tenderNumber} 截止 ${tender.submissionDeadline?.slice(0, 10) ?? "—"} | ${tender.title.es.slice(0, 110)}`);

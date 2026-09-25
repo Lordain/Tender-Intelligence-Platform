@@ -17,9 +17,12 @@ export async function generateMetadata({ params }: GuidePageProps): Promise<Meta
   const guide = getParticipationGuide(slug);
   if (!guide) return {};
 
+  // The buyer in Chinese leads the description (user, 2026-09-25): a search
+  // for 巴西国家石油公司 招标 should find the Petrobras guide even though its
+  // platform name is Portuguese.
   return pageMetadata({
     title: `${guide.platform} 参标指南`,
-    description: guide.summary,
+    description: `${guide.issuer}（${guide.issuerType}）：${guide.summary}`,
     path: `/guides/${guide.slug}`,
   });
 }

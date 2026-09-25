@@ -34,6 +34,11 @@ const TARGETS: [string, string][] = [
   ["秘鲁 Electroperú", "https://www.electroperu.com.pe/"],
   ["秘鲁 Perupetro", "https://www.perupetro.com.pe/"],
   ["巴西 Cemig e-Compras 接口", "https://api-manager-compras.cemig.com.br/"],
+  // The three sources that got daily jobs on 2026-09-25, checked from the
+  // runner before those jobs go live.
+  ["巴西 Petronect 在招项目（每日任务）", "https://www.petronect.com.br/sap/opu/odata/SAP/YPCON_GET_XML_SRV/getXMLSet('01')?$format=json"],
+  ["哥伦比亚 UPME 输电项目（每日任务）", "https://www.upme.gov.co/wp-json/wp/v2/convocatorias?estado_convocatoria=283,287&per_page=100&_fields=id,title"],
+  ["智利 Codelco 在招项目（每日任务）", "https://www.codelco.com/licitaciones-en-proceso"],
 ];
 
 const HEADERS = {
@@ -42,7 +47,7 @@ const HEADERS = {
   "User-Agent": "TenderIntelligencePlatform/1.0 (+https://github.com/lordain/tender-intelligence-platform; open-data ingestion)",
 } as const;
 
-const TENDER_WORDS = /licitaci[oó]n|licita[çc][ãa]o|convocatoria|concurso|proceso de (?:selecci[oó]n|contrataci[oó]n)|proveedores|cartera de proyectos|edital/gi;
+const TENDER_WORDS = /licitaci[oó]n|aquisi[çc][ãa]o|servi[çc]os|OPPORT_NUM|UPME|licita[çc][ãa]o|convocatoria|concurso|proceso de (?:selecci[oó]n|contrataci[oó]n)|proveedores|cartera de proyectos|edital/gi;
 
 async function knock(label: string, url: string): Promise<void> {
   const started = Date.now();

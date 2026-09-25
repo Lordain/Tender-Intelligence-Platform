@@ -110,6 +110,7 @@
     "test:upme": "tsx scripts/test-upme.ts",
     "test:codelco": "tsx scripts/test-codelco.ts",
     "test:petroperu": "tsx scripts/test-petroperu.ts",
+    "test:guides": "tsx scripts/test-participation-guides.ts",
     "test:cemig": "tsx scripts/test-cemig.ts",
     "test:pemex-rules": "tsx scripts/test-pemex-rules.ts",
     "test:cfe-rules": "tsx scripts/test-cfe-rules.ts",

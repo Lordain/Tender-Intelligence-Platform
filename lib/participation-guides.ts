@@ -24,6 +24,15 @@ export type ParticipationGuide = {
   country: string;
   countryCode: string;
   platform: string;
+  /**
+   * Who is buying, in Chinese — a reader meeting "Cemig" or "Codelco" for the
+   * first time cannot tell a power company from a mining company from the
+   * name (user, 2026-09-25: 参标指南帮忙增加对应的中文 <- 说明是电力公司、
+   * 石油公司、矿业公司？, and 包括当前的也检查增加).
+   */
+  issuer: string;
+  /** The short label for the chip: 电力公司 / 石油公司 / 矿业公司 / 政府采购平台 … */
+  issuerType: string;
   title: string;
   summary: string;
   whatIs: string;
@@ -39,6 +48,8 @@ export const participationGuides: ParticipationGuide[] = [
     country: "墨西哥",
     countryCode: "MX",
     platform: "Compras MX",
+    issuer: "墨西哥联邦政府各部门与机构",
+    issuerType: "政府采购平台",
     title: "怎么参与 Compras MX 的政府采购项目？",
     summary: "先确认采购单位、项目状态和参与范围，再决定是否注册并准备墨西哥联邦政府采购项目。",
     whatIs: "Compras MX 是墨西哥联邦公共行政体系使用的政府采购数字平台，由原 CompraNet 系统转型而来。联邦政府机构通过该平台发布和管理货物、服务、租赁及公共工程等采购程序，供应商和公众可以查询公告与文件。CFE、Pemex，以及部分州、市和其他公共机构可能使用自己的采购入口，不能默认所有墨西哥政府项目都集中在这里。",
@@ -121,6 +132,8 @@ export const participationGuides: ParticipationGuide[] = [
     country: "墨西哥",
     countryCode: "MX",
     platform: "CFE Micrositio",
+    issuer: "墨西哥联邦电力委员会（CFE），墨西哥国家电力公司",
+    issuerType: "电力公司",
     title: "怎么参与 CFE Micrositio 的项目？",
     summary: "面向墨西哥联邦电力委员会采购与工程项目，梳理供应商注册、电子签名和逐项参与流程。",
     whatIs: "CFE Micrositio de Concursos 是墨西哥联邦电力委员会（CFE）的电子采购和竞赛平台。CFE 通过该平台发布货物、租赁、服务及工程类采购程序，供应商可注册账户、寻找项目、参加答疑并依招标文件提交技术和经济方案。",
@@ -188,6 +201,8 @@ export const participationGuides: ParticipationGuide[] = [
     country: "墨西哥",
     countryCode: "MX",
     platform: "Pemex SISCeP",
+    issuer: "墨西哥国家石油公司（Pemex）",
+    issuerType: "石油公司",
     title: "怎么参与 Pemex 的采购项目？",
     summary: "先核对 Pemex 采购事件，再了解 HIIP 2.0 登记、SISCeP 联系人开通和逐项响应流程。",
     whatIs: "SISCeP 是 Pemex 用于电子采购活动和供应商互动的系统。企业通常需要先在 HIIP 2.0 完成供应商资料登记，再通过获授权的企业联系人进入系统，对具体采购事件表达参与意向、接收通知并提交相应资料。",
@@ -255,6 +270,8 @@ export const participationGuides: ParticipationGuide[] = [
     country: "巴西",
     countryCode: "BR",
     platform: "Portal Nacional de Contratações Públicas (PNCP)",
+    issuer: "巴西联邦、州、市各级政府机构",
+    issuerType: "政府采购平台",
     title: "怎么参与 PNCP 发布的巴西政府采购项目？",
     summary: "从参与条件、供应商注册到文件递交，了解境外企业参与巴西政府采购需要完成的关键步骤。",
     whatIs: "Portal Nacional de Contratações Públicas（PNCP）是巴西《第14.133/2021号法律》第174条设立的全国政府采购官方门户，用于集中、强制公开新采购法要求披露的采购计划、公告、合同及相关文件。PNCP首先是全国信息公开与检索入口，并不意味着所有项目都在PNCP页面直接提交投标；实际递交可能发生在Compras.gov.br、州或市系统、采购机构自有平台或公告指定的其他电子系统。",
@@ -348,6 +365,8 @@ export const participationGuides: ParticipationGuide[] = [
     country: "哥伦比亚",
     countryCode: "CO",
     platform: "SECOP II",
+    issuer: "哥伦比亚各级公共采购实体",
+    issuerType: "政府采购平台",
     title: "怎么参与 SECOP II 的政府采购项目？",
     summary: "从个人用户到供应商账户，了解哥伦比亚电子公共采购系统的注册、资料公开与项目响应逻辑。",
     whatIs: "SECOP II 是哥伦比亚的交易型电子公共采购平台，由 Colombia Compra Eficiente 管理。采购实体和供应商可以在平台内完成项目发布、信息沟通、报价提交、评审与合同管理等采购流程。",
@@ -422,6 +441,8 @@ export const participationGuides: ParticipationGuide[] = [
     country: "墨西哥",
     countryCode: "MX",
     platform: "Proyectos Estratégicos MX",
+    issuer: "墨西哥联邦政府认定的战略基础设施项目",
+    issuerType: "政府基础设施项目",
     title: "怎么参与 Proyectos Estratégicos MX 的项目？",
     summary: "先确认项目是否属于专项战略基础设施制度，再按公告核对参与条件、文件和提交渠道。",
     whatIs: "Proyectos Estratégicos MX 是墨西哥用于发布和查询特定战略基础设施采购程序的官方入口，服务于依据专项制度认定并推进的项目。它不是普通联邦采购平台 Compras MX 的替代入口，也不覆盖所有墨西哥基础设施项目；参与方式应以每个项目的 convocatoria、bases 和采购单位正式通知为准。",
@@ -493,6 +514,8 @@ export const participationGuides: ParticipationGuide[] = [
     country: "秘鲁",
     countryCode: "PE",
     platform: "SEACE / OECE",
+    issuer: "秘鲁各级政府机构",
+    issuerType: "政府采购平台",
     title: "怎么参与秘鲁 SEACE 的政府采购项目？",
     summary: "从 RNP 供应商登记到在 SEACE／PLADICOP 上投标，梳理秘鲁公共采购的参与路径，以及境外企业必须先解决的前提。",
     whatIs: "SEACE（Sistema Electrónico de Contrataciones del Estado）是秘鲁公共采购的电子系统，主管机构为 OECE（Organismo Especializado para las Contrataciones Públicas Eficientes，由原 OSCE 改制）。自《公共采购通用法》Ley N.° 32069 于 2025 年 4 月 22 日生效后，秘鲁正把采购业务迁移到统一的数字平台 PLADICOP，SEACE 仍用于查询与既有流程。本站收录的秘鲁常规预算项目来自 OECE 的开放采购数据。",
@@ -554,6 +577,8 @@ export const participationGuides: ParticipationGuide[] = [
     country: "秘鲁",
     countryCode: "PE",
     platform: "ProInversión · Obras por Impuestos",
+    issuer: "秘鲁各级公共实体，ProInversión 负责推广",
+    issuerType: "以工程抵税机制",
     title: "怎么参与秘鲁 Obras por Impuestos（以工程抵税）项目？",
     summary: "了解 OxI 机制的出资与抵税逻辑、遴选流程，以及中国企业在「出资企业」和「执行企业」两种角色之间应该怎么选。",
     whatIs: "Obras por Impuestos（OxI）是秘鲁 Ley N.° 29230 设立的公共投资机制：私营企业先出资建设公共项目，完工或按进度验收后，由经济与财政部（MEF）签发 CIPRL／CIPGN 证书返还投资额，企业以该证书抵缴在秘鲁的第三类所得税（Impuesto a la Renta de Tercera Categoría）。ProInversión 负责推广该机制并协助各级公共实体开展企业遴选，现行条例为 2026 年 3 月批准的 DS N.° 038-2026-EF。",
@@ -615,6 +640,8 @@ export const participationGuides: ParticipationGuide[] = [
     country: "智利",
     countryCode: "CL",
     platform: "Mercado Público / ChileCompra",
+    issuer: "智利公共部门机构，ChileCompra 管理",
+    issuerType: "政府采购平台",
     title: "怎么参与智利 Mercado Público 的政府采购项目？",
     summary: "从项目筛选、境外供应商登记到核对 bases、提交报价与跟踪授标，梳理智利公共采购的实际参与路径。",
     whatIs: "Mercado Público 是智利政府采购的公开查询与电子交易平台，由 ChileCompra 管理。公众可查询招标、订单和合同；供应商参与交易前，须按现行规则在 Registro de Proveedores 登记并保持 hábil（可参与）状态。它不是所有基础设施投资的唯一入口：特许经营、国有企业或私人矿业与能源项目，应以各项目主管机构指定的采购渠道为准。",
@@ -693,6 +720,367 @@ export const participationGuides: ParticipationGuide[] = [
       { label: "ChileCompra：现行担保规则", href: "https://www.chilecompra.cl/garantias/" },
     ],
   },
+  {
+    slug: "brazil-petrobras-petronect",
+    country: "巴西",
+    countryCode: "BR",
+    platform: "Petrobras · Petronect",
+    issuer: "巴西国家石油公司（Petrobras）及其物流子公司 Transpetro",
+    issuerType: "石油公司",
+    title: "怎么参与巴西国家石油公司 Petrobras 的采购项目？",
+    summary: "Petrobras 不在 PNCP 发布采购，而是通过自有门户 Petronect。先完成供应商登记，再按每个机会的 Abrangência 判断境外企业能否报价。",
+    whatIs: "Petronect 是巴西国家石油公司 Petrobras 的电子采购门户，Petrobras 与子公司 Transpetro 在这里公开「正在接受报价的采购机会」（Oportunidades Abertas）。Petrobras 作为国有企业，按《国有企业法》Lei 13.303/2016 和公司自己的采购规章采购，不适用政府采购法 Lei 14.133，因此它的项目不会出现在 PNCP。本站收录的 Petrobras 项目来自 Petronect 的公开机会列表，以设备、材料和工程为主。",
+    audience: "油气设备、管材阀门、电气仪表、海工与炼化工程相关的设备供应商和承包商",
+    quickFacts: [
+      { label: "采购门户", value: "Petronect" },
+      { label: "法律依据", value: "Lei 13.303/2016（国有企业法）" },
+      { label: "境外企业", value: "看每个机会的 Abrangência" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "这份指南适用于什么？",
+        items: [
+          "适用于 Petrobras 和 Transpetro 在 Petronect 公开的采购机会（Oportunidades Abertas para propostas）",
+          "不适用于 PNCP 上的政府采购；Petrobras 的采购在 PNCP 上查不到",
+          "巴西官方公报（DOU）上的 Petrobras「AVISO DE LICITAÇÃO」只是简短公告，完整文件和报价都在 Petronect",
+          "大量采购是按供应商登记类别邀请的，公开列表只是其中一部分",
+        ],
+        note: "每个机会都标有 Abrangência（参与范围）：Internacional 表示境外供应商可以报价，Nacional 表示只限巴西供应商。先看这一栏，再决定是否投入准备。",
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "先找到机会并看参与范围", detail: "在 Petronect 的公开机会列表，用「Buscar por」按机会编号、标的或物料关键词搜索，确认 Abrangência、报价期起止时间和发布公司（Petrobras 或 Transpetro）。" },
+          { title: "在 Petronect 创建企业档案", detail: "供应商登记（Cadastro de Fornecedores）统一在 Petronect 办理，全年开放。第一步填写国家、企业识别号码、负责人和联系邮箱；企业身份信息确认后不能再修改，填写前要核对清楚。" },
+          { title: "选择供货类别并回答评估问卷", detail: "选择要登记的物料或服务类别（família），再回答评估问卷。巴西企业一般涉及经济、法律、技术、健康安全环境（SMS）和诚信五类；境外企业使用区别化的问卷，官方常见问题中提到的是经济、法律和资格认定（Credenciamento）三类。" },
+          { title: "等待评估结果和登记证书", detail: "Petrobras 审核后给出结果，通过的类别会签发供应商登记证书 CRC（Certificado de Registro Cadastral，可能是全部或部分类别）。" },
+          { title: "下载文件、提问并报价", detail: "在 Petronect 下载该机会的附件和招标文件，在报价期内按文件要求提交报价，并跟进澄清、更正和结果。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "常见资料清单",
+        intro: "具体要求以登记问卷和每个机会的文件为准。企业通常应提前准备：",
+        items: [
+          "企业设立与存续证明、注册地址和税务识别号码",
+          "法定代表人身份、授权书及签字权限文件",
+          "财务报表及不处于破产、清算状态的声明",
+          "客户推荐信、同类供货或工程业绩",
+          "健康安全环境（SMS）相关记录与培训计划（巴西企业问卷要求）",
+          "信息真实性声明与反腐败合规声明",
+        ],
+        note: "Petrobras 官方说明，登记本身不收费；但 Petronect 平台对参与公开机会收取「Taxa de Acesso」（访问费），对中标企业收取「Taxa de Transação」（交易费），收费模式见 Petronect 的 Modelos de Cobrança。Petrobras 提醒不要向任何自称代表 Petrobras 收费的第三方付款。",
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "机会的 Abrangência 是否为 Internacional；标为 Nacional 的机会，境外企业不能直接报价，只能通过巴西本地实体或作为分包、供货方参与",
+          "登记的 família（物料或服务类别）是否与机会要求一致；登记成功不代表能参加所有采购，官方说明登记本身不保证参与资格",
+          "报价条件：INCOTERMS、币种、进口税费、清关与交付地点由谁承担",
+          "技术标准：是否引用 Petrobras 自有技术规范（N 标准）、API、ABNT 或 INMETRO 认证，认证周期是否赶得上报价期",
+          "本地含量（conteúdo local）、售后和现场服务要求，以及是否允许分包",
+          "诚信与合规：登记评估包含诚信（Integridade）一项，关联关系、制裁名单和过往合规事件都应提前梳理",
+        ],
+        note: "Petronect 的公开机会一般没有预算金额：Lei 13.303 允许国有企业对预算保密。评估是否参与时，应以技术规格、数量和交付范围估算规模，不要等待金额信息。",
+      },
+    ],
+    sources: [
+      { label: "Petronect 公开机会列表（Oportunidades Abertas）", href: "https://www.petronect.com.br/irj/go/km/docs/pccshrcontent/Site%20Content%20(Legacy)/Portal2018/pt/lista_licitacoes_publicadas_ft.html" },
+      { label: "Petrobras 供应商登记说明（Canal Fornecedor）", href: "https://canalfornecedor.petrobras.com.br/cadastro-de-fornecedores/sobre-o-cadastro-de-fornecedores" },
+      { label: "Petrobras 供应商登记步骤", href: "https://canalfornecedor.petrobras.com.br/cadastro-de-fornecedores/etapas-do-processo-de-cadastramento" },
+      { label: "Petronect 登记常见问题", href: "https://www.petronect.com.br/irj/go/km/docs/pccshrcontent/Site%20Content%20(Legacy)/Publico_2_/Site%20Content/PT/cadastro_faq.html" },
+      { label: "巴西《国有企业法》Lei 13.303/2016", href: "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/lei/l13303.htm" },
+    ],
+  },
+  {
+    slug: "brazil-cemig",
+    country: "巴西",
+    countryCode: "BR",
+    platform: "Cemig · Portal de Compras",
+    issuer: "米纳斯吉拉斯州能源公司（Cemig），巴西大型州属电力公司",
+    issuerType: "电力公司",
+    title: "怎么参与巴西电力公司 Cemig 的采购项目？",
+    summary: "Cemig 在自有采购门户上采购输配电设备、材料和工程。只有登记在对应物料或服务类别的供应商才能报价，境外企业还必须通过巴西代表沟通。",
+    whatIs: "Cemig（Companhia Energética de Minas Gerais）是巴西米纳斯吉拉斯州控股的综合电力公司，业务覆盖发电、输电和配电。它作为国有企业，按 Lei 13.303/2016 和公司内部采购规章（Regulamento Interno de Licitações e Contratos）采购，在自有的 Portal de Compras（e-Compras）上发布项目，不在 PNCP 发布。本站收录的 Cemig 项目来自该门户上处于「已发布、接受报价」阶段的流程，以铁塔、绝缘子、变压器等电网设备和材料为主。",
+    audience: "输变电设备、电力材料、电网工程相关的设备供应商和承包商",
+    quickFacts: [
+      { label: "采购门户", value: "Cemig Portal de Compras（e-Compras）" },
+      { label: "法律依据", value: "Lei 13.303/2016 与 Cemig 内部采购规章" },
+      { label: "报价前提", value: "已登记在对应物料或服务类别" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "这份指南适用于什么？",
+        items: [
+          "适用于 Cemig 及其发电、输电、配电子公司在 Portal de Compras 发布的采购流程",
+          "公开检索不需要登录；报价需要供应商账户，账户在登记资料全部提交后才会开通",
+          "报价的前提是在招标文件（Edital）为该标段指定的物料组或服务组（Grupo de Materiais / Serviços）完成登记",
+        ],
+        note: "Cemig 的招标文件通常是一个完整的压缩包，里面有技术规格、图纸和合同条件，下载后要逐项核对，不要只看门户上的摘要。",
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "先核对项目和标段", detail: "在 Portal de Compras 打开流程，下载 Edital，确认标段划分、所需的物料组或服务组、报价期和竞价（disputa）开始时间。" },
+          { title: "选择登记路径", detail: "Cemig 分别提供巴西企业（Empresa Nacional）和境外企业（Empresa Internacional）的登记路径，也有通过 SAP Ariba 的登记渠道。按企业身份选择，不要混用。" },
+          { title: "提交登记资料", detail: "在 Portal de Compras 在线提交资料并跟踪审核状态。境外企业的全部企业文件都要经过领事认证或海牙认证（Apostille），并体现企业在本国的税务识别号。" },
+          { title: "按需完成技术预审", detail: "对运营关键物料和设备，Cemig 要求技术预审（Pré-qualificação Técnica），包括供应商技术评估、物料认可和设备资格认定。没有通过预审的物料可能无法中标。" },
+          { title: "在门户报价并参加竞价", detail: "账户开通后，在报价期内上传报价和文件，按 Edital 参加线上竞价，并跟进资格审查、结果和合同。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "常见资料清单",
+        intro: "以下是登记和报价时通常需要的资料框架，具体以 Cemig 登记要求和 Edital 为准：",
+        items: [
+          "企业设立与存续证明、章程和本国税务识别号（需认证）",
+          "法定代表人身份与授权文件，以及巴西代表的授权",
+          "税务、劳动和社会保障合规证明，或境外的等效文件",
+          "财务报表和经济财务能力证明",
+          "同类供货业绩、产品技术资料、型式试验报告和质量体系认证",
+          "合规、可持续和诚信方面的声明",
+        ],
+        note: "Cemig 的登记问题可以写信到 cadastrocemig@cemig.com.br 咨询。",
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "巴西代表：Cemig 明确规定，与境外企业的所有联系只通过其在巴西的代表进行，需要提前确定代表人选和授权范围",
+          "文件认证：中国是海牙认证公约成员国，企业文件办理 Apostille 即可；葡萄牙语翻译要求以登记说明和 Edital 为准",
+          "技术认证：电网设备是否需要 INMETRO、ABNT 标准或 Cemig 自有技术规范的认可，试验能否在巴西认可的实验室完成",
+          "报价条件：币种、进口税费（II、IPI、ICMS、PIS/COFINS）、清关和交付到 Cemig 仓库的责任",
+          "是否允许联合体和分包，售后、备件和质保期要求",
+        ],
+        note: "Cemig 的门户对已发布流程不显示预算金额。评估规模时，可以从 Edital 的数量清单和技术规格估算。",
+      },
+    ],
+    sources: [
+      { label: "Cemig Portal de Compras（项目检索）", href: "https://app2-compras.cemig.com.br/pesquisa" },
+      { label: "Cemig 供应商登记说明", href: "https://www.cemig.com.br/fornecedores/cadastro-de-fornecedores/" },
+      { label: "Cemig 境外企业登记（Empresa Internacional）", href: "https://www.cemig.com.br/fornecedores/cadastro-de-fornecedores/cadastro-de-empresa-internacional/" },
+      { label: "Cemig 技术预审（Pré-qualificação Técnica）", href: "https://www.cemig.com.br/fornecedores/pre-qualificacao-tecnica/" },
+      { label: "巴西《国有企业法》Lei 13.303/2016", href: "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/lei/l13303.htm" },
+    ],
+  },
+  {
+    slug: "colombia-upme",
+    country: "哥伦比亚",
+    countryCode: "CO",
+    platform: "UPME · 输电项目公开招商",
+    issuer: "哥伦比亚矿业能源规划署（UPME），隶属矿业能源部的政府规划机构",
+    issuerType: "电力输电项目",
+    title: "怎么参与哥伦比亚 UPME 的输电项目招商？",
+    summary: "UPME 招的不是设备供应商，而是出资建设并运营输电线路和变电站的投资人。先判断自己是当投资人，还是给投资人做工程和供货。",
+    whatIs: "UPME（Unidad de Planeación Minero Energética）是哥伦比亚矿业能源部下属的规划机构。它按输电扩展规划，为每一个新的输电项目公开遴选投资人（Convocatoria Pública）：投资人负责设计、采购、建设、运营和维护国家输电网（STN，230/500 kV）或区域输电网（STR，110/115 kV）的线路和变电站，建成后按能源和天然气监管委员会（CREG）核定的年度收入获得长期回报。这些项目不在 SECOP II 发布。同一个招商中，UPME 还会另行遴选对项目进行监理的 Interventor（监理机构）。",
+    audience: "输变电工程总包、电网投资与运营企业、电力设备供应商，以及工程监理和咨询公司",
+    quickFacts: [
+      { label: "遴选对象", value: "项目投资人（以及监理机构）" },
+      { label: "评标方式", value: "25 年预期年收入现值最低者中标" },
+      { label: "中标后", value: "须在哥伦比亚设立公共服务企业 E.S.P." },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "先弄清楚这是什么项目",
+        items: [
+          "UPME 招的是投资人：中标者自己出资建设并运营项目，不是 UPME 付款采购工程",
+          "回报是 CREG 核定的预期年收入（Ingreso Anual Esperado），按投标时报出的 25 年收入流计算",
+          "不少项目在正式公告（Publicación oficial）前有预公告（Prepublicación）阶段，可以提前研究文件",
+          "项目文件、各次听证会纪要和补遗都发布在 UPME 该项目的页面上，纪要本身就反映项目所处阶段",
+        ],
+        note: "对多数设备商和工程公司，更现实的切入点是给投资人做 EPC 总包、分包或供货，而不是自己当投资人。关注 UPME 的项目，可以提前知道哪些投资人会在什么时候采购。",
+      },
+      {
+        id: "process",
+        title: "投资人参与流程",
+        steps: [
+          { title: "阅读项目遴选文件（DSI）", detail: "每个项目都发布《投资人遴选文件》（Documentos de Selección del Inversionista，DSI）及附件，写明技术要求、投运日期、日程表、保函和评标规则。" },
+          { title: "在 UPME 平台注册", detail: "投标人（Proponente）可以是一家国内外自然人或法人，也可以是联合体（Consorcio）。提交方案前必须在 UPME 的电子平台（Plataforma Tecnológica）注册，并指定授权代表向 UPME 申请账户。" },
+          { title: "准备 1 号信封（技术方案）", detail: "包括资格文件、股权结构证明、投标保函（Garantía de Seriedad）、质量证书、授权文件等；如果投标人还不是 E.S.P.，要附上拟设立 E.S.P. 的章程草案。" },
+          { title: "准备 2 号信封（经济方案）", detail: "按美元不变价报出项目投运后前 25 年每一年的预期年收入。UPME 用 CREG 规定的折现率计算现值，在公开听证会上开启 2 号信封，现值最低的有效方案中标。" },
+          { title: "中标后设立 E.S.P. 并提交履约保函", detail: "中标人如尚未设立，须在哥伦比亚设立以输电为经营范围的公共服务企业（E.S.P.），在 CREG 等机构登记，提交经市场管理方（ASIC，由 XM 担任）审批的履约保函，并签署聘请监理的信托合同。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "常见资料清单",
+        intro: "以下资料框架来自 UPME 的 DSI 样本，每个项目的具体要求以该项目的 DSI 为准：",
+        items: [
+          "企业存在和法定代表证明；没有哥伦比亚分支机构的境外企业，可以用本国主管机关出具的同等文件",
+          "股权结构证明（由审计师或法定代表签署），联合体须提交每个成员的股权结构",
+          "联合体协议：成员、持股比例、代表人和最短存续期限",
+          "投标保函：由一流金融机构出具；境外银行须在哥伦比亚央行（Banco de la República）认可的境外金融机构名单内，并具有标普或穆迪投资级长期评级",
+          "质量体系证书、授权委托书和项目共存承诺函等 DSI 规定的格式文件",
+        ],
+        note: "DSI 要求境外文件附哥伦比亚认可的官方译员出具的西班牙语译文，并办理海牙认证（Apostille）或领事认证，签发日期一般不超过 90 天。",
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "角色选择：当投资人意味着长期持有和运营哥伦比亚电网资产，并在当地设立 E.S.P.；只想做工程或供货的企业，应跟踪中标投资人的采购",
+          "投标保函的有效期至少为提交方案后 4 个月，如果届时 CREG 还没有正式确认收入，要一直延长到确认之日",
+          "收入以美元不变价计价，要评估汇率、融资成本和 25 年运营风险",
+          "环境许可、土地通行权（servidumbres）和社区协商是输电项目常见的延期原因；按 DSI，投运延期期间 ASIC 会按月向投资人开具费用",
+          "监理机构（Interventor）是另一项单独遴选，工程咨询和监理公司可以单独关注这一部分",
+        ],
+        note: "UPME 项目的数据标签会滞后，本站只收录尚未召开投资人开标听证会的项目。准备投标前，务必在 UPME 项目页面核对最新纪要和补遗。",
+      },
+    ],
+    sources: [
+      { label: "UPME 输电项目招商列表（Convocatorias de Transmisión）", href: "https://www.upme.gov.co/home/convocatorias/convocatorias-de-transmision/" },
+      { label: "UPME 投资人遴选文件样本（UPME 01-2025 DSI）", href: "https://docs.upme.gov.co/PromocionSector/ConvocatoriasSTN/UPME_01_2025/DSI_UPME_01-2025.pdf" },
+      { label: "CREG 能源和天然气监管委员会", href: "https://www.creg.gov.co/" },
+    ],
+  },
+  {
+    slug: "peru-petroperu",
+    country: "秘鲁",
+    countryCode: "PE",
+    platform: "Petroperú · Competencia internacional",
+    issuer: "秘鲁国家石油公司（Petroperú）",
+    issuerType: "石油公司",
+    title: "怎么参与秘鲁国家石油公司 Petroperú 的国际采购？",
+    summary: "Petroperú 按公司自己的采购规章采购，国际竞争性采购（PCI）面向境外供应商。报价前必须在其合格供应商库（BDPC）完成登记。",
+    whatIs: "Petroperú（Petróleos del Perú）是秘鲁国有石油公司，经营塔拉拉炼厂（Refinería Talara）和北秘鲁输油管道等资产。它按公司自己的《采购与合同规章》（Reglamento de Contrataciones）采购，而不是走 SEACE 的常规政府采购程序。当国内没有供应商满足技术要求，或向境外供应商采购更有利时，Petroperú 会进行国际采购，并在官网「Competencia internacional」栏目公布。本站只收录其中编号以 PCI 开头的正式国际竞争性采购（Proceso por Competencia Internacional）。",
+    audience: "炼化设备、催化剂与化学品、管材阀门及油气工程服务的境外供应商",
+    quickFacts: [
+      { label: "发布位置", value: "Petroperú 官网 Competencia internacional" },
+      { label: "报价前提", value: "BDPC 登记状态为 REGISTRADO" },
+      { label: "截止日期", value: "见招标文件，会随日程修改调整" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "这份指南适用于什么？",
+        items: [
+          "适用于 Petroperú 官网「Competencia internacional」栏目中编号为 PCI 的国际竞争性采购",
+          "同一栏目里编号为 CAI 的条目是采购完成后的公示（技术报告、订单等），不是招标，无法报价",
+          "列表不写投标截止日期；截止日期写在招标文件（Bases）里，并会随「Modificación de cronograma」（日程修改）调整",
+        ],
+        note: "一个 PCI 项目可能多次修改日程，也可能在授标后被宣告无效、重新进行。看这个项目最新上传的文件，才能知道它现在处于哪个阶段。",
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "先在 BDPC 登记", detail: "Petroperú 规章规定，提交报价、获得授标和签约的前提，是在合格供应商库（Base de Datos de Proveedores Calificados，BDPC）有有效登记；联合体的每个成员都要登记。登记由第三方机构 Achilles 验证，按其现行说明在提交资料后最多 2 个工作日内完成审核，状态为 REGISTRADO 后获得证书。" },
+          { title: "找到 PCI 项目并下载 Bases", detail: "在官网「Competencia internacional」列表中找到项目，下载 Bases、技术条件、邀请函、合同范本和提问格式等文件。" },
+          { title: "在提问期内提交问题", detail: "按 Bases 规定的格式（通常有专门的提问表）在提问期内提交问题，关注答复和 Bases 修改。" },
+          { title: "跟进日程修改并提交报价", detail: "以最新的日程修改为准，在截止前按 Bases 规定的方式提交报价，并提供 Bases 要求的保函。" },
+          { title: "跟进授标结果", detail: "关注授标（Buena Pro）结果、宣告流标或取消的通知；授标也可能被宣告无效后重新进行。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "常见资料清单",
+        intro: "BDPC 登记和报价时通常需要：",
+        items: [
+          "BDPC 登记问卷（适用规章的采购用完整版问卷）",
+          "每个登记的产品或服务类别至少一份合同作为业绩证明，文件不超过 5 年",
+          "企业设立、存续与法定代表证明，授权文件",
+          "财务报表与经济能力证明",
+          "Bases 要求的技术文件、保函和各类声明",
+        ],
+        note: "BDPC 登记按企业年营业额分档收费（2023 年 9 月 3 日起：年营业额不超过 10 万美元免费，10 万至 15 万美元为 354 索尔，超过 15 万美元为 1,534 索尔，均含税），证书有效期最长一年。收费和流程以 Petroperú 与 Achilles 的现行说明为准。",
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "BDPC 登记要在报价前完成，并留出审核和补件的时间；Achilles 秘鲁的联系方式见 Petroperú 登记页面",
+          "国际采购适用秘鲁签署的国际条约和国际商事惯例，货物通常按国际贸易术语（INCOTERMS）报价",
+          "禁止与国家签约的情形（impedimentos）适用于 Petroperú 的所有采购，关联企业和过往合同纠纷要提前核对",
+          "保函的出具银行、币种和有效期要求，中资银行保函能否被接受",
+          "技术文件的西班牙语翻译，以及境外文件的海牙认证要求",
+        ],
+        note: "Petroperú 现行采购规章 2021 年 6 月 28 日生效，此后多次修改（最近一次为 2024 年 7 月 18 日）。以官网公布的现行版本和项目 Bases 为准。",
+      },
+    ],
+    sources: [
+      { label: "Petroperú 国际采购公告（Competencia internacional）", href: "https://www.petroperu.com.pe/proveedores/avisos-y-convocatorias/competencia-internacional/" },
+      { label: "Petroperú 供应商信息与现行规章", href: "https://www.petroperu.com.pe/proveedores/informacion-general/" },
+      { label: "Petroperú 合格供应商库（BDPC）登记", href: "https://www.petroperu.com.pe/proveedores/registro-proveedor-calificado/" },
+    ],
+  },
+  {
+    slug: "chile-codelco",
+    country: "智利",
+    countryCode: "CL",
+    platform: "Codelco · Licitaciones en proceso",
+    issuer: "智利国家铜业公司（Codelco），智利国有铜矿企业",
+    issuerType: "矿业公司",
+    title: "怎么参与智利国家铜业公司 Codelco 的采购项目？",
+    summary: "Codelco 不在 Mercado Público 采购，绝大多数采购通过 SAP Ariba 按邀请进行。先在 Red Negocios 完成登记和类别认证，再在截止前表达参与意向。",
+    whatIs: "Codelco（Corporación Nacional del Cobre de Chile）是智利国有铜业公司，旗下有多个矿山分部（División）。智利国有企业不适用政府采购法 Ley 19.886，因此 Codelco 的采购不在 Mercado Público 发布。它的大部分采购在 SAP Ariba 上邀请已登记的供应商参加；官网「Licitaciones en proceso」栏目公开其中一部分，多为总部（Casa Matriz）为各分部统一采购的化学品、电缆、泵、钢材和管材等类别合同。",
+    audience: "矿山设备、电气材料、化学品、管材与工程服务供应商",
+    quickFacts: [
+      { label: "登记平台", value: "Red Negocios（rednegocios.cl）" },
+      { label: "招标平台", value: "SAP Ariba（按邀请）" },
+      { label: "关键日期", value: "Fecha de entrega：表达意向的截止日" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "这份指南适用于什么？",
+        items: [
+          "适用于 Codelco 官网「Licitaciones en proceso」公开的招标，以及按类别向已登记供应商发出的邀请",
+          "官网列表的「Fecha de entrega」通常是表达参与意向的截止日，不是交标截止日；之后招标文件只发给已登记的投标人",
+          "招标文件、提问和报价都在 SAP Ariba 上进行，需要收到邀请后才能进入",
+        ],
+        note: "官网表格不会自动删除过期条目，里面有多年前的记录。先看「Fecha de entrega」是否已过，再决定是否跟进。",
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "在 Red Negocios 登记", detail: "Codelco 的供应商登记通过 Red Negocios（rednegocios.cl）进行：填写联系人、企业和银行资料，选择与经营范围相关的类别，并选择登记计划类型。" },
+          { title: "验证登记类别的经验", detail: "上传发票、订单、合同或 Codelco 合同管理人出具的履约评价，证明在所登记类别的经验。官方说明验证结果有效 3 年，可以随时增加新类别。" },
+          { title: "上传 Codelco 要求的文件", detail: "按企业类型（法人、自然人、成立不满一年的企业、境外企业）上传所需文件，并填写年度更新的合规宣誓书（Declaración Jurada）。" },
+          { title: "完成分级、风险评分与合规审查", detail: "Codelco 规定，任何采购的授标都以完成这一步为前提。按官方流程图，文件验证后约 10 个工作日出结果，可在 Red Negocios 的看板查看。" },
+          { title: "表达参与意向并在 SAP Ariba 报价", detail: "Codelco 会按已验证类别通过邮件邀请供应商；也可以根据官网公布的招标，在「Fecha de entrega」前按公告要求申请邀请。收到邀请后，通过链接创建 SAP Ariba 标准账户，在 Ariba 中下载文件、提问并提交报价。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "常见资料清单",
+        intro: "以下为 Codelco 登记流程中列出的资料类型，具体清单以 Red Negocios 的「Documentos requeridos」为准：",
+        items: [
+          "企业资料、联系人和银行资料（银行资料表）",
+          "证明类别经验的发票、订单或合同",
+          "境外企业适用的设立与代表文件",
+          "员工人数声明、涉诉情况宣誓书",
+          "智利 NCh 2770 标准的对齐问卷",
+          "年度更新的合规宣誓书",
+        ],
+        note: "Red Negocios 的登记咨询邮箱是 contacto@rednegocios.cl；SAP Ariba 访问和使用问题可联系 Codelco 采购门户 portalcompras@codelco.cl。",
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "Red Negocios 有专门的境外企业文件清单，登记前先下载核对",
+          "登记计划类型和费用以 Red Negocios 现行报价为准",
+          "类别经验要能用发票、订单或合同证明，最好准备同类矿山客户的业绩",
+          "类别合同往往覆盖多个分部、周期较长，要评估长期供货、仓储、售后和价格调整机制",
+          "报价币种、INCOTERMS、智利进口税费和本地技术标准",
+        ],
+        note: "官网公开的招标只是 Codelco 采购的一小部分。提前完成登记和类别认证，才会收到按类别发出的邀请。",
+      },
+    ],
+    sources: [
+      { label: "Codelco 公开招标列表（Licitaciones en proceso）", href: "https://www.codelco.com/licitaciones-en-proceso" },
+      { label: "Codelco 供应商登记流程图（PDF）", href: "https://www.codelco.com/prontus_codelco/site/docs/20230628/20230628153213/procesoinscripcionproveedores_esp2__1_.pdf" },
+      { label: "Codelco 采购流程与 SAP Ariba 说明", href: "https://www.codelco.com/proceso-de-contratacion-de-bienes-y-servicios" },
+      { label: "Red Negocios 供应商登记", href: "https://www.rednegocios.cl/" },
+    ],
+  },
 ];
 
 /**
@@ -729,21 +1117,69 @@ export const guideCountries = [
   {
     name: "巴西",
     code: "BR",
-    description: "PNCP全国公开入口、Compras.gov.br与境外供应商SICAF准备",
+    description: "PNCP全国公开入口，以及 Petrobras（石油）和 Cemig（电力）的自有采购门户",
   },
   {
     name: "哥伦比亚",
     code: "CO",
-    description: "SECOP II 电子公共采购项目",
+    description: "SECOP II 电子公共采购，以及 UPME 输电项目投资人遴选",
   },
   {
     name: "秘鲁",
     code: "PE",
-    description: "SEACE 常规预算采购，以及 Obras por Impuestos 以工程抵税项目",
+    description: "SEACE 常规预算采购、Obras por Impuestos 以工程抵税项目，以及 Petroperú（石油）国际采购",
   },
   {
     name: "智利",
     code: "CL",
-    description: "Mercado Público 公开采购与境外供应商登记",
+    description: "Mercado Público 公开采购，以及 Codelco（铜矿）供应商登记与招标",
   },
 ] as const;
+
+/**
+ * The guide for the platform a tender is actually bid on, for the 官方正式投标
+ * 入口 panel on its detail page — a reader who has just found a Cemig or
+ * Codelco tender is exactly the one who needs to know how that buyer
+ * registers suppliers.
+ *
+ * Matched on buyer + source name, the same way lib/tender-search-guide.ts
+ * does: the source names are the ones the mappers write, and nothing on a
+ * public projection needs to carry them. Order matters where names overlap —
+ * the company portals come before the government platforms, and a CFE
+ * tender read from the DOF goes to the CFE guide, not the DOF's.
+ */
+const GUIDE_BY_ORIGIN: Array<[RegExp, string]> = [
+  [/obras por impuestos/i, "peru-obras-por-impuestos"],
+  [/petronect|petrobras|transpetro/i, "brazil-petrobras-petronect"],
+  [/\bcemig\b/i, "brazil-cemig"],
+  [/\bupme\b/i, "colombia-upme"],
+  [/petroper[uú]/i, "peru-petroperu"],
+  [/codelco/i, "chile-codelco"],
+  [/pemex|petr[oó]leos mexicanos/i, "mexico-pemex-siscep"],
+  [/comisi[oó]n federal de electricidad|\bcfe\b/i, "mexico-cfe-micrositio"],
+  [/proyectos estrat[eé]gicos/i, "mexico-proyectos-estrategicos"],
+  [/compras\s?mx|compranet/i, "mexico-compras-mx"],
+  [/\boece\b|\bseace\b/i, "peru-seace-oece"],
+  [/\bpncp\b/i, "brazil-pncp"],
+  [/secop/i, "colombia-secop-ii"],
+  [/mercado p[uú]blico|chilecompra/i, "chile-mercado-publico"],
+];
+
+/** What the detail page's 官方入口 panel needs to link a guide — not the guide's text, which would otherwise ride along into the client bundle. */
+export type ParticipationGuideLink = Pick<ParticipationGuide, "slug" | "platform" | "issuerType">;
+
+export function participationGuideLinkForTender(tender: { buyer?: string | null; sourceName?: string | null }): ParticipationGuideLink | undefined {
+  const guide = participationGuideForTender(tender);
+  return guide && { slug: guide.slug, platform: guide.platform, issuerType: guide.issuerType };
+}
+
+export function participationGuideForTender(tender: { buyer?: string | null; sourceName?: string | null }): ParticipationGuide | undefined {
+  // Source name first: a PNCP row whose buyer happens to mention "Petrobras"
+  // in its name is still a PNCP tender.
+  for (const text of [tender.sourceName ?? "", tender.buyer ?? ""]) {
+    for (const [pattern, slug] of GUIDE_BY_ORIGIN) {
+      if (pattern.test(text)) return getParticipationGuide(slug);
+    }
+  }
+  return undefined;
+}

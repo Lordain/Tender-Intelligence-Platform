@@ -31,6 +31,8 @@ export type TenderSearchGuide = {
    */
   url: string | null;
   steps: string[];
+  /** Replaces the panel's "search by the number above" line where the number is not how the row is found. */
+  intro?: string;
   note?: string;
 };
 
@@ -43,6 +45,9 @@ const PEMEX = /pemex|petr[oó]leos mexicanos/i;
 const CFE = /comisi[oó]n federal de electricidad|\bcfe\b/i;
 const SEACE = /\boece\b|\bseace\b/i;
 const COMPRASMX = /compras\s?mx|compranet/i;
+const PETRONECT = /petronect/i;
+const PETROPERU = /petroper[uú]/i;
+const CODELCO = /codelco/i;
 
 export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide | null {
   const origin = `${tender.buyer} ${tender.sourceName}`;
@@ -117,6 +122,57 @@ export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide |
       // so describing it as something found after entering the ficha named a
       // route the reader was no longer on.
       note: "第 7 步那个日历图标打开的就是 Cronograma——完整时间表，包括本站拿不到的交标截止日（Presentación de propuestas）。这个页面不要收藏：它的网址只在当前这次浏览会话里有效，下次打开是一张空表，得从检索页重新走一遍。",
+    };
+  }
+
+  // The three company sources added on 2026-09-25 with no per-tender page
+  // (user: 详情页的官方入口指导(如有需要)). Cemig and UPME are not here:
+  // their 官方入口 already opens the process's own page. Field names below
+  // are copied from the pages as served that day.
+  if (PETRONECT.test(origin)) {
+    return {
+      platform: "Petronect — Oportunidades Abertas",
+      // The tender's link is the public list itself (PETRONECT_LIST_URL);
+      // Petronect has no per-opportunity URL.
+      url: null,
+      steps: [
+        "打开上面的「前往官方投标入口」",
+        "把招标编号粘贴到列表上方的 BUSCAR POR... 搜索框",
+        "点击搜索框右侧的放大镜",
+      ],
+      note: "结果中的 Abrangência 一栏：Internacional 表示境外供应商可以报价，Nacional 表示只限巴西供应商。报价要先完成 Petrobras 供应商登记，并登录 Petronect。",
+    };
+  }
+
+  if (PETROPERU.test(origin)) {
+    return {
+      platform: "Petroperú — Competencia internacional",
+      url: null,
+      steps: [
+        "打开上面的「前往官方投标入口」",
+        "在列表里找到这个编号（按发布日期从新到旧排列）",
+        "打开这一行，查看 Bases 和之后上传的全部文件",
+      ],
+      // The list states no deadline, and a PCI's schedule moves: the 2025
+      // catalyst call had twenty "Modificación cronograma" uploads.
+      note: "交标截止日写在 Bases 里，并会随「Modificación de cronograma」（日程修改）变动，以最新上传的那份为准。报价前须在 Petroperú 合格供应商库（BDPC）完成登记。",
+    };
+  }
+
+  if (CODELCO.test(origin)) {
+    return {
+      platform: "Codelco — Licitaciones en proceso",
+      url: null,
+      intro: "官方没有单个项目的页面，需要在官网的招标表格里找到这一行。",
+      steps: [
+        "打开上面的「前往官方投标入口」",
+        "在表格里按 Fecha（发布日期）和 Rubro o material（标的）找到这一行",
+        "点击标的名称，打开招标公告（llamado público）",
+        "在 Fecha de entrega 之前，按公告要求表达参与意向",
+      ],
+      // codelcoTenderNumber falls back to a site-made id when the subject
+      // carries no Ariba WS/Doc number, so the copy button can't be the route.
+      note: "Codelco 的招标文件只在 SAP Ariba 上发给受邀供应商。上面的编号如果不是 WS 或 Doc 开头，是本站生成的，官网上搜不到，请按日期和标的查找。",
     };
   }
 

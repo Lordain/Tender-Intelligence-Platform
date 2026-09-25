@@ -9,32 +9,36 @@
  * stability promise, which is why a zero-row or long-stale result writes a
  * FAILED heartbeat instead of passing quietly — see describeBuscaStaleness.
  *
- * Each run re-reads every open tender, not just yesterday's: the search
- * returns them all in ~15 requests, the upsert is keyed on slug, and a row
- * the user deleted stays deleted (tender_manual_deletions). Closing dates
- * come from each kept tender's own ficha, one request per row at
- * CHILE_FICHA_REQUEST_SPACING_MS — about 3 minutes for the ~70 rows the
- * rules keep today. ENRICH_LIMIT is a ceiling against a rule change that
- * suddenly keeps thousands, not a target.
+ * Each run reads every open tender (the search returns them all in ~15
+ * requests) and keeps those published in the last three days — the same
+ * window as the company sources (user, 2026-09-25: 智利每日自动导入的范围 <-
+ * 1–3 天; it had been two months). Three rather than one so a failed day is
+ * caught by the next run. The upsert is keyed on slug, and a row the user
+ * deleted stays deleted (tender_manual_deletions). Closing dates come from
+ * each kept tender's own ficha, one request per row at
+ * CHILE_FICHA_REQUEST_SPACING_MS. ENRICH_LIMIT is a ceiling against a rule
+ * change that suddenly keeps thousands, not a target.
  *
  * Usage:
  *   npm run cron:chile              (dry run — fetches and classifies, writes nothing)
  *   npm run cron:chile -- --write
- *   npm run cron:chile -- --days 3 --write    (only the last N days, as the admin page's manual run does)
+ *   npm run cron:chile -- --days 1 --write    (another window in days)
+ *   npm run cron:chile -- --days 0 --write    (the old two-month window, for a one-off backfill)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ingestChile } from "../lib/ingestion/ingest-chile";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
-import { windowDaysFromArgv } from "../lib/ingestion/publication-window";
+import { COMPANY_SOURCE_WINDOW_DAYS, windowDaysFromArgv } from "../lib/ingestion/publication-window";
 
+/** Only for `--days 0`: the two-month window the daily job used before 2026-09-25. */
 const WINDOW_MONTHS = 2;
 const ENRICH_LIMIT = 300;
 
 async function main() {
   const write = hasWriteFlag();
-  // 0 = no --days given: the daily job's two-month window.
-  const days = windowDaysFromArgv(process.argv, 0);
+  // --days 0 = the old two-month window.
+  const days = windowDaysFromArgv(process.argv, COMPANY_SOURCE_WINDOW_DAYS);
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

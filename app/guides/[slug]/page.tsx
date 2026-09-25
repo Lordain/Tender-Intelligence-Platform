@@ -41,10 +41,12 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="rounded-full bg-[#ffb21c] px-3 py-1 text-xs font-black text-[#071826]">{guide.country}</span>
+                <span className="rounded-full border border-white/25 px-3 py-1 text-xs font-black text-white">{guide.issuerType}</span>
                 <span className="text-xs font-black uppercase tracking-[0.18em] text-white/55">{guide.platform}</span>
               </div>
               <h1 className="mt-5 max-w-4xl text-3xl font-black leading-[1.22] tracking-[-0.04em] sm:text-5xl">{guide.title}</h1>
-              <p className="mt-5 max-w-3xl text-base leading-8 text-white/68">{guide.summary}</p>
+              <p className="mt-4 text-sm font-bold text-[#ffb21c]">采购方：{guide.issuer}</p>
+              <p className="mt-3 max-w-3xl text-base leading-8 text-white/68">{guide.summary}</p>
             </div>
           </div>
         </div>

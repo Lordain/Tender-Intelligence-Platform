@@ -5,6 +5,8 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { DetailSectionHeading } from "@/components/tenders/DetailSectionHeading";
 import { tenderSearchGuide } from "@/lib/tender-search-guide";
+import Link from "next/link";
+import type { ParticipationGuideLink } from "@/lib/participation-guides";
 
 /**
  * Compras MX's "来源" link for a still-open tender (unlike an already-
@@ -18,7 +20,7 @@ import { tenderSearchGuide } from "@/lib/tender-search-guide";
  * the user can paste it straight into that search page is the real fix
  * available without guessing at undocumented site behavior.
  */
-export function SourcePanel({ tender }: { tender: Tender }) {
+export function SourcePanel({ tender, participationGuide: guide }: { tender: Tender; participationGuide?: ParticipationGuideLink }) {
   const { locale } = useLocale();
   const [copied, setCopied] = useState(false);
   const searchGuide = tenderSearchGuide(tender);
@@ -75,7 +77,7 @@ export function SourcePanel({ tender }: { tender: Tender }) {
             <span className="text-xs font-bold text-[#8a959c]">{searchGuide.platform}</span>
           </div>
           <p className="mt-1.5 text-xs leading-5 text-[#64717c]">
-            官方没有可以直接分享的项目页面，需要用上面的招标编号在检索页查一次。按下面 {searchGuide.steps.length} 步走：
+            {searchGuide.intro ?? "官方没有可以直接分享的项目页面，需要用上面的招标编号在检索页查一次。"}按下面 {searchGuide.steps.length} 步走：
           </p>
           <ol className="mt-4 flex flex-col gap-2.5">
             {searchGuide.steps.map((step, index) => (
@@ -103,6 +105,28 @@ export function SourcePanel({ tender }: { tender: Tender }) {
             </p>
           )}
         </div>
+      )}
+
+      {/*
+        Registration is the step a first-time bidder cannot skip and cannot
+        do in an afternoon — Petrobras, Cemig, Petroperú and Codelco each
+        want their own supplier registry done before a bid is accepted — so
+        the panel that sends the reader to the platform also says where the
+        how-to is. One line, not a card: it is a pointer, not content.
+      */}
+      {guide && (
+        <Link
+          href={`/guides/${guide.slug}`}
+          className="group flex items-center justify-between gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] px-5 py-4 transition-colors hover:border-[#d29a28] hover:bg-[#fff4d8] sm:px-6"
+        >
+          <span className="min-w-0">
+            <span className="block text-sm font-black text-[#071826]">第一次参与这个平台？先看参标指南</span>
+            <span className="mt-0.5 block text-xs leading-5 text-[#64717c]">
+              {guide.platform} · {guide.issuerType}：供应商注册、常见资料和境外企业要点
+            </span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 font-black text-[#b86e00] transition-transform group-hover:translate-x-1">→</span>
+        </Link>
       )}
     </section>
   );

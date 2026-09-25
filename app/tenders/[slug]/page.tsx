@@ -14,6 +14,8 @@ import { toPublicTenderDetail } from "@/lib/public-tender";
 import { publicTenderPath } from "@/lib/public-tender-url";
 import { countryLabel, industryLabel } from "@/lib/tender-labels";
 import { TenderStructuredData } from "@/components/seo/TenderStructuredData";
+import { participationGuideLinkForTender } from "@/lib/participation-guides";
+import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 
 // generateMetadata and the page itself both need these two answers, and
 // neither underlying function is request-cached — without this the detail
@@ -129,7 +131,14 @@ export default async function TenderDetailPage({
   return (
     <>
       <TenderStructuredData tender={publicTender} />
-      <TenderDetailView tender={tender} showTrialCta={showTrialCta} />
+      <TenderDetailView
+        tender={tender}
+        showTrialCta={showTrialCta}
+        // Looked up here, on the server, so the guides' text stays out of the
+        // client bundle. None for an OxI tender: its own notice at the foot of
+        // the page already links the OxI guide.
+        participationGuide={isObrasPorImpuestos(tender) ? undefined : participationGuideLinkForTender(tender)}
+      />
     </>
   );
 }

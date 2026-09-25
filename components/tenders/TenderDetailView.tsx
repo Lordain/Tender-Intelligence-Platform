@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Tender } from "@/types/tender";
+import type { ParticipationGuideLink } from "@/lib/participation-guides";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { TenderOverview } from "@/components/tenders/TenderOverview";
 import { RequirementSection } from "@/components/tenders/RequirementList";
@@ -13,7 +14,15 @@ import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 import { deadlineIsInDocuments } from "@/lib/deadline-in-documents";
 import { TenderViewTracker } from "@/components/analytics/TenderViewTracker";
 
-export function TenderDetailView({ tender, showTrialCta = false }: { tender: Tender; showTrialCta?: boolean }) {
+export function TenderDetailView({
+  tender,
+  showTrialCta = false,
+  participationGuide,
+}: {
+  tender: Tender;
+  showTrialCta?: boolean;
+  participationGuide?: ParticipationGuideLink;
+}) {
   const { locale } = useLocale();
 
   return (
@@ -65,7 +74,7 @@ export function TenderDetailView({ tender, showTrialCta = false }: { tender: Ten
       />
 
       <RiskList risks={tender.risks} />
-      <SourcePanel tender={tender} />
+      <SourcePanel tender={tender} participationGuide={participationGuide} />
 
       {/*
         Last on the page (user, 2026-09-12: 移到最下面). It was directly under

@@ -29,7 +29,7 @@ export function ParticipationGuidesPreview() {
         <div className="mt-9 grid overflow-hidden rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] md:grid-cols-2 xl:grid-cols-4">
           {homepageGuides().map((guide) => (
             <Link key={guide.slug} href={`/guides/${guide.slug}`} className="group -ml-px -mt-px border-l border-t border-[#dbe2e5] p-6 transition hover:bg-[#fff4d8]">
-              <span className="text-xs font-black uppercase tracking-[0.14em] text-[#b86e00]">{guide.country}</span>
+              <span className="text-xs font-black uppercase tracking-[0.14em] text-[#b86e00]">{guide.country} · {guide.issuerType}</span>
               <h3 className="mt-3 text-lg font-black leading-7 text-[#071826]">{guide.platform}</h3>
               <p className="mt-3 text-sm leading-6 text-[#64717c]">{guide.summary}</p>
               <span className="mt-6 inline-block text-sm font-black text-[#9d6400] transition-transform group-hover:translate-x-1">阅读 →</span>

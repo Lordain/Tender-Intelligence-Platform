@@ -39,7 +39,12 @@ export function TenderLinkCards({ links, columns = 3 }: { links: TenderLink[]; c
           prefetch={false}
           className="group flex h-full flex-col gap-3 rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 transition-all hover:-translate-y-0.5 hover:border-[#aebdc3] hover:shadow-[0_18px_50px_-32px_rgba(6,27,43,0.45)]"
         >
-          <div className="flex flex-wrap items-center gap-1.5">
+          {/* Two rows of pills reserved wherever cards sit side by side, so
+              every title in a row starts at the same height however many tags
+              its neighbours carry (user, 2026-09-25). 57px is two measured
+              rows (25px pills + 6px gap); a stacked phone layout has no
+              neighbour to line up with and keeps its natural height. */}
+          <div className={`flex flex-wrap content-start items-center gap-1.5 ${columns === 3 ? "md:min-h-[57px]" : "sm:min-h-[57px]"}`}>
             <TenderTagRow
               relevanceTier={link.relevanceTier}
               industries={link.industries}

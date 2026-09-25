@@ -2785,6 +2785,23 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     estimatedValue: 3655109520, currency: "CLP",
   },
   {
+    title: "Servicios de conectividad telecomunicaciones operación de infraestructura y gestión de ciberseguridad.",
+    summary: "La Municipalidad de Peñalolén requiere dar continuidad integral de los servicios de conectividad, telecomunicaciones, operación de infraestructura y gestión de ciberseguridad actualmente en producción, incluyendo conectividad institucional, telefonía IP, Contact Center, redes cableadas e inalámbricas, NAC, seguridad perimetral, CSOC, SIEM, housing, soporte, implementación, SLA y capacitación, asegurando continuidad operativa, seguridad y cumplimiento normativo.",
+    expectedTier: "standard",
+    note: "Real row 2403-73-LR26, one of the seven Chilean rows the user kept by hand from the first live import. A service by its opening word, kept by CHILE_WANTED_SERVICE (user, 2026-09-25: IT/网络安全服务要保留; conectividad, telecomunicaciones 这两个词都要).",
+    buyer: "I MUNICIPALIDAD DE PENALOLEN",
+    country: "Chile", scopeType: "unknown", governmentLevel: "municipal",
+    estimatedValue: 1910656000, currency: "CLP",
+  },
+  {
+    title: "CONTRATACIÓN SERVICIO DE DIAGRAMACIÓN DE PIEZAS GRÁFICAS Y WEB DEL PROYECTO “FORTALECIMIENTO DE LAS CAPACIDADES DE LATINOAMÉRICA Y EL CARIBE EN MATERIA DE CIBERSEGURIDAD” FINANCIADO POR LA UNIÓN EUROPEA.",
+    summary: "Contratar un servicio especializado de diseño gráfico, diseño editorial y diagramación que permita desarrollar una línea gráfica para los productos del proyecto y aplicarla de manera consistente en sus documentos técnicos, materiales de difusión y componentes digitales, incluyendo el diseño visual del sitio web y los insumos gráficos necesarios para su posterior desarrollo técnico.",
+    expectedTier: "excluded",
+    note: "Real open row 1606-32-LE26. Graphic and web design — a service — whose title goes on to name a cybersecurity PROJECT. The exemption reads only the part before 'del proyecto', so the project's name does not carry the contract.",
+    buyer: "AGENCIA CHILENA DE COOPERACION INTERNACIONAL PARA EL DESARROLLO",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal",
+  },
+  {
     title: "ADQUISICIÓN E INSTALACIÓN DE SISTEMA DE CONTROL DE ACCESO BIOMÉTRICO PARA LAS SEDES DE LA ENTIDAD",
     expectedTier: "flagship",
     note: "The control for the gate-barrier rule, and it has to stay FLAGSHIP: a genuine electronic access-control purchase names no barrier, so GATE_BARRIER_KEYWORDS does not touch it and the include-override carries it all the way, undisclosed value and all. That is the whole point of putting the barrier words in their own list instead of narrowing the override — narrowing it would have cost this title its tier. (Adding `Y VIDEOVIGILANCIA` drops it to 中型 via OVERRIDE_NOT_FLAGSHIP, which is a different rule doing its own job; left out so this fixture tests one thing.)",

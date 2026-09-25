@@ -1149,15 +1149,41 @@ const PERU_MARGINAL_INVESTMENT = /\bioa[ar]?r\b/i;
  * INSTALACIÓN … VIDEOVIGILANCIA" are services that an override keyword
  * would otherwise wave through.
  */
+/**
+ * A Chilean SERVICE, by its opening word. Start-anchored, with room for the
+ * short reference codes Chilean buyers put first ("SP 754 Servicio de
+ * Arriendo de Bodegas", "CNG-CONCESIÓN CASINOS", "C.S Servicio de
+ * Arriendo"). AIF / ATIF are Asesoría (Técnica) a la Inspección Fiscal and
+ * FTO is Fiscalización Técnica de Obras — the consultant who inspects a
+ * works contract, not the works: "AIF A. VESPUCIO ORIENTE - AVO II" is the
+ * inspection of the motorway concession. E.I. is Estudio de Ingeniería.
+ */
+const CHILE_SERVICE_TITLE =
+  /^\W*(?:[a-z0-9.°º\/]{1,8}[\s-]+){0,2}(?:servicios?\b|serv\b\.?|prestacion(?:es)?\b|contrat(?:acion|\.)?\s+(?:de\s+)?(?:una?\s+)?(?:servicio|seguro|solucion)|arriendo|concesion|asesoria|consultor|estudio|est\.?\s|e\.\s?i\.|a\.?t?\.?i\.?f\b|fto\b|fiscalizacion|elaboracion|levantamiento|diag\.|compra de procedimientos|administracion|software|licencias|mantencion|adquisicion de (?:servicios|terreno))/i;
+
+/**
+ * The services the user wants kept anyway (2026-09-25: IT/网络安全服务要保留;
+ * conectividad, telecomunicaciones 这两个词都要). The real row behind it is
+ * one the user kept by hand from the first live import: "Servicios de
+ * conectividad telecomunicaciones operación de infraestructura y gestión de
+ * ciberseguridad", about $2M. Either word alone is enough, as the user said.
+ * The cyber terms mirror the INCLUDE_OVERRIDE_KEYWORDS entries for the same
+ * subject, so a Chilean firewall service and a Colombian one are treated
+ * alike.
+ */
+const CHILE_WANTED_SERVICE =
+  /conectividad|telecomunicacion|ciberseguridad|cybersecurity|ciberdefensa|cibern[eé]tic|ciberataque|firewall|seguridad de la informacion|proteccion de (la )?informacion/i;
+
+function isUnwantedChileanService(foldedTitle: string): boolean {
+  // The exemption reads only what is being bought, not the project it is
+  // for: "CONTRATACIÓN SERVICIO DE DIAGRAMACIÓN DE PIEZAS GRÁFICAS Y WEB DEL
+  // PROYECTO “FORTALECIMIENTO DE LAS CAPACIDADES … CIBERSEGURIDAD”" is a
+  // graphic-design contract that names a cybersecurity project.
+  const subject = foldedTitle.split(/\b(?:del|para el|para la) (?:proyecto|programa)\b/i)[0]!;
+  return CHILE_SERVICE_TITLE.test(foldedTitle) && !CHILE_WANTED_SERVICE.test(subject);
+}
+
 const CHILE_NOT_A_TARGET_TITLE = [
-  // A SERVICE, by its opening word. Start-anchored, with room for the short
-  // reference codes Chilean buyers put first ("SP 754 Servicio de Arriendo de
-  // Bodegas", "CNG-CONCESIÓN CASINOS", "C.S Servicio de Arriendo").
-  // AIF / ATIF are Asesoría (Técnica) a la Inspección Fiscal and FTO is
-  // Fiscalización Técnica de Obras — the consultant who inspects a works
-  // contract, not the works: "AIF A. VESPUCIO ORIENTE - AVO II" is the
-  // inspection of the motorway concession. E.I. is Estudio de Ingeniería.
-  /^\W*(?:[a-z0-9.°º\/]{1,8}[\s-]+){0,2}(?:servicios?\b|serv\b\.?|prestacion(?:es)?\b|contrat(?:acion|\.)?\s+(?:de\s+)?(?:una?\s+)?(?:servicio|seguro|solucion)|arriendo|concesion|asesoria|consultor|estudio|est\.?\s|e\.\s?i\.|a\.?t?\.?i\.?f\b|fto\b|fiscalizacion|elaboracion|levantamiento|diag\.|compra de procedimientos|administracion|software|licencias|mantencion|adquisicion de (?:servicios|terreno))/i,
   // What equipment consumes, and blood products. "Convenio de suministro" is
   // how Chilean hospitals contract recurring consumables — contrast media,
   // albumin, hardware store stock — never a one-off equipment purchase.
@@ -1167,11 +1193,11 @@ const CHILE_NOT_A_TARGET_TITLE = [
   // partnership), rural drinking-water systems (SSR) and the wells drilled
   // for them, rural health posts. The user deleted the SSR and posta rows
   // from the first live import (2026-09-24).
+  /pavimentaci[oó]n participativa|pav(?:\.|imentos)?\s+participativos|^\W*ppp,?\s+\d|servicio sanitario rural|\bssr\b|\bsondaje\b|\bposta\b/i,
   // "Conservación" is Chile's ordinary word for upkeep of something that
   // exists — MOP's "CONSERVACIÓN OBRA FISCAL EMBALSE …" maintains a
   // reservoir, "Conservación Coliseo Municipal" a gym. 维护类都不要.
   /\bconservacion\b/i,
-  /pavimentaci[oó]n participativa|pav(?:\.|imentos)?\s+participativos|^\W*ppp,?\s+\d|servicio sanitario rural|\bssr\b|\bsondaje\b|\bposta\b/i,
 ];
 
 const MAINTENANCE_ONLY_KEYWORDS = [
@@ -3223,11 +3249,12 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
 
-  // See CHILE_NOT_A_TARGET_TITLE.
+  // See CHILE_SERVICE_TITLE and CHILE_NOT_A_TARGET_TITLE.
   if (
     input.isNationalPriorityProject !== true &&
     input.country === "Chile" &&
-    CHILE_NOT_A_TARGET_TITLE.some((pattern) => pattern.test(foldAccents(input.title)))
+    (isUnwantedChileanService(foldAccents(input.title)) ||
+      CHILE_NOT_A_TARGET_TITLE.some((pattern) => pattern.test(foldAccents(input.title))))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }

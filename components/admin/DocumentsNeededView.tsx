@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { TenderNeedingDocuments } from "@/types/tender";
@@ -12,6 +12,8 @@ import { BatchAnalyzeDocumentForm, MAX_BATCH_SELECTION } from "@/components/admi
 import { BatchDownloadDocumentsButton } from "@/components/admin/BatchDownloadDocumentsButton";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
+import { SecopDocumentsPanel } from "@/components/admin/SecopDocumentsPanel";
+import { secopProcessIdWithoutOfficialPage } from "@/lib/secop-links";
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -76,6 +78,8 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
   /** "I already fetched this one's files" — see supabase/migrations/0043_documents_downloaded_at.sql. Not the same as 无法获取, which removes the row and now lives only on the tender's edit page. */
   const [pendingDownloadOnly, setPendingDownloadOnly] = useState(false);
   const [markingSlug, setMarkingSlug] = useState<string | null>(null);
+  /** The row whose SECOP official-files list is open — one at a time, so the worklist stays a list. */
+  const [openFilesSlug, setOpenFilesSlug] = useState<string | null>(null);
   // The selected tenders themselves, not just their slugs (2026-09-06): a
   // written tender is dropped from `tenders` immediately, and a panel that
   // looked its rows up in `tenders` would make the just-finished row —
@@ -378,8 +382,11 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
             <tbody className="divide-y divide-[#e5e9eb]">
               {filtered.map((tender) => {
                 const isSelected = selectedTenders.some((item) => item.slug === tender.slug);
+                const secopProcessId = secopProcessIdWithoutOfficialPage(tender.sourceUrl);
+                const filesOpen = secopProcessId !== undefined && openFilesSlug === tender.slug;
                 return (
-                  <tr key={tender.slug} className={`transition-colors hover:bg-[#fff9ec] ${isSelected ? "bg-[#fff8e9]" : ""}`}>
+                  <Fragment key={tender.slug}>
+                  <tr className={`transition-colors hover:bg-[#fff9ec] ${isSelected ? "bg-[#fff8e9]" : ""}`}>
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
@@ -464,15 +471,31 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                         >
                           <PencilIcon />编辑
                         </Link>
-                        <a
-                          href={tender.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="打开这条项目的官方正式投标入口"
-                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
-                        >
-                          <ExternalLinkIcon />官方入口
-                        </a>
+                        {secopProcessId ? (
+                          // No public SECOP page yet (lib/secop-links.ts), so
+                          // the link would open a raw API row. List the
+                          // files instead — only for these rows (user,
+                          // 2026-09-25: 如果没有官方入口才做).
+                          <button
+                            type="button"
+                            aria-expanded={filesOpen}
+                            onClick={() => setOpenFilesSlug(filesOpen ? null : tender.slug)}
+                            title="SECOP 还没有这个项目的公开页面——列出开放数据里已公开的文件"
+                            className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9] ${filesOpen ? "border-[#ffb21c] bg-[#fff8e9]" : "border-[#cbd6da] bg-white"}`}
+                          >
+                            <ExternalLinkIcon />官方文件
+                          </button>
+                        ) : (
+                          <a
+                            href={tender.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="打开这条项目的官方正式投标入口"
+                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#cbd6da] bg-white px-2.5 text-[11px] font-black text-[#0a2b40] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
+                          >
+                            <ExternalLinkIcon />官方入口
+                          </a>
+                        )}
                         <button
                           type="button"
                           onClick={() => toggleSelected(tender)}
@@ -501,6 +524,14 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                       </div>
                     </td>
                   </tr>
+                  {filesOpen && (
+                    <tr className="bg-[#fbfcfc]">
+                      <td colSpan={7} className="px-4 pb-4 pt-1">
+                        <SecopDocumentsPanel processId={secopProcessId} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
               {filtered.length === 0 && (

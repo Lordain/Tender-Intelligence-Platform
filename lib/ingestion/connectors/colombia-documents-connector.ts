@@ -50,6 +50,10 @@ export async function fetchSecopDocumentsForProcess(procesoId: string): Promise<
   const url = new URL(METADATA_BASE_URL);
   url.searchParams.set("proceso", procesoId);
   url.searchParams.set("$limit", "200");
+  // Oldest upload first: the pliego, estudios previos and aviso go up
+  // together at publication; adendas and later notices follow. Also makes
+  // the order stable, which Socrata does not promise without an $order.
+  url.searchParams.set("$order", "fecha_carga ASC, id_documento ASC");
 
   const response = await fetch(url, { headers: { Accept: "application/json" } });
   if (!response.ok) {

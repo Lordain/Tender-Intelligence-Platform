@@ -209,7 +209,8 @@ export function mapChileBuscaRowToTender(
   const publicationDate = parseChileBuscaDate(row.fechaPublicacion);
   if (!publicationDate) return null;
 
-  const submissionDeadline = card?.fechaCierre ? parseChileBuscaDate(card.fechaCierre) : undefined;
+  const submissionDeadline =
+    card?.submissionDeadline ?? (card?.fechaCierre ? parseChileBuscaDate(card.fechaCierre) : undefined);
   const status = chileBuscaStatus(row.estado, submissionDeadline, now);
   if (!status) return null;
 

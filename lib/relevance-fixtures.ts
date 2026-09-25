@@ -312,8 +312,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "SUMINISTRO E INSTALACIÓN DE UN SISTEMA DE VIDEOVIGILANCIA Y CONTROL DE ACCESO PARA EL DISTRITO",
-    expectedTier: "significant",
-    note: "The control for that change: an override-flagged security project with no renewal wording in it must still be promoted, not dropped. 'significant' rather than 'flagship' because videovigilancia is in EQUIPMENT_SCALE_CAPPED_KEYWORDS, which caps an undisclosed-value match there on purpose — the point of this fixture is that RENEWAL_ONLY_KEYWORDS is narrow enough to leave it alone, taking renewal of an existing licence/subscription/platform rather than security work as a category.",
+    expectedTier: "standard",
+    note: "The control for that change: an override-flagged security project with no renewal wording in it must still be KEPT, not dropped — that is what this fixture guards, and it is why the tier matters less than the fact that it survives. It expected 'significant' until 2026-09-25, when the user made a disclosed amount mandatory for 中型 (必须是有金额才定中级，不然都定常规，太多小的CCTV项目了). EQUIPMENT_SCALE_CAPPED_KEYWORDS still matches videovigilancia and still blocks the flagship path; what it no longer does is promote. With no amount published this is 常规.",
     scopeType: "equipment_services",
     country: "Colombia",
   },
@@ -2380,9 +2380,126 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
   },
   {
+    title: "Adquisión e instalación de equipos para el sistema de CCTV para su reemplazo en los locales del BCRP",
+    expectedTier: "standard",
+    summary: "Adquisión e instalación de equipos para el sistema de CCTV para su reemplazo en los locales del BCRP",
+    note: "Real row, LP-SM-20-2026-BCRPLIM-1, read out of production on 2026-09-25 — one of exactly two rows in the whole database sitting at 中型 with no disclosed amount and a CCTV title, which is what the user was seeing. A central bank replacing the cameras in its own offices is a building's security refit, and nothing in the notice says how big it is. Kept at 常规, not excluded: it is a genuine equipment purchase with an ict_telecom tag.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "federal", industries: ["ict_telecom"],
+  },
+  {
+    title: "IMPLEMENTACIÓN DE SOLUCIÓN DE SISTEMAS DE SEGURIDAD ELECTRÓNICA TIPO VIDEOVIGILA",
+    expectedTier: "standard",
+    note: "Real row, LA-85-W83-926014991-N-91-2026 (ITSON), the other of the two. Its title is TRUNCATED by the source at 80 characters — 'VIDEOVIGILA' — which is its own argument for this rule: the platform was promoting to 中型 off a word the notice did not even finish spelling, with no amount behind it.",
+    country: "Mexico", scopeType: "services", governmentLevel: "state", industries: ["ict_telecom"],
+  },
+  {
+    title: "ADQS CCTV PARA DEPOSITOS DE ARMAMENTO Y SITIOS FORANEOS DE LA GUARDIA NACIONAL",
+    expectedTier: "standard",
+    note: "Real row, LA-07-110-007000999-T-687-2026 (SEDENA). The control: it was ALREADY 常规 before this change, with no amount and a CCTV title, so it pins that the change moved the two rows it was aimed at and left this one where it was.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "federal", industries: ["ict_telecom"],
+  },
+  // Medical equipment vs the service around it (2026-09-25). Measured on the
+  // user's own deletions: the equipment pattern had kept 46 titles and the
+  // user deleted 39; the imaging pattern kept 23 and the user deleted 18.
+  // Kept rows first, then the deleted ones, all real.
+  {
+    title: "RESONANCIA NUCLEAR MAGNETICA PARA AMB. Y HOSP.",
+    expectedTier: "standard",
+    note: "Real row, 2215-49-LR26, kept by the user. An MRI machine — the same keyword as the deleted 'SERVICIOS DE EXÁMENES RESONANCIAS MAGNÉTICAS' below, and no purchase verb at all, which is why the rule vetoes service titles rather than requiring a purchase word: Chilean titles often have no verb.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "LICITACION ESTACION DE TRABAJOS PARA DIAGNOSTICO MEDICO PARA LA CATEDRA DE RADIOLOGIA E IMAGENOLOGIA DE LA ESCUELA DE MEDICINA",
+    expectedTier: "standard",
+    note: "Real row, 4895-11-LE26, kept by the user. Diagnostic workstations — equipment, reached through the imaging words.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPAMIENTO MEDICO PARA DIAGNOSTICO, EXAMEN CLINICO Y APOYO ASISTENCIAL, SEGÚN REQUERIMIENTO Y ESPECIFICACIONES TECNICAS.",
+    expectedTier: "standard",
+    note: "Real row, LP-ABR-249-2026-OEC/GR-PUNO-1, kept. The guard on the veto's anchor: 'EXAMEN' appears here naming what the equipment is for. An unanchored service word would have thrown a real equipment purchase away.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "state", industries: ["healthcare"],
+  },
+  {
+    title: "SERVICIOS DE EXÁMENES RESONANCIAS MAGNÉTICAS",
+    expectedTier: "excluded",
+    note: "Real row, chile-1057501-577-lr26, deleted by the user 2026-09-24. Outsourced MRI scans, not an MRI. No amount, so with the imaging keyword refused there is nothing left to keep it.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "SERVICIO DE PRESTACIONES MÉDICAS DE IMAGENOLOGÍA PARA EL SISTEMA DE SALUD NAVAL EN LA COMUNA DE SAN ANTONIO",
+    expectedTier: "excluded",
+    note: "Real row, chile-1017312-17-le26, deleted by the user 2026-09-24.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "MANTENCIÓN PREVENTIVA Y CORRECTIVA EQUIPOS MÉDICOS",
+    expectedTier: "excluded",
+    note: "Real row, chile-552975-75-co26, deleted by the user 2026-09-24. Upkeep of equipment the buyer already owns. 'Mantención' is the Chilean word for 'mantenimiento'; MAINTENANCE_ONLY_KEYWORDS did not know it until 2026-09-25, so on the day this was deleted it had to be caught here instead. Either rule now excludes it.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "SERVICIO DE TOMOGRAFÍA",
+    expectedTier: "excluded",
+    note: "Real row, comprasmx-aa-51-gyn-051gyn056-n-98-2024, deleted by the user 2026-09-11.",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "CONSUMIBLES DE EQUIPO MEDICO GPO 379",
+    expectedTier: "excluded",
+    note: "Real row, comprasmx-aa-50-gyr-050gyr088-n-78-2025, deleted by the user 2026-09-11. What the equipment consumes, not the equipment (我们只做医疗设备). The veto is title-wide for this word, not anchored, because 'consumibles' is never a department name.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  // Upkeep in Portuguese and Chilean Spanish (2026-09-25, user: 维护类都不要).
+  // The first three are what the rule is for; the next three are what it
+  // must not take, each saved by a Portuguese build word the guard had to
+  // learn in the same change.
+  {
+    title: "MANUTENCAO EM DIVERSOS LOCAIS DA MALHA V IARIA DO MUNICIPIO DE LIMEIRA",
+    expectedTier: "excluded",
+    note: "Real row, PNCP 45132495000140-1-000670/2026, R$26.5M, stored 中型. Road upkeep across a municipal network. It got through only because 'manutenção' was not a word the maintenance list knew.",
+    country: "Brazil", scopeType: "services", governmentLevel: "municipal", industries: ["general"], estimatedValue: 26_539_470.13, currency: "BRL",
+  },
+  {
+    title: "Registro de preços para contratação eventual e futura de empresa de engenharia para execução de serviços de manutenção e conservação de estradas vicinais localizadas nos municípios do Estado do Maranhão, com fornecimento de todos os materiais, equipamentos, ferramentas e mão de obra, mediante execução sob demanda deflagrada por ordem de serviço, com o objeto parcelado em 6 (seis) lotes regionais.",
+    expectedTier: "excluded",
+    note: "Real row, PNCP 24393108000150-1-000126/2026, R$445M, stored 大型. The biggest row this rule removes, and the reason it is worth pinning: the maintenance list is value-blind by design, so a very large upkeep framework goes the same way as a small one. 维护类都不要 was said without a size.",
+    country: "Brazil", scopeType: "works", governmentLevel: "state", industries: ["transportation"], estimatedValue: 445_000_000, currency: "BRL",
+  },
+  {
+    title: "Registro de Preços para futura e eventual contratação de empresa especializada para execução de serviços de engenharia voltados à manutenção, conservação, recuperação e melhoria da infraestrutura viária urbana e rural dos Municípios Consorciados ao CODAP.",
+    expectedTier: "excluded",
+    note: "Real row, PNCP 08753385000170-1-000019/2026, R$164M, stored 大型. 'Recuperação e melhoria' are work on existing roads, not new ones — the Portuguese counterparts of the rehabilitación/mejoramiento that the Spanish guard deliberately does not accept either.",
+    country: "Brazil", scopeType: "services", governmentLevel: "public_company", industries: ["general"], estimatedValue: 164_342_015.11, currency: "BRL",
+  },
+  {
+    title: "CONCESSÃO ADMINISTRATIVA PARA PRESTAÇÃO DOS SERVIÇOS DE ILUMINAÇÃO PÚBLICA E DE SOLUÇÕES DIGITAIS NO MUNICÍPIO DE LAGOA SANTA -MG, INCLUÍDOS A INSTALAÇÃO, MELHORAMENTO, DESENVOLVIMENTO, MODERNIZAÇÃO, EXPANSÃO, EFICIENTIZAÇÃO ENERGÉTICA, OPERAÇÃO E MANUTENÇÃO DA REDE MUNICIPAL DE ILUMINAÇÃO PÚBLICA E DAS SOLUÇÕES DIGITAIS",
+    expectedTier: "flagship",
+    note: "Real row, PNCP 73357469000156-1-000145/2026, stored 大型. A PPP street-lighting concession whose scope ends in 'operação e manutenção'. Saved by 'instalação' — before the guard learned Portuguese it could not see either that word or 'concessão'.",
+    country: "Brazil", scopeType: "services", governmentLevel: "municipal", industries: ["power"], estimatedValue: 48_397_098.2, currency: "USD",
+  },
+  {
+    title: "CONTRATAÇÃO DE OBRAS E SERVIÇOS DE ENGENHARIA DESTINADOS À EXECUÇÃO DE MODERNIZAÇÃO, AMPLIAÇÃO E MANUTENÇÃO DO PARQUE DE ILUMINAÇÃO PÚBLICA DO MUNICÍPIO DE ACARÁ/PA",
+    expectedTier: "standard",
+    note: "Real row, PNCP 05196548000172-1-000053/2026, R$17.4M, stored 常规. Saved by 'ampliação' — an expansion builds something that did not exist.",
+    country: "Brazil", scopeType: "works", governmentLevel: "municipal", industries: ["construction", "power"], estimatedValue: 17_367_248.32, currency: "BRL",
+  },
+  {
+    title: "Registro de preços, na forma de licitação compartilhada, para futura e eventual contratação de empresa especializada na execução de obras e serviços de engenharia destinados à implantação, ampliação, recuperação, manutenção e modernização dos sistemas de saneamento básico, drenagem urbana, manejo de águas pluviais, desassoreamento de cursos d'água, recuperação ambiental e obras complementares para atender as demandas dos Municípios Consorciados ao CONSANE.",
+    expectedTier: "flagship",
+    note: "Real row, PNCP 24990099000184-1-000008/2026, R$98M, stored 大型. Saved by 'implantação' and 'ampliação'. The Portuguese twin of the Colombian 'CONSTRUCCION ... CONSERVACION Y/O MANTENIMIENTO' programme the guard was written for.",
+    country: "Brazil", scopeType: "works", governmentLevel: "public_company", industries: ["construction", "water"], estimatedValue: 98_172_766.02, currency: "BRL",
+  },
+  {
+    title: "CONSERVACIÓN DE LA CARRETERA ESTATAL",
+    expectedTier: "excluded",
+    note: "Real row, comprasmx-lo-87-y03-928010997-n-108-2026, deleted by the user 2026-09-24. Road upkeep called 'conservación'. The environmental 'RESTAURACIÓN Y CONSERVACIÓN DE ÁREAS AMBIENTALES ESTRATÉGICAS' in the kept set is why the rule needs a road noun after the word.",
+    country: "Mexico", scopeType: "works", governmentLevel: "state", industries: ["transportation"],
+  },
+  {
     title: "AMPLIACIÓN Y MODERNIZACIÓN DEL SISTEMA DE VIDEOVIGILANCIA DE LA CIUDAD",
-    expectedTier: "significant",
-    note: "The control for the fixture above, and the reason the cámara rule was narrowed with a lookahead rather than deleted. A city-wide CCTV installation with no disclosed value stays 中型 — what changed is only that a body-worn camera is no longer read as one of these.",
+    expectedTier: "standard",
+    note: "The control for the fixture above, and the reason the cámara rule was narrowed with a lookahead rather than deleted: a city-wide CCTV installation is still KEPT, a body-worn camera is still not read as one. It expected 中型 until 2026-09-25, when the user required a disclosed amount for that tier. This title and the bodycam one now land on the same tier, which is the honest answer: with no amount published, the words alone cannot tell a city-wide network from a box of cameras — and that indistinguishability was the user's complaint (太多小的CCTV项目).",
     country: "Peru", scopeType: "equipment", governmentLevel: "municipal",
   },
   {
@@ -2432,6 +2549,51 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "excluded",
     note: "Real title (2026-09-18, per the user: 秘鲁，警卫室). Reached FLAGSHIP — the top tier — because `EQUIPO DE CONTROL DE ACCESO` matches INCLUDE_OVERRIDE_KEYWORDS, which both waives every exclusion and lifts Peru's undisclosed-value gate. The only fix that works is a check ABOVE the override, which is what GATE_BARRIER_KEYWORDS is; an EXCLUDE_KEYWORDS entry would have done nothing at all to this title.",
     country: "Peru", scopeType: "equipment_services", governmentLevel: "federal",
+  },
+  // ── Chile: the platform owner's 2026-09-24 decision, 不要药品 ──────────
+  //
+  // Both halves are pinned, because the buyer rule and the dosage-shape rule
+  // catch overlapping but different sets and each would look redundant alone.
+  {
+    title: "ENOXAPARINA 40 MG04ML SOL.INY. JRP 1000023217",
+    expectedTier: "excluded",
+    note: "Real title from the first live Chilean import (2026-09-24), and it arrived FLAGSHIP: CENABAST's drug tenders are large and priced, which is exactly what this classifier promotes, so four of that import's five flagship slots were drugs and the AVO II motorway sat below them. Caught by the dosage shape — a strength followed by a dosage form — since no list of substance names could ever be complete.",
+    buyer: "CENTRAL DE ABASTECIMIENTO DEL SISTEMA NACIONAL DE SERVICIO DE SALUD",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal",
+    estimatedValue: 13_000_000_000, currency: "CLP",
+  },
+  {
+    title: "GUANTE EXAMEN LATEX MEDIANO X UN 1000022999",
+    expectedTier: "excluded",
+    note: "The half the dosage shape CANNOT catch — examination gloves carry no strength and no dosage form. Only the buyer rule reaches it, which is why CENABAST is named in EXCLUDE_BUYER_KEYWORDS rather than the title rule being stretched to cover consumables.",
+    buyer: "CENTRAL DE ABASTECIMIENTO DEL SISTEMA NACIONAL DE SERVICIO DE SALUD",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal",
+    estimatedValue: 2_200_000_000, currency: "CLP",
+  },
+  {
+    title: "CALCITRIOL 05 MCG CP 1000022933",
+    expectedTier: "excluded",
+    note: "The mirror: a drug bought by a hospital directly rather than through CENABAST still has to go, so the buyer here is deliberately NOT the central agency. This is the case the dosage shape exists for.",
+    buyer: "SERVICIO DE SALUD ARAUCANIA SUR HOSPITAL DE NUEVA IMPERIAL",
+    country: "Chile", scopeType: "unknown", governmentLevel: "state",
+    estimatedValue: 1_240_000_000, currency: "CLP",
+  },
+  {
+    title: "AIF A. VESPUCIO ORIENTE - AVO II",
+    summary: "El presente contrato de asesoría está diseñado para prestar apoyo al Inspector Fiscal en la labor de gestión y seguimiento del cumplimiento del contrato de concesión en la Construcción y apoyo en la fiscalización y control del cumplimiento de las obligaciones",
+    expectedTier: "standard",
+    note: "The control, copied from the row the first live import actually wrote rather than invented: Santiago's Américo Vespucio Oriente motorway must survive both new rules, naming no dose and no central supply agency. The SUMMARY is load-bearing and has to be carried in FULL: the word holding this row in the feed is Construcción, ~180 characters in, and two drafts of this fixture failed — one with no summary, one with it truncated at 150 characters — because Chile's undisclosed-value gate excludes an unpriced row with no industry tag. Both times the gate was working and the fixture was wrong, which is the whole argument for copying real rows instead of writing plausible ones.",
+    buyer: "MOP Dirección General de Concesiones",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal",
+  },
+  {
+    title: "CONCESION DE RECOLECCIÓN Y TRANSPORTE DE RESIDUOS SÓLIDOS DOMICILIARIOS COMERCIAL Y PUBLICOS PLAN Y PLACILLA DE PEÑUELAS COMUNA DE VALPARAISO",
+    summary: "CONCESION DE RECOLECCIÓN Y TRANSPORTE DE RESIDUOS SÓLIDOS DOMICILIARIOS, COMERCIAL Y PUBLICOS, PLAN Y PLACILLA DE PEÑUELAS, COMUNA DE VALPARAISO",
+    expectedTier: "flagship",
+    note: "The priced control, also a real written row: 19.2 billion pesos, the largest thing in that import, and the one flagship left standing once the four CENABAST drug tenders are gone. It carries an amount, so it also pins the CLP rate — at 953 CLP/USD this is 20.15M USD and stays flagship; a rate wrong by an order of magnitude would move it.",
+    buyer: "I MUNICIPALIDAD DE VALPARAISO",
+    country: "Chile", scopeType: "unknown", governmentLevel: "municipal",
+    estimatedValue: 19_200_000_000, currency: "CLP",
   },
   {
     title: "ADQUISICIÓN E INSTALACIÓN DE SISTEMA DE CONTROL DE ACCESO BIOMÉTRICO PARA LAS SEDES DE LA ENTIDAD",

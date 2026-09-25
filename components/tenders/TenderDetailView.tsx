@@ -27,7 +27,7 @@ export function TenderDetailView({ tender, showTrialCta = false }: { tender: Ten
 
       <TenderOverview tender={tender} showTrialCta={showTrialCta} />
 
-      <KeyDatesTimeline dates={tender.keyDates} />
+      <KeyDatesTimeline dates={tender.keyDates} publicationDate={tender.publicationDate} publicationDateIsEstimated={tender.publicationDateIsEstimated} submissionDeadline={tender.submissionDeadline} status={tender.status} />
 
       {tender.oneLineSummary && (
         <section className="relative overflow-hidden rounded-3xl border border-[#efd898] bg-[linear-gradient(135deg,#fff9e9_0%,#fff4d2_100%)] px-6 py-6 shadow-[0_22px_60px_-48px_rgba(126,78,0,.55)] sm:px-8 sm:py-7">

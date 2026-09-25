@@ -92,6 +92,22 @@ const EXCLUDE_KEYWORDS = [
   /osteos[íi]ntesis|endopr[óo]tesis|pr[óo]tesis|implante|ortopedia/i, // ADQUISICIÓN Y SUMINISTRO DE INSUMOS DE OSTEOSÍNTESIS Y ENDOPRÓTESIS
   /reactivo/i,
   /medicamento|f[áa]rmaco|insumo m[ée]dico|material de curaci[óo]n/i,
+  // A drug named by its OWN name plus a dose, which is how a pharmacy
+  // tender is written when nobody says "medicamento": ELTROMBOPAG 25MG CM
+  // REC, SERTRALINA 50 MG CMCM REC, CALCITRIOL 05 MCG CP, TENECTEPLASA
+  // 10.000 U LIOF PSOL INY FA. There is no closed list of international
+  // nonproprietary names, so the SHAPE is the rule — a strength followed by
+  // a pharmaceutical dosage form — not the substance.
+  //
+  // Both halves are required, which is what keeps it off engineering copy: a
+  // water-quality spec says "cloro residual 0,5 mg/l" and a generator plate
+  // says "500 KVA", and neither is followed by a dosage form. The unit is
+  // also refused when a slash follows it, so mg/l cannot start the match at
+  // all. Added 2026-09-24 alongside the CENABAST buyer rule, for the
+  // hospitals and municipalities that buy drugs directly rather than through
+  // it; on the 5-day Chilean import it caught 12 of the same 17 rows and
+  // nothing else, so it is the generalisable half rather than the whole rule.
+  /\b\d[\d.,]*\s*(mg|mcg|ug|ui|u)\b(?!\s*\/)[^,;]{0,24}\b(cm\s*rec|cmcm|cpcm|cp|caps?|comp|grag|jbe|jrp|sol\.?\s*iny|liof|psol|supos|blister|lib\s*sost)\b/i,
   // Real observed titles, second batch. Two of these are the same class
   // of bug as "refacciones"/"sanitarios rurales" above — a SERVICE or
   // small-scale local work that happens to contain a word
@@ -847,7 +863,27 @@ const GATE_BARRIER_KEYWORDS = [
   /\bbarrera(s)?\s+(deslizante(s)?|levadiza(s)?|vehicular(es)?)\b|\bpluma(s)?\s+vehicular(es)?\b/i,
 ];
 
-const EXCLUDE_BUYER_KEYWORDS = [/alimentaci[óo]n para el bienestar/i];
+/**
+ * Buyers whose entire remit is outside what this platform is for.
+ *
+ * CENABAST — Chile's CENTRAL DE ABASTECIMIENTO DEL SISTEMA NACIONAL DE
+ * SERVICIOS DE SALUD — added 2026-09-24 at the platform owner's decision
+ * (不要药品). It is the national health supply agency: buying drugs and
+ * medical consumables for the whole public health system IS its remit, so
+ * this is a fact about the institution rather than a guess about a title.
+ *
+ * It mattered because its tenders are large and priced, which is exactly what
+ * this classifier promotes. In one live 5-day Chilean import, ALL 17
+ * pharmaceutical and consumable rows came from this one buyer, and they took
+ * four of the five flagship slots — enoxaparina, dutasterida/tamsulosina,
+ * eltrombopag — pushing the AVO II motorway and seven PPP lots down the page.
+ * Measured on the 60 rows that import wrote: this pattern catches 17 of 17
+ * and none of the other 43.
+ */
+const EXCLUDE_BUYER_KEYWORDS = [
+  /alimentaci[óo]n para el bienestar/i,
+  /central de abastecimiento/i,
+];
 
 /**
  * Broad "this is fundamentally a maintenance/support SERVICE contract on
@@ -1093,6 +1129,21 @@ const MAINTENANCE_ONLY_KEYWORDS = [
   // no-industry/no-value gate — which meant the same title WITH an
   // industry tag survived as a maintenance job.
   /\bmantenimiento\b|\bmtto\b|\bmantto\b|\bmto\b|servicio t[ée]cnico (preventivo|correctivo)/i,
+  // The same word in the other two languages the platform imports
+  // (2026-09-25, user: 维护类都不要). The list above was written from Mexican
+  // titles and never matched Chile's "mantención" or Brazil's "manutenção" —
+  // "SERVICIO DE MANTENCIÓN DE ALUMBRADO PÚBLICO" and "MANUTENCAO EM DIVERSOS
+  // LOCAIS DA MALHA VIARIA DO MUNICIPIO DE LIMEIRA" are both real rows that
+  // got through. Brazil's word only works because NEW_BUILD_OR_PURCHASE and
+  // CONCESSION_FRAMING learned Portuguese in the same change; without that a
+  // "construção e manutenção" framework would be dropped on its last word.
+  /\bmantenci[óo]n(es)?\b|\bmanuten[çc][ãa]o\b/i,
+  // Road upkeep written as "conservación"/"conservação" rather than
+  // maintenance — the Chilean MOP and Mexican state road agencies both do.
+  // Tied to a road or pavement noun, or to the upkeep adjectives, because
+  // bare "conservación" is also the environmental word ("RESTAURACIÓN Y
+  // CONSERVACIÓN DE ÁREAS AMBIENTALES ESTRATÉGICAS" is a real kept row).
+  /conservaci[óo]n\s+(rutinaria|peri[óo]dica|global|preventiva|de\s+(la\s+|las\s+|los\s+)?(carreteras?|caminos?|red(es)? vial(es)?|pavimentos?|vias?))|conserva[çc][ãa]o\s+(rotineira|peri[óo]dica|preventiva|de\s+(rodovias?|estradas?|pavimentos?|vias?))/i,
   // Fixing PARTS of a machine that is already installed and running — the
   // same class as upkeep, in the words a repair order actually uses
   // (2026-09-18, per the user, 电力维修): "CONTRATACIÓN DE SERVICIO DE
@@ -1155,8 +1206,13 @@ const MAINTENANCE_ONLY_KEYWORDS = [
  * spare-parts stock — exactly the opportunity the original rule judged a
  * foreign bidder cannot take.
  */
-const CONCESSION_FRAMING = /concesi[óo]n|asociaci[óo]n(es)? p[úu]blico[\s-]?privadas?|\bapp\s+de\s+infraestructura\b/i;
-const BUILD_OBJECT = /construcci[óo]n|dise[ñn]o y construcci[óo]n|rehabilitaci[óo]n|ampliaci[óo]n|modernizaci[óo]n|doble calzada/i;
+// Portuguese halves added 2026-09-25 alongside "manutenção" — see
+// MAINTENANCE_ONLY_KEYWORDS. The haystack is accent-folded, so "concessão"
+// arrives as "concessao" and never matched the Spanish "concesi…".
+const CONCESSION_FRAMING =
+  /concesi[óo]n|asociaci[óo]n(es)? p[úu]blico[\s-]?privadas?|\bapp\s+de\s+infraestructura\b|concess[ãa]o|parceria p[úu]blico[\s-]?privada|\bppp\b/i;
+const BUILD_OBJECT =
+  /construcci[óo]n|dise[ñn]o y construcci[óo]n|rehabilitaci[óo]n|ampliaci[óo]n|modernizaci[óo]n|doble calzada|constru[çc][ãa]o|amplia[çc][ãa]o|moderniza[çc][ãa]o|reabilita[çc][ãa]o|duplica[çc][ãa]o/i;
 
 /**
  * The OTHER thing "mantenimiento" must not swallow: a bundled works or supply
@@ -1186,7 +1242,8 @@ const BUILD_OBJECT = /construcci[óo]n|dise[ñn]o y construcci[óo]n|rehabilitac
  * `reconstrucción`, `adquisición`, `instalación` and `ampliación` name
  * something that did not exist before. Only the second group gets past.
  */
-const NEW_BUILD_OR_PURCHASE = /construcci[óo]n|reconstrucci[óo]n|adquisici[óo]n|instalaci[óo]n|ampliaci[óo]n|doble calzada/i;
+const NEW_BUILD_OR_PURCHASE =
+  /construcci[óo]n|reconstrucci[óo]n|adquisici[óo]n|instalaci[óo]n|ampliaci[óo]n|doble calzada|constru[çc][ãa]o|reconstru[çc][ãa]o|aquisi[çc][ãa]o|instala[çc][ãa]o|implanta[çc][ãa]o|amplia[çc][ãa]o|duplica[çc][ãa]o/i;
 
 /** A build-and-operate concession, not routine upkeep — see CONCESSION_FRAMING. */
 function isConcessionWithBuildScope(haystack: string): boolean {
@@ -1843,6 +1900,68 @@ const BARE_WORKS_WHITELIST = new RegExp(
   "i",
 );
 
+/**
+ * The two medical entries in FLAGSHIP_INDUSTRY_KEYWORDS, named so
+ * flagshipIndustryMatches() can refuse them for a title that is a SERVICE.
+ * The patterns themselves are unchanged; see the comments where they sit in
+ * the list for why each term is there.
+ */
+const MEDICAL_EQUIPMENT_WHITELIST =
+  /equipo(s)? m[ée]dico|equipo(s)? m[ée]dio\b|equipamiento m[ée]dico|medical equipment|equipo(s)? de laboratorio/i;
+const MEDICAL_IMAGING_WHITELIST = /imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia|ultrasonido|rayos x/i;
+
+/**
+ * A title that buys the SERVICE around medical equipment rather than the
+ * equipment — the exams, the outsourced imaging, the upkeep — or buys what
+ * the equipment consumes.
+ *
+ * Measured 2026-09-25 against the user's own deletions: of every title these
+ * two patterns kept, the user had deleted 39 of 46 matching the equipment
+ * pattern (85%) and 18 of 23 matching the imaging one (78%). The imaging
+ * words name a modality, and a modality is sold both ways: "RESONANCIA
+ * NUCLEAR MAGNETICA PARA AMB. Y HOSP." (a machine, kept) and "SERVICIOS DE
+ * EXÁMENES RESONANCIAS MAGNÉTICAS" (scans, deleted) carry the same keyword.
+ * The platform is 我们只做医疗设备.
+ *
+ * Anchored to the START of the title, not searched anywhere in it, because
+ * "servicio de …" is also how a hospital names a department, and buyers
+ * write purchases that way — "ADQUISICION DE TRANSFORMADOR TRIFASICO DE 500
+ * KVA PARA EL SERVICIO DE CASA FUERZA DEL HOSPITAL DEPARTAMENTAL" is a real
+ * Peruvian title. An unanchored "servicio" would throw away the same
+ * sentence written about an imaging department. The anchor also keeps the
+ * real Peruvian "ADQUISICIÓN DE EQUIPAMIENTO MEDICO PARA DIAGNOSTICO, EXAMEN
+ * CLINICO …" (a fixture), whose "examen" names what the equipment is for.
+ * The one unanchored term is "consumibles", which is never a department.
+ *
+ * Checked on the title only, never the summary: a Chilean description
+ * routinely opens with the buyer, "Servicio de Salud …", in front of a real
+ * equipment purchase.
+ *
+ * This takes away the medical KEEP signal only. It excludes nothing by
+ * itself: a service or consumables purchase with a disclosed amount over the
+ * floor is still judged on that amount like any other row, which is the
+ * user's 规模为主、品类为辅.
+ */
+const MEDICAL_TITLE_NOT_EQUIPMENT =
+  /^\s*(?:servicios?\b|prestacion|mantencion|mantenimiento|calibracion|asesoria|atencion|toma e informe|consulta\b|contratacion de (?:una? )?(?:servicio|solucion))|consumibles/i;
+
+const MEDICAL_WHITELIST: ReadonlySet<RegExp> = new Set([MEDICAL_EQUIPMENT_WHITELIST, MEDICAL_IMAGING_WHITELIST]);
+
+/**
+ * Which FLAGSHIP_INDUSTRY_KEYWORDS entries count for this tender. Every
+ * caller goes through here, so the classifier, the municipal rule and the
+ * explainKeptSignal() diagnostic cannot disagree about what matched.
+ *
+ * `subjectTitle` must already be folded — the veto is written without
+ * accents, like the haystack.
+ */
+function flagshipIndustryMatches(haystack: string, subjectTitle: string): RegExp[] {
+  const medicalVetoed = MEDICAL_TITLE_NOT_EQUIPMENT.test(subjectTitle);
+  return FLAGSHIP_INDUSTRY_KEYWORDS.filter(
+    (pattern) => pattern.test(haystack) && !(medicalVetoed && MEDICAL_WHITELIST.has(pattern)),
+  );
+}
+
 const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // Bare "infraestructura" dropped (2026-09-05, real false positive): the
   // user flagged "AMPLIACIÓN Y MODERNIZACIÓN DE LA INFRAESTRUCTURA
@@ -1895,14 +2014,14 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // MÉDICAS' (2026-09-07). Listed explicitly rather than loosening the
   // stem, because "medi…" would also catch "medicamento", a consumable
   // this list deliberately excludes.
-  /equipo(s)? m[ée]dico|equipo(s)? m[ée]dio\b|equipamiento m[ée]dico|medical equipment|equipo(s)? de laboratorio/i,
+  MEDICAL_EQUIPMENT_WHITELIST,
   // hemodiálisis/hemodinamia removed from this whitelist 2026-09-07
   // (user-confirmed): every real title carrying them was a SERVICE —
   // "SERVICIOS MEDICOS DE ESPECIALIZACION (HEMODIALISIS)", "FORTALECIMIENTO
   // A LOS SERVICIOS DE HEMODINAMIA", "SMI DE HEMODINAMIA" — and this
   // platform targets medical EQUIPMENT. They are excluded below instead.
   /bomba de infusi[óo]n|ventilador pulmonar/i,
-  /imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia|ultrasonido|rayos x/i,
+  MEDICAL_IMAGING_WHITELIST,
   // Vehicle-fleet purchases — restored to the whitelist per the user's
   // explicit request (2026-09-04: "加入车辆相关的标书，比如说政府购车、
   // 公交车、货车、SUV等等，但要避免触发车辆相关的项目比如加油和保养").
@@ -3177,7 +3296,8 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "value", minValueUsd) };
   }
 
-  const matchesFlagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.some((pattern) => pattern.test(haystack));
+  const flagshipIndustryHits = flagshipIndustryMatches(haystack, subjectTitle);
+  const matchesFlagshipIndustry = flagshipIndustryHits.length > 0;
   const matchesMajorProject = MAJOR_PROJECT_KEYWORDS.some((pattern) => pattern.test(haystack));
   const hasLongDuration = durationDays !== undefined && durationDays >= LONG_DURATION_DAYS;
   const isEquipmentScaleCapped = EQUIPMENT_SCALE_CAPPED_KEYWORDS.some((pattern) => pattern.test(haystack));
@@ -3295,10 +3415,26 @@ export function classifyRelevance(input: {
   // to add, so the bands decide alone. With NO amount disclosed the keyword is
   // the only signal there is, and it still speaks — that is the clause below
   // and the allowlist gate further down, both untouched.
-  if (
-    (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) ||
-    (isEquipmentScaleCapped && normalizedValue === undefined)
-  ) {
+  // 中型 now requires a disclosed amount. Full stop.
+  //
+  // The removed clause was `isEquipmentScaleCapped && normalizedValue ===
+  // undefined` — a fixed CCTV/videovigilancia/substation job with NO amount
+  // was promoted to 中型 on the keyword alone, on the reasoning (2026-09-18,
+  // in this file) that "a fixed CCTV installation is an infrastructure
+  // project". The user reversed it on 2026-09-25: 必须是有金额才定中级，不然
+  // 都定常规，太多小的CCTV项目了.
+  //
+  // The reasoning it replaces was the same guess-about-scale this file
+  // rejects everywhere else: a keyword says what KIND of thing is being
+  // bought, never how much of it. "Sistema de videovigilancia para el almacén
+  // de drogas" and a city-wide camera network are one phrase and two orders
+  // of magnitude, and with no amount published there is nothing to tell them
+  // apart. 常规 is what "we cannot tell" should look like.
+  //
+  // EQUIPMENT_SCALE_CAPPED_KEYWORDS is NOT deleted: it still blocks these
+  // same rows from reaching 大型 through the INCLUDE_OVERRIDE path above,
+  // which is the job it was originally added for.
+  if (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
   }
 
@@ -3397,7 +3533,7 @@ export function classifyRelevance(input: {
     normalizedValue === undefined &&
     matchesFlagshipIndustry &&
     !hasIncludeOverride &&
-    FLAGSHIP_INDUSTRY_KEYWORDS.filter((pattern) => pattern.test(haystack)).every((pattern) => pattern === BARE_WORKS_WHITELIST)
+    flagshipIndustryHits.every((pattern) => pattern === BARE_WORKS_WHITELIST)
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
@@ -3414,12 +3550,23 @@ export function classifyRelevance(input: {
   // demoting a fire-alarm or firewall tender out of flagship left it with no
   // whitelist match, and this gate then excluded it outright — turning a
   // requested demotion into a deletion.
+  //
+  // isEquipmentScaleCapped joined them on 2026-09-25, for the same reason on
+  // the same day the significant clause stopped promoting on it. Before that
+  // change the CCTV keyword was BOTH the promote signal and the keep signal;
+  // removing the promotion silently removed the keep too, and two real rows
+  // (LP-SM-20-2026-BCRPLIM-1, LA-07-110-007000999-T-687-2026) went straight
+  // from 中型 to DELETED rather than to 常规. The user asked for 不然都定常规
+  // — 常规, not gone. Same failure mode as the fire-alarm case above, caught
+  // this time by running the two production rows through the classifier
+  // instead of reading the diff.
   if (
     input.country !== undefined &&
     UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL.has(input.country) &&
     normalizedValue === undefined &&
     !matchesFlagshipIndustry &&
-    !hasIncludeOverride
+    !hasIncludeOverride &&
+    !isEquipmentScaleCapped
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
@@ -3442,7 +3589,13 @@ export function classifyRelevance(input: {
   // Same correction: this gate's comment says everything reaching it failed
   // every positive signal, which stopped being true once demotions began
   // routing keyword-matched tenders past the flagship branch.
-  if (!hasTargetIndustry && normalizedValue === undefined && !matchesFlagshipIndustry && !hasIncludeOverride) {
+  if (
+    !hasTargetIndustry &&
+    normalizedValue === undefined &&
+    !matchesFlagshipIndustry &&
+    !hasIncludeOverride &&
+    !isEquipmentScaleCapped
+  ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }
 
@@ -3522,7 +3675,7 @@ export function explainKeptSignal(input: {
   if (value !== undefined && value >= FLAGSHIP_VALUE_USD) return `金额 ≥ ${FLAGSHIP_VALUE_USD.toLocaleString()} USD`;
   if (value !== undefined && value >= SIGNIFICANT_VALUE_USD) return `金额 ≥ ${SIGNIFICANT_VALUE_USD.toLocaleString()} USD`;
 
-  const flagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.find((pattern) => pattern.test(haystack));
+  const flagshipIndustry = flagshipIndustryMatches(haystack, foldAccents(purchaseSubject(input.title)!))[0];
   if (flagshipIndustry) return `FLAGSHIP_INDUSTRY 白名单 ${show(flagshipIndustry)}`;
 
   const capped = EQUIPMENT_SCALE_CAPPED_KEYWORDS.find((pattern) => pattern.test(haystack));

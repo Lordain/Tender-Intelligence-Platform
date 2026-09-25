@@ -1,0 +1,466 @@
+[
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "flagship",
+  "item": {
+   "Id": 2122,
+   "Title": "DEE-CAT-O-GCEE-085-107289-26-1",
+   "descripcion": "Ingeniería, Procura y Construcción de ductos marinos en el Golfo de México, Paquete 2",
+   "inicio": "2026-08-06T06:00:00Z",
+   "vencimiento": "2028-08-06T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Obra pública",
+   "areacontratante": "Servicios a la Explotación y Perforación",
+   "Created": "2026-08-06T18:54:43Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "standard",
+  "item": {
+   "Id": 2136,
+   "Title": "DEE-CAT-B-GCEE-802-106717-26-1.",
+   "descripcion": "ADQUISICIÓN DE SOLVENTE FORMULADO CON BASE METIL-DIETANOLAMINA (MDEA), PARA ABSORCIÓN DE GASES ÁCIDOS EN SISTEMAS DE ENDULZAMIENTO DE GAS.",
+   "inicio": "2026-09-01T06:00:00Z",
+   "vencimiento": "2027-09-07T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Producción",
+   "Created": "2026-09-01T23:19:13Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "significant",
+  "item": {
+   "Id": 2124,
+   "Title": "DEE-CAT-O-GCEE-085-106723-26-1",
+   "descripcion": "Mantenimiento, rehabilitación y/o construcción de ductos y líneas de descarga en los Activos de la Subdirección de Extracción Región Terrestre Norte",
+   "inicio": "2026-08-13T06:00:00Z",
+   "vencimiento": "2028-08-13T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Obra pública",
+   "areacontratante": "Servicios a la Explotación y Perforación",
+   "Created": "2026-08-13T19:19:06Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "excluded",
+  "item": {
+   "Id": 2145,
+   "Title": "DEE-CAT-B-GCEE-802-95999-26-1",
+   "descripcion": "Adquisición de equipos, materiales y reactivos de laboratorio",
+   "inicio": "2026-09-10T06:00:00Z",
+   "vencimiento": "2027-09-10T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Producción",
+   "Created": "2026-09-11T01:22:23Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "standard",
+  "item": {
+   "Id": 2142,
+   "Title": "DEE-CAT-B-GCEE-401-105008-26-1",
+   "descripcion": "Adquisición de válvulas para los Activos de la Subdirección de Extracción Región Terrestre Norte",
+   "inicio": "2026-09-10T06:00:00Z",
+   "vencimiento": "2027-09-10T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Producción",
+   "Created": "2026-09-10T19:28:03Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "excluded",
+  "item": {
+   "Id": 2146,
+   "Title": "DEE-CAT-S-GCEE-802-107040-26-1",
+   "descripcion": "Servicio de sellado y mantenimiento a válvulas mecánicas de proceso y de medio árbol de pozos, en las instalaciones marinas de la SERMNE, incluye suministro de refacciones",
+   "inicio": "2026-09-10T06:00:00Z",
+   "vencimiento": "2027-09-10T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Servicios",
+   "areacontratante": "Producción",
+   "Created": "2026-09-11T01:22:38Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "standard",
+  "item": {
+   "Id": 2086,
+   "Title": "DEE-CAT-B-GCEE-100-105029-26-2",
+   "descripcion": "Suministro de tubería de perforación, elementos tubulares y herramientas de perforación para utilizarse en los pozos",
+   "inicio": "2026-06-04T06:00:00Z",
+   "vencimiento": "2027-06-04T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Servicios a la Explotación y Perforación",
+   "Created": "2026-06-04T22:43:02Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "significant",
+  "item": {
+   "Id": 2135,
+   "Title": "DEE-CAT-A-GCEE-100-106823-26-1   ",
+   "descripcion": "“Arrendamiento sin opción a compra, de plataforma de perforación marina tipo autoelevable cantiliver de patas independientes, con capacidad mínima nominal para operar en tirante de agua de al menos 400 pies, y capacidad de perforación mínima de 30,000 pies de profundidad, incluyendo su mantenimiento integral para operar en aguas mexicanas del Golfo de México” ",
+   "inicio": "2026-09-01T06:00:00Z",
+   "vencimiento": "2027-09-01T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Arrendamientos",
+   "areacontratante": "Servicios a la Explotación y Perforación",
+   "Created": "2026-09-01T22:46:10Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "excluded",
+  "item": {
+   "Id": 2106,
+   "Title": "DEE-CAT-O-GCEE-085-104751-26-1",
+   "descripcion": "Rehabilitación de caminos generales y puentes en zonas de influencia de Exploración y Extracción",
+   "inicio": "2026-07-09T06:00:00Z",
+   "vencimiento": "2028-07-10T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Obra pública",
+   "areacontratante": "Servicios a la Explotación y Perforación",
+   "Created": "2026-07-10T01:24:04Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "excluded",
+  "item": {
+   "Id": 2108,
+   "Title": "DEE-CAT-S-GCEE-100-104729-26-2  ",
+   "descripcion": "“Rehabilitación y Modernización de los simuladores de operaciones de perforación de pozos” ",
+   "inicio": "2026-07-14T06:00:00Z",
+   "vencimiento": "2027-07-14T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Servicios",
+   "areacontratante": "Servicios a la Explotación y Perforación",
+   "Created": "2026-07-15T00:10:11Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PEP",
+  "expected": "standard",
+  "item": {
+   "Id": 2085,
+   "Title": "18575004-504-15",
+   "descripcion": "Servicio de Reactivación de Pozos Cerrados en el Activo de Producción Poza Rica-Altamira, Área Poza Rica.   (Reposición de Fallo)",
+   "inicio": "2026-06-01T06:00:00Z",
+   "vencimiento": "2027-06-01T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Servicios",
+   "areacontratante": "Producción",
+   "Created": "2026-06-01T17:27:45Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "standard",
+  "item": {
+   "Id": 8610,
+   "Title": "DTE-CAI-B-GCTEL-4-107323-282-26-1",
+   "descripcion": "Adquisición de Válvulas de Seguridad",
+   "inicio": "2026-09-17T06:00:00Z",
+   "vencimiento": "2028-09-17T06:00:00Z",
+   "tipoevento": "Internacional",
+   "tiposuministro": null,
+   "areacontratante": "Producción, Comercialización y Confiabilidad",
+   "Created": "2026-09-17T19:10:23Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "excluded",
+  "item": {
+   "Id": 8611,
+   "Title": "DTE-CAI-B-GCTEL-3-105605-281-26-1",
+   "descripcion": "Tarjetas de control para arrancadores suaves de compresores de gas residual y refrigeración",
+   "inicio": "2026-09-18T06:00:00Z",
+   "vencimiento": "2028-09-18T06:00:00Z",
+   "tipoevento": "Internacional",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Producción, Comercialización y Confiabilidad",
+   "Created": "2026-09-18T18:35:14Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "excluded",
+  "item": {
+   "Id": 8616,
+   "Title": "SNR-MAD-270-CA-B-2026",
+   "descripcion": "ADQUISICIÓN DE BOMBA HIDROLAVADORA CON CAPACIDAD DE 40,000 LBS PARA ATENCIÓN DE TRABAJOS EN TALLER DE CAMBIADORES DE CALOR DE LA REFINERÍA MADERO.",
+   "inicio": "2026-09-24T06:00:00Z",
+   "vencimiento": "2028-09-24T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Proyectos",
+   "Created": "2026-09-24T18:59:36Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "standard",
+  "item": {
+   "Id": 8594,
+   "Title": "DPI-CAI-B-GCTEL-4-106996-260-26-1",
+   "descripcion": "Adquisición de Cambiador de Calor E-561 para UDAs Planta de Glicoles",
+   "inicio": "2026-09-02T06:00:00Z",
+   "vencimiento": "2028-09-02T06:00:00Z",
+   "tipoevento": "Internacional",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Producción, Comercialización y Confiabilidad",
+   "Created": "2026-09-03T00:10:59Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "excluded",
+  "item": {
+   "Id": 8614,
+   "Title": "SNR-CON-116-CA-B-2026",
+   "descripcion": "ADQUISICIÓN DE CAMIÓN TIPO VOLTEO PARA USARSE EN EL TALLER DE TRANSPORTACIÓN DE LA REFINERÍA MADERO Y ADQUISICIÓN DE RETROEXCAVADORA, CAMIONES DE 3.5 TONELADAS Y CAMIÓN CON PLATAFORMA Y BRAZO ARTICULADO PARA USARSE EN LA REFINERÍA MADERO.",
+   "inicio": "2026-09-23T06:00:00Z",
+   "vencimiento": "2028-09-23T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Proyectos",
+   "Created": "2026-09-23T17:00:05Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "standard",
+  "item": {
+   "Id": 8613,
+   "Title": "DPI-CAT-B-GCTEL-3-104809-285-26-2",
+   "descripcion": "ACEITES INDUSTRIALES PARA PLANTAS DE PROCESO",
+   "inicio": "2026-09-22T06:00:00Z",
+   "vencimiento": "2030-09-22T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Producción, Comercialización y Confiabilidad",
+   "Created": "2026-09-22T18:00:18Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "standard",
+  "item": {
+   "Id": 8604,
+   "Title": "DPI-CAT-B-GCTEL-4-104818-263-26-2",
+   "descripcion": "ALQUILUROS PARA PLANTA DE POLIETILENO",
+   "inicio": "2026-09-08T06:00:00Z",
+   "vencimiento": "2028-09-08T06:00:00Z",
+   "tipoevento": "Internacional bajo TLC",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Producción, Comercialización y Confiabilidad",
+   "Created": "2026-09-09T01:06:02Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "excluded",
+  "item": {
+   "Id": 8589,
+   "Title": "DPI-CAI-B-GCTEL-3-106709-253-26-1",
+   "descripcion": "Adquisición de reactivos para laboratorio para el Complejo Petroquímico Cangrejera",
+   "inicio": "2026-08-31T06:00:00Z",
+   "vencimiento": "2028-08-31T06:00:00Z",
+   "tipoevento": "Internacional",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Producción, Comercialización y Confiabilidad",
+   "Created": "2026-09-01T00:22:15Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "standard",
+  "item": {
+   "Id": 8603,
+   "Title": "SNR-SAL-130-CA-B-2026",
+   "descripcion": "ADQUISICIÓN DE HACES DE TUBOS PARA LOS CONDENSADORES 55C DE LA PLANTA FCC EN LA REFINERÍA SALAMANCA",
+   "inicio": "2026-09-08T06:00:00Z",
+   "vencimiento": "2028-09-08T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Proyectos",
+   "Created": "2026-09-08T20:07:17Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "standard",
+  "item": {
+   "Id": 8601,
+   "Title": "DTE-CAN-O-GCTEL-2-107514-265-26-1",
+   "descripcion": "Reparación mayor de planta criogénica 2",
+   "inicio": "2026-09-07T06:00:00Z",
+   "vencimiento": "2029-09-07T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Obra pública",
+   "areacontratante": "Proyectos",
+   "Created": "2026-09-08T00:17:48Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "excluded",
+  "item": {
+   "Id": 8595,
+   "Title": "DTE-CAN-O-GCTEL-2-107383-251-26-1",
+   "descripcion": "Acondicionamiento de muros contrafuego entre transformadores de potencia de la Subestación Eléctrica No. 1 (REASEGURO), del Complejo Procesador de Gas La Venta",
+   "inicio": "2026-09-03T06:00:00Z",
+   "vencimiento": "2029-09-03T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Obra pública",
+   "areacontratante": "Producción, Comercialización y Confiabilidad",
+   "Created": "2026-09-03T15:53:42Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "excluded",
+  "item": {
+   "Id": 8596,
+   "Title": "DTE-CAN-S-GCTEL-4-107263-264-26-1",
+   "descripcion": "REHABILITACIÓN DEL TURBOGENERADOR TG-5",
+   "inicio": "2026-09-03T06:00:00Z",
+   "vencimiento": "2028-09-03T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Servicios",
+   "areacontratante": "Producción, Comercialización y Confiabilidad",
+   "Created": "2026-09-03T20:04:14Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "excluded",
+  "item": {
+   "Id": 8600,
+   "Title": "SNR-CAD-274-CA-B-2026",
+   "descripcion": "ADQUISICIÓN DE ESPÁRRAGOS DE LA REFINERÍA CADEREYTA.",
+   "inicio": "2026-09-07T06:00:00Z",
+   "vencimiento": "2027-09-07T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Proyectos",
+   "Created": "2026-09-07T19:40:32Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "standard",
+  "item": {
+   "Id": 8582,
+   "Title": "SNR-CAD-270-CA-B-2026",
+   "descripcion": "ADQUISICIÓN DE ALÚMINAS DEFLOURINADORAS, ALÚMINAS SOPORTES Y ANILLOS ABATIDORES PARA LA PLANTA DE ALQUILACIÓN DE LA REFINERÍA CADEREYTA.",
+   "inicio": "2026-08-27T06:00:00Z",
+   "vencimiento": "2027-08-27T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Proyectos",
+   "Created": "2026-08-27T19:52:57Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "excluded",
+  "item": {
+   "Id": 8579,
+   "Title": "SNR-MAD-250-CA-B-2026",
+   "descripcion": "ADQUISICIÓN DE CARBÓN ACTIVADO PARA PLANTAS DE PROCESO GIRBOTOL DE LA REFINERÍA MADERO.",
+   "inicio": "2026-08-27T06:00:00Z",
+   "vencimiento": "2028-08-27T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Proyectos",
+   "Created": "2026-08-27T19:13:39Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "excluded",
+  "item": {
+   "Id": 8417,
+   "Title": "DPI-CAI-B-GCTEL-2-107202-185-26-1",
+   "descripcion": "ADQUISICIÓN DE DISCOS DE RUPTURA PARA TORRES DE PROCESO Y CAMBIADORES DE CALOR",
+   "inicio": "2026-07-03T06:00:00Z",
+   "vencimiento": "2028-07-03T06:00:00Z",
+   "tipoevento": "Internacional",
+   "tiposuministro": "Bienes",
+   "areacontratante": "Producción, Comercialización y Confiabilidad",
+   "Created": "2026-07-03T16:42:51Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-Abiertos-PTI",
+  "expected": "standard",
+  "item": {
+   "Id": 8545,
+   "Title": "SNR-MAD-236-CA-O-2026",
+   "descripcion": "REHABILITACIÓN DEL TANQUE MJA-T-18 DE GASÓLEOS DE COQUER DE 55,000 BARRILES DE CAPACIDAD DE LA REFINERÍA MADERO.",
+   "inicio": "2026-08-12T06:00:00Z",
+   "vencimiento": "2028-08-12T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Obra pública",
+   "areacontratante": "Proyectos",
+   "Created": "2026-08-12T19:54:35Z",
+   "Attachments": true
+  }
+ },
+ {
+  "list": "Concursos-e-invitaciones",
+  "expected": "excluded",
+  "item": {
+   "Id": 634,
+   "Title": "DAS-CAN-S-GCSS-JAGM-107505-2026",
+   "descripcion": "Mantenimiento preventivo y correctivo a los equipos biomédicos de las Unidades Médicas de Petróleos Mexicanos",
+   "inicio": "2026-08-26T06:00:00Z",
+   "vencimiento": "2030-08-26T06:00:00Z",
+   "tipoevento": "Nacional",
+   "tiposuministro": "Servicios",
+   "areacontratante": "Servicios de Soporte",
+   "Created": "2026-08-27T05:50:58Z",
+   "Attachments": true
+  }
+ }
+]

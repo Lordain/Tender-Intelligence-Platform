@@ -21,6 +21,7 @@ type PullResult = {
   documentsSkippedPostAward?: number;
   documentsFoundViaNoticeUid?: number;
   documentsFoundViaIdDelProceso?: number;
+  documentsFoundViaPortfolio?: number;
 };
 
 type RefreshResult = {
@@ -223,10 +224,10 @@ export function ImportColombiaForm() {
               {pullResult.documentsMetadataRowsFound === 0 && !pullResult.documentsFailed
                 ? "。返回 0 条说明这批项目在附件元数据数据集里暂时查不到对应记录（可能是刚发布还没归档，也可能是 id 对不上），不是下载失败。"
                 : ""}
-              {pullResult.documentsFoundViaNoticeUid || pullResult.documentsFoundViaIdDelProceso ? (
+              {pullResult.documentsFoundViaPortfolio || pullResult.documentsFoundViaNoticeUid || pullResult.documentsFoundViaIdDelProceso ? (
                 <>
                   {" "}
-                  （其中 {pullResult.documentsFoundViaNoticeUid ?? 0} 条项目通过 noticeUID 匹配到，{pullResult.documentsFoundViaIdDelProceso ?? 0} 条通过 id_del_proceso 匹配到）
+                  （其中 {pullResult.documentsFoundViaPortfolio ?? 0} 条项目通过 id_del_portafolio 匹配到，{pullResult.documentsFoundViaNoticeUid ?? 0} 条通过 noticeUID 匹配到，{pullResult.documentsFoundViaIdDelProceso ?? 0} 条通过 id_del_proceso 匹配到）
                 </>
               ) : (
                 ""

@@ -57,6 +57,8 @@ export type IngestColombiaResult = {
   /** How many candidates got a metadata match via the noticeUID parsed from their own sourceUrl vs. the older id_del_proceso fallback — see extractNoticeUidFromUrl's header comment (2026-09-04 finding). */
   documentsFoundViaNoticeUid?: number;
   documentsFoundViaIdDelProceso?: number;
+  /** Matched via id_del_portafolio (CO1.BDOS.*) — the id dmgg-8hin actually files documents under (2026-09-25). */
+  documentsFoundViaPortfolio?: number;
   /**
    * Dry-run only (write: false). What a real run WOULD do, computed by
    * applying upsertTendersBatched's own two gates — both pure functions over
@@ -212,7 +214,7 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
   }
 
   const documentCandidates = kept.filter(
-    (m) => idBySlug.has(m.tender.slug) && (m.row.id_del_proceso || extractNoticeUidFromUrl(m.row.urlproceso?.url)),
+    (m) => idBySlug.has(m.tender.slug) && (m.row.id_del_portafolio || m.row.id_del_proceso || extractNoticeUidFromUrl(m.row.urlproceso?.url)),
   );
   result.documentsCandidateTenders = documentCandidates.length;
 
@@ -231,6 +233,7 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
   let documentsSkippedPostAward = 0;
   let documentsFoundViaNoticeUid = 0;
   let documentsFoundViaIdDelProceso = 0;
+  let documentsFoundViaPortfolio = 0;
 
   // One-time diagnostic (2026-09-04, after the first real bulk run came
   // back with 0 metadata rows for all 499 candidates): print a few real
@@ -257,25 +260,29 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
 
   for (const { row, tender } of documentCandidates) {
     const tenderId = idBySlug.get(tender.slug)!;
-    // Try the real noticeUID (parsed from this tender's own sourceUrl)
-    // FIRST — see extractNoticeUidFromUrl's header comment for why this is
-    // now believed more likely correct than id_del_proceso. Falls back to
-    // id_del_proceso only if the noticeUID lookup comes back empty (or
-    // there's no noticeUID to try), same two-attempt-max cost either way.
+    // id_del_portafolio FIRST (2026-09-25). The archivos dataset's
+    // `proceso` column holds CO1.BDOS.* ids, and that is exactly what the
+    // process dataset carries as id_del_portafolio: 40 of 40 recent
+    // licitaciones matched on it, while the noticeUID (CO1.NTC.*) and
+    // id_del_proceso (CO1.REQ.*) lookups tried before it matched 0 of 40 —
+    // which is why Colombian tenders kept landing in 待补文件. The older
+    // two stay as fallbacks; they cost a request only when the first misses.
     const noticeUid = extractNoticeUidFromUrl(row.urlproceso?.url);
-    const procesoIdCandidates = [...new Set([noticeUid, row.id_del_proceso].filter((v): v is string => !!v))];
+    const portfolioId = row.id_del_portafolio?.trim();
+    const procesoIdCandidates = [...new Set([portfolioId, noticeUid, row.id_del_proceso].filter((v): v is string => !!v))];
 
     try {
       let docs: Awaited<ReturnType<typeof fetchSecopDocumentsForProcess>> = [];
-      let matchedVia: "noticeUID" | "id_del_proceso" | undefined;
+      let matchedVia: "portfolio" | "noticeUID" | "id_del_proceso" | undefined;
       for (const candidateId of procesoIdCandidates) {
         const attempt = await fetchSecopDocumentsForProcess(candidateId);
         if (attempt.length > 0) {
           docs = attempt;
-          matchedVia = candidateId === noticeUid ? "noticeUID" : "id_del_proceso";
+          matchedVia = candidateId === portfolioId ? "portfolio" : candidateId === noticeUid ? "noticeUID" : "id_del_proceso";
           break;
         }
       }
+      if (matchedVia === "portfolio") documentsFoundViaPortfolio++;
       if (matchedVia === "noticeUID") documentsFoundViaNoticeUid++;
       if (matchedVia === "id_del_proceso") documentsFoundViaIdDelProceso++;
 
@@ -340,8 +347,9 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
   result.documentsSkippedPostAward = documentsSkippedPostAward;
   result.documentsFoundViaNoticeUid = documentsFoundViaNoticeUid;
   result.documentsFoundViaIdDelProceso = documentsFoundViaIdDelProceso;
+  result.documentsFoundViaPortfolio = documentsFoundViaPortfolio;
   console.log(
-    `  [diag] metadata rows matched via noticeUID: ${documentsFoundViaNoticeUid} candidate(s); via id_del_proceso: ${documentsFoundViaIdDelProceso} candidate(s).`,
+    `  [diag] metadata rows matched via id_del_portafolio: ${documentsFoundViaPortfolio} candidate(s); via noticeUID: ${documentsFoundViaNoticeUid}; via id_del_proceso: ${documentsFoundViaIdDelProceso}.`,
   );
 
   return result;

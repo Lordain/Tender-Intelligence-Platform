@@ -139,3 +139,22 @@ export async function fetchSecopProcesosByReference(references: string[]): Promi
 
   return rows;
 }
+
+/**
+ * One process by its SECOP id, only the two fields the 待补文件 official-
+ * files list needs: the portfolio id its documents are filed under, and
+ * `urlproceso` — in case SECOP has published the public page since the
+ * last refresh.
+ */
+export async function fetchSecopProcesoById(idDelProceso: string): Promise<Pick<SecopProcesoRow, "id_del_portafolio" | "urlproceso"> | undefined> {
+  const url = new URL(SECOP_BASE_URL);
+  url.searchParams.set("id_del_proceso", idDelProceso);
+  url.searchParams.set("$select", "id_del_portafolio,urlproceso");
+  url.searchParams.set("$limit", "1");
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!response.ok) {
+    throw new Error(`SECOP procesos API responded ${response.status} ${response.statusText} for id_del_proceso=${idDelProceso}`);
+  }
+  const rows = (await response.json()) as Pick<SecopProcesoRow, "id_del_portafolio" | "urlproceso">[];
+  return rows[0];
+}

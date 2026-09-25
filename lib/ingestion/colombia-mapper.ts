@@ -1,6 +1,7 @@
 import type { GovernmentLevel, Tender, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
+import { secopProcessApiUrl } from "@/lib/secop-links";
 
 /**
  * One row from Colombia's real "SECOP II - Procesos de Contratación"
@@ -39,6 +40,13 @@ export type SecopProcesoRow = {
   ciudad_entidad?: string;
   ordenentidad?: string; // "Nacional" | "Territorial"
   id_del_proceso?: string;
+  /**
+   * "CO1.BDOS.*" — the id the archivos-metadata dataset (dmgg-8hin) files
+   * documents under, in its `proceso` column. Measured 2026-09-25 on 40
+   * recent licitaciones: this matched all 40; the noticeUID and
+   * id_del_proceso lookups matched none.
+   */
+  id_del_portafolio?: string;
   referencia_del_proceso?: string;
   nombre_del_procedimiento?: string;
   descripci_n_del_procedimiento?: string;
@@ -590,7 +598,7 @@ export function mapSecopRowToTender(
     // back to the datos.gov.co API link instead of storing a dead-end.
     sourceUrl: extractNoticeUidFromUrl(row.urlproceso?.url)
       ? row.urlproceso!.url!
-      : `https://www.datos.gov.co/resource/p6dx-8zbt.json?id_del_proceso=${row.id_del_proceso}`,
+      : secopProcessApiUrl(row.id_del_proceso),
     createdAt: now,
     updatedAt: now,
   };

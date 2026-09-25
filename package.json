@@ -51,6 +51,7 @@
     "test:relevance": "tsx scripts/test-relevance.ts",
     "test:download": "tsx scripts/test-download-file.ts",
     "test:extraction-pipeline": "tsx scripts/test-extraction-pipeline.ts",
+    "test:secop-links": "tsx scripts/test-secop-links.ts",
     "test:colombia-titles": "tsx scripts/test-colombia-titles.ts",
     "test:colombia-modalidad-gate": "tsx scripts/test-colombia-modalidad-gate.ts",
     "test:ingest-window": "tsx scripts/test-ingest-window.ts",

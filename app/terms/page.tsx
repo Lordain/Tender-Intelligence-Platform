@@ -1,5 +1,7 @@
 import { PolicyPage, type PolicySection } from "@/components/content/PolicyPage";
 import { LEGAL_CONTACT_EMAIL, LEGAL_OPERATOR_ADDRESS, LEGAL_OPERATOR_NAME } from "@/lib/legal";
+import { TRIAL_DAYS } from "@/lib/access-control";
+import { MAX_ACTIVE_DEVICES } from "@/lib/account-devices";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 
@@ -12,12 +14,13 @@ export const metadata: Metadata = pageMetadata({
 
 const sections: PolicySection[] = [
   { id: "scope", title: "服务范围", paragraphs: ["本信息平台对公开招标信息进行汇集、翻译、分类与结构化展示，帮助用户发现和评估潜在机会。本站不是采购机构、招标代理或官方投标系统，不受理投标文件、不代办投标，也不代表任何政府部门。用户参与项目时，必须前往项目标明的官方渠道核验要求并完成正式投标流程。"] },
-  { id: "account", title: "账户与使用责任", paragraphs: ["用户应提供真实、有效的账户信息，并妥善保护登录凭证。用户对通过其账户进行的操作及对平台信息的使用承担责任。"], items: ["不得以违法、欺诈或干扰平台正常运行的方式使用服务。", "不得绕过访问控制、批量抓取受限内容或损害其他用户权益。", "发现账户被未经授权使用时，应及时联系平台运营方。"] },
+  { id: "account", title: "账户与使用责任", paragraphs: ["用户应提供真实、有效的账户信息，并妥善保护登录凭证。用户对通过其账户进行的操作及对平台信息的使用承担责任。", `每个账户仅供注册用户本人使用，同一账户最多可在 ${MAX_ACTIVE_DEVICES} 台设备（浏览器）上同时保持登录；在新设备登录超出该数量时，最久未使用的设备将自动退出登录。团队使用请选择专业企业版，为每位成员开设独立账户。`], items: ["不得将账户转让、出借或与他人共享使用。", "不得以违法、欺诈或干扰平台正常运行的方式使用服务。", "不得绕过访问控制、批量抓取受限内容或损害其他用户权益。", "发现账户被未经授权使用时，应及时联系平台运营方。"] },
   { id: "information", title: "信息准确性与更新", paragraphs: ["平台尽力保持信息准确和及时，但公开来源可能出现延迟、更正、撤回或访问限制。中文标题、摘要和分析属于辅助性整理，不应替代原始文件。", "用户在投标、签约或作出资金投入前，应自行核实资格要求、截止日期、金额、税务、合规与技术条款。"] },
   {
     id: "subscription",
     title: "订阅与付款",
     paragraphs: [
+      `新注册账户自动获得 ${TRIAL_DAYS} 天全功能免费试用，无需绑定银行卡；试用期满后不会自动扣费，未订阅的账户转为免费版，可继续浏览免费开放的内容。`,
       "部分功能为月度付费订阅服务，具体方案、总价、币种和适用税费以确认付款前的订阅页面为准。银行卡订阅以美元（USD）计价；墨西哥境内 SPEI 转账以页面明确显示的墨西哥比索（MXN）金额为准；人工国际电汇仅接受页面和工作人员确认的美元（USD）金额，不应由用户自行换算币种。",
       "银行卡订阅会按所选周期自动续费，并在结账前明确显示周期、金额和预计扣款安排。依法适用时，平台将在自动续费日前至少五个自然日发送提醒，并提供无罚取消方式。SPEI 或人工国际电汇不会仅因提交申请或汇款资料而自动开通；须以实际足额到账及平台确认结果为准。",
       "用户可通过账户页面取消自动续费。取消请求立即生效，不再产生下一周期扣费；除非页面另有明确说明，当前已付费访问权限通常保留至本周期结束。",
@@ -60,5 +63,5 @@ const sections: PolicySection[] = [
 ];
 
 export default function TermsPage() {
-  return <PolicyPage eyebrow="Legal" title="服务条款" intro="本条款说明平台提供什么、用户如何使用信息，以及双方责任的基本边界。" updated="2026年9月11日" sections={sections} />;
+  return <PolicyPage eyebrow="Legal" title="服务条款" intro="本条款说明平台提供什么、用户如何使用信息，以及双方责任的基本边界。" updated="2026年9月25日" sections={sections} />;
 }

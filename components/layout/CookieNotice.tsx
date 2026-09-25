@@ -76,7 +76,7 @@ export function CookieNotice() {
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-3 rounded-2xl border border-white/10 bg-[#061b2b] px-5 py-4 text-white shadow-[0_20px_50px_-24px_rgba(6,27,43,.9)] sm:flex-row sm:items-center sm:gap-5">
         <p className="text-xs leading-6 text-white/78">
-          本站使用维持登录所必需的 Cookie，并用浏览器本地存储保存统计标识、收藏和搜索设置。
+          本站使用维持登录所必需的 Cookie，并用浏览器本地存储保存统计标识、设备标识、收藏和搜索设置。
           <span className="text-white/58">不使用广告或跨站追踪类 Cookie。</span>{" "}
           <Link href="/cookies" className="font-bold text-[#ffb21c] underline-offset-4 hover:underline">
             查看 Cookie 政策

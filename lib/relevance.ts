@@ -1129,6 +1129,21 @@ const MAINTENANCE_ONLY_KEYWORDS = [
   // no-industry/no-value gate — which meant the same title WITH an
   // industry tag survived as a maintenance job.
   /\bmantenimiento\b|\bmtto\b|\bmantto\b|\bmto\b|servicio t[ée]cnico (preventivo|correctivo)/i,
+  // The same word in the other two languages the platform imports
+  // (2026-09-25, user: 维护类都不要). The list above was written from Mexican
+  // titles and never matched Chile's "mantención" or Brazil's "manutenção" —
+  // "SERVICIO DE MANTENCIÓN DE ALUMBRADO PÚBLICO" and "MANUTENCAO EM DIVERSOS
+  // LOCAIS DA MALHA VIARIA DO MUNICIPIO DE LIMEIRA" are both real rows that
+  // got through. Brazil's word only works because NEW_BUILD_OR_PURCHASE and
+  // CONCESSION_FRAMING learned Portuguese in the same change; without that a
+  // "construção e manutenção" framework would be dropped on its last word.
+  /\bmantenci[óo]n(es)?\b|\bmanuten[çc][ãa]o\b/i,
+  // Road upkeep written as "conservación"/"conservação" rather than
+  // maintenance — the Chilean MOP and Mexican state road agencies both do.
+  // Tied to a road or pavement noun, or to the upkeep adjectives, because
+  // bare "conservación" is also the environmental word ("RESTAURACIÓN Y
+  // CONSERVACIÓN DE ÁREAS AMBIENTALES ESTRATÉGICAS" is a real kept row).
+  /conservaci[óo]n\s+(rutinaria|peri[óo]dica|global|preventiva|de\s+(la\s+|las\s+|los\s+)?(carreteras?|caminos?|red(es)? vial(es)?|pavimentos?|vias?))|conserva[çc][ãa]o\s+(rotineira|peri[óo]dica|preventiva|de\s+(rodovias?|estradas?|pavimentos?|vias?))/i,
   // Fixing PARTS of a machine that is already installed and running — the
   // same class as upkeep, in the words a repair order actually uses
   // (2026-09-18, per the user, 电力维修): "CONTRATACIÓN DE SERVICIO DE
@@ -1191,8 +1206,13 @@ const MAINTENANCE_ONLY_KEYWORDS = [
  * spare-parts stock — exactly the opportunity the original rule judged a
  * foreign bidder cannot take.
  */
-const CONCESSION_FRAMING = /concesi[óo]n|asociaci[óo]n(es)? p[úu]blico[\s-]?privadas?|\bapp\s+de\s+infraestructura\b/i;
-const BUILD_OBJECT = /construcci[óo]n|dise[ñn]o y construcci[óo]n|rehabilitaci[óo]n|ampliaci[óo]n|modernizaci[óo]n|doble calzada/i;
+// Portuguese halves added 2026-09-25 alongside "manutenção" — see
+// MAINTENANCE_ONLY_KEYWORDS. The haystack is accent-folded, so "concessão"
+// arrives as "concessao" and never matched the Spanish "concesi…".
+const CONCESSION_FRAMING =
+  /concesi[óo]n|asociaci[óo]n(es)? p[úu]blico[\s-]?privadas?|\bapp\s+de\s+infraestructura\b|concess[ãa]o|parceria p[úu]blico[\s-]?privada|\bppp\b/i;
+const BUILD_OBJECT =
+  /construcci[óo]n|dise[ñn]o y construcci[óo]n|rehabilitaci[óo]n|ampliaci[óo]n|modernizaci[óo]n|doble calzada|constru[çc][ãa]o|amplia[çc][ãa]o|moderniza[çc][ãa]o|reabilita[çc][ãa]o|duplica[çc][ãa]o/i;
 
 /**
  * The OTHER thing "mantenimiento" must not swallow: a bundled works or supply
@@ -1222,7 +1242,8 @@ const BUILD_OBJECT = /construcci[óo]n|dise[ñn]o y construcci[óo]n|rehabilitac
  * `reconstrucción`, `adquisición`, `instalación` and `ampliación` name
  * something that did not exist before. Only the second group gets past.
  */
-const NEW_BUILD_OR_PURCHASE = /construcci[óo]n|reconstrucci[óo]n|adquisici[óo]n|instalaci[óo]n|ampliaci[óo]n|doble calzada/i;
+const NEW_BUILD_OR_PURCHASE =
+  /construcci[óo]n|reconstrucci[óo]n|adquisici[óo]n|instalaci[óo]n|ampliaci[óo]n|doble calzada|constru[çc][ãa]o|reconstru[çc][ãa]o|aquisi[çc][ãa]o|instala[çc][ãa]o|implanta[çc][ãa]o|amplia[çc][ãa]o|duplica[çc][ãa]o/i;
 
 /** A build-and-operate concession, not routine upkeep — see CONCESSION_FRAMING. */
 function isConcessionWithBuildScope(haystack: string): boolean {

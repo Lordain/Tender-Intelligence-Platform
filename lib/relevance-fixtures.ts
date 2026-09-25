@@ -2435,7 +2435,7 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "MANTENCIÓN PREVENTIVA Y CORRECTIVA EQUIPOS MÉDICOS",
     expectedTier: "excluded",
-    note: "Real row, chile-552975-75-co26, deleted by the user 2026-09-24. Upkeep of equipment the buyer already owns. 'Mantención' is the Chilean word; MAINTENANCE_ONLY_KEYWORDS was written for Mexico's 'mantenimiento' and never saw it.",
+    note: "Real row, chile-552975-75-co26, deleted by the user 2026-09-24. Upkeep of equipment the buyer already owns. 'Mantención' is the Chilean word for 'mantenimiento'; MAINTENANCE_ONLY_KEYWORDS did not know it until 2026-09-25, so on the day this was deleted it had to be caught here instead. Either rule now excludes it.",
     country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
   },
   {
@@ -2449,6 +2449,52 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "excluded",
     note: "Real row, comprasmx-aa-50-gyr-050gyr088-n-78-2025, deleted by the user 2026-09-11. What the equipment consumes, not the equipment (我们只做医疗设备). The veto is title-wide for this word, not anchored, because 'consumibles' is never a department name.",
     country: "Mexico", scopeType: "equipment", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  // Upkeep in Portuguese and Chilean Spanish (2026-09-25, user: 维护类都不要).
+  // The first three are what the rule is for; the next three are what it
+  // must not take, each saved by a Portuguese build word the guard had to
+  // learn in the same change.
+  {
+    title: "MANUTENCAO EM DIVERSOS LOCAIS DA MALHA V IARIA DO MUNICIPIO DE LIMEIRA",
+    expectedTier: "excluded",
+    note: "Real row, PNCP 45132495000140-1-000670/2026, R$26.5M, stored 中型. Road upkeep across a municipal network. It got through only because 'manutenção' was not a word the maintenance list knew.",
+    country: "Brazil", scopeType: "services", governmentLevel: "municipal", industries: ["general"], estimatedValue: 26_539_470.13, currency: "BRL",
+  },
+  {
+    title: "Registro de preços para contratação eventual e futura de empresa de engenharia para execução de serviços de manutenção e conservação de estradas vicinais localizadas nos municípios do Estado do Maranhão, com fornecimento de todos os materiais, equipamentos, ferramentas e mão de obra, mediante execução sob demanda deflagrada por ordem de serviço, com o objeto parcelado em 6 (seis) lotes regionais.",
+    expectedTier: "excluded",
+    note: "Real row, PNCP 24393108000150-1-000126/2026, R$445M, stored 大型. The biggest row this rule removes, and the reason it is worth pinning: the maintenance list is value-blind by design, so a very large upkeep framework goes the same way as a small one. 维护类都不要 was said without a size.",
+    country: "Brazil", scopeType: "works", governmentLevel: "state", industries: ["transportation"], estimatedValue: 445_000_000, currency: "BRL",
+  },
+  {
+    title: "Registro de Preços para futura e eventual contratação de empresa especializada para execução de serviços de engenharia voltados à manutenção, conservação, recuperação e melhoria da infraestrutura viária urbana e rural dos Municípios Consorciados ao CODAP.",
+    expectedTier: "excluded",
+    note: "Real row, PNCP 08753385000170-1-000019/2026, R$164M, stored 大型. 'Recuperação e melhoria' are work on existing roads, not new ones — the Portuguese counterparts of the rehabilitación/mejoramiento that the Spanish guard deliberately does not accept either.",
+    country: "Brazil", scopeType: "services", governmentLevel: "public_company", industries: ["general"], estimatedValue: 164_342_015.11, currency: "BRL",
+  },
+  {
+    title: "CONCESSÃO ADMINISTRATIVA PARA PRESTAÇÃO DOS SERVIÇOS DE ILUMINAÇÃO PÚBLICA E DE SOLUÇÕES DIGITAIS NO MUNICÍPIO DE LAGOA SANTA -MG, INCLUÍDOS A INSTALAÇÃO, MELHORAMENTO, DESENVOLVIMENTO, MODERNIZAÇÃO, EXPANSÃO, EFICIENTIZAÇÃO ENERGÉTICA, OPERAÇÃO E MANUTENÇÃO DA REDE MUNICIPAL DE ILUMINAÇÃO PÚBLICA E DAS SOLUÇÕES DIGITAIS",
+    expectedTier: "flagship",
+    note: "Real row, PNCP 73357469000156-1-000145/2026, stored 大型. A PPP street-lighting concession whose scope ends in 'operação e manutenção'. Saved by 'instalação' — before the guard learned Portuguese it could not see either that word or 'concessão'.",
+    country: "Brazil", scopeType: "services", governmentLevel: "municipal", industries: ["power"], estimatedValue: 48_397_098.2, currency: "USD",
+  },
+  {
+    title: "CONTRATAÇÃO DE OBRAS E SERVIÇOS DE ENGENHARIA DESTINADOS À EXECUÇÃO DE MODERNIZAÇÃO, AMPLIAÇÃO E MANUTENÇÃO DO PARQUE DE ILUMINAÇÃO PÚBLICA DO MUNICÍPIO DE ACARÁ/PA",
+    expectedTier: "standard",
+    note: "Real row, PNCP 05196548000172-1-000053/2026, R$17.4M, stored 常规. Saved by 'ampliação' — an expansion builds something that did not exist.",
+    country: "Brazil", scopeType: "works", governmentLevel: "municipal", industries: ["construction", "power"], estimatedValue: 17_367_248.32, currency: "BRL",
+  },
+  {
+    title: "Registro de preços, na forma de licitação compartilhada, para futura e eventual contratação de empresa especializada na execução de obras e serviços de engenharia destinados à implantação, ampliação, recuperação, manutenção e modernização dos sistemas de saneamento básico, drenagem urbana, manejo de águas pluviais, desassoreamento de cursos d'água, recuperação ambiental e obras complementares para atender as demandas dos Municípios Consorciados ao CONSANE.",
+    expectedTier: "flagship",
+    note: "Real row, PNCP 24990099000184-1-000008/2026, R$98M, stored 大型. Saved by 'implantação' and 'ampliação'. The Portuguese twin of the Colombian 'CONSTRUCCION ... CONSERVACION Y/O MANTENIMIENTO' programme the guard was written for.",
+    country: "Brazil", scopeType: "works", governmentLevel: "public_company", industries: ["construction", "water"], estimatedValue: 98_172_766.02, currency: "BRL",
+  },
+  {
+    title: "CONSERVACIÓN DE LA CARRETERA ESTATAL",
+    expectedTier: "excluded",
+    note: "Real row, comprasmx-lo-87-y03-928010997-n-108-2026, deleted by the user 2026-09-24. Road upkeep called 'conservación'. The environmental 'RESTAURACIÓN Y CONSERVACIÓN DE ÁREAS AMBIENTALES ESTRATÉGICAS' in the kept set is why the rule needs a road noun after the word.",
+    country: "Mexico", scopeType: "works", governmentLevel: "state", industries: ["transportation"],
   },
   {
     title: "AMPLIACIÓN Y MODERNIZACIÓN DEL SISTEMA DE VIDEOVIGILANCIA DE LA CIUDAD",

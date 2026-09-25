@@ -89,7 +89,20 @@ export function CronogramaPasteForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ pasted, preview: isPreview, fichaUrl }),
       });
-      const data = await response.json();
+      // A dev server that is recompiling, or a route that crashed, answers
+      // with Next's HTML error page — reading that as JSON surfaced as
+      // "Unexpected token '<', \"<!DOCTYPE \"… is not valid JSON", which says
+      // nothing about what to do (reported 2026-09-25).
+      const text = await response.text();
+      let data: { error?: string } & Record<string, unknown>;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(
+          `服务器返回了 HTTP ${response.status}，而且不是正常的数据（是一个网页）。` +
+            "本地开发时多半是开发服务器出错或需要重启：看运行 npm run dev 的终端里的报错，Ctrl+C 后重新 npm run dev 再试。",
+        );
+      }
       if (!response.ok) throw new Error(data.error ?? "请求失败");
       if (isPreview) setPreview(data as Preview);
       else {

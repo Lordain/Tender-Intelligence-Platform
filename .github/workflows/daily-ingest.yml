@@ -103,6 +103,11 @@ jobs:
           # one public request. See scripts/cron-petronect.ts.
           - name: Petrobras (Petronect)
             command: cron:petronect
+          # Added 2026-09-25. Colombia's transmission-expansion calls (investor
+          # selection for new substations and lines) — UPME's own process, not
+          # on SECOP. See scripts/cron-upme.ts.
+          - name: Colombia (UPME transmission)
+            command: cron:upme
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v7

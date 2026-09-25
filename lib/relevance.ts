@@ -2743,6 +2743,12 @@ const FEDERAL_CONCESSION_AUCTION_PROCEDURES = [
   /leil[ãa]o\s+de\s+transmiss[ãa]o/i,
   /leil[ãa]o\s+de\s+gera[çc][ãa]o/i,
   /leil[ãa]o\s+de\s+reserva\s+de\s+capacidade/i,
+  // Colombia's UPME transmission calls (2026-09-25): the investor designs,
+  // supplies, builds and operates a piece of the national or regional grid
+  // for a regulated annuity — the same long-term grid concession as an ANEEL
+  // transmission lot, and just as silent about its amount. Only
+  // lib/ingestion/upme-mapper.ts writes this procedure.
+  /selecci[óo]n\s+de\s+inversionista/i,
 ];
 
 /** Exported for the same reason isPriceOnlyAuction is. */

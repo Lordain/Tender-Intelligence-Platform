@@ -8763,3 +8763,22 @@ OCDS 那扇门**保持原样、继续可用**，正是因为它是相反的东�
 全站规则在写入时跳过。回归样本：41 条真实项目，`npm run test:petronect`。
 
 每日任务：`npm run cron:petronect`（daily-ingest.yml），心跳 `import-petronect`。
+
+## 哥伦比亚 UPME 输电项目：WordPress 接口直接给，但「开放」标签不可信（2026-09-25）
+
+UPME 按项目选投资人（设计、供货、建设、运营国家/区域电网的一段），不走 SECOP，
+和 ANEEL 输电拍卖是同一类项目。upme.gov.co 是 WordPress，`convocatorias` 这个自定义
+文章类型直接开放在 `/wp-json/wp/v2/convocatorias`，按 `estado_convocatoria`
+（283 = Abierta oficialmente，287 = Prepublicación）过滤，一次请求全部拿到。
+
+**标签不等于阶段**：当天标为开放/预公告的 16 条里，只有 4 条还能投。其余有的已经挂了
+授标纪要（02-2025、04-2024…），有的开过投资人开标会（02-2026），有的宣布流标
+（10-2021），4 条预公告还是 2018–2019 年的。所以阶段从页面上的会议纪要读
+（`upmeCallStage`）：只要出现投资人侧的开标、评标、反报价、授标或流标，就不再导入。
+监理（interventor）的招标是另一条更早的线，不算。
+
+没有截止日：在 DSI 的时间表 PDF 里，补充文件还会改。DSI 和所有补充文件都存成文件链接，
+留给文件关键日期提取去读。档位：`Selección de Inversionista` 加进了
+`FEDERAL_CONCESSION_AUCTION_PROCEDURES`，与 ANEEL 输电拍卖同一条规则，都是大型项目。
+
+每日任务：`npm run cron:upme`，心跳 `import-upme`；测试 `npm run test:upme`。

@@ -6,6 +6,7 @@ import { INDUSTRY_LABELS } from "@/lib/tender-labels";
 import Link from "next/link";
 import type { TenderCardData } from "@/lib/tender-card";
 import { formatDate } from "@/lib/format";
+import { DEADLINE_IN_DOCUMENTS_LABEL } from "@/lib/deadline-labels";
 import { useLocale } from "@/lib/i18n";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { countryLabel } from "@/lib/tender-labels";
@@ -135,7 +136,7 @@ function TenderPreview({ tenders }: { tenders: TenderCardData[] }) {
                 </span>
                 <p className="line-clamp-2 text-xs font-bold leading-5 text-black xl:text-sm">{tender.titleZh}</p>
                 <p className="text-right text-[10px] font-bold text-[#071826] xl:text-xs">
-                  {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "未提供"}
+                  {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : tender.deadlineInDocuments ? DEADLINE_IN_DOCUMENTS_LABEL : "未提供"}
                 </p>
               </div>
             ))}

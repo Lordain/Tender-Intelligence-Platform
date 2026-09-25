@@ -417,6 +417,8 @@ export type PublicTenderDetail = Pick<
   publicSlug: string;
   titleZh: string;
   summaryZh: string;
+  /** The bid date is in the bid documents (lib/deadline-in-documents.ts): show 见招标文件, not 未提供. */
+  deadlineInDocuments?: true;
   /** A USD range containing the real budget, or null when there is none to show. */
   estimatedValueBand: string | null;
   /**

@@ -23,7 +23,8 @@ export type CronJobId =
   | "import-petronect"
   | "import-upme"
   | "import-codelco"
-  | "import-cemig";
+  | "import-cemig"
+  | "import-petroperu";
 
 export type CronJobSpec = {
   id: CronJobId;
@@ -57,6 +58,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-upme", label: "哥伦比亚 UPME 输电项目自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-codelco", label: "Codelco 公开招标自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-cemig", label: "巴西 Cemig 电力公司自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-petroperu", label: "秘鲁 Petroperú 国际招标自动导入", maxAgeHours: 30, runsOn: "github-actions" },
 ];
 
 export type CronHeartbeatStatus = "ok" | "skipped" | "failed";

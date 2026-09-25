@@ -3,6 +3,7 @@ import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
 import { undisclosedAmountBand } from "@/lib/chile-amount-band";
 import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
+import { deadlineIsInDocuments } from "@/lib/deadline-in-documents";
 import { GENERIC_PUBLIC_SUMMARY, publicSummaryOf, publicTitleOf, shortTitleOf } from "@/lib/public-title";
 
 /**
@@ -49,6 +50,8 @@ export type TenderCardData = Pick<
    * in a platform whose whole value is knowing where to look.
    */
   isObrasPorImpuestos: boolean;
+  /** The bid date is in the bid documents (lib/deadline-in-documents.ts): show 见招标文件, not 未提供. */
+  deadlineInDocuments?: true;
   publicSlug: string;
   /** Always safe Chinese display copy — never a mirrored source title. */
   titleZh: string;
@@ -247,5 +250,6 @@ export function toTenderCardData(
       }
       : {}),
     isObrasPorImpuestos: isObrasPorImpuestos(tender),
+    ...(deadlineIsInDocuments(tender) ? { deadlineInDocuments: true as const } : {}),
   };
 }

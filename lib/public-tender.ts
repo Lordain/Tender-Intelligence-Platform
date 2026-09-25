@@ -1,4 +1,5 @@
 import type { PublicTenderDetail, Tender } from "@/types/tender";
+import { deadlineIsInDocuments } from "@/lib/deadline-in-documents";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
 import { undisclosedAmountBand } from "@/lib/chile-amount-band";
@@ -67,6 +68,7 @@ export function toPublicTenderDetail(tender: Tender): PublicTenderDetail {
     publicationDate: tender.publicationDate,
     publicationDateIsEstimated: tender.publicationDateIsEstimated,
     submissionDeadline: toMonthPrecisionOptional(tender.submissionDeadline),
+    ...(deadlineIsInDocuments(tender) ? { deadlineInDocuments: true as const } : {}),
     // The band, never the figure. `currency` stays so the page can still say
     // which rate the USD range was converted at; the source currency is
     // implied by the country anyway, so it identifies nothing on its own.

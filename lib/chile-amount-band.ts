@@ -56,6 +56,29 @@ function formatUtm(utm: number): string {
   return utm.toLocaleString("en-US");
 }
 
+function bandFor(procedureType: string): { min?: number; max?: number } | undefined {
+  const match = PROCEDURE_CODE.exec(procedureType);
+  const code = (match?.[1] ?? match?.[2])?.toUpperCase();
+  return code ? UTM_BANDS[code] : undefined;
+}
+
+/**
+ * Chilean procedures whose declared band tops out at 2,000 UTM — about
+ * $151K — or below: L1/E2, LE/CO, LP/B2.
+ *
+ * Read by lib/relevance.ts, which excludes a row with NO published amount
+ * whose band this is (2026-09-25, the user: exclude the unpriced Chilean
+ * rows the buyer declared under $151K). The buyer's own statutory
+ * declaration puts the whole contract at a fraction of the $1M floor, so a
+ * keyword match on "equipamiento médico" cannot make it the contract the
+ * floor is for. LR/I2 are open-ended upward and never count; an unmeasured
+ * code (O1) is not a declaration of anything and never counts either.
+ */
+export function isSmallDeclaredChileanBand(procedureType: string): boolean {
+  const band = bandFor(procedureType);
+  return band?.max !== undefined && band.max <= 2000;
+}
+
 export type UndisclosedAmountBand = {
   /** "$376K USD 以上" — short enough for a card. */
   usd: string;
@@ -78,9 +101,7 @@ export function undisclosedAmountBand(tender: {
   if (tender.country !== "Chile" || tender.estimatedValue !== undefined) return undefined;
   const rate = USD_RATES.UTM;
   if (!rate) return undefined;
-  const match = PROCEDURE_CODE.exec(tender.procedureType);
-  const code = (match?.[1] ?? match?.[2])?.toUpperCase();
-  const band = code ? UTM_BANDS[code] : undefined;
+  const band = bandFor(tender.procedureType);
   if (!band) return undefined;
 
   if (band.min === undefined && band.max !== undefined) {

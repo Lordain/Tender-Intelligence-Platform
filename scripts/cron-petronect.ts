@@ -11,14 +11,17 @@
  * Usage:
  *   npm run cron:petronect              (dry run — fetches and classifies, writes nothing)
  *   npm run cron:petronect -- --write
+ *   npm run cron:petronect -- --days 30     (a wider window, for a one-off backfill; 0 = no window)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ingestPetronect } from "../lib/ingestion/ingest-petronect";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
+import { windowDaysFromArgv } from "../lib/ingestion/publication-window";
 
 async function main() {
   const write = hasWriteFlag();
+  const days = windowDaysFromArgv();
 
   const supabase = createSupabaseAdminClient();
   if (write && !supabase) {
@@ -26,12 +29,12 @@ async function main() {
     process.exit(1);
   }
 
-  const result = await ingestPetronect(supabase, { write }, (message) => console.log(`  ${message}`));
+  const result = await ingestPetronect(supabase, { write, days }, (message) => console.log(`  ${message}`));
 
   if (result.staleWarning) console.log(`\n${result.staleWarning}\n`);
   const tiers = result.tierCounts;
   console.log(
-    `在招 ${result.fetchedCount} 个（国际招标 ${result.internationalCount} 个），` +
+    `在招 ${result.fetchedCount} 个（国际招标 ${result.internationalCount} 个），${days > 0 ? `近 ${days} 天发布` : "不限发布时间"} ${result.recentCount} 个，` +
       `进入推荐 ${result.kept.length} 个（大型 ${tiers.flagship}、中型 ${tiers.significant}、常规 ${tiers.standard}），排除 ${tiers.excluded} 个。`,
   );
   for (const tender of [...result.kept].sort((a, b) => a.relevance.tier.localeCompare(b.relevance.tier))) {

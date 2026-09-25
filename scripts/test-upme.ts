@@ -7,6 +7,7 @@
  *
  * Usage: npm run test:upme
  */
+import { ingestUpme } from "@/lib/ingestion/ingest-upme";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseUpmePost, upmeCallNumber, upmeCallStage, type UpmePost } from "@/lib/ingestion/connectors/upme-live";
@@ -68,5 +69,17 @@ const links = upmeDocumentLinks(byNumber.get("UPME 08-2026")!, heliconia.publica
 check("DSI 等文件都存成链接", links.length, byNumber.get("UPME 08-2026")!.documents.length);
 check("文件都在 docs.upme.gov.co", links.every((l) => l.sourceUrl.startsWith("https://docs.upme.gov.co/")), true);
 
+void (async () => {
+  console.log("\n近 3 天发布");
+  const windowed = await ingestUpme(null, { write: false, posts, now });
+  check("仍可投标 4 条", windowed.biddableCount, 4);
+  check("默认 3 天窗口：今天没有近 3 天发布的", windowed.kept.length, 0);
+  check("跳过原因写明「发布超过 3 天」", windowed.calls.filter((c) => c.skipReason === "发布超过 3 天").length, 4);
+  const all = await ingestUpme(null, { write: false, days: 0, posts, now });
+  check("--days 0 不限：4 条", all.kept.length, 4);
+  const opened = await ingestUpme(null, { write: false, posts, now: new Date("2026-07-12T12:00:00Z") });
+  check("08-2026 正式发布（7-10）后两天内在窗口里", opened.kept.map((t) => t.tenderNumber).includes("UPME 08-2026"), true);
+
 console.log(failures === 0 ? "\n全部通过" : `\n${failures} 项失败`);
 process.exit(failures === 0 ? 0 : 1);
+})();

@@ -8851,3 +8851,22 @@ arquivos-compras.cemig.com.br 上公开下载（输电铁塔那份 79 MB，不�
 也一样）。一次性补导入更早的：`npm run cron:cemig -- --days 30 --write`（`--days 0` = 不限）。
 
 每日任务：`npm run cron:cemig`，心跳 `import-cemig`；测试 `npm run test:cemig`。
+
+## 近 3 天发布的窗口：Petronect、UPME、Codelco、Cemig（2026-09-25）
+
+用户决定：「我只想要最近3天发布的」。这四个来源列出的是所有还在招的项目，不管多早发布
+（Petronect 有开标期五个月的），所以没有窗口时，第一次运行会把整批存量一次导入。现在每个来源
+都只写入近 3 天发布的（`lib/ingestion/publication-window.ts`，按 72 小时滚动计算）。
+
+2026-09-25 实测：
+- Petronect：309 个在招，近 3 天发布 53 个，保留 7 个（都是常规）；
+- UPME：仍可投标 4 个，近 3 天发布 0 个；
+- Codelco：0 个；
+- Cemig：已发布 22 个，近 3 天发布 1 个，保留 1 个。
+
+代价：今天就在招、但更早发布的大项目不会进库，包括 Petronect 那 10 个大型（RNEST EPC、
+各炼厂焦化改造等）和 UPME 那 4 个输电项目。要一次性补进来，用 `--days 0`（不限）或
+`--days 30` 跑一次写入，例如 `npm run cron:petronect -- --days 0 --write`。
+
+UPME 的项目在正式发布那天，发布日期会从预公告日改成正式发布日，所以预公告过的项目在正式开放时
+还会再落进一次窗口。

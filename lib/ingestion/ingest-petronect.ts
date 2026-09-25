@@ -5,11 +5,11 @@
  *
  * Every run reads every open opportunity (one request, see
  * connectors/petronect-live.ts), classifies it with lib/relevance-petronect.ts
- * and upserts the kept ones. No recency window: the list only holds
- * opportunities still open for bids, so everything in it is current by
- * definition, and a window on publication date would drop the ones Petrobras
- * gives long bidding periods — which are the large ones (the 2026-05-11
- * clarifier contract closes 2026-10-09).
+ * and upserts the kept ones published within the window
+ * (publication-window.ts: the last 3 days, the user's call on 2026-09-25).
+ * The list holds every opportunity still open, however old — the 2026-05-11
+ * clarifier contract closes 2026-10-09 — so without the window each run
+ * would re-offer months of backlog; `--days 0` still reads all of it.
  *
  * Attachment links are saved after the write, from the same response: the
  * list already carries each opportunity's attachment ids, so they cost no
@@ -20,6 +20,8 @@ import { fetchPetronectOpenOpportunities, type PetronectOpportunity } from "@/li
 import { mapPetronectOpportunityToTender, petronectDocumentLinks, PETRONECT_SOURCE_NAME } from "@/lib/ingestion/petronect-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { saveDocumentLinks, type DocumentLinksForSlug } from "@/lib/ingestion/document-links";
+import { COMPANY_SOURCE_WINDOW_DAYS } from "@/lib/ingestion/publication-window";
+import { filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import type { Tender, TenderRelevanceTier } from "@/types/tender";
 
 export { PETRONECT_SOURCE_NAME };
@@ -27,9 +29,12 @@ export { PETRONECT_SOURCE_NAME };
 export type PetronectIngestResult = {
   fetchedCount: number;
   mappedCount: number;
+  days: number;
+  /** Mapped rows published within `days`. */
+  recentCount: number;
   internationalCount: number;
   tierCounts: Record<TenderRelevanceTier, number>;
-  /** Non-null when the answer cannot be a normal day — see describePetronectStaleness. */
+  /** Tiers of the rows inside the window. Non-null staleWarning when the answer cannot be a normal day — see describePetronectStaleness. */
   staleWarning: string | null;
   kept: Tender[];
   write: boolean;
@@ -68,37 +73,42 @@ export function describePetronectStaleness(fetchedCount: number, mappedCount: nu
 
 export async function ingestPetronect(
   supabase: SupabaseClient | null,
-  options: { write: boolean; rows?: PetronectOpportunity[] },
+  options: { write: boolean; days?: number; rows?: PetronectOpportunity[]; now?: Date },
   onProgress?: (message: string) => void,
 ): Promise<PetronectIngestResult> {
+  const now = options.now ?? new Date();
+  const days = options.days ?? COMPANY_SOURCE_WINDOW_DAYS;
   const rows = options.rows ?? (await fetchPetronectOpenOpportunities());
   onProgress?.(`Petronect 在招项目 ${rows.length} 个`);
 
   const rowBySlug = new Map<string, PetronectOpportunity>();
   const mapped: Tender[] = [];
   for (const row of rows) {
-    const tender = mapPetronectOpportunityToTender(row);
+    const tender = mapPetronectOpportunityToTender(row, now);
     if (!tender) continue;
     mapped.push(tender);
     rowBySlug.set(tender.slug, row);
   }
 
+  const recent = filterTendersPublishedWithinDays(mapped, days, now);
   const tierCounts: Record<TenderRelevanceTier, number> = { flagship: 0, significant: 0, standard: 0, excluded: 0 };
-  for (const tender of mapped) tierCounts[tender.relevance.tier] += 1;
+  for (const tender of recent) tierCounts[tender.relevance.tier] += 1;
 
   const result: PetronectIngestResult = {
     fetchedCount: rows.length,
     mappedCount: mapped.length,
+    days,
+    recentCount: recent.length,
     internationalCount: rows.filter((row) => row.NAT_COVERAGE === "I").length,
     tierCounts,
     staleWarning: describePetronectStaleness(rows.length, mapped.length),
-    kept: mapped.filter((tender) => tender.relevance.tier !== "excluded"),
+    kept: recent.filter((tender) => tender.relevance.tier !== "excluded"),
     write: options.write,
   };
 
   if (!options.write) return result;
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
-  const { upsertedCount, skippedExcludedCount, skippedShortWindowCount, skippedClosedCount, failed } = await upsertTendersBatched(supabase, mapped);
+  const { upsertedCount, skippedExcludedCount, skippedShortWindowCount, skippedClosedCount, failed } = await upsertTendersBatched(supabase, recent);
 
   // After the write: a link row needs the tender's id, which saveDocumentLinks
   // resolves by slug. Slugs that were not written (excluded, past deadline,

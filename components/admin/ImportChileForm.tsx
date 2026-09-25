@@ -41,7 +41,9 @@ type MercadoPublicoResult = {
 type CodelcoResult = {
   source: "codelco";
   listedCount: number;
+  days: number;
   open: SampleTender[];
+  openBeforeWindowCount: number;
   staleWarning: string | null;
   write: boolean;
   upsertedCount?: number;
@@ -126,10 +128,13 @@ function ResultPanel({ result }: { result: Result }) {
       ) : (
         <>
           <p className="text-sm font-bold text-[#071826]">
-            表格 {result.listedCount} 行 → <span className="text-[#b86e00]">仍在报名期内 {result.open.length} 条</span>
+            表格 {result.listedCount} 行 → <span className="text-[#b86e00]">近 {result.days} 天发布、仍在报名期内 {result.open.length} 条</span>
+            {result.openBeforeWindowCount > 0 && (
+              <span className="font-normal text-[#64717c]">（更早发布、仍在报名期内 {result.openBeforeWindowCount} 条，不导入）</span>
+            )}
           </p>
           {result.open.length === 0 && !result.staleWarning && (
-            <p className="mt-1 text-xs text-[#64717c]">今天没有在报名期内的公开招标——Codelco 公开招标本来就少，这是正常的。</p>
+            <p className="mt-1 text-xs text-[#64717c]">近 {result.days} 天没有新的公开招标——Codelco 公开招标本来就少，这是正常的。</p>
           )}
           <WriteSummary result={result} />
           <SampleList tenders={result.open} />
@@ -226,7 +231,7 @@ export function ImportChileForm() {
         <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Chile · 矿业</p>
         <h2 className="mt-1 text-lg font-black text-[#071826]">Codelco — 公开招标（Licitaciones en proceso）</h2>
         <p className="mt-1 text-sm text-[#52636e]">
-          Codelco 不在 Mercado Público 上。读取它官网的在招列表，只导入<strong>仍在报名期内</strong>的；
+          Codelco 不在 Mercado Público 上。读取它官网的在招列表，只导入<strong>近 3 天发布、仍在报名期内</strong>的；
           标书在 SAP Ariba 上，需要先在官网报名（manifestación de interés）。
         </p>
         {errors.codelco && <ErrorPanel error={errors.codelco} />}

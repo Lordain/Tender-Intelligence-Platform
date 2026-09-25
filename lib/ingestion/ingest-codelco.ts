@@ -12,6 +12,8 @@ import { fetchCodelcoCalls, type CodelcoCall } from "@/lib/ingestion/connectors/
 import { codelcoDocumentLinks, mapCodelcoCallToTender, CODELCO_SOURCE_NAME } from "@/lib/ingestion/codelco-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { saveDocumentLinks } from "@/lib/ingestion/document-links";
+import { COMPANY_SOURCE_WINDOW_DAYS } from "@/lib/ingestion/publication-window";
+import { filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import type { Tender } from "@/types/tender";
 
 export { CODELCO_SOURCE_NAME };
@@ -23,7 +25,11 @@ export function santiagoToday(now: Date = new Date()): string {
 
 export type CodelcoIngestResult = {
   listedCount: number;
+  days: number;
+  /** Still open AND published within `days` — the ones written. */
   open: Tender[];
+  /** Still open, published before the window. */
+  openBeforeWindowCount: number;
   staleWarning: string | null;
   write: boolean;
   upsertedCount?: number;
@@ -32,24 +38,29 @@ export type CodelcoIngestResult = {
 
 export async function ingestCodelco(
   supabase: SupabaseClient | null,
-  options: { write: boolean; calls?: CodelcoCall[]; now?: Date },
+  options: { write: boolean; days?: number; calls?: CodelcoCall[]; now?: Date },
 ): Promise<CodelcoIngestResult> {
   const now = options.now ?? new Date();
+  const days = options.days ?? COMPANY_SOURCE_WINDOW_DAYS;
   const calls = options.calls ?? (await fetchCodelcoCalls());
   const today = santiagoToday(now);
 
-  const open: Tender[] = [];
+  const allOpen: Tender[] = [];
   const callBySlug = new Map<string, CodelcoCall>();
   for (const call of calls) {
     const tender = mapCodelcoCallToTender(call, today, now);
     if (!tender) continue;
-    open.push(tender);
+    allOpen.push(tender);
     callBySlug.set(tender.slug, call);
   }
+  // The user's 3-day window (publication-window.ts).
+  const open = filterTendersPublishedWithinDays(allOpen, days, now);
 
   const result: CodelcoIngestResult = {
     listedCount: calls.length,
+    days,
     open,
+    openBeforeWindowCount: allOpen.length - open.length,
     staleWarning: calls.length === 0 ? "⚠ Codelco「Licitaciones en proceso」表格一行都没解析出来。2026-09-25 实测有 51 行，更可能是页面结构变了，见 codelco-live.ts。" : null,
     write: options.write,
   };

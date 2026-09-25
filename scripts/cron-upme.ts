@@ -7,23 +7,26 @@
  * Usage:
  *   npm run cron:upme              (dry run — fetches and classifies, writes nothing)
  *   npm run cron:upme -- --write
+ *   npm run cron:upme -- --days 0         (no publication window, for a one-off backfill)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ingestUpme } from "../lib/ingestion/ingest-upme";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
+import { windowDaysFromArgv } from "../lib/ingestion/publication-window";
 
 async function main() {
   const write = hasWriteFlag();
+  const days = windowDaysFromArgv();
   const supabase = createSupabaseAdminClient();
   if (write && !supabase) {
     console.error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). See .env.example.");
     process.exit(1);
   }
 
-  const result = await ingestUpme(supabase, { write });
+  const result = await ingestUpme(supabase, { write, days });
   if (result.staleWarning) console.log(`\n${result.staleWarning}\n`);
-  console.log(`UPME 标为开放/预公告 ${result.taggedCount} 条，仍可投标 ${result.kept.length} 条：`);
+  console.log(`UPME 标为开放/预公告 ${result.taggedCount} 条，仍可投标 ${result.biddableCount} 条，${days > 0 ? `其中近 ${days} 天发布` : "不限发布时间"} ${result.kept.length} 条：`);
   for (const { call, skipReason } of result.calls) {
     console.log(`  ${skipReason ? "跳过" : "导入"} ${call.number.padEnd(17)} ${call.grid} ${call.publishedOn ?? "—"} ${skipReason ?? ""} | ${call.title.slice(0, 80)}`);
   }

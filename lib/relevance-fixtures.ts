@@ -2398,6 +2398,58 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real row, LA-07-110-007000999-T-687-2026 (SEDENA). The control: it was ALREADY 常规 before this change, with no amount and a CCTV title, so it pins that the change moved the two rows it was aimed at and left this one where it was.",
     country: "Mexico", scopeType: "equipment", governmentLevel: "federal", industries: ["ict_telecom"],
   },
+  // Medical equipment vs the service around it (2026-09-25). Measured on the
+  // user's own deletions: the equipment pattern had kept 46 titles and the
+  // user deleted 39; the imaging pattern kept 23 and the user deleted 18.
+  // Kept rows first, then the deleted ones, all real.
+  {
+    title: "RESONANCIA NUCLEAR MAGNETICA PARA AMB. Y HOSP.",
+    expectedTier: "standard",
+    note: "Real row, 2215-49-LR26, kept by the user. An MRI machine — the same keyword as the deleted 'SERVICIOS DE EXÁMENES RESONANCIAS MAGNÉTICAS' below, and no purchase verb at all, which is why the rule vetoes service titles rather than requiring a purchase word: Chilean titles often have no verb.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "LICITACION ESTACION DE TRABAJOS PARA DIAGNOSTICO MEDICO PARA LA CATEDRA DE RADIOLOGIA E IMAGENOLOGIA DE LA ESCUELA DE MEDICINA",
+    expectedTier: "standard",
+    note: "Real row, 4895-11-LE26, kept by the user. Diagnostic workstations — equipment, reached through the imaging words.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPAMIENTO MEDICO PARA DIAGNOSTICO, EXAMEN CLINICO Y APOYO ASISTENCIAL, SEGÚN REQUERIMIENTO Y ESPECIFICACIONES TECNICAS.",
+    expectedTier: "standard",
+    note: "Real row, LP-ABR-249-2026-OEC/GR-PUNO-1, kept. The guard on the veto's anchor: 'EXAMEN' appears here naming what the equipment is for. An unanchored service word would have thrown a real equipment purchase away.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "state", industries: ["healthcare"],
+  },
+  {
+    title: "SERVICIOS DE EXÁMENES RESONANCIAS MAGNÉTICAS",
+    expectedTier: "excluded",
+    note: "Real row, chile-1057501-577-lr26, deleted by the user 2026-09-24. Outsourced MRI scans, not an MRI. No amount, so with the imaging keyword refused there is nothing left to keep it.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "SERVICIO DE PRESTACIONES MÉDICAS DE IMAGENOLOGÍA PARA EL SISTEMA DE SALUD NAVAL EN LA COMUNA DE SAN ANTONIO",
+    expectedTier: "excluded",
+    note: "Real row, chile-1017312-17-le26, deleted by the user 2026-09-24.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "MANTENCIÓN PREVENTIVA Y CORRECTIVA EQUIPOS MÉDICOS",
+    expectedTier: "excluded",
+    note: "Real row, chile-552975-75-co26, deleted by the user 2026-09-24. Upkeep of equipment the buyer already owns. 'Mantención' is the Chilean word; MAINTENANCE_ONLY_KEYWORDS was written for Mexico's 'mantenimiento' and never saw it.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "SERVICIO DE TOMOGRAFÍA",
+    expectedTier: "excluded",
+    note: "Real row, comprasmx-aa-51-gyn-051gyn056-n-98-2024, deleted by the user 2026-09-11.",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "CONSUMIBLES DE EQUIPO MEDICO GPO 379",
+    expectedTier: "excluded",
+    note: "Real row, comprasmx-aa-50-gyr-050gyr088-n-78-2025, deleted by the user 2026-09-11. What the equipment consumes, not the equipment (我们只做医疗设备). The veto is title-wide for this word, not anchored, because 'consumibles' is never a department name.",
+    country: "Mexico", scopeType: "equipment", governmentLevel: "federal", industries: ["healthcare"],
+  },
   {
     title: "AMPLIACIÓN Y MODERNIZACIÓN DEL SISTEMA DE VIDEOVIGILANCIA DE LA CIUDAD",
     expectedTier: "standard",

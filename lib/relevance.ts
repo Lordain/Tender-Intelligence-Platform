@@ -1879,6 +1879,68 @@ const BARE_WORKS_WHITELIST = new RegExp(
   "i",
 );
 
+/**
+ * The two medical entries in FLAGSHIP_INDUSTRY_KEYWORDS, named so
+ * flagshipIndustryMatches() can refuse them for a title that is a SERVICE.
+ * The patterns themselves are unchanged; see the comments where they sit in
+ * the list for why each term is there.
+ */
+const MEDICAL_EQUIPMENT_WHITELIST =
+  /equipo(s)? m[ée]dico|equipo(s)? m[ée]dio\b|equipamiento m[ée]dico|medical equipment|equipo(s)? de laboratorio/i;
+const MEDICAL_IMAGING_WHITELIST = /imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia|ultrasonido|rayos x/i;
+
+/**
+ * A title that buys the SERVICE around medical equipment rather than the
+ * equipment — the exams, the outsourced imaging, the upkeep — or buys what
+ * the equipment consumes.
+ *
+ * Measured 2026-09-25 against the user's own deletions: of every title these
+ * two patterns kept, the user had deleted 39 of 46 matching the equipment
+ * pattern (85%) and 18 of 23 matching the imaging one (78%). The imaging
+ * words name a modality, and a modality is sold both ways: "RESONANCIA
+ * NUCLEAR MAGNETICA PARA AMB. Y HOSP." (a machine, kept) and "SERVICIOS DE
+ * EXÁMENES RESONANCIAS MAGNÉTICAS" (scans, deleted) carry the same keyword.
+ * The platform is 我们只做医疗设备.
+ *
+ * Anchored to the START of the title, not searched anywhere in it, because
+ * "servicio de …" is also how a hospital names a department, and buyers
+ * write purchases that way — "ADQUISICION DE TRANSFORMADOR TRIFASICO DE 500
+ * KVA PARA EL SERVICIO DE CASA FUERZA DEL HOSPITAL DEPARTAMENTAL" is a real
+ * Peruvian title. An unanchored "servicio" would throw away the same
+ * sentence written about an imaging department. The anchor also keeps the
+ * real Peruvian "ADQUISICIÓN DE EQUIPAMIENTO MEDICO PARA DIAGNOSTICO, EXAMEN
+ * CLINICO …" (a fixture), whose "examen" names what the equipment is for.
+ * The one unanchored term is "consumibles", which is never a department.
+ *
+ * Checked on the title only, never the summary: a Chilean description
+ * routinely opens with the buyer, "Servicio de Salud …", in front of a real
+ * equipment purchase.
+ *
+ * This takes away the medical KEEP signal only. It excludes nothing by
+ * itself: a service or consumables purchase with a disclosed amount over the
+ * floor is still judged on that amount like any other row, which is the
+ * user's 规模为主、品类为辅.
+ */
+const MEDICAL_TITLE_NOT_EQUIPMENT =
+  /^\s*(?:servicios?\b|prestacion|mantencion|mantenimiento|calibracion|asesoria|atencion|toma e informe|consulta\b|contratacion de (?:una? )?(?:servicio|solucion))|consumibles/i;
+
+const MEDICAL_WHITELIST: ReadonlySet<RegExp> = new Set([MEDICAL_EQUIPMENT_WHITELIST, MEDICAL_IMAGING_WHITELIST]);
+
+/**
+ * Which FLAGSHIP_INDUSTRY_KEYWORDS entries count for this tender. Every
+ * caller goes through here, so the classifier, the municipal rule and the
+ * explainKeptSignal() diagnostic cannot disagree about what matched.
+ *
+ * `subjectTitle` must already be folded — the veto is written without
+ * accents, like the haystack.
+ */
+function flagshipIndustryMatches(haystack: string, subjectTitle: string): RegExp[] {
+  const medicalVetoed = MEDICAL_TITLE_NOT_EQUIPMENT.test(subjectTitle);
+  return FLAGSHIP_INDUSTRY_KEYWORDS.filter(
+    (pattern) => pattern.test(haystack) && !(medicalVetoed && MEDICAL_WHITELIST.has(pattern)),
+  );
+}
+
 const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // Bare "infraestructura" dropped (2026-09-05, real false positive): the
   // user flagged "AMPLIACIÓN Y MODERNIZACIÓN DE LA INFRAESTRUCTURA
@@ -1931,14 +1993,14 @@ const FLAGSHIP_INDUSTRY_KEYWORDS = [
   // MÉDICAS' (2026-09-07). Listed explicitly rather than loosening the
   // stem, because "medi…" would also catch "medicamento", a consumable
   // this list deliberately excludes.
-  /equipo(s)? m[ée]dico|equipo(s)? m[ée]dio\b|equipamiento m[ée]dico|medical equipment|equipo(s)? de laboratorio/i,
+  MEDICAL_EQUIPMENT_WHITELIST,
   // hemodiálisis/hemodinamia removed from this whitelist 2026-09-07
   // (user-confirmed): every real title carrying them was a SERVICE —
   // "SERVICIOS MEDICOS DE ESPECIALIZACION (HEMODIALISIS)", "FORTALECIMIENTO
   // A LOS SERVICIOS DE HEMODINAMIA", "SMI DE HEMODINAMIA" — and this
   // platform targets medical EQUIPMENT. They are excluded below instead.
   /bomba de infusi[óo]n|ventilador pulmonar/i,
-  /imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia|ultrasonido|rayos x/i,
+  MEDICAL_IMAGING_WHITELIST,
   // Vehicle-fleet purchases — restored to the whitelist per the user's
   // explicit request (2026-09-04: "加入车辆相关的标书，比如说政府购车、
   // 公交车、货车、SUV等等，但要避免触发车辆相关的项目比如加油和保养").
@@ -3213,7 +3275,8 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "value", minValueUsd) };
   }
 
-  const matchesFlagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.some((pattern) => pattern.test(haystack));
+  const flagshipIndustryHits = flagshipIndustryMatches(haystack, subjectTitle);
+  const matchesFlagshipIndustry = flagshipIndustryHits.length > 0;
   const matchesMajorProject = MAJOR_PROJECT_KEYWORDS.some((pattern) => pattern.test(haystack));
   const hasLongDuration = durationDays !== undefined && durationDays >= LONG_DURATION_DAYS;
   const isEquipmentScaleCapped = EQUIPMENT_SCALE_CAPPED_KEYWORDS.some((pattern) => pattern.test(haystack));
@@ -3449,7 +3512,7 @@ export function classifyRelevance(input: {
     normalizedValue === undefined &&
     matchesFlagshipIndustry &&
     !hasIncludeOverride &&
-    FLAGSHIP_INDUSTRY_KEYWORDS.filter((pattern) => pattern.test(haystack)).every((pattern) => pattern === BARE_WORKS_WHITELIST)
+    flagshipIndustryHits.every((pattern) => pattern === BARE_WORKS_WHITELIST)
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
@@ -3591,7 +3654,7 @@ export function explainKeptSignal(input: {
   if (value !== undefined && value >= FLAGSHIP_VALUE_USD) return `金额 ≥ ${FLAGSHIP_VALUE_USD.toLocaleString()} USD`;
   if (value !== undefined && value >= SIGNIFICANT_VALUE_USD) return `金额 ≥ ${SIGNIFICANT_VALUE_USD.toLocaleString()} USD`;
 
-  const flagshipIndustry = FLAGSHIP_INDUSTRY_KEYWORDS.find((pattern) => pattern.test(haystack));
+  const flagshipIndustry = flagshipIndustryMatches(haystack, foldAccents(purchaseSubject(input.title)!))[0];
   if (flagshipIndustry) return `FLAGSHIP_INDUSTRY 白名单 ${show(flagshipIndustry)}`;
 
   const capped = EQUIPMENT_SCALE_CAPPED_KEYWORDS.find((pattern) => pattern.test(haystack));

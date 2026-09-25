@@ -186,4 +186,6 @@ jobs:
           # Public information (it is the site's own address), so it is stated
           # here rather than kept as a secret nobody can read back.
           APP_URL: https://latintender.com
+          # Optional. Unset → the Baidu push is skipped and only IndexNow runs.
+          BAIDU_PUSH_TOKEN: ${{ secrets.BAIDU_PUSH_TOKEN }}
         run: npm run ping:indexnow -- --write

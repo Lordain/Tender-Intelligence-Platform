@@ -51,6 +51,9 @@ export function StructuredData() {
         "@id": `${origin}/#website`,
         url: origin,
         name: "拉美招投标信息平台",
+        // Google reads WebSite.alternateName when choosing the site name it
+        // shows, and it widens what counts as a search for this site.
+        alternateName: ["LatinTender", "拉美招投标", "拉美招标信息平台"],
         inLanguage: "zh-CN",
         publisher: { "@id": `${origin}/#organization` },
       },

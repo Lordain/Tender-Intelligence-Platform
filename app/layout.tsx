@@ -8,7 +8,7 @@ import { CookieNotice } from "@/components/layout/CookieNotice";
 import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
 import { DeviceGuard } from "@/components/account/DeviceGuard";
 import { siteOrigin } from "@/lib/site-url";
-import { SITE_DESCRIPTION } from "@/lib/seo";
+import { SITE_DESCRIPTION, siteVerification } from "@/lib/seo";
 import { StructuredData } from "@/components/seo/StructuredData";
 
 const geistSans = Geist({
@@ -75,6 +75,26 @@ export const metadata: Metadata = {
     description:
       SITE_DESCRIPTION,
   },
+  // Baidu, 360 and Sogou still read this; Google ignores it. Kept to the
+  // phrases a Chinese buyer actually types, brand first — the site did not
+  // come up for its own name (user, 2026-09-25: 拉美招投标信息平台 好像搜不到我们).
+  keywords: [
+    "拉美招投标信息平台",
+    "拉美招标",
+    "拉美招投标",
+    "拉美政府采购",
+    "墨西哥招标",
+    "巴西招标",
+    "哥伦比亚招标",
+    "秘鲁招标",
+    "智利招标",
+    "LatinTender",
+  ],
+  // Search-console ownership tags, read from the environment so a code for
+  // Google, Bing, Baidu, 360 or Sogou is pasted into Vercel rather than
+  // committed. An unset variable emits nothing. Baidu in particular will not
+  // take a sitemap or an API push until the site is verified.
+  verification: siteVerification(),
   twitter: {
     card: "summary_large_image",
     title: "拉美招投标信息平台",

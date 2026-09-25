@@ -2369,6 +2369,23 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     country: "Peru", scopeType: "equipment", governmentLevel: "state",
   },
 
+  // --- The purchase, not the project it is for (accent fix, 2026-09-25) ---
+  // purchaseSubject() cut "ADQUISICIÓN DE X PARA LA META/EL PROYECTO Y" down
+  // to X only for unaccented titles: `adquisi\w*n` cannot cross the Ó.
+  {
+    title: 'ADQUISICIÓN DE AGREGADOS PARA LA META 364: "MEJORAMIENTO DEL SERVICIO DE TRANSITABILIDAD VIAL MEDIANTE EL PUENTE CARROZABLE CCENTABAMBA DE LOS DISTRITOS DE SIVIA Y AYNA DE LAS PROVINCIAS DE HUANTA Y LA MAR DEL DEPARTAMENTO DE AYACUCHO".',
+    expectedTier: "excluded",
+    note: "Real row, peru-ocds-dgv273-seacev3-1249193, deleted by the user; stored without a procedure type, so the subasta fixture below never covered it. Gravel, bought for a bridge project — the bridge is the META, not the purchase. Came out 中型 on the bridge words until the accent fix let the trim reach it.",
+    country: "Peru", scopeType: "works", governmentLevel: "state",
+  },
+  {
+    title: "ADQUISICIÓN DE INCUBADORA NEONATAL ABIERTA, INCUBADORA DE TRANSPORTE Y CPAP NASAL SEGÚN REQUERIMIENTO Y ESPECIFICACIONES TÉCNICAS PARA EL PROYECTO ADQUISICIÓN DE ANALIZADOR DE GASES Y ELECTROLITOS, ESPECTROFOTOMETRO, EQUIPO DE RAYOS X DENTAL Y BIDESTILADOR DE AGUA; ADEMÁS DE OTROS ACTIVOS EN EL(LA)",
+    expectedTier: "standard",
+    note: "Real row, LP-SM-58-2026-CS/GR PUNO-1, kept. The guard on the fix above: a Peruvian IOARR project named 'ADQUISICIÓN DE …' is the same purchase, so the text after 'PARA EL PROYECTO' is more of the equipment list and must not be trimmed away.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "state", industries: ["healthcare"],
+    procedureType: "Licitación Pública",
+  },
+
   // --- Subasta Inversa Electrónica: the procedure decides (2026-09-14) ---
   // The user's instruction, given against the first of these. A reverse
   // auction may only be used for goods on the state's list of bienes y

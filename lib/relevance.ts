@@ -3131,9 +3131,21 @@ const PROJECT_CONTEXT_CONNECTOR =
 
 function purchaseSubject(text: string | undefined): string | undefined {
   if (!text) return text;
-  if (!SUPPLY_PURCHASE_HEAD.test(text)) return text;
+  // Tested on the folded text: `adquisi\w*n` cannot cross the Ó in
+  // "ADQUISICIÓN" (JS \w is ASCII-only), so until 2026-09-25 every
+  // accented purchase title skipped the project-name trim below and was read
+  // whole — scope words in the PROJECT name counted as scope.
+  if (!SUPPLY_PURCHASE_HEAD.test(foldAccents(text))) return text;
   const connector = PROJECT_CONTEXT_CONNECTOR.exec(text);
   if (!connector || connector.index === 0) return text;
+  // A project that is itself a purchase is the same purchase, not context.
+  // Peru's IOARR investments are named that way: "ADQUISICIÓN DE INCUBADORA
+  // NEONATAL ABIERTA … PARA EL PROYECTO ADQUISICIÓN DE ANALIZADOR DE GASES Y
+  // ELECTROLITOS, ESPECTROFOTOMETRO, EQUIPO DE RAYOS X DENTAL …" lists more
+  // of the equipment being bought after the connector, and trimming it threw
+  // two real hospital-equipment rows away the day the accent fix above let
+  // the trim reach them.
+  if (SUPPLY_PURCHASE_HEAD.test(foldAccents(text.slice(connector.index + connector[0].length)))) return text;
   return text.slice(0, connector.index).trim();
 }
 

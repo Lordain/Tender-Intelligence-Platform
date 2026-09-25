@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
 import { pageMetadata } from "@/lib/seo";
 
@@ -165,6 +166,9 @@ const sources = [
     note: "美元换算采用2026年9月21日公布的FIX：1美元＝17.2203墨西哥比索。",
   },
 ];
+
+/** The insight text is static; the 在招项目精选 inside its closing panel refreshes with the tender list. */
+export const revalidate = 300;
 
 export default function MexicoInsightPage() {
   const articleJsonLd = {
@@ -413,7 +417,7 @@ export default function MexicoInsightPage() {
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffb21c]">From outlook to tenders</p>
               <h2 className="mt-3 text-2xl font-black">继续查看正在发布的墨西哥项目</h2>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-white/64">国家洞察用于判断中长期方向；项目页用于核对当下的采购方、截止日期、参与范围和文件要求。两者要结合使用。</p>
-              <Link href="/tenders?country=Mexico" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-[#ffb21c] px-6 font-black text-[#071826] transition hover:bg-[#ffc34d]">浏览墨西哥招标项目 →</Link>
+              <InsightOpenTenders country="Mexico" accentText="text-[#ffb21c]" accentBorder="hover:border-[#ffb21c]" /><Link href="/countries/mexico" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-[#ffb21c] px-6 font-black text-[#071826] transition hover:bg-[#ffc34d]">浏览墨西哥招标项目 →</Link>
             </section>
 
             <section id="sources" className="scroll-mt-8 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8">

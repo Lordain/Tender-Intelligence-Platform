@@ -132,6 +132,7 @@ for (const route of routes) {
 for (const [file, label] of [
   ["app/guides/[slug]/page.tsx", "guide detail"],
   ["app/tenders/[slug]/page.tsx", "tender detail"],
+  ["app/countries/[country]/page.tsx", "country tenders"],
 ] as const) {
   const source = readFileSync(file, "utf-8");
   check(
@@ -146,6 +147,17 @@ check(
   "the guide canonical is the guide's own path",
   readFileSync("app/guides/[slug]/page.tsx", "utf-8").includes("path: `/guides/${guide.slug}`"),
 );
+
+// The five country pages exist only to rank on their own; a canonical that
+// pointed anywhere else (the filtered /tenders list, say) would undo them.
+check(
+  "the country page canonical is its own path",
+  readFileSync("app/countries/[country]/page.tsx", "utf-8").includes("path: `/countries/${page.slug}`"),
+);
+{
+  const sitemap = readFileSync("app/sitemap.ts", "utf-8");
+  check("the sitemap lists the country pages", sitemap.includes("countryPages.map"), "app/sitemap.ts");
+}
 
 // pageMetadata() must keep restating the fields a page-level openGraph wipes
 // out. Next replaces the layout's whole object rather than merging it, so a

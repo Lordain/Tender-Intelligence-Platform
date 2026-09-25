@@ -2,7 +2,9 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
-import { getTenderByPublicSlug } from "@/lib/tenders";
+import { getCachedTenderList, getTenderByPublicSlug } from "@/lib/tenders";
+import { relatedTenderLinks } from "@/lib/tender-links";
+import { RelatedTenders } from "@/components/tenders/RelatedTenders";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerEntitlement } from "@/lib/access-control-server";
 import { canViewCountry, canViewTenderProtectedContent, shouldClaimFreeTenderView } from "@/lib/access-control";
@@ -94,7 +96,13 @@ export default async function TenderDetailPage({
     notFound();
   }
 
-  const isHomepageFreePreview = await loadIsFreePreview(tender.slug);
+  const [isHomepageFreePreview, allTenders] = await Promise.all([
+    loadIsFreePreview(tender.slug),
+    getCachedTenderList(),
+  ]);
+  // The same guest projection for every viewer: these are links to other
+  // tenders, and a member opening one gets the full page there anyway.
+  const related = <RelatedTenders links={relatedTenderLinks(allTenders, tender)} country={tender.country} />;
 
   const enteredFromHomepage = from === "homepage";
   const publicTender = toPublicTenderDetail(tender);
@@ -121,7 +129,7 @@ export default async function TenderDetailPage({
     return (
       <>
         <TenderStructuredData tender={publicTender} />
-        <PublicTenderDetailView tender={publicTender} promptKind={promptKind} />
+        <PublicTenderDetailView tender={publicTender} promptKind={promptKind} related={related} />
       </>
     );
   }
@@ -138,6 +146,7 @@ export default async function TenderDetailPage({
         // client bundle. None for an OxI tender: its own notice at the foot of
         // the page already links the OxI guide.
         participationGuide={isObrasPorImpuestos(tender) ? undefined : participationGuideLinkForTender(tender)}
+        related={related}
       />
     </>
   );

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
 import { pageMetadata } from "@/lib/seo";
 
@@ -68,6 +69,9 @@ const sources = [
   { label: "Casa Civil：Novo PAC供水项目", href: "https://www.gov.br/casacivil/pt-br/novopac/agua-para-todos/abastecimento-de-agua", note: "371个项目及125亿雷亚尔供水投资。" },
   { label: "巴西央行：PTAX美元汇率", href: "https://ptax.bcb.gov.br/ptax_internet/consultarUltimaCotacaoDolar.do", note: "2026年9月18日收盘卖出价：1美元＝5.1575雷亚尔。" },
 ];
+
+/** The insight text is static; the 在招项目精选 inside its closing panel refreshes with the tender list. */
+export const revalidate = 300;
 
 export default function BrazilInsightPage() {
   const articleJsonLd = {
@@ -141,6 +145,8 @@ export default function BrazilInsightPage() {
               ["建立双重监测", "一边跟踪PNCP等公告入口，一边跟踪PPI、监管机构、拍卖结果和中标项目公司的供应链。"],
               ["用项目文件做最终判断", "核对资格、认证、技术标准、本地化、进口税费、汇率、担保和递交系统，再决定投入。"],
             ].map(([title,text],i)=><li key={title} className="grid gap-4 sm:grid-cols-[2.75rem_minmax(0,1fr)]"><span className="flex size-11 items-center justify-center rounded-full bg-[#e5ad35] font-mono text-sm font-black">{String(i+1).padStart(2,"0")}</span><div className="border-b border-[#e5e9ea] pb-5"><h3 className="font-black">{title}</h3><p className="mt-2 text-sm leading-7 text-[#586873]">{text}</p></div></li>)}</ol><Link href="/guides/brazil-pncp" className="mt-7 inline-flex min-h-12 items-center justify-center rounded-xl bg-[#2d7450] px-6 font-black text-white transition hover:bg-[#245f42]">查看巴西 PNCP 参标指南 →</Link></section>
+
+            <section className="rounded-3xl bg-[#061b2b] p-6 text-white sm:p-8"><p className="text-xs font-black uppercase tracking-[0.18em] text-[#e5ad35]">From outlook to tenders</p><h2 className="mt-3 text-2xl font-black">继续查看正在发布的巴西项目</h2><p className="mt-4 max-w-2xl text-sm leading-7 text-white/64">国家洞察用于判断中长期方向；项目页用于核对采购方、截止日期、参与范围和文件要求。两者要结合使用。</p><InsightOpenTenders country="Brazil" accentText="text-[#e5ad35]" accentBorder="hover:border-[#e5ad35]" /><Link href="/countries/brazil" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-[#e5ad35] px-6 font-black text-[#071826] transition hover:bg-[#f0c25a]">浏览巴西招标项目 →</Link></section>
 
             <section id="sources" className="scroll-mt-8 rounded-3xl bg-[#061b2b] p-6 text-white sm:p-8"><p className="text-xs font-black uppercase tracking-[0.18em] text-[#e5ad35]">Official sources</p><h2 className="mt-3 text-2xl font-black">资料来源与汇率说明</h2><div className="mt-6 grid gap-3">{sources.map((source)=><a key={source.href} href={source.href} target="_blank" rel="noreferrer" className="rounded-xl border border-white/12 bg-white/6 px-4 py-4 transition hover:border-[#e5ad35]"><div className="flex items-center justify-between gap-4 text-sm font-bold"><span>{source.label}</span><span className="shrink-0 text-[#e5ad35]">打开 ↗</span></div><p className="mt-2 text-xs leading-6 text-white/52">{source.note}</p></a>)}</div><p className="mt-6 border-t border-white/12 pt-5 text-xs leading-6 text-white/52">本文人民币以外的美元换算统一采用巴西中央银行2026年9月18日PTAX收盘卖出价：1美元＝5.1575巴西雷亚尔。换算值四舍五入，仅用于理解规模，不代表项目结算汇率。规划、项目数量和实施进度会调整，具体参与条件以主管机构和项目最新文件为准。</p></section>
           </div>

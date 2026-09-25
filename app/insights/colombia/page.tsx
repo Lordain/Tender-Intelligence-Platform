@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
 import { pageMetadata } from "@/lib/seo";
 
@@ -78,6 +79,9 @@ const sources = [
   { label: "MinCIT：国家再工业化政策", href: "https://www.mincit.gov.co/prensa/noticias/industria/gobierno-se-articula-y-avanza-reindustrializacion", note: "健康、农业食品、国防、绿色工业和技术能力方向。" },
   { label: "哥伦比亚金融监管局：TRM", href: "https://www.superfinanciera.gov.co/CargaDriver/", note: "2026年9月17日参考汇率：1美元＝3,128.46哥伦比亚比索。" },
 ];
+
+/** The insight text is static; the 在招项目精选 inside its closing panel refreshes with the tender list. */
+export const revalidate = 300;
 
 export default function ColombiaInsightPage() {
   const articleJsonLd = {
@@ -207,7 +211,7 @@ export default function ColombiaInsightPage() {
               <div className="mt-8 flex flex-col gap-4 rounded-2xl bg-[#eaf1ed] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"><div><p className="font-black">准备开始查找哥伦比亚政府采购项目？</p><p className="mt-1 text-sm leading-6 text-[#64766f]">SECOP II参标指南整理了项目查询、平台注册和参与判断的关键步骤。</p></div><Link href="/guides/colombia-secop-ii" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-[#082820] px-5 text-sm font-black text-white transition hover:bg-[#155244]">查看SECOP II参标指南 →</Link></div>
             </section>
 
-            <section className="rounded-3xl bg-[#082820] p-6 text-white sm:p-8"><p className="text-xs font-black uppercase tracking-[0.18em] text-[#e7b43c]">From outlook to tenders</p><h2 className="mt-3 text-2xl font-black">继续查看正在发布的哥伦比亚项目</h2><p className="mt-4 max-w-2xl text-sm leading-7 text-white/65">国家洞察用于确定方向，具体项目页用于核对采购方、当前状态、截止日期和参与要求。</p><Link href="/tenders?country=Colombia" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-[#e7b43c] px-6 font-black text-[#08261f] transition hover:bg-[#f2c95e]">浏览哥伦比亚招标项目 →</Link></section>
+            <section className="rounded-3xl bg-[#082820] p-6 text-white sm:p-8"><p className="text-xs font-black uppercase tracking-[0.18em] text-[#e7b43c]">From outlook to tenders</p><h2 className="mt-3 text-2xl font-black">继续查看正在发布的哥伦比亚项目</h2><p className="mt-4 max-w-2xl text-sm leading-7 text-white/65">国家洞察用于确定方向，具体项目页用于核对采购方、当前状态、截止日期和参与要求。</p><InsightOpenTenders country="Colombia" accentText="text-[#e7b43c]" accentBorder="hover:border-[#e7b43c]" /><Link href="/countries/colombia" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-[#e7b43c] px-6 font-black text-[#08261f] transition hover:bg-[#f2c95e]">浏览哥伦比亚招标项目 →</Link></section>
 
             <section id="sources" className="scroll-mt-8 rounded-3xl border border-[#d6e0db] bg-[#fffdf8] p-6 sm:p-8">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0f806a]">Sources & methodology</p><h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">资料来源与使用说明</h2>

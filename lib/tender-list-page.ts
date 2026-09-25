@@ -21,7 +21,7 @@ export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", 
  * deadline five days out only means something while the tender is still
  * live, which is the one question these three statuses are left answering.
  */
-const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"];
+export const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"];
 
 /** What 当前在招 subtracts from 全站项目, in the user's own words: 扣除已截止、已取消、已中标. */
 const NOT_LIVE_STATUSES: TenderStatus[] = ["submission_closed", "cancelled", "awarded"];

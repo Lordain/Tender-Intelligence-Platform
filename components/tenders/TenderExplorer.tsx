@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
-import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
+import { LIVE_STATUS_FILTER_PARAM, VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
 import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
 import { DEADLINE_IN_DOCUMENTS_LABEL } from "@/lib/deadline-labels";
@@ -31,7 +31,7 @@ const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
 // the default set (the public DB layer already requires them to have analysis).
 const DEFAULT_STATUSES: TenderStatus[] = DEFAULT_TENDER_LIST_STATUSES;
 /** The 项目阶段 selection 当前在招 applies: every stage except 已截止, 已取消 and 已中标. */
-const LIVE_STATUS_PARAM = VISIBLE_TENDER_STATUSES.filter((status) => !["submission_closed", "cancelled", "awarded"].includes(status)).join(",");
+const LIVE_STATUS_PARAM = LIVE_STATUS_FILTER_PARAM;
 // "excluded" isn't offered here — routine-service tenders stay hidden by
 // default (see includeExcluded in lib/filter-tenders.ts); no UI control
 // exposes showing them. "standard" IS offered (unlike "excluded") since
@@ -132,7 +132,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
           />
         </div>
         <h2 className="text-base font-black leading-6 text-black sm:text-lg">
-          <Link href={`/tenders/${tender.publicSlug}`} data-public-tender-link className="after:absolute after:inset-0">
+          <Link href={`/tenders/${tender.publicSlug}`} prefetch={false} data-public-tender-link className="after:absolute after:inset-0">
             {tender.titleZh}
           </Link>
         </h2>
@@ -185,7 +185,7 @@ function SavedTenderReminders({ savedIds }: { savedIds: string[] }) {
   return (
     <div className="mt-4 divide-y divide-[#e5e9eb]">
       {reminders.map((tender) => (
-        <Link key={tender.id} href={`/tenders/${tender.publicSlug}`} className="block py-3 first:pt-0 last:pb-0">
+        <Link key={tender.id} href={`/tenders/${tender.publicSlug}`} prefetch={false} className="block py-3 first:pt-0 last:pb-0">
           <span className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#64717c]"><CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}</span>
           <p className="line-clamp-2 text-sm font-bold leading-5 text-[#172c3b]">{tender.titleZh}</p>
           <p className="mt-1.5 text-xs font-semibold text-[#b86e00]">{formatDate(tender.submissionDeadline!, locale)}</p>

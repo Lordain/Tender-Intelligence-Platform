@@ -3,10 +3,17 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getParticipationGuide, participationGuides } from "@/lib/participation-guides";
+import { getCachedTenderList } from "@/lib/tenders";
+import { tenderLinksForGuide } from "@/lib/tender-links";
+import { countryKeyForGuide, countryPagePath } from "@/lib/country-pages";
+import { TenderLinkCards } from "@/components/tenders/TenderLinkCards";
 
 type GuidePageProps = {
   params: Promise<{ slug: string }>;
 };
+
+/** The guide text is static; the 在招项目 block under it is not. Same five minutes as the tender list cache. */
+export const revalidate = 300;
 
 export function generateStaticParams() {
   return participationGuides.map((guide) => ({ slug: guide.slug }));
@@ -31,6 +38,11 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
   const { slug } = await params;
   const guide = getParticipationGuide(slug);
   if (!guide) notFound();
+
+  const countryKey = countryKeyForGuide(guide);
+  const openTenders = countryKey
+    ? tenderLinksForGuide(await getCachedTenderList(), { slug: guide.slug, countryKey })
+    : { links: [], scope: "country" as const };
 
   const currentIndex = participationGuides.findIndex((item) => item.slug === guide.slug);
   const nextGuide = participationGuides[(currentIndex + 1) % participationGuides.length];
@@ -142,6 +154,28 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
                 ))}
               </div>
             </section>
+
+            {/* At most three (user, 2026-09-25: 建议不超过3个项目) — the page is
+                about the platform, this is only the bridge to its live tenders. */}
+            {countryKey && openTenders.links.length > 0 && (
+              <section id="open-tenders" className="scroll-mt-8 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Open tenders</p>
+                <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">
+                  {openTenders.scope === "platform" ? "该平台当前在招项目" : `${guide.country}当前在招项目`}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[#586873]">
+                  {openTenders.scope === "platform"
+                    ? `以下项目通过 ${guide.platform} 发布，目前仍在招标期内。`
+                    : `${guide.platform} 目前没有仍在招标期内的项目，以下为${guide.country}的其他在招项目。`}
+                </p>
+                <div className="mt-6">
+                  <TenderLinkCards links={openTenders.links} />
+                </div>
+                <Link href={countryPagePath(countryKey)} className="mt-5 inline-flex text-sm font-black text-[#a96100] transition hover:text-[#071826]">
+                  查看{guide.country}全部在招项目 →
+                </Link>
+              </section>
+            )}
           </div>
         </div>
 

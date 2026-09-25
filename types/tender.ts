@@ -159,6 +159,16 @@ export type TenderNeedingDocuments = {
    * uploaded, it just no longer needs fetching.
    */
   documentsDownloadedAt?: string;
+  /**
+   * Files already on record for a tender that is still here because none of
+   * them has been analysed (user, 2026-09-25: 还没跑过分析的项目数和待补文件项目数
+   * 不符合，主要问题我看都是智利的项目). Absent when nothing is on record.
+   *
+   *   pdfPending      PDFs held but not analysed yet — run 本地批量分析 on them
+   *   otherFiles      .docx/.xlsx forms, held but never parsed; on their own
+   *                   they are not the bid documents
+   */
+  filesOnRecord?: { pdfPending: number; otherFiles: number };
 };
 
 export type Tender = {

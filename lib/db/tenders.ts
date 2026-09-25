@@ -569,7 +569,7 @@ type DocumentsNeededRow = {
   source_url: string;
   source_name: string;
   status: TenderStatus;
-  tender_documents: { id: string }[];
+  tender_documents: { id: string; extraction_status: string | null }[];
   tender_key_dates?: { type: TenderKeyDate["type"]; date: string }[];
   tender_document_links: { id: string }[];
   submission_deadline: string | null;
@@ -581,7 +581,7 @@ type DocumentsNeededRow = {
 // type/date join TENDER_LIST_SELECT uses over the whole table.
 const DOCUMENTS_NEEDED_SELECT = `
   slug, tender_number, title, country, estimated_value, currency, relevance_tier, relevance_label, publication_date, source_url, source_name, status,
-  tender_documents ( id ), tender_document_links ( id ), submission_deadline, documents_downloaded_at,
+  tender_documents ( id, extraction_status ), tender_document_links ( id ), submission_deadline, documents_downloaded_at,
   tender_key_dates ( type, date )
 `;
 
@@ -643,8 +643,16 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
     if (page.length < SUPABASE_PAGE_SIZE) break;
   }
 
+  // "Has a document" used to mean "has any tender_documents row", which is
+  // how five Chilean tenders fell off this list on 2026-09-25 while 项目管理
+  // still counted them as 还没跑过分析: backfill-chile-ficha --download had
+  // recorded their .docx/.xlsx forms — the only attachments Mercado Público
+  // serves without a reCAPTCHA — and the Bases PDFs behind 「Ver anexos」 were
+  // never there. A tender now leaves this list when a document of it has been
+  // ANALYSED, the same test the admin list's analysis filter applies
+  // (fetchAnalysisStates), so the two can no longer disagree about the same row.
   return rows
-    .filter((row) => row.tender_documents.length === 0)
+    .filter((row) => !row.tender_documents.some((document) => document.extraction_status === "extracted"))
     .map((row) => ({
       slug: row.slug,
       tenderNumber: row.tender_number,
@@ -669,6 +677,14 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
       }),
       documentLinkCount: row.tender_document_links?.length ?? 0,
       documentsDownloadedAt: row.documents_downloaded_at ?? undefined,
+      ...(row.tender_documents.length > 0
+        ? {
+            filesOnRecord: {
+              pdfPending: row.tender_documents.filter((document) => document.extraction_status === "pending").length,
+              otherFiles: row.tender_documents.filter((document) => document.extraction_status !== "pending").length,
+            },
+          }
+        : {}),
     }));
 }
 

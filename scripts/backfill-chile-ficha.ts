@@ -20,7 +20,14 @@
  *                                 cannot disagree — the gap found 2026-09-05
  *   tender_documents              one row per attachment, ONLY with --download,
  *                                 because a row there means "we hold this file"
- *                                 and /admin/documents-needed treats it as done
+ *
+ * What it can NOT reach: the tender's own 「Ver anexos」 (ViewAttachment.aspx),
+ * where the Bases and the Acta PDFs live. That page is behind reCAPTCHA
+ * Enterprise (checked 2026-09-25 on 1388961-49-LR26) and is not bypassed
+ * here. The VerAntecedentes indexes this script does read are the product
+ * lines' forms — .docx/.xlsx, not the bid documents — so a tender can come
+ * out of a --download run with eleven files and no Bases. It therefore stays
+ * on /admin/documents-needed (badged 缺 PDF) until something is analysed.
  *
  * Nothing is written to `tender_document_links`: a Chilean attachment has no
  * URL of its own (it is an ASP.NET postback), and storing the index page there

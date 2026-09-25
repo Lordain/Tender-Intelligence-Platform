@@ -8806,3 +8806,19 @@ lib/relevance-codelco.ts：总部（Casa Matriz，全集团统一采购）的工
 按当地中午存。
 
 每日任务：`npm run cron:codelco`，心跳 `import-codelco`；测试 `npm run test:codelco`。
+
+## 新项目清单的「智利」标签（2026-09-25）
+
+用户要求加上（「智利后台没有手动加项目的选项？请加一下」）。两个按钮：Mercado Público
+和 Codelco，走 `app/api/admin/import-chile`，调用的就是每日任务用的 `ingestChile()` /
+`ingestCodelco()`，所以不会跟定时任务不一致。
+
+Mercado Público 要考虑时长：读公开搜索约 25 秒（实测 4,047 条在招，保留 49 条）；
+截止日要逐条打开项目页读，每条 2.5 秒。函数上限 300 秒，所以：
+
+- **预览不读截止日**。档位不依赖截止日，所以预览的数字和写入时一样，只要几十秒。
+- **写入时读项目页，从请求开始算最多 200 秒**（`enrichUntil`）。没读到的先写入，
+  截止日留给下一次每日任务补；导入永远不会把已存的截止日清成空（`NEVER_NULLED_BY_AN_IMPORT`）。
+
+线上部署还从没连过 Mercado Público。连不上时，返回的错误里会附上能在本机跑的命令
+（`npm run cron:chile -- --write`）。

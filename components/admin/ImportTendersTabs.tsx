@@ -24,6 +24,7 @@ const TABS = [
   { href: "/admin/import-tenders/brazil", label: "巴西", country: "Brazil" },
   { href: "/admin/import-tenders/colombia", label: "哥伦比亚", country: "Colombia" },
   { href: "/admin/import-tenders/peru", label: "秘鲁", country: "Peru" },
+  { href: "/admin/import-tenders/chile", label: "智利", country: "Chile" },
 ];
 
 function MaintenanceIcon() {

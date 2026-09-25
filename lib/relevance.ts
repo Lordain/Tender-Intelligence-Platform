@@ -2,6 +2,7 @@ import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
 import { foldAccents } from "@/lib/text-fold";
+import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
 
@@ -2829,7 +2830,7 @@ export function isDirectAward(procedureType: string | undefined): boolean {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "municipal_sports_component" | "rural_road" | "small_local_works" | "equipment_rental" | "short_bid_window",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "municipal_sports_component" | "rural_road" | "small_local_works" | "equipment_rental" | "short_bid_window" | "declared_small_band",
   LocalizedText
 > = {
   no_content: {
@@ -2856,6 +2857,11 @@ const EXCLUDED_REASON_BY_SIGNAL: Record<
     zh: "该项目的标的是社区/乡镇一级的小型工程——幼儿园、托儿所、村小、社区卫生站、社区球场、广场绿化与城市家具、边坡防护与挡土墙、街巷路面、市政路网改善、乡村供水等。这类项目通常由本地承包商承建、金额有限，中资企业（即使在当地已设实体）一般不会参与，默认不进入推荐列表（数据仍保留，可用于统计）。注：若该项目披露的预估金额达到大型工程门槛，本规则不适用；公路（rodovia、BR-xxx 等）不受影响。",
     en: "The object here is a community-scale public work — a daycare or village school, a neighbourhood health post, a local pitch, a square with its landscaping and street furniture, a slope-retaining wall, street surfacing, a municipal road-network upgrade, a rural water scheme. These are built by local contractors at limited value and are not contracts a Chinese company would enter, even with a local entity. Filtered from the default feed (metadata is kept, not deleted). Does not apply once a disclosed value reaches the large-works threshold, and never applies to numbered highways.",
     es: "El objeto es una obra de escala comunitaria — una guardería o escuela rural, un puesto de salud de barrio, una cancha, una plaza con su paisajismo y mobiliario urbano, un muro de contención de talud, pavimentación de calles, una mejora de la red vial municipal, un sistema de agua rural. Las ejecuta un contratista local por montos limitados y no son contratos a los que entraría una empresa china, incluso con filial local. Filtrada de la vista predeterminada (los metadatos se conservan). No aplica cuando el valor declarado alcanza el umbral de obra mayor, ni a carreteras numeradas.",
+  },
+  declared_small_band: {
+    zh: "采购方没有公布具体金额，但公布了法定规模档位，且档位上限不超过 2,000 UTM（约 15 万美元），远低于推荐门槛。关键词再匹配，合同规模也已由采购方自己定下，默认不进入推荐列表（数据仍保留，可用于统计）。注：公布了具体金额的项目按金额判断，不适用本规则。",
+    en: "The buyer published no amount, but did publish the statutory size band of the procedure, and that band tops out at 2,000 UTM (about $151,000) — far below the platform floor. However well the title matches, the buyer has already declared the contract's size. Filtered from the default feed (metadata is kept, not deleted). Does not apply to any tender with a published amount.",
+    es: "La entidad no publicó el monto, pero sí el tramo legal del procedimiento, y ese tramo llega como máximo a 2.000 UTM (unos US$151.000), muy por debajo del umbral de la plataforma. Por mucho que el título coincida, la propia entidad ya declaró el tamaño del contrato. Filtrada de la vista predeterminada (los metadatos se conservan). No aplica a licitaciones con monto publicado.",
   },
   short_bid_window: {
     zh: `该项目从发布到交标不足 ${SHORT_BID_WINDOW_DAYS} 个自然日。读标书、核价、办投标保函，多数平台还要求先完成供应商注册，这个时间窗内中资企业实际上无法参与；加之该项目未披露预估金额、规模也无从判断，默认不进入推荐列表（数据仍保留，可用于统计）。注：中型/大型项目，或已披露金额的项目，不适用本规则。`,
@@ -2954,6 +2960,7 @@ function reasonFor(
     | "small_local_works"
     | "equipment_rental"
     | "short_bid_window"
+    | "declared_small_band"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
   valueThresholdUsd: number = MIN_VALUE_USD,
@@ -3275,6 +3282,21 @@ export function classifyRelevance(input: {
       CHILE_NOT_A_TARGET_TITLE.some((pattern) => pattern.test(foldAccents(input.title))))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+
+  // An unpriced Chilean row whose buyer DECLARED it under 2,000 UTM (~$151K).
+  // See isSmallDeclaredChileanBand. Checked before hasIncludeOverride: the
+  // 25 rows this removed from the 2026-09-25 corpus were all kept by
+  // keywords, including a dual-view X-ray scanner and hydroelectric
+  // equipment, and the band is the buyer telling us the size those keywords
+  // guessed at. A row WITH an amount is judged on the amount, as everywhere.
+  if (
+    input.isNationalPriorityProject !== true &&
+    input.country === "Chile" &&
+    input.estimatedValue === undefined &&
+    isSmallDeclaredChileanBand(input.procedureType ?? "")
+  ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "declared_small_band") };
   }
 
   // See PERU_MARGINAL_INVESTMENT — undisclosed value only; a real amount is

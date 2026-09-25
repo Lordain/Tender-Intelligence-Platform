@@ -2527,6 +2527,44 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real row, 2215-49-LR26, kept by the user. An MRI machine — the same keyword as the deleted 'SERVICIOS DE EXÁMENES RESONANCIAS MAGNÉTICAS' below, and no purchase verb at all, which is why the rule vetoes service titles rather than requiring a purchase word: Chilean titles often have no verb.",
     country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
   },
+  // The buyer's declared size band, for a row with no amount (2026-09-25,
+  // the user: exclude the unpriced Chilean rows the buyer declared under
+  // $151K). The procedure code carries the band; see
+  // isSmallDeclaredChileanBand in lib/chile-amount-band.ts.
+  {
+    title: "RESONANCIA NUCLEAR MAGNETICA PARA AMB. Y HOSP.",
+    procedureType: "Licitación Pública Mayor a 5000 UTM (LR)",
+    tenderNumber: "2215-49-LR26",
+    expectedTier: "standard",
+    note: "Real row, 2215-49-LR26, kept by the user. LR is 5,000 UTM (~$376K) and UP — a floor, not a ceiling — so the band rule leaves it alone.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "LICITACION ESTACION DE TRABAJOS PARA DIAGNOSTICO MEDICO PARA LA CATEDRA DE RADIOLOGIA E IMAGENOLOGIA DE LA ESCUELA DE MEDICINA",
+    procedureType: "Licitación Pública Entre 100 y 1000 UTM (LE)",
+    tenderNumber: "4895-11-LE26",
+    expectedTier: "excluded",
+    note: "Real row, 4895-11-LE26. The fixture below keeps the same title without its procedure code, to pin the imaging words; with the code, the buyer's own LE declaration (100–1,000 UTM, $7.5K–$75K) excludes it. The stored row stays as the user left it — only new imports are affected.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "Adquisición de un equipo de rayos X doble vista",
+    procedureType: "Licitación Pública Mayor a 1000 UTM (LP)",
+    tenderNumber: "1114377-1-LP26",
+    expectedTier: "excluded",
+    note: "Real row, 1114377-1-LP26 (Servicio Nacional de Aduanas), which the keywords made 大型 on 2026-09-25. LP rows say 'Igual o superior a 1.000 UTM e inferior a 2.000 UTM' — under $151K by the buyer's own declaration.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["healthcare"],
+  },
+  {
+    title: "EQUIPAMIENTO MÉDICO DESTINADO A CENTROS DE SALUD",
+    procedureType: "Licitación Pública Entre 100 y 1000 UTM (LE)",
+    tenderNumber: "1213444-23-LE26",
+    estimatedValue: 1_200_000_000,
+    currency: "CLP",
+    expectedTier: "standard",
+    note: "Real title (1213444-23-LE26), with an invented CLP 1.2bn amount to pin the scope: once a number is published it is judged on the number, whatever the band says. The real row is unpriced and excluded.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "municipal", industries: ["healthcare"],
+  },
   {
     title: "LICITACION ESTACION DE TRABAJOS PARA DIAGNOSTICO MEDICO PARA LA CATEDRA DE RADIOLOGIA E IMAGENOLOGIA DE LA ESCUELA DE MEDICINA",
     expectedTier: "standard",

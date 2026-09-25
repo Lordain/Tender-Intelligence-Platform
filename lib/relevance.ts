@@ -2952,12 +2952,74 @@ const SUPPLY_PURCHASE_HEAD =
  * allowed, because Mexican titles carry one.
  */
 const GOODS_PURCHASE_HEAD =
-  /^\W*(?:[\w.\/]{1,15}\s*[-–:]\s*)?(?:contrataci[óo]n\s+(?:de\s+bienes|para\s+la\s+adquisi\w*n)|adquisi\w*n|adqs?\.|compra|suministro|abastecimiento|aquisi[çc][ãa]o|fornecimento)\b/i;
+  /^\W*(?:[\w.\/]{1,15}\s*[-–:]\s*)?(?:contrataci[óo]n\s+(?:de\s+bienes|para\s+la\s+adquisi\w*n)|adquisi\w*n|adqs?\b\.?|compra|suministro|abastecimiento|aquisi[çc][ãa]o|fornecimento)\b/i;
 
 function isGoodsPurchase(title: string, scopeType: TenderScopeType): boolean {
   // Folded first: without the u flag, \w does not match "Ó", so the pattern
   // alone fails on "ADQUISICIÓN" and only matches the unaccented spelling.
   return scopeType === "equipment" || GOODS_PURCHASE_HEAD.test(foldAccents(title));
+}
+
+/**
+ * International procedure, by the letter a Mexican procedure number carries
+ * before its sequence: "LA-07-110-007000999-T-687-2026". N is nacional, I
+ * internacional abierta, T internacional bajo cobertura de tratados.
+ *
+ * Read as SCALE evidence, not as eligibility. Every row Compras MX exports
+ * has no amount (664 of 664 open procedures on 2026-09-25), so a Mexican
+ * row's size cannot be judged the way 规模为主 asks; a procedure the entity
+ * chose to open internationally is the nearest thing to a size statement
+ * the source makes. It is NOT a statement that a Chinese company may bid:
+ * T procedures are open only to Mexico's treaty partners, and China is not
+ * one — a Chinese bidder needs a Mexican (or treaty-country) entity for
+ * those, which is also true of every N procedure the feed already keeps.
+ */
+const MEXICO_INTERNATIONAL_PROCEDURE = /-(?:I|T)-\d+-\d{4}$/i;
+
+/**
+ * What 大量设备/化学品/石油制品采购 buys, on the folded title. 材料 is
+ * deliberately absent (user, 2026-09-25: 材料不算), and so is anything
+ * NOT_BULK_GOODS names — the office, computer and consumable purchases the
+ * user said stay out, which are also the most common international Mexican
+ * purchases: toner, cartridges and papelería are bought internationally as
+ * readily as generators are.
+ */
+const BULK_GOODS_CATEGORY =
+  /\bequipos?\b|\bequipamiento\b|\bmaquinaria\b|\bmaquinas?\b|plantas? (?:generadora|de emergencia|de energia)|grupos? electrogenos?|\bgeneradores?\b|quimic|\bcloro\b|hipoclorito|sulfato de aluminio|\bcombustibles?\b|\bdiesel\b|\bgasolinas?\b|turbosina|\blubricantes?\b|\basfalto\b|emulsion asfaltica|\bgas (?:lp|l\.p\.|licuado)|petrolifer/i;
+
+/**
+ * A title that is nothing but the goods: "EQUIPAMIENTO UMF JUÁREZ, SEGUNDA
+ * VUELTA", "MAQUINARIA Y EQUIPOS DE SEMIPROCESADOS TEXTILES". IMSS and
+ * SEDENA write purchases this way, with no verb, so for this rule the noun
+ * is the purchase. Not added to GOODS_PURCHASE_HEAD: that one also opens the
+ * short-duration exemption, and "EQUIPAMIENTO" heads works titles too.
+ */
+const GOODS_NOUN_HEAD = /^\W*(?:equipamiento|maquinaria|equipos?)\b/i;
+
+const NOT_BULK_GOODS =
+  /papeleri|oficina|computo|informatic|periferic|\bmonitor|discos? dur|\btoner|cartucho|tecnologias? de la informacion|\btic\b|consumible|\binsumo|materia|refaccion|accesorio|mobiliario|uniforme|vestuario|calzado|\bropa\b|equipo de proteccion|despensa|aliment|medicament|vacuna|curacion|osteosintesis|de consumo|limpieza|\baseo\b|didactic|herramientas? menor|herramientas? de mano|\bvales?\b|audiovisual/i;
+
+/**
+ * The keep signal behind the user's 2026-09-25 decision for Mexico: with no
+ * amount to judge, 国际招标 + 设备/化学品/石油制品采购 counts as 大量. A keep
+ * signal only — it takes the row past the two undisclosed-value gates as
+ * 常规 and promotes nothing, the same weight EQUIPMENT_SCALE_CAPPED_KEYWORDS
+ * carry. Every exclusion above those gates still applies first.
+ */
+function isMexicoInternationalBulkPurchase(
+  country: string | undefined,
+  tenderNumber: string | undefined,
+  title: string,
+  subjectTitle: string,
+): boolean {
+  return (
+    country === "Mexico" &&
+    tenderNumber !== undefined &&
+    MEXICO_INTERNATIONAL_PROCEDURE.test(tenderNumber.trim()) &&
+    (GOODS_PURCHASE_HEAD.test(foldAccents(title)) || GOODS_NOUN_HEAD.test(foldAccents(title))) &&
+    BULK_GOODS_CATEGORY.test(subjectTitle) &&
+    !NOT_BULK_GOODS.test(subjectTitle)
+  );
 }
 
 const PROJECT_CONTEXT_CONNECTOR =
@@ -3365,6 +3427,7 @@ export function classifyRelevance(input: {
   const matchesMajorProject = MAJOR_PROJECT_KEYWORDS.some((pattern) => pattern.test(haystack));
   const hasLongDuration = durationDays !== undefined && durationDays >= LONG_DURATION_DAYS;
   const isEquipmentScaleCapped = EQUIPMENT_SCALE_CAPPED_KEYWORDS.some((pattern) => pattern.test(haystack));
+  const isMexicanBulkPurchase = isMexicoInternationalBulkPurchase(input.country, input.tenderNumber, input.title, subjectTitle);
   // See fibreTier. Returned outright rather than used to guard the promotions
   // below, because the user's rule is a determination — 非这些条件，都算常规
   // 项目 — and a guard would only ever lower a tier, never set one.
@@ -3630,7 +3693,8 @@ export function classifyRelevance(input: {
     normalizedValue === undefined &&
     !matchesFlagshipIndustry &&
     !hasIncludeOverride &&
-    !isEquipmentScaleCapped
+    !isEquipmentScaleCapped &&
+    !isMexicanBulkPurchase
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
@@ -3658,7 +3722,8 @@ export function classifyRelevance(input: {
     normalizedValue === undefined &&
     !matchesFlagshipIndustry &&
     !hasIncludeOverride &&
-    !isEquipmentScaleCapped
+    !isEquipmentScaleCapped &&
+    !isMexicanBulkPurchase
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }

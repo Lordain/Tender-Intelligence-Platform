@@ -1303,6 +1303,59 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     scopeType: "equipment", governmentLevel: "state", industries: ["vehicles"], procedureType: "Licitación pública",
     structuredDurationDays: 90, estimatedValue: 3_836_666_667, currency: "COP", country: "Colombia",
   },
+  // Mexico has no amounts (664 of 664 open Compras MX procedures on
+  // 2026-09-25), so 规模为主 cannot apply there. The user's decision for it:
+  // 国际招标 (I/T) + 设备/化学品/石油制品采购 counts as 大量; 材料, 办公, 电脑, 耗材
+  // do not. All real open rows, read the same day.
+  {
+    title: "ADQUISICIÓN PLANTA GENERADORA DE ENERGÍA",
+    expectedTier: "standard",
+    note: 'Real open Compras MX row, LA-06-HBW-006HBW001-I-62-2026 (FIRA). International (I) purchase of a generating plant with no amount — 国际招标 + 设备 counts as 大量 for Mexico (user, 2026-09-25). 常规, never more: with no amount there is nothing to promote on.',
+    tenderNumber: "LA-06-HBW-006HBW001-I-62-2026", buyer: "FIRA",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN DE 132 PARTIDAS (533 BIENES), DE EQUIPAMIENTO ASOCIADO A OBRA UMF 2",
+    expectedTier: "standard",
+    note: 'Real open row, LA-50-GYR-050GYR003-T-163-2026 (IMSS). Treaty-international (T) equipment for a clinic. T is scale evidence, not eligibility: China is not a Mexican treaty partner — see MEXICO_INTERNATIONAL_PROCEDURE.',
+    tenderNumber: "LA-50-GYR-050GYR003-T-163-2026", buyer: "IMSS",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "EQUIPAMIENTO UMF JUÁREZ, SEGUNDA VUELTA",
+    expectedTier: "standard",
+    note: 'Real open row, LA-50-GYR-050GYR035-T-94-2026 (IMSS). No purchase verb at all — IMSS titles the goods and nothing else, which is why GOODS_NOUN_HEAD exists.',
+    tenderNumber: "LA-50-GYR-050GYR035-T-94-2026", buyer: "IMSS",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPO DE ELECTRÓNICA - MEDICIÓN Y MÁQUINAS - HERRAMIENTAS",
+    expectedTier: "standard",
+    note: "Real open row, LA-11-L6H-011L6H001-I-8-2026 (COFAA). Máquinas-herramienta are machine tools. The first draft excluded every 'herramienta' to keep hand tools out, and threw this away with them.",
+    tenderNumber: "LA-11-L6H-011L6H001-I-8-2026", buyer: "COFAA",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPOS DE CÓMPUTO",
+    expectedTier: "excluded",
+    note: 'Real open row, LA-85-W83-926014991-I-94-2026 (ITSON). International AND equipment, and still out: the user kept computers out of 大量设备 (电脑照样排除), and they are the commonest international purchase there is.',
+    tenderNumber: "LA-85-W83-926014991-I-94-2026", buyer: "ITSON",
+    country: "Mexico", scopeType: "services", governmentLevel: "state", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN DE CARTUCHOS 2ª VUELTA.",
+    expectedTier: "excluded",
+    note: 'Real open row, LA-49-830-049830002-T-33-2026 (FGR). A treaty-international office-consumables purchase — the letter alone keeps nothing.',
+    tenderNumber: "LA-49-830-049830002-T-33-2026", buyer: "FGR",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN E INSTALACIÓN DE EQUIPOS INDUSTRIALES Y ELECTROMECÁNICOS",
+    expectedTier: "excluded",
+    note: 'Real open row, LA-51-GYN-051GYN010-N-112-2026 (ISSSTE). The control: the same kind of purchase the rule keeps, but N(acional). It pins that the procedure letter, not the equipment wording, is what the rule turns on.',
+    tenderNumber: "LA-51-GYN-051GYN010-N-112-2026", buyer: "ISSSTE",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
 
   // --- "subestación" narrowed to require a construction/equipment
   // qualifier (2026-09-04) after a real CFE example was found live in

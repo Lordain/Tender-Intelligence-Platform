@@ -26,7 +26,7 @@ import { pageMetadata } from "@/lib/seo";
  */
 export const metadata: Metadata = pageMetadata({
   title: "登录",
-  description: "登录拉美招投标信息平台，查看墨西哥、巴西、哥伦比亚、秘鲁政府招标项目的中文情报、采购方信息与交标时间。",
+  description: "登录拉美招投标信息平台，查看墨西哥、巴西、哥伦比亚、秘鲁、智利政府招标项目的中文情报、采购方信息与交标时间。",
   path: "/login",
 });
 

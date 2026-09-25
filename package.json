@@ -113,6 +113,7 @@
     "discover:comprasmx-vigente": "tsx --env-file-if-exists=.env.local scripts/discover-comprasmx-vigente.ts",
     "cron:colombia": "tsx --env-file-if-exists=.env.local scripts/cron-colombia.ts",
     "cron:pemex": "tsx --env-file-if-exists=.env.local scripts/cron-pemex.ts",
+    "cron:chile": "tsx --env-file-if-exists=.env.local scripts/cron-chile.ts",
     "licitia:daily": "tsx --env-file-if-exists=.env.local scripts/licitia-daily.ts",
     "dedupe:secop-phases": "tsx --env-file-if-exists=.env.local scripts/dedupe-secop-phase-rows.ts",
     "fix:licitia-buyer-names": "tsx --env-file-if-exists=.env.local scripts/fix-licitia-buyer-names.ts",

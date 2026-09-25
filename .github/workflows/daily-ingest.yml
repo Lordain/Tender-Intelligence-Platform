@@ -91,6 +91,13 @@ jobs:
           # a night that fails outright.
           - name: Brazil (PNCP)
             command: ingest:brazil-live
+          # Added 2026-09-25, when the user opened Chile. Mercado Público's
+          # public search (the busca door), every open tender each run, with
+          # each kept row's closing date read from its own ficha — see
+          # scripts/cron-chile.ts. Heavier than it looks only if the rules
+          # start keeping thousands; ENRICH_LIMIT caps that.
+          - name: Chile (Mercado Público)
+            command: cron:chile
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v7

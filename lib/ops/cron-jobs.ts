@@ -18,7 +18,8 @@ export type CronJobId =
   | "purge-stale-colombia"
   | "import-colombia"
   | "import-pemex"
-  | "licitia-daily";
+  | "licitia-daily"
+  | "import-chile";
 
 export type CronJobSpec = {
   id: CronJobId;
@@ -47,6 +48,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-colombia", label: "哥伦比亚自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-pemex", label: "PEMEX 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "licitia-daily", label: "LicitIA 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-chile", label: "智利自动导入", maxAgeHours: 30, runsOn: "github-actions" },
 ];
 
 export type CronHeartbeatStatus = "ok" | "skipped" | "failed";

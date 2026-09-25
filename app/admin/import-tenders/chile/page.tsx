@@ -13,7 +13,7 @@ export default function AdminImportTendersChilePage() {
           <AutoRunBadge schedule="每天 11:17 UTC（北京时间 19:17），GitHub Actions" /> 智利每天自动导入
         </p>
         <AutoRunNote>
-          Mercado Público 和 Codelco 都在每日自动任务里（每天 11:17 UTC，北京时间 19:17）。这一页只在想提前跑一次、或者先看看会导入什么的时候用。
+          Mercado Público 和 Codelco 都在每日自动任务里（每天 11:17 UTC，北京时间 19:17），都只导入近 3 天发布的。这一页只在想提前跑一次、或者先看看会导入什么的时候用。
         </AutoRunNote>
       </div>
       <div className="flex flex-wrap gap-3">

@@ -1,6 +1,8 @@
 /**
  * How far back the power, oil and mining companies' sources import by
- * publication date — Petronect, UPME, Codelco and Cemig.
+ * publication date — Petronect, UPME, Codelco and Cemig — and, since the
+ * user's call of 2026-09-25 (智利每日自动导入的范围 <- 1–3 天), Chile's
+ * Mercado Público daily run too.
  *
  * Each of those sources lists every process still open, however old; a
  * Petronect opportunity can take bids for five months. The user's call

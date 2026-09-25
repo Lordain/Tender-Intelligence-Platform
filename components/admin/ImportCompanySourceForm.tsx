@@ -22,16 +22,14 @@ const TIER_LABELS: Record<string, string> = {
 
 export function ImportCompanySourceForm({
   source,
-  eyebrow,
   title,
-  description,
-  sourceUrl,
+  note,
 }: {
   source: Source;
-  eyebrow: string;
+  /** For the confirm dialog; the row around this panel shows the name. */
   title: string;
-  description: React.ReactNode;
-  sourceUrl: string;
+  /** What the rules keep, in one line. */
+  note?: React.ReactNode;
 }) {
   const [write, setWrite] = useState(false);
   const [days, setDays] = useState<number>(3);
@@ -71,17 +69,9 @@ export function ImportCompanySourceForm({
 
   return (
     <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">{eyebrow}</p>
-      <h2 className="mt-1 text-lg font-black text-[#071826]">{title}</h2>
-      <p className="mt-1 text-sm text-[#52636e]">{description}</p>
-      <p className="mt-1 text-xs text-[#64717c]">
-        已在每日自动任务里。手动只读<strong>近 1–3 天发布</strong>的；已删除的项目不会被重新导入。
-        <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-1 font-bold text-[#b86e00] underline underline-offset-2">
-          打开官网 ↗
-        </a>
-      </p>
+      {note && <p className="text-xs text-[#52636e]">{note}</p>}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-[#233846]">
+      <div className={`${note ? "mt-3 " : ""}flex flex-wrap items-center gap-2 text-xs text-[#233846]`}>
         <span>只导入发布</span>
         {DAY_CHOICES.map((choice) => (
           <button

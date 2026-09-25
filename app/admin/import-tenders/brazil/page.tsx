@@ -1,66 +1,23 @@
 import { ImportAntaqForm } from "@/components/admin/ImportAntaqForm";
 import { ImportBrazilForm } from "@/components/admin/ImportBrazilForm";
 import { ImportCompanySourceForm } from "@/components/admin/ImportCompanySourceForm";
-import { ManualOnlyBadge, ManualOnlyNote } from "@/components/admin/AutoRunBadge";
+import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
 
 export default function AdminImportTendersBrazilPage() {
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-sm text-[#52636e]">
-        巴西有<strong>两个来源</strong>，都是实时接口，不需要手动导出文件——直接拉取。先不勾选&quot;写入
-        Supabase&quot;预览一遍，确认数量和分级没问题再写入。
-      </p>
-      {/*
-        Asked for directly (2026-09-19: 巴西现在会自动下载吗？如果会是每天哪个
-        时段？请跟哥伦比亚一样标记清楚). The answer is no, and saying so is the
-        point: .github/workflows/daily-ingest.yml runs cron:colombia,
-        cron:pemex and licitia:daily, and nothing else. Without this marker the
-        panel looks like Colombia's, which does run itself.
-      */}
-      <div className="rounded-xl border border-[#f0dcae] bg-[#fffbf0] px-4 py-3">
-        <p className="text-sm font-black text-[#071826]">
-          <ManualOnlyBadge hint="巴西两个来源都没有进每日自动导入，需要在这一页手动拉取" /> 巴西不会自动下载
-        </p>
-        <ManualOnlyNote>
-          哥伦比亚、PEMEX、Compras MX 每天 11:17 UTC（北京时间 19:17）自动跑；<strong>巴西两个来源都没有</strong>，
-          每一条巴西项目都是在这一页手动拉进来的。<strong>PNCP 建议每天或每隔几天跑一次</strong>（它每天有几百条新公告），
-          <strong>ANTAQ 每周一次就够</strong>（一年才七八场听证，理由写在下面那一栏里）。
-          隔太久不跑，库里的巴西数据会悄悄变旧——而「很久没导入」和「最近没有新标」在前台看起来一模一样。
-        </ManualOnlyNote>
-      </div>
-      <div className="flex flex-wrap gap-3">
-        <a
-          href="https://pncp.gov.br/app/editais"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8e0e3] bg-white px-4 py-2 text-sm font-bold text-[#071826] transition-colors hover:border-[#ffb21c] hover:bg-[#fff9ec]"
-        >
-          打开 PNCP 官网 ↗
-        </a>
-      </div>
-      <ImportBrazilForm />
-      {/*
-        ANTAQ is below PNCP, not beside it, because it is not an alternative:
-        PNCP is the wide net (5,570 municipalities, every direct-administration
-        notice by statute) and ANTAQ is a handful of very large concessions a
-        procurement registry structurally cannot carry, since a concession is
-        not a purchase. Someone importing "Brazil" wants both, in that order.
-      */}
-      <ImportAntaqForm />
-      <ImportCompanySourceForm
-        source="petronect"
-        eyebrow="Brazil · 石油"
-        title="Petronect — Petrobras / Transpetro"
-        description="Petrobras 和 Transpetro 不在 PNCP 上（Lei 13.303），在自己的 Petronect 门户招标。按石油设备规则筛选，大型 EPC、压缩机、管材等会保留。"
-        sourceUrl="https://www.petronect.com.br/"
-      />
-      <ImportCompanySourceForm
-        source="cemig"
-        eyebrow="Brazil · 电力"
-        title="Cemig — e-Compras"
-        description="米纳斯吉拉斯州电力公司 Cemig 自己的采购门户。只保留电网设备和材料（含电子竞价），服务类、资格登记类不导入。"
-        sourceUrl="https://app2-compras.cemig.com.br/"
-      />
+    <div className="flex flex-col gap-3">
+      <ImportSourceSection name="PNCP — 全国公共采购门户" hint="巴西主渠道：联邦、州、市政府的工程和采购" mode="auto" links={[{ href: "https://pncp.gov.br/app/editais" }]}>
+        <ImportBrazilForm />
+      </ImportSourceSection>
+      <ImportSourceSection name="Petronect — Petrobras / Transpetro" hint="不在 PNCP 上；按石油设备规则筛选（EPC、压缩机、管材等）" mode="auto" links={[{ href: "https://www.petronect.com.br/" }]}>
+        <ImportCompanySourceForm source="petronect" title="Petronect" />
+      </ImportSourceSection>
+      <ImportSourceSection name="Cemig — e-Compras" hint="米纳斯吉拉斯州电力公司；只保留电网设备和材料" mode="auto" links={[{ href: "https://app2-compras.cemig.com.br/" }]}>
+        <ImportCompanySourceForm source="cemig" title="Cemig" />
+      </ImportSourceSection>
+      <ImportSourceSection name="ANTAQ — 港口特许经营" hint="公开听证阶段的港口项目；一年七八场，每周跑一次就够" mode="manual" links={[{ href: "https://www.gov.br/antaq/pt-br" }]}>
+        <ImportAntaqForm />
+      </ImportSourceSection>
     </div>
   );
 }

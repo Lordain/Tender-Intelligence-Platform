@@ -1,6 +1,7 @@
 import { RefreshDisplayTextButton } from "@/components/admin/RefreshDisplayTextButton";
 import { ReclassifyButton } from "@/components/admin/ReclassifyButton";
 import { ExplainKeptPanel } from "@/components/admin/ExplainKeptPanel";
+import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
 
 /**
  * The cross-country maintenance actions, as their own tab.
@@ -18,14 +19,17 @@ import { ExplainKeptPanel } from "@/components/admin/ExplainKeptPanel";
  */
 export default function AdminImportTendersMaintenancePage() {
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-sm text-[#52636e]">
-        这些操作<strong>对所有国家的标书统一生效</strong>，跟当前选中的国家无关。不是每天要做的事——
-        更新项目文案在导入新数据之后跑（翻译和公开文案已经合成一个按钮，按顺序自动跑完两步），重新分类只在改过筛选规则之后跑，保留原因分析随时可看（只读）。
-      </p>
-      <RefreshDisplayTextButton />
-      <ReclassifyButton />
-      <ExplainKeptPanel />
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-[#64717c]">这些操作对<strong>所有国家</strong>统一生效，跟选中的国家无关。</p>
+      <ImportSourceSection name="更新项目文案" hint="导入新数据后跑：翻译 + 生成公开标题和摘要，按顺序自动跑完" mode="tool">
+        <RefreshDisplayTextButton />
+      </ImportSourceSection>
+      <ImportSourceSection name="重新分类" hint="只在改过筛选规则之后跑" mode="tool">
+        <ReclassifyButton />
+      </ImportSourceSection>
+      <ImportSourceSection name="保留原因分析" hint="只读：看每个项目是被哪条规则保留的" mode="tool">
+        <ExplainKeptPanel />
+      </ImportSourceSection>
     </div>
   );
 }

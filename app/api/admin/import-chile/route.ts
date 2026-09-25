@@ -25,8 +25,14 @@ import { logAdminAlert } from "@/lib/admin-alerts";
 export const maxDuration = 300;
 
 const FICHA_BUDGET_MS = 200_000;
-const WINDOW_MONTHS = 2;
 const ENRICH_LIMIT = 300;
+/**
+ * The manual run takes only the last 1–3 days (user, 2026-09-25: 手动只要1-3天，
+ * 不要两个月). The daily job keeps its own window; this page is for catching
+ * what was published since, not for re-reading two months of backlog.
+ */
+const MANUAL_WINDOW_DAYS = [1, 2, 3] as const;
+const DEFAULT_MANUAL_WINDOW_DAYS = 3;
 
 /** Same test as the Brazil route: the network refusing us, not the source answering badly. */
 function isConnectionFailure(err: unknown): boolean {
@@ -39,17 +45,20 @@ export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
-  const body = (await request.json()) as { source?: "mercadopublico" | "codelco"; write?: boolean };
+  const body = (await request.json()) as { source?: "mercadopublico" | "codelco"; write?: boolean; days?: number };
   const source = body.source === "codelco" ? "codelco" : "mercadopublico";
   const write = body.write === true;
+  const days = (MANUAL_WINDOW_DAYS as readonly number[]).includes(body.days ?? -1) ? body.days! : DEFAULT_MANUAL_WINDOW_DAYS;
   const supabase = createSupabaseAdminClient();
   if (write && !supabase) return NextResponse.json({ error: "supabase not configured" }, { status: 500 });
 
-  const cliCommand = `npm run cron:${source === "codelco" ? "codelco" : "chile"} --${write ? " --write" : ""}`.replace(/ --$/, "");
+  const cliCommand = source === "codelco"
+    ? `npm run cron:codelco -- --days ${days}${write ? " --write" : ""}`
+    : `npm run cron:chile -- --days ${days}${write ? " --write" : ""}`;
 
   try {
     if (source === "codelco") {
-      const result = await ingestCodelco(supabase, { write });
+      const result = await ingestCodelco(supabase, { write, days });
       if (write) revalidateTenders();
       return NextResponse.json({ source, ...result });
     }
@@ -57,14 +66,14 @@ export async function POST(request: Request) {
     const result = await ingestChile(supabase, {
       write,
       door: "busca",
-      months: WINDOW_MONTHS,
+      days,
       enrichLimit: write ? ENRICH_LIMIT : 0,
       enrichUntil: started + FICHA_BUDGET_MS,
       preview: false,
     });
     // The public list is cached; drop it so this import shows up now.
     if (write) revalidateTenders();
-    return NextResponse.json({ source, ...result });
+    return NextResponse.json({ source, days, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (isConnectionFailure(err)) {

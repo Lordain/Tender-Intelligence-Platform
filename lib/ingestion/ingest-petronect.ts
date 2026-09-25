@@ -73,7 +73,7 @@ export function describePetronectStaleness(fetchedCount: number, mappedCount: nu
 
 export async function ingestPetronect(
   supabase: SupabaseClient | null,
-  options: { write: boolean; days?: number; rows?: PetronectOpportunity[]; now?: Date },
+  options: { write: boolean; days?: number; tiers?: TenderRelevanceTier[]; rows?: PetronectOpportunity[]; now?: Date },
   onProgress?: (message: string) => void,
 ): Promise<PetronectIngestResult> {
   const now = options.now ?? new Date();
@@ -90,7 +90,11 @@ export async function ingestPetronect(
     rowBySlug.set(tender.slug, row);
   }
 
-  const recent = filterTendersPublishedWithinDays(mapped, days, now);
+  // `tiers` narrows a one-off backfill to the tiers asked for (the user,
+  // 2026-09-25: 大型项目要 — the open flagships the 3-day window leaves out).
+  const recent = filterTendersPublishedWithinDays(mapped, days, now).filter(
+    (tender) => !options.tiers || options.tiers.includes(tender.relevance.tier),
+  );
   const tierCounts: Record<TenderRelevanceTier, number> = { flagship: 0, significant: 0, standard: 0, excluded: 0 };
   for (const tender of recent) tierCounts[tender.relevance.tier] += 1;
 

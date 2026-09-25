@@ -7,6 +7,7 @@ import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redac
 import { undisclosedAmountBand } from "@/lib/chile-amount-band";
 import { publicTitleOf, shortTitleOf } from "@/lib/public-title";
 import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
+import { deadlineIsInDocuments } from "@/lib/deadline-in-documents";
 
 export const TENDER_PAGE_SIZE = 20;
 export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "awarded"];
@@ -123,6 +124,8 @@ export type TenderListItem = Pick<
    * for. Nothing public rendered the name itself.
    */
   isObrasPorImpuestos: boolean;
+  /** The bid date is in the bid documents (lib/deadline-in-documents.ts): show 见招标文件, not 未提供. */
+  deadlineInDocuments?: true;
   publicSlug: string;
   titleZh: string;
   buyer?: string;
@@ -282,6 +285,7 @@ export function toTenderListItem(
       ? tender.submissionDeadline
       : toMonthPrecisionOptional(tender.submissionDeadline),
     isObrasPorImpuestos: isObrasPorImpuestos(tender),
+    ...(deadlineIsInDocuments(tender) ? { deadlineInDocuments: true as const } : {}),
   };
 }
 

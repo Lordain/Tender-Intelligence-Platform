@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { TenderCardData } from "@/lib/tender-card";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
+import { DEADLINE_IN_DOCUMENTS_LABEL } from "@/lib/deadline-labels";
 import { countryLabel } from "@/lib/tender-labels";
 import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
@@ -112,7 +113,7 @@ export function TenderCard({
         <div className="rounded-xl bg-[#fff6df] px-3 py-2.5">
           <p className="text-[11px] font-medium text-[#966000]">计划交标</p>
           <span className="mt-0.5 block text-sm font-bold text-[#071826]">
-            {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "未提供"}
+            {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : tender.deadlineInDocuments ? DEADLINE_IN_DOCUMENTS_LABEL : "未提供"}
           </span>
         </div>
       </div>

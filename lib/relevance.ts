@@ -7,7 +7,9 @@ import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
 import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-codelco";
 import { classifyCemigRelevance, CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig";
+import { classifyPetroperuRelevance, PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
 import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
+import { classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
 
 /**
@@ -4111,6 +4113,15 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
       relevance: classifyPemexRelevance({ title: input.title, procedureType: input.procedureType, scopeType: input.scopeType }),
     };
   }
+  // CFE calls read from the DOF: own rules, see lib/relevance-cfe.ts — the DOF
+  // carries no supply type, and CFE's procedure number does.
+  if (/^Diario Oficial de la Federaci[oó]n/.test(input.sourceName ?? "") && isCfeCall(input)) {
+    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    return {
+      industries: withEnergy,
+      relevance: classifyCfeRelevance({ title: input.title, tenderNumber: input.tenderNumber }),
+    };
+  }
   // Cemig's e-Compras: own rules, see lib/relevance-cemig.ts — the one source
   // where a pregão for goods is kept (user, 2026-09-25).
   if (input.sourceName === CEMIG_SOURCE_NAME) {
@@ -4118,6 +4129,15 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
     return {
       industries: withEnergy,
       relevance: classifyCemigRelevance({ title: input.title, summary: input.summary, procedureType: input.procedureType }),
+    };
+  }
+  // Petroperú's international competitions: own rules, see
+  // lib/relevance-petroperu.ts — rare, big, and never priced.
+  if (input.sourceName === PETROPERU_SOURCE_NAME) {
+    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    return {
+      industries: withEnergy,
+      relevance: classifyPetroperuRelevance({ title: input.title, scopeType: input.scopeType }),
     };
   }
   return {

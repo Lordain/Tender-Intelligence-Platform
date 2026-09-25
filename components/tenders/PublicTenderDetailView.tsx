@@ -16,6 +16,7 @@ import {
 import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { STALE_WITHOUT_END_DATE_DAYS } from "@/lib/tender-status";
+import { DEADLINE_IN_DOCUMENTS_LABEL } from "@/lib/deadline-labels";
 import type { PublicTenderDetail } from "@/types/tender";
 import { TimelineTrack } from "@/components/tenders/TimelineTrack";
 import { DetailSectionHeading } from "@/components/tenders/DetailSectionHeading";
@@ -159,7 +160,9 @@ export function PublicTenderDetailView({ tender, promptKind }: { tender: PublicT
             <p className="mt-5 border-t border-[#e4e9eb] pt-4 text-xs leading-5 text-[#75838c]">
               {tender.submissionDeadline
                 ? "计划交标的具体日期订阅后可见。"
-                : `计划交标日期：数据源未提供。${tender.status === "submission_closed" ? `已按发布满 ${STALE_WITHOUT_END_DATE_DAYS} 天推定截止，并非官方交标日期。` : "请以采购机构后续公告为准。"}`}
+                : tender.deadlineInDocuments && tender.status !== "submission_closed"
+                  ? `计划交标日期：${DEADLINE_IN_DOCUMENTS_LABEL}（以招标文件及其日程修改公告为准）。`
+                  : `计划交标日期：数据源未提供。${tender.status === "submission_closed" ? `已按发布满 ${STALE_WITHOUT_END_DATE_DAYS} 天推定截止，并非官方交标日期。` : "请以采购机构后续公告为准。"}`}
             </p>
           </div>
         </section>

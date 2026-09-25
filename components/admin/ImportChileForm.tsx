@@ -25,6 +25,7 @@ type SampleTender = {
 
 type MercadoPublicoResult = {
   source: "mercadopublico";
+  days: number;
   fetchedCount: number;
   keptAfterRecencyCount: number;
   surfacedCount: number;
@@ -106,7 +107,7 @@ function ResultPanel({ result }: { result: Result }) {
       {result.source === "mercadopublico" ? (
         <>
           <p className="text-sm font-bold text-[#071826]">
-            在招 {result.fetchedCount} 条 → 近 2 个月发布 {result.keptAfterRecencyCount} 条 →{" "}
+            在招 {result.fetchedCount} 条 → 近 {result.days} 天发布 {result.keptAfterRecencyCount} 条 →{" "}
             <span className="text-[#b86e00]">进入推荐 {result.surfacedCount} 条</span>
           </p>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-[#52636e]">
@@ -158,22 +159,26 @@ function ErrorPanel({ error }: { error: { message: string; cliCommand?: string }
   );
 }
 
+/** 手动只要1-3天，不要两个月 (user, 2026-09-25). */
+const DAY_CHOICES = [1, 2, 3] as const;
+
 export function ImportChileForm() {
   const [write, setWrite] = useState(false);
+  const [days, setDays] = useState<number>(3);
   const [running, setRunning] = useState<Source | null>(null);
   const [results, setResults] = useState<Partial<Record<Source, Result>>>({});
   const [errors, setErrors] = useState<Partial<Record<Source, { message: string; cliCommand?: string }>>>({});
 
   async function run(source: Source) {
     const label = source === "codelco" ? " Codelco " : " Mercado Público ";
-    if (write && !confirm(`确定要把${label}的智利项目写入 Supabase 吗？`)) return;
+    if (write && !confirm(`确定要把${label}近 ${days} 天发布的智利项目写入 Supabase 吗？`)) return;
     setRunning(source);
     setErrors((prev) => ({ ...prev, [source]: undefined }));
     try {
       const res = await fetch("/api/admin/import-chile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source, write }),
+        body: JSON.stringify({ source, write, days }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -209,18 +214,35 @@ export function ImportChileForm() {
           <input type="checkbox" checked={write} onChange={(e) => setWrite(e.target.checked)} className="size-4 accent-[#ffb21c]" />
           写入 Supabase（不勾选则只预览）
         </label>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#233846]">
+          <span>只导入发布</span>
+          {DAY_CHOICES.map((choice) => (
+            <button
+              key={choice}
+              type="button"
+              onClick={() => setDays(choice)}
+              disabled={running !== null}
+              className={`h-7 rounded-lg border px-3 font-bold transition-colors disabled:opacity-50 ${
+                days === choice ? "border-[#071826] bg-[#071826] text-white" : "border-[#d8e0e3] bg-white text-[#233846] hover:border-[#b86e00]"
+              }`}
+            >
+              近 {choice} 天
+            </button>
+          ))}
+          <span className="text-[#64717c]">的项目（两个来源都适用）</span>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
         <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Chile · 主渠道</p>
         <h2 className="mt-1 text-lg font-black text-[#071826]">Mercado Público — 政府公开招标</h2>
         <p className="mt-1 text-sm text-[#52636e]">
-          读取 Mercado Público 公开搜索里<strong>所有在招项目</strong>，只保留近 2 个月发布、并通过筛选规则的（2026-09-25 约 70 条）。
+          读取 Mercado Público 公开搜索里<strong>所有在招项目</strong>，只保留<strong>上面选的近 1–3 天</strong>发布、并通过筛选规则的。
           已删除的项目不会被重新导入。
         </p>
         <p className="mt-2 text-xs text-[#64717c]">
-          预览只要几十秒（不读截止日）。写入时会逐条打开项目页读交标截止日，每条约 2.5 秒，最多用 200 秒——
-          没来得及读的先写入，截止日由下一次每日任务补上，已有的截止日不会被清掉。
+          预览只要几十秒（不读截止日）。写入时会逐条打开项目页读交标截止日，每条约 2.5 秒——
+          近几天的项目不多，一般一两分钟内写完；已有的截止日不会被清掉。
         </p>
         {errors.mercadopublico && <ErrorPanel error={errors.mercadopublico} />}
         {button("mercadopublico")}
@@ -231,7 +253,7 @@ export function ImportChileForm() {
         <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Chile · 矿业</p>
         <h2 className="mt-1 text-lg font-black text-[#071826]">Codelco — 公开招标（Licitaciones en proceso）</h2>
         <p className="mt-1 text-sm text-[#52636e]">
-          Codelco 不在 Mercado Público 上。读取它官网的在招列表，只导入<strong>近 3 天发布、仍在报名期内</strong>的；
+          Codelco 不在 Mercado Público 上。读取它官网的在招列表，只导入<strong>上面选的近 1–3 天发布、仍在报名期内</strong>的；
           标书在 SAP Ariba 上，需要先在官网报名（manifestación de interés）。
         </p>
         {errors.codelco && <ErrorPanel error={errors.codelco} />}

@@ -7,6 +7,7 @@ import type { TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types
 import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
 import { ALL_INDUSTRIES, type IndustryKey } from "@/lib/industry";
 import { formatDate, formatEstimatedValueUsdMillions } from "@/lib/format";
+import { DEADLINE_IN_DOCUMENTS_LABEL } from "@/lib/deadline-labels";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { ALL_SCOPE_TYPES, COUNTRY_LABELS, INDUSTRY_LABELS, RELEVANCE_TIER_LABELS, SCOPE_TYPE_LABELS, STATUS_LABELS, countryLabel, industryLabel } from "@/lib/tender-labels";
 import { TenderTagRow } from "@/components/tenders/TenderTagRow";
@@ -144,7 +145,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
           <p className={`mt-1 text-lg font-black ${value ? "text-[#b86e00]" : "text-[#9aa5ab]"}`}>{value ?? "未公开"}</p>
           <p className="mt-3 text-xs font-semibold text-[#7a878f]">计划交标</p>
           <p className="mt-1 text-sm font-bold text-[#071826]">
-            {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : "未提供"}
+            {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : tender.deadlineInDocuments ? DEADLINE_IN_DOCUMENTS_LABEL : "未提供"}
           </p>
         </div>
         <SaveTenderButton tenderId={tender.id} className="relative z-10 shrink-0" />

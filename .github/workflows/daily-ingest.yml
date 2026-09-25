@@ -118,6 +118,11 @@ jobs:
           # for goods is kept. See scripts/cron-cemig.ts.
           - name: Brazil (Cemig)
             command: cron:cemig
+          # Added 2026-09-25. Petroperú's own international competitions (PCI),
+          # outside SEACE: a few a year, published five days back at most.
+          # See scripts/cron-petroperu.ts.
+          - name: Peru (Petroperú)
+            command: cron:petroperu
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v7

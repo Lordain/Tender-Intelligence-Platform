@@ -1,5 +1,6 @@
 "use client";
 
+import { DEADLINE_IN_DOCUMENTS_LABEL } from "@/lib/deadline-labels";
 import type { TenderKeyDate, TenderStatus } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
@@ -35,12 +36,14 @@ function mergeSameDaySubmissionAndOpening(dates: TenderKeyDate[]): TenderKeyDate
 
 const MERGED_SUBMISSION_OPENING_LABEL = { en: "Submission & Opening", es: "Presentación y Apertura", zh: "提交与开标（同日）" };
 
-export function KeyDatesTimeline({ dates, publicationDate, publicationDateIsEstimated = false, submissionDeadline, status }: {
+export function KeyDatesTimeline({ dates, publicationDate, publicationDateIsEstimated = false, submissionDeadline, status, deadlineInDocuments = false }: {
   dates: TenderKeyDate[];
   publicationDate: string;
   publicationDateIsEstimated?: boolean;
   submissionDeadline?: string;
   status: TenderStatus;
+  /** See lib/deadline-in-documents.ts. */
+  deadlineInDocuments?: boolean;
 }) {
   const { locale } = useLocale();
   const datedEvents = [...dates];
@@ -110,10 +113,14 @@ export function KeyDatesTimeline({ dates, publicationDate, publicationDateIsEsti
             ))}
             {missingSubmission && (
               <div className="rounded-2xl bg-[#fff9eb] px-4 py-3">
-                <p className="text-sm font-bold text-[#9a6200]">计划交标日期未提供</p>
+                <p className="text-sm font-bold text-[#9a6200]">
+                  {deadlineInDocuments && status !== "submission_closed" ? `计划交标日期：${DEADLINE_IN_DOCUMENTS_LABEL}` : "计划交标日期未提供"}
+                </p>
                 <p className="mt-1 text-xs leading-5 text-[#75838c]">{status === "submission_closed"
                   ? `已按发布满 ${STALE_WITHOUT_END_DATE_DAYS} 天推定截止；并非官方交标日期。`
-                  : "请以采购机构后续公告为准。"}</p>
+                  : deadlineInDocuments
+                    ? "交标日期写在招标文件（Bases）里，并会随日程修改公告调整，请以最新文件为准。"
+                    : "请以采购机构后续公告为准。"}</p>
               </div>
             )}
           </div>

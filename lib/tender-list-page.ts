@@ -4,6 +4,7 @@ import { ALL_SCOPE_TYPES } from "@/lib/tender-labels";
 import { filterTenders, isSortKey, sortTenders } from "@/lib/filter-tenders";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
 import { estimatedValueBand, toMonthPrecisionOptional } from "@/lib/public-redaction";
+import { undisclosedAmountBand } from "@/lib/chile-amount-band";
 import { publicTitleOf, shortTitleOf } from "@/lib/public-title";
 import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 
@@ -133,6 +134,8 @@ export type TenderListItem = Pick<
    * Exactly one of the two is ever set — see toTenderListItem.
    */
   estimatedValueBand?: string | null;
+  /** Every audience: the USD range a Chilean buyer published instead of an amount. See lib/chile-amount-band.ts. */
+  undisclosedValueBand?: string;
 };
 
 export type TenderListPageData = {
@@ -273,6 +276,7 @@ export function toTenderListItem(
     ...(memberView
       ? { estimatedValue: tender.estimatedValue }
       : { estimatedValueBand: estimatedValueBand(tender.estimatedValue, tender.currency) }),
+    undisclosedValueBand: undisclosedAmountBand(tender)?.usd,
     currency: tender.currency,
     submissionDeadline: memberView
       ? tender.submissionDeadline

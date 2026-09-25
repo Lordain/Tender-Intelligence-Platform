@@ -420,6 +420,13 @@ export type PublicTenderDetail = Pick<
   /** A USD range containing the real budget, or null when there is none to show. */
   estimatedValueBand: string | null;
   /**
+   * The size band a Chilean buyer published INSTEAD of an amount — set only
+   * when there is no amount at all, so it never sits beside
+   * estimatedValueBand. Already a range by statute, so nothing to redact.
+   * See lib/chile-amount-band.ts.
+   */
+  undisclosedValueBand?: { usd: string; utm: string };
+  /**
    * 项目规模, as a pill beside the industries (user, 2026-09-20: 项目详情页，
    * 增加项目规模和项目类型的标签).
    *

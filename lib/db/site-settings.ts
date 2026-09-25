@@ -2,7 +2,7 @@ import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 const DEFAULT_HOMEPAGE_FEATURED_COUNT = 3;
-const DEFAULT_HOMEPAGE_TICKER_COUNT = 10;
+const DEFAULT_HOMEPAGE_TICKER_COUNT = 20;
 
 /**
  * How the homepage's scrolling preview picks its projects.

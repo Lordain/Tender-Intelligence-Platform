@@ -1,5 +1,5 @@
 /**
- * First-level administrative regions of the four countries this platform
+ * First-level administrative regions of the five countries this platform
  * ingests, paired with the Chinese name the translation prompts use.
  *
  * Exists to catch ONE specific translation failure, reported from a live page
@@ -27,7 +27,7 @@ export type RegionEntry = {
   latin: string;
   /** The Chinese the translation prompts produce for it, without 州/省/大区. */
   zh: string;
-  country: "Peru" | "Mexico" | "Colombia" | "Brazil";
+  country: "Peru" | "Mexico" | "Colombia" | "Brazil" | "Chile";
 };
 
 export const REGION_NAMES: readonly RegionEntry[] = [
@@ -147,6 +147,31 @@ export const REGION_NAMES: readonly RegionEntry[] = [
   { latin: "São Paulo", zh: "圣保罗", country: "Brazil" },
   { latin: "Sergipe", zh: "塞尔希培", country: "Brazil" },
   { latin: "Tocantins", zh: "托坎廷斯", country: "Brazil" },
+
+  // Chile — regiones, each 大区 in Chinese as Peru's departments are. The
+  // latin is the part a title actually carries after "Región de/del": the
+  // official names of three are longer (Libertador General Bernardo
+  // O'Higgins; Aysén del General Carlos Ibáñez del Campo; Magallanes y de la
+  // Antártica Chilena) and no title spells them out. The capital region is
+  // 圣地亚哥首都大区 — "Metropolitana" alone translates to nothing a reader
+  // can place. 阿劳卡尼亚 contains Colombia's 阿劳卡 whole; the longest-match
+  // rule in findRegionNameMismatches is what keeps the two apart.
+  { latin: "Arica y Parinacota", zh: "阿里卡和帕里纳科塔", country: "Chile" },
+  { latin: "Tarapacá", zh: "塔拉帕卡", country: "Chile" },
+  { latin: "Antofagasta", zh: "安托法加斯塔", country: "Chile" },
+  { latin: "Atacama", zh: "阿塔卡马", country: "Chile" },
+  { latin: "Coquimbo", zh: "科金博", country: "Chile" },
+  { latin: "Valparaíso", zh: "瓦尔帕莱索", country: "Chile" },
+  { latin: "Metropolitana de Santiago", zh: "圣地亚哥首都", country: "Chile" },
+  { latin: "O'Higgins", zh: "奥希金斯", country: "Chile" },
+  { latin: "Maule", zh: "马乌莱", country: "Chile" },
+  { latin: "Ñuble", zh: "纽布莱", country: "Chile" },
+  { latin: "Biobío", zh: "比奥比奥", country: "Chile" },
+  { latin: "La Araucanía", zh: "阿劳卡尼亚", country: "Chile" },
+  { latin: "Los Ríos", zh: "洛斯里奥斯", country: "Chile" },
+  { latin: "Los Lagos", zh: "洛斯拉各斯", country: "Chile" },
+  { latin: "Aysén", zh: "艾森", country: "Chile" },
+  { latin: "Magallanes", zh: "麦哲伦", country: "Chile" },
 ];
 
 /** Accent- and case-insensitive, so Áncash and Ancash are the same name. */

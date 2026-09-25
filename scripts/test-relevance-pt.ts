@@ -475,6 +475,39 @@ check(
   true,
 );
 
+// …but not once it carries a real amount (2026-09-25, the user: 不要排除).
+// Real rows: SEINFRA and CONDER/BA, R$ 15.8M–43.5M, titled "Obras comuns"
+// and nothing else. The amount is what says it is worth opening.
+function pricedBrazilTender(title: string, brl: number) {
+  return classifyStoredTender({
+    title,
+    summary: title,
+    buyer: "SECRETARIA DE INFRA-ESTRUTURA",
+    country: "Brazil",
+    procedureType: "Concorr\u00eancia - Eletr\u00f4nica",
+    tenderNumber: "02931604000187-1-000362/2026",
+    governmentLevel: "state",
+    scopeType: "works",
+    sourceName: "PNCP",
+    estimatedValue: brl,
+    currency: "BRL",
+  });
+}
+check("「Obras comuns」R$ 15.8M 不再排除", pricedBrazilTender("Obras comuns", 15844015.08).relevance.tier !== "excluded", true);
+// Below the Brazilian floor it is still just an empty title.
+check("「Obras comuns」R$ 5.75M（低于门槛）仍排除", pricedBrazilTender("Obras comuns", 5751155.81).relevance.tier, "excluded");
+// Obras de arte especiais are bridges and viaducts, not street paving, even
+// when the same contract paves the streets leading onto them. Real row,
+// Francisco Beltrão/PR, R$ 16.1M (2026-09-25, the user: 不要排除).
+check(
+  "「Obras de Arte Especiais（两座预应力混凝土桥）」不按小型工程排除",
+  pricedBrazilTender(
+    "Contrata\u00e7\u00e3o de empresa especializada em engenharia civil para a execu\u00e7\u00e3o de Obras de Arte Especiais (Pontes em Concreto Armado/Protendido), Pavimenta\u00e7\u00e3o Asf\u00e1ltica em CBUQ, Drenagem Pluvial, Sinaliza\u00e7\u00e3o e Urbaniza\u00e7\u00e3o nas Ruas Ponta Grossa e Maring\u00e1, sobre o Rio Lonqueador, no Munic\u00edpio de Francisco Beltr\u00e3o/PR.",
+    16097311.1,
+  ).relevance.tier !== "excluded",
+  true,
+);
+
 // The row that exposed the ASCII word-boundary bug: `\br[íi]o\b` matched the
 // "rio" inside "Território", so a public-relations contract was tagged as
 // water infrastructure. See lib/text-fold.ts and npm run test:text-fold.

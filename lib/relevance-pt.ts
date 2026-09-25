@@ -574,6 +574,24 @@ const PT_RURAL_WATER =
 const PT_PAVEMENT_UPKEEP =
   /\bconservacao\s+(preventiva|periodica|rotineira|de\s+pavimentos?)\b|\bmanutencao\s+de\s+pavimentos?\b|\btapa[\s-]?buraco(s)?\b/i;
 
+/**
+ * Obras de arte especiais: Brazilian engineering's statutory name for bridges,
+ * viaducts, tunnels and overpasses — the structures of a road, not its
+ * surface.
+ *
+ * A contract that builds one is not the street job PT_PAVING_VERB is about,
+ * even when it also paves the streets that lead onto it. Real title
+ * (2026-09-25, R$ 16.1M, the user: 不要排除): "execução de Obras de Arte
+ * Especiais (Pontes em Concreto Armado/Protendido), Pavimentação Asfáltica em
+ * CBUQ, Drenagem Pluvial ... nas Ruas Ponta Grossa e Maringá, sobre o Rio
+ * Lonqueador" — two prestressed-concrete bridges, excluded on "Ruas" +
+ * "Pavimentação".
+ *
+ * The statutory phrase only, not bare `ponte`: a footbridge over a stream in
+ * a bairro is still the community-scale work this list exists for.
+ */
+const PT_SPECIAL_STRUCTURE = /\bobras?\s+de\s+arte\s+especia(l|is)\b/i;
+
 /** A plan, a diagnosis or a study — engineering thinking, not engineering. */
 const PT_PLAN_STUDY =
   /\bplano\s+diretor\b|\bestudo\s+de\s+viabilidade\b|\bdiagnostico\s+da\s+situacao\b/i;
@@ -616,6 +634,7 @@ export type PortugueseSmallWorks = "small_local_works" | "consulting";
 export function classifyPortugueseSmallWorks(input: string): PortugueseSmallWorks | null {
   const text = foldAccents(input);
   if (PT_PLAN_STUDY.test(text)) return "consulting";
+  if (PT_SPECIAL_STRUCTURE.test(text)) return null;
   if (PT_PAVEMENT_UPKEEP.test(text)) return "small_local_works";
   if (PT_SMALL_FACILITY_LIST.some((pattern) => pattern.test(text))) return "small_local_works";
   if (PT_RURAL_WATER.test(text)) return "small_local_works";

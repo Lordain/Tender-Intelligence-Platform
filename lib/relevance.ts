@@ -1707,6 +1707,24 @@ const NO_CONTENT_TITLE = [
   /^(?=\S*\d)[A-Za-z0-9][A-Za-z0-9.\-/_]{2,29}$/,
 ];
 
+/**
+ * "Obras comuns" with a real amount on it — a PNCP title that is nothing but
+ * Lei 14.133's category name, which NO_CONTENT_TITLE excludes as saying
+ * nothing.
+ *
+ * Exempt once the published amount clears the country floor (2026-09-25, the
+ * user: 不要排除). Seven such rows in one dry run, R$ 5.8M–43.5M, six from
+ * one state SEINFRA and one from CONDER/BA: a state infrastructure secretariat
+ * tendering R$ 43M of works is a contract worth opening even when the title
+ * does not say what it builds, and the amount is the one thing that does.
+ * Without an amount it is still the empty title the rule was written for.
+ */
+const BRAZIL_WORKS_CATEGORY_TITLE = /^\s*obras?\s+(?:comuns?|comum)\s*$/i;
+
+function isPricedBrazilianWorksCategory(country: string | undefined, title: string, clearsValueFloor: boolean): boolean {
+  return clearsValueFloor && isBrazil(country) && BRAZIL_WORKS_CATEGORY_TITLE.test(foldAccents(title));
+}
+
 const INCLUDE_OVERRIDE_KEYWORDS = [
   /videovigilancia|video surveillance/i,
   // Body-worn cameras. Real police electronics that a Chinese manufacturer
@@ -3353,6 +3371,7 @@ export function classifyRelevance(input: {
 
   if (
     !hasIncludeOverride &&
+    !isPricedBrazilianWorksCategory(input.country, input.title, clearsValueFloor) &&
     (BARE_BUYER_REF_TITLE.test(foldAccents(input.title).trim()) || NO_CONTENT_TITLE.some((pattern) => pattern.test(withoutProcurementPhase(foldAccents(input.title)))))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "no_content") };

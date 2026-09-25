@@ -111,6 +111,7 @@
     "test:codelco": "tsx scripts/test-codelco.ts",
     "test:cemig": "tsx scripts/test-cemig.ts",
     "test:pemex-rules": "tsx scripts/test-pemex-rules.ts",
+    "test:cfe-rules": "tsx scripts/test-cfe-rules.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",
     "analyze:batch": "tsx --env-file-if-exists=.env.local scripts/analyze-batch.ts",

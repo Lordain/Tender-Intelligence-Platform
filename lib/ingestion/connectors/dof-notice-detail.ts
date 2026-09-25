@@ -154,7 +154,7 @@ export function parseDofNoticeDetailHtml(html: string): DofNoticeDetail | null {
     }
   }
   if (title === undefined) {
-    const key = Object.keys(fieldsByLabel).find((l) => /descripci[óo]n del concurso|objeto de la contrataci[óo]n/i.test(l));
+    const key = Object.keys(fieldsByLabel).find((l) => /descripci[óo]n del? concurso|objeto de la contrataci[óo]n/i.test(l));
     if (key) {
       title = fieldsByLabel[key];
       delete fieldsByLabel[key];

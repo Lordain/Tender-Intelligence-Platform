@@ -99,7 +99,17 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // and the following "ario/aria") — real title "ADECUACIONES A LAS
   // INFRAESTRUCTURAS HOSPITALARIAS DEL DEPARTAMENTO DEL MAGDALENA" matched
   // neither this nor the construction pattern's own hospital term.
-  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|rayos x|hospital(es)?\b|hospitalari[oa]s?|unidad(es)? m[ée]dica(s)?|servicios de salud|\bsalud\b/i],
+  // Surgical and diagnostic equipment, and ambulances (2026-09-25, user
+  // flagged both as 综合): "ADQUISICIÓN DE ALTA TECNOLOGÍA QUIRÚRGICA E
+  // IMAGENOLÓGICA … MESA DE OPERACIONES HIDRÁULICA/ELÉCTRICA, EQUIPO
+  // ECÓGRAFO-ULTRASONIDO … ELECTROENCEFALÓGRAFO" matched nothing, because
+  // `imagenología` is the noun and the title used the adjective, and no
+  // surgical or diagnostic device was named here at all. "quirúrgico" is
+  // anchored to equipment words on purpose: bare, it is "material
+  // quirúrgico", the consumable this pattern deliberately leaves out.
+  // "ADQUISICIÓN DE 31 AMBULANCIAS" is a vehicle AND a medical purchase —
+  // the user asked for both tags, so the word is in both patterns.
+  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|imagenol[óo]gic[oa]s?|(equipos?|equipamiento|tecnolog[íi]a|mesas?|l[áa]mparas?|torres?|instrumental) (de )?quir[úu]rgic[oa]s?|mesas? de operaciones|quir[óo]fano(s)?|ec[óo]grafo(s)?|ecograf[íi]a|electroencefal[óo]grafo(s)?|electrocardi[óo]grafo(s)?|equipos? de ultrasonido|mam[óo]grafo(s)?|ambulancia(s)?|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|rayos x|hospital(es)?\b|hospitalari[oa]s?|unidad(es)? m[ée]dica(s)?|servicios de salud|\bsalud\b/i],
   // "\bducto\b" (2026-09-03, real bug found against a real Proyectos
   // Estratégicos MX export): was missing its leading \b, so it matched
   // as a bare substring of "acueducto" (aqueduct — CONAGUA's own
@@ -205,7 +215,12 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // feminine forms spelled out because `\bgenerador\b` alone would have
   // dropped "planta generadora", and `turbo` kept explicitly because it is a
   // real compound rather than a prefix accident.
-  ["power", /energ[íi]a el[ée]ctrica|electricidad|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|\b(?:turbo)?generador(a|as|es)?\b|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|fotovoltaic[ao]|planta solar|parque (solar|e[óo]lico)|e[óo]lic[ao]|geot[ée]rmic[ao]|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
+  // "suministro eléctrico" and "electrificación" (2026-09-25, user flagged as
+  // 综合): Peru's SEACE titles name low-voltage distribution works by the
+  // service, "RENOVACION DE RED SECUNDARIA; EN EL (LA) SUMINISTRO ELECTRICO
+  // AA.HH. RUTA DEL SOL", never by the equipment. Bare "red secundaria" is
+  // not here — it is also a water-main phrase.
+  ["power", /energ[íi]a el[ée]ctrica|electricidad|suministro el[ée]ctrico|electrificaci[óo]n|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|\b(?:turbo)?generador(a|as|es)?\b|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|fotovoltaic[ao]|planta solar|parque (solar|e[óo]lico)|e[óo]lic[ao]|geot[ée]rmic[ao]|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to
   // INCLUDE_OVERRIDE_KEYWORDS in lib/relevance.ts (a real batch of 29
@@ -337,7 +352,20 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // scripts/test-industry-tags.ts in both directions; "metrobús" and
   // "metropolitano" never matched anyway, since the right boundary already
   // stopped them.
-  ["transportation", /transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|\bmetro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|\bvial(es)?\b|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona|v[íi]as? terciarias?|placa huella|carreter[ao]s?\b|\bpuentes?\b|camino(s)? (vecinal(es)?|rural(es)?)|v[íi]a(s)? (vecinal(es)?|nacional(es)?|departamental(es)?|regional(es)?)|trocha(s)? carrozable(s)?|transitabilidad|pavimentaci[óo]n|asfaltado|doble calzada|intercambio vial|paso a desnivel|\bt[úu]nel(es)?\b|\bpeaje(s)?\b|\baeropuertos?\b|aeroportuari[oa]s?|ferrocarril(es)?|terminal(es)? terrestre(s)?|\bmuelle(s)?\b|portu[áa]ri[oa]s?|aquavi[áa]ri[oa]s?|hidrovi[áa]ri[oa]s?|\bhidrovias?\b|porto(s)? organizado(s)?|terminal (portu|de contêiner|de conteiner)|\bcais\b|ber[çc]o(s)? de atraca|dragagem|canal de acesso aquavi|arrendamento (portu|da [áa]rea)/i],
+  // 2026-09-25, two titles the user flagged as 综合:
+  //   "AMPLIACIÓN DEL CUERPO EXISTENTE TRAMO ZACUALTIPÁN – TEHUETLÁN" — a
+  //   highway widening named the way SICT names them: the carriageway
+  //   ("cuerpo") and a place-to-place section ("tramo A – B"). Bare "tramo"
+  //   is NOT here; a pipeline or a collector sewer has tramos too, so only
+  //   the "tramo <place> – <place>" shape counts, and not after a water,
+  //   pipe or line word earlier in the title — "AMPLIACION CONDUCCION PLANTA
+  //   DE TRATAMIENTO DE AGUA POTABLE … TRAMO LOS MANATIES - …" is an
+  //   aqueduct, and was the one false positive a run over all 446 stored
+  //   rows turned up.
+  //   "…infraestrutura viária urbana e rural dos Municípios Consorciados" —
+  //   Portuguese road vocabulary. Matched after accent folding, so "viária"
+  //   arrives as "viaria" and "pavimentação" as "pavimentacao".
+  ["transportation", /(ampliaci[óo]n|construcci[óo]n|modernizaci[óo]n) del (segundo )?cuerpo|(?<!(agua|conducci[óo]n|acueducto|colector|emisor|tuber[íi]a|l[íi]nea|ducto)[^;]{0,150})\btramo:?\s+(?!de\b|del\b)[a-z][a-z .]{1,40}?\s[-–—]\s*[a-z]|infraestrutura vi[áa]ria|\bvi[áa]ri[oa]s?\b|rodovi[áa]ri[oa]s?|\brodovias?\b|estradas? vicina(l|is)|pavimenta[çc][ãa]o|transporte p[úu]blico|movilidad urbana|vialidad\b|sistema de transporte|autob[úu]s|tren de pasajeros|ferroviari[oa]|\bmetro\b|log[íi]stica de transporte|se[ñn]alizaci[óo]n vial|\bvial(es)?\b|comunicaciones y transportes|eje (prioritario|carretero)|ancho de corona|v[íi]as? terciarias?|placa huella|carreter[ao]s?\b|\bpuentes?\b|camino(s)? (vecinal(es)?|rural(es)?)|v[íi]a(s)? (vecinal(es)?|nacional(es)?|departamental(es)?|regional(es)?)|trocha(s)? carrozable(s)?|transitabilidad|pavimentaci[óo]n|asfaltado|doble calzada|intercambio vial|paso a desnivel|\bt[úu]nel(es)?\b|\bpeaje(s)?\b|\baeropuertos?\b|aeroportuari[oa]s?|ferrocarril(es)?|terminal(es)? terrestre(s)?|\bmuelle(s)?\b|portu[áa]ri[oa]s?|aquavi[áa]ri[oa]s?|hidrovi[áa]ri[oa]s?|\bhidrovias?\b|porto(s)? organizado(s)?|terminal (portu|de contêiner|de conteiner)|\bcais\b|ber[çc]o(s)? de atraca|dragagem|canal de acesso aquavi|arrendamento (portu|da [áa]rea)/i],
   // The "\bkm\s*\d+\+\d{3}\b" alternative is a real kilometer-marker
   // notation ("DEL KM 150+000 AL KM 170+000") — standard Mexican federal
   // highway-alignment notation, seen on a real road-engineering-study
@@ -377,7 +405,7 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // INFRAESTRUCTURA FÍSICA DE LAS ÁREAS DE ALTO RIESGO OBSTÉTRICO..." never
   // matched any existing construction term (no "construcción"/"obra
   // pública"/etc.) despite being genuine building repair/rehab work.
-  ["construction", /construcci[óo]n|obra p[úu]blica|carreter[ao]|puentes?\b|ferrocarril|\bpuerto\b|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|remodelaci[óo]n|modernizaci[óo]n y ampliaci[óo]n|ancho de corona|\bkm\s*\d+\+\d{3}\b|(construcci[óo]n|ampliaci[óo]n|modernizaci[óo]n|remodelaci[óo]n).{0,30}aeropuerto|infraestructuras? hospitalaria(s)?|obras? de reparaci[óo]n y rehabilitaci[óo]n|rehabilitaci[óo]n de (la )?infraestructura f[íi]sica/i],
+  ["construction", /construcci[óo]n|obra p[úu]blica|ampliaci[óo]n del (segundo )?cuerpo|infraestrutura vi[áa]ria|pavimenta[çc][ãa]o|carreter[ao]|puentes?\b|ferrocarril|\bpuerto\b|edificaci[óo]n|pavimentaci[óo]n|infraestructura vial|remodelaci[óo]n|modernizaci[óo]n y ampliaci[óo]n|ancho de corona|\bkm\s*\d+\+\d{3}\b|(construcci[óo]n|ampliaci[óo]n|modernizaci[óo]n|remodelaci[óo]n).{0,30}aeropuerto|infraestructuras? hospitalaria(s)?|obras? de reparaci[óo]n y rehabilitaci[óo]n|rehabilitaci[óo]n de (la )?infraestructura f[íi]sica/i],
   // "\bptar\b" (2026-09-03, real gap): CONAGUA's own titles overwhelmingly
   // abbreviate "Planta de Tratamiento de Aguas Residuales" as "PTAR"
   // rather than spelling it out (many real rows in the same export) —
@@ -401,7 +429,19 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // with no water tag at all, which is most of what Peru's water works are.
   // "hidromec[áa]nic" covers the gates, screens and penstocks that are the
   // actual scope of half these contracts.
-  ["water", /agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora|\bptar\b|dragado|desazolve|acueducto(s)?|canal principal|\br[íi]o\b|margen (derecha|izquierda)|zona de riego|\briego\b|irrigaci[óo]n|canal(es)? de riego|bocatoma(s)?|reservorio(s)?|hidromec[áa]nic[oa]s?|\bpresas?\b|\brepresas?\b/i],
+  // 2026-09-25, four titles the user flagged as 综合, all real water works:
+  //   "REHABILITACIÓN DE CARCAMO ESTADIO, COLECTOR SAN CARLOS, NOGALES"
+  //   "TRABAJOS DE REVESTIMIENTO CON CONCRETO HIDRÁULICO DE CANALES DISPERSOS"
+  //   "OBRAS DE MEJORAMIENTO HIDRÁULICO … CUERPOS DE AGUA … CANAL DEL DIQUE"
+  //   "REHABILITACIÓN DE LA PB MATADERO Y PB LAURELES II EN TIJUANA"
+  // A cárcamo is a pumping sump and a colector a trunk sewer. "Concreto
+  // hidráulico" is NOT a signal — it is also how Mexican street paving is
+  // specified — so the canal itself carries it: bare "canal", minus a TV
+  // channel, a complaints channel or a sales channel. "PB" is Tijuana's CESPT
+  // shorthand for planta de bombeo, but also "planta baja" (ground floor),
+  // so it counts only after a works verb and before a proper name, never
+  // before "del/de/y".
+  ["water", /c[áa]rcamo(s)?|\bcolector(es)?\b(?! solar)|subcolector(es)?|planta(s)? de bombeo|estaci[óo]n(es)? de bombeo|(rehabilitaci[óo]n|equipamiento|sustituci[óo]n|mantenimiento|construcci[óo]n) (de )?(la |las )?pbs?\s+(?!del?\b|y\b)[a-z]{3,}|\bcanal(es)?\b(?!\s*(\d|de (television|tv|denuncias?|atencion|venta|ventas|distribucion|comunicacion)))|cuerpos? de agua|(mejoramiento|infraestructura|obras?) hidr[áa]ulic[oa]s?|agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora|\bptar\b|dragado|desazolve|acueducto(s)?|canal principal|\br[íi]o\b|margen (derecha|izquierda)|zona de riego|\briego\b|irrigaci[óo]n|canal(es)? de riego|bocatoma(s)?|reservorio(s)?|hidromec[áa]nic[oa]s?|\bpresas?\b|\brepresas?\b/i],
   // Real batch the user flagged as legitimate opportunities: bulk vehicle
   // and heavy-machinery acquisitions ("ADQS. DE 22 VEHS. CISTERNA...",
   // "ADQUISICION DE VEHICULOS PARA EL CONVENIO CONASAMA 2026",
@@ -428,7 +468,7 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // Deliberately not bare "auto": in Spanish that is also a court ruling
   // ("auto judicial", "auto de apertura"), which appears in real procurement
   // text for legal services.
-  ["vehicles", /veh[íi]culo(s)?|vehs\.?\b|autom[óo]vil(es)?|\bsed[áa]n(es)?\b|cami[óo]n(es)?\b|autob[úu]s(es)?|maquinaria pesada|(retro)?excavadora(s)?|gr[úu]a(s)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?/i],
+  ["vehicles", /veh[íi]culo(s)?|vehs\.?\b|autom[óo]vil(es)?|\bsed[áa]n(es)?\b|cami[óo]n(es)?\b|autob[úu]s(es)?|maquinaria pesada|(retro)?excavadora(s)?|gr[úu]a(s)?|camioneta(s)?|pick\s?-?up(s)?|\bsuv(s)?\b|furgoneta(s)?|ambulancia(s)?/i],
 ];
 
 /**

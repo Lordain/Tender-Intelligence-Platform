@@ -106,6 +106,10 @@ function IndustryLogoRail() {
 function TenderPreview({ tenders }: { tenders: TenderCardData[] }) {
   const { locale } = useLocale();
   const rows = Array.from({ length: 4 }, () => tenders).flat();
+  // The keyframes move one copy (25% of four) per cycle, so a fixed duration
+  // would scroll twice as fast at 20 rows as at 10. Scaled per row instead,
+  // at the 1.8s a row the original 18s-for-10 set.
+  const scrollDuration = `${Math.max(tenders.length, 1) * 1.8}s`;
 
   return (
     <div className="relative ml-auto w-full max-w-[39rem] xl:max-w-[42rem]">
@@ -119,7 +123,7 @@ function TenderPreview({ tenders }: { tenders: TenderCardData[] }) {
           </div>
         </div>
         <div className="absolute inset-x-0 bottom-0 top-[5.45rem] overflow-hidden bg-transparent xl:top-[5.7rem]">
-          <div className="hero-tender-scroll divide-y divide-[#e3e8ea] pl-14 pr-6 xl:pl-20 xl:pr-8">
+          <div className="hero-tender-scroll divide-y divide-[#e3e8ea] pl-14 pr-6 xl:pl-20 xl:pr-8" style={{ animationDuration: scrollDuration }}>
             {rows.map((tender, index) => (
               <div
                 key={`${tender.id}-${index}`}
@@ -155,7 +159,9 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
             把拉美招标<br />变成中国企业<br />看得懂的机会
           </h1>
           <p className="mt-7 max-w-xl text-base leading-8 text-white/78 sm:text-lg lg:max-w-[27rem] xl:max-w-xl">
-            我们专注于为中国企业提供拉美市场的招标与采购信息汇集，持续整理和汇总当地公开招标信息，帮助中国企业更加高效地获取拉美市场的项目信息，了解当地采购需求，寻找潜在合作机会
+            <span className="block">专注于拉美五国政府招标采购信息，一站式中文平台。</span>
+            <span className="block">覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，中文翻译，人工精筛，按国家、行业、项目规模筛选。</span>
+            <span className="block">帮企业省时、省力、省钱，快速获取精准拉美项目机会。</span>
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link href="/tenders" className="inline-flex items-center justify-center gap-4 rounded-2xl bg-[#ffb21c] px-7 py-3.5 text-sm font-bold text-[#071826] transition-transform hover:-translate-y-0.5 hover:bg-[#ffc247]">

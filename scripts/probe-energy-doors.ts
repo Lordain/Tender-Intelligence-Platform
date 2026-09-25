@@ -39,6 +39,17 @@ const TARGETS: [string, string][] = [
   ["巴西 Petronect 在招项目（每日任务）", "https://www.petronect.com.br/sap/opu/odata/SAP/YPCON_GET_XML_SRV/getXMLSet('01')?$format=json"],
   ["哥伦比亚 UPME 输电项目（每日任务）", "https://www.upme.gov.co/wp-json/wp/v2/convocatorias?estado_convocatoria=283,287&per_page=100&_fields=id,title"],
   ["智利 Codelco 在招项目（每日任务）", "https://www.codelco.com/licitaciones-en-proceso"],
+  // Mexico mining (user, 2026-09-25: 深度分析墨西哥矿业项目，是否有可以连接的接口).
+  // SEMARNAT's weekly Gaceta Ecológica lists every project entering
+  // environmental review — new mines and expansions among them — as PDFs on
+  // port 8443, which the agent sandbox's egress refuses.
+  ["墨西哥 SEMARNAT 环评周报目录（2026）", "http://sinat.semarnat.gob.mx/Gaceta/gacetapublicacion/?ai=2026"],
+  ["墨西哥 SEMARNAT 环评周报 PDF（8443 端口）", "https://sinat.semarnat.gob.mx:8443/Gacetas/archivos2026/gaceta_0046-26.pdf"],
+  ["墨西哥 SEMARNAT 环评项目查询（8443 端口）", "https://apps1.semarnat.gob.mx:8443/consultatramite/inicio.php"],
+  ["墨西哥 经济部矿业管理系统 SIAM", "https://siam.economia.gob.mx/"],
+  // Colombia oil (user, 2026-09-25: 哥伦比亚石油公司能不能取到实时数据).
+  ["哥伦比亚 Ecopetrol 供应商门户", "https://proveedores.ecopetrol.com.co/es-ES/"],
+  ["哥伦比亚 Ecopetrol 选举期公开招标表", "https://proveedores.ecopetrol.com.co/es-ES/Convocatorias-p%C3%BAblicas-en-ley-de-garant%C3%ADas/"],
 ];
 
 const HEADERS = {

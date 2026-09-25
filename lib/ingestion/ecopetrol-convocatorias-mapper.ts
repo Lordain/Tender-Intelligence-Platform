@@ -62,6 +62,7 @@ export function mapEcopetrolConvocatoriaRowToTender(row: EcopetrolConvocatoriaRo
   const procedureType = "Convocatoria Pública";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title,
     summary: title,
     buyer: "Ecopetrol S.A.",

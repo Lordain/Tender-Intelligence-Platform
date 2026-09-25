@@ -612,6 +612,7 @@ export const tenders: Tender[] = rawTenders.map((tender) => ({
     summary: tender.summary.es,
     industries: tender.industries,
     procedureType: tender.procedureType,
+    tenderNumber: tender.tenderNumber,
     scopeType: tender.scopeType,
     estimatedValue: tender.estimatedValue,
     currency: tender.currency,

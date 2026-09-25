@@ -133,6 +133,7 @@ export function mapAneelGeracaoToTenders(input: AneelGeracaoMappingInput, now: D
 
   const { industries, relevance } = classifyStoredTender({
     procedureType: "Leilão de Reserva de Capacidade",
+    tenderNumber,
     title,
     summary,
     buyer: "Agência Nacional de Energia Elétrica (ANEEL)",

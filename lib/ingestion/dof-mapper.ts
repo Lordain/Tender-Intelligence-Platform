@@ -86,6 +86,7 @@ export function mapDofNotaToTender(nota: DofNota, sourceName: string): Tender | 
   const procedureType = nota.tipoNota && nota.tipoNota !== "null" ? nota.tipoNota : "Unknown";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber: `DOF-${nota.codNota}`,
     title,
     summary: title,
     buyer,

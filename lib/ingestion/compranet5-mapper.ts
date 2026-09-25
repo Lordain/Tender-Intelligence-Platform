@@ -169,6 +169,7 @@ export function mapCompranet5RowToTender(
   const procedureType = row["Tipo de procedimiento"]?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title,
     summary,
     buyer,

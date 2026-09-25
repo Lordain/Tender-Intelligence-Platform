@@ -196,6 +196,7 @@ export function mapPemexConcursoItemToTender(
   const procedureType = item.areacontratante?.trim() ? `${procedureLabel} (${item.areacontratante.trim()})` : procedureLabel;
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title: description,
     summary: description,
     buyer,

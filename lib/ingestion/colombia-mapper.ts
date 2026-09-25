@@ -506,6 +506,7 @@ export function mapSecopRowToTender(
   const procedureType = row.modalidad_de_contratacion?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title,
     summary,
     buyer,

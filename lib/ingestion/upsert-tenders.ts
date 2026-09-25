@@ -134,6 +134,7 @@ function enforceStoredFieldParity(tenders: Tender[]): void {
       buyer: tender.buyer,
       country: tender.country,
       procedureType: tender.procedureType,
+      tenderNumber: tender.tenderNumber,
       governmentLevel: tender.governmentLevel,
       scopeType: tender.scopeType,
       estimatedValue: tender.estimatedValue,

@@ -38,6 +38,8 @@ export type RelevanceFixture = {
   structuredDurationDays?: number;
   /** tenders.procedure_type — set only by fixtures that exercise the procedure rule (see PRICE_ONLY_AUCTION_PROCEDURES). */
   procedureType?: string;
+  /** tenders.tender_number — set only by fixtures that exercise the Mexican procedure-character rule (see isMexicoInternationalBulkPurchase). */
+  tenderNumber?: string;
 };
 
 export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
@@ -1241,7 +1243,7 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "MEJORAMIENTO DE LA INFRAESTRUCTURA VIAL MUNICIPAL",
     expectedTier: "excluded",
-    note: "140 days — still inside the new 150-day blacklist, and carrying a $2.9M value to pin the other half of the same decision: the rule stays VALUE-BLIND. The user was offered a 'large value overrides short duration' exception on 2026-09-15 and explicitly declined it (但是不让位), so a big disclosed value must NOT rescue this row. If someone later adds that exception, this fixture is what tells them it was a deliberate no.",
+    note: "140 days — still inside the new 150-day blacklist, and carrying a $2.9M value to pin the other half of the same decision: the rule stays VALUE-BLIND. The user was offered a 'large value overrides short duration' exception on 2026-09-15 and explicitly declined it (但是不让位), so a big disclosed value must NOT rescue this row. If someone later adds that exception, this fixture is what tells them it was a deliberate no. 2026-09-25: the user DID add an exception, for goods purchases only (放行) — this is a works contract, so it still falls, and it is now also the fixture that proves the exemption did not leak onto works.",
     scopeType: "works",
     structuredDurationDays: 140,
     estimatedValue: 2_900_000,
@@ -1273,6 +1275,123 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     estimatedValue: 2_900_000,
     currency: "USD",
     country: "Colombia",
+  },
+  // Goods purchases over the floor are exempt from the short-duration rule
+  // (user, 2026-09-25: 放行), and a single vehicle over the floor stays
+  // (单台但金额 ≥ 100 万美元的，留). All three are real open SECOP rows,
+  // excluded on 2026-09-25 before the change.
+  {
+    title: "ADQUISICIÓN DE SISTEMAS  TECNOLÓGICOS DE BÚSQUEDA Y LOCALIZACIÓN PARA LAS UNIDADES DE  ATENCIÓN Y PREVENCIÓN DE DESASTRES DEL EJÉRCITO NACIONAL",
+    expectedTier: "standard",
+    note: "Real row, 291-LP-CENACINGENIEROS-2026, COP 4.48bn (~$1.4M), 60-day delivery. A supplier's delivery window, not a small job. Its accented ADQUISICIÓN is the case that needed the title folded before the purchase-verb match — the unfolded pattern does not see it.",
+    buyer: "CENTRAL ADMINISTRATIVA ESPECIALIZADA INGENIEROS CENAC INGENIEROS",
+    scopeType: "equipment", governmentLevel: "federal", industries: ["general"], procedureType: "Licitación pública",
+    structuredDurationDays: 60, estimatedValue: 4_480_000_000, currency: "COP", country: "Colombia",
+  },
+  {
+    title: "ADQUISICION E INSTALACION DE DISPOSITIVOS Y EQUIPOS DE CONECTIVIDAD PARA EL MEJORAMIENTO; MANTENIMIENTO Y AMPLIACION DEL SISTEMA DE CIRCUITO CERRADO DE TELEVISION (CCTV) Y DEL SISTEMA INTEGRADO DE EME",
+    expectedTier: "standard",
+    note: "Real row, STICS-LP-009-2026, COP 3.25bn (~$1.0M), 90 days. The CCTV buildout NEW_BUILD_OR_PURCHASE's comment names as one to keep: that guard got it past the maintenance rule, and the 90-day delivery then dropped it anyway. 常规, not 中型: CCTV is scale-capped.",
+    scopeType: "equipment", governmentLevel: "state", industries: ["ict_telecom"], procedureType: "Licitación pública",
+    structuredDurationDays: 90, estimatedValue: 3_249_120_313, currency: "COP", country: "Colombia",
+  },
+  {
+    title: "ADQUISICIÓN DE UN VEHÍCULO DE BOMBEROS TIPO ESCALERA PARA EL CUERPO DE BOMBEROS OFICIAL DE MONTERÍA",
+    expectedTier: "standard",
+    note: "Real row, CBOM-LP-02-2026, COP 3.84bn (~$1.2M), 90 days. One ladder truck. Had two rules against it — the single-vehicle floor and the short duration — and clears both only because the amount clears the floor. The below-floor singles ('UN VEHICULO TIPO PICK UP', '01 VEHÍCULO TIPO TODO TERRENO') stay excluded; they carry no amount.",
+    buyer: "CUERPO DE BOMBEROS OFICIAL DE MONTERIA",
+    scopeType: "equipment", governmentLevel: "state", industries: ["vehicles"], procedureType: "Licitación pública",
+    structuredDurationDays: 90, estimatedValue: 3_836_666_667, currency: "COP", country: "Colombia",
+  },
+  // Mexico has no amounts (664 of 664 open Compras MX procedures on
+  // 2026-09-25), so 规模为主 cannot apply there. The user's decision for it:
+  // 国际招标 (I/T) + 设备/化学品/石油制品采购 counts as 大量; 材料, 办公, 电脑, 耗材
+  // do not. All real open rows, read the same day.
+  {
+    title: "ADQUISICIÓN PLANTA GENERADORA DE ENERGÍA",
+    expectedTier: "standard",
+    note: 'Real open Compras MX row, LA-06-HBW-006HBW001-I-62-2026 (FIRA). International (I) purchase of a generating plant with no amount — 国际招标 + 设备 counts as 大量 for Mexico (user, 2026-09-25). 常规, never more: with no amount there is nothing to promote on.',
+    tenderNumber: "LA-06-HBW-006HBW001-I-62-2026", buyer: "FIRA",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN DE 132 PARTIDAS (533 BIENES), DE EQUIPAMIENTO ASOCIADO A OBRA UMF 2",
+    expectedTier: "standard",
+    note: 'Real open row, LA-50-GYR-050GYR003-T-163-2026 (IMSS). Treaty-international (T) equipment for a clinic. T is scale evidence, not eligibility: China is not a Mexican treaty partner — see MEXICO_INTERNATIONAL_PROCEDURE.',
+    tenderNumber: "LA-50-GYR-050GYR003-T-163-2026", buyer: "IMSS",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "EQUIPAMIENTO UMF JUÁREZ, SEGUNDA VUELTA",
+    expectedTier: "standard",
+    note: 'Real open row, LA-50-GYR-050GYR035-T-94-2026 (IMSS). No purchase verb at all — IMSS titles the goods and nothing else, which is why GOODS_NOUN_HEAD exists.',
+    tenderNumber: "LA-50-GYR-050GYR035-T-94-2026", buyer: "IMSS",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPO DE ELECTRÓNICA - MEDICIÓN Y MÁQUINAS - HERRAMIENTAS",
+    expectedTier: "standard",
+    note: "Real open row, LA-11-L6H-011L6H001-I-8-2026 (COFAA). Máquinas-herramienta are machine tools. The first draft excluded every 'herramienta' to keep hand tools out, and threw this away with them.",
+    tenderNumber: "LA-11-L6H-011L6H001-I-8-2026", buyer: "COFAA",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPOS DE CÓMPUTO",
+    expectedTier: "excluded",
+    note: 'Real open row, LA-85-W83-926014991-I-94-2026 (ITSON). International AND equipment, and still out: the user kept computers out of 大量设备 (电脑照样排除), and they are the commonest international purchase there is.',
+    tenderNumber: "LA-85-W83-926014991-I-94-2026", buyer: "ITSON",
+    country: "Mexico", scopeType: "services", governmentLevel: "state", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN DE CARTUCHOS 2ª VUELTA.",
+    expectedTier: "excluded",
+    note: 'Real open row, LA-49-830-049830002-T-33-2026 (FGR). A treaty-international office-consumables purchase — the letter alone keeps nothing.',
+    tenderNumber: "LA-49-830-049830002-T-33-2026", buyer: "FGR",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN E INSTALACIÓN DE EQUIPOS INDUSTRIALES Y ELECTROMECÁNICOS",
+    expectedTier: "excluded",
+    note: 'Real open row, LA-51-GYN-051GYN010-N-112-2026 (ISSSTE). The control: the same kind of purchase the rule keeps, but N(acional). It pins that the procedure letter, not the equipment wording, is what the rule turns on.',
+    tenderNumber: "LA-51-GYN-051GYN010-N-112-2026", buyer: "ISSSTE",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  // The user's review of the first twelve rows the rule kept (2026-09-25):
+  // eight 可以, these four 不要. All real, all international, all equipment.
+  {
+    title: "MAQUINARIA Y EQUIPOS DE SEMIPROCESADOS TEXTILES",
+    expectedTier: "excluded",
+    note: "Real open row, LA-07-113-007000998-T-236-2026 (SEDENA). Garment-industry machinery. User: 不要.",
+    tenderNumber: "LA-07-113-007000998-T-236-2026", buyer: "SEDENA",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "MAQUINARIA Y EQUIPOS ESPECIALES CONFECCION PRENDAS ESPECIALES",
+    expectedTier: "excluded",
+    note: "Real open row, LA-07-113-007000998-T-237-2026 (SEDENA). Its twin. User: 不要.",
+    tenderNumber: "LA-07-113-007000998-T-237-2026", buyer: "SEDENA",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPO DE RAPPEL PARA LA SGG",
+    expectedTier: "excluded",
+    note: "Real open row, IA-73-R97-914012998-I-26-2026 (Jalisco). Climbing gear. User: 不要.",
+    tenderNumber: "IA-73-R97-914012998-I-26-2026", buyer: "SECRETARÍA DE ADMINISTRACIÓN (JAL)",
+    country: "Mexico", scopeType: "services", governmentLevel: "state", procedureType: "INVITACIÓN A CUANDO MENOS TRES PERSONAS",
+  },
+  {
+    title: "ADQUISICION DE EQUIPO DE CAMPO",
+    expectedTier: "excluded",
+    note: "Real open row, LA-10-LAU-010LAU001-T-179-2026 (Servicio Geológico Mexicano). Field kit. User: 不要.",
+    tenderNumber: "LA-10-LAU-010LAU001-T-179-2026", buyer: "SGM",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "SISTEMAS FERROVIARIOS QUERÉTARO – SALTILLO",
+    expectedTier: "flagship",
+    note: "Real open row, LO-09-JZO-009JZO001-I-62-2026 (ATTRAPI). A national rail line that came out excluded for 'no keyword', because the major-project entry knew 'ferrocarril' and not the adjective. User: 铁路补上.",
+    tenderNumber: "LO-09-JZO-009JZO001-I-62-2026", buyer: "ATTRAPI",
+    country: "Mexico", scopeType: "services", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
   },
 
   // --- "subestación" narrowed to require a construction/equipment

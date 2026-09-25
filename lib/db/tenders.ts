@@ -186,6 +186,7 @@ function toRelevance(row: TenderRow): TenderRelevance {
     buyer: row.buyer,
     country: row.country,
     procedureType: row.procedure_type,
+    tenderNumber: row.tender_number,
     governmentLevel: row.government_level,
     scopeType: row.scope_type,
     estimatedValue: row.estimated_value ?? undefined,

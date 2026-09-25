@@ -43,6 +43,7 @@ type Row = {
   buyer: string;
   country: string;
   procedure_type: string | null;
+  tender_number: string;
   government_level: string;
   scope_type: string;
   estimated_value: number | null;
@@ -73,7 +74,7 @@ async function main() {
     const { data, error } = await supabase
       .from("tenders")
       .select(
-        "slug, title, summary, buyer, country, procedure_type, government_level, scope_type, estimated_value, currency, source_name, structured_duration_days, relevance_tier, relevance_manually_overridden",
+        "slug, tender_number, title, summary, buyer, country, procedure_type, government_level, scope_type, estimated_value, currency, source_name, structured_duration_days, relevance_tier, relevance_manually_overridden",
       )
       .order("slug", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
@@ -104,6 +105,7 @@ async function main() {
       buyer: row.buyer,
       country: row.country,
       procedureType: row.procedure_type ?? undefined,
+      tenderNumber: row.tender_number,
       governmentLevel: row.government_level as Parameters<typeof classifyStoredTender>[0]["governmentLevel"],
       scopeType: row.scope_type as Parameters<typeof classifyStoredTender>[0]["scopeType"],
       estimatedValue: row.estimated_value ?? undefined,

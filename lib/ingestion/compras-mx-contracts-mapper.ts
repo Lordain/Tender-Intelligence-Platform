@@ -163,6 +163,7 @@ export function mapComprasMxContractRowToTender(
   const procedureType = row["Tipo Procedimiento"]?.trim() || row["Ley"]?.trim() || "Unknown";
   const { industries, relevance } = classifyStoredTender({
     procedureType,
+    tenderNumber,
     title,
     summary,
     buyer,

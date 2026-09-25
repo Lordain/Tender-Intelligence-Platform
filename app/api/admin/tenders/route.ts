@@ -88,6 +88,9 @@ export async function POST(request: Request) {
     currency,
     buyer,
     procedureType: body.procedureType?.trim() || undefined,
+    // A hand-entered tender stores its slug as tender_number (below), which
+    // is not a procedure number and says nothing about its character.
+    tenderNumber: undefined,
     country: body.country,
     governmentLevel: body.governmentLevel,
   });

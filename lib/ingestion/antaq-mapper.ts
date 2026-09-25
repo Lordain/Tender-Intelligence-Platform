@@ -162,6 +162,7 @@ export function mapAntaqHearingToTender(hearing: AntaqHearing, now: Date = new D
     governmentLevel: GOVERNMENT_LEVEL,
     scopeType: SCOPE_TYPE,
     procedureType: "Audiência e Consulta Pública",
+    tenderNumber,
   });
 
   const nowIso = now.toISOString();

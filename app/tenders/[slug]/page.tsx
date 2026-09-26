@@ -7,7 +7,8 @@ import { relatedTenderLinks } from "@/lib/tender-links";
 import { RelatedTenders } from "@/components/tenders/RelatedTenders";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerEntitlement } from "@/lib/access-control-server";
-import { canViewCountry, canViewTenderProtectedContent, isReleasedAfterDeadline, shouldClaimFreeTenderView } from "@/lib/access-control";
+import { canViewCountry, canViewTenderProtectedContent, isReleasedAfterDeadline, releaseNeedsClosedOn, shouldClaimFreeTenderView } from "@/lib/access-control";
+import { fetchTenderClosedAt } from "@/lib/db/tenders";
 import { platformDay } from "@/lib/tender-status";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
@@ -112,11 +113,16 @@ export default async function TenderDetailPage({
     isHomepageFreePreview,
     enteredFromHomepage,
   ) && (entitlement.role !== "subscriber" || canViewCountry(entitlement, tender.country));
-  // Three days past its deadline a tender opens to everyone, crawlers
-  // included — see PUBLIC_AFTER_DEADLINE_DAYS. Checked before the free
+  // Three days past its deadline (or past its award or cancellation, when it
+  // has no deadline) a tender opens to everyone, crawlers included — see PUBLIC_AFTER_DEADLINE_DAYS. Checked before the free
   // allowance so that reading a released tender never spends one of a free
   // account's monthly views.
-  const releasedAfterDeadline = isReleasedAfterDeadline(tender.submissionDeadline, platformDay(new Date()));
+  const releaseInput = { submissionDeadline: tender.submissionDeadline, status: tender.status, awardDate: tender.awardDate };
+  const closedAt = releaseNeedsClosedOn(releaseInput) ? await fetchTenderClosedAt(tender.id) : null;
+  const releasedAfterDeadline = isReleasedAfterDeadline(
+    { ...releaseInput, closedOn: closedAt ? platformDay(closedAt) : null },
+    platformDay(new Date()),
+  );
   let mayViewProtectedContent = entitledToProtectedContent || releasedAfterDeadline;
 
   if (!releasedAfterDeadline && shouldClaimFreeTenderView(entitlement.role, isHomepageFreePreview, enteredFromHomepage)) {

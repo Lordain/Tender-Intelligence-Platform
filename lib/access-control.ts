@@ -136,25 +136,56 @@ export function isClosedTender(status: TenderStatus): boolean {
 export const PUBLIC_AFTER_DEADLINE_DAYS = 3;
 
 /**
- * Whether the deadline-based release has opened this tender to everyone.
+ * What the release counts from. Calendar days (YYYY-MM-DD) throughout.
  *
- * Both arguments are calendar days (YYYY-MM-DD): `today` is the platform day
- * (lib/tender-status.ts's platformDay), and submission_deadline is a `date`
- * column. Calendar arithmetic, not instants — the same reason platformDay
- * exists. No deadline (见招标文件, or not yet known) never releases: there
- * is no date to count from.
+ * The submission deadline when there is one. An awarded or cancelled tender
+ * with none (见招标文件, or never captured) counts from the day it ended
+ * instead (user, 2026-09-26: 一样规则): its award date, else `closedOn`, the
+ * platform day its status changed to awarded/cancelled (tender_status_history).
  */
-export function isReleasedAfterDeadline(submissionDeadline: string | null | undefined, today: string | null): boolean {
-  const release = deadlineReleaseDay(submissionDeadline);
+export type TenderReleaseInput = {
+  submissionDeadline?: string | null;
+  status?: TenderStatus;
+  awardDate?: string | null;
+  closedOn?: string | null;
+};
+
+const ENDED_STATUSES: readonly TenderStatus[] = ["awarded", "cancelled"];
+
+/**
+ * Whether the release has opened this tender to everyone.
+ *
+ * `today` is the platform day (lib/tender-status.ts's platformDay).
+ * Calendar arithmetic, not instants — the same reason platformDay exists.
+ * An open tender with no deadline never releases: there is no date to count
+ * from.
+ */
+export function isReleasedAfterDeadline(input: TenderReleaseInput, today: string | null): boolean {
+  const release = tenderReleaseDay(input);
   return Boolean(release && today && today >= release);
 }
 
-/** The calendar day (YYYY-MM-DD) the release opens a tender, or null with no usable deadline. */
-export function deadlineReleaseDay(submissionDeadline: string | null | undefined): string | null {
-  const deadline = /^\d{4}-\d{2}-\d{2}/.exec(submissionDeadline ?? "")?.[0];
-  if (!deadline) return null;
-  const [year, month, day] = deadline.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day + PUBLIC_AFTER_DEADLINE_DAYS)).toISOString().slice(0, 10);
+/** Whether the release needs `closedOn`, the one input that costs a query. */
+export function releaseNeedsClosedOn(input: TenderReleaseInput): boolean {
+  return !calendarDay(input.submissionDeadline) && ENDED_STATUSES.includes(input.status as TenderStatus) && !calendarDay(input.awardDate);
+}
+
+/** The calendar day the release opens a tender, or null when there is nothing to count from. */
+export function tenderReleaseDay(input: TenderReleaseInput): string | null {
+  const deadline = calendarDay(input.submissionDeadline);
+  if (deadline) return addDays(deadline, PUBLIC_AFTER_DEADLINE_DAYS);
+  if (!input.status || !ENDED_STATUSES.includes(input.status)) return null;
+  const ended = calendarDay(input.awardDate) ?? calendarDay(input.closedOn);
+  return ended ? addDays(ended, PUBLIC_AFTER_DEADLINE_DAYS) : null;
+}
+
+function calendarDay(value: string | null | undefined): string | null {
+  return /^\d{4}-\d{2}-\d{2}/.exec(value ?? "")?.[0] ?? null;
+}
+
+function addDays(day: string, days: number): string {
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, date + days)).toISOString().slice(0, 10);
 }
 
 /**

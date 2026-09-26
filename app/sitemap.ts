@@ -9,7 +9,7 @@ import { industryPages } from "@/lib/industry-pages";
 import { archiveWeeks } from "@/lib/weekly-digest";
 import { weekSlug } from "@/lib/weekly";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
-import { deadlineReleaseDay } from "@/lib/access-control";
+import { tenderReleaseDay } from "@/lib/access-control";
 
 /**
  * When a tender page last changed for a crawler: its own last update, or the
@@ -19,7 +19,7 @@ import { deadlineReleaseDay } from "@/lib/access-control";
  */
 function tenderLastModified(updatedAt: string, submissionDeadline: string | undefined, now: Date): Date {
   const updated = new Date(updatedAt);
-  const releaseDay = deadlineReleaseDay(submissionDeadline);
+  const releaseDay = tenderReleaseDay({ submissionDeadline });
   if (!releaseDay) return updated;
   const released = new Date(`${releaseDay}T00:00:00Z`);
   return released > updated && released <= now ? released : updated;

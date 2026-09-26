@@ -491,6 +491,30 @@ export async function fetchTenderSitemapEntriesFromDb(): Promise<TenderSitemapEn
   return entries;
 }
 
+/**
+ * When a tender last became awarded or cancelled, from the append-only
+ * tender_status_history (migration 0018). Only the post-deadline release
+ * needs it, and only for an ended tender with neither a deadline nor an award
+ * date — see releaseNeedsClosedOn() — so it is a separate read, not part of
+ * every detail load. Null when there is no such change on record.
+ */
+export async function fetchTenderClosedAt(tenderId: string): Promise<string | null> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("tender_status_history")
+    .select("changed_at")
+    .eq("tender_id", tenderId)
+    .in("next_status", ["awarded", "cancelled"])
+    .order("changed_at", { ascending: false })
+    .limit(1);
+  if (error) {
+    console.error("[tenders] Could not read tender status history", error.message);
+    return null;
+  }
+  return (data?.[0] as { changed_at: string } | undefined)?.changed_at ?? null;
+}
+
 /** Returns undefined when configured but no row matches; null when Supabase isn't configured. */
 export async function fetchTenderBySlugFromDb(
   slug: string,

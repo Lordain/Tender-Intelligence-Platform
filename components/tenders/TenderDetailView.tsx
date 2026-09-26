@@ -43,7 +43,7 @@ export function TenderDetailView({
         <span aria-hidden="true">←</span> {localize(uiText.backToTenders, locale)}
       </Link>
 
-      {releasedNotice && <ReleasedTenderNotice audience={releasedNotice} submissionDeadline={tender.submissionDeadline} />}
+      {releasedNotice && <ReleasedTenderNotice audience={releasedNotice} submissionDeadline={tender.submissionDeadline} status={tender.status} />}
 
       <TenderOverview tender={tender} showTrialCta={showTrialCta} />
 

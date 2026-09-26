@@ -41,7 +41,7 @@ import { countryInsights } from "../lib/country-insights";
 import { countryPages } from "../lib/country-pages";
 import { industryPages } from "../lib/industry-pages";
 import { isoWeekOf, weekSlug } from "../lib/weekly";
-import { deadlineReleaseDay } from "../lib/access-control";
+import { tenderReleaseDay } from "../lib/access-control";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = {
@@ -135,7 +135,7 @@ async function readAllTenders(supabase: SupabaseClient): Promise<Row[]> {
  * that is the day its page gains its whole analysis.
  */
 function releasedWithin(deadline: string | null, cutoff: Date, now: Date): boolean {
-  const releaseDay = deadlineReleaseDay(deadline);
+  const releaseDay = tenderReleaseDay({ submissionDeadline: deadline });
   if (!releaseDay) return false;
   const released = new Date(`${releaseDay}T00:00:00Z`);
   return released >= cutoff && released <= now;

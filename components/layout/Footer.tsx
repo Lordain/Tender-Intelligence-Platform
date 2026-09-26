@@ -27,7 +27,7 @@ const headingClass = "text-xs font-black uppercase tracking-[0.15em] text-[#ffb2
 export function Footer() {
   return (
     <footer className="border-t border-white/10 bg-[#031521] text-white">
-      <div className="mx-auto grid max-w-[94rem] grid-cols-2 gap-x-6 gap-y-10 px-5 py-12 sm:px-8 md:grid-cols-4 xl:grid-cols-[2fr_repeat(4,minmax(0,1fr))] xl:gap-x-8">
+      <div className="mx-auto grid max-w-[108rem] grid-cols-2 gap-x-6 gap-y-10 px-5 py-12 sm:px-8 md:grid-cols-4 xl:grid-cols-[2fr_repeat(4,minmax(0,1fr))] xl:gap-x-8">
         <div className="col-span-2 max-w-sm md:col-span-4 xl:col-span-1">
           <Link href="/" className="inline-flex items-center gap-3"><BrandLogo variant="dark" className="size-10" /><span className="text-lg font-black tracking-[0.08em]">拉美招投标信息平台</span></Link>
           <p className="mt-5 text-sm leading-7 text-white/70">拉美五国政府招标采购信息，一站式中文平台。</p>
@@ -69,7 +69,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-[94rem] flex-col gap-2 px-5 py-6 text-[11px] leading-5 text-white/38 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+        <div className="mx-auto flex max-w-[108rem] flex-col gap-2 px-5 py-6 text-[11px] leading-5 text-white/38 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
           <p>© {new Date().getFullYear()} 拉美招投标信息平台 · latintender.com</p>
           <p>本站独立整理公开信息，与各国政府机构无隶属关系；不受理或代办投标，重要要求请以官方原始文件为准。</p>
         </div>

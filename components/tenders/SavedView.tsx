@@ -102,7 +102,7 @@ export function SavedView({ canLoadTenders = false }: { canLoadTenders?: boolean
 
   return (
     <main className="bg-[#f6f4ef] px-5 py-6 sm:px-8 sm:py-8">
-      <div className="mx-auto max-w-[94rem]">
+      <div className="mx-auto max-w-[108rem]">
         <PageIntro
           eyebrow="My workspace"
           title="我的收藏"

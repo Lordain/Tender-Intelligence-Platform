@@ -81,7 +81,7 @@ function IndustryIcon({ name }: { name: IndustryIconName }) {
 
 function IndustryLogoRail() {
   return (
-    <div className="border-t border-white/8 bg-[#020f18]/58 py-5">
+    <div className="relative z-20 border-t border-white/8 bg-[#020f18]/58 py-5">
       <p className="mb-4 text-center text-[10px] font-semibold uppercase tracking-[0.28em] text-white/38">我们覆盖的行业</p>
       <div className="industry-logo-mask overflow-hidden">
         <div className="industry-logo-scroll flex w-max">
@@ -113,29 +113,36 @@ function TenderPreview({ tenders }: { tenders: TenderCardData[] }) {
   const scrollDuration = `${Math.max(tenders.length, 1) * 1.8}s`;
 
   return (
-    <div className="relative ml-auto w-full max-w-[39rem] xl:max-w-[42rem]">
-      <div className="hero-product-edge relative h-[31rem] overflow-hidden rounded-r-[1.6rem] rounded-l-[2.5rem] text-[#071826] shadow-[0_18px_46px_-38px_rgba(0,0,0,0.62)] xl:h-[33rem]">
-        <div className="relative z-10 border-b border-[#dbe2e5]/75 bg-transparent pb-3 pl-14 pr-6 pt-4 xl:pl-20 xl:pr-8">
+    // Phones and tablets inset the list so the lighthouse stands beside it,
+    // as it does on desktop, instead of disappearing behind it.
+    <div className="relative ml-12 max-w-[39rem] sm:ml-16 lg:ml-auto lg:w-full xl:max-w-[42rem] 2xl:max-w-[54rem]">
+      {/* Behind the list, lantern pinned to its top-left corner: see .hero-lighthouse. */}
+      <div aria-hidden="true" className="hero-lighthouse">
+        <Image src="/lighthouse-hero.webp" alt="" fill preload sizes="(min-width: 1280px) 100vw, (min-width: 1024px) 74rem, 40rem" className="object-cover" />
+      </div>
+      <div className="hero-product-edge relative h-[23rem] overflow-hidden rounded-r-[1.4rem] rounded-l-[2rem] text-[#071826] shadow-[0_18px_46px_-38px_rgba(0,0,0,0.62)] sm:h-[27rem] lg:h-[31rem] lg:rounded-r-[1.6rem] lg:rounded-l-[2.5rem] xl:h-[33rem]">
+        <div className="relative z-10 border-b border-[#dbe2e5]/75 bg-transparent pb-3 pl-7 pr-5 pt-4 sm:pl-10 sm:pr-6 lg:pl-14 xl:pl-20 xl:pr-8">
           <h2 className="text-base font-bold">拉美招标中项目预览</h2>
-          <div className="mt-3 grid grid-cols-[5.5rem_minmax(0,1fr)_6.75rem] gap-4 text-[10px] font-semibold text-[#7a8790] xl:grid-cols-[6rem_minmax(0,1fr)_7.5rem] xl:text-xs">
+          <div className="mt-3 hidden grid-cols-[5.5rem_minmax(0,1fr)_6.75rem] gap-4 text-[10px] font-semibold text-[#7a8790] sm:grid xl:grid-cols-[6rem_minmax(0,1fr)_7.5rem] xl:text-xs">
             <span>国家</span>
             <span>中文项目名称</span>
             <span className="text-right">计划交标时间</span>
           </div>
         </div>
-        <div className="absolute inset-x-0 bottom-0 top-[5.45rem] overflow-hidden bg-transparent xl:top-[5.7rem]">
-          <div className="hero-tender-scroll divide-y divide-[#e3e8ea] pl-14 pr-6 xl:pl-20 xl:pr-8" style={{ animationDuration: scrollDuration }}>
+        <div className="absolute inset-x-0 bottom-0 top-[3.45rem] overflow-hidden bg-transparent sm:top-[5.45rem] xl:top-[5.7rem]">
+          <div className="hero-tender-scroll divide-y divide-[#e3e8ea] pl-7 pr-5 sm:pl-10 sm:pr-6 lg:pl-14 xl:pl-20 xl:pr-8" style={{ animationDuration: scrollDuration }}>
             {rows.map((tender, index) => (
               <div
                 key={`${tender.id}-${index}`}
                 aria-hidden={index >= tenders.length}
-                className="grid min-h-[5rem] grid-cols-[5.5rem_minmax(0,1fr)_6.75rem] items-center gap-4 py-3 xl:grid-cols-[6rem_minmax(0,1fr)_7.5rem]"
+                className="grid min-h-[5rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 py-3 sm:grid-cols-[5.5rem_minmax(0,1fr)_6.75rem] sm:gap-4 xl:grid-cols-[6rem_minmax(0,1fr)_7.5rem]"
               >
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#53636e] xl:text-xs">
+                {/* Phones: title on top, country and date beneath it. */}
+                <span className="order-2 inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#53636e] sm:order-none xl:text-xs">
                   <CountryFlag country={tender.country} />{countryLabel(tender.country, locale)}
                 </span>
-                <p className="line-clamp-2 text-xs font-bold leading-5 text-black xl:text-sm">{tender.titleZh}</p>
-                <p className="text-right text-[10px] font-bold text-[#071826] xl:text-xs">
+                <p className="order-1 col-span-2 line-clamp-2 text-xs font-bold leading-5 text-black sm:order-none sm:col-span-1 xl:text-sm">{tender.titleZh}</p>
+                <p className="order-3 text-right text-[10px] font-bold text-[#071826] sm:order-none xl:text-xs">
                   {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : tender.deadlineInDocuments ? DEADLINE_IN_DOCUMENTS_LABEL : "未提供"}
                 </p>
               </div>
@@ -152,10 +159,8 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
 
   return (
     <section className="relative isolate overflow-hidden bg-[#031521] text-white">
-      <Image src="/lighthouse-hero.webp" alt="" fill preload sizes="100vw" className="-z-20 -translate-x-[16%] scale-[1.12] object-cover object-center opacity-90" />
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(3,21,33,.98)_0%,rgba(3,21,33,.86)_31%,rgba(3,21,33,.24)_50%,rgba(3,21,33,.5)_100%)]" />
-      <div className="mx-auto grid min-h-[36rem] max-w-[94rem] items-center gap-8 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:py-8 xl:gap-12">
-        <div className="relative z-10 min-w-0 max-w-[40rem]">
+      <div className="mx-auto grid min-h-[36rem] max-w-[108rem] items-center gap-10 px-5 pb-10 pt-12 sm:px-8 sm:py-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] 2xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-8 lg:py-8 xl:gap-12">
+        <div className="relative z-20 min-w-0 max-w-[40rem]">
           <h1 className="text-[clamp(2.55rem,4vw,4.25rem)] font-black leading-[1.14] tracking-[0.02em] text-[#fffdf9]">
             把拉美招标<br />变成中国企业<br />看得懂的机会
           </h1>
@@ -178,7 +183,7 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
             )}
           </div>
         </div>
-        <div className="relative z-10 hidden min-w-0 lg:block xl:translate-x-4">
+        <div className="relative z-10 min-w-0 xl:translate-x-4 2xl:translate-x-0">
           <TenderPreview tenders={tenders} />
         </div>
       </div>

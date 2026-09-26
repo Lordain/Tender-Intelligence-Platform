@@ -22,12 +22,12 @@ const differences = [
 export function HumanReviewedDifference() {
   return (
     <section id="human-reviewed" aria-labelledby="human-reviewed-heading" className="scroll-mt-20 border-t border-[#e7e1d6] bg-[#f7f4ee] px-5 py-16 sm:px-8 sm:py-20">
-      <div className="mx-auto max-w-[94rem]">
-        <div className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[0.75fr_1.25fr] lg:items-end">
+      <div className="mx-auto max-w-[108rem]">
+        <div className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Human + AI</p>
-            <h2 id="human-reviewed-heading" className="mt-3 text-3xl font-black leading-[1.22] tracking-[0.02em] text-[#071826] sm:text-4xl">
-              自动化提速，<br className="hidden sm:block" />人工把关关键环节
+            <h2 id="human-reviewed-heading" className="mt-3 text-[min(7.2vw,1.875rem)] font-black leading-[1.22] tracking-[0.02em] text-[#071826] sm:text-4xl">
+              <span className="block whitespace-nowrap">自动化提速，</span><span className="block whitespace-nowrap">人工把关关键环节</span>
             </h2>
           </div>
           <p className="max-w-2xl text-sm leading-7 text-[#64717c] lg:justify-self-end">

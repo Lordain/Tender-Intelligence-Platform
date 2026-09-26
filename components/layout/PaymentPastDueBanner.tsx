@@ -39,7 +39,7 @@ export function PaymentPastDueBanner() {
 
   return (
     <div role="alert" className="border-b border-amber-300 bg-amber-50 text-[#633b00]">
-      <div className="mx-auto flex max-w-[94rem] flex-col gap-2 px-5 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-8">
+      <div className="mx-auto flex max-w-[108rem] flex-col gap-2 px-5 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <p className="font-semibold leading-6">
           {headline}
           {action}

@@ -6,7 +6,12 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/auth";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 
-export function AuthNav() {
+/**
+ * `placement="bar"` is the header's top row. Signed in, its four links do
+ * not fit beside the logo on a phone, so below lg they move to the header's
+ * second, scrollable row (`placement="row"`) instead of overflowing it.
+ */
+export function AuthNav({ placement = "bar" }: { placement?: "bar" | "row" }) {
   const { locale } = useLocale();
   const { user, loading, logout, supabaseConfigured } = useUser();
   const router = useRouter();
@@ -43,9 +48,32 @@ export function AuthNav() {
 
   if (loading) return null;
 
+  if (placement === "row") {
+    if (!supabaseConfigured || !user) return null;
+    const pill = "whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium hover:bg-white/8 hover:text-white";
+    return (
+      <>
+        <span aria-hidden="true" className="mx-1 h-4 w-px shrink-0 bg-white/15" />
+        {isAdmin && <Link href="/admin/tenders" className={`${pill} text-[#ffb21c]`}>后台管理</Link>}
+        <Link href="/notifications" className={`${pill} text-white/75`}>通知设置</Link>
+        <Link href="/account" className={`${pill} text-white/75`}>账户管理</Link>
+        <button
+          type="button"
+          onClick={async () => {
+            await logout();
+            router.push("/");
+          }}
+          className={`${pill} text-white/60`}
+        >
+          {localize(uiText.logout, locale)}
+        </button>
+      </>
+    );
+  }
+
   if (supabaseConfigured && user) {
     return (
-      <div className="flex items-center gap-6 xl:gap-8">
+      <div className="hidden items-center gap-6 lg:flex xl:gap-8">
         {isAdmin && (
           <Link
             href="/admin/tenders"

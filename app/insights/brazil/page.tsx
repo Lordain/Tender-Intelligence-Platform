@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
+import { InsightHeroCredit } from "@/components/insights/InsightHeroCredit";
 import { pageMetadata } from "@/lib/seo";
 
 const insight = getCountryInsight("brazil")!;
@@ -92,7 +93,7 @@ export default function BrazilInsightPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
 
       <header className="relative isolate overflow-hidden bg-[#061b2b] text-white">
-        <Image src={insight.heroImage} alt="巴西港口、铁路、公路与能源基础设施" fill priority sizes="100vw" className="object-cover opacity-55" />
+        <Image src={insight.heroImage} alt={insight.heroImageAlt} fill priority sizes="100vw" className="object-cover opacity-55" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#031521] via-[#031521]/88 to-[#031521]/20" />
         <div className="relative mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20 lg:py-24">
           <Link href="/insights" className="inline-flex text-sm font-bold text-white/68 transition hover:text-white">← 返回国家洞察</Link>
@@ -103,6 +104,7 @@ export default function BrazilInsightPage() {
             <div className="mt-8 text-sm text-white/64">作者：<strong className="text-white">拉美招投标指南针</strong></div>
           </div>
         </div>
+        <InsightHeroCredit insight={insight} />
       </header>
 
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">

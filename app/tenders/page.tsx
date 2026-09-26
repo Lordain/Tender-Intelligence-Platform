@@ -56,7 +56,7 @@ export default async function TendersPage({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[94rem] px-5 py-6 sm:px-8 sm:py-8">
+    <div className="mx-auto w-full max-w-[108rem] px-5 py-6 sm:px-8 sm:py-8">
       {canExportTenders(entitlement) && <div className="mb-4 flex justify-end"><a href={`/api/tenders/export?${exportParams.toString()}`} className="rounded-xl border border-[#d8e0e3] bg-white px-4 py-2 text-xs font-bold text-[#16415a] hover:border-[#b86e00]">导出当前项目清单 CSV</a></div>}
       <TenderListStructuredData tenders={pageData.tenders} />
       <Suspense>

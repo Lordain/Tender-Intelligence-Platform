@@ -5,12 +5,12 @@ import { homepageCountryInsights } from "@/lib/country-insights";
 export function CountryInsightsPreview() {
   return (
     <section id="country-insights" className="scroll-mt-20 bg-[#061b2b] px-5 py-16 text-white sm:px-8 sm:py-20">
-      <div className="mx-auto max-w-[94rem]">
-        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+      <div className="mx-auto max-w-[108rem]">
+        <div className="grid gap-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffb21c]">Country insights</p>
-            <h2 className="mt-3 text-3xl font-black leading-[1.22] tracking-[0.02em] sm:text-4xl">
-              先看国家投资方向，<br className="hidden sm:block" />再判断项目机会
+            <h2 className="mt-3 text-[min(7.2vw,1.875rem)] font-black leading-[1.22] tracking-[0.02em] sm:text-4xl">
+              <span className="block whitespace-nowrap">先看国家投资方向，</span><span className="block whitespace-nowrap">再判断项目机会</span>
             </h2>
           </div>
           <div className="lg:justify-self-end">
@@ -33,7 +33,7 @@ export function CountryInsightsPreview() {
               <div className="relative aspect-[16/9] overflow-hidden bg-[#0a2639]">
                 <Image
                   src={insight.heroImage}
-                  alt={`${insight.country}战略投资与基础设施`}
+                  alt={insight.heroImageAlt}
                   fill
                   sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
                   className="object-cover transition duration-500 group-hover:scale-[1.03]"

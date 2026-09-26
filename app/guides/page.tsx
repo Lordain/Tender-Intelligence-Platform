@@ -14,7 +14,7 @@ export default function GuidesPage() {
   return (
     <div className="bg-[#f7f4ee] text-[#071826]">
       <header className="bg-[#061b2b] px-5 py-16 text-white sm:px-8 sm:py-20">
-        <div className="mx-auto max-w-[94rem]">
+        <div className="mx-auto max-w-[108rem]">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.65fr)] lg:items-end">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.22em] text-[#ffb21c]">Bid participation guides</p>
@@ -29,7 +29,7 @@ export default function GuidesPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[94rem] px-5 py-12 sm:px-8 sm:py-16">
+      <main className="mx-auto max-w-[108rem] px-5 py-12 sm:px-8 sm:py-16">
         <div className="rounded-2xl border border-[#e6b13f] bg-[#fff3cf] p-5 sm:p-6">
           <p className="font-black text-[#6d4900]">使用前请注意</p>
           <p className="mt-2 text-sm leading-7 text-[#6d5a31]">指南提供通用准备框架，不构成资格保证或法律意见。参与范围、文件格式、截止日期及提交方式，始终以具体项目的官方公告、招标文件、附件与最新澄清为准。</p>

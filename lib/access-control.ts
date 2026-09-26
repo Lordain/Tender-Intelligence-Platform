@@ -124,6 +124,40 @@ export function isClosedTender(status: TenderStatus): boolean {
 }
 
 /**
+ * Days after the submission deadline at which a tender's full detail opens
+ * to every visitor, signed in or not (user, 2026-09-26: 项目截止 3 天后，
+ * 免费公开完整项目信息，以增加我们被找到的可能性).
+ *
+ * A closed tender is worth nothing to a paying member as an opportunity, but
+ * its full page — requirements, documents, risks, key dates — is exactly the
+ * content search engines and AI assistants index and cite. The three days
+ * leave room for a late extension to land in the data before the page opens.
+ */
+export const PUBLIC_AFTER_DEADLINE_DAYS = 3;
+
+/**
+ * Whether the deadline-based release has opened this tender to everyone.
+ *
+ * Both arguments are calendar days (YYYY-MM-DD): `today` is the platform day
+ * (lib/tender-status.ts's platformDay), and submission_deadline is a `date`
+ * column. Calendar arithmetic, not instants — the same reason platformDay
+ * exists. No deadline (见招标文件, or not yet known) never releases: there
+ * is no date to count from.
+ */
+export function isReleasedAfterDeadline(submissionDeadline: string | null | undefined, today: string | null): boolean {
+  const release = deadlineReleaseDay(submissionDeadline);
+  return Boolean(release && today && today >= release);
+}
+
+/** The calendar day (YYYY-MM-DD) the release opens a tender, or null with no usable deadline. */
+export function deadlineReleaseDay(submissionDeadline: string | null | undefined): string | null {
+  const deadline = /^\d{4}-\d{2}-\d{2}/.exec(submissionDeadline ?? "")?.[0];
+  if (!deadline) return null;
+  const [year, month, day] = deadline.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + PUBLIC_AFTER_DEADLINE_DAYS)).toISOString().slice(0, 10);
+}
+
+/**
  * Full analysis remains protected even though every tender now has an
  * indexable public summary page. The homepage's selected free cards are the
  * only exception, and only when the visitor actually follows that entry.

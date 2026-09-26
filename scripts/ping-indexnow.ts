@@ -41,12 +41,14 @@ import { countryInsights } from "../lib/country-insights";
 import { countryPages } from "../lib/country-pages";
 import { industryPages } from "../lib/industry-pages";
 import { isoWeekOf, weekSlug } from "../lib/weekly";
+import { deadlineReleaseDay } from "../lib/access-control";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = {
   public_slug: string;
   publication_date: string | null;
   updated_at: string | null;
+  submission_deadline: string | null;
 };
 
 /** This week's digest: the one weekly page whose content still moves. */
@@ -114,7 +116,7 @@ async function readAllTenders(supabase: SupabaseClient): Promise<Row[]> {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("public_slug, publication_date, updated_at")
+      .select("public_slug, publication_date, updated_at, submission_deadline")
       .order("publication_date", { ascending: false })
       .range(from, from + PAGE_SIZE - 1)
       .returns<Row[]>();
@@ -124,6 +126,19 @@ async function readAllTenders(supabase: SupabaseClient): Promise<Row[]> {
     if (page.length < PAGE_SIZE) break;
   }
   return rows;
+}
+
+/**
+ * Whether the page opened to everyone (PUBLIC_AFTER_DEADLINE_DAYS after its
+ * deadline) inside this run's window. The row itself did not change that day,
+ * so neither updated_at nor publication_date would put it in the batch — yet
+ * that is the day its page gains its whole analysis.
+ */
+function releasedWithin(deadline: string | null, cutoff: Date, now: Date): boolean {
+  const releaseDay = deadlineReleaseDay(deadline);
+  if (!releaseDay) return false;
+  const released = new Date(`${releaseDay}T00:00:00Z`);
+  return released >= cutoff && released <= now;
 }
 
 function flag(name: string): boolean {
@@ -185,7 +200,7 @@ async function main() {
     if (all) return true;
     const changed = row.updated_at ? new Date(row.updated_at) >= cutoff : false;
     const published = row.publication_date ? new Date(row.publication_date) >= cutoff : false;
-    return changed || published;
+    return changed || published || releasedWithin(row.submission_deadline, cutoff, now);
   });
 
   // The homepage and the list change every day a tender is imported, so they

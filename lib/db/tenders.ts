@@ -458,6 +458,8 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
 export type TenderSitemapEntry = {
   publicSlug: string;
   updatedAt: string;
+  /** For the day the page opened to everyone — see isReleasedAfterDeadline(). */
+  submissionDeadline?: string;
 };
 
 /**
@@ -475,14 +477,14 @@ export async function fetchTenderSitemapEntriesFromDb(): Promise<TenderSitemapEn
     const data = await retrySupabaseRead(
       () => supabase
         .from("tenders")
-        .select("public_slug, updated_at")
+        .select("public_slug, updated_at, submission_deadline")
         .order("updated_at", { ascending: false })
         .range(from, from + SUPABASE_PAGE_SIZE - 1),
       "Failed to fetch tender sitemap entries from Supabase",
     );
 
-    const page = data as unknown as Array<{ public_slug: string; updated_at: string }>;
-    entries.push(...page.map((row) => ({ publicSlug: row.public_slug, updatedAt: row.updated_at })));
+    const page = data as unknown as Array<{ public_slug: string; updated_at: string; submission_deadline: string | null }>;
+    entries.push(...page.map((row) => ({ publicSlug: row.public_slug, updatedAt: row.updated_at, submissionDeadline: row.submission_deadline ?? undefined })));
     if (page.length < SUPABASE_PAGE_SIZE) break;
   }
 

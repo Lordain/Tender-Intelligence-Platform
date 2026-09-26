@@ -7,7 +7,8 @@ import { relatedTenderLinks } from "@/lib/tender-links";
 import { RelatedTenders } from "@/components/tenders/RelatedTenders";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerEntitlement } from "@/lib/access-control-server";
-import { canViewCountry, canViewTenderProtectedContent, shouldClaimFreeTenderView } from "@/lib/access-control";
+import { canViewCountry, canViewTenderProtectedContent, isReleasedAfterDeadline, shouldClaimFreeTenderView } from "@/lib/access-control";
+import { platformDay } from "@/lib/tender-status";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { isHomepageFreePreviewSlug } from "@/lib/homepage-selection";
@@ -106,13 +107,19 @@ export default async function TenderDetailPage({
 
   const enteredFromHomepage = from === "homepage";
   const publicTender = toPublicTenderDetail(tender);
-  let mayViewProtectedContent = canViewTenderProtectedContent(
+  const entitledToProtectedContent = canViewTenderProtectedContent(
     entitlement.role,
     isHomepageFreePreview,
     enteredFromHomepage,
   ) && (entitlement.role !== "subscriber" || canViewCountry(entitlement, tender.country));
+  // Three days past its deadline a tender opens to everyone, crawlers
+  // included — see PUBLIC_AFTER_DEADLINE_DAYS. Checked before the free
+  // allowance so that reading a released tender never spends one of a free
+  // account's monthly views.
+  const releasedAfterDeadline = isReleasedAfterDeadline(tender.submissionDeadline, platformDay(new Date()));
+  let mayViewProtectedContent = entitledToProtectedContent || releasedAfterDeadline;
 
-  if (shouldClaimFreeTenderView(entitlement.role, isHomepageFreePreview, enteredFromHomepage)) {
+  if (!releasedAfterDeadline && shouldClaimFreeTenderView(entitlement.role, isHomepageFreePreview, enteredFromHomepage)) {
     const [user, admin] = await Promise.all([getCurrentUser(), Promise.resolve(createSupabaseAdminClient())]);
     if (user && admin) {
       const { data, error } = await admin.rpc("claim_free_tender_view", { p_user_id: user.id, p_tender_id: tender.id });
@@ -147,6 +154,9 @@ export default async function TenderDetailPage({
         // the page already links the OxI guide.
         participationGuide={isObrasPorImpuestos(tender) ? undefined : participationGuideLinkForTender(tender)}
         related={related}
+        // The banner is for readers the release let in; a member who could
+        // read the page anyway is not told it is free.
+        releasedNotice={releasedAfterDeadline && !entitledToProtectedContent ? (entitlement.role === "guest" ? "guest" : "member") : undefined}
       />
     </>
   );

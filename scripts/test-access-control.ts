@@ -19,6 +19,7 @@ import {
   canViewTenderProtectedContent,
   shouldClaimFreeTenderView,
   isClosedTender,
+  isReleasedAfterDeadline,
   isSubscriptionEntitled,
   selectPreferredSubscription,
   subscriptionStatusFromStripe,
@@ -186,6 +187,21 @@ check(
   selectPreferredSubscription([{ ...livePaid, created_at: null }, olderPaid], NOW),
   olderPaid,
 );
+
+// ---------------------------------------------------------------------------
+// Release three days after the deadline (2026-09-26). Calendar days both
+// sides; the day the release lands is the first day it is open.
+// ---------------------------------------------------------------------------
+check("deadline day itself is still protected", isReleasedAfterDeadline("2026-09-20", "2026-09-20"), false);
+check("two days after is still protected", isReleasedAfterDeadline("2026-09-20", "2026-09-22"), false);
+check("three days after opens", isReleasedAfterDeadline("2026-09-20", "2026-09-23"), true);
+check("long past stays open", isReleasedAfterDeadline("2026-06-01", "2026-09-23"), true);
+check("across a month end", isReleasedAfterDeadline("2026-09-29", "2026-10-02"), true);
+check("across a month end, one day short", isReleasedAfterDeadline("2026-09-29", "2026-10-01"), false);
+check("a timestamp deadline counts by its calendar day", isReleasedAfterDeadline("2026-09-20T23:59:00Z", "2026-09-23"), true);
+check("no deadline (见招标文件) never opens", isReleasedAfterDeadline(undefined, "2026-09-23"), false);
+check("an unparseable deadline never opens", isReleasedAfterDeadline("pending", "2026-09-23"), false);
+check("no platform day never opens", isReleasedAfterDeadline("2026-09-20", null), false);
 
 console.log(`\n${passed}/${passed + failed} checks passed.`);
 if (failed > 0) {

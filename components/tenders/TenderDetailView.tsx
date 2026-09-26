@@ -15,6 +15,7 @@ import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 import { deadlineIsInDocuments } from "@/lib/deadline-in-documents";
 import { TenderViewTracker } from "@/components/analytics/TenderViewTracker";
 import { ReleasedTenderNotice } from "@/components/tenders/ReleasedTenderNotice";
+import { UpcomingTenderNotice } from "@/components/tenders/UpcomingTenderNotice";
 
 export function TenderDetailView({
   tender,
@@ -42,6 +43,8 @@ export function TenderDetailView({
       >
         <span aria-hidden="true">←</span> {localize(uiText.backToTenders, locale)}
       </Link>
+
+      {tender.status === "planned" && <UpcomingTenderNotice />}
 
       {releasedNotice && <ReleasedTenderNotice audience={releasedNotice} submissionDeadline={tender.submissionDeadline} status={tender.status} />}
 

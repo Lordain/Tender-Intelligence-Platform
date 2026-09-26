@@ -123,10 +123,11 @@ export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SOR
       };
       const priorityOf = (tender: Tender, deadline: number | null) => {
         const isFuture = deadline !== null && deadline >= now;
-        // 计划中 was tier 1 here; it is no longer a status any tender can
-        // display (lib/tender-status.ts), so open/clarification is the whole
-        // "live opportunity" band.
+        // Open/clarification with a future deadline is the "live opportunity"
+        // band. 即将招标 (an announcement, no deadline yet) comes right after
+        // it: not biddable today, but ahead of anything already decided.
         if (isFuture && (tender.status === "open" || tender.status === "clarification")) return 0;
+        if (tender.status === "planned") return 1;
         if (tender.status === "awarded") return 2;
         if (isFuture) return 3;
         return 4;

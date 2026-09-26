@@ -10,7 +10,7 @@ import type { TenderRelevanceTier, TenderStatus } from "@/types/tender";
 import { VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
 import type { SubscriptionPlan, ViewerRole } from "@/lib/access-control";
 
-// "planned"/计划中 is deliberately absent — see lib/tender-status.ts.
+// "planned"/即将招标 appears only for announcement sources — see lib/tender-status.ts.
 const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
 const TIERS: TenderRelevanceTier[] = ["flagship", "significant", "standard"];
 /** The countries a digest can be narrowed to — same set the public list offers (AVAILABLE_COUNTRIES in lib/tender-list-page.ts). An empty selection means every country, so a country missing here is only missing as a CHOICE, not from the mail. */

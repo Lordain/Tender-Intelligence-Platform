@@ -9,7 +9,9 @@
  * written:
  *
  *   1. 计划中 ("planned") is not used. Sources that report a planning stage
- *      (ocds-mapper maps OCDS `planning` to it) now read as 招标中.
+ *      (ocds-mapper maps OCDS `planning` to it) now read as 招标中. The one
+ *      exception is a tender ANNOUNCEMENT source (lib/upcoming-tenders.ts,
+ *      2026-09-26): its rows are not open yet, say so, and read 即将招标.
  *   2. 澄清中 applies ONLY on the day of the clarification meeting itself.
  *      The complaint was that a junta de aclaraciones lasts one day, but
  *      the status stuck: a tender imported during its clarification window
@@ -58,12 +60,15 @@
  *      than in each mapper.
  */
 import type { Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
+import { isUpcomingTenderSource } from "@/lib/upcoming-tenders";
 
 /**
  * Statuses a reader can ever see, and the only ones offered as filters.
- * "planned" is deliberately absent — see rule 1 above.
+ * "planned" (即将招标) is reachable only by an announcement source's rows —
+ * see rule 1 above.
  */
 export const VISIBLE_TENDER_STATUSES: TenderStatus[] = [
+  "planned",
   "open",
   "clarification",
   "submission_closed",
@@ -145,12 +150,18 @@ export function deriveTenderStatus(
     /** Needed for rule 5 only. Absent (mock data, a partial row) simply means rule 5 cannot fire. */
     publicationDate?: string | null;
     keyDates?: Pick<TenderKeyDate, "type" | "date">[];
+    /** Rule 1's exception: an announcement source keeps "planned". */
+    sourceName?: string | null;
   },
   now: Date = new Date(),
 ): TenderStatus {
   // A procurement really can be called off before its own deadline, so
   // "cancelled" is terminal on any date and wins outright.
   if (stored === "cancelled") return "cancelled";
+
+  // An announced tender is not open and has no dates to close it; the
+  // ingest removes it once the buyer stops announcing it.
+  if (stored === "planned" && isUpcomingTenderSource(fields.sourceName)) return "planned";
 
   const today = platformDay(now);
   const deadlineDay = fields.submissionDeadline ? platformDay(fields.submissionDeadline) : null;

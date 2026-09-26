@@ -234,6 +234,7 @@ function toTender(row: TenderRow): Tender {
       submissionDeadline: row.submission_deadline,
       publicationDate: row.publication_date,
       keyDates: row.tender_key_dates ?? [],
+      sourceName: row.source_name,
     }),
     qualifications: requirements.filter((r) => r.kind === "qualification").map(toRequirement),
     experienceRequirements: requirements.filter((r) => r.kind === "experience").map(toRequirement),
@@ -700,6 +701,7 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
         submissionDeadline: row.submission_deadline,
         publicationDate: row.publication_date,
         keyDates: row.tender_key_dates ?? [],
+        sourceName: row.source_name,
       }),
       documentLinkCount: row.tender_document_links?.length ?? 0,
       documentsDownloadedAt: row.documents_downloaded_at ?? undefined,
@@ -814,6 +816,7 @@ type AdminTenderListDbRow = {
   publication_date_is_estimated: boolean | null;
   updated_at: string;
   submission_deadline: string | null;
+  source_name: string | null;
   tender_key_dates?: { type: TenderKeyDate["type"]; date: string }[];
 };
 
@@ -885,7 +888,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
       .select(
         // tender_key_dates joined for deriveTenderStatus only — see
         // DOCUMENTS_NEEDED_SELECT's comment for why it cannot be skipped.
-        "id, slug, tender_number, title, summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, tender_key_dates ( type, date )",
+        "id, slug, tender_number, title, summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, source_name, tender_key_dates ( type, date )",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
@@ -917,6 +920,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
       submissionDeadline: row.submission_deadline,
       publicationDate: row.publication_date,
       keyDates: row.tender_key_dates ?? [],
+      sourceName: row.source_name,
     }),
     relevanceTier: row.relevance_tier,
     relevanceManuallyOverridden: row.relevance_manually_overridden ?? false,

@@ -27,7 +27,7 @@ const VALUE_LABELS: Record<string, string> = {
   flagship: "大型项目",
   significant: "中型项目",
   standard: "常规项目",
-  planned: "计划中",
+  planned: "即将招标",
   open: "招标中",
   clarification: "澄清中",
   submission_closed: "已截止",

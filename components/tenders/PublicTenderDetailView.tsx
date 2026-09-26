@@ -17,6 +17,7 @@ import {
 import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { STALE_WITHOUT_END_DATE_DAYS } from "@/lib/tender-status";
+import { UpcomingTenderNotice } from "@/components/tenders/UpcomingTenderNotice";
 import { DEADLINE_IN_DOCUMENTS_LABEL } from "@/lib/deadline-labels";
 import type { PublicTenderDetail } from "@/types/tender";
 import { TimelineTrack } from "@/components/tenders/TimelineTrack";
@@ -105,6 +106,8 @@ export function PublicTenderDetailView({ tender, promptKind, related }: {
         <Link href="/tenders" className="inline-flex w-fit items-center gap-2 text-sm font-black text-[#536772] transition-colors hover:text-[#b86e00]">
           <span aria-hidden="true">←</span> {localize(uiText.backToTenders, locale)}
         </Link>
+
+        {tender.status === "planned" && <UpcomingTenderNotice />}
 
         <article className="flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
           <div className="flex flex-wrap items-center gap-2">

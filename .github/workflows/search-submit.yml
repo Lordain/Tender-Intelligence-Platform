@@ -1,0 +1,42 @@
+# Submits chosen content sections (the guides, the country insights) to
+# IndexNow and Baidu by hand — for the day a whole section changes, as when
+# every guide and insight gained the 拉美招投标指南针 byline (2026-09-26).
+# The daily run only submits tenders and the overview pages.
+#
+# Baidu's daily quota is small (about ten) and shared with the daily run, so
+# a manual push here leaves that day's tender push "over quota" — logged, not
+# failed. The order given is Baidu's priority.
+name: Submit pages to search engines
+
+on:
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: "要提交的栏目（逗号分隔，按百度优先顺序）：insights、guides"
+        type: string
+        default: insights,guides
+      baidu_limit:
+        description: "百度本次最多提交几个（每日额度约 10）"
+        type: string
+        default: "10"
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    name: IndexNow + Baidu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Submit
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          APP_URL: https://latintender.com
+          BAIDU_PUSH_TOKEN: ${{ secrets.BAIDU_PUSH_TOKEN }}
+          PAGES: ${{ inputs.pages }}
+          BAIDU_LIMIT: ${{ inputs.baidu_limit }}
+        run: npm run ping:indexnow -- --write --pages "$PAGES" --baidu-limit "$BAIDU_LIMIT"

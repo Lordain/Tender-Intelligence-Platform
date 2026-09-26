@@ -10,9 +10,10 @@ import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 import { deadlineIsInDocuments } from "@/lib/deadline-in-documents";
 
 export const TENDER_PAGE_SIZE = 20;
-// 暂停中 is shown by default (migration 0057): a paused tender is one a reader
-// is likely following, and it may resume. 流标 is not — the round is over.
-export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "suspended", "awarded"];
+// The live stages only (user, 2026-09-26: 已中标、暂停中 不要是预设). 已中标,
+// 暂停中 and the rest stay one pill away under 项目阶段. Equal to
+// LIVE_STATUS_FILTER_PARAM, so the default view is 当前在招.
+export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification"];
 
 /**
  * Statuses a bidder can still act on — now only the 5天内交标 gate.

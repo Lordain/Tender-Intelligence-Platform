@@ -26,9 +26,9 @@ import { AVAILABLE_COUNTRIES, DEFAULT_TENDER_LIST_STATUSES, type TenderListItem 
 
 // "planned"/即将招标 appears only for announcement sources — see lib/tender-status.ts.
 const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
-// Closed and cancelled projects stay available through an explicit filter,
-// but do not crowd the initial discovery view. Awarded projects remain in
-// the default set (the public DB layer already requires them to have analysis).
+// Closed, cancelled, awarded and paused projects stay available through an
+// explicit filter, but do not crowd the initial discovery view (awarded and
+// paused left the default on 2026-09-26, at the user's request).
 const DEFAULT_STATUSES: TenderStatus[] = DEFAULT_TENDER_LIST_STATUSES;
 /** The 项目阶段 selection 当前在招 applies: every stage except 已截止, 已取消 and 已中标. */
 const LIVE_STATUS_PARAM = LIVE_STATUS_FILTER_PARAM;
@@ -276,7 +276,8 @@ export function TenderExplorer({
   const sort: SortKey = isSortKey(sortParam) ? sortParam : "deadline_asc";
   const viewParam = searchParams.get("view");
   const view = viewParam === "new" || viewParam === "deadline" ? viewParam : null;
-  const liveOnly = statusParam === LIVE_STATUS_PARAM;
+  // The default view IS the live stages, so no status param counts as on.
+  const liveOnly = statusParam === null || statusParam === LIVE_STATUS_PARAM;
 
   const hasActiveFilters = countryParam !== null || industries.length > 0 || scopeTypes.length > 0 || statusParam !== null || tierParam !== null || sortParam !== null || query.length > 0 || view !== null;
 
@@ -384,8 +385,14 @@ export function TenderExplorer({
           }}
         />
 
-        <div className="mt-4 grid gap-y-3 xl:grid-cols-[max-content_max-content_max-content] xl:divide-x xl:divide-[#dbe2e5]">
-          <div className="xl:pr-5">
+        {/* 项目规模 is a dropdown here between 国家/地区 and 行业 (user,
+            2026-09-26: 把项目规模移到上面也做成下拉选单，放在国家右侧和行业的中间),
+            so the pill row below keeps to one line. Four dropdowns with all
+            five countries fill 1280px almost exactly, hence the narrower
+            triggers and gaps; flex-wrap so a long selection wraps rather than
+            pushing the card wider. */}
+        <div className="mt-4 grid gap-y-3 xl:flex xl:flex-wrap xl:divide-x xl:divide-[#dbe2e5]">
+          <div className="xl:pr-4">
             <MultiSelectPills
               label="国家/地区"
               maxVisible={countryOptions.length}
@@ -401,18 +408,31 @@ export function TenderExplorer({
               onChange={(next) => updateParams({ country: next.length === 1 ? next[0] : null })}
             />
           </div>
-          <div className="xl:px-5">
+          <div className="xl:px-4">
+            <MultiSelectPills
+              label={localize(uiText.scaleLabel, locale)}
+              minWidthClass="min-w-[8rem]"
+              maxVisible={RELEVANCE_TIERS.length}
+              options={RELEVANCE_TIERS.map((option) => ({ value: option, label: localize(RELEVANCE_TIER_LABELS[option], locale) }))}
+              selected={relevanceTiers}
+              // Defaults to 全部 (no tier param); ticking every size is 全部 too.
+              onChange={(next) => updateParams({ tier: next.length === 0 || next.length === RELEVANCE_TIERS.length ? null : next.join(",") })}
+            />
+          </div>
+          <div className="xl:px-4">
             <MultiSelectPills
               label="行业"
+              minWidthClass="min-w-[8rem]"
               searchable
               options={industryOptions.map((option) => ({ value: option, label: localize(INDUSTRY_LABELS[option], locale) }))}
               selected={industries}
               onChange={(next) => updateParams({ industry: next.join(",") || null })}
             />
           </div>
-          <div className="xl:pl-5">
+          <div className="xl:pl-4">
             <MultiSelectPills
               label="项目类型"
+              minWidthClass="min-w-[8rem]"
               options={scopeTypeOptions.map((option) => ({ value: option, label: localize(SCOPE_TYPE_LABELS[option], locale) }))}
               selected={scopeTypes}
               onChange={(next) => updateParams({ scope: next.join(",") || null })}
@@ -421,23 +441,12 @@ export function TenderExplorer({
         </div>
 
         {/* Short, fixed-length option lists stay always-visible instead of
-            behind a dropdown — see InlineTogglePills' header comment. All
-            three groups share one wrapping row (compressed per explicit
-            user request 2026-09-04) rather than a row each. Side by side from
-            1600px rather than from the xl breakpoint: with 暂停中 and 流标
-            added (2026-09-26) the three groups need ~1320px, plus ~110px for
-            清除筛选, which overflowed the card at 1280 and collided at 1440. */}
-        <div className="mt-4 grid gap-y-3 border-t border-[#e5e9eb] pt-4 min-[1600px]:grid-cols-[max-content_max-content_max-content_minmax(0,1fr)] min-[1600px]:items-center min-[1600px]:divide-x min-[1600px]:divide-[#dbe2e5]">
-          <div className="min-[1600px]:pr-5">
-            <InlineTogglePills
-              label={localize(uiText.scaleLabel, locale)}
-              options={RELEVANCE_TIERS.map((option) => ({ value: option, label: localize(RELEVANCE_TIER_LABELS[option], locale) }))}
-              selected={relevanceTiers}
-              showAllOption
-              onChange={(next) => updateParams({ tier: next.length === 0 ? "none" : next.join(",") })}
-            />
-          </div>
-          <div className="min-[1600px]:px-5">
+            behind a dropdown — see InlineTogglePills' header comment.
+            项目阶段, 计划交标 and 清除筛选 share one row from xl (user,
+            2026-09-26: 项目阶段、计划交标做成一行，取消筛选按钮出现时也在这一行);
+            项目规模 moved up into the dropdown row to make the room. */}
+        <div className="mt-4 grid gap-y-3 border-t border-[#e5e9eb] pt-4 xl:grid-cols-[max-content_max-content_minmax(0,1fr)] xl:items-center xl:divide-x xl:divide-[#dbe2e5]">
+          <div className="xl:pr-5">
             <InlineTogglePills
               label="项目阶段"
               options={STATUSES.map((option) => ({ value: option, label: localize(STATUS_LABELS[option], locale) }))}
@@ -446,7 +455,7 @@ export function TenderExplorer({
               onChange={(next) => updateParams({ status: next.length === 0 ? "none" : next.join(",") })}
             />
           </div>
-          <div className="min-[1600px]:pl-5">
+          <div className="xl:px-5">
             <InlineTogglePills
               label="计划交标"
               mode="single"
@@ -470,17 +479,17 @@ export function TenderExplorer({
           {/*
             Sits in the pill row itself, right-aligned and vertically centred
             on it (user, 2026-09-12: 把清除筛选的按钮和项目规模、项目阶段、计划交标
-            高度拉齐). The fourth grid column is flexible and the cell is only
-            rendered when there is something to clear, so the three pill groups
-            keep their max-content widths either way.
+            高度拉齐). The last grid column is flexible and the cell is only
+            rendered when there is something to clear, so the pill groups keep
+            their max-content widths either way.
           */}
           {hasActiveFilters && (
-            <div className="flex min-[1600px]:justify-end min-[1600px]:pl-5">
+            <div className="flex xl:justify-end xl:pl-5">
               {/*
                 Sized as one more pill, not as a call to action: same
                 rounded-full / px-2.5 / py-1 / text-xs as chipClass in
-                InlineTogglePills, so it sits on the same baseline as 项目规模
-                and friends instead of making the whole row taller (user,
+                InlineTogglePills, so it sits on the same baseline as 项目阶段
+                and 计划交标 instead of making the whole row taller (user,
                 2026-09-12: 不要那么大，不要影响到整个空间，高度跟左边保持一致).
                 The amber border is what still marks it out.
               */}
@@ -572,12 +581,13 @@ export function TenderExplorer({
               {/*
                 当前在招 replaced 5天内交标 (user, 2026-09-25: 招标概览 改成全站项目、
                 当前在招、24小时新增；当前在招 = 全站项目扣除已截止、已取消、已中标).
-                Same catalogue basis as 全站项目 beside it; clicking it narrows the
-                list to the live stages, and clicking again goes back.
+                Same catalogue basis as 全站项目 beside it. Since the default
+                view became the live stages (2026-09-26) it is on by default;
+                clicking it off shows every stage, as 全站项目 counts.
               */}
               <button
                 type="button"
-                onClick={() => updateParams({ status: liveOnly ? null : LIVE_STATUS_PARAM, view: null })}
+                onClick={() => updateParams({ status: liveOnly ? "none" : null, view: null })}
                 className={`rounded-lg px-1 py-1.5 transition-colors ${liveOnly ? "bg-white/15" : "hover:bg-white/10"}`}
               >
                 <p className="text-[11px] font-medium text-white/58">当前在招</p>

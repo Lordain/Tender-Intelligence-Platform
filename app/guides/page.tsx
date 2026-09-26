@@ -21,7 +21,6 @@ export default function GuidesPage() {
               <p className="text-xs font-black uppercase tracking-[0.22em] text-[#ffb21c]">Bid participation guides</p>
               <h1 className="mt-4 max-w-4xl text-4xl font-black leading-[1.12] tracking-[-0.04em] sm:text-5xl lg:text-6xl">参标需知</h1>
               <p className="mt-6 max-w-3xl text-base leading-8 text-white/68 sm:text-lg">为中国企业整理拉美政府采购平台的参与流程、常见资质与文件准备要点。先看懂规则，再决定如何进入项目。</p>
-              <p className="mt-6 text-sm text-white/64">作者：<strong className="text-white">{SOCIAL_BRAND}</strong></p>
             </div>
             <div className="rounded-2xl border border-white/12 bg-white/6 p-6">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ffb21c]">免费开放</p>

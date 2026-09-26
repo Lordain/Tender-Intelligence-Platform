@@ -17,6 +17,8 @@
  *   npm run ping:indexnow -- --all          (every indexable URL, including the static pages — for the first run)
  *   npm run ping:indexnow -- --origin https://latintender.com
  *   npm run ping:indexnow -- --baidu-limit 20  (Baidu's batch size; default 10)
+ *   npm run ping:indexnow -- --pages insights,guides --write
+ *                                           (only those content sections, in that order; no tenders)
  *
  * BAIDU: when BAIDU_PUSH_TOKEN is set, a --write run also pushes to Baidu's
  * 普通收录 API (lib/baidu-push.ts). Baidu's daily quota is far smaller than
@@ -78,6 +80,25 @@ const DAILY_PATHS = [
   ...industryPages.map((page) => `/industries/${page.slug}`),
   "/weekly",
 ];
+
+/**
+ * The content sections --pages can submit on their own, e.g. after the guides
+ * and insights gained the 拉美招投标指南针 byline (2026-09-26). Each is its
+ * index page and then every article, so the order given is Baidu's priority.
+ */
+const SECTION_PATHS: Record<string, string[]> = {
+  guides: ["/guides", ...participationGuides.map((guide) => `/guides/${guide.slug}`)],
+  insights: ["/insights", ...countryInsights.map((insight) => `/insights/${insight.slug}`)],
+};
+
+function sectionPaths(value: string): string[] {
+  const names = value.split(",").map((name) => name.trim()).filter(Boolean);
+  const unknown = names.filter((name) => !SECTION_PATHS[name]);
+  if (unknown.length > 0 || names.length === 0) {
+    throw new Error(`--pages 只接受 ${Object.keys(SECTION_PATHS).join("、")}，收到：${value}`);
+  }
+  return [...new Set(names.flatMap((name) => SECTION_PATHS[name]))];
+}
 
 /** How many of Baidu's daily slots go to the rotating overview pages; the rest go to the newest tenders. */
 const BAIDU_ROTATING_SLOTS = 3;
@@ -193,6 +214,25 @@ async function main() {
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     throw new Error("Supabase 没有配置（NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY），见 .env.example");
+  }
+
+  const pages = text("pages");
+  if (pages) {
+    const urls = sectionPaths(pages).map((path) => `${origin}${path}`);
+    console.log(`站点：${origin}`);
+    console.log(`范围：${pages}，共 ${urls.length} 个地址`);
+    for (const url of urls) console.log(`  ${url}`);
+    const baiduLimit = option("baidu-limit", 10);
+    if (!write) {
+      console.log(`\n百度批次：前 ${Math.min(baiduLimit, urls.length)} 个。试运行，没有提交。加 --write 才真的提交。`);
+      return;
+    }
+    await verifyKeyFile(origin);
+    const result = await submitToIndexNow(origin, urls);
+    console.log(`\nIndexNow 返回 ${result.status}${result.body ? `：${result.body}` : ""}`);
+    if (!result.ok) process.exitCode = 1;
+    await pushToBaidu(origin, urls, baiduLimit);
+    return;
   }
 
   const rows = await readAllTenders(supabase);

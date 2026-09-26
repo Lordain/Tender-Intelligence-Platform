@@ -100,6 +100,7 @@
     "probe:brazil-search-filters": "tsx scripts/probe-brazil-search-filters.ts",
     "probe:brazil-amount": "tsx scripts/probe-brazil-amount.ts",
     "test:cli-write-flag": "tsx scripts/test-cli-write-flag.ts",
+    "test:award-results": "tsx scripts/test-award-results.ts",
     "test:brazil-pncp-mapper": "tsx scripts/test-brazil-pncp-mapper.ts",
     "test:ckan-client": "tsx scripts/test-ckan-client.ts",
     "test:block-page": "tsx scripts/test-block-page.ts",

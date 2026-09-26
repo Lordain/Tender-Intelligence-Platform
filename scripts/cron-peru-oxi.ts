@@ -25,6 +25,8 @@ import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ingestPeruOxi, refreshPeruOxiStatuses } from "../lib/ingestion/ingest-peru";
 import { describeStatusRefresh } from "../lib/ingestion/status-refresh";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
+import { refreshPeruOxiAwards } from "../lib/ingestion/award-sources";
+import { describeAwardRefresh } from "../lib/ingestion/award-results";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
 import { STATUS_LABELS } from "@/lib/tender-labels";
 import type { TenderStatus } from "@/types/tender";
@@ -69,6 +71,20 @@ async function main() {
     console.error(error);
   }
 
+  // ③ 中标结果 for OxI tenders reading 已中标 — after ②, so today's awards
+  // are included. The export has no winner column: date and amount only.
+  let awardSummary = "";
+  try {
+    const awards = await refreshPeruOxiAwards(supabase, { write }, (message) => console.log(`  ${message}`));
+    console.log("\n③ 中标结果：");
+    for (const line of describeAwardRefresh(awards)) console.log(line);
+    awardSummary = `补中标结果 ${awards.filled.length} 条`;
+    if (awards.failed) problems.push(awards.failed);
+  } catch (error) {
+    problems.push(`中标结果失败：${error instanceof Error ? error.message : String(error)}`);
+    console.error(error);
+  }
+
   if (!write) {
     console.log(`\n试运行（加 --write 才真的写入）——什么都没动。${problems.length ? `\n问题：${problems.join("；")}` : ""}`);
     if (problems.length) process.exit(1);
@@ -76,7 +92,7 @@ async function main() {
   }
 
   const problem = problems.join("；") || null;
-  await writeCronHeartbeat(supabase, "import-peru-oxi", problem ? "failed" : "ok", problem ?? [importSummary, statusSummary].filter(Boolean).join("，"));
+  await writeCronHeartbeat(supabase, "import-peru-oxi", problem ? "failed" : "ok", problem ?? [importSummary, statusSummary, awardSummary].filter(Boolean).join("，"));
   if (problem) {
     console.error(`\n${problem}`);
     process.exit(1);

@@ -3,6 +3,7 @@ import { ReclassifyButton } from "@/components/admin/ReclassifyButton";
 import { ExplainKeptPanel } from "@/components/admin/ExplainKeptPanel";
 import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
 import { RefreshStatusesPanel } from "@/components/admin/RefreshStatusesPanel";
+import { RefreshAwardsPanel } from "@/components/admin/RefreshAwardsPanel";
 
 /**
  * The cross-country maintenance actions, as their own tab.
@@ -27,6 +28,9 @@ export default function AdminImportTendersMaintenancePage() {
       </ImportSourceSection>
       <ImportSourceSection name="刷新标书状态" hint="暂停、恢复、中标、流标、取消：按来源最新状态更新已入库项目" mode="tool">
         <RefreshStatusesPanel />
+      </ImportSourceSection>
+      <ImportSourceSection name="导入中标结果" hint="为已中标项目补中标日期、供应商、金额；各国也在自己的标签页里" mode="tool">
+        <RefreshAwardsPanel manualNote="PEMEX、CFE 和各能源、矿业、电力公司的门户不公布中标数据，这些项目的中标信息请在「项目管理」里逐条填写。" />
       </ImportSourceSection>
       <ImportSourceSection name="重新分类" hint="只在改过筛选规则之后跑" mode="tool">
         <ReclassifyButton />

@@ -1,5 +1,6 @@
 import { ImportColombiaForm } from "@/components/admin/ImportColombiaForm";
 import { ImportCompanySourceForm } from "@/components/admin/ImportCompanySourceForm";
+import { RefreshAwardsPanel } from "@/components/admin/RefreshAwardsPanel";
 import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
 
 export default function AdminImportTendersColombiaPage() {
@@ -15,6 +16,9 @@ export default function AdminImportTendersColombiaPage() {
       </ImportSourceSection>
       <ImportSourceSection name="UPME — 输电扩建招标" hint="新建变电站和输电线路的投资人遴选；只导入仍在投标阶段的" mode="auto" links={[{ href: "https://www.upme.gov.co/" }]}>
         <ImportCompanySourceForm source="upme" title="UPME" />
+      </ImportSourceSection>
+      <ImportSourceSection name="导入中标结果" hint="为已中标项目补中标日期、供应商、金额" mode="auto">
+        <RefreshAwardsPanel sources={["colombia"]} manualNote="UPME 的中标结果只以决议文件发布，这些项目的中标信息请在「项目管理」里逐条填写。" />
       </ImportSourceSection>
     </div>
   );

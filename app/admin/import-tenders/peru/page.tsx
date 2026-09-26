@@ -1,6 +1,7 @@
 import { ImportPeruForm } from "@/components/admin/ImportPeruForm";
 import { ImportCompanySourceForm } from "@/components/admin/ImportCompanySourceForm";
 import { PeruDocumentLinksForm } from "@/components/admin/PeruDocumentLinksForm";
+import { RefreshAwardsPanel } from "@/components/admin/RefreshAwardsPanel";
 import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
 import { ImportSourceGroupHeading, ImportSourceSection } from "@/components/admin/ImportSourceSection";
 
@@ -29,6 +30,9 @@ export default function AdminImportTendersPeruPage() {
           title="Petroperú"
           note="只导入 PCI 开头的正式招标；CAI 开头的是采购完成后的公示，不导入。"
         />
+      </ImportSourceSection>
+      <ImportSourceSection name="导入中标结果" hint="为已中标项目补中标日期、供应商、金额" mode="auto">
+        <RefreshAwardsPanel sources={["oxi", "oece"]} manualNote="Petroperú 不公布中标数据，这些项目的中标信息请在「项目管理」里逐条填写。" />
       </ImportSourceSection>
       {/*
         Local dev only, and the route enforces it too — it calls SEACE, which

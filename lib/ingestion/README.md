@@ -8939,3 +8939,43 @@ PEMEX 七个列表近一个月发布了 71 个招标，通用规则只保留 3 �
 DOF 导入是后台手动按钮，所以只影响以后的导入；库里已有的 CFE 行不动。
 
 测试：`npm run test:cfe-rules`（26 条真实样本）。
+
+### Rail and metro outside Mexico — where the tenders actually are (surveyed 2026-09-26)
+
+Asked because every 铁路/地铁 tender on the site was Mexican. The relevance
+rules keep rail titles from every country (checked against sample titles),
+and the 交通基建 tag gap for rolling stock and Portuguese rail words is fixed
+in lib/industry.ts / lib/relevance-pt.ts. What remains is where each
+country's rail buying is published, measured from this sandbox:
+
+- **Brazil.** Metrô SP moved to compras.gov.br in 2024 (its own licitações
+  page says so), so Metrô SP, CPTM and Trensurb rows are **already in PNCP**
+  — a live search found 31 open Metrô SP editais. They are spare parts,
+  consumables and building maintenance under pregão/dispensa, which the
+  value and modality gates rightly drop. The large rail work (new lines,
+  rolling stock) is procured as concessions/PPPs auctioned at B3 — PPI
+  (ppi.gov.br: SPA shell, resets the connection here as in the 09-18
+  survey) and state PPP programmes — i.e. the DOU concession watch, not
+  PNCP. Infra S.A. (ex-VALEC) lists its pregões on its own site as HTML and
+  in PNCP; its 2026 leilões are rail-yard terminal concessions.
+- **Chile.** Neither Metro de Santiago nor EFE buys through Mercado Público.
+  Metro's current tenders sit behind an Altcha proof-of-work challenge and
+  supplier registration — not something to get around. Its **Próximas
+  Licitaciones** page, though, is a plain HTML table (Proyecto / Servicio /
+  Publicación month, 107 rows, updated 21/09/2026) that names the large
+  items months ahead: L7 station civil works, L9 civil works, vías y
+  catenarias, **material rodante y CBTC**. No amounts, no deadlines — a
+  `planned` source, like ANEEL before its edital. EFE runs on SAP Ariba
+  behind a login; its próximas page lists categories only.
+- **Colombia.** The rail entities contract under *Contratación régimen
+  especial*, which the 2026-09-11 decision (Licitación pública only)
+  excludes by design. In SECOP II since 2025-07: Metro de Bogotá's largest
+  rows are loan agreements with development banks, not tenders; Metro de
+  Medellín (Empresa de Transporte Masivo del Valle de Aburrá) has real
+  supply rows of 15–52 bn COP, e.g. "Suministro internacional de elementos
+  rail-line". Widening the gate for a named list of rail entities would be
+  the change; it relaxes a rule the user set, so it is theirs to make.
+- **Peru.** ATU and ProInversión did not answer from this network. Lima's
+  new metro lines are APP/government-to-government contracts rather than
+  open tenders; ATU's ordinary purchases are in SEACE and go through the
+  existing connector and its filters.

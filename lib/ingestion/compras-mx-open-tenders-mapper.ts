@@ -94,7 +94,7 @@ function inferScopeType(tipoContratacion: string | undefined): TenderScopeType {
  *    own "CANCEL" check, safer than hardcoding only the exact strings seen
  *    so far in a vocabulary this codebase hasn't fully enumerated.
  */
-function inferStatus(estatus: string | undefined): TenderStatus {
+export function inferStatus(estatus: string | undefined): TenderStatus {
   const normalized = estatus?.toUpperCase().trim();
   switch (normalized) {
     case "VIGENTE":
@@ -112,16 +112,14 @@ function inferStatus(estatus: string | undefined): TenderStatus {
       // wrongly suggest it's still in the pre-submission Q&A phase.
       return "submission_closed";
     case "SUSPENDIDO":
-      // No dedicated "suspended" status in this platform's TenderStatus —
-      // "cancelled" is the closest fit and, just as importantly, is
-      // excluded from the tender list's default status filter the same
-      // way "open"/"clarification" tenders are shown by default (see
-      // DEFAULT_STATUSES in TenderExplorer.tsx) — a suspended procedure
-      // no longer belongs in the default "currently biddable" view.
-      return "cancelled";
+      // Written as "cancelled" until the platform had a suspended status
+      // (migration 0057) — which wrote off procedures that routinely resume.
+      return "suspended";
   }
   if (normalized?.includes("ADJUDICA")) return "awarded";
-  if (normalized?.includes("CANCEL") || normalized?.includes("DESIERT")) return "cancelled";
+  // 流标 (a lot or procedure declared void) is its own status since 0057.
+  if (normalized?.includes("DESIERT")) return "deserted";
+  if (normalized?.includes("CANCEL")) return "cancelled";
   // Unrecognized (e.g. the rare "EN OSD", 2 of 1,791 rows in the vigentes
   // tab, meaning unconfirmed) — "open" remains the safer wrong guess for
   // the still-in-progress tab; a concluded-tab upload with a genuinely

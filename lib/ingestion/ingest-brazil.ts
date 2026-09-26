@@ -1,10 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchPncpArquivos, fetchPncpItems, fetchPncpSearchPage, PNCP_MAX_PAGE_SIZE, PNCP_WORKS_MODALITIES } from "@/lib/ingestion/connectors/brazil-pncp-live";
+import { fetchPncpArquivos, fetchPncpCompra, fetchPncpItems, fetchPncpSearchPage, PNCP_MAX_PAGE_SIZE, PNCP_WORKS_MODALITIES, type PncpCompraState } from "@/lib/ingestion/connectors/brazil-pncp-live";
+import { refreshStoredStatuses, type ObservedStatus, type StatusRefreshResult } from "@/lib/ingestion/status-refresh";
 import { saveDocumentLinks, type DocumentLinksForSlug } from "@/lib/ingestion/document-links";
 import { mapPncpSearchRowToTender, parsePncpDate, type PncpItem, type PncpSearchRow } from "@/lib/ingestion/brazil-pncp-mapper";
 import { filterRecentTenders } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
-import type { Tender } from "@/types/tender";
+import type { Tender, TenderStatus } from "@/types/tender";
 import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "./review-csv";
 import { convertToUsd } from "@/lib/currency";
 
@@ -633,4 +634,76 @@ export async function ingestBrazilPncp(
       failed: linkFailures + saved.failed.length,
     },
   };
+}
+
+
+/**
+ * What PNCP's compra record says, as a status — for the status refresh only.
+ * The import's own inferStatus (brazil-pncp-mapper.ts) reads the SEARCH row,
+ * whose fields differ; this reads the consulta record.
+ *
+ * Undefined for a situação this table does not know: an unknown state is
+ * news, not evidence, and the stored status is left as it is.
+ */
+export function pncpCompraStatus(compra: PncpCompraState): TenderStatus | undefined {
+  switch (compra.situacaoCompraId) {
+    case 2:
+    case 3:
+      return "cancelled";
+    case 4:
+      return "suspended";
+    case 1:
+      return compra.existeResultado === true ? "awarded" : "open";
+    default:
+      return undefined;
+  }
+}
+
+const COMPRA_LOOKUP_SPACING_MS = 300;
+
+/**
+ * Re-reads every PNCP tender stored here that has not already ended, one
+ * consulta request each, and lets PNCP's current situação move its status:
+ * 暂停中 on Suspensa, back to 招标中 when it is Divulgada again, 已取消 on
+ * Revogada/Anulada, 已中标 once a result exists (user, 2026-09-26: 自动&手动，
+ * 刷新标书状态).
+ *
+ * Needed because the daily sweep only asks for notices still receiving
+ * proposals — a tender that is suspended or revoked after it was imported
+ * never comes back through it.
+ */
+export async function refreshBrazilPncpStatuses(
+  supabase: SupabaseClient,
+  options: { write: boolean; limit?: number },
+  onProgress?: (message: string) => void,
+): Promise<StatusRefreshResult & { checked: number; unreachable: string[] }> {
+  const stored: { slug: string; tender_number: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("slug, tender_number")
+      .eq("source_name", BRAZIL_PNCP_SOURCE_NAME)
+      .not("status", "in", "(awarded,cancelled,deserted)")
+      .range(from, from + 999);
+    if (error) throw new Error(`读取已入库的巴西项目失败：${error.message}`);
+    stored.push(...((data ?? []) as typeof stored));
+    if ((data ?? []).length < 1000) break;
+  }
+  const targets = stored.slice(0, options.limit ?? stored.length);
+
+  const observed: ObservedStatus[] = [];
+  const unreachable: string[] = [];
+  for (const [index, row] of targets.entries()) {
+    if (index > 0) await new Promise((resolve) => setTimeout(resolve, COMPRA_LOOKUP_SPACING_MS));
+    try {
+      const status = pncpCompraStatus(await fetchPncpCompra(row.tender_number));
+      if (status) observed.push({ slug: row.slug, status });
+    } catch (error) {
+      unreachable.push(`${row.tender_number}：${error instanceof Error ? error.message : String(error)}`);
+    }
+    if ((index + 1) % 20 === 0) onProgress?.(`已查询 ${index + 1}/${targets.length}`);
+  }
+
+  const result = await refreshStoredStatuses(supabase, observed, { write: options.write });
+  return { ...result, checked: targets.length, unreachable };
 }

@@ -214,6 +214,52 @@ both confirmed genuinely unauthenticated by the user directly (see "SECOP
 II tender documents" below for the full verification). This is the one
 piece of this project that doesn't belong in the table above.
 
+## Tender lifecycle: 暂停、恢复、流标、取消、重发 (2026-09-26)
+
+User: 自动&手动，刷新标书状态 / 不只秘鲁，所有国家都应考虑 / 也要考虑后续的恢复或者取消、重发.
+
+**Statuses.** Migration `0057_tender_lifecycle.sql` adds `suspended` (暂停中)
+and `deserted` (流标). Until it is run in the SQL editor the code writes the
+old values instead (`lib/ingestion/lifecycle-schema.ts`: deserted → cancelled,
+suspended → submission_closed on import, and not written at all by a status
+refresh), so deploying first is safe. 暂停中 is shown by default on /tenders
+and excluded from 当前在招; it is never "released" after its old deadline.
+
+**Each source's words** — the same mappers serve the daily jobs and the admin
+buttons: Peru OxI `Estado` (all nine values in the user's all-states export),
+Mexico `SUSPENDIDO` / `DESIERT*`, Chile `Suspendida` / `Sin ofertas recibidas`,
+Brazil `Suspensa` / `Deserta` / `Fracassada`, Colombia `estado_del_procedimiento`
+(desierto / cancelado / suspendido), Peru OECE `tender.status` and per-item
+`statusDetails` (only when every item agrees), OCDS `unsuccessful` → 流标.
+
+**Status refresh of stored tenders** (`lib/ingestion/status-refresh.ts`): only
+the status column moves; a hand-set status (manual_field_overrides) is left
+alone; a finished tender is never reopened automatically; a change that would
+not change what the page shows is not written (so no empty digest emails).
+
+| Source | How it is re-read | Daily job |
+|---|---|---|
+| Peru OxI | all-states export (`EstadoConvocatoria=""`, checked: ≥3 states must come back) | `cron:peru-oxi` |
+| Brazil PNCP | `/api/consulta/v1/orgaos/{cnpj}/compras/{ano}/{seq}` per tender | `cron:refresh-statuses` |
+| Chile Mercado Público | each tender's ficha, `lblFicha1Estado` | `cron:refresh-statuses` |
+| Mexico Compras MX | LicitIA corpus, every section | `cron:refresh-statuses` |
+| Colombia SECOP II | existing refresh pass | `cron:colombia` |
+| Peru OECE | `ingest:peru-live --refresh-open` | none — SEACE answers the GitHub runner 403 (measured 2026-09-26), as it does Vercel; run `cron:peru-oece-status -- --write` locally |
+| Petronect, Codelco, Cemig, UPME, Petroperú, PEMEX, DOF | open lists only — nothing to read once a tender leaves them | — (deadline closes them) |
+
+Manual: 新项目清单 → 维护 → 刷新标书状态 (per source, plus an OxI all-states
+Excel upload). Uploading an all-states Excel to the OxI import also only
+refreshes statuses — that layout has no bid schedule, so importing tenders
+from it would clear their dates.
+
+**恢复** is the source saying open again; the change lands in
+tender_status_history like any other, so subscribers' digests report it and
+the detail page's 项目动态 box lists it. **重发** (a new code for the same
+procedure) is linked at import time in `tender_reissues`
+(`lib/ingestion/reissue.ts`: same source, buyer and title once re-issue
+wording is removed; the earlier round must be cancelled, deserted or
+suspended), and both detail pages link to each other.
+
 ## Confirmed portal structure (from official docs, not guessed)
 
 Per the official "Guía de navegación en el portal Compras MX" (Secretaría

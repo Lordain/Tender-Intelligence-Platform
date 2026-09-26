@@ -53,7 +53,9 @@ import {
   type ChileBuscaRow,
 } from "@/lib/ingestion/chile-busca-parser";
 import { CHILE_BUSCA_SOURCE_NAME, mapChileBuscaRowToTender } from "@/lib/ingestion/chile-busca-mapper";
-import { ChileFichaEgressBlockedError, fetchChileFicha } from "@/lib/ingestion/connectors/chile-ficha-live";
+import { ChileFichaEgressBlockedError, fetchChileFicha, fetchChileFichaEstado } from "@/lib/ingestion/connectors/chile-ficha-live";
+import { chileFichaEstadoStatus } from "@/lib/ingestion/chile-ficha-parser";
+import { refreshStoredStatuses, type ObservedStatus, type StatusRefreshResult } from "@/lib/ingestion/status-refresh";
 import { filterRecentTenders, filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import type { Tender, TenderRelevanceTier } from "@/types/tender";
@@ -470,4 +472,57 @@ async function ingestChileViaBusca(
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
   const { upsertedCount, skippedExcludedCount, failed } = await upsertTendersBatched(supabase, kept);
   return { ...result, upsertedCount, skippedExcludedCount, failed };
+}
+
+
+/**
+ * Re-reads the ficha of every Chilean tender stored here that has not already
+ * ended, and lets its estado move the status: 暂停中 on Suspendida, back to
+ * 招标中 on Publicada, 流标 / 已取消 / 已中标 when it ends (user, 2026-09-26:
+ * 自动&手动，刷新标书状态).
+ *
+ * Needed because the daily import keeps only tenders published in the last
+ * three days: a tender imported last week is never read again by it.
+ * One ficha request per tender, paced by the connector
+ * (CHILE_FICHA_REQUEST_SPACING_MS).
+ */
+export async function refreshChileStatuses(
+  supabase: SupabaseClient,
+  options: { write: boolean; limit?: number },
+  onProgress?: (message: string) => void,
+): Promise<StatusRefreshResult & { checked: number; unreachable: string[]; unknownEstados: string[] }> {
+  const stored: { slug: string; tender_number: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("slug, tender_number")
+      .in("source_name", [CHILE_BUSCA_SOURCE_NAME, CHILE_SOURCE_NAME])
+      .not("status", "in", "(awarded,cancelled,deserted)")
+      .range(from, from + 999);
+    if (error) throw new Error(`读取已入库的智利项目失败：${error.message}`);
+    stored.push(...((data ?? []) as typeof stored));
+    if ((data ?? []).length < 1000) break;
+  }
+  const targets = stored.slice(0, options.limit ?? stored.length);
+
+  const observed: ObservedStatus[] = [];
+  const unreachable: string[] = [];
+  const unknownEstados = new Set<string>();
+  for (const [index, row] of targets.entries()) {
+    try {
+      const estado = await fetchChileFichaEstado(row.tender_number);
+      const status = chileFichaEstadoStatus(estado);
+      if (status) observed.push({ slug: row.slug, status });
+      else unknownEstados.add(estado ?? "（没读到）");
+    } catch (error) {
+      unreachable.push(`${row.tender_number}：${error instanceof Error ? error.message : String(error)}`);
+      // A gateway refusal is about this machine; every other ficha would get
+      // the same answer.
+      if (error instanceof ChileFichaEgressBlockedError) break;
+    }
+    if ((index + 1) % 10 === 0) onProgress?.(`已查询 ${index + 1}/${targets.length}`);
+  }
+
+  const result = await refreshStoredStatuses(supabase, observed, { write: options.write });
+  return { ...result, checked: targets.length, unreachable, unknownEstados: [...unknownEstados] };
 }

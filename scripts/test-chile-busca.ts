@@ -260,7 +260,7 @@ check("没有截止日就只按 estado", chileBuscaStatus("Publicada y disponibl
 check("Cerrada a recibir más ofertas", chileBuscaStatus("Cerrada a recibir más ofertas", undefined, NOW), "submission_closed");
 check("Adjudicada → awarded", chileBuscaStatus("Adjudicada a uno o varios proveedores", undefined, NOW), "awarded");
 check("Cancelada por el organismo → cancelled", chileBuscaStatus("Cancelada por el organismo", undefined, NOW), "cancelled");
-check("Sin ofertas recibidas（流标）→ cancelled", chileBuscaStatus("Sin ofertas recibidas", undefined, NOW), "cancelled");
+check("Sin ofertas recibidas（流标）→ deserted", chileBuscaStatus("Sin ofertas recibidas", undefined, NOW), "deserted");
 // Never defaulted. A state nobody has measured must not surface as biddable.
 check("没见过的 estado 文案 → undefined，绝不默认成 open", chileBuscaStatus("Algo Nuevo", undefined, NOW), undefined);
 

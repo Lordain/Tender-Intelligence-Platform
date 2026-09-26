@@ -5,6 +5,8 @@ import { classifyStoredTender } from "@/lib/relevance";
 import { hasShortBidWindow, isPastSubmissionDeadline, SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "@/lib/ingestion/review-csv";
 import { slugify } from "@/lib/ingestion/text-utils";
+import { legacyStatus, lifecycleSchemaAvailable } from "@/lib/ingestion/lifecycle-schema";
+import { linkReissuedTenders } from "@/lib/ingestion/reissue";
 
 /**
  * Real yearly Datos Abiertos exports run tens of thousands of rows — one
@@ -411,6 +413,13 @@ export async function upsertTendersBatched(
 ): Promise<UpsertTendersResult> {
   enforceStoredFieldParity(tenders);
 
+  // 暂停中 / 流标 need migration 0057; before it, one such row would fail its
+  // whole 500-row batch. See lifecycle-schema.ts.
+  const lifecycleReady = await lifecycleSchemaAvailable(supabase);
+  if (!lifecycleReady) {
+    for (const tender of tenders) tender.status = legacyStatus(tender.status);
+  }
+
   // Per the user's explicit call (2026-09-04): an "excluded" (routine-
   // service) tender no longer gets written at all, replacing the earlier
   // "write it but hide it by default" design (see purge-excluded-
@@ -638,6 +647,17 @@ export async function upsertTendersBatched(
     }
 
     const idBySlug = new Map<string, string>(upserted.map((row) => [row.slug, row.id]));
+
+    // 重发: a row that did not exist before this import may be a re-issue of
+    // an earlier cancelled / deserted / suspended round. See reissue.ts.
+    if (lifecycleReady) {
+      await linkReissuedTenders(
+        supabase,
+        batch
+          .filter((tender) => !protectionBySlug.has(tender.slug) && idBySlug.has(tender.slug))
+          .map((tender) => ({ id: idBySlug.get(tender.slug)!, tender })),
+      );
+    }
 
     // Key dates are refreshed by delete-then-insert, which is why both
     // halves below are careful about what a human put there (2026-09-08):

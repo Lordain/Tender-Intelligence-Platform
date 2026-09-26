@@ -41,7 +41,8 @@ export function selectHomepageTenders(
   // status here is already derived (deriveTenderStatus runs in toTender), so
   // a deadline that passed this morning has already made it closed.
   const byDeadline = tenders
-    .filter((tender) => tender.submissionDeadline && !isClosedTender(tender.status))
+    // 暂停中 is not closed, but its deadline is on hold — it is not "closing soon".
+    .filter((tender) => tender.submissionDeadline && !isClosedTender(tender.status) && tender.status !== "suspended")
     .sort((a, b) => a.submissionDeadline!.localeCompare(b.submissionDeadline!));
 
   const tickerSource = settings.tickerMode === "deadline"

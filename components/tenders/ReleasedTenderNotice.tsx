@@ -21,7 +21,7 @@ export function ReleasedTenderNotice({
   const deadline = submissionDeadline ? formatDate(submissionDeadline, "zh") : null;
   // An awarded or cancelled tender with no deadline was released from the day
   // it ended, so that is what the sentence names.
-  const ended = deadline ? `已于 ${deadline} 截止投标` : status === "awarded" ? "已完成定标" : status === "cancelled" ? "已取消" : "已截止投标";
+  const ended = deadline ? `已于 ${deadline} 截止投标` : status === "awarded" ? "已完成定标" : status === "cancelled" ? "已取消" : status === "deserted" ? "已流标" : "已截止投标";
   const action = audience === "guest"
     ? { href: "/register?next=%2Ftenders", label: `注册免费试用 ${TRIAL_DAYS} 天` }
     : { href: "/pricing", label: "查看订阅方案" };

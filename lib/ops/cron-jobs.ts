@@ -26,7 +26,9 @@ export type CronJobId =
   | "import-metro-santiago"
   | "import-cemig"
   | "import-petroperu"
-  | "import-brazil";
+  | "import-brazil"
+  | "import-peru-oxi"
+  | "refresh-statuses";
 
 export type CronJobSpec = {
   id: CronJobId;
@@ -63,6 +65,8 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-cemig", label: "巴西 Cemig 电力公司自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-petroperu", label: "秘鲁 Petroperú 国际招标自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-brazil", label: "巴西 PNCP 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-peru-oxi", label: "秘鲁 OxI 自动导入与状态刷新", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "refresh-statuses", label: "已入库项目状态刷新（巴西、智利、墨西哥）", maxAgeHours: 30, runsOn: "github-actions" },
 ];
 
 export type CronHeartbeatStatus = "ok" | "skipped" | "failed";

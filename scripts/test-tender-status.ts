@@ -121,6 +121,45 @@ const CASES: Case[] = [
     keyDates: [{ type: "clarification", date: "2026-09-18T15:00:00.000Z" }],
     expected: "clarification",
   },
+
+  // --- Migration 0057: 暂停中 and 流标 --------------------------------------
+  {
+    // A paused tender whose old deadline has passed is still paused, not
+    // closed: the deadline usually moves when it resumes.
+    name: "suspended + deadline passed -> suspended, not submission_closed",
+    stored: "suspended",
+    publicationDate: "2026-09-01T00:00:00.000Z",
+    submissionDeadline: "2026-09-10T00:00:00.000Z",
+    expected: "suspended",
+  },
+  {
+    name: "suspended + deadline ahead -> suspended, not open",
+    stored: "suspended",
+    publicationDate: "2026-09-01T00:00:00.000Z",
+    submissionDeadline: "2026-10-10T00:00:00.000Z",
+    expected: "suspended",
+  },
+  {
+    name: "suspended with no end date past 45 days -> still suspended (rule 5 does not close it)",
+    stored: "suspended",
+    publicationDate: "2026-06-01T00:00:00.000Z",
+    expected: "suspended",
+  },
+  {
+    // 流标 is a fact about the round, like cancelled — the calendar cannot undo it.
+    name: "deserted + deadline ahead -> deserted",
+    stored: "deserted",
+    publicationDate: "2026-09-01T00:00:00.000Z",
+    submissionDeadline: "2026-10-10T00:00:00.000Z",
+    expected: "deserted",
+  },
+  {
+    name: "resumed (stored open again) + new deadline ahead -> open",
+    stored: "open",
+    publicationDate: "2026-09-01T00:00:00.000Z",
+    submissionDeadline: "2026-10-20T00:00:00.000Z",
+    expected: "open",
+  },
 ];
 
 let failed = 0;

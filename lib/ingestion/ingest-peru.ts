@@ -13,9 +13,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchOeceRecordsForSegment, recentSegmentIds, segmentsForDays } from "@/lib/ingestion/connectors/peru-oece-live";
 import { mapOeceRecordToTender, oeceDocumentLinks, type OeceRecord, type TenderDocumentLink } from "@/lib/ingestion/peru-oece-mapper";
 import { saveDocumentLinks, type DocumentLinksForSlug } from "@/lib/ingestion/document-links";
-import { downloadOxiExport } from "@/lib/ingestion/connectors/peru-oxi-live";
-import { readPeruOxiFile } from "@/lib/ingestion/connectors/peru-oxi-file";
-import { mapPeruOxiRowToTender, PERU_OXI_SOURCE_NAME, PERU_OXI_SOURCE_URL } from "@/lib/ingestion/peru-oxi-mapper";
+import { downloadOxiExport, OXI_ESTADO_TODOS } from "@/lib/ingestion/connectors/peru-oxi-live";
+import { readPeruOxiWorkbook } from "@/lib/ingestion/connectors/peru-oxi-file";
+import { mapPeruOxiRowToTender, oxiEstadoStatus, peruOxiSlug, PERU_OXI_SOURCE_NAME, PERU_OXI_SOURCE_URL, type PeruOxiRow } from "@/lib/ingestion/peru-oxi-mapper";
+import { refreshStoredStatuses, type ObservedStatus, type StatusRefreshResult } from "@/lib/ingestion/status-refresh";
 import { filterRecentTenders, filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import type { Tender, TenderRelevanceTier } from "@/types/tender";
@@ -62,6 +63,15 @@ export type PeruIngestResult = {
    */
   duplicateTenderNumbers?: { slug: string; tenderNumber: string; count: number }[];
   sample: Tender[];
+  /**
+   * OxI only: what the rows' Estado column said about tenders already
+   * stored (paused, resumed, awarded, deserted, cancelled). Present whenever
+   * the file or export carried states other than En Proceso — always for an
+   * all-states file, which is used for this and nothing else.
+   */
+  statusRefresh?: StatusRefreshResult;
+  /** OxI only: the file was an all-states export, so no tender was imported from it — see readPeruOxiWorkbook. */
+  statusOnly?: boolean;
 };
 
 export type PeruIngestOptions = {
@@ -250,9 +260,9 @@ export async function refreshPeruOeceStatuses(
       .from("tenders")
       .select("slug, publication_date, title")
       .eq("source_name", PERU_OECE_SOURCE_NAME)
-      // The two terminal statuses (lib/tender-status.ts) — a row already
-      // reading 已中标/已取消 has nothing left for a refresh to discover.
-      .not("status", "in", "(awarded,cancelled)")
+      // The terminal statuses (lib/tender-status.ts) — a row already
+      // reading 已中标/已取消/流标 has nothing left for a refresh to discover.
+      .not("status", "in", "(awarded,cancelled,deserted)")
       .range(from, from + PAGE - 1);
     if (error) throw new Error(`Failed to read open Peru tenders: ${error.message}`);
     const page = data ?? [];
@@ -306,11 +316,34 @@ export async function refreshPeruOeceStatuses(
   return { ...base, upsertedCount, failed };
 }
 
+/** Rows whose Estado says anything other than En Proceso are status observations, not tenders to import. */
+function isInProcessRow(row: PeruOxiRow): boolean {
+  const status = oxiEstadoStatus(row.Estado);
+  return !row.Estado?.trim() || status === "open";
+}
+
+function oxiObservations(rows: PeruOxiRow[]): ObservedStatus[] {
+  const observed: ObservedStatus[] = [];
+  for (const row of rows) {
+    const code = row["Codigo Convocatoria"]?.trim();
+    const status = oxiEstadoStatus(row.Estado);
+    if (code && status) observed.push({ slug: peruOxiSlug(code), status });
+  }
+  return observed;
+}
+
 /**
  * ProInversión Obras por Impuestos.
  *
  * `file` lets a caller pass an export a human downloaded, bypassing the
  * network — the fallback for the day investinperu.pe changes its endpoint.
+ * Either export layout is accepted (see readPeruOxiWorkbook):
+ *
+ *   - the in-process export: En Proceso rows are imported as tenders, as
+ *     always; any row in another state only updates a tender already stored;
+ *   - an all-states export: nothing is imported, and every row updates the
+ *     status of the tender already stored under its code — 暂停、恢复、
+ *     中标、流标、取消 (user, 2026-09-26: 包括手动导入部分).
  */
 export async function ingestPeruOxi(
   supabase: SupabaseClient | null,
@@ -326,8 +359,22 @@ export async function ingestPeruOxi(
     onProgress?.(`got ${(buffer.length / 1024).toFixed(0)} KB`);
   }
 
-  const rows = await readPeruOxiFile({ buffer, fileName: options.file?.fileName ?? "oxi-export.xlsx" });
-  const mapped = rows
+  const workbook = await readPeruOxiWorkbook({ buffer, fileName: options.file?.fileName ?? "oxi-export.xlsx" });
+  const rows = workbook.rows;
+
+  if (!workbook.hasBidSchedule) {
+    onProgress?.(`all-states file (${rows.length} rows, no bid schedule) — refreshing statuses only, importing nothing`);
+    const empty = summarize("oxi", rows.length, [], [], { write: options.write, preview: options.preview });
+    if (!supabase) {
+      if (options.write) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
+      return { ...empty, statusOnly: true };
+    }
+    const statusRefresh = await refreshStoredStatuses(supabase, oxiObservations(rows), { write: options.write });
+    return { ...empty, statusOnly: true, statusRefresh };
+  }
+
+  const inProcess = rows.filter(isInProcessRow);
+  const mapped = inProcess
     .map((row) => mapPeruOxiRowToTender(row, PERU_OXI_SOURCE_NAME, PERU_OXI_SOURCE_URL))
     .filter((tender): tender is Tender => tender !== null);
   // The export is a snapshot of what is open right now, so months defaults to
@@ -336,11 +383,58 @@ export async function ingestPeruOxi(
   const kept = applyRecency(mapped, options, 0);
   const result = summarize("oxi", rows.length, mapped, kept, { write: options.write, preview: options.preview });
 
-  if (!options.write) return result;
+  const otherStates = rows.filter((row) => !isInProcessRow(row));
+  if (!options.write) {
+    if (otherStates.length === 0 || !supabase) return result;
+    return { ...result, statusRefresh: await refreshStoredStatuses(supabase, oxiObservations(otherStates), { write: false }) };
+  }
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
-  return writeOut(supabase, kept, result);
+  const written = await writeOut(supabase, kept, result);
+  if (otherStates.length === 0) return written;
+  return { ...written, statusRefresh: await refreshStoredStatuses(supabase, oxiObservations(otherStates), { write: true }) };
 }
 
+/**
+ * The daily OxI status refresh: every tender this platform holds from OxI,
+ * checked against ProInversión's all-states export.
+ *
+ * The in-process export alone cannot do this — a convocatoria that is
+ * suspended, awarded or declared desierto simply drops out of it, which says
+ * it is no longer in process and nothing about what happened. The all-states
+ * export says what happened, and says it again when a suspended one returns
+ * to En Proceso (恢复): that row goes back to open here, and the same day's
+ * in-process import brings its new dates.
+ */
+export async function refreshPeruOxiStatuses(
+  supabase: SupabaseClient,
+  options: { write: boolean; file?: { buffer: Buffer; fileName: string } },
+  onProgress?: (message: string) => void,
+): Promise<StatusRefreshResult & { exportRows: number; states: Record<string, number> }> {
+  let buffer: Buffer;
+  if (options.file) {
+    buffer = options.file.buffer;
+  } else {
+    onProgress?.("fetching the all-states OxI export from investinperu.pe...");
+    buffer = await downloadOxiExport(OXI_ESTADO_TODOS);
+    onProgress?.(`got ${(buffer.length / 1024).toFixed(0)} KB`);
+  }
+  const { rows } = await readPeruOxiWorkbook({ buffer, fileName: options.file?.fileName ?? "oxi-todos.xlsx" });
+
+  const states: Record<string, number> = {};
+  for (const row of rows) states[row.Estado?.trim() || "（空）"] = (states[row.Estado?.trim() || "（空）"] ?? 0) + 1;
+  // The "Todos" filter value is a reasoned guess (peru-oxi-live.ts). An
+  // answer holding one state is what a wrong guess would look like — every
+  // tender would then be "refreshed" to that state — so it is refused.
+  const recognised = Object.keys(states).filter((estado) => oxiEstadoStatus(estado) !== undefined);
+  if (rows.length === 0 || recognised.length < 3) {
+    throw new Error(
+      `OxI 全部状态导出看起来不是「全部」：${rows.length} 行，状态 ${JSON.stringify(states)}。` +
+        "EstadoConvocatoria 的「全部」取值可能不对，本次不改任何状态。",
+    );
+  }
+  const result = await refreshStoredStatuses(supabase, oxiObservations(rows), { write: options.write });
+  return { ...result, exportRows: rows.length, states };
+}
 
 export type PeruDocumentLinkBackfillResult = {
   segments: string[];

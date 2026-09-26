@@ -21,6 +21,23 @@ const HEADER_ANCHOR = "Codigo Convocatoria";
 const MAX_HEADER_SEARCH_ROWS = 40;
 
 export async function readPeruOxiFile(file: string | { buffer: Buffer; fileName: string }): Promise<PeruOxiRow[]> {
+  return (await readPeruOxiWorkbook(file)).rows;
+}
+
+/**
+ * The export's two layouts, told apart by header rather than by file name.
+ *
+ * The in-process export ("En Proceso", EstadoConvocatoria=4041) carries the
+ * bid schedule — Fecha Integración Bases, Fecha Presentación Propuestas. The
+ * all-states export ("Todos", the user's ListaConvocatoriaTodos_20260926.xlsx)
+ * does NOT: it has Monto Adjudicado, Año/Fecha Buena Pro and Estado instead.
+ * Importing tenders from the second would write rows with no deadline and,
+ * for rows already stored, delete the schedule key dates the first one gave
+ * them. So the caller uses an all-states file for status only.
+ */
+export type PeruOxiWorkbook = { rows: PeruOxiRow[]; headers: string[]; hasBidSchedule: boolean };
+
+export async function readPeruOxiWorkbook(file: string | { buffer: Buffer; fileName: string }): Promise<PeruOxiWorkbook> {
   const workbook = new ExcelJS.Workbook();
   if (typeof file === "string") {
     await workbook.xlsx.readFile(file);
@@ -28,7 +45,7 @@ export async function readPeruOxiFile(file: string | { buffer: Buffer; fileName:
     await workbook.xlsx.load(file.buffer as unknown as ExcelJS.Buffer);
   }
   const worksheet = workbook.worksheets[0];
-  if (!worksheet) return [];
+  if (!worksheet) return { rows: [], headers: [], hasBidSchedule: false };
 
   /**
    * Two of this export's columns are real Excel HYPERLINK cells, not text:
@@ -93,5 +110,6 @@ export async function readPeruOxiFile(file: string | { buffer: Buffer; fileName:
     if (/^CONV\d+$/i.test(record[HEADER_ANCHOR] ?? "")) rows.push(record as unknown as PeruOxiRow);
   });
 
-  return rows;
+  const headerList = headers.filter(Boolean);
+  return { rows, headers: headerList, hasBidSchedule: headerList.includes("Fecha Presentación Propuestas") };
 }

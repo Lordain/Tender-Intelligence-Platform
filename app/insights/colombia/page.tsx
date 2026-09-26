@@ -4,7 +4,7 @@ import Link from "next/link";
 import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
 import { InsightHeroCredit } from "@/components/insights/InsightHeroCredit";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 
 const insight = getCountryInsight("colombia")!;
 
@@ -14,6 +14,7 @@ export const metadata: Metadata = pageMetadata({
     "梳理哥伦比亚国家投资计划、交通基础设施长期路线图，以及铁路、公路、港口、电网、水务和数字基础设施的区域机会。",
   path: "/insights/colombia",
   image: insight.heroImage,
+  author: SOCIAL_BRAND,
 });
 
 type IconName = "rail" | "road" | "port" | "energy" | "water" | "digital" | "industry";

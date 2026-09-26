@@ -28,6 +28,19 @@ const OXI_EXPORT_URL =
 
 const OXI_LISTING_PAGE = "https://www.investinperu.pe/inversiones-seleccion-oxi/";
 
+/** What the page sends for the "En Proceso" state filter (captured 2026-09-11). */
+export const OXI_ESTADO_EN_PROCESO = "4041";
+/**
+ * The page's "Todos" option — every state, which is what the status refresh
+ * reads (ingest-peru.ts refreshPeruOxiStatuses). NOT captured from the page:
+ * every other filter here sends "" for "no filter", and this assumes the
+ * state filter does the same. refreshPeruOxiStatuses checks the answer
+ * (several distinct states must come back) and refuses to use a response
+ * that looks like one filtered state, so a wrong guess fails loudly rather
+ * than reading every tender as its one state.
+ */
+export const OXI_ESTADO_TODOS = "";
+
 /** Exactly the fields the page posts, in the page's own order. */
 const EXPORT_FIELDS: [string, string][] = [
   ["Codigo", ""],
@@ -44,7 +57,7 @@ const EXPORT_FIELDS: [string, string][] = [
   ["NivelGobierno", ""],
   ["TipoProyecto", ""],
   ["TipoConvocatoriaList", ""],
-  ["EstadoConvocatoria", "4041"],
+  ["EstadoConvocatoria", OXI_ESTADO_EN_PROCESO],
   ["Lan", "es"],
   ["Page", "1"],
   ["PageLimit", "9"],
@@ -73,9 +86,9 @@ function looksLikeXlsx(buffer: Buffer): boolean {
  * body attached, so a redesign reads as a real failure rather than a zero-row
  * import.
  */
-export async function downloadOxiExport(): Promise<Buffer> {
+export async function downloadOxiExport(estado: string = OXI_ESTADO_EN_PROCESO): Promise<Buffer> {
   const form = new FormData();
-  for (const [name, value] of EXPORT_FIELDS) form.append(name, value);
+  for (const [name, value] of EXPORT_FIELDS) form.append(name, name === "EstadoConvocatoria" ? estado : value);
 
   const response = await fetch(OXI_EXPORT_URL, {
     method: "POST",

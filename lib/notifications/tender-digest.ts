@@ -125,6 +125,8 @@ const STATUS_EMAIL_LABELS: Record<string, string> = {
   submission_closed: "已截止",
   awarded: "已中标",
   cancelled: "已取消",
+  suspended: "暂停中",
+  deserted: "流标",
 };
 
 const RELEVANCE_EMAIL_LABELS: Record<string, string> = {

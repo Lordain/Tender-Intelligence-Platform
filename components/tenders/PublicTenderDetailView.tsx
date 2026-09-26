@@ -84,11 +84,13 @@ function ProtectedContentPrompt({ kind, nextPath }: { kind: TenderDetailPromptKi
 }
 
 /** Search-indexable landing view. Receives only the public field allow-list. */
-export function PublicTenderDetailView({ tender, promptKind, related }: {
+export function PublicTenderDetailView({ tender, promptKind, related, lifecycle }: {
   tender: PublicTenderDetail;
   promptKind: TenderDetailPromptKind;
   /** 相关在招项目, rendered on the server and placed after the subscription prompt. */
   related?: ReactNode;
+  /** 项目动态 (pause, resumption, re-issue), rendered on the server; nothing for most tenders. */
+  lifecycle?: ReactNode;
 }) {
   const { locale } = useLocale();
   const nextPath = `/tenders/${tender.publicSlug}`;
@@ -149,6 +151,8 @@ export function PublicTenderDetailView({ tender, promptKind, related }: {
             </dl>
           </div>
         </article>
+
+        {lifecycle}
 
         <section className="flex flex-col gap-4">
           <DetailSectionHeading title={localize(uiText.criticalDates, locale)} description="按项目进程查看公开日期；如有交标安排，仅显示月份" />

@@ -32,7 +32,11 @@ export type TenderStatus =
   | "clarification"
   | "submission_closed"
   | "awarded"
-  | "cancelled";
+  | "cancelled"
+  /** The buyer paused the procedure; it may resume (migration 0057). */
+  | "suspended"
+  /** 流标 — ended with no valid bid or no winner; often re-issued (migration 0057). */
+  | "deserted";
 
 export type GovernmentLevel =
   | "federal"

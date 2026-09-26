@@ -10,7 +10,9 @@ import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 import { deadlineIsInDocuments } from "@/lib/deadline-in-documents";
 
 export const TENDER_PAGE_SIZE = 20;
-export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "awarded"];
+// 暂停中 is shown by default (migration 0057): a paused tender is one a reader
+// is likely following, and it may resume. 流标 is not — the round is over.
+export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", "clarification", "suspended", "awarded"];
 
 /**
  * Statuses a bidder can still act on — now only the 5天内交标 gate.
@@ -24,7 +26,9 @@ export const DEFAULT_TENDER_LIST_STATUSES: TenderStatus[] = ["planned", "open", 
 export const LIVE_TENDER_STATUSES: TenderStatus[] = ["planned", "open", "clarification"];
 
 /** What 当前在招 subtracts from 全站项目, in the user's own words: 扣除已截止、已取消、已中标. */
-const NOT_LIVE_STATUSES: TenderStatus[] = ["submission_closed", "cancelled", "awarded"];
+// 暂停中 and 流标 (migration 0057) are not biddable either: nobody can submit
+// to a paused or a deserted procedure today.
+const NOT_LIVE_STATUSES: TenderStatus[] = ["submission_closed", "cancelled", "awarded", "suspended", "deserted"];
 
 /**
  * 最近新增 is a ROLLING 24 hours, not the calendar day.

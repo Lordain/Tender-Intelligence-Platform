@@ -1,3 +1,4 @@
+import type { TenderStatus } from "@/types/tender";
 /**
  * The per-tender ficha page (`DetailsAcquisition.aspx`) and its attachment
  * index (`VerAntecedentes.aspx`). Pure parsing — no fetching — so every rule
@@ -211,4 +212,34 @@ export function parseChileViewState(html: string): ChileViewState | undefined {
   const action = /<form[^>]*\baction="([^"]+)"/i.exec(html)?.[1];
   if (!viewState || !action) return undefined;
   return { viewState: decodeEntities(viewState), generator: decodeEntities(generator ?? ""), action: decodeEntities(action) };
+}
+
+
+/**
+ * The tender's current estado as the ficha prints it — `<span
+ * id="lblFicha1Estado">Publicada</span>` on the committed fixture
+ * (ficha-attachments.html). Read by the status refresh only (ingest-chile.ts
+ * refreshChileStatuses); the import takes its estado from the search export.
+ */
+export function parseChileFichaEstado(html: string): string | undefined {
+  const span = /<span[^>]*\bid="lblFicha1Estado"[^>]*>([^<]*)<\/span>/i.exec(html);
+  const text = span ? decodeEntities(span[1]).trim() : "";
+  return text || undefined;
+}
+
+/**
+ * The ficha's short estado words, as statuses. The ficha does not use the
+ * search export's long texts ("Publicada y disponible para ofertar"), so the
+ * two tables are separate. Undefined for a word not listed: the refresh then
+ * leaves the stored status alone.
+ */
+export function chileFichaEstadoStatus(estado: string | undefined): TenderStatus | undefined {
+  const value = (estado ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  if (/^publicada/.test(value)) return "open";
+  if (/^cerrada/.test(value)) return "submission_closed";
+  if (/^desierta/.test(value)) return "deserted";
+  if (/^adjudicada/.test(value)) return "awarded";
+  if (/^(revocada|cancelada)/.test(value)) return "cancelled";
+  if (/^suspendida/.test(value)) return "suspended";
+  return undefined;
 }

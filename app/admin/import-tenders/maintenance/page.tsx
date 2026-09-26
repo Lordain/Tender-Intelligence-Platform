@@ -2,6 +2,7 @@ import { RefreshDisplayTextButton } from "@/components/admin/RefreshDisplayTextB
 import { ReclassifyButton } from "@/components/admin/ReclassifyButton";
 import { ExplainKeptPanel } from "@/components/admin/ExplainKeptPanel";
 import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
+import { RefreshStatusesPanel } from "@/components/admin/RefreshStatusesPanel";
 
 /**
  * The cross-country maintenance actions, as their own tab.
@@ -23,6 +24,9 @@ export default function AdminImportTendersMaintenancePage() {
       <p className="text-xs text-[#64717c]">这些操作对<strong>所有国家</strong>统一生效，跟选中的国家无关。</p>
       <ImportSourceSection name="更新项目文案" hint="导入新数据后跑：翻译 + 生成公开标题和摘要，按顺序自动跑完" mode="tool">
         <RefreshDisplayTextButton />
+      </ImportSourceSection>
+      <ImportSourceSection name="刷新标书状态" hint="暂停、恢复、中标、流标、取消：按来源最新状态更新已入库项目" mode="tool">
+        <RefreshStatusesPanel />
       </ImportSourceSection>
       <ImportSourceSection name="重新分类" hint="只在改过筛选规则之后跑" mode="tool">
         <ReclassifyButton />

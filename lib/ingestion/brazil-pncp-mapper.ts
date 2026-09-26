@@ -163,15 +163,12 @@ export function inferScopeType(text: string): TenderScopeType {
  * only the first two of those, which is why this list is written from the
  * modality-filtered one.
  *
- * SUSPENSA maps to `submission_closed`, and that is a compromise worth
- * stating. This project's TenderStatus has no suspended state. "open" would
- * tell a reader to prepare a bid for a procedure that is not currently
- * accepting one; "cancelled" would write off a procedure that routinely
- * resumes. `submission_closed` is the one that is true right now — it is not
- * taking bids — and a resumed tender flips back on the next import, because
- * the row is re-upserted whenever its situação changes. Adding a real
- * `suspended` status is the better fix and is deliberately not smuggled in
- * here.
+ * SUSPENSA maps to `suspended` (migration 0057). Until that status existed
+ * it was written as `submission_closed` — the one existing value that was
+ * true at the time, since "open" would tell a reader to prepare a bid for a
+ * procedure not accepting one and "cancelled" would write off a procedure
+ * that routinely resumes. A resumed tender flips back when its situação
+ * changes and the row is read again.
  *
  * `tem_resultado` is reported honestly as awarded; lib/tender-status.ts's
  * rule 6 is what stops a wrong one from hiding a tender that is still taking
@@ -180,7 +177,9 @@ export function inferScopeType(text: string): TenderScopeType {
 export function inferStatus(row: PncpSearchRow, now: Date = new Date()): TenderStatus {
   const situacao = (row.situacao_nome ?? "").toLowerCase();
   if (row.cancelado === true || /revogad|anulad/.test(situacao)) return "cancelled";
-  if (/suspens/.test(situacao)) return "submission_closed";
+  if (/suspens/.test(situacao)) return "suspended";
+  // "Deserta" / "Fracassada": no bidder, or none qualified — 流标.
+  if (/desert|fracassad/.test(situacao)) return "deserted";
   if (row.tem_resultado === true) return "awarded";
   const deadline = parsePncpDate(row.data_fim_vigencia);
   if (deadline && new Date(deadline).getTime() < now.getTime()) return "submission_closed";

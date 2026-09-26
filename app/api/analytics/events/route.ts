@@ -5,6 +5,7 @@ import { INTERNAL_TRAFFIC_COOKIE } from "@/lib/analytics-internal";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { clientIp, createRateLimiter } from "@/lib/security/rate-limit";
+import { sanitizeEntryProperties } from "@/lib/analytics-source";
 
 const eventSchema = z.object({
   eventType: z.enum(["page_view", "tender_open", "filter_apply", "tender_save", "tender_unsave"]),
@@ -64,6 +65,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid filter event" }, { status: 400 });
     }
     properties = { dimension, values };
+  } else if (eventType === "page_view") {
+    // A page load's first view says where the visit came from; everything
+    // else the browser might send is dropped. See lib/analytics-source.ts.
+    properties = sanitizeEntryProperties(properties, request.headers.get("user-agent"));
   } else {
     properties = {};
   }

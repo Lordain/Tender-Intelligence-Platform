@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AcquisitionFunnelSection } from "@/components/admin/AcquisitionFunnelSection";
 import { InternalTrafficControl } from "@/components/admin/InternalTrafficControl";
+import type { AcquisitionFunnel } from "@/lib/analytics-funnel";
 import type { AnalyticsDashboardData, AnalyticsPeriod, TrafficScope } from "@/lib/db/analytics";
 
 const TRAFFIC_SCOPE_LABELS: Record<TrafficScope, string> = {
@@ -104,11 +106,13 @@ export function AdminAnalyticsDashboard({
   selectedDays,
   trafficScope,
   internalDeviceMarked,
+  funnel,
 }: {
   data: AnalyticsDashboardData | null;
   selectedDays: number;
   trafficScope: TrafficScope;
   internalDeviceMarked: boolean;
+  funnel: AcquisitionFunnel | null;
 }) {
   const trackingReady = data !== null;
   const dashboard: AnalyticsDashboardData = data ?? {
@@ -170,6 +174,8 @@ export function AdminAnalyticsDashboard({
           <p className="mt-1 text-xs text-white/52">已注册 {formatNumber(dashboard.subscriptions.registeredUsers)} 位用户</p>
         </article>
       </section>
+
+      <AcquisitionFunnelSection funnel={funnel} selectedDays={selectedDays} />
 
       <section className="rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">

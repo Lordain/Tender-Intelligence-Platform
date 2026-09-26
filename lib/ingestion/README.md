@@ -8979,3 +8979,17 @@ country's rail buying is published, measured from this sandbox:
   new metro lines are APP/government-to-government contracts rather than
   open tenders; ATU's ordinary purchases are in SEACE and go through the
   existing connector and its filters.
+
+**Acted on (2026-09-26, user's choices):**
+
+- *Chile* — `npm run cron:metro-santiago` reads Metro's programme daily and
+  imports the large line-building items as 即将招标 previews
+  (`lib/upcoming-tenders.ts`, `lib/relevance-metro-santiago.ts`), removing
+  each once the programme stops announcing it. Note from building it: from
+  this sandbox's direct egress the page answered 403 from an S3 origin while
+  the same request through the sandbox proxy (and from curl) was 200 with
+  the platform's own User-Agent — a network-path artefact, not Metro's WAF.
+- *Colombia* — rail companies' *Contratación régimen especial* is admitted
+  for 大型项目 only, loans excluded (`RAIL_ENTITY_SOQL_FRAGMENTS` in
+  colombia-mapper.ts). Through the real gate, 2026-03-01 to 2026-09-26:
+  173 candidate rows, 1 admitted.

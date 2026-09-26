@@ -16,7 +16,7 @@
  *
  * Usage: npm run test:colombia-modalidad-gate
  */
-import { mapSecopRowToTender, isIngestedColombiaModalidad, type SecopProcesoRow } from "../lib/ingestion/colombia-mapper";
+import { mapSecopRowToTender, isIngestedColombiaModalidad, isRailSpecialRegimeRow, type SecopProcesoRow } from "../lib/ingestion/colombia-mapper";
 
 const SOURCE_NAME = "SECOP II — Colombia Compra Eficiente";
 
@@ -110,6 +110,43 @@ const noTitle = mapSecopRowToTender(
   { ignoreModalidadGate: true },
 );
 check("缺标题的行仍然映射为 null（必填字段检查照常生效）", noTitle === null);
+
+// --- Rail companies' régimen especial (user, 2026-09-26) -------------------
+// Admitted only from the named rail companies, only when 大型项目, and never
+// for a loan. Shaped on the real rows found in SECOP II the same day.
+const metroMedellin = { entidad: "EMPRESA DE TRANSPORTE MASIVO DEL VALLE DE ABURRA LIMITADA", modalidad_de_contratacion: "Contratación régimen especial" };
+check("铁路公司的特殊制度采购被识别为候选", isRailSpecialRegimeRow(metroMedellin));
+check("带「(con ofertas)」的写法同样识别", isRailSpecialRegimeRow({ ...metroMedellin, modalidad_de_contratacion: "Contratación régimen especial (con ofertas)" }));
+check("非铁路机构的特殊制度采购不是候选", !isRailSpecialRegimeRow({ entidad: "METROSALUD", modalidad_de_contratacion: "Contratación régimen especial" }));
+check("铁路公司的直接合同（Contratación directa）不是候选", !isRailSpecialRegimeRow({ ...metroMedellin, modalidad_de_contratacion: "Contratación directa" }));
+
+const railWorks = mapSecopRowToTender(row({
+  ...metroMedellin,
+  nombre_del_procedimiento: "CONSTRUCCIÓN DE OBRAS CIVILES Y SUMINISTRO DE MATERIAL RODANTE PARA LA LÍNEA DEL METRO",
+  descripci_n_del_procedimiento: "Construcción de obras civiles del viaducto y suministro de trenes para la nueva línea del Metro de Medellín.",
+  precio_base: "400000000000",
+}), SOURCE_NAME);
+check("铁路公司的大型特殊制度采购被收录", railWorks?.relevance.tier === "flagship", `tier = ${railWorks?.relevance.tier}`);
+
+const railSmall = mapSecopRowToTender(row({
+  ...metroMedellin,
+  nombre_del_procedimiento: "SUMINISTRO DE REPUESTOS PARA ESCALERAS ELÉCTRICAS",
+  descripci_n_del_procedimiento: "Suministro de repuestos para escaleras eléctricas de las estaciones.",
+  precio_base: "900000000",
+}), SOURCE_NAME);
+check("铁路公司的小额特殊制度采购不收录", railSmall === null, `tier = ${railSmall?.relevance.tier}`);
+
+const railLoan = mapSecopRowToTender(row({
+  entidad: "METRO DE BOGOTA SA",
+  modalidad_de_contratacion: "Contratación régimen especial",
+  nombre_del_procedimiento: "Empréstito Banco Europeo de Inversiones - TRAMO D",
+  descripci_n_del_procedimiento: "Por medio del contrato de crédito; el Banco Europeo de Inversiones establece a favor de la Empresa Metro de Bogotá un préstamo para la construcción de la Línea 2.",
+  precio_base: "620400000000",
+}), SOURCE_NAME);
+check("贷款/融资协议不收录，金额再大也不收", railLoan === null, `tier = ${railLoan?.relevance.tier}`);
+
+const otherSpecial = mapSecopRowToTender(row({ entidad: "ACUEDUCTO METROPOLITANO DE BUCARAMANGA S.A. E.S.P.", modalidad_de_contratacion: "Contratación régimen especial" }), SOURCE_NAME);
+check("非铁路机构的大型特殊制度采购仍不收录（9/11 规则不变）", otherSpecial === null);
 
 console.log("Colombia modalidad 门槛\n");
 let failures = 0;

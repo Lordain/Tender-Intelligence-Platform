@@ -455,6 +455,49 @@ export function isIngestedColombiaModalidad(modalidad: string | null | undefined
   return normalizeModalidad(modalidad).startsWith(INGESTED_MODALIDAD_PREFIX);
 }
 
+/**
+ * The one exception to the Licitación-pública-only rule (user, 2026-09-26:
+ * 哥伦比亚对铁路/地铁公司放开「特殊制度采购」——只对特殊制度采购的大型项目开放).
+ *
+ * Colombia's rail and metro companies are EICEs that contract under their own
+ * manuals — *Contratación régimen especial* — so none of their buying could
+ * pass the gate above. Admitted here: that modalidad, from these companies
+ * only, and only when the ordinary relevance rules call it 大型项目
+ * (flagship); anything smaller is dropped in mapSecopRowToTender exactly as
+ * if the gate had refused it. Measured before shipping (SECOP II, 2026-03-01
+ * to 2026-09-26): 173 such rows, 1 flagship — civil protection works for
+ * Metro de Medellín. The rest are spare parts, services and training.
+ *
+ * The names are matched as fragments of `entidad`, upper-cased and without
+ * accents — the form datos.gov.co stores them in. RAIL_ENTITY_SOQL_FRAGMENTS
+ * is what the live connector filters on server-side, so both ends read the
+ * same list.
+ */
+export const RAIL_ENTITY_SOQL_FRAGMENTS = [
+  "METRO DE BOGOTA",
+  "TRANSPORTE MASIVO DEL VALLE DE ABURRA", // Metro de Medellín
+  "PROMOTORA FERROCARRIL DE ANTIOQUIA",
+  "EMPRESA FERREA REGIONAL", // Regiotram del Norte / de Occidente
+  "REGIOTRAM",
+] as const;
+
+const SPECIAL_REGIME_PREFIX = "contratacion regimen especial";
+
+/**
+ * Loans and credit lines. Metro de Bogotá registers its development-bank
+ * financing in SECOP under the same modalidad, at hundreds of billions of
+ * pesos — the largest "contracts" it has, and nothing anyone can bid on.
+ */
+const FINANCING_AGREEMENT = /emprestito|prestamo|linea de credito|contrato de credito|convenio de credito|el banco (acepta|otorga)|banco (europeo|interamericano|mundial)/;
+
+/** Whether a row is a rail company's régimen especial process — the candidates for the exception above. */
+export function isRailSpecialRegimeRow(row: Pick<SecopProcesoRow, "modalidad_de_contratacion" | "entidad">): boolean {
+  if (!row.modalidad_de_contratacion || !row.entidad) return false;
+  if (!normalizeModalidad(row.modalidad_de_contratacion).startsWith(SPECIAL_REGIME_PREFIX)) return false;
+  const entity = normalizeModalidad(row.entidad).toUpperCase();
+  return RAIL_ENTITY_SOQL_FRAGMENTS.some((fragment) => entity.includes(fragment));
+}
+
 export type MapSecopRowOptions = {
   /**
    * Skips the modalidad gate below and maps the row anyway. ONLY for the
@@ -481,7 +524,8 @@ export function mapSecopRowToTender(
   // does not carry is not a tender we have any use for, whatever its value
   // or keywords say. The existing value/keyword rules (lib/relevance.ts)
   // still run afterwards, on what survives this.
-  if (!options.ignoreModalidadGate && !isIngestedColombiaModalidad(row.modalidad_de_contratacion)) return null;
+  const railException = !isIngestedColombiaModalidad(row.modalidad_de_contratacion) && isRailSpecialRegimeRow(row);
+  if (!options.ignoreModalidadGate && !isIngestedColombiaModalidad(row.modalidad_de_contratacion) && !railException) return null;
 
   const rawName = stripProcessPhaseSuffix(row.nombre_del_procedimiento?.trim() ?? "");
   const buyer = row.entidad?.trim();
@@ -530,6 +574,9 @@ export function mapSecopRowToTender(
     sourceName,
     structuredDurationDays,
   });
+
+  // The rail exception admits 大型项目 only, and never a financing agreement.
+  if (railException && (relevance.tier !== "flagship" || FINANCING_AGREEMENT.test(normalizeModalidad(`${title} ${summary}`)))) return null;
 
   const awardDate = parseDate(row.fecha_adjudicacion) ?? undefined;
   const rawAwardedValue = row.valor_total_adjudicacion ? Number(row.valor_total_adjudicacion) : undefined;

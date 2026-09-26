@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
+import { InsightHeroCredit } from "@/components/insights/InsightHeroCredit";
 import { pageMetadata } from "@/lib/seo";
 
 const insight = getCountryInsight("mexico")!;
@@ -191,7 +192,7 @@ export default function MexicoInsightPage() {
       <header className="relative isolate overflow-hidden bg-[#061b2b] text-white">
         <Image
           src={insight.heroImage}
-          alt="墨西哥铁路、电力、港口和公路基础设施全景"
+          alt={insight.heroImageAlt}
           fill
           priority
           sizes="100vw"
@@ -212,6 +213,7 @@ export default function MexicoInsightPage() {
             </div>
           </div>
         </div>
+        <InsightHeroCredit insight={insight} />
       </header>
 
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">

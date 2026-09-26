@@ -42,7 +42,7 @@ export default function CountryInsightsPage() {
                 <div className="relative aspect-[16/9] overflow-hidden bg-[#061b2b]">
                   <Image
                     src={insight.heroImage}
-                    alt={`${insight.country}战略投资与基础设施`}
+                    alt={insight.heroImageAlt}
                     fill
                     priority
                     sizes="(min-width: 1024px) 50vw, 100vw"

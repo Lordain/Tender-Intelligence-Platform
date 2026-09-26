@@ -25,7 +25,9 @@
  * Usage:
  *   npm run cron:refresh-statuses              (dry run — compares, writes nothing)
  *   npm run cron:refresh-statuses -- --write
- *   npm run cron:refresh-statuses -- --only brazil,chile,mexico
+ *   npm run cron:refresh-statuses -- --only brazil,chile,mexico,colombia
+ *
+ * Then 中标结果 for every tender reading 已中标 (see AWARD_SOURCES below).
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { refreshBrazilPncpStatuses } from "../lib/ingestion/ingest-brazil";
@@ -33,9 +35,24 @@ import { refreshChileStatuses } from "../lib/ingestion/ingest-chile";
 import { refreshComprasMxStatuses } from "../lib/ingestion/refresh-comprasmx-statuses";
 import { describeStatusRefresh, type StatusRefreshResult } from "../lib/ingestion/status-refresh";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
+import { refreshBrazilAwards, refreshChileAwards, refreshColombiaAwards, refreshMexicoAwards } from "../lib/ingestion/award-sources";
+import { describeAwardRefresh, type AwardRefreshResult } from "../lib/ingestion/award-results";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
 import { STATUS_LABELS } from "@/lib/tender-labels";
 import type { TenderStatus } from "@/types/tender";
+
+/**
+ * 中标结果, after every status refresh has run (user, 2026-09-26: 从接口增加
+ * 中标结果): the tenders just moved to 已中标 are candidates on the same run.
+ * Colombia's status comes from cron:colombia's own refresh; its award columns
+ * are filled here. Peru's are in cron:peru-oxi and cron:peru-oece-status.
+ */
+const AWARD_SOURCES: { id: string; label: string; run: (write: boolean) => Promise<AwardRefreshResult> }[] = [
+  { id: "mexico", label: "墨西哥 Compras MX", run: (write) => refreshMexicoAwards(createSupabaseAdminClient()!, { write }, (m) => console.log(`  ${m}`)) },
+  { id: "brazil", label: "巴西 PNCP", run: (write) => refreshBrazilAwards(createSupabaseAdminClient()!, { write }, (m) => console.log(`  ${m}`)) },
+  { id: "chile", label: "智利 Mercado Público", run: (write) => refreshChileAwards(createSupabaseAdminClient()!, { write }, (m) => console.log(`  ${m}`)) },
+  { id: "colombia", label: "哥伦比亚 SECOP II", run: (write) => refreshColombiaAwards(createSupabaseAdminClient()!, { write }, (m) => console.log(`  ${m}`)) },
+];
 
 const LABELS = Object.fromEntries(Object.entries(STATUS_LABELS).map(([status, label]) => [status, label.zh])) as Record<TenderStatus, string>;
 
@@ -97,6 +114,19 @@ async function main() {
       summary.push(`${source.label} 变化 ${result.changes.length} 条`);
     } catch (error) {
       problems.push(`${source.label}：${error instanceof Error ? error.message : String(error)}`);
+      console.error(error);
+    }
+  }
+
+  for (const source of AWARD_SOURCES.filter((s) => !only || only.has(s.id))) {
+    console.log(`\n=== 中标结果：${source.label} ===`);
+    try {
+      const result = await source.run(write);
+      for (const line of describeAwardRefresh(result)) console.log(line);
+      if (result.failed) problems.push(`${source.label} 中标结果：${result.failed}`);
+      if (result.filled.length) summary.push(`${source.label} 补中标结果 ${result.filled.length} 条`);
+    } catch (error) {
+      problems.push(`${source.label} 中标结果：${error instanceof Error ? error.message : String(error)}`);
       console.error(error);
     }
   }

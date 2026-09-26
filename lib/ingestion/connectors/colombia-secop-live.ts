@@ -148,6 +148,45 @@ export async function fetchSecopProcesosByReference(references: string[]): Promi
 }
 
 /**
+ * The awarded rows for references already tracked — for the 中标结果 refresh.
+ *
+ * SECOP II keeps one row per PHASE of a process, and the award sits on the
+ * phase row, whose reference carries the phase in parentheses: the stored
+ * ICCU-LP-038-2026 reads submission_closed with no award, while
+ * "ICCU-LP-038-2026 (Fase de Selección (Presentación de ofertas))" carries
+ * CONSORCIO VCGC-38, 2026-08-27, 4,709,875,392 (checked 2026-09-26). So
+ * this asks for the bare reference AND every "<reference> (" phase row,
+ * adjudicado = 'Si' only; buildSecopSlug strips the phase suffix, so the
+ * caller matches both back onto the stored slug.
+ */
+export async function fetchSecopAwardedRowsByReference(references: string[]): Promise<SecopProcesoRow[]> {
+  const unique = [...new Set(references)].filter((r): r is string => !!r);
+  const rows: SecopProcesoRow[] = [];
+  const batchSize = 20;
+  for (let i = 0; i < unique.length; i += batchSize) {
+    const batch = unique.slice(i, i + batchSize);
+    const exact = batch.map((ref) => `'${escapeSoqlString(ref)}'`).join(",");
+    const phases = batch.map((ref) => `starts_with(referencia_del_proceso, '${escapeSoqlString(`${ref} (`)}')`).join(" OR ");
+    const whereClause = `adjudicado = 'Si' AND (referencia_del_proceso in (${exact}) OR ${phases})`;
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+      const url = new URL(SECOP_BASE_URL);
+      url.searchParams.set("$where", whereClause);
+      url.searchParams.set("$order", "id_del_proceso ASC");
+      url.searchParams.set("$limit", String(PAGE_SIZE));
+      url.searchParams.set("$offset", String(offset));
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!response.ok) {
+        throw new Error(`SECOP procesos API responded ${response.status} ${response.statusText} (awarded reference batch starting at ${i})`);
+      }
+      const pageRows = (await response.json()) as SecopProcesoRow[];
+      rows.push(...pageRows);
+      if (pageRows.length < PAGE_SIZE) break;
+    }
+  }
+  return rows;
+}
+
+/**
  * One process by its SECOP id, only the two fields the 待补文件 official-
  * files list needs: the portfolio id its documents are filed under, and
  * `urlproceso` — in case SECOP has published the public page since the

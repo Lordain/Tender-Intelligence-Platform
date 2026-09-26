@@ -24,6 +24,8 @@
  *   npm run ingest:peru-live -- --refresh-open --write
  */
 import { ingestPeruOece, refreshPeruOeceStatuses } from "../lib/ingestion/ingest-peru";
+import { refreshPeruOeceAwards } from "../lib/ingestion/award-sources";
+import { describeAwardRefresh } from "../lib/ingestion/award-results";
 import { reportClassificationPreview } from "../lib/ingestion/preview-report";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
@@ -69,15 +71,21 @@ async function main() {
       console.log(`${refreshed.nowAwarded.length} have been awarded since we last looked:`);
       for (const item of refreshed.nowAwarded.slice(0, 20)) console.log(`  ${item.slug} — ${item.title}`);
     }
-    if (!write) {
-      console.log("\ndry run (pass --write to apply these statuses) — nothing was written to Supabase.");
-      return;
+    if (write) {
+      if (refreshed.failed && refreshed.failed.length > 0) {
+        console.error(`${refreshed.failed.length} row(s) failed to upsert:`);
+        for (const f of refreshed.failed.slice(0, 20)) console.error(`  ${f.slug}: ${f.error}`);
+      }
+      console.log(`Updated ${refreshed.upsertedCount ?? 0} tender(s).`);
     }
-    if (refreshed.failed && refreshed.failed.length > 0) {
-      console.error(`${refreshed.failed.length} row(s) failed to upsert:`);
-      for (const f of refreshed.failed.slice(0, 20)) console.error(`  ${f.slug}: ${f.error}`);
-    }
-    console.log(`Updated ${refreshed.upsertedCount ?? 0} tender(s).`);
+
+    // 中标结果 for every Peru OECE tender now reading 已中标 — after the status
+    // refresh, so the ones it just moved are included (lib/ingestion/award-sources.ts).
+    console.log("\n中标结果：");
+    const awards = await refreshPeruOeceAwards(supabase, { write }, (message) => console.log(`  ${message}`));
+    for (const line of describeAwardRefresh(awards)) console.log(line);
+
+    if (!write) console.log("\ndry run (pass --write to apply these statuses and award results) — nothing was written to Supabase.");
     return;
   }
 

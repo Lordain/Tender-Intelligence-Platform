@@ -32,9 +32,13 @@ function Field({ label, value, emphasized = false, note }: { label: string; valu
 export function TenderOverview({ tender, showTrialCta = false }: { tender: Tender; showTrialCta?: boolean }) {
   const heading = shortTitleOf(tender);
   const { locale } = useLocale();
-  // A planned award date is not a result; show it in this block only when
-  // there is an actual awarded supplier or value.
-  const hasAwardResult = Boolean(tender.awardedTo) || tender.awardedValue !== undefined;
+  // 中标结果 only once the tender reads 已中标 (user, 2026-09-26: 当项目状态改成
+  // 已中标时，在项目概览里面增加这三个信息). Before that award_date is the
+  // PLANNED 结果公示 day, which is not a result. The status check is on the
+  // stored status, the one the award refresh (lib/ingestion/award-results.ts)
+  // also keys on, so the tag and this block cannot disagree.
+  const hasAwardResult =
+    tender.status === "awarded" && (Boolean(tender.awardedTo) || tender.awardedValue !== undefined || Boolean(tender.awardDate));
   const undisclosedBand = undisclosedAmountBand(tender);
 
   return (
@@ -130,10 +134,15 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
           />
         </dl>
         {hasAwardResult && (
-          <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {tender.awardedTo && <Field label={localize(uiText.awardedToLabel, locale)} value={tender.awardedTo} emphasized />}
-            {tender.awardedValue !== undefined && <Field label={localize(uiText.awardedValueLabel, locale)} value={formatEstimatedValueUsd(tender.awardedValue, tender.currency, locale) ?? "未公开"} note={exchangeRateNote(tender.currency, locale)} emphasized />}
-            {tender.awardDate && <Field label={localize(uiText.awardDateLabel, locale)} value={formatDate(tender.awardDate, locale)} />}
+          <dl className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.2fr)]">
+            <Field label={localize(uiText.awardDateLabel, locale)} value={tender.awardDate ? formatDate(tender.awardDate, locale) : "未公开"} emphasized />
+            <Field label={localize(uiText.awardedToLabel, locale)} value={tender.awardedTo ?? "未公开"} emphasized />
+            <Field
+              label={localize(uiText.awardedValueLabel, locale)}
+              value={tender.awardedValue !== undefined ? formatEstimatedValueUsd(tender.awardedValue, tender.currency, locale) ?? "未公开" : "未公开"}
+              note={tender.awardedValue !== undefined ? exchangeRateNote(tender.currency, locale) : null}
+              emphasized
+            />
           </dl>
         )}
       </div>

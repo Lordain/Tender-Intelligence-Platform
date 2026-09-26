@@ -316,6 +316,30 @@ export async function fetchChileOcdsTender(code: string): Promise<OcdsReleasePac
 }
 
 /**
+ * One tender's award release — `https://apis.mercadopublico.cl/OCDS/data/award/{code}`,
+ * the index's `urlAward` on the host that answers (the api.mercadopublico.cl
+ * APISOCDS form the index prints is the same data behind the older host).
+ *
+ * Checked 2026-09-26 on three July codes: 1211839-44-LE26 has one award,
+ * status "active", 2026-07-09, 30,487,800 CLP, supplier
+ * "Humberto Alfonso | VERAELEC"; 729-133-LE26 an award with status "" and
+ * no supplier (not yet awarded); 1057547-295-LE26 status "unsuccessful"
+ * (desierta). Only "active" awards are results.
+ */
+export type ChileOcdsAward = {
+  status?: string;
+  date?: string;
+  value?: { amount?: number; currency?: string };
+  suppliers?: { name?: string }[];
+};
+
+export async function fetchChileOcdsAwards(code: string): Promise<ChileOcdsAward[]> {
+  const url = `${CHILE_OCDS_INDEX_BASE}/award/${encodeURIComponent(code)}`;
+  const body = (await getChileJson(url, `智利定标记录 ${code}`)) as { releases?: { awards?: ChileOcdsAward[] }[] };
+  return (body.releases ?? []).flatMap((release) => release.awards ?? []);
+}
+
+/**
  * Every record of one month, index followed by per-record fetches.
  *
  * Two deliberate shapes:

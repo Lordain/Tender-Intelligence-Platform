@@ -112,6 +112,36 @@ all gate on `normalizedValue !== undefined` first) — for most sources,
 the *majority* of open, still-biddable tenders would otherwise be
 misclassified as too small.
 
+### 中标结果 — which sources publish the award, and how it arrives (2026-09-26)
+
+The user asked (2026-09-26): 从接口增加中标结果，只要三个信息（中标日期、中标
+供应商、中标金额，如果是范围取最大值）. Each was checked against a real awarded
+record that day, not assumed. Code: `lib/ingestion/award-sources.ts` (one
+function per source), `lib/ingestion/award-results.ts` (what may be written),
+`npm run test:award-results`.
+
+| Source | 日期 | 供应商 | 金额 | How | Verified on |
+|---|---|---|---|---|---|
+| 墨西哥 Compras MX (via LicitIA) | ✓ `schedule.award_at` | ✓ `awards[].contractor.name` | ✓ `subtotal`, or `maximum_subtotal` for a contrato abierto | daily (cron:refresh-statuses) + admin | LO-13-J2U-013J2U002-N-6-2026 |
+| 巴西 PNCP | ✓ `dataResultado` | ✓ `nomeRazaoSocialFornecedor` | ✓ compra `valorTotalHomologado` | daily + admin | 87612800000141-1-000196/2026 |
+| 智利 Mercado Público | ✓ | ✓ | ✓ | OCDS `/award/{code}`, `status: active` only; daily + admin | 1211839-44-LE26 |
+| 哥伦比亚 SECOP II | ✓ `fecha_adjudicacion` | ✓ `nombre_del_proveedor` | ✓ `valor_total_adjudicacion` | daily + admin; the award sits on the "(Fase de …)" phase row, and multi-lot processes come back as a winner × amount cross product (folded to distinct values) | ICCU-LP-038-2026 |
+| 秘鲁 OxI | ✓ `Fecha Buena Pro` | ✗ no column | ✓ `Monto Adjudicado (S/)` | all-states export; cron:peru-oxi + admin (live or uploaded file) | the user's ListaConvocatoriaTodos_20260926.xlsx |
+| 秘鲁 OECE | ✓ | ✓ | ✓ | OCDS `compiledRelease.awards[]`; **CLI only** (`cron:peru-oece-status -- --write`), SEACE refuses Vercel and the runner | fixture sample-peru-oece.json |
+| PEMEX (pemex.com lists) | ✗ | ✗ | ✗ | the SharePoint lists carry no award field; LicitIA's `pemex` collection documents "no se infieren ganadores ni importes" | — |
+| CFE (DOF, msc.cfe.mx) | ✗ | ✗ | ✗ | same statement on LicitIA's `cfe` collection; results exist only as fallo documents | — |
+| Proyectos Estratégicos (Hacienda) | ✗ | ✗ | ✗ | not in LicitIA (404 on FP-… numbers); export has no award columns | — |
+| Cemig | — | id only | ✗ | `auction-notice-lot/listLotsbyAuctionId` gives `winnerProviderId`, no name or amount; the ata documents name them. `providers/getProviderById` answers without login with a supplier's registration record — a misconfiguration on their side, deliberately not used | 530-G21524 |
+| Petronect, Codelco, UPME, Petroperú, Metro de Santiago | ✗ | ✗ | ✗ | open-list portals; results, where published, are documents (actas, resoluciones) | — |
+
+Written only onto tenders already reading 已中标 (the status refresh decides
+that), only into empty columns, never over a column in
+`manual_field_overrides`; the one replacement is award_date, where the actual
+date replaces the planned one (user, 2026-09-12: 以实际日期为准). A Compras MX
+fallo arrives days before its contracts, so the date is written first and the
+row stays a candidate until the supplier and amount appear; candidates older
+than a year are no longer asked about.
+
 ### Technique 1 — browser download/export button
 
 The simplest real case: the source's own UI has a download/export

@@ -1,42 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { Locale, TenderScopeType, TenderStatus } from "@/types/tender";
-import { filterTenders, type TenderFilterOptions } from "@/lib/filter-tenders";
 import { getCachedTenderList } from "@/lib/tenders";
 import { getViewerEntitlement } from "@/lib/access-control-server";
-import { canViewCountry, canUseTenderListMemberFeatures } from "@/lib/access-control";
-import { toNotificationTender } from "@/lib/tender-list-page";
+import { tenderListViewerRules } from "@/lib/tender-list-page";
+import { isSavedSearchInput, matchSavedSearchAlerts } from "@/lib/saved-search-alerts";
+import { clientIp, createRateLimiter } from "@/lib/security/rate-limit";
 
-type SavedSearchInput = {
-  id: string;
-  name: string;
-  href: string;
-  alertEnabled: boolean;
-  lastCheckedAt: string;
-};
-
-const MAX_SEARCHES = 20;
-const MAX_NOTIFICATIONS = 50;
-
-function parseFiltersFromHref(href: string): TenderFilterOptions {
-  const queryString = href.split("?")[1] ?? "";
-  const params = new URLSearchParams(queryString);
-  return {
-    query: params.get("q") ?? undefined,
-    industries: params.get("industry")?.split(",").filter(Boolean),
-    scopeTypes: params.get("scope")?.split(",").filter(Boolean) as TenderScopeType[] | undefined,
-    statuses: params.get("status")?.split(",").filter(Boolean) as TenderStatus[] | undefined,
-  };
-}
-
-function isSavedSearchInput(value: unknown): value is SavedSearchInput {
-  if (!value || typeof value !== "object") return false;
-  const search = value as Partial<SavedSearchInput>;
-  return typeof search.id === "string"
-    && typeof search.name === "string"
-    && typeof search.href === "string"
-    && search.alertEnabled === true
-    && typeof search.lastCheckedAt === "string";
-}
+/**
+ * Per address, per instance — see lib/security/rate-limit.ts for what that
+ * does and does not stop. This route sits outside the /tenders page limiter
+ * (bot-protection.ts matches page paths only), and each call can carry
+ * twenty searches, so without its own limit it answered "does this phrase
+ * match anything?" as fast as a script could ask. The bell calls it once per
+ * page view, only for searches with reminders on; thirty a minute is far
+ * above that.
+ */
+const isRateLimited = createRateLimiter({ windowMs: 60_000, max: 30 });
 
 /**
  * Match saved searches server-side so the header never receives the complete
@@ -48,34 +26,21 @@ function isSavedSearchInput(value: unknown): value is SavedSearchInput {
  * have been in the response. The role decides the projection instead — the
  * same shape /tenders serves the same viewer.
  *
- * `searchPublicFieldsOnly` matters as much as the projection does. Without it
- * this endpoint answered keyword queries against `title.es`, the buyer and the
- * procurement number: a visitor could not read those fields, but could ask
- * whether a given Spanish phrase matched anything and page through what did,
- * which is the same disclosure one question at a time. app/tenders/page.tsx
- * has always set this for non-members; this route is the second reader of the
- * same list and was missing it.
+ * Filters and viewer rules are the list page's own (2026-09-26 review), via
+ * lib/saved-search-alerts.ts: this route used to ignore the saved link's
+ * country, and let a Basic subscriber's keywords search the Spanish title,
+ * buyer and procurement number of every country.
  */
 export async function POST(request: NextRequest) {
+  const ip = clientIp(request);
+  if (ip !== "unknown" && isRateLimited(ip)) {
+    return NextResponse.json({ error: "请求过于频繁，请稍后再试。" }, { status: 429, headers: { "Retry-After": "60" } });
+  }
+
   const body = await request.json().catch(() => null) as { searches?: unknown[] } | null;
-  const searches = (body?.searches ?? []).filter(isSavedSearchInput).slice(0, MAX_SEARCHES);
+  const searches = Array.isArray(body?.searches) ? body.searches.filter(isSavedSearchInput) : [];
   if (searches.length === 0) return NextResponse.json([]);
 
-  const entitlement = await getViewerEntitlement();
-  const memberView = canUseTenderListMemberFeatures(entitlement.role);
-  const tenders = await getCachedTenderList();
-  const locale: Locale = "zh";
-  const items = searches.flatMap((search) =>
-    filterTenders(tenders, { ...parseFiltersFromHref(search.href), searchPublicFieldsOnly: !memberView }, locale)
-      .filter((tender) => tender.createdAt > search.lastCheckedAt)
-      .map((tender) => ({
-        tender: toNotificationTender(tender, { memberView: memberView && canViewCountry(entitlement, tender.country) }),
-        searchId: search.id,
-        searchName: search.name,
-      })),
-  )
-    .sort((a, b) => b.tender.createdAt.localeCompare(a.tender.createdAt))
-    .slice(0, MAX_NOTIFICATIONS);
-
-  return NextResponse.json(items);
+  const [entitlement, tenders] = await Promise.all([getViewerEntitlement(), getCachedTenderList()]);
+  return NextResponse.json(matchSavedSearchAlerts(tenders, searches, tenderListViewerRules(entitlement)));
 }

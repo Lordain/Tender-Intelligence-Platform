@@ -1,6 +1,10 @@
 import "server-only";
 import { TENDERS_CACHE_TAG } from "@/lib/cache-tags";
 import { unstable_cache } from "next/cache";
+import { cache } from "react";
+import { brotliCompressSync, brotliDecompressSync, constants as zlibConstants } from "node:zlib";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { reportOpsFailure } from "@/lib/notifications/ops-alert";
 import { tenders as mockTenders } from "@/data/tenders";
 import type { Tender } from "@/types/tender";
 import { fetchAllTendersFromDb, fetchTenderByPublicSlugFromDb, fetchTenderBySlugFromDb, fetchTendersBySlugsFromDb } from "@/lib/db/tenders";
@@ -50,8 +54,45 @@ export async function getTendersBySlugs(slugs: string[]): Promise<Map<string, Te
  * unstable_cache rather than `use cache`: this project does not set the
  * cacheComponents flag, so it is on Next's previous caching model — see
  * node_modules/next/dist/docs/01-app/02-guides/caching-without-cache-components.md.
+ *
+ * STORED COMPRESSED (2026-09-26). Next's data cache refuses any entry over
+ * 2 MB — it logs one warning and simply does not store it
+ * (node_modules/next/dist/server/lib/incremental-cache/index.js, "items over
+ * 2MB can not be cached") — after which every request would run the full
+ * query again (1.5–2 s measured) with nothing visibly wrong. Measured that
+ * day: 458 public rows, 1,187,160 characters of JSON, ~2,600 per row, so the
+ * plain list would have stopped caching at roughly 800 rows, a few weeks of
+ * ingestion away. Brotli (quality 5) stores it at ~216,000 characters —
+ * room for several thousand rows — for ~7 ms of extra decoding per request.
+ * The Tender objects come back exactly as before (the cache already
+ * round-tripped them through JSON), so no caller changes.
+ *
+ * The cache key changed with the stored shape ("-v2"), so an entry written by
+ * the previous deployment is never decoded as a compressed one.
  */
-export const getCachedTenderList = unstable_cache(getAllTenders, ["public-tender-list"], {
+const TENDER_LIST_CACHE_LIMIT = 2 * 1024 * 1024;
+const TENDER_LIST_CACHE_WARN_AT = Math.floor(TENDER_LIST_CACHE_LIMIT * 0.75);
+
+async function encodedTenderList(): Promise<string> {
+  const encoded = brotliCompressSync(JSON.stringify(await getAllTenders()), {
+    params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 5 },
+  }).toString("base64");
+  if (encoded.length > TENDER_LIST_CACHE_WARN_AT) {
+    // Said before it happens, not after: past the limit the site keeps
+    // working, only slower on every page, which nobody would notice as such.
+    const message = `公开项目列表缓存已达 ${(encoded.length / 1024 / 1024).toFixed(2)} MB（压缩后），Next 数据缓存上限 2 MB；超过后每次打开列表都会全量查询数据库`;
+    console.warn(`[tender-list-cache] ${message}`);
+    await reportOpsFailure(createSupabaseAdminClient(), { source: "tender-list-cache:size", title: "项目列表缓存接近上限", message });
+  }
+  return encoded;
+}
+
+const getCachedTenderListEncoded = unstable_cache(encodedTenderList, ["public-tender-list-v2"], {
   revalidate: 300,
   tags: [TENDERS_CACHE_TAG],
 });
+
+/** React's cache() so the several readers in one render decode the list once. */
+export const getCachedTenderList = cache(async (): Promise<Tender[]> =>
+  JSON.parse(brotliDecompressSync(Buffer.from(await getCachedTenderListEncoded(), "base64")).toString("utf8")) as Tender[],
+);

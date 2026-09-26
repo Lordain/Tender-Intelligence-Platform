@@ -275,3 +275,70 @@ export async function resolveComprasMxDetailUrl(procedureNumber: string): Promis
   if (result.status === "found") return { status: "resolved", detailUrl: buildComprasMxDetailUrl(result.detail.id) };
   return result;
 }
+
+/**
+ * One Compras MX procedure's award, from the same `GET /licitaciones/{numero}`
+ * — its `awards` array (one entry per contract signed out of the procedure)
+ * and `schedule.award_at`, the fallo. Checked 2026-09-26 against
+ * LO-13-J2U-013J2U002-N-6-2026 (section concluido, ADJUDICADO): one award,
+ * contractor CONSTRUCTORA GERMER SA DE CV, subtotal 83,651,363.77 MXN,
+ * award_at 2026-07-22.
+ *
+ * Amount without IVA (`subtotal`), the figure the Compras MX contracts export
+ * this project already reads is also sin impuestos. A contrato abierto is
+ * published as a range, and `maximum_subtotal` is its ceiling — the user's
+ * rule is 如果是范围，取最大值, so the maximum wins whenever it is set.
+ *
+ * LicitIA's CFE and PEMEX collections carry an `awards` field too, and say in
+ * their own documentation that they never fill it ("no se infieren ganadores
+ * ni importes") — so this is Compras MX only.
+ */
+export type LicitiaAward = { supplier?: string; amount?: number; currency?: string; status?: string };
+
+export type FetchLicitacionAwardsResult =
+  | { status: "found"; awardAt?: string; awards: LicitiaAward[] }
+  | { status: "not_found" }
+  | { status: "error"; message: string };
+
+type LicitiaAwardsResponse = {
+  success: boolean;
+  data?: {
+    schedule?: { award_at?: string | null };
+    awards?: {
+      status?: string | null;
+      contractor?: { name?: string | null } | null;
+      value?: { subtotal?: string | null; maximum_subtotal?: string | null; currency?: string | null } | null;
+    }[];
+  };
+};
+
+function positiveNumber(raw: string | null | undefined): number | undefined {
+  const value = Number(raw ?? "");
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+export async function fetchLicitacionAwards(procedureNumber: string): Promise<FetchLicitacionAwardsResult> {
+  const url = `${LICITIA_BASE}/licitaciones/${encodeURIComponent(procedureNumber)}`;
+  let response: Response;
+  try {
+    response = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+  } catch (err) {
+    return { status: "error", message: err instanceof Error ? err.message : String(err) };
+  }
+  if (response.status === 404) return { status: "not_found" };
+  if (!response.ok) return { status: "error", message: `HTTP ${response.status} ${response.statusText}` };
+  let body: LicitiaAwardsResponse;
+  try {
+    body = (await response.json()) as LicitiaAwardsResponse;
+  } catch (err) {
+    return { status: "error", message: `response wasn't valid JSON: ${err instanceof Error ? err.message : String(err)}` };
+  }
+  if (!body.success || !body.data) return { status: "not_found" };
+  const awards = (body.data.awards ?? []).map((award) => ({
+    supplier: award.contractor?.name ?? undefined,
+    amount: positiveNumber(award.value?.maximum_subtotal) ?? positiveNumber(award.value?.subtotal),
+    currency: award.value?.currency ?? undefined,
+    status: award.status ?? undefined,
+  }));
+  return { status: "found", awardAt: body.data.schedule?.award_at ?? undefined, awards };
+}

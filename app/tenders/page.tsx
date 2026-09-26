@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import { getCachedTenderList } from "@/lib/tenders";
 import { TenderExplorer } from "@/components/tenders/TenderExplorer";
 import { getViewerEntitlement } from "@/lib/access-control-server";
-import { canExportTenders, canUseTenderListMemberFeatures } from "@/lib/access-control";
-import { buildTenderListPage, TENDER_PAGE_SIZE, type TenderListSearchParams } from "@/lib/tender-list-page";
+import { canExportTenders } from "@/lib/access-control";
+import { buildTenderListPage, TENDER_PAGE_SIZE, tenderListViewerRules, type TenderListSearchParams } from "@/lib/tender-list-page";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import { TenderListStructuredData } from "@/components/seo/TenderStructuredData";
@@ -42,12 +42,11 @@ export default async function TendersPage({
 
   const pageData = buildTenderListPage(allTenders, params, {
     pageSize: TENDER_PAGE_SIZE,
-    // One flag for every member/guest difference on this list: the publisher,
-    // the exact budget and the exact deadline are all withheld from guests
-    // and lapsed free accounts, visually AND in the serialized React payload.
-    memberView: canUseTenderListMemberFeatures(entitlement.role),
-    memberCountry: entitlement.plan === "basic" ? entitlement.selectedCountry ?? "__none__" : null,
-    searchPublicFieldsOnly: !canUseTenderListMemberFeatures(entitlement.role) || entitlement.plan === "basic",
+    // One set of viewer rules for every member/guest difference on this list:
+    // the publisher, the exact budget and the exact deadline are all withheld
+    // from guests and lapsed free accounts, visually AND in the serialized
+    // React payload. The saved-search reminder route applies the same rules.
+    ...tenderListViewerRules(entitlement),
   });
   const exportParams = new URLSearchParams();
   for (const key of ["q", "country", "industry"] as const) {

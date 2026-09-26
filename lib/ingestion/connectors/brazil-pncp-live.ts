@@ -210,6 +210,8 @@ export type PncpCompraState = {
   situacaoCompraNome?: string;
   existeResultado?: boolean;
   dataEncerramentoProposta?: string;
+  /** The homologated total — what the compra was actually awarded for. 0 or absent before a result exists. */
+  valorTotalHomologado?: number | null;
 };
 
 const CONSULTA_BASE = "https://pncp.gov.br/api/consulta/v1/orgaos";
@@ -491,4 +493,59 @@ export async function fetchPncpArquivos(
     });
   }
   return links;
+}
+
+
+/**
+ * 中标结果 for one compra: every item's homologated result — the winning
+ * fornecedor, the amount and the day — from
+ * `/api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{sequencial}/itens/{n}/resultados`.
+ *
+ * Checked 2026-09-26 against 87612800000141-1-000196/2026 (Três de Maio,
+ * pavimentação): one item, temResultado true, one result —
+ * nomeRazaoSocialFornecedor PEDRAS BASALTO TRES DE MAIO LTDA,
+ * valorTotalHomologado 179700, dataResultado 2026-03-23 — and the compra's
+ * own valorTotalHomologado 179700.00 agrees.
+ *
+ * One request per item with a result, so a compra of hundreds of items is
+ * capped: the suppliers of the first `maxItems` are enough to name the
+ * winners, and the amount comes from the compra's own total, not the sum of
+ * what was read. A cancelled result (dataCancelamento) is not a winner.
+ */
+export type PncpAwardLine = { supplier?: string; amount?: number; date?: string };
+
+export async function fetchPncpAwardLines(controlNumber: string, maxItems = 20): Promise<{ lines: PncpAwardLine[]; itemsWithResult: number }> {
+  const parts = parsePncpControlNumber(controlNumber);
+  if (!parts) throw new Error(`不是 PNCP 编号：${controlNumber}`);
+  const base = `${ITEMS_BASE}/${parts.cnpj}/compras/${parts.ano}/${parts.sequencial}/itens`;
+  const withResult: number[] = [];
+  const seenFirst = new Set<string>();
+  for (let pagina = 1; pagina <= ITEMS_MAX_PAGES; pagina += 1) {
+    if (pagina > 1) await sleep(ITEMS_PAGE_PACE_MS);
+    const body = await getJson(`${base}?pagina=${pagina}&tamanhoPagina=${ITEMS_PAGE_SIZE}`, `PNCP items ${controlNumber} p${pagina}`, AMOUNT_BACKOFF_MS);
+    const page = (Array.isArray(body) ? body : ((body as { items?: unknown[] })?.items ?? [])) as { numeroItem?: number; temResultado?: boolean }[];
+    if (page.length === 0) break;
+    const first = String(page[0]?.numeroItem);
+    if (seenFirst.has(first)) break;
+    seenFirst.add(first);
+    for (const item of page) if (item.temResultado && typeof item.numeroItem === "number") withResult.push(item.numeroItem);
+    if (page.length < ITEMS_MIN_FULL_PAGE) break;
+  }
+
+  const lines: PncpAwardLine[] = [];
+  for (const numeroItem of withResult.slice(0, maxItems)) {
+    await sleep(ITEMS_PAGE_PACE_MS);
+    const body = await getJson(`${base}/${numeroItem}/resultados`, `PNCP resultados ${controlNumber} item ${numeroItem}`, AMOUNT_BACKOFF_MS);
+    const results = (Array.isArray(body) ? body : []) as {
+      nomeRazaoSocialFornecedor?: string;
+      valorTotalHomologado?: number;
+      dataResultado?: string;
+      dataCancelamento?: string | null;
+    }[];
+    for (const result of results) {
+      if (result.dataCancelamento) continue;
+      lines.push({ supplier: result.nomeRazaoSocialFornecedor, amount: result.valorTotalHomologado, date: result.dataResultado });
+    }
+  }
+  return { lines, itemsWithResult: withResult.length };
 }

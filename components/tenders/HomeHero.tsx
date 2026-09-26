@@ -166,7 +166,9 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
           </h1>
           <p className="mt-7 max-w-xl text-base leading-8 text-white/78 sm:text-lg lg:max-w-[27rem] xl:max-w-xl">
             <span className="block">专注于拉美五国政府招标采购信息，一站式中文平台。</span>
-            <span className="block">覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，中文翻译，人工精筛，按国家、行业、项目规模筛选。</span>
+            {/* Breaks before 中文翻译 only where the whole clause fits on one line. */}
+            <span className="sm:block lg:inline xl:block">覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，</span>
+            <span className="sm:block lg:inline xl:block">中文翻译，人工精筛，按国家、行业、项目规模筛选。</span>
             <span className="block">帮企业省时、省力、省钱，快速获取精准拉美项目机会。</span>
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">

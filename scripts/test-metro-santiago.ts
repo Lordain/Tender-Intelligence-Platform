@@ -27,8 +27,12 @@ check("month formats", [parsePlannedMonth("jun-26"), parsePlannedMonth("sept-202
 check("line labels", ["L9", "Línea 7", "L89", "L6EX EFE", "Operacionales"].map(metroLineLabel), ["Línea 9", "Línea 7", "Líneas 8 y 9", "Extensión Línea 6", "Operacionales"]);
 
 const now = new Date("2026-09-26T12:00:00Z");
-const kept = rows.map((row) => mapMetroSantiagoPlannedTender(row, now)).filter((tender) => tender !== null);
-check("on 2026-09-26 the large upcoming items are the four L7/L9 rows", kept.map((tender) => `${tender.relevance.tier} ${tender.title.es.split(" — ")[0]}`), [
+const keptOnCapture = rows.map((row) => mapMetroSantiagoPlannedTender(row, now)).filter((tender) => tender !== null);
+check("on 2026-09-26 nothing is imported: every line item's month (Jun–Aug) has arrived", keptOnCapture.length, 0);
+// The same page read at the start of June, when all four were still ahead.
+const june = new Date("2026-05-20T12:00:00Z");
+const kept = rows.map((row) => mapMetroSantiagoPlannedTender(row, june)).filter((tender) => tender !== null);
+check("in May the large upcoming items are the four L7/L9 rows", kept.map((tender) => `${tender.relevance.tier} ${tender.title.es.split(" — ")[0]}`), [
   "significant EMAS L9",
   "flagship Obras Civiles de Estaciones Grupos 3 y 4, Línea 7",
   "significant Suministro y mantenimiento sistema de Ticketing red de uso Línea 9",
@@ -36,12 +40,13 @@ check("on 2026-09-26 the large upcoming items are the four L7/L9 rows", kept.map
 ]);
 check("every kept row is planned, transport, in Chile", kept.every((tender) => tender.status === "planned" && tender.industries.includes("transportation") && tender.country === "Chile"), true);
 check("the summary says it is an announcement and names the month", /aviso previo[\s\S]*junio de 2026/.test(kept[1].summary.es), true);
-check("running-railway buying is not imported", rows.filter((row) => row.project === "Operacionales").map((row) => mapMetroSantiagoPlannedTender(row, now)).every((tender) => tender === null), true);
+check("running-railway buying is not imported", rows.filter((row) => row.project === "Operacionales").map((row) => mapMetroSantiagoPlannedTender(row, june)).every((tender) => tender === null), true);
 const study = { project: "L9", service: "Ing. Detalle Estaciones Tramo Sur (Extension sur)", plannedText: "oct-26", plannedMonth: "2026-10" };
 check("a study on a new line is not imported", mapMetroSantiagoPlannedTender(study, now), null);
-const old = { project: "L9", service: "Material Rodante y CBTC", plannedText: "ago-25", plannedMonth: "2025-08" };
-check("a month more than three months gone is not imported", mapMetroSantiagoPlannedTender(old, now), null);
-check("the same row inside the window is flagship", mapMetroSantiagoPlannedTender({ ...old, plannedMonth: "2026-07" }, now)?.relevance.tier, "flagship");
+const rolling = { project: "L9", service: "Material Rodante y CBTC", plannedText: "oct-26", plannedMonth: "2026-10" };
+check("a month still ahead is imported, as flagship", mapMetroSantiagoPlannedTender(rolling, now)?.relevance.tier, "flagship");
+check("the current month is not imported", mapMetroSantiagoPlannedTender({ ...rolling, plannedMonth: "2026-09" }, now), null);
+check("a past month is not imported", mapMetroSantiagoPlannedTender({ ...rolling, plannedMonth: "2026-07" }, now), null);
 
 check("an announcement keeps 即将招标", deriveTenderStatus("planned", { sourceName: METRO_SANTIAGO_PREVIEW_SOURCE_NAME, publicationDate: "2026-01-01" }, now), "planned");
 check("planned from any other source still reads 招标中 (rule 1)", deriveTenderStatus("planned", { sourceName: "Portal Nacional de Contratações Públicas (PNCP)" }, now), "open");

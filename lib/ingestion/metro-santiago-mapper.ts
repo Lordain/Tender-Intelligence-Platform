@@ -9,13 +9,6 @@ export { METRO_SANTIAGO_PREVIEW_SOURCE_NAME };
 const METRO_BUYER = "Metro S.A. (Metro de Santiago)";
 
 /**
- * How far back a planned month may lie and still be imported. The months are
- * the buyer's estimates and slip; a quarter is room for a late publication
- * without keeping 2022's programme (the table still lists it) alive.
- */
-export const PLANNED_MONTH_GRACE_MONTHS = 3;
-
-/**
  * The line-building projects: new lines (L7, L8, L9, L8-9 as "L89"), line
  * extensions ("L6EX EFE", "EL2-EL3") and any "Línea N" spelling. What the
  * user asked for (只保留新线路和大型系统) — the other project headings are
@@ -41,10 +34,18 @@ function santiagoYearMonth(now: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit" }).format(now).slice(0, 7);
 }
 
-/** Whether a row is a large line-building item planned for now or later (with the grace above). */
+/**
+ * Whether a row is a large line-building item whose planned month is still
+ * ahead (Santiago time). Only a month not yet reached: once it arrives the
+ * table cannot say whether the tender opened on Metro's gated portal, slipped
+ * or was dropped (it is not pruned — 2022 rows are still listed), so the
+ * preview comes down rather than keep saying 即将招标 on a guess (2026-09-26,
+ * user: 不好判断，不要). The first run under this rule removed the four June–
+ * August L7/L9 previews the earlier three-month grace had kept.
+ */
 export function isLargeUpcomingMetroItem(row: MetroSantiagoPlannedTender, now: Date = new Date()): boolean {
   if (!row.plannedMonth) return false;
-  if (monthIndex(row.plannedMonth) < monthIndex(santiagoYearMonth(now)) - PLANNED_MONTH_GRACE_MONTHS) return false;
+  if (monthIndex(row.plannedMonth) <= monthIndex(santiagoYearMonth(now))) return false;
   return LINE_PROJECT.test(row.project.trim()) && !NOT_LARGE_WORK.test(row.service);
 }
 

@@ -8985,7 +8985,12 @@ country's rail buying is published, measured from this sandbox:
 - *Chile* — `npm run cron:metro-santiago` reads Metro's programme daily and
   imports the large line-building items as 即将招标 previews
   (`lib/upcoming-tenders.ts`, `lib/relevance-metro-santiago.ts`), removing
-  each once the programme stops announcing it. Note from building it: from
+  each once the programme stops announcing it. Only items whose planned
+  month is still ahead: the table is never pruned and cannot say whether an
+  item whose month has come opened on the gated portal, slipped or was
+  dropped, so the preview comes down when its month arrives (user, same
+  day: 不好判断). That removed the first four previews (June–August L7/L9
+  items); on 2026-09-26 no line item is announced for a later month. Note from building it: from
   this sandbox's direct egress the page answered 403 from an S3 origin while
   the same request through the sandbox proxy (and from curl) was 200 with
   the platform's own User-Agent — a network-path artefact, not Metro's WAF.

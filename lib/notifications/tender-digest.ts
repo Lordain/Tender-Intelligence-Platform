@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { escapeHtml } from "@/lib/notifications/escape-html";
 import type { DigestRecipient } from "@/lib/notifications/digest-recipients";
 import { countryLabel, industryLabel } from "@/lib/tender-labels";
+import { isDueInSlot, recipientWindowStart, type DigestSlot } from "@/lib/notifications/digest-slot";
 
 export type DigestTender = {
   id: string;
@@ -64,48 +65,96 @@ function matches(tender: DigestTender, preference: Preference, statusOverride?: 
   );
 }
 
-export async function getNewTenders(windowStart: Date, windowEnd: Date): Promise<DigestTender[]> {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return [];
+const DIGEST_TENDER_COLUMNS = "id, public_slug, title, summary, buyer, tender_number, country, industries, status, relevance_tier, publication_date, created_at";
+const DIGEST_PAGE_SIZE = 500;
+/**
+ * Far above anything a digest window holds (the busiest 7 days on record,
+ * 2026-09, was 188 new tenders), and there only so a runaway window cannot
+ * page forever. Reaching it is an error, not a truncation: see below.
+ */
+const DIGEST_MAX_ROWS = 20_000;
+const DIGEST_READ_ATTEMPTS = 3;
 
-  const { data, error } = await supabase
+/**
+ * Read a whole digest window, page by page, or throw.
+ *
+ * Both readers used to take `.limit(200)` and turn a read error into `[]`.
+ * The cap was applied BEFORE any recipient's filters, so on a busy week the
+ * 200 newest rows could all be from other countries and a Basic subscriber's
+ * country simply vanished from their mail; and a failed read produced the
+ * same run as a quiet day — "no updates", heartbeat ok, nobody told
+ * (2026-09-26 review). The Monday weekly window was already at 188 rows.
+ *
+ * Now every page is read, each page is retried, and anything that still
+ * fails throws. The cron route's catch turns that into a failed heartbeat and
+ * a 每日摘要任务整体失败 alert, and the slot can be run again: sending
+ * nothing and saying so beats sending a digest that silently lacks rows.
+ */
+export async function readDigestPages<T>(
+  label: string,
+  readPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += DIGEST_PAGE_SIZE) {
+    let page: T[] | null = null;
+    let lastError = "";
+    for (let attempt = 1; attempt <= DIGEST_READ_ATTEMPTS && page === null; attempt += 1) {
+      const { data, error } = await readPage(from, from + DIGEST_PAGE_SIZE - 1);
+      if (error) {
+        lastError = error.message;
+        if (attempt < DIGEST_READ_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+      } else {
+        page = data ?? [];
+      }
+    }
+    if (page === null) throw new Error(`${label}读取失败（已重试 ${DIGEST_READ_ATTEMPTS} 次）：${lastError}`);
+    rows.push(...page);
+    if (page.length < DIGEST_PAGE_SIZE) return rows;
+    if (rows.length >= DIGEST_MAX_ROWS) throw new Error(`${label}超过 ${DIGEST_MAX_ROWS} 条，时间窗口可能有误，本轮未发送`);
+  }
+}
+
+function requireAdminClient() {
+  const supabase = createSupabaseAdminClient();
+  // Not `return []`: without the service role nothing can be read, and an
+  // empty list here would be reported as a quiet day.
+  if (!supabase) throw new Error("SUPABASE_SERVICE_ROLE_KEY 未设置，无法读取摘要数据");
+  return supabase;
+}
+
+export async function getNewTenders(windowStart: Date, windowEnd: Date): Promise<DigestTender[]> {
+  const supabase = requireAdminClient();
+  // `id` breaks ties so a row sharing its created_at with a page boundary is
+  // neither skipped nor read twice (one import writes many rows per instant).
+  return readDigestPages<DigestTender>("新项目", (from, to) => supabase
     .from("tenders")
-    .select("id, public_slug, title, summary, buyer, tender_number, country, industries, status, relevance_tier, publication_date, created_at")
+    .select(DIGEST_TENDER_COLUMNS)
     .gte("created_at", windowStart.toISOString())
     .lt("created_at", windowEnd.toISOString())
     .order("created_at", { ascending: false })
-    .limit(200);
-
-  if (error) {
-    console.error("Failed to read new tenders for email digest:", error.message);
-    return [];
-  }
-  return (data ?? []) as DigestTender[];
+    .order("id", { ascending: true })
+    .range(from, to) as unknown as PromiseLike<{ data: DigestTender[] | null; error: { message: string } | null }>);
 }
 
-export async function getStatusChanges(windowStart: Date, windowEnd: Date): Promise<StatusChange[]> {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return [];
+type StatusHistoryRow = { previous_status: string; next_status: string; changed_at: string; tenders: unknown };
 
-  const { data, error } = await supabase
+export async function getStatusChanges(windowStart: Date, windowEnd: Date): Promise<StatusChange[]> {
+  const supabase = requireAdminClient();
+  const rows = await readDigestPages<StatusHistoryRow>("项目状态变化", (from, to) => supabase
     .from("tender_status_history")
-    .select("previous_status, next_status, changed_at, tenders ( id, public_slug, title, summary, buyer, tender_number, country, industries, status, relevance_tier, publication_date, created_at )")
+    .select(`id, previous_status, next_status, changed_at, tenders ( ${DIGEST_TENDER_COLUMNS} )`)
     .gte("changed_at", windowStart.toISOString())
     .lt("changed_at", windowEnd.toISOString())
     .order("changed_at", { ascending: false })
-    .limit(200);
-
-  if (error) {
-    console.error("Failed to read tender status changes for email digest:", error.message);
-    return [];
-  }
-  return (data ?? []).flatMap((row) => {
-    const tender = row.tenders as unknown as DigestTender | null;
+    .order("id", { ascending: true })
+    .range(from, to) as unknown as PromiseLike<{ data: StatusHistoryRow[] | null; error: { message: string } | null }>);
+  return rows.flatMap((row) => {
+    const tender = row.tenders as DigestTender | null;
     return tender ? [{
       tender,
-      previousStatus: row.previous_status as string,
-      nextStatus: row.next_status as string,
-      changedAt: row.changed_at as string,
+      previousStatus: row.previous_status,
+      nextStatus: row.next_status,
+      changedAt: row.changed_at,
     }] : [];
   });
 }
@@ -116,6 +165,29 @@ export function matchingTenders(tenders: DigestTender[], preference: Preference)
 
 export function matchingStatusChanges(changes: StatusChange[], preference: Preference) {
   return changes.filter((change) => matches(change.tender, preference, [change.previousStatus, change.nextStatus])).slice(0, 20);
+}
+
+export type PlannedDigest = { recipient: DigestRecipient; tenders: DigestTender[]; statusChanges: StatusChange[] };
+
+/**
+ * Who gets mail in this slot and what it contains — every rule the cron route
+ * used to apply inline, in the same order, so the send loop can be split
+ * across a first run and a resume without either one deciding differently.
+ * Reserved-domain (test) addresses are left to the caller, which counts them.
+ */
+export function planDigestSends(
+  slot: DigestSlot,
+  recipients: DigestRecipient[],
+  tenders: DigestTender[],
+  statusChanges: StatusChange[],
+): PlannedDigest[] {
+  return recipients.flatMap((recipient) => {
+    if (!isDueInSlot(slot, recipient.cadence)) return [];
+    const start = recipientWindowStart(slot, recipient.cadence);
+    const matches = matchingTenders(tenders.filter((tender) => new Date(tender.created_at) >= start), recipient);
+    const updates = matchingStatusChanges(statusChanges.filter((change) => new Date(change.changedAt) >= start), recipient);
+    return matches.length === 0 && updates.length === 0 ? [] : [{ recipient, tenders: matches, statusChanges: updates }];
+  });
 }
 
 const STATUS_EMAIL_LABELS: Record<string, string> = {
@@ -288,11 +360,33 @@ export function renderTenderDigestEmail(
   };
 }
 
+/**
+ * Resend's answer when an Idempotency-Key it already holds (24 hours) comes
+ * back with a different payload. For the digest that means the first attempt
+ * for this recipient and slot DID reach Resend — a resumed run is only
+ * rebuilding the mail from rows that changed since (a title translated in
+ * between) — so the caller treats it as already sent rather than as a failure.
+ */
+export class DigestAlreadySentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DigestAlreadySentError";
+  }
+}
+
+/** Another request with the same key is still in flight (two runs overlapping): leave the row to that one. */
+export class DigestSendInFlightError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DigestSendInFlightError";
+  }
+}
+
 export async function sendTenderDigestEmail(
   recipient: DigestRecipient,
   tenders: DigestTender[],
   statusChanges: StatusChange[],
-  options: { test?: boolean } = {},
+  options: { test?: boolean; idempotencyKey?: string } = {},
 ) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
@@ -303,7 +397,14 @@ export async function sendTenderDigestEmail(
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      // One key per recipient per slot: a retry of the same slot — a resumed
+      // run, or a request that timed out after Resend accepted it — returns
+      // the first response instead of mailing the person twice.
+      ...(options.idempotencyKey ? { "Idempotency-Key": options.idempotencyKey } : {}),
+    },
     body: JSON.stringify({
       from,
       to: [recipient.email],
@@ -322,7 +423,13 @@ export async function sendTenderDigestEmail(
     }),
   });
 
-  const result = await response.json().catch(() => null) as { id?: string; message?: string } | null;
+  const result = await response.json().catch(() => null) as { id?: string; message?: string; name?: string } | null;
+  if (response.status === 409 && result?.name === "invalid_idempotent_request") {
+    throw new DigestAlreadySentError(result.message ?? "Idempotency key already used");
+  }
+  if (response.status === 409 && result?.name === "concurrent_idempotent_requests") {
+    throw new DigestSendInFlightError(result.message ?? "Same idempotency key in flight");
+  }
   if (!response.ok) throw new Error(result?.message ?? "Resend rejected the email");
   return result?.id ?? null;
 }

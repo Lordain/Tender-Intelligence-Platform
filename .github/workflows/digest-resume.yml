@@ -1,0 +1,49 @@
+# Resumes the twice-daily tender digest ten minutes after Vercel starts it.
+#
+# The digest itself runs on Vercel Cron (vercel.json: 15:00 and 00:00 UTC,
+# i.e. 09:00 and 18:00 in Mexico City). That function has a 60-second ceiling;
+# a run that would outlast it stops starting new sends after ~45 s and leaves
+# the rest for this call (user, 2026-09-26: 在现有 GitHub Actions 里加一步，10
+# 分钟后再调用一次).
+#
+# Safe to run every time, including when the first run finished: the route
+# rebuilds the same slot, skips everyone already marked sent, and retries an
+# interrupted send under the same Resend Idempotency-Key, so nobody is mailed
+# twice. With nothing left it answers without touching the heartbeat. More
+# than three hours after the slot it does nothing at all (GitHub schedules
+# can run late), so a delayed resume never mails a stale window.
+#
+# Needs the repository secret CRON_SECRET — the same value as the Vercel
+# environment variable. Without it the step only warns; the admin alert
+# 每日摘要本轮未在时限内发完 is what shows a resume that never happened.
+name: Digest resume
+
+on:
+  schedule:
+    - cron: "10 15 * * *"
+    - cron: "10 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  resume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resume the current digest slot
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: https://latintender.com
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::warning::CRON_SECRET is not set as a repository secret; the digest resume did not run."
+            exit 0
+          fi
+          code=$(curl -sS -o body.json -w '%{http_code}' --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/tender-digest?resume=1") || { echo "::error::Request failed"; exit 1; }
+          cat body.json; echo
+          case "$code" in
+            200) echo "Resume ran." ;;
+            409) echo "Nothing to resume (no slot in the last 3 hours, or notifications are off)." ;;
+            *) echo "::error::Digest resume answered HTTP $code"; exit 1 ;;
+          esac

@@ -33,6 +33,8 @@ const VALUE_LABELS: Record<string, string> = {
   submission_closed: "已截止",
   awarded: "已中标",
   cancelled: "已取消",
+  suspended: "暂停中",
+  deserted: "流标",
   equipment: "设备",
   services: "服务",
   equipment_services: "设备与服务",

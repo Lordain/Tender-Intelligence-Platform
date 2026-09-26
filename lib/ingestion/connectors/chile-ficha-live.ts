@@ -48,6 +48,7 @@ import {
   parseChileAttachmentIndex,
   parseChileFichaAttachmentUrls,
   parseChileFichaClosingDate,
+  parseChileFichaEstado,
   parseChileViewState,
 } from "@/lib/ingestion/chile-ficha-parser";
 
@@ -156,6 +157,15 @@ export type ChileFichaResult = {
   refusals: string[];
   fichaBytes: number;
 };
+
+/** Only the ficha page itself, for its estado — no attachment indexes. See parseChileFichaEstado. */
+export async function fetchChileFichaEstado(code: string): Promise<string | undefined> {
+  const { response, body } = await request(FICHA_BASE + encodeURIComponent(code));
+  if (!response.ok) throw new ChileFichaError(`智利 ficha ${code}：HTTP ${response.status}`);
+  const html = body.toString("utf8");
+  if (html.length < MIN_FICHA_BYTES) throw new ChileFichaError(`智利 ficha ${code}：HTTP 200 但只有 ${html.length} 字节 —— 这不是项目页。`);
+  return parseChileFichaEstado(html);
+}
 
 export async function fetchChileFicha(code: string): Promise<ChileFichaResult> {
   const { response, body } = await request(FICHA_BASE + encodeURIComponent(code));

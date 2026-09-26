@@ -89,6 +89,18 @@ function take(tenders: Tender[], limit: number): TenderLink[] {
   return links;
 }
 
+/**
+ * The tenders with these ids, in the given order, as links — for the
+ * re-issue cross-references on a detail page (lib/db/tenders.ts
+ * fetchTenderLifecycle). Unlike every other list here these are not
+ * filtered to live tenders: the previous round of a re-issue is by
+ * definition over. A tender missing from `all` (not public) is skipped.
+ */
+export function tenderLinksByIds(all: Tender[], ids: string[]): TenderLink[] {
+  const byId = new Map(all.map((tender) => [tender.id, tender]));
+  return take(ids.map((id) => byId.get(id)).filter((tender): tender is Tender => tender !== undefined), ids.length);
+}
+
 /** Every live tender in one country, nearest deadline first — the country page's list. */
 export function liveTenderLinksForCountry(all: Tender[], country: string, options: { limit?: number; now?: Date } = {}): TenderLink[] {
   return take(liveCandidates(all, [country], options.now ?? new Date()).sort(byDeadline), options.limit ?? Number.POSITIVE_INFINITY);

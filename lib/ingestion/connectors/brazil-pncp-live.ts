@@ -195,6 +195,39 @@ async function getJson(url: string, label: string, backoff: readonly number[] = 
 export type PncpSearchPage = { items: PncpSearchRow[]; total: number | null };
 
 /**
+ * One procurement's CURRENT state, by its PNCP control number — what the
+ * status refresh reads for tenders already stored (ingest-brazil.ts
+ * refreshBrazilPncpStatuses). The search sweep cannot: it asks only for
+ * notices still receiving proposals, so a suspended or revoked one simply
+ * stops appearing in it.
+ *
+ * `/api/consulta/v1/orgaos/{cnpj}/compras/{ano}/{sequencial}` — the pncp-api
+ * path of the same resource answers 301 naming this one (checked 2026-09-26).
+ * situacaoCompraId: 1 Divulgada no PNCP, 2 Revogada, 3 Anulada, 4 Suspensa.
+ */
+export type PncpCompraState = {
+  situacaoCompraId?: number;
+  situacaoCompraNome?: string;
+  existeResultado?: boolean;
+  dataEncerramentoProposta?: string;
+};
+
+const CONSULTA_BASE = "https://pncp.gov.br/api/consulta/v1/orgaos";
+
+/** "<cnpj>-1-<sequencial>/<ano>" → its parts; undefined for anything else. */
+export function parsePncpControlNumber(value: string): { cnpj: string; sequencial: number; ano: string } | undefined {
+  const match = /^(\d{14})-\d+-(\d+)\/(\d{4})$/.exec(value.trim());
+  if (!match) return undefined;
+  return { cnpj: match[1], sequencial: Number(match[2]), ano: match[3] };
+}
+
+export async function fetchPncpCompra(controlNumber: string): Promise<PncpCompraState> {
+  const parts = parsePncpControlNumber(controlNumber);
+  if (!parts) throw new Error(`不是 PNCP 编号：${controlNumber}`);
+  return (await getJson(`${CONSULTA_BASE}/${parts.cnpj}/compras/${parts.ano}/${parts.sequencial}`, `PNCP compra ${controlNumber}`)) as PncpCompraState;
+}
+
+/**
  * One page of notices for one modality, newest-UPDATED first.
  *
  * `ordenacao=-data` sorts on `data_atualizacao_pncp`, not publication —

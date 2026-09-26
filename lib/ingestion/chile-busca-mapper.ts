@@ -76,15 +76,19 @@ export const CHILE_BUSCA_SOURCE_NAME = "Mercado Público — 公开招标搜索�
 const CHILE_BUSCA_ESTADO_TEXTS: { pattern: RegExp; status: TenderStatus }[] = [
   { pattern: /^publicada y disponible para ofertar$/i, status: "open" },
   { pattern: /^cerrada a recibir m[áa]s ofertas$/i, status: "submission_closed" },
-  { pattern: /^sin ofertas recibidas$/i, status: "cancelled" },
+  // No bids at all is 流标 (migration 0057), not a buyer's cancellation — it
+  // was written as cancelled until the deserted status existed.
+  { pattern: /^sin ofertas recibidas$/i, status: "deserted" },
+  // Not seen in the measured sample; Mercado Público's own wording for a
+  // tender with no admissible offer. Harmless if it never appears.
+  { pattern: /^desierta\b/i, status: "deserted" },
   { pattern: /^adjudicada a uno o varios proveedores$/i, status: "awarded" },
   { pattern: /^cancelada por el organismo$/i, status: "cancelled" },
   // Seen only under idEstado=-1 and never as a filterable code of its own. A
-  // suspended tender is not open for bids and is not finished either; the
-  // honest nearest neighbour is "closed to submissions", not "cancelled",
-  // because it can resume. One observation is not a mapping, and this is
-  // recorded as the weakest row in the table.
-  { pattern: /^suspendida$/i, status: "submission_closed" },
+  // suspended tender is not open for bids and is not finished either, because
+  // it can resume. Written as "closed to submissions" as the nearest neighbour
+  // until the suspended status existed (migration 0057); it is now itself.
+  { pattern: /^suspendida$/i, status: "suspended" },
 ];
 
 /**

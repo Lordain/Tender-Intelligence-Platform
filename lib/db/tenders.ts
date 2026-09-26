@@ -506,7 +506,7 @@ export async function fetchTenderClosedAt(tenderId: string): Promise<string | nu
     .from("tender_status_history")
     .select("changed_at")
     .eq("tender_id", tenderId)
-    .in("next_status", ["awarded", "cancelled"])
+    .in("next_status", ["awarded", "cancelled", "deserted"])
     .order("changed_at", { ascending: false })
     .limit(1);
   if (error) {
@@ -514,6 +514,57 @@ export async function fetchTenderClosedAt(tenderId: string): Promise<string | nu
     return null;
   }
   return (data?.[0] as { changed_at: string } | undefined)?.changed_at ?? null;
+}
+
+export type TenderLifecycle = {
+  /** Status changes worth telling a reader about, oldest first — see fetchTenderLifecycle. */
+  events: { changedAt: string; previous: Tender["status"]; next: Tender["status"] }[];
+  /** Earlier rounds this tender re-issues (重发), newest first. */
+  previousRoundIds: string[];
+  /** Later rounds that re-issue this tender, newest first. */
+  nextRoundIds: string[];
+};
+
+const LIFECYCLE_STATUSES: Tender["status"][] = ["suspended", "deserted", "cancelled"];
+
+/**
+ * A tender's pause / resume / end history and its re-issue links (migration
+ * 0057), for the detail page's 项目动态 box. A separate read like
+ * fetchTenderClosedAt, and never fatal: before 0057 is run tender_reissues
+ * does not exist, and the page must render exactly as it did.
+ *
+ * Only the changes a reader cares about are kept — into or out of 暂停中,
+ * and into 流标 / 已取消. The ordinary open → closed movement is already
+ * what the status badge and the timeline show.
+ */
+export async function fetchTenderLifecycle(tenderId: string): Promise<TenderLifecycle> {
+  const empty: TenderLifecycle = { events: [], previousRoundIds: [], nextRoundIds: [] };
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return empty;
+
+  const [history, earlier, later] = await Promise.all([
+    supabase
+      .from("tender_status_history")
+      .select("changed_at, previous_status, next_status")
+      .eq("tender_id", tenderId)
+      .order("changed_at", { ascending: true })
+      .limit(50),
+    supabase.from("tender_reissues").select("previous_tender_id, created_at").eq("tender_id", tenderId).order("created_at", { ascending: false }).limit(5),
+    supabase.from("tender_reissues").select("tender_id, created_at").eq("previous_tender_id", tenderId).order("created_at", { ascending: false }).limit(5),
+  ]);
+
+  const events = history.error
+    ? []
+    : ((history.data ?? []) as { changed_at: string; previous_status: Tender["status"]; next_status: Tender["status"] }[])
+        .filter((row) => LIFECYCLE_STATUSES.includes(row.next_status) || row.previous_status === "suspended")
+        .map((row) => ({ changedAt: row.changed_at, previous: row.previous_status, next: row.next_status }));
+  if (history.error) console.error("[tenders] Could not read tender status history", history.error.message);
+
+  return {
+    events,
+    previousRoundIds: earlier.error ? [] : ((earlier.data ?? []) as { previous_tender_id: string }[]).map((row) => row.previous_tender_id),
+    nextRoundIds: later.error ? [] : ((later.data ?? []) as { tender_id: string }[]).map((row) => row.tender_id),
+  };
 }
 
 /** Returns undefined when configured but no row matches; null when Supabase isn't configured. */

@@ -128,9 +128,12 @@ export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SOR
         // it: not biddable today, but ahead of anything already decided.
         if (isFuture && (tender.status === "open" || tender.status === "clarification")) return 0;
         if (tender.status === "planned") return 1;
-        if (tender.status === "awarded") return 2;
-        if (isFuture) return 3;
-        return 4;
+        // 暂停中 (migration 0057): not biddable today but may resume, so it
+        // sits with the announcements, ahead of anything already decided.
+        if (tender.status === "suspended") return 2;
+        if (tender.status === "awarded") return 3;
+        if (isFuture) return 4;
+        return 5;
       };
 
       const deadlineSorted = sorted.sort((a, b) => {

@@ -1,4 +1,4 @@
-import type { GovernmentLevel, Tender, TenderKeyDate } from "@/types/tender";
+import type { GovernmentLevel, Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
 import { untranslated, slugify } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
 
@@ -69,6 +69,36 @@ export type PeruOxiRow = {
   Estado?: string;
 };
 
+/**
+ * Every value the export's Estado column carried in the user's all-states
+ * download (ListaConvocatoriaTodos_20260926.xlsx, 3,543 rows), and what this
+ * platform calls it (migration 0057):
+ *
+ *   En Proceso                              393  → open
+ *   Suspendido (Antes de la Buena Pro)       64  → suspended
+ *   Suspendido (Después de la Buena Pro)     30  → suspended
+ *   Adjudicado                             1074  → awarded
+ *   Convenio/Contrato Suscrito             1655  → awarded
+ *   Desierto                                229  → deserted (流标)
+ *   Cancelado                                15  → cancelled
+ *   Nulidad                                  13  → cancelled
+ *   Otros                                    67  → (no reading)
+ *
+ * "Otros" and anything new return undefined: a state this table has never
+ * seen says nothing about whether the tender is open, and a status refresh
+ * must leave the row alone rather than guess.
+ */
+export function oxiEstadoStatus(estado: string | undefined): TenderStatus | undefined {
+  const value = (estado ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  if (!value) return undefined;
+  if (value === "en proceso") return "open";
+  if (value.startsWith("suspendido")) return "suspended";
+  if (value === "adjudicado" || value.startsWith("convenio") || value.includes("contrato suscrito")) return "awarded";
+  if (value === "desierto") return "deserted";
+  if (value === "cancelado" || value === "nulidad") return "cancelled";
+  return undefined;
+}
+
 export const PERU_OXI_SOURCE_NAME = "ProInversión — Obras por Impuestos (Perú)";
 /** The real listing page behind the "Exportar a Excel" button, confirmed by the user 2026-09-11. Only a fallback now — nearly every row carries its own detail link. */
 export const PERU_OXI_SOURCE_URL = "https://www.investinperu.pe/inversiones-seleccion-oxi/";
@@ -97,6 +127,11 @@ function parseOxiDate(raw: string | undefined): string | null {
 function parseOxiAmount(raw: string | undefined): number | undefined {
   const value = Number((raw ?? "").replace(/,/g, "").trim());
   return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+/** The slug every OxI row is stored under — shared by the import and the status refresh so the two cannot disagree. */
+export function peruOxiSlug(tenderNumber: string): string {
+  return `peru-oxi-${slugify(tenderNumber.trim())}`;
 }
 
 export function mapPeruOxiRowToTender(row: PeruOxiRow, sourceName: string, sourceUrl: string): Tender | null {
@@ -153,7 +188,7 @@ export function mapPeruOxiRowToTender(row: PeruOxiRow, sourceName: string, sourc
 
   return {
     id: crypto.randomUUID(),
-    slug: `peru-oxi-${slugify(tenderNumber)}`,
+    slug: peruOxiSlug(tenderNumber),
     tenderNumber,
     title: untranslated(title),
     summary: untranslated(title),
@@ -168,9 +203,11 @@ export function mapPeruOxiRowToTender(row: PeruOxiRow, sourceName: string, sourc
     estimatedValue,
     currency: estimatedValue ? "PEN" : undefined,
     location: row.Departamento?.trim() || undefined,
-    // Every row in this export is "En Proceso"; a convocatoria that closes
-    // drops out of the export rather than changing state inside it.
-    status: "open",
+    // The in-process export is all "En Proceso"; an all-states export (or a
+    // file a human downloaded with another filter) carries the real state,
+    // which is read rather than assumed. No Estado at all means the
+    // in-process export's shape, i.e. open.
+    status: oxiEstadoStatus(row.Estado) ?? "open",
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],

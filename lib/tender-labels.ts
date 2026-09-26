@@ -129,6 +129,8 @@ export const STATUS_LABELS: Record<TenderStatus, LocalizedText> = {
   },
   awarded: { en: "Awarded", es: "Adjudicada", zh: "已中标" },
   cancelled: { en: "Cancelled", es: "Cancelada", zh: "已取消" },
+  suspended: { en: "Suspended", es: "Suspendida", zh: "暂停中" },
+  deserted: { en: "Void", es: "Desierta", zh: "流标" },
 };
 
 export const STATUS_COLORS: Record<TenderStatus, string> = {
@@ -138,6 +140,8 @@ export const STATUS_COLORS: Record<TenderStatus, string> = {
   submission_closed: "bg-zinc-200 text-zinc-700",
   awarded: "bg-blue-100 text-blue-800",
   cancelled: "bg-red-100 text-red-800",
+  suspended: "bg-orange-100 text-orange-800",
+  deserted: "bg-stone-200 text-stone-700",
 };
 
 export const GOVERNMENT_LEVEL_LABELS: Record<GovernmentLevel, LocalizedText> = {

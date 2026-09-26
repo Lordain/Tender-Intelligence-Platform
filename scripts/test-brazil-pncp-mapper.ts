@@ -106,7 +106,8 @@ const beforeDeadline = new Date("2026-05-01T00:00:00Z");
 check("tem_resultado → awarded（规则 6 在展示层兜底）", inferStatus(ROAD), "awarded");
 check("撤销 → cancelled", inferStatus({ ...ROAD, situacao_nome: "Revogada", tem_resultado: false }), "cancelled");
 check("cancelado 标记 → cancelled", inferStatus({ ...ROAD, cancelado: true, tem_resultado: false }), "cancelled");
-check("中止 → submission_closed（本项目没有 suspended 这个状态）", inferStatus({ ...ROAD, situacao_nome: "Suspensa", tem_resultado: false }), "submission_closed");
+check("中止 → suspended（暂停中，可恢复）", inferStatus({ ...ROAD, situacao_nome: "Suspensa", tem_resultado: false }), "suspended");
+check("Deserta → deserted（流标）", inferStatus({ ...ROAD, situacao_nome: "Deserta", tem_resultado: false }), "deserted");
 check("截止日已过 → submission_closed", inferStatus({ ...ROAD, tem_resultado: false }), "submission_closed");
 check("截止日未到 → open", inferStatus({ ...ROAD, tem_resultado: false }, beforeDeadline), "open");
 

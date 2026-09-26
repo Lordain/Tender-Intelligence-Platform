@@ -423,9 +423,12 @@ export function TenderExplorer({
         {/* Short, fixed-length option lists stay always-visible instead of
             behind a dropdown — see InlineTogglePills' header comment. All
             three groups share one wrapping row (compressed per explicit
-            user request 2026-09-04) rather than a row each. */}
-        <div className="mt-4 grid gap-y-3 border-t border-[#e5e9eb] pt-4 xl:grid-cols-[max-content_max-content_max-content_minmax(0,1fr)] xl:items-center xl:divide-x xl:divide-[#dbe2e5]">
-          <div className="xl:pr-5">
+            user request 2026-09-04) rather than a row each. Side by side from
+            1600px rather than from the xl breakpoint: with 暂停中 and 流标
+            added (2026-09-26) the three groups need ~1320px, plus ~110px for
+            清除筛选, which overflowed the card at 1280 and collided at 1440. */}
+        <div className="mt-4 grid gap-y-3 border-t border-[#e5e9eb] pt-4 min-[1600px]:grid-cols-[max-content_max-content_max-content_minmax(0,1fr)] min-[1600px]:items-center min-[1600px]:divide-x min-[1600px]:divide-[#dbe2e5]">
+          <div className="min-[1600px]:pr-5">
             <InlineTogglePills
               label={localize(uiText.scaleLabel, locale)}
               options={RELEVANCE_TIERS.map((option) => ({ value: option, label: localize(RELEVANCE_TIER_LABELS[option], locale) }))}
@@ -434,7 +437,7 @@ export function TenderExplorer({
               onChange={(next) => updateParams({ tier: next.length === 0 ? "none" : next.join(",") })}
             />
           </div>
-          <div className="xl:px-5">
+          <div className="min-[1600px]:px-5">
             <InlineTogglePills
               label="项目阶段"
               options={STATUSES.map((option) => ({ value: option, label: localize(STATUS_LABELS[option], locale) }))}
@@ -443,7 +446,7 @@ export function TenderExplorer({
               onChange={(next) => updateParams({ status: next.length === 0 ? "none" : next.join(",") })}
             />
           </div>
-          <div className="xl:pl-5">
+          <div className="min-[1600px]:pl-5">
             <InlineTogglePills
               label="计划交标"
               mode="single"
@@ -472,7 +475,7 @@ export function TenderExplorer({
             keep their max-content widths either way.
           */}
           {hasActiveFilters && (
-            <div className="flex xl:justify-end xl:pl-5">
+            <div className="flex min-[1600px]:justify-end min-[1600px]:pl-5">
               {/*
                 Sized as one more pill, not as a call to action: same
                 rounded-full / px-2.5 / py-1 / text-xs as chipClass in

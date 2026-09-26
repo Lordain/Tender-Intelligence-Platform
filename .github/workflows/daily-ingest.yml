@@ -44,8 +44,9 @@
 # :17 rather than :00 because GitHub's scheduler is best-effort and the top of
 # the hour is the most contended minute there is.
 #
-# NOT fixed by this: Peru has no scheduled import at all, so every Peru row is
-# still imported by hand. Brazil joined the matrix on 2026-09-19.
+# NOT fixed by this: Peru's SEACE/OECE rows are still imported by hand (its
+# proxy refuses datacenter ranges). Brazil joined the matrix on 2026-09-19,
+# Peru's Petroperú and OxI on 2026-09-25 and 2026-09-26.
 name: Daily ingest
 
 on:
@@ -136,6 +137,29 @@ jobs:
           # See scripts/cron-petroperu.ts.
           - name: Peru (Petroperú)
             command: cron:petroperu
+          # Added 2026-09-26. ProInversión's Obras por Impuestos: imports the
+          # in-process list, then checks every stored OxI tender against the
+          # all-states list — 暂停中 when suspended, back to 招标中 when it
+          # resumes, 已中标 / 流标 / 已取消 when it ends (user: 自动&手动，
+          # 刷新标书状态). investinperu.pe answers this runner (probe,
+          # 2026-09-25). See scripts/cron-peru-oxi.ts.
+          - name: Peru (ProInversión OxI)
+            command: cron:peru-oxi
+          # Added 2026-09-26. Asks each source about the tenders it already
+          # gave us — paused, resumed, cancelled, 流标, awarded — since the
+          # imports above only re-read what was published in the last few
+          # days. Brazil, Chile and Mexico here; Colombia and OxI refresh in
+          # their own jobs. See scripts/cron-refresh-statuses.ts.
+          - name: Status refresh (Brazil, Chile, Mexico)
+            command: cron:refresh-statuses
+          # Added 2026-09-26. Peru OECE/SEACE status refresh (awards, 流标,
+          # cancellations) for the Peru rows imported by hand. optional:
+          # SEACE's proxy refuses datacenter ranges (it refuses Vercel), and
+          # whether it refuses this runner too has never been measured —
+          # this job is how that gets measured without failing the run.
+          - name: Peru (OECE status refresh)
+            command: cron:peru-oece-status
+            optional: true
     name: ${{ matrix.name }}
     continue-on-error: ${{ matrix.optional == true }}
     steps:

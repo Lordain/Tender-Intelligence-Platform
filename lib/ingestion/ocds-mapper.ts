@@ -25,7 +25,8 @@ const STATUS_BY_OCDS_STATUS: Record<string, TenderStatus> = {
   active: "open",
   complete: "awarded",
   cancelled: "cancelled",
-  unsuccessful: "cancelled",
+  // OCDS "unsuccessful" is a procedure that ended without an award — 流标.
+  unsuccessful: "deserted",
   withdrawn: "cancelled",
 };
 

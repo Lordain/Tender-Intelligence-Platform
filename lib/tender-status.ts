@@ -74,16 +74,19 @@ export const VISIBLE_TENDER_STATUSES: TenderStatus[] = [
   "submission_closed",
   "awarded",
   "cancelled",
+  "suspended",
+  "deserted",
 ];
 
 /**
  * The /tenders `status` value for 当前在招 — every visible status minus
- * 已截止、已取消、已中标 (user, 2026-09-25). The explorer's 当前在招 toggle
+ * 已截止、已取消、已中标 (user, 2026-09-25), and minus 暂停中、流标 since
+ * those were added (migration 0057): neither can be bid on today. The explorer's 当前在招 toggle
  * compares the URL against this exact string, so a link that wants to land
  * with that toggle on must build it from here rather than spell it out.
  */
 export const LIVE_STATUS_FILTER_PARAM = VISIBLE_TENDER_STATUSES
-  .filter((status) => !["submission_closed", "cancelled", "awarded"].includes(status))
+  .filter((status) => !["submission_closed", "cancelled", "awarded", "suspended", "deserted"].includes(status))
   .join(",");
 
 /**
@@ -156,8 +159,17 @@ export function deriveTenderStatus(
   now: Date = new Date(),
 ): TenderStatus {
   // A procurement really can be called off before its own deadline, so
-  // "cancelled" is terminal on any date and wins outright.
+  // "cancelled" is terminal on any date and wins outright. "deserted" (流标)
+  // is the same kind of fact: the round is over, whatever its dates said.
   if (stored === "cancelled") return "cancelled";
+  if (stored === "deserted") return "deserted";
+
+  // "suspended" wins over the calendar too (migration 0057). A paused
+  // procedure's deadline stops meaning anything — it is normally moved when
+  // the procedure resumes — so reading 已截止 off it would write off a tender
+  // that is only waiting. It stays 暂停中 until the source reports it open
+  // again (resumed) or ended; the status refresh is what notices either.
+  if (stored === "suspended") return "suspended";
 
   // An announced tender is not open and has no dates to close it; the
   // ingest removes it once the buyer stops announcing it.

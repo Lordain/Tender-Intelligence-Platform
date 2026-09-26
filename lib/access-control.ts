@@ -117,7 +117,9 @@ export function selectPreferredSubscription<T extends SubscriptionEntitlementCan
     })[0];
 }
 
-const CLOSED_TENDER_STATUSES: readonly TenderStatus[] = ["submission_closed", "awarded", "cancelled"];
+// "suspended" is deliberately not here: a paused tender may resume, so it is
+// not written off as closed (migration 0057).
+const CLOSED_TENDER_STATUSES: readonly TenderStatus[] = ["submission_closed", "awarded", "cancelled", "deserted"];
 
 export function isClosedTender(status: TenderStatus): boolean {
   return CLOSED_TENDER_STATUSES.includes(status);
@@ -150,7 +152,7 @@ export type TenderReleaseInput = {
   closedOn?: string | null;
 };
 
-const ENDED_STATUSES: readonly TenderStatus[] = ["awarded", "cancelled"];
+const ENDED_STATUSES: readonly TenderStatus[] = ["awarded", "cancelled", "deserted"];
 
 /**
  * Whether the release has opened this tender to everyone.
@@ -172,6 +174,9 @@ export function releaseNeedsClosedOn(input: TenderReleaseInput): boolean {
 
 /** The calendar day the release opens a tender, or null when there is nothing to count from. */
 export function tenderReleaseDay(input: TenderReleaseInput): string | null {
+  // A paused tender is not over: its deadline usually moves when it resumes,
+  // so it is never released while paused, whatever the old deadline says.
+  if (input.status === "suspended") return null;
   const deadline = calendarDay(input.submissionDeadline);
   if (deadline) return addDays(deadline, PUBLIC_AFTER_DEADLINE_DAYS);
   if (!input.status || !ENDED_STATUSES.includes(input.status)) return null;

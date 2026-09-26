@@ -151,6 +151,30 @@ export async function fetchAllVigenteLicitaciones(onProgress?: (lote: number, to
   return vigente;
 }
 
+/**
+ * The whole corpus, every section, reduced to what a status refresh needs —
+ * `estatus` and `seccion` for the procedure numbers asked about. Streamed lote
+ * by lote and filtered as it goes: the corpus is ~372k rows, and holding it
+ * whole to look up a few hundred would cost a few hundred MB for nothing.
+ */
+export async function fetchLicitacionEstatuses(
+  numbers: Set<string>,
+  onProgress?: (lote: number, totalLotes: number) => void,
+): Promise<Map<string, { estatus: string; seccion: string }>> {
+  const manifest = await fetchDescargasManifest();
+  const licitaciones = manifest.find((e) => e.entidad === "licitaciones");
+  if (!licitaciones) throw new Error("LicitIA's /descargas manifest doesn't list a 'licitaciones' entity — its shape may have changed");
+  const found = new Map<string, { estatus: string; seccion: string }>();
+  for (let lote = 0; lote < licitaciones.lotes; lote++) {
+    onProgress?.(lote, licitaciones.lotes);
+    for (const row of await fetchLicitacionesLote(lote)) {
+      const key = row.numero?.toUpperCase();
+      if (key && numbers.has(key)) found.set(key, { estatus: row.estatus ?? "", seccion: row.seccion ?? "" });
+    }
+  }
+  return found;
+}
+
 export function buildComprasMxDetailUrl(comprasMxId: string): string {
   return `https://comprasmx.buengobierno.gob.mx/sitiopublico/#/sitiopublico/detalle/${comprasMxId}/procedimiento`;
 }

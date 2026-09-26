@@ -176,6 +176,10 @@ export type OeceRecord = {
       procurementMethodDetails?: string;
       mainProcurementCategory?: "goods" | "services" | "works";
       value?: { amount?: number; currency?: string };
+      /** OCDS tender.status — "active" on every fixture; read only for its end states. */
+      status?: string;
+      /** Per-item SEACE state ("CONVOCADO", "ADJUDICADO", …) — see inferStatus(). */
+      items?: { statusDetails?: string }[];
       /** Real per-document download links — see oeceDocumentLinks() below. */
       documents?: OeceDocument[];
     };
@@ -291,9 +295,31 @@ function inferScopeType(category: string | undefined): TenderScopeType {
   return SCOPE_TYPE_BY_CATEGORY[category ?? ""] ?? "services";
 }
 
-/** `awards` present (even an empty array was never observed real — only appears once a real award exists) is the clean real signal; see this file's header comment for why `tender.items[].statusDetails` isn't used instead. */
-function inferStatus(hasAwards: boolean): TenderStatus {
-  return hasAwards ? "awarded" : "open";
+/**
+ * `awards` present (even an empty array was never observed real — only
+ * appears once a real award exists) is the clean awarded signal.
+ *
+ * The end states (migration 0057) are read from what the source states
+ * outright, never from absence: OCDS `tender.status` cancelled/unsuccessful,
+ * or EVERY item's SEACE statusDetails saying DESIERTO / NULO / CANCELADO /
+ * SUSPENDIDO. Every item, because a procedure with one deserted lot out of
+ * five is still running for the other four. The header's caution stands:
+ * statusDetails can LAG (still CONVOCADO on a record whose documents declared
+ * it desierto), so a CONVOCADO item proves nothing — it only means this rule
+ * does not fire, and the row stays as it was.
+ */
+function inferStatus(tender: OeceRecord["compiledRelease"]["tender"], hasAwards: boolean): TenderStatus {
+  if (hasAwards) return "awarded";
+  const ocdsStatus = tender?.status?.toLowerCase();
+  if (ocdsStatus === "cancelled" || ocdsStatus === "withdrawn") return "cancelled";
+  if (ocdsStatus === "unsuccessful") return "deserted";
+  const details = (tender?.items ?? []).map((item) => (item.statusDetails ?? "").toUpperCase().trim()).filter(Boolean);
+  if (details.length > 0) {
+    if (details.every((detail) => detail.includes("DESIERT"))) return "deserted";
+    if (details.every((detail) => /NUL|CANCELAD/.test(detail))) return "cancelled";
+    if (details.every((detail) => detail.includes("SUSPENDID"))) return "suspended";
+  }
+  return "open";
 }
 
 /**
@@ -418,7 +444,7 @@ export function mapOeceRecordToTender(record: OeceRecord, sourceName: string): T
     estimatedValue,
     currency: estimatedValue ? currency : undefined,
     location,
-    status: inferStatus(Boolean(compiled.awards && compiled.awards.length > 0)),
+    status: inferStatus(compiled.tender, Boolean(compiled.awards && compiled.awards.length > 0)),
     qualifications: [],
     experienceRequirements: [],
     requiredDocuments: [],

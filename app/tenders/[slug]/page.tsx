@@ -3,12 +3,13 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { getCachedTenderList, getTenderByPublicSlug } from "@/lib/tenders";
-import { relatedTenderLinks } from "@/lib/tender-links";
+import { relatedTenderLinks, tenderLinksByIds } from "@/lib/tender-links";
 import { RelatedTenders } from "@/components/tenders/RelatedTenders";
+import { TenderLifecycle } from "@/components/tenders/TenderLifecycle";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerEntitlement } from "@/lib/access-control-server";
 import { canViewCountry, canViewTenderProtectedContent, isReleasedAfterDeadline, releaseNeedsClosedOn, shouldClaimFreeTenderView } from "@/lib/access-control";
-import { fetchTenderClosedAt } from "@/lib/db/tenders";
+import { fetchTenderClosedAt, fetchTenderLifecycle } from "@/lib/db/tenders";
 import { platformDay } from "@/lib/tender-status";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
@@ -98,13 +99,25 @@ export default async function TenderDetailPage({
     notFound();
   }
 
-  const [isHomepageFreePreview, allTenders] = await Promise.all([
+  const [isHomepageFreePreview, allTenders, lifecycleData] = await Promise.all([
     loadIsFreePreview(tender.slug),
     getCachedTenderList(),
+    fetchTenderLifecycle(tender.id),
   ]);
   // The same guest projection for every viewer: these are links to other
   // tenders, and a member opening one gets the full page there anyway.
   const related = <RelatedTenders links={relatedTenderLinks(allTenders, tender)} country={tender.country} />;
+  // 项目动态: pause / resumption / 流标 / cancellation and re-issue links
+  // (migration 0057). Renders nothing for a tender with none of them.
+  const lifecycle = (monthOnly: boolean) => (
+    <TenderLifecycle
+      lifecycle={lifecycleData}
+      status={tender.status}
+      previousRounds={tenderLinksByIds(allTenders, lifecycleData.previousRoundIds)}
+      nextRounds={tenderLinksByIds(allTenders, lifecycleData.nextRoundIds)}
+      monthOnly={monthOnly}
+    />
+  );
 
   const enteredFromHomepage = from === "homepage";
   const publicTender = toPublicTenderDetail(tender);
@@ -142,7 +155,7 @@ export default async function TenderDetailPage({
     return (
       <>
         <TenderStructuredData tender={publicTender} />
-        <PublicTenderDetailView tender={publicTender} promptKind={promptKind} related={related} />
+        <PublicTenderDetailView tender={publicTender} promptKind={promptKind} related={related} lifecycle={lifecycle(true)} />
       </>
     );
   }
@@ -160,6 +173,7 @@ export default async function TenderDetailPage({
         // the page already links the OxI guide.
         participationGuide={isObrasPorImpuestos(tender) ? undefined : participationGuideLinkForTender(tender)}
         related={related}
+        lifecycle={lifecycle(false)}
         // The banner is for readers the release let in; a member who could
         // read the page anyway is not told it is free.
         releasedNotice={releasedAfterDeadline && !entitledToProtectedContent ? (entitlement.role === "guest" ? "guest" : "member") : undefined}

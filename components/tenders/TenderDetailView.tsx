@@ -23,12 +23,15 @@ export function TenderDetailView({
   participationGuide,
   related,
   releasedNotice,
+  lifecycle,
 }: {
   tender: Tender;
   showTrialCta?: boolean;
   participationGuide?: ParticipationGuideLink;
   /** 相关在招项目, rendered on the server and placed last on the page. */
   related?: ReactNode;
+  /** 项目动态 (pause, resumption, re-issue), rendered on the server; nothing for most tenders. */
+  lifecycle?: ReactNode;
   /** Set when this page is open only because its deadline passed three days ago. */
   releasedNotice?: "guest" | "member";
 }) {
@@ -49,6 +52,8 @@ export function TenderDetailView({
       {releasedNotice && <ReleasedTenderNotice audience={releasedNotice} submissionDeadline={tender.submissionDeadline} status={tender.status} />}
 
       <TenderOverview tender={tender} showTrialCta={showTrialCta} />
+
+      {lifecycle}
 
       <KeyDatesTimeline dates={tender.keyDates} publicationDate={tender.publicationDate} publicationDateIsEstimated={tender.publicationDateIsEstimated} submissionDeadline={tender.submissionDeadline} status={tender.status} deadlineInDocuments={deadlineIsInDocuments(tender)} />
 

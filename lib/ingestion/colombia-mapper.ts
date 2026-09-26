@@ -327,6 +327,12 @@ function inferStatus(
   if (providerName && providerName !== "No Definido") return "awarded";
   if (adjudicado?.trim().toLowerCase() === "si" || adjudicado?.trim().toLowerCase() === "sí") return "awarded";
   if (estadoDelProcedimiento && /adjudicad/i.test(estadoDelProcedimiento)) return "awarded";
+  // The procedure's own end states, read off the same field (migration 0057).
+  // Substring matches on SECOP's words, so a value this sample never showed
+  // can only ever make one of these fire when the source says so outright.
+  if (estadoDelProcedimiento && /desiert/i.test(estadoDelProcedimiento)) return "deserted";
+  if (estadoDelProcedimiento && /cancelad|revocad|terminado anormalmente/i.test(estadoDelProcedimiento)) return "cancelled";
+  if (estadoDelProcedimiento && /suspendid/i.test(estadoDelProcedimiento)) return "suspended";
   if (aperturaEstado === "Cerrado") return "submission_closed";
   return "open";
 }

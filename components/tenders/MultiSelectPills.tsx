@@ -55,8 +55,16 @@ export function MultiSelectPills<T extends string>({
     );
   }
 
+  /** Adds every option on show — all of them, or the ones matching the 行业 search. */
+  function selectAll() {
+    setDraft((current) => [...new Set([...current, ...visibleOptions.map((option) => option.value)])]);
+  }
+
   function apply() {
-    onChange(draft);
+    // Every option ticked is 全部 — no filter — as the trigger then says,
+    // rather than a list of every name (and, for 行业, not a filter that
+    // would drop tenders carrying no industry tag).
+    onChange(draft.length === options.length ? [] : draft);
     if (detailsRef.current) detailsRef.current.open = false;
   }
 
@@ -128,7 +136,11 @@ export function MultiSelectPills<T extends string>({
             ))}
           </div>
           <div className="mt-3 flex items-center justify-between gap-2 border-t border-[#e5e9eb] pt-3">
-            <button type="button" onClick={() => setDraft([])} className="px-2 py-1.5 text-xs font-semibold text-[#63737d] hover:text-[#071826]">重置</button>
+            {/* 全选 on the far left, 取消全选 beside it (user, 2026-09-26: 每个下拉框都加一个全选的按钮，放在最左侧；重置改成取消全选). */}
+            <div className="flex items-center">
+              <button type="button" onClick={selectAll} className="px-2 py-1.5 text-xs font-semibold text-[#63737d] hover:text-[#071826]">全选</button>
+              <button type="button" onClick={() => setDraft([])} className="px-2 py-1.5 text-xs font-semibold text-[#63737d] hover:text-[#071826]">取消全选</button>
+            </div>
             <div className="flex items-center gap-2">
               <button type="button" onClick={cancel} className="px-2 py-1.5 text-xs font-semibold text-[#63737d] hover:text-[#071826]">取消</button>
               <button

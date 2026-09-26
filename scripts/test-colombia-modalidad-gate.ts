@@ -16,7 +16,7 @@
  *
  * Usage: npm run test:colombia-modalidad-gate
  */
-import { mapSecopRowToTender, isIngestedColombiaModalidad, isRailSpecialRegimeRow, type SecopProcesoRow } from "../lib/ingestion/colombia-mapper";
+import { mapSecopRowToTender, isIngestedColombiaModalidad, specialRegimeSectorOf, type SecopProcesoRow } from "../lib/ingestion/colombia-mapper";
 
 const SOURCE_NAME = "SECOP II — Colombia Compra Eficiente";
 
@@ -115,10 +115,10 @@ check("缺标题的行仍然映射为 null（必填字段检查照常生效）",
 // Admitted only from the named rail companies, only when 大型项目, and never
 // for a loan. Shaped on the real rows found in SECOP II the same day.
 const metroMedellin = { entidad: "EMPRESA DE TRANSPORTE MASIVO DEL VALLE DE ABURRA LIMITADA", modalidad_de_contratacion: "Contratación régimen especial" };
-check("铁路公司的特殊制度采购被识别为候选", isRailSpecialRegimeRow(metroMedellin));
-check("带「(con ofertas)」的写法同样识别", isRailSpecialRegimeRow({ ...metroMedellin, modalidad_de_contratacion: "Contratación régimen especial (con ofertas)" }));
-check("非铁路机构的特殊制度采购不是候选", !isRailSpecialRegimeRow({ entidad: "METROSALUD", modalidad_de_contratacion: "Contratación régimen especial" }));
-check("铁路公司的直接合同（Contratación directa）不是候选", !isRailSpecialRegimeRow({ ...metroMedellin, modalidad_de_contratacion: "Contratación directa" }));
+check("铁路公司的特殊制度采购被识别为候选", specialRegimeSectorOf(metroMedellin) === "rail");
+check("带「(con ofertas)」的写法同样识别", specialRegimeSectorOf({ ...metroMedellin, modalidad_de_contratacion: "Contratación régimen especial (con ofertas)" }) === "rail");
+check("非名单机构的特殊制度采购不是候选", specialRegimeSectorOf({ entidad: "METROSALUD", modalidad_de_contratacion: "Contratación régimen especial" }) === null);
+check("铁路公司的直接合同（Contratación directa）不是候选", specialRegimeSectorOf({ ...metroMedellin, modalidad_de_contratacion: "Contratación directa" }) === null);
 
 const railWorks = mapSecopRowToTender(row({
   ...metroMedellin,
@@ -147,6 +147,70 @@ check("贷款/融资协议不收录，金额再大也不收", railLoan === null,
 
 const otherSpecial = mapSecopRowToTender(row({ entidad: "ACUEDUCTO METROPOLITANO DE BUCARAMANGA S.A. E.S.P.", modalidad_de_contratacion: "Contratación régimen especial" }), SOURCE_NAME);
 check("非铁路机构的大型特殊制度采购仍不收录（9/11 规则不变）", otherSpecial === null);
+
+// --- Power utilities and the Ecopetrol group (user, 2026-09-26) -----------
+// Shaped on the real rows SECOP II held the same day.
+const special = "Contratación régimen especial";
+check("电力公司被识别为 power", specialRegimeSectorOf({ entidad: "ELECTRIFICADORA DEL HUILA S.A. E.S.P.", modalidad_de_contratacion: special }) === "power");
+check("数据里拼错的「HIDORELECTRICA」也识别", specialRegimeSectorOf({ entidad: "Central Hidoreléctrica de Caldas S.A E.S.P BIC", modalidad_de_contratacion: special }) === "power");
+check("Ecopetrol 子公司被识别为 oil", specialRegimeSectorOf({ entidad: "HOCOL S.A", modalidad_de_contratacion: special }) === "oil");
+check("名字里带 Ecopetrol 的学校不是候选", specialRegimeSectorOf({ entidad: "INSTITUCION EDUCATIVA ECOPETROL", modalidad_de_contratacion: special }) === null);
+
+const substation = mapSecopRowToTender(row({
+  entidad: "ELECTRIFICADORA DEL HUILA S.A. E.S.P.",
+  modalidad_de_contratacion: special,
+  nombre_del_procedimiento: "Construcción, modernización, reposición y puesta en servicio de infraestructura eléctrica de subestaciones",
+  descripci_n_del_procedimiento: "Realizar la construcción; modernización; reposición; integración y puesta en servicio de infraestructura de subestaciones 115 kV.",
+  precio_base: "98000000000",
+}), SOURCE_NAME);
+check("电力公司的大型变电站工程被收录", substation?.relevance.tier === "flagship", `tier = ${substation?.relevance.tier}`);
+
+const relayModules = mapSecopRowToTender(row({
+  entidad: "EMPRESAS PUBLICAS DE MEDELLIN E.S.P.",
+  modalidad_de_contratacion: special,
+  nombre_del_procedimiento: "modulo expansion 8ed 4sd siemens io209 para rele siprotec",
+  descripci_n_del_procedimiento: "modulo expansion 8ed 4sd siemens io209 para rele siprotec; modulo expansion 16 entradas digitales",
+  precio_base: "242000000000",
+}), SOURCE_NAME);
+check("金额异常、标题不是工程/设备安装的电力采购不收（不能只靠金额进来）", relayModules === null, `tier = ${relayModules?.relevance.tier}`);
+
+const ppa = mapSecopRowToTender(row({
+  entidad: "Central Hidoreléctrica de Caldas S.A E.S.P BIC",
+  modalidad_de_contratacion: special,
+  nombre_del_procedimiento: "CONTRATO DE SUMINISTRO DE ENERGIA Y POTENCIA ELECTRICA",
+  descripci_n_del_procedimiento: "Contrato de suministro de energía y potencia eléctrica para la generación.",
+  precio_base: "325000000000",
+}), SOURCE_NAME);
+check("购电合同不收", ppa === null, `tier = ${ppa?.relevance.tier}`);
+
+const oilEpc = mapSecopRowToTender(row({
+  entidad: "EMPRESA COLOMBIANA DE PETROLEOS",
+  modalidad_de_contratacion: special,
+  nombre_del_procedimiento: "CONSTRUCCIÓN DE OBRAS CIVILES; ELÉCTRICAS; MECÁNICAS E INSTRUMENTACIÓN",
+  // The real description: it names the Vicepresidencia de Proyectos y
+  // Perforación, which a bare "perforación" filter mistook for drilling.
+  descripci_n_del_procedimiento: "CONSTRUCCIÓN DE OBRAS CIVILES, ELÉCTRICAS, MECÁNICAS E INSTRUMENTACIÓN REQUERIDAS POR LA VICEPRESIDENCIA DE PROYECTOS Y PERFORACIÓN PARA ECOPETROL S.A. Y PARA SU GRUPO EMPRESARIAL.",
+  precio_base: "130000000000",
+}), SOURCE_NAME);
+check("Ecopetrol 的工程总包被收录", oilEpc?.relevance.tier === "flagship", `tier = ${oilEpc?.relevance.tier}`);
+
+const wellServices = mapSecopRowToTender(row({
+  entidad: "HOCOL S.A",
+  modalidad_de_contratacion: special,
+  nombre_del_procedimiento: "COMPLETAMIENTO; REACONDICIONAMIENTO; INTERVENCIÓN; PRUEBA Y/O ABANDONOS DE POZOS",
+  descripci_n_del_procedimiento: "Completamiento, reacondicionamiento, intervención, prueba y/o abandono de pozos mediante el uso de equipos de construcción de pozos.",
+  precio_base: "1632000000000",
+}), SOURCE_NAME);
+check("油井作业服务不收，金额再大也不收", wellServices === null, `tier = ${wellServices?.relevance.tier}`);
+
+const oilCredit = mapSecopRowToTender(row({
+  entidad: "EMPRESA COLOMBIANA DE PETROLEOS",
+  modalidad_de_contratacion: special,
+  nombre_del_procedimiento: "Crédito por USD 1.190 millones - ECP Guarantor",
+  descripci_n_del_procedimiento: "Crédito por USD 1.190 millones",
+  precio_base: "3757000000000",
+}), SOURCE_NAME);
+check("Ecopetrol 的贷款不收", oilCredit === null, `tier = ${oilCredit?.relevance.tier}`);
 
 console.log("Colombia modalidad 门槛\n");
 let failures = 0;

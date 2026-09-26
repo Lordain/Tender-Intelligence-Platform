@@ -1,4 +1,4 @@
-import { RAIL_ENTITY_SOQL_FRAGMENTS, type SecopProcesoRow } from "@/lib/ingestion/colombia-mapper";
+import { SPECIAL_REGIME_ENTITY_SOQL_FRAGMENTS, type SecopProcesoRow } from "@/lib/ingestion/colombia-mapper";
 
 /**
  * Live-fetches Colombia's real SECOP II "Procesos de Contratación" Socrata
@@ -49,14 +49,15 @@ export async function fetchSecopProcesos(options: FetchSecopProcesosOptions): Pr
   // first letter and the accented vowel matches every spelling; anything
   // extra it lets through is rejected by the mapper a moment later.
   //
-  // The second branch is the rail exception (RAIL_ENTITY_SOQL_FRAGMENTS in
-  // colombia-mapper.ts, 2026-09-26): régimen especial, from the named rail
-  // companies only. The mapper then keeps just their 大型项目.
-  const railEntities = RAIL_ENTITY_SOQL_FRAGMENTS.map((fragment) => `upper(entidad) like '%${fragment}%'`).join(" OR ");
+  // The second branch is the sector exceptions (SPECIAL_REGIME_SECTORS in
+  // colombia-mapper.ts, 2026-09-26: rail, power, Ecopetrol group):
+  // régimen especial, from the named companies only. The mapper then keeps
+  // just their 大型项目 works.
+  const sectorEntities = SPECIAL_REGIME_ENTITY_SOQL_FRAGMENTS.map((fragment) => `upper(entidad) like '%${fragment}%'`).join(" OR ");
   const whereClause =
     `fecha_de_publicacion_del >= '${soqlTimestamp(sinceDate)}'` +
     ` AND (modalidad_de_contratacion like '%icitaci%'` +
-    ` OR (modalidad_de_contratacion like '%gimen especial%' AND (${railEntities})))`;
+    ` OR (modalidad_de_contratacion like '%gimen especial%' AND (${sectorEntities})))`;
 
   const rows: SecopProcesoRow[] = [];
   for (let page = 0; page < maxPages; page++) {

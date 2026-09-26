@@ -8989,7 +8989,16 @@ country's rail buying is published, measured from this sandbox:
   this sandbox's direct egress the page answered 403 from an S3 origin while
   the same request through the sandbox proxy (and from curl) was 200 with
   the platform's own User-Agent — a network-path artefact, not Metro's WAF.
-- *Colombia* — rail companies' *Contratación régimen especial* is admitted
-  for 大型项目 only, loans excluded (`RAIL_ENTITY_SOQL_FRAGMENTS` in
-  colombia-mapper.ts). Through the real gate, 2026-03-01 to 2026-09-26:
-  173 candidate rows, 1 admitted.
+- *Colombia* — *Contratación régimen especial* is admitted for three named
+  sectors (`SPECIAL_REGIME_SECTORS` in colombia-mapper.ts): rail, power
+  utilities, and the Ecopetrol group's works (not well services) — 大型项目
+  only, never a loan or an energy/gas supply agreement, and for power and
+  oil only with a disclosed amount and a works-or-equipment title. Through
+  the real gate, 2026-03-01 to 2026-09-26, 7,401 candidate rows: power 7
+  (substations, grid works, solar and wind parks, SCADA), oil 4 (EPC civil,
+  mechanical, electrical and instrumentation works), rail 1. The first
+  draft without the amount requirement also let in school fences and a
+  sports ground Ecopetrol builds as community investment, an insurance
+  renewal and a fiduciary arrangement; and a bare "perforación" filter
+  dropped both Ecopetrol EPC contracts because they name the Vicepresidencia
+  de Proyectos y Perforación.

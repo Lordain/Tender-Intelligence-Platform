@@ -4,7 +4,7 @@ import Link from "next/link";
 import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
 import { InsightHeroCredit } from "@/components/insights/InsightHeroCredit";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 
 const insight = getCountryInsight("brazil")!;
 
@@ -14,6 +14,7 @@ export const metadata: Metadata = pageMetadata({
     "梳理巴西Novo PAC、PPI项目组合，以及交通、能源、港口、水务、城市建设和区域供应链机会。",
   path: "/insights/brazil",
   image: insight.heroImage,
+  author: SOCIAL_BRAND,
 });
 
 type IconName = "road" | "rail" | "port" | "energy" | "water" | "city" | "digital" | "health";

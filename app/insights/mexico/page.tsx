@@ -4,7 +4,7 @@ import Link from "next/link";
 import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
 import { InsightHeroCredit } from "@/components/insights/InsightHeroCredit";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 
 const insight = getCountryInsight("mexico")!;
 
@@ -14,6 +14,7 @@ export const metadata: Metadata = pageMetadata({
     "基于墨西哥2026年官方资料，拆解5.6万亿比索基础设施投资基准、行业配置、重点项目、区域分布及中国企业可参与空间。",
   path: "/insights/mexico",
   image: insight.heroImage,
+  author: SOCIAL_BRAND,
 });
 
 const sectorInvestment = [

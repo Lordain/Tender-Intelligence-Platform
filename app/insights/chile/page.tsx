@@ -4,7 +4,7 @@ import Link from "next/link";
 import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
 import { InsightHeroCredit } from "@/components/insights/InsightHeroCredit";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 
 const insight = getCountryInsight("chile")!;
 
@@ -13,6 +13,7 @@ export const metadata: Metadata = pageMetadata({
   description: insight.description,
   path: "/insights/chile",
   image: insight.heroImage,
+  author: SOCIAL_BRAND,
 });
 
 const planAreas = [

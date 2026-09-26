@@ -30,6 +30,16 @@ import type { Metadata } from "next";
 const BRAND = "拉美招投标信息平台";
 
 /**
+ * The name the platform publishes under on 小红书 and 微信公众号, where the
+ * platforms would not accept 拉美招投标信息平台 (user, 2026-09-26). A reader
+ * who meets an article there searches for THIS name, so the site says it
+ * wherever an author or an alias is declared: the byline of every guide and
+ * country insight, their Article JSON-LD, the Organization/WebSite
+ * alternateName, the keywords and the footer.
+ */
+export const SOCIAL_BRAND = "拉美招投标指南针";
+
+/**
  * The site description every metadata surface shares — the root layout's
  * <meta>, Open Graph, and the Organization JSON-LD. One constant so the three
  * cannot drift; they had been three hand-kept copies.
@@ -96,15 +106,19 @@ export function pageMetadata({
   /** Path only, e.g. "/guides/peru-seace-oece" — resolved against metadataBase. */
   path,
   image,
+  author,
 }: {
   title: string;
   description: string;
   path: string;
   image?: string;
+  /** A byline for authored pages (guides, country insights) — normally SOCIAL_BRAND. */
+  author?: string;
 }): Metadata {
   return {
     title,
     description,
+    ...(author ? { authors: [{ name: author }] } : {}),
     alternates: { canonical: path },
     openGraph: {
       type: "website",

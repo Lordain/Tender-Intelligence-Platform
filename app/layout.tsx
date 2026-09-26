@@ -80,6 +80,8 @@ export const metadata: Metadata = {
   // come up for its own name (user, 2026-09-25: 拉美招投标信息平台 好像搜不到我们).
   keywords: [
     "拉美招投标信息平台",
+    // The 小红书 / 微信公众号 name (lib/seo.ts SOCIAL_BRAND).
+    "拉美招投标指南针",
     "拉美招标",
     "拉美招投标",
     "拉美政府采购",

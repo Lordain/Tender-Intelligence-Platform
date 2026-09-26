@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { countryInsights } from "@/lib/country-insights";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "国家洞察",
   description:
     "面向中国企业的拉美国家投资与政府采购洞察，整理战略规划、行业预算、重点区域、项目机会与参与提示。",
   path: "/insights",
+  author: SOCIAL_BRAND,
 });
 
 export default function CountryInsightsPage() {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
+import { siteOrigin } from "@/lib/site-url";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getParticipationGuide, participationGuides } from "@/lib/participation-guides";
@@ -31,6 +32,8 @@ export async function generateMetadata({ params }: GuidePageProps): Promise<Meta
     title: `${guide.platform} 参标指南`,
     description: `${guide.issuer}（${guide.issuerType}）：${guide.summary}`,
     path: `/guides/${guide.slug}`,
+    // The 小红书 / 微信公众号 name — see SOCIAL_BRAND.
+    author: SOCIAL_BRAND,
   });
 }
 
@@ -47,8 +50,23 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
   const currentIndex = participationGuides.findIndex((item) => item.slug === guide.slug);
   const nextGuide = participationGuides[(currentIndex + 1) % participationGuides.length];
 
+  // Same Article shape as the country insights: authored under the 小红书 /
+  // 微信公众号 name, published by the platform.
+  const origin = siteOrigin();
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: guide.title,
+    description: guide.summary,
+    url: `${origin}/guides/${guide.slug}`,
+    author: { "@type": "Organization", name: SOCIAL_BRAND },
+    publisher: { "@type": "Organization", name: "拉美招投标信息平台" },
+    inLanguage: "zh-CN",
+  };
+
   return (
     <div className="bg-[#f7f4ee] text-[#071826]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       <header className="bg-[#061b2b] px-5 py-12 text-white sm:px-8 sm:py-16">
         <div className="mx-auto max-w-6xl">
           <Link href="/guides" className="inline-flex items-center gap-2 text-sm font-bold text-white/62 transition hover:text-white">← 返回全部参标指南</Link>
@@ -62,6 +80,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
               <h1 className="mt-5 max-w-4xl text-3xl font-black leading-[1.22] tracking-[-0.04em] sm:text-5xl">{guide.title}</h1>
               <p className="mt-4 text-sm font-bold text-[#ffb21c]">采购方：{guide.issuer}</p>
               <p className="mt-3 max-w-3xl text-base leading-8 text-white/68">{guide.summary}</p>
+              <p className="mt-6 text-sm text-white/64">作者：<strong className="text-white">{SOCIAL_BRAND}</strong></p>
             </div>
           </div>
         </div>

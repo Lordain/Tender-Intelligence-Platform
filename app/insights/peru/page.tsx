@@ -4,7 +4,7 @@ import Link from "next/link";
 import { InsightOpenTenders } from "@/components/insights/InsightOpenTenders";
 import { getCountryInsight } from "@/lib/country-insights";
 import { InsightHeroCredit } from "@/components/insights/InsightHeroCredit";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 
 const insight = getCountryInsight("peru")!;
 
@@ -14,6 +14,7 @@ export const metadata: Metadata = pageMetadata({
     "梳理秘鲁2024—2030竞争力规划、2032物流走廊、2026公共投资与PPP项目组合，以及交通、矿业、能源、水务和社会基础设施机会。",
   path: "/insights/peru",
   image: insight.heroImage,
+  author: SOCIAL_BRAND,
 });
 
 type IconName = "rail" | "road" | "port" | "energy" | "water" | "mine" | "health" | "digital";

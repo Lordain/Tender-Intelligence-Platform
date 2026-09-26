@@ -1,5 +1,5 @@
 import { siteOrigin } from "@/lib/site-url";
-import { SITE_DESCRIPTION } from "@/lib/seo";
+import { SITE_DESCRIPTION, SOCIAL_BRAND } from "@/lib/seo";
 
 /**
  * Organization + WebSite, as JSON-LD.
@@ -29,7 +29,8 @@ export function StructuredData() {
         "@type": "Organization",
         "@id": `${origin}/#organization`,
         name: "拉美招投标信息平台",
-        alternateName: "Latin Tender",
+        // SOCIAL_BRAND is the name on 小红书 and 微信公众号 (lib/seo.ts).
+        alternateName: ["Latin Tender", SOCIAL_BRAND],
         url: origin,
         // A square brand mark is a better organization identity than the
         // wide social-share cover. Search-result favicons are controlled by
@@ -53,7 +54,7 @@ export function StructuredData() {
         name: "拉美招投标信息平台",
         // Google reads WebSite.alternateName when choosing the site name it
         // shows, and it widens what counts as a search for this site.
-        alternateName: ["LatinTender", "拉美招投标", "拉美招标信息平台"],
+        alternateName: ["LatinTender", "拉美招投标", "拉美招标信息平台", SOCIAL_BRAND],
         inLanguage: "zh-CN",
         publisher: { "@id": `${origin}/#organization` },
       },

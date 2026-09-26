@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { SUPPORT_EMAIL, SUPPORT_WECHAT } from "@/lib/support";
+import { SOCIAL_BRAND } from "@/lib/seo";
 
 const columns = [
   { title: "产品", links: [["招标项目", "/tenders"], ["招标周报", "/weekly"], ["我的收藏", "/saved"], ["订阅服务", "/pricing"]] },
@@ -58,6 +59,11 @@ export function Footer() {
               <dd className="mt-0.5">
                 <a href={`mailto:${SUPPORT_EMAIL}`} className="text-white/70 transition-colors hover:text-white">{SUPPORT_EMAIL}</a>
               </dd>
+            </div>
+            <div>
+              {/* The platform's name on 小红书 and 微信公众号 (lib/seo.ts SOCIAL_BRAND): a reader who met an article there searches for it. */}
+              <dt className="text-xs text-white/38">小红书 · 微信公众号</dt>
+              <dd className="mt-0.5 text-white/85">{SOCIAL_BRAND}</dd>
             </div>
             {SUPPORT_WECHAT && (
               <div>

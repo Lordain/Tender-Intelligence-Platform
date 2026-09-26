@@ -314,7 +314,7 @@ const PT_INDUSTRY_PATTERNS: [IndustryKey, RegExp][] = [
   // pública`, `paralelepípedo` and `bloquete` (both paving stone types) have
   // no Spanish equivalents in lib/industry.ts, so without these a Brazilian
   // road contract carries no transport tag at all.
-  ["transportation", /\brodovias?\b|\brodovi[áa]ri[oa]\b|pavimenta[çc][ãa]o|capeamento\s+asf[áa]ltico|asf[áa]ltic[oa]|\bvias?\s+p[úu]blicas?\b|paralelep[íi]pedo(s)?|\bbloquete(s)?\b|sinaliza[çc][ãa]o\s+vi[áa]ria|terminal\s+rodovi[áa]rio|\bponte(s)?\b|\bviaduto(s)?\b|transporte\s+(p[úu]blico|aquavi[áa]rio)|\bestradas?\s+(rurais|vicinais)\b/i],
+  ["transportation", /\brodovias?\b|\brodovi[áa]ri[oa]\b|pavimenta[çc][ãa]o|capeamento\s+asf[áa]ltico|asf[áa]ltic[oa]|\bvias?\s+p[úu]blicas?\b|paralelep[íi]pedo(s)?|\bbloquete(s)?\b|sinaliza[çc][ãa]o\s+vi[áa]ria|terminal\s+rodovi[áa]rio|\bponte(s)?\b|\bviaduto(s)?\b|transporte\s+(p[úu]blico|aquavi[áa]rio)|\bestradas?\s+(rurais|vicinais)\b|\bferrovi(a|as|aria|arias|ario|arios)\b|\bmetro\b|\btre(m|ns)\b|\bvlt\b|\btrilhos?\b|material\s+rodante|\bdormentes\b/i], // rail: added 2026-09-26, when every 铁路/地铁 tender on the site turned out to be Mexican
   // `pavimenta[çc][ãa]o` is here as well as under transportation on purpose:
   // lib/industry.ts's Spanish `construction` pattern likewise carries
   // `pavimentaci[óo]n`, and a road contract genuinely is both. Without it the

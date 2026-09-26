@@ -31,6 +31,21 @@ type Case = {
 };
 
 const cases: Case[] = [
+  // --- Rail beyond Mexico's wording (2026-09-26) --------------------------
+  // The user noticed every 铁路/地铁 tender on the site was Mexican. The
+  // relevance rules kept rail titles from every country, but the transport
+  // tag knew Mexico's words (ferroviario, tren de pasajeros, metro) and not
+  // rolling stock, rails, or Brazil's Portuguese — so a Brazilian VLT or a
+  // Chilean rail supply would land in 综合, invisible under 交通基建.
+  { title: "ADQUISICIÓN DE MATERIAL RODANTE PARA EL REGIOTRAM DEL NORTE", expect: ["transportation"], note: "机车车辆采购" },
+  { title: "Suministro de rieles y durmientes para EFE Trenes de Chile", expect: ["transportation"], note: "钢轨与轨枕" },
+  { title: "ADQUISICIÓN DE TRENES PARA LA LÍNEA 1 DEL METRO DE LIMA", expect: ["transportation"], note: "地铁列车" },
+  { title: "Contratação de obras de implantação do VLT (Veículo Leve sobre Trilhos) de Salvador", expect: ["transportation"], note: "巴西轻轨" },
+  { title: "Aquisição de trens para a Linha 9 da CPTM", expect: ["transportation"], note: "巴西列车采购" },
+  { title: "Obras de construção da Ferrovia de Integração Oeste-Leste (FIOL) lote 2", expect: ["transportation"], note: "巴西铁路工程" },
+  { title: "Implantação da Linha 6 do Metrô de São Paulo", expect: ["transportation"], note: "metrô 带重音" },
+  { title: "Mantenimiento del tren de aterrizaje de aeronave", expect: [], reject: ["transportation"], note: "起落架不是火车" },
+
   // --- Brazil's river-named states (2026-09-18) ---------------------------
   // Three of the 27 states are named after a river, and the water pattern's
   // `\br[íi]o\b` matches the word inside the state name — so every tender in

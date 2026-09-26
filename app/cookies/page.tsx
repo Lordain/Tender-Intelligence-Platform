@@ -23,7 +23,7 @@ const sections: PolicySection[] = [
     paragraphs: ["平台只使用以下几项，不使用广告类、跨站追踪类或第三方营销 Cookie；也不会向广告网络共享这些信息。"],
     items: [
       "登录会话 Cookie（严格必要）——由 Supabase 身份验证服务设置，用于保持用户登录状态。这类 Cookie 是使用账户功能（收藏、通知设置、后台管理等）所必需的，无法关闭；不使用即代表不登录账户。",
-      "统计标识（localStorage，非 Cookie）——首次访问时生成一个随机、不含姓名或邮箱的标识，用于记录页面访问、筛选类别、项目查看和收藏操作。登录期间产生的事件可能与账户标识关联，以形成运营统计；不记录搜索框输入的具体文字，也不用于第三方广告。该标识会保留至用户清除本网站数据。",
+      "统计标识（localStorage，非 Cookie）——首次访问时生成一个随机、不含姓名或邮箱的标识，用于记录页面访问、访问来源（来源网站域名和链接中的推广标记）、筛选类别、项目查看和收藏操作。登录期间产生的事件可能与账户标识关联，以形成运营统计；不记录搜索框输入的具体文字，也不用于第三方广告。该标识会保留至用户清除本网站数据。",
       `设备标识（localStorage，非 Cookie，严格必要）——为每个浏览器生成一个随机标识，用于执行「每个账户最多 ${MAX_ACTIVE_DEVICES} 台设备同时登录」的限制，并让用户在账户页面识别自己已登录的设备。登录期间，平台会在服务器上记录该标识及对应的浏览器类型、首次和最近使用时间；标识本身不含姓名或邮箱，也不用于统计或广告。`,
       "收藏与搜索设置（localStorage，非 Cookie）——收藏的项目和已保存搜索条件保存在浏览器本地，仅存于用户自己的设备上。",
       "Cookie 提示记录（localStorage，非 Cookie）——记住用户已看过本站的 Cookie 提示，避免每次访问重复显示。",
@@ -46,5 +46,5 @@ const sections: PolicySection[] = [
 ];
 
 export default function CookiesPage() {
-  return <PolicyPage eyebrow="Cookies" title="Cookie 政策" intro="本政策说明平台使用哪些 Cookie 和类似的本地存储技术，以及用户可以如何管理它们。" updated="2026年9月25日" sections={sections} />;
+  return <PolicyPage eyebrow="Cookies" title="Cookie 政策" intro="本政策说明平台使用哪些 Cookie 和类似的本地存储技术，以及用户可以如何管理它们。" updated="2026年9月26日" sections={sections} />;
 }

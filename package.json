@@ -103,6 +103,7 @@
     "test:award-results": "tsx scripts/test-award-results.ts",
     "test:digest-run": "tsx --conditions=react-server scripts/test-digest-run.ts",
     "test:saved-search-alerts": "tsx scripts/test-saved-search-alerts.ts",
+    "test:analytics-source": "tsx scripts/test-analytics-source.ts",
     "test:brazil-pncp-mapper": "tsx scripts/test-brazil-pncp-mapper.ts",
     "test:ckan-client": "tsx scripts/test-ckan-client.ts",
     "test:block-page": "tsx scripts/test-block-page.ts",

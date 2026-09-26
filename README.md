@@ -31,6 +31,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+**Vercel deploys only `main` and non-`claude/` branches.** `vercel.json` sets `git.deploymentEnabled` to `false` for `claude/**`: each change used to produce three deployments (the working branch's push, that branch's fast-forward to the merge commit, and `main`'s production build), and the working-branch previews were never opened — changes are checked locally before merging. Dependabot branches still get previews, which are the build check on those PRs.
+
 This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) (TypeScript, App Router, Tailwind CSS, Turbopack).
 
 ## Project Structure

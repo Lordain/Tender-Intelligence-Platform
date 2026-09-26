@@ -51,6 +51,7 @@ export const SITE_DESCRIPTION =
  *   BAIDU_SITE_VERIFICATION   → <meta name="baidu-site-verification">
  *   SO360_SITE_VERIFICATION   → <meta name="360-site-verification">
  *   SOGOU_SITE_VERIFICATION   → <meta name="sogou_site_verification">
+ *   TOUTIAO_SITE_VERIFICATION → <meta name="bytedance-verification-code">
  *
  * Each console hands out a meta tag; only its `content` value goes in the
  * variable. These are public by design (they are printed in the page), so
@@ -68,6 +69,9 @@ const BAIDU_VERIFICATION_CODE = "codeva-WJtzxoje9L";
 /** Sogou's, issued 2026-09-25 in 搜狗资源平台 (HTML标签验证); same reasoning. The last two characters are zeros. */
 const SOGOU_VERIFICATION_CODE = "zxZwmxeM00";
 
+/** 头条搜索站长平台's, issued 2026-09-26 (HTML标签验证); same reasoning. The character after "ScC" is a zero. */
+const TOUTIAO_VERIFICATION_CODE = "uxcvu4GovUjeScC0xvFu";
+
 export function siteVerification(): Metadata["verification"] {
   const read = (name: string) => process.env[name]?.trim() || undefined;
   const other: Record<string, string> = {};
@@ -75,10 +79,12 @@ export function siteVerification(): Metadata["verification"] {
   const baidu = read("BAIDU_SITE_VERIFICATION") ?? BAIDU_VERIFICATION_CODE;
   const so360 = read("SO360_SITE_VERIFICATION");
   const sogou = read("SOGOU_SITE_VERIFICATION") ?? SOGOU_VERIFICATION_CODE;
+  const toutiao = read("TOUTIAO_SITE_VERIFICATION") ?? TOUTIAO_VERIFICATION_CODE;
   if (bing) other["msvalidate.01"] = bing;
   if (baidu) other["baidu-site-verification"] = baidu;
   if (so360) other["360-site-verification"] = so360;
   if (sogou) other["sogou_site_verification"] = sogou;
+  if (toutiao) other["bytedance-verification-code"] = toutiao;
   const google = read("GOOGLE_SITE_VERIFICATION");
   if (!google && Object.keys(other).length === 0) return undefined;
   return { ...(google ? { google } : {}), ...(Object.keys(other).length ? { other } : {}) };

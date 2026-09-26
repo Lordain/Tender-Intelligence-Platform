@@ -415,7 +415,8 @@ export function TenderExplorer({
               maxVisible={RELEVANCE_TIERS.length}
               options={RELEVANCE_TIERS.map((option) => ({ value: option, label: localize(RELEVANCE_TIER_LABELS[option], locale) }))}
               selected={relevanceTiers}
-              onChange={(next) => updateParams({ tier: next.join(",") || null })}
+              // Defaults to 全部 (no tier param); ticking every size is 全部 too.
+              onChange={(next) => updateParams({ tier: next.length === 0 || next.length === RELEVANCE_TIERS.length ? null : next.join(",") })}
             />
           </div>
           <div className="xl:px-4">

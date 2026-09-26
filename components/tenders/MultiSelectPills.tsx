@@ -10,6 +10,7 @@ export function MultiSelectPills<T extends string>({
   searchable = false,
   maxVisible = 2,
   valueWidthClass = "max-w-[24rem]",
+  minWidthClass = "min-w-[9.5rem]",
 }: {
   label: string;
   options: { value: T; label: string; icon?: ReactNode }[];
@@ -31,6 +32,8 @@ export function MultiSelectPills<T extends string>({
    * 国家地区再做宽一点，最少智利显示完整).
    */
   valueWidthClass?: string;
+  /** The closed trigger's minimum width; narrower where 「全部」 is the usual value and the row is full. */
+  minWidthClass?: string;
 }) {
   const [query, setQuery] = useState("");
   // Staged locally until "应用" is clicked — checking/unchecking a box no
@@ -79,7 +82,7 @@ export function MultiSelectPills<T extends string>({
           if (event.currentTarget.open) setDraft(selected);
         }}
       >
-        <summary className="flex h-9 min-w-[9.5rem] cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#172c3b] transition-colors hover:border-[#9babb3] [&::-webkit-details-marker]:hidden">
+        <summary className={`flex h-9 ${minWidthClass} cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#172c3b] transition-colors hover:border-[#9babb3] [&::-webkit-details-marker]:hidden`}>
           <span className={`flex ${valueWidthClass} items-center gap-2 overflow-hidden whitespace-nowrap`}>
             {selected.length === 0 ? "全部" : selectedOptions.map((option, index) => (
               <span key={option?.value ?? index} className="inline-flex shrink-0 items-center gap-1.5">

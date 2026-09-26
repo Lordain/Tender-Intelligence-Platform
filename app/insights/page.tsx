@@ -15,7 +15,7 @@ export default function CountryInsightsPage() {
   return (
     <div className="bg-[#f7f4ee] text-[#071826]">
       <header className="bg-[#061b2b] px-5 py-16 text-white sm:px-8 sm:py-20">
-        <div className="mx-auto max-w-[94rem]">
+        <div className="mx-auto max-w-[108rem]">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.65fr)] lg:items-end">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.22em] text-[#ffb21c]">Country intelligence</p>
@@ -34,7 +34,7 @@ export default function CountryInsightsPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[94rem] px-5 py-12 sm:px-8 sm:py-16">
+      <main className="mx-auto max-w-[108rem] px-5 py-12 sm:px-8 sm:py-16">
         <div className="grid gap-7 lg:grid-cols-2">
           {countryInsights.map((insight) => (
             <article key={insight.slug} className="group overflow-hidden rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_18px_50px_rgba(7,24,38,0.06)]">

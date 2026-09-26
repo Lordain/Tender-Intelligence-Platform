@@ -115,7 +115,7 @@ function TenderPreview({ tenders }: { tenders: TenderCardData[] }) {
   return (
     // Phones and tablets inset the list so the lighthouse stands beside it,
     // as it does on desktop, instead of disappearing behind it.
-    <div className="relative ml-12 max-w-[39rem] sm:ml-16 lg:ml-auto lg:w-full xl:max-w-[42rem]">
+    <div className="relative ml-12 max-w-[39rem] sm:ml-16 lg:ml-auto lg:w-full xl:max-w-[42rem] 2xl:max-w-[54rem]">
       {/* Behind the list, lantern pinned to its top-left corner: see .hero-lighthouse. */}
       <div aria-hidden="true" className="hero-lighthouse">
         <Image src="/lighthouse-hero.webp" alt="" fill preload sizes="(min-width: 1280px) 100vw, (min-width: 1024px) 74rem, 40rem" className="object-cover" />
@@ -159,7 +159,7 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
 
   return (
     <section className="relative isolate overflow-hidden bg-[#031521] text-white">
-      <div className="mx-auto grid min-h-[36rem] max-w-[94rem] items-center gap-10 px-5 pb-10 pt-12 sm:px-8 sm:py-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:gap-8 lg:py-8 xl:gap-12">
+      <div className="mx-auto grid min-h-[36rem] max-w-[108rem] items-center gap-10 px-5 pb-10 pt-12 sm:px-8 sm:py-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] 2xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-8 lg:py-8 xl:gap-12">
         <div className="relative z-20 min-w-0 max-w-[40rem]">
           <h1 className="text-[clamp(2.55rem,4vw,4.25rem)] font-black leading-[1.14] tracking-[0.02em] text-[#fffdf9]">
             把拉美招标<br />变成中国企业<br />看得懂的机会
@@ -183,7 +183,7 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
             )}
           </div>
         </div>
-        <div className="relative z-10 min-w-0 xl:translate-x-4">
+        <div className="relative z-10 min-w-0 xl:translate-x-4 2xl:translate-x-0">
           <TenderPreview tenders={tenders} />
         </div>
       </div>

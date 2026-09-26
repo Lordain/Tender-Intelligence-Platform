@@ -5,7 +5,7 @@ import { homepageCountryInsights } from "@/lib/country-insights";
 export function CountryInsightsPreview() {
   return (
     <section id="country-insights" className="scroll-mt-20 bg-[#061b2b] px-5 py-16 text-white sm:px-8 sm:py-20">
-      <div className="mx-auto max-w-[94rem]">
+      <div className="mx-auto max-w-[108rem]">
         <div className="grid gap-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffb21c]">Country insights</p>

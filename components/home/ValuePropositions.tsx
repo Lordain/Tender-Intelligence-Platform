@@ -40,7 +40,7 @@ const values = [
 export function ValuePropositions() {
   return (
     <section id="how-it-works" className="bg-[#fffdf9] px-5 py-16 sm:px-8 sm:py-20">
-      <div className="mx-auto max-w-[94rem]">
+      <div className="mx-auto max-w-[108rem]">
         <div className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Why us</p>

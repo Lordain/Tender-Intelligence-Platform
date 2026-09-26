@@ -20,7 +20,7 @@ export const metadata: Metadata = pageMetadata({
 export default function PricingPage() {
   return (
     <main className="bg-[#f6f4ef] px-5 py-6 sm:px-8 sm:py-8">
-      <div className="mx-auto max-w-[94rem]">
+      <div className="mx-auto max-w-[108rem]">
         <PageIntro eyebrow="Subscription plans" title="订阅服务" description={`免费版长期开放；注册后先体验 ${TRIAL_DAYS} 天完整项目详情，再选择适合的国家范围和团队方案。`} metrics={[{ label: "注册即享", value: String(TRIAL_DAYS), suffix: "天试用" }]} />
         <PricingPlans />
         <div className="mt-6 rounded-2xl border border-[#e9b949] bg-[#fff3d4] px-5 py-5 text-[#5f4300] sm:px-6">

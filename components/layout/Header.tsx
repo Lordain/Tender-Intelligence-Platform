@@ -24,7 +24,7 @@ export function Header() {
   return (
     <header className="relative z-40 bg-[#031521] text-white">
       <div className="border-b border-white/10">
-        <div className="mx-auto max-w-[94rem] px-5 sm:px-8">
+        <div className="mx-auto max-w-[108rem] px-5 sm:px-8">
           <div className="flex h-[4.75rem] items-center justify-between gap-3 sm:gap-6">
             <div className="flex min-w-0 items-center gap-10 xl:gap-14">
               <Link href="/" className="flex min-w-0 items-center gap-3 lg:shrink-0" aria-label="拉美招投标信息平台首页">

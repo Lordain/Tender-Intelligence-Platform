@@ -60,6 +60,11 @@ select {
  * full-bleed cover image the lantern's position followed the screen's aspect
  * ratio instead — at 1024px the list hid it completely.
  *
+ * From lg up --lamp-x is a percentage, so it resolves against the preview's
+ * width: the gap between the lantern and the list stays in proportion as the
+ * list grows. 17.5% is the gap the full-bleed version showed on a wide screen,
+ * which the user asked to keep.
+ *
  * The lantern is at 61.5% / 25.7% of lighthouse-hero.webp (1672×941). The
  * mask fades all four edges of the picture to nothing, into the section's
  * navy, which matches the night sky — so no edge shows at any width.
@@ -100,7 +105,7 @@ select {
 @media (min-width: 1024px) {
   .hero-lighthouse {
     --lh-w: 74rem;
-    --lamp-x: -1.6rem;
+    --lamp-x: -12%;
     --lamp-y: 3.4rem;
   }
 }
@@ -108,8 +113,8 @@ select {
 @media (min-width: 1280px) {
   .hero-lighthouse {
     --lh-w: clamp(92rem, 88vw, 150rem);
-    --lamp-x: -2.6rem;
-    --lamp-y: 3.6rem;
+    --lamp-x: -17.5%;
+    --lamp-y: 3.9rem;
   }
 }
 

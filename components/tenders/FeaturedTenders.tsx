@@ -7,7 +7,7 @@ import { TenderCard } from "@/components/tenders/TenderCard";
 export function FeaturedTenders({ tenders }: { tenders: TenderCardData[] }) {
   return (
     <section className="w-full border-t border-[#dbe2e5] bg-[#f7f4ee] px-5 py-4 sm:px-8">
-      <div className="mx-auto max-w-[94rem]">
+      <div className="mx-auto max-w-[108rem]">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {tenders.map((tender, index) => (
           // Phones show the first 4 and tablets 8 (full rows of two); the

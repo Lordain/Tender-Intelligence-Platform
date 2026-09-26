@@ -19,6 +19,8 @@ import {
   canViewTenderProtectedContent,
   shouldClaimFreeTenderView,
   isClosedTender,
+  isReleasedAfterDeadline,
+  releaseNeedsClosedOn,
   isSubscriptionEntitled,
   selectPreferredSubscription,
   subscriptionStatusFromStripe,
@@ -186,6 +188,36 @@ check(
   selectPreferredSubscription([{ ...livePaid, created_at: null }, olderPaid], NOW),
   olderPaid,
 );
+
+// ---------------------------------------------------------------------------
+// Release three days after the deadline (2026-09-26). Calendar days both
+// sides; the day the release lands is the first day it is open.
+// ---------------------------------------------------------------------------
+check("deadline day itself is still protected", isReleasedAfterDeadline({ submissionDeadline: "2026-09-20" }, "2026-09-20"), false);
+check("two days after is still protected", isReleasedAfterDeadline({ submissionDeadline: "2026-09-20" }, "2026-09-22"), false);
+check("three days after opens", isReleasedAfterDeadline({ submissionDeadline: "2026-09-20" }, "2026-09-23"), true);
+check("long past stays open", isReleasedAfterDeadline({ submissionDeadline: "2026-06-01" }, "2026-09-23"), true);
+check("across a month end", isReleasedAfterDeadline({ submissionDeadline: "2026-09-29" }, "2026-10-02"), true);
+check("across a month end, one day short", isReleasedAfterDeadline({ submissionDeadline: "2026-09-29" }, "2026-10-01"), false);
+check("a timestamp deadline counts by its calendar day", isReleasedAfterDeadline({ submissionDeadline: "2026-09-20T23:59:00Z" }, "2026-09-23"), true);
+check("no deadline (见招标文件) never opens", isReleasedAfterDeadline({ submissionDeadline: undefined }, "2026-09-23"), false);
+check("an unparseable deadline never opens", isReleasedAfterDeadline({ submissionDeadline: "pending" }, "2026-09-23"), false);
+check("no platform day never opens", isReleasedAfterDeadline({ submissionDeadline: "2026-09-20" }, null), false);
+
+// Awarded or cancelled with no deadline: the same three days, counted from
+// the award date, else from the day the status changed (user, 2026-09-26).
+check("awarded, no deadline, counts from the award date", isReleasedAfterDeadline({ status: "awarded", awardDate: "2026-09-20" }, "2026-09-23"), true);
+check("awarded, no deadline, two days after award", isReleasedAfterDeadline({ status: "awarded", awardDate: "2026-09-20" }, "2026-09-22"), false);
+check("cancelled, no dates, counts from the status change", isReleasedAfterDeadline({ status: "cancelled", closedOn: "2026-09-20" }, "2026-09-23"), true);
+check("cancelled with nothing to count from stays protected", isReleasedAfterDeadline({ status: "cancelled" }, "2026-09-23"), false);
+check("the deadline wins over the award date", isReleasedAfterDeadline({ submissionDeadline: "2026-09-22", status: "awarded", awardDate: "2026-09-01" }, "2026-09-23"), false);
+check("an open tender's award date is not a release", isReleasedAfterDeadline({ status: "open", awardDate: "2026-09-01" }, "2026-09-23"), false);
+check("only a dateless ended tender needs the status history", [
+  releaseNeedsClosedOn({ status: "cancelled" }),
+  releaseNeedsClosedOn({ status: "awarded", awardDate: "2026-09-01" }),
+  releaseNeedsClosedOn({ status: "cancelled", submissionDeadline: "2026-09-01" }),
+  releaseNeedsClosedOn({ status: "open" }),
+], [true, false, false, false]);
 
 console.log(`\n${passed}/${passed + failed} checks passed.`);
 if (failed > 0) {

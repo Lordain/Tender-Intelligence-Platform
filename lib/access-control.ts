@@ -124,6 +124,71 @@ export function isClosedTender(status: TenderStatus): boolean {
 }
 
 /**
+ * Days after the submission deadline at which a tender's full detail opens
+ * to every visitor, signed in or not (user, 2026-09-26: 项目截止 3 天后，
+ * 免费公开完整项目信息，以增加我们被找到的可能性).
+ *
+ * A closed tender is worth nothing to a paying member as an opportunity, but
+ * its full page — requirements, documents, risks, key dates — is exactly the
+ * content search engines and AI assistants index and cite. The three days
+ * leave room for a late extension to land in the data before the page opens.
+ */
+export const PUBLIC_AFTER_DEADLINE_DAYS = 3;
+
+/**
+ * What the release counts from. Calendar days (YYYY-MM-DD) throughout.
+ *
+ * The submission deadline when there is one. An awarded or cancelled tender
+ * with none (见招标文件, or never captured) counts from the day it ended
+ * instead (user, 2026-09-26: 一样规则): its award date, else `closedOn`, the
+ * platform day its status changed to awarded/cancelled (tender_status_history).
+ */
+export type TenderReleaseInput = {
+  submissionDeadline?: string | null;
+  status?: TenderStatus;
+  awardDate?: string | null;
+  closedOn?: string | null;
+};
+
+const ENDED_STATUSES: readonly TenderStatus[] = ["awarded", "cancelled"];
+
+/**
+ * Whether the release has opened this tender to everyone.
+ *
+ * `today` is the platform day (lib/tender-status.ts's platformDay).
+ * Calendar arithmetic, not instants — the same reason platformDay exists.
+ * An open tender with no deadline never releases: there is no date to count
+ * from.
+ */
+export function isReleasedAfterDeadline(input: TenderReleaseInput, today: string | null): boolean {
+  const release = tenderReleaseDay(input);
+  return Boolean(release && today && today >= release);
+}
+
+/** Whether the release needs `closedOn`, the one input that costs a query. */
+export function releaseNeedsClosedOn(input: TenderReleaseInput): boolean {
+  return !calendarDay(input.submissionDeadline) && ENDED_STATUSES.includes(input.status as TenderStatus) && !calendarDay(input.awardDate);
+}
+
+/** The calendar day the release opens a tender, or null when there is nothing to count from. */
+export function tenderReleaseDay(input: TenderReleaseInput): string | null {
+  const deadline = calendarDay(input.submissionDeadline);
+  if (deadline) return addDays(deadline, PUBLIC_AFTER_DEADLINE_DAYS);
+  if (!input.status || !ENDED_STATUSES.includes(input.status)) return null;
+  const ended = calendarDay(input.awardDate) ?? calendarDay(input.closedOn);
+  return ended ? addDays(ended, PUBLIC_AFTER_DEADLINE_DAYS) : null;
+}
+
+function calendarDay(value: string | null | undefined): string | null {
+  return /^\d{4}-\d{2}-\d{2}/.exec(value ?? "")?.[0] ?? null;
+}
+
+function addDays(day: string, days: number): string {
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, date + days)).toISOString().slice(0, 10);
+}
+
+/**
  * Full analysis remains protected even though every tender now has an
  * indexable public summary page. The homepage's selected free cards are the
  * only exception, and only when the visitor actually follows that entry.

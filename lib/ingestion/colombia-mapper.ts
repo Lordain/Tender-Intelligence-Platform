@@ -455,6 +455,160 @@ export function isIngestedColombiaModalidad(modalidad: string | null | undefined
   return normalizeModalidad(modalidad).startsWith(INGESTED_MODALIDAD_PREFIX);
 }
 
+/**
+ * The exceptions to the Licitación-pública-only rule: named sectors whose
+ * state companies contract under their own manuals — *Contratación régimen
+ * especial* — so none of their buying could pass the gate above.
+ *
+ *   rail  (user, 2026-09-26: 只对特殊制度采购的大型项目开放)
+ *   power (user, 2026-09-26: 电力公司)
+ *   oil   (user, 2026-09-26: Ecopetrol 集团的工程总包，只收工程，不收油井作业服务)
+ *
+ * Every one admits only that modalidad, only from its named companies, only
+ * when the ordinary relevance rules call the process 大型项目 (flagship), and
+ * never a loan, a credit line or an energy/gas purchase agreement. Power and
+ * oil must ALSO read as works or equipment in the title: régimen especial
+ * amounts are unreliable (an EPM relay-module order at 242 bn COP, a
+ * hospital's single ultrasound scanner at 159 bn), so the price alone must
+ * not be what lets a row in. Anything that fails is dropped in
+ * mapSecopRowToTender exactly as if the gate had refused it.
+ *
+ * Measured through this gate before shipping (SECOP II, 2026-03-01 to
+ * 2026-09-26, every régimen especial row of the named companies): see the
+ * figures in lib/ingestion/README.md's rail-and-metro section.
+ *
+ * `entities` are fragments of `entidad` as datos.gov.co stores it (upper
+ * case), and deliberately free of accented letters: the live connector sends
+ * them to SoQL, whose `like` compares bytes, so "ENERGÍA" and "ENERGIA" are
+ * both written in the data and only an unaccented fragment matches both.
+ */
+type SpecialRegimeSector = {
+  key: "rail" | "power" | "oil";
+  entities: readonly string[];
+  /** When set, the folded title/summary must match — the "works or equipment" test. */
+  requiresWork?: RegExp;
+  /** When set, a folded title/summary matching it is dropped — e.g. well services for oil. */
+  excludesWork?: RegExp;
+};
+
+const POWER_WORK = /construc|\bobras?\b|montaje|subestacion|linea(s)? de (transmision|distribucion)|redes? (electric|de distribucion|de media|de baja)|parque (solar|eolico|de generacion)|generacion|fotovolta|eolic|hidroelectric|transformador|suministro e instalacion|puesta en (servicio|funcionamiento|operacion)|moderniz|repotenci|reposicion/;
+const OIL_WORK = /construc|obras? civiles|montaje|procura|\bepc\b|\bipc\b|ingenieria, procura|facilidades de (produccion|superficie)|planta de/;
+// "perforación DE" only: Ecopetrol's own EPC contracts name the department
+// that commissions them — "Vicepresidencia de Proyectos y Perforación" — and
+// the bare word dropped both of its 130 bn COP works contracts.
+const OIL_WELL_SERVICES = /\bpozos?\b|completamiento|reacondicionamiento|workover|perforacion de|abandono|cabezal|operacion (local )?de estaciones|servicios? de (ejecucion de mantenimiento y )?operacion/;
+
+export const SPECIAL_REGIME_SECTORS: readonly SpecialRegimeSector[] = [
+  {
+    key: "rail",
+    entities: [
+      "METRO DE BOGOTA",
+      "TRANSPORTE MASIVO DEL VALLE DE ABURRA", // Metro de Medellín
+      "PROMOTORA FERROCARRIL DE ANTIOQUIA",
+      "EMPRESA FERREA REGIONAL", // Regiotram del Norte / de Occidente
+      "REGIOTRAM",
+    ],
+  },
+  {
+    key: "power",
+    entities: [
+      "EMPRESAS PUBLICAS DE MEDELLIN", // EPM
+      "ELECTRIFICADORA", // del Huila, de Santander, del Meta, del Caquetá …
+      "EMPRESA DE ENERGIA", // de Pereira, del Quindío, del Guainía, de Boyacá …
+      "CENTRALES ELECTRICAS",
+      "CENTRALES DE ENERGIA",
+      "CENTRAL HID", // Central Hidroeléctrica de Caldas — written "HIDORELECTRICA" in the data
+      "HIDROELECTRICA ITUANGO",
+      "EMPRESA URRA",
+      "GECELCA",
+      "GESTION ENERGETICA", // GENSA
+      "INTERCOLOMBIA",
+      "INTERCONEXION ELECTRICA", // ISA
+      "DE ENERGIA DE ANTIOQUIA",
+      "GENERADORA DE ENERG", // del Tolima
+      "WIND AUTOGEN",
+    ],
+    requiresWork: POWER_WORK,
+  },
+  {
+    key: "oil",
+    entities: [
+      "EMPRESA COLOMBIANA DE PETROLEOS",
+      "ECOPETROL",
+      "HOCOL",
+      "CENIT TRANSPORTE",
+      "OLEODUCTO CENTRAL", // Ocensa
+      "OLEODUCTO BICENTENARIO",
+      "REFINERIA DE CARTAGENA",
+    ],
+    requiresWork: OIL_WORK,
+    excludesWork: OIL_WELL_SERVICES,
+  },
+];
+
+/** Every sector's fragments, for the live connector's server-side filter. */
+export const SPECIAL_REGIME_ENTITY_SOQL_FRAGMENTS = SPECIAL_REGIME_SECTORS.flatMap((sector) => sector.entities);
+
+/**
+ * Schools, municipalities and police units that merely carry one of the
+ * names ("INSTITUCION EDUCATIVA ECOPETROL", "MUNICIPIO DE URRAO") are not the
+ * company.
+ */
+const NOT_THE_COMPANY = /^(INSTITUCION EDUCATIVA|CENTRO ETNOEDUCATIVO|MUNICIPIO|POLICIA|ALCALDIA)/;
+
+const SPECIAL_REGIME_PREFIX = "contratacion regimen especial";
+
+/**
+ * Loans, credit lines and supply agreements for energy or gas. Metro de
+ * Bogotá registers its development-bank financing under this modalidad at
+ * hundreds of billions of pesos, and Ecopetrol its credit facilities and
+ * firm gas-transport contracts — the largest "contracts" there are, and
+ * nothing anyone can bid on.
+ */
+const NOT_A_TENDER = /emprestito|prestamo|linea de credito|contrato de credito|convenio de credito|credit agreement|credito (por|tesoreria)|el banco (acepta|otorga)|banco (europeo|interamericano|mundial)|suministro de energia|energia y potencia|transporte de gas|gas natural firme/;
+
+/**
+ * Services no sector's exception is for, whatever their size: the same
+ * short list a works-or-equipment reader would skip.
+ */
+const PLAIN_SERVICES = /capacitacion|vigilancia|\baseo\b|viajes|seguros?\b|poliza|todo riesgo|fiducia|auditoria|interventoria|consultoria|asistencia tecnica|licenciamiento|diagnosticos?|proteccion personal|planes de salud|alimentacion/;
+
+/**
+ * Ecopetrol's community investment — school fences, sports grounds — is
+ * registered as its own construction work. Real building, but social
+ * programme work in the company's municipalities, not the oil company's
+ * engineering, and the reason oil needs this on top of OIL_WORK.
+ */
+const COMMUNITY_WORKS = /instituciones? educativas?|escenario (recreo)?deportivo|recreodeportivo|polideportivo|\bvivienda/;
+
+/** The sector a row's régimen especial process belongs to, or null when it is not a candidate for an exception. */
+export function specialRegimeSectorOf(row: Pick<SecopProcesoRow, "modalidad_de_contratacion" | "entidad">): SpecialRegimeSector["key"] | null {
+  if (!row.modalidad_de_contratacion || !row.entidad) return null;
+  if (!normalizeModalidad(row.modalidad_de_contratacion).startsWith(SPECIAL_REGIME_PREFIX)) return null;
+  const entity = normalizeModalidad(row.entidad).toUpperCase();
+  if (NOT_THE_COMPANY.test(entity)) return null;
+  return SPECIAL_REGIME_SECTORS.find((sector) => sector.entities.some((fragment) => entity.includes(fragment)))?.key ?? null;
+}
+
+/**
+ * Whether an exception candidate, once classified, is admitted.
+ *
+ * A disclosed amount is required for power and oil. Without one, 大型项目
+ * came from a keyword alone ("construcción", "subestación"), and in the
+ * first measurement that was how school fences and a sports ground paid for
+ * by Ecopetrol, an insurance renewal and a fiduciary arrangement got in —
+ * the size of an exception row has to be stated, not guessed.
+ */
+function admitsSpecialRegime(sectorKey: SpecialRegimeSector["key"], tier: string, text: string, estimatedValue: number | undefined): boolean {
+  const sector = SPECIAL_REGIME_SECTORS.find((candidate) => candidate.key === sectorKey)!;
+  const folded = normalizeModalidad(text);
+  if (tier !== "flagship" || NOT_A_TENDER.test(folded) || PLAIN_SERVICES.test(folded) || COMMUNITY_WORKS.test(folded)) return false;
+  if (sector.key !== "rail" && !estimatedValue) return false;
+  if (sector.requiresWork && !sector.requiresWork.test(folded)) return false;
+  if (sector.excludesWork && sector.excludesWork.test(folded)) return false;
+  return true;
+}
+
 export type MapSecopRowOptions = {
   /**
    * Skips the modalidad gate below and maps the row anyway. ONLY for the
@@ -481,7 +635,8 @@ export function mapSecopRowToTender(
   // does not carry is not a tender we have any use for, whatever its value
   // or keywords say. The existing value/keyword rules (lib/relevance.ts)
   // still run afterwards, on what survives this.
-  if (!options.ignoreModalidadGate && !isIngestedColombiaModalidad(row.modalidad_de_contratacion)) return null;
+  const specialRegimeSector = isIngestedColombiaModalidad(row.modalidad_de_contratacion) ? null : specialRegimeSectorOf(row);
+  if (!options.ignoreModalidadGate && !isIngestedColombiaModalidad(row.modalidad_de_contratacion) && !specialRegimeSector) return null;
 
   const rawName = stripProcessPhaseSuffix(row.nombre_del_procedimiento?.trim() ?? "");
   const buyer = row.entidad?.trim();
@@ -530,6 +685,9 @@ export function mapSecopRowToTender(
     sourceName,
     structuredDurationDays,
   });
+
+  // The sector exceptions admit 大型项目 works only — see SPECIAL_REGIME_SECTORS.
+  if (specialRegimeSector && !admitsSpecialRegime(specialRegimeSector, relevance.tier, `${title} ${summary}`, estimatedValue)) return null;
 
   const awardDate = parseDate(row.fecha_adjudicacion) ?? undefined;
   const rawAwardedValue = row.valor_total_adjudicacion ? Number(row.valor_total_adjudicacion) : undefined;

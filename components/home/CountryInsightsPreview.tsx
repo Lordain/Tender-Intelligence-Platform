@@ -9,7 +9,7 @@ export function CountryInsightsPreview() {
         <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffb21c]">Country insights</p>
-            <h2 className="mt-3 text-3xl font-black leading-[1.18] tracking-[-0.04em] sm:text-4xl">
+            <h2 className="mt-3 text-3xl font-black leading-[1.22] tracking-[0.02em] sm:text-4xl">
               先看国家投资方向，<br className="hidden sm:block" />再判断项目机会
             </h2>
           </div>
@@ -45,7 +45,7 @@ export function CountryInsightsPreview() {
               </div>
 
               <div className="flex flex-1 flex-col p-6">
-                <h3 className="text-xl font-black leading-8 tracking-[-0.03em]">{insight.title}</h3>
+                <h3 className="text-xl font-black leading-8 tracking-[0.01em]">{insight.title}</h3>
                 <p className="mt-3 text-sm leading-7 text-[#64717c]">{insight.description}</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {insight.highlights.slice(0, 2).map((highlight) => (

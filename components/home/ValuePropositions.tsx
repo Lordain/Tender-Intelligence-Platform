@@ -44,7 +44,7 @@ export function ValuePropositions() {
         <div className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[0.75fr_1.25fr] lg:items-end">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Why us</p>
-            <h2 className="mt-3 text-3xl font-black leading-[1.18] tracking-[-0.04em] text-[#071826] sm:text-4xl">从发现项目到投标判断，<br className="hidden sm:block" />关键信息一步到位</h2>
+            <h2 className="mt-3 text-3xl font-black leading-[1.22] tracking-[0.02em] text-[#071826] sm:text-4xl">从发现项目到投标判断，<br className="hidden sm:block" />关键信息一步到位</h2>
           </div>
           <p className="max-w-2xl text-sm leading-7 text-[#64717c] lg:justify-self-end">不替企业做决定，而是把分散、陌生且难以快速判断的政府招标信息，整理成团队能够高效使用的中文情报。</p>
         </div>

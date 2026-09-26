@@ -6,6 +6,8 @@ import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
 import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-codelco";
+import { classifyMetroSantiagoRelevance } from "@/lib/relevance-metro-santiago";
+import { METRO_SANTIAGO_PREVIEW_SOURCE_NAME } from "@/lib/upcoming-tenders";
 import { classifyCemigRelevance, CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig";
 import { classifyPetroperuRelevance, PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
 import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
@@ -4103,6 +4105,15 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
     return {
       industries: withMining,
       relevance: classifyCodelcoRelevance({ title: input.title, procedureType: input.procedureType, scopeType: input.scopeType }),
+    };
+  }
+  // Metro de Santiago's announced tenders: own rules, see
+  // lib/relevance-metro-santiago.ts — no amounts, and every row is rail.
+  if (input.sourceName === METRO_SANTIAGO_PREVIEW_SOURCE_NAME) {
+    const withTransport: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "transportation" as const])];
+    return {
+      industries: withTransport,
+      relevance: classifyMetroSantiagoRelevance({ title: input.title }),
     };
   }
   // PEMEX's own lists: own rules, see lib/relevance-pemex.ts (user, 2026-09-25).

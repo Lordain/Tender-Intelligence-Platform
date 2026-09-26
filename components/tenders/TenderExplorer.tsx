@@ -24,7 +24,7 @@ import { canUseTenderListMemberFeatures, TRIAL_DAYS, type AccessPromptKind, type
 import { AccessPrompt } from "@/components/access/AccessPrompt";
 import { AVAILABLE_COUNTRIES, DEFAULT_TENDER_LIST_STATUSES, type TenderListItem } from "@/lib/tender-list-page";
 
-// "planned"/计划中 is deliberately absent — see lib/tender-status.ts.
+// "planned"/即将招标 appears only for announcement sources — see lib/tender-status.ts.
 const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
 // Closed and cancelled projects stay available through an explicit filter,
 // but do not crowd the initial discovery view. Awarded projects remain in

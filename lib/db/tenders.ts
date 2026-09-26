@@ -234,6 +234,7 @@ function toTender(row: TenderRow): Tender {
       submissionDeadline: row.submission_deadline,
       publicationDate: row.publication_date,
       keyDates: row.tender_key_dates ?? [],
+      sourceName: row.source_name,
     }),
     qualifications: requirements.filter((r) => r.kind === "qualification").map(toRequirement),
     experienceRequirements: requirements.filter((r) => r.kind === "experience").map(toRequirement),
@@ -458,6 +459,8 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
 export type TenderSitemapEntry = {
   publicSlug: string;
   updatedAt: string;
+  /** For the day the page opened to everyone — see isReleasedAfterDeadline(). */
+  submissionDeadline?: string;
 };
 
 /**
@@ -475,18 +478,42 @@ export async function fetchTenderSitemapEntriesFromDb(): Promise<TenderSitemapEn
     const data = await retrySupabaseRead(
       () => supabase
         .from("tenders")
-        .select("public_slug, updated_at")
+        .select("public_slug, updated_at, submission_deadline")
         .order("updated_at", { ascending: false })
         .range(from, from + SUPABASE_PAGE_SIZE - 1),
       "Failed to fetch tender sitemap entries from Supabase",
     );
 
-    const page = data as unknown as Array<{ public_slug: string; updated_at: string }>;
-    entries.push(...page.map((row) => ({ publicSlug: row.public_slug, updatedAt: row.updated_at })));
+    const page = data as unknown as Array<{ public_slug: string; updated_at: string; submission_deadline: string | null }>;
+    entries.push(...page.map((row) => ({ publicSlug: row.public_slug, updatedAt: row.updated_at, submissionDeadline: row.submission_deadline ?? undefined })));
     if (page.length < SUPABASE_PAGE_SIZE) break;
   }
 
   return entries;
+}
+
+/**
+ * When a tender last became awarded or cancelled, from the append-only
+ * tender_status_history (migration 0018). Only the post-deadline release
+ * needs it, and only for an ended tender with neither a deadline nor an award
+ * date — see releaseNeedsClosedOn() — so it is a separate read, not part of
+ * every detail load. Null when there is no such change on record.
+ */
+export async function fetchTenderClosedAt(tenderId: string): Promise<string | null> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("tender_status_history")
+    .select("changed_at")
+    .eq("tender_id", tenderId)
+    .in("next_status", ["awarded", "cancelled"])
+    .order("changed_at", { ascending: false })
+    .limit(1);
+  if (error) {
+    console.error("[tenders] Could not read tender status history", error.message);
+    return null;
+  }
+  return (data?.[0] as { changed_at: string } | undefined)?.changed_at ?? null;
 }
 
 /** Returns undefined when configured but no row matches; null when Supabase isn't configured. */
@@ -674,6 +701,7 @@ export async function fetchTendersNeedingDocumentsFromDb(): Promise<TenderNeedin
         submissionDeadline: row.submission_deadline,
         publicationDate: row.publication_date,
         keyDates: row.tender_key_dates ?? [],
+        sourceName: row.source_name,
       }),
       documentLinkCount: row.tender_document_links?.length ?? 0,
       documentsDownloadedAt: row.documents_downloaded_at ?? undefined,
@@ -788,6 +816,7 @@ type AdminTenderListDbRow = {
   publication_date_is_estimated: boolean | null;
   updated_at: string;
   submission_deadline: string | null;
+  source_name: string | null;
   tender_key_dates?: { type: TenderKeyDate["type"]; date: string }[];
 };
 
@@ -859,7 +888,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
       .select(
         // tender_key_dates joined for deriveTenderStatus only — see
         // DOCUMENTS_NEEDED_SELECT's comment for why it cannot be skipped.
-        "id, slug, tender_number, title, summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, tender_key_dates ( type, date )",
+        "id, slug, tender_number, title, summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, source_name, tender_key_dates ( type, date )",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
@@ -891,6 +920,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
       submissionDeadline: row.submission_deadline,
       publicationDate: row.publication_date,
       keyDates: row.tender_key_dates ?? [],
+      sourceName: row.source_name,
     }),
     relevanceTier: row.relevance_tier,
     relevanceManuallyOverridden: row.relevance_manually_overridden ?? false,

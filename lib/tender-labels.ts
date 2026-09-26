@@ -119,7 +119,7 @@ export const ALL_SCOPE_TYPES: TenderScopeType[] = [
 ];
 
 export const STATUS_LABELS: Record<TenderStatus, LocalizedText> = {
-  planned: { en: "Planned", es: "Planeada", zh: "计划中" },
+  planned: { en: "Upcoming", es: "Próxima", zh: "即将招标" },
   open: { en: "Open", es: "Abierta", zh: "招标中" },
   clarification: { en: "Clarification", es: "Aclaraciones", zh: "澄清中" },
   submission_closed: {
@@ -132,7 +132,7 @@ export const STATUS_LABELS: Record<TenderStatus, LocalizedText> = {
 };
 
 export const STATUS_COLORS: Record<TenderStatus, string> = {
-  planned: "bg-zinc-100 text-zinc-700",
+  planned: "bg-violet-100 text-violet-800",
   open: "bg-emerald-100 text-emerald-800",
   clarification: "bg-amber-100 text-amber-800",
   submission_closed: "bg-zinc-200 text-zinc-700",

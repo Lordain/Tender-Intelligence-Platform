@@ -9,6 +9,21 @@ import { industryPages } from "@/lib/industry-pages";
 import { archiveWeeks } from "@/lib/weekly-digest";
 import { weekSlug } from "@/lib/weekly";
 import { requirePublicTenderSlug } from "@/lib/public-tender-url";
+import { tenderReleaseDay } from "@/lib/access-control";
+
+/**
+ * When a tender page last changed for a crawler: its own last update, or the
+ * day its deadline release opened the full content to everyone, whichever is
+ * later. Without the second, a page that gained its whole analysis three days
+ * after closing would still advertise the date it was last imported.
+ */
+function tenderLastModified(updatedAt: string, submissionDeadline: string | undefined, now: Date): Date {
+  const updated = new Date(updatedAt);
+  const releaseDay = tenderReleaseDay({ submissionDeadline });
+  if (!releaseDay) return updated;
+  const released = new Date(`${releaseDay}T00:00:00Z`);
+  return released > updated && released <= now ? released : updated;
+}
 
 /**
  * What a crawler is allowed to know about.
@@ -75,6 +90,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const tenders = fromDb ?? (await getCachedTenderList()).map((tender) => ({
       publicSlug: requirePublicTenderSlug(tender),
       updatedAt: tender.updatedAt,
+      submissionDeadline: tender.submissionDeadline,
     }));
 
     // Only weeks that have something in them: an empty past week 404s.
@@ -90,7 +106,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })),
       ...tenders.map((tender) => ({
         url: `${origin}/tenders/${tender.publicSlug}`,
-        lastModified: new Date(tender.updatedAt),
+        lastModified: tenderLastModified(tender.updatedAt, tender.submissionDeadline, now),
         changeFrequency: "weekly" as const,
         priority: 0.7,
       })),

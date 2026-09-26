@@ -156,7 +156,7 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(3,21,33,.98)_0%,rgba(3,21,33,.86)_31%,rgba(3,21,33,.24)_50%,rgba(3,21,33,.5)_100%)]" />
       <div className="mx-auto grid min-h-[36rem] max-w-[94rem] items-center gap-8 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:py-8 xl:gap-12">
         <div className="relative z-10 min-w-0 max-w-[40rem]">
-          <h1 className="text-[clamp(2.55rem,4vw,4.25rem)] font-black leading-[1.14] tracking-[-0.05em] text-[#fffdf9]">
+          <h1 className="text-[clamp(2.55rem,4vw,4.25rem)] font-black leading-[1.14] tracking-[0.02em] text-[#fffdf9]">
             把拉美招标<br />变成中国企业<br />看得懂的机会
           </h1>
           <p className="mt-7 max-w-xl text-base leading-8 text-white/78 sm:text-lg lg:max-w-[27rem] xl:max-w-xl">

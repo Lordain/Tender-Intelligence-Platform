@@ -14,18 +14,23 @@ import { ObrasPorImpuestosNotice } from "@/components/tenders/ObrasPorImpuestosN
 import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 import { deadlineIsInDocuments } from "@/lib/deadline-in-documents";
 import { TenderViewTracker } from "@/components/analytics/TenderViewTracker";
+import { ReleasedTenderNotice } from "@/components/tenders/ReleasedTenderNotice";
+import { UpcomingTenderNotice } from "@/components/tenders/UpcomingTenderNotice";
 
 export function TenderDetailView({
   tender,
   showTrialCta = false,
   participationGuide,
   related,
+  releasedNotice,
 }: {
   tender: Tender;
   showTrialCta?: boolean;
   participationGuide?: ParticipationGuideLink;
   /** 相关在招项目, rendered on the server and placed last on the page. */
   related?: ReactNode;
+  /** Set when this page is open only because its deadline passed three days ago. */
+  releasedNotice?: "guest" | "member";
 }) {
   const { locale } = useLocale();
 
@@ -38,6 +43,10 @@ export function TenderDetailView({
       >
         <span aria-hidden="true">←</span> {localize(uiText.backToTenders, locale)}
       </Link>
+
+      {tender.status === "planned" && <UpcomingTenderNotice />}
+
+      {releasedNotice && <ReleasedTenderNotice audience={releasedNotice} submissionDeadline={tender.submissionDeadline} status={tender.status} />}
 
       <TenderOverview tender={tender} showTrialCta={showTrialCta} />
 

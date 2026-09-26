@@ -152,14 +152,10 @@ jobs:
           # their own jobs. See scripts/cron-refresh-statuses.ts.
           - name: Status refresh (Brazil, Chile, Mexico)
             command: cron:refresh-statuses
-          # Added 2026-09-26. Peru OECE/SEACE status refresh (awards, 流标,
-          # cancellations) for the Peru rows imported by hand. optional:
-          # SEACE's proxy refuses datacenter ranges (it refuses Vercel), and
-          # whether it refuses this runner too has never been measured —
-          # this job is how that gets measured without failing the run.
-          - name: Peru (OECE status refresh)
-            command: cron:peru-oece-status
-            optional: true
+          # Peru OECE/SEACE has no job here: measured 2026-09-26 (run
+          # 36259854139), its proxy answers this runner 403 Forbidden, as it
+          # answers Vercel. Its status refresh stays the local CLI
+          # `npm run cron:peru-oece-status -- --write`.
     name: ${{ matrix.name }}
     continue-on-error: ${{ matrix.optional == true }}
     steps:

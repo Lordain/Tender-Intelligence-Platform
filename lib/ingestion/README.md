@@ -244,7 +244,7 @@ not change what the page shows is not written (so no empty digest emails).
 | Chile Mercado Público | each tender's ficha, `lblFicha1Estado` | `cron:refresh-statuses` |
 | Mexico Compras MX | LicitIA corpus, every section | `cron:refresh-statuses` |
 | Colombia SECOP II | existing refresh pass | `cron:colombia` |
-| Peru OECE | `ingest:peru-live --refresh-open` | `cron:peru-oece-status` (optional; runner reachability unmeasured) |
+| Peru OECE | `ingest:peru-live --refresh-open` | none — SEACE answers the GitHub runner 403 (measured 2026-09-26), as it does Vercel; run `cron:peru-oece-status -- --write` locally |
 | Petronect, Codelco, Cemig, UPME, Petroperú, PEMEX, DOF | open lists only — nothing to read once a tender leaves them | — (deadline closes them) |
 
 Manual: 新项目清单 → 维护 → 刷新标书状态 (per source, plus an OxI all-states

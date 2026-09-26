@@ -118,8 +118,14 @@ jobs:
           # tenders months ahead on a public programme page; the tenders
           # themselves are behind registration. Imported as 即将招标 previews
           # and removed once no longer announced. See scripts/cron-metro-santiago.ts.
+          #
+          # optional: its failure is shown on its own job but does not fail
+          # the run. Since 2026-09-26 the site answers the GitHub runners with
+          # HTTP 403 (a bot gate, which is not bypassed); the user chose to
+          # keep trying daily without turning the whole run red over it.
           - name: Chile (Metro de Santiago, upcoming)
             command: cron:metro-santiago
+            optional: true
           # Added 2026-09-25. Cemig's own e-Compras portal (Lei 13.303), where
           # it buys grid equipment by pregão — the one source where a pregão
           # for goods is kept. See scripts/cron-cemig.ts.
@@ -131,6 +137,7 @@ jobs:
           - name: Peru (Petroperú)
             command: cron:petroperu
     name: ${{ matrix.name }}
+    continue-on-error: ${{ matrix.optional == true }}
     steps:
       - uses: actions/checkout@v7
 

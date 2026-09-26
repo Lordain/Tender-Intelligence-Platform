@@ -36,7 +36,12 @@ export async function submitToBaidu(origin: string, token: string, urls: readonl
     throw new Error(`百度推送只能提交 ${host} 的地址，收到了 ${foreign.length} 个别的域名，例如 ${foreign[0]}`);
   }
 
-  const endpoint = `${ENDPOINT}?site=${encodeURIComponent(origin)}&token=${encodeURIComponent(token)}`;
+  // `site` goes in raw, as Baidu's own example writes it (site=https://…).
+  // Percent-encoded, Baidu cannot match it to the verified site and refuses
+  // the whole batch with HTTP 400 "site init fail" — that was the first daily
+  // run's failure (2026-09-26); the same request unencoded reaches the token
+  // check. An origin has nothing in it that needs escaping anyway.
+  const endpoint = `${ENDPOINT}?site=${new URL(origin).origin}&token=${encodeURIComponent(token)}`;
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "content-type": "text/plain" },

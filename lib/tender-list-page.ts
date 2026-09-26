@@ -8,6 +8,7 @@ import { undisclosedAmountBand } from "@/lib/chile-amount-band";
 import { publicTitleOf, shortTitleOf } from "@/lib/public-title";
 import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 import { deadlineIsInDocuments } from "@/lib/deadline-in-documents";
+import { canUseTenderListMemberFeatures, type ViewerEntitlement } from "@/lib/access-control";
 
 export const TENDER_PAGE_SIZE = 20;
 // The live stages only (user, 2026-09-26: 已中标、暂停中 不要是预设). 已中标,
@@ -344,6 +345,95 @@ export function toNotificationTender(
   };
 }
 
+/**
+ * Everything about the VIEWER that changes what the public list shows them —
+ * decided once, here, for every reader of the list.
+ *
+ * There are two readers: /tenders itself and the saved-search reminder route
+ * (app/api/tenders/notifications). The route used to derive its own version
+ * and got it wrong in the direction that matters (2026-09-26 review): a Basic
+ * subscriber's keywords were matched against the Spanish title, the buyer
+ * and the procurement number of EVERY country, so "does anything match
+ * <phrase>?" could be asked about countries they had not bought — the
+ * answer leaked through whether a reminder came back, one question at a
+ * time. The list page has always searched Chinese public copy only for Basic.
+ * Both now call this.
+ */
+export type TenderListViewerRules = {
+  /** Members (trial, subscriber) read buyer, exact budget and exact deadline. */
+  memberView: boolean;
+  /** Basic: the one country those member fields apply to ("__none__" before one is chosen). null: every country. */
+  memberCountry: string | null;
+  /** Keyword search over approved Chinese copy only — guests, lapsed accounts and Basic. */
+  searchPublicFieldsOnly: boolean;
+};
+
+export function tenderListViewerRules(entitlement: Pick<ViewerEntitlement, "role" | "plan" | "selectedCountry">): TenderListViewerRules {
+  const memberView = canUseTenderListMemberFeatures(entitlement.role);
+  return {
+    memberView,
+    memberCountry: entitlement.plan === "basic" ? entitlement.selectedCountry ?? "__none__" : null,
+    searchPublicFieldsOnly: !memberView || entitlement.plan === "basic",
+  };
+}
+
+/** Whether one row is projected with member fields for this viewer. */
+export function rowHasMemberView(rules: Pick<TenderListViewerRules, "memberView" | "memberCountry">, country: string): boolean {
+  return rules.memberView && (!rules.memberCountry || country === rules.memberCountry);
+}
+
+/** The filters a /tenders URL asks for — shared by the page and by saved-search reminders. */
+export type TenderListFilters = {
+  query: string;
+  countries: string[];
+  industries: string[];
+  industryMatchMode: "any" | "all";
+  scopeTypes: TenderScopeType[];
+  statuses: TenderStatus[];
+  relevanceTiers: TenderRelevanceTier[];
+};
+
+/**
+ * Read the list filters out of the URL parameters, with the page's defaults:
+ * no `country` means the AVAILABLE_COUNTRIES, no `status` means the live
+ * stages, `status=none` / `tier=none` mean no restriction.
+ *
+ * The reminder route replays a saved /tenders link through this, so a saved
+ * search reminds about exactly the rows opening that link would list — it
+ * used to drop `country`, `tier` and `industryMode` and treat a missing
+ * `status` as every stage, reminding about other countries' tenders.
+ */
+export function parseTenderListFilters(params: TenderListSearchParams): TenderListFilters {
+  const countryParam = firstValue(params.country);
+  const statusParam = firstValue(params.status);
+  const tierParam = firstValue(params.tier);
+  return {
+    query: firstValue(params.q) ?? "",
+    countries: countryParam ? parseList(countryParam) : [...AVAILABLE_COUNTRIES],
+    industries: parseList(firstValue(params.industry)),
+    industryMatchMode: firstValue(params.industryMode) === "all" ? "all" : "any",
+    scopeTypes: parseList(firstValue(params.scope)) as TenderScopeType[],
+    statuses: (statusParam === "none"
+      ? []
+      : statusParam !== null
+        ? parseList(statusParam)
+        : DEFAULT_TENDER_LIST_STATUSES) as TenderStatus[],
+    relevanceTiers: (tierParam === "none" ? [] : parseList(tierParam)) as TenderRelevanceTier[],
+  };
+}
+
+/** A saved link ("/tenders?q=…&country=…") as the same parameter record the page receives. */
+export function tenderListParamsFromHref(href: string): TenderListSearchParams {
+  const queryIndex = href.indexOf("?");
+  const search = new URLSearchParams(queryIndex === -1 ? "" : href.slice(queryIndex + 1).split("#")[0]);
+  const params: TenderListSearchParams = {};
+  for (const key of new Set(search.keys())) {
+    const values = search.getAll(key);
+    params[key] = values.length === 1 ? values[0] : values;
+  }
+  return params;
+}
+
 function firstValue(value: string | string[] | undefined): string | null {
   return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }
@@ -366,20 +456,7 @@ export function buildTenderListPage(
 ): TenderListPageData {
   const now = options.now ?? new Date();
   const pageSize = options.pageSize ?? TENDER_PAGE_SIZE;
-  const query = firstValue(params.q) ?? "";
-  const countryParam = firstValue(params.country);
-  const countries = countryParam ? parseList(countryParam) : [...AVAILABLE_COUNTRIES];
-  const industries = parseList(firstValue(params.industry));
-  const industryMatchMode = firstValue(params.industryMode) === "all" ? "all" : "any";
-  const scopeTypes = parseList(firstValue(params.scope)) as TenderScopeType[];
-  const statusParam = firstValue(params.status);
-  const statuses = (statusParam === "none"
-    ? []
-    : statusParam !== null
-      ? parseList(statusParam)
-      : DEFAULT_TENDER_LIST_STATUSES) as TenderStatus[];
-  const tierParam = firstValue(params.tier);
-  const relevanceTiers = (tierParam === "none" ? [] : parseList(tierParam)) as TenderRelevanceTier[];
+  const { query, countries, industries, industryMatchMode, scopeTypes, statuses, relevanceTiers } = parseTenderListFilters(params);
   const sortParam = firstValue(params.sort);
   const sort = isSortKey(sortParam) ? sortParam : "deadline_asc";
   const viewParam = firstValue(params.view);
@@ -435,7 +512,7 @@ export function buildTenderListPage(
   return {
     tenders: sorted
       .slice(offset, offset + pageSize)
-      .map((tender) => toTenderListItem(tender, { memberView: options.memberView && (!options.memberCountry || tender.country === options.memberCountry) })),
+      .map((tender) => toTenderListItem(tender, { memberView: rowHasMemberView({ memberView: options.memberView ?? false, memberCountry: options.memberCountry ?? null }, tender.country) })),
     totalResults: sorted.length,
     totalPages,
     currentPage,

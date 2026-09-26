@@ -29,6 +29,30 @@ export type BaiduPushResult = {
   notValid?: string[];
 };
 
+/**
+ * The token as Baidu wants it: letters and digits only. Baidu answers any
+ * other character — a space or line break inside, or the whole API address
+ * pasted from 资源提交 → API提交 — with 400 "token invalid" (measured
+ * 2026-09-26, as opposed to 401 "token is not valid" for a clean wrong one),
+ * which is what the first real pushes got. So a pasted address or
+ * `token=…` is reduced to its token, and whitespace anywhere is dropped.
+ */
+export function normalizeBaiduToken(raw: string): string {
+  const fromUrl = raw.match(/token=([^&\s]+)/);
+  return (fromUrl ? fromUrl[1] : raw).replace(/\s+/g, "");
+}
+
+/** What is wrong with a token's format, without any of its characters — safe to log. */
+export function describeBaiduTokenFormat(raw: string): string | null {
+  const token = normalizeBaiduToken(raw);
+  if (/^[A-Za-z0-9]+$/.test(token)) return null;
+  const kinds = [
+    /[^\x00-\x7f]/.test(token) && "非英文字符（如全角符号或中文）",
+    /[^A-Za-z0-9\x80-\uffff]/.test(token) && "标点或符号",
+  ].filter(Boolean);
+  return `整理后长度 ${token.length}，含${kinds.join("、") || "其他字符"}`;
+}
+
 export async function submitToBaidu(origin: string, token: string, urls: readonly string[]): Promise<BaiduPushResult> {
   const host = new URL(origin).host;
   const foreign = urls.filter((url) => new URL(url).host !== host);

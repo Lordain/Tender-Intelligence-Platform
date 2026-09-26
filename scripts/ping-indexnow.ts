@@ -37,7 +37,7 @@
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { INDEXNOW_KEY, indexNowKeyPath, submitToIndexNow } from "../lib/indexnow";
 import { siteOrigin } from "../lib/site-url";
-import { submitToBaidu } from "../lib/baidu-push";
+import { describeBaiduTokenFormat, normalizeBaiduToken, submitToBaidu } from "../lib/baidu-push";
 import { participationGuides } from "../lib/participation-guides";
 import { countryInsights } from "../lib/country-insights";
 import { countryPages } from "../lib/country-pages";
@@ -282,11 +282,16 @@ async function main() {
 }
 
 async function pushToBaidu(origin: string, urls: string[], limit: number) {
-  const token = process.env.BAIDU_PUSH_TOKEN?.trim();
+  const raw = process.env.BAIDU_PUSH_TOKEN ?? "";
+  const token = normalizeBaiduToken(raw);
   if (!token) {
     console.log("\n未设置 BAIDU_PUSH_TOKEN，跳过百度推送。");
     return;
   }
+  // Never the token itself — only its shape, so a bad paste can be diagnosed.
+  if (token !== raw.trim()) console.log("\nBAIDU_PUSH_TOKEN 含网址、token= 或空白，已只取 token 部分。");
+  const formatProblem = describeBaiduTokenFormat(raw);
+  if (formatProblem) console.log(`\nBAIDU_PUSH_TOKEN 格式不对（${formatProblem}）：百度的 token 只含字母和数字。`);
   // `urls` is already Baidu's batch, in priority order — see baiduBatch().
   const batch = urls.slice(0, limit);
   const result = await submitToBaidu(origin, token, batch);

@@ -27,7 +27,7 @@ const PROTECTED_PATH_PATTERN = /^\/tenders(\/|$)/;
  * spreading is the moment it would stop rendering.
  */
 const ALLOWED_CRAWLER_UA =
-  /googlebot|bingbot|baiduspider|sogou|360spider|yisouspider|bytespider|micromessenger|yandexbot|duckduckbot|applebot|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp/i;
+  /googlebot|bingbot|baiduspider|sogou|360spider|yisouspider|bytespider|petalbot|micromessenger|yandexbot|duckduckbot|applebot|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|gptbot|oai-searchbot|chatgpt-user|claudebot|claude-searchbot|claude-user|perplexitybot|perplexity-user/i;
 
 // Generic HTTP-client/scraping-library signatures. Real browsers never send
 // these, so blocking them costs no real visitors or SEO — this is the "did

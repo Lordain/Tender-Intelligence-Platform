@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { ADMIN_EXTERNAL_LINK_CLASS } from "@/lib/admin-source-links";
 import { NEW_TENDERS_SOURCES, type NewTendersSource, type ImportNewTendersResult } from "@/lib/ingestion/new-tenders-sources";
 
 export function ImportTendersForm() {
   const [source, setSource] = useState<NewTendersSource>(NEW_TENDERS_SOURCES[0].value);
+  const selectedSource = NEW_TENDERS_SOURCES.find((s) => s.value === source);
   const [file, setFile] = useState<File | null>(null);
     // One month, not six: a wide window is the FIRST import's job, and after
   // that every run is a top-up that re-fetches and re-upserts months of rows
@@ -89,6 +91,12 @@ export function ImportTendersForm() {
             className="w-full rounded-xl border border-[#d8e0e3] bg-white px-3 py-2.5 text-sm text-[#071826] outline-none file:mr-3 file:rounded-lg file:border-0 file:bg-[#071826] file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-[#0d2a40]"
           />
           {file && <span className="text-xs text-[#8a959c]">已选择：{file.name}</span>}
+          {selectedSource && (
+            <span className="text-xs text-[#8a959c]">
+              <a href={selectedSource.exportUrl} target="_blank" rel="noopener noreferrer" className={ADMIN_EXTERNAL_LINK_CLASS}>打开 {selectedSource.exportSite} ↗</a>
+              ，在官网导出后把文件选到这里。
+            </span>
+          )}
         </label>
 
         <label className="mt-5 flex items-center gap-2 border-t border-[#e5e9eb] pt-5 text-sm text-[#233846]">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ADMIN_EXTERNAL_LINK_CLASS, OXI_EXPORT_PAGE_URL } from "@/lib/admin-source-links";
 import { STATUS_LABELS } from "@/lib/tender-labels";
 import type { TenderStatus } from "@/types/tender";
 
@@ -112,7 +113,10 @@ export function RefreshStatusesPanel() {
           {running === "file" ? "运行中…" : "用文件刷新"}
         </button>
       </div>
-      <p className="mt-1 text-xs text-[#8a97a0]">ProInversión 网站上「状态」选「全部」后点「Exportar a Excel」下载的文件。</p>
+      <p className="mt-1 text-xs text-[#8a97a0]">
+        <a href={OXI_EXPORT_PAGE_URL} target="_blank" rel="noopener noreferrer" className={ADMIN_EXTERNAL_LINK_CLASS}>打开 ProInversión OxI 页面 ↗</a>
+        ，「状态」选「全部」后点「Exportar a Excel」，把下载的文件选到这里。
+      </p>
 
       {result && (
         <div className="mt-4 border-t border-[#e5e9eb] pt-4 text-sm text-[#52636e]">

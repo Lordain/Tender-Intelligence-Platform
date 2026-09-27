@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ADMIN_EXTERNAL_LINK_CLASS, OXI_EXPORT_PAGE_URL } from "@/lib/admin-source-links";
 import { AWARD_SOURCES, PERU_OECE_AWARDS_COMMAND, type AwardSourceId } from "@/lib/ingestion/award-source-labels";
 
 type Fill = { slug: string; title: string; awardDate?: string; awardedTo?: string; awardedValue?: number; currency?: string };
@@ -119,7 +120,10 @@ export function RefreshAwardsPanel({ sources, manualNote }: { sources?: AwardSou
               {running === "file" ? "运行中…" : "用文件导入"}
             </button>
           </div>
-          <p className="mt-1 text-xs text-[#8a97a0]">ProInversión 网站上「状态」选「全部」后点「Exportar a Excel」下载的文件（含 Monto Adjudicado、Fecha Buena Pro 两列）。</p>
+          <p className="mt-1 text-xs text-[#8a97a0]">
+            <a href={OXI_EXPORT_PAGE_URL} target="_blank" rel="noopener noreferrer" className={ADMIN_EXTERNAL_LINK_CLASS}>打开 ProInversión OxI 页面 ↗</a>
+            ，「状态」选「全部」后点「Exportar a Excel」，把下载的文件（含 Monto Adjudicado、Fecha Buena Pro 两列）选到这里。
+          </p>
         </>
       )}
       {manualNote && <p className="mt-3 text-xs leading-5 text-[#64717c]">{manualNote}</p>}

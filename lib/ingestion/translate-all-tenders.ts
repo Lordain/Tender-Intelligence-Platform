@@ -23,6 +23,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { findDroppedIdentifiers, stripUnverifiedParentheticals, titleIsTruncated, type TenderToTranslate, type TranslatedTender } from "@/lib/ingestion/translate-titles";
 import { translateTenderBatchQwen } from "@/lib/ingestion/translate-titles-qwen";
 import { translateTenderBatchPt } from "@/lib/ingestion/translate-titles-pt";
+import { translateTenderBatchEn } from "@/lib/ingestion/translate-titles-en";
 import { sourceLanguageFor, SOURCE_LANGUAGE_LABELS, type TenderSourceLanguage } from "@/lib/ingestion/source-language";
 import type { LocalizedText } from "@/types/tender";
 
@@ -98,6 +99,18 @@ async function translateRows(rows: TranslatableRow[]): Promise<TranslatedTender[
         slug: t.slug,
         titlePt: t.title.es,
         summaryPt: t.summary.es,
+        titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
+      })),
+    );
+  }
+
+  // Guyana's originals are English (translate-titles-en.ts).
+  if (language === "en") {
+    return translateTenderBatchEn(
+      rows.map((t) => ({
+        slug: t.slug,
+        titleEn: t.title.es,
+        summaryEn: t.summary.es,
         titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
       })),
     );

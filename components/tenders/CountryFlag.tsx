@@ -79,11 +79,25 @@ export function ChileFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/** Green field, the golden arrowhead edged in white, the red triangle edged in black — drawn as SVG because the two nested triangles are the flag. */
+export function GuyanaFlag({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 14" className={`inline-block h-3.5 w-5 shrink-0 ${className}`}>
+      <rect width="20" height="14" fill="#009e49" />
+      <path d="M0 0 20 7 0 14Z" fill="#fff" />
+      <path d="M0 0.9 18 7 0 13.1Z" fill="#fcd116" />
+      <path d="M0 0 10 7 0 14Z" fill="#000" />
+      <path d="M0 1 8.6 7 0 13Z" fill="#ce1126" />
+    </svg>
+  );
+}
+
 export function CountryFlag({ country, className = "" }: { country: string; className?: string }) {
   if (country === "Mexico") return <MexicoFlag className={className} />;
   if (country === "Brazil") return <BrazilFlag className={className} />;
   if (country === "Colombia") return <ColombiaFlag className={className} />;
   if (country === "Peru") return <PeruFlag className={className} />;
   if (country === "Chile") return <ChileFlag className={className} />;
+  if (country === "Guyana") return <GuyanaFlag className={className} />;
   return null;
 }

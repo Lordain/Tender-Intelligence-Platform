@@ -26,7 +26,7 @@
  * likely to be misread are exactly the short ones. The country is stated
  * by the mapper, is never guessed, and is already on every row.
  */
-export type TenderSourceLanguage = "es" | "pt";
+export type TenderSourceLanguage = "es" | "pt" | "en";
 
 /**
  * Countries whose tenders are published in Portuguese. A list rather than a
@@ -46,12 +46,18 @@ const PORTUGUESE_COUNTRIES = new Set(["Brazil"]);
  * handled exactly as it was before this function existed, rather than
  * silently changing language.
  */
+/** Countries whose tenders are published in English — Guyana (2026-09-27). */
+const ENGLISH_COUNTRIES = new Set(["Guyana"]);
+
 export function sourceLanguageFor(country: string | null | undefined): TenderSourceLanguage {
-  return country && PORTUGUESE_COUNTRIES.has(country) ? "pt" : "es";
+  if (country && PORTUGUESE_COUNTRIES.has(country)) return "pt";
+  if (country && ENGLISH_COUNTRIES.has(country)) return "en";
+  return "es";
 }
 
 /** For a log line or an admin-facing count, where "es"/"pt" means nothing to the reader. */
 export const SOURCE_LANGUAGE_LABELS: Record<TenderSourceLanguage, string> = {
   es: "西班牙语",
   pt: "葡萄牙语",
+  en: "英语",
 };

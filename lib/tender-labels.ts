@@ -23,7 +23,9 @@ import type { Locale } from "@/types/tender";
 // 哥伦比亚、秘鲁), with Chile last because it has no connector — this array
 // also feeds the admin tender form's country <select>, and an option nobody
 // can import belongs at the bottom rather than third.
-export const ALL_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile"] as const;
+// Guyana (2026-09-27) is imported but staged — see lib/staged-countries.ts;
+// it is here so the admin form and labels know it, not because it is public.
+export const ALL_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Guyana"] as const;
 
 export const COUNTRY_LABELS: Record<(typeof ALL_COUNTRIES)[number], LocalizedText> = {
   Mexico: { en: "Mexico", es: "México", zh: "墨西哥" },
@@ -31,6 +33,7 @@ export const COUNTRY_LABELS: Record<(typeof ALL_COUNTRIES)[number], LocalizedTex
   Chile: { en: "Chile", es: "Chile", zh: "智利" },
   Colombia: { en: "Colombia", es: "Colombia", zh: "哥伦比亚" },
   Peru: { en: "Peru", es: "Perú", zh: "秘鲁" },
+  Guyana: { en: "Guyana", es: "Guyana", zh: "圭亚那" },
 };
 
 export const COUNTRY_FLAGS: Record<(typeof ALL_COUNTRIES)[number], string> = {
@@ -39,6 +42,7 @@ export const COUNTRY_FLAGS: Record<(typeof ALL_COUNTRIES)[number], string> = {
   Chile: "🇨🇱",
   Colombia: "🇨🇴",
   Peru: "🇵🇪",
+  Guyana: "🇬🇾",
 };
 
 /** tender.country is typed as string (matches the Postgres text column), not narrowed to ALL_COUNTRIES — every real mapper writes a known value, but this stays defensive (falls back to the raw string) against any stale/unrecognized value rather than crashing on an unknown lookup, same posture as industryLabel(). */

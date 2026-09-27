@@ -31,8 +31,11 @@ export function Footer() {
       <div className="mx-auto grid max-w-[108rem] grid-cols-2 gap-x-6 gap-y-10 px-5 py-12 sm:px-8 md:grid-cols-4 xl:grid-cols-[2fr_repeat(4,minmax(0,1fr))] xl:gap-x-8">
         <div className="col-span-2 max-w-sm md:col-span-4 xl:col-span-1">
           <Link href="/" className="inline-flex items-center gap-3"><BrandLogo variant="dark" className="size-10" /><span className="text-lg font-black tracking-[0.08em]">拉美招投标信息平台</span></Link>
-          <p className="mt-5 text-sm leading-7 text-white/70">拉美政府及国企招标采购，一站式中文平台。</p>
-          <p className="mt-1 text-sm leading-7 text-white/45">多平台聚合 · 人工精筛 · 按国家、行业、项目规模筛选</p>
+          <p className="mt-5 text-sm leading-7 text-white/70">专注于拉美政府及国企招标采购，一站式中文平台。</p>
+          <p className="mt-1 text-sm leading-7 text-white/45">
+            {/* Wraps only between the three points, never inside one. */}
+            <span className="whitespace-nowrap">汇集十余个官方采购平台</span> · <span className="whitespace-nowrap">人工精筛</span> · <span className="whitespace-nowrap">剔除小额和日常项目</span>
+          </p>
           <ul className="mt-5 flex flex-wrap gap-2" aria-label="覆盖国家">
             {countries.map(([label, href]) => (
               <li key={href}>

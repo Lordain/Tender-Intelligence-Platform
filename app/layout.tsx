@@ -100,7 +100,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "拉美招投标信息平台",
-    description: "拉美政府及国有石油、电力、矿业公司招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利等国，自动剔除小额和无关项目，人工精筛。",
+    description: "拉美政府及国有石油、电力、矿业公司招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利等国，汇集十余个官方采购平台，人工精筛，剔除小额和日常项目。",
   },
   // NO `alternates` here, deliberately. Metadata fields are inherited WHOLE by
   // any route that does not set its own (Next's own docs: "All openGraph

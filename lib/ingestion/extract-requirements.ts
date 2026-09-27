@@ -417,13 +417,48 @@ export const JSON_SHAPE_INSTRUCTIONS_PT = JSON_SHAPE_INSTRUCTIONS
   )
   .replace("even though the source document is in Spanish.", "even though the source document is in Portuguese.");
 
+export const SYSTEM_PROMPT_EN = `You are extracting bid-qualification information from a real Guyanese government tender document (Invitation to Bid, Bidding Document, Specific Procurement Notice, or an annex to one) for a platform that helps Chinese enterprises decide whether to bid.
+
+The document is in English. Guyanese procurement runs under the Procurement Act 2003, administered by the National Procurement and Tender Administration Board (NPTAB); donor-financed contracts follow the lender's own rules instead — the World Bank's Procurement Regulations for IPF Borrowers, the Caribbean Development Bank's or the Inter-American Development Bank's procurement policies — and the document says which.
+
+Ground rules:
+- Extract only what THIS document actually says. Never infer, generalize, or fill in a plausible-sounding requirement that isn't stated.
+- Every item needs a sourceReference citing where it came from — cite the clause or section as written ("ITB 11.1", "Section III, 2.3", "paragraph 7") and/or the page. An item you cannot cite, you cannot include.
+- Extract only tender-specific, actionable content — skip generic restatements of the procurement law or the lender's standard clauses that appear in every document of that family.
+- The qualification requirements are usually in Section III (Evaluation and Qualification Criteria) or a Qualification Requirements clause. Keep the document's own structure: eligibility, financial capacity (average annual turnover, access to credit lines, and the exact thresholds and currency), specific experience (number and value of similar contracts, and the period), key personnel and equipment, and bid security (amount, form, validity).
+- Record the compliance documents a Guyanese notice routinely demands, when this document does: valid certificates of compliance from the National Insurance Scheme (NIS) and the Guyana Revenue Authority (GRA), a business registration, a site visit or pre-bid meeting. A foreign bidder without a Guyanese presence cannot produce an NIS or GRA certificate — whenever the document requires them, say so in the item's description.
+- Record any requirement that restricts who may bid, in its own words: eligible source countries, a margin of preference for domestic bidders, a requirement to be registered in Guyana, local content obligations, joint-venture rules.
+- Amounts: "G$", "GY$" and "GYD" are Guyana dollars; "EE$" before a figure is the engineer's estimate in Guyana dollars; "US$" is US dollars. Keep every figure exactly as written.
+- All title/description fields must be written directly in Chinese (zh), concise and close to the document's own terms — do not copy multi-sentence legal paragraphs verbatim, and do not write a placeholder.
+- You may be given a block headed 本平台已对该项目使用的中文写法 — the tender's title, summary and any earlier one-line summary, as this platform ALREADY displays them. It is reference vocabulary, never a source to extract from. Reuse its renderings of proper nouns — places, villages, rivers, agencies, project names — exactly as written there, and do not re-transliterate any name that appears in it. For a name that appears NOWHERE in that block, transliterate it as you normally would, with the English in full-width parentheses.
+- If a section is genuinely absent from this document (the notice alone was provided, not the full bidding document), return an empty array for the corresponding field rather than guessing.
+- Never write an unescaped ASCII double quote inside a value. To quote an English proper noun inside a Chinese sentence use 「」 or no quotes at all.
+
+Also provide "oneLineSummary": one or two Chinese sentences, at most 100 characters, stating what this tender/project concretely IS — not a category label, not a boilerplate opener. See the schema field description for examples.
+
+Additionally, provide a "relevanceAssessment": this tender was already given a rough priority tier from its TITLE ALONE before anyone had read the actual document — you have now read the real thing, so give your own independent, grounded assessment of participationScope and suggestedTier, citing concrete content in your reasoning rather than a generic template.
+
+participationScope in a Guyanese document, specifically. The schema's three values were defined for a different country's procurement law, so map them as follows and do not read the schema's own Spanish-language descriptions as if they applied here:
+- "international_open" — International Competitive Bidding (ICB), the World Bank's "international competitive procurement", or any document open to bidders from all eligible countries.
+- "national" — National Competitive Bidding (NCB), a Request for Quotation, or a document that in practice requires Guyanese registration, NIS/GRA compliance certificates or local content a foreign firm cannot meet on its own.
+- "international_treaty" — does not occur in Guyana. Do not use it.
+- null — the document genuinely never addresses who may participate.`;
+
+/** Same JSON contract as the Spanish path, with the two sentences that name the source language corrected. */
+export const JSON_SHAPE_INSTRUCTIONS_EN = JSON_SHAPE_INSTRUCTIONS
+  .replace(
+    'to quote a Spanish proper noun inside Chinese text use 「」 or no quotes at all (建设 BRAMONAS 2 堤防, not 建设"BRAMONAS 2"堤防)',
+    "to quote an English proper noun inside Chinese text use 「」 or no quotes at all",
+  )
+  .replace("never Spanish or English, even though the source document is in Spanish.", "never English, even though the source document is in English.");
+
 /** Defaults to Spanish for an absent language, which is both the overwhelmingly likely answer and the behaviour every caller had before this existed. */
 export function systemPromptFor(language: TenderSourceLanguage | undefined): string {
-  return language === "pt" ? SYSTEM_PROMPT_PT : SYSTEM_PROMPT;
+  return language === "pt" ? SYSTEM_PROMPT_PT : language === "en" ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT;
 }
 
 export function jsonShapeInstructionsFor(language: TenderSourceLanguage | undefined): string {
-  return language === "pt" ? JSON_SHAPE_INSTRUCTIONS_PT : JSON_SHAPE_INSTRUCTIONS;
+  return language === "pt" ? JSON_SHAPE_INSTRUCTIONS_PT : language === "en" ? JSON_SHAPE_INSTRUCTIONS_EN : JSON_SHAPE_INSTRUCTIONS;
 }
 
 /** Pulls the first JSON object out of a text response — tolerates a model wrapping it in a ```json fence or prose despite instructions not to, rather than requiring an exact match. */

@@ -5,6 +5,7 @@ import { foldAccents } from "@/lib/text-fold";
 import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
+import { classifyGuyanaRelevance, guyanaFactsFromStoredFields, guyanaIndustries, GUYANA_SOURCE_NAME } from "@/lib/relevance-guyana";
 import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-codelco";
 import { classifyMetroSantiagoRelevance } from "@/lib/relevance-metro-santiago";
 import { METRO_SANTIAGO_PREVIEW_SOURCE_NAME } from "@/lib/upcoming-tenders";
@@ -4088,6 +4089,19 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   // alongside a real tag it would otherwise sit next to as a phantom category.
   const merged = [...new Set([...spanish, ...portuguese])];
   const industries = merged.length > 1 ? merged.filter((tag) => tag !== "general") : merged;
+  // Guyana's eprocure.gov.gy: own rules, see lib/relevance-guyana.ts — the
+  // titles are English, which neither keyword pass above reads, and size comes
+  // from the notice's ICB/NCB sentence, carried in procedureType.
+  if (input.sourceName === GUYANA_SOURCE_NAME) {
+    return {
+      industries: guyanaIndustries(input.title),
+      relevance: classifyGuyanaRelevance({
+        title: input.title,
+        scopeType: input.scopeType,
+        facts: guyanaFactsFromStoredFields(input.procedureType, input.summary),
+      }),
+    };
+  }
   // Petrobras / Transpetro, from Petronect: own rules, see lib/relevance-petronect.ts.
   // Every row is an oil company's purchase, so it is filed under 能源矿业
   // even when the title is a valve or a relay that no keyword would tag.

@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { escapeHtml } from "@/lib/notifications/escape-html";
 import type { DigestRecipient } from "@/lib/notifications/digest-recipients";
 import { countryLabel, industryLabel } from "@/lib/tender-labels";
+import { isStagedCountry } from "@/lib/staged-countries";
 import { isDueInSlot, recipientWindowStart, type DigestSlot } from "@/lib/notifications/digest-slot";
 
 export type DigestTender = {
@@ -57,6 +58,8 @@ function matches(tender: DigestTender, preference: Preference, statusOverride?: 
     tender.buyer, tender.tender_number,
   ].filter(Boolean).join(" ").toLocaleLowerCase();
   return (
+    // A staged country is not on the site yet, so it is not in anyone's mail either.
+    !isStagedCountry(tender.country) &&
     (preference.countries.length === 0 || preference.countries.includes(tender.country)) &&
     (preference.industries.length === 0 || tender.industries.some((industry) => preference.industries.includes(industry))) &&
     (preference.statuses.length === 0 || statuses.some((status) => preference.statuses.includes(status))) &&

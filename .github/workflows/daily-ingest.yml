@@ -148,6 +148,14 @@ jobs:
           # their own jobs. See scripts/cron-refresh-statuses.ts.
           - name: Status refresh (Brazil, Chile, Mexico)
             command: cron:refresh-statuses
+          # Added 2026-09-27. Guyana's eprocure.gov.gy: every open opportunity,
+          # each notice PDF read for ICB/NCB and the lender, only large works and
+          # purchases written (user: 小项目不要，只要大型工程项目或者采购项目).
+          # Guyana is staged — admin pages only, see lib/staged-countries.ts.
+          # Reading the notices needs poppler's pdftotext, hence `poppler`.
+          - name: Guyana (eprocure, staged)
+            command: cron:guyana
+            poppler: true
           # Peru OECE/SEACE has no job here: measured 2026-09-26 (run
           # 36259854139), its proxy answers this runner 403 Forbidden, as it
           # answers Vercel. Its status refresh stays the local CLI
@@ -163,6 +171,10 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Install pdftotext
+        if: ${{ matrix.poppler == true }}
+        run: command -v pdftotext || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)
 
       - name: Import
         env:

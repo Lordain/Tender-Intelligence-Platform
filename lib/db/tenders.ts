@@ -1,4 +1,5 @@
 import "server-only";
+import { isStagedCountry } from "@/lib/staged-countries";
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -453,7 +454,8 @@ export const fetchAllTendersFromDb = cache(async (): Promise<Tender[] | null> =>
   }
 
   const withAnalysis = await fetchTenderIdsWithAnalysis(supabase);
-  return rows.filter((row) => withAnalysis.has(row.id)).map(toTender);
+  // Every public list reads this — a staged country stays out of all of them.
+  return rows.filter((row) => withAnalysis.has(row.id) && !isStagedCountry(row.country)).map(toTender);
 });
 
 export type TenderSitemapEntry = {
@@ -478,13 +480,14 @@ export async function fetchTenderSitemapEntriesFromDb(): Promise<TenderSitemapEn
     const data = await retrySupabaseRead(
       () => supabase
         .from("tenders")
-        .select("public_slug, updated_at, submission_deadline")
+        .select("public_slug, updated_at, submission_deadline, country")
         .order("updated_at", { ascending: false })
         .range(from, from + SUPABASE_PAGE_SIZE - 1),
       "Failed to fetch tender sitemap entries from Supabase",
     );
 
-    const page = data as unknown as Array<{ public_slug: string; updated_at: string; submission_deadline: string | null }>;
+    const page = (data as unknown as Array<{ public_slug: string; updated_at: string; submission_deadline: string | null; country: string | null }>)
+      .filter((row) => !isStagedCountry(row.country));
     entries.push(...page.map((row) => ({ publicSlug: row.public_slug, updatedAt: row.updated_at, submissionDeadline: row.submission_deadline ?? undefined })));
     if (page.length < SUPABASE_PAGE_SIZE) break;
   }
@@ -607,7 +610,8 @@ export async function fetchTenderByPublicSlugFromDb(
     "Failed to fetch tender by public slug from Supabase",
   );
 
-  if (!data) return undefined;
+  // A staged country's page does not exist yet for a visitor (lib/staged-countries.ts).
+  if (!data || isStagedCountry((data as unknown as TenderRow).country)) return undefined;
   return toTender(data as unknown as TenderRow);
 }
 
@@ -631,7 +635,8 @@ export async function fetchTendersBySlugsFromDb(slugs: string[]): Promise<Map<st
     "Failed to fetch tenders by slug from Supabase",
   );
 
-  return new Map((data as unknown as TenderRow[]).map((row) => [row.slug, toTender(row)]));
+  // Homepage picks only — a staged country's row never reaches it.
+  return new Map((data as unknown as TenderRow[]).filter((row) => !isStagedCountry(row.country)).map((row) => [row.slug, toTender(row)]));
 }
 
 type DocumentsNeededRow = {

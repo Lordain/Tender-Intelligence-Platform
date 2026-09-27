@@ -164,11 +164,14 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
           <h1 className="text-[clamp(2.55rem,4vw,4.25rem)] font-black leading-[1.14] tracking-[0.02em] text-[#fffdf9]">
             把拉美招标<br />变成中国企业<br />看得懂的机会
           </h1>
-          <p className="mt-7 max-w-xl text-base leading-8 text-white/78 sm:text-lg lg:max-w-[27rem] xl:max-w-xl">
-            <span className="block">专注于拉美五国政府招标采购信息，一站式中文平台。</span>
-            {/* Breaks before 中文翻译 only where the whole clause fits on one line. */}
-            <span className="sm:block lg:inline xl:block">覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，</span>
-            <span className="sm:block lg:inline xl:block">中文翻译，人工精筛，按国家、行业、项目规模筛选。</span>
+          <p className="mt-7 max-w-xl text-base leading-8 text-pretty text-white/78 sm:max-w-[39rem] sm:text-lg lg:max-w-[27rem] xl:max-w-[39rem] xl:text-[17px] 2xl:text-lg">
+            {/* The original four-line copy (user, 2026-09-20), revised 2026-09-27: 五国 → 等国 (countries are being added),
+                中文翻译 → 人工精筛 + what is dropped (user's wording). Breaks between the middle lines only where each fits on one line;
+                the second line is 34 em wide (612px at 18px), hence 39rem, from md where the column is 640px,
+                and 17px at xl where the column is ~596px. */}
+            <span className="block">专注于拉美政府及国企招标采购，一站式中文平台。</span>
+            <span className="md:block lg:inline xl:block">覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利等国，汇集十余个官方采购平台，</span>
+            <span className="md:block lg:inline xl:block">人工精筛，按国家、行业、项目规模筛选，剔除小额和日常项目。</span>
             <span className="block">帮企业省时、省力、省钱，快速获取精准拉美项目机会。</span>
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">

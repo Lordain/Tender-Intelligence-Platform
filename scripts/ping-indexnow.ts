@@ -38,6 +38,7 @@ import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { INDEXNOW_KEY, indexNowKeyPath, submitToIndexNow } from "../lib/indexnow";
 import { siteOrigin } from "../lib/site-url";
 import { describeBaiduTokenFormat, normalizeBaiduToken, submitToBaidu } from "../lib/baidu-push";
+import { isStagedCountry } from "../lib/staged-countries";
 import { participationGuides } from "../lib/participation-guides";
 import { countryInsights } from "../lib/country-insights";
 import { countryPages } from "../lib/country-pages";
@@ -137,12 +138,13 @@ async function readAllTenders(supabase: SupabaseClient): Promise<Row[]> {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("public_slug, publication_date, updated_at, submission_deadline")
+      .select("public_slug, publication_date, updated_at, submission_deadline, country")
       .order("publication_date", { ascending: false })
       .range(from, from + PAGE_SIZE - 1)
-      .returns<Row[]>();
+      .returns<(Row & { country: string | null })[]>();
     if (error) throw new Error(`读取 tenders 失败：${error.message}`);
-    const page = data ?? [];
+    // A staged country's pages are 404 to visitors — never tell a search engine about them.
+    const page = (data ?? []).filter((row) => !isStagedCountry(row.country));
     rows.push(...page);
     if (page.length < PAGE_SIZE) break;
   }

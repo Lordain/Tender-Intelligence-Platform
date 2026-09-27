@@ -49,9 +49,12 @@ export const SOCIAL_BRAND = "拉美招投标指南针";
  * government platforms (2026-09-25: 请基于最新状态同步刷新Metadata和SEO) —
  * Petrobras, Pemex, CFE, Cemig, Codelco, Petroperú and UPME's transmission
  * calls are a large part of what a searcher for 拉美 石油/电力/矿业 招标 wants.
+ *
+ * Revised 2026-09-27: 五国 → 等国, since countries are being added (the five
+ * stay named — search matches them), and 中文翻译 → 人工精筛 + what is dropped (user's wording).
  */
 export const SITE_DESCRIPTION =
-  "专注于拉美五国政府招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台及国家石油、电力、矿业公司采购门户，中文翻译，人工精筛，按国家、行业、项目规模筛选。帮企业省时、省力、省钱，快速获取精准拉美项目机会。";
+  "专注于拉美政府及国企招标采购，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利等国，汇集十余个政府及国家石油、电力、矿业公司官方采购平台，人工精筛，按国家、行业、项目规模筛选，剔除小额和日常项目。帮企业省时、省力、省钱，快速获取精准拉美项目机会。";
 
 /**
  * Search-console verification tags from the environment.

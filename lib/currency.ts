@@ -84,6 +84,12 @@ export const USD_RATES: Record<string, number> = {
   // the 900–1000 band the Chile round-2 report used for estimating and
   // explicitly refused to write into this file without a real measurement.
   CLP: 1 / 953,
+  // Added 2026-09-27 for Guyana (eprocure.gov.gy, staged). Its notices quote
+  // Guyana dollars — "EE$36,086,600" in a title is an engineer's estimate in
+  // GYD — so without a rate a GY$6.14 billion water plant would read as "no
+  // value published". open.er-api.com, read 2026-09-27: 209.09; the Bank of
+  // Guyana has held the currency near 208–210 for years.
+  GYD: 1 / 209,
   // The two Chilean INDEXED UNITS, not currencies — and both appear in the
   // Moneda column as if they were: CLF 47 rows, UF 37 (the same unit under its
   // ISO code and its Spanish name), UTM 6. Ninety real amounts that would

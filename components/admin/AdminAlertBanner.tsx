@@ -24,13 +24,20 @@ type StaleCronJob = {
    * secrets. A monitor that sends you to the wrong console at the moment
    * something is broken is worse than one that says nothing.
    */
-  runsOn?: "vercel" | "github-actions";
+  runsOn?: "vercel" | "github-actions" | "manual";
+  manualCommand?: string;
 };
 
-const WHERE_TEXT: Record<NonNullable<StaleCronJob["runsOn"]>, string> = {
+const WHERE_TEXT: Record<Exclude<NonNullable<StaleCronJob["runsOn"]>, "manual">, string> = {
   vercel: "Vercel Cron",
   "github-actions": "GitHub Actions",
 };
+
+function whereToLook(job: StaleCronJob): string {
+  if (!job.runsOn) return "";
+  if (job.runsOn === "manual") return job.manualCommand ? `　在自己电脑的项目目录里运行 ${job.manualCommand}` : "";
+  return `　去 ${WHERE_TEXT[job.runsOn]} 查`;
+}
 
 const REASON_TEXT: Record<StaleCronJob["reason"], string> = {
   never: "从未运行过",
@@ -104,7 +111,7 @@ export function AdminAlertBanner() {
             {staleJobs.map((job) => (
               <li key={job.job} className="text-xs text-amber-800">
                 <span className="font-semibold">{job.label}</span>：{REASON_TEXT[job.reason]}（{describeLastRun(job)}）
-                {job.runsOn ? `　去 ${WHERE_TEXT[job.runsOn]} 查` : ""}
+                {whereToLook(job)}
                 {job.detail ? `　${job.detail}` : ""}
               </li>
             ))}

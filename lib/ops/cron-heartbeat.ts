@@ -38,7 +38,9 @@ export type StaleCronJob = {
   detail: string | null;
   reason: "never" | "overdue" | "failed";
   /** Where to go looking when this one is quiet — Vercel's Cron Jobs page or the repository's Actions tab. */
-  runsOn: "vercel" | "github-actions";
+  runsOn: "vercel" | "github-actions" | "manual";
+  /** For a manual job: the command to run. */
+  manualCommand?: string;
 };
 
 /**
@@ -60,7 +62,7 @@ export async function findStaleCronJobs(admin: SupabaseClient | null, now = new 
     const row = rows.get(spec.id);
     if (!row) {
       if (process.env.NODE_ENV === "production") {
-        stale.push({ job: spec.id, label: spec.label, lastRunAt: null, status: null, detail: null, reason: "never", runsOn: spec.runsOn });
+        stale.push({ job: spec.id, label: spec.label, lastRunAt: null, status: null, detail: null, reason: "never", runsOn: spec.runsOn, manualCommand: spec.manualCommand });
       }
       continue;
     }
@@ -70,11 +72,11 @@ export async function findStaleCronJobs(admin: SupabaseClient | null, now = new 
     const ageHours = (now.getTime() - new Date(lastRunAt).getTime()) / 3_600_000;
 
     if (status === "failed") {
-      stale.push({ job: spec.id, label: spec.label, lastRunAt, status, detail, reason: "failed", runsOn: spec.runsOn });
+      stale.push({ job: spec.id, label: spec.label, lastRunAt, status, detail, reason: "failed", runsOn: spec.runsOn, manualCommand: spec.manualCommand });
       continue;
     }
     if (ageHours > spec.maxAgeHours) {
-      stale.push({ job: spec.id, label: spec.label, lastRunAt, status, detail, reason: "overdue", runsOn: spec.runsOn });
+      stale.push({ job: spec.id, label: spec.label, lastRunAt, status, detail, reason: "overdue", runsOn: spec.runsOn, manualCommand: spec.manualCommand });
     }
   }
 

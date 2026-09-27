@@ -1,8 +1,10 @@
 /**
  * The daily read of Metro de Santiago's announced tenders ("Próximas
- * Licitaciones"), as a plain script so the GitHub Actions schedule can run
- * it. Invoked by .github/workflows/daily-ingest.yml. Added 2026-09-26 (user:
- * 智利圣地亚哥地铁「即将招标」自动导入，需要备注是预告即将招标).
+ * Licitaciones"). Added 2026-09-26 (user: 智利圣地亚哥地铁「即将招标」自动导入，
+ * 需要备注是预告即将招标). It ran in .github/workflows/daily-ingest.yml until
+ * the site started answering GitHub's runners with HTTP 403; since
+ * 2026-09-27 it is run by hand weekly from the owner's computer, and the
+ * admin banner asks for it after 8 days (lib/ops/cron-jobs.ts).
  *
  * Usage:
  *   npm run cron:metro-santiago              (dry run — fetches and classifies, writes nothing)

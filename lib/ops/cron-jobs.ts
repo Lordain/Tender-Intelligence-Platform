@@ -41,8 +41,13 @@ export type CronJobSpec = {
    * minutes under load, which is another reason these are generous.
    */
   maxAgeHours: number;
-  /** Where the schedule actually lives, so the admin banner can say where to look when one goes quiet. */
-  runsOn: "vercel" | "github-actions";
+  /**
+   * Where the schedule actually lives, so the admin banner can say where to
+   * look when one goes quiet. "manual" is a job with no schedule at all,
+   * run by hand from the owner's own computer with `manualCommand`.
+   */
+  runsOn: "vercel" | "github-actions" | "manual";
+  manualCommand?: string;
 };
 
 export const CRON_JOBS: CronJobSpec[] = [
@@ -61,7 +66,16 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-petronect", label: "Petrobras（Petronect）自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-upme", label: "哥伦比亚 UPME 输电项目自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-codelco", label: "Codelco 公开招标自动导入", maxAgeHours: 30, runsOn: "github-actions" },
-  { id: "import-metro-santiago", label: "圣地亚哥地铁招标预告自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  // Manual since 2026-09-27: the site answers GitHub's runners with HTTP 403
+  // and its programme page changes every few months, so a weekly run from the
+  // owner's computer is enough. 8 days leaves a day of slack on "weekly".
+  {
+    id: "import-metro-santiago",
+    label: "圣地亚哥地铁招标预告导入（每周手动）",
+    maxAgeHours: 8 * 24,
+    runsOn: "manual",
+    manualCommand: "npm run cron:metro-santiago -- --write",
+  },
   { id: "import-cemig", label: "巴西 Cemig 电力公司自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-petroperu", label: "秘鲁 Petroperú 国际招标自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-brazil", label: "巴西 PNCP 自动导入", maxAgeHours: 30, runsOn: "github-actions" },

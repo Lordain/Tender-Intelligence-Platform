@@ -23,9 +23,10 @@ import type { Tender } from "@/types/tender";
 
 export type NewTendersSource = "comprasmx-open" | "proyectos-estrategicos";
 
-export const NEW_TENDERS_SOURCES: { value: NewTendersSource; label: string }[] = [
-  { value: "comprasmx-open", label: "Compras MX — 开放招标（Difusión de procedimientos）" },
-  { value: "proyectos-estrategicos", label: "Proyectos Estratégicos MX (Hacienda)" },
+/** `exportUrl`: the site the file is exported from, linked next to the upload. */
+export const NEW_TENDERS_SOURCES: { value: NewTendersSource; label: string; exportUrl: string; exportSite: string }[] = [
+  { value: "comprasmx-open", label: "Compras MX — 开放招标（Difusión de procedimientos）", exportUrl: "https://comprasmx.buengobierno.gob.mx/sitiopublico/#/", exportSite: "Compras MX" },
+  { value: "proyectos-estrategicos", label: "Proyectos Estratégicos MX (Hacienda)", exportUrl: "https://proyectosestrategicosmx.hacienda.gob.mx/sitiopublico/#/", exportSite: "Proyectos Estratégicos" },
 ];
 
 export type ImportNewTendersResult = {

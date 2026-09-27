@@ -34,6 +34,7 @@ async function main() {
 
   // --- Small helpers -------------------------------------------------------------
   check("title loses the typed '1.'", guyanaTitle("1.\tConstruction of Control Structure at Nabaclis"), "Construction of Control Structure at Nabaclis");
+  check("title loses a pasted Word bullet (U+F076)", guyanaTitle("\uF076\tDrilling of Potable Water Wells at Amelia\u2019s Ward"), "Drilling of Potable Water Wells at Amelia\u2019s Ward");
   check("buyer loses the numeric prefix", guyanaBuyer("34-Ministry of Public Utilities and Aviation"), "Ministry of Public Utilities and Aviation");
   check("regions named", guyanaLocation(["Region 04", "Region 10"]), "Region 4 (Demerara-Mahaica); Region 10 (Upper Demerara-Berbice)");
   check("unknown region dropped", guyanaLocation(["Region 99"]), undefined);
@@ -87,7 +88,7 @@ async function main() {
   check("NCB above US$1M kept as 中型", big.rows[0]?.tender.relevance.tier, "significant");
   check("estimate stored in GYD", [big.rows[0]?.tender.estimatedValue, big.rows[0]?.tender.currency], [450000000, "GYD"]);
   const empty = await ingestGuyana(null, { write: false, opportunities: [base], noticeText: async () => null });
-  check("no pdftotext anywhere → warning", empty.staleWarning?.includes("pdftotext"), true);
+  check("no notice readable → warning", empty.staleWarning?.includes("一份招标公告都没读出文字"), true);
 
   // --- Staging and language ------------------------------------------------------
   check("Guyana is staged", isStagedCountry("Guyana"), true);

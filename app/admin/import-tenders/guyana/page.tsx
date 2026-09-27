@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ImportGuyanaForm } from "@/components/admin/ImportGuyanaForm";
 import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
 import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
 import { GUYANA_EPROCURE_LIST_URL } from "@/lib/ingestion/connectors/guyana-eprocure-live";
@@ -8,8 +9,8 @@ const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "�
 /**
  * Guyana is staged (lib/staged-countries.ts): imported daily, invisible to
  * visitors. This tab is where the user reviews what came in before deciding
- * to open it (2026-09-27). No import button: reading the notices needs
- * pdftotext, which the daily GitHub job installs and the web host lacks.
+ * to open it (2026-09-27). The import button runs the daily job's code on
+ * the web host, which reads the notices with pdf.js (no pdftotext there).
  */
 export default async function AdminImportTendersGuyanaPage() {
   const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Guyana");
@@ -34,9 +35,7 @@ export default async function AdminImportTendersGuyanaPage() {
             每天读取全部在招项目，并逐份读取招标公告 PDF：写明<strong>国际竞争性招标（ICB）</strong>的工程和设备采购保留，公路、桥梁、管网、水厂、医院、电网等列为大型；
             国内招标（NCB）和询价只有标题里的工程师估价达到 100 万美元才保留；服务、咨询和日常用品一律不导入。导入后在「通用维护 → 更新项目文案」生成中文标题和摘要（英语原文）。
           </p>
-          <p className="text-xs text-[#64717c]">
-            想提前跑：在自己电脑的项目目录里运行 <code>npm run cron:guyana</code>（试运行）或 <code>npm run cron:guyana -- --write</code>（需要装 poppler）。
-          </p>
+          <ImportGuyanaForm />
           <div className="rounded-xl border border-[#e1e7e9] bg-white">
             <p className="border-b border-[#eef1f2] px-4 py-2 text-xs font-black text-[#52636e]">已导入 {rows.length} 条</p>
             {rows.length === 0 ? (

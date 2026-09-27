@@ -4,8 +4,8 @@
  * Added 2026-09-27. Guyana is STAGED (lib/staged-countries.ts): what this
  * writes shows in the admin pages only.
  *
- * Needs poppler's `pdftotext` to read each notice — without it every row reads
- * as "notice unreadable", is treated as small, and the heartbeat says FAILED.
+ * Reads each notice with poppler's `pdftotext` (the daily job installs it),
+ * or with pdf.js where it is not installed — see guyana-eprocure-live.ts.
  *
  * Usage:
  *   npm run cron:guyana              (dry run — fetches and classifies, writes nothing)

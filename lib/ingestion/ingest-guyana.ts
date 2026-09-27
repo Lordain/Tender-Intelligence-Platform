@@ -100,7 +100,7 @@ export async function ingestGuyana(
       opportunities.length === 0
         ? "⚠ eprocure.gov.gy 一条在招项目都没返回。2026-09-27 实测有 35 条，更可能是接口变了，见 guyana-eprocure-live.ts。"
         : readNoticeCount === 0
-          ? "⚠ 一份招标公告都没读出文字 —— 多半是这台机器没有 pdftotext（poppler-utils），所有项目都会被当作小项目排除。"
+          ? "⚠ 一份招标公告都没读出文字 —— 多半是公告下载失败（eprocure.gov.gy 的 /files/ 链接），所有项目都会被当作小项目排除。"
           : null,
     write: options.write,
   };

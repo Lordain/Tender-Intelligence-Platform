@@ -40,10 +40,15 @@ export function guyanaBuyer(agency: string): string {
 /**
  * The name as a title: whitespace collapsed, and the "1." an agency types in
  * front of a lot list dropped. Lots stay — "Lot 1-4" is part of what is being
- * bought.
+ * bought. Private-use and zero-width characters go too: four GWI well-drilling
+ * names of 2026-09-27 began with U+F076, a Word bullet that renders as a box.
  */
 export function guyanaTitle(projectName: string): string {
-  return projectName.replace(/\s+/g, " ").replace(/^\s*\d{1,2}\.\s*/, "").trim();
+  return projectName
+    .replace(/[\uE000-\uF8FF\u200B-\u200D\u2060\uFEFF]/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^\s*\d{1,2}\.\s*/, "")
+    .trim();
 }
 
 function scopeTypeOf(nature: string): TenderScopeType {

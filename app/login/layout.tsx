@@ -26,7 +26,7 @@ import { pageMetadata } from "@/lib/seo";
  */
 export const metadata: Metadata = pageMetadata({
   title: "登录",
-  description: "登录拉美招投标信息平台。专注于拉美五国政府招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，中文翻译，人工精筛，按国家、行业、项目规模筛选。",
+  description: "登录拉美招投标信息平台。聚合墨西哥、巴西、哥伦比亚、秘鲁、智利等拉美国家十余个政府和国企采购平台，规则筛选加人工精筛，只保留值得中国企业投的项目。",
   path: "/login",
 });
 

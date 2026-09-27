@@ -165,11 +165,16 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
             把拉美招标<br />变成中国企业<br />看得懂的机会
           </h1>
           <p className="mt-7 max-w-xl text-base leading-8 text-white/78 sm:text-lg lg:max-w-[27rem] xl:max-w-xl">
-            <span className="block">专注于拉美五国政府招标采购信息，一站式中文平台。</span>
-            {/* Breaks before 中文翻译 only where the whole clause fits on one line. */}
-            <span className="sm:block lg:inline xl:block">覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利，汇集各官方采购平台，</span>
-            <span className="sm:block lg:inline xl:block">中文翻译，人工精筛，按国家、行业、项目规模筛选。</span>
-            <span className="block">帮企业省时、省力、省钱，快速获取精准拉美项目机会。</span>
+            {/* Approved copy (user, 2026-09-27). The countries are named for search; 等 leaves room for the next one. */}
+            {/* From sm up each sentence breaks at its comma, so no line ends on a stranded 每日更新 or 一站看清. */}
+            <span className="block">
+              <span className="sm:block">聚合墨西哥、巴西、哥伦比亚、秘鲁、智利等拉美国家</span>
+              <span className="sm:block">十余个政府和国企采购平台，每日更新。</span>
+            </span>
+            <span className="mt-2 block">
+              <span className="sm:block">规则筛选加人工精筛，只留值得中国企业投的项目，</span>
+              <span className="sm:block">标书要点和中标结果一站看清。</span>
+            </span>
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link href="/tenders" className="inline-flex items-center justify-center gap-4 rounded-2xl bg-[#ffb21c] px-7 py-3.5 text-sm font-bold text-[#071826] transition-transform hover:-translate-y-0.5 hover:bg-[#ffc247]">

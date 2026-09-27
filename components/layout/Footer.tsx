@@ -31,8 +31,8 @@ export function Footer() {
       <div className="mx-auto grid max-w-[108rem] grid-cols-2 gap-x-6 gap-y-10 px-5 py-12 sm:px-8 md:grid-cols-4 xl:grid-cols-[2fr_repeat(4,minmax(0,1fr))] xl:gap-x-8">
         <div className="col-span-2 max-w-sm md:col-span-4 xl:col-span-1">
           <Link href="/" className="inline-flex items-center gap-3"><BrandLogo variant="dark" className="size-10" /><span className="text-lg font-black tracking-[0.08em]">拉美招投标信息平台</span></Link>
-          <p className="mt-5 text-sm leading-7 text-white/70">拉美五国政府招标采购信息，一站式中文平台。</p>
-          <p className="mt-1 text-sm leading-7 text-white/45">中文翻译 · 人工精筛 · 按国家、行业、项目规模筛选</p>
+          <p className="mt-5 text-sm leading-7 text-white/70">聚合拉美多国十余个政府和国企采购平台，规则筛选加人工精筛，只推送值得中国企业投的项目，每日更新。</p>
+          <p className="mt-1 text-sm leading-7 text-white/45">多平台聚合 · 人工精筛 · 标书要点 · 中标结果</p>
           <ul className="mt-5 flex flex-wrap gap-2" aria-label="覆盖国家">
             {countries.map(([label, href]) => (
               <li key={href}>

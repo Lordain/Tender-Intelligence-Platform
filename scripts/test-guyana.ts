@@ -6,6 +6,8 @@
 import fixture from "../lib/ingestion/__fixtures__/guyana-eprocure-2026-09-27.json" with { type: "json" };
 import { parseGuyanaOpportunity, type GuyanaOpportunity } from "../lib/ingestion/connectors/guyana-eprocure-live";
 import { ingestGuyana } from "../lib/ingestion/ingest-guyana";
+import { readGuyanaDocumentAccess } from "../lib/ingestion/guyana-document-access";
+import { buildRowWithProtectedValues } from "../lib/ingestion/upsert-tenders";
 import { guyanaBuyer, guyanaLocation, guyanaTitle } from "../lib/ingestion/guyana-mapper";
 import { guyanaTitleEstimateGyd, readGuyanaNotice } from "../lib/relevance-guyana";
 import { classifyStoredTender } from "../lib/relevance";
@@ -65,6 +67,31 @@ async function main() {
   check("deadline is 09:00 Georgetown", roadTender.submissionDeadline, "2026-10-02T13:00:00.000Z");
   check("road tagged transport", roadTender.industries, ["transportation"]);
   check("road procedure carries ICB", roadTender.procedureType, "Open Tendered — International Competitive Bidding (ICB)");
+
+  // --- How to obtain the bid documents (详情页「这个项目的标书怎么拿」) -----------
+  const accessOf = (id: string) => readGuyanaDocumentAccess(texts[id] ?? null);
+  const roadAccess = accessOf("PROC-2026-00425")!;
+  check("World Bank road: requested, sent by email, inspectable, no fee", [roadAccess.byEmail, roadAccess.inspection, roadAccess.fee, roadAccess.free], [true, true, undefined, undefined]);
+  check("road excerpt says it is sent by email", roadAccess.excerpt.includes("The document will be sent by email."), true);
+  check("road excerpt leaves out the bid-submission marking", roadAccess.excerpt.includes("Request for Bids: Improvement"), false);
+  const leguan = accessOf("PROC-2026-00427")!;
+  check("GWI lot: G$5,000, courier, inspection", [leguan.fee, leguan.courier, leguan.inspection, leguan.collectInPerson], [{ amount: 5000, currency: "GYD" }, true, true, undefined]);
+  check("GWI lot: request heading verbatim", leguan.requestTitle, "Request for Bid Documents for the Supply and Installation of Transmission Mains at Leguan, Region # 3");
+  check("GWI lot with no closing quote still gives its heading", accessOf("PROC-2026-00429")?.requestTitle, "Request for Bid Documents for the Supply and Installation of Transmission Mains at Adventure, Region # 6 (Lot 1-4)");
+  check("HECI: download from electricity.gov.gy", [accessOf("PROC-2026-00432")?.downloadUrl, accessOf("PROC-2026-00432")?.downloadNeedsForm], ["https://www.electricity.gov.gy", undefined]);
+  check("HECI solar: download needs an online form", accessOf("PROC-2026-00448")?.downloadNeedsForm, true);
+  check("GuySuCo: download or printed for G$2,000", [accessOf("PROC-2026-00460")?.downloadUrl, accessOf("PROC-2026-00460")?.fee?.amount, accessOf("PROC-2026-00460")?.collectInPerson], ["https://www.guysuco.com", 2000, true]);
+  check("CH&PA: flash drive for G$10,000, collected", [accessOf("PROC-2026-00435")?.flashDrive, accessOf("PROC-2026-00435")?.fee?.amount, accessOf("PROC-2026-00435")?.collectInPerson], [true, 10000, true]);
+  check("GPL: uplifted for $5,000", [accessOf("PROC-2026-00446")?.fee?.amount, accessOf("PROC-2026-00446")?.collectInPerson], [5000, true]);
+  check("Agriculture: free by email, or a G$5,000 flash drive", [accessOf("PROC-2026-00459")?.byEmail, accessOf("PROC-2026-00459")?.free, accessOf("PROC-2026-00459")?.fee?.amount], [true, true, 5000]);
+  check("no text → no access", accessOf("PROC-2026-00433"), null);
+  const bath = result.rows.find((row) => row.opportunity.projectId === "PROC-2026-00428")!.tender.bidDocumentAccess;
+  check("scanned Bath lot borrows a sibling's route, without its heading", [bath?.fromSibling, bath?.fee?.amount, bath?.requestTitle], [true, 5000, undefined]);
+  check("every Guyana tender carries the field (null or not)", result.rows.every((row) => row.tender.bidDocumentAccess !== undefined), true);
+  check("Guyana row writes bid_document_access", "bid_document_access" in buildRowWithProtectedValues(roadTender, undefined), true);
+  const { bidDocumentAccess: _omitted, ...otherSource } = roadTender;
+  void _omitted;
+  check("a source that never sets it does not name the column", "bid_document_access" in buildRowWithProtectedValues(otherSource, undefined), false);
 
   // Reclassify from stored fields must give every row the tier it was imported with.
   for (const row of result.rows) {

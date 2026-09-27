@@ -12,10 +12,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchGuyanaOpportunities, fetchNoticeText, type GuyanaOpportunity } from "@/lib/ingestion/connectors/guyana-eprocure-live";
 import { guyanaDocumentLinks, guyanaTitle, mapGuyanaOpportunityToTender, GUYANA_SOURCE_NAME } from "@/lib/ingestion/guyana-mapper";
 import { readGuyanaNotice, type GuyanaNoticeFacts } from "@/lib/relevance-guyana";
+import { borrowedDocumentAccess, readGuyanaDocumentAccess } from "@/lib/ingestion/guyana-document-access";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { saveDocumentLinks } from "@/lib/ingestion/document-links";
 import { runPool } from "@/lib/ingestion/run-pool";
-import type { Tender } from "@/types/tender";
+import type { BidDocumentAccess, Tender } from "@/types/tender";
 
 export { GUYANA_SOURCE_NAME };
 
@@ -66,6 +67,30 @@ export function resolveGuyanaFacts(
   return resolved;
 }
 
+/**
+ * How to obtain each row's bid documents, read from its notice
+ * (guyana-document-access.ts). A scan borrows from a sibling lot, as its
+ * facts do — the lots of one programme are sold the same way.
+ */
+export function resolveGuyanaDocumentAccess(
+  opportunities: GuyanaOpportunity[],
+  noticeTextById: Map<string, string | null>,
+): Map<string, BidDocumentAccess | null> {
+  const own = new Map(opportunities.map((opportunity) => [opportunity.projectId, readGuyanaDocumentAccess(noticeTextById.get(opportunity.projectId) ?? null)]));
+  const bySibling = new Map<string, BidDocumentAccess>();
+  for (const opportunity of opportunities) {
+    const access = own.get(opportunity.projectId);
+    if (access && !bySibling.has(siblingKey(opportunity))) bySibling.set(siblingKey(opportunity), access);
+  }
+  const resolved = new Map<string, BidDocumentAccess | null>();
+  for (const opportunity of opportunities) {
+    const access = own.get(opportunity.projectId) ?? null;
+    const sibling = access ? undefined : bySibling.get(siblingKey(opportunity));
+    resolved.set(opportunity.projectId, access ?? (sibling ? borrowedDocumentAccess(sibling) : null));
+  }
+  return resolved;
+}
+
 export async function ingestGuyana(
   supabase: SupabaseClient | null,
   options: { write: boolean; opportunities?: GuyanaOpportunity[]; noticeText?: (url: string) => Promise<string | null>; now?: Date },
@@ -84,9 +109,11 @@ export async function ingestGuyana(
   });
 
   const factsById = resolveGuyanaFacts(opportunities, noticeTextById);
+  const accessById = resolveGuyanaDocumentAccess(opportunities, noticeTextById);
   const rows: GuyanaRow[] = opportunities.map((opportunity) => {
     const { facts, factsFrom } = factsById.get(opportunity.projectId)!;
-    return { opportunity, facts, factsFrom, tender: mapGuyanaOpportunityToTender(opportunity, facts, now) };
+    const tender = mapGuyanaOpportunityToTender(opportunity, facts, now, accessById.get(opportunity.projectId) ?? null);
+    return { opportunity, facts, factsFrom, tender };
   });
   const kept = rows.filter((row) => row.tender.relevance?.tier !== "excluded").map((row) => row.tender);
   const readNoticeCount = [...noticeTextById.values()].filter(Boolean).length;

@@ -219,6 +219,10 @@ function buildRow(fields: Tender) {
     source_name: fields.sourceName,
     source_url: fields.sourceUrl,
     updated_at: fields.updatedAt,
+    // Only from a mapper that reads it (Guyana, migration 0058). Absent for
+    // every other source, so their imports never name the column and neither
+    // write it nor depend on the migration having run.
+    ...(fields.bidDocumentAccess !== undefined ? { bid_document_access: fields.bidDocumentAccess } : {}),
   };
 }
 

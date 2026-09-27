@@ -175,6 +175,36 @@ export type TenderNeedingDocuments = {
   filesOnRecord?: { pdfPending: number; otherFiles: number };
 };
 
+/** See Tender.bidDocumentAccess. Every field is what the notice states; nothing is inferred. */
+export type BidDocumentAccess = {
+  /** A website the full set can be downloaded from. */
+  downloadUrl?: string;
+  /** The download needs an online form filled first. */
+  downloadNeedsForm?: boolean;
+  /** Sent electronically by email on a written or emailed request. */
+  byEmail?: boolean;
+  /** The notice says the copy is free of cost. */
+  free?: boolean;
+  /** Non-refundable fee for the set, in the source currency. */
+  fee?: { amount: number; currency: string };
+  /** Collected in person at the entity's office (after paying at its cashier). */
+  collectInPerson?: boolean;
+  /** Can be forwarded by courier, on a local courier's freight-collect account. */
+  courier?: boolean;
+  /** The set is an electronic copy on a flash drive. */
+  flashDrive?: boolean;
+  /** Can be inspected at the entity's office. */
+  inspection?: boolean;
+  /** The heading a written request must carry, verbatim. */
+  requestTitle?: string;
+  /** Email addresses the notice gives. */
+  emails: string[];
+  /** The notice's own sentences on obtaining the documents (English), to check against. */
+  excerpt: string;
+  /** Read from a sibling lot's notice because this one was a scan. */
+  fromSibling?: boolean;
+};
+
 export type Tender = {
   id: string;
   slug: string;
@@ -378,6 +408,16 @@ export type Tender = {
    * an admin can un-set it from this same edit form.
    */
   documentsUnavailable?: boolean;
+  /**
+   * How to obtain the full bid documents, where the source publishes only a
+   * notice and the documents must be requested, bought or collected from the
+   * procuring entity (migration 0058). Read from each notice at import — the
+   * route differs notice by notice (user, 2026-09-27: 如果标书需要特别获取，
+   * 那针对这部分项目，要在项目详情页里面说明怎么获取标书). Guyana only so far;
+   * undefined for every other source, whose route is the same for all its
+   * tenders and lives in lib/tender-search-guide.ts instead.
+   */
+  bidDocumentAccess?: BidDocumentAccess | null;
   sourceName: string;
   sourceUrl: string;
   createdAt: string;

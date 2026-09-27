@@ -5,6 +5,7 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { DetailSectionHeading } from "@/components/tenders/DetailSectionHeading";
 import { tenderSearchGuide } from "@/lib/tender-search-guide";
+import { BidDocumentAccessCard } from "@/components/tenders/BidDocumentAccessCard";
 import Link from "next/link";
 import type { ParticipationGuideLink } from "@/lib/participation-guides";
 
@@ -106,6 +107,12 @@ export function SourcePanel({ tender, participationGuide: guide }: { tender: Ten
           )}
         </div>
       )}
+
+      {/*
+        Per tender, not per platform: where the source publishes only the
+        notice and each notice says its own way to the documents (Guyana).
+      */}
+      {tender.bidDocumentAccess && <BidDocumentAccessCard access={tender.bidDocumentAccess} noticeUrl={tender.sourceUrl} />}
 
       {/*
         Registration is the step a first-time bidder cannot skip and cannot

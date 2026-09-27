@@ -1,4 +1,4 @@
-import type { Tender, TenderKeyDate, TenderScopeType } from "@/types/tender";
+import type { BidDocumentAccess, Tender, TenderKeyDate, TenderScopeType } from "@/types/tender";
 import { slugify, untranslated } from "@/lib/ingestion/text-utils";
 import { safeFileName, type TenderDocumentLink } from "@/lib/ingestion/document-links";
 import { GUYANA_EPROCURE_LIST_URL, type GuyanaOpportunity } from "@/lib/ingestion/connectors/guyana-eprocure-live";
@@ -40,10 +40,15 @@ export function guyanaBuyer(agency: string): string {
 /**
  * The name as a title: whitespace collapsed, and the "1." an agency types in
  * front of a lot list dropped. Lots stay — "Lot 1-4" is part of what is being
- * bought.
+ * bought. Private-use and zero-width characters go too: four GWI well-drilling
+ * names of 2026-09-27 began with U+F076, a Word bullet that renders as a box.
  */
 export function guyanaTitle(projectName: string): string {
-  return projectName.replace(/\s+/g, " ").replace(/^\s*\d{1,2}\.\s*/, "").trim();
+  return projectName
+    .replace(/[\uE000-\uF8FF\u200B-\u200D\u2060\uFEFF]/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^\s*\d{1,2}\.\s*/, "")
+    .trim();
 }
 
 function scopeTypeOf(nature: string): TenderScopeType {
@@ -66,8 +71,17 @@ export function guyanaDocumentLinks(opportunity: GuyanaOpportunity): TenderDocum
   }));
 }
 
-/** One advertised opportunity → a Tender. Every row maps; whether it is kept is the relevance tier's job. */
-export function mapGuyanaOpportunityToTender(opportunity: GuyanaOpportunity, facts: GuyanaNoticeFacts, now: Date = new Date()): Tender {
+/**
+ * One advertised opportunity → a Tender. Every row maps; whether it is kept is
+ * the relevance tier's job. `access` is how the notice says the documents are
+ * obtained (guyana-document-access.ts); null when it says nothing readable.
+ */
+export function mapGuyanaOpportunityToTender(
+  opportunity: GuyanaOpportunity,
+  facts: GuyanaNoticeFacts,
+  now: Date = new Date(),
+  access: BidDocumentAccess | null = null,
+): Tender {
   const title = guyanaTitle(opportunity.projectName);
   const buyer = guyanaBuyer(opportunity.agency);
   const scopeType = scopeTypeOf(opportunity.procurementNature);
@@ -132,6 +146,9 @@ export function mapGuyanaOpportunityToTender(opportunity: GuyanaOpportunity, fac
     keyDates,
     risks: [],
     relevance,
+    // Always set, null included, so every row of a Guyana batch carries the
+    // column and PostgREST builds one ON CONFLICT clause for all of them.
+    bidDocumentAccess: access,
     sourceName: GUYANA_SOURCE_NAME,
     sourceUrl: opportunity.documents[0]?.url ?? GUYANA_EPROCURE_LIST_URL,
     createdAt: timestamp,

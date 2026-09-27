@@ -28,14 +28,17 @@
  * only (2026-09-27: 小项目不要，只要大型工程项目或者采购项目), and that
  * sentence is the one reliable size signal the source publishes — see
  * lib/relevance-guyana.ts. Text comes from poppler's `pdftotext`, the tool
- * document-intake.ts already depends on; a scanned notice has no text layer
- * and reads as null.
+ * document-intake.ts already depends on; where it is not installed — the web
+ * host, which runs the admin page's manual import button — from unpdf
+ * (pdf.js). On all 35 notices of 2026-09-27 the two gave the same facts. A
+ * scanned notice has no text layer and reads as null either way.
  */
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { getDocumentProxy } from "unpdf";
 
 const execFileAsync = promisify(execFile);
 
@@ -51,6 +54,8 @@ const HEADERS = {
 const TIMEOUT_MS = 60_000;
 /** A notice is one to three pages; anything past this is not a notice. */
 const MAX_PDF_BYTES = 15 * 1024 * 1024;
+/** Pages read per notice — the competition and lender sentences are on the first. */
+const MAX_NOTICE_PAGES = 4;
 
 export type GuyanaOpportunity = {
   projectId: string;
@@ -127,15 +132,38 @@ export async function fetchNoticeText(url: string): Promise<string | null> {
     if (!response.ok) return null;
     const bytes = Buffer.from(await response.arrayBuffer());
     if (bytes.length === 0 || bytes.length > MAX_PDF_BYTES || bytes.subarray(0, 5).toString() !== "%PDF-") return null;
-    dir = await mkdtemp(join(tmpdir(), "guyana-notice-"));
-    const file = join(dir, "notice.pdf");
-    await writeFile(file, bytes);
-    const { stdout } = await execFileAsync("pdftotext", ["-q", "-l", "4", file, "-"], { maxBuffer: 4 * 1024 * 1024 });
-    const clean = stdout.replace(/\s+/g, " ").trim();
+    let raw: string;
+    try {
+      dir = await mkdtemp(join(tmpdir(), "guyana-notice-"));
+      const file = join(dir, "notice.pdf");
+      await writeFile(file, bytes);
+      raw = (await execFileAsync("pdftotext", ["-q", "-l", String(MAX_NOTICE_PAGES), file, "-"], { maxBuffer: 4 * 1024 * 1024 })).stdout;
+    } catch (err) {
+      // Only a missing binary falls through to pdf.js; a PDF that pdftotext
+      // itself refuses is not one pdf.js will read better.
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") return null;
+      raw = await pdfJsText(bytes);
+    }
+    const clean = raw.replace(/\s+/g, " ").trim();
     return clean.length >= 40 ? clean : null;
   } catch {
     return null;
   } finally {
     if (dir) await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
+/** The first MAX_NOTICE_PAGES pages' text through pdf.js, for a machine without pdftotext. */
+async function pdfJsText(bytes: Buffer): Promise<string> {
+  const pdf = await getDocumentProxy(new Uint8Array(bytes), { verbosity: 0 });
+  try {
+    const pages: string[] = [];
+    for (let number = 1; number <= Math.min(pdf.numPages, MAX_NOTICE_PAGES); number++) {
+      const content = await (await pdf.getPage(number)).getTextContent();
+      pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "));
+    }
+    return pages.join(" ");
+  } finally {
+    await pdf.loadingTask.destroy();
   }
 }

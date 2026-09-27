@@ -4,6 +4,7 @@ import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type {
+  BidDocumentAccess,
   LocalizedText,
   Tender,
   TenderKeyDate,
@@ -15,6 +16,7 @@ import type {
 } from "@/types/tender";
 import { classifyStoredTender } from "@/lib/relevance";
 import { deriveTenderStatus } from "@/lib/tender-status";
+import { GUYANA_SOURCE_NAME } from "@/lib/relevance-guyana";
 
 type TenderRow = {
   id: string;
@@ -571,6 +573,26 @@ export async function fetchTenderLifecycle(tenderId: string): Promise<TenderLife
 }
 
 /** Returns undefined when configured but no row matches; null when Supabase isn't configured. */
+/** Sources whose import writes tenders.bid_document_access (migration 0058). */
+const SOURCES_WITH_DOCUMENT_ACCESS: ReadonlySet<string> = new Set([GUYANA_SOURCE_NAME]);
+
+/**
+ * A detail page's 标书获取方式 (Tender.bidDocumentAccess), read on its own.
+ *
+ * Not in TENDER_FLAT_FIELDS, deliberately. Those strings go to PostgREST as
+ * an explicit column list, and a column the database does not have yet fails
+ * the WHOLE request — every list and detail page on the site, until someone
+ * runs migration 0058. Asked for separately, only for the one source that
+ * writes it, and any error (the column not there yet included) just leaves
+ * the card off. The list query stays as slim as it was.
+ */
+async function withBidDocumentAccess(supabase: SupabaseClient, tender: Tender): Promise<Tender> {
+  if (!SOURCES_WITH_DOCUMENT_ACCESS.has(tender.sourceName)) return tender;
+  const { data, error } = await supabase.from("tenders").select("bid_document_access").eq("slug", tender.slug).maybeSingle();
+  if (error || !data) return tender;
+  return { ...tender, bidDocumentAccess: (data as { bid_document_access: BidDocumentAccess | null }).bid_document_access ?? null };
+}
+
 export async function fetchTenderBySlugFromDb(
   slug: string,
 ): Promise<Tender | null | undefined> {
@@ -587,7 +609,7 @@ export async function fetchTenderBySlugFromDb(
   );
 
   if (!data) return undefined;
-  return toTender(data as unknown as TenderRow);
+  return withBidDocumentAccess(supabase, toTender(data as unknown as TenderRow));
 }
 
 /**
@@ -612,7 +634,7 @@ export async function fetchTenderByPublicSlugFromDb(
 
   // A staged country's page does not exist yet for a visitor (lib/staged-countries.ts).
   if (!data || isStagedCountry((data as unknown as TenderRow).country)) return undefined;
-  return toTender(data as unknown as TenderRow);
+  return withBidDocumentAccess(supabase, toTender(data as unknown as TenderRow));
 }
 
 /**

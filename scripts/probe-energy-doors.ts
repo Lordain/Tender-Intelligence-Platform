@@ -50,6 +50,22 @@ const TARGETS: [string, string][] = [
   // Colombia oil (user, 2026-09-25: 哥伦比亚石油公司能不能取到实时数据).
   ["哥伦比亚 Ecopetrol 供应商门户", "https://proveedores.ecopetrol.com.co/es-ES/"],
   ["哥伦比亚 Ecopetrol 选举期公开招标表", "https://proveedores.ecopetrol.com.co/es-ES/Convocatorias-p%C3%BAblicas-en-ley-de-garant%C3%ADas/"],
+  // Argentina (user, 2026-09-27: 增加阿根廷，先做分析). COMPR.AR, CONTRAT.AR,
+  // the Boletín Oficial, ADIF, Mendoza and Santa Fe answered the sandbox;
+  // these did not (no connection, a 503, or a 403 from Córdoba), and they are
+  // where the water, power, nuclear and provincial works tenders are.
+  ["阿根廷 AySA（布宜诺斯艾利斯水务）首页", "https://www.aysa.com.ar/"],
+  ["阿根廷 AySA 供应商", "https://www.aysa.com.ar/proveedores"],
+  ["阿根廷 ENARSA（国家能源公司）首页", "https://www.enarsa.com.ar/"],
+  ["阿根廷 ENARSA 招标", "https://www.enarsa.com.ar/licitaciones/"],
+  ["阿根廷 Nucleoeléctrica（核电）首页", "https://www.na-sa.com.ar/"],
+  ["阿根廷 Entidad Binacional Yacyretá（水电）", "https://www.eby.org.ar/"],
+  ["阿根廷 Corredores Viales（国道特许）", "https://www.corredoresviales.com.ar/"],
+  ["阿根廷 布宜诺斯艾利斯省采购平台 PBAC", "https://pbac.cgp.gba.gov.ar/"],
+  ["阿根廷 科尔多瓦省采购平台", "https://compraspublicas.cba.gov.ar/"],
+  ["阿根廷 布宜诺斯艾利斯市采购平台 BAC", "https://www.buenosairescompras.gob.ar/ListarAperturaProxima.aspx"],
+  ["阿根廷 内乌肯省政府", "https://www.neuquen.gob.ar/"],
+  ["阿根廷 布宜诺斯艾利斯省基础设施部", "https://www.gba.gob.ar/infraestructura"],
 ];
 
 const HEADERS = {

@@ -26,13 +26,15 @@ type Props = {
   bankQuote: { mxnAmount: number; rate: number; validDays: number } | null;
   stripeReady: boolean;
   internationalWireEnabled: boolean;
+  /** Whether wire customers can download the proforma invoice and agreement. */
+  wireDocuments: boolean;
   initialProfile: BillingProfile;
 };
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const mxn = new Intl.NumberFormat("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote, stripeReady, internationalWireEnabled, initialProfile }: Props) {
+export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote, stripeReady, internationalWireEnabled, wireDocuments, initialProfile }: Props) {
   const [profile, setProfile] = useState(initialProfile);
   const [method, setMethod] = useState<"card" | "bank_transfer" | "international_wire" | null>(stripeReady ? "card" : internationalWireEnabled ? "international_wire" : null);
   const [submitting, setSubmitting] = useState(false);
@@ -156,7 +158,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
             <span className="text-sm font-black">国际银行电汇（人工确认）</span>
             <span className="mt-1 block pl-6 text-xs leading-5 text-white/55">
               {internationalWireEnabled
-                ? `适合企业对公付款。提交后工作人员会联系你，确认后可下载中英文形式发票和服务协议交给财务。金额 ${usd.format(usdAmount)} 美元（USD），到账后人工开通，不会自动续费。`
+                ? `适合企业对公付款。提交后工作人员会联系你${wireDocuments ? "，确认后可下载中英文形式发票和服务协议交给财务" : ""}。金额 ${usd.format(usdAmount)} 美元（USD），到账后人工开通，不会自动续费。`
                 : "收款账户审核完成后开放。"}
             </span>
           </label>

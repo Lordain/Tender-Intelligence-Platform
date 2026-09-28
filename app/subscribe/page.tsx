@@ -9,6 +9,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { hasCurrentStripePrice } from "@/lib/stripe";
 import { internationalWireEnabled } from "@/lib/manual-wire";
 import { EnterprisePaymentSteps } from "@/components/billing/EnterprisePaymentSteps";
+import { invoiceSeller } from "@/lib/billing/invoice-seller";
 
 /**
  * The one crawlable page here that should NOT be indexed, rather than one that
@@ -50,6 +51,7 @@ export default async function SubscribePage({
   const quote = Number.isFinite(rate) && rate > 0 ? bankTransferQuote(selected.plan, rate, selected.interval) : null;
   const stripeReady = await hasCurrentStripePrice(selected.plan, selected.interval);
   const usdAmount = planPriceUsd(selected.plan, selected.interval);
+  const wireDocuments = invoiceSeller() !== null;
 
   return (
     <main className="bg-[#f6f4ef] px-5 py-10 sm:px-8 sm:py-14">
@@ -80,6 +82,7 @@ export default async function SubscribePage({
           bankQuote={quote ? { mxnAmount: quote.mxnAmount, rate, validDays } : null}
           stripeReady={stripeReady}
           internationalWireEnabled={internationalWireEnabled()}
+          wireDocuments={wireDocuments}
           initialProfile={{
             buyerType: profile?.buyer_type === "individual" ? "individual" : "business",
             legalName: profile?.legal_name ?? "",
@@ -95,7 +98,7 @@ export default async function SubscribePage({
         />
         {internationalWireEnabled() && (
           <section className="mt-6 rounded-3xl border border-[#dbe2e5] bg-[#eef2f1] p-6 sm:p-7">
-            <EnterprisePaymentSteps />
+            <EnterprisePaymentSteps documents={wireDocuments} />
           </section>
         )}
       </div>

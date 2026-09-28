@@ -7,6 +7,7 @@ import { TRIAL_DAYS } from "@/lib/access-control";
 import { SUPPORT_WECHAT } from "@/lib/support";
 import { EnterprisePaymentSteps } from "@/components/billing/EnterprisePaymentSteps";
 import { internationalWireEnabled } from "@/lib/manual-wire";
+import { invoiceSeller } from "@/lib/billing/invoice-seller";
 // Read from the constant, never retyped: the cards above this line compute
 // ¥ from USD_CNY_REFERENCE_RATE, so a literal here goes stale the first time
 // the rate is refreshed and the page contradicts its own prices.
@@ -27,8 +28,8 @@ export default function PricingPage() {
         <PricingPlans />
         {internationalWireEnabled() && (
           <section id="enterprise-payment" className="mt-6 rounded-2xl border border-[#d8e0e3] bg-[#eef2f1] px-5 py-5 sm:px-6">
-            <EnterprisePaymentSteps />
-            <p className="mt-4 text-xs leading-6 text-[#64717c]">形式发票和服务协议为中英文对照，工作人员联系确认后在账户页下载；正式发票在到账后开具。</p>
+            <EnterprisePaymentSteps documents={invoiceSeller() !== null} />
+            {invoiceSeller() !== null && <p className="mt-4 text-xs leading-6 text-[#64717c]">形式发票和服务协议为中英文对照，工作人员联系确认后在账户页下载；正式发票在到账后开具。</p>}
           </section>
         )}
         <div className="mt-6 rounded-2xl border border-[#e9b949] bg-[#fff3d4] px-5 py-5 text-[#5f4300] sm:px-6">

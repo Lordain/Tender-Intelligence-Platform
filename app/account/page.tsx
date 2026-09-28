@@ -292,7 +292,7 @@ export default function AccountPage() {
             </div>
             <details className="mt-6 rounded-2xl border border-[#dfe5e7] bg-[#f7f8f6] px-5 py-4">
               <summary className="cursor-pointer text-sm font-black text-[#071826]">查看企业付款的完整步骤</summary>
-              <div className="mt-4"><EnterprisePaymentSteps title={null} /></div>
+              <div className="mt-4"><EnterprisePaymentSteps title={null} documents={Boolean(billingStatus.manualWire.documentsAvailable)} /></div>
             </details>
           </section>
         )}

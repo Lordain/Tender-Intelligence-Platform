@@ -203,6 +203,10 @@ async function main() {
   check("a road buyer's spare parts are not a road", tier({ title: "Adquisición de repuestos de balanzas", procedureType: "Licitación Pública" }), "excluded");
   check("Neuquén's paved carriageway is a road", tier({ title: "Obra Básica Y Calzada Pavimentada De Av. Interurbana Río Colorado / Trenque Lauquen", scopeType: "works" }) !== "excluded", true);
   check("a real river work still counts", tier({ title: "Obras de defensa costera y dragado en el río Paraná", scopeType: "works" }) !== "excluded", true);
+  // Software licences only (user, 2026-09-28: 只买软件许可 → 排除).
+  check("software licences are not an ICT project", tier({ title: "Adquisición de licencias de suite de software cartográfico e hidrográfico", procedureType: "Licitación Pública" }), "excluded");
+  check("a VMware upgrade is not an ICT project", tier({ title: "Actualización/upgrade del Vmware VSPHERE 8 ENTERPRISE PLUS - Implementación y Soporte Técnico", procedureType: "Licitación Pública" }), "excluded");
+  check("software development still counts as ICT", tier({ title: "Reingenieria de software SINTRA", procedureType: "Licitación Pública" }) !== "excluded", true);
   check("direct award still excluded in a sector", tier({ title: "Provisión de transformadores de potencia", procedureType: "Contratación Directa" }), "excluded");
 
   check("COMPR.AR: open calls always opened", comprarRowWanted(comprarRows[1]), true);

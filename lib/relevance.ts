@@ -2642,11 +2642,22 @@ const VALUE_FLOOR_EXEMPT_EXTRA_PATTERN_BY_COUNTRY: Record<string, RegExp> = {
 const EXEMPTION_FALSE_FRIENDS = /\br[ií]o\s+(?:turbio|gallegos|cuarto|grande|negro|colorado|tercero|segundo|ceballos|mayo|chico|primero|hondo)\b|\bmargen (?:izquierda|derecha)\b/gi;
 const NEVER_EXEMPT = /\bagua (?:mineral|envasada)\b|\bbotell[oó]n(?:es)?\b|\bdispensers?\b|\bbid[oó]n(?:es)?\b|\basegurador[ao]?\b|\bp[oó]liza\b|\bseguros? (?:de|para)\b|\btransporte (?:de|del) personal\b/i;
 
+/**
+ * A purchase of software licences — or an upgrade or subscription of a
+ * vendor's product — is not an ICT project, so it is never exempt (user,
+ * 2026-09-28: 只买软件许可 → 排除). From the COMPR.AR dry run: "Adquisición de
+ * licencias de suite de software cartográfico e hidrográfico",
+ * "Actualización/upgrade del Vmware VSPHERE 8 ENTERPRISE PLUS". Read on the
+ * title only, so a system build whose summary lists its licences keeps its
+ * exemption; software development ("Reingeniería de software") is not matched.
+ */
+const SOFTWARE_LICENCE_ONLY = /\blicencias?\b|\blicenciamientos?\b|\bupgrade\b|\bsuscripci[oó]n(?:es)?\b/i;
+
 function isValueFloorExemptSector(country: string | undefined, subjectTitle: string, subjectSummary: string | undefined): boolean {
   const exempt = country === undefined ? undefined : VALUE_FLOOR_EXEMPT_INDUSTRIES_BY_COUNTRY[country];
   if (!exempt) return false;
   const text = [subjectTitle, subjectSummary].filter(Boolean).join(" ");
-  if (NEVER_EXEMPT.test(text)) return false;
+  if (NEVER_EXEMPT.test(text) || SOFTWARE_LICENCE_ONLY.test(subjectTitle)) return false;
   const title = subjectTitle.replace(EXEMPTION_FALSE_FRIENDS, " ");
   const summary = subjectSummary?.replace(EXEMPTION_FALSE_FRIENDS, " ");
   if (classifyIndustries(title, summary).some((industry) => exempt.has(industry))) return true;

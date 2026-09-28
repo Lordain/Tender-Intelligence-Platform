@@ -138,6 +138,8 @@ export type TranslateAllTendersResult = {
   droppedIdentifiers?: { slug: string; codes: string[] }[];
   /** Most recent real error message from a failed API call, if any — callers (the admin API route) use this to log an admin_alerts row when translation is failing systemically (quota/connection), not just per one bad row. */
   lastErrorMessage?: string;
+  /** Rows not reached because the run stopped at `stopAfterMs`; the next run picks them up. */
+  leftForNextRun?: number;
   /**
    * How the attempted rows split across prompts.
    *
@@ -219,8 +221,17 @@ export async function translateAllTenders(
      * set is ~31 batches.
      */
     onProgress?: (doneCount: number, total: number) => void;
+    /**
+     * Stop starting new batches this many ms after the call began. The admin
+     * button runs inside a serverless request with a hard limit; stopping
+     * early keeps what was written and says how many are left, where being
+     * killed at the limit returned the host's error page instead of a result
+     * (2026-09-28). Unset for the CLI.
+     */
+    stopAfterMs?: number;
   },
 ): Promise<TranslateAllTendersResult> {
+  const startedAt = Date.now();
   // PostgREST caps an unranged select at 1000 rows — page with .range()
   // so tenders past the first 1000 don't silently get skipped.
   const PAGE_SIZE = 1000;
@@ -288,7 +299,14 @@ export async function translateAllTenders(
   const droppedIdentifiers: { slug: string; codes: string[] }[] = [];
   let lastErrorMessage: string | undefined;
 
+  let processed = 0;
+  let stoppedEarly = false;
   for (const batch of chunkByLanguage(toTranslate, BATCH_SIZE)) {
+    if (options.stopAfterMs !== undefined && processed > 0 && Date.now() - startedAt > options.stopAfterMs) {
+      stoppedEarly = true;
+      break;
+    }
+    processed += batch.length;
     let results: TranslatedTender[];
     try {
       results = await translateRows(batch);
@@ -353,5 +371,5 @@ export async function translateAllTenders(
     options.onProgress?.(translatedCount + failedCount, toTranslate.length);
   }
 
-  return { ...result, translatedCount, failedCount, failedSlugs, writtenSlugs, droppedIdentifiers, lastErrorMessage };
+  return { ...result, translatedCount, failedCount, failedSlugs, writtenSlugs, droppedIdentifiers, lastErrorMessage, ...(stoppedEarly ? { leftForNextRun: toTranslate.length - processed } : {}) };
 }

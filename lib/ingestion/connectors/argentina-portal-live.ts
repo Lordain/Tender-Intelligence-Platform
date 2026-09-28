@@ -89,6 +89,51 @@ const RETRY_PAUSE_MS = 3_000;
 const MAX_PAGES = 120;
 /** How long the list walk may take before it stops and reports how far it got. */
 const DEFAULT_BUDGET_MS = 20 * 60_000;
+/**
+ * Waits before trying an unreachable portal again. On 2026-09-28 both portals
+ * refused the GitHub runner for the whole of one request's three attempts
+ * (40 s, "fetch failed") while answering the sandbox in 2 s, so a longer gap
+ * is what can ride out a short outage; a block that outlasts seven minutes is
+ * reported with its cause instead.
+ */
+const REACH_RETRY_PAUSES_MS = [2 * 60_000, 5 * 60_000];
+
+/**
+ * What undici's bare "fetch failed" hides: its cause's code (ECONNRESET,
+ * ECONNREFUSED, ETIMEDOUT, ENOTFOUND, EAI_AGAIN, UND_ERR_CONNECT_TIMEOUT, a
+ * certificate error, …), which is what tells a refusal from a DNS failure.
+ */
+export function describeFetchError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  if (err.name === "TimeoutError") return "超时（60 秒无响应）";
+  const cause = (err as { cause?: unknown }).cause as { code?: string; message?: string } | undefined;
+  const detail = [cause?.code, cause?.message].filter(Boolean).join(" ");
+  return detail && !err.message.includes(detail) ? `${err.message}（${detail}）` : err.message;
+}
+
+/**
+ * Runs `open` (a portal's first request), trying again after each pause in
+ * `pausesMs` when it throws. Returns the first success; throws the last
+ * error, with every attempt's cause, when none succeeds.
+ */
+export async function openWithRetry<T>(
+  open: () => Promise<T>,
+  pausesMs: readonly number[] = REACH_RETRY_PAUSES_MS,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+): Promise<T> {
+  const errors: string[] = [];
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await open();
+    } catch (err) {
+      errors.push(describeFetchError(err));
+      if (attempt >= pausesMs.length) {
+        throw new Error(errors.length > 1 ? `${errors.length} 次都连不上：${errors.join("；")}` : errors[0]);
+      }
+      await sleep(pausesMs[attempt]);
+    }
+  }
+}
 
 // ── HTML helpers ─────────────────────────────────────────────────────────
 
@@ -301,7 +346,7 @@ export class PortalSession {
         if (![502, 503, 504].includes(response.status) || attempt >= RETRIES) return response;
         await response.body?.cancel();
       } catch (err) {
-        if (attempt >= RETRIES) throw err;
+        if (attempt >= RETRIES) throw new Error(`${url} 连接失败：${describeFetchError(err)}`);
       }
       await new Promise((resolve) => setTimeout(resolve, RETRY_PAUSE_MS * attempt));
     }
@@ -387,18 +432,24 @@ export type ArgentinaPortalFetchResult = {
  */
 export async function fetchArgentinaPortal(
   portalId: ArgentinaPortalId,
-  options: { wanted: (row: ArgentinaPortalListRow) => boolean; maxPages?: number; pauseMs?: number; budgetMs?: number },
+  options: { wanted: (row: ArgentinaPortalListRow) => boolean; maxPages?: number; pauseMs?: number; budgetMs?: number; reachRetryPausesMs?: readonly number[] },
 ): Promise<ArgentinaPortalFetchResult> {
   const portal = ARGENTINA_PORTALS[portalId];
-  const session = new PortalSession();
+  let session = new PortalSession();
   const pause = () => new Promise((resolve) => setTimeout(resolve, options.pauseMs ?? 150));
   // COMPR.AR took 15 minutes on one run and over 40 on the next (2026-09-28,
   // slow answers and 503 retries). The walk stops at the budget and says so,
   // rather than holding the daily job past its 40-minute limit.
   const deadline = Date.now() + (options.budgetMs ?? DEFAULT_BUDGET_MS);
 
-  await session.page(`${portal.origin}${portal.homePath}`);
-  let page = await session.page(`${portal.origin}${portal.listPath}`);
+  // Opening the portal is retried as a whole, on a fresh session each time,
+  // after minutes rather than seconds; the walk that follows keeps the
+  // per-request retries.
+  let page = await openWithRetry(async () => {
+    session = new PortalSession();
+    await session.page(`${portal.origin}${portal.homePath}`);
+    return session.page(`${portal.origin}${portal.listPath}`);
+  }, options.reachRetryPausesMs);
 
   const listed: ArgentinaPortalListRow[] = [];
   const failed: ArgentinaPortalFetchResult["failed"] = [];

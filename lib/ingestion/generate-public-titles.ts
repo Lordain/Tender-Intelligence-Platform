@@ -150,6 +150,8 @@ export type GenerateDisplayTextResult = {
   rejected?: { slug: string; column: GeneratedColumn; value: string; problems: string[] }[];
   /** Rows the model never returned, or whose write failed. */
   failedSlugs?: string[];
+  /** Rows not reached because the run stopped at `stopAfterMs`; the next run picks them up. */
+  leftForNextRun?: number;
   lastErrorMessage?: string;
   /** Real model output for the first `sample` rows, written nowhere. */
   preview?: DisplayTextPreview[];
@@ -267,8 +269,11 @@ export async function generateDisplayText(
     limit?: number;
     sample?: number;
     onProgress?: (done: number, total: number) => void;
+    /** Stop starting new batches this many ms after the call began — see translateAllTenders' option of the same name. */
+    stopAfterMs?: number;
   },
 ): Promise<GenerateDisplayTextResult> {
+  const startedAt = Date.now();
   const candidates = await loadCandidates(supabase);
   const selected = options.limit === undefined ? candidates : candidates.slice(0, options.limit);
 
@@ -315,7 +320,14 @@ export async function generateDisplayText(
   let lastErrorMessage: string | undefined;
   let done = 0;
 
+  let processed = 0;
+  let stoppedEarly = false;
   for (const batch of chunk(selected, BATCH_SIZE)) {
+    if (options.stopAfterMs !== undefined && processed > 0 && Date.now() - startedAt > options.stopAfterMs) {
+      stoppedEarly = true;
+      break;
+    }
+    processed += batch.length;
     let generated: Awaited<ReturnType<typeof generateDisplayTextBatch>> = [];
     try {
       generated = await generateDisplayTextBatch(batch.map(toInput));
@@ -402,12 +414,13 @@ export async function generateDisplayText(
 
   return {
     candidateCount: candidates.length,
-    attemptedCount: selected.length,
+    attemptedCount: processed,
     writtenCount,
     writtenByColumn,
     clearedByColumn,
     rejected,
     failedSlugs,
     lastErrorMessage,
+    ...(stoppedEarly ? { leftForNextRun: selected.length - processed } : {}),
   };
 }

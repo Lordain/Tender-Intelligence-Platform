@@ -38,6 +38,16 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  */
 const MAX_SAMPLE = 20;
 
+/**
+ * Model calls run in sequence and can take minutes. Without this the route
+ * got the host's default limit and was cut off mid-run (2026-09-28: the panel
+ * showed "Unexpected token 'A', \"An error o\"… is not valid JSON" — the host's
+ * error page read as JSON). The pass itself stops starting batches at
+ * STOP_AFTER_MS and reports what is left, well inside this limit.
+ */
+export const maxDuration = 300;
+const STOP_AFTER_MS = 150_000;
+
 export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
@@ -57,6 +67,7 @@ export async function POST(request: Request) {
       write,
       limit: body.limit,
       sample: write || body.sample === undefined ? undefined : Math.min(body.sample, MAX_SAMPLE),
+      stopAfterMs: STOP_AFTER_MS,
     });
     if (result.lastErrorMessage) {
       await logAdminAlert(supabase, "public-titles", new Error(result.lastErrorMessage));

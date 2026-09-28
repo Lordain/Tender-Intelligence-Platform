@@ -313,7 +313,10 @@ export function mapAdifTenderToTender(tender: AdifTender, now: Date = new Date()
       publicationDate: null,
       submissionDeadline,
       sourceName: ADIF_SOURCE_NAME,
-      sourceUrl: tender.files.find((file) => file.category === "Aviso")?.url ?? ADIF_PORTAL_URL,
+      // ADIF has no page per procedure, only its list of open calls; that
+      // list is the official entry (user, 2026-09-28: 官方入口应是招标页面，
+      // 不是 PDF). The notice PDF stays with the other attachments below.
+      sourceUrl: ADIF_PORTAL_URL,
     },
     now,
   );

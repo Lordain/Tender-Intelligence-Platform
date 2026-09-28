@@ -80,7 +80,7 @@ export function RefreshDisplayTextButton() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ write, limit: count(translateLimit) }),
       });
-      const translateData = await translateRes.json();
+      const translateData = await readJson(translateRes, "翻译");
       if (!translateRes.ok) throw new Error(`翻译这一步失败：${translateData.error ?? `HTTP ${translateRes.status}`}`);
       setTranslated(translateData as TranslateAllTendersResult);
 
@@ -93,7 +93,7 @@ export function RefreshDisplayTextButton() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(write ? { write: true, limit: generateCount } : { write: false, sample: generateCount ?? 20 }),
       });
-      const generateData = await generateRes.json();
+      const generateData = await readJson(generateRes, "生成公开文案");
       if (!generateRes.ok) throw new Error(`生成公开文案这一步失败：${generateData.error ?? `HTTP ${generateRes.status}`}`);
       setGenerated(generateData as GenerateDisplayTextResult);
     } catch (err) {
@@ -178,6 +178,25 @@ export function RefreshDisplayTextButton() {
   );
 }
 
+/**
+ * The response body as JSON, or a plain explanation when the host answered
+ * with its own error page instead — which is what a request cut off at the
+ * time limit gets, and which JSON.parse turned into "Unexpected token 'A'"
+ * (2026-09-28).
+ */
+async function readJson(response: Response, step: string): Promise<Record<string, unknown>> {
+  const text = await response.text();
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(
+      response.status === 504 || /timeout|timed out|An error occurred/i.test(text)
+        ? `「${step}」这一步超时被服务器中断（已完成的部分已保存）。请把条数调小一些再点一次。`
+        : `「${step}」这一步服务器返回异常（HTTP ${response.status}）。请稍后再试。`,
+    );
+  }
+}
+
 function StageHeading({ children }: { children: React.ReactNode }) {
   return <p className="mb-1 text-xs font-black uppercase tracking-[0.12em] text-[#8b969c]">{children}</p>;
 }
@@ -208,8 +227,14 @@ function TranslateResult({ result }: { result: TranslateAllTendersResult }) {
       {result.failedSlugs && result.failedSlugs.length > 0 && (
         <p className="mt-1 text-xs text-red-700">失败：{result.failedSlugs.join("、")}</p>
       )}
+      {result.leftForNextRun ? <LeftForNextRun count={result.leftForNextRun} /> : null}
     </div>
   );
+}
+
+/** A run that stopped at its time budget: what it did is saved; the rest needs another press. */
+function LeftForNextRun({ count }: { count: number }) {
+  return <p className="mt-1 text-xs font-semibold text-[#8a5700]">为避免超时，本次先处理到这里，还剩 {count} 条，再点一次「开始」继续。</p>;
 }
 
 const COLUMN_LABELS: Record<string, string> = {
@@ -223,6 +248,7 @@ function GenerateResult({ result }: { result: GenerateDisplayTextResult }) {
     <div className="mt-4 border-t border-[#e5e9eb] pt-4 text-sm text-[#52636e]">
       <StageHeading>② 生成公开文案</StageHeading>
       <p>还没有生成公开文案的项目：{result.candidateCount} 条，本次处理 {result.attemptedCount} 条。</p>
+      {result.leftForNextRun ? <LeftForNextRun count={result.leftForNextRun} /> : null}
 
       {result.preview && (
         <div className="mt-3 flex flex-col gap-3">

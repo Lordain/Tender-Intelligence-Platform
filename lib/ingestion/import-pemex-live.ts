@@ -13,7 +13,7 @@
 import { fetchPemexAttachments, fetchPemexList } from "@/lib/ingestion/connectors/pemex-live";
 import { mapPemexConcursoItemToTender, pemexDocumentLinks } from "@/lib/ingestion/pemex-mapper";
 import { saveDocumentLinks, type DocumentLinksForSlug } from "@/lib/ingestion/document-links";
-import { filterRecentTenders } from "@/lib/ingestion/recency";
+import { filterRecentTenders, filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import type { Tender } from "@/types/tender";
@@ -27,7 +27,7 @@ const SOURCE_NAME = "PEMEX — Concursos Abiertos";
 export async function importPemexLive(
   listTitle: string,
   buyer: string,
-  options: { write: boolean; months?: number; procedureLabel?: string },
+  options: { write: boolean; months?: number; days?: number; procedureLabel?: string },
 ): Promise<ImportPemexLiveResult> {
   // One month, matching the admin forms and the scheduled runs. This is the
   // value a caller gets by saying nothing, so it must be the conservative
@@ -47,7 +47,9 @@ export async function importPemexLive(
     if (item.Attachments) itemBySlug.set(tender.slug, item.Id);
     mapped.push(tender);
   }
-  const kept = filterRecentTenders(mapped, months);
+  // The admin form asks in days (user, 2026-09-28: 1、2、3天，不需要每次都1个月);
+  // months stay for the CLI and backfills.
+  const kept = options.days && options.days > 0 ? filterTendersPublishedWithinDays(mapped, options.days) : filterRecentTenders(mapped, months);
 
   const result: ImportPemexLiveResult = {
     listTitle,
@@ -55,6 +57,7 @@ export async function importPemexLive(
     mappedCount: mapped.length,
     keptAfterRecencyCount: kept.length,
     months,
+    ...(options.days ? { days: options.days } : {}),
     sample: kept.slice(0, 5),
   };
 

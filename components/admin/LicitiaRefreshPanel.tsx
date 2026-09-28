@@ -1,5 +1,6 @@
 "use client";
 
+import { DayWindowPicker, DEFAULT_DAY_WINDOW } from "@/components/admin/DayWindowPicker";
 import { useState } from "react";
 import { AutoRunBadge } from "@/components/admin/AutoRunBadge";
 
@@ -11,6 +12,7 @@ type DiscoverResult = {
   keptAfterRecencyCount: number;
   excludedCsvPath?: string;
   months: number;
+  days?: number;
   upsertedCount?: number;
   skippedExcludedCount?: number;
   protectedCount?: number;
@@ -67,11 +69,9 @@ export function LicitiaRefreshPanel() {
 }
 
 function DiscoverSection() {
-    // One month, not six: a wide window is the FIRST import's job, and after
-  // that every run is a top-up that re-fetches and re-upserts months of rows
-  // nobody is waiting on (user, 2026-09-12: 只有第一次需要大量，后续没必要每次都是大量文档).
-  // Still editable, so a catch-up after a gap just means typing a bigger number.
-  const [months, setMonths] = useState("1");
+  // Days, not months (user, 2026-09-28: 1、2、3天，不需要每次都1个月). The daily
+  // job keeps new tenders flowing; a manual run only tops up the last few days.
+  const [days, setDays] = useState<number>(DEFAULT_DAY_WINDOW);
   const [write, setWrite] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +86,7 @@ function DiscoverSection() {
       const res = await fetch("/api/admin/licitia/discover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ write, months: months.trim() === "" ? undefined : Number(months) }),
+        body: JSON.stringify({ write, days }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -109,16 +109,9 @@ function DiscoverSection() {
       </p>
       {error && <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
       <div className="mt-2 flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-semibold text-[#52636e]">保留最近几个月（0 = 不限制）</span>
-          <input
-            type="number"
-            min={0}
-            value={months}
-            onChange={(e) => setMonths(e.target.value)}
-            className="h-9 w-32 rounded-lg border border-[#d8e0e3] bg-white px-2 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
-          />
-        </label>
+        <div className="flex flex-col gap-1 text-xs">
+          <DayWindowPicker value={days} onChange={setDays} disabled={submitting} />
+        </div>
         <label className="flex items-center gap-2 pb-2 text-xs text-[#233846]">
           <input type="checkbox" checked={write} onChange={(e) => setWrite(e.target.checked)} className="size-4 accent-[#ffb21c]" />
           写入 Supabase（不勾选则只预览）
@@ -136,7 +129,7 @@ function DiscoverSection() {
         <div className="mt-2 text-xs text-[#52636e]">
           <p>
             共 {result.vigenteCount} 条&quot;vigente&quot;，{result.newCount} 条是新的，成功映射 {result.mappedCount} 条（{result.resolvedLinksCount} 条有真实链接），按最近{" "}
-            {result.months || "不限"} 个月过滤后剩 {result.keptAfterRecencyCount} 条。
+            {result.days ?? days} 天过滤后剩 {result.keptAfterRecencyCount} 条。
           </p>
           {result.upsertedCount !== undefined && (
             <p className="mt-1 font-semibold text-emerald-700">

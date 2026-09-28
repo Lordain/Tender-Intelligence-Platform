@@ -21,6 +21,7 @@ export async function POST(request: Request) {
     procedureLabel?: string;
     write?: boolean;
     months?: number;
+    days?: number;
   };
 
   if (!body.listTitle || !PEMEX_LIST_TITLES.includes(body.listTitle as (typeof PEMEX_LIST_TITLES)[number])) {
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     const result = await importPemexLive(body.listTitle, body.buyer.trim(), {
       write: body.write === true,
       months: body.months,
+      days: Number.isFinite(body.days) ? Number(body.days) : undefined,
       procedureLabel: body.procedureLabel,
     });
     // The public list is cached; drop it so this edit shows up now.

@@ -159,7 +159,10 @@ export async function ingestArgentina(
       mapped: run.value.records.length,
       kept,
       skipped,
-      failures: run.value.failed.map((failure) => ({ ref: failure.processNumber, error: failure.error })),
+      failures: [
+        ...(run.value.stoppedEarly ? [{ ref: "列表", error: run.value.stoppedEarly }] : []),
+        ...run.value.failed.map((failure) => ({ ref: failure.processNumber, error: failure.error })),
+      ],
       seconds: run.seconds,
     };
   };

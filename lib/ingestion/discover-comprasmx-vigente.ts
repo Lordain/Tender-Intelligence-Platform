@@ -15,7 +15,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAllVigenteLicitaciones, fetchLicitacionDetail, buildComprasMxDetailUrl } from "@/lib/ingestion/connectors/licitia-connector";
 import { mapLicitiaVigenteRowToTender } from "@/lib/ingestion/licitia-vigente-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
-import { filterRecentTenders } from "@/lib/ingestion/recency";
+import { filterRecentTenders, filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import type { Tender } from "@/types/tender";
 
 /**
@@ -49,6 +49,8 @@ export type DiscoverComprasMxVigenteResult = {
   resolvedLinksCount: number;
   keptAfterRecencyCount: number;
   months: number;
+  /** Set when the run was asked for a window in days. */
+  days?: number;
   /**
    * Where this run's rejected titles were written, so the admin panel can name
    * the file. Absent when the export could not be written (a locked file, a
@@ -66,7 +68,7 @@ export type DiscoverComprasMxVigenteResult = {
 
 export async function discoverComprasMxVigente(
   supabase: SupabaseClient,
-  options: { write: boolean; months?: number },
+  options: { write: boolean; months?: number; days?: number },
 ): Promise<DiscoverComprasMxVigenteResult> {
   // One month, matching the admin forms and the scheduled runs. This is the
   // value a caller gets by saying nothing, so it must be the conservative
@@ -139,7 +141,8 @@ export async function discoverComprasMxVigente(
     }
   }
 
-  const recent = filterRecentTenders(tenders, months);
+  // Days from the admin panel (user, 2026-09-28); months for the CLI.
+  const recent = options.days && options.days > 0 ? filterTendersPublishedWithinDays(tenders, options.days) : filterRecentTenders(tenders, months);
   console.log(
     `[discover-comprasmx-vigente] Mapped ${tenders.length} of ${newRows.length} new rows (${resolvedLinks} with a real deep link); keeping ${recent.length} within the last ${months || "unlimited"} month(s).`,
   );
@@ -151,6 +154,7 @@ export async function discoverComprasMxVigente(
     resolvedLinksCount: resolvedLinks,
     keptAfterRecencyCount: recent.length,
     months,
+    ...(options.days ? { days: options.days } : {}),
     sample: recent.slice(0, 5),
   };
 

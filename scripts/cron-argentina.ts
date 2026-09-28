@@ -59,17 +59,17 @@ async function main() {
 
   const failed = result.failed ?? [];
   const brokenSources = result.sources.filter((source) => source.error);
-  const problem =
-    failed.length > 0
-      ? `${failed.length} 条写入失败`
-      : brokenSources.length > 0
-        ? `${brokenSources.map((source) => source.id).join("、")} 读取失败（见日志）`
-        : null;
+  // One unreachable source does not fail the job: from the GitHub runner the
+  // Boletín Oficial's name did not resolve (EAI_AGAIN, twice on 2026-09-28)
+  // while the other three answered. It is named in the heartbeat message the
+  // admin page shows; the job fails when a write fails or nothing was read.
+  const problem = failed.length > 0 ? `${failed.length} 条写入失败` : null;
+  const partial = brokenSources.length > 0 ? `；${brokenSources.map((source) => source.id).join("、")} 未能读取` : "";
   await writeCronHeartbeat(
     supabase!,
     "import-argentina",
     problem ? "failed" : "ok",
-    problem ?? `${result.sources.map((source) => `${source.id} ${source.kept}`).join("，")}；写入 ${result.upsertedCount ?? 0} 条（未公开）`,
+    problem ?? `${result.sources.map((source) => `${source.id} ${source.kept}`).join("，")}；写入 ${result.upsertedCount ?? 0} 条（未公开）${partial}`,
   );
   for (const f of failed.slice(0, 10)) console.error(`  ${f.slug} —— ${f.error}`);
   if (problem) process.exit(1);

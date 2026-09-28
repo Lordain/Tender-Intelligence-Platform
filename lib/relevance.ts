@@ -4214,18 +4214,20 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   // CFE calls read from the DOF: own rules, see lib/relevance-cfe.ts — the DOF
   // carries no supply type, and CFE's procedure number does.
   if (/^Diario Oficial de la Federaci[oó]n/.test(input.sourceName ?? "") && isCfeCall(input)) {
-    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    // An electricity utility's call is 电力, not 能矿 (user, 2026-09-28: 不是所有的电力都加能矿标签；能矿还是聚焦能源和石油).
+    const withPower: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "power" as const])];
     return {
-      industries: withEnergy,
+      industries: withPower,
       relevance: classifyCfeRelevance({ title: input.title, tenderNumber: input.tenderNumber }),
     };
   }
   // Cemig's e-Compras: own rules, see lib/relevance-cemig.ts — the one source
   // where a pregão for goods is kept (user, 2026-09-25).
   if (input.sourceName === CEMIG_SOURCE_NAME) {
-    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    // An electricity utility's call is 电力, not 能矿 (user, 2026-09-28: 不是所有的电力都加能矿标签；能矿还是聚焦能源和石油).
+    const withPower: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "power" as const])];
     return {
-      industries: withEnergy,
+      industries: withPower,
       relevance: classifyCemigRelevance({ title: input.title, summary: input.summary, procedureType: input.procedureType }),
     };
   }

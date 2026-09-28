@@ -17,13 +17,13 @@ export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
-  const body = (await request.json().catch(() => ({}))) as { write?: boolean; months?: number };
+  const body = (await request.json().catch(() => ({}))) as { write?: boolean; months?: number; days?: number };
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) return NextResponse.json({ error: "Supabase isn't configured." }, { status: 500 });
 
   try {
-    const result = await discoverComprasMxVigente(supabase, { write: body.write === true, months: body.months });
+    const result = await discoverComprasMxVigente(supabase, { write: body.write === true, months: body.months, days: Number.isFinite(body.days) ? Number(body.days) : undefined });
     // The public list is cached; drop it so this edit shows up now.
     revalidateTenders();
     return NextResponse.json(result);

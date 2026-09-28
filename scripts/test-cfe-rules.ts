@@ -49,7 +49,9 @@ console.log("\n识别");
 check("CFE 编号即识别", isCfeCall({ tenderNumber: "CFE-0001-CAAAT-0115-2026" }), true);
 check("没有编号时按采购单位识别", isCfeCall({ buyer: "COMISION FEDERAL DE ELECTRICIDAD", tenderNumber: "DOF-REF-1" }), true);
 check("其他采购单位不适用", isCfeCall({ buyer: "PETROLEOS MEXICANOS", tenderNumber: "DOF-REF-1" }), false);
-check("行业含能源矿业", classify(cases[0]).industries.includes("energy_mining"), true);
+// An electricity utility is 电力, not 能矿 (user, 2026-09-28).
+check("行业含电力", classify(cases[0]).industries.includes("power"), true);
+check("行业不含能矿", classify(cases[0]).industries.includes("energy_mining"), false);
 
 console.log("\n只作用于 DOF");
 check(

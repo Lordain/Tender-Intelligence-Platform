@@ -235,7 +235,8 @@ export function normalizeRawExtraction(input: unknown): unknown {
   // value is repaired, never a value invented. Anything unrecognised is left
   // exactly as it came and still fails validation.
   if (Array.isArray(raw.risks)) {
-    for (const risk of raw.risks) {
+    raw.risks = foldStrayRiskLevels(raw.risks);
+    for (const risk of raw.risks as unknown[]) {
       if (typeof risk !== "object" || risk === null) continue;
       const item = risk as Record<string, unknown>;
       if (typeof item.level !== "string") continue;
@@ -245,6 +246,37 @@ export function normalizeRawExtraction(input: unknown): unknown {
   }
 
   return raw;
+}
+
+/**
+ * A risk level the model wrote as its own array item instead of inside the
+ * risk it belongs to — `risks: [{title, description, …}, "medium", …]`, seen
+ * on a Brazilian edital on 2026-09-28 (brazil-45291787000126-1-000019-2026),
+ * which stopped the whole batch as a schema error.
+ *
+ * The string is the preceding risk's level: it becomes that risk's `level`
+ * when the risk has none, and is dropped as a duplicate when it has one.
+ * Only a string that IS a level (directly or through RISK_LEVEL_SYNONYMS) is
+ * touched — anything else stays in place and still fails validation, so a
+ * genuinely wrong answer is still reported rather than quietly reshaped.
+ */
+export function foldStrayRiskLevels(risks: unknown[]): unknown[] {
+  const levels = new Set(["low", "medium", "high", "critical"]);
+  const out: unknown[] = [];
+  for (const item of risks) {
+    if (typeof item === "string") {
+      const word = item.trim().toLowerCase();
+      const level = levels.has(word) ? word : RISK_LEVEL_SYNONYMS[word];
+      const previous = out[out.length - 1];
+      if (level && typeof previous === "object" && previous !== null && !Array.isArray(previous)) {
+        const risk = previous as Record<string, unknown>;
+        if (risk.level === undefined || risk.level === null || risk.level === "") risk.level = level;
+        continue;
+      }
+    }
+    out.push(item);
+  }
+  return out;
 }
 
 function isArrayField(field: unknown): boolean {

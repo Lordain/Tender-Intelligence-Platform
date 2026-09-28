@@ -30,11 +30,13 @@ export async function POST(request: Request) {
   const write = form.get("write") === "true";
   const monthsRaw = form.get("months");
   const months = typeof monthsRaw === "string" && monthsRaw.trim() !== "" ? Number(monthsRaw) : undefined;
+  const daysRaw = form.get("days");
+  const days = typeof daysRaw === "string" && daysRaw.trim() !== "" ? Number(daysRaw) : undefined;
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
   try {
-    const result = await importNewTenders(source as NewTendersSource, { buffer, fileName: file.name }, { write, months });
+    const result = await importNewTenders(source as NewTendersSource, { buffer, fileName: file.name }, { write, months, days });
     // The public list is cached; drop it so this edit shows up now.
     revalidateTenders();
     return NextResponse.json(result);

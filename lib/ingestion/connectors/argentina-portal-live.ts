@@ -45,6 +45,7 @@
  * link a reader follows to them.
  */
 import { foldAccents } from "@/lib/text-fold";
+import { runPool } from "@/lib/ingestion/run-pool";
 
 export type ArgentinaPortalId = "comprar" | "contratar";
 
@@ -86,6 +87,8 @@ const RETRIES = 3;
 const RETRY_PAUSE_MS = 3_000;
 /** Pages of ten; 453 rows on 2026-09-27. A bound, not an expectation. */
 const MAX_PAGES = 120;
+/** How long the list walk may take before it stops and reports how far it got. */
+const DEFAULT_BUDGET_MS = 20 * 60_000;
 
 // ── HTML helpers ─────────────────────────────────────────────────────────
 
@@ -372,6 +375,8 @@ export type ArgentinaPortalFetchResult = {
   records: ArgentinaPortalRecord[];
   /** Rows whose page could not be opened or read — reported, never silently dropped. */
   failed: { processNumber: string; error: string }[];
+  /** Set when the walk hit its time budget before the last page. */
+  stoppedEarly?: string;
 };
 
 /**
@@ -382,20 +387,27 @@ export type ArgentinaPortalFetchResult = {
  */
 export async function fetchArgentinaPortal(
   portalId: ArgentinaPortalId,
-  options: { wanted: (row: ArgentinaPortalListRow) => boolean; maxPages?: number; pauseMs?: number },
+  options: { wanted: (row: ArgentinaPortalListRow) => boolean; maxPages?: number; pauseMs?: number; budgetMs?: number },
 ): Promise<ArgentinaPortalFetchResult> {
   const portal = ARGENTINA_PORTALS[portalId];
   const session = new PortalSession();
   const pause = () => new Promise((resolve) => setTimeout(resolve, options.pauseMs ?? 150));
+  // COMPR.AR took 15 minutes on one run and over 40 on the next (2026-09-28,
+  // slow answers and 503 retries). The walk stops at the budget and says so,
+  // rather than holding the daily job past its 40-minute limit.
+  const deadline = Date.now() + (options.budgetMs ?? DEFAULT_BUDGET_MS);
 
   await session.page(`${portal.origin}${portal.homePath}`);
   let page = await session.page(`${portal.origin}${portal.listPath}`);
 
   const listed: ArgentinaPortalListRow[] = [];
-  const records: ArgentinaPortalRecord[] = [];
   const failed: ArgentinaPortalFetchResult["failed"] = [];
+  const opened: { row: ArgentinaPortalListRow; url: string }[] = [];
   const seen = new Set<string>();
+  let stoppedEarly: string | undefined;
 
+  // The walk: pages and row postbacks, in order on one session, since each
+  // postback is only valid against the page it was rendered on.
   for (let pageNumber = 1; pageNumber <= (options.maxPages ?? MAX_PAGES); pageNumber += 1) {
     const rows = parsePortalGrid(page.html);
     if (pageNumber === 1 && rows.length === 0 && !/Se han encontrado \(0\)/.test(page.html)) {
@@ -409,15 +421,7 @@ export async function fetchArgentinaPortal(
       try {
         const answer = await session.postBack(page, row.eventTarget);
         if (!("redirect" in answer)) throw new Error("点开项目没有跳转到项目页");
-        // A fresh session: with the list session's cookies the process page
-        // answered 503 on both hosts (2026-09-27), with none it answers 200 —
-        // which is also how a reader following the link will open it.
-        const detail = await new PortalSession().page(answer.redirect);
-        const process = parsePortalProcess(detail.html);
-        if (!process) throw new Error("项目页读不出编号和名称");
-        // Stored without the cookie-check suffix: the page opens without it.
-        const url = answer.redirect.replace(/[&?]AspxAutoDetectCookieSupport=1$/, "");
-        records.push({ portal: portalId, row, url, process });
+        opened.push({ row, url: answer.redirect });
       } catch (err) {
         failed.push({ processNumber: row.processNumber, error: err instanceof Error ? err.message : String(err) });
       }
@@ -425,12 +429,33 @@ export async function fetchArgentinaPortal(
     }
     const next = nextPageArgument(page.html, portal.gridUniqueId);
     if (!next) break;
+    if (Date.now() > deadline) {
+      stoppedEarly = `读到第 ${pageNumber} 页时超过时间上限，后面的页没有读`;
+      break;
+    }
     const answer = await session.postBack(page, portal.gridUniqueId, next);
     if ("redirect" in answer) throw new Error(`翻到 ${next} 时被重定向到 ${answer.redirect}`);
     page = answer;
     await pause();
   }
-  return { portal: portalId, listed, records, failed };
+
+  // The process pages: independent of the list session, so four at a time.
+  // A fresh session each: with the list session's cookies the page answered
+  // 503 on both hosts (2026-09-27), with none it answers 200 — which is also
+  // how a reader following the link will open it.
+  const records: ArgentinaPortalRecord[] = [];
+  await runPool(opened, 4, async ({ row, url }) => {
+    try {
+      const detail = await new PortalSession().page(url);
+      const process = parsePortalProcess(detail.html);
+      if (!process) throw new Error("项目页读不出编号和名称");
+      // Stored without the cookie-check suffix: the page opens without it.
+      records.push({ portal: portalId, row, url: url.replace(/[&?]AspxAutoDetectCookieSupport=1$/, ""), process });
+    } catch (err) {
+      failed.push({ processNumber: row.processNumber, error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+  return { portal: portalId, listed, records, failed, ...(stoppedEarly ? { stoppedEarly } : {}) };
 }
 
 /** "Licitación Pública" / "Licitacion Pública" / "Concurso Público" — the open-call procedures. */

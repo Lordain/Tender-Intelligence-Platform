@@ -13,6 +13,8 @@ import { AccountDevices } from "@/components/account/AccountDevices";
 import { PendingInvitations } from "@/components/account/PendingInvitations";
 import { BasicCountrySelection } from "@/components/account/BasicCountrySelection";
 import { InvoiceContact } from "@/components/billing/InvoiceContact";
+import { EnterprisePaymentSteps } from "@/components/billing/EnterprisePaymentSteps";
+import { PLAN_NAMES } from "@/lib/billing-catalog";
 
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -27,6 +29,8 @@ type BillingStatus = {
   paymentCollection: "card" | "bank_transfer" | "international_wire" | null;
   manualWire: {
     contactedAt: string | null;
+    /** Whether the English proforma invoice and agreement can be downloaded (seller configured). */
+    documentsAvailable?: boolean;
     request: {
       id: string;
       reference: string;
@@ -237,7 +241,7 @@ export default function AccountPage() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-[#b86e00]">International wire · manual review</p>
                 <h2 className="mt-2 text-xl font-black text-[#071826]">国际银行电汇待确认</h2>
-                <p className="mt-2 text-sm leading-6 text-[#64717c]">应付 <strong className="text-[#071826]">US${(billingStatus.manualWire.request.amount_minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} 美元（USD）</strong>。请勿换算为墨西哥比索。</p>
+                <p className="mt-2 text-sm leading-6 text-[#64717c]">{PLAN_NAMES[billingStatus.manualWire.request.plan]} · {billingStatus.manualWire.request.billing_interval === "annual" ? "年付（12 个月）" : "按月"}，应付 <strong className="text-[#071826]">US${(billingStatus.manualWire.request.amount_minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} 美元（USD）</strong>。请勿换算为墨西哥比索。</p>
               </div>
               <span className="w-fit rounded-full bg-[#fff0ca] px-3 py-1 text-xs font-black text-[#8a5700]">
                 {billingStatus.manualWire.request.status === "proof_submitted"
@@ -254,6 +258,20 @@ export default function AccountPage() {
                 <p className="mt-4">工作人员会先核对你的购买主体与账单资料，再通过账单邮箱与你联系并提供本次汇款所需的信息。</p>
                 <p className="mt-3 font-bold text-[#071826]">网站不会展示或自动发送银行账号、SWIFT/BIC 或收款人地址。</p>
                 <p className="mt-3 text-xs text-[#64717c]">如收到与申请金额、币种或收款主体不一致的信息，请暂停汇款并通过官网公布的联系方式复核。</p>
+                {billingStatus.manualWire.documentsAvailable && (
+                  <div className="mt-5 border-t border-[#dfe5e7] pt-4">
+                    <p className="text-xs font-bold text-[#7a878f]">付汇文件（中英文，可直接交给财务）</p>
+                    {/* Released once staff have contacted the customer: the documents name the account holder. */}
+                    {!billingStatus.manualWire.contactedAt && billingStatus.manualWire.request.status === "pending" ? (
+                      <p className="mt-2 text-xs leading-5 text-[#64717c]">工作人员联系确认后，可在这里下载形式发票和服务协议。</p>
+                    ) : (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <a href={`/api/manual-wire/document?requestId=${billingStatus.manualWire.request.id}&kind=invoice`} className="rounded-lg bg-[#071826] px-4 py-2 text-xs font-black text-white hover:bg-[#0a2b40]">下载形式发票 PDF</a>
+                        <a href={`/api/manual-wire/document?requestId=${billingStatus.manualWire.request.id}&kind=agreement`} className="rounded-lg border border-[#071826] px-4 py-2 text-xs font-black text-[#071826] hover:bg-white">下载服务协议 PDF</a>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <div className="rounded-2xl border border-[#e9b949] bg-[#fff7df] px-4 py-3 text-xs leading-5 text-[#6e510b]">汇款币种必须为 USD，并选择由汇款方承担全部手续费（OUR）。附言必须填写唯一付款编号；少于应付金额时不会开通。</div>
@@ -272,6 +290,10 @@ export default function AccountPage() {
                 {wireMessage && <p className="mt-3 text-xs font-bold leading-5 text-[#64717c]">{wireMessage}</p>}
               </div>
             </div>
+            <details className="mt-6 rounded-2xl border border-[#dfe5e7] bg-[#f7f8f6] px-5 py-4">
+              <summary className="cursor-pointer text-sm font-black text-[#071826]">查看企业付款的完整步骤</summary>
+              <div className="mt-4"><EnterprisePaymentSteps title={null} documents={Boolean(billingStatus.manualWire.documentsAvailable)} /></div>
+            </details>
           </section>
         )}
 

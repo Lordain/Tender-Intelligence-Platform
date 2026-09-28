@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { selectPreferredSubscription } from "@/lib/access-control";
-import { PLAN_PRICES_USD } from "@/lib/billing-catalog";
+import { planPriceUsd } from "@/lib/billing-catalog";
+import { unprintableCharacters } from "@/lib/billing/wire-documents";
 import { internationalWireEnabled } from "@/lib/manual-wire";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
@@ -11,7 +12,7 @@ export const runtime = "nodejs";
 
 const profileSchema = z.object({
   plan: z.enum(["basic", "professional", "enterprise"]),
-  interval: z.literal("monthly"),
+  interval: z.enum(["monthly", "annual"]),
   requestId: z.uuid(),
   buyerType: z.enum(["individual", "business"]),
   legalName: z.string().trim().min(1).max(160),
@@ -42,6 +43,13 @@ function makeReference() {
 export async function POST(request: Request) {
   const parsed = profileSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "请检查付款与账单资料。" }, { status: 400 });
+  // What the buyer types is printed on the proforma invoice and agreement,
+  // whose font covers GB2312 and Latin-1 (lib/billing/wire-documents.ts).
+  const { legalName, addressLine1, addressLine2, city, state, postalCode, taxId } = parsed.data;
+  const unprintable = unprintableCharacters([legalName, addressLine1, addressLine2, city, state, postalCode, taxId].join(" "));
+  if (unprintable.length > 0) {
+    return NextResponse.json({ error: `公司名称或地址中的「${unprintable.join("")}」无法打印在付汇文件上，请换成常用字或英文。` }, { status: 400 });
+  }
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "登录已过期，请重新登录。" }, { status: 401 });
   const admin = createSupabaseAdminClient();
@@ -76,7 +84,7 @@ export async function POST(request: Request) {
   if (existingError) return NextResponse.json({ error: "暂时无法检查电汇申请。" }, { status: 500 });
   if (existing) return NextResponse.json({ url: "/account?wire=pending" });
 
-  const amountMinor = Math.round(PLAN_PRICES_USD[parsed.data.plan].monthly * 100);
+  const amountMinor = Math.round(planPriceUsd(parsed.data.plan, parsed.data.interval) * 100);
   const paymentId = parsed.data.requestId;
   const reference = makeReference();
   const now = new Date().toISOString();

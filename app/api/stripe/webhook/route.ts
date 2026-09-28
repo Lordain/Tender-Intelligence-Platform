@@ -38,7 +38,7 @@ function subscriptionIdentity(subscription: Stripe.Subscription, fallbackUserId?
   let fromMetadata: { plan: StripePlan; interval: BillingInterval } | null = null;
   if (
     (metadataPlan === "basic" || metadataPlan === "professional" || metadataPlan === "enterprise") &&
-    metadataInterval === "monthly"
+    (metadataInterval === "monthly" || metadataInterval === "annual")
   ) {
     fromMetadata = { plan: metadataPlan, interval: metadataInterval };
   }

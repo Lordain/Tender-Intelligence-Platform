@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { selectPreferredSubscription } from "@/lib/access-control";
 import { loginPathFor } from "@/lib/auth-redirect";
-import { bankTransferQuote, parsePaidPlanSelection, PLAN_PRICES_USD } from "@/lib/billing-catalog";
+import { bankTransferQuote, parsePaidPlanSelection } from "@/lib/billing-catalog";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
-import { appOrigin, getStripeClient, parseStripeSelection } from "@/lib/stripe";
+import { appOrigin, getStripeClient, parseStripeSelection, stripePriceMatches, stripeRecurringFor } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
 const checkoutSchema = z.object({
   plan: z.enum(["basic", "professional", "enterprise"]),
-  interval: z.literal("monthly"),
+  interval: z.enum(["monthly", "annual"]),
   paymentMethod: z.enum(["card", "bank_transfer"]),
   quotedRate: z.number().positive().optional(),
   requestId: z.uuid(),
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   // A stale Stripe Price must never charge the old amount after the pricing
   // page has changed. Check cards as well as bank transfers before checkout.
   const configuredPrice = await stripe.prices.retrieve(selected.priceId);
-  if (configuredPrice.currency !== "usd" || configuredPrice.unit_amount !== PLAN_PRICES_USD[selected.plan].monthly * 100 || configuredPrice.recurring?.interval !== "month" || configuredPrice.recurring?.interval_count !== 1 || !configuredPrice.active) {
+  if (!stripePriceMatches(configuredPrice, selected.plan, selected.interval)) {
     return NextResponse.json({ error: "支付价格尚未更新，请联系客服。" }, { status: 503 });
   }
 
@@ -231,7 +231,7 @@ export async function POST(request: Request) {
     }
 
     const validDays = Math.min(30, Math.max(1, Number(process.env.BANK_TRANSFER_DAYS_UNTIL_DUE) || 3));
-    const quote = bankTransferQuote(selected.plan, transferRate);
+    const quote = bankTransferQuote(selected.plan, transferRate, selected.interval);
     const price = await stripe.prices.retrieve(selected.priceId);
     const productId = typeof price.product === "string" ? price.product : price.product.id;
 
@@ -259,7 +259,7 @@ export async function POST(request: Request) {
         customer: customerId,
         collection_method: "send_invoice",
         days_until_due: validDays,
-        items: [{ price_data: { currency: "mxn", product: productId, unit_amount: quote.mxnAmountCentavos, recurring: { interval: "month", interval_count: 1 } }, quantity: 1 }],
+        items: [{ price_data: { currency: "mxn", product: productId, unit_amount: quote.mxnAmountCentavos, recurring: stripeRecurringFor(selected.interval) }, quantity: 1 }],
         payment_settings: {
           payment_method_types: ["customer_balance"],
           payment_method_options: { customer_balance: { funding_type: "bank_transfer", bank_transfer: { type: "mx_bank_transfer" } } },

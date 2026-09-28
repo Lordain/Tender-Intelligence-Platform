@@ -5,6 +5,9 @@ import { pageMetadata } from "@/lib/seo";
 import { InvoiceContact } from "@/components/billing/InvoiceContact";
 import { TRIAL_DAYS } from "@/lib/access-control";
 import { SUPPORT_WECHAT } from "@/lib/support";
+import { EnterprisePaymentSteps } from "@/components/billing/EnterprisePaymentSteps";
+import { internationalWireEnabled } from "@/lib/manual-wire";
+import { invoiceSeller } from "@/lib/billing/invoice-seller";
 // Read from the constant, never retyped: the cards above this line compute
 // ¥ from USD_CNY_REFERENCE_RATE, so a literal here goes stale the first time
 // the rate is refreshed and the page contradicts its own prices.
@@ -13,7 +16,7 @@ import { USD_CNY_REFERENCE_RATE } from "@/lib/billing-catalog";
 export const metadata: Metadata = pageMetadata({
   title: "订阅方案与价格",
   description:
-    "免费版、基础个人版、专业个人版和专业企业版的月度价格与功能对比。",
+    "免费版、基础个人版、专业个人版和专业企业版的月付、年付价格与功能对比；企业可国际电汇对公付款。",
   path: "/pricing",
 });
 
@@ -23,6 +26,12 @@ export default function PricingPage() {
       <div className="mx-auto max-w-[108rem]">
         <PageIntro eyebrow="Subscription plans" title="订阅服务" description={`免费版长期开放；注册后先体验 ${TRIAL_DAYS} 天完整项目详情，再选择适合的国家范围和团队方案。`} metrics={[{ label: "注册即享", value: String(TRIAL_DAYS), suffix: "天试用" }]} />
         <PricingPlans />
+        {internationalWireEnabled() && (
+          <section id="enterprise-payment" className="mt-6 rounded-2xl border border-[#d8e0e3] bg-[#eef2f1] px-5 py-5 sm:px-6">
+            <EnterprisePaymentSteps documents={invoiceSeller() !== null} />
+            {invoiceSeller() !== null && <p className="mt-4 text-xs leading-6 text-[#64717c]">形式发票和服务协议为中英文对照，工作人员联系确认后在账户页下载；正式发票在到账后开具。</p>}
+          </section>
+        )}
         <div className="mt-6 rounded-2xl border border-[#e9b949] bg-[#fff3d4] px-5 py-5 text-[#5f4300] sm:px-6">
           <p className="text-base font-black">需要微信付款？请先联系我们</p>
           <p className="mt-2 text-sm leading-7">微信 ID：<span className="select-all font-black">{SUPPORT_WECHAT}</span>。请告知所选套餐及注册邮箱；确认付款金额与收款方式后，工作人员核实到账，再从后台人工开通。微信联系或提供付款截图不等于已开通权限。</p>

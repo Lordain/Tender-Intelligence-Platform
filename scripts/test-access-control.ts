@@ -70,7 +70,9 @@ check("basic monthly price has no promotion", PLAN_PRICES_USD.basic.monthly, 99)
 check("professional monthly price has no promotion", PLAN_PRICES_USD.professional.monthly, 199);
 check("enterprise monthly price has no promotion", PLAN_PRICES_USD.enterprise.monthly, 399);
 check("basic plan opens checkout without a Stripe Price ID", parsePaidPlanSelection("basic", "monthly"), { plan: "basic", interval: "monthly" });
-check("legacy annual selection is rejected", parsePaidPlanSelection("basic", "annual"), null);
+check("annual selection opens checkout", parsePaidPlanSelection("basic", "annual"), { plan: "basic", interval: "annual" });
+check("legacy semiannual selection is rejected", parsePaidPlanSelection("basic", "semiannual"), null);
+check("annual is ten months' price", [PLAN_PRICES_USD.basic.annual, PLAN_PRICES_USD.professional.annual, PLAN_PRICES_USD.enterprise.annual], [990, 1990, 3990]);
 check("free reminder is weekly", digestCadence(null, false, false), "weekly");
 check("basic reminder is daily", digestCadence("basic", false, false), "daily");
 check("professional reminder is twice daily", digestCadence("professional", false, false), "twice_daily");

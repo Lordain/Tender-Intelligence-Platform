@@ -16,7 +16,7 @@ import {
   parsePortalProcess,
   type ArgentinaPortalRecord,
 } from "../lib/ingestion/connectors/argentina-portal-live";
-import { parseAdifActivePanels } from "../lib/ingestion/connectors/adif-live";
+import { ADIF_PORTAL_URL, parseAdifActivePanels } from "../lib/ingestion/connectors/adif-live";
 import { parseBoletinEdition, parseBoletinNotice, type BoletinListing } from "../lib/ingestion/connectors/boletin-oficial-live";
 import {
   adifDocumentLinks,
@@ -142,7 +142,8 @@ async function main() {
   check("ADIF files are absolute and unversioned", adif[0].files[0].url, "https://plataforma.adifsa.com.ar/uploads/archivo_adjunto/licitacion/20260924_103734-6ab4277e54034.pdf".replace("6ab4277e54034", "6ab5279ea95e4"));
   const turnouts = mapAdifTenderToTender(adif[5], NOW);
   check("ADIF slug and number", [turnouts.slug, turnouts.tenderNumber], ["argentina-adif-lpn-29-2026", "ADIF LPN 29/2026"]);
-  check("ADIF source link is the notice PDF", turnouts.sourceUrl.endsWith(".pdf"), true);
+  check("ADIF source link is its tender list page, not a PDF", turnouts.sourceUrl, ADIF_PORTAL_URL);
+  check("the ADIF notice PDF is still among the documents", adifDocumentLinks(adif[5]).some((link) => link.documentType === "Aviso"), true);
   check("ADIF turnouts: unpriced rail work kept", turnouts.relevance.tier, "standard");
   check("ADIF documents saved as links", adifDocumentLinks(adif[5]).length, adif[5].files.length);
   const adifTiers = adif.map((row) => mapAdifTenderToTender(row, NOW).relevance.tier);

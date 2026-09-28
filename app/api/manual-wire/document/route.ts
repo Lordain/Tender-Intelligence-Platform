@@ -19,10 +19,25 @@ function plain(message: string, status: number) {
 }
 
 /**
- * The English proforma invoice or service agreement for one international
- * wire request (lib/billing/wire-documents.ts), for the customer who made it
- * or an admin. Built on each request; nothing is stored.
+ * The Chinese-English proforma invoice or service agreement for one
+ * international wire request (lib/billing/wire-documents.ts): for an admin at
+ * any time, for the customer who made it once staff have contacted them.
+ * Built on each request; nothing is stored.
  */
+/** Staff marked the request as contacted, or the customer has already sent a wire (only possible after contact). */
+async function customerContacted(admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>, requestId: string, status: string): Promise<boolean> {
+  if (status === "proof_submitted" || status === "paid") return true;
+  const { data, error } = await admin
+    .from("billing_admin_audit_log")
+    .select("id")
+    .eq("manual_payment_request_id", requestId)
+    .eq("action", "manual_payment_customer_contacted")
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
+}
+
 export async function GET(request: Request) {
   const parsed = querySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   if (!parsed.success) return plain("链接无效。", 400);
@@ -42,6 +57,13 @@ export async function GET(request: Request) {
   // Someone else's request reads as missing, not forbidden.
   if (!payment || (payment.user_id !== user.id && !staff)) return plain("没有找到这个电汇申请。", 404);
   if (["cancelled", "rejected", "expired"].includes(payment.status)) return plain("这个电汇申请已取消，不再提供文件。", 410);
+  // The seller on these documents is the bank account holder — a person's
+  // name under RESICO (user, 2026-09-28: 收款人是我个人名字，我不想太广泛提供).
+  // So a customer sees them only once staff have contacted them about this
+  // request (记录已联系), which is also when the bank details go out by email.
+  if (!staff && !(await customerContacted(admin, payment.id, payment.status))) {
+    return plain("工作人员联系确认后才能下载付汇文件，请留意账单邮箱。", 403);
+  }
   if (payment.currency !== "USD" || (payment.billing_interval !== "monthly" && payment.billing_interval !== "annual")) {
     return plain("这个电汇申请不支持生成文件，请联系我们。", 409);
   }

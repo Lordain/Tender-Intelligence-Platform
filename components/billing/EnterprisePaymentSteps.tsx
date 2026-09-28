@@ -12,8 +12,8 @@ import { BILLING_EMAIL } from "@/lib/support";
  */
 export const ENTERPRISE_PAYMENT_STEPS = [
   { title: "选方案", body: `建议选「按年付」，省 ${ANNUAL_SAVING_PERCENT}%，一年只需汇款一次。` },
-  { title: "提交申请", body: "在确认订阅页选「国际银行电汇」并提交。" },
-  { title: "下载文件", body: "在账户页下载中英文形式发票和服务协议，交财务付汇。" },
+  { title: "提交申请", body: "在确认订阅页选「国际银行电汇」并提交，工作人员会联系你。" },
+  { title: "下载文件", body: "联系确认后，在账户页下载中英文形式发票和服务协议，交财务付汇。" },
   { title: "汇款开通", body: `按 ${BILLING_EMAIL} 邮件发来的收款信息以美元电汇，附言写申请编号；到账后开通。` },
 ] as const;
 

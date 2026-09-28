@@ -36,11 +36,15 @@ export function PricingPlans() {
         <article key={plan.id} className="flex flex-col rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-6 shadow-[0_24px_60px_-48px_rgba(6,27,43,.5)]">
           <p className="text-xs font-black uppercase tracking-[0.15em] text-[#b86e00]">{plan.audience}</p>
           <h2 className="mt-3 text-2xl font-black text-[#071826]">{plan.name}</h2>
-          <div className="mt-5 flex min-h-24 flex-col">
-            <p className="text-3xl font-black text-[#071826]">{plan.id === "free" ? "免费" : `$${PLAN_PRICES_USD[plan.id][interval].toLocaleString("en-US")}`}<span className="ml-1 text-sm font-semibold text-[#64717c]">{plan.id === "free" ? "长期使用" : `USD / ${INTERVAL_UNIT_ZH[interval]}`}</span></p>
-            {plan.id !== "free" && <p className="mt-2 text-sm font-bold text-[#a96100]">约 ¥{Math.round(PLAN_PRICES_USD[plan.id][interval] * USD_CNY_REFERENCE_RATE).toLocaleString("zh-CN")} RMB / {INTERVAL_UNIT_ZH[interval]}</p>}
-            {plan.id !== "free" && interval === "annual" && <p className="mt-1 text-xs font-bold text-emerald-700">比按月付省 {ANNUAL_SAVING_PERCENT}%</p>}
-            <p className="mt-auto text-xs text-[#64717c]">{plan.id === "free" ? "注册后持续开放" : `${TRIAL_DAYS} 天免费试用，无需绑定银行卡`}</p>
+          {/* One rhythm for every line under the price, and one height for the
+              block, so the dividers below line up across cards in both cycles. */}
+          <div className="mt-5 min-h-[7.25rem]">
+            <p className="text-3xl font-black leading-9 text-[#071826]">{plan.id === "free" ? "免费" : `$${PLAN_PRICES_USD[plan.id][interval].toLocaleString("en-US")}`}<span className="ml-1 text-sm font-semibold text-[#64717c]">{plan.id === "free" ? "长期使用" : `USD / ${INTERVAL_UNIT_ZH[interval]}`}</span></p>
+            <div className="mt-3 space-y-1 text-xs leading-5">
+              {plan.id !== "free" && <p className="text-sm font-bold leading-5 text-[#a96100]">约 ¥{Math.round(PLAN_PRICES_USD[plan.id][interval] * USD_CNY_REFERENCE_RATE).toLocaleString("zh-CN")} RMB / {INTERVAL_UNIT_ZH[interval]}</p>}
+              {plan.id !== "free" && interval === "annual" && <p className="font-bold text-emerald-700">比按月付省 {ANNUAL_SAVING_PERCENT}%</p>}
+              <p className="text-[#64717c]">{plan.id === "free" ? "注册后持续开放" : `${TRIAL_DAYS} 天免费试用，无需绑定银行卡`}</p>
+            </div>
           </div>
           <ul className="mt-7 flex-1 space-y-3 border-t border-[#e2e7e9] pt-6">
             {plan.features.map((feature) => <li key={feature} className="flex gap-2 text-sm leading-6 text-[#425461]"><span className="font-black text-[#b86e00]">✓</span>{feature}</li>)}

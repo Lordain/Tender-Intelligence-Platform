@@ -261,10 +261,15 @@ export default function AccountPage() {
                 {billingStatus.manualWire.documentsAvailable && (
                   <div className="mt-5 border-t border-[#dfe5e7] pt-4">
                     <p className="text-xs font-bold text-[#7a878f]">付汇文件（中英文，可直接交给财务）</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <a href={`/api/manual-wire/document?requestId=${billingStatus.manualWire.request.id}&kind=invoice`} className="rounded-lg bg-[#071826] px-4 py-2 text-xs font-black text-white hover:bg-[#0a2b40]">下载形式发票 PDF</a>
-                      <a href={`/api/manual-wire/document?requestId=${billingStatus.manualWire.request.id}&kind=agreement`} className="rounded-lg border border-[#071826] px-4 py-2 text-xs font-black text-[#071826] hover:bg-white">下载服务协议 PDF</a>
-                    </div>
+                    {/* Released once staff have contacted the customer: the documents name the account holder. */}
+                    {!billingStatus.manualWire.contactedAt && billingStatus.manualWire.request.status === "pending" ? (
+                      <p className="mt-2 text-xs leading-5 text-[#64717c]">工作人员联系确认后，可在这里下载形式发票和服务协议。</p>
+                    ) : (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <a href={`/api/manual-wire/document?requestId=${billingStatus.manualWire.request.id}&kind=invoice`} className="rounded-lg bg-[#071826] px-4 py-2 text-xs font-black text-white hover:bg-[#0a2b40]">下载形式发票 PDF</a>
+                        <a href={`/api/manual-wire/document?requestId=${billingStatus.manualWire.request.id}&kind=agreement`} className="rounded-lg border border-[#071826] px-4 py-2 text-xs font-black text-[#071826] hover:bg-white">下载服务协议 PDF</a>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

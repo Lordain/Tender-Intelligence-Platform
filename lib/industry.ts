@@ -180,7 +180,7 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // `energía renovable` and `biocombustible` stay. The first is a policy
   // phrase that attaches to fuels and generation alike, and the second is
   // fuel production, not electricity.
-  ["energy_mining", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|(?<!para (uso en |usarse en )?(la |el )?)refiner[íi]a|gas natural|\bducto\b|oleoducto|gasoducto|yacimiento|pozo petrolero|energ[íi]a renovable|biocombustible|resistividad|miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
+  ["energy_mining", /petr[óo]leo|petroqu[íi]mic[ao]|hidrocarburo|perforaci[óo]n|(?<!para (uso en |usarse en )?(la |el )?)refiner[íi]a|gas natural|\bducto\b|oleoducto|gasoducto|yacimiento|pozo petrolero|biocombustible|resistividad|miner[íi]a|mineral(?!es de construcci)|yacimiento minero|concesi[óo]n minera/i],
   // "generador(es)?"/"\bups\b" added (2026-09-05, same real gap as the
   // "hospital(es)?" fix above): relevance.ts's FLAGSHIP_INDUSTRY_KEYWORDS
   // already recognizes a generator/UPS purchase as power-grid key
@@ -220,7 +220,7 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // service, "RENOVACION DE RED SECUNDARIA; EN EL (LA) SUMINISTRO ELECTRICO
   // AA.HH. RUTA DEL SOL", never by the equipment. Bare "red secundaria" is
   // not here — it is also a water-main phrase.
-  ["power", /energ[íi]a el[ée]ctrica|electricidad|suministro el[ée]ctrico|electrificaci[óo]n|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|\b(?:turbo)?generador(a|as|es)?\b|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|fotovoltaic[ao]|planta solar|parque (solar|e[óo]lico)|e[óo]lic[ao]|geot[ée]rmic[ao]|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
+  ["power", /energ[íi]a el[ée]ctrica|energ[íi]as? renovables?|electricidad|suministro el[ée]ctrico|electrificaci[óo]n|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|\b(?:turbo)?generador(a|as|es)?\b|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|fotovoltaic[ao]|planta solar|parque (solar|e[óo]lico)|e[óo]lic[ao]|geot[ée]rmic[ao]|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to
   // INCLUDE_OVERRIDE_KEYWORDS in lib/relevance.ts (a real batch of 29

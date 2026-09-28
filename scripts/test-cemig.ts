@@ -84,7 +84,9 @@ async function main() {
   check("程序类型带规则原文", towers.procedureType, "Pregão Eletrônico - Material · Cemig (Lei 13.303/2016)");
   check("摘要带供应品类（分档要读）", towers.summary.es.includes("ESTRUTURA METÁLICA P/LINHA TRANSMISSÃO ATÉ 550kV"), true);
   check("项目页链接", towers.sourceUrl, "https://app2-compras.cemig.com.br/processos/21952");
-  check("行业含能源矿业", towers.industries.includes("energy_mining"), true);
+  // An electricity utility is 电力, not 能矿 (user, 2026-09-28).
+  check("行业含电力", towers.industries.includes("power"), true);
+  check("行业不含能矿", towers.industries.includes("energy_mining"), false);
   check("没有金额", towers.estimatedValue, undefined);
   check("来源名", towers.sourceName, CEMIG_SOURCE_NAME);
   const links = cemigDocumentLinks(processes.find((p) => p.row.id === 21952)!, towers.publicationDate);

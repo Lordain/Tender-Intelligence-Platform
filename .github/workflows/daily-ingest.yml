@@ -156,6 +156,13 @@ jobs:
           - name: Guyana (eprocure, staged)
             command: cron:guyana
             poppler: true
+          # Added 2026-09-27. Argentina: COMPR.AR, CONTRAT.AR, ADIF and the
+          # Boletín Oficial, the platform's rules with two Argentine settings
+          # (unpriced rows as Mexico's; energy, rail, power, transport, water
+          # and ICT kept whatever the amount). Staged — admin pages only, see
+          # lib/staged-countries.ts. COMPR.AR alone walks ~46 list pages.
+          - name: Argentina (COMPR.AR, CONTRAT.AR, ADIF, Boletín Oficial, staged)
+            command: cron:argentina
           # Peru OECE/SEACE has no job here: measured 2026-09-26 (run
           # 36259854139), its proxy answers this runner 403 Forbidden, as it
           # answers Vercel. Its status refresh stays the local CLI

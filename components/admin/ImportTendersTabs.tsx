@@ -27,6 +27,7 @@ const TABS = [
   { href: "/admin/import-tenders/chile", label: "智利", country: "Chile" },
   // Staged (lib/staged-countries.ts): imported and reviewable here, not public yet.
   { href: "/admin/import-tenders/guyana", label: "圭亚那（未公开）", country: "Guyana" },
+  { href: "/admin/import-tenders/argentina", label: "阿根廷（未公开）", country: "Argentina" },
 ];
 
 function MaintenanceIcon() {

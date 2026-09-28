@@ -1,0 +1,464 @@
+
+<!DOCTYPE html>
+<!--[if lt IE 7]><html lang="es" class="lt-ie10 lt-ie9 lt-ie8 lt-ie7"><![endif]-->
+<!--[if IE 7]><html lang="es" class="lt-ie10 lt-ie9 lt-ie8"><![endif]-->
+<!--[if IE 8]><html lang="es" class="lt-ie10 lt-ie9"> <![endif]-->
+<!--[if IE 9]><html lang="es" class="lt-ie10"> <![endif]-->
+<!--[if gt IE 9]><!-->
+<html lang="es">
+<!--<![endif]-->
+<head><meta http-equiv="X-UA-Compatible" content="IE=edge" /><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><title>
+	CONTRAT.AR - Portal ElectrÃ³nico de ContrataciÃ³n de Obra PÃºblica
+</title><meta name="viewport" content="width=device-width, initial-scale=1.0" /><link href="/Estilos/unificado-nuevo?v=s-RazccyIQtdLzjOCdM6I4GLUtKMGPrYWHVprPZCvnA1" rel="stylesheet"/>
+    </head>
+<body>
+    <!--[if lt IE 9]>
+    <![endif]-->
+    <header class="navbar-primary navbar-top">
+        <div class="container">
+<div class="row">
+    <div class="col-xs-6">
+        <a id="ctl00_CtrlHeader_linkLogoBAC" onclick="" class="logoBac"></a>
+    </div>
+    <div style="float: right; width: 13%;">
+    </div>
+</div>
+        </div>
+    </header>
+    <form name="aspnetForm" method="post" action="./ListarAperturaProxima.aspx" id="aspnetForm">
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="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" />
+<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="25B84F1C" />
+        <nav class="navbar-inverse">
+<div class="modal" id="myModal" tabindex="-2" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div id="ctl00_CtrlMenuPortal_logIn_divBodyModal" class="modal-body" data-backdrop="static" data-keyboard="false">
+                <div id="ctl00_CtrlMenuPortal_logIn_ctl00">
+                        <a onclick="ClosePopup();" id="ctl00_CtrlMenuPortal_logIn_lnkClose" class="close" data-dismiss="modal" aria-hidden="true" href="javascript:__doPostBack(&#39;ctl00$CtrlMenuPortal$logIn$lnkClose&#39;,&#39;&#39;)">&times;</a>
+</div>
+                <div id="ctl00_CtrlMenuPortal_logIn_upModalLogin">
+                        <div class="form-group">
+                            <h2 class="text-center">
+                                <span id="ctl00_CtrlMenuPortal_logIn_lblHeader">Bienvenido</span>
+                            </h2>
+                        </div>
+                        <br />
+                        <div id="ctl00_CtrlMenuPortal_logIn_pnlLogin">
+                            <div class="form-group pull-right">
+                                <small>
+                                </small>
+                            </div>
+                            <div class="form-group">
+                                    <div class="row form-group">
+                                        <div class="form-horizontal">
+                                            <div class="col-md-12">
+                                                <span id="ctl00_CtrlMenuPortal_logIn_Label2" class="text">El número de identificación que ingrese debe ser el personal. No el del organismo o empresa.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row form-group">
+                                        <div class="form-horizontal">
+                                            <div id="ctl00_CtrlMenuPortal_logIn_contenedorCUIT" class="col-md-12">
+                                                <input name="ctl00$CtrlMenuPortal$logIn$tbUsuario" type="text" id="ctl00_CtrlMenuPortal_logIn_tbUsuario" class="form-control" PlaceHolder="CUIL / CUIT / Pasaporte" />
+                                            </div>
+                                        </div>
+                                    </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <a id="ctl00_CtrlMenuPortal_logIn_lnkConfirmar" class="btn btn-primary pull-right" data-loading-text="Validando..." href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$CtrlMenuPortal$logIn$lnkConfirmar&quot;, &quot;&quot;, true, &quot;validateUser&quot;, &quot;&quot;, false, true))">Siguiente</a>
+                                </div>
+                            </div>
+                            <div id="divHiddens">
+                                <input name="ctl00$CtrlMenuPortal$logIn$hdnMensajeErrorDadoBaja" type="hidden" id="ctl00_CtrlMenuPortal_logIn_hdnMensajeErrorDadoBaja" value="0" />
+                                <input name="ctl00$CtrlMenuPortal$logIn$hdnMensajeErrorEliminadoInactivo" type="hidden" id="ctl00_CtrlMenuPortal_logIn_hdnMensajeErrorEliminadoInactivo" value="0" />
+                            </div>
+	</div>
+</div>
+                <a id="ctl00_CtrlMenuPortal_logIn_ingresarMediantePaec" href="javascript:__doPostBack(&#39;ctl00$CtrlMenuPortal$logIn$ingresarMediantePaec&#39;,&#39;&#39;)"></a>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="navbar-header">
+    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#nav" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+    </button>
+</div>
+<div class="collapse navbar-collapse" id="nav">
+    <div class="container">
+        <div class="row">
+            <ul class="nav navbar-nav">
+                <li><a target="b_blank" href="https://www.argentina.gob.ar/jefatura/innovacion-publica/oficina-nacional-de-contrataciones-onc"><strong>Institucional</strong></a></li>
+                <li><a target="a_blank" href="http://www.infoleg.gob.ar/?page_id=3428"><strong>Normativa</strong></a></li>
+                <!-- PRYONC-242 - HITO 1. Oculta menú de cocontratantes -->
+                <li><a href="/contactenos.aspx"><strong>Atención al usuario</strong></a></li>
+            </ul>
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a id="ctl00_CtrlMenuPortal_lnkIngresar" href="/Login.aspx" href="javascript:__doPostBack(&#39;ctl00$CtrlMenuPortal$lnkIngresar&#39;,&#39;&#39;)">
+                                <span class="glyphicon glyphicon-log-in"></span>
+                                <strong>Ingresar</strong>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+        </nav>
+        <div class="bg-white-2" style="padding-top: 5px; padding-bottom: 5px;">
+            <div class="container">
+                <div class="row">
+<div id="date" style="font-size: 11px; text-align: right; min-height: 15px;">
+    <span id="ctl00_CtrlTimeNow_scriptFechaHora"></span>
+    <span id="divReloj"></span>
+</div>
+                </div>
+            </div>
+        </div>
+        <section>
+    <div class="container">
+        <nav role="navigation">
+            <ol class="breadcrumb">
+                <li><a href="default.aspx">Home</a></li>
+                <li id="ctl00_CPH1_mostrarLIProveedor" style="display: none;"><a href="concesionario.aspx">Constructor</a></li>
+                <li id="ctl00_CPH1_mostrarLI" style="display: none;"><a href="ComprasElectronicas.aspx">Compras Electrónicas</a></li>
+                <li class="active">Licitaciones de apertura próxima</li>
+            </ol>
+        </nav>
+        <div class="row">
+            <div class="col-md-12">
+                <h1>Licitaciones de apertura próxima</h1>
+                <br />
+                <br />
+                <h4><small>
+                    <span id="ctl00_CPH1_lblCantidadListaPliegos">Se han encontrado (3) resultados  para su búsqueda.</span>
+                </small></h4>
+                <br />
+                <div id="ctl00_CPH1_pnlListaPliegos">
+                    <div class="table-responsive">
+                        <div>
+		<table class="table table-hover table-striped table-condensed" cellspacing="0" border="0" id="ctl00_CPH1_GridListaPliegos">
+			<thead>
+				<tr class="tr-header">
+					<th scope="col">Número de Proceso</th><th scope="col">Nombre de Proceso</th><th scope="col">Tipo de Proceso</th><th scope="col">Fecha de Apertura</th><th scope="col">Estado</th><th scope="col">Unidad Ejecutora</th>
+				</tr>
+			</thead><tbody>
+				<tr>
+					<td>
+                                        <a id="ctl00_CPH1_GridListaPliegos_ctl02_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegos$ctl02$lnkNumeroProceso&#39;,&#39;&#39;)">46-0023-LPU26</a>
+                                    </td><td>MALLA 405-A. RUTA NACIONAL N&#176;89. PROVINCIAS DE CHACO Y SANTIAGO DEL ESTERO.</td><td>
+                                        <p>Licitación Pública</p>
+                                    </td><td>30/09/2026 14:00 Hrs.</td><td>
+                                        <p>Publicado</p>
+                                    </td><td>
+                                        <p>46/000 - Coordinación de Licitaciones y Contrataciones - DNV</p>
+                                    </td>
+				</tr><tr>
+					<td>
+                                        <a id="ctl00_CPH1_GridListaPliegos_ctl03_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegos$ctl03$lnkNumeroProceso&#39;,&#39;&#39;)">504/2-0004-LPU26</a>
+                                    </td><td>Concesi&#243;n de v&#237;as e inmuebles aleda&#241;os de LB, LSM y LU.</td><td>
+                                        <p>Licitación Pública</p>
+                                    </td><td>11/11/2026 10:00 Hrs.</td><td>
+                                        <p>Publicado</p>
+                                    </td><td>
+                                        <p>504/2 - AGENCIA DE TRANSFORMACION DE EMPRESAS PUBLICAS</p>
+                                    </td>
+				</tr><tr>
+					<td>
+                                        <a id="ctl00_CPH1_GridListaPliegos_ctl04_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegos$ctl04$lnkNumeroProceso&#39;,&#39;&#39;)">34-0003-LPU26</a>
+                                    </td><td>AMPLIACI&#211;N DEL SISTEMA DE TRANSPORTE DE ENERG&#205;A EL&#201;CTRICA BAJO CONCESI&#211;N DE OBRA P&#218;BLICA “AMBA I”</td><td>
+                                        <p>Licitación Pública</p>
+                                    </td><td>14/12/2026 12:00 Hrs.</td><td>
+                                        <p>Publicado</p>
+                                    </td><td>
+                                        <p>34/000 - Dirección General de Administración - MHA</p>
+                                    </td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+                    </div>
+                    <div style="text-align: right">
+                        <a id="ctl00_CPH1_btnDescargarReporteExcel" class="btn btn-primary" href="javascript:__doPostBack(&#39;ctl00$CPH1$btnDescargarReporteExcel&#39;,&#39;&#39;)">Descargar Reporte Excel</a>
+                    </div>
+                    <br />
+</div>
+            </div>
+        </div>
+    </div>
+        </section>
+<footer>
+    <div class="footer" style="color:white">
+        <div class="container">
+            <div class="col-md-2 imgLogo">
+                <!-- LOGO COMPRAR -->
+                <img src="Imagenes/Logos/jefatura.png" alt="Jefatura" width="200" border="0" />
+            </div>
+            <!--
+            <div class="col-md-2 lblFooter lblFooterLeft">
+                <span id="ctl00_pie_lblSecretaria" style="display:inline-block;margin-left: 40px;color:white">Secretaría de Innovación, Ciencia y Tecnología</span>
+            </div>
+            -->
+            <div class="col-md-4 lblFooter">
+                <span id="ctl00_pie_lblContrataciones" style="display:inline-block;margin-left: 20px;color:white">Oficina Nacional de Contrataciones</span>
+            </div>
+            <div class="col-md-3 imgLogo imgLogoLeft">
+            </div>
+            <div class="col-md-3 links-externos">
+                <!-- LINKS EXTERNOS -->
+                <div class="row">
+                    <!-- BOLETIN OFICIAL -->
+                    <div class="col-md-12">
+                        <span>Presidencia de la nación</span>
+                    </div>
+                    <!-- INSTITUCIONAL -->
+                    <div class="col-md-12 margin-top-2">
+                        <span id="ctl00_pie_lblNombreserver" class="footer-version"></span>
+                        <span id="ctl00_pie_Label1" class="footer-version">
+                                v 5.2.127_CONTRAT.Ar</span>
+                    </div>
+                    <!-- NORMATIVA -->
+                    <div class="col-md-12 margin-top-2">
+                        <a id="ctl00_pie_LinkButton1" href="javascript:__doPostBack(&#39;ctl00$pie$LinkButton1&#39;,&#39;&#39;)">Avisos sobre Navegadores</a>
+                    </div>
+                    <div class="col-md-12 margin-top-2">
+                        <a id="ctl00_pie_LinkButton2" href="javascript:__doPostBack(&#39;ctl00$pie$LinkButton2&#39;,&#39;&#39;)">Términos y Condiciones de Uso</a>
+                    </div>
+                    <div class="col-md-12 margin-top-2">
+                        <a id="ctl00_pie_LinkButton3" href="javascript:__doPostBack(&#39;ctl00$pie$LinkButton3&#39;,&#39;&#39;)">Preguntas Frecuentes</a>
+                    </div>
+                    <div class="col-md-12 margin-top-2">
+                        <span class="glyphicon glyphicon-send"></span>&nbsp;
+                            <span id="ctl00_pie_lblTextIncidencias">Envíenos por favor un ticket</span>
+                        <a id="ctl00_pie_linkIncidencias" href="https://incidencias.innovacion.gob.ar/servicedesk/customer/portal/6" target="_blank"> aquí</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- LINKS AVISOS -->
+        <!-- VERSION -->
+        <!--NOMBRE SERVIDOR-->
+    </div>
+</footer>
+<div class="modal" id="modalAvisoNavegadores" tabindex="-2" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div id="ctl00_pie_div1" class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title">Aviso sobre Navegadores</h4>
+            </div>
+            <div class="modal-body" data-backdrop="static" data-keyboard="false">
+                <div class="container-fluid">
+<!--
+-->
+<p>Para brindar la mejor calidad y velocidad de navegación nuestro sitio está desarrollado en función de las últimas versiones de los navegadores:</p>
+<img id="idImgAvisoNavegadores" alt="Aviso Navegadores" src="/Imagenes/Varias/navegadores.jpg" class="centrar-imagen" style="display:block;margin-left:auto;margin-right:auto;width:25%;">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal" id="modalTerminosYCondiciones" tabindex="-2" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <p><u>Resolución 197-E/2017 – ANEXO I</u></p>
+                <h4 class="modal-title" id="myModalLabel">POLÍTICAS, TÉRMINOS Y CONDICIONES DE USO DEL SISTEMA (PTCUS) COMUNES A TODOS LOS USUARIOS</h4>
+            </div>
+            <div class="modal-body" style="height: 500px; overflow-y: auto; text-align: justify;">
+<p>ARTÍCULO 1º. NORMATIVA. Los procedimientos de selección que se realicen por CONTRAT.AR deberán cumplir con la normativa vigente en la materia. </p>
+<p>
+    ARTÍCULO 2º.-DISPOSICIONES RELATIVAS A ACTOS MATERIALES O PRESENCIALES. A partir del momento en que un procedimiento deba realizarse mediante 
+    CONTRAT.AR se tendrán por no escritas las disposiciones relativas a actos materiales o presenciales cuya realización se traduzca en operaciones 
+    virtuales en el mismo. Las disposiciones referentes a actos que sólo sea posible efectuar en forma material, como la entrega de documentación en 
+    soporte físico, se cumplirán conforme con lo establecido en la normativa vigente.
+</p>
+<p>
+    ARTÍCULO 3º.- CÓMPUTO DE PLAZOS. El cómputo de los plazos se regirá por la fecha y hora oficial del sitio <a>https://contratar.gob.ar</a> o el 
+    que en un futuro lo reemplace. A los efectos del cómputo de plazos fijados en días hábiles, la presentación en un día inhábil se entiende 
+    realizada en la primera hora del día hábil siguiente.
+</p>
+<p>
+    ARTÍCULO 4º.- NOTIFICACIONES ELECTRÓNICAS. Todas las notificaciones entre la Repartición Contratante y los interesados, oferentes, adjudicatarios, 
+    contratistas o proveedores, se realizarán válidamente por los medios habilitados por la normativa vigente o por correo electrónico o a través de 
+    la difusión en el sitio de internet de CONTRAT.AR, cuya dirección es <a>https://contratar.gob.ar</a> o la que en un futuro la reemplace, en este 
+    caso se entenderán realizadas el día hábil siguiente al de su difusión.
+</p>
+<p>
+    ARTÍCULO 5º - PLIEGOS. Los Pliegos de Bases y Condiciones Generales y los Pliegos de Bases y Condiciones Particulares se encontrarán disponibles 
+    en el portal <a>https://contratar.gob.ar</a>. La Repartición Contratante ingresará en CONTRAT.AR el Pliego de Bases y Condiciones Generales y el 
+    Pliego de Bases y Condiciones Particulares. Una vez aprobado por la autoridad competente será difundido en CONTRAT.AR.
+</p>
+<p>
+    ARTÍCULO 6º.- CONSULTAS. Para efectuar consultas al Pliego de Bases y Condiciones Particulares, el interesado deberá haber cumplido con el 
+    procedimiento de registración y autenticación como usuario externo de CONTRAT.AR. Las consultas deben efectuarse a través de CONTRAT.AR. 
+    La Repartición Contratante, además de la publicidad que corresponda según la normativa general, difundirá en el CONTRAT.AR las circulares 
+    aclaratorias y las modificatorias que se emitan de oficio o como respuesta a consultas, en este último caso sin indicar el autor de la consulta. 
+</p>
+<p>
+    ARTÍCULO 7º.- PUBLICIDAD Y DIFUSIÓN. Además de la publicidad que corresponda dar a los procedimientos por aplicación de la normativa vigente en 
+    la materia, las convocatorias se difundirán a través de CONTRAT.AR.
+</p>
+<p>
+    ARTÍCULO 8º.- PROPUESTAS: Las propuestas se deberán presentar hasta el día y hora que determine la Repartición Contratante en la convocatoria, 
+    únicamente a través del CONTRAT.AR, utilizando el formulario electrónico que suministre el sistema, y cumpliendo todos los requerimientos de los 
+    pliegos aplicables, acompañando la documentación que la integre en soporte electrónico. No se admitirán propuestas que se presenten por otros 
+    medios. Para el caso en que en los pliegos se solicite algún requisito que sólo sea posible efectuar en forma material, como la presentación de 
+    documentos que por sus características deban ser presentados en soporte papel, estos serán individualizados en la propuesta electrónica y serán 
+    presentados en la Repartición Contratante en la fecha, hora y lugar que se indique en los respectivos Pliegos de Bases y Condiciones Particulares. 
+    Salvo estos casos, toda otra documentación que integre la oferta se deberá presentar a través de CONTRAT.AR. A fin de garantizar su validez, la 
+    propuesta electrónicamente cargada deberá ser confirmada por el oferente, quien podrá realizarlo únicamente a través de un usuario habilitado 
+    para ello, conforme lo normado con el procedimiento de registración y autenticación de los usuarios de los constructores.
+</p>
+<p>
+    ARTÍCULO 9º.- GARANTÍAS: La presentación de garantías será considerada como un requisito que sólo es posible efectuar en forma material, y se 
+    deberá proceder de conformidad con lo establecido en el artículo anterior.
+</p>
+<p>
+    ARTÍCULO 10º- APERTURA DE PROPUESTAS.- La apertura de propuestas se efectuará a través de CONTRAT.AR en la hora y fecha establecida en el llamado. 
+    En forma electrónica y automática se generará el acta de apertura de propuestas correspondiente.
+</p>
+<p>
+    ARTÍCULO 11.- ETAPAS DEL PROCEDIMIENTO. Además de la publicidad que corresponda dar a las distintas etapas de los procedimientos por aplicación 
+    de la normativa vigente en la materia, las mismas se difundirán a través de CONTRAT.AR.
+</p>
+<p>
+    ARTÍCULO 12.- ENCUADRE JURÍDICO. El acceso y/o uso al Sistema de Gestión Electrónica para las contrataciones de Obra Pública, concesiones de Obra 
+    Pública y Servicios Públicos y licencias, “CONTRAT.AR”, se efectúa en el marco de lo normado por el Decreto Nº 1336/2016, las Políticas, Términos 
+    y Condiciones de Uso del Sistema y las Condiciones Particulares que en el futuro puedan complementarlas, sustituirlas o modificarlas.
+</p>
+<p>
+    ARTÍCULO 13.- ACEPTACIÓN. Desde el momento de acceso y/o uso del CONTRAT.AR, se considera que el usuario acepta plenamente y sin reserva alguna, 
+    las Políticas, Términos y Condiciones así como las Condiciones Particulares de uso del sistema que pudieran dictarse, adhiriendo en forma 
+    inmediata a todas y cada de una ellas.
+</p>
+<p>
+    ARTÍCULO 14.- ACCESO. El acceso a CONTRAT.AR es público y gratuito, y se realiza a través de Internet, en el sitio cuya página principal se 
+    encuentra ubicada en <a>https://contratar.gob.ar</a> o aquella que en un futuro la reemplace. El Usuario deberá contar con un equipo y programas 
+    informáticos que cumplan con los requisitos mínimos de compatibilidad con el sistema (acceso por internet; navegadores Internet Explorer; Mozilla 
+    Firefox o Google Chrome). El Usuario toma conocimiento que cuando su equipo o programas de computación no reúnan tales requisitos mínimos, no 
+    podrá tener acceso al sistema y/o se podrá bloquear su acceso.
+</p>
+<p>
+    ARTÍCULO 15.- TÉRMINOS. A los efectos de las presentes Políticas, Términos y Condiciones, se entenderá que: 
+    CONTRAT.AR: Constituye el Sistema de Gestión Electrónica para las contrataciones de Obra Pública, concesiones de Obra Pública y Servicios Públicos 
+    y licencias a través del cual las jurisdicciones y entidades comprendidas en el artículo 8° de la Ley N° 24.156 y sus modificaciones, que 
+    componen el Sector Público Nacional, efectuarán en forma electrónica todos los procedimientos de contratación y seguimiento de la ejecución de 
+    los mencionados contratos del Sector Público Nacional, de conformidad con la normativa legal vigente en la materia. 
+    <a>https://contratar.gob.ar</a>: Es el portal sobre el que se gestiona el CONTRAT.AR y a través del cual se difunden las convocatorias y las 
+    restantes etapas de los procedimientos de selección. El acceso a este portal es público y gratuito.
+</p>
+<p><u>USUARIOS DEL CONSTRUCTOR:</u></p>
+<p>
+    Es la persona humana que utiliza el CONTRAT.AR en representación de la persona humana o jurídica inscripta en el 
+    Registro Nacional de Constructores de Obras Públicas, conforme el procedimiento de registro y autenticación de los usuarios de los constructores.
+</p>
+<p><u>USUARIO CONTRATANTE:</u></p>
+<p>
+    Es la persona humana designada por la Repartición Contratante, como responsable de la utilización del CONTRAT.AR, de 
+    acuerdo a los roles otorgados conforme al procedimiento de Administradores de Perfiles y Usuarios de la Administración.
+</p>
+<p><u>PROTECCIÓN DE LA INFORMACIÓN CONTENIDA EN EL PORTAL:</u></p>
+<p>
+    Toda la información elaborada o disponible en, o a través del CONTRAT.AR, se encuentra 
+    protegida como propiedad intelectual. Está prohibido a todos los usuarios modificar, copiar, transmitir, vender, distribuir, exhibir, publicar, 
+    licenciar, crear trabajos derivados, o usar, en general, el contenido disponible en o a través del CONTRAT.AR para fines comerciales y otros.
+</p>
+<p><u>USO ADECUADO DE CONTRAT.AR:</u></p>
+<p>
+    El usuario que ingresa al CONTRAT.AR se compromete a utilizar el mismo en forma lícita y de acuerdo a las 
+    presentes PTCUS. Se encuentra prohibido a los usuarios la realización de actos maliciosos o que atenten contra el sitio, o que de alguna manera 
+    puedan dañar, inutilizar, sobrecargar, deteriorar, impedir o limitar la utilización de todas o algunas de las funcionalidades del mismo.
+</p>
+<p><u>RESPONSABILIDAD POR CLAVES DE USUARIO:</u></p>
+<p>
+    Los usuarios de CONTRAT.AR no pueden ceder, transferir o comunicar bajo ninguna circunstancia sus 
+    claves y nombres de usuarios, haciéndose plenamente responsables por los actos, documentos, anexos, propuestas, y demás antecedentes que bajo 
+    esas claves y nombres de usuario, ingresen al CONTRAT.AR. Además, los usuarios asumen la obligación de cambiar sus claves frecuentemente, las 
+    que se debe evitar que sean evidentes y/o simples.
+</p>
+<p><u>RESPONSABILIDAD:</u></p>
+<p>
+    El Gobierno Nacional no se responsabiliza por los daños y/o perjuicios derivados del acceso y/o uso de los contenidos 
+    publicados en el sitio <a>https://contratar.gob.ar</a> o en el que en un futuro lo reemplace. El Gobierno Nacional no se responsabiliza por las 
+    interrupciones de este servicio, ni por cualquier inconveniente originado en causas ajenas que impidan el acceso. La veracidad e integridad de 
+    la totalidad de la información y contenido de los documentos publicados son de exclusiva responsabilidad de los usuarios que los publican y 
+    envían, de acuerdo a las claves de acceso bajo las cuales actúen. El Gobierno Nacional no es responsable por la interrupción en la recepción de 
+    correos electrónicos por parte de los usuarios del constructor. El Gobierno Nacional no es responsable de los virus que puedan contener los 
+    documentos que adjuntan los usuarios del sitio. Es responsabilidad de cada usuario velar por que los archivos que sube al sitio no tengan virus 
+    de ninguna especie. Las estadísticas e informes disponibles en el CONTRAT.AR son meramente referenciales y no comprometen al Ministerio de 
+    Modernización, ni al Gobierno Nacional.
+</p>
+<p><u>SUSPENSIÓN O ELIMINACIÓN DE USUARIOS:</u></p>
+<p>
+    El Ministerio de Modernización se reserva el derecho de suspender y/o eliminar unilateral y 
+    automáticamente del CONTRAT.AR a los usuarios que incumplan las PTCUS.
+</p>
+<p><u>CENTRO DE CONTACTO. MESA DE AYUDA TELEFÓNICA:</u></p>
+<p>
+    El Ministerio de Modernización establecerá para todos los usuarios del CONTRAT.AR un centro de 
+    contacto que contará con una mesa de ayuda telefónica y vía correo electrónico. Esta mesa de ayuda atenderá las consultas de los usuarios sobre 
+    el funcionamiento del CONTRAT.AR.
+</p>
+<p>ARTÍCULO 16.- USUARIOS DEL CONSTRUCTOR. </p>
+<p><u>CORREOS ELECTRÓNICOS ENVIADOS POR CONTRAT.AR A USUARIOS DEL CONSTRUCTOR:</u></p>
+<p>
+    Los usuarios del constructor aceptan recibir permanentemente correos electrónicos relativos a procedimientos de selección y demás información 
+    relevante, a la dirección de correo informada por ellos en CONTRAT.AR. En el sitio <a>https://contratar.gob.ar</a> o el que en un futuro lo 
+    reemplace se difundirán las convocatorias y las restantes etapas de los procedimientos de selección, sin perjuicio de las demás formas de 
+    difusión y publicidad que la normativa vigente determina. Se recomienda a los usuarios del constructor revisar periódicamente el CONTRAT.AR 
+    –en particular Escritorio del Constructor– para informarse de las novedades vinculadas a las etapas, desarrollo del proceso de contratación 
+    electrónica y demás información relevante, como así también consultar las demás formas de difusión y publicidad que la reglamentación vigente 
+    determina.
+</p>
+<p><u>LIBERACIÓN DE RESPONSABILIDAD:</u></p>
+<p>
+    Los usuarios del constructor deben velar por la seriedad de las propuestas ingresadas al CONTRAT.AR, siendo 
+    plenamente responsables por las mismas. Los usuarios del constructor deberán aceptar que el Gobierno Nacional carece de toda responsabilidad 
+    por los resultados que obtengan en cada uno de los procedimientos de selección electrónicos en que participen. Los usuarios del constructor 
+    liberan al Gobierno Nacional de cualquier responsabilidad derivada de la dilación o no envío oportuno de correos electrónicos de alerta. La no 
+    recepción oportuna de correos electrónicos de alerta que envía el CONTRAT.AR no justificará ni se considerará como causal suficiente para eximir 
+    a los oferentes de sus cargas y responsabilidades.
+</p>
+<p><u>POLÍTICAS DE PRIVACIDAD:</u></p>
+<p>
+    Los usuarios de CONTRAT.AR aceptan, por el sólo hecho de su inscripción o registro en el sitio, que los datos, 
+    antecedentes e información aportados en las diversas etapas de los procedimientos en que participan sean de público conocimiento en el ámbito 
+    de las transacciones que se efectúan en él y que sólo están disponibles públicamente para esos efectos. Asimismo, los usuarios de CONTRAT.AR, 
+    por el sólo hecho de su inscripción, otorgan su conformidad para que los resultados de los procedimientos de selección en que participen y las 
+    respectivas contrataciones formen parte de las estadísticas e informes, se procesen y se publiquen por parte del Gobierno Nacional. Cuando se 
+    solicite por parte de terceros acceso a información que pudiese afectar derechos de los usuarios del constructor, tales como los relacionados 
+    con su vida privada o derechos de carácter económico o comercial, se procederá en un todo conforme a la Ley Nº 25.326 de “Protección de Datos 
+    Personales” modificada por la Ley Nº 26.343 y reglamentada por el Decreto Nº 1558/2001 modificado por el Decreto N° 1160/2010, el Decreto 
+    Nº 1172/2003 de “Acceso a la Información Pública” y el Decreto N° 117/2016 “Plan de Apertura de Datos”.
+</p>
+<p><u>DECLARACIÓN:</u></p>
+<p>
+    Los usuarios de CONTRAT.AR declaran conocer y aceptar la circunstancia relativa a que el Ministerio de Modernización puede, 
+    en cualquier momento, modificar todo o parte de las presentes PTCUS, que serán oportunamente publicadas en el portal de CONTRAT.AR.
+</p>
+<p><u>USUARIOS CONTRATANTES:</u></p>
+<p>
+    El usuario-contratante es responsable de la información que se difunda y debe procurar que su contenido se adapte 
+    a las previsiones contempladas por la normativa vigente. Queda estrictamente prohibido a los usuarios contratantes realizar cualquier uso de 
+    CONTRAT.AR ajeno al marco del proceso de contrataciones públicas electrónicas. Los Organismos de Control están autorizados a utilizar el 
+    CONTRAT.AR con el objeto de asegurar el correcto desempeño de los distintos procesos y velar por su transparencia.
+</p>
+<p><u>LÍMITE DE RESPONSABILIDAD DEL CONTRAT.AR SOBRE EL PROCESO DE SELECCIÓN:</u></p>
+<p>
+    El CONTRAT.AR es un medio que facilita la realización de los 
+    procedimientos de selección sin garantizar la seriedad e idoneidad de las propuestas recibidas.
+</p>
+            </div>
+        </div>
+    </div>
+</div>
+    </form>
+</body>
+</html>

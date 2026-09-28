@@ -92,6 +92,17 @@ export function GuyanaFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/** Three horizontal bands, light blue–white–light blue, with the Sun of May at the centre (drawn as a plain gold disc at this size). */
+export function ArgentinaFlag({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 14" className={`inline-block h-3.5 w-5 shrink-0 ${className}`}>
+      <rect width="20" height="14" fill="#74acdf" />
+      <rect y="4.67" width="20" height="4.67" fill="#fff" />
+      <circle cx="10" cy="7" r="1.5" fill="#f6b40e" stroke="#85340a" strokeWidth="0.25" />
+    </svg>
+  );
+}
+
 export function CountryFlag({ country, className = "" }: { country: string; className?: string }) {
   if (country === "Mexico") return <MexicoFlag className={className} />;
   if (country === "Brazil") return <BrazilFlag className={className} />;
@@ -99,5 +110,6 @@ export function CountryFlag({ country, className = "" }: { country: string; clas
   if (country === "Peru") return <PeruFlag className={className} />;
   if (country === "Chile") return <ChileFlag className={className} />;
   if (country === "Guyana") return <GuyanaFlag className={className} />;
+  if (country === "Argentina") return <ArgentinaFlag className={className} />;
   return null;
 }

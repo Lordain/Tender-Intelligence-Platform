@@ -90,6 +90,11 @@ export const USD_RATES: Record<string, number> = {
   // value published". open.er-api.com, read 2026-09-27: 209.09; the Bank of
   // Guyana has held the currency near 208–210 for years.
   GYD: 1 / 209,
+  // Added 2026-09-27 for Argentina (staged). The BCRA's own reference rate
+  // (Comunicación A 3500, api.bcra.gob.ar estadisticascambiarias), read
+  // 2026-09-27: 1513. The peso moves several percent a month, which is inside
+  // what a $1M floor can tell apart; refresh it when the gap grows.
+  ARS: 1 / 1513,
   // The two Chilean INDEXED UNITS, not currencies — and both appear in the
   // Moneda column as if they were: CLF 47 rows, UF 37 (the same unit under its
   // ISO code and its Spanish name), UTM 6. Ninety real amounts that would

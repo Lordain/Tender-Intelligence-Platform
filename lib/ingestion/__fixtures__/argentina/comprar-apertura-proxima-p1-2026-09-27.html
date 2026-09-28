@@ -1,0 +1,498 @@
+
+<!DOCTYPE html>
+<!--[if lt IE 7]><html lang="es" class="lt-ie10 lt-ie9 lt-ie8 lt-ie7"><![endif]-->
+<!--[if IE 7]><html lang="es" class="lt-ie10 lt-ie9 lt-ie8"><![endif]-->
+<!--[if IE 8]><html lang="es" class="lt-ie10 lt-ie9"> <![endif]-->
+<!--[if IE 9]><html lang="es" class="lt-ie10"> <![endif]-->
+<!--[if gt IE 9]><!-->
+<html lang="es">
+<!--<![endif]-->
+<head><meta http-equiv="X-UA-Compatible" content="IE=edge" /><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><title>
+	COMPR.AR - Portal de Compras Públicas de la República Argentina
+</title><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link href="App_Themes/bastrap/bootstrap.min.css" type="text/css" rel="stylesheet" /><link href="App_Themes/bastrap/bootstrap-multiselect.css" type="text/css" rel="stylesheet" /><link href="App_Themes/bastrap/font-awesome.css" type="text/css" rel="stylesheet" /><link href="App_Themes/bastrap/integracion-bp.css" type="text/css" rel="stylesheet" /><link href="App_Themes/bastrap/styles-2.min.css" type="text/css" rel="stylesheet" /><link href="App_Themes/bastrap/styles-seac-2.min.css" type="text/css" rel="stylesheet" /></head>
+<body>
+    <!--[if lt IE 9]>
+    <![endif]-->
+<header class="navbar-primary navbar-top">
+    <div class="container">
+        <div class="row">
+                <a href="/Default.aspx" id="ctl00_CtrlHeader_linkLogoBAC" onclick="" style="margin-top:30px" class="navbar-brand logoBac"></a>
+                <div id="logoModernizacion">
+                </div>
+        </div>
+    </div>
+</header>
+    <form method="post" action="./Compras.aspx?qs=W1HXHGHtH10%3d&amp;AspxAutoDetectCookieSupport=1" id="aspnetForm">
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="tOxgEliyIa+CtvMEPfCl+mlC6oNZm0iVniA6hxEx4PDGCgiWbO8cBazJ2QHj+JAYO4BpUuL7bCV1mWAjA+lda6Lsf94H4wWmzMeeYMd7IMh7Kwg4MFjFUfE2jxLktsyIF+iXHfoT3a4M+sPFwz+Z6LQ5INTRKCmwWDcQh0ShcuwTr91b9jLZpZgxXN+yBk2htu8bfKSMNi0t0tW+58uUnVNKJSe65rLEjs1wuIb8UP2oQrUP4vzc7OM85R0QdZ1CwXMZpYAP7UwtwXAEBx/4SDAC+tLi8V84osE7CmUMQelWtZUaV63kTNC43UYNCjnylGZ/366P44SBD1hViwcsrwxayW1k3UPvqI68fT+pBXsLQ+Lt+z/jLtfV9Qq/+VguLvOXh+I5SvM6qIlnHJikTFbR5z2/NGeZXRi24RGj1Use+2sd9tBPVeZOS34+rNeqH7bs5rNA0v0o7QnLIM0Upma4lh9H/ju+DaBZCOO4LsYdSuoS8Ka1znsa6ZQJIuLgPHDGG1jzcDu7t3ZHELqSxKO/aC2eX3MRsVzHVxgAZge5TxACLS5NUKCuf+hDoOc0yrj0dzGkqMRycKfIyT1hGpOUrSh5ltXFVqN7RjV/u/KUlECwtk7k3f8ua7NQRTyp/IDvz68DvUOa3sJTbTjf1huo/SgFObzfvOPwzl5jrLhEvFWQhbx7giQc9AO7bCLSda4wVD8G8mYFXErZTVFoQGfgY3MriaEnt7aV894chSF2FimYjx3+7mEFRgMCQxnIeAjPnMoS/laOCK44CpX0UEKg6f0Yowj0VS8FUV9g+NoxZNGRfEhPgid5qi6wrvCN4vt+4lET3lphmLySlVLOq+r2DlWfKQ3aiUwBA4MOeE4wzBFDXxtvdYYrhpv8X7p+bWogf0vPeq0cnCL6wFcBtUkhwGQnDh6MoIkRhuTZyMeGtJzwHN8A1SHNSCb/xxYToJBddr5J0hHg6Z5iq0KOpb20rlYzrYJ7v8UO844jW6KShxFjXhzNqB4FIdxODwKwP01JLWKHyLGN+IRim7IHK3le9xpuyT573EkQYS0i6SKx8pJq8zG5h0vmdKqb9wIXDnSOlYZi8QMYpHr4BZXJraJhhETi7svC2g5sS1WdQrBEMyr2P80ilo9iazLrEb6IZABFtCo8/8j0mez6a9ud1lpuv6fFY9cScdIhkvAWDE7GjBISLP/PhgHkznol4zINcwNW7+4XwnzkmuhvKhjhg8If3pxd5xh7PymU+y5bllzX/A6pKPNfxUo9aeNeU7+mQi/EuN1qATpQdVCAmmlwxeDHPvdd1EViuLDOkUREurT+V+No0EsCTvx+7HsDVLlui7sjz0GYtknEHX08SGCFirxXrHs+Xg57ufJcontoQRkh/bGddipzMZA+oh5acmL7kWpS6BrC/LrrTYnGszAmvj8JZtb7oBVoenwRht/ExnZjKUb1WBzOHwfXurunUAwlKf4YTQxyVsbUNTQ5hjA0ZRHT7Y4+HzyhHKq1KQnON2iUQwcODfOJ5mLUohZp0L6j0MTgHpOBjDMMiT/M9x2jdDgocUInDNBKFKisvmyQ4JJpMbGx5zhueKEvuCgehPFGTB9y0g59tdzYctbLFSuksBopEtVGvODwV7b000lRjeQpymSyUXJAiQVPWmDb43DRWq+wxt7FxZYkpyYvEOAmdj/E4FyeHQTwdL3vmvtzJLpuR0a6WzGhFfWADRnsFDBy9AnTjaqplWTlOhyTrtFvNTW/nW1fcOwCg6AcfbB9kMgqwzcYWYD80RpwUgTTnAKWWCZKjZSa34fAM1XpWzQQK1WfYcuF8cNAHLBjq+I3Sme5EokV6mWeOE5ukBveej6xfdGWWl2NEh3UWDLdFEiQcfniKFMJx2JkrsqFdju8zoCuOU8M10Ikuo1V6yVglgHhxsZtQIDfesbx4Kq3MTRlqR9/oALYJ/rTbaxuU20nSGS5RLGYbdpxSXn4KaQ1ISALpyAjtExWta59McPHsMQocL/dha8vw6NTqPssd81vDlEZCkmqhPwpAmou2uoTU23d4zNkuIf0cPmk1cO1Og28wUo+c8htS9uA+ksl4AhhWoz7wO0nqgJnXFcAzb/ncNb0KS5hWBkoBTFgmBuWvKha6q5G2Kiib7Yh41zBefkYHA2j9peFDgFF4Ura2+vDe+zWY/gv9eGa3UO4AcAYX+u49ig8E+H/foM7l+v9us6wd2wgwT0O73J35FObThBd7XVGQuEJb55V/XvHd3msz0L4oGtXkNUPLSvHA7O6OCvSUYRH1zbP0mouO9IaJU/7plU2QYEhDsa7c8QcJErwGUorwvHpjhOZgTICGmDMLWqyZ7M6zqfJFhgsAtTXMQq1ALU3SbL3ai6fb/x2s+gOBucCYrnGNrZNZTLBux77ib5/q1ZYx4CEmkaIBn/Wm3RVnIMZQdsv67oWMrKFYFvlY7akPpiJ1CyIKDQtHd6Bfp8J49uRL/hHPvNV6zaWFq/ZeDaFU6BAK3UqKkR0HhD6Eqn5y6/xzEU2qpes0GfOUkPdPJVGzbbaUFbOIROOfEC+mgXbuHth/K+kKS2ka9DjRzV9dRTUjHCQnda8PAVZjPHseDuOiRoIyA3G5qC/2XapYEeUic0Gu85Zh92t757k7cRKJE1q+5FI9NEOdgsAzR9KOAsJ90hljWvHVxg5cEQFPkJFZoyfZYsiq45O5h6hHtVLhbamArVchJNOMpQLDcd9jHdUu1EOBB5+EIuIVK2XwAsHss7aHLNp/BmOp45IZSHx5SfE2a0SHsutJA3yXKaUMpv8a+CRopmWXqJVcJW5+e4SAXyI+QccNaQpI+vjLG4NhRGATK0VcmPZa95cqGkNWCFbsXwQKCKkrxUqzXdMNBSRvbowtiGZY/HrfRX6ptWiQ9pQ/yA+APvymX3RNRl3o/tLm9Bki8zqJ+3Cde/5DIv/BM4ml8iUsylEBCbU5LOiY7VPnCDLXKomlS4J+ibsK01YItzo33Aw9LppKHg7xqFKQKjHb3kGj4RfCqhke8ALFchlIgQFFqqlC2FsD+Z/HuBfmmd44QRMGdvF6D+jSL7RLv04rE/keSThxE/AGnUIqJAaY1dfDNiEbiFTDUCkWXH0KKp9SIjiL5BL8r20hKfjdQzZ7zZ0VMqU8hb0WgAoYLSZ0u/vqqOfWfwiAlvM10hqH+Uqdsa8pL4fQ2bbC1w2aqoY3QEzn1CjQZNo+GsM4C6Q7JH5CW/8S851/Kh1M6F42Q/HNDb6nI5VUZyE4bwjfM7pXAoR0q6Hp31+3tlzVOOCY0/+1zoRc8jlfe7gZxbeYIflm6s8zSbv9PdTTvC05s/AjCAZIDXXKm2Fkh6wQst9VCHoBmxi9F4OxpifnnmYYmcSgGIUSwDOFSjnJpRe+pt9meA27K9cRwng1AKSbMIm6S7b8vvnr6OoA25jgSO1TcwoaFXCIKlv/oEmDNomULqT6JiWCC26YTeqEywAy15z9nmfkqGSmzOwVrcxtXd4Is5/B39qetVyz2v4fL/FFXM1icF8MhYJHBPXbxGUYSp5xQd7upC076h6obD8dHJSDS6/UaeGXDOC7G0tvu9xQE6s3jRVTKwBcyjp6VVF+5c7zI+mswYs1GxcNUAMrQ4xOvo8f5L09STfCngBWlUB1HE88/xTLvJGPYd4dPE6HusJfS3MpNFk8V5rsKEv9iGb5muJUcYGN6P8H8JGIT78RU5Ju9cKJ4fx6VUe1jmt9JysaplaEqLrkxNjc62t3YSSh7DZjwbzSRkbpLXArZLNXSYnR5X7p40OyWbRQ1B9k4m4ukmQOGzdw85Ze5QK20zfPyoY9jdzdw0mlQzo3xJNCpP/4E5bmxtxm8XUiYxJwDf/mC/5YgrTxcaO181ARDUoU14fEGOl9wHApWfBIcikPWN9+S2toZmy+Nu981FPL9y0emc6AFdYq78TWbdltq/gM4xdUCo9DcKlmr9Y54gSlgXgfBPXBD2TPQl/owq35UD8mFFSeDg1NCWo8Bqik/exBD83B9TTRG6VSzTmZI3DNt5s3LdsBHnyLlLBqha4cIIUk1JPunL72IV1TNQcKWzQESoVyK2rGQO3CgZjPYrBiz0hS8w9STXsZfyxQeiQfiNkrPUYij+5g7dyWn0esi2LkjHPXwKd1iaFqgjBTYzEsRA8h2mp+p2NctkV/OAkH4V/Kx8bIR+AL+IJh8zt9eV0qpb+cVHDqm7mLIGp4oozBaFjN6vhF2Unz2IQpeCErG//E/5bfsEte0N7H4JIa60WXzGIrceMblNJxWyhUmkY0feUtgY03NdKYU74KGfEPOC6lcZwU3y1TjVBGrI4mSXajzyZJKQhNsLYJ8ULBk92PFyYvMCNle1m7pcthXyMk+yJS5XplU37YotftEydJRnO5XlTBDP/9UfimfQDgyo5lh6RoMLkKq7MzUJ3bvGo3zlTSrXGFY4OHOLFRYn59Lzui7CbaxA+ZpGjvTaWQQC7+8wDX7UZIPwRKfIeSjBKXv5SCtrr0rBiA4v+UYHlzFmVLtW4IWAp9GJojLqTQQanNo7Jq8HjLrIRwuyZXp+vOj/Ej7nZJm2Z4sFHGBb/Bivnf8v9IdzJDwHzJS05XlGeJ8NRW5zSbrm5pciwiWdYnBYJVcNqPj05TvxOGzgXn89SpFKWrg6vO/R2Rz2aSEKR3ubOEBi+d/351uGrpVFPw9BQI2LWTYkPRgDRY85hwtN7YpZwelppNY5XtnLNrTPFoliw7zxtadVZtwLjYrSMLyjZFNZXqNDZnwimEJ+WeOthMj0VSuuRmYb5AZ+oaF+XB/bXSuVJLyhIPA7dsGcvtoK6awPTtiVQga8cztV/mk8c58EZ4+GGar35eOzrzh3+96PyknRHus589iQXTTAdC9nvF8wQ3KSA/ck2k1xO6pX1/OV+esGsxhi2AAK92FHpvcNnopSo5wr9JH9xNw7/krpL549PHcdZMTqOxDQyW4QiKP8HU8dhbgIzWZ/bNpMs9mNdxjGkn1pruF6O5+u+e5+fM5YhtQX/xzdNVnIUMKPMhlek1eNf05Gfoj9TjESwlDXbWKwvQHmh1WzsvKsga624ellVmKDnUriQD4HOaOBmFNygUFlPSZ5ubj1/94dryjfaiHK+MqKVTFh9whlHJl2CG1nOgct6LomHRCYIpqbSniFRnVKUgJo/t5WpHkZlJa3Ul4dnvToSnHfWUWr70jwi0g6/dzV9YAUcqiUczkx60UzezkZmbGFG7tmhig8ExbU2h9Jl5FIw+ns03OXUcrpEgftqSn3/bZ6IZn91f8NKDFe+KGzhQSNogdvD6QPUW42iJGMZzE4bArcRSO0/LkPtIWL+TpgH4aHb6h0kQJv0+3D2MQrx3QXEQL7VI/7gJrpExijBVlMgdHb8PpG6+wtC7i/x6YW9shX7TmiV1lmH2bvq2wZi/MujHRhgxhzq/tawjsf+9bj2eUnxEr5fIPALdoysYvE+Ryxo6tX/4HKH94n+Tg7C0FZRAe/JOajsROga9Jry7aJVXFBq9j8LwLdv/CaCOj9cWW2mc7jYZzwVKAUEnRaxlFWweUEbJUVeSEtHnVVot4xM2TtkP9jUCZYPsZztsknFELywyb/oIFU1Zf9QbXOHvGX0Gof2eF4AbqTnQs0sVyAvWCe9wCkysbaHe/qRg9L9GpNFTPUo1uTErNiFoSOk4G+sIpFwYYzByxcXHsVYqYrTvO6UbPcrtjhb0Pb2qzR+zgVHTXu/K1T/zV5Nu2WIZeDUFCPqRbKTv4Kc0jlin+gZuz0F26kw34YOG5T7pe+9Jp+Otd4bIwe4Amq4ITh14VYU25qmy5vG+PSbbiQvCFLsNIqPNAo3laBhC9A9EzXRjN19UmulaW9qZi2si1qc7sCaJJI8mCdY/ATRRdDs/fBXduhYjpZuRf491f+hiensGkkYjV+lr+UsvXlArplXvJ6oZXAQGQw375JXJsBeTt89wWHnEbHPweVl7TIwgBb9G5r91BfFiPbyrkDPm0D9hlVTOWVtUYawIzapzA==" />
+<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="7D87A8B0" />
+        <nav class="navbar-inverse">
+<div class="navbar-header">
+    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#nav" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+    </button>
+</div>
+<div class="collapse navbar-collapse" id="nav">
+    <div class="container">
+        <div class="row">
+            <ul class="nav navbar-nav">
+                <li><a target="_blank" href="https://www.argentina.gob.ar/jefatura/innovacion-publica/oficina-nacional-de-contrataciones"><strong>Institucional</strong></a></li>
+                <li><a target="_blank" href="http://www.infoleg.gob.ar/?page_id=91"><strong>Normativa</strong></a></li>
+                <li><a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><strong>Capacitación</strong></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="/ComprasElectronicas.aspx?qs=uZmpNBcarZh/t6e8LDmVN|XFAS9B6k9ddqFj4heYwZ4=" id="ctl00_CtrlMenuPortal_lnkProveedoresInstructivos">Proveedores</a></li>
+                        <li><a href="/capacitacion.aspx">Organismos</a></li>
+                    </ul>
+                </li>
+                <li><a href="/contactenos.aspx"><strong>Atención al usuario</strong></a></li>
+                <li><a href="/Dictamen/Dictamen/Buscar"><strong>Material de apoyo</strong></a></li>
+            </ul>
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a id="lnkIngresar" href="../Login.aspx" style="cursor: pointer">
+                        <span class="glyphicon glyphicon-log-in"></span>
+                        <strong>Ingresar</strong>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+<div class="modal" id="modalIngresar" tabindex="-2" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div id="ctl00_CtrlMenuPortal_logIn_updateModal">
+                    <div id="ctl00_CtrlMenuPortal_logIn_divHeaderModal" class="modal-header">
+                        <a onclick="CloseModalIngresar();" id="ctl00_CtrlMenuPortal_logIn_lnkClose" class="close" data-dismiss="modal" aria-hidden="true" href="javascript:__doPostBack(&#39;ctl00$CtrlMenuPortal$logIn$lnkClose&#39;,&#39;&#39;)">&times;</a>
+                        <h2 class="text-center">
+                            <span id="ctl00_CtrlMenuPortal_logIn_lblHeader">Bienvenido</span>
+                        </h2>
+                    </div>
+                    <div id="ctl00_CtrlMenuPortal_logIn_divBodyModal" class="modal-body" data-backdrop="static" data-keyboard="false">
+                            <div class="row form-group">
+                                <div class="form-horizontal">
+                                    <div class="col-md-12">
+<input name="ctl00$CtrlMenuPortal$logIn$txtUsername$txtTextBox" id="ctl00_CtrlMenuPortal_logIn_txtUsername_txtTextBox" class="form-control" type="text" placeholder="CUIL / CUIT / Pasaporte" />
+<span id="ctl00_CtrlMenuPortal_logIn_txtUsername_txtTextBoxVG" class="glyphicon form-control-feedback"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row form-group">
+                                <div class="form-horizontal">
+                                    <div class="col-md-12">
+                                        <span id="ctl00_CtrlMenuPortal_logIn_Label2" class="text">El número de identificación que ingrese debe ser el personal. No el del organismo o empresa.</span>
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="row">
+                            <div class="form-horizontal">
+                                <div class="col-md-12">
+                                    <a id="ctl00_CtrlMenuPortal_logIn_lnkConfirmar" class="btn btn-primary pull-right" data-loading-text="Validando..." href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$CtrlMenuPortal$logIn$lnkConfirmar&quot;, &quot;&quot;, true, &quot;vgLogin&quot;, &quot;&quot;, false, true))">Siguiente</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+</div>
+        </div>
+    </div>
+</div>
+<div class="modal" id="modalRecuperarCuenta" tabindex="-2" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div id="ctl00_CtrlMenuPortal_logIn_ctl00">
+                    <div class="modal-header">
+                        <a onclick="CloseModalRecuperarCuenta();" class="close" data-dismiss="modal" aria-hidden="true" href="javascript:__doPostBack(&#39;ctl00$CtrlMenuPortal$logIn$ctl03&#39;,&#39;&#39;)">&times;</a>
+                        <h2 class="text-center">
+                            <span id="ctl00_CtrlMenuPortal_logIn_Label1">Recuperar contraseña</span>
+                        </h2>
+                    </div>
+                    <div class="modal-body" data-backdrop="static" data-keyboard="false">
+                        <div class="container-fluid">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div id="ctl00_CtrlMenuPortal_logIn_divAdvertencia" class="alert alert-info"><strong>Importante:</strong> El correo electrónico debe ser el mismo que ingresó al sistema al momento de registrarse como usuario.</div>
+                                    <div class="row form-group">
+                                        <div class="form-horizontal">
+                                            <div class="col-md-12">
+                                                <input name="ctl00$CtrlMenuPortal$logIn$textBoxUserRecuperoContrasenia" id="ctl00_CtrlMenuPortal_logIn_textBoxUserRecuperoContrasenia" class="form-control" type="text" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row form-group ">
+                                        <div class="form-horizontal">
+                                            <div class="col-md-12">
+<input name="ctl00$CtrlMenuPortal$logIn$txtMail$txtTextBox" id="ctl00_CtrlMenuPortal_logIn_txtMail_txtTextBox" class="form-control" type="text" placeholder="Correo electronico" />
+<span id="ctl00_CtrlMenuPortal_logIn_txtMail_txtTextBoxVG" class="glyphicon form-control-feedback"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row form-group">
+                                        <div class="form-horizontal">
+                                            <div class="col-md-12">
+<input name="ctl00$CtrlMenuPortal$logIn$txtMail2$txtTextBox" id="ctl00_CtrlMenuPortal_logIn_txtMail2_txtTextBox" class="form-control" type="text" placeholder="Reingrese correo electronico" />
+<span id="ctl00_CtrlMenuPortal_logIn_txtMail2_txtTextBoxVG" class="glyphicon form-control-feedback"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row pull-right">
+                                <div class="col-md-12">
+                                    <a id="ctl00_CtrlMenuPortal_logIn_btnSolicitar" class="btn btn-success m-l-1 btn-sm" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$CtrlMenuPortal$logIn$btnSolicitar&quot;, &quot;&quot;, true, &quot;vgRecuperar&quot;, &quot;&quot;, false, true))">Solicitar</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+</div>
+        </div>
+    </div>
+</div>
+        </nav>
+        <div class="bg-white-1" style="padding-top: 5px; padding-bottom: 5px;">
+            <div class="container">
+                <div class="row">
+<div id="date" style="font-size: 11px; text-align: right;">
+    <span id="ctl00_CtrlTimeNow_scriptFechaHora"></span>
+    <span id="divReloj"></span>
+</div>
+                </div>
+            </div>
+        </div>
+        <section>
+    <link href="/Scripts/jquery-ui-1-11-1/jquery-ui.min.css" type="text/css" rel="stylesheet" />
+    <div class="container">
+        <nav role="navigation">
+            <ol class="breadcrumb">
+                <li><a href="default.aspx">Home</a></li>
+                <li>Compras</li>
+                <li class="active"><span id="ctl00_CPH1_lblTituloBreadCrumb">Licitaciones de apertura próxima</span></li>
+            </ol>
+        </nav>
+        <div class="row form-group">
+            <div class="col-md-12">
+                <h2><span id="ctl00_CPH1_lblTitulo">Licitaciones de apertura próxima</span></h2>
+            </div>
+        </div>
+        <div class="row form-group">
+            <div class="col-md-12">
+                    <div id="ctl00_CPH1_divAperturaProxima">
+                        <div class="panel panel-default">
+                            <div class="panel-body">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <br />
+                                        <h4><small>
+                                            <span id="ctl00_CPH1_lblCantidadListaPliegosAperturaProxima">Se han encontrado (453) resultados para su búsqueda</span></small></h4>
+                                        <br />
+                                        <div id="ctl00_CPH1_pnlListaPliegosAperturaProxima">
+                                            <div id="ctl00_CPH1_ctl03">
+                                                    <div class="table-responsive">
+                                                        <div>
+			<table class="table table-hover table-striped table-condensed" cellspacing="0" id="ctl00_CPH1_GridListaPliegosAperturaProxima">
+				<tr class="tr-header">
+					<th scope="col">Número de Proceso</th><th scope="col">Nombre descriptivo de Proceso</th><th scope="col">Tipo de Proceso</th><th scope="col">Fecha de Apertura</th><th scope="col">Estado</th><th scope="col">Unidad Ejecutora</th><th scope="col">Servicio Administrativo Financiero</th>
+				</tr><tr>
+					<td>
+                                                                        <a id="ctl00_CPH1_GridListaPliegosAperturaProxima_ctl02_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima$ctl02$lnkNumeroProceso&#39;,&#39;&#39;)">38/37-1102-LPR26</a>
+                                                                    </td><td>CONTRATAR EL SERVICIO DE CONFECCION Y REPOSICION DE TOLDOS PARA EL ESTACIONAMIENTO DEL HNPB</td><td>
+                                                                        <p>Licitación Privada</p>
+                                                                    </td><td>28/09/2026 00:00 Hrs.</td><td>
+                                                                        <p>Publicado</p>
+                                                                    </td><td>
+                                                                        <p>38/37 - Hospital Naval Puerto Belgrano</p>
+                                                                    </td><td>
+                                                                        <p>379 - Estado Mayor General de la Armada</p>
+                                                                    </td>
+				</tr><tr>
+					<td>
+                                                                        <a id="ctl00_CPH1_GridListaPliegosAperturaProxima_ctl03_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima$ctl03$lnkNumeroProceso&#39;,&#39;&#39;)">84/99-0654-LPU26</a>
+                                                                    </td><td>SERVICIO DE LIMPIEZA HOSPITALARIA</td><td>
+                                                                        <p>Licitación Pública</p>
+                                                                    </td><td>28/09/2026 07:00 Hrs.</td><td>
+                                                                        <p>Publicado</p>
+                                                                    </td><td>
+                                                                        <p>84/99 - Hospital Militar Regional Mendoza</p>
+                                                                    </td><td>
+                                                                        <p>374 - Estado Mayor General del Ejercito</p>
+                                                                    </td>
+				</tr><tr>
+					<td>
+                                                                        <a id="ctl00_CPH1_GridListaPliegosAperturaProxima_ctl04_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima$ctl04$lnkNumeroProceso&#39;,&#39;&#39;)">38/19-1035-LPR26</a>
+                                                                    </td><td>ESNN SERVICIO MANTENIMIENTO MATAFUEGOS</td><td>
+                                                                        <p>Licitación Privada</p>
+                                                                    </td><td>28/09/2026 07:00 Hrs.</td><td>
+                                                                        <p>Publicado</p>
+                                                                    </td><td>
+                                                                        <p>38/19 - División Contrataciones del Cuartel General del EMGA</p>
+                                                                    </td><td>
+                                                                        <p>379 - Estado Mayor General de la Armada</p>
+                                                                    </td>
+				</tr><tr>
+					<td>
+                                                                        <a id="ctl00_CPH1_GridListaPliegosAperturaProxima_ctl05_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima$ctl05$lnkNumeroProceso&#39;,&#39;&#39;)">84/48-1386-LPR26</a>
+                                                                    </td><td>ADQUISICI&#211;N DE REPUESTOS Y ACCESORIOS PARA VEHICULOS - 3ER TRIM A&#209;O 2026</td><td>
+                                                                        <p>Licitación Privada</p>
+                                                                    </td><td>28/09/2026 07:00 Hrs.</td><td>
+                                                                        <p>Publicado</p>
+                                                                    </td><td>
+                                                                        <p>84/48 - Batallón de Ingenieros Anfibios 121</p>
+                                                                    </td><td>
+                                                                        <p>374 - Estado Mayor General del Ejercito</p>
+                                                                    </td>
+				</tr><tr>
+					<td>
+                                                                        <a id="ctl00_CPH1_GridListaPliegosAperturaProxima_ctl06_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima$ctl06$lnkNumeroProceso&#39;,&#39;&#39;)">38/27-1138-LPR26</a>
+                                                                    </td><td>servicio de impresi&#243;n de revista institucional &quot;DESEMBARCO&quot;</td><td>
+                                                                        <p>Licitación Privada</p>
+                                                                    </td><td>28/09/2026 08:00 Hrs.</td><td>
+                                                                        <p>Publicado</p>
+                                                                    </td><td>
+                                                                        <p>38/27 - Agrupación Servicios de Cuartel</p>
+                                                                    </td><td>
+                                                                        <p>379 - Estado Mayor General de la Armada</p>
+                                                                    </td>
+				</tr><tr>
+					<td>
+                                                                        <a id="ctl00_CPH1_GridListaPliegosAperturaProxima_ctl07_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima$ctl07$lnkNumeroProceso&#39;,&#39;&#39;)">84/24-1352-LPR26</a>
+                                                                    </td><td>SERVICIO DE COLOCACI&#211;N Y CONFECCI&#211;N DE LETRAS EN COLUMNA DEL PATIO INTERIOR (PROMOCI&#211;N 157).</td><td>
+                                                                        <p>Licitación Privada</p>
+                                                                    </td><td>28/09/2026 08:00 Hrs.</td><td>
+                                                                        <p>Publicado</p>
+                                                                    </td><td>
+                                                                        <p>84/24 - Colegio Militar de la Nación - Compras y Contrataciones</p>
+                                                                    </td><td>
+                                                                        <p>374 - Estado Mayor General del Ejercito</p>
+                                                                    </td>
+				</tr><tr>
+					<td>
+                                                                        <a id="ctl00_CPH1_GridListaPliegosAperturaProxima_ctl08_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima$ctl08$lnkNumeroProceso&#39;,&#39;&#39;)">84/77-0606-LPU26</a>
+                                                                    </td><td>SERVICIO DE ACTUALIZACI&#211;N Y MANTENIMIENTO DEL SISTEMA DE COMANDO Y CONTROL SITEA</td><td>
+                                                                        <p>Licitación Pública</p>
+                                                                    </td><td>28/09/2026 08:00 Hrs.</td><td>
+                                                                        <p>Publicado</p>
+                                                                    </td><td>
+                                                                        <p>84/77 - Departamento Contaduría y Finanzas (EMGE)</p>
+                                                                    </td><td>
+                                                                        <p>374 - Estado Mayor General del Ejercito</p>
+                                                                    </td>
+				</tr><tr>
+					<td>
+                                                                        <a id="ctl00_CPH1_GridListaPliegosAperturaProxima_ctl09_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima$ctl09$lnkNumeroProceso&#39;,&#39;&#39;)">84/23-1392-LPR26</a>
+                                                                    </td><td>MODERNIZACI&#211;N DE CONSULTORIOS DE LA SECCI&#211;N SANIDAD</td><td>
+                                                                        <p>Licitación Privada</p>
+                                                                    </td><td>28/09/2026 08:00 Hrs.</td><td>
+                                                                        <p>Publicado</p>
+                                                                    </td><td>
+                                                                        <p>84/23 - Escuela de Suboficiales del Ejercito Sargento Cabral - Estado Mayor General del Ejercito</p>
+                                                                    </td><td>
+                                                                        <p>374 - Estado Mayor General del Ejercito</p>
+                                                                    </td>
+				</tr><tr>
+					<td>
+                                                                        <a id="ctl00_CPH1_GridListaPliegosAperturaProxima_ctl10_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima$ctl10$lnkNumeroProceso&#39;,&#39;&#39;)">40/21-0759-CDI26</a>
+                                                                    </td><td>MANT. Y REPARACION DE VEHICULOS - 2&#176; LLAMADO - 3&#176; TRIMESTRE - OCA</td><td>
+                                                                        <p>Contratación Directa</p>
+                                                                    </td><td>28/09/2026 08:00 Hrs.</td><td>
+                                                                        <p>Publicado</p>
+                                                                    </td><td>
+                                                                        <p>40/021 - UOC RYD</p>
+                                                                    </td><td>
+                                                                        <p>381 - Estado Mayor General de La Fuerza Aérea</p>
+                                                                    </td>
+				</tr><tr>
+					<td>
+                                                                        <a id="ctl00_CPH1_GridListaPliegosAperturaProxima_ctl11_lnkNumeroProceso" href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima$ctl11$lnkNumeroProceso&#39;,&#39;&#39;)">84/71-1400-LPR26</a>
+                                                                    </td><td>ADQUISICION DE ELEMENTOS DE SEGURIDAD Y A FINES</td><td>
+                                                                        <p>Licitación Privada</p>
+                                                                    </td><td>28/09/2026 08:00 Hrs.</td><td>
+                                                                        <p>Publicado</p>
+                                                                    </td><td>
+                                                                        <p>84/71 - Liceo Militar General Roca</p>
+                                                                    </td><td>
+                                                                        <p>374 - Estado Mayor General del Ejercito</p>
+                                                                    </td>
+				</tr><tr class="pagination-gv ">
+					<td colspan="7"><table>
+						<tr>
+							<td><span>1</span></td><td><a href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima&#39;,&#39;Page$2&#39;)">2</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima&#39;,&#39;Page$3&#39;)">3</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima&#39;,&#39;Page$4&#39;)">4</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima&#39;,&#39;Page$5&#39;)">5</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima&#39;,&#39;Page$6&#39;)">6</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima&#39;,&#39;Page$7&#39;)">7</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima&#39;,&#39;Page$8&#39;)">8</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima&#39;,&#39;Page$9&#39;)">9</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima&#39;,&#39;Page$10&#39;)">10</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$CPH1$GridListaPliegosAperturaProxima&#39;,&#39;Page$11&#39;)">...</a></td>
+						</tr>
+					</table></td>
+				</tr>
+			</table>
+		</div>
+                                                    </div>
+                                                    <div id="ctl00_CPH1_ctl05" style="display:none;">
+                                                            <div id="divPanelFondoTransparente" class="FondoGrisTransparente">
+                                                            </div>
+                                                            <div id="divPanelProgreso" class="PanelProgresoCentroPagina">
+                                                                <img src="/App_Themes/styles-viejo/imagenes/iconos/AjaxPanelProgreso.gif" alt="" />
+                                                            </div>
+		</div>
+	</div>
+                                            <div style="text-align: right">
+                                                <a id="ctl00_CPH1_btnDescargarReporteExcelAperturaProxima" class="btn btn-primary" href="javascript:__doPostBack(&#39;ctl00$CPH1$btnDescargarReporteExcelAperturaProxima&#39;,&#39;&#39;)">Descargar Reporte Excel</a>
+                                            </div>
+                                            <br />
+</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            </div>
+        </div>
+    </div>
+        </section>
+<footer>
+    <div class="footer">
+        <div class="container">
+            <div class="col-md-2 imgLogo">
+                <!-- LOGO COMPRAR -->
+                <img src="Imagenes/Logos/jefatura.png" alt="Jefatura de Gabinete de Ministros - Argentina" width="200" />
+            </div>
+            <div class="col-md-2 lblFooter lblFooterLeft">
+                <span id="ctl00_pie_lblSecretaria" style="display:inline-block;">Secretaría Ejecutiva</span>
+            </div>
+            <div class="col-md-2 lblFooter">
+                <span id="ctl00_pie_lblContrataciones" style="display:inline-block;">Oficina Nacional de Contrataciones</span>
+            </div>
+            <div class="col-md-3 imgLogo imgLogoLeft">
+            </div>
+            <div class="col-md-3 links-externos">
+                <!-- LINKS EXTERNOS -->
+                <div class="row">
+                    <!-- BOLETIN OFICIAL -->
+                    <div class="col-md-12">
+                        <span>Presidencia de la nación</span>
+                    </div>
+                    <!-- INSTITUCIONAL -->
+                    <div class="col-md-12 margin-top-2">
+                        <span id="ctl00_pie_lblNombreserver" class="footer-version">PRDFINMSAPPB07</span>
+                        <span id="ctl00_pie_Label1" class="footer-version">
+                                v 1.1.929_COMPRAR</span>
+                    </div>
+                    <!-- NORMATIVA -->
+                    <div class="col-md-12 margin-top-2">
+                        <a id="ctl00_pie_LinkButton1" href="javascript:__doPostBack(&#39;ctl00$pie$LinkButton1&#39;,&#39;&#39;)">Avisos sobre Navegadores</a>
+                    </div>
+                    <div class="col-md-12 margin-top-2">
+                        <a id="ctl00_pie_LinkButton2" href="javascript:__doPostBack(&#39;ctl00$pie$LinkButton2&#39;,&#39;&#39;)">Términos y Condiciones de Uso</a>
+                    </div>
+                    <div class="col-md-12 margin-top-2">
+                        <a id="ctl00_pie_LinkButton3" href="javascript:__doPostBack(&#39;ctl00$pie$LinkButton3&#39;,&#39;&#39;)">Preguntas Frecuentes</a>
+                    </div>
+                    <div class="col-md-12 margin-top-2">
+                        <span class="glyphicon glyphicon-send"></span>&nbsp;
+                            <span id="ctl00_pie_lblTextIncidencias">Envíenos por favor un ticket</span>
+                        <a id="ctl00_pie_linkIncidencias" href="https://incidencias.innovacion.gob.ar/servicedesk/customer/portal/6" target="_blank"> aquí</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- LINKS AVISOS -->
+        <!-- VERSION -->
+        <!--NOMBRE SERVIDOR-->
+    </div>
+</footer>
+<div class="modal" id="modalAvisoNavegadores" tabindex="-2" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div id="ctl00_pie_div1" class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title">Aviso sobre Navegadores</h4>
+            </div>
+            <div class="modal-body" data-backdrop="static" data-keyboard="false">
+                <div class="container-fluid">
+                    Para brindar la mejor calidad y velocidad de navegación nuestro sitio está desarrollado en función de las últimas versiones de los navegadores:
+                    <div class="col-md-6 col-md-offset-3">
+                        <div class="container-fluid">
+                            <div class="carousel slide" data-ride="carousel" id="carouselnav">
+                                <div class="carousel-inner">
+                                    <div class="item active">
+                                        <img id="ctl00_pie_imgCarrousel" src="/App_Themes/bastrap/images/navegadores.jpg" alt="Navegadores" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal" id="modalTerminosYCondiciones" tabindex="-2" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <p><u>DI-2016-29-E-APN-ONC#MM – ANEXO II</u></p>
+                <h4 class="modal-title">POLÍTICAS, TÉRMINOS Y CONDICIONES DE USO DEL SISTEMA (PTCUS) COMUNES A TODOS LOS USUARIOS</h4>
+            </div>
+            <div class="modal-body" style="height: 500px; overflow-y: auto; text-align: justify;">
+                <p>Artículo 1°.- Encuadre Jurídico</p>
+                <p>El acceso y/o uso al Sistema Electrónico de Contrataciones de la Administración Nacional denominado COMPR.AR., se efectúa en el marco de lo normado por los artículos 21 y 22 del Decreto Delegado Nº 1023/01, el artículo 33 del reglamento del Régimen de Contrataciones de la Administración Nacional aprobado por el Decreto Nº 893/12, las Políticas, Términos y Condiciones de Uso del Sistema y las Condiciones Particulares que en el futuro puedan complementarlas, sustituirlas o modificarlas. </p>
+                <p>Artículo 2°.- Aceptación </p>
+                <p>Desde el momento de acceso y/o uso del COMPR.AR, se considera que el usuario acepta plenamente y sin reserva alguna, las Políticas, Términos y Condiciones así como las Condiciones Particulares de uso del sistema que pudieran dictarse, adhiriendo en forma inmediata a todas y cada de una ellas. </p>
+                <p>Artículo 3°.- Acceso</p>
+                <p>El acceso a COMPR.AR es público y gratuito, y se realiza a través de Internet, en el sitio cuya página principal se encuentra ubicada en <a>https://comprar.gob.ar</a> o aquella que en un futuro la reemplace. El Usuario deberá contar con un equipo y programas informáticos que cumplan con los requisitos mínimos de compatibilidad con el sistema (acceso por internet; navegadores Internet Explorer; Mozilla Firefox o Google Chrome). El Usuario toma conocimiento que cuando su equipo o programas de computación no reúnan tales requisitos mínimos, no podrá tener acceso al sistema y/o se podrá bloquear su acceso. </p>
+                <p>Artículo 4°.- Términos </p>
+                <p>A los efectos de las presentes Políticas, Términos y Condiciones, se entenderá que:</p>
+                <p><u>COMPR.AR</u></p>
+                <p>Constituye el Sistema Electrónico de Contrataciones de la Administración Nacional a través del cual las jurisdicciones y entidades de la Administración Pública Nacional comprendidas en el artículo 2º del Decreto Delegado Nº 1023/01 y sus modificaciones efectuarán en forma electrónica todos los procedimientos prescriptos en el Reglamento del Régimen de Contrataciones de la Administración Nacional, aprobado por el Decreto Nº 893/12 y sus modificaciones.</p>
+                <p><a>https://comprar.gob.ar</a></p>
+                <p>Es el portal sobre el que se gestiona el COMPR.AR y a través del cual se difunden las convocatorias y las restantes etapas de los procedimientos de selección. El acceso a este portal es público y gratuito. </p>
+                <p>Asimismo, es medio válido de todas las notificaciones entre la jurisdicción o entidad contratante y los interesados, oferentes, adjudicatarios o cocontratantes que deban realizarse durante los procedimientos de selección. </p>
+                <p><u>USUARIOS DEL PROVEEDOR:</u></p>
+                <p>Es la persona humana que utiliza el COMPR.AR en representación de la persona humana o jurídica inscripta en el Sistema de Información de Proveedores que administra la OFICINA NACIONAL DE CONTRATACIONES, conforme el procedimiento de autenticación de los usuarios de los proveedores obrante en el Anexo III de la presente medida. </p>
+                <p><u>USUARIOS COMPRADORES:</u></p>
+                <p>Es la persona humana designada por la Unidad Operativa de Contrataciones, en adelante UOC, como responsable de la utilización del COMPR.AR, de acuerdo a los roles otorgados conforme al procedimiento de Administradores de Perfiles y Usuarios de la Administración obrante en los Anexos IV y V. </p>
+                <p><u>SISTEMA DE INFORMACION DE PROVEEDORES:</u></p>
+                <p>El Sistema de Información de Proveedores (SIPRO) que administra la OFICINA NACIONAL DE CONTRATACIONES se incorpora también al sistema COMPR.AR. Este sistema tiene por objeto registrar información relativa a los proveedores, sus antecedentes, historial de procedimientos de selección en los que se hubieren presentado como oferentes, historial de contratos, órdenes de compra o venta, incumplimientos contractuales y extra-contractuales, en ambos casos por causas imputables al proveedor, sanciones de apercibimiento, suspensión e inhabilitación y toda otra información que la OFICINA NACIONAL DE CONTRATACIONES considere de utilidad. </p>
+                <p><u>PROTECCIÓN DE LA INFORMACIÓN CONTENIDA EN EL PORTAL:</u></p>
+                <p>Toda la información elaborada o disponible en, o a través del COMPR.AR, se encuentra protegida como propiedad intelectual. Está prohibido a todos los usuarios modificar, copiar, transmitir, vender, distribuir, exhibir, publicar, licenciar, crear trabajos derivados, o usar, en general, el contenido disponible en o a través del COMPR.AR para fines comerciales y otros. </p>
+                <p><u>USO ADECUADO DE COMPR.AR:</u></p>
+                <p>El usuario que ingresa al COMPR.AR, se compromete a utilizar el mismo en forma lícita y de acuerdo a las presentes PTCUS. Se encuentra prohibido a los usuarios, la realización de actos maliciosos o que atenten contra el sitio, o que de alguna manera puedan dañar, inutilizar, sobrecargar, deteriorar, impedir o limitar la utilización de todas o algunas de las funcionalidades del mismo.</p>
+                <p><u>RESPONSABILIDAD POR CLAVES DE USUARIO:</u></p>
+                <p>Los usuarios de COMPR.AR no pueden ceder, transferir o comunicar bajo ninguna circunstancia sus claves y nombres de usuarios, haciéndose plenamente responsables por los actos, documentos, anexos, ofertas, y demás antecedentes que bajo esas claves y nombres de usuario, ingresen al COMPR.AR. Además, los usuarios asumen la obligación de cambiar sus claves frecuentemente, las que se debe evitar que sean evidentes y/o simples. </p>
+                <p><u>RESPONSABILIDAD:</u></p>
+                <p>El Gobierno Nacional no se responsabiliza por los daños y/o perjuicios derivados del acceso y/o uso de los contenidos publicados en el sitio <a>https://comprar.gob.ar</a> o en el que en un futuro lo reemplace. </p>
+                <p>El Gobierno Nacional no se responsabiliza por las interrupciones de este servicio, ni por cualquier inconveniente originado en causas ajenas que impidan el acceso. </p>
+                <p>La veracidad e integridad de la totalidad de la información y contenido de los documentos publicados son de exclusiva responsabilidad de los usuarios que los publican y envían, de acuerdo a las claves de acceso bajo las cuales actúen. </p>
+                <p>El Gobierno Nacional no es responsable por la interrupción en la recepción de correos electrónicos por parte del usuario-proveedor. </p>
+                <p>El Gobierno Nacional no es responsable de los virus que puedan contener los documentos que adjuntan los usuarios del sitio. Es responsabilidad de cada usuario velar por que los archivos que sube al sitio no tengan virus de ninguna especie. </p>
+                <p>Las estadísticas e informes disponibles en el COMPR.AR son meramente referenciales y no comprometen a la OFICINA NACIONAL DE CONTRATACIONES, ni al Gobierno Nacional. </p>
+                <p><u>SUSPENSIÓN O ELIMINACIÓN DE USUARIOS:</u></p>
+                <p>La OFICINA NACIONAL DE CONTRATACIONES se reserva el derecho de suspender y/o eliminar unilateral y automáticamente del COMPR.AR a los usuarios que incumplan las PTCUS. </p>
+                <p><u>CENTRO DE CONTACTO. MESA DE AYUDA TELEFÓNICA:</u></p>
+                <p>La OFICINA NACIONAL DE CONTRATACIONES establecerá para todos los usuarios del COMPR.AR un centro de contacto que contará con una mesa de ayuda telefónica y vía correo electrónico. Esta mesa de ayuda atenderá las consultas de los usuarios sobre el funcionamiento del COMPR.AR.</p>
+                <p>Artículo 5°.- Usuarios de los proveedores </p>
+                <p><u>CORREOS ELECTRÓNICOS ENVIADOS POR COMPR.AR. A PROVEEDORES:</u></p>
+                <p>Los usuarios proveedores aceptan recibir permanentemente correos electrónicos relativos a procedimientos de selección y demás información relevante, a la dirección de correo informada por ellos en el SIPRO. </p>
+                <p>El sitio <a>https://comprar.gob.ar</a> o el que en un futuro lo reemplace es el medio obligatorio de difusión de las convocatorias y de las restantes etapas de los procedimientos de selección, sin perjuicio de las demás formas de difusión y publicidad que la reglamentación vigente determina.</p>
+                <p>Los correos electrónicos enviados por el COMPR.AR solo constituyen un medio de aviso. </p>
+                <p>Se recomienda a los proveedores, revisar periódicamente el COMPR.AR –en particular Escritorio del Proveedor– para informarse de las novedades vinculadas a las etapas, desarrollo del proceso de contratación electrónica y demás información relevante, como así también consultar las demás formas de difusión y publicidad que la reglamentación vigente determina.</p>
+                <p><u>LIBERACIÓN DE RESPONSABILIDAD:</u></p>
+                <p>Los usuarios proveedores deben velar por la seriedad de las ofertas ingresadas al COMPR.AR, siendo plenamente responsables por las mismas. </p>
+                <p>Los usuarios proveedores deberán aceptar que el Gobierno Nacional carece de toda responsabilidad por los resultados que obtengan en cada uno de los procedimientos de selección electrónicos en que participen. </p>
+                <p>Los usuarios proveedores liberan al Gobierno Nacional de cualquier responsabilidad derivada de la dilación o no envío oportuno de correos electrónicos de alerta, declarando conocer que el medio de notificación es la difusión que cada Usuario Comprador efectúa en el portal <a>https://comprar.gob.ar</a> o en el que en un futuro lo reemplace. La no recepción oportuna de correos electrónicos de alerta que envía el COMPR.AR, no justificará, ni se considerará como causal suficiente para eximir a los proponentes de sus cargas y responsabilidades. </p>
+                <p><u>POLÍTICAS DE PRIVACIDAD:</u></p>
+                <p>Los usuarios de COMPR.AR aceptan, por el sólo hecho de su inscripción o registro en el sitio, que los datos, antecedentes e información aportados en las diversas etapas de los procedimientos en que participan, sean de público conocimiento en el ámbito de las transacciones que se efectúan en él y que sólo están disponibles públicamente para esos efectos. Asimismo, los usuarios de COMPR.AR, por el sólo hecho de su inscripción otorgan su conformidad para que los resultados de los procedimientos de selección en que participen y las respectivas contrataciones, formen parte de las estadísticas e informes, se procesen y se publiquen por parte del Gobierno Nacional.</p>
+                <p>Cuando se solicite por parte de terceros acceso a información que pudiese afectar derechos de los usuarios proveedores, tales como los relacionados con su vida privada o derechos de carácter económico o comercial, se procederá en un todo conforme a la Ley Nº 25.326 de “Protección de Datos Personales” modificada por la Ley Nº 26.343 y reglamentada por el Decreto Nº 1558/2001 modificado por el Decreto 1160/2010, el Decreto Nº 1172/2003 de “Acceso a la Información Pública” y el Decreto N° 117/2016 “Plan de Apertura de Datos”. </p>
+                <p><u>DECLARACIÓN:</u></p>
+                <p>Los usuarios de COMPR.AR declaran conocer y aceptar la circunstancia relativa a que la OFICINA NACIONAL DE CONTRATACIONES, puede en cualquier momento modificar todo o parte de las presentes PTCUS, que serán oportunamente publicadas en el portal de COMPR.AR. </p>
+                <p><u>USUARIOS COMPRADORES:</u></p>
+                <p>El usuario-comprador es responsable de la información que se difunda y debe procurar que su contenido se adapte a las previsiones contempladas por la normativa vigente. Queda estrictamente prohibido a los usuarios compradores realizar cualquier uso de COMPR.AR ajeno al marco del proceso de contrataciones públicas electrónicas. Los Organismos de Control están autorizados a utilizar el COMPR.AR con el objeto de asegurar el correcto desempeño de los distintos procesos y velar por su transparencia. </p>
+                <p><u>LÍMITE DE RESPONSABILIDAD DEL COMPR.AR SOBRE EL PROCESO DE SELECCION:</u></p>
+                <p>El COMPR.AR es un medio que facilita la realización de los procedimientos de selección sin garantizar la seriedad e idoneidad de las ofertas recibidas, las que deben ser evaluadas por cada usuario comprador, y en su caso, por la Comisión Evaluadora de Ofertas.</p>
+            </div>
+        </div>
+    </div>
+</div>
+    </form>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
-import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
+import { classifyIndustries, stripKnownFalsePositivePlaceNames, type IndustryKey } from "@/lib/industry";
 import { foldAccents } from "@/lib/text-fold";
 import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
@@ -2582,7 +2582,88 @@ function fibreTier(text: string): TenderRelevance["tier"] | null {
  * Membership is a claim about one SOURCE's publishing habits, so it is
  * decided per country from a real import and never assumed for a new one.
  */
-const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru", "Chile"]);
+const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru", "Chile", "Argentina"]);
+// Argentina joined 2026-09-27 by the user's call, before its first import
+// (没有金额的项目…我们可以和墨西哥一样): COMPR.AR's public page for a process
+// never shows its estimated amount, and CONTRAT.AR's shows a currency and a
+// duration but no figure, so an unpriced Argentine row is the normal case,
+// not the exception — the same footing Mexico is on.
+
+/**
+ * Countries where a target sector is kept whatever its amount — the value
+ * floor below does not apply to it, and neither does the undisclosed-value
+ * gate above (user, 2026-09-27, for Argentina: 能源/铁路/电力/交通/水务行业
+ * 不看金额 → OK, and ICT the same day; the $1M floor itself left as it is: 我不想动现在的标准).
+ *
+ * The sector is read from what is being bought — the title and summary — and
+ * never from the buyer's name, for the reason the allowlist gate gives below:
+ * "Dirección Nacional de Vialidad" would otherwise make every stationery order
+ * a road. Every exclusion that runs before the floor still runs (routine
+ * services, maintenance-only, consultancies, direct awards, short contracts),
+ * so this lets a small railway sleeper order in, not a cleaning contract.
+ */
+const VALUE_FLOOR_EXEMPT_INDUSTRIES_BY_COUNTRY: Record<string, ReadonlySet<IndustryKey>> = {
+  // ICT added the same day (user: also ICT project).
+  Argentina: new Set<IndustryKey>(["energy_mining", "power", "transportation", "water", "ict_telecom"]),
+};
+
+/**
+ * Railway work as Argentina's rail infrastructure company names it, which the
+ * shared transport vocabulary in lib/industry.ts does not reach: of ADIF's 14
+ * open procedures on 2026-09-27, "Aparatos de Vía de Trocha Ancha … Línea San
+ * Martín", "Renovación De Vía Cuádruple … Línea Roca" and "Señalización
+ * Integral Playa Retiro. Línea San Martín" matched no industry at all. Kept
+ * out of lib/industry.ts so no other country's tags move; matched against
+ * accent-folded text, as everything here is.
+ */
+const ARGENTINE_RAIL_WORK =
+  /\blinea (?:general )?(?:roca|mitre|sarmiento|san martin|urquiza|belgrano(?: sur| norte)?)\b|\btrocha (?:ancha|media|angosta)\b|\baparatos? de via\b|\brenovacion (?:de (?:la )?)?(?:infraestructura de )?vias?\b|\bvia cuadruple\b|\brectificadora de traccion\b|\bferroviari[oa]s?\b|\bferrocarril(?:es)?\b/i;
+
+/**
+ * Road work as Argentine notices word it and the shared list does not:
+ * Neuquén's IDB-financed "Obra Básica y Calzada Pavimentada de Av.
+ * Interurbana Río Colorado" matched no industry (Boletín Oficial, 2026-09-28).
+ */
+const ARGENTINE_ROAD_WORK = /\bcalzadas? pavimentadas?\b|\b(?:re)?pavimentad[oa]s?\b|\brepavimentacion\b|\bruta (?:nacional|provincial)\b|\bautovia\b/i;
+
+const VALUE_FLOOR_EXEMPT_EXTRA_PATTERN_BY_COUNTRY: Record<string, RegExp> = {
+  Argentina: new RegExp(`${ARGENTINE_RAIL_WORK.source}|${ARGENTINE_ROAD_WORK.source}`, "i"),
+};
+
+/**
+ * What the exemption must not read as a sector, from the first Argentine dry
+ * run (2026-09-28): bottled water and dispensers matched "agua potable"; the
+ * towns Río Turbio, Río Gallegos, Río Cuarto matched the water word "río";
+ * "margen izquierda" — Yacyretá's bank of the Paraná — made a workers'
+ * insurance policy a water project. The first two groups are removed before
+ * the sector is read; a purchase that is plainly consumables or insurance is
+ * never exempt.
+ */
+const EXEMPTION_FALSE_FRIENDS = /\br[ií]o\s+(?:turbio|gallegos|cuarto|grande|negro|colorado|tercero|segundo|ceballos|mayo|chico|primero|hondo)\b|\bmargen (?:izquierda|derecha)\b/gi;
+const NEVER_EXEMPT = /\bagua (?:mineral|envasada)\b|\bbotell[oó]n(?:es)?\b|\bdispensers?\b|\bbid[oó]n(?:es)?\b|\basegurador[ao]?\b|\bp[oó]liza\b|\bseguros? (?:de|para)\b|\btransporte (?:de|del) personal\b/i;
+
+/**
+ * A purchase of software licences — or an upgrade or subscription of a
+ * vendor's product — is not an ICT project, so it is never exempt (user,
+ * 2026-09-28: 只买软件许可 → 排除). From the COMPR.AR dry run: "Adquisición de
+ * licencias de suite de software cartográfico e hidrográfico",
+ * "Actualización/upgrade del Vmware VSPHERE 8 ENTERPRISE PLUS". Read on the
+ * title only, so a system build whose summary lists its licences keeps its
+ * exemption; software development ("Reingeniería de software") is not matched.
+ */
+const SOFTWARE_LICENCE_ONLY = /\blicencias?\b|\blicenciamientos?\b|\bupgrade\b|\bsuscripci[oó]n(?:es)?\b/i;
+
+function isValueFloorExemptSector(country: string | undefined, subjectTitle: string, subjectSummary: string | undefined): boolean {
+  const exempt = country === undefined ? undefined : VALUE_FLOOR_EXEMPT_INDUSTRIES_BY_COUNTRY[country];
+  if (!exempt) return false;
+  const text = [subjectTitle, subjectSummary].filter(Boolean).join(" ");
+  if (NEVER_EXEMPT.test(text) || SOFTWARE_LICENCE_ONLY.test(subjectTitle)) return false;
+  const title = subjectTitle.replace(EXEMPTION_FALSE_FRIENDS, " ");
+  const summary = subjectSummary?.replace(EXEMPTION_FALSE_FRIENDS, " ");
+  if (classifyIndustries(title, summary).some((industry) => exempt.has(industry))) return true;
+  const extra = VALUE_FLOOR_EXEMPT_EXTRA_PATTERN_BY_COUNTRY[country!];
+  return extra !== undefined && extra.test([title, summary].filter(Boolean).join(" "));
+}
 
 const MIN_VALUE_USD = 1_000_000;
 
@@ -3575,7 +3656,8 @@ export function classifyRelevance(input: {
   // keyword-only logic). Only isNationalPriorityProject — a real,
   // government-verified major-project designation — still rescues a
   // below-floor value; no keyword-based override can anymore.
-  if (input.isNationalPriorityProject !== true && normalizedValue !== undefined && normalizedValue < minValueUsd) {
+  const exemptFromValueFloor = isValueFloorExemptSector(input.country, subjectTitle, subjectSummary);
+  if (input.isNationalPriorityProject !== true && !exemptFromValueFloor && normalizedValue !== undefined && normalizedValue < minValueUsd) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "value", minValueUsd) };
   }
 
@@ -3848,6 +3930,7 @@ export function classifyRelevance(input: {
     input.country !== undefined &&
     UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL.has(input.country) &&
     normalizedValue === undefined &&
+    !exemptFromValueFloor &&
     !matchesFlagshipIndustry &&
     !hasIncludeOverride &&
     !isEquipmentScaleCapped &&
@@ -3877,6 +3960,7 @@ export function classifyRelevance(input: {
   if (
     !hasTargetIndustry &&
     normalizedValue === undefined &&
+    !exemptFromValueFloor &&
     !matchesFlagshipIndustry &&
     !hasIncludeOverride &&
     !isEquipmentScaleCapped &&
@@ -4141,18 +4225,20 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   // CFE calls read from the DOF: own rules, see lib/relevance-cfe.ts — the DOF
   // carries no supply type, and CFE's procedure number does.
   if (/^Diario Oficial de la Federaci[oó]n/.test(input.sourceName ?? "") && isCfeCall(input)) {
-    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    // An electricity utility's call is 电力, not 能矿 (user, 2026-09-28: 不是所有的电力都加能矿标签；能矿还是聚焦能源和石油).
+    const withPower: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "power" as const])];
     return {
-      industries: withEnergy,
+      industries: withPower,
       relevance: classifyCfeRelevance({ title: input.title, tenderNumber: input.tenderNumber }),
     };
   }
   // Cemig's e-Compras: own rules, see lib/relevance-cemig.ts — the one source
   // where a pregão for goods is kept (user, 2026-09-25).
   if (input.sourceName === CEMIG_SOURCE_NAME) {
-    const withEnergy: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "energy_mining" as const])];
+    // An electricity utility's call is 电力, not 能矿 (user, 2026-09-28: 不是所有的电力都加能矿标签；能矿还是聚焦能源和石油).
+    const withPower: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "power" as const])];
     return {
-      industries: withEnergy,
+      industries: withPower,
       relevance: classifyCemigRelevance({ title: input.title, summary: input.summary, procedureType: input.procedureType }),
     };
   }

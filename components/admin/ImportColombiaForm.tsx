@@ -1,5 +1,6 @@
 "use client";
 
+import { DayWindowPicker, DEFAULT_DAY_WINDOW } from "@/components/admin/DayWindowPicker";
 import { useState } from "react";
 import { AutoRunBadge, AutoRunNote } from "@/components/admin/AutoRunBadge";
 
@@ -48,7 +49,7 @@ type RefreshResult = {
  * A second button, "刷新已有标书状态", calls a DIFFERENT endpoint
  * (refreshColombiaTenders — see ingest-colombia.ts) rather than reusing
  * this same pull with a wider window: a real bug found 2026-09-05 was
- * that the recency window ("保留最近几个月发布的") is a server-side filter
+ * that the recency window (the day picker) is a server-side filter
  * on the SECOP fetch itself, so a tender published outside that window is
  * never re-fetched no matter how many times "拉取并写入" runs — the user
  * tested this directly against two real already-tracked tenders and
@@ -59,11 +60,9 @@ type RefreshResult = {
  * regardless of age.
  */
 export function ImportColombiaForm() {
-    // One month, not six: a wide window is the FIRST import's job, and after
-  // that every run is a top-up that re-fetches and re-upserts months of rows
-  // nobody is waiting on (user, 2026-09-12: 只有第一次需要大量，后续没必要每次都是大量文档).
-  // Still editable, so a catch-up after a gap just means typing a bigger number.
-  const [months, setMonths] = useState("1");
+  // Days, not months (user, 2026-09-28: 1、2、3天，不需要每次都1个月). The daily
+  // job keeps new tenders flowing; a manual run only tops up the last few days.
+  const [days, setDays] = useState<number>(DEFAULT_DAY_WINDOW);
   const [maxPages, setMaxPages] = useState("20");
   // Defaults to checked per the user's explicit request (2026-09-04): "写入
   // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
@@ -87,7 +86,7 @@ export function ImportColombiaForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode: "pull",
-          months: months.trim() === "" ? undefined : Number(months),
+          days,
           maxPages: maxPages.trim() === "" ? undefined : Number(maxPages),
           write,
           fetchDocuments: write && fetchDocuments,
@@ -142,16 +141,9 @@ export function ImportColombiaForm() {
       {error && <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
 
       <div className="mt-3 flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-semibold text-[#52636e]">保留最近几个月发布的</span>
-          <input
-            type="number"
-            min={0}
-            value={months}
-            onChange={(e) => setMonths(e.target.value)}
-            className="h-9 w-28 rounded-lg border border-[#d8e0e3] bg-white px-2 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
-          />
-        </label>
+        <div className="flex flex-col gap-1 text-xs">
+          <DayWindowPicker value={days} onChange={setDays} disabled={submitting !== null} />
+        </div>
         <label className="flex flex-col gap-1 text-xs">
           <span className="font-semibold text-[#52636e]">最多拉取页数（每页 1000 条）</span>
           <input
@@ -190,7 +182,7 @@ export function ImportColombiaForm() {
           type="button"
           onClick={runRefresh}
           disabled={submitting !== null}
-          title="按已入库标书的编号，逐条重新从 SECOP 拉取最新数据并覆盖写入——不限发布时间，不受上方“保留最近几个月”设置影响；不会重新下载附件"
+          title="按已入库标书的编号，逐条重新从 SECOP 拉取最新数据并覆盖写入——不限发布时间，不受上方“近几天”设置影响；不会重新下载附件"
           className="h-9 rounded-lg border border-[#d8e0e3] bg-white px-4 text-xs font-black text-[#071826] transition-colors hover:border-[#ffb21c] hover:bg-[#fff9ec] disabled:opacity-50"
         >
           {submitting === "refresh" ? "运行中…" : "刷新已有标书状态"}
@@ -203,7 +195,7 @@ export function ImportColombiaForm() {
       {pullResult && (
         <div className="mt-3 text-xs text-[#52636e]">
           <p>
-            实时拉到 {pullResult.fetchedCount} 条，成功映射 {pullResult.mappedCount} 条，按最近 {pullResult.months || "不限"} 个月过滤后剩 {pullResult.keptAfterRecencyCount} 条。
+            实时拉到 {pullResult.fetchedCount} 条，成功映射 {pullResult.mappedCount} 条，按最近 {days} 天过滤后剩 {pullResult.keptAfterRecencyCount} 条。
           </p>
           {pullResult.upsertedCount !== undefined && (
             <p className="mt-1 font-semibold text-emerald-700">

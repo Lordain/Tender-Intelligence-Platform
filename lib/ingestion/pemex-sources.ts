@@ -45,6 +45,8 @@ export type ImportPemexLiveResult = {
   mappedCount: number;
   keptAfterRecencyCount: number;
   months: number;
+  /** Set when the run was asked for a window in days (the admin form). */
+  days?: number;
   upsertedCount?: number;
   skippedExcludedCount?: number;
   failed?: { slug: string; error: string }[];

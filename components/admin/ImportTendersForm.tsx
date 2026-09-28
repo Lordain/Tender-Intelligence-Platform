@@ -1,5 +1,6 @@
 "use client";
 
+import { DayWindowPicker, DEFAULT_DAY_WINDOW } from "@/components/admin/DayWindowPicker";
 import { useState } from "react";
 import { ADMIN_EXTERNAL_LINK_CLASS } from "@/lib/admin-source-links";
 import { NEW_TENDERS_SOURCES, type NewTendersSource, type ImportNewTendersResult } from "@/lib/ingestion/new-tenders-sources";
@@ -8,11 +9,9 @@ export function ImportTendersForm() {
   const [source, setSource] = useState<NewTendersSource>(NEW_TENDERS_SOURCES[0].value);
   const selectedSource = NEW_TENDERS_SOURCES.find((s) => s.value === source);
   const [file, setFile] = useState<File | null>(null);
-    // One month, not six: a wide window is the FIRST import's job, and after
-  // that every run is a top-up that re-fetches and re-upserts months of rows
-  // nobody is waiting on (user, 2026-09-12: 只有第一次需要大量，后续没必要每次都是大量文档).
-  // Still editable, so a catch-up after a gap just means typing a bigger number.
-  const [months, setMonths] = useState("1");
+  // Days, not months (user, 2026-09-28: 1、2、3天，不需要每次都1个月). The daily
+  // job keeps new tenders flowing; a manual run only tops up the last few days.
+  const [days, setDays] = useState<number>(DEFAULT_DAY_WINDOW);
   // Defaults to checked per the user's explicit request (2026-09-04): "写入
   // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
   const [write, setWrite] = useState(true);
@@ -36,7 +35,7 @@ export function ImportTendersForm() {
     form.append("source", source);
     form.append("file", file);
     form.append("write", String(write));
-    form.append("months", months);
+    form.append("days", String(days));
 
     try {
       const res = await fetch("/api/admin/import-tenders", { method: "POST", body: form });
@@ -70,16 +69,9 @@ export function ImportTendersForm() {
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="text-xs font-semibold text-[#52636e]">保留最近几个月发布的（0 = 不限制）</span>
-            <input
-              type="number"
-              min={0}
-              value={months}
-              onChange={(e) => setMonths(e.target.value)}
-              className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
-            />
-          </label>
+          <div className="flex flex-col justify-end gap-1.5 text-sm">
+            <DayWindowPicker value={days} onChange={setDays} disabled={submitting} />
+          </div>
         </div>
 
         <label className="mt-4 flex flex-col gap-1.5 text-sm">
@@ -116,7 +108,7 @@ export function ImportTendersForm() {
       {result && (
         <div className="flex flex-col gap-3 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
           <p className="text-sm text-[#52636e]">
-            文件共 {result.totalRows} 行，成功映射 {result.mappedCount} 条，按最近 {result.months || "不限"} 个月过滤后剩 {result.keptAfterRecencyCount} 条。
+            文件共 {result.totalRows} 行，成功映射 {result.mappedCount} 条，按最近 {days} 天过滤后剩 {result.keptAfterRecencyCount} 条。
           </p>
           {result.upsertedCount !== undefined && (
             <p className="text-sm font-semibold text-emerald-700">

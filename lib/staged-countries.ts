@@ -14,7 +14,7 @@
  * country listed here, so for every country already open it changes nothing. Opening a country means deleting
  * it from this list and adding it to AVAILABLE_COUNTRIES.
  */
-export const STAGED_COUNTRIES: readonly string[] = ["Guyana"];
+export const STAGED_COUNTRIES: readonly string[] = ["Guyana", "Argentina"];
 
 export function isStagedCountry(country: string | null | undefined): boolean {
   return country != null && STAGED_COUNTRIES.includes(country);

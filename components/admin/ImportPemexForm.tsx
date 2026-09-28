@@ -1,5 +1,6 @@
 "use client";
 
+import { DayWindowPicker, DEFAULT_DAY_WINDOW } from "@/components/admin/DayWindowPicker";
 import { useState } from "react";
 import { AutoRunBadge, AutoRunNote } from "@/components/admin/AutoRunBadge";
 import { KNOWN_BUYER_NAMES, PEMEX_LIST_TITLES, type PemexListTitle, type ImportPemexLiveResult } from "@/lib/ingestion/pemex-sources";
@@ -7,11 +8,9 @@ import { KNOWN_BUYER_NAMES, PEMEX_LIST_TITLES, type PemexListTitle, type ImportP
 export function ImportPemexForm() {
   const [listTitle, setListTitle] = useState<PemexListTitle>(PEMEX_LIST_TITLES[0]);
   const [buyer, setBuyer] = useState(KNOWN_BUYER_NAMES[PEMEX_LIST_TITLES[0]] ?? "");
-    // One month, not six: a wide window is the FIRST import's job, and after
-  // that every run is a top-up that re-fetches and re-upserts months of rows
-  // nobody is waiting on (user, 2026-09-12: 只有第一次需要大量，后续没必要每次都是大量文档).
-  // Still editable, so a catch-up after a gap just means typing a bigger number.
-  const [months, setMonths] = useState("1");
+  // Days, not months (user, 2026-09-28: 1、2、3天，不需要每次都1个月). The daily
+  // job keeps new tenders flowing; a manual run only tops up the last few days.
+  const [days, setDays] = useState<number>(DEFAULT_DAY_WINDOW);
   // Defaults to checked per the user's explicit request (2026-09-04): "写入
   // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
   const [write, setWrite] = useState(true);
@@ -47,7 +46,7 @@ export function ImportPemexForm() {
       const res = await fetch("/api/admin/import-pemex", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listTitle, buyer: buyer.trim(), write, months: months.trim() === "" ? undefined : Number(months) }),
+        body: JSON.stringify({ listTitle, buyer: buyer.trim(), write, days }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -76,7 +75,7 @@ export function ImportPemexForm() {
 
       {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="text-xs font-semibold text-[#52636e]">子公司列表</span>
           <select
@@ -101,16 +100,10 @@ export function ImportPemexForm() {
             className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-semibold text-[#52636e]">保留最近几个月（0 = 不限制）</span>
-          <input
-            type="number"
-            min={0}
-            value={months}
-            onChange={(e) => setMonths(e.target.value)}
-            className="h-11 rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none focus:border-[#ffb21c]"
-          />
-        </label>
+      </div>
+
+      <div className="mt-3">
+        <DayWindowPicker value={days} onChange={setDays} disabled={submitting} />
       </div>
 
       <label className="mt-4 flex items-center gap-2 border-t border-[#e5e9eb] pt-4 text-sm text-[#233846]">
@@ -130,7 +123,7 @@ export function ImportPemexForm() {
       {result && (
         <div className="mt-4 border-t border-[#e5e9eb] pt-4 text-sm text-[#52636e]">
           <p>
-            「{result.listTitle}」共 {result.totalItems} 条，成功映射 {result.mappedCount} 条，按最近 {result.months || "不限"} 个月过滤后剩{" "}
+            「{result.listTitle}」共 {result.totalItems} 条，成功映射 {result.mappedCount} 条，按最近 {result.days ?? days} 天过滤后剩{" "}
             {result.keptAfterRecencyCount} 条。
           </p>
           {result.upsertedCount !== undefined && (

@@ -606,6 +606,15 @@ async function main() {
     const unknown = normalizeRawExtraction({ risks: [{ level: "catastrófico-ish" }] }) as { risks: { level: string }[] };
     check("a level nobody can map is left alone, to fail loudly", unknown.risks[0].level === "catastrófico-ish");
 
+    // The 2026-09-28 abort (brazil-45291787000126-1-000019-2026): risks.1 = "medium",
+    // a level written as its own array item after the risk it belongs to.
+    const risk = { title: "履约保证金", description: "合同金额的 5%", sourceReference: "Edital 12.1" };
+    const stray = normalizeRawExtraction({ risks: [{ ...risk }, "medium", { ...risk, level: "high" }, "Alto"] }) as { risks: Record<string, unknown>[] };
+    check("a stray level becomes the preceding risk's level", stray.risks.length === 2 && stray.risks[0].level === "medium");
+    check("a stray level after a risk that has one is dropped", stray.risks[1].level === "high");
+    const strayOther = normalizeRawExtraction({ risks: [{ ...risk, level: "low" }, "no es un nivel"] }) as { risks: unknown[] };
+    check("a stray string that is not a level stays, to fail loudly", strayOther.risks.length === 2 && strayOther.risks[1] === "no es un nivel");
+
     // The 2026-09-16 abort: one bad enum value stopped a batch with four
     // tenders left. A value complaint is this document's problem.
     const valueOnly = new Error(

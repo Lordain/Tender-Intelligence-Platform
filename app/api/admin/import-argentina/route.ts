@@ -36,7 +36,8 @@ export async function POST(request: Request) {
   const cliCommand = `npm run cron:argentina -- --only ${sources.join(",")}${write ? " --write" : ""}`;
 
   try {
-    const result = await ingestArgentina(supabase, { write, sources });
+    // No minutes-long wait for an unreachable portal inside a five-minute request: report it, the button can be pressed again.
+    const result = await ingestArgentina(supabase, { write, sources, portalReachRetryPausesMs: [] });
     const rows: ArgentinaImportRow[] = result.rows.map(({ tender, source }) => {
       const usd = tender.estimatedValue !== undefined ? convertToUsd(tender.estimatedValue, tender.currency) : null;
       return {

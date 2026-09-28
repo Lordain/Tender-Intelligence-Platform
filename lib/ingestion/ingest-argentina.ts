@@ -129,7 +129,19 @@ async function timed<T>(work: () => Promise<T>): Promise<{ value?: T; error?: st
 
 export async function ingestArgentina(
   supabase: SupabaseClient | null,
-  options: { write: boolean; sources?: ArgentinaSourceId[]; boletinEditions?: number; now?: Date; fetchers?: Partial<ArgentinaFetchers> },
+  options: {
+    write: boolean;
+    sources?: ArgentinaSourceId[];
+    boletinEditions?: number;
+    now?: Date;
+    fetchers?: Partial<ArgentinaFetchers>;
+    /**
+     * Waits before retrying a portal that cannot be reached at all. The daily
+     * job keeps the connector's default (2 and 5 minutes); the admin button,
+     * limited to five minutes, passes [] and reports the cause at once.
+     */
+    portalReachRetryPausesMs?: readonly number[];
+  },
 ): Promise<ArgentinaIngestResult> {
   const now = options.now ?? new Date();
   const fetchers = { ...LIVE_FETCHERS, ...options.fetchers };
@@ -139,7 +151,10 @@ export async function ingestArgentina(
 
   const portalSource = async (id: "comprar" | "contratar"): Promise<ArgentinaSourceReport> => {
     const run = await timed<ArgentinaPortalFetchResult>(() =>
-      fetchers.portal(id, { wanted: id === "comprar" ? comprarRowWanted : () => true }),
+      fetchers.portal(id, {
+        wanted: id === "comprar" ? comprarRowWanted : () => true,
+        ...(options.portalReachRetryPausesMs ? { reachRetryPausesMs: options.portalReachRetryPausesMs } : {}),
+      }),
     );
     if (!run.value) return { id, listed: 0, mapped: 0, kept: 0, skipped: 0, failures: [], error: run.error, seconds: run.seconds };
     let kept = 0;

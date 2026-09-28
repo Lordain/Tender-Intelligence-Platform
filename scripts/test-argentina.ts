@@ -6,10 +6,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  describeFetchError,
   formAction,
   hiddenFields,
   isOpenCallProcedure,
   nextPageArgument,
+  openWithRetry,
   parsePortalGrid,
   parsePortalProcess,
   type ArgentinaPortalRecord,
@@ -211,6 +213,27 @@ async function main() {
 
   check("COMPR.AR: open calls always opened", comprarRowWanted(comprarRows[1]), true);
   check("COMPR.AR: a private tender for awnings is not opened", comprarRowWanted(comprarRows[0]), false);
+
+  // --- Reaching a portal (2026-09-28: both refused the runner for 40 s) ------------
+  const refused = Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" }) });
+  check("the cause behind fetch failed is named", describeFetchError(refused), "fetch failed（ECONNRESET read ECONNRESET）");
+  check("a timeout says so", describeFetchError(Object.assign(new Error("aborted"), { name: "TimeoutError" })), "超时（60 秒无响应）");
+  {
+    const waits: number[] = [];
+    let calls = 0;
+    const opened = await openWithRetry(async () => {
+      calls += 1;
+      if (calls < 3) throw refused;
+      return "list page";
+    }, [120_000, 300_000], async (ms) => { waits.push(ms); });
+    check("an unreachable portal is tried again after 2 and 5 minutes", [opened, calls, waits], ["list page", 3, [120_000, 300_000]]);
+    let message = "";
+    await openWithRetry(async () => { throw refused; }, [1, 1], async () => {}).catch((err: Error) => { message = err.message; });
+    check("a portal that never answers reports every attempt's cause", message, "3 次都连不上：fetch failed（ECONNRESET read ECONNRESET）；fetch failed（ECONNRESET read ECONNRESET）；fetch failed（ECONNRESET read ECONNRESET）");
+    let once = "";
+    await openWithRetry(async () => { throw refused; }, [], async () => {}).catch((err: Error) => { once = err.message; });
+    check("the admin button (no pauses) fails at once with the cause", once, "fetch failed（ECONNRESET read ECONNRESET）");
+  }
 
   // --- Staging and language ------------------------------------------------------
   check("Argentina is staged", isStagedCountry("Argentina"), true);

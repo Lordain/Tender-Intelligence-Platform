@@ -60,20 +60,23 @@ export default async function SubscribePage({
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Secure checkout</p>
           <h1 className="mt-3 text-4xl font-black tracking-[-0.045em] text-[#071826]">确认订阅</h1>
           <p className="mt-4 text-sm font-bold text-[#425461]">{PLAN_NAMES[selected.plan]} · ${usdAmount.toLocaleString("en-US")} USD / {INTERVAL_UNIT_ZH[selected.interval]}</p>
-          <nav aria-label="付费周期" className="mt-4 inline-flex rounded-xl border border-[#d8e0e3] bg-white p-1">
-            {PAID_INTERVALS.map((interval) => (
-              <Link
-                key={interval}
-                prefetch={false}
-                replace
-                href={`/subscribe?plan=${selected.plan}&interval=${interval}`}
-                aria-current={interval === selected.interval ? "page" : undefined}
-                className={`rounded-lg px-4 py-2 text-sm font-black ${interval === selected.interval ? "bg-[#061b2b] text-white" : "text-[#425461] hover:bg-[#f1f4f4]"}`}
-              >
-                {interval === "monthly" ? "按月付" : `按年付 · 省 ${ANNUAL_SAVING_PERCENT}%`}
-              </Link>
-            ))}
-          </nav>
+          {/* Centred, as on /pricing (user, 2026-09-28). */}
+          <div className="mt-4 flex justify-center">
+            <nav aria-label="付费周期" className="inline-flex rounded-xl border border-[#d8e0e3] bg-white p-1">
+              {PAID_INTERVALS.map((interval) => (
+                <Link
+                  key={interval}
+                  prefetch={false}
+                  replace
+                  href={`/subscribe?plan=${selected.plan}&interval=${interval}`}
+                  aria-current={interval === selected.interval ? "page" : undefined}
+                  className={`rounded-lg px-4 py-2 text-sm font-black ${interval === selected.interval ? "bg-[#061b2b] text-white" : "text-[#425461] hover:bg-[#f1f4f4]"}`}
+                >
+                  {interval === "monthly" ? "按月付" : `按年付 · 省 ${ANNUAL_SAVING_PERCENT}%`}
+                </Link>
+              ))}
+            </nav>
+          </div>
         </header>
         <SubscriptionCheckoutForm
           plan={selected.plan}

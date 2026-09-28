@@ -140,7 +140,7 @@ export function AdminBillingPanel() {
         <form onSubmit={activate} className="mt-4 grid gap-3 sm:grid-cols-[minmax(14rem,1fr)_10rem_10rem_minmax(12rem,1fr)_auto]">
           <input required type="email" placeholder="客户登录邮箱" value={activation.email} onChange={(event) => setActivation((value) => ({ ...value, email: event.target.value }))} className={inputClass} />
           <select value={activation.plan} onChange={(event) => setActivation((value) => ({ ...value, plan: event.target.value as PaidPlan }))} className={inputClass}><option value="basic">基础个人版</option><option value="professional">专业个人版</option><option value="enterprise">专业企业版</option></select>
-          <select value={activation.interval} onChange={(event) => setActivation((value) => ({ ...value, interval: event.target.value as BillingInterval }))} className={inputClass}><option value="monthly">按月</option></select>
+          <select value={activation.interval} onChange={(event) => setActivation((value) => ({ ...value, interval: event.target.value as BillingInterval }))} className={inputClass}><option value="monthly">按月</option><option value="annual">年度（12 个月）</option></select>
           <input maxLength={1000} placeholder="付款方式＋到账交易编号／其他原因" value={activation.note} onChange={(event) => setActivation((value) => ({ ...value, note: event.target.value }))} className={inputClass} />
           <button disabled={busy !== null} className="rounded-xl bg-[#071826] px-5 text-sm font-black text-white disabled:opacity-50">开通</button>
         </form>
@@ -163,6 +163,10 @@ export function AdminBillingPanel() {
                 <div className="flex flex-wrap items-center gap-2"><span className="font-black text-[#071826]">{item.reference}</span><span className="rounded-full bg-[#f1f3f2] px-2.5 py-1 text-[11px] font-bold">{statusNames[item.status] ?? item.status}</span>{contactedRequests.has(item.id) && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">已联系客户</span>}</div>
                 <p className="mt-2 break-all text-sm font-bold text-[#425461]">{item.email}</p>
                 <p className="mt-1 text-sm text-[#64717c]">{PLAN_NAMES[item.plan]} · {BILLING_INTERVAL_LABELS[item.billing_interval]} · US${(item.amount_minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+                <p className="mt-1 flex flex-wrap gap-3 text-xs font-bold">
+                  <a href={`/api/manual-wire/document?requestId=${item.id}&kind=invoice`} className="text-[#0b5f8a] underline underline-offset-4">形式发票 PDF</a>
+                  <a href={`/api/manual-wire/document?requestId=${item.id}&kind=agreement`} className="text-[#0b5f8a] underline underline-offset-4">服务协议 PDF</a>
+                </p>
                 {(item.sender_reference || item.customer_note) && (
                   <div className="mt-4 rounded-xl border border-[#b9c8ce] bg-[#f4f7f7] px-4 py-3 shadow-sm">
                     {item.sender_reference && (

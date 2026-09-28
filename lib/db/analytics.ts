@@ -235,7 +235,9 @@ export async function fetchAnalyticsDashboard(days: number, requestedScope: Traf
   }
   const monthlyListValueUsd = activeSubscriptions.reduce((total, row) => {
     const plan = row.plan as PaidPlan;
-    const price = row.billing_interval === "monthly" ? PLAN_PRICES_USD[plan]?.monthly : null;
+    // An annual plan counts at its monthly equivalent (a twelfth of the year's price).
+    const price = row.billing_interval === "monthly" ? PLAN_PRICES_USD[plan]?.monthly
+      : row.billing_interval === "annual" && PLAN_PRICES_USD[plan] ? PLAN_PRICES_USD[plan].annual / 12 : null;
     return price ? total + price : total;
   }, 0);
   const manualPayments = manualPaymentResult;

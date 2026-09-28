@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { getStripeClient } from "@/lib/stripe";
+import { invoiceSeller } from "@/lib/billing/invoice-seller";
 
 export const runtime = "nodejs";
 
@@ -104,7 +105,7 @@ export async function GET() {
       console.error("[billing-status] Manual wire lookup failed", wireResult.error ?? contactResult.error);
       return NextResponse.json({ error: "暂时无法读取国际电汇状态。" }, { status: 500 });
     }
-    if (wireResult.data) manualWire = { request: wireResult.data, contactedAt: contactResult.data?.created_at ?? null };
+    if (wireResult.data) manualWire = { request: wireResult.data, contactedAt: contactResult.data?.created_at ?? null, documentsAvailable: invoiceSeller() !== null };
   }
 
   return NextResponse.json({ pendingPayment, paymentCollection, manualWire });

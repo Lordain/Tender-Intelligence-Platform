@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { selectPreferredSubscription } from "@/lib/access-control";
-import { PLAN_PRICES_USD } from "@/lib/billing-catalog";
+import { planPriceUsd } from "@/lib/billing-catalog";
+import { isPdfLatinText } from "@/lib/billing/pdf-text";
 import { internationalWireEnabled } from "@/lib/manual-wire";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
@@ -11,7 +12,7 @@ export const runtime = "nodejs";
 
 const profileSchema = z.object({
   plan: z.enum(["basic", "professional", "enterprise"]),
-  interval: z.literal("monthly"),
+  interval: z.enum(["monthly", "annual"]),
   requestId: z.uuid(),
   buyerType: z.enum(["individual", "business"]),
   legalName: z.string().trim().min(1).max(160),
@@ -42,6 +43,11 @@ function makeReference() {
 export async function POST(request: Request) {
   const parsed = profileSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "请检查付款与账单资料。" }, { status: 400 });
+  // The proforma invoice and agreement are English PDFs (lib/billing/pdf-text.ts).
+  const { legalName, addressLine1, addressLine2, city, state, postalCode, taxId } = parsed.data;
+  if (![legalName, addressLine1, addressLine2, city, state, postalCode, taxId].every(isPdfLatinText)) {
+    return NextResponse.json({ error: "国际电汇的形式发票和服务协议为英文，请用英文或拼音填写公司名称和地址。" }, { status: 400 });
+  }
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "登录已过期，请重新登录。" }, { status: 401 });
   const admin = createSupabaseAdminClient();
@@ -76,7 +82,7 @@ export async function POST(request: Request) {
   if (existingError) return NextResponse.json({ error: "暂时无法检查电汇申请。" }, { status: 500 });
   if (existing) return NextResponse.json({ url: "/account?wire=pending" });
 
-  const amountMinor = Math.round(PLAN_PRICES_USD[parsed.data.plan].monthly * 100);
+  const amountMinor = Math.round(planPriceUsd(parsed.data.plan, parsed.data.interval) * 100);
   const paymentId = parsed.data.requestId;
   const reference = makeReference();
   const now = new Date().toISOString();

@@ -48,6 +48,16 @@ const nextConfig: NextConfig = {
   // Allow an isolated local preview to run beside another dev server without
   // sharing its build cache or lock file.
   distDir: process.env.LATINTENDER_DEV_DIST_DIR || ".next",
+  // The wire documents (lib/billing/wire-documents.ts) read their fonts from
+  // disk and subset them with HarfBuzz compiled to WebAssembly, which
+  // subset-font loads with require.resolve. Kept external so that lookup
+  // finds the real node_modules file, and the fonts are traced in by hand
+  // because nothing imports them.
+  serverExternalPackages: ["subset-font", "harfbuzzjs"],
+  outputFileTracingIncludes: {
+    "/api/manual-wire": ["./lib/billing/fonts/*.ttf"],
+    "/api/manual-wire/document": ["./lib/billing/fonts/*.ttf", "./node_modules/harfbuzzjs/dist/harfbuzz-subset.wasm"],
+  },
   async headers() {
     return [
       {

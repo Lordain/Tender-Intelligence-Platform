@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { selectPreferredSubscription } from "@/lib/access-control";
 import { planPriceUsd } from "@/lib/billing-catalog";
-import { isPdfLatinText } from "@/lib/billing/pdf-text";
+import { unprintableCharacters } from "@/lib/billing/wire-documents";
 import { internationalWireEnabled } from "@/lib/manual-wire";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
@@ -43,10 +43,12 @@ function makeReference() {
 export async function POST(request: Request) {
   const parsed = profileSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "请检查付款与账单资料。" }, { status: 400 });
-  // The proforma invoice and agreement are English PDFs (lib/billing/pdf-text.ts).
+  // What the buyer types is printed on the proforma invoice and agreement,
+  // whose font covers GB2312 and Latin-1 (lib/billing/wire-documents.ts).
   const { legalName, addressLine1, addressLine2, city, state, postalCode, taxId } = parsed.data;
-  if (![legalName, addressLine1, addressLine2, city, state, postalCode, taxId].every(isPdfLatinText)) {
-    return NextResponse.json({ error: "国际电汇的形式发票和服务协议为英文，请用英文或拼音填写公司名称和地址。" }, { status: 400 });
+  const unprintable = unprintableCharacters([legalName, addressLine1, addressLine2, city, state, postalCode, taxId].join(" "));
+  if (unprintable.length > 0) {
+    return NextResponse.json({ error: `公司名称或地址中的「${unprintable.join("")}」无法打印在付汇文件上，请换成常用字或英文。` }, { status: 400 });
   }
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "登录已过期，请重新登录。" }, { status: 401 });

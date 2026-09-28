@@ -3,11 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SubscriptionCheckoutForm } from "@/components/pricing/SubscriptionCheckoutForm";
 import { loginPathFor } from "@/lib/auth-redirect";
-import { bankTransferQuote, INTERVAL_UNIT_ZH, PAID_INTERVALS, parsePaidPlanSelection, PLAN_NAMES, planPriceUsd } from "@/lib/billing-catalog";
+import { ANNUAL_SAVING_PERCENT, bankTransferQuote, INTERVAL_UNIT_ZH, PAID_INTERVALS, parsePaidPlanSelection, PLAN_NAMES, planPriceUsd } from "@/lib/billing-catalog";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { hasCurrentStripePrice } from "@/lib/stripe";
 import { internationalWireEnabled } from "@/lib/manual-wire";
+import { EnterprisePaymentSteps } from "@/components/billing/EnterprisePaymentSteps";
 
 /**
  * The one crawlable page here that should NOT be indexed, rather than one that
@@ -67,7 +68,7 @@ export default async function SubscribePage({
                 aria-current={interval === selected.interval ? "page" : undefined}
                 className={`rounded-lg px-4 py-2 text-sm font-black ${interval === selected.interval ? "bg-[#061b2b] text-white" : "text-[#425461] hover:bg-[#f1f4f4]"}`}
               >
-                {interval === "monthly" ? "按月付" : "按年付 · 省 2 个月"}
+                {interval === "monthly" ? "按月付" : `按年付 · 省 ${ANNUAL_SAVING_PERCENT}%`}
               </Link>
             ))}
           </nav>
@@ -92,6 +93,11 @@ export default async function SubscribePage({
             taxId: profile?.tax_id ?? "",
           }}
         />
+        {internationalWireEnabled() && (
+          <section className="mt-6 rounded-3xl border border-[#dbe2e5] bg-[#eef2f1] p-6 sm:p-7">
+            <EnterprisePaymentSteps />
+          </section>
+        )}
       </div>
     </main>
   );

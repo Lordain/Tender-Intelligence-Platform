@@ -28,7 +28,7 @@ export default function PricingPage() {
         {internationalWireEnabled() && (
           <section id="enterprise-payment" className="mt-6 rounded-2xl border border-[#d8e0e3] bg-[#eef2f1] px-5 py-5 sm:px-6">
             <EnterprisePaymentSteps />
-            <p className="mt-4 text-xs leading-6 text-[#64717c]">形式发票和服务协议为英文，由系统按你提交的资料自动生成；正式发票在到账后开具。</p>
+            <p className="mt-4 text-xs leading-6 text-[#64717c]">形式发票和服务协议为中英文对照，提交电汇申请后自动生成；正式发票在到账后开具。</p>
           </section>
         )}
         <div className="mt-6 rounded-2xl border border-[#e9b949] bg-[#fff3d4] px-5 py-5 text-[#5f4300] sm:px-6">

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { TRIAL_DAYS } from "@/lib/access-control";
-import { ANNUAL_MONTHS_CHARGED, INTERVAL_UNIT_ZH, PLAN_PRICES_USD, USD_CNY_REFERENCE_RATE, type PaidInterval, type PaidPlan } from "@/lib/billing-catalog";
+import { ANNUAL_SAVING_PERCENT, INTERVAL_UNIT_ZH, PLAN_PRICES_USD, USD_CNY_REFERENCE_RATE, type PaidInterval, type PaidPlan } from "@/lib/billing-catalog";
 
 const plans: { id: "free" | PaidPlan; name: string; audience: string; features: string[] }[] = [
   { id: "free", name: "免费版", audience: "初步了解拉美市场", features: ["1 个账号", "全部国家的公开项目标题", "每月可查看 5 个项目的完整详情和标书分析", "每周 1 次项目提醒", "可阅读历史项目"] },
@@ -16,7 +16,7 @@ export function PricingPlans() {
   const [interval, setBillingInterval] = useState<PaidInterval>("monthly");
   return (
     <>
-    <div className="mt-8 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
+    <div className="mt-8 flex justify-center">
       <div role="group" aria-label="付费周期" className="inline-flex rounded-xl border border-[#d8e0e3] bg-white p-1">
         {(["monthly", "annual"] as const).map((option) => (
           <button
@@ -26,11 +26,10 @@ export function PricingPlans() {
             onClick={() => setBillingInterval(option)}
             className={`rounded-lg px-4 py-2 text-sm font-black ${interval === option ? "bg-[#061b2b] text-white" : "text-[#425461] hover:bg-[#f1f4f4]"}`}
           >
-            {option === "monthly" ? "按月付" : "按年付"}
+            {option === "monthly" ? "按月付" : <>按年付<span className={`ml-2 rounded-md px-1.5 py-0.5 text-xs ${interval === option ? "bg-[#ffb21c] text-[#071826]" : "bg-emerald-50 text-emerald-700"}`}>省 {ANNUAL_SAVING_PERCENT}%</span></>}
           </button>
         ))}
       </div>
-      <p className="text-sm font-bold text-[#a96100]">按年付：12 个月只收 {ANNUAL_MONTHS_CHARGED} 个月费用，适合企业一次性付款。</p>
     </div>
     <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
       {plans.map((plan) => (
@@ -40,7 +39,7 @@ export function PricingPlans() {
           <div className="mt-5 flex min-h-24 flex-col">
             <p className="text-3xl font-black text-[#071826]">{plan.id === "free" ? "免费" : `$${PLAN_PRICES_USD[plan.id][interval].toLocaleString("en-US")}`}<span className="ml-1 text-sm font-semibold text-[#64717c]">{plan.id === "free" ? "长期使用" : `USD / ${INTERVAL_UNIT_ZH[interval]}`}</span></p>
             {plan.id !== "free" && <p className="mt-2 text-sm font-bold text-[#a96100]">约 ¥{Math.round(PLAN_PRICES_USD[plan.id][interval] * USD_CNY_REFERENCE_RATE).toLocaleString("zh-CN")} RMB / {INTERVAL_UNIT_ZH[interval]}</p>}
-            {plan.id !== "free" && interval === "annual" && <p className="mt-1 text-xs font-bold text-emerald-700">比按月付省 ${(PLAN_PRICES_USD[plan.id].monthly * 12 - PLAN_PRICES_USD[plan.id].annual).toLocaleString("en-US")}</p>}
+            {plan.id !== "free" && interval === "annual" && <p className="mt-1 text-xs font-bold text-emerald-700">比按月付省 {ANNUAL_SAVING_PERCENT}%</p>}
             <p className="mt-auto text-xs text-[#64717c]">{plan.id === "free" ? "注册后持续开放" : `${TRIAL_DAYS} 天免费试用，无需绑定银行卡`}</p>
           </div>
           <ul className="mt-7 flex-1 space-y-3 border-t border-[#e2e7e9] pt-6">

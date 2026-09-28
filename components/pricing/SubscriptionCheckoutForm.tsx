@@ -3,9 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { BILLING_INTERVAL_LABELS } from "@/lib/access-control";
-import { INTERVAL_UNIT_ZH, PLAN_NAMES, PLAN_PRICES_USD, USD_CNY_REFERENCE_RATE, type PaidInterval, type PaidPlan } from "@/lib/billing-catalog";
-import { isPdfLatinText } from "@/lib/billing/pdf-text";
-import { EnterprisePaymentSteps } from "@/components/billing/EnterprisePaymentSteps";
+import { ANNUAL_SAVING_PERCENT, INTERVAL_UNIT_ZH, PLAN_NAMES, USD_CNY_REFERENCE_RATE, type PaidInterval, type PaidPlan } from "@/lib/billing-catalog";
 import { SUPPORT_WECHAT } from "@/lib/support";
 
 type BillingProfile = {
@@ -45,20 +43,9 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
     setProfile((current) => ({ ...current, [key]: value }));
   }
 
-  // The proforma invoice and agreement are English PDFs in a Latin font, so a
-  // wire order needs its name and address in English or pinyin.
-  const nonLatinField = method === "international_wire"
-    ? ([["legalName", "公司名称"], ["addressLine1", "账单地址"], ["addressLine2", "地址补充"], ["city", "城市"], ["state", "州 / 省"], ["postalCode", "邮政编码"], ["taxId", "税号"]] as const)
-        .find(([key]) => !isPdfLatinText(profile[key]))?.[1] ?? null
-    : null;
-
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!method) return;
-    if (nonLatinField) {
-      setError(`国际电汇的形式发票和服务协议为英文，请用英文或拼音填写「${nonLatinField}」。`);
-      return;
-    }
     setSubmitting(true);
     setError(null);
     setRecoveryUrl(null);
@@ -107,7 +94,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
             </select>
           </label>
           <label className="flex flex-col gap-2">
-            <span className="text-xs font-bold text-[#425461]">法定姓名 / 公司名称{method === "international_wire" && <span className="font-normal text-[#b86e00]">（英文）</span>}</span>
+            <span className="text-xs font-bold text-[#425461]">法定姓名 / 公司名称</span>
             <input required maxLength={160} value={profile.legalName} onChange={(event) => update("legalName", event.target.value)} className={inputClass} />
           </label>
           <label className="flex flex-col gap-2">
@@ -138,7 +125,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
         <h2 className="mt-3 text-2xl font-black">{PLAN_NAMES[plan]} · {BILLING_INTERVAL_LABELS[interval]}</h2>
         <p className="mt-3 text-3xl font-black">{usd.format(usdAmount)}</p>
         <p className="mt-1 text-xs leading-5 text-white/55">美元标价，已包含依法适用的税费。</p>
-        {interval === "annual" && <p className="mt-2 text-xs font-bold leading-5 text-emerald-300">12 个月只收 10 个月费用，比按月付省 {usd.format(PLAN_PRICES_USD[plan].monthly * 12 - usdAmount)}。</p>}
+        {interval === "annual" && <p className="mt-2 text-xs font-bold leading-5 text-emerald-300">比按月付省 {ANNUAL_SAVING_PERCENT}%。</p>}
         <p className="mt-2 text-sm font-bold text-[#ffd16f]">约 ¥{Math.round(usdAmount * USD_CNY_REFERENCE_RATE).toLocaleString("zh-CN")} RMB / {INTERVAL_UNIT_ZH[interval]} <span className="text-xs font-normal text-white/55">仅供参考，按 1 USD ≈ ¥{USD_CNY_REFERENCE_RATE} 估算</span></p>
 
         <div className="mt-6 rounded-2xl border border-[#ffb21c]/60 bg-[#ffb21c]/10 p-4">
@@ -169,7 +156,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
             <span className="text-sm font-black">国际银行电汇（人工确认）</span>
             <span className="mt-1 block pl-6 text-xs leading-5 text-white/55">
               {internationalWireEnabled
-                ? `适合企业对公付款。提交申请后可下载英文形式发票和服务协议交给财务；工作人员核对资料后通过账单邮箱提供汇款信息。金额 ${usd.format(usdAmount)} 美元（USD），到账核实后人工开通，不会自动续费。`
+                ? `适合企业对公付款。提交后可下载中英文形式发票和服务协议交给财务。金额 ${usd.format(usdAmount)} 美元（USD），到账后人工开通，不会自动续费。`
                 : "收款账户审核完成后开放。"}
             </span>
           </label>
@@ -177,11 +164,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
 
         {method === "bank_transfer" && <p className="mt-4 rounded-xl border border-[#ffb21c]/25 bg-[#ffb21c]/10 px-4 py-3 text-xs leading-5 text-[#ffd16f]">转账不是自动扣款。每个续费周期Stripe会发送新的MXN账单和转账指示，到账后才延长账户权限。</p>}
         {method === "international_wire" && (
-          <div className="mt-4 rounded-xl border border-[#ffb21c]/25 bg-[#ffb21c]/10 px-4 py-3 text-xs leading-5 text-[#ffd16f]">
-            <p>此处只提交申请，不会显示银行资料。工作人员核对资料后才会提供汇款信息；提交回执不代表到账。</p>
-            <p className="mt-2">形式发票和服务协议为英文：左侧公司名称和地址请用英文或拼音填写。</p>
-            <EnterprisePaymentSteps tone="dark" />
-          </div>
+          <p className="mt-4 rounded-xl border border-[#ffb21c]/25 bg-[#ffb21c]/10 px-4 py-3 text-xs leading-5 text-[#ffd16f]">此处只提交申请，不显示银行资料；收款信息由工作人员核对后通过邮件发送。付款步骤见页面下方。</p>
         )}
         {error && (
           <div className="mt-4 text-xs font-bold leading-5 text-red-300">

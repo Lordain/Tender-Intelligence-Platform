@@ -5,6 +5,8 @@
  * 的价格买 12 个月) — offered because Chinese enterprises buy by the year and
  * would rather send one international wire than twelve. */
 export const ANNUAL_MONTHS_CHARGED = 10;
+/** What annual saves against twelve monthly payments, as the pages state it (user: 省多少用%说话). */
+export const ANNUAL_SAVING_PERCENT = Math.round((1 - ANNUAL_MONTHS_CHARGED / 12) * 100);
 
 export const PLAN_PRICES_USD = {
   basic: { monthly: 99, annual: 99 * ANNUAL_MONTHS_CHARGED },

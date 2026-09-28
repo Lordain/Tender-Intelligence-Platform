@@ -260,7 +260,7 @@ export default function AccountPage() {
                 <p className="mt-3 text-xs text-[#64717c]">如收到与申请金额、币种或收款主体不一致的信息，请暂停汇款并通过官网公布的联系方式复核。</p>
                 {billingStatus.manualWire.documentsAvailable && (
                   <div className="mt-5 border-t border-[#dfe5e7] pt-4">
-                    <p className="text-xs font-bold text-[#7a878f]">付汇文件（英文，可直接交给财务）</p>
+                    <p className="text-xs font-bold text-[#7a878f]">付汇文件（中英文，可直接交给财务）</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <a href={`/api/manual-wire/document?requestId=${billingStatus.manualWire.request.id}&kind=invoice`} className="rounded-lg bg-[#071826] px-4 py-2 text-xs font-black text-white hover:bg-[#0a2b40]">下载形式发票 PDF</a>
                       <a href={`/api/manual-wire/document?requestId=${billingStatus.manualWire.request.id}&kind=agreement`} className="rounded-lg border border-[#071826] px-4 py-2 text-xs font-black text-[#071826] hover:bg-white">下载服务协议 PDF</a>

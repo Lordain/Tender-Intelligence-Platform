@@ -16,6 +16,16 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  * under any reverse-proxy/serverless timeout; run it again (already-
  * translated tenders are skipped) to keep chipping away at the rest.
  */
+/**
+ * Model calls run in sequence and can take minutes. Without this the route
+ * got the host's default limit and was cut off mid-run (2026-09-28: the panel
+ * showed "Unexpected token 'A', \"An error o\"… is not valid JSON" — the host's
+ * error page read as JSON). The pass itself stops starting batches at
+ * STOP_AFTER_MS and reports what is left, well inside this limit.
+ */
+export const maxDuration = 300;
+const STOP_AFTER_MS = 150_000;
+
 export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
@@ -30,7 +40,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { write?: boolean; limit?: number };
 
   try {
-    const result = await translateAllTenders(supabase, { write: body.write === true, limit: body.limit });
+    const result = await translateAllTenders(supabase, { write: body.write === true, limit: body.limit, stopAfterMs: STOP_AFTER_MS });
     if (result.failedCount && result.lastErrorMessage) {
       await logAdminAlert(supabase, "translate-tenders", new Error(result.lastErrorMessage));
     }

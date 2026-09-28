@@ -1,6 +1,6 @@
 import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/types/tender";
 import { convertToUsd } from "@/lib/currency";
-import { classifyIndustries, stripKnownFalsePositivePlaceNames } from "@/lib/industry";
+import { classifyIndustries, stripKnownFalsePositivePlaceNames, type IndustryKey } from "@/lib/industry";
 import { foldAccents } from "@/lib/text-fold";
 import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
@@ -2582,7 +2582,54 @@ function fibreTier(text: string): TenderRelevance["tier"] | null {
  * Membership is a claim about one SOURCE's publishing habits, so it is
  * decided per country from a real import and never assumed for a new one.
  */
-const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru", "Chile"]);
+const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru", "Chile", "Argentina"]);
+// Argentina joined 2026-09-27 by the user's call, before its first import
+// (没有金额的项目…我们可以和墨西哥一样): COMPR.AR's public page for a process
+// never shows its estimated amount, and CONTRAT.AR's shows a currency and a
+// duration but no figure, so an unpriced Argentine row is the normal case,
+// not the exception — the same footing Mexico is on.
+
+/**
+ * Countries where a target sector is kept whatever its amount — the value
+ * floor below does not apply to it, and neither does the undisclosed-value
+ * gate above (user, 2026-09-27, for Argentina: 能源/铁路/电力/交通/水务行业
+ * 不看金额 → OK, and ICT the same day; the $1M floor itself left as it is: 我不想动现在的标准).
+ *
+ * The sector is read from what is being bought — the title and summary — and
+ * never from the buyer's name, for the reason the allowlist gate gives below:
+ * "Dirección Nacional de Vialidad" would otherwise make every stationery order
+ * a road. Every exclusion that runs before the floor still runs (routine
+ * services, maintenance-only, consultancies, direct awards, short contracts),
+ * so this lets a small railway sleeper order in, not a cleaning contract.
+ */
+const VALUE_FLOOR_EXEMPT_INDUSTRIES_BY_COUNTRY: Record<string, ReadonlySet<IndustryKey>> = {
+  // ICT added the same day (user: also ICT project).
+  Argentina: new Set<IndustryKey>(["energy_mining", "power", "transportation", "water", "ict_telecom"]),
+};
+
+/**
+ * Railway work as Argentina's rail infrastructure company names it, which the
+ * shared transport vocabulary in lib/industry.ts does not reach: of ADIF's 14
+ * open procedures on 2026-09-27, "Aparatos de Vía de Trocha Ancha … Línea San
+ * Martín", "Renovación De Vía Cuádruple … Línea Roca" and "Señalización
+ * Integral Playa Retiro. Línea San Martín" matched no industry at all. Kept
+ * out of lib/industry.ts so no other country's tags move; matched against
+ * accent-folded text, as everything here is.
+ */
+const ARGENTINE_RAIL_WORK =
+  /\blinea (?:general )?(?:roca|mitre|sarmiento|san martin|urquiza|belgrano(?: sur| norte)?)\b|\btrocha (?:ancha|media|angosta)\b|\baparatos? de via\b|\brenovacion (?:de (?:la )?)?(?:infraestructura de )?vias?\b|\bvia cuadruple\b|\brectificadora de traccion\b|\bferroviari[oa]s?\b|\bferrocarril(?:es)?\b/i;
+
+const VALUE_FLOOR_EXEMPT_EXTRA_PATTERN_BY_COUNTRY: Record<string, RegExp> = {
+  Argentina: ARGENTINE_RAIL_WORK,
+};
+
+function isValueFloorExemptSector(country: string | undefined, subjectTitle: string, subjectSummary: string | undefined): boolean {
+  const exempt = country === undefined ? undefined : VALUE_FLOOR_EXEMPT_INDUSTRIES_BY_COUNTRY[country];
+  if (!exempt) return false;
+  if (classifyIndustries(subjectTitle, subjectSummary).some((industry) => exempt.has(industry))) return true;
+  const extra = VALUE_FLOOR_EXEMPT_EXTRA_PATTERN_BY_COUNTRY[country!];
+  return extra !== undefined && extra.test([subjectTitle, subjectSummary].filter(Boolean).join(" "));
+}
 
 const MIN_VALUE_USD = 1_000_000;
 
@@ -3575,7 +3622,8 @@ export function classifyRelevance(input: {
   // keyword-only logic). Only isNationalPriorityProject — a real,
   // government-verified major-project designation — still rescues a
   // below-floor value; no keyword-based override can anymore.
-  if (input.isNationalPriorityProject !== true && normalizedValue !== undefined && normalizedValue < minValueUsd) {
+  const exemptFromValueFloor = isValueFloorExemptSector(input.country, subjectTitle, subjectSummary);
+  if (input.isNationalPriorityProject !== true && !exemptFromValueFloor && normalizedValue !== undefined && normalizedValue < minValueUsd) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "value", minValueUsd) };
   }
 
@@ -3848,6 +3896,7 @@ export function classifyRelevance(input: {
     input.country !== undefined &&
     UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL.has(input.country) &&
     normalizedValue === undefined &&
+    !exemptFromValueFloor &&
     !matchesFlagshipIndustry &&
     !hasIncludeOverride &&
     !isEquipmentScaleCapped &&
@@ -3877,6 +3926,7 @@ export function classifyRelevance(input: {
   if (
     !hasTargetIndustry &&
     normalizedValue === undefined &&
+    !exemptFromValueFloor &&
     !matchesFlagshipIndustry &&
     !hasIncludeOverride &&
     !isEquipmentScaleCapped &&

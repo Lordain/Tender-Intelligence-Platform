@@ -66,6 +66,11 @@ const TARGETS: [string, string][] = [
   ["阿根廷 布宜诺斯艾利斯市采购平台 BAC", "https://www.buenosairescompras.gob.ar/ListarAperturaProxima.aspx"],
   ["阿根廷 内乌肯省政府", "https://www.neuquen.gob.ar/"],
   ["阿根廷 布宜诺斯艾利斯省基础设施部", "https://www.gba.gob.ar/infraestructura"],
+  // The four sources the daily Argentina job reads (2026-09-27), from the runner it runs on.
+  ["阿根廷 COMPR.AR 首页（每日任务）", "https://comprar.gob.ar/"],
+  ["阿根廷 CONTRAT.AR 首页（每日任务）", "https://contratar.gob.ar/"],
+  ["阿根廷 ADIF 招标门户（每日任务）", "https://plataforma.adifsa.com.ar/portal_licitaciones"],
+  ["阿根廷 政府公报第三部分（每日任务）", "https://www.boletinoficial.gob.ar/seccion/tercera"],
 ];
 
 const HEADERS = {

@@ -29,7 +29,8 @@ export type CronJobId =
   | "import-brazil"
   | "import-peru-oxi"
   | "refresh-statuses"
-  | "import-guyana";
+  | "import-guyana"
+  | "import-argentina";
 
 export type CronJobSpec = {
   id: CronJobId;
@@ -83,6 +84,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-peru-oxi", label: "秘鲁 OxI 自动导入与状态刷新", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "refresh-statuses", label: "已入库项目状态刷新（巴西、智利、墨西哥）", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-guyana", label: "圭亚那 eprocure 自动导入（未公开）", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-argentina", label: "阿根廷 COMPR.AR / CONTRAT.AR / ADIF / 政府公报 自动导入（未公开）", maxAgeHours: 30, runsOn: "github-actions" },
 ];
 
 export type CronHeartbeatStatus = "ok" | "skipped" | "failed";

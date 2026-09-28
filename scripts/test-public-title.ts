@@ -285,6 +285,14 @@ rejectsSummary("CS型卫生中心的重建工程，属于基层医疗机构基�
 acceptsSummary("快速公交系统BRT组件基础设施的改造与建设工程，用于加强系统并更新物理条件。");
 acceptsShortFrom("BRT系统配套工程改造与建设", "波哥大快速公交系统配套组件基础设施的改造与建设工程");
 
+// --- Rail signalling abbreviations name a kind of system -------------------
+// Both halves of a real rejection on an ADIF tender (2026-09-28).
+accepts("阿根廷 铁路ATS监控系统采购");
+acceptsSummary("铁路ATS监控系统的采购项目。");
+accepts("地铁CBTC信号系统升级改造");
+// A proper noun next to it is still refused.
+rejects("阿根廷 ADIF铁路ATS监控系统采购", "含有原文词：ADIF");
+
 // --- Checking a public summary --------------------------------------------
 // Same audience and same surfaces as the public title, so the same rules.
 function acceptsSummary(candidate: string): void {

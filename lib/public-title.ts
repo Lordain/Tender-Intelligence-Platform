@@ -75,6 +75,12 @@ const ALLOWED_LATIN_TOKENS: ReadonlySet<string> = new Set([
   // refused both the summary and the short title of a Bogotá TransMilenio
   // tender over the three letters.
   "brt",
+  // Rail signalling systems, written in Latin in Chinese rail prose the way
+  // SCADA is in power: 列车自动监控系统（ATS）, 基于通信的列车控制（CBTC）.
+  // Each names a KIND of system every metro and mainline railway buys.
+  // Added 2026-09-28 after a real run refused both the public title and the
+  // summary of an ADIF tender (铁路ATS监控系统采购) over the three letters.
+  "ats", "atp", "ato", "cbtc",
 ]);
 
 const LATIN_RUN = /[A-Za-z]+/g;

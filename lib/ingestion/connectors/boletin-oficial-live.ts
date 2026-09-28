@@ -124,6 +124,7 @@ function yyyymmdd(date: Date): string {
 export async function fetchBoletinEditions(options: { editions: number; now?: Date }): Promise<BoletinListing[]> {
   const listings: BoletinListing[] = [];
   let found = 0;
+  let lastError: unknown = null;
   const day = new Date(options.now ?? new Date());
   // Buenos Aires is UTC-3 with no DST; the edition is dated by its local day.
   day.setUTCHours(day.getUTCHours() - 3);
@@ -132,11 +133,20 @@ export async function fetchBoletinEditions(options: { editions: number; now?: Da
     day.setUTCDate(day.getUTCDate() - 1);
     const weekday = new Date(`${edition.slice(0, 4)}-${edition.slice(4, 6)}-${edition.slice(6)}T12:00:00Z`).getUTCDay();
     if (weekday === 0 || weekday === 6) continue;
-    const page = parseBoletinEdition(await get(`${BOLETIN_ORIGIN}/seccion/tercera/${edition}`), edition);
+    let page: BoletinListing[];
+    try {
+      page = parseBoletinEdition(await get(`${BOLETIN_ORIGIN}/seccion/tercera/${edition}`), edition);
+    } catch (err) {
+      // Today's edition answered 503 at noon on 2026-09-28 while the
+      // previous ones opened; one bad day falls back to the day before.
+      lastError = err;
+      continue;
+    }
     if (page.length === 0) continue;
     listings.push(...page);
     found += 1;
   }
+  if (found === 0 && lastError) throw lastError;
   return listings;
 }
 

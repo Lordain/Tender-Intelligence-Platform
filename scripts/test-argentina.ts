@@ -196,6 +196,13 @@ async function main() {
   check("office furniture under the floor → excluded", tier({ title: "Adquisición de mobiliario de oficina", value: 300_000, scopeType: "equipment" }), "excluded");
   check("Mexico unchanged: transformers under the floor → excluded", tier({ title: "Provisión de transformadores de potencia para subestación", value: 300_000, scopeType: "equipment", country: "Mexico" }), "excluded");
   check("Peru unchanged: rail sleepers under the floor → excluded", tier({ title: "Adquisición de durmientes de hormigón para Línea Roca", value: 150_000, scopeType: "equipment", country: "Peru" }), "excluded");
+  // False friends from the first live dry run (2026-09-28).
+  check("bottled water is not water infrastructure", tier({ title: "ADQUISICION DE AGUA MINERAL ENVASADA E 43 RIO TURBIO", procedureType: "Licitación Privada" }), "excluded");
+  check("water dispensers are not water infrastructure", tier({ title: "Provisión de dispensers y botellones de agua potable", scopeType: "equipment" }), "excluded");
+  check("workers' insurance on Yacyretá's left bank is not water", tier({ title: "CONTRATACIÓN DE UNA ASEGURADORA DE RIESGO DEL TRABAJO (A.R.T) PARA EL PERSONAL DE LA ENTIDAD BINACIONAL YACYRETÁ (MARGEN IZQUIERDA)" }), "excluded");
+  check("a road buyer's spare parts are not a road", tier({ title: "Adquisición de repuestos de balanzas", procedureType: "Licitación Pública" }), "excluded");
+  check("Neuquén's paved carriageway is a road", tier({ title: "Obra Básica Y Calzada Pavimentada De Av. Interurbana Río Colorado / Trenque Lauquen", scopeType: "works" }) !== "excluded", true);
+  check("a real river work still counts", tier({ title: "Obras de defensa costera y dragado en el río Paraná", scopeType: "works" }) !== "excluded", true);
   check("direct award still excluded in a sector", tier({ title: "Provisión de transformadores de potencia", procedureType: "Contratación Directa" }), "excluded");
 
   check("COMPR.AR: open calls always opened", comprarRowWanted(comprarRows[1]), true);

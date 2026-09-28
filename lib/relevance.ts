@@ -2619,16 +2619,39 @@ const VALUE_FLOOR_EXEMPT_INDUSTRIES_BY_COUNTRY: Record<string, ReadonlySet<Indus
 const ARGENTINE_RAIL_WORK =
   /\blinea (?:general )?(?:roca|mitre|sarmiento|san martin|urquiza|belgrano(?: sur| norte)?)\b|\btrocha (?:ancha|media|angosta)\b|\baparatos? de via\b|\brenovacion (?:de (?:la )?)?(?:infraestructura de )?vias?\b|\bvia cuadruple\b|\brectificadora de traccion\b|\bferroviari[oa]s?\b|\bferrocarril(?:es)?\b/i;
 
+/**
+ * Road work as Argentine notices word it and the shared list does not:
+ * Neuquén's IDB-financed "Obra Básica y Calzada Pavimentada de Av.
+ * Interurbana Río Colorado" matched no industry (Boletín Oficial, 2026-09-28).
+ */
+const ARGENTINE_ROAD_WORK = /\bcalzadas? pavimentadas?\b|\b(?:re)?pavimentad[oa]s?\b|\brepavimentacion\b|\bruta (?:nacional|provincial)\b|\bautovia\b/i;
+
 const VALUE_FLOOR_EXEMPT_EXTRA_PATTERN_BY_COUNTRY: Record<string, RegExp> = {
-  Argentina: ARGENTINE_RAIL_WORK,
+  Argentina: new RegExp(`${ARGENTINE_RAIL_WORK.source}|${ARGENTINE_ROAD_WORK.source}`, "i"),
 };
+
+/**
+ * What the exemption must not read as a sector, from the first Argentine dry
+ * run (2026-09-28): bottled water and dispensers matched "agua potable"; the
+ * towns Río Turbio, Río Gallegos, Río Cuarto matched the water word "río";
+ * "margen izquierda" — Yacyretá's bank of the Paraná — made a workers'
+ * insurance policy a water project. The first two groups are removed before
+ * the sector is read; a purchase that is plainly consumables or insurance is
+ * never exempt.
+ */
+const EXEMPTION_FALSE_FRIENDS = /\br[ií]o\s+(?:turbio|gallegos|cuarto|grande|negro|colorado|tercero|segundo|ceballos|mayo|chico|primero|hondo)\b|\bmargen (?:izquierda|derecha)\b/gi;
+const NEVER_EXEMPT = /\bagua (?:mineral|envasada)\b|\bbotell[oó]n(?:es)?\b|\bdispensers?\b|\bbid[oó]n(?:es)?\b|\basegurador[ao]?\b|\bp[oó]liza\b|\bseguros? (?:de|para)\b|\btransporte (?:de|del) personal\b/i;
 
 function isValueFloorExemptSector(country: string | undefined, subjectTitle: string, subjectSummary: string | undefined): boolean {
   const exempt = country === undefined ? undefined : VALUE_FLOOR_EXEMPT_INDUSTRIES_BY_COUNTRY[country];
   if (!exempt) return false;
-  if (classifyIndustries(subjectTitle, subjectSummary).some((industry) => exempt.has(industry))) return true;
+  const text = [subjectTitle, subjectSummary].filter(Boolean).join(" ");
+  if (NEVER_EXEMPT.test(text)) return false;
+  const title = subjectTitle.replace(EXEMPTION_FALSE_FRIENDS, " ");
+  const summary = subjectSummary?.replace(EXEMPTION_FALSE_FRIENDS, " ");
+  if (classifyIndustries(title, summary).some((industry) => exempt.has(industry))) return true;
   const extra = VALUE_FLOOR_EXEMPT_EXTRA_PATTERN_BY_COUNTRY[country!];
-  return extra !== undefined && extra.test([subjectTitle, subjectSummary].filter(Boolean).join(" "));
+  return extra !== undefined && extra.test([title, summary].filter(Boolean).join(" "));
 }
 
 const MIN_VALUE_USD = 1_000_000;

@@ -240,7 +240,9 @@ export function mapPortalRecordToTender(record: ArgentinaPortalRecord, now: Date
   const summary = [
     sentence(title),
     sentence(object ? `Objeto: ${object}` : undefined),
-    sentence(`Organismo: ${buyer}${withoutCode(process.unit) && withoutCode(process.unit) !== buyer ? ` (${withoutCode(process.unit)})` : ""}`),
+    // No "Organismo: …" line: the buyer has its own field, and its name here
+    // would be classified as if it were the purchase — "Dirección Nacional de
+    // Vialidad" made a scale spare-parts order a road (dry run, 2026-09-28).
     sentence(`${procedure}${process.scope ? `, alcance ${process.scope.toLowerCase()}` : ""}${process.stage ? `, etapa ${process.stage.toLowerCase()}` : ""}`),
     isContratar && process.legalBasis ? sentence(`Encuadre legal: ${process.legalBasis}`) : undefined,
     process.durationText ? sentence(`Duración del contrato: ${process.durationText}`) : undefined,
@@ -291,7 +293,6 @@ export function mapAdifTenderToTender(tender: AdifTender, now: Date = new Date()
   const submissionDeadline = argentineDateTime(tender.openingDate);
   const summary = [
     sentence(title),
-    sentence(`Organismo: ${ADIF_BUYER}`),
     sentence(`${tender.procedureType} N° ${tender.number} (${tender.kind.toLowerCase()})`),
     tender.openingDate ? sentence(`Apertura de sobres: ${tender.openingDate}`) : undefined,
     "Publicado en el Portal de Licitaciones de ADIF; aviso, pliegos y circulares descargables sin registro.",
@@ -343,24 +344,39 @@ const BOLETIN_AMENDMENT = /\b(circular (?:modificatoria|aclaratoria)|tipo de cir
  */
 export function boletinSkipReason(notice: BoletinNotice): string | null {
   if (BOLETIN_NOT_A_CALL.test(notice.category)) return "不是招标公告（授标、评标、出售等）";
-  if (/\bUOC:\s*\d/.test(notice.text) || /comprar\.gob\.ar|contratar\.gob\.ar/i.test(notice.text)) return "COMPR.AR / CONTRAT.AR 已有";
+  if (/\bUOC:/.test(notice.text) || /\bEjercicio:\s*\d{4}\s+Clase:/.test(notice.text) || /comprar\.gob\.ar|contratar\.gob\.ar/i.test(notice.text)) return "COMPR.AR / CONTRAT.AR 已有";
   if (/ADMINISTRACI[OÓ]N DE INFRAESTRUCTURAS FERROVIARIAS|plataforma\.adifsa/i.test(`${notice.organism} ${notice.text}`)) return "ADIF 门户已有";
   if (BOLETIN_AMENDMENT.test(`${notice.procedure} ${notice.text.slice(0, 260)}`)) return "修改、延期或暂停通知，不是新招标";
   return null;
 }
 
 /**
- * What the notice is for: the quoted object after "OBJETO"/"OBRA", else the
- * first long quotation, else the opening sentence.
+ * What the notice is for. In order: a quotation the notice labels as the
+ * object or the work ("OBJETO: “…”", "OBRA - “…”", or one that itself begins
+ * "Obra"); an unquoted "OBJETO: …" up to the next label; the first quotation
+ * that is not a loan or programme name; the opening sentence without its
+ * "Llámese a Licitación Pública Nº …," preamble. The loan-programme case is
+ * Neuquén's IDB notices (2026-09-28): "Contrato de Préstamo … “Programa de
+ * Desarrollo Urbano …” AR-L1420 “Obra Básica y Calzada Pavimentada …”".
  */
 export function boletinObject(text: string): string {
-  const labelled = /\b(?:OBJETO|Objeto|OBRA|Obra)\s*:?\s*[“"]\s*([^”"]{12,400}?)\s*[”"]/.exec(text);
-  if (labelled) return labelled[1].replace(/^(?:OBRA|Obra)\s*:\s*/, "");
-  const plain = /\bOBJETO\s*:\s*(.{12,300}?)(?=\s+(?:DESTINO|PRESUPUESTO|FECHA|LUGAR|RETIRO|CONSULTA|APERTURA|PLAZO|ETAPA|VALOR|MODALIDAD|CLASE|GARANT[IÍ]A)\b|$)/.exec(text);
-  if (plain) return plain[1];
-  const quoted = /[“"]\s*([^”"]{15,400}?)\s*[”"]/.exec(text);
-  if (quoted) return quoted[1].replace(/^(?:OBRA|Obra)\s*:\s*/, "");
-  return text.split(/(?<=\.)\s+(?=[A-ZÁÉÍÓÚÑ])/)[0].slice(0, 240);
+  const clean = (value: string) => value.replace(/^\s*(?:obra|objeto)\s*[:\-–]\s*/i, "").replace(/\s+/g, " ").trim();
+  const quotes = [...text.matchAll(/[“"]\s*([^”"]{12,400}?)\s*[”"]/g)].map((match) => ({
+    value: match[1],
+    before: text.slice(Math.max(0, match.index! - 45), match.index!),
+  }));
+  const usable = quotes.filter(
+    (quote) => !/^(?:programa|proyecto de desarrollo|pr[eé]stamo)\b/i.test(quote.value) && !/(?:pr[eé]stamo|programa)\b[^“"]{0,30}$/i.test(quote.before),
+  );
+  const labelled = usable.find((quote) => /^obra\b/i.test(quote.value) || /\b(?:objeto|obra|denominad[oa])\s*[:\-–]?\s*$/i.test(quote.before));
+  if (labelled) return clean(labelled.value);
+  const plain = /\b(?:OBJETO|Objeto|objeto)\s*:\s*(.{12,300}?)(?=\s+(?:DESTINO|PRESUPUESTO|FECHA|LUGAR|RETIRO|CONSULTA|APERTURA|PLAZO|ETAPA|VALOR|MODALIDAD|CLASE|GARANT[IÍ]A|Destino|Presupuesto|Fecha|Lugar|Retiro|Consulta|Apertura|Plazo|Valor|Modalidad)\b|$)/.exec(text);
+  if (plain) return clean(plain[1]);
+  if (usable[0]) return clean(usable[0].value);
+  const opening = text
+    .replace(/^.*?\b(?:Ll[áa]mese a|Se llama a|convoca a)\b[^,]{0,120},\s*/i, "")
+    .replace(/^.*?\bse invita a participar de (?:la )?[^,]{0,120}?\b(?:para|cuyo objeto es)\s+(?:la |el )?/i, "");
+  return clean(opening.split(/(?<=\.)\s+(?=[A-ZÁÉÍÓÚÑ])/)[0].slice(0, 240));
 }
 
 export function boletinGovernmentLevel(organism: string): GovernmentLevel {
@@ -397,11 +413,14 @@ export function mapBoletinNoticeToTender(notice: BoletinNotice, now: Date = new 
   const scopeText = /internacional/i.test(`${notice.procedure} ${notice.text}`) ? "Licitación internacional" : undefined;
   const summary = [
     sentence(title),
-    sentence(`Organismo: ${buyer}`),
     sentence(procedure),
     scopeText ? sentence(scopeText) : undefined,
     financier ? sentence(`Financiamiento: ${financier}`) : undefined,
-    `Texto del aviso: ${notice.text.slice(0, 900)}${notice.text.length > 900 ? "…" : ""}`,
+    // The notice's own text is not copied in: its boilerplate (addresses,
+    // guarantees, the organism's name) is words the rules would classify as
+    // if they were the purchase. The notice is one click away (sourceUrl).
+    budget ? sentence(`Presupuesto oficial: ${budget.currency} ${budget.amount.toLocaleString("es-AR")}`) : undefined,
+    submissionDeadline ? sentence("Fecha de apertura según el aviso publicado en el Boletín Oficial") : undefined,
   ]
     .filter(Boolean)
     .join(" ");

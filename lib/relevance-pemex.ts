@@ -76,6 +76,27 @@ const EQUIPMENT =
   /\bbombas?\b|bombeo|motobomba|compresor|cambiador(?:es)? de calor|intercambiador|(?:haz|haces) de tubos|turbina|turbogenerador|generador|transformador|interruptor|arrancador|relevador|valvula|equipos? dinamico|\bgruas?\b|reformador|caldera|\bhorno|calentador|instrumentacion|motores? electrico|tablero|subestacion|separador|recipiente/;
 const MATERIALS = /tuberia|tubular|placas?\b|perfiles|laminas|conductores|\bcables?\b|fluxeria|aislamiento termico|refractario|conexiones|esparrago|malla|\bacero/;
 
+/**
+ * Construction machinery and cranes. The user kept both real rows on
+ * 2026-09-29 (需要留，不排除): a dump truck, backhoe and articulated-boom
+ * truck for the Madero refinery, and pedestal cranes with installation for
+ * three offshore platforms. Checked before NOT_TARGET_GOODS, which lists
+ * "camion" and "excavadora", and before the national rule, which read the
+ * cranes as one plant's spot purchase. A car, pickup or lifting sling is
+ * still excluded.
+ */
+const HEAVY_MACHINERY =
+  /retroexcavadora|excavadora|camion(?:es)? (?:tipo )?volteo|motoconformadora|motoniveladora|cargador frontal|tractor de orugas|brazo articulado|\bgruas? (?:de pedestal|marinas?|telescopicas?|articuladas?|de celosia)/;
+
+/**
+ * Rebuilding a major rotating machine, not routine upkeep of it. The user
+ * kept "REHABILITACIÓN DEL TURBOGENERADOR TG-5" on 2026-09-29. Only the
+ * rebuild words count: "mantenimiento" to the same machine is still a
+ * service contract and still excluded.
+ */
+const MAJOR_EQUIPMENT_REBUILD =
+  /^\W*(?:rehabilitacion|reparacion mayor|overhaul)\b.*\b(?:turbogenerador|turbocompresor|motocompresor|turbina|compresor|generador)/;
+
 /** What a national (CAN / "Nacional") purchase must be to count as 大量 rather than a plant's spot buy. */
 const NATIONAL_MAJOR =
   /compresor|motocompresor|cambiador(?:es)? de calor|intercambiador|(?:haz|haces) de tubos|turbina|turbogenerador|generador|transformador|caldera|reformador|tuberia de perforacion|catalizador|alumina/;
@@ -154,6 +175,16 @@ const REASONS = {
     en: `Well services (drilling, completion, workover…). ${NOTE_EN}`,
     es: `Servicios a pozos (perforación, terminación, reactivación…). ${NOTE_ES}`,
   },
+  heavy_machinery: {
+    zh: `该项目是 PEMEX 的工程机械或起重机采购。${NOTE_ZH}`,
+    en: `A PEMEX purchase of construction machinery or cranes. ${NOTE_EN}`,
+    es: `Una compra de PEMEX de maquinaria pesada o grúas. ${NOTE_ES}`,
+  },
+  equipment_rebuild: {
+    zh: `该项目是 PEMEX 大型旋转设备（汽轮发电机、燃气轮机、压缩机等）的修复工程。${NOTE_ZH}`,
+    en: `A rebuild of a major PEMEX rotating machine (turbogenerator, turbine, compressor…). ${NOTE_EN}`,
+    es: `Rehabilitación de un equipo rotativo mayor de PEMEX (turbogenerador, turbina, compresor…). ${NOTE_ES}`,
+  },
   goods: {
     zh: `该项目是 PEMEX 的大宗设备、化学品、石油制品或工业材料采购。${NOTE_ZH}`,
     en: `A PEMEX purchase of equipment, chemicals, petroleum products or industrial material. ${NOTE_EN}`,
@@ -183,9 +214,14 @@ export function classifyPemexRelevance(input: { title: string; procedureType: st
     return NATIONAL_WORKS_MAJOR.test(text) ? tier("standard", REASONS.works) : tier("excluded", REASONS.small_works);
   }
 
-  if (!goods) return UPSTREAM_SERVICE.test(text) ? tier("standard", REASONS.upstream) : tier("excluded", REASONS.service);
+  if (!goods) {
+    if (UPSTREAM_SERVICE.test(text)) return tier("standard", REASONS.upstream);
+    if (MAJOR_EQUIPMENT_REBUILD.test(text)) return tier("standard", REASONS.equipment_rebuild);
+    return tier("excluded", REASONS.service);
+  }
 
   if (OCTG.test(text)) return tier("standard", REASONS.goods);
+  if (HEAVY_MACHINERY.test(text)) return tier("standard", REASONS.heavy_machinery);
   if (NOT_TARGET_GOODS.test(text)) return tier("excluded", REASONS.not_target_goods);
   // Judged on what is bought, not what it is for: "concretos refractarios
   // para mantenimiento en calderas" is refractory, not a boiler.

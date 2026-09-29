@@ -2630,21 +2630,35 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // learn in the same change.
   {
     title: "MANUTENCAO EM DIVERSOS LOCAIS DA MALHA V IARIA DO MUNICIPIO DE LIMEIRA",
-    expectedTier: "excluded",
-    note: "Real row, PNCP 45132495000140-1-000670/2026, R$26.5M, stored 中型. Road upkeep across a municipal network. It got through only because 'manutenção' was not a word the maintenance list knew.",
+    expectedTier: "significant",
+    note: "Real row, PNCP 45132495000140-1-000670/2026, R$26.5M (~$5.1M), stored 中型. Road upkeep across a municipal network: excluded by 'manutenção' from 2026-09-25, kept again on 2026-09-29 (user: 金额都不小…需要留，不排除). The smallest of the three large Brazilian road-upkeep frameworks, and so the one LARGE_BRAZIL_ROAD_UPKEEP_USD is set below.",
     country: "Brazil", scopeType: "services", governmentLevel: "municipal", industries: ["general"], estimatedValue: 26_539_470.13, currency: "BRL",
   },
   {
     title: "Registro de preços para contratação eventual e futura de empresa de engenharia para execução de serviços de manutenção e conservação de estradas vicinais localizadas nos municípios do Estado do Maranhão, com fornecimento de todos os materiais, equipamentos, ferramentas e mão de obra, mediante execução sob demanda deflagrada por ordem de serviço, com o objeto parcelado em 6 (seis) lotes regionais.",
-    expectedTier: "excluded",
-    note: "Real row, PNCP 24393108000150-1-000126/2026, R$445M, stored 大型. The biggest row this rule removes, and the reason it is worth pinning: the maintenance list is value-blind by design, so a very large upkeep framework goes the same way as a small one. 维护类都不要 was said without a size.",
+    expectedTier: "flagship",
+    note: "Real row, PNCP 24393108000150-1-000126/2026, R$445M, stored 大型. Excluded as upkeep on 2026-09-25 (维护类都不要 was said without a size); kept again on 2026-09-29 when the user reviewed it by amount (金额都不小…需要留). See isLargeBrazilianRoadUpkeep.",
     country: "Brazil", scopeType: "works", governmentLevel: "state", industries: ["transportation"], estimatedValue: 445_000_000, currency: "BRL",
   },
   {
     title: "Registro de Preços para futura e eventual contratação de empresa especializada para execução de serviços de engenharia voltados à manutenção, conservação, recuperação e melhoria da infraestrutura viária urbana e rural dos Municípios Consorciados ao CODAP.",
-    expectedTier: "excluded",
-    note: "Real row, PNCP 08753385000170-1-000019/2026, R$164M, stored 大型. 'Recuperação e melhoria' are work on existing roads, not new ones — the Portuguese counterparts of the rehabilitación/mejoramiento that the Spanish guard deliberately does not accept either.",
+    expectedTier: "flagship",
+    note: "Real row, PNCP 08753385000170-1-000019/2026, R$164M, stored 大型. Road upkeep for a consortium's whole urban and rural network. Excluded on 2026-09-25, kept again on 2026-09-29 by the user's review (金额都不小…需要留). See isLargeBrazilianRoadUpkeep.",
     country: "Brazil", scopeType: "services", governmentLevel: "public_company", industries: ["general"], estimatedValue: 164_342_015.11, currency: "BRL",
+  },
+  // The limits of the 2026-09-29 exception: a road-upkeep framework below
+  // the floor, and a large upkeep contract that is not roads, stay excluded.
+  {
+    title: "MANUTENCAO DA MALHA VIARIA URBANA DO MUNICIPIO",
+    expectedTier: "excluded",
+    note: "Synthetic, R$5M (~$0.96M): the same kind of road upkeep as Limeira at a fifth of its size, under LARGE_BRAZIL_ROAD_UPKEEP_USD.",
+    country: "Brazil", scopeType: "services", governmentLevel: "municipal", industries: ["transportation"], estimatedValue: 5_000_000, currency: "BRL",
+  },
+  {
+    title: "MANUTENCAO PREDIAL PREVENTIVA E CORRETIVA DOS PREDIOS DA SECRETARIA DE ESTADO DA SAUDE",
+    expectedTier: "excluded",
+    note: "Synthetic, R$120M: building upkeep, not a road network. The 2026-09-29 exception is for roads only.",
+    country: "Brazil", scopeType: "services", governmentLevel: "state", industries: ["construction"], estimatedValue: 120_000_000, currency: "BRL",
   },
   {
     title: "CONCESSÃO ADMINISTRATIVA PARA PRESTAÇÃO DOS SERVIÇOS DE ILUMINAÇÃO PÚBLICA E DE SOLUÇÕES DIGITAIS NO MUNICÍPIO DE LAGOA SANTA -MG, INCLUÍDOS A INSTALAÇÃO, MELHORAMENTO, DESENVOLVIMENTO, MODERNIZAÇÃO, EXPANSÃO, EFICIENTIZAÇÃO ENERGÉTICA, OPERAÇÃO E MANUTENÇÃO DA REDE MUNICIPAL DE ILUMINAÇÃO PÚBLICA E DAS SOLUÇÕES DIGITAIS",

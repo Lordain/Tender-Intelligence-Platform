@@ -1334,6 +1334,27 @@ const BUILD_OBJECT =
 const NEW_BUILD_OR_PURCHASE =
   /construcci[óo]n|reconstrucci[óo]n|adquisici[óo]n|instalaci[óo]n|ampliaci[óo]n|doble calzada|constru[çc][ãa]o|reconstru[çc][ãa]o|aquisi[çc][ãa]o|instala[çc][ãa]o|implanta[çc][ãa]o|amplia[çc][ãa]o|duplica[çc][ãa]o/i;
 
+/**
+ * A large Brazilian road-upkeep framework: maintenance of a whole road
+ * network with a published amount of at least LARGE_BRAZIL_ROAD_UPKEEP_USD.
+ *
+ * The user kept three real rows on 2026-09-29 (金额都不小…需要留，不排除),
+ * all 「价格登记、按需派单」 road maintenance:
+ *   - Maranhão's vicinal roads in 6 regional lots, R$445M (~$86M);
+ *   - CODAP's urban and rural road network, R$164M (~$32M);
+ *   - Limeira's municipal road network, R$26.5M (~$5.1M).
+ * The floor sits below the smallest of them so an exchange-rate move does
+ * not drop it. Brazil only and roads only: the other countries' upkeep was
+ * reviewed separately (维护类都不要) and a building or lighting contract is
+ * not what was kept.
+ */
+const LARGE_BRAZIL_ROAD_UPKEEP_USD = 3_000_000;
+const ROAD_NETWORK_PT = /estradas?|rodovias?|malha\s*v\s*iaria|infraestrutura\s+viaria|\bvias?\s+(?:urbanas?|rurais|vicinais|publicas)\b/i;
+
+function isLargeBrazilianRoadUpkeep(country: string | undefined, haystack: string, valueUsd: number | undefined): boolean {
+  return country !== undefined && isBrazil(country) && valueUsd !== undefined && valueUsd >= LARGE_BRAZIL_ROAD_UPKEEP_USD && ROAD_NETWORK_PT.test(haystack);
+}
+
 /** A build-and-operate concession, not routine upkeep — see CONCESSION_FRAMING. */
 function isConcessionWithBuildScope(haystack: string): boolean {
   if (CONCESSION_FRAMING.test(haystack) && BUILD_OBJECT.test(haystack)) return true;
@@ -3376,6 +3397,7 @@ export function classifyRelevance(input: {
   if (
     input.isNationalPriorityProject !== true &&
     !isConcessionWithBuildScope(haystack) &&
+    !isLargeBrazilianRoadUpkeep(input.country, haystack, normalizedValue) &&
     (MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
       RENEWAL_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack)))
   ) {

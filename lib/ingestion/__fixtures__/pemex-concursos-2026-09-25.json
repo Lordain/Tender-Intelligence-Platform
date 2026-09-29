@@ -241,7 +241,7 @@
  },
  {
   "list": "Concursos-Abiertos-PTI",
-  "expected": "excluded",
+  "expected": "standard",
   "item": {
    "Id": 8614,
    "Title": "SNR-CON-116-CA-B-2026",
@@ -353,7 +353,7 @@
  },
  {
   "list": "Concursos-Abiertos-PTI",
-  "expected": "excluded",
+  "expected": "standard",
   "item": {
    "Id": 8596,
    "Title": "DTE-CAN-S-GCTEL-4-107263-264-26-1",

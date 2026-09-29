@@ -5,6 +5,7 @@ import { ARGENTINA_SOURCE_LABELS, ARGENTINA_SOURCES, ingestArgentina } from "@/l
 import type { ArgentinaImportResponse, ArgentinaImportRow, ArgentinaSourceId } from "@/lib/ingestion/argentina-import-result";
 import { convertToUsd } from "@/lib/currency";
 import { logAdminAlert } from "@/lib/admin-alerts";
+import { revalidateTenders } from "@/lib/cache-tags";
 
 /**
  * The 阿根廷 tab's import button, over the same ingestArgentina() the daily job
@@ -13,8 +14,8 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  * one, which can outlast the host's five minutes, so the form offers it
  * separately from the three quick ones.
  *
- * Nothing here is public: Argentina is staged (lib/staged-countries.ts), so a
- * write lands in the admin pages only and no public cache needs dropping.
+ * Argentina opened 2026-09-29, so a write drops the public list's cache like
+ * every other country's import.
  */
 export const maxDuration = 300;
 
@@ -38,6 +39,8 @@ export async function POST(request: Request) {
   try {
     // No minutes-long wait for an unreachable portal inside a five-minute request: report it, the button can be pressed again.
     const result = await ingestArgentina(supabase, { write, sources, portalReachRetryPausesMs: [] });
+    // The public list is cached; drop it so this import shows up now.
+    if (write) revalidateTenders();
     const rows: ArgentinaImportRow[] = result.rows.map(({ tender, source }) => {
       const usd = tender.estimatedValue !== undefined ? convertToUsd(tender.estimatedValue, tender.currency) : null;
       return {

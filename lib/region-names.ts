@@ -1,5 +1,5 @@
 /**
- * First-level administrative regions of the five countries this platform
+ * First-level administrative regions of the countries this platform
  * ingests, paired with the Chinese name the translation prompts use.
  *
  * Exists to catch ONE specific translation failure, reported from a live page
@@ -27,7 +27,7 @@ export type RegionEntry = {
   latin: string;
   /** The Chinese the translation prompts produce for it, without 州/省/大区. */
   zh: string;
-  country: "Peru" | "Mexico" | "Colombia" | "Brazil" | "Chile";
+  country: "Peru" | "Mexico" | "Colombia" | "Brazil" | "Chile" | "Argentina";
 };
 
 export const REGION_NAMES: readonly RegionEntry[] = [
@@ -172,6 +172,32 @@ export const REGION_NAMES: readonly RegionEntry[] = [
   { latin: "Los Lagos", zh: "洛斯拉各斯", country: "Chile" },
   { latin: "Aysén", zh: "艾森", country: "Chile" },
   { latin: "Magallanes", zh: "麦哲伦", country: "Chile" },
+  // Argentina — provincias and the capital (2026-09-29). Córdoba is left
+  // out: its Latin name is already Colombia's department above, and both
+  // are 科尔多瓦 in Chinese, so the table has nothing to tell apart.
+  { latin: "Buenos Aires", zh: "布宜诺斯艾利斯", country: "Argentina" },
+  { latin: "Ciudad Autónoma de Buenos Aires", zh: "布宜诺斯艾利斯自治市", country: "Argentina" },
+  { latin: "Catamarca", zh: "卡塔马卡", country: "Argentina" },
+  { latin: "Chaco", zh: "查科", country: "Argentina" },
+  { latin: "Chubut", zh: "丘布特", country: "Argentina" },
+  { latin: "Corrientes", zh: "科连特斯", country: "Argentina" },
+  { latin: "Entre Ríos", zh: "恩特雷里奥斯", country: "Argentina" },
+  { latin: "Formosa", zh: "福莫萨", country: "Argentina" },
+  { latin: "Jujuy", zh: "胡胡伊", country: "Argentina" },
+  { latin: "La Pampa", zh: "拉潘帕", country: "Argentina" },
+  { latin: "La Rioja", zh: "拉里奥哈", country: "Argentina" },
+  { latin: "Mendoza", zh: "门多萨", country: "Argentina" },
+  { latin: "Misiones", zh: "米西奥内斯", country: "Argentina" },
+  { latin: "Neuquén", zh: "内乌肯", country: "Argentina" },
+  { latin: "Río Negro", zh: "内格罗河", country: "Argentina" },
+  { latin: "Salta", zh: "萨尔塔", country: "Argentina" },
+  { latin: "San Juan", zh: "圣胡安", country: "Argentina" },
+  { latin: "San Luis", zh: "圣路易斯", country: "Argentina" },
+  { latin: "Santa Cruz", zh: "圣克鲁斯", country: "Argentina" },
+  { latin: "Santa Fe", zh: "圣菲", country: "Argentina" },
+  { latin: "Santiago del Estero", zh: "圣地亚哥-德尔埃斯特罗", country: "Argentina" },
+  { latin: "Tierra del Fuego", zh: "火地岛", country: "Argentina" },
+  { latin: "Tucumán", zh: "图库曼", country: "Argentina" },
 ];
 
 /** Accent- and case-insensitive, so Áncash and Ancash are the same name. */

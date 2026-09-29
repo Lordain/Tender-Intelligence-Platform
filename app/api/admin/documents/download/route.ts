@@ -4,6 +4,7 @@ import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { fetchDocumentLinksForSlugs, type StoredDocumentLink } from "@/lib/ingestion/document-links";
 import { downloadFile } from "@/lib/ingestion/download-file";
+import { downloadPortalDocument, parsePortalDocumentUrl } from "@/lib/ingestion/connectors/argentina-portal-live";
 
 /**
  * Backs the 批量下载标书 button on /admin/documents-needed: given a set of
@@ -35,7 +36,13 @@ import { downloadFile } from "@/lib/ingestion/download-file";
  * first real run), so it is not wired up yet rather than wired up and
  * silently returning nothing.
  */
-export const maxDuration = 60;
+/**
+ * 300, raised from 60 on 2026-09-29: COMPR.AR / CONTRAT.AR answer slowly from
+ * abroad (measured from a US host: a 27 MB annex took about two minutes), and
+ * each of their documents is a page load plus a postback. It is also the only
+ * way an admin in China gets those files — the portals do not open from there.
+ */
+export const maxDuration = 300;
 
 /**
  * A bigger batch does not fit in maxDuration.
@@ -82,7 +89,7 @@ const CONCURRENCY = 2;
  * maxDuration above and the response still has to be built and sent inside
  * it; a local dev server has no limit, which is where a big batch belongs.
  */
-const TOTAL_BUDGET_MS = process.env.VERCEL ? 48_000 : 900_000;
+const TOTAL_BUDGET_MS = process.env.VERCEL ? 270_000 : 900_000;
 
 /**
  * Same honest-identification posture as the OECE index fetch (see
@@ -149,6 +156,13 @@ async function downloadOne(
   limits: { budgetMs: number },
 ): Promise<{ outcome: FileOutcome; buffer?: Buffer }> {
   const base: FileOutcome = { slug: link.slug, fileName: link.fileName, ok: false };
+  // COMPR.AR / CONTRAT.AR: no URL per file, only a button on the process
+  // page, which is replayed (argentina-portal-live.ts, 2026-09-29).
+  if (parsePortalDocumentUrl(link.sourceUrl)) {
+    const portal = await downloadPortalDocument(link.sourceUrl, { maxBytes: MAX_FILE_BYTES, timeoutMs: limits.budgetMs });
+    if (!portal.ok) return { outcome: { ...base, error: portal.error } };
+    return { outcome: { ...base, ok: true, bytes: portal.bytes }, buffer: portal.buffer };
+  }
   const result = await downloadFile(link.sourceUrl, {
     budgetMs: limits.budgetMs,
     stallMs: STALL_TIMEOUT_MS,
@@ -188,7 +202,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "所选项目都没有可自动下载的官方标书链接。目前只有秘鲁 SEACE/OECE 的项目带链接（且需要在本次改动之后重新导入过）；" +
+          "所选项目都没有可自动下载的官方标书链接。目前带链接的是秘鲁 SEACE/OECE、PEMEX，以及阿根廷 ADIF、COMPR.AR、CONTRAT.AR 的项目（需要在相应改动之后导入过）；" +
           "墨西哥 Compras MX 有反爬限制，哥伦比亚 SECOP II 的编号匹配尚未验证，这两个来源仍然要手动下载。",
         slugsWithoutLinks: slugs,
       },
@@ -273,10 +287,20 @@ export async function POST(request: Request) {
 
   const archive = zip.toBuffer();
   const stamp = new Date().toISOString().slice(0, 10);
-  return new Response(new Uint8Array(archive), {
+  // Streamed, not one body: Vercel refuses a buffered response over 4.5 MB
+  // (FUNCTION_PAYLOAD_TOO_LARGE) and a streamed one has no such limit
+  // (vercel.com/docs/functions/limitations, checked 2026-09-29) — one
+  // Argentine pliego alone is 4 MB, its technical volumes 27 MB and more.
+  const CHUNK_BYTES = 1024 * 1024;
+  const zipStream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (let at = 0; at < archive.byteLength; at += CHUNK_BYTES) controller.enqueue(new Uint8Array(archive.subarray(at, at + CHUNK_BYTES)));
+      controller.close();
+    },
+  });
+  return new Response(zipStream, {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Length": String(archive.byteLength),
       "Content-Disposition": `attachment; filename="tender-documents-${stamp}.zip"`,
       // Counts the client shows in its status line without re-parsing the ZIP.
       "X-Download-Total": String(links.length),

@@ -45,6 +45,7 @@ export function StructuredData() {
           { "@type": "Country", name: "Colombia" },
           { "@type": "Country", name: "Peru" },
           { "@type": "Country", name: "Chile" },
+          { "@type": "Country", name: "Argentina" },
         ],
       },
       {

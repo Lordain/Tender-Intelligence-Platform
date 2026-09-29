@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: WeeklyPageProps): Promise<Met
   const digest = weeklyDigest(await getCachedTenderList(), week);
   return pageMetadata({
     title: `拉美招标周报｜${weekTitle(week)}（${formatWeekRange(week)}）新发布项目`,
-    description: `${formatWeekRange(week)}拉美五国新发布的政府采购与国企招标项目。${digestSummary(digest)}`,
+    description: `${formatWeekRange(week)}拉美六国新发布的政府采购与国企招标项目。${digestSummary(digest)}`,
     path: `/weekly/${weekSlug(week)}`,
   });
 }

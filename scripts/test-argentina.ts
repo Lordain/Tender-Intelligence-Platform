@@ -1,5 +1,5 @@
 /**
- * Argentina (staged 2026-09-27): the four connectors' parsers, the mapper, the
+ * Argentina (staged 2026-09-27, opened 2026-09-29): the four connectors' parsers, the mapper, the
  * two Argentine rule settings, and the staged-country gate. Offline — runs on
  * the pages saved on 2026-09-27 under lib/ingestion/__fixtures__/argentina/.
  */
@@ -12,10 +12,16 @@ import {
   isOpenCallProcedure,
   nextPageArgument,
   openWithRetry,
+  parseCircularDocuments,
+  parsePortalCirculars,
+  parsePortalDocumentUrl,
+  parsePortalDocuments,
   parsePortalGrid,
   parsePortalProcess,
+  portalDocumentUrl,
   type ArgentinaPortalRecord,
 } from "../lib/ingestion/connectors/argentina-portal-live";
+import { officialSiteAccessNote } from "../lib/official-site-access";
 import { ADIF_PORTAL_URL, parseAdifActivePanels } from "../lib/ingestion/connectors/adif-live";
 import { parseBoletinEdition, parseBoletinNotice, type BoletinListing } from "../lib/ingestion/connectors/boletin-oficial-live";
 import {
@@ -30,6 +36,7 @@ import {
   mapAdifTenderToTender,
   mapBoletinNoticeToTender,
   mapPortalRecordToTender,
+  portalDocumentLinks,
 } from "../lib/ingestion/argentina-mapper";
 import { comprarRowWanted, ingestArgentina } from "../lib/ingestion/ingest-argentina";
 import { classifyStoredTender } from "../lib/relevance";
@@ -236,9 +243,53 @@ async function main() {
     check("the admin button (no pauses) fails at once with the cause", once, "fetch failed（ECONNRESET read ECONNRESET）");
   }
 
+  // --- Bid documents: the process page's download buttons (2026-09-29, 做成自动下载) ---
+  {
+    const comprarDocs = parsePortalDocuments(fixture("comprar-pliego-84-77-0606-LPU26.html"));
+    check("COMPR.AR: general conditions, clauses, annex, act — one each", comprarDocs.map((d) => [d.kind, d.fileName]), [
+      ["Condiciones generales", "Condiciones generales DI-2024-79130471-APN-ONC#JGM.pdf"],
+      ["Cláusulas particulares", "Clausulas Particulares PLIEG-2026-86673810-APN-DCYF#EA.pdf"],
+      ["Anexo", "ESPECIFICACIÓN TÉCNCIA NRO 02-CIDESO-26 - ET 02-CIDESO-26.pdf"],
+      ["Acto administrativo", "Autorización pliego DI-2026-87836487-APN-DGID#EA.pdf"],
+    ]);
+    check("COMPR.AR: the GEDO disposition button (answers with a page) is not a document", comprarDocs.some((d) => d.eventTarget.endsWith("lnkGEDODisposicion")), false);
+
+    const contratarHtml = fixture("contratar-pliego-34-0003-LPU26.html");
+    const contratarDocs = parsePortalDocuments(contratarHtml);
+    check("CONTRAT.AR: repeater annexes and UC_CondicionesGenerales are read", [
+      contratarDocs.filter((d) => d.kind === "Anexo").length,
+      contratarDocs.some((d) => d.kind === "Condiciones generales"),
+    ], [11, true]);
+    check("CONTRAT.AR: an annex named by GEDO number carries its description", contratarDocs.find((d) => d.kind === "Anexo")?.fileName, "PLIEGO DE ESPECIFICACIONES TÉCNICAS - TOMO I - PLIEG-2026-75056788-APN-SSEE%MEC.pdf");
+    const processUrl = "https://contratar.gob.ar/PLIEGO/VistaPreviaPliegoCiudadano.aspx?qs=abc";
+    const circulars = parsePortalCirculars(contratarHtml, processUrl);
+    check("CONTRAT.AR: circulars, each with its own page", [circulars.length, circulars[0]], [2, { number: "1", url: "https://contratar.gob.ar/PLIEGO/VistaPreviaCircularCiudadano.aspx?qs=N8jBG/m/v4MD7eGHdrQQtGipkHUv9vZI" }]);
+    const circularDocs = parseCircularDocuments(fixture("contratar-circular-34-0003-LPU26.html"), circulars[0]);
+    check("a circular's attachment is a document on the circular's page", circularDocs.map((d) => [d.kind, d.fileName, d.pageUrl, d.eventTarget]), [
+      ["Circular", "Circular 1 - plieg202687691515apnse#mec.pdf", circulars[0].url, "ctl00$CPH1$UCVistaPreviaCircular$DatosCircular$gvAnexosCircularAclaratoria$ctl02$ctl00"],
+    ]);
+
+    const link = portalDocumentUrl(processUrl, "ctl00$CPH1$UCVistaPreviaPliego$UCAnexos$rptAnexos$MiClaveUnica1$btnVerAnexo");
+    check("a stored link round-trips to page and button", parsePortalDocumentUrl(link), { pageUrl: processUrl, eventTarget: "ctl00$CPH1$UCVistaPreviaPliego$UCAnexos$rptAnexos$MiClaveUnica1$btnVerAnexo" });
+    check("only the two portals' links are replayed", [
+      parsePortalDocumentUrl("https://example.com/x#documento=a"),
+      parsePortalDocumentUrl("https://prod1.seace.gob.pe/file.pdf"),
+    ], [null, null]);
+
+    const links = portalDocumentLinks({ portal: "contratar", url: processUrl, row: contratarRows[0], process: { ...rfc, documents: [...contratarDocs, ...circularDocs] } });
+    check("links: one per document, the circular's on its own page", [links.length, parsePortalDocumentUrl(links.at(-1)!.sourceUrl)?.pageUrl], [contratarDocs.length + 1, circulars[0].url]);
+    check("links: every file name keeps its extension within 120 characters", links.every((l) => /\.(pdf|docx?|xlsx?|zip)$/.test(l.fileName) && l.fileName.length <= 120), true);
+
+    check("detail page: an access note for COMPR.AR and CONTRAT.AR only", [
+      officialSiteAccessNote({ sourceUrl: processUrl })?.startsWith("CONTRAT.AR（contratar.gob.ar）"),
+      officialSiteAccessNote({ sourceUrl: "https://comprar.gob.ar/PLIEGO/VistaPreviaPliegoCiudadano.aspx?qs=x" })?.startsWith("COMPR.AR"),
+      officialSiteAccessNote({ sourceUrl: ADIF_PORTAL_URL }),
+    ], [true, true, null]);
+  }
+
   // --- Staging and language ------------------------------------------------------
-  check("Argentina is staged", isStagedCountry("Argentina"), true);
-  check("open countries are not", ["Mexico", "Brazil", "Colombia", "Peru", "Chile"].map(isStagedCountry), [false, false, false, false, false]);
+  check("Argentina is open (2026-09-29), Guyana still staged", [isStagedCountry("Argentina"), isStagedCountry("Guyana")], [false, true]);
+  check("open countries are not staged", ["Mexico", "Brazil", "Colombia", "Peru", "Chile"].map(isStagedCountry), [false, false, false, false, false]);
   check("Argentina is Spanish", sourceLanguageFor("Argentina"), "es");
 
   // --- The run, on the saved pages ---------------------------------------------------

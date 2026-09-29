@@ -2,8 +2,8 @@ import { countryLabel } from "@/lib/tender-labels";
 import { participationGuides } from "@/lib/participation-guides";
 
 /**
- * The five country landing pages (/countries/mexico …), one per connector
- * country (2026-09-25). They exist for search: /tenders?country=Mexico
+ * The country landing pages (/countries/mexico …), one per open country
+ * (2026-09-25; Argentina added 2026-09-29). They exist for search: /tenders?country=Mexico
  * declares /tenders as its canonical, so until now nothing on the site could
  * rank for 墨西哥招标 or 巴西政府采购 on its own — every filtered view signed
  * itself away to the one list page.
@@ -17,6 +17,13 @@ export type CountryPage = {
   /** The Tender.country key. */
   country: string;
   intro: string;
+  /**
+   * The sources this platform reads for the country, for a country that has
+   * no participation guide yet: the page's description and 覆盖采购来源 count
+   * come from its guides, and without this they read 「来源包括 。」 and 0.
+   * Ignored once the country has guides.
+   */
+  sources?: string[];
 };
 
 export const countryPages: CountryPage[] = [
@@ -45,6 +52,12 @@ export const countryPages: CountryPage[] = [
     country: "Chile",
     intro: "智利公共部门的采购在 Mercado Público 平台发布，由 ChileCompra 管理；智利国家铜业公司（Codelco）在自己的采购门户招标。",
   },
+  {
+    slug: "argentina",
+    country: "Argentina",
+    intro: "阿根廷联邦政府的货物与服务采购在 COMPR.AR 平台发布，公共工程、特许经营在 CONTRAT.AR 平台发布；国家铁路基础设施公司（ADIF）有自己的招标门户，国有企业和各省的招标公告刊登在政府公报（Boletín Oficial）。",
+    sources: ["COMPR.AR", "CONTRAT.AR", "ADIF", "Boletín Oficial"],
+  },
 ];
 
 export function getCountryPage(slug: string): CountryPage | undefined {
@@ -55,6 +68,12 @@ export function getCountryPage(slug: string): CountryPage | undefined {
 export function countryPagePath(country: string): string {
   const page = countryPages.find((item) => item.country === country);
   return page ? `/countries/${page.slug}` : `/tenders?country=${encodeURIComponent(country)}`;
+}
+
+/** Where a country's tenders come from: its guides' platforms, or the page's own list while it has no guide. */
+export function sourcesForCountry(page: CountryPage): string[] {
+  const guides = guidesForCountry(page.country);
+  return guides.length > 0 ? guides.map((guide) => guide.platform.split(" · ")[0]) : page.sources ?? [];
 }
 
 /** The participation guides for a country, in the guides' own order. Guides carry the Chinese name. */

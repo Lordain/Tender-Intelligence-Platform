@@ -63,7 +63,9 @@ const rows: Tender[] = [
   tender("co-1", "Colombia", { status: "submission_closed" }),
   tender("pe-1", "Peru", { tier: "flagship" }),
   tender("cl-1", "Chile", { es: "Codelco Chuquicamata mantención", buyer: "Codelco" }),
-  // Not an AVAILABLE_COUNTRIES country: never on /tenders, so never in a reminder.
+  // Not an AVAILABLE_COUNTRIES country (Guyana is staged): never on /tenders, so never in a reminder.
+  tender("gy-1", "Guyana"),
+  // Argentina opened 2026-09-29: on /tenders, so in reminders.
   tender("ar-1", "Argentina"),
   tender("mx-old", "Mexico", { createdAt: "2026-09-01T00:00:00.000Z" }),
 ];
@@ -93,7 +95,8 @@ function alertIds(viewer: ViewerEntitlement, href: string, lastCheckedAt?: strin
 // ── Country ──────────────────────────────────────────────────────────────
 check("country=Peru reminds about Peru only (before: every country)", JSON.stringify(alertIds(viewers.专业版!, "/tenders?country=Peru")) === JSON.stringify(["pe-1"]));
 check("country=Mexico,Chile is honoured", alertIds(viewers.专业版!, "/tenders?country=Mexico,Chile&status=none").every((id) => id.startsWith("mx") || id.startsWith("cl")));
-check("no country param = the open countries only, never Argentina", !alertIds(viewers.专业版!, "/tenders?status=none").includes("ar-1"));
+check("no country param = the open countries only, never Guyana", !alertIds(viewers.专业版!, "/tenders?status=none").includes("gy-1"));
+check("no country param includes Argentina since it opened", alertIds(viewers.专业版!, "/tenders?status=none").includes("ar-1"));
 check("Basic (Mexico) saving country=Brazil still gets Brazil reminders, as the list shows them", JSON.stringify(alertIds(viewers.基础版墨西哥!, "/tenders?country=Brazil")) === JSON.stringify(["br-1", "br-2"]));
 
 // ── Stage, scale, industries ─────────────────────────────────────────────

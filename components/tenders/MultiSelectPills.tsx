@@ -96,7 +96,9 @@ export function MultiSelectPills<T extends string>({
               <span key={option?.value ?? index} className="inline-flex shrink-0 items-center gap-1.5">
                 {option?.icon}
                 {option?.label ?? selected[index]}
-                {index < selectedOptions.length - 1 ? "、" : ""}
+                {/* A flag already separates the countries; without the 、 all six
+                    fit the 1280px filter row on one line (2026-09-29, 阿根廷 added). */}
+                {!option?.icon && index < selectedOptions.length - 1 ? "、" : ""}
               </span>
             ))}
             {selected.length > maxVisible && <span className="shrink-0">+{selected.length - maxVisible}</span>}

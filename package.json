@@ -142,6 +142,7 @@
     "cron:petroperu": "tsx --env-file-if-exists=.env.local scripts/cron-petroperu.ts",
     "cron:guyana": "tsx --env-file-if-exists=.env.local scripts/cron-guyana.ts",
     "cron:argentina": "tsx --env-file-if-exists=.env.local scripts/cron-argentina.ts",
+    "backfill:argentina-docs": "tsx --env-file-if-exists=.env.local scripts/backfill-argentina-document-links.ts",
     "cron:peru-oxi": "tsx --env-file-if-exists=.env.local scripts/cron-peru-oxi.ts",
     "cron:refresh-statuses": "tsx --env-file-if-exists=.env.local scripts/cron-refresh-statuses.ts",
     "cron:peru-oece-status": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts --refresh-open",

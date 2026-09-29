@@ -56,6 +56,31 @@ const stored = classifyStoredTender({
 });
 check("用存储字段重新分类得到同一档位", stored.relevance.tier, rigTender.relevance.tier);
 
+console.log("\n2026-09-29 用户要求保留的（工程机械、起重机、大型旋转设备修复）");
+function pemexTier(title: string, scopeType: "equipment" | "services" | "works", coverage = "Nacional") {
+  return classifyStoredTender({
+    title,
+    summary: title,
+    buyer: "Pemex Exploración y Producción",
+    country: "Mexico",
+    governmentLevel: "public_company",
+    scopeType,
+    procedureType: pemexProcedureType("Concurso Abierto (Producción)", coverage),
+    tenderNumber: "DEE-CAT-B-GCEE-802-106892-26-1",
+    sourceName: PEMEX_SOURCE_NAME,
+  }).relevance.tier;
+}
+check(
+  "海上平台基座起重机含安装（国内招标）→ standard",
+  pemexTier("ADQUISICIÓN DE GRÚAS DE PEDESTAL PARA LAS INSTALACIONES MARINAS PP-KU-A, PP-MALOOB-A Y PG-ZAAP-C PERTENECIENTES AL AEKMZ, INCLUYE SERVICIO PARA LA INSTALACIÓN Y PUESTA EN OPERACIÓN", "equipment"),
+  "standard",
+);
+check("燃气轮机修复（服务）→ standard", pemexTier("REHABILITACIÓN DE TURBINA DE GAS DE LA UNIDAD TG-3", "services"), "standard");
+console.log("\n仍然排除的");
+check("普通轿车 → excluded", pemexTier("ADQUISICIÓN DE VEHÍCULOS TIPO SEDÁN PARA PERSONAL", "equipment"), "excluded");
+check("吊索和起吊工具 → excluded", pemexTier("ADQUISICIÓN DE ESLINGAS Y ACCESORIOS DE IZAJE", "equipment"), "excluded");
+check("汽轮发电机日常维护（服务）→ excluded", pemexTier("MANTENIMIENTO PREVENTIVO AL TURBOGENERADOR TG-5", "services"), "excluded");
+
 console.log("\n只作用于 PEMEX 列表");
 const elsewhere = classifyStoredTender({
   title: "ALQUILUROS PARA PLANTA DE POLIETILENO",

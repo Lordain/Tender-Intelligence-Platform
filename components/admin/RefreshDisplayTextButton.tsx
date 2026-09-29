@@ -51,6 +51,8 @@ export function RefreshDisplayTextButton() {
   const [generateLimit, setGenerateLimit] = useState("100");
   const [write, setWrite] = useState(true);
   const [stage, setStage] = useState<"idle" | "translating" | "generating">("idle");
+  /** Rows finished so far in the current step, across its rounds — shown on the button. */
+  const [stepDone, setStepDone] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [translated, setTranslated] = useState<TranslateAllTendersResult | null>(null);
   const [generated, setGenerated] = useState<GenerateDisplayTextResult | null>(null);
@@ -75,27 +77,50 @@ export function RefreshDisplayTextButton() {
 
     try {
       setStage("translating");
-      const translateRes = await fetch("/api/admin/translate-tenders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ write, limit: count(translateLimit) }),
-      });
-      const translateData = await readJson(translateRes, "翻译");
-      if (!translateRes.ok) throw new Error(`翻译这一步失败：${translateData.error ?? `HTTP ${translateRes.status}`}`);
-      setTranslated(translateData as TranslateAllTendersResult);
+      setStepDone(0);
+      const translateLimitCount = count(translateLimit);
+      let translatedSoFar: TranslateAllTendersResult | null = null;
+      for (let round = 0; round < MAX_ROUNDS; round += 1) {
+        const limit = remaining(translateLimitCount, translatedSoFar?.attemptedCount);
+        const translateRes = await fetch("/api/admin/translate-tenders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ write, limit }),
+        });
+        const translateData = await readJson(translateRes, "翻译");
+        if (!translateRes.ok) throw new Error(`翻译这一步失败：${translateData.error ?? `HTTP ${translateRes.status}`}`);
+        const roundResult = translateData as TranslateAllTendersResult;
+        translatedSoFar = translatedSoFar ? mergeTranslate(translatedSoFar, roundResult) : roundResult;
+        setTranslated(translatedSoFar);
+        setStepDone(translatedSoFar.attemptedCount);
+        // Another round only when this one stopped at its time budget AND
+        // wrote something: rows that fail every time must not loop forever.
+        if (!write || !roundResult.leftForNextRun || !roundResult.translatedCount) break;
+        if (limit !== undefined && roundResult.attemptedCount >= limit) break;
+      }
 
       // Only after the first request has RETURNED. The second pass re-reads
       // the rows from Supabase, so it sees what step ① just wrote.
       setStage("generating");
+      setStepDone(0);
       const generateCount = count(generateLimit);
-      const generateRes = await fetch("/api/admin/public-titles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(write ? { write: true, limit: generateCount } : { write: false, sample: generateCount ?? 20 }),
-      });
-      const generateData = await readJson(generateRes, "生成公开文案");
-      if (!generateRes.ok) throw new Error(`生成公开文案这一步失败：${generateData.error ?? `HTTP ${generateRes.status}`}`);
-      setGenerated(generateData as GenerateDisplayTextResult);
+      let generatedSoFar: GenerateDisplayTextResult | null = null;
+      for (let round = 0; round < MAX_ROUNDS; round += 1) {
+        const limit = remaining(generateCount, generatedSoFar?.attemptedCount);
+        const generateRes = await fetch("/api/admin/public-titles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(write ? { write: true, limit } : { write: false, sample: generateCount ?? 20 }),
+        });
+        const generateData = await readJson(generateRes, "生成公开文案");
+        if (!generateRes.ok) throw new Error(`生成公开文案这一步失败：${generateData.error ?? `HTTP ${generateRes.status}`}`);
+        const roundResult = generateData as GenerateDisplayTextResult;
+        generatedSoFar = generatedSoFar ? mergeGenerate(generatedSoFar, roundResult) : roundResult;
+        setGenerated(generatedSoFar);
+        setStepDone(generatedSoFar.attemptedCount);
+        if (!write || !roundResult.leftForNextRun || !roundResult.writtenCount) break;
+        if (limit !== undefined && roundResult.attemptedCount >= limit) break;
+      }
     } catch (err) {
       // Whatever the earlier step already returned stays on screen. A run that
       // translated 20 rows and then lost the API did real work, and hiding it
@@ -160,7 +185,13 @@ export function RefreshDisplayTextButton() {
           disabled={submitting}
           className="mb-0.5 rounded-xl bg-[#ffb21c] px-5 py-2.5 text-sm font-black text-[#071826] transition-colors hover:bg-[#ffc247] disabled:opacity-50"
         >
-          {stage === "translating" ? "① 翻译中…" : stage === "generating" ? "② 生成公开文案中…" : write ? "开始" : "预览"}
+          {stage === "translating"
+            ? `① 翻译中…${stepDone > 0 ? `（已处理 ${stepDone} 条）` : ""}`
+            : stage === "generating"
+              ? `② 生成公开文案中…${stepDone > 0 ? `（已处理 ${stepDone} 条）` : ""}`
+              : write
+                ? "开始"
+                : "预览"}
         </button>
       </div>
 
@@ -176,6 +207,64 @@ export function RefreshDisplayTextButton() {
       {generated && <GenerateResult result={generated} />}
     </div>
   );
+}
+
+/**
+ * Each request stops starting batches after two minutes so it answers inside
+ * the host's five (see the two routes). The panel then asks again by itself,
+ * so one press still does the whole job (user, 2026-09-29: 现在限制时间效率很
+ * 低，之前都是一次翻译好). This caps the rounds of one step.
+ */
+const MAX_ROUNDS = 20;
+
+/** What is left of the admin's limit after `done` rows; undefined = no limit. */
+function remaining(limit: number | undefined, done: number | undefined): number | undefined {
+  return limit === undefined ? undefined : Math.max(limit - (done ?? 0), 0);
+}
+
+function sumCounts<K extends string>(a: Record<K, number> | undefined, b: Record<K, number> | undefined): Record<K, number> | undefined {
+  if (!a || !b) return a ?? b;
+  const sum = { ...a };
+  for (const key of Object.keys(b) as K[]) sum[key] = (sum[key] ?? 0) + b[key];
+  return sum;
+}
+
+/** Rounds of step ① shown as one run: the first round's totals, everything else added up, the last round's remainder. */
+function mergeTranslate(a: TranslateAllTendersResult, b: TranslateAllTendersResult): TranslateAllTendersResult {
+  const byLanguage = new Map(a.attemptedByLanguage.map((row) => [row.language, { ...row }]));
+  for (const row of b.attemptedByLanguage) {
+    const earlier = byLanguage.get(row.language);
+    if (earlier) earlier.count += row.count;
+    else byLanguage.set(row.language, { ...row });
+  }
+  return {
+    ...a,
+    attemptedCount: a.attemptedCount + b.attemptedCount,
+    attemptedByLanguage: [...byLanguage.values()],
+    translatedCount: (a.translatedCount ?? 0) + (b.translatedCount ?? 0),
+    failedCount: (a.failedCount ?? 0) + (b.failedCount ?? 0),
+    // A row that failed in one round and was written in a later one is not a failure.
+    failedSlugs: [...(a.failedSlugs ?? []), ...(b.failedSlugs ?? [])].filter((slug) => !b.writtenSlugs?.includes(slug)),
+    writtenSlugs: [...(a.writtenSlugs ?? []), ...(b.writtenSlugs ?? [])],
+    droppedIdentifiers: [...(a.droppedIdentifiers ?? []), ...(b.droppedIdentifiers ?? [])],
+    lastErrorMessage: b.lastErrorMessage ?? a.lastErrorMessage,
+    leftForNextRun: b.leftForNextRun,
+  };
+}
+
+/** Rounds of step ② shown as one run, as mergeTranslate. */
+function mergeGenerate(a: GenerateDisplayTextResult, b: GenerateDisplayTextResult): GenerateDisplayTextResult {
+  return {
+    ...a,
+    attemptedCount: a.attemptedCount + b.attemptedCount,
+    writtenCount: (a.writtenCount ?? 0) + (b.writtenCount ?? 0),
+    writtenByColumn: sumCounts(a.writtenByColumn, b.writtenByColumn),
+    clearedByColumn: sumCounts(a.clearedByColumn, b.clearedByColumn),
+    rejected: [...(a.rejected ?? []), ...(b.rejected ?? [])],
+    failedSlugs: [...(a.failedSlugs ?? []), ...(b.failedSlugs ?? [])],
+    lastErrorMessage: b.lastErrorMessage ?? a.lastErrorMessage,
+    leftForNextRun: b.leftForNextRun,
+  };
 }
 
 /**

@@ -26,6 +26,7 @@ import { translateTenderBatchPt } from "@/lib/ingestion/translate-titles-pt";
 import { translateTenderBatchEn } from "@/lib/ingestion/translate-titles-en";
 import { sourceLanguageFor, SOURCE_LANGUAGE_LABELS, type TenderSourceLanguage } from "@/lib/ingestion/source-language";
 import type { LocalizedText } from "@/types/tender";
+import { runPool } from "@/lib/ingestion/run-pool";
 
 // Was 25 — dropped after a real run (2026-09-03) truncated a 25-item
 // batch's output (max_tokens: 8000 in translate-titles.ts) when a few
@@ -36,6 +37,9 @@ import type { LocalizedText } from "@/types/tender";
 // max_tokens of its own and so relies on DashScope's default cap —
 // unmeasured, and not worth probing with a bigger batch.
 const BATCH_SIZE = 8;
+
+/** Batches sent to the model at once — the document analysis runs 4 (ANALYSIS_CONCURRENCY) against the same API. */
+export const MODEL_CONCURRENCY = 3;
 
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -301,11 +305,14 @@ export async function translateAllTenders(
 
   let processed = 0;
   let stoppedEarly = false;
-  for (const batch of chunkByLanguage(toTranslate, BATCH_SIZE)) {
-    if (options.stopAfterMs !== undefined && processed > 0 && Date.now() - startedAt > options.stopAfterMs) {
-      stoppedEarly = true;
-      break;
-    }
+  const timeUp = () => {
+    if (options.stopAfterMs === undefined || processed === 0 || Date.now() - startedAt <= options.stopAfterMs) return false;
+    stoppedEarly = true;
+    return true;
+  };
+  // MODEL_CONCURRENCY batches at once (2026-09-29): one batch of 8 took most
+  // of the admin button's 150 s, so the button stopped after 8 rows.
+  await runPool(chunkByLanguage(toTranslate, BATCH_SIZE), MODEL_CONCURRENCY, async (batch) => {
     processed += batch.length;
     let results: TranslatedTender[];
     try {
@@ -369,7 +376,7 @@ export async function translateAllTenders(
     }
 
     options.onProgress?.(translatedCount + failedCount, toTranslate.length);
-  }
+  }, timeUp);
 
   return { ...result, translatedCount, failedCount, failedSlugs, writtenSlugs, droppedIdentifiers, lastErrorMessage, ...(stoppedEarly ? { leftForNextRun: toTranslate.length - processed } : {}) };
 }

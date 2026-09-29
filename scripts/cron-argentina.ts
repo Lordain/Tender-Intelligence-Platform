@@ -2,8 +2,7 @@
  * The daily read of Argentina's four sources — COMPR.AR, CONTRAT.AR, ADIF and
  * the Boletín Oficial — as a plain script so the GitHub Actions schedule can
  * run it. Invoked by .github/workflows/daily-ingest.yml. Added 2026-09-27.
- * Argentina is STAGED (lib/staged-countries.ts): what this writes shows in
- * the admin pages only.
+ * Staged (admin pages only) until 2026-09-29; public since.
  *
  * Usage:
  *   npm run cron:argentina                        (dry run — fetches and classifies, writes nothing)
@@ -74,7 +73,7 @@ async function main() {
     supabase!,
     "import-argentina",
     problem ? "failed" : "ok",
-    problem ?? `${result.sources.map((source) => `${source.id} ${source.kept}`).join("，")}；写入 ${result.upsertedCount ?? 0} 条（未公开）${partial}`,
+    problem ?? `${result.sources.map((source) => `${source.id} ${source.kept}`).join("，")}；写入 ${result.upsertedCount ?? 0} 条${partial}`,
   );
   for (const f of failed.slice(0, 10)) console.error(`  ${f.slug} —— ${f.error}`);
   if (problem) process.exit(1);

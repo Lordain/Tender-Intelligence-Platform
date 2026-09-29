@@ -1,5 +1,5 @@
 /**
- * Argentina (staged 2026-09-27): the four connectors' parsers, the mapper, the
+ * Argentina (staged 2026-09-27, opened 2026-09-29): the four connectors' parsers, the mapper, the
  * two Argentine rule settings, and the staged-country gate. Offline — runs on
  * the pages saved on 2026-09-27 under lib/ingestion/__fixtures__/argentina/.
  */
@@ -237,8 +237,8 @@ async function main() {
   }
 
   // --- Staging and language ------------------------------------------------------
-  check("Argentina is staged", isStagedCountry("Argentina"), true);
-  check("open countries are not", ["Mexico", "Brazil", "Colombia", "Peru", "Chile"].map(isStagedCountry), [false, false, false, false, false]);
+  check("Argentina is open (2026-09-29), Guyana still staged", [isStagedCountry("Argentina"), isStagedCountry("Guyana")], [false, true]);
+  check("open countries are not staged", ["Mexico", "Brazil", "Colombia", "Peru", "Chile"].map(isStagedCountry), [false, false, false, false, false]);
   check("Argentina is Spanish", sourceLanguageFor("Argentina"), "es");
 
   // --- The run, on the saved pages ---------------------------------------------------

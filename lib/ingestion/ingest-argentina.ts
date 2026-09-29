@@ -11,8 +11,8 @@
  *   Oficial      that buy outside the two portals
  *
  * Only rows the platform's rules keep are written — the same rules as every
- * other country, with Argentina's two settings in lib/relevance.ts. Argentina
- * is STAGED (lib/staged-countries.ts): admin pages only until it is opened.
+ * other country, with Argentina's two settings in lib/relevance.ts. Staged
+ * (admin pages only) until 2026-09-29; public since.
  *
  * A source that fails does not stop the others; its error is reported with
  * the result, and the run as a whole fails only if every source did.

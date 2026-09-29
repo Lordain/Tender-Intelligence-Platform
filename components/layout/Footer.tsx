@@ -10,7 +10,7 @@ const columns = [
 ] as const;
 
 /**
- * The five countries as links to their tender pages. They replace the
+ * The open countries as links to their tender pages. They replace the
  * sentence that used to list them inside a five-line intro (user,
  * 2026-09-25: 左边的介绍是不是太长了) — the same coverage said in a glance,
  * and every page of the site now links each country page.
@@ -21,6 +21,7 @@ const countries = [
   ["哥伦比亚", "/countries/colombia"],
   ["秘鲁", "/countries/peru"],
   ["智利", "/countries/chile"],
+  ["阿根廷", "/countries/argentina"],
 ] as const;
 
 const headingClass = "text-xs font-black uppercase tracking-[0.15em] text-[#ffb21c]";
@@ -36,10 +37,11 @@ export function Footer() {
             {/* Wraps only between the three points, never inside one. */}
             <span className="whitespace-nowrap">汇集十余个官方采购平台</span> · <span className="whitespace-nowrap">人工精筛</span> · <span className="whitespace-nowrap">剔除小额和日常项目</span>
           </p>
-          <ul className="mt-5 flex flex-wrap gap-2" aria-label="覆盖国家">
+          {/* Tighter than before (gap-2, px-3) so the six countries stay on one line from 360px phones up (2026-09-29, 阿根廷 added). */}
+          <ul className="mt-5 flex flex-wrap gap-1 sm:gap-1.5" aria-label="覆盖国家">
             {countries.map(([label, href]) => (
               <li key={href}>
-                <Link href={href} className="inline-flex rounded-full border border-white/12 px-3 py-1 text-xs font-bold text-white/62 transition-colors hover:border-[#ffb21c] hover:text-[#ffcd67]">
+                <Link href={href} className="inline-flex rounded-full border border-white/12 px-2 py-1 text-xs sm:px-2.5 font-bold text-white/62 transition-colors hover:border-[#ffb21c] hover:text-[#ffcd67]">
                   {label}
                 </Link>
               </li>

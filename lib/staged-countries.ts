@@ -14,7 +14,8 @@
  * country listed here, so for every country already open it changes nothing. Opening a country means deleting
  * it from this list and adding it to AVAILABLE_COUNTRIES.
  */
-export const STAGED_COUNTRIES: readonly string[] = ["Guyana", "Argentina"];
+// Argentina opened 2026-09-29 (user: 请帮忙前台+后台开放阿根廷).
+export const STAGED_COUNTRIES: readonly string[] = ["Guyana"];
 
 export function isStagedCountry(country: string | null | undefined): boolean {
   return country != null && STAGED_COUNTRIES.includes(country);

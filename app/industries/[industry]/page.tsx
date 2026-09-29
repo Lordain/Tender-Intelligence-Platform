@@ -31,13 +31,13 @@ export async function generateMetadata({ params }: IndustryPageProps): Promise<M
   if (!page) return {};
   return pageMetadata({
     title: `拉美${page.name}招标项目｜${page.titleTail}`,
-    description: `墨西哥、巴西、哥伦比亚、秘鲁、智利五国当前在招的${page.name}类政府采购与国企招标项目，提供中文标题、项目摘要、国家与计划交标月份，每日更新。`,
+    description: `墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷六国当前在招的${page.name}类政府采购与国企招标项目，提供中文标题、项目摘要、国家与计划交标月份，每日更新。`,
     path: `/industries/${page.slug}`,
   });
 }
 
 /**
- * One page per industry tag, across the five countries (2026-09-25) — the
+ * One page per industry tag, across the open countries (2026-09-25) — the
  * country pages' twin, for the reader who searches by what they build rather
  * than where. Same sections, same components, same design.
  */
@@ -77,7 +77,7 @@ export default async function IndustryTendersPage({ params }: IndustryPageProps)
               <span className="text-xs font-black uppercase tracking-[0.18em] text-white/55">Tenders by industry · 每日更新</span>
             </div>
             <h1 className="mt-5 text-3xl font-black leading-[1.22] tracking-[-0.04em] sm:text-5xl">拉美{page.name}招标项目</h1>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-white/68">{page.intro}本页汇总墨西哥、巴西、哥伦比亚、秘鲁、智利当前仍在招标期内的{page.name}项目，附中文标题、国家和计划交标月份。</p>
+            <p className="mt-4 max-w-3xl text-base leading-8 text-white/68">{page.intro}本页汇总墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷当前仍在招标期内的{page.name}项目，附中文标题、国家和计划交标月份。</p>
           </div>
           <div className="mt-8 grid max-w-2xl grid-cols-2 gap-3">
             <div className="rounded-2xl border border-white/12 bg-white/6 px-5 py-4">

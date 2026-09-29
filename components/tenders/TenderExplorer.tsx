@@ -388,7 +388,7 @@ export function TenderExplorer({
         {/* 项目规模 is a dropdown here between 国家/地区 and 行业 (user,
             2026-09-26: 把项目规模移到上面也做成下拉选单，放在国家右侧和行业的中间),
             so the pill row below keeps to one line. Four dropdowns with all
-            five countries fill 1280px almost exactly, hence the narrower
+            countries fill 1280px almost exactly, hence the narrower
             triggers and gaps; flex-wrap so a long selection wraps rather than
             pushing the card wider. */}
         <div className="mt-4 grid gap-y-3 xl:flex xl:flex-wrap xl:divide-x xl:divide-[#dbe2e5]">

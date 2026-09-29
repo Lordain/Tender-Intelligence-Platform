@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { pageMetadata } from "@/lib/seo";
 import { getCachedTenderList } from "@/lib/tenders";
-import { countryPages, getCountryPage, guidesForCountry } from "@/lib/country-pages";
+import { countryPages, getCountryPage, guidesForCountry, sourcesForCountry } from "@/lib/country-pages";
 import { industryPages } from "@/lib/industry-pages";
 import { getCountryInsight } from "@/lib/country-insights";
 import { liveTenderCountForCountry, liveTenderLinksForCountry } from "@/lib/tender-links";
@@ -31,10 +31,12 @@ export async function generateMetadata({ params }: CountryPageProps): Promise<Me
   const page = getCountryPage(slug);
   if (!page) return {};
   const name = countryLabel(page.country, "zh");
-  const platforms = guidesForCountry(page.country).map((guide) => guide.platform.split(" · ")[0]).join("、");
+  const platforms = sourcesForCountry(page).join("、");
+  // Only what the country has: a newly opened one can go days without a guide or an insight.
+  const extras = [guidesForCountry(page.country).length > 0 && "参标指南", getCountryInsight(page.slug) && "国家洞察"].filter(Boolean).join("与");
   return pageMetadata({
     title: `${name}招标项目｜${name}政府采购与国企招标信息`,
-    description: `${name}当前在招的政府采购与国有企业招标项目，来源包括 ${platforms}。提供中文标题、项目摘要、行业与计划交标月份，每日更新，并附${name}参标指南与国家洞察。`,
+    description: `${name}当前在招的政府采购与国有企业招标项目，来源包括 ${platforms}。提供中文标题、项目摘要、行业与计划交标月份，每日更新${extras ? `，并附${name}${extras}` : ""}。`,
     path: `/countries/${page.slug}`,
   });
 }
@@ -49,6 +51,7 @@ export default async function CountryTendersPage({ params }: CountryPageProps) {
   const liveCount = liveTenderCountForCountry(tenders, page.country, now);
   const links = liveTenderLinksForCountry(tenders, page.country, { limit: LISTED, now });
   const guides = guidesForCountry(page.country);
+  const sourceCount = sourcesForCountry(page).length;
   const insight = getCountryInsight(page.slug);
   const name = countryLabel(page.country, "zh");
   const listHref = `/tenders?country=${page.country}&status=${LIVE_STATUS_FILTER_PARAM}`;
@@ -88,7 +91,7 @@ export default async function CountryTendersPage({ params }: CountryPageProps) {
             </div>
             <div className="rounded-2xl border border-white/12 bg-white/6 px-5 py-4">
               <p className="text-xs font-bold text-white/55">覆盖采购来源</p>
-              <p className="mt-1 text-2xl font-black text-white">{guides.length} <span className="text-sm text-white/70">个平台</span></p>
+              <p className="mt-1 text-2xl font-black text-white">{sourceCount} <span className="text-sm text-white/70">个平台</span></p>
             </div>
           </div>
         </div>

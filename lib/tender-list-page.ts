@@ -87,9 +87,10 @@ export const UPCOMING_DEADLINE_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
  * list: two copies would let the pills and the server-side filter disagree,
  * and the failure mode of that is a country a user can tick but never see.
  */
-// Chile added last, 2026-09-25, when the user opened it after the Chilean
-// filters were tuned (智利筛选调好 → 现在开放).
-export const AVAILABLE_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile"] as const;
+// Chile added 2026-09-25, when the user opened it after the Chilean
+// filters were tuned (智利筛选调好 → 现在开放). Argentina added last,
+// 2026-09-29 (前台+后台开放阿根廷).
+export const AVAILABLE_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Argentina"] as const;
 
 export type TenderListSearchParams = Record<string, string | string[] | undefined>;
 

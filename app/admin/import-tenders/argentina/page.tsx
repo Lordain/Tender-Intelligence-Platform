@@ -7,21 +7,13 @@ import { ADIF_PORTAL_URL } from "@/lib/ingestion/connectors/adif-live";
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 
 /**
- * Argentina is staged (lib/staged-countries.ts): imported daily from four
- * sources, invisible to visitors. This tab is where the user reviews what came
- * in before deciding to open it (2026-09-27).
+ * Argentina: imported daily from four sources. Staged from 2026-09-27 and
+ * opened to visitors 2026-09-29 (前台+后台开放阿根廷).
  */
 export default async function AdminImportTendersArgentinaPage() {
   const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Argentina");
   return (
     <div className="flex flex-col gap-3">
-      <section className="rounded-2xl border border-[#eed18c] bg-[#fff8e7] px-5 py-4 text-sm leading-6 text-[#6d4c0d]">
-        <p className="font-black">阿根廷尚未对外公开</p>
-        <p className="mt-1 text-xs leading-5">
-          项目每天自动导入，只在后台可见：前台列表、详情页、首页、网站地图、搜索引擎推送和摘要邮件都不会出现。审核满意后，把阿根廷从
-          <code className="mx-1">lib/staged-countries.ts</code>移到公开国家名单即可上线。
-        </p>
-      </section>
       <ImportSourceSection
         name="COMPR.AR · CONTRAT.AR · ADIF · 政府公报"
         hint="阿根廷全国采购平台、全国工程平台、国家铁路基础设施公司、政府公报第三部分"

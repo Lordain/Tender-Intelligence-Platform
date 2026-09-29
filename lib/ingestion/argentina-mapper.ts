@@ -1,7 +1,6 @@
 /**
- * Argentina's four sources → Tender. Argentina is STAGED
- * (lib/staged-countries.ts): what these rows become is visible in the admin
- * pages and nowhere public until the user opens the country.
+ * Argentina's four sources → Tender. Staged (admin pages only) from
+ * 2026-09-27; opened to visitors 2026-09-29.
  *
  * The rules are the platform's, unchanged (user, 2026-09-27: 我不想动现在的
  * 标准，如果项目数达不到也先保持这个规则), with two Argentine settings in

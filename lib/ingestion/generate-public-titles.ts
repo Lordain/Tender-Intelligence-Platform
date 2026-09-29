@@ -3,6 +3,8 @@ import { generateDisplayTextBatch, type DisplayTextInput } from "@/lib/ingestion
 import { publicSummaryProblems, publicTitleProblems, shortTitleProblems } from "@/lib/public-title";
 import { stripUnverifiedParentheticals } from "@/lib/ingestion/translate-titles";
 import type { LocalizedText } from "@/types/tender";
+import { runPool } from "@/lib/ingestion/run-pool";
+import { MODEL_CONCURRENCY } from "@/lib/ingestion/translate-all-tenders";
 
 /**
  * Fill the three derived display columns — tenders.title_zh_short,
@@ -322,11 +324,13 @@ export async function generateDisplayText(
 
   let processed = 0;
   let stoppedEarly = false;
-  for (const batch of chunk(selected, BATCH_SIZE)) {
-    if (options.stopAfterMs !== undefined && processed > 0 && Date.now() - startedAt > options.stopAfterMs) {
-      stoppedEarly = true;
-      break;
-    }
+  const timeUp = () => {
+    if (options.stopAfterMs === undefined || processed === 0 || Date.now() - startedAt <= options.stopAfterMs) return false;
+    stoppedEarly = true;
+    return true;
+  };
+  // Several batches at once, as the translation pass (2026-09-29).
+  await runPool(chunk(selected, BATCH_SIZE), MODEL_CONCURRENCY, async (batch) => {
     processed += batch.length;
     let generated: Awaited<ReturnType<typeof generateDisplayTextBatch>> = [];
     try {
@@ -410,7 +414,7 @@ export async function generateDisplayText(
     }
 
     options.onProgress?.(done, selected.length);
-  }
+  }, timeUp);
 
   return {
     candidateCount: candidates.length,

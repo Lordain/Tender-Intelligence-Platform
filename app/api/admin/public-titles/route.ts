@@ -43,10 +43,13 @@ const MAX_SAMPLE = 20;
  * got the host's default limit and was cut off mid-run (2026-09-28: the panel
  * showed "Unexpected token 'A', \"An error o\"… is not valid JSON" — the host's
  * error page read as JSON). The pass itself stops starting batches at
- * STOP_AFTER_MS and reports what is left, well inside this limit.
+ * STOP_AFTER_MS and reports what is left; the panel then calls again by
+ * itself until nothing is left. 120 s, not 150: batches run three at a time
+ * and one of 8 rows has taken well over two minutes, so the last one started
+ * must still finish inside the 300.
  */
 export const maxDuration = 300;
-const STOP_AFTER_MS = 150_000;
+const STOP_AFTER_MS = 120_000;
 
 export async function POST(request: Request) {
   const admin = await getAdminUser();

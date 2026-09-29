@@ -1,0 +1,435 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" style="background-color: #FFF;">
+<head id="ctl00_Head1"><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><title>
+
+</title>
+    <!-- link rel="stylesheet" type="text/css" href="/App_Themes/styles/css/css.css" / -->
+    
+    <title></title>
+    <script src="JavaScript/Generica.js" type="text/javascript"></script>
+    <script src="JavaScript/VistaPreviaPliegoCiudadano.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        function Cerrar() {
+            window.parent.CloseModal('ctl00_CPH1_PopupVistaCircular_PW-1', -1);
+        }
+    </script>
+<link type="text/css" rel="stylesheet" href="/WebResource.axd?d=UMDWOfv6JeQGTRlzvxCZSYhmV0E5B0OclmSQ6X1QWhENcTwC8waQYoPD3XF_bSAu8UXIZPqoROa4-vqAV59a0UlTxGNAUHZfZqEZphhOcr_eijc-WdQquWF5nOZ-k6ByO56TQ2aalCYokeCd9Rb_RxC1jCc1&amp;t=635978156741675445" /><link type="text/css" rel="stylesheet" href="/WebResource.axd?d=mJ65Ndi1X4YJUuuK7hb8AW8B75Vsj08Aj2VzDpELbNicwfQaSRGPvF5Rz8duQE5KBTPeY-NE16i6HMFk7hUe5b7jEBqLS1a4Wix95vzKqe2HB4MwGdiYIyllU4geBIHtYoCodNb-j1kSMvm1JmPMMYUnHveoffIoI6hgz2zo0dvWo4RwATVw1vJet8AZLUnxZ_jD_Q2&amp;t=635978156739487935" /><link type="text/css" rel="stylesheet" href="/WebResource.axd?d=5JEPvQigQoLx3Iijcq7nFmftbLqy8CnAX7btqVRttJwuNg8UniaeXF_y0phbMt4T9wH9cOouQkXzfcB-An56i7iAFjxnnayFZipxtxgHhx5g10TwQeIR-wEEXCgsPcCukyo8dbPogWSl60JIIiOQ9FNDfP-an8MsLcm7_4CB11rTxrpBuApMVD-TCnIGSxil91NCpQ2&amp;t=635978156740581682" /><link href="../App_Themes/poncho/styles.css?v=639261512700755435" type="text/css" rel="stylesheet" /><link href="../App_Themes/poncho/ventana-modal.css?v=639261512700755435" type="text/css" rel="stylesheet" /></head>
+<body style="overflow-y: auto; overflow-x: auto; background-image: none;">
+    <form name="aspnetForm" method="post" action="./VistaPreviaCircularCiudadano.aspx?qs=N8jBG%2fm%2fv4MD7eGHdrQQtGipkHUv9vZI" id="aspnetForm" enctype="multipart/form-data">
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="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" />
+
+
+<script type="text/javascript">
+//<![CDATA[
+var __cultureInfo = {"name":"es-AR","numberFormat":{"CurrencyDecimalDigits":2,"CurrencyDecimalSeparator":",","IsReadOnly":true,"CurrencyGroupSizes":[3],"NumberGroupSizes":[3],"PercentGroupSizes":[3],"CurrencyGroupSeparator":".","CurrencySymbol":"$","NaNSymbol":"NuN","CurrencyNegativePattern":2,"NumberNegativePattern":1,"PercentPositivePattern":0,"PercentNegativePattern":0,"NegativeInfinitySymbol":"-Infinito","NegativeSign":"-","NumberDecimalDigits":2,"NumberDecimalSeparator":",","NumberGroupSeparator":".","CurrencyPositivePattern":2,"PositiveInfinitySymbol":"Infinito","PositiveSign":"+","PercentDecimalDigits":2,"PercentDecimalSeparator":",","PercentGroupSeparator":".","PercentSymbol":"%","PerMilleSymbol":"‰","NativeDigits":["0","1","2","3","4","5","6","7","8","9"],"DigitSubstitution":1},"dateTimeFormat":{"AMDesignator":"a.m.","Calendar":{"MinSupportedDateTime":"\/Date(-62135586000000)\/","MaxSupportedDateTime":"\/Date(253402300799999)\/","AlgorithmType":1,"CalendarType":1,"Eras":[1],"TwoDigitYearMax":2029,"IsReadOnly":true},"DateSeparator":"/","FirstDayOfWeek":0,"CalendarWeekRule":0,"FullDateTimePattern":"dddd, dd\u0027 de \u0027MMMM\u0027 de \u0027yyyy hh:mm:ss tt","LongDatePattern":"dddd, dd\u0027 de \u0027MMMM\u0027 de \u0027yyyy","LongTimePattern":"hh:mm:ss tt","MonthDayPattern":"dd\u0027 de \u0027MMMM","PMDesignator":"p.m.","RFC1123Pattern":"ddd, dd MMM yyyy HH\u0027:\u0027mm\u0027:\u0027ss \u0027GMT\u0027","ShortDatePattern":"dd/MM/yyyy","ShortTimePattern":"hh:mm tt","SortableDateTimePattern":"yyyy\u0027-\u0027MM\u0027-\u0027dd\u0027T\u0027HH\u0027:\u0027mm\u0027:\u0027ss","TimeSeparator":":","UniversalSortableDateTimePattern":"yyyy\u0027-\u0027MM\u0027-\u0027dd HH\u0027:\u0027mm\u0027:\u0027ss\u0027Z\u0027","YearMonthPattern":"MMMM\u0027 de \u0027yyyy","AbbreviatedDayNames":["dom","lun","mar","mié","jue","vie","sáb"],"ShortestDayNames":["do","lu","ma","mi","ju","vi","sá"],"DayNames":["domingo","lunes","martes","miércoles","jueves","viernes","sábado"],"AbbreviatedMonthNames":["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic",""],"MonthNames":["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre",""],"IsReadOnly":true,"NativeCalendarName":"calendario gregoriano","AbbreviatedMonthGenitiveNames":["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic",""],"MonthGenitiveNames":["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre",""]},"eras":[1,"d.C.",null,0]};//]]>
+</script>
+
+<script src="/ScriptResource.axd?d=kJYePUC-h76Vlzg6zI8WdylAqXvsUr-kUUptCWnc8EwRC9c4rJ3nkaReQrCHJaU1XkkLpUjCY0z9bsd7NZsl1kaUm7aVJgPzB_S3Y4SO0eLJthwqjPqXiKoKC27YHwQDw5f8dnoPhhYqDDF0sJ-EinVz26k1&amp;t=ffffffffe6d5a9ac" type="text/javascript"></script>
+<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="D3F1DD32" />
+<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="M8niIilIPB+QUdiO16V0ZUFYH8OeR2Y4EA/P2Cwj1pMFQTo1u6tcJL/e1GFENho6Bo6fZOFQX1+X87HAXeNs305uOZMg2c2pcGjQ3ICG3ZMLQiflb13ML8PdDa+o8q3oQW5YlUHA8I/6mfKGgRtjl6G9rfXwRKIAMCo0M68WpcyXn7a5" />
+        
+        <div id="page_pop">
+            <div id="contenido_pop">
+                <div id="contenido_tablas_pop">
+                    
+    <div>
+        
+
+<style type="text/css">
+    .style1
+    {
+        height: 26px;
+    }
+</style>
+<div>
+    <table width="100%">
+        <tr>
+            <td class="fondoblanco">
+                
+<table width="100%" class="fondoblanco">
+    <tr>
+        <td style="width: 100%; text-align: left;" colspan="2">
+            <br />
+            <div style="text-align: center;">
+                <img src="/controles/Logo.aspx?qs=E:\SHARED\Logos\Escudo_Oficial.png" id="ctl00_CPH1_UCVistaPreviaCircular_ControlLogo_imgLogo" alt="Logo" />
+            </div>
+            <br />
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <div style="width: 100%; text-align: center;">
+                <span class="titulo_principal">
+                    <span id="ctl00_CPH1_UCVistaPreviaCircular_ControlLogo_lbl_titulo">Gobierno de la República Argentina</span></span>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <div style="width: 100%; text-align: center;">
+                <span class="titulo_principal">
+                    <span id="ctl00_CPH1_UCVistaPreviaCircular_ControlLogo_Lbl_frase">2026 AÑO DE LA RECONSTRUCCIÓN DE LA NACIÓN ARGENTINA</span></span>
+            </div>
+        </td>
+    </tr>
+</table>
+
+            </td>
+        </tr>
+        <tr>
+            <td class="fondoblanco">
+                
+<!-- área resumen datos -->
+<style type="text/css">
+    .style1
+    {
+        width: 273px;
+    }
+</style>
+<table class="informacion_basica" cellspacing="5">
+    <tr>
+        <td style="text-align: left; width: 30%">
+            <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCabeceraPliego_Label36"><b><font color="#3B3B3B">Número de expediente:</font></b></span>
+        </td>
+        <td style="text-align: left">
+            <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCabeceraPliego_lblNumExpediente"><font color="#707172">EX-2026-48480094-&nbsp&nbsp&nbsp-APN-DC#MEC</font></span>
+        </td>
+    </tr>
+    <tr>
+        <td style="text-align: left;">
+            <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCabeceraPliego_Label37"><b><font color="#3B3B3B">Número del Proceso de Contratación:</font></b></span>
+        </td>
+        <td style="text-align: left">
+            <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCabeceraPliego_lblNumPliego"><font color="#707172">34-0003-LPU26</font></span>
+        </td>
+    </tr>
+    <tr>
+        <td style="text-align: left;">
+            <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCabeceraPliego_Label39"><b><font color="#3B3B3B">Nombre del Proceso de Contratación:</font></b></span>
+        </td>
+        <td style="text-align: left">
+            <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCabeceraPliego_lblNomPliego"><font color="#707172">AMPLIACIÓN DEL SISTEMA DE TRANSPORTE DE ENERGÍA ELÉCTRICA BAJO CONCESIÓN DE OBRA PÚBLICA “AMBA I”</font></span>
+        </td>
+    </tr>
+    <tr>
+        <td style="text-align: left;">
+            <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCabeceraPliego_Label41"><b><font color="#3B3B3B">Unidad Operativa de Contrataciones:</font></b></span>
+        </td>
+        <td style="text-align: left">
+            <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCabeceraPliego_lblUnidadOperativa"><font color="#707172">34/000 - Dirección General de Administración - MHA</font></span>
+        </td>
+    </tr>
+</table>
+<!-- fin área resumen datos -->
+
+            </td>
+        </tr>
+        <tr>
+            <td class="fondoblanco">
+                <br />
+                
+
+<style type="text/css">
+    .style1 {
+        height: 26px;
+    }
+
+    .style2 {
+        width: 33%;
+    }
+
+    .style3 {
+        height: 26px;
+        width: 33%;
+    }
+    .style4{
+        text-align:center;
+    }
+</style>
+
+<!-- SUBTITULO "INFORMACION DE LA CIRCULAR" -->
+<div style="float: left; margin-left: 3px;">
+    <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_lblTituloInformacionCircular"><b><font color="#303030">Información de la circular:</font></b></span>
+</div>
+<br />
+<br />
+
+<!-- CABECERA DE LA CIRCULAR -->
+<div style="width: 100%; height: 11px;  clear: left;">
+    <div style="float: left; background-color: #FFFFFF; background-position: top;">
+        
+    </div>
+    <div style="float: right; background-color: #FFFFFF; background-position: top;">
+        
+    </div>
+</div>
+
+<div class="panel panel-default panel-body" align="center">
+    <table width="98%">
+        <tr>
+            <td class="fondoblanco">
+                <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_Label4"><b><font color="#3B3B3B">Número de circular</font></b></span>
+            </td>
+            <td style="width: 75%; vertical-align: top;" class="fondoblanco">
+                <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_lblNumeroCircular"><font color="#707172">1</font></span>
+            </td>
+        </tr>
+        
+            <tr>
+                <td class="fondoblanco">
+                    <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_Label2"><b><font color="#3B3B3B">Tipo circular</font></b></span>
+                </td>
+                <td style="width: 75%; vertical-align: top;" class="fondoblanco">
+                    <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_lblTipoCircular" style="display:inline-block;"><font color="#707172">Con consulta</font></span>
+                </td>
+            </tr>
+        
+        <tr>
+            <td class="fondoblanco">
+                <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_Label8"><b><font color="#3B3B3B">Tipo de proceso</font></b></span>
+            </td>
+            <td style="width: 75%; vertical-align: top;" class="fondoblanco">
+                <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_lblTipoProceso"><font color="#707172">Licitacion Pública</font></span>
+            </td>
+        </tr>
+        
+        
+            <tr>
+                <td class="fondoblanco">
+                    <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_Label3"><b><font color="#3B3B3B">Fecha de publicación</font></b></span>
+                </td>
+                <td style="width: 75%; vertical-align: top;" class="fondoblanco">
+                    <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_lblFechaPublicacion" style="display:inline-block;"><font color="#707172">11/09/2026</font></span>
+                </td>
+            </tr>
+        
+
+    </table>
+</div>
+
+<div style="width: 100%; height: 11px; ">
+    <div style="float: left; background-color: #FFFFFF; background-position: top;">
+        
+    </div>
+    <div style="float: right; background-color: #FFFFFF; background-position: top;">
+        
+    </div>
+</div>
+<br />
+<br />
+
+<!-- SUBTITULO "MOTIVO DE LA CIRCULAR -->
+<div style="float: left; margin-left: 3px;">
+    <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_Label1"><b><font color="#303030">Motivo de la circular:</font></b></span>
+</div>
+<br />
+<br />
+<div style="width: 100%; height: 11px;  clear: left;">
+    <div style="float: left; background-color: #FFFFFF; background-position: top;">
+        
+    </div>
+    <div style="float: right; background-color: #FFFFFF; background-position: top;">
+        
+    </div>
+</div>
+<div class="panel panel-default panel-body" align="center">
+    <table width="98%">
+        <tr>
+            <td style="width: 100%; vertical-align: top;" class="fondoblanco">
+                <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_lblMotivo" style="display:inline-block;"><font color="#707172">CIRCULAR N° 1 ACLARATORIA con Consulta -Licitación Pública Nacional e Internacional de Etapa Múltiple N° 34-0003-LPU26 - EX-2026-73614665-APN-DGDA#MEC - PLIEG-2026-87691515-APN-SE#MEC
+</font></span>
+            </td>
+        </tr>
+    </table>
+</div>
+<div style="width: 100%; height: 11px; ">
+    <div style="float: left; background-color: #FFFFFF; background-position: top;">
+        
+    </div>
+    <div style="float: right; background-color: #FFFFFF; background-position: top;">
+        
+    </div>
+</div>
+
+<!-- ACLARACIONES -->
+
+    <br />
+    <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_lblSeccionAclaraciones"><b><font color="#303030">Aclaraciones</font></b></span>
+    <br />
+    <br />
+
+<div id="divAclaraciones">
+    
+
+<table style="width:100%; background-color:#cccccc" cellspacing="1" border="0">
+    <tr>
+        <td style="width:100%" class="fondoblanco" colspan="2">
+            
+            <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_11058_Label1"><b><font color="#303030">Aclaración N° 1</font></b></span>
+
+            <br />
+            
+        </td>
+    </tr>
+    <tr>
+        <td style="width:25%" class="fondoblanco">
+            <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_11058_lblVistaDescripcion">Descripción</span>
+            
+        </td>
+        <td style="width:75%" class="fondoblanco">
+            <textarea name="ctl00$CPH1$UCVistaPreviaCircular$DatosCircular$11058$txtDescripcion" rows="2" cols="100" id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_11058_txtDescripcion" disabled="disabled" class="form-control">
+CIRCULAR N&#176; 1 ACLARATORIA con Consulta - Licitaci&#243;n P&#250;blica Nacional e Internacional de Etapa M&#250;ltiple N&#176; 34-0003-LPU26 - EX-2026-73614665-APN-DGDA#MEC -
+Se adjunta respuesta a Consulta N&#176; 1</textarea>
+            <br />
+            <br />
+            
+        </td>
+    </tr>
+</table>
+<br />
+    <br />
+</div>
+<br />
+
+
+
+    <div style="float: left; margin-left: 3px;">
+        <span id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_lblAnexosCirculares"><b><font color="#303030">Anexos</font></b></span>
+    </div>
+
+    <br />
+    <br />
+
+    <div style="width: 100%; height: 11px;  clear: left;">
+        <div style="float: left; background-color: #FFFFFF; background-position: top;">
+            
+        </div>
+        <div style="float: right; background-color: #FFFFFF; background-position: top;">
+            
+        </div>
+    </div>
+
+    <div class="panel panel-default panel-body" align="center">
+        <div>
+	<table cellspacing="0" rules="all" border="1" id="ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_gvAnexosCircularAclaratoria" width="98%">
+		<tr>
+			<th scope="col" width="30%">Nombre</th><th scope="col" width="60%">Descripcion</th><th scope="col" width="10%">Acciones</th>
+		</tr><tr>
+			<td>plieg202687691515apnse#mec.pdf</td><td>CIRCULAR N&#176; 1 ACLARATORIA - PLIEG-2026-87691515-APN-SE#MEC</td><td>
+                        <a class="style4" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$CPH1$UCVistaPreviaCircular$DatosCircular$gvAnexosCircularAclaratoria$ctl02$ctl00&quot;, &quot;&quot;, true, &quot;&quot;, &quot;&quot;, false, true))">Ver</a>
+                    </td>
+		</tr>
+	</table>
+</div>
+    </div>
+
+    <div style="width: 100%; height: 11px; ">
+        <div style="float: left; background-color: #FFFFFF; background-position: top;">
+            
+        </div>
+        <div style="float: right; background-color: #FFFFFF; background-position: top;">
+            
+        </div>
+    </div>
+
+    
+
+<script src="../JavaScript/UCAnexo.js" type="text/javascript"></script>
+
+<!-- Ingreso de Anexos -->
+
+<!-- /Ingreso de Anexos -->
+<!--Subtitulo Anexos-->
+
+<!--/Subtitulo Anexos-->
+<!--Subtitulo Documentos-->
+
+<!-- Subtitulo Documentos-->
+<!-- Anexos Ingresados -->
+
+<!-- /Anexos Ingresados -->
+
+<!-- LINK "VER FICHA DEL PROCESO PUBLICADO" -->
+
+
+<!-- LINK "VER MODIFICACIONES REALIZADAS" -->
+
+
+            </td>
+        </tr>
+    </table>
+</div>
+
+        <div style="float: right">
+            <span id="ctl00_CPH1_lblNombrePersonaFirma"><b><font color="#303030"></font></b></span>
+            <br />
+            <span id="ctl00_CPH1_lblCargoPersonaFirma"><b><font color="#303030"></font></b></span>
+            <br />
+        </div>
+        <br />
+        <br />
+        <br />
+        <div style="padding-left: 30px">
+            <div id="Botonera" style="text-align: left">
+                <a onclick="javascript:Cerrar();return false;" id="ctl00_CPH1_lnkCerrar" class="btn" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$CPH1$lnkCerrar&quot;, &quot;&quot;, true, &quot;&quot;, &quot;&quot;, false, true))"><font color="#006AAC">Cerrar</font></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Este campo se utiliza para validar la pantalla al generar el documento GEDO -->
+    <input type="hidden" name="ctl00$CPH1$VistaGEDO" id="ctl00_CPH1_VistaGEDO" />
+
+                </div>
+            </div>
+        </div>
+    
+<script type="text/javascript">
+            if (jQuery.fn.limitMaxlength == null) {
+                jQuery.fn.limitMaxlength = function(options) {
+
+                    var settings = jQuery.extend({
+                        attribute: "maxlength",
+                        onLimit: function() { },
+                        onEdit: function() { }
+                    }, options);
+
+                    // Event handler to limit the textarea
+                    var onEdit = function() {
+                        var textarea = jQuery(this);
+                        var maxlength = parseInt(jQuery(options)[0]); 
+
+                        var texto = textarea.val().replace(/(\r\n|\n|\r)/gm, '\r\n');
+
+                        if (texto.length > maxlength) {
+                            textarea.val(texto.substr(0, maxlength));
+
+                            // Call the onlimit handler within the scope of the textarea
+                            jQuery.proxy(settings.onLimit, this)();
+                        }
+
+                        // Call the onEdit handler within the scope of the textarea
+                        jQuery.proxy(settings.onEdit, this)(maxlength - texto.length);
+                    }
+
+                    this.each(onEdit);
+
+                    return $(this).keyup(onEdit)
+                    .keydown(onEdit)
+                    .focus(onEdit)
+                    .blur(onEdit)
+                    .live('input paste', onEdit);
+                }
+            }
+
+            $(document).ready(
+                function() {
+                    $("textarea[id=ctl00_CPH1_UCVistaPreviaCircular_DatosCircular_11058_txtDescripcion]").limitMaxlength(8000);
+                }
+              );
+            
+            </script></form>
+</body>
+</html>

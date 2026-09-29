@@ -40,9 +40,12 @@
  * figure. The rows are unpriced by nature — lib/relevance.ts treats Argentina
  * as it treats Mexico (UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL).
  *
- * The annexes download with no login too, but only through a postback on the
- * process page, so there is no URL to store for them; the process page is the
- * link a reader follows to them.
+ * The documents download with no login too, but only through a postback on
+ * the process page, so there is no plain URL for them. What is stored instead
+ * (2026-09-29, user: 做成自动下载) is the process page plus the button's
+ * event target, `<page>#documento=<target>` — see portalDocumentUrl() and
+ * downloadPortalDocument() below — which the 批量下载标书 route replays the
+ * way the page itself does when a visitor clicks.
  */
 import { foldAccents } from "@/lib/text-fold";
 import { runPool } from "@/lib/ingestion/run-pool";
@@ -252,7 +255,178 @@ export type ArgentinaPortalProcess = {
   /** Line items: "CONCESION RED FEDERAL CAMINOS; TRAMO: CENTRO". */
   items: string[];
   annexes: { name: string; type?: string; description?: string }[];
+  /** Every downloadable document on the page, one per distinct file — see parsePortalDocuments(). */
+  documents: PortalDocument[];
 };
+
+/** One download button on a process (or circular) page. */
+export type PortalDocument = {
+  /** The button's __EVENTTARGET. */
+  eventTarget: string;
+  /** A file name built from the row: the annex's own name, or the act's label and GEDO number. */
+  fileName: string;
+  /** "Anexo" | "Condiciones generales" | "Cláusulas particulares" | "Acto administrativo" | "Circular". */
+  kind: string;
+  /** The page the button is on, when it is not the process page itself: a circular's own page. */
+  pageUrl?: string;
+};
+
+// The two hosts are one product in two versions: COMPR.AR renders annexes
+// in a GridView (gvAnexos$ctl02) and the general conditions as
+// UCCondicionesGenerales$…$lnkGEDOByC; CONTRAT.AR in a Repeater
+// (rptAnexos$MiClaveUnica1) and UC_CondicionesGenerales$…$btnVer.
+const DOCUMENT_BUTTON =
+  /__doPostBack\(&#39;(ctl00\$CPH1\$UCVistaPreviaPliego\$(UCAnexos|UCCondicionesGenerales|UC_CondicionesGenerales|UC_Clausulas|UC_ActosAdministrativos)\$\w+\$\w+\$(btnVerAnexo|lnkGEDOByC|btnVer))&#39;/g;
+/** A circular's attachments, on its own page (VistaPreviaCircularCiudadano.aspx). */
+const CIRCULAR_DOCUMENT_BUTTON = /WebForm_PostBackOptions\(&quot;(ctl00\$CPH1\$UCVistaPreviaCircular\$[\w$]+)&quot;/g;
+const GEDO_NUMBER = /^[A-Z]{2,6}-\d{4}-\d+-[A-Z0-9#%-]+$/;
+const DOCUMENT_KIND: Record<string, string> = {
+  UCAnexos: "Anexo",
+  UCCondicionesGenerales: "Condiciones generales",
+  UC_CondicionesGenerales: "Condiciones generales",
+  UC_Clausulas: "Cláusulas particulares",
+  UC_ActosAdministrativos: "Acto administrativo",
+};
+
+/** The text cells of the table row a match sits in. */
+function rowCells(html: string, at: number): string[] {
+  const rowStart = html.lastIndexOf("<tr", at);
+  const rowEnd = html.indexOf("</tr>", at);
+  if (rowStart < 0 || rowEnd < 0) return [];
+  return [...html.slice(rowStart, rowEnd).matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map((cell) => cellText(cell[1])).filter(Boolean);
+}
+
+/**
+ * A process page's circulars (aclaratorias, modificatorias), each with its
+ * own page: the button only opens a popup on VistaPreviaCircularCiudadano.aspx.
+ */
+export function parsePortalCirculars(html: string, processUrl: string): { number: string; url: string }[] {
+  const circulars: { number: string; url: string }[] = [];
+  for (const match of html.matchAll(/VerCircularCiudadano\(&#39;([^&]+)&#39;/g)) {
+    const number = rowCells(html, match.index)[0] ?? String(circulars.length + 1);
+    circulars.push({ number, url: new URL(`VistaPreviaCircularCiudadano.aspx?qs=${decodeEntities(match[1])}`, processUrl).toString() });
+  }
+  return circulars;
+}
+
+/** The attachments on a circular's page, named after the circular. */
+export function parseCircularDocuments(html: string, circular: { number: string; url: string }): PortalDocument[] {
+  return [...html.matchAll(CIRCULAR_DOCUMENT_BUTTON)].flatMap((match) => {
+    const name = rowCells(html, match.index)[0];
+    if (!name) return [];
+    return [{ eventTarget: decodeEntities(match[1]), fileName: `Circular ${circular.number} - ${name}`, kind: "Circular", pageUrl: circular.url }];
+  });
+}
+
+/**
+ * The download buttons of a process page: annexes, the general conditions,
+ * the particular clauses (the pliego itself) and the administrative acts.
+ * Measured 2026-09-29 on 38/1-0455-LPU26: each downloads with no login.
+ *
+ * lnkGEDODisposicion is left out — it answered with a page, not a file — and
+ * a GEDO number already taken is skipped: 「Autorización pliego」 and
+ * 「Autorización llamado」 are often the same act, and two buttons for one
+ * file would download it twice.
+ */
+export function parsePortalDocuments(html: string): PortalDocument[] {
+  const documents: PortalDocument[] = [];
+  const seen = new Set<string>();
+  for (const match of html.matchAll(DOCUMENT_BUTTON)) {
+    const [, eventTarget, container] = match;
+    const cells = rowCells(html, match.index);
+    if (cells.length === 0) continue;
+    const kind = DOCUMENT_KIND[container];
+    let fileName: string;
+    let key: string;
+    if (container === "UCAnexos") {
+      // [file, type, description]: CONTRAT.AR's files are named by GEDO
+      // number only, so the description goes in front when it adds anything.
+      const description = cells[2];
+      fileName = description && !cells[0].toLowerCase().startsWith(description.toLowerCase()) ? `${description} - ${cells[0]}` : cells[0];
+      key = `anexo:${cells[0]}`;
+    } else {
+      const gedo = cells.find((cell) => GEDO_NUMBER.test(cell));
+      if (!gedo) continue;
+      const label = container === "UCCondicionesGenerales" ? kind : cells[0] === gedo ? kind : cells[0];
+      fileName = `${label} ${gedo}.pdf`;
+      key = `gedo:${gedo}`;
+    }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    documents.push({ eventTarget: decodeEntities(eventTarget), fileName, kind });
+  }
+  return documents;
+}
+
+/** Marks a stored document link as a postback on the page before it. */
+const DOCUMENT_MARK = "#documento=";
+const PORTAL_HOSTS = new Set(["comprar.gob.ar", "contratar.gob.ar"]);
+
+/** The stored link for one document: the process page, then which button. */
+export function portalDocumentUrl(processUrl: string, eventTarget: string): string {
+  return `${processUrl}${DOCUMENT_MARK}${encodeURIComponent(eventTarget)}`;
+}
+
+/** The page and button of a link portalDocumentUrl() made; null for any other URL. */
+export function parsePortalDocumentUrl(url: string): { pageUrl: string; eventTarget: string } | null {
+  const at = url.indexOf(DOCUMENT_MARK);
+  if (at < 0) return null;
+  const pageUrl = url.slice(0, at);
+  let host: string;
+  try {
+    host = new URL(pageUrl).hostname;
+  } catch {
+    return null;
+  }
+  if (!PORTAL_HOSTS.has(host)) return null;
+  return { pageUrl, eventTarget: decodeURIComponent(url.slice(at + DOCUMENT_MARK.length)) };
+}
+
+export type PortalDocumentDownload =
+  | { ok: true; buffer: Buffer; bytes: number; fileName?: string }
+  | { ok: false; error: string };
+
+/**
+ * Downloads one document the way a visitor's click does: open the process
+ * page on a fresh session, post the button back, follow any redirect. The
+ * portal answers slowly from abroad and sometimes drops the first
+ * connection, which PortalSession's retries cover.
+ */
+export async function downloadPortalDocument(url: string, limits: { maxBytes: number; timeoutMs: number }): Promise<PortalDocumentDownload> {
+  const target = parsePortalDocumentUrl(url);
+  if (!target) return { ok: false, error: "不是 COMPR.AR / CONTRAT.AR 的文件链接" };
+  try {
+    const session = new PortalSession();
+    const page = await session.page(target.pageUrl);
+    const action = formAction(page.html, page.url);
+    const form = { ...hiddenFields(page.html), __EVENTTARGET: target.eventTarget, __EVENTARGUMENT: "" };
+    let response = await session.request(action, { method: "POST", form, timeoutMs: limits.timeoutMs });
+    let current = action;
+    for (let hop = 0; hop < 5 && response.status >= 300 && response.status < 400 && response.headers.get("location"); hop += 1) {
+      await response.body?.cancel();
+      current = new URL(response.headers.get("location")!, current).toString();
+      response = await session.request(current, { timeoutMs: limits.timeoutMs });
+    }
+    if (!response.ok) return { ok: false, error: `官网返回 HTTP ${response.status}` };
+    const type = response.headers.get("content-type") ?? "";
+    const disposition = response.headers.get("content-disposition") ?? "";
+    if (/text\/html/i.test(type) && !/attachment/i.test(disposition)) {
+      await response.body?.cancel();
+      return { ok: false, error: "官网没有返回文件（项目页可能已更新，按钮已变）" };
+    }
+    const declared = Number(response.headers.get("content-length") ?? "0");
+    if (declared > limits.maxBytes) {
+      await response.body?.cancel();
+      return { ok: false, error: `文件 ${(declared / 1024 / 1024).toFixed(0)} MB，超过本次下载上限` };
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.byteLength > limits.maxBytes) return { ok: false, error: `文件超过本次下载上限` };
+    const named = /filename\*?=(?:UTF-8'')?"?([^";]+)/i.exec(disposition)?.[1];
+    return { ok: true, buffer, bytes: buffer.byteLength, ...(named ? { fileName: decodeURIComponent(named) } : {}) };
+  } catch (err) {
+    return { ok: false, error: describeFetchError(err) };
+  }
+}
 
 /** `<span id="…_lblX">value</span>` inside the process view, by suffix. */
 function spans(html: string): Map<string, string[]> {
@@ -312,6 +486,7 @@ export function parsePortalProcess(html: string): ArgentinaPortalProcess | null 
       ...(annexTypes[index] ? { type: annexTypes[index].replace(/_/g, " ") } : {}),
       ...(annexDescriptions[index] ? { description: annexDescriptions[index] } : {}),
     })),
+    documents: parsePortalDocuments(html),
   };
 }
 
@@ -339,7 +514,7 @@ export class PortalSession {
    * (2026-09-27), so a transient refusal is retried rather than recorded as
    * a failed row. A postback here only reads a page, so repeating one is safe.
    */
-  async request(url: string, init: { method?: "GET" | "POST"; form?: Record<string, string> } = {}): Promise<Response> {
+  async request(url: string, init: { method?: "GET" | "POST"; form?: Record<string, string>; timeoutMs?: number } = {}): Promise<Response> {
     for (let attempt = 1; ; attempt += 1) {
       try {
         const response = await this.requestOnce(url, init);
@@ -352,7 +527,7 @@ export class PortalSession {
     }
   }
 
-  private async requestOnce(url: string, init: { method?: "GET" | "POST"; form?: Record<string, string> }): Promise<Response> {
+  private async requestOnce(url: string, init: { method?: "GET" | "POST"; form?: Record<string, string>; timeoutMs?: number }): Promise<Response> {
     const response = await fetch(url, {
       method: init.method ?? "GET",
       headers: {
@@ -362,7 +537,8 @@ export class PortalSession {
       },
       ...(init.form ? { body: new URLSearchParams(init.form).toString() } : {}),
       redirect: "manual",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      // A document download sets its own: a 24 MB pliego takes longer than a page.
+      signal: AbortSignal.timeout(init.timeoutMs ?? TIMEOUT_MS),
     });
     this.remember(response);
     return response;
@@ -497,9 +673,20 @@ export async function fetchArgentinaPortal(
   const records: ArgentinaPortalRecord[] = [];
   await runPool(opened, 4, async ({ row, url }) => {
     try {
-      const detail = await new PortalSession().page(url);
+      const session = new PortalSession();
+      const detail = await session.page(url);
       const process = parsePortalProcess(detail.html);
       if (!process) throw new Error("项目页读不出编号和名称");
+      // A circular's attachments sit on its own page. One that cannot be
+      // read costs its attachments, not the row.
+      for (const circular of parsePortalCirculars(detail.html, detail.url)) {
+        try {
+          const page = await session.page(circular.url);
+          process.documents.push(...parseCircularDocuments(page.html, circular));
+        } catch {
+          // The circular is still listed on the process page a reader opens.
+        }
+      }
       // Stored without the cookie-check suffix: the page opens without it.
       records.push({ portal: portalId, row, url: url.replace(/[&?]AspxAutoDetectCookieSupport=1$/, ""), process });
     } catch (err) {

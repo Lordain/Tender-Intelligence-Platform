@@ -12,7 +12,7 @@ import { slugify, untranslated } from "@/lib/ingestion/text-utils";
 import { foldAccents } from "@/lib/text-fold";
 import { safeFileName, type TenderDocumentLink } from "@/lib/ingestion/document-links";
 import { classifyStoredTender } from "@/lib/relevance";
-import type { ArgentinaPortalRecord } from "@/lib/ingestion/connectors/argentina-portal-live";
+import { portalDocumentUrl, type ArgentinaPortalRecord } from "@/lib/ingestion/connectors/argentina-portal-live";
 import { ADIF_PORTAL_URL, type AdifTender } from "@/lib/ingestion/connectors/adif-live";
 import type { BoletinNotice } from "@/lib/ingestion/connectors/boletin-oficial-live";
 
@@ -328,6 +328,25 @@ export function adifDocumentLinks(tender: AdifTender): TenderDocumentLink[] {
     documentType: file.category,
     format: (/\.(\w{2,4})$/.exec(file.url)?.[1] ?? "pdf").toLowerCase(),
   }));
+}
+
+/**
+ * A COMPR.AR / CONTRAT.AR row's documents as links the 批量下载标书 route can
+ * replay (user, 2026-09-29: 做成自动下载): the portal has no plain URL per
+ * file, so each link is the page plus the button — see portalDocumentUrl().
+ */
+export function portalDocumentLinks(record: ArgentinaPortalRecord): TenderDocumentLink[] {
+  return record.process.documents.map((document) => {
+    const extension = /\.(\w{2,4})$/.exec(document.fileName)?.[1]?.toLowerCase() ?? "pdf";
+    // Trimmed before the extension goes back on: safeFileName's 120-character cap would otherwise cut it off.
+    const stem = document.fileName.replace(/\.\w{2,4}$/, "");
+    return {
+      sourceUrl: portalDocumentUrl(document.pageUrl ?? record.url, document.eventTarget),
+      fileName: `${safeFileName(stem).slice(0, 110)}.${extension}`,
+      documentType: document.kind,
+      format: extension,
+    };
+  });
 }
 
 // ── Boletín Oficial ──────────────────────────────────────────────────────

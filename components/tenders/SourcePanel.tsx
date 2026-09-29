@@ -5,6 +5,7 @@ import type { Tender } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { DetailSectionHeading } from "@/components/tenders/DetailSectionHeading";
 import { tenderSearchGuide } from "@/lib/tender-search-guide";
+import { officialSiteAccessNote } from "@/lib/official-site-access";
 import { BidDocumentAccessCard } from "@/components/tenders/BidDocumentAccessCard";
 import Link from "next/link";
 import type { ParticipationGuideLink } from "@/lib/participation-guides";
@@ -25,6 +26,7 @@ export function SourcePanel({ tender, participationGuide: guide }: { tender: Ten
   const { locale } = useLocale();
   const [copied, setCopied] = useState(false);
   const searchGuide = tenderSearchGuide(tender);
+  const accessNote = officialSiteAccessNote(tender);
 
   async function handleCopy() {
     await navigator.clipboard.writeText(tender.tenderNumber);
@@ -62,6 +64,14 @@ export function SourcePanel({ tender, participationGuide: guide }: { tender: Ten
         </div>
         <p className="mt-3 text-xs leading-5 text-white/60">本站是信息服务，不接收投标文件或代办投标。请前往上述官方渠道完成正式流程；若链接进入官方检索页，请复制招标编号查询，并以官方文件和要求为准。</p>
       </div>
+
+      {/* Sites a reader in China often cannot open (lib/official-site-access.ts; user, 2026-09-29). */}
+      {accessNote && (
+        <p className="rounded-2xl border border-[#f0d9a8] bg-[#fff8e9] px-5 py-4 text-xs leading-6 text-[#7a5200] sm:px-6">
+          <span className="mb-1 block text-sm font-black text-[#5c3d00]">打不开官方入口？</span>
+          {accessNote}
+        </p>
+      )}
 
       {/*
         The step list only appears for platforms with no linkable per-tender

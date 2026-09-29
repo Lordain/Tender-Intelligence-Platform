@@ -35,6 +35,7 @@ import {
   mapAdifTenderToTender,
   mapBoletinNoticeToTender,
   mapPortalRecordToTender,
+  portalDocumentLinks,
 } from "@/lib/ingestion/argentina-mapper";
 import { classifyStoredTender } from "@/lib/relevance";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
@@ -183,6 +184,7 @@ export async function ingestArgentina(
         continue;
       }
       rows.push({ tender, source: id });
+      documentLinks.push({ slug: tender.slug, links: portalDocumentLinks(record) });
       if (tender.relevance.tier !== "excluded") kept += 1;
     }
     return {

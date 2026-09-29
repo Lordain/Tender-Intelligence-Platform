@@ -264,6 +264,24 @@ async function main() {
   check("run: closed calls are not rows", result.rows.some((row) => row.tender.slug === "argentina-contratar-504-0001-lpu26"), false);
   check("run: kept are all Argentine and open", result.kept.every((tender) => tender.country === "Argentina" && tender.status === "open"), true);
 
+  // 2026-09-29: COMPR.AR/CONTRAT.AR calls published before the 3-day window are not rows; ADIF (no publication date) still is.
+  const windowRun = (now: Date, days?: number) =>
+    ingestArgentina(null, {
+      write: false,
+      now,
+      sources: ["comprar", "adif"],
+      ...(days === undefined ? {} : { days }),
+      fetchers: { portal: async (id) => ({ portal: id, listed: comprarRows, records: [record], failed: [] }), adif: async () => adif },
+    });
+  const hasSitea = (run: Awaited<ReturnType<typeof windowRun>>) => run.rows.some((row) => row.tender.slug === siteaTender.slug);
+  const adifCount = (run: Awaited<ReturnType<typeof windowRun>>) => run.rows.filter((row) => row.source === "adif").length;
+  const windowed = await windowRun(NOW);
+  const unwindowed = await windowRun(NOW, 0);
+  check("window: a call published 14/09 is skipped on 27/09", hasSitea(windowed), false);
+  check("window: and read with --days 0", hasSitea(unwindowed), true);
+  check("window: the next day it is kept", hasSitea(await windowRun(new Date("2026-09-15T12:00:00Z"))), true);
+  check("window: ADIF rows are not windowed", [adifCount(windowed) > 0, adifCount(windowed)], [true, adifCount(unwindowed)]);
+
   console.log(`${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 }

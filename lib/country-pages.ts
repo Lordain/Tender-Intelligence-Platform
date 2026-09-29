@@ -55,8 +55,7 @@ export const countryPages: CountryPage[] = [
   {
     slug: "argentina",
     country: "Argentina",
-    intro: "阿根廷联邦政府的货物与服务采购在 COMPR.AR 平台发布，公共工程、特许经营在 CONTRAT.AR 平台发布；国家铁路基础设施公司（ADIF）有自己的招标门户，国有企业和各省的招标公告刊登在政府公报（Boletín Oficial）。",
-    sources: ["COMPR.AR", "CONTRAT.AR", "ADIF", "Boletín Oficial"],
+    intro: "阿根廷联邦政府的货物与服务采购在 COMPR.AR 平台发布，公共工程、特许经营在 CONTRAT.AR 平台发布；国家铁路基础设施公司（ADIF）有自己的招标门户，其他分散采购通知还会刊登在政府公报（Boletín Oficial）第三部分。",
   },
 ];
 

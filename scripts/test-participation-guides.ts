@@ -12,6 +12,12 @@ import { CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig";
 import { CODELCO_SOURCE_NAME } from "@/lib/relevance-codelco";
 import { PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
 import { UPME_SOURCE_NAME } from "@/lib/ingestion/upme-mapper";
+import {
+  ADIF_SOURCE_NAME,
+  BOLETIN_SOURCE_NAME,
+  COMPRAR_SOURCE_NAME,
+  CONTRATAR_SOURCE_NAME,
+} from "@/lib/ingestion/argentina-mapper";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -47,6 +53,10 @@ const cases: Array<[string, string, string | undefined]> = [
   [UPME_SOURCE_NAME, "UPME", "colombia-upme"],
   [PETROPERU_SOURCE_NAME, "Petróleos del Perú – PETROPERÚ S.A.", "peru-petroperu"],
   [CODELCO_SOURCE_NAME, "Codelco — Casa Matriz", "chile-codelco"],
+  [COMPRAR_SOURCE_NAME, "MINISTERIO DE EJEMPLO", "argentina-comprar"],
+  [CONTRATAR_SOURCE_NAME, "SECRETARÍA DE TRANSPORTE", "argentina-contratar"],
+  [ADIF_SOURCE_NAME, "Trenes Argentinos Infraestructura", "argentina-adif"],
+  [BOLETIN_SOURCE_NAME, "BANCO DE LA NACIÓN ARGENTINA", "argentina-boletin-oficial"],
   ["Portal Nacional de Contratações Públicas (PNCP) — busca de editais", "PETROBRAS TRANSPORTE S.A.", "brazil-pncp"],
 ];
 for (const [sourceName, buyer, slug] of cases) {

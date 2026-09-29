@@ -40,6 +40,8 @@ import { classifyStoredTender } from "@/lib/relevance";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { saveDocumentLinks, type DocumentLinksForSlug } from "@/lib/ingestion/document-links";
 import { runPool } from "@/lib/ingestion/run-pool";
+import { COMPANY_SOURCE_WINDOW_DAYS } from "@/lib/ingestion/publication-window";
+import { filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import type { ArgentinaSourceId } from "@/lib/ingestion/argentina-import-result";
 
 export const ARGENTINA_SOURCES: ArgentinaSourceId[] = ["comprar", "contratar", "adif", "boletin"];
@@ -58,7 +60,7 @@ export type ArgentinaSourceReport = {
   /** Rows whose detail was read and mapped. */
   mapped: number;
   kept: number;
-  /** Rows read but not imported, with why — COMPR.AR's small procedures, Boletín amendments, closed calls. */
+  /** Rows read but not imported, with why — COMPR.AR's small procedures, Boletín amendments, closed calls, calls published before the window. */
   skipped: number;
   failures: { ref: string; error: string }[];
   /** The whole source failed. */
@@ -141,9 +143,24 @@ export async function ingestArgentina(
      * limited to five minutes, passes [] and reports the cause at once.
      */
     portalReachRetryPausesMs?: readonly number[];
+    /**
+     * COMPR.AR and CONTRAT.AR list every call still open, however old — a
+     * Vialidad Nacional road call published 2026-05-18 still took bids at the
+     * end of September — so each run offered months of backlog (the user,
+     * 2026-09-29: 为什么自动跑的过程中，会进一些很老的项目？). Only calls
+     * published within this many days are imported, the same 3-day window as
+     * the company sources (publication-window.ts); 0 reads them all.
+     *
+     * Not applied to ADIF, whose list has no publication date (a first-seen
+     * row is stamped today, estimated), nor to the Boletín Oficial, already
+     * bounded by the editions it reads: its date is the edition's, and a
+     * Friday edition read on Monday would fall outside three days.
+     */
+    days?: number;
   },
 ): Promise<ArgentinaIngestResult> {
   const now = options.now ?? new Date();
+  const days = options.days ?? COMPANY_SOURCE_WINDOW_DAYS;
   const fetchers = { ...LIVE_FETCHERS, ...options.fetchers };
   const selected = new Set(options.sources ?? ARGENTINA_SOURCES);
   const rows: ArgentinaIngestResult["rows"] = [];
@@ -161,7 +178,7 @@ export async function ingestArgentina(
     let skipped = run.value.listed.length - run.value.records.length;
     for (const record of run.value.records) {
       const tender = mapPortalRecordToTender(record, now);
-      if (!isStillOpen(tender, now)) {
+      if (!isStillOpen(tender, now) || filterTendersPublishedWithinDays([tender], days, now).length === 0) {
         skipped += 1;
         continue;
       }

@@ -9,12 +9,15 @@
  *   npm run cron:argentina                        (dry run — fetches and classifies, writes nothing)
  *   npm run cron:argentina -- --write
  *   npm run cron:argentina -- --only adif,boletin (some sources only)
+ *   npm run cron:argentina -- --days 0 --write    (COMPR.AR/CONTRAT.AR calls of any
+ *                                                 publication date, not only the last 3 days)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ARGENTINA_SOURCE_LABELS, ARGENTINA_SOURCES, ingestArgentina } from "../lib/ingestion/ingest-argentina";
 import type { ArgentinaSourceId } from "../lib/ingestion/argentina-import-result";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
+import { windowDaysFromArgv } from "../lib/ingestion/publication-window";
 
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 
@@ -35,7 +38,9 @@ async function main() {
     process.exit(1);
   }
 
-  const result = await ingestArgentina(supabase, { write, sources: onlyFlag() });
+  const days = windowDaysFromArgv();
+  console.log(days > 0 ? `COMPR.AR、CONTRAT.AR 只导入最近 ${days} 天发布的（--days 0 不限）` : "COMPR.AR、CONTRAT.AR 不限发布日期");
+  const result = await ingestArgentina(supabase, { write, sources: onlyFlag(), days });
   for (const source of result.sources) {
     console.log(
       `\n${ARGENTINA_SOURCE_LABELS[source.id]}（${source.seconds.toFixed(0)} 秒）` +

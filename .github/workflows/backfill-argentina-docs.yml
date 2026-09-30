@@ -1,0 +1,51 @@
+# Records the bid-document links of Argentine tenders imported from COMPR.AR
+# and CONTRAT.AR before the import started recording them (2026-09-29).
+# New imports record their own; this is for the rows already in the database,
+# so they show 「标书 N」 on /admin/documents-needed and 批量下载标书 can fetch
+# them.
+#
+# WHY A WORKFLOW (user, 2026-09-30: 加 Actions). The portals time out from
+# mainland China, so the backfill cannot run from the admin's machine, and
+# this runner reaches them — the daily Argentina job reads COMPR.AR here every
+# night. The Supabase keys are the ones daily-ingest.yml already uses.
+#
+# Manual only. Without 写入 it lists what it would save and touches nothing.
+# With it, it upserts tender_document_links on (tender_id, source_url): no
+# tender row changes, and re-running is harmless.
+name: Backfill Argentina bid documents
+
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: "真的写入 Supabase（不勾就是试运行）"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Backfill
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ "${{ inputs.write }}" = "true" ]; then
+            npm run backfill:argentina-docs -- --write
+          else
+            npm run backfill:argentina-docs
+          fi

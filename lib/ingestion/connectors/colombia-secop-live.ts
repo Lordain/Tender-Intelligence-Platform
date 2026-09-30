@@ -87,6 +87,20 @@ export async function fetchSecopProcesos(options: FetchSecopProcesosOptions): Pr
   return rows;
 }
 
+/**
+ * The newest publication date the dataset holds, as YYYY-MM-DD, or null when
+ * it is empty. datos.gov.co trails the SECOP II portal by a day or two, so a
+ * manual 近 N 天 run that comes back empty says why (2026-09-30).
+ */
+export async function fetchSecopLatestPublicationDate(): Promise<string | null> {
+  const url = new URL(SECOP_BASE_URL);
+  url.searchParams.set("$select", "max(fecha_de_publicacion_del) as latest");
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`SECOP procesos API responded ${response.status} ${response.statusText} (latest date)`);
+  const [row] = (await response.json()) as { latest?: string }[];
+  return row?.latest ? row.latest.slice(0, 10) : null;
+}
+
 const REFERENCE_BATCH_SIZE = 50;
 
 function escapeSoqlString(value: string): string {

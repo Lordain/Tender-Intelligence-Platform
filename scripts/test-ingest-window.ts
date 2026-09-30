@@ -16,29 +16,37 @@ import type { Tender } from "../types/tender";
 const NOW = new Date("2026-09-15T12:00:00.000Z");
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function daysBetween(a: Date, b: Date): number {
-  return Math.round((b.getTime() - a.getTime()) / DAY_MS);
-}
-
 type Check = { label: string; pass: boolean; detail?: string };
 const checks: Check[] = [];
 const check = (label: string, pass: boolean, detail?: string) => checks.push({ label, pass, detail });
 
 // --- resolveIngestWindow -----------------------------------------------
+// Calendar days from midnight, Bogotá time: datos.gov.co stores the
+// publication date only (every row reads 00:00), so a rolling 48 hours cut
+// the oldest day out and 近 2 天 came back empty (2026-09-30).
 const fiveDays = resolveIngestWindow({ months: 1, days: 5 }, NOW);
 check("--days 5 时 useDays 为真", fiveDays.useDays);
-check("--days 5 回溯正好 5 天", daysBetween(fiveDays.sinceDate, NOW) === 5, `实际 ${daysBetween(fiveDays.sinceDate, NOW)} 天`);
+check("--days 5 从 5 个日历日前的 0 点起", fiveDays.sinceDate.toISOString() === "2026-09-10T00:00:00.000Z", fiveDays.sinceDate.toISOString());
+check(
+  "波哥大还是前一天时（UTC 凌晨 3 点），按波哥大日期算",
+  resolveIngestWindow({ months: 1, days: 2 }, new Date("2026-09-30T03:00:00.000Z")).sinceDate.toISOString() === "2026-09-27T00:00:00.000Z",
+  resolveIngestWindow({ months: 1, days: 2 }, new Date("2026-09-30T03:00:00.000Z")).sinceDate.toISOString(),
+);
+check(
+  "近 2 天包含前天发布（记为 0 点）的项目 —— 以前从此刻往前推 48 小时会漏掉",
+  resolveIngestWindow({ months: 1, days: 2 }, new Date("2026-09-30T11:00:00.000Z")).sinceDate.getTime() <= new Date("2026-09-28T00:00:00.000Z").getTime(),
+);
 
 // The one that matters: days must not be silently widened by a months that
 // was also passed. Both flags together is the realistic invocation, because
 // --months has a default of 1 and is therefore ALWAYS present.
 check(
   "同时给 --days 5 和 --months 1 时，按 5 天算而不是 1 个月",
-  daysBetween(resolveIngestWindow({ months: 1, days: 5 }, NOW).sinceDate, NOW) === 5,
+  resolveIngestWindow({ months: 1, days: 5 }, NOW).sinceDate.toISOString() === "2026-09-10T00:00:00.000Z",
 );
 check(
   "同时给 --days 5 和 --months 6 时，仍然按 5 天算",
-  daysBetween(resolveIngestWindow({ months: 6, days: 5 }, NOW).sinceDate, NOW) === 5,
+  resolveIngestWindow({ months: 6, days: 5 }, NOW).sinceDate.toISOString() === "2026-09-10T00:00:00.000Z",
 );
 
 const oneMonth = resolveIngestWindow({ months: 1 }, NOW);

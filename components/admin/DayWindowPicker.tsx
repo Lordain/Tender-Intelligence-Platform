@@ -14,16 +14,19 @@ export function DayWindowPicker({
   onChange,
   disabled,
   label = "只导入发布于",
+  choices = DAY_WINDOW_CHOICES,
 }: {
   value: number;
   onChange: (days: number) => void;
   disabled?: boolean;
   label?: string;
+  /** SECOP adds 7: its open data trails the portal by a day or two, so 1–2 days is usually empty. */
+  choices?: readonly number[];
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
       <span className="font-semibold text-[#52636e]">{label}</span>
-      {DAY_WINDOW_CHOICES.map((choice) => (
+      {choices.map((choice) => (
         <button
           key={choice}
           type="button"

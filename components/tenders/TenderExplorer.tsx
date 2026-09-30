@@ -405,7 +405,11 @@ export function TenderExplorer({
                 icon: <CountryFlag country={country} />,
               }))}
               selected={countries as (typeof AVAILABLE_COUNTRIES)[number][]}
-              onChange={(next) => updateParams({ country: next.length === 1 ? next[0] : null })}
+              // Nothing ticked, or every country, is 全部 (no country param),
+              // like 项目规模 below. It used to keep only a single choice —
+              // written when the list had two countries, so two meant all —
+              // and picking 阿根廷 + 智利 silently listed every country.
+              onChange={(next) => updateParams({ country: next.length === 0 || next.length === countryOptions.length ? null : next.join(",") })}
             />
           </div>
           <div className="xl:px-4">

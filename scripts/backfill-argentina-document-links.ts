@@ -12,6 +12,9 @@
  * Usage:
  *   npm run backfill:argentina-docs            (dry run — lists what it would save)
  *   npm run backfill:argentina-docs -- --write
+ *
+ * The portals time out from mainland China; run it from GitHub Actions —
+ * "Backfill Argentina bid documents" (.github/workflows/backfill-argentina-docs.yml).
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import {
@@ -43,28 +46,30 @@ async function main() {
   console.log(`COMPR.AR / CONTRAT.AR 项目 ${rows.length} 条\n`);
 
   const entries: DocumentLinksForSlug[] = [];
+  let unreadable = 0;
   for (const row of rows) {
-    try {
-      const session = new PortalSession();
-      const detail = await session.page(row.source_url);
-      const process = parsePortalProcess(detail.html);
-      if (!process) throw new Error("项目页读不出编号和名称");
-      for (const circular of parsePortalCirculars(detail.html, detail.url)) {
-        try {
-          process.documents.push(...parseCircularDocuments((await session.page(circular.url)).html, circular));
-        } catch (err) {
-          console.log(`  ⚠ ${row.tender_number} 澄清 ${circular.number} 打不开：${err instanceof Error ? err.message : String(err)}`);
+    // Two tries: COMPR.AR answers an occasional 503 that clears on the next
+    // request (38/1-0455-LPU26 in the 2026-09-29 dry run).
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const links = await readDocumentLinks(row.source_url, row.tender_number);
+        entries.push({ slug: row.slug, links });
+        console.log(`${row.tender_number}：${links.length} 个文件`);
+        for (const link of links) console.log(`    ${link.documentType} | ${link.fileName}`);
+        break;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (attempt === 1) {
+          console.log(`${row.tender_number}：第一次失败（${message}），10 秒后重试`);
+          await new Promise((resolve) => setTimeout(resolve, 10_000));
+        } else {
+          unreadable += 1;
+          console.log(`${row.tender_number}：❌ ${message}`);
         }
       }
-      const record = { portal: row.source_url.includes("contratar") ? "contratar" : "comprar", url: row.source_url, process } as ArgentinaPortalRecord;
-      const links = portalDocumentLinks(record);
-      entries.push({ slug: row.slug, links });
-      console.log(`${row.tender_number}：${links.length} 个文件`);
-      for (const link of links) console.log(`    ${link.documentType} | ${link.fileName}`);
-    } catch (err) {
-      console.log(`${row.tender_number}：❌ ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+  if (unreadable > 0) console.log(`\n${unreadable} 个项目两次都读不出，没有写入；再跑一次即可补上。`);
 
   if (!write) {
     console.log(`\n试运行（加 --write 才真的写入）——什么都没动。`);
@@ -74,6 +79,23 @@ async function main() {
   console.log(`\n写入：${saved.tendersWithLinks} 个项目，${saved.linkCount} 个文件链接${saved.failed.length > 0 ? `，${saved.failed.length} 个失败` : ""}。`);
   for (const failure of saved.failed) console.log(`  ${failure.slug} —— ${failure.error}`);
   if (saved.failed.length > 0) process.exit(1);
+}
+
+/** Opens the process page and its circulars, and returns one link per download button. */
+async function readDocumentLinks(sourceUrl: string, tenderNumber: string) {
+  const session = new PortalSession();
+  const detail = await session.page(sourceUrl);
+  const process = parsePortalProcess(detail.html);
+  if (!process) throw new Error("项目页读不出编号和名称");
+  for (const circular of parsePortalCirculars(detail.html, detail.url)) {
+    try {
+      process.documents.push(...parseCircularDocuments((await session.page(circular.url)).html, circular));
+    } catch (err) {
+      console.log(`  ⚠ ${tenderNumber} 澄清 ${circular.number} 打不开：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  const record = { portal: sourceUrl.includes("contratar") ? "contratar" : "comprar", url: sourceUrl, process } as ArgentinaPortalRecord;
+  return portalDocumentLinks(record);
 }
 
 main().catch((error) => {

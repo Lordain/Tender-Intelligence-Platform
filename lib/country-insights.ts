@@ -121,6 +121,25 @@ export const countryInsights: CountryInsightSummary[] = [
     },
     highlights: ["417万亿智利比索（约4,318亿美元）长期规划组合", "24,589项规划倡议", "四大基础设施方向"],
   },
+  {
+    slug: "argentina",
+    country: "阿根廷",
+    countryCode: "AR",
+    title: "阿根廷国家洞察：2026—2028公共投资与长期战略项目机会",
+    description:
+      "梳理阿根廷国家公共投资计划2026—2028约9.53万亿比索的三年列示投资、1,164个公共投资项目，以及大型投资激励制度、交通和能源长期项目管线。",
+    author: "拉美招投标指南针",
+    readTime: "约 16 分钟",
+    heroImage: "/insights/argentina-yacyreta.webp",
+    heroImageAlt: "阿根廷与巴拉圭边境的亚西雷塔（Yacyretá）水电站大坝和输电设施",
+    heroImageCredit: {
+      author: "Cmasi（经裁切并压缩为 WebP）",
+      license: "CC BY-SA 4.0",
+      licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Yacyret%C3%A1_dam_104947.jpg",
+    },
+    highlights: ["约9.53万亿阿根廷比索三年列示投资（含规划预算）", "1,164个包括2026—2028年安排的公共投资项目", "交通与能源三年列示投入约5.30万亿比索"],
+  },
 ];
 
 export function getCountryInsight(slug: string) {

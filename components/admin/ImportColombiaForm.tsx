@@ -1,6 +1,6 @@
 "use client";
 
-import { DayWindowPicker, DEFAULT_DAY_WINDOW } from "@/components/admin/DayWindowPicker";
+import { DayWindowPicker } from "@/components/admin/DayWindowPicker";
 import { useState } from "react";
 import { AutoRunBadge, AutoRunNote } from "@/components/admin/AutoRunBadge";
 
@@ -9,6 +9,8 @@ type PullResult = {
   mappedCount: number;
   keptAfterRecencyCount: number;
   months: number;
+  sinceDate?: string;
+  sourceLatestPublicationDate?: string;
   upsertedCount?: number;
   skippedExcludedCount?: number;
   protectedCount?: number;
@@ -59,10 +61,21 @@ type RefreshResult = {
  * filter at all), so it genuinely reaches everything already tracked
  * regardless of age.
  */
+const SECOP_DAY_CHOICES = [1, 2, 3, 7] as const;
+const SECOP_DEFAULT_DAYS = 7;
+
+/** "2026-09-28" → "9月28日". */
+function monthDay(date: string): string {
+  const [, month, day] = date.split("-");
+  return `${Number(month)}月${Number(day)}日`;
+}
+
 export function ImportColombiaForm() {
   // Days, not months (user, 2026-09-28: 1、2、3天，不需要每次都1个月). The daily
   // job keeps new tenders flowing; a manual run only tops up the last few days.
-  const [days, setDays] = useState<number>(DEFAULT_DAY_WINDOW);
+  // SECOP alone also offers 7, and starts there (2026-09-30): datos.gov.co
+  // trails the portal by a day or two, so 近 1–2 天 is usually empty.
+  const [days, setDays] = useState<number>(SECOP_DEFAULT_DAYS);
   const [maxPages, setMaxPages] = useState("20");
   // Defaults to checked per the user's explicit request (2026-09-04): "写入
   // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
@@ -137,12 +150,13 @@ export function ImportColombiaForm() {
       </AutoRunNote>
       <p className="mt-1 text-sm text-[#52636e]">
         直接从 SECOP II 官方公开接口实时拉取（不需要手动导出文件），可以同时把每条新写入项目的招标附件一并下载并记录。
+        开放数据比 SECOP 门户晚 1–2 天，且只记到日期；「近 N 天」按哥伦比亚日历日算（从 N 天前的 0 点起）。
       </p>
       {error && <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
 
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1 text-xs">
-          <DayWindowPicker value={days} onChange={setDays} disabled={submitting !== null} />
+          <DayWindowPicker value={days} onChange={setDays} disabled={submitting !== null} choices={SECOP_DAY_CHOICES} />
         </div>
         <label className="flex flex-col gap-1 text-xs">
           <span className="font-semibold text-[#52636e]">最多拉取页数（每页 1000 条）</span>
@@ -195,8 +209,15 @@ export function ImportColombiaForm() {
       {pullResult && (
         <div className="mt-3 text-xs text-[#52636e]">
           <p>
-            实时拉到 {pullResult.fetchedCount} 条，成功映射 {pullResult.mappedCount} 条，按最近 {days} 天过滤后剩 {pullResult.keptAfterRecencyCount} 条。
+            实时拉到 {pullResult.fetchedCount} 条，成功映射 {pullResult.mappedCount} 条，
+            {pullResult.sinceDate ? `按 ${monthDay(pullResult.sinceDate)}起发布过滤` : "按发布时间过滤"}后剩 {pullResult.keptAfterRecencyCount} 条。
           </p>
+          {pullResult.sourceLatestPublicationDate && (
+            <p className="mt-1">
+              开放数据目前最新到 {monthDay(pullResult.sourceLatestPublicationDate)}
+              {pullResult.sinceDate && pullResult.sourceLatestPublicationDate < pullResult.sinceDate ? "，比所选时间段还早，所以拉到 0 条——请选更长的天数。" : "。"}
+            </p>
+          )}
           {pullResult.upsertedCount !== undefined && (
             <p className="mt-1 font-semibold text-emerald-700">
               已写入 {pullResult.upsertedCount} 条

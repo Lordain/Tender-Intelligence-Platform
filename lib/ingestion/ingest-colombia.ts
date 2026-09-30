@@ -2,11 +2,11 @@ import { createHash } from "node:crypto";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchSecopProcesos, fetchSecopProcesosByReference } from "@/lib/ingestion/connectors/colombia-secop-live";
+import { fetchSecopLatestPublicationDate, fetchSecopProcesos, fetchSecopProcesosByReference } from "@/lib/ingestion/connectors/colombia-secop-live";
 import { fetchSecopDocumentsForProcess, fetchSecopDocumentsSample, downloadSecopDocument, isPreAwardDocument } from "@/lib/ingestion/connectors/colombia-documents-connector";
 import { mapSecopRowToTender, extractNoticeUidFromUrl, type SecopProcesoRow } from "@/lib/ingestion/colombia-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
-import { filterRecentTenders, filterTendersPublishedWithinDays, isPastSubmissionDeadline } from "@/lib/ingestion/recency";
+import { filterRecentTenders, isPastSubmissionDeadline } from "@/lib/ingestion/recency";
 import type { Tender } from "@/types/tender";
 
 const SOURCE_NAME = "SECOP II — Colombia Compra Eficiente";
@@ -41,6 +41,10 @@ export type IngestColombiaResult = {
   mappedCount: number;
   keptAfterRecencyCount: number;
   months: number;
+  /** A `days` run only: the first publication date it asked for (YYYY-MM-DD). */
+  sinceDate?: string;
+  /** A `days` run only: the newest publication date datos.gov.co holds (YYYY-MM-DD), which trails the portal by a day or two. */
+  sourceLatestPublicationDate?: string;
   upsertedCount?: number;
   skippedExcludedCount?: number;
   protectedCount?: number;
@@ -99,13 +103,26 @@ export function resolveIngestWindow(
   now: Date = new Date(),
 ): { sinceDate: Date; useDays: boolean } {
   const useDays = !!options.days && options.days > 0;
+  if (useDays) {
+    // Calendar days, from midnight N days before today in Bogotá (2026-09-30,
+    // user: 为什么连续好几天Secop拉到都是0条). datos.gov.co stores the
+    // publication DATE only — every row reads 00:00 — so "the last 48 hours"
+    // from a click at 19:00 started at 11:00 two days ago and cut that whole
+    // day out, and with the dataset a day or two behind, 近 2 天 always came
+    // back empty.
+    const bogotaToday = new Date(now.getTime() - BOGOTA_UTC_OFFSET_HOURS * 60 * 60 * 1000);
+    const sinceDate = new Date(Date.UTC(bogotaToday.getUTCFullYear(), bogotaToday.getUTCMonth(), bogotaToday.getUTCDate() - options.days!));
+    return { sinceDate, useDays };
+  }
   const sinceDate = new Date(now);
-  if (useDays) sinceDate.setDate(sinceDate.getDate() - options.days!);
   // The 6-month fallback is for months <= 0 only — a caller that passed
   // nothing meaningful, not a caller that asked for a narrow window.
-  else sinceDate.setMonth(sinceDate.getMonth() - (options.months > 0 ? options.months : 6));
+  sinceDate.setMonth(sinceDate.getMonth() - (options.months > 0 ? options.months : 6));
   return { sinceDate, useDays };
 }
+
+/** Colombia keeps UTC−5 all year (no daylight saving). */
+const BOGOTA_UTC_OFFSET_HOURS = 5;
 
 /**
  * Combines what used to be two separate manual CLI steps (ingest-colombia-
@@ -144,7 +161,7 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
   // (see recency.ts's known blind spot), and letting the two disagree is
   // how a 5-day import quietly writes two months of rows.
   const keptTenders = useDays
-    ? filterTendersPublishedWithinDays(mapped.map((m) => m.tender), options.days!)
+    ? mapped.map((m) => m.tender).filter((tender) => new Date(tender.publicationDate).getTime() >= sinceDate.getTime())
     : filterRecentTenders(mapped.map((m) => m.tender), options.months);
   const keptSlugs = new Set(keptTenders.map((t) => t.slug));
   const kept = mapped.filter((m) => keptSlugs.has(m.tender.slug));
@@ -155,6 +172,12 @@ export async function ingestColombia(supabase: SupabaseClient, options: IngestCo
     keptAfterRecencyCount: kept.length,
     months: options.months,
   };
+  if (useDays) {
+    result.sinceDate = sinceDate.toISOString().slice(0, 10);
+    // Best effort: it only explains an empty window, so a failed lookup must
+    // not fail the import.
+    result.sourceLatestPublicationDate = (await fetchSecopLatestPublicationDate().catch(() => null)) ?? undefined;
+  }
 
   // A dry run's whole job is "show me what a write would do before I do it",
   // and it used to stop here — reporting `kept`, the count of rows that

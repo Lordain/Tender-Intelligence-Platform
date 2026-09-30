@@ -125,9 +125,9 @@ export const countryInsights: CountryInsightSummary[] = [
     slug: "argentina",
     country: "阿根廷",
     countryCode: "AR",
-    title: "阿根廷国家洞察：公共投资、RIGI与基础设施项目机会",
+    title: "阿根廷国家洞察：2026—2028公共投资与长期战略项目机会",
     description:
-      "从2026年国家预算、RIGI大型投资项目和已经进入采购的输电、铁路、公路、港航与水务项目出发，梳理区域机会与中国企业的进入路径。",
+      "梳理阿根廷国家公共投资计划2026—2028约9.53万亿比索的三年列示投资、1,164个公共投资项目，以及大型投资激励制度、交通和能源长期项目管线。",
     author: "拉美招投标指南针",
     readTime: "约 16 分钟",
     heroImage: "/insights/argentina-yacyreta.webp",
@@ -138,7 +138,7 @@ export const countryInsights: CountryInsightSummary[] = [
       licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
       sourceUrl: "https://commons.wikimedia.org/wiki/File:Yacyret%C3%A1_dam_104947.jpg",
     },
-    highlights: ["3.29万亿阿根廷比索（约21.8亿美元）2026年资本支出", "16个已批准RIGI项目", "输电、交通、能源与水务机会"],
+    highlights: ["约9.53万亿阿根廷比索三年列示投资（含规划预算）", "1,164个包括2026—2028年安排的公共投资项目", "交通与能源三年列示投入约5.30万亿比索"],
   },
 ];
 

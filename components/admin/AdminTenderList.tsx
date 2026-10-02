@@ -236,7 +236,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[#849098]"><SearchIcon /></span>
               <input
                 type="search"
-                placeholder="按标题、摘要、采购单位、slug 或标书编号搜索…"
+                placeholder="按中外文标题、摘要、一句话总结、采购单位、slug 或编号搜索…"
                 value={draftQuery}
                 onChange={(event) => setDraftQuery(event.target.value)}
                 className="h-11 w-full rounded-xl border border-[#d8e0e3] bg-white pl-11 pr-4 text-sm text-[#071826] outline-none transition-colors placeholder:text-[#9aa5ab] focus:border-[#ffb21c]"

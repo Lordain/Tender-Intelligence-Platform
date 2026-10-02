@@ -18,7 +18,7 @@ export default async function IndustryReport({ searchParams }: { searchParams: P
   const monthParts = Object.fromEntries(dateParts.map((part) => [part.type, part.value]));
   const currentMonth = `${monthParts.year}-${monthParts.month}`;
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.month ?? "") ? params.month! : currentMonth;
-  const tenders = filterTenders(await getCachedTenderList(), {}, "zh").filter((tender) => tender.createdAt.startsWith(month));
+  const tenders = filterTenders(await getCachedTenderList(), {}).filter((tender) => tender.createdAt.startsWith(month));
   const counts = new Map<string, number>();
   for (const tender of tenders) for (const industry of tender.industries) counts.set(industry, (counts.get(industry) ?? 0) + 1);
   const sectors = [...counts.entries()].sort((a, b) => b[1] - a[1]);

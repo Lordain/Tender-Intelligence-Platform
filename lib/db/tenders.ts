@@ -871,6 +871,10 @@ export type AdminTenderListRow = {
    * and the es once each and drops `en`, which every mapper mirrors from
    * `es` and no writer ever fills. Lowercased here rather than per keystroke
    * per row, since it exists for exactly one comparison.
+   *
+   * Also carries the condensed Chinese title and the 一句话总结 (user,
+   * 2026-10-02: 搜索包括(中文+外语)标题、摘要、一句话总结) — neither is in
+   * `title`, which the search box reads separately.
    */
   searchSummary: string;
 };
@@ -881,6 +885,8 @@ type AdminTenderListDbRow = {
   tender_number: string;
   title: LocalizedText;
   summary: LocalizedText | null;
+  title_zh_short: string | null;
+  one_line_summary: string | null;
   buyer: string;
   industries: Tender["industries"];
   country: string;
@@ -966,7 +972,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
       .select(
         // tender_key_dates joined for deriveTenderStatus only — see
         // DOCUMENTS_NEEDED_SELECT's comment for why it cannot be skipped.
-        "id, slug, tender_number, title, summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, source_name, tender_key_dates ( type, date )",
+        "id, slug, tender_number, title, summary, title_zh_short, one_line_summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, source_name, tender_key_dates ( type, date )",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
@@ -1014,6 +1020,9 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     publicationDateIsEstimated: row.publication_date_is_estimated ?? undefined,
     submissionDeadline: row.submission_deadline ?? undefined,
     updatedAt: row.updated_at,
-    searchSummary: flattenSummaryForSearch(row.summary),
+    searchSummary: [flattenSummaryForSearch(row.summary), row.title_zh_short, row.one_line_summary]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase(),
   }));
 }

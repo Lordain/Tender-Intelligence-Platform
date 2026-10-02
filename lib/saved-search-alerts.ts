@@ -54,7 +54,7 @@ export function matchSavedSearchAlerts(
   rules: TenderListViewerRules,
 ): SavedSearchAlert[] {
   return searches.slice(0, MAX_SAVED_SEARCHES).flatMap((search) =>
-    filterTenders(tenders, { ...parseTenderListFilters(tenderListParamsFromHref(search.href)), searchPublicFieldsOnly: rules.searchPublicFieldsOnly }, "zh")
+    filterTenders(tenders, { ...parseTenderListFilters(tenderListParamsFromHref(search.href)), searchPublicFieldsOnly: rules.searchPublicFieldsOnly, fullSearchCountry: rules.memberView ? rules.memberCountry : null })
       .filter((tender) => tender.createdAt > search.lastCheckedAt)
       .map((tender) => ({
         tender: toNotificationTender(tender, { memberView: rowHasMemberView(rules, tender.country) }),

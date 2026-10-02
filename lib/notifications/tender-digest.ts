@@ -12,6 +12,9 @@ export type DigestTender = {
   public_slug: string;
   title: { zh?: string; es?: string; en?: string };
   summary: { zh?: string; es?: string; en?: string };
+  /** Searched by keyword only — see matches(). Optional so older fixtures need not carry them. */
+  title_zh_short?: string | null;
+  one_line_summary?: string | null;
   buyer: string;
   tender_number: string;
   country: string;
@@ -52,9 +55,13 @@ export function notificationsEnabled() {
 
 function matches(tender: DigestTender, preference: Preference, statusOverride?: string[]) {
   const statuses = statusOverride ?? [tender.status];
+  // Chinese and source-language title and summary, the condensed Chinese
+  // title and the 一句话总结 (user, 2026-10-02: 搜索包括(中文+外语)标题、摘要、
+  // 一句话总结) — the same fields /tenders searches for a member.
   const searchableText = [
-    tender.title.zh, tender.title.es, tender.title.en,
+    tender.title.zh, tender.title.es, tender.title.en, tender.title_zh_short,
     tender.summary.zh, tender.summary.es, tender.summary.en,
+    tender.one_line_summary,
     tender.buyer, tender.tender_number,
   ].filter(Boolean).join(" ").toLocaleLowerCase();
   return (
@@ -68,7 +75,7 @@ function matches(tender: DigestTender, preference: Preference, statusOverride?: 
   );
 }
 
-const DIGEST_TENDER_COLUMNS = "id, public_slug, title, summary, buyer, tender_number, country, industries, status, relevance_tier, publication_date, created_at";
+const DIGEST_TENDER_COLUMNS = "id, public_slug, title, summary, title_zh_short, one_line_summary, buyer, tender_number, country, industries, status, relevance_tier, publication_date, created_at";
 const DIGEST_PAGE_SIZE = 500;
 /**
  * Far above anything a digest window holds (the busiest 7 days on record,

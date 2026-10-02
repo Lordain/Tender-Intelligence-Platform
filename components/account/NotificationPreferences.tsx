@@ -164,7 +164,7 @@ export function NotificationPreferences({
 
       {canUseKeywords && <div className="mt-4 rounded-2xl border border-[#e1e7e9] p-4 sm:p-5">
         <p className="text-xs font-black tracking-[0.04em] text-[#425461]">关键词</p>
-        <p className="mt-1 text-xs leading-5 text-[#64717c]">命中任一关键词的项目才会纳入通知，可匹配标题、摘要、采购单位或项目编号。</p>
+        <p className="mt-1 text-xs leading-5 text-[#64717c]">命中任一关键词的项目才会纳入通知，可匹配中外文标题、摘要、一句话总结、采购单位或项目编号。</p>
         <div className="mt-3 flex gap-2">
           <input value={keywordDraft} onChange={(event) => { setKeywordDraft(event.target.value); setSaved(false); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addKeyword(); } }} maxLength={80} placeholder="例如：新能源、solar、EPC" className="h-11 min-w-0 flex-1 rounded-xl border border-[#d8e0e3] bg-white px-4 text-sm text-[#071826] placeholder:text-[#98a2a8] focus:border-[#ffb21c] focus:outline-none focus:ring-2 focus:ring-[#ffb21c]/15" />
           <button type="button" onClick={addKeyword} disabled={!keywordDraft.trim() || keywords.length >= 20} className="shrink-0 rounded-xl border border-[#071826] px-4 text-xs font-bold text-[#071826] transition-colors hover:bg-[#071826] hover:text-white disabled:cursor-not-allowed disabled:opacity-40">添加</button>

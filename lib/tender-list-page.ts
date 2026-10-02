@@ -468,8 +468,18 @@ export function buildTenderListPage(
 
   const filtered = filterTenders(
     allTenders,
-    { query, searchPublicFieldsOnly: options.searchPublicFieldsOnly, industries, industryMatchMode, scopeTypes, statuses, countries, relevanceTiers },
-    "zh",
+    {
+      query,
+      searchPublicFieldsOnly: options.searchPublicFieldsOnly,
+      // Basic's own country is searched in full — see TenderFilterOptions.fullSearchCountry.
+      fullSearchCountry: options.memberView ? options.memberCountry : null,
+      industries,
+      industryMatchMode,
+      scopeTypes,
+      statuses,
+      countries,
+      relevanceTiers,
+    },
   );
   // Every row a visitor could reach through SOME combination of filters:
   // the whole table minus the excluded tier, which no public surface
@@ -479,7 +489,7 @@ export function buildTenderListPage(
   //
   // Deliberately NOT `filtered`: a facet computed from the current result
   // set would delete its own option the moment you ticked it.
-  const visibleTenders = filterTenders(allTenders, {}, "zh");
+  const visibleTenders = filterTenders(allTenders, {});
   const presentIndustries = new Set(visibleTenders.flatMap((tender) => tender.industries));
   const availableIndustries = ALL_INDUSTRIES.filter((industry) => presentIndustries.has(industry));
   const presentScopeTypes = new Set(visibleTenders.map((tender) => tender.scopeType));

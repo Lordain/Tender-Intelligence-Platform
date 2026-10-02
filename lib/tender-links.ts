@@ -47,7 +47,7 @@ const TIER_WEIGHT: Record<TenderRelevanceTier, number> = { flagship: 3, signific
  */
 function liveCandidates(all: Tender[], countries: string[] | undefined, now: Date, industries?: string[]): Tender[] {
   const nowMs = now.getTime();
-  return filterTenders(all, { statuses: LIVE_TENDER_STATUSES, countries, industries }, "zh").filter((tender) => {
+  return filterTenders(all, { statuses: LIVE_TENDER_STATUSES, countries, industries }).filter((tender) => {
     if (!tender.submissionDeadline) return true;
     const deadline = new Date(tender.submissionDeadline).getTime();
     return !Number.isFinite(deadline) || deadline >= nowMs;
@@ -184,7 +184,7 @@ export function liveTenderCountsForIndustry(all: Tender[], industry: string, now
  * list is the part worth reading.
  */
 export function publishedTenderLinks(all: Tender[], range: { from: string; to: string }): TenderLink[] {
-  const candidates = filterTenders(all, {}, "zh").filter((tender) => {
+  const candidates = filterTenders(all, {}).filter((tender) => {
     const day = tender.publicationDate?.slice(0, 10);
     return !!day && day >= range.from && day <= range.to;
   });

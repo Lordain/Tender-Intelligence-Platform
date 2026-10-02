@@ -95,7 +95,7 @@ const subasta = mapSecopRowToTender(
   SOURCE_NAME,
   { ignoreModalidadGate: true },
 );
-check("Subasta Inversa 仍被判为 excluded（2026-09-14 的规则照常生效）", subasta?.relevance.tier === "excluded", `tier = ${subasta?.relevance.tier}`);
+check("施工类的 Subasta Inversa 仍被判为 excluded（逆向竞价只放行设备类，2026-10-02）", subasta?.relevance.tier === "excluded", `tier = ${subasta?.relevance.tier}`);
 
 const tiny = mapSecopRowToTender(
   row({ modalidad_de_contratacion: "Selección Abreviada de Menor Cuantía", precio_base: "40000000" }), // ~USD 9.5k

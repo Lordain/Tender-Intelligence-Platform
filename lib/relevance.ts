@@ -11,6 +11,7 @@ import { classifyMetroSantiagoRelevance } from "@/lib/relevance-metro-santiago";
 import { METRO_SANTIAGO_PREVIEW_SOURCE_NAME } from "@/lib/upcoming-tenders";
 import { classifyCemigRelevance, CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig";
 import { BRAZIL_PNCP_SOURCE_NAME, classifyPncpPregaoRelevance, isPregaoProcedure } from "@/lib/relevance-pncp-pregao";
+import { classifyColombiaSubastaRelevance, isColombianSubastaInversa } from "@/lib/relevance-colombia-subasta";
 import { classifyPetroperuRelevance, PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
 import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
 import { classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
@@ -4276,6 +4277,17 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   // rules below exactly as they were.
   if (input.sourceName === BRAZIL_PNCP_SOURCE_NAME && isPregaoProcedure(input.procedureType)) {
     return classifyPncpPregaoRelevance({
+      title: input.title,
+      summary: input.summary,
+      estimatedValue: input.estimatedValue,
+      currency: input.currency,
+    });
+  }
+  // Colombia's subasta inversa: equipment of US$ 1M and up only, own rules,
+  // see lib/relevance-colombia-subasta.ts (user, 2026-10-02). Every other
+  // country's subasta inversa still meets PRICE_ONLY_AUCTION_PROCEDURES below.
+  if (input.country === "Colombia" && isColombianSubastaInversa(input.procedureType)) {
+    return classifyColombiaSubastaRelevance({
       title: input.title,
       summary: input.summary,
       estimatedValue: input.estimatedValue,

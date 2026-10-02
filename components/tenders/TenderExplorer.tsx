@@ -129,6 +129,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
             status={tender.status}
             scopeType={tender.scopeType}
             isObrasPorImpuestos={tender.isObrasPorImpuestos}
+            isInternationalOpen={tender.isInternationalOpen}
           />
         </div>
         <h2 className="text-base font-black leading-6 text-black sm:text-lg">
@@ -273,7 +274,7 @@ export function TenderExplorer({
     [tierParam],
   );
   const sortParam = searchParams.get("sort");
-  const sort: SortKey = isSortKey(sortParam) ? sortParam : "deadline_asc";
+  const sort: SortKey = isSortKey(sortParam) ? sortParam : "recommended";
   const viewParam = searchParams.get("view");
   const view = viewParam === "new" || viewParam === "deadline" ? viewParam : null;
   // The default view IS the live stages, so no status param counts as on.
@@ -472,7 +473,10 @@ export function TenderExplorer({
                 { value: "deadline_desc" as const, label: "由远到近" },
                 { value: "new" as const, label: "24小时新增" },
               ]}
-              selected={view === "new" ? ["new"] : sort === "publication_desc" ? [] : [sort]}
+              // Nothing lit by default: the list opens in the recommended order
+              // (two per industry, 大型 first); a pill re-sorts by deadline, and
+              // clicking it again goes back.
+              selected={view === "new" ? ["new"] : sort === "deadline_asc" || sort === "deadline_desc" ? [sort] : []}
               onChange={(next) => {
                 const choice = next[0];
                 if (choice === "new") updateParams({ view: "new", sort: "publication_desc" });

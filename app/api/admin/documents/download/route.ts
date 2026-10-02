@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { fetchDocumentLinksForSlugs, type StoredDocumentLink } from "@/lib/ingestion/document-links";
-import { downloadFile } from "@/lib/ingestion/download-file";
+import { DOCUMENT_DOWNLOAD_HEADERS, downloadFile } from "@/lib/ingestion/download-file";
 import { analysisFileName } from "@/lib/ingestion/analysis-file-name";
 import { downloadPortalDocument, parsePortalDocumentUrl, type PortalPageCache } from "@/lib/ingestion/connectors/argentina-portal-live";
 
@@ -92,17 +92,6 @@ const CONCURRENCY = 2;
  */
 const TOTAL_BUDGET_MS = process.env.VERCEL ? 270_000 : 900_000;
 
-/**
- * Same honest-identification posture as the OECE index fetch (see
- * peru-oece-live.ts's fetchOece): .gob.pe answers 403 to a request carrying
- * no User-Agent at all, which is what Node's fetch sends.
- */
-const DOWNLOAD_HEADERS: Record<string, string> = {
-  "User-Agent":
-    "TenderIntelligencePlatform/1.0 (+https://github.com/lordain/tender-intelligence-platform; open-data ingestion)",
-  "Accept-Language": "es-PE,es;q=0.9",
-};
-
 type FileOutcome = { slug: string; fileName: string; ok: boolean; bytes?: number; error?: string };
 
 /** Appends " (2)", " (3)", ... before the extension until the path is free. */
@@ -142,7 +131,7 @@ async function downloadOne(
     budgetMs: limits.budgetMs,
     stallMs: STALL_TIMEOUT_MS,
     maxBytes: MAX_FILE_BYTES,
-    headers: DOWNLOAD_HEADERS,
+    headers: DOCUMENT_DOWNLOAD_HEADERS,
   });
   if (!result.ok) return { outcome: { ...base, error: result.error } };
   return { outcome: { ...base, ok: true, bytes: result.bytes }, buffer: result.buffer };
@@ -242,8 +231,10 @@ export async function POST(request: Request) {
     ...(okCount < links.length
       ? [
           "",
-          "有文件没下下来。秘鲁 prod1.seace.gob.pe 传得慢，标书动辄十几 MB，同时下反而更慢——",
-          "一次选 1～2 个项目重试即可；失败的不会影响已经成功的。在本机 npm run dev 下运行时间预算宽松很多。",
+          "有文件没下下来。",
+          "秘鲁项目：SEACE（prod1.seace.gob.pe）自 2026-10 起拒绝云服务器下载（HTTP 403），网站上下不了——",
+          '在本机项目目录运行 npm run download:docs -- "项目编号1,项目编号2"，文件会存到 downloads\\tender-docs。',
+          "其他来源：多是官网慢，一次选 1～2 个项目重试即可；失败的不会影响已经成功的。",
         ]
       : []),
     "",

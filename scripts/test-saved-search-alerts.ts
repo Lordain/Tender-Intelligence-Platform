@@ -26,7 +26,7 @@ function check(label: string, condition: boolean, detail?: string) {
   else { failed += 1; console.error(`FAIL ${label}${detail ? ` — ${detail}` : ""}`); }
 }
 
-function tender(slug: string, country: string, o: { es?: string; zh?: string; buyer?: string; status?: TenderStatus; tier?: TenderRelevanceTier; industries?: string[]; createdAt?: string } = {}): Tender {
+function tender(slug: string, country: string, o: { es?: string; zh?: string; buyer?: string; status?: TenderStatus; tier?: TenderRelevanceTier; industries?: string[]; createdAt?: string; summaryEs?: string; oneLine?: string } = {}): Tender {
   return {
     id: slug,
     slug,
@@ -36,7 +36,8 @@ function tender(slug: string, country: string, o: { es?: string; zh?: string; bu
     // The two generated titles differ, so a wrong projection shows up.
     titleZhShort: `会员标题 ${slug}`,
     titleZhPublic: `公开标题 ${slug}`,
-    summary: { zh: "", es: "" },
+    summary: { zh: "", es: o.summaryEs ?? "" },
+    oneLineSummary: o.oneLine,
     buyer: o.buyer ?? `Comisión ${slug}`,
     industries: o.industries ?? ["power"],
     scopeType: "works",
@@ -63,6 +64,9 @@ const rows: Tender[] = [
   tender("co-1", "Colombia", { status: "submission_closed" }),
   tender("pe-1", "Peru", { tier: "flagship" }),
   tender("cl-1", "Chile", { es: "Codelco Chuquicamata mantención", buyer: "Codelco" }),
+  // Words that appear only in the source summary or only in the 一句话总结 (2026-10-02).
+  tender("mx-4", "Mexico", { summaryEs: "Suministro de aerogeneradores Vestas", oneLine: "风电机组整机采购含十年运维" }),
+  tender("pe-2", "Peru", { summaryEs: "Adquisición de tomógrafos Siemens", oneLine: "医院CT设备采购含安装培训" }),
   // Not an AVAILABLE_COUNTRIES country (Guyana is staged): never on /tenders, so never in a reminder.
   tender("gy-1", "Guyana"),
   // Argentina opened 2026-09-29: on /tenders, so in reminders.
@@ -93,7 +97,7 @@ function alertIds(viewer: ViewerEntitlement, href: string, lastCheckedAt?: strin
 }
 
 // ── Country ──────────────────────────────────────────────────────────────
-check("country=Peru reminds about Peru only (before: every country)", JSON.stringify(alertIds(viewers.专业版!, "/tenders?country=Peru")) === JSON.stringify(["pe-1"]));
+check("country=Peru reminds about Peru only (before: every country)", JSON.stringify(alertIds(viewers.专业版!, "/tenders?country=Peru")) === JSON.stringify(["pe-1", "pe-2"]));
 check("country=Mexico,Chile is honoured", alertIds(viewers.专业版!, "/tenders?country=Mexico,Chile&status=none").every((id) => id.startsWith("mx") || id.startsWith("cl")));
 check("no country param = the open countries only, never Guyana", !alertIds(viewers.专业版!, "/tenders?status=none").includes("gy-1"));
 check("no country param includes Argentina since it opened", alertIds(viewers.专业版!, "/tenders?status=none").includes("ar-1"));
@@ -110,13 +114,25 @@ check("industryMode=all is honoured (before: any)", JSON.stringify(alertIds(view
 for (const name of ["游客", "免费版", "基础版墨西哥", "基础版未选国家"]) {
   const viewer = viewers[name]!;
   check(`${name}: a Spanish title word matches nothing (other country)`, alertIds(viewer, "/tenders?q=petrobras").length === 0);
-  check(`${name}: a Spanish title word matches nothing (own/any country)`, alertIds(viewer, "/tenders?q=pemex").length === 0);
-  check(`${name}: buyer and procurement number are not searched`, alertIds(viewer, "/tenders?q=codelco").length === 0 && alertIds(viewer, "/tenders?q=NUM-mx-1").length === 0);
+  check(`${name}: buyer is not searched (other country)`, alertIds(viewer, "/tenders?q=codelco").length === 0);
+  check(`${name}: source summary and 一句话总结 are not searched (other country)`, alertIds(viewer, "/tenders?q=siemens").length === 0 && alertIds(viewer, "/tenders?q=CT设备").length === 0);
   check(`${name}: Chinese public copy is searched`, JSON.stringify(alertIds(viewer, "/tenders?q=港口疏浚&status=none")) === JSON.stringify(["br-2"]));
 }
+for (const name of ["游客", "免费版", "基础版未选国家"]) {
+  const viewer = viewers[name]!;
+  check(`${name}: no member field of any country is searched`, alertIds(viewer, "/tenders?q=pemex").length === 0 && alertIds(viewer, "/tenders?q=NUM-mx-1").length === 0 && alertIds(viewer, "/tenders?q=vestas").length === 0 && alertIds(viewer, "/tenders?q=风电机组").length === 0);
+}
+// A Basic subscriber reads their own country with member fields — the
+// original title and the buyer are on the card — so those rows are searched
+// in full (user, 2026-10-02: 搜索包括(中文+外语)标题、摘要、一句话总结).
+const basicMx = viewers.基础版墨西哥!;
+check("基础版墨西哥: own country — original title, buyer and number are searched", JSON.stringify(alertIds(basicMx, "/tenders?q=pemex")) === JSON.stringify(["mx-1"]) && JSON.stringify(alertIds(basicMx, "/tenders?q=NUM-mx-1")) === JSON.stringify(["mx-1"]));
+check("基础版墨西哥: own country — source summary and 一句话总结 are searched", JSON.stringify(alertIds(basicMx, "/tenders?q=vestas")) === JSON.stringify(["mx-4"]) && JSON.stringify(alertIds(basicMx, "/tenders?q=风电机组")) === JSON.stringify(["mx-4"]));
 for (const name of ["试用", "专业版", "企业版"]) {
   const viewer = viewers[name]!;
   check(`${name}: full search across countries (title, buyer, number)`, JSON.stringify(alertIds(viewer, "/tenders?q=petrobras")) === JSON.stringify(["br-1"]) && JSON.stringify(alertIds(viewer, "/tenders?q=codelco")) === JSON.stringify(["cl-1"]) && JSON.stringify(alertIds(viewer, "/tenders?q=NUM-mx-1")) === JSON.stringify(["mx-1"]));
+  check(`${name}: source summary and 一句话总结, any country`, JSON.stringify(alertIds(viewer, "/tenders?q=SIEMENS")) === JSON.stringify(["pe-2"]) && JSON.stringify(alertIds(viewer, "/tenders?q=CT设备")) === JSON.stringify(["pe-2"]) && JSON.stringify(alertIds(viewer, "/tenders?q=风电机组")) === JSON.stringify(["mx-4"]));
+  check(`${name}: the condensed Chinese title members read is searched`, JSON.stringify(alertIds(viewer, "/tenders?q=会员标题 cl-1")) === JSON.stringify(["cl-1"]));
 }
 
 // ── Projection per row ───────────────────────────────────────────────────
@@ -142,6 +158,7 @@ const hrefs = [
   "/tenders", "/tenders?country=Peru", "/tenders?country=Mexico,Brazil&status=none", "/tenders?status=awarded", "/tenders?tier=flagship",
   "/tenders?q=petrobras", "/tenders?q=变电站", "/tenders?q=港口&status=none", "/tenders?industry=power,ict_telecom&industryMode=all",
   "/tenders?scope=works&country=Chile", "/tenders?status=none&tier=none", "/tenders?q=codelco&country=Chile",
+  "/tenders?q=pemex", "/tenders?q=vestas", "/tenders?q=CT设备", "/tenders?q=风电机组",
 ];
 let mismatches = 0;
 for (const [name, viewer] of Object.entries(viewers)) {

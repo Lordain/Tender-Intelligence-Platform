@@ -211,6 +211,28 @@ async function main() {
     globalThis.fetch = realFetch;
   }
 
+  // ── Keywords reach every text field (2026-10-02) ───────────────────────
+  // 搜索包括(中文+外语)标题、摘要、一句话总结 — a keyword found only in one of
+  // them must still put the tender in the mail.
+  {
+    const base = makeTender(900, new Date("2026-09-28T10:00:00Z"));
+    const row: DigestTender = {
+      ...base,
+      title: { zh: "某市污水处理厂扩建工程", es: "Ampliación de la PTAR Norte" },
+      summary: { zh: "处理规模提升至每日五万立方米", es: "Incluye biodigestores anaerobios" },
+      title_zh_short: "北区污水厂扩建",
+      one_line_summary: "膜生物反应器工艺总承包",
+    };
+    const kw = (keyword: string) => matchingTenders([row], { ...recipients[0]!, keywords: [keyword] }).length === 1;
+    check("keyword in the Chinese title", kw("污水处理厂"));
+    check("keyword in the original-language title, any case", kw("ptar norte"));
+    check("keyword in the Chinese summary", kw("五万立方米"));
+    check("keyword in the source-language summary", kw("biodigestores"));
+    check("keyword in the condensed Chinese title", kw("北区污水厂"));
+    check("keyword in the 一句话总结", kw("膜生物反应器"));
+    check("a keyword in none of them matches nothing", !kw("海水淡化"));
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 }

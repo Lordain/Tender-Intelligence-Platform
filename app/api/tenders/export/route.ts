@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     query: params.get("q") ?? undefined,
     countries: params.get("country")?.split(",").filter(Boolean),
     industries: params.get("industry")?.split(",").filter(Boolean),
-  }, "zh").filter((tender) => history ? isClosedTender(tender.status) : !isClosedTender(tender.status)).slice(0, 5000);
+  }).filter((tender) => history ? isClosedTender(tender.status) : !isClosedTender(tender.status)).slice(0, 5000);
   const header = ["中文标题", "国家", "行业", "采购单位", "项目状态", "预算", "币种", "截止时间", "项目链接"];
   const rows = tenders.map((tender) => {
     const item = toTenderListItem(tender, { memberView: true });

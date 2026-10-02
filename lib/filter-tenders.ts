@@ -1,12 +1,19 @@
-import type { Locale, Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
+import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { orderIndustryShowcase } from "@/lib/industry-showcase";
-import { localize } from "@/lib/localize";
 import { calendarDateBucket, interleaveCountriesWithinEqualGroups } from "@/lib/country-interleave";
 
 export type TenderFilterOptions = {
   query?: string;
   /** Restrict keyword matching to approved Chinese public copy. */
   searchPublicFieldsOnly?: boolean;
+  /**
+   * Basic: the one country whose rows this viewer reads with member fields.
+   * Those rows are searched in full even under searchPublicFieldsOnly — the
+   * viewer sees their original-language title on the card, so a word from it
+   * must find them. Every other country stays on public copy. See
+   * tenderSearchText.
+   */
+  fullSearchCountry?: string | null;
   industries?: string[];
   /**
    * A tender can carry multiple industries.ts tags (e.g. a power-plant
@@ -33,6 +40,7 @@ export function filterTenders(
   {
     query,
     searchPublicFieldsOnly,
+    fullSearchCountry,
     industries,
     industryMatchMode = "any",
     scopeTypes,
@@ -41,7 +49,6 @@ export function filterTenders(
     relevanceTiers,
     includeExcluded,
   }: TenderFilterOptions,
-  locale: Locale,
 ): Tender[] {
   const normalizedQuery = query?.trim().toLowerCase();
 
@@ -68,32 +75,65 @@ export function filterTenders(
     }
 
     if (normalizedQuery) {
-      // tender.slug added (2026-09-05, real gap): an admin pasting a
-      // tender's slug (visible on every /admin/tenders/[slug] edit page,
-      // and in the public tender-detail URL itself) into this search box
-      // got 0 results — the haystack never included it, only
-      // title/summary/buyer/tenderNumber, none of which necessarily contain the
-      // same text as the slug (e.g. Proyectos Estratégicos MX's slug is a
-      // slugified transform of its own reference number, not identical to
-      // the tenderNumber field's real formatting).
-      const hasChineseTitle = tender.title.zh.trim() && tender.title.zh.trim() !== tender.title.es.trim();
-      const hasChineseSummary = tender.summary.zh.trim() && tender.summary.zh.trim() !== tender.summary.es.trim();
-      const haystack = (searchPublicFieldsOnly
-        ? [hasChineseTitle ? tender.title.zh : "", hasChineseSummary ? tender.summary.zh : ""]
-        : [
-            localize(tender.title, locale),
-            ...Object.values(tender.summary),
-            tender.buyer,
-            tender.tenderNumber,
-            tender.slug,
-          ])
-        .join(" ")
-        .toLowerCase();
+      const scope = searchPublicFieldsOnly && tender.country !== fullSearchCountry ? "public" : "full";
+      const haystack = tenderSearchText(tender, scope);
       if (!haystack.includes(normalizedQuery)) return false;
     }
 
     return true;
   });
+}
+
+/**
+ * Everything a keyword is matched against, lowercased (user, 2026-10-02: 搜索
+ * 包括(中文+外语)标题、摘要、一句话总结).
+ *
+ * "full" — members, admins, and a Basic viewer's own country: the Chinese
+ * title in all three forms (the full translation, the condensed one members
+ * read in the list, the public one), the original-language title, the summary
+ * in Chinese and in the source language plus its public form, the 一句话总结,
+ * and the buyer, procurement number and slug (an admin pastes a slug from an
+ * edit page: 2026-09-05).
+ *
+ * The title used to be `localize(title, "zh")` alone, so a Portuguese or
+ * Spanish word from the original title — the line a member reads under the
+ * Chinese one, and the words in the bid documents — found nothing unless the
+ * summary happened to repeat it. The 一句话总结 was not searched at all.
+ *
+ * "public" — guests, lapsed accounts, and Basic outside its country: Chinese
+ * copy only, as before. The original title, the source summary and the
+ * 一句话总结 are member content (the 一句话总结 is paywalled analysis shown
+ * only on admin-picked free previews); matching against them would let anyone
+ * ask, one search at a time, whether a word appears in text they cannot see —
+ * the leak the 2026-09-26 review closed. An untranslated row mirrors the source
+ * into `zh`, which is why those copies are skipped here.
+ */
+export function tenderSearchText(tender: Tender, scope: "full" | "public"): string {
+  const titleZh = tender.title.zh.trim();
+  const summaryZh = tender.summary.zh.trim();
+  const hasChineseTitle = titleZh !== "" && titleZh !== tender.title.es.trim();
+  const hasChineseSummary = summaryZh !== "" && summaryZh !== tender.summary.es.trim();
+  const parts =
+    scope === "public"
+      ? [
+          hasChineseTitle ? titleZh : "",
+          hasChineseTitle ? tender.titleZhShort : "",
+          tender.titleZhPublic,
+          hasChineseSummary ? summaryZh : "",
+          tender.summaryZhPublic,
+        ]
+      : [
+          ...Object.values(tender.title),
+          tender.titleZhShort,
+          tender.titleZhPublic,
+          ...Object.values(tender.summary),
+          tender.summaryZhPublic,
+          tender.oneLineSummary,
+          tender.buyer,
+          tender.tenderNumber,
+          tender.slug,
+        ];
+  return parts.filter(Boolean).join(" ").toLowerCase();
 }
 
 // deadline_desc added 2026-09-25 (user: 计划交标 … 增加：由远到近).

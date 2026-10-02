@@ -1,0 +1,57 @@
+# Downloads Argentine COMPR.AR / CONTRAT.AR bid documents on the GitHub runner
+# and hands them back as one ZIP (user, 2026-10-02: 阿根廷附件一直失败).
+#
+# 批量下载标书 runs on Vercel inside 300 s. These portals are slow — 9–23 s per
+# process page, and a 27 MB technical volume took 94 s on its own (measured
+# 2026-10-02) — so a project with nine such volumes can never finish there.
+# This runner reaches both portals every night (daily-ingest.yml) and has
+# hours. The links must already be recorded: new imports record them, older
+# rows were backfilled by backfill-argentina-docs.yml.
+#
+# Reads the database, writes nothing to it. The ZIP is the run's artifact
+# 「argentina-bid-documents」 (kept 7 days); each file is named
+# <slug>__<document>, so 选择上传 / local batch analysis attach it by name.
+name: Download Argentina bid documents
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenders:
+        description: "项目编号，多个用逗号分隔（例如 34-0003-LPU26,46-0035-LPU26）；留空 = 所有仍在投标期的 COMPR.AR / CONTRAT.AR 项目"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TENDERS: ${{ inputs.tenders }}
+        # Through an env var, not interpolated into the script: the input is
+        # free text typed into a form.
+        run: npm run download:argentina-docs -- "$TENDERS"
+
+      - name: Upload the ZIP
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: argentina-bid-documents
+          path: downloads/argentina-docs/
+          if-no-files-found: warn
+          retention-days: 7

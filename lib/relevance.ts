@@ -1209,6 +1209,11 @@ const CHILE_NOT_A_TARGET_TITLE = [
   // exists — MOP's "CONSERVACIÓN OBRA FISCAL EMBALSE …" maintains a
   // reservoir, "Conservación Coliseo Municipal" a gym. 维护类都不要.
   /\bconservacion\b/i,
+  // Printers and what they consume, bought or rented (2026-10-02, user:
+  // 智利两条打印机误判 → 要补规则). "Adquisición del Servicio de Arriendo de
+  // Impresora" (1122317-17-LR26, 16,013,250 entered as USD) reached 大型项目 on
+  // its amount alone. Office equipment in any form, never a target.
+  /\bimpresoras?\b|\bplotters?\b|\btoner\b|\bcartuchos?\b|\bfotocopiadoras?\b|multifuncional(?:es)?\b/i,
 ];
 
 const MAINTENANCE_ONLY_KEYWORDS = [

@@ -2982,4 +2982,24 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "骨干、海缆算中型项目 — qualifies with NO distance stated at all, and with no amount either. This is why the fibre rule is a determination and not a cap: a cap could only ever lower a tier, and this row has to be RAISED to 中型 from the 常规 the rest of the rules would give it.",
     country: "Peru", scopeType: "works", governmentLevel: "federal",
   },
+  // Chilean printers (2026-10-02, user: 智利两条打印机误判 → 要补规则). Both
+  // reached 大型项目 on the amount alone in the busca dry run of that day.
+  {
+    title: "SUMINISTROS ORIGINAL DE IMPRESORA PLOTTER Y OTROS",
+    procedureType: "Licitación Pública Entre 100 y 1000 UTM (LE)",
+    estimatedValue: 25_000_000,
+    currency: "USD",
+    expectedTier: "excluded",
+    note: "Real row, 765-23-LE26 (CONADI). Printer consumables. The amount is itself wrong — an LE procedure is 100–1,000 UTM by law, so 25,000,000 entered as USD is 25 million pesos — but a published amount is judged as published (see the 1213444-23-LE26 fixture), so the printer rule is what excludes it.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["general"],
+  },
+  {
+    title: "Adquisición del Servicio de Arriendo de Impresora",
+    procedureType: "Licitación Pública Mayor a 5000 UTM (LR)",
+    estimatedValue: 16_013_250,
+    currency: "USD",
+    expectedTier: "excluded",
+    note: "Real row, 1122317-17-LR26 (ChileCompra). Printer rental.",
+    country: "Chile", scopeType: "unknown", governmentLevel: "federal", industries: ["general"],
+  },
 ];

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ADMIN_EXTERNAL_LINK_CLASS } from "@/lib/admin-source-links";
 import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
 import type { SeaceListImportResult } from "@/lib/ingestion/ingest-peru-seace-list";
 
@@ -54,8 +53,22 @@ export function ImportPeruSeaceListForm() {
       {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
+        <div className="mb-4 flex flex-col gap-3 border-b border-[#e5e9eb] pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-[#64717c]">
+            第一步：打开 SEACE 官方搜索页，按发布日期搜索后点导出（Exportar），下载 Lista-Procesos 文件。
+          </p>
+          <a
+            href={SEACE_PUBLIC_SEARCH_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-10 w-fit shrink-0 items-center gap-1.5 rounded-xl border border-[#d8e0e3] bg-white px-4 text-sm font-black text-[#071826] transition-colors hover:border-[#ffb21c] hover:bg-[#fff8e9]"
+          >
+            官方入口 ↗
+          </a>
+        </div>
+
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-semibold text-[#52636e]">SEACE 导出文件（Lista-Procesos .xls / .xlsx）</span>
+          <span className="text-xs font-semibold text-[#52636e]">第二步：上传 SEACE 导出文件（Lista-Procesos .xls / .xlsx）</span>
           <input
             type="file"
             accept=".xls,.xlsx,.csv"
@@ -64,10 +77,7 @@ export function ImportPeruSeaceListForm() {
           />
           {file && <span className="text-xs text-[#8a959c]">已选择：{file.name}</span>}
           <span className="text-xs text-[#8a959c]">
-            <a href={SEACE_PUBLIC_SEARCH_URL} target="_blank" rel="noopener noreferrer" className={ADMIN_EXTERNAL_LINK_CLASS}>
-              打开 SEACE 搜索页 ↗
-            </a>
-            ，按发布日期搜索后点导出，把下载的文件选到这里。文件本身就是时间范围，不再按天数过滤；库里已有的编号会跳过，不会覆盖。
+            文件本身就是时间范围，不再按天数过滤；库里已有的编号会跳过，不会覆盖。
           </span>
         </label>
 

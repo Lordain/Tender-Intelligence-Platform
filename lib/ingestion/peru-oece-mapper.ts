@@ -277,7 +277,7 @@ export function oeceDocumentLinks(record: OeceRecord): SharedTenderDocumentLink[
  * consistent with every real sample not matching the above being a
  * genuine national-level body.
  */
-function inferGovernmentLevel(buyerName: string | undefined): GovernmentLevel {
+export function inferGovernmentLevel(buyerName: string | undefined): GovernmentLevel {
   const name = buyerName ?? "";
   if (/municipalidad (distrital|provincial)/i.test(name)) return "municipal";
   if (/gobierno regional/i.test(name)) return "state";

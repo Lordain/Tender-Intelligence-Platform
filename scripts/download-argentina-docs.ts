@@ -18,17 +18,13 @@
  *   npm run download:argentina-docs -- 34-0003-LPU26,46-0035-LPU26
  *   npm run download:argentina-docs                  (every Argentine portal tender with links, still open)
  */
-import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { fetchDocumentLinksForSlugs } from "../lib/ingestion/document-links";
-import { downloadPortalDocument, parsePortalDocumentUrl, type PortalPageCache } from "../lib/ingestion/connectors/argentina-portal-live";
-import { analysisFileName } from "../lib/ingestion/analysis-file-name";
+import { parsePortalDocumentUrl } from "../lib/ingestion/connectors/argentina-portal-live";
+import { downloadTenderDocsToFolder } from "../lib/ingestion/download-docs-to-folder";
 
 const OUT_DIR = join("downloads", "argentina-docs");
-/** Per file. The largest volume seen so far is 281 MB; GitHub artifacts take it. */
-const MAX_FILE_BYTES = 400 * 1024 * 1024;
-const FILE_TIMEOUT_MS = 15 * 60 * 1000;
 
 async function main() {
   const supabase = createSupabaseAdminClient();
@@ -64,50 +60,16 @@ async function main() {
     for (const w of wanted.filter((w) => !found.has(w))) console.log(`⚠ 没找到 ${w}`);
   }
 
-  const links = await fetchDocumentLinksForSlugs(supabase, rows.map((row) => row.slug));
-  mkdirSync(OUT_DIR, { recursive: true });
-  const report: string[] = [`下载时间：${new Date().toISOString()}`, ""];
-  let okCount = 0;
-  let failCount = 0;
-
-  for (const row of rows) {
-    const files = (links.get(row.slug) ?? []).filter((link) => parsePortalDocumentUrl(link.sourceUrl));
-    console.log(`\n${row.tender_number}（${files.length} 个文件）`);
-    report.push(`${row.tender_number}  ${row.slug}`);
-    if (files.length === 0) {
-      report.push("  [无链接] 还没有记录标书链接——先运行「Backfill Argentina bid documents」。", "");
-      continue;
-    }
-    const pages: PortalPageCache = new Map();
-    const used = new Set<string>();
-    for (const link of files) {
-      const startedAt = Date.now();
-      // One retry: COMPR.AR answers the occasional 503 that clears at once.
-      let result = await downloadPortalDocument(link.sourceUrl, { maxBytes: MAX_FILE_BYTES, timeoutMs: FILE_TIMEOUT_MS }, pages);
-      if (!result.ok) result = await downloadPortalDocument(link.sourceUrl, { maxBytes: MAX_FILE_BYTES, timeoutMs: FILE_TIMEOUT_MS }, pages);
-      const seconds = ((Date.now() - startedAt) / 1000).toFixed(0);
-      let name = analysisFileName(row.slug, link.fileName);
-      for (let n = 2; used.has(name); n++) name = analysisFileName(row.slug, link.fileName.replace(/(\.[^.]+)?$/, ` (${n})$1`));
-      used.add(name);
-      if (result.ok) {
-        writeFileSync(join(OUT_DIR, name), result.buffer);
-        okCount += 1;
-        const line = `  [OK] ${name}（${(result.bytes / 1024 / 1024).toFixed(1)} MB，${seconds} 秒）`;
-        console.log(line);
-        report.push(line);
-      } else {
-        failCount += 1;
-        const line = `  [失败] ${name} — ${result.error}`;
-        console.log(line);
-        report.push(line);
-      }
-    }
-    report.push("");
-  }
-
-  report.splice(1, 0, `成功 ${okCount} 个文件，失败 ${failCount} 个。文件名以项目 slug 开头，可直接在「选择上传」或本地批量分析中使用。`);
-  writeFileSync(join(OUT_DIR, "下载报告.txt"), report.join("\n"));
-  console.log(`\n成功 ${okCount} 个，失败 ${failCount} 个。`);
+  const allLinks = await fetchDocumentLinksForSlugs(supabase, rows.map((row) => row.slug));
+  const links = new Map(
+    [...allLinks].map(([slug, list]) => [slug, list.filter((link) => parsePortalDocumentUrl(link.sourceUrl))]),
+  );
+  const { okCount } = await downloadTenderDocsToFolder(
+    rows,
+    links,
+    OUT_DIR,
+    "还没有记录标书链接——先运行「Backfill Argentina bid documents」。",
+  );
   if (okCount === 0) process.exit(1);
 }
 

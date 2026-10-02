@@ -86,7 +86,9 @@ export function BatchDownloadDocumentsButton({ tenders }: { tenders: { slug: str
                 <code className="rounded bg-[#edf2f3] px-1 font-mono text-[10px]">项目slug__文件名.pdf</code>
                 ，解压后可以直接拖进下面的分析面板，或者把整个文件夹丢给「本地批量分析」——它按这个 slug 自动归属，不用手动一个个对。
                 <span className="mt-1 block text-[#8a959c]">
-                  秘鲁的服务器较慢、单份标书常有好几 MB，<strong>建议一次选 1～2 个项目</strong>（PEMEX 快一些）；没下完的重试即可，不会重复计费也不会影响已成功的。
+                  <strong>秘鲁项目在这里下不了</strong>：SEACE 拒绝云服务器下载，请在本机运行{" "}
+                  <code className="rounded bg-[#edf2f3] px-1 font-mono text-[10px]">npm run download:docs -- &quot;项目编号&quot;</code>
+                  。其他来源较慢时，建议一次选 1～2 个项目；没下完的重试即可，不会影响已成功的。
                 </span>
               </>
             ) : (
@@ -114,12 +116,12 @@ export function BatchDownloadDocumentsButton({ tenders }: { tenders: { slug: str
             已下载：{status.ok} / {status.total} 份全部成功。压缩包里的「下载报告.txt」有逐条明细。
           </p>
         ) : (
-          // Partial is the common case on this source, not an anomaly worth
-          // an error colour: prod1.seace.gob.pe is slow and a single Bases
-          // file routinely runs to several MB.
+          // Partial is the common case, not an anomaly worth an error colour:
+          // the portals are slow. Peru is the exception — prod1.seace.gob.pe
+          // refuses cloud servers outright since 2026-10 (scripts/download-docs.ts).
           <p className="mt-3 rounded-xl bg-[#fff8e9] px-3 py-2 text-xs font-bold text-[#7a5200]">
-            已下载：{status.ok} / {status.total} 份成功，其余没传完。
-            <span className="font-bold">秘鲁服务器慢，一次选 1～2 个项目重试就行</span>
+            已下载：{status.ok} / {status.total} 份成功，其余没下下来。
+            <span className="font-bold">秘鲁项目请在本机用 npm run download:docs 下载；其他来源一次选 1～2 个项目重试就行</span>
             ——已经成功的不受影响，失败的原因在压缩包里的「下载报告.txt」。
           </p>
         ))}

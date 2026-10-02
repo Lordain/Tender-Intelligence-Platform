@@ -19,6 +19,7 @@ import { mapPeruOxiRowToTender, oxiEstadoStatus, peruOxiSlug, PERU_OXI_SOURCE_NA
 import { refreshStoredStatuses, type ObservedStatus, type StatusRefreshResult } from "@/lib/ingestion/status-refresh";
 import { filterRecentTenders, filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
+import { adoptSeaceListSlugs } from "@/lib/ingestion/ingest-peru-seace-list";
 import type { Tender, TenderRelevanceTier } from "@/types/tender";
 
 export const PERU_OECE_SOURCE_NAME =
@@ -215,11 +216,26 @@ export async function ingestPeruOece(
     if (links.length > 0) linksBySlug.set(tender.slug, links);
   }
 
-  const kept = applyRecency(mapped, options, months);
+  let kept = applyRecency(mapped, options, months);
   const result = summarize("oece", records.length, mapped, kept, { write: options.write, segments, preview: options.preview });
 
   if (!options.write) return result;
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
+  // A procedure first loaded from a manual SEACE export (peru-seace-…) is
+  // updated in place rather than copied; its document links follow the slug.
+  const adoption = await adoptSeaceListSlugs(supabase, kept);
+  if (adoption.adopted > 0) {
+    onProgress?.(`${adoption.adopted} tender(s) were first loaded from a SEACE export — updating those rows in place`);
+    kept.forEach((tender, index) => {
+      const slug = adoption.tenders[index].slug;
+      const links = linksBySlug.get(tender.slug);
+      if (slug !== tender.slug && links) {
+        linksBySlug.delete(tender.slug);
+        linksBySlug.set(slug, links);
+      }
+    });
+    kept = adoption.tenders;
+  }
   const written = await writeOut(supabase, kept, result);
 
   // After the upsert, never before: a link row references tenders.id, and an

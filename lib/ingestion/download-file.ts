@@ -33,6 +33,17 @@ export type DownloadLimits = {
   headers?: Record<string, string>;
 };
 
+/**
+ * Same honest-identification posture as the OECE index fetch (see
+ * peru-oece-live.ts's fetchOece): .gob.pe answers 403 to a request carrying
+ * no User-Agent at all, which is what Node's fetch sends.
+ */
+export const DOCUMENT_DOWNLOAD_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "TenderIntelligencePlatform/1.0 (+https://github.com/lordain/tender-intelligence-platform; open-data ingestion)",
+  "Accept-Language": "es-PE,es;q=0.9",
+};
+
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 
 export async function downloadFile(url: string, limits: DownloadLimits): Promise<DownloadOutcome> {

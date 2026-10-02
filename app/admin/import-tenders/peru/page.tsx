@@ -1,4 +1,5 @@
 import { ImportPeruForm } from "@/components/admin/ImportPeruForm";
+import { ImportPeruSeaceListForm } from "@/components/admin/ImportPeruSeaceListForm";
 import { ImportCompanySourceForm } from "@/components/admin/ImportCompanySourceForm";
 import { PeruDocumentLinksForm } from "@/components/admin/PeruDocumentLinksForm";
 import { RefreshAwardsPanel } from "@/components/admin/RefreshAwardsPanel";
@@ -18,6 +19,14 @@ export default function AdminImportTendersPeruPage() {
         ]}
       >
         <ImportPeruForm />
+      </ImportSourceSection>
+      <ImportSourceSection
+        name="SEACE — 上传导出清单"
+        hint="OECE 数据接口停更时用：从 SEACE 搜索页导出 Lista-Procesos 后上传"
+        mode="manual"
+        links={[{ label: "官方入口", href: SEACE_PUBLIC_SEARCH_URL }]}
+      >
+        <ImportPeruSeaceListForm />
       </ImportSourceSection>
       <ImportSourceSection
         name="Petroperú — 国际竞争性招标（PCI）"

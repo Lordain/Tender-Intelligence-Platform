@@ -42,6 +42,7 @@
     "purge:manually-deleted": "tsx --env-file-if-exists=.env.local scripts/reapply-manual-deletions.ts",
     "purge:since": "tsx --env-file-if-exists=.env.local scripts/purge-tenders-since.ts",
     "ingest:peru": "tsx --env-file-if-exists=.env.local scripts/ingest-peru.ts",
+    "ingest:peru-seace-list": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-seace-list.ts",
     "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts",
     "ingest:brazil-live": "tsx --env-file-if-exists=.env.local scripts/ingest-brazil-live.ts",
     "ingest:peru-oxi": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-oxi.ts",
@@ -123,6 +124,7 @@
     "test:codelco": "tsx scripts/test-codelco.ts",
     "test:petroperu": "tsx scripts/test-petroperu.ts",
     "test:guides": "tsx scripts/test-participation-guides.ts",
+    "test:peru-seace-list": "tsx scripts/test-peru-seace-list.ts",
     "test:cemig": "tsx scripts/test-cemig.ts",
     "test:pemex-rules": "tsx scripts/test-pemex-rules.ts",
     "test:cfe-rules": "tsx scripts/test-cfe-rules.ts",
@@ -209,7 +211,8 @@
     "create:qa-account": "tsx --env-file-if-exists=.env.local scripts/create-qa-account.ts",
     "create:test-checkout": "tsx --env-file-if-exists=.env.local scripts/create-test-checkout.ts",
     "test:admin-generated-text": "tsx scripts/test-admin-generated-text.ts",
-    "download:argentina-docs": "tsx --env-file-if-exists=.env.local scripts/download-argentina-docs.ts"
+    "download:argentina-docs": "tsx --env-file-if-exists=.env.local scripts/download-argentina-docs.ts",
+    "download:docs": "tsx --env-file-if-exists=.env.local scripts/download-docs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

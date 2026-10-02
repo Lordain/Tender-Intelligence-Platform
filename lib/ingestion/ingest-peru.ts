@@ -33,6 +33,14 @@ export type PeruIngestResult = {
   surfacedCount: number;
   tierCounts: Record<TenderRelevanceTier, number>;
   segments?: string[];
+  /**
+   * The newest publication days among the MAPPED rows (before the recency
+   * window), newest first, with how many rows each. Added 2026-10-02 when a
+   * --days 7 run fetched 5,435 September records and kept none: without this
+   * the CLI cannot say whether the window is wrong or the source has simply
+   * stopped receiving new tenders.
+   */
+  newestPublicationDays?: { day: string; count: number }[];
   write: boolean;
   /** Only populated when options.preview is set; see that option. */
   preview?: Tender[];
@@ -109,6 +117,18 @@ function findDuplicateSlugs(kept: Tender[]): { slug: string; tenderNumber: strin
     .map(([slug, group]) => ({ slug, tenderNumber: group[0].tenderNumber, count: group.length }));
 }
 
+function newestPublicationDays(mapped: Tender[], limit = 7): { day: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const tender of mapped) {
+    const day = tender.publicationDate.slice(0, 10);
+    counts.set(day, (counts.get(day) ?? 0) + 1);
+  }
+  return [...counts]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .slice(0, limit)
+    .map(([day, count]) => ({ day, count }));
+}
+
 function summarize(
   source: "oece" | "oxi",
   fetchedCount: number,
@@ -127,6 +147,7 @@ function summarize(
     surfacedCount: kept.length - tierCounts.excluded,
     tierCounts,
     segments: options.segments,
+    newestPublicationDays: newestPublicationDays(mapped),
     write: options.write,
     ...(options.preview ? { preview: kept } : {}),
     ...(duplicates.length > 0 ? { duplicateTenderNumbers: duplicates } : {}),

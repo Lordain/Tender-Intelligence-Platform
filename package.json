@@ -159,6 +159,7 @@
     "inspect:dof-notice": "tsx --env-file-if-exists=.env.local scripts/inspect-dof-notice.ts",
     "test:account-devices": "tsx scripts/test-account-devices.ts",
     "report:monthly": "tsx --env-file-if-exists=.env.local scripts/report-monthly.ts",
+    "measure:small-works": "tsx --env-file-if-exists=.env.local scripts/measure-small-works.ts",
     "report:account-sharing": "tsx --env-file-if-exists=.env.local scripts/report-account-sharing.ts",
     "find:chinese-bidders": "tsx --env-file-if-exists=.env.local scripts/find-chinese-bidders.ts",
     "find:chinese-suppliers": "tsx scripts/find-chinese-suppliers.ts",

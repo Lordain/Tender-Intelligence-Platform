@@ -10,6 +10,7 @@ import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-c
 import { classifyMetroSantiagoRelevance } from "@/lib/relevance-metro-santiago";
 import { METRO_SANTIAGO_PREVIEW_SOURCE_NAME } from "@/lib/upcoming-tenders";
 import { classifyCemigRelevance, CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig";
+import { BRAZIL_PNCP_SOURCE_NAME, classifyPncpPregaoRelevance, isPregaoProcedure } from "@/lib/relevance-pncp-pregao";
 import { classifyPetroperuRelevance, PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
 import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
 import { classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
@@ -4263,6 +4264,18 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
       industries: withPower,
       relevance: classifyCemigRelevance({ title: input.title, summary: input.summary, procedureType: input.procedureType }),
     };
+  }
+  // PNCP's Pregão Eletrônico: equipment only, own rules, see
+  // lib/relevance-pncp-pregao.ts (user, 2026-10-02). Gated on the procedure as
+  // well as the source, so this source's Concorrência rows keep the general
+  // rules below exactly as they were.
+  if (input.sourceName === BRAZIL_PNCP_SOURCE_NAME && isPregaoProcedure(input.procedureType)) {
+    return classifyPncpPregaoRelevance({
+      title: input.title,
+      summary: input.summary,
+      estimatedValue: input.estimatedValue,
+      currency: input.currency,
+    });
   }
   // Petroperú's international competitions: own rules, see
   // lib/relevance-petroperu.ts — rare, big, and never priced.

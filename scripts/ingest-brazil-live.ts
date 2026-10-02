@@ -20,6 +20,7 @@
  *   npm run ingest:brazil-live -- --skip-amounts            (shape only — every row then reports no amount)
  *   npm run ingest:brazil-live -- --documents --write       (also record each written tender's bid-document links)
  *   npm run ingest:brazil-live -- --modalities 4            (just Concorrência Eletrônica)
+ *   npm run ingest:brazil-live -- --modalities 6 --days 2   (Pregão Eletrônico, equipment only — lib/relevance-pncp-pregao.ts)
  *   npm run ingest:brazil-live -- --write
  */
 import { ingestBrazilPncp, BRAZIL_PNCP_SOURCE_NAME } from "../lib/ingestion/ingest-brazil";
@@ -171,6 +172,9 @@ async function main() {
   // was read as a fact about Brazilian procurement. It was a fact about the
   // network: PNCP refused every one of the 78 lookups. A count that cannot
   // distinguish those two is worse than no count.
+  if (result.pregaoNotEquipment > 0) {
+    console.log(`  电子竞价（Pregão）里 ${result.pregaoNotEquipment} 条不是目标设备类（医疗设备、车辆、工程机械、电力设备、ICT 基础设施），未取金额、不入库。`);
+  }
   if (result.skippedAwardedClosed > 0) {
     console.log(`  跳过 ${result.skippedAwardedClosed} 条已中标且早就截止的记录（PNCP 只给布尔值，没有中标方和金额）。`);
   }

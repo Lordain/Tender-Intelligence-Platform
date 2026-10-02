@@ -45,6 +45,7 @@
     "ingest:peru-seace-list": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-seace-list.ts",
     "ingest:peru-live": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-live.ts",
     "ingest:brazil-live": "tsx --env-file-if-exists=.env.local scripts/ingest-brazil-live.ts",
+    "cron:brazil-pregao": "tsx --env-file-if-exists=.env.local scripts/ingest-brazil-live.ts --pregao",
     "ingest:peru-oxi": "tsx --env-file-if-exists=.env.local scripts/ingest-peru-oxi.ts",
     "backfill:peru-documents": "tsx --env-file-if-exists=.env.local scripts/backfill-peru-document-links.ts",
     "protect:source-urls": "tsx --env-file-if-exists=.env.local scripts/protect-manual-source-urls.ts",

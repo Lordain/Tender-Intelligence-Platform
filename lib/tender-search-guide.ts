@@ -36,7 +36,7 @@ export type TenderSearchGuide = {
   note?: string;
 };
 
-type SearchGuideInput = Pick<Tender, "buyer" | "sourceName" | "sourceUrl">;
+type SearchGuideInput = Pick<Tender, "buyer" | "sourceName" | "sourceUrl"> & Partial<Pick<Tender, "tenderNumber">>;
 
 /** A Compras MX row whose LicitIA lookup resolved gets a real detail URL; an unresolved one falls back to the bare search page. */
 const COMPRASMX_DETAIL_PATH = "/detalle/";
@@ -48,6 +48,8 @@ const COMPRASMX = /compras\s?mx|compranet/i;
 const PETRONECT = /petronect/i;
 const PETROPERU = /petroper[uú]/i;
 const CODELCO = /codelco/i;
+const MERCADO_PUBLICO = /mercado p[uú]blico|chilecompra/i;
+const ADIF = /trenes argentinos infraestructura|\badif\b/i;
 
 export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide | null {
   const origin = `${tender.buyer} ${tender.sourceName}`;
@@ -173,6 +175,40 @@ export function tenderSearchGuide(tender: SearchGuideInput): TenderSearchGuide |
       // codelcoTenderNumber falls back to a site-made id when the subject
       // carries no Ariba WS/Doc number, so the copy button can't be the route.
       note: "Codelco 的招标文件只在 SAP Ariba 上发给受邀供应商。上面的编号如果不是 WS 或 Doc 开头，是本站生成的，官网上搜不到，请按日期和标的查找。",
+    };
+  }
+
+  // The two below are the user's own click-paths (2026-10-02), labels as the
+  // pages spell them. CODELCO is tested first: a Codelco row is not a
+  // Mercado Público one even when the buyer text mentions ChileCompra.
+  if (MERCADO_PUBLICO.test(origin)) {
+    return {
+      platform: "Mercado Público（ChileCompra）",
+      url: null,
+      intro: "官方入口打开的就是这个项目的招标页面，标书在它的附件里。",
+      steps: [
+        "打开上面的「前往官方投标入口」，进入官方招标页面",
+        "点击页面里的 Ver adjuntos（放大镜图标）",
+        "弹出的窗口列出这个项目的全部文件，包括标书",
+        "点击文件最右侧的 Ver（放大镜）即可下载",
+      ],
+    };
+  }
+
+  if (ADIF.test(origin)) {
+    // "ADIF LPN 24/2026" is searched as "24/2026": the portal's search box
+    // takes the number alone, with the procedure type ticked above it.
+    const searchNumber = /\d+\s*\/\s*\d{4}/.exec(tender.tenderNumber ?? "")?.[0].replace(/\s+/g, "");
+    return {
+      platform: "Trenes Argentinos Infraestructura（ADIF）— Portal de Licitaciones",
+      url: null,
+      intro: searchNumber ? `在官网按编号 ${searchNumber} 搜索（不带前面的「ADIF LPN」）。` : "在官网按项目编号的数字部分搜索（例如 ADIF LPN 24/2026 就搜 24/2026）。",
+      steps: [
+        "打开上面的「前往官方投标入口」，进入官方招标页面",
+        "在搜索框上方勾选 Licitación",
+        searchNumber ? `在搜索框输入 ${searchNumber}` : "在搜索框输入编号的数字部分，例如 ADIF LPN 24/2026 就输入 24/2026",
+        "搜索后打开这个项目，即可下载对应的标书文件",
+      ],
     };
   }
 

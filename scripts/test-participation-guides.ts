@@ -70,6 +70,13 @@ check("Petroperú", guideFor(PETROPERU_SOURCE_NAME, "Petróleos del Perú – PE
 check("Codelco", guideFor(CODELCO_SOURCE_NAME, "Codelco — Casa Matriz")?.platform, "Codelco — Licitaciones en proceso");
 check("Cemig 已有项目页面，不需要步骤", guideFor(CEMIG_SOURCE_NAME, "Cemig Distribuição S.A."), null);
 check("UPME 已有项目页面，不需要步骤", guideFor(UPME_SOURCE_NAME, "UPME"), null);
+check("Mercado Público 有下载步骤", guideFor("Mercado Público — ChileCompra（智利公共采购平台）", "MUNICIPALIDAD DE EJEMPLO")?.steps[1], "点击页面里的 Ver adjuntos（放大镜图标）");
+check(
+  "ADIF 按去掉前缀的编号搜索",
+  tenderSearchGuide({ sourceName: ADIF_SOURCE_NAME, buyer: "Trenes Argentinos Infraestructura", sourceUrl: "https://example.org/", tenderNumber: "ADIF LPN 24/2026" })?.steps[2],
+  "在搜索框输入 24/2026",
+);
+check("Codelco 仍走 Codelco 的步骤", guideFor(CODELCO_SOURCE_NAME, "Codelco — Casa Matriz")?.platform, "Codelco — Licitaciones en proceso");
 check("PEMEX 不受影响", guideFor("PEMEX — Concursos Abiertos", "Pemex Exploración y Producción")?.platform, "PEMEX — Concursos Abiertos");
 
 console.log(failures === 0 ? "\n全部通过" : `\n${failures} 项失败`);

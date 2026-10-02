@@ -109,7 +109,11 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // quirúrgico", the consumable this pattern deliberately leaves out.
   // "ADQUISICIÓN DE 31 AMBULANCIAS" is a vehicle AND a medical purchase —
   // the user asked for both tags, so the word is in both patterns.
-  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipo de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|imagenol[óo]gic[oa]s?|(equipos?|equipamiento|tecnolog[íi]a|mesas?|l[áa]mparas?|torres?|instrumental) (de )?quir[úu]rgic[oa]s?|mesas? de operaciones|quir[óo]fano(s)?|ec[óo]grafo(s)?|ecograf[íi]a|electroencefal[óo]grafo(s)?|electrocardi[óo]grafo(s)?|equipos? de ultrasonido|mam[óo]grafo(s)?|ambulancia(s)?|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|rayos x|hospital(es)?\b|hospitalari[oa]s?|unidad(es)? m[ée]dica(s)?|servicios de salud|\bsalud\b/i],
+  // "equipos de laboratorio" (2026-10-02): the singular alone missed Peru's
+  // "ADQUISICIÒN DE EQUIPOS DE LABORATORIO Y PRODUCCION PARA EL IOAR:
+  // ¿REMODELACION DE LABORATORIO …", which the remodelling word then filed as
+  // pure construction — the class the small-works floor removes.
+  ["healthcare", /equipo m[ée]dico|equipamiento m[ée]dico|equipos? de laboratorio|bomba de infusi[óo]n|ventilador pulmonar|hemodi[áa]lisis|hemodinamia|imagenolog[íi]a|imagenol[óo]gic[oa]s?|(equipos?|equipamiento|tecnolog[íi]a|mesas?|l[áa]mparas?|torres?|instrumental) (de )?quir[úu]rgic[oa]s?|mesas? de operaciones|quir[óo]fano(s)?|ec[óo]grafo(s)?|ecograf[íi]a|electroencefal[óo]grafo(s)?|electrocardi[óo]grafo(s)?|equipos? de ultrasonido|mam[óo]grafo(s)?|ambulancia(s)?|radiolog[íi]a|tomograf[íi]a|resonancia magn[ée]tica|rayos x|hospital(es)?\b|hospitalari[oa]s?|unidad(es)? m[ée]dica(s)?|servicios de salud|\bsalud\b/i],
   // "\bducto\b" (2026-09-03, real bug found against a real Proyectos
   // Estratégicos MX export): was missing its leading \b, so it matched
   // as a bare substring of "acueducto" (aqueduct — CONAGUA's own
@@ -162,7 +166,10 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // trucks ("grúa de arrastre"), which belong under vehicles. "montacargas"
   // (forklift) is included: it is materials-handling plant, bought the same
   // way and by the same buyers.
-  ["heavy_equipment", /excavadora|retroexcavadora|motoniveladora|cargador frontal|minicargador|bulldozer|topadora|tractor de orugas|compactadora|rodillo vibratorio|pavimentadora|montacargas|maquinaria pesada|maquinaria para construcci[óo]n|gr[úu]a(s)? (torre|hidr[áa]ulica|telesc[óo]pica|sobre|m[óo]vil|articulada)|planta de asfalto|revolvedora de concreto|olla revolvedora/i],
+  // "maquinaria y equipo de construcción" (2026-10-02): Mexico's
+  // "LA-T-28-2026 MAQUINARIA Y EQUIPO DE CONSTRUCCIÓN" was tagged pure
+  // construction on the trailing word.
+  ["heavy_equipment", /excavadora|retroexcavadora|motoniveladora|cargador frontal|minicargador|bulldozer|topadora|tractor de orugas|compactadora|rodillo vibratorio|pavimentadora|montacargas|maquinaria pesada|maquinaria (?:y equipos? )?(?:para|de) (?:la )?construcci[óo]n|gr[úu]a(s)? (torre|hidr[áa]ulica|telesc[óo]pica|sobre|m[óo]vil|articulada)|planta de asfalto|revolvedora de concreto|olla revolvedora/i],
   // Renewable GENERATION is not here, and that is the user's call (2026-09-20,
   // on the real Colombian title "INSTALACIÓN DE SISTEMAS DE ENERGÍA SOLAR
   // FOTOVOLTAICA EN ZONAS NO INTERCONECTADA"): 不要有太阳能相关词都加能矿标
@@ -220,7 +227,10 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // service, "RENOVACION DE RED SECUNDARIA; EN EL (LA) SUMINISTRO ELECTRICO
   // AA.HH. RUTA DEL SOL", never by the equipment. Bare "red secundaria" is
   // not here — it is also a water-main phrase.
-  ["power", /energ[íi]a el[ée]ctrica|energ[íi]as? renovables?|electricidad|suministro el[ée]ctrico|electrificaci[óo]n|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|\b(?:turbo)?generador(a|as|es)?\b|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|fotovoltaic[ao]|planta solar|parque (solar|e[óo]lico)|e[óo]lic[ao]|geot[ée]rmic[ao]|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
+  // "grupo electrógeno" (2026-10-02): EMAPA Pasco's "ADQUISICION DE GRUPO
+  // ELECTROGENO PARA LA ESTACION DEL REBOMBEO" — a generator set — was tagged
+  // pure water from the pumping station it is for.
+  ["power", /grupos? electr[óo]genos?|energ[íi]a el[ée]ctrica|energ[íi]as? renovables?|electricidad|suministro el[ée]ctrico|electrificaci[óo]n|subestaci[óo]n|transmisi[óo]n el[ée]ctrica|l[íi]neas? de transmisi[óo]n|generaci[óo]n el[ée]ctrica|red el[ée]ctrica|distribuci[óo]n el[ée]ctrica|\bcfe\b|comisi[óo]n federal de electricidad|transformador(es)?|\b(?:turbo)?generador(a|as|es)?\b|\bups\b|relevador(es)?|rel[ée]s? de protecci[óo]n|casa de m[áa]quinas|energ[íi]a fotovoltaica|sistemas? de energ[íi]a solar|fotovoltaic[ao]|planta solar|parque (solar|e[óo]lico)|e[óo]lic[ao]|geot[ée]rmic[ao]|central(es)? de generaci[óo]n|interruptor(es)? de potencia|seccionador(es)?|celda(s)? de (media|alta) tensi[óo]n|(media|alta) tensi[óo]n|centro(s)? de transformaci[óo]n|\bkv\b|unidad(es)? terminal(es)? remota(s)?|\brtu\b|sistema de control distribuido|\bdcs\b|\bscada\b/i],
   // The second half of this alternation (ran/bts/ruteador/wdm/...) is the
   // same real ICT/telecom equipment whitelist added to
   // INCLUDE_OVERRIDE_KEYWORDS in lib/relevance.ts (a real batch of 29

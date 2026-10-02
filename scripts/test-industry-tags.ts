@@ -31,6 +31,12 @@ type Case = {
 };
 
 const cases: Case[] = [
+  // --- Equipment read as pure works (2026-10-02) -------------------------
+  // Found in the small-works measurement: each was tagged construction or
+  // water alone, the class the pure-works floor removes.
+  { title: "LA-T-28-2026 MAQUINARIA Y EQUIPO DE CONSTRUCCIÓN", expect: ["heavy_equipment"], note: "工程机械采购" },
+  { title: "ADQUISICION DE GRUPO ELECTROGENO PARA LA ESTACION DEL REBOMBEO RECTANGULAR DE LA EPS EMAPA PASCO S.A", expect: ["power"], note: "发电机组采购" },
+  { title: "ADQUISICIÒN DE EQUIPOS DE LABORATORIO Y PRODUCCION PARA EL IOAR: ¿REMODELACION DE LABORATORIO ESPECIFICO Y/O ESPECIALIDAD", expect: ["healthcare"], note: "实验室设备采购" },
   // --- Rail beyond Mexico's wording (2026-09-26) --------------------------
   // The user noticed every 铁路/地铁 tender on the site was Mexican. The
   // relevance rules kept rail titles from every country, but the transport

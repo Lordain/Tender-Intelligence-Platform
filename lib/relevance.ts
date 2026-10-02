@@ -2744,6 +2744,62 @@ function minValueUsdFor(country: string | undefined): number {
   return MIN_VALUE_USD_BY_COUNTRY[country] ?? MIN_VALUE_USD;
 }
 
+/**
+ * A second, higher floor for pure civil works and water works (user,
+ * 2026-10-02: 土建、水工程类的项目占比太高 … 收紧小型土建/水工程入库, at
+ * 用 250万，我还是想要排掉一些).
+ *
+ * Measured first (scripts/measure-small-works.ts, rows published 2026-08-01 –
+ * 10-02, nearly all in September): 128 pure-works rows were kept as 常规
+ * below $5M or with no amount. With an amount they fell out as
+ *
+ *     $1M – $2M    19   (Colombia 2, Mexico 9, Peru 8)
+ *     $2M – $3M    24   (Brazil 13, Colombia 6, Peru 5)
+ *     $3M – $5M    25
+ *
+ * and nothing below $1M — the platform floor already holds there, so a lower
+ * line would have removed nothing. $2.5M takes the first band and part of the
+ * second: seven identical $1.14M Mexican high schools, Peruvian village
+ * irrigation channels, small parks and stadium stands, and Brazil's smallest
+ * school and drainage contracts.
+ *
+ * "Pure" means every tag is construction or water. A road is construction +
+ * transportation, a hospital construction + healthcare, and neither is what
+ * the user asked about, so neither is touched. A goods purchase is never
+ * caught either — buying a generator set for a pumping station is equipment,
+ * whatever the station is tagged.
+ *
+ * Countries listed rather than applied everywhere: these are the five the
+ * measurement covered. Argentina is deliberately absent — the user said of
+ * its floor 我不想动现在的标准 (2026-09-27) and exempted its water sector
+ * from amounts altogether.
+ *
+ * Future imports only (user: 只应用于未来新导入的); stored rows are not
+ * reclassified by this change.
+ */
+const SMALL_WORKS_MIN_VALUE_USD = 2_500_000;
+const SMALL_WORKS_FLOOR_COUNTRIES: ReadonlySet<string> = new Set(["Brazil", "Chile", "Colombia", "Mexico", "Peru"]);
+const WORKS_ONLY_INDUSTRIES: ReadonlySet<string> = new Set(["construction", "water"]);
+
+function isWorksOnly(industries: readonly string[]): boolean {
+  const tags = industries.filter((tag) => tag !== "general");
+  return tags.length > 0 && tags.every((tag) => WORKS_ONLY_INDUSTRIES.has(tag));
+}
+
+/**
+ * Mexico's "Invitación a cuando menos tres personas" — the procedure the
+ * public-works law (LOPSRM art. 43) opens for contracts under the maximum
+ * amounts the federal budget sets each year, i.e. the small ones (art. 42
+ * also allows it by exception, which is rare for works). Compras
+ * MX publishes no amount on most rows, so for a pure works row the procedure
+ * is the only size statement there is (same reasoning as Chile's declared
+ * UTM band). Measured: 9 such rows in a month, all road patching, a school,
+ * a drainage outlet, works supervision. Mexican public tenders (LICITACIÓN
+ * PÚBLICA) without an amount are NOT touched — that is where the 57 km line,
+ * the military hospital and the river defences are.
+ */
+const MEXICO_INVITATION_PROCEDURE = /invitaci[oó]n a cuando menos tres/i;
+
 // zh tier names renamed 2026-09-05 per explicit user request
 // ("重点项目"->"中型项目", "旗舰项目"->"大型项目") — see the same-day comment
 // in lib/tender-labels.ts. This LABELS object is written into each
@@ -2954,9 +3010,19 @@ export function isDirectAward(procedureType: string | undefined): boolean {
 }
 
 const EXCLUDED_REASON_BY_SIGNAL: Record<
-  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "municipal_sports_component" | "rural_road" | "small_local_works" | "equipment_rental" | "short_bid_window" | "declared_small_band",
+  "keyword" | "industry" | "no_content" | "short_duration" | "short_bridge" | "buyer" | "consulting" | "undisclosed_value" | "price_only_auction" | "price_comparison" | "direct_award" | "municipal_water_component" | "municipal_sports_component" | "rural_road" | "small_local_works" | "equipment_rental" | "short_bid_window" | "declared_small_band" | "small_works_value" | "small_works_invitation",
   LocalizedText
 > = {
+  small_works_value: {
+    zh: `该项目是纯土建/水利工程，预估金额低于 $${SMALL_WORKS_MIN_VALUE_USD.toLocaleString("en-US")} 美元。这一规模的房建、道路、供排水工程基本由本地承包商承建，默认不进入推荐列表（数据仍保留，可用于统计）。注：含交通、医疗、电力等其他行业内容的项目，以及设备采购，不适用本规则。`,
+    en: `A pure civil-works or water-works contract with an estimated value under $${SMALL_WORKS_MIN_VALUE_USD.toLocaleString("en-US")}. Buildings, streets and water networks at this size are built by local contractors. Filtered from the default feed (metadata is kept, not deleted). Does not apply to projects that also carry transport, health, power or other sector content, nor to equipment purchases.`,
+    es: `Obra civil o hidráulica pura con valor estimado menor a US$${SMALL_WORKS_MIN_VALUE_USD.toLocaleString("en-US")}. Edificaciones, calles y redes de agua de este tamaño las ejecutan contratistas locales. Filtrada de la vista predeterminada (los metadatos se conservan). No aplica a proyectos con contenido de transporte, salud, energía u otros sectores, ni a compras de equipo.`,
+  },
+  small_works_invitation: {
+    zh: "该项目是纯土建/水利工程，采用「至少邀请三家」（Invitación a cuando menos tres personas）程序且未公布金额。按墨西哥公共工程法，这一程序通常用于联邦预算年度限额以下的小额工程，默认不进入推荐列表（数据仍保留，可用于统计）。注：公开招标（Licitación Pública）不适用本规则。",
+    en: "A pure civil-works or water-works contract let by Invitación a cuando menos tres personas, with no amount published. Mexican public-works law uses that procedure for contracts under the budget's annual maximum amounts, i.e. normally small ones. Filtered from the default feed (metadata is kept, not deleted). Does not apply to a Licitación Pública.",
+    es: "Obra civil o hidráulica pura por invitación a cuando menos tres personas, sin monto publicado. La ley de obras públicas lo prevé para contratos bajo los montos máximos anuales del presupuesto, es decir, normalmente obras pequeñas. Filtrada de la vista predeterminada (los metadatos se conservan). No aplica a una licitación pública.",
+  },
   no_content: {
     zh: "该记录只包含发标单位和参考编号，没有任何描述标的物的信息（数据源本身如此，非抓取遗漏），无法判断相关性，默认不进入推荐列表（数据仍保留，可用于统计）。",
     en: "This record only carries a buyer name and a reference number — the real source data has no description of what's being procured at all (not a scraping gap), so there's nothing to judge relevance from. Filtered from the default feed (metadata is kept, not deleted).",
@@ -3085,6 +3151,8 @@ function reasonFor(
     | "equipment_rental"
     | "short_bid_window"
     | "declared_small_band"
+    | "small_works_value"
+    | "small_works_invitation"
     | "none",
   /** Only meaningful for signal === "value" — the actual per-country threshold this tender was measured against (see MIN_VALUE_USD_BY_COUNTRY). */
   valueThresholdUsd: number = MIN_VALUE_USD,
@@ -3688,6 +3756,24 @@ export function classifyRelevance(input: {
   const exemptFromValueFloor = isValueFloorExemptSector(input.country, subjectTitle, subjectSummary);
   if (input.isNationalPriorityProject !== true && !exemptFromValueFloor && normalizedValue !== undefined && normalizedValue < minValueUsd) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "value", minValueUsd) };
+  }
+
+  // Small pure works — see SMALL_WORKS_MIN_VALUE_USD. After the platform
+  // floor, so a row under both reads the platform's reason, and before every
+  // promotion, because a disclosed amount decides here the way it does above.
+  if (
+    input.isNationalPriorityProject !== true &&
+    input.country !== undefined &&
+    SMALL_WORKS_FLOOR_COUNTRIES.has(input.country) &&
+    isWorksOnly(input.industries) &&
+    !isGoodsPurchase(input.title, input.scopeType)
+  ) {
+    if (normalizedValue !== undefined && normalizedValue < SMALL_WORKS_MIN_VALUE_USD) {
+      return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "small_works_value") };
+    }
+    if (normalizedValue === undefined && input.country === "Mexico" && MEXICO_INVITATION_PROCEDURE.test(input.procedureType ?? "")) {
+      return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "small_works_invitation") };
+    }
   }
 
   const flagshipIndustryHits = flagshipIndustryMatches(haystack, subjectTitle);

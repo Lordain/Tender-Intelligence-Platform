@@ -5,7 +5,7 @@
 // (scripts/test-homepage-selection.ts) instead of only in production.
 import type { HomepageControlSettings } from "@/lib/db/site-settings";
 import { isClosedTender } from "@/lib/access-control";
-import { calendarDateBucket, interleaveCountriesWithinEqualGroups } from "@/lib/country-interleave";
+import { orderIndustryShowcase } from "@/lib/industry-showcase";
 import type { Tender } from "@/types/tender";
 
 function isTender(tender: Tender | undefined): tender is Tender {
@@ -33,10 +33,10 @@ export function selectHomepageTenders(
   ).slice(0, settings.featuredCount);
   const featuredSlugSet = new Set(featured.map((tender) => tender.slug));
 
-  // "Closing soonest, nearest first" — the default (see HomepageTickerMode).
+  // The automatic pool (see HomepageTickerMode): live tenders with a deadline.
   //
-  // A tender with no deadline cannot be ranked by one and is left out rather
-  // than parked at either end; a closed one has nothing left to bid on. Both
+  // A tender with no deadline is left out — the carousel shows when each one
+  // closes — and a closed one has nothing left to bid on. Both
   // questions are answered by the same rules the rest of the site uses: the
   // status here is already derived (deriveTenderStatus runs in toTender), so
   // a deadline that passed this morning has already made it closed.
@@ -52,18 +52,16 @@ export function selectHomepageTenders(
       : settings.tickerSlugs.map((slug) => bySlug.get(slug)).filter(isTender);
 
   const tickerCandidates = tickerSource.filter((tender) => !featuredSlugSet.has(tender.slug));
-  // Automatic mode still ranks by the nearest deadline first. Only projects
-  // closing on the same calendar day are round-robined by country, so ten
-  // same-day Peru rows no longer hide Mexico and Colombia below the fold.
-  // Manual mode is deliberately untouched: an administrator's order is an
-  // explicit editorial decision, not something this display rule may alter.
-  const ticker = (settings.tickerMode === "deadline"
-    ? interleaveCountriesWithinEqualGroups(
-        tickerCandidates,
-        (tender) => calendarDateBucket(tender.submissionDeadline),
-      )
-    : tickerCandidates
-  ).slice(0, settings.tickerCount);
+  // Automatic mode: two live projects from every industry, 大型 then 中型
+  // first, countries interleaved (user, 2026-10-02; lib/industry-showcase.ts).
+  // It used to be the nearest deadlines, which filled the carousel with
+  // whichever sector and country happened to close this week. Manual mode is
+  // deliberately untouched: an administrator's order is an explicit editorial
+  // decision, not something this display rule may alter.
+  const ticker = (settings.tickerMode === "deadline" ? orderIndustryShowcase(tickerCandidates) : tickerCandidates).slice(
+    0,
+    settings.tickerCount,
+  );
 
   return { featured, ticker };
 }

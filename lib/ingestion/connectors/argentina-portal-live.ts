@@ -392,12 +392,33 @@ export type PortalDocumentDownload =
  * portal answers slowly from abroad and sometimes drops the first
  * connection, which PortalSession's retries cover.
  */
-export async function downloadPortalDocument(url: string, limits: { maxBytes: number; timeoutMs: number }): Promise<PortalDocumentDownload> {
+/**
+ * Process pages already opened during one batch, by page URL. A project's
+ * files all hang off the same page, and the portal takes 9–23 s to serve it
+ * (2026-10-02), so reloading it per file spent most of a 16-file project's
+ * time budget before a byte of a document arrived. The page's view state
+ * accepts one postback after another — checked live, three files in a row
+ * from one load — so each page is opened once and shared.
+ */
+export type PortalPageCache = Map<string, Promise<{ session: PortalSession; page: { url: string; html: string } }>>;
+
+export async function downloadPortalDocument(
+  url: string,
+  limits: { maxBytes: number; timeoutMs: number },
+  pages: PortalPageCache = new Map(),
+): Promise<PortalDocumentDownload> {
   const target = parsePortalDocumentUrl(url);
   if (!target) return { ok: false, error: "不是 COMPR.AR / CONTRAT.AR 的文件链接" };
   try {
-    const session = new PortalSession();
-    const page = await session.page(target.pageUrl);
+    let opened = pages.get(target.pageUrl);
+    if (!opened) {
+      const session = new PortalSession();
+      opened = session.page(target.pageUrl).then((page) => ({ session, page }));
+      pages.set(target.pageUrl, opened);
+      // A page that failed to open is not cached: the next file retries it.
+      opened.catch(() => pages.delete(target.pageUrl));
+    }
+    const { session, page } = await opened;
     const action = formAction(page.html, page.url);
     const form = { ...hiddenFields(page.html), __EVENTTARGET: target.eventTarget, __EVENTARGUMENT: "" };
     let response = await session.request(action, { method: "POST", form, timeoutMs: limits.timeoutMs });

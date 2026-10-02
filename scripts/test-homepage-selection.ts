@@ -8,8 +8,9 @@
  * closed this morning, cannot appear in it.
  */
 import { selectHomepageTenders } from "../lib/homepage-selection";
+import { sortTenders } from "../lib/filter-tenders";
 import type { HomepageControlSettings } from "../lib/db/site-settings";
-import type { Tender, TenderStatus } from "../types/tender";
+import type { Tender, TenderRelevanceTier, TenderStatus } from "../types/tender";
 
 let passed = 0;
 let failed = 0;
@@ -24,13 +25,18 @@ function check(label: string, condition: boolean, detail?: string) {
   }
 }
 
-function tender(slug: string, options: { deadline?: string; status?: TenderStatus; published?: string; country?: string } = {}): Tender {
+function tender(
+  slug: string,
+  options: { deadline?: string; status?: TenderStatus; published?: string; country?: string; industries?: string[]; tier?: TenderRelevanceTier } = {},
+): Tender {
   return {
     slug,
     country: options.country ?? "Mexico",
     publicationDate: options.published ?? "2026-09-01",
     submissionDeadline: options.deadline,
     status: options.status ?? "open",
+    industries: options.industries ?? ["general"],
+    relevance: { tier: options.tier ?? "standard" },
   } as Tender;
 }
 
@@ -71,7 +77,7 @@ const pool = [
 
 {
   const { ticker } = selectHomepageTenders(pool, settings());
-  check("nearest deadline first", ticker.map((t) => t.slug).join(",") === "soon,middle,far", ticker.map((t) => t.slug).join(","));
+  check("same size and industry: nearest deadline first", ticker.map((t) => t.slug).join(",") === "soon,middle,far", ticker.map((t) => t.slug).join(","));
   check("a tender with no deadline cannot be ranked by one, so it is out", !ticker.some((t) => t.slug === "no-deadline"));
   check("a closed tender has nothing left to bid on", !ticker.some((t) => t.slug === "closed"));
   check("nor has an awarded one, deadline or not", !ticker.some((t) => t.slug === "awarded"));
@@ -104,6 +110,50 @@ const pool = [
   // whatever it renders for that, but nothing throws.
   const { ticker } = selectHomepageTenders([tender("a"), tender("b")], settings());
   check("no deadlines anywhere is an empty ticker, not a crash", ticker.length === 0);
+}
+
+{
+  // The first-impression rule (user, 2026-10-02): two per industry, 大型 then
+  // 中型 first, countries interleaved.
+  const many = [
+    // Seven power rows: only two may show, and the big ones win.
+    ...Array.from({ length: 5 }, (_, i) => tender(`power-std-${i}`, { deadline: "2026-10-01", industries: ["power"], country: "Mexico" })),
+    tender("power-big", { deadline: "2026-12-01", industries: ["power"], tier: "flagship", country: "Chile" }),
+    tender("power-mid", { deadline: "2026-11-01", industries: ["power"], tier: "significant", country: "Brazil" }),
+    tender("water-1", { deadline: "2026-10-10", industries: ["water"], country: "Peru" }),
+    tender("water-2", { deadline: "2026-10-11", industries: ["water"], country: "Peru" }),
+    tender("water-ar", { deadline: "2026-10-12", industries: ["water"], country: "Argentina" }),
+    tender("ict-1", { deadline: "2026-10-05", industries: ["ict_telecom", "power"], country: "Colombia" }),
+  ];
+  const { ticker } = selectHomepageTenders(many, settings({ tickerCount: 6 }));
+  const slugs = ticker.map((t) => t.slug);
+  check("大型 and 中型 come before 常规", slugs[0] === "power-big" && slugs[1] === "power-mid", slugs.join(","));
+  check("no industry takes more than two showcase places", slugs.slice(0, 5).filter((s) => s.startsWith("power")).length === 2, slugs.join(","));
+  check("every industry with live projects is shown", ["water", "ict"].every((prefix) => slugs.some((s) => s.startsWith(prefix))), slugs.join(","));
+  check("an industry's pair prefers two countries", slugs.includes("water-1") && slugs.includes("water-ar") && !slugs.includes("water-2"), slugs.join(","));
+  check("a multi-tag tender counts once", new Set(slugs).size === slugs.length);
+  check(
+    "once every industry has its two, the rest follows by size and deadline",
+    slugs.length === 6 && slugs[5] === "power-std-0",
+    slugs.join(","),
+  );
+}
+
+{
+  // /tenders opens in the same order (sort "recommended", the default).
+  const now = new Date("2026-09-30T00:00:00Z").getTime();
+  const list = [
+    tender("closed-big", { deadline: "2026-09-01", status: "submission_closed", tier: "flagship", industries: ["power"] }),
+    tender("power-std", { deadline: "2026-10-01", industries: ["power"] }),
+    tender("power-big", { deadline: "2026-12-01", industries: ["power"], tier: "flagship", country: "Chile" }),
+    tender("water-mid", { deadline: "2026-11-01", industries: ["water"], tier: "significant", country: "Peru" }),
+    tender("power-std-2", { deadline: "2026-10-02", industries: ["power"], country: "Peru" }),
+    tender("power-std-3", { deadline: "2026-10-03", industries: ["power"] }),
+  ];
+  const slugs = sortTenders(list, "recommended", now).map((t) => t.slug);
+  check("list: 大型, then 中型, then the rest", slugs.slice(0, 2).join(",") === "power-big,water-mid", slugs.join(","));
+  check("list: a closed tender stays behind every live one, however big", slugs[slugs.length - 1] === "closed-big", slugs.join(","));
+  check("list: nothing is dropped", slugs.length === list.length);
 }
 
 console.log(`\n${passed}/${passed + failed} checks passed.`);

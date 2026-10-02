@@ -7,10 +7,11 @@ const DEFAULT_HOMEPAGE_TICKER_COUNT = 20;
 /**
  * How the homepage's scrolling preview picks its projects.
  *
- *   "deadline" — the N tenders whose bid deadline comes soonest, nearest
- *                first. Nothing to maintain and nothing to schedule: the
- *                homepage is revalidated every 5 minutes (app/page.tsx), so
- *                the list moves on its own as deadlines pass.
+ *   "deadline" — automatic. Live tenders with a deadline, two per industry,
+ *                大型/中型 first, countries interleaved (lib/industry-showcase.ts;
+ *                until 2026-10-02 it was simply the soonest deadlines — the
+ *                stored value keeps its old name). Nothing to maintain: the
+ *                homepage is revalidated every 5 minutes (app/page.tsx).
  *   "manual"   — the ordered list an admin picked by hand.
  *
  * Default is "deadline" (user, 2026-09-16). A manual list stays stored while

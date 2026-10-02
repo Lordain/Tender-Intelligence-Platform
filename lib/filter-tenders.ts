@@ -1,4 +1,5 @@
 import type { Locale, Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
+import { orderIndustryShowcase } from "@/lib/industry-showcase";
 import { localize } from "@/lib/localize";
 import { calendarDateBucket, interleaveCountriesWithinEqualGroups } from "@/lib/country-interleave";
 
@@ -96,7 +97,8 @@ export function filterTenders(
 }
 
 // deadline_desc added 2026-09-25 (user: 计划交标 … 增加：由远到近).
-export const SORT_KEYS = ["publication_desc", "deadline_asc", "deadline_desc"] as const;
+// recommended added 2026-10-02 and is /tenders' default — see sortTenders.
+export const SORT_KEYS = ["publication_desc", "deadline_asc", "deadline_desc", "recommended"] as const;
 
 export type SortKey = (typeof SORT_KEYS)[number];
 
@@ -110,6 +112,19 @@ export function sortTenders(allTenders: Tender[], sortKey: SortKey = DEFAULT_SOR
   const sorted = [...allTenders];
 
   switch (sortKey) {
+    case "recommended": {
+      // The first screen of /tenders (user, 2026-10-02 — 这是用户第一眼看到
+      // 我们的入口): among the live opportunities, two per industry, 大型 then
+      // 中型 first, countries interleaved (lib/industry-showcase.ts), then the
+      // remaining live rows by size and deadline. Everything not biddable
+      // today keeps the 由近到远 order behind them.
+      const byDeadline = sortTenders(allTenders, "deadline_asc", now);
+      const isLive = (tender: Tender) => {
+        const deadline = tender.submissionDeadline ? new Date(tender.submissionDeadline).getTime() : NaN;
+        return Number.isFinite(deadline) && deadline >= now && (tender.status === "open" || tender.status === "clarification");
+      };
+      return [...orderIndustryShowcase(byDeadline.filter(isLive)), ...byDeadline.filter((tender) => !isLive(tender))];
+    }
     case "deadline_asc":
     case "deadline_desc": {
       // 由远到近 flips only the order WITHIN the live band: the groups stay in

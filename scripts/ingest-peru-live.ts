@@ -107,6 +107,11 @@ async function main() {
   if (result.keptAfterRecencyCount !== result.mappedCount) {
     console.log(`Keeping ${result.keptAfterRecencyCount} of ${result.mappedCount} within the recency window.`);
   }
+  if (result.newestPublicationDays && result.newestPublicationDays.length > 0) {
+    console.log(
+      `源数据里最新的发布日期：${result.newestPublicationDays.map(({ day, count }) => `${day}（${count} 条）`).join("、")}`,
+    );
+  }
 
   if (!write) {
     if (args.includes("--json")) {

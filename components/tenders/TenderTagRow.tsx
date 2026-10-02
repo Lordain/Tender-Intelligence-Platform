@@ -3,6 +3,7 @@
 import type { TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { localize, useLocale } from "@/lib/i18n";
 import {
+  PARTICIPATION_SCOPE_LABELS,
   RELEVANCE_TIER_COLORS,
   RELEVANCE_TIER_LABELS,
   SCOPE_TYPE_LABELS,
@@ -48,6 +49,8 @@ export type TenderTagRowProps = {
   status: TenderStatus;
   scopeType: TenderScopeType;
   isObrasPorImpuestos?: boolean;
+  /** Carácter "internacional abierto" (participationScope international_open): foreign firms may bid directly (user, 2026-10-02). */
+  isInternationalOpen?: boolean;
   /** `sm` on cards and list rows, `md` on the two detail pages, matching the type scale each already used. */
   size?: "sm" | "md";
 };
@@ -58,6 +61,7 @@ export function TenderTagRow({
   status,
   scopeType,
   isObrasPorImpuestos = false,
+  isInternationalOpen = false,
   size = "sm",
 }: TenderTagRowProps) {
   const { locale } = useLocale();
@@ -82,6 +86,11 @@ export function TenderTagRow({
       <span className={`${pill} border border-[#d8e0e3] font-medium text-[#566773]`}>
         {localize(SCOPE_TYPE_LABELS[scopeType], locale)}
       </span>
+      {isInternationalOpen && (
+        <span className={`${pill} bg-[#e6f4ec] font-black text-[#1f6b45]`}>
+          {localize(PARTICIPATION_SCOPE_LABELS.international_open, locale)}
+        </span>
+      )}
       {isObrasPorImpuestos && (
         <span className={`${pill} bg-[#e2eef5] font-black text-[#155573]`}>{OBRAS_POR_IMPUESTOS_BADGE}</span>
       )}

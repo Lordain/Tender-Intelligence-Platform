@@ -4,7 +4,8 @@ import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { fetchDocumentLinksForSlugs, type StoredDocumentLink } from "@/lib/ingestion/document-links";
 import { downloadFile } from "@/lib/ingestion/download-file";
-import { downloadPortalDocument, parsePortalDocumentUrl } from "@/lib/ingestion/connectors/argentina-portal-live";
+import { analysisFileName } from "@/lib/ingestion/analysis-file-name";
+import { downloadPortalDocument, parsePortalDocumentUrl, type PortalPageCache } from "@/lib/ingestion/connectors/argentina-portal-live";
 
 /**
  * Backs the 批量下载标书 button on /admin/documents-needed: given a set of
@@ -20,7 +21,7 @@ import { downloadPortalDocument, parsePortalDocumentUrl } from "@/lib/ingestion/
  * (see colombia-documents-connector.ts's header).
  *
  * Entries are named `<slug>__<document name>` so the pipeline resolves each
- * file to its tender by exact slug lookup — see analysisFileName() below.
+ * file to its tender by exact slug lookup — see lib/ingestion/analysis-file-name.ts.
  *
  * Coverage is per-source and honest about it: only tenders whose ingestion
  * captured real per-document URLs have anything to download. Today that is
@@ -104,34 +105,6 @@ const DOWNLOAD_HEADERS: Record<string, string> = {
 
 type FileOutcome = { slug: string; fileName: string; ok: boolean; bytes?: number; error?: string };
 
-const UNSAFE_PATH_CHARS = /[\\/:*?"<>|]/g;
-
-function zipSafe(segment: string): string {
-  return segment.replace(UNSAFE_PATH_CHARS, "-").trim().slice(0, 120) || "unnamed";
-}
-
-/**
- * The file name the analysis pipeline can resolve without opening the file.
- *
- * lib/ingestion/match-documents-to-tenders.ts resolves a document to its
- * tender in three steps, and the FIRST one is a `<slug>__` file-name prefix
- * (SLUG_OVERRIDE_PATTERN) — an exact lookup, no text extraction, no
- * ambiguity. Without the prefix these files would fall through to step two,
- * "does any known tender_number appear in the name or the extracted text",
- * and the name alone says nothing: every one of them is called "Bases
- * Administrativas.pdf". They would still usually resolve off the PDF's own
- * text, but only after extracting it, and only if SEACE's own document
- * happens to spell the procedure number the way the record does.
- *
- * So the ZIP is flat and every entry is `<slug>__<document name>`. Flat
- * because findDocuments() does not recurse: an admin who unzipped and pointed
- * /admin/local-batch at the folder would have got "0 files found" from a
- * folder visibly full of PDFs.
- */
-function analysisFileName(slug: string, fileName: string): string {
-  return `${zipSafe(slug)}__${zipSafe(fileName)}`;
-}
-
 /** Appends " (2)", " (3)", ... before the extension until the path is free. */
 function uniquePath(path: string, used: Set<string>): string {
   if (!used.has(path)) {
@@ -154,12 +127,14 @@ function uniquePath(path: string, used: Set<string>): string {
 async function downloadOne(
   link: StoredDocumentLink,
   limits: { budgetMs: number },
+  portalPages: PortalPageCache,
 ): Promise<{ outcome: FileOutcome; buffer?: Buffer }> {
   const base: FileOutcome = { slug: link.slug, fileName: link.fileName, ok: false };
   // COMPR.AR / CONTRAT.AR: no URL per file, only a button on the process
-  // page, which is replayed (argentina-portal-live.ts, 2026-09-29).
+  // page, which is replayed (argentina-portal-live.ts, 2026-09-29). The page
+  // is opened once per batch and shared by its files.
   if (parsePortalDocumentUrl(link.sourceUrl)) {
-    const portal = await downloadPortalDocument(link.sourceUrl, { maxBytes: MAX_FILE_BYTES, timeoutMs: limits.budgetMs });
+    const portal = await downloadPortalDocument(link.sourceUrl, { maxBytes: MAX_FILE_BYTES, timeoutMs: limits.budgetMs }, portalPages);
     if (!portal.ok) return { outcome: { ...base, error: portal.error } };
     return { outcome: { ...base, ok: true, bytes: portal.bytes }, buffer: portal.buffer };
   }
@@ -218,6 +193,7 @@ export async function POST(request: Request) {
   // an amended publication — and adding the same name to a flat archive twice
   // makes one of them unreachable.
   const usedPaths = new Set<string>();
+  const portalPages: PortalPageCache = new Map();
   const startedAt = Date.now();
   const remainingBudget = () => TOTAL_BUDGET_MS - (Date.now() - startedAt);
   // Sequential batches of CONCURRENCY rather than one Promise.all over
@@ -243,7 +219,7 @@ export async function POST(request: Request) {
     // Never promise a file more time than the batch has left, minus what
     // zipping and sending the response still needs.
     const budgetMs = Math.max(remainingBudget() - 10_000, 15_000);
-    const results = await Promise.all(links.slice(from, from + CONCURRENCY).map((link) => downloadOne(link, { budgetMs })));
+    const results = await Promise.all(links.slice(from, from + CONCURRENCY).map((link) => downloadOne(link, { budgetMs }, portalPages)));
     for (const { outcome, buffer } of results) {
       outcomes.push(outcome);
       if (!buffer) continue;

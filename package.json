@@ -208,7 +208,8 @@
     "check:subscription-state": "tsx --env-file-if-exists=.env.local scripts/check-subscription-state.ts",
     "create:qa-account": "tsx --env-file-if-exists=.env.local scripts/create-qa-account.ts",
     "create:test-checkout": "tsx --env-file-if-exists=.env.local scripts/create-test-checkout.ts",
-    "test:admin-generated-text": "tsx scripts/test-admin-generated-text.ts"
+    "test:admin-generated-text": "tsx scripts/test-admin-generated-text.ts",
+    "download:argentina-docs": "tsx --env-file-if-exists=.env.local scripts/download-argentina-docs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

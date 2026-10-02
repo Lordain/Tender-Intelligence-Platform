@@ -134,6 +134,8 @@ export type TenderListItem = Pick<
    * for. Nothing public rendered the name itself.
    */
   isObrasPorImpuestos: boolean;
+  /** Carácter "internacional abierto" — the card's 国际公开招标 tag (user, 2026-10-02). Public: the detail page's 项目概览 already shows it to everyone. */
+  isInternationalOpen: boolean;
   /** The bid date is in the bid documents (lib/deadline-in-documents.ts): show 见招标文件, not 未提供. */
   deadlineInDocuments?: true;
   publicSlug: string;
@@ -301,6 +303,7 @@ export function toTenderListItem(
       ? tender.submissionDeadline
       : toMonthPrecisionOptional(tender.submissionDeadline),
     isObrasPorImpuestos: isObrasPorImpuestos(tender),
+    isInternationalOpen: tender.participationScope === "international_open",
     ...(deadlineIsInDocuments(tender) ? { deadlineInDocuments: true as const } : {}),
   };
 }
@@ -459,7 +462,7 @@ export function buildTenderListPage(
   const pageSize = options.pageSize ?? TENDER_PAGE_SIZE;
   const { query, countries, industries, industryMatchMode, scopeTypes, statuses, relevanceTiers } = parseTenderListFilters(params);
   const sortParam = firstValue(params.sort);
-  const sort = isSortKey(sortParam) ? sortParam : "deadline_asc";
+  const sort = isSortKey(sortParam) ? sortParam : "recommended";
   const viewParam = firstValue(params.view);
   const view = viewParam === "new" || viewParam === "deadline" ? viewParam : null;
 

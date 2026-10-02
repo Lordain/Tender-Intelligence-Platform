@@ -253,12 +253,12 @@ export function HomepageControlPanel({
         eyebrow: "Scrolling preview",
         title: "项目滚动设置",
         description: tickerMode === "deadline"
-          ? "当前为自动模式：按交标截止日由近到远取前 N 个，没有交标日期或已截止的项目不参与。首页每 5 分钟重新生成，列表自己会随日期推移滚动，不需要任何维护。"
+          ? "当前为自动模式：每个行业先取 2 个在招项目，大型、中型项目优先，再按国家穿插；没有交标日期或已截止的项目不参与。首页每 5 分钟重新生成，不需要任何维护。"
           : "手动模式：下面这份有序清单就是前台显示的内容。建议选择来自不同国家和行业的项目；国家名称与国旗会按项目数据自动显示。",
         mode: (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#dbe2e5] bg-[#fffdf9] p-2">
             {([
-              ["deadline", "自动：最近要交标的排前面"],
+              ["deadline", "自动：每个行业 2 个，大型优先"],
               ["manual", "手动：用下面这份清单"],
             ] as const).map(([value, label]) => (
               <button

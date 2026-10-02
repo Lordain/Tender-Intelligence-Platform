@@ -7,7 +7,8 @@
  *   - project counts by tier, and by industry × tier (a tender can carry more
  *     than one industry, so the industry rows add up to more than the total);
  *   - counts by budget band, in USD through lib/currency.ts;
- *   - the top 3 by USD value among recommended (non-excluded) tenders;
+ *   - the top 5 by USD value among recommended (non-excluded) tenders (the
+ *     report uses 3; the spares cover a value that is a source typo);
  *   - counts by participation scope (Carácter del procedimiento), where the
  *     source states it;
  *   - for every analysed tender (one with extracted requirements or risks):
@@ -175,13 +176,15 @@ async function main() {
     }
   }
 
-  // Top 3 by USD value among the recommended rows of each country.
+  // Top 3 by USD value among the recommended rows of each country — five are
+  // kept, so a source typo (PNCP's UFSCar theatre at R$ 3.16 bn, 2026-09) can
+  // be dropped from the write-up without another run.
   for (const [country, stats] of Object.entries(countries)) {
     stats.top3 = rows
       .filter((row) => row.country === country && row.relevance_tier !== "excluded" && row.estimated_value)
       .map((row) => ({ row, usd: convertToUsd(row.estimated_value!, row.currency ?? undefined) ?? 0 }))
       .sort((a, b) => b.usd - a.usd)
-      .slice(0, 3)
+      .slice(0, 5)
       .map(({ row, usd }) => ({
         slug: row.slug,
         publicSlug: row.public_slug,

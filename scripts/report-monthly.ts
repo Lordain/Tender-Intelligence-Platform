@@ -54,12 +54,14 @@ type Row = {
   tender_risks: Risk[];
 };
 
+// Edges at the tier lines in lib/relevance.ts (中型 $5M, 大型 $10M), so a band
+// reads against the 大型 / 中型 / 常规 counts beside it.
 const BUDGET_BANDS: { key: string; label: string; min: number; max: number }[] = [
-  { key: "lt100k", label: "< 10 万美元", min: 0, max: 100_000 },
-  { key: "100k_1m", label: "10 万 – 100 万美元", min: 100_000, max: 1_000_000 },
-  { key: "1m_6m", label: "100 万 – 600 万美元", min: 1_000_000, max: 6_000_000 },
-  { key: "6m_20m", label: "600 万 – 2000 万美元", min: 6_000_000, max: 20_000_000 },
-  { key: "gte20m", label: "≥ 2000 万美元", min: 20_000_000, max: Infinity },
+  { key: "lt1m", label: "< 100 万美元", min: 0, max: 1_000_000 },
+  { key: "1m_5m", label: "100 万 – 500 万美元", min: 1_000_000, max: 5_000_000 },
+  { key: "5m_10m", label: "500 万 – 1000 万美元", min: 5_000_000, max: 10_000_000 },
+  { key: "10m_50m", label: "1000 万 – 5000 万美元", min: 10_000_000, max: 50_000_000 },
+  { key: "gte50m", label: "≥ 5000 万美元", min: 50_000_000, max: Infinity },
 ];
 
 function text(value: LocalizedText | null | undefined): { zh: string; es: string } {
@@ -123,6 +125,8 @@ async function main() {
     budgetBandsRecommended: Record<string, number>;
     participationScope: Record<string, number>;
     participationScopeRecommended: Record<string, number>;
+    /** Sum of the disclosed estimated values, in USD. */
+    disclosedUsd: number;
     analysedCount: number;
     analysedRecommendedCount: number;
     top3: unknown[];
@@ -141,6 +145,7 @@ async function main() {
       budgetBandsRecommended: {},
       participationScope: {},
       participationScopeRecommended: {},
+      disclosedUsd: 0,
       analysedCount: 0,
       analysedRecommendedCount: 0,
       top3: [],
@@ -154,6 +159,7 @@ async function main() {
     const usd = row.estimated_value ? convertToUsd(row.estimated_value, row.currency ?? undefined) : null;
     const band = usd === null ? "undisclosed" : (BUDGET_BANDS.find((b) => usd >= b.min && usd < b.max)?.key ?? "undisclosed");
     increment(stats.budgetBands, band);
+    if (usd !== null) stats.disclosedUsd += Math.round(usd);
     if (recommended) increment(stats.budgetBandsRecommended, band);
     const scope = row.participation_scope ?? "not_stated";
     increment(stats.participationScope, scope);

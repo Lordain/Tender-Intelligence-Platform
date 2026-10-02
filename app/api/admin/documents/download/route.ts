@@ -115,7 +115,9 @@ function refusedHostHint(host: string): string {
     return "秘鲁 SEACE 拒绝网站服务器下载——在本机项目目录运行 npm run download:docs -- \"项目编号\"";
   }
   if (/(comprar|contratar)\.gob\.ar$/.test(host)) {
-    return "阿根廷 COMPR.AR / CONTRAT.AR 不接受网站服务器连接——在本机运行 npm run download:docs -- \"项目编号\"，或在 GitHub Actions 运行「Download Argentina bid documents」";
+    // Not the CLI: the admin's own connection timed out on comprar.gob.ar
+    // exactly like Vercel (2026-10-02). GitHub's runners reach it every night.
+    return "阿根廷 COMPR.AR / CONTRAT.AR 不接受网站服务器连接——在 GitHub Actions 运行「Download Argentina bid documents」，填项目编号";
   }
   return `${host} 不接受网站服务器连接——在本机运行 npm run download:docs -- "项目编号"`;
 }
@@ -273,9 +275,9 @@ export async function POST(request: Request) {
       ? [
           "",
           "有文件没下下来。",
-          "秘鲁 SEACE 和阿根廷 COMPR.AR / CONTRAT.AR 不接受网站服务器的连接（2026-10 起），这两类项目在网站上下不了——",
-          '在本机项目目录运行 npm run download:docs -- "项目编号1,项目编号2"，文件会存到 downloads\\tender-docs；',
-          "阿根廷的大项目也可以在 GitHub Actions 运行「Download Argentina bid documents」。",
+          "秘鲁 SEACE 和阿根廷 COMPR.AR / CONTRAT.AR 不接受网站服务器的连接（2026-10 起），这两类项目在网站上下不了：",
+          '秘鲁——在本机项目目录运行 npm run download:docs -- "项目编号1,项目编号2"，文件会存到 downloads\\tender-docs；',
+          "阿根廷——在 GitHub Actions 运行「Download Argentina bid documents」，填项目编号（本机网络通常也连不上 COMPR.AR）。",
           "其他来源：多是官网慢，一次选 1～2 个项目重试即可；失败的不会影响已经成功的。",
         ]
       : []),

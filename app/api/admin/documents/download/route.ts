@@ -92,6 +92,34 @@ const CONCURRENCY = 2;
  */
 const TOTAL_BUDGET_MS = process.env.VERCEL ? 270_000 : 900_000;
 
+/**
+ * Hosts that do not accept this server at all, seen 2026-10-02 from Vercel:
+ * prod1.seace.gob.pe answers 403, and comprar.gob.ar never completes the TCP
+ * handshake (UND_ERR_CONNECT_TIMEOUT on all 8 files of a 2-project batch,
+ * 163 s for nothing) — while the same portals answer GitHub's runners and an
+ * office connection. Once one file of a host fails like that, the rest of
+ * the batch on that host fails at once with what to do instead.
+ */
+const REFUSED_CONNECTION = /UND_ERR_CONNECT_TIMEOUT|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|HTTP 403\b/;
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url.split("#")[0]).hostname;
+  } catch {
+    return "";
+  }
+}
+
+function refusedHostHint(host: string): string {
+  if (/seace\.gob\.pe$/.test(host)) {
+    return "秘鲁 SEACE 拒绝网站服务器下载——在本机项目目录运行 npm run download:docs -- \"项目编号\"";
+  }
+  if (/(comprar|contratar)\.gob\.ar$/.test(host)) {
+    return "阿根廷 COMPR.AR / CONTRAT.AR 不接受网站服务器连接——在本机运行 npm run download:docs -- \"项目编号\"，或在 GitHub Actions 运行「Download Argentina bid documents」";
+  }
+  return `${host} 不接受网站服务器连接——在本机运行 npm run download:docs -- "项目编号"`;
+}
+
 type FileOutcome = { slug: string; fileName: string; ok: boolean; bytes?: number; error?: string };
 
 /** Appends " (2)", " (3)", ... before the extension until the path is free. */
@@ -183,6 +211,7 @@ export async function POST(request: Request) {
   // makes one of them unreachable.
   const usedPaths = new Set<string>();
   const portalPages: PortalPageCache = new Map();
+  const refusedHosts = new Set<string>();
   const startedAt = Date.now();
   const remainingBudget = () => TOTAL_BUDGET_MS - (Date.now() - startedAt);
   // Sequential batches of CONCURRENCY rather than one Promise.all over
@@ -208,8 +237,20 @@ export async function POST(request: Request) {
     // Never promise a file more time than the batch has left, minus what
     // zipping and sending the response still needs.
     const budgetMs = Math.max(remainingBudget() - 10_000, 15_000);
-    const results = await Promise.all(links.slice(from, from + CONCURRENCY).map((link) => downloadOne(link, { budgetMs }, portalPages)));
-    for (const { outcome, buffer } of results) {
+    const batch = links.slice(from, from + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map((link) => {
+        const host = hostOf(link.sourceUrl);
+        if (refusedHosts.has(host)) {
+          return Promise.resolve({ outcome: { slug: link.slug, fileName: link.fileName, ok: false, error: `未尝试：${refusedHostHint(host)}` } as FileOutcome });
+        }
+        return downloadOne(link, { budgetMs }, portalPages);
+      }),
+    );
+    results.forEach(({ outcome }, index) => {
+      if (!outcome.ok && outcome.error && REFUSED_CONNECTION.test(outcome.error)) refusedHosts.add(hostOf(batch[index].sourceUrl));
+    });
+    for (const { outcome, buffer } of results as { outcome: FileOutcome; buffer?: Buffer }[]) {
       outcomes.push(outcome);
       if (!buffer) continue;
       totalBytes += buffer.byteLength;
@@ -232,8 +273,9 @@ export async function POST(request: Request) {
       ? [
           "",
           "有文件没下下来。",
-          "秘鲁项目：SEACE（prod1.seace.gob.pe）自 2026-10 起拒绝云服务器下载（HTTP 403），网站上下不了——",
-          '在本机项目目录运行 npm run download:docs -- "项目编号1,项目编号2"，文件会存到 downloads\\tender-docs。',
+          "秘鲁 SEACE 和阿根廷 COMPR.AR / CONTRAT.AR 不接受网站服务器的连接（2026-10 起），这两类项目在网站上下不了——",
+          '在本机项目目录运行 npm run download:docs -- "项目编号1,项目编号2"，文件会存到 downloads\\tender-docs；',
+          "阿根廷的大项目也可以在 GitHub Actions 运行「Download Argentina bid documents」。",
           "其他来源：多是官网慢，一次选 1～2 个项目重试即可；失败的不会影响已经成功的。",
         ]
       : []),

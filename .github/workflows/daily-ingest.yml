@@ -92,6 +92,14 @@ jobs:
           # a night that fails outright.
           - name: Brazil (PNCP)
             command: ingest:brazil-live
+          # Added 2026-10-02 (user: 巴西电子竞价加进每日自动导入 ← OK). The
+          # Concorrência job above is works by law; equipment comes through
+          # Pregão Eletrônico, read here for five equipment classes at US$ 2M
+          # and up (lib/relevance-pncp-pregao.ts). Its own job and heartbeat:
+          # three days of pregões are ~9,000 rows, ~90 list pages, and a night
+          # PNCP throttles that sweep should not mark the works import failed.
+          - name: Brazil (PNCP Pregão, equipment)
+            command: cron:brazil-pregao
           # Added 2026-09-25, when the user opened Chile. Mercado Público's
           # public search (the busca door): every open tender is read, those
           # published in the last 3 days are kept (user, 2026-09-25), each

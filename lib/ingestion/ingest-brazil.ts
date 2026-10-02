@@ -9,7 +9,9 @@ import type { Tender, TenderStatus } from "@/types/tender";
 import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "./review-csv";
 import { convertToUsd } from "@/lib/currency";
 
-export const BRAZIL_PNCP_SOURCE_NAME = "Portal Nacional de Contratações Públicas (PNCP) — busca de editais";
+import { BRAZIL_PNCP_SOURCE_NAME, isPregaoProcedure, pregaoEquipmentClasses } from "@/lib/relevance-pncp-pregao";
+
+export { BRAZIL_PNCP_SOURCE_NAME };
 
 /**
  * Brazil's import, as the four measurement runs on 2026-09-18 said it has to
@@ -48,6 +50,14 @@ export type BrazilIngestResult = {
   sealedBudget: number;
   /** Rows that arrived already awarded with the proposal deadline behind them. Dropped: PNCP's `tem_resultado` is a boolean with no winner, amount or date behind it, so the row can neither be bid on nor read as award intelligence. */
   skippedAwardedClosed: number;
+  /**
+   * Pregões that name no target equipment class, dropped before the amount
+   * lookup (lib/relevance-pncp-pregao.ts). Two days of modality 6 is ~3,200
+   * rows and ~95% of them are food, medicine and stationery — one item
+   * request each would turn a two-minute sweep into an hour and buy nothing,
+   * since every one of them classifies as excluded and is never written.
+   */
+  pregaoNotEquipment: number;
   /** How many amount lookups PNCP refused outright. Distinct from sealedBudget and from "this tender has no items": a refusal is a fact about the network, not about the tender, and re-running fixes it. */
   amountLookupFailed: number;
   /** Set when the amount pass stopped on AMOUNT_FAILURE_STREAK. Every row after the stop has no amount for a reason that has nothing to do with the row. */
@@ -353,7 +363,14 @@ export async function ingestBrazilPncp(
     const deadline = parsePncpDate(row.data_fim_vigencia);
     return deadline !== null && deadline !== undefined && new Date(deadline).getTime() < nowMs;
   });
-  const withinWindow = recentRows.filter((row) => !staleAwarded.includes(row));
+  const notEquipment = recentRows.filter(
+    (row) => isPregaoProcedure(row.modalidade_licitacao_nome) && pregaoEquipmentClasses(row.description ?? "").length === 0,
+  );
+  if (notEquipment.length > 0) {
+    onProgress?.(`电子竞价里不是目标设备类的 ${notEquipment.length} 条直接跳过，不取金额（食品、药品、文具、服务等）`);
+  }
+  const skipped = new Set([...staleAwarded, ...notEquipment]);
+  const withinWindow = recentRows.filter((row) => !skipped.has(row));
   if (staleAwarded.length > 0) {
     onProgress?.(
       `跳过 ${staleAwarded.length} 条「已中标且投标截止日期已过」的记录 —— ` +
@@ -551,6 +568,7 @@ export async function ingestBrazilPncp(
     withoutAmount,
     sealedBudget,
     skippedAwardedClosed: staleAwarded.length,
+    pregaoNotEquipment: notEquipment.length,
     amountLookupFailed,
     amountsStoppedEarly,
     amountFailureReasons: [...amountFailureReasons],

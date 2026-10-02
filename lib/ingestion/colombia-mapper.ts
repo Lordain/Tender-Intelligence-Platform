@@ -445,6 +445,13 @@ function normalizeDurationDays(duracion: string | undefined, unidad: string | un
  * narrow enough that only the two intended values can match it.
  */
 const INGESTED_MODALIDAD_PREFIX = "licitacion publica";
+/**
+ * Selección abreviada subasta inversa, added 2026-10-02 (user: 哥伦比亚只对
+ * 设备类、100 万美元以上的逆向竞价放行 ← OK). It enters the mapper so that
+ * lib/relevance-colombia-subasta.ts can keep the equipment purchases; that
+ * module excludes everything else, and excluded rows are never written.
+ */
+const INGESTED_SUBASTA_PREFIX = "seleccion abreviada subasta inversa";
 
 function normalizeModalidad(value: string): string {
   return value
@@ -458,7 +465,8 @@ function normalizeModalidad(value: string): string {
 /** Exported for scripts/tests that need the same gate without re-mapping a row. */
 export function isIngestedColombiaModalidad(modalidad: string | null | undefined): boolean {
   if (!modalidad) return false;
-  return normalizeModalidad(modalidad).startsWith(INGESTED_MODALIDAD_PREFIX);
+  const normalized = normalizeModalidad(modalidad);
+  return normalized.startsWith(INGESTED_MODALIDAD_PREFIX) || normalized.startsWith(INGESTED_SUBASTA_PREFIX);
 }
 
 /**

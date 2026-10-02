@@ -20,6 +20,8 @@
  *   npm run ingest:brazil-live -- --skip-amounts            (shape only — every row then reports no amount)
  *   npm run ingest:brazil-live -- --documents --write       (also record each written tender's bid-document links)
  *   npm run ingest:brazil-live -- --modalities 4            (just Concorrência Eletrônica)
+ *   npm run ingest:brazil-live -- --pregao                  (Pregão Eletrônico, equipment only — lib/relevance-pncp-pregao.ts)
+ *   npm run cron:brazil-pregao -- --write                   (the same, as the daily job runs it)
  *   npm run ingest:brazil-live -- --write
  */
 import { ingestBrazilPncp, BRAZIL_PNCP_SOURCE_NAME } from "../lib/ingestion/ingest-brazil";
@@ -32,8 +34,20 @@ function argValue(args: string[], flag: string): string | undefined {
   return idx >= 0 ? args[idx + 1] : undefined;
 }
 
+/**
+ * `--pregao`: the equipment pass over Pregão Eletrônico (user, 2026-10-02:
+ * 巴西电子竞价加进每日自动导入 ← OK). Its own daily job and heartbeat, so a
+ * night PNCP refuses the long pregão sweep does not mark the works import as
+ * failed, or the other way round. Two days of pregões are ~6,000 rows, so the
+ * row cap that is a runaway guard for Concorrência would truncate this one.
+ */
+const PREGAO_MODALITY = 6;
+const PREGAO_MAX_ROWS = 15_000;
+
 async function main() {
   const args = process.argv.slice(2);
+  const pregao = args.includes("--pregao");
+  const heartbeatJob = pregao ? "import-brazil-pregao" : "import-brazil";
   const write = hasWriteFlag();
   const supabase = createSupabaseAdminClient();
   if (write && !supabase) {
@@ -54,13 +68,14 @@ async function main() {
     console.error(`--days 认不出来："${daysRaw}"。给一个 1 以上的整数，例如 --days 3`);
     process.exit(1);
   }
-  const maxRowsPerModality = Number(argValue(args, "--max") ?? 3000) || 3000;
+  const defaultMax = pregao ? PREGAO_MAX_ROWS : 3000;
+  const maxRowsPerModality = Number(argValue(args, "--max") ?? defaultMax) || defaultMax;
   const raw = argValue(args, "--modalities");
   // One bare numeric id per value. A comma list is accepted HERE and expanded
   // into separate passes — what must never happen is passing a list to PNCP,
   // which keeps only the last value and silently returns a fraction of the
   // intended scope.
-  const modalities = raw ? raw.split(",").map((part) => Number(part.trim())).filter((n) => Number.isInteger(n) && n > 0) : undefined;
+  const modalities = pregao && !raw ? [PREGAO_MODALITY] : raw ? raw.split(",").map((part) => Number(part.trim())).filter((n) => Number.isInteger(n) && n > 0) : undefined;
   if (raw && (!modalities || modalities.length === 0)) {
     console.error(`--modalities 认不出来："${raw}"。给数字 id，多个用逗号分开，例如 --modalities 4,5`);
     process.exit(1);
@@ -171,6 +186,9 @@ async function main() {
   // was read as a fact about Brazilian procurement. It was a fact about the
   // network: PNCP refused every one of the 78 lookups. A count that cannot
   // distinguish those two is worse than no count.
+  if (result.pregaoNotEquipment > 0) {
+    console.log(`  电子竞价（Pregão）里 ${result.pregaoNotEquipment} 条不是目标设备类（医疗设备、车辆、工程机械、电力设备、ICT 基础设施），未取金额、不入库。`);
+  }
   if (result.skippedAwardedClosed > 0) {
     console.log(`  跳过 ${result.skippedAwardedClosed} 条已中标且早就截止的记录（PNCP 只给布尔值，没有中标方和金额）。`);
   }
@@ -185,7 +203,7 @@ async function main() {
 
   if (!write) {
     console.log("\n试运行 —— 一条都没写进 Supabase。确认上面的分级和金额之后，用：");
-    console.log("  npm run ingest:brazil-live -- --write");
+    console.log(pregao ? "  npm run cron:brazil-pregao -- --write" : "  npm run ingest:brazil-live -- --write");
     console.log("\n金额按 lib/currency.ts 里的 1 USD = 5.16 BRL 折成美元（2026-09-18 核对）。");
     console.log("巴西档位：常规 200–500 万、中型 500–1000 万、大型 1000 万以上（美元）。汇率变动超过 5% 时分级会跟着变。");
     return;
@@ -211,7 +229,7 @@ async function main() {
           : null;
   await writeCronHeartbeat(
     supabase!,
-    "import-brazil",
+    heartbeatJob,
     problem ? "failed" : "ok",
     problem ??
       `抓到 ${result.fetchedRows} 条，进入推荐 ${result.keptCount} 条，写入 ${result.written ?? 0} 条` +
@@ -241,10 +259,11 @@ async function main() {
 }
 
 main().catch(async (err) => {
+  const heartbeatJob = process.argv.includes("--pregao") ? "import-brazil-pregao" : "import-brazil";
   const message = err instanceof Error ? err.message : String(err);
   console.error(message);
   // A crash is the loudest failure and would otherwise only surface 30 hours
   // later as "overdue"; say it now, with the reason.
-  if (hasWriteFlag()) await writeCronHeartbeat(createSupabaseAdminClient(), "import-brazil", "failed", message.slice(0, 300));
+  if (hasWriteFlag()) await writeCronHeartbeat(createSupabaseAdminClient(), heartbeatJob, "failed", message.slice(0, 300));
   process.exit(1);
 });

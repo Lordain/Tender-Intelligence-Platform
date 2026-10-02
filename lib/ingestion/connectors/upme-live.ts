@@ -181,10 +181,31 @@ export function parseUpmePost(post: UpmePost): UpmeCall | null {
   };
 }
 
+/**
+ * The REST body, with whatever WordPress printed in front of it removed.
+ *
+ * Since 2026-10-01 upme.gov.co answers `application/json` whose first 440 KB
+ * are a BOM and the Elementor plugin's per-post `<style>` blocks, with the
+ * real array after the last `</style>` — a theme or plugin hook that echoes
+ * CSS on every request, the REST API included. `response.json()` failed on
+ * the first byte and the daily job died. Only that exact prefix is removed:
+ * anything else in front of the array still fails loudly, because then the
+ * format really has changed.
+ */
+export function parseUpmeCallsBody(text: string): UpmePost[] {
+  const json = text.replace(/^\uFEFF/, "").replace(/^(?:\s*<style\b[^>]*>[\s\S]*?<\/style>)+/i, "").trim();
+  let body: unknown;
+  try {
+    body = JSON.parse(json);
+  } catch {
+    throw new Error(`UPME 接口返回的不是 JSON（开头：${json.slice(0, 80)}）—— 格式可能变了`);
+  }
+  if (!Array.isArray(body)) throw new Error("UPME 接口没有返回数组 —— 格式可能变了");
+  return body as UpmePost[];
+}
+
 export async function fetchUpmeCalls(): Promise<UpmePost[]> {
   const response = await fetch(CALLS_URL, { headers: HEADERS, signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!response.ok) throw new Error(`UPME 返回 HTTP ${response.status} ${response.statusText}`);
-  const body = await response.json();
-  if (!Array.isArray(body)) throw new Error("UPME 接口没有返回数组 —— 格式可能变了");
-  return body as UpmePost[];
+  return parseUpmeCallsBody(await response.text());
 }

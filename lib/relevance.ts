@@ -10,6 +10,8 @@ import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-c
 import { classifyMetroSantiagoRelevance } from "@/lib/relevance-metro-santiago";
 import { METRO_SANTIAGO_PREVIEW_SOURCE_NAME } from "@/lib/upcoming-tenders";
 import { classifyCemigRelevance, CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig";
+import { BRAZIL_PNCP_SOURCE_NAME, classifyPncpPregaoRelevance, isPregaoProcedure } from "@/lib/relevance-pncp-pregao";
+import { classifyColombiaSubastaRelevance, isColombianSubastaInversa } from "@/lib/relevance-colombia-subasta";
 import { classifyPetroperuRelevance, PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
 import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
 import { classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
@@ -1208,6 +1210,11 @@ const CHILE_NOT_A_TARGET_TITLE = [
   // exists — MOP's "CONSERVACIÓN OBRA FISCAL EMBALSE …" maintains a
   // reservoir, "Conservación Coliseo Municipal" a gym. 维护类都不要.
   /\bconservacion\b/i,
+  // Printers and what they consume, bought or rented (2026-10-02, user:
+  // 智利两条打印机误判 → 要补规则). "Adquisición del Servicio de Arriendo de
+  // Impresora" (1122317-17-LR26, 16,013,250 entered as USD) reached 大型项目 on
+  // its amount alone. Office equipment in any form, never a target.
+  /\bimpresoras?\b|\bplotters?\b|\btoner\b|\bcartuchos?\b|\bfotocopiadoras?\b|multifuncional(?:es)?\b/i,
 ];
 
 const MAINTENANCE_ONLY_KEYWORDS = [
@@ -4263,6 +4270,29 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
       industries: withPower,
       relevance: classifyCemigRelevance({ title: input.title, summary: input.summary, procedureType: input.procedureType }),
     };
+  }
+  // PNCP's Pregão Eletrônico: equipment only, own rules, see
+  // lib/relevance-pncp-pregao.ts (user, 2026-10-02). Gated on the procedure as
+  // well as the source, so this source's Concorrência rows keep the general
+  // rules below exactly as they were.
+  if (input.sourceName === BRAZIL_PNCP_SOURCE_NAME && isPregaoProcedure(input.procedureType)) {
+    return classifyPncpPregaoRelevance({
+      title: input.title,
+      summary: input.summary,
+      estimatedValue: input.estimatedValue,
+      currency: input.currency,
+    });
+  }
+  // Colombia's subasta inversa: equipment of US$ 1M and up only, own rules,
+  // see lib/relevance-colombia-subasta.ts (user, 2026-10-02). Every other
+  // country's subasta inversa still meets PRICE_ONLY_AUCTION_PROCEDURES below.
+  if (input.country === "Colombia" && isColombianSubastaInversa(input.procedureType)) {
+    return classifyColombiaSubastaRelevance({
+      title: input.title,
+      summary: input.summary,
+      estimatedValue: input.estimatedValue,
+      currency: input.currency,
+    });
   }
   // Petroperú's international competitions: own rules, see
   // lib/relevance-petroperu.ts — rare, big, and never priced.

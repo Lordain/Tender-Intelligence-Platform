@@ -57,6 +57,9 @@ export async function fetchSecopProcesos(options: FetchSecopProcesosOptions): Pr
   const whereClause =
     `fecha_de_publicacion_del >= '${soqlTimestamp(sinceDate)}'` +
     ` AND (modalidad_de_contratacion like '%icitaci%'` +
+    // Subasta inversa (2026-10-02): equipment of US$ 1M and up is kept by
+    // lib/relevance-colombia-subasta.ts. ~1,200 a month, most dropped there.
+    ` OR modalidad_de_contratacion like '%ubasta inversa%'` +
     ` OR (modalidad_de_contratacion like '%gimen especial%' AND (${sectorEntities})))`;
 
   const rows: SecopProcesoRow[] = [];

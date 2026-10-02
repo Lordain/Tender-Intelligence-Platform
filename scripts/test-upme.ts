@@ -10,7 +10,7 @@
 import { ingestUpme } from "@/lib/ingestion/ingest-upme";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseUpmePost, upmeCallNumber, upmeCallStage, type UpmePost } from "@/lib/ingestion/connectors/upme-live";
+import { parseUpmeCallsBody, parseUpmePost, upmeCallNumber, upmeCallStage, type UpmePost } from "@/lib/ingestion/connectors/upme-live";
 import { mapUpmeCallToTender, upmeDocumentLinks, upmeSkipReason } from "@/lib/ingestion/upme-mapper";
 import { platformDay } from "@/lib/tender-status";
 
@@ -32,6 +32,19 @@ check("UPME 08-2026", upmeCallNumber("UPME 08-2026 Tercer Transformador Heliconi
 check("区域电网 STR", upmeCallNumber("UPME STR 05-2026 Subestaciones Nueva Galapa 110 kV"), "UPME STR 05-2026");
 check("「Convocatoria UPME 02 2026」没有连字符", upmeCallNumber("Convocatoria UPME 02 2026 Nueva Subestación Corzo 500 kV"), "UPME 02-2026");
 check("16 条全部解析", byNumber.size, 16);
+
+console.log("\n接口返回体（2026-10-01 起前面多了 BOM 和 Elementor 的 <style>）");
+const fixtureText = readFileSync(join(__dirname, "../lib/ingestion/__fixtures__/upme-convocatorias-2026-09-25.json"), "utf8");
+check("干净的 JSON 照常解析", parseUpmeCallsBody(fixtureText).length, 16);
+const leaked = `\uFEFF<style id="elementor-post-108045">.elementor-108045{--display:flex;}</style><style id="elementor-post-47500">.e{--width:85%;}</style>${fixtureText}`;
+check("BOM + 多个 <style> 块之后的 JSON 也能解析", parseUpmeCallsBody(leaked).length, 16);
+let rejected = "";
+try {
+  parseUpmeCallsBody("<!DOCTYPE html><html><body>Mantenimiento</body></html>");
+} catch (error) {
+  rejected = error instanceof Error ? error.message : String(error);
+}
+check("真正换了格式（整页 HTML）时仍然报错", rejected.startsWith("UPME 接口返回的不是 JSON"), true);
 
 console.log("\n阶段（标签说「开放」，会议纪要说了算）");
 const STAGES: [string, string][] = [

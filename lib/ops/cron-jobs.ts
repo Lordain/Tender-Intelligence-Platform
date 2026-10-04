@@ -32,7 +32,8 @@ export type CronJobId =
   | "refresh-statuses"
   | "import-guyana"
   | "import-argentina"
-  | "import-dominicana";
+  | "import-dominicana"
+  | "import-energy-auctions";
 
 export type CronJobSpec = {
   id: CronJobId;
@@ -89,6 +90,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-guyana", label: "圭亚那 eprocure 自动导入（未公开）", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-argentina", label: "阿根廷 COMPR.AR / CONTRAT.AR / ADIF / 政府公报 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-dominicana", label: "多米尼加 DGCP 自动导入（未公开）", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-energy-auctions", label: "能源拍卖（人工整理）写入", maxAgeHours: 30, runsOn: "github-actions" },
 ];
 
 export type CronHeartbeatStatus = "ok" | "skipped" | "failed";

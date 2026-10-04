@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { TRIAL_DAYS } from "@/lib/access-control";
 import { ANNUAL_SAVING_PERCENT, INTERVAL_UNIT_ZH, PLAN_PRICES_USD, USD_CNY_REFERENCE_RATE, type PaidInterval, type PaidPlan } from "@/lib/billing-catalog";
 
-const plans: { id: "free" | PaidPlan; name: string; audience: string; features: string[] }[] = [
-  { id: "free", name: "免费版", audience: "初步了解拉美市场", features: ["1 个账号", "全部国家的公开项目标题", "每月可查看 5 个项目的完整详情和标书分析", "每周 1 次项目提醒", "可阅读历史项目"] },
-  { id: "basic", name: "基础个人版", audience: "外贸经理、市场负责人", features: ["1 个账号", "选择 1 个国家，查看该国全部项目详情", "可查看所选国家的完整标书分析", "其他国家可浏览公开项目标题", "每日 1 次行业项目提醒", "收藏与跟踪项目", "可阅读历史项目"] },
-  { id: "professional", name: "专业个人版", audience: "拉美负责人", features: ["1 个账号", "全部国家完整中文项目详情", "可查看完整标书分析", "每日 2 次项目提醒", "自定义提醒关键词", "收藏与跟踪项目", "导出当前项目清单 CSV"] },
-  { id: "enterprise", name: "专业企业版", audience: "拉美拓展小组", features: ["3 个账号，各自设置项目提醒", "全部国家完整中文项目详情", "可查看完整标书分析", "收藏与跟踪项目", "导出当前及历史项目清单 CSV", "每月标准化行业分析报告"] },
+type FeatureIcon = "user" | "users" | "globe" | "pin" | "document" | "analysis" | "bell" | "history" | "bookmark" | "tag" | "download" | "chart";
+
+/** Each feature with the icon drawn beside it, as on Vercel's pricing page (user, 2026-10-05: 把 √ 也像Vercel做成小icon). */
+const plans: { id: "free" | PaidPlan; name: string; audience: string; features: [FeatureIcon, string][] }[] = [
+  { id: "free", name: "免费版", audience: "初步了解拉美市场", features: [["user", "1 个账号"], ["globe", "全部国家的公开项目标题"], ["document", "每月可查看 5 个项目的完整详情和标书分析"], ["bell", "每周 1 次项目提醒"], ["history", "可阅读历史项目"]] },
+  { id: "basic", name: "基础个人版", audience: "外贸经理、市场负责人", features: [["user", "1 个账号"], ["pin", "选择 1 个国家，查看该国全部项目详情"], ["analysis", "可查看所选国家的完整标书分析"], ["globe", "其他国家可浏览公开项目标题"], ["bell", "每日 1 次行业项目提醒"], ["bookmark", "收藏与跟踪项目"], ["history", "可阅读历史项目"]] },
+  { id: "professional", name: "专业个人版", audience: "拉美负责人", features: [["user", "1 个账号"], ["globe", "全部国家完整中文项目详情"], ["analysis", "可查看完整标书分析"], ["bell", "每日 2 次项目提醒"], ["tag", "自定义提醒关键词"], ["bookmark", "收藏与跟踪项目"], ["download", "导出当前项目清单 CSV"]] },
+  { id: "enterprise", name: "专业企业版", audience: "拉美拓展小组", features: [["users", "3 个账号，各自设置项目提醒"], ["globe", "全部国家完整中文项目详情"], ["analysis", "可查看完整标书分析"], ["bookmark", "收藏与跟踪项目"], ["download", "导出当前及历史项目清单 CSV"], ["chart", "每月标准化行业分析报告"]] },
 ];
 
 /**
@@ -19,11 +22,25 @@ const plans: { id: "free" | PaidPlan; name: string; audience: string; features: 
  */
 const RECOMMENDED: (typeof plans)[number]["id"] = "professional";
 
-function CheckIcon() {
+const ICON_PATHS: Record<FeatureIcon, ReactNode> = {
+  user: <><circle cx="12" cy="8" r="3.5" /><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" /></>,
+  users: <><circle cx="9" cy="8.5" r="3" /><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M15.5 5.8a3 3 0 0 1 0 5.6M17 14.6c2 .4 3.3 1.9 3.7 4.4" /></>,
+  globe: <><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.3 2.4 3.5 5.2 3.5 8.5s-1.2 6.1-3.5 8.5c-2.3-2.4-3.5-5.2-3.5-8.5s1.2-6.1 3.5-8.5Z" /></>,
+  pin: <><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z" /><circle cx="12" cy="10" r="2.3" /></>,
+  document: <><path d="M14 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8Z" /><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4" /></>,
+  analysis: <><path d="M13 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2H11M13 3.5V8h4.5v2" /><circle cx="15.5" cy="15.5" r="3" /><path d="m17.7 17.7 2.3 2.3" /></>,
+  bell: <><path d="M5 18h14l-1.5-2v-5a5.5 5.5 0 0 0-11 0v5Z" /><path d="M10 20.5a2.2 2.2 0 0 0 4 0" /></>,
+  history: <path d="M4 12a8 8 0 1 0 2.4-5.7M4 4.5v3.8h3.8M12 8v4.3l2.8 1.7" />,
+  bookmark: <path d="M7 3.5h10a1 1 0 0 1 1 1v16l-6-4-6 4v-16a1 1 0 0 1 1-1Z" />,
+  tag: <><path d="M3.5 12.3V4.5a1 1 0 0 1 1-1h7.8l8.2 8.2a1 1 0 0 1 0 1.4l-7.4 7.4a1 1 0 0 1-1.4 0Z" /><circle cx="8" cy="8" r="1.3" /></>,
+  download: <path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5M4.5 16.5v2a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-2" />,
+  chart: <path d="M4 20h16M7 16.5v-5M12 16.5V7M17 16.5v-8" />,
+};
+
+function FeatureIconSvg({ name }: { name: FeatureIcon }) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="mt-[3px] size-[18px] shrink-0 fill-none stroke-[#7d8b93]" strokeWidth={1.5}>
-      <circle cx="10" cy="10" r="8.25" />
-      <path d="m6.6 10.2 2.3 2.3 4.5-4.8" strokeLinecap="round" strokeLinejoin="round" />
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="mt-[3px] size-[18px] shrink-0 fill-none stroke-[#52636e]" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+      {ICON_PATHS[name]}
     </svg>
   );
 }
@@ -68,7 +85,7 @@ export function PricingPlans() {
             <div className="mt-5 md:min-h-[6.5rem]">
               <p className="flex flex-wrap items-baseline gap-x-2">
                 <span className="text-5xl font-black leading-none tracking-[-0.05em] text-[#071826]">{plan.id === "free" ? "免费" : `$${PLAN_PRICES_USD[plan.id][interval].toLocaleString("en-US")}`}</span>
-                <span className="font-mono text-sm text-[#64717c]">{plan.id === "free" ? "长期使用" : `USD / ${INTERVAL_UNIT_ZH[interval]}`}</span>
+                <span className="text-sm font-semibold text-[#64717c]">{plan.id === "free" ? "长期使用" : `USD / ${INTERVAL_UNIT_ZH[interval]}`}</span>
               </p>
               {plan.id !== "free" && <p className="mt-3 text-sm font-bold text-[#8a5b11]">约 ¥{Math.round(PLAN_PRICES_USD[plan.id][interval] * USD_CNY_REFERENCE_RATE).toLocaleString("zh-CN")} RMB / {INTERVAL_UNIT_ZH[interval]}</p>}
               {plan.id !== "free" && interval === "annual" && <p className="mt-1 text-xs font-bold text-emerald-700">比按月付省 {ANNUAL_SAVING_PERCENT}%</p>}
@@ -79,9 +96,9 @@ export function PricingPlans() {
               {plan.id === "free" ? "注册后持续开放。" : `${TRIAL_DAYS} 天免费试用，无需绑定银行卡。`}
             </p>
             <ul className="mt-7 flex-1 space-y-3.5 border-t border-[#e5e9ea] pt-7">
-              {plan.features.map((feature) => (
+              {plan.features.map(([icon, feature]) => (
                 <li key={feature} className="flex gap-3 text-[15px] leading-6 text-[#2b3f4c]">
-                  <CheckIcon />
+                  <FeatureIconSvg name={icon} />
                   {feature}
                 </li>
               ))}

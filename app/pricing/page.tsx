@@ -29,7 +29,7 @@ export default function PricingPage() {
             the billing toggle. */}
         <header className="pt-4 sm:pt-8">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Subscription plans</p>
-          <h1 className="mt-4 text-4xl font-black leading-[1.1] tracking-[-0.05em] text-[#071826] sm:text-6xl">
+          <h1 className="mt-4 text-4xl font-black leading-[1.1] tracking-[-0.045em] text-[#071826] sm:text-6xl">
             订阅服务，
             <br />
             <span className="text-[#8a979f]">按国家与团队选择方案</span>

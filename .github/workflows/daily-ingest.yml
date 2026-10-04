@@ -44,21 +44,31 @@
 # :17 rather than :00 because GitHub's scheduler is best-effort and the top of
 # the hour is the most contended minute there is.
 #
-# TWICE A DAY SINCE 2026-10-04 (user: 能不能设定成每天跑2次?).
+# TWICE A DAY, STARTED BY VERCEL (2026-10-04; user: 能不能设定成每天跑2次? and
+# 改成由 Vercel 定时去触发 GitHub ← OK).
 #
-# GitHub has been starting the 11:17 run 4 to 7 hours late every day
-# (2026-09-27..10-04: 15:08 to 18:35 UTC), so it really lands around midday in
-# Bogotá and around midnight in Beijing. The second schedule, 19:17 UTC, then
-# lands around 23:00-02:00 UTC — the end of the Latin American working day,
-# 07:00-10:00 in Beijing — and picks up the afternoon's publications before a
-# Chinese customer starts work, instead of a day later. Every import reads a
-# window of days and upserts, so a second pass only adds what is new.
+# GitHub started the scheduled run 4 to 7 hours late every day of
+# 2026-09-27..10-04 (15:08 to 18:35 UTC for an 11:17 schedule). A Vercel cron
+# on Hobby fires within the hour it names, so the clock now lives there:
+# app/api/cron/trigger-daily-ingest calls workflow_dispatch with via=vercel —
 #
-# Two jobs stay once a day, on the 11:17 run: the status refresh (once_daily
-# in the matrix), which re-asks Brazil, Chile and Mexico about every tender
-# already stored — ~15 minutes of requests to sources that throttle — and the
-# IndexNow/Baidu push (the indexnow job's `if`), whose Baidu quota is small
-# and resets daily; a second push would spend it on the same pages.
+#   pass=full   11:xx UTC  06:xx Bogotá/Lima, 19:xx Beijing   every job
+#   pass=light  22:xx UTC  17:xx Bogotá/Lima, 06:xx Beijing   the afternoon's
+#               publications, in before the 00:00 UTC digest and before a
+#               Chinese customer starts work
+#
+# Every import reads a window of days and upserts, so the second pass only
+# adds what is new. Two jobs stay on the full pass only: the status refresh
+# (once_daily in the matrix), which re-asks Brazil, Chile and Mexico about
+# every tender already stored — ~15 minutes of requests to sources that
+# throttle — and the IndexNow/Baidu push, whose Baidu quota is small and
+# resets daily.
+#
+# The schedules below are the FALLBACK, an hour after each Vercel slot, for a
+# day the trigger fails (token expired, Vercel down) or before
+# GITHUB_DISPATCH_TOKEN is set. The gate job lets a scheduled run through
+# only when no Vercel run of the same pass was created in the last 8 hours,
+# so a healthy day runs each pass once, not twice.
 #
 # NOT fixed by this: Peru's SEACE/OECE rows are still imported by hand (its
 # proxy refuses datacenter ranges). Brazil joined the matrix on 2026-09-19,
@@ -67,16 +77,29 @@ name: Daily ingest
 
 on:
   schedule:
-    - cron: "17 11 * * *"
-    # The evening pass. The once-a-day jobs test for the line above by its
-    # text (the SKIP env and the indexnow job's `if`) — change all three together.
-    - cron: "17 19 * * *"
+    # Fallback for the full pass. The gate job maps the line below to the
+    # light pass by its text — change both together.
+    - cron: "17 12 * * *"
+    # Fallback for the light pass.
+    - cron: "17 23 * * *"
   workflow_dispatch:
     inputs:
       write:
         description: "真的写入 Supabase（不勾就是试运行）"
         type: boolean
         default: false
+      pass:
+        description: "full：全部任务；light：不跑「已入库项目状态刷新」和搜索引擎推送"
+        type: choice
+        options: [full, light]
+        default: full
+      via:
+        description: "谁触发的（Vercel 定时填 vercel；手动运行不用改）"
+        type: string
+        default: manual
+
+# The fallback schedule finds Vercel's runs by this name.
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Daily ingest ({0}, {1})', inputs.via, inputs.pass) || format('Daily ingest (schedule {0})', github.event.schedule) }}
 
 # Two overlapping runs would race on the same upserts.
 concurrency:
@@ -84,7 +107,50 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Which pass this is, and whether a scheduled (fallback) run should go ahead.
+  # Fails open: if GitHub's API cannot be read, the run goes ahead — a pass
+  # run twice only re-upserts the same rows, a pass skipped loses a day.
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+      pass: ${{ steps.decide.outputs.pass }}
+    steps:
+      - id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          INPUT_PASS: ${{ inputs.pass }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$EVENT" != "schedule" ]; then
+            echo "pass=${INPUT_PASS:-full}" >> "$GITHUB_OUTPUT"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$SCHEDULE" = "17 23 * * *" ]; then pass=light; else pass=full; fi
+          echo "pass=$pass" >> "$GITHUB_OUTPUT"
+          since=$(date -u -d '8 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          if count=$(gh api "repos/$REPO/actions/workflows/daily-ingest.yml/runs?event=workflow_dispatch&created=%3E%3D$since&per_page=50" \
+              --jq "[.workflow_runs[] | select(.display_title == \"Daily ingest (vercel, $pass)\")] | length"); then
+            if [ "$count" -gt 0 ]; then
+              echo "Vercel already started the $pass pass since $since; nothing to do."
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "No Vercel-started $pass pass since $since; running it now."
+          else
+            echo "::warning::Could not list this workflow's runs; running the $pass pass anyway."
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
   ingest:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
@@ -211,9 +277,9 @@ jobs:
     name: ${{ matrix.name }}
     continue-on-error: ${{ matrix.optional == true }}
     env:
-      # True only for a once_daily job on the evening schedule; its steps
-      # are then skipped and the job shows as succeeded with nothing done.
-      SKIP: ${{ matrix.once_daily == true && github.event_name == 'schedule' && github.event.schedule != '17 11 * * *' }}
+      # True only for a once_daily job on the light pass; its steps are then
+      # skipped and the job shows as succeeded with nothing done.
+      SKIP: ${{ matrix.once_daily == true && needs.gate.outputs.pass == 'light' }}
     steps:
       - uses: actions/checkout@v7
         if: env.SKIP != 'true'
@@ -265,9 +331,9 @@ jobs:
   # them fails: a PEMEX outage has nothing to do with yesterday's Colombia
   # tenders crossing their deadline, and those pages are the point.
   indexnow:
-    needs: ingest
-    # Once a day, after the 11:17 run (the Baidu quota is daily; see above).
-    if: always() && ((github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.write)
+    needs: [gate, ingest]
+    # Once a day, after the full pass (the Baidu quota is daily; see above).
+    if: always() && needs.gate.outputs.run == 'true' && needs.gate.outputs.pass == 'full' && (github.event_name == 'schedule' || inputs.write)
     runs-on: ubuntu-latest
     name: IndexNow
     steps:

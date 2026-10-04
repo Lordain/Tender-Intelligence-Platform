@@ -146,7 +146,7 @@ export function ImportColombiaForm() {
         <AutoRunBadge schedule={DAILY_INGEST_SCHEDULE} />
       </h2>
       <AutoRunNote>
-        每天自动跑两次（计划北京时间 19:17 和次日 03:17，实际常晚几小时；拉取新标 + 刷新已有标书状态，<strong>不下载附件</strong>）。这里只在需要提前跑、或者要一并下载附件时用。
+        每天自动跑两次（北京时间晚上 7 点多和早上 6 点多；拉取新标 + 刷新已有标书状态，<strong>不下载附件</strong>）。这里只在需要提前跑、或者要一并下载附件时用。
       </AutoRunNote>
       <p className="mt-1 text-sm text-[#52636e]">
         直接从 SECOP II 官方公开接口实时拉取（不需要手动导出文件），可以同时把每条新写入项目的招标附件一并下载并记录。

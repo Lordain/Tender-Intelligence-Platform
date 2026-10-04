@@ -39,7 +39,7 @@ export default async function AdminImportTendersLayout({ children }: { children:
         <p className="-mt-2 text-xs text-[#64717c]">
           点开一个来源即可操作。<strong>先预览</strong>，确认数字后再勾选「写入 Supabase」；已删除的项目不会被重新导入。
           <span className="ml-1 rounded-full bg-[#e7f5ec] px-1.5 py-0.5 text-[10px] font-black text-[#186a3b]">每天自动</span>
-          的来源由每日任务每天自动运行两次（计划北京时间 19:17 和次日 03:17，实际常晚几小时），手动只在想提前跑时用。
+          的来源由每日任务每天自动运行两次（北京时间晚上 7 点多和早上 6 点多），手动只在想提前跑时用。
         </p>
 
         {children}

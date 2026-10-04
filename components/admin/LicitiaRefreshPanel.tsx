@@ -52,7 +52,7 @@ export function LicitiaRefreshPanel() {
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Maintenance</p>
       <h2 className="mt-1 text-lg font-black text-[#071826]">LicitIA 刷新</h2>
       <p className="mt-1 text-sm text-[#52636e]">
-        三个原本只能在命令行跑的维护操作，现在都可以在这里手动触发。其中前两个已经每天自动跑两次了（计划 11:17 和 19:17 UTC，即北京时间 19:17 和次日 03:17，实际常晚几小时，跑在 GitHub Actions 上）；「修复采购单位名称」仍然只在需要时手动点。
+        三个原本只能在命令行跑的维护操作，现在都可以在这里手动触发。其中前两个已经每天自动跑两次了（北京时间晚上 7 点多和早上 6 点多，由 Vercel 准点触发、跑在 GitHub Actions 上）；「修复采购单位名称」仍然只在需要时手动点。
       </p>
 
       <div className="mt-4 flex flex-col gap-4">

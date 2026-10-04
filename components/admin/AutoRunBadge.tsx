@@ -14,12 +14,13 @@
  * (.github/workflows/daily-ingest.yml), not on Vercel.
  */
 /**
- * The daily-ingest schedule (.github/workflows/daily-ingest.yml), said once
- * for every badge. Twice a day since 2026-10-04 (user: 能不能设定成每天跑2次).
- * GitHub starts scheduled runs late — measured 4 to 7 hours late every day of
- * 2026-09-27..10-04 — so the planned times are stated as planned.
+ * The daily-ingest schedule, said once for every badge. Twice a day since
+ * 2026-10-04, started on time by a Vercel cron (11:xx and 22:xx UTC,
+ * app/api/cron/trigger-daily-ingest) and run on GitHub Actions
+ * (.github/workflows/daily-ingest.yml), whose own schedule is the late
+ * fallback.
  */
-export const DAILY_INGEST_SCHEDULE = "每天两次，计划 11:17 和 19:17 UTC（北京时间 19:17 和次日 03:17，实际常晚几小时），GitHub Actions";
+export const DAILY_INGEST_SCHEDULE = "每天两次，北京时间晚上 7 点多和早上 6 点多（Vercel 准点触发，在 GitHub Actions 上运行）";
 
 export function AutoRunBadge({ schedule }: { schedule: string }) {
   return (

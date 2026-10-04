@@ -66,7 +66,7 @@ export function ImportPemexForm() {
         <AutoRunBadge schedule={DAILY_INGEST_SCHEDULE} />
       </h2>
       <AutoRunNote>
-        每天自动跑两次（计划北京时间 19:17 和次日 03:17，实际常晚几小时），<strong>七个子公司列表全部跑一遍</strong>。这里只在需要提前拉某一个列表时用。
+        每天自动跑两次（北京时间晚上 7 点多和早上 6 点多），<strong>七个子公司列表全部跑一遍</strong>。这里只在需要提前拉某一个列表时用。
       </AutoRunNote>
       <p className="mt-1 text-sm text-[#52636e]">
         PEMEX 的 SharePoint 招标列表接口本身是匿名公开的，不用再打开浏览器 Console 手动抓取——选一个子公司列表，服务器直接去

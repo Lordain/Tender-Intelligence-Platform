@@ -40,3 +40,16 @@ export function GuideLogo({ slug }: { slug: string }) {
     </span>
   );
 }
+
+/**
+ * The platform as the guide cards label it. Only where the full name is too
+ * long for a card line (user, 2026-10-04: 巴西不用写全名，写PNCP就可以); the
+ * guide's own page keeps `platform` in full.
+ */
+const GUIDE_PLATFORM_SHORT: Record<string, string> = {
+  "brazil-pncp": "PNCP",
+};
+
+export function guidePlatformLabel(guide: { slug: string; platform: string }) {
+  return GUIDE_PLATFORM_SHORT[guide.slug] ?? guide.platform;
+}

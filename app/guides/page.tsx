@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 import Link from "next/link";
 import { guideCountries, participationGuides } from "@/lib/participation-guides";
-import { GuideCountryFlag, GuideLogo } from "@/components/guides/GuideMarks";
+import { GuideCountryFlag, GuideLogo, guidePlatformLabel } from "@/components/guides/GuideMarks";
 
 export const metadata: Metadata = pageMetadata({
   title: "参标指南",
@@ -64,7 +64,7 @@ export default function GuidesPage() {
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                             <span className="rounded-md bg-[#fff0c9] px-2 py-0.5 text-xs font-black text-[#8f5b00]">{guide.issuerType}</span>
-                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-[#b86e00]">{guide.platform}</span>
+                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-[#b86e00]">{guidePlatformLabel(guide)}</span>
                           </span>
                           <span className="mt-2 block text-base font-black leading-7 tracking-[-0.01em]">{guide.title}</span>
                           <span className="mt-0.5 block text-xs font-bold leading-5 text-[#8a969d]">{guide.issuer}</span>

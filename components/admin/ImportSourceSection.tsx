@@ -18,7 +18,7 @@ export type ImportSourceMode = "auto" | "manual" | "tool";
 const MODE: Record<ImportSourceMode, { label: string; title: string; className: string }> = {
   auto: {
     label: "每天自动",
-    title: "已在每日自动任务里（GitHub Actions，计划北京时间 19:17，实际常晚几小时）。手动只在想提前跑或先预览时用。",
+    title: "已在每日自动任务里（GitHub Actions，每天两次，计划北京时间 19:17 和次日 03:17，实际常晚几小时）。手动只在想提前跑或先预览时用。",
     className: "bg-[#e7f5ec] text-[#186a3b]",
   },
   manual: {

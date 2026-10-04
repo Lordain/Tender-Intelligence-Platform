@@ -334,7 +334,7 @@ export function ImportBrazilForm() {
         <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-[#b86e00]">当前生效的规则</h3>
 
         <p className="mt-2 text-[#233846]">
-          <strong>每天 11:17 UTC（北京 19:17）自动跑一次</strong>，窗口 3 天，直接写入 Supabase。
+          <strong>每天自动跑两次（计划北京时间 19:17 和次日 03:17，实际常晚几小时）</strong>，窗口 3 天，直接写入 Supabase。
           上面的按钮是额外的手动触发，不影响定时任务。两者规则完全一样。
         </p>
         <p className="mt-1">

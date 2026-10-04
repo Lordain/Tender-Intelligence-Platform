@@ -17,5 +17,9 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
+  // Supabase reports a failed link (expired, already used) as error_code on
+  // this redirect; pass it on so /login can say which it was.
+  const errorCode = searchParams.get("error_code");
+  const detail = errorCode && /^[a-z_]{1,64}$/.test(errorCode) ? `&error_code=${errorCode}` : "";
+  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed${detail}`);
 }

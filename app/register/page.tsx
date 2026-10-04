@@ -7,6 +7,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { AuthFrame } from "@/components/auth/AuthFrame";
 import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
+import { ResendConfirmation } from "@/components/auth/ResendConfirmation";
+import { authErrorMessage } from "@/lib/auth-errors";
 import { safeNextPath } from "@/lib/auth-redirect";
 import { TRIAL_DAYS } from "@/lib/access-control";
 
@@ -42,11 +44,23 @@ export default function RegisterPage() {
 
   if (confirmationSent) {
     return (
-      <AuthFrame mode="register"><div className="flex w-full flex-col gap-3">
+      <AuthFrame mode="register"><div className="flex w-full flex-col gap-4">
         <h1 className="text-xl font-black text-[#071826]">
           {localize(uiText.checkYourEmail, locale)}
         </h1>
-        <p className="text-sm text-[#64717c]">{localize(uiText.checkYourEmailBody, locale)}</p>
+        <p className="text-sm leading-6 text-[#64717c]">
+          确认邮件已发送到 <strong className="break-all font-bold text-[#071826]">{email}</strong>。请点击邮件里的链接完成确认，然后再登录。
+        </p>
+        <ul className="list-disc space-y-1 rounded-xl bg-[#f4f7f8] py-3 pl-8 pr-4 text-xs leading-5 text-[#52636e]">
+          <li>几分钟内没收到，请看看垃圾邮件或「推广」文件夹。</li>
+          <li>请在注册用的这个浏览器里打开链接；在别的浏览器里打开，邮箱通常也会确认成功，回到这里直接登录即可。</li>
+          <li>邮箱填错了？<button type="button" onClick={() => setConfirmationSent(false)} className="font-bold text-[#0a2b40] underline decoration-[#ffb21c] decoration-2 underline-offset-2">返回修改</button></li>
+        </ul>
+        <ResendConfirmation email={email} startCoolingDown />
+        <p className="text-sm text-[#64717c]">
+          已经确认了？{" "}
+          <Link href="/login" className="font-bold text-[#0a2b40] underline decoration-[#ffb21c] decoration-2 underline-offset-4">去登录</Link>
+        </p>
       </div></AuthFrame>
     );
   }
@@ -68,7 +82,15 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (signUpError) {
-      setError(signUpError.message);
+      setError(authErrorMessage(signUpError));
+      return;
+    }
+
+    // With email confirmation on, Supabase answers a signup for an address
+    // that is already registered and confirmed with a user that has no
+    // identities and sends no email — rather than an error.
+    if (!data.session && data.user && data.user.identities?.length === 0) {
+      setError(authErrorMessage({ code: "user_already_exists" }));
       return;
     }
 

@@ -7,6 +7,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { AuthFrame } from "@/components/auth/AuthFrame";
 import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
+import { ResendConfirmation } from "@/components/auth/ResendConfirmation";
+import { authCallbackMessage, authErrorCode, authErrorMessage } from "@/lib/auth-errors";
 import { safeNextPath } from "@/lib/auth-redirect";
 import { MAX_ACTIVE_DEVICES } from "@/lib/account-devices";
 
@@ -31,6 +33,22 @@ function DeviceLimitNotice() {
   );
 }
 
+/**
+ * Why /auth/callback sent the visitor here. Before 2026-10-04 the login page
+ * ignored ?error=auth_callback_failed, so an expired confirmation link, or
+ * one opened in a mail app's own browser, landed on a plain login form with
+ * no word of what had happened.
+ */
+function CallbackErrorNotice() {
+  const params = useSearchParams();
+  if (params.get("error") !== "auth_callback_failed") return null;
+  return (
+    <p role="alert" className="rounded-xl bg-[#fff4d8] p-4 text-sm leading-6 text-[#72521b]">
+      {authCallbackMessage(params.get("error_code"))}
+    </p>
+  );
+}
+
 const SUPABASE_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
@@ -45,6 +63,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   function nextPath() {
@@ -61,6 +80,7 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setUnconfirmed(false);
 
     const supabase = getSupabaseBrowserClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
@@ -68,7 +88,8 @@ export default function LoginPage() {
     setLoading(false);
 
     if (signInError) {
-      setError(signInError.message);
+      setError(authErrorMessage(signInError));
+      setUnconfirmed(authErrorCode(signInError) === "email_not_confirmed");
       return;
     }
 
@@ -79,6 +100,7 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setUnconfirmed(false);
 
     const supabase = getSupabaseBrowserClient();
     const { error: otpError } = await supabase.auth.signInWithOtp({
@@ -91,7 +113,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (otpError) {
-      setError(otpError.message);
+      setError(authErrorMessage(otpError));
       return;
     }
 
@@ -116,6 +138,7 @@ export default function LoginPage() {
       </h1>
 
       <Suspense><DeviceLimitNotice /></Suspense>
+      <Suspense><CallbackErrorNotice /></Suspense>
 
       <SocialAuthButtons onError={setError} />
 
@@ -127,6 +150,7 @@ export default function LoginPage() {
             onClick={() => {
               setMode(option);
               setError(null);
+              setUnconfirmed(false);
             }}
             aria-pressed={mode === option}
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
@@ -174,7 +198,8 @@ export default function LoginPage() {
           </label>
         )}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm leading-6 text-red-600">{error}</p>}
+        {unconfirmed && <ResendConfirmation email={email} />}
 
         <button
           type="submit"

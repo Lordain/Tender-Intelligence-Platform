@@ -48,6 +48,21 @@ function parseList(param: string | null): string[] {
   return param ? param.split(",").filter(Boolean) : [];
 }
 
+/**
+ * The order the closed country trigger names its picks in, so the five it
+ * shows before 「+2」 are 阿根廷 rather than 智利. Only the trigger: the menu
+ * keeps AVAILABLE_COUNTRIES' order.
+ */
+const COUNTRY_TRIGGER_ORDER = ["Mexico", "Brazil", "Colombia", "Peru", "Argentina", "Chile", "Dominican Republic"];
+
+function triggerOrder(countries: string[]): string[] {
+  const rank = (country: string) => {
+    const index = COUNTRY_TRIGGER_ORDER.indexOf(country);
+    return index === -1 ? COUNTRY_TRIGGER_ORDER.length : index;
+  };
+  return [...countries].sort((a, b) => rank(a) - rank(b));
+}
+
 /** First page, last page, and a small window around the current page — with "ellipsis" markers for any gap — so a jump to page 12 of 40 doesn't require 11 clicks on "下一页". */
 function buildPageWindow(current: number, total: number): (number | "ellipsis")[] {
   const radius = 1;
@@ -397,21 +412,19 @@ export function TenderExplorer({
             <MultiSelectPills
               label="国家/地区"
               // The seventh country (多米尼加, 2026-10-04) must not widen the
-              // trigger: the user asked for the six-country width to stay,
-              // with every country still ticked by default (国家/地区就不再做宽了，
-              // 保持现在的宽度). Six names plus 「+1」 measured 22px wider and
-              // pushed the 1280px filter row onto two lines, so it shows five
-              // and 「+2」 inside the old box: 29.5rem is the 472px the six
-              // flagged names measured. Capped by the viewport below sm.
+              // trigger (国家/地区就不再做宽了，保持现在的宽度): it spells out five
+              // and folds the rest into 「+2」, and fits that content rather
+              // than holding the old six-name width, which left a gap before
+              // the arrow (user, 2026-10-05: 留白太多). The five shown are
+              // 阿根廷 rather than 智利 (把可视从智利改成阿根廷).
               maxVisible={5}
-              minWidthClass="min-w-[9.5rem] sm:min-w-[29.5rem]"
               valueWidthClass="max-w-[min(36rem,calc(100vw-13rem))]"
               options={countryOptions.map((country) => ({
                 value: country,
                 label: localize(COUNTRY_LABELS[country], locale),
                 icon: <CountryFlag country={country} />,
               }))}
-              selected={countries as (typeof AVAILABLE_COUNTRIES)[number][]}
+              selected={triggerOrder(countries) as (typeof AVAILABLE_COUNTRIES)[number][]}
               // Nothing ticked, or every country, is 全部 (no country param),
               // like 项目规模 below. It used to keep only a single choice —
               // written when the list had two countries, so two meant all —

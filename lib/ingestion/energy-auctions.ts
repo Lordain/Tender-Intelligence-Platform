@@ -50,6 +50,11 @@ type EnergyAuction = {
   submissionDeadline?: string;
   awardDate?: string;
   internationalOpen: boolean;
+  /**
+   * The process's own official page — where the bases, circulars and results
+   * are published — not a press release about it (user, 2026-10-05: 没有具体
+   * 的招标官网吗？现在的连进去更像是个新闻报道). Press pages stay in `sources`.
+   */
   sourceUrl: string;
   sources: string[];
 };
@@ -78,8 +83,9 @@ export const ENERGY_AUCTIONS: readonly EnergyAuction[] = [
     submissionDeadline: "2026-12-04T12:00:00-03:00",
     awardDate: "2027-01-13T12:00:00-03:00",
     internationalOpen: true,
-    sourceUrl: "https://www.cne.cl/prensa/prensa-2026/07-julio-2026/webinar-abordo-principales-aspectos-de-la-licitacion-electrica-2026-01-para-clientes-regulados/",
+    sourceUrl: "https://www.licitacioneselectricas.cl/licitaciones/licitacion-de-suministro-2026-01",
     sources: [
+      "https://www.licitacioneselectricas.cl/licitaciones/licitacion-de-suministro-2026-01",
       "https://www.cne.cl/prensa/prensa-2026/07-julio-2026/webinar-abordo-principales-aspectos-de-la-licitacion-electrica-2026-01-para-clientes-regulados/",
       "https://g5noticias.cl/2026/07/20/cne-publica-bases-de-la-licitacion-de-suministro-2026-01-para-abastecer-a-clientes-regulados-entre-2029-y-2044/",
     ],
@@ -108,8 +114,9 @@ export const ENERGY_AUCTIONS: readonly EnergyAuction[] = [
     submissionDeadline: "2025-11-14T12:00:00-03:00",
     awardDate: "2025-12-11T12:00:00-03:00",
     internationalOpen: true,
-    sourceUrl: "https://www.cne.cl/prensa/prensa-2025/12-diciembre-2025/cne-adjudica-licitacion-de-suministro-2025-01-con-alta-participacion-y-oferta-economicamente-mas-conveniente/",
+    sourceUrl: "https://www.licitacioneselectricas.cl/licitaciones/licitacion-de-suministro-2025-01",
     sources: [
+      "https://www.licitacioneselectricas.cl/licitaciones/licitacion-de-suministro-2025-01",
       "https://www.cne.cl/prensa/prensa-2025/12-diciembre-2025/cne-adjudica-licitacion-de-suministro-2025-01-con-alta-participacion-y-oferta-economicamente-mas-conveniente/",
       "https://www.cne.cl/prensa/prensa-2025/11-noviembre-2025/licitacion-de-suministro-2025-01-seis-empresas-presentan-sus-ofertas/print/",
       "https://www.cne.cl/prensa/prensa-2025/05-mayo-2025/cne-aprueba-bases-definitivas-de-licitacion-de-suministro-electrico-para-clientes-regulados/print/",
@@ -137,8 +144,9 @@ export const ENERGY_AUCTIONS: readonly EnergyAuction[] = [
     submissionDeadline: "2026-05-08T12:00:00-03:00",
     awardDate: "2026-07-07T12:00:00-03:00",
     internationalOpen: true,
-    sourceUrl: "https://www.argentina.gob.ar/node/506660",
+    sourceUrl: "https://cammesaweb.cammesa.com/almasadi/",
     sources: [
+      "https://cammesaweb.cammesa.com/almasadi/",
       "https://www.argentina.gob.ar/node/506660",
       "https://beccarvarela.com/novedades/almasadi-convocatoria-abierta-nacional-e-internacional-para-el-abastecimiento-de-energia-electrica-por-centrales-de-almacenamiento-para-reserva-y-confiabilidad-en-el-mem/",
       "https://econojournal.com.ar/destacada/alma-sadi-se-adjudicaron-los-700-mw-de-almacenamiento/",
@@ -168,8 +176,9 @@ export const ENERGY_AUCTIONS: readonly EnergyAuction[] = [
     awardDate: "2025-09-02T12:00:00-03:00",
     internationalOpen: true,
     // The Boletín Oficial notice of Res. SE 67/2025 (17 February 2025), the call itself.
-    sourceUrl: "https://www.boletinoficial.gob.ar/detalleAviso/primera/321235/20250217",
+    sourceUrl: "https://cammesaweb.cammesa.com/almagba/",
     sources: [
+      "https://cammesaweb.cammesa.com/almagba/",
       "https://www.boletinoficial.gob.ar/detalleAviso/primera/321235/20250217",
       "https://www.ess-news.com/2025/09/02/argentina-awards-667-mw-in-inaugural-battery-storage-tender/",
       "https://econojournal.com.ar/2025/09/almacenamiento-en-baterias-adjudicaron-proyectos-por-650-mw-y-podrian-sumar-otros-222/",
@@ -197,8 +206,9 @@ export const ENERGY_AUCTIONS: readonly EnergyAuction[] = [
     publicationDate: "2026-04-21T12:00:00-05:00",
     awardDate: "2026-07-29T12:00:00-05:00",
     internationalOpen: false,
-    sourceUrl: "https://minenergia.gov.co/es/sala-de-prensa/noticias-index/minenergia-lanzo-la-subasta-de-energias-limpias-y-almacenamiento-acelerando-la-transicion-en-el-pais/",
+    sourceUrl: "https://www.bolsamercantil.com.co/subastasdelargoplazo",
     sources: [
+      "https://www.bolsamercantil.com.co/subastasdelargoplazo",
       "https://minenergia.gov.co/es/sala-de-prensa/noticias-index/minenergia-lanzo-la-subasta-de-energias-limpias-y-almacenamiento-acelerando-la-transicion-en-el-pais/",
       "https://www.pv-magazine.com/2026/07/31/colombia-awards-725-mw-of-solar-on-second-day-of-green-energy-auction/",
       "https://www.enerdata.net/publications/daily-energy-news/colombia-awards-1-gw-solar-capacity-and-100-mw-bess-latest-auction.html",

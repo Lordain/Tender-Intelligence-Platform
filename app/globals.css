@@ -141,7 +141,43 @@ select {
   to { transform: translateX(-50%); }
 }
 
+/* Homepage Why us — see components/home/ValuePropositions.tsx. */
+.whyus-dot {
+  animation: whyus-dot 3.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.whyus-exit-ring {
+  animation: whyus-exit-ring 2.8s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.whyus-track-sweep {
+  animation: whyus-track-sweep 4.5s linear infinite;
+}
+
+@keyframes whyus-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@keyframes whyus-exit-ring {
+  from { opacity: 0.55; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.6); }
+}
+
+@keyframes whyus-track-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(500%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-tender-scroll,
-  .industry-logo-scroll { animation: none; }
+  .industry-logo-scroll,
+  .whyus-dot,
+  .whyus-exit-ring,
+  .whyus-track-sweep { animation: none; }
+  .whyus-particles { display: none; }
 }

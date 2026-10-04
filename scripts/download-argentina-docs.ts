@@ -42,7 +42,7 @@ async function main() {
     .from("tenders")
     .select("slug, tender_number, submission_deadline")
     .eq("country", "Argentina")
-    .or("source_url.like.https://comprar.gob.ar/*,source_url.like.https://contratar.gob.ar/*");
+    .or("source_url.like.https://comprar.gob.ar/*,source_url.like.https://contratar.gob.ar/*,source_url.like.https://comprar.mendoza.gov.ar/*");
   if (error) throw new Error(error.message);
   const today = new Date().toISOString().slice(0, 10);
   const rows = ((data ?? []) as { slug: string; tender_number: string; submission_deadline: string | null }[]).filter((row) =>

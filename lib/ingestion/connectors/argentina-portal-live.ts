@@ -46,11 +46,20 @@
  * event target, `<page>#documento=<target>` — see portalDocumentUrl() and
  * downloadPortalDocument() below — which the 批量下载标书 route replays the
  * way the page itself does when a visitor clicks.
+ *
+ * ── COMPR.AR Mendoza ─────────────────────────────────────────────────────
+ *
+ * The Province of Mendoza runs the same product at comprar.mendoza.gov.ar
+ * (user, 2026-10-04: 阿根廷门多萨省 … 要接吗 ← OK). Same list path, same grid,
+ * same process page: a live read of three pages on 2026-10-04 mapped 30 of 30
+ * rows with no change to this file but the entry below. Most of what it lists
+ * is hospital direct purchases, which the rules drop; what it adds is the
+ * province's own Licitaciones Públicas.
  */
 import { foldAccents } from "@/lib/text-fold";
 import { runPool } from "@/lib/ingestion/run-pool";
 
-export type ArgentinaPortalId = "comprar" | "contratar";
+export type ArgentinaPortalId = "comprar" | "contratar" | "mendoza";
 
 export type ArgentinaPortal = {
   id: ArgentinaPortalId;
@@ -76,6 +85,13 @@ export const ARGENTINA_PORTALS: Record<ArgentinaPortalId, ArgentinaPortal> = {
     homePath: "/",
     listPath: "/ListarAperturaProxima.aspx",
     gridUniqueId: "ctl00$CPH1$GridListaPliegos",
+  },
+  mendoza: {
+    id: "mendoza",
+    origin: "https://comprar.mendoza.gov.ar",
+    homePath: "/",
+    listPath: "/Compras.aspx?qs=W1HXHGHtH10=",
+    gridUniqueId: "ctl00$CPH1$GridListaPliegosAperturaProxima",
   },
 };
 
@@ -360,7 +376,7 @@ export function parsePortalDocuments(html: string): PortalDocument[] {
 
 /** Marks a stored document link as a postback on the page before it. */
 const DOCUMENT_MARK = "#documento=";
-const PORTAL_HOSTS = new Set(["comprar.gob.ar", "contratar.gob.ar"]);
+const PORTAL_HOSTS = new Set(["comprar.gob.ar", "contratar.gob.ar", "comprar.mendoza.gov.ar"]);
 
 /** The stored link for one document: the process page, then which button. */
 export function portalDocumentUrl(processUrl: string, eventTarget: string): string {

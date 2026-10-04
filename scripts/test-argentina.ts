@@ -138,6 +138,12 @@ async function main() {
   check("COMPR.AR national scope", siteaTender.participationScope, "national");
   check("software maintenance is still routine, ICT or not", siteaTender.relevance.tier, "excluded");
 
+  // COMPR.AR Mendoza (2026-10-04): the same product, the province as buyer.
+  const mendozaTender = mapPortalRecordToTender({ ...record, portal: "mendoza", url: "https://comprar.mendoza.gov.ar/PLIEGO/VistaPreviaPliegoCiudadano.aspx?qs=x" }, NOW);
+  check("Mendoza slug", mendozaTender.slug, "argentina-mendoza-84-77-0606-lpu26");
+  check("Mendoza is a provincial buyer, named as such", [mendozaTender.governmentLevel, mendozaTender.buyer], ["state", "Estado Mayor General del Ejercito（Gobierno de Mendoza）"]);
+  check("Mendoza source name", mendozaTender.sourceName, "COMPR.AR Mendoza — Compras Públicas de la Provincia de Mendoza (Argentina)");
+
   const rfcTender = mapPortalRecordToTender({ portal: "contratar", row: contratarRows[0], url: "https://x", process: rfc }, NOW);
   check("CONTRAT.AR concession is works, international", [rfcTender.scopeType, rfcTender.participationScope], ["works", "international_open"]);
   check("closed by date → submission_closed", rfcTender.status, "submission_closed");
@@ -311,7 +317,7 @@ async function main() {
     },
   });
   const bySource = Object.fromEntries(result.sources.map((source) => [source.id, [source.listed, source.kept]]));
-  check("run: per-source counts", bySource, { comprar: [10, 0], contratar: [3, 0], adif: [14, 6], boletin: [3, 0] });
+  check("run: per-source counts", bySource, { comprar: [10, 0], contratar: [3, 0], adif: [14, 6], boletin: [3, 0], mendoza: [10, 0] });
   check("run: closed calls are not rows", result.rows.some((row) => row.tender.slug === "argentina-contratar-504-0001-lpu26"), false);
   check("run: kept are all Argentine and open", result.kept.every((tender) => tender.country === "Argentina" && tender.status === "open"), true);
 

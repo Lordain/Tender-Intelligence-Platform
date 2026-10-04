@@ -1,7 +1,45 @@
 import type { Metadata } from "next";
 import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
+import Image from "next/image";
 import Link from "next/link";
 import { guideCountries, participationGuides } from "@/lib/participation-guides";
+import { CountryFlag } from "@/components/tenders/CountryFlag";
+
+/** guideCountries carries ISO codes; CountryFlag takes the English names the tenders use. */
+const FLAG_COUNTRY: Record<(typeof guideCountries)[number]["code"], string> = {
+  MX: "Mexico",
+  BR: "Brazil",
+  CO: "Colombia",
+  PE: "Peru",
+  CL: "Chile",
+  AR: "Argentina",
+  DO: "Dominican Republic",
+};
+
+/**
+ * Each platform's own icon, taken from its official site (favicon, touch icon
+ * or header logo) and redrawn at 128px in public/guides/logos/<slug>.png
+ * (user, 2026-10-04: 能不能找到每个平台的官方图标，加入图标？). CFE and
+ * Proyectos Estratégicos MX could not be fetched from their sites, so they
+ * show their initials until an official file is in hand.
+ */
+const GUIDE_LOGO_FALLBACK: Record<string, string> = {
+  "mexico-cfe-micrositio": "CFE",
+  "mexico-proyectos-estrategicos": "PE",
+};
+
+function GuideLogo({ slug }: { slug: string }) {
+  const fallback = GUIDE_LOGO_FALLBACK[slug];
+  return (
+    <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#e5e9ea] bg-white p-1.5">
+      {fallback ? (
+        <span className="text-xs font-black tracking-[-0.02em] text-[#425461]">{fallback}</span>
+      ) : (
+        <Image src={`/guides/logos/${slug}.png`} alt="" width={32} height={32} className="size-full object-contain" />
+      )}
+    </span>
+  );
+}
 
 export const metadata: Metadata = pageMetadata({
   title: "参标指南",
@@ -30,62 +68,61 @@ export default function GuidesPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[108rem] px-5 py-12 sm:px-8 sm:py-16">
-        <div className="rounded-2xl border border-[#e6b13f] bg-[#fff3cf] p-5 sm:p-6">
-          <p className="font-black text-[#6d4900]">使用前请注意</p>
-          <p className="mt-2 text-sm leading-7 text-[#6d5a31]">指南提供通用准备框架，不构成资格保证或法律意见。参与范围、文件格式、截止日期及提交方式，始终以具体项目的官方公告、招标文件、附件与最新澄清为准。</p>
+      <main className="mx-auto max-w-[108rem] px-5 py-10 sm:px-8 sm:py-12">
+        <div className="flex flex-col gap-1 rounded-xl border border-[#e6b13f] bg-[#fff3cf] px-5 py-4 sm:flex-row sm:gap-4">
+          <p className="shrink-0 text-sm font-black leading-7 text-[#6d4900]">使用前请注意</p>
+          <p className="text-sm leading-7 text-[#6d5a31]">指南提供通用准备框架，不构成资格保证或法律意见。参与范围、文件格式、截止日期及提交方式，始终以具体项目的官方公告、招标文件、附件与最新澄清为准。</p>
         </div>
 
-        {guideCountries.map((country) => {
-          const guides = participationGuides.filter((guide) => guide.countryCode === country.code);
-          return (
-            <section key={country.code} className="mt-14">
-              <div className="flex flex-col gap-3 border-b border-[#dbe2e5] pb-6 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">{country.code}</p>
-                  <h2 className="mt-2 text-3xl font-black tracking-[-0.03em]">{country.name}</h2>
+        {/* One panel per country with its guides as a list, in a hairline
+            grid like /pricing, rather than a heading band and a row of tall
+            cards per country (user, 2026-10-04: 布局整体太长了，也浪费了很多
+            空间，可以做成更精简的卡片，然后每个国家名称旁边都增加国旗). The
+            last cell is the 持续扩充 note, so the grid stays filled at two
+            and four columns with seven countries. */}
+        <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#dbe2e5] lg:grid-cols-2 2xl:grid-cols-4">
+          {guideCountries.map((country) => {
+            const guides = participationGuides.filter((guide) => guide.countryCode === country.code);
+            return (
+              <section key={country.code} aria-labelledby={`guides-${country.code}`} className="flex flex-col bg-[#fffdf9] p-5 sm:p-7">
+                <div className="flex items-start justify-between gap-4">
+                  <h2 id={`guides-${country.code}`} className="flex items-center gap-3 text-2xl font-black tracking-[-0.03em]">
+                    <CountryFlag country={FLAG_COUNTRY[country.code]} className="ring-1 ring-black/10" />
+                    {country.name}
+                  </h2>
+                  <span className="mt-1.5 shrink-0 text-xs font-bold text-[#8a969d]">{guides.length} 份指南</span>
                 </div>
-                <p className="text-sm text-[#64717c]">{country.description}</p>
-              </div>
+                <p className="mt-2 text-sm leading-6 text-[#64717c]">{country.description}</p>
+                <ul className="mt-4 divide-y divide-[#e5e9ea] border-t border-[#e5e9ea]">
+                  {guides.map((guide) => (
+                    <li key={guide.slug}>
+                      <Link href={`/guides/${guide.slug}`} className="group -mx-3 flex items-start gap-4 rounded-xl px-3 py-4 transition-colors hover:bg-[#f4efe4]">
+                        <GuideLogo slug={guide.slug} />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                            <span className="rounded-md bg-[#fff0c9] px-2 py-0.5 text-xs font-black text-[#8f5b00]">{guide.issuerType}</span>
+                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-[#b86e00]">{guide.platform}</span>
+                          </span>
+                          <span className="mt-2 block text-base font-black leading-7 tracking-[-0.01em]">{guide.title}</span>
+                          <span className="mt-0.5 block text-xs font-bold leading-5 text-[#8a969d]">{guide.issuer}</span>
+                        </span>
+                        <span aria-hidden="true" className="mt-8 shrink-0 font-black text-[#b86e00] transition-transform group-hover:translate-x-1">→</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
 
-              <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {guides.map((guide, index) => (
-                  <Link
-                    key={guide.slug}
-                    href={`/guides/${guide.slug}`}
-                    className="group flex min-h-72 flex-col rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-6 transition hover:-translate-y-1 hover:border-[#d29a28] hover:shadow-[0_18px_45px_rgba(7,24,38,0.09)] sm:p-7"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <span className="flex flex-wrap gap-2">
-                        <span className="rounded-full bg-[#fff0c9] px-3 py-1 text-xs font-black text-[#8f5b00]">{guide.country}</span>
-                        <span className="rounded-full border border-[#dbe2e5] bg-white px-3 py-1 text-xs font-black text-[#233846]">{guide.issuerType}</span>
-                      </span>
-                      <span className="font-mono text-sm font-black text-[#b5bec3]">{String(index + 1).padStart(2, "0")}</span>
-                    </div>
-                    <p className="mt-7 text-xs font-black uppercase tracking-[0.16em] text-[#b86e00]">{guide.platform}</p>
-                    <h3 className="mt-3 text-xl font-black leading-8 tracking-[-0.02em]">{guide.title}</h3>
-                    <p className="mt-2 text-xs font-bold leading-6 text-[#8a969d]">{guide.issuer}</p>
-                    <p className="mt-4 text-sm leading-7 text-[#64717c]">{guide.summary}</p>
-                    <div className="mt-auto flex justify-end pt-8">
-                      <span className="font-black text-[#b86e00] transition-transform group-hover:translate-x-1">查看指南 →</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          );
-        })}
-
-        <section className="mt-16 rounded-3xl bg-[#061b2b] px-6 py-10 text-white sm:px-10 sm:py-12">
-          <div className="grid gap-7 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffb21c]">持续扩充</p>
-              <h2 className="mt-3 text-2xl font-black sm:text-3xl">更多国家与采购平台将陆续加入</h2>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/62">随着平台覆盖范围扩大，我们会继续增加各国注册入口、参与流程、常见材料及境外企业需要特别核对的事项。</p>
-            </div>
-            <Link href="/tenders" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#ffb21c] px-6 font-black text-[#071826] transition hover:bg-[#ffc34d]">浏览招标项目</Link>
-          </div>
-        </section>
+          <section className="flex flex-col bg-[#061b2b] p-5 text-white sm:p-7">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffb21c]">持续扩充</p>
+            <h2 className="mt-3 text-2xl font-black tracking-[-0.03em]">更多国家与采购平台将陆续加入</h2>
+            <p className="mt-3 text-sm leading-7 text-white/62">随着平台覆盖范围扩大，我们会继续增加各国注册入口、参与流程、常见材料及境外企业需要特别核对的事项。</p>
+            <Link href="/tenders" className="mt-6 inline-flex min-h-11 w-fit items-center justify-center rounded-xl bg-[#ffb21c] px-6 text-sm font-black text-[#071826] transition hover:bg-[#ffc34d] lg:mt-auto">浏览招标项目</Link>
+          </section>
+        </div>
+        <p className="mt-4 text-xs leading-6 text-[#8a969d]">各平台图标与名称归其所有者，仅用于识别对应的官方平台，不代表合作或认可。</p>
       </main>
     </div>
   );

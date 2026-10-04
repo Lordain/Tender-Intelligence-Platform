@@ -50,20 +50,20 @@ export function PricingPlans() {
   return (
     <>
     <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
-      <p className="inline-flex items-center gap-2 rounded-full border border-[#dde3e4] bg-white px-3.5 py-1.5 text-sm text-[#425461]">
+      <p className="inline-flex items-center gap-2 rounded-xl border border-[#dde3e4] bg-white px-3.5 py-1.5 text-sm text-[#425461]">
         <span className="size-1.5 rounded-full bg-[#ffb21c]" aria-hidden="true" />
         注册即享 <strong className="font-black text-[#071826]">{TRIAL_DAYS} 天</strong>完整项目详情试用
       </p>
-      <div role="group" aria-label="付费周期" className="inline-flex rounded-full border border-[#dde3e4] bg-white p-1">
+      <div role="group" aria-label="付费周期" className="inline-flex rounded-xl border border-[#dde3e4] bg-white p-1">
         {(["monthly", "annual"] as const).map((option) => (
           <button
             key={option}
             type="button"
             aria-pressed={interval === option}
             onClick={() => setBillingInterval(option)}
-            className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${interval === option ? "bg-[#061b2b] text-white" : "text-[#425461] hover:text-[#071826]"}`}
+            className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${interval === option ? "bg-[#061b2b] text-white" : "text-[#425461] hover:text-[#071826]"}`}
           >
-            {option === "monthly" ? "按月付" : <>按年付<span className={`ml-2 rounded-full px-1.5 py-0.5 text-xs ${interval === option ? "bg-[#ffb21c] text-[#071826]" : "bg-emerald-50 text-emerald-700"}`}>省 {ANNUAL_SAVING_PERCENT}%</span></>}
+            {option === "monthly" ? "按月付" : <>按年付<span className={`ml-2 rounded-md px-1.5 py-0.5 text-xs ${interval === option ? "bg-[#ffb21c] text-[#071826]" : "bg-emerald-50 text-emerald-700"}`}>省 {ANNUAL_SAVING_PERCENT}%</span></>}
           </button>
         ))}
       </div>
@@ -78,7 +78,7 @@ export function PricingPlans() {
           <article key={plan.id} className={`flex flex-col p-6 sm:p-8 ${recommended ? "bg-white" : "bg-[#fbfaf6]"}`}>
             <div className="flex items-center gap-2.5">
               <h2 className="text-base font-bold text-[#071826]">{plan.name}</h2>
-              {recommended && <span className="rounded-full bg-[#eef1f1] px-2.5 py-0.5 text-xs font-semibold text-[#425461]">推荐</span>}
+              {recommended && <span className="rounded-md bg-[#eef1f1] px-2 py-0.5 text-xs font-semibold text-[#425461]">推荐</span>}
             </div>
             {/* One height for the price block in both cycles, so the rules
                 below line up across the row. */}
@@ -106,7 +106,7 @@ export function PricingPlans() {
             <Link
               prefetch={false}
               href={plan.id === "free" ? "/register" : `/subscribe?plan=${plan.id}&interval=${interval}`}
-              className={`mt-9 inline-flex min-h-11 w-fit items-center rounded-full px-5 text-sm font-bold transition-colors ${recommended ? "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]" : "border border-[#d3dadc] bg-white text-[#071826] hover:border-[#9babb3]"}`}
+              className={`mt-9 inline-flex min-h-11 w-fit items-center rounded-xl px-5 text-sm font-bold transition-colors ${recommended ? "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]" : "border border-[#d3dadc] bg-white text-[#071826] hover:border-[#9babb3]"}`}
             >
               {plan.id === "free" ? "免费注册" : "选择方案"}
             </Link>

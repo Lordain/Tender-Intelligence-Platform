@@ -239,7 +239,7 @@ export function ValuePropositions() {
           <p className="mt-1 text-xs text-[#75838c]">西语、葡语 · 格式各异</p>
           {/* Highlighted on request (user, 2026-10-04); wording changed from 数千条 to 上万条 on request.
               The buyer count is distinct publishing entities over the last year or month: SECOP II
-              10,611, PNCP 5,300+ in September 2026 alone, ChileCompra ~850, plus estimates for
+              10,611, PNCP 7,188 in September 2026 alone, ChileCompra ~850, plus estimates for
               SEACE, Compras MX and COMPR.AR. Approved as 2 万多个 by the user, 2026-10-04. */}
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             <p className="inline-flex items-baseline gap-1.5 rounded-full bg-[#071826] px-4 py-1.5 text-white shadow-[0_8px_24px_-12px_rgba(7,24,38,.6)]">

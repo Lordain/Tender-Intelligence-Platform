@@ -1,6 +1,7 @@
 import { convertToUsd } from "@/lib/currency";
 import type { IndustryKey } from "@/lib/industry";
 import { foldAccents } from "@/lib/text-fold";
+import { isNewEnergy, isNewEnergyPower, NEW_ENERGY_MIN_VALUE_USD } from "@/lib/new-energy";
 import type { LocalizedText, TenderRelevance } from "@/types/tender";
 
 /**
@@ -157,6 +158,11 @@ const REASONS = {
     en: "This equipment pregão publishes no budget, so its size cannot be judged — most such purchases are single small units. Filtered from the default feed (metadata is kept, not deleted).",
     es: "Este pregão de equipos no publica presupuesto, así que no se puede juzgar su tamaño — la mayoría son compras pequeñas de una unidad. Filtrada de la vista predeterminada (los metadatos se conservan).",
   },
+  small_new_energy: {
+    zh: `该新能源类电子竞价（Pregão）预估金额低于 $${NEW_ENERGY_MIN_VALUE_USD.toLocaleString("en-US")} 美元，规模过小，默认不进入推荐列表（数据仍保留，可用于统计）。`,
+    en: `This new-energy pregão is estimated under $${NEW_ENERGY_MIN_VALUE_USD.toLocaleString("en-US")} — too small to be worth bidding on from abroad. Filtered from the default feed (metadata is kept, not deleted).`,
+    es: `Este pregão de nuevas energías se estima en menos de $${NEW_ENERGY_MIN_VALUE_USD.toLocaleString("en-US")} — demasiado pequeño para ofertar desde el extranjero. Filtrada de la vista predeterminada (los metadatos se conservan).`,
+  },
   small: {
     zh: `该设备类电子竞价（Pregão）预估金额低于 $${BRAZIL_FLOOR_USD.toLocaleString("en-US")} 美元，规模过小，默认不进入推荐列表（数据仍保留，可用于统计）。`,
     en: `This equipment pregão is estimated under $${BRAZIL_FLOOR_USD.toLocaleString("en-US")} — too small to be worth bidding on from abroad. Filtered from the default feed (metadata is kept, not deleted).`,
@@ -186,6 +192,10 @@ export function pregaoEquipmentClasses(objectText: string): IndustryKey[] {
   const text = fold(objectText);
   if (NOT_EQUIPMENT_PURCHASE.test(text)) return [];
   const classes = EQUIPMENT_CLASSES.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
+  // Solar, storage, hydrogen and charging phrasings the power class above does
+  // not carry — "sistemas de geração de energia solar fotovoltaica" was one
+  // (Acre, R$16.9M, 2026-10-01). See lib/new-energy.ts.
+  if (!classes.includes("power") && isNewEnergyPower(text)) classes.push("power");
   // An ambulance is both a vehicle and medical equipment — the user asked for
   // both tags on that word (lib/industry.ts) — so both stay.
   if (classes.length === 1 && classes[0] === "ict_telecom" && OFFICE_IT.test(text)) return [];
@@ -210,7 +220,12 @@ export function classifyPncpPregaoRelevance(input: {
   }
   const usd = input.estimatedValue === undefined ? null : convertToUsd(input.estimatedValue, input.currency);
   if (usd === null) return { industries: classes, relevance: tier("excluded", REASONS.no_value) };
-  if (usd < BRAZIL_FLOOR_USD) return { industries: classes, relevance: tier("excluded", REASONS.small) };
+  // New energy is judged against its own, lower floor — lib/new-energy.ts.
+  if (isNewEnergy(text)) {
+    if (usd < NEW_ENERGY_MIN_VALUE_USD) return { industries: classes, relevance: tier("excluded", REASONS.small_new_energy) };
+  } else if (usd < BRAZIL_FLOOR_USD) {
+    return { industries: classes, relevance: tier("excluded", REASONS.small) };
+  }
   const reason = keptReason(classes);
   if (usd >= FLAGSHIP_USD) return { industries: classes, relevance: tier("flagship", reason) };
   if (usd >= SIGNIFICANT_USD) return { industries: classes, relevance: tier("significant", reason) };

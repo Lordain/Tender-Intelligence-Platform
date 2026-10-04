@@ -116,6 +116,7 @@
     "test:block-page": "tsx scripts/test-block-page.ts",
     "test:aneel-lotes": "tsx scripts/test-aneel-lote-parser.ts",
     "test:auth-errors": "tsx scripts/test-auth-errors.ts",
+    "test:new-energy": "tsx scripts/test-new-energy.ts",
     "test:aneel-edital": "tsx scripts/test-aneel-edital-file.ts",
     "test:aneel-stage": "tsx scripts/test-aneel-auction-stage.ts",
     "test:aneel-mapper": "tsx scripts/test-aneel-mapper.ts",

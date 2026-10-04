@@ -1,6 +1,7 @@
 import { convertToUsd } from "@/lib/currency";
 import type { IndustryKey } from "@/lib/industry";
 import { foldAccents } from "@/lib/text-fold";
+import { isNewEnergy, isNewEnergyPower, NEW_ENERGY_MIN_VALUE_USD } from "@/lib/new-energy";
 import type { LocalizedText, TenderRelevance } from "@/types/tender";
 
 /**
@@ -56,7 +57,7 @@ const EQUIPMENT_CLASSES: [IndustryKey, RegExp][] = [
   ],
   [
     "ict_telecom",
-    /servidor(?:es)?\b|almacenamiento|hiperconvergen|centro de (?:datos|computo)|data ?center|\bswitch(?:es)?\b|firewall|ciberseguridad|solucion de conectividad|infraestructura tecnologica|camaras? de (?:video ?)?vigilancia|video ?vigilancia|circuito cerrado de television|\bcctv\b|radios? (?:de comunicacion|portatiles)|radio ?comunicacion|aeronaves? no tripuladas|\bdrones?\b/,
+    /servidor(?:es)?\b|almacenamiento(?! (?:de energia|energetico|en baterias))|hiperconvergen|centro de (?:datos|computo)|data ?center|\bswitch(?:es)?\b|firewall|ciberseguridad|solucion de conectividad|infraestructura tecnologica|camaras? de (?:video ?)?vigilancia|video ?vigilancia|circuito cerrado de television|\bcctv\b|radios? (?:de comunicacion|portatiles)|radio ?comunicacion|aeronaves? no tripuladas|\bdrones?\b/,
   ],
 ];
 
@@ -118,6 +119,11 @@ const REASONS = {
     en: "This subasta inversa buys consumables, fuel, services, upkeep, rental, software licences or office computers — not equipment. Filtered from the default feed (metadata is kept, not deleted).",
     es: "Esta subasta inversa compra insumos, combustible, servicios, mantenimiento, arriendo, licencias o computadores de oficina — no equipos. Filtrada de la vista predeterminada (los metadatos se conservan).",
   },
+  small_new_energy: {
+    zh: `该新能源类逆向竞价（Subasta Inversa）没有公开金额或金额低于 $${NEW_ENERGY_MIN_VALUE_USD.toLocaleString("en-US")} 美元，规模过小，默认不进入推荐列表（数据仍保留，可用于统计）。`,
+    en: `This new-energy subasta inversa publishes no amount or is under $${NEW_ENERGY_MIN_VALUE_USD.toLocaleString("en-US")} — too small to be worth bidding on from abroad. Filtered from the default feed (metadata is kept, not deleted).`,
+    es: `Esta subasta inversa de nuevas energías no publica monto o es menor a $${NEW_ENERGY_MIN_VALUE_USD.toLocaleString("en-US")} — demasiado pequeña para ofertar desde el extranjero. Filtrada de la vista predeterminada (los metadatos se conservan).`,
+  },
   small: {
     zh: `该设备类逆向竞价（Subasta Inversa）没有公开金额或金额低于 $${FLOOR_USD.toLocaleString("en-US")} 美元，规模过小，默认不进入推荐列表（数据仍保留，可用于统计）。`,
     en: `This equipment subasta inversa publishes no amount or is under $${FLOOR_USD.toLocaleString("en-US")} — too small to be worth bidding on from abroad. Filtered from the default feed (metadata is kept, not deleted).`,
@@ -152,6 +158,10 @@ export function subastaEquipmentClasses(objectText: string): IndustryKey[] {
   const text = objectOf(objectText);
   if (NOT_EQUIPMENT_PURCHASE.test(text)) return [];
   const classes = EQUIPMENT_CLASSES.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
+  // Storage, hydrogen, charging and the wider solar phrasings — lib/new-energy.ts.
+  // Read against the whole text as well: objectOf() drops "para los ambientes
+  // de formación", which is exactly the clause that marks a training kit.
+  if (!classes.includes("power") && isNewEnergyPower(text) && isNewEnergy(objectText)) classes.push("power");
   if (classes.length === 1 && classes[0] === "ict_telecom" && OFFICE_IT.test(text)) return [];
   return classes;
 }
@@ -173,7 +183,10 @@ export function classifyColombiaSubastaRelevance(input: {
     return { industries: ["general"], relevance: tier("excluded", named ? REASONS.consumable_or_service : REASONS.not_equipment) };
   }
   const usd = input.estimatedValue === undefined ? null : convertToUsd(input.estimatedValue, input.currency);
-  if (usd === null || usd < FLOOR_USD) return { industries: classes, relevance: tier("excluded", REASONS.small) };
+  // New energy has its own, lower floor — lib/new-energy.ts.
+  const newEnergy = isNewEnergy(text);
+  const floor = newEnergy ? NEW_ENERGY_MIN_VALUE_USD : FLOOR_USD;
+  if (usd === null || usd < floor) return { industries: classes, relevance: tier("excluded", newEnergy ? REASONS.small_new_energy : REASONS.small) };
   const reason: LocalizedText = {
     zh: `该项目是哥伦比亚政府的${classes.map((c) => CLASS_ZH[c]).join("、")}采购。${NOTE_ZH}`,
     en: `A Colombian public purchase of ${classes.map((c) => CLASS_EN[c]).join(", ")}. ${NOTE_EN}`,

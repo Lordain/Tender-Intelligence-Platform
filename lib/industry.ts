@@ -1,4 +1,5 @@
 import { foldAccents } from "@/lib/text-fold";
+import { isNewEnergyPower } from "@/lib/new-energy";
 
 /**
  * Multi-tag industry classification (rule-based keyword matching, same
@@ -578,5 +579,8 @@ export function classifyIndustries(...texts: (string | undefined)[]): IndustryKe
   // contract as water infrastructure, which is exactly what it did.
   const haystack = stripKnownFalsePositivePlaceNames(foldAccents(texts.filter(Boolean).join(" ")));
   const matched = INDUSTRY_KEYWORDS.filter(([, pattern]) => pattern.test(haystack)).map(([key]) => key);
+  // Storage, hydrogen, EV charging and the solar phrasings the power pattern
+  // above does not carry — see lib/new-energy.ts.
+  if (!matched.includes("power") && isNewEnergyPower(haystack)) matched.push("power");
   return matched.length > 0 ? matched : ["general"];
 }

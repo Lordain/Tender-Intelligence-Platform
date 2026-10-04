@@ -1,5 +1,6 @@
 import { foldAccents } from "@/lib/text-fold";
 import type { IndustryKey } from "@/lib/industry";
+import { isNewEnergyPower } from "@/lib/new-energy";
 
 /**
  * Portuguese exclusion rules — Brazil only.
@@ -342,7 +343,10 @@ const PT_INDUSTRY_PATTERNS: [IndustryKey, RegExp][] = [
 /** Portuguese-only industry tags. Returns [] rather than ["general"] — the caller merges this with the Spanish pass, which already supplies that fallback. */
 export function classifyPortugueseIndustries(input: string): IndustryKey[] {
   const text = foldAccents(input);
-  return PT_INDUSTRY_PATTERNS.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
+  const matched = PT_INDUSTRY_PATTERNS.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
+  // Solar, wind, storage and charging in Portuguese — see lib/new-energy.ts.
+  if (!matched.includes("power") && isNewEnergyPower(text)) matched.push("power");
+  return matched;
 }
 
 /**

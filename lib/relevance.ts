@@ -12,6 +12,7 @@ import { METRO_SANTIAGO_PREVIEW_SOURCE_NAME } from "@/lib/upcoming-tenders";
 import { classifyCemigRelevance, CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig";
 import { BRAZIL_PNCP_SOURCE_NAME, classifyPncpPregaoRelevance, isPregaoProcedure } from "@/lib/relevance-pncp-pregao";
 import { classifyColombiaSubastaRelevance, isColombianSubastaInversa } from "@/lib/relevance-colombia-subasta";
+import { isNewEnergy, NEW_ENERGY_MIN_VALUE_USD } from "@/lib/new-energy";
 import { classifyPetroperuRelevance, PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
 import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
 import { classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
@@ -3461,7 +3462,10 @@ export function classifyRelevance(input: {
   // floor (see purchaseClearsValueFloor). The floor check itself is unchanged.
   const normalizedValue =
     input.estimatedValue !== undefined ? (convertToUsd(input.estimatedValue, input.currency) ?? undefined) : undefined;
-  const minValueUsd = minValueUsdFor(input.country);
+  // The new-energy whitelist — see lib/new-energy.ts. Read on what is bought
+  // (title and summary), never on the buyer's name or the stored tags.
+  const newEnergy = isNewEnergy([subjectTitle, subjectSummary].filter(Boolean).join(" "));
+  const minValueUsd = newEnergy ? Math.min(NEW_ENERGY_MIN_VALUE_USD, minValueUsdFor(input.country)) : minValueUsdFor(input.country);
   const clearsValueFloor = normalizedValue !== undefined && normalizedValue >= minValueUsd;
   const purchaseClearsValueFloor = clearsValueFloor && isGoodsPurchase(input.title, input.scopeType);
 
@@ -3731,7 +3735,10 @@ export function classifyRelevance(input: {
   // LOCALIZACIÓN ..." ($1.4M) and "ADQUISICION E INSTALACION DE DISPOSITIVOS
   // Y EQUIPOS DE CONECTIVIDAD ... CCTV" ($1.0M), both Colombian. Works stay
   // value-blind, as the user set it on 2026-09-15.
-  if (!hasIncludeOverride && !purchaseClearsValueFloor && durationDays !== undefined && durationDays < SHORT_DURATION_DAYS) {
+  // New energy is exempt as well (lib/new-energy.ts): "SUMINISTRO DE
+  // COMPONENTES DEL SISTEMA SOLAR FOTOVOLTAICO (CELDAS PANELES SOLARES…)" at
+  // $726k was excluded here, and a PV install is weeks of work however large.
+  if (!hasIncludeOverride && !purchaseClearsValueFloor && !newEnergy && durationDays !== undefined && durationDays < SHORT_DURATION_DAYS) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "short_duration") };
   }
 
@@ -4014,6 +4021,7 @@ export function classifyRelevance(input: {
     normalizedValue === undefined &&
     matchesFlagshipIndustry &&
     !hasIncludeOverride &&
+    !newEnergy &&
     flagshipIndustryHits.every((pattern) => pattern === BARE_WORKS_WHITELIST)
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
@@ -4023,7 +4031,7 @@ export function classifyRelevance(input: {
   // SETTLEMENT_SCALE_KEYWORDS. Every promotion above has already returned,
   // so what reaches here matched at most the bare "construcción" and names
   // one comunidad/localidad/colonia as its site.
-  if (normalizedValue === undefined && SETTLEMENT_SCALE_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+  if (normalizedValue === undefined && !newEnergy && SETTLEMENT_SCALE_KEYWORDS.some((pattern) => pattern.test(haystack))) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }
 
@@ -4049,7 +4057,8 @@ export function classifyRelevance(input: {
     !matchesFlagshipIndustry &&
     !hasIncludeOverride &&
     !isEquipmentScaleCapped &&
-    !isMexicanBulkPurchase
+    !isMexicanBulkPurchase &&
+    !newEnergy
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }

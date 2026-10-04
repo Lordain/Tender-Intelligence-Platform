@@ -10,6 +10,7 @@ import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { publicTenderPath } from "@/lib/public-tender-url";
+import { DaysLeft } from "@/components/tenders/DaysLeft";
 
 export function TenderCard({
   tender,
@@ -48,6 +49,7 @@ export function TenderCard({
             status={tender.status}
             scopeType={tender.scopeType}
             isObrasPorImpuestos={tender.isObrasPorImpuestos}
+            liveDot={showOneLineSummary}
           />
         </div>
         <SaveTenderButton tenderId={tender.id} className="relative z-10 shrink-0" />
@@ -115,6 +117,14 @@ export function TenderCard({
           <span className="mt-0.5 block text-sm font-bold text-[#071826]">
             {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : tender.deadlineInDocuments ? DEADLINE_IN_DOCUMENTS_LABEL : "未提供"}
           </span>
+          {/* showOneLineSummary is set by the homepage alone, so the countdown
+              stays there. The slot is reserved on every homepage card, chip or
+              not, so the date boxes line up across a row. */}
+          {showOneLineSummary && (
+            <span className="block h-6">
+              {tender.submissionDeadline && (tender.status === "open" || tender.status === "clarification") && <DaysLeft deadline={tender.submissionDeadline} />}
+            </span>
+          )}
         </div>
       </div>
 

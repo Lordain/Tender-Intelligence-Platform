@@ -173,11 +173,88 @@ select {
   to { transform: translateX(500%); }
 }
 
+/*
+ * Scroll reveal — components/home/Reveal.tsx. Nothing here hides anything on
+ * its own: only an element the script has marked data-reveal="hidden" (below
+ * the fold, motion allowed) starts out transparent.
+ */
+[data-reveal] {
+  transition:
+    opacity 0.7s ease var(--reveal-delay, 0ms),
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--reveal-delay, 0ms);
+}
+
+[data-reveal="hidden"] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: none;
+}
+
+/* Why us: a step's icon pops a beat after its text arrives. */
+[data-reveal] .reveal-pop {
+  transition:
+    opacity 0.45s ease calc(var(--reveal-delay, 0ms) + 120ms),
+    transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--reveal-delay, 0ms) + 120ms);
+}
+
+[data-reveal="hidden"] .reveal-pop {
+  opacity: 0;
+  transform: scale(0.55);
+  transition: none;
+}
+
+/* Why us figures: a light runs across the gold number once it is on screen. */
+.whyus-shimmer {
+  background: linear-gradient(100deg, #ffcd67 0%, #ffcd67 40%, #fff6dc 50%, #ffcd67 60%, #ffcd67 100%);
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+[data-reveal="shown"] .whyus-shimmer {
+  animation: whyus-shimmer 1.6s ease calc(var(--reveal-delay, 0ms) + 300ms) 2;
+}
+
+@keyframes whyus-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
+
+/* Homepage cards: an open tender's status pill carries a live dot. */
+.live-dot {
+  position: relative;
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #10b981;
+}
+
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: live-dot 1.8s ease-out infinite;
+}
+
+@keyframes live-dot {
+  from { opacity: 0.7; transform: scale(1); }
+  to { opacity: 0; transform: scale(2.6); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-tender-scroll,
   .industry-logo-scroll,
   .whyus-dot,
   .whyus-exit-ring,
-  .whyus-track-sweep { animation: none; }
+  .whyus-track-sweep,
+  .live-dot::after { animation: none; }
   .whyus-particles { display: none; }
+  [data-reveal],
+  [data-reveal] .reveal-pop { transition: none; }
+  [data-reveal] .whyus-shimmer { animation: none; }
 }

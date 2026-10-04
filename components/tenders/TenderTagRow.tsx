@@ -53,6 +53,8 @@ export type TenderTagRowProps = {
   isInternationalOpen?: boolean;
   /** `sm` on cards and list rows, `md` on the two detail pages, matching the type scale each already used. */
   size?: "sm" | "md";
+  /** A pulsing dot in an open tender's status pill. Homepage cards only (user, 2026-10-04: 动画方案 4). */
+  liveDot?: boolean;
 };
 
 export function TenderTagRow({
@@ -63,6 +65,7 @@ export function TenderTagRow({
   isObrasPorImpuestos = false,
   isInternationalOpen = false,
   size = "sm",
+  liveDot = false,
 }: TenderTagRowProps) {
   const { locale } = useLocale();
   const text = size === "sm" ? "text-[11px]" : "text-xs";
@@ -80,7 +83,8 @@ export function TenderTagRow({
           {industryLabel(industry, locale)}
         </span>
       ))}
-      <span className={`${pill} font-semibold ${STATUS_COLORS[status]}`}>
+      <span className={`${pill} font-semibold ${STATUS_COLORS[status]}${liveDot && status === "open" ? " inline-flex items-center gap-1.5" : ""}`}>
+        {liveDot && status === "open" && <span aria-hidden="true" className="live-dot" />}
         {localize(STATUS_LABELS[status], locale)}
       </span>
       <span className={`${pill} border border-[#d8e0e3] font-medium text-[#566773]`}>

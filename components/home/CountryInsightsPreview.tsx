@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { homepageCountryInsights } from "@/lib/country-insights";
+import { Reveal } from "@/components/home/Reveal";
 
 export function CountryInsightsPreview() {
   return (
     <section id="country-insights" className="scroll-mt-20 bg-[#061b2b] px-5 py-16 text-white sm:px-8 sm:py-20">
       <div className="mx-auto max-w-[108rem]">
-        <div className="grid gap-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
+        <Reveal className="grid gap-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffb21c]">Country insights</p>
             <h2 className="mt-3 text-[min(7.2vw,1.875rem)] font-black leading-[1.22] tracking-[0.02em] sm:text-4xl">
@@ -21,14 +22,14 @@ export function CountryInsightsPreview() {
               查看全部国家洞察 →
             </Link>
           </div>
-        </div>
+        </Reveal>
 
         <div className="mt-9 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {homepageCountryInsights().map((insight) => (
+          {homepageCountryInsights().map((insight, index) => (
+            <Reveal key={insight.slug} delayMs={index * 120} className="flex min-w-0">
             <Link
-              key={insight.slug}
               href={`/insights/${insight.slug}`}
-              className="group flex min-w-0 flex-col overflow-hidden rounded-3xl border border-white/12 bg-[#fffdf9] text-[#071826] shadow-[0_20px_55px_rgba(0,0,0,0.18)] transition duration-300 hover:-translate-y-1 hover:border-[#ffb21c]/60"
+              className="group flex w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-white/12 bg-[#fffdf9] text-[#071826] shadow-[0_20px_55px_rgba(0,0,0,0.18)] transition duration-300 hover:-translate-y-1 hover:border-[#ffb21c]/60"
             >
               <div className="relative aspect-[16/9] overflow-hidden bg-[#0a2639]">
                 <Image
@@ -38,7 +39,8 @@ export function CountryInsightsPreview() {
                   sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
                   className="object-cover transition duration-500 group-hover:scale-[1.03]"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#061b2b]/70 via-transparent to-transparent" />
+                {/* bg-linear-to-t: Tailwind v4's name; the old bg-gradient-to-t drew nothing here. */}
+                <div className="absolute inset-0 bg-linear-to-t from-[#061b2b]/70 via-transparent to-transparent" />
                 <span className="absolute bottom-4 left-4 rounded-full bg-[#ffb21c] px-3 py-1 text-xs font-black text-[#071826]">
                   {insight.country}
                 </span>
@@ -59,6 +61,7 @@ export function CountryInsightsPreview() {
                 </span>
               </div>
             </Link>
+            </Reveal>
           ))}
         </div>
       </div>

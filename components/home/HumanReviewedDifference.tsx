@@ -1,3 +1,5 @@
+import { Reveal } from "@/components/home/Reveal";
+
 const differences = [
   {
     number: "01",
@@ -23,7 +25,7 @@ export function HumanReviewedDifference() {
   return (
     <section id="human-reviewed" aria-labelledby="human-reviewed-heading" className="scroll-mt-20 border-t border-[#e7e1d6] bg-[#f7f4ee] px-5 py-16 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-[108rem]">
-        <div className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
+        <Reveal className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Human + AI</p>
             <h2 id="human-reviewed-heading" className="mt-3 text-[min(7.2vw,1.875rem)] font-black leading-[1.22] tracking-[0.02em] text-[#071826] sm:text-4xl">
@@ -33,17 +35,18 @@ export function HumanReviewedDifference() {
           <p className="max-w-2xl text-sm leading-7 text-[#64717c] lg:justify-self-end">
             项目筛选、信息补充和标书分析，我们把人工工作放在最影响判断的地方。
           </p>
-        </div>
+        </Reveal>
 
-        <div className="mt-9 overflow-hidden rounded-[1.75rem] border border-[#dbe2e5] bg-white shadow-[0_22px_60px_-48px_rgba(6,27,43,.35)]">
+        <Reveal className="mt-9 overflow-hidden rounded-[1.75rem] border border-[#dbe2e5] bg-white shadow-[0_22px_60px_-48px_rgba(6,27,43,.35)]">
           <div className="hidden grid-cols-[0.55fr_1.2fr_5rem_1.2fr] items-center gap-4 bg-[#0c2637] px-7 py-6 text-center text-sm font-black md:grid">
             <span className="text-white/65">对比维度</span>
             <span className="text-white">AI招投标网站</span>
             <span className="mx-auto flex size-11 items-center justify-center rounded-full border border-[#ffb21c] bg-[#ffb21c] text-xs tracking-wide text-[#071826]">VS</span>
             <span className="text-[#ffcd67]">拉美招投标信息平台</span>
           </div>
-          {differences.map((item) => (
-            <article key={item.number} className="grid items-center gap-5 border-b border-[#e5eaec] px-6 py-8 text-center last:border-b-0 md:grid-cols-[0.55fr_1.2fr_5rem_1.2fr] md:gap-4 md:px-7 md:py-9">
+          {/* The rows unfold one by one (user, 2026-10-04: 动画方案 1). */}
+          {differences.map((item, index) => (
+            <Reveal as="article" delayMs={150 + index * 160} key={item.number} className="grid items-center gap-5 border-b border-[#e5eaec] px-6 py-8 text-center last:border-b-0 md:grid-cols-[0.55fr_1.2fr_5rem_1.2fr] md:gap-4 md:px-7 md:py-9">
               <div>
                 <span className="block font-mono text-xs font-black tracking-wider text-[#b86e00]">{item.number}</span>
                 <h3 className="mt-2 text-lg font-black text-[#071826]">{item.title}</h3>
@@ -58,9 +61,9 @@ export function HumanReviewedDifference() {
                 <p className="mb-2 text-xs font-black text-[#a96100] md:hidden">拉美招投标信息平台</p>
                 <p className="text-sm font-bold leading-7 text-[#173649]">{item.latinTender}</p>
               </div>
-            </article>
+            </Reveal>
           ))}
-        </div>
+        </Reveal>
 
         <p className="mx-auto mt-8 max-w-4xl text-center text-base font-bold leading-8 text-[#173649]">
           重点不是让企业被海量信息淹没，而是找到与业务匹配的项目，掌握项目与标书中的关键要求，再判断是否值得继续投入。

@@ -3207,4 +3207,23 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real SECOP II row (LP 01 DE 2026 FRR), ~$378k: kept since the new-energy floor went to $200k (user, 2026-10-04: 新能源门槛：降到20万).",
     country: "Colombia", scopeType: "works", governmentLevel: "federal", industries: ["power"],
   },
+  // --- Dominican Republic (DGCP, staged 2026-10-04) — real rows from the first dry run.
+  {
+    title: "CONTRATACIÓN DE SUMINISTRO DE ALMUERZOS Y CENAS POR OCHO (8) MESES PARA LOS COLABORADORES",
+    procedureType: "Licitación Pública Nacional",
+    estimatedValue: 59_999_098,
+    currency: "DOP",
+    expectedTier: "excluded",
+    note: "Real row PASAPORTES-CCC-LPN-2026-0002 (~$1.0M): staff meals are routine catering whatever the amount.",
+    country: "Dominican Republic", scopeType: "services", governmentLevel: "federal", industries: ["general"],
+  },
+  {
+    title: "CONSTRUCCION Y RECONSTRUCION DE CARRETERAS CON OBRAS COMPLEMENTARIAS DE DRENAJE EN LAS PROVINCIAS LA VEGA Y HATO MAYOR",
+    procedureType: "Licitación Pública Nacional",
+    estimatedValue: 1_387_071_900.75,
+    currency: "DOP",
+    expectedTier: "flagship",
+    note: "Real row MOPC-CCC-LPN-2026-0019, ~$23M road works by the Ministry of Public Works.",
+    country: "Dominican Republic", scopeType: "works", governmentLevel: "federal", industries: ["construction", "transportation", "water"],
+  },
 ];

@@ -33,6 +33,10 @@ const EXCLUDE_KEYWORDS = [
   /conserjer[íi]a|conserje/i,
   /guardia de seguridad|vigilante|servicio de vigilancia/i,
   /catering|banquete|comedor|servicio de alimentos|servicio de comida/i,
+  // Meals by name (2026-10-04, first Dominican dry run): "CONTRATACIÓN DE
+  // SUMINISTRO DE ALMUERZOS Y CENAS POR OCHO (8) MESES PARA LOS COLABORADORES"
+  // (Dirección General de Pasaportes, DOP 60M) came out 常规 — no catering word.
+  /\b(?:almuerzos|desayunos|cenas|refrigerios|meriendas)\b/i,
   /jardiner[íi]a|poda de [áa]rboles|[áa]reas verdes/i,
   /control de plagas|fumigaci[óo]n/i,
   /mensajer[íi]a local|paqueter[íi]a/i,

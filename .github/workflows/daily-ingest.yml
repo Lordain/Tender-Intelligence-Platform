@@ -171,6 +171,12 @@ jobs:
           # lib/staged-countries.ts. COMPR.AR alone walks ~46 list pages.
           - name: Argentina (COMPR.AR, CONTRAT.AR, ADIF, Boletín Oficial, staged)
             command: cron:argentina
+          # Added 2026-10-04. The Dominican Republic's DGCP open-data API: every
+          # procedure of the last 3 days, the public tenders (LPN / LPI / LPA)
+          # still taking bids, the platform's general rules. Staged — admin
+          # pages only, see lib/staged-countries.ts. See scripts/cron-dominicana.ts.
+          - name: Dominican Republic (DGCP, staged)
+            command: cron:dominicana
           # Peru OECE/SEACE has no job here: measured 2026-09-26 (run
           # 36259854139), its proxy answers this runner 403 Forbidden, as it
           # answers Vercel. Its status refresh stays the local CLI

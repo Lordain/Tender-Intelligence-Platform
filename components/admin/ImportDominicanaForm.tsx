@@ -30,7 +30,7 @@ export function ImportDominicanaForm() {
   const [result, setResult] = useState<DominicanaImportResponse | null>(null);
 
   async function run() {
-    if (write && !confirm(`确定要读取多米尼加 DGCP 最近 ${days} 天发布的项目，并把保留的写入 Supabase 吗？（只在后台可见）`)) return;
+    if (write && !confirm(`确定要读取多米尼加 DGCP 最近 ${days} 天发布的项目，并把保留的写入 Supabase 吗？`)) return;
     setSubmitting(true);
     setError(null);
     setResult(null);
@@ -109,7 +109,7 @@ export function ImportDominicanaForm() {
           </p>
           {result.write ? (
             <p className="mt-1 font-semibold text-emerald-700">
-              已写入 {result.upsertedCount ?? 0} 条（只在后台可见），标书链接 {result.documentLinks ?? 0} 个
+              已写入 {result.upsertedCount ?? 0} 条，标书链接 {result.documentLinks ?? 0} 个
               {result.failed && result.failed.length > 0 ? `，${result.failed.length} 条失败：${result.failed.map((f) => f.slug).join("、")}` : ""}
             </p>
           ) : (

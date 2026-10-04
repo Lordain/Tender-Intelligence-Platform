@@ -61,6 +61,8 @@ type TenderRow = {
   ficha_url?: string | null;
   created_at: string;
   updated_at: string;
+  /** Migration 0061: when the first analysis row made it public. Null until then. */
+  listed_at?: string | null;
   // Optional: TENDER_LIST_SELECT (used for list/notification views that
   // never render qualifications/keyDates/risks — see fetchAllTendersFromDb)
   // omits these three joins entirely to skip their real DB cost across an
@@ -118,7 +120,7 @@ const TENDER_FLAT_FIELDS = `
   publication_date, publication_date_is_estimated,
   submission_deadline, award_date, awarded_to, awarded_value, estimated_value, currency, location,
   status, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden,
-  homepage_featured, documents_unavailable, source_name, source_url, ficha_url, created_at, updated_at
+  homepage_featured, documents_unavailable, source_name, source_url, ficha_url, created_at, updated_at, listed_at
 `;
 
 /** One tender's full detail, including its qualifications/keyDates/risks — for fetchTenderBySlugFromDb (a single row). */
@@ -253,6 +255,7 @@ function toTender(row: TenderRow): Tender {
     fichaUrl: row.ficha_url ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    listedAt: row.listed_at ?? undefined,
   };
 }
 

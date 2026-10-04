@@ -24,21 +24,23 @@ type Dot = { name: string; x: number; y: number };
 /**
  * Short names, not full ones (user, 2026-10-04: 平台的名称可以缩写展示): ChileCompra
  * for Mercado Público, SHCP for Hacienda's Proyectos Estratégicos, BORA for the
- * Boletín Oficial de la República Argentina, Metro SCL for Metro de Santiago.
+ * Boletín Oficial de la República Argentina, Metro SCL for Metro de Santiago,
+ * DGCP for the Dominican Republic's Portal Transaccional (2026-10-04).
  * Rows chosen by hand so the longer names sit in the sparser rows.
  *
  * Desktop is two wide rows, not three narrow ones (user, 2026-10-04: 太高了，
  * 可以做宽一点，但是矮一点 … 把点位放宽一点，但是层数少一点). 12 over 10 so the
- * second row falls between the dots of the first.
+ * second row falls between the dots of the first; 13 over 10 since DGCP joined
+ * (2026-10-04) — 12 over 11 lined the two rows up.
  */
 const DESKTOP_ROWS = [
-  ["ComprasMX", "PNCP", "SECOP II", "ChileCompra", "SEACE", "COMPR.AR", "PEMEX", "Petrobras", "UPME", "Codelco", "CFE", "DOU"],
+  ["ComprasMX", "PNCP", "SECOP II", "ChileCompra", "SEACE", "COMPR.AR", "PEMEX", "DGCP", "Petrobras", "UPME", "Codelco", "CFE", "DOU"],
   ["Petroperú", "CONTRAT.AR", "ANEEL", "ProInversión", "Metro SCL", "ADIF", "SHCP", "Cemig", "ANTAQ", "BORA"],
 ];
 const MOBILE_ROWS = [
   ["ComprasMX", "ChileCompra", "PNCP", "SECOP II"],
   ["PEMEX", "SEACE", "UPME", "DOU", "CFE"],
-  ["Petrobras", "BORA", "Codelco", "COMPR.AR"],
+  ["Petrobras", "BORA", "Codelco", "COMPR.AR", "DGCP"],
   ["ANEEL", "ADIF", "Cemig", "ANTAQ", "Petroperú"],
   ["Metro SCL", "CONTRAT.AR", "ProInversión", "SHCP"],
 ];

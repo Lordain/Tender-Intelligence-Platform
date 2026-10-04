@@ -6,21 +6,13 @@ import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 
 /**
- * The Dominican Republic is staged (lib/staged-countries.ts): imported daily,
- * invisible to visitors. This tab is where the user reviews what came in
- * before deciding to open it, and runs the import by hand (2026-10-04).
+ * The Dominican Republic's tab: the manual import and what came in. Staged
+ * on 2026-10-04 and opened to visitors the same day (user: 公开多米尼加).
  */
 export default async function AdminImportTendersDominicanaPage() {
   const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Dominican Republic");
   return (
     <div className="flex flex-col gap-3">
-      <section className="rounded-2xl border border-[#eed18c] bg-[#fff8e7] px-5 py-4 text-sm leading-6 text-[#6d4c0d]">
-        <p className="font-black">多米尼加尚未对外公开</p>
-        <p className="mt-1 text-xs leading-5">
-          项目每天自动导入，只在后台可见：前台列表、详情页、首页、网站地图、搜索引擎推送和摘要邮件都不会出现。审核满意后，把多米尼加从
-          <code className="mx-1">lib/staged-countries.ts</code>移到公开国家名单即可上线。
-        </p>
-      </section>
       <ImportSourceSection
         name="DGCP — 多米尼加政府采购开放数据"
         hint="Portal Transaccional 的官方接口；只读公开招标（国内、国际、简易公开招标）"

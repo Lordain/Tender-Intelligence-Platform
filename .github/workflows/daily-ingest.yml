@@ -260,9 +260,9 @@ jobs:
             command: cron:argentina
           # Added 2026-10-04. The Dominican Republic's DGCP open-data API: every
           # procedure of the last 3 days, the public tenders (LPN / LPI / LPA)
-          # still taking bids, the platform's general rules. Staged — admin
-          # pages only, see lib/staged-countries.ts. See scripts/cron-dominicana.ts.
-          - name: Dominican Republic (DGCP, staged)
+          # still taking bids, the platform's general rules. Opened to visitors
+          # the same day (user: 公开多米尼加). See scripts/cron-dominicana.ts.
+          - name: Dominican Republic (DGCP)
             command: cron:dominicana
           # Added 2026-10-04. National energy auctions kept by hand (Chile CNE,
           # Argentina AlmaSADI / AlmaGBA, Colombia MinEnergía) — open and

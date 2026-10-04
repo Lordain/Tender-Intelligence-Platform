@@ -9,7 +9,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = pageMetadata({
   title: "拉美招标周报｜每周新发布的政府采购与国企招标项目",
-  description: "每周汇总墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷新发布的政府采购与国有企业招标项目，按国家和行业整理，附重点项目与计划交标月份。",
+  description: "每周汇总墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加新发布的政府采购与国有企业招标项目，按国家和行业整理，附重点项目与计划交标月份。",
   path: "/weekly",
 });
 
@@ -23,7 +23,7 @@ export default async function WeeklyArchivePage() {
           <div className="mt-9 max-w-4xl">
             <span className="inline-flex items-center rounded-full bg-[#ffb21c] px-3 py-1 text-xs font-black text-[#071826]">招标周报</span>
             <h1 className="mt-5 text-3xl font-black leading-[1.22] tracking-[-0.04em] sm:text-5xl">拉美招标周报</h1>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-white/68">每周汇总墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷新发布的政府采购与国有企业招标项目，按国家和行业整理。本周的周报每日更新。</p>
+            <p className="mt-4 max-w-3xl text-base leading-8 text-white/68">每周汇总墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加新发布的政府采购与国有企业招标项目，按国家和行业整理。本周的周报每日更新。</p>
           </div>
         </div>
       </header>

@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { ingestDominicana, type DominicanaIngestResult } from "@/lib/ingestion/ingest-dominicana";
 import { DOMINICANA_IMPORT_MAX_DAYS, type DominicanaImportResponse, type DominicanaImportRow } from "@/lib/ingestion/dominicana-import-result";
 import { logAdminAlert } from "@/lib/admin-alerts";
+import { revalidateTenders } from "@/lib/cache-tags";
 
 /**
  * The 多米尼加 tab's import button (user, 2026-10-04: 也做一下手动接口), over
@@ -11,9 +12,8 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  * `cron:dominicana` cannot diverge. One window of 30 days is about 7,000
  * procedures — seven API pages — and a few dozen document lists.
  *
- * Nothing here is public: the Dominican Republic is staged
- * (lib/staged-countries.ts), so a write lands in the admin pages only and no
- * public cache needs dropping.
+ * The Dominican Republic opened 2026-10-04, so a write drops the public
+ * list's cache like every other country's import.
  */
 export const maxDuration = 300;
 
@@ -49,6 +49,8 @@ export async function POST(request: Request) {
 
   try {
     const result = await ingestDominicana(supabase, { write, days });
+    // The public list is cached; drop it so this import shows up now.
+    if (write) revalidateTenders();
     const keptSlugs = new Set(result.kept.map((tender) => tender.slug));
     const rows = result.rows.map(slimRow);
     const response: DominicanaImportResponse = {

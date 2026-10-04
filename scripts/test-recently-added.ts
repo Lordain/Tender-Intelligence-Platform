@@ -109,6 +109,28 @@ check(
   count([tender("broken", "not a date")], LAST_NIGHT) === 0,
 );
 
+// 2026-10-04: a tender is public only once its analysis is in, which is
+// imported by hand, often days after the row. It counts from listedAt — the
+// moment it appeared on the site — not from the import (user: 如果是在24小时内
+// 录入的项目也算).
+{
+  const imported = tender("late-analysis", "2026-09-10T04:30:00.000Z");
+  const listed = { ...imported, listedAt: "2026-09-15T02:00:00.000Z" } as Tender;
+  check(
+    "imported days ago, published to the site last night: counts as new",
+    count([listed], "2026-09-15T09:00:00.000Z") === 1,
+    `got ${count([listed], "2026-09-15T09:00:00.000Z")}`,
+  );
+  check(
+    "…and drops out 24 hours after it was listed",
+    count([listed], "2026-09-16T02:01:00.000Z") === 0,
+  );
+  check(
+    "listed long ago, whatever the import date: not new",
+    count([{ ...tender("old-listed", "2026-09-15T04:00:00.000Z"), listedAt: "2026-09-01T00:00:00.000Z" } as Tender], LAST_NIGHT) === 0,
+  );
+}
+
 // The 「本日新增」 cell is a button that filters the list to the same set, so
 // the count and the view have to agree — a count of 3 opening a list of 0 is
 // the bug this catches.

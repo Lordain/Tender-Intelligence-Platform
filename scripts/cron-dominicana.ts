@@ -1,9 +1,8 @@
 /**
  * The daily read of the Dominican Republic's DGCP open-data API, as a plain
  * script so the GitHub Actions schedule can run it. Invoked by
- * .github/workflows/daily-ingest.yml. Added 2026-10-04; the Dominican Republic
- * is STAGED (lib/staged-countries.ts): what this writes shows in the admin
- * pages only.
+ * .github/workflows/daily-ingest.yml. Added 2026-10-04, staged, and opened to
+ * visitors the same day.
  *
  * Usage:
  *   npm run cron:dominicana                       (dry run — fetches and classifies, writes nothing)
@@ -52,7 +51,7 @@ async function main() {
     supabase!,
     "import-dominicana",
     problem ? "failed" : "ok",
-    problem ?? `发布 ${result.listedCount} 条，公开招标 ${result.publicTenderCount} 条，保留 ${result.kept.length} 条，写入 ${result.upsertedCount ?? 0} 条（未公开），标书链接 ${result.documentLinks ?? 0} 个`,
+    problem ?? `发布 ${result.listedCount} 条，公开招标 ${result.publicTenderCount} 条，保留 ${result.kept.length} 条，写入 ${result.upsertedCount ?? 0} 条，标书链接 ${result.documentLinks ?? 0} 个`,
   );
   if (failed.length > 0) for (const f of failed.slice(0, 10)) console.error(`  ${f.slug} —— ${f.error}`);
   if (problem) process.exit(1);

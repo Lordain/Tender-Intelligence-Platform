@@ -11,6 +11,7 @@ import { DOMINICANA_INGESTED_MODALIDADES } from "@/lib/ingestion/connectors/domi
 import { dominicanGovernmentLevel, dominicanStatus, dominicanTime, mapDgcpProcesoToTender } from "@/lib/ingestion/dominicana-mapper";
 import { ingestDominicana } from "@/lib/ingestion/ingest-dominicana";
 import { isStagedCountry } from "@/lib/staged-countries";
+import { AVAILABLE_COUNTRIES } from "@/lib/tender-list-page";
 import { countryLabel } from "@/lib/tender-labels";
 
 let failures = 0;
@@ -54,9 +55,11 @@ async function main() {
   check("已取消的不留", run.kept.some((tender) => tender.status === "cancelled"), false);
   check("公路工程留下", run.kept.some((tender) => tender.tenderNumber === "MOPC-CCC-LPN-2026-0019"), true);
 
-  console.log("\n未公开");
-  check("多米尼加在未公开国家里", isStagedCountry("Dominican Republic"), true);
-  check("厄瓜多尔在未公开国家里", isStagedCountry("Ecuador"), true);
+  console.log("\n公开");
+  // Opened 2026-10-04 (user: 公开多米尼加); Ecuador stays staged.
+  check("多米尼加已公开", isStagedCountry("Dominican Republic"), false);
+  check("多米尼加在前台国家名单里", (AVAILABLE_COUNTRIES as readonly string[]).includes("Dominican Republic"), true);
+  check("厄瓜多尔仍未公开", isStagedCountry("Ecuador"), true);
 
   if (failures > 0) {
     console.log(`\n${failures} 项失败`);

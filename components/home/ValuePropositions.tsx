@@ -1,24 +1,137 @@
 /**
  * Why us, drawn as the pipeline it is (user, 2026-10-04: 把我们做的关键动作做成
  * 节点，然后一步一步讲，先从收集20多个平台的信息汇集我们平台，然后经过处理，变成
- * 高价值的情报).
+ * 高价值的情报; then 把各平台做成圆点，分散分布，然后汇集到一个出口 … 也可以动画化).
  *
- * Every claim here is something the platform does today. "20+" is the count
- * of distinct official sources the importers read (Compras MX, DOF/CFE,
- * PEMEX, Proyectos Estratégicos; PNCP, DOU, Petronect, Cemig, ANEEL ×2,
- * ANTAQ; SECOP II, UPME; SEACE/OECE, Petroperú, ProInversión; Mercado
- * Público, Codelco, Metro de Santiago; COMPR.AR, CONTRAT.AR, ADIF, Boletín
- * Oficial) — 23 on 2026-10-04. Raise it only when that list grows.
+ * Every claim here is something the platform does today. The dots are the
+ * official sources the importers read — 22 named here, 23 counting ANEEL's two
+ * auction feeds separately, on 2026-10-04. Keep the rows below and the "20 多个"
+ * copy in step with that list.
+ *
+ * The motion is decoration on a picture that already says everything when
+ * still: particles travel each path into the exit, the dots breathe, a light
+ * runs along the step track. Under prefers-reduced-motion all of it stops and
+ * the particles are not drawn (app/globals.css, .whyus-*).
  */
 
-const sources = [
-  { country: "墨西哥", platforms: ["Compras MX", "PEMEX", "CFE"] },
-  { country: "巴西", platforms: ["PNCP", "Petrobras", "ANEEL"] },
-  { country: "哥伦比亚", platforms: ["SECOP II", "UPME"] },
-  { country: "秘鲁", platforms: ["SEACE", "Petroperú"] },
-  { country: "智利", platforms: ["Mercado Público", "Codelco"] },
-  { country: "阿根廷", platforms: ["COMPR.AR", "CONTRAT.AR"] },
+type Dot = { name: string; x: number; y: number };
+
+/** Rows chosen by hand so the long names sit in the sparser rows. */
+const DESKTOP_ROWS = [
+  ["Compras MX", "PNCP", "SECOP II", "Mercado Público", "SEACE", "COMPR.AR", "PEMEX", "Petrobras"],
+  ["UPME", "Codelco", "Petroperú", "CONTRAT.AR", "CFE", "ANEEL", "ProInversión"],
+  ["Metro Santiago", "ADIF", "Estratégicos MX", "DOU", "Cemig", "ANTAQ", "Boletín Oficial"],
+];
+const MOBILE_ROWS = [
+  ["Compras MX", "Mercado Público", "PNCP", "SECOP II"],
+  ["PEMEX", "SEACE", "UPME", "DOU", "CFE"],
+  ["Petrobras", "Boletín Oficial", "Codelco", "COMPR.AR"],
+  ["ANEEL", "ADIF", "Cemig", "ANTAQ", "Petroperú"],
+  ["Metro Santiago", "CONTRAT.AR", "ProInversión", "Estratégicos MX"],
+];
+const PLATFORM_COUNT = DESKTOP_ROWS.flat().length;
+
+/** Fixed offsets so the dots read as scattered rather than as a table — and render identically on server and client. */
+const JITTER = [
+  [0, 0], [-10, 12], [12, -9], [-6, 7], [9, -12], [-12, 5], [5, 10], [11, -5],
 ] as const;
+
+function layout(rows: string[][], width: number, rowY: number[], margin: number): Dot[] {
+  return rows.flatMap((row, r) => {
+    const spacing = (width - margin * 2) / row.length;
+    return row.map((name, i) => {
+      const [dx, dy] = JITTER[(i + r * 3) % JITTER.length]!;
+      return { name, x: margin + spacing * (i + 0.5) + dx, y: rowY[r]! + dy };
+    });
+  });
+}
+
+type Scene = {
+  width: number;
+  height: number;
+  exit: { x: number; y: number; r: number };
+  labelSize: number;
+  dots: Dot[];
+};
+
+const DESKTOP: Scene = {
+  width: 1200,
+  height: 500,
+  exit: { x: 600, y: 386, r: 42 },
+  labelSize: 13,
+  dots: layout(DESKTOP_ROWS, 1200, [44, 128, 212], 40),
+};
+const MOBILE: Scene = {
+  width: 360,
+  height: 520,
+  exit: { x: 180, y: 424, r: 34 },
+  labelSize: 10,
+  dots: layout(MOBILE_ROWS, 360, [22, 82, 142, 202, 262], 26),
+};
+
+function pathTo(dot: Dot, exit: Scene["exit"]): string {
+  const endY = exit.y - exit.r - 6;
+  const drop = endY - dot.y;
+  return `M${dot.x.toFixed(1)} ${dot.y.toFixed(1)} C${dot.x.toFixed(1)} ${(dot.y + drop * 0.55).toFixed(1)} ${exit.x} ${(endY - drop * 0.45).toFixed(1)} ${exit.x} ${endY}`;
+}
+
+function Convergence({ scene, idPrefix, className }: { scene: Scene; idPrefix: string; className: string }) {
+  const { exit } = scene;
+  return (
+    <svg viewBox={`0 0 ${scene.width} ${scene.height}`} className={className} role="img" aria-label={`${PLATFORM_COUNT} 个官方采购平台的公告汇集到一个入口`}>
+      <defs>
+        <radialGradient id={`${idPrefix}-glow`}>
+          <stop offset="0%" stopColor="#ffb21c" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#ffb21c" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={`${idPrefix}-line`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2={exit.y}>
+          <stop offset="0%" stopColor="#ffb21c" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#e39a10" stopOpacity="0.75" />
+        </linearGradient>
+      </defs>
+
+      <circle cx={exit.x} cy={exit.y} r={exit.r * 2.6} fill={`url(#${idPrefix}-glow)`} />
+
+      <g fill="none" stroke={`url(#${idPrefix}-line)`} strokeWidth={1.3}>
+        {scene.dots.map((dot, i) => (
+          <path key={dot.name} id={`${idPrefix}-p${i}`} d={pathTo(dot, exit)} />
+        ))}
+      </g>
+
+      <g className="whyus-particles" fill="#b86e00">
+        {scene.dots.map((dot, i) => {
+          const dur = `${3.4 + (i % 5) * 0.5}s`;
+          // Negative begin: every particle is already mid-flight on first
+          // paint, rather than all of them waiting at the SVG origin.
+          const begin = `-${((i * 0.73) % 3.4).toFixed(2)}s`;
+          return (
+            <circle key={dot.name} r={3}>
+              <animateMotion dur={dur} begin={begin} repeatCount="indefinite">
+                <mpath href={`#${idPrefix}-p${i}`} />
+              </animateMotion>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur={dur} begin={begin} repeatCount="indefinite" />
+            </circle>
+          );
+        })}
+      </g>
+
+      {scene.dots.map((dot, i) => (
+        <g key={dot.name}>
+          <circle cx={dot.x} cy={dot.y} r={10} fill="#ffb21c" opacity={0.14} />
+          <circle className="whyus-dot" style={{ animationDelay: `${((i * 0.41) % 3.6).toFixed(2)}s` }} cx={dot.x} cy={dot.y} r={4.5} fill="#ffffff" stroke="#e39a10" strokeWidth={2} />
+          <text x={dot.x} y={dot.y + scene.labelSize + 9} textAnchor="middle" fontSize={scene.labelSize} fontWeight={700} fill="#52636e" className="font-mono">
+            {dot.name}
+          </text>
+        </g>
+      ))}
+
+      <circle className="whyus-exit-ring" cx={exit.x} cy={exit.y} r={exit.r} fill="none" stroke="#ffb21c" strokeWidth={2} />
+      <circle cx={exit.x} cy={exit.y} r={exit.r} fill="#0c2637" stroke="#ffb21c" strokeWidth={2.5} />
+      <text x={exit.x} y={exit.y - exit.r * 0.06} textAnchor="middle" fontSize={exit.r * 0.38} fontWeight={900} fill="#ffcd67">一个</text>
+      <text x={exit.x} y={exit.y + exit.r * 0.42} textAnchor="middle" fontSize={exit.r * 0.38} fontWeight={900} fill="#ffffff">入口</text>
+    </svg>
+  );
+}
 
 type StepIcon = "collect" | "filter" | "translate" | "document" | "bell";
 
@@ -97,7 +210,7 @@ function Icon({ name }: { name: StepIcon }) {
 
 export function ValuePropositions() {
   return (
-    <section id="how-it-works" className="bg-[#fffdf9] px-5 py-16 sm:px-8 sm:py-20">
+    <section id="how-it-works" className="overflow-hidden bg-[#fffdf9] px-5 py-16 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-[108rem]">
         <div className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
           <div>
@@ -107,42 +220,26 @@ export function ValuePropositions() {
           <p className="max-w-2xl text-sm leading-7 text-[#64717c] lg:justify-self-end">不替企业做决定，而是把分散、陌生且难以快速判断的政府招标信息，一步步整理成团队能够高效使用的中文情报。</p>
         </div>
 
-        {/* Stage 1 — the raw input: scattered portals, other languages. */}
-        <div className="mt-10 rounded-[1.75rem] border border-dashed border-[#cfd8dc] bg-white/70 px-5 py-6 sm:px-8">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-            <p className="text-sm font-black text-[#071826]">起点：分散在 6 国 20 多个官方平台的原始公告</p>
-            <p className="text-xs text-[#75838c]">西语、葡语 · 格式各异 · 每天数千条</p>
-          </div>
-          <ul className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-6">
-            {sources.map((group) => (
-              <li key={group.country} className="rounded-2xl bg-[#f3f6f7] px-3.5 py-3">
-                <p className="text-xs font-black text-[#315063]">{group.country}</p>
-                <p className="mt-1.5 flex flex-wrap gap-1.5">
-                  {group.platforms.map((platform) => (
-                    <span key={platform} className="whitespace-nowrap rounded-md border border-[#dbe2e5] bg-white px-2 py-0.5 font-mono text-[0.7rem] font-bold text-[#52636e]">{platform}</span>
-                  ))}
-                </p>
-              </li>
-            ))}
-          </ul>
+        {/* Stage 1 — scattered official portals converging into one entry. */}
+        <div className="mt-10 text-center">
+          <p className="text-sm font-black text-[#071826]">6 国 {PLATFORM_COUNT} 个官方采购平台</p>
+          <p className="mt-1 text-xs text-[#75838c]">西语、葡语 · 格式各异 · 每天数千条新公告</p>
         </div>
+        <Convergence scene={DESKTOP} idPrefix="wyd" className="mx-auto mt-4 hidden w-full max-w-6xl md:block" />
+        <Convergence scene={MOBILE} idPrefix="wym" className="mx-auto mt-4 block w-full max-w-sm md:hidden" />
 
-        {/* The funnel: many sources narrowing into the pipeline. */}
-        <div aria-hidden="true" className="mb-6 flex justify-center lg:mb-8">
-          <svg viewBox="0 0 240 56" className="h-12 w-60 text-[#ffb21c]" preserveAspectRatio="none">
-            <path d="M0 0h240L150 56H90z" fill="currentColor" opacity="0.16" />
-            <path d="M120 6v40m-7-8 7 8 7-8" fill="none" stroke="#b86e00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
+        <div aria-hidden="true" className="mx-auto -mt-16 h-10 w-px md:-mt-14 bg-linear-to-b from-[#ffb21c] to-[#ffb21c]/20" />
 
         {/* Stage 2 — what we do, node by node. */}
-        <ol className="relative grid gap-0 lg:grid-cols-5 lg:gap-6">
-          {/* The track the nodes sit on: vertical on phones, horizontal from lg. */}
-          <span aria-hidden="true" className="absolute bottom-6 left-[1.6rem] top-6 w-px bg-gradient-to-b from-[#ffb21c] to-[#b86e00] lg:hidden" />
-          <span aria-hidden="true" className="absolute left-[10%] right-[10%] top-[1.6rem] hidden h-px bg-gradient-to-r from-[#ffd27a] via-[#ffb21c] to-[#b86e00] lg:block" />
+        <ol className="relative mt-2 grid gap-0 lg:grid-cols-5 lg:gap-6">
+          {/* The track the nodes sit on: vertical on phones, horizontal from lg with a light running along it. */}
+          <span aria-hidden="true" className="absolute bottom-6 left-[1.6rem] top-6 w-px bg-linear-to-b from-[#ffb21c] to-[#b86e00] lg:hidden" />
+          <span aria-hidden="true" className="absolute left-[10%] right-[10%] top-[1.55rem] hidden h-0.5 overflow-hidden rounded-full bg-[#ffe3a6] lg:block">
+            <span className="whyus-track-sweep absolute inset-y-0 left-0 w-1/5 bg-linear-to-r from-transparent via-[#b86e00] to-transparent" />
+          </span>
           {steps.map((step) => (
             <li key={step.number} className="relative flex gap-5 pb-8 last:pb-0 lg:flex-col lg:items-center lg:pb-0 lg:text-center">
-              <span className="relative z-10 flex size-[3.2rem] shrink-0 items-center justify-center rounded-full border-2 border-[#ffb21c] bg-[#fffdf9] text-[#b86e00] shadow-[0_0_0_6px_#fffdf9]">
+              <span className="relative z-10 flex size-[3.2rem] shrink-0 items-center justify-center rounded-full bg-linear-to-br from-[#ffc247] to-[#e39a10] text-[#071826] shadow-[0_0_0_6px_#fffdf9,0_10px_24px_-10px_rgba(184,110,0,.7)]">
                 <Icon name={step.icon} />
               </span>
               <div className="min-w-0 lg:mt-5">
@@ -158,15 +255,16 @@ export function ValuePropositions() {
           ))}
         </ol>
 
-        <div aria-hidden="true" className="flex justify-center py-4">
+        <div aria-hidden="true" className="flex justify-center py-5">
           <svg viewBox="0 0 24 40" className="h-10 w-6"><path d="M12 2v32m-7-8 7 8 7-8" fill="none" stroke="#b86e00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
 
         {/* Stage 3 — what the customer gets. */}
-        <div className="rounded-[1.75rem] bg-[#0c2637] px-6 py-7 text-center sm:px-10 sm:py-9">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffcd67]">你拿到的</p>
-          <p className="mt-2 text-xl font-black text-white sm:text-2xl">一份可以直接判断「投不投」的中文项目情报</p>
-          <ul className="mt-5 flex flex-wrap justify-center gap-2.5">
+        <div className="relative overflow-hidden rounded-[1.75rem] bg-[#0c2637] px-6 py-8 text-center sm:px-10 sm:py-10">
+          <span aria-hidden="true" className="pointer-events-none absolute -top-24 left-1/2 h-48 w-[36rem] max-w-full -translate-x-1/2 rounded-full bg-[#ffb21c]/20 blur-3xl" />
+          <p className="relative text-xs font-black uppercase tracking-[0.2em] text-[#ffcd67]">你拿到的</p>
+          <p className="relative mt-2 text-xl font-black text-white sm:text-2xl">一份可以直接判断「投不投」的中文项目情报</p>
+          <ul className="relative mt-5 flex flex-wrap justify-center gap-2.5">
             {deliverables.map((item) => (
               <li key={item} className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm font-bold text-white/85">{item}</li>
             ))}

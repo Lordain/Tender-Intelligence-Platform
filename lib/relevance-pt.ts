@@ -1,6 +1,6 @@
 import { foldAccents } from "@/lib/text-fold";
 import type { IndustryKey } from "@/lib/industry";
-import { isNewEnergyPower } from "@/lib/new-energy";
+import { isNewEnergy, isNewEnergyPower } from "@/lib/new-energy";
 
 /**
  * Portuguese exclusion rules — Brazil only.
@@ -346,6 +346,12 @@ export function classifyPortugueseIndustries(input: string): IndustryKey[] {
   const matched = PT_INDUSTRY_PATTERNS.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
   // Solar, wind, storage and charging in Portuguese — see lib/new-energy.ts.
   if (!matched.includes("power") && isNewEnergyPower(text)) matched.push("power");
+  // Electric buses and fleets: the Spanish vehicle pattern reads "vehículo"
+  // and "autobús", never "veículo" or "ônibus", so a Brazilian concorrência
+  // for 100 electric buses carried no 车辆 tag (Belo Horizonte, 2026). Only
+  // the new-energy vehicles are added here — a general Portuguese vehicle
+  // pattern would retag every fleet and upkeep row.
+  if (!matched.includes("vehicles") && isNewEnergy(text) && !isNewEnergyPower(text)) matched.push("vehicles");
   return matched;
 }
 

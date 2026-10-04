@@ -52,6 +52,9 @@ console.log("\n行业标签");
 check("储能 → 电力", classifyIndustries("ADQUISICIÓN DE SISTEMA DE ALMACENAMIENTO DE ENERGÍA EN BATERÍAS (BESS)"), ["power"]);
 check("充电桩 → 电力", classifyIndustries("INSTALACIÓN DE ELECTROLINERAS EN LA CIUDAD"), ["power"]);
 check("葡语光伏 → 电力", classifyPortugueseIndustries("Fornecimento e instalação de sistemas de geração de energia solar fotovoltaica"), ["power"]);
+check("葡语电动公交采购（Belo Horizonte 式）→ 车辆", classifyPortugueseIndustries("Aquisição de 100 ônibus elétricos tipo BRT misto e 27 carregadores"), ["vehicles"]);
+check("葡语普通车辆采购 → 不在这里加标签", classifyPortugueseIndustries("Aquisição de veículos automotores novos, zero quilômetro"), []);
+check("电动公交的维修保养 → 不加车辆标签", classifyPortugueseIndustries("Manutenção preventiva e corretiva dos ônibus elétricos da frota municipal"), []);
 
 console.log("\n巴西电子竞价（Pregão）");
 const acre = "Fornecimento e a instalação de sistemas de geração de energia solar fotovoltaica conectados à rede (on grid) destinados às unidades do Poder Judiciário do Estado do Acre";

@@ -1,45 +1,8 @@
 import type { Metadata } from "next";
 import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
-import Image from "next/image";
 import Link from "next/link";
 import { guideCountries, participationGuides } from "@/lib/participation-guides";
-import { CountryFlag } from "@/components/tenders/CountryFlag";
-
-/** guideCountries carries ISO codes; CountryFlag takes the English names the tenders use. */
-const FLAG_COUNTRY: Record<(typeof guideCountries)[number]["code"], string> = {
-  MX: "Mexico",
-  BR: "Brazil",
-  CO: "Colombia",
-  PE: "Peru",
-  CL: "Chile",
-  AR: "Argentina",
-  DO: "Dominican Republic",
-};
-
-/**
- * Each platform's own icon, taken from its official site (favicon, touch icon
- * or header logo) and redrawn at 128px in public/guides/logos/<slug>.png
- * (user, 2026-10-04: 能不能找到每个平台的官方图标，加入图标？). CFE's is
- * the CFE lettering from the logo the user supplied. Proyectos Estratégicos
- * MX could not be fetched from its site, so it shows its initials until an
- * official file is in hand.
- */
-const GUIDE_LOGO_FALLBACK: Record<string, string> = {
-  "mexico-proyectos-estrategicos": "PE",
-};
-
-function GuideLogo({ slug }: { slug: string }) {
-  const fallback = GUIDE_LOGO_FALLBACK[slug];
-  return (
-    <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#e5e9ea] bg-white p-1.5">
-      {fallback ? (
-        <span className="text-xs font-black tracking-[-0.02em] text-[#425461]">{fallback}</span>
-      ) : (
-        <Image src={`/guides/logos/${slug}.png`} alt="" width={32} height={32} className="size-full object-contain" />
-      )}
-    </span>
-  );
-}
+import { GuideCountryFlag, GuideLogo } from "@/components/guides/GuideMarks";
 
 export const metadata: Metadata = pageMetadata({
   title: "参标指南",
@@ -87,7 +50,7 @@ export default function GuidesPage() {
               <section key={country.code} aria-labelledby={`guides-${country.code}`} className="flex flex-col bg-[#fffdf9] p-5 sm:p-7">
                 <div className="flex items-start justify-between gap-4">
                   <h2 id={`guides-${country.code}`} className="flex items-center gap-3 text-2xl font-black tracking-[-0.03em]">
-                    <CountryFlag country={FLAG_COUNTRY[country.code]} className="ring-1 ring-black/10" />
+                    <GuideCountryFlag code={country.code} />
                     {country.name}
                   </h2>
                   <span className="mt-1.5 shrink-0 text-xs font-bold text-[#8a969d]">{guides.length} 份指南</span>

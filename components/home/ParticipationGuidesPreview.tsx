@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { homepageGuides } from "@/lib/participation-guides";
 import { Reveal } from "@/components/home/Reveal";
+import { GuideCountryFlag, GuideLogo } from "@/components/guides/GuideMarks";
 
 export function ParticipationGuidesPreview() {
   return (
@@ -30,11 +31,27 @@ export function ParticipationGuidesPreview() {
         <div className="mt-9 grid overflow-hidden rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] md:grid-cols-2 xl:grid-cols-4">
           {homepageGuides().map((guide, index) => (
             <Reveal key={guide.slug} delayMs={index * 110} className="-ml-px -mt-px flex">
-            <Link href={`/guides/${guide.slug}`} className="group w-full border-l border-t border-[#dbe2e5] p-6 transition hover:bg-[#fff4d8]">
-              <span className="text-xs font-black uppercase tracking-[0.14em] text-[#b86e00]">{guide.country} · {guide.issuerType}</span>
-              <h3 className="mt-3 text-lg font-black leading-7 text-[#071826]">{guide.platform}</h3>
-              <p className="mt-3 text-sm leading-6 text-[#64717c]">{guide.summary}</p>
-              <span className="mt-6 inline-block text-sm font-black text-[#9d6400] transition-transform group-hover:translate-x-1">阅读 →</span>
+            {/* Same pieces as the /guides rows — flag beside the country,
+                the platform's official icon, type tag, title, buyer — so the
+                strip reads as a preview of that page (user, 2026-10-04:
+                首页的参标指南改成同一种设计风格，一样保持只展示4条). */}
+            <Link href={`/guides/${guide.slug}`} className="group flex w-full flex-col border-l border-t border-[#dbe2e5] p-6 transition-colors hover:bg-[#f4efe4]">
+              <span className="flex items-center gap-2.5 text-lg font-black tracking-[-0.02em] text-[#071826]">
+                <GuideCountryFlag code={guide.countryCode} />
+                {guide.country}
+              </span>
+              <span className="mt-4 flex items-start gap-4 border-t border-[#e5e9ea] pt-4">
+                <GuideLogo slug={guide.slug} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    <span className="rounded-md bg-[#fff0c9] px-2 py-0.5 text-xs font-black text-[#8f5b00]">{guide.issuerType}</span>
+                    <span className="text-[11px] font-black uppercase tracking-[0.14em] text-[#b86e00]">{guide.platform}</span>
+                  </span>
+                  <h3 className="mt-2 text-base font-black leading-7 tracking-[-0.01em] text-[#071826]">{guide.title}</h3>
+                  <span className="mt-0.5 block text-xs font-bold leading-5 text-[#8a969d]">{guide.issuer}</span>
+                </span>
+              </span>
+              <span className="mt-auto inline-block pt-6 text-sm font-black text-[#9d6400] transition-transform group-hover:translate-x-1">阅读指南 →</span>
             </Link>
             </Reveal>
           ))}

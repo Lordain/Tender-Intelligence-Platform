@@ -232,7 +232,13 @@ export function ValuePropositions() {
         {/* Stage 1 — scattered official portals converging into one entry. */}
         <div className="mt-10 text-center">
           <p className="text-sm font-black text-[#071826]">拉美各国 20 多个官方采购平台</p>
-          <p className="mt-1 text-xs text-[#75838c]">西语、葡语 · 格式各异 · 每天数千条新公告</p>
+          <p className="mt-1 text-xs text-[#75838c]">西语、葡语 · 格式各异</p>
+          {/* Highlighted on request (user, 2026-10-04: 每天数千条 <- 这个地方要Highlight). */}
+          <p className="mt-3 inline-flex items-baseline gap-1.5 rounded-full bg-[#071826] px-4 py-1.5 text-white shadow-[0_8px_24px_-12px_rgba(7,24,38,.6)]">
+            <span className="text-xs font-bold text-white/70">每天</span>
+            <span className="text-lg font-black text-[#ffcd67]">数千条</span>
+            <span className="text-xs font-bold text-white/70">新公告</span>
+          </p>
         </div>
         <Convergence scene={DESKTOP} idPrefix="wyd" className="mx-auto mt-4 hidden w-full max-w-6xl md:block" />
         <Convergence scene={MOBILE} idPrefix="wym" className="mx-auto mt-4 block w-full max-w-sm md:hidden" />

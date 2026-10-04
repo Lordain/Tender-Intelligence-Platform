@@ -3,8 +3,8 @@ import { foldAccents } from "@/lib/text-fold";
 /**
  * New energy — solar PV, wind, battery storage, green hydrogen, EV charging
  * and electric buses — as a priority whitelist (user, 2026-10-04: 光伏、新能源
- * 项目是后续我们会关注的重点，优先白名单; floor 新能源白名单的门槛，用 50 万美元
- * ← OK).
+ * 项目是后续我们会关注的重点，优先白名单; floor 50 万美元, then 新能源门槛：降到
+ * 20万).
  *
  * Chinese exporters to Latin America are disproportionately in exactly these
  * products, and the classifier was losing them in four measured places:
@@ -40,7 +40,14 @@ import { foldAccents } from "@/lib/text-fold";
  * standing rule, 2026-10-02: 库里的不动了 … 只应用于未来新导入的).
  */
 
-export const NEW_ENERGY_MIN_VALUE_USD = 500_000;
+/**
+ * US$500k on 2026-10-04, lowered the same day to US$200k (user: 新能源门槛：
+ * 降到20万). Measured first: one year of Colombian SECOP II and one month of
+ * Brazilian PNCP put the 200k–500k band at roughly three to four more rows a
+ * month across both, about half of them building works that carry some solar
+ * panels or a solar water pump rather than a PV plant.
+ */
+export const NEW_ENERGY_MIN_VALUE_USD = 200_000;
 
 /** Generation, storage, hydrogen and charging — the power-equipment side. Matched on accent-folded text, case-insensitively. */
 const NEW_ENERGY_POWER =

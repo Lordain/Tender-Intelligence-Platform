@@ -103,6 +103,31 @@ export function ArgentinaFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/** A white cross quartering blue (top-left, bottom-right) and red (top-right, bottom-left); the coat of arms is too small to draw at this size. */
+export function DominicanRepublicFlag({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 14" className={`inline-block h-3.5 w-5 shrink-0 ${className}`}>
+      <rect width="20" height="14" fill="#fff" />
+      <rect width="8.5" height="5.5" fill="#002d62" />
+      <rect x="11.5" width="8.5" height="5.5" fill="#ce1126" />
+      <rect y="8.5" width="8.5" height="5.5" fill="#ce1126" />
+      <rect x="11.5" y="8.5" width="8.5" height="5.5" fill="#002d62" />
+    </svg>
+  );
+}
+
+/** Yellow (half), blue, red horizontal bands; the coat of arms is a small disc at this size. */
+export function EcuadorFlag({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 14" className={`inline-block h-3.5 w-5 shrink-0 ${className}`}>
+      <rect width="20" height="7" fill="#ffdd00" />
+      <rect y="7" width="20" height="3.5" fill="#034ea2" />
+      <rect y="10.5" width="20" height="3.5" fill="#ed1c24" />
+      <circle cx="10" cy="7" r="1.6" fill="#ffdd00" stroke="#7a5310" strokeWidth="0.3" />
+    </svg>
+  );
+}
+
 export function CountryFlag({ country, className = "" }: { country: string; className?: string }) {
   if (country === "Mexico") return <MexicoFlag className={className} />;
   if (country === "Brazil") return <BrazilFlag className={className} />;
@@ -111,5 +136,7 @@ export function CountryFlag({ country, className = "" }: { country: string; clas
   if (country === "Chile") return <ChileFlag className={className} />;
   if (country === "Guyana") return <GuyanaFlag className={className} />;
   if (country === "Argentina") return <ArgentinaFlag className={className} />;
+  if (country === "Dominican Republic") return <DominicanRepublicFlag className={className} />;
+  if (country === "Ecuador") return <EcuadorFlag className={className} />;
   return null;
 }

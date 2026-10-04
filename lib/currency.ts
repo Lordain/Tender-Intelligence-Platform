@@ -95,6 +95,10 @@ export const USD_RATES: Record<string, number> = {
   // 2026-09-27: 1513. The peso moves several percent a month, which is inside
   // what a $1M floor can tell apart; refresh it when the gap grows.
   ARS: 1 / 1513,
+  // Added 2026-10-04 for the Dominican Republic (DGCP, staged). open.er-api.com,
+  // read 2026-10-04: 59.59. The Banco Central has let the peso drift a few
+  // percent a year, well inside what a $1M floor can tell apart.
+  DOP: 1 / 59.6,
   // The two Chilean INDEXED UNITS, not currencies — and both appear in the
   // Moneda column as if they were: CLF 47 rows, UF 37 (the same unit under its
   // ISO code and its Spanish name), UTM 6. Ninety real amounts that would

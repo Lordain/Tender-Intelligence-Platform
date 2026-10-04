@@ -3,8 +3,8 @@ import { foldAccents } from "@/lib/text-fold";
 /**
  * New energy — solar PV, wind, battery storage, green hydrogen, EV charging
  * and electric buses — as a priority whitelist (user, 2026-10-04: 光伏、新能源
- * 项目是后续我们会关注的重点，优先白名单; floor 新能源白名单的门槛，用 50 万美元
- * ← OK).
+ * 项目是后续我们会关注的重点，优先白名单; floor 50 万美元, then 新能源门槛：降到
+ * 20万).
  *
  * Chinese exporters to Latin America are disproportionately in exactly these
  * products, and the classifier was losing them in four measured places:
@@ -40,7 +40,14 @@ import { foldAccents } from "@/lib/text-fold";
  * standing rule, 2026-10-02: 库里的不动了 … 只应用于未来新导入的).
  */
 
-export const NEW_ENERGY_MIN_VALUE_USD = 500_000;
+/**
+ * US$500k on 2026-10-04, lowered the same day to US$200k (user: 新能源门槛：
+ * 降到20万). Measured first: one year of Colombian SECOP II and one month of
+ * Brazilian PNCP put the 200k–500k band at roughly three to four more rows a
+ * month across both, about half of them building works that carry some solar
+ * panels or a solar water pump rather than a PV plant.
+ */
+export const NEW_ENERGY_MIN_VALUE_USD = 200_000;
 
 /** Generation, storage, hydrogen and charging — the power-equipment side. Matched on accent-folded text, case-insensitively. */
 const NEW_ENERGY_POWER =
@@ -60,20 +67,35 @@ const NEW_ENERGY_VEHICLES =
 const NOT_NEW_ENERGY =
   /\bmantenimiento\b|\bmanutencao\b|\brecuperacao\b|\breparos?\b|\breparacion\b|\bconserto\b|\bconservacion\b|operacion y mantenimiento|\bo&m\b|\bestudios?\b|\bestudos?\b|consultori|interventori|asesori|assessori|supervision|supervisao|fiscalizacao|diagnostico|auditoria|capacitacion|capacitacao|formacion|\bcursos?\b|diplomado|treinamento|didactic|didatic|(?:kits?|materiale?s?) educativ|entrenador|modulos? de entrenamiento|kits? (?:de )?(?:laboratorio|practica|aprendizaje)|laboratorio de|calentador(?:es)? solar|terma(?:s)? solar|aquecedor(?:es)? solar|aquecimento solar|colector(?:es)? solar|coletor(?:es)? solar|\balquiler\b|\barrendamiento\b|\blocacao\b|(?:operad|accionad|alimentad|impulsad)[oa]s? (?:mediante|con|por) (?:energia )?(?:solar|fotovoltaica)/i;
 
+/**
+ * Training and upkeep the supplier provides WITH the equipment — "treinamento
+ * operacional, técnico e de manutenção" in a 2026-09 pregão for four
+ * battery buses and their chargers (São Leopoldo, R$14.9M). Read as part of
+ * the object, those words made the purchase look like a training or upkeep
+ * contract. They are removed before NOT_NEW_ENERGY is read; a contract whose
+ * object IS upkeep or training still says so without this shape.
+ */
+const ANCILLARY_SERVICES =
+  /\b(?:treinamento|capacitacao|capacitacion|entrenamiento)\s+(?:operacional|tecnic[oa]|del personal|de (?:los )?operadores|dos operadores)(?:[^.;]{0,50}?\b(?:manutencao|mantenimiento)\b)?/gi;
+
 function fold(text: string): string {
   return foldAccents(text);
+}
+
+function withoutAncillary(folded: string): string {
+  return folded.replace(ANCILLARY_SERVICES, " ");
 }
 
 /** Solar, wind, storage, hydrogen or EV charging equipment or plant — tagged 电力. */
 export function isNewEnergyPower(text: string | undefined): boolean {
   if (!text) return false;
   const folded = fold(text);
-  return NEW_ENERGY_POWER.test(folded) && !NOT_NEW_ENERGY.test(folded);
+  return NEW_ENERGY_POWER.test(folded) && !NOT_NEW_ENERGY.test(withoutAncillary(folded));
 }
 
 /** Anything on the new-energy whitelist, electric buses included. */
 export function isNewEnergy(text: string | undefined): boolean {
   if (!text) return false;
   const folded = fold(text);
-  return (NEW_ENERGY_POWER.test(folded) || NEW_ENERGY_VEHICLES.test(folded)) && !NOT_NEW_ENERGY.test(folded);
+  return (NEW_ENERGY_POWER.test(folded) || NEW_ENERGY_VEHICLES.test(folded)) && !NOT_NEW_ENERGY.test(withoutAncillary(folded));
 }

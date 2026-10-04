@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { TenderCardData } from "@/lib/tender-card";
 import { TenderCard } from "@/components/tenders/TenderCard";
+import { Reveal } from "@/components/home/Reveal";
 
 export function FeaturedTenders({ tenders }: { tenders: TenderCardData[] }) {
   return (
@@ -12,8 +13,11 @@ export function FeaturedTenders({ tenders }: { tenders: TenderCardData[] }) {
         {tenders.map((tender, index) => (
           // Phones show the first 4 and tablets 8 (full rows of two); the
           // rest are one tap away via 查看全部项目. All 9 from lg up.
+          // Cards below the fold fade up in their row's order (动画方案 1).
           <div key={tender.id} className={index >= 8 ? "hidden lg:block" : index >= 4 ? "hidden md:block" : undefined}>
-            <TenderCard tender={tender} showOneLineSummary />
+            <Reveal delayMs={(index % 3) * 110} className="h-full">
+              <TenderCard tender={tender} showOneLineSummary />
+            </Reveal>
           </div>
         ))}
       </div>

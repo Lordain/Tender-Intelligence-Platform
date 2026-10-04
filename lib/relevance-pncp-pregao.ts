@@ -196,7 +196,9 @@ export function pregaoEquipmentClasses(objectText: string): IndustryKey[] {
   // supply-and-install, not a service. Upkeep, repair and rental are still
   // refused, by NOT_NEW_ENERGY inside isNewEnergyPower.
   const newEnergy = isNewEnergyPower(text);
-  if (NOT_EQUIPMENT_PURCHASE.test(text) && !newEnergy) return [];
+  // Electric buses and fleets too: their pregões list training, warranty and
+  // upkeep as part of the supply (lib/new-energy.ts, ANCILLARY_SERVICES).
+  if (NOT_EQUIPMENT_PURCHASE.test(text) && !newEnergy && !isNewEnergy(text)) return [];
   const classes = EQUIPMENT_CLASSES.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
   // Solar, storage, hydrogen and charging phrasings the power class above does
   // not carry — "sistemas de geração de energia solar fotovoltaica" was one

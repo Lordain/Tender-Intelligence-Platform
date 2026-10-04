@@ -17,6 +17,8 @@
  * the particles are not drawn (app/globals.css, .whyus-*).
  */
 
+import { Reveal } from "@/components/home/Reveal";
+
 type Dot = { name: string; x: number; y: number };
 
 /**
@@ -153,35 +155,35 @@ const steps: { number: string; icon: StepIcon; title: string; detail: string; re
     icon: "collect",
     title: "每日汇集",
     detail: "每天自动读取拉美各国 20 多个官方采购平台的新公告，汇集到一个平台。",
-    result: "不用再逐个网站翻",
+    result: "多源信息一站聚合，告别低效逐站检索",
   },
   {
     number: "02",
     icon: "filter",
     title: "筛掉噪音",
-    detail: "规则筛选加人工复核，去掉日常服务、小额采购和来不及投标的项目。",
-    result: "只留值得评估的",
+    detail: "人工筛选，滤掉日常服务及小额项目，仅保留具备投标价值的项目。",
+    result: "只聚焦有效商机",
   },
   {
     number: "03",
     icon: "translate",
     title: "中文整理",
-    detail: "生成中文标题和摘要，标注行业，按金额分成常规、中型、大型。",
-    result: "一眼看懂是什么、多大",
+    detail: "整理成中文信息，按国家、行业、项目规模分类。",
+    result: "一眼看懂是什么、值不值得跟",
   },
   {
     number: "04",
     icon: "document",
     title: "标书拆解",
-    detail: "下载标书，提炼资质、业绩、所需文件、风险点和关键日期。",
-    result: "先看清门槛再投入",
+    detail: "分析标书，提炼资质、业绩、所需文件、风险点与关键日期。",
+    result: "先看清门槛，再投入",
   },
   {
     number: "05",
     icon: "bell",
     title: "按需送达",
     detail: "按国家、行业、关键词订阅，新项目和进展变化通过邮件提醒。",
-    result: "不错过投标窗口",
+    result: "及时把握投标窗口",
   },
 ];
 
@@ -224,17 +226,17 @@ export function ValuePropositions() {
   return (
     <section id="how-it-works" className="overflow-hidden bg-[#fffdf9] px-5 py-16 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-[108rem]">
-        <div className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
+        <Reveal className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Why us</p>
             {/* User's wording, 2026-10-04. The first line is split in two on phones, where it would not fit. */}
             <h2 className="mt-3 text-[min(6.6vw,1.875rem)] font-black leading-[1.22] tracking-[0.02em] text-[#071826] sm:text-4xl"><span className="block whitespace-nowrap"><span className="block sm:inline">从每天 20 多个平台</span><span className="text-[#b86e00]">上万条</span>信息，</span><span className="block whitespace-nowrap">到一份能直接判断的中文情报</span></h2>
           </div>
           <p className="max-w-2xl text-sm leading-7 text-[#64717c] lg:justify-self-end">不替企业做决定，而是把分散、陌生且难以快速判断的政府招标信息，一步步整理成团队能够高效使用的中文情报。</p>
-        </div>
+        </Reveal>
 
         {/* Stage 1 — scattered official portals converging into one entry. */}
-        <div className="mt-10 text-center">
+        <Reveal className="mt-10 text-center">
           <p className="text-sm font-black text-[#071826]">拉美各国 20 多个官方采购平台</p>
           <p className="mt-1 text-xs text-[#75838c]">西语、葡语 · 格式各异</p>
           {/* Highlighted on request (user, 2026-10-04); wording changed from 数千条 to 上万条 on request.
@@ -244,18 +246,20 @@ export function ValuePropositions() {
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             <p className="inline-flex items-baseline gap-1.5 rounded-full bg-[#071826] px-4 py-1.5 text-white shadow-[0_8px_24px_-12px_rgba(7,24,38,.6)]">
               <span className="text-xs font-bold text-white/70">每天</span>
-              <span className="text-lg font-black text-[#ffcd67]">上万条</span>
+              <span className="whyus-shimmer text-lg font-black">上万条</span>
               <span className="text-xs font-bold text-white/70">新公告</span>
             </p>
             <p className="inline-flex items-baseline gap-1.5 rounded-full bg-[#071826] px-4 py-1.5 text-white shadow-[0_8px_24px_-12px_rgba(7,24,38,.6)]">
               <span className="text-xs font-bold text-white/70">覆盖</span>
-              <span className="text-lg font-black text-[#ffcd67]">2 万多个</span>
+              <span className="whyus-shimmer text-lg font-black">2 万多个</span>
               <span className="text-xs font-bold text-white/70">政府采购单位</span>
             </p>
           </div>
-        </div>
-        <Convergence scene={DESKTOP} idPrefix="wyd" className="mx-auto mt-4 hidden w-full max-w-[96rem] lg:block" />
-        <Convergence scene={MOBILE} idPrefix="wym" className="mx-auto mt-4 block w-full max-w-sm lg:hidden" />
+        </Reveal>
+        <Reveal delayMs={150}>
+          <Convergence scene={DESKTOP} idPrefix="wyd" className="mx-auto mt-4 hidden w-full max-w-[96rem] lg:block" />
+          <Convergence scene={MOBILE} idPrefix="wym" className="mx-auto mt-4 block w-full max-w-sm lg:hidden" />
+        </Reveal>
 
         <div aria-hidden="true" className="mx-auto -mt-4 h-10 w-px bg-linear-to-b from-[#ffb21c] to-[#ffb21c]/20" />
 
@@ -266,21 +270,28 @@ export function ValuePropositions() {
           <span aria-hidden="true" className="absolute left-[10%] right-[10%] top-[1.55rem] hidden h-0.5 overflow-hidden rounded-full bg-[#ffe3a6] lg:block">
             <span className="whyus-track-sweep absolute inset-y-0 left-0 w-1/5 bg-linear-to-r from-transparent via-[#b86e00] to-transparent" />
           </span>
-          {steps.map((step) => (
-            <li key={step.number} className="relative flex gap-5 pb-8 last:pb-0 lg:flex-col lg:items-center lg:pb-0 lg:text-center">
-              <span className="relative z-10 flex size-[3.2rem] shrink-0 items-center justify-center rounded-full bg-linear-to-br from-[#ffc247] to-[#e39a10] text-[#071826] shadow-[0_0_0_6px_#fffdf9,0_10px_24px_-10px_rgba(184,110,0,.7)]">
+          {/* The five steps arrive one after another, each icon popping a beat after its text (user, 2026-10-04: 动画方案 3). */}
+          {steps.map((step, index) => (
+            <Reveal as="li" delayMs={index * 140} key={step.number} className="relative flex gap-5 pb-8 last:pb-0 lg:flex-col lg:items-center lg:pb-0 lg:text-center">
+              <span className="reveal-pop relative z-10 flex size-[3.2rem] shrink-0 items-center justify-center rounded-full bg-linear-to-br from-[#ffc247] to-[#e39a10] text-[#071826] shadow-[0_0_0_6px_#fffdf9,0_10px_24px_-10px_rgba(184,110,0,.7)]">
                 <Icon name={step.icon} />
               </span>
               <div className="min-w-0 lg:mt-5">
                 <p className="font-mono text-xs font-black tracking-wider text-[#b86e00]">STEP {step.number}</p>
                 <h3 className="mt-1 text-xl font-black text-[#071826]">{step.title}</h3>
                 <p className="mt-2 text-sm leading-7 text-[#64717c]">{step.detail}</p>
-                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#fff4d8] px-3 py-1 text-xs font-bold text-[#7a5310]">
+                {/* rounded-2xl, not rounded-full: between lg and xl the longer lines (多源信息一站聚合，告别低效逐站检索) wrap to two, and a pill stretched over two lines reads as a blob. */}
+                <p className="mt-3 inline-flex max-w-full items-baseline gap-1.5 rounded-2xl bg-[#fff4d8] px-3 py-1 text-left text-xs font-bold leading-5 text-[#7a5310]">
                   <span aria-hidden="true">→</span>
-                  {step.result}
+                  {/* Breaks only after ， or 、, never inside a phrase (一眼看懂是什 / 么 at 1024 px). */}
+                  <span>
+                    {step.result.split(/(?<=[，、])/).map((part) => (
+                      <span key={part} className="whitespace-nowrap">{part}</span>
+                    ))}
+                  </span>
                 </p>
               </div>
-            </li>
+            </Reveal>
           ))}
         </ol>
 
@@ -289,7 +300,7 @@ export function ValuePropositions() {
         </div>
 
         {/* Stage 3 — what the customer gets. */}
-        <div className="relative overflow-hidden rounded-[1.75rem] bg-[#0c2637] px-6 py-8 text-center sm:px-10 sm:py-10">
+        <Reveal delayMs={200} className="relative overflow-hidden rounded-[1.75rem] bg-[#0c2637] px-6 py-8 text-center sm:px-10 sm:py-10">
           <span aria-hidden="true" className="pointer-events-none absolute -top-24 left-1/2 h-48 w-[36rem] max-w-full -translate-x-1/2 rounded-full bg-[#ffb21c]/20 blur-3xl" />
           <p className="relative text-xs font-black uppercase tracking-[0.2em] text-[#ffcd67]">你拿到的</p>
           <p className="relative mt-2 text-xl font-black text-white sm:text-2xl">一份可以直接判断「投不投」的中文项目情报</p>
@@ -298,7 +309,7 @@ export function ValuePropositions() {
               <li key={item} className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm font-bold text-white/85">{item}</li>
             ))}
           </ul>
-        </div>
+        </Reveal>
       </div>
     </section>
   );

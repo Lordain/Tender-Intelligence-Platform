@@ -3104,7 +3104,7 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     currency: "COP",
     structuredDurationDays: 180,
     expectedTier: "standard",
-    note: "Real row LP-CN-003-2025, ~$647k. Under the $1M floor it was excluded; new energy is judged against $500k.",
+    note: "Real row LP-CN-003-2025, ~$647k. Under the $1M floor it was excluded; new energy is judged against $200k.",
     country: "Colombia", scopeType: "works", governmentLevel: "municipal", industries: ["power"],
   },
   {
@@ -3130,11 +3130,11 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "SUMINISTRO; INSTALACIÓN Y PUESTA EN FUNCIONAMIENTO DE PANELES SOLARES FOTOVOLTAICOS PARA LA AUTOGENERACIÓN DE ENERGÍA; EN EL MUNICIPIO DE CRAVO NORTE; ARAUCA.",
     procedureType: "Licitación pública Obra Publica",
-    estimatedValue: 1_200_000_000,
+    estimatedValue: 500_000_000,
     currency: "COP",
     structuredDurationDays: 180,
     expectedTier: "excluded",
-    note: "Guard, the row above at ~$375k: the whitelist lowers the floor, it does not remove it.",
+    note: "Guard, the row above at ~$156k: the whitelist lowers the floor (to $200k since 2026-10-04), it does not remove it.",
     country: "Colombia", scopeType: "works", governmentLevel: "municipal", industries: ["power"],
   },
   {
@@ -3171,7 +3171,7 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     estimatedValue: 4_200_000,
     currency: "BRL",
     expectedTier: "standard",
-    note: "Guard: ~$810k. Brazil's own floor is $2M; new energy is judged against $500k.",
+    note: "Guard: ~$810k. Brazil's own floor is $2M; new energy is judged against $200k.",
     country: "Brazil", scopeType: "works", governmentLevel: "municipal", industries: ["power", "construction"],
   },
   // No published amount: kept, never excluded (user, 2026-10-04: 要保障，没金额的
@@ -3197,5 +3197,33 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     expectedTier: "standard",
     note: "Guard: Brazilian municipal works with no amount; new energy is not 小型工程.",
     country: "Brazil", scopeType: "works", governmentLevel: "municipal", industries: ["power", "construction"],
+  },
+  {
+    title: "IMPLEMENTAR SISTEMA FOTOVOLTAICO PARA SEDES DE LA RNEC",
+    procedureType: "Licitación pública Obra Publica",
+    estimatedValue: 1_209_600_000,
+    currency: "COP",
+    expectedTier: "standard",
+    note: "Real SECOP II row (LP 01 DE 2026 FRR), ~$378k: kept since the new-energy floor went to $200k (user, 2026-10-04: 新能源门槛：降到20万).",
+    country: "Colombia", scopeType: "works", governmentLevel: "federal", industries: ["power"],
+  },
+  // --- Dominican Republic (DGCP, staged 2026-10-04) — real rows from the first dry run.
+  {
+    title: "CONTRATACIÓN DE SUMINISTRO DE ALMUERZOS Y CENAS POR OCHO (8) MESES PARA LOS COLABORADORES",
+    procedureType: "Licitación Pública Nacional",
+    estimatedValue: 59_999_098,
+    currency: "DOP",
+    expectedTier: "excluded",
+    note: "Real row PASAPORTES-CCC-LPN-2026-0002 (~$1.0M): staff meals are routine catering whatever the amount.",
+    country: "Dominican Republic", scopeType: "services", governmentLevel: "federal", industries: ["general"],
+  },
+  {
+    title: "CONSTRUCCION Y RECONSTRUCION DE CARRETERAS CON OBRAS COMPLEMENTARIAS DE DRENAJE EN LAS PROVINCIAS LA VEGA Y HATO MAYOR",
+    procedureType: "Licitación Pública Nacional",
+    estimatedValue: 1_387_071_900.75,
+    currency: "DOP",
+    expectedTier: "flagship",
+    note: "Real row MOPC-CCC-LPN-2026-0019, ~$23M road works by the Ministry of Public Works.",
+    country: "Dominican Republic", scopeType: "works", governmentLevel: "federal", industries: ["construction", "transportation", "water"],
   },
 ];

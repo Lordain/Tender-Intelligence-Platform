@@ -15,7 +15,8 @@
  * it from this list and adding it to AVAILABLE_COUNTRIES.
  */
 // Argentina opened 2026-09-29 (user: 请帮忙前台+后台开放阿根廷).
-export const STAGED_COUNTRIES: readonly string[] = ["Guyana"];
+// The Dominican Republic and Ecuador joined 2026-10-04 (user: 先接多米尼加和厄瓜多尔 ← OK).
+export const STAGED_COUNTRIES: readonly string[] = ["Guyana", "Dominican Republic", "Ecuador"];
 
 export function isStagedCountry(country: string | null | undefined): boolean {
   return country != null && STAGED_COUNTRIES.includes(country);

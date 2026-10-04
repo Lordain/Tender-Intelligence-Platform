@@ -13,6 +13,7 @@ import { classifyCemigRelevance, CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig
 import { BRAZIL_PNCP_SOURCE_NAME, classifyPncpPregaoRelevance, isPregaoProcedure } from "@/lib/relevance-pncp-pregao";
 import { classifyColombiaSubastaRelevance, isColombianSubastaInversa } from "@/lib/relevance-colombia-subasta";
 import { isNewEnergy, NEW_ENERGY_MIN_VALUE_USD } from "@/lib/new-energy";
+import { classifyEnergyAuction, ENERGY_AUCTIONS_SOURCE_NAME } from "@/lib/relevance-energy-auctions";
 import { classifyPetroperuRelevance, PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
 import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
 import { classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
@@ -33,6 +34,10 @@ const EXCLUDE_KEYWORDS = [
   /conserjer[íi]a|conserje/i,
   /guardia de seguridad|vigilante|servicio de vigilancia/i,
   /catering|banquete|comedor|servicio de alimentos|servicio de comida/i,
+  // Meals by name (2026-10-04, first Dominican dry run): "CONTRATACIÓN DE
+  // SUMINISTRO DE ALMUERZOS Y CENAS POR OCHO (8) MESES PARA LOS COLABORADORES"
+  // (Dirección General de Pasaportes, DOP 60M) came out 常规 — no catering word.
+  /\b(?:almuerzos|desayunos|cenas|refrigerios|meriendas)\b/i,
   /jardiner[íi]a|poda de [áa]rboles|[áa]reas verdes/i,
   /control de plagas|fumigaci[óo]n/i,
   /mensajer[íi]a local|paqueter[íi]a/i,
@@ -4301,6 +4306,9 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   // alongside a real tag it would otherwise sit next to as a phantom category.
   const merged = [...new Set([...spanish, ...portuguese])];
   const industries = merged.length > 1 ? merged.filter((tag) => tag !== "general") : merged;
+  // National energy auctions, kept by hand: 大型 and 电力 by construction —
+  // see lib/relevance-energy-auctions.ts.
+  if (input.sourceName === ENERGY_AUCTIONS_SOURCE_NAME) return classifyEnergyAuction();
   // Guyana's eprocure.gov.gy: own rules, see lib/relevance-guyana.ts — the
   // titles are English, which neither keyword pass above reads, and size comes
   // from the notice's ICB/NCB sentence, carried in procedureType.

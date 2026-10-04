@@ -57,12 +57,16 @@ console.log("\n巴西电子竞价（Pregão）");
 const acre = "Fornecimento e a instalação de sistemas de geração de energia solar fotovoltaica conectados à rede (on grid) destinados às unidades do Poder Judiciário do Estado do Acre";
 check("阿克里州并网光伏（真实，2026-10-01）→ 电力设备类", pregaoEquipmentClasses(acre), ["power"]);
 check("R$ 1,690 万 → 常规", classifyPncpPregaoRelevance({ title: acre, estimatedValue: 16_900_000, currency: "BRL" }).relevance.tier, "standard");
-check("R$ 300 万（约 58 万美元）→ 新能源门槛 50 万，留", classifyPncpPregaoRelevance({ title: acre, estimatedValue: 3_000_000, currency: "BRL" }).relevance.tier, "standard");
-check("R$ 200 万（约 39 万美元）→ 排除", classifyPncpPregaoRelevance({ title: acre, estimatedValue: 2_000_000, currency: "BRL" }).relevance.tier, "excluded");
+check("R$ 200 万（约 39 万美元）→ 新能源门槛 20 万，留", classifyPncpPregaoRelevance({ title: acre, estimatedValue: 2_000_000, currency: "BRL" }).relevance.tier, "standard");
+check("R$ 80 万（约 16 万美元）→ 排除", classifyPncpPregaoRelevance({ title: acre, estimatedValue: 800_000, currency: "BRL" }).relevance.tier, "excluded");
 check("同样 R$ 300 万的变压器 → 仍按巴西 200 万美元门槛排除", classifyPncpPregaoRelevance({ title: "Aquisição de transformadores de distribuição", estimatedValue: 3_000_000, currency: "BRL" }).relevance.tier, "excluded");
 check("没公开金额的光伏电子竞价 → 留（常规）", classifyPncpPregaoRelevance({ title: acre }).relevance.tier, "standard");
 check("没公开金额的变压器电子竞价 → 仍排除", classifyPncpPregaoRelevance({ title: "Aquisição de transformadores de distribuição" }).relevance.tier, "excluded");
 check("写成「工程服务」的光伏供货安装（真实，2026 年 9 月）→ 电力设备类", pregaoEquipmentClasses("CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA A PRESTAÇÃO DE SERVIÇOS DE ENGENHARIA ABRANGENDO O FORNECIMENTO, A INSTALAÇÃO, O COMISSIONAMENTO, A HOMOLOGAÇÃO JUNTO À CONCESSIONÁRIA E A ENTREGA, EM PLENO ESTADO DE FUNCIONAMENTO, DE SISTEMAS DE GERAÇÃO DE ENERGIA SOLAR FOTOVOLTAICA CONECTADOS À REDE ELÉTRICA (ON-GRID)"), ["power"]);
+const eBus = "[Portal de Compras Públicas] - Aquisição de 04 (quatro) ônibus elétricos à bateria, piso baixo total, modelo Básico, Categoria M3, compreendendo o fornecimento dos veículos, documentação técnica, testes, comissionamento, entrada em operação assistida, treinamento operacional, técnico e de manutenção, assistência técnica e garantia, bem como o fornecimento, instalação, testes, comissionamento, entrada em operação assistida, treinamento operacional, técnico e de manutenção, assistência técnica e garantia de 04 (quatro) estações de recarga rápida";
+check("4 台电动公交 + 快充站（真实，São Leopoldo，R$ 1,488 万）→ 车辆类", pregaoEquipmentClasses(eBus), ["vehicles"]);
+check("同上 → 常规", classifyPncpPregaoRelevance({ title: eBus, estimatedValue: 14_880_000, currency: "BRL" }).relevance.tier, "standard");
+check("电动车的维修保养 → 仍不是设备采购", pregaoEquipmentClasses("Prestação de serviços de manutenção preventiva e corretiva dos ônibus elétricos da frota municipal"), []);
 check("光伏电站修复（真实）→ 不是设备采购", pregaoEquipmentClasses("Serviços de recuperação da usina minigeradora fotovoltaica de 392 kWp do prédio-sede do Tribunal."), []);
 check("光伏系统维护 → 不是设备采购", pregaoEquipmentClasses("Manutenção preventiva e corretiva dos sistemas fotovoltaicos"), []);
 

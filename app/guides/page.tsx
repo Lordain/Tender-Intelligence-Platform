@@ -19,12 +19,12 @@ const FLAG_COUNTRY: Record<(typeof guideCountries)[number]["code"], string> = {
 /**
  * Each platform's own icon, taken from its official site (favicon, touch icon
  * or header logo) and redrawn at 128px in public/guides/logos/<slug>.png
- * (user, 2026-10-04: 能不能找到每个平台的官方图标，加入图标？). CFE and
- * Proyectos Estratégicos MX could not be fetched from their sites, so they
- * show their initials until an official file is in hand.
+ * (user, 2026-10-04: 能不能找到每个平台的官方图标，加入图标？). CFE's is
+ * the CFE lettering from the logo the user supplied. Proyectos Estratégicos
+ * MX could not be fetched from its site, so it shows its initials until an
+ * official file is in hand.
  */
 const GUIDE_LOGO_FALLBACK: Record<string, string> = {
-  "mexico-cfe-micrositio": "CFE",
   "mexico-proyectos-estrategicos": "PE",
 };
 

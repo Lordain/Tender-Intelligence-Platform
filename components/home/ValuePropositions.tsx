@@ -224,7 +224,8 @@ export function ValuePropositions() {
         <div className="grid gap-8 border-b border-[#dbe2e5] pb-9 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Why us</p>
-            <h2 className="mt-3 text-[min(7.2vw,1.875rem)] font-black leading-[1.22] tracking-[0.02em] text-[#071826] sm:text-4xl"><span className="block whitespace-nowrap">从 20 多个平台的公告，</span><span className="block whitespace-nowrap">到一份能直接用的中文情报</span></h2>
+            {/* User's wording, 2026-10-04. The first line is split in two on phones, where it would not fit. */}
+            <h2 className="mt-3 text-[min(6.6vw,1.875rem)] font-black leading-[1.22] tracking-[0.02em] text-[#071826] sm:text-4xl"><span className="block whitespace-nowrap"><span className="block sm:inline">从每天 20 多个平台</span><span className="text-[#b86e00]">数千条</span>信息，</span><span className="block whitespace-nowrap">到一份能直接判断的中文情报</span></h2>
           </div>
           <p className="max-w-2xl text-sm leading-7 text-[#64717c] lg:justify-self-end">不替企业做决定，而是把分散、陌生且难以快速判断的政府招标信息，一步步整理成团队能够高效使用的中文情报。</p>
         </div>

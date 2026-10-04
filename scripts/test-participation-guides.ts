@@ -18,6 +18,7 @@ import {
   COMPRAR_SOURCE_NAME,
   CONTRATAR_SOURCE_NAME,
 } from "@/lib/ingestion/argentina-mapper";
+import { DOMINICANA_SOURCE_NAME } from "@/lib/ingestion/dominicana-mapper";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -57,6 +58,7 @@ const cases: Array<[string, string, string | undefined]> = [
   [CONTRATAR_SOURCE_NAME, "SECRETARÍA DE TRANSPORTE", "argentina-contratar"],
   [ADIF_SOURCE_NAME, "Trenes Argentinos Infraestructura", "argentina-adif"],
   [BOLETIN_SOURCE_NAME, "BANCO DE LA NACIÓN ARGENTINA", "argentina-boletin-oficial"],
+  [DOMINICANA_SOURCE_NAME, "MINISTERIO DE OBRAS PÚBLICAS Y COMUNICACIONES", "dominican-republic-dgcp"],
   ["Portal Nacional de Contratações Públicas (PNCP) — busca de editais", "PETROBRAS TRANSPORTE S.A.", "brazil-pncp"],
 ];
 for (const [sourceName, buyer, slug] of cases) {

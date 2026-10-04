@@ -155,35 +155,35 @@ const steps: { number: string; icon: StepIcon; title: string; detail: string; re
     icon: "collect",
     title: "每日汇集",
     detail: "每天自动读取拉美各国 20 多个官方采购平台的新公告，汇集到一个平台。",
-    result: "不用再逐个网站翻",
+    result: "多源信息一站聚合，告别低效逐站检索",
   },
   {
     number: "02",
     icon: "filter",
     title: "筛掉噪音",
-    detail: "规则筛选加人工复核，去掉日常服务、小额采购和来不及投标的项目。",
-    result: "只留值得评估的",
+    detail: "人工筛选，滤掉日常服务及小额项目，仅保留具备投标价值的项目。",
+    result: "只聚焦有效商机",
   },
   {
     number: "03",
     icon: "translate",
     title: "中文整理",
-    detail: "生成中文标题和摘要，标注行业，按金额分成常规、中型、大型。",
-    result: "一眼看懂是什么、多大",
+    detail: "整理成中文信息，按国家、行业、项目规模分类。",
+    result: "一眼看懂是什么、值不值得跟",
   },
   {
     number: "04",
     icon: "document",
     title: "标书拆解",
-    detail: "下载标书，提炼资质、业绩、所需文件、风险点和关键日期。",
-    result: "先看清门槛再投入",
+    detail: "分析标书，提炼资质、业绩、所需文件、风险点与关键日期。",
+    result: "先看清门槛，再投入",
   },
   {
     number: "05",
     icon: "bell",
     title: "按需送达",
     detail: "按国家、行业、关键词订阅，新项目和进展变化通过邮件提醒。",
-    result: "不错过投标窗口",
+    result: "及时把握投标窗口",
   },
 ];
 
@@ -280,9 +280,15 @@ export function ValuePropositions() {
                 <p className="font-mono text-xs font-black tracking-wider text-[#b86e00]">STEP {step.number}</p>
                 <h3 className="mt-1 text-xl font-black text-[#071826]">{step.title}</h3>
                 <p className="mt-2 text-sm leading-7 text-[#64717c]">{step.detail}</p>
-                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#fff4d8] px-3 py-1 text-xs font-bold text-[#7a5310]">
+                {/* rounded-2xl, not rounded-full: between lg and xl the longer lines (多源信息一站聚合，告别低效逐站检索) wrap to two, and a pill stretched over two lines reads as a blob. */}
+                <p className="mt-3 inline-flex max-w-full items-baseline gap-1.5 rounded-2xl bg-[#fff4d8] px-3 py-1 text-left text-xs font-bold leading-5 text-[#7a5310]">
                   <span aria-hidden="true">→</span>
-                  {step.result}
+                  {/* Breaks only after ， or 、, never inside a phrase (一眼看懂是什 / 么 at 1024 px). */}
+                  <span>
+                    {step.result.split(/(?<=[，、])/).map((part) => (
+                      <span key={part} className="whitespace-nowrap">{part}</span>
+                    ))}
+                  </span>
                 </p>
               </div>
             </Reveal>

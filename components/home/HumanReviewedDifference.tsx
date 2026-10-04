@@ -27,7 +27,7 @@ export function HumanReviewedDifference() {
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Human + AI</p>
             <h2 id="human-reviewed-heading" className="mt-3 text-[min(7.2vw,1.875rem)] font-black leading-[1.22] tracking-[0.02em] text-[#071826] sm:text-4xl">
-              <span className="block whitespace-nowrap">自动化提速，</span><span className="block whitespace-nowrap">人工把关关键环节</span>
+              <span className="block whitespace-nowrap">自动化提速，</span><span className="block whitespace-nowrap">关键环节由人工把关</span>
             </h2>
           </div>
           <p className="max-w-2xl text-sm leading-7 text-[#64717c] lg:justify-self-end">

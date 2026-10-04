@@ -62,6 +62,8 @@ check("R$ 200 万（约 39 万美元）→ 排除", classifyPncpPregaoRelevance(
 check("同样 R$ 300 万的变压器 → 仍按巴西 200 万美元门槛排除", classifyPncpPregaoRelevance({ title: "Aquisição de transformadores de distribuição", estimatedValue: 3_000_000, currency: "BRL" }).relevance.tier, "excluded");
 check("没公开金额的光伏电子竞价 → 留（常规）", classifyPncpPregaoRelevance({ title: acre }).relevance.tier, "standard");
 check("没公开金额的变压器电子竞价 → 仍排除", classifyPncpPregaoRelevance({ title: "Aquisição de transformadores de distribuição" }).relevance.tier, "excluded");
+check("写成「工程服务」的光伏供货安装（真实，2026 年 9 月）→ 电力设备类", pregaoEquipmentClasses("CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA A PRESTAÇÃO DE SERVIÇOS DE ENGENHARIA ABRANGENDO O FORNECIMENTO, A INSTALAÇÃO, O COMISSIONAMENTO, A HOMOLOGAÇÃO JUNTO À CONCESSIONÁRIA E A ENTREGA, EM PLENO ESTADO DE FUNCIONAMENTO, DE SISTEMAS DE GERAÇÃO DE ENERGIA SOLAR FOTOVOLTAICA CONECTADOS À REDE ELÉTRICA (ON-GRID)"), ["power"]);
+check("光伏电站修复（真实）→ 不是设备采购", pregaoEquipmentClasses("Serviços de recuperação da usina minigeradora fotovoltaica de 392 kWp do prédio-sede do Tribunal."), []);
 check("光伏系统维护 → 不是设备采购", pregaoEquipmentClasses("Manutenção preventiva e corretiva dos sistemas fotovoltaicos"), []);
 
 console.log("\n哥伦比亚逆向竞价（Subasta Inversa）");

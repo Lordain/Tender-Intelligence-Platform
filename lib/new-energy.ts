@@ -58,7 +58,7 @@ const NEW_ENERGY_VEHICLES =
  * Rows like these keep the general rules.
  */
 const NOT_NEW_ENERGY =
-  /\bmantenimiento\b|\bmanutencao\b|\bconservacion\b|operacion y mantenimiento|\bo&m\b|\bestudios?\b|\bestudos?\b|consultori|interventori|asesori|assessori|supervision|supervisao|fiscalizacao|diagnostico|auditoria|capacitacion|capacitacao|formacion|\bcursos?\b|diplomado|treinamento|didactic|didatic|(?:kits?|materiale?s?) educativ|entrenador|modulos? de entrenamiento|kits? (?:de )?(?:laboratorio|practica|aprendizaje)|laboratorio de|calentador(?:es)? solar|terma(?:s)? solar|aquecedor(?:es)? solar|aquecimento solar|colector(?:es)? solar|coletor(?:es)? solar|\balquiler\b|\barrendamiento\b|\blocacao\b|(?:operad|accionad|alimentad|impulsad)[oa]s? (?:mediante|con|por) (?:energia )?(?:solar|fotovoltaica)/i;
+  /\bmantenimiento\b|\bmanutencao\b|\brecuperacao\b|\breparos?\b|\breparacion\b|\bconserto\b|\bconservacion\b|operacion y mantenimiento|\bo&m\b|\bestudios?\b|\bestudos?\b|consultori|interventori|asesori|assessori|supervision|supervisao|fiscalizacao|diagnostico|auditoria|capacitacion|capacitacao|formacion|\bcursos?\b|diplomado|treinamento|didactic|didatic|(?:kits?|materiale?s?) educativ|entrenador|modulos? de entrenamiento|kits? (?:de )?(?:laboratorio|practica|aprendizaje)|laboratorio de|calentador(?:es)? solar|terma(?:s)? solar|aquecedor(?:es)? solar|aquecimento solar|colector(?:es)? solar|coletor(?:es)? solar|\balquiler\b|\barrendamiento\b|\blocacao\b|(?:operad|accionad|alimentad|impulsad)[oa]s? (?:mediante|con|por) (?:energia )?(?:solar|fotovoltaica)/i;
 
 function fold(text: string): string {
   return foldAccents(text);

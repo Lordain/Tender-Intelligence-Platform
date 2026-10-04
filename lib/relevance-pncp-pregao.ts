@@ -190,12 +190,18 @@ function fold(text: string): string {
  */
 export function pregaoEquipmentClasses(objectText: string): IndustryKey[] {
   const text = fold(objectText);
-  if (NOT_EQUIPMENT_PURCHASE.test(text)) return [];
+  // New energy is read past the services veto: a PV pregão is written as
+  // "prestação de serviços de engenharia abrangendo o fornecimento, a
+  // instalação … de sistemas de geração de energia solar fotovoltaica" — a
+  // supply-and-install, not a service. Upkeep, repair and rental are still
+  // refused, by NOT_NEW_ENERGY inside isNewEnergyPower.
+  const newEnergy = isNewEnergyPower(text);
+  if (NOT_EQUIPMENT_PURCHASE.test(text) && !newEnergy) return [];
   const classes = EQUIPMENT_CLASSES.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
   // Solar, storage, hydrogen and charging phrasings the power class above does
   // not carry — "sistemas de geração de energia solar fotovoltaica" was one
   // (Acre, R$16.9M, 2026-10-01). See lib/new-energy.ts.
-  if (!classes.includes("power") && isNewEnergyPower(text)) classes.push("power");
+  if (!classes.includes("power") && newEnergy) classes.push("power");
   // An ambulance is both a vehicle and medical equipment — the user asked for
   // both tags on that word (lib/industry.ts) — so both stay.
   if (classes.length === 1 && classes[0] === "ict_telecom" && OFFICE_IT.test(text)) return [];

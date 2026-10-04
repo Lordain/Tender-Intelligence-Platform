@@ -3,6 +3,9 @@
  * 节点，然后一步一步讲，先从收集20多个平台的信息汇集我们平台，然后经过处理，变成
  * 高价值的情报; then 把各平台做成圆点，分散分布，然后汇集到一个出口 … 也可以动画化).
  *
+ * No country count anywhere in the copy (user, 2026-10-04: 不用强调6国，因为我们
+ * 不断在增加国家); the platform count stays "20 多个".
+ *
  * Every claim here is something the platform does today. The dots are the
  * official sources the importers read — 22 named here, 23 counting ANEEL's two
  * auction feeds separately, on 2026-10-04. Keep the rows below and the "20 多个"
@@ -16,18 +19,23 @@
 
 type Dot = { name: string; x: number; y: number };
 
-/** Rows chosen by hand so the long names sit in the sparser rows. */
+/**
+ * Short names, not full ones (user, 2026-10-04: 平台的名称可以缩写展示): ChileCompra
+ * for Mercado Público, SHCP for Hacienda's Proyectos Estratégicos, BORA for the
+ * Boletín Oficial de la República Argentina, Metro SCL for Metro de Santiago.
+ * Rows chosen by hand so the longer names sit in the sparser rows.
+ */
 const DESKTOP_ROWS = [
-  ["Compras MX", "PNCP", "SECOP II", "Mercado Público", "SEACE", "COMPR.AR", "PEMEX", "Petrobras"],
+  ["ComprasMX", "PNCP", "SECOP II", "ChileCompra", "SEACE", "COMPR.AR", "PEMEX", "Petrobras"],
   ["UPME", "Codelco", "Petroperú", "CONTRAT.AR", "CFE", "ANEEL", "ProInversión"],
-  ["Metro Santiago", "ADIF", "Estratégicos MX", "DOU", "Cemig", "ANTAQ", "Boletín Oficial"],
+  ["Metro SCL", "ADIF", "SHCP", "DOU", "Cemig", "ANTAQ", "BORA"],
 ];
 const MOBILE_ROWS = [
-  ["Compras MX", "Mercado Público", "PNCP", "SECOP II"],
+  ["ComprasMX", "ChileCompra", "PNCP", "SECOP II"],
   ["PEMEX", "SEACE", "UPME", "DOU", "CFE"],
-  ["Petrobras", "Boletín Oficial", "Codelco", "COMPR.AR"],
+  ["Petrobras", "BORA", "Codelco", "COMPR.AR"],
   ["ANEEL", "ADIF", "Cemig", "ANTAQ", "Petroperú"],
-  ["Metro Santiago", "CONTRAT.AR", "ProInversión", "Estratégicos MX"],
+  ["Metro SCL", "CONTRAT.AR", "ProInversión", "SHCP"],
 ];
 const PLATFORM_COUNT = DESKTOP_ROWS.flat().length;
 
@@ -57,15 +65,15 @@ type Scene = {
 const DESKTOP: Scene = {
   width: 1200,
   height: 500,
-  exit: { x: 600, y: 386, r: 42 },
+  exit: { x: 600, y: 356, r: 46 },
   labelSize: 13,
   dots: layout(DESKTOP_ROWS, 1200, [44, 128, 212], 40),
 };
 const MOBILE: Scene = {
   width: 360,
-  height: 520,
-  exit: { x: 180, y: 424, r: 34 },
-  labelSize: 10,
+  height: 530,
+  exit: { x: 180, y: 408, r: 36 },
+  labelSize: 11,
   dots: layout(MOBILE_ROWS, 360, [22, 82, 142, 202, 262], 26),
 };
 
@@ -78,7 +86,7 @@ function pathTo(dot: Dot, exit: Scene["exit"]): string {
 function Convergence({ scene, idPrefix, className }: { scene: Scene; idPrefix: string; className: string }) {
   const { exit } = scene;
   return (
-    <svg viewBox={`0 0 ${scene.width} ${scene.height}`} className={className} role="img" aria-label={`${PLATFORM_COUNT} 个官方采购平台的公告汇集到一个入口`}>
+    <svg viewBox={`0 0 ${scene.width} ${scene.height}`} className={className} role="img" aria-label={`${PLATFORM_COUNT} 个官方采购平台的公告汇集到拉美招投标信息平台`}>
       <defs>
         <radialGradient id={`${idPrefix}-glow`}>
           <stop offset="0%" stopColor="#ffb21c" stopOpacity="0.3" />
@@ -127,8 +135,9 @@ function Convergence({ scene, idPrefix, className }: { scene: Scene; idPrefix: s
 
       <circle className="whyus-exit-ring" cx={exit.x} cy={exit.y} r={exit.r} fill="none" stroke="#ffb21c" strokeWidth={2} />
       <circle cx={exit.x} cy={exit.y} r={exit.r} fill="#0c2637" stroke="#ffb21c" strokeWidth={2.5} />
-      <text x={exit.x} y={exit.y - exit.r * 0.06} textAnchor="middle" fontSize={exit.r * 0.38} fontWeight={900} fill="#ffcd67">一个</text>
-      <text x={exit.x} y={exit.y + exit.r * 0.42} textAnchor="middle" fontSize={exit.r * 0.38} fontWeight={900} fill="#ffffff">入口</text>
+      {/* The site's own mark and name (user, 2026-10-04: 把一个入口改成 Logo + 拉美招投标信息平台). The dark variant is the one drawn on navy, as in the header. */}
+      <image href="/brand/logo-dark-ui.webp" x={exit.x - exit.r * 0.72} y={exit.y - exit.r * 0.72} width={exit.r * 1.44} height={exit.r * 1.44} />
+      <text x={exit.x} y={exit.y + exit.r + exit.r * 0.72} textAnchor="middle" fontSize={exit.r * 0.46} fontWeight={900} letterSpacing="0.06em" fill="#071826">拉美招投标信息平台</text>
     </svg>
   );
 }
@@ -140,7 +149,7 @@ const steps: { number: string; icon: StepIcon; title: string; detail: string; re
     number: "01",
     icon: "collect",
     title: "每日汇集",
-    detail: "每天自动读取 6 国 20 多个官方采购平台的新公告，汇集到一个入口。",
+    detail: "每天自动读取拉美各国 20 多个官方采购平台的新公告，汇集到一个平台。",
     result: "不用再逐个网站翻",
   },
   {
@@ -222,13 +231,13 @@ export function ValuePropositions() {
 
         {/* Stage 1 — scattered official portals converging into one entry. */}
         <div className="mt-10 text-center">
-          <p className="text-sm font-black text-[#071826]">6 国 {PLATFORM_COUNT} 个官方采购平台</p>
+          <p className="text-sm font-black text-[#071826]">拉美各国 20 多个官方采购平台</p>
           <p className="mt-1 text-xs text-[#75838c]">西语、葡语 · 格式各异 · 每天数千条新公告</p>
         </div>
         <Convergence scene={DESKTOP} idPrefix="wyd" className="mx-auto mt-4 hidden w-full max-w-6xl md:block" />
         <Convergence scene={MOBILE} idPrefix="wym" className="mx-auto mt-4 block w-full max-w-sm md:hidden" />
 
-        <div aria-hidden="true" className="mx-auto -mt-16 h-10 w-px md:-mt-14 bg-linear-to-b from-[#ffb21c] to-[#ffb21c]/20" />
+        <div aria-hidden="true" className="mx-auto -mt-4 h-10 w-px bg-linear-to-b from-[#ffb21c] to-[#ffb21c]/20" />
 
         {/* Stage 2 — what we do, node by node. */}
         <ol className="relative mt-2 grid gap-0 lg:grid-cols-5 lg:gap-6">

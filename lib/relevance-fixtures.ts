@@ -3174,4 +3174,28 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Guard: ~$810k. Brazil's own floor is $2M; new energy is judged against $500k.",
     country: "Brazil", scopeType: "works", governmentLevel: "municipal", industries: ["power", "construction"],
   },
+  // No published amount: kept, never excluded (user, 2026-10-04: 要保障，没金额的
+  // 这类项目，不被排除掉). Guards on the three no-amount rules a new-energy row
+  // could otherwise meet.
+  {
+    title: "INSTALACIÓN DE SISTEMA FOTOVOLTAICO INTERCONECTADO A LA RED EN EDIFICIOS DE LA PRESIDENCIA MUNICIPAL",
+    procedureType: "LICITACIÓN PÚBLICA NACIONAL",
+    expectedTier: "standard",
+    note: "Guard: Mexican municipal works, no amount — the municipal and undisclosed-value gates would exclude it; new energy is kept as 常规.",
+    country: "Mexico", scopeType: "works", governmentLevel: "municipal", industries: ["power", "construction"],
+  },
+  {
+    title: "ADQUISICION DE SISTEMA DE ENERGIA SOLAR FOTOVOLTAICA; EN EL(LA) PUESTO DE SALUD DEL DISTRITO DE YAULI, PROVINCIA HUANCAVELICA, DEPARTAMENTO HUANCAVELICA - IOARR",
+    procedureType: "Licitación Pública",
+    expectedTier: "standard",
+    note: "Guard: a Peruvian IOARR with no amount is excluded as marginal investment (PERU_MARGINAL_INVESTMENT); new energy is not.",
+    country: "Peru", scopeType: "equipment", governmentLevel: "municipal", industries: ["power"],
+  },
+  {
+    title: "Execução de obra de instalação de sistema de geração de energia solar fotovoltaica nas escolas municipais",
+    procedureType: "Concorrência - Eletrônica",
+    expectedTier: "standard",
+    note: "Guard: Brazilian municipal works with no amount; new energy is not 小型工程.",
+    country: "Brazil", scopeType: "works", governmentLevel: "municipal", industries: ["power", "construction"],
+  },
 ];

@@ -60,6 +60,8 @@ check("R$ 1,690 万 → 常规", classifyPncpPregaoRelevance({ title: acre, esti
 check("R$ 300 万（约 58 万美元）→ 新能源门槛 50 万，留", classifyPncpPregaoRelevance({ title: acre, estimatedValue: 3_000_000, currency: "BRL" }).relevance.tier, "standard");
 check("R$ 200 万（约 39 万美元）→ 排除", classifyPncpPregaoRelevance({ title: acre, estimatedValue: 2_000_000, currency: "BRL" }).relevance.tier, "excluded");
 check("同样 R$ 300 万的变压器 → 仍按巴西 200 万美元门槛排除", classifyPncpPregaoRelevance({ title: "Aquisição de transformadores de distribuição", estimatedValue: 3_000_000, currency: "BRL" }).relevance.tier, "excluded");
+check("没公开金额的光伏电子竞价 → 留（常规）", classifyPncpPregaoRelevance({ title: acre }).relevance.tier, "standard");
+check("没公开金额的变压器电子竞价 → 仍排除", classifyPncpPregaoRelevance({ title: "Aquisição de transformadores de distribuição" }).relevance.tier, "excluded");
 check("光伏系统维护 → 不是设备采购", pregaoEquipmentClasses("Manutenção preventiva e corretiva dos sistemas fotovoltaicos"), []);
 
 console.log("\n哥伦比亚逆向竞价（Subasta Inversa）");
@@ -76,6 +78,7 @@ check("太阳能驱动的净水设备（真实）→ 排除", classifyColombiaSu
   estimatedValue: 2_647_572_165,
   currency: "COP",
 }).relevance.tier, "excluded");
+check("没公开金额的光伏逆向竞价 → 留（常规）", classifyColombiaSubastaRelevance({ title: "SUMINISTRO DE MODULOS SOLARES FOTOVOLTAICOS E INVERSORES" }).relevance.tier, "standard");
 check("储能不再被当成 ICT 存储", classifyColombiaSubastaRelevance({ title: "ADQUISICIÓN DE SISTEMA DE ALMACENAMIENTO DE ENERGÍA EN BATERÍAS", estimatedValue: 4_000_000_000, currency: "COP" }).industries, ["power"]);
 
 if (failures > 0) {

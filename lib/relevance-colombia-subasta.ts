@@ -186,6 +186,18 @@ export function classifyColombiaSubastaRelevance(input: {
   // New energy has its own, lower floor — lib/new-energy.ts.
   const newEnergy = isNewEnergy(text);
   const floor = newEnergy ? NEW_ENERGY_MIN_VALUE_USD : FLOOR_USD;
+  // New energy with no published amount is kept, as 常规 (user, 2026-10-04:
+  // 要保障，没金额的这类项目，不被排除掉). Its scale is unknown, not small.
+  if (usd === null && newEnergy) {
+    return {
+      industries: classes,
+      relevance: tier("standard", {
+        zh: `该项目是哥伦比亚政府的${classes.map((c) => CLASS_ZH[c]).join("、")}采购（新能源，未公开金额）。${NOTE_ZH}`,
+        en: `A Colombian public purchase of ${classes.map((c) => CLASS_EN[c]).join(", ")} (new energy, amount not published). ${NOTE_EN}`,
+        es: `Una compra pública colombiana de ${classes.map((c) => CLASS_EN[c]).join(", ")} (nuevas energías, monto no publicado). ${NOTE_ES}`,
+      }),
+    };
+  }
   if (usd === null || usd < floor) return { industries: classes, relevance: tier("excluded", newEnergy ? REASONS.small_new_energy : REASONS.small) };
   const reason: LocalizedText = {
     zh: `该项目是哥伦比亚政府的${classes.map((c) => CLASS_ZH[c]).join("、")}采购。${NOTE_ZH}`,

@@ -219,6 +219,9 @@ export function classifyPncpPregaoRelevance(input: {
     return { industries: ["general"], relevance: tier("excluded", named ? REASONS.service_or_upkeep : REASONS.not_equipment) };
   }
   const usd = input.estimatedValue === undefined ? null : convertToUsd(input.estimatedValue, input.currency);
+  // New energy with no published amount is kept, as 常规 (user, 2026-10-04:
+  // 要保障，没金额的这类项目，不被排除掉). Its scale is unknown, not small.
+  if (usd === null && isNewEnergy(text)) return { industries: classes, relevance: tier("standard", keptReason(classes)) };
   if (usd === null) return { industries: classes, relevance: tier("excluded", REASONS.no_value) };
   // New energy is judged against its own, lower floor — lib/new-energy.ts.
   if (isNewEnergy(text)) {

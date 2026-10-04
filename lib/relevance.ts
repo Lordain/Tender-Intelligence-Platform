@@ -3513,6 +3513,7 @@ export function classifyRelevance(input: {
   if (
     input.isNationalPriorityProject !== true &&
     input.estimatedValue === undefined &&
+    !newEnergy &&
     PERU_MARGINAL_INVESTMENT.test(haystack)
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
@@ -3575,7 +3576,9 @@ export function classifyRelevance(input: {
     if (isPortugueseNoObjectTitle(input.title)) {
       return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "no_content") };
     }
-    const small = classifyPortugueseSmallWorks(haystack);
+    // New energy is not 小型工程 (user, 2026-10-04: 没金额的这类项目，不被排除掉);
+    // a disclosed amount is still judged against its floor below.
+    const small = newEnergy ? null : classifyPortugueseSmallWorks(haystack);
     if (small !== null) {
       return {
         tier: "excluded",
@@ -3706,6 +3709,7 @@ export function classifyRelevance(input: {
   if (
     !hasIncludeOverride &&
     !clearsValueFloor &&
+    !(newEnergy && normalizedValue === undefined) &&
     (SUPPORT_VEHICLE_KEYWORDS.some((pattern) => pattern.test(haystack)) || SINGLE_VEHICLE_PURCHASE.test(haystack))
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };

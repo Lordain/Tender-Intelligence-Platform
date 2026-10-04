@@ -24,11 +24,14 @@ type Dot = { name: string; x: number; y: number };
  * for Mercado Público, SHCP for Hacienda's Proyectos Estratégicos, BORA for the
  * Boletín Oficial de la República Argentina, Metro SCL for Metro de Santiago.
  * Rows chosen by hand so the longer names sit in the sparser rows.
+ *
+ * Desktop is two wide rows, not three narrow ones (user, 2026-10-04: 太高了，
+ * 可以做宽一点，但是矮一点 … 把点位放宽一点，但是层数少一点). 12 over 10 so the
+ * second row falls between the dots of the first.
  */
 const DESKTOP_ROWS = [
-  ["ComprasMX", "PNCP", "SECOP II", "ChileCompra", "SEACE", "COMPR.AR", "PEMEX", "Petrobras"],
-  ["UPME", "Codelco", "Petroperú", "CONTRAT.AR", "CFE", "ANEEL", "ProInversión"],
-  ["Metro SCL", "ADIF", "SHCP", "DOU", "Cemig", "ANTAQ", "BORA"],
+  ["ComprasMX", "PNCP", "SECOP II", "ChileCompra", "SEACE", "COMPR.AR", "PEMEX", "Petrobras", "UPME", "Codelco", "CFE", "DOU"],
+  ["Petroperú", "CONTRAT.AR", "ANEEL", "ProInversión", "Metro SCL", "ADIF", "SHCP", "Cemig", "ANTAQ", "BORA"],
 ];
 const MOBILE_ROWS = [
   ["ComprasMX", "ChileCompra", "PNCP", "SECOP II"],
@@ -63,11 +66,11 @@ type Scene = {
 };
 
 const DESKTOP: Scene = {
-  width: 1200,
-  height: 500,
-  exit: { x: 600, y: 356, r: 46 },
-  labelSize: 13,
-  dots: layout(DESKTOP_ROWS, 1200, [44, 128, 212], 40),
+  width: 1600,
+  height: 350,
+  exit: { x: 800, y: 246, r: 44 },
+  labelSize: 16,
+  dots: layout(DESKTOP_ROWS, 1600, [34, 112], 30),
 };
 const MOBILE: Scene = {
   width: 360,
@@ -127,7 +130,7 @@ function Convergence({ scene, idPrefix, className }: { scene: Scene; idPrefix: s
         <g key={dot.name}>
           <circle cx={dot.x} cy={dot.y} r={10} fill="#ffb21c" opacity={0.14} />
           <circle className="whyus-dot" style={{ animationDelay: `${((i * 0.41) % 3.6).toFixed(2)}s` }} cx={dot.x} cy={dot.y} r={4.5} fill="#ffffff" stroke="#e39a10" strokeWidth={2} />
-          <text x={dot.x} y={dot.y + scene.labelSize + 9} textAnchor="middle" fontSize={scene.labelSize} fontWeight={700} fill="#52636e" className="font-mono">
+          <text x={dot.x} y={dot.y + scene.labelSize + 9} textAnchor="middle" fontSize={scene.labelSize} fontWeight={700} fill="#52636e" stroke="#fffdf9" strokeWidth={4} paintOrder="stroke" className="font-mono">
             {dot.name}
           </text>
         </g>
@@ -236,7 +239,7 @@ export function ValuePropositions() {
           <p className="mt-1 text-xs text-[#75838c]">西语、葡语 · 格式各异</p>
           {/* Highlighted on request (user, 2026-10-04); wording changed from 数千条 to 上万条 on request.
               The buyer count is distinct publishing entities over the last year or month: SECOP II
-              10,611, PNCP 5,300+ in September 2026 alone, ChileCompra ~850, plus estimates for
+              10,611, PNCP 7,188 in September 2026 alone, ChileCompra ~850, plus estimates for
               SEACE, Compras MX and COMPR.AR. Approved as 2 万多个 by the user, 2026-10-04. */}
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             <p className="inline-flex items-baseline gap-1.5 rounded-full bg-[#071826] px-4 py-1.5 text-white shadow-[0_8px_24px_-12px_rgba(7,24,38,.6)]">
@@ -251,8 +254,8 @@ export function ValuePropositions() {
             </p>
           </div>
         </div>
-        <Convergence scene={DESKTOP} idPrefix="wyd" className="mx-auto mt-4 hidden w-full max-w-6xl md:block" />
-        <Convergence scene={MOBILE} idPrefix="wym" className="mx-auto mt-4 block w-full max-w-sm md:hidden" />
+        <Convergence scene={DESKTOP} idPrefix="wyd" className="mx-auto mt-4 hidden w-full max-w-[96rem] lg:block" />
+        <Convergence scene={MOBILE} idPrefix="wym" className="mx-auto mt-4 block w-full max-w-sm lg:hidden" />
 
         <div aria-hidden="true" className="mx-auto -mt-4 h-10 w-px bg-linear-to-b from-[#ffb21c] to-[#ffb21c]/20" />
 

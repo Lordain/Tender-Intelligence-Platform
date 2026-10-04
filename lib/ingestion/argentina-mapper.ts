@@ -22,8 +22,12 @@ export const COMPRAR_SOURCE_NAME = "COMPR.AR — Portal de Compras Públicas (Ar
 export const CONTRATAR_SOURCE_NAME = "CONTRAT.AR — Obra Pública, Concesiones y Privatizaciones (Argentina)";
 export const ADIF_SOURCE_NAME = "Trenes Argentinos Infraestructura (ADIF) — Portal de Licitaciones";
 export const BOLETIN_SOURCE_NAME = "Boletín Oficial de la República Argentina — Tercera Sección";
+export const MENDOZA_SOURCE_NAME = "COMPR.AR Mendoza — Compras Públicas de la Provincia de Mendoza (Argentina)";
 
-export const ARGENTINA_SOURCE_NAMES = [COMPRAR_SOURCE_NAME, CONTRATAR_SOURCE_NAME, ADIF_SOURCE_NAME, BOLETIN_SOURCE_NAME] as const;
+export const ARGENTINA_SOURCE_NAMES = [COMPRAR_SOURCE_NAME, CONTRATAR_SOURCE_NAME, ADIF_SOURCE_NAME, BOLETIN_SOURCE_NAME, MENDOZA_SOURCE_NAME] as const;
+
+/** The province's buyer names ("Ministerio de Seguridad") read like national ones; this says whose they are. */
+const MENDOZA_BUYER_SUFFIX = "（Gobierno de Mendoza）";
 
 /** Buenos Aires is UTC-3 all year. */
 const OFFSET = "-03:00";
@@ -224,12 +228,16 @@ function sentence(value: string | undefined): string | undefined {
 export function mapPortalRecordToTender(record: ArgentinaPortalRecord, now: Date = new Date()): Tender {
   const { process, row } = record;
   const isContratar = record.portal === "contratar";
+  const isMendoza = record.portal === "mendoza";
   const title = argentinaTitle(process.name);
   const object = process.object && foldAccents(process.object).toLowerCase() !== foldAccents(process.name).toLowerCase() ? process.object : undefined;
   // The SAF is the ministry or force; the unit is its purchasing office. The
   // SAF says who is buying — "Estado Mayor General del Ejército", not
   // "Departamento Contaduría y Finanzas (EMGE)" — where the list gives one.
-  const buyer = withoutCode(row.saf) || withoutCode(process.unit) || withoutCode(row.unit) || (isContratar ? "Administración Pública Nacional" : "Administración Pública Nacional");
+  const unitName = withoutCode(row.saf) || withoutCode(process.unit) || withoutCode(row.unit);
+  const buyer = isMendoza
+    ? `${unitName || "Gobierno de la Provincia de Mendoza"}${unitName ? MENDOZA_BUYER_SUFFIX : ""}`
+    : unitName || "Administración Pública Nacional";
   const procedure = process.procedure ?? row.procedureType;
   const procedureType = [procedure.replace(/^Licitacion\b/, "Licitación"), process.scope ? `Alcance ${process.scope}` : undefined, process.stage ? `Etapa ${process.stage}` : undefined]
     .filter(Boolean)
@@ -247,7 +255,7 @@ export function mapPortalRecordToTender(record: ArgentinaPortalRecord, now: Date
     process.durationText ? sentence(`Duración del contrato: ${process.durationText}`) : undefined,
     items.length > 0 ? sentence(`Renglones: ${items.join("; ")}${process.items.length > items.length ? ` y ${process.items.length - items.length} más` : ""}`) : undefined,
     submissionDeadline ? sentence(`Apertura de ofertas: ${process.openingText ?? row.openingText}`) : undefined,
-    `Publicado en ${isContratar ? "CONTRAT.AR (contratar.gob.ar)" : "COMPR.AR (comprar.gob.ar)"}; pliegos y anexos descargables sin registro desde la página del proceso.`,
+    `Publicado en ${isContratar ? "CONTRAT.AR (contratar.gob.ar)" : isMendoza ? "COMPR.AR Mendoza (comprar.mendoza.gov.ar), portal de compras de la Provincia de Mendoza" : "COMPR.AR (comprar.gob.ar)"}; pliegos y anexos descargables sin registro desde la página del proceso.`,
   ]
     .filter(Boolean)
     .join(" ");
@@ -259,14 +267,14 @@ export function mapPortalRecordToTender(record: ArgentinaPortalRecord, now: Date
       title,
       summary,
       buyer,
-      governmentLevel: "federal",
+      governmentLevel: isMendoza ? "state" : "federal",
       scopeType: isContratar && argentinaScopeType(`${title} ${object ?? ""}`) === "unknown" ? "works" : argentinaScopeType(`${title} ${object ?? ""}`),
       procedureType,
       participationScope: participationScopeOf(process.scope),
       publicationDate: argentineDateTime(process.publishedText),
       submissionDeadline,
       questionsClose: argentineDateTime(process.questionsCloseText),
-      sourceName: isContratar ? CONTRATAR_SOURCE_NAME : COMPRAR_SOURCE_NAME,
+      sourceName: isContratar ? CONTRATAR_SOURCE_NAME : isMendoza ? MENDOZA_SOURCE_NAME : COMPRAR_SOURCE_NAME,
       sourceUrl: record.url,
     },
     now,

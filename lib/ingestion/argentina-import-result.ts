@@ -1,6 +1,6 @@
 /** The shapes the admin tab's manual Argentina import sends and receives — no server imports, so the client form can use them. */
 
-export type ArgentinaSourceId = "comprar" | "contratar" | "adif" | "boletin";
+export type ArgentinaSourceId = "comprar" | "contratar" | "adif" | "boletin" | "mendoza";
 
 export type ArgentinaImportRow = {
   slug: string;

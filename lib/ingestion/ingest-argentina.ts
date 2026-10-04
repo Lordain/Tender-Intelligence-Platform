@@ -9,6 +9,8 @@
  *   ADIF         national rail infrastructure       connectors/adif-live.ts
  *   Boletín      state companies and provinces      connectors/boletin-oficial-live.ts
  *   Oficial      that buy outside the two portals
+ *   Mendoza      the Province of Mendoza's own      connectors/argentina-portal-live.ts
+ *                COMPR.AR (added 2026-10-04)        (same connector)
  *
  * Only rows the platform's rules keep are written — the same rules as every
  * other country, with Argentina's two settings in lib/relevance.ts. Staged
@@ -32,6 +34,7 @@ import {
   ARGENTINA_COUNTRY,
   boletinSkipReason,
   COMPRAR_SOURCE_NAME,
+  MENDOZA_SOURCE_NAME,
   mapAdifTenderToTender,
   mapBoletinNoticeToTender,
   mapPortalRecordToTender,
@@ -45,13 +48,14 @@ import { COMPANY_SOURCE_WINDOW_DAYS } from "@/lib/ingestion/publication-window";
 import { filterTendersPublishedWithinDays } from "@/lib/ingestion/recency";
 import type { ArgentinaSourceId } from "@/lib/ingestion/argentina-import-result";
 
-export const ARGENTINA_SOURCES: ArgentinaSourceId[] = ["comprar", "contratar", "adif", "boletin"];
+export const ARGENTINA_SOURCES: ArgentinaSourceId[] = ["comprar", "contratar", "adif", "boletin", "mendoza"];
 
 export const ARGENTINA_SOURCE_LABELS: Record<ArgentinaSourceId, string> = {
   comprar: "COMPR.AR（全国货物与服务）",
   contratar: "CONTRAT.AR（全国工程、特许经营、私有化）",
   adif: "ADIF（国家铁路基础设施公司）",
   boletin: "政府公报第三部分（国企、省级项目）",
+  mendoza: "COMPR.AR Mendoza（门多萨省政府采购）",
 };
 
 export type ArgentinaSourceReport = {
@@ -100,7 +104,7 @@ const LIVE_FETCHERS: ArgentinaFetchers = {
  * so what can keep it is a target sector in its name, and that is visible
  * from the list without opening it.
  */
-export function comprarRowWanted(row: ArgentinaPortalListRow): boolean {
+export function comprarRowWanted(row: ArgentinaPortalListRow, portal: "comprar" | "mendoza" = "comprar"): boolean {
   if (isOpenCallProcedure(row.procedureType)) return true;
   if (/directa|subasta/i.test(row.procedureType)) return false;
   const { relevance } = classifyStoredTender({
@@ -108,11 +112,11 @@ export function comprarRowWanted(row: ArgentinaPortalListRow): boolean {
     summary: row.name,
     buyer: row.saf ?? row.unit,
     country: ARGENTINA_COUNTRY,
-    governmentLevel: "federal",
+    governmentLevel: portal === "mendoza" ? "state" : "federal",
     scopeType: "unknown",
     procedureType: row.procedureType,
     tenderNumber: row.processNumber,
-    sourceName: COMPRAR_SOURCE_NAME,
+    sourceName: portal === "mendoza" ? MENDOZA_SOURCE_NAME : COMPRAR_SOURCE_NAME,
   });
   return relevance.tier !== "excluded";
 }
@@ -167,10 +171,10 @@ export async function ingestArgentina(
   const rows: ArgentinaIngestResult["rows"] = [];
   const documentLinks: DocumentLinksForSlug[] = [];
 
-  const portalSource = async (id: "comprar" | "contratar"): Promise<ArgentinaSourceReport> => {
+  const portalSource = async (id: "comprar" | "contratar" | "mendoza"): Promise<ArgentinaSourceReport> => {
     const run = await timed<ArgentinaPortalFetchResult>(() =>
       fetchers.portal(id, {
-        wanted: id === "comprar" ? comprarRowWanted : () => true,
+        wanted: id === "contratar" ? () => true : (row) => comprarRowWanted(row, id),
         ...(options.portalReachRetryPausesMs ? { reachRetryPausesMs: options.portalReachRetryPausesMs } : {}),
       }),
     );
@@ -269,6 +273,7 @@ export async function ingestArgentina(
   if (selected.has("contratar")) jobs.push(portalSource("contratar"));
   if (selected.has("adif")) jobs.push(adifSource());
   if (selected.has("boletin")) jobs.push(boletinSource());
+  if (selected.has("mendoza")) jobs.push(portalSource("mendoza"));
   const sources = (await Promise.all(jobs)).sort((a, b) => ARGENTINA_SOURCES.indexOf(a.id) - ARGENTINA_SOURCES.indexOf(b.id));
 
   // One slug, one row: a later source never overwrites an earlier one in the same batch.
@@ -279,7 +284,7 @@ export async function ingestArgentina(
 
   const result: ArgentinaIngestResult = { sources, rows: finalRows, kept, write: options.write };
   if (sources.length > 0 && sources.every((source) => source.error)) {
-    throw new Error(`阿根廷四个来源全部失败：${sources.map((source) => `${source.id}: ${source.error}`).join("；")}`);
+    throw new Error(`阿根廷所有来源全部失败：${sources.map((source) => `${source.id}: ${source.error}`).join("；")}`);
   }
   if (!options.write) return result;
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");

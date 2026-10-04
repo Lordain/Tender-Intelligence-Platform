@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { safeNextPath } from "@/lib/auth-redirect";
 import { localize, uiText, useLocale } from "@/lib/i18n";
+import { authErrorMessage } from "@/lib/auth-errors";
 
 type SocialAuthButtonsProps = {
   onError: (message: string | null) => void;
@@ -27,7 +28,7 @@ export function SocialAuthButtons({ onError }: SocialAuthButtonsProps) {
     });
 
     if (error) {
-      onError(error.message);
+      onError(authErrorMessage(error));
       setLoading(false);
     }
   }

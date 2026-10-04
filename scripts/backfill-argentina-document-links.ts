@@ -40,7 +40,7 @@ async function main() {
     .from("tenders")
     .select("slug, tender_number, source_url")
     .eq("country", "Argentina")
-    .or("source_url.like.https://comprar.gob.ar/*,source_url.like.https://contratar.gob.ar/*");
+    .or("source_url.like.https://comprar.gob.ar/*,source_url.like.https://contratar.gob.ar/*,source_url.like.https://comprar.mendoza.gov.ar/*");
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as { slug: string; tender_number: string; source_url: string }[];
   console.log(`COMPR.AR / CONTRAT.AR 项目 ${rows.length} 条\n`);
@@ -94,7 +94,7 @@ async function readDocumentLinks(sourceUrl: string, tenderNumber: string) {
       console.log(`  ⚠ ${tenderNumber} 澄清 ${circular.number} 打不开：${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  const record = { portal: sourceUrl.includes("contratar") ? "contratar" : "comprar", url: sourceUrl, process } as ArgentinaPortalRecord;
+  const record = { portal: sourceUrl.includes("contratar") ? "contratar" : sourceUrl.includes("mendoza") ? "mendoza" : "comprar", url: sourceUrl, process } as ArgentinaPortalRecord;
   return portalDocumentLinks(record);
 }
 

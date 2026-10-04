@@ -10,10 +10,11 @@ const SOURCES: { id: ArgentinaSourceId; label: string; hint: string }[] = [
   { id: "contratar", label: "CONTRAT.AR", hint: "全国工程、特许经营、私有化 · 约半分钟" },
   { id: "adif", label: "ADIF", hint: "国家铁路基础设施公司 · 约半分钟" },
   { id: "boletin", label: "政府公报", hint: "国企和省级项目，最近两期 · 约 1 分钟" },
+  { id: "mendoza", label: "门多萨省", hint: "COMPR.AR Mendoza，门多萨省政府采购，逐页读 · 约 2–5 分钟" },
   { id: "comprar", label: "COMPR.AR", hint: "全国货物与服务，逐页读 400 多条 · 可能超过网页 5 分钟上限，超时请用命令行" },
 ];
 
-const SOURCE_SHORT: Record<ArgentinaSourceId, string> = { comprar: "COMPR.AR", contratar: "CONTRAT.AR", adif: "ADIF", boletin: "政府公报" };
+const SOURCE_SHORT: Record<ArgentinaSourceId, string> = { comprar: "COMPR.AR", contratar: "CONTRAT.AR", adif: "ADIF", boletin: "政府公报", mendoza: "门多萨省" };
 
 function deadline(row: ArgentinaImportRow): string {
   return row.submissionDeadline ? `截标 ${new Date(row.submissionDeadline).toLocaleDateString("zh-CN", { timeZone: "America/Argentina/Buenos_Aires" })}` : "截标日期未读到";

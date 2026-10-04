@@ -2,7 +2,7 @@
 
 import { DayWindowPicker, DEFAULT_DAY_WINDOW } from "@/components/admin/DayWindowPicker";
 import { useState } from "react";
-import { AutoRunBadge, AutoRunNote } from "@/components/admin/AutoRunBadge";
+import { AutoRunBadge, AutoRunNote, DAILY_INGEST_SCHEDULE } from "@/components/admin/AutoRunBadge";
 import { KNOWN_BUYER_NAMES, PEMEX_LIST_TITLES, type PemexListTitle, type ImportPemexLiveResult } from "@/lib/ingestion/pemex-sources";
 
 export function ImportPemexForm() {
@@ -63,10 +63,10 @@ export function ImportPemexForm() {
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Live fetch</p>
       <h2 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black text-[#071826]">
         PEMEX 直接拉取
-        <AutoRunBadge schedule="每天 11:17 UTC（北京时间 19:17），GitHub Actions" />
+        <AutoRunBadge schedule={DAILY_INGEST_SCHEDULE} />
       </h2>
       <AutoRunNote>
-        每天 11:17 UTC（北京时间 19:17）自动跑一次，<strong>七个子公司列表全部跑一遍</strong>。这里只在需要提前拉某一个列表时用。
+        每天自动跑两次（计划北京时间 19:17 和次日 03:17，实际常晚几小时），<strong>七个子公司列表全部跑一遍</strong>。这里只在需要提前拉某一个列表时用。
       </AutoRunNote>
       <p className="mt-1 text-sm text-[#52636e]">
         PEMEX 的 SharePoint 招标列表接口本身是匿名公开的，不用再打开浏览器 Console 手动抓取——选一个子公司列表，服务器直接去

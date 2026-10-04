@@ -44,6 +44,22 @@
 # :17 rather than :00 because GitHub's scheduler is best-effort and the top of
 # the hour is the most contended minute there is.
 #
+# TWICE A DAY SINCE 2026-10-04 (user: 能不能设定成每天跑2次?).
+#
+# GitHub has been starting the 11:17 run 4 to 7 hours late every day
+# (2026-09-27..10-04: 15:08 to 18:35 UTC), so it really lands around midday in
+# Bogotá and around midnight in Beijing. The second schedule, 19:17 UTC, then
+# lands around 23:00-02:00 UTC — the end of the Latin American working day,
+# 07:00-10:00 in Beijing — and picks up the afternoon's publications before a
+# Chinese customer starts work, instead of a day later. Every import reads a
+# window of days and upserts, so a second pass only adds what is new.
+#
+# Two jobs stay once a day, on the 11:17 run: the status refresh (once_daily
+# in the matrix), which re-asks Brazil, Chile and Mexico about every tender
+# already stored — ~15 minutes of requests to sources that throttle — and the
+# IndexNow/Baidu push (the indexnow job's `if`), whose Baidu quota is small
+# and resets daily; a second push would spend it on the same pages.
+#
 # NOT fixed by this: Peru's SEACE/OECE rows are still imported by hand (its
 # proxy refuses datacenter ranges). Brazil joined the matrix on 2026-09-19,
 # Peru's Petroperú and OxI on 2026-09-25 and 2026-09-26.
@@ -52,6 +68,9 @@ name: Daily ingest
 on:
   schedule:
     - cron: "17 11 * * *"
+    # The evening pass. The once-a-day jobs test for the line above by its
+    # text (the SKIP env and the indexnow job's `if`) — change all three together.
+    - cron: "17 19 * * *"
   workflow_dispatch:
     inputs:
       write:
@@ -156,6 +175,8 @@ jobs:
           # their own jobs. See scripts/cron-refresh-statuses.ts.
           - name: Status refresh (Brazil, Chile, Mexico)
             command: cron:refresh-statuses
+            # Once a day: it re-reads every stored tender, not a few days.
+            once_daily: true
           # Added 2026-09-27. Guyana's eprocure.gov.gy: every open opportunity,
           # each notice PDF read for ICB/NCB and the lender, only large works and
           # purchases written (user: 小项目不要，只要大型工程项目或者采购项目).
@@ -189,21 +210,29 @@ jobs:
           # `npm run cron:peru-oece-status -- --write`.
     name: ${{ matrix.name }}
     continue-on-error: ${{ matrix.optional == true }}
+    env:
+      # True only for a once_daily job on the evening schedule; its steps
+      # are then skipped and the job shows as succeeded with nothing done.
+      SKIP: ${{ matrix.once_daily == true && github.event_name == 'schedule' && github.event.schedule != '17 11 * * *' }}
     steps:
       - uses: actions/checkout@v7
+        if: env.SKIP != 'true'
 
       - uses: actions/setup-node@v7
+        if: env.SKIP != 'true'
         with:
           node-version: 22
           cache: npm
 
       - run: npm ci
+        if: env.SKIP != 'true'
 
       - name: Install pdftotext
-        if: ${{ matrix.poppler == true }}
+        if: ${{ env.SKIP != 'true' && matrix.poppler == true }}
         run: command -v pdftotext || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)
 
       - name: Import
+        if: env.SKIP != 'true'
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -219,7 +248,7 @@ jobs:
       - name: Upload the excluded-tenders CSV
         # Runs even on failure — a partial export is still the fastest way to
         # see what the relevance rules rejected today.
-        if: always()
+        if: always() && env.SKIP != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: excluded-${{ strategy.job-index }}-${{ github.run_id }}
@@ -237,7 +266,8 @@ jobs:
   # tenders crossing their deadline, and those pages are the point.
   indexnow:
     needs: ingest
-    if: always() && (github.event_name == 'schedule' || inputs.write)
+    # Once a day, after the 11:17 run (the Baidu quota is daily; see above).
+    if: always() && ((github.event_name == 'schedule' && github.event.schedule == '17 11 * * *') || inputs.write)
     runs-on: ubuntu-latest
     name: IndexNow
     steps:

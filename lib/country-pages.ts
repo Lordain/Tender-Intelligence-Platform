@@ -3,7 +3,7 @@ import { participationGuides } from "@/lib/participation-guides";
 
 /**
  * The country landing pages (/countries/mexico …), one per open country
- * (2026-09-25; Argentina added 2026-09-29). They exist for search: /tenders?country=Mexico
+ * (2026-09-25; Argentina added 2026-09-29, the Dominican Republic 2026-10-04). They exist for search: /tenders?country=Mexico
  * declares /tenders as its canonical, so until now nothing on the site could
  * rank for 墨西哥招标 or 巴西政府采购 on its own — every filtered view signed
  * itself away to the one list page.
@@ -56,6 +56,12 @@ export const countryPages: CountryPage[] = [
     slug: "argentina",
     country: "Argentina",
     intro: "阿根廷联邦政府的货物与服务采购在 COMPR.AR 平台发布，公共工程、特许经营在 CONTRAT.AR 平台发布；国家铁路基础设施公司（ADIF）有自己的招标门户，其他分散采购通知还会刊登在政府公报（Boletín Oficial）第三部分。",
+  },
+  {
+    slug: "dominican-republic",
+    country: "Dominican Republic",
+    intro: "多米尼加的政府采购统一在公共采购总局（DGCP）管理的 Portal Transaccional 平台发布，本平台读取其中的国内、国际公开招标。",
+    sources: ["Portal Transaccional（DGCP）"],
   },
 ];
 

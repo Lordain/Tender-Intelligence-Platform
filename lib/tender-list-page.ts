@@ -47,11 +47,17 @@ const NOT_LIVE_STATUSES: TenderStatus[] = ["submission_closed", "cancelled", "aw
  * no longer has to know the count is kept on Mexico City's clock rather than
  * their own.
  *
- * Measured from createdAt, the ingestion instant (a timestamptz), NOT from
+ * Measured from when the tender appeared on the site, NOT from
  * publication_date: two of the Mexican mappers fabricate a publication date
  * when the source carries none, so publication date answers "when did the
- * government publish this" only sometimes, while createdAt always answers
- * "when did this appear on the site" — which is the question 新增 asks.
+ * government publish this" only sometimes.
+ *
+ * "Appeared on the site" is listedAt — the first analysis row, stamped by
+ * migration 0061 — and createdAt (the import) only when that is missing. It
+ * was createdAt alone until 2026-10-04, but a tender is public only once its
+ * analysis is in, which is imported by hand, often a day or more after the
+ * row: such a tender appeared on the site and was never counted as new
+ * (user: 如果是在24小时内录入的项目也算).
  */
 const RECENTLY_ADDED_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -88,9 +94,10 @@ export const UPCOMING_DEADLINE_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
  * and the failure mode of that is a country a user can tick but never see.
  */
 // Chile added 2026-09-25, when the user opened it after the Chilean
-// filters were tuned (智利筛选调好 → 现在开放). Argentina added last,
-// 2026-09-29 (前台+后台开放阿根廷).
-export const AVAILABLE_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Argentina"] as const;
+// filters were tuned (智利筛选调好 → 现在开放). Argentina added
+// 2026-09-29 (前台+后台开放阿根廷), the Dominican Republic last, 2026-10-04
+// (公开多米尼加(前台+后台+网站内的文字描述)).
+export const AVAILABLE_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Argentina", "Dominican Republic"] as const;
 
 export type TenderListSearchParams = Record<string, string | string[] | undefined>;
 
@@ -499,7 +506,7 @@ export function buildTenderListPage(
 
   const nowMs = now.getTime();
   const isRecentlyAdded = (tender: Tender) => {
-    const added = new Date(tender.createdAt).getTime();
+    const added = new Date(tender.listedAt ?? tender.createdAt).getTime();
     return Number.isFinite(added) && nowMs - added < RECENTLY_ADDED_WINDOW_MS && added <= nowMs;
   };
   const newTodayCount = filtered.filter(isRecentlyAdded).length;

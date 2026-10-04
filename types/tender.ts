@@ -422,6 +422,12 @@ export type Tender = {
   sourceUrl: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * When the tender first appeared on the public site: its first analysis
+   * row (migration 0061 stamps it). Undefined for a tender not yet public,
+   * and for rows read before the migration ran.
+   */
+  listedAt?: string;
 };
 
 /**

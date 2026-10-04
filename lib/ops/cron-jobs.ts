@@ -94,7 +94,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "refresh-statuses", label: "已入库项目状态刷新（巴西、智利、墨西哥）", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-guyana", label: "圭亚那 eprocure 自动导入（未公开）", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-argentina", label: "阿根廷 COMPR.AR / CONTRAT.AR / ADIF / 政府公报 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
-  { id: "import-dominicana", label: "多米尼加 DGCP 自动导入（未公开）", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-dominicana", label: "多米尼加 DGCP 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-energy-auctions", label: "能源拍卖（人工整理）写入", maxAgeHours: 30, runsOn: "github-actions" },
 ];
 

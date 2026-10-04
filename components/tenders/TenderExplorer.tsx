@@ -396,9 +396,15 @@ export function TenderExplorer({
           <div className="xl:pr-4">
             <MultiSelectPills
               label="国家/地区"
-              maxVisible={countryOptions.length}
-              // Room for all five with flags; capped by the viewport so a
-              // phone still gets a trigger that fits its screen.
+              // The seventh country (多米尼加, 2026-10-04) must not widen the
+              // trigger: the user asked for the six-country width to stay,
+              // with every country still ticked by default (国家/地区就不再做宽了，
+              // 保持现在的宽度). Six names plus 「+1」 measured 22px wider and
+              // pushed the 1280px filter row onto two lines, so it shows five
+              // and 「+2」 inside the old box: 29.5rem is the 472px the six
+              // flagged names measured. Capped by the viewport below sm.
+              maxVisible={5}
+              minWidthClass="min-w-[9.5rem] sm:min-w-[29.5rem]"
               valueWidthClass="max-w-[min(36rem,calc(100vw-13rem))]"
               options={countryOptions.map((country) => ({
                 value: country,

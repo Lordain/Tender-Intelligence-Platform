@@ -1,7 +1,7 @@
 /**
  * Dominican Republic ingestion — the DGCP open-data API, for the daily job
- * (scripts/cron-dominicana.ts). Added 2026-10-04; staged, so what it writes
- * shows in the admin pages only (lib/staged-countries.ts).
+ * (scripts/cron-dominicana.ts). Added 2026-10-04, staged, and opened to
+ * visitors the same day.
  *
  * Reads every procedure published in the window, keeps the public tenders
  * (DOMINICANA_INGESTED_MODALIDADES) that are still taking bids, classifies

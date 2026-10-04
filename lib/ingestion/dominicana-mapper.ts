@@ -6,8 +6,7 @@ import { classifyStoredTender } from "@/lib/relevance";
 
 /**
  * A DGCP procedure (lib/ingestion/connectors/dominicana-dgcp-live.ts) as a
- * Tender. Added 2026-10-04; the Dominican Republic is staged
- * (lib/staged-countries.ts) until the user opens it.
+ * Tender. Added 2026-10-04, staged, and opened to visitors the same day.
  *
  * Classified by the platform's general rules (lib/relevance.ts) with the
  * country set: a $1M floor, US$200k for new energy, the same exclusions.

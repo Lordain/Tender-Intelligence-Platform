@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { SUPPORT_EMAIL, SUPPORT_WECHAT } from "@/lib/support";
@@ -22,6 +23,7 @@ const countries = [
   ["秘鲁", "/countries/peru"],
   ["智利", "/countries/chile"],
   ["阿根廷", "/countries/argentina"],
+  ["多米尼加", "/countries/dominican-republic"],
 ] as const;
 
 const headingClass = "text-xs font-black uppercase tracking-[0.15em] text-[#ffb21c]";
@@ -37,14 +39,20 @@ export function Footer() {
             {/* Wraps only between the three points, never inside one. */}
             <span className="whitespace-nowrap">汇集十余个官方采购平台</span> · <span className="whitespace-nowrap">人工精筛</span> · <span className="whitespace-nowrap">剔除小额和日常项目</span>
           </p>
-          {/* Tighter than before (gap-2, px-3) so the six countries stay on one line from 360px phones up (2026-09-29, 阿根廷 added). */}
-          <ul className="mt-5 flex flex-wrap gap-1 sm:gap-1.5" aria-label="覆盖国家">
-            {countries.map(([label, href]) => (
-              <li key={href}>
-                <Link href={href} className="inline-flex rounded-full border border-white/12 px-2 py-1 text-xs sm:px-2.5 font-bold text-white/62 transition-colors hover:border-[#ffb21c] hover:text-[#ffcd67]">
-                  {label}
-                </Link>
-              </li>
+          {/* Tighter than before (gap-2, px-3) so the six countries stay on one line from 360px phones up (2026-09-29, 阿根廷 added).
+              Seven (2026-10-04, 多米尼加) need ~430px and the column is 320–384px, so they no longer fit one line at any
+              width; rather than leave 多米尼加 alone on a second line, the row breaks after the fourth: 4 + 3 everywhere.
+              No row gap: the break item's own height is the space between the lines, the same as the gap between pills. */}
+          <ul className="mt-5 flex flex-wrap gap-x-1 sm:gap-x-1.5" aria-label="覆盖国家">
+            {countries.map(([label, href], index) => (
+              <Fragment key={href}>
+                {index === 4 && <li aria-hidden="true" className="h-1 basis-full sm:h-1.5" />}
+                <li>
+                  <Link href={href} className="inline-flex rounded-full border border-white/12 px-2 py-1 text-xs sm:px-2.5 font-bold text-white/62 transition-colors hover:border-[#ffb21c] hover:text-[#ffcd67]">
+                    {label}
+                  </Link>
+                </li>
+              </Fragment>
             ))}
           </ul>
         </div>

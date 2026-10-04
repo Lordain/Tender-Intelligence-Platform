@@ -234,12 +234,22 @@ export function ValuePropositions() {
         <div className="mt-10 text-center">
           <p className="text-sm font-black text-[#071826]">拉美各国 20 多个官方采购平台</p>
           <p className="mt-1 text-xs text-[#75838c]">西语、葡语 · 格式各异</p>
-          {/* Highlighted on request (user, 2026-10-04); wording changed from 数千条 to 上万条 on request. */}
-          <p className="mt-3 inline-flex items-baseline gap-1.5 rounded-full bg-[#071826] px-4 py-1.5 text-white shadow-[0_8px_24px_-12px_rgba(7,24,38,.6)]">
-            <span className="text-xs font-bold text-white/70">每天</span>
-            <span className="text-lg font-black text-[#ffcd67]">上万条</span>
-            <span className="text-xs font-bold text-white/70">新公告</span>
-          </p>
+          {/* Highlighted on request (user, 2026-10-04); wording changed from 数千条 to 上万条 on request.
+              The buyer count is distinct publishing entities over the last year or month: SECOP II
+              10,611, PNCP 5,300+ in September 2026 alone, ChileCompra ~850, plus estimates for
+              SEACE, Compras MX and COMPR.AR. Approved as 2 万多个 by the user, 2026-10-04. */}
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            <p className="inline-flex items-baseline gap-1.5 rounded-full bg-[#071826] px-4 py-1.5 text-white shadow-[0_8px_24px_-12px_rgba(7,24,38,.6)]">
+              <span className="text-xs font-bold text-white/70">每天</span>
+              <span className="text-lg font-black text-[#ffcd67]">上万条</span>
+              <span className="text-xs font-bold text-white/70">新公告</span>
+            </p>
+            <p className="inline-flex items-baseline gap-1.5 rounded-full bg-[#071826] px-4 py-1.5 text-white shadow-[0_8px_24px_-12px_rgba(7,24,38,.6)]">
+              <span className="text-xs font-bold text-white/70">覆盖</span>
+              <span className="text-lg font-black text-[#ffcd67]">2 万多个</span>
+              <span className="text-xs font-bold text-white/70">政府采购单位</span>
+            </p>
+          </div>
         </div>
         <Convergence scene={DESKTOP} idPrefix="wyd" className="mx-auto mt-4 hidden w-full max-w-6xl md:block" />
         <Convergence scene={MOBILE} idPrefix="wym" className="mx-auto mt-4 block w-full max-w-sm md:hidden" />

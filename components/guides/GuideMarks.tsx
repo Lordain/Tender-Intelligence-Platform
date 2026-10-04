@@ -48,6 +48,7 @@ export function GuideLogo({ slug }: { slug: string }) {
  */
 const GUIDE_PLATFORM_SHORT: Record<string, string> = {
   "brazil-pncp": "PNCP",
+  "argentina-adif": "ADIF · Portal de Licitaciones",
 };
 
 export function guidePlatformLabel(guide: { slug: string; platform: string }) {

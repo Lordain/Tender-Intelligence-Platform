@@ -42,12 +42,17 @@ export default function GuidesPage() {
             cards per country (user, 2026-10-04: 布局整体太长了，也浪费了很多
             空间，可以做成更精简的卡片，然后每个国家名称旁边都增加国旗). The
             last cell is the 持续扩充 note, so the grid stays filled at two
-            and four columns with seven countries. */}
-        <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#dbe2e5] lg:grid-cols-2 2xl:grid-cols-4">
+            columns with seven countries (four were tried and cramped the
+            rows at 1600px). Each panel spans three rows
+            and shares them through subgrid, so the heading, the one-line
+            description and the top of the list sit on the same lines across
+            a row of panels (user, 2026-10-04: 保持左右对齐，调整摘要长度，
+            不要两行). */}
+        <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#dbe2e5] lg:grid-cols-2">
           {guideCountries.map((country) => {
             const guides = participationGuides.filter((guide) => guide.countryCode === country.code);
             return (
-              <section key={country.code} aria-labelledby={`guides-${country.code}`} className="flex flex-col bg-[#fffdf9] p-5 sm:p-7">
+              <section key={country.code} aria-labelledby={`guides-${country.code}`} className="row-span-3 grid grid-rows-subgrid bg-[#fffdf9] p-5 sm:p-7">
                 <div className="flex items-start justify-between gap-4">
                   <h2 id={`guides-${country.code}`} className="flex items-center gap-3 text-2xl font-black tracking-[-0.03em]">
                     <GuideCountryFlag code={country.code} />
@@ -55,7 +60,7 @@ export default function GuidesPage() {
                   </h2>
                   <span className="mt-1.5 shrink-0 text-xs font-bold text-[#8a969d]">{guides.length} 份指南</span>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-[#64717c]">{country.description}</p>
+                <p title={country.description} className="mt-2 text-sm leading-6 text-[#64717c] lg:truncate">{country.description}</p>
                 <ul className="mt-4 divide-y divide-[#e5e9ea] border-t border-[#e5e9ea]">
                   {guides.map((guide) => (
                     <li key={guide.slug}>
@@ -64,7 +69,7 @@ export default function GuidesPage() {
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                             <span className="rounded-md bg-[#fff0c9] px-2 py-0.5 text-xs font-black text-[#8f5b00]">{guide.issuerType}</span>
-                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-[#b86e00]">{guidePlatformLabel(guide)}</span>
+                            <span className="min-w-0 truncate text-[11px] font-black uppercase tracking-[0.14em] text-[#b86e00]">{guidePlatformLabel(guide)}</span>
                           </span>
                           <span className="mt-2 block text-base font-black leading-7 tracking-[-0.01em]">{guide.title}</span>
                           <span className="mt-0.5 block text-xs font-bold leading-5 text-[#8a969d]">{guide.issuer}</span>
@@ -78,7 +83,7 @@ export default function GuidesPage() {
             );
           })}
 
-          <section className="flex flex-col bg-[#061b2b] p-5 text-white sm:p-7">
+          <section className="row-span-3 flex flex-col bg-[#061b2b] p-5 text-white sm:p-7">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffb21c]">持续扩充</p>
             <h2 className="mt-3 text-2xl font-black tracking-[-0.03em]">更多国家与采购平台将陆续加入</h2>
             <p className="mt-3 text-sm leading-7 text-white/62">随着平台覆盖范围扩大，我们会继续增加各国注册入口、参与流程、常见材料及境外企业需要特别核对的事项。</p>

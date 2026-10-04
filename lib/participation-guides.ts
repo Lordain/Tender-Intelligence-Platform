@@ -1370,6 +1370,103 @@ export const participationGuides: ParticipationGuide[] = [
       { label: "阿根廷政府：国家采购制度程序手册（Disposición 62/2016，更新文本）", href: "https://www.argentina.gob.ar/normativa/nacional/265967/actualizacion" },
     ],
   },
+  {
+    slug: "dominican-republic-dgcp",
+    country: "多米尼加",
+    countryCode: "DO",
+    platform: "Portal Transaccional（DGCP）",
+    issuer: "多米尼加中央政府、分权与自治机构、地方政府及其他公共采购单位",
+    issuerType: "政府采购平台",
+    title: "怎么参与多米尼加 DGCP 政府采购项目？",
+    summary: "从公开查找项目、境外供应商临时登记到双信封报价、担保、评审和授标，梳理多米尼加政府采购的实际参与路径。",
+    whatIs: "Portal Transaccional（政府采购交易平台）是多米尼加政府采购总局（Dirección General de Contrataciones Públicas，DGCP）管理的电子采购入口，覆盖中央政府、分权和自治机构、地方政府及法律规定的其他采购主体。公众可查询年度采购计划、程序、文件、问答、开标和授标信息；供应商通过国家供应商登记册（Registro de Proveedores del Estado，RPE）及平台账户参与电子程序。",
+    audience: "希望向多米尼加公共机构供应货物、服务、工程或咨询服务的境内外企业",
+    quickFacts: [
+      { label: "官方平台", value: "Portal Transaccional（DGCP）" },
+      { label: "供应商登记", value: "RPE；外国企业投标时可获临时登记" },
+      { label: "常用语言", value: "西班牙语" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "先确认适用法律和程序阶段",
+        items: [
+          "第47-25号《公共采购法》自2026年1月28日起生效，通用实施条例由第52-26号法令批准",
+          "在新法生效前已经启动的采购程序，以及相应合同的签署、执行、验收、结算和争议，继续适用第340-06号旧法及原规则",
+          "2026年4月起，货物与服务达到RD$6,436,757.51、工程达到RD$406,713,345.70时进入公开招标门槛；其他简化采购、较小采购和直接采购区间以DGCP第PNP-03-2026号决议及项目文件为准",
+        ],
+        note: "不要只根据程序名称判断规则。先看项目发布日期、适用法律、采购方式和最新pliego de condiciones（招标文件）。",
+      },
+      {
+        id: "first-check",
+        title: "注册前先看这些字段",
+        items: [
+          "Referencia del procedimiento：记录程序编号，用于查找后续问答、更正、开标和授标",
+          "Unidad de compras：确认采购单位及其正式咨询渠道",
+          "Modalidad：确认公开招标、简化采购、电子反向拍卖或其他方式",
+          "Cronograma：核对提问、澄清、报价截止、技术开标、经济开标和授标日期",
+          "Documentos del procedimiento：下载技术规格、招标条件、表格、合同草案及所有enmiendas（更正）",
+        ],
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "公开检索并下载完整文件", detail: "按关键词、采购单位、程序编号和日期查找项目。先下载招标文件、技术规格、表格和合同草案，再核对是否开放境外企业、报价币种、税费、交付和本地履约条件。" },
+          { title: "确认RPE与平台账户路径", detail: "多米尼加企业通常先完成国家供应商登记册（RPE）登记并绑定电子采购平台用户。DGCP明确说明，外国自然人或法人参加采购时无需预先正式登记RPE，电子采购系统会分配临时登记用于提交电子报价；中标、签约和收款所需的最终资料仍以项目文件与DGCP要求为准。" },
+          { title: "准备资格与技术报价", detail: "根据项目建立文件清单，通常包括公司设立与存续、授权代表、税务或同等证明、受益所有人、业绩、财务能力、技术方案、人员设备和声明。非西班牙语文件须由来源国或多米尼加的主管机构完成合格翻译；公证、附加证明书或领事认证要求以标书为准。" },
+          { title: "分别完成技术与经济文件", detail: "平台通常把技术资格材料放在Sobre A（技术信封），把报价和适用的投标严肃性担保放在Sobre B（经济信封）。电子页面可能显示为Sobre 1和Sobre 2；文件放错信封可能影响评审，必须逐项依照当次招标文件。" },
+          { title: "提交后跟进评审和合同", detail: "在截止前完成上传并保存平台回执。之后继续查看技术评审、经济开标、纠正期、授标决定、行政复议和合同通知；如有疑问，应在正式提问期通过规定渠道提出。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "境外企业常见资料清单",
+        intro: "DGCP允许外国企业以临时登记参加，但不代表免除项目资格审查。以下用于建立准备清单，实际以招标文件为准：",
+        items: [
+          "公司注册、章程、存续和经营范围的本国同等证明",
+          "法定代表人、授权委托、最终受益所有人和无利益冲突声明",
+          "税务识别、财务报表、银行资信及项目要求的偿付能力证明",
+          "类似合同、验收或客户证明，技术人员、设备和实施方案",
+          "非西班牙语文件的合格翻译，以及标书要求的公证、附加证明书或领事认证",
+          "签约和付款所需的银行账户、税务与本地代表资料（如适用）",
+        ],
+        note: "当地代表、联合体或多米尼加法人并非所有采购的统一前置条件；只有适用法律、行业许可或项目文件明确要求时才办理。",
+      },
+      {
+        id: "guarantees",
+        title: "担保、开标与异议",
+        items: [
+          "第47-25号法允许银行担保、银行保证金或保险公司保函等形式；投标严肃性担保、履约担保和其他覆盖范围由法律、条例和招标文件共同确定",
+          "投标严肃性担保的有效期由招标文件规定，应从技术报价开标起覆盖至合同签署；材料错误或币种错误的纠正期通常为1至5个工作日",
+          "合同或订单超过等值1万美元时，中标人通常须在授标通知后5个工作日内提交履约担保；具体金额、格式、出具机构和币种以项目文件为准",
+          "技术文件先评审，只有通过技术评审的报价才进入经济开标；电子反向拍卖等方式另有程序",
+          "新法下第一阶段行政救济称为recurso de reconsideración（复议），后续可向DGCP提出recurso jerárquico impropio（特别层级复议）；期限和提交方式必须按最新通知及适用规则核对",
+        ],
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "先确认程序是否真正允许境外企业参与，以及中国业绩、母公司资质和联合体成员业绩如何计算",
+          "核对是否要求本地送达地址、授权代表、行业执照、税务登记或中标后设立本地主体",
+          "报价以多米尼加比索（DOP）计价时，测算汇率、税费、进口关税、付款周期和价格调整机制",
+          "确认境外银行担保是否可接受、是否需要本地银行确认，以及担保文本能否逐字满足标书",
+          "不要只依赖项目摘要；问答、enmiendas（更正）和cronograma（时间表）可能改变资格、文件和截止日期",
+        ],
+        note: "正式投标前，应以最新招标文件、采购单位书面答复、DGCP现行规则及专业法律税务意见为准。",
+      },
+    ],
+    sources: [
+      { label: "DGCP：Portal Transaccional政府采购交易平台", href: "https://comunidad.comprasdominicana.gob.do/" },
+      { label: "DGCP：第47-25号《公共采购法》与第52-26号实施条例", href: "https://www.dgcp.gob.do/transparencia/documentos/base_legal_institucional/Ley%2047-25%20y%20reglamento%2052-26.pdf" },
+      { label: "DGCP：新法实施初期规则与旧程序过渡安排", href: "https://www.dgcp.gob.do/noticias/dgcp-establece-pautas-para-el-inicio-de-la-implementacion-de-la-nueva-ley-num-47-25-de-contrataciones-publicas/" },
+      { label: "DGCP：2026年采购门槛（PNP-03-2026）", href: "https://www.dgcp.gob.do/wp-content/uploads/page/PNP-03-2026_UMBRALES.pdf" },
+      { label: "DGCP：国家供应商登记册（RPE）及外国企业说明", href: "https://www.dgcp.gob.do/servicios/registro-de-proveedores/" },
+      { label: "DGCP：供应商使用电子采购平台手册", href: "https://www.dgcp.gob.do/wp-content/uploads/page/Manual-PT_Proveedores-del-Estado.pdf" },
+      { label: "DGCP：供应商培训、指南与操作材料", href: "https://www.dgcp.gob.do/materiales-didacticos/proveedores/" },
+    ],
+  },
 ];
 
 /**
@@ -1428,6 +1525,11 @@ export const guideCountries = [
     code: "AR",
     description: "COMPR.AR货物与服务、CONTRAT.AR工程与特许经营、ADIF铁路采购及Boletín Oficial第三部分",
   },
+  {
+    name: "多米尼加",
+    code: "DO",
+    description: "DGCP政府采购交易平台，覆盖中央政府、自治机构、地方政府的货物、服务与工程采购",
+  },
 ] as const;
 
 /**
@@ -1443,6 +1545,7 @@ export const guideCountries = [
  * tender read from the DOF goes to the CFE guide, not the DOF's.
  */
 const GUIDE_BY_ORIGIN: Array<[RegExp, string]> = [
+  [/\bdgcp\b|portal transaccional|rep[uú]blica dominicana/i, "dominican-republic-dgcp"],
   [/trenes argentinos infraestructura|administraci[oó]n de infraestructuras ferroviarias|\badif\b/i, "argentina-adif"],
   [/contrat\.?ar|obra p[uú]blica, concesiones y privatizaciones/i, "argentina-contratar"],
   [/compr\.?ar|portal de compras p[uú]blicas \(argentina\)/i, "argentina-comprar"],

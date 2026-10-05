@@ -22,7 +22,7 @@ export function Header() {
   ] as const;
 
   return (
-    <header className="relative z-40 bg-[#031521] text-white print:hidden">
+    <header className="relative z-40 bg-[#031521] text-white">
       <div className="border-b border-white/10">
         <div className="mx-auto max-w-[108rem] px-5 sm:px-8">
           <div className="flex h-[4.75rem] items-center justify-between gap-3 sm:gap-6">

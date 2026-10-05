@@ -258,18 +258,3 @@ select {
   [data-reveal] .reveal-pop { transition: none; }
   [data-reveal] .whyus-shimmer { animation: none; }
 }
-
-/*
- * 导出 PDF on a tender's detail page is the browser's print → 另存为 PDF
- * (components/tenders/ExportTenderPdfButton.tsx). A4 with even margins, the
- * page's own colours kept (cards, tags, the summary panel) rather than
- * dropped to the browser's ink-saving default, and no card split across two
- * sheets where it fits on one.
- */
-@media print {
-  @page { size: A4; margin: 12mm; }
-  html, body { background: #ffffff !important; }
-  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  main section, main li { break-inside: avoid; }
-  main h2, main h3 { break-after: avoid; }
-}

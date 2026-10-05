@@ -168,7 +168,7 @@ export default async function TenderDetailPage({
       <TenderDetailView
         tender={tender}
         showTrialCta={showTrialCta}
-        canExportPdf={canExportTenderDetail(entitlement, tender.country)}
+        canExportWord={canExportTenderDetail(entitlement, tender.country)}
         // Looked up here, on the server, so the guides' text stays out of the
         // client bundle. None for an OxI tender: its own notice at the foot of
         // the page already links the OxI guide.

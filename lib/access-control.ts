@@ -246,7 +246,7 @@ export function canViewCountry(entitlement: ViewerEntitlement, country: string):
 }
 
 /**
- * One tender's detail page as a PDF (the browser's print → 另存为 PDF): every
+ * One tender's detail page as a Word file (/api/tenders/[slug]/docx): every
  * paid plan, 基础个人版 only for the one country it covers (user, 2026-10-05:
  * 专业个人版…可以导出项目详情页 / 专业企业版也支持 / 个人版也支持导出单个国家的
  * 项目详情页). Not trial or free accounts. The project-list CSV export this

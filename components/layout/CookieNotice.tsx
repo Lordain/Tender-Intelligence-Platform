@@ -72,7 +72,7 @@ export function CookieNotice() {
     <div
       role="region"
       aria-label="Cookie 与本地存储说明"
-      className="fixed inset-x-0 bottom-0 z-50 print:hidden px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pb-5"
+      className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pb-5"
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-3 rounded-2xl border border-white/10 bg-[#061b2b] px-5 py-4 text-white shadow-[0_20px_50px_-24px_rgba(6,27,43,.9)] sm:flex-row sm:items-center sm:gap-5">
         <p className="text-xs leading-6 text-white/78">

@@ -97,7 +97,12 @@ export function BeginnerGuideCard({ className = "" }: { className?: string }) {
         </span>
         <span className="mt-3 block text-xl font-black leading-8 tracking-[-0.01em] sm:text-2xl">{beginnerGuide.title}</span>
         <span className="mt-2 block text-sm leading-6 text-white/62">{beginnerGuide.summary}</span>
-        <span className="mt-4 inline-block text-sm font-black text-[#ffb21c] transition-transform group-hover:translate-x-1">阅读入门指南 →</span>
+        {/* Drawn as a button (user, 2026-10-05: 阅读入门指南 -> 做成明显一点的按钮);
+            a span, since the whole card is already the link. */}
+        <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#ffb21c] px-5 text-sm font-black text-[#071826] shadow-[0_6px_18px_-6px_rgba(255,178,28,0.55)] transition group-hover:bg-[#ffc34d]">
+          阅读入门指南
+          <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">→</span>
+        </span>
       </span>
       <MiniFlow />
     </Link>

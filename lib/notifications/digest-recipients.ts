@@ -14,6 +14,7 @@
 // tsx, which resolves paths without the Next.js bundler.
 import { createSupabaseAdminClient } from "../supabase/admin-client";
 import { selectPreferredSubscription } from "../access-control";
+import { isAdminEmail } from "../admin-emails";
 import { digestCadence, type DigestCadence } from "./digest-cadence";
 
 type Preference = {
@@ -162,6 +163,12 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
   return eligible.flatMap<DigestRecipient>((preference) => {
     const email = usersById.get(preference.user_id);
     if (!email) return [];
+    // Staff get the paid digest (twice daily, full titles, their keywords),
+    // matching the access getViewerEntitlement() gives them on the front end.
+    // Without this an admin account with no subscription row fell to the free
+    // Monday roundup and saw awards days after paying users did (user,
+    // 2026-10-05: 你想用管理员账号实际体验付费用户收到的邮件 ← 你改代码).
+    if (isAdminEmail(email)) return [{ ...preference, email, cadence: "twice_daily" }];
     const ownerId = ownerByMember.get(preference.user_id);
     const subscription = subscriptionByUser.get(preference.user_id);
     const isEnterpriseMember = ownerId !== undefined && enterpriseOwnerIds.has(ownerId);

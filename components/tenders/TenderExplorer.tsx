@@ -370,14 +370,12 @@ export function TenderExplorer({
       }}
     >
       <PageIntro
-        eyebrow="Tender database"
+        eyebrow="LatAm tenders · 20+ platforms"
         title="招标项目"
-        description="筛选并评估适合中国企业的拉美政府采购机会"
-        metrics={[{ label: "当前结果", value: totalResults.toLocaleString(), suffix: "个项目" }]}
-        // Says the count is a floor rather than the ceiling: a visitor who
-        // sees a few hundred rows has no way to tell a growing database from
-        // a finished one, and three countries reads as the whole product.
-        metricsNote={{ title: "持续扩张中", body: "将陆续接入更多拉美国家，项目数量不断增加" }}
+        description="汇集拉美 20 多个官方采购平台，按国家、行业和规模筛选值得跟进的项目"
+        // 当前筛选结果, not 当前结果: the number follows the filters below, and
+        // the 持续扩张中 note beside it is gone (user, 2026-10-05).
+        metrics={[{ label: "当前筛选结果", value: totalResults.toLocaleString(), suffix: "个项目" }]}
       />
 
       {accessNotice && (
@@ -598,10 +596,10 @@ export function TenderExplorer({
               {/*
                 全站项目, not 全站在招 (user, 2026-09-20: 因为在招把已截止都
                 算入了). It never did count 已截止 — it summed the live
-                statuses only. But printed beside a 当前结果 of the same size,
+                statuses only. But printed beside a 当前筛选结果 of the same size,
                 on a feed whose default preset shows 已中标 too, 在招 read as a
                 claim about what was in the number. The cell now counts the
-                whole public catalogue, which 当前结果 is always a subset of —
+                whole public catalogue, which 当前筛选结果 is always a subset of —
                 see siteTenderCount in lib/tender-list-page.ts.
               */}
               <div className="px-1 py-1.5"><p className="text-[11px] font-medium text-white/58">全站项目</p><p className="mt-1.5 text-[1.65rem] font-black leading-none">{formatTenderCount(siteTenderCount)}</p></div>

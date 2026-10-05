@@ -3,6 +3,7 @@ import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 import Link from "next/link";
 import { guideCountries, participationGuides } from "@/lib/participation-guides";
 import { GuideCountryFlag, GuideLogo, guidePlatformLabel } from "@/components/guides/GuideMarks";
+import { BeginnerGuideCard } from "@/components/guides/BeginnerGuideCard";
 
 export const metadata: Metadata = pageMetadata({
   title: "参标指南",
@@ -32,7 +33,10 @@ export default function GuidesPage() {
       </header>
 
       <main className="mx-auto max-w-[108rem] px-5 py-10 sm:px-8 sm:py-12">
-        <div className="flex flex-col gap-1 rounded-xl border border-[#e6b13f] bg-[#fff3cf] px-5 py-4 sm:flex-row sm:gap-4">
+        {/* Pinned above everything: the 新手入门 guide (user, 2026-10-05). */}
+        <BeginnerGuideCard className="rounded-2xl" />
+
+        <div className="mt-6 flex flex-col gap-1 rounded-xl border border-[#e6b13f] bg-[#fff3cf] px-5 py-4 sm:flex-row sm:gap-4">
           <p className="shrink-0 text-sm font-black leading-7 text-[#6d4900]">使用前请注意</p>
           <p className="text-sm leading-7 text-[#6d5a31]">指南提供通用准备框架，不构成资格保证或法律意见。参与范围、文件格式、截止日期及提交方式，始终以具体项目的官方公告、招标文件、附件与最新澄清为准。</p>
         </div>

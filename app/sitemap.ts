@@ -3,6 +3,7 @@ import { getCachedTenderList } from "@/lib/tenders";
 import { siteOrigin } from "@/lib/site-url";
 import { fetchTenderSitemapEntriesFromDb } from "@/lib/db/tenders";
 import { participationGuides } from "@/lib/participation-guides";
+import { BEGINNER_GUIDE_PATH } from "@/lib/beginner-guide";
 import { countryInsights } from "@/lib/country-insights";
 import { countryPages } from "@/lib/country-pages";
 import { industryPages } from "@/lib/industry-pages";
@@ -71,6 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     })),
     { url: `${origin}/guides`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${origin}${BEGINNER_GUIDE_PATH}`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     ...participationGuides.map((guide) => ({
       url: `${origin}/guides/${guide.slug}`,
       lastModified: now,

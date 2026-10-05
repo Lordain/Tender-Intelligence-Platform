@@ -2,6 +2,7 @@ import Link from "next/link";
 import { homepageGuides } from "@/lib/participation-guides";
 import { Reveal } from "@/components/home/Reveal";
 import { GuideCountryFlag, GuideLogo, guidePlatformLabel } from "@/components/guides/GuideMarks";
+import { BeginnerGuideCard } from "@/components/guides/BeginnerGuideCard";
 
 export function ParticipationGuidesPreview() {
   return (
@@ -29,12 +30,17 @@ export function ParticipationGuidesPreview() {
           count, which is the point.
         */}
         <div className="mt-9 grid overflow-hidden rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] md:grid-cols-2 xl:grid-cols-4">
+          {/* The 新手入门 guide sits above the four, across the full width
+              (user, 2026-10-05: 放在现在的4个参标指南的上方). */}
+          <Reveal className="-ml-px -mt-px col-span-full">
+            <BeginnerGuideCard className="border-l border-t border-[#dbe2e5]" />
+          </Reveal>
           {homepageGuides().map((guide, index) => (
             // Each card spans four rows of the parent grid and shares them
             // through subgrid, so the header, title, buyer and link line up
             // across a row of cards whatever any one title's length (user,
             // 2026-10-04: 现在看着不对齐，很丑，再优化一下).
-            <Reveal key={guide.slug} delayMs={index * 110} className="-ml-px -mt-px row-span-4 grid grid-rows-subgrid">
+            <Reveal key={guide.slug} delayMs={(index + 1) * 110} className="-ml-px -mt-px row-span-4 grid grid-rows-subgrid">
             {/* Same pieces as the /guides rows — flag beside the country,
                 the platform's official icon, type tag, title, buyer — so the
                 strip reads as a preview of that page (user, 2026-10-04:

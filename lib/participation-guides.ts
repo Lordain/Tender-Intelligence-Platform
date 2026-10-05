@@ -1498,37 +1498,37 @@ export const guideCountries = [
   {
     name: "墨西哥",
     code: "MX",
-    description: "联邦采购、电力、油气与战略基础设施项目",
+    description: "联邦采购、电力、油气与战略基础设施",
   },
   {
     name: "巴西",
     code: "BR",
-    description: "PNCP全国公开入口，以及 Petrobras（石油）和 Cemig（电力）的自有采购门户",
+    description: "PNCP 全国采购，Petrobras 与 Cemig 自有门户",
   },
   {
     name: "哥伦比亚",
     code: "CO",
-    description: "SECOP II 电子公共采购，以及 UPME 输电项目投资人遴选",
+    description: "SECOP II 公共采购，UPME 输电项目招商",
   },
   {
     name: "秘鲁",
     code: "PE",
-    description: "SEACE 常规预算采购、Obras por Impuestos 以工程抵税项目，以及 Petroperú（石油）国际采购",
+    description: "SEACE 公共采购、以工程抵税与 Petroperú",
   },
   {
     name: "智利",
     code: "CL",
-    description: "Mercado Público 公开采购，以及 Codelco（铜矿）供应商登记与招标",
+    description: "Mercado Público 公共采购与 Codelco 招标",
   },
   {
     name: "阿根廷",
     code: "AR",
-    description: "COMPR.AR货物与服务、CONTRAT.AR工程与特许经营、ADIF铁路采购及Boletín Oficial第三部分",
+    description: "COMPR.AR、CONTRAT.AR、ADIF 与 Boletín Oficial",
   },
   {
     name: "多米尼加",
     code: "DO",
-    description: "DGCP政府采购交易平台，覆盖中央政府、自治机构、地方政府的货物、服务与工程采购",
+    description: "DGCP 交易平台，中央与地方政府采购",
   },
 ] as const;
 

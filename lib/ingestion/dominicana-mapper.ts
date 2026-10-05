@@ -1,7 +1,7 @@
 import type { GovernmentLevel, Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/types/tender";
 import { slugify, untranslated } from "@/lib/ingestion/text-utils";
 import { safeFileName, type TenderDocumentLink } from "@/lib/ingestion/document-links";
-import type { DgcpDocumento, DgcpProceso } from "@/lib/ingestion/connectors/dominicana-dgcp-live";
+import { DOMINICANA_NATIONAL_EMERGENCY_CODE, type DgcpDocumento, type DgcpProceso } from "@/lib/ingestion/connectors/dominicana-dgcp-live";
 import { classifyStoredTender } from "@/lib/relevance";
 
 /**
@@ -74,7 +74,16 @@ function sentence(text: string | undefined): string | undefined {
   return /[.!?。]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
+/**
+ * The procedure as shown on the tender. A national-emergency procedure says
+ * so: the bare "Procesos de Excepción" reads as a direct award, which it is not.
+ */
+export function dominicanProcedureType(proceso: Pick<DgcpProceso, "modalidad" | "codigo_proceso">): string {
+  return DOMINICANA_NATIONAL_EMERGENCY_CODE.test(proceso.codigo_proceso) ? "Proceso de Excepción por Emergencia Nacional (convocatoria abierta)" : proceso.modalidad;
+}
+
 export function mapDgcpProcesoToTender(proceso: DgcpProceso, now: Date = new Date()): Tender {
+  const procedureType = dominicanProcedureType(proceso);
   const title = proceso.titulo.replace(/[“”"]/g, "").replace(/\s+/g, " ").trim();
   const description = proceso.descripcion?.replace(/\s+/g, " ").trim();
   const buyer = proceso.unidad_compra.trim();
@@ -90,7 +99,7 @@ export function mapDgcpProcesoToTender(proceso: DgcpProceso, now: Date = new Dat
   const summary = [
     sentence(title),
     description && description.toLowerCase() !== title.toLowerCase() ? sentence(description) : undefined,
-    sentence(`Modalidad: ${proceso.modalidad}`),
+    sentence(`Modalidad: ${procedureType}`),
     proceso.objeto_proceso ? sentence(`Objeto: ${proceso.objeto_proceso}${proceso.subobjeto_proceso ? ` (${proceso.subobjeto_proceso})` : ""}`) : undefined,
     external ? "Con financiamiento de un organismo financiero externo." : undefined,
     proceso.es_snip && /^s[ií]$/i.test(proceso.es_snip) && proceso.codigo_snip && proceso.codigo_snip !== "N/A" ? sentence(`Proyecto SNIP ${proceso.codigo_snip}`) : undefined,
@@ -107,7 +116,7 @@ export function mapDgcpProcesoToTender(proceso: DgcpProceso, now: Date = new Dat
     country: DOMINICAN_REPUBLIC,
     governmentLevel,
     scopeType,
-    procedureType: proceso.modalidad,
+    procedureType,
     tenderNumber: proceso.codigo_proceso,
     ...(amount !== undefined ? { estimatedValue: amount, currency } : {}),
     sourceName: DOMINICANA_SOURCE_NAME,
@@ -129,7 +138,7 @@ export function mapDgcpProcesoToTender(proceso: DgcpProceso, now: Date = new Dat
     governmentLevel,
     industries,
     scopeType,
-    procedureType: proceso.modalidad,
+    procedureType,
     ...(international ? { participationScope: "international_open" as const } : {}),
     publicationDate,
     ...(submissionDeadline ? { submissionDeadline } : {}),

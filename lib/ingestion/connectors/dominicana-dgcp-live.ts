@@ -17,7 +17,8 @@
  * Volume (September 2026, measured): 7,122 procedures, of which 4,783 were
  * below-threshold purchases and 1,737 minor contracts. The public tenders —
  * Licitación Pública Nacional / Internacional / Abreviada — were 104, and
- * those are the only ones read further (DOMINICANA_INGESTED_MODALIDADES).
+ * those are read further (DOMINICANA_INGESTED_MODALIDADES), together with
+ * the national-emergency exception procedures (isIngestedDgcpProceso).
  *
  * The API answers a client with no User-Agent (Python's default) 403, and
  * curl 200, so the header below is not optional.
@@ -71,6 +72,26 @@ export type DgcpDocumento = {
 
 /** The open tenders. Everything else — below-threshold, minor, exception, price comparison, reverse auction — is a small or non-competitive buy. */
 export const DOMINICANA_INGESTED_MODALIDADES = /^licitaci[oó]n p[uú]blica (nacional|internacional|abreviada)\b/i;
+
+/**
+ * A national-emergency exception procedure: modalidad "Procesos de Excepción",
+ * code segment -PEEN- (tipo_excepcion "Emergencia", under a presidential
+ * decree such as 517-25 / 630-2026 for the power sector). Added 2026-10-05 at
+ * the user's instruction after reading two of them in full (EDESUR, EDENORTE):
+ * each is published on the portal with a complete pliego, open to national
+ * and foreign bidders registered in the RPE, sealed bids opened before a
+ * notary in technical and economic rounds, with two to four weeks to bid.
+ * That is an open tender on a short clock. The other exception codes (PEPU,
+ * PEIN, PEPB, PEEX, PEUR…) are direct or restricted awards and stay out.
+ */
+export const DOMINICANA_NATIONAL_EMERGENCY_CODE = /-PEEN-/i;
+
+/** What the daily job and the admin import read further: the public tenders plus the national-emergency procedures. */
+export function isIngestedDgcpProceso(proceso: Pick<DgcpProceso, "modalidad" | "codigo_proceso">): boolean {
+  const modalidad = proceso.modalidad ?? "";
+  if (DOMINICANA_INGESTED_MODALIDADES.test(modalidad)) return true;
+  return /^procesos? de excepci[oó]n\b/i.test(modalidad) && DOMINICANA_NATIONAL_EMERGENCY_CODE.test(proceso.codigo_proceso ?? "");
+}
 
 async function getJson<T>(url: string, fetchImpl: typeof fetch = fetch): Promise<T> {
   let last: unknown;

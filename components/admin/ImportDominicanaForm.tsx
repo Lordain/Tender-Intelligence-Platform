@@ -58,7 +58,7 @@ export function ImportDominicanaForm() {
   return (
     <div className="rounded-xl border border-[#e1e7e9] bg-white px-4 py-4">
       <p className="text-sm font-black text-[#071826]">手动导入</p>
-      <p className="mt-1 text-xs leading-5 text-[#64717c]">读取所选时间内发布的全部采购程序，只看公开招标；30 天约需 1 分钟。已存在的项目只会更新，不会重复。</p>
+      <p className="mt-1 text-xs leading-5 text-[#64717c]">读取所选时间内发布的全部采购程序，只看公开招标和全国紧急状态例外程序；30 天约需 1 分钟。已存在的项目只会更新，不会重复。</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-[#233846]">
         <span>发布时间：最近</span>
@@ -105,7 +105,7 @@ export function ImportDominicanaForm() {
       {result && (
         <div className="mt-4 border-t border-[#eef1f2] pt-3 text-sm text-[#52636e]">
           <p>
-            最近 {result.days} 天发布 {result.listedCount} 条，其中公开招标 {result.publicTenderCount} 条；保留 <strong className="text-[#071826]">{result.kept.length}</strong> 条。
+            最近 {result.days} 天发布 {result.listedCount} 条，其中公开招标及紧急程序 {result.publicTenderCount} 条；保留 <strong className="text-[#071826]">{result.kept.length}</strong> 条。
           </p>
           {result.write ? (
             <p className="mt-1 font-semibold text-emerald-700">

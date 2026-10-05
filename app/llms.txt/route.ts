@@ -1,4 +1,5 @@
 import { participationGuides } from "@/lib/participation-guides";
+import { BEGINNER_GUIDE_PATH, beginnerGuide } from "@/lib/beginner-guide";
 import { countryPages } from "@/lib/country-pages";
 import { industryPages } from "@/lib/industry-pages";
 import { countryLabel } from "@/lib/tender-labels";
@@ -41,6 +42,7 @@ export async function GET(): Promise<Response> {
 - 各项目要求提交的资料以该项目公告与招标文件为准，不存在适用于所有项目的统一资料清单。
 
 ## 参标指南（免费，无需注册）
+- [${beginnerGuide.title}](${origin}${BEGINNER_GUIDE_PATH})（新手入门，适用拉美各国）：${beginnerGuide.summary}
 ${participationGuides.map((guide) => `- [${guide.title}](${origin}/guides/${guide.slug})（${guide.issuer}，${guide.issuerType}）：${guide.summary}`).join("\n")}
 
 ## 国家洞察（免费，无需注册）

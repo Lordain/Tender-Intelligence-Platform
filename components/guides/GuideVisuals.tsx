@@ -88,7 +88,7 @@ function FieldCards({ items }: { items: string[] }) {
           <li key={item} className="flex gap-3 rounded-xl border border-[#dbe2e5] bg-white p-4 md:last:odd:col-span-2">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#e6f0f4] text-[#1d5670]"><BeginnerIcon name={guideIcon(`${lead ?? ""}${rest}`, "eye")} /></span>
             <span className="min-w-0">
-              {lead && <span className="inline-block max-w-full break-words rounded-md bg-[#061b2b] px-2 py-0.5 font-mono text-[11px] font-bold leading-5 text-[#ffc95c]">{lead}</span>}
+              {lead && <span className="inline-block max-w-full break-words rounded-md border border-[#cfe2ea] bg-[#f1f7fa] px-2 py-0.5 font-mono text-xs font-bold leading-5 text-[#1d5670]">{lead}</span>}
               <span className="mt-1.5 block text-sm leading-6 text-[#43545f]">{rest}</span>
             </span>
           </li>

@@ -1,5 +1,6 @@
 import type { GuideSection, GuideStep } from "@/lib/participation-guides";
-import { guideIcon, splitGuideLine } from "@/lib/guide-visuals";
+import { splitGuideLine, type GuideIconList } from "@/lib/guide-visuals";
+import type { BeginnerIconName } from "@/lib/beginner-guide";
 import { BeginnerIcon } from "@/components/guides/BeginnerIcon";
 
 /**
@@ -7,6 +8,9 @@ import { BeginnerIcon } from "@/components/guides/BeginnerIcon";
  * 流程化、或者多以图形的方式说明，并增加一些Icon): the 参与流程 as a flowchart,
  * every other list as icon cards in the shape its section calls for. Same
  * palette and node style as the 新手入门 flowchart (BeginnerFlowchart).
+ *
+ * The icons come in from guidePageIcons, unique across the page; a line
+ * without one simply goes without (a step shows its number instead).
  */
 
 /** Steps tint from 找 (blue) through 投 (amber) to 跟进 (green) along the track. */
@@ -17,16 +21,22 @@ const STEP_TONES = [
 ] as const;
 const toneOf = (index: number, count: number) => STEP_TONES[Math.min(2, Math.floor((index / count) * 3))];
 
-function StepNode({ step, index, count, size = "lg" }: { step: GuideStep; index: number; count: number; size?: "lg" | "sm" }) {
+function StepNode({ icon, index, count, size = "lg" }: { icon?: BeginnerIconName; index: number; count: number; size?: "lg" | "sm" }) {
   return (
     <span className={`relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[#061b2b] text-[#ffb21c] ring-4 ${toneOf(index, count)} ${size === "lg" ? "size-14" : "size-11"}`}>
-      <BeginnerIcon name={guideIcon(step.title, "notice")} className={size === "lg" ? "size-6" : "size-5"} />
-      <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-[#ffb21c] font-mono text-[11px] font-black text-[#071826] ring-2 ring-white">{index + 1}</span>
+      {icon ? (
+        <>
+          <BeginnerIcon name={icon} className={size === "lg" ? "size-6" : "size-5"} />
+          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-[#ffb21c] font-mono text-[11px] font-black text-[#071826] ring-2 ring-white">{index + 1}</span>
+        </>
+      ) : (
+        <span className={`font-mono font-black ${size === "lg" ? "text-xl" : "text-lg"}`}>{index + 1}</span>
+      )}
     </span>
   );
 }
 
-export function GuideStepFlow({ steps }: { steps: GuideStep[] }) {
+export function GuideStepFlow({ steps, icons = [] }: { steps: GuideStep[]; icons?: GuideIconList }) {
   return (
     <>
       {/* Desktop: one track, a node per step, the words under it. */}
@@ -43,7 +53,7 @@ export function GuideStepFlow({ steps }: { steps: GuideStep[] }) {
                     <path d="m4 2 4 4-4 4" />
                   </svg>
                 )}
-                <StepNode step={step} index={index} count={steps.length} />
+                <StepNode icon={icons[index]} index={index} count={steps.length} />
               </div>
               <h3 className="mt-4 text-sm font-black leading-6">{step.title}</h3>
               <p className="mt-1.5 text-xs leading-5 text-[#586873]">{step.detail}</p>
@@ -57,7 +67,7 @@ export function GuideStepFlow({ steps }: { steps: GuideStep[] }) {
         <span aria-hidden="true" className="absolute bottom-6 left-[22px] top-6 w-0.5 bg-[#cfd8dc]" />
         {steps.map((step, index) => (
           <li key={step.title} className="relative flex gap-4 pb-6 last:pb-0">
-            <StepNode step={step} index={index} count={steps.length} size="sm" />
+            <StepNode icon={icons[index]} index={index} count={steps.length} size="sm" />
             <div className="min-w-0 flex-1 pt-1">
               <h3 className="font-black">{step.title}</h3>
               <p className="mt-0.5 text-sm leading-6 text-[#586873]">{step.detail}</p>
@@ -86,7 +96,6 @@ function FieldCards({ items }: { items: string[] }) {
         const { lead, rest } = splitGuideLine(item);
         return (
           <li key={item} className="flex gap-3 rounded-xl border border-[#dbe2e5] bg-white p-4 md:last:odd:col-span-2">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#e6f0f4] text-[#1d5670]"><BeginnerIcon name={guideIcon(`${lead ?? ""}${rest}`, "eye")} /></span>
             <span className="min-w-0">
               {lead && <span className="inline-block max-w-full break-words rounded-md border border-[#cfe2ea] bg-[#f1f7fa] px-2 py-0.5 font-mono text-xs font-bold leading-5 text-[#1d5670]">{lead}</span>}
               <span className="mt-1.5 block text-sm leading-6 text-[#43545f]">{rest}</span>
@@ -99,7 +108,7 @@ function FieldCards({ items }: { items: string[] }) {
 }
 
 /** 常见资料清单: a checklist of tiles. */
-function ChecklistTiles({ items }: { items: string[] }) {
+function ChecklistTiles({ items, icons }: { items: string[]; icons: GuideIconList }) {
   return (
     <ul className="grid gap-px overflow-hidden rounded-2xl border border-[#e5e9ea] bg-[#e5e9ea] sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item, index) => {
@@ -109,7 +118,7 @@ function ChecklistTiles({ items }: { items: string[] }) {
         const span = !last ? "" : `${items.length % 2 === 1 ? "sm:col-span-2" : ""} ${items.length % 3 === 1 ? "lg:col-span-3" : items.length % 3 === 2 ? "lg:col-span-2" : "lg:col-span-1"}`;
         return (
           <li key={item} className={`flex gap-3 bg-white p-4 sm:p-5 ${span}`}>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#fff0c9] text-[#8f5b00]"><BeginnerIcon name={guideIcon(item, "folder")} /></span>
+            {icons[index] && <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#fff0c9] text-[#8f5b00]"><BeginnerIcon name={icons[index]} /></span>}
             <span className="min-w-0 flex-1 text-[#43545f]">
               <Lead lead={lead} rest={rest} leadClassName="text-[#071826]" />
             </span>
@@ -122,17 +131,21 @@ function ChecklistTiles({ items }: { items: string[] }) {
 }
 
 /** 中国企业重点核对: numbered amber cards, one risk each. */
-function WatchCards({ items }: { items: string[] }) {
+function WatchCards({ items, icons }: { items: string[]; icons: GuideIconList }) {
   return (
     <ul className="grid gap-3 md:grid-cols-2">
       {items.map((item, index) => {
         const { lead, rest } = splitGuideLine(item);
         return (
           <li key={item} className="flex gap-3 rounded-xl border-l-4 border-[#e0a12a] bg-[#fff7e4] px-4 py-3.5 text-[#66562f] md:last:odd:col-span-2">
-            <span className="relative mt-0.5 h-fit shrink-0 text-[#b86e00]">
-              <BeginnerIcon name={guideIcon(item, "globe")} className="size-6" />
-              <span className="absolute -right-2 -top-2 flex size-4 items-center justify-center rounded-full bg-[#b86e00] font-mono text-[9px] font-black text-white">{index + 1}</span>
-            </span>
+            {icons[index] ? (
+              <span className="relative mt-0.5 h-fit shrink-0 text-[#b86e00]">
+                <BeginnerIcon name={icons[index]} className="size-6" />
+                <span className="absolute -right-2 -top-2 flex size-4 items-center justify-center rounded-full bg-[#b86e00] font-mono text-[9px] font-black text-white">{index + 1}</span>
+              </span>
+            ) : (
+              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#b86e00] font-mono text-[11px] font-black text-white">{index + 1}</span>
+            )}
             <Lead lead={lead} rest={rest} leadClassName="text-[#071826]" />
           </li>
         );
@@ -142,14 +155,14 @@ function WatchCards({ items }: { items: string[] }) {
 }
 
 /** Everything else (适用范围, 担保与异议 …): icon cards. */
-function InfoCards({ items, fallback }: { items: string[]; fallback: Parameters<typeof guideIcon>[1] }) {
+function InfoCards({ items, icons }: { items: string[]; icons: GuideIconList }) {
   return (
     <ul className={`grid gap-3 md:grid-cols-2 ${items.length === 3 ? "lg:grid-cols-3" : ""}`}>
-      {items.map((item) => {
+      {items.map((item, index) => {
         const { lead, rest } = splitGuideLine(item);
         return (
           <li key={item} className={`flex gap-3 rounded-xl border border-[#dbe2e5] bg-white p-4 text-[#43545f] ${items.length === 3 ? "md:last:odd:col-span-2 lg:last:odd:col-span-1" : "md:last:odd:col-span-2"}`}>
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#e6f0f4] text-[#1d5670]"><BeginnerIcon name={guideIcon(item, fallback)} /></span>
+            {icons[index] && <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#e6f0f4] text-[#1d5670]"><BeginnerIcon name={icons[index]} /></span>}
             <Lead lead={lead} rest={rest} leadClassName="text-[#071826]" />
           </li>
         );
@@ -160,20 +173,17 @@ function InfoCards({ items, fallback }: { items: string[]; fallback: Parameters<
 
 export function GuideNote({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex gap-3 rounded-xl bg-[#061b2b] px-4 py-3.5 text-sm leading-6 text-white/80 sm:px-5">
-      <BeginnerIcon name="lightbulb" className="mt-0.5 size-5 text-[#ffb21c]" />
-      <p>{children}</p>
-    </div>
+    <p className="rounded-xl border-l-4 border-[#ffb21c] bg-[#061b2b] px-4 py-3.5 text-sm leading-6 text-white/80 sm:px-5">{children}</p>
   );
 }
 
-export function GuideSectionBody({ section }: { section: GuideSection }) {
+export function GuideSectionBody({ section, icons = [] }: { section: GuideSection; icons?: GuideIconList }) {
   return (
     <>
       {section.intro && <p className="mt-3 text-sm leading-6 text-[#586873]">{section.intro}</p>}
       {section.steps && (
         <div className="mt-8">
-          <GuideStepFlow steps={section.steps} />
+          <GuideStepFlow steps={section.steps} icons={icons} />
         </div>
       )}
       {section.items && (
@@ -181,11 +191,11 @@ export function GuideSectionBody({ section }: { section: GuideSection }) {
           {section.id === "first-check" ? (
             <FieldCards items={section.items} />
           ) : section.id === "documents" ? (
-            <ChecklistTiles items={section.items} />
+            <ChecklistTiles items={section.items} icons={icons} />
           ) : section.id === "foreign" ? (
-            <WatchCards items={section.items} />
+            <WatchCards items={section.items} icons={icons} />
           ) : (
-            <InfoCards items={section.items} fallback={section.id === "guarantees" ? "guarantee" : "info"} />
+            <InfoCards items={section.items} icons={icons} />
           )}
         </div>
       )}

@@ -9,7 +9,7 @@ import { tenderLinksForGuide } from "@/lib/tender-links";
 import { countryKeyForGuide, countryPagePath } from "@/lib/country-pages";
 import { TenderLinkCards } from "@/components/tenders/TenderLinkCards";
 import { BEGINNER_GUIDE_PATH } from "@/lib/beginner-guide";
-import { guideFactIcon, guideSectionIcon } from "@/lib/guide-visuals";
+import { guidePageIcons, guideSectionIcon } from "@/lib/guide-visuals";
 import { BeginnerIcon } from "@/components/guides/BeginnerIcon";
 import { GuideSectionBody } from "@/components/guides/GuideVisuals";
 
@@ -51,6 +51,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
     ? tenderLinksForGuide(await getCachedTenderList(), { slug: guide.slug, countryKey })
     : { links: [], scope: "country" as const };
 
+  const icons = guidePageIcons(guide);
   const currentIndex = participationGuides.findIndex((item) => item.slug === guide.slug);
   const nextGuide = participationGuides[(currentIndex + 1) % participationGuides.length];
 
@@ -90,7 +91,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
           <nav aria-label="本页目录" className="mt-9 flex flex-wrap gap-2">
             {[{ id: "overview", title: "一图看懂" }, ...guide.sections, { id: "sources", title: "官方来源" }].map((section) => (
               <a key={section.id} href={`#${section.id}`} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/6 px-3.5 py-2 text-sm font-bold text-white/78 transition hover:border-[#ffb21c] hover:text-white">
-                <BeginnerIcon name={section.id === "overview" ? "eye" : section.id === "sources" ? "link" : guideSectionIcon(section.id)} className="size-4 text-[#ffb21c]" />
+                <BeginnerIcon name={section.id === "overview" ? "target" : section.id === "sources" ? "link" : guideSectionIcon(section.id)} className="size-4 text-[#ffb21c]" />
                 {section.title}
               </a>
             ))}
@@ -107,15 +108,17 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
               <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">{guide.platform} 是什么？</h2>
               <p className="mt-4 text-sm leading-7 text-[#52636e] sm:text-base sm:leading-8">{guide.whatIs}</p>
               <Link href={BEGINNER_GUIDE_PATH} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#fff0c9] px-3 py-1.5 text-xs font-black text-[#7a4c00] transition hover:bg-[#ffe3a0]">
-                <BeginnerIcon name="lightbulb" className="size-4" />第一次投拉美？先看新手入门 →
+                第一次投拉美？先看新手入门 →
               </Link>
             </div>
             <ul className="grid gap-3 sm:grid-cols-2">
               {[...guide.quickFacts, { label: "适合谁看", value: guide.audience }].map((fact, index) => (
                 <li key={fact.label} className={`flex gap-3 rounded-2xl p-4 ${index === 0 ? "bg-[#061b2b] text-white" : "border border-[#dbe2e5] bg-white"}`}>
-                  <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${index === 0 ? "bg-[#ffb21c]/14 text-[#ffb21c]" : "bg-[#fff0c9] text-[#8f5b00]"}`}>
-                    <BeginnerIcon name={fact.label === "适合谁看" ? "users" : guideFactIcon(fact.label)} />
-                  </span>
+                  {icons.facts[index] && (
+                    <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${index === 0 ? "bg-[#ffb21c]/14 text-[#ffb21c]" : "bg-[#fff0c9] text-[#8f5b00]"}`}>
+                      <BeginnerIcon name={icons.facts[index]} />
+                    </span>
+                  )}
                   <span className="min-w-0">
                     <span className={`block text-[11px] font-black uppercase tracking-[0.12em] ${index === 0 ? "text-white/55" : "text-[#8a969d]"}`}>{fact.label}</span>
                     <span className="mt-1 block text-sm font-black leading-6">{fact.value}</span>
@@ -132,7 +135,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#061b2b] text-[#ffb21c]"><BeginnerIcon name={guideSectionIcon(section.id)} className="size-[22px]" /></span>
               {section.title}
             </h2>
-            <GuideSectionBody section={section} />
+            <GuideSectionBody section={section} icons={icons.sections[section.id]} />
           </section>
         ))}
 
@@ -143,15 +146,13 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
           <div className="mt-6 grid gap-3 md:grid-cols-2">
             {guide.sources.map((source) => (
               <a key={source.href} href={source.href} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl border border-white/12 bg-white/6 px-4 py-3.5 text-sm font-bold transition hover:border-[#ffb21c] hover:bg-white/10">
-                <BeginnerIcon name="link" className="size-4 text-[#ffb21c]" />
                 <span className="min-w-0 flex-1">{source.label}</span>
                 <span className="shrink-0 text-[#ffb21c]">↗</span>
               </a>
             ))}
           </div>
           {/* The 重要说明 box, kept but folded down to a line at the foot of the sources. */}
-          <p className="mt-6 flex gap-2 border-t border-white/12 pt-5 text-xs leading-6 text-white/55">
-            <BeginnerIcon name="info" className="mt-1 size-4" />
+          <p className="mt-6 border-t border-white/12 pt-5 text-xs leading-6 text-white/55">
             本页帮助企业做前期准备，不代表采购方确认您具备资格。具体项目的公告、招标文件、附件、澄清答复及更正通知具有最终效力。
           </p>
         </section>

@@ -6,6 +6,7 @@ import type { DigestRecipient } from "@/lib/notifications/digest-recipients";
 import { countryLabel, industryLabel } from "@/lib/tender-labels";
 import { isStagedCountry } from "@/lib/staged-countries";
 import { isDueInSlot, recipientWindowStart, type DigestSlot } from "@/lib/notifications/digest-slot";
+import { PLAN_NAMES } from "@/lib/billing-catalog";
 
 export type DigestTender = {
   id: string;
@@ -289,6 +290,51 @@ function renderStatusRows(statusChanges: StatusChange[], appUrl: string, limited
   }).join("");
 }
 
+/**
+ * The free weekly roundup says what the reader is on and how to hear sooner
+ * (user, 2026-10-05: 周通知的邮件，要强调当前的账户类型，通知频率。如果要提升，
+ * 建议怎么做). Without it a free reader sees a week-old award and concludes the
+ * platform is slow, when paying readers had it the same day. Feature wording
+ * follows the pricing page (components/pricing/PricingPlans.tsx); times are
+ * the cron slots in vercel.json, in Mexico City and Beijing time.
+ */
+const WEEKLY_PLAN_FACTS: [string, string][] = [
+  ["当前账户", "免费版"],
+  ["通知频率", "每周 1 次，每周一 9:00 发送（墨西哥城时间；北京时间周一 23:00），汇总过去 7 天"],
+  ["本邮件范围", "隐藏项目名称、采购单位和编号；关键词条件不生效"],
+];
+
+const UPGRADE_OPTIONS: { name: string; recommended?: boolean; cadence: string; detail: string }[] = [
+  { name: PLAN_NAMES.basic, cadence: "每日 1 次提醒", detail: "选择 1 个国家，查看该国全部项目详情和标书分析" },
+  { name: PLAN_NAMES.professional, recommended: true, cadence: "每日 2 次提醒（墨西哥城 9:00、18:00）", detail: "全部国家完整中文详情，可自定义提醒关键词" },
+  { name: PLAN_NAMES.enterprise, cadence: "每日 2 次提醒，3 个账号各自设置", detail: "全部国家完整详情，另含每月行业分析报告" },
+];
+
+function renderWeeklyPlanNotice(pricingUrl: string): string {
+  const rows = WEEKLY_PLAN_FACTS.map(([label, value]) =>
+    `<tr><td style="width:84px;padding:4px 10px 4px 0;vertical-align:top;font-size:12px;font-weight:700;color:#8a5700">${label}</td><td style="padding:4px 0;font-size:13px;line-height:1.6;color:#071826">${escapeHtml(value)}</td></tr>`).join("");
+  return `<div style="margin:0 0 18px;border:1px solid #f3d38b;border-radius:12px;background:#fff7e3;padding:16px 18px">`
+    + `<div style="margin-bottom:7px;font-size:13px;font-weight:800;color:#071826">您的账户与通知频率</div>`
+    + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0">${rows}</table>`
+    + `<div style="margin-top:8px;font-size:12px;line-height:1.6;color:#64717c">付费版用户在项目入库后最快当天、最晚次日就会收到同样的提醒。<a href="${pricingUrl}" style="font-weight:700;color:#8a5700">了解如何更早收到 →</a></div>`
+    + `</div>`;
+}
+
+function renderUpgradeSection(pricingUrl: string): string {
+  const rows = UPGRADE_OPTIONS.map((option) =>
+    `<tr><td style="padding:12px 0;border-top:1px solid #e5e9eb;vertical-align:top">`
+      + `<div style="font-size:14px;font-weight:800;color:#071826">${escapeHtml(option.name)}${option.recommended ? ` <span style="display:inline-block;margin-left:4px;border-radius:999px;background:#ffb21c;padding:2px 8px;font-size:11px;color:#071826">推荐</span>` : ""}</div>`
+      + `<div style="margin-top:4px;font-size:13px;font-weight:700;color:#b86e00">${escapeHtml(option.cadence)}</div>`
+      + `<div style="margin-top:3px;font-size:13px;line-height:1.6;color:#64717c">${escapeHtml(option.detail)}</div>`
+      + `</td></tr>`).join("");
+  return `<div style="margin-top:28px;border:1px solid #dbe2e5;border-radius:14px;background:#fffdf9;padding:20px">`
+    + `<div style="font-size:18px;font-weight:800;color:#071826">想更早收到项目提醒？</div>`
+    + `<div style="margin-top:6px;margin-bottom:6px;font-size:13px;line-height:1.7;color:#64717c">升级后不用等到每周一：新项目和状态变化按天提醒，并显示完整项目名称、采购单位和编号。</div>`
+    + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0">${rows}</table>`
+    + `<a href="${pricingUrl}" style="display:inline-block;margin-top:8px;border-radius:9px;background:#061b2b;padding:11px 18px;font-size:13px;font-weight:800;text-decoration:none;color:#ffffff">查看订阅方案 →</a>`
+    + `</div>`;
+}
+
 /** The single source of truth used by both Resend delivery and the admin preview page. */
 /**
  * The plain-text half of the message.
@@ -317,7 +363,9 @@ function renderTenderDigestText(
       `  ${new URL(`/tenders/${tender.public_slug}`, appUrl).toString()}`,
     ].join("\n");
 
-  const blocks: string[] = ["您的招标动态", "以下内容符合您当前设置的通知条件。"];
+  const blocks: string[] = limited
+    ? ["您的每周招标汇总", "以下是过去 7 天符合您通知条件的项目。", WEEKLY_PLAN_FACTS.map(([label, value]) => `${label}：${value}`).join("\n")]
+    : ["您的招标动态", "以下内容符合您当前设置的通知条件。"];
   if (tenders.length > 0) {
     blocks.push(`新发布项目（${tenders.length} 个）`, tenders.map(line).join("\n\n"));
   }
@@ -325,6 +373,13 @@ function renderTenderDigestText(
     blocks.push(
       `项目状态更新（${statusChanges.length} 个）`,
       statusChanges.map((change) => `${line(change.tender)}\n  状态：${change.previousStatus} → ${change.nextStatus}`).join("\n\n"),
+    );
+  }
+  if (limited) {
+    blocks.push(
+      "想更早收到项目提醒？升级后不用等到每周一，并显示完整项目名称、采购单位和编号：",
+      UPGRADE_OPTIONS.map((option) => `- ${option.name}${option.recommended ? "（推荐）" : ""}：${option.cadence}；${option.detail}`).join("\n"),
+      `查看订阅方案：${new URL("/pricing", appUrl).toString()}`,
     );
   }
   blocks.push(
@@ -345,6 +400,7 @@ export function renderTenderDigestEmail(
     tenders.length > 0 ? `${tenders.length} 个新标` : "",
     statusChanges.length > 0 ? `${statusChanges.length} 项状态更新` : "",
   ].filter(Boolean).join("，") || "招标动态";
+  const pricingUrl = escapeHtml(new URL("/pricing", appUrl).toString());
   const settingsUrl = escapeHtml(new URL("/notifications", appUrl).toString());
   const tenderSection = tenders.length > 0
     ? `<h2 style="margin:0 0 14px;font-size:18px;color:#071826">新发布项目 <span style="display:inline-block;margin-left:6px;border-radius:999px;background:#fff0ca;padding:3px 9px;font-size:12px;color:#8a5700">${tenders.length} 个</span></h2><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${renderTenderRows(tenders, appUrl, limited)}</table>`
@@ -354,16 +410,18 @@ export function renderTenderDigestEmail(
     : "";
 
   return {
-    subject: `拉美招投标信息平台｜${subjectParts}`,
+    subject: `拉美招投标信息平台｜${limited ? "每周汇总：" : ""}${subjectParts}`,
     text: renderTenderDigestText(tenders, statusChanges, appUrl, limited),
     html: `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>`
       + `<body style="margin:0;background:#f4f1eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',Arial,sans-serif;color:#52636e">`
       + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:28px 14px;background:#f4f1eb"><tr><td align="center">`
       + `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;overflow:hidden;border-radius:18px;background:#ffffff">`
       + `<tr><td style="padding:28px 32px;background:#061b2b;color:#ffffff"><div style="font-size:12px;font-weight:800;letter-spacing:.18em;color:#ffb21c">TENDER ALERT</div><div style="margin-top:10px;font-size:23px;font-weight:800">拉美招投标信息平台</div><div style="margin-top:7px;font-size:13px;color:#a9b8bf">为您筛选值得关注的拉美政府采购机会</div></td></tr>`
-      + `<tr><td style="padding:30px 32px"><h1 style="margin:0;font-size:26px;line-height:1.4;color:#071826">您的招标动态</h1><p style="margin:10px 0 18px;font-size:15px;line-height:1.7;color:#64717c">以下内容符合您当前设置的通知条件。</p>`
+      + `<tr><td style="padding:30px 32px"><h1 style="margin:0;font-size:26px;line-height:1.4;color:#071826">${limited ? "您的每周招标汇总" : "您的招标动态"}</h1><p style="margin:10px 0 18px;font-size:15px;line-height:1.7;color:#64717c">${limited ? "以下是过去 7 天符合您通知条件的项目。" : "以下内容符合您当前设置的通知条件。"}</p>`
+      + (limited ? renderWeeklyPlanNotice(pricingUrl) : "")
       + `<div style="margin:0 0 28px;border-radius:12px;background:#f1f4f4;padding:16px 18px"><div style="margin-bottom:7px;font-size:13px;font-weight:800;color:#071826">当前通知设置</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${renderPreferenceSummary(preference)}</table></div>`
       + `${tenderSection}${statusSection}`
+      + (limited ? renderUpgradeSection(pricingUrl) : "")
       + `<div style="margin-top:26px;border-radius:12px;background:#f1f4f4;padding:16px;font-size:12px;line-height:1.7;color:#70808a">您可以随时前往 <a href="${settingsUrl}" style="font-weight:700;color:#24465a">通知设置</a> 调整条件或停止接收。</div>`
       + `</td></tr><tr><td style="border-top:1px solid #e5e9eb;padding:20px 32px;font-size:11px;color:#87949c">本邮件由 latintender.com 根据您的通知设置自动发送。</td></tr>`
       + `</table></td></tr></table></body></html>`,

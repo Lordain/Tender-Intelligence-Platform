@@ -18,7 +18,10 @@ export default async function AdminEmailPreviewPage() {
   // node_modules/next/dist/docs/.../route-segment-config/index.md.)
   await connection();
 
-  const preview = renderTenderDigestPreview();
+  const previews = [
+    { key: "paid", label: "付费用户（每日提醒）", preview: renderTenderDigestPreview() },
+    { key: "weekly", label: "免费用户（每周一汇总）", preview: renderTenderDigestPreview(true) },
+  ];
   const emailConfig = describeEmailConfig();
   const emailEnvironment = describeEmailEnvironment();
 
@@ -35,28 +38,32 @@ export default async function AdminEmailPreviewPage() {
 
       <EmailPreviewTestSender />
 
-      <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#78868e]">邮件标题</p>
-        <p className="mt-2 text-base font-black text-[#071826]">{preview.subject}</p>
-      </section>
+      {previews.map(({ key, label, preview }) => (
+        <div key={key} className="flex flex-col gap-6">
+          <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#78868e]">{label} · 邮件标题</p>
+            <p className="mt-2 text-base font-black text-[#071826]">{preview.subject}</p>
+          </section>
 
-      <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_430px]">
-        <section className="rounded-2xl border border-[#dbe2e5] bg-[#e8eceb] p-3 sm:p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-black text-[#071826]">桌面端</h2>
-            <span className="text-xs text-[#64717c]">640px 邮件宽度</span>
-          </div>
-          <iframe title="桌面端通知邮件预览" srcDoc={preview.html} sandbox="" className="h-[960px] w-full rounded-xl border border-[#cfd8dc] bg-white" />
-        </section>
+          <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_430px]">
+            <section className="rounded-2xl border border-[#dbe2e5] bg-[#e8eceb] p-3 sm:p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-black text-[#071826]">桌面端</h2>
+                <span className="text-xs text-[#64717c]">640px 邮件宽度</span>
+              </div>
+              <iframe title={`${label}：桌面端通知邮件预览`} srcDoc={preview.html} sandbox="" className="h-[960px] w-full rounded-xl border border-[#cfd8dc] bg-white" />
+            </section>
 
-        <section className="rounded-2xl border border-[#dbe2e5] bg-[#e8eceb] p-3 sm:p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-black text-[#071826]">手机端</h2>
-            <span className="text-xs text-[#64717c]">390px</span>
+            <section className="rounded-2xl border border-[#dbe2e5] bg-[#e8eceb] p-3 sm:p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-black text-[#071826]">手机端</h2>
+                <span className="text-xs text-[#64717c]">390px</span>
+              </div>
+              <iframe title={`${label}：手机端通知邮件预览`} srcDoc={preview.html} sandbox="" className="mx-auto h-[960px] w-full max-w-[390px] rounded-xl border border-[#cfd8dc] bg-white" />
+            </section>
           </div>
-          <iframe title="手机端通知邮件预览" srcDoc={preview.html} sandbox="" className="mx-auto h-[960px] w-full max-w-[390px] rounded-xl border border-[#cfd8dc] bg-white" />
-        </section>
-      </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -55,11 +55,15 @@ export const previewPreference: DigestPreferenceSummary = {
   keywords: ["轨道交通", "EPC", "供水"],
 };
 
-export function renderTenderDigestPreview() {
+/** `weekly` renders the free accounts' Monday roundup instead of the paid digest. */
+export function renderTenderDigestPreview(weekly = false) {
   return renderTenderDigestEmail(
     previewTenders,
     previewStatusChanges,
     process.env.APP_URL || "https://www.latintender.com",
-    previewPreference,
+    // The weekly roundup ignores keywords (digest-recipients.ts), so its
+    // settings box shows none.
+    weekly ? { ...previewPreference, keywords: [] } : previewPreference,
+    weekly,
   );
 }

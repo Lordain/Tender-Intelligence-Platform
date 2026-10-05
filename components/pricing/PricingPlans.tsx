@@ -39,15 +39,17 @@ const ICON_PATHS: Record<FeatureIcon, ReactNode> = {
 };
 
 /**
- * Three pages of the September report under 每月标准化行业分析报告, small, so
+ * Three pages of a sample 行业分析月报 under 每月标准化行业分析报告, small, so
  * the line shows what the report looks like rather than only naming it
- * (user, 2026-10-05: 增加小示意图…参考之前做的). Rendered from the report
- * cards published that month; each opens full size in a new tab.
+ * (user, 2026-10-05: 请你自己做更偏一个行业维度分析的标准化报告，放几张示意图).
+ * Built from the real September figures (503 tenders in five countries):
+ * industry × country, size structure by industry, and an industry focus.
+ * Each opens full size in a new tab.
  */
 const REPORT_SAMPLES = [
-  { id: "01", title: "常见资质要求" },
-  { id: "02", title: "常需提交的文件" },
-  { id: "03", title: "常见投标风险" },
+  { id: "01", title: "五国行业项目分布" },
+  { id: "02", title: "各行业项目规模结构" },
+  { id: "03", title: "行业聚焦：交通" },
 ];
 
 function ReportSamples() {
@@ -57,15 +59,15 @@ function ReportSamples() {
         {REPORT_SAMPLES.map((sample) => (
           <a
             key={sample.id}
-            href={`/pricing/report-${sample.id}.webp`}
+            href={`/pricing/industry-report-${sample.id}.webp`}
             target="_blank"
             rel="noopener noreferrer"
             title={`示例：${sample.title}（点击查看大图）`}
             className="group block overflow-hidden rounded-md border border-[#dbe2e5] bg-[#f7f4ee] shadow-[0_8px_18px_-14px_rgba(6,27,43,.55)] transition-transform hover:-translate-y-0.5 hover:border-[#b86e00]"
           >
             <Image
-              src={`/pricing/report-${sample.id}-thumb.webp`}
-              alt={`行业分析报告示例页：拉美招标${sample.title}`}
+              src={`/pricing/industry-report-${sample.id}-thumb.webp`}
+              alt={`行业分析月报示例页：${sample.title}`}
               width={360}
               height={480}
               sizes="88px"
@@ -74,7 +76,7 @@ function ReportSamples() {
           </a>
         ))}
       </div>
-      <p className="mt-1.5 text-[11px] leading-4 text-[#7a878f]">示例：2026 年 9 月拉美招标要求分析</p>
+      <p className="mt-1.5 text-[11px] leading-4 text-[#7a878f]">示例：2026 年 9 月拉美行业分析月报</p>
     </div>
   );
 }

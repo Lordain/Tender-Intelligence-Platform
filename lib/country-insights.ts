@@ -149,13 +149,16 @@ export const countryInsights: CountryInsightSummary[] = [
       "从2025—2028国家公共投资计划约4,441.83亿多米尼加比索出发，梳理交通、教育、供水、能源、城市基础设施及公私合作项目机会。",
     author: "拉美招投标指南针",
     readTime: "约 15 分钟",
-    heroImage: "/insights/dominican-republic-santo-domingo-metro.webp",
-    heroImageAlt: "多米尼加首都圣多明各都市区的高层建筑、道路与城市绿地",
+    // An infrastructure project rather than a skyline (user, 2026-10-05:
+    // 感觉Codex选的国家洞察图片不适合，请帮我选择适合的多米尼加工程项目图片替换):
+    // the Juan Bosch cable-stayed bridge and the Duarte bridge over the Ozama.
+    heroImage: "/insights/dominican-republic-ozama-bridges.webp",
+    heroImageAlt: "圣多明各奥萨马河上的胡安·博什（Juan Bosch）斜拉桥与胡安·巴勃罗·杜阿尔特（Juan Pablo Duarte）大桥航拍",
     heroImageCredit: {
-      author: "Desox7x（经裁切并压缩为 WebP）",
-      license: "CC BY-SA 4.0",
-      licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
-      sourceUrl: "https://commons.wikimedia.org/wiki/File:SantoDomingoMetro.jpg",
+      author: "Markocortesa2（经裁切并压缩为 WebP）",
+      license: "CC BY 4.0",
+      licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Puente_Juan_Bosch_y_Juan_Pablo_Duarte_desde_un_dron.jpg",
     },
     highlights: ["4,441.83亿比索（约73.2亿美元）四年规划投资", "约2,024个国家公共投资项目", "交通、教育和住房社区服务约占65.2%"],
   },

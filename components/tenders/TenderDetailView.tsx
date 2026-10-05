@@ -24,9 +24,12 @@ export function TenderDetailView({
   related,
   releasedNotice,
   lifecycle,
+  canExportWord = false,
 }: {
   tender: Tender;
   showTrialCta?: boolean;
+  /** Shows 导出 Word — canExportTenderDetail(), decided on the server. */
+  canExportWord?: boolean;
   participationGuide?: ParticipationGuideLink;
   /** 相关在招项目, rendered on the server and placed last on the page. */
   related?: ReactNode;
@@ -51,7 +54,7 @@ export function TenderDetailView({
 
       {releasedNotice && <ReleasedTenderNotice audience={releasedNotice} submissionDeadline={tender.submissionDeadline} status={tender.status} />}
 
-      <TenderOverview tender={tender} showTrialCta={showTrialCta} />
+      <TenderOverview tender={tender} showTrialCta={showTrialCta} canExportWord={canExportWord} />
 
       {lifecycle}
 

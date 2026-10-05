@@ -13,7 +13,7 @@
  * one before fixing it.
  */
 import {
-  canExportTenders,
+  canExportTenderDetail,
   canUseTenderListMemberFeatures,
   canViewCountry,
   canViewTenderProtectedContent,
@@ -122,12 +122,15 @@ const entitlement: ViewerEntitlement = {
 check("basic sees selected country", canViewCountry(entitlement, "Mexico"), true);
 check("basic cannot see other countries", canViewCountry(entitlement, "Brazil"), false);
 check("basic without a selection fails closed", canViewCountry({ ...entitlement, selectedCountry: null }, "Mexico"), false);
-check("basic cannot export", canExportTenders(entitlement), false);
 check("professional sees all countries", canViewCountry({ ...entitlement, plan: "professional" }, "Brazil"), true);
-check("professional can export", canExportTenders({ ...entitlement, plan: "professional" }), true);
-check("enterprise can export", canExportTenders({ ...entitlement, plan: "enterprise" }), true);
 check("trial sees all countries", canViewCountry({ ...entitlement, role: "trial", plan: null }, "Peru"), true);
-check("free cannot export", canExportTenders({ ...entitlement, role: "free", plan: null }), false);
+check("basic exports a detail page in its country", canExportTenderDetail(entitlement, "Mexico"), true);
+check("basic cannot export a detail page elsewhere", canExportTenderDetail(entitlement, "Brazil"), false);
+check("basic without a selection exports no detail page", canExportTenderDetail({ ...entitlement, selectedCountry: null }, "Mexico"), false);
+check("professional exports any detail page", canExportTenderDetail({ ...entitlement, plan: "professional" }, "Brazil"), true);
+check("enterprise exports any detail page", canExportTenderDetail({ ...entitlement, plan: "enterprise" }, "Peru"), true);
+check("trial cannot export a detail page", canExportTenderDetail({ ...entitlement, role: "trial", plan: null }, "Peru"), false);
+check("free cannot export a detail page", canExportTenderDetail({ ...entitlement, role: "free", plan: null }, "Peru"), false);
 check("submission_closed counts as closed for homepage selection", isClosedTender("submission_closed"), true);
 check("an open tender does not count as closed", isClosedTender("open"), false);
 

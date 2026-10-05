@@ -245,8 +245,18 @@ export function canViewCountry(entitlement: ViewerEntitlement, country: string):
   return entitlement.plan !== "basic" || entitlement.selectedCountry === country;
 }
 
-export function canExportTenders(entitlement: ViewerEntitlement): boolean {
-  return entitlement.role === "subscriber" && (entitlement.plan === "professional" || entitlement.plan === "enterprise");
+/**
+ * One tender's detail page as a Word file (/api/tenders/[slug]/docx): every
+ * paid plan, 基础个人版 only for the one country it covers (user, 2026-10-05:
+ * 专业个人版…可以导出项目详情页 / 专业企业版也支持 / 个人版也支持导出单个国家的
+ * 项目详情页). Not trial or free accounts. The project-list CSV export this
+ * used to sit beside is gone (user, 2026-10-05: 导出当前及历史项目清单 CSV ←
+ * 算了，把这个功能删除): it handed out the whole catalogue in one file.
+ */
+export function canExportTenderDetail(entitlement: ViewerEntitlement, country: string): boolean {
+  if (entitlement.role !== "subscriber") return false;
+  if (entitlement.plan === "basic") return entitlement.selectedCountry === country;
+  return entitlement.plan === "professional" || entitlement.plan === "enterprise";
 }
 
 export function tenderDetailPrompt(role: ViewerRole): AccessPromptKind {

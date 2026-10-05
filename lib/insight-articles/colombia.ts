@@ -1,0 +1,116 @@
+import type { InsightArticle } from "@/lib/insight-articles/types";
+
+export const colombiaInsight: InsightArticle = {
+  slug: "colombia",
+  countryEn: "Colombia",
+  countryPath: "/countries/colombia",
+  kicker: "Cross-cycle investment outlook",
+  headline: ["哥伦比亚国家洞察：", "交通重构、能源转型与区域机会"],
+  lede: "国家发展计划即将收官，但铁路、公路、电网、水务和数字连接的项目会跨过政府周期继续推进。看清阶段，才知道下一轮采购在哪。",
+  published: "2026-09-17",
+  modified: "2026-10-05",
+  stats: [
+    { label: "国家投资计划", value: "1,154.8万亿", unit: "哥伦比亚比索", usd: "约3,691亿美元", note: "2023—2026年多年投资计划总额" },
+    { label: "交通战略组合", value: "321.3万亿", unit: "哥伦比亚比索", usd: "约1,027亿美元", note: "铁路、公路、机场、港口跨周期路线图" },
+    { label: "已获CONPES优先", value: "38.6万亿", unit: "哥伦比亚比索", usd: "约123亿美元", note: "有政策文件支持推进的交通项目" },
+    { label: "道路特许经营", value: "36", unit: "个项目", note: "30个4G项目和6个5G项目" },
+  ],
+  basis: "1,154.8万亿比索是2023—2026年全领域投资计划（2022年不变价），并非都用于基础设施；321.3万亿比索是2025年公布、延伸到2055年的交通组合。远期路线图不等于已批预算。",
+  overview: {
+    title: "值得跟踪的是跨政府周期的项目管线",
+    points: [
+      { lead: "国家计划给方向，不是工程预算", text: "1,154.8万亿比索分配到社会保障、区域融合、生产转型、气候行动、水资源和粮食安全等领域。" },
+      { lead: "专项路线图更可操作", text: "铁路复兴、公路特许经营、港口河运、输电扩张、水务资金和偏远地区数字连接，周期多延伸到2030年后。" },
+      { lead: "先认阶段再定动作", text: "政策设想、预可研、可研、CONPES优先、预算承诺、招标、建设和运维，各对应不同的进入方式。" },
+    ],
+  },
+  sectors: {
+    title: "交通路线图中，铁路占八成以上",
+    intro: "交通部2025年公布的321.3万亿比索组合。各方向实施期不同，金额是路线图规模，不是一次到位的资金。",
+    shares: true,
+    bars: [
+      { name: "铁路复兴", value: 85.99, tag: "2026—2055", amount: "276.3万亿比索 · 约883亿美元", color: "bg-[#0f8b72]" },
+      { name: "和平公路", value: 5.66, tag: "2026—2035", amount: "18.2万亿比索 · 约58.2亿美元", color: "bg-[#d89416]" },
+      { name: "Zipaquirá区域铁路", value: 5.29, tag: "2027—2039", amount: "17万亿比索 · 约54.3亿美元", color: "bg-[#48a7a0]" },
+      { name: "机场基础设施", value: 1.37, tag: "2026—2030", amount: "4.4万亿比索 · 约14.1亿美元", color: "bg-[#6f87c9]" },
+      { name: "河运与港口", value: 1.29, tag: "跨周期", amount: "4.13万亿比索 · 约13.2亿美元", color: "bg-[#df6f52]" },
+      { name: "公共交通电动化", value: 0.4, tag: "2026—2043", amount: "1.28万亿比索 · 约4.09亿美元", color: "bg-[#8f73bd]" },
+    ],
+    takeaways: [
+      { lead: "公路转向收尾与运营", text: "4G逐步进入运维，5G仍在建，机会从土建转向机电、养护和服务。" },
+      { lead: "铁路回到长期主线", text: "金额占约86%，但多数还在研究和结构化阶段，要提前跟踪而非等招标。" },
+      { lead: "偏远地区组合采购", text: "港口、河运、电网、数字和水务在偏远地区叠加；单项合同小，但连续性强。" },
+    ],
+  },
+  pipeline: {
+    title: "已经能看到的六个工程方向",
+    items: [
+      { icon: "rail", title: "铁路与多式联运", text: "跨洋铁路、Villavicencio—Puerto Gaitán、Buenaventura—Palmira、La Tebaida—La Dorada、Bogotá—Belencito等走廊，阶段从预可研到既有线恢复不等。" },
+      { icon: "road", title: "公路特许经营", figure: "4G执行率93.32% · 5G 27.68%", text: "截至2026年9月：30个4G项目中17个已进入运维；6个5G项目投资约16.71万亿比索（约53.4亿美元）。" },
+      { icon: "port", title: "港口、河运与跨洋走廊", text: "Buenaventura、Barranquilla、加勒比港口和Magdalena河航运；含Chocó跨洋铁路、疏浚、码头和集疏运，需多方协调。" },
+      { icon: "energy", title: "输电、新能源与电气化", text: "矿能部已采用2025—2039输电扩张计划；输电线路、变电站、并网、储能和非互联地区供电，加勒比风光送出尤其值得跟踪。" },
+      { icon: "water", title: "水务与环境", figure: "46个项目 · 国家出资3.5万亿比索", text: "以2026—2035年跨年度预算支持（约11.2亿美元），覆盖18个省、42个市镇；采购方有部委、省市、公用事业和专项基金。" },
+      { icon: "digital", title: "数字连接与偏远覆盖", text: "Amazonía光纤及太平洋、Urabá、La Guajira宽带项目；常用专项基金和多年期服务合同，与土建采购逻辑不同。" },
+    ],
+  },
+  regions: {
+    title: "四类区域，采购逻辑并不相同",
+    map: {
+      src: "/insights/colombia-infrastructure-regions.webp",
+      width: 1600,
+      height: 900,
+      alt: "哥伦比亚四类重点基础设施投资区域示意图：加勒比与北部能源物流带、中部安第斯与首都经济圈、太平洋与西南走廊、Orinoquía—Amazonía连接区",
+      caption: "区域和走廊仅表达重点投资方向，不代表具体项目线路、项目边界或已获批准的投资范围。",
+    },
+    items: [
+      { color: "bg-[#d9a62e]", title: "加勒比与北部能源物流带", places: "La Guajira、Atlántico、Bolívar、Magdalena、Cesar、Córdoba、Sucre", focus: "风光送出、电网扩建、港口、Magdalena河航运、机场和铁路连接；两条主线是La Guajira能源和Barranquilla—Cartagena港口工业。" },
+      { color: "bg-[#0f8b72]", title: "中部安第斯与首都经济圈", places: "Bogotá D.C.、Cundinamarca、Boyacá、Santander、Antioquia、Tolima、Caldas、Risaralda、Quindío", focus: "区域铁路、城市交通、干线公路、输变电、机场扩容、工业和水务；金额大，但发包主体和层级最复杂。" },
+      { color: "bg-[#df6f52]", title: "太平洋与西南走廊", places: "Chocó、Valle del Cauca、Cauca、Nariño", focus: "Buenaventura港、跨洋铁路前期研究、Pasto走廊、和平公路、水务与数字连接；地形、环评和社区协商影响工期成本。" },
+      { color: "bg-[#6f78c9]", title: "Orinoquía—Amazonía连接区", places: "Meta、Casanare、Arauca、Guaviare、Putumayo、Caquetá、Amazonas", focus: "Villavicencio—Puerto Gaitán铁路研究、河运、偏远电力、Amazonía光纤、水务和公共服务；对离网方案和本地服务要求更高。" },
+    ],
+    note: "中部项目更成熟、竞争更充分；边远地区更需要专业技术，也更依赖物流、社区沟通、环评和本地履约能力。",
+  },
+  opportunities: {
+    title: "中国企业可以从哪些位置进入？",
+    intro: "大型特许经营不是唯一入口。设备供货、专项工程、可研设计、运维和技术合作更适合初次进入的企业。",
+    items: [
+      { sector: "铁路与城市轨道", scope: ["可研设计", "轨道", "桥隧", "信号通信", "车辆", "站场", "施工设备"], buyers: "交通部、ANI、地方政府、区域交通项目主体" },
+      { sector: "公路与特许经营", scope: ["桥梁隧道", "路面", "机电", "收费系统", "养护", "运营设备"], buyers: "ANI、INVÍAS、省市政府及特许经营公司" },
+      { sector: "港口与河运", scope: ["疏浚", "码头", "装卸", "航道维护", "仓储", "集疏运"], buyers: "交通部、ANI、Cormagdalena、港口公司" },
+      { sector: "能源与电网", scope: ["光伏风电", "储能", "输变电", "微网", "监控保护", "工程服务"], buyers: "矿能部、UPME、公用事业公司和项目开发商" },
+      { sector: "水务与环境", scope: ["供水", "污水处理", "泵站", "管网", "固废", "流域治理"], buyers: "住房部、Findeter、地方政府及公用事业公司" },
+      { sector: "数字基础设施", scope: ["光纤", "无线接入", "数据设备", "偏远地区连接", "长期运维"], buyers: "MinTIC、Fondo Único TIC、地方政府与运营商" },
+      { sector: "再工业化与本地供应链", scope: ["设备制造", "技术转移", "工业园区", "医疗与国防产业合作"], buyers: "MinCIT、Colombia Productiva、国有和私营龙头企业" },
+    ],
+  },
+  entry: {
+    title: "把国家方向变成可执行动作",
+    steps: [
+      { title: "先分项目阶段", detail: "路线图、预可研、可研、CONPES、已招标和在建分开管理，别把远期构想当近期商机。" },
+      { title: "画采购主体地图", detail: "中央有ANI、INVÍAS、UPME、MinTIC；地方还有省市、公用事业和项目主体。" },
+      { title: "熟悉SECOP与专项平台", detail: "公开采购多在SECOP；特许经营、国企和地方公用事业可能有自己的入口。" },
+      { title: "合规算进成本", detail: "税务、劳动、环保、社区协商、进口、保函和西语文件，影响报价和工期。" },
+      { title: "找互补型伙伴", detail: "当地设计院、施工商、运营商可补足资质、业绩、关系和售后覆盖。" },
+    ],
+    guides: [
+      { href: "/guides/colombia-secop-ii", label: "查看SECOP II参标指南" },
+      { href: "/guides/colombia-upme", label: "查看UPME参标指南" },
+    ],
+  },
+  sources: {
+    intro: "优先采用DNP、交通部、ANI、矿能部、住房部、MinTIC、MinCIT和金融监管局公开资料。规划跨越多个政府周期，金额、阶段和实施方案以主管机构后续文件为准。",
+    items: [
+      { label: "DNP：国家发展计划2022—2026", href: "https://www.dnp.gov.co/plan-nacional-desarrollo/pnd-2022-2026", note: "国家发展计划、五大转型与多年投资计划入口。" },
+      { label: "DNP：多年投资计划法案说明", href: "https://colaboracion.dnp.gov.co/CDT/portalDNP/PND-2023/05022023_Exposicion-de-motivos-PND-2022-2026.pdf", note: "1,154.8万亿比索总额及分配，按2022年不变价。" },
+      { label: "交通部：跨周期交通投资路线图", href: "https://mintransporte.gov.co/publicaciones/12195/la-hoja-de-ruta-del-gobierno-del-cambio-proyecta-inversiones-en-transporte-5-veces-superiores-a-las-vias-4g/", note: "321.3万亿比索交通组合、六个方向及时间跨度。" },
+      { label: "ANI：4G和5G项目进度", href: "https://www.ani.gov.co/w/la-ani-lleva-los-proyectos-4g-al-93-32-de-ejecuci%C3%B3n-con-inversiones-por-67-23-billones", note: "30个4G、6个5G项目及执行进度（2026年9月14日发布）。" },
+      { label: "交通部：跨洋铁路走廊可研", href: "https://mintransporte.gov.co/publicaciones/12352/colombia-avanza-hacia-la-factibilidad-del-corredor-ferreo-interoceanico-una-apuesta-estrategica-para-conectar-el-pacifico-y-el-caribe/", note: "222.3公里Chocó跨洋铁路及两端港口的研究阶段。" },
+      { label: "矿能部：输电扩张计划", href: "https://minenergia.gov.co/es/misional/energia-electrica-2/planes-expansion/", note: "2025—2039输电扩张计划及历史计划。" },
+      { label: "住房部：2025年度问责报告（水务重点项目）", href: "https://minvivienda.gov.co/sites/default/files/2025-11/20251119_informe_de_rendicion_de_cuentas_2025_vf.pdf", note: "46个项目、18个省、42个市镇；国家出资3.5万亿比索，2026—2035年跨年度预算。" },
+      { label: "MinTIC：Amazonía光纤计划", href: "https://www.mintic.gov.co/portal/715/w3-article-438101.html", note: "Amazonas与Putumayo的光纤节点和区域连接。" },
+      { label: "MinCIT：国家再工业化政策", href: "https://www.mincit.gov.co/prensa/noticias/industria/gobierno-se-articula-y-avanza-reindustrializacion", note: "健康、农业食品、国防、绿色工业和技术能力方向。" },
+      { label: "哥伦比亚金融监管局：TRM", href: "https://www.superfinanciera.gov.co/CargaDriver/", note: "2026年9月17日：1美元＝3,128.46哥伦比亚比索。" },
+    ],
+    fx: "按2026年9月17日TRM 1美元＝3,128.46哥伦比亚比索换算，仅用于理解量级，不构成报价或财务依据。",
+  },
+};

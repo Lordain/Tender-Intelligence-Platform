@@ -1,0 +1,131 @@
+import type { InsightArticle } from "@/lib/insight-articles/types";
+
+export const argentinaInsight: InsightArticle = {
+  slug: "argentina",
+  countryEn: "Argentina",
+  countryPath: "/countries/argentina",
+  kicker: "Infrastructure & procurement outlook",
+  headline: ["阿根廷国家洞察：", "2026—2028公共投资与长期战略项目机会"],
+  lede: "从三年公共投资计划、30年大型投资激励制度和分阶段特许经营出发，看能源、交通、矿业与公用事业的长期方向。",
+  published: "2026-09-29",
+  modified: "2026-10-05",
+  stats: [
+    { label: "2026—2028列示投资", value: "9.53万亿", unit: "阿根廷比索", usd: "约63.3亿美元", note: "含2027、2028年规划预算" },
+    { label: "公共投资项目", value: "1,164", unit: "个", note: "国家公共投资项目池" },
+    { label: "三年交通投入", value: "3.07万亿", unit: "阿根廷比索", note: "含公路与其他运输功能" },
+    { label: "三年能源投入", value: "2.23万亿", unit: "阿根廷比索", note: "能源、燃料与矿业功能" },
+  ],
+  basis: "2026年为年度预算，2027、2028年为规划预算；美元按2026年9月15日汇率静态折算。实际采购金额以项目公告和招标文件为准。",
+  overview: {
+    title: "三年约9.53万亿比索，覆盖1,164个项目",
+    points: [
+      { lead: "交通与能源占55.7%", text: "交通运输约3.07万亿、能源燃料与矿业约2.23万亿比索，值得优先核对项目清单和采购进度。" },
+      { lead: "项目不等于标段", text: "一个项目可能拆成多个采购，也可能还在规划阶段。" },
+      { lead: "不全是工程订单", text: "附表含转移支付、金融应用和国防等，不能把全部金额看作向工程企业开放的订单。" },
+    ],
+    years: {
+      title: "国家公共投资计划 · 逐年列示",
+      items: [
+        { year: "2026", value: 3.79, amount: "3.79万亿", status: "年度预算" },
+        { year: "2027", value: 3.89, amount: "3.89万亿", status: "规划预算" },
+        { year: "2028", value: 1.85, amount: "1.85万亿", status: "规划预算" },
+      ],
+    },
+  },
+  sectors: {
+    title: "2026—2028年投入：交通与能源为主",
+    intro: "含2026年年度预算及2027、2028年规划预算，用于看三年资金方向。",
+    shares: true,
+    bars: [
+      { name: "交通运输（含公路与铁路）", value: 32.3, tag: "32.3%", amount: "约3.07万亿比索", color: "bg-[#59a8d8]" },
+      { name: "能源、燃料与矿业", value: 23.4, tag: "23.4%", amount: "约2.23万亿比索", color: "bg-[#d9a23a]" },
+      { name: "供水与排污", value: 8.8, tag: "8.8%", amount: "约0.84万亿比索", color: "bg-[#5aa8ba]" },
+      { name: "科技与创新", value: 4.5, tag: "4.5%", amount: "约0.43万亿比索", color: "bg-[#67a98d]" },
+      { name: "其他功能及金融应用", value: 31.0, tag: "31.0%", amount: "约2.95万亿比索", color: "bg-[#b5bfc4]" },
+    ],
+  },
+  strategy: {
+    nav: "长期主线",
+    title: "三年预算之外，四条长期主线继续出项目",
+    intro: "以下制度和特许经营补充公共投资计划以外的机会，口径不能与它直接相加。",
+    items: [
+      { tag: "2026—2028", title: "国家公共投资计划", text: "1,164个项目、三年约9.53万亿比索：交通约3.07万亿，能源燃料与矿业约2.23万亿，供排水约0.84万亿。" },
+      { tag: "30年稳定期", title: "大型投资激励制度", text: "面向能源、油气、矿业和基础设施，给获批项目30年税务、海关、外汇和监管稳定。批准金额是私人投资，不是政府采购。" },
+      { tag: "分阶段实施", title: "国家战略网络特许经营", text: "联邦公路特许经营目标覆盖9,000多公里战略国道；输电扩建列出16项工程、5,610公里500千伏线路。" },
+      { tag: "滚动管线", title: "铁路、港航与公用事业", text: "铁路更新、Paraná—Paraguay水道、港口集疏运和AySA供排水，由不同主管机关和国企分别推进。" },
+    ],
+  },
+  pipeline: {
+    title: "值得持续跟踪的五类项目方向",
+    items: [
+      { icon: "energy", title: "输电扩建与能源配套", figure: "16项工程 · 5,610公里500千伏", text: "官方估算投资超过66亿美元；AMBA一期已启动国际、多阶段特许经营招标。油气、锂和新能源还带动变电站、管线和营地采购。" },
+      { icon: "mine", title: "锂、Vaca Muerta与大型投资", figure: "16个获批项目 · 298.92亿美元", text: "截至2026年6月的大型投资激励制度。Vaca Muerta是Neuquén盆地的页岩油气核心区；机会覆盖工程、供电供水、管线、道路和长期服务。" },
+      { icon: "rail", title: "铁路更新与运营重构", text: "2026年预算给国家铁路基础设施公司列示2,000亿比索、国家铁路运营公司2,038.62亿比索资本转移；采购线路、信号、电气化和车辆设施。" },
+      { icon: "road", title: "国家公路与路网维护", text: "联邦公路特许经营网络分阶段推进；国家公路局还按路线采购路面恢复、桥涵、安全设施和养护服务。" },
+      { icon: "port", title: "港航、水务与城市服务", text: "Paraná—Paraguay水道和港口带来疏浚、导航监测和码头需求；三年供排水约0.84万亿比索，覆盖管网、泵站和处理设施。" },
+    ],
+  },
+  regions: {
+    title: "四类业务观察区，项目逻辑不同",
+    map: {
+      src: "/insights/argentina-infrastructure-regions.webp",
+      width: 1600,
+      height: 900,
+      alt: "阿根廷四类基础设施机会区域示意图：西北与库约资源带、东北与Litoral物流带、中部都市与Pampas核心区、Patagonia能源与连接区",
+      caption: "按省份和主要产业链归纳的业务观察区，不代表行政边界、项目准确位置、投资范围或政治立场。",
+    },
+    items: [
+      { color: "bg-[#d9a23a]", title: "西北与库约资源带", places: "Jujuy、Salta、Catamarca、La Rioja、San Juan、Mendoza", focus: "锂、铜、油气和新能源带动矿区道路、输电、供水和营地；高海拔、缺水、跨省许可和社区关系影响成本。" },
+      { color: "bg-[#59a8d8]", title: "东北与Litoral物流带", places: "Misiones、Corrientes、Chaco、Formosa、Entre Ríos、Santa Fe", focus: "水电、林农产业、铁路、公路、港口和Paraná—Paraguay水道相连；同步跟踪港航运营方、铁路和省级项目。" },
+      { color: "bg-[#c85c43]", title: "中部都市与Pampas核心区", places: "Buenos Aires、CABA、Córdoba、Santa Fe、La Pampa、San Luis", focus: "AMBA输电、城市水务、干线公路、铁路、港口和公共建筑最集中；国家、省、市和特许经营主体常常并行。" },
+      { color: "bg-[#7b63a8]", title: "Patagonia能源与连接区", places: "Neuquén、Río Negro、Chubut、Santa Cruz、Tierra del Fuego", focus: "Vaca Muerta油气、风电、输电、管线、港口和长距离交通；偏远物流、气候、营地和运维能力是报价关键。" },
+    ],
+    note: "阿根廷是联邦制国家：省、市、国企和项目公司可能各用独立采购入口，本地税务、专业签字和许可要逐省核对。",
+  },
+  opportunities: {
+    title: "中国企业可关注的潜在项目机会",
+    intro: "直接投标、组联合体、进入特许经营或总包供应链，门槛各不相同；以每项最新文件为准。",
+    items: [
+      { sector: "电网与能源", scope: ["500千伏线路", "变电站", "保护控制", "储能", "油气与矿区供电"], buyers: "能源秘书处、CAMMESA、特许经营项目公司、能源与矿业业主" },
+      { sector: "铁路与交通", scope: ["轨道", "道岔", "信号通信", "牵引供电", "车站", "车辆设施", "维护"], buyers: "ADIF、铁路运营主体、交通秘书处及中标承包商" },
+      { sector: "公路与工程", scope: ["路面恢复", "桥涵", "收费与智能交通", "安全设施", "施工设备", "养护"], buyers: "Vialidad Nacional、省级公路部门、特许经营公司" },
+      { sector: "矿业与油气", scope: ["矿山与油田工程", "管线", "泵阀", "自动化", "水处理", "营地和物流"], buyers: "大型投资激励制度项目业主、矿业与油气公司、工程总承包商" },
+      { sector: "港航与水务", scope: ["疏浚", "导航监测", "码头设备", "供排水管网", "泵站与处理设施"], buyers: "港航主管机关、港口和水道运营方、AySA及地方公用事业" },
+    ],
+  },
+  entry: {
+    title: "把市场方向转成参标动作",
+    steps: [
+      { title: "分清发布入口", detail: "货物服务看COMPR.AR，工程与特许经营看CONTRAT.AR，铁路看ADIF门户，省级项目另行跟踪。" },
+      { title: "把阶段写进清单", detail: "预算、激励制度批准、规划、公告、投标、授标、建设分开标注，别把投资新闻当采购通知。" },
+      { title: "下载最新完整标书", detail: "境外资格、澄清、担保、币种、调价、税费、付款和本地履约条件。" },
+      { title: "选参与结构", detail: "门槛过高时评估联合体、当地代表、设备供货或分包，但不预设都要本地合作。" },
+    ],
+    guides: [
+      { href: "/guides/argentina-comprar", label: "查看COMPR.AR参标指南" },
+      { href: "/guides/argentina-contratar", label: "查看CONTRAT.AR参标指南" },
+      { href: "/guides/argentina-adif", label: "查看ADIF参标指南" },
+    ],
+  },
+  sources: {
+    intro: "优先采用阿根廷内阁办公室、经济部、能源秘书处、交通秘书处、国家公路局、CAMMESA、ADIF及中央银行公开资料。金额和项目状态会变化，参与前请回到原文件核对。",
+    items: [
+      { label: "国家公共投资计划2026—2028", href: "https://www.argentina.gob.ar/sites/default/files/pnip_2026-2028.pdf", note: "三年滚动公共投资框架、重点行业、地区与主要项目。" },
+      { label: "国家公共投资计划统计附表（附件一）", href: "https://www.argentina.gob.ar/sites/default/files/anexos_pnip_2026-2028_0.xlsx", note: "逐项目的年度和规划预算；三年合计和行业金额据此计算。" },
+      { label: "国家公共投资计划优先级规则", href: "https://www.argentina.gob.ar/normativa/nacional/resoluci%C3%B3n-18-2025-412107/texto", note: "已开工、就业、出口、能源平衡等项目优先。" },
+      { label: "2026年国家预算法第27.798号法律", href: "https://www.argentina.gob.ar/normativa/nacional/ley-27798-422000/texto", note: "核对计划第一年的正式预算落地。" },
+      { label: "国家公共投资项目数据库（2026预算）", href: "https://www.argentina.gob.ar/jefatura/presupuestaria/inversion-publica/consulta-de-proyectos-y-seguimiento-de-ejecucion/proyectos", note: "按省份、机关、状态和金额核对具体项目。" },
+      { label: "经济部：大型投资激励制度项目进展", href: "https://www.argentina.gob.ar/node/504545", note: "截至2026年6月16个已批准项目、298.92亿美元。" },
+      { label: "大型投资激励制度法律框架（第27.742号法律）", href: "https://www.argentina.gob.ar/normativa/nacional/ley-27742-401266/texto", note: "适用行业、投资条件及30年稳定期。" },
+      { label: "能源部门：国家输电扩建计划与AMBA I", href: "https://www.argentina.gob.ar/node/510027", note: "16项工程、5,610公里500千伏线路、超过66亿美元。" },
+      { label: "Resolución 202/2026：AMBA I特许经营招标", href: "https://www.argentina.gob.ar/normativa/nacional/norma-428810", note: "国际、多阶段公开招标的法律与采购口径。" },
+      { label: "国家铁路基础设施公司招标门户", href: "https://plataforma.adifsa.com.ar/portal_licitaciones", note: "线路、车站、信号与配套项目的正式文件。" },
+      { label: "Red Federal de Concesiones：联邦公路特许经营网络", href: "https://www.argentina.gob.ar/transporte/vialidad-nacional/red-federal-de-concesiones", note: "超过9,000公里战略国道及各阶段路段。" },
+      { label: "铁路紧急行动计划进展", href: "https://www.argentina.gob.ar/noticias/avanza-el-plan-de-accion-de-la-emergencia-ferroviaria", note: "轨道、信号、车辆和关键设施的更新方向。" },
+      { label: "政府公告：Hidrovía特许经营进展", href: "https://www.argentina.gob.ar/noticias/avanza-el-proceso-de-licitacion-de-la-hidrovia-se-evaluaron-las-ofertas-de-la-etapa-1", note: "水道特许经营的评审阶段，不代表下游合同已发布。" },
+      { label: "阿根廷水务公司2026行动计划与预算", href: "https://www.argentina.gob.ar/normativa/nacional/resoluci%C3%B3n-495-2026-424845/texto", note: "供排水运营、维护和投资的预算依据。" },
+      { label: "阿根廷中央银行参考汇率", href: "https://www.bcra.gob.ar/principales-variables/", note: "2026年9月15日：1美元＝1,506.6836阿根廷比索。" },
+    ],
+    fx: "按2026年9月15日1美元＝1,506.6836阿根廷比索静态折算，不代表未来年度的官方美元预算。",
+  },
+};

@@ -11,8 +11,10 @@ export { ENERGY_AUCTIONS_SOURCE_NAME };
  * auction for 2,835 GWh a year, 700 MW of batteries in one call — and none of
  * them is on a procurement portal the importers read: Chile's CNE, Argentina's
  * Secretaría de Energía with CAMMESA, Colombia's Ministerio de Minas y
- * Energía with the Bolsa Mercantil each run their own process a few times a
- * year. So each auction is one record here, written by the daily job
+ * Energía with the Bolsa Mercantil, the Dominican Republic's three
+ * distribution companies through their Consejo Unificado (CUED, portal
+ * compraenergia.do — not the DGCP, which carries none of them) each run their
+ * own process a few times a year. So each auction is one record here, written by the daily job
  * (scripts/cron-energy-auctions.ts) and refreshed in place when a record
  * changes.
  *
@@ -39,7 +41,7 @@ export { ENERGY_AUCTIONS_SOURCE_NAME };
 type EnergyAuction = {
   slug: string;
   tenderNumber: string;
-  country: "Chile" | "Argentina" | "Colombia";
+  country: "Chile" | "Argentina" | "Colombia" | "Dominican Republic";
   buyer: string;
   title: LocalizedText;
   summary: LocalizedText;
@@ -212,6 +214,67 @@ export const ENERGY_AUCTIONS: readonly EnergyAuction[] = [
       "https://minenergia.gov.co/es/sala-de-prensa/noticias-index/minenergia-lanzo-la-subasta-de-energias-limpias-y-almacenamiento-acelerando-la-transicion-en-el-pais/",
       "https://www.pv-magazine.com/2026/07/31/colombia-awards-725-mw-of-solar-on-second-day-of-green-energy-auction/",
       "https://www.enerdata.net/publications/daily-energy-news/colombia-awards-1-gw-solar-capacity-and-100-mw-bess-latest-auction.html",
+    ],
+  },
+  {
+    slug: "energia-dominicana-edes-lp-ngr-01-2025",
+    tenderNumber: "EDES-LP-NGR-01-2025",
+    country: "Dominican Republic",
+    buyer: "Edenorte, Edesur y Edeeste — Consejo Unificado de las Empresas Distribuidoras (CUED)",
+    title: {
+      zh: "多米尼加 600 MW 新能源+储能长期购电招标（EDES-LP-NGR-01-2025，已签约 325.69 MW）",
+      es: "Licitación Pública para Nueva Generación Renovable de hasta 600 MW con almacenamiento, EDES-LP-NGR-01-2025 — adjudicada",
+      en: "Dominican Republic 600 MW renewables-plus-storage long-term PPA tender, EDES-LP-NGR-01-2025 — awarded",
+    },
+    summary: {
+      zh: "多米尼加三家国有配电公司（Edenorte、Edesur、Edeeste）通过配电公司统一委员会（CUED）组织、电力监管局（SIE）监督的长期购电招标，仅限新建「光伏+储能」或「风电+储能」项目，单个项目 20–300 MW，总规模最高 600 MW，合同期 180 个月，签约后 24 个月内开始供电。2025 年 8 月 14 日发布，2026 年 2 月 20 日接收报价，4 月 8 日开启 20 份经济报价，共 32 家企业参与。2026 年 6 月 CUED 公布签约结果：共 325.69 MW，配 50% 电池储能，电价约 0.1060–0.1090 美元/千瓦时；签约方为 Parque Taíno（84.70 MW）、Galileo Energía 的 Batoncillo 光伏（44.20 MW）、Mella Solar Power（99.00 MW）、EGE Haina 的 Esperanza 风电（49.50 MW）和 Esperanza 光伏（48.28 MW），预计 2028 年 6 月起并网。投标方须为在多米尼加设立的企业；中国光伏组件、储能设备厂商和 EPC 可通过为中标项目供货或承建参与。",
+      es: "Licitación de las distribuidoras Edenorte, Edesur y Edeeste, dirigida por el Consejo Unificado de las Empresas Distribuidoras (CUED) bajo supervisión de la Superintendencia de Electricidad, para contratos de largo plazo con nueva generación eólica o solar fotovoltaica con almacenamiento, de 20 a 300 MW por proyecto y hasta 600 MW en total; contratos de 180 meses con inicio dentro de 24 meses desde la firma. Aviso del 14 de agosto de 2025; recepción de ofertas el 20 de febrero de 2026; apertura de 20 ofertas económicas el 8 de abril de 2026, con 32 empresas participantes. En junio de 2026 el CUED suscribió contratos por 325,69 MW con respaldo del 50 % en baterías, a precios de entre 0,1060 y 0,1090 US$/kWh: Parque Taíno (84,70 MW), Galileo Energía — Parque Solar Batoncillo (44,20 MW), Mella Solar Power (99,00 MW) y EGE Haina — Esperanza Eólico (49,50 MW) y Esperanza Solar (48,28 MW). Entrada prevista a partir de junio de 2028.",
+      en: "A long-term PPA tender by the distribution companies Edenorte, Edesur and Edeeste, run by their Unified Council (CUED) under the Electricity Superintendency's supervision, for new wind or solar PV generation with storage, 20–300 MW per project and up to 600 MW in all; 180-month contracts starting within 24 months of signing. Notice of 14 Aug 2025; offers received 20 Feb 2026; 20 economic offers opened 8 Apr 2026, with 32 companies taking part. In June 2026 CUED signed contracts for 325.69 MW with 50% battery backing at US$0.1060–0.1090/kWh: Parque Taíno (84.70 MW), Galileo Energía's Batoncillo solar (44.20 MW), Mella Solar Power (99.00 MW) and EGE Haina's Esperanza wind (49.50 MW) and Esperanza solar (48.28 MW). Entry into service expected from June 2028.",
+    },
+    procedureType: "Licitación Pública para Nueva Generación Renovable mediante Contratos de Largo Plazo (Ley General de Electricidad 125-01, art. 110; Resolución SIE-092-2025-LCE)",
+    scopeType: "works",
+    status: "awarded",
+    publicationDate: "2025-08-14T12:00:00-04:00",
+    submissionDeadline: "2026-02-20T10:00:00-04:00",
+    // The date CUED announced the signed contracts; the award resolution
+    // itself is not published.
+    awardDate: "2026-06-24T12:00:00-04:00",
+    internationalOpen: false,
+    sourceUrl: "https://edenorte.com.do/aviso-licitacion-publica-no-edes-lp-ngr-01-2025/",
+    sources: [
+      "https://edenorte.com.do/aviso-licitacion-publica-no-edes-lp-ngr-01-2025/",
+      "https://cued.gob.do/cued-da-apertura-de-ofertas-economicas-en-licitacion-de-generacion-de-hasta-600-mw-de-energia-renovable/",
+      "https://cued.gob.do/cued-marca-un-hito-al-adjudicar-325-69-mw-de-nueva-capacidad-de-energia-renovable-con-un-respaldo-del-50-en-baterias/",
+      "https://compraenergia.do/",
+    ],
+  },
+  {
+    slug: "energia-dominicana-edes-lpi-ng-04-2023",
+    tenderNumber: "EDES-LPI-NG-04-2023",
+    country: "Dominican Republic",
+    buyer: "Edenorte, Edesur y Edeeste — Consejo Unificado de las Empresas Distribuidoras (CUED)",
+    title: {
+      zh: "多米尼加 800 MW 新建发电长期购电国际招标（EDES-LPI-NG-04-2023，已授标）",
+      es: "Licitación Pública Internacional para Nueva Generación de hasta 800 MW, EDES-LPI-NG-04-2023 — adjudicada",
+      en: "Dominican Republic 800 MW new-generation long-term PPA international tender, EDES-LPI-NG-04-2023 — awarded",
+    },
+    summary: {
+      zh: "多米尼加三家国有配电公司（Edenorte、Edesur、Edeeste）通过配电公司统一委员会（CUED）组织的国际招标，为新建发电机组签订长期购电合同，总规模最高 800 MW；招标条件由电力监管局 SIE-120-2023-LCE 号决议（2023 年 10 月 27 日）确定，2023 年 11 月 1 日开放注册。2024 年 6 月 11 日招标委员会第 06-2024 号决议授标两家：NexGen Capital（机组净容量 467 MW，合同 400 MW，容量电价 35.5 美元/千瓦·月，比较电价约 0.140 美元/千瓦时）和 Energía 2000（机组 440 MW，合同 400 MW，27.77 美元/千瓦·月，约 0.122 美元/千瓦时），两份报价的热耗率为 6.307 和 6.135 MMBtu/MWh。可作为了解多米尼加新建大型电站规模与电价的参考。",
+      es: "Licitación internacional de las distribuidoras Edenorte, Edesur y Edeeste, representadas por el Consejo Unificado (CUED), para contratos de largo plazo con nueva generación de hasta 800 MW; bases establecidas por la Resolución SIE-120-2023-LCE del 27 de octubre de 2023, registro abierto desde el 1 de noviembre de 2023. Adjudicada mediante el Acta 06-2024 del Comité de Licitación del 11 de junio de 2024 a NexGen Capital (467 MW netos, 400 MW ofertados, 35,5 US$/kW-mes, precio comparativo de energía 0,139969 US$/kWh) y Energía 2000 (440 MW netos, 400 MW ofertados, 27,77 US$/kW-mes, 0,121975 US$/kWh), con consumos térmicos de referencia de 6,307 y 6,135 MMBtu/MWh.",
+      en: "An international tender by the distribution companies Edenorte, Edesur and Edeeste, represented by their Unified Council (CUED), for long-term contracts with up to 800 MW of new generation; bases set by Electricity Superintendency Resolution SIE-120-2023-LCE of 27 Oct 2023, registration open from 1 Nov 2023. Awarded by the tender committee's Act 06-2024 of 11 Jun 2024 to NexGen Capital (467 MW net, 400 MW offered, US$35.5/kW-month, comparative energy price US$0.139969/kWh) and Energía 2000 (440 MW net, 400 MW offered, US$27.77/kW-month, US$0.121975/kWh), with reference heat rates of 6.307 and 6.135 MMBtu/MWh.",
+    },
+    procedureType: "Licitación Pública Internacional para Nueva Generación mediante Contratos de Largo Plazo (Resolución SIE-120-2023-LCE)",
+    scopeType: "works",
+    status: "awarded",
+    // Bases approved by SIE on 27 October 2023; registration opened 1 November.
+    publicationDate: "2023-10-27T12:00:00-04:00",
+    awardDate: "2024-06-11T12:00:00-04:00",
+    internationalOpen: true,
+    sourceUrl: "https://edeeste.com.do/index.php/resultado-proceso-de-adjudicacion-edes-lpi-ng-04-2023/",
+    sources: [
+      "https://edeeste.com.do/index.php/resultado-proceso-de-adjudicacion-edes-lpi-ng-04-2023/",
+      "https://edeeste.com.do/wp-content/uploads/Resultado-Adjudicacion-EDES-LPI-NG-04-2023.pdf",
+      "https://compraenergia.do/",
     ],
   },
 ];

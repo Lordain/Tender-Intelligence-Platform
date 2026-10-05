@@ -29,6 +29,9 @@ import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPort
  * control) if matched blindly, so INCLUDE_OVERRIDE is checked first.
  */
 
+/** Lifted out of EXCLUDE_KEYWORDS only so the ELECTRICAL_NETWORK_MATERIALS exception can name it; the pattern is unchanged. */
+const ELECTRICAL_MATERIALS_KEYWORD = /material(es)? el[ée]ctrico(s)?/i;
+
 const EXCLUDE_KEYWORDS = [
   /limpieza/i,
   /conserjer[íi]a|conserje/i,
@@ -308,7 +311,7 @@ const EXCLUDE_KEYWORDS = [
   // buyers, each with the user's own Chinese reason). Same posture as
   // batch #3 above — each pattern scoped to the real title, comment
   // carries the user's reason for traceability.
-  /material(es)? el[ée]ctrico(s)?/i, // 材料项目 — ADQUISICIÓN DE MATERIAL ELÉCTRICO PARA LA INFRAESTRUCTURA HOSPITALARIA, a materials purchase, not equipment
+  ELECTRICAL_MATERIALS_KEYWORD, // 材料项目 — ADQUISICIÓN DE MATERIAL ELÉCTRICO PARA LA INFRAESTRUCTURA HOSPITALARIA, a materials purchase, not equipment. A power utility's own network stock is the one exception — see ELECTRICAL_NETWORK_MATERIALS.
   /material(es)? de construcci[óo]n/i, // 建筑材料 — ADQUISICIÓN DE MATERIAL DE CONSTRUCCIÓN PARA CAMPAMENTOS DE CONSERVACIÓN..., raw materials, not a works contract
   /\bmicrosectores?\b/i, // 小项目 — CONSTRUCCIÓN DE 20 MICROSECTORES, small distributed local works
   // "servicio m[ée]dico subrogado" above required the full word "médico" —
@@ -1416,6 +1419,35 @@ function isConcessionWithBuildScope(haystack: string): boolean {
  * to cut on, and this title leads with the goods themselves.
  */
 const MATERIALS_SUPPLY_PATTERN = /^\W*materiales?\b|suministro (de )?material(es)?\b/i;
+
+/**
+ * Electrical network materials bought as goods by a power utility, at a value
+ * that clears the floor (user, 2026-10-05: 修正电力材料被误排除的规则).
+ *
+ * Three rules read such a purchase as something it is not. EDEESTE's
+ * "Adquisición de Materiales Eléctricos para el Mantenimiento del Flujo
+ * Logístico de las Áreas Operativas" — DOP 2,155M, about US$34M, a Licitación
+ * Pública Nacional on the DGCP — is excluded by ELECTRICAL_MATERIALS_KEYWORD
+ * (the 2026-09-04 review's "材料项目"), by MATERIALS_SUPPLY_PATTERN (the
+ * subject opens with "materiales" once purchaseSubject() drops the verb) and
+ * by MAINTENANCE_ONLY_KEYWORDS ("mantenimiento" names what the stock is for).
+ * It is none of those: it is cable, hardware and switchgear in bulk, the
+ * goods a Chinese manufacturer sells, bought outright by a distribution
+ * company.
+ *
+ * So the exception needs all of:
+ *   - electrical material as the subject (ELECTRICAL_NETWORK_MATERIALS);
+ *   - a goods purchase that clears the country's value floor
+ *     (purchaseClearsValueFloor) — a maintenance SERVICE, or a small stock
+ *     top-up, is still excluded;
+ *   - a power utility as the buyer, or the grid as the destination
+ *     (POWER_UTILITY_BUYER / GRID_DESTINATION). That is what keeps the
+ *     reviewed row excluded: "material eléctrico para la infraestructura
+ *     hospitalaria" is a hospital buying building supplies.
+ */
+const ELECTRICAL_NETWORK_MATERIALS = /\bmateriales? (?:y equipos? )?electric[oa]s?\b|\bmateriales? (?:y equipos? )?(?:de|para) (?:las? |los )?(?:subestacion|redes? electricas?|redes? de (?:distribucion|transmision)|lineas? (?:electricas?|de (?:transmision|distribucion)))/i;
+const POWER_UTILITY_BUYER = /electricidad|\belectric[ao]\b|\bedenorte\b|\bedesur\b|\bedeeste\b|\beted\b|\begehid\b/i;
+const GRID_DESTINATION = /subestacion|redes? electricas?|redes? de (?:distribucion|transmision)|lineas? (?:electricas?|de (?:transmision|distribucion))|electrificacion/i;
 
 /**
  * Commodity construction inputs, plant consumables and catalogue products,
@@ -3473,6 +3505,11 @@ export function classifyRelevance(input: {
   const minValueUsd = newEnergy ? Math.min(NEW_ENERGY_MIN_VALUE_USD, minValueUsdFor(input.country)) : minValueUsdFor(input.country);
   const clearsValueFloor = normalizedValue !== undefined && normalizedValue >= minValueUsd;
   const purchaseClearsValueFloor = clearsValueFloor && isGoodsPurchase(input.title, input.scopeType);
+  // See ELECTRICAL_NETWORK_MATERIALS.
+  const electricalMaterialsPurchase =
+    purchaseClearsValueFloor &&
+    ELECTRICAL_NETWORK_MATERIALS.test(haystack) &&
+    (POWER_UTILITY_BUYER.test(foldAccents(input.buyer ?? "")) || GRID_DESTINATION.test(haystack));
 
   // See MAINTENANCE_ONLY_KEYWORDS' header comment — deliberately checked
   // before, and not gated by, hasIncludeOverride below. Only a real,
@@ -3480,6 +3517,7 @@ export function classifyRelevance(input: {
   // keyword-based override) can rescue a maintenance-only tender.
   if (
     input.isNationalPriorityProject !== true &&
+    !electricalMaterialsPurchase &&
     !isConcessionWithBuildScope(haystack) &&
     !isLargeBrazilianRoadUpkeep(input.country, haystack, normalizedValue) &&
     (MAINTENANCE_ONLY_KEYWORDS.some((pattern) => pattern.test(haystack)) ||
@@ -3624,7 +3662,10 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "buyer") };
   }
 
-  if (!hasIncludeOverride && EXCLUDE_KEYWORDS.some((pattern) => pattern.test(haystack))) {
+  if (
+    !hasIncludeOverride &&
+    EXCLUDE_KEYWORDS.some((pattern) => !(electricalMaterialsPurchase && pattern === ELECTRICAL_MATERIALS_KEYWORD) && pattern.test(haystack))
+  ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
 
@@ -3662,6 +3703,7 @@ export function classifyRelevance(input: {
   // of building something. See MATERIALS_SUPPLY_PATTERN.
   if (
     !hasIncludeOverride &&
+    !electricalMaterialsPurchase &&
     MATERIALS_SUPPLY_PATTERN.test(haystack) &&
     !WORKS_CONTRACT_CONTEXT.test(haystack)
   ) {

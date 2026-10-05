@@ -172,7 +172,7 @@ export function AdminAnalyticsDashboard({
         <article className="rounded-2xl bg-[#061b2b] p-5 text-white">
           <p className="text-xs font-black tracking-[0.08em] text-white/58">当前订阅用户</p>
           <p className="mt-3 text-3xl font-black tracking-[-0.04em] text-[#ffb21c]">{formatNumber(activeSubscribers)}</p>
-          <p className="mt-1 text-xs text-white/52">已注册 {formatNumber(dashboard.subscriptions.registeredUsers)} 位用户</p>
+          <p className="mt-1 text-xs text-white/52">已注册 {formatNumber(dashboard.subscriptions.registeredUsers)} 位用户（不含内部账号）</p>
         </article>
       </section>
 

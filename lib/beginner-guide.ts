@@ -24,7 +24,9 @@ export type BeginnerIconName =
   | "search" | "notice" | "download" | "register" | "question" | "submit" | "review" | "award"
   | "company" | "experience" | "finance" | "guarantee" | "local" | "pricing"
   | "clock" | "language" | "amendments" | "reject" | "tax" | "official" | "partner-warning"
-  | "target" | "local-company" | "step-up" | "folder" | "partner" | "bell";
+  | "target" | "local-company" | "step-up" | "folder" | "partner" | "bell"
+  // Added for the platform guides' visual layout (app/guides/[slug]).
+  | "key" | "globe" | "money" | "calendar" | "lightbulb" | "info" | "eye" | "link" | "envelope" | "users" | "tools" | "warning";
 
 export type FlowStep = {
   title: string;

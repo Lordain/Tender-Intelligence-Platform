@@ -8,7 +8,7 @@ import { RelatedTenders } from "@/components/tenders/RelatedTenders";
 import { TenderLifecycle } from "@/components/tenders/TenderLifecycle";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerEntitlement } from "@/lib/access-control-server";
-import { canViewCountry, canViewTenderProtectedContent, isReleasedAfterDeadline, releaseNeedsClosedOn, shouldClaimFreeTenderView } from "@/lib/access-control";
+import { canExportTenderDetail, canViewCountry, canViewTenderProtectedContent, isReleasedAfterDeadline, releaseNeedsClosedOn, shouldClaimFreeTenderView } from "@/lib/access-control";
 import { fetchTenderClosedAt, fetchTenderLifecycle } from "@/lib/db/tenders";
 import { platformDay } from "@/lib/tender-status";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
@@ -168,6 +168,7 @@ export default async function TenderDetailPage({
       <TenderDetailView
         tender={tender}
         showTrialCta={showTrialCta}
+        canExportPdf={canExportTenderDetail(entitlement, tender.country)}
         // Looked up here, on the server, so the guides' text stays out of the
         // client bundle. None for an OxI tender: its own notice at the foot of
         // the page already links the OxI guide.

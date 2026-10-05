@@ -30,7 +30,7 @@ const headingClass = "text-xs font-black uppercase tracking-[0.15em] text-[#ffb2
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-[#031521] text-white">
+    <footer className="border-t border-white/10 bg-[#031521] text-white print:hidden">
       <div className="mx-auto grid max-w-[108rem] grid-cols-2 gap-x-6 gap-y-10 px-5 py-12 sm:px-8 md:grid-cols-4 xl:grid-cols-[2fr_repeat(4,minmax(0,1fr))] xl:gap-x-8">
         <div className="col-span-2 max-w-sm md:col-span-4 xl:col-span-1">
           <Link href="/" className="inline-flex items-center gap-3"><BrandLogo variant="dark" className="size-10" /><span className="text-lg font-black tracking-[0.08em]">拉美招投标信息平台</span></Link>

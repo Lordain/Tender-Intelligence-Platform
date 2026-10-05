@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { getCachedTenderList } from "@/lib/tenders";
 import { TenderExplorer } from "@/components/tenders/TenderExplorer";
 import { getViewerEntitlement } from "@/lib/access-control-server";
-import { canExportTenders } from "@/lib/access-control";
 import { buildTenderListPage, TENDER_PAGE_SIZE, tenderListViewerRules, type TenderListSearchParams } from "@/lib/tender-list-page";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
@@ -48,17 +47,12 @@ export default async function TendersPage({
     // React payload. The saved-search reminder route applies the same rules.
     ...tenderListViewerRules(entitlement),
   });
-  const exportParams = new URLSearchParams();
-  for (const key of ["q", "country", "industry"] as const) {
-    const value = params[key];
-    if (typeof value === "string") exportParams.set(key, value);
-  }
 
   return (
     <div className="mx-auto w-full max-w-[108rem] px-5 py-6 sm:px-8 sm:py-8">
       <TenderListStructuredData tenders={pageData.tenders} />
       <Suspense>
-        <TenderExplorer {...pageData} viewerRole={entitlement.role} exportHref={canExportTenders(entitlement) ? `/api/tenders/export?${exportParams.toString()}` : null} />
+        <TenderExplorer {...pageData} viewerRole={entitlement.role} />
       </Suspense>
     </div>
   );

@@ -223,7 +223,6 @@ export function TenderExplorer({
   siteTenderCount,
   liveTenderCount,
   newTodayCount,
-  exportHref = null,
 }: {
   tenders: TenderListItem[];
   viewerRole: ViewerRole;
@@ -237,8 +236,6 @@ export function TenderExplorer({
   liveTenderCount: number;
   newTodayCount: number;
   upcomingCount?: number;
-  /** The CSV export of the filtered rows; null when the plan has no export. */
-  exportHref?: string | null;
 }) {
   const { locale } = useLocale();
   const router = useRouter();
@@ -379,7 +376,6 @@ export function TenderExplorer({
         // 当前筛选结果, not 当前结果: the number follows the filters below, and
         // the 持续扩张中 note beside it is gone (user, 2026-10-05).
         metrics={[{ label: "当前筛选结果", value: totalResults.toLocaleString(), suffix: "个项目" }]}
-        metricsAction={exportHref ? { href: exportHref, label: "导出当前清单 CSV" } : undefined}
       />
 
       {accessNotice && (

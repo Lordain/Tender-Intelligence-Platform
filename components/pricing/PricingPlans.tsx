@@ -10,9 +10,9 @@ type FeatureIcon = "user" | "users" | "globe" | "pin" | "document" | "analysis" 
 /** Each feature with the icon drawn beside it, as on Vercel's pricing page (user, 2026-10-05: 把 √ 也像Vercel做成小icon). */
 const plans: { id: "free" | PaidPlan; name: string; audience: string; features: [FeatureIcon, string][] }[] = [
   { id: "free", name: "免费版", audience: "初步了解拉美市场", features: [["user", "1 个账号"], ["globe", "全部国家的公开项目标题"], ["document", "每月可查看 5 个项目的完整详情和标书分析"], ["bell", "每周 1 次项目提醒"], ["history", "可阅读历史项目"]] },
-  { id: "basic", name: "基础个人版", audience: "外贸经理、市场负责人", features: [["user", "1 个账号"], ["pin", "选择 1 个国家，查看该国全部项目详情"], ["analysis", "可查看所选国家的完整标书分析"], ["globe", "其他国家可浏览公开项目标题"], ["bell", "每日 1 次行业项目提醒"], ["bookmark", "收藏与跟踪项目"], ["history", "可阅读历史项目"]] },
-  { id: "professional", name: "专业个人版", audience: "拉美负责人", features: [["user", "1 个账号"], ["globe", "全部国家完整中文项目详情"], ["analysis", "可查看完整标书分析"], ["bell", "每日 2 次项目提醒"], ["tag", "自定义提醒关键词"], ["bookmark", "收藏与跟踪项目"], ["download", "导出当前项目清单 CSV"]] },
-  { id: "enterprise", name: "专业企业版", audience: "拉美拓展小组", features: [["users", "3 个账号，各自设置项目提醒"], ["globe", "全部国家完整中文项目详情"], ["analysis", "可查看完整标书分析"], ["bookmark", "收藏与跟踪项目"], ["download", "导出当前及历史项目清单 CSV"], ["chart", "每月标准化行业分析报告"]] },
+  { id: "basic", name: "基础个人版", audience: "外贸经理、市场负责人", features: [["user", "1 个账号"], ["pin", "选择 1 个国家，查看该国全部项目详情"], ["analysis", "可查看所选国家的完整标书分析"], ["globe", "其他国家可浏览公开项目标题"], ["bell", "每日 1 次行业项目提醒"], ["bookmark", "收藏与跟踪项目"], ["download", "导出所选国家的项目详情 PDF"], ["history", "可阅读历史项目"]] },
+  { id: "professional", name: "专业个人版", audience: "拉美负责人", features: [["user", "1 个账号"], ["globe", "全部国家完整中文项目详情"], ["analysis", "可查看完整标书分析"], ["bell", "每日 2 次项目提醒"], ["tag", "自定义提醒关键词"], ["bookmark", "收藏与跟踪项目"], ["download", "导出项目详情 PDF"]] },
+  { id: "enterprise", name: "专业企业版", audience: "拉美拓展小组", features: [["users", "3 个账号，各自设置项目提醒"], ["globe", "全部国家完整中文项目详情"], ["analysis", "可查看完整标书分析"], ["bookmark", "收藏与跟踪项目"], ["download", "导出项目详情 PDF"], ["chart", "每月标准化行业分析报告"]] },
 ];
 
 /**

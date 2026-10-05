@@ -471,7 +471,7 @@ export default function AccountPage() {
         {entitlement?.role === "subscriber" && entitlement.plan === "basic" && <BasicCountrySelection selectedCountry={entitlement.selectedCountry} />}
 
         {entitlement?.isEnterpriseOwner && <EnterpriseAccounts />}
-        {entitlement?.role === "subscriber" && entitlement.plan === "enterprise" && <div className="mt-6 rounded-2xl border border-[#dbe2e5] bg-white p-5"><h2 className="text-lg font-black">行业月报与历史数据</h2><div className="mt-3 flex flex-wrap gap-4 text-sm font-bold text-[#a96100]"><Link href="/reports/industry">查看本月行业月报 →</Link><a href="/api/tenders/export?history=1">导出历史项目清单 →</a></div></div>}
+        {entitlement?.role === "subscriber" && entitlement.plan === "enterprise" && <div className="mt-6 rounded-2xl border border-[#dbe2e5] bg-white p-5"><h2 className="text-lg font-black">行业月报</h2><div className="mt-3 flex flex-wrap gap-4 text-sm font-bold text-[#a96100]"><Link href="/reports/industry">查看本月行业月报 →</Link></div></div>}
 
         {/* Everyone sees this, not just enterprise owners: the device cap
             applies to every account, and the person who most needs to free

@@ -16,6 +16,7 @@ import {
 import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { TenderTagRow } from "@/components/tenders/TenderTagRow";
 import { SaveTenderButton } from "@/components/tenders/SaveTenderButton";
+import { ExportTenderPdfButton } from "@/components/tenders/ExportTenderPdfButton";
 import { publicTenderPath } from "@/lib/public-tender-url";
 import { shortTitleOf } from "@/lib/public-title";
 
@@ -29,7 +30,7 @@ function Field({ label, value, emphasized = false, note }: { label: string; valu
   );
 }
 
-export function TenderOverview({ tender, showTrialCta = false }: { tender: Tender; showTrialCta?: boolean }) {
+export function TenderOverview({ tender, showTrialCta = false, canExportPdf = false }: { tender: Tender; showTrialCta?: boolean; canExportPdf?: boolean }) {
   const heading = shortTitleOf(tender);
   const { locale } = useLocale();
   // 中标结果 only once the tender reads 已中标 (user, 2026-09-26: 当项目状态改成
@@ -58,7 +59,8 @@ export function TenderOverview({ tender, showTrialCta = false }: { tender: Tende
           />
           <span className="text-xs text-[#849098]">{tender.tenderNumber}</span>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
+          {canExportPdf && <ExportTenderPdfButton />}
           {showTrialCta && (
             <Link href={`/register?next=${encodeURIComponent(publicTenderPath(tender))}`} className="inline-flex h-10 items-center rounded-xl bg-[#ffb21c] px-4 text-xs font-black text-[#071826] hover:bg-[#ffc247]">
               注册即可免费试用{TRIAL_DAYS}天

@@ -27,7 +27,7 @@
  *   npm run check:subscription-state -- --user 00000000-0000-0000-0000-000000000000
  */
 import {
-  canExportTenders,
+  canExportTenderDetail,
   canViewCountry,
   isSubscriptionEntitled,
   selectPreferredSubscription,
@@ -152,10 +152,9 @@ async function main() {
   if (acceptedOwner && entitlement.role !== "subscriber") console.log("  注意：席位已接受，但要 owner 的企业订阅仍然有效才授予权限");
 
   console.log(`\n【当前身份】role=${entitlement.role}  plan=${entitlement.plan ?? "—"}${selectedCountry ? `  选定国家=${selectedCountry}` : ""}`);
-  console.log(`  可导出当前清单：${canExportTenders(entitlement) ? "是" : "否"}`);
-  console.log(`  可导出历史清单：${entitlement.role === "subscriber" && entitlement.plan === "enterprise" ? "是" : "否"}`);
   const countries = ["Mexico", "Brazil", "Colombia", "Peru"];
   console.log(`  各国完整详情：${countries.map((c) => `${c}=${canViewCountry(entitlement, c) ? "✓" : "✗"}`).join("  ")}`);
+  console.log(`  各国详情导出 PDF：${countries.map((c) => `${c}=${canExportTenderDetail(entitlement, c) ? "✓" : "✗"}`).join("  ")}`);
 
   // ---- 4. 免费额度 ----
   const monthStart = mexicoMonthStart();

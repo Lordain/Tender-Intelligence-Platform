@@ -16,6 +16,7 @@ import { deadlineIsInDocuments } from "@/lib/deadline-in-documents";
 import { TenderViewTracker } from "@/components/analytics/TenderViewTracker";
 import { ReleasedTenderNotice } from "@/components/tenders/ReleasedTenderNotice";
 import { UpcomingTenderNotice } from "@/components/tenders/UpcomingTenderNotice";
+import { publicTenderPath } from "@/lib/public-tender-url";
 
 export function TenderDetailView({
   tender,
@@ -24,9 +25,12 @@ export function TenderDetailView({
   related,
   releasedNotice,
   lifecycle,
+  canExportPdf = false,
 }: {
   tender: Tender;
   showTrialCta?: boolean;
+  /** Shows 导出 PDF — canExportTenderDetail(), decided on the server. */
+  canExportPdf?: boolean;
   participationGuide?: ParticipationGuideLink;
   /** 相关在招项目, rendered on the server and placed last on the page. */
   related?: ReactNode;
@@ -40,9 +44,17 @@ export function TenderDetailView({
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 px-5 py-7 sm:px-8 sm:py-9">
       <TenderViewTracker tenderId={tender.id} />
+      {/* Printed (导出 PDF) only: what the document is and where it came from. */}
+      <div className="hidden border-b-2 border-[#071826] pb-3 print:flex print:items-end print:justify-between">
+        <div>
+          <p className="text-base font-black text-[#071826]">拉美招投标信息平台</p>
+          <p className="text-[11px] text-[#536772]">项目详情 · latintender.com{publicTenderPath(tender)}</p>
+        </div>
+        <p className="text-[11px] text-[#536772]">信息以官方原文为准</p>
+      </div>
       <Link
         href="/tenders"
-        className="inline-flex w-fit items-center gap-2 text-sm font-black text-[#536772] transition-colors hover:text-[#b86e00]"
+        className="inline-flex w-fit items-center gap-2 text-sm font-black text-[#536772] transition-colors hover:text-[#b86e00] print:hidden"
       >
         <span aria-hidden="true">←</span> {localize(uiText.backToTenders, locale)}
       </Link>
@@ -51,7 +63,7 @@ export function TenderDetailView({
 
       {releasedNotice && <ReleasedTenderNotice audience={releasedNotice} submissionDeadline={tender.submissionDeadline} status={tender.status} />}
 
-      <TenderOverview tender={tender} showTrialCta={showTrialCta} />
+      <TenderOverview tender={tender} showTrialCta={showTrialCta} canExportPdf={canExportPdf} />
 
       {lifecycle}
 
@@ -102,7 +114,7 @@ export function TenderDetailView({
       */}
       {isObrasPorImpuestos(tender) && <ObrasPorImpuestosNotice />}
 
-      {related}
+      <div className="print:hidden">{related}</div>
     </div>
   );
 }

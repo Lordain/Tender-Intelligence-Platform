@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 import { siteOrigin } from "@/lib/site-url";
-import { BEGINNER_GUIDE_PATH, adviceItems, beginnerGuide, cautionItems, flowDecision, flowSteps, prepareGroups } from "@/lib/beginner-guide";
+import { BEGINNER_GUIDE_PATH, adviceItems, beginnerGuide, cautionItems, flowDecision, prepareGroups } from "@/lib/beginner-guide";
 import { guideCountries, participationGuides } from "@/lib/participation-guides";
 import { GuideCountryFlag, guidePlatformLabel } from "@/components/guides/GuideMarks";
+import { BeginnerIcon } from "@/components/guides/BeginnerIcon";
+import { BeginnerFlowchart } from "@/components/guides/BeginnerFlowchart";
 
 export const metadata: Metadata = pageMetadata({
   title: beginnerGuide.shortTitle,
@@ -12,14 +14,6 @@ export const metadata: Metadata = pageMetadata({
   path: BEGINNER_GUIDE_PATH,
   author: SOCIAL_BRAND,
 });
-
-/** Which of the three stages a flow step sits in, by position — 1–3 看项目, 4–6 做投标, 7–8 等结果. */
-const STAGES = [
-  { label: "看项目", until: 3, className: "bg-[#e6f0f4] text-[#1d5670]" },
-  { label: "做投标", until: 6, className: "bg-[#fff0c9] text-[#8f5b00]" },
-  { label: "等结果", until: 8, className: "bg-[#e7f2e8] text-[#2e6b3a]" },
-];
-const stageFor = (index: number) => STAGES.find((stage) => index < stage.until)!;
 
 const SECTIONS = [
   { id: "flow", title: "常见流程" },
@@ -78,46 +72,16 @@ export default function BeginnerGuidePage() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-8 px-5 py-10 sm:px-8 sm:py-14">
-        {/* The flowchart: eight steps, four to a row on desktop with arrows
-            between them, stacked with down arrows on a phone. */}
         <section id="flow" className="scroll-mt-8 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8">
           <SectionHeading kicker="Process" title="1. 常见流程" intro="各国叫法不同，顺序大体一样。从看到公告到截标，常常只有 2–6 周。" />
-          <div className="mt-5 flex flex-wrap gap-2">
-            {STAGES.map((stage) => (
-              <span key={stage.label} className={`rounded-md px-2.5 py-1 text-xs font-black ${stage.className}`}>{stage.label}</span>
-            ))}
+          <div className="mt-8">
+            <BeginnerFlowchart />
           </div>
-          <ol className="mt-6 grid gap-8 lg:grid-cols-4 lg:gap-x-10 lg:gap-y-8">
-            {flowSteps.map((step, index) => {
-              const stage = stageFor(index);
-              const last = index === flowSteps.length - 1;
-              const endOfRow = index % 4 === 3;
-              return (
-                <li key={step.title} className="relative flex gap-4 rounded-2xl border border-[#dbe2e5] bg-white p-4 lg:flex-col lg:gap-3 lg:p-5">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#061b2b] font-mono text-sm font-black text-[#ffb21c]">{index + 1}</span>
-                  <span className="min-w-0">
-                    <span className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-black ${stage.className}`}>{stage.label}</span>
-                    <span className="mt-1.5 block text-base font-black">{step.title}</span>
-                    <span className="mt-1 block text-sm leading-6 text-[#586873]">{step.detail}</span>
-                    {step.term && <span className="mt-2 block text-[11px] font-bold text-[#8a969d]">{step.term}</span>}
-                  </span>
-                  {!last && (
-                    <span
-                      aria-hidden="true"
-                      className={`absolute -bottom-7 left-9 text-lg font-black text-[#ffb21c] lg:bottom-auto lg:left-auto lg:-right-8 lg:top-1/2 lg:-translate-y-1/2 ${endOfRow ? "lg:hidden" : ""}`}
-                    >
-                      <span className="lg:hidden">↓</span>
-                      <span className="hidden lg:inline">→</span>
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
 
-          {/* The one fork in the path, at step 2. */}
-          <div className="mt-8 rounded-2xl bg-[#061b2b] p-5 text-white sm:p-6">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ffb21c]">第 2 步的关键判断</p>
+          {/* The fork, spelled out: the diamond after step 3. Desktop only — the
+              phone timeline already carries both branches at the diamond. */}
+          <div className="mt-8 hidden rounded-2xl bg-[#061b2b] p-5 text-white sm:p-6 lg:block">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ffb21c]">关键判断（第 3 步之后）</p>
             <p className="mt-2 text-lg font-black">{flowDecision.question}</p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {[flowDecision.yes, flowDecision.no].map((branch, index) => (
@@ -135,7 +99,10 @@ export default function BeginnerGuidePage() {
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-[#e5e9ea] bg-[#e5e9ea] sm:grid-cols-2 lg:grid-cols-3">
             {prepareGroups.map((group) => (
               <div key={group.title} className="bg-white p-5">
-                <h3 className="font-black">{group.title}</h3>
+                <h3 className="flex items-center gap-2.5 font-black">
+                  <span className="flex size-9 items-center justify-center rounded-lg bg-[#fff0c9] text-[#8f5b00]"><BeginnerIcon name={group.icon} /></span>
+                  {group.title}
+                </h3>
                 <ul className="mt-3 space-y-2">
                   {group.items.map((item) => (
                     <li key={item} className="flex gap-2.5 text-sm leading-6 text-[#43545f]">
@@ -153,8 +120,8 @@ export default function BeginnerGuidePage() {
           <SectionHeading kicker="Watch out" title="3. 需要注意什么" />
           <ul className="mt-6 grid gap-3 md:grid-cols-2">
             {cautionItems.map((item) => (
-              <li key={item.title} className="flex gap-3 rounded-xl border-l-4 border-[#e0a12a] bg-[#fff7e4] px-4 py-3.5">
-                <span aria-hidden="true" className="mt-0.5 font-black text-[#b86e00]">!</span>
+              <li key={item.title} className="flex gap-3 rounded-xl border-l-4 border-[#e0a12a] bg-[#fff7e4] px-4 py-3.5 md:last:odd:col-span-2">
+                <span className="mt-0.5 text-[#b86e00]"><BeginnerIcon name={item.icon} /></span>
                 <span>
                   <span className="block text-sm font-black">{item.title}</span>
                   <span className="mt-0.5 block text-sm leading-6 text-[#66562f]">{item.detail}</span>
@@ -167,11 +134,14 @@ export default function BeginnerGuidePage() {
         <section id="advice" className="scroll-mt-8 rounded-3xl bg-[#061b2b] p-6 text-white sm:p-8">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffb21c]">Our advice</p>
           <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">4. 我们的建议</h2>
-          <ol className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+          <ol className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {adviceItems.map((item, index) => (
               <li key={item.title} className="rounded-xl border border-white/12 bg-white/6 p-4">
-                <span className="font-mono text-sm font-black text-[#ffb21c]">{String(index + 1).padStart(2, "0")}</span>
-                <span className="mt-2 block font-black">{item.title}</span>
+                <span className="flex items-center justify-between">
+                  <span className="flex size-10 items-center justify-center rounded-lg bg-[#ffb21c]/12 text-[#ffb21c]"><BeginnerIcon name={item.icon} className="size-[22px]" /></span>
+                  <span className="font-mono text-sm font-black text-white/30">{String(index + 1).padStart(2, "0")}</span>
+                </span>
+                <span className="mt-3 block font-black">{item.title}</span>
                 <span className="mt-1 block text-sm leading-6 text-white/66">{item.detail}</span>
               </li>
             ))}

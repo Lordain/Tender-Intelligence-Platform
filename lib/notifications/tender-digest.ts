@@ -296,17 +296,18 @@ function renderStatusRows(statusChanges: StatusChange[], appUrl: string, limited
  * 建议怎么做). Without it a free reader sees a week-old award and concludes the
  * platform is slow, when paying readers had it the same day. Feature wording
  * follows the pricing page (components/pricing/PricingPlans.tsx); times are
- * the cron slots in vercel.json, in Mexico City and Beijing time.
+ * the cron slots in vercel.json (09:00 and 18:00 Mexico City), given in
+ * Beijing time only (user, 2026-10-05: 不要写墨西哥城时间，就写北京时间).
  */
 const WEEKLY_PLAN_FACTS: [string, string][] = [
   ["当前账户", "免费版"],
-  ["通知频率", "每周 1 次，每周一 9:00 发送（墨西哥城时间；北京时间周一 23:00），汇总过去 7 天"],
+  ["通知频率", "每周 1 次，北京时间每周一 23:00 发送，汇总过去 7 天"],
   ["本邮件范围", "隐藏项目名称、采购单位和编号；关键词条件不生效"],
 ];
 
 const UPGRADE_OPTIONS: { name: string; recommended?: boolean; cadence: string; detail: string }[] = [
   { name: PLAN_NAMES.basic, cadence: "每日 1 次提醒", detail: "选择 1 个国家，查看该国全部项目详情和标书分析" },
-  { name: PLAN_NAMES.professional, recommended: true, cadence: "每日 2 次提醒（墨西哥城 9:00、18:00）", detail: "全部国家完整中文详情，可自定义提醒关键词" },
+  { name: PLAN_NAMES.professional, recommended: true, cadence: "每日 2 次提醒（北京时间 8:00、23:00）", detail: "全部国家完整中文详情，可自定义提醒关键词" },
   { name: PLAN_NAMES.enterprise, cadence: "每日 2 次提醒，3 个账号各自设置", detail: "全部国家完整详情，另含每月行业分析报告" },
 ];
 

@@ -35,6 +35,18 @@ export function BeginnerIcon({ name, className = "size-5" }: { name: BeginnerIco
       {name === "folder" && <><path d="M3 6h6l2 2h10v11H3z" /><path d="M3 11h18" /></>}
       {name === "partner" && <><circle cx="8" cy="8" r="2.5" /><circle cx="16" cy="8" r="2.5" /><path d="M3 19c0-2.8 2.2-4.5 5-4.5 1.4 0 2.7.4 3.5 1.2M21 19c0-2.8-2.2-4.5-5-4.5-1.4 0-2.7.4-3.5 1.2" /></>}
       {name === "bell" && <><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z" /><path d="M10 21h4" /></>}
+      {name === "key" && <><circle cx="8" cy="15" r="4" /><path d="m11 12 9-9M17 6l2.5 2.5M14.5 8.5 16.5 10.5" /></>}
+      {name === "globe" && <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" /></>}
+      {name === "money" && <><rect x="2.5" y="6" width="19" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 9.5v5M18 9.5v5" /></>}
+      {name === "calendar" && <><rect x="3.5" y="5" width="17" height="15.5" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01" /></>}
+      {name === "lightbulb" && <><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" /></>}
+      {name === "info" && <><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.5h.01" /></>}
+      {name === "eye" && <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></>}
+      {name === "link" && <><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2" /><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2" /></>}
+      {name === "envelope" && <><rect x="3" y="5.5" width="18" height="13" rx="2" /><path d="m3.5 7 8.5 6 8.5-6" /></>}
+      {name === "users" && <><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M16 5.2a3 3 0 0 1 0 5.6M18 14.8c1.8.6 3 2.4 3 5.2" /></>}
+      {name === "warning" && <><path d="M12 3.5 21.5 20h-19z" /><path d="M12 10v4.5M12 17.5h.01" /></>}
+      {name === "tools" && <><path d="M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.5-7.5" /><path d="M14.5 6.5 17 4l3 3-2.5 2.5M4 4l5 5M3 8l2-2" /></>}
     </svg>
   );
 }

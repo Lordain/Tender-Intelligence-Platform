@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { TRIAL_DAYS } from "@/lib/access-control";
 import { ANNUAL_SAVING_PERCENT, INTERVAL_UNIT_ZH, PLAN_PRICES_USD, USD_CNY_REFERENCE_RATE, type PaidInterval, type PaidPlan } from "@/lib/billing-catalog";
 
@@ -36,6 +37,47 @@ const ICON_PATHS: Record<FeatureIcon, ReactNode> = {
   download: <path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5M4.5 16.5v2a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-2" />,
   chart: <path d="M4 20h16M7 16.5v-5M12 16.5V7M17 16.5v-8" />,
 };
+
+/**
+ * Three pages of the September report under 每月标准化行业分析报告, small, so
+ * the line shows what the report looks like rather than only naming it
+ * (user, 2026-10-05: 增加小示意图…参考之前做的). Rendered from the report
+ * cards published that month; each opens full size in a new tab.
+ */
+const REPORT_SAMPLES = [
+  { id: "01", title: "常见资质要求" },
+  { id: "02", title: "常需提交的文件" },
+  { id: "03", title: "常见投标风险" },
+];
+
+function ReportSamples() {
+  return (
+    <div className="mt-3 pl-8">
+      <div className="grid max-w-[16.5rem] grid-cols-3 gap-2">
+        {REPORT_SAMPLES.map((sample) => (
+          <a
+            key={sample.id}
+            href={`/pricing/report-${sample.id}.webp`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`示例：${sample.title}（点击查看大图）`}
+            className="group block overflow-hidden rounded-md border border-[#dbe2e5] bg-[#f7f4ee] shadow-[0_8px_18px_-14px_rgba(6,27,43,.55)] transition-transform hover:-translate-y-0.5 hover:border-[#b86e00]"
+          >
+            <Image
+              src={`/pricing/report-${sample.id}-thumb.webp`}
+              alt={`行业分析报告示例页：拉美招标${sample.title}`}
+              width={360}
+              height={480}
+              sizes="88px"
+              className="block h-auto w-full"
+            />
+          </a>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11px] leading-4 text-[#7a878f]">示例：2026 年 9 月拉美招标要求分析</p>
+    </div>
+  );
+}
 
 function FeatureIconSvg({ name }: { name: FeatureIcon }) {
   return (
@@ -97,9 +139,12 @@ export function PricingPlans() {
             </p>
             <ul className="mt-7 flex-1 space-y-3.5 border-t border-[#e5e9ea] pt-7">
               {plan.features.map(([icon, feature]) => (
-                <li key={feature} className="flex gap-3 text-[15px] leading-6 text-[#2b3f4c]">
-                  <FeatureIconSvg name={icon} />
-                  {feature}
+                <li key={feature} className="text-[15px] leading-6 text-[#2b3f4c]">
+                  <span className="flex gap-3">
+                    <FeatureIconSvg name={icon} />
+                    {feature}
+                  </span>
+                  {icon === "chart" && <ReportSamples />}
                 </li>
               ))}
             </ul>

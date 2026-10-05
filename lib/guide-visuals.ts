@@ -58,14 +58,9 @@ export function splitGuideLine(line: string): { lead?: string; rest: string } {
   return { lead: line.slice(0, at), rest: line.slice(at + 1) };
 }
 
-/**
- * Every icon that fits a line, best first. A line with a short lead is
- * matched on the lead alone (「授权：法定代表人…」 is about 授权, whatever the
- * rest mentions); words further in fit too loosely to earn an icon.
- */
+/** Every icon that fits a step title, best first. */
 function iconCandidates(text: string): BeginnerIconName[] {
-  const { lead } = splitGuideLine(text);
-  return ICON_RULES.filter(([pattern]) => pattern.test(lead ?? text)).map(([, icon]) => icon).filter((icon, index, all) => all.indexOf(icon) === index);
+  return ICON_RULES.filter(([pattern]) => pattern.test(text)).map(([, icon]) => icon).filter((icon, index, all) => all.indexOf(icon) === index);
 }
 
 /** Each section kind's icon, for its heading and the page's section nav. */
@@ -81,48 +76,22 @@ export function guideSectionIcon(id: string): BeginnerIconName {
   }
 }
 
-/** An icon per line of one list, or none where nothing fitting was left. */
-export type GuideIconList = Array<BeginnerIconName | undefined>;
-
-export type GuidePageIcons = {
-  facts: GuideIconList;
-  /** Keyed by section id: one entry per step, or per item. */
-  sections: Record<string, GuideIconList>;
-};
-
 /**
- * The icons for a whole guide page, each used at most once (user,
- * 2026-10-05: Icon大量重复，如果不适合用icon的地方就不用，但是不要重复).
- *
- * The section headings keep their own marks (shared only with their chip in
- * the page nav, where 一图看懂 and 官方来源 take target and link); nothing
- * else reuses them.
- * The rest are handed out greedily — the flowchart first, then the
- * checklist, the 中国企业重点核对 cards, the other lists, and the fact tiles
- * last — each line taking the best fitting icon still free, and going
- * without when none is. The 先看字段 cards take none: the field name is
- * already the thing to look at.
+ * The flowchart's icons — the one list on a guide page that carries them
+ * (user, 2026-10-05: 不要这种几个有icon、几个没有，可以统一用或统一不用 … 适当
+ * 就好，不需要全都用). Every step gets its own, distinct from the others and
+ * from the section headings' marks: a step's own `icon` first, else the best
+ * fitting one still free. If any step is left without, none get one and the
+ * nodes show their numbers instead, so the track never mixes the two.
  */
-export function guidePageIcons(guide: {
-  quickFacts: Array<{ label: string; value: string }>;
-  audience: string;
-  sections: Array<{ id: string; items?: string[]; steps?: Array<{ title: string }> }>;
-}): GuidePageIcons {
-  const used = new Set<BeginnerIconName>(["target", "link", ...guide.sections.map((section) => guideSectionIcon(section.id))]);
-  const take = (texts: string[]): GuideIconList =>
-    texts.map((text) => {
-      const icon = iconCandidates(text).find((candidate) => !used.has(candidate));
-      if (icon) used.add(icon);
-      return icon;
-    });
-
-  const rank = (section: { id: string; steps?: unknown }) =>
-    section.steps ? 0 : section.id === "documents" ? 1 : section.id === "foreign" ? 2 : 3;
-  const sections: Record<string, GuideIconList> = {};
-  for (const section of [...guide.sections].sort((a, b) => rank(a) - rank(b))) {
-    if (section.steps) sections[section.id] = take(section.steps.map((step) => step.title));
-    else if (section.items) sections[section.id] = section.id === "first-check" ? section.items.map(() => undefined) : take(section.items);
-  }
-  const facts = take([...guide.quickFacts.map((fact) => fact.label), "适合谁看"]);
-  return { facts, sections };
+export function guideStepIcons(steps: Array<{ title: string; icon?: BeginnerIconName }>, reserved: BeginnerIconName[]): BeginnerIconName[] | undefined {
+  const used = new Set<BeginnerIconName>(reserved);
+  for (const step of steps) if (step.icon) used.add(step.icon);
+  const icons = steps.map((step) => {
+    if (step.icon) return step.icon;
+    const icon = iconCandidates(step.title).find((candidate) => !used.has(candidate));
+    if (icon) used.add(icon);
+    return icon;
+  });
+  return icons.every(Boolean) ? (icons as BeginnerIconName[]) : undefined;
 }

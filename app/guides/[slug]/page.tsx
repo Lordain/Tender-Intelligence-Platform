@@ -9,7 +9,7 @@ import { tenderLinksForGuide } from "@/lib/tender-links";
 import { countryKeyForGuide, countryPagePath } from "@/lib/country-pages";
 import { TenderLinkCards } from "@/components/tenders/TenderLinkCards";
 import { BEGINNER_GUIDE_PATH } from "@/lib/beginner-guide";
-import { guidePageIcons, guideSectionIcon } from "@/lib/guide-visuals";
+import { guideSectionIcon, guideStepIcons } from "@/lib/guide-visuals";
 import { BeginnerIcon } from "@/components/guides/BeginnerIcon";
 import { GuideSectionBody } from "@/components/guides/GuideVisuals";
 
@@ -51,7 +51,8 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
     ? tenderLinksForGuide(await getCachedTenderList(), { slug: guide.slug, countryKey })
     : { links: [], scope: "country" as const };
 
-  const icons = guidePageIcons(guide);
+  // The flowchart's icons, kept clear of the section headings' marks.
+  const sectionIcons = guide.sections.map((section) => guideSectionIcon(section.id));
   const currentIndex = participationGuides.findIndex((item) => item.slug === guide.slug);
   const nextGuide = participationGuides[(currentIndex + 1) % participationGuides.length];
 
@@ -89,10 +90,9 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
           {/* The page's sections as chips, in place of the old sticky sidebar,
               so the flowchart and the cards get the full width. */}
           <nav aria-label="本页目录" className="mt-9 flex flex-wrap gap-2">
-            {[{ id: "overview", title: "一图看懂" }, ...guide.sections, { id: "sources", title: "官方来源" }].map((section) => (
-              <a key={section.id} href={`#${section.id}`} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/6 px-3.5 py-2 text-sm font-bold text-white/78 transition hover:border-[#ffb21c] hover:text-white">
-                <BeginnerIcon name={section.id === "overview" ? "target" : section.id === "sources" ? "link" : guideSectionIcon(section.id)} className="size-4 text-[#ffb21c]" />
-                {section.title}
+            {[{ id: "overview", title: "一图看懂" }, ...guide.sections, { id: "sources", title: "官方来源" }].map((section, index) => (
+              <a key={section.id} href={`#${section.id}`} className="rounded-full border border-white/15 bg-white/6 px-4 py-2 text-sm font-bold text-white/78 transition hover:border-[#ffb21c] hover:text-white">
+                <span className="mr-1.5 font-mono text-[#ffb21c]">{index + 1}</span>{section.title}
               </a>
             ))}
           </nav>
@@ -113,16 +113,9 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
             </div>
             <ul className="grid gap-3 sm:grid-cols-2">
               {[...guide.quickFacts, { label: "适合谁看", value: guide.audience }].map((fact, index) => (
-                <li key={fact.label} className={`flex gap-3 rounded-2xl p-4 ${index === 0 ? "bg-[#061b2b] text-white" : "border border-[#dbe2e5] bg-white"}`}>
-                  {icons.facts[index] && (
-                    <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${index === 0 ? "bg-[#ffb21c]/14 text-[#ffb21c]" : "bg-[#fff0c9] text-[#8f5b00]"}`}>
-                      <BeginnerIcon name={icons.facts[index]} />
-                    </span>
-                  )}
-                  <span className="min-w-0">
-                    <span className={`block text-[11px] font-black uppercase tracking-[0.12em] ${index === 0 ? "text-white/55" : "text-[#8a969d]"}`}>{fact.label}</span>
-                    <span className="mt-1 block text-sm font-black leading-6">{fact.value}</span>
-                  </span>
+                <li key={fact.label} className={`rounded-2xl p-4 sm:p-5 ${index === 0 ? "bg-gradient-to-br from-[#0f3550] to-[#061b2b] text-white" : "border border-[#e6dfcf] bg-gradient-to-br from-white via-white to-[#f7eedb]"}`}>
+                  <span className={`block text-[11px] font-black uppercase tracking-[0.12em] ${index === 0 ? "text-[#ffb21c]" : "text-[#b86e00]"}`}>{fact.label}</span>
+                  <span className="mt-1.5 block text-sm font-black leading-6">{fact.value}</span>
                 </li>
               ))}
             </ul>
@@ -135,7 +128,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#061b2b] text-[#ffb21c]"><BeginnerIcon name={guideSectionIcon(section.id)} className="size-[22px]" /></span>
               {section.title}
             </h2>
-            <GuideSectionBody section={section} icons={icons.sections[section.id]} />
+            <GuideSectionBody section={section} stepIcons={section.steps && guideStepIcons(section.steps, sectionIcons)} />
           </section>
         ))}
 

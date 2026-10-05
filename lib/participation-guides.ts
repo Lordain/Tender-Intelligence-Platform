@@ -1,8 +1,11 @@
 import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
+import type { BeginnerIconName } from "@/lib/beginner-guide";
 
 export type GuideStep = {
   title: string;
   detail: string;
+  /** The flowchart icon, where the title's words would pick a wrong or taken one (lib/guide-visuals.ts). */
+  icon?: BeginnerIconName;
 };
 
 export type GuideSection = {
@@ -167,10 +170,10 @@ export const participationGuides: ParticipationGuide[] = [
         title: "参与流程",
         steps: [
           { title: "核对项目", detail: "确认是 CFE 采购，读日历和 Pliego de Requisitos，看截止和递交方式。" },
-          { title: "选供应商类别", detail: "境内或境外、自然人或法人，货物服务供应商还是工程承包商。" },
+          { title: "选供应商类别", icon: "users", detail: "境内或境外、自然人或法人，货物服务供应商还是工程承包商。" },
           { title: "创建账户", detail: "在新供应商入口填写企业、联系人和税务资料。" },
           { title: "配置 e.firma", detail: "上传企业（不是个人）的 .cer、.key 和密码，由墨西哥税务局 SAT 校验。这实际需要墨西哥税号 RFC；没有的先问 CFE 服务台。" },
-          { title: "加入程序", detail: "找到项目，表达参与意向，留意提问和答疑窗口。" },
+          { title: "加入程序", icon: "question", detail: "找到项目，表达参与意向，留意提问和答疑窗口。" },
           { title: "递交方案", detail: "法律、技术、经济方案按时电子递交，保存回执。" },
         ],
       },
@@ -236,8 +239,8 @@ export const participationGuides: ParticipationGuide[] = [
         steps: [
           { title: "核对项目", detail: "确认还在进行、意向截止未过，读 bases 和附件。" },
           { title: "HIIP 2.0 登记", detail: "完成供应商登记，拿到六位供应商编号和登记证明。" },
-          { title: "开通联系人", detail: "用 HIIP 登记、供应商编号和法定代表人邮箱，开通可进 SISCeP 的企业联系人。" },
-          { title: "表达参与意向", detail: "按公告把 manifestación de interés 发到 SISCeP 指定邮箱，并抄送公告联系人。" },
+          { title: "开通联系人", icon: "key", detail: "用 HIIP 登记、供应商编号和法定代表人邮箱，开通可进 SISCeP 的企业联系人。" },
+          { title: "表达参与意向", icon: "envelope", detail: "按公告把 manifestación de interés 发到 SISCeP 指定邮箱，并抄送公告联系人。" },
           { title: "进入项目并递交", detail: "收到邀请链接后进入 SISCeP，按 bases 和澄清递交方案。" },
         ],
       },
@@ -538,7 +541,7 @@ export const participationGuides: ParticipationGuide[] = [
         id: "process",
         title: "参与流程",
         steps: [
-          { title: "选 RNP 类别", detail: "RNP 分货物、服务、工程咨询、工程执行四类，要和项目对象对上，不是登记一次就通用。" },
+          { title: "选 RNP 类别", icon: "target", detail: "RNP 分货物、服务、工程咨询、工程执行四类，要和项目对象对上，不是登记一次就通用。" },
           { title: "办 RNP 登记", detail: "没在秘鲁设分支的按 extranjero no domiciliado，经 OECE 线上窗口提交；登记长期有效，资料要及时更新。" },
           { title: "找项目看阶段", detail: "在 SEACE／PLADICOP 查找，确认程序类型和当前阶段，判断还来不来得及。" },
           { title: "等最终版 bases", detail: "质询和异议之后发布的 bases integradas 才是最终版本，别按首次公告准备。" },
@@ -834,8 +837,8 @@ export const participationGuides: ParticipationGuide[] = [
         id: "process",
         title: "参与流程",
         steps: [
-          { title: "核对项目标段", detail: "下载 Edital，看标段、所需类别、报价期和竞价（disputa）时间。" },
-          { title: "选登记路径", detail: "巴西企业、境外企业（Empresa Internacional）或 SAP Ariba 渠道，按身份选，别混用。" },
+          { title: "核对项目标段", icon: "target", detail: "下载 Edital，看标段、所需类别、报价期和竞价（disputa）时间。" },
+          { title: "选登记路径", icon: "link", detail: "巴西企业、境外企业（Empresa Internacional）或 SAP Ariba 渠道，按身份选，别混用。" },
           { title: "提交登记资料", detail: "在线提交并跟踪审核；境外企业的文件都要海牙认证或领事认证，写明本国税号。" },
           { title: "技术预审", detail: "关键物料和设备要做技术预审，没通过的可能无法中标。" },
           { title: "报价和竞价", detail: "账户开通后上传报价，参加线上竞价，跟进资格审查和合同。" },
@@ -909,9 +912,9 @@ export const participationGuides: ParticipationGuide[] = [
         title: "投资人参与流程",
         steps: [
           { title: "读 DSI 文件", detail: "每个项目发布投资人遴选文件（DSI），写明技术要求、投运日期、保函和评标规则。" },
-          { title: "平台注册", detail: "可单独或以联合体投标；递交前在 UPME 电子平台注册，并指定授权代表。" },
+          { title: "平台注册", icon: "register", detail: "可单独或以联合体投标；递交前在 UPME 电子平台注册，并指定授权代表。" },
           { title: "1 号信封：技术", detail: "资格文件、股权结构、投标保函、质量证书；还不是 E.S.P. 的附上拟设公司章程。" },
-          { title: "2 号信封：经济", detail: "按美元不变价报 25 年每年的预期收入，现值最低的有效方案中标。" },
+          { title: "2 号信封：经济", icon: "money", detail: "按美元不变价报 25 年每年的预期收入，现值最低的有效方案中标。" },
           { title: "设 E.S.P. 交保函", detail: "中标后在哥伦比亚设立输电公共服务企业，交 ASIC（XM）审批的履约保函，签监理信托合同。" },
         ],
       },

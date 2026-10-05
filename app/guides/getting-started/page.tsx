@@ -98,7 +98,7 @@ export default function BeginnerGuidePage() {
           <SectionHeading kicker="Checklist" title="2. 需要准备什么" intro="下面是多数项目都会要的。每个项目以招标文件里的清单为准。" />
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-[#e5e9ea] bg-[#e5e9ea] sm:grid-cols-2 lg:grid-cols-3">
             {prepareGroups.map((group) => (
-              <div key={group.title} className="bg-white p-5">
+              <div key={group.title} className="bg-gradient-to-br from-white via-white to-[#fbf4e4] p-5">
                 <h3 className="flex items-center gap-2.5 font-black">
                   <span className="flex size-9 items-center justify-center rounded-lg bg-[#fff0c9] text-[#8f5b00]"><BeginnerIcon name={group.icon} /></span>
                   {group.title}
@@ -118,10 +118,13 @@ export default function BeginnerGuidePage() {
 
         <section id="cautions" className="scroll-mt-8 rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] p-6 sm:p-8">
           <SectionHeading kicker="Watch out" title="3. 需要注意什么" />
+          {/* Numbered cards on an amber gradient rather than an icon each — the
+              icons stay on the flowchart and the checklist (user, 2026-10-05:
+              调整一下Icon 使用量，适当就好 … 可以使用不同的呈现效果来强化内容). */}
           <ul className="mt-6 grid gap-3 md:grid-cols-2">
-            {cautionItems.map((item) => (
-              <li key={item.title} className="flex gap-3 rounded-xl border-l-4 border-[#e0a12a] bg-[#fff7e4] px-4 py-3.5 md:last:odd:col-span-2">
-                <span className="mt-0.5 text-[#b86e00]"><BeginnerIcon name={item.icon} /></span>
+            {cautionItems.map((item, index) => (
+              <li key={item.title} className="flex gap-3.5 rounded-xl border border-[#f1dcae] bg-gradient-to-br from-[#fffaf0] to-[#ffefcc] px-4 py-4 shadow-[0_1px_2px_rgba(184,110,0,0.06)] md:last:odd:col-span-2">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#b86e00] font-mono text-xs font-black text-white shadow-[0_2px_6px_-2px_rgba(184,110,0,0.6)]">{index + 1}</span>
                 <span>
                   <span className="block text-sm font-black">{item.title}</span>
                   <span className="mt-0.5 block text-sm leading-6 text-[#66562f]">{item.detail}</span>
@@ -136,11 +139,8 @@ export default function BeginnerGuidePage() {
           <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] sm:text-3xl">4. 我们的建议</h2>
           <ol className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {adviceItems.map((item, index) => (
-              <li key={item.title} className="rounded-xl border border-white/12 bg-white/6 p-4">
-                <span className="flex items-center justify-between">
-                  <span className="flex size-10 items-center justify-center rounded-lg bg-[#ffb21c]/12 text-[#ffb21c]"><BeginnerIcon name={item.icon} className="size-[22px]" /></span>
-                  <span className="font-mono text-sm font-black text-white/30">{String(index + 1).padStart(2, "0")}</span>
-                </span>
+              <li key={item.title} className="rounded-xl border border-white/12 bg-gradient-to-br from-white/[0.09] to-white/[0.02] p-5">
+                <span className="block font-mono text-3xl font-black leading-none text-[#ffb21c]">{String(index + 1).padStart(2, "0")}</span>
                 <span className="mt-3 block font-black">{item.title}</span>
                 <span className="mt-1 block text-sm leading-6 text-white/66">{item.detail}</span>
               </li>

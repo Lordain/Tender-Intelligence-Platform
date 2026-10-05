@@ -17,15 +17,16 @@ export const FLOW_STAGES = [
   { label: "等结果", steps: [6, 7], tint: "bg-[#e7f2e8] text-[#2e6b3a] border-[#a5cfab]", ring: "ring-[#cfe6d2]" },
 ] as const;
 
-const stageOf = (index: number) => FLOW_STAGES.find((stage) => (stage.steps as readonly number[]).includes(index))!;
+export const stageOf = (index: number) => FLOW_STAGES.find((stage) => (stage.steps as readonly number[]).includes(index))!;
 
 /** The diamond sits after step index 2, so steps from index 3 on move one column right. */
 const DECISION_AFTER = 2;
 const columnOf = (index: number) => (index <= DECISION_AFTER ? index + 1 : index + 2);
 const DECISION_COLUMN = DECISION_AFTER + 2;
 
-type Node = { kind: "step"; step: FlowStep; index: number } | { kind: "decision" };
-const NODES: Node[] = [
+export type FlowNode = { kind: "step"; step: FlowStep; index: number } | { kind: "decision" };
+/** The eight steps with the decision diamond after step 3 — shared with the pinned card's miniature. */
+export const FLOW_NODES: FlowNode[] = [
   ...flowSteps.slice(0, DECISION_AFTER + 1).map((step, index) => ({ kind: "step" as const, step, index })),
   { kind: "decision" as const },
   ...flowSteps.slice(DECISION_AFTER + 1).map((step, offset) => ({ kind: "step" as const, step, index: offset + DECISION_AFTER + 1 })),
@@ -89,10 +90,10 @@ export function BeginnerFlowchart() {
           </div>
 
           {/* Row 3: the track and its nodes. */}
-          {NODES.map((node, position) => {
+          {FLOW_NODES.map((node, position) => {
             const column = node.kind === "decision" ? DECISION_COLUMN : columnOf(node.index);
             const first = position === 0;
-            const last = position === NODES.length - 1;
+            const last = position === FLOW_NODES.length - 1;
             return (
               <div key={node.kind === "decision" ? "decision" : node.step.title} style={{ gridColumn: column, gridRow: 3 }} className="relative mt-7 flex justify-center">
                 <span aria-hidden="true" className={`absolute top-1/2 h-0.5 -translate-y-1/2 bg-[#cfd8dc] ${first ? "left-1/2" : "left-0"} ${last ? "right-1/2" : "right-0"}`} />
@@ -106,7 +107,7 @@ export function BeginnerFlowchart() {
           })}
 
           {/* Row 4: labels under each node. */}
-          {NODES.map((node) => {
+          {FLOW_NODES.map((node) => {
             const column = node.kind === "decision" ? DECISION_COLUMN : columnOf(node.index);
             return (
               <div key={`label-${node.kind === "decision" ? "decision" : node.step.title}`} style={{ gridColumn: column, gridRow: 4 }} className="mt-4 px-1.5 text-center">
@@ -131,7 +132,7 @@ export function BeginnerFlowchart() {
       {/* Phone and tablet: a vertical timeline. */}
       <ol className="relative lg:hidden">
         <span aria-hidden="true" className="absolute bottom-6 left-[22px] top-6 w-0.5 bg-[#cfd8dc]" />
-        {NODES.map((node) => {
+        {FLOW_NODES.map((node) => {
           if (node.kind === "decision") {
             return (
               <li key="decision" className="relative flex gap-4 pb-6">

@@ -1,0 +1,33 @@
+# One-off: can the runner that does the nightly imports reach Ecuador's SOCE
+# (the portal where open tenders are published)? From the development sandbox
+# the TLS handshake is reset, so the question can only be answered here.
+# No secrets, no writes. Runs on a push of this file to the dev branch only;
+# removed again before anything is merged.
+name: Probe Ecuador SOCE
+
+on:
+  push:
+    branches: [claude/ai-tender-intelligence-platform-onfhq1]
+    paths: [.github/workflows/probe-ecuador.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Knock
+        run: |
+          getent hosts www.compraspublicas.gob.ec || echo "DNS lookup failed"
+          for url in \
+            "https://www.compraspublicas.gob.ec/ProcesoContratacion/compras/" \
+            "https://www.compraspublicas.gob.ec/ProcesoContratacion/compras/PC/buscarProceso.cpe" \
+            "https://portal.compraspublicas.gob.ec/sercop/" \
+            "https://datosabiertos.compraspublicas.gob.ec/PLATAFORMA/api/search_ocds?year=2026&search=LICB&page=1"; do
+            echo "== $url"
+            curl -sS -m 40 -A "Mozilla/5.0" -o body.txt -w "HTTP %{http_code}  %{size_download} bytes  connect %{time_connect}s  tls %{time_appconnect}s  total %{time_total}s\n" "$url" || echo "curl failed ($?)"
+            head -c 400 body.txt 2>/dev/null | tr -s '\n\r\t ' ' '; echo
+            rm -f body.txt
+          done

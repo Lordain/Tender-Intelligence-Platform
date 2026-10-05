@@ -172,7 +172,7 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
                 the second line is 34 em wide (612px at 18px), hence 39rem, from md where the column is 640px,
                 and 17px at xl where the column is ~596px. */}
             <span className="block">专注于拉美政府及国企招标采购，一站式中文平台。</span>
-            <span className="md:block lg:inline xl:block">覆盖墨西哥、巴西、哥伦比亚、秘鲁等拉美七国，汇集十余个官方平台，</span>
+            <span className="md:block lg:inline xl:block">覆盖墨西哥、巴西、哥伦比亚、秘鲁等拉美七国，汇集 20 多个官方平台，</span>
             <span className="md:block lg:inline xl:block">人工精筛，按国家、行业、项目规模筛选，剔除小额和日常项目。</span>
             <span className="block">帮企业省时、省力、省钱，快速获取精准拉美项目机会。</span>
           </p>

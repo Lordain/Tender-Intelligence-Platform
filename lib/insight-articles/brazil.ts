@@ -1,0 +1,120 @@
+import type { InsightArticle } from "@/lib/insight-articles/types";
+
+export const brazilInsight: InsightArticle = {
+  slug: "brazil",
+  countryEn: "Brazil",
+  countryPath: "/countries/brazil",
+  kicker: "Infrastructure & procurement outlook",
+  headline: ["巴西国家洞察：", "Novo PAC、特许经营与区域基础设施机会"],
+  lede: "从Novo PAC、PPI项目组合和行业管线出发，看交通、能源、港口、水务和城市建设的机会，以及中国企业从哪里进入。",
+  published: "2026-09-21",
+  modified: "2026-10-05",
+  stats: [
+    { label: "Novo PAC总投资", value: "1.9万亿", unit: "巴西雷亚尔", usd: "约3,684亿美元", note: "公共、国企、融资与私人资本合计" },
+    { label: "项目覆盖", value: "4.11万", unit: "个项目", note: "可按州、行业、阶段和执行主体筛选" },
+    { label: "PPI联邦项目组合", value: "192", unit: "个项目", usd: "约3,340亿雷亚尔（约648亿美元）", note: "特许经营、PPP等联邦合作项目" },
+    { label: "公路特许经营", value: "32", unit: "个新项目", usd: "约3,600亿雷亚尔（约698亿美元）", note: "交通部2023—2026年管线" },
+  ],
+  basis: "1.9万亿雷亚尔不全是联邦预算，也不是一年内支出：它包含私人、国企、融资和行业基金，覆盖2023—2026年及之后。看机会时先确认项目在规划、采购、拍卖、建设还是运营阶段。",
+  overview: {
+    title: "国家投资、地方执行与私人资本并存",
+    points: [
+      { lead: "Novo PAC是方向雷达", text: "总投资1.9万亿雷亚尔：2023—2026年约1.3万亿（约2,521亿美元），2026年后约6,000亿（约1,163亿美元）。" },
+      { lead: "没有单一采购平台", text: "联邦部委、州、市、公用事业、国企和特许经营公司都可能是实际发包方。" },
+      { lead: "PPI看特许经营与PPP", text: "2026年致国会报告：联邦项目组合192个、预计投资3,340亿雷亚尔；具体机会回到PNCP、Compras.gov.br或运营商门户核实。" },
+    ],
+  },
+  sectors: {
+    title: "可量化的投资管线",
+    intro: "以下取官方单独披露的金额，口径各不相同，不能相加；横条按最大一项为满格。",
+    bars: [
+      { name: "Novo PAC · 2023—2026年", value: 13000, tag: "约2,521亿美元", amount: "约1.3万亿雷亚尔", color: "bg-[#2d7450]" },
+      { name: "Novo PAC · 2026年后", value: 6000, tag: "约1,163亿美元", amount: "约6,000亿雷亚尔", color: "bg-[#67a98d]" },
+      { name: "公路特许经营 · 32个新项目", value: 3600, tag: "约698亿美元", amount: "约3,600亿雷亚尔", color: "bg-[#e5ad35]" },
+      { name: "PPI联邦组合 · 192个项目", value: 3340, tag: "约648亿美元", amount: "约3,340亿雷亚尔", color: "bg-[#318fae]" },
+      { name: "港口 · 42个项目", value: 220, tag: "2025—2026年", amount: "超过220亿雷亚尔", color: "bg-[#b95d42]" },
+      { name: "供水 · 371个项目", value: 125, tag: "Novo PAC子项", amount: "125亿雷亚尔", color: "bg-[#5aa8ba]" },
+    ],
+    takeaways: [
+      { lead: "不只来自新建工程", text: "特许经营优化、存量扩能、气候韧性、数字化改造和长期运维同样持续出单。" },
+      { lead: "盯住中标方和总包", text: "对设备与分包企业，识别中标运营商和EPC，与跟踪政府公告同样重要。" },
+      { lead: "中小项目数量多", text: "医院、学校等批量项目分散在地方，执行能力和资金来源要逐个判断。" },
+    ],
+  },
+  strategy: {
+    nav: "落地机制",
+    title: "先判断项目属于哪一种落地机制",
+    intro: "同一个行业的项目，可能走完全不同的发布和采购路径。",
+    items: [
+      { tag: "公共采购", title: "政府直接采购", text: "在PNCP发现公告，按文件指定的平台递交；联邦、州、市或公共机构执行合同。" },
+      { tag: "特许经营／PPP", title: "拍卖与项目公司", text: "跟踪PPI、主管部委、监管机构和B3拍卖；后续采购多进入项目公司供应链。" },
+      { tag: "国企与公用事业", title: "自有采购门户", text: "Petrobras、Eletrobras体系和地方公用事业可能使用自己的供应商和采购系统。" },
+    ],
+  },
+  pipeline: {
+    title: "八条行业主线",
+    items: [
+      { icon: "road", title: "公路建设与特许经营", figure: "32个新项目 · 约3,600亿雷亚尔", text: "传统工程、既有合同优化和新一轮特许经营并行；分别跟踪政府、特许经营公司和其EPC。" },
+      { icon: "rail", title: "铁路与多式联运", text: "北向出口通道、中西部粮食产区与东南港口群之间的扩能；轨道、信号、车辆和运维机会多在授权、续约和承包链中。" },
+      { icon: "port", title: "港口与航道", figure: "42个项目 · 超过220亿雷亚尔", text: "2025—2026年；除码头租赁外，还有疏浚、仓储、岸电、港机、数字化和集疏运。" },
+      { icon: "energy", title: "电网、新能源与油气", text: "东北风光、北部孤网替代、跨区输电和海上油气；覆盖输变电设备、储能、海工装备和运维。" },
+      { icon: "water", title: "供水、污水与气候韧性", figure: "371个供水项目 · 125亿雷亚尔", text: "联邦、州、市和公用事业共同推进，具体采购入口要逐个核对。" },
+      { icon: "city", title: "住房、城市更新与公共交通", text: "住房、BRT、VLT、地铁和公交走廊；常由地方申报、联邦出资，再走地方采购或融资项目。" },
+      { icon: "digital", title: "数字基础设施", text: "宽带、数据中心、政府数字化、智能交通和基础设施监测；以设备、软件、集成或服务合同出现。" },
+      { icon: "health", title: "医疗、教育与社会设施", text: "医院、学校、托育和文体设施；有分散采购，也有Novo PAC Seleções的批量项目。" },
+    ],
+  },
+  regions: {
+    title: "四类区域值得持续跟踪",
+    map: {
+      src: "/insights/brazil-infrastructure-regions.webp",
+      width: 1586,
+      height: 992,
+      alt: "巴西四类重点基础设施区域示意图：北部与亚马孙出口通道、东北能源与水务走廊、东南工业与物流核心、中西部—南部农业物流带",
+      caption: "示意产业和物流方向，不代表具体项目选线或行政边界上的投资金额。",
+    },
+    items: [
+      { color: "bg-[#35a6c8]", title: "北部与亚马孙出口通道", places: "Pará、Amazonas、Amapá、Rondônia、Tocantins等", focus: "河运、北方港口、输电、数字连接、供水和矿业物流；距离、环评和社区协商影响进度与成本。" },
+      { color: "bg-[#e5ad35]", title: "东北能源与水务走廊", places: "Bahia、Pernambuco、Ceará、Rio Grande do Norte、Piauí等", focus: "风电、光伏、输电、绿氢、港口、铁路和水安全；同步看电网消纳、许可和港区产业链。" },
+      { color: "bg-[#b95d42]", title: "东南工业与物流核心", places: "São Paulo、Rio de Janeiro、Minas Gerais、Espírito Santo", focus: "全国最密集的工业和港口市场：公路铁路、港口、城市轨道、能源油气、制造升级和水务。" },
+      { color: "bg-[#548c58]", title: "中西部—南部农业物流带", places: "Mato Grosso、Goiás、Mato Grosso do Sul、Paraná、Santa Catarina、Rio Grande do Sul", focus: "粮食仓储、铁路公路、边境通道、南部港口、电网和气候韧性工程。" },
+    ],
+    note: "巴西的项目分散在联邦、州、市和运营商手里。先选区域，再列出该区域真正发包的主体，比通看全国公告更有效。",
+  },
+  opportunities: {
+    title: "中国企业可以从哪些位置进入？",
+    intro: "大型特许经营之外，设备供货、专业分包和长期服务往往是更现实的第一步。",
+    items: [
+      { sector: "交通与大型土建", scope: ["公路桥隧", "铁路", "轨道", "站场", "收费", "智慧交通", "施工设备"], buyers: "DNIT、ANTT、州政府、特许经营公司及EPC" },
+      { sector: "港口与物流", scope: ["码头", "疏浚", "港机", "仓储", "岸电", "冷链", "集疏运"], buyers: "港务局、ANTAQ、码头运营商和物流企业" },
+      { sector: "能源与工业设施", scope: ["发输配电", "风光储", "海工", "油气装备", "电气设备", "长期运维"], buyers: "MME、ANEEL、Petrobras、公用事业与项目公司" },
+      { sector: "水务与环境", scope: ["供排水", "污水处理", "泵站", "防洪", "固废", "智慧水务"], buyers: "州和市政府、公用事业公司、PPP运营商" },
+      { sector: "城市与社会基础设施", scope: ["住房", "公共交通", "医院学校", "数字化设施", "设施管理"], buyers: "部委、Caixa、州、市及公共机构" },
+      { sector: "数字与专业服务", scope: ["咨询设计", "BIM", "测绘", "监测", "系统集成", "数据平台"], buyers: "政府采购、主承包商和长期运营主体" },
+    ],
+  },
+  entry: {
+    title: "把国家机会变成可执行动作",
+    steps: [
+      { title: "先选行业和区域", detail: "定一两个行业、重点州和能交付的产品，不从全国公告开始。" },
+      { title: "找真正的采购方", detail: "分开政府、州市、国企、公用事业、特许经营公司和EPC，各建名单。" },
+      { title: "定进入身份", detail: "直接投标、本地公司、联合体、设备供货或分包；税务、担保、葡语和售后都影响选择。" },
+      { title: "双线监测", detail: "一边看PNCP等公告，一边看PPI、拍卖结果和中标项目公司的供应链。" },
+      { title: "按文件做决定", detail: "核对资格、认证、标准、本地化、进口税费、汇率和担保后再投入。" },
+    ],
+    guides: [{ href: "/guides/brazil-pncp", label: "查看巴西PNCP参标指南" }],
+  },
+  sources: {
+    intro: "优先采用Casa Civil、交通部、港口与机场部和巴西央行公开资料。规划、项目数量和进度会调整，参与前请回到原文件核对。",
+    items: [
+      { label: "Casa Civil：Novo PAC总览", href: "https://www.gov.br/casacivil/pt-br/novopac", note: "1.9万亿雷亚尔总投资、2023—2026与后续投资口径。" },
+      { label: "Casa Civil：Novo PAC透明度", href: "https://www.gov.br/casacivil/pt-br/novopac/transparencia", note: "4.11万个项目，可按州及行业筛选。" },
+      { label: "巴西政府：2026致国会报告", href: "https://www.gov.br/casacivil/pt-br/.arquivos/mensagem-ao-congresso-nacional-2026.pdf/@@download/file", note: "PPI联邦项目组合192个、预计投资3,340亿雷亚尔（PPI章节）。" },
+      { label: "交通部：公路特许经营路演材料（2026年8月版）", href: "https://www.gov.br/transportes/pt-br/assuntos/concessoes/conteudos-rodovias-2026/RoadShow6aEd_PT_2026.08.07site.pdf", note: "2023—2026年32个新项目、约3,600亿雷亚尔。" },
+      { label: "港口与机场部：港口项目组合", href: "https://www.gov.br/portos-e-aeroportos/pt-br/assuntos/concessoes/portos", note: "2025—2026年42个港口项目、超过220亿雷亚尔。" },
+      { label: "Casa Civil：Novo PAC供水项目", href: "https://www.gov.br/casacivil/pt-br/novopac/agua-para-todos/abastecimento-de-agua", note: "371个项目及125亿雷亚尔。" },
+      { label: "巴西央行：PTAX美元汇率", href: "https://ptax.bcb.gov.br/ptax_internet/consultarUltimaCotacaoDolar.do", note: "2026年9月18日：1美元＝5.1575雷亚尔。" },
+    ],
+    fx: "按巴西央行2026年9月18日PTAX收盘卖出价1美元＝5.1575雷亚尔换算并取整，仅用于理解规模，不代表项目结算汇率。",
+  },
+};

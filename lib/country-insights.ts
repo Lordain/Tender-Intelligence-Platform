@@ -100,7 +100,7 @@ export const countryInsights: CountryInsightSummary[] = [
       licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
       sourceUrl: "https://commons.wikimedia.org/wiki/File:PeruRail_EMD_GT42AC_812_at_Km_99.jpg",
     },
-    highlights: ["561.57亿索尔（约166.8亿美元）公共投资", "44个APP/资产项目与8项增补", "66个矿业投资项目"],
+    highlights: ["2026预算2,575.62亿索尔（约765.2亿美元）", "44个APP/资产项目与8项增补", "66个矿业投资项目"],
   },
   {
     slug: "chile",

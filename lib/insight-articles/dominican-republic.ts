@@ -1,0 +1,125 @@
+import type { InsightArticle } from "@/lib/insight-articles/types";
+
+export const dominicanRepublicInsight: InsightArticle = {
+  slug: "dominican-republic",
+  countryEn: "Dominican Republic",
+  countryPath: "/countries/dominican-republic",
+  kicker: "Infrastructure & procurement outlook",
+  headline: ["多米尼加国家洞察：", "2025—2028公共投资与长期基础设施机会"],
+  lede: "从四年国家公共投资计划出发，结合年度预算、公私合作项目银行和长期能源规划，看交通、教育、供水、能源与城市基础设施的机会。",
+  published: "2026-10-04",
+  modified: "2026-10-05",
+  stats: [
+    { label: "2025—2028规划投资", value: "4,441.83亿", unit: "多米尼加比索", usd: "约73.2亿美元", note: "国家公共投资计划" },
+    { label: "公共投资项目", value: "约2,024", unit: "个", note: "覆盖中央与地方项目" },
+    { label: "四年交通投入", value: "1,338.96亿", unit: "多米尼加比索", note: "规划金额最大的功能类别" },
+    { label: "能源开发管线", value: "超7,400", unit: "兆瓦 · 136个项目", note: "含可再生能源与储能" },
+  ],
+  basis: "美元按2026年10月2日多米尼加中央银行卖出价1美元＝60.6902比索静态折算，仅用于比较。公共预算、公私合作和能源开发是不同口径，不能简单相加。",
+  overview: {
+    title: "四年约4,441.83亿比索，覆盖约2,024个项目",
+    points: [
+      { lead: "交通、教育、住房占65.2%", text: "交通约1,338.96亿、教育约962.98亿、住房与社区服务约592.94亿比索。" },
+      { lead: "四年规划看方向，年度预算看落地", text: "2026年编码项目约965.44亿比索，是判断当年执行重点的口径。" },
+      { lead: "项目数不等于标次数", text: "一个项目可能拆成多个采购，也可能还在规划、设计、融资或续建阶段。" },
+    ],
+    years: {
+      title: "国家公共投资计划 · 逐年安排（比索）",
+      items: [
+        { year: "2025", value: 1960.12, amount: "1,960.12亿" },
+        { year: "2026", value: 1133.56, amount: "1,133.56亿" },
+        { year: "2027", value: 752.76, amount: "752.76亿" },
+        { year: "2028", value: 595.38, amount: "595.38亿" },
+      ],
+    },
+  },
+  sectors: {
+    title: "交通、教育和社区基础设施是资金主线",
+    intro: "国家公共投资计划四年功能分类，用于观察项目管线；实际采购规模以年度预算和项目公告为准。",
+    shares: true,
+    bars: [
+      { name: "交通运输", value: 30.1, tag: "30.1%", amount: "约1,338.96亿比索", color: "bg-[#59a8d8]" },
+      { name: "教育", value: 21.7, tag: "21.7%", amount: "约962.98亿比索", color: "bg-[#d9a23a]" },
+      { name: "住房与社区服务", value: 13.3, tag: "13.3%", amount: "约592.94亿比索", color: "bg-[#c85c43]" },
+      { name: "环境、空气与水体保护", value: 6.6, tag: "6.6%", amount: "约292.37亿比索", color: "bg-[#5aa8ba]" },
+      { name: "能源与燃料", value: 5.3, tag: "5.3%", amount: "约235.38亿比索", color: "bg-[#67a98d]" },
+      { name: "其他功能", value: 22.9, tag: "22.9%", amount: "约1,019.20亿比索", color: "bg-[#b5bfc4]" },
+    ],
+  },
+  strategy: {
+    nav: "多年期框架",
+    title: "四条框架决定项目如何进入市场",
+    intro: "资金和采购口径各不相同，要分别跟踪项目阶段和正式入口。",
+    items: [
+      { tag: "2025—2028", title: "国家公共投资计划", text: "约2,024个项目、四年约4,441.83亿比索；交通、教育、住房和社区服务合计约65.2%。" },
+      { tag: "2026年度", title: "预算落地与项目编码", text: "中央政府资本支出约2,152.85亿比索，其中编码项目约965.44亿比索。" },
+      { tag: "滚动项目库", title: "公私合作项目银行", text: "交通、港口、城市服务、能源和公共设施项目处于受理、评估、竞标、执行等不同状态，不都在招标。" },
+      { tag: "2025—2038", title: "能源系统扩建", text: "可再生能源、储能、天然气、电网和水电；开发管线136个项目、超过7,400兆瓦，2030目标约需54亿美元。" },
+    ],
+  },
+  pipeline: {
+    title: "值得持续跟踪的五类项目方向",
+    items: [
+      { icon: "rail", title: "轨道交通、公路与物流连接", figure: "306个项目 · 约1,338.96亿比索", text: "圣多明各地铁扩建、圣地亚哥单轨和道路桥梁；政府目标2028年底把大众轨道交通从35公里扩到73公里。" },
+      { icon: "education", title: "学校、校园和技能设施", figure: "约962.98亿比索", text: "不只校舍建设，也有修缮、实验室、家具、教学设备、数字化系统和校园运营服务。" },
+      { icon: "water", title: "供水、排污与气候韧性", figure: "INAPA 2025年执行102.68亿比索", text: "住房与社区服务约592.94亿、环境与水体保护约292.37亿比索；管网、泵站、处理厂、排水和智能计量是持续需求。" },
+      { icon: "energy", title: "可再生能源、储能与输电", figure: "136个项目 · 超过7,400兆瓦", text: "储能项目已进入特许阶段；光伏、风电、储能、变电站、输电线路、保护控制和运维。" },
+      { icon: "city", title: "公私合作与都市基础设施", figure: "Autopista Ámbar约236.8亿比索", text: "项目银行横跨公路、停车、港口、卫生、政府设施和城市交通；先判断项目是早期倡议、竞标还是已执行。" },
+    ],
+  },
+  regions: {
+    title: "四类业务观察区，采购和履约条件不同",
+    map: {
+      src: "/insights/dominican-republic-infrastructure-regions.webp",
+      width: 1600,
+      height: 900,
+      alt: "多米尼加四类基础设施机会区域示意图，区分Ozama都市区、Cibao北部与西北部、东部旅游与产业走廊和南部与边境发展带",
+      caption: "按官方规划地区和主要产业链归纳，仅用于说明业务观察区域，不代表精确行政边界、项目位置、投资范围或政治立场。",
+    },
+    items: [
+      { color: "bg-[#c85c43]", title: "Ozama都市区", places: "Distrito Nacional、Santo Domingo", focus: "2026年编码项目约325.45亿比索，占地区分布33.7%；地铁与城市交通、供水排污、住房、医院和公共建筑。" },
+      { color: "bg-[#d9a23a]", title: "Cibao北部与西北部", places: "Santiago、Puerto Plata、Montecristi及周边", focus: "圣地亚哥单轨、道路、供水、物流和旅游设施；2026年Cibao Norte与Cibao Noroeste合计约181.03亿比索。" },
+      { color: "bg-[#59a8d8]", title: "东部旅游与产业走廊", places: "La Altagracia、La Romana、San Pedro de Macorís", focus: "机场与道路连接、旅游公共空间、供水排污、电网、港口和工业服务；采购方可能是中央、地方、公用事业或私人业主。" },
+      { color: "bg-[#7b63a8]", title: "南部与边境发展带", places: "Barahona、Pedernales、San Juan、Elías Piña及周边", focus: "旅游开发、道路、供水、农业水利、医院学校和电力连接；偏远物流和气候韧性影响履约成本。" },
+    ],
+    note: "国家电子采购平台覆盖面广，但公用事业、地方机构、公私合作项目公司和私人能源开发商可能有不同入口。发现项目后，先确认实际采购主体和正式文件来源。",
+  },
+  opportunities: {
+    title: "中国企业可关注的潜在项目机会",
+    intro: "直接投标、组联合体、参与公私合作或进入总包供应链，门槛各不相同；资格和本地化要求以每项最新文件为准。",
+    items: [
+      { sector: "交通与工程", scope: ["地铁", "单轨", "道路桥梁", "轨道信号", "机电系统", "施工设备与维护"], buyers: "公共工程与通信部（MOPC）、圣多明各地铁办公室（OPRET）、交通基础设施信托（FITRAM）、地方政府" },
+      { sector: "能源与电网", scope: ["光伏", "风电", "储能", "输变电", "保护控制", "天然气与运维"], buyers: "国家能源委员会（CNE）、国家输电公司（ETED）、国家水电公司（EGEHID）、配电企业及私人业主" },
+      { sector: "供水与环境", scope: ["水厂", "污水处理", "泵站", "管网", "排水", "河道治理", "仪表与自动化"], buyers: "国家供水与排污研究所（INAPA）、圣多明各供水排污公司（CAASD）、地方供水机构" },
+      { sector: "社会基础设施", scope: ["学校", "医院", "公共建筑", "实验室", "家具设备", "数字系统"], buyers: "教育部（MINERD）、住房部（MIVED）、国家卫生服务（SNS）、各部委与自治机构" },
+      { sector: "公私合作项目", scope: ["公路", "港口", "停车", "城市服务", "公共设施的设计、融资、建设和运营"], buyers: "公私合作总局（DGAPP）、项目主管部门、项目公司及入围联合体" },
+    ],
+  },
+  entry: {
+    title: "把市场方向转成参标动作",
+    steps: [
+      { title: "分清项目口径", detail: "国家计划、年度预算、公私合作、私人能源开发和正式采购分开看，别把规划金额当招标规模。" },
+      { title: "核对采购入口", detail: "政府采购以DGCP为主；公私合作、公用事业和私人项目可能另有入口。" },
+      { title: "先做境外参与核验", detail: "RPE临时登记、平台账户、翻译认证、本地代表、税务、担保和电子提交。" },
+      { title: "按产业链选角色", detail: "门槛过高时评估联合体、设备供货、专项工程或分包，不预设都要本地合作。" },
+    ],
+    guides: [{ href: "/guides/dominican-republic-dgcp", label: "查看多米尼加DGCP参标指南" }],
+  },
+  sources: {
+    intro: "优先采用多米尼加规划与发展部、预算总局、公私合作总局、国家能源委员会、总统府及中央银行公开资料。金额和项目状态会变化，参与前请回到原文件核对。",
+    items: [
+      { label: "国家公共投资计划2025—2028", href: "https://mepyd.gob.do/download/21003/pnpsp/416606/pnpip-2025-2028.pdf", note: "四年投资总额、项目数量、年度和功能分类金额。" },
+      { label: "规划与发展部：国家公共投资计划入口", href: "https://mepyd.gob.do/pnpip-2025-2028", note: "国家公共投资计划的官方发布页。" },
+      { label: "预算总局：2026年国家预算说明报告", href: "https://digepres.gob.do/wp-content/uploads/2026/02/2.-Inf-Expl-y-MPMP-1.pdf", note: "2026年资本支出、编码项目及地区分布。" },
+      { label: "预算总局：2026年国家预算", href: "https://digepres.gob.do/ley-de-presupuesto-general-del-estado-2026/", note: "2026年度预算文件和法律入口。" },
+      { label: "公私合作总局：项目银行", href: "https://dgapp.gob.do/banco-de-proyectos/por-fecha/", note: "不同状态的公私合作倡议、竞标与执行项目。" },
+      { label: "公私合作总局：Autopista Ámbar项目", href: "https://dgapp.gob.do/banco-de-proyectos/originador/", note: "项目来源、阶段和公开资本支出口径。" },
+      { label: "国家能源委员会：能源计划2025—2038及项目管线", href: "https://cne.gob.do/noticia/rd-alcanza-24-5-de-renovables-y-tiene-en-carpeta-mas-de-7400-mw-en-nuevos-proyectos/", note: "136个开发项目、超过7,400兆瓦和2030投资需求。" },
+      { label: "国家能源委员会：发电扩建规划", href: "https://cne.gob.do/wp-content/uploads/2025/04/Boletin-7-web.pdf", note: "至2038年的光伏、风电、储能、天然气和水电方向。" },
+      { label: "总统府：2028年大众轨道交通扩展目标", href: "https://presidencia.gob.do/noticias/gobierno-impulsa-transformacion-del-transporte-masivo-con-la-expansion-73-kilometros-de", note: "现有和规划轨道交通网络长度。" },
+      { label: "总统府：供水与排污投资", href: "https://www.presidencia.gob.do/noticias/presidente-luis-abinader-revela-inversion-historica-en-agua-potable-y-saneamiento", note: "INAPA 2025年投资及主要建设方向。" },
+      { label: "多米尼加中央银行参考汇率", href: "https://www.bancentral.gov.do/", note: "2026年10月2日卖出价：1美元＝60.6902比索。" },
+    ],
+    fx: "按2026年10月2日多米尼加中央银行卖出价1美元＝60.6902多米尼加比索静态折算，仅用于比较；实际采购金额与汇率以项目文件为准。",
+  },
+};

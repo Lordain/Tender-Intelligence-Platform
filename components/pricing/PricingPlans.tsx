@@ -42,9 +42,10 @@ const ICON_PATHS: Record<FeatureIcon, ReactNode> = {
  * Three pages of a sample 行业分析月报 under 每月标准化行业分析报告, small, so
  * the line shows what the report looks like rather than only naming it
  * (user, 2026-10-05: 请你自己做更偏一个行业维度分析的标准化报告，放几张示意图).
- * Built from the real September figures (503 tenders in five countries):
- * industry × country, size structure by industry, and an industry focus.
- * Each opens full size in a new tab.
+ * Laid out from the September figures (industry × country, size structure by
+ * industry, an industry focus), with every number and sentence blurred: it
+ * shows what the report looks like, not its data (user, 2026-10-05: 把这些
+ * 图片的内容打码，不直接展示数据). Each opens full size in a new tab.
  */
 const REPORT_SAMPLES = [
   { id: "01", title: "五国行业项目分布" },
@@ -59,14 +60,14 @@ function ReportSamples() {
         {REPORT_SAMPLES.map((sample) => (
           <a
             key={sample.id}
-            href={`/pricing/industry-report-${sample.id}.webp`}
+            href={`/pricing/industry-sample-${sample.id}.webp`}
             target="_blank"
             rel="noopener noreferrer"
             title={`示例：${sample.title}（点击查看大图）`}
             className="group block overflow-hidden rounded-md border border-[#dbe2e5] bg-[#f7f4ee] shadow-[0_8px_18px_-14px_rgba(6,27,43,.55)] transition-transform hover:-translate-y-0.5 hover:border-[#b86e00]"
           >
             <Image
-              src={`/pricing/industry-report-${sample.id}-thumb.webp`}
+              src={`/pricing/industry-sample-${sample.id}-thumb.webp`}
               alt={`行业分析月报示例页：${sample.title}`}
               width={360}
               height={480}

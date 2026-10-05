@@ -19,24 +19,15 @@ export function GuideCountryFlag({ code }: { code: string }) {
 /**
  * Each platform's own icon, taken from its official site (favicon, touch icon
  * or header logo) and redrawn at 128px in public/guides/logos/<slug>.png
- * (user, 2026-10-04: 能不能找到每个平台的官方图标，加入图标？). CFE's is
- * the CFE lettering from the logo the user supplied. Proyectos Estratégicos
- * MX could not be fetched from its site, so it shows its initials until an
- * official file is in hand.
+ * (user, 2026-10-04: 能不能找到每个平台的官方图标，加入图标？). CFE's and
+ * Proyectos Estratégicos MX's sites could not be reached from here, so theirs
+ * come from logo files the user supplied: the CFE lettering, and the hexagon
+ * symbol without the wordmark.
  */
-const GUIDE_LOGO_FALLBACK: Record<string, string> = {
-  "mexico-proyectos-estrategicos": "PE",
-};
-
 export function GuideLogo({ slug }: { slug: string }) {
-  const fallback = GUIDE_LOGO_FALLBACK[slug];
   return (
     <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#e5e9ea] bg-white p-1.5">
-      {fallback ? (
-        <span className="text-xs font-black tracking-[-0.02em] text-[#425461]">{fallback}</span>
-      ) : (
-        <Image src={`/guides/logos/${slug}.png`} alt="" width={32} height={32} className="size-full object-contain" />
-      )}
+      <Image src={`/guides/logos/${slug}.png`} alt="" width={32} height={32} className="size-full object-contain" />
     </span>
   );
 }

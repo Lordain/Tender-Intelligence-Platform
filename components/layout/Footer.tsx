@@ -37,7 +37,7 @@ export function Footer() {
           <p className="mt-5 text-sm leading-7 text-white/70">专注于拉美政府及国企招标采购，一站式中文平台。</p>
           <p className="mt-1 text-sm leading-7 text-white/45">
             {/* Wraps only between the three points, never inside one. */}
-            <span className="whitespace-nowrap">汇集十余个官方采购平台</span> · <span className="whitespace-nowrap">人工精筛</span> · <span className="whitespace-nowrap">剔除小额和日常项目</span>
+            <span className="whitespace-nowrap">汇集 20 多个官方采购平台</span> · <span className="whitespace-nowrap">人工精筛</span> · <span className="whitespace-nowrap">剔除小额和日常项目</span>
           </p>
           {/* Tighter than before (gap-2, px-3) so the six countries stay on one line from 360px phones up (2026-09-29, 阿根廷 added).
               Seven (2026-10-04, 多米尼加) need ~430px and the column is 320–384px, so they no longer fit one line at any

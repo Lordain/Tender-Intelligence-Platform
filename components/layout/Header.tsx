@@ -31,7 +31,7 @@ export function Header() {
                 <BrandLogo variant="dark" className="size-10 sm:size-11" priority />
                 <span className="min-w-0">
                   <span className="block truncate text-base font-bold tracking-[0.04em] sm:text-lg sm:tracking-[0.08em]">拉美招投标信息平台</span>
-                  <span className="hidden text-[10px] tracking-[0.12em] text-white/60 sm:block">拉美市场 · 投标更有把握</span>
+                  <span className="hidden text-[10px] tracking-[0.12em] text-white/60 sm:block">拉美市场 · 探索更多机会</span>
                 </span>
               </Link>
               <nav className="hidden items-center gap-5 lg:flex xl:gap-7">

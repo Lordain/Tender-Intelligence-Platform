@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DgcpProceso } from "@/lib/ingestion/connectors/dominicana-dgcp-live";
-import { DOMINICANA_INGESTED_MODALIDADES } from "@/lib/ingestion/connectors/dominicana-dgcp-live";
+import { DOMINICANA_INGESTED_MODALIDADES, isIngestedDgcpProceso } from "@/lib/ingestion/connectors/dominicana-dgcp-live";
 import { dominicanGovernmentLevel, dominicanStatus, dominicanTime, mapDgcpProcesoToTender } from "@/lib/ingestion/dominicana-mapper";
 import { ingestDominicana } from "@/lib/ingestion/ingest-dominicana";
 import { isStagedCountry } from "@/lib/staged-countries";
@@ -30,6 +30,11 @@ check("公开招标（全国）收", DOMINICANA_INGESTED_MODALIDADES.test("Licit
 check("公开招标（简易）收", DOMINICANA_INGESTED_MODALIDADES.test("Licitación Pública Abreviada"), true);
 check("门槛以下采购不收", DOMINICANA_INGESTED_MODALIDADES.test("Compras por Debajo del Umbral"), false);
 check("比价不收", DOMINICANA_INGESTED_MODALIDADES.test("Comparación de Precios"), false);
+check("全国紧急状态例外程序（PEEN）收", isIngestedDgcpProceso({ modalidad: "Procesos de Excepción", codigo_proceso: "EDESUR-MAE-PEEN-2026-0008" }), true);
+check("其他例外程序（PEPU 独家供应）不收", isIngestedDgcpProceso({ modalidad: "Procesos de Excepción", codigo_proceso: "EDESUR-DAF-CM-PEPU-2026-0001" }), false);
+check("其他例外程序（PEUR 紧急）不收", isIngestedDgcpProceso({ modalidad: "Procesos de Excepción", codigo_proceso: "MOPC-MAE-PEUR-2026-0003" }), false);
+check("编号带 PEEN 但不是例外程序不收", isIngestedDgcpProceso({ modalidad: "Compras por Debajo del Umbral", codigo_proceso: "X-PEEN-1" }), false);
+check("公开招标照收", isIngestedDgcpProceso({ modalidad: "Licitación Pública Internacional", codigo_proceso: "EDEESTE-CCC-LPI-2026-0001" }), true);
 
 console.log("\n字段");
 check("「Z」按圣多明各时间读（UTC-4）", dominicanTime("2026-11-12T10:00:00Z"), "2026-11-12T14:00:00.000Z");
@@ -48,10 +53,34 @@ check("截标时间按当地时间", road.submissionDeadline, "2026-11-12T14:00:
 check("官方链接去掉双斜杠", road.sourceUrl, "https://comunidad.comprasdominicana.gob.do/Public/Tendering/OpportunityDetail/Index?noticeUID=DO1.NTC.1777402");
 check("员工餐 → 排除", mapDgcpProcesoToTender(byCode("PASAPORTES-CCC-LPN-2026-0002"), NOW).relevance.tier, "excluded");
 
+// Real row, read 2026-10-05 (EDESUR, national-emergency procedure under Decreto 630-2026).
+const transformers = mapDgcpProcesoToTender(
+  {
+    codigo_proceso: "EDESUR-MAE-PEEN-2026-0008",
+    unidad_compra: "Empresa Distribuidora de Electricidad del Sur",
+    modalidad: "Procesos de Excepción",
+    tipo_excepcion: "Emergencia",
+    titulo: "ADQUISICIÓN TRANSFORMADORES DE POTENCIA",
+    descripcion: "ADQUISICIÓN TRANSFORMADORES DE POTENCIA",
+    estado_proceso: "Proceso publicado",
+    divisa: "DOP",
+    monto_estimado: 522553892.7,
+    fecha_publicacion: "2026-10-01T18:00:18.3133333Z",
+    fecha_fin_recepcion_ofertas: "2026-10-30T09:30:00Z",
+    url: "https://comunidad.comprasdominicana.gob.do//Public/Tendering/OpportunityDetail/Index?noticeUID=DO1.NTC.1779162",
+    objeto_proceso: "Bienes",
+    subobjeto_proceso: "Bienes no comunes ni estandarizados",
+    organismo_financiero_externo: "No",
+  } as DgcpProceso,
+  NOW,
+);
+check("紧急程序：电力变压器 ~830 万美元 → 保留、招标中", [transformers.relevance.tier !== "excluded", transformers.status], [true, "open"]);
+check("紧急程序标明是公开征集", transformers.procedureType, "Proceso de Excepción por Emergencia Nacional (convocatoria abierta)");
+
 async function main() {
   console.log("\n导入（不写库）");
   const run = await ingestDominicana(null, { write: false, now: NOW, fetchProcesos: async () => rows });
-  check("门槛以下的不读", run.publicTenderCount, rows.filter((row) => row.modalidad.startsWith("Licitaci")).length);
+  check("门槛以下的不读", run.publicTenderCount, rows.filter((row) => row.modalidad.startsWith("Licitaci") || /-PEEN-/.test(row.codigo_proceso)).length);
   check("已取消的不留", run.kept.some((tender) => tender.status === "cancelled"), false);
   check("公路工程留下", run.kept.some((tender) => tender.tenderNumber === "MOPC-CCC-LPN-2026-0019"), true);
 

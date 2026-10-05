@@ -15,15 +15,15 @@ export default async function AdminImportTendersDominicanaPage() {
     <div className="flex flex-col gap-3">
       <ImportSourceSection
         name="DGCP — 多米尼加政府采购开放数据"
-        hint="Portal Transaccional 的官方接口；只读公开招标（国内、国际、简易公开招标）"
+        hint="Portal Transaccional 的官方接口；只读公开招标（国内、国际、简易公开招标）和全国紧急状态例外程序（PEEN）"
         mode="auto"
         defaultOpen
         links={[{ href: "https://comunidad.comprasdominicana.gob.do/" }, { href: "https://datosabiertos.dgcp.gob.do/" }]}
       >
         <div className="flex flex-col gap-3 text-sm text-[#233846]">
           <p className="text-xs leading-5 text-[#64717c]">
-            每天读取最近 3 天发布的全部采购程序（每月约 7,000 条），其中<strong>公开招标</strong>每月约 100 条；低于门槛的采购、小额合同、比价和逆向拍卖不读。
-            公开招标按平台通用规则判断，只写入仍在投标期且被保留的项目，并附上招标文件和附件的下载链接。导入后在「通用维护 → 更新项目文案」生成中文标题和摘要（西语原文）。
+            每天读取最近 3 天发布的全部采购程序（每月约 7,000 条），其中<strong>公开招标</strong>每月约 100 条，<strong>全国紧急状态例外程序</strong>（编号带 PEEN，公开征集、外国企业可投）不定期出现；低于门槛的采购、小额合同、比价、逆向拍卖和其他例外程序不读。
+            两类都按平台通用规则判断，只写入仍在投标期且被保留的项目，并附上招标文件和附件的下载链接。导入后在「通用维护 → 更新项目文案」生成中文标题和摘要（西语原文）。
           </p>
           <ImportDominicanaForm />
           <div className="rounded-xl border border-[#e1e7e9] bg-white">

@@ -4,15 +4,16 @@
  * visitors the same day.
  *
  * Reads every procedure published in the window, keeps the public tenders
- * (DOMINICANA_INGESTED_MODALIDADES) that are still taking bids, classifies
+ * (isIngestedDgcpProceso: the open tenders and the national-emergency
+ * procedures) that are still taking bids, classifies
  * them by the platform's general rules and writes only what those keep,
  * with each kept tender's pliego and annexes as document links.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
 import {
-  DOMINICANA_INGESTED_MODALIDADES,
   fetchDgcpDocumentos,
+  isIngestedDgcpProceso,
   fetchDgcpProcesos,
   type DgcpDocumento,
   type DgcpProceso,
@@ -60,7 +61,7 @@ export async function ingestDominicana(
 
   const seen = new Set<string>();
   const publicTenders = procesos.filter((proceso) => {
-    if (!DOMINICANA_INGESTED_MODALIDADES.test(proceso.modalidad ?? "") || seen.has(proceso.codigo_proceso)) return false;
+    if (!isIngestedDgcpProceso(proceso) || seen.has(proceso.codigo_proceso)) return false;
     seen.add(proceso.codigo_proceso);
     return true;
   });

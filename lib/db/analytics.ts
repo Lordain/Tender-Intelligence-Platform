@@ -94,6 +94,29 @@ async function fetchManualPaymentRows(supabase: AdminClient): Promise<ManualPaym
   }
 }
 
+/**
+ * The accounts the dashboard counts: every profile not marked
+ * exclude_from_stats (migration 0063 — the owner's own, test and
+ * complimentary accounts, 2026-10-05). Before that migration has run the
+ * column is missing (42703) and everyone is counted, as before, rather than
+ * the whole dashboard failing.
+ */
+async function fetchStatsProfiles(supabase: AdminClient): Promise<{ registeredUsers: number; excludedUserIds: Set<string> }> {
+  const excluded = await supabase.from("profiles").select("id").eq("exclude_from_stats", true);
+  if (excluded.error?.code === "42703") {
+    const all = await supabase.from("profiles").select("id", { count: "exact", head: true });
+    if (all.error) throw all.error;
+    return { registeredUsers: all.count ?? 0, excludedUserIds: new Set() };
+  }
+  if (excluded.error) throw excluded.error;
+  const counted = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("exclude_from_stats", false);
+  if (counted.error) throw counted.error;
+  return {
+    registeredUsers: counted.count ?? 0,
+    excludedUserIds: new Set(((excluded.data ?? []) as Array<{ id: string }>).map((row) => row.id)),
+  };
+}
+
 function number(value: number | string | null | undefined): number {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -164,12 +187,11 @@ export async function fetchAnalyticsDashboard(days: number, requestedScope: Traf
     supabase.from("analytics_daily_tender_opens").select("tender_id,tender_title,slug,is_internal,open_count,visitor_count").gte("day", sinceDay),
     supabase.from("analytics_current_favorites").select("tender_id,tender_title,slug,is_internal,favorite_count").order("favorite_count", { ascending: false }),
     fetchSubscriptionRows(supabase),
-    supabase.from("profiles").select("id", { count: "exact", head: true }),
+    fetchStatsProfiles(supabase),
     fetchManualPaymentRows(supabase),
   ]);
 
-  const analyticsError = dailyResult.error ?? geographyResult.error ?? filterResult.error ?? clickResult.error ?? favoriteResult.error
-    ?? profileResult.error;
+  const analyticsError = dailyResult.error ?? geographyResult.error ?? filterResult.error ?? clickResult.error ?? favoriteResult.error;
   if (analyticsError) return null;
 
   const dailyByDay = new Map(
@@ -219,7 +241,8 @@ export async function fetchAnalyticsDashboard(days: number, requestedScope: Traf
     favoriteTotals.set(row.tender_id, current);
   }
 
-  const subscriptions = subscriptionResult;
+  // Excluded accounts' subscriptions count nowhere: not as users, not by plan, not in the list value.
+  const subscriptions = subscriptionResult.filter((row) => !profileResult.excludedUserIds.has(row.user_id));
   const now = Date.now();
   const periodIsCurrent = (row: SubscriptionRow) => !row.current_period_end || new Date(row.current_period_end).getTime() > now;
   const activeSubscriptions = subscriptions.filter((row) => row.status === "active" && periodIsCurrent(row));
@@ -264,7 +287,7 @@ export async function fetchAnalyticsDashboard(days: number, requestedScope: Traf
     subscriptions: {
       activeUsers,
       trialingUsers,
-      registeredUsers: profileResult.count ?? 0,
+      registeredUsers: profileResult.registeredUsers,
       byPlan: [...planTotals.entries()].map(([plan, users]) => ({ plan, count: users.size })).sort((a, b) => b.count - a.count),
     },
     payments: {

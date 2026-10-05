@@ -219,7 +219,7 @@ export type TenderListPageData = {
    *   filterTenders — the site was advertising a catalogue including
    *   thousands of tenders no user can reach.
    * - It subtracted only awarded + cancelled, while the default feed INCLUDES
-   *   awarded (DEFAULT_TENDER_LIST_STATUSES), so 当前结果 could legitimately
+   *   awarded (DEFAULT_TENDER_LIST_STATUSES), so 当前筛选结果 could legitimately
    *   come out LARGER than the site total sitting next to it.
    *
    * Now it runs the same filterTenders() gate the feed does, so it is always
@@ -228,12 +228,12 @@ export type TenderListPageData = {
    *
    * It stopped being the LIVE slice on 2026-09-20 (user: 把全站在招改成全站
    * 项目，因为在招把已截止都算入了). It never did count 已截止 — the three
-   * LIVE_TENDER_STATUSES are what it summed. But printed beside a 当前结果 of
+   * LIVE_TENDER_STATUSES are what it summed. But printed beside a 当前筛选结果 of
    * the same size, on a feed whose default preset shows 已中标 too, 在招 read
    * as a claim about what was IN the number rather than as a narrower count
    * beside a wider one. Wording cannot fix both readings at once, so the cell
    * now counts what its new label says: the catalogue. 全站项目 is a superset
-   * of 当前结果 on every dimension, not just on status — which is the one
+   * of 当前筛选结果 on every dimension, not just on status — which is the one
    * relationship a visitor checks between two numbers printed side by side.
    *
    * The excluded tier is still out, as on every public surface: those rows

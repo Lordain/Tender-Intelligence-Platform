@@ -115,7 +115,7 @@ async function requestJson<T>(url: string, init: RequestInit, fetchImpl: typeof 
   throw new Error(`${url} 请求失败：${last instanceof Error ? last.message : String(last)}`);
 }
 
-type Envelope<T> = { status?: number; result?: T; message?: string };
+type Envelope<T> = { status?: number; result?: T; message?: unknown };
 type ListResult = { registros?: PanamaProceso[]; valorInicial?: string | null };
 
 /** Every procedure of one type whose status changed between the two instants (ISO, UTC). */
@@ -138,7 +138,7 @@ export async function fetchPanamaProcesos(
       { method: "POST", body: JSON.stringify(body) },
       fetchImpl,
     );
-    if (answer.status !== 1) throw new Error(`PanamaCompra 列表返回错误：${answer.message ?? "status " + answer.status}`);
+    if (answer.status !== 1) throw new Error(`PanamaCompra 列表返回错误：${JSON.stringify(answer.message ?? "status " + answer.status)}`);
     rows.push(...(answer.result?.registros ?? []));
     cursor = answer.result?.valorInicial ?? "";
     if (!cursor) return { rows, truncated: false };
@@ -178,10 +178,23 @@ export function parsePanamaDetalle(result: { pageComponentes?: Component[] }): P
   return { fields, documentosPropuesta, archivos };
 }
 
+/**
+ * The page layout the detail is read with, by procedure type. Type 16
+ * (Licitación por mejor valor) has no 「Pliego de cargos」 layout of its own:
+ * every one of the 47 type-16 procedures in the 2026-10-06 trial answered
+ * {"status":0,"result":"ERROR"}, while the same procedures read with the
+ * Licitación pública layout (7) came back complete. The layout only decides
+ * how the page is arranged; the data is the procedure's own.
+ */
+const DETAIL_LAYOUT: Readonly<Record<number, number>> = { 16: 7 };
+
 export async function fetchPanamaDetalle(proceso: Pick<PanamaProceso, "idTipoProceso" | "idProcesosContratacionFlujos">, fetchImpl: typeof fetch = fetch): Promise<PanamaDetalle> {
-  const url = `${PANAMACOMPRA_API}/procesos-configuracion/pagina-componentes-publico/${proceso.idTipoProceso}/procesoVistaPliego/${proceso.idProcesosContratacionFlujos}`;
-  const answer = await requestJson<Envelope<{ pageComponentes?: Component[] }>>(url, { method: "GET" }, fetchImpl);
-  if (answer.status !== 1 || !answer.result) throw new Error(`PanamaCompra 详情返回错误（${proceso.idProcesosContratacionFlujos}）：${answer.message ?? ""}`);
+  const layout = DETAIL_LAYOUT[proceso.idTipoProceso] ?? proceso.idTipoProceso;
+  const url = `${PANAMACOMPRA_API}/procesos-configuracion/pagina-componentes-publico/${layout}/procesoVistaPliego/${proceso.idProcesosContratacionFlujos}`;
+  const answer = await requestJson<Envelope<{ pageComponentes?: Component[] } | string>>(url, { method: "GET" }, fetchImpl);
+  if (answer.status !== 1 || !answer.result || typeof answer.result !== "object") {
+    throw new Error(`PanamaCompra 详情返回错误（类型 ${layout}，${proceso.idProcesosContratacionFlujos}）：${JSON.stringify(answer.message ?? answer.result ?? "")}`);
+  }
   return parsePanamaDetalle(answer.result);
 }
 

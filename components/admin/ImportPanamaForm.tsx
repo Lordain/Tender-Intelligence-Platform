@@ -46,7 +46,7 @@ export function ImportPanamaForm() {
   const [result, setResult] = useState<PanamaImportResponse | null>(null);
 
   async function run() {
-    if (write && !confirm(`确定要从 PanamaCompra 拉取最近 ${days} 天的巴拿马正式招标，并把保留的在招项目写入 Supabase 吗？（只在后台可见）`)) return;
+    if (write && !confirm(`确定要从 PanamaCompra 拉取最近 ${days} 天的巴拿马正式招标，并把保留的在招项目写入 Supabase 吗？`)) return;
     setSubmitting(true);
     setError(null);
     setResult(null);
@@ -135,7 +135,7 @@ export function ImportPanamaForm() {
           )}
           {result.write ? (
             <p className="mt-1 font-semibold text-emerald-700">
-              已写入 {result.upsertedCount ?? 0} 条（只在后台可见）
+              已写入 {result.upsertedCount ?? 0} 条
               {result.statusUpdates ? `，同步状态 ${result.statusUpdates} 条` : ""}
               {result.failed && result.failed.length > 0 ? `，${result.failed.length} 条失败：${result.failed.map((f) => f.slug).join("、")}` : ""}
             </p>

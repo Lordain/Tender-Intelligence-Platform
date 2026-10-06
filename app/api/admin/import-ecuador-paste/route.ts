@@ -3,14 +3,15 @@ import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { importEcuadorPaste } from "@/lib/ingestion/import-ecuador-paste";
 import { logAdminAlert } from "@/lib/admin-alerts";
+import { revalidateTenders } from "@/lib/cache-tags";
 
 /**
  * The 厄瓜多尔 tab's 「SOCE 粘贴导入」 (user, 2026-10-06). Nothing is fetched:
  * the text is what the admin copied from SOCE in their own browser. See
  * lib/ingestion/import-ecuador-paste.ts.
  *
- * Ecuador is staged (lib/staged-countries.ts), so a write lands in the admin
- * pages only and no public cache needs dropping.
+ * Ecuador opened 2026-10-06, so a write drops the public list's cache like
+ * every other country's import.
  */
 const MAX_TEXT = 200_000;
 
@@ -27,7 +28,10 @@ export async function POST(request: Request) {
   if (body.write === true && !supabase) return NextResponse.json({ error: "Supabase isn't configured." }, { status: 500 });
 
   try {
-    return NextResponse.json(await importEcuadorPaste(supabase, text, { write: body.write === true }));
+    const result = await importEcuadorPaste(supabase, text, { write: body.write === true });
+    // The public list is cached; drop it so this import shows up now.
+    if (body.write === true) revalidateTenders();
+    return NextResponse.json(result);
   } catch (err) {
     if (body.write === true) await logAdminAlert(supabase, "import-ecuador-paste", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 });

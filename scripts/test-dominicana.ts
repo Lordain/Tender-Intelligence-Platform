@@ -85,10 +85,10 @@ async function main() {
   check("公路工程留下", run.kept.some((tender) => tender.tenderNumber === "MOPC-CCC-LPN-2026-0019"), true);
 
   console.log("\n公开");
-  // Opened 2026-10-04 (user: 公开多米尼加); Ecuador stays staged.
+  // Opened 2026-10-04 (user: 公开多米尼加); Ecuador opened 2026-10-06.
   check("多米尼加已公开", isStagedCountry("Dominican Republic"), false);
   check("多米尼加在前台国家名单里", (AVAILABLE_COUNTRIES as readonly string[]).includes("Dominican Republic"), true);
-  check("厄瓜多尔仍未公开", isStagedCountry("Ecuador"), true);
+  check("厄瓜多尔已公开（2026-10-06）", isStagedCountry("Ecuador"), false);
 
   if (failures > 0) {
     console.log(`\n${failures} 项失败`);

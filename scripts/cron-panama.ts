@@ -1,8 +1,7 @@
 /**
  * The daily read of Panama's PanamaCompra, as a plain script so the GitHub
  * Actions schedule can run it. Invoked by .github/workflows/daily-ingest.yml.
- * Added 2026-10-06. Panama is STAGED (lib/staged-countries.ts): what this
- * writes shows in the admin pages only.
+ * Added 2026-10-06, staged, and opened to visitors the same day.
  *
  * Usage:
  *   npm run cron:panama                       (dry run — fetches and classifies, writes nothing)
@@ -67,7 +66,7 @@ async function main() {
     supabase!,
     "import-panama",
     problem ? "failed" : "ok",
-    problem ?? `状态变化 ${result.listedCount} 条，进行中 ${result.liveCount} 条，保留 ${result.kept.length} 条，写入 ${result.upsertedCount ?? 0} 条，状态更新 ${result.statusUpdates ?? 0} 条（未公开）`,
+    problem ?? `状态变化 ${result.listedCount} 条，进行中 ${result.liveCount} 条，保留 ${result.kept.length} 条，写入 ${result.upsertedCount ?? 0} 条，状态更新 ${result.statusUpdates ?? 0} 条`,
   );
   if (failed.length > 0) for (const f of failed.slice(0, 10)) console.error(`  ${f.slug} —— ${f.error}`);
   if (problem) process.exit(1);

@@ -277,11 +277,11 @@ jobs:
           # See scripts/cron-cfe-dof.ts.
           - name: Mexico (CFE via DOF)
             command: cron:cfe-dof
-          # Added 2026-10-06, STAGED (lib/staged-countries.ts): admin pages
-          # only until the user opens Panama. PanamaCompra's public list and
+          # Added 2026-10-06, staged, and opened to visitors the same day
+          # (直接把这两个国家的前后台可视都做了吧). PanamaCompra's public list and
           # pliego calls; formal tenders whose status changed in the last 3
           # days, the general rules. See scripts/cron-panama.ts.
-          - name: Panama (PanamaCompra, staged)
+          - name: Panama (PanamaCompra)
             command: cron:panama
           # Added 2026-10-04. National energy auctions kept by hand (Chile CNE,
           # Argentina AlmaSADI / AlmaGBA, Colombia MinEnergía) — open and

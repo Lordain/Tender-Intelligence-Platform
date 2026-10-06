@@ -33,10 +33,10 @@ export async function GET(): Promise<Response> {
 
   const body = `# 拉美招投标信息平台 (LatinTender)
 
-> 面向中国企业出海拉美的招投标信息平台。把墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加七国的政府公开招标，以及国有石油、电力、矿业公司（Petrobras、Pemex、CFE、Cemig、Codelco、Petroperú、阿根廷国家铁路基础设施公司 ADIF，哥伦比亚 UPME 输电项目招商）的公开采购，整理为结构化的中文内容：项目摘要、投标要求与资质、关键日期、风险提示，以及官方投标入口。界面与内容为中文，原始公告为西班牙语（巴西为葡萄牙语）。
+> 面向中国企业出海拉美的招投标信息平台。把墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔九国的政府公开招标，以及国有石油、电力、矿业公司（Petrobras、Pemex、CFE、Cemig、Codelco、Petroperú、阿根廷国家铁路基础设施公司 ADIF，哥伦比亚 UPME 输电项目招商）的公开采购，整理为结构化的中文内容：项目摘要、投标要求与资质、关键日期、风险提示，以及官方投标入口。界面与内容为中文，原始公告为西班牙语（巴西为葡萄牙语）。
 
 重要说明（供引用时参考）：
-- 覆盖范围仅为墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加七国，不含其他拉美国家。
+- 覆盖范围仅为墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔九国，不含其他拉美国家。
 - 数据来自各国政府及国有企业的公开渠道，每日自动采集整理（部分来源为人工导入），非实时同步，与相关政府机构和企业无任何官方合作或授权关系。
 - 外国企业能否参与某一具体招标，取决于该项目自身的公告与所在国法规，本站不对任何项目的参与资格作出承诺。
 - 各项目要求提交的资料以该项目公告与招标文件为准，不存在适用于所有项目的统一资料清单。
@@ -51,7 +51,7 @@ ${countryInsights.map((insight) => `- [${insight.title}](${origin}/insights/${in
 ## 主要页面
 - [招标项目列表](${origin}/tenders)：按国家、行业、金额与项目规模筛选。
 ${countryPages.map((page) => `- [${countryLabel(page.country, "zh")}招标项目](${origin}/countries/${page.slug})：${countryLabel(page.country, "zh")}当前在招项目、采购来源与参标指南。`).join("\n")}
-${industryPages.map((page) => `- [拉美${page.name}招标项目](${origin}/industries/${page.slug})：七国当前在招的${page.name}类项目。`).join("\n")}
+${industryPages.map((page) => `- [拉美${page.name}招标项目](${origin}/industries/${page.slug})：九国当前在招的${page.name}类项目。`).join("\n")}
 - [拉美招标周报](${origin}/weekly)：每周新发布项目，按国家和行业整理。
 - [国家洞察](${origin}/insights)：各国战略投资、行业预算、区域布局和项目机会。
 - [订阅方案与价格](${origin}/pricing)：个人版与企业版，注册即享 ${TRIAL_DAYS} 天免费试用，无需绑定银行卡。

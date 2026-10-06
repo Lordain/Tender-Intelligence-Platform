@@ -58,12 +58,26 @@ async function readAccounts(supabase: AdminClient): Promise<AccountRow[]> {
  * 用户，都是我自己) — they use ordinary addresses, but every one of them was
  * opened and used on the owner's own devices. Only accounts that matter to
  * this period are checked, one count query each, ten at a time.
+ *
+ * Also every profile marked exclude_from_stats (migration 0063), the same
+ * flag the counters above the funnel honour. Without it two internal sign-ups
+ * opened in WeChat still showed as 微信 → 注册 2 (user, 2026-10-06: 2个微信注册
+ * 数据，也是属于内部的请先调整成0). Before 0063 has run the column is missing
+ * (42703) and only the rules above apply.
  */
+async function excludedFromStats(supabase: AdminClient): Promise<Set<string>> {
+  const { data, error } = await supabase.from("profiles").select("id").eq("exclude_from_stats", true);
+  if (error?.code === "42703") return new Set();
+  if (error) throw error;
+  return new Set(((data ?? []) as Array<{ id: string }>).map((row) => row.id));
+}
+
 async function ownAccountIds(supabase: AdminClient, candidates: AccountRow[]): Promise<Set<string>> {
   const own = new Set<string>();
   const unknown: string[] = [];
+  const excluded = await excludedFromStats(supabase);
   for (const account of candidates) {
-    if (isAdminEmail(account.email) || isReservedEmailDomain(account.email)) own.add(account.id);
+    if (excluded.has(account.id) || isAdminEmail(account.email) || isReservedEmailDomain(account.email)) own.add(account.id);
     else unknown.push(account.id);
   }
   for (let index = 0; index < unknown.length; index += 10) {

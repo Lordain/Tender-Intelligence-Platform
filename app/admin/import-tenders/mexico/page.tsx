@@ -2,6 +2,7 @@ import { ImportTendersForm } from "@/components/admin/ImportTendersForm";
 import { ImportPemexForm } from "@/components/admin/ImportPemexForm";
 import { ImportDofSearchForm } from "@/components/admin/ImportDofSearchForm";
 import { ImportCfePasteForm } from "@/components/admin/ImportCfePasteForm";
+import { ScreenCfeListForm } from "@/components/admin/ScreenCfeListForm";
 import { RefreshAwardsPanel } from "@/components/admin/RefreshAwardsPanel";
 import { LicitiaRefreshPanel } from "@/components/admin/LicitiaRefreshPanel";
 import { MexicoDeadlineBackfillPanel } from "@/components/admin/MexicoDeadlineBackfillPanel";
@@ -29,11 +30,14 @@ export default function AdminImportTendersMexicoPage() {
       </ImportSourceSection>
       <ImportSourceSection
         name="CFE 网站粘贴导入"
-        hint="DOF 不刊登的工程类和简化招标：在 CFE 网站复制整页，粘贴导入"
+        hint="DOF 不刊登的工程类和简化招标：先贴搜索列表初筛，再把值得的项目详情页整页粘贴导入"
         mode="manual"
         links={[{ label: "CFE 招标网站", href: "https://msc.cfe.mx/Aplicaciones/NCFE/Concursos/" }]}
       >
-        <ImportCfePasteForm />
+        <div className="flex flex-col gap-3">
+          <ScreenCfeListForm />
+          <ImportCfePasteForm />
+        </div>
       </ImportSourceSection>
       <ImportSourceSection name="导入中标结果" hint="为已中标项目补中标日期、供应商、金额" mode="auto">
         <RefreshAwardsPanel sources={["mexico"]} manualNote="PEMEX、CFE（DOF 公告）和 Proyectos Estratégicos 的来源不公布中标数据，这些项目的中标信息请在「项目管理」里逐条填写。" />

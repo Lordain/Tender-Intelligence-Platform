@@ -139,8 +139,37 @@ function tier(name: TenderRelevance["tier"], reason: LocalizedText): TenderRelev
   return { tier: name, label: LABELS[name], reason };
 }
 
+/**
+ * The plant's or office's own reference that CFE's micrositio puts before a
+ * title — "(HB60) MANTENIMIENTO AL SISTEMA AIRE GASES…", "5100005873_Servicio
+ * de mantenimiento integral…", "DJ-O-CA-185-2026 Mejoras Civiles…", "D137
+ * Mantenimiento correctivo…", "ZZOC.- TRABAJOS…", "PO207/2026-ZTAL.- Mejora…"
+ * (the list pasted 2026-10-06). With it in front, the rules below that read
+ * how a title OPENS did not see "mantenimiento" or "servicio", and a plant
+ * upkeep job was kept as a power-plant works contract. Removed before any rule
+ * runs, so each rule reads what CFE is actually buying.
+ */
+const INTERNAL_REFERENCE = [
+  /^\W*\(?h[a-z]\d{2}\)?(?=\W)\W*/, // (HB60) / HB61 / (Hb61) -
+  /^\W*\d{6,}[\s_-]*/, // SAP numbers: 500670074, 5100005873_
+  /^\W*dj(?:-[a-z0-9]+)+\s+/, // DJ-O-CA-185-2026, DJ-SC-026-26, DJ-087-26
+  /^\W*d\d{3}\b\W*/, // D137, D403 -
+  /^\W*z[a-z]{2,4}\.?\s*[-–]+\s*/, // ZZOC.- / ZAER - / ZPOL. –
+  /^\W*po\d+\/\S*\s+/, // PO207/2026-ZTAL.-
+];
+
+export function stripCfeInternalReference(text: string): string {
+  let out = text;
+  for (let pass = 0; pass < 3; pass += 1) {
+    const before = out;
+    for (const pattern of INTERNAL_REFERENCE) out = out.replace(pattern, "");
+    if (out === before) break;
+  }
+  return out || text;
+}
+
 export function classifyCfeRelevance(input: { title: string; tenderNumber: string | undefined }): TenderRelevance {
-  const text = foldAccents(input.title).toLowerCase().replace(/\s+/g, " ").trim();
+  const text = stripCfeInternalReference(foldAccents(input.title).toLowerCase().replace(/\s+/g, " ").trim());
   const code = CFE_NUMBER.exec(input.tenderNumber?.trim() ?? "");
   // "C" in the number is works; the rules below call it "O".
   const kind = code ? code[1].toUpperCase().replace("C", "O") : GOODS_HEAD.test(text) ? "A" : "S";

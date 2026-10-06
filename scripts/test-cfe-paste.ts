@@ -12,6 +12,8 @@ import { CFE_BUYER_PATTERN } from "@/lib/ingestion/heuristics";
 import { isCfeCall } from "@/lib/relevance-cfe";
 import { hasShortBidWindow } from "@/lib/ingestion/recency";
 import { importCfePaste } from "@/lib/ingestion/import-cfe-paste";
+import { parseCfeListPaste, screenCfeListRow } from "@/lib/ingestion/cfe-list-screen";
+import { classifyCfeRelevance } from "@/lib/relevance-cfe";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -92,6 +94,34 @@ const maintenance = mapCfeMicrositioProcedure(
   NOW,
 );
 check("国内小工程/维护 → 排除", maintenance.relevance.tier, "excluded");
+
+console.log("\n列表初筛（CFE 网站搜索结果，2026-10-06 用户粘贴的列表节选）");
+const listText = readFileSync(join(process.cwd(), "lib/ingestion/__fixtures__/cfe-micrositio-list-2026-10-06.txt"), "utf8");
+const listed = parseCfeListPaste(listText);
+check("识别 10 行", listed.length, 10);
+check("各列读对", listed[0], {
+  number: "CFE-0413-CSAAN-0023-2026",
+  state: "México",
+  description: "ADQUISICIÓN DE TÓNERS, TINTAS Y REFACCIONES PARA IMPRESORAS DE LA C.C.C. VALLE DE MÉXICO",
+  procedureType: "Concurso simplificado",
+  contractType: "Adquisición por Abastecimientos",
+  published: "06-10-2026",
+  status: "Vigente",
+});
+check("已授标的行也读出状态", listed[9].status, "Adjudicado");
+const verdicts = Object.fromEntries(listed.map((row) => [row.number, screenCfeListRow(row).verdict]));
+check("耗材 → 排除", verdicts["CFE-0413-CSAAN-0023-2026"], "excluded");
+check("直接授标 → 不看", verdicts["CFE-0102-ADCON-0013-2026"], "direct_award");
+check("流标/已授标 → 不看", [verdicts["CFE-0027-ADSAN-0001-2026"], verdicts["CFE-0400-ADSAN-0001-2026"]], ["not_current", "not_current"]);
+check("国际招标的设备供货安装 → 值得打开", verdicts["CFE-0001-CAAAT-0162-2026"], "open");
+check("配电网工程 → 值得打开", verdicts["CFE-0115-CACON-0057-2026"], "open");
+check("输电线路导线 → 值得打开", verdicts["CFE-0001-CAAAT-0163-2026"], "open");
+check("仓库土建小工程（编号前缀 DJ-…）→ 排除", verdicts["CFE-0116-CACON-0185-2026"], "excluded");
+// The plant's own reference before the title hid "MANTENIMIENTO"/"Servicio" from the rules.
+check("「(HB60) MANTENIMIENTO…CENTRAL」→ 排除（之前被当成电厂工程）", verdicts["CFE-0700-CSCON-0111-2026"], "excluded");
+check("「5100005873_Servicio de mantenimiento…」→ 排除", verdicts["CFE-0900-CAAAT-0043-2026"], "excluded");
+check("已在平台上的标出来", screenCfeListRow(listed[4], "cfe-x").existingSlug, "cfe-x");
+check("没有前缀的标题照旧", classifyCfeRelevance({ title: "Adquisición de Conductores y cables para líneas de Transmisión", tenderNumber: "CFE-0001-CAAAT-0163-2026" }).tier, "standard");
 
 async function pasteChecks() {
   console.log("\n粘贴导入（不连数据库，只预览）");

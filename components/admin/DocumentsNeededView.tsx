@@ -130,15 +130,20 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ downloaded }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        // The server's own reason, so a failure can be told apart from a
+        // signed-out session (403) without opening the browser's network tab.
+        const detail = ((await res.json().catch(() => null)) as { error?: string } | null)?.error;
+        throw new Error(res.status === 403 ? "登录已过期或不是管理员账号，请刷新页面重新登录" : `HTTP ${res.status}${detail ? `：${detail}` : ""}`);
+      }
       const { documentsDownloadedAt } = (await res.json()) as { documentsDownloadedAt: string | null };
       setTenders((prev) =>
         prev.map((item) =>
           item.slug === tender.slug ? { ...item, documentsDownloadedAt: documentsDownloadedAt ?? undefined } : item,
         ),
       );
-    } catch {
-      alert("标记失败，请稍后重试。");
+    } catch (err) {
+      alert(`标记失败：${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setMarkingSlug(null);
     }

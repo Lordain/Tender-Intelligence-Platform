@@ -46,38 +46,50 @@ const ICON_PATHS: Record<FeatureIcon, ReactNode> = {
  * industry, an industry focus), with every number and sentence blurred: it
  * shows what the report looks like, not its data (user, 2026-10-05: 把这些
  * 图片的内容打码，不直接展示数据). Each opens full size in a new tab.
+ *
+ * Marked as an excerpt of a report of more than ten pages — the page labels
+ * inside the images are P.02 / P.05 / P.09, not 1-3 of 3, and the last
+ * thumbnail carries a 完整月报 10 余页 overlay — so three thumbnails do not
+ * read as the whole report (user, 2026-10-06: 提示是个10多页的报告，不要让用户
+ * 以为就3页).
  */
 const REPORT_SAMPLES = [
-  { id: "01", title: "五国行业项目分布" },
-  { id: "02", title: "各行业项目规模结构" },
-  { id: "03", title: "行业聚焦：交通" },
+  { id: "01", page: "P.02", title: "五国行业项目分布" },
+  { id: "02", page: "P.05", title: "各行业项目规模结构" },
+  { id: "03", page: "P.09", title: "行业聚焦：交通" },
 ];
 
 function ReportSamples() {
   return (
     <div className="mt-3 pl-8">
       <div className="grid max-w-[16.5rem] grid-cols-3 gap-2">
-        {REPORT_SAMPLES.map((sample) => (
+        {REPORT_SAMPLES.map((sample, index) => (
           <a
             key={sample.id}
-            href={`/pricing/industry-sample-${sample.id}.webp`}
+            href={`/pricing/industry-excerpt-${sample.id}.webp`}
             target="_blank"
             rel="noopener noreferrer"
-            title={`示例：${sample.title}（点击查看大图）`}
-            className="group block overflow-hidden rounded-md border border-[#dbe2e5] bg-[#f7f4ee] shadow-[0_8px_18px_-14px_rgba(6,27,43,.55)] transition-transform hover:-translate-y-0.5 hover:border-[#b86e00]"
+            title={`节选 ${sample.page}：${sample.title}（点击查看大图）`}
+            className="group relative block overflow-hidden rounded-md border border-[#dbe2e5] bg-[#f7f4ee] shadow-[0_8px_18px_-14px_rgba(6,27,43,.55)] transition-transform hover:-translate-y-0.5 hover:border-[#b86e00]"
           >
             <Image
-              src={`/pricing/industry-sample-${sample.id}-thumb.webp`}
-              alt={`行业分析月报示例页：${sample.title}`}
+              src={`/pricing/industry-excerpt-${sample.id}-thumb.webp`}
+              alt={`行业分析月报节选 ${sample.page}：${sample.title}`}
               width={360}
               height={480}
               sizes="88px"
               className="block h-auto w-full"
             />
+            {index === REPORT_SAMPLES.length - 1 && (
+              <span className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-[linear-gradient(180deg,rgba(6,27,43,0)_0%,rgba(6,27,43,.88)_45%)] px-1 pb-1.5 pt-5 text-center leading-tight text-white">
+                <span className="text-[10px] font-bold text-white/75">完整月报</span>
+                <span className="text-xs font-black text-[#ffb21c]">10 余页</span>
+              </span>
+            )}
           </a>
         ))}
       </div>
-      <p className="mt-1.5 text-[11px] leading-4 text-[#7a878f]">示例：2026 年 9 月拉美行业分析月报</p>
+      <p className="mt-1.5 text-[11px] leading-4 text-[#7a878f]">节选 3 页，完整月报 10 余页</p>
     </div>
   );
 }

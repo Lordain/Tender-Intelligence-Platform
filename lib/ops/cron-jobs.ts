@@ -35,6 +35,7 @@ export type CronJobId =
   | "import-argentina"
   | "import-dominicana"
   | "import-cfe-dof"
+  | "import-panama"
   | "import-energy-auctions";
 
 export type CronJobSpec = {
@@ -97,6 +98,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-argentina", label: "阿根廷 COMPR.AR / CONTRAT.AR / ADIF / 政府公报 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-dominicana", label: "多米尼加 DGCP 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-cfe-dof", label: "墨西哥 CFE（DOF 公报）自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-panama", label: "巴拿马 PanamaCompra 自动导入（未公开）", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-energy-auctions", label: "能源拍卖（人工整理）写入", maxAgeHours: 30, runsOn: "github-actions" },
 ];
 

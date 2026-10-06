@@ -58,11 +58,15 @@
 #               Chinese customer starts work
 #
 # Every import reads a window of days and upserts, so the second pass only
-# adds what is new. Two jobs stay on the full pass only: the status refresh
-# (once_daily in the matrix), which re-asks Brazil, Chile and Mexico about
-# every tender already stored — ~15 minutes of requests to sources that
-# throttle — and the IndexNow/Baidu push, whose Baidu quota is small and
-# resets daily.
+# adds what is new. Only the IndexNow/Baidu push stays on the full pass:
+# Baidu's quota is small and resets daily, so a second push is refused.
+#
+# The status refresh (and the award lookup behind it) runs on both passes
+# since 2026-10-06 (user: 两次都刷新状态，搜索引擎推送每天一次), so an award
+# or cancellation reaches the 00:00 UTC digest the same day instead of waiting
+# for the evening. It re-asks Brazil, Chile and Mexico about every tender
+# already stored, ~15 minutes against sources that throttle; if one starts
+# refusing the second run, put `once_daily: true` back on that matrix entry.
 #
 # The schedules below are the FALLBACK, an hour after each Vercel slot, for a
 # day the trigger fails (token expired, Vercel down) or before
@@ -89,7 +93,7 @@ on:
         type: boolean
         default: false
       pass:
-        description: "full：全部任务；light：不跑「已入库项目状态刷新」和搜索引擎推送"
+        description: "full：全部任务；light：不跑搜索引擎推送"
         type: choice
         options: [full, light]
         default: full
@@ -241,8 +245,8 @@ jobs:
           # their own jobs. See scripts/cron-refresh-statuses.ts.
           - name: Status refresh (Brazil, Chile, Mexico)
             command: cron:refresh-statuses
-            # Once a day: it re-reads every stored tender, not a few days.
-            once_daily: true
+            # On both passes (see the header); once_daily: true would limit it
+            # to the evening's full pass again.
           # Added 2026-09-27. Guyana's eprocure.gov.gy: every open opportunity,
           # each notice PDF read for ICB/NCB and the lender, only large works and
           # purchases written (user: 小项目不要，只要大型工程项目或者采购项目).

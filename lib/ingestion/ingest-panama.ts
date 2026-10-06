@@ -10,9 +10,10 @@
  *
  *   - the formal tenders that changed in the window are read, deduplicated
  *     by number;
- *   - the pliego page is read for those still live (Vigente and the states
- *     around evaluation), which is where the reference price and the
- *     deadline are;
+ *   - the pliego page is read for those still taking bids by their status
+ *     (Vigente), which is where the reference price and the deadline are —
+ *     the ones in evaluation, awarded or cancelled cannot be written whatever
+ *     the pliego says, and their new status is in the list already;
  *   - the ones still taking bids and kept by the platform's general rules are
  *     written through upsertTendersBatched(), every filter included;
  *   - one already stored whose status has moved on gets the new status.
@@ -27,21 +28,25 @@ import {
   type PanamaDetalle,
   type PanamaProceso,
 } from "@/lib/ingestion/connectors/panama-panamacompra-live";
-import { PANAMA, PANAMA_SOURCE_NAME, mapPanamaProcesoToTender } from "@/lib/ingestion/panama-mapper";
+import { PANAMA, PANAMA_SOURCE_NAME, mapPanamaProcesoToTender, panamaStatus } from "@/lib/ingestion/panama-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { legacyStatus, lifecycleSchemaAvailable } from "@/lib/ingestion/lifecycle-schema";
 import { COMPANY_SOURCE_WINDOW_DAYS } from "@/lib/ingestion/publication-window";
 
 export { PANAMA_SOURCE_NAME };
 
-/** Statuses still worth reading the pliego for. */
+/** Statuses of a procedure still in progress — taking bids, in evaluation, paused. */
 const LIVE_STATUSES = /^(vigente|por adjudicar|suspendido|en reclamo|por autorizar)$/i;
 
 export type PanamaIngestResult = {
   /** Unique formal tenders whose status changed in the window. */
   listedCount: number;
   liveCount: number;
+  /** Pliegos read: the live ones still taking bids by their status. */
+  detailCount: number;
   detailErrors: number;
+  /** Pliegos left unread because the run's time budget ran out; the next run reads them. */
+  unreadForTime: number;
   truncatedTypes: string[];
   rows: { proceso: PanamaProceso; tender: Tender }[];
   kept: Tender[];
@@ -79,12 +84,20 @@ async function updateStoredStatuses(supabase: SupabaseClient, moved: Tender[]): 
 
 export async function ingestPanama(
   supabase: SupabaseClient | null,
-  options: { write: boolean; days?: number; now?: Date; log?: (line: string) => void },
+  options: {
+    write: boolean;
+    days?: number;
+    now?: Date;
+    log?: (line: string) => void;
+    /** Stop reading pliegos after this many ms (the admin page's request has 300 s); the daily job has no limit. */
+    budgetMs?: number;
+  },
 ): Promise<PanamaIngestResult> {
   const now = options.now ?? new Date();
   const days = options.days ?? COMPANY_SOURCE_WINDOW_DAYS;
   const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
   const log = options.log ?? (() => {});
+  const startedAt = Date.now();
 
   const byNumber = new Map<string, PanamaProceso>();
   const truncatedTypes: string[] = [];
@@ -98,11 +111,20 @@ export async function ingestPanama(
 
   let detailErrors = 0;
   let liveCount = 0;
+  let detailCount = 0;
+  let unreadForTime = 0;
   const rows: PanamaIngestResult["rows"] = [];
   for (const proceso of procesos) {
     let detalle: PanamaDetalle | undefined;
-    if (LIVE_STATUSES.test(proceso.nombreRealizado.trim())) {
-      liveCount += 1;
+    const estado = proceso.nombreRealizado.trim();
+    if (LIVE_STATUSES.test(estado)) liveCount += 1;
+    if (LIVE_STATUSES.test(estado) && panamaStatus(estado, undefined, now) === "open") {
+      if (options.budgetMs !== undefined && Date.now() - startedAt > options.budgetMs) {
+        unreadForTime += 1;
+        rows.push({ proceso, tender: mapPanamaProcesoToTender(proceso, undefined, now) });
+        continue;
+      }
+      detailCount += 1;
       try {
         detalle = await fetchPanamaDetalle(proceso);
       } catch (error) {
@@ -122,7 +144,7 @@ export async function ingestPanama(
     .filter(({ tender }) => tender.submissionDeadline !== undefined || tender.estimatedValue !== undefined)
     .map(({ tender }) => tender);
 
-  const result: PanamaIngestResult = { listedCount: procesos.length, liveCount, detailErrors, truncatedTypes, rows, kept, write: options.write };
+  const result: PanamaIngestResult = { listedCount: procesos.length, liveCount, detailCount, detailErrors, unreadForTime, truncatedTypes, rows, kept, write: options.write };
   if (!options.write) return result;
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
 

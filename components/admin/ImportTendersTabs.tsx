@@ -29,6 +29,7 @@ const TABS = [
   { href: "/admin/import-tenders/dominicana", label: "多米尼加", country: "Dominican Republic" },
   // Staged (lib/staged-countries.ts): imported and reviewable here, not public yet.
   { href: "/admin/import-tenders/guyana", label: "圭亚那（未公开）", country: "Guyana" },
+  { href: "/admin/import-tenders/panama", label: "巴拿马（未公开）", country: "Panama" },
 ];
 
 function MaintenanceIcon() {

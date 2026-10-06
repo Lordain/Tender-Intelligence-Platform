@@ -41,7 +41,7 @@ async function main() {
 
   const result = await ingestPanama(supabase, { write, days, log: (line) => console.log(line) });
   console.log(
-    `\nPanamaCompra 近 ${days} 天有状态变化的正式招标 ${result.listedCount} 条，仍在进行 ${result.liveCount} 条（详情失败 ${result.detailErrors} 条）；保留 ${result.kept.length} 条：`,
+    `\nPanamaCompra 近 ${days} 天有状态变化的正式招标 ${result.listedCount} 条，仍在进行 ${result.liveCount} 条，在招读详情 ${result.detailCount} 条（失败 ${result.detailErrors} 条）；保留 ${result.kept.length} 条：`,
   );
   for (const tender of result.kept) {
     const usd = tender.estimatedValue !== undefined ? ` · US$${Math.round(tender.estimatedValue).toLocaleString("en-US")}` : "";
@@ -58,7 +58,7 @@ async function main() {
   const problem =
     result.listedCount === 0
       ? "PanamaCompra 一条都没返回（见日志）"
-      : result.liveCount > 0 && result.detailErrors === result.liveCount
+      : result.detailCount > 0 && result.detailErrors === result.detailCount
         ? "详情一条都没读到（见日志）"
         : failed.length > 0
           ? `${failed.length} 条写入失败`

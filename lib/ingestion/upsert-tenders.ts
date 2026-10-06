@@ -145,7 +145,12 @@ function enforceStoredFieldParity(tenders: Tender[]): void {
       structuredDurationDays: tender.structuredDurationDays,
     });
 
-    const tierDrifted = fromStoredFields.relevance.tier !== tender.relevance.tier;
+    // A tier an admin chose by hand (the Ecuador paste's 「手动保留」) is not
+    // the rules' to correct: it is stored with relevance_manually_overridden,
+    // which reclassify:tenders also leaves alone, so there is no drift to
+    // prevent. Without this it was recomputed back to 「排除」 here and then
+    // dropped by the excluded gate — 已写入 0 条 (user, 2026-10-06).
+    const tierDrifted = tender.relevanceManuallyOverridden !== true && fromStoredFields.relevance.tier !== tender.relevance.tier;
     const industriesDrifted =
       fromStoredFields.industries.length !== tender.industries.length ||
       [...fromStoredFields.industries].sort().join(",") !== [...tender.industries].sort().join(",");
@@ -162,7 +167,7 @@ function enforceStoredFieldParity(tenders: Tender[]): void {
       );
     }
 
-    tender.relevance = fromStoredFields.relevance;
+    if (tender.relevanceManuallyOverridden !== true) tender.relevance = fromStoredFields.relevance;
     tender.industries = fromStoredFields.industries;
   }
 

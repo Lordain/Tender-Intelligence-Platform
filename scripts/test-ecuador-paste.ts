@@ -10,6 +10,39 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ecuadorAmount, ecuadorGovernmentLevel, ecuadorStatus, ecuadorTime, mapSoceToTender, parseSoceProcedures } from "@/lib/ingestion/ecuador-soce-paste";
 import { importEcuadorPaste } from "@/lib/ingestion/import-ecuador-paste";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * A stand-in database that accepts every call upsertTendersBatched() makes,
+ * holds nothing, and records the rows upserted into tenders. The 「手动保留」
+ * write once passed every preview check and still stored nothing — the tier
+ * was recomputed inside the write (已写入 0 条, 2026-10-06) — so the write
+ * path itself is exercised here, not only the preview.
+ */
+function recordingSupabase(): { client: SupabaseClient; tenders: Record<string, unknown>[] } {
+  const tenders: Record<string, unknown>[] = [];
+  const builder = (table: string) => {
+    let result: { data: unknown; error: null } = { data: [], error: null };
+    const chain: Record<string, unknown> = new Proxy(
+      {},
+      {
+        get(_target, prop) {
+          if (prop === "then") return (resolve: (value: unknown) => void) => resolve(result);
+          return (...args: unknown[]) => {
+            if (prop === "upsert" && table === "tenders") {
+              const rows = args[0] as Record<string, unknown>[];
+              tenders.push(...rows);
+              result = { data: rows.map((row) => ({ id: `id-${row.slug}`, slug: row.slug })), error: null };
+            }
+            return chain;
+          };
+        },
+      },
+    );
+    return chain;
+  };
+  return { client: { from: builder } as unknown as SupabaseClient, tenders };
+}
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -129,6 +162,19 @@ async function main() {
   check("截止日已过：选了也不写入", closedKeep.rows[0].outcome, "closed");
   const badTier = await importEcuadorPaste(null, EPUNEMI_PAGE, { write: false, now: NOW, keep: { "LICO-EPUNEMI-2026-007": "excluded" as never } });
   check("不认识的档位：不算保留", badTier.rows[0].outcome, "excluded");
+
+  const db = recordingSupabase();
+  const written = await importEcuadorPaste(db.client, `${LINK}\n${EPUNEMI_PAGE}`, { write: true, now: NOW, keep: { "LICO-EPUNEMI-2026-007": "standard" } });
+  check("真的写入：1 条", [written.written, written.failed?.length], [1, 0]);
+  const row = db.tenders[0] ?? {};
+  check("写入的档位、锁定和原因", [row.relevance_tier, row.relevance_manually_overridden, (row.relevance_reason as { zh?: string } | undefined)?.zh], ["standard", true, "管理员在后台手动设置"]);
+  check("写入官方链接和截止日", [row.source_url, row.submission_deadline], [LINK, "2026-11-04T15:00:00.000Z"]);
+  const dbNoKeep = recordingSupabase();
+  const notWritten = await importEcuadorPaste(dbNoKeep.client, EPUNEMI_PAGE, { write: true, now: NOW });
+  check("没选手动保留：照规则不写入", [notWritten.written, dbNoKeep.tenders.length], [0, 0]);
+  const dbWorks = recordingSupabase();
+  await importEcuadorPaste(dbWorks.client, WORKS_PAGE, { write: true, now: NOW });
+  check("规则保留的项目照常写入、不锁定", [dbWorks.tenders.length, dbWorks.tenders[0]?.relevance_manually_overridden], [1, false]);
 
   console.log("\n官方链接");
   check("链接在上方", parseSoceProcedures(`${LINK},\n${EPUNEMI_PAGE}`)[0].url, LINK);

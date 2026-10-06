@@ -10,7 +10,11 @@ import type { TenderRelevanceTier } from "@/types/tender";
  * usual rules. "short_window" is still written — manual pastes are exempt
  * from the 12-day rule — and says so.
  */
-export type EcuadorImportOutcome = "write" | "excluded" | "closed" | "short_window" | "not_open";
+export type EcuadorImportOutcome = "write" | "excluded" | "closed" | "short_window" | "not_open" | "manual_keep";
+
+/** The tiers an admin can keep an excluded procedure at (user, 2026-10-06: 我手动保留，规则不变). */
+export type EcuadorKeepTier = "flagship" | "significant" | "standard";
+export const ECUADOR_KEEP_TIERS: readonly EcuadorKeepTier[] = ["standard", "significant", "flagship"];
 
 export type EcuadorImportRow = {
   code: string;
@@ -24,6 +28,8 @@ export type EcuadorImportRow = {
   keyDates: number;
   tier: TenderRelevanceTier;
   reasonZh: string;
+  /** The rules' own verdict, before any 「手动保留」. */
+  ruleTier: TenderRelevanceTier;
   outcome: EcuadorImportOutcome;
   outcomeZh: string;
   /** Already on the platform under this code: the write updates that row. */

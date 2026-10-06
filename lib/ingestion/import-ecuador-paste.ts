@@ -3,7 +3,8 @@ import type { Tender } from "@/types/tender";
 import { ECUADOR, ECUADOR_SOCE_SEARCH_URL, mapSoceToTender, parseSoceProcedures, soceLinksWithoutPage } from "@/lib/ingestion/ecuador-soce-paste";
 import { hasShortBidWindow, isPastSubmissionDeadline, SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
-import type { EcuadorImportOutcome, EcuadorImportResponse, EcuadorImportRow } from "@/lib/ingestion/ecuador-paste-result";
+import { ECUADOR_KEEP_TIERS, type EcuadorImportOutcome, type EcuadorImportResponse, type EcuadorImportRow, type EcuadorKeepTier } from "@/lib/ingestion/ecuador-paste-result";
+import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 
 /**
  * The 厄瓜多尔 tab's 「SOCE 粘贴导入」: procedure pages copied from SOCE, read
@@ -19,6 +20,13 @@ import type { EcuadorImportOutcome, EcuadorImportResponse, EcuadorImportRow } fr
  * edit form's own window check skips these rows for the same reason
  * (app/api/admin/tenders/[slug]/route.ts).
  *
+ * An excluded procedure the admin wants anyway is kept by hand (user,
+ * 2026-10-06: 我手动保留，规则不变): the row picks a tier, and the write stores
+ * it as an admin's choice — reason 「管理员在后台手动设置」, protected from
+ * re-imports — the same as changing the tier in the edit form. The rules
+ * themselves do not change. Only an excluded call can be kept: a closed one
+ * or one no longer taking bids is still not written.
+ *
  * One code, one row: a page pasted twice updates the same row, and a code
  * already stored for Ecuador is updated in place. A procedure's official link
  * pasted alongside its page becomes the row's source link (user, 2026-10-06:
@@ -30,7 +38,11 @@ const OUTCOME_ZH: Record<EcuadorImportOutcome, string> = {
   closed: "交标截止日已过，不写入",
   short_window: `会写入（发布到交标不足 ${SHORT_BID_WINDOW_DAYS} 天，手动粘贴不受此限制）`,
   not_open: "SOCE 上已不在投标阶段，不写入",
+  manual_keep: "按你的选择手动保留，会写入",
 };
+
+/** What the admin edit form writes when a tier is changed by hand (app/api/admin/tenders/[slug]/route.ts). */
+const MANUAL_REASON = { zh: "管理员在后台手动设置", en: "Manually set by an admin", es: "Establecido manualmente por un administrador" };
 
 function outcomeOf(tender: Tender, now: Date): EcuadorImportOutcome {
   if (isPastSubmissionDeadline(tender, now)) return "closed";
@@ -54,7 +66,11 @@ async function existingRows(supabase: SupabaseClient, codes: string[]): Promise<
   return byCode;
 }
 
-export async function importEcuadorPaste(supabase: SupabaseClient | null, text: string, options: { write: boolean; now?: Date }): Promise<EcuadorImportResponse> {
+export async function importEcuadorPaste(
+  supabase: SupabaseClient | null,
+  text: string,
+  options: { write: boolean; now?: Date; /** Code → tier, for excluded procedures kept by hand. */ keep?: Record<string, EcuadorKeepTier> },
+): Promise<EcuadorImportResponse> {
   const procedures = parseSoceProcedures(text);
   if (procedures.length === 0 && soceLinksWithoutPage(text).length > 0) {
     throw new Error("只贴了链接：平台不会去打开 SOCE 的页面，请把链接和项目详情页的内容一起贴上（链接放在内容上方）。");
@@ -73,9 +89,14 @@ export async function importEcuadorPaste(supabase: SupabaseClient | null, text: 
     const existingSlug = stored?.slug;
     // No link this time, but an earlier paste had one: keep it.
     const keptUrl = !procedure.url && stored?.sourceUrl && stored.sourceUrl !== ECUADOR_SOCE_SEARCH_URL ? stored.sourceUrl : undefined;
-    const tender = { ...mapped, ...(existingSlug && existingSlug !== mapped.slug ? { slug: existingSlug } : {}), ...(keptUrl ? { sourceUrl: keptUrl } : {}) };
-    const outcome = outcomeOf(tender, now);
-    if (outcome === "write" || outcome === "short_window") toWrite.push(tender);
+    let tender: Tender = { ...mapped, ...(existingSlug && existingSlug !== mapped.slug ? { slug: existingSlug } : {}), ...(keptUrl ? { sourceUrl: keptUrl } : {}) };
+    let outcome = outcomeOf(tender, now);
+    const keepTier = options.keep?.[procedure.code];
+    if (outcome === "excluded" && keepTier && ECUADOR_KEEP_TIERS.includes(keepTier)) {
+      tender = { ...tender, relevance: { tier: keepTier, label: RELEVANCE_TIER_LABELS[keepTier], reason: MANUAL_REASON }, relevanceManuallyOverridden: true };
+      outcome = "manual_keep";
+    }
+    if (outcome === "write" || outcome === "short_window" || outcome === "manual_keep") toWrite.push(tender);
     rows.push({
       code: procedure.code,
       title: tender.title.es,
@@ -88,6 +109,7 @@ export async function importEcuadorPaste(supabase: SupabaseClient | null, text: 
       keyDates: tender.keyDates.length,
       tier: tender.relevance.tier,
       reasonZh: tender.relevance.reason.zh,
+      ruleTier: mapped.relevance.tier,
       outcome,
       outcomeZh: OUTCOME_ZH[outcome],
       ...(existingSlug ? { existingSlug } : {}),

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { importEcuadorPaste } from "@/lib/ingestion/import-ecuador-paste";
+import { ECUADOR_KEEP_TIERS, type EcuadorKeepTier } from "@/lib/ingestion/ecuador-paste-result";
 import { logAdminAlert } from "@/lib/admin-alerts";
 import { revalidateTenders } from "@/lib/cache-tags";
 
@@ -19,7 +20,10 @@ export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
-  const body = (await request.json().catch(() => ({}))) as { text?: string; write?: boolean };
+  const body = (await request.json().catch(() => ({}))) as { text?: string; write?: boolean; keep?: Record<string, string> };
+  // 「手动保留」: code → tier for excluded procedures the admin keeps anyway; anything else is ignored.
+  const keep: Record<string, EcuadorKeepTier> = {};
+  for (const [code, tier] of Object.entries(body.keep ?? {})) if ((ECUADOR_KEEP_TIERS as readonly string[]).includes(tier)) keep[code] = tier as EcuadorKeepTier;
   const text = body.text ?? "";
   if (!text.trim()) return NextResponse.json({ error: "请先粘贴 SOCE 项目详情页的内容。" }, { status: 400 });
   if (text.length > MAX_TEXT) return NextResponse.json({ error: "粘贴的内容太长，请一次贴不超过几十个项目。" }, { status: 400 });
@@ -28,7 +32,7 @@ export async function POST(request: Request) {
   if (body.write === true && !supabase) return NextResponse.json({ error: "Supabase isn't configured." }, { status: 500 });
 
   try {
-    const result = await importEcuadorPaste(supabase, text, { write: body.write === true });
+    const result = await importEcuadorPaste(supabase, text, { write: body.write === true, keep });
     // The public list is cached; drop it so this import shows up now.
     if (body.write === true) revalidateTenders();
     return NextResponse.json(result);

@@ -65,7 +65,7 @@ const NOT_TARGET_GOODS =
   /refaccion|repuesto|partes de repuesto|herramienta|proteccion personal|proteccion respiratoria|equipo de seguridad|proteccion civil|terminales portatiles|papel|cajeros|vehiculo|mantas de plomo|andamio|soldadura|electrodo|uniforme|oficina|computo|mobiliario|consumible|profauna|cuchillas|equipos? de uso menor|equipos? hidraulicos de torque|pruebas de electromovilidad|poliza|garantia|rodamiento|filtro|escobilla|interruptores de presion|medicion termica|internet/;
 
 const EQUIPMENT_OR_MATERIAL =
-  /transformador|interruptor|seccionador|tablero|subestacion|regulador|capacitor|conductor|\bcables?\b|\bpostes?\b|aislador|torres?\b|valvula|\bbombas?\b|tuberia|generador|turbina|enfriador|chiller|variador|sistema de control|control distribuido|reductor|embrague|medicion|combustible|diesel|carbon\b|quimic|amplificacion optica|proteccion(?:es)?,? comunicacion|protecciones|baterias|compresor|motor|caldera|intercambiador|ventilador|alabes|filtracion|precalentador|control de velocidad/;
+  /transformador|interruptor|seccionador|tablero|subestacion|regulador|capacitor|conductor|\bcables?\b|\bpostes?\b|aislador|torres?\b|valvula|\bbombas?\b|tuberia|generador|turbina|enfriador|chiller|variador|sistema de control|control distribuido|reductor|embrague|medicion|combustible|diesel|carbon\b|quimic|amplificacion optica|proteccion(?:es)?,? comunicacion|protecciones|baterias|compresor|motor|caldera|intercambiador|ventilador|filtracion|precalentador|control de velocidad/;
 
 /** A national purchase must be one of these to count as 大量 rather than a plant's spot buy. */
 const NATIONAL_MAJOR =
@@ -73,6 +73,28 @@ const NATIONAL_MAJOR =
 
 /** OPGW: the earth wire with optical fibre strung along transmission lines (CFE-0025-CSCON-0003-2026). */
 const MAJOR_WORKS = /subestacion|lineas? de (?:transmision|distribucion)|central|construccion|ampliacion|modernizacion|opgw|cable de guarda/;
+
+/**
+ * Building and site works at a CFE facility, which MAJOR_WORKS read as a
+ * plant or grid works because the title names the "central" or says
+ * "construcción" (user, 2026-10-06, on the micrositio list: 规则保留，但可能
+ * 偏小 → 排除): a perimeter wall, a concrete floor with bollards, a training
+ * yard, adaptations at a gas-turbine plant. Treated as other works — kept
+ * only when internationally tendered, like every other non-grid works.
+ */
+const MINOR_SITE_WORKS =
+  /\bbarda\b|perimetral|guarnicion|banqueta|bolardo|\bpisos?\b|campo de practicas|\badecuaciones\b|impermeabiliz|\bpintura\b|remodelacion|\boficinas?\b|\balmacen\b|\bbanos\b|sanitarios|\bcasetas?\b/;
+
+/**
+ * Components and consumables of plant equipment — the bushings of a
+ * transformer, the blades of a generator rotor, valve gaskets, conveyor belts,
+ * a compressor degreaser — and wooden poles. Each names a major item ("del
+ * transformador", "del generador", "compresor", "postes") that otherwise kept
+ * it; excluded whatever the coverage (user, 2026-10-06:
+ * CFE-0700-CSAAA-0137 主变压器套管、CFE-0920-CSAAN-0059 发电机转子叶片 → 排除,
+ * and the gaskets, belts, degreaser and wooden poles with them).
+ */
+const COMPONENT_OR_CONSUMABLE = /\bboquillas?\b|\balabes?\b|\bjuntas?\b|\bbandas? (?:sinfin|transportadoras?)\b|\bempaques?\b|desengrasante|postes? de madera/;
 
 const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   flagship: { zh: "大型项目 · 建议中资企业重点关注", en: "Flagship Project", es: "Proyecto Insignia" },
@@ -139,8 +161,37 @@ function tier(name: TenderRelevance["tier"], reason: LocalizedText): TenderRelev
   return { tier: name, label: LABELS[name], reason };
 }
 
+/**
+ * The plant's or office's own reference that CFE's micrositio puts before a
+ * title — "(HB60) MANTENIMIENTO AL SISTEMA AIRE GASES…", "5100005873_Servicio
+ * de mantenimiento integral…", "DJ-O-CA-185-2026 Mejoras Civiles…", "D137
+ * Mantenimiento correctivo…", "ZZOC.- TRABAJOS…", "PO207/2026-ZTAL.- Mejora…"
+ * (the list pasted 2026-10-06). With it in front, the rules below that read
+ * how a title OPENS did not see "mantenimiento" or "servicio", and a plant
+ * upkeep job was kept as a power-plant works contract. Removed before any rule
+ * runs, so each rule reads what CFE is actually buying.
+ */
+const INTERNAL_REFERENCE = [
+  /^\W*\(?h[a-z]\d{2}\)?(?=\W)\W*/, // (HB60) / HB61 / (Hb61) -
+  /^\W*\d{6,}[\s_-]*/, // SAP numbers: 500670074, 5100005873_
+  /^\W*dj(?:-[a-z0-9]+)+\s+/, // DJ-O-CA-185-2026, DJ-SC-026-26, DJ-087-26
+  /^\W*d\d{3}\b\W*/, // D137, D403 -
+  /^\W*z[a-z]{2,4}\.?\s*[-–]+\s*/, // ZZOC.- / ZAER - / ZPOL. –
+  /^\W*po\d+\/\S*\s+/, // PO207/2026-ZTAL.-
+];
+
+export function stripCfeInternalReference(text: string): string {
+  let out = text;
+  for (let pass = 0; pass < 3; pass += 1) {
+    const before = out;
+    for (const pattern of INTERNAL_REFERENCE) out = out.replace(pattern, "");
+    if (out === before) break;
+  }
+  return out || text;
+}
+
 export function classifyCfeRelevance(input: { title: string; tenderNumber: string | undefined }): TenderRelevance {
-  const text = foldAccents(input.title).toLowerCase().replace(/\s+/g, " ").trim();
+  const text = stripCfeInternalReference(foldAccents(input.title).toLowerCase().replace(/\s+/g, " ").trim());
   const code = CFE_NUMBER.exec(input.tenderNumber?.trim() ?? "");
   // "C" in the number is works; the rules below call it "O".
   const kind = code ? code[1].toUpperCase().replace("C", "O") : GOODS_HEAD.test(text) ? "A" : "S";
@@ -153,11 +204,11 @@ export function classifyCfeRelevance(input: { title: string; tenderNumber: strin
   if (kind === "S" && !(GOODS_HEAD.test(text) && EQUIPMENT_OR_MATERIAL.test(text))) return tier("excluded", REASONS.service);
 
   if (kind === "O") {
-    if (MAJOR_WORKS.test(text)) return international ? tier("significant", REASONS.major_works) : tier("standard", REASONS.major_works);
+    if (MAJOR_WORKS.test(text) && !MINOR_SITE_WORKS.test(text)) return international ? tier("significant", REASONS.major_works) : tier("standard", REASONS.major_works);
     return international ? tier("standard", REASONS.works) : tier("excluded", REASONS.small_works);
   }
 
-  if (NOT_TARGET_GOODS.test(text)) return tier("excluded", REASONS.not_target_goods);
+  if (NOT_TARGET_GOODS.test(text) || COMPONENT_OR_CONSUMABLE.test(text)) return tier("excluded", REASONS.not_target_goods);
   // Judged on what is bought, not what it is for.
   const subject = text.split(/ (?:para|con destino) /)[0];
   if (!international) return NATIONAL_MAJOR.test(subject) ? tier("standard", REASONS.goods) : tier("excluded", REASONS.national_spot);

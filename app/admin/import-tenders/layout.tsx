@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/supabase/server-client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ImportTendersTabs } from "@/components/admin/ImportTendersTabs";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { DailyManualTasks } from "@/components/admin/DailyManualTasks";
 
 // Same real admin gate as app/admin/tenders/layout.tsx — this page writes
 // new tenders to Supabase, so it needs the strict allowlist check. Also the
@@ -33,6 +34,8 @@ export default async function AdminImportTendersLayout({ children }: { children:
     <AdminShell>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-8 sm:px-8 lg:py-10">
         <AdminPageHeader eyebrow="New tenders" title="新项目清单" description="按国家导入最新政府采购项目，并在正式写入前预览数据。" backHref="/admin/tenders" />
+
+        <DailyManualTasks />
 
         <ImportTendersTabs />
 

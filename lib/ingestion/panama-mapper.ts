@@ -16,9 +16,19 @@ import { classifyStoredTender } from "@/lib/relevance";
 export const PANAMA = "Panama";
 export const PANAMA_SOURCE_NAME = "PanamaCompra — Dirección General de Contrataciones Públicas (Panamá)";
 
-/** The public route that opens a procedure by its number. */
-export function panamaPublicUrl(numProceso: string): string {
-  return `${PANAMACOMPRA_SITE}/Inicio/#/busqueda-numero-licitacion/${encodeURIComponent(numProceso)}`;
+/**
+ * The procedure's public 「Pliego de cargos」 page. Its last path segment is
+ * what the site's own links carry: JSON naming the flow id, the procedure
+ * type and the page to render, base64-encoded and reversed. The route that
+ * opens a procedure by its number (#/busqueda-numero-licitacion/…) was used
+ * until 2026-10-06, but it redirects to a token without the page ("rn") and
+ * that page answers 「Este número de acto no existe」 (user, 2026-10-06, for
+ * 2026-2-96-01-03-LV-000001 and 2026-2-02-01-08-LV-000009).
+ */
+export function panamaPublicUrl(proceso: Pick<PanamaProceso, "numProceso" | "idProcesosContratacionFlujos" | "idTipoProceso">): string {
+  const json = JSON.stringify({ i: proceso.idProcesosContratacionFlujos, tp: proceso.idTipoProceso, rn: "/ps/documentos-proceso/pliego-general/publico" });
+  const token = [...Buffer.from(json, "utf8").toString("base64").replace(/=+$/, "")].reverse().join("");
+  return `${PANAMACOMPRA_SITE}/Inicio/#/pliego-de-cargos/${encodeURIComponent(proceso.numProceso)}/${token}`;
 }
 
 /**
@@ -145,7 +155,7 @@ export function mapPanamaProcesoToTender(proceso: PanamaProceso, detalle: Panama
     risks: [],
     relevance,
     sourceName: PANAMA_SOURCE_NAME,
-    sourceUrl: panamaPublicUrl(proceso.numProceso),
+    sourceUrl: panamaPublicUrl(proceso),
     createdAt: timestamp,
     updatedAt: timestamp,
   };

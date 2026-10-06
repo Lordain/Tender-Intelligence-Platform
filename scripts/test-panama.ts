@@ -75,7 +75,13 @@ check("发布时间取详情页", tender.publicationDate, "2026-09-15T15:09:00.0
 check("交标截止", tender.submissionDeadline, "2026-10-28T14:01:00.000Z");
 check("状态", tender.status, "open");
 check("类型", tender.scopeType, "services");
-check("官方入口", tender.sourceUrl, panamaPublicUrl("2026-0-28-01-08-LP-000040"));
+check("官方入口", tender.sourceUrl, panamaPublicUrl(fixture.proceso));
+// The link the user opened from the site itself (2026-10-06): flujo 1068029, type 16.
+check(
+  "官方入口与官网自己的链接一致",
+  panamaPublicUrl({ numProceso: "2026-2-96-01-03-LV-000001", idProcesosContratacionFlujos: 1068029, idTipoProceso: 16 }),
+  "https://www.panamacompra.gob.pa/Inicio/#/pliego-de-cargos/2026-2-96-01-03-LV-000001/0nIvNWasJWdw9CbhJXZuV2Zt82ZllGbw9ybzV2YvJHctM3b05WZtV3YvR2LzB3LiojIuJnIsYTM6ICc0JCL5IDM4YDMxojIpJye",
+);
 check("摘要不含经办人", /persona@|Adriana/i.test(tender.summary.es), false);
 check("没有详情也能映射", mapPanamaProcesoToTender(fixture.proceso, undefined, NOW).estimatedValue, undefined);
 

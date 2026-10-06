@@ -12,6 +12,8 @@ import { CFE_BUYER_PATTERN } from "@/lib/ingestion/heuristics";
 import { isCfeCall } from "@/lib/relevance-cfe";
 import { hasShortBidWindow } from "@/lib/ingestion/recency";
 import { importCfePaste } from "@/lib/ingestion/import-cfe-paste";
+import { parseCfeListPaste, screenCfeListRow } from "@/lib/ingestion/cfe-list-screen";
+import { classifyCfeRelevance } from "@/lib/relevance-cfe";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -92,6 +94,51 @@ const maintenance = mapCfeMicrositioProcedure(
   NOW,
 );
 check("国内小工程/维护 → 排除", maintenance.relevance.tier, "excluded");
+
+console.log("\n列表初筛（CFE 网站搜索结果，2026-10-06 用户粘贴的列表节选）");
+const listText = readFileSync(join(process.cwd(), "lib/ingestion/__fixtures__/cfe-micrositio-list-2026-10-06.txt"), "utf8");
+const listed = parseCfeListPaste(listText);
+check("识别 10 行", listed.length, 10);
+check("各列读对", listed[0], {
+  number: "CFE-0413-CSAAN-0023-2026",
+  state: "México",
+  description: "ADQUISICIÓN DE TÓNERS, TINTAS Y REFACCIONES PARA IMPRESORAS DE LA C.C.C. VALLE DE MÉXICO",
+  procedureType: "Concurso simplificado",
+  contractType: "Adquisición por Abastecimientos",
+  published: "06-10-2026",
+  status: "Vigente",
+});
+check("已授标的行也读出状态", listed[9].status, "Adjudicado");
+const verdicts = Object.fromEntries(listed.map((row) => [row.number, screenCfeListRow(row).verdict]));
+check("耗材 → 排除", verdicts["CFE-0413-CSAAN-0023-2026"], "excluded");
+check("直接授标 → 不看", verdicts["CFE-0102-ADCON-0013-2026"], "direct_award");
+check("流标/已授标 → 不看", [verdicts["CFE-0027-ADSAN-0001-2026"], verdicts["CFE-0400-ADSAN-0001-2026"]], ["not_current", "not_current"]);
+check("国际招标的设备供货安装 → 值得打开", verdicts["CFE-0001-CAAAT-0162-2026"], "open");
+check("配电网工程 → 值得打开", verdicts["CFE-0115-CACON-0057-2026"], "open");
+check("输电线路导线 → 值得打开", verdicts["CFE-0001-CAAAT-0163-2026"], "open");
+check("仓库土建小工程（编号前缀 DJ-…）→ 排除", verdicts["CFE-0116-CACON-0185-2026"], "excluded");
+// The plant's own reference before the title hid "MANTENIMIENTO"/"Servicio" from the rules.
+check("「(HB60) MANTENIMIENTO…CENTRAL」→ 排除（之前被当成电厂工程）", verdicts["CFE-0700-CSCON-0111-2026"], "excluded");
+check("「5100005873_Servicio de mantenimiento…」→ 排除", verdicts["CFE-0900-CAAAT-0043-2026"], "excluded");
+check("已在平台上的标出来", screenCfeListRow(listed[4], "cfe-x").existingSlug, "cfe-x");
+// The user's calls on the 2026-10-06 list: kept by the rules, but small → excluded.
+for (const [number, title] of [
+  ["CFE-0107-CACON-0048-2026", "PO810/2026/DL05/SGRLES/CTG- Construcción de guarnición y colado de piso de concreto para eliminar la banqueta"],
+  ["CFE-0114-CACON-0048-2026", "ZTAC. - CONSTRUCCION DEL CAMPO DE PRACTICAS EN EL C.T. TLATELOLCO"],
+  ["CFE-0400-CSCON-0063-2026", "AMPLIACIÓN DE LA BARDA PERIMETRAL DE LA CENTRAL COGENERACIÓN SALAMANCA"],
+  ["CFE-0920-CSCON-0041-2026", "700221531 ADECUACIONES A INFRAESTRUCTURA PARA CUMPLIMIENTO DE CÓDIGO DE RED DE CENACE PARA LA CENTRAL TURBOGAS CARMEN"],
+  ["CFE-0604-CSAAA-0033-2026", "ADQUISICIÓN DE DESENGRASANTE BIODEGRADABLE PARA EL LAVADO DE COMPRESOR AXIAL"],
+  ["CFE-0513-CSAAA-0028-2026", "ADQUISICIÓN DE JUNTAS GRAFITO PARA VÁLVULAS NEUMÁTICAS DE UNIDAD 2"],
+  ["CFE-0513-CSAAA-0030-2026", "ADQUISICIÓN DE BANDAS SINFÍN PARA ALIMENTADORES DE CARBÓN PARA UNIDADES 1 A 7"],
+  ["CFE-0101-CSAAN-0027-2026", "POSTES DE MADERA"],
+  ["CFE-0105-CSAAA-0021-2026", "ADQUISICION DE POSTES DE MADERA"],
+  ["CFE-0700-CSAAA-0137-2026", '(HC61) Adquisición boquillas Transformador Principal T1 Ciclo 1 Central Ciclo Combinado Huinalá "Segunda Vuelta"'],
+  ["CFE-0920-CSAAN-0059-2026", "500669998 SUMINISTRO DE ÁLABES DE ENFRIAMIENTO DE ROTOR DEL GENERADOR ELÉCTRICO DE LA U-2"],
+]) {
+  check(`偏小 → 排除：${number}`, classifyCfeRelevance({ title, tenderNumber: number }).tier, "excluded");
+}
+check("变电站土建+机电工程照旧保留", classifyCfeRelevance({ title: "CONSTRUCCION DE OBRA CIVIL Y ELECTROMECANICA DE SUBESTACION AMERICAS INDUSTRIES EN ZONA REYNOSA", tenderNumber: "CFE-0115-CACON-0056-2026" }).tier, "standard");
+check("没有前缀的标题照旧", classifyCfeRelevance({ title: "Adquisición de Conductores y cables para líneas de Transmisión", tenderNumber: "CFE-0001-CAAAT-0163-2026" }).tier, "standard");
 
 async function pasteChecks() {
   console.log("\n粘贴导入（不连数据库，只预览）");

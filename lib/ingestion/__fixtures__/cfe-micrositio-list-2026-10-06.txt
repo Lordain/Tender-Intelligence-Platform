@@ -1,0 +1,52 @@
+Procedimientos Encontrados: 113180
+Número de Procedimiento
+Testigo Social	
+Entidad Federativa
+Descripción
+Tipo de procedimiento
+Tipo contratación
+Fecha Publicación
+Estado
+Adjudicado A
+Monto Adjudicado En Pesos
+Detalle
+CFE-0413-CSAAN-0023-2026	
+NO
+México	ADQUISICIÓN DE TÓNERS, TINTAS Y REFACCIONES PARA IMPRESORAS DE LA C.C.C. VALLE DE MÉXICO	Concurso simplificado	Adquisición por Abastecimientos	06-10-2026	Vigente		$0.00	
+
+CFE-0102-ADCON-0013-2026	
+NO
+Guanajuato	Rehabilitación emergente de la infraestructura eléctrica de distribución en la Zona Ixmiquilpan de la División de Distribución Bajío	Adjudicación directa	Contratación de Obras	05-10-2026	Vigente		$0.00	
+
+CFE-0700-CSCON-0111-2026	
+NO
+Nuevo León	(HB60) MANTENIMIENTO AL SISTEMA AIRE GASES UNIDAD 4 DE LA CENTRAL TERMOELECTRICA JOSE LOPEZ PORTILLO	Concurso simplificado	Contratación de Obras	05-10-2026	Vigente		$0.00	
+
+CFE-0001-CAAAT-0162-2026	
+NO
+Ciudad de México	Suministro e instalación de bombas de Alimentación de Diésel con motor para las Turbinas de Gas de la Central Ciclo Combinado Felipe Carrillo Puerto	Concurso abierto	Adquisición por Abastecimientos	05-10-2026	Vigente		$0.00	
+
+CFE-0115-CACON-0057-2026	
+NO
+Ciudad de México	CONSTRUCCIÓN DE OBRA POR TERCEROS DE RED GENERAL DE DISTRIBUCION (OBRAS AL 100%) ZONA METROPOLITANA PONIENTE	Concurso abierto	Contratación de Obras	05-10-2026	Vigente		$0.00	
+
+CFE-0116-CACON-0185-2026	
+NO
+Jalisco	DJ-O-CA-185-2026 Mejoras Civiles en Almacén de Zona Costa	Concurso abierto	Contratación de Obras	05-10-2026	Vigente		$0.00	
+
+CFE-0001-CAAAT-0163-2026	
+NO
+Ciudad de México	Adquisición de Conductores y cables para líneas de Transmisión	Concurso abierto	Adquisición por Abastecimientos	02-10-2026	Vigente		$0.00	
+
+CFE-0027-ADSAN-0001-2026	
+NO
+Querétaro	Servicios periciales en materia técnica para la revisión, análisis, atención y asistencia en las diferentes etapas procesales del Caso Arbitral CCI 29667/ICA6, relacionado con el Proyecto 311 RM TULA	Adjudicación directa	Servicio por Abastecimiento	02-10-2026	Desierto		$0.00	
+
+CFE-0900-CAAAT-0043-2026	
+NO
+Veracruz de Ignacio de la Llave	5100005873_Servicio de mantenimiento integral y suministro de bienes a transformadores de potencia de la unidad 3 de la Central Hidroeléctrica Manuel Moreno Torres	Concurso abierto	Adquisición por Abastecimientos	01-10-2026	Vigente		$0.00	
+
+CFE-0400-ADSAN-0001-2026	
+NO
+Ciudad de México	ADQUISICIÓN DE BIENES Y SERVICIOS PARA LA REPARACIÓN DEL GENERADOR ELÉCTRICO EN ATENCIÓN AL SINIESTRO OCURRIDO EN LA UNIDAD 2 DE LA C.H. INFIERNILLO	Adjudicación directa	Servicio por Abastecimiento	30-09-2026	Adjudicado	GENERADORES MEXICANOS SA DE CV,	$89,569,940.00	
+

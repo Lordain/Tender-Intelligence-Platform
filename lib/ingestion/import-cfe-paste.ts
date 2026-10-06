@@ -3,6 +3,7 @@ import type { Tender } from "@/types/tender";
 import { cfeNotOpenReason, mapCfeMicrositioProcedure, parseCfeMicrositioPaste } from "@/lib/ingestion/cfe-micrositio-paste";
 import { hasShortBidWindow, isPastSubmissionDeadline, SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
+import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 import { CFE_MICROSITIO_SOURCE_NAME } from "@/lib/relevance-cfe";
 import type { CfePasteOutcome, CfePasteResponse, CfePasteRow } from "@/lib/ingestion/cfe-paste-result";
 
@@ -57,7 +58,7 @@ async function existingSlugs(supabase: SupabaseClient, numbers: string[]): Promi
 
 export async function importCfePaste(supabase: SupabaseClient | null, text: string, options: { write: boolean; now?: Date }): Promise<CfePasteResponse> {
   const procedures = parseCfeMicrositioPaste(text);
-  if (procedures.length === 0) throw new Error("没有找到「Procedimiento No.」——请从 CFE 项目详情页顶部的标题开始，整页复制。");
+  if (procedures.length === 0) throw new PasteInputError("没有找到「Procedimiento No.」——请从 CFE 项目详情页顶部的标题开始，整页复制。");
 
   const existing = supabase ? await existingSlugs(supabase, procedures.map((procedure) => procedure.number)) : new Map<string, string>();
   const now = options.now ?? new Date();

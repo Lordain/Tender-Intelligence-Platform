@@ -4,7 +4,9 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { importEcuadorPaste } from "@/lib/ingestion/import-ecuador-paste";
 import { ECUADOR_KEEP_TIERS, type EcuadorKeepTier } from "@/lib/ingestion/ecuador-paste-result";
 import { logAdminAlert } from "@/lib/admin-alerts";
+import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 import { revalidateTenders } from "@/lib/cache-tags";
+import { markManualTaskDone } from "@/lib/ops/manual-tasks";
 
 /**
  * The 厄瓜多尔 tab's 「SOCE 粘贴导入」 (user, 2026-10-06). Nothing is fetched:
@@ -34,10 +36,14 @@ export async function POST(request: Request) {
   try {
     const result = await importEcuadorPaste(supabase, text, { write: body.write === true, keep });
     // The public list is cached; drop it so this import shows up now.
-    if (body.write === true) revalidateTenders();
+    if (body.write === true) {
+      revalidateTenders();
+      await markManualTaskDone(supabase, "ecuador-soce", `粘贴 ${result.rows.length} 个项目，写入 ${result.written ?? 0} 条`);
+    }
     return NextResponse.json(result);
   } catch (err) {
-    if (body.write === true) await logAdminAlert(supabase, "import-ecuador-paste", err);
+    // Something pasted wrong is the form's message, not a 系统告警.
+    if (body.write === true && !(err instanceof PasteInputError)) await logAdminAlert(supabase, "import-ecuador-paste", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 });
   }
 }

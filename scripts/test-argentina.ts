@@ -339,6 +339,17 @@ async function main() {
   check("window: the next day it is kept", hasSitea(await windowRun(new Date("2026-09-15T12:00:00Z"))), true);
   check("window: ADIF rows are not windowed", [adifCount(windowed) > 0, adifCount(windowed)], [true, adifCount(unwindowed)]);
 
+  // Mexico's no-amount equipment whitelist, extended to Argentina's open calls
+  // (user, 2026-10-06: OK). A 60-day delivery no longer drops it either.
+  const biomedical = "ADQUISICIÓN DE EQUIPOS BIOMEDICOS PARA EL H GRL 601 - HMC. Plazo de entrega: 60 días";
+  check("whitelist: biomedical equipment, open call, 60-day delivery → kept", tier({ title: biomedical }), "standard");
+  check("whitelist: air conditioning equipment, open call → kept", tier({ title: "Adquisición de equipos de aire acondicionado para el Hospital Posadas" }), "standard");
+  check("whitelist: fire suppression system, open call → kept", tier({ title: "Adquisición e instalación de sistema de detección y supresión de incendios" }), "standard");
+  check("whitelist: not for a Licitación Privada", tier({ title: biomedical, procedureType: "Licitación Privada" }), "excluded");
+  check("whitelist: not the upkeep of the same equipment", tier({ title: "Servicio de mantenimiento de equipos de aire acondicionado" }), "excluded");
+  check("whitelist: not the consumables", tier({ title: "Adquisición de insumos y consumibles para equipo médico" }), "excluded");
+  check("whitelist: Mexico unchanged — a national call stays out", tier({ title: biomedical, country: "Mexico" }), "excluded");
+
   console.log(`${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 }

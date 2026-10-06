@@ -1,0 +1,28 @@
+Descripción del Proceso de Contratación
+Entidad:	HOSPITAL DE ESPECIALIDADES CARLOS ANDRADE MARIN
+Objeto de Proceso:	ADQUISICIÓN DEL DISPOSITIVO MÉDICO: PAQUETE QUIRÚRGICO PARA CIRUGÍA ABDOMINAL, COMPLETO, PARA CENTRO QUIRÚRGICO
+Código:	SIE-HCAM-2026-228
+Tipo Compra:	Bien
+Presupuesto Referencial Total (Sin Iva):	USD 363,482.92
+Tipo de Contratación:	Subasta Inversa Electrónica -
+Forma de Pago:	Anticipo: 0% Saldo: Otra - Revisar términos de referencia 100.00%
+Tipo de Adjudicación:	Total
+Plazo de Entrega:	360 dias
+Vigencia de Oferta:	90 días
+Funcionario encargado del proceso:	funcionario.ejemplo@iess.gob.ec
+Estado del Proceso:	Preguntas, Respuestas y Aclaraciones
+Descripción:	ADQUISICIÓN DEL DISPOSITIVO MÉDICO: PAQUETE QUIRÚRGICO PARA CIRUGÍA ABDOMINAL, COMPLETO, PARA CENTRO QUIRÚRGICO
+Variación mínima de la Oferta durante la Puja:	5.00% Tipo Variación: Precio total
+
+Fechas de Control del Proceso
+SIE-HCAM-2026-228
+Fecha de Publicación	2026-10-05 20:00:00	Indicar la fecha real en la cual desea publicar el Proceso.
+Fecha Límite de Preguntas	2026-10-12 20:00:00	Fecha máxima para solicitar aclaraciones respecto al Proceso de Contratación.
+Fecha Límite de Respuestas	2026-10-15 20:00:00	Fecha máxima para solventar cualquier inquietud relacionada al Proceso de Contratación.
+Fecha Límite entrega Ofertas	2026-10-22 09:00:00	Fecha máxima de entrega Ofertas Técnica.
+Fecha Límite solicitar Convalidación	2026-10-26 20:00:00	Fecha máxima para que la Entidad notifique los errores de forma en las ofertas.
+Fecha Límite respuesta Convalidación	2026-10-28 20:00:00	Fecha máxima para respuestas de Convalidación de Errores.
+Fecha Límite de Calificación	2026-10-30 20:00:00	Fecha máxima para calificar a proveedores.
+Fecha Inicio de Puja	2026-11-04 10:00:00	Fecha en que inicia la puja.
+Fecha Final de Puja	2026-11-04 10:15:00	Fecha en que finaliza la puja.
+Fecha Estimada de Adjudicación	2026-11-10 18:00:00	Fecha estimada para la Adjudicación de la compra.

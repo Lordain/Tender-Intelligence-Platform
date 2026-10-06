@@ -11,6 +11,7 @@ import { cfeDates, cfeParticipationScope, cfeScopeType, mapCfeMicrositioProcedur
 import { CFE_BUYER_PATTERN } from "@/lib/ingestion/heuristics";
 import { isCfeCall } from "@/lib/relevance-cfe";
 import { hasShortBidWindow } from "@/lib/ingestion/recency";
+import { importCfePaste } from "@/lib/ingestion/import-cfe-paste";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -67,9 +68,9 @@ check("关键日期", tender.keyDates.map((d) => d.type), ["publication", "clari
 check("走 CFE 规则：国内工程 · 配电网建设 → 常规", tender.relevance.tier, "standard");
 check("行业", tender.industries.includes("power"), true);
 check("没有金额", tender.estimatedValue, undefined);
-// The platform's 12-day rule (lib/ingestion/recency.ts) applies to a pasted
-// call like any other: 常规、没有金额、发布到交标 7 天 → not written.
-check("发布到交标只有 7 天：按 12 天规则不写入", hasShortBidWindow(tender), true);
+// 常规、没有金额、发布到交标 7 天: the DOF or any automated source would skip
+// it; a paste is written anyway (user, 2026-10-06: 手动粘贴的项目不受 12 天限制).
+check("发布到交标只有 7 天：自动导入会跳过", hasShortBidWindow(tender), true);
 check("截止后", mapCfeMicrositioProcedure(procedure, new Date("2026-10-13T00:00:00Z")).status, "submission_closed");
 
 const opgw = mapCfeMicrositioProcedure(
@@ -92,5 +93,17 @@ const maintenance = mapCfeMicrositioProcedure(
 );
 check("国内小工程/维护 → 排除", maintenance.relevance.tier, "excluded");
 
-console.log(failures ? `\n${failures} 项失败` : "\n全部通过");
-if (failures) process.exit(1);
+async function pasteChecks() {
+  console.log("\n粘贴导入（不连数据库，只预览）");
+  const preview = await importCfePaste(null, text, { write: false, now: NOW });
+  check("7 天窗口照样写入，并注明", [preview.rows[0].outcome, preview.rows[0].outcomeZh.startsWith("会写入")], ["short_window", true]);
+  const expired = await importCfePaste(null, text.replace(/12\/10\/2026 08:30 hrs/, "01/10/2026 08:30 hrs").replace("12/10/2026 09:00 hrs", "01/10/2026 09:00 hrs"), { write: false, now: NOW });
+  check("截止日已过仍不写入", expired.rows[0].outcome, "closed");
+  const routine = await importCfePaste(null, text.replace(/CONSTRUCCIÓN DE OBRA POR TERCEROS[^\t\n]*/g, "SERVICIO DE MANTENIMIENTO A EDIFICIOS"), { write: false, now: NOW });
+  check("按 CFE 规则排除的仍不写入", routine.rows[0].outcome, "excluded");
+
+  console.log(failures ? `\n${failures} 项失败` : "\n全部通过");
+  if (failures) process.exit(1);
+}
+
+void pasteChecks();

@@ -5,7 +5,11 @@
  */
 import type { TenderRelevanceTier } from "@/types/tender";
 
-/** What the import does with a pasted procedure, under the platform's usual rules. */
+/**
+ * What the import does with a pasted procedure, under the platform's usual
+ * rules. "short_window" is still written — manual pastes are exempt from the
+ * 12-day rule — and says so, so the admin knows the DOF would not have.
+ */
 export type CfePasteOutcome = "write" | "excluded" | "closed" | "short_window" | "not_open";
 
 export type CfePasteRow = {

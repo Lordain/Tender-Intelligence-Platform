@@ -14,6 +14,12 @@ import type { CfePasteOutcome, CfePasteResponse, CfePasteRow } from "@/lib/inges
  * an admin's earlier delete) apply unchanged (standing rule: 请一定要保障现在
  * 应用的筛选规则，在我们导入新项目时，一样适用).
  *
+ * Except the 12-day bidding window: a call the admin chose by hand is written
+ * however short its window (user, 2026-10-06: 手动粘贴的项目不受 12 天限制（你
+ * 亲自挑的，说明你想看）。其他规则照旧，比如截止日已过、按 CFE 规则排除的仍然不
+ * 写入). The admin edit form's own window check skips these rows for the same
+ * reason (app/api/admin/tenders/[slug]/route.ts).
+ *
  * One call, one row (user, 2026-10-06: 如果我手动贴，就要避免DOF（晚几天公告
  * 时），重复加载). Both directions are handled by the procedure number:
  *   - pasted after the DOF already brought it in: the paste is written onto
@@ -25,12 +31,12 @@ const OUTCOME_ZH: Record<CfePasteOutcome, string> = {
   write: "会写入",
   excluded: "按 CFE 规则排除，不写入",
   closed: "交标截止日已过，不写入",
-  short_window: `发布到交标不足 ${SHORT_BID_WINDOW_DAYS} 天（常规项目、无金额），按平台规则不写入`,
+  short_window: `会写入（发布到交标不足 ${SHORT_BID_WINDOW_DAYS} 天，自动导入会跳过；手动粘贴不受此限制）`,
   not_open: "",
 };
 
-function outcomeOf(tender: Tender): CfePasteOutcome {
-  if (isPastSubmissionDeadline(tender)) return "closed";
+function outcomeOf(tender: Tender, now: Date): CfePasteOutcome {
+  if (isPastSubmissionDeadline(tender, now)) return "closed";
   if (tender.relevance.tier === "excluded") return "excluded";
   if (hasShortBidWindow(tender)) return "short_window";
   return "write";
@@ -49,12 +55,12 @@ async function existingSlugs(supabase: SupabaseClient, numbers: string[]): Promi
   return bySlug;
 }
 
-export async function importCfePaste(supabase: SupabaseClient | null, text: string, options: { write: boolean }): Promise<CfePasteResponse> {
+export async function importCfePaste(supabase: SupabaseClient | null, text: string, options: { write: boolean; now?: Date }): Promise<CfePasteResponse> {
   const procedures = parseCfeMicrositioPaste(text);
   if (procedures.length === 0) throw new Error("没有找到「Procedimiento No.」——请从 CFE 项目详情页顶部的标题开始，整页复制。");
 
   const existing = supabase ? await existingSlugs(supabase, procedures.map((procedure) => procedure.number)) : new Map<string, string>();
-  const now = new Date();
+  const now = options.now ?? new Date();
   const rows: CfePasteRow[] = [];
   const toWrite: Tender[] = [];
 
@@ -63,7 +69,7 @@ export async function importCfePaste(supabase: SupabaseClient | null, text: stri
     const existingSlug = existing.get(procedure.number);
     const tender = existingSlug && existingSlug !== mapped.slug ? { ...mapped, slug: existingSlug } : mapped;
     const notOpen = cfeNotOpenReason(procedure);
-    const outcome: CfePasteOutcome = notOpen ? "not_open" : outcomeOf(tender);
+    const outcome: CfePasteOutcome = notOpen ? "not_open" : outcomeOf(tender, now);
     if (!notOpen) toWrite.push(tender);
     rows.push({
       number: procedure.number,
@@ -87,6 +93,6 @@ export async function importCfePaste(supabase: SupabaseClient | null, text: stri
 
   if (!options.write) return { rows };
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
-  const result = await upsertTendersBatched(supabase, toWrite);
+  const result = await upsertTendersBatched(supabase, toWrite, undefined, { allowShortBidWindow: true });
   return { rows, written: result.upsertedCount, failed: result.failed };
 }

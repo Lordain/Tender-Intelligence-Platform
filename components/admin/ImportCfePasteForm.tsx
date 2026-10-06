@@ -13,7 +13,7 @@ function mexicoTime(iso: string | undefined): string {
 }
 
 function OutcomeTag({ row }: { row: CfePasteRow }) {
-  const className = row.outcome === "write" ? "bg-[#e7f5ec] text-[#186a3b]" : "bg-[#fff3d6] text-[#8a5a00]";
+  const className = row.outcome === "write" || row.outcome === "short_window" ? "bg-[#e7f5ec] text-[#186a3b]" : "bg-[#fff3d6] text-[#8a5a00]";
   return <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-black ${className}`}>{row.outcomeZh}</span>;
 }
 
@@ -54,7 +54,7 @@ export function ImportCfePasteForm() {
     }
   }
 
-  const writable = result?.rows.filter((row) => row.outcome === "write").length ?? 0;
+  const writable = result?.rows.filter((row) => row.outcome === "write" || row.outcome === "short_window").length ?? 0;
 
   return (
     <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
@@ -63,7 +63,7 @@ export function ImportCfePasteForm() {
       <p className="mt-1 text-sm text-[#52636e]">
         在 CFE 招标网站（msc.cfe.mx）打开项目详情页，全选（Ctrl/⌘ + A）、复制，粘贴到下面。可以连续贴多个项目。DOF
         不刊登的工程类和简化招标（编号里有 CON 或 CS）只能用这种方式补录。同一个编号如果已经从 DOF 导入过，会更新那一条，不会重复；之后
-        DOF 再刊登时也会跳过。
+        DOF 再刊登时也会跳过。筛选规则和自动导入相同，只有「发布到交标不足 12 天」这一条对手动粘贴不适用。
       </p>
 
       {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

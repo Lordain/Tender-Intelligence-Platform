@@ -6,6 +6,7 @@ import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 import { syncKeyDatesForTopLevelFields } from "@/lib/db/key-dates-sync";
 import { decideBidWindow } from "@/lib/db/bid-window-gate";
 import { CFE_MICROSITIO_SOURCE_NAME } from "@/lib/relevance-cfe";
+import { ECUADOR_SOCE_SOURCE_NAME } from "@/lib/ingestion/ecuador-soce-paste";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { generatedTextRefusals, releaseClearedGeneratedText } from "@/lib/admin/generated-text";
 import type {
@@ -228,12 +229,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   // hand-picked tier overwritten by a side effect of the date field in the
   // same form submission would be indistinguishable from a bug.
   //
-  // Also skipped for a call pasted from CFE's micrositio: the admin chose it
-  // by hand, and those are exempt from the 12-day rule (user, 2026-10-06:
-  // 手动粘贴的项目不受 12 天限制). Without this, the next save of such a row —
-  // any field — would exclude it.
+  // Also skipped for a call pasted from CFE's micrositio or Ecuador's SOCE:
+  // the admin chose it by hand, and those are exempt from the 12-day rule
+  // (user, 2026-10-06: 手动粘贴的项目不受 12 天限制). Without this, the next
+  // save of such a row — any field — would exclude it.
   let bidWindowNote: string | null = null;
-  if (body.relevanceTier === existing.relevance_tier && existing.source_name !== CFE_MICROSITIO_SOURCE_NAME) {
+  const pastedByHand = existing.source_name === CFE_MICROSITIO_SOURCE_NAME || existing.source_name === ECUADOR_SOCE_SOURCE_NAME;
+  if (body.relevanceTier === existing.relevance_tier && !pastedByHand) {
     const decision = decideBidWindow({
       currentTier: existing.relevance_tier,
       currentReason: existing.relevance_reason ?? null,

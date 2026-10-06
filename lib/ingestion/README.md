@@ -9095,3 +9095,17 @@ User question: why are some CFE calls on CFE's micrositio never found by the DOF
 - **`lib/relevance-cfe.ts` read works as kind `O`; CFE writes `CO`.** Corrected, and `CS` accepted. Nothing stored from the DOF changes, since the DOF has neither.
 
 The micrositio itself is still not fetched (Imperva + anti-forgery token, re-checked the same day: `X-CDN: Imperva`, `visid_incap_*`, `__RequestVerificationToken`, and no export button on the grid). Instead the admin pastes the page: 墨西哥 tab → 「CFE 网站粘贴导入」, read by `cfe-micrositio-paste.ts` (`npm run test:cfe-paste`, fixture `__fixtures__/cfe-micrositio-2026-10-06.txt`) and written through `upsertTendersBatched()`, so every filter applies except one: the 12-day bidding window, which the user's own first example (published 05/10, bids due 12/10) did not pass. Pastes are exempt from it (user: 手动粘贴的项目不受 12 天限制（你亲自挑的，说明你想看）。其他规则照旧) — `upsertTendersBatched(…, { allowShortBidWindow: true })`, and the admin edit form's window check skips rows from this source so a later save does not exclude them. Passed deadlines and CFE's own exclusions still apply. One call is one row whichever arrives first: a paste onto a number the DOF already brought writes onto that row, and the DOF import skips numbers already stored from the micrositio (user: 如果我手动贴，就要避免DOF（晚几天公告时），重复加载).
+
+## Ecuador: SOCE procedure pages pasted by hand (2026-10-06)
+
+Ecuador is staged (lib/staged-countries.ts) and has no daily job. It is not read automatically for two reasons:
+
+- SOCE's search page (compraspublicas.gob.ec) sits behind a CAPTCHA, which this project does not get around. From the sandbox it also reset the connection.
+- SERCOP's open-data API (datosabiertos.compraspublicas.gob.ec/PLATAFORMA/api, `search_ocds` and `record?ocid=`) is public, but too late. A procedure first appears as a planning-only release, with no tender period. Its tender data arrives only after bids close: of 44 recent LICB/LICO records sampled on 2026-10-06, none was still open. It also answers 429 to anything faster than a slow pace.
+
+So the admin picks procedures from SOCE's results by amount, opens each page, and pastes it into 新项目清单 → 厄瓜多尔 → SOCE 粘贴导入. The pipeline is `lib/ingestion/ecuador-soce-paste.ts`, then `import-ecuador-paste.ts`, then `upsertTendersBatched()`.
+
+- **Rules:** the general rules apply, including the US$1M floor and the Subasta Inversa Electrónica exclusion. The one exemption is the 12-day window, as with CFE pastes; in practice it never bites, because SOCE pages always carry an amount.
+- **Times:** UTC-5. Amounts are US$, before VAT.
+- **Personal data:** the page's 「Funcionario encargado del proceso」 e-mail is dropped.
+- **Tests:** `npm run test:ecuador-paste`.

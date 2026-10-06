@@ -128,6 +128,19 @@ export function EcuadorFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/** Quartered: white with a blue star, red; blue, white with a red star. */
+export function PanamaFlag({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 14" className={`inline-block h-3.5 w-5 shrink-0 ${className}`}>
+      <rect width="20" height="14" fill="#fff" />
+      <rect x="10" width="10" height="7" fill="#da121a" />
+      <rect y="7" width="10" height="7" fill="#072357" />
+      <circle cx="5" cy="3.5" r="1.4" fill="#072357" />
+      <circle cx="15" cy="10.5" r="1.4" fill="#da121a" />
+    </svg>
+  );
+}
+
 export function CountryFlag({ country, className = "" }: { country: string; className?: string }) {
   if (country === "Mexico") return <MexicoFlag className={className} />;
   if (country === "Brazil") return <BrazilFlag className={className} />;
@@ -138,5 +151,6 @@ export function CountryFlag({ country, className = "" }: { country: string; clas
   if (country === "Argentina") return <ArgentinaFlag className={className} />;
   if (country === "Dominican Republic") return <DominicanRepublicFlag className={className} />;
   if (country === "Ecuador") return <EcuadorFlag className={className} />;
+  if (country === "Panama") return <PanamaFlag className={className} />;
   return null;
 }

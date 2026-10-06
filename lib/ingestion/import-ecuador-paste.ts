@@ -3,6 +3,7 @@ import type { Tender } from "@/types/tender";
 import { ECUADOR, ECUADOR_SOCE_SEARCH_URL, mapSoceToTender, parseSoceProcedures, soceLinksWithoutPage } from "@/lib/ingestion/ecuador-soce-paste";
 import { hasShortBidWindow, isPastSubmissionDeadline, SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
+import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 import { ECUADOR_KEEP_TIERS, type EcuadorImportOutcome, type EcuadorImportResponse, type EcuadorImportRow, type EcuadorKeepTier } from "@/lib/ingestion/ecuador-paste-result";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 
@@ -73,10 +74,10 @@ export async function importEcuadorPaste(
 ): Promise<EcuadorImportResponse> {
   const procedures = parseSoceProcedures(text);
   if (procedures.length === 0 && soceLinksWithoutPage(text).length > 0) {
-    throw new Error("只贴了链接：平台不会去打开 SOCE 的页面，请把链接和项目详情页的内容一起贴上（链接放在内容上方）。");
+    throw new PasteInputError("只贴了链接：平台不会去打开 SOCE 的页面，请把链接和项目详情页的内容一起贴上（链接放在内容上方）。");
   }
   if (procedures.length === 0) {
-    throw new Error("没有找到「Descripción del Proceso de Contratación」——请在 SOCE 项目详情页从这个标题开始，连同下面的「Fechas de Control del Proceso」一起复制。");
+    throw new PasteInputError("没有找到「Descripción del Proceso de Contratación」——请在 SOCE 项目详情页从这个标题开始，连同下面的「Fechas de Control del Proceso」一起复制。");
   }
   const existing = supabase ? await existingRows(supabase, procedures.map((procedure) => procedure.code)) : new Map<string, StoredRow>();
   const now = options.now ?? new Date();

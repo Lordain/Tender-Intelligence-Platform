@@ -3,6 +3,7 @@ import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { importCfePaste } from "@/lib/ingestion/import-cfe-paste";
 import { logAdminAlert } from "@/lib/admin-alerts";
+import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 import { revalidateTenders } from "@/lib/cache-tags";
 
 /**
@@ -30,7 +31,8 @@ export async function POST(request: Request) {
     if (body.write === true) revalidateTenders();
     return NextResponse.json(result);
   } catch (err) {
-    if (body.write === true) await logAdminAlert(supabase, "import-cfe-paste", err);
+    // Something pasted wrong is the form's message, not a 系统告警.
+    if (body.write === true && !(err instanceof PasteInputError)) await logAdminAlert(supabase, "import-cfe-paste", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 });
   }
 }

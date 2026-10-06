@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ecuadorAmount, ecuadorGovernmentLevel, ecuadorStatus, ecuadorTime, mapSoceToTender, parseSoceProcedures } from "@/lib/ingestion/ecuador-soce-paste";
 import { importEcuadorPaste } from "@/lib/ingestion/import-ecuador-paste";
+import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -191,6 +192,10 @@ async function main() {
   await importEcuadorPaste(null, LINK, { write: false, now: NOW }).then(
     () => check("只贴链接时说明要贴内容", "没有报错", "报错"),
     (error: Error) => check("只贴链接时说明要贴内容", error.message.startsWith("只贴了链接"), true),
+  );
+  await importEcuadorPaste(null, LINK, { write: true, now: NOW }).then(
+    () => check("贴错内容不算系统告警", "没有报错", "PasteInputError"),
+    (error: Error) => check("贴错内容不算系统告警", error instanceof PasteInputError, true),
   );
 
   console.log(failures === 0 ? "\n全部通过" : `\n${failures} 项失败`);

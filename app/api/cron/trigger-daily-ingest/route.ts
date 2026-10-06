@@ -18,7 +18,7 @@ export const maxDuration = 30;
  * 2026-10-04: 改成由 Vercel 定时去触发 GitHub ← OK).
  *
  *   ?pass=full   every job (11:00 UTC, Beijing evening)
- *   ?pass=light  everything but the status refresh and the search-engine push
+ *   ?pass=light  everything but the search-engine push
  *                (21:00 UTC, Beijing morning) — see the workflow's header
  *
  * GITHUB_DISPATCH_TOKEN is a fine-grained token for this one repository with

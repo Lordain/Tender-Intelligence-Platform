@@ -81,9 +81,8 @@ function ReportSamples() {
               className="block h-auto w-full"
             />
             {index === REPORT_SAMPLES.length - 1 && (
-              <span className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-[linear-gradient(180deg,rgba(6,27,43,0)_0%,rgba(6,27,43,.88)_45%)] px-1 pb-1.5 pt-5 text-center leading-tight text-white">
-                <span className="text-[10px] font-bold text-white/75">完整月报</span>
-                <span className="text-xs font-black text-[#ffb21c]">10 余页</span>
+              <span className="absolute inset-x-0 bottom-0 whitespace-nowrap bg-[linear-gradient(180deg,rgba(6,27,43,0)_0%,rgba(6,27,43,.88)_45%)] px-0.5 pb-1.5 pt-5 text-center text-[9px] font-bold leading-tight text-white/80">
+                完整月报 <span className="font-black text-[#ffb21c]">10 余页</span>
               </span>
             )}
           </a>

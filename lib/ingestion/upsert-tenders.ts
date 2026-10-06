@@ -215,7 +215,9 @@ function buildRow(fields: Tender) {
     relevance_tier: fields.relevance.tier,
     relevance_label: fields.relevance.label,
     relevance_reason: fields.relevance.reason,
-    relevance_manually_overridden: false,
+    // Only a hand-picked import sets it (the Ecuador paste's 「手动保留」); every
+    // connector leaves it unset and writes false, as before.
+    relevance_manually_overridden: fields.relevanceManuallyOverridden === true,
     source_name: fields.sourceName,
     source_url: fields.sourceUrl,
     updated_at: fields.updatedAt,

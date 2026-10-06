@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { EcuadorImportResponse, EcuadorImportRow } from "@/lib/ingestion/ecuador-paste-result";
+import { ECUADOR_KEEP_TIERS, type EcuadorImportResponse, type EcuadorImportRow, type EcuadorKeepTier } from "@/lib/ingestion/ecuador-paste-result";
 
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 const SCOPE_LABEL: Record<string, string> = { works: "工程", equipment: "货物", services: "服务", equipment_services: "货物和服务", consulting: "咨询", unknown: "未注明" };
@@ -17,8 +17,10 @@ function usd(value: number | undefined): string {
   return value === undefined ? "未写金额" : `US$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
+const WRITES = new Set(["write", "short_window", "manual_keep"]);
+
 function OutcomeTag({ row }: { row: EcuadorImportRow }) {
-  const className = row.outcome === "write" || row.outcome === "short_window" ? "bg-[#e7f5ec] text-[#186a3b]" : "bg-[#fff3d6] text-[#8a5a00]";
+  const className = WRITES.has(row.outcome) ? "bg-[#e7f5ec] text-[#186a3b]" : "bg-[#fff3d6] text-[#8a5a00]";
   return <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-black ${className}`}>{row.outcomeZh}</span>;
 }
 
@@ -27,7 +29,8 @@ function OutcomeTag({ row }: { row: EcuadorImportRow }) {
  * search results by amount, opens each one's page, selects it, copies and
  * pastes it here; several pages can be pasted one after another. Preview
  * first, then write — the same rules as every other import decide what is
- * written.
+ * written. An excluded procedure can be kept by hand at a chosen tier (user,
+ * 2026-10-06: 我手动保留，规则不变 → 写入都没写入，我怎么手动改？).
  */
 export function ImportEcuadorPasteForm() {
   const router = useRouter();
@@ -35,6 +38,8 @@ export function ImportEcuadorPasteForm() {
   const [submitting, setSubmitting] = useState<"preview" | "write" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<EcuadorImportResponse | null>(null);
+  /** Code → tier for excluded procedures kept by hand. */
+  const [keep, setKeep] = useState<Record<string, EcuadorKeepTier>>({});
 
   async function run(write: boolean) {
     if (!text.trim()) {
@@ -48,7 +53,7 @@ export function ImportEcuadorPasteForm() {
       const res = await fetch("/api/admin/import-ecuador-paste", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, write }),
+        body: JSON.stringify({ text, write, keep }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -63,7 +68,7 @@ export function ImportEcuadorPasteForm() {
     }
   }
 
-  const writable = result?.rows.filter((row) => row.outcome === "write" || row.outcome === "short_window").length ?? 0;
+  const writable = result?.rows.filter((row) => WRITES.has(row.outcome) || (row.outcome === "excluded" && keep[row.code])).length ?? 0;
 
   return (
     <div className="rounded-xl border border-[#e1e7e9] bg-white px-4 py-4">
@@ -80,6 +85,7 @@ export function ImportEcuadorPasteForm() {
         onChange={(event) => {
           setText(event.target.value);
           setResult(null);
+          setKeep({});
         }}
         rows={10}
         placeholder={"https://www.compraspublicas.gob.ec/ProcesoContratacion/compras/PC/informacionProcesoContratacion2.cpe?idSoliCompra=…\nDescripción del Proceso de Contratación\nEntidad:\t…\nObjeto de Proceso:\t…\nCódigo:\t…\n…\nFechas de Control del Proceso\n…"}
@@ -128,6 +134,32 @@ export function ImportEcuadorPasteForm() {
                   发布 {ecuadorTime(row.publicationDate)} · 交标截止 {ecuadorTime(row.submissionDeadline)}（厄瓜多尔时间） · 关键日期 {row.keyDates} 个
                 </p>
                 <p className="mt-1 text-xs text-[#64717c]">{row.reasonZh}</p>
+                {(row.outcome === "excluded" || row.outcome === "manual_keep") && (
+                  <label className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-[#233846]">
+                    手动保留
+                    <select
+                      value={keep[row.code] ?? ""}
+                      onChange={(event) => {
+                        const tier = event.target.value as EcuadorKeepTier | "";
+                        setKeep((current) => {
+                          const next = { ...current };
+                          if (tier) next[row.code] = tier;
+                          else delete next[row.code];
+                          return next;
+                        });
+                      }}
+                      className="h-8 rounded-lg border border-[#d8e0e3] bg-white px-2 text-xs text-[#071826] outline-none focus:border-[#ffb21c]"
+                    >
+                      <option value="">不保留（按规则排除）</option>
+                      {ECUADOR_KEEP_TIERS.map((tier) => (
+                        <option key={tier} value={tier}>
+                          保留为「{TIER_LABEL[tier]}」
+                        </option>
+                      ))}
+                    </select>
+                    <span className="font-normal text-[#7a878f]">选了就会写入，并锁定为你选的档位（和在项目管理里手动改档位一样），以后重新导入不会被覆盖。</span>
+                  </label>
+                )}
                 <p className="mt-1 break-all text-xs text-[#64717c]">
                   {row.officialUrl ? (
                     <>

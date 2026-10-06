@@ -119,6 +119,17 @@ async function main() {
   check("开标", epunemi.keyDates.find((k) => k.type === "opening")?.date, "2026-11-04T16:00:00.000Z");
   check("体育设施工程不足 600 万美元：按现有规则排除", epunemi.relevance.tier, "excluded");
 
+  console.log("\n手动保留（规则不变）");
+  const kept = await importEcuadorPaste(null, EPUNEMI_PAGE, { write: false, now: NOW, keep: { "LICO-EPUNEMI-2026-007": "standard" } });
+  check("选了档位：手动保留、会写入", [kept.rows[0].outcome, kept.rows[0].tier, kept.rows[0].ruleTier], ["manual_keep", "standard", "excluded"]);
+  check("原因写成手动设置", kept.rows[0].reasonZh, "管理员在后台手动设置");
+  const notKept = await importEcuadorPaste(null, EPUNEMI_PAGE, { write: false, now: NOW });
+  check("没选：照规则排除", notKept.rows[0].outcome, "excluded");
+  const closedKeep = await importEcuadorPaste(null, EPUNEMI_PAGE, { write: false, now: new Date("2026-11-05T15:00:00Z"), keep: { "LICO-EPUNEMI-2026-007": "flagship" } });
+  check("截止日已过：选了也不写入", closedKeep.rows[0].outcome, "closed");
+  const badTier = await importEcuadorPaste(null, EPUNEMI_PAGE, { write: false, now: NOW, keep: { "LICO-EPUNEMI-2026-007": "excluded" as never } });
+  check("不认识的档位：不算保留", badTier.rows[0].outcome, "excluded");
+
   console.log("\n官方链接");
   check("链接在上方", parseSoceProcedures(`${LINK},\n${EPUNEMI_PAGE}`)[0].url, LINK);
   check("链接在下方", parseSoceProcedures(`${EPUNEMI_PAGE}\n${LINK}`)[0].url, LINK);

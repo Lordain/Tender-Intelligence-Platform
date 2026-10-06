@@ -32,6 +32,9 @@ import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPort
 /** Lifted out of EXCLUDE_KEYWORDS only so the ELECTRICAL_NETWORK_MATERIALS exception can name it; the pattern is unchanged. */
 const ELECTRICAL_MATERIALS_KEYWORD = /material(es)? el[ée]ctrico(s)?/i;
 
+/** Lifted out of EXCLUDE_KEYWORDS only so isMexicoInternationalTargetEquipment can lift it for an HVAC purchase; the pattern is unchanged. */
+const HVAC_KEYWORD = /aire acondicionado|climatizaci[óo]n/i;
+
 const EXCLUDE_KEYWORDS = [
   /limpieza/i,
   /conserjer[íi]a|conserje/i,
@@ -157,7 +160,7 @@ const EXCLUDE_KEYWORDS = [
   /actualizaci[óo]n,? mantenimiento preventivo y soporte|mantenimiento preventivo y soporte/i, // SERVICIO INTEGRAL PARA LA ACTUALIZACIÓN, MANTENIMIENTO PREVENTIVO Y SOPORTE — routine IT/systems support
   /mobiliario (y equipo )?para (equipar )?aula|equipar aula multisensorial/i, // ADQUISICIÓN DE MOBILIARIO Y EQUIPO PARA EQUIPAR AULA MULTISENSORIAL — routine classroom furniture, small-scale despite the real "education" industry tag
   /rehabilitaci[óo]n de (sistemas? de )?captaci[óo]n de agua|rehab\.? de sistemas? de captaci[óo]n/i, // REHAB. DE SISTEMAS DE CAPTACIÓN DE AGUA POTABLE — small rural water-system repair, not real water infrastructure, despite the real "water" industry tag
-  /aire acondicionado|climatizaci[óo]n/i, // MTTO AIRE ACONDICIONADO — routine HVAC maintenance
+  HVAC_KEYWORD, // MTTO AIRE ACONDICIONADO — routine HVAC maintenance
   /embanquetado|banquetas?\b/i, // EMBANQUETADO EN CALLE PABLO GONZALEZ — one street's sidewalk work
   /productos alimenticios/i, // ADQUISICIÓN DE PRODUCTOS ALIMENTICIOS PARA PERSONAS — food supply, different phrasing from "alimentos" above
   // Named staples (2026-09-18, per the user). The "alimentos"/"productos
@@ -3366,6 +3369,37 @@ function isMexicoInternationalBulkPurchase(
   );
 }
 
+/**
+ * The user's Mexico whitelist (2026-10-06): 医疗设备、暖通空调、消防、机电 —
+ * offered for the international rows with no amount and no keyword hit in
+ * that day's Compras MX export, accepted with "OK". Same weight and the same
+ * gate as isMexicoInternationalBulkPurchase: an INTERNATIONAL procedure (I or
+ * T in the number), no amount, and the subject is one of these categories →
+ * kept as 常规, never promoted. National ones are untouched, as offered.
+ *
+ * Real rows it keeps, all from that export: LA-50-GYR-050GYR975-T-9-2026
+ * 「SISTEMA AUTOMATIZADO DE SUPRESIÓN DE INCENDIOS」, …-T-3-2026 「EQUIPOS DE
+ * AIRE ACONDICIONADO」, LA-85-W84-926005961-I-4-2026 「MOBILIARIO, EQUIPO E
+ * INSTRUMENTAL MÉDICO」, LA-07-110-007000999-T-693-2026 「REMODELACIÓN Y
+ * EQUIPAMIENTO ESPECIALIDADES MÉDICAS」.
+ *
+ * Not the parts, the upkeep or the hire of the same equipment: an IMSS
+ * 「COMPONENTES DE AIRE ACONDICIONADO」 and 「INSUMOS Y CONSUMIBLES PARA EQUIPO
+ * MÉDICO」 in the same export stay out. Audiovisual stays out too (NOT_BULK_GOODS,
+ * the user's own 2026-09-25 decision).
+ */
+const MEXICO_TARGET_EQUIPMENT =
+  /instrumental medic|equipo(?:s)? (?:e instrumental )?medic|equipamiento\b.{0,40}\bmedic|equipo(?:s)? (?:de|para) laboratorio|aire acondicionado|climatizacion|\bchillers?\b|manejadoras? de aire|supresion de incendio|deteccion (?:y supresion )?de incendio|(?:sistema|red|equipo)s? contra incendio|electromecanic/;
+
+const NOT_TARGET_EQUIPMENT =
+  /insumo|consumible|refaccion|repuesto|accesorio|componente|herramienta|material de curacion|mantenimiento|\bmanto\b|\bmtto\b|servicio|\bserv\b|arrendamiento|renta\b|reparacion|audiovisual/;
+
+function isMexicoInternationalTargetEquipment(country: string | undefined, tenderNumber: string | undefined, title: string, subjectTitle: string): boolean {
+  if (country !== "Mexico" || tenderNumber === undefined || !MEXICO_INTERNATIONAL_PROCEDURE.test(tenderNumber.trim())) return false;
+  const subject = subjectTitle.toLowerCase();
+  return MEXICO_TARGET_EQUIPMENT.test(subject) && !NOT_TARGET_EQUIPMENT.test(foldAccents(title).toLowerCase());
+}
+
 const PROJECT_CONTEXT_CONNECTOR =
   /\bpara\s+(?:el|la|los|las)\s+(?:sub\s*)?(?:proyectos?|obras?|ioarr|plan\s+de\s+negocio|meta)\b/i;
 
@@ -3672,9 +3706,15 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "buyer") };
   }
 
+  const mexicanTargetEquipment = normalizedValue === undefined && isMexicoInternationalTargetEquipment(input.country, input.tenderNumber, input.title, subjectTitle);
   if (
     !hasIncludeOverride &&
-    EXCLUDE_KEYWORDS.some((pattern) => !(electricalMaterialsPurchase && pattern === ELECTRICAL_MATERIALS_KEYWORD) && pattern.test(haystack))
+    EXCLUDE_KEYWORDS.some(
+      (pattern) =>
+        !(electricalMaterialsPurchase && pattern === ELECTRICAL_MATERIALS_KEYWORD) &&
+        !(mexicanTargetEquipment && pattern === HVAC_KEYWORD) &&
+        pattern.test(haystack),
+    )
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
@@ -4119,6 +4159,7 @@ export function classifyRelevance(input: {
     !hasIncludeOverride &&
     !isEquipmentScaleCapped &&
     !isMexicanBulkPurchase &&
+    !mexicanTargetEquipment &&
     !newEnergy
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
@@ -4149,7 +4190,8 @@ export function classifyRelevance(input: {
     !matchesFlagshipIndustry &&
     !hasIncludeOverride &&
     !isEquipmentScaleCapped &&
-    !isMexicanBulkPurchase
+    !isMexicanBulkPurchase &&
+    !mexicanTargetEquipment
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }

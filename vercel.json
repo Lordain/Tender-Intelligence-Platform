@@ -10,6 +10,6 @@
     { "path": "/api/cron/subscription-renewal-reminders", "schedule": "0 16 * * *" },
     { "path": "/api/cron/purge-stale-colombia", "schedule": "30 3 * * *" },
     { "path": "/api/cron/trigger-daily-ingest?pass=full", "schedule": "0 11 * * *" },
-    { "path": "/api/cron/trigger-daily-ingest?pass=light", "schedule": "0 22 * * *" }
+    { "path": "/api/cron/trigger-daily-ingest?pass=light", "schedule": "0 21 * * *" }
   ]
 }

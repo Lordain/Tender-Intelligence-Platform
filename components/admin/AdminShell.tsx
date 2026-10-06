@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AdminAlertBanner } from "@/components/admin/AdminAlertBanner";
+import { DailyManualTasksReminder } from "@/components/admin/DailyManualTasks";
 
 const links = [
   { href: "/admin/analytics", label: "运营看板", detail: "流量与用户行为" },
@@ -51,6 +52,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </aside>
       <div className="min-w-0">
         <AdminAlertBanner />
+        <DailyManualTasksReminder />
         {children}
       </div>
     </div>

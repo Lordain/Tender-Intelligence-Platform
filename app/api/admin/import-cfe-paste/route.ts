@@ -5,6 +5,7 @@ import { importCfePaste } from "@/lib/ingestion/import-cfe-paste";
 import { logAdminAlert } from "@/lib/admin-alerts";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 import { revalidateTenders } from "@/lib/cache-tags";
+import { markManualTaskDone } from "@/lib/ops/manual-tasks";
 
 /**
  * The 墨西哥 tab's 「CFE 网站粘贴导入」 (user, 2026-10-06: 有什么方法我可以快速
@@ -28,7 +29,10 @@ export async function POST(request: Request) {
 
   try {
     const result = await importCfePaste(supabase, text, { write: body.write === true });
-    if (body.write === true) revalidateTenders();
+    if (body.write === true) {
+      revalidateTenders();
+      await markManualTaskDone(supabase, "cfe-micrositio", `粘贴 ${result.rows.length} 个项目，写入 ${result.written ?? 0} 条`);
+    }
     return NextResponse.json(result);
   } catch (err) {
     // Something pasted wrong is the form's message, not a 系统告警.

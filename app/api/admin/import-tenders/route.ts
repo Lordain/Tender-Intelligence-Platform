@@ -2,6 +2,8 @@ import { revalidateTenders } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { importNewTenders, type NewTendersSource } from "@/lib/ingestion/import-new-tenders";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { markManualTaskDone } from "@/lib/ops/manual-tasks";
 
 const VALID_SOURCES: NewTendersSource[] = ["comprasmx-open", "proyectos-estrategicos"];
 
@@ -39,6 +41,9 @@ export async function POST(request: Request) {
     const result = await importNewTenders(source as NewTendersSource, { buffer, fileName: file.name }, { write, months, days });
     // The public list is cached; drop it so this edit shows up now.
     revalidateTenders();
+    if (write) {
+      await markManualTaskDone(createSupabaseAdminClient(), source === "comprasmx-open" ? "comprasmx" : "proyectos-estrategicos", `上传 ${file.name}，写入 ${result.upsertedCount ?? 0} 条`);
+    }
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

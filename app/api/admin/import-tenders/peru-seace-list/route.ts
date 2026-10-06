@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { importPeruSeaceList } from "@/lib/ingestion/ingest-peru-seace-list";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
+import { markManualTaskDone } from "@/lib/ops/manual-tasks";
 
 /**
  * The 秘鲁 tab's 「SEACE 导出清单」 upload — a Lista-Procesos.xls the admin
@@ -20,8 +21,12 @@ export async function POST(request: Request) {
   const write = form.get("write") === "true";
 
   try {
-    const result = await importPeruSeaceList(createSupabaseAdminClient(), Buffer.from(await file.arrayBuffer()), { write });
-    if (write) revalidateTenders();
+    const supabase = createSupabaseAdminClient();
+    const result = await importPeruSeaceList(supabase, Buffer.from(await file.arrayBuffer()), { write });
+    if (write) {
+      revalidateTenders();
+      await markManualTaskDone(supabase, "peru-seace", `上传 ${file.name}，写入 ${result.upsertedCount ?? 0} 条`);
+    }
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

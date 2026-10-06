@@ -19,7 +19,7 @@ export const maxDuration = 30;
  *
  *   ?pass=full   every job (11:00 UTC, Beijing evening)
  *   ?pass=light  everything but the status refresh and the search-engine push
- *                (22:00 UTC, Beijing morning) — see the workflow's header
+ *                (21:00 UTC, Beijing morning) — see the workflow's header
  *
  * GITHUB_DISPATCH_TOKEN is a fine-grained token for this one repository with
  * "Actions: read and write" and nothing else: it can start, re-run and cancel
@@ -36,7 +36,7 @@ type Pass = "full" | "light";
 function passFor(request: NextRequest): Pass {
   const asked = new URL(request.url).searchParams.get("pass");
   if (asked === "full" || asked === "light") return asked;
-  // No parameter: the evening slot (22:xx UTC) is the light one.
+  // No parameter: the evening slot (21:xx UTC) is the light one.
   return new Date().getUTCHours() >= 20 ? "light" : "full";
 }
 

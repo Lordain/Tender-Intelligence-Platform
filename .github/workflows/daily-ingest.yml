@@ -53,7 +53,7 @@
 # app/api/cron/trigger-daily-ingest calls workflow_dispatch with via=vercel —
 #
 #   pass=full   11:xx UTC  06:xx Bogotá/Lima, 19:xx Beijing   every job
-#   pass=light  22:xx UTC  17:xx Bogotá/Lima, 06:xx Beijing   the afternoon's
+#   pass=light  21:xx UTC  16:xx Bogotá/Lima, 05:xx Beijing   the afternoon's
 #               publications, in before the 00:00 UTC digest and before a
 #               Chinese customer starts work
 #
@@ -81,7 +81,7 @@ on:
     # light pass by its text — change both together.
     - cron: "17 12 * * *"
     # Fallback for the light pass.
-    - cron: "17 23 * * *"
+    - cron: "17 22 * * *"
   workflow_dispatch:
     inputs:
       write:
@@ -132,7 +132,7 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [ "$SCHEDULE" = "17 23 * * *" ]; then pass=light; else pass=full; fi
+          if [ "$SCHEDULE" = "17 22 * * *" ]; then pass=light; else pass=full; fi
           echo "pass=$pass" >> "$GITHUB_OUTPUT"
           since=$(date -u -d '8 hours ago' +%Y-%m-%dT%H:%M:%SZ)
           if count=$(gh api "repos/$REPO/actions/workflows/daily-ingest.yml/runs?event=workflow_dispatch&created=%3E%3D$since&per_page=50" \

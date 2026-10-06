@@ -23,7 +23,9 @@ function isoToDofDate(iso: string): string {
 export function ImportDofSearchForm() {
   const [buyerPreset, setBuyerPreset] = useState<string>(DOF_BUYER_PRESETS[0].value);
   const [customTexto, setCustomTexto] = useState("");
-  const texto = buyerPreset === CUSTOM_BUYER_VALUE ? customTexto : buyerPreset;
+  const preset = DOF_BUYER_PRESETS.find((p) => p.value === buyerPreset);
+  const textos: string[] = preset ? [...preset.terms] : [customTexto.trim()].filter(Boolean);
+  const texto = preset ? preset.label : customTexto;
   const [fechaIni, setFechaIni] = useState(""); // native <input type="date"> value, YYYY-MM-DD
   const [fechaFin, setFechaFin] = useState(""); // native <input type="date"> value, YYYY-MM-DD
   const [idOrg, setIdOrg] = useState(DEFAULT_DOF_ID_ORG);
@@ -35,7 +37,7 @@ export function ImportDofSearchForm() {
   const [result, setResult] = useState<ImportDofSearchLiveResult | null>(null);
 
   async function run() {
-    if (!texto.trim()) {
+    if (textos.length === 0) {
       setError("请先填写采购单位关键词。");
       return;
     }
@@ -53,7 +55,8 @@ export function ImportDofSearchForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          texto: texto.trim(),
+          textos,
+          cfeOnly: preset?.cfeOnly ?? false,
           fechaIni: isoToDofDate(fechaIni),
           fechaFin: isoToDofDate(fechaFin),
           idOrg: idOrg.trim(),
@@ -159,6 +162,7 @@ export function ImportDofSearchForm() {
           {result.upsertedCount !== undefined && (
             <p className="mt-1 font-semibold text-emerald-700">
               已写入 {result.upsertedCount} 条
+              {result.skippedPastedCount ? `，${result.skippedPastedCount} 条已从 CFE 网站粘贴导入过、保留粘贴的版本` : ""}
               {result.skippedExcludedCount ? `，跳过 ${result.skippedExcludedCount} 条日常服务类` : ""}
               {result.failed && result.failed.length > 0 ? `，${result.failed.length} 条失败` : ""}
             </p>

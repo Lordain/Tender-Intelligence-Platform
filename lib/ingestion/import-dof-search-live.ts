@@ -23,6 +23,8 @@ import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import type { Tender } from "@/types/tender";
 import type { ImportDofSearchLiveResult } from "@/lib/ingestion/dof-sources";
+import { CFE_BUYER_PATTERN } from "@/lib/ingestion/heuristics";
+import { CFE_MICROSITIO_SOURCE_NAME } from "@/lib/relevance-cfe";
 
 export type { ImportDofSearchLiveResult } from "@/lib/ingestion/dof-sources";
 export { DEFAULT_DOF_ID_ORG } from "@/lib/ingestion/dof-sources";
@@ -107,11 +109,55 @@ function cutoffFromRange(fechaIni: string): number | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
 }
 
+/** The buyer at the head of a "<BUYER> - REF:<number>" title, without the short unit code some carry in front. */
+function titleBuyer(titulo: string | undefined): string {
+  return (titulo ?? "").replace(/\s*-\s*REF:.*$/i, "").replace(/^[A-Z0-9]{4,8}\s*-\s*/, "").trim();
+}
+
+/**
+ * Several searches in one run, merged by notice: CFE is the full name plus the
+ * units that publish as "CFE <unit>" (DOF_CFE_TERMS). `cfeOnly` keeps a notice
+ * only when the buyer in its title is CFE, so the bare "CFE" search cannot
+ * bring in another buyer that happens to mention it.
+ */
+async function searchAll(params: { textos: string[]; fechaIni: string; fechaFin: string; idOrg?: string; cfeOnly?: boolean }): Promise<DofSearchNota[]> {
+  const byCodNota = new Map<number, DofSearchNota>();
+  for (const texto of params.textos) {
+    for (const nota of await fetchDofSearchLive({ texto, fechaIni: params.fechaIni, fechaFin: params.fechaFin, idOrg: params.idOrg })) {
+      byCodNota.set(nota.codNota, nota);
+    }
+  }
+  const notas = [...byCodNota.values()];
+  return params.cfeOnly ? notas.filter((nota) => CFE_BUYER_PATTERN.test(titleBuyer(nota.titulo))) : notas;
+}
+
+/**
+ * Calls already in the table from CFE's micrositio, pasted by the admin
+ * (lib/ingestion/cfe-micrositio-paste.ts). The pasted copy is kept: it was
+ * read off CFE's own page, with the procedure type, the state and the files,
+ * and writing the DOF's copy too would list the call twice under two slugs.
+ */
+async function pastedNumbers(supabase: AdminClient, numbers: string[]): Promise<Set<string>> {
+  const found = new Set<string>();
+  for (let index = 0; index < numbers.length; index += 100) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("tender_number")
+      .eq("source_name", CFE_MICROSITIO_SOURCE_NAME)
+      .in("tender_number", numbers.slice(index, index + 100));
+    if (error) throw new Error(`无法核对已手动粘贴导入的 CFE 项目：${error.message}`);
+    for (const row of (data ?? []) as Array<{ tender_number: string }>) found.add(row.tender_number);
+  }
+  return found;
+}
+
+type AdminClient = NonNullable<ReturnType<typeof createSupabaseAdminClient>>;
+
 export async function importDofSearchLive(
-  params: { texto: string; fechaIni: string; fechaFin: string; idOrg?: string },
+  params: { textos: string[]; fechaIni: string; fechaFin: string; idOrg?: string; cfeOnly?: boolean },
   options: { write: boolean },
 ): Promise<ImportDofSearchLiveResult> {
-  const notas = await fetchDofSearchLive(params);
+  const notas = await searchAll(params);
   const detailsByCodNota = await fetchDetailsForNotas(notas);
 
   const mapped = notas
@@ -119,21 +165,25 @@ export async function importDofSearchLive(
     .filter((t): t is Tender => t !== null);
 
   const cutoff = cutoffFromRange(params.fechaIni);
-  const kept = cutoff === null
+  const inRange = cutoff === null
     ? mapped
     : mapped.filter((tender) => new Date(tender.publicationDate).getTime() >= cutoff);
+
+  const supabase = createSupabaseAdminClient();
+  const pasted = supabase ? await pastedNumbers(supabase, inRange.map((tender) => tender.tenderNumber)) : new Set<string>();
+  const kept = inRange.filter((tender) => !pasted.has(tender.tenderNumber));
 
   const result: ImportDofSearchLiveResult = {
     totalNotas: notas.length,
     detailsFetched: detailsByCodNota.size,
     mappedCount: mapped.length,
     keptAfterRecencyCount: kept.length,
+    ...(pasted.size > 0 ? { skippedPastedCount: inRange.length - kept.length } : {}),
     sample: kept.slice(0, 5),
   };
 
   if (!options.write) return result;
 
-  const supabase = createSupabaseAdminClient();
   if (!supabase) {
     throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
   }

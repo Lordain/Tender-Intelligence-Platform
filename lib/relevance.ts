@@ -16,7 +16,7 @@ import { isNewEnergy, NEW_ENERGY_MIN_VALUE_USD } from "@/lib/new-energy";
 import { classifyEnergyAuction, ENERGY_AUCTIONS_SOURCE_NAME } from "@/lib/relevance-energy-auctions";
 import { classifyPetroperuRelevance, PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
 import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
-import { classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
+import { CFE_MICROSITIO_SOURCE_NAME, classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
 
 /**
@@ -4401,8 +4401,10 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
     };
   }
   // CFE calls read from the DOF: own rules, see lib/relevance-cfe.ts — the DOF
-  // carries no supply type, and CFE's procedure number does.
-  if (/^Diario Oficial de la Federaci[oó]n/.test(input.sourceName ?? "") && isCfeCall(input)) {
+  // carries no supply type, and CFE's procedure number does. The same rules
+  // for a call pasted from CFE's own micrositio (2026-10-06), so a call is
+  // judged the same whichever way it arrived.
+  if ((/^Diario Oficial de la Federaci[oó]n/.test(input.sourceName ?? "") || input.sourceName === CFE_MICROSITIO_SOURCE_NAME) && isCfeCall(input)) {
     // An electricity utility's call is 电力, not 能矿 (user, 2026-09-28: 不是所有的电力都加能矿标签；能矿还是聚焦能源和石油).
     const withPower: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "power" as const])];
     return {

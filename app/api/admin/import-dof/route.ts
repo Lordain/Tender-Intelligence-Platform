@@ -24,6 +24,9 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
   const body = (await request.json().catch(() => ({}))) as {
+    /** Several searches merged into one run (the CFE preset is two); `texto` is the single-search form. */
+    textos?: string[];
+    cfeOnly?: boolean;
     texto?: string;
     fechaIni?: string;
     fechaFin?: string;
@@ -31,7 +34,8 @@ export async function POST(request: Request) {
     write?: boolean;
   };
 
-  if (!body.texto?.trim()) {
+  const textos = (body.textos ?? [body.texto ?? ""]).map((texto) => texto.trim()).filter(Boolean);
+  if (textos.length === 0) {
     return NextResponse.json({ error: "texto（采购单位关键词）is required" }, { status: 400 });
   }
   if (!body.fechaIni?.trim() || !body.fechaFin?.trim()) {
@@ -46,7 +50,8 @@ export async function POST(request: Request) {
   try {
     const result = await importDofSearchLive(
       {
-        texto: body.texto.trim(),
+        textos,
+        cfeOnly: body.cfeOnly === true,
         fechaIni: body.fechaIni.trim(),
         fechaFin: body.fechaFin.trim(),
         idOrg: body.idOrg?.trim() || undefined,

@@ -20,14 +20,24 @@ export const DEFAULT_DOF_ID_ORG = "PE,PL,PJ,OA,EPEM,EF,OD,AV,CV,VG,TODOS";
  * the user's explicit request (2026-09-04), plus a "自定义" escape hatch
  * for any other buyer, since the search itself isn't actually restricted
  * to just these two.
+ *
+ * CFE is two searches since 2026-10-06: some CFE units publish under their
+ * own name — "CFE DISTRIBUCION GOLFO NORTE - REF:580519" — which a search for
+ * the full name never returns (11 of 104 CFE calls, 2026-09-01 to 10-06).
+ * The bare "CFE" search is kept to titles whose buyer starts with CFE
+ * (`cfeOnly`), so a notice that merely mentions CFE is not taken for one.
  */
+export const DOF_CFE_TERMS = ["Comisión Federal de Electricidad", "CFE"] as const;
+
 export const DOF_BUYER_PRESETS = [
-  { value: "Comisión Federal de Electricidad", label: "国家电力公司 CFE — Comisión Federal de Electricidad" },
-  { value: "Petróleos Mexicanos", label: "国家石油公司 PEMEX — Petróleos Mexicanos" },
+  { value: "cfe", label: "国家电力公司 CFE — 全称和以 CFE 开头的下属单位", terms: [...DOF_CFE_TERMS], cfeOnly: true },
+  { value: "pemex", label: "国家石油公司 PEMEX — Petróleos Mexicanos", terms: ["Petróleos Mexicanos"], cfeOnly: false },
 ] as const;
 
 export type ImportDofSearchLiveResult = {
   totalNotas: number;
+  /** Calls already imported from CFE's micrositio by paste — the pasted copy is kept, the DOF one not written. */
+  skippedPastedCount?: number;
   detailsFetched: number;
   mappedCount: number;
   keptAfterRecencyCount: number;

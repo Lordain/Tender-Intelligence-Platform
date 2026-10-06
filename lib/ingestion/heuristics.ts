@@ -3,7 +3,7 @@ import type { GovernmentLevel, TenderParticipationScope } from "@/types/tender";
 const GOVERNMENT_LEVEL_PATTERNS: [RegExp, GovernmentLevel][] = [
   [/municipio|ayuntamiento/i, "municipal"],
   [/gobierno del estado|secretar[íi]a de.*estado/i, "state"],
-  [/^cfe$|comisión federal de electricidad|^pemex$|petróleos mexicanos|imss|isste/i, "public_company"],
+  [/^cfe\b|comisión federal de electricidad|^pemex$|petróleos mexicanos|imss|isste/i, "public_company"],
   [/secretar[íi]a|instituto nacional|federal/i, "federal"],
 ];
 
@@ -23,8 +23,15 @@ export function inferGovernmentLevel(buyerName: string): GovernmentLevel {
  * `sourceUrl` to CFE's own micrositio (explicit request, 2026-09-05: CFE
  * tenders should link there instead of DOF) rather than to DOF's notice
  * detail page, which every OTHER DOF-sourced buyer still uses.
+ *
+ * Also a name that STARTS with "CFE": some CFE units publish under their own
+ * name — "CFE DISTRIBUCION GOLFO NORTE", "CFE COORDINACION REGIONAL DE
+ * PRODUCCION NOROESTE" — 11 of the 104 CFE calls the DOF published between
+ * 2026-09-01 and 2026-10-06 (user, 2026-10-06: 为什么有些CFE的项目，导入DOF
+ * 获取不到). Anchored at the start, so an unrelated buyer that merely
+ * mentions CFE in its name is not taken for it.
  */
-export const CFE_BUYER_PATTERN = /comisi[óo]n federal de electricidad/i;
+export const CFE_BUYER_PATTERN = /comisi[óo]n federal de electricidad|^\s*CFE\b/i;
 
 /**
  * CFE's own tender micrositio (`msc.cfe.mx/Aplicaciones/NCFE/Concursos/`).

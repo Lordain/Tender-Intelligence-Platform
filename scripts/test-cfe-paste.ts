@@ -121,6 +121,23 @@ check("仓库土建小工程（编号前缀 DJ-…）→ 排除", verdicts["CFE-
 check("「(HB60) MANTENIMIENTO…CENTRAL」→ 排除（之前被当成电厂工程）", verdicts["CFE-0700-CSCON-0111-2026"], "excluded");
 check("「5100005873_Servicio de mantenimiento…」→ 排除", verdicts["CFE-0900-CAAAT-0043-2026"], "excluded");
 check("已在平台上的标出来", screenCfeListRow(listed[4], "cfe-x").existingSlug, "cfe-x");
+// The user's calls on the 2026-10-06 list: kept by the rules, but small → excluded.
+for (const [number, title] of [
+  ["CFE-0107-CACON-0048-2026", "PO810/2026/DL05/SGRLES/CTG- Construcción de guarnición y colado de piso de concreto para eliminar la banqueta"],
+  ["CFE-0114-CACON-0048-2026", "ZTAC. - CONSTRUCCION DEL CAMPO DE PRACTICAS EN EL C.T. TLATELOLCO"],
+  ["CFE-0400-CSCON-0063-2026", "AMPLIACIÓN DE LA BARDA PERIMETRAL DE LA CENTRAL COGENERACIÓN SALAMANCA"],
+  ["CFE-0920-CSCON-0041-2026", "700221531 ADECUACIONES A INFRAESTRUCTURA PARA CUMPLIMIENTO DE CÓDIGO DE RED DE CENACE PARA LA CENTRAL TURBOGAS CARMEN"],
+  ["CFE-0604-CSAAA-0033-2026", "ADQUISICIÓN DE DESENGRASANTE BIODEGRADABLE PARA EL LAVADO DE COMPRESOR AXIAL"],
+  ["CFE-0513-CSAAA-0028-2026", "ADQUISICIÓN DE JUNTAS GRAFITO PARA VÁLVULAS NEUMÁTICAS DE UNIDAD 2"],
+  ["CFE-0513-CSAAA-0030-2026", "ADQUISICIÓN DE BANDAS SINFÍN PARA ALIMENTADORES DE CARBÓN PARA UNIDADES 1 A 7"],
+  ["CFE-0101-CSAAN-0027-2026", "POSTES DE MADERA"],
+  ["CFE-0105-CSAAA-0021-2026", "ADQUISICION DE POSTES DE MADERA"],
+  ["CFE-0700-CSAAA-0137-2026", '(HC61) Adquisición boquillas Transformador Principal T1 Ciclo 1 Central Ciclo Combinado Huinalá "Segunda Vuelta"'],
+  ["CFE-0920-CSAAN-0059-2026", "500669998 SUMINISTRO DE ÁLABES DE ENFRIAMIENTO DE ROTOR DEL GENERADOR ELÉCTRICO DE LA U-2"],
+]) {
+  check(`偏小 → 排除：${number}`, classifyCfeRelevance({ title, tenderNumber: number }).tier, "excluded");
+}
+check("变电站土建+机电工程照旧保留", classifyCfeRelevance({ title: "CONSTRUCCION DE OBRA CIVIL Y ELECTROMECANICA DE SUBESTACION AMERICAS INDUSTRIES EN ZONA REYNOSA", tenderNumber: "CFE-0115-CACON-0056-2026" }).tier, "standard");
 check("没有前缀的标题照旧", classifyCfeRelevance({ title: "Adquisición de Conductores y cables para líneas de Transmisión", tenderNumber: "CFE-0001-CAAAT-0163-2026" }).tier, "standard");
 
 async function pasteChecks() {

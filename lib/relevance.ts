@@ -3400,6 +3400,29 @@ function isMexicoInternationalTargetEquipment(country: string | undefined, tende
   return MEXICO_TARGET_EQUIPMENT.test(subject) && !NOT_TARGET_EQUIPMENT.test(foldAccents(title).toLowerCase());
 }
 
+/**
+ * The same whitelist for Argentina (user, 2026-10-06: 把墨西哥那份「没有金额也
+ * 保留」的行业白名单也用到阿根廷 → OK). Argentina's procedure numbers carry no
+ * international mark, so the gate is the open call itself — a Licitación or
+ * Concurso Público, never a Licitación Privada or a Contratación Directa,
+ * which the law caps far under the floor. Medical equipment also reads
+ * "biomédico" here, how Argentine hospitals word it: 「ADQUISICIÓN DE EQUIPOS
+ * BIOMEDICOS PARA EL H GRL 601」 (COMPR.AR, 2026-10-06) is the row that
+ * prompted it.
+ *
+ * Unlike Mexico it also lifts the short-duration exclusion: a COMPR.AR
+ * purchase states its delivery period, 30 to 90 days for equipment, and that
+ * — not the missing amount — is what dropped the biomedical row. The parts,
+ * upkeep and hire of the same equipment stay out (NOT_TARGET_EQUIPMENT).
+ */
+const ARGENTINA_OPEN_CALL = /^(?:licitacion|concurso) public[ao]\b/;
+
+function isArgentinaOpenCallTargetEquipment(country: string | undefined, procedureType: string | undefined, title: string, subjectTitle: string): boolean {
+  if (country !== "Argentina" || !ARGENTINA_OPEN_CALL.test(foldAccents(procedureType ?? "").toLowerCase().trim())) return false;
+  const subject = foldAccents(subjectTitle).toLowerCase();
+  return (MEXICO_TARGET_EQUIPMENT.test(subject) || /\bequip(?:o|os|amiento)s? biomedic/.test(subject)) && !NOT_TARGET_EQUIPMENT.test(foldAccents(title).toLowerCase());
+}
+
 const PROJECT_CONTEXT_CONNECTOR =
   /\bpara\s+(?:el|la|los|las)\s+(?:sub\s*)?(?:proyectos?|obras?|ioarr|plan\s+de\s+negocio|meta)\b/i;
 
@@ -3706,7 +3729,11 @@ export function classifyRelevance(input: {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "buyer") };
   }
 
-  const mexicanTargetEquipment = normalizedValue === undefined && isMexicoInternationalTargetEquipment(input.country, input.tenderNumber, input.title, subjectTitle);
+  const argentineTargetEquipment =
+    normalizedValue === undefined && isArgentinaOpenCallTargetEquipment(input.country, input.procedureType, input.title, subjectTitle);
+  // Named for Mexico, where it began; Argentina's open calls share it (see isArgentinaOpenCallTargetEquipment).
+  const mexicanTargetEquipment =
+    argentineTargetEquipment || (normalizedValue === undefined && isMexicoInternationalTargetEquipment(input.country, input.tenderNumber, input.title, subjectTitle));
   if (
     !hasIncludeOverride &&
     EXCLUDE_KEYWORDS.some(
@@ -3839,7 +3866,7 @@ export function classifyRelevance(input: {
   // New energy is exempt as well (lib/new-energy.ts): "SUMINISTRO DE
   // COMPONENTES DEL SISTEMA SOLAR FOTOVOLTAICO (CELDAS PANELES SOLARES…)" at
   // $726k was excluded here, and a PV install is weeks of work however large.
-  if (!hasIncludeOverride && !purchaseClearsValueFloor && !newEnergy && durationDays !== undefined && durationDays < SHORT_DURATION_DAYS) {
+  if (!hasIncludeOverride && !purchaseClearsValueFloor && !newEnergy && !argentineTargetEquipment && durationDays !== undefined && durationDays < SHORT_DURATION_DAYS) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "short_duration") };
   }
 

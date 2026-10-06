@@ -16,7 +16,7 @@ import { isNewEnergy, NEW_ENERGY_MIN_VALUE_USD } from "@/lib/new-energy";
 import { classifyEnergyAuction, ENERGY_AUCTIONS_SOURCE_NAME } from "@/lib/relevance-energy-auctions";
 import { classifyPetroperuRelevance, PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
 import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
-import { classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
+import { CFE_MICROSITIO_SOURCE_NAME, classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
 
 /**
@@ -1762,7 +1762,17 @@ const NO_CONTENT_TITLE = [
   // ENDS in a company name — "SUMINISTRO DE TRANSFORMADORES PARA
   // SUBESTACIÓN ELÉCTRICA S.A.S." — out of this: any procurement verb at
   // all means the title says what is being bought, so it is not a bare name.
-  /^(?!.*\b(?:SUMINISTRO|ADQUISICI[ÓO]N|ADQUIRIR|CONSTRUCCI[ÓO]N|COMPRA|CONTRATAR|PRESTACI[ÓO]N|MANTENIMIENTO|REHABILITACI[ÓO]N|MODERNIZACI[ÓO]N|AMPLIACI[ÓO]N|SERVICIO)\b)[^a-z]{2,90}(?:S\.?A\.?S\.?|LTDA\.?|S\.?A\.? DE C\.?V\.?|S\.?A\.?)\s*$/,
+  //
+  // The suffix must stand as its own word (2026-10-06). Without the space
+  // before it, any caps title ENDING in the letters "SA" was a company:
+  // Compras MX's "TIRA REACTIVA GLUCOSA", "… EQUIPOS DE COMUNICACIONES DE LAS
+  // AULAS DEL CIIASA" — and so would be PRESA, MESA, DEFENSA, EMPRESA — all
+  // excluded as 「只包含发标单位和参考编号」 (user: 这两天我手动导入的墨西哥项目数
+  // 偏少，请帮忙看原因、避免误排除). The verbs gained the nouns Compras MX titles
+  // open with — CONTRATACIÓN, CONSERVACIÓN, INSTALACIÓN, ARRENDAMIENTO,
+  // EQUIPAMIENTO, TRABAJOS, OBRA(S) — for a title cut off mid-word in the
+  // export: "… DE LA COMISIÓN ESTATAL DEL AGUA Y SA" is SANEAMIENTO, truncated.
+  /^(?!.*\b(?:SUMINISTRO|ADQUISICI[ÓO]N|ADQUIRIR|CONSTRUCCI[ÓO]N|COMPRA|CONTRATAR|CONTRATACI[ÓO]N|PRESTACI[ÓO]N|MANTENIMIENTO|CONSERVACI[ÓO]N|INSTALACI[ÓO]N|ARRENDAMIENTO|EQUIPAMIENTO|TRABAJOS|OBRAS?|REHABILITACI[ÓO]N|MODERNIZACI[ÓO]N|AMPLIACI[ÓO]N|SERVICIOS?)\b)[^a-z]{1,90}[\s,](?:S\.?A\.?S\.?|LTDA\.?|S\.?A\.? DE C\.?V\.?|S\.?A\.?)\s*$/,
   // A generic noun standing alone, with at most a leading verb/article.
   // The qualifier group was added 2026-09-18 for a real PNCP row whose entire
   // object text was "Obras comuns" — it came out 常规项目 with a construction
@@ -4401,8 +4411,10 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
     };
   }
   // CFE calls read from the DOF: own rules, see lib/relevance-cfe.ts — the DOF
-  // carries no supply type, and CFE's procedure number does.
-  if (/^Diario Oficial de la Federaci[oó]n/.test(input.sourceName ?? "") && isCfeCall(input)) {
+  // carries no supply type, and CFE's procedure number does. The same rules
+  // for a call pasted from CFE's own micrositio (2026-10-06), so a call is
+  // judged the same whichever way it arrived.
+  if ((/^Diario Oficial de la Federaci[oó]n/.test(input.sourceName ?? "") || input.sourceName === CFE_MICROSITIO_SOURCE_NAME) && isCfeCall(input)) {
     // An electricity utility's call is 电力, not 能矿 (user, 2026-09-28: 不是所有的电力都加能矿标签；能矿还是聚焦能源和石油).
     const withPower: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "power" as const])];
     return {

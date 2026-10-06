@@ -9083,3 +9083,15 @@ country's rail buying is published, measured from this sandbox:
   renewal and a fiduciary arrangement; and a bare "perforación" filter
   dropped both Ecopetrol EPC contracts because they name the Vicepresidencia
   de Proyectos y Perforación.
+
+## CFE: what the DOF carries, the "CFE <unit>" names, and the micrositio paste (2026-10-06)
+
+User question: why are some CFE calls on CFE's micrositio never found by the DOF import? Measured on every CFE call the DOF published 2026-09-01 → 2026-10-06 (104, each detail page read):
+
+- **The DOF carries only CFE's concursos abiertos for goods and services.** Every number was `CA` + `AA`/`SA` (CAAAT 36, CASAT 17, CASAN 12, …). No works (`CO`, e.g. CFE-0115-**CACON**-0057-2026, 「Contratación de Obras」) and no concursos simplificados (`CS`, e.g. CFE-0025-**CSCON**-0003-2026). Those exist only on the micrositio.
+- **The DOF prints a call 2–5 days after the micrositio** (its own 「Fecha de publicación en Micrositio」 row; most 3–4 days).
+- **11 of the 104 were filed under the unit's own name** — "CFE DISTRIBUCION GOLFO NORTE - REF:…", "CFE COORDINACION REGIONAL DE PRODUCCION NOROESTE - REF:…" — which a search for "Comisión Federal de Electricidad" never returns. The CFE preset now runs both searches (`DOF_CFE_TERMS`), keeps only titles whose buyer is CFE, and `CFE_BUYER_PATTERN` accepts a name starting with "CFE".
+- **The DOF read was manual only.** It is now in the daily job: `npm run cron:cfe-dof` (last 10 days of editions, heartbeat `import-cfe-dof`).
+- **`lib/relevance-cfe.ts` read works as kind `O`; CFE writes `CO`.** Corrected, and `CS` accepted. Nothing stored from the DOF changes, since the DOF has neither.
+
+The micrositio itself is still not fetched (Imperva + anti-forgery token, re-checked the same day: `X-CDN: Imperva`, `visid_incap_*`, `__RequestVerificationToken`, and no export button on the grid). Instead the admin pastes the page: 墨西哥 tab → 「CFE 网站粘贴导入」, read by `cfe-micrositio-paste.ts` (`npm run test:cfe-paste`, fixture `__fixtures__/cfe-micrositio-2026-10-06.txt`) and written through `upsertTendersBatched()`, so every filter applies except one: the 12-day bidding window, which the user's own first example (published 05/10, bids due 12/10) did not pass. Pastes are exempt from it (user: 手动粘贴的项目不受 12 天限制（你亲自挑的，说明你想看）。其他规则照旧) — `upsertTendersBatched(…, { allowShortBidWindow: true })`, and the admin edit form's window check skips rows from this source so a later save does not exclude them. Passed deadlines and CFE's own exclusions still apply. One call is one row whichever arrives first: a paste onto a number the DOF already brought writes onto that row, and the DOF import skips numbers already stored from the micrositio (user: 如果我手动贴，就要避免DOF（晚几天公告时），重复加载).

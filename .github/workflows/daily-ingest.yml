@@ -268,6 +268,15 @@ jobs:
           # the same day (user: 公开多米尼加). See scripts/cron-dominicana.ts.
           - name: Dominican Republic (DGCP)
             command: cron:dominicana
+          # Added 2026-10-06 (user: A, B都做). CFE's calls in the DOF, which
+          # until then reached the platform only when an admin pressed 「DOF
+          # 直接拉取」. Both CFE searches (the full name and "CFE <unit>"),
+          # the last 10 days of editions, CFE's own rules. The DOF carries
+          # CFE's concursos abiertos for goods and services only; works and
+          # concursos simplificados are pasted from CFE's micrositio by hand.
+          # See scripts/cron-cfe-dof.ts.
+          - name: Mexico (CFE via DOF)
+            command: cron:cfe-dof
           # Added 2026-10-04. National energy auctions kept by hand (Chile CNE,
           # Argentina AlmaSADI / AlmaGBA, Colombia MinEnergía) — open and
           # awarded — rewritten daily so an edited record reaches the site.

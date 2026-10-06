@@ -17,8 +17,18 @@ import { foldAccents } from "@/lib/text-fold";
  *
  *   CFE-0001-CA A A T-0151-2026
  *             │ │   └ coverage: N nacional, T internacional bajo TLC, A internacional abierto
- *             │ └ A adquisición (goods), S servicio, O obra
- *             └ CA concurso abierto
+ *             │ └ AA adquisición (goods), SA servicio, CO obra
+ *             └ CA concurso abierto, CS concurso simplificado
+ *
+ * Works are "CO", not "O" (corrected 2026-10-06, from CFE's own micrositio:
+ * CFE-0115-CACON-0057-2026 is 「Contratación de Obras」, and
+ * CFE-0025-CSCON-0003-2026 a 「Concurso simplificado」 for works). The first
+ * version read the kind as one of A/S/O, so a works number never matched and
+ * fell through to the title's head as if it had no number. The DOF publishes
+ * no works and no simplified calls at all (none of 104, 2026-09-01 to
+ * 2026-10-06), so nothing the DOF import stored was classified differently;
+ * these reach the platform through the pasted micrositio page
+ * (lib/ingestion/cfe-micrositio-paste.ts).
  *
  * The number is a stored column, so a reclassify reads what the import read.
  * Rows the DOF gave no CFE number for (the CNLV nuclear plant's "a ruego"
@@ -36,12 +46,15 @@ import { foldAccents } from "@/lib/text-fold";
  *                    generators, pumps, capacitor banks, conductors, poles) → 常规
  */
 
-/** CFE's procedure-number shape: CFE-<area>-CA<kind><x><coverage>-<seq>-<year>. */
-const CFE_NUMBER = /^CFE-\d{4}-CA([ASO])[A-Z]([NTA])-/i;
+/** Calls pasted from CFE's own micrositio (lib/ingestion/cfe-micrositio-paste.ts); the same rules apply as to the DOF's. */
+export const CFE_MICROSITIO_SOURCE_NAME = "CFE — Micrositio de Concursos (msc.cfe.mx)";
+
+/** CFE's procedure-number shape: CFE-<area>-C<A|S><kind><x><coverage>-<seq>-<year>; kind A goods, S service, C works. */
+const CFE_NUMBER = /^CFE-\d{4}-C[AS]([ASC])[A-Z]([NTA])-/i;
 
 /** Whether a stored row is a CFE call (buyer or number), which is when these rules apply. */
 export function isCfeCall(input: { buyer?: string; tenderNumber?: string }): boolean {
-  return CFE_NUMBER.test(input.tenderNumber?.trim() ?? "") || /comisi[oó]n federal de electricidad/i.test(input.buyer ?? "");
+  return CFE_NUMBER.test(input.tenderNumber?.trim() ?? "") || /comisi[oó]n federal de electricidad|^\s*CFE\b/i.test(input.buyer ?? "");
 }
 
 const GOODS_HEAD = /^\W*(?:adquisicion|suministro|compra)/;
@@ -58,7 +71,8 @@ const EQUIPMENT_OR_MATERIAL =
 const NATIONAL_MAJOR =
   /transformador|interruptor|seccionador|tablero|subestacion|turbina|generador|\bbombas?\b|capacitor|conductor|\bpostes?\b|aislador|torres?\b|caldera|compresor|motor/;
 
-const MAJOR_WORKS = /subestacion|lineas? de (?:transmision|distribucion)|central|construccion|ampliacion|modernizacion/;
+/** OPGW: the earth wire with optical fibre strung along transmission lines (CFE-0025-CSCON-0003-2026). */
+const MAJOR_WORKS = /subestacion|lineas? de (?:transmision|distribucion)|central|construccion|ampliacion|modernizacion|opgw|cable de guarda/;
 
 const LABELS: Record<TenderRelevance["tier"], LocalizedText> = {
   flagship: { zh: "大型项目 · 建议中资企业重点关注", en: "Flagship Project", es: "Proyecto Insignia" },
@@ -128,7 +142,8 @@ function tier(name: TenderRelevance["tier"], reason: LocalizedText): TenderRelev
 export function classifyCfeRelevance(input: { title: string; tenderNumber: string | undefined }): TenderRelevance {
   const text = foldAccents(input.title).toLowerCase().replace(/\s+/g, " ").trim();
   const code = CFE_NUMBER.exec(input.tenderNumber?.trim() ?? "");
-  const kind = code ? code[1].toUpperCase() : GOODS_HEAD.test(text) ? "A" : "S";
+  // "C" in the number is works; the rules below call it "O".
+  const kind = code ? code[1].toUpperCase().replace("C", "O") : GOODS_HEAD.test(text) ? "A" : "S";
   // No number means no stated coverage; treated as national, the stricter reading.
   const international = code ? code[2].toUpperCase() !== "N" : false;
 

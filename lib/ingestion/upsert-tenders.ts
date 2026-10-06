@@ -414,6 +414,15 @@ export async function upsertTendersBatched(
   supabase: SupabaseClient,
   tenders: Tender[],
   onProgress?: (upsertedSoFar: number, total: number) => void,
+  options: {
+    /**
+     * Skip the 12-day bidding-window gate below, and only that one. For calls
+     * an admin picked by hand — the CFE micrositio paste (user, 2026-10-06:
+     * 手动粘贴的项目不受 12 天限制（你亲自挑的，说明你想看）。其他规则照旧).
+     * Every automated source leaves it off.
+     */
+    allowShortBidWindow?: boolean;
+  } = {},
 ): Promise<UpsertTendersResult> {
   enforceStoredFieldParity(tenders);
 
@@ -459,8 +468,8 @@ export async function upsertTendersBatched(
   // this function, and a rule placed here cannot be missed by a path that
   // forgets to call it. See hasShortBidWindow() for the four guards and why
   // this is not in lib/relevance.ts.
-  const rushed = stillOpen.filter((t) => hasShortBidWindow(t));
-  const open = stillOpen.filter((t) => !hasShortBidWindow(t));
+  const rushed = options.allowShortBidWindow ? [] : stillOpen.filter((t) => hasShortBidWindow(t));
+  const open = options.allowShortBidWindow ? stillOpen : stillOpen.filter((t) => !hasShortBidWindow(t));
   if (rushed.length > 0) {
     console.log(
       `Skipping ${rushed.length} tender(s) with under ${SHORT_BID_WINDOW_DAYS} calendar days between publication and deadline — not written to Supabase.`,

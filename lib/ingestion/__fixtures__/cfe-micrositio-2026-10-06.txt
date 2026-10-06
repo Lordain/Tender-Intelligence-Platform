@@ -1,0 +1,50 @@
+Procedimiento No. CFE-0115-CACON-0057-2026
+Datos Generales [Tiempo del Centro: UTC -6 (UTC -5 en verano)]
+Empresa	0100 - CFE Distribución
+Área Contratante	0115 - Distribución Golfo Norte
+Entidad Federativa	Ciudad de México
+Descripción del bien, arrendamiento, servicio, obra ó servicio de obra	CONSTRUCCIÓN DE OBRA POR TERCEROS DE RED GENERAL DE DISTRIBUCION (OBRAS AL 100%) ZONA METROPOLITANA PONIENTE
+Descripción detallada	
+CONSTRUCCIÓN DE OBRA POR TERCEROS DE RED GENERAL DE DISTRIBUCION (OBRAS AL 100%) ZONA METROPOLITANA PONIENTE
+Tipo de Procedimiento	Concurso abierto
+Tipo de Contratación	Contratación de Obras
+Estado del Procedimiento	Vigente
+Testigo Social	No
+Fecha Publicación	05/10/2026 17:54 hrs
+Adjudicado A	
+Monto Adjudicado	
+Tipo de Moneda	Pesos mexicanos
+Tipo de Cambio	
+Monto Adjudicado en Pesos Mexicanos	
+
+Anexos de la Publicación [Tiempo del Centro: UTC -6 (UTC -5 en verano)]
+Archivo	Descripción	Fecha de publicación	Descargar
+Pliego Requisitos CACON 0057 2026.pdf	Pliego Requisitos CACON 0057 2026	05/10/2026	
+Convocatoria CACON 0057 2026.doc.pdf	Convocatoria CACON 0057 2026	05/10/2026	
+Anexo 9 Lineamientos de seguridad y salud en el trabajo para proveedores yo contratistas.pdf	Anexo 9 Lineamientos de seguridad y salud en el trabajo para proveedores yo contratistas	05/10/2026	
+Anexo 8 Garantia de Vicios Ocultos.doc	Anexo 8 Garantia de Vicios Ocultos	05/10/2026	
+Anexo 7 Garantía de Cumplimiento.doc	Anexo 7 Garantía de Cumplimiento	05/10/2026	
+Anexo 6 Garantía de Anticipo.doc	Anexo 6 Garantía de Anticipo	05/10/2026	
+Anexo 5 Programa de Eventos CACON 0057 2026.pdf	Anexo 5 Programa de Eventos CACON 0057 2026	05/10/2026	
+ANEXO 4.zip	ANEXO 4	05/10/2026	
+Anexo 3 Modelo Contrato Obra a Precios Unitarios.docx	Anexo 3 Modelo Contrato Obra a Precios Unitarios	05/10/2026	
+ANEXO 2.zip	ANEXO 2	05/10/2026	
+Anexo 1 Encuesta Concursantes.doc	Anexo 1 Encuesta Concursantes	05/10/2026	
+Sesión de Aclaraciones [Tiempo del Centro: UTC -6 (UTC -5 en verano)]
+Sesión
+Fecha Inicio Recepción de Preguntas
+Fecha Fin Recepción de Preguntas
+Fecha Inicio Sesión
+Fecha Cierre Sesión
+1	05/10/2026 06:00:00 p. m.	06/10/2026 09:00:00 a. m.	06/10/2026 09:00:00 a. m.	06/10/2026 11:00:00 a. m.
+Presentación de Ofertas (Carga en el Sistema) [Tiempo del Centro: UTC -6 (UTC -5 en verano)]
+Fecha Inicio
+Fecha Fin
+Archivo de Financiamiento
+06/10/2026 11:00 hrs	12/10/2026 08:30 hrs	No
+Apertura de Ofertas Técnicas [Tiempo del Centro: UTC -6 (UTC -5 en verano)]
+Fecha de Apertura de Ofertas Técnicas	12/10/2026 09:00 hrs
+Lugar de Apertura de Ofertas Económicas	ELECTRÓNICA
+Apertura de Ofertas Económicas [Tiempo del Centro: UTC -6 (UTC -5 en verano)]
+Fecha de Apertura de Ofertas Económicas	13/10/2026 09:00 hrs
+Lugar de Apertura de Ofertas Económicas	ELECTRÓNICA

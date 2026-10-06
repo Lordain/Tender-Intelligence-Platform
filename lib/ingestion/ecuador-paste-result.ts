@@ -28,6 +28,8 @@ export type EcuadorImportRow = {
   outcomeZh: string;
   /** Already on the platform under this code: the write updates that row. */
   existingSlug?: string;
+  /** The procedure's own SOCE page, pasted alongside or kept from an earlier paste; absent, the row links SOCE's search. */
+  officialUrl?: string;
 };
 
 export type EcuadorImportResponse = {

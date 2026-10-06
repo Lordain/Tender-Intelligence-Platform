@@ -7,21 +7,13 @@ import { PANAMACOMPRA_SITE } from "@/lib/ingestion/connectors/panama-panamacompr
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 
 /**
- * Panama is staged (lib/staged-countries.ts): imported daily, invisible to
- * visitors. This tab is where the user reviews what came in before deciding
- * to open it, and pulls the last few days in early (2026-10-06).
+ * Panama's tab: the manual import and what came in. Staged on 2026-10-06 and
+ * opened to visitors the same day (user: 直接把这两个国家的前后台可视都做了吧).
  */
 export default async function AdminImportTendersPanamaPage() {
   const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Panama");
   return (
     <div className="flex flex-col gap-3">
-      <section className="rounded-2xl border border-[#eed18c] bg-[#fff8e7] px-5 py-4 text-sm leading-6 text-[#6d4c0d]">
-        <p className="font-black">巴拿马尚未对外公开</p>
-        <p className="mt-1 text-xs leading-5">
-          项目每天自动导入，只在后台可见：前台列表、详情页、首页、网站地图、搜索引擎推送和摘要邮件都不会出现。审核满意后，把巴拿马从
-          <code className="mx-1">lib/staged-countries.ts</code>移到公开国家名单即可上线。
-        </p>
-      </section>
       <ImportSourceSection
         name="PanamaCompra — 巴拿马政府采购系统"
         hint="公开招标、最优价值招标、多边银行贷款项目等正式招标；按平台通用规则筛选"

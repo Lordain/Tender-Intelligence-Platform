@@ -9098,7 +9098,7 @@ The micrositio itself is still not fetched (Imperva + anti-forgery token, re-che
 
 ## Ecuador: SOCE procedure pages pasted by hand (2026-10-06)
 
-Ecuador is staged (lib/staged-countries.ts) and has no daily job. It is not read automatically for two reasons:
+Ecuador opened to visitors the day it was added (2026-10-06) and has no daily job. It is not read automatically for two reasons:
 
 - SOCE's search page (compraspublicas.gob.ec) sits behind a CAPTCHA, which this project does not get around. From the sandbox it also reset the connection.
 - SERCOP's open-data API (datosabiertos.compraspublicas.gob.ec/PLATAFORMA/api, `search_ocds` and `record?ocid=`) is public, but too late. A procedure first appears as a planning-only release, with no tender period. Its tender data arrives only after bids close: of 44 recent LICB/LICO records sampled on 2026-10-06, none was still open. It also answers 429 to anything faster than a slow pace.

@@ -40,6 +40,28 @@ const WORKS_PAGE = [
   "Fecha Límite entrega Ofertas\t2026-10-09 10:00:00\tFecha máxima de entrega Ofertas.",
 ].join("\n");
 
+/** The user's second paste (2026-10-06): a works licitación whose deadline is 「Fecha Límite de Propuestas」, columns copied as spaces. */
+const EPUNEMI_PAGE = [
+  "Descripción del Proceso de Contratación",
+  "Entidad:\tEMPRESA DE PRODUCCION Y DESARROLLO ESTRATEGICO DE LA UNIVERSIDAD ESTATAL DE MILAGRO",
+  "Objeto de Proceso:\tREPOTENCIACIÓN INTEGRAL DE LA INFRAESTRUCTURA DEPORTIVA Y CULTURAL DE LOS SECTORES DEL POLIDEPORTIVO Y DEL PASEO CULTURAL DE LA UNIVERSIDAD ESTATAL DE MILAGRO",
+  "Código:\tLICO-EPUNEMI-2026-007",
+  "Tipo Compra:\tObra",
+  "Presupuesto Referencial Total (Sin Iva):\tUSD 3,222,455.94",
+  "Estado del Proceso:\tPreguntas, Respuestas y Aclaraciones",
+  "Fechas de Control del Proceso",
+  "LICO-EPUNEMI-2026-007",
+  "Fecha de Publicación    2026-10-02 18:30:00 Indicar la fecha real en la cual desea publicar el Proceso.",
+  "Fecha Límite de Preguntas   2026-10-14 09:00:00 Fecha máxima para solicitar aclaraciones respecto al Proceso de",
+  "Contratación.",
+  "Fecha Límite de Respuestas  2026-10-19 10:00:00 Fecha máxima para solventar cualquier inquietud relacionada al Proceso",
+  "Fecha Límite de Propuestas  2026-11-04 10:00:00 Fecha máxima para la entrega de propuestas.",
+  "Fecha Apertura de Ofertas   2026-11-04 11:00:00 Fecha para la apertura de los sobres de las ofertas.",
+  "Fecha Estimada de Adjudicación  2026-11-09 16:00:00 Fecha estimada para la Adjudicación de la compra.",
+].join("\n");
+const LINK = "https://www.compraspublicas.gob.ec/ProcesoContratacion/compras/PC/informacionProcesoContratacion2.cpe?idSoliCompra=T_ERtPw7b2R2f99hR-IiHBgO-BpIiEajoU-4m06mf3k";
+const LINK_2 = "https://www.compraspublicas.gob.ec/ProcesoContratacion/compras/PC/informacionProcesoContratacion2.cpe?idSoliCompra=EJEMPLO2";
+
 async function main() {
   console.log("ecuador paste\n\n时间（厄瓜多尔 UTC-5）和金额");
   check("晚上 8 点", ecuadorTime("2026-10-05 20:00:00"), "2026-10-06T01:00:00.000Z");
@@ -88,6 +110,30 @@ async function main() {
   await importEcuadorPaste(null, "随便一段文字", { write: false, now: NOW }).then(
     () => check("没有项目时报错", "没有报错", "报错"),
     () => check("没有项目时报错", "报错", "报错"),
+  );
+
+  console.log("\n「Fecha Límite de Propuestas」、空格分隔");
+  const epunemi = mapSoceToTender(parseSoceProcedures(EPUNEMI_PAGE)[0], NOW);
+  check("交标截止（Propuestas）", epunemi.submissionDeadline, "2026-11-04T15:00:00.000Z");
+  check("发布", epunemi.publicationDate, "2026-10-02T23:30:00.000Z");
+  check("开标", epunemi.keyDates.find((k) => k.type === "opening")?.date, "2026-11-04T16:00:00.000Z");
+  check("体育设施工程不足 600 万美元：按现有规则排除", epunemi.relevance.tier, "excluded");
+
+  console.log("\n官方链接");
+  check("链接在上方", parseSoceProcedures(`${LINK},\n${EPUNEMI_PAGE}`)[0].url, LINK);
+  check("链接在下方", parseSoceProcedures(`${EPUNEMI_PAGE}\n${LINK}`)[0].url, LINK);
+  const before = parseSoceProcedures(`${LINK}\n${text}\n${LINK_2}\n${EPUNEMI_PAGE}`);
+  check("两个项目，链接都在上方", before.map((p) => [p.code, p.url]), [["SIE-HCAM-2026-228", LINK], ["LICO-EPUNEMI-2026-007", LINK_2]]);
+  const after = parseSoceProcedures(`${text}\n${LINK}\n${EPUNEMI_PAGE}\n${LINK_2}`);
+  check("两个项目，链接都在下方", after.map((p) => [p.code, p.url]), [["SIE-HCAM-2026-228", LINK], ["LICO-EPUNEMI-2026-007", LINK_2]]);
+  check("没贴链接", parseSoceProcedures(text)[0].url, undefined);
+  check("链接成为来源链接", mapSoceToTender(parseSoceProcedures(`${LINK}\n${EPUNEMI_PAGE}`)[0], NOW).sourceUrl, LINK);
+  check("链接不当成字段", Object.keys(parseSoceProcedures(`${LINK}\n${EPUNEMI_PAGE}`)[0].fields).some((k) => k.startsWith("http")), false);
+  const linked = await importEcuadorPaste(null, `${LINK}\n${WORKS_PAGE}`, { write: false, now: NOW });
+  check("结果里显示官方链接", linked.rows[0].officialUrl, LINK);
+  await importEcuadorPaste(null, LINK, { write: false, now: NOW }).then(
+    () => check("只贴链接时说明要贴内容", "没有报错", "报错"),
+    (error: Error) => check("只贴链接时说明要贴内容", error.message.startsWith("只贴了链接"), true),
   );
 
   console.log(failures === 0 ? "\n全部通过" : `\n${failures} 项失败`);

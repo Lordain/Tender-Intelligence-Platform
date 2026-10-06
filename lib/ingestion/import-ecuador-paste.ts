@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
-import { ECUADOR, mapSoceToTender, parseSoceProcedures } from "@/lib/ingestion/ecuador-soce-paste";
+import { ECUADOR, ECUADOR_SOCE_SEARCH_URL, mapSoceToTender, parseSoceProcedures, soceLinksWithoutPage } from "@/lib/ingestion/ecuador-soce-paste";
 import { hasShortBidWindow, isPastSubmissionDeadline, SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import type { EcuadorImportOutcome, EcuadorImportResponse, EcuadorImportRow } from "@/lib/ingestion/ecuador-paste-result";
@@ -20,7 +20,9 @@ import type { EcuadorImportOutcome, EcuadorImportResponse, EcuadorImportRow } fr
  * (app/api/admin/tenders/[slug]/route.ts).
  *
  * One code, one row: a page pasted twice updates the same row, and a code
- * already stored for Ecuador is updated in place.
+ * already stored for Ecuador is updated in place. A procedure's official link
+ * pasted alongside its page becomes the row's source link (user, 2026-10-06:
+ * 导入时，请同时支持导入官方链接); a later paste without one keeps it.
  */
 const OUTCOME_ZH: Record<EcuadorImportOutcome, string> = {
   write: "会写入",
@@ -38,30 +40,40 @@ function outcomeOf(tender: Tender, now: Date): EcuadorImportOutcome {
   return "write";
 }
 
+type StoredRow = { slug: string; sourceUrl: string | null };
+
 /** Rows already stored for Ecuador under these codes. */
-async function existingSlugs(supabase: SupabaseClient, codes: string[]): Promise<Map<string, string>> {
-  const bySlug = new Map<string, string>();
-  if (codes.length === 0) return bySlug;
-  const { data, error } = await supabase.from("tenders").select("slug,tender_number").eq("country", ECUADOR).in("tender_number", codes);
+async function existingRows(supabase: SupabaseClient, codes: string[]): Promise<Map<string, StoredRow>> {
+  const byCode = new Map<string, StoredRow>();
+  if (codes.length === 0) return byCode;
+  const { data, error } = await supabase.from("tenders").select("slug,tender_number,source_url").eq("country", ECUADOR).in("tender_number", codes);
   if (error) throw new Error(`无法核对是否已导入过：${error.message}`);
-  for (const row of (data ?? []) as Array<{ slug: string; tender_number: string }>) if (!bySlug.has(row.tender_number)) bySlug.set(row.tender_number, row.slug);
-  return bySlug;
+  for (const row of (data ?? []) as Array<{ slug: string; tender_number: string; source_url: string | null }>) {
+    if (!byCode.has(row.tender_number)) byCode.set(row.tender_number, { slug: row.slug, sourceUrl: row.source_url });
+  }
+  return byCode;
 }
 
 export async function importEcuadorPaste(supabase: SupabaseClient | null, text: string, options: { write: boolean; now?: Date }): Promise<EcuadorImportResponse> {
   const procedures = parseSoceProcedures(text);
+  if (procedures.length === 0 && soceLinksWithoutPage(text).length > 0) {
+    throw new Error("只贴了链接：平台不会去打开 SOCE 的页面，请把链接和项目详情页的内容一起贴上（链接放在内容上方）。");
+  }
   if (procedures.length === 0) {
     throw new Error("没有找到「Descripción del Proceso de Contratación」——请在 SOCE 项目详情页从这个标题开始，连同下面的「Fechas de Control del Proceso」一起复制。");
   }
-  const existing = supabase ? await existingSlugs(supabase, procedures.map((procedure) => procedure.code)) : new Map<string, string>();
+  const existing = supabase ? await existingRows(supabase, procedures.map((procedure) => procedure.code)) : new Map<string, StoredRow>();
   const now = options.now ?? new Date();
 
   const rows: EcuadorImportRow[] = [];
   const toWrite: Tender[] = [];
   for (const procedure of procedures) {
     const mapped = mapSoceToTender(procedure, now);
-    const existingSlug = existing.get(procedure.code);
-    const tender = existingSlug && existingSlug !== mapped.slug ? { ...mapped, slug: existingSlug } : mapped;
+    const stored = existing.get(procedure.code);
+    const existingSlug = stored?.slug;
+    // No link this time, but an earlier paste had one: keep it.
+    const keptUrl = !procedure.url && stored?.sourceUrl && stored.sourceUrl !== ECUADOR_SOCE_SEARCH_URL ? stored.sourceUrl : undefined;
+    const tender = { ...mapped, ...(existingSlug && existingSlug !== mapped.slug ? { slug: existingSlug } : {}), ...(keptUrl ? { sourceUrl: keptUrl } : {}) };
     const outcome = outcomeOf(tender, now);
     if (outcome === "write" || outcome === "short_window") toWrite.push(tender);
     rows.push({
@@ -79,6 +91,7 @@ export async function importEcuadorPaste(supabase: SupabaseClient | null, text: 
       outcome,
       outcomeZh: OUTCOME_ZH[outcome],
       ...(existingSlug ? { existingSlug } : {}),
+      ...(tender.sourceUrl !== ECUADOR_SOCE_SEARCH_URL ? { officialUrl: tender.sourceUrl } : {}),
     });
   }
 

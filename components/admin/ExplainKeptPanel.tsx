@@ -41,6 +41,8 @@ const COUNTRY_OPTIONS = [
   { value: "Chile", label: "智利" },
   { value: "Argentina", label: "阿根廷" },
   { value: "Dominican Republic", label: "多米尼加" },
+  { value: "Panama", label: "巴拿马" },
+  { value: "Ecuador", label: "厄瓜多尔" },
 ];
 
 const COUNTRY_LABELS: Record<string, string> = { Mexico: "墨西哥", Colombia: "哥伦比亚", Peru: "秘鲁", Brazil: "巴西", Chile: "智利", Argentina: "阿根廷", Guyana: "圭亚那", "Dominican Republic": "多米尼加", Ecuador: "厄瓜多尔", Panama: "巴拿马" };

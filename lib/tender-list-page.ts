@@ -95,9 +95,10 @@ export const UPCOMING_DEADLINE_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
  */
 // Chile added 2026-09-25, when the user opened it after the Chilean
 // filters were tuned (智利筛选调好 → 现在开放). Argentina added
-// 2026-09-29 (前台+后台开放阿根廷), the Dominican Republic last, 2026-10-04
-// (公开多米尼加(前台+后台+网站内的文字描述)).
-export const AVAILABLE_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Argentina", "Dominican Republic"] as const;
+// 2026-09-29 (前台+后台开放阿根廷), the Dominican Republic 2026-10-04
+// (公开多米尼加(前台+后台+网站内的文字描述)), Panama and Ecuador last,
+// 2026-10-06 (直接把这两个国家的前后台可视都做了吧).
+export const AVAILABLE_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Argentina", "Dominican Republic", "Panama", "Ecuador"] as const;
 
 export type TenderListSearchParams = Record<string, string | string[] | undefined>;
 

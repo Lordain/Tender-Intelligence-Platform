@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const countries = [{ value: "Mexico", label: "墨西哥" }, { value: "Brazil", label: "巴西" }, { value: "Colombia", label: "哥伦比亚" }, { value: "Peru", label: "秘鲁" }, { value: "Chile", label: "智利" }, { value: "Argentina", label: "阿根廷" }, { value: "Dominican Republic", label: "多米尼加" }];
+const countries = [{ value: "Mexico", label: "墨西哥" }, { value: "Brazil", label: "巴西" }, { value: "Colombia", label: "哥伦比亚" }, { value: "Peru", label: "秘鲁" }, { value: "Chile", label: "智利" }, { value: "Argentina", label: "阿根廷" }, { value: "Dominican Republic", label: "多米尼加" }, { value: "Panama", label: "巴拿马" }, { value: "Ecuador", label: "厄瓜多尔" }];
 
 export function BasicCountrySelection({ selectedCountry }: { selectedCountry: string | null }) {
   const router = useRouter();

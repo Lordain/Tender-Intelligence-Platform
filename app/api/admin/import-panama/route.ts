@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { ingestPanama } from "@/lib/ingestion/ingest-panama";
 import { PANAMA_MANUAL_MAX_DAYS, type PanamaImportResponse, type PanamaImportRow } from "@/lib/ingestion/panama-import-result";
 import { logAdminAlert } from "@/lib/admin-alerts";
+import { revalidateTenders } from "@/lib/cache-tags";
 
 /**
  * The 巴拿马 tab's import button (user, 2026-10-06: 「巴拿马导入」页面，只拉最近
@@ -14,8 +15,8 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  * at 240 s anyway so the answer comes back inside the 300 s limit, and the
  * daily job reads what was left.
  *
- * Nothing here is public: Panama is staged (lib/staged-countries.ts), so a
- * write lands in the admin pages only and no public cache needs dropping.
+ * Panama opened 2026-10-06, so a write drops the public list's cache like
+ * every other country's import.
  */
 export const maxDuration = 300;
 
@@ -70,6 +71,8 @@ export async function POST(request: Request) {
       excluded: excluded.map(slimRow),
       ...(write ? { upsertedCount: result.upsertedCount ?? 0, statusUpdates: result.statusUpdates ?? 0, failed: result.failed ?? [] } : {}),
     };
+    // The public list is cached; drop it so this import shows up now.
+    if (write) revalidateTenders();
     return NextResponse.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

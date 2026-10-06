@@ -41,7 +41,7 @@ export function ImportEcuadorPasteForm() {
       setError("请先粘贴 SOCE 项目详情页的内容。");
       return;
     }
-    if (write && !confirm("确定要把这些厄瓜多尔项目写入数据库吗？（只在后台可见）")) return;
+    if (write && !confirm("确定要把这些厄瓜多尔项目写入数据库吗？")) return;
     setSubmitting(write ? "write" : "preview");
     setError(null);
     try {
@@ -70,7 +70,7 @@ export function ImportEcuadorPasteForm() {
       <p className="text-sm font-black text-[#071826]">粘贴导入</p>
       <p className="mt-1 text-xs leading-5 text-[#64717c]">
         在 SOCE 搜索结果里按金额挑出想要的项目，打开详情页，从「Descripción del Proceso de Contratación」选到「Fechas de Control del
-        Proceso」的最后一行，复制后粘贴到下面。可以连续贴多个项目。同一个编号再贴一次会更新那一条，不会重复。筛选规则和其他国家的导入相同（包括 100 万美元门槛）；经办人邮箱不会保存。
+        Proceso」的最后一行，复制后粘贴到下面；把浏览器地址栏里的官方链接贴在内容上方，项目就会链接到它。可以连续贴多个项目。同一个编号再贴一次会更新那一条，不会重复。筛选规则和其他国家的导入相同（包括 100 万美元门槛）；经办人邮箱不会保存。
       </p>
 
       {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
@@ -82,7 +82,7 @@ export function ImportEcuadorPasteForm() {
           setResult(null);
         }}
         rows={10}
-        placeholder={"Descripción del Proceso de Contratación\nEntidad:\t…\nObjeto de Proceso:\t…\nCódigo:\t…\n…\nFechas de Control del Proceso\n…"}
+        placeholder={"https://www.compraspublicas.gob.ec/ProcesoContratacion/compras/PC/informacionProcesoContratacion2.cpe?idSoliCompra=…\nDescripción del Proceso de Contratación\nEntidad:\t…\nObjeto de Proceso:\t…\nCódigo:\t…\n…\nFechas de Control del Proceso\n…"}
         className="mt-3 w-full rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 font-mono text-xs text-[#071826] outline-none focus:border-[#ffb21c]"
       />
 
@@ -109,7 +109,7 @@ export function ImportEcuadorPasteForm() {
         <div className="mt-4 border-t border-[#eef1f2] pt-3 text-sm text-[#52636e]">
           <p>
             识别到 {result.rows.length} 个项目，其中 {writable} 个会写入。
-            {result.written !== undefined && <span className="font-semibold text-emerald-700"> 已写入 {result.written} 条（只在后台可见）。</span>}
+            {result.written !== undefined && <span className="font-semibold text-emerald-700"> 已写入 {result.written} 条。</span>}
             {result.failed && result.failed.length > 0 && <span className="font-semibold text-red-700"> {result.failed.length} 条失败：{result.failed.map((f) => f.error).join("；")}</span>}
           </p>
           <ul className="mt-3 flex flex-col gap-3">
@@ -128,6 +128,18 @@ export function ImportEcuadorPasteForm() {
                   发布 {ecuadorTime(row.publicationDate)} · 交标截止 {ecuadorTime(row.submissionDeadline)}（厄瓜多尔时间） · 关键日期 {row.keyDates} 个
                 </p>
                 <p className="mt-1 text-xs text-[#64717c]">{row.reasonZh}</p>
+                <p className="mt-1 break-all text-xs text-[#64717c]">
+                  {row.officialUrl ? (
+                    <>
+                      官方链接：
+                      <a href={row.officialUrl} target="_blank" rel="noreferrer" className="text-[#b86e00] hover:underline">
+                        {row.officialUrl}
+                      </a>
+                    </>
+                  ) : (
+                    <span className="text-[#8a5a00]">没有贴官方链接，项目会链接到 SOCE 搜索页。</span>
+                  )}
+                </p>
                 {row.existingSlug && <p className="mt-1 text-xs font-semibold text-[#8a5a00]">平台上已有这个编号（{row.existingSlug}），写入时更新那一条，不新增。</p>}
               </li>
             ))}

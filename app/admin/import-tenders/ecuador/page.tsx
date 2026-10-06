@@ -7,8 +7,8 @@ import { ECUADOR, ECUADOR_SOCE_SEARCH_URL } from "@/lib/ingestion/ecuador-soce-p
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 
 /**
- * Ecuador is staged (lib/staged-countries.ts): imported by hand, invisible to
- * visitors. SOCE's search sits behind a CAPTCHA and SERCOP's open data shows
+ * Ecuador's tab, opened to visitors 2026-10-06 (user: 直接把这两个国家的前后台
+ * 可视都做了吧). SOCE's search sits behind a CAPTCHA and SERCOP's open data shows
  * a call only after bids close (2026-10-06), so there is no daily job: the
  * admin pastes procedure pages here.
  */
@@ -16,13 +16,6 @@ export default async function AdminImportTendersEcuadorPage() {
   const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === ECUADOR);
   return (
     <div className="flex flex-col gap-3">
-      <section className="rounded-2xl border border-[#eed18c] bg-[#fff8e7] px-5 py-4 text-sm leading-6 text-[#6d4c0d]">
-        <p className="font-black">厄瓜多尔尚未对外公开</p>
-        <p className="mt-1 text-xs leading-5">
-          导入的项目只在后台可见：前台列表、详情页、首页、网站地图、搜索引擎推送和摘要邮件都不会出现。审核满意后，把厄瓜多尔从
-          <code className="mx-1">lib/staged-countries.ts</code>移到公开国家名单即可上线。
-        </p>
-      </section>
       <ImportSourceSection
         name="SOCE 粘贴导入 — 厄瓜多尔政府采购系统"
         hint="在 SOCE 打开项目详情页，复制整页，粘贴导入"

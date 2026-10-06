@@ -1,8 +1,7 @@
 /**
  * Panama ingestion — PanamaCompra V3's public list and pliego calls, for the
- * daily job (scripts/cron-panama.ts). Added 2026-10-06, STAGED
- * (lib/staged-countries.ts): what this writes shows in the admin pages only
- * (user, 2026-10-06, on 先导入但不对外显示，你在后台审核一两周: OK).
+ * daily job (scripts/cron-panama.ts). Added 2026-10-06, staged, and opened
+ * to visitors the same day (user: 直接把这两个国家的前后台可视都做了吧).
  *
  * The list is filtered by the date of each procedure's latest STATUS CHANGE,
  * not its publication (see panama-panamacompra-live.ts), so a window catches

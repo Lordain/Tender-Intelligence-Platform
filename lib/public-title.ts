@@ -55,6 +55,10 @@ export function publicTitleOf(tender: Pick<Tender, "title" | "titleZhPublic">): 
 const ALLOWED_LATIN_TOKENS: ReadonlySet<string> = new Set([
   // Electrical and power
   "kv", "mv", "v", "kw", "mw", "gw", "kwh", "mwh", "kva", "mva", "hz", "ac", "dc",
+  // Photovoltaic peak power — how every solar tender states its size (554kWp,
+  // 1.2MWp). Added 2026-10-07 after a real run refused a Brazilian rooftop-PV
+  // summary over kWp.
+  "wp", "kwp", "mwp", "gwp",
   // Dimensions and quantities
   "km", "mm", "cm", "m", "m2", "m3", "kg", "t", "l",
   // Contracting and delivery models a Chinese reader knows in Latin
@@ -102,8 +106,13 @@ const LONG_DIGIT_RUN = /\d{6,}/;
  * reads as a broken page to a visitor and as thin content to a crawler, and
  * these pages live or die on ranking. A title that is safe and ranks for
  * nothing is not a win — a vaguer real title (墨西哥 变电站扩建工程) is.
+ *
+ * An X run counts only standing on its own — XX市, （XXX）, 某XX项目 — and not
+ * as part of a Latin word or after one: Siglo XXI is a Roman numeral in a
+ * real Mexican place name, and a real run (2026-10-07) refused the member
+ * short title 世纪（Siglo XXI）排水管网建设工程 over it.
  */
-const MASKING = /[█▓▒░]|\*{2,}|某某|[xX]{2,}|已隐藏|已屏蔽|保密处理/;
+const MASKING = /[█▓▒░]|\*{2,}|某某|(?<![A-Za-z]\s*)[xX]{2,}(?![A-Za-z])|已隐藏|已屏蔽|保密处理/;
 
 /**
  * Talking ABOUT the notice instead of reporting what it says.

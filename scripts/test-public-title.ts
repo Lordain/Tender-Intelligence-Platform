@@ -293,6 +293,24 @@ accepts("地铁CBTC信号系统升级改造");
 // A proper noun next to it is still refused.
 rejects("阿根廷 ADIF铁路ATS监控系统采购", "含有原文词：ADIF");
 
+// --- Photovoltaic peak power is a unit ------------------------------------
+// Real rejection (2026-10-07) on a Brazilian rooftop-PV tender.
+acceptsSummary("八套并网型太阳能光伏微发电系统的供货与安装工程，用于公共建筑供电，总装机容量约554kWp。");
+accepts("巴西 1.2MWp 屋顶光伏电站工程");
+
+// --- A Roman numeral is not a mask -----------------------------------------
+// Real rejection (2026-10-07): the short title of a Compras MX drainage tender
+// in the Siglo XXI area was refused as 含有遮挡或占位符号.
+acceptsShortFrom("世纪（Siglo XXI）排水管网建设工程", "墨西哥城世纪（Siglo XXI）片区排水管网建设工程施工及相关配套工作");
+acceptsShortFrom("世纪（Siglo XX）社区道路修复", "世纪（Siglo XX）社区道路修复与人行道改造工程及其配套工作");
+// X runs standing on their own are still placeholders — checked for the
+// masking reason itself, since XX would also trip the foreign-word rule.
+const MASKED = "含有遮挡或占位符号";
+check("XX市 仍是遮挡", publicTitleProblems("墨西哥 XX市变电站扩建工程").includes(MASKED), true);
+check("（XXX）仍是遮挡", shortTitleProblems("马托格罗索州（XXX）市公路修复", fullTitle).includes(MASKED), true);
+check("某XX项目 仍是遮挡", publicSummaryProblems("某XX项目的道路修复工程。").includes(MASKED), true);
+check("Siglo XXI 不是遮挡", shortTitleProblems("世纪（Siglo XXI）排水管网建设工程", "世纪（Siglo XXI）排水管网").includes(MASKED), false);
+
 // --- Checking a public summary --------------------------------------------
 // Same audience and same surfaces as the public title, so the same rules.
 function acceptsSummary(candidate: string): void {

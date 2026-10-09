@@ -14,6 +14,7 @@ import type { WorldBankNotice } from "@/lib/ingestion/connectors/worldbank-procn
 import { mapWorldBankNotice, worldBankAmount, worldBankMarket, worldBankNumber, worldBankSkipReason, zonedIso } from "@/lib/ingestion/worldbank-mapper";
 import { mapSicoesToTender, parseSicoesProcesses } from "@/lib/ingestion/bolivia-sicoes-paste";
 import { lenderReference } from "@/lib/ingestion/lender-reference";
+import { findCrossSourceMatch, type MatchCandidate } from "@/lib/ingestion/cross-source-match";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -73,6 +74,38 @@ const fromSicoes = mapSicoesToTender(parseSicoesProcesses(ficha)[0], NOW);
 const fromBank = mapWorldBankNotice({ ...notices[0], bid_reference_no: "BO-ENDE-568419-CW-RFB" }, NOW);
 check("同一项目 → 同一 slug", fromSicoes.slug, fromBank.slug);
 check("同一项目 → 同一编号", fromSicoes.tenderNumber, fromBank.tenderNumber);
+
+console.log("和本国平台已有项目比对（2026-10-09 只读报告里的三对）");
+const stored = (title: string, buyer: string, submissionDeadline: string): MatchCandidate => ({ slug: "x", tenderNumber: "x", title, summary: "", buyer, submissionDeadline, sourceName: "x" });
+check(
+  "ADIF 变电站 → 很可能同一项目",
+  findCrossSourceMatch(
+    { reference: "AR-DGPPSE-ADIF-486312-CW-RFB", title: "Intervención en Subestaciones Rectificadoras de San Fernando, Victoria, San Isidro, Olivos, Núñez y Palermo", buyer: "ADIF S.A.", submissionDeadline: "2026-11-17T17:00:00.000Z" },
+    [stored("Intervención en Subestaciones Rectificadoras de San Fernando, Victoria, San Isidro, Olivos, Núñez y Palermo - LPN 40/2026", "Trenes Argentinos Infraestructura (ADIF S.A.)", "2026-11-17T00:00:00.000Z")],
+  )?.kind,
+  "strong",
+);
+check(
+  "巴西两个不同咨询（截止差 89 天、采购方不同）→ 不算",
+  findCrossSourceMatch(
+    { title: "Contratação de empresa de consultoria para desenvolvimento do projeto executivo da sede da APAC.", buyer: "Secretariat of Water Resources and Sanitation", submissionDeadline: "2026-10-09T13:00:00.000Z" },
+    [stored("Contratação integrada de empresa especializada em engenharia e arquitetura para a elaboração de solução completa", "ESTADO DE MATO GROSSO", "2027-01-07T13:00:00.000Z")],
+  ),
+  undefined,
+);
+check(
+  "厄瓜多尔道路 vs 桥梁（同日截止、标题不同）→ 不算",
+  findCrossSourceMatch(
+    { title: "REHABILITACION DE LA VÍA EL DESEO – LA INMACULADA - CRUCE BUENO, CANTÓN YAGUACHI", buyer: "Gobierno Autonomo Descentralizado Provincial del Guayas", submissionDeadline: "2026-11-05T20:00:00.000Z" },
+    [stored("CONSTRUCCIÓN DEL PUENTE VEHICULAR DE 70 METROS DE LUZ DOBLE CARRIL SOBRE EL RIO PINDO GRANDE", "GOBIERNO AUTONOMO DESCENTRALIZADO MUNICIPAL DEL CANTON PASTAZA", "2026-11-05T00:00:00.000Z")],
+  ),
+  undefined,
+);
+check(
+  "库里写着世行编号 → 编号相同",
+  findCrossSourceMatch({ reference: "BO-ENDE-568419-CW-RFB", title: "x", buyer: "y" }, [{ ...stored("Const. electrificación", "ENDE", "2026-11-06T00:00:00.000Z"), tenderNumber: "BO-ENDE-568419-CW-RFB" }])?.kind,
+  "reference",
+);
 
 console.log(failures === 0 ? "\n全部通过" : `\n${failures} 项失败`);
 if (failures > 0) process.exit(1);

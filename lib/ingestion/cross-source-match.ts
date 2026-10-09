@@ -11,7 +11,17 @@
  *
  *   reference  the STEP reference appears in the stored row's number, title or summary
  *   strong     deadline within a day, and the titles share most of their words
- *   weak       the titles share most of their words, or deadline and buyer agree — for a person to look at
+ *   weak       for a person to look at: the titles share most of their words and the
+ *              buyer or the deadline agrees too, or deadline and buyer agree with some
+ *              title words in common
+ *
+ * The first comparison (2026-10-09, 109 World Bank calls of 120 days against
+ * every country's stored rows) found one real duplicate — ADIF's
+ * substations, matched as strong — and two weak matches that were different
+ * calls: a Brazilian consultancy whose title shared generic words with a
+ * Mato Grosso one closing 89 days later, and a Guayas road whose deadline
+ * fell on the day of an unrelated bridge by a buyer of similar name. Weak
+ * now needs both signals, which drops those two and keeps ADIF.
  */
 
 export type MatchCandidate = {
@@ -86,7 +96,7 @@ export function findCrossSourceMatch(
     let kind: MatchKind | undefined;
     if (reference && compact(`${candidate.tenderNumber ?? ""} ${candidate.title} ${candidate.summary}`).includes(reference)) kind = "reference";
     else if (sameDeadline && titleOverlap >= 0.5) kind = "strong";
-    else if (titleOverlap >= 0.6 || (sameDeadline && buyerOverlap >= 0.5)) kind = "weak";
+    else if ((titleOverlap >= 0.6 && (buyerOverlap >= 0.3 || (deadlineDays !== null && deadlineDays <= 7))) || (sameDeadline && buyerOverlap >= 0.5 && titleOverlap >= 0.3)) kind = "weak";
     if (!kind) continue;
 
     const match: CrossSourceMatch = { kind, candidate, titleOverlap, buyerOverlap, deadlineDays };

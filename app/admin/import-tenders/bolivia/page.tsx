@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ImportBoliviaPasteForm } from "@/components/admin/ImportBoliviaPasteForm";
+import { ScreenBoliviaListForm } from "@/components/admin/ScreenBoliviaListForm";
 import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
 import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
 import { BOLIVIA, BOLIVIA_SICOES_SEARCH_URL } from "@/lib/ingestion/bolivia-sicoes-paste";
@@ -17,7 +18,7 @@ export default async function AdminImportTendersBoliviaPage() {
     <div className="flex flex-col gap-3">
       <ImportSourceSection
         name="SICOES 粘贴导入 — 玻利维亚政府采购系统"
-        hint="在 SICOES 打开「Ver Ficha」，复制整页，粘贴导入"
+        hint="先贴搜索列表初筛，再把值得的项目「Ver Ficha」整页粘贴导入"
         mode="manual"
         defaultOpen
         links={[{ label: "SICOES", href: BOLIVIA_SICOES_SEARCH_URL }]}
@@ -26,6 +27,7 @@ export default async function AdminImportTendersBoliviaPage() {
           <p className="text-xs leading-5 text-[#64717c]">
             SICOES 有人机验证和验证码，平台不自动抓取，所以玻利维亚没有每日自动任务，只能在这里手动导入。玻利维亚还没有对外公开，导入的项目只在后台可见。导入后在「通用维护 → 更新项目文案」生成中文标题和摘要。
           </p>
+          <ScreenBoliviaListForm />
           <ImportBoliviaPasteForm />
           <div className="rounded-xl border border-[#e1e7e9] bg-white">
             <p className="border-b border-[#eef1f2] px-4 py-2 text-xs font-black text-[#52636e]">已导入 {rows.length} 条</p>

@@ -11,7 +11,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { WorldBankNotice } from "@/lib/ingestion/connectors/worldbank-procnotices-live";
-import { mapWorldBankNotice, worldBankAmount, worldBankMarket, worldBankNumber, worldBankSkipReason, zonedIso } from "@/lib/ingestion/worldbank-mapper";
+import { mapWorldBankNotice, worldBankAmount, worldBankDocumentChannels, worldBankMarket, worldBankNumber, worldBankSkipReason, zonedIso } from "@/lib/ingestion/worldbank-mapper";
 import { mapSicoesToTender, parseSicoesProcesses } from "@/lib/ingestion/bolivia-sicoes-paste";
 import { lenderReference } from "@/lib/ingestion/lender-reference";
 import { findCrossSourceMatch, type MatchCandidate } from "@/lib/ingestion/cross-source-match";
@@ -65,6 +65,8 @@ check("状态", t.status, "open");
 check("约 219 万美元 → 常规", t.relevance.tier, "standard");
 check("官方公告链接", t.sourceUrl, `https://projects.worldbank.org/en/projects-operations/procurement-detail/${notices[0].id}`);
 check("没有联系人邮箱", JSON.stringify(t).includes("@"), false);
+check("标书获取渠道（ENDE 官网）", t.summary.es.includes("https://www.ende.bo/nacional-internacional/vigentes/"), true);
+check("会议链接不算标书渠道", worldBankDocumentChannels("ver https://ende.webex.com/x y https://www.ende.bo/docs."), ["https://www.ende.bo/docs"]);
 
 console.log("和 SICOES 手动导入不重复");
 check("识别世行编号", lenderReference(" bo-ende-568419-cw-rfb "), "BO-ENDE-568419-CW-RFB");

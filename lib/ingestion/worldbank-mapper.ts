@@ -124,6 +124,26 @@ export function worldBankMarket(text: string): TenderParticipationScope | undefi
   return undefined;
 }
 
+/** Video calls and the like, not where the documents are. */
+const NOT_DOCUMENTS = /webex|zoom\.us|teams\.microsoft|meet\.google|whatsapp|facebook|youtube/i;
+
+/**
+ * Where the notice says the bid documents are (user, 2026-10-09: 公告能看到标
+ * 书？然后能下载？): the agency's site, the national system or a shared folder,
+ * as the notice text writes them. The notice itself carries no files. At most
+ * three, in order; never fetched by this platform.
+ */
+export function worldBankDocumentChannels(text: string): string[] {
+  const links: string[] = [];
+  for (const match of text.matchAll(/https?:\/\/[^\s"'<>()]+/gi)) {
+    const link = match[0].replace(/[.,;:]+$/, "");
+    if (NOT_DOCUMENTS.test(link) || links.includes(link)) continue;
+    links.push(link);
+    if (links.length === 3) break;
+  }
+  return links;
+}
+
 export function worldBankScopeType(group: string | undefined): TenderScopeType {
   switch ((group ?? "").toUpperCase()) {
     case "CW":
@@ -186,6 +206,7 @@ export function mapWorldBankNotice(notice: WorldBankNotice, now: Date = new Date
   const procedureType = `${method} · Banco Mundial${market === "international_open" ? " · Internacional" : market === "national" ? " · Nacional" : ""}`;
   const amount = worldBankAmount(text);
   const governmentLevel = worldBankGovernmentLevel(buyer);
+  const channels = worldBankDocumentChannels(text);
 
   const publicationDate = notice.submission_date ? new Date(notice.submission_date).toISOString() : undefined;
   const submissionDeadline = notice.submission_deadline_date ? zonedIso(notice.submission_deadline_date, notice.submission_deadline_time, timeZone) : undefined;
@@ -198,6 +219,7 @@ export function mapWorldBankNotice(notice: WorldBankNotice, now: Date = new Date
     notice.project_name ? `Proyecto financiado por el Banco Mundial: ${clean(notice.project_name)}${notice.project_id ? ` (${notice.project_id})` : ""}.` : undefined,
     `Método: ${method}${notice.notice_type ? ` · ${notice.notice_type}` : ""}.`,
     market === "international_open" ? "Abierta a oferentes internacionales." : market === "national" ? "Convocatoria abierta nacional." : undefined,
+    channels.length > 0 ? `Documentos de la licitación según el aviso: ${channels.join(" ; ")}.` : undefined,
     `Aviso ${notice.id} en el portal de adquisiciones del Banco Mundial; los documentos se solicitan a la entidad contratante.`,
   ]
     .filter(Boolean)

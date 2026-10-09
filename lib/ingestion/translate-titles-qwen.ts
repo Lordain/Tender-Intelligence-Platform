@@ -12,15 +12,15 @@ import type { TenderToTranslate, TranslatedTender } from "@/lib/ingestion/transl
  * scripts/compare-translation-providers.ts still runs both and switching
  * back is one import line in translate-all-tenders.ts.
  *
- * Qwen3.6-Plus via Alibaba Cloud DashScope's OpenAI-compatible endpoint —
+ * Qwen3.7-Plus via Alibaba Cloud DashScope's OpenAI-compatible endpoint —
  * confirmed real (WebSearch, 2026-09-03, since this model postdates
- * training data): model id `qwen3.6-plus`, base URL
+ * training data): model id `qwen3.7-plus` (was `qwen3.6-plus` until 2026-10-09), base URL
  * `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`, standard
  * `openai` npm SDK pointed at that base URL and a DASHSCOPE_API_KEY
  * instead of an OpenAI key. Structured output uses the OpenAI-compatible
  * `response_format: { type: "json_object" }` (JSON mode) rather than a
  * full JSON-schema/strict mode — DashScope's exact structured-output
- * feature parity with Qwen3.6-Plus specifically (a general chat model,
+ * feature parity with Qwen3.7-Plus specifically (a general chat model,
  * not a "-vl"/document variant) wasn't independently confirmed, so this
  * sticks to the widely-supported JSON-mode + manual zod validation
  * pattern instead of assuming schema-level enforcement exists.
@@ -87,7 +87,7 @@ export async function translateTenderBatchQwen(items: TenderToTranslate[]): Prom
   });
 
   const response = await client.chat.completions.create({
-    model: "qwen3.6-plus",
+    model: "qwen3.7-plus",
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },

@@ -1,7 +1,7 @@
 /**
  * CLI wrapper around lib/ingestion/translate-all-tenders.ts — see that
  * file's header for what this actually does (es->zh title/summary
- * translation on Qwen3.6-Plus, batched, for every non-excluded tender still
+ * translation on Qwen3.7-Plus, batched, for every non-excluded tender still
  * showing an untranslated() mirror). The admin "新项目清单" page's
  * "翻译所有标题" button does the same thing through a web form instead
  * of the terminal, via the same shared function.

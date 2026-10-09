@@ -49,7 +49,7 @@ import type { TenderSourceLanguage } from "@/lib/ingestion/source-language";
 export async function extractTenderRequirementsQwenAnthropic(
   filePath: string,
   context: { tenderNumber: string; title: string; buyer: string; existingChineseText?: string; sourceLanguage?: TenderSourceLanguage },
-  model: Extract<ExtractionModel, "qwen3.5-plus" | "qwen3.6-plus"> = "qwen3.5-plus",
+  model: Extract<ExtractionModel, "qwen3.7-plus"> = "qwen3.7-plus",
   /** Per-tier page cap — see maxPagesForTier() in extraction-routing.ts. */
   maxPages?: number,
 ): Promise<TenderExtraction> {

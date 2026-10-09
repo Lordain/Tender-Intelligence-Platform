@@ -48,7 +48,7 @@
  * Usage:
  *   npm run analyze:batch -- path/to/folder --provider=claude-haiku [--count=5]
  *
- * --provider: claude-haiku | claude-sonnet | claude-opus | qwen | qwen-anthropic | qwen-anthropic-3.6 | auto
+ * --provider: claude-haiku | claude-sonnet | claude-opus | qwen | qwen-anthropic | auto
  *
  * --provider=auto (2026-09-03, per the user): routes each document by
  * whether it has a real text layer, per the day's findings — Word docs
@@ -63,8 +63,8 @@
  * docs) goes to Qwen, confirmed working well and far cheaper. This is a
  * real, live-tested cost/quality split, not a guess.
  *
- * Which Qwen depends on what the tender is worth: flagship (大型项目) gets
- * qwen3.6-plus, everything else qwen3.5-plus. That half is not decided
+ * Every readable document goes to qwen3.7-plus since 2026-10-09 (until then
+ * flagship got qwen3.6-plus and the rest qwen3.5-plus). That is not decided
  * here — auto calls lib/ingestion/extraction-routing.ts, the same function
  * the single-document path (extract-tender-document.ts) and the admin
  * upload path both call, so a document gets the same model whichever way
@@ -92,22 +92,21 @@ import { maxPagesForTier, chooseExtractionModel, describeExtractionRouting } fro
 import type { TenderRelevanceTier } from "../types/tender";
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 
-type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "qwen-anthropic" | "qwen-anthropic-3.6" | "auto";
+type ProviderKey = "claude-haiku" | "claude-sonnet" | "claude-opus" | "qwen" | "qwen-anthropic" | "auto";
 type ExtractContext = { tenderNumber: string; title: string; buyer: string };
 
 const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractContext, tier: TenderRelevanceTier | null) => Promise<TenderExtraction>> = {
   // Every runner takes the tier's page cap. An evaluation run that read
   // more pages than production does would be measuring a pipeline nobody
   // ships.
-  "claude-haiku": (p, c, tier) => extractTenderRequirements(p, c, "claude-haiku-4-5-20251001", undefined, true, maxPagesForTier(tier)),
+  "claude-haiku": (p, c, tier) => extractTenderRequirements(p, c, "claude-haiku-5-5", undefined, true, maxPagesForTier(tier)),
   "claude-sonnet": (p, c, tier) => extractTenderRequirements(p, c, "claude-sonnet-5", undefined, true, maxPagesForTier(tier)),
   "claude-opus": (p, c, tier) => extractTenderRequirements(p, c, "claude-opus-5", undefined, true, maxPagesForTier(tier)),
   qwen: extractTenderRequirementsQwen,
   // Wrapped rather than passed by reference: this map's third argument is
   // now the tender's tier, and this function's third parameter is a model
   // id — same position, different meaning.
-  "qwen-anthropic": (p, c, tier) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.5-plus", maxPagesForTier(tier)),
-  "qwen-anthropic-3.6": (p, c, tier) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.6-plus", maxPagesForTier(tier)),
+  "qwen-anthropic": (p, c, tier) => extractTenderRequirementsQwenAnthropic(p, c, "qwen3.7-plus", maxPagesForTier(tier)),
   // Self-referencing PROVIDER_RUNNERS here is fine — this arrow function
   // body only runs once PROVIDER_RUNNERS itself is fully assigned, since
   // it's called later, not during this object literal's construction.
@@ -121,11 +120,7 @@ const PROVIDER_RUNNERS: Record<ProviderKey, (pdfPath: string, context: ExtractCo
   auto: async (p, c, tier) => {
     const hasText = await hasRealTextLayer(p);
     const model = chooseExtractionModel(hasText, tier);
-    const chosen: ProviderKey = !hasText
-      ? "claude-haiku"
-      : model === "qwen3.6-plus"
-        ? "qwen-anthropic-3.6"
-        : "qwen-anthropic";
+    const chosen: ProviderKey = model === "claude-haiku-5-5" ? "claude-haiku" : "qwen-anthropic";
     console.log(`  [auto] ${describeExtractionRouting(hasText, tier)} — routing to ${chosen}`);
     return PROVIDER_RUNNERS[chosen](p, c, tier);
   },
@@ -137,7 +132,6 @@ const PROVIDER_ENV_VAR: Record<ProviderKey, string[]> = {
   "claude-opus": ["ANTHROPIC_API_KEY"],
   qwen: ["DASHSCOPE_API_KEY"],
   "qwen-anthropic": ["DASHSCOPE_API_KEY"],
-  "qwen-anthropic-3.6": ["DASHSCOPE_API_KEY"],
   // Either underlying provider could get picked per document, so both
   // keys need to be set up front rather than discovered mid-run.
   auto: ["ANTHROPIC_API_KEY", "DASHSCOPE_API_KEY"],
@@ -161,7 +155,7 @@ async function main() {
   const count = countArg ? parseInt(countArg, 10) : 5;
 
   if (!dir || !provider || !(provider in PROVIDER_RUNNERS)) {
-    console.error("Usage: npm run analyze:batch -- <folder> --provider=<claude-haiku|claude-sonnet|claude-opus|qwen|qwen-anthropic|qwen-anthropic-3.6|auto> [--count=5]");
+    console.error("Usage: npm run analyze:batch -- <folder> --provider=<claude-haiku|claude-sonnet|claude-opus|qwen|qwen-anthropic|auto> [--count=5]");
     process.exit(1);
   }
 

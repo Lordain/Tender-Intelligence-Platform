@@ -200,7 +200,7 @@ export async function analyzeUploadedDocument(
         // up front. See maxPagesForTier().
         const maxPages = maxPagesForTier(relevanceTier);
         const extraction: TenderExtraction = hasText
-          ? await extractTenderRequirementsQwenAnthropic(tempPath, context, model === "qwen3.6-plus" ? "qwen3.6-plus" : "qwen3.5-plus", maxPages)
+          ? await extractTenderRequirementsQwenAnthropic(tempPath, context, "qwen3.7-plus", maxPages)
           : await extractTenderRequirements(tempPath, context, model, undefined, true, maxPages, undefined, (note) =>
               warnings.push(`「${intake.fileName}」${note}`),
             );

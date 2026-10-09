@@ -3,7 +3,7 @@
  * tenders.ts) and the "翻译所有标题" button on the admin "新项目清单"
  * page — shared so the CLI and the web form translate through exactly
  * the same path. See translate-titles-qwen.ts for the actual es->zh model
- * call this drives (Qwen3.6-Plus via DashScope, batched).
+ * call this drives (Qwen3.7-Plus via DashScope, batched).
  *
  * Was Claude Haiku 4.5 (translate-titles.ts) until 2026-09-08, when the
  * user moved this path to Qwen. Both modules keep the same signature over

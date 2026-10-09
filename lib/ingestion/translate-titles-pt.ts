@@ -25,7 +25,7 @@ import type { TranslatedTender } from "@/lib/ingestion/translate-titles";
  * to a field named "Es" is telling it the text is Spanish, which is the
  * single most consequential thing it could be told wrong here.
  *
- * Same provider and model as the Spanish path — Qwen3.6-Plus through
+ * Same provider and model as the Spanish path — Qwen3.7-Plus through
  * DashScope's OpenAI-compatible endpoint, JSON mode plus zod validation.
  * Not a second opinion about the provider, just a second prompt.
  *
@@ -96,7 +96,7 @@ export async function translateTenderBatchPt(items: TenderToTranslatePt[]): Prom
   });
 
   const response = await client.chat.completions.create({
-    model: "qwen3.6-plus",
+    model: "qwen3.7-plus",
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },

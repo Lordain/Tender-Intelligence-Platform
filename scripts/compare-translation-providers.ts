@@ -1,6 +1,6 @@
 /**
  * Runs the same batch of real tender titles/summaries through all three
- * translation providers (Claude Haiku 4.5 — the current production path,
+ * translation providers (Claude Haiku 5.5 — Haiku 4.5 was the production path until 2026-09-08,
  * plus the two cheaper alternatives the user asked to evaluate,
  * 2026-09-03: Qwen3.6-Plus) and prints them
  * side by side, so translation quality can be judged before deciding
@@ -31,8 +31,8 @@ type Provider = {
 };
 
 const PROVIDERS: Provider[] = [
-  { name: "claude-haiku-4-5", envVar: "ANTHROPIC_API_KEY", run: translateTenderBatch },
-  { name: "qwen3.6-plus", envVar: "DASHSCOPE_API_KEY", run: translateTenderBatchQwen },
+  { name: "claude-haiku-5-5", envVar: "ANTHROPIC_API_KEY", run: translateTenderBatch },
+  { name: "qwen3.7-plus", envVar: "DASHSCOPE_API_KEY", run: translateTenderBatchQwen },
 ];
 
 const FIXTURE: (TenderToTranslate & { existingTitleZh?: string })[] = [

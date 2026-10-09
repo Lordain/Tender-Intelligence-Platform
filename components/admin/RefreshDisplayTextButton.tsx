@@ -133,7 +133,7 @@ export function RefreshDisplayTextButton() {
 
   return (
     <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Qwen3.6-Plus</p>
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Qwen3.7-Plus</p>
       <h2 className="mt-1 text-lg font-black text-[#071826]">更新项目文案</h2>
       <p className="mt-1 text-sm text-[#52636e]">
         导入新数据之后跑这一个按钮，它<strong>按顺序做两步</strong>：

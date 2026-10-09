@@ -160,7 +160,7 @@ const steps: { number: string; icon: StepIcon; title: string; detail: string; re
     number: "01",
     icon: "collect",
     title: "每日汇集",
-    detail: "每天自动读取拉美各国 20 多个官方采购平台的新公告，汇集到一个平台。",
+    detail: "每天更新拉美各国 20 多个官方采购平台的新公告，汇集到一个平台。",
     result: "多源信息一站聚合，告别低效逐站检索",
   },
   {

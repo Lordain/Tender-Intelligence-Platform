@@ -11,15 +11,25 @@
 # Reads the database, writes nothing to it. The ZIP is the run's artifact
 # 「argentina-bid-documents」 (kept 7 days); each file is named
 # <slug>__<document>, so 选择上传 / local batch analysis attach it by name.
+#
+# Left empty, the tenders box now means the 待补文件 list rather than every
+# open tender, and a project with a file over 「大文件上限」 MB goes whole to
+# a second artifact, 「argentina-bid-documents-large」, each oversized PDF's
+# first 40 pages left in the main ZIP (2026-10-09: a run fetched seven projects for two and made a
+# 1.2 GB ZIP). See scripts/download-argentina-docs.ts.
 name: Download Argentina bid documents
 
 on:
   workflow_dispatch:
     inputs:
       tenders:
-        description: "项目编号，多个用逗号分隔（例如 34-0003-LPU26,46-0035-LPU26）；留空 = 所有仍在投标期的 COMPR.AR / CONTRAT.AR 项目"
+        description: "项目编号，多个用逗号分隔（例如 68-0013-LPU26,84/26-0687-LPU26）；留空 = 「待补文件」里的阿根廷 COMPR.AR / CONTRAT.AR 项目"
         type: string
         default: ""
+      large_file_mb:
+        description: "大文件上限（MB）：含超过此大小文件的项目整体放进 argentina-bid-documents-large，超大 PDF 另留前 40 页在主压缩包"
+        type: string
+        default: "50"
 
 permissions:
   contents: read
@@ -38,11 +48,17 @@ jobs:
 
       - run: npm ci
 
+      # truncatePdfToPages (the first-40-pages copy of a large PDF) uses
+      # poppler's pdfinfo / pdfseparate / pdfunite.
+      - name: Install poppler
+        run: command -v pdfseparate || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)
+
       - name: Download
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           TENDERS: ${{ inputs.tenders }}
+          LARGE_FILE_MB: ${{ inputs.large_file_mb }}
         # Through an env var, not interpolated into the script: the input is
         # free text typed into a form.
         run: npm run download:argentina-docs -- "$TENDERS"
@@ -54,4 +70,13 @@ jobs:
           name: argentina-bid-documents
           path: downloads/argentina-docs/
           if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload the large files
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: argentina-bid-documents-large
+          path: downloads/argentina-docs-large/
+          if-no-files-found: ignore
           retention-days: 7

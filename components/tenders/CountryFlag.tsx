@@ -141,6 +141,17 @@ export function PanamaFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/** Red, yellow, green horizontal bands; the coat of arms is too small to draw at this size. */
+export function BoliviaFlag({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 14" className={`inline-block h-3.5 w-5 shrink-0 ${className}`}>
+      <rect width="20" height="14" fill="#d52b1e" />
+      <rect y="4.67" width="20" height="4.67" fill="#f9e300" />
+      <rect y="9.33" width="20" height="4.67" fill="#007934" />
+    </svg>
+  );
+}
+
 export function CountryFlag({ country, className = "" }: { country: string; className?: string }) {
   if (country === "Mexico") return <MexicoFlag className={className} />;
   if (country === "Brazil") return <BrazilFlag className={className} />;
@@ -152,5 +163,6 @@ export function CountryFlag({ country, className = "" }: { country: string; clas
   if (country === "Dominican Republic") return <DominicanRepublicFlag className={className} />;
   if (country === "Ecuador") return <EcuadorFlag className={className} />;
   if (country === "Panama") return <PanamaFlag className={className} />;
+  if (country === "Bolivia") return <BoliviaFlag className={className} />;
   return null;
 }

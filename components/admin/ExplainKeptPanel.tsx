@@ -43,9 +43,10 @@ const COUNTRY_OPTIONS = [
   { value: "Dominican Republic", label: "多米尼加" },
   { value: "Panama", label: "巴拿马" },
   { value: "Ecuador", label: "厄瓜多尔" },
+  { value: "Bolivia", label: "玻利维亚" },
 ];
 
-const COUNTRY_LABELS: Record<string, string> = { Mexico: "墨西哥", Colombia: "哥伦比亚", Peru: "秘鲁", Brazil: "巴西", Chile: "智利", Argentina: "阿根廷", Guyana: "圭亚那", "Dominican Republic": "多米尼加", Ecuador: "厄瓜多尔", Panama: "巴拿马" };
+const COUNTRY_LABELS: Record<string, string> = { Mexico: "墨西哥", Colombia: "哥伦比亚", Peru: "秘鲁", Brazil: "巴西", Chile: "智利", Argentina: "阿根廷", Guyana: "圭亚那", "Dominican Republic": "多米尼加", Ecuador: "厄瓜多尔", Panama: "巴拿马", Bolivia: "玻利维亚" };
 
 function countryName(country: string): string {
   return COUNTRY_LABELS[country] ?? country;

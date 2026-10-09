@@ -99,6 +99,11 @@ export const USD_RATES: Record<string, number> = {
   // read 2026-10-04: 59.59. The Banco Central has let the peso drift a few
   // percent a year, well inside what a $1M floor can tell apart.
   DOP: 1 / 59.6,
+  // Added 2026-10-09 for Bolivia (SICOES paste, staged). open.er-api.com,
+  // read 2026-10-09: 11.95. The Banco Central's old peg was 6.96; which of
+  // the two Bolivian contracts are priced against is still to be confirmed,
+  // and it decides whether a Bs 7–12M contract clears the $1M floor.
+  BOB: 1 / 11.95,
   // The two Chilean INDEXED UNITS, not currencies — and both appear in the
   // Moneda column as if they were: CLF 47 rows, UF 37 (the same unit under its
   // ISO code and its Spanish name), UTM 6. Ninety real amounts that would

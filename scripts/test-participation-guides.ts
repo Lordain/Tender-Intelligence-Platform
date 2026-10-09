@@ -19,6 +19,8 @@ import {
   CONTRATAR_SOURCE_NAME,
 } from "@/lib/ingestion/argentina-mapper";
 import { DOMINICANA_SOURCE_NAME } from "@/lib/ingestion/dominicana-mapper";
+import { PANAMA_SOURCE_NAME } from "@/lib/ingestion/panama-mapper";
+import { ECUADOR_SOCE_SOURCE_NAME } from "@/lib/ingestion/ecuador-soce-paste";
 
 let failures = 0;
 function check(name: string, actual: unknown, expected: unknown) {
@@ -59,6 +61,12 @@ const cases: Array<[string, string, string | undefined]> = [
   [ADIF_SOURCE_NAME, "Trenes Argentinos Infraestructura", "argentina-adif"],
   [BOLETIN_SOURCE_NAME, "BANCO DE LA NACIÓN ARGENTINA", "argentina-boletin-oficial"],
   [DOMINICANA_SOURCE_NAME, "MINISTERIO DE OBRAS PÚBLICAS Y COMUNICACIONES", "dominican-republic-dgcp"],
+  [PANAMA_SOURCE_NAME, "MINISTERIO DE OBRAS PÚBLICAS", "panama-panamacompra"],
+  [ECUADOR_SOCE_SOURCE_NAME, "EMPRESA PÚBLICA DE EJEMPLO", "ecuador-soce"],
+  ["PanamaCompra (DGCP)", "DGCP", "panama-panamacompra"],
+  ["SERCOP — SOCE, Ecuador", "DGCP", "ecuador-soce"],
+  ["DGCP — Portal Transaccional", "UNIDAD DE COMPRAS", "dominican-republic-dgcp"],
+  ["Fuente sin plataforma reconocida", "UNIDAD DE COMPRAS", undefined],
   ["Portal Nacional de Contratações Públicas (PNCP) — busca de editais", "PETROBRAS TRANSPORTE S.A.", "brazil-pncp"],
 ];
 for (const [sourceName, buyer, slug] of cases) {

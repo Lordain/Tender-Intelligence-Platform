@@ -1477,6 +1477,196 @@ export const participationGuides: ParticipationGuide[] = [
       { label: "DGCP：供应商培训、指南与操作材料", href: "https://www.dgcp.gob.do/materiales-didacticos/proveedores/" },
     ],
   },
+  {
+    slug: "panama-panamacompra",
+    country: "巴拿马",
+    countryCode: "PA",
+    platform: "PanamaCompra（DGCP）",
+    issuer: "巴拿马各政府部门、自治机构、地方政府及适用公共采购法的采购单位",
+    issuerType: "政府采购平台",
+    title: "怎么参与巴拿马 PanamaCompra 政府采购项目？",
+    summary: "巴拿马公共采购平台。先读完整标书，再登记供应商、配置报价用户并按期递交。",
+    whatIs: "PanamaCompra 是巴拿马公共采购总局（DGCP）管理的电子采购平台，发布货物、服务和公共工程采购。各采购单位组织程序，平台提供公告、标书、更正和结果；巴拿马运河管理局采用自己的采购规则和入口。",
+    audience: "想向巴拿马公共机构供应货物、服务或工程的境内外企业",
+    quickFacts: [
+      { label: "官方平台", value: "PanamaCompra" },
+      { label: "供应商登记", value: "Registro de Proponentes（投标人登记册）" },
+      { label: "常用语言", value: "西班牙语" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "先确认采购入口",
+        items: [
+          "适用法律：第 22 号公共采购法及其修订文本、实施规则，按项目文件核对",
+          "采购主体：确认发布单位和程序类型，别把平台管理机关当发包方",
+          "运河另查：运河管理局的采购和特许经营采用机构自身规则",
+        ],
+        note: "供应商登记只是入口，不等于满足某项工程的资质、经验和财务条件。",
+      },
+      {
+        id: "first-check",
+        title: "注册前看这些字段",
+        items: [
+          "Número de acto：采购编号，用来核对完整文件和更正",
+          "Entidad：采购单位，确认适用制度和履约地点",
+          "Pliego de cargos：招标文件，先读资格、技术规格、评审和合同条件",
+          "Fecha de presentación：递交日期和时间，另记答疑、踏勘及开标安排",
+          "Adendas：更正文件，可能调整要求和日程",
+        ],
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "搜索项目", detail: "按编号、单位和业务范围找项目，核对状态及递交时间。" },
+          { title: "下载标书", detail: "读完整招标文件、附件和更正，判断中国企业能否满足条件。" },
+          { title: "登记供应商", detail: "填企业主体资料、上传对应文件；获批后配置具备 Proveedor（报价用户）权限的账户。" },
+          { title: "准备递交", detail: "按标书准备资格、技术、报价及担保，在指定渠道截止前提交并保存凭证。" },
+          { title: "跟进结果", detail: "查看开标记录、补正期限、评审、授标和合同，按公告期限处理异议。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "境外企业准备什么",
+        intro: "登记与项目资格是两份清单，以平台当前要求和招标文件为准。",
+        items: [
+          "公司文件：本国设立、存续和经营范围证明，核对适用的营业许可",
+          "代表授权：代表资格、授权委托及签署权限证明",
+          "翻译认证：外国文件按要求译成西语，并办理海牙认证或合法化认证",
+          "税务合规：核对税务及社保清税证明，未在当地登记的境外企业有单独办理要求",
+          "工程能力：工程执业资格、类似合同、人员设备和财务材料按标书准备",
+        ],
+      },
+      {
+        id: "guarantees",
+        title: "日期、担保与补正",
+        items: [
+          "提交方式：按标书指定的电子递交要求操作，上传文件不等于完成提交",
+          "担保要求：核对投标、履约及预付款担保的适用范围、文本和有效期",
+          "日程更新：踏勘、答疑、递交及开标分别记录，并持续查看更正",
+          "补正窗口：开标记录会列出可补正事项，按标书规定期限处理",
+        ],
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "外国企业资格：登记可包含境外企业，但项目资质和专业许可仍需逐项满足",
+          "本地安排：代理、工程执照、税务和联合体条件先看标书，不默认必须设本地公司",
+          "美元报价：核对税费、进口、交付、付款进度和调价，别只比较总价",
+          "担保可接受性：确认境外出具的保函是否符合发包方要求",
+          "正式文件：平台摘要不能替代招标文件、最新更正及书面答复",
+        ],
+        note: "未确认统一的境外登记处理时限和适用费用，不预设可即时开通；提前按最新官方要求办理。",
+      },
+    ],
+    sources: [
+      { label: "PanamaCompra 官方平台", href: "https://www.panamacompra.gob.pa/" },
+      { label: "DGCP：公共采购法第22号更新文本", href: "https://www.dgcp.gob.pa/images/legislacion/leyes/2024/TEXTO%20UNICO%20Ley%2022%20DGCP%202023.pdf" },
+      { label: "DGCP：PanamaCompra V3供应商登记指南（官方透明度门户）", href: "https://monitoreo.antai.gob.pa/api/submissions/407845/files/72665/download" },
+      { label: "巴拿马政府：供应商登记要求", href: "https://www.panamadigital.gob.pa/InformacionTramite/inscripcion-como-proveedor-del-estado-en-el-portal-wwwpanamacompragobpa" },
+      { label: "DGCP：境外文件与翻译认证说明", href: "https://www.dgcp.gob.pa/images/transparencia/articulo9/formularios/certificados-de-proponente.pdf" },
+      { label: "DGCP：开标记录与补正期限说明", href: "https://compendio.panamacompra.gob.pa/category/consultas-juridicas/propuestas-consultas-juridicas/acta-de-apertura-de-propuestas/" },
+      { label: "运河管理局：战略项目与自身采购规则", href: "https://pancanal.com/vision-2025-2035/" },
+    ],
+  },
+  {
+    slug: "ecuador-soce",
+    country: "厄瓜多尔",
+    countryCode: "EC",
+    platform: "SOCE（SERCOP）",
+    issuer: "厄瓜多尔适用国家公共采购制度的政府部门、地方政府和公共机构",
+    issuerType: "政府采购平台",
+    title: "怎么参与厄瓜多尔 SOCE 政府采购项目？",
+    summary: "厄瓜多尔官方公共采购系统。先核对境外资格、RUP登记和签署要求，由用户自己在官方页面操作。",
+    whatIs: "SOCE（Sistema Oficial de Contratación Pública，官方公共采购系统）由厄瓜多尔国家公共采购局（SERCOP）管理。采购单位发布货物、服务、咨询和工程程序；供应商通常需在 RUP（统一供应商登记册）登记并获得有效资格。",
+    audience: "想参与厄瓜多尔公共机构采购的境内外企业",
+    quickFacts: [
+      { label: "官方平台", value: "SOCE（SERCOP）" },
+      { label: "供应商登记", value: "RUP登记与资格启用" },
+      { label: "页面操作", value: "用户自己在官方页面完成" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "先确认制度和资格",
+        items: [
+          "适用制度：核对现行公共采购法、实施条例和程序启动时的过渡安排",
+          "采购主体：政府部门、地方政府和公共机构各自采购，SERCOP是制度管理机关",
+          "登记与资格：境内外企业通常都需RUP登记并启用资格，法定例外另查",
+          "外部融资：开发银行融资项目还需核对贷款协议和对应采购政策",
+        ],
+        note: "RUP允许外国企业登记，不代表每个程序都对进口产品或境外咨询开放。",
+      },
+      {
+        id: "first-check",
+        title: "找项目先看什么",
+        items: [
+          "Código del proceso：程序编号，用来核对公告、问答和结果",
+          "Entidad contratante：采购单位，确认实际履约与合同主体",
+          "Tipo de contratación：采购方式及适用资格，别只看金额",
+          "Pliegos：招标文件，核对规格、经验、国产要求和评审办法",
+          "Cronograma：日程，分别记录提问、答复、报价、开标和授标时间",
+        ],
+        note: "公开数据门户可用于了解历史采购；当前状态和附件由用户自己在官方页面核对。",
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "查找项目", detail: "由用户自己在官方页面按编号、采购单位和业务类别查找项目。" },
+          { title: "读取标书", detail: "用户自行下载标书和附件，核对境外资格、采购方式及完整日程。" },
+          { title: "登记启用", detail: "按境外法人路径准备RUP资料，核对产品类别、资格状态和适用签署要求。" },
+          { title: "签署递交", detail: "按程序要求准备、签署和递交技术与经济文件，用户自行操作并保存凭证。" },
+          { title: "跟进评审", detail: "用户自行查看问答、更正、补正通知、评审和授标，按时准备合同文件。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "境外企业准备什么",
+        intro: "未在当地设立的外国法人，与已在当地登记的主体走不同资料路径。",
+        items: [
+          "公司存续：本国主管机关出具的合法存在证明",
+          "授权文件：代表任命和授权委托，确保投标及签约权限有效",
+          "翻译认证：西语翻译及适用的海牙认证或合法化认证，按最新官方要求办理",
+          "登记类别：核对CPC（产品中央分类）与实际供货、服务范围",
+          "项目资格：业绩、人员、财务、技术、报价和声明按标书准备",
+          "中标落地：外国法人中标后须在当地保有代理或代表，住所登记按适用公司法核对",
+        ],
+      },
+      {
+        id: "guarantees",
+        title: "日期、签名与合同",
+        items: [
+          "电子签名：法规规定的情形须使用电子签名，境外证书的接受条件先核验",
+          "递交窗口：以最新日程和补充文件为准，别把开标时间当成提交截止",
+          "补正边界：按通知处理可补正事项，不预设报价或实质资格可以事后更改",
+          "合同担保：履约、预付款和技术保证按适用法规及项目文件准备",
+        ],
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "本地优惠：国产、国内供应商或特定主体优惠可能影响参与和评分",
+          "境外业绩：确认中国合同和联合体经验能否被接受及如何证明",
+          "进口与税费：美元报价仍需核对关税、税费、运输、售后和付款条件",
+          "融资规则：开发银行项目的资格和采购办法可能与一般政府程序不同",
+          "人工操作：账号、验证、下载和投标均由用户自己在官方页面完成",
+        ],
+        note: "未确认统一适用的境外登记费用、处理时限和境外电子证书接受条件；以最新SERCOP公开政策及具体文件为准。",
+      },
+    ],
+    sources: [
+      { label: "SERCOP：RUP统一供应商登记说明", href: "https://portal.compraspublicas.gob.ec/sercop/registro-unico-de-proveedores/" },
+      { label: "SERCOP：外国法人登记文件与中标后安排", href: "https://portal.compraspublicas.gob.ec/sercop/personas-juridicas/" },
+      { label: "SERCOP：公共采购法公开文本", href: "https://portal.compraspublicas.gob.ec/sercop/wp-content/uploads/2025/12/LOSNCP.pdf" },
+      { label: "SERCOP：采购法规与政策文献入口", href: "https://portal.compraspublicas.gob.ec/sercop/biblioteca/" },
+      { label: "SERCOP：公共采购开放数据门户", href: "https://datosabiertos.compraspublicas.gob.ec/" },
+      { label: "美洲开发银行：项目采购政策", href: "https://www.iadb.org/es/como-trabajar-juntos/adquisiciones/adquisiciones-para-proyectos/marco-de-adquisiciones" },
+    ],
+  },
 ];
 
 /**
@@ -1540,6 +1730,8 @@ export const guideCountries = [
     code: "DO",
     description: "DGCP 交易平台，中央与地方政府采购",
   },
+  { name: "巴拿马", code: "PA", description: "PanamaCompra 公共采购，核对境外登记与工程资格" },
+  { name: "厄瓜多尔", code: "EC", description: "SOCE 公共采购，RUP登记与用户自行操作" },
 ] as const;
 
 /**
@@ -1555,6 +1747,8 @@ export const guideCountries = [
  * tender read from the DOF goes to the CFE guide, not the DOF's.
  */
 const GUIDE_BY_ORIGIN: Array<[RegExp, string]> = [
+  [/panama\s?compra|contrataciones p[uú]blicas \(panam[aá]\)/i, "panama-panamacompra"],
+  [/\bsercop\b|\bsoce\b|sistema oficial de contrataci[oó]n p[uú]blica.*ecuador/i, "ecuador-soce"],
   [/\bdgcp\b|portal transaccional|rep[uú]blica dominicana/i, "dominican-republic-dgcp"],
   [/trenes argentinos infraestructura|administraci[oó]n de infraestructuras ferroviarias|\badif\b/i, "argentina-adif"],
   [/contrat\.?ar|obra p[uú]blica, concesiones y privatizaciones/i, "argentina-contratar"],

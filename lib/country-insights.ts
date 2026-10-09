@@ -162,6 +162,42 @@ export const countryInsights: CountryInsightSummary[] = [
     },
     highlights: ["4,441.83亿比索（约73.2亿美元）四年规划投资", "约2,024个国家公共投资项目", "交通、教育和住房社区服务约占65.2%"],
   },
+  {
+    slug: "panama",
+    country: "巴拿马",
+    countryCode: "PA",
+    title: "巴拿马国家洞察：2025—2029公共投资与运河长期机会",
+    description: "从302.78亿美元五年指示性投资与运河2025—2035愿景出发，梳理教育、道路、轨道、水务和物流的供应链机会。",
+    author: "拉美招投标指南针",
+    readTime: "约 10 分钟",
+    heroImage: "/insights/panama-agua-clara-locks.webp",
+    heroImageAlt: "巴拿马运河扩建的阿瓜克拉拉（Agua Clara）船闸与货轮",
+    heroImageCredit: {
+      author: "Mariordo（经裁切并压缩为 WebP）",
+      license: "CC BY-SA 4.0",
+      licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Agua_Clara_Locks_Panorama_09_2019_0743.jpg",
+    },
+    highlights: ["302.78亿美元五年指示性投资", "111.88亿美元2026投资预算", "超过80亿美元运河长期愿景"],
+  },
+  {
+    slug: "ecuador",
+    country: "厄瓜多尔",
+    countryCode: "EC",
+    title: "厄瓜多尔国家洞察：多年公共投资、电力与水务机会",
+    description: "从2025—2029国家发展规划和72.61亿美元四年参考投资出发，区分年度预算与银行融资，梳理能源、水务、连接和公共服务机会。",
+    author: "拉美招投标指南针",
+    readTime: "约 10 分钟",
+    heroImage: "/insights/ecuador-coca-codo-sinclair.webp",
+    heroImageAlt: "厄瓜多尔科卡科多辛克莱（Coca Codo Sinclair）水电工程建设设施",
+    heroImageCredit: {
+      author: "amalavida.tv / 厄瓜多尔旅游部（经裁切并压缩为 WebP）",
+      license: "CC BY-SA 2.0",
+      licenseUrl: "https://creativecommons.org/licenses/by-sa/2.0/",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:COCACODO_SINCLAIR_006.jpg",
+    },
+    highlights: ["72.61亿美元四年参考投资", "388个2026年度投资项目", "电力与昆卡水务融资项目"],
+  },
 ];
 
 export function getCountryInsight(slug: string) {

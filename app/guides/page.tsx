@@ -8,7 +8,7 @@ import { BeginnerGuideCard } from "@/components/guides/BeginnerGuideCard";
 export const metadata: Metadata = pageMetadata({
   title: "参标指南",
   description:
-    "面向中国企业的拉美参标指南：墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加的政府采购平台，以及 Petrobras、Pemex、CFE、Cemig、Codelco、Petroperú 等国有石油、电力、矿业公司的供应商注册、参与流程、常见资料与注意事项，免费阅读。",
+    "面向中国企业的拉美参标指南：墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔的政府采购平台，以及 Petrobras、Pemex、CFE、Cemig、Codelco、Petroperú 等国有石油、电力、矿业公司的供应商注册、参与流程、常见资料与注意事项，免费阅读。",
   path: "/guides",
   author: SOCIAL_BRAND,
 });
@@ -52,11 +52,11 @@ export default function GuidesPage() {
             description and the top of the list sit on the same lines across
             a row of panels (user, 2026-10-04: 保持左右对齐，调整摘要长度，
             不要两行). */}
-        <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#dbe2e5] lg:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#dbe2e5] lg:grid-cols-2">
           {guideCountries.map((country) => {
             const guides = participationGuides.filter((guide) => guide.countryCode === country.code);
             return (
-              <section key={country.code} aria-labelledby={`guides-${country.code}`} className="row-span-3 grid grid-rows-subgrid bg-[#fffdf9] p-5 sm:p-7">
+              <section key={country.code} aria-labelledby={`guides-${country.code}`} className="row-span-3 grid grid-cols-1 grid-rows-subgrid bg-[#fffdf9] p-5 sm:p-7">
                 <div className="flex items-start justify-between gap-4">
                   <h2 id={`guides-${country.code}`} className="flex items-center gap-3 text-2xl font-black tracking-[-0.03em]">
                     <GuideCountryFlag code={country.code} />

@@ -1,0 +1,31 @@
+# One-off, read-only (user, 2026-10-09: 只读一次线上数据库 … ok): how many
+# World Bank calls the platform already holds from the countries' own
+# systems. scripts/compare-worldbank-duplicates.ts only SELECTs. Runs on a
+# push of this file to the dev branch only; removed again before anything is
+# merged.
+name: Compare World Bank duplicates
+
+on:
+  push:
+    branches: [claude/ai-tender-intelligence-platform-onfhq1]
+    paths: [.github/workflows/compare-worldbank.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Compare (read-only)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx scripts/compare-worldbank-duplicates.ts --days 120

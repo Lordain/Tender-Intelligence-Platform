@@ -94,6 +94,10 @@ async function main() {
   check("交标截止", et.submissionDeadline, "2026-11-06T19:00:00.000Z");
   check("约 267 万美元 → 常规", et.relevance.tier, "standard");
   check("行业含电力", et.industries.includes("power"), true);
+  check("世行出资 → 按世行编号保存", et.tenderNumber, "BO-ENDE-568419-CW-RFB");
+  check("世行出资 → 与世行公告同一 slug", et.slug, "bolivia-bo-ende-568419-cw-rfb");
+  check("非世行项目仍按 CUCE", [gt.tenderNumber, gt.slug], ["26-1704-00-1694954-1-1", "bolivia-26-1704-00-1694954-1-1"]);
+  check("摘要里保留 CUCE", et.summary.es.includes("26-0514-00-1695257-1-1"), true);
 
   console.log("个人信息与银行账户不保存");
   const stored = JSON.stringify([gt, et, g.fields, e.fields]);
@@ -114,6 +118,7 @@ async function main() {
   const preview = await importBoliviaPaste(null, `${guardia}\n${ende}`, { write: false, now: NOW });
   check("预览结果", preview.rows.map((row) => [row.cuce, row.outcome]), [["26-1704-00-1694954-1-1", "excluded"], ["26-0514-00-1695257-1-1", "write"]]);
   check("美元折算显示", Math.round(preview.rows[1].budgetUsd ?? 0), 2673379);
+  check("预览标出世行编号", preview.rows[1].lenderReference, "BO-ENDE-568419-CW-RFB");
   const db = recordingSupabase();
   const written = await importBoliviaPaste(db.client, `${guardia}\n${ende}`, { write: true, now: NOW, keep: { "26-1704-00-1694954-1-1": "standard" } });
   check("手动保留 + 规则保留 → 写入 2 条", written.written, 2);

@@ -141,6 +141,8 @@
     "test:cfe-paste": "tsx scripts/test-cfe-paste.ts",
     "test:ecuador-paste": "tsx scripts/test-ecuador-paste.ts",
     "test:bolivia-paste": "tsx scripts/test-bolivia-paste.ts",
+    "test:worldbank": "tsx scripts/test-worldbank.ts",
+    "dry-run:worldbank": "tsx scripts/dry-run-worldbank.ts",
     "compare:translation": "tsx --env-file-if-exists=.env.local scripts/compare-translation-providers.ts",
     "compare:extraction": "tsx --env-file-if-exists=.env.local scripts/compare-extraction-providers.ts",
     "analyze:batch": "tsx --env-file-if-exists=.env.local scripts/analyze-batch.ts",

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
-import { BOLIVIA, mapSicoesToTender, parseSicoesProcesses } from "@/lib/ingestion/bolivia-sicoes-paste";
+import { BOLIVIA, boliviaIdentity, mapSicoesToTender, parseSicoesProcesses } from "@/lib/ingestion/bolivia-sicoes-paste";
 import { hasShortBidWindow, isPastSubmissionDeadline, SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
@@ -18,7 +18,10 @@ import { convertToUsd } from "@/lib/currency";
  * (import-ecuador-paste.ts): no 12-day window for a call the admin chose by
  * hand, and an excluded process can be kept at a tier the admin picks.
  *
- * One CUCE, one row: a Ficha pasted twice updates the same row.
+ * One CUCE, one row: a Ficha pasted twice updates the same row. A call the
+ * World Bank finances is stored under its STEP reference instead, the same
+ * row as the World Bank's notice of it (lib/ingestion/lender-reference.ts):
+ * the preview says so when that row is already there.
  */
 const OUTCOME_ZH: Record<BoliviaImportOutcome, string> = {
   write: "会写入",
@@ -40,16 +43,16 @@ function outcomeOf(tender: Tender, now: Date): BoliviaImportOutcome {
   return "write";
 }
 
-/** Rows already stored for Bolivia under these CUCEs. */
-async function existingSlugs(supabase: SupabaseClient, cuces: string[]): Promise<Map<string, string>> {
-  const byCuce = new Map<string, string>();
-  if (cuces.length === 0) return byCuce;
-  const { data, error } = await supabase.from("tenders").select("slug,tender_number").eq("country", BOLIVIA).in("tender_number", cuces);
+/** Rows already stored for Bolivia under these tender numbers (CUCEs or STEP references), with where they came from. */
+async function existingRows(supabase: SupabaseClient, numbers: string[]): Promise<Map<string, { slug: string; sourceName: string | null }>> {
+  const byNumber = new Map<string, { slug: string; sourceName: string | null }>();
+  if (numbers.length === 0) return byNumber;
+  const { data, error } = await supabase.from("tenders").select("slug,tender_number,source_name").eq("country", BOLIVIA).in("tender_number", numbers);
   if (error) throw new Error(`无法核对是否已导入过：${error.message}`);
-  for (const row of (data ?? []) as Array<{ slug: string; tender_number: string }>) {
-    if (!byCuce.has(row.tender_number)) byCuce.set(row.tender_number, row.slug);
+  for (const row of (data ?? []) as Array<{ slug: string; tender_number: string; source_name: string | null }>) {
+    if (!byNumber.has(row.tender_number)) byNumber.set(row.tender_number, { slug: row.slug, sourceName: row.source_name });
   }
-  return byCuce;
+  return byNumber;
 }
 
 export async function importBoliviaPaste(
@@ -61,14 +64,17 @@ export async function importBoliviaPaste(
   if (processes.length === 0) {
     throw new PasteInputError("没有找到「1. IDENTIFICACIÓN DE LA ENTIDAD」和 CUCE——请在 SICOES 点「Ver Ficha」，从这个标题开始全选整页复制。");
   }
-  const existing = supabase ? await existingSlugs(supabase, processes.map((process) => process.cuce)) : new Map<string, string>();
+  // Looked up by CUCE too: a Ficha stored under its CUCE before it was known to be World Bank-financed.
+  const numbers = [...new Set(processes.flatMap((process) => [process.cuce, boliviaIdentity(process).tenderNumber]))];
+  const existing = supabase ? await existingRows(supabase, numbers) : new Map<string, { slug: string; sourceName: string | null }>();
   const now = options.now ?? new Date();
 
   const rows: BoliviaImportRow[] = [];
   const toWrite: Tender[] = [];
   for (const process of processes) {
     const mapped = mapSicoesToTender(process, now);
-    const existingSlug = existing.get(process.cuce);
+    const stored = existing.get(mapped.tenderNumber) ?? existing.get(process.cuce);
+    const existingSlug = stored?.slug;
     let tender: Tender = existingSlug && existingSlug !== mapped.slug ? { ...mapped, slug: existingSlug } : mapped;
     let outcome = outcomeOf(tender, now);
     const keepTier = options.keep?.[process.cuce];
@@ -97,6 +103,8 @@ export async function importBoliviaPaste(
       outcome,
       outcomeZh: OUTCOME_ZH[outcome],
       ...(existingSlug ? { existingSlug } : {}),
+      ...(stored?.sourceName && stored.sourceName !== mapped.sourceName ? { existingSource: stored.sourceName } : {}),
+      ...(mapped.tenderNumber !== process.cuce ? { lenderReference: mapped.tenderNumber } : {}),
     });
   }
 

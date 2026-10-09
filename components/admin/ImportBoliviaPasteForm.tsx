@@ -163,6 +163,12 @@ export function ImportBoliviaPasteForm() {
                   </label>
                 )}
                 {row.existingSlug && <p className="mt-1 text-xs font-semibold text-[#8a5a00]">平台上已有这个 CUCE（{row.existingSlug}），写入时更新那一条，不新增。</p>}
+                {row.lenderReference && (
+                  <p className="mt-1 text-xs text-[#52636e]">
+                    世界银行出资项目，按世行编号 <span className="font-mono">{row.lenderReference}</span> 保存，和世界银行公告里的同一项目合并为一条。
+                    {row.existingSource && <span className="font-semibold text-[#8a5a00]"> 平台上已有世界银行导入的这一条，写入时用 SICOES 的信息更新它。</span>}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

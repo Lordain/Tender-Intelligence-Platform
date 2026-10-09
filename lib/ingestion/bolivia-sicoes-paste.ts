@@ -1,6 +1,7 @@
 import type { GovernmentLevel, Tender, TenderKeyDate, TenderParticipationScope, TenderScopeType, TenderStatus } from "@/types/tender";
 import { slugify, untranslated } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
+import { lenderReference, lenderReferenceSlug } from "@/lib/ingestion/lender-reference";
 
 /**
  * Bolivia's SICOES (sicoes.gob.bo), a process's 「Ficha del proceso」 pasted
@@ -248,6 +249,18 @@ export function boliviaSlug(cuce: string): string {
   return `bolivia-${slugify(cuce)}`;
 }
 
+/**
+ * The tender number and slug a Ficha is stored under. A call financed by the
+ * World Bank carries its STEP reference as the entity's process code; it is
+ * then stored under that reference, the same as the World Bank's own notice
+ * of it, so the two are one row (lib/ingestion/lender-reference.ts). Anything
+ * else is stored under its CUCE.
+ */
+export function boliviaIdentity(process: Pick<SicoesProcess, "cuce" | "entityCode">): { tenderNumber: string; slug: string } {
+  const reference = lenderReference(process.entityCode);
+  return reference ? { tenderNumber: reference, slug: lenderReferenceSlug(BOLIVIA, reference) } : { tenderNumber: process.cuce, slug: boliviaSlug(process.cuce) };
+}
+
 /** One pasted Ficha as a Tender. */
 export function mapSicoesToTender(process: SicoesProcess, now: Date = new Date()): Tender {
   const { cuce, fields } = process;
@@ -262,7 +275,7 @@ export function mapSicoesToTender(process: SicoesProcess, now: Date = new Date()
   const currency = currencyOf(fields["moneda considerada para el proceso"]);
   const amount = currency ? process.total : undefined;
   const governmentLevel = boliviaGovernmentLevel(buyer);
-  const slug = boliviaSlug(cuce);
+  const { tenderNumber, slug } = boliviaIdentity(process);
 
   const publicationDate = boliviaTime(fields["fecha de publicacion (en el sicoes)"]);
   const submissionDeadline = activity(process, /^presentacion de (propuestas|ofertas)/);
@@ -308,7 +321,7 @@ export function mapSicoesToTender(process: SicoesProcess, now: Date = new Date()
     governmentLevel,
     scopeType,
     procedureType,
-    tenderNumber: cuce,
+    tenderNumber,
     ...(amount !== undefined && currency ? { estimatedValue: amount, currency } : {}),
     sourceName: BOLIVIA_SICOES_SOURCE_NAME,
   });
@@ -317,7 +330,7 @@ export function mapSicoesToTender(process: SicoesProcess, now: Date = new Date()
   return {
     id: crypto.randomUUID(),
     slug,
-    tenderNumber: cuce,
+    tenderNumber,
     title: untranslated(title),
     summary: untranslated(summary),
     buyer,

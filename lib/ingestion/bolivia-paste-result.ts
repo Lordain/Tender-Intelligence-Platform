@@ -36,8 +36,12 @@ export type BoliviaImportRow = {
   ruleTier: TenderRelevanceTier;
   outcome: BoliviaImportOutcome;
   outcomeZh: string;
-  /** Already on the platform under this CUCE: the write updates that row. */
+  /** Already on the platform under this CUCE or reference: the write updates that row. */
   existingSlug?: string;
+  /** That row came from another source — the World Bank's notice of the same call. */
+  existingSource?: string;
+  /** The World Bank STEP reference the call is stored under, instead of its CUCE. */
+  lenderReference?: string;
 };
 
 export type BoliviaImportResponse = {

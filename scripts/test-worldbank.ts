@@ -1,0 +1,78 @@
+/**
+ * World Bank procurement notices (lib/ingestion/worldbank-mapper.ts), against
+ * four Bolivian notices read from the API on 2026-10-09
+ * (lib/ingestion/__fixtures__/worldbank-procnotices-bolivia-2026-10-09.json;
+ * no contact fields, the notice text cut short and its e-mail replaced).
+ * Also checks that a call the World Bank finances and its SICOES Ficha
+ * become one row (lib/ingestion/lender-reference.ts).
+ *
+ * Usage: npm run test:worldbank
+ */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import type { WorldBankNotice } from "@/lib/ingestion/connectors/worldbank-procnotices-live";
+import { mapWorldBankNotice, worldBankAmount, worldBankMarket, worldBankNumber, worldBankSkipReason, zonedIso } from "@/lib/ingestion/worldbank-mapper";
+import { mapSicoesToTender, parseSicoesProcesses } from "@/lib/ingestion/bolivia-sicoes-paste";
+import { lenderReference } from "@/lib/ingestion/lender-reference";
+
+let failures = 0;
+function check(name: string, actual: unknown, expected: unknown) {
+  const ok = JSON.stringify(actual) === JSON.stringify(expected);
+  if (!ok) failures += 1;
+  console.log(`  ${ok ? "✓" : "✗"} ${name}${ok ? "" : `\n      期望 ${JSON.stringify(expected)}，实际 ${JSON.stringify(actual)}`}`);
+}
+
+const fixtures = join(__dirname, "../lib/ingestion/__fixtures__");
+const notices = JSON.parse(readFileSync(join(fixtures, "worldbank-procnotices-bolivia-2026-10-09.json"), "utf8")) as WorldBankNotice[];
+const NOW = new Date("2026-10-09T22:00:00Z");
+
+console.log("数字、金额、市场、时区");
+check("欧式金额带 .-", worldBankNumber("26.193.790,72.-"), 26193790.72);
+check("美式金额", worldBankNumber("1,250,000.00"), 1250000);
+check("标注 + Bs.", worldBankAmount("El precio referencial total de la obra es de Bs. 26.193.790,72.- (Veintiséis…)"), { value: 26193790.72, currency: "BOB" });
+check("标注 + USD", worldBankAmount("Presupuesto oficial: USD 3,500,000.00"), { value: 3500000, currency: "USD" });
+check("数字在前、币种在后", worldBankAmount("Monto estimado 12.000.000,00 bolivianos"), { value: 12000000, currency: "BOB" });
+check("只有 $ 不读", worldBankAmount("Presupuesto oficial: $ 3,500,000"), undefined);
+check("没有标注不读", worldBankAmount("Bs. 26.193.790,72"), undefined);
+check("国内公开", worldBankMarket("SOLICITUD DE OFERTAS ABIERTA NACIONAL"), "national");
+check("国际公开", worldBankMarket("Licitación Pública Internacional"), "international_open");
+check("英文国际", worldBankMarket("Open International competitive procurement"), "international_open");
+check("未说明", worldBankMarket("Solicitud de ofertas"), undefined);
+check("拉巴斯 UTC-4", zonedIso("2026-10-23T00:00:00Z", "15:30", "America/La_Paz"), "2026-10-23T19:30:00.000Z");
+check("圣地亚哥夏令时 UTC-3", zonedIso("2026-12-01T00:00:00Z", "10:00", "America/Santiago"), "2026-12-01T13:00:00.000Z");
+check("圣地亚哥冬令时 UTC-4", zonedIso("2026-07-01T00:00:00Z", "10:00", "America/Santiago"), "2026-07-01T14:00:00.000Z");
+
+console.log("哪些公告读取");
+check("工程招标读取", worldBankSkipReason(notices[0]), undefined);
+check("授标结果跳过", worldBankSkipReason(notices[1])?.startsWith("不是招标公告"), true);
+check("询价方式跳过", worldBankSkipReason({ ...notices[0], procurement_method_name: "Request for Quotations" })?.startsWith("小额"), true);
+check("个人咨询跳过", worldBankSkipReason({ ...notices[3], procurement_method_name: "Individual Consultant Selection" })?.startsWith("小额"), true);
+check("非平台国家跳过", worldBankSkipReason({ ...notices[0], project_ctry_name: "Bhutan" })?.startsWith("不是平台国家"), true);
+
+console.log("ENDE 农村电网（BO-ENDE-568421-CW-RFB）");
+const t = mapWorldBankNotice(notices[0], NOW);
+check("编号", t.tenderNumber, "BO-ENDE-568421-CW-RFB");
+check("slug", t.slug, "bolivia-bo-ende-568421-cw-rfb");
+check("国家", t.country, "Bolivia");
+check("采购方", t.buyer, "Empresa Nacional de Electricidad");
+check("国企", t.governmentLevel, "public_company");
+check("工程", t.scopeType, "works");
+check("金额", [t.estimatedValue, t.currency], [26193790.72, "BOB"]);
+check("国内公开", t.participationScope, "national");
+check("截止（当地 15:30）", t.submissionDeadline, "2026-10-23T19:30:00.000Z");
+check("状态", t.status, "open");
+check("约 219 万美元 → 常规", t.relevance.tier, "standard");
+check("官方公告链接", t.sourceUrl, `https://projects.worldbank.org/en/projects-operations/procurement-detail/${notices[0].id}`);
+check("没有联系人邮箱", JSON.stringify(t).includes("@"), false);
+
+console.log("和 SICOES 手动导入不重复");
+check("识别世行编号", lenderReference(" bo-ende-568419-cw-rfb "), "BO-ENDE-568419-CW-RFB");
+check("机构自编号不是世行编号", lenderReference("GAMLG-LP-O N° 05/2026"), undefined);
+const ficha = readFileSync(join(fixtures, "sicoes-ficha-web-ende-2026-10-09.txt"), "utf8");
+const fromSicoes = mapSicoesToTender(parseSicoesProcesses(ficha)[0], NOW);
+const fromBank = mapWorldBankNotice({ ...notices[0], bid_reference_no: "BO-ENDE-568419-CW-RFB" }, NOW);
+check("同一项目 → 同一 slug", fromSicoes.slug, fromBank.slug);
+check("同一项目 → 同一编号", fromSicoes.tenderNumber, fromBank.tenderNumber);
+
+console.log(failures === 0 ? "\n全部通过" : `\n${failures} 项失败`);
+if (failures > 0) process.exit(1);

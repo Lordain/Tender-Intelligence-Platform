@@ -14,6 +14,7 @@ import { boliviaAmount, boliviaGovernmentLevel, boliviaTime, mapSicoesToTender, 
 import { importBoliviaPaste } from "@/lib/ingestion/import-bolivia-paste";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 import { isStagedCountry } from "@/lib/staged-countries";
+import { parseBoliviaListPaste, screenBoliviaListRow } from "@/lib/ingestion/bolivia-list-screen";
 
 /** A stand-in database that accepts every call upsertTendersBatched() makes and records the rows upserted into tenders. */
 function recordingSupabase(): { client: SupabaseClient; tenders: Record<string, unknown>[] } {
@@ -131,6 +132,19 @@ async function main() {
     message = err instanceof PasteInputError ? "PasteInputError" : String(err);
   }
   check("贴错内容 → 表单提示", message, "PasteInputError");
+
+  console.log("第一层：列表初筛（贴了两页，含重复行）");
+  const listed = parseBoliviaListPaste(fixture("sicoes-list-2026-10-09.txt"));
+  check("两页合并去重 → 7 个", listed.length, 7);
+  const verdicts = Object.fromEntries(listed.map((row) => [row.cuce, screenBoliviaListRow(row, NOW).verdict]));
+  check("公开招标 → 值得打开", verdicts["26-1704-00-1694954-1-1"], "open");
+  check("其他方式（世行出资）→ 值得打开", verdicts["26-0514-00-1695257-1-1"], "open");
+  check("ANPE 小额 → 不用打开", verdicts["26-0517-02-1665865-1-2"], "small_or_direct");
+  check("已签约 → 不在招标中", verdicts["26-0514-00-1695579-0-E"], "not_current");
+  check("去掉标题引号", listed.find((row) => row.cuce === "26-0514-00-1695257-1-1")?.object, "Const. Electrificación Rural De La Provincia Mendez (Tarija)");
+  const cleaning = { ...listed[0], object: "Servicio De Limpieza Y Transporte De Residuos Solidos Urbanos", contractType: "Servicios Generales" };
+  check("清洁服务 → 按平台规则排除", screenBoliviaListRow(cleaning, NOW).verdict, "excluded");
+  check("截止已过 → 已截止", screenBoliviaListRow(listed[0], new Date("2026-11-05T00:00:00Z")).verdict, "closed");
 
   console.log(failures === 0 ? "\n全部通过" : `\n${failures} 项失败`);
   if (failures > 0) process.exit(1);

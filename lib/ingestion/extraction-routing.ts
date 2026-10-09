@@ -13,10 +13,10 @@ import type { ExtractionModel } from "@/lib/ingestion/extract-requirements";
  *    comes back empty (see lib/ingestion/README.md, 2026-09-03/04). That
  *    decision is about the FILE and is not up for negotiation on scale.
  *
- * 2. Only then, how much is this tender worth getting right? A flagship
- *    (大型项目) document gets qwen3.6-plus; significant (中型) and standard
- *    (常规) stay on qwen3.5-plus, which is cheaper and has been the default
- *    for every text-layer document so far.
+ * 2. Every text-layer document goes to qwen3.7-plus, whatever the tier
+ *    (2026-10-09, user: Qwen 3.5 plus 和 Qwen 3.6 plus 统一改成 Qwen 3.7
+ *    plus). Until then a flagship (大型项目) got qwen3.6-plus and the rest
+ *    the cheaper qwen3.5-plus. The tier still sets the page cap below.
  *
  * The tier read here is the one stored on the tender — the same tag shown
  * in the product, including an admin's manual override — so the model that
@@ -28,8 +28,9 @@ export function chooseExtractionModel(
   hasTextLayer: boolean,
   tier: TenderRelevanceTier | null | undefined,
 ): ExtractionModel {
-  if (!hasTextLayer) return "claude-haiku-4-5-20251001";
-  return tier === "flagship" ? "qwen3.6-plus" : "qwen3.5-plus";
+  if (!hasTextLayer) return "claude-haiku-5-5";
+  void tier; // one Qwen for every tier since 2026-10-09; kept in the signature for the caller's log line
+  return "qwen3.7-plus";
 }
 
 /** For log lines and admin-facing messages — why this model, in one clause. */

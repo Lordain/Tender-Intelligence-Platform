@@ -170,7 +170,7 @@ function stubClient(script: (unknown | Error)[]) {
 const manual = (path: string, script: (unknown | Error)[], maxPages?: number) => {
   const { client, calls, requestOptionsSeen } = stubClient(script);
   return {
-    run: () => extractTenderRequirements(path, CONTEXT, "qwen3.5-plus", client, false, maxPages),
+    run: () => extractTenderRequirements(path, CONTEXT, "qwen3.7-plus", client, false, maxPages),
     calls,
     requestOptionsSeen,
   };
@@ -248,7 +248,7 @@ async function main() {
     const blip = new Error("500 {\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Internal server error\"}}");
     // Call 1 = the whole PDF (too big), then one chunk blips and the rest answer.
     const { client, calls } = stubClient([cap, blip, FULL_RESPONSE, FULL_RESPONSE]);
-    const result = await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", client, false);
+    const result = await extractTenderRequirements(big, CONTEXT, "qwen3.7-plus", client, false);
     check("a chunk that fails does not abort the document", result.qualifications.length === 1);
     check("...and the surviving chunks were still sent as documents, not text", calls.at(-1)?.contentTypes.includes("document") === true);
   }
@@ -260,7 +260,7 @@ async function main() {
     const big = join(TMP, "big.pdf");
     const cap = new Error("400 Exceeded limit on max bytes to request body : 16777216");
     const { client, calls } = stubClient([cap, cap, cap, cap, FULL_RESPONSE]);
-    const result = await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", client, false);
+    const result = await extractTenderRequirements(big, CONTEXT, "qwen3.7-plus", client, false);
     check("when every chunk fails, the text fallback runs", calls.at(-1)?.contentTypes.every((t) => t === "text") === true);
     check("...and still returns a usable result", result.qualifications.length === 1);
     check("...and the fallback really sent the document's text", (calls.at(-1)?.promptChars ?? 0) > 200);
@@ -273,7 +273,7 @@ async function main() {
     const cap = new Error("400 Exceeded limit on max bytes to request body : 16777216");
     const overflow = new Error("prompt is too long: 298943 tokens > 200000 maximum");
     const { client, calls } = stubClient([cap, cap, cap, cap, overflow, FULL_RESPONSE]);
-    await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", client, false);
+    await extractTenderRequirements(big, CONTEXT, "qwen3.7-plus", client, false);
     const [secondLast, last] = calls.slice(-2);
     check("a context overflow retries with less text, not the same text", last.promptChars < secondLast.promptChars);
   }
@@ -402,7 +402,7 @@ async function main() {
     const big = join(TMP, "big.pdf");
     const { client, calls } = stubClient([FULL_RESPONSE]);
     // preferExtractedText: true — what extractTenderRequirementsQwenAnthropic passes.
-    const result = await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", client, false, 20, true);
+    const result = await extractTenderRequirements(big, CONTEXT, "qwen3.7-plus", client, false, 20, true);
     check("only one call is made — no doomed native-PDF attempt first", calls.length === 1);
     check("and it carries no document block at all", !calls[0].contentTypes.includes("document"));
     check("the PDF's own text is what was sent", calls[0].promptChars > 200 && calls[0].docBytes === 0);
@@ -475,7 +475,7 @@ async function main() {
     await extractTenderRequirements(
       big,
       { ...CONTEXT, existingChineseText: established },
-      "qwen3.5-plus",
+      "qwen3.7-plus",
       client,
       false,
       20,
@@ -490,7 +490,7 @@ async function main() {
     );
 
     const without = stubClient([FULL_RESPONSE]);
-    await extractTenderRequirements(big, CONTEXT, "qwen3.5-plus", without.client, false, 20, true);
+    await extractTenderRequirements(big, CONTEXT, "qwen3.7-plus", without.client, false, 20, true);
     check(
       "and a tender with no established Chinese gets no empty header",
       !without.calls[0].promptText.includes("本平台已对该项目使用的中文写法"),
@@ -555,12 +555,11 @@ async function main() {
     for (const tier of ["flagship", "significant", "standard", null] as const) {
       check(
         `a scanned PDF on a ${tier ?? "未分级"} tender goes to Claude Haiku`,
-        chooseExtractionModel(false, tier) === "claude-haiku-4-5-20251001",
+        chooseExtractionModel(false, tier) === "claude-haiku-5-5",
       );
     }
-    check("a flagship text-layer document gets the better Qwen", chooseExtractionModel(true, "flagship") === "qwen3.6-plus");
-    for (const tier of ["significant", "standard", null] as const) {
-      check(`a ${tier ?? "未分级"} text-layer document stays on the cheaper Qwen`, chooseExtractionModel(true, tier) === "qwen3.5-plus");
+    for (const tier of ["flagship", "significant", "standard", null] as const) {
+      check(`a ${tier ?? "未分级"} text-layer document goes to qwen3.7-plus`, chooseExtractionModel(true, tier) === "qwen3.7-plus");
     }
     check("page caps follow the tier: 40/30/20", maxPagesForTier("flagship") === 40 && maxPagesForTier("significant") === 30 && maxPagesForTier("standard") === 20);
     check("an unclassified tender gets the standard cap", maxPagesForTier(null) === 20);

@@ -35,7 +35,7 @@ import { sanitizeForApi } from "@/lib/ingestion/text-sanitize";
  * the three generated columns returns the site to its previous behaviour.
  *
  * Same provider, transport and pairing discipline as
- * translate-titles-qwen.ts: Qwen3.6-Plus on DashScope's OpenAI-compatible
+ * translate-titles-qwen.ts: Qwen3.7-Plus on DashScope's OpenAI-compatible
  * endpoint, JSON mode with manual zod validation, and a positional id rather
  * than the slug — a slug carries a real procurement number, and this is the
  * one prompt in the codebase whose entire job is to not emit one.
@@ -179,7 +179,7 @@ export async function generateDisplayTextBatch(items: DisplayTextInput[]): Promi
   });
 
   const response = await client.chat.completions.create({
-    model: "qwen3.6-plus",
+    model: "qwen3.7-plus",
     // Set explicitly rather than left to DashScope's unmeasured default. Every
     // field this returns is hard-capped by its validator (60 / 25 / 100
     // characters), so a full BATCH_SIZE of rows is roughly 4k tokens — this

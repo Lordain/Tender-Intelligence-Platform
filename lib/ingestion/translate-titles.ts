@@ -17,13 +17,14 @@ import { sanitizeForApi } from "@/lib/ingestion/text-sanitize";
  * file imports, and scripts/compare-translation-providers.ts still calls
  * it, so it is kept rather than deleted.
  *
- * Runs on Haiku 4.5, not Opus 5 (extract-requirements.ts's model) — an
+ * Runs on Haiku, not Opus 5 (extract-requirements.ts's model) — an
  * explicit user decision, not a default: translating a title/summary is a
  * mechanical task, not the long-document comprehension work Layer 2
- * extraction does, so the cheap/fast tier is the right fit. Haiku 4.5 is
- * an older-generation model in Anthropic's current lineup — it does NOT
- * support `thinking` or `output_config.effort` (both are Opus/Sonnet-5-
- * tier-and-newer features); deliberately omitted below, not forgotten.
+ * extraction does, so the cheap/fast tier is the right fit. Haiku 5.5 since
+ * 2026-10-09 (was Haiku 4.5). It thinks by default, and thinking counts
+ * against max_tokens, so effort is set to low below: the task needs no
+ * reasoning, and a batch that spent its budget thinking would come back
+ * unparsed. No temperature or prefill — Haiku 5.5 rejects both.
  *
  * en is never a target locale for this Chinese-only product (lib/i18n.tsx)
  * — only title.zh/summary.zh get a real translation; en stays mirrored
@@ -266,7 +267,7 @@ export async function translateTenderBatch(items: TenderToTranslate[]): Promise<
   const client = new Anthropic();
 
   const response = await client.messages.parse({
-    model: "claude-haiku-4-5-20251001",
+    model: "claude-haiku-5-5",
     max_tokens: 8000,
     system: SYSTEM_PROMPT,
     messages: [
@@ -277,7 +278,7 @@ export async function translateTenderBatch(items: TenderToTranslate[]): Promise<
         ),
       },
     ],
-    output_config: { format: zodOutputFormat(BatchTranslationSchema) },
+    output_config: { effort: "low", format: zodOutputFormat(BatchTranslationSchema) },
   });
 
   if (!response.parsed_output) {

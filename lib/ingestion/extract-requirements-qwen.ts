@@ -55,7 +55,7 @@ export async function extractTenderRequirementsQwen(
   const documentText = await extractDocumentText(filePath);
 
   const response = await client.chat.completions.create({
-    model: "qwen3.5-plus",
+    model: "qwen3.7-plus",
     response_format: { type: "json_object" },
     messages: [
       {

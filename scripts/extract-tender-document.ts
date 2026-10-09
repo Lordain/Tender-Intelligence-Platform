@@ -8,9 +8,9 @@
  * staged rollout needed): auto-routes by whether the document has a real
  * text layer (lib/ingestion/text-layer.ts's hasRealTextLayer(), same
  * check scripts/analyze-batch.ts's --provider=auto uses and live-tested
- * there first) — qwen3.5-plus (via DashScope's Anthropic-compatible
+ * there first) — qwen3.7-plus (via DashScope's Anthropic-compatible
  * endpoint) for anything with real text, since it's confirmed working
- * well and far cheaper; claude-haiku-4-5-20251001 for a scanned/image-
+ * well and far cheaper; claude-haiku-5-5 for a scanned/image-
  * only PDF, the only provider confirmed to read scanned pages correctly
  * (including after PDF chunking for an oversized one — see pdf-split.ts).
  * --precise overrides this entirely and forces claude-opus-5 (the paid
@@ -45,8 +45,8 @@ import type { TenderRelevanceTier } from "../types/tender";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 /**
- * The tender's scale tag, which decides between qwen3.6-plus and
- * qwen3.5-plus. Best-effort on purpose: a dry run has never needed
+ * The tender's scale tag, which sets the page cap (and, until 2026-10-09,
+ * chose between two Qwen models). Best-effort on purpose: a dry run has never needed
  * Supabase, and making it mandatory here would break running this against
  * a document offline. An unreachable tender routes as not-flagship, and
  * the log line below says so rather than implying the tag was checked.
@@ -210,7 +210,7 @@ async function main() {
     // browser. --precise deliberately keeps reading the whole document.
     const maxPages = maxPagesForTier(tier);
     extraction = hasText
-      ? await extractTenderRequirementsQwenAnthropic(pdfPath, context, model === "qwen3.6-plus" ? "qwen3.6-plus" : "qwen3.5-plus", maxPages)
+      ? await extractTenderRequirementsQwenAnthropic(pdfPath, context, "qwen3.7-plus", maxPages)
       : await extractTenderRequirements(pdfPath, context, model, undefined, true, maxPages);
   }
   const fields = toTenderFields(extraction, tenderSlug);

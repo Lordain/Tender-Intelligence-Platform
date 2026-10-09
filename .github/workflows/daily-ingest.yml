@@ -297,6 +297,14 @@ jobs:
           # days, the general rules. See scripts/cron-panama.ts.
           - name: Panama (PanamaCompra)
             command: cron:panama
+          # Added 2026-10-09 (user: 每天自动读取 9 国加玻利维亚的世界银行招标，经过
+          # 比对后 OK). The World Bank's procurement notices for every platform
+          # country; a call the country's own system already gave the platform
+          # (same World Bank reference, or same deadline and title) is not
+          # written, a doubtful match waits in the admin 世界银行 tab. Bolivia
+          # stays staged. See scripts/cron-worldbank.ts.
+          - name: World Bank (procurement notices)
+            command: cron:worldbank
           # Added 2026-10-04. National energy auctions kept by hand (Chile CNE,
           # Argentina AlmaSADI / AlmaGBA, Colombia MinEnergía) — open and
           # awarded — rewritten daily so an edited record reaches the site.

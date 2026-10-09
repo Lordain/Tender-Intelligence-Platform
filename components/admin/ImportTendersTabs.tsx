@@ -29,6 +29,8 @@ const TABS = [
   { href: "/admin/import-tenders/dominicana", label: "多米尼加", country: "Dominican Republic" },
   { href: "/admin/import-tenders/panama", label: "巴拿马", country: "Panama" },
   { href: "/admin/import-tenders/ecuador", label: "厄瓜多尔", country: "Ecuador" },
+  // Every country's World Bank notices (2026-10-09); no flag of its own.
+  { href: "/admin/import-tenders/worldbank", label: "世界银行", country: "World Bank" },
   // Staged (lib/staged-countries.ts): imported and reviewable here, not public yet.
   { href: "/admin/import-tenders/guyana", label: "圭亚那（未公开）", country: "Guyana" },
   { href: "/admin/import-tenders/bolivia", label: "玻利维亚（未公开）", country: "Bolivia" },

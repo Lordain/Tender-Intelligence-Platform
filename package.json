@@ -161,6 +161,7 @@
     "cron:dominicana": "tsx --env-file-if-exists=.env.local scripts/cron-dominicana.ts",
     "cron:cfe-dof": "tsx --env-file-if-exists=.env.local scripts/cron-cfe-dof.ts",
     "cron:panama": "tsx --env-file-if-exists=.env.local scripts/cron-panama.ts",
+    "cron:worldbank": "tsx --env-file-if-exists=.env.local scripts/cron-worldbank.ts",
     "dry-run:panama": "tsx scripts/dry-run-panama.ts",
     "cron:energy-auctions": "tsx --env-file-if-exists=.env.local scripts/cron-energy-auctions.ts",
     "cron:argentina": "tsx --env-file-if-exists=.env.local scripts/cron-argentina.ts",

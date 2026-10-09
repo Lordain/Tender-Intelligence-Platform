@@ -4,13 +4,15 @@ import { clientIp, createRateLimiter } from "@/lib/security/rate-limit";
 /**
  * Moderate anti-scraping for the tender list/detail pages — the only pages
  * exposing bulk structured data worth mass-copying. Deliberately scoped so
- * search engines keep full, unthrottled access (2026-09-05, user explicitly
- * chose "保留SEO，中等防护" over blocking anonymous access outright).
+ * search engines keep full access (2026-09-05, user explicitly chose
+ * "保留SEO，中等防护" over blocking anonymous access outright), at a rate no
+ * real crawler reaches (2026-10-09).
  */
 const PROTECTED_PATH_PATTERN = /^\/tenders(\/|$)/;
 
 /**
- * Major search engines and link-preview bots we never rate-limit or block.
+ * Major search engines and link-preview bots, never blocked and given a far
+ * higher limit than people (see crawlerLimited below).
  *
  * The Chinese ones are not an afterthought here — this product's customers
  * are Chinese enterprises, so Baidu, Sogou, 360, Shenma (YisouSpider, the
@@ -38,23 +40,35 @@ const SCRAPER_UA_PATTERN =
 /** See lib/security/rate-limit.ts for what this does and does not cover. */
 const isRateLimited = createRateLimiter({ windowMs: 60_000, max: 40 });
 
+/**
+ * A user agent is only a claim: a script that sends "Googlebot" used to get
+ * through with no limit at all (2026-10-09 audit). The crawlers get their own
+ * counter, per address, at 300 a minute — five pages a second from one
+ * address, more than any of them crawls at, and their 429s ask them to slow
+ * down rather than drop pages. A copier claiming to be one is held to the
+ * same 300. User, 2026-10-09: 搜索引擎改为每分钟 300 次上限 — OK.
+ */
+const crawlerLimited = createRateLimiter({ windowMs: 60_000, max: 300 });
+
+function tooManyRequests(): NextResponse {
+  return new NextResponse("请求过于频繁，请稍后再试。", {
+    status: 429,
+    headers: { "Retry-After": "60", "content-type": "text/plain; charset=utf-8" },
+  });
+}
+
 export function evaluateBotProtection(request: NextRequest): NextResponse | null {
   if (!PROTECTED_PATH_PATTERN.test(request.nextUrl.pathname)) return null;
 
   const userAgent = request.headers.get("user-agent") ?? "";
-  if (ALLOWED_CRAWLER_UA.test(userAgent)) return null;
+  const ip = clientIp(request);
+  if (ALLOWED_CRAWLER_UA.test(userAgent)) return ip !== "unknown" && crawlerLimited(ip) ? tooManyRequests() : null;
 
   if (!userAgent || SCRAPER_UA_PATTERN.test(userAgent)) {
     return new NextResponse("Access denied.", { status: 403 });
   }
 
-  const ip = clientIp(request);
-  if (ip !== "unknown" && isRateLimited(ip)) {
-    return new NextResponse("请求过于频繁，请稍后再试。", {
-      status: 429,
-      headers: { "Retry-After": "60", "content-type": "text/plain; charset=utf-8" },
-    });
-  }
+  if (ip !== "unknown" && isRateLimited(ip)) return tooManyRequests();
 
   return null;
 }

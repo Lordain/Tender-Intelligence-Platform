@@ -31,6 +31,7 @@ const TABS = [
   { href: "/admin/import-tenders/ecuador", label: "厄瓜多尔", country: "Ecuador" },
   // Staged (lib/staged-countries.ts): imported and reviewable here, not public yet.
   { href: "/admin/import-tenders/guyana", label: "圭亚那（未公开）", country: "Guyana" },
+  { href: "/admin/import-tenders/bolivia", label: "玻利维亚（未公开）", country: "Bolivia" },
 ];
 
 function MaintenanceIcon() {

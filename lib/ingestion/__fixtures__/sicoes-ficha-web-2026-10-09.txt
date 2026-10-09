@@ -1,0 +1,131 @@
+1. IDENTIFICACIÓN DE LA ENTIDAD
+Código de la Entidad	Denominación de la Entidad	Fax	Teléfono
+ 1704 - 00	 GOBIERNO AUTONOMO MUNICIPAL DE LA GUARDIA	 3840334	 3840019
+2. IDENTIFICACIÓN DE LA CONVOCATORIA
+CUCE	
+:
+26-1704-00-1694954-1-1
+Fecha de publicación (en el SICOES)	
+:
+09/10/2026
+Objeto de la Contratación	
+:
+CONST. PAVIMENTACION DE CALLES DISTRITO MUNICIPAL N° 3
+Datos de identificación del proceso	
+:
+Modalidad	Código de la entidad para identificar al proceso	Nro. de convocatoria
+Licitacion Publica	GAMLG-LP-O N° 05/2026	1
+Subasta	
+:
+Si
+Concesión Administrativa	
+:
+No
+3. DATOS GENERALES DE LA CONVOCATORIA
+Tipo de convocatoria	
+:
+Convocatoria Publica Nacional
+Forma de adjudicación	
+:
+Por el Total
+Normativa utilizada	
+:
+NB-SABS (D.S.0181)
+Tipo de contratación	
+:
+Obras
+Método de selección y adjudicación	
+:
+Selección y adjudicación de calidad, propuesta técnica y costo
+Garantías solicitadas	
+:
+Garantia de cumplimiento de contrato
+Garantia seriedad de propuesta
+Moneda considerada para el proceso	
+:
+Bolivianos
+Costo de Trabajo de los Equipos	
+:
+Si
+Elaboración del DBC	
+:
+En base al modelo de DBC aprobado por el Órgano Rector o por el Organismo Financiador
+Bienes o servicios recurrentes con cargo a la siguiente gestión:	
+:
+No
+4. DETALLE DE BIENES, OBRAS, SERVICIOS GENERALES O DE CONSULTORIA REQUERIDOS
+#	Código del Catálogo	Descripción del bien o servicio	Unidad de Medida	Cantidad	Precio referencial unitario	Precio referencial total
+1	72141103	Servicio de pavimentación de calles y carreteras
+M-01 obras preliminares	Global	1	50,715.88	50,715.88
+Volúmenes de ObraDescargar volúmenes
+#	Código	Descripción	Unidad	Cantidad
+1	961120	MOVILIZACION Y DESMOVILIZACION DE EQUIPO Y MAQUINARIA	GLOBAL	1
+2	961121	INSTALACIONES DE FAENAS	GLOBAL	1
+3	961122	LETRERO DE OBRA DE 4.00X2.50 M	PIEZA	2
+2	72141103	Servicio de pavimentación de calles y carreteras
+M-02 pavimento rigido	Global	1	5,678,793.38	5,678,793.38
+Volúmenes de ObraDescargar volúmenes
+#	Código	Descripción	Unidad	Cantidad
+1	962519	REPLANTEO Y CONTROL TOPOGRAFICO	M2	10382,08
+2	962520	CORTE DE TERRENO	M3	230,36
+3	962521	PREPARACION DE TERRENO DE FUNDACION	M2	10382,08
+4	962522	RELLENO Y COMPACTADO SIN PROVISION DE MATERIAL	M3	2,63
+5	962523	RELLENO PARA CAMBIO DE MATERIAL SIN PROVISION	M3	457,27
+6	962524	LOSA DE HORMIGON TIPO H23 (E=0.15M)	M2	5837,49
+7	962525	LOSA DE HORMIGON TIPO H23 (E=0.18M)	M2	4544,59
+8	962526	JUNTAS DE DILATACION PARA PAVIMENTO	ML	616,2
+9	962527	EXCAVACION MANUAL PARA CORDONES	M3	119,48
+10	962528	CORDON DE HORMIGON SIMPLE H21 (0.15x0.40m)	ML	2841,7
+11	962529	CORDON H°S° SUJECION	M3	4,44
+3	72141103	Servicio de pavimentación de calles y carreteras
+M-03 actividades finales	Global	1	12,026.74	12,026.74
+Volúmenes de ObraDescargar volúmenes
+#	Código	Descripción	Unidad	Cantidad
+1	961123	PLACA DE ENTREGA SEGÚN DISEÑO	PIEZA	1
+2	961124	LIMPIEZA GENERAL (PAVIMENTO)	GLOBAL	1
+TOTAL: Cinco millones setecientos cuarenta y un mil quinientos treinta y seis 00/100	5,741,536.00
+5. DETALLE DE DOCUMENTOS PREVENTIVOS
+#	Gestión	Entidad	DA	Nro. Preventivo	Descripción	Importe
+1	2026	1704	1	1156	CERTIFICACION PRESUPUESTARIA PARA LA CONST. PAVIMENTACION DE CALLES DISTRITO MUNICIPAL N°3, A SOLICITUD DEL ING. NOMBRE APELLIDO/SECRETARIO MUNICIPAL DE OBRAS PUBLICAS, SEGUN COMUNICACION INTERNA GAMLG-SMOP-COM.INT. N° 2152/2026	5,741,536.00
+UE	Prog	Proy	Act/Obra	Fuente	Organismo	Objeto del Gasto	Ent. Trans.	Descripción	Importe
+1	170	17040617200000	0	20	210	4.2.3.10	0	Construcciones y Mejoras de Bienes de Dominio Público	5,741,536.00
+6. CUENTA BANCARIA
+En caso de ejecución del depósito por concepto de garantía, la misma será efectuada a favor de:
+#	Banco	Cuenta / Descripción
+1	1014 - BANCO UNION S.A.	0000000000 - GOB. AUTONOMO MCPAL. LA GUARDIA - CUENTA UNICA MUNICIPAL - CUM
+7. BENEFICIARIO ASOCIADO
+#	Razón Social Beneficiario	Porcentaje
+1	GOBIERNO AUTÓNOMO MUNICIPAL DE LA GUARDIA	100
+8. PERSONAL DE LA ENTIDAD RELACIONADO CON EL PROCESO DE CONTRATACION
+ 	 	Nombre	Cargo
+Encargado de atender consultas	:	Persona Uno	Secretario Municipal De Obras Publicas
+Responsable de elaboración del DBC	:	Persona Dos	Responsable De Unidad De Contrataciones
+Responsable de Elaboración de Esp. Tecnicas /Term. de Referencia	:	Persona Tres	Responsable De Infraestructura Municipal I
+Responsable del Proceso de Contratacion	:	Persona Cuatro	Secretaria Municipal De Administracion Y Finanzas
+9. PROGRAMACIÓN DEL CRONOGRAMA DE ACTIVIDADES
+ 	Actividad	Fecha	Hora	Lugar
+1	Inicio del Proceso de Contratación (fecha fija)	12/10/2026		UNIDAD DE CONTRATACIONES (Edificio Municipal Km. 20 - Parte Trasera Planta Baja)
+2	Inspección previa (fecha fija)	13/10/2026	10:00	SECRETARIA MUNICIPAL DE OBRAS PÚBLICAS (Km. 20 carretera antigua a Cochabamba - Parte Trasera Planta Alta) - Distrito Nº 3 del Municipio de La Guardia.
+3	Consultas escritas (fecha fija)	14/10/2026	12:00	UNIDAD DE CONTRATACIONES (Edificio Municipal Km. 20 - Parte Trasera Planta Baja)
+4	Reunión de aclaración (fecha fija)	15/10/2026	14:30	SECRETARIA MUNICIPAL DE OBRAS PÚBLICAS (Edificio Municipal Km. 20 - Parte Trasera Planta alta)
+5	Aprobación del Documento Base de Contratación (fecha máxima)	20/10/2026		
+6	Presentación de propuestas/ofertas (fecha fija)	03/11/2026	10:00	ELECTRÓNICO A TRAVES DEL RUPE
+7	Inicio de Subasta	03/11/2026	10:10	ELECTRÓNICO
+8	Cierre de Subasta	03/11/2026	10:40	ELECTRÓNICO
+9	Apertura de Sobres (fecha fija)	03/11/2026	10:41	ELECTRÓNICO
+10	Adjudicación (fecha máxima)	12/11/2026		
+11	Presentación de documentos para firma de contrato (fecha máxima)	03/12/2026		
+12	Formalización del Proceso (fecha máxima)	21/12/2026		
+13	Entrega definitiva (fecha máxima)	30/06/2027		
+10. DOCUMENTOS PUBLICADOS
+N°	Tipo de documento	Datos de la publicación del archivo	Tamaño	Archivo
+Fecha	Responsable
+1	Documento Base de Contratacion	09/10/2026	usuario.placeholder	969 KB	descargar
+2	Planos	09/10/2026	usuario.placeholder	7.24 MB	descargar
+3	Convocatoria	09/10/2026	usuario.placeholder	1.81 MB	descargar
+11. DATOS DEL RESPONSABLE DE REGISTRO Y ENVÍO DE LA INFORMACIÓN
+Nombre completo
+Cargo
+ PERSONA CINCO	Responsable Unidad De Contrataciones
+Fecha de publicación	Medio de Envío
+09/10/2026 17:57:55	Internet

@@ -1,0 +1,98 @@
+1. IDENTIFICACIÓN DE LA ENTIDAD
+Código de la Entidad	Denominación de la Entidad	Fax	Teléfono
+ 0514 - 00	 EMPRESA NACIONAL DE ELECTRICIDAD - ENDE	 4520318	 4520317-2312865
+2. IDENTIFICACIÓN DE LA CONVOCATORIA
+CUCE	
+:
+26-0514-00-1695257-1-1
+Fecha de publicación (en el SICOES)	
+:
+08/10/2026
+Objeto de la Contratación	
+:
+“CONST. ELECTRIFICACIÓN RURAL DE LA PROVINCIA MENDEZ (TARIJA)”
+Datos de identificación del proceso	
+:
+Modalidad	Código de la entidad para identificar al proceso	Nro. de convocatoria
+Otras modalidades	BO-ENDE-568419-CW-RFB	1
+Subasta	
+:
+No
+Concesión Administrativa	
+:
+No
+3. DATOS GENERALES DE LA CONVOCATORIA
+Tipo de convocatoria	
+:
+Convocatoria Publica Nacional
+Forma de adjudicación	
+:
+Por el Total
+Normativa utilizada	
+:
+Normativa del Financiador (BM)
+Tipo de contratación	
+:
+Obras
+Método de selección y adjudicación	
+:
+Selección y adjudicación de precio evaluado más bajo (técnicamente evaluado más bajo-norma externa)
+Garantías solicitadas	
+:
+Garantia de cumplimiento de contrato
+Moneda considerada para el proceso	
+:
+Bolivianos
+Elaboración del DBC	
+:
+En base al modelo de DBC aprobado por el Órgano Rector o por el Organismo Financiador
+Bienes o servicios recurrentes con cargo a la siguiente gestión:	
+:
+No
+4. DETALLE DE BIENES, OBRAS, SERVICIOS GENERALES O DE CONSULTORIA REQUERIDOS
+#	Código del Catálogo	Objeto de Gasto	Descripción del bien o servicio	Unidad de Medida	Cantidad	Precio referencial unitario	Precio referencial total
+1	72141122	42230	Servicio de construcción de líneas de energía eléctrica
+Const. electrificación rural de la provincia mendez (tarija)	Global	1	31,946,876.91	31,946,876.91
+TOTAL: Treinta y uno millones novecientos cuarenta y seis mil ochocientos setenta y seis 91/100	31,946,876.91
+5. FUENTES Y ORGANISMOS FINANCIADORES
+#	Código	Descripción Fuente	Código	Descripción Organismo	% de participación
+1	43	Transferencias de Crédito Externo	412	Banco Internacional de Reconstrucción y Fomento	100
+6. PROYECTO/ACTIVIDAD
+Entidad	0514-EMPRESA NACIONAL DE ELECTRICIDAD - ENDE
+Dirección Administrativa	1-UNIDAD EJECUTORA INICIAL
+Nro	Proyecto/Actividad	Código SISIN	Descripción SISIN
+1	PROYECTO	05141035500000	CONST. ELECTRIFICACION RURAL DE LA PROVINCIA MENDEZ (TARIJA)
+7. PERSONAL DE LA ENTIDAD RELACIONADO CON EL PROCESO DE CONTRATACION
+ 	 	Nombre	Cargo
+Encargado de atender consultas	:	Persona Uno	Coordinador Tecnico De Redes
+Responsable de elaboración del DBC	:	Persona Dos	Especialista Adquisiciones
+Responsable de Elaboración de Esp. Tecnicas /Term. de Referencia	:	Persona Uno	Coordinador Tecnico De Redes
+Responsable del Proceso de Contratacion	:	Persona Tres	Responsable De Proceso De Contratacion
+8. PROGRAMACIÓN DEL CRONOGRAMA DE ACTIVIDADES
+ 	Actividad	Fecha	Hora	Lugar
+1	Inicio del Proceso de Contratación (fecha fija)	08/10/2026		OFICINA ENDE CORPORACION Calle Colombia N° O-655 casi esq. Falsuri, Cochabamba - Bolivia
+2	Inspección previa (fecha fija)	19/10/2026	11:00	19 de octubre a horas 11:00 a.m. en el ingreso a la Comunidad de Colorados Sud; cuyas coordenas UTM son X:309370.00 Y:7635888.00
+3	Consultas escritas (fecha fija)	21/10/2026	15:00	Correo electronico: proyecto@example.bo
+4	Reunión de aclaración (fecha fija)	23/10/2026	11:00	https://example.webex.com/meeting
+5	Aprobación del Documento Base de Contratación (fecha estimada)			
+6	Presentación de propuestas/ofertas (fecha fija)	06/11/2026	15:00	OFICINA ENDE CORPORACION Calle Colombia N° O-655 casi esq. Falsuri, Cochabamba - Bolivia
+7	Apertura de Sobres (fecha fija)	06/11/2026	15:30	OFICINA ENDE CORPORACION Calle Colombia N° O-655 casi esq. Falsuri, Cochabamba - Bolivia o en el link: https://example.webex.com/meeting2
+8	Adjudicación (fecha estimada)	14/12/2026		
+9	Presentación de documentos para firma de contrato (fecha estimada)	04/01/2027		
+10	Formalización del Proceso (fecha estimada)	02/02/2027		
+11	Entrega definitiva (fecha estimada)	02/02/2028		
+9. DOCUMENTOS PUBLICADOS
+N°	Tipo de documento	Datos de la publicación del archivo	Tamaño	Archivo
+Fecha	Responsable
+1	Especificaciones Tecnicas	09/10/2026	usuario.placeholder	15.09 MB	descargar
+2	Planos	08/10/2026	usuario.placeholder	4.42 MB	descargar
+3	Planos	08/10/2026	usuario.placeholder	611.6 KB	descargar
+4	Documento Base de Contratacion	08/10/2026	usuario.placeholder	319.5 KB	descargar
+5	Convocatoria	08/10/2026	usuario.placeholder	15.3 KB	descargar
+6	Especificaciones Tecnicas	08/10/2026	usuario.placeholder	7.32 MB	descargar
+10. DATOS DEL RESPONSABLE DE REGISTRO Y ENVÍO DE LA INFORMACIÓN
+Nombre completo
+Cargo
+ PERSONA CUATRO	Especialista De Adquisiciones
+Fecha de publicación	Medio de Envío
+09/10/2026 22:26:47	Internet

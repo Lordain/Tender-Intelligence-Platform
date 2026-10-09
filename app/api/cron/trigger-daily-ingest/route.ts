@@ -17,9 +17,11 @@ export const maxDuration = 30;
  * (vercel.json) and this route asks GitHub to start the workflow now (user,
  * 2026-10-04: 改成由 Vercel 定时去触发 GitHub ← OK).
  *
- *   ?pass=full   every job (11:00 UTC, Beijing evening)
- *   ?pass=light  everything but the search-engine push
- *                (21:00 UTC, Beijing morning) — see the workflow's header
+ *   ?pass=full      every job (11:00 UTC, Beijing evening)
+ *   ?pass=light     everything but the search-engine push
+ *                   (21:00 UTC, Beijing morning) — see the workflow's header
+ *   ?pass=colombia  Colombia (SECOP II) alone (03:00 UTC, Beijing 11:00),
+ *                   right after datos.gov.co's morning sync
  *
  * GITHUB_DISPATCH_TOKEN is a fine-grained token for this one repository with
  * "Actions: read and write" and nothing else: it can start, re-run and cancel
@@ -31,11 +33,17 @@ export const maxDuration = 30;
 const REPOSITORY = "Lordain/tender-intelligence-platform";
 const WORKFLOW = "daily-ingest.yml";
 
-type Pass = "full" | "light";
+type Pass = "full" | "light" | "colombia";
+
+const TRIGGERED: Record<Pass, string> = {
+  full: "已触发完整一轮",
+  light: "已触发早间一轮（不含搜索引擎推送）",
+  colombia: "已触发哥伦比亚加跑（北京时间 11:00）",
+};
 
 function passFor(request: NextRequest): Pass {
   const asked = new URL(request.url).searchParams.get("pass");
-  if (asked === "full" || asked === "light") return asked;
+  if (asked === "full" || asked === "light" || asked === "colombia") return asked;
   // No parameter: the evening slot (21:xx UTC) is the light one.
   return new Date().getUTCHours() >= 20 ? "light" : "full";
 }
@@ -77,7 +85,7 @@ async function trigger(request: NextRequest) {
     throw new Error(`GitHub 返回 HTTP ${response.status}${detail ? `：${detail}` : ""}`);
   }
 
-  await recordCronHeartbeat(admin, "trigger-daily-ingest", "ok", pass === "full" ? "已触发完整一轮" : "已触发早间一轮（不含状态刷新和搜索引擎推送）");
+  await recordCronHeartbeat(admin, "trigger-daily-ingest", "ok", TRIGGERED[pass]);
   return NextResponse.json({ dispatched: true, pass });
 }
 

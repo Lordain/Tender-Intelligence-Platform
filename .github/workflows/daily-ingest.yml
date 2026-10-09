@@ -68,6 +68,18 @@
 # already stored, ~15 minutes against sources that throttle; if one starts
 # refusing the second run, put `once_daily: true` back on that matrix entry.
 #
+# A THIRD PASS, COLOMBIA ONLY (2026-10-07; user: 现在按北京时间 11:00 加 ← OK).
+#
+#   pass=colombia  03:xx UTC  22:xx Bogotá, 11:xx Beijing   Colombia (SECOP II)
+#
+# datos.gov.co's mirror of SECOP II syncs once a day in Beijing's morning —
+# 08:47 on 2026-10-06, 10:04 on 2026-10-07 (rowsUpdatedAt of p6dx-8zbt) —
+# and until then the full pass picked that sync up only at 19:xx Beijing.
+# This pass reads it about eight hours sooner. Every other job is skipped
+# (matrix `colombia_pass`), and so is IndexNow, which stays on the full pass.
+# It has no fallback schedule: a day Vercel misses it, the full pass that
+# evening reads the same rows.
+#
 # The schedules below are the FALLBACK, an hour after each Vercel slot, for a
 # day the trigger fails (token expired, Vercel down) or before
 # GITHUB_DISPATCH_TOKEN is set. The gate job lets a scheduled run through
@@ -93,9 +105,9 @@ on:
         type: boolean
         default: false
       pass:
-        description: "full：全部任务；light：不跑搜索引擎推送"
+        description: "full：全部任务；light：不跑搜索引擎推送；colombia：只跑哥伦比亚（SECOP II）"
         type: choice
-        options: [full, light]
+        options: [full, light, colombia]
         default: full
       via:
         description: "谁触发的（Vercel 定时填 vercel；手动运行不用改）"
@@ -165,6 +177,8 @@ jobs:
         include:
           - name: Colombia (SECOP II)
             command: cron:colombia
+            # The only job the colombia pass runs (see the header).
+            colombia_pass: true
           - name: PEMEX
             command: cron:pemex
           - name: LicitIA (Compras MX)
@@ -296,9 +310,10 @@ jobs:
     name: ${{ matrix.name }}
     continue-on-error: ${{ matrix.optional == true }}
     env:
-      # True only for a once_daily job on the light pass; its steps are then
-      # skipped and the job shows as succeeded with nothing done.
-      SKIP: ${{ matrix.once_daily == true && needs.gate.outputs.pass == 'light' }}
+      # True for a once_daily job on the light pass, and for every job but
+      # Colombia (SECOP II) on the colombia pass; its steps are then skipped
+      # and the job shows as succeeded with nothing done.
+      SKIP: ${{ (matrix.once_daily == true && needs.gate.outputs.pass == 'light') || (needs.gate.outputs.pass == 'colombia' && matrix.colombia_pass != true) }}
     steps:
       - uses: actions/checkout@v7
         if: env.SKIP != 'true'

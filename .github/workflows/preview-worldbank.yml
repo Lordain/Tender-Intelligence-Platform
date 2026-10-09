@@ -1,0 +1,30 @@
+# One-off, read-only (user, 2026-10-09: 再跑一次只读预演 … OK): the World Bank
+# daily import as a dry run — reads the API and the stored rows, compares,
+# prints what would be written, writes nothing (no --write). Runs on a push of
+# this file to the dev branch only; removed again before anything is merged.
+name: Preview World Bank import
+
+on:
+  push:
+    branches: [claude/ai-tender-intelligence-platform-onfhq1]
+    paths: [.github/workflows/preview-worldbank.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Dry run (no --write)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run cron:worldbank

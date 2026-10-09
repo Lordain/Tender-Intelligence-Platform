@@ -3,6 +3,7 @@ import { AdminAnalyticsDashboard } from "@/components/admin/AdminAnalyticsDashbo
 import { INTERNAL_TRAFFIC_COOKIE } from "@/lib/analytics-internal";
 import { fetchAnalyticsDashboard, type TrafficScope } from "@/lib/db/analytics";
 import { fetchAcquisitionFunnel } from "@/lib/db/analytics-funnel";
+import { fetchUserActivity } from "@/lib/db/user-activity";
 
 export default async function AdminAnalyticsPage({
   searchParams,
@@ -14,15 +15,19 @@ export default async function AdminAnalyticsPage({
   const scope: TrafficScope = ["external", "internal", "all"].includes(params.scope ?? "")
     ? params.scope as TrafficScope
     : "external";
-  const [data, funnel, cookieStore] = await Promise.all([
+  const [data, funnel, userActivity, cookieStore] = await Promise.all([
     fetchAnalyticsDashboard(days, scope).catch(() => null),
     // Read on its own so a failure here never blanks the rest of the page.
     fetchAcquisitionFunnel(days).catch((error) => {
       console.error("Acquisition funnel failed", error);
       return null;
     }),
+    fetchUserActivity().catch((error) => {
+      console.error("User activity failed", error);
+      return null;
+    }),
     cookies(),
   ]);
   const internalDeviceMarked = cookieStore.get(INTERNAL_TRAFFIC_COOKIE)?.value === "1";
-  return <AdminAnalyticsDashboard data={data} selectedDays={days} trafficScope={scope} internalDeviceMarked={internalDeviceMarked} funnel={funnel} />;
+  return <AdminAnalyticsDashboard data={data} selectedDays={days} trafficScope={scope} internalDeviceMarked={internalDeviceMarked} funnel={funnel} userActivity={userActivity} />;
 }

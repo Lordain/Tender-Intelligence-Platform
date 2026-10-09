@@ -17,6 +17,7 @@ export type CronJobId =
   | "subscription-renewal-reminders"
   | "purge-stale-colombia"
   | "trigger-daily-ingest"
+  | "user-activity-digest"
   | "import-colombia"
   | "import-pemex"
   | "licitia-daily"
@@ -68,6 +69,8 @@ export const CRON_JOBS: CronJobSpec[] = [
   // A skipped heartbeat here (token not set) is healthy — GitHub's own
   // schedule still runs the imports, late.
   { id: "trigger-daily-ingest", label: "每日导入准点触发（Vercel → GitHub）", maxAgeHours: 30, runsOn: "vercel" },
+  // Once daily (01:12 UTC): emails the operators the registered users who visited.
+  { id: "user-activity-digest", label: "注册用户访问汇总邮件", maxAgeHours: 30, runsOn: "vercel" },
   // The ingestion jobs. Their heartbeats are the only thing standing between
   // "no new tenders this week" and "we stopped reading this source a week
   // ago" — from the feed itself the two are indistinguishable.

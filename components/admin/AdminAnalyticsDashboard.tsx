@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { UserActivitySection } from "@/components/admin/UserActivitySection";
+import type { UserActivity } from "@/lib/db/user-activity";
 import { AcquisitionFunnelSection } from "@/components/admin/AcquisitionFunnelSection";
 import { InternalTrafficControl } from "@/components/admin/InternalTrafficControl";
 import type { AcquisitionFunnel } from "@/lib/analytics-funnel";
@@ -108,12 +110,14 @@ export function AdminAnalyticsDashboard({
   trafficScope,
   internalDeviceMarked,
   funnel,
+  userActivity,
 }: {
   data: AnalyticsDashboardData | null;
   selectedDays: number;
   trafficScope: TrafficScope;
   internalDeviceMarked: boolean;
   funnel: AcquisitionFunnel | null;
+  userActivity: UserActivity | null;
 }) {
   const trackingReady = data !== null;
   const dashboard: AnalyticsDashboardData = data ?? {
@@ -177,6 +181,8 @@ export function AdminAnalyticsDashboard({
       </section>
 
       <AcquisitionFunnelSection funnel={funnel} selectedDays={selectedDays} />
+
+      <UserActivitySection activity={userActivity} />
 
       <section className="rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">

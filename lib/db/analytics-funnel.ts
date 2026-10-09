@@ -38,9 +38,9 @@ async function readExternalPageViews(supabase: AdminClient, since: string): Prom
   return { rows, truncated: true };
 }
 
-type AccountRow = { id: string; email: string | null; createdAt: string };
+export type AccountRow = { id: string; email: string | null; createdAt: string };
 
-async function readAccounts(supabase: AdminClient): Promise<AccountRow[]> {
+export async function readAccounts(supabase: AdminClient): Promise<AccountRow[]> {
   const accounts: AccountRow[] = [];
   for (let page = 1; ; page += 1) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: PAGE_SIZE });
@@ -72,7 +72,7 @@ async function excludedFromStats(supabase: AdminClient): Promise<Set<string>> {
   return new Set(((data ?? []) as Array<{ id: string }>).map((row) => row.id));
 }
 
-async function ownAccountIds(supabase: AdminClient, candidates: AccountRow[]): Promise<Set<string>> {
+export async function ownAccountIds(supabase: AdminClient, candidates: AccountRow[]): Promise<Set<string>> {
   const own = new Set<string>();
   const unknown: string[] = [];
   const excluded = await excludedFromStats(supabase);

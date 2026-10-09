@@ -50,7 +50,9 @@ export default async function Home() {
   // and nowhere else. /tenders, every detail page and every other card stay on
   // publicTitleOf.
   const featuredWithPreviews = featured.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { includeAnalysisPreview: true, showOneLineSummary: true, shopfront: true }));
-  const tickerWithPreviews = ticker.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { shopfront: true }));
+  // The scrolling strip carries the visitor title instead (2026-10-09, the
+  // user: 滚动项目标题改成精简版 → 改用访客版短标题); its exact deadline stays.
+  const tickerWithPreviews = ticker.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { shopfront: true, publicTitle: true }));
 
   return (
     <div className="flex flex-col">

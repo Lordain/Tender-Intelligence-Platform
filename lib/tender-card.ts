@@ -130,9 +130,21 @@ function topRisk(risks: readonly TenderRisk[]): PreviewItem | undefined {
  */
 export function toTenderCardData(
   tender: Tender,
-  options: { memberView?: boolean; includeAnalysisPreview?: boolean; shopfront?: boolean; showOneLineSummary?: boolean } = {},
+  options: { memberView?: boolean; includeAnalysisPreview?: boolean; shopfront?: boolean; showOneLineSummary?: boolean; publicTitle?: boolean } = {},
 ): TenderCardData {
   const memberView = options.memberView ?? false;
+  /**
+   * Forces the visitor title (publicTitleOf) even on a shopfront card, and
+   * changes nothing else — the exact deadline stays. Used by the homepage's
+   * scrolling strip (2026-10-09, the user: 滚动项目标题改成精简版 → 改用访客版
+   * 短标题), where a row has one or two lines and 墨西哥 斜拉桥建设工程（交通）
+   * reads at a glance.
+   *
+   * A separate option, against the one-flag rule below, because it can only
+   * withhold: it swaps a member-shaped title for the public one and opens
+   * nothing. Passed inconsistently, it fails safe.
+   */
+  const forcePublicTitle = options.publicTitle ?? false;
   /**
    * The homepage shopfront exception: show this card the way a member sees
    * it — the condensed title that keeps the place name, and the exact
@@ -208,7 +220,7 @@ export function toTenderCardData(
     // screens and for regenerating this, and the original-language line below
     // is what actually matches the official documents anyway.
     titleZh: hasRealTranslation
-      ? (shopfront ? shortTitleOf(tender) : publicTitleOf(tender))
+      ? (shopfront && !forcePublicTitle ? shortTitleOf(tender) : publicTitleOf(tender))
       : memberView ? `${tender.buyer}采购项目` : "政府采购项目",
     ...(memberView && hasRealTranslation ? { titleOriginal: tender.title.es } : {}),
     // The guest branch reads the generated public summary and does NOT fall

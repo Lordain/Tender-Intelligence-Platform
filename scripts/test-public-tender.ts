@@ -296,6 +296,18 @@ if (shopfrontCard.titleOriginal !== undefined || shopfrontCard.buyer !== undefin
 if (shopfrontCard.estimatedValueBand !== "$1M – $5M USD") {
   throw new Error("首页卡片的金额仍应按区间脱敏");
 }
+// The scrolling strip (2026-10-09) takes the visitor title back and keeps
+// the shopfront's exact deadline; it withholds, it opens nothing.
+const tickerCard = toTenderCardData(fullTender, { shopfront: true, publicTitle: true });
+if (tickerCard.titleZh !== "墨西哥 变电站扩建工程（输配电）") {
+  throw new Error("首页滚动栏应显示访客版短标题");
+}
+if (tickerCard.submissionDeadline !== "2026-10-01T00:00:00.000Z") {
+  throw new Error("首页滚动栏仍应显示完整的交标日期");
+}
+if (JSON.stringify(tickerCard).includes("SECRET_PLACE_NAME")) {
+  throw new Error("首页滚动栏不应带出订阅用户标题里的地名");
+}
 // Every other card keeps month precision — the exception is one route, not a
 // new default.
 if (guestCard.submissionDeadline !== "2026-10") {

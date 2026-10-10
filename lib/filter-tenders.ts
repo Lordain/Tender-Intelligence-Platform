@@ -1,6 +1,7 @@
 import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { orderIndustryShowcase } from "@/lib/industry-showcase";
 import { calendarDateBucket, interleaveCountriesWithinEqualGroups } from "@/lib/country-interleave";
+import { compileSearchQuery, foldSearchText, type FoldedText } from "@/lib/search-match";
 
 export type TenderFilterOptions = {
   query?: string;
@@ -50,7 +51,8 @@ export function filterTenders(
     includeExcluded,
   }: TenderFilterOptions,
 ): Tender[] {
-  const normalizedQuery = query?.trim().toLowerCase();
+  // Every word, any order, accents and punctuation folded — lib/search-match.ts.
+  const matchesQuery = compileSearchQuery(query);
 
   return allTenders.filter((tender) => {
     if (!includeExcluded && tender.relevance.tier === "excluded") return false;
@@ -74,14 +76,25 @@ export function filterTenders(
       return false;
     }
 
-    if (normalizedQuery) {
+    if (matchesQuery) {
       const scope = searchPublicFieldsOnly && !fullSearchCountries?.includes(tender.country) ? "public" : "full";
-      const haystack = tenderSearchText(tender, scope);
-      if (!haystack.includes(normalizedQuery)) return false;
+      if (!matchesQuery(foldedSearchText(tender, scope))) return false;
     }
 
     return true;
   });
+}
+
+// Folding a row's text is the costly part of a search; the saved-search
+// alert run asks it of the same rows once per saved search.
+const foldedCache = new WeakMap<Tender, { full?: FoldedText; public?: FoldedText }>();
+function foldedSearchText(tender: Tender, scope: "full" | "public"): FoldedText {
+  let entry = foldedCache.get(tender);
+  if (!entry) {
+    entry = {};
+    foldedCache.set(tender, entry);
+  }
+  return (entry[scope] ??= foldSearchText(tenderSearchText(tender, scope)));
 }
 
 /**

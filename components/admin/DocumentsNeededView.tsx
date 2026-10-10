@@ -7,6 +7,7 @@ import type { TenderNeedingDocuments } from "@/types/tender";
 import { useUser } from "@/lib/auth";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
+import { compileSearchQuery, foldSearchText } from "@/lib/search-match";
 import { countryLabel, RELEVANCE_TIER_LABELS, STATUS_LABELS, STATUS_COLORS } from "@/lib/tender-labels";
 import { BatchAnalyzeDocumentForm, MAX_BATCH_SELECTION } from "@/components/admin/BatchAnalyzeDocumentForm";
 import { BatchDownloadDocumentsButton } from "@/components/admin/BatchDownloadDocumentsButton";
@@ -188,15 +189,16 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
   const downloadableCount = useMemo(() => tenders.filter((tender) => tender.documentLinkCount > 0).length, [tenders]);
   const pendingDownloadCount = useMemo(() => tenders.filter((tender) => !tender.documentsDownloadedAt).length, [tenders]);
 
+  // Same matching as /tenders (lib/search-match.ts), folded once per load.
+  const searchText = useMemo(
+    () => new Map(tenders.map((tender) => [tender.slug, foldSearchText([localize(tender.title, locale), tender.title.es, tender.tenderNumber, tender.slug].join(" "))])),
+    [locale, tenders],
+  );
+
   const filtered = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const matchesSearch = compileSearchQuery(query);
     return tenders.filter((tender) => {
-      const matchesQuery =
-        !normalizedQuery ||
-        localize(tender.title, locale).toLowerCase().includes(normalizedQuery) ||
-        tender.title.es.toLowerCase().includes(normalizedQuery) ||
-        tender.tenderNumber.toLowerCase().includes(normalizedQuery) ||
-        tender.slug.toLowerCase().includes(normalizedQuery);
+      const matchesQuery = !matchesSearch || matchesSearch(searchText.get(tender.slug)!);
       const matchesCountry = country === "all" || tender.country === country;
       const matchesRelevance = relevance === "all" || tender.relevanceTier === relevance;
       const matchesSource = source === "all" || tender.sourceName === source;
@@ -204,7 +206,7 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
       const matchesPending = !pendingDownloadOnly || !tender.documentsDownloadedAt;
       return matchesQuery && matchesCountry && matchesRelevance && matchesSource && matchesDownloadable && matchesPending;
     });
-  }, [country, downloadableOnly, locale, pendingDownloadOnly, query, relevance, source, tenders]);
+  }, [country, downloadableOnly, pendingDownloadOnly, query, relevance, searchText, source, tenders]);
 
   const priorityCount = tenders.filter((tender) => tender.relevanceTier === "flagship" || tender.relevanceTier === "significant").length;
   const hasFilters = Boolean(query.trim()) || country !== "all" || relevance !== "all" || source !== "all" || downloadableOnly || pendingDownloadOnly;

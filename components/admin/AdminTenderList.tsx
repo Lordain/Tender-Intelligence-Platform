@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { AdminTenderListRow } from "@/lib/db/tenders";
 import type { TenderRelevanceTier, TenderStatus } from "@/types/tender";
 import { formatDate, formatEstimatedValueUsd } from "@/lib/format";
+import { compileSearchQuery, foldSearchText } from "@/lib/search-match";
 import {
   countryLabel,
   RELEVANCE_TIER_COLORS,
@@ -140,19 +141,18 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     });
   }
 
+  // Folded once per load, not per keystroke — the same matching as /tenders
+  // (lib/search-match.ts). See AdminTenderListRow.searchSummary for why the
+  // summary is searched here at all.
+  const searchText = useMemo(
+    () => new Map(tenders.map((tender) => [tender.slug, foldSearchText([tender.title.zh, tender.title.es, tender.buyer, tender.slug, tender.tenderNumber, tender.searchSummary].join(" "))])),
+    [tenders],
+  );
+
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const matchesSearch = compileSearchQuery(query);
     return tenders.filter((tender) => {
-      const matchesQuery =
-        !q ||
-        tender.title.zh.toLowerCase().includes(q) ||
-        tender.title.es.toLowerCase().includes(q) ||
-        tender.buyer.toLowerCase().includes(q) ||
-        tender.slug.toLowerCase().includes(q) ||
-        tender.tenderNumber.toLowerCase().includes(q) ||
-        // Already lowercased server-side — see AdminTenderListRow.searchSummary
-        // for why the summary is searched here at all.
-        tender.searchSummary.includes(q);
+      const matchesQuery = !matchesSearch || matchesSearch(searchText.get(tender.slug)!);
       const matchesCountry = country === "all" || tender.country === country;
       const matchesStatus = status === "all" || tender.status === status;
       const matchesRelevance =
@@ -179,7 +179,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
 
       return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
     });
-  }, [analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, relevance, status, tenders]);
+  }, [analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, relevance, searchText, status, tenders]);
 
   // Changing any filter drops the selection. Without this the red bar
   // survives a filter change still holding rows that are no longer on screen:

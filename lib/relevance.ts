@@ -60,6 +60,15 @@ export const INSURANCE_PURCHASE_TITLE = new RegExp(
     String.raw`\bseguros?\s+(?:de\s+)?(?:vida|personales|patrimoniales|generales|vehiculares?|multirriesgos?|de\s+accidentes|de\s+responsabilidad civil|de\s+deshonestidad|complementario de trabajo de riesgo)\b`,
     String.raw`\briesgos humanos\b`,
     String.raw`\b(?:adquisicion|contratacion|compra)\s+(?:del?\s+)?soat\b`,
+    // 2026-10-10 (user: 排除): "PROGRAMA INTEGRAL DE SEGUROS DEL TREN
+    // INTERURBANO MÉXICO-TOLUCA" — insurance for a railway, not the railway.
+    String.raw`\bprograma\s+integral\s+de\s+seguros?\b`,
+    // Same round: "Contratar el servicio de fiducia mercantil … patrimonio
+    // autónomo para el recaudo, administración, inversión, giro y pago". A
+    // trust service is a financial product like a policy. Title only, as for
+    // everything here: a concession's summary can require the concessionaire
+    // to set up a fiducia, and that must not take the concession with it.
+    String.raw`\b(?:servicios?|contratar|contratacion|contrato)\s+(?:de\s+)?(?:el\s+servicio\s+de\s+|una\s+|la\s+)?fiducia\b`,
     // Portuguese and English titles
     String.raw`\bcontratacao de (?:empresa (?:especializada )?(?:em|para) (?:(?:a )?prestacao de servicos de )?)?seguros?\b`,
     String.raw`\bseguros?\s+(?:de\s+)?(?:vida|veiculos|veicular|frota|patrimonial|predial|automotivo|responsabilidade civil)\b`,
@@ -682,6 +691,21 @@ const EXCLUDE_KEYWORDS = [
   // MAJOR_PROJECT bridge rule already refused to promote them, but the
   // "construcción" industry whitelist was still keeping them.
   /puentes? peatonal(es)?/i,
+
+  // ---- 2026-10-10, user: 排除 — four kept rows, each slipping past an
+  // existing rule by one word. ----
+
+  // "PRESTAR EL SERVICIO INTEGRAL DE VIGILANCIA PARA LAS SEDES DEL IDEAM":
+  // guarding, with "integral" between the words the older rule needs. The
+  // space before "vigilancia" keeps "videovigilancia" (equipment, kept) out.
+  /servicios?\s+integral(es)?\s+de\s+vigilancia\b/i,
+  // The other two rows of this round — an insurance programme and a trust
+  // (fiducia) service — are in INSURANCE_PURCHASE_TITLE, which reads the
+  // title alone.
+  // "SUMINISTRO E INSTALACIÓN DE MOBILIARIO; EQUIPOS DE CÓMPUTO; ELEMENTOS;
+  // ACCESORIOS Y DISPOSITIVOS TECNOLÓGICOS" — office fit-out. Only furniture
+  // and computers together; either alone is left to the other rules.
+  /mobiliario[^.]{0,40}equipos?\s+de\s+c[óo]mputo|equipos?\s+de\s+c[óo]mputo[^.]{0,40}mobiliario/i,
 
   // Single-unit vehicle purchases moved out to SINGLE_VEHICLE_PURCHASE
   // (2026-09-25), because they now yield to a disclosed amount and nothing in

@@ -7,6 +7,7 @@ import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
 import { classifyGuyanaRelevance, guyanaFactsFromStoredFields, guyanaIndustries, GUYANA_SOURCE_NAME } from "@/lib/relevance-guyana";
 import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-codelco";
+import { classifyChileConcesionRelevance, CHILE_CONCESIONES_SOURCE_NAME } from "@/lib/relevance-chile-concesiones";
 import { classifyMetroSantiagoRelevance } from "@/lib/relevance-metro-santiago";
 import { METRO_SANTIAGO_PREVIEW_SOURCE_NAME } from "@/lib/upcoming-tenders";
 import { classifyCemigRelevance, CEMIG_SOURCE_NAME } from "@/lib/relevance-cemig";
@@ -4460,6 +4461,17 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
     return {
       industries: withMining,
       relevance: classifyCodelcoRelevance({ title: input.title, procedureType: input.procedureType, scopeType: input.scopeType }),
+    };
+  }
+  // Chile's public-works concessions (MOP DGC): own rules, see
+  // lib/relevance-chile-concesiones.ts — two Mercado Público title rules
+  // read "Concesión …" and a concession's upkeep clause as routine service.
+  // Every row is a works concession, so it is filed under 基建 as well.
+  if (input.sourceName === CHILE_CONCESIONES_SOURCE_NAME) {
+    const withConstruction: typeof industries = [...new Set([...industries.filter((tag) => tag !== "general"), "construction" as const])];
+    return {
+      industries: withConstruction,
+      relevance: classifyChileConcesionRelevance({ title: input.title, estimatedValue: input.estimatedValue, currency: input.currency }),
     };
   }
   // Metro de Santiago's announced tenders: own rules, see

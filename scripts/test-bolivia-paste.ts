@@ -124,7 +124,8 @@ async function main() {
   const written = await importBoliviaPaste(db.client, `${guardia}\n${ende}`, { write: true, now: NOW, keep: { "26-1704-00-1694954-1-1": "standard" } });
   check("手动保留 + 规则保留 → 写入 2 条", written.written, 2);
   check("写入的国家", db.tenders.map((row) => row.country), ["Bolivia", "Bolivia"]);
-  check("玻利维亚未公开", isStagedCountry("Bolivia"), true);
+  // Opened to visitors 2026-10-10 (user: 前台+后台+全站文字都开通Bolivia).
+  check("玻利维亚已公开", isStagedCountry("Bolivia"), false);
   let message = "";
   try {
     await importBoliviaPaste(null, "Se han encontrado 64980 registros", { write: false });

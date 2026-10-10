@@ -13,8 +13,9 @@
  *     (the 世界银行 tab), never written by the job;
  *   - the rest written through upsertTendersBatched(), every filter included.
  *
- * Bolivia is staged (lib/staged-countries.ts), so its rows stay in the admin
- * pages; the other countries' rows are public like any import's.
+ * Guyana is staged (lib/staged-countries.ts), so its rows stay in the admin
+ * pages; the other countries' rows, Bolivia's since 2026-10-10, are public
+ * like any import's.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";

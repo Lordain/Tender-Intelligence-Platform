@@ -26,6 +26,7 @@ const countries = [
   ["多米尼加", "/countries/dominican-republic"],
   ["巴拿马", "/countries/panama"],
   ["厄瓜多尔", "/countries/ecuador"],
+  ["玻利维亚", "/countries/bolivia"],
 ] as const;
 
 const headingClass = "text-xs font-black uppercase tracking-[0.15em] text-[#ffb21c]";
@@ -44,9 +45,11 @@ export function Footer() {
           {/* Tighter than before (gap-2, px-3) so the six countries stay on one line from 360px phones up (2026-09-29, 阿根廷 added).
               Seven (2026-10-04, 多米尼加) need ~430px and the column is 320–384px, so they no longer fit one line at any
               width; rather than leave 多米尼加 alone on a second line, the row breaks after the fourth: 4 + 3 everywhere.
-              Nine (2026-10-06, 巴拿马 and 厄瓜多尔) break after the fifth: 5 + 4, each line under 300px.
+              Nine (2026-10-06, 巴拿马 and 厄瓜多尔) break after the fifth: 5 + 4, each line under 300px;
+              ten (2026-10-10, 玻利维亚) the same, 5 + 5: the second line is ~314px at 360, so the gap between pills
+              is 2px below sm (it was 4px, which pushed 玻利维亚 onto a third line of its own).
               No row gap: the break item's own height is the space between the lines, the same as the gap between pills. */}
-          <ul className="mt-5 flex flex-wrap gap-x-1 sm:gap-x-1.5" aria-label="覆盖国家">
+          <ul className="mt-5 flex flex-wrap gap-x-0.5 sm:gap-x-1.5" aria-label="覆盖国家">
             {countries.map(([label, href], index) => (
               <Fragment key={href}>
                 {index === 5 && <li aria-hidden="true" className="h-1 basis-full sm:h-1.5" />}

@@ -4,6 +4,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { importBoliviaPaste } from "@/lib/ingestion/import-bolivia-paste";
 import { BOLIVIA_KEEP_TIERS, type BoliviaKeepTier } from "@/lib/ingestion/bolivia-paste-result";
 import { logAdminAlert } from "@/lib/admin-alerts";
+import { markManualTaskDone } from "@/lib/ops/manual-tasks";
+import { revalidateTenders } from "@/lib/cache-tags";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 
 /**
@@ -11,8 +13,8 @@ import { PasteInputError } from "@/lib/ingestion/paste-input-error";
  * the text is what the admin copied from SICOES in their own browser. See
  * lib/ingestion/import-bolivia-paste.ts.
  *
- * Bolivia is staged (lib/staged-countries.ts): a write lands in the admin
- * pages only, so there is no public cache to drop yet.
+ * Bolivia opened 2026-10-10, so a write drops the public list's cache like
+ * every other country's import.
  */
 const MAX_TEXT = 300_000;
 
@@ -31,7 +33,13 @@ export async function POST(request: Request) {
   if (body.write === true && !supabase) return NextResponse.json({ error: "Supabase isn't configured." }, { status: 500 });
 
   try {
-    return NextResponse.json(await importBoliviaPaste(supabase, text, { write: body.write === true, keep }));
+    const result = await importBoliviaPaste(supabase, text, { write: body.write === true, keep });
+    if (body.write === true) {
+      // The public list is cached; drop it so this import shows up now.
+      revalidateTenders();
+      await markManualTaskDone(supabase, "bolivia-sicoes", `粘贴 ${result.rows.length} 个项目，写入 ${result.written ?? 0} 条`);
+    }
+    return NextResponse.json(result);
   } catch (err) {
     if (body.write === true && !(err instanceof PasteInputError)) await logAdminAlert(supabase, "import-bolivia-paste", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 });

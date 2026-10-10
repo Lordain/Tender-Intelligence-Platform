@@ -3,7 +3,7 @@ import { participationGuides } from "@/lib/participation-guides";
 
 /**
  * The country landing pages (/countries/mexico …), one per open country
- * (2026-09-25; Argentina added 2026-09-29, the Dominican Republic 2026-10-04, Panama and Ecuador 2026-10-06). They exist for search: /tenders?country=Mexico
+ * (2026-09-25; Argentina added 2026-09-29, the Dominican Republic 2026-10-04, Panama and Ecuador 2026-10-06, Bolivia 2026-10-10). They exist for search: /tenders?country=Mexico
  * declares /tenders as its canonical, so until now nothing on the site could
  * rank for 墨西哥招标 or 巴西政府采购 on its own — every filtered view signed
  * itself away to the one list page.
@@ -74,6 +74,12 @@ export const countryPages: CountryPage[] = [
     country: "Ecuador",
     intro: "厄瓜多尔的政府采购统一在国家公共采购局（SERCOP）管理的 SOCE 系统发布，本平台收录其中金额较大的公开招标。厄瓜多尔以美元计价。",
     sources: ["SOCE（SERCOP）"],
+  },
+  {
+    slug: "bolivia",
+    country: "Bolivia",
+    intro: "玻利维亚的政府采购统一在经济财政部管理的国家采购信息系统 SICOES 发布，本平台收录其中金额较大的公开招标，以及世界银行出资项目的招标公告。玻利维亚以玻利维亚诺（Bs）计价，平台按市场汇率换算成美元。",
+    sources: ["SICOES（经济财政部）", "世界银行采购公告"],
   },
 ];
 

@@ -48,7 +48,7 @@ export function ImportBoliviaPasteForm() {
       setError("请先粘贴 SICOES 项目详情页（Ver Ficha）的内容。");
       return;
     }
-    if (write && !confirm("确定要把这些玻利维亚项目写入数据库吗？（玻利维亚未公开，只在后台可见）")) return;
+    if (write && !confirm("确定要把这些玻利维亚项目写入数据库吗？")) return;
     setSubmitting(write ? "write" : "preview");
     setError(null);
     try {

@@ -53,7 +53,7 @@ function parseList(param: string | null): string[] {
  * shows before 「+2」 are 阿根廷 rather than 智利. Only the trigger: the menu
  * keeps AVAILABLE_COUNTRIES' order.
  */
-const COUNTRY_TRIGGER_ORDER = ["Mexico", "Brazil", "Colombia", "Peru", "Argentina", "Chile", "Dominican Republic", "Panama", "Ecuador"];
+const COUNTRY_TRIGGER_ORDER = ["Mexico", "Brazil", "Colombia", "Peru", "Argentina", "Chile", "Dominican Republic", "Panama", "Ecuador", "Bolivia"];
 
 function triggerOrder(countries: string[]): string[] {
   const rank = (country: string) => {
@@ -412,7 +412,7 @@ export function TenderExplorer({
               // The seventh country (多米尼加, 2026-10-04) must not widen the
               // trigger (国家/地区就不再做宽了，保持现在的宽度): it spells out five
               // and folds the rest into 「+2」 (「+4」 since 巴拿马 and 厄瓜多尔,
-              // 2026-10-06), and fits that content rather
+              // 2026-10-06; 「+5」 since 玻利维亚, 2026-10-10), and fits that content rather
               // than holding the old six-name width, which left a gap before
               // the arrow (user, 2026-10-05: 留白太多). The five shown are
               // 阿根廷 rather than 智利 (把可视从智利改成阿根廷).

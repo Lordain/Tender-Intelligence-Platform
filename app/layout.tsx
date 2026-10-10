@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   // resolve against whatever host served the page — including preview hosts.
   metadataBase: new URL(siteOrigin()),
   title: {
-    default: "拉美招投标信息平台 | 中国企业出海墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔",
+    default: "拉美招投标信息平台 | 中国企业出海墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔、玻利维亚",
     // Every page below sets a short, page-specific title; this keeps the
     // brand on the end of it so search results stay attributable without
     // each page repeating it.
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     siteName: "拉美招投标信息平台",
     locale: "zh_CN",
     url: siteOrigin(),
-    title: "拉美招投标信息平台 | 中国企业出海墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔",
+    title: "拉美招投标信息平台 | 中国企业出海墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔、玻利维亚",
     description:
       SITE_DESCRIPTION,
   },
@@ -94,6 +94,7 @@ export const metadata: Metadata = {
     "多米尼加招标",
     "巴拿马招标",
     "厄瓜多尔招标",
+    "玻利维亚招标",
     "LatinTender",
   ],
   // Search-console ownership tags, read from the environment so a code for
@@ -104,7 +105,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "拉美招投标信息平台",
-    description: "拉美政府及国有石油、电力、矿业公司招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔等国，汇集 20 多个官方采购平台，人工精筛，剔除小额和日常项目。",
+    description: "拉美政府及国有石油、电力、矿业公司招标采购信息，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔、玻利维亚等国，汇集 20 多个官方采购平台，人工精筛，剔除小额和日常项目。",
   },
   // NO `alternates` here, deliberately. Metadata fields are inherited WHOLE by
   // any route that does not set its own (Next's own docs: "All openGraph

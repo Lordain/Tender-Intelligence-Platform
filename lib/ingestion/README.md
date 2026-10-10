@@ -9109,3 +9109,23 @@ So the admin picks procedures from SOCE's results by amount, opens each page, an
 - **Times:** UTC-5. Amounts are US$, before VAT.
 - **Personal data:** the page's 「Funcionario encargado del proceso」 e-mail is dropped.
 - **Tests:** `npm run test:ecuador-paste`.
+
+## Chile: MOP public-works concessions (2026-10-10)
+
+Added after the 11-country source review (user: 智利 MOP 特许经营 OK). Concessions are tendered under the Ley de Concesiones (DS MOP 900), not Ley 19.886, so none reach Mercado Público. The MOP's Dirección General de Concesiones lists them at concesiones.mop.gob.cl → Proyectos en Licitación: a list page, then one project page each with a Ficha (Presupuesto oficial, Fecha de Llamado, Recepción de Ofertas, Apertura Económica) and a document table. Plain HTML; it answers the platform's own User-Agent.
+
+- **Connector and mapper:** `connectors/chile-concesiones-live.ts`, `chile-concesiones-mapper.ts`. The budget is stored as written: UF when the page gives UF (also when it gives US$ beside it), else US$. The bid date is 23:59 in Santiago. The list of companies that bought the bases is not kept as a document.
+- **Rules:** `lib/relevance-chile-concesiones.ts`. Two Mercado Público title rules misread this source: CHILE_SERVICE_TITLE excluded "Segunda Concesión Ruta 5 …" (US$ 1.1bn) as a municipal service concession, and the upkeep words in a concession's description excluded the Calama prison. The source's own rules keep what the general ones are for: advisory, study and inspection contracts are excluded, and so is a budget under US$ 1M. A budget of US$ 10M or more is 大型. Mercado Público's rule is unchanged for every other source (`npm run test:chile-concesiones`).
+- **Daily job:** `npm run cron:chile-concesiones`, heartbeat `import-chile-concesiones`, the 3-day publication window. On 2026-10-10 the page listed 6 projects. Four were still before their offer date, all 大型: Ruta 5 Collipulli–Temuco (UF 26.5M), Accesos a Valdivia (UF 14.8M), Teleférico Alto Hospicio–Iquique (UF 3.25M) and Centro Penitenciario de Calama (UF 8.7M). All were published months earlier, so they need a one-off `--days 0 --write`.
+
+## Peru: ProInversión APP concursos (2026-10-10)
+
+Added after the same review (user: 秘鲁 APP 项目库 OK). The site is investinperu.pe, the same host as OxI.
+
+- **Portfolio:** `projectappService.php`, a multipart POST, 10 projects a page. On 2026-10-10 it held 88 projects, each with its phase and estimated award quarter.
+- **Call date:** for a project in Transacción, its detail page's Cronograma gives the call date (Convocatoria / DI). Only that block is read: the page also names the project director with an e-mail address, and that is not kept.
+- **What is imported:** on 2026-10-10 all six projects in Transacción had been called, between March 2025 and April 2026. They are concursos under way, so they are stored as 招标中, not as 即将招标 previews.
+- **Deadline:** none is stored, because the bases and circulars set it. The summary says so.
+- **Rules:** the general rules. Transmission groups 2, 3 and 4, Choquequirao and Obras de Cabecera were 大型. The Sullana hospital O&M concession was excluded as upkeep.
+- **Status:** a written run marks stored rows 已中标 once the portfolio says Adjudicado.
+- **Commands:** `npm run cron:peru-app`, heartbeat `import-peru-app`, the 3-day window counted from the call date, and a one-off `--days 0 --write` for the six already called. Tests: `npm run test:peru-app`.

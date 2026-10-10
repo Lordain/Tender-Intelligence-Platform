@@ -2416,8 +2416,9 @@ const SIGNIFICANT_VALUE_USD = 5_000_000;
  * US$30M, 中型 from US$10M, 常规 below. MAJOR_PROJECT_KEYWORDS (carretera,
  * puente, puerto, aeropuerto, ferrocarril…), long duration and the include
  * overrides no longer lift such a row above what its amount says — a
- * "CONSTRUCCIÓN DE PUENTE" at US$3M is 常规, not 大型. With NO amount the
- * rules are unchanged.
+ * "CONSTRUCCIÓN DE PUENTE" at US$3M is 常规, not 大型. With NO amount such a
+ * row reaches 中型 at most (same day: B. 没金额最多算中型) — whatever would
+ * have made it 大型 makes it 中型 instead.
  *
  * A row also tagged with any other target industry (power, ICT, energy…)
  * keeps the platform-wide bands above, so a substation or a power
@@ -3997,7 +3998,8 @@ export function classifyRelevance(input: {
   // Transport / civil works / water with a disclosed amount: the amount alone decides
   // 大型 and 中型 — see TRANSPORT_WORKS_FLAGSHIP_VALUE_USD. Below the 中型 floor
   // it skips every promotion below and lands where an unpromoted row does.
-  const transportWorksByValue = normalizedValue !== undefined && isTransportWorksOnly(input.industries);
+  const transportWorksOnly = isTransportWorksOnly(input.industries);
+  const transportWorksByValue = normalizedValue !== undefined && transportWorksOnly;
   if (transportWorksByValue && normalizedValue >= TRANSPORT_WORKS_FLAGSHIP_VALUE_USD) {
     return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
   }
@@ -4076,6 +4078,14 @@ export function classifyRelevance(input: {
       !isEquipmentScaleCapped &&
       !OVERRIDE_NOT_FLAGSHIP.some((pattern) => pattern.test(haystack))))
   ) {
+    // Transport / civil works / water with NO amount: a keyword, a long
+    // duration or a priority-project listing says what kind of work it is,
+    // never how big — so it reaches 中型 at most (user, 2026-10-10: B. 没金额
+    // 最多算中型). 38 of the 82 live 大型 rows in these industries were this
+    // case, nearly all Proyectos Estratégicos without a published amount.
+    if (transportWorksOnly) {
+      return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
+    }
     return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
   }
 

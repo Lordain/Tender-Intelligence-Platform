@@ -696,8 +696,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   // --- Flagship: real MAJOR_PROJECT_KEYWORDS matches ---
   {
     title: "CONSTRUCCIÓN DE PRESA Y RED DE RIEGO",
-    expectedTier: "flagship",
-    note: "Dam construction — MAJOR_PROJECT_KEYWORDS 建水库/水坝.",
+    expectedTier: "significant",
+    note: "Dam construction — MAJOR_PROJECT_KEYWORDS 建水库/水坝. 2026-10-10: no amount disclosed, so 中型 at most for transport/works/water (user: B. 没金额最多算中型).",
     industries: ["construction"],
     scopeType: "works",
   },
@@ -710,8 +710,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "AMPLIACIÓN DE AEROPUERTO INTERNACIONAL",
-    expectedTier: "flagship",
-    note: "Airport expansion — MAJOR_PROJECT_KEYWORDS 建机场.",
+    expectedTier: "significant",
+    note: "Airport expansion — MAJOR_PROJECT_KEYWORDS 建机场. 2026-10-10: no amount disclosed, so 中型 at most for transport/works/water (user: B. 没金额最多算中型).",
     industries: ["construction"],
     scopeType: "works",
   },

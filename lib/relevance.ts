@@ -2406,6 +2406,36 @@ const FLAGSHIP_VALUE_USD = 10_000_000;
 const SIGNIFICANT_VALUE_USD = 5_000_000;
 
 /**
+ * Transport and civil works only (user, 2026-10-10: 我想调整交通、土建类项目的
+ * 大型项目、中型项目标准，太多大型项目了 / 其他行业不用动 / 有金额时只看金额：
+ * 关键词不再把小金额项目拉进大型。门槛…大型提到 2000 万–3000 万美元、中型提到
+ * 1000 万美元左右).
+ *
+ * For a row whose only target industries are transportation and/or
+ * construction, a disclosed amount decides the tier on its own: 大型 from
+ * US$30M, 中型 from US$10M, 常规 below. MAJOR_PROJECT_KEYWORDS (carretera,
+ * puente, puerto, aeropuerto, ferrocarril…), long duration and the include
+ * overrides no longer lift such a row above what its amount says — a
+ * "CONSTRUCCIÓN DE PUENTE" at US$3M is 常规, not 大型. With NO amount the
+ * rules are unchanged.
+ *
+ * A row also tagged with any other target industry (power, water, ICT,
+ * energy…) keeps the platform-wide bands above, so a substation or a power
+ * plant that also carries the construction tag is not touched.
+ */
+const TRANSPORT_WORKS_FLAGSHIP_VALUE_USD = 30_000_000;
+const TRANSPORT_WORKS_SIGNIFICANT_VALUE_USD = 10_000_000;
+const TRANSPORT_WORKS_INDUSTRIES: ReadonlySet<string> = new Set(["transportation", "construction"]);
+
+/** Whether a row's target industries are transport and/or civil works and nothing else. */
+export function isTransportWorksOnly(industries: readonly string[]): boolean {
+  return (
+    industries.some((tag) => TRANSPORT_WORKS_INDUSTRIES.has(tag)) &&
+    industries.every((tag) => TRANSPORT_WORKS_INDUSTRIES.has(tag) || tag === "general")
+  );
+}
+
+/**
  * "大项目" (major-project) keyword signal — promotes straight to flagship
  * regardless of value, per the user's explicit list (2026-09-02): railway,
  * long-distance highway/pipeline, dam/reservoir, power plant, airport,
@@ -3962,6 +3992,17 @@ export function classifyRelevance(input: {
     return { tier: fibre, label: LABELS[fibre], reason: reasonFor(fibre, "scope") };
   }
 
+  // Transport / civil works with a disclosed amount: the amount alone decides
+  // 大型 and 中型 — see TRANSPORT_WORKS_FLAGSHIP_VALUE_USD. Below the 中型 floor
+  // it skips every promotion below and lands where an unpromoted row does.
+  const transportWorksByValue = normalizedValue !== undefined && isTransportWorksOnly(input.industries);
+  if (transportWorksByValue && normalizedValue >= TRANSPORT_WORKS_FLAGSHIP_VALUE_USD) {
+    return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
+  }
+  if (transportWorksByValue && normalizedValue >= TRANSPORT_WORKS_SIGNIFICANT_VALUE_USD) {
+    return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
+  }
+
   // Previously also promoted any scopeType "works"/"equipment_services"
   // tender with an unknown value straight to flagship (isWorksLike),
   // regardless of what the work actually was — removed (2026-09-02) after
@@ -4006,11 +4047,12 @@ export function classifyRelevance(input: {
   // disclosed amount is not an estimate at all (2026-09-12: 除非金额很大的项目).
   const hasFlagshipScaleValue = normalizedValue !== undefined && normalizedValue >= FLAGSHIP_VALUE_USD;
 
-  if (majorIsDemotedToSignificant && !majorIsLocationOnly && !hasFlagshipScaleValue) {
+  if (!transportWorksByValue && majorIsDemotedToSignificant && !majorIsLocationOnly && !hasFlagshipScaleValue) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
   }
 
   if (
+    !transportWorksByValue && (
     (matchesMajorProject && !majorIsLocationOnly) ||
     // A federal concession/capacity auction is flagship by construction —
     // see isFederalConcessionAuction. Placed first among the value-free
@@ -4030,7 +4072,7 @@ export function classifyRelevance(input: {
     (hasIncludeOverride &&
       normalizedValue === undefined &&
       !isEquipmentScaleCapped &&
-      !OVERRIDE_NOT_FLAGSHIP.some((pattern) => pattern.test(haystack)))
+      !OVERRIDE_NOT_FLAGSHIP.some((pattern) => pattern.test(haystack))))
   ) {
     return { tier: "flagship", label: LABELS.flagship, reason: reasonFor("flagship", "value") };
   }
@@ -4087,7 +4129,7 @@ export function classifyRelevance(input: {
   // EQUIPMENT_SCALE_CAPPED_KEYWORDS is NOT deleted: it still blocks these
   // same rows from reaching 大型 through the INCLUDE_OVERRIDE path above,
   // which is the job it was originally added for.
-  if (normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) {
+  if (!transportWorksByValue && normalizedValue !== undefined && normalizedValue >= SIGNIFICANT_VALUE_USD) {
     return { tier: "significant", label: LABELS.significant, reason: reasonFor("significant", "scope") };
   }
 

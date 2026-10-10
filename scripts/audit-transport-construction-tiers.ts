@@ -5,7 +5,11 @@
  * 太多大型项目了 / 其他行业不用动). Only rows tagged transportation or
  * construction are counted; every other industry is out of scope.
  *
- * Today a transport/works row reaches 大型 in two ways:
+ * Since 2026-10-10 a transport/works row WITH an amount is tiered by the amount
+ * alone (大型 ≥ US$30M, 中型 ≥ US$10M — lib/relevance.ts
+ * TRANSPORT_WORKS_FLAGSHIP_VALUE_USD), so the split below mostly shows what is
+ * left over: rows with no amount. Before that, such a row reached 大型 in two
+ * ways:
  *   1. a disclosed amount ≥ US$10M (FLAGSHIP_VALUE_USD), or
  *   2. a MAJOR_PROJECT_KEYWORDS match — carretera / autopista / puente /
  *      puerto / aeropuerto / ferrocarril / presa … — which promotes to 大型
@@ -152,7 +156,7 @@ async function main() {
         else std++;
       }
       const ifNoValueStaysBig = big + noValue.length;
-      const now = flagshipFloor === 10_000_000 && significantFloor === 5_000_000 ? "  <- 现在的金额门槛" : "";
+      const now = flagshipFloor === 30_000_000 && significantFloor === 10_000_000 ? "  <- 现在的金额门槛（2026-10-10 起）" : flagshipFloor === 10_000_000 && significantFloor === 5_000_000 ? "  <- 之前的全站门槛" : "";
       console.log(
         `    ${money(flagshipFloor).padStart(7)}  ${money(significantFloor).padStart(7)} | ${String(big).padStart(5)} ${String(mid).padStart(5)} ${String(std).padStart(5)} | ${String(ifNoValueStaysBig).padStart(5)}${now}`,
       );

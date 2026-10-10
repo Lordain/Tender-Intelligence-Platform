@@ -63,23 +63,11 @@ const CALLOUT: Record<string, { side: "left" | "right"; y: number; edge: number 
 
 const pct = (value: number, of: number) => `${(value / of) * 100}%`;
 
-/**
- * The relief: each country is extruded by stacked copies stepping down and a
- * little to the right (an oblique projection, so the sides show on two edges),
- * deepest first. Lit countries are over twice as deep as the rest, so they
- * stand clear of the continent (user, 2026-10-10: 3D效果可以再明显一点).
- */
-const UNLIT_DEPTH = 8;
-const LIT_DEPTH = 18;
-const OBLIQUE = 0.45;
-const steps = (depth: number) => Array.from({ length: depth }, (_, index) => depth - index);
-const UNLIT_SIDES = steps(UNLIT_DEPTH);
-const LIT_SIDES = steps(LIT_DEPTH);
+/** The relief: map-unit offsets of the stacked copies under each country, deepest last. */
+const UNLIT_SIDES = [4, 3, 2, 1];
+const LIT_SIDES = [9, 8, 7, 6, 5, 4, 3, 2, 1];
 /** Darkest at the base, warming toward the top edge. */
-const mix = (from: number[], to: number[], t: number) =>
-  `#${from.map((channel, index) => Math.round(channel + (to[index] - channel) * t).toString(16).padStart(2, "0")).join("")}`;
-const LIT_SIDE_COLORS = LIT_SIDES.map((_, index) => mix([0x3a, 0x1b, 0x02], [0xd8, 0x80, 0x14], index / (LIT_DEPTH - 1)));
-const UNLIT_SIDE_COLORS = UNLIT_SIDES.map((_, index) => mix([0x02, 0x0d, 0x16], [0x0a, 0x26, 0x3a], index / (UNLIT_DEPTH - 1)));
+const LIT_SIDE_COLORS = ["#5a2c04", "#6a3405", "#7a3d06", "#8a4607", "#9a5008", "#aa5a09", "#b9640b", "#c66f0e", "#d27a12"];
 
 /** `facing`: the side the map is on, which carries the amber accent. */
 function CountryCard({ entry, facing, className = "" }: { entry: CoverageCountry; facing?: "left" | "right"; className?: string }) {
@@ -214,7 +202,7 @@ function MapBody({
           <feGaussianBlur stdDeviation="9" />
         </filter>
         <filter id={`coverage-shadow-${id}`} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="12" />
+          <feGaussianBlur stdDeviation="7" />
         </filter>
         {/* Each outline once; the relief below re-uses it with <use>, so the 3D costs no extra path data. */}
         {shapes.map((shape) => (
@@ -224,21 +212,21 @@ function MapBody({
 
       {/* The relief (user, 2026-10-10: 能不能把地图做成3D的？): a soft shadow on
           the sea, every country given thickness by stacked copies stepping
-          down, the lit ones over twice as deep so they stand above the rest. All
+          down, the lit ones twice as thick so they stand above the rest. All
           the sides are drawn before any top, so no side covers a neighbour's
           surface. */}
-      <g aria-hidden fill="#00070d" opacity={0.9} filter={`url(#coverage-shadow-${id})`} transform="translate(26 42)">
+      <g aria-hidden fill="#00070d" opacity={0.75} filter={`url(#coverage-shadow-${id})`} transform="translate(6 18)">
         {shapes.map((shape) => (
           <use key={shape.name} href={ref(shape)} />
         ))}
       </g>
       <g aria-hidden>
         {shapes.filter((shape) => !shape.country).map((shape) =>
-          UNLIT_SIDES.map((step, index) => <use key={`${shape.name}-${step}`} href={ref(shape)} x={step * OBLIQUE} y={step} fill={UNLIT_SIDE_COLORS[index]} />),
+          UNLIT_SIDES.map((step) => <use key={`${shape.name}-${step}`} href={ref(shape)} y={step} fill="#071d2c" />),
         )}
       </g>
       {shapes.filter((shape) => !shape.country).map((shape) => (
-        <use key={shape.name} href={ref(shape)} fill="#123650" stroke="#2a5a7a" strokeWidth={0.8} />
+        <use key={shape.name} href={ref(shape)} fill="#11324a" stroke="#1d4560" strokeWidth={0.7} />
       ))}
 
       <g aria-hidden filter={`url(#coverage-blur-${id})`}>
@@ -251,7 +239,7 @@ function MapBody({
         <g key={`${shape.name}-sides`} aria-hidden data-country={shape.country!} className="coverage-country">
           <g className="coverage-lift">
             {LIT_SIDES.map((step, index) => (
-              <use key={step} href={ref(shape)} x={step * OBLIQUE} y={step} fill={LIT_SIDE_COLORS[index]} />
+              <use key={step} href={ref(shape)} y={step} fill={LIT_SIDE_COLORS[index]} />
             ))}
           </g>
         </g>

@@ -198,7 +198,7 @@ select {
 }
 
 .coverage-country.is-active .coverage-lift {
-  transform: translateY(-12px);
+  transform: translateY(-6px);
 }
 
 .coverage-country.is-active .coverage-shape {

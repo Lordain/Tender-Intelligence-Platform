@@ -123,23 +123,22 @@ export function TenderCard({
           <p className="text-[11px] font-medium text-[#66757f]">
             {localize(tender.publicationDateIsEstimated ? uiText.ingestedDateLabel : uiText.publicationDateLabel, locale)}
           </p>
-          <span className="mt-0.5 block text-sm font-bold text-[#071826]">
+          <span className="mt-0.5 block whitespace-nowrap text-sm font-bold text-[#071826] lg:text-[13px] xl:text-sm">
             {formatDate(tender.publicationDate, locale)}
           </span>
         </div>
         <div className="surface-amber rounded-xl px-3 py-2.5">
-          <p className="text-[11px] font-medium text-[#966000]">计划交标</p>
-          <span className="mt-0.5 block text-sm font-bold text-[#071826]">
+          {/* The countdown sits small beside the label, not under the date, so
+              it never adds a line to the box (user, 2026-10-10: 截标的提醒不要
+              导致换行 … 放在计划交标旁边). showOneLineSummary is set by the
+              homepage alone, so the countdown stays there. */}
+          <p className="flex items-center justify-between gap-1.5 whitespace-nowrap text-[11px] font-medium text-[#966000]">
+            计划交标
+            {showOneLineSummary && tender.submissionDeadline && (tender.status === "open" || tender.status === "clarification") && <DaysLeft deadline={tender.submissionDeadline} />}
+          </p>
+          <span className="mt-0.5 block whitespace-nowrap text-sm font-bold text-[#071826] lg:text-[13px] xl:text-sm">
             {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : tender.deadlineInDocuments ? DEADLINE_IN_DOCUMENTS_LABEL : "未提供"}
           </span>
-          {/* showOneLineSummary is set by the homepage alone, so the countdown
-              stays there. The slot is reserved on every homepage card, chip or
-              not, so the date boxes line up across a row. */}
-          {showOneLineSummary && (
-            <span className="block h-6">
-              {tender.submissionDeadline && (tender.status === "open" || tender.status === "clarification") && <DaysLeft deadline={tender.submissionDeadline} />}
-            </span>
-          )}
         </div>
       </div>
 

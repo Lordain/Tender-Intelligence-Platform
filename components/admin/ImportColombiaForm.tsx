@@ -16,15 +16,6 @@ type PullResult = {
   protectedCount?: number;
   skippedManuallyDeletedCount?: number;
   failed?: { slug: string; error: string }[];
-  documentsCandidateTenders?: number;
-  documentsDownloaded?: number;
-  documentsAlreadyOnFile?: number;
-  documentsFailed?: number;
-  documentsMetadataRowsFound?: number;
-  documentsSkippedPostAward?: number;
-  documentsFoundViaNoticeUid?: number;
-  documentsFoundViaIdDelProceso?: number;
-  documentsFoundViaPortfolio?: number;
 };
 
 type RefreshResult = {
@@ -45,8 +36,9 @@ type RefreshResult = {
  * downloads, both confirmed real, unauthenticated Socrata endpoints — see
  * that file's header comment), unlike every Mexico source this platform
  * has, which needs either a manually captured export or is anti-bot
- * gated. One button pulls both: the tender list AND (optionally) each
- * newly-written tender's pre-award bid documents in the same run.
+ * gated. The button pulls the tender list only: attachments are not
+ * downloaded here (user, 2026-10-10: 不要附件，我自己到网站里面下) — a 7-day
+ * window held 547 pre-award files across 14 tenders, fetched one by one.
  *
  * A second button, "刷新已有标书状态", calls a DIFFERENT endpoint
  * (refreshColombiaTenders — see ingest-colombia.ts) rather than reusing
@@ -80,14 +72,13 @@ export function ImportColombiaForm() {
   // Defaults to checked per the user's explicit request (2026-09-04): "写入
   // Supabase 全部预设勾选，要预览再取消勾选" — uncheck to preview only.
   const [write, setWrite] = useState(true);
-  const [fetchDocuments, setFetchDocuments] = useState(true);
   const [submitting, setSubmitting] = useState<"pull" | "refresh" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pullResult, setPullResult] = useState<PullResult | null>(null);
   const [refreshResult, setRefreshResult] = useState<RefreshResult | null>(null);
 
   async function runPull() {
-    if (write && !confirm("确定要从 SECOP II 拉取哥伦比亚标书（和附件）并写入 Supabase 吗？这个操作可能需要几分钟，附件下载会逐条项目单独请求。")) return;
+    if (write && !confirm("确定要从 SECOP II 拉取哥伦比亚标书并写入 Supabase 吗？")) return;
 
     setSubmitting("pull");
     setError(null);
@@ -102,7 +93,6 @@ export function ImportColombiaForm() {
           days,
           maxPages: maxPages.trim() === "" ? undefined : Number(maxPages),
           write,
-          fetchDocuments: write && fetchDocuments,
         }),
       });
       const data = await res.json();
@@ -142,14 +132,14 @@ export function ImportColombiaForm() {
     <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b86e00]">Colombia</p>
       <h2 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black text-[#071826]">
-        SECOP II — 哥伦比亚标书 + 附件
+        SECOP II — 哥伦比亚标书
         <AutoRunBadge schedule={DAILY_INGEST_SCHEDULE} />
       </h2>
       <AutoRunNote>
-        每天自动跑两次（北京时间晚上 7 点多和早上 6 点多；拉取新标 + 刷新已有标书状态，<strong>不下载附件</strong>）。这里只在需要提前跑、或者要一并下载附件时用。
+        每天自动跑两次（北京时间晚上 7 点多和早上 6 点多；拉取新标 + 刷新已有标书状态，<strong>不下载附件</strong>）。这里只在需要提前跑时用。
       </AutoRunNote>
       <p className="mt-1 text-sm text-[#52636e]">
-        直接从 SECOP II 官方公开接口实时拉取（不需要手动导出文件），可以同时把每条新写入项目的招标附件一并下载并记录。
+        直接从 SECOP II 官方公开接口实时拉取（不需要手动导出文件），不下载附件——附件请到 SECOP 项目页自行下载。
         开放数据比 SECOP 门户晚 1–2 天，且只记到日期；「近 N 天」按哥伦比亚日历日算（从 N 天前的 0 点起）。
       </p>
       {error && <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
@@ -175,12 +165,6 @@ export function ImportColombiaForm() {
           <input type="checkbox" checked={write} onChange={(e) => setWrite(e.target.checked)} className="size-4 accent-[#ffb21c]" />
           写入 Supabase（不勾选则只预览）
         </label>
-        {write && (
-          <label className="ml-6 flex items-center gap-2 text-xs text-[#233846]">
-            <input type="checkbox" checked={fetchDocuments} onChange={(e) => setFetchDocuments(e.target.checked)} className="size-4 accent-[#ffb21c]" />
-            同时下载新写入项目的招标附件（只下载未涉及合同编号的标前文件，不含已中标后的文件）
-          </label>
-        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -225,27 +209,6 @@ export function ImportColombiaForm() {
               {pullResult.protectedCount ? `，${pullResult.protectedCount} 条保留人工锁定的分类` : ""}
               {pullResult.skippedManuallyDeletedCount ? `，跳过 ${pullResult.skippedManuallyDeletedCount} 条人工删除过的` : ""}
               {pullResult.failed && pullResult.failed.length > 0 ? `，${pullResult.failed.length} 条失败` : ""}
-            </p>
-          )}
-          {pullResult.documentsCandidateTenders !== undefined && (
-            <p className="mt-1">
-              附件：对 {pullResult.documentsCandidateTenders} 条新写入项目逐条查询，SECOP 附件元数据接口共返回 {pullResult.documentsMetadataRowsFound ?? 0} 条记录
-              {pullResult.documentsSkippedPostAward ? `（其中 ${pullResult.documentsSkippedPostAward} 条因带合同编号=已中标后文件，跳过）` : ""}
-              ，下载并记录 {pullResult.documentsDownloaded ?? 0} 份
-              {pullResult.documentsAlreadyOnFile ? `（${pullResult.documentsAlreadyOnFile} 份已存在，跳过）` : ""}
-              {pullResult.documentsFailed ? `，${pullResult.documentsFailed} 份失败` : ""}
-              {pullResult.documentsMetadataRowsFound === 0 && !pullResult.documentsFailed
-                ? "。返回 0 条说明这批项目在附件元数据数据集里暂时查不到对应记录（可能是刚发布还没归档，也可能是 id 对不上），不是下载失败。"
-                : ""}
-              {pullResult.documentsFoundViaPortfolio || pullResult.documentsFoundViaNoticeUid || pullResult.documentsFoundViaIdDelProceso ? (
-                <>
-                  {" "}
-                  （其中 {pullResult.documentsFoundViaPortfolio ?? 0} 条项目通过 id_del_portafolio 匹配到，{pullResult.documentsFoundViaNoticeUid ?? 0} 条通过 noticeUID 匹配到，{pullResult.documentsFoundViaIdDelProceso ?? 0} 条通过 id_del_proceso 匹配到）
-                </>
-              ) : (
-                ""
-              )}
-              。文件保存在服务器本地 downloads/colombia/&lt;项目 slug&gt;/ 目录，尚未做 AI 分析——需要再用&quot;标书附件分析&quot;逐条上传分析，或用 <code>npm run extract:document</code> 处理。
             </p>
           )}
         </div>

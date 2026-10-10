@@ -165,7 +165,7 @@ export function PricingPlans() {
             <Link
               prefetch={false}
               href={plan.id === "free" ? "/register" : `/subscribe?plan=${plan.id}&interval=${interval}`}
-              className={`mt-9 inline-flex min-h-11 w-fit items-center self-start rounded-xl px-6 text-sm font-bold transition-colors ${recommended ? "bg-[#ffb21c] text-[#071826] hover:bg-[#ffc247]" : "border border-[#d3dadc] bg-white text-[#071826] hover:border-[#9babb3]"}`}
+              className={`mt-9 inline-flex min-h-11 w-fit items-center self-start rounded-xl px-6 text-sm font-bold ${recommended ? "button-gold text-[#071826]" : "button-paper border border-[#d3dadc] text-[#071826] hover:border-[#9babb3]"}`}
             >
               {plan.id === "free" ? "免费注册" : "选择方案"}
             </Link>

@@ -67,11 +67,11 @@ export const brazilInsight: InsightArticle = {
   regions: {
     title: "四类区域值得持续跟踪",
     map: {
-      src: "/insights/brazil-regions.svg",
-      width: 1600,
-      height: 1000,
+      src: "/insights/brazil-regions.webp",
+      width: 1536,
+      height: 1110,
       alt: "巴西重点区域地图，按省级行政区着色：1 北部与亚马孙出口通道、2 东北能源与水务走廊、3 东南工业与物流核心、4 中西部—南部农业物流带",
-      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。",
+      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。",
     },
     items: [
       { color: "bg-[#35a6c8]", title: "北部与亚马孙出口通道", places: "Pará、Amazonas、Amapá、Rondônia、Tocantins、Acre、Roraima", focus: "河运、北方港口、输电、数字连接、供水和矿业物流；距离、环评和社区协商影响进度与成本。" },

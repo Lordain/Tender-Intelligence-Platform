@@ -72,7 +72,7 @@ export const boliviaInsight: InsightArticle = {
   },
   regions: {
     title: "区域机会：高原、谷地、低地与南部",
-    map: { src: "/insights/bolivia-regions.svg", width: 1600, height: 1000, alt: "玻利维亚重点区域地图，按省级行政区着色：1 西部高原矿业与都市带、2 中部谷地交通与灌溉带、3 东部低地农业与能源带、4 南部天然气与能源区", caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。" },
+    map: { src: "/insights/bolivia-regions.webp", width: 1536, height: 1110, alt: "玻利维亚重点区域地图，按省级行政区着色：1 西部高原矿业与都市带、2 中部谷地交通与灌溉带、3 东部低地农业与能源带、4 南部天然气与能源区", caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。" },
     items: [
       { color: "bg-[#c85c43]", title: "西部高原矿业与都市带", places: "La Paz、Oruro、Potosí", focus: "道路桥梁、矿业与锂资源、城市交通和供水；拉巴斯省工程计划近170亿玻利维亚诺，高海拔施工和社区协商影响工期。" },
       { color: "bg-[#d9a23a]", title: "中部谷地交通与灌溉带", places: "Cochabamba、Chuquisaca", focus: "东西向公路连接、灌溉与供水和农产品加工；世界银行社区灌溉项目覆盖多地，具体工点以采购公告为准。" },

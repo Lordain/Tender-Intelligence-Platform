@@ -294,6 +294,13 @@ function draw(slug, config, provincesAll, world, mode = "svg") {
     return members.length ? merge(topo, members) : null;
   });
   if (mode === "art") {
+    // A province in no region was dark navy in the base, and the model reads
+    // that as sea: lay plain grey land over it, so it stays in the country.
+    for (const f of provinceFeatures) {
+      if (f.properties.name !== insetName && regionOf.get(f.properties.name) === undefined) {
+        parts.push(`<path d="${round(path(f))}" fill="#4b5662" fill-opacity="0.85" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1"/>`);
+      }
+    }
     // The painting has the colour, relief and glow; only the exact outlines go on top.
     regionShapes.forEach((shape) => {
       if (shape) parts.push(`<path d="${round(path(shape))}" fill="none" stroke="#fff6dd" stroke-opacity="0.8" stroke-width="1.6"/>`);

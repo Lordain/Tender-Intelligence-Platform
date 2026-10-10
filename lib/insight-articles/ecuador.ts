@@ -66,7 +66,7 @@ export const ecuadorInsight: InsightArticle = {
   },
   regions: {
     title: "区域机会：地形与公共服务需求",
-    map: { src: "/insights/ecuador-regions.svg", width: 1600, height: 1000, alt: "厄瓜多尔重点区域地图，按省级行政区着色：1 安第斯都市与交通带、2 太平洋港口与产业带、3 亚马孙能源与连接区、4 加拉帕戈斯公共服务区", caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。" },
+    map: { src: "/insights/ecuador-regions.webp", width: 1536, height: 1110, alt: "厄瓜多尔重点区域地图，按省级行政区着色：1 安第斯都市与交通带、2 太平洋港口与产业带、3 亚马孙能源与连接区、4 加拉帕戈斯公共服务区", caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。" },
     items: [
       { color: "bg-[#c85c43]", title: "安第斯都市与交通带", places: "Pichincha（Quito）、Azuay（Cuenca）等安第斯省份", focus: "城市供水与污水服务、交通连接和公共设施；昆卡供水与污水项目有美洲开发银行融资，采购计划需单独确认。" },
       { color: "bg-[#d9a23a]", title: "太平洋港口与产业带", places: "Guayas、Manabí、El Oro、Esmeraldas、Santa Elena等", focus: "港口与生产连接、物流配套、工业园区和公共服务；以Guayaquil等港口城市为核心，同步关注地方政府与公用事业公司的发包。" },

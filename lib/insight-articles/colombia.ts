@@ -56,11 +56,11 @@ export const colombiaInsight: InsightArticle = {
   regions: {
     title: "四类区域，采购逻辑并不相同",
     map: {
-      src: "/insights/colombia-regions.svg",
-      width: 1600,
-      height: 1000,
+      src: "/insights/colombia-regions.webp",
+      width: 1536,
+      height: 1110,
       alt: "哥伦比亚重点区域地图，按省级行政区着色：1 加勒比与北部能源物流带、2 中部安第斯与首都经济圈、3 太平洋与西南走廊、4 Orinoquía—Amazonía连接区",
-      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。",
+      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。",
     },
     items: [
       { color: "bg-[#d9a62e]", title: "加勒比与北部能源物流带", places: "La Guajira、Atlántico、Bolívar、Magdalena、Cesar、Córdoba、Sucre", focus: "风光送出、电网扩建、港口、Magdalena河航运、机场和铁路连接；两条主线是La Guajira能源和Barranquilla—Cartagena港口工业。" },

@@ -70,11 +70,11 @@ export const dominicanRepublicInsight: InsightArticle = {
   regions: {
     title: "四类业务观察区，采购和履约条件不同",
     map: {
-      src: "/insights/dominican-republic-regions.svg",
-      width: 1600,
-      height: 1000,
+      src: "/insights/dominican-republic-regions.webp",
+      width: 1536,
+      height: 1110,
       alt: "多米尼加重点区域地图，按省级行政区着色：1 Ozama都市区、2 Cibao北部与西北部、3 东部旅游与产业走廊、4 南部与边境发展带",
-      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。",
+      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。",
     },
     items: [
       { color: "bg-[#c85c43]", title: "Ozama都市区", places: "Distrito Nacional、Santo Domingo", focus: "2026年编码项目约325.45亿比索，占地区分布33.7%；地铁与城市交通、供水排污、住房、医院和公共建筑。" },

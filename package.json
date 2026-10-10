@@ -96,6 +96,7 @@
     "fix:dof-awarded-status": "tsx --env-file-if-exists=.env.local scripts/fix-dof-awarded-status.ts",
     "probe:dof-notice": "tsx --env-file-if-exists=.env.local scripts/probe-dof-notice.ts",
     "audit:public-visibility": "tsx --env-file-if-exists=.env.local scripts/audit-public-visibility.ts",
+    "audit:search": "tsx --env-file-if-exists=.env.local --conditions=react-server scripts/audit-search.ts",
     "audit:tier-distribution": "tsx --env-file-if-exists=.env.local scripts/audit-tier-distribution.ts",
     "audit:transport-construction-tiers": "tsx --env-file-if-exists=.env.local scripts/audit-transport-construction-tiers.ts",
     "retier:transport-works": "tsx --env-file-if-exists=.env.local scripts/retier-transport-works.ts",

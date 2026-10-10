@@ -173,6 +173,10 @@ export type BrazilIngestOptions = {
 
 /** PNCP throttles by resetting connections. The connector retries, but pacing means it has less to retry. */
 const PACE_MS = 1_200;
+/** The sweep's waits before re-asking for a page PNCP refused, after the fetch's own retries ran out. */
+const SWEEP_COOLDOWN_MS = [3 * 60_000, 6 * 60_000];
+/** At most this many cool-downs per run, across all modalities: 3 waits, 15 minutes at most. */
+const SWEEP_COOLDOWN_BUDGET = 3;
 /** Shared minimum gap between amount-request STARTS — see the worker pool below for why it is shared rather than per-worker. */
 const AMOUNT_PACE_MS = 500;
 /**
@@ -269,6 +273,7 @@ export async function ingestBrazilPncp(
   else windowCutoff.setMonth(windowCutoff.getMonth() - months);
   const windowLabel = days !== undefined ? `${days} 天` : `${months} 个月`;
 
+  let cooldownsLeft = SWEEP_COOLDOWN_BUDGET;
   for (const modalidade of modalities) {
     let pages = 0;
     let seen = 0;
@@ -284,12 +289,31 @@ export async function ingestBrazilPncp(
       // It is recorded as its own stop reason rather than folded into "cap",
       // because the two are not equally bad: a cap means the period was not
       // covered, an error means it was not covered AND something is wrong.
-      let page: Awaited<ReturnType<typeof fetchPncpSearchPage>>;
-      try {
-        page = await fetchPncpSearchPage(modalidade, pagina, PNCP_MAX_PAGE_SIZE);
-      } catch (err) {
+      let page: Awaited<ReturnType<typeof fetchPncpSearchPage>> | undefined;
+      let lastError: unknown;
+      // Two cool-downs before giving the page up (2026-10-10). The fetch's own
+      // retries span under two minutes, and PNCP's throttle has outlasted
+      // that on page 48 of 150: the sweep then stopped with most of the
+      // window unread. Waiting a few minutes and asking for the SAME page
+      // again resumes where it was, which re-running the job never does.
+      for (let round = 0; round <= SWEEP_COOLDOWN_MS.length && !page; round += 1) {
+        if (round > 0) {
+          // A budget for the whole run, so a night of throttling cannot push
+          // the job past its 40-minute limit (daily-ingest.yml).
+          if (cooldownsLeft === 0) break;
+          cooldownsLeft -= 1;
+          onProgress?.(`采购方式 ${modalidade}：第 ${pagina} 页被 PNCP 拒绝，等 ${SWEEP_COOLDOWN_MS[round - 1] / 60_000} 分钟后从这一页接着取`);
+          await sleep(SWEEP_COOLDOWN_MS[round - 1]);
+        }
+        try {
+          page = await fetchPncpSearchPage(modalidade, pagina, PNCP_MAX_PAGE_SIZE);
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      if (!page) {
         stoppedBy = "error";
-        onProgress?.(`采购方式 ${modalidade}：第 ${pagina} 页取不到（${err instanceof Error ? err.message : String(err)}），保留已取到的 ${seen} 条`);
+        onProgress?.(`采购方式 ${modalidade}：第 ${pagina} 页取不到（${lastError instanceof Error ? lastError.message : String(lastError)}），保留已取到的 ${seen} 条`);
         break;
       }
       pages += 1;

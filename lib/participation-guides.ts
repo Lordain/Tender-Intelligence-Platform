@@ -1666,6 +1666,101 @@ export const participationGuides: ParticipationGuide[] = [
       { label: "SERCOP：公共采购开放数据门户", href: "https://datosabiertos.compraspublicas.gob.ec/" },
       { label: "美洲开发银行：项目采购政策", href: "https://www.iadb.org/es/como-trabajar-juntos/adquisiciones/adquisiciones-para-proyectos/marco-de-adquisiciones" },
     ],
+  },  {
+    slug: "bolivia-sicoes",
+    country: "玻利维亚",
+    countryCode: "BO",
+    platform: "SICOES（经济财政部）",
+    issuer: "玻利维亚中央政府部门、省市政府、国有企业和其他公共机构",
+    issuerType: "政府采购平台",
+    title: "怎么参与玻利维亚 SICOES 政府采购项目？",
+    summary: "玻利维亚国家采购信息系统。先确认采购方式和国际招标门槛，再准备RUPE登记、担保和本地分包安排，由用户自己在官方页面操作。",
+    whatIs: "SICOES（Sistema de Contrataciones Estatales，国家采购信息系统）由经济财政部管理，公共机构在这里发布采购公告、招标文件和结果。供应商须在 RUPE（国家供应商统一登记）登记；电子投标也通过 RUPE 提交。",
+    audience: "想参与玻利维亚政府和国企采购的境内外企业",
+    quickFacts: [
+      { label: "官方平台", value: "SICOES（经济财政部）" },
+      { label: "供应商登记", value: "RUPE统一登记" },
+      { label: "国际招标门槛", value: "7,000万玻利维亚诺以上" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "先确认采购方式",
+        items: [
+          "Licitación Pública：100万玻利维亚诺以上的公开招标，任何合格供应商可参与",
+          "国内与国际：100万至7,000万玻利维亚诺为国内招标，7,000万以上为国际招标；较小项目也可按需发国际公告",
+          "ANPE：5万至100万玻利维亚诺，主要面向本国生产与就业，金额小",
+          "例外与紧急：例外采购、灾害紧急采购和直接采购不限金额；2026年4月第5600号最高法令废除了161项直接采购授权",
+          "银行融资：世界银行、美洲开发银行等出资的项目按出资方采购政策执行，公告也会出现在出资方网站",
+        ],
+        note: "门槛和规则来自第0181号最高法令（政府采购基本规范）汇编本；新政府仍在调整法规，以采购文件引用的现行版本为准。",
+      },
+      {
+        id: "first-check",
+        title: "找项目先看什么",
+        items: [
+          "CUCE：采购统一编号，用来核对公告、补充文件和结果",
+          "Entidad：采购单位，确认实际合同主体",
+          "Modalidad：采购方式，决定外国企业能否参与和评标办法",
+          "DBC：招标文件，核对规格、经验、优惠和评审方法",
+          "Cronograma：日程，分别记录提问、答疑会、递交、开标和授标时间",
+        ],
+        note: "SICOES检索页有人机验证，本平台不自动抓取；当前状态和附件由用户自己在官方页面核对。",
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "查找项目", detail: "由用户自己在SICOES按编号、采购单位和采购方式查找项目。" },
+          { title: "读取文件", detail: "下载招标文件和补充文件，核对外国企业资格、采购方式和完整日程。" },
+          { title: "登记RUPE", detail: "在RUPE完成供应商登记；电子投标通过RUPE提交，境外资料需提供同等效力的文件。" },
+          { title: "准备担保", detail: "按文件准备投标保证（常见为参考价的1%）；外国企业的担保开具方式见下文。" },
+          { title: "递交跟进", detail: "按日程递交技术与经济文件，跟进答疑、补正、评审和授标，按时准备合同。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "境外企业准备什么",
+        intro: "境外企业提交的资料须与本国企业要求的文件同等或等效。",
+        items: [
+          "公司存续：本国主管机关出具的合法存在证明",
+          "授权文件：代表任命和授权委托，确保投标及签约权限有效",
+          "翻译认证：西语翻译及适用的海牙认证或合法化认证",
+          "项目资格：业绩、人员、设备、财务和报价按招标文件准备",
+          "联合体：与本地企业组成的联合体需按文件约定各方出资和责任",
+        ],
+      },
+      {
+        id: "guarantees",
+        title: "担保、优惠与分包",
+        items: [
+          "担保类型：由投标人选择银行保函、保险担保单或押金等文件允许的方式",
+          "境外担保：保险担保单须由在玻利维亚注册的保险公司出具；银行保函须由当地银行或在当地有代理行的银行出具",
+          "履约担保：合同金额的7%",
+          "本地优惠：工程类招标中，本国企业或本国股东占51%以上的联合体有5%评标优惠",
+          "分包要求：合同允许分包时，外国中标人须分包给可承接的本国企业",
+        ],
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "汇率与付款：2026年1月起汇率放开，确认报价币种、付款币种和汇率条款",
+          "进口与税费：重编预算法对资本品进口和销售免增值税五年，具体适用以税务规定为准",
+          "融资规则：银行融资项目的资格和采购办法可能与一般政府程序不同",
+          "本地伙伴：优惠、分包和售后服务都需要可靠的本地合作方",
+          "人工操作：账号、验证、下载和投标均由用户自己在官方页面完成",
+        ],
+        note: "未确认统一适用的境外登记费用、处理时限和电子投标的境外证书要求；以最新经济财政部公开规定和具体招标文件为准。",
+      },
+    ],
+    sources: [
+      { label: "SICOES：国家采购信息系统", href: "https://www.sicoes.gob.bo/portal/index.php" },
+      { label: "第0181号最高法令（政府采购基本规范，汇编本）", href: "https://www.boliviatv.bo/principal/doc/Normativa/NB-SABS%20DS%20181%20COMPILADO.pdf" },
+      { label: "经济财政部：电子采购规则（含RUPE电子投标）", href: "https://economiayfinanzas.gob.bo/sites/default/files/2024-06/REGLAMENTO%20DE%20USO%20DE%20MEDIOS%20ELECTRONICOS_2022.pdf" },
+      { label: "玻利维亚通讯社：第5600号最高法令", href: "https://abi.bo/gobierno-presenta-el-decreto-5600-que-suprime-161-decretos-y-transparenta-las-contrataciones-directas/" },
+      { label: "世界银行：借款人采购规则", href: "https://www.worldbank.org/en/projects-operations/products-and-services/brief/procurement-new-framework" },
+    ],
   },
 ];
 
@@ -1732,6 +1827,7 @@ export const guideCountries = [
   },
   { name: "巴拿马", code: "PA", description: "PanamaCompra 公共采购，核对境外登记与工程资格" },
   { name: "厄瓜多尔", code: "EC", description: "SOCE 公共采购，RUP登记与用户自行操作" },
+  { name: "玻利维亚", code: "BO", description: "SICOES 公共采购，RUPE登记与外国企业担保" },
 ] as const;
 
 /**
@@ -1749,6 +1845,7 @@ export const guideCountries = [
 const GUIDE_BY_ORIGIN: Array<[RegExp, string]> = [
   [/panama\s?compra|contrataciones p[uú]blicas \(panam[aá]\)/i, "panama-panamacompra"],
   [/\bsercop\b|\bsoce\b|sistema oficial de contrataci[oó]n p[uú]blica.*ecuador/i, "ecuador-soce"],
+  [/\bsicoes\b|sistema de contrataciones estatales/i, "bolivia-sicoes"],
   [/\bdgcp\b|portal transaccional|rep[uú]blica dominicana/i, "dominican-republic-dgcp"],
   [/trenes argentinos infraestructura|administraci[oó]n de infraestructuras ferroviarias|\badif\b/i, "argentina-adif"],
   [/contrat\.?ar|obra p[uú]blica, concesiones y privatizaciones/i, "argentina-contratar"],

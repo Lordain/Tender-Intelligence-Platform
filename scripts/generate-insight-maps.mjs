@@ -150,7 +150,7 @@ const COUNTRIES = {
   bolivia: {
     admin: "Bolivia",
     regions: [
-      { color: "#c85c43", icons: ["mine", "rail", "city"], provinces: ["La Paz", "Oruro", "Potosí"], label: { dx: -220, dy: 0 } },
+      { color: "#c85c43", icons: ["mine", "road", "city"], provinces: ["La Paz", "Oruro", "Potosí"], label: { dx: -220, dy: 0 } },
       { color: "#d9a23a", icons: ["road", "water", "industry"], provinces: ["Cochabamba", "Chuquisaca"], label: { dx: 40, dy: 10 } },
       { color: "#59a8d8", icons: ["agri", "energy", "road"], provinces: ["Santa Cruz", "El Beni", "Pando"] },
       { color: "#7b63a8", icons: ["oil", "grid", "water"], provinces: ["Tarija"], label: { dx: 220, dy: 20 } },

@@ -12,6 +12,7 @@ const FLAG_COUNTRY: Record<string, string> = {
   DO: "Dominican Republic",
   PA: "Panama",
   EC: "Ecuador",
+  BO: "Bolivia",
 };
 
 export function GuideCountryFlag({ code }: { code: string }) {
@@ -42,6 +43,7 @@ export function GuideLogo({ slug }: { slug: string }) {
 const GUIDE_PLATFORM_SHORT: Record<string, string> = {
   "panama-panamacompra": "PanamaCompra",
   "ecuador-soce": "SOCE",
+  "bolivia-sicoes": "SICOES",
   "brazil-pncp": "PNCP",
   "argentina-adif": "ADIF · Portal de Licitaciones",
 };

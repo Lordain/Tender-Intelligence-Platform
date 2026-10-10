@@ -198,6 +198,24 @@ export const countryInsights: CountryInsightSummary[] = [
     },
     highlights: ["72.61亿美元四年参考投资", "388个2026年度投资项目", "电力与昆卡水务融资项目"],
   },
+  {
+    slug: "bolivia",
+    country: "玻利维亚",
+    countryCode: "BO",
+    title: "玻利维亚国家洞察：2026—2028改革期融资与基础设施机会",
+    description: "从29.56亿美元2026公共投资预算、美洲开发银行45亿美元支持和YPFB油气投资计划出发，梳理道路、电力、灌溉、油气与锂的项目机会。",
+    author: "拉美招投标指南针",
+    readTime: "约 10 分钟",
+    heroImage: "/insights/bolivia-mi-teleferico.webp",
+    heroImageAlt: "玻利维亚拉巴斯城市缆车（Mi Teleférico）红线的吊舱与塔架，背景为拉巴斯谷地",
+    heroImageCredit: {
+      author: "EEJCC（经缩放并压缩为 WebP）",
+      license: "CC BY-SA 4.0",
+      licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:L%C3%ADnea_Roja_de_Mi_Telef%C3%A9rico_en_La_Paz,_Bolivia.jpg",
+    },
+    highlights: ["29.56亿美元2026公共投资预算", "45亿美元美洲开发银行2026—2028支持", "6.01亿美元YPFB油气投资计划"],
+  },
 ];
 
 export function getCountryInsight(slug: string) {

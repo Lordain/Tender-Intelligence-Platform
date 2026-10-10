@@ -37,7 +37,7 @@ export function SourcePanel({ tender, participationGuide: guide }: { tender: Ten
   return (
     <section className="flex flex-col gap-4">
       <DetailSectionHeading title="官方正式投标入口" description="如有兴趣参标，请自行在官方平台核对文件与要求，并按官方流程完成投标" />
-      <div className="rounded-2xl bg-[#061b2b] p-5 text-white sm:p-6">
+      <div className="surface-navy rounded-2xl p-5 text-white sm:p-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#ffb21c]">官方投标平台</p>
@@ -67,7 +67,7 @@ export function SourcePanel({ tender, participationGuide: guide }: { tender: Ten
 
       {/* Sites a reader in China often cannot open (lib/official-site-access.ts; user, 2026-09-29). */}
       {accessNote && (
-        <p className="rounded-2xl border border-[#f0d9a8] bg-[#fff8e9] px-5 py-4 text-xs leading-6 text-[#7a5200] sm:px-6">
+        <p className="rounded-2xl border border-[#f0d9a8] surface-amber px-5 py-4 text-xs leading-6 text-[#7a5200] sm:px-6">
           <span className="mb-1 block text-sm font-black text-[#5c3d00]">打不开官方入口？</span>
           {accessNote}
         </p>
@@ -82,7 +82,7 @@ export function SourcePanel({ tender, participationGuide: guide }: { tender: Ten
         matching against on screen.
       */}
       {searchGuide && (
-        <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
+        <div className="rounded-2xl surface-warm border border-[#dfe5e7] p-5 sm:p-6">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h3 className="text-sm font-black text-[#071826]">这个平台要自己检索标书</h3>
             <span className="text-xs font-bold text-[#8a959c]">{searchGuide.platform}</span>
@@ -111,7 +111,7 @@ export function SourcePanel({ tender, participationGuide: guide }: { tender: Ten
             </a>
           )}
           {searchGuide.note && (
-            <p className="mt-4 rounded-xl border border-[#f0d9a8] bg-[#fff8e9] px-3 py-2 text-xs leading-5 text-[#7a5200]">
+            <p className="mt-4 rounded-xl border border-[#f0d9a8] surface-amber px-3 py-2 text-xs leading-5 text-[#7a5200]">
               {searchGuide.note}
             </p>
           )}

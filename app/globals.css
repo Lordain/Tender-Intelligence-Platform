@@ -118,6 +118,116 @@ select {
   }
 }
 
+/* The hero's three buttons — components/tenders/HomeHero.tsx. */
+.hero-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  padding: 0.875rem 1.75rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.hero-cta svg {
+  transition: transform 0.2s ease;
+}
+
+.hero-cta:hover {
+  transform: translateY(-2px);
+}
+
+.hero-cta:hover svg {
+  transform: translateX(3px);
+}
+
+/* A glint crosses the button on hover. */
+.hero-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 45%;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.35) 50%, rgba(255, 255, 255, 0) 100%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.hero-cta:hover::after {
+  transform: translateX(260%);
+  transition: transform 0.7s ease;
+}
+
+.hero-cta-primary {
+  color: #071826;
+  background-image: linear-gradient(135deg, #ffcf5c 0%, #ffb21c 55%, #f39b00 100%);
+  box-shadow: 0 12px 30px -14px rgba(255, 178, 28, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.hero-cta-primary:hover {
+  box-shadow: 0 16px 36px -14px rgba(255, 178, 28, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.hero-cta-glass {
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.hero-cta-glass:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.hero-cta-outline {
+  color: #ffcf68;
+  border: 1px solid rgba(255, 178, 28, 0.6);
+  background-image: linear-gradient(135deg, rgba(255, 178, 28, 0.16) 0%, rgba(255, 178, 28, 0.02) 100%);
+}
+
+.hero-cta-outline:hover {
+  border-color: rgba(255, 178, 28, 0.95);
+  background-color: rgba(255, 178, 28, 0.12);
+}
+
+/* The industry rail's light: a glow drifting across, and a spark along its top edge. */
+.industry-rail-light,
+.industry-rail-edge {
+  position: absolute;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.industry-rail-light {
+  inset: -40% auto -40% 0;
+  width: 32%;
+  background: radial-gradient(closest-side, rgba(255, 190, 70, 0.16), rgba(255, 190, 70, 0));
+  animation: industry-rail-light 11s ease-in-out infinite alternate;
+}
+
+.industry-rail-edge {
+  top: -1px;
+  left: 0;
+  width: 22%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 207, 104, 0), rgba(255, 207, 104, 0.9) 50%, rgba(255, 207, 104, 0));
+  animation: industry-rail-edge 6s linear infinite;
+}
+
+@keyframes industry-rail-light {
+  from { transform: translateX(-30%); }
+  to { transform: translateX(240%); }
+}
+
+@keyframes industry-rail-edge {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(460%); }
+}
+
 .hero-tender-scroll {
   animation: tender-scroll 18s linear infinite;
 }
@@ -171,6 +281,64 @@ select {
 @keyframes whyus-track-sweep {
   from { transform: translateX(-100%); }
   to { transform: translateX(500%); }
+}
+
+/*
+ * Surfaces shared by the tender cards, the /tenders list and the detail page
+ * (user, 2026-10-10: 基于我们对招标指南、国家风格的设计优化 … 增加一些渐变效果).
+ * The same palette as the guides' cards (components/guides/GuideVisuals.tsx):
+ * warm paper to pale amber, cool grey-blue, amber, navy. Named here once so
+ * every card carries a short class rather than a long gradient of its own.
+ */
+.surface-warm {
+  background-image: linear-gradient(150deg, #ffffff 0%, #fffcf5 45%, #f9eed6 100%);
+}
+
+.surface-cool {
+  background-image: linear-gradient(135deg, #f8fbfb 0%, #edf3f5 100%);
+}
+
+.surface-amber {
+  background-image: linear-gradient(135deg, #fffaf0 0%, #ffedc4 100%);
+}
+
+.surface-navy {
+  background-image:
+    radial-gradient(120% 90% at 100% 0%, rgba(255, 178, 28, 0.16) 0%, rgba(255, 178, 28, 0) 55%),
+    linear-gradient(140deg, #0c3048 0%, #061b2b 55%, #041422 100%);
+}
+
+/* A card's amber hairline along its top edge, lit on hover. */
+.surface-accent {
+  position: relative;
+}
+
+.surface-accent::before {
+  content: "";
+  position: absolute;
+  inset: 0 1.25rem auto;
+  height: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, rgba(255, 178, 28, 0), #ffb21c 50%, rgba(255, 178, 28, 0));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.surface-accent:hover::before,
+.surface-accent:focus-within::before {
+  opacity: 1;
+}
+
+/* The dark call-to-action buttons. */
+.button-navy {
+  background-image: linear-gradient(135deg, #12405c 0%, #071826 60%);
+  transition: filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button-navy:hover {
+  filter: brightness(1.18);
+  box-shadow: 0 10px 24px -14px rgba(6, 27, 43, 0.8);
 }
 
 /* Homepage coverage map — see components/home/CoverageMap.tsx. No CSS mask
@@ -329,6 +497,8 @@ select {
 @media (prefers-reduced-motion: reduce) {
   .hero-tender-scroll,
   .industry-logo-scroll,
+  .industry-rail-light,
+  .industry-rail-edge,
   .whyus-dot,
   .whyus-exit-ring,
   .whyus-track-sweep,
@@ -338,6 +508,8 @@ select {
   .live-dot::after { animation: none; }
   .coverage-wave { display: none; }
   .coverage-ping { display: none; }
+  .industry-rail-edge { display: none; }
+  .hero-cta::after { display: none; }
   .whyus-particles { display: none; }
   [data-reveal],
   [data-reveal] .reveal-pop { transition: none; }

@@ -38,7 +38,7 @@ export function TenderLinkCards({ links, columns = 3 }: { links: TenderLink[]; c
           key={link.id}
           href={publicTenderPath(link)}
           prefetch={false}
-          className="group flex h-full flex-col gap-3 rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 transition-all hover:-translate-y-0.5 hover:border-[#aebdc3] hover:shadow-[0_18px_50px_-32px_rgba(6,27,43,0.45)]"
+          className="surface-accent group flex h-full flex-col gap-3 rounded-2xl surface-warm border border-[#dfe5e7] p-5 transition-all hover:-translate-y-0.5 hover:border-[#e2c68a] hover:shadow-[0_22px_50px_-30px_rgba(126,78,0,0.45)]"
         >
           {/* Two rows of pills reserved wherever cards sit side by side, so
               every title in a row starts at the same height however many tags

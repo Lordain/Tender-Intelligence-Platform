@@ -22,7 +22,7 @@ import { shortTitleOf } from "@/lib/public-title";
 
 function Field({ label, value, emphasized = false, note }: { label: string; value: string; emphasized?: boolean; note?: string | null }) {
   return (
-    <div className={`flex min-w-0 flex-col rounded-2xl border px-5 py-4 ${emphasized ? "border-[#f2dba2] bg-[#fff9eb]" : "border-[#e4e9eb] bg-white"}`}>
+    <div className={`flex min-w-0 flex-col rounded-2xl border px-5 py-4 ${emphasized ? "border-[#f2dba2] surface-amber" : "border-[#e4e9eb] surface-cool"}`}>
       <dt className="text-xs font-bold text-[#75838c]">{label}</dt>
       <dd className={`mt-2 break-words text-base font-black leading-6 ${emphasized ? "text-[#9a6200]" : "text-[#071826]"}`}>{value}</dd>
       {note && <p className="mt-1 text-xs leading-5 text-[#7a878f]">{note}</p>}
@@ -43,7 +43,7 @@ export function TenderOverview({ tender, showTrialCta = false, canExportWord = f
   const undisclosedBand = undisclosedAmountBand(tender);
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
+    <section className="flex flex-col gap-4 rounded-2xl surface-warm border border-[#dfe5e7] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-semibold text-[#536772]">
@@ -110,7 +110,7 @@ export function TenderOverview({ tender, showTrialCta = false, canExportWord = f
         appeared, and therefore new information rather than a repeat.
       */}
       {![heading, tender.title.es].includes(localize(tender.summary, locale).trim()) && (
-        <div className="rounded-xl border-l-4 border-[#ffb21c] bg-[#fff8e9] px-4 py-3">
+        <div className="rounded-xl border-l-4 border-[#ffb21c] surface-amber px-4 py-3">
           <p className="text-[11px] font-black uppercase tracking-[0.1em] text-[#9a6200]">项目摘要</p>
           <p className="mt-1 text-sm leading-6 text-[#425461]">{localize(tender.summary, locale)}</p>
         </div>

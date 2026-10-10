@@ -135,7 +135,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
     ?? null;
 
   return (
-    <article className="group relative grid gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 transition-all hover:border-[#a9b8bf] hover:shadow-[0_18px_45px_-35px_rgba(6,27,43,.5)] md:grid-cols-[minmax(0,1fr)_14rem] md:items-center">
+    <article className="surface-warm surface-accent group grid gap-4 rounded-2xl border border-[#dfe5e7] p-5 shadow-[0_1px_2px_rgba(6,27,43,0.04)] transition-all hover:border-[#e2c68a] hover:shadow-[0_22px_50px_-34px_rgba(126,78,0,0.45)] md:grid-cols-[minmax(0,1fr)_16rem] md:items-center">
       <div className="min-w-0">
         <div className="mb-2.5 flex flex-wrap gap-2">
           <TenderTagRow
@@ -157,7 +157,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
           {tender.buyer && <span className="truncate">发布机构：{tender.buyer}</span>}
         </div>
       </div>
-      <div className="flex items-center justify-between gap-4 border-t border-[#e5e9eb] pt-4 md:border-l md:border-t-0 md:pl-5 md:pt-0">
+      <div className="surface-amber flex items-center justify-between gap-4 rounded-xl border border-[#f1dcae] px-4 py-3">
         <div>
           <p className="text-xs font-semibold text-[#7a878f]">项目金额</p>
           <p className={`mt-1 text-lg font-black ${value ? "text-[#b86e00]" : "text-[#9aa5ab]"}`}>{value ?? "未公开"}</p>
@@ -385,7 +385,7 @@ export function TenderExplorer({
         </button>
       )}
 
-      <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
+      <section className="surface-warm rounded-2xl border border-[#dfe5e7] p-4 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-5">
         <TenderSearchForm
           key={query}
           initialQuery={query}
@@ -591,7 +591,7 @@ export function TenderExplorer({
         </div>
 
         <aside className="space-y-5">
-          <section className="rounded-2xl bg-[#061b2b] p-5 text-white">
+          <section className="surface-navy rounded-2xl p-5 text-white shadow-[0_22px_50px_-34px_rgba(6,27,43,.75)]">
             <h2 className="text-base font-bold">招标概览</h2>
             <div className="mt-4 grid grid-cols-3 divide-x divide-white/20 text-center">
               {/*
@@ -629,7 +629,7 @@ export function TenderExplorer({
               </button>
             </div>
           </section>
-          <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5">
+          <section className="surface-warm rounded-2xl border border-[#dfe5e7] p-5">
             <div className="flex items-center justify-between"><h2 className="font-bold text-[#071826]">交标提醒</h2><Link href="/saved" data-member-feature="saved-tenders" className="text-xs font-semibold text-[#24465a]">查看关注</Link></div>
             <SavedTenderReminders savedIds={savedIds} />
           </section>

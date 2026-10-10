@@ -25,7 +25,7 @@ import { DetailSectionHeading } from "@/components/tenders/DetailSectionHeading"
 
 function Field({ label, value, emphasized = false, note }: { label: string; value: string; emphasized?: boolean; note?: string | null }) {
   return (
-    <div className={`flex min-w-0 flex-col rounded-2xl border px-5 py-4 ${emphasized ? "border-[#f2dba2] bg-[#fff9eb]" : "border-[#e4e9eb] bg-white"}`}>
+    <div className={`flex min-w-0 flex-col rounded-2xl border px-5 py-4 ${emphasized ? "border-[#f2dba2] surface-amber" : "border-[#e4e9eb] surface-cool"}`}>
       <dt className="text-xs font-bold text-[#75838c]">{label}</dt>
       <dd className={`mt-2 break-words text-base font-black leading-6 ${emphasized ? "text-[#9a6200]" : "text-[#071826]"}`}>{value}</dd>
       {note && <p className="mt-1 text-xs leading-5 text-[#7a878f]">{note}</p>}
@@ -51,8 +51,8 @@ function ProtectedContentPrompt({ kind, nextPath }: { kind: TenderDetailPromptKi
       : "完整页面包括项目编号与原文名称、关键日期、资质与经验要求、所需文件、风险提示，以及官方投标入口和检索说明。";
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-[#d8e0e3] bg-[#fffdf9] shadow-[0_24px_70px_-55px_rgba(6,27,43,.65)]">
-      <div className="bg-[#061b2b] px-6 py-7 text-white sm:px-8 sm:py-8">
+    <section className="overflow-hidden rounded-3xl surface-warm border border-[#dfe5e7] shadow-[0_24px_70px_-55px_rgba(6,27,43,.65)]">
+      <div className="surface-navy px-6 py-7 text-white sm:px-8 sm:py-8">
         <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#ffb21c]">完整参标情报</p>
         <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] sm:text-3xl">
           {title}
@@ -111,7 +111,7 @@ export function PublicTenderDetailView({ tender, promptKind, related, lifecycle 
 
         {tender.status === "planned" && <UpcomingTenderNotice />}
 
-        <article className="flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
+        <article className="flex flex-col gap-4 rounded-2xl surface-warm border border-[#dfe5e7] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-semibold text-[#536772]">
               <CountryFlag country={tender.country} />
@@ -131,7 +131,7 @@ export function PublicTenderDetailView({ tender, promptKind, related, lifecycle 
           </h1>
 
           {![tender.titleZh].includes(tender.summaryZh.trim()) && (
-            <div className="rounded-xl border-l-4 border-[#ffb21c] bg-[#fff8e9] px-4 py-3">
+            <div className="rounded-xl border-l-4 border-[#ffb21c] surface-amber px-4 py-3">
               <p className="text-[11px] font-black uppercase tracking-[0.1em] text-[#9a6200]">项目摘要</p>
               <p className="mt-1 text-sm leading-6 text-[#425461]">{tender.summaryZh}</p>
             </div>
@@ -156,7 +156,7 @@ export function PublicTenderDetailView({ tender, promptKind, related, lifecycle 
 
         <section className="flex flex-col gap-4">
           <DetailSectionHeading title={localize(uiText.criticalDates, locale)} description="按项目进程查看公开日期；如有交标安排，仅显示月份" />
-          <div className="rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] px-6 py-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:px-8">
+          <div className="rounded-3xl surface-warm border border-[#dfe5e7] px-6 py-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:px-8">
             <TimelineTrack items={[
               {
                 id: "publication",

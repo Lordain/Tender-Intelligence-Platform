@@ -60,14 +60,14 @@ export function RequirementSection({
       ) : (
         <>
           {mandatoryItems.length > 0 && (
-            <ul className="divide-y divide-[#e5e9eb] overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]">
+            <ul className="divide-y divide-[#e5e9eb] overflow-hidden rounded-2xl surface-warm border border-[#dfe5e7]">
               {visibleMandatoryItems.map((item) => (
                 <RequirementItem key={item.id} item={item} locale={locale} />
               ))}
             </ul>
           )}
           {hiddenMandatoryItems.length > 0 && (
-            <details className="group rounded-xl border border-[#dbe2e5] bg-[#fffdf9]">
+            <details className="group rounded-xl surface-warm border border-[#dfe5e7]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-black text-[#425461] hover:bg-[#f2f4f3] [&::-webkit-details-marker]:hidden">
                 <span className="flex items-center gap-2"><ChevronIcon />展开其余 {hiddenMandatoryItems.length} 项强制要求</span>
                 <span className="text-xs font-semibold text-[#87939a]">完整查看</span>
@@ -83,7 +83,7 @@ export function RequirementSection({
                 <ChevronIcon />
                 其他 {optionalItems.length} 项非强制要求
               </summary>
-              <ul className="mt-3 divide-y divide-[#e5e9eb] overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]">
+              <ul className="mt-3 divide-y divide-[#e5e9eb] overflow-hidden rounded-2xl surface-warm border border-[#dfe5e7]">
                 {optionalItems.map((item) => (
                   <RequirementItem key={item.id} item={item} locale={locale} />
                 ))}

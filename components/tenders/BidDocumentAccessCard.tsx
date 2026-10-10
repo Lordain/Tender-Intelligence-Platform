@@ -69,7 +69,7 @@ export function BidDocumentAccessCard({ access, noticeUrl }: { access: BidDocume
   }
 
   return (
-    <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 sm:p-6">
+    <div className="rounded-2xl surface-warm border border-[#dfe5e7] p-5 sm:p-6">
       <h3 className="text-sm font-black text-[#071826]">这个项目的标书怎么拿</h3>
       <p className="mt-1.5 text-xs leading-5 text-[#64717c]">
         官方平台只发布招标公告，完整招标文件{access.downloadUrl ? "可以在网上下载，也可以" : "要"}按下面的方式向采购单位获取：
@@ -82,7 +82,7 @@ export function BidDocumentAccessCard({ access, noticeUrl }: { access: BidDocume
           </li>
         ))}
       </ul>
-      <p className="mt-4 rounded-xl border border-[#f0d9a8] bg-[#fff8e9] px-3 py-2 text-xs leading-5 text-[#7a5200]">
+      <p className="mt-4 rounded-xl border border-[#f0d9a8] surface-amber px-3 py-2 text-xs leading-5 text-[#7a5200]">
         {access.fromSibling ? "这一标段的公告是扫描件，以上按同一项目其他标段的公告整理。" : ""}
         以上由本站根据招标公告整理；地址、办公时间等细节见公告原文，以公告为准。
       </p>

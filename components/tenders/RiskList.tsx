@@ -63,14 +63,14 @@ export function RiskList({ risks }: { risks: TenderRisk[] }) {
       ) : (
         <>
           {highRisks.length > 0 && (
-            <ul className="divide-y divide-[#e5e9eb] overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]">
+            <ul className="divide-y divide-[#e5e9eb] overflow-hidden rounded-2xl surface-warm border border-[#dfe5e7]">
               {visibleHighRisks.map((risk) => (
                 <RiskItem key={risk.id} risk={risk} locale={locale} />
               ))}
             </ul>
           )}
           {hiddenHighRisks.length > 0 && (
-            <details className="group rounded-xl border border-[#dbe2e5] bg-[#fffdf9]">
+            <details className="group rounded-xl surface-warm border border-[#dfe5e7]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-black text-[#425461] hover:bg-[#f2f4f3] [&::-webkit-details-marker]:hidden">
                 <span className="flex items-center gap-2"><ChevronIcon />展开其余 {hiddenHighRisks.length} 项高优先级风险</span>
                 <span className="text-xs font-semibold text-[#87939a]">完整查看</span>
@@ -86,7 +86,7 @@ export function RiskList({ risks }: { risks: TenderRisk[] }) {
                 <ChevronIcon />
                 其他 {lowerRisks.length} 项中低风险提示
               </summary>
-              <ul className="mt-3 divide-y divide-[#e5e9eb] overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#fffdf9]">
+              <ul className="mt-3 divide-y divide-[#e5e9eb] overflow-hidden rounded-2xl surface-warm border border-[#dfe5e7]">
                 {lowerRisks.map((risk) => (
                   <RiskItem key={risk.id} risk={risk} locale={locale} />
                 ))}

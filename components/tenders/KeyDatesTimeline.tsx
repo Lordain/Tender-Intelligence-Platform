@@ -84,7 +84,7 @@ export function KeyDatesTimeline({ dates, publicationDate, publicationDateIsEsti
         description="发布、提问截止、提交与开标及中标结果；其他安排见下方"
         count={primary.length}
       />
-      <div className="rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] px-6 py-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:px-8">
+      <div className="rounded-3xl surface-warm border border-[#dfe5e7] px-6 py-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:px-8">
         {primary.length === 0 ? (
           <p className="text-sm text-[#64717c]">{localize(uiText.noneListed, locale)}</p>
         ) : (
@@ -98,11 +98,11 @@ export function KeyDatesTimeline({ dates, publicationDate, publicationDateIsEsti
         )}
       </div>
       {(otherDates.length > 0 || primaryWithNotes.length > 0 || missingSubmission) && (
-        <div className="rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] px-6 py-6 sm:px-8">
+        <div className="rounded-3xl surface-warm border border-[#dfe5e7] px-6 py-6 sm:px-8">
           <h3 className="text-sm font-black text-[#071826]">其他时间安排与节点说明</h3>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {otherDates.map((keyDate) => (
-              <div key={keyDate.id} className="rounded-2xl bg-[#f4f7f7] px-4 py-3">
+              <div key={keyDate.id} className="rounded-2xl surface-cool px-4 py-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-sm font-bold text-[#071826]">{dateLabel(keyDate)}</p>
                   <p className="text-sm font-black tabular-nums text-[#425461]">{formatDate(keyDate.date, locale)}</p>
@@ -111,13 +111,13 @@ export function KeyDatesTimeline({ dates, publicationDate, publicationDateIsEsti
               </div>
             ))}
             {primaryWithNotes.map((keyDate) => (
-              <div key={`${keyDate.id}-note`} className="rounded-2xl bg-[#f4f7f7] px-4 py-3">
+              <div key={`${keyDate.id}-note`} className="rounded-2xl surface-cool px-4 py-3">
                 <p className="text-sm font-bold text-[#071826]">{dateLabel(keyDate)}说明</p>
                 <p className="mt-1 text-xs leading-5 text-[#75838c]">{dateNote(keyDate)}</p>
               </div>
             ))}
             {missingSubmission && (
-              <div className="rounded-2xl bg-[#fff9eb] px-4 py-3">
+              <div className="rounded-2xl surface-amber px-4 py-3">
                 <p className="text-sm font-bold text-[#9a6200]">
                   {deadlineInDocuments && status !== "submission_closed" ? `计划交标日期：${DEADLINE_IN_DOCUMENTS_LABEL}` : "计划交标日期未提供"}
                 </p>

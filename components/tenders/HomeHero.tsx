@@ -79,9 +79,17 @@ function IndustryIcon({ name }: { name: IndustryIconName }) {
   );
 }
 
+/**
+ * A soft light travels along the rail and its top edge (user, 2026-10-10: 我们
+ * 覆盖的行业增加一点光源动画). Both are transform animations on their own
+ * layers (.industry-rail-light, app/globals.css), so the GPU moves them and
+ * nothing repaints; they hold still under prefers-reduced-motion.
+ */
 function IndustryLogoRail() {
   return (
-    <div className="relative z-20 border-t border-white/8 bg-[#020f18]/58 py-5">
+    <div className="relative z-20 overflow-hidden border-t border-white/8 bg-[#020f18]/58 py-5">
+      <span aria-hidden="true" className="industry-rail-edge" />
+      <span aria-hidden="true" className="industry-rail-light" />
       <p className="mb-4 text-center text-[10px] font-semibold uppercase tracking-[0.28em] text-white/38">我们覆盖的行业</p>
       <div className="industry-logo-mask overflow-hidden">
         <div className="industry-logo-scroll flex w-max">
@@ -177,14 +185,18 @@ export function HomeHero({ tenders }: { tenders: TenderCardData[] }) {
             <span className="block">帮企业省时、省力、省钱，快速获取精准拉美项目机会。</span>
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/tenders" className="inline-flex items-center justify-center gap-4 rounded-2xl bg-[#ffb21c] px-7 py-3.5 text-sm font-bold text-[#071826] transition-transform hover:-translate-y-0.5 hover:bg-[#ffc247]">
+            {/* One family of three (user, 2026-10-10: 这3个框也优化一下): the
+                same height, radius and arrow; amber for the main action, glass
+                for the second, an amber-tinted outline for the third. Styles in
+                app/globals.css (.hero-cta-*). */}
+            <Link href="/tenders" className="hero-cta hero-cta-primary">
               浏览招标 <ArrowIcon />
             </Link>
-            <a href="#how-it-works" className="inline-flex items-center justify-center gap-4 rounded-2xl border border-white/70 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-[#061b2b]">
+            <a href="#how-it-works" className="hero-cta hero-cta-glass">
               我们提供的价值 <ArrowIcon />
             </a>
             {user && (
-              <Link href="/account#notification-preferences" className="inline-flex items-center justify-center gap-3 rounded-2xl border border-[#ffb21c]/75 bg-[#031521]/35 px-7 py-3.5 text-sm font-bold text-[#ffcf68] transition-colors hover:bg-[#ffb21c] hover:text-[#071826]">
+              <Link href="/account#notification-preferences" className="hero-cta hero-cta-outline">
                 设置邮件通知 <ArrowIcon />
               </Link>
             )}

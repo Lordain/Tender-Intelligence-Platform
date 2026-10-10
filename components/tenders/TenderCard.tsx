@@ -12,12 +12,25 @@ import { CountryFlag } from "@/components/tenders/CountryFlag";
 import { publicTenderPath } from "@/lib/public-tender-url";
 import { DaysLeft } from "@/components/tenders/DaysLeft";
 
+/**
+ * The card's seven rows, in order: tags, title, summary, preview, dates,
+ * country line, button. With `aligned` the card is a subgrid of a parent grid
+ * whose items each span CARD_ROWS rows (FeaturedTenders), so every row lines up
+ * across the cards beside it at any width — titles of one, two or three
+ * lines, a tag row that wraps, a missing summary (user, 2026-10-10: 卡片在不同
+ * 屏幕大小时，摆放位置高低不对齐). A missing row is then an empty cell, so the
+ * count never changes.
+ */
+export const CARD_ROWS = 7;
+
 export function TenderCard({
   tender,
   showOneLineSummary = false,
+  aligned = false,
 }: {
   tender: TenderCardData;
   showOneLineSummary?: boolean;
+  aligned?: boolean;
 }) {
   const { locale } = useLocale();
   const detailHref = `${publicTenderPath(tender)}${showOneLineSummary ? "?from=homepage" : ""}`;
@@ -40,7 +53,7 @@ export function TenderCard({
   ].filter(Boolean) as { label: string; text: string; strong: boolean; summary: boolean }[];
 
   return (
-    <article className="group relative flex h-full flex-col gap-3 rounded-2xl border border-[#d8e0e3] bg-[#fffdf9] p-5 transition-all hover:-translate-y-0.5 hover:border-[#aebdc3] hover:shadow-[0_18px_50px_-32px_rgba(6,27,43,0.45)]">
+    <article className={`surface-warm surface-accent group rounded-2xl border border-[#dfe5e7] p-5 shadow-[0_1px_2px_rgba(6,27,43,0.04)] transition-all hover:-translate-y-0.5 hover:border-[#e2c68a] hover:shadow-[0_22px_50px_-30px_rgba(126,78,0,0.45)] ${aligned ? "row-span-7 grid grid-rows-subgrid gap-y-3" : "flex h-full flex-col gap-3"}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <TenderTagRow
@@ -64,24 +77,26 @@ export function TenderCard({
           height across a row of cards — the 高高矮矮 the user reported
           (2026-09-20). Nothing is clamped, so a three-line title still shows
           in full; this only stops a short one from pulling its card up. */}
-      <h3 className="min-h-[2.75rem] text-base font-black leading-snug text-black">
-        <Link href={detailHref} prefetch={false} data-public-tender-link className="after:absolute after:inset-0">
-          {tender.titleZh}
-        </Link>
-      </h3>
-      {titleOriginal && <p className="line-clamp-1 text-xs text-[#75838c]">{titleOriginal}</p>}
+      <div>
+        <h3 className="min-h-[2.75rem] text-base font-black leading-snug text-black">
+          <Link href={detailHref} prefetch={false} data-public-tender-link className="after:absolute after:inset-0">
+            {tender.titleZh}
+          </Link>
+        </h3>
+        {titleOriginal && <p className="mt-3 line-clamp-1 text-xs text-[#75838c]">{titleOriginal}</p>}
+      </div>
 
       {/* Absent on the free-preview cards, where 一句话总结 already leads the
           block below and says the same thing. Not a CSS hide: toTenderCardData
           does not project the field at all in that case. */}
-      {tender.summaryZh && (
+      {tender.summaryZh ? (
         <p className="line-clamp-2 text-xs leading-5 text-[#61717c]">
           {tender.summaryZh}
         </p>
-      )}
+      ) : aligned && <div />}
 
-      {previews.length > 0 && (
-        <div className="rounded-xl border border-[#e2e7e9] bg-[#f7f9f8] px-3 py-2.5">
+      {previews.length > 0 ? (
+        <div className="surface-cool rounded-xl border border-[#e0e8eb] px-3 py-2.5">
           <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#73818a]">投标重点预览</p>
           <ul className="space-y-1.5">
             {previews.map((preview) => (
@@ -92,7 +107,7 @@ export function TenderCard({
             ))}
           </ul>
         </div>
-      )}
+      ) : aligned && <div />}
 
       {/* Two dates side by side, publication left and deadline right
           (2026-09-20). mt-auto on the row rather than on one card inside it,
@@ -103,8 +118,8 @@ export function TenderCard({
           bidder acts on; the publication date is the quieter one, and it is
           labelled 收录日期 when the stored value is when we first saw the
           tender rather than when it was published. */}
-      <div className="mt-auto grid grid-cols-2 gap-2">
-        <div className="rounded-xl bg-[#f1f4f5] px-3 py-2.5">
+      <div className={`grid grid-cols-2 gap-2 ${aligned ? "" : "mt-auto"}`}>
+        <div className="surface-cool rounded-xl px-3 py-2.5">
           <p className="text-[11px] font-medium text-[#66757f]">
             {localize(tender.publicationDateIsEstimated ? uiText.ingestedDateLabel : uiText.publicationDateLabel, locale)}
           </p>
@@ -112,7 +127,7 @@ export function TenderCard({
             {formatDate(tender.publicationDate, locale)}
           </span>
         </div>
-        <div className="rounded-xl bg-[#fff6df] px-3 py-2.5">
+        <div className="surface-amber rounded-xl px-3 py-2.5">
           <p className="text-[11px] font-medium text-[#966000]">计划交标</p>
           <span className="mt-0.5 block text-sm font-bold text-[#071826]">
             {tender.submissionDeadline ? formatDate(tender.submissionDeadline, locale) : tender.deadlineInDocuments ? DEADLINE_IN_DOCUMENTS_LABEL : "未提供"}
@@ -139,7 +154,7 @@ export function TenderCard({
         </>}
         {value !== null && <>{" · "}{value}</>}</span>
       </p>
-      <Link href={detailHref} prefetch={false} data-public-tender-link className="relative z-10 mt-1 inline-flex w-full items-center justify-center rounded-xl bg-[#071826] px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-[#163b52]">
+      <Link href={detailHref} prefetch={false} data-public-tender-link className="button-navy relative z-10 mt-1 inline-flex w-full items-center justify-center self-end rounded-xl px-4 py-2.5 text-xs font-black text-white">
         查看招标信息
       </Link>
     </article>

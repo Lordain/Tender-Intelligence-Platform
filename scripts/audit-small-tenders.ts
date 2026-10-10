@@ -7,10 +7,19 @@
  * the tiers use. Rows without an amount, or in a currency with no rate, are
  * counted separately — they are not "small", they are unknown.
  *
- * Read-only; nothing is written.
+ * Same day: 可以的话，我想清理掉. With --write, every row below the amount is
+ * deleted the way the admin list deletes one — the row goes and its slug is
+ * tombstoned in tender_manual_deletions, so the next import does not bring
+ * it back. EXCEPT a row whose tier an admin locked (relevance_manually_
+ * overridden): that was a deliberate decision to keep it, so it is listed and
+ * left alone unless --include-locked. Rows with no amount are never touched.
+ * Related rows (requirements, risks, documents, key dates, status history)
+ * go with it through their ON DELETE CASCADE, as with any admin delete.
  *
- *   npm run audit:small-tenders
- *   npm run audit:small-tenders -- --max 500000
+ *   npm run audit:small-tenders                          (preview)
+ *   npm run audit:small-tenders -- --max 500000          (another threshold)
+ *   npm run audit:small-tenders -- --write               (delete, locked rows kept)
+ *   npm run audit:small-tenders -- --write --include-locked
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { convertToUsd } from "../lib/currency";
@@ -20,10 +29,13 @@ import type { TenderRelevanceTier, TenderStatus } from "../types/tender";
 const PAGE_SIZE = 1000;
 const maxIndex = process.argv.indexOf("--max");
 const MAX_USD = maxIndex >= 0 && Number(process.argv[maxIndex + 1]) > 0 ? Number(process.argv[maxIndex + 1]) : 300_000;
+const write = process.argv.includes("--write");
+const includeLocked = process.argv.includes("--include-locked");
 const TIER_ZH: Record<TenderRelevanceTier, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "已过滤" };
 
 type Row = {
   slug: string;
+  tender_number: string;
   title: { es?: string; zh?: string } | null;
   country: string;
   status: TenderStatus;
@@ -53,7 +65,7 @@ async function main() {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, title, country, status, industries, source_name, estimated_value, currency, relevance_tier, relevance_manually_overridden, one_line_summary")
+      .select("slug, tender_number, title, country, status, industries, source_name, estimated_value, currency, relevance_tier, relevance_manually_overridden, one_line_summary")
       .order("slug", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
     if (error) {
@@ -98,7 +110,36 @@ async function main() {
     const usd = usdOf(row)!;
     console.log(`  $${Math.round(usd).toLocaleString("en-US").padStart(9)}  ${TIER_ZH[row.relevance_tier ?? "standard"]}  ${row.country.padEnd(10)} ${(row.title?.zh || row.title?.es || "").replace(/\s+/g, " ").slice(0, 46)}`);
   }
-  console.log("\n只读，没有写入任何数据。把上面的输出整段发我。");
+  const locked = small.filter((row) => row.relevance_manually_overridden === true);
+  const toDelete = small.filter((row) => includeLocked || row.relevance_manually_overridden !== true);
+  console.log(`\n==== 清理 ====`);
+  console.log(`  会删除：${toDelete.length} 条（前台可见 ${toDelete.filter((row) => row.relevance_tier !== "excluded").length} 条，已过滤 ${toDelete.filter((row) => row.relevance_tier === "excluded").length} 条）`);
+  if (locked.length > 0) {
+    console.log(`  人工锁定过分级的 ${locked.length} 条${includeLocked ? "也会删除（--include-locked）" : "不删，加 --include-locked 才删"}：`);
+    for (const row of locked) console.log(`    $${Math.round(usdOf(row)!).toLocaleString("en-US").padStart(9)}  ${row.country.padEnd(10)} ${(row.title?.zh || row.title?.es || "").replace(/\s+/g, " ").slice(0, 46)}  ${row.slug}`);
+  }
+
+  if (!write) {
+    console.log(`\n预览，没有写入。确认无误后执行：npm run audit:small-tenders -- --write${MAX_USD !== 300_000 ? ` --max ${MAX_USD}` : ""}`);
+    return;
+  }
+
+  let removed = 0;
+  let failed = 0;
+  for (const row of toDelete) {
+    const { error } = await supabase.from("tenders").delete().eq("slug", row.slug);
+    if (error) {
+      failed += 1;
+      console.error(`  ${row.slug} 删除失败：${error.message}`);
+      continue;
+    }
+    removed += 1;
+    const { error: tombstoneError } = await supabase
+      .from("tender_manual_deletions")
+      .upsert({ slug: row.slug, tender_number: row.tender_number, title: row.title?.es ?? null, deleted_at: new Date().toISOString() }, { onConflict: "slug" });
+    if (tombstoneError) console.error(`  ${row.slug} 已删除，但没能记入 tender_manual_deletions：${tombstoneError.message}`);
+  }
+  console.log(`\n已删除 ${removed} 条低于 ${limit} 的项目${failed ? `，${failed} 条失败` : ""}，并记入手动删除名单，之后的导入不会再写回。`);
 }
 
 main();

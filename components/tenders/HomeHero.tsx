@@ -80,32 +80,45 @@ function IndustryIcon({ name }: { name: IndustryIconName }) {
 }
 
 /**
- * A soft light travels along the rail and its top edge (user, 2026-10-10: 我们
- * 覆盖的行业增加一点光源动画). Both are transform animations on their own
- * layers (.industry-rail-light, app/globals.css), so the GPU moves them and
- * nothing repaints; they hold still under prefers-reduced-motion.
+ * One white light sweeps across the rail, and the industries under it light
+ * up as it passes (user, 2026-10-10: 不要两道光而且速度不一样，改成白光 … 让内容
+ * 发白光). The lit copy of the strip sits in a moving window (.industry-shine),
+ * held in place by an equal and opposite move (.industry-shine-counter) and
+ * scrolled by the same animation as the strip beneath it, so the glow sits on
+ * the very words it covers. Every one of those moves is a transform the GPU
+ * composites: nothing repaints. Under prefers-reduced-motion the window is
+ * gone and the strip holds still.
  */
+function IndustryStrip({ lit = false }: { lit?: boolean }) {
+  return (
+    <div className="industry-logo-scroll flex w-max">
+      {[0, 1].map((copy) => (
+        <div key={copy} aria-hidden={lit || copy === 1} className="flex shrink-0 items-center gap-12 pr-12 sm:gap-16 sm:pr-16">
+          {COVERED_INDUSTRIES.map(({ icon, name, detail }) => (
+            <div key={`${copy}-${name}`} className={`flex min-w-max items-center gap-3 ${lit ? "industry-lit text-white" : "text-white/42"}`}>
+              <IndustryIcon name={icon} />
+              <span>
+                <strong className={`block text-sm font-bold tracking-wide ${lit ? "text-white" : "text-white/58"}`}>{name}</strong>
+                <small className={`block text-[9px] tracking-[0.08em] ${lit ? "text-white/85" : "text-white/30"}`}>{detail}</small>
+              </span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function IndustryLogoRail() {
   return (
     <div className="relative z-20 overflow-hidden border-t border-white/8 bg-[#020f18]/58 py-5">
-      <span aria-hidden="true" className="industry-rail-edge" />
-      <span aria-hidden="true" className="industry-rail-light" />
       <p className="mb-4 text-center text-[10px] font-semibold uppercase tracking-[0.28em] text-white/38">我们覆盖的行业</p>
-      <div className="industry-logo-mask overflow-hidden">
-        <div className="industry-logo-scroll flex w-max">
-          {[0, 1].map((copy) => (
-            <div key={copy} aria-hidden={copy === 1} className="flex shrink-0 items-center gap-12 pr-12 sm:gap-16 sm:pr-16">
-              {COVERED_INDUSTRIES.map(({ icon, name, detail }) => (
-                <div key={`${copy}-${name}`} className="flex min-w-max items-center gap-3 text-white/42">
-                  <IndustryIcon name={icon} />
-                  <span>
-                    <strong className="block text-sm font-bold tracking-wide text-white/58">{name}</strong>
-                    <small className="block text-[9px] tracking-[0.08em] text-white/30">{detail}</small>
-                  </span>
-                </div>
-              ))}
-            </div>
-          ))}
+      <div className="industry-logo-mask relative overflow-hidden">
+        <IndustryStrip />
+        <div aria-hidden="true" className="industry-shine">
+          <div className="industry-shine-counter">
+            <IndustryStrip lit />
+          </div>
         </div>
       </div>
     </div>

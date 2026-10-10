@@ -194,39 +194,44 @@ select {
   background-color: rgba(255, 178, 28, 0.12);
 }
 
-/* The industry rail's light: a glow drifting across, and a spark along its top edge. */
-.industry-rail-light,
-.industry-rail-edge {
+/* The rail's light: see IndustryLogoRail in components/tenders/HomeHero.tsx.
+   The window is a quarter of the rail wide and runs from just off its left
+   edge to just off its right (-100% → 400% of itself); the counter-layer is
+   the rail's width (400% of the window) and moves the same distance the other
+   way (25% → -100% of itself), so its contents never move on screen. Same
+   keyframe stops and timing on both, so the two cancel at every frame. */
+.industry-shine {
   position: absolute;
+  inset: 0 auto 0 0;
+  width: 25%;
+  overflow: hidden;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 38%, #000 62%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 38%, #000 62%, transparent);
   will-change: transform;
+  animation: industry-shine 8s ease-in-out infinite;
 }
 
-.industry-rail-light {
-  inset: -40% auto -40% 0;
-  width: 32%;
-  background: radial-gradient(closest-side, rgba(255, 196, 84, 0.42), rgba(255, 178, 28, 0.16) 55%, rgba(255, 178, 28, 0));
-  animation: industry-rail-light 9s ease-in-out infinite alternate;
+.industry-shine-counter {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 400%;
+  will-change: transform;
+  animation: industry-shine-counter 8s ease-in-out infinite;
 }
 
-.industry-rail-edge {
-  top: -1px;
-  left: 0;
-  width: 22%;
-  height: 2px;
-  background: linear-gradient(90deg, rgba(255, 207, 104, 0), #ffd06f 50%, rgba(255, 207, 104, 0));
-  box-shadow: 0 0 12px 2px rgba(255, 190, 70, 0.55);
-  animation: industry-rail-edge 5s linear infinite;
+.industry-lit {
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.55));
 }
 
-@keyframes industry-rail-light {
-  from { transform: translateX(-30%); }
-  to { transform: translateX(240%); }
+@keyframes industry-shine {
+  0% { transform: translateX(-100%); }
+  70%, 100% { transform: translateX(400%); }
 }
 
-@keyframes industry-rail-edge {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(460%); }
+@keyframes industry-shine-counter {
+  0% { transform: translateX(25%); }
+  70%, 100% { transform: translateX(-100%); }
 }
 
 .hero-tender-scroll {
@@ -498,8 +503,6 @@ select {
 @media (prefers-reduced-motion: reduce) {
   .hero-tender-scroll,
   .industry-logo-scroll,
-  .industry-rail-light,
-  .industry-rail-edge,
   .whyus-dot,
   .whyus-exit-ring,
   .whyus-track-sweep,
@@ -509,7 +512,7 @@ select {
   .live-dot::after { animation: none; }
   .coverage-wave { display: none; }
   .coverage-ping { display: none; }
-  .industry-rail-edge { display: none; }
+  .industry-shine { display: none; }
   .hero-cta::after { display: none; }
   .whyus-particles { display: none; }
   [data-reveal],

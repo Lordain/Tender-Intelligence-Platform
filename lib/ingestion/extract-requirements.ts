@@ -245,8 +245,35 @@ export function normalizeRawExtraction(input: unknown): unknown {
     }
   }
 
+  // A requirement whose `mandatory` the model left out, or wrote as a word.
+  // 2026-10-10 (brazil-00399857000126-1-000360-2026): all six requiredDocuments
+  // came back without the key, and the batch stopped on the first file. The
+  // schema's own rule is "true unless the document marks it optional", so a
+  // missing value is that default, not a guess; a written yes/no is read as
+  // one. Anything else is left as it came and still fails validation.
+  for (const key of REQUIREMENT_ARRAY_KEYS) {
+    const items = raw[key];
+    if (!Array.isArray(items)) continue;
+    for (const entry of items as unknown[]) {
+      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) continue;
+      const item = entry as Record<string, unknown>;
+      if (item.mandatory === undefined || item.mandatory === null) item.mandatory = true;
+      else if (typeof item.mandatory === "string") {
+        const word = item.mandatory.trim().toLowerCase();
+        if (MANDATORY_WORDS[word] !== undefined) item.mandatory = MANDATORY_WORDS[word];
+      }
+    }
+  }
+
   return raw;
 }
+
+const REQUIREMENT_ARRAY_KEYS = ["qualifications", "experienceRequirements", "requiredDocuments"] as const;
+
+const MANDATORY_WORDS: Record<string, boolean> = {
+  true: true, yes: true, sí: true, si: true, sim: true, obligatorio: true, obrigatório: true, obrigatorio: true, 是: true, 强制: true, 必须: true,
+  false: false, no: false, não: false, nao: false, opcional: false, optional: false, 否: false, 非强制: false, 可选: false,
+};
 
 /**
  * A risk level the model wrote as its own array item instead of inside the

@@ -3,7 +3,12 @@ import { fetchHomepageControlSettings } from "@/lib/db/site-settings";
 import { HomeHero } from "@/components/tenders/HomeHero";
 import { FeaturedTenders } from "@/components/tenders/FeaturedTenders";
 import { ValuePropositions } from "@/components/home/ValuePropositions";
-import { CountryInsightsPreview } from "@/components/home/CountryInsightsPreview";
+import { CoverageMap, type CoverageCountry } from "@/components/home/CoverageMap";
+import { AVAILABLE_COUNTRIES } from "@/lib/tender-list-page";
+import { liveTenderCountForCountry } from "@/lib/tender-links";
+import { countryPages } from "@/lib/country-pages";
+import { getCountryInsight } from "@/lib/country-insights";
+import { countryLabel } from "@/lib/tender-labels";
 import { ParticipationGuidesPreview } from "@/components/home/ParticipationGuidesPreview";
 import { selectHomepageTenders } from "@/lib/homepage-selection";
 import { toTenderCardData } from "@/lib/tender-card";
@@ -54,12 +59,27 @@ export default async function Home() {
   // user: 滚动项目标题改成精简版 → 改用访客版短标题); its exact deadline stays.
   const tickerWithPreviews = ticker.map((tender) => toTenderCardData(detailBySlug.get(tender.slug) ?? tender, { shopfront: true, publicTitle: true }));
 
+  // The coverage map's numbers: the country pages' own live count, on this
+  // page's five-minute revalidation (which every import also triggers).
+  const now = new Date();
+  const coverage: CoverageCountry[] = AVAILABLE_COUNTRIES.map((country) => {
+    const page = countryPages.find((entry) => entry.country === country);
+    const insight = page ? getCountryInsight(page.slug) : undefined;
+    return {
+      country,
+      name: countryLabel(country, "zh"),
+      liveCount: liveTenderCountForCountry(tenders, country, now),
+      href: insight ? `/insights/${page!.slug}` : page ? `/countries/${page.slug}` : `/tenders?country=${encodeURIComponent(country)}`,
+      linkLabel: insight ? "国家洞察" : "国家页",
+    };
+  });
+
   return (
     <div className="flex flex-col">
       <HomeHero tenders={tickerWithPreviews} />
       <FeaturedTenders tenders={featuredWithPreviews} />
       <ValuePropositions />
-      <CountryInsightsPreview />
+      <CoverageMap countries={coverage} />
       <ParticipationGuidesPreview />
     </div>
   );

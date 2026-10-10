@@ -173,6 +173,53 @@ select {
   to { transform: translateX(500%); }
 }
 
+/* Homepage coverage map — see components/home/CoverageMap.tsx. Each lit
+   country has a blurred copy behind it that breathes; the delays are
+   staggered inline so the continent shimmers rather than blinks. */
+.coverage-glow {
+  animation: coverage-glow 3.2s ease-in-out infinite;
+  opacity: 0.55;
+}
+
+.coverage-ping {
+  animation: coverage-ping 2.4s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.coverage-shape,
+.coverage-badge rect {
+  transition: fill-opacity 0.2s ease, stroke-opacity 0.2s ease, filter 0.2s ease;
+}
+
+.coverage-country.is-active .coverage-shape {
+  filter: brightness(1.18) drop-shadow(0 0 10px rgba(255, 208, 111, 0.9));
+}
+
+.coverage-country.is-active .coverage-badge rect {
+  fill-opacity: 1;
+  stroke-opacity: 1;
+}
+
+.coverage-row.is-active {
+  border-color: rgba(255, 178, 28, 0.6);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 639px) {
+  .coverage-label { display: none; }
+}
+
+@keyframes coverage-glow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.95; }
+}
+
+@keyframes coverage-ping {
+  from { opacity: 0.8; transform: scale(1); }
+  to { opacity: 0; transform: scale(3.2); }
+}
+
 /*
  * Scroll reveal — components/home/Reveal.tsx. Nothing here hides anything on
  * its own: only an element the script has marked data-reveal="hidden" (below
@@ -252,7 +299,10 @@ select {
   .whyus-dot,
   .whyus-exit-ring,
   .whyus-track-sweep,
+  .coverage-glow,
+  .coverage-ping,
   .live-dot::after { animation: none; }
+  .coverage-ping { display: none; }
   .whyus-particles { display: none; }
   [data-reveal],
   [data-reveal] .reveal-pop { transition: none; }

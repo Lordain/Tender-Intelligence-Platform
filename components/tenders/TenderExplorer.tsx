@@ -370,9 +370,9 @@ export function TenderExplorer({
       }}
     >
       <PageIntro
-        eyebrow="LatAm tenders · 20+ platforms"
+        eyebrow="LatAm tenders · 30+ platforms"
         title="招标项目"
-        description="汇集拉美 20 多个官方采购平台，按国家、行业和规模筛选值得跟进的项目"
+        description="汇集拉美 30 多个官方采购平台，按国家、行业和规模筛选值得跟进的项目"
         // 当前筛选结果, not 当前结果: the number follows the filters below, and
         // the 持续扩张中 note beside it is gone (user, 2026-10-05).
         metrics={[{ label: "当前筛选结果", value: totalResults.toLocaleString(), suffix: "个项目" }]}

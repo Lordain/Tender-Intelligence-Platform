@@ -277,7 +277,7 @@
     "@types/react-dom": "^19",
     "@types/word-extractor": "^1.0.6",
     "d3-geo": "^3.1.1",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
     "topojson-client": "^3.1.0",

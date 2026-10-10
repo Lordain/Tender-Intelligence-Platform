@@ -4,13 +4,26 @@
  *
  * User, 2026-10-10: 请帮我做个批量检查：一句话总结里面提到的项目预算金额 vs
  * 我自己手动填写的预算金额，如果有差异，把我的替换成一句话总结的金额+规模调整.
- * The summary comes from document analysis of the bid documents, so where it
- * names a budget it wins over an amount typed by hand.
+ * (and, mid-run: 也要比较我改的金额).
+ *
+ * Which stored amounts may be replaced — decided on the first live preview,
+ * where 10 of 14 mismatches were the SUMMARY's mistake, checked against PNCP
+ * and SECOP: a unit slip ("1.055 万雷亚尔" for R$ 10,557,230), pesos written
+ * as dollars (COP 30,123,714,371 → "3012万美元"), a bidder requirement read as
+ * the budget, a model's own BOB→USD conversion. An amount the import took
+ * from the source system is exact; the summary is a model's paraphrase of it.
+ * So:
+ *   - an amount an admin TYPED (estimated_value in manual_field_overrides)
+ *     that differs from the summary → replaced, as asked — unless the
+ *     currencies differ (the model converted) or the two are more than 5×
+ *     apart (a unit slip), which are listed for a human instead;
+ *   - an amount from the source that differs → listed only, never written;
+ *   - no stored amount → filled only with --include-empty.
  *
  * Reading the amount: lib/ingestion/summary-amount.ts — only a figure with a
- * currency, never a guarantee / experience threshold, and never a summary
- * that names two budgets. Amounts within 3% of each other (the summary
- * rounds: "约5,225万雷亚尔") count as the same.
+ * currency, never a guarantee / experience / asset threshold, and never a
+ * summary that names two budgets. Amounts within 5% of each other (the
+ * summary rounds: "约60亿比索") count as the same.
  *
  * What --write changes, per row in the 「会替换」 list:
  *   - estimated_value and currency → the summary's, and both are added to
@@ -42,7 +55,9 @@ import { amountsInSummary, type SummaryAmount } from "../lib/ingestion/summary-a
 import type { LocalizedText, TenderRelevanceTier } from "../types/tender";
 
 const PAGE_SIZE = 1000;
-const TOLERANCE = 0.03;
+const TOLERANCE = 0.05;
+/** Beyond this ratio either way a mismatch is a unit slip, not a correction. */
+const MAX_RATIO = 5;
 const write = process.argv.includes("--write");
 const includeEmpty = process.argv.includes("--include-empty");
 const TIER_ZH: Record<TenderRelevanceTier, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "已过滤" };
@@ -120,6 +135,10 @@ async function main() {
     else lengthen.push({ row, tierFrom, tierTo: floored.tier, label: floored.label, reason: floored.reason });
   };
   const fill: Change[] = [];
+  // Mismatches that are NOT written: the stored amount came from the source,
+  // or a typed one disagrees in a way that looks like the summary's mistake.
+  const sourceMismatch: Change[] = [];
+  const typedSuspicious: Change[] = [];
   const ambiguous: { row: Row; amounts: SummaryAmount[] }[] = [];
   let same = 0;
   let noAmount = 0;
@@ -177,12 +196,27 @@ async function main() {
       tierTo = tierFrom;
     }
     const change = { row, amount, tierFrom, tierTo, label: relevance.label, reason: relevance.reason, tierNote };
-    if (row.estimated_value === null) fill.push(change);
-    else replace.push(change);
+    const typedByHand = (row.manual_field_overrides ?? []).includes("estimated_value");
+    const ratio = storedUsd ? summaryUsd / storedUsd : null;
+    if (row.estimated_value === null) {
+      fill.push(change);
+      // Filled only with --include-empty; without it the floor still applies.
+      if (!includeEmpty) floorOnly(row);
+    } else if (!typedByHand) {
+      sourceMismatch.push(change);
+      floorOnly(row);
+    } else if (amount.currency !== row.currency || (ratio !== null && (ratio > MAX_RATIO || ratio < 1 / MAX_RATIO))) {
+      typedSuspicious.push(change);
+      floorOnly(row);
+    } else {
+      replace.push(change);
+    }
   }
 
-  console.log(`有一句话总结的项目 ${rows.length} 条：总结里没写金额 ${noAmount} 条，金额一致（差 ≤3%）${same} 条，总结里有多个金额/看不准 ${ambiguous.length} 条${unconvertible ? `，币种无法换算 ${unconvertible} 条` : ""}。`);
-  console.log(`金额不一致、会替换 ${replace.length} 条；库里没有金额、总结里有 ${fill.length} 条（${includeEmpty ? "会补上" : "只列出，加 --include-empty 才补"}）。`);
+  console.log(`有一句话总结的项目 ${rows.length} 条：总结里没写金额 ${noAmount} 条，金额一致（差 ≤5%）${same} 条，总结里有多个金额/看不准 ${ambiguous.length} 条${unconvertible ? `，币种无法换算 ${unconvertible} 条` : ""}。`);
+  console.log(`你改过的金额与总结不一致：会替换 ${replace.length} 条，差异可疑不替换 ${typedSuspicious.length} 条。`);
+  console.log(`源头系统的金额与总结不一致（以源头为准，不改）：${sourceMismatch.length} 条。`);
+  console.log(`库里没有金额、总结里有：${fill.length} 条（${includeEmpty ? "会补上" : "只列出，加 --include-empty 才补"}）。`);
   console.log(`金额不变、但总结写明长期合同（2 年以上至少中型，3 年以上大型）要上调规模 ${lengthen.length} 条${lockedLong ? `（另有人工锁定 ${lockedLong} 条，不动）` : ""}。\n`);
 
   const printChange = (change: Change) => {
@@ -198,8 +232,18 @@ async function main() {
   };
 
   if (replace.length > 0) {
-    console.log("==== 金额不一致，会替换成总结里的金额 ====");
+    console.log("==== 你改过的金额与总结不一致，会替换成总结里的金额 ====");
     replace.forEach(printChange);
+    console.log("");
+  }
+  if (typedSuspicious.length > 0) {
+    console.log(`==== 你改过的金额与总结不一致，但币种不同或相差 ${MAX_RATIO} 倍以上 —— 更像总结写错，不替换（请人工看）====`);
+    typedSuspicious.forEach(printChange);
+    console.log("");
+  }
+  if (sourceMismatch.length > 0) {
+    console.log("==== 源头系统的金额与总结不一致 —— 以源头为准，不改（只列出）====");
+    sourceMismatch.forEach(printChange);
     console.log("");
   }
   if (fill.length > 0) {

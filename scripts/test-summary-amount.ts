@@ -36,6 +36,13 @@ expect("two lots → ambiguous", "分两个标段，分别为1,200万和800万�
 expect("same figure twice → one", "总价5,000万美元（约5000万美元）", "Panama", [50_000_000, "USD"]);
 expect("bare $ in Brazil is not a peso", "预算$ 5.000.000", "Brazil", null);
 expect("empty", "", "Brazil", null);
+// From the first live preview, 2026-10-10.
+expect("total assets are a requirement", "特许经营期30年，要求投标方具备至少1.5亿美元总资产及200公里线路经验", "Peru", null);
+expect("Chinese long form 万+digits", "总投资4090万6130.40索尔，包括项目执行", "Peru", [40_906_130.4, "PEN"]);
+expect("Chinese long form, separators in the tail", "总投资6,441万7,033.47索尔", "Peru", [64_417_033.47, "PEN"]);
+expect("Chinese long form, 亿+万", "总投资1亿2,000万美元", "Panama", [120_000_000, "USD"]);
+expect("floor area is not money", "约3.36万平方米州立医院，合同估值约3.02亿雷亚尔", "Brazil", [302_000_000, "BRL"]);
+expect("two lots, Chinese", "分为两个标段，预算分别约为37亿和58亿比索", "Colombia", "ambiguous");
 
 console.log(`${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

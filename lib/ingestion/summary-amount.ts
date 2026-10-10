@@ -67,7 +67,11 @@ const PREFIX_CURRENCIES: [RegExp, string | "peso"][] = [
 ];
 
 /** Words that make the amount a requirement on the bidder, not the budget, when they sit just before it. */
-const NOT_BUDGET = /(保证金|担保|履约|投标保函|罚款|罚金|违约金|注册资本|资本金|净资产|营业额|营收|业绩|经验|类似项目|单项合同|保险金额)[^，。；,;]{0,8}$/;
+const NOT_BUDGET = /(保证金|担保|履约|投标保函|罚款|罚金|违约金|注册资本|资本金|净资产|营业额|营收|业绩|经验|类似项目|单项合同|保险金额|具备|至少|不低于|不少于)[^，。；,;]{0,8}$/;
+/** Same, when the noun FOLLOWS the figure: "具备至少1.5亿美元总资产". */
+const NOT_BUDGET_AFTER = /^[^，。；,;]{0,3}(总资产|资产|净资产|营业额|注册资本|资本金)/;
+/** A 万/亿 figure that measures something else: "约3.36万平方米", "1.2万户". */
+const MEASURE_AFTER = /^\s*(平方米|平米|公顷|公里|千米|米|吨|人|户|台|套|床|千瓦|兆瓦|立方米|升|株|棵|个|名|册|件)/;
 
 const UNITS: [RegExp, number][] = [
   [/^\s*十亿/, 1e9],
@@ -111,9 +115,11 @@ export function amountsInSummary(summary: string | null | undefined, country: st
   // the first of "1,200万和800万美元". Its presence makes the summary
   // ambiguous rather than letting the second figure stand alone.
   let unpricedFigures = 0;
+  let consumedUntil = 0;
   for (const match of text.matchAll(NUMBER)) {
     const start = match.index!;
-    const end = start + match[0].length;
+    let end = start + match[0].length;
+    if (start < consumedUntil) continue;
     const before = text.slice(Math.max(0, start - 12), start);
     // A digit glued to letters is a code or a model number (BR381, 22.9kV), not money.
     if (/[A-Za-z]$/.test(before) && !/(?:\$|R\$|US\$|S\/|Bs)\s*$/i.test(before)) continue;
@@ -127,11 +133,28 @@ export function amountsInSummary(summary: string | null | undefined, country: st
         break;
       }
     }
+    // Chinese long form: "4090万6130.40索尔" is 40,906,130.40, and
+    // "1亿2000万" is 120,000,000 — the tail belongs to the same figure.
+    let tail = 0;
+    if (multiplier === 1e4 || multiplier === 1e8) {
+      const more = /^(\d[\d.,]*\d|\d)(万)?/.exec(rest);
+      const tailNumber = more ? parseNumber(more[1]) : null;
+      if (more && tailNumber !== null && (multiplier === 1e8 || !more[2])) {
+        tail = tailNumber * (more[2] ? 1e4 : 1);
+        rest = rest.slice(more[0].length);
+        end = text.length - rest.length;
+        consumedUntil = end;
+      }
+    }
+    if (multiplier >= 1e4 && MEASURE_AFTER.test(rest)) continue;
     let currency: string | "peso" | null = null;
     const suffix = rest.replace(/^\s+/, "");
+    let afterCurrency = suffix;
     for (const [pattern, code] of SUFFIX_CURRENCIES) {
-      if (pattern.test(suffix)) {
+      const word = pattern.exec(suffix);
+      if (word) {
         currency = code;
+        afterCurrency = suffix.slice(word[0].length);
         break;
       }
     }
@@ -150,9 +173,10 @@ export function amountsInSummary(summary: string | null | undefined, country: st
     if (currency === "peso") currency = PESO_BY_COUNTRY[country] ?? null;
     if (!currency) continue;
     if (NOT_BUDGET.test(text.slice(Math.max(0, start - 20), start))) continue;
+    if (NOT_BUDGET_AFTER.test(afterCurrency)) continue;
     const number = parseNumber(match[0]);
     if (number === null) continue;
-    found.push({ value: Math.round(number * multiplier * 100) / 100, currency, text: text.slice(Math.max(0, start - 4), Math.min(text.length, end + 8)).trim() });
+    found.push({ value: Math.round((number * multiplier + tail) * 100) / 100, currency, text: text.slice(Math.max(0, start - 4), Math.min(text.length, end + 8)).trim() });
   }
   if (found.length === 0) return { kind: "none" };
   // The same figure twice (总价 X，即 X) is still one budget.

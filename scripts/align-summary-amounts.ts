@@ -74,6 +74,8 @@ async function main() {
   const sourceMismatch = byCase("source-mismatch");
   const fill = byCase("fill");
   const ambiguous = byCase("ambiguous");
+  // A row --include-empty would fill is re-tiered on its amount instead, so it
+  // only counts here when it stays unfilled.
   const lengthen = planned.filter((item) => !item.plan.newAmount && item.plan.tierTo !== item.plan.tierFrom);
   const lockedLong = planned.filter((item) => !item.plan.newAmount && item.plan.tierNote?.startsWith("人工锁定，分级不动（长期合同")).length;
 
@@ -106,7 +108,13 @@ async function main() {
   section("你改过的金额与总结不一致，会替换成总结里的金额", replace, printAmount);
   section("你改过的金额与总结不一致，但币种不同或相差 5 倍以上 —— 更像总结写错，不替换（请人工看）", typedSuspicious, printAmount);
   section("源头系统的金额与总结不一致 —— 以源头为准，金额不改（只列出）", sourceMismatch, printAmount);
-  section(`库里没有金额，总结里有（${includeEmpty ? "会补上" : "只列出"}）`, fill, printAmount);
+  // Shown with the tier the row WOULD get once filled, which is what decides
+  // whether --include-empty is worth running.
+  section(
+    `库里没有金额，总结里有（${includeEmpty ? "会补上" : "只列出；规模按补上金额后计算"}）`,
+    fill.map(({ row }) => ({ row, plan: planSummaryAdjustment(row, { fillEmpty: true }) })),
+    printAmount,
+  );
   section("长期合同，规模上调（金额不动）", lengthen, ({ row, plan }) => {
     console.log(`  ${row.country.padEnd(10)} ${titleOf(row)}  ${TIER_ZH[plan.tierFrom]}→${TIER_ZH[plan.tierTo]}  金额 ${fmtRaw(row.estimated_value, row.currency)}`);
     console.log(`    总结：${row.one_line_summary}`);

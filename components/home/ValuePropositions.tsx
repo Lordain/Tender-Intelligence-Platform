@@ -4,13 +4,14 @@
  * 高价值的情报; then 把各平台做成圆点，分散分布，然后汇集到一个出口 … 也可以动画化).
  *
  * No country count anywhere in the copy (user, 2026-10-04: 不用强调6国，因为我们
- * 不断在增加国家); the platform count stays "20 多个".
+ * 不断在增加国家); the platform count reads "30 多个" (user, 2026-10-10: 改成
+ * 30多个平台，因为我们还在加，就避免再改了 — 29 on that day).
  *
  * Every claim here is something the platform does today. The dots are the
  * official sources the importers read — 25 named here, 26 counting ANEEL's two
  * auction feeds separately, on 2026-10-10 (PanamaCompra and SOCE added when
- * Panama and Ecuador opened, SICOES when Bolivia did). Keep the rows below and the "20 多个"
- * copy in step with that list.
+ * Panama and Ecuador opened, SICOES when Bolivia did). The "30 多个" copy is
+ * deliberately ahead of this list; the dots are the sources, not a count.
  *
  * The motion is decoration on a picture that already says everything when
  * still: particles travel each path into the exit, the dots breathe, a light
@@ -163,7 +164,7 @@ const steps: { number: string; icon: StepIcon; title: string; detail: string; re
     number: "01",
     icon: "collect",
     title: "每日汇集",
-    detail: "每天更新拉美各国 20 多个官方采购平台的新公告，汇集到一个平台。",
+    detail: "每天更新拉美各国 30 多个官方采购平台的新公告，汇集到一个平台。",
     result: "多源信息一站聚合，告别低效逐站检索",
   },
   {
@@ -239,14 +240,14 @@ export function ValuePropositions() {
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b86e00]">Why us</p>
             {/* User's wording, 2026-10-04. The first line is split in two on phones, where it would not fit. */}
-            <h2 className="mt-3 text-[min(6.6vw,1.875rem)] font-black leading-[1.22] tracking-[0.02em] text-[#071826] sm:text-4xl"><span className="block whitespace-nowrap"><span className="block sm:inline">从每天 20 多个平台</span><span className="text-[#b86e00]">上万条</span>信息，</span><span className="block whitespace-nowrap">到一份能直接判断的中文情报</span></h2>
+            <h2 className="mt-3 text-[min(6.6vw,1.875rem)] font-black leading-[1.22] tracking-[0.02em] text-[#071826] sm:text-4xl"><span className="block whitespace-nowrap"><span className="block sm:inline">从每天 30 多个平台</span><span className="text-[#b86e00]">上万条</span>信息，</span><span className="block whitespace-nowrap">到一份能直接判断的中文情报</span></h2>
           </div>
           <p className="max-w-2xl text-sm leading-7 text-[#64717c] lg:justify-self-end">不替企业做决定，而是把分散、陌生且难以快速判断的政府招标信息，一步步整理成团队能够高效使用的中文情报。</p>
         </Reveal>
 
         {/* Stage 1 — scattered official portals converging into one entry. */}
         <Reveal className="mt-10 text-center">
-          <p className="text-sm font-black text-[#071826]">拉美各国 20 多个官方采购平台</p>
+          <p className="text-sm font-black text-[#071826]">拉美各国 30 多个官方采购平台</p>
           <p className="mt-1 text-xs text-[#75838c]">西语、葡语 · 格式各异</p>
           {/* Highlighted on request (user, 2026-10-04); wording changed from 数千条 to 上万条 on request.
               The buyer count is distinct publishing entities over the last year or month: SECOP II

@@ -15,7 +15,7 @@ export function AuthFrame({ mode, children }: { mode: "login" | "register"; chil
             <div className="my-auto py-10">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffb21c]">Tender intelligence</p>
               <h1 className="mt-4 text-3xl font-black leading-tight tracking-[-0.04em]">更快发现机会，<br />更稳做出投标判断</h1>
-              <p className="mt-5 max-w-sm text-sm leading-7 text-pretty text-white/62">专注于拉美政府及国企招标采购，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔、玻利维亚等国，汇集 20 多个官方采购平台，人工精筛，按国家、行业、项目规模筛选，剔除小额和日常项目。帮企业省时、省力、省钱，快速获取精准拉美项目机会。</p>
+              <p className="mt-5 max-w-sm text-sm leading-7 text-pretty text-white/62">专注于拉美政府及国企招标采购，一站式中文平台。覆盖墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔、玻利维亚等国，汇集 30 多个官方采购平台，人工精筛，按国家、行业、项目规模筛选，剔除小额和日常项目。帮企业省时、省力、省钱，快速获取精准拉美项目机会。</p>
             </div>
           </div>
         </section>

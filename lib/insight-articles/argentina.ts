@@ -10,10 +10,10 @@ export const argentinaInsight: InsightArticle = {
   published: "2026-09-29",
   modified: "2026-10-05",
   stats: [
-    { label: "2026—2028列示投资", value: "9.53万亿", unit: "阿根廷比索", usd: "约63.3亿美元", note: "含2027、2028年规划预算" },
+    { label: "2026—2028列示投资", value: "约63.3亿", unit: "美元", detail: "原币9.53万亿阿根廷比索", note: "含2027、2028年规划预算" },
     { label: "公共投资项目", value: "1,164", unit: "个", note: "国家公共投资项目池" },
-    { label: "三年交通投入", value: "3.07万亿", unit: "阿根廷比索", note: "含公路与其他运输功能" },
-    { label: "三年能源投入", value: "2.23万亿", unit: "阿根廷比索", note: "能源、燃料与矿业功能" },
+    { label: "三年交通投入", value: "约20.4亿", unit: "美元", detail: "原币3.07万亿阿根廷比索", note: "含公路与其他运输功能" },
+    { label: "三年能源投入", value: "约14.8亿", unit: "美元", detail: "原币2.23万亿阿根廷比索", note: "能源、燃料与矿业功能" },
   ],
   basis: "2026年为年度预算，2027、2028年为规划预算；美元按2026年9月15日汇率静态折算。实际采购金额以项目公告和招标文件为准。",
   overview: {
@@ -68,16 +68,16 @@ export const argentinaInsight: InsightArticle = {
   regions: {
     title: "四类业务观察区，项目逻辑不同",
     map: {
-      src: "/insights/argentina-infrastructure-regions.webp",
+      src: "/insights/argentina-regions.svg",
       width: 1600,
-      height: 900,
-      alt: "阿根廷四类基础设施机会区域示意图：西北与库约资源带、东北与Litoral物流带、中部都市与Pampas核心区、Patagonia能源与连接区",
-      caption: "按省份和主要产业链归纳的业务观察区，不代表行政边界、项目准确位置、投资范围或政治立场。",
+      height: 1000,
+      alt: "阿根廷重点区域地图，按省级行政区着色：1 西北与库约资源带、2 东北与Litoral物流带、3 中部都市与Pampas核心区、4 Patagonia能源与连接区",
+      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。",
     },
     items: [
-      { color: "bg-[#d9a23a]", title: "西北与库约资源带", places: "Jujuy、Salta、Catamarca、La Rioja、San Juan、Mendoza", focus: "锂、铜、油气和新能源带动矿区道路、输电、供水和营地；高海拔、缺水、跨省许可和社区关系影响成本。" },
+      { color: "bg-[#d9a23a]", title: "西北与库约资源带", places: "Jujuy、Salta、Tucumán、Catamarca、La Rioja、San Juan、Mendoza等", focus: "锂、铜、油气和新能源带动矿区道路、输电、供水和营地；高海拔、缺水、跨省许可和社区关系影响成本。" },
       { color: "bg-[#59a8d8]", title: "东北与Litoral物流带", places: "Misiones、Corrientes、Chaco、Formosa、Entre Ríos、Santa Fe", focus: "水电、林农产业、铁路、公路、港口和Paraná—Paraguay水道相连；同步跟踪港航运营方、铁路和省级项目。" },
-      { color: "bg-[#c85c43]", title: "中部都市与Pampas核心区", places: "Buenos Aires、CABA、Córdoba、Santa Fe、La Pampa、San Luis", focus: "AMBA输电、城市水务、干线公路、铁路、港口和公共建筑最集中；国家、省、市和特许经营主体常常并行。" },
+      { color: "bg-[#c85c43]", title: "中部都市与Pampas核心区", places: "Buenos Aires、CABA、Córdoba、La Pampa、San Luis", focus: "AMBA输电、城市水务、干线公路、铁路、港口和公共建筑最集中；国家、省、市和特许经营主体常常并行。" },
       { color: "bg-[#7b63a8]", title: "Patagonia能源与连接区", places: "Neuquén、Río Negro、Chubut、Santa Cruz、Tierra del Fuego", focus: "Vaca Muerta油气、风电、输电、管线、港口和长距离交通；偏远物流、气候、营地和运维能力是报价关键。" },
     ],
     note: "阿根廷是联邦制国家：省、市、国企和项目公司可能各用独立采购入口，本地税务、专业签字和许可要逐省核对。",

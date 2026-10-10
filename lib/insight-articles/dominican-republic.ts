@@ -10,9 +10,9 @@ export const dominicanRepublicInsight: InsightArticle = {
   published: "2026-10-04",
   modified: "2026-10-05",
   stats: [
-    { label: "2025—2028规划投资", value: "4,441.83亿", unit: "多米尼加比索", usd: "约73.2亿美元", note: "国家公共投资计划" },
+    { label: "2025—2028规划投资", value: "约73.2亿", unit: "美元", detail: "原币4,441.83亿多米尼加比索", note: "国家公共投资计划" },
     { label: "公共投资项目", value: "约2,024", unit: "个", note: "覆盖中央与地方项目" },
-    { label: "四年交通投入", value: "1,338.96亿", unit: "多米尼加比索", note: "规划金额最大的功能类别" },
+    { label: "四年交通投入", value: "约22.1亿", unit: "美元", detail: "原币1,338.96亿多米尼加比索", note: "规划金额最大的功能类别" },
     { label: "能源开发管线", value: "超7,400", unit: "兆瓦 · 136个项目", note: "含可再生能源与储能" },
   ],
   basis: "美元按2026年10月2日多米尼加中央银行卖出价1美元＝60.6902比索静态折算，仅用于比较。公共预算、公私合作和能源开发是不同口径，不能简单相加。",
@@ -70,11 +70,11 @@ export const dominicanRepublicInsight: InsightArticle = {
   regions: {
     title: "四类业务观察区，采购和履约条件不同",
     map: {
-      src: "/insights/dominican-republic-infrastructure-regions.webp",
+      src: "/insights/dominican-republic-regions.svg",
       width: 1600,
-      height: 900,
-      alt: "多米尼加四类基础设施机会区域示意图，区分Ozama都市区、Cibao北部与西北部、东部旅游与产业走廊和南部与边境发展带",
-      caption: "按官方规划地区和主要产业链归纳，仅用于说明业务观察区域，不代表精确行政边界、项目位置、投资范围或政治立场。",
+      height: 1000,
+      alt: "多米尼加重点区域地图，按省级行政区着色：1 Ozama都市区、2 Cibao北部与西北部、3 东部旅游与产业走廊、4 南部与边境发展带",
+      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。",
     },
     items: [
       { color: "bg-[#c85c43]", title: "Ozama都市区", places: "Distrito Nacional、Santo Domingo", focus: "2026年编码项目约325.45亿比索，占地区分布33.7%；地铁与城市交通、供水排污、住房、医院和公共建筑。" },

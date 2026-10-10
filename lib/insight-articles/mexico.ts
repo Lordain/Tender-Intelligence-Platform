@@ -10,7 +10,7 @@ export const mexicoInsight: InsightArticle = {
   published: "2026-09-17",
   modified: "2026-10-05",
   stats: [
-    { label: "五年投资基准", value: "5.6万亿", unit: "墨西哥比索", usd: "约3,252亿美元", note: "2026—2030年公共及混合投资" },
+    { label: "五年投资基准", value: "约3,252亿", unit: "美元", detail: "原币5.6万亿墨西哥比索", note: "2026—2030年公共及混合投资" },
     { label: "项目储备", value: "1,500+", unit: "个基础设施项目", note: "已进入财务与技术分析" },
     { label: "三大领域占比", value: "83.72%", unit: "能源、铁路与公路", note: "资金最集中的三个方向" },
     { label: "战略行业", value: "8", unit: "个", note: "能源、交通、港口、医疗、水务等" },
@@ -60,17 +60,17 @@ export const mexicoInsight: InsightArticle = {
   regions: {
     title: "四类区域最值得持续跟踪",
     map: {
-      src: "/insights/mexico-infrastructure-corridors.webp",
+      src: "/insights/mexico-regions.svg",
       width: 1600,
-      height: 900,
-      alt: "墨西哥四类重点基础设施投资区域示意图：北部边境与制造业带、中部与Bajío工业带、墨西哥湾与东南部、太平洋港口与物流走廊",
-      caption: "区域与投资方向示意，不代表具体项目选线或行政边界上的精确投资范围。",
+      height: 1000,
+      alt: "墨西哥重点区域地图，按省级行政区着色：1 北部边境与制造业带、2 中部与Bajío工业带、3 墨西哥湾与东南部、4 太平洋港口与物流走廊",
+      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。",
     },
     items: [
       { color: "bg-[#f5a20b]", title: "北部边境与制造业带", places: "Sonora、Chihuahua、Coahuila、Nuevo León、Tamaulipas", focus: "电力扩容、跨境铁路公路、工业用水和物流园区；首批发展极含Hermosillo、San Jerónimo（Juárez）和Altamira。" },
-      { color: "bg-[#82c8f2]", title: "中部与Bajío工业带", places: "Estado de México、Hidalgo、Querétaro、Guanajuato、San Luis Potosí、Jalisco、Michoacán、Puebla、Tlaxcala", focus: "客运铁路、干线公路、电网、工业园区和汽车制造供应链；连接首都圈与北部边境，工程叠加最多。" },
+      { color: "bg-[#82c8f2]", title: "中部与Bajío工业带", places: "Ciudad de México、Estado de México、Hidalgo、Querétaro、Guanajuato、San Luis Potosí、Jalisco、Puebla、Tlaxcala", focus: "客运铁路、干线公路、电网、工业园区和汽车制造供应链；连接首都圈与北部边境，工程叠加最多。" },
       { color: "bg-[#ef6b2e]", title: "墨西哥湾与东南部", places: "Veracruz、Tabasco、Campeche、Yucatán、Quintana Roo、Oaxaca、Chiapas", focus: "港口、石化与天然气、水务、Tren Maya货运化；CIIT把Coatzacoalcos、Salina Cruz、Dos Bocas与Puerto Chiapas连成一体。" },
-      { color: "bg-[#4e9ad4]", title: "太平洋港口与物流走廊", places: "Baja California、Sonora、Sinaloa、Colima、Michoacán、Guerrero、Oaxaca、Chiapas", focus: "Ensenada、Manzanillo、Lázaro Cárdenas、Salina Cruz等港口扩建，加上集疏运公路、铁路和仓储。" },
+      { color: "bg-[#4e9ad4]", title: "太平洋港口与物流走廊", places: "Baja California、Sinaloa、Colima、Michoacán、Guerrero", focus: "Ensenada、Manzanillo、Lázaro Cárdenas、Salina Cruz等港口扩建，加上集疏运公路、铁路和仓储。" },
     ],
     note: "同一地区连续出现多类工程，比单个超级项目更重要：能源、交通、港口和园区一起建，才有长期的设备供应、仓储、售后和分包需求。",
   },

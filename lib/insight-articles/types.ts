@@ -22,12 +22,20 @@ export type InsightIconName =
   | "education"
   | "industry";
 
+/**
+ * One headline number. Money is always shown in US dollars first, so every
+ * country reads on one scale (user, 2026-10-10: 货币是怎么呈现也没拉齐): value
+ * 「约3,252亿」, unit 「美元」, and `detail` the figure in the source's own
+ * currency — 「原币5.6万亿墨西哥比索」, or 「原币即美元」 where it is the dollar
+ * (Ecuador, Panama). Counts and shares keep their own unit; `detail` may then
+ * carry a money figure that goes with them, dollars first as well.
+ */
 export type InsightStat = {
   label: string;
   value: string;
   unit: string;
-  /** The US$ equivalent, shown small under the unit. */
-  usd?: string;
+  /** Shown small under the unit: see above. */
+  detail?: string;
   note: string;
 };
 

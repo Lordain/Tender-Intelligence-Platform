@@ -171,7 +171,7 @@ export function InsightArticleView({ article }: { article: InsightArticle }) {
                 <span className={`text-[11px] font-black uppercase tracking-[0.12em] ${index === 0 ? "text-[#ffb21c]" : "text-[#b86e00]"}`}>{stat.label}</span>
                 <span className={`mt-3 break-words text-2xl font-black leading-none tracking-[-0.05em] sm:mt-4 sm:text-[2.1rem] ${index === 0 ? "text-white" : "text-[#071826]"}`}>{stat.value}</span>
                 <span className={`mt-2 text-sm font-black ${index === 0 ? "text-white/85" : "text-[#253d4b]"}`}>{stat.unit}</span>
-                {stat.usd && <span className={`mt-0.5 text-xs font-bold ${index === 0 ? "text-[#ffcf70]" : "text-[#8a672e]"}`}>{stat.usd}</span>}
+                {stat.detail && <span className={`mt-0.5 text-xs font-bold ${index === 0 ? "text-[#ffcf70]" : "text-[#8a672e]"}`}>{stat.detail}</span>}
                 <span className={`mt-auto pt-4 text-xs leading-5 ${index === 0 ? "text-white/60" : "text-[#6b7981]"}`}>{stat.note}</span>
               </li>
             ))}
@@ -267,7 +267,8 @@ export function InsightArticleView({ article }: { article: InsightArticle }) {
 
         <Section id="regions" index={indexOf("regions")} label="区域分布" title={article.regions.title}>
           <figure className="mt-6 overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#061b2b]">
-            <Image src={article.regions.map.src} alt={article.regions.map.alt} width={article.regions.map.width} height={article.regions.map.height} sizes="(min-width: 1152px) 1088px, 100vw" className="h-auto w-full" />
+            {/* The region maps are SVG from scripts/generate-insight-maps.mjs: served as they are, since the optimizer does not rasterize SVG. */}
+            <Image src={article.regions.map.src} alt={article.regions.map.alt} width={article.regions.map.width} height={article.regions.map.height} sizes="(min-width: 1152px) 1088px, 100vw" unoptimized={article.regions.map.src.endsWith(".svg")} className="h-auto w-full" />
             <figcaption className="border-t border-white/10 px-5 py-3 text-xs leading-6 text-white/58">{article.regions.map.caption}</figcaption>
           </figure>
           {/* The colour badge doubles as the map's legend. */}

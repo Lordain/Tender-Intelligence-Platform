@@ -13,7 +13,7 @@ export default function NotificationsPage() {
   const entitlement = useEntitlement(Boolean(user));
   useEffect(() => { if (!loading && !user) router.push("/login?next=/notifications"); }, [loading, user, router]);
   if (loading || !user) return null;
-  const needsBasicCountry = entitlement?.role === "subscriber" && entitlement.plan === "basic" && !entitlement.selectedCountry;
+  const needsBasicCountry = entitlement?.role === "subscriber" && entitlement.plan === "basic" && entitlement.selectedCountries.length === 0;
   const locked = entitlement ? !canConfigureEmailNotifications(entitlement.role) || needsBasicCountry : true;
 
   return (
@@ -25,7 +25,7 @@ export default function NotificationsPage() {
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[#64717c] sm:text-base">设置新标与项目状态提醒。免费版每周一次，基础版每日一次，专业版每日两次。</p>
         </header>
         {entitlement?.role === "trial" && <div className="mt-6 rounded-2xl border border-[#efcf80] bg-[#fff7df] px-5 py-4 text-sm font-bold text-[#805100]">{TRIAL_DAYS} 天免费试用期间可设置每日两次提醒；试用结束且未订阅时改为每周一次。</div>}
-        <div className="mt-6"><NotificationPreferences userId={user.id} locked={locked} lockReason={needsBasicCountry ? "请先在账户管理中选择基础版覆盖的国家，再开启每日行业提醒。" : undefined} lockActionHref={needsBasicCountry ? "/account" : undefined} plan={entitlement?.plan} role={entitlement?.role} selectedCountry={entitlement?.selectedCountry ?? null} /></div>
+        <div className="mt-6"><NotificationPreferences userId={user.id} locked={locked} lockReason={needsBasicCountry ? "请先在账户管理中选择基础版覆盖的国家，再开启每日行业提醒。" : undefined} lockActionHref={needsBasicCountry ? "/account" : undefined} plan={entitlement?.plan} role={entitlement?.role} selectedCountries={entitlement?.selectedCountries ?? []} /></div>
       </div>
     </main>
   );

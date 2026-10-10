@@ -7,13 +7,13 @@ export type TenderFilterOptions = {
   /** Restrict keyword matching to approved Chinese public copy. */
   searchPublicFieldsOnly?: boolean;
   /**
-   * Basic: the one country whose rows this viewer reads with member fields.
+   * Basic: the countries whose rows this viewer reads with member fields.
    * Those rows are searched in full even under searchPublicFieldsOnly — the
    * viewer sees their original-language title on the card, so a word from it
    * must find them. Every other country stays on public copy. See
    * tenderSearchText.
    */
-  fullSearchCountry?: string | null;
+  fullSearchCountries?: string[] | null;
   industries?: string[];
   /**
    * A tender can carry multiple industries.ts tags (e.g. a power-plant
@@ -40,7 +40,7 @@ export function filterTenders(
   {
     query,
     searchPublicFieldsOnly,
-    fullSearchCountry,
+    fullSearchCountries,
     industries,
     industryMatchMode = "any",
     scopeTypes,
@@ -75,7 +75,7 @@ export function filterTenders(
     }
 
     if (normalizedQuery) {
-      const scope = searchPublicFieldsOnly && tender.country !== fullSearchCountry ? "public" : "full";
+      const scope = searchPublicFieldsOnly && !fullSearchCountries?.includes(tender.country) ? "public" : "full";
       const haystack = tenderSearchText(tender, scope);
       if (!haystack.includes(normalizedQuery)) return false;
     }

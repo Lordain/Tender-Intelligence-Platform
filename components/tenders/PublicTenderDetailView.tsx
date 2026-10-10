@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { TRIAL_DAYS } from "@/lib/access-control";
+import { BASIC_PLAN_COUNTRY_LIMIT, TRIAL_DAYS } from "@/lib/access-control";
 import { loginPathFor } from "@/lib/auth-redirect";
 import { formatDate } from "@/lib/format";
 import { exchangeRateNote } from "@/lib/currency";
@@ -33,19 +33,23 @@ function Field({ label, value, emphasized = false, note }: { label: string; valu
   );
 }
 
-export type TenderDetailPromptKind = "login" | "free-limit" | "basic-select-country" | "basic-other-country";
+export type TenderDetailPromptKind = "login" | "free-limit" | "basic-select-country" | "basic-add-country" | "basic-other-country";
 
 function ProtectedContentPrompt({ kind, nextPath }: { kind: TenderDetailPromptKind; nextPath: string }) {
   const isGuest = kind === "login";
   const isBasicWithoutCountry = kind === "basic-select-country";
+  const isBasicAddCountry = kind === "basic-add-country";
   const isBasicOtherCountry = kind === "basic-other-country";
-  const actionHref = isGuest ? `/register?next=${encodeURIComponent(nextPath)}` : isBasicWithoutCountry ? "/account" : "/pricing";
+  const actionHref = isGuest ? `/register?next=${encodeURIComponent(nextPath)}` : isBasicWithoutCountry || isBasicAddCountry ? "/account" : "/pricing";
   const title = isGuest ? "注册后查看完整项目分析"
     : isBasicWithoutCountry ? "先选择基础版覆盖的国家"
+    : isBasicAddCountry ? "该项目不在已选国家内"
     : isBasicOtherCountry ? "该项目不在基础版所选国家内"
     : "本月免费详情额度已用完";
   const description = isBasicWithoutCountry
-    ? "基础个人版可选择一个国家查看完整项目分析。请先到账户页选择国家，选择后本订阅期内不可更换。"
+    ? `基础个人版可选择 ${BASIC_PLAN_COUNTRY_LIMIT} 个国家查看完整项目分析。请先到账户页选择国家，选择后本订阅期内不可更换。`
+    : isBasicAddCountry
+      ? `基础个人版可选择 ${BASIC_PLAN_COUNTRY_LIMIT} 个国家查看完整项目分析，您还可再选 1 个国家。到账户页选择该国后即可查看，选择后本订阅期内不可更换。`
     : isBasicOtherCountry
       ? "基础个人版只开放所选国家的完整项目详情；其他国家仍可浏览公开项目标题和摘要。若需查看全部国家，可升级至专业个人版。"
       : "完整页面包括项目编号与原文名称、关键日期、资质与经验要求、所需文件、风险提示，以及官方投标入口和检索说明。";
@@ -64,7 +68,7 @@ function ProtectedContentPrompt({ kind, nextPath }: { kind: TenderDetailPromptKi
       <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <p className="text-sm leading-6 text-[#64717c]">
           {isGuest ? `新用户可免费试用 ${TRIAL_DAYS} 天，无需绑定银行卡。`
-            : isBasicWithoutCountry ? "选定国家后即可查看该国完整项目分析。"
+            : isBasicWithoutCountry || isBasicAddCountry ? "选定国家后即可查看该国完整项目分析。"
               : isBasicOtherCountry ? "现有基础版权限不受影响。"
                 : "免费版每月可查看 5 个完整项目，下月额度自动恢复。"}
         </p>
@@ -75,7 +79,7 @@ function ProtectedContentPrompt({ kind, nextPath }: { kind: TenderDetailPromptKi
             </Link>
           )}
           <Link href={actionHref} className="inline-flex h-11 items-center justify-center rounded-xl bg-[#ffb21c] px-5 text-sm font-black text-[#071826] hover:bg-[#ffc247]">
-            {isGuest ? "免费注册" : isBasicWithoutCountry ? "选择国家" : isBasicOtherCountry ? "查看升级方案" : "查看订阅方案"}
+            {isGuest ? "免费注册" : isBasicWithoutCountry || isBasicAddCountry ? "选择国家" : isBasicOtherCountry ? "查看升级方案" : "查看订阅方案"}
           </Link>
         </div>
       </div>

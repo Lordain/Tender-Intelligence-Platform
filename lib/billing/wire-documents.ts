@@ -92,8 +92,8 @@ export const PLAN_NAMES_EN: Record<PaidPlan, string> = {
 
 const PLAN_SCOPE: Record<PaidPlan, { en: string; zh: string }> = {
   basic: {
-    en: "1 user account; full tender details and document analysis for one selected country",
-    zh: "1 个用户账号；可查看所选 1 个国家的全部项目详情和标书分析",
+    en: "1 user account; full tender details and document analysis for two selected countries",
+    zh: "1 个用户账号；可查看所选 2 个国家的全部项目详情和标书分析",
   },
   professional: {
     en: "1 user account; full tender details and document analysis for all covered countries",

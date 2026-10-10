@@ -52,7 +52,7 @@ export function NotificationPreferences({
   lockActionHref = "/pricing",
   plan,
   role,
-  selectedCountry,
+  selectedCountries = [],
 }: {
   userId: string;
   locked?: boolean;
@@ -60,10 +60,11 @@ export function NotificationPreferences({
   lockActionHref?: string;
   plan?: SubscriptionPlan;
   role?: ViewerRole;
-  selectedCountry?: string | null;
+  selectedCountries?: string[];
 }) {
   const canUseKeywords = role === "trial" || plan === "professional" || plan === "enterprise";
-  const basicCountry = role === "subscriber" && plan === "basic" ? selectedCountry : null;
+  // Basic reads only its own countries; the digest ignores any other country saved here.
+  const basicCountries = role === "subscriber" && plan === "basic" ? selectedCountries : null;
   const frequency = role === "free" ? "每周一 09:00" : role === "subscriber" && plan === "basic" ? "每日 09:00" : "每日 09:00 / 18:00";
   const { locale } = useLocale();
   const [enabled, setEnabled] = useState(false);
@@ -96,7 +97,7 @@ export function NotificationPreferences({
     setSaving(true);
     setSaved(false);
     setError(null);
-    const { error: saveError } = await getSupabaseBrowserClient().from("email_notification_preferences").upsert({ user_id: userId, enabled, countries: basicCountry ? [basicCountry] : countries, industries, statuses, relevance_tiers: tiers, keywords: canUseKeywords ? keywords : [], timezone: "America/Mexico_City", updated_at: new Date().toISOString() });
+    const { error: saveError } = await getSupabaseBrowserClient().from("email_notification_preferences").upsert({ user_id: userId, enabled, countries: basicCountries ? countries.filter((country) => basicCountries.includes(country)) : countries, industries, statuses, relevance_tiers: tiers, keywords: canUseKeywords ? keywords : [], timezone: "America/Mexico_City", updated_at: new Date().toISOString() });
     setSaving(false);
     if (saveError) {
       setError("通知设置保存失败，请稍后重试。");
@@ -156,7 +157,7 @@ export function NotificationPreferences({
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <PreferenceGroup title="国家">{basicCountry ? <p className="mt-3 text-sm font-bold">{localize(COUNTRY_LABELS[basicCountry as keyof typeof COUNTRY_LABELS], locale)}（基础版国家）</p> : <ToggleList values={[...NOTIFICATION_COUNTRIES]} selected={countries} onChange={(next) => { setCountries(next); setSaved(false); }} render={(value) => localize(COUNTRY_LABELS[value as keyof typeof COUNTRY_LABELS], locale)} />}</PreferenceGroup>
+        <PreferenceGroup title="国家">{basicCountries?.length === 1 ? <p className="mt-3 text-sm font-bold">{localize(COUNTRY_LABELS[basicCountries[0] as keyof typeof COUNTRY_LABELS], locale)}（基础版国家）</p> : <ToggleList values={basicCountries ?? [...NOTIFICATION_COUNTRIES]} selected={basicCountries ? countries.filter((country) => basicCountries.includes(country)) : countries} onChange={(next) => { setCountries(next); setSaved(false); }} render={(value) => localize(COUNTRY_LABELS[value as keyof typeof COUNTRY_LABELS], locale)} />}</PreferenceGroup>
         <PreferenceGroup title="相关度"><ToggleList values={TIERS} selected={tiers} onChange={(next) => { setTiers(next); setSaved(false); }} render={(value) => localize(RELEVANCE_TIER_LABELS[value as TenderRelevanceTier], locale)} /></PreferenceGroup>
         <PreferenceGroup title="项目阶段"><ToggleList values={STATUSES} selected={statuses} onChange={(next) => { setStatuses(next); setSaved(false); }} render={(value) => localize(STATUS_LABELS[value as TenderStatus], locale)} /></PreferenceGroup>
         <PreferenceGroup title="行业"><ToggleList values={ALL_INDUSTRIES} selected={industries} onChange={(next) => { setIndustries(next); setSaved(false); }} render={(value) => localize(INDUSTRY_LABELS[value as keyof typeof INDUSTRY_LABELS], locale)} /></PreferenceGroup>

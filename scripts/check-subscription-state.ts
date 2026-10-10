@@ -128,20 +128,20 @@ async function main() {
 
   // ---- 2. 权限（用站点自己的函数推导）----
   let entitlement: ViewerEntitlement;
-  let selectedCountry: string | null = null;
+  let selectedCountries: string[] = [];
   if (selected) {
     const sel = selected;
     if (sel.plan === "basic") {
-      const { data, error } = await admin.from("basic_plan_countries").select("country").eq("subscription_id", sel.id).maybeSingle();
+      const { data, error } = await admin.from("basic_plan_countries").select("country, selected_at").eq("subscription_id", sel.id).order("selected_at");
       if (error) throw new Error(`基础版国家读取失败：${error.message}`);
-      selectedCountry = (data?.country as string | undefined) ?? null;
+      selectedCountries = (data ?? []).map((row) => row.country as string);
     }
-    entitlement = { role: "subscriber", plan: sel.plan as SubscriptionPlan, selectedCountry, trialEndsAt: null, subscriptionOwnerUserId: userId, isEnterpriseOwner: sel.plan === "enterprise", periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
+    entitlement = { role: "subscriber", plan: sel.plan as SubscriptionPlan, selectedCountries, trialEndsAt: null, subscriptionOwnerUserId: userId, isEnterpriseOwner: sel.plan === "enterprise", periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
   } else {
     const { data: profile } = await admin.from("profiles").select("trial_ends_at").eq("id", userId).maybeSingle();
     const trialEndsAt = (profile?.trial_ends_at as string | undefined) ?? null;
     const inTrial = trialEndsAt !== null && new Date(trialEndsAt).getTime() > Date.now();
-    entitlement = { role: inTrial ? "trial" : "free", plan: null, selectedCountry: null, trialEndsAt, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
+    entitlement = { role: inTrial ? "trial" : "free", plan: null, selectedCountries: [], trialEndsAt, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
     console.log(`\n【试用】trial_ends_at=${trialEndsAt ?? "未设置"}（TRIAL_DAYS=${TRIAL_DAYS}）${inTrial ? " —— 仍在试用期内" : ""}`);
   }
 
@@ -151,7 +151,7 @@ async function main() {
   if (seats?.length) console.log(`\n【企业席位】${seats.map((s) => `${s.status}→owner ${String(s.owner_user_id).slice(0, 8)}…`).join("， ")}`);
   if (acceptedOwner && entitlement.role !== "subscriber") console.log("  注意：席位已接受，但要 owner 的企业订阅仍然有效才授予权限");
 
-  console.log(`\n【当前身份】role=${entitlement.role}  plan=${entitlement.plan ?? "—"}${selectedCountry ? `  选定国家=${selectedCountry}` : ""}`);
+  console.log(`\n【当前身份】role=${entitlement.role}  plan=${entitlement.plan ?? "—"}${selectedCountries.length ? `  选定国家=${selectedCountries.join("、")}` : ""}`);
   const countries = ["Mexico", "Brazil", "Colombia", "Peru"];
   console.log(`  各国完整详情：${countries.map((c) => `${c}=${canViewCountry(entitlement, c) ? "✓" : "✗"}`).join("  ")}`);
   console.log(`  各国详情导出 PDF：${countries.map((c) => `${c}=${canExportTenderDetail(entitlement, c) ? "✓" : "✗"}`).join("  ")}`);

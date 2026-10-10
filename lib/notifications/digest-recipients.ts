@@ -15,7 +15,7 @@
 import { createSupabaseAdminClient } from "../supabase/admin-client";
 import { selectPreferredSubscription } from "../access-control";
 import { isAdminEmail } from "../admin-emails";
-import { digestCadence, type DigestCadence } from "./digest-cadence";
+import { basicDigestCountries, digestCadence, type DigestCadence } from "./digest-cadence";
 
 type Preference = {
   user_id: string;
@@ -136,7 +136,10 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
   const basicSubscriptions = current.filter((subscription) => subscription.plan === "basic");
   const basicCountries = await readInChunks(basicSubscriptions.map((subscription) => subscription.id as string), "基础版国家", (ids) => supabase
     .from("basic_plan_countries").select("subscription_id, country").in("subscription_id", ids));
-  const countryBySubscription = new Map(basicCountries.map((row) => [row.subscription_id, row.country]));
+  const countriesBySubscription = new Map<string, string[]>();
+  for (const row of basicCountries) {
+    countriesBySubscription.set(row.subscription_id, [...(countriesBySubscription.get(row.subscription_id) ?? []), row.country]);
+  }
   const subscriptionByUser = new Map(current.map((subscription) => [subscription.user_id, subscription]));
 
   const trialNow = new Date().toISOString();
@@ -174,9 +177,11 @@ export async function getDigestRecipients(): Promise<DigestRecipient[]> {
     const isEnterpriseMember = ownerId !== undefined && enterpriseOwnerIds.has(ownerId);
     const cadence = digestCadence(subscription?.plan ?? null, isEnterpriseMember, trialIds.has(preference.user_id));
     if (subscription?.plan === "basic") {
-      const country = countryBySubscription.get(subscription.id);
-      if (!country) return [];
-      return [{ ...preference, countries: [country], keywords: [], email, cadence }];
+      // Only the plan's own countries, narrowed to the ones the subscriber
+      // ticked on /notifications; none ticked means all of them.
+      const planCountries = countriesBySubscription.get(subscription.id) ?? [];
+      if (planCountries.length === 0) return [];
+      return [{ ...preference, countries: basicDigestCountries(planCountries, preference.countries), keywords: [], email, cadence }];
     }
     return [{ ...preference, keywords: cadence === "weekly" ? [] : preference.keywords, email, cadence }];
   });

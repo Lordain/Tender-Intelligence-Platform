@@ -6,7 +6,7 @@ import { selectPreferredSubscription, TRIAL_DAYS, type BillingInterval, type Sub
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 
-const EMPTY: ViewerEntitlement = { role: "guest", plan: null, selectedCountry: null, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
+const EMPTY: ViewerEntitlement = { role: "guest", plan: null, selectedCountries: [], trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
 
 type SubscriptionRow = {
   id: string;
@@ -133,17 +133,17 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
 
   const own = await findCurrentSubscription(admin, user.id);
   if (own.selected) {
-    let selectedCountry: string | null = null;
+    let selectedCountries: string[] = [];
     if (own.selected.plan === "basic") {
-      const { data, error } = await admin.from("basic_plan_countries").select("country").eq("subscription_id", own.selected.id).maybeSingle();
+      const { data, error } = await admin.from("basic_plan_countries").select("country, selected_at").eq("subscription_id", own.selected.id).order("selected_at");
       if (error) throw new Error(`基础版国家读取失败：${error.message}`);
-      selectedCountry = data?.country ?? null;
+      selectedCountries = (data ?? []).map((row) => row.country as string);
     }
     return {
       ...EMPTY,
       role: "subscriber",
       plan: own.selected.plan as SubscriptionPlan,
-      selectedCountry,
+      selectedCountries,
       subscriptionOwnerUserId: user.id,
       isEnterpriseOwner: own.selected.plan === "enterprise",
       ...periodOf(own.selected),

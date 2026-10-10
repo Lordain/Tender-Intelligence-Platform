@@ -38,6 +38,26 @@ const ELECTRICAL_MATERIALS_KEYWORD = /material(es)? el[ée]ctrico(s)?/i;
 const HVAC_KEYWORD = /aire acondicionado|climatizaci[óo]n/i;
 
 /**
+ * Lifted out of EXCLUDE_KEYWORDS (2026-10-11) so each can carry a value
+ * exception; the patterns are unchanged. From the user's review of a night's
+ * excluded rows (1、2、3都做):
+ *   - CLASSROOM_KEYWORD — "aulas" is a village school's extra classroom, the
+ *     case the rule was written for; it also caught the completion of four
+ *     teaching buildings at UFRRJ (R$ 14.6M). At US$2M or more it is a real
+ *     building and the word no longer excludes it.
+ *   - SOFTWARE_PURCHASE_KEYWORD — buying software is a licence, except a
+ *     hospital's whole information system: 「ADQUISICIÓN DE SOFTWARES
+ *     HIS-ESB-BI Y ERP PARA EL NUEVO HOSPITAL」 (Chile, ~US$20M). A hospital
+ *     HIS/ERP at US$5M or more is kept; every other software purchase is not.
+ */
+const CLASSROOM_KEYWORD = /\baulas?\b/i;
+const CLASSROOM_KEEP_FROM_USD = 2_000_000;
+const SOFTWARE_PURCHASE_KEYWORD = /(adquisici[óo]n|compra|suministro|contrataci[óo]n) de software/i;
+const HOSPITAL_INFORMATION_SYSTEM = /\b(his|erp)\b|sistema (integral )?de informaci[óo]n (hospitalaria|cl[íi]nica)|historia cl[íi]nica electr[óo]nica/i;
+const HOSPITAL_CONTEXT = /hospital|cl[íi]nic|salud/i;
+const HOSPITAL_SYSTEM_KEEP_FROM_USD = 5_000_000;
+
+/**
  * Buying insurance — the title's own object, read from the TITLE alone (user,
  * 2026-10-10: 保险类服务归入日常服务排除). Found on a Peru SEACE row,
  * "Contratación del servicio de seguros personales (Riesgos Humanos) para la
@@ -128,7 +148,7 @@ const EXCLUDE_KEYWORDS = [
   // software (a videovigilancia or SCADA build) is not caught by the word
   // appearing anywhere in its scope — and those carry an
   // INCLUDE_OVERRIDE_KEYWORDS anchor that bypasses this list anyway.
-  /(adquisici[óo]n|compra|suministro|contrataci[óo]n) de software/i,
+  SOFTWARE_PURCHASE_KEYWORD, // value exception for a hospital's HIS/ERP — see its declaration
   /combustible para (el parque vehicular|veh[íi]culos)|suministro de gasolina y di[ée]sel/i,
   // Real title (2026-09-04): "ADQUISICIÓN DE COMBUSTIBLES Y LUBRICANTES
   // PARA VEHÍCULOS Y EQUIPOS TERRESTRES" — fuel/lubricant purchase, not a
@@ -248,7 +268,8 @@ const EXCLUDE_KEYWORDS = [
   // class with a value exception. See its header comment.
 
   // Small community and school buildings.
-  /techumbre|techado\b|m[óo]dulo sanitario|\baulas?\b|sal[óo]n de usos m[úu]ltiples|cancha\b|polideportivo/i,
+  /techumbre|techado\b|m[óo]dulo sanitario|sal[óo]n de usos m[úu]ltiples|cancha\b|polideportivo/i,
+  CLASSROOM_KEYWORD, // value exception from US$2M — see its declaration
   /bardeado perimetral|centro de desarrollo comunitario|cuartos? dormitorio|albergue|centro de resguardo temporal|caseta\b|invernadero/i,
 
   // Religious buildings — all of them, per the user: 全部TEMPLO 和IGLESIA
@@ -3493,6 +3514,37 @@ function isMexicoInternationalTargetEquipment(country: string | undefined, tende
 }
 
 /**
+ * Hospital and university building works in a Mexican public call, kept at
+ * 常规 though Compras MX never publishes an amount (user, 2026-10-11, after
+ * reviewing a night's 591 excluded rows: 墨西哥没金额的公开招标里，医院、大学
+ * 校区的新建/扩建/改造保留为常规). The rows that prompted it:
+ * 「AMPLIACIÓN Y REMODELACIÓN QUIRÓFANOS HGSMF NO. 12 AGUA PRIETA」,
+ * 「PROYECTO INTEGRAL PARA LA UMF 2+1 EN SAN JUAN PARANGARICUTIRO」,
+ * 「REMODELACIÓN, AMPLIACIÓN Y EQUIPAMIENTO DEL H.M.E.M. Y N.」,
+ * 「“UNIVERSIDAD ROSARIO CASTELLANOS SEDE ECATEPEC”」.
+ *
+ * A Licitación Pública only — an Invitación a cuando menos tres personas is
+ * capped well under any scale worth keeping. The works signal is either the
+ * procedure number (Compras MX numbers public works LO-…) or a works verb in
+ * the title. Supervision, quality verification, upkeep and supplies for the
+ * same hospitals stay out: they buy a service around the building, not the
+ * building.
+ */
+const MEXICO_PUBLIC_CALL = /^licitacion publica\b/;
+const HEALTH_EDUCATION_FACILITY =
+  /\bhospital|\bh\.\s?m\.\s?e\.\s?m\b|\bhg[rzs]\w*\b|\bumf\b|\bumaa?\b|\bclinica|\bquirofano|\bunidad medica|\buniversidad|\bcampus\b/;
+const FACILITY_WORKS = /construccion|\bconstr\.|ampliacion|remodelacion|rehabilitacion|proyecto integral|obra civil|nueva creacion/;
+const NOT_FACILITY_WORKS =
+  /supervision|verificacion|control de obra|mantenimiento|\bmanto\b|\bmtto\b|\bservicio|\bserv\b|suministro|viveres|oxigeno|arrendamiento|insumo|consumible/;
+
+function isMexicoPublicHealthEducationWorks(country: string | undefined, procedureType: string | undefined, tenderNumber: string | undefined, title: string): boolean {
+  if (country !== "Mexico" || !MEXICO_PUBLIC_CALL.test(foldAccents(procedureType ?? "").toLowerCase().trim())) return false;
+  const folded = foldAccents(title).toLowerCase();
+  if (!HEALTH_EDUCATION_FACILITY.test(folded) || NOT_FACILITY_WORKS.test(folded)) return false;
+  return /^LO-/i.test((tenderNumber ?? "").trim()) || FACILITY_WORKS.test(folded);
+}
+
+/**
  * The same whitelist for Argentina (user, 2026-10-06: 把墨西哥那份「没有金额也
  * 保留」的行业白名单也用到阿根廷 → OK). Argentina's procedure numbers carry no
  * international mark, so the gate is the open call itself — a Licitación or
@@ -3826,12 +3878,21 @@ export function classifyRelevance(input: {
   // Named for Mexico, where it began; Argentina's open calls share it (see isArgentinaOpenCallTargetEquipment).
   const mexicanTargetEquipment =
     argentineTargetEquipment || (normalizedValue === undefined && isMexicoInternationalTargetEquipment(input.country, input.tenderNumber, input.title, subjectTitle));
+  const mexicanHealthEducationWorks = normalizedValue === undefined && isMexicoPublicHealthEducationWorks(input.country, input.procedureType, input.tenderNumber, input.title);
   if (
     !hasIncludeOverride &&
     EXCLUDE_KEYWORDS.some(
       (pattern) =>
         !(electricalMaterialsPurchase && pattern === ELECTRICAL_MATERIALS_KEYWORD) &&
         !(mexicanTargetEquipment && pattern === HVAC_KEYWORD) &&
+        !(pattern === CLASSROOM_KEYWORD && normalizedValue !== undefined && normalizedValue >= CLASSROOM_KEEP_FROM_USD) &&
+        !(
+          pattern === SOFTWARE_PURCHASE_KEYWORD &&
+          normalizedValue !== undefined &&
+          normalizedValue >= HOSPITAL_SYSTEM_KEEP_FROM_USD &&
+          HOSPITAL_INFORMATION_SYSTEM.test(input.title) &&
+          HOSPITAL_CONTEXT.test(input.title)
+        ) &&
         pattern.test(haystack),
     )
   ) {
@@ -4303,6 +4364,7 @@ export function classifyRelevance(input: {
     !isEquipmentScaleCapped &&
     !isMexicanBulkPurchase &&
     !mexicanTargetEquipment &&
+    !mexicanHealthEducationWorks &&
     !newEnergy
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
@@ -4334,7 +4396,8 @@ export function classifyRelevance(input: {
     !hasIncludeOverride &&
     !isEquipmentScaleCapped &&
     !isMexicanBulkPurchase &&
-    !mexicanTargetEquipment
+    !mexicanTargetEquipment &&
+    !mexicanHealthEducationWorks
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "industry") };
   }
@@ -4710,12 +4773,19 @@ function classifyStoredTenderFields(input: StoredTenderClassificationInput): {
       relevance: classifyPetroperuRelevance({ title: input.title, scopeType: input.scopeType }),
     };
   }
+  // A hospital/university building kept by isMexicoPublicHealthEducationWorks
+  // is works: tag it so, or a title that names no trade ("“UNIVERSIDAD ROSARIO
+  // CASTELLANOS SEDE ECATEPEC”") would show as 综合.
+  const worksTagged: typeof industries =
+    input.estimatedValue === undefined && !industries.includes("construction") && isMexicoPublicHealthEducationWorks(input.country, input.procedureType, input.tenderNumber, input.title)
+      ? [...industries.filter((tag) => tag !== "general"), "construction" as const]
+      : industries;
   return {
-    industries,
+    industries: worksTagged,
     relevance: classifyRelevance({
       title: input.title,
       summary: input.summary,
-      industries,
+      industries: worksTagged,
       procedureType: input.procedureType,
       tenderNumber: input.tenderNumber,
       scopeType: input.scopeType,

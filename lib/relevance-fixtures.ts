@@ -3395,4 +3395,49 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "The control: \"seguro\" as an adjective (safe), not insurance.",
     country: "Colombia", scopeType: "works", governmentLevel: "federal", procedureType: "Licitación pública",
   },
+  // ---- 2026-10-10, user: 排除 — four kept rows. Values are illustrative and
+  // deliberately large: these are excluded whatever the amount. ----
+  {
+    title: "(SG-621) APALANCAMIENTO 2027 VF PRESTAR EL SERVICIO INTEGRAL DE VIGILANCIA PARA LAS SEDES DEL IDEAM A NIVEL NACIONAL",
+    estimatedValue: 5_000_000, currency: "USD",
+    expectedTier: "excluded",
+    note: "Real Colombia title, user marked 排除. Guarding, with \"integral\" between the words.",
+    country: "Colombia", scopeType: "services",
+  },
+  {
+    title: "ADQUISICIÓN E INSTALACIÓN DEL SISTEMA INTEGRAL DE VIDEOVIGILANCIA PARA LA CIUDAD",
+    estimatedValue: 5_000_000, currency: "USD",
+    expectedTier: "significant",
+    note: "The control: a videovigilancia system is equipment the user keeps.",
+    country: "Colombia", scopeType: "equipment",
+  },
+  {
+    title: "SUMINISTRO E INSTALACIÓN DE MOBILIARIO; EQUIPOS DE CÓMPUTO; ELEMENTOS; ACCESORIOS Y DISPOSITIVOS TECNOLÓGICOS",
+    estimatedValue: 5_000_000, currency: "USD",
+    expectedTier: "excluded",
+    note: "Real Colombia title, user marked 排除. Office furniture and computers together.",
+    country: "Colombia", scopeType: "equipment",
+  },
+  {
+    title: "Contratar el servicio de fiducia mercantil en virtud del cual se constituye el patrimonio autónomo para el recaudo, administración, inversión, giro y pago de los recursos",
+    estimatedValue: 5_000_000, currency: "USD",
+    expectedTier: "excluded",
+    note: "Real Colombia title, user marked 排除. A trust (fiducia) service is a financial product.",
+    country: "Colombia", scopeType: "services",
+  },
+  {
+    title: "CONCESIÓN PARA LA CONSTRUCCIÓN, OPERACIÓN Y MANTENIMIENTO DE LA VÍA BUCARAMANGA - BARRANCABERMEJA",
+    summary: "El concesionario deberá constituir una fiducia mercantil para administrar los recursos del proyecto.",
+    estimatedValue: 400_000_000, currency: "USD",
+    expectedTier: "flagship",
+    note: "The control: a road concession whose summary requires the concessionaire to set up a fiducia. The fiducia rule reads the title only.",
+    country: "Colombia", scopeType: "works",
+  },
+  {
+    title: "PROGRAMA INTEGRAL DE SEGUROS DEL TREN INTERURBANO MÉXICO-TOLUCA 2026-2027",
+    estimatedValue: 200_000_000, currency: "MXN",
+    expectedTier: "excluded",
+    note: "Real Mexico title, user marked 排除. Insurance for a railway, not the railway.",
+    country: "Mexico", scopeType: "services",
+  },
 ];

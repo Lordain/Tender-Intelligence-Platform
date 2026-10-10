@@ -3440,4 +3440,57 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "Real Mexico title, user marked 排除. Insurance for a railway, not the railway.",
     country: "Mexico", scopeType: "services",
   },
+  // ---- 2026-10-11, user review of a night's excluded rows (1、2、3都做). ----
+  {
+    title: "AMPLIACIÓN Y REMODELACIÓN QUIRÓFANOS HGSMF NO. 12 AGUA PRIETA, SONORA",
+    expectedTier: "standard",
+    note: "Real Compras MX row (LO- public works, no amount). Hospital works in a Licitación Pública are kept at 常规.",
+    country: "Mexico", scopeType: "works", procedureType: "LICITACIÓN PÚBLICA", tenderNumber: "LO-50-GYR-050GYR068-N-33-2026",
+  },
+  {
+    title: "“UNIVERSIDAD ROSARIO CASTELLANOS SEDE ECATEPEC”",
+    expectedTier: "standard",
+    note: "Real Compras MX row: a university campus under a works number (LO-) with no trade word — kept, tagged construction.",
+    country: "Mexico", scopeType: "works", procedureType: "LICITACIÓN PÚBLICA", tenderNumber: "LO-74-030-915109922-N-65-2026",
+  },
+  {
+    title: "SUPERVISIÓN Y CONTROL DE OBRA HGR 260 CAMAS EN MORELIA, MICHOACÁN.",
+    expectedTier: "excluded",
+    note: "The control: supervising a hospital build is a service, not the build.",
+    country: "Mexico", scopeType: "services", procedureType: "LICITACIÓN PÚBLICA", tenderNumber: "LO-50-GYR-050GYR119-T-67-2026",
+  },
+  {
+    title: "IA-N119-2026 MANTENIMIENTO A EQUIPO MEDICO DEL HGZ # 3 HGOP # 7 Y HGZ # 18",
+    expectedTier: "excluded",
+    note: "The control: upkeep at a hospital, under a restricted invitation.",
+    country: "Mexico", scopeType: "services", procedureType: "INVITACIÓN A CUANDO MENOS TRES PERSONAS", tenderNumber: "IA-50-GYR-050GYR008-N-119-2026",
+  },
+  {
+    title: "Contratação de empresa especializada para a execução de obra/reforma para CONCLUSÃO DOS PRÉDIOS DE AULAS PRÁTICAS Q1, Q2, Q3 E Q4, DESTINADOS AO INSTITUTO DE QUÍMICA DA UFRRJ NO CAMPUS SEROPÉDICA.",
+    estimatedValue: 14_600_000, currency: "BRL",
+    expectedTier: "standard",
+    note: "Real PNCP row: 'aulas' no longer excludes a building of US$2M or more.",
+    country: "Brazil", scopeType: "works", procedureType: "Concorrência - Eletrônica",
+  },
+  {
+    title: "CONSTRUCCIÓN DE DOS AULAS EN LA ESCUELA PRIMARIA RURAL",
+    estimatedValue: 400_000, currency: "USD",
+    expectedTier: "excluded",
+    note: "The control: a village school's classrooms stay excluded.",
+    country: "Colombia", scopeType: "works", procedureType: "Licitación pública",
+  },
+  {
+    title: "ADQUISICIÓN DE SOFTWARES HIS-ESB-BI Y ERP PARA EL NUEVO HOSPITAL",
+    estimatedValue: 19_380_000_000, currency: "CLP",
+    expectedTier: "flagship",
+    note: "Real Mercado Público row: a new hospital's whole information system (~US$20M) is kept.",
+    country: "Chile", scopeType: "equipment", procedureType: "Licitación Pública Mayor a 5000 UTM (LR)",
+  },
+  {
+    title: "ADQUISICIÓN DE SOFTWARE DE GESTIÓN DOCUMENTAL PARA LA MUNICIPALIDAD",
+    estimatedValue: 8_000_000, currency: "USD",
+    expectedTier: "excluded",
+    note: "The control: any other software purchase stays excluded, whatever the amount.",
+    country: "Chile", scopeType: "services", procedureType: "Licitación Pública Mayor a 5000 UTM (LR)",
+  },
 ];

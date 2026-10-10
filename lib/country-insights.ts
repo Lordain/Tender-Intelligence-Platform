@@ -221,12 +221,3 @@ export const countryInsights: CountryInsightSummary[] = [
 export function getCountryInsight(slug: string) {
   return countryInsights.find((insight) => insight.slug === slug);
 }
-
-// The homepage remains a four-card preview; newer insights live in /insights.
-const HOMEPAGE_INSIGHT_SLUGS = ["mexico", "brazil", "colombia", "peru"] as const;
-
-export function homepageCountryInsights(): CountryInsightSummary[] {
-  return HOMEPAGE_INSIGHT_SLUGS.map(getCountryInsight).filter(
-    (insight): insight is CountryInsightSummary => insight !== undefined,
-  );
-}

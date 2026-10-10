@@ -30,11 +30,25 @@ const TABS = [
   { href: "/admin/import-tenders/panama", label: "巴拿马", country: "Panama" },
   { href: "/admin/import-tenders/ecuador", label: "厄瓜多尔", country: "Ecuador" },
   { href: "/admin/import-tenders/bolivia", label: "玻利维亚", country: "Bolivia" },
-  // Every country's World Bank notices (2026-10-09); no flag of its own.
+  // Every country's World Bank notices (2026-10-09); a globe in place of a flag (2026-10-11: 增加世界银行图标).
   { href: "/admin/import-tenders/worldbank", label: "世界银行", country: "World Bank" },
   // Staged (lib/staged-countries.ts): imported and reviewable here, not public yet.
   { href: "/admin/import-tenders/guyana", label: "圭亚那（未公开）", country: "Guyana" },
 ];
+
+/** Flag-sized globe for the one multi-country source — a generic globe, not the World Bank's logo. */
+function WorldBankIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 14" className="h-3.5 w-5 shrink-0">
+      <rect width="20" height="14" rx="1" fill="#0b6fb3" />
+      <g fill="none" stroke="#ffffff" strokeWidth="0.9">
+        <circle cx="10" cy="7" r="4.6" />
+        <ellipse cx="10" cy="7" rx="2" ry="4.6" />
+        <path d="M5.4 7h9.2M6.1 4.6h7.8M6.1 9.4h7.8" />
+      </g>
+    </svg>
+  );
+}
 
 function MaintenanceIcon() {
   return (
@@ -59,7 +73,7 @@ export function ImportTendersTabs() {
                 active ? "bg-[#061b2b] text-white shadow-sm" : "text-[#64717c] hover:bg-[#f2f4f3] hover:text-[#071826]"
               }`}
             >
-              {tab.country ? <CountryFlag country={tab.country} /> : <MaintenanceIcon />}
+              {tab.country === "World Bank" ? <WorldBankIcon /> : tab.country ? <CountryFlag country={tab.country} /> : <MaintenanceIcon />}
               {tab.label}
             </Link>
             {/* Separates the one cross-country tab from the per-country ones. */}

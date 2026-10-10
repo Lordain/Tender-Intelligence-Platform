@@ -4,13 +4,12 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 
 /**
  * Marks one tender's bid documents as "already downloaded" on the
- * /admin/documents-needed worklist — same shape as the sibling
- * documents-unavailable route, deliberately separate from the full tender-edit
- * PATCH so a one-click marker never needs the whole edit-form body.
+ * /admin/documents-needed worklist — deliberately separate from the full
+ * tender-edit PATCH so a one-click marker never needs the whole edit-form body.
  *
- * The two markers mean different things and must not be confused:
- * documents-unavailable removes the row from the worklist because the source
- * has nothing obtainable; this one leaves it there (the files still have to be
+ * Not to be confused with documents_unavailable (set in the edit form), which
+ * removes the row from the worklist because the source has nothing
+ * obtainable; this one leaves it there (the files still have to be
  * uploaded before the tender is analysed) and only records that the fetching
  * half is done.
  *
@@ -18,7 +17,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
  * un-marking clears it — a Peruvian tender's documents get republished after
  * the consultas round, at which point what was downloaded is stale.
  *
- * No revalidateTenders() here, unlike documents-unavailable: this column is
+ * No revalidateTenders() here: this column is
  * admin bookkeeping and appears on no public surface, so dropping the public
  * list cache would be pure waste.
  */

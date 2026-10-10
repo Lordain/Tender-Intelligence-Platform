@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { AdminTenderListRow } from "@/lib/db/tenders";
 import type { TenderRelevanceTier, TenderStatus } from "@/types/tender";
 import { formatDate, formatEstimatedValueUsd } from "@/lib/format";
+import { convertToUsd } from "@/lib/currency";
 import { compileSearchQuery, foldSearchText } from "@/lib/search-match";
 import {
   countryLabel,
@@ -62,6 +63,9 @@ function deadlineDay(value: string | undefined): string | null {
   return date.toISOString().slice(0, 10);
 }
 
+/** 最近24小时导入: rows first imported in the last day (createdAt — a re-import does not move it). */
+const RECENT_IMPORT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 const selectClass =
   "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-2 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
 
@@ -79,6 +83,9 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const [deadlinePresence, setDeadlinePresence] = useState("all");
   const [deadlineFrom, setDeadlineFrom] = useState("");
   const [deadlineTo, setDeadlineTo] = useState("");
+  const [recentOnly, setRecentOnly] = useState(false);
+  // Fixed when the page loads, so the window does not drift between renders.
+  const [recentSince] = useState(() => Date.now() - RECENT_IMPORT_WINDOW_MS);
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -144,6 +151,8 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   // Folded once per load, not per keystroke — the same matching as /tenders
   // (lib/search-match.ts). See AdminTenderListRow.searchSummary for why the
   // summary is searched here at all.
+  const recentCount = useMemo(() => tenders.filter((tender) => Date.parse(tender.createdAt) >= recentSince).length, [recentSince, tenders]);
+
   const searchText = useMemo(
     () => new Map(tenders.map((tender) => [tender.slug, foldSearchText([tender.title.zh, tender.title.es, tender.buyer, tender.slug, tender.tenderNumber, tender.searchSummary].join(" "))])),
     [tenders],
@@ -177,9 +186,11 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       const matchesPresence =
         deadlinePresence === "all" || (deadlinePresence === "missing" ? day === null : day !== null);
 
-      return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
+      const matchesRecent = !recentOnly || Date.parse(tender.createdAt) >= recentSince;
+
+      return matchesRecent && matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
     });
-  }, [analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, relevance, searchText, status, tenders]);
+  }, [analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, recentOnly, recentSince, relevance, searchText, status, tenders]);
 
   // Changing any filter drops the selection. Without this the red bar
   // survives a filter change still holding rows that are no longer on screen:
@@ -189,7 +200,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   //
   // Every filter state has to appear here. selectedVisible below is the guard
   // for the day one is added and this line is forgotten.
-  const filterKey = [query, country, status, relevance, analysis, deadlinePresence, deadlineFrom, deadlineTo].join("\u0000");
+  const filterKey = [query, country, status, relevance, analysis, deadlinePresence, deadlineFrom, deadlineTo, recentOnly].join("\u0000");
   const [seenFilterKey, setSeenFilterKey] = useState(filterKey);
   if (filterKey !== seenFilterKey) {
     setSeenFilterKey(filterKey);
@@ -206,7 +217,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   );
 
   const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all" || analysis !== "all"
-    || Boolean(deadlineFrom) || Boolean(deadlineTo) || deadlinePresence !== "all";
+    || Boolean(deadlineFrom) || Boolean(deadlineTo) || deadlinePresence !== "all" || recentOnly;
 
   function clearFilters() {
     setDraftQuery("");
@@ -218,6 +229,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     setDeadlinePresence("all");
     setDeadlineFrom("");
     setDeadlineTo("");
+    setRecentOnly(false);
   }
 
   return (
@@ -225,7 +237,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <form
-            className="flex min-w-0 flex-1 gap-2"
+            className="flex min-w-0 flex-1 gap-2 lg:max-w-[560px]"
             onSubmit={(event) => {
               event.preventDefault();
               setQuery(draftQuery);
@@ -246,7 +258,19 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               搜索
             </button>
           </form>
-          <p className="shrink-0 text-xs font-bold text-[#64717c]">
+          <button
+            type="button"
+            aria-pressed={recentOnly}
+            onClick={() => setRecentOnly((value) => !value)}
+            className={`h-11 shrink-0 whitespace-nowrap rounded-xl border px-4 text-sm font-black transition-colors ${
+              recentOnly
+                ? "border-[#ffb21c] bg-[#fff1cf] text-[#071826]"
+                : "border-[#d8e0e3] bg-white text-[#52636e] hover:border-[#9aa5ab] hover:text-[#071826]"
+            }`}
+          >
+            最近24小时导入（{recentCount}）
+          </button>
+          <p className="shrink-0 text-xs font-bold text-[#64717c] lg:ml-auto">
             显示 <span className="text-[#071826]">{filtered.length}</span> / {tenders.length} 个项目
           </p>
         </div>
@@ -375,19 +399,22 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                   className="size-4 accent-[#ffb21c]"
                 />
               </th>
-              <th className="w-[25%] px-3 py-3 font-black">标题</th>
+              <th className="w-[27%] px-3 py-3 font-black">标题 / 编号</th>
               <th className="w-[12%] px-2 py-3 font-black">行业</th>
               <th className="w-[7%] px-2 py-3 font-black">国家</th>
               <th className="w-[7%] px-2 py-3 font-black">状态</th>
               <th className="w-[9%] px-2 py-3 font-black">相关度</th>
-              <th className="w-[8%] px-2 py-3 font-black">金额</th>
+              <th className="w-[10%] px-2 py-3 font-black">金额</th>
               <th className="w-[10%] px-2 py-3 font-black">发布 / 交标</th>
-              <th className="w-[16%] px-3 py-3 text-center font-black">操作</th>
+              <th className="w-[14%] px-3 py-3 text-center font-black">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e5e9eb]">
             {filtered.map((tender) => {
               const value = tender.estimatedValue ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, "zh") : null;
+              // Shown as US$XX.XXM (user, 2026-10-11); the exact figure stays in the tooltip.
+              const usd = tender.estimatedValue ? convertToUsd(tender.estimatedValue, tender.currency) : null;
+              const valueShort = usd === null ? null : `US$${(usd / 1_000_000).toFixed(2)}M`;
               return (
                 <tr key={tender.slug} className="transition-colors hover:bg-[#fff9ec]">
                   <td className="px-2 py-3 text-center">
@@ -401,6 +428,10 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                   </td>
                   <td className="px-3 py-3">
                     <p title={tender.title.zh} className="truncate whitespace-nowrap text-[12px] font-black text-[#071826]">{tender.title.zh}</p>
+                    {/* The procurement number, as a second line rather than a
+                        column of its own (user, 2026-10-11: 增加项目ID…不想
+                        还要滑动) — the same two-line pattern as 发布 / 交标. */}
+                    <p title={tender.tenderNumber} className="mt-0.5 truncate whitespace-nowrap font-mono text-[10px] text-[#7a878f]">{tender.tenderNumber}</p>
                   </td>
                   <td className="px-2 py-3">
                     {tender.industries.length > 0 ? (
@@ -433,7 +464,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                       </span>
                     ) : <span className="text-[#9aa5ab]">未分类</span>}
                   </td>
-                  <td title={value ?? undefined} className="truncate whitespace-nowrap px-2 py-3 text-[11px] font-bold text-[#425461]">{value ?? "—"}</td>
+                  <td title={value ?? undefined} className="truncate whitespace-nowrap px-2 py-3 text-[11px] font-bold text-[#425461]">{valueShort ?? "—"}</td>
                   <td className="whitespace-nowrap px-2 py-3 text-[11px] text-[#5d6d77]">
                     <span className="block">
                       {formatDate(tender.publicationDate, "zh")}

@@ -859,6 +859,8 @@ export type AdminTenderListRow = {
   publicationDateIsEstimated?: boolean;
   /** Undefined when the source has not published one — not every tender has a deadline. */
   submissionDeadline?: string;
+  /** When the row was first imported; a re-import does not move it. 最近24小时导入 filters on it. */
+  createdAt: string;
   updatedAt: string;
   /**
    * The summary, flattened and lowercased, for the search box only — never
@@ -901,6 +903,7 @@ type AdminTenderListDbRow = {
   currency: string | null;
   publication_date: string;
   publication_date_is_estimated: boolean | null;
+  created_at: string;
   updated_at: string;
   submission_deadline: string | null;
   source_name: string | null;
@@ -940,6 +943,10 @@ type AnalysedDocumentProbeRow = {
  * this cheap: only tenders someone actually paid to analyse are joined, not
  * the whole table. A tender nobody has analysed appears in neither set, which
  * is exactly the third state.
+ *
+ * Each embed is capped at one row: only "is there any" matters, and fetching
+ * every requirement and risk id of every analysed tender was most of what
+ * this query used to send back.
  */
 async function fetchAnalysisStates(supabase: SupabaseClient): Promise<{ empty: Set<string>; analysed: Set<string> }> {
   const empty = new Set<string>();
@@ -950,6 +957,9 @@ async function fetchAnalysisStates(supabase: SupabaseClient): Promise<{ empty: S
         .from("tenders")
         .select("slug, tender_documents!inner ( id ), tender_requirements ( id ), tender_risks ( id )")
         .eq("tender_documents.extraction_status", "extracted")
+        .limit(1, { referencedTable: "tender_documents" })
+        .limit(1, { referencedTable: "tender_requirements" })
+        .limit(1, { referencedTable: "tender_risks" })
         .range(from, from + SUPABASE_PAGE_SIZE - 1),
       "Failed to check which analysed tenders came back empty",
     );
@@ -968,29 +978,34 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
 
-  const rows: AdminTenderListDbRow[] = [];
-  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("tenders")
-      .select(
-        // tender_key_dates joined for deriveTenderStatus only — see
-        // DOCUMENTS_NEEDED_SELECT's comment for why it cannot be skipped.
-        "id, slug, tender_number, title, summary, title_zh_short, one_line_summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, updated_at, submission_deadline, source_name, tender_key_dates ( type, date )",
-      )
-      .order("publication_date", { ascending: false })
-      .range(from, from + SUPABASE_PAGE_SIZE - 1);
+  const fetchRows = async (): Promise<AdminTenderListDbRow[] | null> => {
+    const rows: AdminTenderListDbRow[] = [];
+    for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("tenders")
+        .select(
+          // tender_key_dates joined for deriveTenderStatus only — see
+          // DOCUMENTS_NEEDED_SELECT's comment for why it cannot be skipped.
+          "id, slug, tender_number, title, summary, title_zh_short, one_line_summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, created_at, updated_at, submission_deadline, source_name, tender_key_dates ( type, date )",
+        )
+        .order("publication_date", { ascending: false })
+        .range(from, from + SUPABASE_PAGE_SIZE - 1);
 
-    if (error) {
-      console.error("Failed to fetch admin tender list from Supabase:", error.message);
-      return null;
+      if (error) {
+        console.error("Failed to fetch admin tender list from Supabase:", error.message);
+        return null;
+      }
+
+      const page = data as unknown as AdminTenderListDbRow[];
+      rows.push(...page);
+      if (page.length < SUPABASE_PAGE_SIZE) break;
     }
+    return rows;
+  };
 
-    const page = data as unknown as AdminTenderListDbRow[];
-    rows.push(...page);
-    if (page.length < SUPABASE_PAGE_SIZE) break;
-  }
-
-  const analysisStates = await fetchAnalysisStates(supabase);
+  // Independent queries — run side by side rather than one after the other.
+  const [rows, analysisStates] = await Promise.all([fetchRows(), fetchAnalysisStates(supabase)]);
+  if (!rows) return null;
 
   return rows
     .map((row) => ({
@@ -1022,6 +1037,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
     publicationDate: row.publication_date,
     publicationDateIsEstimated: row.publication_date_is_estimated ?? undefined,
     submissionDeadline: row.submission_deadline ?? undefined,
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
     searchSummary: [flattenSummaryForSearch(row.summary), row.title_zh_short, row.one_line_summary]
       .filter(Boolean)

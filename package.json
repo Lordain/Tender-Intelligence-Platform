@@ -188,6 +188,7 @@
     "report:monthly": "tsx --env-file-if-exists=.env.local scripts/report-monthly.ts",
     "measure:small-works": "tsx --env-file-if-exists=.env.local scripts/measure-small-works.ts",
     "maps:insights": "node scripts/generate-insight-maps.mjs",
+    "images:insight-cards": "node scripts/generate-insight-cards.mjs",
     "measure:insurance": "tsx --env-file-if-exists=.env.local scripts/measure-insurance.ts",
     "report:account-sharing": "tsx --env-file-if-exists=.env.local scripts/report-account-sharing.ts",
     "find:chinese-bidders": "tsx --env-file-if-exists=.env.local scripts/find-chinese-bidders.ts",

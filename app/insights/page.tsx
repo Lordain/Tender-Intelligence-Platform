@@ -4,6 +4,9 @@ import Link from "next/link";
 import { countryInsights } from "@/lib/country-insights";
 import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 
+/** The card picture: the hero graded to one look by scripts/generate-insight-cards.mjs. */
+const cardImage = (heroImage: string) => heroImage.replace("/insights/", "/insights/cards/");
+
 export const metadata: Metadata = pageMetadata({
   title: "国家洞察",
   description:
@@ -36,34 +39,34 @@ export default function CountryInsightsPage() {
       </header>
 
       <main className="mx-auto max-w-[108rem] px-5 py-12 sm:px-8 sm:py-16">
-        <div className="grid gap-7 lg:grid-cols-2">
-          {countryInsights.map((insight) => (
-            <article key={insight.slug} className="group overflow-hidden rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_18px_50px_rgba(7,24,38,0.06)]">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {countryInsights.map((insight, index) => (
+            <article key={insight.slug} className="group overflow-hidden rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_18px_50px_rgba(7,24,38,0.06)]">
               <Link href={`/insights/${insight.slug}`} className="flex h-full flex-col">
                 <div className="relative aspect-[16/9] overflow-hidden bg-[#061b2b]">
                   <Image
-                    src={insight.heroImage}
+                    src={cardImage(insight.heroImage)}
                     alt={insight.heroImageAlt}
                     fill
-                    priority
-                    sizes="(min-width: 1024px) 50vw, 100vw"
+                    priority={index < 3}
+                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                     className="object-cover transition duration-500 group-hover:scale-[1.02]"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#061b2b]/75 via-transparent to-transparent" />
-                  <span className="absolute bottom-5 left-5 rounded-full bg-[#ffb21c] px-3 py-1 text-xs font-black text-[#071826]">{insight.country}</span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#061b2b]/70 via-transparent to-transparent" />
+                  <span className="absolute bottom-4 left-4 rounded-full bg-[#ffb21c] px-3 py-1 text-xs font-black text-[#071826]">{insight.country}</span>
                 </div>
-                <div className="flex flex-1 flex-col p-6 sm:p-8">
+                <div className="flex flex-1 flex-col p-5 sm:p-6">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-[#7b878e]">
                     <span>作者：{insight.author}</span>
                   </div>
-                  <h2 className="mt-4 text-2xl font-black leading-9 tracking-[-0.03em] sm:text-3xl">{insight.title}</h2>
-                  <p className="mt-4 text-sm leading-7 text-[#5c6c76]">{insight.description}</p>
-                  <div className="mt-6 flex flex-wrap gap-2">
+                  <h2 className="mt-3 text-xl font-black leading-8 tracking-[-0.02em]">{insight.title}</h2>
+                  <p className="mt-3 text-sm leading-6 text-[#5c6c76]">{insight.description}</p>
+                  <div className="mt-5 flex flex-wrap gap-1.5">
                     {insight.highlights.map((highlight) => (
-                      <span key={highlight} className="rounded-full bg-[#edf2f4] px-3 py-1.5 text-xs font-bold text-[#38505e]">{highlight}</span>
+                      <span key={highlight} className="rounded-full bg-[#edf2f4] px-2.5 py-1 text-[11px] font-bold text-[#38505e]">{highlight}</span>
                     ))}
                   </div>
-                  <p className="mt-auto pt-8 font-black text-[#a96a00] transition-transform group-hover:translate-x-1">阅读全文 →</p>
+                  <p className="mt-auto pt-6 text-sm font-black text-[#a96a00] transition-transform group-hover:translate-x-1">阅读全文 →</p>
                 </div>
               </Link>
             </article>

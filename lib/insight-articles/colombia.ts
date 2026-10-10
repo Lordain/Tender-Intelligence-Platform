@@ -8,7 +8,7 @@ export const colombiaInsight: InsightArticle = {
   headline: ["哥伦比亚国家洞察：", "2023—2026交通重构与能源转型机会"],
   lede: "国家发展计划即将收官，但铁路、公路、电网、水务和数字连接的项目会跨过政府周期继续推进。看清阶段，才知道下一轮采购在哪。",
   published: "2026-09-17",
-  modified: "2026-10-05",
+  modified: "2026-10-10",
   stats: [
     { label: "国家投资计划", value: "约3,691亿", unit: "美元", detail: "原币1,154.8万亿哥伦比亚比索", note: "2023—2026年多年投资计划总额" },
     { label: "交通战略组合", value: "约1,027亿", unit: "美元", detail: "原币321.3万亿哥伦比亚比索", note: "铁路、公路、机场、港口跨周期路线图" },
@@ -46,7 +46,7 @@ export const colombiaInsight: InsightArticle = {
     title: "已经能看到的六个工程方向",
     items: [
       { icon: "rail", title: "铁路与多式联运", text: "跨洋铁路、Villavicencio—Puerto Gaitán、Buenaventura—Palmira、La Tebaida—La Dorada、Bogotá—Belencito等走廊，阶段从预可研到既有线恢复不等。" },
-      { icon: "road", title: "公路特许经营", figure: "4G执行率93.32% · 5G 27.68%", text: "截至2026年9月：30个4G项目中17个已进入运维；6个5G项目投资约16.71万亿比索（约53.4亿美元）。" },
+      { icon: "road", title: "公路特许经营", figure: "4G执行率93.32% · 5G 27.68%", text: "ANI 2026年9月通报：30个4G项目中17个已进入运维；6个5G项目投资约16.71万亿比索（约53.4亿美元）。" },
       { icon: "port", title: "港口、河运与跨洋走廊", text: "Buenaventura、Barranquilla、加勒比港口和Magdalena河航运；含Chocó跨洋铁路、疏浚、码头和集疏运，需多方协调。" },
       { icon: "energy", title: "输电、新能源与电气化", text: "矿能部已采用2025—2039输电扩张计划；输电线路、变电站、并网、储能和非互联地区供电，加勒比风光送出尤其值得跟踪。" },
       { icon: "water", title: "水务与环境", figure: "46个项目 · 国家出资3.5万亿比索", text: "以2026—2035年跨年度预算支持（约11.2亿美元），覆盖18个省、42个市镇；采购方有部委、省市、公用事业和专项基金。" },

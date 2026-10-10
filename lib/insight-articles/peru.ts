@@ -8,7 +8,7 @@ export const peruInsight: InsightArticle = {
   headline: ["秘鲁国家洞察：", "2024—2030竞争力规划与物流走廊机会"],
   lede: "从2024—2030竞争力规划、2032物流走廊和2026项目组合出发，看交通、矿业、能源、水务与社会基础设施里能执行的机会。",
   published: "2026-09-17",
-  modified: "2026-10-05",
+  modified: "2026-10-10",
   stats: [
     { label: "2026公共预算", value: "约765.2亿", unit: "美元", detail: "原币2,575.62亿秘鲁索尔", note: "中央、区域和地方合计" },
     { label: "APP与资产项目", value: "44+8", unit: "个项目与增补合同", detail: "目标约197.97亿美元", note: "PROINVERSIÓN 2026年组合" },
@@ -100,7 +100,7 @@ export const peruInsight: InsightArticle = {
     items: [
       { label: "CNCF：国家竞争力与生产力计划2024—2030", href: "https://www.cnc.gob.pe/plan-de-competitividad/plan-de-competitividad", note: "75项措施、37个责任机构及至2030年7月的节点。" },
       { label: "MEF：国家可持续基础设施计划2022—2025", href: "https://www.mef.gob.pe/es/inversion-privada-sp-21801/6082-plan-nacional-de-infraestructura-sostenible-para-la-competitividad-2022-2025", note: "72个优先项目、1,466.22亿索尔及十个领域。" },
-      { label: "MEF：2026公共预算", href: "https://www.gob.pe/institucion/mef/noticias/1299969-presupuesto-publico-2026-es-aprobado-tras-consenso-entre-gobierno-y-congreso-para-fortalecer-obras-y-servicios-esenciales", note: "2,575.62亿索尔预算总额：中央1,642.23亿、区域591.64亿、地方341.75亿。" },
+      { label: "MEF：2026公共预算", href: "https://www.gob.pe/institucion/mef/noticias/1299969-presupuesto-publico-2026-es-aprobado-tras-consenso-entre-gobierno-y-congreso-para-fortalecer-obras-y-servicios-esenciales", note: "2,575.62亿索尔预算总额，其中中央政府1,642.23亿、区域政府591.64亿；地方政府额度以MEF预算文件为准（通稿三级分项与总额不闭合）。" },
       { label: "MEF：2026预算投资说明", href: "https://www.gob.pe/institucion/mef/noticias/1240904-titular-del-mef-propuesta-de-presupuesto-publico-2026-permitira-al-peru-mantener-el-camino-de-desarrollo-y-cierre-de-brechas", note: "2026年投资安排、续建比例及部门重点。" },
       { label: "PROINVERSIÓN：2026 APP与资产项目组合", href: "https://www.gob.pe/institucion/proinversion/noticias/1363835-proinversion-impulsa-cartera-de-44-proyectos-y-8-adendas-por-cerca-de-us-20-mil-millones-para-el-2026", note: "44个项目、8项增补合同、197.97亿美元及行业分布。" },
       { label: "MTC：2032国家运输物流规划", href: "https://www.gob.pe/institucion/mtc/normas-legales/4081616-362-2023-mtc-01", note: "已批准的2032物流服务与基础设施规划。" },

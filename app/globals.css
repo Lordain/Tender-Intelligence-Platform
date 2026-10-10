@@ -295,17 +295,19 @@ select {
  * The same palette as the guides' cards (components/guides/GuideVisuals.tsx):
  * warm paper to pale amber, cool grey-blue, amber, navy. Named here once so
  * every card carries a short class rather than a long gradient of its own.
+ * Toned down by about half the same day (user: 让当前的渐变效果淡一点); the
+ * direction and stops are unchanged, only how far each one travels.
  */
 .surface-warm {
-  background-image: linear-gradient(150deg, #ffffff 0%, #fffcf5 45%, #f9eed6 100%);
+  background-image: linear-gradient(150deg, #ffffff 0%, #fffdf9 45%, #fcf6e9 100%);
 }
 
 .surface-cool {
-  background-image: linear-gradient(135deg, #f8fbfb 0%, #edf3f5 100%);
+  background-image: linear-gradient(135deg, #fafcfc 0%, #f2f6f8 100%);
 }
 
 .surface-amber {
-  background-image: linear-gradient(135deg, #fffaf0 0%, #ffedc4 100%);
+  background-image: linear-gradient(135deg, #fffcf6 0%, #fff4dc 100%);
 }
 
 .surface-navy {

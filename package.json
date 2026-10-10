@@ -52,6 +52,7 @@
     "ingest:proyectos-estrategicos": "tsx --env-file-if-exists=.env.local scripts/ingest-proyectos-estrategicos.ts",
     "test:relevance": "tsx scripts/test-relevance.ts",
     "test:duplicate-procurement": "tsx scripts/test-duplicate-procurement.ts",
+    "test:search-match": "tsx scripts/test-search-match.ts",
     "test:download": "tsx scripts/test-download-file.ts",
     "test:extraction-pipeline": "tsx scripts/test-extraction-pipeline.ts",
     "test:weekly": "tsx scripts/test-weekly.ts",

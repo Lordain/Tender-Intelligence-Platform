@@ -15,18 +15,19 @@
  * text, builds queries of a few kinds a person would type (below). The tender
  * the words came from is the right answer, so a query that does not find it is
  * a miss. Every query runs through:
- *   - 现在   — filterTenders(), exactly as /tenders runs it today;
- *   - 改进后 — a candidate matcher kept in this file only: the query is split
- *              on spaces and every word must appear (in any order); accents,
- *              full-width characters and punctuation are folded away.
+ *   - 旧规则 — the whole query, lowercased, as one substring: how every search
+ *              box worked until 2026-10-10;
+ *   - 现在   — filterTenders(), exactly as /tenders runs it: every word in any
+ *              order, accents / width / punctuation folded, synonyms
+ *              (lib/search-match.ts — adopted 2026-10-10 from this audit).
  * Both look at the same fields (tenderSearchText), in the member ("full") and
- * guest ("public") scopes, so the candidate never searches text a viewer
- * cannot see. It also reports where a found tender lands in the default
+ * guest ("public") scopes, so neither searches text a viewer cannot see. It also reports where a found tender lands in the default
  * 推荐 order (page 1 = the first 20), and how many results each query returns,
  * so a looser matcher that floods the list shows up too.
  *
- * Finally a small zh ↔ es/pt term list counts tenders that one wording misses
- * because the text uses another (智能交通 vs ITS, 光伏 vs fotovoltaica …).
+ * Finally a zh ↔ es/pt term list (TERM_GROUPS — wider than the synonyms the
+ * site uses, on purpose: it is where new candidates show up) counts tenders
+ * that one wording misses because the text uses another.
  *
  * Read-only; nothing is written. Without Supabase it runs on the bundled
  * sample tenders, which is only enough to check the script itself.
@@ -37,6 +38,7 @@
 import { fetchAllTendersFromDb } from "../lib/db/tenders";
 import { tenders as sampleTenders } from "../data/tenders";
 import { filterTenders, sortTenders, tenderSearchText } from "../lib/filter-tenders";
+import { compileSearchQuery, foldSearchText, type FoldedText } from "../lib/search-match";
 import type { Tender } from "../types/tender";
 
 /** /tenders shows 20 rows a page (lib/tender-list-page.ts TENDER_PAGE_SIZE). */
@@ -63,62 +65,49 @@ function rng(seed: number) {
   };
 }
 
-// ---- the candidate matcher ------------------------------------------------
+// ---- the two rules -----------------------------------------------------------
 
 const fold = (text: string) => text.normalize("NFKC").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 const spaced = (text: string) => ` ${fold(text).replace(/[^\p{L}\p{N}]+/gu, " ").trim()} `;
 const compact = (text: string) => fold(text).replace(/[^\p{L}\p{N}]+/gu, "");
 
-type Haystack = { raw: string; spaced: string; compact: string };
+type Haystack = { raw: string; folded: FoldedText };
 const haystackCache = new Map<string, Haystack>();
 function haystackOf(tender: Tender, scope: "full" | "public"): Haystack {
   const key = `${scope}|${tender.slug}`;
   let hay = haystackCache.get(key);
   if (!hay) {
     const raw = tenderSearchText(tender, scope);
-    hay = { raw, spaced: spaced(raw), compact: compact(raw) };
+    hay = { raw, folded: foldSearchText(raw) };
     haystackCache.set(key, hay);
   }
   return hay;
 }
 
+/** The rule until 2026-10-10: the whole query, lowercased, as one substring. */
+const legacyMatches = (tender: Tender, query: string, scope: "full" | "public") => haystackOf(tender, scope).raw.includes(query.trim().toLowerCase());
+
 /**
- * Today's rule, the check filterTenders() makes on an already-visible row:
- * the whole query, lowercased, as one substring. Cached here because the
- * test asks it millions of times; main() checks it against filterTenders()
- * itself before trusting it.
+ * Today's rule on an already-visible row — what filterTenders() asks. Kept
+ * here with a cache because the test asks it millions of times; main() checks
+ * it against filterTenders() itself before trusting it.
  */
-const currentMatches = (tender: Tender, query: string, scope: "full" | "public") => haystackOf(tender, scope).raw.includes(query.trim().toLowerCase());
+function currentMatches(tender: Tender, query: string, scope: "full" | "public"): boolean {
+  const matches = compileSearchQuery(query);
+  return matches === null || matches(haystackOf(tender, scope).folded);
+}
 
 /** Whole-word for source-language terms, so "metro" does not count "metros" (metres). */
 function termAppears(tender: Tender, term: string): boolean {
-  const hay = haystackOf(tender, "full");
+  const hay = haystackOf(tender, "full").folded;
   const word = spaced(term);
   return /\p{Script=Han}/u.test(term) ? hay.spaced.includes(word.trim()) : hay.spaced.includes(word);
 }
 
-/** A word matches when it appears in the folded text, or — for codes like LPN-001/2026 — once separators are dropped on both sides. */
-function wordMatches(hay: Haystack, word: string): boolean {
-  const asText = spaced(word).trim();
-  const asCode = compact(word);
-  return (asText !== "" && hay.spaced.includes(asText)) || (asCode !== "" && hay.compact.includes(asCode));
-}
-
-function candidateMatches(tender: Tender, query: string, scope: "full" | "public", synonyms: boolean): boolean {
-  const hay = haystackOf(tender, scope);
-  const words = query.split(/\s+/).filter(Boolean);
-  return words.every((word) => {
-    if (wordMatches(hay, word)) return true;
-    if (!synonyms) return false;
-    const group = SYNONYM_GROUPS.find((terms) => terms.some((term) => compact(term) === compact(word)));
-    return group ? group.some((term) => wordMatches(hay, term)) : false;
-  });
-}
-
 // ---- zh ↔ es/pt wording ---------------------------------------------------
 
-/** Each line: ways of saying the same thing. Chinese first, then source-language terms. Kept short and unambiguous on purpose. */
-const SYNONYM_GROUPS: string[][] = [
+/** Each line: ways of saying the same thing. Chinese first, then source-language terms. Only measured here — the site's own list is lib/search-match.ts SEARCH_SYNONYMS. */
+const TERM_GROUPS: string[][] = [
   ["智能交通", "ITS", "sistema inteligente de transporte", "sistemas inteligentes de transporte"],
   ["快速公交", "BRT", "TransMilenio"],
   ["地铁", "metro", "metrô", "subterráneo"],
@@ -253,7 +242,7 @@ function kinds(scope: "full" | "public"): Kind[] {
 
 // ---- running ----------------------------------------------------------------
 
-type Tally = { tried: number; now: number; candidate: number; nowPage1: number; nowResults: number[]; candidateResults: number[]; misses: { query: string; title: string }[] };
+type Tally = { tried: number; legacy: number; now: number; nowPage1: number; legacyResults: number[]; nowResults: number[]; misses: { query: string; title: string }[] };
 
 const median = (values: number[]) => {
   if (values.length === 0) return 0;
@@ -287,15 +276,18 @@ async function main() {
         for (const kind of scopeKinds) {
           const query = kind.make(tender, random);
           if (!query) continue;
-          const tally = tallies.get(kind.id) ?? { tried: 0, now: 0, candidate: 0, nowPage1: 0, nowResults: [], candidateResults: [], misses: [] };
+          const tally = tallies.get(kind.id) ?? { tried: 0, legacy: 0, now: 0, nowPage1: 0, legacyResults: [], nowResults: [], misses: [] };
           tallies.set(kind.id, tally);
           tally.tried += 1;
+          const legacyHits = visible.filter((item) => legacyMatches(item, query, scope));
           const nowHits = visible.filter((item) => currentMatches(item, query, scope));
           if (checked < 40) {
             checked += 1;
             const reference = filterTenders(visible, { query, searchPublicFieldsOnly: scope === "public" });
             if (reference.length !== nowHits.length) throw new Error(`「现在」的复刻和 filterTenders 结果不同：${query}`);
           }
+          tally.legacyResults.push(legacyHits.length);
+          if (legacyHits.some((hit) => hit.slug === tender.slug)) tally.legacy += 1;
           tally.nowResults.push(nowHits.length);
           if (nowHits.some((hit) => hit.slug === tender.slug)) {
             tally.now += 1;
@@ -305,21 +297,18 @@ async function main() {
           } else if (tally.misses.length < 4) {
             tally.misses.push({ query, title: chineseTitle(tender, scope) || tender.title.es });
           }
-          const candidateHits = visible.filter((item) => candidateMatches(item, query, scope, false));
-          tally.candidateResults.push(candidateHits.length);
-          if (candidateHits.some((hit) => hit.slug === tender.slug)) tally.candidate += 1;
         }
       }
     }
 
     console.log(`==== ${scope === "full" ? "会员视角（中文 + 原文 + 采购单位 + 编号）" : "游客视角（只搜公开中文）"} ====`);
-    console.log("   次数  现在 改进后 现在在第一页 结果条数中位(现在/改进后)  查询方式");
+    console.log("   次数 旧规则  现在 现在在第一页 结果条数中位(旧规则/现在)  查询方式");
     for (const kind of scopeKinds) {
       const tally = tallies.get(kind.id);
       if (!tally) continue;
-      const results = `${median(tally.nowResults)} / ${median(tally.candidateResults)}`;
+      const results = `${median(tally.legacyResults)} / ${median(tally.nowResults)}`;
       console.log(
-        `  ${String(tally.tried).padStart(5)}  ${pct(tally.now, tally.tried)}  ${pct(tally.candidate, tally.tried)}        ${pct(tally.nowPage1, tally.now)}  ${results.padStart(22)}    ${kind.label}`,
+        `  ${String(tally.tried).padStart(5)}  ${pct(tally.legacy, tally.tried)}  ${pct(tally.now, tally.tried)}        ${pct(tally.nowPage1, tally.now)}  ${results.padStart(22)}    ${kind.label}`,
       );
     }
     console.log("\n  现在搜不到的例子：");
@@ -333,8 +322,8 @@ async function main() {
   }
 
   console.log("==== 同一件事的不同说法（会员视角）：只用一种说法搜，会漏掉多少 ====");
-  console.log("  这个主题共有 N 条项目（任一说法出现在标题、摘要、采购单位里）；用某个说法搜，现在能找到几条。");
-  for (const group of SYNONYM_GROUPS) {
+  console.log("  这个主题共有 N 条项目（任一说法出现在标题、摘要、采购单位里）；用某个说法搜，现在能找到几条（网站同义词表里的词会互相找到）。");
+  for (const group of TERM_GROUPS) {
     const about = visible.filter((tender) => group.some((term) => termAppears(tender, term)));
     if (about.length === 0) continue;
     const found = group.map((term) => `${term} ${about.filter((tender) => currentMatches(tender, term, "full")).length}`);

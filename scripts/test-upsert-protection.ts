@@ -163,5 +163,34 @@ const ZH = "修建绕行路段";
   check("an empty deadline is still filled by the source", row.submission_deadline, "2026-11-01");
 }
 
+{
+  // The long-contract floor (applySummaryDurationFloor) survives re-import:
+  // the mapper's tier never sees the 一句话总结, so the stored one is read.
+  const row = buildRowWithProtectedValues(mapped(ES), stored({ slug: "secop-test-1", one_line_summary: "绕行路段建设及为期三年的运维" }));
+  check("a 3-year term in the stored summary keeps 大型 through re-import", row.relevance_tier, "flagship");
+  const short = buildRowWithProtectedValues(mapped(ES), stored({ slug: "secop-test-1", one_line_summary: "绕行路段建设，工期12个月" }));
+  check("a 12-month term leaves the mapper's tier", short.relevance_tier, "standard");
+  const locked = buildRowWithProtectedValues(
+    mapped(ES),
+    stored({ slug: "secop-test-1", one_line_summary: "为期三年的运维", relevance_tier: "significant", relevance_label: "x", relevance_reason: "x", relevance_manually_overridden: true, __omit: ["relevance_tier", "relevance_label", "relevance_reason", "relevance_manually_overridden"] }),
+  );
+  check("a locked tier still wins over the floor", locked.relevance_tier, "significant");
+}
+
+{
+  // 有金额的以金额为主: with an amount, the summary's term no longer raises the tier.
+  const withAmount = { ...mapped(ES), estimatedValue: 500_000, currency: "USD" } as unknown as Tender;
+  const row = buildRowWithProtectedValues(withAmount, stored({ slug: "secop-test-1", one_line_summary: "绕行路段建设及为期三年的运维" }));
+  check("with an amount the 3-year term is ignored on re-import", row.relevance_tier, "standard");
+}
+
+{
+  // An amount the source lacks but the row keeps (filled from the summary):
+  // the tier is computed on it, not on the source's nothing.
+  const row = buildRowWithProtectedValues(mapped(ES), stored({ slug: "secop-test-1", estimated_value: 60_000_000, currency: "USD" }));
+  check("a kept amount re-tiers the row on re-import", row.relevance_tier, "flagship");
+  check("…and the amount itself is kept", row.estimated_value, 60_000_000);
+}
+
 console.log(`\n${passed}/${passed + failed} checks passed.`);
 if (failed > 0) process.exit(1);

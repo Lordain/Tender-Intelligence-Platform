@@ -18,6 +18,7 @@
 import { mergeExtractions, toTenderFields, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { assertWritten } from "@/lib/db/assert-written";
+import { applySummaryAdjustment } from "@/lib/ingestion/summary-adjustment";
 
 export type ImportBatchAnalysisResult = {
   slug: string;
@@ -96,6 +97,9 @@ export async function importBatchAnalysis(
         `${slug} 的一句话总结`,
         await supabase!.from("tenders").update({ one_line_summary: fields.oneLineSummary.trim() }).eq("id", tenderId),
       );
+      // The 一句话总结 rule, same as analyzeUploadedDocument — see
+      // lib/ingestion/summary-adjustment.ts. Never excludes.
+      await applySummaryAdjustment(supabase!, tenderId);
     }
 
     if (!options.force) {

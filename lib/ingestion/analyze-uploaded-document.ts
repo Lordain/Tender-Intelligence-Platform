@@ -59,6 +59,7 @@ import { extractTenderRequirementsQwenAnthropic } from "@/lib/ingestion/extract-
 import { untranslated } from "@/lib/ingestion/text-utils";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 import { isNationalPrioritySource } from "@/lib/relevance";
+import { applySummaryAdjustment } from "@/lib/ingestion/summary-adjustment";
 import { assertWritten } from "@/lib/db/assert-written";
 
 export type AnalyzeUploadedDocumentResult = {
@@ -487,6 +488,16 @@ export async function analyzeUploadedDocument(
         );
         relevanceTierChanged = { from: currentTier ?? "(none)", to: relevanceAssessment.suggestedTier, reasoning: relevanceAssessment.reasoning };
       }
+    }
+
+    // The 一句话总结 rule (lib/ingestion/summary-adjustment.ts), applied on
+    // whatever the document's own suggestion left: fill a missing amount, or
+    // correct one an admin typed, and re-tier on it; with no amount, a long
+    // contract term raises the tier. Never to 已过滤, never a locked tier
+    // (user, 2026-10-10: 可以基于总结调整标书内容，但是不要基于总结把标书直接屏蔽).
+    if (fields.oneLineSummary?.trim()) {
+      const adjusted = await applySummaryAdjustment(supabase, tenderId);
+      if (adjusted) warnings.push(`已按一句话总结调整：${adjusted}`);
     }
 
     return {

@@ -2,6 +2,7 @@ import type { LocalizedText, Tender, TenderRelevance, TenderScopeType } from "@/
 import { convertToUsd } from "@/lib/currency";
 import { classifyIndustries, stripKnownFalsePositivePlaceNames, type IndustryKey } from "@/lib/industry";
 import { foldAccents } from "@/lib/text-fold";
+import { contractMonthsInSummary } from "@/lib/summary-duration";
 import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
@@ -4508,7 +4509,48 @@ export type StoredTenderClassificationInput = {
   procedureType: string | undefined;
   /** tenders.tender_number, verbatim — see classifyRelevance's own field comment. */
   tenderNumber: string | undefined;
+  /**
+   * tenders.one_line_summary — written by document analysis after import, so
+   * absent at import time. When present, a contract term it states sets a
+   * floor on the tier: see applySummaryDurationFloor.
+   */
+  oneLineSummary?: string | null;
 };
+
+/** User, 2026-10-10: 超长期项目（2年）最少中型，3年调整成大项目. */
+export const SUMMARY_DURATION_SIGNIFICANT_MONTHS = 24;
+export const SUMMARY_DURATION_FLAGSHIP_MONTHS = 36;
+const TIER_RANK: Record<TenderRelevance["tier"], number> = { excluded: 0, standard: 1, significant: 2, flagship: 3 };
+
+/**
+ * A contract term the 一句话总结 states (lib/summary-duration.ts) sets a floor
+ * on the tier: 2 years or more → at least 中型, 3 years or more → 大型. Only
+ * ever raises; never touches 已过滤 — exclusion is the platform's own rule
+ * (请一定要保障现在应用的筛选规则), and a long cleaning contract is still
+ * routine service.
+ *
+ * Only for a tender WITHOUT an amount (user, same day: 有金额的以金额为主，
+ * 没有金额的才用时长评估). With an amount, the amount bands decide; the term
+ * is a proxy for scale and loses to a measurement of it. `hasAmount` is a
+ * required argument so no caller can forget to ask.
+ */
+export function applySummaryDurationFloor(relevance: TenderRelevance, oneLineSummary: string | null | undefined, hasAmount: boolean): TenderRelevance {
+  if (hasAmount || relevance.tier === "excluded") return relevance;
+  const months = contractMonthsInSummary(oneLineSummary);
+  if (months === null || months < SUMMARY_DURATION_SIGNIFICANT_MONTHS) return relevance;
+  const floor = months >= SUMMARY_DURATION_FLAGSHIP_MONTHS ? "flagship" : "significant";
+  if (TIER_RANK[relevance.tier] >= TIER_RANK[floor]) return relevance;
+  const years = Number.isInteger(months / 12) ? `${months / 12} 年` : `${months} 个月`;
+  return {
+    tier: floor,
+    label: LABELS[floor],
+    reason: {
+      zh: `一句话总结显示合同期约 ${years}，属于长期项目（2 年以上至少中型，3 年以上为大型），按${floor === "flagship" ? "大型" : "中型"}项目关注。`,
+      en: `The one-line summary gives a contract term of about ${months} months — a long-term contract (2+ years: at least significant; 3+ years: flagship).`,
+      es: `El resumen indica un plazo contractual de unos ${months} meses — contrato de largo plazo (2+ años: al menos significativo; 3+ años: insignia).`,
+    },
+  };
+}
 
 /**
  * The ONLY way the ingestion path and the reclassify path should ever compute
@@ -4528,6 +4570,15 @@ export type StoredTenderClassificationInput = {
  * connector-only signal will be right at import and wrong forever after.
  */
 export function classifyStoredTender(input: StoredTenderClassificationInput): {
+  industries: ReturnType<typeof classifyIndustries>;
+  relevance: TenderRelevance;
+} {
+  const result = classifyStoredTenderFields(input);
+  const hasAmount = input.estimatedValue !== undefined && input.estimatedValue !== null;
+  return input.oneLineSummary ? { ...result, relevance: applySummaryDurationFloor(result.relevance, input.oneLineSummary, hasAmount) } : result;
+}
+
+function classifyStoredTenderFields(input: StoredTenderClassificationInput): {
   industries: ReturnType<typeof classifyIndustries>;
   relevance: TenderRelevance;
 } {

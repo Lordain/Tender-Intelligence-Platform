@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { AdminTenderListRow } from "@/lib/db/tenders";
 import type { TenderRelevanceTier, TenderStatus } from "@/types/tender";
 import { formatDate, formatEstimatedValueUsd } from "@/lib/format";
+import { convertToUsd } from "@/lib/currency";
 import { compileSearchQuery, foldSearchText } from "@/lib/search-match";
 import {
   countryLabel,
@@ -388,6 +389,9 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
           <tbody className="divide-y divide-[#e5e9eb]">
             {filtered.map((tender) => {
               const value = tender.estimatedValue ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, "zh") : null;
+              // Shown as US$XX.XXM (user, 2026-10-11); the exact figure stays in the tooltip.
+              const usd = tender.estimatedValue ? convertToUsd(tender.estimatedValue, tender.currency) : null;
+              const valueShort = usd === null ? null : `US$${(usd / 1_000_000).toFixed(2)}M`;
               return (
                 <tr key={tender.slug} className="transition-colors hover:bg-[#fff9ec]">
                   <td className="px-2 py-3 text-center">
@@ -437,7 +441,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                       </span>
                     ) : <span className="text-[#9aa5ab]">未分类</span>}
                   </td>
-                  <td title={value ?? undefined} className="truncate whitespace-nowrap px-2 py-3 text-[11px] font-bold text-[#425461]">{value ?? "—"}</td>
+                  <td title={value ?? undefined} className="truncate whitespace-nowrap px-2 py-3 text-[11px] font-bold text-[#425461]">{valueShort ?? "—"}</td>
                   <td className="whitespace-nowrap px-2 py-3 text-[11px] text-[#5d6d77]">
                     <span className="block">
                       {formatDate(tender.publicationDate, "zh")}

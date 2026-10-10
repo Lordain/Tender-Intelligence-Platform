@@ -385,7 +385,7 @@ export function TenderExplorer({
         </button>
       )}
 
-      <section className="surface-warm rounded-2xl border border-[#dfe5e7] p-4 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-5">
+      <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
         <TenderSearchForm
           key={query}
           initialQuery={query}
@@ -591,7 +591,7 @@ export function TenderExplorer({
         </div>
 
         <aside className="space-y-5">
-          <section className="surface-navy rounded-2xl p-5 text-white shadow-[0_22px_50px_-34px_rgba(6,27,43,.75)]">
+          <section className="rounded-2xl bg-[#061b2b] p-5 text-white">
             <h2 className="text-base font-bold">招标概览</h2>
             <div className="mt-4 grid grid-cols-3 divide-x divide-white/20 text-center">
               {/*
@@ -629,7 +629,7 @@ export function TenderExplorer({
               </button>
             </div>
           </section>
-          <section className="surface-warm rounded-2xl border border-[#dfe5e7] p-5">
+          <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5">
             <div className="flex items-center justify-between"><h2 className="font-bold text-[#071826]">交标提醒</h2><Link href="/saved" data-member-feature="saved-tenders" className="text-xs font-semibold text-[#24465a]">查看关注</Link></div>
             <SavedTenderReminders savedIds={savedIds} />
           </section>

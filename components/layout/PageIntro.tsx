@@ -26,7 +26,7 @@ export function PageIntro({
         <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#65747d] sm:text-base">{description}</p>
       </div>
 
-      <div className="surface-navy flex shrink-0 self-start divide-x divide-white/15 overflow-hidden rounded-2xl px-2 py-3 text-white shadow-[0_16px_40px_-30px_rgba(6,27,43,.65)] lg:self-auto">
+      <div className="flex shrink-0 self-start divide-x divide-white/15 overflow-hidden rounded-2xl bg-[#061b2b] px-2 py-3 text-white shadow-[0_16px_40px_-30px_rgba(6,27,43,.65)] lg:self-auto">
         {metrics.map((metric) => (
           <div key={metric.label} className="min-w-28 px-4 sm:min-w-32">
             <p className={`${LABEL} text-white/55`}>{metric.label}</p>

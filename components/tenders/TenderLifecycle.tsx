@@ -51,7 +51,7 @@ export function TenderLifecycle({
   return (
     <section className="flex flex-col gap-4">
       <DetailSectionHeading title="项目动态" description="暂停、恢复、流标、取消与重新招标，平台每天自动核对来源并更新" />
-      <div className="rounded-3xl surface-warm border border-[#dfe5e7] px-6 py-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:px-8">
+      <div className="rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] px-6 py-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:px-8">
         {status === "suspended" && (
           <p className="rounded-xl border-l-4 border-[#f59e0b] bg-[#fff7e6] px-4 py-3 text-sm leading-6 text-[#5f4a1d]">
             <strong className="text-[#071826]">本项目目前暂停中。</strong>

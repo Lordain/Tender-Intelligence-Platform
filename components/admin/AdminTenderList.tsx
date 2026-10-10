@@ -375,14 +375,14 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                   className="size-4 accent-[#ffb21c]"
                 />
               </th>
-              <th className="w-[25%] px-3 py-3 font-black">标题</th>
+              <th className="w-[27%] px-3 py-3 font-black">标题 / 编号</th>
               <th className="w-[12%] px-2 py-3 font-black">行业</th>
               <th className="w-[7%] px-2 py-3 font-black">国家</th>
               <th className="w-[7%] px-2 py-3 font-black">状态</th>
               <th className="w-[9%] px-2 py-3 font-black">相关度</th>
-              <th className="w-[8%] px-2 py-3 font-black">金额</th>
+              <th className="w-[10%] px-2 py-3 font-black">金额</th>
               <th className="w-[10%] px-2 py-3 font-black">发布 / 交标</th>
-              <th className="w-[16%] px-3 py-3 text-center font-black">操作</th>
+              <th className="w-[14%] px-3 py-3 text-center font-black">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e5e9eb]">
@@ -401,6 +401,10 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
                   </td>
                   <td className="px-3 py-3">
                     <p title={tender.title.zh} className="truncate whitespace-nowrap text-[12px] font-black text-[#071826]">{tender.title.zh}</p>
+                    {/* The procurement number, as a second line rather than a
+                        column of its own (user, 2026-10-11: 增加项目ID…不想
+                        还要滑动) — the same two-line pattern as 发布 / 交标. */}
+                    <p title={tender.tenderNumber} className="mt-0.5 truncate whitespace-nowrap font-mono text-[10px] text-[#7a878f]">{tender.tenderNumber}</p>
                   </td>
                   <td className="px-2 py-3">
                     {tender.industries.length > 0 ? (

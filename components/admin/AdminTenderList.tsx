@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AdminTenderListRow } from "@/lib/db/tenders";
@@ -8,6 +8,7 @@ import type { TenderRelevanceTier, TenderStatus } from "@/types/tender";
 import { formatDate, formatEstimatedValueUsd } from "@/lib/format";
 import { convertToUsd } from "@/lib/currency";
 import { compileSearchQuery, foldSearchText } from "@/lib/search-match";
+import { buildPageWindow } from "@/lib/page-window";
 import {
   countryLabel,
   RELEVANCE_TIER_COLORS,
@@ -66,6 +67,11 @@ function deadlineDay(value: string | undefined): string | null {
 /** 最近24小时导入: rows first imported in the last day (createdAt — a re-import does not move it). */
 const RECENT_IMPORT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+/** Rows per page (user, 2026-10-11: 项目管理页每页只显示200个项目). */
+const PAGE_SIZE = 200;
+
+type AmountView = "default" | "desc" | "asc" | "missing";
+
 const selectClass =
   "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-2 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
 
@@ -86,6 +92,9 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const [recentOnly, setRecentOnly] = useState(false);
   // Fixed when the page loads, so the window does not drift between renders.
   const [recentSince] = useState(() => Date.now() - RECENT_IMPORT_WINDOW_MS);
+  const [amountView, setAmountView] = useState<AmountView>("default");
+  const [page, setPage] = useState(1);
+  const tableRef = useRef<HTMLDivElement>(null);
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -148,11 +157,18 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     });
   }
 
+  const recentCount = useMemo(() => tenders.filter((tender) => Date.parse(tender.createdAt) >= recentSince).length, [recentSince, tenders]);
+  // The amount in USD, for sorting across currencies — null when there is
+  // none (or no rate), which the table shows as —.
+  const usdBySlug = useMemo(
+    () => new Map(tenders.map((tender) => [tender.slug, tender.estimatedValue ? convertToUsd(tender.estimatedValue, tender.currency) : null])),
+    [tenders],
+  );
+  const noAmountCount = useMemo(() => tenders.filter((tender) => !tender.estimatedValue).length, [tenders]);
+
   // Folded once per load, not per keystroke — the same matching as /tenders
   // (lib/search-match.ts). See AdminTenderListRow.searchSummary for why the
   // summary is searched here at all.
-  const recentCount = useMemo(() => tenders.filter((tender) => Date.parse(tender.createdAt) >= recentSince).length, [recentSince, tenders]);
-
   const searchText = useMemo(
     () => new Map(tenders.map((tender) => [tender.slug, foldSearchText([tender.title.zh, tender.title.es, tender.buyer, tender.slug, tender.tenderNumber, tender.searchSummary].join(" "))])),
     [tenders],
@@ -187,10 +203,34 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
         deadlinePresence === "all" || (deadlinePresence === "missing" ? day === null : day !== null);
 
       const matchesRecent = !recentOnly || Date.parse(tender.createdAt) >= recentSince;
+      const matchesAmount = amountView !== "missing" || !tender.estimatedValue;
 
-      return matchesRecent && matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
+      return matchesRecent && matchesAmount && matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
     });
-  }, [analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, recentOnly, recentSince, relevance, searchText, status, tenders]);
+  }, [amountView, analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, recentOnly, recentSince, relevance, searchText, status, tenders]);
+
+  // 金额从高到低 / 从低到高 (user, 2026-10-11). Rows without an amount go last
+  // either way; otherwise the list keeps its publication-date order.
+  const sorted = useMemo(() => {
+    if (amountView !== "desc" && amountView !== "asc") return filtered;
+    const direction = amountView === "desc" ? -1 : 1;
+    return [...filtered].sort((a, b) => {
+      const left = usdBySlug.get(a.slug) ?? null;
+      const right = usdBySlug.get(b.slug) ?? null;
+      if (left === null || right === null) return left === null ? (right === null ? 0 : 1) : -1;
+      return (left - right) * direction;
+    });
+  }, [amountView, filtered, usdBySlug]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = useMemo(() => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE), [currentPage, sorted]);
+
+  function goToPage(next: number) {
+    setPage(next);
+    setSelected(new Set());
+    tableRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
 
   // Changing any filter drops the selection. Without this the red bar
   // survives a filter change still holding rows that are no longer on screen:
@@ -200,24 +240,26 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   //
   // Every filter state has to appear here. selectedVisible below is the guard
   // for the day one is added and this line is forgotten.
-  const filterKey = [query, country, status, relevance, analysis, deadlinePresence, deadlineFrom, deadlineTo, recentOnly].join("\u0000");
+  // A new filter or sort also starts again from page 1.
+  const filterKey = [query, country, status, relevance, analysis, deadlinePresence, deadlineFrom, deadlineTo, recentOnly, amountView].join("\u0000");
   const [seenFilterKey, setSeenFilterKey] = useState(filterKey);
   if (filterKey !== seenFilterKey) {
     setSeenFilterKey(filterKey);
+    setPage(1);
     if (selected.size > 0) setSelected(new Set());
   }
 
   // What 批量删除 actually acts on, and what the bar counts: never more than
-  // what is on screen right now. Derived from `filtered`, so it narrows with
-  // every filter — including any filter added later — whether or not the key
-  // above knows about it.
+  // what is on screen right now. Derived from the current page, so it narrows
+  // with every filter — including any filter added later — whether or not the
+  // key above knows about it.
   const selectedVisible = useMemo(
-    () => filtered.filter((tender) => selected.has(tender.slug)).map((tender) => tender.slug),
-    [filtered, selected],
+    () => pageRows.filter((tender) => selected.has(tender.slug)).map((tender) => tender.slug),
+    [pageRows, selected],
   );
 
   const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all" || analysis !== "all"
-    || Boolean(deadlineFrom) || Boolean(deadlineTo) || deadlinePresence !== "all" || recentOnly;
+    || Boolean(deadlineFrom) || Boolean(deadlineTo) || deadlinePresence !== "all" || recentOnly || amountView !== "default";
 
   function clearFilters() {
     setDraftQuery("");
@@ -230,6 +272,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     setDeadlineFrom("");
     setDeadlineTo("");
     setRecentOnly(false);
+    setAmountView("default");
   }
 
   return (
@@ -270,8 +313,26 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
           >
             最近24小时导入（{recentCount}）
           </button>
+          <label className="shrink-0">
+            <span className="sr-only">金额排序与筛选</span>
+            <select
+              value={amountView}
+              onChange={(event) => setAmountView(event.target.value as AmountView)}
+              className={`h-11 rounded-xl border px-3 text-sm font-black outline-none transition-colors focus:border-[#ffb21c] ${
+                amountView !== "default"
+                  ? "border-[#ffb21c] bg-[#fff1cf] text-[#071826]"
+                  : "border-[#d8e0e3] bg-white text-[#52636e] hover:border-[#9aa5ab]"
+              }`}
+            >
+              <option value="default">金额：默认排序</option>
+              <option value="desc">金额从高到低</option>
+              <option value="asc">金额从低到高</option>
+              <option value="missing">只看无金额（{noAmountCount}）</option>
+            </select>
+          </label>
           <p className="shrink-0 text-xs font-bold text-[#64717c] lg:ml-auto">
             显示 <span className="text-[#071826]">{filtered.length}</span> / {tenders.length} 个项目
+            {totalPages > 1 && <>（第 {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} 条）</>}
           </p>
         </div>
 
@@ -383,17 +444,17 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_18px_50px_-48px_rgba(6,27,43,.55)]">
+      <div ref={tableRef} className="scroll-mt-4 overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_18px_50px_-48px_rgba(6,27,43,.55)]">
         <table className="w-full min-w-[1020px] table-fixed text-left text-xs">
           <thead className="border-b border-[#dbe2e5] bg-[#edf2f3] text-[11px] uppercase tracking-[0.06em] text-[#52636e]">
             <tr>
               <th className="w-[4%] px-2 py-3 text-center font-black">
                 <input
                   type="checkbox"
-                  aria-label="全选当前筛选结果"
-                  checked={filtered.length > 0 && filtered.every((tender) => selected.has(tender.slug))}
+                  aria-label="全选当前页"
+                  checked={pageRows.length > 0 && pageRows.every((tender) => selected.has(tender.slug))}
                   onChange={(event) => {
-                    if (event.target.checked) setSelected(new Set(filtered.map((tender) => tender.slug)));
+                    if (event.target.checked) setSelected(new Set(pageRows.map((tender) => tender.slug)));
                     else setSelected(new Set());
                   }}
                   className="size-4 accent-[#ffb21c]"
@@ -410,10 +471,10 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e5e9eb]">
-            {filtered.map((tender) => {
+            {pageRows.map((tender) => {
               const value = tender.estimatedValue ? formatEstimatedValueUsd(tender.estimatedValue, tender.currency, "zh") : null;
               // Shown as US$XX.XXM (user, 2026-10-11); the exact figure stays in the tooltip.
-              const usd = tender.estimatedValue ? convertToUsd(tender.estimatedValue, tender.currency) : null;
+              const usd = usdBySlug.get(tender.slug) ?? null;
               const valueShort = usd === null ? null : `US$${(usd / 1_000_000).toFixed(2)}M`;
               return (
                 <tr key={tender.slug} className="transition-colors hover:bg-[#fff9ec]">
@@ -514,6 +575,29 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} className="rounded-xl border border-[#d8e0e3] bg-white px-4 py-2 text-xs font-semibold disabled:opacity-40">上一页</button>
+          {buildPageWindow(currentPage, totalPages).map((p, i) =>
+            p === "ellipsis" ? (
+              <span key={`ellipsis-${i}`} className="px-1 text-xs text-[#9aa5ab]">…</span>
+            ) : (
+              <button
+                key={p}
+                type="button"
+                onClick={() => goToPage(p)}
+                className={`min-w-9 rounded-xl px-3 py-2 text-xs font-black transition-colors ${
+                  p === currentPage ? "bg-[#ffb21c] text-[#071826]" : "border border-[#d8e0e3] bg-white text-[#425461] hover:border-[#ffb21c]"
+                }`}
+              >
+                {p}
+              </button>
+            ),
+          )}
+          <button type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages} className="rounded-xl border border-[#d8e0e3] bg-white px-4 py-2 text-xs font-semibold disabled:opacity-40">下一页</button>
+        </div>
+      )}
     </div>
   );
 }

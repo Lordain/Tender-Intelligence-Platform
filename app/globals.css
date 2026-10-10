@@ -192,6 +192,15 @@ select {
   transition: filter 0.2s ease, stroke-opacity 0.2s ease, stroke-width 0.2s ease;
 }
 
+/* The lit country rises off the map when pointed at: its top and its sides together. */
+.coverage-lift {
+  transition: transform 0.25s ease;
+}
+
+.coverage-country.is-active .coverage-lift {
+  transform: translateY(-6px);
+}
+
 .coverage-country.is-active .coverage-shape {
   filter: brightness(1.18) drop-shadow(0 0 10px rgba(255, 208, 111, 0.9));
 }
@@ -299,6 +308,7 @@ select {
   .whyus-track-sweep,
   .coverage-glow,
   .coverage-ping,
+  .coverage-lift,
   .live-dot::after { animation: none; }
   .coverage-ping { display: none; }
   .whyus-particles { display: none; }

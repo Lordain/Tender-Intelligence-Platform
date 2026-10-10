@@ -59,6 +59,14 @@ async function main() {
     const failed = discovered.failed ?? [];
     if (failed.length > 0) problems.push(`发现新标书：${failed.length} 条写入失败（例如 ${failed.slice(0, 3).map((f) => f.slug).join("、")}）`);
     notes.push(`新增/更新 ${discovered.upsertedCount ?? 0} 条`);
+    // Cut short by a rate limit or the network: a failure only when nothing
+    // got through at all. Otherwise the rows in hand are written and the
+    // rest come next run, which is a note, not an alarm.
+    if (discovered.stoppedEarly) {
+      console.log(`  ⚠ ${discovered.stoppedEarly.reason}`);
+      if (discovered.stoppedEarly.at <= 5) problems.push(`发现新标书：${discovered.stoppedEarly.reason}`);
+      else notes.push(`查详情在 ${discovered.stoppedEarly.at}/${discovered.stoppedEarly.of} 条处被限流停下，剩下的下次补`);
+    }
   } catch (error) {
     problems.push(`发现新标书失败：${error instanceof Error ? error.message : String(error)}`);
     console.error(error);
@@ -71,7 +79,11 @@ async function main() {
       `  待回填 ${resolved.candidateCount} 条，成功 ${resolved.resolvedCount} 条，` +
         `源头查不到 ${resolved.notFoundCount} 条，出错 ${resolved.errorCount} 条。`,
     );
-    if (resolved.errorCount > 0) problems.push(`链接回填：${resolved.errorCount} 条出错`);
+    if (resolved.stoppedEarly) console.log(`  ⚠ ${resolved.stoppedEarly}`);
+    // Links are enrichment on rows already written: a failure only when every
+    // lookup failed; otherwise the rest wait for the next run.
+    if (resolved.errorCount > 0 && resolved.resolvedCount + resolved.notFoundCount === 0) problems.push(`链接回填：${resolved.stoppedEarly ?? `${resolved.errorCount} 条出错`}`);
+    else if (resolved.errorCount > 0) notes.push(`回填链接 ${resolved.errorCount} 条出错，下次补`);
     notes.push(`回填链接 ${resolved.resolvedCount} 条`);
   } catch (error) {
     problems.push(`链接回填失败：${error instanceof Error ? error.message : String(error)}`);

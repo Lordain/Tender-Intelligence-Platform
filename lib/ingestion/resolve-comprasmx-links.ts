@@ -13,8 +13,8 @@ import { resolveComprasMxDetailUrl } from "@/lib/ingestion/connectors/licitia-co
 const GENERIC_SOURCE_URL = "https://comprasmx.buengobierno.gob.mx/sitiopublico/#/";
 
 // Same reasoning as discover-comprasmx-vigente.ts / the original script: a
-// real systemic failure should stop the run loudly instead of grinding
-// through hundreds more doomed requests with identical output.
+// run of failures stops the loop instead of grinding through hundreds more
+// doomed requests with identical output.
 const ERROR_CIRCUIT_BREAKER_THRESHOLD = 5;
 
 export type ResolveComprasMxLinksResult = {
@@ -22,6 +22,8 @@ export type ResolveComprasMxLinksResult = {
   resolvedCount: number;
   notFoundCount: number;
   errorCount: number;
+  /** Why the run stopped before the end, when it did. */
+  stoppedEarly?: string;
   write: boolean;
 };
 
@@ -38,6 +40,7 @@ export async function resolveComprasMxLinks(supabase: SupabaseClient, options: {
   let notFoundCount = 0;
   let errorCount = 0;
   let consecutiveErrors = 0;
+  let stoppedEarly: string | undefined;
 
   for (const row of rows) {
     const slug = row.slug as string;
@@ -50,9 +53,13 @@ export async function resolveComprasMxLinks(supabase: SupabaseClient, options: {
       errorCount++;
       consecutiveErrors++;
       if (consecutiveErrors >= ERROR_CIRCUIT_BREAKER_THRESHOLD) {
-        throw new Error(
-          `${consecutiveErrors} requests in a row failed with an error (not "not found") — stopping early rather than repeating the same failure hundreds more times. This looks systemic (network/firewall/DNS reaching api.licitia.com.mx), not "these procedures aren't indexed."`,
-        );
+        // Stop, but report rather than throw (2026-10-10): the links written
+        // before this point are kept, and the rest are still on the fallback
+        // URL for the next run. The last message says whether it was a rate
+        // limit or the network.
+        stoppedEarly = `连续 ${consecutiveErrors} 次出错（最后一次：${result.message}），回填停在第 ${resolvedCount + notFoundCount + errorCount}/${rows.length} 条，剩下的下次运行补上`;
+        console.error(`[resolve-comprasmx-links] ${stoppedEarly}`);
+        break;
       }
       continue;
     }
@@ -72,5 +79,5 @@ export async function resolveComprasMxLinks(supabase: SupabaseClient, options: {
 
   console.log(`[resolve-comprasmx-links] Resolved ${resolvedCount} of ${rows.length} (${notFoundCount} not found in LicitIA's index, ${errorCount} errored).`);
 
-  return { candidateCount: rows.length, resolvedCount, notFoundCount, errorCount, write: options.write };
+  return { candidateCount: rows.length, resolvedCount, notFoundCount, errorCount, ...(stoppedEarly ? { stoppedEarly } : {}), write: options.write };
 }

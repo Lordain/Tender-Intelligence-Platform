@@ -214,16 +214,20 @@ async function main() {
   // 的每日任务加上运行记录 <- OK). Brazil was the one daily job without one,
   // so a night PNCP refused us looked exactly like a night with nothing new.
   //
-  // Failed only when the run is actually blind — nothing read at all, every
-  // modality cut off, or rows refused by the database. One modality hanging
-  // up halfway is PNCP's usual rate limiting and the next night's 3-day window
-  // reads those days again, so that is recorded in the detail, not raised.
+  // Failed only when the run is actually blind — nothing read, every
+  // modality cut off before it read anything worth having, or rows refused
+  // by the database. A modality hanging up halfway, after its cool-downs, is
+  // PNCP's usual rate limiting: the rows before it are written and the next
+  // run reads the newest again, so that is recorded in the detail, not
+  // raised. (2026-10-10: the Pregão job sweeps ONE modality, so "every
+  // modality cut off" fired on a run that had read 4,700 rows and written 12.)
   const erroredModalities = result.byModality.filter((entry) => entry.stoppedBy === "error").length;
+  const blindModalities = result.byModality.filter((entry) => entry.stoppedBy === "error" && entry.pages < 3).length;
   const problem =
     result.fetchedRows === 0
       ? "PNCP 一条都没返回（见 GitHub Actions 日志）"
-      : erroredModalities === result.byModality.length
-        ? "每种采购方式都在翻页中途被 PNCP 断开"
+      : blindModalities === result.byModality.length
+        ? "每种采购方式都在开头几页就被 PNCP 断开"
         : result.failed
           ? `${result.failed} 条写入失败`
           : null;

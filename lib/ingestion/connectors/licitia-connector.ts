@@ -222,18 +222,61 @@ export type FetchLicitacionDetailResult =
  * and discover-comprasmx-vigente.ts (also buyer.agency/acronym, since it's
  * the same HTTP call either way — no reason to fetch this twice per row).
  */
+/**
+ * Pace and back-off for the detail endpoint (2026-10-10). A night with 628
+ * new procedures sent one lookup every ~60ms; LicitIA answered 429 Too Many
+ * Requests from the 584th on, five in a row tripped the circuit breaker, and
+ * the run read as a network failure. It was a rate limit: so the lookups are
+ * spaced, and a 429 (or 503) waits — Retry-After when LicitIA sends one —
+ * and tries again instead of counting as an error.
+ */
+const DETAIL_MIN_GAP_MS = 250;
+const RATE_LIMIT_BACKOFF_MS = [10_000, 30_000, 60_000];
+const RATE_LIMIT_STATUSES = new Set([429, 503]);
+let nextDetailAt = 0;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function paceDetail() {
+  const wait = nextDetailAt - Date.now();
+  nextDetailAt = Math.max(Date.now(), nextDetailAt) + DETAIL_MIN_GAP_MS;
+  if (wait > 0) await sleep(wait);
+}
+
+function retryAfterMs(response: Response, fallback: number): number {
+  const header = response.headers.get("retry-after");
+  const seconds = header ? Number(header) : NaN;
+  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds * 1000, 120_000) : fallback;
+}
+
 export async function fetchLicitacionDetail(procedureNumber: string): Promise<FetchLicitacionDetailResult> {
   const url = `${LICITIA_BASE}/licitaciones/${encodeURIComponent(procedureNumber)}`;
 
-  let response: Response;
-  try {
-    response = await fetch(url, { headers: { Accept: "application/json" } });
-  } catch (err) {
-    return { status: "error", message: err instanceof Error ? err.message : String(err) };
+  let response: Response | undefined;
+  for (let attempt = 0; ; attempt += 1) {
+    await paceDetail();
+    try {
+      response = await fetch(url, { headers: { Accept: "application/json" } });
+    } catch (err) {
+      return { status: "error", message: err instanceof Error ? err.message : String(err) };
+    }
+    if (!RATE_LIMIT_STATUSES.has(response.status) || attempt >= RATE_LIMIT_BACKOFF_MS.length) break;
+    const wait = retryAfterMs(response, RATE_LIMIT_BACKOFF_MS[attempt]);
+    console.log(`[licitia] HTTP ${response.status} for ${procedureNumber} — LicitIA is rate limiting; waiting ${Math.round(wait / 1000)}s and trying again.`);
+    // Everyone behind this request waits too: the limit is on the client, not the procedure.
+    nextDetailAt = Date.now() + wait;
+    await sleep(wait);
   }
 
   if (response.status === 404) return { status: "not_found" };
-  if (!response.ok) return { status: "error", message: `HTTP ${response.status} ${response.statusText}` };
+  if (!response.ok) {
+    return {
+      status: "error",
+      message: RATE_LIMIT_STATUSES.has(response.status)
+        ? `HTTP ${response.status} ${response.statusText} — LicitIA 限流，等待重试后仍被拒绝`
+        : `HTTP ${response.status} ${response.statusText}`,
+    };
+  }
 
   let body: LicitiaLicitacionResponse;
   try {

@@ -34,9 +34,10 @@ import type { Tender } from "@/types/tender";
 const SOURCE_NAME = "Compras MX";
 const FALLBACK_SOURCE_URL = "https://comprasmx.buengobierno.gob.mx/sitiopublico/#/";
 
-// Same reasoning as resolve-comprasmx-links.ts: a real systemic failure
-// (network/firewall/DNS) should stop this run immediately instead of
-// grinding through hundreds more doomed requests with identical output.
+// Same reasoning as resolve-comprasmx-links.ts: a run of failures (network,
+// or a rate limit that outlasted the connector's own back-off) stops the
+// lookups instead of grinding through hundreds more doomed requests — and
+// keeps everything resolved before that point.
 /** Same 1000-row-per-request PostgREST cap every other full-table scan in this codebase pages around (see lib/db/tenders.ts's SUPABASE_PAGE_SIZE comment). */
 const PAGE_SIZE = 1000;
 
@@ -63,6 +64,8 @@ export type DiscoverComprasMxVigenteResult = {
   protectedCount?: number;
   skippedManuallyDeletedCount?: number;
   failed?: { slug: string; error: string }[];
+  /** Set when the detail lookups were cut short (rate limit, network); what was resolved before that is still written. */
+  stoppedEarly?: { at: number; of: number; reason: string };
   sample: Tender[];
 };
 
@@ -112,6 +115,7 @@ export async function discoverComprasMxVigente(
   const tenders: Tender[] = [];
   let resolvedLinks = 0;
   let consecutiveErrors = 0;
+  let stoppedEarly: DiscoverComprasMxVigenteResult["stoppedEarly"];
 
   for (const [i, row] of newRows.entries()) {
     // One request gets both the deep-link id AND buyer.agency/buyer.acronym
@@ -122,9 +126,18 @@ export async function discoverComprasMxVigente(
       console.error(`[discover-comprasmx-vigente]   [${i + 1}/${newRows.length}] error resolving detail for ${row.numero} — ${result.message}`);
       consecutiveErrors++;
       if (consecutiveErrors >= ERROR_CIRCUIT_BREAKER_THRESHOLD) {
-        throw new Error(
-          `${consecutiveErrors} detail lookups in a row failed with an error (not "not found") — stopping early. This looks systemic (network/firewall/DNS reaching api.licitia.com.mx), not "these procedures aren't indexed." Already-discovered rows aren't lost, they'll just be re-downloaded next run.`,
-        );
+        // Stop asking, but keep what is in hand (2026-10-10). This used to
+        // throw, which also threw away every row already resolved — 583 of
+        // 628 one night — so the next run met the same 628 and stopped in the
+        // same place. The rows resolved so far are written below; the rest
+        // are still new next run and are picked up then.
+        stoppedEarly = {
+          at: i + 1,
+          of: newRows.length,
+          reason: `连续 ${consecutiveErrors} 次查详情出错（最后一次：${result.message}），停在第 ${i + 1}/${newRows.length} 条；已查到的照常写入，剩下的下次运行补上`,
+        };
+        console.error(`[discover-comprasmx-vigente] ${stoppedEarly.reason}`);
+        break;
       }
     } else {
       consecutiveErrors = 0;
@@ -155,6 +168,7 @@ export async function discoverComprasMxVigente(
     keptAfterRecencyCount: recent.length,
     months,
     ...(options.days ? { days: options.days } : {}),
+    ...(stoppedEarly ? { stoppedEarly } : {}),
     sample: recent.slice(0, 5),
   };
 

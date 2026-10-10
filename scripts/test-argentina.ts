@@ -183,7 +183,9 @@ async function main() {
   check("object from OBJETO: “…”", boletinObject(agp.text).startsWith("PROVISIÓN DE BOMBAS E INSTALACIÓN"), true);
   check("port company is a public company", boletinGovernmentLevel(agp.organism), "public_company");
   const agpTender = mapBoletinNoticeToTender(agp, new Date("2026-09-02T12:00:00Z"));
-  check("AGP pumps: US$7.5M → 中型", agpTender.relevance.tier, "significant");
+  // 2026-10-10: a port job is transport, and transport/works 中型 starts at
+  // US$10M (lib/relevance.ts TRANSPORT_WORKS_SIGNIFICANT_VALUE_USD).
+  check("AGP pumps: US$7.5M → 常规 (transport/works bands)", agpTender.relevance.tier, "standard");
   check("Boletín slug is organism + procedure (stable across editions)", agpTender.slug, "argentina-bo-administracion-general-de-puertos-s-a-u-licitacion-publica-11-2026");
 
   const neuquen = notice("2417086");

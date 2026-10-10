@@ -96,6 +96,7 @@
     "probe:dof-notice": "tsx --env-file-if-exists=.env.local scripts/probe-dof-notice.ts",
     "audit:public-visibility": "tsx --env-file-if-exists=.env.local scripts/audit-public-visibility.ts",
     "audit:tier-distribution": "tsx --env-file-if-exists=.env.local scripts/audit-tier-distribution.ts",
+    "audit:transport-construction-tiers": "tsx --env-file-if-exists=.env.local scripts/audit-transport-construction-tiers.ts",
     "survey:peru-procedures": "tsx scripts/survey-peru-procedures.ts",
     "probe:brazil-pncp": "tsx scripts/probe-brazil-pncp.ts",
     "dump:brazil-pncp": "tsx scripts/dump-brazil-pncp-rows.ts",

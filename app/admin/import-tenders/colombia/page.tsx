@@ -8,7 +8,7 @@ export default function AdminImportTendersColombiaPage() {
     <div className="flex flex-col gap-3">
       <ImportSourceSection
         name="SECOP II — 政府公开招标"
-        hint="哥伦比亚主渠道；可同时下载新写入项目的招标附件"
+        hint="哥伦比亚主渠道；只拉取标书，不下载附件"
         mode="auto"
         links={[{ href: "https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index" }]}
       >

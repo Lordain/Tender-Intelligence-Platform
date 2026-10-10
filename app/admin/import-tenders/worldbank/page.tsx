@@ -11,7 +11,7 @@ export default function AdminImportTendersWorldBankPage() {
   return (
     <div className="flex flex-col gap-3">
       <ImportSourceSection
-        name="世界银行招标公告 — 9 国 + 玻利维亚"
+        name="世界银行招标公告 — 10 国 + 圭亚那"
         hint="每日自动导入；和本国平台像同一项目的，在这里确认"
         mode="auto"
         defaultOpen
@@ -19,7 +19,7 @@ export default function AdminImportTendersWorldBankPage() {
       >
         <div className="flex flex-col gap-3 text-sm text-[#233846]">
           <p className="text-xs leading-5 text-[#64717c]">
-            每日任务读取世界银行出资项目的招标公告。和本国平台已导入的同一项目（世界银行编号相同，或截止日和标题对得上）不会重复写入，保留本国平台那条。公告本身不带标书，摘要里写明标书获取渠道。玻利维亚的项目仍只在后台可见。
+            每日任务读取世界银行出资项目的招标公告。和本国平台已导入的同一项目（世界银行编号相同，或截止日和标题对得上）不会重复写入，保留本国平台那条。公告本身不带标书，摘要里写明标书获取渠道。圭亚那的项目仍只在后台可见。
           </p>
           <WorldBankReviewForm />
         </div>

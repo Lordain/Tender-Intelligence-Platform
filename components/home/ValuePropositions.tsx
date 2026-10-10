@@ -7,9 +7,9 @@
  * 不断在增加国家); the platform count stays "20 多个".
  *
  * Every claim here is something the platform does today. The dots are the
- * official sources the importers read — 24 named here, 25 counting ANEEL's two
- * auction feeds separately, on 2026-10-06 (PanamaCompra and SOCE added when
- * Panama and Ecuador opened). Keep the rows below and the "20 多个"
+ * official sources the importers read — 25 named here, 26 counting ANEEL's two
+ * auction feeds separately, on 2026-10-10 (PanamaCompra and SOCE added when
+ * Panama and Ecuador opened, SICOES when Bolivia did). Keep the rows below and the "20 多个"
  * copy in step with that list.
  *
  * The motion is decoration on a picture that already says everything when
@@ -33,19 +33,22 @@ type Dot = { name: string; x: number; y: number };
  * 可以做宽一点，但是矮一点 … 把点位放宽一点，但是层数少一点). 12 over 10 so the
  * second row falls between the dots of the first; 13 over 10 since DGCP joined
  * (2026-10-04) — 12 over 11 lined the two rows up; 14 over 11 since SOCE and
- * PanamaCompra (2026-10-06), the short name in the crowded row.
+ * PanamaCompra (2026-10-06), the short name in the crowded row; 14 over 12
+ * since SICOES (2026-10-10), the second row reordered so a long name always
+ * sits between two short ones (Metro SCL and PanamaCompra touched at 12 a row).
  */
 const DESKTOP_ROWS = [
   ["ComprasMX", "PNCP", "SECOP II", "ChileCompra", "SEACE", "COMPR.AR", "PEMEX", "DGCP", "Petrobras", "UPME", "SOCE", "Codelco", "CFE", "DOU"],
-  ["Petroperú", "CONTRAT.AR", "ANEEL", "ProInversión", "Metro SCL", "PanamaCompra", "ADIF", "SHCP", "Cemig", "ANTAQ", "BORA"],
+  ["Petroperú", "ANEEL", "CONTRAT.AR", "ADIF", "ProInversión", "SHCP", "Metro SCL", "BORA", "PanamaCompra", "Cemig", "SICOES", "ANTAQ"],
 ];
 // Five a row since SOCE and PanamaCompra (2026-10-06): each long name sits
 // between two short ones, since a 360px row of five leaves ~62px a dot.
+// SICOES (2026-10-10) makes the row of the shortest names six.
 const MOBILE_ROWS = [
   ["ComprasMX", "SOCE", "ChileCompra", "PNCP", "SECOP II"],
   ["PEMEX", "DOU", "PanamaCompra", "CFE", "SEACE"],
   ["Petrobras", "BORA", "Codelco", "COMPR.AR", "DGCP"],
-  ["ANEEL", "ADIF", "Cemig", "ANTAQ", "Petroperú"],
+  ["ANEEL", "ADIF", "SICOES", "Cemig", "ANTAQ", "Petroperú"],
   ["Metro SCL", "UPME", "CONTRAT.AR", "SHCP", "ProInversión"],
 ];
 const PLATFORM_COUNT = DESKTOP_ROWS.flat().length;

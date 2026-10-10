@@ -19,8 +19,9 @@
 // the Dominican Republic opened the same day (user: 公开多米尼加(前台+后台+网站内的文字描述)).
 // Panama joined 2026-10-06 (user, on 先导入但不对外显示，你在后台审核一两周: OK);
 // Panama and Ecuador opened the same day (user: 直接把这两个国家的前后台可视都做了吧).
-// Bolivia joined 2026-10-09 (user: 请同步开始评估+做玻利维亚的接入).
-export const STAGED_COUNTRIES: readonly string[] = ["Guyana", "Bolivia"];
+// Bolivia joined 2026-10-09 (user: 请同步开始评估+做玻利维亚的接入) and opened
+// 2026-10-10 (user: 前台+后台+全站文字都开通Bolivia).
+export const STAGED_COUNTRIES: readonly string[] = ["Guyana"];
 
 export function isStagedCountry(country: string | null | undefined): boolean {
   return country != null && STAGED_COUNTRIES.includes(country);

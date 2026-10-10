@@ -8,7 +8,7 @@ import { BeginnerGuideCard } from "@/components/guides/BeginnerGuideCard";
 export const metadata: Metadata = pageMetadata({
   title: "参标指南",
   description:
-    "面向中国企业的拉美参标指南：墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔的政府采购平台，以及 Petrobras、Pemex、CFE、Cemig、Codelco、Petroperú 等国有石油、电力、矿业公司的供应商注册、参与流程、常见资料与注意事项，免费阅读。",
+    "面向中国企业的拉美参标指南：墨西哥、巴西、哥伦比亚、秘鲁、智利、阿根廷、多米尼加、巴拿马、厄瓜多尔、玻利维亚的政府采购平台，以及 Petrobras、Pemex、CFE、Cemig、Codelco、Petroperú 等国有石油、电力、矿业公司的供应商注册、参与流程、常见资料与注意事项，免费阅读。",
   path: "/guides",
   author: SOCIAL_BRAND,
 });

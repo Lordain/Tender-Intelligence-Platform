@@ -25,12 +25,14 @@ export type CronJobId =
   | "import-petronect"
   | "import-upme"
   | "import-codelco"
+  | "import-chile-concesiones"
   | "import-metro-santiago"
   | "import-cemig"
   | "import-petroperu"
   | "import-brazil"
   | "import-brazil-pregao"
   | "import-peru-oxi"
+  | "import-peru-app"
   | "refresh-statuses"
   | "import-guyana"
   | "import-argentina"
@@ -82,6 +84,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-petronect", label: "Petrobras（Petronect）自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-upme", label: "哥伦比亚 UPME 输电项目自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-codelco", label: "Codelco 公开招标自动导入", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-chile-concesiones", label: "智利 MOP 特许经营项目自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   // Manual since 2026-09-27: the site answers GitHub's runners with HTTP 403
   // and its programme page changes every few months, so a weekly run from the
   // owner's computer is enough. 8 days leaves a day of slack on "weekly".
@@ -97,13 +100,14 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-brazil", label: "巴西 PNCP 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-brazil-pregao", label: "巴西 PNCP 电子竞价（设备类）自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-peru-oxi", label: "秘鲁 OxI 自动导入与状态刷新", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-peru-app", label: "秘鲁 ProInversión APP 项目自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "refresh-statuses", label: "已入库项目状态刷新（巴西、智利、墨西哥）", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-guyana", label: "圭亚那 eprocure 自动导入（未公开）", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-argentina", label: "阿根廷 COMPR.AR / CONTRAT.AR / ADIF / 政府公报 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-dominicana", label: "多米尼加 DGCP 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-cfe-dof", label: "墨西哥 CFE（DOF 公报）自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-panama", label: "巴拿马 PanamaCompra 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
-  { id: "import-worldbank", label: "世界银行招标公告自动导入（9 国 + 玻利维亚）", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-worldbank", label: "世界银行招标公告自动导入（10 国 + 圭亚那）", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-energy-auctions", label: "能源拍卖（人工整理）写入", maxAgeHours: 30, runsOn: "github-actions" },
 ];
 

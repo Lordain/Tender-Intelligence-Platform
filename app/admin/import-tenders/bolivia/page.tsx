@@ -8,9 +8,10 @@ import { BOLIVIA, BOLIVIA_SICOES_SEARCH_URL } from "@/lib/ingestion/bolivia-sico
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 
 /**
- * Bolivia's tab, staged (lib/staged-countries.ts; user, 2026-10-09: 请同步开始
- * 评估+做玻利维亚的接入). SICOES sits behind Cloudflare Turnstile and an image
- * CAPTCHA, so there is no daily job: the admin pastes Ficha pages here.
+ * Bolivia's tab (user, 2026-10-09: 请同步开始评估+做玻利维亚的接入; opened to
+ * visitors 2026-10-10: 前台+后台+全站文字都开通Bolivia). SICOES sits behind
+ * Cloudflare Turnstile and an image CAPTCHA, so there is no daily job: the
+ * admin pastes Ficha pages here.
  */
 export default async function AdminImportTendersBoliviaPage() {
   const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === BOLIVIA);
@@ -25,7 +26,7 @@ export default async function AdminImportTendersBoliviaPage() {
       >
         <div className="flex flex-col gap-3 text-sm text-[#233846]">
           <p className="text-xs leading-5 text-[#64717c]">
-            SICOES 有人机验证和验证码，平台不自动抓取，所以玻利维亚没有每日自动任务，只能在这里手动导入。玻利维亚还没有对外公开，导入的项目只在后台可见。导入后在「通用维护 → 更新项目文案」生成中文标题和摘要。
+            SICOES 有人机验证和验证码，平台不自动抓取，所以玻利维亚没有每日自动任务，只能在这里手动导入。导入后在「通用维护 → 更新项目文案」生成中文标题和摘要。
           </p>
           <ScreenBoliviaListForm />
           <ImportBoliviaPasteForm />

@@ -226,6 +226,14 @@ jobs:
           # See scripts/cron-codelco.ts.
           - name: Chile (Codelco)
             command: cron:codelco
+          # Added 2026-10-10 (user, after the 11-country source review: 智利 MOP
+          # 特许经营 OK). Chile's public-works concessions — motorways, cable
+          # cars, prisons, hundreds of millions of dollars each — are tendered
+          # under the Ley de Concesiones and never reach Mercado Público. The
+          # MOP's Dirección General de Concesiones lists them; see
+          # scripts/cron-chile-concesiones.ts.
+          - name: Chile (MOP concesiones)
+            command: cron:chile-concesiones
           # Metro de Santiago (upcoming tenders) was here from 2026-09-26 and
           # left the same day's schedule on 2026-09-27: its site answers the
           # GitHub runners with HTTP 403, a bot gate this project does not
@@ -252,6 +260,13 @@ jobs:
           # 2026-09-25). See scripts/cron-peru-oxi.ts.
           - name: Peru (ProInversión OxI)
             command: cron:peru-oxi
+          # Added 2026-10-10 (user, after the 11-country source review: 秘鲁 APP
+          # 项目库 OK). ProInversión's public-private partnership concursos —
+          # transmission groups, water works, cable cars — called on its own
+          # site, never on SEACE. The same host as the OxI job above answers
+          # this runner. See scripts/cron-peru-proinversion-app.ts.
+          - name: Peru (ProInversión APP)
+            command: cron:peru-app
           # Added 2026-09-26. Asks each source about the tenders it already
           # gave us — paused, resumed, cancelled, 流标, awarded — since the
           # imports above only re-read what was published in the last few
@@ -301,8 +316,8 @@ jobs:
           # 比对后 OK). The World Bank's procurement notices for every platform
           # country; a call the country's own system already gave the platform
           # (same World Bank reference, or same deadline and title) is not
-          # written, a doubtful match waits in the admin 世界银行 tab. Bolivia
-          # stays staged. See scripts/cron-worldbank.ts.
+          # written, a doubtful match waits in the admin 世界银行 tab. Guyana
+          # stays staged (Bolivia opened 2026-10-10). See scripts/cron-worldbank.ts.
           - name: World Bank (procurement notices)
             command: cron:worldbank
           # Added 2026-10-04. National energy auctions kept by hand (Chile CNE,

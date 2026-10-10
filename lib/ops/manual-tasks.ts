@@ -17,7 +17,7 @@ import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
  * Client-safe: no server-only imports, the panel imports the list and the
  * day helper.
  */
-export type ManualTaskId = "comprasmx" | "proyectos-estrategicos" | "peru-seace" | "cfe-micrositio" | "ecuador-soce";
+export type ManualTaskId = "comprasmx" | "proyectos-estrategicos" | "peru-seace" | "cfe-micrositio" | "ecuador-soce" | "bolivia-sicoes";
 
 export type ManualTask = {
   id: ManualTaskId;
@@ -65,6 +65,17 @@ export const MANUAL_TASKS: ManualTask[] = [
     how: "在 SOCE 打开值得的项目详情页，连同链接整页复制，粘贴到「厄瓜多尔」页",
     href: "/admin/import-tenders/ecuador",
     site: { label: "SOCE", href: "https://www.compraspublicas.gob.ec/ProcesoContratacion/compras/PC/buscarProceso.cpe" },
+  },
+  // Added 2026-10-10 (user: 玻利维亚加进每日人工任务提醒 ok). Bolivia is
+  // staged, so what is imported stays in the admin pages until it opens.
+  {
+    id: "bolivia-sicoes",
+    label: "玻利维亚 SICOES（未公开）",
+    how: "在 SICOES 搜索结果复制列表，贴到「SICOES 列表初筛」；把值得的项目 Ficha 整页贴到「SICOES 粘贴导入」",
+    href: "/admin/import-tenders/bolivia",
+    // BOLIVIA_SICOES_SEARCH_URL, written out: this file is client-safe and
+    // bolivia-sicoes-paste.ts brings the whole classifier with it.
+    site: { label: "SICOES", href: "https://www.sicoes.gob.bo/portal/index.php" },
   },
 ];
 

@@ -51,8 +51,9 @@ assert.equal(tender.currency, "UF");
 assert.equal(tender.scopeType, "works");
 assert.equal(tender.participationScope, "international_open");
 // 23:59 in Santiago, which is UTC-3 in December.
-assert.equal(tender.submissionDeadline, "2026-12-18T02:59:00.000Z");
-assert.equal(tender.publicationDate, "2026-05-13T16:00:00.000Z");
+// Kept in Santiago time: the date column stores the 17th, the day the page states.
+assert.equal(tender.submissionDeadline, "2026-12-17T23:59:00-03:00");
+assert.equal(tender.publicationDate, "2026-05-13T12:00:00-04:00");
 assert.equal(tender.relevance.tier, "flagship");
 assert.ok(tender.industries.includes("construction"));
 assert.ok(tender.industries.includes("transportation"));

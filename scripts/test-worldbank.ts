@@ -39,9 +39,12 @@ check("国内公开", worldBankMarket("SOLICITUD DE OFERTAS ABIERTA NACIONAL"), 
 check("国际公开", worldBankMarket("Licitación Pública Internacional"), "international_open");
 check("英文国际", worldBankMarket("Open International competitive procurement"), "international_open");
 check("未说明", worldBankMarket("Solicitud de ofertas"), undefined);
-check("拉巴斯 UTC-4", zonedIso("2026-10-23T00:00:00Z", "15:30", "America/La_Paz"), "2026-10-23T19:30:00.000Z");
-check("圣地亚哥夏令时 UTC-3", zonedIso("2026-12-01T00:00:00Z", "10:00", "America/Santiago"), "2026-12-01T13:00:00.000Z");
-check("圣地亚哥冬令时 UTC-4", zonedIso("2026-07-01T00:00:00Z", "10:00", "America/Santiago"), "2026-07-01T14:00:00.000Z");
+check("拉巴斯 UTC-4", zonedIso("2026-10-23T00:00:00Z", "15:30", "America/La_Paz"), "2026-10-23T15:30:00-04:00");
+check("圣地亚哥夏令时 UTC-3", zonedIso("2026-12-01T00:00:00Z", "10:00", "America/Santiago"), "2026-12-01T10:00:00-03:00");
+check("圣地亚哥冬令时 UTC-4", zonedIso("2026-07-01T00:00:00Z", "10:00", "America/Santiago"), "2026-07-01T10:00:00-04:00");
+check("同一时刻", Date.parse(zonedIso("2026-12-01T00:00:00Z", "10:00", "America/Santiago")!), Date.parse("2026-12-01T13:00:00.000Z"));
+// date columns keep the day as written: a late local deadline stays on its own day, not UTC's next one.
+check("墨西哥 18:00 仍是当天", zonedIso("2026-10-10", "18:00", "America/Mexico_City")?.slice(0, 10), "2026-10-10");
 
 console.log("哪些公告读取");
 check("工程招标读取", worldBankSkipReason(notices[0]), undefined);
@@ -60,7 +63,7 @@ check("国企", t.governmentLevel, "public_company");
 check("工程", t.scopeType, "works");
 check("金额", [t.estimatedValue, t.currency], [26193790.72, "BOB"]);
 check("国内公开", t.participationScope, "national");
-check("截止（当地 15:30）", t.submissionDeadline, "2026-10-23T19:30:00.000Z");
+check("截止（当地 15:30）", t.submissionDeadline, "2026-10-23T15:30:00-04:00");
 check("状态", t.status, "open");
 check("约 219 万美元 → 常规", t.relevance.tier, "standard");
 check("官方公告链接", t.sourceUrl, `https://projects.worldbank.org/en/projects-operations/procurement-detail/${notices[0].id}`);

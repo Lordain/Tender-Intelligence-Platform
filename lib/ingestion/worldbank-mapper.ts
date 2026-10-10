@@ -167,7 +167,14 @@ export function worldBankGovernmentLevel(organization: string): GovernmentLevel 
   return "federal";
 }
 
-/** A local wall-clock time in `timeZone` → ISO, UTC. */
+/**
+ * A local wall-clock time in `timeZone` → ISO with that zone's offset, e.g.
+ * "2026-12-17T23:59:00-03:00". The offset is kept rather than converted to
+ * UTC because submission_deadline and tender_key_dates.date are `date`
+ * columns, which take the day as written: "2026-12-18T02:59:00.000Z" — the
+ * same instant — stored a Chilean 17 December deadline as the 18th, and the
+ * site showed it a day late (2026-10-10, first MOP concessions write).
+ */
 export function zonedIso(day: string, time: string | undefined, timeZone: string): string | undefined {
   const date = day.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!date) return undefined;
@@ -176,8 +183,10 @@ export function zonedIso(day: string, time: string | undefined, timeZone: string
   const guess = Date.UTC(Number(date[1]), Number(date[2]) - 1, Number(date[3]), hours, minutes);
   const parts = new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(guess));
   const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
-  const wall = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
-  return new Date(guess - (wall - guess)).toISOString();
+  const offsetMinutes = (Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute")) - guess) / 60_000;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const offset = `${offsetMinutes < 0 ? "-" : "+"}${pad(Math.floor(Math.abs(offsetMinutes) / 60))}:${pad(Math.abs(offsetMinutes) % 60)}`;
+  return `${date[1]}-${date[2]}-${date[3]}T${pad(hours)}:${pad(minutes)}:00${offset}`;
 }
 
 function clean(text: string | undefined): string | undefined {

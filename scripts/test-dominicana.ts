@@ -47,7 +47,9 @@ check("截标已过 → 已截标", dominicanStatus("Proceso publicado", "2026-0
 
 console.log("\n映射（真实行）");
 const road = mapDgcpProcesoToTender(byCode("MOPC-CCC-LPN-2026-0019"), NOW);
-check("公路工程 ~2,300 万美元 → 大型、工程、招标中", [road.relevance.tier, road.scopeType, road.status], ["flagship", "works", "open"]);
+// 2026-10-10: transport/works/water rows with an amount use their own bands
+// (中型 from US$10M, 大型 from US$30M — lib/relevance.ts).
+check("公路工程 ~2,300 万美元 → 中型、工程、招标中", [road.relevance.tier, road.scopeType, road.status], ["significant", "works", "open"]);
 check("slug 与国家", [road.slug, road.country, countryLabel(road.country, "zh")], ["dominicana-mopc-ccc-lpn-2026-0019", "Dominican Republic", "多米尼加"]);
 check("截标时间按当地时间", road.submissionDeadline, "2026-11-12T14:00:00.000Z");
 check("官方链接去掉双斜杠", road.sourceUrl, "https://comunidad.comprasdominicana.gob.do/Public/Tendering/OpportunityDetail/Index?noticeUID=DO1.NTC.1777402");

@@ -8,7 +8,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseAppSchedule, convocatoriaDate, type ProinversionAppProject } from "../lib/ingestion/connectors/peru-proinversion-app-live";
 import { isAppConcursoUnderWay, mapAppProjectToTender, PROINVERSION_APP_SOURCE_NAME } from "../lib/ingestion/peru-proinversion-app-mapper";
-import { ingestPeruProinversionApp } from "../lib/ingestion/ingest-peru-proinversion-app";
+import { appClosingStatus, ingestPeruProinversionApp } from "../lib/ingestion/ingest-peru-proinversion-app";
+import { deriveTenderStatus } from "../lib/tender-status";
+import { deadlineIsInDocuments } from "../lib/deadline-in-documents";
 
 const dir = join(__dirname, "../lib/ingestion/__fixtures__/peru-proinversion-app");
 const read = (name: string) => readFileSync(join(dir, name), "utf8");
@@ -61,6 +63,21 @@ assert.equal(sullanaTender.buyer, "Gobierno Regional Piura (con ProInversión)")
 assert.equal(sullanaTender.governmentLevel, "state");
 assert.equal(sullanaTender.scopeType, "services");
 assert.equal(sullanaTender.relevance.tier, "excluded");
+
+// A concurso called in December has no deadline and is still open in October:
+// the 45-day guess is not applied to this source (user, 2026-10-10: 秘鲁的都显示已截止？).
+assert.equal(deriveTenderStatus("open", { publicationDate: tender.publicationDate, sourceName: PROINVERSION_APP_SOURCE_NAME }, now), "open");
+assert.equal(deriveTenderStatus("open", { publicationDate: tender.publicationDate, sourceName: "Peru OECE" }, now), "submission_closed");
+assert.equal(deriveTenderStatus("awarded", { publicationDate: tender.publicationDate, sourceName: PROINVERSION_APP_SOURCE_NAME }, now), "awarded");
+assert.equal(deadlineIsInDocuments(tender), true);
+// The import closes them instead, from the project's state.
+const calledGrupo2 = bySlug("grupo-2-del-plan-de-transmision-2025-2034");
+assert.equal(appClosingStatus(calledGrupo2), null);
+assert.equal(appClosingStatus({ ...calledGrupo2, Estado: "Adjudicado" }), "awarded");
+assert.equal(appClosingStatus({ ...calledGrupo2, Estado: "Desierto" }), "deserted");
+assert.equal(appClosingStatus({ ...calledGrupo2, Estado: "Suspendido" }), "suspended");
+assert.equal(appClosingStatus({ ...calledGrupo2, Fase: "Ejecución Contractual" }), "submission_closed");
+assert.equal(appClosingStatus(undefined), "submission_closed");
 
 async function windowChecks() {
   // The ingest's 3-day window counts from the call date.

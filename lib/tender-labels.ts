@@ -262,7 +262,19 @@ export const KEY_DATE_TYPE_LABELS: Record<TenderKeyDate["type"], LocalizedText> 
     es: "Vigencia del Concurso",
     zh: "公告有效期至",
   },
+  // Fallback only: a milestone is shown under its own name — see keyDateTitle().
+  milestone: { en: "Milestone", es: "Hito", zh: "其他节点" },
 };
+
+/**
+ * What a key date is called on a page: its type's label, except a milestone,
+ * which is named by its own notes ("支付参与费截止", "发布合同终版").
+ */
+export function keyDateTitle(keyDate: Pick<TenderKeyDate, "type" | "notes">, locale: Locale): string {
+  if (keyDate.type === "milestone" && keyDate.notes?.[locale]) return keyDate.notes[locale];
+  if (keyDate.type === "milestone" && keyDate.notes?.zh) return keyDate.notes.zh;
+  return KEY_DATE_TYPE_LABELS[keyDate.type][locale];
+}
 
 /**
  * Short, always-shown clarification under each key-date TYPE label — added
@@ -294,5 +306,10 @@ export const KEY_DATE_TYPE_DESCRIPTIONS: Record<TenderKeyDate["type"], Localized
     en: "How long this standing procurement mechanism stays open — NOT a bid deadline. Each specific event under it has its own timetable, published on the buyer's portal.",
     es: "Hasta cuándo sigue vigente este mecanismo de contratación — NO es una fecha límite de presentación. Cada evento concreto tiene su propio calendario en el portal del comprador.",
     zh: "这个长期公开征询机制的有效期截止日——不是交标截止日。具体某一次采购事件另有自己的时间表，以采购方平台公布的为准。",
+  },
+  milestone: {
+    en: "Another step of the published schedule.",
+    es: "Otra etapa del cronograma publicado.",
+    zh: "招标日程中的其他节点，以采购方公告为准。",
   },
 };

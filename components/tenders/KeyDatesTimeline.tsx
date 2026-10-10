@@ -4,7 +4,7 @@ import { DEADLINE_IN_DOCUMENTS_LABEL } from "@/lib/deadline-labels";
 import type { TenderKeyDate, TenderStatus } from "@/types/tender";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
-import { KEY_DATE_TYPE_LABELS, KEY_DATE_TYPE_DESCRIPTIONS } from "@/lib/tender-labels";
+import { KEY_DATE_TYPE_LABELS, KEY_DATE_TYPE_DESCRIPTIONS, keyDateTitle } from "@/lib/tender-labels";
 import { DetailSectionHeading } from "@/components/tenders/DetailSectionHeading";
 import { TimelineTrack } from "@/components/tenders/TimelineTrack";
 import { STALE_WITHOUT_END_DATE_DAYS } from "@/lib/tender-status";
@@ -70,7 +70,12 @@ export function KeyDatesTimeline({ dates, publicationDate, publicationDateIsEsti
 
   const dateLabel = (keyDate: TenderKeyDate) => keyDate.id === "overview-publication" && publicationDateIsEstimated
     ? localize(uiText.ingestedDateLabel, locale)
-    : localize(keyDate.id.includes("+") ? MERGED_SUBMISSION_OPENING_LABEL : KEY_DATE_TYPE_LABELS[keyDate.type], locale);
+    : keyDate.id.includes("+") ? localize(MERGED_SUBMISSION_OPENING_LABEL, locale) : keyDate.type === "milestone" ? keyDateTitle(keyDate, locale) : localize(KEY_DATE_TYPE_LABELS[keyDate.type], locale);
+  // A milestone's notes are its name (see keyDateTitle), so its card shows the
+  // source's own wording underneath instead of repeating the title.
+  const dateNote = (keyDate: TenderKeyDate) => keyDate.type === "milestone"
+    ? keyDate.notes?.es && locale !== "es" ? `原文：${keyDate.notes.es}` : localize(KEY_DATE_TYPE_DESCRIPTIONS.milestone, locale)
+    : localize(keyDate.notes ?? KEY_DATE_TYPE_DESCRIPTIONS[keyDate.type], locale);
 
   return (
     <section className="flex flex-col gap-4">
@@ -102,13 +107,13 @@ export function KeyDatesTimeline({ dates, publicationDate, publicationDateIsEsti
                   <p className="text-sm font-bold text-[#071826]">{dateLabel(keyDate)}</p>
                   <p className="text-sm font-black tabular-nums text-[#425461]">{formatDate(keyDate.date, locale)}</p>
                 </div>
-                <p className="mt-1 text-xs leading-5 text-[#75838c]">{localize(keyDate.notes ?? KEY_DATE_TYPE_DESCRIPTIONS[keyDate.type], locale)}</p>
+                <p className="mt-1 text-xs leading-5 text-[#75838c]">{dateNote(keyDate)}</p>
               </div>
             ))}
             {primaryWithNotes.map((keyDate) => (
               <div key={`${keyDate.id}-note`} className="rounded-2xl bg-[#f4f7f7] px-4 py-3">
                 <p className="text-sm font-bold text-[#071826]">{dateLabel(keyDate)}说明</p>
-                <p className="mt-1 text-xs leading-5 text-[#75838c]">{localize(keyDate.notes ?? KEY_DATE_TYPE_DESCRIPTIONS[keyDate.type], locale)}</p>
+                <p className="mt-1 text-xs leading-5 text-[#75838c]">{dateNote(keyDate)}</p>
               </div>
             ))}
             {missingSubmission && (

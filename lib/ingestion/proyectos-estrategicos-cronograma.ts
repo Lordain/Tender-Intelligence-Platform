@@ -7,6 +7,7 @@ import {
   type ParsedCronograma,
   type ParsedCronogramaRow,
 } from "@/lib/ingestion/seace-cronograma";
+import { looksLikeProinversionCronograma, parseProinversionCronograma } from "@/lib/ingestion/proinversion-cronograma";
 
 /**
  * Parses the CRONOGRAMA DE EVENTOS block of a Proyectos Estratégicos MX
@@ -124,12 +125,14 @@ export function parseProyectosEstrategicosCronograma(pasted: string): ParsedCron
 
 /**
  * Picks the parser by what was actually pasted, so one textarea takes either
- * source. The two formats are unmistakable: SEACE is a table whose header row
+ * source (three, with ProInversión's bases). The two formats are unmistakable: SEACE is a table whose header row
  * is Etapa / Fecha Inicio / Fecha Fin, Proyectos Estratégicos is a list of
  * "Fecha y hora de …:" labels. Detection looks for the label shape first
  * because a SEACE paste never contains it.
  */
-export function parseAnyCronograma(pasted: string): ParsedCronograma & { format: "seace" | "proyectos-estrategicos" } {
+export function parseAnyCronograma(pasted: string): ParsedCronograma & { format: "seace" | "proyectos-estrategicos" | "proinversion" } {
+  // ProInversión's bases write DD.MM.YYYY, which neither of the others does.
+  if (looksLikeProinversionCronograma(pasted)) return { ...parseProinversionCronograma(pasted), format: "proinversion" };
   if (/fecha y hora/i.test(pasted)) {
     return { ...parseProyectosEstrategicosCronograma(pasted), format: "proyectos-estrategicos" };
   }

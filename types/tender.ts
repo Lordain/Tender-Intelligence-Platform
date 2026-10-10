@@ -69,7 +69,15 @@ export type TenderKeyDate = {
      * deadline. PEMEX's Concursos Abiertos carry one (`vencimiento`, routinely
      * a year or two out); see supabase/migrations/0044_key_date_validity_end.sql.
      */
-    | "validity_end";
+    | "validity_end"
+    /**
+     * Any other dated step of a published schedule, named by its own notes
+     * (zh: what it is, es: the source's wording) — the participation fee, the
+     * final contracts, the qualification result of a ProInversión concurso.
+     * Never a deadline and never read for status: it only adds a card under
+     * 其他时间安排与节点说明. See supabase/migrations/0067_key_date_milestone.sql.
+     */
+    | "milestone";
   date: string;
   mandatory?: boolean;
   notes?: LocalizedText;

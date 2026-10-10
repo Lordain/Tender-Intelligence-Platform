@@ -2,6 +2,7 @@ import type { GovernmentLevel, Tender, TenderKeyDate, TenderScopeType } from "@/
 import { untranslated } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
 import { zonedIso } from "@/lib/ingestion/worldbank-mapper";
+import { PROINVERSION_APP_SOURCE_NAME } from "@/lib/proinversion-app-source";
 import { convocatoriaDate, proinversionAppDetailUrl, type ProinversionAppProject, type ScheduleStep } from "@/lib/ingestion/connectors/peru-proinversion-app-live";
 
 /**
@@ -10,7 +11,7 @@ import { convocatoriaDate, proinversionAppDetailUrl, type ProinversionAppProject
  * apply; every project states its investment.
  */
 
-export const PROINVERSION_APP_SOURCE_NAME = "ProInversión — Proyectos APP en concurso (Perú)";
+export { PROINVERSION_APP_SOURCE_NAME };
 
 const LIMA = "America/Lima";
 const PROINVERSION = "Agencia de Promoción de la Inversión Privada (ProInversión)";

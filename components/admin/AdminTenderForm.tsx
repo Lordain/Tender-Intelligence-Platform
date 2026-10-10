@@ -22,6 +22,7 @@ import {
   RELEVANCE_TIER_LABELS,
 } from "@/lib/tender-labels";
 import { CronogramaPasteForm } from "@/components/admin/CronogramaPasteForm";
+import { PROINVERSION_APP_SOURCE_NAME } from "@/lib/proinversion-app-source";
 import { mergeServerChanges } from "@/lib/admin/form-merge";
 import { generatedTextProblems } from "@/lib/admin/generated-text";
 import { GENERIC_PUBLIC_SUMMARY } from "@/lib/public-title";
@@ -644,7 +645,7 @@ export function AdminTenderForm({ tender }: { tender?: Tender }) {
                   exist for that tender. Keyed off the CURRENT form value so
                   correcting a mis-tagged country updates it without a save. */}
               {(form.country === "Peru" || form.country === "Mexico") && (
-                <CronogramaPasteForm tenderSlug={tender!.slug} country={form.country} initialFichaUrl={tender!.fichaUrl} />
+                <CronogramaPasteForm tenderSlug={tender!.slug} country={form.country} isProinversion={tender!.sourceName === PROINVERSION_APP_SOURCE_NAME} initialFichaUrl={tender!.fichaUrl} />
               )}
             </div>
           </div>

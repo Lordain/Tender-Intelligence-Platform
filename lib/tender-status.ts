@@ -61,6 +61,7 @@
  */
 import type { Tender, TenderKeyDate, TenderStatus } from "@/types/tender";
 import { isUpcomingTenderSource } from "@/lib/upcoming-tenders";
+import { isClosedByImport } from "@/lib/proinversion-app-source";
 
 /**
  * Statuses a reader can ever see, and the only ones offered as filters.
@@ -236,9 +237,12 @@ export function deriveTenderStatus(
   // validity_end that has not passed yet returned "open" above only because
   // the tender is genuinely still running, and must not be second-guessed
   // here.
+  //
+  // Not for a source whose own import closes its rows from the source's state
+  // (lib/proinversion-app-source.ts): a concurso runs far longer than 45 days.
   const hasAnyEndDate = deadlineDay !== null || validityEndDay !== undefined;
   const publishedDay = fields.publicationDate ? platformDay(fields.publicationDate) : null;
-  if (!hasAnyEndDate && today && publishedDay && daysBetween(publishedDay, today) > STALE_WITHOUT_END_DATE_DAYS) {
+  if (!hasAnyEndDate && !isClosedByImport(fields.sourceName) && today && publishedDay && daysBetween(publishedDay, today) > STALE_WITHOUT_END_DATE_DAYS) {
     return "submission_closed";
   }
 

@@ -1,4 +1,5 @@
 import type { ExtractedKeyDateType } from "@/lib/ingestion/key-date-checks";
+import type { LocalizedText } from "@/types/tender";
 
 /**
  * Parses a SEACE *ficha de selección* Cronograma table, pasted in by an
@@ -53,6 +54,9 @@ export const CRONOGRAMA_SOURCE_REFERENCE = "SEACE ficha de selección · Cronogr
 /** The same, for a Proyectos Estratégicos MX procedure page. */
 export const PE_MX_CRONOGRAMA_SOURCE_REFERENCE = "Proyectos Estratégicos MX · Cronograma de eventos";
 
+/** The same, for the cronograma of a ProInversión concurso's bases. */
+export const PROINVERSION_CRONOGRAMA_SOURCE_REFERENCE = "ProInversión · Cronograma de las Bases";
+
 /**
  * Every marker this platform has ever written from a pasted schedule.
  *
@@ -65,6 +69,7 @@ export const PE_MX_CRONOGRAMA_SOURCE_REFERENCE = "Proyectos Estratégicos MX · 
 export const CRONOGRAMA_SOURCE_REFERENCES = [
   CRONOGRAMA_SOURCE_REFERENCE,
   PE_MX_CRONOGRAMA_SOURCE_REFERENCE,
+  PROINVERSION_CRONOGRAMA_SOURCE_REFERENCE,
 ] as const;
 
 export type ParsedCronogramaRow = {
@@ -72,9 +77,14 @@ export type ParsedCronogramaRow = {
   label: string;
   /** The day this row resolves to, YYYY-MM-DD — the END of a window. */
   date: string;
-  type: ExtractedKeyDateType;
+  /** "milestone": a step the platform has no type for, named by `notes` (ProInversión's bases). */
+  type: ExtractedKeyDateType | "milestone";
   /** The raw cells, so a mis-parse is visible instead of merely wrong. */
   raw: string;
+  /** Stored as the row's notes; a milestone's name. Without it the stage label is stored, as before. */
+  notes?: LocalizedText;
+  /** A step a bidder cannot skip (the participation fee). */
+  mandatory?: boolean;
 };
 
 export type ParsedCronograma = {
@@ -250,6 +260,12 @@ export function diffAgainstExisting(
   const diff: CronogramaDiff = { toInsert: [], duplicates: [], conflicts: [] };
 
   for (const row of rows) {
+    // Milestones are many rows of one type, each its own step; only a
+    // previous paste writes them, and the caller has already set those aside.
+    if (row.type === "milestone") {
+      diff.toInsert.push(row);
+      continue;
+    }
     const sameType = existing.filter((entry) => entry.type === row.type);
     const sameDay = sameType.find((entry) => entry.date.slice(0, 10) === row.date);
     if (sameDay) {

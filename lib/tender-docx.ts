@@ -32,7 +32,7 @@ import { officialSiteAccessNote } from "@/lib/official-site-access";
 import {
   GOVERNMENT_LEVEL_LABELS,
   KEY_DATE_TYPE_DESCRIPTIONS,
-  KEY_DATE_TYPE_LABELS,
+  keyDateTitle,
   PARTICIPATION_SCOPE_LABELS,
   RELEVANCE_TIER_LABELS,
   SCOPE_TYPE_LABELS,
@@ -235,11 +235,11 @@ export async function buildTenderDocx(tender: Tender, pageUrl: string, exportedA
       .filter((date) => date.type !== "publication" && date.type !== "submission")
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((date): [string, string, string?] => [
-        localize(KEY_DATE_TYPE_LABELS[date.type], "zh"),
+        keyDateTitle(date, "zh"),
         formatDate(date.date, "zh"),
         // The page folds these explanations under the timeline; the file
         // prints every one (user, 2026-10-05: 折叠的内容要全显示).
-        localize(date.notes ?? KEY_DATE_TYPE_DESCRIPTIONS[date.type], "zh") || undefined,
+        (date.type === "milestone" ? date.notes?.es && `原文：${date.notes.es}` : localize(date.notes ?? KEY_DATE_TYPE_DESCRIPTIONS[date.type], "zh")) || undefined,
       ]),
   ];
 

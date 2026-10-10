@@ -135,7 +135,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
     ?? null;
 
   return (
-    <article className="group relative grid gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 transition-all hover:border-[#a9b8bf] hover:shadow-[0_18px_45px_-35px_rgba(6,27,43,.5)] md:grid-cols-[minmax(0,1fr)_14rem] md:items-center">
+    <article className="surface-warm surface-accent group grid gap-4 rounded-2xl border border-[#dfe5e7] p-5 shadow-[0_1px_2px_rgba(6,27,43,0.04)] transition-all hover:border-[#e2c68a] hover:shadow-[0_22px_50px_-34px_rgba(126,78,0,0.45)] md:grid-cols-[minmax(0,1fr)_16rem] md:items-center">
       <div className="min-w-0">
         <div className="mb-2.5 flex flex-wrap gap-2">
           <TenderTagRow
@@ -157,7 +157,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
           {tender.buyer && <span className="truncate">发布机构：{tender.buyer}</span>}
         </div>
       </div>
-      <div className="flex items-center justify-between gap-4 border-t border-[#e5e9eb] pt-4 md:border-l md:border-t-0 md:pl-5 md:pt-0">
+      <div className="surface-amber flex items-center justify-between gap-4 rounded-xl border border-[#f1dcae] px-4 py-3">
         <div>
           <p className="text-xs font-semibold text-[#7a878f]">项目金额</p>
           <p className={`mt-1 text-lg font-black ${value ? "text-[#b86e00]" : "text-[#9aa5ab]"}`}>{value ?? "未公开"}</p>

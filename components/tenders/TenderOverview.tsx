@@ -43,7 +43,7 @@ export function TenderOverview({ tender, showTrialCta = false, canExportWord = f
   const undisclosedBand = undisclosedAmountBand(tender);
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
+    <section className="surface-warm flex flex-col gap-4 rounded-2xl border border-[#dfe5e7] p-5 shadow-[0_20px_55px_-48px_rgba(6,27,43,.55)] sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-semibold text-[#536772]">

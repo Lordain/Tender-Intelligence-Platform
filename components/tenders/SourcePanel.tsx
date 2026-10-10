@@ -37,7 +37,7 @@ export function SourcePanel({ tender, participationGuide: guide }: { tender: Ten
   return (
     <section className="flex flex-col gap-4">
       <DetailSectionHeading title="官方正式投标入口" description="如有兴趣参标，请自行在官方平台核对文件与要求，并按官方流程完成投标" />
-      <div className="rounded-2xl bg-[#061b2b] p-5 text-white sm:p-6">
+      <div className="surface-navy rounded-2xl p-5 text-white sm:p-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#ffb21c]">官方投标平台</p>

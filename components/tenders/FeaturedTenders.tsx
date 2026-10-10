@@ -9,14 +9,16 @@ export function FeaturedTenders({ tenders }: { tenders: TenderCardData[] }) {
   return (
     <section className="w-full border-t border-[#dbe2e5] bg-[#f7f4ee] px-5 py-4 sm:px-8">
       <div className="mx-auto max-w-[108rem]">
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+      {/* Each card spans its seven rows as a subgrid (TenderCard's CARD_ROWS),
+          through the two wrappers, so the rows line up across a row of cards. */}
+      <div className="grid grid-cols-1 gap-x-5 gap-y-5 md:grid-cols-2 lg:grid-cols-3">
         {tenders.map((tender, index) => (
           // Phones show the first 4 and tablets 8 (full rows of two); the
           // rest are one tap away via 查看全部项目. All 9 from lg up.
           // Cards below the fold fade up in their row's order (动画方案 1).
-          <div key={tender.id} className={index >= 8 ? "hidden lg:block" : index >= 4 ? "hidden md:block" : undefined}>
-            <Reveal delayMs={(index % 3) * 110} className="h-full">
-              <TenderCard tender={tender} showOneLineSummary />
+          <div key={tender.id} className={`row-span-7 grid-rows-subgrid gap-y-3 ${index >= 8 ? "hidden lg:grid" : index >= 4 ? "hidden md:grid" : "grid"}`}>
+            <Reveal delayMs={(index % 3) * 110} className="row-span-7 grid grid-rows-subgrid gap-y-3">
+              <TenderCard tender={tender} showOneLineSummary aligned />
             </Reveal>
           </div>
         ))}

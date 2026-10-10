@@ -10,7 +10,7 @@ export function DetailSectionHeading({
   return (
     <div className="flex items-end justify-between gap-4">
       <div className="flex min-w-0 items-start gap-3">
-        <span aria-hidden="true" className="mt-1 h-8 w-1 shrink-0 rounded-full bg-[#ffb21c]" />
+        <span aria-hidden="true" className="mt-1 h-8 w-1 shrink-0 rounded-full bg-linear-to-b from-[#ffcf5c] to-[#f39b00]" />
         <div>
           <h2 className="text-xl font-black tracking-[-0.025em] text-[#071826] sm:text-2xl">{title}</h2>
           <p className="mt-1 text-sm leading-5 text-[#75838c]">{description}</p>

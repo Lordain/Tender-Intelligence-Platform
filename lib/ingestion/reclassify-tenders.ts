@@ -34,6 +34,7 @@
  *      about freezing the industry tags too.
  */
 import { REVIEW_CSV_HEADERS, toCsv, writeReviewCsv, type CsvValue } from "@/lib/ingestion/review-csv";
+import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { classifyStoredTender } from "@/lib/relevance";
 import type { LocalizedText, Tender, TenderRelevanceTier, TenderScopeType } from "@/types/tender";
@@ -72,6 +73,8 @@ export type ReclassifyTendersResult = {
   updatedCount: number;
   deletedCount: number;
   protectedSkippedCount: number;
+  /** Analysed rows (with a 一句话总结) the rules would now exclude — kept at their tier instead. */
+  analysedKeptCount: number;
   failedCount: number;
   /** How many rows got a different `industries` array from re-running classifyIndustries() against their real title/summary/buyer (see the header comment's new point 0). */
   industriesChangedCount: number;
@@ -129,6 +132,7 @@ export async function reclassifyTenders(
   let changed = 0;
   let nowExcluded = 0;
   let nowIncluded = 0;
+  let analysedKept = 0;
   let updated = 0;
   let deleted = 0;
   let failed = 0;
@@ -151,7 +155,7 @@ export async function reclassifyTenders(
     // import and demoted here. Migration 0029 gives it a column; rows
     // ingested before that migration read back NULL, which means exactly what
     // it meant then (unknown duration) and so changes no tier.
-    const { industries: recomputedIndustries, relevance: recomputed } = classifyStoredTender({
+    const { industries: recomputedIndustries, relevance: ruled } = classifyStoredTender({
       title: row.title.es,
       summary: row.summary.es,
       buyer: row.buyer,
@@ -168,6 +172,16 @@ export async function reclassifyTenders(
       // reclassify would take back what document analysis raised.
       oneLineSummary: row.one_line_summary,
     });
+    // A tender that has been through document analysis is never moved to
+    // 已过滤 — and so never deleted — by a reclassify (user, 2026-10-10: 请确保
+    // 后续跑标书分析，能刷新标书情况 / 然后不要被常规排除). Analysis is a human
+    // choosing to spend money reading the documents; the rules may still
+    // raise or lower it, but taking it out is a decision for the admin form.
+    const keepAnalysed = ruled.tier === "excluded" && row.relevance_tier !== null && row.relevance_tier !== "excluded" && Boolean(row.one_line_summary?.trim());
+    const recomputed = keepAnalysed
+      ? { tier: row.relevance_tier!, label: row.relevance_label ?? RELEVANCE_TIER_LABELS[row.relevance_tier!], reason: row.relevance_reason ?? ruled.reason }
+      : ruled;
+    if (keepAnalysed) analysedKept++;
     const industriesChanged = !sameIndustries(row.industries, recomputedIndustries);
     if (industriesChanged) industriesChangedCount++;
 
@@ -290,6 +304,7 @@ export async function reclassifyTenders(
     updatedCount: updated,
     deletedCount: deleted,
     protectedSkippedCount: protectedSkipped,
+    analysedKeptCount: analysedKept,
     failedCount: failed,
     industriesChangedCount,
     keptPath,

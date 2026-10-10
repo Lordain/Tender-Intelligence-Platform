@@ -10,6 +10,7 @@ type ReclassifyResult = {
   updatedCount: number;
   deletedCount: number;
   protectedSkippedCount: number;
+  analysedKeptCount?: number;
   failedCount: number;
   industriesChangedCount: number;
   keptPath: string;
@@ -84,6 +85,7 @@ export function ReclassifyButton() {
             <p className="mt-1 font-semibold text-emerald-700">
               已更新 {result.updatedCount} 条，删除 {result.deletedCount} 条
               {result.protectedSkippedCount ? `，保留 ${result.protectedSkippedCount} 条人工锁定的分类` : ""}
+              {result.analysedKeptCount ? `，${result.analysedKeptCount} 条已做过标书分析的项目按规则会被排除，已保留原分级` : ""}
               {result.failedCount ? `，${result.failedCount} 条失败` : ""}
             </p>
           )}

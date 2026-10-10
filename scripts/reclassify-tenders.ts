@@ -30,6 +30,9 @@ async function main() {
       console.log("\ndry run (pass --write to update relevance_tier/label/reason in Supabase, and delete anything now excluded) — nothing was written to Supabase.");
     } else {
       console.log(`\nUpdated ${result.updatedCount} row(s), deleted ${result.deletedCount} newly-excluded row(s) in Supabase (${result.failedCount} failed).`);
+      if (result.analysedKeptCount > 0) {
+        console.log(`Kept ${result.analysedKeptCount} analysed row(s) (with a 一句话总结) the rules would now exclude — at their current tier, not deleted.`);
+      }
       if (result.protectedSkippedCount > 0) {
         // "untouched" would be a lie: reclassifyTenders() deliberately still
         // refreshes a locked row's industries. The 🔒 checkbox freezes the

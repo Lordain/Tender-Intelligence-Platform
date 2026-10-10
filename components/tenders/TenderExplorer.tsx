@@ -159,7 +159,7 @@ function TenderRow({ tender }: { tender: TenderListItem }) {
       </div>
       <div className="surface-amber flex items-center justify-between gap-4 rounded-xl border border-[#f1dcae] px-4 py-3">
         <div>
-          <p className="text-xs font-semibold text-[#7a878f]">项目金额</p>
+          <p className="text-xs font-semibold text-[#7a878f]">项目预估金额</p>
           <p className={`mt-1 text-lg font-black ${value ? "text-[#b86e00]" : "text-[#9aa5ab]"}`}>{value ?? "未公开"}</p>
           <p className="mt-3 text-xs font-semibold text-[#7a878f]">计划交标</p>
           <p className="mt-1 text-sm font-bold text-[#071826]">

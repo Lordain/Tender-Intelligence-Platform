@@ -1714,7 +1714,7 @@ export const participationGuides: ParticipationGuide[] = [
           { title: "查找项目", detail: "由用户自己在SICOES按编号、采购单位和采购方式查找项目。" },
           { title: "读取文件", detail: "下载招标文件和补充文件，核对外国企业资格、采购方式和完整日程。" },
           { title: "登记RUPE", detail: "在RUPE完成供应商登记；电子投标通过RUPE提交，境外资料需提供同等效力的文件。" },
-          { title: "准备担保", detail: "按文件准备投标保证（常见为参考价的1%）；外国企业的担保开具方式见下文。" },
+          { title: "准备担保", icon: "finance", detail: "按文件准备投标保证（常见为参考价的1%）；外国企业的担保开具方式见下文。" },
           { title: "递交跟进", detail: "按日程递交技术与经济文件，跟进答疑、补正、评审和授标，按时准备合同。" },
         ],
       },

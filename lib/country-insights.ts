@@ -32,7 +32,7 @@ export const countryInsights: CountryInsightSummary[] = [
     countryCode: "MX",
     title: "墨西哥国家洞察：2026—2030战略投资与项目机会",
     description:
-      "从约3,252亿美元（5.6万亿比索）基础设施投资基准出发，拆解能源、铁路、公路、港口、水务、ICT与医疗等重点行业，以及区域分布和中国企业可参与空间。",
+      "从约3,252亿美元（5.6万亿墨西哥比索）基础设施投资基准出发，拆解能源、铁路、公路、港口、水务、ICT与医疗等重点行业，以及区域分布和中国企业可参与空间。",
     author: "拉美招投标指南针",
     readTime: "约 15 分钟",
     heroImage: "/insights/mexico-el-insurgente.webp",
@@ -89,7 +89,7 @@ export const countryInsights: CountryInsightSummary[] = [
     countryCode: "PE",
     title: "秘鲁国家洞察：2024—2030竞争力规划与物流走廊机会",
     description:
-      "从2024—2030竞争力规划、2032物流走廊和2026项目组合出发，梳理交通、矿业、能源、水务与社会基础设施的区域机会。",
+      "从约765.2亿美元（2,575.62亿秘鲁索尔）2026公共预算、2024—2030竞争力规划和2032物流走廊出发，梳理交通、矿业、能源、水务与社会基础设施的区域机会。",
     author: "拉美招投标指南针",
     readTime: "约 17 分钟",
     heroImage: "/insights/peru-southern-railway.webp",
@@ -108,7 +108,7 @@ export const countryInsights: CountryInsightSummary[] = [
     countryCode: "CL",
     title: "智利国家洞察：2025—2055基础设施规划与近期项目机会",
     description:
-      "区分智利2025—2055国家基础设施规划、矿业投资储备与已经进入采购的项目，梳理能源、交通、水务、矿业和数字基础设施机会。",
+      "从约4,318亿美元（417万亿智利比索）2025—2055国家基础设施规划出发，区分矿业投资储备与已经进入采购的项目，梳理能源、交通、水务、矿业和数字基础设施机会。",
     author: "拉美招投标指南针",
     readTime: "约 14 分钟",
     heroImage: "/insights/chile-cerro-dominador.webp",
@@ -127,7 +127,7 @@ export const countryInsights: CountryInsightSummary[] = [
     countryCode: "AR",
     title: "阿根廷国家洞察：2026—2028公共投资与长期战略项目机会",
     description:
-      "梳理阿根廷国家公共投资计划2026—2028约63.3亿美元（9.53万亿比索）的三年列示投资、1,164个公共投资项目，以及大型投资激励制度、交通和能源长期项目管线。",
+      "从国家公共投资计划2026—2028约63.3亿美元（9.53万亿阿根廷比索）三年列示投资与1,164个公共投资项目出发，梳理大型投资激励制度、交通和能源长期项目管线。",
     author: "拉美招投标指南针",
     readTime: "约 16 分钟",
     heroImage: "/insights/argentina-yacyreta.webp",
@@ -209,7 +209,7 @@ export const countryInsights: CountryInsightSummary[] = [
     heroImage: "/insights/bolivia-mi-teleferico.webp",
     heroImageAlt: "玻利维亚拉巴斯城市缆车（Mi Teleférico）红线的吊舱与塔架，背景为拉巴斯谷地",
     heroImageCredit: {
-      author: "EEJCC（经缩放并压缩为 WebP）",
+      author: "EEJCC（经裁切并压缩为 WebP）",
       license: "CC BY-SA 4.0",
       licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
       sourceUrl: "https://commons.wikimedia.org/wiki/File:L%C3%ADnea_Roja_de_Mi_Telef%C3%A9rico_en_La_Paz,_Bolivia.jpg",

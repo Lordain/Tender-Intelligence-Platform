@@ -39,7 +39,7 @@ export default function CountryInsightsPage() {
         <div className="grid gap-7 lg:grid-cols-2">
           {countryInsights.map((insight) => (
             <article key={insight.slug} className="group overflow-hidden rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_18px_50px_rgba(7,24,38,0.06)]">
-              <Link href={`/insights/${insight.slug}`} className="block">
+              <Link href={`/insights/${insight.slug}`} className="flex h-full flex-col">
                 <div className="relative aspect-[16/9] overflow-hidden bg-[#061b2b]">
                   <Image
                     src={insight.heroImage}
@@ -52,7 +52,7 @@ export default function CountryInsightsPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-[#061b2b]/75 via-transparent to-transparent" />
                   <span className="absolute bottom-5 left-5 rounded-full bg-[#ffb21c] px-3 py-1 text-xs font-black text-[#071826]">{insight.country}</span>
                 </div>
-                <div className="p-6 sm:p-8">
+                <div className="flex flex-1 flex-col p-6 sm:p-8">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-[#7b878e]">
                     <span>作者：{insight.author}</span>
                   </div>
@@ -63,7 +63,7 @@ export default function CountryInsightsPage() {
                       <span key={highlight} className="rounded-full bg-[#edf2f4] px-3 py-1.5 text-xs font-bold text-[#38505e]">{highlight}</span>
                     ))}
                   </div>
-                  <p className="mt-8 font-black text-[#a96a00] transition-transform group-hover:translate-x-1">阅读全文 →</p>
+                  <p className="mt-auto pt-8 font-black text-[#a96a00] transition-transform group-hover:translate-x-1">阅读全文 →</p>
                 </div>
               </Link>
             </article>

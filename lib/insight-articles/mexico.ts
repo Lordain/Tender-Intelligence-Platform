@@ -60,11 +60,11 @@ export const mexicoInsight: InsightArticle = {
   regions: {
     title: "四类区域最值得持续跟踪",
     map: {
-      src: "/insights/mexico-regions.svg",
-      width: 1600,
-      height: 1000,
+      src: "/insights/mexico-regions.webp",
+      width: 1536,
+      height: 1110,
       alt: "墨西哥重点区域地图，按省级行政区着色：1 北部边境与制造业带、2 中部与Bajío工业带、3 墨西哥湾与东南部、4 太平洋港口与物流走廊",
-      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。",
+      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。",
     },
     items: [
       { color: "bg-[#f5a20b]", title: "北部边境与制造业带", places: "Sonora、Chihuahua、Coahuila、Nuevo León、Tamaulipas", focus: "电力扩容、跨境铁路公路、工业用水和物流园区；首批发展极含Hermosillo、San Jerónimo（Juárez）和Altamira。" },

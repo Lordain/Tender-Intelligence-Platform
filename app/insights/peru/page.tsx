@@ -7,7 +7,7 @@ import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 const insight = getCountryInsight("peru")!;
 
 export const metadata: Metadata = pageMetadata({
-  title: "秘鲁国家洞察：竞争力、物流走廊与战略项目机会",
+  title: insight.title,
   description:
     "梳理秘鲁2024—2030竞争力规划、2032物流走廊、2026公共投资与PPP项目组合，以及交通、矿业、能源、水务和社会基础设施机会。",
   path: "/insights/peru",

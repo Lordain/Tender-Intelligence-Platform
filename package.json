@@ -187,6 +187,9 @@
     "test:account-devices": "tsx scripts/test-account-devices.ts",
     "report:monthly": "tsx --env-file-if-exists=.env.local scripts/report-monthly.ts",
     "measure:small-works": "tsx --env-file-if-exists=.env.local scripts/measure-small-works.ts",
+    "maps:insights": "node scripts/generate-insight-maps.mjs",
+    "maps:coverage-base": "node scripts/generate-coverage-map-base.mjs",
+    "images:insight-cards": "node scripts/generate-insight-cards.mjs",
     "measure:insurance": "tsx --env-file-if-exists=.env.local scripts/measure-insurance.ts",
     "report:account-sharing": "tsx --env-file-if-exists=.env.local scripts/report-account-sharing.ts",
     "find:chinese-bidders": "tsx --env-file-if-exists=.env.local scripts/find-chinese-bidders.ts",
@@ -273,10 +276,15 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/word-extractor": "^1.0.6",
+    "d3-geo": "^3.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
+    "topojson-client": "^3.1.0",
+    "topojson-server": "^3.0.1",
+    "topojson-simplify": "^3.0.3",
     "tsx": "^4.23.13",
-    "typescript": "^5"
+    "typescript": "^5",
+    "world-atlas": "^2.0.2"
   }
 }

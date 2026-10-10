@@ -7,7 +7,7 @@ import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 const insight = getCountryInsight("colombia")!;
 
 export const metadata: Metadata = pageMetadata({
-  title: "哥伦比亚国家洞察：交通重构、能源转型与区域机会",
+  title: insight.title,
   description:
     "梳理哥伦比亚国家投资计划、交通基础设施长期路线图，以及铁路、公路、港口、电网、水务和数字基础设施的区域机会。",
   path: "/insights/colombia",

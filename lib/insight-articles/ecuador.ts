@@ -5,15 +5,15 @@ export const ecuadorInsight: InsightArticle = {
   countryEn: "Ecuador",
   countryPath: "/countries/ecuador",
   kicker: "Infrastructure & procurement outlook",
-  headline: ["厄瓜多尔国家洞察：", "多年公共投资、电力与水务机会"],
+  headline: ["厄瓜多尔国家洞察：", "2025—2028公共投资与电力水务机会"],
   lede: "72.61亿美元四年参考投资，服务2025—2029国家发展规划。电网可靠性、水务和交通连接值得跟踪，但预算与贷款都不等于在招合同。",
   published: "2026-10-09",
-  modified: "2026-10-09",
+  modified: "2026-10-10",
   stats: [
-    { label: "四年参考投资", value: "72.61亿", unit: "美元", note: "国家发展规划列示2025—2028参考额度" },
-    { label: "年度投资计划", value: "21.81亿", unit: "美元", note: "国民议会公布的2026年度投资计划" },
+    { label: "四年参考投资", value: "72.61亿", unit: "美元", detail: "原币即美元", note: "国家发展规划列示2025—2028参考额度" },
+    { label: "年度投资计划", value: "21.81亿", unit: "美元", detail: "原币即美元", note: "国民议会公布的2026年度投资计划" },
     { label: "年度投资项目", value: "388", unit: "个", note: "2026年度投资项目数，不是招标次数" },
-    { label: "电力项目融资", value: "3亿", unit: "美元", note: "美洲开发银行EC-L1306贷款，不是项目总成本" },
+    { label: "电力项目融资", value: "3亿", unit: "美元", detail: "原币即美元", note: "美洲开发银行EC-L1306贷款，不是项目总成本" },
   ],
   basis: "原币即美元，无汇率换算。72.61亿美元为2025—2028参考投资上限汇总，排除资本保全计划；2026年度计划、预算草案项目额度和银行贷款分别列示，不相加，均非已授标金额。",
   overview: {
@@ -58,7 +58,7 @@ export const ecuadorInsight: InsightArticle = {
   pipeline: {
     title: "项目管线：有融资，不等于已开标",
     items: [
-      { icon: "energy", title: "电力可靠性计划", figure: "项目总成本约3.78亿美元", text: "美洲开发银行EC-L1306贷款3亿美元，覆盖供电可靠性、接入与韧性方向。按融资文件和采购计划执行，政策改革贷款不当工程订单。" },
+      { icon: "energy", title: "电力可靠性计划", figure: "项目总成本约3.78亿美元", text: "美洲开发银行EC-L1306贷款3亿美元，用于700多公里输电线路增容、变电站与配电控制中心加固等；按融资文件和采购计划执行，贷款额不等于工程订单。" },
       { icon: "water", title: "昆卡供水与污水服务", figure: "项目总成本0.93亿美元", text: "EC-L1297贷款0.70亿美元，关注水源、供水及污水处理；采购计划单独确认。" },
       { icon: "road", title: "实体连接与运输", text: "依据国家发展规划观察交通基础设施，不在缺少官方文件时补写单项金额。" },
       { icon: "digital", title: "应急与数字服务", figure: "预算草案列示0.50亿美元", text: "ECU 911现代化属于预算观察方向，不能由额度推断设备清单或开标日期。" },
@@ -66,12 +66,12 @@ export const ecuadorInsight: InsightArticle = {
   },
   regions: {
     title: "区域机会：地形与公共服务需求",
-    map: { src: "/insights/ecuador-infrastructure-regions.webp", width: 1600, height: 900, alt: "厄瓜多尔地形与发光基础设施网络示意：红色安第斯都市与交通带、黄色太平洋港口与产业带、蓝色亚马孙能源与连接区，以及紫色加拉帕戈斯群岛插图", caption: "大陆地形、发光节点与四色业务观察区域示意，右下为加拉帕戈斯群岛插图。" },
+    map: { src: "/insights/ecuador-regions.webp", width: 1536, height: 1110, alt: "厄瓜多尔重点区域地图，按省级行政区着色：1 安第斯都市与交通带、2 太平洋港口与产业带、3 亚马孙能源与连接区、4 加拉帕戈斯公共服务区", caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。" },
     items: [
-      { color: "bg-[#c85c43]", title: "安第斯都市与交通带", places: "基多、昆卡及安第斯城市", focus: "城市供水、污水服务、交通和公共设施。" },
-      { color: "bg-[#d9a23a]", title: "太平洋港口与产业带", places: "瓜亚斯、马纳比、埃尔奥罗", focus: "生产连接、物流配套与公共服务。" },
-      { color: "bg-[#59a8d8]", title: "亚马孙能源与连接区", places: "纳波、苏昆比奥斯及亚马孙地区", focus: "供电接入、区域发展与环境约束。" },
-      { color: "bg-[#7b63a8]", title: "加拉帕戈斯公共服务区", places: "加拉帕戈斯群岛", focus: "能源与公共服务，重点核实生态保护及运输条件。" },
+      { color: "bg-[#c85c43]", title: "安第斯都市与交通带", places: "Pichincha（Quito）、Azuay（Cuenca）等安第斯省份", focus: "城市供水与污水服务、交通连接和公共设施；昆卡供水与污水项目有美洲开发银行融资，采购计划需单独确认。" },
+      { color: "bg-[#d9a23a]", title: "太平洋港口与产业带", places: "Guayas、Manabí、El Oro、Esmeraldas、Santa Elena等", focus: "港口与生产连接、物流配套、工业园区和公共服务；以Guayaquil等港口城市为核心，同步关注地方政府与公用事业公司的发包。" },
+      { color: "bg-[#59a8d8]", title: "亚马孙能源与连接区", places: "Napo、Sucumbíos、Orellana、Pastaza等亚马孙省份", focus: "供电可靠性与接入、输配电改造和区域连接；电力可靠性计划有融资支持，但环评、社区协商和雨林施工条件影响进度。" },
+      { color: "bg-[#7b63a8]", title: "加拉帕戈斯公共服务区", places: "Galápagos", focus: "离岛能源、供水和公共服务；生态保护规则严格，设备运输、施工窗口和环保许可要提前核实。" },
     ],
     note: "区域为平台的业务观察，不是官方投资分区或采购承诺。地图仅用于说明业务观察区域，不代表精确行政边界、项目位置、投资范围或政治立场。",
   },

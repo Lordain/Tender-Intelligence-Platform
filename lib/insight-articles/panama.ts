@@ -10,10 +10,10 @@ export const panamaInsight: InsightArticle = {
   published: "2026-10-09",
   modified: "2026-10-09",
   stats: [
-    { label: "五年公共投资", value: "302.78亿", unit: "美元", note: "2025—2029指示性投资计划，不是已授标金额" },
-    { label: "年度投资预算", value: "111.88亿", unit: "美元", note: "2026国家预算投资安排，不能与五年计划相加" },
-    { label: "教育部五年安排", value: "85.24亿", unit: "美元", note: "机构投资口径，不等于校舍工程订单" },
-    { label: "运河长期投资", value: "超过80亿", unit: "美元", note: "2025—2035运河愿景估算，独立于一般采购" },
+    { label: "五年公共投资", value: "302.78亿", unit: "美元", detail: "原币即美元（巴波亚与美元1∶1）", note: "2025—2029指示性投资计划，不是已授标金额" },
+    { label: "年度投资预算", value: "111.88亿", unit: "美元", detail: "原币即美元", note: "2026国家预算投资安排，不能与五年计划相加" },
+    { label: "教育部五年安排", value: "85.24亿", unit: "美元", detail: "原币即美元", note: "机构投资口径，不等于校舍工程订单" },
+    { label: "运河长期投资", value: "超过80亿", unit: "美元", detail: "原币即美元", note: "2025—2035运河愿景估算，独立于一般采购" },
   ],
   basis: "原币即美元口径：官方B/.（巴波亚）按固定1∶1等值列为美元，无浮动汇率换算。五年数字为指示性计划，年度数字为预算，运河数字为长期愿景估算；均非在招或已授标金额，不相加。",
   overview: {
@@ -67,12 +67,12 @@ export const panamaInsight: InsightArticle = {
   },
   regions: {
     title: "区域机会：业务观察区",
-    map: { src: "/insights/panama-infrastructure-regions.webp", width: 1600, height: 900, alt: "巴拿马地形与发光基础设施网络示意：红色运河与都市枢纽、黄色西部生产与能源带、蓝色中部太平洋走廊、紫色东部连接与韧性区", caption: "地形、发光节点与四色业务观察区域示意，对应下方四张区域卡片。" },
+    map: { src: "/insights/panama-regions.webp", width: 1536, height: 1110, alt: "巴拿马重点区域地图，按省级行政区着色：1 运河与都市枢纽、2 西部生产与能源带、3 中部太平洋走廊、4 东部连接与韧性区", caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。" },
     items: [
-      { color: "bg-[#c85c43]", title: "运河与都市枢纽", places: "巴拿马城、科隆、西巴拿马", focus: "运河物流、城市轨道、供水与公共设施。" },
-      { color: "bg-[#d9a23a]", title: "西部生产与能源带", places: "奇里基、博卡斯德尔托罗", focus: "生产连接、道路维护和公共服务设施。" },
-      { color: "bg-[#59a8d8]", title: "中部太平洋走廊", places: "科克莱、贝拉瓜斯、埃雷拉、洛斯桑托斯", focus: "道路、供水、教育与区域服务配套。" },
-      { color: "bg-[#7b63a8]", title: "东部连接与韧性区", places: "达连、巴拿马东部", focus: "连接改善、基本公共服务与韧性需求。" },
+      { color: "bg-[#c85c43]", title: "运河与都市枢纽", places: "Panamá、Panamá Oeste、Colón", focus: "运河配套物流、地铁土建与机电系统、供水排水和公共设施最集中；运河相关工程按运河管理局规则发包，不一定进入PanamaCompra。" },
+      { color: "bg-[#d9a23a]", title: "西部生产与能源带", places: "Chiriquí、Bocas del Toro、Comarca Ngäbe-Buglé", focus: "农业生产连接、道路桥梁维护、电力和公共服务设施；工点分散，先核实公共工程部公告的实际工点和合同范围。" },
+      { color: "bg-[#59a8d8]", title: "中部太平洋走廊", places: "Coclé、Veraguas、Herrera、Los Santos", focus: "道路桥梁、供水排水、校舍与教学设备等区域服务配套；教育部五年安排最大，但其中包含非工程支出。" },
+      { color: "bg-[#7b63a8]", title: "东部连接与韧性区", places: "Darién、Panamá东部及原住民特区", focus: "道路连接、医疗和供水等基本公共服务与气候韧性；偏远物流和社区协商影响工期，标包通常较小。" },
     ],
     note: "区域为平台根据官方规划整理的业务观察，不是官方投资分区。地图仅用于说明业务观察区域，不代表精确行政边界、项目位置、投资范围或政治立场。",
   },

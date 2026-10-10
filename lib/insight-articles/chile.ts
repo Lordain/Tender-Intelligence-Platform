@@ -10,10 +10,10 @@ export const chileInsight: InsightArticle = {
   published: "2026-09-25",
   modified: "2026-10-05",
   stats: [
-    { label: "长期规划估算", value: "417万亿", unit: "智利比索", usd: "约4,318亿美元", note: "PNIP 2025—2055滚动组合" },
+    { label: "长期规划估算", value: "约4,318亿", unit: "美元", detail: "原币417万亿智利比索", note: "PNIP 2025—2055滚动组合" },
     { label: "规划倡议", value: "24,589", unit: "项", note: "截至2026年1月" },
     { label: "核心方向", value: "4", unit: "大领域", note: "能源、交通、城市与水务" },
-    { label: "矿业投资储备", value: "1,045.49亿", unit: "美元", note: "Cochilco 2025—2034组合" },
+    { label: "矿业投资储备", value: "1,045.49亿", unit: "美元", detail: "原文即美元口径", note: "Cochilco 2025—2034组合" },
   ],
   basis: "417万亿比索和24,589项倡议是横跨2025—2055年的滚动规划，含公共与私人项目，不是2026年预算，也不是招标数量。Cochilco矿业储备是另一套统计，不能与PNIP相加。",
   overview: {
@@ -52,11 +52,11 @@ export const chileInsight: InsightArticle = {
   regions: {
     title: "四类区域，采购与履约条件不同",
     map: {
-      src: "/insights/chile-infrastructure-regions.webp",
-      width: 1600,
-      height: 900,
-      alt: "智利四类基础设施机会区域示意图：北部矿业与能源带、中部都市与港口枢纽、中南部工业与农业走廊、南部与极地连接区",
-      caption: "根据官方规划与行业管线整理的业务观察区，不代表行政边界、项目准确位置或投资范围。",
+      src: "/insights/chile-regions.webp",
+      width: 1536,
+      height: 1110,
+      alt: "智利重点区域地图，按省级行政区着色：1 北部矿业与能源带、2 中部都市与港口枢纽、3 中南部工业与农业走廊、4 南部与极地连接区",
+      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。",
     },
     items: [
       { color: "bg-[#d9a23a]", title: "北部矿业与能源带", places: "Arica y Parinacota、Tarapacá、Antofagasta、Atacama", focus: "铜锂项目、光伏储能、矿区供水与海淡、输电、公路和港口集疏运；重点核对环评、偏远施工和水资源约束。" },

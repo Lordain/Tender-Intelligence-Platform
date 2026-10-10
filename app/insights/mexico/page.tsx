@@ -7,7 +7,7 @@ import { pageMetadata, SOCIAL_BRAND } from "@/lib/seo";
 const insight = getCountryInsight("mexico")!;
 
 export const metadata: Metadata = pageMetadata({
-  title: "墨西哥国家洞察：2026—2030战略投资与项目机会",
+  title: insight.title,
   description:
     "基于墨西哥2026年官方资料，拆解5.6万亿比索基础设施投资基准、行业配置、重点项目、区域分布及中国企业可参与空间。",
   path: "/insights/mexico",

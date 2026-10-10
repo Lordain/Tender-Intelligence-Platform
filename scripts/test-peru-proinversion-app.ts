@@ -47,7 +47,7 @@ assert.equal(tender.currency, "USD");
 assert.equal(tender.status, "open");
 assert.equal(tender.submissionDeadline, undefined);
 // Noon in Lima (UTC-5).
-assert.equal(tender.publicationDate, "2025-12-23T17:00:00.000Z");
+assert.equal(tender.publicationDate, "2025-12-23T12:00:00-05:00");
 assert.equal(tender.relevance.tier, "flagship");
 assert.ok(tender.industries.includes("power"));
 assert.match(tender.summary.es, /Buena pro prevista: IV TRIMESTRE 2026\./);

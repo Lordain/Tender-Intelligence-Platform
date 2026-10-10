@@ -32,6 +32,7 @@ export function AdminBillingPanel() {
   const [busy, setBusy] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [showRequestHistory, setShowRequestHistory] = useState(false);
+  const [showInternal, setShowInternal] = useState(false);
   const [webhookTestStatus, setWebhookTestStatus] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [confirmingStop, setConfirmingStop] = useState<string | null>(null);
@@ -68,7 +69,17 @@ export function AdminBillingPanel() {
   const openRequests = useMemo(() => requests.filter((item) => item.status === "pending" || item.status === "proof_submitted"), [requests]);
   const historicalRequests = useMemo(() => requests.filter((item) => item.status !== "pending" && item.status !== "proof_submitted"), [requests]);
   const visibleRequests = showRequestHistory || needle ? requests : openRequests;
-  const subscriptions = useMemo(() => (data?.subscriptions ?? []).filter((item) => !needle || item.email.toLowerCase().includes(needle)), [data, needle]);
+  // Internal accounts — a manual grant that never expires (到期 2099/12/31) —
+  // are hidden from 订阅管理 and its log unless asked for (user, 2026-10-11:
+  // 这个是我内部的，帮我隐藏). Recognised by the date rather than a list of
+  // addresses, so no email is written into the code; a search still finds them.
+  const isInternal = (item: Subscription) => item.current_period_end !== null && new Date(item.current_period_end).getFullYear() >= 2099;
+  const internalEmails = useMemo(() => new Set((data?.subscriptions ?? []).filter(isInternal).map((item) => item.email)), [data]);
+  const subscriptions = useMemo(
+    () => (data?.subscriptions ?? []).filter((item) => (needle ? item.email.toLowerCase().includes(needle) : showInternal || !isInternal(item))),
+    [data, needle, showInternal],
+  );
+  const auditRows = useMemo(() => (data?.audit ?? []).filter((item) => showInternal || needle || !internalEmails.has(item.email)), [data, internalEmails, needle, showInternal]);
   const contactedRequests = useMemo(() => new Set((data?.audit ?? []).filter((item) => item.action === "manual_payment_customer_contacted").map((item) => item.manual_payment_request_id)), [data]);
   const undoableExtensions = useMemo(() => {
     const latestActions = new Map<string, Audit>();
@@ -204,10 +215,20 @@ export function AdminBillingPanel() {
         )}
       </div>
 
-      <h2 className="mt-10 text-xl font-black text-[#071826]">订阅管理</h2>
+      <div className="mt-10 flex items-center justify-between gap-3">
+        <h2 className="text-xl font-black text-[#071826]">订阅管理</h2>
+        {internalEmails.size > 0 && !needle && (
+          <button type="button" onClick={() => setShowInternal((value) => !value)} className="rounded-lg border px-3 py-1.5 text-xs font-bold text-[#52636e] hover:bg-[#f1f3f2]">
+            {showInternal ? "隐藏内部账号" : `显示内部账号（${internalEmails.size}）`}
+          </button>
+        )}
+      </div>
       <div className="mt-3 overflow-x-auto rounded-2xl border border-[#dbe2e5] bg-white">
         <table className="w-full min-w-[64rem] text-left text-sm"><thead className="bg-[#f1f3f2] text-xs text-[#64717c]"><tr><th className="p-3">账号</th><th>套餐</th><th>来源</th><th>状态</th><th>到期</th><th className="pr-3 text-right">操作</th></tr></thead>
           <tbody className="divide-y divide-[#e5eaec]">
+            {subscriptions.length === 0 && (
+              <tr><td colSpan={6} className="p-6 text-center text-sm text-[#64717c]">{needle ? "没有匹配的订阅。" : "暂无对外订阅。"}</td></tr>
+            )}
             {subscriptions.map((item) => (
               <tr key={item.id}>
                 <td className="p-3 font-bold">{item.email}</td>
@@ -262,7 +283,7 @@ export function AdminBillingPanel() {
         </table>
       </div>
 
-      <details className="mt-8 rounded-2xl border border-[#dbe2e5] bg-white p-5"><summary className="cursor-pointer font-black text-[#071826]">最近操作记录</summary><div className="mt-4 divide-y text-xs">{(data?.audit ?? []).map((item) => <div key={item.id} className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr_1fr]"><span>{new Date(item.created_at).toLocaleString("zh-CN")}</span><span>{item.adminEmail} → {item.email}</span><span>{item.action}{item.note ? ` · ${item.note}` : ""}</span></div>)}</div></details>
+      <details className="mt-8 rounded-2xl border border-[#dbe2e5] bg-white p-5"><summary className="cursor-pointer font-black text-[#071826]">最近操作记录</summary><div className="mt-4 divide-y text-xs">{auditRows.map((item) => <div key={item.id} className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr_1fr]"><span>{new Date(item.created_at).toLocaleString("zh-CN")}</span><span>{item.adminEmail} → {item.email}</span><span>{item.action}{item.note ? ` · ${item.note}` : ""}</span></div>)}</div></details>
     </main>
   );
 }

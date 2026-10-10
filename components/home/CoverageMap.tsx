@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { LATAM_MAP_SHAPES, LATAM_MAP_VIEWBOX } from "@/lib/latam-map";
 import { Reveal } from "@/components/home/Reveal";
@@ -17,12 +18,21 @@ import { CoverageMapHighlight } from "@/components/home/CoverageMapHighlight";
  * the lg breakpoint there is no room beside the map, and the same cards sit
  * under it in two columns instead.
  *
- * Server-rendered SVG from lib/latam-map.ts, so the outlines are in the HTML
- * and never in the page's JavaScript. The only script is the hover link
- * between a country and its card (CoverageMapHighlight). The glow is CSS
- * (app/globals.css, .coverage-*): a blurred copy of each lit country
- * breathing behind it, staggered; under prefers-reduced-motion it holds
- * still, still lit.
+ * The picture is a painted satellite-style map (user, 2026-10-10: 当前首页我们
+ * 使用的发光地图，能不能也替换成类似这种卫星图？… 发光效果也做成这种，只是同一色),
+ * public/home/coverage-terrain.webp: an image model's re-rendering of
+ * scripts/generate-coverage-map-base.mjs's base, every covered country one
+ * warm gold, borders held in place. It is an ordinary lazy next/image behind
+ * the SVG, set to the base's span of the canvas (COVERAGE_ART).
+ *
+ * Over it, server-rendered SVG from lib/latam-map.ts, so the outlines are in
+ * the HTML and never in the page's JavaScript: each covered country's live
+ * outline, link and hover light, its pin and line to its card. The only
+ * script is the hover link between a country and its card
+ * (CoverageMapHighlight). The glow is CSS (app/globals.css, .coverage-*): a
+ * blurred copy of each lit country breathing over the painting, staggered;
+ * a band of light sweeping across them; the lines to the cards flowing
+ * outward. Under prefers-reduced-motion it all holds still, still lit.
  *
  * Counts are the country pages' own (liveTenderCountForCountry), computed by
  * app/page.tsx on the homepage's five-minute revalidation, which every import
@@ -63,11 +73,26 @@ const CALLOUT: Record<string, { side: "left" | "right"; y: number; edge: number 
 
 const pct = (value: number, of: number) => `${(value / of) * 100}%`;
 
-/** The relief: map-unit offsets of the stacked copies under each country, deepest last. */
-const UNLIT_SIDES = [4, 3, 2, 1];
-const LIT_SIDES = [9, 8, 7, 6, 5, 4, 3, 2, 1];
-/** Darkest at the base, warming toward the top edge. */
-const LIT_SIDE_COLORS = ["#5a2c04", "#6a3405", "#7a3d06", "#8a4607", "#9a5008", "#aa5a09", "#b9640b", "#c66f0e", "#d27a12"];
+/** The painting's span, in map units (scripts/generate-coverage-map-base.mjs). */
+const COVERAGE_ART = { x: -300, y: -20, width: 1200, height: 800 };
+
+/** The painting placed under a map drawn with the given viewBox. */
+function CoverageArt({ view, className }: { view: { x: number; width: number; height: number }; className: string }) {
+  return (
+    <div
+      aria-hidden
+      className={`coverage-art pointer-events-none absolute ${className}`}
+      style={{
+        left: pct(COVERAGE_ART.x - view.x, view.width),
+        top: pct(COVERAGE_ART.y, view.height),
+        width: pct(COVERAGE_ART.width, view.width),
+        height: pct(COVERAGE_ART.height, view.height),
+      }}
+    >
+      <Image src="/home/coverage-terrain.webp" alt="" fill sizes="(min-width: 1024px) 72rem, 200vw" className="object-fill" />
+    </div>
+  );
+}
 
 /** `facing`: the side the map is on, which carries the amber accent. */
 function CountryCard({ entry, facing, className = "" }: { entry: CoverageCountry; facing?: "left" | "right"; className?: string }) {
@@ -95,8 +120,7 @@ function CountryCard({ entry, facing, className = "" }: { entry: CoverageCountry
 
 export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
   const byCountry = new Map(countries.map((entry) => [entry.country, entry]));
-  const shapes = LATAM_MAP_SHAPES.filter((shape) => !shape.country || byCountry.has(shape.country));
-  const lit = shapes.filter((shape) => shape.country);
+  const lit = LATAM_MAP_SHAPES.filter((shape) => shape.country && byCountry.has(shape.country));
   const total = countries.reduce((sum, entry) => sum + entry.liveCount, 0);
 
   return (
@@ -120,15 +144,15 @@ export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
 
         <CoverageMapHighlight className="mx-auto mt-10 max-w-6xl">
           <div className="relative mx-auto w-full max-w-[30rem] lg:max-w-none">
-            {/* A soft amber haze behind the continent, so the glow has something to sit in. */}
-            <div aria-hidden className="pointer-events-none absolute inset-x-[20%] inset-y-[10%] rounded-full bg-[#ffb21c]/10 blur-3xl lg:inset-x-[36%]" />
+            <CoverageArt view={CANVAS} className="hidden lg:block" />
+            <CoverageArt view={{ x: 0, ...LATAM_MAP_VIEWBOX }} className="lg:hidden" />
             <svg
               viewBox={`${CANVAS.x} 0 ${CANVAS.width} ${CANVAS.height}`}
               className="relative hidden h-auto w-full lg:block"
               role="img"
               aria-label={`拉美地图：已覆盖 ${countries.length} 个国家，共 ${total} 个在招项目`}
             >
-              <MapBody shapes={shapes} lit={lit} byCountry={byCountry} callouts />
+              <MapBody lit={lit} byCountry={byCountry} callouts />
             </svg>
             <svg
               viewBox={`0 0 ${LATAM_MAP_VIEWBOX.width} ${LATAM_MAP_VIEWBOX.height}`}
@@ -136,7 +160,7 @@ export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
               role="img"
               aria-label={`拉美地图：已覆盖 ${countries.length} 个国家，共 ${total} 个在招项目`}
             >
-              <MapBody shapes={shapes} lit={lit} byCountry={byCountry} callouts={false} />
+              <MapBody lit={lit} byCountry={byCountry} callouts={false} />
             </svg>
 
             {/* The cards, beside the map from lg up, each at the end of its country's line. */}
@@ -178,12 +202,10 @@ export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
 }
 
 function MapBody({
-  shapes,
   lit,
   byCountry,
   callouts,
 }: {
-  shapes: typeof LATAM_MAP_SHAPES;
   lit: typeof LATAM_MAP_SHAPES;
   byCountry: Map<string, CoverageCountry>;
   callouts: boolean;
@@ -194,64 +216,45 @@ function MapBody({
   return (
     <>
       <defs>
-        <linearGradient id={`coverage-lit-${id}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#ffd06f" />
-          <stop offset="100%" stopColor="#f39c12" />
-        </linearGradient>
         <filter id={`coverage-blur-${id}`} x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur stdDeviation="9" />
         </filter>
-        <filter id={`coverage-shadow-${id}`} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="7" />
-        </filter>
-        {/* Each outline once; the relief below re-uses it with <use>, so the 3D costs no extra path data. */}
-        {shapes.map((shape) => (
+        <linearGradient id={`coverage-sweep-${id}`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#fff3d1" stopOpacity={0} />
+          <stop offset="50%" stopColor="#fff3d1" stopOpacity={0.55} />
+          <stop offset="100%" stopColor="#fff3d1" stopOpacity={0} />
+        </linearGradient>
+        <clipPath id={`coverage-clip-${id}`}>
+          {lit.map((shape) => (
+            <use key={shape.name} href={ref(shape)} />
+          ))}
+        </clipPath>
+        {/* Each lit outline once; the glow and the link re-use it with <use>. */}
+        {lit.map((shape) => (
           <path key={shape.name} id={ref(shape).slice(1)} d={shape.d} />
         ))}
       </defs>
 
-      {/* The relief (user, 2026-10-10: 能不能把地图做成3D的？): a soft shadow on
-          the sea, every country given thickness by stacked copies stepping
-          down, the lit ones twice as thick so they stand above the rest. All
-          the sides are drawn before any top, so no side covers a neighbour's
-          surface. */}
-      <g aria-hidden fill="#00070d" opacity={0.75} filter={`url(#coverage-shadow-${id})`} transform="translate(6 18)">
-        {shapes.map((shape) => (
-          <use key={shape.name} href={ref(shape)} />
-        ))}
-      </g>
-      <g aria-hidden>
-        {shapes.filter((shape) => !shape.country).map((shape) =>
-          UNLIT_SIDES.map((step) => <use key={`${shape.name}-${step}`} href={ref(shape)} y={step} fill="#071d2c" />),
-        )}
-      </g>
-      {shapes.filter((shape) => !shape.country).map((shape) => (
-        <use key={shape.name} href={ref(shape)} fill="#11324a" stroke="#1d4560" strokeWidth={0.7} />
-      ))}
-
-      <g aria-hidden filter={`url(#coverage-blur-${id})`}>
+      {/* The painting under this layer has the relief and the gold; here each
+          covered country's edge breathes a soft halo (the relief inside stays
+          clear) and the country is the link, lit brighter when it or its card
+          is pointed at. */}
+      <g aria-hidden filter={`url(#coverage-blur-${id})`} style={{ mixBlendMode: "screen" }}>
         {lit.map((shape, index) => (
-          <use key={shape.name} href={ref(shape)} fill="#ffb21c" className="coverage-glow" style={{ animationDelay: `${(index * 0.37) % 3.2}s` }} />
+          <use key={shape.name} href={ref(shape)} fill="none" stroke="#ffb21c" strokeWidth={7} className="coverage-glow" style={{ animationDelay: `${(index * 0.37) % 3.2}s` }} />
         ))}
       </g>
 
-      {lit.map((shape) => (
-        <g key={`${shape.name}-sides`} aria-hidden data-country={shape.country!} className="coverage-country">
-          <g className="coverage-lift">
-            {LIT_SIDES.map((step, index) => (
-              <use key={step} href={ref(shape)} y={step} fill={LIT_SIDE_COLORS[index]} />
-            ))}
-          </g>
-        </g>
-      ))}
+      {/* A band of light runs across the covered countries every few seconds. */}
+      <g aria-hidden clipPath={`url(#coverage-clip-${id})`} style={{ mixBlendMode: "screen" }}>
+        <rect x={-260} y={-20} width={220} height={800} fill={`url(#coverage-sweep-${id})`} transform="skewX(-12)" className="coverage-sweep" />
+      </g>
 
       {lit.map((shape) => {
         const entry = byCountry.get(shape.country!)!;
         return (
           <a key={shape.name} href={entry.href} aria-label={`${entry.name}：${entry.liveCount} 个在招项目，${entry.linkLabel}`} data-country={entry.country} className="coverage-country">
-            <g className="coverage-lift">
-              <use href={ref(shape)} fill={`url(#coverage-lit-${id})`} stroke="#fff3d1" strokeOpacity={0.55} strokeWidth={0.8} className="coverage-shape" />
-            </g>
+            <use href={ref(shape)} fill="#ffd06f" fillOpacity={0} stroke="#fff3d1" strokeOpacity={0.45} strokeWidth={0.8} className="coverage-shape" />
           </a>
         );
       })}

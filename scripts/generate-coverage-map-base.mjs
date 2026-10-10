@@ -6,7 +6,7 @@
  * this script draws a plain map — covered countries amber, every other land
  * grey, the sea navy, no text — and an image model repaints only its texture
  * (relief, glow, night ocean) with every border held in place. The painting
- * is saved as public/home/coverage-map.webp; components/home/CoverageMap.tsx
+ * is saved as public/home/coverage-terrain.webp; components/home/CoverageMap.tsx
  * lays it under the live, interactive outlines of lib/latam-map.ts.
  *
  *   npm run maps:coverage-base   # node_modules/.cache/coverage-map/base.png

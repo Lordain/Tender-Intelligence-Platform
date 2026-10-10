@@ -18,10 +18,7 @@
 import { mergeExtractions, toTenderFields, type TenderExtraction } from "@/lib/ingestion/extract-requirements";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { assertWritten } from "@/lib/db/assert-written";
-import { applySummaryDurationFloor, isNationalPrioritySource } from "@/lib/relevance";
-import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
-import { untranslated } from "@/lib/ingestion/text-utils";
-import type { TenderRelevanceTier } from "@/types/tender";
+import { applySummaryAdjustment } from "@/lib/ingestion/summary-adjustment";
 
 export type ImportBatchAnalysisResult = {
   slug: string;
@@ -86,7 +83,7 @@ export async function importBatchAnalysis(
 
     const { data: tender, error: tenderError } = await supabase!
       .from("tenders")
-      .select("id, relevance_tier, relevance_manually_overridden, source_name")
+      .select("id")
       .eq("slug", slug)
       .maybeSingle();
     if (tenderError || !tender) {
@@ -100,19 +97,9 @@ export async function importBatchAnalysis(
         `${slug} 的一句话总结`,
         await supabase!.from("tenders").update({ one_line_summary: fields.oneLineSummary.trim() }).eq("id", tenderId),
       );
-      // A contract term the summary states sets a floor on the tier — same
-      // rule and limits as analyzeUploadedDocument (user, 2026-10-10: 超长期
-      // 项目（2年）最少中型，3年调整成大项目).
-      const tierNow = (tender.relevance_tier ?? null) as TenderRelevanceTier | null;
-      if (tierNow && !tender.relevance_manually_overridden && !isNationalPrioritySource(tender.source_name as string | null)) {
-        const floored = applySummaryDurationFloor({ tier: tierNow, label: RELEVANCE_TIER_LABELS[tierNow], reason: untranslated("") }, fields.oneLineSummary);
-        if (floored.tier !== tierNow) {
-          assertWritten(
-            `${slug} 的相关度分级（长期合同）`,
-            await supabase!.from("tenders").update({ relevance_tier: floored.tier, relevance_label: floored.label, relevance_reason: floored.reason }).eq("id", tenderId),
-          );
-        }
-      }
+      // The 一句话总结 rule, same as analyzeUploadedDocument — see
+      // lib/ingestion/summary-adjustment.ts. Never excludes.
+      await applySummaryAdjustment(supabase!, tenderId);
     }
 
     if (!options.force) {

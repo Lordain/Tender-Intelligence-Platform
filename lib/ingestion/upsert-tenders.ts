@@ -436,31 +436,57 @@ export function buildRowWithProtectedValues(fields: Tender, existing: ExistingRo
     row[column] = { ...incoming, zh: stored.zh };
   }
 
-  // The long-contract floor survives re-import (user, 2026-10-10: 超长期项目
-  // （2年）最少中型，3年调整成大项目). The 一句话总结 that states the term is
-  // written by document analysis after import, so the mapper's freshly
-  // computed tier never sees it; without this, the next run of a source that
-  // still lists the tender would put the lower tier back. A locked tier is
-  // restored by the omit loop below regardless.
-  const storedOneLine = existing.stored.one_line_summary;
-  if (typeof storedOneLine === "string" && storedOneLine.trim()) {
-    const floored = applySummaryDurationFloor(
-      { tier: row.relevance_tier as TenderRelevance["tier"], label: row.relevance_label as LocalizedText, reason: row.relevance_reason as LocalizedText },
-      storedOneLine,
-    );
-    if (floored.tier !== row.relevance_tier) {
-      row.relevance_tier = floored.tier;
-      row.relevance_label = floored.label;
-      row.relevance_reason = floored.reason;
-    }
-  }
-
-  if (existing.omit.size === 0) return row;
   for (const column of existing.omit) {
     // `slug` is the ON CONFLICT target and can never be protected; anything
     // the stored row doesn't actually have is left as the source built it.
     if (column === "slug" || !(column in existing.stored)) continue;
     row[column] = existing.stored[column];
+  }
+
+  // The tier must match the amount and summary this row will actually carry.
+  // The mapper computed it from the SOURCE's amount and no 一句话总结, but the
+  // stored amount may have been kept above (typed by an admin, or filled from
+  // the summary while the source still has none — lib/ingestion/summary-
+  // adjustment.ts), and document analysis may have written a summary stating
+  // a long contract term. Without this, the next run of a source that still
+  // lists the tender would put the source-only tier back. User, 2026-10-10:
+  // 可以基于总结调整标书内容，但是不要基于总结把标书直接屏蔽 — so a recompute
+  // that lands on 已过滤 keeps the mapper's tier instead. A locked tier was
+  // restored by the loop above and is left alone.
+  if (!existing.omit.has("relevance_tier")) {
+    const storedOneLine = typeof existing.stored.one_line_summary === "string" && existing.stored.one_line_summary.trim() ? existing.stored.one_line_summary : null;
+    const keptAmount = (row.estimated_value ?? null) as number | null;
+    const keptCurrency = (row.currency ?? null) as string | null;
+    const amountKept = keptAmount !== (fields.estimatedValue ?? null) || keptCurrency !== (fields.currency ?? null);
+    let relevance: TenderRelevance | null = null;
+    if (amountKept) {
+      relevance = classifyStoredTender({
+        title: fields.title.es,
+        summary: fields.summary.es,
+        buyer: fields.buyer,
+        country: fields.country,
+        procedureType: fields.procedureType,
+        tenderNumber: fields.tenderNumber,
+        governmentLevel: fields.governmentLevel,
+        scopeType: fields.scopeType,
+        estimatedValue: keptAmount ?? undefined,
+        currency: keptCurrency ?? undefined,
+        sourceName: fields.sourceName,
+        structuredDurationDays: fields.structuredDurationDays,
+        oneLineSummary: storedOneLine,
+      }).relevance;
+    } else if (storedOneLine) {
+      relevance = applySummaryDurationFloor(
+        { tier: row.relevance_tier as TenderRelevance["tier"], label: row.relevance_label as LocalizedText, reason: row.relevance_reason as LocalizedText },
+        storedOneLine,
+        keptAmount !== null,
+      );
+    }
+    if (relevance && relevance.tier !== row.relevance_tier && !(relevance.tier === "excluded" && row.relevance_tier !== "excluded")) {
+      row.relevance_tier = relevance.tier;
+      row.relevance_label = relevance.label;
+      row.relevance_reason = relevance.reason;
+    }
   }
   return row;
 }

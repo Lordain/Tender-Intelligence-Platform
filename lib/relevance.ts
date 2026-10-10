@@ -4527,11 +4527,15 @@ const TIER_RANK: Record<TenderRelevance["tier"], number> = { excluded: 0, standa
  * on the tier: 2 years or more → at least 中型, 3 years or more → 大型. Only
  * ever raises; never touches 已过滤 — exclusion is the platform's own rule
  * (请一定要保障现在应用的筛选规则), and a long cleaning contract is still
- * routine service. Takes precedence over the transport/works amount bands:
- * the user's own later instruction for exactly this signal.
+ * routine service.
+ *
+ * Only for a tender WITHOUT an amount (user, same day: 有金额的以金额为主，
+ * 没有金额的才用时长评估). With an amount, the amount bands decide; the term
+ * is a proxy for scale and loses to a measurement of it. `hasAmount` is a
+ * required argument so no caller can forget to ask.
  */
-export function applySummaryDurationFloor(relevance: TenderRelevance, oneLineSummary: string | null | undefined): TenderRelevance {
-  if (relevance.tier === "excluded") return relevance;
+export function applySummaryDurationFloor(relevance: TenderRelevance, oneLineSummary: string | null | undefined, hasAmount: boolean): TenderRelevance {
+  if (hasAmount || relevance.tier === "excluded") return relevance;
   const months = contractMonthsInSummary(oneLineSummary);
   if (months === null || months < SUMMARY_DURATION_SIGNIFICANT_MONTHS) return relevance;
   const floor = months >= SUMMARY_DURATION_FLAGSHIP_MONTHS ? "flagship" : "significant";
@@ -4570,7 +4574,8 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   relevance: TenderRelevance;
 } {
   const result = classifyStoredTenderFields(input);
-  return input.oneLineSummary ? { ...result, relevance: applySummaryDurationFloor(result.relevance, input.oneLineSummary) } : result;
+  const hasAmount = input.estimatedValue !== undefined && input.estimatedValue !== null;
+  return input.oneLineSummary ? { ...result, relevance: applySummaryDurationFloor(result.relevance, input.oneLineSummary, hasAmount) } : result;
 }
 
 function classifyStoredTenderFields(input: StoredTenderClassificationInput): {

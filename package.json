@@ -55,6 +55,7 @@
     "test:search-match": "tsx scripts/test-search-match.ts",
     "test:summary-amount": "tsx scripts/test-summary-amount.ts",
     "test:summary-duration": "tsx scripts/test-summary-duration.ts",
+    "test:summary-adjustment": "tsx scripts/test-summary-adjustment.ts",
     "test:download": "tsx scripts/test-download-file.ts",
     "test:extraction-pipeline": "tsx scripts/test-extraction-pipeline.ts",
     "test:weekly": "tsx scripts/test-weekly.ts",

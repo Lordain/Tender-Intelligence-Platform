@@ -177,5 +177,20 @@ const ZH = "修建绕行路段";
   check("a locked tier still wins over the floor", locked.relevance_tier, "significant");
 }
 
+{
+  // 有金额的以金额为主: with an amount, the summary's term no longer raises the tier.
+  const withAmount = { ...mapped(ES), estimatedValue: 500_000, currency: "USD" } as unknown as Tender;
+  const row = buildRowWithProtectedValues(withAmount, stored({ slug: "secop-test-1", one_line_summary: "绕行路段建设及为期三年的运维" }));
+  check("with an amount the 3-year term is ignored on re-import", row.relevance_tier, "standard");
+}
+
+{
+  // An amount the source lacks but the row keeps (filled from the summary):
+  // the tier is computed on it, not on the source's nothing.
+  const row = buildRowWithProtectedValues(mapped(ES), stored({ slug: "secop-test-1", estimated_value: 60_000_000, currency: "USD" }));
+  check("a kept amount re-tiers the row on re-import", row.relevance_tier, "flagship");
+  check("…and the amount itself is kept", row.estimated_value, 60_000_000);
+}
+
 console.log(`\n${passed}/${passed + failed} checks passed.`);
 if (failed > 0) process.exit(1);

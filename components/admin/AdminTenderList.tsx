@@ -63,6 +63,9 @@ function deadlineDay(value: string | undefined): string | null {
   return date.toISOString().slice(0, 10);
 }
 
+/** 最近24小时导入: rows first imported in the last day (createdAt — a re-import does not move it). */
+const RECENT_IMPORT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 const selectClass =
   "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-2 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
 
@@ -80,6 +83,9 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const [deadlinePresence, setDeadlinePresence] = useState("all");
   const [deadlineFrom, setDeadlineFrom] = useState("");
   const [deadlineTo, setDeadlineTo] = useState("");
+  const [recentOnly, setRecentOnly] = useState(false);
+  // Fixed when the page loads, so the window does not drift between renders.
+  const [recentSince] = useState(() => Date.now() - RECENT_IMPORT_WINDOW_MS);
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -145,6 +151,8 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   // Folded once per load, not per keystroke — the same matching as /tenders
   // (lib/search-match.ts). See AdminTenderListRow.searchSummary for why the
   // summary is searched here at all.
+  const recentCount = useMemo(() => tenders.filter((tender) => Date.parse(tender.createdAt) >= recentSince).length, [recentSince, tenders]);
+
   const searchText = useMemo(
     () => new Map(tenders.map((tender) => [tender.slug, foldSearchText([tender.title.zh, tender.title.es, tender.buyer, tender.slug, tender.tenderNumber, tender.searchSummary].join(" "))])),
     [tenders],
@@ -178,9 +186,11 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       const matchesPresence =
         deadlinePresence === "all" || (deadlinePresence === "missing" ? day === null : day !== null);
 
-      return matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
+      const matchesRecent = !recentOnly || Date.parse(tender.createdAt) >= recentSince;
+
+      return matchesRecent && matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
     });
-  }, [analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, relevance, searchText, status, tenders]);
+  }, [analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, recentOnly, recentSince, relevance, searchText, status, tenders]);
 
   // Changing any filter drops the selection. Without this the red bar
   // survives a filter change still holding rows that are no longer on screen:
@@ -190,7 +200,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   //
   // Every filter state has to appear here. selectedVisible below is the guard
   // for the day one is added and this line is forgotten.
-  const filterKey = [query, country, status, relevance, analysis, deadlinePresence, deadlineFrom, deadlineTo].join("\u0000");
+  const filterKey = [query, country, status, relevance, analysis, deadlinePresence, deadlineFrom, deadlineTo, recentOnly].join("\u0000");
   const [seenFilterKey, setSeenFilterKey] = useState(filterKey);
   if (filterKey !== seenFilterKey) {
     setSeenFilterKey(filterKey);
@@ -207,7 +217,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   );
 
   const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all" || analysis !== "all"
-    || Boolean(deadlineFrom) || Boolean(deadlineTo) || deadlinePresence !== "all";
+    || Boolean(deadlineFrom) || Boolean(deadlineTo) || deadlinePresence !== "all" || recentOnly;
 
   function clearFilters() {
     setDraftQuery("");
@@ -219,6 +229,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     setDeadlinePresence("all");
     setDeadlineFrom("");
     setDeadlineTo("");
+    setRecentOnly(false);
   }
 
   return (
@@ -226,7 +237,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       <div className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-4 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <form
-            className="flex min-w-0 flex-1 gap-2"
+            className="flex min-w-0 flex-1 gap-2 lg:max-w-[560px]"
             onSubmit={(event) => {
               event.preventDefault();
               setQuery(draftQuery);
@@ -247,7 +258,19 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
               搜索
             </button>
           </form>
-          <p className="shrink-0 text-xs font-bold text-[#64717c]">
+          <button
+            type="button"
+            aria-pressed={recentOnly}
+            onClick={() => setRecentOnly((value) => !value)}
+            className={`h-11 shrink-0 whitespace-nowrap rounded-xl border px-4 text-sm font-black transition-colors ${
+              recentOnly
+                ? "border-[#ffb21c] bg-[#fff1cf] text-[#071826]"
+                : "border-[#d8e0e3] bg-white text-[#52636e] hover:border-[#9aa5ab] hover:text-[#071826]"
+            }`}
+          >
+            最近24小时导入（{recentCount}）
+          </button>
+          <p className="shrink-0 text-xs font-bold text-[#64717c] lg:ml-auto">
             显示 <span className="text-[#071826]">{filtered.length}</span> / {tenders.length} 个项目
           </p>
         </div>

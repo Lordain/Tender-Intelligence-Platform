@@ -61,6 +61,14 @@ function CheckIcon() {
   );
 }
 
+function TrashIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-3.5">
+      <path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14M10 10v6m4-6v6" />
+    </svg>
+  );
+}
+
 const selectClass =
   "h-10 w-full rounded-xl border border-[#d8e0e3] bg-white px-3 text-sm font-bold text-[#233846] outline-none transition-colors focus:border-[#ffb21c]";
 
@@ -79,6 +87,8 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
   /** "I already fetched this one's files" — see supabase/migrations/0043_documents_downloaded_at.sql. Not the same as 无法获取, which removes the row and now lives only on the tender's edit page. */
   const [pendingDownloadOnly, setPendingDownloadOnly] = useState(false);
   const [markingSlug, setMarkingSlug] = useState<string | null>(null);
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   /** The row whose SECOP official-files list is open — one at a time, so the worklist stays a list. */
   const [openFilesSlug, setOpenFilesSlug] = useState<string | null>(null);
   // The selected tenders themselves, not just their slugs (2026-09-06): a
@@ -150,6 +160,63 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
     }
   }
 
+  /**
+   * The same delete as 项目管理 (user, 2026-10-11: 增加一个可以删除项目的按钮 /
+   * 但是要确认，避免我误点): the row and its children go, and the slug is
+   * recorded in tender_manual_deletions so the next import does not bring it
+   * back. Confirmed first, naming the tender, since it cannot be undone.
+   */
+  async function handleDelete(tender: TenderNeedingDocuments) {
+    const title = localize(tender.title, locale);
+    if (!confirm(`确定要删除「${title}」（${tender.tenderNumber}）吗？\n\n删除后无法恢复，之后的导入也不会再把它加回来。`)) return;
+    setDeletingSlug(tender.slug);
+    try {
+      const res = await fetch(`/api/admin/tenders/${tender.slug}`, { method: "DELETE" });
+      if (!res.ok) {
+        const detail = ((await res.json().catch(() => null)) as { error?: string } | null)?.error;
+        throw new Error(res.status === 403 ? "登录已过期或不是管理员账号，请刷新页面重新登录" : `HTTP ${res.status}${detail ? `：${detail}` : ""}`);
+      }
+      setTenders((prev) => prev.filter((item) => item.slug !== tender.slug));
+      setSelectedTenders((prev) => prev.filter((item) => item.slug !== tender.slug));
+      if (openFilesSlug === tender.slug) setOpenFilesSlug(null);
+    } catch (err) {
+      alert(`删除失败：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setDeletingSlug(null);
+    }
+  }
+
+  /**
+   * 也可以支持选择多个一起删除 (user, 2026-10-11): the ticked rows, through the
+   * same bulk delete 项目管理 uses. Only rows still on the worklist count — a
+   * selected tender whose analysis was just written has already left it.
+   */
+  async function handleBulkDelete(targets: TenderNeedingDocuments[]) {
+    if (targets.length === 0) return;
+    const names = targets.map((tender) => `· ${localize(tender.title, locale)}（${tender.tenderNumber}）`).join("\n");
+    if (!confirm(`确定要删除这 ${targets.length} 条项目吗？\n\n${names}\n\n删除后无法恢复，之后的导入也不会再把它们加回来。`)) return;
+    setBulkDeleting(true);
+    try {
+      const res = await fetch("/api/admin/tenders/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slugs: targets.map((tender) => tender.slug) }),
+      });
+      const data = (await res.json().catch(() => null)) as { error?: string; failed?: string[] } | null;
+      if (!res.ok) throw new Error(res.status === 403 ? "登录已过期或不是管理员账号，请刷新页面重新登录" : `HTTP ${res.status}${data?.error ? `：${data.error}` : ""}`);
+      const failed = new Set(data?.failed ?? []);
+      const removed = new Set(targets.map((tender) => tender.slug).filter((slug) => !failed.has(slug)));
+      setTenders((prev) => prev.filter((item) => !removed.has(item.slug)));
+      setSelectedTenders((prev) => prev.filter((item) => !removed.has(item.slug)));
+      if (openFilesSlug && removed.has(openFilesSlug)) setOpenFilesSlug(null);
+      if (failed.size > 0) alert(`有 ${failed.size} 条没有删掉，请稍后再试。`);
+    } catch (err) {
+      alert(`删除失败：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   useEffect(() => {
     if (!SUPABASE_CONFIGURED || loading) return;
     if (!user) router.push("/login");
@@ -207,6 +274,8 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
       return matchesQuery && matchesCountry && matchesRelevance && matchesSource && matchesDownloadable && matchesPending;
     });
   }, [country, downloadableOnly, pendingDownloadOnly, query, relevance, searchText, source, tenders]);
+
+  const selectedOnList = selectedTenders.filter((selectedTender) => tenders.some((tender) => tender.slug === selectedTender.slug));
 
   const priorityCount = tenders.filter((tender) => tender.relevanceTier === "flagship" || tender.relevanceTier === "significant").length;
   const hasFilters = Boolean(query.trim()) || country !== "all" || relevance !== "all" || source !== "all" || downloadableOnly || pendingDownloadOnly;
@@ -352,6 +421,25 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
         </div>
       </div>
 
+      {selectedOnList.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
+          <p className="text-xs font-bold text-red-700">已选择 {selectedOnList.length} 项</p>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setSelectedTenders([])} className="text-xs font-bold text-[#52636e] hover:underline">
+              取消选择
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkDelete(selectedOnList)}
+              disabled={bulkDeleting}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-600 px-3 text-xs font-black text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+            >
+              <TrashIcon />{bulkDeleting ? "删除中…" : "批量删除"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {tenders.length === 0 ? (
         <p className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-8 text-center text-sm text-[#64717c]">{localize(uiText.documentsNeededEmpty, locale)}</p>
       ) : (
@@ -378,12 +466,12 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                   with a full-text tooltip either way, so it loses the least
                   by being narrow; the buttons lose the most by being tight.
                 */}
-                <th className="w-[25%] px-3 py-2.5 font-black">{localize(uiText.colTitle, locale)}</th>
+                <th className="w-[22%] px-3 py-2.5 font-black">{localize(uiText.colTitle, locale)}</th>
                 <th className="w-[7%] px-2 py-2.5 font-black">{localize(uiText.countryLabel, locale)}</th>
                 <th className="w-[7%] px-2 py-2.5 font-black">状态</th>
                 <th className="w-[12%] px-2 py-2.5 font-black">{localize(uiText.colTenderId, locale)}</th>
                 <th className="w-[10%] px-2 py-2.5 font-black">{localize(uiText.colPublicationDate, locale)}</th>
-                <th className="w-[35%] px-2 py-2.5 text-center font-black">操作</th>
+                <th className="w-[38%] px-2 py-2.5 text-center font-black">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e9eb]">
@@ -527,6 +615,15 @@ export function DocumentsNeededView({ tenders: initialTenders }: { tenders: Tend
                         >
                           <CheckIcon />
                           {tender.documentsDownloadedAt ? "已下载" : "标记下载"}
+                        </button>
+                        <button
+                          type="button"
+                          title="删除这条项目（会先确认）"
+                          disabled={deletingSlug === tender.slug}
+                          onClick={() => handleDelete(tender)}
+                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-red-200 bg-white px-2 text-[11px] font-black text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <TrashIcon />{deletingSlug === tender.slug ? "删除中…" : "删除"}
                         </button>
                       </div>
                     </td>

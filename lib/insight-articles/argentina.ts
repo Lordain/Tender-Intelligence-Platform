@@ -68,11 +68,11 @@ export const argentinaInsight: InsightArticle = {
   regions: {
     title: "四类业务观察区，项目逻辑不同",
     map: {
-      src: "/insights/argentina-regions.svg",
-      width: 1600,
-      height: 1000,
+      src: "/insights/argentina-regions.webp",
+      width: 1536,
+      height: 1110,
       alt: "阿根廷重点区域地图，按省级行政区着色：1 西北与库约资源带、2 东北与Litoral物流带、3 中部都市与Pampas核心区、4 Patagonia能源与连接区",
-      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。",
+      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。",
     },
     items: [
       { color: "bg-[#d9a23a]", title: "西北与库约资源带", places: "Jujuy、Salta、Tucumán、Catamarca、La Rioja、San Juan、Mendoza等", focus: "锂、铜、油气和新能源带动矿区道路、输电、供水和营地；高海拔、缺水、跨省许可和社区关系影响成本。" },

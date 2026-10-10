@@ -67,7 +67,7 @@ export const panamaInsight: InsightArticle = {
   },
   regions: {
     title: "区域机会：业务观察区",
-    map: { src: "/insights/panama-regions.svg", width: 1600, height: 1000, alt: "巴拿马重点区域地图，按省级行政区着色：1 运河与都市枢纽、2 西部生产与能源带、3 中部太平洋走廊、4 东部连接与韧性区", caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。" },
+    map: { src: "/insights/panama-regions.webp", width: 1536, height: 1110, alt: "巴拿马重点区域地图，按省级行政区着色：1 运河与都市枢纽、2 西部生产与能源带、3 中部太平洋走廊、4 东部连接与韧性区", caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。" },
     items: [
       { color: "bg-[#c85c43]", title: "运河与都市枢纽", places: "Panamá、Panamá Oeste、Colón", focus: "运河配套物流、地铁土建与机电系统、供水排水和公共设施最集中；运河相关工程按运河管理局规则发包，不一定进入PanamaCompra。" },
       { color: "bg-[#d9a23a]", title: "西部生产与能源带", places: "Chiriquí、Bocas del Toro、Comarca Ngäbe-Buglé", focus: "农业生产连接、道路桥梁维护、电力和公共服务设施；工点分散，先核实公共工程部公告的实际工点和合同范围。" },

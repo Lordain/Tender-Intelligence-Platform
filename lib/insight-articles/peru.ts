@@ -55,11 +55,11 @@ export const peruInsight: InsightArticle = {
   regions: {
     title: "四类区域，形成不同的采购组合",
     map: {
-      src: "/insights/peru-regions.svg",
-      width: 1600,
-      height: 1000,
+      src: "/insights/peru-regions.webp",
+      width: 1536,
+      height: 1110,
       alt: "秘鲁重点区域地图，按省级行政区着色：1 北部资源与物流带、2 Lima—Callao与中部枢纽、3 南部矿业能源走廊、4 亚马孙与东部连接区",
-      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；仅示意，不代表具体项目选线或投资金额的地域分布。",
+      caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。",
     },
     items: [
       { color: "bg-[#d9a23a]", title: "北部资源与物流带", places: "Tumbes、Piura、Lambayeque、La Libertad、Cajamarca、Áncash", focus: "矿业、农业出口、公路、Paita港、区域机场、水务和灌溉；Cajamarca是矿业重点，沿海偏港口物流和城市服务。" },

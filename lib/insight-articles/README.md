@@ -36,9 +36,17 @@ headline number comes from, e.g. 「墨西哥国家洞察：2026—2030战略投
     adding 等 when the list is partial.
   - `focus` is one or two sentences: what is built there, then what to check.
     Only facts the article already states.
-- **The map:** `public/insights/<slug>-regions.svg`, drawn by
-  `npm run maps:insights` (`scripts/generate-insight-maps.mjs`). Never an
-  image made by hand or by an image model.
+- **The map:** `public/insights/<slug>-regions.webp` (or `.svg` until the
+  country has its terrain art), drawn by `npm run maps:insights`
+  (`scripts/generate-insight-maps.mjs`).
+  - Terrain art (user, 2026-10-10): an image model may paint the texture
+    only — relief, glow, night ocean — over the script's own base map
+    (`npm run maps:insights -- --base <slug>`), saved as
+    `data/insight-map-art/<slug>.webp`. The borders are the script's: check
+    each painting with the outline laid over it, and redo it if a border
+    moved or a neighbour turned to sea. The script then draws the exact
+    region outlines, the labels and the icon strip on top. The model never
+    draws text, numbers, icons or borders.
   - Natural Earth provinces are coloured by region, in the same colours as the
     region cards.
   - Each region carries one label: its number plus two or three icons from the
@@ -47,7 +55,8 @@ headline number comes from, e.g. 「墨西哥国家洞察：2026—2030战略投
   - Add a country there (provinces per region, icons, label offsets) and run
     the script.
   - The `alt` text is 「<国名>重点区域地图，按省级行政区着色：1 …、2 …」. The
-    caption is the shared one: 按省级行政区着色，编号对应下方区域卡片…
+    caption is the shared one: 按省级行政区着色，编号对应下方区域卡片… (with
+    terrain art: …地形质感为美术渲染，仅示意…)
 
 ## Hero photo
 

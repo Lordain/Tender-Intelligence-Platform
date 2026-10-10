@@ -7,7 +7,8 @@
  *   npm run maps:insights            # all countries
  *   npm run maps:insights -- peru    # one
  *
- * Output: public/insights/<slug>-regions.svg, 1600 × 1000.
+ * Output: public/insights/<slug>-regions.svg, 1600 × 1000 (or .webp with
+ * terrain art, below).
  *
  * Geography is Natural Earth (public domain): 1:10m admin-1 provinces for the
  * country, downloaded once into node_modules/.cache, and world-atlas's 1:50m
@@ -17,6 +18,20 @@
  * glows, and each region carries one label: its number, as on the card, and
  * its two or three industry icons from one shared set. A strip at the foot
  * names the icons used. Change the look here, once, and regenerate them all.
+ *
+ * Terrain art (user, 2026-10-10: 地图能做成像GPT做的那种？更好看的版本吗？).
+ * A country may also have a painted texture, data/insight-map-art/<slug>.webp:
+ * an image model's re-rendering of this script's own base map (relief, glow,
+ * night ocean), made with the borders held where they are. Then the output
+ * is public/insights/<slug>-regions.webp: that picture, 1536 × 1024, with
+ * the exact region outlines, the labels and the icon strip (86 px, below it)
+ * drawn here on top — the model is never asked for text, icons or borders.
+ *
+ *   npm run maps:insights -- --base [slug…]   # base maps for the model, into
+ *                                             # node_modules/.cache/insight-maps/base
+ *
+ * Check each painting against the borders before using it: the base keeps
+ * the projection identical, so an outline drawn over it shows any drift.
  */
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -25,14 +40,25 @@ import { geoMercator, geoPath, geoCentroid, geoBounds } from "d3-geo";
 import { topology } from "topojson-server";
 import { feature, merge, mesh } from "topojson-client";
 import { presimplify, simplify, quantile } from "topojson-simplify";
+import sharp from "sharp";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CACHE = join(ROOT, "node_modules/.cache/insight-maps");
 const ADMIN1_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_admin_1_states_provinces.geojson";
 
-const W = 1600;
-const H = 1000;
-const LEGEND_H = 86;
+// The canvas, set per country by setLayout(): "svg" the plain map, "base" the
+// unlabelled map handed to the image model, "art" the painted one. "base" and
+// "art" share one projection: the map area is 1536 × 1024 in both.
+let W = 1600;
+let H = 1000;
+let LEGEND_H = 86;
+const ART_DIR = join(ROOT, "data/insight-map-art");
+const BASE_DIR = join(CACHE, "base");
+function setLayout(mode) {
+  if (mode === "svg") [W, H, LEGEND_H] = [1600, 1000, 86];
+  if (mode === "base") [W, H, LEGEND_H] = [1536, 1024, 0];
+  if (mode === "art") [W, H, LEGEND_H] = [1536, 1024 + 86, 86];
+}
 
 // ── The shared icon set (24 × 24, stroked) ──────────────────────────────────
 const ICONS = {
@@ -210,7 +236,7 @@ function label(index, region, x, y) {
   return parts.join("");
 }
 
-function draw(slug, config, provincesAll, world) {
+function draw(slug, config, provincesAll, world, mode = "svg") {
   const own = provincesAll
     .filter((f) => f.properties.admin === config.admin)
     .map((f) => withoutPolygons(f, config.drop));
@@ -250,28 +276,45 @@ function draw(slug, config, provincesAll, world) {
 <filter id="shadow" x="-20%" y="-40%" width="140%" height="180%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.45"/></filter>
 <clipPath id="frame"><rect width="${W}" height="${H - LEGEND_H}"/></clipPath>
 </defs>`);
-  parts.push(`<rect width="${W}" height="${H}" fill="url(#bg)"/><rect width="${W}" height="${H - LEGEND_H}" fill="url(#grid)"/>`);
-  parts.push(`<g clip-path="url(#frame)"><g fill="#0f2c40" stroke="#24506b" stroke-width="1">${neighbours}</g>`);
+  if (mode === "art") {
+    // Transparent: the painting goes under this layer in sharp (librsvg does not draw embedded WebP).
+    parts.push(`<g clip-path="url(#frame)">`);
+  } else if (mode === "base") {
+    // Neighbours as plainly grey land, so the model does not paint them as sea.
+    parts.push(`<rect width="${W}" height="${H}" fill="url(#bg)"/>`);
+    parts.push(`<g clip-path="url(#frame)"><g fill="#3d4650" stroke="#5f6a75" stroke-width="1.2">${neighbours}</g>`);
+  } else {
+    parts.push(`<rect width="${W}" height="${H}" fill="url(#bg)"/><rect width="${W}" height="${H - LEGEND_H}" fill="url(#grid)"/>`);
+    parts.push(`<g clip-path="url(#frame)"><g fill="#0f2c40" stroke="#24506b" stroke-width="1">${neighbours}</g>`);
+  }
 
   // Region glow, then provinces, then region outlines.
   const regionShapes = config.regions.map((region, index) => {
     const members = geoms.filter((g) => regionOf.get(g.properties.name) === index && g.properties.name !== insetName);
     return members.length ? merge(topo, members) : null;
   });
-  regionShapes.forEach((shape, index) => {
+  if (mode === "art") {
+    // The painting has the colour, relief and glow; only the exact outlines go on top.
+    regionShapes.forEach((shape) => {
+      if (shape) parts.push(`<path d="${round(path(shape))}" fill="none" stroke="#fff6dd" stroke-opacity="0.8" stroke-width="1.6"/>`);
+    });
+  }
+  if (mode !== "art") regionShapes.forEach((shape, index) => {
     if (shape) parts.push(`<path d="${round(path(shape))}" fill="${config.regions[index].color}" fill-opacity="0.7" stroke="${config.regions[index].color}" stroke-width="14" stroke-opacity="0.9" filter="url(#glow)"/>`);
   });
-  for (const f of provinceFeatures) {
+  for (const f of mode === "art" ? [] : provinceFeatures) {
     if (f.properties.name === insetName) continue;
     const index = regionOf.get(f.properties.name);
     const fill = index === undefined ? "#1b4560" : config.regions[index].color;
     parts.push(`<path d="${round(path(f))}" fill="${fill}" fill-opacity="${index === undefined ? 1 : 0.86}"/>`);
   }
-  const inner = mesh(topo, topo.objects.provinces, (a, b) => a !== b);
-  parts.push(`<path d="${round(path(inner))}" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="0.9"/>`);
-  regionShapes.forEach((shape) => {
-    if (shape) parts.push(`<path d="${round(path(shape))}" fill="none" stroke="#fff6dd" stroke-opacity="0.85" stroke-width="2"/>`);
-  });
+  if (mode !== "art") {
+    const inner = mesh(topo, topo.objects.provinces, (a, b) => a !== b);
+    parts.push(`<path d="${round(path(inner))}" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="0.9"/>`);
+    regionShapes.forEach((shape) => {
+      if (shape) parts.push(`<path d="${round(path(shape))}" fill="none" stroke="#fff6dd" stroke-opacity="0.85" stroke-width="2"/>`);
+    });
+  }
 
   // Inset (Galápagos).
   let insetCentre = null;
@@ -281,12 +324,18 @@ function draw(slug, config, provincesAll, world) {
     const insetProjection = geoMercator().fitExtent([[bx + 24, by + 24], [bx + bw - 24, by + bh - 24]], target);
     const insetPath = geoPath(insetProjection);
     const index = regionOf.get(insetName);
-    parts.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="18" fill="#071826" fill-opacity="0.75" stroke="#ffffff" stroke-opacity="0.25"/>`);
-    parts.push(`<path d="${round(insetPath(target))}" fill="${config.regions[index].color}" fill-opacity="0.55" filter="url(#glow)"/>`);
-    parts.push(`<path d="${round(insetPath(target))}" fill="${config.regions[index].color}" fill-opacity="0.9" stroke="#fff6dd" stroke-width="1.5"/>`);
+    if (mode !== "art") parts.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="18" fill="#071826" fill-opacity="0.75" stroke="#ffffff" stroke-opacity="0.25"/>`);
+    if (mode !== "art") parts.push(`<path d="${round(insetPath(target))}" fill="${config.regions[index].color}" fill-opacity="0.55" filter="url(#glow)"/>`);
+    parts.push(mode === "art"
+      ? `<path d="${round(insetPath(target))}" fill="none" stroke="#fff6dd" stroke-opacity="0.8" stroke-width="1.4"/>`
+      : `<path d="${round(insetPath(target))}" fill="${config.regions[index].color}" fill-opacity="0.9" stroke="#fff6dd" stroke-width="1.5"/>`);
     insetCentre = [bx + bw / 2, by + bh / 2];
   }
   parts.push(`</g>`);
+  if (mode === "base") {
+    parts.push(`</svg>`);
+    return parts.join("\n");
+  }
 
   // Labels: at the region's centre, or offset with a leader line.
   config.regions.forEach((region, index) => {
@@ -314,11 +363,35 @@ function draw(slug, config, provincesAll, world) {
   return parts.join("\n");
 }
 
-const only = process.argv.slice(2);
+const args = process.argv.slice(2);
+const baseOnly = args.includes("--base");
+const only = args.filter((arg) => !arg.startsWith("--"));
 const provinces = (await admin1()).features;
 const world = worldCountries();
 for (const [slug, config] of Object.entries(COUNTRIES)) {
   if (only.length && !only.includes(slug)) continue;
+  if (baseOnly) {
+    setLayout("base");
+    mkdirSync(BASE_DIR, { recursive: true });
+    const out = join(BASE_DIR, `${slug}-base.png`);
+    await sharp(Buffer.from(draw(slug, config, provinces, world, "base"))).png().toFile(out);
+    console.log(`${slug}: ${out.replace(`${ROOT}/`, "")}`);
+    continue;
+  }
+  const artFile = join(ART_DIR, `${slug}.webp`);
+  if (existsSync(artFile)) {
+    setLayout("art");
+    const art = await sharp(artFile).resize(W, H - LEGEND_H, { fit: "fill" }).toBuffer();
+    const overlay = await sharp(Buffer.from(draw(slug, config, provinces, world, "art"))).png().toBuffer();
+    const out = join(ROOT, "public/insights", `${slug}-regions.webp`);
+    const info = await sharp({ create: { width: W, height: H, channels: 3, background: "#041422" } })
+      .composite([{ input: art, left: 0, top: 0 }, { input: overlay, left: 0, top: 0 }])
+      .webp({ quality: 84 })
+      .toFile(out);
+    console.log(`${slug}: ${out.replace(`${ROOT}/`, "")}（${Math.round(info.size / 1024)} KB，含底图质感）`);
+    continue;
+  }
+  setLayout("svg");
   const svg = draw(slug, config, provinces, world);
   const out = join(ROOT, "public/insights", `${slug}-regions.svg`);
   writeFileSync(out, svg);

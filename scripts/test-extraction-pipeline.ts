@@ -614,6 +614,16 @@ async function main() {
     const strayOther = normalizeRawExtraction({ risks: [{ ...risk, level: "low" }, "no es un nivel"] }) as { risks: unknown[] };
     check("a stray string that is not a level stays, to fail loudly", strayOther.risks.length === 2 && strayOther.risks[1] === "no es un nivel");
 
+    // The 2026-10-10 abort (brazil-00399857000126-1-000360-2026): every
+    // requiredDocuments item came back without `mandatory`.
+    const doc = { title: "营业执照", description: "公司注册证明", sourceReference: "Edital 8.1" };
+    const missing = normalizeRawExtraction({ requiredDocuments: [{ ...doc }, { ...doc, mandatory: null }], qualifications: [{ ...doc, mandatory: false }] }) as Record<string, { mandatory: unknown }[]>;
+    check("a missing mandatory reads as the schema's default, true", missing.requiredDocuments.every((item) => item.mandatory === true));
+    check("a mandatory the model did write is kept", missing.qualifications[0].mandatory === false);
+    const worded = normalizeRawExtraction({ experienceRequirements: [{ ...doc, mandatory: "Sim" }, { ...doc, mandatory: "opcional" }, { ...doc, mandatory: "talvez" }] }) as Record<string, { mandatory: unknown }[]>;
+    check("a written yes/no reads as a boolean", worded.experienceRequirements[0].mandatory === true && worded.experienceRequirements[1].mandatory === false);
+    check("a word nobody can map is left alone, to fail loudly", worded.experienceRequirements[2].mandatory === "talvez");
+
     // The 2026-09-16 abort: one bad enum value stopped a batch with four
     // tenders left. A value complaint is this document's problem.
     const valueOnly = new Error(

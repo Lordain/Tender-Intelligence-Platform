@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { LATAM_MAP_SHAPES, LATAM_MAP_VIEWBOX } from "@/lib/latam-map";
@@ -20,19 +21,25 @@ import { CoverageMapHighlight } from "@/components/home/CoverageMapHighlight";
  *
  * The picture is a painted satellite-style map (user, 2026-10-10: 当前首页我们
  * 使用的发光地图，能不能也替换成类似这种卫星图？… 发光效果也做成这种，只是同一色),
- * public/home/coverage-terrain.webp: an image model's re-rendering of
+ * public/home/coverage-relief.webp: an image model's re-rendering of
  * scripts/generate-coverage-map-base.mjs's base, every covered country one
  * warm gold, borders held in place. It is an ordinary lazy next/image behind
  * the SVG, set to the base's span of the canvas (COVERAGE_ART).
  *
- * Over it, server-rendered SVG from lib/latam-map.ts, so the outlines are in
- * the HTML and never in the page's JavaScript: each covered country's live
- * outline, link and hover light, its pin and line to its card. The only
- * script is the hover link between a country and its card
- * (CoverageMapHighlight). The glow is CSS (app/globals.css, .coverage-*): a
- * blurred copy of each lit country breathing over the painting, staggered;
- * a band of light sweeping across them; the lines to the cards flowing
- * outward. Under prefers-reduced-motion it all holds still, still lit.
+ * Over it, server-rendered SVG: each covered country's live outline, link and
+ * hover light, its pin and line to its card. The outlines are <use>s of one
+ * cached file, public/home/coverage-shapes.svg, so the path data sits neither
+ * in the HTML nor in the page's JavaScript (user, 2026-10-10: 确保首页的打开速
+ * 度不受影响 … 不要有卡顿). The only script is the hover link between a
+ * country and its card (CoverageMapHighlight).
+ *
+ * The motion (app/globals.css, .coverage-*) is GPU work only: a pre-blurred
+ * gold halo image breathing (opacity), a wave of light crossing the covered
+ * countries west to east, the pins' pings and the lines flowing to the cards.
+ * No SVG filter and no CSS mask runs per frame: a masked layer this large
+ * took the map from 60 to ~20 frames a second. The section is not
+ * rendered until it nears the screen (content-visibility). Under
+ * prefers-reduced-motion it all holds still, still lit.
  *
  * Counts are the country pages' own (liveTenderCountForCountry), computed by
  * app/page.tsx on the homepage's five-minute revalidation, which every import
@@ -73,6 +80,9 @@ const CALLOUT: Record<string, { side: "left" | "right"; y: number; edge: number 
 
 const pct = (value: number, of: number) => `${(value / of) * 100}%`;
 
+/** The covered countries' outlines, one cached file (scripts/generate-coverage-map-base.mjs). */
+const COVERAGE_SHAPES = "/home/coverage-shapes.svg";
+
 /** The painting's span, in map units (scripts/generate-coverage-map-base.mjs). */
 const COVERAGE_ART = { x: -300, y: -20, width: 1200, height: 800 };
 
@@ -89,19 +99,22 @@ function CoverageArt({ view, className }: { view: { x: number; width: number; he
         height: pct(COVERAGE_ART.height, view.height),
       }}
     >
-      <Image src="/home/coverage-terrain.webp" alt="" fill sizes="(min-width: 1024px) 72rem, 200vw" className="object-fill" />
+      <Image src="/home/coverage-relief.webp" alt="" fill sizes="(min-width: 1024px) 72rem, 200vw" className="object-fill" />
+      {/* The gold halo breathing: an opacity animation the GPU runs on its own. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- a fixed overlay, already sized and compressed */}
+      <img src="/home/coverage-glow.webp" alt="" loading="lazy" decoding="async" className="coverage-glow absolute inset-0 h-full w-full" />
     </div>
   );
 }
 
 /** `facing`: the side the map is on, which carries the amber accent. */
 function CountryCard({ entry, facing, className = "" }: { entry: CoverageCountry; facing?: "left" | "right"; className?: string }) {
-  const accent = facing === "right" ? "border-r-2 border-r-[#ffb21c]/80" : facing === "left" ? "border-l-2 border-l-[#ffb21c]/80" : "";
+  const accent = facing === "right" ? "lg:border-r-2 lg:border-r-[#ffb21c]/80" : facing === "left" ? "lg:border-l-2 lg:border-l-[#ffb21c]/80" : "";
   return (
     <Link
       href={entry.href}
       data-country={entry.country}
-      className={`coverage-row group block rounded-2xl border border-white/10 bg-linear-to-br from-[#0d2a3f]/95 to-[#071826]/95 px-4 py-3 shadow-[0_18px_45px_-12px_rgba(0,0,0,0.6)] backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-[#ffb21c]/60 ${accent} ${className}`}
+      className={`coverage-row group block rounded-2xl border border-white/10 bg-linear-to-br from-[#0d2a3f]/95 to-[#071826]/95 px-4 py-3 shadow-[0_18px_45px_-12px_rgba(0,0,0,0.6)] transition duration-200 hover:-translate-y-0.5 hover:border-[#ffb21c]/60 ${accent} ${className}`}
     >
       <span className="flex items-center justify-between gap-3">
         <span className="flex min-w-0 items-center gap-2">
@@ -122,9 +135,10 @@ export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
   const byCountry = new Map(countries.map((entry) => [entry.country, entry]));
   const lit = LATAM_MAP_SHAPES.filter((shape) => shape.country && byCountry.has(shape.country));
   const total = countries.reduce((sum, entry) => sum + entry.liveCount, 0);
+  const ranked = [...countries].sort((a, b) => b.liveCount - a.liveCount);
 
   return (
-    <section id="country-insights" className="scroll-mt-20 overflow-hidden bg-[#061b2b] px-5 py-16 text-white sm:px-8 sm:py-20">
+    <section id="country-insights" className="coverage-section scroll-mt-20 overflow-hidden bg-[#061b2b] px-5 py-16 text-white sm:px-8 sm:py-20">
       <div className="mx-auto max-w-[108rem]">
         <Reveal className="grid gap-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-x-12">
           <div>
@@ -143,58 +157,43 @@ export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
         </Reveal>
 
         <CoverageMapHighlight className="mx-auto mt-10 max-w-6xl">
-          <div className="relative mx-auto w-full max-w-[30rem] lg:max-w-none">
-            <CoverageArt view={CANVAS} className="hidden lg:block" />
-            <CoverageArt view={{ x: 0, ...LATAM_MAP_VIEWBOX }} className="lg:hidden" />
-            <svg
-              viewBox={`${CANVAS.x} 0 ${CANVAS.width} ${CANVAS.height}`}
-              className="relative hidden h-auto w-full lg:block"
-              role="img"
-              aria-label={`拉美地图：已覆盖 ${countries.length} 个国家，共 ${total} 个在招项目`}
-            >
-              <MapBody lit={lit} byCountry={byCountry} callouts />
-            </svg>
-            <svg
-              viewBox={`0 0 ${LATAM_MAP_VIEWBOX.width} ${LATAM_MAP_VIEWBOX.height}`}
-              className="relative h-auto w-full lg:hidden"
-              role="img"
-              aria-label={`拉美地图：已覆盖 ${countries.length} 个国家，共 ${total} 个在招项目`}
-            >
-              <MapBody lit={lit} byCountry={byCountry} callouts={false} />
-            </svg>
+          <div className="relative">
+            <div className="relative mx-auto w-full max-w-[30rem] lg:max-w-none">
+              <CoverageArt view={CANVAS} className="hidden lg:block" />
+              <CoverageArt view={{ x: 0, ...LATAM_MAP_VIEWBOX }} className="lg:hidden" />
+              <svg
+                viewBox={`${CANVAS.x} 0 ${CANVAS.width} ${CANVAS.height}`}
+                className="coverage-svg relative hidden h-auto w-full lg:block"
+                role="img"
+                aria-label={`拉美地图：已覆盖 ${countries.length} 个国家，共 ${total} 个在招项目`}
+              >
+                <MapBody lit={lit} byCountry={byCountry} callouts />
+              </svg>
+              <svg
+                viewBox={`0 0 ${LATAM_MAP_VIEWBOX.width} ${LATAM_MAP_VIEWBOX.height}`}
+                className="coverage-svg relative h-auto w-full lg:hidden"
+                role="img"
+                aria-label={`拉美地图：已覆盖 ${countries.length} 个国家，共 ${total} 个在招项目`}
+              >
+                <MapBody lit={lit} byCountry={byCountry} callouts={false} />
+              </svg>
+            </div>
 
-            {/* The cards, beside the map from lg up, each at the end of its country's line. */}
-            {lit.map((shape) => {
-              const entry = byCountry.get(shape.country!)!;
-              const callout = CALLOUT[entry.country];
-              if (!callout) return null;
-              const edge = callout.edge;
-              return (
-                <div
-                  key={entry.country}
-                  className="absolute hidden w-[13.5rem] lg:block"
-                  style={{
-                    left: pct(edge - CANVAS.x, CANVAS.width),
-                    top: pct(callout.y, CANVAS.height),
-                    transform: callout.side === "left" ? "translate(-100%, -50%)" : "translate(0, -50%)",
-                  }}
-                >
-                  <CountryCard entry={entry} facing={callout.side === "left" ? "right" : "left"} />
-                </div>
-              );
-            })}
+            {/* The cards, once: from lg up laid over the map, each at the end of its
+                country's line; below lg in two columns under it, busiest first. */}
+            <ul className="mx-auto mt-8 grid max-w-xl grid-cols-2 gap-2 lg:pointer-events-none lg:absolute lg:inset-0 lg:mt-0 lg:block lg:max-w-none">
+              {ranked.map((entry) => {
+                const callout = CALLOUT[entry.country];
+                const style = callout ? ({ "--x": pct(callout.edge - CANVAS.x, CANVAS.width), "--y": pct(callout.y, CANVAS.height) } as CSSProperties) : undefined;
+                const placed = callout ? `lg:pointer-events-auto lg:absolute lg:left-(--x) lg:top-(--y) lg:w-[13.5rem] lg:-translate-y-1/2 ${callout.side === "left" ? "lg:-translate-x-full" : ""}` : "lg:hidden";
+                return (
+                  <li key={entry.country} style={style} className={placed}>
+                    <CountryCard entry={entry} facing={callout ? (callout.side === "left" ? "right" : "left") : undefined} className="h-full lg:h-auto" />
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-
-          {/* Phones and tablets: the same cards under the map. */}
-          <ul className="mx-auto mt-8 grid max-w-xl grid-cols-2 gap-2 lg:hidden">
-            {[...countries].sort((a, b) => b.liveCount - a.liveCount).map((entry) => {
-              return (
-                <li key={entry.country}>
-                  <CountryCard entry={entry} className="h-full" />
-                </li>
-              );
-            })}
-          </ul>
         </CoverageMapHighlight>
       </div>
     </section>
@@ -210,51 +209,27 @@ function MapBody({
   byCountry: Map<string, CoverageCountry>;
   callouts: boolean;
 }) {
-  // Two copies of this body can be on the page (lg and below); the ids differ so each finds its own.
-  const id = callouts ? "wide" : "narrow";
-  const ref = (shape: (typeof LATAM_MAP_SHAPES)[number]) => `#coverage-${id}-${shape.name.replace(/\W+/g, "-")}`;
+  // The outlines live in a cached file (scripts/generate-coverage-map-base.mjs), not in this HTML.
+  const ref = (shape: (typeof LATAM_MAP_SHAPES)[number]) => `${COVERAGE_SHAPES}#${shape.name.replace(/\W+/g, "-")}`;
   return (
     <>
-      <defs>
-        <filter id={`coverage-blur-${id}`} x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="9" />
-        </filter>
-        <linearGradient id={`coverage-sweep-${id}`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#fff3d1" stopOpacity={0} />
-          <stop offset="50%" stopColor="#fff3d1" stopOpacity={0.55} />
-          <stop offset="100%" stopColor="#fff3d1" stopOpacity={0} />
-        </linearGradient>
-        <clipPath id={`coverage-clip-${id}`}>
-          {lit.map((shape) => (
-            <use key={shape.name} href={ref(shape)} />
-          ))}
-        </clipPath>
-        {/* Each lit outline once; the glow and the link re-use it with <use>. */}
+      {/* The painting under this layer has the relief, the gold and the
+          motion; here each covered country is the link, lit brighter when it
+          or its card is pointed at. */}
+      {/* A wave of light crossing the covered countries west to east every
+          7s: each lights up in turn, its delay set by its longitude. No mask,
+          no filter — the earlier masked band cost the map half its frames. */}
+      <g aria-hidden className="pointer-events-none">
         {lit.map((shape) => (
-          <path key={shape.name} id={ref(shape).slice(1)} d={shape.d} />
+          <use key={shape.name} href={ref(shape)} fill="#fff3d1" className="coverage-wave" style={{ animationDelay: `${((shape.cx - 100) / 500) * 1.6}s` }} />
         ))}
-      </defs>
-
-      {/* The painting under this layer has the relief and the gold; here each
-          covered country's edge breathes a soft halo (the relief inside stays
-          clear) and the country is the link, lit brighter when it or its card
-          is pointed at. */}
-      <g aria-hidden filter={`url(#coverage-blur-${id})`} style={{ mixBlendMode: "screen" }}>
-        {lit.map((shape, index) => (
-          <use key={shape.name} href={ref(shape)} fill="none" stroke="#ffb21c" strokeWidth={7} className="coverage-glow" style={{ animationDelay: `${(index * 0.37) % 3.2}s` }} />
-        ))}
-      </g>
-
-      {/* A band of light runs across the covered countries every few seconds. */}
-      <g aria-hidden clipPath={`url(#coverage-clip-${id})`} style={{ mixBlendMode: "screen" }}>
-        <rect x={-260} y={-20} width={220} height={800} fill={`url(#coverage-sweep-${id})`} transform="skewX(-12)" className="coverage-sweep" />
       </g>
 
       {lit.map((shape) => {
         const entry = byCountry.get(shape.country!)!;
         return (
           <a key={shape.name} href={entry.href} aria-label={`${entry.name}：${entry.liveCount} 个在招项目，${entry.linkLabel}`} data-country={entry.country} className="coverage-country">
-            <use href={ref(shape)} fill="#ffd06f" fillOpacity={0} stroke="#fff3d1" strokeOpacity={0.45} strokeWidth={0.8} className="coverage-shape" />
+            <use href={ref(shape)} fill="#fff3d1" fillOpacity={0} stroke="#fff3d1" strokeOpacity={0.45} strokeWidth={0.8} className="coverage-shape" />
           </a>
         );
       })}

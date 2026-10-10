@@ -173,12 +173,31 @@ select {
   to { transform: translateX(500%); }
 }
 
-/* Homepage coverage map — see components/home/CoverageMap.tsx. Each lit
-   country has a blurred copy behind it that breathes; the delays are
-   staggered inline so the continent shimmers rather than blinks. */
+/* Homepage coverage map — see components/home/CoverageMap.tsx. No CSS mask
+   and no SVG filter animates here: a masked layer this large took the map to
+   ~20 frames a second. The halo is an opacity animation the GPU runs; the
+   wave, pings and lines repaint only the small SVG layer above the painting. */
+.coverage-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1100px;
+}
+
+/* The live outlines, pins and lines on their own layer: their small repaints never touch the painting. */
+.coverage-svg {
+  will-change: transform;
+}
+
+/* The pre-blurred gold halo breathing over the painting. */
 .coverage-glow {
   animation: coverage-glow 3.2s ease-in-out infinite;
   opacity: 0.55;
+  will-change: opacity;
+}
+
+/* The wave of light: each covered country brightens in turn, delays inline. */
+.coverage-wave {
+  opacity: 0;
+  animation: coverage-wave 7s ease-in-out infinite;
 }
 
 .coverage-ping {
@@ -187,27 +206,20 @@ select {
   transform-origin: center;
 }
 
-.coverage-leader {
-  transition: filter 0.2s ease, stroke-opacity 0.2s ease, stroke-width 0.2s ease;
-}
-
 .coverage-shape {
-  transition: fill-opacity 0.2s ease, stroke-opacity 0.2s ease, filter 0.2s ease;
+  transition: fill-opacity 0.2s ease, stroke-opacity 0.2s ease;
 }
 
 /* Pointed at, the country lights up over the painting. */
 .coverage-country.is-active .coverage-shape {
-  fill-opacity: 0.28;
+  fill-opacity: 0.38;
   stroke-opacity: 1;
-  filter: drop-shadow(0 0 10px rgba(255, 208, 111, 0.9));
 }
 
-/* The painted map fades into the section at its edges. */
-.coverage-art {
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
-  mask-composite: intersect;
+.coverage-leader {
+  transition: stroke-opacity 0.2s ease, stroke-width 0.2s ease;
+  stroke-dasharray: 3 5;
+  animation: coverage-flow 1.4s linear infinite;
 }
 
 .coverage-country.is-active .coverage-leader {
@@ -221,30 +233,19 @@ select {
   box-shadow: 0 18px 45px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 178, 28, 0.35), 0 0 28px -6px rgba(255, 178, 28, 0.45);
 }
 
-
-/* The light band over the covered countries: across in 2.4s, then a pause. */
-.coverage-sweep {
-  animation: coverage-sweep 7s ease-in-out infinite;
+@keyframes coverage-glow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
 }
 
-/* The lines to the cards flow from the country outward. */
-.coverage-leader {
-  stroke-dasharray: 3 5;
-  animation: coverage-flow 1.4s linear infinite;
-}
-
-@keyframes coverage-sweep {
-  0% { transform: skewX(-12deg) translateX(0); }
-  35%, 100% { transform: skewX(-12deg) translateX(1300px); }
+@keyframes coverage-wave {
+  0%, 100% { opacity: 0; }
+  8% { opacity: 0.32; }
+  24% { opacity: 0; }
 }
 
 @keyframes coverage-flow {
   to { stroke-dashoffset: -16; }
-}
-
-@keyframes coverage-glow {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 0.95; }
 }
 
 @keyframes coverage-ping {
@@ -335,7 +336,7 @@ select {
   .coverage-ping,
   .coverage-leader,
   .live-dot::after { animation: none; }
-  .coverage-sweep { display: none; }
+  .coverage-wave { display: none; }
   .coverage-ping { display: none; }
   .whyus-particles { display: none; }
   [data-reveal],

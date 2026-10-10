@@ -347,6 +347,30 @@ select {
   box-shadow: 0 10px 24px -14px rgba(6, 27, 43, 0.8);
 }
 
+/* The pricing page's plan buttons (user, 2026-10-10: 订阅页按钮也做成渐变):
+   amber for the recommended plan, the hero's own gradient; a cool paper
+   gradient for the others, the same palette as .surface-cool. */
+.button-gold {
+  background-image: linear-gradient(135deg, #ffcf5c 0%, #ffb21c 55%, #f39b00 100%);
+  box-shadow: 0 10px 24px -14px rgba(255, 178, 28, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button-gold:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 14px 30px -14px rgba(255, 178, 28, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.button-paper {
+  background-image: linear-gradient(135deg, #ffffff 0%, #f3f7f8 55%, #e6eef1 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button-paper:hover {
+  box-shadow: 0 10px 22px -16px rgba(6, 27, 43, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
 /* Homepage coverage map — see components/home/CoverageMap.tsx. No CSS mask
    and no SVG filter animates here: a masked layer this large took the map to
    ~20 frames a second. The halo is an opacity animation the GPU runs; the

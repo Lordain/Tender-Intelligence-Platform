@@ -36,6 +36,39 @@ const ELECTRICAL_MATERIALS_KEYWORD = /material(es)? el[ée]ctrico(s)?/i;
 /** Lifted out of EXCLUDE_KEYWORDS only so isMexicoInternationalTargetEquipment can lift it for an HVAC purchase; the pattern is unchanged. */
 const HVAC_KEYWORD = /aire acondicionado|climatizaci[óo]n/i;
 
+/**
+ * Buying insurance — the title's own object, read from the TITLE alone (user,
+ * 2026-10-10: 保险类服务归入日常服务排除). Found on a Peru SEACE row,
+ * "Contratación del servicio de seguros personales (Riesgos Humanos) para la
+ * Autoridad Portuaria Nacional", which came out 大型 because the buyer's name
+ * reads as port infrastructure. EXCLUDE_KEYWORDS already had "pólizas de
+ * seguros" / "programa de seguros" / "contratar los seguros"; this covers the
+ * other ways a title says it.
+ *
+ * Title only, never the summary: works and vehicle notices list insurance as
+ * a requirement ("póliza todo riesgo", "incluye SOAT", "seguro de vida ley"
+ * for the crew), and that is not what they buy. "Seguro" also names buyers —
+ * Caja de Seguro Social (Panama), Instituto Mexicano del Seguro Social,
+ * Seguro Integral de Salud — hence the lookahead after the purchase verb.
+ * Matched against accent-folded text.
+ */
+export const INSURANCE_PURCHASE_TITLE = new RegExp(
+  [
+    // "servicio de seguros", "contratación del seguro", "adquisición de pólizas", "contratar los seguros"
+    String.raw`\b(?:servicios?|contratacion|contratar|adquisicion|adquirir|suministro|provision|compra)\s+(?:de|del|los|las|el|la)\s+(?:(?:los|las|el|la|un|una)\s+)?(?:servicios?\s+de\s+)?(?:seguros?|polizas?)\b(?!\s+(?:social|integral|popular)\b)`,
+    // a named line of cover
+    String.raw`\bseguros?\s+(?:de\s+)?(?:vida|personales|patrimoniales|generales|vehiculares?|multirriesgos?|de\s+accidentes|de\s+responsabilidad civil|de\s+deshonestidad|complementario de trabajo de riesgo)\b`,
+    String.raw`\briesgos humanos\b`,
+    String.raw`\b(?:adquisicion|contratacion|compra)\s+(?:del?\s+)?soat\b`,
+    // Portuguese and English titles
+    String.raw`\bcontratacao de (?:empresa (?:especializada )?(?:em|para) (?:(?:a )?prestacao de servicos de )?)?seguros?\b`,
+    String.raw`\bseguros?\s+(?:de\s+)?(?:vida|veiculos|veicular|frota|patrimonial|predial|automotivo|responsabilidade civil)\b`,
+    String.raw`\bapolices? de seguro`,
+    String.raw`\binsurance (?:services?|polic(?:y|ies)|cover(?:age)?)\b|\b(?:provision|procurement|supply) of insurance\b`,
+  ].join("|"),
+  "i",
+);
+
 const EXCLUDE_KEYWORDS = [
   /limpieza/i,
   /conserjer[íi]a|conserje/i,
@@ -3744,6 +3777,9 @@ export function classifyRelevance(input: {
         pattern.test(haystack),
     )
   ) {
+    return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
+  }
+  if (!hasIncludeOverride && INSURANCE_PURCHASE_TITLE.test(subjectTitle)) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "keyword") };
   }
 

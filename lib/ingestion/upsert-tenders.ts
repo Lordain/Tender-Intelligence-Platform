@@ -7,6 +7,7 @@ import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "@/lib/i
 import { slugify } from "@/lib/ingestion/text-utils";
 import { legacyStatus, lifecycleSchemaAvailable } from "@/lib/ingestion/lifecycle-schema";
 import { linkReissuedTenders } from "@/lib/ingestion/reissue";
+import { procurementFingerprint } from "@/lib/ingestion/duplicate-procurement";
 
 /**
  * Real yearly Datos Abiertos exports run tens of thousands of rows — one
@@ -41,6 +42,80 @@ const LOOKUP_CHUNK_SIZE = 100;
  * full re-run — but a second failure is treated as real rather than retried
  * into a hang.
  */
+/** Statuses whose row no longer stands for a live procurement, so a new posting may replace it. */
+const SUPERSEDED_STATUSES = new Set(["cancelled", "deserted"]);
+
+/**
+ * Drops NEW tenders that duplicate a stored row, or an earlier row of the
+ * same import, under another slug. Earliest publication date wins inside the
+ * import (the first posting), ties by slug. A failed lookup writes everything
+ * — a possible duplicate is a smaller harm than a stopped import.
+ */
+async function dropDuplicateProcurements(supabase: SupabaseClient, tenders: Tender[]): Promise<Tender[]> {
+  const fingerprintOf = (tender: Tender) =>
+    procurementFingerprint({
+      country: tender.country,
+      buyer: tender.buyer,
+      title: tender.title.es,
+      estimatedValue: tender.estimatedValue,
+      currency: tender.currency,
+      submissionDeadline: tender.submissionDeadline,
+    });
+  const candidates = tenders.filter((tender) => fingerprintOf(tender) !== null);
+  if (candidates.length === 0) return tenders;
+
+  const storedSlugs = new Set<string>();
+  const storedSlugsByFingerprint = new Map<string, Set<string>>();
+  const buyers = [...new Set(candidates.map((tender) => tender.buyer))];
+  for (const buyerChunk of chunk(buyers, LOOKUP_CHUNK_SIZE / 2)) {
+    const { data, error } = await withOneRetry(() =>
+      supabase.from("tenders").select("slug, country, buyer, title, estimated_value, currency, submission_deadline, status").in("buyer", buyerChunk),
+    );
+    if (error) {
+      console.warn(`  重复项目检查读取失败，本次不做这项检查：${error.message}`);
+      return tenders;
+    }
+    for (const row of data ?? []) {
+      storedSlugs.add(row.slug as string);
+      if (SUPERSEDED_STATUSES.has(row.status as string)) continue;
+      const fingerprint = procurementFingerprint({
+        country: row.country as string,
+        buyer: row.buyer as string,
+        title: (row.title as { es?: string } | null)?.es,
+        estimatedValue: row.estimated_value as number | null,
+        currency: row.currency as string | null,
+        submissionDeadline: row.submission_deadline as string | null,
+      });
+      if (!fingerprint) continue;
+      const slugs = storedSlugsByFingerprint.get(fingerprint) ?? new Set<string>();
+      slugs.add(row.slug as string);
+      storedSlugsByFingerprint.set(fingerprint, slugs);
+    }
+  }
+
+  const ordered = [...tenders].sort(
+    (a, b) => (a.publicationDate ?? "").localeCompare(b.publicationDate ?? "") || a.slug.localeCompare(b.slug),
+  );
+  const claimedInImport = new Map<string, string>();
+  const dropped = new Set<string>();
+  for (const tender of ordered) {
+    const fingerprint = fingerprintOf(tender);
+    if (!fingerprint || storedSlugs.has(tender.slug)) {
+      if (fingerprint && !claimedInImport.has(fingerprint)) claimedInImport.set(fingerprint, tender.slug);
+      continue;
+    }
+    const storedElsewhere = [...(storedSlugsByFingerprint.get(fingerprint) ?? [])].some((slug) => slug !== tender.slug);
+    const earlierInImport = claimedInImport.has(fingerprint) && claimedInImport.get(fingerprint) !== tender.slug;
+    if (storedElsewhere || earlierInImport) {
+      dropped.add(tender.slug);
+      console.log(`  重复发布，不写入：${tender.slug}（与 ${storedElsewhere ? [...storedSlugsByFingerprint.get(fingerprint)!][0] : claimedInImport.get(fingerprint)} 是同一个项目）`);
+      continue;
+    }
+    claimedInImport.set(fingerprint, tender.slug);
+  }
+  return tenders.filter((tender) => !dropped.has(tender.slug));
+}
+
 async function withOneRetry<T>(run: () => PromiseLike<T>): Promise<T> {
   try {
     return await run();
@@ -99,6 +174,12 @@ export type UpsertTendersResult = {
    * collapsed rows are genuinely different projects.
    */
   duplicateSlugCount: number;
+  /**
+   * NEW rows not written because the same procurement is already stored, or
+   * is in this same import, under another slug — a source that posted one
+   * tender twice under two ids (lib/ingestion/duplicate-procurement.ts).
+   */
+  skippedDuplicateProcurementCount: number;
   /** Where the full list of excluded rows was written, when it could be. */
   excludedCsvPath?: string;
   failed: { slug: string; error: string }[];
@@ -605,10 +686,22 @@ export async function upsertTendersBatched(
     if (error) console.error(`  tender_manual_deletions 表不存在，本次按「没有手动删除」处理。`);
     for (const row of data ?? []) deletedSlugs.add(row.slug as string);
   }
-  const liveTenders = uniqueBySlug.filter((t) => !deletedSlugs.has(t.slug));
-  const skippedManuallyDeletedCount = uniqueBySlug.length - liveTenders.length;
+  const notDeleted = uniqueBySlug.filter((t) => !deletedSlugs.has(t.slug));
+  const skippedManuallyDeletedCount = uniqueBySlug.length - notDeleted.length;
   if (skippedManuallyDeletedCount > 0) {
     console.log(`Skipping ${skippedManuallyDeletedCount} tender(s) an admin previously deleted — not re-inserted.`);
+  }
+
+  // The same procurement under another slug (2026-10-10, user: 请检查，确保不是
+  // 重复): a NEW row whose fingerprint — buyer, amount, deadline day, title —
+  // matches a row already stored under a different slug, or an earlier row of
+  // this same import, is not written. A row whose slug is already stored is
+  // always written: that is an update, and refusing it would freeze both
+  // halves of a pair already in the table. See duplicate-procurement.ts.
+  const liveTenders = await dropDuplicateProcurements(supabase, notDeleted);
+  const skippedDuplicateProcurementCount = notDeleted.length - liveTenders.length;
+  if (skippedDuplicateProcurementCount > 0) {
+    console.log(`Skipping ${skippedDuplicateProcurementCount} tender(s) already stored under another id (same buyer, amount, deadline and title) — not written twice.`);
   }
 
   for (const batch of chunk(liveTenders, BATCH_SIZE)) {
@@ -772,5 +865,5 @@ export async function upsertTendersBatched(
       ` (of ${tenders.length} mapped: ${closed.length} already past their deadline, ${rushed.length} with a bidding window under ${SHORT_BID_WINDOW_DAYS} days, ${excludedCount} excluded, ${skippedManuallyDeletedCount} previously deleted by an admin).`,
   );
 
-  return { upsertedCount, skippedExcludedCount: excludedCount, skippedClosedCount: closed.length, skippedShortWindowCount: rushed.length, protectedCount, skippedManuallyDeletedCount, duplicateSlugCount, failed, excludedCsvPath: lastExcludedCsvPath ?? undefined };
+  return { upsertedCount, skippedExcludedCount: excludedCount, skippedClosedCount: closed.length, skippedShortWindowCount: rushed.length, protectedCount, skippedManuallyDeletedCount, duplicateSlugCount, skippedDuplicateProcurementCount, failed, excludedCsvPath: lastExcludedCsvPath ?? undefined };
 }

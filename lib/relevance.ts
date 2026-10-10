@@ -2411,23 +2411,25 @@ const SIGNIFICANT_VALUE_USD = 5_000_000;
  * 关键词不再把小金额项目拉进大型。门槛…大型提到 2000 万–3000 万美元、中型提到
  * 1000 万美元左右).
  *
- * For a row whose only target industries are transportation and/or
- * construction, a disclosed amount decides the tier on its own: 大型 from
+ * For a row whose only target industries are transportation, construction
+ * and/or water, a disclosed amount decides the tier on its own: 大型 from
  * US$30M, 中型 from US$10M, 常规 below. MAJOR_PROJECT_KEYWORDS (carretera,
  * puente, puerto, aeropuerto, ferrocarril…), long duration and the include
  * overrides no longer lift such a row above what its amount says — a
  * "CONSTRUCCIÓN DE PUENTE" at US$3M is 常规, not 大型. With NO amount the
  * rules are unchanged.
  *
- * A row also tagged with any other target industry (power, water, ICT,
- * energy…) keeps the platform-wide bands above, so a substation or a power
+ * A row also tagged with any other target industry (power, ICT, energy…)
+ * keeps the platform-wide bands above, so a substation or a power
  * plant that also carries the construction tag is not touched.
  */
 const TRANSPORT_WORKS_FLAGSHIP_VALUE_USD = 30_000_000;
 const TRANSPORT_WORKS_SIGNIFICANT_VALUE_USD = 10_000_000;
-const TRANSPORT_WORKS_INDUSTRIES: ReadonlySet<string> = new Set(["transportation", "construction"]);
+// Water joined 2026-10-10, same day (user: 水务也一起调整=土建): treatment
+// plants, aqueducts and sewer networks are civil works.
+const TRANSPORT_WORKS_INDUSTRIES: ReadonlySet<string> = new Set(["transportation", "construction", "water"]);
 
-/** Whether a row's target industries are transport and/or civil works and nothing else. */
+/** Whether a row's target industries are transport, civil works and/or water and nothing else. */
 export function isTransportWorksOnly(industries: readonly string[]): boolean {
   return (
     industries.some((tag) => TRANSPORT_WORKS_INDUSTRIES.has(tag)) &&
@@ -3992,7 +3994,7 @@ export function classifyRelevance(input: {
     return { tier: fibre, label: LABELS[fibre], reason: reasonFor(fibre, "scope") };
   }
 
-  // Transport / civil works with a disclosed amount: the amount alone decides
+  // Transport / civil works / water with a disclosed amount: the amount alone decides
   // 大型 and 中型 — see TRANSPORT_WORKS_FLAGSHIP_VALUE_USD. Below the 中型 floor
   // it skips every promotion below and lands where an unpromoted row does.
   const transportWorksByValue = normalizedValue !== undefined && isTransportWorksOnly(input.industries);

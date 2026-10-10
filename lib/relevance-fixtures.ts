@@ -778,6 +778,24 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     currency: "USD",
   },
   {
+    title: "CONSTRUCCIÓN DE PLANTA DE TRATAMIENTO DE AGUAS RESIDUALES",
+    expectedTier: "significant",
+    note: "Synthetic, 2026-10-10 (水务也一起调整=土建). Water works use the transport/works bands: US$12M is 中型, not 大型 as under the platform-wide $10M floor.",
+    industries: ["water", "construction"],
+    scopeType: "works",
+    estimatedValue: 12_000_000,
+    currency: "USD",
+  },
+  {
+    title: "CONSTRUCCIÓN DE ACUEDUCTO REGIONAL",
+    expectedTier: "standard",
+    note: "Synthetic, 2026-10-10. Water-only row at US$7M: under the transport/works/water 中型 floor of $10M, so 常规 (was 中型).",
+    industries: ["water"],
+    scopeType: "works",
+    estimatedValue: 7_000_000,
+    currency: "USD",
+  },
+  {
     title: "CONSTRUCCIÓN DE SUBESTACIÓN ELÉCTRICA DE 230 KV",
     expectedTier: "flagship",
     note: "Synthetic control, 2026-10-10 (其他行业不用动): a works job that also carries the power tag keeps the platform-wide bands, so US$12M is still 大型 here.",
@@ -2740,8 +2758,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   },
   {
     title: "Registro de preços, na forma de licitação compartilhada, para futura e eventual contratação de empresa especializada na execução de obras e serviços de engenharia destinados à implantação, ampliação, recuperação, manutenção e modernização dos sistemas de saneamento básico, drenagem urbana, manejo de águas pluviais, desassoreamento de cursos d'água, recuperação ambiental e obras complementares para atender as demandas dos Municípios Consorciados ao CONSANE.",
-    expectedTier: "flagship",
-    note: "Real row, PNCP 24990099000184-1-000008/2026, R$98M, stored 大型. Saved by 'implantação' and 'ampliação'. The Portuguese twin of the Colombian 'CONSTRUCCION ... CONSERVACION Y/O MANTENIMIENTO' programme the guard was written for.",
+    expectedTier: "significant",
+    note: "Real row, PNCP 24990099000184-1-000008/2026, R$98M, stored 大型. Saved by 'implantação' and 'ampliação'. The Portuguese twin of the Colombian 'CONSTRUCCION ... CONSERVACION Y/O MANTENIMIENTO' programme the guard was written for. 2026-10-10: 中型 — construction + water, about US$18M, under the transport/works/water 大型 floor of $30M.",
     country: "Brazil", scopeType: "works", governmentLevel: "public_company", industries: ["construction", "water"], estimatedValue: 98_172_766.02, currency: "BRL",
   },
   {
@@ -3288,8 +3306,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     procedureType: "Licitación Pública Nacional",
     estimatedValue: 1_387_071_900.75,
     currency: "DOP",
-    expectedTier: "flagship",
-    note: "Real row MOPC-CCC-LPN-2026-0019, ~$23M road works by the Ministry of Public Works.",
+    expectedTier: "significant",
+    note: "Real row MOPC-CCC-LPN-2026-0019, ~$23M road works by the Ministry of Public Works. 2026-10-10: 中型 — transport/works/water bands put $23M under the $30M 大型 floor.",
     country: "Dominican Republic", scopeType: "works", governmentLevel: "federal", industries: ["construction", "transportation", "water"],
   },
   // --- 2026-10-06: Mexico whitelist — 医疗设备、暖通空调、消防、机电, international, no amount (real Compras MX rows).

@@ -31,7 +31,7 @@ import { isClosedTender } from "../lib/access-control";
 import type { TenderRelevanceTier, TenderStatus } from "../types/tender";
 
 const PAGE_SIZE = 1000;
-const IN_SCOPE = new Set(["transportation", "construction"]);
+const IN_SCOPE = new Set(["transportation", "construction", "water"]);
 const TIER_ZH: Record<TenderRelevanceTier, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "已过滤" };
 
 /** Candidate (大型 floor, 中型 floor) pairs for transport/works, in USD. The first is today's. */
@@ -127,7 +127,7 @@ async function main() {
 
   for (const [label, group] of [["在招（未截止）", scored.filter((s) => s.live)], ["全部（含已截止）", scored]] as const) {
     const shown = group.filter((s) => s.tier !== "excluded");
-    console.log(`\n==== 交通 + 土建，${label}：显示 ${shown.length} 条（人工锁定 ${lockedInScope} 条不计）====`);
+    console.log(`\n==== 交通 + 土建 + 水务，${label}：显示 ${shown.length} 条（人工锁定 ${lockedInScope} 条不计）====`);
     for (const tier of ["flagship", "significant", "standard"] as const) {
       const n = shown.filter((s) => s.tier === tier).length;
       console.log(`  ${TIER_ZH[tier]}  ${String(n).padStart(5)} 条  ${pct(n, shown.length)}`);

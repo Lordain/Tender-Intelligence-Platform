@@ -7,7 +7,7 @@ import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "@/lib/i
 import { slugify } from "@/lib/ingestion/text-utils";
 import { legacyStatus, lifecycleSchemaAvailable } from "@/lib/ingestion/lifecycle-schema";
 import { linkReissuedTenders } from "@/lib/ingestion/reissue";
-import { procurementFingerprint } from "@/lib/ingestion/duplicate-procurement";
+import { procurementFingerprints } from "@/lib/ingestion/duplicate-procurement";
 
 /**
  * Real yearly Datos Abiertos exports run tens of thousands of rows — one
@@ -52,8 +52,8 @@ const SUPERSEDED_STATUSES = new Set(["cancelled", "deserted"]);
  * — a possible duplicate is a smaller harm than a stopped import.
  */
 async function dropDuplicateProcurements(supabase: SupabaseClient, tenders: Tender[]): Promise<Tender[]> {
-  const fingerprintOf = (tender: Tender) =>
-    procurementFingerprint({
+  const fingerprintsOf = (tender: Tender) =>
+    procurementFingerprints({
       country: tender.country,
       buyer: tender.buyer,
       title: tender.title.es,
@@ -61,7 +61,7 @@ async function dropDuplicateProcurements(supabase: SupabaseClient, tenders: Tend
       currency: tender.currency,
       submissionDeadline: tender.submissionDeadline,
     });
-  const candidates = tenders.filter((tender) => fingerprintOf(tender) !== null);
+  const candidates = tenders.filter((tender) => fingerprintsOf(tender).length > 0);
   if (candidates.length === 0) return tenders;
 
   const storedSlugs = new Set<string>();
@@ -78,18 +78,18 @@ async function dropDuplicateProcurements(supabase: SupabaseClient, tenders: Tend
     for (const row of data ?? []) {
       storedSlugs.add(row.slug as string);
       if (SUPERSEDED_STATUSES.has(row.status as string)) continue;
-      const fingerprint = procurementFingerprint({
+      for (const fingerprint of procurementFingerprints({
         country: row.country as string,
         buyer: row.buyer as string,
         title: (row.title as { es?: string } | null)?.es,
         estimatedValue: row.estimated_value as number | null,
         currency: row.currency as string | null,
         submissionDeadline: row.submission_deadline as string | null,
-      });
-      if (!fingerprint) continue;
-      const slugs = storedSlugsByFingerprint.get(fingerprint) ?? new Set<string>();
-      slugs.add(row.slug as string);
-      storedSlugsByFingerprint.set(fingerprint, slugs);
+      })) {
+        const slugs = storedSlugsByFingerprint.get(fingerprint) ?? new Set<string>();
+        slugs.add(row.slug as string);
+        storedSlugsByFingerprint.set(fingerprint, slugs);
+      }
     }
   }
 
@@ -99,19 +99,23 @@ async function dropDuplicateProcurements(supabase: SupabaseClient, tenders: Tend
   const claimedInImport = new Map<string, string>();
   const dropped = new Set<string>();
   for (const tender of ordered) {
-    const fingerprint = fingerprintOf(tender);
-    if (!fingerprint || storedSlugs.has(tender.slug)) {
-      if (fingerprint && !claimedInImport.has(fingerprint)) claimedInImport.set(fingerprint, tender.slug);
+    const fingerprints = fingerprintsOf(tender);
+    const claim = () => {
+      for (const fingerprint of fingerprints) if (!claimedInImport.has(fingerprint)) claimedInImport.set(fingerprint, tender.slug);
+    };
+    if (fingerprints.length === 0 || storedSlugs.has(tender.slug)) {
+      claim();
       continue;
     }
-    const storedElsewhere = [...(storedSlugsByFingerprint.get(fingerprint) ?? [])].some((slug) => slug !== tender.slug);
-    const earlierInImport = claimedInImport.has(fingerprint) && claimedInImport.get(fingerprint) !== tender.slug;
-    if (storedElsewhere || earlierInImport) {
+    const twin =
+      fingerprints.flatMap((fingerprint) => [...(storedSlugsByFingerprint.get(fingerprint) ?? [])]).find((slug) => slug !== tender.slug) ??
+      fingerprints.map((fingerprint) => claimedInImport.get(fingerprint)).find((slug) => slug !== undefined && slug !== tender.slug);
+    if (twin) {
       dropped.add(tender.slug);
-      console.log(`  重复发布，不写入：${tender.slug}（与 ${storedElsewhere ? [...storedSlugsByFingerprint.get(fingerprint)!][0] : claimedInImport.get(fingerprint)} 是同一个项目）`);
+      console.log(`  重复发布，不写入：${tender.slug}（与 ${twin} 是同一个项目）`);
       continue;
     }
-    claimedInImport.set(fingerprint, tender.slug);
+    claim();
   }
   return tenders.filter((tender) => !dropped.has(tender.slug));
 }

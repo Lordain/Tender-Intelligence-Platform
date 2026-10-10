@@ -1,10 +1,11 @@
 /**
  * Find — and, with --write, remove — the same procurement stored twice.
  *
- * User, 2026-10-10: 请检查，确保不是重复. Groups rows that match on country,
- * buyer, amount, deadline day and folded title (lib/ingestion/
- * duplicate-procurement.ts — the same rule the import now applies to new
- * rows). Within a group it keeps one row and lists the rest:
+ * User, 2026-10-10: 请检查，确保不是重复. Groups rows that share any key from
+ * procurementFingerprints() (lib/ingestion/duplicate-procurement.ts — the
+ * same rule the import now applies to new rows): country, buyer, amount,
+ * deadline day and folded title everywhere, and for Brazil the same without
+ * the title. Within a group it keeps one row and lists the rest:
  *   - a row an admin locked (relevance_manually_overridden) is kept first,
  *     and a second locked row is listed but never removed;
  *   - otherwise the one imported first (created_at), then the lower slug.
@@ -18,7 +19,7 @@
  *   npm run dedupe:tenders -- --write   (removes the listed duplicates)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
-import { procurementFingerprint } from "../lib/ingestion/duplicate-procurement";
+import { groupDuplicateProcurements, procurementFingerprint } from "../lib/ingestion/duplicate-procurement";
 import { convertToUsd } from "../lib/currency";
 
 const PAGE_SIZE = 1000;
@@ -67,26 +68,23 @@ async function main() {
     if (page.length < PAGE_SIZE) break;
   }
 
-  const groups = new Map<string, Row[]>();
+  const inputOf = (row: Row) => ({
+    country: row.country,
+    buyer: row.buyer,
+    title: row.title?.es,
+    estimatedValue: row.estimated_value,
+    currency: row.currency,
+    submissionDeadline: row.submission_deadline,
+  });
+  const duplicates = groupDuplicateProcurements(rows, (row) => row.slug, inputOf);
+  // Same everything but the title, any country — listed for a human only.
   const looseGroups = new Map<string, Row[]>();
   for (const row of rows) {
-    const input = {
-      country: row.country,
-      buyer: row.buyer,
-      estimatedValue: row.estimated_value,
-      currency: row.currency,
-      submissionDeadline: row.submission_deadline,
-    };
-    const strict = procurementFingerprint({ ...input, title: row.title?.es });
-    if (strict) groups.set(strict, [...(groups.get(strict) ?? []), row]);
-    // Same everything but the title — "x" stands in for it.
-    const loose = procurementFingerprint({ ...input, title: "x" });
+    const loose = procurementFingerprint({ ...inputOf(row), title: "any" });
     if (loose) looseGroups.set(loose, [...(looseGroups.get(loose) ?? []), row]);
   }
-
-  const duplicates = [...groups.values()].filter((group) => group.length > 1);
   const toRemove: Row[] = [];
-  console.log(`共 ${rows.length} 条项目，发现 ${duplicates.length} 组重复（同一采购单位、金额、截止日、标题）。\n`);
+  console.log(`共 ${rows.length} 条项目，发现 ${duplicates.length} 组重复（同一采购单位、金额、截止日；巴西以外还要求标题相同）。\n`);
   for (const group of duplicates) {
     const [keep, ...rest] = [...group].sort(
       (a, b) =>

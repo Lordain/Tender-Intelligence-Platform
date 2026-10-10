@@ -3,7 +3,7 @@
  *
  *   npm run test:duplicate-procurement
  */
-import { procurementFingerprint } from "../lib/ingestion/duplicate-procurement";
+import { groupDuplicateProcurements, procurementFingerprint, procurementFingerprints } from "../lib/ingestion/duplicate-procurement";
 
 let passed = 0;
 let failed = 0;
@@ -33,6 +33,29 @@ check("采购单位不同不算重复", comprasnet !== procurementFingerprint({ 
 check("没有金额的不参与判断", procurementFingerprint({ ...base, estimatedValue: undefined, title: "x" }) === null);
 check("没有截止日的不参与判断", procurementFingerprint({ ...base, submissionDeadline: null, title: "x" }) === null);
 check("币种不同不算重复", procurementFingerprint({ ...base, title: "x" }) !== procurementFingerprint({ ...base, currency: "USD", title: "x" }));
+
+// Brazil without the title (same day, after the cleanup preview): Fortaleza's
+// edital 67/2026 posted twice, worded differently each time.
+const fortaleza = { country: "Brazil", buyer: "MUNICIPIO DE FORTALEZA", estimatedValue: 29_290_863.59, currency: "BRL", submissionDeadline: "2026-12-17T09:00:00" };
+const fromSystem = procurementFingerprints({ ...fortaleza, title: "SERVIÇOS DE ELABORAÇÃO DE PROJETOS BÁSICOS E EXECUTIVOS DE ENGENHARIA, TÚNEL SILAS MUNGUBA" });
+const byHand2 = procurementFingerprints({ ...fortaleza, title: "CONTRATAÇÃO INTEGRADA DE EMPRESA PARA A PRESTAÇÃO DE SERVIÇOS DE ELABORAÇÃO DE PROJETOS" });
+check("巴西：同一采购单位、金额、截止日，标题措辞不同也算同一个项目", fromSystem.some((key) => byHand2.includes(key)));
+check("巴西：金额差一分钱就不算", !fromSystem.some((key) => procurementFingerprints({ ...fortaleza, estimatedValue: 29_290_863.6, title: "x" }).includes(key)));
+// Mexico: template schools for different campuses, one amount and deadline.
+const school = { country: "Mexico", buyer: "DGETI", estimatedValue: 20_000_000, currency: "MXN", submissionDeadline: "2026-10-06" };
+const cosio = procurementFingerprints({ ...school, title: "Construcción del bachillerato Margarita Maza, plantel Cosío" });
+const sanFrancisco = procurementFingerprints({ ...school, title: "Construcción del bachillerato Margarita Maza, plantel San Francisco" });
+check("墨西哥：同金额同截止日的不同校区不算重复", !cosio.some((key) => sanFrancisco.includes(key)));
+
+const rows = [
+  { id: "a", input: { ...fortaleza, title: "uno" } },
+  { id: "b", input: { ...fortaleza, title: "dos" } },
+  { id: "c", input: { ...school, title: "Cosío" } },
+  { id: "d", input: { ...school, title: "San Francisco" } },
+  { id: "e", input: { ...school, title: "Cosío" } },
+];
+const groups = groupDuplicateProcurements(rows, (row) => row.id, (row) => row.input).map((group) => group.map((row) => row.id).sort().join(","));
+check("分组：巴西两条一组，墨西哥只有标题相同的一组", JSON.stringify(groups.sort()) === JSON.stringify(["a,b", "c,e"]));
 
 console.log(failed === 0 ? `全部 ${passed} 项通过` : `${failed} 项失败`);
 if (failed > 0) process.exit(1);

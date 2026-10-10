@@ -66,11 +66,11 @@ export const MANUAL_TASKS: ManualTask[] = [
     href: "/admin/import-tenders/ecuador",
     site: { label: "SOCE", href: "https://www.compraspublicas.gob.ec/ProcesoContratacion/compras/PC/buscarProceso.cpe" },
   },
-  // Added 2026-10-10 (user: 玻利维亚加进每日人工任务提醒 ok). Bolivia is
-  // staged, so what is imported stays in the admin pages until it opens.
+  // Added 2026-10-10 (user: 玻利维亚加进每日人工任务提醒 ok); Bolivia opened
+  // to visitors the same day.
   {
     id: "bolivia-sicoes",
-    label: "玻利维亚 SICOES（未公开）",
+    label: "玻利维亚 SICOES",
     how: "在 SICOES 搜索结果复制列表，贴到「SICOES 列表初筛」；把值得的项目 Ficha 整页贴到「SICOES 粘贴导入」",
     href: "/admin/import-tenders/bolivia",
     // BOLIVIA_SICOES_SEARCH_URL, written out: this file is client-safe and

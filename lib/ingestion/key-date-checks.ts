@@ -41,7 +41,7 @@ import type { TenderKeyDate } from "@/types/tender";
  */
 
 /** Exported as ExtractedKeyDateType for seace-cronograma.ts, which produces exactly this set. */
-export type ExtractedType = Exclude<TenderKeyDate["type"], "publication" | "validity_end">;
+export type ExtractedType = Exclude<TenderKeyDate["type"], "publication" | "validity_end" | "milestone">;
 export type { ExtractedType as ExtractedKeyDateType };
 
 /**
@@ -137,7 +137,7 @@ function swapHint(earlier: Row, later: Row): string {
   return "请对照标书原文核对。";
 }
 
-/** The rows of one rank, earliest and latest, in rank order. Rows the checker has no opinion on (publication, validity_end) and anything not an ISO day are dropped first. */
+/** The rows of one rank, earliest and latest, in rank order. Rows the checker has no opinion on (publication, validity_end, milestone) and anything not an ISO day are dropped first. */
 function rankGroups(keyDates: readonly Input[]): Row[][] {
   const rows = keyDates.filter((item): item is Row => item.type in RANK && ISO_DAY.test(item.date));
   const byRank = new Map<number, Row[]>();

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { TenderKeyDate } from "@/types/tender";
-import { KEY_DATE_TYPE_LABELS } from "@/lib/tender-labels";
+import { KEY_DATE_TYPE_LABELS, keyDateTitle } from "@/lib/tender-labels";
 import { formatDate } from "@/lib/format";
 
 /**
@@ -20,7 +20,9 @@ import { formatDate } from "@/lib/format";
  * top-level column counterpart and stay purely admin-managed here.
  */
 const HANDLED_ELSEWHERE: TenderKeyDate["type"][] = ["publication", "submission", "award"];
-const KEY_DATE_TYPES = (Object.keys(KEY_DATE_TYPE_LABELS) as TenderKeyDate["type"][]).filter((t) => !HANDLED_ELSEWHERE.includes(t));
+// "milestone" rows come from a pasted schedule, named by their notes; they are
+// listed below like any other row but not offered as a type to add by hand.
+const KEY_DATE_TYPES = (Object.keys(KEY_DATE_TYPE_LABELS) as TenderKeyDate["type"][]).filter((t) => !HANDLED_ELSEWHERE.includes(t) && t !== "milestone");
 
 const inputClass =
   "h-11 w-full rounded-lg border border-[#d8e0e3] bg-white px-3 text-sm text-[#071826] outline-none transition-shadow focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10";
@@ -215,7 +217,7 @@ export function KeyDatesEditor({ tenderSlug, initialKeyDates }: { tenderSlug: st
           </div>
         ) : (
           <div key={kd.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-[#e2e7e9] bg-white px-3 py-2.5 text-sm">
-            <span className="rounded-full bg-[#edf2f3] px-2.5 py-1 text-xs font-bold text-[#425461]">{KEY_DATE_TYPE_LABELS[kd.type].zh}</span>
+            <span className="rounded-full bg-[#edf2f3] px-2.5 py-1 text-xs font-bold text-[#425461]">{keyDateTitle(kd, "zh")}</span>
             <span className="font-bold text-[#071826]">{formatDate(kd.date, "zh")}</span>
             {sameDayIds.has(kd.id) && (
               <span className="rounded-full bg-[#fff4d8] px-2 py-0.5 text-[11px] font-bold text-[#9a6200]" title="前台会把提交截止和开标合并显示为同一事件">

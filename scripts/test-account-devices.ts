@@ -28,7 +28,11 @@ function check(name: string, actual: unknown, expected: unknown): void {
   }
 }
 
-const at = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60_000).toISOString();
+// One clock reading for the whole file: reading it per call let the tie
+// checks below fail now and then, when the millisecond turned between two
+// rows meant to share a stamp.
+const NOW = Date.now();
+const at = (minutesAgo: number) => new Date(NOW - minutesAgo * 60_000).toISOString();
 
 // ── Under and at the cap nothing is touched ────────────────────────────────
 check("an empty account revokes nothing", devicesToRevoke([]), []);

@@ -3294,4 +3294,39 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     note: "The control: a NATIONAL procedure (N). The whitelist is for international ones only, as offered.",
     country: "Mexico", scopeType: "equipment", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
   },
+  // ---- 2026-10-10: insurance is routine service (user: 保险类服务归入日常服务排除), read from the title only. ----
+  {
+    title: "Contratación del servicio de seguros personales (Riesgos Humanos) para la Autoridad Portuaria Nacional",
+    expectedTier: "excluded",
+    note: "Peru SEACE, local dry run 2026-10-10: came out FLAGSHIP because the buyer's name reads as port infrastructure. It buys insurance.",
+    country: "Peru", scopeType: "services", governmentLevel: "federal", procedureType: "Concurso Público",
+  },
+  {
+    title: "SERVICIO DE SEGUROS PATRIMONIALES Y PERSONALES PARA ELECTRO ORIENTE S.A.",
+    estimatedValue: 2_000_000, currency: "USD",
+    expectedTier: "excluded",
+    note: "Insurance over the US$1M floor is still insurance.",
+    country: "Peru", scopeType: "services", governmentLevel: "federal", procedureType: "Concurso Público",
+  },
+  {
+    title: "ADQUISICIÓN DE EQUIPOS DE IMAGENOLOGÍA PARA LA CAJA DE SEGURO SOCIAL",
+    estimatedValue: 12_000_000, currency: "USD",
+    expectedTier: "flagship",
+    note: "The control: Caja de Seguro Social is Panama's social-security fund — a buyer, not insurance being bought.",
+    country: "Panama", scopeType: "equipment", governmentLevel: "federal", procedureType: "Licitación por mejor valor",
+  },
+  {
+    title: "CONSTRUCCIÓN DEL HOSPITAL GENERAL DE ZONA DEL INSTITUTO MEXICANO DEL SEGURO SOCIAL EN TAPACHULA",
+    estimatedValue: 900_000_000, currency: "MXN",
+    expectedTier: "flagship",
+    note: "The control: IMSS named in the title.",
+    country: "Mexico", scopeType: "works", governmentLevel: "federal", procedureType: "LICITACIÓN PÚBLICA",
+  },
+  {
+    title: "SUMINISTRO SEGURO DE AGUA POTABLE PARA LA CIUDAD - CONSTRUCCIÓN DE PLANTA",
+    estimatedValue: 8_000_000, currency: "USD",
+    expectedTier: "significant",
+    note: "The control: \"seguro\" as an adjective (safe), not insurance.",
+    country: "Colombia", scopeType: "works", governmentLevel: "federal", procedureType: "Licitación pública",
+  },
 ];

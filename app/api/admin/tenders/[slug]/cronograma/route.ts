@@ -9,6 +9,7 @@ import {
   CRONOGRAMA_SOURCE_REFERENCE,
   CRONOGRAMA_SOURCE_REFERENCES,
   PE_MX_CRONOGRAMA_SOURCE_REFERENCE,
+  PROINVERSION_CRONOGRAMA_SOURCE_REFERENCE,
   diffAgainstExisting,
 } from "@/lib/ingestion/seace-cronograma";
 import { parseAnyCronograma } from "@/lib/ingestion/proyectos-estrategicos-cronograma";
@@ -61,7 +62,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   // mean the paste picked up the wrong rows than that SEACE is wrong — which
   // is exactly why it is shown rather than acted on.
   const problems = findKeyDateProblems(
-    parsed.rows.map((row) => ({ type: row.type, date: row.date })),
+    // A milestone has no place in the order the checker enforces.
+    parsed.rows.flatMap((row) => (row.type === "milestone" ? [] : [{ type: row.type, date: row.date }])),
     { publicationDate: (tender.publication_date as string | null) ?? null },
   );
 
@@ -157,7 +159,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   // Each format gets its own marker so the admin can see which page a row was
   // read off; both are deleted above, so re-pasting either stays idempotent.
   const sourceReference =
-    parsed.format === "proyectos-estrategicos" ? PE_MX_CRONOGRAMA_SOURCE_REFERENCE : CRONOGRAMA_SOURCE_REFERENCE;
+    parsed.format === "proyectos-estrategicos"
+      ? PE_MX_CRONOGRAMA_SOURCE_REFERENCE
+      : parsed.format === "proinversion"
+        ? PROINVERSION_CRONOGRAMA_SOURCE_REFERENCE
+        : CRONOGRAMA_SOURCE_REFERENCE;
   const timelineRows = diff.toInsert;
   if (timelineRows.length > 0) {
     const { error: insertError } = await supabase.from("tender_key_dates").insert(
@@ -168,7 +174,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
         // Just the stage, verbatim. The row renders its source_reference
         // beside this already, so prefixing the note with it printed the same
         // sentence twice across one line.
-        notes: { es: "", en: "", zh: row.label },
+        // A milestone is named by its notes (see keyDateTitle in lib/tender-labels.ts).
+        notes: row.type === "milestone" && row.notes ? row.notes : { es: "", en: "", zh: row.label },
+        ...(row.mandatory ? { mandatory: true } : {}),
         source_reference: sourceReference,
         // A human read this off the official page, so a re-ingest must never
         // delete it (migration 0033).

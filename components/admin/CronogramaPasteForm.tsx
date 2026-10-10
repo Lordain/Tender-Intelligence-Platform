@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
  * checker made of the result.
  */
 type Preview = {
-  rows: { label: string; date: string; type: string; raw: string }[];
+  rows: { label: string; date: string; type: string; raw: string; notes?: { zh: string }; mandatory?: boolean }[];
   ignored: { label: string; reason: string }[];
   unparsed: string[];
   problems: string[];
@@ -59,15 +59,19 @@ const TYPE_LABELS: Record<string, string> = {
   award: "授标",
   contract_signing: "签约",
   site_visit: "现场踏勘",
+  milestone: "其他节点",
 };
 
 export function CronogramaPasteForm({
   tenderSlug,
   country,
+  isProinversion = false,
   initialFichaUrl,
 }: {
   tenderSlug: string;
   country: string;
+  /** A ProInversión APP concurso: the schedule comes from its bases, not a SEACE ficha. */
+  isProinversion?: boolean;
   /** Whatever a previous paste stored (migration 0048), so it is visible and correctable rather than silently overwritten. */
   initialFichaUrl?: string;
 }) {
@@ -122,8 +126,20 @@ export function CronogramaPasteForm({
   // The two sources publish their schedule in completely different shapes, so
   // the instructions have to name the right page — the parser detects the
   // format either way, but an admin needs to know what to go and copy.
-  const copy =
-    country === "Mexico"
+  const copy = isProinversion
+    ? {
+        title: "从 ProInversión 招标文件粘贴日程",
+        body: (
+          <>
+            ProInversión 的项目库不公布截止日。打开该项目的招标文件（Bases）或最新通告（Circular），
+            选中 <span className="font-bold">Cronograma</span> 整张表（Actividad / Plazo o Fechas）复制，粘贴到下面。
+            每个有日期的节点都会保存：提问截止、参与费（报名费）、资格申请、合同各稿、联合体变更等；
+            没有具体日期的（如「合同终稿后 30 天」）会列出来，不推算。
+            交标截止取递交信封的日期；招标文件还没定这一天时，取资格申请截止。
+          </>
+        ),
+      }
+    : country === "Mexico"
       ? {
           title: "从 Proyectos Estratégicos 粘贴日程",
           body: (
@@ -164,7 +180,9 @@ export function CronogramaPasteForm({
         onChange={(event) => setPasted(event.target.value)}
         rows={6}
         placeholder={
-          country === "Mexico"
+          isProinversion
+            ? "1.1. Consultas a las Bases\nHasta el jueves 24.09.2026\n3.1. Pago del Derecho de Participación\nHasta el viernes 27.11.2026\n…"
+            : country === "Mexico"
             ? "Fecha y hora de presentación y apertura de proposiciones:\n08/10/2026 11:00\n…"
             : "Etapa\tFecha Inicio\tFecha Fin\nConvocatoria\t10/09/2026\t10/09/2026\n…"
         }
@@ -177,46 +195,50 @@ export function CronogramaPasteForm({
           lost to an import (2026-09-15), every one had to be found again by
           typing its procedure number into that search. The admin pasting is
           already on the right page with its URL in the address bar. */}
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-bold text-[#52636e]">
-          {country === "Mexico" ? "该项目页面链接（选填）" : "ficha 链接（选填）"}
-          <span className="ml-1 font-normal text-[#8a97a0]">
-            ——{country === "Mexico" ? "复制浏览器地址栏里这个项目的网址" : "复制浏览器地址栏里 ficha de selección 的网址"}。
-            {country === "Mexico" ? (
-              <>
-                填了会<span className="font-bold text-[#b86e00]">同时更新最下方的「官方标书链接」</span>，也就是前台那个官方入口按钮——
-                读者点进去就是这个项目本身，而不是平台首页或搜索页。
-              </>
-            ) : (
-              <>
-                只存下来供自己复核，<span className="font-bold text-[#b86e00]">不会</span>改前台的官方入口——
-                SEACE 的 ficha 链接只在你当前这次浏览会话里有效，换个人、换个时间点开就是一张空表。
-              </>
-            )}
+      {/* A ProInversión project's public link is its portfolio page, which the
+          import keeps; a pasted bases PDF is not a better entry for readers. */}
+      {!isProinversion && (
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-[#52636e]">
+            {country === "Mexico" ? "该项目页面链接（选填）" : "ficha 链接（选填）"}
+            <span className="ml-1 font-normal text-[#8a97a0]">
+              ——{country === "Mexico" ? "复制浏览器地址栏里这个项目的网址" : "复制浏览器地址栏里 ficha de selección 的网址"}。
+              {country === "Mexico" ? (
+                <>
+                  填了会<span className="font-bold text-[#b86e00]">同时更新最下方的「官方标书链接」</span>，也就是前台那个官方入口按钮——
+                  读者点进去就是这个项目本身，而不是平台首页或搜索页。
+                </>
+              ) : (
+                <>
+                  只存下来供自己复核，<span className="font-bold text-[#b86e00]">不会</span>改前台的官方入口——
+                  SEACE 的 ficha 链接只在你当前这次浏览会话里有效，换个人、换个时间点开就是一张空表。
+                </>
+              )}
+            </span>
           </span>
-        </span>
-        <input
-          type="url"
-          value={fichaUrl}
-          onChange={(event) => setFichaUrl(event.target.value)}
-          placeholder={
-            country === "Mexico"
-              ? "https://proyectosestrategicosmx.hacienda.gob.mx/sitiopublico/#/…"
-              : "https://prod2.seace.gob.pe/seacebus-uiwd-pub/fichaSeleccion/fichaSeleccion.xhtml?id=…"
-          }
-          className="w-full rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 text-xs text-[#071826] outline-none focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10"
-        />
-        {initialFichaUrl && (
-          <a
-            href={initialFichaUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="self-start text-xs font-bold text-[#b86e00] underline"
-          >
-            打开已保存的链接 ↗
-          </a>
-        )}
-      </label>
+          <input
+            type="url"
+            value={fichaUrl}
+            onChange={(event) => setFichaUrl(event.target.value)}
+            placeholder={
+              country === "Mexico"
+                ? "https://proyectosestrategicosmx.hacienda.gob.mx/sitiopublico/#/…"
+                : "https://prod2.seace.gob.pe/seacebus-uiwd-pub/fichaSeleccion/fichaSeleccion.xhtml?id=…"
+            }
+            className="w-full rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 text-xs text-[#071826] outline-none focus:border-[#ffb21c] focus:ring-4 focus:ring-[#ffb21c]/10"
+          />
+          {initialFichaUrl && (
+            <a
+              href={initialFichaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="self-start text-xs font-bold text-[#b86e00] underline"
+            >
+              打开已保存的链接 ↗
+            </a>
+          )}
+        </label>
+      )}
 
       {/* Two-step on purpose, and the labels have to say so. The write button
           first read "写入这 0 条" before a preview had ever run, which a user
@@ -265,15 +287,18 @@ export function CronogramaPasteForm({
                 <tr className="border-b border-[#e5e9eb] text-[#52636e]">
                   <th className="py-1.5 pr-3 font-black">类型</th>
                   <th className="py-1.5 pr-3 font-black">日期</th>
-                  <th className="py-1.5 font-black">ficha 原文</th>
+                  <th className="py-1.5 font-black">{isProinversion ? "招标文件原文" : "ficha 原文"}</th>
                 </tr>
               </thead>
               <tbody>
-                {preview.rows.map((row) => {
+                {preview.rows.map((row, index) => {
                   const duplicate = preview.duplicates.find((item) => item.type === row.type && item.date === row.date);
                   return (
-                    <tr key={`${row.type}-${row.date}`} className="border-b border-[#f0f2f3]">
-                      <td className="py-1.5 pr-3 font-black text-[#071826]">{TYPE_LABELS[row.type] ?? row.type}</td>
+                    <tr key={`${row.type}-${row.date}-${index}`} className="border-b border-[#f0f2f3]">
+                      <td className="py-1.5 pr-3 font-black text-[#071826]">
+                        {row.type === "milestone" ? row.notes?.zh ?? TYPE_LABELS.milestone : TYPE_LABELS[row.type] ?? row.type}
+                        {row.mandatory && <span className="ml-1 text-[11px] font-bold text-[#a34030]">必须</span>}
+                      </td>
                       <td className="py-1.5 pr-3 font-mono">{row.date}</td>
                       <td className="py-1.5 text-[#52636e]">
                         {row.label}

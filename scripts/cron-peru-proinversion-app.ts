@@ -54,10 +54,10 @@ async function main() {
     supabase!,
     "import-peru-app",
     problem ? "failed" : "ok",
-    problem ?? `进行中 ${result.open.length + result.openBeforeWindow.length} 个，写入 ${result.upsertedCount ?? 0} 个，标为已中标 ${result.awardedSlugs?.length ?? 0} 个`,
+    problem ?? `进行中 ${result.open.length + result.openBeforeWindow.length} 个，写入 ${result.upsertedCount ?? 0} 个，更新状态 ${result.statusChanges?.length ?? 0} 个`,
   );
   if (failed.length > 0) for (const f of failed.slice(0, 10)) console.error(`  ${f.slug} —— ${f.error}`);
-  if (result.awardedSlugs?.length) console.log(`标为已中标：${result.awardedSlugs.join("、")}`);
+  if (result.statusChanges?.length) console.log(`更新状态：${result.statusChanges.map((change) => `${change.slug} → ${change.status}`).join("、")}`);
   if (problem) process.exit(1);
   console.log(`\n写入 ${result.upsertedCount ?? 0} 个。完成。`);
 }

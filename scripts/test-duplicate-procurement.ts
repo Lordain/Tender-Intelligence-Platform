@@ -34,5 +34,5 @@ check("没有金额的不参与判断", procurementFingerprint({ ...base, estima
 check("没有截止日的不参与判断", procurementFingerprint({ ...base, submissionDeadline: null, title: "x" }) === null);
 check("币种不同不算重复", procurementFingerprint({ ...base, title: "x" }) !== procurementFingerprint({ ...base, currency: "USD", title: "x" }));
 
-console.log(failed === 0 ? "全部通过" : `${failed} 项失败`);
+console.log(failed === 0 ? `全部 ${passed} 项通过` : `${failed} 项失败`);
 if (failed > 0) process.exit(1);

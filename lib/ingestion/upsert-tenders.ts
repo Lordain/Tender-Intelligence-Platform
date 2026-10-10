@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Tender } from "@/types/tender";
+import type { LocalizedText, Tender, TenderRelevance } from "@/types/tender";
 import { assertWritten } from "@/lib/db/assert-written";
-import { classifyStoredTender } from "@/lib/relevance";
+import { applySummaryDurationFloor, classifyStoredTender } from "@/lib/relevance";
 import { hasShortBidWindow, isPastSubmissionDeadline, SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "@/lib/ingestion/review-csv";
 import { slugify } from "@/lib/ingestion/text-utils";
@@ -434,6 +434,25 @@ export function buildRowWithProtectedValues(fields: Tender, existing: ExistingRo
     if (stored.es !== incoming.es) continue;
     if (stored.zh === undefined || stored.zh === stored.es) continue;
     row[column] = { ...incoming, zh: stored.zh };
+  }
+
+  // The long-contract floor survives re-import (user, 2026-10-10: 超长期项目
+  // （2年）最少中型，3年调整成大项目). The 一句话总结 that states the term is
+  // written by document analysis after import, so the mapper's freshly
+  // computed tier never sees it; without this, the next run of a source that
+  // still lists the tender would put the lower tier back. A locked tier is
+  // restored by the omit loop below regardless.
+  const storedOneLine = existing.stored.one_line_summary;
+  if (typeof storedOneLine === "string" && storedOneLine.trim()) {
+    const floored = applySummaryDurationFloor(
+      { tier: row.relevance_tier as TenderRelevance["tier"], label: row.relevance_label as LocalizedText, reason: row.relevance_reason as LocalizedText },
+      storedOneLine,
+    );
+    if (floored.tier !== row.relevance_tier) {
+      row.relevance_tier = floored.tier;
+      row.relevance_label = floored.label;
+      row.relevance_reason = floored.reason;
+    }
   }
 
   if (existing.omit.size === 0) return row;

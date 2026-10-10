@@ -13,7 +13,9 @@
  * rounds: "约5,225万雷亚尔") count as the same.
  *
  * What --write changes, per row in the 「会替换」 list:
- *   - estimated_value and currency → the summary's;
+ *   - estimated_value and currency → the summary's, and both are added to
+ *     manual_field_overrides so the next import of the source does not put
+ *     its own figure back (lib/ingestion/upsert-tenders.ts omitSetFor);
  *   - relevance_tier / label / reason → recomputed on the new amount
  *     (classifyStoredTender, the import's own rule), EXCEPT a row an admin
  *     locked (relevance_manually_overridden) keeps its tier, and a row the
@@ -22,12 +24,19 @@
  * Rows with NO stored amount are listed separately and only filled with
  * --include-empty.
  *
+ * Same day, second rule (一句话总结里面如果识别到超长期项目（2年），就归为最少
+ * 中型项目，3年调整成大项目): a contract term the summary states sets a floor
+ * on the tier — applySummaryDurationFloor, lib/relevance.ts. Rows whose amount
+ * changes get it through classifyStoredTender; every other row gets it on its
+ * stored tier, in the 「长期合同，规模上调」 list. Locked rows and 已过滤 rows
+ * are never moved.
+ *
  *   npm run align:summary-amounts                                (preview)
  *   npm run align:summary-amounts -- --write                     (apply)
  *   npm run align:summary-amounts -- --write --include-empty     (also fill blanks)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
-import { classifyStoredTender } from "../lib/relevance";
+import { applySummaryDurationFloor, classifyStoredTender } from "../lib/relevance";
 import { convertToUsd } from "../lib/currency";
 import { amountsInSummary, type SummaryAmount } from "../lib/ingestion/summary-amount";
 import type { LocalizedText, TenderRelevanceTier } from "../types/tender";
@@ -55,6 +64,7 @@ type Row = {
   structured_duration_days: number | null;
   relevance_tier: TenderRelevanceTier | null;
   relevance_manually_overridden: boolean | null;
+  manual_field_overrides: string[] | null;
 };
 
 type Change = {
@@ -84,7 +94,7 @@ async function main() {
     const { data, error } = await supabase
       .from("tenders")
       .select(
-        "slug, tender_number, title, summary, one_line_summary, buyer, country, procedure_type, government_level, scope_type, estimated_value, currency, source_name, structured_duration_days, relevance_tier, relevance_manually_overridden",
+        "slug, tender_number, title, summary, one_line_summary, buyer, country, procedure_type, government_level, scope_type, estimated_value, currency, source_name, structured_duration_days, relevance_tier, relevance_manually_overridden, manual_field_overrides",
       )
       .not("one_line_summary", "is", null)
       .order("slug", { ascending: true })
@@ -99,6 +109,16 @@ async function main() {
   }
 
   const replace: Change[] = [];
+  const lengthen: { row: Row; tierFrom: TenderRelevanceTier; tierTo: TenderRelevanceTier; label: LocalizedText; reason: LocalizedText }[] = [];
+  let lockedLong = 0;
+  // A row whose amount stays as it is may still need the long-contract floor.
+  const floorOnly = (row: Row) => {
+    const tierFrom = row.relevance_tier ?? "standard";
+    const floored = applySummaryDurationFloor({ tier: tierFrom, label: { zh: "", en: "", es: "" }, reason: { zh: "", en: "", es: "" } }, row.one_line_summary);
+    if (floored.tier === tierFrom) return;
+    if (row.relevance_manually_overridden === true) lockedLong += 1;
+    else lengthen.push({ row, tierFrom, tierTo: floored.tier, label: floored.label, reason: floored.reason });
+  };
   const fill: Change[] = [];
   const ambiguous: { row: Row; amounts: SummaryAmount[] }[] = [];
   let same = 0;
@@ -109,10 +129,12 @@ async function main() {
     const result = amountsInSummary(row.one_line_summary, row.country);
     if (result.kind === "none") {
       noAmount += 1;
+      floorOnly(row);
       continue;
     }
     if (result.kind === "ambiguous") {
       ambiguous.push({ row, amounts: result.amounts });
+      floorOnly(row);
       continue;
     }
     const amount = result.amount;
@@ -120,10 +142,12 @@ async function main() {
     const storedUsd = usd(row.estimated_value, row.currency);
     if (summaryUsd === null) {
       unconvertible += 1;
+      floorOnly(row);
       continue;
     }
     if (storedUsd !== null && Math.abs(summaryUsd - storedUsd) <= storedUsd * TOLERANCE) {
       same += 1;
+      floorOnly(row);
       continue;
     }
 
@@ -140,6 +164,7 @@ async function main() {
       currency: amount.currency,
       sourceName: row.source_name,
       structuredDurationDays: row.structured_duration_days ?? undefined,
+      oneLineSummary: row.one_line_summary,
     });
     const tierFrom = row.relevance_tier ?? "standard";
     let tierTo = relevance.tier;
@@ -157,7 +182,8 @@ async function main() {
   }
 
   console.log(`有一句话总结的项目 ${rows.length} 条：总结里没写金额 ${noAmount} 条，金额一致（差 ≤3%）${same} 条，总结里有多个金额/看不准 ${ambiguous.length} 条${unconvertible ? `，币种无法换算 ${unconvertible} 条` : ""}。`);
-  console.log(`金额不一致、会替换 ${replace.length} 条；库里没有金额、总结里有 ${fill.length} 条（${includeEmpty ? "会补上" : "只列出，加 --include-empty 才补"}）。\n`);
+  console.log(`金额不一致、会替换 ${replace.length} 条；库里没有金额、总结里有 ${fill.length} 条（${includeEmpty ? "会补上" : "只列出，加 --include-empty 才补"}）。`);
+  console.log(`金额不变、但总结写明长期合同（2 年以上至少中型，3 年以上大型）要上调规模 ${lengthen.length} 条${lockedLong ? `（另有人工锁定 ${lockedLong} 条，不动）` : ""}。\n`);
 
   const printChange = (change: Change) => {
     const { row, amount } = change;
@@ -181,8 +207,17 @@ async function main() {
     fill.forEach(printChange);
     console.log("");
   }
+  if (lengthen.length > 0) {
+    console.log("==== 长期合同，规模上调（金额不动）====");
+    for (const { row, tierFrom, tierTo } of lengthen) {
+      console.log(`  ${row.country.padEnd(10)} ${titleOf(row)}  ${TIER_ZH[tierFrom]}→${TIER_ZH[tierTo]}  金额 ${fmtRaw(row.estimated_value, row.currency)}`);
+      console.log(`    总结：${row.one_line_summary}`);
+      console.log(`    ${row.slug}`);
+    }
+    console.log("");
+  }
   if (ambiguous.length > 0) {
-    console.log("==== 总结里有多个金额或看不准，不动（请人工看）====");
+    console.log("==== 总结里有多个金额或看不准，金额不动（请人工看）====");
     for (const { row, amounts } of ambiguous) {
       console.log(`  ${row.country.padEnd(10)} ${titleOf(row)}  现在 ${fmtRaw(row.estimated_value, row.currency)}`);
       console.log(`    总结：${row.one_line_summary}`);
@@ -202,7 +237,11 @@ async function main() {
   let retiered = 0;
   let failed = 0;
   for (const change of toWrite) {
-    const patch: Record<string, unknown> = { estimated_value: change.amount.value, currency: change.amount.currency };
+    const patch: Record<string, unknown> = {
+      estimated_value: change.amount.value,
+      currency: change.amount.currency,
+      manual_field_overrides: [...new Set([...(change.row.manual_field_overrides ?? []), "estimated_value", "currency"])],
+    };
     if (change.tierTo !== change.tierFrom) {
       patch.relevance_tier = change.tierTo;
       patch.relevance_label = change.label;
@@ -217,7 +256,21 @@ async function main() {
     updated += 1;
     if (change.tierTo !== change.tierFrom) retiered += 1;
   }
-  console.log(`\n已更新 ${updated} 条金额，其中 ${retiered} 条规模随之调整${failed ? `，${failed} 条失败` : ""}。行业标签、一句话总结和其他字段没有改动。`);
+  let lengthened = 0;
+  for (const change of lengthen) {
+    const { error } = await supabase
+      .from("tenders")
+      .update({ relevance_tier: change.tierTo, relevance_label: change.label, relevance_reason: change.reason })
+      .eq("slug", change.row.slug)
+      .eq("relevance_tier", change.tierFrom);
+    if (error) {
+      failed += 1;
+      console.error(`  ${change.row.slug} 规模上调失败：${error.message}`);
+      continue;
+    }
+    lengthened += 1;
+  }
+  console.log(`\n已更新 ${updated} 条金额，其中 ${retiered} 条规模随之调整；长期合同规模上调 ${lengthened} 条${failed ? `；${failed} 条失败` : ""}。行业标签、一句话总结和其他字段没有改动。`);
 }
 
 main();

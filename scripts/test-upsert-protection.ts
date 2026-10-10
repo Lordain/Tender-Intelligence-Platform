@@ -163,5 +163,19 @@ const ZH = "修建绕行路段";
   check("an empty deadline is still filled by the source", row.submission_deadline, "2026-11-01");
 }
 
+{
+  // The long-contract floor (applySummaryDurationFloor) survives re-import:
+  // the mapper's tier never sees the 一句话总结, so the stored one is read.
+  const row = buildRowWithProtectedValues(mapped(ES), stored({ slug: "secop-test-1", one_line_summary: "绕行路段建设及为期三年的运维" }));
+  check("a 3-year term in the stored summary keeps 大型 through re-import", row.relevance_tier, "flagship");
+  const short = buildRowWithProtectedValues(mapped(ES), stored({ slug: "secop-test-1", one_line_summary: "绕行路段建设，工期12个月" }));
+  check("a 12-month term leaves the mapper's tier", short.relevance_tier, "standard");
+  const locked = buildRowWithProtectedValues(
+    mapped(ES),
+    stored({ slug: "secop-test-1", one_line_summary: "为期三年的运维", relevance_tier: "significant", relevance_label: "x", relevance_reason: "x", relevance_manually_overridden: true, __omit: ["relevance_tier", "relevance_label", "relevance_reason", "relevance_manually_overridden"] }),
+  );
+  check("a locked tier still wins over the floor", locked.relevance_tier, "significant");
+}
+
 console.log(`\n${passed}/${passed + failed} checks passed.`);
 if (failed > 0) process.exit(1);

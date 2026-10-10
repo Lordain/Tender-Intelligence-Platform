@@ -59,6 +59,7 @@ type TenderRow = {
   source_name: string;
   procedure_type: string | null;
   structured_duration_days: number | null;
+  one_line_summary: string | null;
 };
 
 const OUT_DIR = "exports";
@@ -112,7 +113,7 @@ export async function reclassifyTenders(
     const { data, error } = await supabase
       .from("tenders")
       .select(
-        "slug, tender_number, title, summary, buyer, country, government_level, industries, scope_type, estimated_value, currency, procedure_type, structured_duration_days, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden, source_url, publication_date, source_name",
+        "slug, tender_number, title, summary, buyer, country, government_level, industries, scope_type, estimated_value, currency, procedure_type, structured_duration_days, one_line_summary, relevance_tier, relevance_label, relevance_reason, relevance_manually_overridden, source_url, publication_date, source_name",
       )
       .order("publication_date", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
@@ -163,6 +164,9 @@ export async function reclassifyTenders(
       currency: row.currency ?? undefined,
       sourceName: row.source_name,
       structuredDurationDays: row.structured_duration_days ?? undefined,
+      // The long-contract floor (applySummaryDurationFloor) — without it a
+      // reclassify would take back what document analysis raised.
+      oneLineSummary: row.one_line_summary,
     });
     const industriesChanged = !sameIndustries(row.industries, recomputedIndustries);
     if (industriesChanged) industriesChangedCount++;

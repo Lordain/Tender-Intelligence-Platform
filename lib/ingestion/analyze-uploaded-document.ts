@@ -58,7 +58,7 @@ import {
 import { extractTenderRequirementsQwenAnthropic } from "@/lib/ingestion/extract-requirements-qwen-anthropic";
 import { untranslated } from "@/lib/ingestion/text-utils";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
-import { isNationalPrioritySource } from "@/lib/relevance";
+import { applySummaryDurationFloor, isNationalPrioritySource } from "@/lib/relevance";
 import { assertWritten } from "@/lib/db/assert-written";
 
 export type AnalyzeUploadedDocumentResult = {
@@ -486,6 +486,34 @@ export async function analyzeUploadedDocument(
             .eq("id", tenderId),
         );
         relevanceTierChanged = { from: currentTier ?? "(none)", to: relevanceAssessment.suggestedTier, reasoning: relevanceAssessment.reasoning };
+      }
+    }
+
+    // A contract term the 一句话总结 states sets a floor on the tier (user,
+    // 2026-10-10: 超长期项目（2年）最少中型，3年调整成大项目). Applied after the
+    // document's own suggestion, on whichever tier that left. Same limits as
+    // above: a locked row and a Proyectos Estratégicos row are not moved, and
+    // the floor itself never lifts an excluded row.
+    const summaryForFloor = fields.oneLineSummary?.trim() || (typeof tender.one_line_summary === "string" ? tender.one_line_summary : "");
+    const tierBeforeFloor = (relevanceTierChanged?.to ?? tender.relevance_tier ?? null) as TenderRelevanceTier | null;
+    if (summaryForFloor && tierBeforeFloor && !isNationalPrioritySource(tender.source_name as string | null)) {
+      const floored = applySummaryDurationFloor(
+        { tier: tierBeforeFloor, label: RELEVANCE_TIER_LABELS[tierBeforeFloor], reason: untranslated("") },
+        summaryForFloor,
+      );
+      if (floored.tier !== tierBeforeFloor) {
+        if (tender.relevance_manually_overridden) {
+          skippedLockedTier = true;
+        } else {
+          assertWritten(
+            "相关度分级（长期合同）",
+            await supabase
+              .from("tenders")
+              .update({ relevance_tier: floored.tier, relevance_label: floored.label, relevance_reason: floored.reason })
+              .eq("id", tenderId),
+          );
+          relevanceTierChanged = { from: relevanceTierChanged?.from ?? tierBeforeFloor, to: floored.tier, reasoning: floored.reason.zh };
+        }
       }
     }
 

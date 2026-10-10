@@ -375,24 +375,24 @@ export function toNotificationTender(
 export type TenderListViewerRules = {
   /** Members (trial, subscriber) read buyer, exact budget and exact deadline. */
   memberView: boolean;
-  /** Basic: the one country those member fields apply to ("__none__" before one is chosen). null: every country. */
-  memberCountry: string | null;
+  /** Basic: the countries those member fields apply to (empty before one is chosen). null: every country. */
+  memberCountries: string[] | null;
   /** Keyword search over approved Chinese copy only — guests, lapsed accounts and Basic. */
   searchPublicFieldsOnly: boolean;
 };
 
-export function tenderListViewerRules(entitlement: Pick<ViewerEntitlement, "role" | "plan" | "selectedCountry">): TenderListViewerRules {
+export function tenderListViewerRules(entitlement: Pick<ViewerEntitlement, "role" | "plan" | "selectedCountries">): TenderListViewerRules {
   const memberView = canUseTenderListMemberFeatures(entitlement.role);
   return {
     memberView,
-    memberCountry: entitlement.plan === "basic" ? entitlement.selectedCountry ?? "__none__" : null,
+    memberCountries: entitlement.plan === "basic" ? entitlement.selectedCountries : null,
     searchPublicFieldsOnly: !memberView || entitlement.plan === "basic",
   };
 }
 
 /** Whether one row is projected with member fields for this viewer. */
-export function rowHasMemberView(rules: Pick<TenderListViewerRules, "memberView" | "memberCountry">, country: string): boolean {
-  return rules.memberView && (!rules.memberCountry || country === rules.memberCountry);
+export function rowHasMemberView(rules: Pick<TenderListViewerRules, "memberView" | "memberCountries">, country: string): boolean {
+  return rules.memberView && (!rules.memberCountries || rules.memberCountries.includes(country));
 }
 
 /** The filters a /tenders URL asks for — shared by the page and by saved-search reminders. */
@@ -465,7 +465,7 @@ function parseList(value: string | null): string[] {
 export function buildTenderListPage(
   allTenders: Tender[],
   params: TenderListSearchParams,
-  options: { now?: Date; pageSize?: number; memberView?: boolean; memberCountry?: string | null; searchPublicFieldsOnly?: boolean } = {},
+  options: { now?: Date; pageSize?: number; memberView?: boolean; memberCountries?: string[] | null; searchPublicFieldsOnly?: boolean } = {},
 ): TenderListPageData {
   const now = options.now ?? new Date();
   const pageSize = options.pageSize ?? TENDER_PAGE_SIZE;
@@ -480,8 +480,8 @@ export function buildTenderListPage(
     {
       query,
       searchPublicFieldsOnly: options.searchPublicFieldsOnly,
-      // Basic's own country is searched in full — see TenderFilterOptions.fullSearchCountry.
-      fullSearchCountry: options.memberView ? options.memberCountry : null,
+      // Basic's own countries are searched in full — see TenderFilterOptions.fullSearchCountries.
+      fullSearchCountries: options.memberView ? options.memberCountries : null,
       industries,
       industryMatchMode,
       scopeTypes,
@@ -535,7 +535,7 @@ export function buildTenderListPage(
   return {
     tenders: sorted
       .slice(offset, offset + pageSize)
-      .map((tender) => toTenderListItem(tender, { memberView: rowHasMemberView({ memberView: options.memberView ?? false, memberCountry: options.memberCountry ?? null }, tender.country) })),
+      .map((tender) => toTenderListItem(tender, { memberView: rowHasMemberView({ memberView: options.memberView ?? false, memberCountries: options.memberCountries ?? null }, tender.country) })),
     totalResults: sorted.length,
     totalPages,
     currentPage,

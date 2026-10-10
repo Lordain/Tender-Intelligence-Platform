@@ -8,7 +8,8 @@ export type AccessPromptKind = "login" | "subscription";
 export type ViewerEntitlement = {
   role: ViewerRole;
   plan: SubscriptionPlan;
-  selectedCountry: string | null;
+  /** Basic only: the countries this subscription has chosen, at most BASIC_PLAN_COUNTRY_LIMIT. Empty for every other plan. */
+  selectedCountries: string[];
   trialEndsAt: string | null;
   subscriptionOwnerUserId: string | null;
   isEnterpriseOwner: boolean;
@@ -34,6 +35,14 @@ export const BILLING_INTERVAL_LABELS: Record<BillingInterval, string> = {
 };
 
 export const TRIAL_DAYS = 7;
+
+/**
+ * How many countries 基础个人版 opens in full (user, 2026-10-10: 把当前的基础
+ * 用户可以看的国家从 1 调整成 2). Each pick is permanent for the subscription,
+ * so a subscriber who chose one country before this changed can add a second.
+ * The database enforces the same number (migration 0068's slot column).
+ */
+export const BASIC_PLAN_COUNTRY_LIMIT = 2;
 export const PAYMENT_GRACE_DAYS = 3;
 
 export type SubscriptionEntitlementCandidate = {
@@ -242,12 +251,12 @@ export function canUseTenderListMemberFeatures(role: ViewerRole): boolean {
 export function canViewCountry(entitlement: ViewerEntitlement, country: string): boolean {
   if (entitlement.role === "trial") return true;
   if (entitlement.role !== "subscriber") return false;
-  return entitlement.plan !== "basic" || entitlement.selectedCountry === country;
+  return entitlement.plan !== "basic" || entitlement.selectedCountries.includes(country);
 }
 
 /**
  * One tender's detail page as a Word file (/api/tenders/[slug]/docx): every
- * paid plan, 基础个人版 only for the one country it covers (user, 2026-10-05:
+ * paid plan, 基础个人版 only for the countries it covers (user, 2026-10-05:
  * 专业个人版…可以导出项目详情页 / 专业企业版也支持 / 个人版也支持导出单个国家的
  * 项目详情页). Not trial or free accounts. The project-list CSV export this
  * used to sit beside is gone (user, 2026-10-05: 导出当前及历史项目清单 CSV ←
@@ -255,7 +264,7 @@ export function canViewCountry(entitlement: ViewerEntitlement, country: string):
  */
 export function canExportTenderDetail(entitlement: ViewerEntitlement, country: string): boolean {
   if (entitlement.role !== "subscriber") return false;
-  if (entitlement.plan === "basic") return entitlement.selectedCountry === country;
+  if (entitlement.plan === "basic") return entitlement.selectedCountries.includes(country);
   return entitlement.plan === "professional" || entitlement.plan === "enterprise";
 }
 

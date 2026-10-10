@@ -306,7 +306,7 @@ const WEEKLY_PLAN_FACTS: [string, string][] = [
 ];
 
 const UPGRADE_OPTIONS: { name: string; recommended?: boolean; cadence: string; detail: string }[] = [
-  { name: PLAN_NAMES.basic, cadence: "每日 1 次提醒", detail: "选择 1 个国家，查看该国全部项目详情和标书分析" },
+  { name: PLAN_NAMES.basic, cadence: "每日 1 次提醒", detail: "选择 2 个国家，查看这两国全部项目详情和标书分析" },
   { name: PLAN_NAMES.professional, recommended: true, cadence: "每日 2 次提醒（北京时间 8:00、23:00）", detail: "全部国家完整中文详情，可自定义提醒关键词" },
   { name: PLAN_NAMES.enterprise, cadence: "每日 2 次提醒，3 个账号各自设置", detail: "全部国家完整详情，另含每月行业分析报告" },
 ];

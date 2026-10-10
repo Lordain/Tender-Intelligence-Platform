@@ -74,15 +74,16 @@ const rows: Tender[] = [
   tender("mx-old", "Mexico", { createdAt: "2026-09-01T00:00:00.000Z" }),
 ];
 
-function entitlement(role: ViewerEntitlement["role"], plan: ViewerEntitlement["plan"] = null, selectedCountry: string | null = null): ViewerEntitlement {
-  return { role, plan, selectedCountry, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
+function entitlement(role: ViewerEntitlement["role"], plan: ViewerEntitlement["plan"] = null, selectedCountries: string[] = []): ViewerEntitlement {
+  return { role, plan, selectedCountries, trialEndsAt: null, subscriptionOwnerUserId: null, isEnterpriseOwner: false, periodStart: null, periodEnd: null, cancelAtPeriodEnd: false, billingInterval: null, paymentPastDue: false, hasBillingLink: false };
 }
 const viewers: Record<string, ViewerEntitlement> = {
   游客: entitlement("guest"),
   免费版: entitlement("free"),
   试用: entitlement("trial"),
-  基础版墨西哥: entitlement("subscriber", "basic", "Mexico"),
-  基础版未选国家: entitlement("subscriber", "basic", null),
+  基础版墨西哥: entitlement("subscriber", "basic", ["Mexico"]),
+  基础版未选国家: entitlement("subscriber", "basic", []),
+  基础版墨西哥巴西: entitlement("subscriber", "basic", ["Mexico", "Brazil"]),
   专业版: entitlement("subscriber", "professional"),
   企业版: entitlement("subscriber", "enterprise"),
 };
@@ -128,6 +129,11 @@ for (const name of ["游客", "免费版", "基础版未选国家"]) {
 const basicMx = viewers.基础版墨西哥!;
 check("基础版墨西哥: own country — original title, buyer and number are searched", JSON.stringify(alertIds(basicMx, "/tenders?q=pemex")) === JSON.stringify(["mx-1"]) && JSON.stringify(alertIds(basicMx, "/tenders?q=NUM-mx-1")) === JSON.stringify(["mx-1"]));
 check("基础版墨西哥: own country — source summary and 一句话总结 are searched", JSON.stringify(alertIds(basicMx, "/tenders?q=vestas")) === JSON.stringify(["mx-4"]) && JSON.stringify(alertIds(basicMx, "/tenders?q=风电机组")) === JSON.stringify(["mx-4"]));
+// Two countries (user, 2026-10-10: 基础用户可以看的国家从 1 调整成 2): both
+// are searched in full, a third stays on public copy.
+const basicMxBr = viewers.基础版墨西哥巴西!;
+check("基础版墨西哥巴西: both own countries are searched in full", JSON.stringify(alertIds(basicMxBr, "/tenders?q=pemex")) === JSON.stringify(["mx-1"]) && JSON.stringify(alertIds(basicMxBr, "/tenders?q=petrobras")) === JSON.stringify(["br-1"]));
+check("基础版墨西哥巴西: a third country stays on public copy", alertIds(basicMxBr, "/tenders?q=codelco").length === 0);
 for (const name of ["试用", "专业版", "企业版"]) {
   const viewer = viewers[name]!;
   check(`${name}: full search across countries (title, buyer, number)`, JSON.stringify(alertIds(viewer, "/tenders?q=petrobras")) === JSON.stringify(["br-1"]) && JSON.stringify(alertIds(viewer, "/tenders?q=codelco")) === JSON.stringify(["cl-1"]) && JSON.stringify(alertIds(viewer, "/tenders?q=NUM-mx-1")) === JSON.stringify(["mx-1"]));
@@ -146,6 +152,8 @@ check("member and public titles differ in this fixture (so the checks below mean
 const basic = projections(viewers.基础版墨西哥!);
 check("Basic (Mexico): Mexico rows get the member title", basic.get("mx-1") === member("mx-1"));
 check("Basic (Mexico): other countries get the public title", basic.get("br-1") === publicTitle("br-1") && basic.get("cl-1") === publicTitle("cl-1"));
+const basicTwo = projections(viewers.基础版墨西哥巴西!);
+check("Basic (Mexico + Brazil): both countries get the member title, a third the public one", basicTwo.get("br-1") === member("br-1") && basicTwo.get("cl-1") === publicTitle("cl-1"));
 check("Basic without a chosen country: public titles everywhere", [...projections(viewers.基础版未选国家!)].every(([id, title]) => title === publicTitle(id)));
 check("guest and free: public titles everywhere", [...projections(viewers.游客!), ...projections(viewers.免费版!)].every(([id, title]) => title === publicTitle(id)));
 check("professional: member titles everywhere", [...projections(viewers.专业版!)].every(([id, title]) => title === member(id)));

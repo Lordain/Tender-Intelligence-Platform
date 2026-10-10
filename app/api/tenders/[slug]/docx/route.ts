@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 /**
  * 导出 Word: one tender's detail page as a .docx download (lib/tender-docx.ts).
  * The plan check is here, on the server, not only in whether the button is
- * drawn — 基础个人版 gets its own country and nothing else.
+ * drawn — 基础个人版 gets its own countries and nothing else.
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

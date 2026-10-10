@@ -86,11 +86,11 @@ async function main() {
   const basicSubscriptionId = await subscription("basic", "basic");
   await subscription("professional", "professional");
   await subscription("enterprise-owner", "enterprise");
-  check(await admin.from("basic_plan_countries").insert({ subscription_id: basicSubscriptionId, country: "Mexico" }), "设置基础版国家");
+  check(await admin.from("basic_plan_countries").insert([{ subscription_id: basicSubscriptionId, country: "Mexico", slot: 1 }, { subscription_id: basicSubscriptionId, country: "Brazil", slot: 2 }]), "设置基础版国家");
   check(await admin.from("enterprise_members").insert({ owner_user_id: ids["enterprise-owner"], member_user_id: ids["enterprise-member"], email: addresses["enterprise-member"], status: "accepted", responded_at: new Date(now).toISOString() }), "设置企业成员");
   check(await admin.from("enterprise_members").insert({ owner_user_id: ids["enterprise-owner"], member_user_id: ids["pending-invitee"], email: addresses["pending-invitee"], status: "pending" }), "设置待接受邀请");
   console.log(`\n已创建 ${roles.length} 个测试账号。统一密码：${password}`);
-  console.log("试用：可查看全部详情；免费：每月 5 个完整详情；基础版：仅墨西哥完整详情；专业版：全国家详情和导出；企业主/成员：全功能；待邀请：接受邀请前为免费版。");
+  console.log("试用：可查看全部详情；免费：每月 5 个完整详情；基础版：仅墨西哥、巴西完整详情；专业版：全国家详情和导出；企业主/成员：全功能；待邀请：接受邀请前为免费版。");
   console.log("测试完成后，请在 Supabase Auth 中移除这些 qa-pricing-* 账号；不要在正式客户库运行本脚本。");
 }
 

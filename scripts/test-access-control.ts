@@ -13,6 +13,7 @@
  * one before fixing it.
  */
 import {
+  BASIC_PLAN_COUNTRY_LIMIT,
   canExportTenderDetail,
   canUseTenderListMemberFeatures,
   canViewCountry,
@@ -29,7 +30,7 @@ import {
   type ViewerEntitlement,
 } from "../lib/access-control";
 import { parsePaidPlanSelection, PLAN_PRICES_USD } from "../lib/billing-catalog";
-import { digestCadence } from "../lib/notifications/digest-cadence";
+import { basicDigestCountries, digestCadence } from "../lib/notifications/digest-cadence";
 
 const NOW = Date.parse("2026-06-15T12:00:00Z");
 const DAY = 86_400_000;
@@ -75,6 +76,9 @@ check("legacy semiannual selection is rejected", parsePaidPlanSelection("basic",
 check("annual is ten months' price", [PLAN_PRICES_USD.basic.annual, PLAN_PRICES_USD.professional.annual, PLAN_PRICES_USD.enterprise.annual], [990, 1990, 3990]);
 check("free reminder is weekly", digestCadence(null, false, false), "weekly");
 check("basic reminder is daily", digestCadence("basic", false, false), "daily");
+check("basic digest covers both countries when none is ticked", basicDigestCountries(["Mexico", "Brazil"], []), ["Mexico", "Brazil"]);
+check("basic digest follows a ticked plan country", basicDigestCountries(["Mexico", "Brazil"], ["Brazil"]), ["Brazil"]);
+check("basic digest ignores a ticked country outside the plan", basicDigestCountries(["Mexico", "Brazil"], ["Peru"]), ["Mexico", "Brazil"]);
 check("professional reminder is twice daily", digestCadence("professional", false, false), "twice_daily");
 check("enterprise member reminder is twice daily", digestCadence(null, true, false), "twice_daily");
 check("active inside its period", isSubscriptionEntitled("active", iso(-10), iso(20), NOW), true);
@@ -114,19 +118,23 @@ check("订阅用户不花免费额度", shouldClaimFreeTenderView("subscriber", 
 check("trial may view protected analysis", canViewTenderProtectedContent("trial", false, false), true);
 check("subscriber may view protected analysis", canViewTenderProtectedContent("subscriber", false, false), true);
 const entitlement: ViewerEntitlement = {
-  role: "subscriber", plan: "basic", selectedCountry: "Mexico", trialEndsAt: null,
+  role: "subscriber", plan: "basic", selectedCountries: ["Mexico"], trialEndsAt: null,
   subscriptionOwnerUserId: "qa", isEnterpriseOwner: false, periodStart: null,
   periodEnd: null, cancelAtPeriodEnd: false, billingInterval: "monthly",
   paymentPastDue: false, hasBillingLink: false,
 };
 check("basic sees selected country", canViewCountry(entitlement, "Mexico"), true);
 check("basic cannot see other countries", canViewCountry(entitlement, "Brazil"), false);
-check("basic without a selection fails closed", canViewCountry({ ...entitlement, selectedCountry: null }, "Mexico"), false);
+check("basic without a selection fails closed", canViewCountry({ ...entitlement, selectedCountries: [] }, "Mexico"), false);
+check("basic sees both of its two countries", ["Mexico", "Brazil"].every((country) => canViewCountry({ ...entitlement, selectedCountries: ["Mexico", "Brazil"] }, country)), true);
+check("basic with two countries cannot see a third", canViewCountry({ ...entitlement, selectedCountries: ["Mexico", "Brazil"] }, "Peru"), false);
+check("basic plan covers two countries", BASIC_PLAN_COUNTRY_LIMIT, 2);
 check("professional sees all countries", canViewCountry({ ...entitlement, plan: "professional" }, "Brazil"), true);
 check("trial sees all countries", canViewCountry({ ...entitlement, role: "trial", plan: null }, "Peru"), true);
 check("basic exports a detail page in its country", canExportTenderDetail(entitlement, "Mexico"), true);
 check("basic cannot export a detail page elsewhere", canExportTenderDetail(entitlement, "Brazil"), false);
-check("basic without a selection exports no detail page", canExportTenderDetail({ ...entitlement, selectedCountry: null }, "Mexico"), false);
+check("basic without a selection exports no detail page", canExportTenderDetail({ ...entitlement, selectedCountries: [] }, "Mexico"), false);
+check("basic exports a detail page in its second country", canExportTenderDetail({ ...entitlement, selectedCountries: ["Mexico", "Brazil"] }, "Brazil"), true);
 check("professional exports any detail page", canExportTenderDetail({ ...entitlement, plan: "professional" }, "Brazil"), true);
 check("enterprise exports any detail page", canExportTenderDetail({ ...entitlement, plan: "enterprise" }, "Peru"), true);
 check("trial cannot export a detail page", canExportTenderDetail({ ...entitlement, role: "trial", plan: null }, "Peru"), false);

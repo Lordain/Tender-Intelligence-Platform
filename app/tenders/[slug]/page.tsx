@@ -8,7 +8,7 @@ import { RelatedTenders } from "@/components/tenders/RelatedTenders";
 import { TenderLifecycle } from "@/components/tenders/TenderLifecycle";
 import { TenderDetailView } from "@/components/tenders/TenderDetailView";
 import { getViewerEntitlement } from "@/lib/access-control-server";
-import { canExportTenderDetail, canViewCountry, canViewTenderProtectedContent, isReleasedAfterDeadline, releaseNeedsClosedOn, shouldClaimFreeTenderView } from "@/lib/access-control";
+import { BASIC_PLAN_COUNTRY_LIMIT, canExportTenderDetail, canViewCountry, canViewTenderProtectedContent, isReleasedAfterDeadline, releaseNeedsClosedOn, shouldClaimFreeTenderView } from "@/lib/access-control";
 import { fetchTenderClosedAt, fetchTenderLifecycle } from "@/lib/db/tenders";
 import { platformDay } from "@/lib/tender-status";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
@@ -150,7 +150,8 @@ export default async function TenderDetailPage({
   if (!mayViewProtectedContent) {
     const promptKind: TenderDetailPromptKind = entitlement.role === "guest" ? "login"
       : entitlement.role === "subscriber" && entitlement.plan === "basic"
-        ? entitlement.selectedCountry ? "basic-other-country" : "basic-select-country"
+        ? entitlement.selectedCountries.length === 0 ? "basic-select-country"
+          : entitlement.selectedCountries.length < BASIC_PLAN_COUNTRY_LIMIT ? "basic-add-country" : "basic-other-country"
         : "free-limit";
     return (
       <>

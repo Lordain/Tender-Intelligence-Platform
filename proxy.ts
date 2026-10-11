@@ -33,10 +33,27 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // A signed-out visitor to any /admin page goes straight to /login from
+  // here. The admin layouts redirect too, but a page renders alongside its
+  // layout, so before this every anonymous hit on /admin/tenders or
+  // /admin/analytics ran that page's full service-role queries first and was
+  // answered 10–19 s later (user, 2026-10-11: 没登录就直接跳到登录页，不再碰
+  // 数据库). Signed-in requests are unchanged: the layouts still decide who
+  // is an admin.
+  if (!user && ADMIN_PAGE_PATTERN.test(request.nextUrl.pathname)) {
+    const redirect = NextResponse.redirect(new URL("/login", request.url));
+    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+    return redirect;
+  }
 
   return response;
 }
+
+const ADMIN_PAGE_PATTERN = /^\/admin(\/|$)/;
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],

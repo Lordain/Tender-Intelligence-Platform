@@ -126,7 +126,7 @@ export async function analyzeUploadedDocument(
     // slug burned every model call in the upload first.
     const { data: tender, error: tenderError } = await supabase
       .from("tenders")
-      .select("id, title, summary, one_line_summary, source_name, country, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date")
+      .select("id, title, summary, one_line_summary, source_name, country, relevance_tier, relevance_manually_overridden, submission_deadline, award_date, publication_date, estimated_value")
       .eq("slug", tenderSlug)
       .maybeSingle();
     if (tenderError || !tender) {
@@ -426,6 +426,7 @@ export async function analyzeUploadedDocument(
     let participationScopeSet: string | undefined;
     let relevanceTierChanged: { from: string; to: string; reasoning: string } | undefined;
     let skippedLockedTier: boolean | undefined;
+    const TIER_RANK: Record<TenderRelevanceTier, number> = { excluded: 0, standard: 1, significant: 2, flagship: 3 };
 
     if (relevanceAssessment) {
       if (relevanceAssessment.participationScope) {
@@ -474,6 +475,21 @@ export async function analyzeUploadedDocument(
         }
       } else if (tender.relevance_manually_overridden) {
         if (relevanceAssessment.suggestedTier !== currentTier) skippedLockedTier = true;
+      } else if (
+        tender.estimated_value !== null &&
+        currentTier !== null &&
+        currentTier in TIER_RANK &&
+        TIER_RANK[relevanceAssessment.suggestedTier] < TIER_RANK[currentTier as TenderRelevanceTier]
+      ) {
+        // A tender with a budget keeps the tier its budget gives it: a
+        // document read may raise it, never lower it (user, 2026-10-11, on a
+        // US$20M Chilean hospital HIS/ERP purchase the model called 中型:
+        // 明明就是大型 — the same rule as 有金额的以金额为主). Without an
+        // amount the model's reading is the best evidence there is, and it
+        // stands.
+        warnings.push(
+          `标书分析建议把相关度降为「${RELEVANCE_TIER_LABELS[relevanceAssessment.suggestedTier].zh}」，但项目有预估金额，规模以金额为准，保持「${RELEVANCE_TIER_LABELS[currentTier as TenderRelevanceTier].zh}」。理由：${relevanceAssessment.reasoning}`,
+        );
       } else if (relevanceAssessment.suggestedTier !== currentTier) {
         assertWritten(
           "相关度分级",

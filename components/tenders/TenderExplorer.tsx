@@ -622,7 +622,7 @@ export function TenderExplorer({
             </div>
             {weekendLull && (
               <p className="mt-4 rounded-lg border border-[#ffb21c]/40 bg-[#ffb21c]/15 px-3 py-2.5 text-[13px] font-semibold leading-5 text-[#ffcf6e]">
-                拉美各国政府周末不发布新招标。受时差影响，北京时间周日至周一新增会明显减少，周二早上恢复正常。
+                拉美政府周末不发标，周二恢复正常更新
               </p>
             )}
           </section>

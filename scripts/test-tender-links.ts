@@ -8,7 +8,7 @@
  * and only the guest projection, because every one of these lists is on a
  * page crawlers read.
  */
-import { featuredTenderLinksForCountry, liveTenderLinksForCountry, relatedTenderLinks, tenderLinksForGuide } from "../lib/tender-links";
+import { featuredTenderLinksForCountry, liveTenderCountForCountry, liveTenderLinksForCountry, relatedTenderLinks, tenderLinksForGuide } from "../lib/tender-links";
 import type { Tender, TenderRelevanceTier, TenderStatus } from "../types/tender";
 
 let passed = 0;
@@ -71,6 +71,13 @@ const pool = [
   check("related: deadline is month precision", first.submissionDeadline === "2026-10", String(first.submissionDeadline));
   check("related: carries no buyer, budget or original title",
     !("buyer" in first) && !("estimatedValue" in first) && !JSON.stringify(first).includes("Título"), JSON.stringify(first));
+}
+
+// A date-only deadline due today is still live all day, as the status rule
+// treats it (2026-10-11: the homepage map counted 592 while /tenders said 594).
+{
+  const dueToday = [tender("due-today", { country: "Colombia", deadline: "2026-09-25" }), tender("due-yesterday", { country: "Colombia", deadline: "2026-09-24" })];
+  check("live count: due today counts, due yesterday does not", liveTenderCountForCountry(dueToday, "Colombia", NOW) === 1);
 }
 
 {

@@ -2,6 +2,7 @@ import type { IndustryKey } from "@/lib/industry";
 import type { Tender, TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { filterTenders } from "@/lib/filter-tenders";
 import { LIVE_TENDER_STATUSES, toTenderListItem } from "@/lib/tender-list-page";
+import { platformDay } from "@/lib/tender-status";
 import { participationGuideForTender } from "@/lib/participation-guides";
 
 /**
@@ -44,13 +45,20 @@ const TIER_WEIGHT: Record<TenderRelevanceTier, number> = { flagship: 3, signific
  * public surface), and so is any row whose status says it is still open but
  * whose own deadline has already passed — a stale status should not be the
  * thing a new visitor clicks first.
+ *
+ * "Passed" is by calendar day, the way the status itself is derived
+ * (lib/tender-status.ts): a tender due today is still 招标中 all day. It was
+ * compared to the minute, and a date-only deadline reads as midnight, so on
+ * its last day a tender showed 招标中 on /tenders while the homepage map no
+ * longer counted it (2026-10-11: 592 there, 594 on /tenders — two Colombian
+ * tenders due that day). User: 统一成项目页的算法.
  */
 function liveCandidates(all: Tender[], countries: string[] | undefined, now: Date, industries?: string[]): Tender[] {
-  const nowMs = now.getTime();
+  const today = platformDay(now);
   return filterTenders(all, { statuses: LIVE_TENDER_STATUSES, countries, industries }).filter((tender) => {
-    if (!tender.submissionDeadline) return true;
-    const deadline = new Date(tender.submissionDeadline).getTime();
-    return !Number.isFinite(deadline) || deadline >= nowMs;
+    if (!tender.submissionDeadline || !today) return true;
+    const deadlineDay = platformDay(tender.submissionDeadline);
+    return deadlineDay === null || deadlineDay >= today;
   });
 }
 

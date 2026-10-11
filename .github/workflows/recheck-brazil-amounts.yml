@@ -1,0 +1,55 @@
+# Runs scripts/recheck-brazil-amounts.ts on the machine that can reach PNCP.
+#
+# The script re-asks PNCP for the amount of Brazilian tenders that went in
+# without one (PNCP refused the nightly lookup), re-tiers them, and with
+# write=true deletes the ones the rules would have excluded and writes the
+# amount and tier on the rest. A laptop usually cannot reach pncp.gov.br
+# (see probe-brazil-doors.yml), so it runs here.
+#
+# Manual only. Run it with write unticked first and read the log; tick write
+# only once the list is right (user, 2026-10-11: 只读预览，确认后再写).
+name: Recheck Brazil amounts
+
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: "写入数据库（先不勾，看完预览再勾）"
+        type: boolean
+        default: false
+      hours:
+        description: "检查最近多少小时入库的项目"
+        type: string
+        default: "36"
+
+permissions:
+  contents: read
+
+jobs:
+  recheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Inputs reach the shell through env, never interpolated into the
+      # script, so a dispatch input cannot become a command.
+      - name: Recheck
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          WRITE: ${{ inputs.write }}
+          HOURS: ${{ inputs.hours }}
+        run: |
+          if [ "$WRITE" = "true" ]; then
+            npm run recheck:brazil-amounts -- --hours "$HOURS" --write
+          else
+            npm run recheck:brazil-amounts -- --hours "$HOURS"
+          fi

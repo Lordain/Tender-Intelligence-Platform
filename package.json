@@ -99,6 +99,8 @@
     "audit:search": "tsx --env-file-if-exists=.env.local --conditions=react-server scripts/audit-search.ts",
     "audit:brazil-duplicates": "tsx --env-file-if-exists=.env.local scripts/audit-brazil-duplicates.ts",
     "audit:small-tenders": "tsx --env-file-if-exists=.env.local scripts/audit-small-tenders.ts",
+    "audit:recent-imports": "tsx --env-file-if-exists=.env.local scripts/audit-recent-imports.ts",
+    "recheck:brazil-amounts": "tsx --env-file-if-exists=.env.local scripts/recheck-brazil-amounts.ts",
     "align:summary-amounts": "tsx --env-file-if-exists=.env.local scripts/align-summary-amounts.ts",
     "audit:tier-distribution": "tsx --env-file-if-exists=.env.local scripts/audit-tier-distribution.ts",
     "audit:transport-construction-tiers": "tsx --env-file-if-exists=.env.local scripts/audit-transport-construction-tiers.ts",

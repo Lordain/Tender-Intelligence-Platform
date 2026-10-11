@@ -197,7 +197,7 @@ async function main() {
     if (result.amountsStoppedEarly) {
       console.log("     连续被拒太多次，取金额那一趟提前停了。剩下的项目一律显示无金额，跟项目本身无关。");
     }
-    console.log("     隔几分钟重跑同一条命令，写入会按 slug 覆盖，金额就补上了。");
+    console.log(`     这 ${result.heldBackForAmount} 条没问到金额的这一轮不写入，留到下一轮重新取金额后再判断（巴西按金额分级，没有金额就挡不住小工程）。`);
     for (const reason of result.amountFailureReasons.slice(0, 5)) console.log(`       ${reason}`);
   }
 

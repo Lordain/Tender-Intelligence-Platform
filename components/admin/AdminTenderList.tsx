@@ -83,6 +83,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState("all");
+  const [industry, setIndustry] = useState("all");
   const [status, setStatus] = useState("all");
   const [relevance, setRelevance] = useState("all");
   const [analysis, setAnalysis] = useState("all");
@@ -102,6 +103,12 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
 
   const countries = useMemo(
     () => [...new Set(tenders.map((tender) => tender.country))].sort((a, b) => countryLabel(a, "zh").localeCompare(countryLabel(b, "zh"), "zh")),
+    [tenders],
+  );
+
+  // Only the industries some row actually carries, in label order.
+  const industries = useMemo(
+    () => [...new Set(tenders.flatMap((tender) => tender.industries))].sort((a, b) => industryLabel(a, "zh").localeCompare(industryLabel(b, "zh"), "zh")),
     [tenders],
   );
 
@@ -179,6 +186,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     return tenders.filter((tender) => {
       const matchesQuery = !matchesSearch || matchesSearch(searchText.get(tender.slug)!);
       const matchesCountry = country === "all" || tender.country === country;
+      const matchesIndustry = industry === "all" || (industry === "none" ? tender.industries.length === 0 : tender.industries.includes(industry as (typeof tender.industries)[number]));
       const matchesStatus = status === "all" || tender.status === status;
       const matchesRelevance =
         relevance === "all" ||
@@ -205,9 +213,9 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
       const matchesRecent = !recentOnly || Date.parse(tender.createdAt) >= recentSince;
       const matchesAmount = amountView !== "missing" || !tender.estimatedValue;
 
-      return matchesRecent && matchesAmount && matchesQuery && matchesCountry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
+      return matchesRecent && matchesAmount && matchesQuery && matchesCountry && matchesIndustry && matchesStatus && matchesRelevance && matchesAnalysis && matchesDeadline && matchesPresence;
     });
-  }, [amountView, analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, recentOnly, recentSince, relevance, searchText, status, tenders]);
+  }, [amountView, analysis, country, deadlineFrom, deadlinePresence, deadlineTo, query, recentOnly, recentSince, relevance, searchText, status, tenders, industry]);
 
   // 金额从高到低 / 从低到高 (user, 2026-10-11). Rows without an amount go last
   // either way; otherwise the list keeps its publication-date order.
@@ -241,7 +249,7 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
   // Every filter state has to appear here. selectedVisible below is the guard
   // for the day one is added and this line is forgotten.
   // A new filter or sort also starts again from page 1.
-  const filterKey = [query, country, status, relevance, analysis, deadlinePresence, deadlineFrom, deadlineTo, recentOnly, amountView].join("\u0000");
+  const filterKey = [query, country, industry, status, relevance, analysis, deadlinePresence, deadlineFrom, deadlineTo, recentOnly, amountView].join("\u0000");
   const [seenFilterKey, setSeenFilterKey] = useState(filterKey);
   if (filterKey !== seenFilterKey) {
     setSeenFilterKey(filterKey);
@@ -258,13 +266,14 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
     [pageRows, selected],
   );
 
-  const hasFilters = Boolean(query.trim()) || country !== "all" || status !== "all" || relevance !== "all" || analysis !== "all"
+  const hasFilters = Boolean(query.trim()) || country !== "all" || industry !== "all" || status !== "all" || relevance !== "all" || analysis !== "all"
     || Boolean(deadlineFrom) || Boolean(deadlineTo) || deadlinePresence !== "all" || recentOnly || amountView !== "default";
 
   function clearFilters() {
     setDraftQuery("");
     setQuery("");
     setCountry("all");
+    setIndustry("all");
     setStatus("all");
     setRelevance("all");
     setAnalysis("all");
@@ -336,12 +345,20 @@ export function AdminTenderList({ tenders }: { tenders: AdminTenderListRow[] }) 
           </p>
         </div>
 
-        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.7fr)_auto] lg:items-end">
+        <div className="mt-4 grid gap-3 border-t border-[#e5e9eb] pt-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2.1fr)_auto] lg:items-end">
           <label className="flex flex-col gap-1.5">
             <span className="whitespace-nowrap text-xs font-black text-[#52636e]">国家/地区</span>
             <select value={country} onChange={(event) => setCountry(event.target.value)} className={selectClass}>
               <option value="all">全部国家</option>
               {countries.map((item) => <option key={item} value={item}>{countryLabel(item, "zh")}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="whitespace-nowrap text-xs font-black text-[#52636e]">行业</span>
+            <select value={industry} onChange={(event) => setIndustry(event.target.value)} className={selectClass}>
+              <option value="all">全部行业</option>
+              {industries.map((item) => <option key={item} value={item}>{industryLabel(item, "zh")}</option>)}
+              <option value="none">未标注</option>
             </select>
           </label>
           <label className="flex flex-col gap-1.5">

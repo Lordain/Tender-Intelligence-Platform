@@ -62,6 +62,17 @@ export type BrazilIngestResult = {
   amountLookupFailed: number;
   /** Set when the amount pass stopped on AMOUNT_FAILURE_STREAK. Every row after the stop has no amount for a reason that has nothing to do with the row. */
   amountsStoppedEarly: boolean;
+  /**
+   * Rows left out of this run because their amount was never asked for —
+   * PNCP refused the lookup, or the pass had stopped before reaching them.
+   * Brazil is tiered on value, and a row with no amount skips the value
+   * floors entirely: on 2026-10-11 PNCP refused at row 15 of 519, and 192
+   * small works went in as 常规 with nothing to say they were small. They are
+   * held for the next run, which asks again (user, 2026-10-11: 没查到金额的
+   * 项目这一轮先不写入，留到下一轮再查金额). A row PNCP answered without a
+   * value — a sealed budget, no items — is not held.
+   */
+  heldBackForAmount: number;
   /** The distinct refusal reasons, commonest first. Printed verbatim because guessing at PNCP's mood from a count is how the 43-minute run got mistaken for sealed budgets. */
   amountFailureReasons: string[];
   /**
@@ -422,6 +433,8 @@ export async function ingestBrazilPncp(
   // costs time rather than data.
   const results = new Array<Tender | null>(withinWindow.length).fill(null);
   const sealedFlags = new Array<boolean>(withinWindow.length).fill(false);
+  // True where the amount was never actually looked up (see heldBackForAmount).
+  const unresolvedFlags = new Array<boolean>(withinWindow.length).fill(false);
   let withoutAmount = 0;
   let sealedBudget = 0;
 
@@ -467,6 +480,7 @@ export async function ingestBrazilPncp(
       if (index >= withinWindow.length) return;
       const row = withinWindow[index];
       let items: PncpItem[] | null = null;
+      if (!options.skipAmounts && amountsStoppedEarly) unresolvedFlags[index] = true;
       if (!options.skipAmounts && !amountsStoppedEarly) {
         await takeSlot();
         let refused: string | null = null;
@@ -474,6 +488,7 @@ export async function ingestBrazilPncp(
           refused = reason;
         });
         if (refused !== null) {
+          unresolvedFlags[index] = true;
           amountLookupFailed += 1;
           amountFailureStreak += 1;
           amountFailureReasons.add(refused);
@@ -510,8 +525,13 @@ export async function ingestBrazilPncp(
   // sequencial triple that item_url carries, and by the time the attachment
   // pass runs the only handle left on a tender is its slug.
   const itemUrlBySlug = new Map<string, string>();
+  let heldBackForAmount = 0;
   for (const [index, tender] of results.entries()) {
     if (tender === null) continue;
+    if (unresolvedFlags[index]) {
+      heldBackForAmount += 1;
+      continue;
+    }
     if (tender.estimatedValue === undefined) {
       withoutAmount += 1;
       if (sealedFlags[index]) sealedBudget += 1;
@@ -595,6 +615,7 @@ export async function ingestBrazilPncp(
     pregaoNotEquipment: notEquipment.length,
     amountLookupFailed,
     amountsStoppedEarly,
+    heldBackForAmount,
     amountFailureReasons: [...amountFailureReasons],
     byModality,
     write: options.write,

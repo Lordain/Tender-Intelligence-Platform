@@ -237,7 +237,7 @@ export function TenderExplorer({
   // lib/weekend-lull.ts for the window.
   const lullNotice = useSyncExternalStore(noopSubscribe, () => {
     const lull = publishingLull(new Date());
-    return lull && `拉美政府${lull.holiday ? "节假日" : "周末"}不发标，受时差影响，\n北京时间${lull.resumeWeekday}起恢复正常更新`;
+    return lull && `拉美政府${lull.holiday ? "节假日" : "周末"}不发标，24小时新增少，\n北京时间${lull.resumeWeekday}起正常更新`;
   }, () => null);
 
   // Falls back to the full taxonomy only if the data carries no industries

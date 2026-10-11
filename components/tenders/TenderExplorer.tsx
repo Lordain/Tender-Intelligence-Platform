@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { TenderRelevanceTier, TenderScopeType, TenderStatus } from "@/types/tender";
 import { LIVE_STATUS_FILTER_PARAM, VISIBLE_TENDER_STATUSES } from "@/lib/tender-status";
@@ -24,6 +24,9 @@ import { canUseTenderListMemberFeatures, TRIAL_DAYS, type AccessPromptKind, type
 import { AccessPrompt } from "@/components/access/AccessPrompt";
 import { AVAILABLE_COUNTRIES, DEFAULT_TENDER_LIST_STATUSES, type TenderListItem } from "@/lib/tender-list-page";
 import { buildPageWindow } from "@/lib/page-window";
+import { isWeekendLull } from "@/lib/weekend-lull";
+
+const noopSubscribe = () => () => {};
 
 // "planned"/即将招标 appears only for announcement sources — see lib/tender-status.ts.
 const STATUSES: TenderStatus[] = VISIBLE_TENDER_STATUSES;
@@ -228,6 +231,10 @@ export function TenderExplorer({
   const searchParams = useSearchParams();
   const { savedIds } = useSavedTenderIds();
   const [accessPrompt, setAccessPrompt] = useState<AccessPromptKind | null>(null);
+  // Read in the browser only, as DaysLeft does: the server snapshot is false,
+  // so the server HTML has no notice and hydration agrees. See
+  // lib/weekend-lull.ts for the window.
+  const weekendLull = useSyncExternalStore(noopSubscribe, () => isWeekendLull(new Date()), () => false);
 
   // Falls back to the full taxonomy only if the data carries no industries
   // at all — an empty filter would be worse than an over-broad one.
@@ -613,6 +620,11 @@ export function TenderExplorer({
                 <p className="mt-1.5 text-[1.65rem] font-black leading-none text-[#ffb21c]">{newTodayCount}</p>
               </button>
             </div>
+            {weekendLull && (
+              <p className="mt-4 rounded-lg border border-[#ffb21c]/40 bg-[#ffb21c]/15 px-3 py-2.5 text-[13px] font-semibold leading-5 text-[#ffcf6e]">
+                拉美各国政府周末不发布新招标。受时差影响，北京时间周日至周一新增会明显减少，周二早上恢复正常。
+              </p>
+            )}
           </section>
           <section className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-5">
             <div className="flex items-center justify-between"><h2 className="font-bold text-[#071826]">交标提醒</h2><Link href="/saved" data-member-feature="saved-tenders" className="text-xs font-semibold text-[#24465a]">查看关注</Link></div>

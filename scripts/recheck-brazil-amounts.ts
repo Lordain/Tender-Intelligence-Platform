@@ -27,6 +27,12 @@
  *   npm run recheck:brazil-amounts                 (preview)
  *   npm run recheck:brazil-amounts -- --write
  *   npm run recheck:brazil-amounts -- --hours 72
+ *
+ * PNCP has to be reachable from where this runs. A laptop often cannot reach
+ * .gov.br hosts at all (see .github/workflows/probe-brazil-doors.yml), so it
+ * checks first and stops in seconds rather than timing out row by row; the
+ * GitHub runner the nightly import uses can, through
+ * .github/workflows/recheck-brazil-amounts.yml.
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { fetchPncpItems } from "../lib/ingestion/connectors/brazil-pncp-live";
@@ -118,7 +124,20 @@ async function main() {
   }
   const rows = candidates.filter((row) => !analysed.has(row.id) && !(row.manual_field_overrides ?? []).includes("estimated_value"));
   console.log(`巴西 PNCP、最近 ${HOURS} 小时入库、没有金额、未锁定、未分析的项目：${rows.length} 条（另有 ${candidates.length - rows.length} 条做过分析或金额是你填的，不动）。`);
-  console.log(`逐条向 PNCP 重新取金额（每条间隔 ${PACE_MS}ms）…\n`);
+  if (rows.length === 0) return;
+
+  // Can this machine reach PNCP at all? One plain request with a short
+  // timeout, before 192 lookups that would each wait a minute to fail.
+  const probe = itemUrlOf(rows[0].tender_number)?.match(/\/compras\/(\d+)\/(\d+)\/(\d+)/);
+  try {
+    const response = await fetch(`https://pncp.gov.br/api/pncp/v1/orgaos/${probe?.[1]}/compras/${probe?.[2]}/${probe?.[3]}/itens?pagina=1&tamanhoPagina=1`, { signal: AbortSignal.timeout(20_000) });
+    console.log(`连通检查：PNCP 回应 HTTP ${response.status}。`);
+  } catch (err) {
+    console.error(`连通检查失败：这台电脑连不上 PNCP（${err instanceof Error ? err.message : String(err)}）。`);
+    console.error("请改在 GitHub 上跑：Actions → Recheck Brazil amounts → Run workflow（write 先不勾，看完预览再勾）。");
+    process.exit(1);
+  }
+  console.log(`逐条向 PNCP 重新取金额（每条间隔 ${PACE_MS}ms），每条都会打印结果…\n`);
 
   const outcomes: Outcome[] = [];
   let streak = 0;
@@ -133,8 +152,10 @@ async function main() {
     const items: PncpItem[] | null = await fetchPncpItems(itemUrlOf(row.tender_number), () => {
       refused = true;
     });
+    const n = `${String(index + 1).padStart(3)}/${rows.length}`;
     if (refused || items === null) {
       outcomes.push({ kind: "refused", row });
+      console.log(`  ${n}  PNCP 拒绝     ${titleOf(row)}`);
       streak += 1;
       if (streak >= FAILURE_STREAK) {
         stopped = true;
@@ -146,6 +167,7 @@ async function main() {
     const { value } = sumPncpItemValues(items);
     if (value === undefined) {
       outcomes.push({ kind: "no-amount", row });
+      console.log(`  ${n}  本身无金额   ${titleOf(row)}`);
     } else {
       const { relevance } = classifyStoredTender({
         title: row.title?.es ?? "",
@@ -166,8 +188,8 @@ async function main() {
           ? { kind: "delete", row, value, reason: relevance.reason.zh }
           : { kind: "keep", row, value, tier: relevance.tier, label: relevance.label, reason: relevance.reason },
       );
+      console.log(`  ${n}  ${relevance.tier === "excluded" ? "删除" : `保留·${TIER_ZH[relevance.tier]}`}  ${usdText(value)}  ${titleOf(row)}`);
     }
-    if ((index + 1) % 20 === 0) console.log(`  ${index + 1} / ${rows.length}`);
   }
 
   const of = <K extends Outcome["kind"]>(kind: K) => outcomes.filter((o): o is Extract<Outcome, { kind: K }> => o.kind === kind);

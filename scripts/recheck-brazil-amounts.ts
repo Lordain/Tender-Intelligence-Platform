@@ -132,11 +132,14 @@ async function main() {
   // the GitHub runner the nightly import itself uses (2026-10-11). Slowness
   // is the row loop's problem (its refusal streak), not the probe's.
   try {
-    const response = await fetch("https://pncp.gov.br/api/pncp/v1/modalidades?statusAtivo=true", { signal: AbortSignal.timeout(30_000) });
+    const response = await fetch("https://pncp.gov.br/api/pncp/v1/modalidades?statusAtivo=true", {
+      headers: { Accept: "application/json", "User-Agent": "TenderIntelligencePlatform/1.0 (+https://github.com/lordain/tender-intelligence-platform; open-data ingestion)" },
+      signal: AbortSignal.timeout(60_000),
+    });
     console.log(`连通检查：PNCP 回应 HTTP ${response.status}。`);
   } catch (err) {
     console.error(`连通检查失败：这台电脑连不上 PNCP（${err instanceof Error ? err.message : String(err)}）。`);
-    console.error("请改在 GitHub 上跑：Actions → Recheck Brazil amounts → Run workflow（write 先不勾，看完预览再勾）。");
+    console.error("在本地电脑上：请改在 GitHub 上跑（Actions → Recheck Brazil amounts）。在 GitHub 上也这样：PNCP 此刻没有回应，过几个小时再跑。");
     process.exit(1);
   }
   console.log(`逐条向 PNCP 重新取金额（每条间隔 ${PACE_MS}ms），每条都会打印结果…\n`);

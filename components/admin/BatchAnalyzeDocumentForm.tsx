@@ -30,6 +30,18 @@ export const MAX_BATCH_SELECTION = 5;
 const MAX_FILES_PER_TENDER = 10;
 /** Same as the route's own MAX_UPLOAD_BYTES, for the same reason. */
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
+/**
+ * What one request can carry on the deployed site. Vercel refuses a function
+ * request body over 4.5 MB (FUNCTION_PAYLOAD_TOO_LARGE) before the route
+ * runs, and all of one tender's files go up in one request — so the limit is
+ * on their sum. Kept a little under 4.5 MB for the multipart overhead.
+ * Checked when a file is picked (user, 2026-10-11: 选文件时就检查大小 … 不用
+ * 等上传失败才知道). A local dev server has no such limit, and there the
+ * check is off.
+ */
+const DEPLOYED_REQUEST_BYTES = 4.3 * 1024 * 1024;
+const ENFORCE_REQUEST_LIMIT = process.env.NODE_ENV === "production";
+const mb = (bytes: number) => (bytes / 1024 / 1024).toFixed(1);
 
 export function BatchAnalyzeDocumentForm({
   tenders,
@@ -84,6 +96,7 @@ export function BatchAnalyzeDocumentForm({
       const key = (file: File) => `${file.name}|${file.size}|${file.lastModified}`;
       const seen = new Set(existing.map(key));
       const added: File[] = [];
+      let totalBytes = existing.reduce((sum, file) => sum + file.size, 0);
 
       for (const file of incoming) {
         if (seen.has(key(file))) continue;
@@ -91,6 +104,13 @@ export function BatchAnalyzeDocumentForm({
           rejected.push(`「${file.name}」超过 ${MAX_FILE_BYTES / 1024 / 1024}MB`);
           continue;
         }
+        if (ENFORCE_REQUEST_LIMIT && totalBytes + file.size > DEPLOYED_REQUEST_BYTES) {
+          rejected.push(
+            `「${file.name}」（${mb(file.size)}MB）太大：网页上传每个项目合计不能超过约 4.5MB${existing.length + added.length > 0 ? `（这个项目已选 ${mb(totalBytes)}MB）` : ""}。请用「本地批量分析」：在本地运行 npm run dev，打开 http://localhost:3000/admin/local-batch`,
+          );
+          continue;
+        }
+        totalBytes += file.size;
         if (existing.length + added.length >= MAX_FILES_PER_TENDER) {
           rejected.push(`「${file.name}」超出单个项目最多 ${MAX_FILES_PER_TENDER} 个文件的上限`);
           continue;

@@ -9,7 +9,7 @@ const insight = getCountryInsight("brazil")!;
 export const metadata: Metadata = pageMetadata({
   title: insight.title,
   description:
-    "梳理巴西Novo PAC、PPI项目组合，以及交通、能源、港口、水务、城市建设和区域供应链机会。",
+    "根据BNDES 2026—2029年基础设施投资预测，梳理巴西电力、公路、水务等八类行业的资金分布、重点区域与中国企业可关注方向。",
   path: "/insights/brazil",
   image: insight.heroImage,
   author: SOCIAL_BRAND,

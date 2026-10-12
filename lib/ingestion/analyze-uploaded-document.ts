@@ -60,6 +60,7 @@ import { untranslated } from "@/lib/ingestion/text-utils";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 import { isNationalPrioritySource } from "@/lib/relevance";
 import { applySummaryAdjustment } from "@/lib/ingestion/summary-adjustment";
+import { refreshTitlesAfterAnalysis } from "@/lib/ingestion/refresh-titles-from-summary";
 import { assertWritten } from "@/lib/db/assert-written";
 
 export type AnalyzeUploadedDocumentResult = {
@@ -514,6 +515,10 @@ export async function analyzeUploadedDocument(
     if (fields.oneLineSummary?.trim()) {
       const adjusted = await applySummaryAdjustment(supabase, tenderId);
       if (adjusted) warnings.push(`已按一句话总结调整：${adjusted}`);
+      // Titles from the new 一句话总结: notes after the full title's
+      // abbreviations, then the short/visitor titles again (user, 2026-10-12).
+      const titleWarning = await refreshTitlesAfterAnalysis(supabase, tenderId);
+      if (titleWarning) warnings.push(titleWarning);
     }
 
     return {

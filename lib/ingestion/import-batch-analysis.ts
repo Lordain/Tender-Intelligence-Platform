@@ -19,6 +19,7 @@ import { mergeExtractions, toTenderFields, type TenderExtraction } from "@/lib/i
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { assertWritten } from "@/lib/db/assert-written";
 import { applySummaryAdjustment } from "@/lib/ingestion/summary-adjustment";
+import { refreshTitlesAfterAnalysis } from "@/lib/ingestion/refresh-titles-from-summary";
 
 export type ImportBatchAnalysisResult = {
   slug: string;
@@ -100,6 +101,8 @@ export async function importBatchAnalysis(
       // The 一句话总结 rule, same as analyzeUploadedDocument — see
       // lib/ingestion/summary-adjustment.ts. Never excludes.
       await applySummaryAdjustment(supabase!, tenderId);
+      const titleWarning = await refreshTitlesAfterAnalysis(supabase!, tenderId);
+      if (titleWarning) console.warn(`  ${slug}：${titleWarning}`);
     }
 
     if (!options.force) {

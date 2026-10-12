@@ -28,7 +28,16 @@
  *   npm run recheck:brazil-amounts -- --write
  *   npm run recheck:brazil-amounts -- --hours 72
  *
- * PNCP has to be reachable from where this runs. A laptop often cannot reach
+ * --remove-all (user, 2026-10-12: 请先帮我把巴西的移除，不然我没办法跑翻译，
+ * 一跑就200多份): PNCP has refused amount lookups since 2026-10-11, so the
+ * re-check cannot run. This mode asks PNCP nothing. It deletes every row in
+ * the scope above, so it runs from a laptop too. Deleted, not tombstoned: an
+ * import that later gets the amount can bring a row back if the rules keep it.
+ *
+ *   npm run recheck:brazil-amounts -- --remove-all --hours 60            (preview)
+ *   npm run recheck:brazil-amounts -- --remove-all --hours 60 --write
+ *
+ * PNCP has to be reachable from where this runs (except with --remove-all). A laptop often cannot reach
  * .gov.br hosts at all (see .github/workflows/probe-brazil-doors.yml), so it
  * checks first and stops in seconds rather than timing out row by row; the
  * GitHub runner the nightly import uses can, through
@@ -46,6 +55,7 @@ const PAGE_SIZE = 1000;
 const PACE_MS = 500;
 const FAILURE_STREAK = 12;
 const write = process.argv.includes("--write");
+const removeAll = process.argv.includes("--remove-all");
 const hoursIndex = process.argv.indexOf("--hours");
 const HOURS = hoursIndex >= 0 && Number(process.argv[hoursIndex + 1]) > 0 ? Number(process.argv[hoursIndex + 1]) : 36;
 const TIER_ZH: Record<TenderRelevanceTier, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "已过滤" };
@@ -125,6 +135,28 @@ async function main() {
   const rows = candidates.filter((row) => !analysed.has(row.id) && !(row.manual_field_overrides ?? []).includes("estimated_value"));
   console.log(`巴西 PNCP、最近 ${HOURS} 小时入库、没有金额、未锁定、未分析的项目：${rows.length} 条（另有 ${candidates.length - rows.length} 条做过分析或金额是你填的，不动）。`);
   if (rows.length === 0) return;
+
+  if (removeAll) {
+    console.log("\n==== 全部移除（不向 PNCP 取金额）====");
+    for (const row of rows) console.log(`  ${row.tender_number.padEnd(30)} ${titleOf(row)}`);
+    console.log("");
+    if (!write) {
+      console.log(`预览，没有删除。确认无误后执行：npm run recheck:brazil-amounts -- --remove-all --hours ${HOURS} --write`);
+      return;
+    }
+    let deleted = 0;
+    let failed = 0;
+    for (let i = 0; i < rows.length; i += 100) {
+      const ids = rows.slice(i, i + 100).map((row) => row.id);
+      const { error } = await supabase.from("tenders").delete().in("id", ids);
+      if (error) {
+        failed += ids.length;
+        console.error(`  第 ${i + 1}–${i + ids.length} 条删除失败：${error.message}`);
+      } else deleted += ids.length;
+    }
+    console.log(`已删除 ${deleted} 条${failed ? `，失败 ${failed} 条` : ""}。前台列表约 5 分钟后刷新。`);
+    return;
+  }
 
   // Can this machine reach PNCP at all? Asked of the modality list, which
   // answers in seconds, not of the items endpoint: that one routinely takes

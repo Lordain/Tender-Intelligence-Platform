@@ -49,9 +49,9 @@ export const countryInsights: CountryInsightSummary[] = [
     slug: "brazil",
     country: "巴西",
     countryCode: "BR",
-    title: "巴西国家洞察：2023—2026 Novo PAC与特许经营机会",
+    title: "巴西国家洞察：2026—2029，四年投资看哪里？",
     description:
-      "从Novo PAC约3,684亿美元（1.9万亿雷亚尔）投资与4.11万个项目出发，梳理交通、能源、港口、水务、城市建设及PPI特许经营机会。",
+      "根据BNDES 2026年研究，2026—2029年八类基础设施投资预测约2,534亿美元（约1.31万亿雷亚尔），电力、公路、水务合计70.92%；梳理重点区域与中国企业可关注方向。",
     author: "拉美招投标指南针",
     readTime: "约 17 分钟",
     heroImage: "/insights/brazil-belo-monte.webp",
@@ -62,7 +62,7 @@ export const countryInsights: CountryInsightSummary[] = [
       licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
       sourceUrl: "https://commons.wikimedia.org/wiki/File:2019_Cerim%C3%B4nia_de_Inaugura%C3%A7%C3%A3o_da_Usina_Hidroel%C3%A9trica_Belo_Monte_-_49134734776.jpg",
     },
-    highlights: ["约3,684亿美元Novo PAC总投资", "4.11万个Novo PAC项目", "192个PPI联邦项目"],
+    highlights: ["约2,534亿美元四年投资预测", "电力＋公路＋水务占70.92%", "八类基础设施行业"],
   },
   {
     slug: "colombia",

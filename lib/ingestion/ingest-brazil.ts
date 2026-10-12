@@ -60,7 +60,7 @@ export type BrazilIngestResult = {
   pregaoNotEquipment: number;
   /** How many amount lookups PNCP refused outright. Distinct from sealedBudget and from "this tender has no items": a refusal is a fact about the network, not about the tender, and re-running fixes it. */
   amountLookupFailed: number;
-  /** Set when the amount pass stopped on AMOUNT_FAILURE_STREAK. Every row after the stop has no amount for a reason that has nothing to do with the row. */
+  /** Set when the amount pass stopped asking /itens (ITEMS_SWITCH_STREAK failures in a row). Later rows take their amount from the compra total instead. */
   amountsStoppedEarly: boolean;
   /** Rows whose /itens lookup failed but whose amount came from the compra's own estimated total instead (fetchPncpEstimatedTotal). */
   amountsFromCompraTotal: number;
@@ -215,6 +215,18 @@ const DOCUMENT_FAILURE_STREAK = 10;
  * coincidence of empty tenders — it is PNCP refusing this client.
  */
 const AMOUNT_FAILURE_STREAK = 12;
+/**
+ * How many /itens failures in a row before the pass stops asking /itens and
+ * goes straight to the compra's estimated total (fetchPncpEstimatedTotal).
+ *
+ * Three, not AMOUNT_FAILURE_STREAK: since the compra total became the
+ * fallback, giving up on /itens no longer loses the amount. All it costs is
+ * the item-level detail. Each /itens timeout costs about a minute, so the
+ * dry run on 2026-10-12 spent 9 of its 15 minutes on the first 12 rows
+ * (user, same day: 只要明细接口连续 3 条超时，就直接切到备用接口 — 一起改).
+ * AMOUNT_FAILURE_STREAK still bounds the fallback itself.
+ */
+const ITEMS_SWITCH_STREAK = 3;
 /** Row-count and wall-clock triggers for the amount pass's progress line. */
 const AMOUNT_PROGRESS_EVERY = 10;
 const AMOUNT_HEARTBEAT_MS = 10_000;
@@ -486,7 +498,10 @@ export async function ingestBrazilPncp(
       let items: PncpItem[] | null = null;
       let unresolved = false;
       let fromCompraTotal = false;
-      if (!options.skipAmounts && amountsStoppedEarly) unresolved = true;
+      // Rows reached after the switch never touch /itens; they still count
+      // toward the progress line, so a long fallback pass is not silent.
+      const skippedItems = !options.skipAmounts && amountsStoppedEarly;
+      if (skippedItems) unresolved = true;
       if (!options.skipAmounts && !amountsStoppedEarly) {
         await takeSlot();
         let refused: string | null = null;
@@ -503,7 +518,7 @@ export async function ingestBrazilPncp(
         }
         done += 1;
         beat(done === withinWindow.length);
-        if (amountFailureStreak >= AMOUNT_FAILURE_STREAK) {
+        if (amountFailureStreak >= ITEMS_SWITCH_STREAK && !amountsStoppedEarly) {
           amountsStoppedEarly = true;
           onProgress?.(
             `取金额：明细接口连续 ${amountFailureStreak} 条没回应，停在第 ${done} / ${withinWindow.length} 条 —— ` +
@@ -532,6 +547,10 @@ export async function ingestBrazilPncp(
           compraTotalFailureStreak += 1;
           amountFailureReasons.add(err instanceof Error ? err.message : String(err));
         }
+      }
+      if (skippedItems) {
+        done += 1;
+        beat(done === withinWindow.length);
       }
       if (unresolved) unresolvedFlags[index] = true;
       const tender = mapPncpSearchRowToTender(row, items ?? undefined, BRAZIL_PNCP_SOURCE_NAME);

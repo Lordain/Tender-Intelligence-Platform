@@ -87,6 +87,7 @@
     "test:recently-added": "tsx scripts/test-recently-added.ts",
     "test:weekend-lull": "tsx scripts/test-weekend-lull.ts",
     "test:abbreviation-notes": "tsx scripts/test-abbreviation-notes.ts",
+    "test:oxi-floor": "tsx scripts/test-oxi-floor.ts",
     "test:list-facets": "tsx scripts/test-list-facets.ts",
     "test:upcoming-deadlines": "tsx scripts/test-upcoming-deadlines.ts",
     "test:upsert-protection": "tsx scripts/test-upsert-protection.ts",

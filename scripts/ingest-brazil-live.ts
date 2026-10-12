@@ -192,12 +192,12 @@ async function main() {
   if (result.skippedAwardedClosed > 0) {
     console.log(`  跳过 ${result.skippedAwardedClosed} 条已中标且早就截止的记录（PNCP 只给布尔值，没有中标方和金额）。`);
   }
-  if (result.amountLookupFailed > 0) {
-    console.log(`  ⚠ 其中 ${result.amountLookupFailed} 条是 PNCP 拒绝了取金额的请求 —— 这些项目不是没有预算，是我们没问到。`);
-    if (result.amountsStoppedEarly) {
-      console.log("     连续被拒太多次，取金额那一趟提前停了。剩下的项目一律显示无金额，跟项目本身无关。");
+  if (result.amountLookupFailed > 0 || result.amountsStoppedEarly) {
+    console.log(`  ⚠ 明细接口（/itens）有 ${result.amountLookupFailed} 条没回应${result.amountsStoppedEarly ? "，连续失败太多次后不再问它" : ""}。`);
+    console.log(`     其中 ${result.amountsFromCompraTotal} 条改用 PNCP 采购总额（valorTotalEstimado）补上了金额，照常分级。`);
+    if (result.heldBackForAmount > 0) {
+      console.log(`     还有 ${result.heldBackForAmount} 条两边都没拿到金额（或预算保密），这一轮不写入，留到下一轮再判断（巴西按金额分级，没有金额就挡不住小工程）。`);
     }
-    console.log(`     这 ${result.heldBackForAmount} 条没问到金额的这一轮不写入，留到下一轮重新取金额后再判断（巴西按金额分级，没有金额就挡不住小工程）。`);
     for (const reason of result.amountFailureReasons.slice(0, 5)) console.log(`       ${reason}`);
   }
 

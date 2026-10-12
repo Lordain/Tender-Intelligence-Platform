@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchPncpArquivos, fetchPncpCompra, fetchPncpItems, fetchPncpSearchPage, PNCP_MAX_PAGE_SIZE, PNCP_WORKS_MODALITIES, type PncpCompraState } from "@/lib/ingestion/connectors/brazil-pncp-live";
+import { fetchPncpArquivos, fetchPncpCompra, fetchPncpEstimatedTotal, fetchPncpItems, fetchPncpSearchPage, PNCP_MAX_PAGE_SIZE, PNCP_WORKS_MODALITIES, type PncpCompraState } from "@/lib/ingestion/connectors/brazil-pncp-live";
 import { refreshStoredStatuses, type ObservedStatus, type StatusRefreshResult } from "@/lib/ingestion/status-refresh";
 import { saveDocumentLinks, type DocumentLinksForSlug } from "@/lib/ingestion/document-links";
 import { mapPncpSearchRowToTender, parsePncpDate, type PncpItem, type PncpSearchRow } from "@/lib/ingestion/brazil-pncp-mapper";
@@ -62,6 +62,8 @@ export type BrazilIngestResult = {
   amountLookupFailed: number;
   /** Set when the amount pass stopped on AMOUNT_FAILURE_STREAK. Every row after the stop has no amount for a reason that has nothing to do with the row. */
   amountsStoppedEarly: boolean;
+  /** Rows whose /itens lookup failed but whose amount came from the compra's own estimated total instead (fetchPncpEstimatedTotal). */
+  amountsFromCompraTotal: number;
   /**
    * Rows left out of this run because their amount was never asked for —
    * PNCP refused the lookup, or the pass had stopped before reaching them.
@@ -456,6 +458,8 @@ export async function ingestBrazilPncp(
   let amountFailureStreak = 0;
   let amountLookupFailed = 0;
   let amountsStoppedEarly = false;
+  let compraTotalFailureStreak = 0;
+  let amountsFromCompraTotal = 0;
   const amountFailureReasons = new Set<string>();
   // Every 50 rows was the only trigger until 2026-09-19, when a 97-row run
   // printed 「发布时间在 1 天内的：97 / 300 条」 and then said nothing for long
@@ -480,7 +484,9 @@ export async function ingestBrazilPncp(
       if (index >= withinWindow.length) return;
       const row = withinWindow[index];
       let items: PncpItem[] | null = null;
-      if (!options.skipAmounts && amountsStoppedEarly) unresolvedFlags[index] = true;
+      let unresolved = false;
+      let fromCompraTotal = false;
+      if (!options.skipAmounts && amountsStoppedEarly) unresolved = true;
       if (!options.skipAmounts && !amountsStoppedEarly) {
         await takeSlot();
         let refused: string | null = null;
@@ -488,7 +494,7 @@ export async function ingestBrazilPncp(
           refused = reason;
         });
         if (refused !== null) {
-          unresolvedFlags[index] = true;
+          unresolved = true;
           amountLookupFailed += 1;
           amountFailureStreak += 1;
           amountFailureReasons.add(refused);
@@ -500,16 +506,39 @@ export async function ingestBrazilPncp(
         if (amountFailureStreak >= AMOUNT_FAILURE_STREAK) {
           amountsStoppedEarly = true;
           onProgress?.(
-            `取金额：连续 ${amountFailureStreak} 条都被拒，停在第 ${done} / ${withinWindow.length} 条 —— ` +
-              "项目照常写入，只是没有金额。这是 PNCP 在拒绝我们，不是这些项目没有预算，过几分钟重跑就会补上",
+            `取金额：明细接口连续 ${amountFailureStreak} 条没回应，停在第 ${done} / ${withinWindow.length} 条 —— ` +
+              "剩下的改用 PNCP 采购总额（valorTotalEstimado）取金额",
           );
         }
       }
+      // /itens failed or has stopped: ask the compra's own estimated total
+      // (fetchPncpEstimatedTotal). A total above zero stands in for the item
+      // sum, and the mapper reads it the same way. Anything else leaves the
+      // row held back, as before. A sealed budget waits for /itens to come
+      // back rather than going in with no amount. This has its own failure
+      // streak, so a PNCP that is down altogether still stops quickly.
+      if (unresolved && compraTotalFailureStreak < AMOUNT_FAILURE_STREAK) {
+        await takeSlot();
+        try {
+          const total = await fetchPncpEstimatedTotal(row.item_url);
+          compraTotalFailureStreak = 0;
+          if (total !== null) {
+            items = [{ valorTotal: total }];
+            unresolved = false;
+            fromCompraTotal = true;
+            amountsFromCompraTotal += 1;
+          }
+        } catch (err) {
+          compraTotalFailureStreak += 1;
+          amountFailureReasons.add(err instanceof Error ? err.message : String(err));
+        }
+      }
+      if (unresolved) unresolvedFlags[index] = true;
       const tender = mapPncpSearchRowToTender(row, items ?? undefined, BRAZIL_PNCP_SOURCE_NAME);
       if (!tender) continue;
       results[index] = tender;
       sealedFlags[index] = items?.some((item) => item.orcamentoSigiloso === true) === true;
-      if (items) itemCounts.push(items.length);
+      if (items && !fromCompraTotal) itemCounts.push(items.length);
     }
   }
 
@@ -615,6 +644,7 @@ export async function ingestBrazilPncp(
     pregaoNotEquipment: notEquipment.length,
     amountLookupFailed,
     amountsStoppedEarly,
+    amountsFromCompraTotal,
     heldBackForAmount,
     amountFailureReasons: [...amountFailureReasons],
     byModality,

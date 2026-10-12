@@ -212,6 +212,8 @@ export type PncpCompraState = {
   dataEncerramentoProposta?: string;
   /** The homologated total — what the compra was actually awarded for. 0 or absent before a result exists. */
   valorTotalHomologado?: number | null;
+  /** The compra's estimated total. 0 or absent when the buyer sealed the budget. See fetchPncpEstimatedTotal. */
+  valorTotalEstimado?: number | null;
 };
 
 const CONSULTA_BASE = "https://pncp.gov.br/api/consulta/v1/orgaos";
@@ -227,6 +229,30 @@ export async function fetchPncpCompra(controlNumber: string): Promise<PncpCompra
   const parts = parsePncpControlNumber(controlNumber);
   if (!parts) throw new Error(`不是 PNCP 编号：${controlNumber}`);
   return (await getJson(`${CONSULTA_BASE}/${parts.cnpj}/compras/${parts.ano}/${parts.sequencial}`, `PNCP compra ${controlNumber}`)) as PncpCompraState;
+}
+
+/**
+ * The compra's estimated total, from the consulta API: the fallback for an
+ * amount when `/itens` will not answer.
+ *
+ * Since 2026-10-11 the pncp-api `/itens` path has timed out on every request
+ * from the GitHub runner, while the search API and this consulta path kept
+ * answering on the same runner in the same minutes. The status refresh read
+ * 198 of 201 compras through it on 2026-10-12. So the import held back every
+ * row for want of an amount (heldBackForAmount), and Brazil imported nothing
+ * for two days (user, 2026-10-12: 巴西到现在还是不行).
+ *
+ * Returns the total when PNCP states one above zero, and null when it answered
+ * without one, for example a sealed budget. Throws when PNCP did not answer.
+ * Uses the amount pass's short retry budget, not the status refresh's long
+ * one: this runs once per row inside the import.
+ */
+export async function fetchPncpEstimatedTotal(itemUrl: string | undefined): Promise<number | null> {
+  const match = (itemUrl ?? "").match(/\/compras\/(\d{14})\/(\d{4})\/(\d+)/);
+  if (!match) return null;
+  const body = (await getJson(`${CONSULTA_BASE}/${match[1]}/compras/${match[2]}/${Number(match[3])}`, `PNCP compra total ${match[1]}/${match[2]}/${match[3]}`, AMOUNT_BACKOFF_MS)) as PncpCompraState;
+  const total = body.valorTotalEstimado;
+  return typeof total === "number" && Number.isFinite(total) && total > 0 ? Math.round(total * 100) / 100 : null;
 }
 
 /**

@@ -21,6 +21,10 @@ on:
         description: "检查最近多少小时入库的项目"
         type: string
         default: "36"
+      import_preview:
+        description: "改为试运行巴西导入（只读，不写库），用来看金额能不能取到"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -47,8 +51,13 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           WRITE: ${{ inputs.write }}
           HOURS: ${{ inputs.hours }}
+          IMPORT_PREVIEW: ${{ inputs.import_preview }}
         run: |
-          if [ "$WRITE" = "true" ]; then
+          # A dry run of the nightly Brazil import, never with --write: shows
+          # whether amounts come through (2026-10-12, the /itens outage).
+          if [ "$IMPORT_PREVIEW" = "true" ]; then
+            npm run ingest:brazil-live
+          elif [ "$WRITE" = "true" ]; then
             npm run recheck:brazil-amounts -- --hours "$HOURS" --write
           else
             npm run recheck:brazil-amounts -- --hours "$HOURS"

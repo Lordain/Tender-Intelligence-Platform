@@ -54,6 +54,8 @@ export type DisplayTextRow = {
   summary_zh_public: string | null;
   country: string | null;
   manual_field_overrides: string[] | null;
+  /** Sent to the generator and counted as source text (user, 2026-10-12: 通过一句话总结来优化标题). */
+  one_line_summary?: string | null;
 };
 
 /** The three generated columns, paired with the override key that pins each one. */
@@ -173,7 +175,7 @@ async function loadCandidates(supabase: SupabaseClient): Promise<DisplayTextRow[
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("tenders")
-      .select("slug, title, summary, title_zh_short, title_zh_public, summary_zh_public, country, manual_field_overrides")
+      .select("slug, title, summary, title_zh_short, title_zh_public, summary_zh_public, country, manual_field_overrides, one_line_summary")
       // Newest IMPORTED first, not newest published. `limit` exists so a run
       // can be kept to "the rows that arrived since last time", and
       // publication_date answers a different question: a tender published in
@@ -196,8 +198,8 @@ async function loadCandidates(supabase: SupabaseClient): Promise<DisplayTextRow[
   return rows.filter(needsDisplayText);
 }
 
-function toInput(row: DisplayTextRow): DisplayTextInput {
-  return { slug: row.slug, titleZh: row.title.zh, summaryZh: row.summary.zh, country: row.country };
+export function toInput(row: DisplayTextRow): DisplayTextInput {
+  return { slug: row.slug, titleZh: row.title.zh, summaryZh: row.summary.zh, country: row.country, oneLineSummary: row.one_line_summary ?? null };
 }
 
 /**
@@ -213,12 +215,12 @@ function toInput(row: DisplayTextRow): DisplayTextInput {
  * against less than the prompt gave it reports copying as invention. See the
  * `sourceZh` note on shortTitleProblems.
  */
-function generatorSourceText(row: Pick<DisplayTextRow, "title" | "summary">): string {
-  return `${row.title.zh}\n${row.summary.zh}`;
+function generatorSourceText(row: Pick<DisplayTextRow, "title" | "summary" | "one_line_summary">): string {
+  return [row.title.zh, row.summary.zh, row.one_line_summary ?? ""].join("\n");
 }
 
 export function checkGenerated(
-  row: Pick<DisplayTextRow, "slug" | "title" | "summary">,
+  row: Pick<DisplayTextRow, "slug" | "title" | "summary" | "one_line_summary">,
   generated: { titleZhShort: string; titleZhPublic: string; summaryZhPublic: string },
 ): DisplayTextPreview {
   // Strip a Latin parenthetical the full title does not contain, rather than

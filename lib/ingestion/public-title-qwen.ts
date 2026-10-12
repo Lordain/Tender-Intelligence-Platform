@@ -55,7 +55,7 @@ const SYSTEM_PROMPT = `你要为一条已经翻译好的中文招标信息生成
 输入每条包含：id、country（国家）、titleZh（完整中文标题）、summaryZh（完整中文摘要）、oneLineSummary（读过招标文件后写的一句话说明，可能为空）。
 对每一条输出三个字段：titleZhShort、titleZhPublic、summaryZhPublic。
 
-关于 oneLineSummary：它是读过招标文件后写的，比标题可靠。titleZh 里的拉丁字母缩写或简称（例如 H.M.E.M. Y N.、CESFAM、SLEP）看不懂时，按 oneLineSummary 的说法写成中文——短标题写出它是什么（例如 军队妇女与新生儿专科医院），访客标题写成品类（例如 专科医院）。oneLineSummary 没有说明的缩写，不要猜。下面各条规则里说的「原标题」「原文」，都包括 oneLineSummary：它说了的可以用，它没说的照样不许写。oneLineSummary 为空时忽略这一段。
+关于 oneLineSummary：它是读过招标文件后写的，比标题可靠。titleZh 里的拉丁字母缩写或简称（例如 H.M.E.M. Y N.、CESFAM、SLEP）看不懂时，按 oneLineSummary 的说法写成中文——短标题写出它是什么（例如 军队妇女与新生儿专科医院），访客标题写成品类（例如 专科医院）。oneLineSummary 没有说明的缩写，不要猜。oneLineSummary 只用于【1】【2】两个标题：这两条规则里说的「原标题」，包括 oneLineSummary——它说了的可以用，它没说的照样不许写。【3】summaryZhPublic 不使用 oneLineSummary，照旧只根据 titleZh 和 summaryZh 写。oneLineSummary 为空时忽略这一段。
 
 ═══ 【1】titleZhShort —— 给付费订阅用户看的短标题 ═══
 

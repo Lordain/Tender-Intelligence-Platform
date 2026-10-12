@@ -3,6 +3,8 @@
  * 标题不清晰，用各种缩写 … 包括访客标题、订阅用户标题、正式完整标题).
  * See lib/ingestion/refresh-titles-from-summary.ts.
  *
+ * Titles only — no summary is changed (user: 只考虑标题，不要动摘要).
+ *
  * Only rows that have a 一句话总结. The full title only gains Chinese notes
  * after its abbreviations; nothing in it is removed. Admin-edited fields are
  * skipped. New analyses do this by themselves; this is for rows analysed
@@ -43,7 +45,6 @@ function print(outcome: TitleRefreshOutcome) {
   for (const { note, reason } of outcome.title.refusedNotes) console.log(`                  没加的缩写说明：${note.abbr} → ${note.zh}（${reason}）`);
   show("订阅用户标题", outcome.short);
   show("访客标题    ", outcome.publicTitle);
-  show("访客摘要    ", outcome.publicSummary);
   if (outcome.error) console.log(`  出错：${outcome.error}`);
 }
 
@@ -90,13 +91,13 @@ async function main() {
   console.log("");
   // Preview prints every row; a write prints only rows that changed.
   for (const outcome of outcomes) {
-    const changed = [outcome.title, outcome.short, outcome.publicTitle, outcome.publicSummary].some((c) => c.after !== c.before);
+    const changed = [outcome.title, outcome.short, outcome.publicTitle].some((c) => c.after !== c.before);
     if (!write || changed || outcome.error) print(outcome);
   }
 
   const count = (pick: (o: TitleRefreshOutcome) => { before: string | null; after: string | null }) => outcomes.filter((o) => pick(o).after !== pick(o).before).length;
   console.log("─".repeat(78));
-  console.log(`会改动：完整标题 ${count((o) => o.title)} 条（只加缩写说明）、订阅用户标题 ${count((o) => o.short)} 条、访客标题 ${count((o) => o.publicTitle)} 条、访客摘要 ${count((o) => o.publicSummary)} 条（共 ${outcomes.length} 条）。`);
+  console.log(`会改动：完整标题 ${count((o) => o.title)} 条（只加缩写说明）、订阅用户标题 ${count((o) => o.short)} 条、访客标题 ${count((o) => o.publicTitle)} 条（共 ${outcomes.length} 条）。摘要一律不动。`);
   const errors = outcomes.filter((o) => o.error).length;
   if (errors) console.log(`出错 ${errors} 条，没有改动，可以再跑一次。`);
   if (write) console.log(`已写入 ${outcomes.filter((o) => o.written).length} 条。前台约 5 分钟后刷新。`);

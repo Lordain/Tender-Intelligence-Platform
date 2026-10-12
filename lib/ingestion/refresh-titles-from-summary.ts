@@ -12,9 +12,13 @@ import { generateDisplayTextBatch, type GeneratedDisplayText } from "@/lib/inges
  * 1. Full title (title.zh): Chinese notes inserted after its abbreviations,
  *    nothing removed (lib/ingestion/abbreviation-notes.ts). title.es is
  *    never touched.
- * 2. Member short title, visitor title and visitor summary: generated again
- *    from the noted title plus the 一句话总结, through the same validators as
+ * 2. Member short title and visitor title: generated again from the noted
+ *    title plus the 一句话总结, through the same validators as
  *    `npm run titles:public`. A refused field keeps its current value.
+ *
+ * Titles only (user, 2026-10-12: 只考虑标题，不要动摘要): the generator also
+ * returns a visitor summary, and it is thrown away here. No summary column
+ * is written.
  *
  * Anything an admin edited (manual_field_overrides) is skipped, field by
  * field. Used by `npm run titles:from-summary` for stored rows, and by
@@ -31,7 +35,6 @@ export type TitleRefreshOutcome = {
   title: Change & { notes: AbbreviationNote[]; refusedNotes: { note: AbbreviationNote; reason: string }[] };
   short: Change;
   publicTitle: Change;
-  publicSummary: Change;
   written: boolean;
   error?: string;
 };
@@ -99,7 +102,7 @@ async function refreshBatch(supabase: SupabaseClient, batch: RefreshRow[], write
     const pinned = pinnedOf(row);
     const got = generated.get(row.slug);
     const checked = got ? checkGenerated(next, got) : null;
-    const change = (column: "title_zh_short" | "title_zh_public" | "summary_zh_public", value: string | undefined, problems: string[]): Change => {
+    const change = (column: "title_zh_short" | "title_zh_public", value: string | undefined, problems: string[]): Change => {
       const isPinned = pinned.has(column);
       const usable = !isPinned && value !== undefined && problems.length === 0;
       return { before: row[column], after: usable ? value : row[column], problems: value === undefined ? ["模型没有返回"] : problems, pinned: isPinned };
@@ -110,7 +113,6 @@ async function refreshBatch(supabase: SupabaseClient, batch: RefreshRow[], write
       title: { before: row.title.zh, after: applied.title, problems: [], pinned: pinned.has("title"), notes: applied.applied, refusedNotes: applied.refused },
       short: change("title_zh_short", checked?.short.value, checked?.short.problems ?? []),
       publicTitle: change("title_zh_public", checked?.publicTitle.value, checked?.publicTitle.problems ?? []),
-      publicSummary: change("summary_zh_public", checked?.publicSummary.value, checked?.publicSummary.problems ?? []),
       written: false,
       ...(got === undefined && error ? { error } : {}),
     };
@@ -119,7 +121,6 @@ async function refreshBatch(supabase: SupabaseClient, batch: RefreshRow[], write
     if (outcome.title.after !== outcome.title.before) update.title = next.title;
     if (outcome.short.after !== outcome.short.before) update.title_zh_short = outcome.short.after;
     if (outcome.publicTitle.after !== outcome.publicTitle.before) update.title_zh_public = outcome.publicTitle.after;
-    if (outcome.publicSummary.after !== outcome.publicSummary.before) update.summary_zh_public = outcome.publicSummary.after;
 
     if (write && Object.keys(update).length > 0) {
       const { error: updateError } = await supabase.from("tenders").update({ ...update, updated_at: new Date().toISOString() }).eq("slug", row.slug);

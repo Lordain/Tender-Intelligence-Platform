@@ -2,6 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { applyAbbreviationNotes, findAbbreviationNotesBatch, type AbbreviationNote } from "@/lib/ingestion/abbreviation-notes";
 import { checkGenerated, toInput, type DisplayTextRow } from "@/lib/ingestion/generate-public-titles";
 import { generateDisplayTextBatch, type GeneratedDisplayText } from "@/lib/ingestion/public-title-qwen";
+import { deriveTenderStatus } from "@/lib/tender-status";
+import { LIVE_TENDER_STATUSES } from "@/lib/tender-list-page";
+import type { TenderStatus } from "@/types/tender";
 
 /**
  * Re-title a tender from its 一句话总结 (user, 2026-10-12: 很多项目的标题不清晰，
@@ -25,7 +28,10 @@ import { generateDisplayTextBatch, type GeneratedDisplayText } from "@/lib/inges
  * document analysis right after it writes a new 一句话总结.
  */
 
-export type RefreshRow = DisplayTextRow & { one_line_summary: string };
+/** The status columns deriveTenderStatus needs, so only tenders still taking bids are touched. */
+type StatusFields = { status: TenderStatus; submission_deadline: string | null; publication_date: string | null; source_name: string | null };
+export type CandidateRow = DisplayTextRow & StatusFields;
+export type RefreshRow = CandidateRow & { one_line_summary: string };
 
 type Change = { before: string | null; after: string | null; problems: string[]; pinned: boolean };
 
@@ -39,11 +45,30 @@ export type TitleRefreshOutcome = {
   error?: string;
 };
 
-export const REFRESH_COLUMNS = "slug, title, summary, title_zh_short, title_zh_public, summary_zh_public, country, manual_field_overrides, one_line_summary";
+export const REFRESH_COLUMNS =
+  "slug, title, summary, title_zh_short, title_zh_public, summary_zh_public, country, manual_field_overrides, one_line_summary, status, submission_deadline, publication_date, source_name";
 
-/** Untranslated rows (zh mirrors es) have nothing to work from; rows without a 一句话总结 have nothing new to add. */
-export function canRefresh(row: DisplayTextRow): row is RefreshRow {
-  return Boolean(row.one_line_summary?.trim()) && row.title.zh.trim() !== row.title.es.trim();
+/**
+ * Only tenders still taking bids — the same live statuses as 当前在招 on the
+ * site (user, 2026-10-12: 只看投标中的项目，不要全开). Closed, awarded and
+ * cancelled tenders keep their titles: retitling them costs model calls and
+ * helps no one bid.
+ */
+export function isBiddingNow(row: StatusFields, now: Date = new Date()): boolean {
+  const status = deriveTenderStatus(
+    row.status,
+    { submissionDeadline: row.submission_deadline, publicationDate: row.publication_date, sourceName: row.source_name },
+    now,
+  );
+  return LIVE_TENDER_STATUSES.includes(status);
+}
+
+/**
+ * Untranslated rows (zh mirrors es) have nothing to work from; rows without a
+ * 一句话总结 have nothing new to add; tenders no longer taking bids are left.
+ */
+export function canRefresh(row: CandidateRow): row is RefreshRow {
+  return Boolean(row.one_line_summary?.trim()) && row.title.zh.trim() !== row.title.es.trim() && isBiddingNow(row);
 }
 
 const BATCH_SIZE = 10;
@@ -161,7 +186,7 @@ async function refreshOne(supabase: SupabaseClient, tenderId: string): Promise<s
     if (!process.env.DASHSCOPE_API_KEY) return null;
     const { data, error } = await supabase.from("tenders").select(REFRESH_COLUMNS).eq("id", tenderId).maybeSingle();
     if (error || !data) return error ? `标题没有按一句话总结更新：${error.message}` : null;
-    const row = data as DisplayTextRow;
+    const row = data as CandidateRow;
     if (!canRefresh(row)) return null;
     const [outcome] = await refreshTitlesFromSummary(supabase, [row], { write: true });
     return outcome?.error ? `标题没有按一句话总结更新：${outcome.error}` : null;

@@ -5,7 +5,8 @@
  *
  * Titles only — no summary is changed (user: 只考虑标题，不要动摘要).
  *
- * Only rows that have a 一句话总结. The full title only gains Chinese notes
+ * Only tenders still taking bids (同「当前在招」) that have a 一句话总结. The
+ * full title only gains Chinese notes
  * after its abbreviations; nothing in it is removed. Admin-edited fields are
  * skipped. New analyses do this by themselves; this is for rows analysed
  * before 2026-10-12.
@@ -13,11 +14,10 @@
  *   npm run titles:from-summary                        (preview: 10 rows, real model calls, writes nothing)
  *   npm run titles:from-summary -- --limit 30          (preview 30)
  *   npm run titles:from-summary -- --slug <slug>       (preview one row)
- *   npm run titles:from-summary -- --write             (every row with a 一句话总结)
+ *   npm run titles:from-summary -- --write             (every bidding row with a 一句话总结)
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
-import { canRefresh, refreshTitlesFromSummary, REFRESH_COLUMNS, type RefreshRow, type TitleRefreshOutcome } from "../lib/ingestion/refresh-titles-from-summary";
-import type { DisplayTextRow } from "../lib/ingestion/generate-public-titles";
+import { canRefresh, refreshTitlesFromSummary, REFRESH_COLUMNS, type CandidateRow, type RefreshRow, type TitleRefreshOutcome } from "../lib/ingestion/refresh-titles-from-summary";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
 
 const PAGE_SIZE = 1000;
@@ -73,11 +73,11 @@ async function main() {
       console.error("读取 tenders 失败：" + error.message);
       process.exit(1);
     }
-    const page = (data ?? []) as DisplayTextRow[];
+    const page = (data ?? []) as CandidateRow[];
     rows.push(...page.filter(canRefresh));
     if (page.length < PAGE_SIZE) break;
   }
-  console.log(`有一句话总结、已翻译的项目：${rows.length} 条。`);
+  console.log(`投标中（同网站「当前在招」）、有一句话总结、已翻译的项目：${rows.length} 条。已截止、已中标、已取消的不处理。`);
   if (rows.length === 0) return;
 
   const limit = limitArg ? Number(limitArg) : write ? rows.length : PREVIEW_DEFAULT;

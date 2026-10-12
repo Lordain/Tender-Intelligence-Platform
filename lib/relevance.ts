@@ -17,6 +17,7 @@ import { classifyColombiaSubastaRelevance, isColombianSubastaInversa } from "@/l
 import { isNewEnergy, NEW_ENERGY_MIN_VALUE_USD } from "@/lib/new-energy";
 import { classifyEnergyAuction, ENERGY_AUCTIONS_SOURCE_NAME } from "@/lib/relevance-energy-auctions";
 import { classifyPetroperuRelevance, PETROPERU_SOURCE_NAME } from "@/lib/relevance-petroperu";
+import { isObrasPorImpuestos } from "@/lib/obras-por-impuestos";
 import { classifyPemexRelevance, PEMEX_SOURCE_NAME } from "@/lib/relevance-pemex";
 import { CFE_MICROSITIO_SOURCE_NAME, classifyCfeRelevance, isCfeCall } from "@/lib/relevance-cfe";
 import { classifyPortugueseExclusion, classifyPortugueseIndustries, classifyPortugueseSmallWorks, isBrazil, isPortugueseMunicipalSportsComponent, isPortugueseNoObjectTitle } from "@/lib/relevance-pt";
@@ -4632,11 +4633,55 @@ export function applySummaryDurationFloor(relevance: TenderRelevance, oneLineSum
  * in StoredTenderClassificationInput above AND in a column on `tenders`. A
  * connector-only signal will be right at import and wrong forever after.
  */
+/**
+ * Peru's Obras por Impuestos keeps 中型 and up only: US$5M or more (user,
+ * 2026-10-12: 收紧 OxI：以工程抵税项目只保留中型以上，也就是 500 万美元以上).
+ *
+ * The 2026-10-12 audit (npm run audit:live-by-country) found 46 of Peru's 136
+ * live tenders came from OxI, mostly small municipal and school works. The
+ * winner also pre-finances the work against Peruvian income tax
+ * (lib/obras-por-impuestos.ts), which makes a small OxI project the least
+ * reachable kind of tender on the site.
+ *
+ * The amount decides when there is one. Without one, the row stays only if
+ * the general rules already rate it 中型 or 大型. Runs after the general
+ * rules, so it only ever moves a kept row to 已过滤, never the other way.
+ * Like every rule change, it reaches stored rows only through an import or a
+ * reclassify run; rows already in the database stay as they are.
+ */
+export const OXI_MIN_VALUE_USD = 5_000_000;
+
+function applyOxiFloor(relevance: TenderRelevance, input: StoredTenderClassificationInput): TenderRelevance {
+  if (relevance.tier === "excluded" || !isObrasPorImpuestos({ sourceName: input.sourceName })) return relevance;
+  const usd = input.estimatedValue === undefined || input.estimatedValue === null ? null : convertToUsd(input.estimatedValue, input.currency);
+  const keep = usd !== null ? usd >= OXI_MIN_VALUE_USD : relevance.tier === "significant" || relevance.tier === "flagship";
+  if (keep) return relevance;
+  return {
+    tier: "excluded",
+    label: LABELS.excluded,
+    reason: {
+      zh:
+        usd !== null
+          ? "以工程抵税（OxI）项目只保留 500 万美元以上的；本项目金额不到 500 万美元，默认不进入推荐列表（数据仍保留，可用于统计）。"
+          : "以工程抵税（OxI）项目只保留中型以上的；本项目没有金额，按其他规则也只是常规项目，默认不进入推荐列表（数据仍保留，可用于统计）。",
+      en:
+        usd !== null
+          ? "Peru Obras por Impuestos projects are kept from US$5M; this one is below that. Filtered from the default feed (metadata is kept, not deleted)."
+          : "Peru Obras por Impuestos projects are kept from the significant tier; this one has no amount and rates standard otherwise. Filtered from the default feed (metadata is kept, not deleted).",
+      es:
+        usd !== null
+          ? "Los proyectos de Obras por Impuestos se conservan desde US$5M; este queda por debajo. Excluido del listado por defecto (los datos se conservan)."
+          : "Los proyectos de Obras por Impuestos se conservan desde el nivel significativo; este no tiene monto y por lo demás es estándar. Excluido del listado por defecto (los datos se conservan).",
+    },
+  };
+}
+
 export function classifyStoredTender(input: StoredTenderClassificationInput): {
   industries: ReturnType<typeof classifyIndustries>;
   relevance: TenderRelevance;
 } {
-  const result = classifyStoredTenderFields(input);
+  const fields = classifyStoredTenderFields(input);
+  const result = { ...fields, relevance: applyOxiFloor(fields.relevance, input) };
   const hasAmount = input.estimatedValue !== undefined && input.estimatedValue !== null;
   return input.oneLineSummary ? { ...result, relevance: applySummaryDurationFloor(result.relevance, input.oneLineSummary, hasAmount) } : result;
 }

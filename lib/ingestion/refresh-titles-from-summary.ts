@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { applyAbbreviationNotes, findAbbreviationNotesBatch, type AbbreviationNote } from "@/lib/ingestion/abbreviation-notes";
-import { checkGenerated, toInput, type DisplayTextRow } from "@/lib/ingestion/generate-public-titles";
-import { generateDisplayTextBatch, type GeneratedDisplayText } from "@/lib/ingestion/public-title-qwen";
+import type { DisplayTextRow } from "@/lib/ingestion/generate-public-titles";
+import { droppedSourceSpellings, refineTitlesBatch, type RefineResult } from "@/lib/ingestion/title-refine-qwen";
+import { publicTitleProblems, shortTitleProblems } from "@/lib/public-title";
 import { deriveTenderStatus } from "@/lib/tender-status";
 import { LIVE_TENDER_STATUSES } from "@/lib/tender-list-page";
 import type { TenderStatus } from "@/types/tender";
@@ -15,12 +16,12 @@ import type { TenderStatus } from "@/types/tender";
  * 1. Full title (title.zh): Chinese notes inserted after its abbreviations,
  *    nothing removed (lib/ingestion/abbreviation-notes.ts). title.es is
  *    never touched.
- * 2. Member short title and visitor title: generated again from the noted
- *    title plus the 一句话总结, through the same validators as
- *    `npm run titles:public`. A refused field keeps its current value.
+ * 2. Member short title and visitor title: changed only where the 一句话总结
+ *    shows they are unclear (title-refine-qwen.ts), through the same
+ *    validators as `npm run titles:public`, and a short title may not drop
+ *    a source spelling. A refused field keeps its current value.
  *
- * Titles only (user, 2026-10-12: 只考虑标题，不要动摘要): the generator also
- * returns a visitor summary, and it is thrown away here. No summary column
+ * Titles only (user, 2026-10-12: 只考虑标题，不要动摘要): no summary column
  * is written.
  *
  * Anything an admin edited (manual_field_overrides) is skipped, field by
@@ -106,38 +107,62 @@ async function refreshBatch(supabase: SupabaseClient, batch: RefreshRow[], write
     return { row, applied, next: { ...row, title: { ...row.title, zh: applied.title } } as RefreshRow };
   });
 
-  // Step 2: the three display strings, from the noted title.
-  const generated = new Map<string, GeneratedDisplayText>();
-  try {
-    for (const item of await generateDisplayTextBatch(noted.map(({ next }) => toInput(next)))) generated.set(item.slug, item);
-  } catch (err) {
-    error = err instanceof Error ? err.message : String(err);
-  }
-  for (const { next } of noted.filter(({ row }) => !generated.has(row.slug))) {
+  // Step 2: fix the short and visitor titles only where the 一句话总结 shows
+  // they are unclear (lib/ingestion/title-refine-qwen.ts). Empty columns are
+  // left to `npm run titles:public`, which fills missing ones.
+  const refined = new Map<string, RefineResult>();
+  const inputs = noted
+    .filter(({ row }) => (row.title_zh_short ?? "").trim() !== "" || (row.title_zh_public ?? "").trim() !== "")
+    .map(({ row, next }) => ({
+      slug: row.slug,
+      country: row.country,
+      titleZh: next.title.zh,
+      oneLineSummary: row.one_line_summary,
+      titleZhShort: row.title_zh_short ?? "",
+      titleZhPublic: row.title_zh_public ?? "",
+    }));
+  if (inputs.length > 0) {
     try {
-      const [single] = await generateDisplayTextBatch([toInput(next)]);
-      if (single) generated.set(single.slug, single);
+      for (const item of await refineTitlesBatch(inputs)) refined.set(item.slug, item);
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
+    }
+    for (const input of inputs.filter((item) => !refined.has(item.slug))) {
+      try {
+        const [single] = await refineTitlesBatch([input]);
+        if (single) refined.set(single.slug, single);
+      } catch (err) {
+        error = err instanceof Error ? err.message : String(err);
+      }
     }
   }
 
   const outcomes: TitleRefreshOutcome[] = [];
   for (const { row, applied, next } of noted) {
     const pinned = pinnedOf(row);
-    const got = generated.get(row.slug);
-    const checked = got ? checkGenerated(next, got) : null;
-    const change = (column: "title_zh_short" | "title_zh_public", value: string | undefined, problems: string[]): Change => {
+    const got = refined.get(row.slug);
+    const source = [next.title.zh, row.summary.zh, row.one_line_summary].join("\n");
+    const change = (column: "title_zh_short" | "title_zh_public", value: string | undefined): Change => {
+      const before = row[column];
       const isPinned = pinned.has(column);
-      const usable = !isPinned && value !== undefined && problems.length === 0;
-      return { before: row[column], after: usable ? value : row[column], problems: value === undefined ? ["模型没有返回"] : problems, pinned: isPinned };
+      if (isPinned || (before ?? "").trim() === "" || value === undefined || value === before) {
+        return { before, after: before, problems: value === undefined && !isPinned && (before ?? "").trim() !== "" ? ["模型没有返回"] : [], pinned: isPinned };
+      }
+      const problems =
+        column === "title_zh_short"
+          ? [
+              ...shortTitleProblems(value, next.title.zh, source),
+              ...droppedSourceSpellings(before ?? "", value).map((spelling) => `删掉了地名原文${spelling}`),
+            ]
+          : publicTitleProblems(value);
+      return { before, after: problems.length === 0 ? value : before, problems, pinned: false };
     };
     const outcome: TitleRefreshOutcome = {
       slug: row.slug,
       oneLineSummary: row.one_line_summary,
       title: { before: row.title.zh, after: applied.title, problems: [], pinned: pinned.has("title"), notes: applied.applied, refusedNotes: applied.refused },
-      short: change("title_zh_short", checked?.short.value, checked?.short.problems ?? []),
-      publicTitle: change("title_zh_public", checked?.publicTitle.value, checked?.publicTitle.problems ?? []),
+      short: change("title_zh_short", got?.titleZhShort),
+      publicTitle: change("title_zh_public", got?.titleZhPublic),
       written: false,
       ...(got === undefined && error ? { error } : {}),
     };

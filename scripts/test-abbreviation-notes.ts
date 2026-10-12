@@ -1,5 +1,6 @@
 /** Offline checks for applyAbbreviationNotes: notes are inserted, the original title is never changed otherwise. */
 import { applyAbbreviationNotes } from "../lib/ingestion/abbreviation-notes";
+import { droppedSourceSpellings } from "../lib/ingestion/title-refine-qwen";
 
 let passed = 0;
 let failed = 0;
@@ -36,6 +37,14 @@ const two = applyAbbreviationNotes("CESFAM 与 SAR 新建", "新建家庭健康�
   { abbr: "SAR", zh: "急诊室" },
 ]);
 check("two notes: one applied, one refused", [two.title, two.refused.length], ["CESFAM（家庭健康中心） 与 SAR 新建", 1]);
+
+// A refined short title may not drop a source spelling (the Bolivia row in the 2026-10-12 preview).
+check(
+  "dropped place spellings are caught",
+  droppedSourceSpellings("比拉卡亚（Vilacaya）、帕卡西（Pacasi）和普纳（Puna）区农村电气化施工", "比拉卡亚（Vilacaya）等三区农村电气化施工工程"),
+  ["（Pacasi）", "（Puna）"],
+);
+check("Chinese notes are not source spellings", droppedSourceSpellings("H.M.E.M. Y N.（军事妇女与新生儿专科医院）改造", "军事妇女与新生儿专科医院改造"), []);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

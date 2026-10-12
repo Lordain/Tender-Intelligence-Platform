@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchPncpArquivos, fetchPncpCompra, fetchPncpEstimatedTotal, fetchPncpItems, fetchPncpSearchPage, PNCP_MAX_PAGE_SIZE, PNCP_WORKS_MODALITIES, type PncpCompraState } from "@/lib/ingestion/connectors/brazil-pncp-live";
+import { fetchPncpArquivos, fetchPncpCompra, fetchPncpEstimatedTotal, fetchPncpItems, fetchPncpSearchPage, PNCP_MAX_PAGE_SIZE, PNCP_WORKS_MODALITIES, type PncpCompraState, type PncpFetchError } from "@/lib/ingestion/connectors/brazil-pncp-live";
 import { refreshStoredStatuses, type ObservedStatus, type StatusRefreshResult } from "@/lib/ingestion/status-refresh";
 import { saveDocumentLinks, type DocumentLinksForSlug } from "@/lib/ingestion/document-links";
 import { mapPncpSearchRowToTender, parsePncpDate, type PncpItem, type PncpSearchRow } from "@/lib/ingestion/brazil-pncp-mapper";
@@ -188,8 +188,24 @@ export type BrazilIngestOptions = {
 const PACE_MS = 1_200;
 /** The sweep's waits before re-asking for a page PNCP refused, after the fetch's own retries ran out. */
 const SWEEP_COOLDOWN_MS = [3 * 60_000, 6 * 60_000];
-/** At most this many cool-downs per run, across all modalities: 3 waits, 15 minutes at most. */
-const SWEEP_COOLDOWN_BUDGET = 3;
+/**
+ * At most this many cool-downs per run, across all modalities.
+ *
+ * Six since 2026-10-12, up from 3. On that Monday the Pregão sweep spent all
+ * three on pages 11, 12 and 13 (each resumed after one 3-minute wait). Page
+ * 19 then dropped the connection with no cool-down left, and the sweep kept
+ * 1,800 rows of a window that held more (user: 连接断开也一起改). A dropped
+ * connection and a refusal get the same treatment: wait, then ask for the
+ * same page again. SWEEP_TIME_BUDGET_MS bounds the total, not this count.
+ */
+const SWEEP_COOLDOWN_BUDGET = 6;
+/**
+ * No new cool-down once the sweep has run this long. The amount pass and the
+ * write still need time inside daily-ingest.yml's 40-minute job limit.
+ * Since the compra-total fallback (2026-10-12) that is a few minutes, not
+ * the 9–13 the /itens timeouts used to take.
+ */
+const SWEEP_TIME_BUDGET_MS = 25 * 60_000;
 /** Shared minimum gap between amount-request STARTS — see the worker pool below for why it is shared rather than per-worker. */
 const AMOUNT_PACE_MS = 500;
 /**
@@ -299,6 +315,7 @@ export async function ingestBrazilPncp(
   const windowLabel = days !== undefined ? `${days} 天` : `${months} 个月`;
 
   let cooldownsLeft = SWEEP_COOLDOWN_BUDGET;
+  const sweepStartedAt = Date.now();
   for (const modalidade of modalities) {
     let pages = 0;
     let seen = 0;
@@ -326,8 +343,11 @@ export async function ingestBrazilPncp(
           // A budget for the whole run, so a night of throttling cannot push
           // the job past its 40-minute limit (daily-ingest.yml).
           if (cooldownsLeft === 0) break;
+          if (Date.now() - sweepStartedAt + SWEEP_COOLDOWN_MS[round - 1] > SWEEP_TIME_BUDGET_MS) break;
           cooldownsLeft -= 1;
-          onProgress?.(`采购方式 ${modalidade}：第 ${pagina} 页被 PNCP 拒绝，等 ${SWEEP_COOLDOWN_MS[round - 1] / 60_000} 分钟后从这一页接着取`);
+          const status = (lastError as PncpFetchError | undefined)?.pncpStatus;
+          const dropped = status === "network" || status === "timeout";
+          onProgress?.(`采购方式 ${modalidade}：第 ${pagina} 页${dropped ? "连接断开" : "被 PNCP 拒绝"}，等 ${SWEEP_COOLDOWN_MS[round - 1] / 60_000} 分钟后从这一页接着取（还剩 ${cooldownsLeft} 次冷却）`);
           await sleep(SWEEP_COOLDOWN_MS[round - 1]);
         }
         try {

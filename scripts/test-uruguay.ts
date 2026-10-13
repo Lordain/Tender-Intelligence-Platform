@@ -76,5 +76,20 @@ check(
   "flagship",
 );
 
+// No amount is not a keep signal on its own (as Mexico, Peru, Chile, Argentina),
+// with the open-call truck fleet kept (user, 2026-10-13: 这个留).
+const live = (title: string, procedureType = "Licitación Pública", summary = title) =>
+  classifyStoredTender({ title, summary, buyer: "Intendencia de Rocha", country: "Uruguay", governmentLevel: "municipal", scopeType: "unknown", procedureType, tenderNumber: "LP 10/2026", sourceName: "test" })
+    .relevance.tier;
+check("school catering in Río Negro → excluded", live("SERVICIO DE ALIMENTACIÓN TERCERIZADO PARA EL LICEO N°2 DE YOUNG, DEPARTAMENTO DE RIO NEGRO"), "excluded");
+check("tree pruning near MV lines → excluded", live("Tratamiento de espacios verdes Distritos Pando y Atlántida", "Licitación Abreviada", "Ítems: PODAS EN PROXIMIDAD A LINEAS AEREAS DE MEDIA TENSION"), "excluded");
+check("stretcher-bearer service → excluded", live("SERVICIO DE CAMILLEROS PARA HOSPITAL DE COLONIA"), "excluded");
+check("Rocha: nine dump trucks and two pickups → kept", live("Adquisición de nueve camiones 0 km de 10 m³ de capacidad y dos camionetas 0 km, pick-up doble cabina") !== "excluded", true);
+check("trucks in a Licitación Abreviada → not the fleet exemption", live("Adquisición de dos camiones 0 km", "Licitación Abreviada"), "excluded");
+check("pickups only → excluded", live("Adquisición de cuatro camionetas 0 km pick-up doble cabina"), "excluded");
+check("same two trucks in a Licitación Pública → kept", live("Adquisición de dos camiones 0 km") !== "excluded", true);
+check("backhoe hire → excluded", live("Arrendamiento de retroexcavadora"), "excluded");
+check("UTE fire systems in power plants → 中型", live("Servicio de adecuación de sistema de incendio", "Licitación Abreviada", "Ítems: ADECUACION DE LOS SISTEMAS DE INCENDIO EN LAS CENTRALES DE GENERACION DE ENERGIA"), "significant");
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

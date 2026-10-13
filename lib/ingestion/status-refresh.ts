@@ -171,3 +171,30 @@ export function describeStatusRefresh(result: StatusRefreshResult, labels: Recor
   if (result.failed) lines.push(`  ⚠ ${result.failed}`);
   return lines;
 }
+
+export type UnfinishedRow = {
+  slug: string;
+  tender_number: string;
+  status: TenderStatus;
+  submission_deadline: string | null;
+  publication_date: string | null;
+  source_url: string | null;
+};
+
+/** A source's stored tenders not yet awarded, cancelled or declared void — the ones whose status can still move. */
+export async function listUnfinishedTenders(supabase: SupabaseClient, sourceNames: string[]): Promise<UnfinishedRow[]> {
+  const rows: UnfinishedRow[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("slug, tender_number, status, submission_deadline, publication_date, source_url")
+      .in("source_name", sourceNames)
+      .not("status", "in", `(${FINISHED.join(",")})`)
+      .order("slug", { ascending: true })
+      .range(from, from + 999);
+    if (error) throw new Error(`读取已入库项目失败：${error.message}`);
+    rows.push(...((data ?? []) as UnfinishedRow[]));
+    if ((data ?? []).length < 1000) break;
+  }
+  return rows;
+}

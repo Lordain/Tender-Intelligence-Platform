@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ImportUruguayForm } from "@/components/admin/ImportUruguayForm";
 import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
+import { RefreshAwardsPanel } from "@/components/admin/RefreshAwardsPanel";
 import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
 import { ARCE_BASE } from "@/lib/ingestion/connectors/uruguay-arce-live";
 
@@ -55,6 +56,9 @@ export default async function AdminImportTendersUruguayPage() {
             )}
           </div>
         </div>
+      </ImportSourceSection>
+      <ImportSourceSection name="导入中标结果" hint="为已中标项目补中标日期、供应商、金额" mode="auto">
+        <RefreshAwardsPanel sources={["uruguay"]} />
       </ImportSourceSection>
     </div>
   );

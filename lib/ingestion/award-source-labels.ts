@@ -4,7 +4,7 @@
  * and the Supabase admin client into the browser bundle (same split as
  * pemex-sources.ts).
  */
-export type AwardSourceId = "mexico" | "brazil" | "chile" | "colombia" | "oxi" | "oece";
+export type AwardSourceId = "mexico" | "brazil" | "chile" | "colombia" | "oxi" | "oece" | "dominicana" | "uruguay" | "panama";
 
 /** The command an operator runs where SEACE answers — shown by the admin panel instead of a button that always fails. */
 export const PERU_OECE_AWARDS_COMMAND = "npm run cron:peru-oece-status -- --write";
@@ -16,4 +16,7 @@ export const AWARD_SOURCES: { id: AwardSourceId; label: string; hint: string }[]
   { id: "colombia", label: "哥伦比亚 SECOP II", hint: "日期、供应商、金额" },
   { id: "oxi", label: "秘鲁 OxI", hint: "全部状态清单：日期、金额（无企业名称）" },
   { id: "oece", label: "秘鲁 OECE", hint: "SEACE 拒绝服务器访问，只能本地命令行运行" },
+  { id: "dominicana", label: "多米尼加 DGCP", hint: "合同记录：日期、供应商、金额" },
+  { id: "panama", label: "巴拿马 PanamaCompra", hint: "中标决议：日期、供应商、金额" },
+  { id: "uruguay", label: "乌拉圭 ARCE", hint: "OCDS 中标记录：日期、供应商、金额" },
 ];

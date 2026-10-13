@@ -9,7 +9,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
-import { fetchArceTenders, isIngestedArceTender, type ArceRelease } from "@/lib/ingestion/connectors/uruguay-arce-live";
+import { fetchArceAward, fetchArceCancellations, fetchArceRelease, fetchArceTenders, isIngestedArceTender, type ArceRelease } from "@/lib/ingestion/connectors/uruguay-arce-live";
+import { listUnfinishedTenders, refreshStoredStatuses, type ObservedStatus, type StatusRefreshResult } from "@/lib/ingestion/status-refresh";
 import { mapArceReleaseToTender, URUGUAY_SOURCE_NAME, uruguayDocumentLinks } from "@/lib/ingestion/uruguay-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { saveDocumentLinks } from "@/lib/ingestion/document-links";
@@ -75,4 +76,56 @@ export async function ingestUruguay(
     .filter((entry) => entry.links.length > 0);
   const saved = links.length > 0 ? await saveDocumentLinks(supabase, links) : null;
   return { ...result, upsertedCount, failed, documentLinks: saved?.linkCount ?? 0 };
+}
+
+/** The purchase id an ARCE row was stored under (slug uruguay-{id}). */
+export function uruguayPurchaseId(slug: string): string | null {
+  return /^uruguay-(\d+)$/.exec(slug)?.[1] ?? null;
+}
+
+/**
+ * Today's state of every stored Uruguayan call not yet finished (user,
+ * 2026-10-13: 先做多米尼加、乌拉圭、巴拿马). An award is its own release,
+ * adjudicacion-{id}, asked for directly; a cancellation or a call declared
+ * void is found in the monthly feeds since the oldest stored call was
+ * published, and its release says which (cancelled / unsuccessful).
+ */
+export async function refreshUruguayStatuses(
+  supabase: SupabaseClient,
+  options: { write: boolean; now?: Date },
+  onProgress?: (message: string) => void,
+): Promise<StatusRefreshResult & { checked: number; unreachable: string[] }> {
+  const now = options.now ?? new Date();
+  const stored = (await listUnfinishedTenders(supabase, [URUGUAY_SOURCE_NAME])).filter((row) => uruguayPurchaseId(row.slug));
+  const observed: ObservedStatus[] = [];
+  const unreachable: string[] = [];
+  if (stored.length === 0) return { ...(await refreshStoredStatuses(supabase, [], { write: options.write, now })), checked: 0, unreachable };
+
+  const oldest = stored.reduce((min, row) => (row.publication_date && row.publication_date < min ? row.publication_date : min), now.toISOString());
+  // Six months at most: a call still unfinished after that is the source's to close, and each month is a 5 MB feed.
+  const from = new Date(Math.max(Date.parse(oldest), now.getTime() - 183 * 86_400_000));
+  const endings = await fetchArceCancellations(from, now);
+
+  for (const [index, row] of stored.entries()) {
+    const purchaseId = uruguayPurchaseId(row.slug)!;
+    if (index > 0) await new Promise((resolve) => setTimeout(resolve, 300));
+    try {
+      const ending = endings.get(purchaseId);
+      if (ending) {
+        const release = await fetchArceRelease(ending);
+        const status = release?.tender?.status;
+        if (status === "cancelled") observed.push({ slug: row.slug, status: "cancelled" });
+        else if (status === "unsuccessful") observed.push({ slug: row.slug, status: "deserted" });
+        continue;
+      }
+      const award = await fetchArceAward(purchaseId);
+      if (award?.awards?.some((entry) => (entry.status ?? "active") === "active")) observed.push({ slug: row.slug, status: "awarded" });
+    } catch (error) {
+      unreachable.push(`${row.tender_number}：${error instanceof Error ? error.message : String(error)}`);
+      if (unreachable.length >= 5 && observed.length === 0) break;
+    }
+    if ((index + 1) % 20 === 0) onProgress?.(`已查询 ${index + 1}/${stored.length}`);
+  }
+  const result = await refreshStoredStatuses(supabase, observed, { write: options.write, now });
+  return { ...result, checked: stored.length, unreachable };
 }

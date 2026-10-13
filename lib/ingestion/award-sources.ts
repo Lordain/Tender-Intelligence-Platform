@@ -23,6 +23,13 @@ import { BRAZIL_PNCP_SOURCE_NAME } from "@/lib/ingestion/ingest-brazil";
 import { CHILE_BUSCA_SOURCE_NAME } from "@/lib/ingestion/chile-busca-mapper";
 import { CHILE_SOURCE_NAME } from "@/lib/ingestion/chile-ocds-mapper";
 import { PERU_OECE_SOURCE_NAME } from "@/lib/ingestion/ingest-peru";
+import { fetchDgcpContratos } from "@/lib/ingestion/connectors/dominicana-dgcp-live";
+import { fetchArceAward, type ArceAward } from "@/lib/ingestion/connectors/uruguay-arce-live";
+import { fetchPanamaActas, fetchPanamaAdjudicacion, findAdjudicacionActa } from "@/lib/ingestion/connectors/panama-panamacompra-live";
+import { DOMINICANA_SOURCE_NAME } from "@/lib/ingestion/dominicana-mapper";
+import { URUGUAY_SOURCE_NAME } from "@/lib/ingestion/uruguay-mapper";
+import { PANAMA_SOURCE_NAME, panamaFlowFromUrl } from "@/lib/ingestion/panama-mapper";
+import { uruguayPurchaseId } from "@/lib/ingestion/ingest-uruguay";
 
 /**
  * Where each country's 中标结果 comes from (user, 2026-09-26: 看能不能从接口
@@ -37,6 +44,9 @@ import { PERU_OECE_SOURCE_NAME } from "@/lib/ingestion/ingest-peru";
  *   秘鲁 OxI            all-states export: Fecha Buena Pro, Monto Adjudicado   (no winner column)
  *   秘鲁 OECE           OCDS compiledRelease.awards[] — CLI only: SEACE refuses
  *                       GitHub's and Vercel's networks (see the README)
+ *   多米尼加 DGCP       /contratos?proceso= → razón social, valor, fecha     日期 供应商 金额
+ *   乌拉圭 ARCE         OCDS adjudicacion-{id} → suppliers, Σ qty × unit    日期 供应商 金额
+ *   巴拿马 PanamaCompra Resolución de Adjudicación page                     日期 供应商 金额
  *
  * No source here for PEMEX, CFE (DOF), Proyectos Estratégicos or the company
  * portals (Petronect, Cemig, Codelco, UPME, Petroperú, Metro de Santiago):
@@ -290,4 +300,103 @@ export async function refreshPeruOeceAwards(
     }
   }
   return finish(supabase, candidates, observations, [`读取了 ${segments.length} 个月份`], options.write);
+}
+
+/**
+ * Dominican Republic (user, 2026-10-13: 先做多米尼加、乌拉圭、巴拿马): the
+ * DGCP's contracts of the procedure — winner, contracted amount, award date.
+ * A contract a buyer cancelled is left out; one per lot is summed.
+ */
+export async function refreshDominicanaAwards(supabase: SupabaseClient, options: { write: boolean }, onProgress?: Progress): Promise<AwardRefreshResult> {
+  const candidates = await listAwardCandidates(supabase, { sourceNames: [DOMINICANA_SOURCE_NAME] });
+  const { observations, notes } = await askEach(
+    candidates,
+    "DGCP",
+    300,
+    async (row) => {
+      const contratos = (await fetchDgcpContratos(row.tender_number)).filter((contrato) => !/cancel|anulad/i.test(contrato.estado_contrato ?? ""));
+      if (contratos.length === 0) return null;
+      return combineAwardParts(
+        row.slug,
+        contratos.map((contrato) => ({ supplier: contrato.razon_social, amount: contrato.valor_contratado, currency: contrato.divisa ?? "DOP", date: contrato.fecha_adjudicacion })),
+      );
+    },
+    onProgress,
+  );
+  return finish(supabase, candidates, observations, notes, options.write);
+}
+
+/**
+ * Uruguay: the call's award release (adjudicacion-{id}). Each winner's items
+ * carry a quantity and a UNIT price, so the amount is Σ quantity × unit price
+ * over the active awards. ARCE publishes no estimate, so the tender has no
+ * currency of its own and takes the award's.
+ */
+export async function refreshUruguayAwards(supabase: SupabaseClient, options: { write: boolean }, onProgress?: Progress): Promise<AwardRefreshResult> {
+  const candidates = await listAwardCandidates(supabase, { sourceNames: [URUGUAY_SOURCE_NAME] });
+  const { observations, notes } = await askEach(
+    candidates,
+    "ARCE",
+    300,
+    async (row) => {
+      const purchaseId = uruguayPurchaseId(row.slug);
+      if (!purchaseId) return null;
+      const release = await fetchArceAward(purchaseId);
+      const awards = (release?.awards ?? []).filter((award) => (award.status ?? "active") === "active");
+      if (awards.length === 0) return null;
+      return combineAwardParts(row.slug, awards.flatMap(uruguayAwardParts));
+    },
+    onProgress,
+  );
+  return finish(supabase, candidates, observations, notes, options.write);
+}
+
+/** One ARCE award as parts: every supplier, and the award's total once (on the first supplier). */
+export function uruguayAwardParts(award: ArceAward): AwardPart[] {
+  const totals = new Map<string, number>();
+  for (const item of award.items ?? []) {
+    const unit = item.unit?.value?.amount;
+    const quantity = item.quantity ?? 1;
+    if (typeof unit !== "number" || !Number.isFinite(unit) || unit <= 0 || !Number.isFinite(quantity) || quantity <= 0) continue;
+    const currency = (item.unit?.value?.currency ?? "UYU").toUpperCase();
+    totals.set(currency, (totals.get(currency) ?? 0) + unit * quantity);
+  }
+  const suppliers = award.suppliers?.length ? award.suppliers : [{}];
+  const parts: AwardPart[] = suppliers.map((supplier) => ({ supplier: supplier.name, date: award.date }));
+  // An award priced in two currencies adds one part per currency, and combineAwardParts then leaves the amount out.
+  for (const [currency, amount] of totals) parts.push({ amount, currency });
+  return parts;
+}
+
+/**
+ * Panama: the procedure's 「Resolución de Adjudicación」, opened the way the
+ * public page opens it (see fetchPanamaAdjudicacion). The flow and type it
+ * needs are carried in the stored source link (panamaFlowFromUrl).
+ */
+export async function refreshPanamaAwards(supabase: SupabaseClient, options: { write: boolean }, onProgress?: Progress): Promise<AwardRefreshResult> {
+  const candidates = await listAwardCandidates(supabase, { sourceNames: [PANAMA_SOURCE_NAME] });
+  let noLink = 0;
+  const { observations, notes } = await askEach(
+    candidates,
+    "PanamaCompra",
+    400,
+    async (row) => {
+      const flow = panamaFlowFromUrl(row.source_url);
+      if (!flow) {
+        noLink += 1;
+        return null;
+      }
+      const acta = findAdjudicacionActa(await fetchPanamaActas(flow));
+      if (!acta) return null;
+      const award = await fetchPanamaAdjudicacion(flow.idTipoProceso, acta);
+      return combineAwardParts(row.slug, [
+        { date: award.date ?? acta.fechaRealizada },
+        ...award.suppliers.map((supplier) => ({ supplier })),
+        { amount: award.amount, currency: "USD" },
+      ]);
+    },
+    onProgress,
+  );
+  if (noLink) notes.push(`${noLink} 条的来源链接里读不到流程编号（未查询）`);
+  return finish(supabase, candidates, observations, notes, options.write);
 }

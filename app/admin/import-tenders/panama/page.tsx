@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ImportPanamaForm } from "@/components/admin/ImportPanamaForm";
 import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
+import { RefreshAwardsPanel } from "@/components/admin/RefreshAwardsPanel";
 import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
 import { PANAMACOMPRA_SITE } from "@/lib/ingestion/connectors/panama-panamacompra-live";
 
@@ -47,6 +48,9 @@ export default async function AdminImportTendersPanamaPage() {
             )}
           </div>
         </div>
+      </ImportSourceSection>
+      <ImportSourceSection name="导入中标结果" hint="为已中标项目补中标日期、供应商、金额" mode="auto">
+        <RefreshAwardsPanel sources={["panama"]} />
       </ImportSourceSection>
     </div>
   );

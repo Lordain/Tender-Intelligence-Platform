@@ -210,3 +210,123 @@ export async function fetchPanamaDetalle(proceso: Pick<PanamaProceso, "idTipoPro
 export function pausePanamaDetail(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, DETAIL_PAUSE_MS));
 }
+
+/** One entry of a procedure's 「actas」 list (componentProcesosActasPliego): minutes, addenda, the award resolution. */
+export type PanamaActa = {
+  nombre: string;
+  idTipoActas?: number;
+  fechaRealizada?: string;
+  paginaSiguiente?: string;
+  rutaNueva?: string;
+  paramsBody?: Record<string, unknown>;
+};
+
+/** Every record a procedure's public page lists, read from the same pliego page as the detail. */
+export async function fetchPanamaActas(proceso: Pick<PanamaProceso, "idTipoProceso" | "idProcesosContratacionFlujos">, fetchImpl: typeof fetch = fetch): Promise<PanamaActa[]> {
+  let layout = proceso.idTipoProceso;
+  let answer = await readPliego(layout, proceso.idProcesosContratacionFlujos, fetchImpl);
+  if (answer.status !== 1 && layout !== FALLBACK_LAYOUT) {
+    layout = FALLBACK_LAYOUT;
+    answer = await readPliego(layout, proceso.idProcesosContratacionFlujos, fetchImpl);
+  }
+  if (answer.status !== 1 || !answer.result || typeof answer.result !== "object") {
+    throw new Error(`PanamaCompra 详情返回错误（类型 ${layout}，${proceso.idProcesosContratacionFlujos}）：${JSON.stringify(answer.message ?? answer.result ?? "")}`);
+  }
+  const actas: PanamaActa[] = [];
+  for (const component of answer.result.pageComponentes ?? []) {
+    if (component.tipo !== "componentProcesosActasPliego" || !Array.isArray(component.value)) continue;
+    for (const entry of component.value as PanamaActa[]) if (entry && typeof entry.nombre === "string") actas.push(entry);
+  }
+  return actas;
+}
+
+/** The award resolution among a procedure's records — the latest, if a first one was annulled and reissued. */
+export function findAdjudicacionActa(actas: PanamaActa[]): PanamaActa | undefined {
+  return actas
+    .filter((acta) => /resoluci[oó]n de adjudicaci[oó]n/i.test(acta.nombre) && acta.rutaNueva)
+    .sort((a, b) => (b.fechaRealizada ?? "").localeCompare(a.fechaRealizada ?? ""))[0];
+}
+
+export type PanamaAdjudicacion = { suppliers: string[]; amount?: number; date?: string };
+
+/**
+ * The figures after "B/." in a clause, as numbers. Written both ways round —
+ * 「B/.185,000.00」 and 「B/. 73.399,65」 — and now and then without the dot
+ * (「B/64,000.00」), so a comma or dot followed by exactly two final digits
+ * is the decimal mark and every other one groups thousands.
+ */
+export function balboaFigures(text: string): number[] {
+  return [...text.matchAll(/B\/\.?\s?(\d[\d.,]*\d)/g)]
+    .map((m) => {
+      const raw = m[1];
+      const decimal = /[.,](\d{2})$/.exec(raw);
+      const whole = (decimal ? raw.slice(0, -3) : raw).replace(/[.,]/g, "");
+      return Number(decimal ? `${whole}.${decimal[1]}` : whole);
+    })
+    .filter((n) => Number.isFinite(n) && n > 0);
+}
+
+/**
+ * The resolution page as an award: the winners (componentOfertasAdjudicadasProponentes),
+ * the amount the resolution adjudicates, and its date.
+ *
+ * The amount is read from the RESUELVE clauses — 「Adjudicar el Acto Público
+ * No. … al proponente BIO LAB INTERNACIONAL, S. A., por la suma de … (B/.185,000.00)」
+ * — every B/. figure in a clause that adjudicates, summed, since a procedure
+ * split into renglones adjudicates each to its winner in its own sentence.
+ * Balboas are at par with the dollar, and the import stores Panama in USD.
+ *
+ * The winning offers' lines are the check, and the fallback: their totals
+ * (the renegotiated one where there is one) add up to the resolution's
+ * figure — RLJ's 71,989.65 + 1,410.00 = B/.73,399.65 — but resolutions are
+ * typed by hand. Of the ten awarded 2026-10-07 to 13, one named no figure at
+ * all and one wrote 「B/ 64,00.00」 for an offer of 64,000.00. So when the
+ * clauses give nothing, or a figure more than half off the offers, the
+ * offers' total is used.
+ */
+export function parsePanamaAdjudicacion(result: { pageComponentes?: Component[] }): PanamaAdjudicacion {
+  const suppliers: string[] = [];
+  const clauses: string[] = [];
+  let offersTotal = 0;
+  let date: string | undefined;
+  for (const component of result.pageComponentes ?? []) {
+    const value = component.value as unknown;
+    if (component.tipo === "componentOfertasAdjudicadasProponentes" && Array.isArray(value)) {
+      for (const oferta of value as { empresa?: { nombreComercial?: string }; procesosOfertasItems?: { precioTotal?: number | null; nuevoPrecioTotal?: number | null }[] }[]) {
+        const name = oferta.empresa?.nombreComercial?.replace(/\s+/g, " ").trim();
+        if (name && !suppliers.includes(name)) suppliers.push(name);
+        for (const item of oferta.procesosOfertasItems ?? []) {
+          const total = item.nuevoPrecioTotal ?? item.precioTotal;
+          if (typeof total === "number" && Number.isFinite(total) && total > 0) offersTotal += total;
+        }
+      }
+    }
+    if (component.identificador === "resuelve" && typeof value === "string") clauses.push(value);
+    if (component.identificador === "otrosResuelve" && Array.isArray(value)) {
+      for (const entry of value as { texto?: string }[]) if (entry.texto) clauses.push(entry.texto);
+    }
+    if (component.tipo === "componentFooterActas" && value && typeof value === "object") {
+      const day = /^(\d{2})-(\d{2})-(\d{4})/.exec(String((value as { fechaRealizada?: string }).fechaRealizada ?? ""));
+      if (day) date = `${day[3]}-${day[2]}-${day[1]}`;
+    }
+  }
+  const figures = clauses.filter((clause) => /\badjudic/i.test(clause)).flatMap(balboaFigures);
+  const resolved = figures.length ? figures.reduce((sum, n) => sum + n, 0) : undefined;
+  const offers = offersTotal > 0 ? offersTotal : undefined;
+  const chosen = resolved !== undefined && (offers === undefined || Math.abs(resolved - offers) <= offers / 2) ? resolved : offers;
+  const amount = chosen !== undefined ? Math.round(chosen * 100) / 100 : undefined;
+  return { suppliers, ...(amount !== undefined ? { amount } : {}), ...(date ? { date } : {}) };
+}
+
+/** Opens a record the way the public site does: POST {rutaNueva}/get-page with the record's own parameters. */
+export async function fetchPanamaAdjudicacion(idTipoProceso: number, acta: PanamaActa, fetchImpl: typeof fetch = fetch): Promise<PanamaAdjudicacion> {
+  const answer = await requestJson<Envelope<{ pageComponentes?: Component[] } | string>>(
+    `${PANAMACOMPRA_API}${acta.rutaNueva}/get-page`,
+    { method: "POST", body: JSON.stringify({ ...(acta.paramsBody ?? {}), idTipoProceso }) },
+    fetchImpl,
+  );
+  if (answer.status !== 1 || !answer.result || typeof answer.result !== "object") {
+    throw new Error(`PanamaCompra 中标决议返回错误：${JSON.stringify(answer.message ?? answer.result ?? "")}`);
+  }
+  return parsePanamaAdjudicacion(answer.result);
+}

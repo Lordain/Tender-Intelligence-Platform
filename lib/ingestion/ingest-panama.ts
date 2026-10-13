@@ -31,6 +31,7 @@ import { PANAMA, PANAMA_SOURCE_NAME, mapPanamaProcesoToTender, panamaStatus } fr
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { legacyStatus, lifecycleSchemaAvailable } from "@/lib/ingestion/lifecycle-schema";
 import { COMPANY_SOURCE_WINDOW_DAYS } from "@/lib/ingestion/publication-window";
+import { listUnfinishedTenders, refreshStoredStatuses, type ObservedStatus, type StatusRefreshResult } from "@/lib/ingestion/status-refresh";
 
 export { PANAMA_SOURCE_NAME };
 
@@ -155,3 +156,46 @@ export async function ingestPanama(
 }
 
 export { PANAMA };
+
+/** Days of status changes the refresh reads back: wide enough to cover a few missed daily runs. */
+const STATUS_REFRESH_DAYS = 10;
+
+/**
+ * Today's state of the stored Panamanian tenders not yet finished (user,
+ * 2026-10-13: 先做多米尼加、乌拉圭、巴拿马). PanamaCompra's list filters on
+ * the date of the latest status change, so one pass over every formal-tender
+ * type for the last STATUS_REFRESH_DAYS lists every procedure that moved —
+ * awarded, void, cancelled, suspended — and the stored ones are matched by
+ * numProceso. The daily import keeps only tenders still taking bids, so
+ * without this a tender stayed 已截标 after its award.
+ */
+export async function refreshPanamaStatuses(
+  supabase: SupabaseClient,
+  options: { write: boolean; now?: Date },
+  onProgress?: (message: string) => void,
+): Promise<StatusRefreshResult & { checked: number; unreachable: string[] }> {
+  const now = options.now ?? new Date();
+  const stored = await listUnfinishedTenders(supabase, [PANAMA_SOURCE_NAME]);
+  const unreachable: string[] = [];
+  const latest = new Map<string, PanamaProceso>();
+  const from = new Date(now.getTime() - STATUS_REFRESH_DAYS * 86_400_000).toISOString();
+  for (const type of Object.keys(PANAMA_TENDER_TYPES).map(Number)) {
+    try {
+      const { rows } = await fetchPanamaProcesos(type, from, now.toISOString());
+      for (const row of rows) {
+        const seen = latest.get(row.numProceso);
+        if (!seen || (row.fechaEstado ?? row.fechaPublicacion ?? "") > (seen.fechaEstado ?? seen.fechaPublicacion ?? "")) latest.set(row.numProceso, row);
+      }
+    } catch (error) {
+      unreachable.push(`类型 ${type}：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  onProgress?.(`PanamaCompra 近 ${STATUS_REFRESH_DAYS} 天状态有变化的正式招标 ${latest.size} 条`);
+  const observed: ObservedStatus[] = [];
+  for (const row of stored) {
+    const proceso = latest.get(row.tender_number);
+    if (proceso) observed.push({ slug: row.slug, status: panamaStatus(proceso.nombreRealizado, row.submission_deadline ?? undefined, now) });
+  }
+  const result = await refreshStoredStatuses(supabase, observed, { write: options.write, now });
+  return { ...result, checked: stored.length, unreachable };
+}

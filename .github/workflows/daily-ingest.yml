@@ -270,9 +270,11 @@ jobs:
           # Added 2026-09-26. Asks each source about the tenders it already
           # gave us — paused, resumed, cancelled, 流标, awarded — since the
           # imports above only re-read what was published in the last few
-          # days. Brazil, Chile and Mexico here; Colombia and OxI refresh in
-          # their own jobs. See scripts/cron-refresh-statuses.ts.
-          - name: Status refresh (Brazil, Chile, Mexico)
+          # days. Brazil, Chile and Mexico here, and since 2026-10-13 the
+          # Dominican Republic, Uruguay and Panama (user: 先做多米尼加、乌拉圭、
+          # 巴拿马); Colombia and OxI refresh in their own jobs. Then 中标结果
+          # for every tender reading 已中标. See scripts/cron-refresh-statuses.ts.
+          - name: Status refresh (Brazil, Chile, Mexico, DR, Uruguay, Panama)
             command: cron:refresh-statuses
             # On both passes (see the header); once_daily: true would limit it
             # to the evening's full pass again.

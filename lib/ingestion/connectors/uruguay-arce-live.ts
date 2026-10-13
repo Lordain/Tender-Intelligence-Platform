@@ -58,6 +58,16 @@ export type ArceRelease = {
     tenderPeriod?: { startDate?: string; endDate?: string };
     documents?: { id?: string; documentType?: string; url?: string; datePublished?: string; format?: string; title?: string }[];
   };
+  awards?: ArceAward[];
+};
+
+/** One winner of an award release; each item carries its quantity and UNIT price. */
+export type ArceAward = {
+  id?: string;
+  status?: string | null;
+  date?: string;
+  suppliers?: { id?: string; name?: string }[];
+  items?: { id?: string; description?: string; quantity?: number; unit?: { name?: string; value?: { amount?: number; currency?: string } } }[];
 };
 
 /**
@@ -160,4 +170,48 @@ export async function fetchArceTenders(from: Date, to: Date, fetchImpl?: typeof 
     }
   }
   return { listed: unique.length, releases, failed };
+}
+
+/**
+ * The award release of one call, or null when it has none yet. ARCE names it
+ * after the purchase: adjudicacion-{id_compra} (6,886 of September 2026's
+ * 13,700 releases). A call not awarded answers 404 — read as "not yet", at
+ * once, without the retries a failure gets.
+ */
+export async function fetchArceAward(purchaseId: string, fetchImpl: typeof fetch = fetch): Promise<ArceRelease | null> {
+  const url = `${ARCE_BASE}/ocds/release/adjudicacion-${encodeURIComponent(purchaseId)}`;
+  let last: unknown;
+  for (let attempt = 0; attempt < RETRIES; attempt += 1) {
+    try {
+      const response = await fetchImpl(url, { headers: HEADERS, signal: AbortSignal.timeout(TIMEOUT_MS) });
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      const body = (await response.json()) as { releases?: ArceRelease[] };
+      return body.releases?.[0] ?? null;
+    } catch (err) {
+      last = err;
+      await new Promise((resolve) => setTimeout(resolve, 5_000 * (attempt + 1)));
+    }
+  }
+  throw new Error(`${url} 请求失败：${last instanceof Error ? last.message : String(last)}`);
+}
+
+/**
+ * The calls cancelled or declared void in the months covering [from, to], by
+ * purchase id → release id. Their releases are named by an amendment counter
+ * (ajuste_llamado-48508), not by the purchase, so they are found through the
+ * feed's tenderCancellation items; the release itself says which it was
+ * (tender.status "cancelled" or "unsuccessful").
+ */
+export async function fetchArceCancellations(from: Date, to: Date, fetchImpl?: typeof fetch): Promise<Map<string, string>> {
+  const months: string[] = [];
+  for (let cursor = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1)); cursor <= to; cursor.setUTCMonth(cursor.getUTCMonth() + 1)) {
+    months.push(`${cursor.getUTCFullYear()}/${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`);
+  }
+  const found = new Map<string, string>();
+  for (const month of months) {
+    const xml = await (await get(`${ARCE_BASE}/ocds/rss/${month}`, fetchImpl)).text();
+    for (const item of parseArceRss(xml)) if (item.category === "tenderCancellation") found.set(item.purchaseId, item.releaseId);
+  }
+  return found;
 }

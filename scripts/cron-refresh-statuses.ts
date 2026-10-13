@@ -12,6 +12,9 @@
  *   巴西 PNCP        one consulta request per stored tender (situação)
  *   智利 Mercado Público  one ficha per stored tender (Estado)
  *   墨西哥 Compras MX  LicitIA's full corpus (estatus, every section)
+ *   多米尼加 DGCP      one /procesos?proceso= per stored tender (estado_proceso)
+ *   乌拉圭 ARCE        adjudicacion-{id} per stored call, cancellations from the feed
+ *   巴拿马 PanamaCompra the last 10 days of status changes, every formal-tender type
  *
  * The others are covered elsewhere: Colombia by cron:colombia's own refresh
  * pass, Peru OxI by cron:peru-oxi, Peru OECE by cron:peru-oece-status. The
@@ -35,7 +38,18 @@ import { refreshChileStatuses } from "../lib/ingestion/ingest-chile";
 import { refreshComprasMxStatuses } from "../lib/ingestion/refresh-comprasmx-statuses";
 import { describeStatusRefresh, type StatusRefreshResult } from "../lib/ingestion/status-refresh";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
-import { refreshBrazilAwards, refreshChileAwards, refreshColombiaAwards, refreshMexicoAwards } from "../lib/ingestion/award-sources";
+import {
+  refreshBrazilAwards,
+  refreshChileAwards,
+  refreshColombiaAwards,
+  refreshDominicanaAwards,
+  refreshMexicoAwards,
+  refreshPanamaAwards,
+  refreshUruguayAwards,
+} from "../lib/ingestion/award-sources";
+import { refreshDominicanaStatuses } from "../lib/ingestion/ingest-dominicana";
+import { refreshUruguayStatuses } from "../lib/ingestion/ingest-uruguay";
+import { refreshPanamaStatuses } from "../lib/ingestion/ingest-panama";
 import { describeAwardRefresh, type AwardRefreshResult } from "../lib/ingestion/award-results";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
 import { STATUS_LABELS } from "@/lib/tender-labels";
@@ -52,6 +66,10 @@ const AWARD_SOURCES: { id: string; label: string; run: (write: boolean) => Promi
   { id: "brazil", label: "巴西 PNCP", run: (write) => refreshBrazilAwards(createSupabaseAdminClient()!, { write }, (m) => console.log(`  ${m}`)) },
   { id: "chile", label: "智利 Mercado Público", run: (write) => refreshChileAwards(createSupabaseAdminClient()!, { write }, (m) => console.log(`  ${m}`)) },
   { id: "colombia", label: "哥伦比亚 SECOP II", run: (write) => refreshColombiaAwards(createSupabaseAdminClient()!, { write }, (m) => console.log(`  ${m}`)) },
+  // Added 2026-10-13 (user: 先做多米尼加、乌拉圭、巴拿马), after their status refreshes below.
+  { id: "dominicana", label: "多米尼加 DGCP", run: (write) => refreshDominicanaAwards(createSupabaseAdminClient()!, { write }, (m) => console.log(`  ${m}`)) },
+  { id: "uruguay", label: "乌拉圭 ARCE", run: (write) => refreshUruguayAwards(createSupabaseAdminClient()!, { write }, (m) => console.log(`  ${m}`)) },
+  { id: "panama", label: "巴拿马 PanamaCompra", run: (write) => refreshPanamaAwards(createSupabaseAdminClient()!, { write }, (m) => console.log(`  ${m}`)) },
 ];
 
 const LABELS = Object.fromEntries(Object.entries(STATUS_LABELS).map(([status, label]) => [status, label.zh])) as Record<TenderStatus, string>;
@@ -88,6 +106,32 @@ const SOURCES: { id: string; label: string; run: (write: boolean) => Promise<Sta
       if (r.notInCorpus) notes.push(`${r.notInCorpus} 条在 LicitIA 全量数据里找不到（未改动）`);
       if (r.unknownEstatus.length) notes.push(`不认识的状态：${r.unknownEstatus.join("、")}（未改动，需补进映射表）`);
       return { ...r, notes };
+    },
+  },  {
+    id: "dominicana",
+    label: "多米尼加 DGCP",
+    run: async (write) => {
+      const supabase = createSupabaseAdminClient()!;
+      const r = await refreshDominicanaStatuses(supabase, { write }, (m) => console.log(`  ${m}`));
+      return { ...r, notes: r.unreachable.length ? [`${r.unreachable.length} 条查询失败，例如 ${r.unreachable.slice(0, 2).join("；")}`] : [] };
+    },
+  },
+  {
+    id: "uruguay",
+    label: "乌拉圭 ARCE",
+    run: async (write) => {
+      const supabase = createSupabaseAdminClient()!;
+      const r = await refreshUruguayStatuses(supabase, { write }, (m) => console.log(`  ${m}`));
+      return { ...r, notes: r.unreachable.length ? [`${r.unreachable.length} 条查询失败，例如 ${r.unreachable.slice(0, 2).join("；")}`] : [] };
+    },
+  },
+  {
+    id: "panama",
+    label: "巴拿马 PanamaCompra",
+    run: async (write) => {
+      const supabase = createSupabaseAdminClient()!;
+      const r = await refreshPanamaStatuses(supabase, { write }, (m) => console.log(`  ${m}`));
+      return { ...r, notes: r.unreachable.length ? [`${r.unreachable.length} 条查询失败，例如 ${r.unreachable.slice(0, 2).join("；")}`] : [] };
     },
   },
 ];

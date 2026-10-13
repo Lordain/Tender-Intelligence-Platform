@@ -9,6 +9,9 @@ import {
   refreshColombiaAwards,
   refreshMexicoAwards,
   refreshPeruOxiAwards,
+  refreshDominicanaAwards,
+  refreshPanamaAwards,
+  refreshUruguayAwards,
 } from "@/lib/ingestion/award-sources";
 import { PERU_OECE_AWARDS_COMMAND, type AwardSourceId } from "@/lib/ingestion/award-source-labels";
 import type { AwardRefreshResult } from "@/lib/ingestion/award-results";
@@ -31,6 +34,9 @@ const RUNNERS: Record<Exclude<AwardSourceId, "oece" | "oxi">, (supabase: NonNull
   brazil: (supabase, write) => refreshBrazilAwards(supabase, { write }),
   chile: (supabase, write) => refreshChileAwards(supabase, { write }),
   colombia: (supabase, write) => refreshColombiaAwards(supabase, { write }),
+  dominicana: (supabase, write) => refreshDominicanaAwards(supabase, { write }),
+  panama: (supabase, write) => refreshPanamaAwards(supabase, { write }),
+  uruguay: (supabase, write) => refreshUruguayAwards(supabase, { write }),
 };
 
 export async function POST(request: Request) {

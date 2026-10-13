@@ -128,3 +128,33 @@ export async function fetchDgcpDocumentos(codigoProceso: string, fetchImpl?: typ
   const body = await getJson<Envelope<DgcpDocumento>>(`${DGCP_API}/procesos/documentos?proceso=${encodeURIComponent(codigoProceso)}`, fetchImpl);
   return body.payload?.content ?? [];
 }
+
+/** One contract signed out of a procedure (GET /contratos?proceso=). */
+export type DgcpContrato = {
+  codigo_contrato: string;
+  codigo_proceso: string;
+  estado_contrato?: string;
+  estado_adjudicacion?: string;
+  fecha_adjudicacion?: string;
+  divisa?: string;
+  valor_contratado?: number | null;
+  razon_social?: string;
+};
+
+/** One procedure by its code, today's state included; null when the API does not know it. */
+export async function fetchDgcpProceso(codigoProceso: string, fetchImpl?: typeof fetch): Promise<DgcpProceso | null> {
+  const body = await getJson<Envelope<DgcpProceso>>(`${DGCP_API}/procesos?proceso=${encodeURIComponent(codigoProceso)}`, fetchImpl);
+  return (body.payload?.content ?? []).find((row) => row.codigo_proceso === codigoProceso) ?? null;
+}
+
+/**
+ * The contracts of one procedure: winner (razon_social), amount
+ * (valor_contratado) and award date. Measured 2026-10-13 on 18 awarded
+ * public tenders of May–July: 14 had their contracts here, the other 4 none
+ * yet. A procedure split into lots has one contract per lot and winner; a
+ * contract a buyer cancelled stays listed with estado_contrato "Cancelado".
+ */
+export async function fetchDgcpContratos(codigoProceso: string, fetchImpl?: typeof fetch): Promise<DgcpContrato[]> {
+  const body = await getJson<Envelope<DgcpContrato>>(`${DGCP_API}/contratos?proceso=${encodeURIComponent(codigoProceso)}&limit=${PAGE_SIZE}`, fetchImpl);
+  return (body.payload?.content ?? []).filter((row) => row.codigo_proceso === codigoProceso);
+}

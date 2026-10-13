@@ -31,6 +31,20 @@ export function panamaPublicUrl(proceso: Pick<PanamaProceso, "numProceso" | "idP
   return `${PANAMACOMPRA_SITE}/Inicio/#/pliego-de-cargos/${encodeURIComponent(proceso.numProceso)}/${token}`;
 }
 
+/** panamaPublicUrl read back: the flow and the procedure type the token carries, or null for any other link. */
+export function panamaFlowFromUrl(url: string | null | undefined): { idProcesosContratacionFlujos: number; idTipoProceso: number } | null {
+  const token = /\/pliego-de-cargos\/[^/]+\/([^/?#]+)/.exec(url ?? "")?.[1];
+  if (!token) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from([...decodeURIComponent(token)].reverse().join(""), "base64").toString("utf8")) as { i?: unknown; tp?: unknown };
+    const flow = Number(parsed.i);
+    const type = Number(parsed.tp);
+    return Number.isInteger(flow) && flow > 0 && Number.isInteger(type) && type > 0 ? { idProcesosContratacionFlujos: flow, idTipoProceso: type } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The detail page's dates: "15-09-2026 - 10:09 AM" and "28-10-2026 hasta
  * 09:01 AM", in Panama's own time (UTC-5 all year).

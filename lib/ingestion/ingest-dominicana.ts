@@ -13,12 +13,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
 import {
   fetchDgcpDocumentos,
+  fetchDgcpProceso,
   isIngestedDgcpProceso,
   fetchDgcpProcesos,
   type DgcpDocumento,
   type DgcpProceso,
 } from "@/lib/ingestion/connectors/dominicana-dgcp-live";
-import { DOMINICANA_SOURCE_NAME, dominicanDocumentLinks, mapDgcpProcesoToTender } from "@/lib/ingestion/dominicana-mapper";
+import { DOMINICANA_SOURCE_NAME, dominicanDocumentLinks, dominicanStatus, mapDgcpProcesoToTender } from "@/lib/ingestion/dominicana-mapper";
+import { listUnfinishedTenders, refreshStoredStatuses, type ObservedStatus, type StatusRefreshResult } from "@/lib/ingestion/status-refresh";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { saveDocumentLinks } from "@/lib/ingestion/document-links";
 import { runPool } from "@/lib/ingestion/run-pool";
@@ -90,4 +92,34 @@ export async function ingestDominicana(
   );
   const saved = links.length > 0 ? await saveDocumentLinks(supabase, links) : null;
   return { ...result, upsertedCount, failed, documentLinks: saved?.linkCount ?? 0 };
+}
+
+/**
+ * Today's state of every stored Dominican tender not yet finished, one
+ * /procesos?proceso= request each (user, 2026-10-13: 先做多米尼加、乌拉圭、
+ * 巴拿马). The daily import reads only procedures PUBLISHED in the last three
+ * days, so an award or cancellation weeks later never reached the platform.
+ */
+export async function refreshDominicanaStatuses(
+  supabase: SupabaseClient,
+  options: { write: boolean; now?: Date },
+  onProgress?: (message: string) => void,
+): Promise<StatusRefreshResult & { checked: number; unreachable: string[] }> {
+  const now = options.now ?? new Date();
+  const stored = await listUnfinishedTenders(supabase, [DOMINICANA_SOURCE_NAME]);
+  const observed: ObservedStatus[] = [];
+  const unreachable: string[] = [];
+  for (const [index, row] of stored.entries()) {
+    if (index > 0) await new Promise((resolve) => setTimeout(resolve, 300));
+    try {
+      const proceso = await fetchDgcpProceso(row.tender_number);
+      if (proceso) observed.push({ slug: row.slug, status: dominicanStatus(proceso.estado_proceso, row.submission_deadline ?? undefined, now) });
+    } catch (error) {
+      unreachable.push(`${row.tender_number}：${error instanceof Error ? error.message : String(error)}`);
+      if (unreachable.length >= 5 && observed.length === 0) break;
+    }
+    if ((index + 1) % 20 === 0) onProgress?.(`已查询 ${index + 1}/${stored.length}`);
+  }
+  const result = await refreshStoredStatuses(supabase, observed, { write: options.write, now });
+  return { ...result, checked: stored.length, unreachable };
 }

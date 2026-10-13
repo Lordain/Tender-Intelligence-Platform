@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ImportDominicanaForm } from "@/components/admin/ImportDominicanaForm";
 import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
+import { RefreshAwardsPanel } from "@/components/admin/RefreshAwardsPanel";
 import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
 
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
@@ -46,6 +47,9 @@ export default async function AdminImportTendersDominicanaPage() {
             )}
           </div>
         </div>
+      </ImportSourceSection>
+      <ImportSourceSection name="导入中标结果" hint="为已中标项目补中标日期、供应商、金额" mode="auto">
+        <RefreshAwardsPanel sources={["dominicana"]} />
       </ImportSourceSection>
     </div>
   );

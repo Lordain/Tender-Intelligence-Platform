@@ -2775,7 +2775,13 @@ function fibreTier(text: string): TenderRelevance["tier"] | null {
  * Membership is a claim about one SOURCE's publishing habits, so it is
  * decided per country from a real import and never assumed for a new one.
  */
-const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru", "Chile", "Argentina"]);
+const UNDISCLOSED_VALUE_IS_NOT_A_KEEP_SIGNAL = new Set(["Mexico", "Peru", "Chile", "Argentina", "Uruguay"]);
+// Uruguay joined 2026-10-13 by the user's call (按推荐改), on the same footing:
+// ARCE publishes no amount on any call (0 of 250 sampled), and the first
+// 30-day preview kept a school catering contract (「Río Negro」 read as
+// water), tree pruning near power lines and a stretcher-bearer service on an
+// industry tag alone. 15 kept calls still taking bids became 7, plus the
+// Rocha truck fleet the user asked to keep (isUruguayOpenCallFleetPurchase).
 // Argentina joined 2026-09-27 by the user's call, before its first import
 // (没有金额的项目…我们可以和墨西哥一样): COMPR.AR's public page for a process
 // never shows its estimated amount, and CONTRAT.AR's shows a currency and a
@@ -3566,6 +3572,25 @@ function isArgentinaOpenCallTargetEquipment(country: string | undefined, procedu
   if (country !== "Argentina" || !ARGENTINA_OPEN_CALL.test(foldAccents(procedureType ?? "").toLowerCase().trim())) return false;
   const subject = foldAccents(subjectTitle).toLowerCase();
   return (MEXICO_TARGET_EQUIPMENT.test(subject) || /\bequip(?:o|os|amiento)s? biomedic/.test(subject)) && !NOT_TARGET_EQUIPMENT.test(foldAccents(title).toLowerCase());
+}
+
+/**
+ * Uruguay's open calls for trucks, buses and road machinery, kept at 常规
+ * though ARCE never publishes an amount (user, 2026-10-13, reviewing the
+ * 30-day preview: 罗恰省 9 辆自卸卡车加 2 辆皮卡 ← 这个留). A Licitación
+ * Pública is the procedure Uruguayan law reserves for its largest purchases,
+ * and a fleet of heavy vehicles is equipment a Chinese maker bids on.
+ * Pickups alone (camionetas), hire, repair, parts and trade-ins
+ * (permuta/recambio) stay out.
+ */
+const URUGUAY_FLEET_VEHICLES =
+  /\bcamion(?:es)?\b|\bomnibus\b|\bbuses\b|maquinaria vial|retroexcavadora|motoniveladora|\bexcavadora|cargador(?:es)? frontal|compactador/;
+const PURCHASE_VERB = /\badquisicion|\bcompra\b|\bsuministro/;
+
+function isUruguayOpenCallFleetPurchase(country: string | undefined, procedureType: string | undefined, title: string): boolean {
+  if (country !== "Uruguay" || !/^licitacion publica\b/.test(foldAccents(procedureType ?? "").toLowerCase().trim())) return false;
+  const folded = foldAccents(title).toLowerCase();
+  return PURCHASE_VERB.test(folded) && URUGUAY_FLEET_VEHICLES.test(folded) && !NOT_TARGET_EQUIPMENT.test(folded) && !/permuta|recambio/.test(folded);
 }
 
 const PROJECT_CONTEXT_CONNECTOR =
@@ -4366,7 +4391,8 @@ export function classifyRelevance(input: {
     !isMexicanBulkPurchase &&
     !mexicanTargetEquipment &&
     !mexicanHealthEducationWorks &&
-    !newEnergy
+    !newEnergy &&
+    !isUruguayOpenCallFleetPurchase(input.country, input.procedureType, input.title)
   ) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "undisclosed_value") };
   }

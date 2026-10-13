@@ -1,0 +1,80 @@
+/** Offline checks for the Uruguay ARCE connector, mapper and the no-amount cap (lib/relevance.ts applyNoAmountCap). */
+import { arceFeedDate, isIngestedArceTender, parseArceRss, type ArceRelease } from "../lib/ingestion/connectors/uruguay-arce-live";
+import { mapArceReleaseToTender, uruguayGovernmentLevel, uruguayTime } from "../lib/ingestion/uruguay-mapper";
+import { classifyStoredTender } from "../lib/relevance";
+
+let passed = 0;
+let failed = 0;
+function check(label: string, actual: unknown, expected: unknown) {
+  const ok = actual === expected;
+  if (ok) passed += 1;
+  else failed += 1;
+  console.log(`  ${ok ? "✓" : "✗"} ${label}${ok ? "" : ` — expected ${String(expected)}, got ${String(actual)}`}`);
+}
+
+// Feed parsing and its zone-less dates (Montevideo, UTC-3).
+const rss = `<rss><channel>
+<item><title>id_compra:1378894,release_id:llamado-1378894,ocid:ocds-yfs5dr-1378894</title><guid>llamado-1378894</guid><category>tender</category><pubDate>Tue, 13 Oct 2026 10:25:12</pubDate></item>
+<item><title>id_compra:1378001,release_id:adjudicacion-1378001</title><category>award</category><pubDate>Tue, 13 Oct 2026 11:00:00</pubDate></item>
+</channel></rss>`;
+const items = parseArceRss(rss);
+check("RSS: two items", items.length, 2);
+check("RSS: release id", items[0]?.releaseId, "llamado-1378894");
+check("RSS: purchase id", items[0]?.purchaseId, "1378894");
+check("RSS: category", items[1]?.category, "award");
+check("feed date read as -03:00", arceFeedDate("Tue, 13 Oct 2026 10:25:12")?.toISOString(), "2026-10-13T13:25:12.000Z");
+check("release time 'Z' read as -03:00", uruguayTime("2026-11-04T10:00:00Z"), "2026-11-04T13:00:00.000Z");
+
+// What is read.
+const release = (method: string, buyer: { id?: string; name?: string }, extra: Partial<NonNullable<ArceRelease["tender"]>> = {}): ArceRelease => ({
+  ocid: "ocds-yfs5dr-1",
+  id: "llamado-1",
+  date: "2026-10-13T10:00:00Z",
+  buyer,
+  tender: { id: "1", title: `${method} 16/2026`, procurementMethodDetails: method, description: "Suministro de transformadores de potencia", ...extra },
+});
+check("Licitación Pública, any buyer → read", isIngestedArceTender(release("Licitación Pública", { id: "29-4", name: "ASSE" })), true);
+check("Licitación Abreviada, UTE → read", isIngestedArceTender(release("Licitación Abreviada", { id: "61-1", name: "UTE" })), true);
+check("Licitación Abreviada, MTOP Vialidad → read", isIngestedArceTender(release("Licitación Abreviada", { id: "10-3", name: "Dirección Nacional de Vialidad" })), true);
+check("Licitación Abreviada, ANP by name → read", isIngestedArceTender(release("Licitación Abreviada", { id: "99-9", name: "Administración Nacional de Puertos" })), true);
+check("Licitación Abreviada, ANTEL → not read", isIngestedArceTender(release("Licitación Abreviada", { id: "65-1", name: "ANTEL" })), false);
+check("Compra Directa, UTE → not read", isIngestedArceTender(release("Compra Directa", { id: "61-1", name: "UTE" })), false);
+check("Concurso de Precios → not read", isIngestedArceTender(release("Concurso de Precios", { id: "61-1", name: "UTE" })), false);
+
+// Mapping.
+check("UTE is a public company", uruguayGovernmentLevel("61-1", "UTE"), "public_company");
+check("Intendencia is municipal", uruguayGovernmentLevel("84-1", "Intendencia de Montevideo"), "municipal");
+const mapped = mapArceReleaseToTender(
+  release("Licitación Pública", { id: "61-1", name: "UTE" }, { tenderPeriod: { startDate: "2026-10-13T09:00:00Z", endDate: "2026-11-20T15:30:00Z" } }),
+  new Date("2026-10-13T15:00:00Z"),
+);
+check("slug", mapped.slug, "uruguay-1");
+check("tender number", mapped.tenderNumber, "Licitación Pública 16/2026 (ID 1)");
+check("title is the description", mapped.title.es, "Suministro de transformadores de potencia");
+check("deadline in UTC", mapped.submissionDeadline, "2026-11-20T18:30:00.000Z");
+check("open before the deadline", mapped.status, "open");
+check("source page", mapped.sourceUrl, "https://www.comprasestatales.gub.uy/consultas/detalle/id/1");
+check("no amount", mapped.estimatedValue, undefined);
+
+// No amount → at most 中型, even when the 一句话总结 gives a long contract term.
+const base = {
+  title: "Construcción de la línea de transmisión de 500 kV",
+  summary: "Construcción de la línea de transmisión de 500 kV.",
+  buyer: "UTE",
+  governmentLevel: "public_company" as const,
+  scopeType: "works" as const,
+  procedureType: "Licitación Pública",
+  tenderNumber: "LP 1/2026",
+  sourceName: "test",
+  oneLineSummary: "为UTE建设500千伏输电线路，合同期48个月",
+};
+check("Uruguay, no amount, 4-year term → 中型", classifyStoredTender({ ...base, country: "Uruguay" }).relevance.tier, "significant");
+check("Paraguay, same row → 大型 (cap is Uruguay only)", classifyStoredTender({ ...base, country: "Paraguay" }).relevance.tier, "flagship");
+check(
+  "Uruguay with an amount → not capped",
+  classifyStoredTender({ ...base, country: "Uruguay", estimatedValue: 80_000_000, currency: "USD" }).relevance.tier,
+  "flagship",
+);
+
+console.log(`\n${passed} passed, ${failed} failed`);
+if (failed > 0) process.exit(1);

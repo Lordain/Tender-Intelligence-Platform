@@ -4676,14 +4676,38 @@ function applyOxiFloor(relevance: TenderRelevance, input: StoredTenderClassifica
   };
 }
 
+/**
+ * Countries whose rows without an amount stop at 中型. Uruguay publishes no
+ * estimate on any call (250 of 250 sampled, 2026-10-13), so a keyword alone
+ * would otherwise make a 大型 of anything that names a port or a substation
+ * (user, same day: 没金额的最多中型).
+ */
+const NO_AMOUNT_MAX_SIGNIFICANT_COUNTRIES: ReadonlySet<string> = new Set(["Uruguay"]);
+
+function applyNoAmountCap(relevance: TenderRelevance, input: StoredTenderClassificationInput): TenderRelevance {
+  if (relevance.tier !== "flagship" || !NO_AMOUNT_MAX_SIGNIFICANT_COUNTRIES.has(input.country)) return relevance;
+  if (input.estimatedValue !== undefined && input.estimatedValue !== null) return relevance;
+  return {
+    tier: "significant",
+    label: LABELS.significant,
+    reason: {
+      zh: "按行业或合同期本可列为大型；但该国招标不公布预算，没有金额的项目最多算中型，建议纳入重点关注。",
+      en: "Its sector or contract term would make it flagship, but this country publishes no estimates, so an unpriced project stops at significant.",
+      es: "Por su sector o plazo sería insignia, pero este país no publica el monto estimado; sin monto, el proyecto queda como máximo en significativo.",
+    },
+  };
+}
+
 export function classifyStoredTender(input: StoredTenderClassificationInput): {
   industries: ReturnType<typeof classifyIndustries>;
   relevance: TenderRelevance;
 } {
   const fields = classifyStoredTenderFields(input);
-  const result = { ...fields, relevance: applyOxiFloor(fields.relevance, input) };
   const hasAmount = input.estimatedValue !== undefined && input.estimatedValue !== null;
-  return input.oneLineSummary ? { ...result, relevance: applySummaryDurationFloor(result.relevance, input.oneLineSummary, hasAmount) } : result;
+  const floored = applyOxiFloor(fields.relevance, input);
+  const withDuration = input.oneLineSummary ? applySummaryDurationFloor(floored, input.oneLineSummary, hasAmount) : floored;
+  // Last, so a long contract term in the 一句话总结 cannot lift an unpriced row past it either.
+  return { ...fields, relevance: applyNoAmountCap(withDuration, input) };
 }
 
 function classifyStoredTenderFields(input: StoredTenderClassificationInput): {

@@ -152,6 +152,20 @@ export function BoliviaFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/** Nine stripes, white and blue, with a white canton holding the Sun of May (a plain gold disc at this size). */
+export function UruguayFlag({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 14" className={`inline-block h-3.5 w-5 shrink-0 ${className}`}>
+      <rect width="20" height="14" fill="#fff" />
+      {[1, 3, 5, 7].map((stripe) => (
+        <rect key={stripe} y={(stripe * 14) / 9} width="20" height={14 / 9} fill="#0038a8" />
+      ))}
+      <rect width="8" height={(5 * 14) / 9} fill="#fff" />
+      <circle cx="4" cy={(5 * 14) / 18} r="1.9" fill="#fcd116" stroke="#7b3f00" strokeWidth="0.3" />
+    </svg>
+  );
+}
+
 export function CountryFlag({ country, className = "" }: { country: string; className?: string }) {
   if (country === "Mexico") return <MexicoFlag className={className} />;
   if (country === "Brazil") return <BrazilFlag className={className} />;
@@ -164,5 +178,6 @@ export function CountryFlag({ country, className = "" }: { country: string; clas
   if (country === "Ecuador") return <EcuadorFlag className={className} />;
   if (country === "Panama") return <PanamaFlag className={className} />;
   if (country === "Bolivia") return <BoliviaFlag className={className} />;
+  if (country === "Uruguay") return <UruguayFlag className={className} />;
   return null;
 }

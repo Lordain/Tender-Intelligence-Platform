@@ -193,8 +193,15 @@ const AFTER_ANALYSIS_TIMEOUT_MS = 45_000;
  * The hook document analysis calls after writing a new 一句话总结. Never
  * throws: a failure here must not fail an analysis that already succeeded,
  * so it comes back as a warning line instead.
+ *
+ * `wait: true` drops the time limit. 本地批量分析 runs on the operator's own
+ * dev server, where no request limit applies, and there the timeout only
+ * reported 超时 while the update went on finishing in the background
+ * (2026-10-13, two of 16 Brazil tenders) — a warning that said 没有更新 about
+ * a title that may well have been updated.
  */
-export async function refreshTitlesAfterAnalysis(supabase: SupabaseClient, tenderId: string): Promise<string | null> {
+export async function refreshTitlesAfterAnalysis(supabase: SupabaseClient, tenderId: string, options: { wait?: boolean } = {}): Promise<string | null> {
+  if (options.wait) return refreshOne(supabase, tenderId);
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<string>((resolve) => {
     timer = setTimeout(() => resolve("标题没有按一句话总结更新：超时，可稍后用 npm run titles:from-summary 补上"), AFTER_ANALYSIS_TIMEOUT_MS);

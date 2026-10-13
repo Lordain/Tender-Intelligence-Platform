@@ -104,7 +104,8 @@ export async function analyzeUploadedDocument(
   supabase: SupabaseClient,
   tenderSlug: string,
   files: { buffer: Buffer; fileName: string }[],
-  options: { write: boolean; force: boolean },
+  /** waitForTitles: no time limit on the title update — 本地批量分析 only, see refreshTitlesAfterAnalysis. */
+  options: { write: boolean; force: boolean; waitForTitles?: boolean },
 ): Promise<AnalyzeUploadedDocumentResult> {
   if (files.length === 0) throw new Error("no files provided");
 
@@ -517,7 +518,7 @@ export async function analyzeUploadedDocument(
       if (adjusted) warnings.push(`已按一句话总结调整：${adjusted}`);
       // Titles from the new 一句话总结: notes after the full title's
       // abbreviations, then the short/visitor titles again (user, 2026-10-12).
-      const titleWarning = await refreshTitlesAfterAnalysis(supabase, tenderId);
+      const titleWarning = await refreshTitlesAfterAnalysis(supabase, tenderId, { wait: options.waitForTitles });
       if (titleWarning) warnings.push(titleWarning);
     }
 

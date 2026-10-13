@@ -133,7 +133,7 @@ export async function analyzeLocalFolder(
       // folder in memory at once is exactly the failure this tool exists
       // to avoid — which is also why the width above stays small.
       const buffers = paths.map((path) => ({ buffer: readFileSync(path), fileName: basename(path) }));
-      const analysed = await analyzeUploadedDocument(supabase, tenderSlug, buffers, { write: options.write, force: options.force });
+      const analysed = await analyzeUploadedDocument(supabase, tenderSlug, buffers, { write: options.write, force: options.force, waitForTitles: true });
       results.push({ ...analysed, tenderSlug });
       // One success means the failures seen so far were per-document, not
       // a broken run — so the give-up counter stops applying.

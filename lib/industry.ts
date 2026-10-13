@@ -452,7 +452,10 @@ const INDUSTRY_KEYWORDS: [IndustryKey, RegExp][] = [
   // shorthand for planta de bombeo, but also "planta baja" (ground floor),
   // so it counts only after a works verb and before a proper name, never
   // before "del/de/y".
-  ["water", /c[áa]rcamo(s)?|\bcolector(es)?\b(?! solar)|subcolector(es)?|planta(s)? de bombeo|estaci[óo]n(es)? de bombeo|(rehabilitaci[óo]n|equipamiento|sustituci[óo]n|mantenimiento|construcci[óo]n) (de )?(la |las )?pbs?\s+(?!del?\b|y\b)[a-z]{3,}|\bcanal(es)?\b(?!\s*(\d|de (television|tv|denuncias?|atencion|venta|ventas|distribucion|comunicacion)))|cuerpos? de agua|(mejoramiento|infraestructura|obras?) hidr[áa]ulic[oa]s?|agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora|\bptar\b|dragado|desazolve|acueducto(s)?|canal principal|\br[íi]o\b|margen (derecha|izquierda)|zona de riego|\briego\b|irrigaci[óo]n|canal(es)? de riego|bocatoma(s)?|reservorio(s)?|hidromec[áa]nic[oa]s?|\bpresas?\b|\brepresas?\b/i],
+  // 2026-10-13, OSE's "Construcción de 20 perforaciones … PERFORACION PARA
+  // EXTRACCION DE AGUA" (Uruguay) came out 能矿 with no water tag: water
+  // wells, named by what they draw, are water works — see WATER_WELL below.
+  ["water", /perforaci[óo]n(es)? (para|de) (la )?(extracci[óo]n de |captaci[óo]n de )?agua|extracci[óo]n de agua|pozos? (de agua|profundos?|semisurgentes?)|c[áa]rcamo(s)?|\bcolector(es)?\b(?! solar)|subcolector(es)?|planta(s)? de bombeo|estaci[óo]n(es)? de bombeo|(rehabilitaci[óo]n|equipamiento|sustituci[óo]n|mantenimiento|construcci[óo]n) (de )?(la |las )?pbs?\s+(?!del?\b|y\b)[a-z]{3,}|\bcanal(es)?\b(?!\s*(\d|de (television|tv|denuncias?|atencion|venta|ventas|distribucion|comunicacion)))|cuerpos? de agua|(mejoramiento|infraestructura|obras?) hidr[áa]ulic[oa]s?|agua potable|saneamiento|drenaje|alcantarillado|planta de tratamiento de agua|planta potabilizadora|\bptar\b|dragado|desazolve|acueducto(s)?|canal principal|\br[íi]o\b|margen (derecha|izquierda)|zona de riego|\briego\b|irrigaci[óo]n|canal(es)? de riego|bocatoma(s)?|reservorio(s)?|hidromec[áa]nic[oa]s?|\bpresas?\b|\brepresas?\b/i],
   // Real batch the user flagged as legitimate opportunities: bulk vehicle
   // and heavy-machinery acquisitions ("ADQS. DE 22 VEHS. CISTERNA...",
   // "ADQUISICION DE VEHICULOS PARA EL CONVENIO CONASAMA 2026",
@@ -572,13 +575,21 @@ export function stripKnownFalsePositivePlaceNames(text: string): string {
   );
 }
 
+const ENERGY_MINING = INDUSTRY_KEYWORDS.find(([key]) => key === "energy_mining")![1];
+const WATER_WELL = /perforaci[óo]n(es)? (para|de) (la )?(extracci[óo]n de |captaci[óo]n de )?agua|extracci[óo]n de agua|pozos? de agua/i;
+
 /** Matches against real Spanish-language text (title/description, plus any real category field a source provides) — never guesses from a buyer name alone. Falls back to ["general"] rather than an empty array, so every tender has at least one tag to display/filter by. */
 export function classifyIndustries(...texts: (string | undefined)[]): IndustryKey[] {
   // Folded before matching — see lib/text-fold.ts. Without it `\br[íi]o\b`
   // matches the "rio" inside "Território" and tags a public-relations
   // contract as water infrastructure, which is exactly what it did.
   const haystack = stripKnownFalsePositivePlaceNames(foldAccents(texts.filter(Boolean).join(" ")));
-  const matched = INDUSTRY_KEYWORDS.filter(([, pattern]) => pattern.test(haystack)).map(([key]) => key);
+  let matched = INDUSTRY_KEYWORDS.filter(([, pattern]) => pattern.test(haystack)).map(([key]) => key);
+  // A water well's "perforación" is not oil drilling: drop 能矿 when that word
+  // was its only hit and the text says the wells draw water.
+  if (matched.includes("energy_mining") && WATER_WELL.test(haystack) && !ENERGY_MINING.test(haystack.replace(/perforaci[óo]n(es)?/gi, ""))) {
+    matched = matched.filter((key) => key !== "energy_mining");
+  }
   // Storage, hydrogen, EV charging and the solar phrasings the power pattern
   // above does not carry — see lib/new-energy.ts.
   if (!matched.includes("power") && isNewEnergyPower(haystack)) matched.push("power");

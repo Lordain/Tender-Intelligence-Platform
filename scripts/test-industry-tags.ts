@@ -31,6 +31,17 @@ type Case = {
 };
 
 const cases: Case[] = [
+  // --- Water wells are not oil drilling (2026-10-13) ----------------------
+  // OSE (Uruguay) came out 能矿 + 土建 with no water tag.
+  {
+    title: "Construcción de 20 (veinte) perforaciones en los departamentos de Canelones, Florida, Lavalleja, Treinta y Tres, Maldonado y Rocha. Ítems: PERFORACION PARA EXTRACCION DE AGUA",
+    expect: ["water"],
+    reject: ["energy_mining"],
+    note: "供水打井",
+  },
+  { title: "Perforación de pozos de agua para abastecimiento rural", expect: ["water"], reject: ["energy_mining"], note: "供水打井" },
+  { title: "Servicio de perforación de pozos petroleros terrestres", expect: ["energy_mining"], reject: ["water"], note: "油井钻探仍是能矿" },
+  { title: "Perforación de pozos de agua y suministro de gas natural", expect: ["water", "energy_mining"], note: "另有能矿信号时保留" },
   // --- Equipment read as pure works (2026-10-02) -------------------------
   // Found in the small-works measurement: each was tagged construction or
   // water alone, the class the pure-works floor removes.

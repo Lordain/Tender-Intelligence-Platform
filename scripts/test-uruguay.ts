@@ -56,7 +56,7 @@ check("open before the deadline", mapped.status, "open");
 check("source page", mapped.sourceUrl, "https://www.comprasestatales.gub.uy/consultas/detalle/id/1");
 check("no amount", mapped.estimatedValue, undefined);
 
-// No amount → at most 中型, even when the 一句话总结 gives a long contract term.
+// No amount → at most 常规, even when the 一句话总结 gives a long contract term.
 const base = {
   title: "Construcción de la línea de transmisión de 500 kV",
   summary: "Construcción de la línea de transmisión de 500 kV.",
@@ -68,7 +68,7 @@ const base = {
   sourceName: "test",
   oneLineSummary: "为UTE建设500千伏输电线路，合同期48个月",
 };
-check("Uruguay, no amount, 4-year term → 中型", classifyStoredTender({ ...base, country: "Uruguay" }).relevance.tier, "significant");
+check("Uruguay, no amount, 4-year term → 常规", classifyStoredTender({ ...base, country: "Uruguay" }).relevance.tier, "standard");
 check("Paraguay, same row → 大型 (cap is Uruguay only)", classifyStoredTender({ ...base, country: "Paraguay" }).relevance.tier, "flagship");
 check(
   "Uruguay with an amount → not capped",
@@ -89,6 +89,7 @@ check("trucks in a Licitación Abreviada → not the fleet exemption", live("Adq
 check("pickups only → excluded", live("Adquisición de cuatro camionetas 0 km pick-up doble cabina"), "excluded");
 check("same two trucks in a Licitación Pública → kept", live("Adquisición de dos camiones 0 km") !== "excluded", true);
 check("backhoe hire → excluded", live("Arrendamiento de retroexcavadora"), "excluded");
+check("San José street resurfacing, no amount → 常规", live("REMODELACIÓN DE CALLE ESPÍNOLA, EN EL TRAMO COMPRENDIDO ENTRE CALLE ANSINA Y VÍA FÉRREA EN SAN JOSÉ DE MAYO", "Licitación Pública", "Ítems: REPARACION DE PAVIMENTO"), "standard");
 check("UTE fire systems in power plants → 常规", live("Servicio de adecuación de sistema de incendio", "Licitación Abreviada", "Ítems: ADECUACION DE LOS SISTEMAS DE INCENDIO EN LAS CENTRALES DE GENERACION DE ENERGIA"), "standard");
 
 // Fences, walls and fire systems are not lifted by the substation or plant they

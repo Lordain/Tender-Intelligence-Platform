@@ -24,7 +24,7 @@ export default async function AdminImportTendersUruguayPage() {
       </section>
       <ImportSourceSection
         name="comprasestatales.gub.uy — 乌拉圭国家采购监管署（ARCE）"
-        hint="全部公开招标，以及 UTE、ANCAP、OSE、ANP、AFE、交通部的简易招标；乌拉圭不公布预算，没有金额的最多算中型"
+        hint="全部公开招标，以及 UTE、ANCAP、OSE、ANP、AFE、交通部的简易招标；乌拉圭不公布预算，没有金额的按常规"
         mode="auto"
         defaultOpen
         links={[{ href: `${ARCE_BASE}/consultas/` }]}

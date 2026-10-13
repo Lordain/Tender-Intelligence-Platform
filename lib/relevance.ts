@@ -4703,23 +4703,26 @@ function applyOxiFloor(relevance: TenderRelevance, input: StoredTenderClassifica
 }
 
 /**
- * Countries whose rows without an amount stop at 中型. Uruguay publishes no
+ * Countries whose rows without an amount stop at 常规. Uruguay publishes no
  * estimate on any call (250 of 250 sampled, 2026-10-13), so a keyword alone
- * would otherwise make a 大型 of anything that names a port or a substation
- * (user, same day: 没金额的最多中型).
+ * would otherwise make a 大型 of anything that names a port or a substation.
+ * First capped at 中型 (user: 没金额的最多中型); lowered the same day after the
+ * 30-day preview, whose three 中型 — a street resurfacing, a substation fence
+ * and a power-plant fire system — were all ordinary work (user: 只改乌拉圭，
+ * 没金额最多常规). A stated amount still lifts a row by the value bands.
  */
-const NO_AMOUNT_MAX_SIGNIFICANT_COUNTRIES: ReadonlySet<string> = new Set(["Uruguay"]);
+const NO_AMOUNT_MAX_STANDARD_COUNTRIES: ReadonlySet<string> = new Set(["Uruguay"]);
 
 function applyNoAmountCap(relevance: TenderRelevance, input: StoredTenderClassificationInput): TenderRelevance {
-  if (relevance.tier !== "flagship" || !NO_AMOUNT_MAX_SIGNIFICANT_COUNTRIES.has(input.country)) return relevance;
+  if (TIER_RANK[relevance.tier] <= TIER_RANK.standard || !NO_AMOUNT_MAX_STANDARD_COUNTRIES.has(input.country)) return relevance;
   if (input.estimatedValue !== undefined && input.estimatedValue !== null) return relevance;
   return {
-    tier: "significant",
-    label: LABELS.significant,
+    tier: "standard",
+    label: LABELS.standard,
     reason: {
-      zh: "按行业或合同期本可列为大型；但该国招标不公布预算，没有金额的项目最多算中型，建议纳入重点关注。",
-      en: "Its sector or contract term would make it flagship, but this country publishes no estimates, so an unpriced project stops at significant.",
-      es: "Por su sector o plazo sería insignia, pero este país no publica el monto estimado; sin monto, el proyecto queda como máximo en significativo.",
+      zh: "该国招标不公布预算，没有金额的项目无法判断规模，按常规项目关注。",
+      en: "This country publishes no estimates, so an unpriced project cannot be sized and is listed as standard.",
+      es: "Este país no publica el monto estimado; sin monto no se puede dimensionar el proyecto y queda como estándar.",
     },
   };
 }

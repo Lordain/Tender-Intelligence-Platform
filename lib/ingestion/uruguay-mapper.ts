@@ -10,7 +10,7 @@ import { classifyStoredTender } from "@/lib/relevance";
  *
  * Classified by the platform's general rules with the country set. No call
  * carries an amount, so every Uruguayan row goes through the no-amount rules,
- * and lib/relevance.ts caps it at 中型 (user, 2026-10-13: 没金额的最多中型).
+ * and lib/relevance.ts caps it at 常规 (user, 2026-10-13: 没金额最多常规).
  */
 
 export const URUGUAY = "Uruguay";

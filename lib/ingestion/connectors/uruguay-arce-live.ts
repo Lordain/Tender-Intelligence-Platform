@@ -1,6 +1,6 @@
 /**
  * Uruguay — ARCE's OCDS feed (comprasestatales.gub.uy), added 2026-10-13
- * (user: 帮忙看看增加乌拉圭 → 都收，没金额的最多中型).
+ * (user: 帮忙看看增加乌拉圭 → 都收；没金额的最多常规).
  *
  * The Agencia Reguladora de Compras Estatales publishes every state purchase
  * on comprasestatales.gub.uy and serves it as Open Contracting releases, no

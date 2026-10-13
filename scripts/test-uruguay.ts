@@ -89,6 +89,10 @@ check("trucks in a Licitación Abreviada → not the fleet exemption", live("Adq
 check("pickups only → excluded", live("Adquisición de cuatro camionetas 0 km pick-up doble cabina"), "excluded");
 check("same two trucks in a Licitación Pública → kept", live("Adquisición de dos camiones 0 km") !== "excluded", true);
 check("backhoe hire → excluded", live("Arrendamiento de retroexcavadora"), "excluded");
+// Ordinary cars are not kept (user, 2026-10-13: 轿车不收).
+check("Interior Ministry sedans → excluded", live("Adquisición de vehículos", "Licitación Pública", "Adquisición de vehículos. Ítems: AUTOMOVIL ESTANDAR 5 PUERTAS (NAFTA)."), "excluded");
+check("cars and trucks together → kept", live("Adquisición de vehículos", "Licitación Pública", "Ítems: AUTOMOVIL ESTANDAR 5 PUERTAS; CAMION CON CAJA VOLCADORA") !== "excluded", true);
+check("Paraguay, same sedans → not this rule", classifyStoredTender({ title: "Adquisición de vehículos", summary: "Ítems: AUTOMOVIL ESTANDAR 5 PUERTAS (NAFTA).", buyer: "x", country: "Paraguay", governmentLevel: "federal", scopeType: "equipment", procedureType: "Licitación Pública", tenderNumber: "1", sourceName: "test" }).relevance.reason.zh.includes("轿车"), false);
 check("San José street resurfacing, no amount → 常规", live("REMODELACIÓN DE CALLE ESPÍNOLA, EN EL TRAMO COMPRENDIDO ENTRE CALLE ANSINA Y VÍA FÉRREA EN SAN JOSÉ DE MAYO", "Licitación Pública", "Ítems: REPARACION DE PAVIMENTO"), "standard");
 check("UTE fire systems in power plants → 常规", live("Servicio de adecuación de sistema de incendio", "Licitación Abreviada", "Ítems: ADECUACION DE LOS SISTEMAS DE INCENDIO EN LAS CENTRALES DE GENERACION DE ENERGIA"), "standard");
 

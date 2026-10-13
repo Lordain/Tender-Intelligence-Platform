@@ -89,7 +89,21 @@ check("trucks in a Licitación Abreviada → not the fleet exemption", live("Adq
 check("pickups only → excluded", live("Adquisición de cuatro camionetas 0 km pick-up doble cabina"), "excluded");
 check("same two trucks in a Licitación Pública → kept", live("Adquisición de dos camiones 0 km") !== "excluded", true);
 check("backhoe hire → excluded", live("Arrendamiento de retroexcavadora"), "excluded");
-check("UTE fire systems in power plants → 中型", live("Servicio de adecuación de sistema de incendio", "Licitación Abreviada", "Ítems: ADECUACION DE LOS SISTEMAS DE INCENDIO EN LAS CENTRALES DE GENERACION DE ENERGIA"), "significant");
+check("UTE fire systems in power plants → 常规", live("Servicio de adecuación de sistema de incendio", "Licitación Abreviada", "Ítems: ADECUACION DE LOS SISTEMAS DE INCENDIO EN LAS CENTRALES DE GENERACION DE ENERGIA"), "standard");
+
+// Fences, walls and fire systems are not lifted by the substation or plant they
+// are built in, in any country (user, 2026-10-13: 不因为地点在变电站、发电厂就升档).
+const site = (country: string, title: string, estimatedValue?: number) =>
+  classifyStoredTender({
+    title, summary: title, buyer: "x", country, governmentLevel: "public_company", scopeType: "works", procedureType: "Licitación Pública", tenderNumber: "1", sourceName: "test",
+    ...(estimatedValue === undefined ? {} : { estimatedValue, currency: "USD" }),
+  }).relevance.tier;
+check("UTE fence at a substation → 常规", site("Uruguay", "Construcción de cerco olímpico en subestación de trasmisión"), "standard");
+check("Peru: fence at a substation → 常规 (was 大型)", site("Peru", "Construcción de cerco perimétrico en subestación de transmisión"), "standard");
+check("Colombia: perimeter enclosure of a substation → 常规", site("Colombia", "Construcción de cerramiento perimetral de la subestación eléctrica"), "standard");
+check("Mexico: wall at a thermal plant → 常规", site("Mexico", "Construcción de muro perimetral en la Central Termoeléctrica Tula"), "standard");
+check("substation named first is the asset → still 大型", site("Peru", "Construcción de subestación eléctrica 60 kV y cerco perimétrico"), "flagship");
+check("fence at a substation, US$12M stated → the amount decides", site("Peru", "Construcción de cerco perimétrico en subestación de transmisión", 12_000_000) !== "standard", true);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -4736,6 +4736,61 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   return { ...fields, relevance: applyNoAmountCap(withDuration, input) };
 }
 
+/**
+ * Fences, walls and fire systems are judged as what they are, not by the
+ * substation or power plant they are built in (user, 2026-10-13: 围栏、围墙、
+ * 消防这类附属工程，不因为地点在变电站、发电厂就升档). UTE's 「Construcción de
+ * cerco olímpico en subestación de trasmisión」 was 大型 on "subestación"
+ * alone — and an unpriced fence at a substation in Peru, Colombia or Chile
+ * was 大型 the same way — while the work is a perimeter fence.
+ *
+ * Only when the fence, wall or fire system comes first in the title, so the
+ * site after it is where the work is done. A title that names the
+ * substation or plant first ("Construcción de subestación eléctrica y cerco
+ * perimetral") is building the asset, and is read whole.
+ */
+const ANCILLARY_WORKS = /\bcercos?\b|cerramiento|cierre perimetral|muros? perimetr|\btapial|alambrado|mallas? perimetral|vallado|vallas? perimetral|\bincendio/;
+const POWER_SITE =
+  /\b(?:sub)?estacion(?:es)? (?:de (?:trasmision|transmision|distribucion|transformacion)|electricas?)(?: de \w+)?|\bsubestacion(?:es)?\b|\bcentral(?:es)? (?:de )?(?:generacion(?: de energia(?: electrica)?)?|ciclo combinado|termoelectricas?|hidroelectricas?|geotermoelectricas?|electricas?|generadoras?)|\bplantas? (?:de generacion|termoelectricas?|hidroelectricas?)|\bparques? eolicos?|\bl[ií]neas? de (?:sub)?transmision|\b\d{1,4}(?:\.\d+)?\s?kv\b/g;
+
+/** The title and summary with the power site taken out, or null when the title is not ancillary works at one. */
+export function withoutAncillaryWorksSite(title: string, summary: string): { title: string; summary: string } | null {
+  const foldedTitle = foldAccents(title).toLowerCase();
+  const ancillary = ANCILLARY_WORKS.exec(foldedTitle);
+  if (!ancillary) return null;
+  const haystack = `${foldedTitle} ${foldAccents(summary).toLowerCase()}`;
+  const site = new RegExp(POWER_SITE.source).exec(haystack);
+  if (!site || site.index < ancillary.index) return null;
+  const strip = (text: string) => foldAccents(text).toLowerCase().replace(POWER_SITE, "el sitio");
+  return { title: strip(title), summary: strip(summary) };
+}
+
+/**
+ * Only the promotion is taken away: a row the site lifted above 常规 is judged
+ * again without it, and lands at 常规 at least — an amount can still lift it
+ * by the value bands, and the site never decides whether it is kept at all.
+ */
+function capAncillaryWorksAtPowerSite(
+  input: StoredTenderClassificationInput,
+  classify: (title: string, summary: string) => TenderRelevance,
+): TenderRelevance {
+  const relevance = classify(input.title, input.summary);
+  if (TIER_RANK[relevance.tier] <= TIER_RANK.standard) return relevance;
+  const withoutSite = withoutAncillaryWorksSite(input.title, input.summary);
+  if (!withoutSite) return relevance;
+  const judged = classify(withoutSite.title, withoutSite.summary);
+  if (TIER_RANK[judged.tier] >= TIER_RANK.standard) return judged;
+  return {
+    tier: "standard",
+    label: LABELS.standard,
+    reason: {
+      zh: "围栏、围墙、消防等附属工程按工程本身判断，不因位于变电站或发电厂而升档，按常规项目关注。",
+      en: "Fences, walls and fire systems are judged as the works themselves, not lifted by the substation or power plant they are built in.",
+      es: "Cercos, muros y sistemas contra incendio se valoran como la obra misma, sin subir de nivel por la subestación o central donde se ejecutan.",
+    },
+  };
+}
+
 function classifyStoredTenderFields(input: StoredTenderClassificationInput): {
   industries: ReturnType<typeof classifyIndustries>;
   relevance: TenderRelevance;
@@ -4877,9 +4932,9 @@ function classifyStoredTenderFields(input: StoredTenderClassificationInput): {
       : industries;
   return {
     industries: worksTagged,
-    relevance: classifyRelevance({
-      title: input.title,
-      summary: input.summary,
+    relevance: capAncillaryWorksAtPowerSite(input, (title, summary) => classifyRelevance({
+      title,
+      summary,
       industries: worksTagged,
       procedureType: input.procedureType,
       tenderNumber: input.tenderNumber,
@@ -4896,6 +4951,6 @@ function classifyStoredTenderFields(input: StoredTenderClassificationInput): {
       // added three hundred lines above it.
       isNationalPriorityProject: isNationalPrioritySource(input.sourceName),
       structuredDurationDays: input.structuredDurationDays,
-    }),
+    })),
   };
 }

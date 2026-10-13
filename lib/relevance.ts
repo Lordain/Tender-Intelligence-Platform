@@ -3593,6 +3593,28 @@ function isUruguayOpenCallFleetPurchase(country: string | undefined, procedureTy
   return PURCHASE_VERB.test(folded) && URUGUAY_FLEET_VEHICLES.test(folded) && !NOT_TARGET_EQUIPMENT.test(folded) && !/permuta|recambio/.test(folded);
 }
 
+/**
+ * Uruguay's purchases of ordinary cars — "Adquisición de vehículos" whose
+ * items are AUTOMOVIL ESTANDAR 5 PUERTAS (NAFTA) — are not kept (user,
+ * 2026-10-13: 轿车不收). The general vehicle-purchase whitelist keeps them,
+ * and ARCE never publishes an amount to size them by. A purchase that also
+ * names trucks, buses or road machinery stays a fleet purchase, and an
+ * electric car is left to the new-energy rules.
+ */
+const PASSENGER_CAR = /\bautomovil(?:es)?\b|\bsedan(?:es)?\b/;
+
+function isUruguayPassengerCarPurchase(country: string | undefined, title: string, summary: string | undefined): boolean {
+  if (country !== "Uruguay") return false;
+  const folded = foldAccents([title, summary].filter(Boolean).join(" ")).toLowerCase();
+  return PURCHASE_VERB.test(folded) && PASSENGER_CAR.test(folded) && !URUGUAY_FLEET_VEHICLES.test(folded) && !/ambulancia/.test(folded);
+}
+
+const URUGUAY_PASSENGER_CAR_REASON: LocalizedText = {
+  zh: "该项目是采购普通轿车，乌拉圭也不公布预算，默认不进入推荐列表（数据仍保留，可用于统计）。同时采购卡车、客车或工程机械的不适用本规则。",
+  en: "A purchase of ordinary passenger cars, and Uruguay publishes no budget to size it by. Filtered from the default feed (metadata is kept, not deleted). Does not apply when trucks, buses or road machinery are bought too.",
+  es: "Compra de automóviles comunes, y Uruguay no publica presupuesto con qué dimensionarla. Filtrada de la vista predeterminada (los metadatos se conservan). No aplica si también se compran camiones, ómnibus o maquinaria vial.",
+};
+
 const PROJECT_CONTEXT_CONNECTOR =
   /\bpara\s+(?:el|la|los|las)\s+(?:sub\s*)?(?:proyectos?|obras?|ioarr|plan\s+de\s+negocio|meta)\b/i;
 
@@ -3878,6 +3900,10 @@ export function classifyRelevance(input: {
   // reading it as scope is reading the wrong noun.
   if (input.isNationalPriorityProject !== true && EQUIPMENT_RENTAL_KEYWORDS.some((pattern) => pattern.test(haystack))) {
     return { tier: "excluded", label: LABELS.excluded, reason: reasonFor("excluded", "equipment_rental") };
+  }
+
+  if (!newEnergy && isUruguayPassengerCarPurchase(input.country, subjectTitle, subjectSummary)) {
+    return { tier: "excluded", label: LABELS.excluded, reason: URUGUAY_PASSENGER_CAR_REASON };
   }
 
   const hasIncludeOverride =

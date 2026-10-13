@@ -316,7 +316,7 @@ jobs:
           # every new call of the last 3 days read in full, every Licitación
           # Pública and the Licitaciones Abreviadas of UTE, ANCAP, OSE, ANP,
           # AFE and MTOP, the general rules; Uruguay publishes no estimates,
-          # so an unpriced row stops at 中型. Admin pages only, see
+          # so an unpriced row stops at 常规. Admin pages only, see
           # lib/staged-countries.ts and scripts/cron-uruguay.ts.
           - name: Uruguay (ARCE, staged)
             command: cron:uruguay

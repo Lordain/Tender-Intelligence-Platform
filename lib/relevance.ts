@@ -4703,23 +4703,26 @@ function applyOxiFloor(relevance: TenderRelevance, input: StoredTenderClassifica
 }
 
 /**
- * Countries whose rows without an amount stop at 中型. Uruguay publishes no
+ * Countries whose rows without an amount stop at 常规. Uruguay publishes no
  * estimate on any call (250 of 250 sampled, 2026-10-13), so a keyword alone
- * would otherwise make a 大型 of anything that names a port or a substation
- * (user, same day: 没金额的最多中型).
+ * would otherwise make a 大型 of anything that names a port or a substation.
+ * First capped at 中型 (user: 没金额的最多中型); lowered the same day after the
+ * 30-day preview, whose three 中型 — a street resurfacing, a substation fence
+ * and a power-plant fire system — were all ordinary work (user: 只改乌拉圭，
+ * 没金额最多常规). A stated amount still lifts a row by the value bands.
  */
-const NO_AMOUNT_MAX_SIGNIFICANT_COUNTRIES: ReadonlySet<string> = new Set(["Uruguay"]);
+const NO_AMOUNT_MAX_STANDARD_COUNTRIES: ReadonlySet<string> = new Set(["Uruguay"]);
 
 function applyNoAmountCap(relevance: TenderRelevance, input: StoredTenderClassificationInput): TenderRelevance {
-  if (relevance.tier !== "flagship" || !NO_AMOUNT_MAX_SIGNIFICANT_COUNTRIES.has(input.country)) return relevance;
+  if (TIER_RANK[relevance.tier] <= TIER_RANK.standard || !NO_AMOUNT_MAX_STANDARD_COUNTRIES.has(input.country)) return relevance;
   if (input.estimatedValue !== undefined && input.estimatedValue !== null) return relevance;
   return {
-    tier: "significant",
-    label: LABELS.significant,
+    tier: "standard",
+    label: LABELS.standard,
     reason: {
-      zh: "按行业或合同期本可列为大型；但该国招标不公布预算，没有金额的项目最多算中型，建议纳入重点关注。",
-      en: "Its sector or contract term would make it flagship, but this country publishes no estimates, so an unpriced project stops at significant.",
-      es: "Por su sector o plazo sería insignia, pero este país no publica el monto estimado; sin monto, el proyecto queda como máximo en significativo.",
+      zh: "该国招标不公布预算，没有金额的项目无法判断规模，按常规项目关注。",
+      en: "This country publishes no estimates, so an unpriced project cannot be sized and is listed as standard.",
+      es: "Este país no publica el monto estimado; sin monto no se puede dimensionar el proyecto y queda como estándar.",
     },
   };
 }
@@ -4734,6 +4737,61 @@ export function classifyStoredTender(input: StoredTenderClassificationInput): {
   const withDuration = input.oneLineSummary ? applySummaryDurationFloor(floored, input.oneLineSummary, hasAmount) : floored;
   // Last, so a long contract term in the 一句话总结 cannot lift an unpriced row past it either.
   return { ...fields, relevance: applyNoAmountCap(withDuration, input) };
+}
+
+/**
+ * Fences, walls and fire systems are judged as what they are, not by the
+ * substation or power plant they are built in (user, 2026-10-13: 围栏、围墙、
+ * 消防这类附属工程，不因为地点在变电站、发电厂就升档). UTE's 「Construcción de
+ * cerco olímpico en subestación de trasmisión」 was 大型 on "subestación"
+ * alone — and an unpriced fence at a substation in Peru, Colombia or Chile
+ * was 大型 the same way — while the work is a perimeter fence.
+ *
+ * Only when the fence, wall or fire system comes first in the title, so the
+ * site after it is where the work is done. A title that names the
+ * substation or plant first ("Construcción de subestación eléctrica y cerco
+ * perimetral") is building the asset, and is read whole.
+ */
+const ANCILLARY_WORKS = /\bcercos?\b|cerramiento|cierre perimetral|muros? perimetr|\btapial|alambrado|mallas? perimetral|vallado|vallas? perimetral|\bincendio/;
+const POWER_SITE =
+  /\b(?:sub)?estacion(?:es)? (?:de (?:trasmision|transmision|distribucion|transformacion)|electricas?)(?: de \w+)?|\bsubestacion(?:es)?\b|\bcentral(?:es)? (?:de )?(?:generacion(?: de energia(?: electrica)?)?|ciclo combinado|termoelectricas?|hidroelectricas?|geotermoelectricas?|electricas?|generadoras?)|\bplantas? (?:de generacion|termoelectricas?|hidroelectricas?)|\bparques? eolicos?|\bl[ií]neas? de (?:sub)?transmision|\b\d{1,4}(?:\.\d+)?\s?kv\b/g;
+
+/** The title and summary with the power site taken out, or null when the title is not ancillary works at one. */
+export function withoutAncillaryWorksSite(title: string, summary: string): { title: string; summary: string } | null {
+  const foldedTitle = foldAccents(title).toLowerCase();
+  const ancillary = ANCILLARY_WORKS.exec(foldedTitle);
+  if (!ancillary) return null;
+  const haystack = `${foldedTitle} ${foldAccents(summary).toLowerCase()}`;
+  const site = new RegExp(POWER_SITE.source).exec(haystack);
+  if (!site || site.index < ancillary.index) return null;
+  const strip = (text: string) => foldAccents(text).toLowerCase().replace(POWER_SITE, "el sitio");
+  return { title: strip(title), summary: strip(summary) };
+}
+
+/**
+ * Only the promotion is taken away: a row the site lifted above 常规 is judged
+ * again without it, and lands at 常规 at least — an amount can still lift it
+ * by the value bands, and the site never decides whether it is kept at all.
+ */
+function capAncillaryWorksAtPowerSite(
+  input: StoredTenderClassificationInput,
+  classify: (title: string, summary: string) => TenderRelevance,
+): TenderRelevance {
+  const relevance = classify(input.title, input.summary);
+  if (TIER_RANK[relevance.tier] <= TIER_RANK.standard) return relevance;
+  const withoutSite = withoutAncillaryWorksSite(input.title, input.summary);
+  if (!withoutSite) return relevance;
+  const judged = classify(withoutSite.title, withoutSite.summary);
+  if (TIER_RANK[judged.tier] >= TIER_RANK.standard) return judged;
+  return {
+    tier: "standard",
+    label: LABELS.standard,
+    reason: {
+      zh: "围栏、围墙、消防等附属工程按工程本身判断，不因位于变电站或发电厂而升档，按常规项目关注。",
+      en: "Fences, walls and fire systems are judged as the works themselves, not lifted by the substation or power plant they are built in.",
+      es: "Cercos, muros y sistemas contra incendio se valoran como la obra misma, sin subir de nivel por la subestación o central donde se ejecutan.",
+    },
+  };
 }
 
 function classifyStoredTenderFields(input: StoredTenderClassificationInput): {
@@ -4877,9 +4935,9 @@ function classifyStoredTenderFields(input: StoredTenderClassificationInput): {
       : industries;
   return {
     industries: worksTagged,
-    relevance: classifyRelevance({
-      title: input.title,
-      summary: input.summary,
+    relevance: capAncillaryWorksAtPowerSite(input, (title, summary) => classifyRelevance({
+      title,
+      summary,
       industries: worksTagged,
       procedureType: input.procedureType,
       tenderNumber: input.tenderNumber,
@@ -4896,6 +4954,6 @@ function classifyStoredTenderFields(input: StoredTenderClassificationInput): {
       // added three hundred lines above it.
       isNationalPriorityProject: isNationalPrioritySource(input.sourceName),
       structuredDurationDays: input.structuredDurationDays,
-    }),
+    })),
   };
 }

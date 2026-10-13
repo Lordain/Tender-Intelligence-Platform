@@ -4691,9 +4691,9 @@ function applyNoAmountCap(relevance: TenderRelevance, input: StoredTenderClassif
     tier: "significant",
     label: LABELS.significant,
     reason: {
-      zh: `${relevance.reason.zh}（该国招标不公布预算，没有金额的项目最多算中型。）`,
-      en: `${relevance.reason.en} (No estimate is published in this country, so an unpriced project stops at significant.)`,
-      es: `${relevance.reason.es} (Este país no publica el monto estimado; sin monto, el proyecto queda como máximo en significativo.)`,
+      zh: "按行业或合同期本可列为大型；但该国招标不公布预算，没有金额的项目最多算中型，建议纳入重点关注。",
+      en: "Its sector or contract term would make it flagship, but this country publishes no estimates, so an unpriced project stops at significant.",
+      es: "Por su sector o plazo sería insignia, pero este país no publica el monto estimado; sin monto, el proyecto queda como máximo en significativo.",
     },
   };
 }

@@ -63,7 +63,7 @@ export const uruguayInsight: InsightArticle = {
   },
   regions: {
     title: "区域机会：首都圈、中部、西部河岸与东北走廊",
-    map: { src: "/insights/uruguay-regions.svg", width: 1600, height: 1000, alt: "乌拉圭重点区域地图，按省级行政区着色：1 南部首都都市圈、2 中部水源与能源带、3 西部河岸物流与新能源带、4 东北边境与东部走廊", caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；不代表具体项目选线或投资金额的地域分布。" },
+    map: { src: "/insights/uruguay-regions.webp", width: 1536, height: 1110, alt: "乌拉圭重点区域地图，按省级行政区着色：1 南部首都都市圈、2 中部水源与能源带、3 西部河岸物流与新能源带、4 东北边境与东部走廊", caption: "按省级行政区着色，编号对应下方区域卡片，图标为该区域的重点方向；地形质感为美术渲染，仅示意，不代表具体项目选线或投资金额的地域分布。" },
     items: [
       { color: "bg-[#c85c43]", title: "南部首都都市圈", places: "Montevideo、Canelones、San José", focus: "BRT公交、城市道路和港口；UTE在蒙得维的亚新建输电站，公交改造施工期交通管制较多。" },
       { color: "bg-[#d9a23a]", title: "中部水源与能源带", places: "Florida、Durazno、Flores、Lavalleja", focus: "卡苏帕水库、水电站改造和铁路延伸至ANCAP杜拉斯诺工厂；卡苏帕位于Florida省，需等环境许可后授标。" },

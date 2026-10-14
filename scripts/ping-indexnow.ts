@@ -25,7 +25,9 @@
  * IndexNow's, so it gets the most important URLs only: on --all the static
  * pages first (the homepage is what a search for 拉美招投标信息平台 should
  * land on), otherwise the homepage, this week's digest, three rotating
- * overview pages and then the newest tenders (baiduBatch). Running out of quota is logged,
+ * overview pages and then the newest tenders (baiduBatch) — except that for
+ * now a daily run sends the homepage and the guides and insights instead
+ * (BAIDU_EVERGREEN_ONLY). Running out of quota is logged,
  * not failed — tomorrow's run has a fresh one.
  *
  * On --origin: the site's address normally comes from APP_URL, which a local
@@ -40,6 +42,7 @@ import { siteOrigin } from "../lib/site-url";
 import { describeBaiduTokenFormat, normalizeBaiduToken, submitToBaidu } from "../lib/baidu-push";
 import { isStagedCountry } from "../lib/staged-countries";
 import { participationGuides } from "../lib/participation-guides";
+import { BEGINNER_GUIDE_PATH } from "../lib/beginner-guide";
 import { countryInsights } from "../lib/country-insights";
 import { countryPages } from "../lib/country-pages";
 import { industryPages } from "../lib/industry-pages";
@@ -65,6 +68,7 @@ const STATIC_PATHS = [
   "/weekly",
   CURRENT_WEEK_PATH,
   "/guides",
+  BEGINNER_GUIDE_PATH,
   ...participationGuides.map((guide) => `/guides/${guide.slug}`),
   "/insights",
   ...countryInsights.map((insight) => `/insights/${insight.slug}`),
@@ -88,7 +92,7 @@ const DAILY_PATHS = [
  * index page and then every article, so the order given is Baidu's priority.
  */
 const SECTION_PATHS: Record<string, string[]> = {
-  guides: ["/guides", ...participationGuides.map((guide) => `/guides/${guide.slug}`)],
+  guides: ["/guides", BEGINNER_GUIDE_PATH, ...participationGuides.map((guide) => `/guides/${guide.slug}`)],
   insights: ["/insights", ...countryInsights.map((insight) => `/insights/${insight.slug}`)],
 };
 
@@ -99,6 +103,30 @@ function sectionPaths(value: string): string[] {
     throw new Error(`--pages 只接受 ${Object.keys(SECTION_PATHS).join("、")}，收到：${value}`);
   }
   return [...new Set(names.flatMap((name) => SECTION_PATHS[name]))];
+}
+
+/**
+ * Baidu gets the long-lived Chinese content for now, not tenders (user,
+ * 2026-10-14: 先推长期内容). Three weeks in, Baidu had indexed one page; a new
+ * site sits in review for one to three months, and a tender page closes in
+ * a few weeks — often before Baidu would have indexed it. The guides and
+ * insights are original Chinese text that stays true, which is what passes
+ * that review. Set to false to go back to baiduBatch() (homepage, digest,
+ * overview pages, newest tenders) once Baidu's 索引量 picks up.
+ */
+const BAIDU_EVERGREEN_ONLY = true;
+const BAIDU_EVERGREEN_PATHS = [...SECTION_PATHS.guides, ...SECTION_PATHS.insights];
+
+/**
+ * The homepage every day, then the guides and insights in turn — the next
+ * slice each day, so all of them come round every four days (35 pages, nine
+ * a day at a quota of ten).
+ */
+function baiduEvergreenBatch(origin: string, limit: number, now: Date): string[] {
+  const slots = Math.min(Math.max(limit - 1, 0), BAIDU_EVERGREEN_PATHS.length);
+  const dayIndex = Math.floor(now.getTime() / 86_400_000);
+  const todays = Array.from({ length: slots }, (_, i) => BAIDU_EVERGREEN_PATHS[(dayIndex * slots + i) % BAIDU_EVERGREEN_PATHS.length]);
+  return [origin, ...todays.map((path) => `${origin}${path}`)].slice(0, limit);
 }
 
 /** How many of Baidu's daily slots go to the rotating overview pages; the rest go to the newest tenders. */
@@ -262,25 +290,27 @@ async function main() {
   for (const url of urls.slice(0, 20)) console.log(`  ${url}`);
   if (urls.length > 20) console.log(`  …… 其余 ${urls.length - 20} 个`);
 
-  if (urls.length === 0) {
-    console.log("没有变化，不提交。");
-    return;
-  }
   const baiduLimit = option("baidu-limit", 10);
-  const baiduUrls = baiduBatch(origin, staticPaths, tenderUrls, baiduLimit, all);
+  // The evergreen batch does not depend on today's tenders, so it goes even
+  // on a day with nothing new for IndexNow.
+  const baiduUrls =
+    BAIDU_EVERGREEN_ONLY && !all ? baiduEvergreenBatch(origin, baiduLimit, now) : baiduBatch(origin, staticPaths, tenderUrls, baiduLimit, all);
+  if (urls.length === 0) console.log("IndexNow：没有变化，不提交。");
   if (!write) {
-    console.log(`\n百度批次（${baiduUrls.length} 个）：`);
+    console.log(`\n百度批次（${baiduUrls.length} 个${BAIDU_EVERGREEN_ONLY && !all ? "，只推参标指南和国家洞察等长期内容" : ""}）：`);
     for (const url of baiduUrls) console.log(`  ${url}`);
     console.log("\n试运行，没有提交。加 --write 才真的提交。");
     return;
   }
 
-  await verifyKeyFile(origin);
-  const result = await submitToIndexNow(origin, urls);
-  console.log(`\nIndexNow 返回 ${result.status}${result.body ? `：${result.body}` : ""}`);
-  if (!result.ok) process.exitCode = 1;
+  if (urls.length > 0) {
+    await verifyKeyFile(origin);
+    const result = await submitToIndexNow(origin, urls);
+    console.log(`\nIndexNow 返回 ${result.status}${result.body ? `：${result.body}` : ""}`);
+    if (!result.ok) process.exitCode = 1;
+  }
 
-  await pushToBaidu(origin, baiduUrls, baiduLimit);
+  if (baiduUrls.length > 0) await pushToBaidu(origin, baiduUrls, baiduLimit);
 }
 
 async function pushToBaidu(origin: string, urls: string[], limit: number) {

@@ -216,6 +216,24 @@ export const countryInsights: CountryInsightSummary[] = [
     },
     highlights: ["29.56亿美元2026公共投资预算", "45亿美元美洲开发银行2026—2028支持", "6.01亿美元YPFB油气投资计划"],
   },
+  {
+    slug: "uruguay",
+    country: "乌拉圭",
+    countryCode: "UY",
+    title: "乌拉圭国家洞察：2026—2030交通、水与电网投资机会",
+    description: "从交通部26亿美元五年工程计划、UTE 18亿美元投资预算和美洲开发银行最高50亿美元国别战略出发，梳理公路桥梁、首都公交改造、卡苏帕水库、电网与港口的项目机会。",
+    author: "拉美招投标指南针",
+    readTime: "约 10 分钟",
+    heroImage: "/insights/uruguay-montevideo-port.webp",
+    heroImageAlt: "蒙得维的亚港Cuenca del Plata集装箱码头的堆场与岸桥，前景为港口防波堤步道",
+    heroImageCredit: {
+      author: "Ermell（经裁切并压缩为 WebP）",
+      license: "CC BY-SA 4.0",
+      licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Montevideo_Terminal_Cuenca_del_Plata-20110506-RM-120752.jpg",
+    },
+    highlights: ["26亿美元交通部五年工程与服务", "18亿美元UTE五年投资预算", "最高50亿美元美洲开发银行2026—2030国别战略"],
+  },
 ];
 
 export function getCountryInsight(slug: string) {

@@ -1762,6 +1762,102 @@ export const participationGuides: ParticipationGuide[] = [
       { label: "世界银行：借款人采购规则", href: "https://www.worldbank.org/en/projects-operations/products-and-services/brief/procurement-new-framework" },
     ],
   },
+  {
+    slug: "uruguay-arce",
+    country: "乌拉圭",
+    countryCode: "UY",
+    platform: "comprasestatales.gub.uy（ARCE）",
+    issuer: "乌拉圭中央政府部门、省政府、国有企业（UTE、ANCAP、OSE等）和其他公共机构",
+    issuerType: "政府采购平台",
+    title: "怎么参与乌拉圭政府采购项目？",
+    summary: "乌拉圭国家采购平台，由国家采购监管局（ARCE）管理。先看采购方式和金额门槛，再在RUPE登记、准备担保，由用户自己在官方页面操作。",
+    whatIs: "comprasestatales.gub.uy 由国家采购监管局（ARCE，Agencia Reguladora de Compras Estatales）管理，中央部门、省政府和国有企业在这里发布采购公告、招标文件、澄清和结果。供应商须在 RUPE（国家供应商统一登记）登记后才能签约。",
+    audience: "想参与乌拉圭政府和国企采购的境内外企业",
+    quickFacts: [
+      { label: "官方平台", value: "comprasestatales.gub.uy（ARCE）" },
+      { label: "供应商登记", value: "RUPE统一登记" },
+      { label: "公开招标门槛", value: "1,370.5万比索以上（2026年）" },
+    ],
+    sections: [
+      {
+        id: "scope",
+        title: "先确认采购方式",
+        items: [
+          "Licitación Pública：2026年金额超过1,370.5万比索（约34万美元）的公开招标，任何合格供应商可参与",
+          "Licitación Abreviada：1,370.5万比索以下的简易招标；获准扩大限额的机构上限为6,852.5万比索（约170万美元）",
+          "Compra Directa：65.4万比索以下（省政府102.4万比索）的直接采购，金额小",
+          "门槛调整：金额每年按消费者物价指数更新，以上为2026年1—12月数值",
+          "银行融资：美洲开发银行、CAF、世界银行等出资的项目可能按出资方采购规则执行",
+        ],
+        note: "门槛来自ARCE公布的2026年采购金额（政府会计与财务管理法汇编TOCAF第33、44条）；以具体采购文件为准。",
+      },
+      {
+        id: "first-check",
+        title: "找项目先看什么",
+        items: [
+          "编号：如「Licitación Pública 16/2026」，加上平台的采购ID，用来核对公告和补充文件",
+          "采购单位：确认合同主体，如UTE、OSE、交通部或省政府",
+          "Pliego：招标文件，核对规格、资格、评审办法和担保",
+          "日期：提问截止、递交截止和开标时间按蒙得维的亚时间（UTC−3）",
+          "预算：乌拉圭公告一般不公布预算金额，规模要从招标文件判断",
+        ],
+        note: "本平台每天读取ARCE开放数据中的公开招标和重点国企的简易招标；当前状态和附件以官方页面为准。",
+      },
+      {
+        id: "process",
+        title: "参与流程",
+        steps: [
+          { title: "查找项目", detail: "由用户自己在平台按编号或采购单位查找项目，下载招标文件。" },
+          { title: "读取文件", detail: "核对外国企业资格、提问截止、递交方式和开标日期。" },
+          { title: "登记RUPE", detail: "在RUPE注册；在线报价需处于「登记中」或「有效」状态，部分招标要求「有效」。" },
+          { title: "准备担保", icon: "finance", detail: "超过简易招标上限的采购通常要投标保证；中标后提交合同金额5%的履约保证。" },
+          { title: "递交跟进", detail: "按文件在线或纸质递交，跟进开标、评审和授标。" },
+        ],
+      },
+      {
+        id: "documents",
+        title: "境外企业准备什么",
+        intro: "境外文件须经认证（legalizada）并正式译成西班牙语，翻译可在国外完成。",
+        items: [
+          "登记身份：可用本国税号（Código Fiscal extranjero）在RUPE注册，税务地址填境外地址",
+          "公司与授权：本国主管机关出具的存续证明、代表任命和授权文件",
+          "时效：境外公证文件自出具到在服务点核验不超过60天",
+          "核验：上传扫描件后，将原件送RUPE服务点核验，再由国家公证员审核激活",
+          "预审：ARCE建议先请采购机构的公证员预审文件，再办认证和翻译",
+        ],
+      },
+      {
+        id: "guarantees",
+        title: "担保与本国优惠",
+        items: [
+          "担保方式：现金或公债存款、银行保函、保证保险单",
+          "投标保证：低于简易招标上限的采购不要求；文件允许不交的，撤回报价罚款为最高报价的5%",
+          "履约保证：中标金额的5%；低于简易招标上限40%的合同可不要求",
+          "本国优惠：符合本国标准的货物、服务和工程有8%的价格优惠，工程按本国人工和材料部分计算",
+          "中小企业：本国微型和小型企业的优惠可达16%，中型企业12%",
+        ],
+      },
+      {
+        id: "foreign",
+        title: "中国企业重点核对",
+        items: [
+          "币种：报价可能用美元或比索，核对报价和付款币种",
+          "无预算：公告不公布预算，规模和资格门槛看招标文件",
+          "融资规则：银行融资项目的资格和程序可能与一般政府程序不同",
+          "本地伙伴：文件送达、当地代表和售后服务都需要可靠合作方",
+          "人工操作：注册、下载和投标均由用户自己在官方页面完成",
+        ],
+        note: "未确认外国企业RUPE登记的处理时限和费用；以ARCE最新指南和具体招标文件为准。",
+      },
+    ],
+    sources: [
+      { label: "ARCE：国家采购平台", href: "https://www.comprasestatales.gub.uy/" },
+      { label: "ARCE：2026年采购金额", href: "https://www.gub.uy/agencia-reguladora-compras-estatales/politicas-y-gestion/montos-adquisiciones" },
+      { label: "ARCE：外国企业RUPE登记指南", href: "https://www.gub.uy/agencia-reguladora-compras-estatales/sites/agencia-reguladora-compras-estatales/files/2026-03/81.%20RUPE%20Guia%20para%20proveedores_Empresas_extranjeras.pdf" },
+      { label: "TOCAF第64条：投标与履约担保", href: "https://www.impo.com.uy/bases/tocaf-tcr/150-2012/64" },
+      { label: "ARCE：本国产品与中小企业优惠条款", href: "https://www.gub.uy/agencia-compras-contrataciones-estado/sites/agencia-compras-contrataciones-estado/files/inline-files/Cl%C3%A1usulas%20Reg%C3%ADmenes%20de%20preferencia.pdf" },
+    ],
+  },
 ];
 
 /**
@@ -1828,6 +1924,7 @@ export const guideCountries = [
   { name: "巴拿马", code: "PA", description: "PanamaCompra 公共采购，核对境外登记与工程资格" },
   { name: "厄瓜多尔", code: "EC", description: "SOCE 公共采购，RUP登记与用户自行操作" },
   { name: "玻利维亚", code: "BO", description: "SICOES 公共采购，RUPE登记与外国企业担保" },
+  { name: "乌拉圭", code: "UY", description: "ARCE 公共采购，RUPE登记与本国产品优惠" },
 ] as const;
 
 /**
@@ -1846,6 +1943,7 @@ const GUIDE_BY_ORIGIN: Array<[RegExp, string]> = [
   [/panama\s?compra|contrataciones p[uú]blicas \(panam[aá]\)/i, "panama-panamacompra"],
   [/\bsercop\b|\bsoce\b|sistema oficial de contrataci[oó]n p[uú]blica.*ecuador/i, "ecuador-soce"],
   [/\bsicoes\b|sistema de contrataciones estatales/i, "bolivia-sicoes"],
+  [/\barce\b.*uruguay|compras estatales \(uruguay\)|comprasestatales/i, "uruguay-arce"],
   [/\bdgcp\b|portal transaccional|rep[uú]blica dominicana/i, "dominican-republic-dgcp"],
   [/trenes argentinos infraestructura|administraci[oó]n de infraestructuras ferroviarias|\badif\b/i, "argentina-adif"],
   [/contrat\.?ar|obra p[uú]blica, concesiones y privatizaciones/i, "argentina-contratar"],

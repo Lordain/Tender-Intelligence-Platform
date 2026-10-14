@@ -8,9 +8,9 @@
  * 30多个平台，因为我们还在加，就避免再改了 — 29 on that day).
  *
  * Every claim here is something the platform does today. The dots are the
- * official sources the importers read — 25 named here, 26 counting ANEEL's two
- * auction feeds separately, on 2026-10-10 (PanamaCompra and SOCE added when
- * Panama and Ecuador opened, SICOES when Bolivia did). The "30 多个" copy is
+ * official sources the importers read — 26 named here, 27 counting ANEEL's two
+ * auction feeds separately, on 2026-10-14 (PanamaCompra and SOCE added when
+ * Panama and Ecuador opened, SICOES when Bolivia did, ARCE when Uruguay did). The "30 多个" copy is
  * deliberately ahead of this list; the dots are the sources, not a count.
  *
  * The motion is decoration on a picture that already says everything when
@@ -36,19 +36,23 @@ type Dot = { name: string; x: number; y: number };
  * (2026-10-04) — 12 over 11 lined the two rows up; 14 over 11 since SOCE and
  * PanamaCompra (2026-10-06), the short name in the crowded row; 14 over 12
  * since SICOES (2026-10-10), the second row reordered so a long name always
- * sits between two short ones (Metro SCL and PanamaCompra touched at 12 a row).
+ * sits between two short ones (Metro SCL and PanamaCompra touched at 12 a row);
+ * 15 over 12 since ARCE (2026-10-14), a short name in the row of short names,
+ * set between SECOP II and ChileCompra, which touched at 15 a row — 14 over 13
+ * would line the rows up again, as 12 over 11 did.
  */
 const DESKTOP_ROWS = [
-  ["ComprasMX", "PNCP", "SECOP II", "ChileCompra", "SEACE", "COMPR.AR", "PEMEX", "DGCP", "Petrobras", "UPME", "SOCE", "Codelco", "CFE", "DOU"],
+  ["ComprasMX", "PNCP", "SECOP II", "ARCE", "ChileCompra", "SEACE", "COMPR.AR", "PEMEX", "DGCP", "Petrobras", "UPME", "SOCE", "Codelco", "CFE", "DOU"],
   ["Petroperú", "ANEEL", "CONTRAT.AR", "ADIF", "ProInversión", "SHCP", "Metro SCL", "BORA", "PanamaCompra", "Cemig", "SICOES", "ANTAQ"],
 ];
 // Five a row since SOCE and PanamaCompra (2026-10-06): each long name sits
 // between two short ones, since a 360px row of five leaves ~62px a dot.
-// SICOES (2026-10-10) makes the row of the shortest names six.
+// SICOES (2026-10-10) makes the row of the shortest names six; ARCE
+// (2026-10-14) a second six, every long name in it between two short ones.
 const MOBILE_ROWS = [
   ["ComprasMX", "SOCE", "ChileCompra", "PNCP", "SECOP II"],
   ["PEMEX", "DOU", "PanamaCompra", "CFE", "SEACE"],
-  ["Petrobras", "BORA", "Codelco", "COMPR.AR", "DGCP"],
+  ["Petrobras", "Codelco", "ARCE", "COMPR.AR", "BORA", "DGCP"],
   ["ANEEL", "ADIF", "SICOES", "Cemig", "ANTAQ", "Petroperú"],
   ["Metro SCL", "UPME", "CONTRAT.AR", "SHCP", "ProInversión"],
 ];

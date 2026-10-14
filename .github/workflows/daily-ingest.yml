@@ -314,13 +314,13 @@ jobs:
           # days, the general rules. See scripts/cron-panama.ts.
           - name: Panama (PanamaCompra)
             command: cron:panama
-          # Added 2026-10-13, staged (user: 可以，加进每日导入). ARCE's OCDS feed:
+          # Added 2026-10-13, staged (user: 可以，加进每日导入), opened to visitors
+          # 2026-10-14 (前台+后台开放乌拉圭). ARCE's OCDS feed:
           # every new call of the last 3 days read in full, every Licitación
           # Pública and the Licitaciones Abreviadas of UTE, ANCAP, OSE, ANP,
           # AFE and MTOP, the general rules; Uruguay publishes no estimates,
-          # so an unpriced row stops at 常规. Admin pages only, see
-          # lib/staged-countries.ts and scripts/cron-uruguay.ts.
-          - name: Uruguay (ARCE, staged)
+          # so an unpriced row stops at 常规. See scripts/cron-uruguay.ts.
+          - name: Uruguay (ARCE)
             command: cron:uruguay
           # Added 2026-10-09 (user: 每天自动读取 9 国加玻利维亚的世界银行招标，经过
           # 比对后 OK). The World Bank's procurement notices for every platform

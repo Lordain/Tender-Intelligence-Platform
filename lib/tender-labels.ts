@@ -26,7 +26,7 @@ import type { Locale } from "@/types/tender";
 // Guyana (2026-09-27) is imported but staged — see lib/staged-countries.ts;
 // it is here so the admin form and labels know it, not because it is public.
 // Argentina (2026-09-27) was staged the same way and opened 2026-09-29.
-// Uruguay (2026-10-13) is staged the same way.
+// Uruguay (2026-10-13) was staged the same way and opened 2026-10-14.
 export const ALL_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Guyana", "Argentina", "Dominican Republic", "Ecuador", "Panama", "Bolivia", "Uruguay"] as const;
 
 export const COUNTRY_LABELS: Record<(typeof ALL_COUNTRIES)[number], LocalizedText> = {

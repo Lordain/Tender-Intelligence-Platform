@@ -1,7 +1,7 @@
 /**
  * The daily read of Uruguay's ARCE OCDS feed, as a plain script so the GitHub
- * Actions schedule can run it. Added 2026-10-13, staged (admin pages only,
- * see lib/staged-countries.ts).
+ * Actions schedule can run it. Added 2026-10-13, staged, and opened to
+ * visitors 2026-10-14 (user: 前台+后台开放乌拉圭).
  *
  * Usage:
  *   npm run cron:uruguay                       (dry run — fetches and classifies, writes nothing)

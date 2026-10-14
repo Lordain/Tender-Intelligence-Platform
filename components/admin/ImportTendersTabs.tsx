@@ -30,11 +30,11 @@ const TABS = [
   { href: "/admin/import-tenders/panama", label: "巴拿马", country: "Panama" },
   { href: "/admin/import-tenders/ecuador", label: "厄瓜多尔", country: "Ecuador" },
   { href: "/admin/import-tenders/bolivia", label: "玻利维亚", country: "Bolivia" },
+  { href: "/admin/import-tenders/uruguay", label: "乌拉圭", country: "Uruguay" },
   // Every country's World Bank notices (2026-10-09); a globe in place of a flag (2026-10-11: 增加世界银行图标).
   { href: "/admin/import-tenders/worldbank", label: "世界银行", country: "World Bank" },
   // Staged (lib/staged-countries.ts): imported and reviewable here, not public yet.
   { href: "/admin/import-tenders/guyana", label: "圭亚那（未公开）", country: "Guyana" },
-  { href: "/admin/import-tenders/uruguay", label: "乌拉圭（未公开）", country: "Uruguay" },
 ];
 
 /** Flag-sized globe for the one multi-country source — a generic globe, not the World Bank's logo. */

@@ -6,7 +6,7 @@ import { classifyStoredTender } from "@/lib/relevance";
 
 /**
  * An ARCE call (lib/ingestion/connectors/uruguay-arce-live.ts) as a Tender.
- * Added 2026-10-13, staged.
+ * Added 2026-10-13, staged; opened to visitors 2026-10-14.
  *
  * Classified by the platform's general rules with the country set. No call
  * carries an amount, so every Uruguayan row goes through the no-amount rules,

@@ -182,6 +182,15 @@ const COUNTRIES = {
       { color: "#7b63a8", icons: ["oil", "grid", "water"], provinces: ["Tarija"], label: { dx: 220, dy: 20 } },
     ],
   },
+  uruguay: {
+    admin: "Uruguay",
+    regions: [
+      { color: "#c85c43", icons: ["city", "road", "port"], provinces: ["Montevideo", "Canelones", "San José"], label: { dx: 40, dy: 8 } },
+      { color: "#d9a23a", icons: ["water", "energy", "rail"], provinces: ["Florida", "Durazno", "Flores", "Lavalleja"] },
+      { color: "#59a8d8", icons: ["port", "solar", "industry"], provinces: ["Colonia", "Soriano", "Río Negro", "Paysandú", "Salto", "Artigas"] },
+      { color: "#7b63a8", icons: ["road", "grid", "solar"], provinces: ["Rivera", "Tacuarembó", "Cerro Largo", "Treinta y Tres", "Rocha", "Maldonado"], label: { dx: 30, dy: -40 } },
+    ],
+  },
 };
 
 // ── Data ─────────────────────────────────────────────────────────────────────

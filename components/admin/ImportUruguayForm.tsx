@@ -20,7 +20,7 @@ export function ImportUruguayForm() {
   const [result, setResult] = useState<UruguayImportResponse | null>(null);
 
   async function run() {
-    if (write && !confirm("确定要从 comprasestatales.gub.uy 拉取乌拉圭最近 3 天的新招标，并把保留的项目写入 Supabase 吗？（只在后台可见）")) return;
+    if (write && !confirm("确定要从 comprasestatales.gub.uy 拉取乌拉圭最近 3 天的新招标，并把保留的项目写入 Supabase 吗？")) return;
     setSubmitting(true);
     setError(null);
     setResult(null);
@@ -83,7 +83,7 @@ export function ImportUruguayForm() {
           </p>
           {result.write ? (
             <p className="mt-1 font-semibold text-emerald-700">
-              已写入 {result.upsertedCount ?? 0} 条（只在后台可见）
+              已写入 {result.upsertedCount ?? 0} 条
               {result.failed && result.failed.length > 0 ? `，${result.failed.length} 条失败：${result.failed.map((f) => f.slug).join("、")}` : ""}
             </p>
           ) : (

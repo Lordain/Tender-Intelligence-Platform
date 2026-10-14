@@ -8,21 +8,13 @@ import { ARCE_BASE } from "@/lib/ingestion/connectors/uruguay-arce-live";
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 
 /**
- * Uruguay is staged (lib/staged-countries.ts): imported daily, invisible to
- * visitors. This tab is where the user reviews what came in before deciding
- * to open it (user, 2026-10-13: 后台增加). Same layout as the 圭亚那 tab.
+ * Uruguay's tab: the manual import and what came in (user, 2026-10-13: 后台增加).
+ * Staged on 2026-10-13 and opened to visitors 2026-10-14 (user: 前台+后台开放乌拉圭).
  */
 export default async function AdminImportTendersUruguayPage() {
   const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Uruguay");
   return (
     <div className="flex flex-col gap-3">
-      <section className="rounded-2xl border border-[#eed18c] bg-[#fff8e7] px-5 py-4 text-sm leading-6 text-[#6d4c0d]">
-        <p className="font-black">乌拉圭尚未对外公开</p>
-        <p className="mt-1 text-xs leading-5">
-          项目每天自动导入，只在后台可见：前台列表、详情页、首页、网站地图、搜索引擎推送和摘要邮件都不会出现。审核满意后，把乌拉圭从
-          <code className="mx-1">lib/staged-countries.ts</code>移到公开国家名单即可上线。
-        </p>
-      </section>
       <ImportSourceSection
         name="comprasestatales.gub.uy — 乌拉圭国家采购监管署（ARCE）"
         hint="全部公开招标，以及 UTE、ANCAP、OSE、ANP、AFE、交通部的简易招标；乌拉圭不公布预算，没有金额的按常规"

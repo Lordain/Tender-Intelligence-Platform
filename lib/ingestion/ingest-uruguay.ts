@@ -1,6 +1,7 @@
 /**
  * Uruguay ingestion — ARCE's OCDS feed, for the daily job
- * (scripts/cron-uruguay.ts). Added 2026-10-13, staged.
+ * (scripts/cron-uruguay.ts). Added 2026-10-13, staged, and opened to
+ * visitors 2026-10-14 (user: 前台+后台开放乌拉圭).
  *
  * Reads every new call published in the window, keeps the public tenders and
  * the key buyers' abbreviated tenders (isIngestedArceTender) that are still

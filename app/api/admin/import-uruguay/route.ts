@@ -5,6 +5,7 @@ import { ingestUruguay } from "@/lib/ingestion/ingest-uruguay";
 import type { UruguayImportResponse, UruguayImportRow } from "@/lib/ingestion/uruguay-import-result";
 import type { Tender } from "@/types/tender";
 import { logAdminAlert } from "@/lib/admin-alerts";
+import { revalidateTenders } from "@/lib/cache-tags";
 
 /**
  * The 乌拉圭 tab's import button (user, 2026-10-13: 后台增加), over the same
@@ -12,8 +13,8 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  * diverge. The 3-day window is ~200 calls read one at a time, about a minute
  * and a half (a 7-day read took 3.5 minutes on 2026-10-13).
  *
- * Nothing here is public: Uruguay is staged (lib/staged-countries.ts), so a
- * write lands in the admin pages only and no public cache needs dropping.
+ * Uruguay opened 2026-10-14, so a write drops the public list's cache like
+ * every other country's import.
  */
 export const maxDuration = 300;
 
@@ -58,6 +59,8 @@ export async function POST(request: Request) {
       excluded: rows.filter((row) => !keptSlugs.has(row.slug)),
       ...(write ? { upsertedCount: result.upsertedCount ?? 0, failed: result.failed ?? [] } : {}),
     };
+    // The public list is cached; drop it so this import shows up now.
+    if (write) revalidateTenders();
     return NextResponse.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

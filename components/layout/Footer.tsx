@@ -27,6 +27,7 @@ const countries = [
   ["巴拿马", "/countries/panama"],
   ["厄瓜多尔", "/countries/ecuador"],
   ["玻利维亚", "/countries/bolivia"],
+  ["乌拉圭", "/countries/uruguay"],
 ] as const;
 
 const headingClass = "text-xs font-black uppercase tracking-[0.15em] text-[#ffb21c]";
@@ -48,11 +49,13 @@ export function Footer() {
               Nine (2026-10-06, 巴拿马 and 厄瓜多尔) break after the fifth: 5 + 4, each line under 300px;
               ten (2026-10-10, 玻利维亚) the same, 5 + 5: the second line is ~314px at 360, so the gap between pills
               is 2px below sm (it was 4px, which pushed 玻利维亚 onto a third line of its own).
+              Eleven (2026-10-14, 乌拉圭) break after the sixth: 6 + 5, so 乌拉圭 is not alone on a third line;
+              the first line gains 阿根廷 (~310px at 360) and the second keeps the old second line's width.
               No row gap: the break item's own height is the space between the lines, the same as the gap between pills. */}
           <ul className="mt-5 flex flex-wrap gap-x-0.5 sm:gap-x-1.5" aria-label="覆盖国家">
             {countries.map(([label, href], index) => (
               <Fragment key={href}>
-                {index === 5 && <li aria-hidden="true" className="h-1 basis-full sm:h-1.5" />}
+                {index === 6 && <li aria-hidden="true" className="h-1 basis-full sm:h-1.5" />}
                 <li>
                   <Link href={href} className="inline-flex rounded-full border border-white/12 px-2 py-1 text-xs sm:px-2.5 font-bold text-white/62 transition-colors hover:border-[#ffb21c] hover:text-[#ffcd67]">
                     {label}

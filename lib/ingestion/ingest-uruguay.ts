@@ -10,7 +10,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
-import { fetchArceAward, fetchArceCancellations, fetchArceRelease, fetchArceTenders, isIngestedArceTender, type ArceRelease } from "@/lib/ingestion/connectors/uruguay-arce-live";
+import { ArceRefusedError, fetchArceAward, fetchArceCancellations, fetchArceRelease, fetchArceTenders, isIngestedArceTender, type ArceRelease } from "@/lib/ingestion/connectors/uruguay-arce-live";
 import { listUnfinishedTenders, refreshStoredStatuses, type ObservedStatus, type StatusRefreshResult } from "@/lib/ingestion/status-refresh";
 import { mapArceReleaseToTender, URUGUAY_SOURCE_NAME, uruguayDocumentLinks } from "@/lib/ingestion/uruguay-mapper";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
@@ -84,12 +84,15 @@ export function uruguayPurchaseId(slug: string): string | null {
   return /^uruguay-(\d+)$/.exec(slug)?.[1] ?? null;
 }
 
+/** How far back the status refresh looks for cancellations (see refreshUruguayStatuses). */
+const CANCELLATION_WINDOW_DAYS = 7;
+
 /**
  * Today's state of every stored Uruguayan call not yet finished (user,
  * 2026-10-13: 先做多米尼加、乌拉圭、巴拿马). An award is its own release,
  * adjudicacion-{id}, asked for directly; a cancellation or a call declared
- * void is found in the monthly feeds since the oldest stored call was
- * published, and its release says which (cancelled / unsuccessful).
+ * void is found in the feed items of the last week, and its release says
+ * which (cancelled / unsuccessful).
  */
 export async function refreshUruguayStatuses(
   supabase: SupabaseClient,
@@ -102,10 +105,12 @@ export async function refreshUruguayStatuses(
   const unreachable: string[] = [];
   if (stored.length === 0) return { ...(await refreshStoredStatuses(supabase, [], { write: options.write, now })), checked: 0, unreachable };
 
-  const oldest = stored.reduce((min, row) => (row.publication_date && row.publication_date < min ? row.publication_date : min), now.toISOString());
-  // Six months at most: a call still unfinished after that is the source's to close, and each month is a 5 MB feed.
-  const from = new Date(Math.max(Date.parse(oldest), now.getTime() - 183 * 86_400_000));
-  const endings = await fetchArceCancellations(from, now);
+  // Cancellations published in the last week, whatever the call's age: this
+  // runs twice a day, so a week leaves room for a few failed runs. Until
+  // 2026-10-14 it read every monthly feed back to the oldest stored call
+  // (up to six, 5 MB each) on every run; ARCE started refusing our servers
+  // that day.
+  const endings = await fetchArceCancellations(new Date(now.getTime() - CANCELLATION_WINDOW_DAYS * 86_400_000), now);
 
   for (const [index, row] of stored.entries()) {
     const purchaseId = uruguayPurchaseId(row.slug)!;
@@ -123,6 +128,7 @@ export async function refreshUruguayStatuses(
       if (award?.awards?.some((entry) => (entry.status ?? "active") === "active")) observed.push({ slug: row.slug, status: "awarded" });
     } catch (error) {
       unreachable.push(`${row.tender_number}：${error instanceof Error ? error.message : String(error)}`);
+      if (error instanceof ArceRefusedError) break; // ARCE asked us to stop; the rest would be refused too
       if (unreachable.length >= 5 && observed.length === 0) break;
     }
     if ((index + 1) % 20 === 0) onProgress?.(`已查询 ${index + 1}/${stored.length}`);

@@ -33,8 +33,23 @@ const HEADERS = {
 
 const TIMEOUT_MS = 90_000;
 const RETRIES = 4;
-/** Between release requests: ARCE's server is small, and a day is ~70 calls. */
-const RELEASE_PACE_MS = 300;
+/**
+ * Between release requests: ARCE's server is small, and a 3-day window is
+ * ~200 calls. Was 300 ms until ARCE started answering 403 to our servers
+ * (2026-10-14, the site still open to visitors); a second apart since.
+ */
+const RELEASE_PACE_MS = 1_000;
+
+/**
+ * ARCE refused the request (403, or 429 too many requests). Seen from
+ * 2026-10-14 on the whole site, home page included, for our servers only.
+ * Not retried: a retry only adds load to a server that has asked us to stop.
+ */
+export class ArceRefusedError extends Error {}
+
+function refusal(url: string, status: number): ArceRefusedError | null {
+  return status === 403 || status === 429 ? new ArceRefusedError(`${url} 被 ARCE 拒绝：HTTP ${status}（对方服务器拒绝我们的访问，未重试）`) : null;
+}
 
 export type ArceFeedItem = { releaseId: string; purchaseId: string; category: string; pubDate: string };
 
@@ -98,9 +113,12 @@ async function get(url: string, fetchImpl: typeof fetch = fetch): Promise<Respon
   for (let attempt = 0; attempt < RETRIES; attempt += 1) {
     try {
       const response = await fetchImpl(url, { headers: HEADERS, signal: AbortSignal.timeout(TIMEOUT_MS) });
+      const refused = refusal(url, response.status);
+      if (refused) throw refused;
       if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
       return response;
     } catch (err) {
+      if (err instanceof ArceRefusedError) throw err;
       last = err;
       await new Promise((resolve) => setTimeout(resolve, 5_000 * (attempt + 1)));
     }
@@ -131,22 +149,31 @@ export function arceFeedDate(raw: string): Date | null {
   return Number.isNaN(parsed) ? null : new Date(parsed);
 }
 
-/** Feed items of the months covering [from, to]: the current month's feed, plus the previous one when the window reaches back into it. */
+/**
+ * Feed items published in [from, to]. The latest feed (500 releases, about
+ * 4 days) when it reaches back to `from`; otherwise the monthly feeds of the
+ * months covering the window, 5 MB each (changed 2026-10-14, when ARCE
+ * started refusing our servers: the monthly feeds were read on every run).
+ */
 export async function fetchArceFeed(from: Date, to: Date, fetchImpl?: typeof fetch): Promise<ArceFeedItem[]> {
+  const inWindow = (item: ArceFeedItem) => {
+    const at = arceFeedDate(item.pubDate);
+    return at !== null && at >= from && at <= to;
+  };
+  const latest = parseArceRss(await (await get(`${ARCE_BASE}/ocds/rss`, fetchImpl)).text());
+  const oldest = Math.min(...latest.map((item) => arceFeedDate(item.pubDate)?.getTime() ?? Infinity));
+  if (latest.length > 0 && oldest <= from.getTime()) return latest.filter(inWindow);
+
   const months: string[] = [];
-  for (const date of [from, to]) {
-    const key = `${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-    if (!months.includes(key)) months.push(key);
+  for (let cursor = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1)); cursor <= to; cursor.setUTCMonth(cursor.getUTCMonth() + 1)) {
+    months.push(`${cursor.getUTCFullYear()}/${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`);
   }
   const items: ArceFeedItem[] = [];
   for (const month of months) {
     const xml = await (await get(`${ARCE_BASE}/ocds/rss/${month}`, fetchImpl)).text();
     items.push(...parseArceRss(xml));
   }
-  return items.filter((item) => {
-    const at = arceFeedDate(item.pubDate);
-    return at !== null && at >= from && at <= to;
-  });
+  return items.filter(inWindow);
 }
 
 export async function fetchArceRelease(releaseId: string, fetchImpl?: typeof fetch): Promise<ArceRelease | null> {
@@ -165,7 +192,8 @@ export async function fetchArceTenders(from: Date, to: Date, fetchImpl?: typeof 
     try {
       const release = await fetchArceRelease(item.releaseId, fetchImpl);
       if (release) releases.push(release);
-    } catch {
+    } catch (error) {
+      if (error instanceof ArceRefusedError) throw error; // the rest would be refused too
       failed.push(item.releaseId);
     }
   }
@@ -185,10 +213,13 @@ export async function fetchArceAward(purchaseId: string, fetchImpl: typeof fetch
     try {
       const response = await fetchImpl(url, { headers: HEADERS, signal: AbortSignal.timeout(TIMEOUT_MS) });
       if (response.status === 404) return null;
+      const refused = refusal(url, response.status);
+      if (refused) throw refused;
       if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
       const body = (await response.json()) as { releases?: ArceRelease[] };
       return body.releases?.[0] ?? null;
     } catch (err) {
+      if (err instanceof ArceRefusedError) throw err;
       last = err;
       await new Promise((resolve) => setTimeout(resolve, 5_000 * (attempt + 1)));
     }
@@ -197,21 +228,14 @@ export async function fetchArceAward(purchaseId: string, fetchImpl: typeof fetch
 }
 
 /**
- * The calls cancelled or declared void in the months covering [from, to], by
- * purchase id → release id. Their releases are named by an amendment counter
+ * The calls cancelled or declared void in [from, to], by purchase id →
+ * release id. Their releases are named by an amendment counter
  * (ajuste_llamado-48508), not by the purchase, so they are found through the
  * feed's tenderCancellation items; the release itself says which it was
  * (tender.status "cancelled" or "unsuccessful").
  */
 export async function fetchArceCancellations(from: Date, to: Date, fetchImpl?: typeof fetch): Promise<Map<string, string>> {
-  const months: string[] = [];
-  for (let cursor = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1)); cursor <= to; cursor.setUTCMonth(cursor.getUTCMonth() + 1)) {
-    months.push(`${cursor.getUTCFullYear()}/${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`);
-  }
   const found = new Map<string, string>();
-  for (const month of months) {
-    const xml = await (await get(`${ARCE_BASE}/ocds/rss/${month}`, fetchImpl)).text();
-    for (const item of parseArceRss(xml)) if (item.category === "tenderCancellation") found.set(item.purchaseId, item.releaseId);
-  }
+  for (const item of await fetchArceFeed(from, to, fetchImpl)) if (item.category === "tenderCancellation") found.set(item.purchaseId, item.releaseId);
   return found;
 }

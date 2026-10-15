@@ -1,5 +1,5 @@
 /** Offline checks for the Uruguay ARCE connector, mapper and the no-amount cap (lib/relevance.ts applyNoAmountCap). */
-import { arceFeedDate, isIngestedArceTender, parseArceRss, type ArceRelease } from "../lib/ingestion/connectors/uruguay-arce-live";
+import { ArceRefusedError, arceFeedDate, fetchArceAward, fetchArceCancellations, fetchArceFeed, isIngestedArceTender, parseArceRss, type ArceRelease } from "../lib/ingestion/connectors/uruguay-arce-live";
 import { mapArceReleaseToTender, uruguayGovernmentLevel, uruguayTime } from "../lib/ingestion/uruguay-mapper";
 import { classifyStoredTender } from "../lib/relevance";
 
@@ -110,5 +110,48 @@ check("Mexico: wall at a thermal plant → 常规", site("Mexico", "Construcció
 check("substation named first is the asset → still 大型", site("Peru", "Construcción de subestación eléctrica 60 kV y cerco perimétrico"), "flagship");
 check("fence at a substation, US$12M stated → the amount decides", site("Peru", "Construcción de cerco perimétrico en subestación de transmisión", 12_000_000) !== "standard", true);
 
-console.log(`\n${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+// Requests to ARCE (2026-10-14, when ARCE started refusing our servers): a
+// refusal is not retried, and the latest feed is used when it covers the window.
+const feedXml = (items: [string, string, string][]) =>
+  `<rss><channel>${items.map(([id, category, date]) => `<item><title>id_compra:${id},release_id:${category === "tender" ? "llamado" : "ajuste_llamado"}-${id}</title><category>${category}</category><pubDate>${date}</pubDate></item>`).join("")}</channel></rss>`;
+function fakeFetch(routes: Record<string, { status: number; body?: string }>) {
+  const calls: string[] = [];
+  const impl = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url.replace("https://www.comprasestatales.gub.uy", ""));
+    const route = routes[url.replace("https://www.comprasestatales.gub.uy", "")] ?? { status: 404 };
+    return new Response(route.body ?? "", { status: route.status });
+  }) as typeof fetch;
+  return { impl, calls };
+}
+
+async function requestChecks() {
+  const refused = fakeFetch({ "/ocds/rss": { status: 403 } });
+  const error = await fetchArceFeed(new Date("2026-10-12T00:00:00Z"), new Date("2026-10-14T00:00:00Z"), refused.impl).catch((e) => e);
+  check("403 → ArceRefusedError", error instanceof ArceRefusedError, true);
+  check("403 → asked once, no retries", refused.calls.length, 1);
+
+  const awardRefused = fakeFetch({ "/ocds/release/adjudicacion-1": { status: 429 } });
+  check("award 429 → ArceRefusedError", (await fetchArceAward("1", awardRefused.impl).catch((e) => e)) instanceof ArceRefusedError, true);
+  check("award 429 → asked once", awardRefused.calls.length, 1);
+
+  const covered = fakeFetch({
+    "/ocds/rss": { status: 200, body: feedXml([["10", "tender", "Wed, 14 Oct 2026 09:00:00"], ["11", "tenderCancellation", "Tue, 13 Oct 2026 09:00:00"], ["12", "tender", "Sat, 10 Oct 2026 09:00:00"]]) },
+  });
+  const items = await fetchArceFeed(new Date("2026-10-12T00:00:00Z"), new Date("2026-10-15T00:00:00Z"), covered.impl);
+  check("latest feed reaches back → no monthly feed", covered.calls.join(","), "/ocds/rss");
+  check("latest feed → only the window's items", items.map((item) => item.purchaseId).join(","), "10,11");
+
+  const short = fakeFetch({
+    "/ocds/rss": { status: 200, body: feedXml([["20", "tender", "Wed, 14 Oct 2026 09:00:00"]]) },
+    "/ocds/rss/2026/10": { status: 200, body: feedXml([["20", "tender", "Wed, 14 Oct 2026 09:00:00"], ["21", "tenderCancellation", "Thu, 08 Oct 2026 09:00:00"], ["22", "tenderCancellation", "Thu, 01 Oct 2026 09:00:00"]]) },
+  });
+  const endings = await fetchArceCancellations(new Date("2026-10-07T00:00:00Z"), new Date("2026-10-15T00:00:00Z"), short.impl);
+  check("latest feed too short → the month's feed", short.calls.join(","), "/ocds/rss,/ocds/rss/2026/10");
+  check("cancellations inside the window only", [...endings.keys()].join(","), "21");
+}
+
+void requestChecks().then(() => {
+  console.log(`\n${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exit(1);
+});

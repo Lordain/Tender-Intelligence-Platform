@@ -49,6 +49,7 @@ import {
 } from "../lib/ingestion/award-sources";
 import { refreshDominicanaStatuses } from "../lib/ingestion/ingest-dominicana";
 import { refreshUruguayStatuses } from "../lib/ingestion/ingest-uruguay";
+import { ArceRefusedError } from "../lib/ingestion/connectors/uruguay-arce-live";
 import { refreshPanamaStatuses } from "../lib/ingestion/ingest-panama";
 import { describeAwardRefresh, type AwardRefreshResult } from "../lib/ingestion/award-results";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
@@ -157,6 +158,12 @@ async function main() {
       if (result.failed) problems.push(`${source.label}：${result.failed}`);
       summary.push(`${source.label} 变化 ${result.changes.length} 条`);
     } catch (error) {
+      // ARCE refusing our servers is a pause, not a failure (see scripts/cron-uruguay.ts).
+      if (error instanceof ArceRefusedError) {
+        console.log(`  ARCE 拒绝访问，本轮暂停：${error.message}`);
+        summary.push(`${source.label} 暂停（ARCE 拒绝访问）`);
+        continue;
+      }
       problems.push(`${source.label}：${error instanceof Error ? error.message : String(error)}`);
       console.error(error);
     }

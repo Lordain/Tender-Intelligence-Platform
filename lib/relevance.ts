@@ -275,7 +275,14 @@ const EXCLUDE_KEYWORDS = [
 
   // Religious buildings — all of them, per the user: 全部TEMPLO 和IGLESIA
   // 和PARROQUIA 宗教相关都不要.
-  /\btemplo\b|\biglesia\b|\bparroquia\b|\bcapilla\b|\bconvento\b|bas[íi]lica|santuario/i,
+  //
+  // "parroquia" only when the parish church is what is being worked on:
+  // in Ecuador (and Venezuela) a parroquia is also the civil division
+  // below the cantón, and calls name it as their location — "ASFALTADO DE
+  // LA VÍA DAYUMA PINDO …, PARROQUIA DAYUMA, CANTÓN FRANCISCO DE ORELLANA"
+  // is a US$6.8M road, excluded as religious until 2026-10-15 (user: 为什么？).
+  /\btemplo\b|\biglesia\b|\bcapilla\b|\bconvento\b|bas[íi]lica|santuario|\bparroquial(es)?\b/i,
+  /\b(construcci[óo]n|reconstrucci[óo]n|restauraci[óo]n|rehabilitaci[óo]n|reparaci[óo]n|remodelaci[óo]n|mantenimiento|ampliaci[óo]n|intervenci[óo]n|pintura)\s+(de\s+|del\s+)?(la\s+)?parroquia\b/i,
 
   // Health SERVICE delivery and medical consumables, as opposed to
   // equipment. hemodinamia/hemodiálisis moved here off the whitelist.

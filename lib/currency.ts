@@ -9,6 +9,25 @@ import type { Locale } from "@/types/tender";
  * figures — the UI should read as "approximately" even where it doesn't
  * say so literally.
  *
+ * Refreshed 2026-10-15 (user: 调整一下现网的汇率，我感觉墨西哥偏差比较大),
+ * against open.er-api.com and frankfurter (ECB), midpoint where both carry
+ * the pair; CLP, UF and UTM against mindicador.cl (Banco Central de Chile).
+ * Every row more than 1.5% off moved:
+ *
+ *   MXN 17.53 -> 18.49   (5.2% off: 18.464 / 18.523; Mexican amounts read
+ *                         about 5% too high in dollars)
+ *   CLP 953   -> 984     (3.2%: 981.8 market / 987.03 dólar observado)
+ *   DOP 59.6  -> 61.3    (2.8%, single source)
+ *   PEN 3.35  -> 3.44    (2.7%, single source; ECB carries no PEN)
+ *   BRL 5.16  -> 5.05    (2.2%: 5.036 / 5.057)
+ *   BOB 11.95 -> 11.72   (1.9%, single source, same market rate as before)
+ *   EUR 1.138 -> 1.119   (1.7%: 1.1180 / 1.1208)
+ *   UF  43.03 -> 41.83, UTM 75.26 -> 73.32 (41,162.73 and 72,151 CLP / 984)
+ *
+ * COP (0.5%), GBP, GYD and ARS (under 0.2%) stayed. The amounts shown on the
+ * site follow at once; a tender's stored tier (大型/中型…) was set when it was
+ * imported and is not recomputed by this change.
+ *
  * Refreshed 2026-09-24 against two independent live sources on the same day
  * (open.er-api.com and frankfurter.app/ECB), taking the midpoint where both
  * carry the pair. Four rows moved, two deliberately did not:
@@ -46,16 +65,16 @@ import type { Locale } from "@/types/tender";
  */
 export const USD_RATES: Record<string, number> = {
   USD: 1,
-  MXN: 1 / 17.53,
+  MXN: 1 / 18.49,
   COP: 1 / 3200,
-  PEN: 1 / 3.35,
+  PEN: 1 / 3.44,
   // Added 2026-09-11: Peru's OECE data is genuinely multi-currency and a real
   // import turned up 7 EUR and 2 GBP tenders. Without a rate, convertToUsd()
   // returns null and the classifier reads a real amount as "no value
   // published" — the one outcome that table is meant to prevent. Quoted the
   // other way round from the rows above (these are worth MORE than a dollar),
   // hence no reciprocal.
-  EUR: 1.138,
+  EUR: 1.119,
   GBP: 1.324,
   // Added 2026-09-18 for Brazil. PNCP quotes everything in reais, and without
   // a rate here convertToUsd() returns null — so a real R$ 7,494,680.99 road
@@ -67,7 +86,7 @@ export const USD_RATES: Record<string, number> = {
   // cross-checked here against Wise/XE/Investing.com. It replaces a 5.4
   // placeholder that was ~4.5% off; the monthly FX Routine re-checks it like
   // every other row from here on.
-  BRL: 1 / 5.16,
+  BRL: 1 / 5.05,
   // Added 2026-09-24 for Chile, the last thing blocking that source: the
   // busca export carries a currency on 4,055 of 4,055 rows, 3,918 of them CLP,
   // and without a rate convertToUsd() returns null — so a real 690,000,000
@@ -83,7 +102,7 @@ export const USD_RATES: Record<string, number> = {
   // third digit is the last one this measurement can carry. It lands inside
   // the 900–1000 band the Chile round-2 report used for estimating and
   // explicitly refused to write into this file without a real measurement.
-  CLP: 1 / 953,
+  CLP: 1 / 984,
   // Added 2026-09-27 for Guyana (eprocure.gov.gy, staged). Its notices quote
   // Guyana dollars — "EE$36,086,600" in a title is an engineer's estimate in
   // GYD — so without a rate a GY$6.14 billion water plant would read as "no
@@ -98,12 +117,12 @@ export const USD_RATES: Record<string, number> = {
   // Added 2026-10-04 for the Dominican Republic (DGCP). open.er-api.com,
   // read 2026-10-04: 59.59. The Banco Central has let the peso drift a few
   // percent a year, well inside what a $1M floor can tell apart.
-  DOP: 1 / 59.6,
+  DOP: 1 / 61.3,
   // Added 2026-10-09 for Bolivia (SICOES paste, staged). open.er-api.com,
   // read 2026-10-09: 11.95. The Banco Central's old peg was 6.96; which of
   // the two Bolivian contracts are priced against is still to be confirmed,
   // and it decides whether a Bs 7–12M contract clears the $1M floor.
-  BOB: 1 / 11.95,
+  BOB: 1 / 11.72,
   // The two Chilean INDEXED UNITS, not currencies — and both appear in the
   // Moneda column as if they were: CLF 47 rows, UF 37 (the same unit under its
   // ISO code and its Spanish name), UTM 6. Ninety real amounts that would
@@ -126,9 +145,9 @@ export const USD_RATES: Record<string, number> = {
   // "Igual o superior a 5.000 UTM" — which is a floor, not an amount. The
   // mapper refuses to turn a range into a number, and a rate does not change
   // that; it would only dress the floor up as a value.
-  CLF: 43.03,
-  UF: 43.03,
-  UTM: 75.26,
+  CLF: 41.83,
+  UF: 41.83,
+  UTM: 73.32,
 };
 
 /** Returns null (not the raw value) when the currency isn't in the rate table, so callers can distinguish "genuinely converted" from "unknown currency, don't display a number that looks precise but isn't even the right unit." */

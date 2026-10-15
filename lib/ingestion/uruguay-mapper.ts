@@ -1,7 +1,8 @@
 import type { GovernmentLevel, Tender, TenderKeyDate, TenderScopeType, TenderStatus } from "@/types/tender";
 import { untranslated } from "@/lib/ingestion/text-utils";
 import { safeFileName, type TenderDocumentLink } from "@/lib/ingestion/document-links";
-import { ARCE_BASE, type ArceRelease } from "@/lib/ingestion/connectors/uruguay-arce-live";
+import type { ArceRelease } from "@/lib/ingestion/connectors/uruguay-arce-live";
+import { arceCallUrl } from "@/lib/ingestion/uruguay-paste-result";
 import { classifyStoredTender } from "@/lib/relevance";
 
 /**
@@ -39,11 +40,17 @@ export function uruguayScopeType(release: ArceRelease): TenderScopeType {
   return "unknown";
 }
 
+/** The state companies ARCE lists by name: UTE, ANCAP, OSE, AFE, ANP, ANTEL. */
+const STATE_COMPANY_NAME =
+  /usinas y trasmisiones el[eé]ctricas|combustibles?,? alcohol y portland|obras sanitarias del estado|ferrocarriles del estado|administraci[oó]n nacional de puertos|administraci[oó]n nacional de telecomunicaciones/i;
+
 /** State companies by the buyer id's inciso (60–69, 50–53), departmental governments (80–99); the rest is central government. */
 export function uruguayGovernmentLevel(buyerId: string | undefined, buyerName: string): GovernmentLevel {
   const inciso = Number((buyerId ?? "").split("-")[0]);
   if (/^intendencia\b/i.test(buyerName) || (inciso >= 80 && inciso <= 99)) return "municipal";
   if ((inciso >= 60 && inciso <= 69) || (inciso >= 50 && inciso <= 53)) return "public_company";
+  // A pasted list has the name only (lib/ingestion/uruguay-arce-paste.ts).
+  if (!buyerId && STATE_COMPANY_NAME.test(buyerName)) return "public_company";
   return "federal";
 }
 
@@ -148,7 +155,7 @@ export function mapArceReleaseToTender(release: ArceRelease, now: Date = new Dat
     risks: [],
     relevance,
     sourceName: URUGUAY_SOURCE_NAME,
-    sourceUrl: `${ARCE_BASE}/consultas/detalle/id/${purchaseId}`,
+    sourceUrl: arceCallUrl(purchaseId),
     createdAt: timestamp,
     updatedAt: timestamp,
   };

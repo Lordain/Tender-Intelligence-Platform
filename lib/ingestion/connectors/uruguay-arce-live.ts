@@ -94,7 +94,13 @@ export type ArceAward = {
  *   60 ANCAP · 61 UTE · 62 AFE · 66 OSE · 10 MTOP (e.g. 10-3 Dirección Nacional de Vialidad)
  */
 const KEY_BUYER_INCISOS = new Set(["10", "60", "61", "62", "66"]);
-const KEY_BUYER_NAME = /administraci[oó]n nacional de puertos|\bANP\b/i;
+/**
+ * The same buyers by name, for the admin's paste of ARCE's list
+ * (lib/ingestion/uruguay-arce-paste.ts), which carries the buyer's name but not
+ * its id: UTE, ANCAP, OSE, AFE, MTOP and ANP as ARCE writes them.
+ */
+const KEY_BUYER_NAME =
+  /administraci[oó]n nacional de puertos|\bANP\b|usinas y trasmisiones el[eé]ctricas|\bUTE\b|combustibles?,? alcohol y portland|\bANCAP\b|obras sanitarias del estado|\bOSE\b|ferrocarriles del estado|\bAFE\b|ministerio de transporte y obras p[uú]blicas|\bMTOP\b/i;
 
 export function isKeyBuyer(buyer: { name?: string; id?: string } | undefined): boolean {
   const inciso = (buyer?.id ?? "").split("-")[0];

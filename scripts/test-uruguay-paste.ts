@@ -11,6 +11,8 @@ import { arceCallUrl, extractArceDocuments, extractArceLinks, readMarkdownLinks 
 import { isIngestedArceTender } from "@/lib/ingestion/connectors/uruguay-arce-live";
 import { mapArceReleaseToTender, uruguayGovernmentLevel } from "@/lib/ingestion/uruguay-mapper";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
+import { readManualTasks } from "@/lib/ops/manual-tasks";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 let passed = 0;
 let failed = 0;
@@ -192,7 +194,20 @@ Publicado: 29/06/2026 15:10hs | Última Modificación: 15/10/2026 12:18hs
   check("贴错内容 → 提示", wrong instanceof PasteInputError, true);
 }
 
-void importChecks().then(twoStepChecks).then(() => {
+async function reminderChecks() {
+  console.log("每日手动任务提醒（乌拉圭只在自动导入没在正常跑时出现）");
+  const heartbeat = (status: string, hoursAgo: number) =>
+    ({ from: () => ({ select: () => ({ in: async () => ({ data: [{ job: "import-uruguay", status, detail: null, last_run_at: new Date(NOW.getTime() - hoursAgo * 3_600_000).toISOString() }] }) }) }) }) as unknown as SupabaseClient;
+  const shown = async (supabase: SupabaseClient) => (await readManualTasks(supabase, NOW)).some((task) => task.id === "uruguay-arce");
+  check("上次成功但已超时（ARCE 拒绝后崩掉、没写状态）→ 显示", await shown(heartbeat("ok", 31)), true);
+  check("暂停 → 显示", await shown(heartbeat("skipped", 2)), true);
+  check("失败 → 显示", await shown(heartbeat("failed", 2)), true);
+  check("正常运行 → 不显示", await shown(heartbeat("ok", 2)), false);
+  const empty = { from: () => ({ select: () => ({ in: async () => ({ data: [] }) }) }) } as unknown as SupabaseClient;
+  check("没有记录 → 不显示", await shown(empty), false);
+}
+
+void importChecks().then(twoStepChecks).then(reminderChecks).then(() => {
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 });

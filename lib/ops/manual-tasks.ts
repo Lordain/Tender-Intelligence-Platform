@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
+import { CRON_JOBS } from "@/lib/ops/cron-jobs";
 
 /**
  * The imports only an admin can run — sources with no API the daily job can
@@ -29,9 +30,12 @@ export type ManualTask = {
   /** The official site the data comes from. */
   site: { label: string; href: string };
   /**
-   * Shown only while this scheduled job's last heartbeat is not "ok" —
-   * "skipped" (paused) or "failed" — a stand-in for an automatic import that
-   * is not running, gone again the day the job runs normally.
+   * Shown only while this scheduled job is not running normally: its last
+   * heartbeat "skipped" (paused) or "failed", or older than the job's
+   * maxAgeHours (lib/ops/cron-jobs.ts). Overdue counts because a run that
+   * crashes writes no heartbeat at all — how ARCE's first refusals looked,
+   * the last heartbeat still "ok" from the day before (user, 2026-10-15:
+   * 没有乌拉圭啊？). Gone again the day the job runs normally.
    */
   whilePaused?: string;
 };
@@ -131,7 +135,14 @@ export async function readManualTasks(supabase: SupabaseClient | null, now = new
     for (const row of (data ?? []) as { job: string; last_run_at: string; detail: string | null; status: string }[]) rows.set(row.job, row);
   }
   const today = beijingDay(now);
-  return MANUAL_TASKS.filter((task) => !task.whilePaused || ["skipped", "failed"].includes(rows.get(task.whilePaused)?.status ?? "")).map((task) => {
+  const notRunning = (job: string) => {
+    const row = rows.get(job);
+    if (!row) return false;
+    if (row.status === "skipped" || row.status === "failed") return true;
+    const maxAgeHours = CRON_JOBS.find((spec) => spec.id === job)?.maxAgeHours;
+    return maxAgeHours !== undefined && now.getTime() - new Date(row.last_run_at).getTime() > maxAgeHours * 3_600_000;
+  };
+  return MANUAL_TASKS.filter((task) => !task.whilePaused || notRunning(task.whilePaused)).map((task) => {
     const row = rows.get(manualTaskJob(task.id));
     return { ...task, lastDoneAt: row?.last_run_at ?? null, detail: row?.detail ?? null, doneToday: row ? beijingDay(row.last_run_at) === today : false };
   });

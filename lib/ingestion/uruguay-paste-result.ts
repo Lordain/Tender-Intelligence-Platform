@@ -53,6 +53,50 @@ export function extractArceLinks(html: string): ArceLink[] {
   return links;
 }
 
+/** A file linked from a detail page: the pliego, or a clarification's attachment. */
+export type ArceDocLink = { title: string; url: string };
+
+function absolute(href: string): string {
+  if (/^https?:\/\//i.test(href)) return href;
+  return `https://www.comprasestatales.gub.uy${href.startsWith("/") ? "" : "/"}${href}`;
+}
+
+/**
+ * The files a detail page links to, from the HTML copied with it: the pliego
+ * (「Archivo adjunto … pliego」) and each clarification's attachment. Only
+ * links whose text says so, so a page's menus and footer are left out.
+ */
+export function extractArceDocuments(html: string): ArceDocLink[] {
+  const docs: ArceDocLink[] = [];
+  for (const match of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
+    const href = decodeEntities(/\bhref\s*=\s*(["'])(.*?)\1/i.exec(match[1])?.[2] ?? "");
+    const text = decodeEntities(match[2].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+    if (!href || href.startsWith("#") || /^(mailto|tel|javascript):/i.test(href)) continue;
+    if (!/pliego|aclaraci[oó]n|archivo adjunto/i.test(text)) continue;
+    const url = absolute(href);
+    if (!docs.some((doc) => doc.url === url)) docs.push({ title: text, url });
+  }
+  return docs;
+}
+
+/**
+ * The same, for a page pasted where the links came through as Markdown —
+ * 「[Ver detalles de la compra … | …](https://…/id/1302291)」, the form the
+ * owner's own paste of the list took on 2026-10-15. Returns the text with
+ * each link reduced to its words, and the links it held.
+ */
+export function readMarkdownLinks(text: string): { text: string; links: ArceLink[]; documents: ArceDocLink[] } {
+  const links: ArceLink[] = [];
+  const documents: ArceDocLink[] = [];
+  const plain = text.replace(/\[([^\]\n]*)\]\((\S+?)\)/g, (_whole, label: string, href: string) => {
+    const purchaseId = DETAIL_HREF.exec(href)?.[1];
+    if (purchaseId) links.push({ label: normalizeArceLabel(label), purchaseId });
+    else if (/pliego|aclaraci[oó]n|archivo adjunto/i.test(label)) documents.push({ title: label.trim(), url: absolute(href) });
+    return label;
+  });
+  return { text: plain, links, documents };
+}
+
 /** Lower case, one space, no 「Ver detalles de la compra」 — the form both a link's text and a list entry are compared in. */
 export function normalizeArceLabel(text: string): string {
   return text
@@ -93,6 +137,18 @@ export type UruguayPasteRow = {
   outcome: UruguayPasteOutcome;
   outcomeZh: string;
   existingSlug?: string;
+};
+
+/** One paste into the detail-page import: the page's text and what the copied HTML linked to. */
+export type ArceDetailPaste = { text: string; links: ArceLink[]; documents: ArceDocLink[] };
+
+export type UruguayDetailRow = UruguayPasteRow & { items: number; documents: number; keyDates: number };
+
+export type UruguayDetailResponse = {
+  rows: UruguayDetailRow[];
+  written?: number;
+  failed?: { slug: string; error: string }[];
+  documentLinks?: number;
 };
 
 export type UruguayPasteResponse = {

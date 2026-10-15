@@ -5,9 +5,9 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { arceListCallToRelease, attachArcePurchaseIds, isArceSaleOrLease, parseArceList } from "@/lib/ingestion/uruguay-arce-paste";
-import { importUruguayPaste } from "@/lib/ingestion/import-uruguay-paste";
-import { arceCallUrl, extractArceLinks } from "@/lib/ingestion/uruguay-paste-result";
+import { arceDetailToRelease, arceListCallToRelease, attachArcePurchaseIds, isArceSaleOrLease, parseArceDetailPages, parseArceList } from "@/lib/ingestion/uruguay-arce-paste";
+import { importUruguayDetails, importUruguayPaste, screenUruguayList } from "@/lib/ingestion/import-uruguay-paste";
+import { arceCallUrl, extractArceDocuments, extractArceLinks, readMarkdownLinks } from "@/lib/ingestion/uruguay-paste-result";
 import { isIngestedArceTender } from "@/lib/ingestion/connectors/uruguay-arce-live";
 import { mapArceReleaseToTender, uruguayGovernmentLevel } from "@/lib/ingestion/uruguay-mapper";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
@@ -104,7 +104,8 @@ async function importChecks() {
   check("交标已过（10月23日截标）→ 不写入", later.rows.find((row) => row.procedureNumber === "Licitación Pública 103682/2026")?.outcome, "closed");
 
   const noIds = await importUruguayPaste(null, text, { write: false, now: NOW });
-  check("没 ID → 全部不写入", noIds.rows.every((row) => row.outcome === "no_id"), true);
+  check("没 ID → 一条也不写入", noIds.rows.some((row) => ["write", "short_window", "manual_keep"].includes(row.outcome)), false);
+  check("没 ID 但值得的 → 标出来（初筛照样能判断）", noIds.rows.find((row) => row.procedureNumber.endsWith("27250/2026"))?.outcome, "no_id");
 
   const kept = await importUruguayPaste(null, text, { write: false, links: allLinks, now: NOW, keep: { [String(1300000 + 2)]: "standard" } });
   check("手动保留 → 写入", kept.rows.find((row) => row.purchaseId === String(1300000 + 2))?.outcome, "manual_keep");
@@ -116,7 +117,82 @@ async function importChecks() {
   check("贴错内容 → 提示", empty instanceof PasteInputError, true);
 }
 
-void importChecks().then(() => {
+async function twoStepChecks() {
+  console.log("第一步：列表初筛（只判断，不写入）");
+  // The owner's own paste of the list on 2026-10-15 came through with its links as Markdown.
+  const markdown = `Se encontraron 760 resultados.
+[Licitación Pública 1/2025  Ministerio de Economía y Finanzas | Dirección Nacional de Aduanas](https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1302291)
+Ministerio de Economía y Finanzas | Dirección Nacional de Aduanas
+PERMISOS DE EXPLOTACION DE UN DEPÓSITO FISCAL ÚNICO POR CIUDAD EN RIVERA, CHUY Y RIO BRANCO DEL DEPARTAMENTO DE RIVERA, ROCHA Y CERRO LARGO.
+ Recepción de ofertas hasta: 29/10/2026 10:00hs
+Publicado: 11/12/2025 11:15hs | Última Modificación: 23/09/2026 10:57hs
+[Ver detalles de la compra Licitación Pública 1/2025 | Ministerio de Economía y Finanzas | Dirección Nacional de Aduanas](https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1302291)
+[PFI - Licitación pública internacional 27250/2026  Administración de las Obras Sanitarias del Estado | Administración de las Obras Sanitarias del Estado](https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1352194)
+Administración de las Obras Sanitarias del Estado | Administración de las Obras Sanitarias del Estado
+CONSTRUCCION DE UNA PRESA SOBRE EL ARROYO CASUPA Y OBRAS ANEXAS
+ Recepción de ofertas hasta: 23/11/2026 14:00hs
+Publicado: 29/06/2026 15:10hs | Última Modificación: 15/10/2026 12:18hs
+[Ver detalles de la compra PFI - Licitación pública internacional 27250/2026 | Administración de las Obras Sanitarias del Estado | Administración de las Obras Sanitarias del Estado](https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1352194)`;
+  check("Markdown 链接 → 读出 ID", readMarkdownLinks(markdown).links.map((link) => link.purchaseId), ["1302291", "1302291", "1352194", "1352194"]);
+  const screened = await screenUruguayList(null, markdown, [], NOW);
+  check("Markdown 格式的列表也能初筛", screened.rows.map((row) => [row.procedureNumber, row.purchaseId]), [
+    ["Licitación Pública 1/2025", "1302291"],
+    ["PFI - Licitación pública internacional 27250/2026", "1352194"],
+  ]);
+  check("Casupá 水坝值得打开", screened.rows[1].outcome, "write");
+  check("初筛给出详情页链接", screened.rows[1].url, "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1352194");
+
+  console.log("第二步：详情页");
+  const dam = readFileSync(join(process.cwd(), "lib/ingestion/__fixtures__/uruguay/detalle-27250-2026-ose.txt"), "utf8");
+  const customs = readFileSync(join(process.cwd(), "lib/ingestion/__fixtures__/uruguay/detalle-2-2025-aduanas.txt"), "utf8");
+  const [page] = parseArceDetailPages(dam);
+  check("编号", page.procedureNumber, "PFI - Licitación pública internacional 27250/2026");
+  check("采购单位", page.buyer, "Administración de las Obras Sanitarias del Estado | Administración de las Obras Sanitarias del Estado");
+  check("描述", page.description, "CONSTRUCCION DE UNA PRESA SOBRE EL ARROYO CASUPA Y OBRAS ANEXAS");
+  check("交标", page.deadline, "2026-11-23T14:00:00");
+  check("发布", page.published, "2026-06-29T15:10:00");
+  check("开标", page.opening, "2026-11-23T14:00:00");
+  check("提问截止（只有日期）", page.questionsUntil, "2026-10-23T23:59:00");
+  check("物品清单", page.items, [{ description: "CONSTRUCCION DE REPRESA PARA ABASTECIMIENTO DE AGUA POTABLE", code: "122722", quantity: 1, unit: "UNIDAD" }]);
+  check("两页连贴 → 2 个", parseArceDetailPages(`${customs}\n${dam}`).map((p) => p.procedureNumber), ["Licitación Pública 2/2025", "PFI - Licitación pública internacional 27250/2026"]);
+  check("海关页的数量 180", parseArceDetailPages(customs)[0].items[0].quantity, 180);
+
+  const detailHtml = `<nav><a href="/consultas/detalle/mostrar-llamado/1/id/1352194">PFI - Licitación pública internacional 27250/2026</a></nav>
+<a href="/Pliegos/pliego_27250.pdf">Archivo adjunto archivo adjunto/pliego (.pdf 2 Mb)</a>
+<a href="https://www.comprasestatales.gub.uy/Aclaraciones/aclar_llamado_27250_26.doc">Archivo adjunto de la aclaración Nº 45 (.doc 258 Kb)</a>
+<a href="mailto:licitacionesobras@ose.com.uy">licitacionesobras@ose.com.uy</a>
+<a href="https://www.gub.uy/agencia-reguladora-compras-estatales/institucional/contacto">Contacto</a>`;
+  const docs = extractArceDocuments(detailHtml);
+  check("只取标书和澄清文件，邮箱和菜单不取", docs.map((doc) => doc.url), [
+    "https://www.comprasestatales.gub.uy/Pliegos/pliego_27250.pdf",
+    "https://www.comprasestatales.gub.uy/Aclaraciones/aclar_llamado_27250_26.doc",
+  ]);
+  const release = arceDetailToRelease({ ...page, purchaseId: "1352194" }, docs);
+  check("标书文件类型", release.tender?.documents?.map((doc) => doc.documentType), ["biddingDocuments", "clarifications"]);
+
+  const preview = await importUruguayDetails(null, [{ text: dam, links: extractArceLinks(detailHtml), documents: docs }], { write: false, now: NOW });
+  const row = preview.rows[0];
+  check("ID 来自页面链接", row.purchaseId, "1352194");
+  check("会写入", row.outcome, "write");
+  check("物品 1 项、文件 2 个", [row.items, row.documents], [1, 2]);
+  check("关键日期：发布、交标、开标、提问截止", row.keyDates, 4);
+  const noLink = await importUruguayDetails(null, [{ text: dam, links: [], documents: [] }], { write: false, now: NOW });
+  check("没链接 → 不写入", noLink.rows[0].outcome, "no_id");
+  const twoPastes = await importUruguayDetails(
+    null,
+    [
+      { text: customs, links: [{ label: "", purchaseId: "1302292" }], documents: [] },
+      { text: dam, links: [{ label: "", purchaseId: "1352194" }], documents: [] },
+    ],
+    { write: false, now: NOW },
+  );
+  check("两次粘贴各自配 ID", twoPastes.rows.map((r) => r.purchaseId), ["1302292", "1352194"]);
+  check("海关仓储许可 → 按规则排除", twoPastes.rows[0].outcome, "excluded");
+  const wrong = await importUruguayDetails(null, [{ text: "hola", links: [], documents: [] }], { write: false, now: NOW }).catch((error) => error);
+  check("贴错内容 → 提示", wrong instanceof PasteInputError, true);
+}
+
+void importChecks().then(twoStepChecks).then(() => {
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 });

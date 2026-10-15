@@ -2,14 +2,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tender } from "@/types/tender";
 import { isIngestedArceTender } from "@/lib/ingestion/connectors/uruguay-arce-live";
 import { mapArceReleaseToTender, URUGUAY } from "@/lib/ingestion/uruguay-mapper";
-import { arceListCallToRelease, attachArcePurchaseIds, isArceSaleOrLease, parseArceList } from "@/lib/ingestion/uruguay-arce-paste";
+import { arceDetailToRelease, arceListCallToRelease, attachArcePurchaseIds, isArceSaleOrLease, parseArceDetailPages, parseArceList } from "@/lib/ingestion/uruguay-arce-paste";
+import { uruguayDocumentLinks, uruguayTime } from "@/lib/ingestion/uruguay-mapper";
+import { saveDocumentLinks } from "@/lib/ingestion/document-links";
 import { hasShortBidWindow, isPastSubmissionDeadline, SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 import {
+  readMarkdownLinks,
   URUGUAY_KEEP_TIERS,
+  type ArceDetailPaste,
   type ArceLink,
+  type UruguayDetailResponse,
+  type UruguayDetailRow,
   type UruguayKeepTier,
   type UruguayPasteOutcome,
   type UruguayPasteResponse,
@@ -45,7 +51,7 @@ const OUTCOME_ZH: Record<UruguayPasteOutcome, string> = {
   closed: "交标截止日已过，不写入",
   not_open: "已不在投标阶段，不写入",
   exists: "平台上已有，不重复写入",
-  no_id: "没拿到项目 ID，不写入（请从 ARCE 列表页直接复制粘贴，不要先贴到记事本）",
+  no_id: "没拿到项目 ID，不写入（请在 ARCE 页面上直接复制粘贴，不要先贴到记事本）",
 };
 
 const MANUAL_REASON = { zh: "管理员在后台手动设置", en: "Manually set by an admin", es: "Establecido manualmente por un administrador" };
@@ -70,7 +76,8 @@ export async function importUruguayPaste(
   text: string,
   options: { write: boolean; links?: ArceLink[]; now?: Date; /** purchase id → tier, for excluded calls kept by hand. */ keep?: Record<string, UruguayKeepTier> },
 ): Promise<UruguayPasteResponse> {
-  const listed = attachArcePurchaseIds(parseArceList(text), options.links ?? []);
+  const markdown = readMarkdownLinks(text);
+  const listed = attachArcePurchaseIds(parseArceList(markdown.text), [...(options.links ?? []), ...markdown.links]);
   if (listed.length === 0) {
     throw new PasteInputError("没有找到「Ver detalles de la compra …」——请在 ARCE「Consulta de Publicaciones → Llamados vigentes」列表页全选复制，直接粘贴到这里。");
   }
@@ -101,10 +108,9 @@ export async function importUruguayPaste(
   for (const { call, release } of read) {
     const mapped = mapArceReleaseToTender(release, now);
     let tender = mapped;
-    let outcome: UruguayPasteOutcome;
-    if (!call.purchaseId) outcome = "no_id";
-    else if (existing.has(mapped.slug)) outcome = "exists";
-    else outcome = outcomeOf(tender, now);
+    // The rules decide first, so the screening can still say a call without an id is worth opening.
+    let outcome: UruguayPasteOutcome = call.purchaseId && existing.has(mapped.slug) ? "exists" : outcomeOf(tender, now);
+    if (!call.purchaseId && (outcome === "write" || outcome === "short_window")) outcome = "no_id";
     const keepTier = call.purchaseId ? options.keep?.[call.purchaseId] : undefined;
     if (outcome === "excluded" && keepTier && URUGUAY_KEEP_TIERS.includes(keepTier)) {
       tender = { ...tender, relevance: { tier: keepTier, label: RELEVANCE_TIER_LABELS[keepTier], reason: MANUAL_REASON }, relevanceManuallyOverridden: true };
@@ -141,4 +147,106 @@ export async function importUruguayPaste(
   if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
   const written = await upsertTendersBatched(supabase, toWrite, undefined, { allowShortBidWindow: true });
   return { ...result, written: written.upsertedCount, failed: written.failed };
+}
+
+/**
+ * The first step (user, 2026-10-15: 1层是分析哪些项目值得录入): the list read
+ * with the same rules, nothing written. The admin opens the calls worth it
+ * and pastes their detail pages into importUruguayDetails.
+ */
+export function screenUruguayList(supabase: SupabaseClient | null, text: string, links: ArceLink[], now?: Date): Promise<UruguayPasteResponse> {
+  return importUruguayPaste(supabase, text, { write: false, links, now });
+}
+
+/** The id a paste's links agree on: the one detail id they name most often. */
+function pasteId(links: ArceLink[]): string | undefined {
+  const counts = new Map<string, number>();
+  for (const link of links) counts.set(link.purchaseId, (counts.get(link.purchaseId) ?? 0) + 1);
+  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+}
+
+/**
+ * The second step (1层是录标书): detail pages pasted one after another, each
+ * written with its items, files, opening and clarification deadline, under
+ * the same rules as the list and the daily import. The id comes from the
+ * links the copied page carries; a page pasted without them is shown but not
+ * written.
+ */
+export async function importUruguayDetails(
+  supabase: SupabaseClient | null,
+  pastes: ArceDetailPaste[],
+  options: { write: boolean; now?: Date; keep?: Record<string, UruguayKeepTier> },
+): Promise<UruguayDetailResponse> {
+  const now = options.now ?? new Date();
+  const pages = pastes.flatMap((paste) => {
+    const markdown = readMarkdownLinks(paste.text);
+    const details = parseArceDetailPages(markdown.text);
+    const id = details.length === 1 ? pasteId([...paste.links, ...markdown.links]) : undefined;
+    const documents = [...paste.documents, ...markdown.documents];
+    return details.map((detail) => ({ detail: detail.purchaseId || !id ? detail : { ...detail, purchaseId: id }, documents: details.length === 1 ? documents : [] }));
+  });
+  if (pages.length === 0) {
+    throw new PasteInputError("没有找到项目详情——请在 ARCE 打开项目（Ver detalles de la compra），从页面标题开始全选整页复制，直接粘贴到这里。");
+  }
+
+  const ids = [...new Set(pages.map(({ detail }) => detail.purchaseId).filter((id): id is string => Boolean(id)))];
+  const existing = supabase ? await storedSlugs(supabase, ids.map((id) => `uruguay-${id}`)) : new Set<string>();
+
+  const rows: UruguayDetailRow[] = [];
+  const toWrite: Tender[] = [];
+  const links: { slug: string; links: ReturnType<typeof uruguayDocumentLinks> }[] = [];
+  const seen = new Set<string>();
+  for (const { detail, documents } of pages) {
+    if (detail.purchaseId) {
+      if (seen.has(detail.purchaseId)) continue;
+      seen.add(detail.purchaseId);
+    }
+    const release = arceDetailToRelease(detail, documents);
+    const mapped = mapArceReleaseToTender(release, now);
+    const keyDates = [...mapped.keyDates];
+    const opening = uruguayTime(detail.opening);
+    if (opening) keyDates.push({ id: `${mapped.slug}-opening`, type: "opening", date: opening });
+    const questions = uruguayTime(detail.questionsUntil);
+    if (questions) keyDates.push({ id: `${mapped.slug}-questions`, type: "questions_deadline", date: questions });
+    let tender: Tender = { ...mapped, keyDates };
+    let outcome: UruguayPasteOutcome;
+    if (!detail.purchaseId) outcome = "no_id";
+    else if (isArceSaleOrLease(detail) || !isIngestedArceTender(release)) outcome = "excluded";
+    else if (existing.has(mapped.slug)) outcome = "exists";
+    else outcome = outcomeOf(tender, now);
+    const keepTier = detail.purchaseId ? options.keep?.[detail.purchaseId] : undefined;
+    if (outcome === "excluded" && keepTier && URUGUAY_KEEP_TIERS.includes(keepTier)) {
+      tender = { ...tender, relevance: { tier: keepTier, label: RELEVANCE_TIER_LABELS[keepTier], reason: MANUAL_REASON }, relevanceManuallyOverridden: true };
+      outcome = "manual_keep";
+    }
+    if (outcome === "write" || outcome === "short_window" || outcome === "manual_keep") {
+      toWrite.push(tender);
+      const docLinks = uruguayDocumentLinks(release);
+      if (docLinks.length > 0) links.push({ slug: tender.slug, links: docLinks });
+    }
+    const outOfReach = outcome === "excluded" && (isArceSaleOrLease(detail) || !isIngestedArceTender(release));
+    rows.push({
+      procedureNumber: detail.procedureNumber,
+      ...(detail.purchaseId ? { purchaseId: detail.purchaseId, url: tender.sourceUrl } : {}),
+      title: tender.title.es,
+      buyer: tender.buyer,
+      publicationDate: tender.publicationDate,
+      submissionDeadline: tender.submissionDeadline,
+      tier: tender.relevance.tier,
+      reasonZh: outOfReach ? (isArceSaleOrLease(detail) ? "政府资产出售/出租，不是采购。" : "不在乌拉圭的读取范围内（只读公开招标和重点国企、交通部的简易招标）。") : tender.relevance.reason.zh,
+      ruleTier: mapped.relevance.tier,
+      outcome,
+      outcomeZh: OUTCOME_ZH[outcome],
+      ...(outcome === "exists" ? { existingSlug: mapped.slug } : {}),
+      items: detail.items.length,
+      documents: documents.length,
+      keyDates: keyDates.length,
+    });
+  }
+
+  if (!options.write) return { rows };
+  if (!supabase) throw new Error("Supabase isn't configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).");
+  const written = await upsertTendersBatched(supabase, toWrite, undefined, { allowShortBidWindow: true });
+  const saved = links.length > 0 ? await saveDocumentLinks(supabase, links) : null;
+  return { rows, written: written.upsertedCount, failed: written.failed, documentLinks: saved?.linkCount ?? 0 };
 }

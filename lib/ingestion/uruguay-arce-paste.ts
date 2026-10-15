@@ -125,3 +125,122 @@ export function arceListCallToRelease(call: ArceListCall): ArceRelease {
     },
   };
 }
+
+/**
+ * A call's detail page as the admin copies it — the second step, for the
+ * calls the list's screening says are worth opening (user, 2026-10-15: 应该是
+ * 2层设计吧？1层是分析哪些项目值得录入，1层是录标书). On top of the list's
+ * fields it carries the items, the opening and the clarification deadline:
+ *
+ *   InicioConsulta de PublicacionesPFI - Licitación pública internacional 27250/2026 Administración de las Obras Sanitarias del Estado | …
+ *   PFI - Licitación pública internacional 27250/2026 Administración de las Obras Sanitarias del Estado | …
+ *   CONSTRUCCION DE UNA PRESA SOBRE EL ARROYO CASUPA Y OBRAS ANEXAS
+ *    Recepción de ofertas hasta: 23/11/2026 14:00hs
+ *   Fecha Publicación: 29/06/2026 15:10hs
+ *   Acto de Apertura:23/11/2026 14:00hs
+ *   Aclaraciones hasta el:23/10/2026
+ *   …
+ *   Ítems del llamado
+ *   Ítem Nº 1  CONSTRUCCION DE REPRESA PARA ABASTECIMIENTO DE AGUA POTABLE (Cód. Artículo 122722)
+ *   Cantidad:1,00 UNIDAD
+ *
+ * The contact block (an office's e-mail and phone) is not kept.
+ */
+export type ArceDetailItem = { description: string; code?: string; quantity?: number; unit?: string };
+
+export type ArceDetail = ArceListCall & {
+  opening?: string;
+  /** "Aclaraciones hasta el": the last day to ask questions, as a date. */
+  questionsUntil?: string;
+  items: ArceDetailItem[];
+};
+
+const BREADCRUMB = /^Inicio\s*Consulta de Publicaciones\s*/i;
+const PAGE_FOOTER = /^Agencia Reguladora de Compras Estatales$/i;
+/** "Licitación Pública 2/2025 Ministerio de …": the procedure ends at its number. */
+const HEADER = /^(.*?\S*\d+\/\d{2,4})\s+(.+)$/;
+
+function montevideoDate(text: string, label: RegExp): string | undefined {
+  const match = new RegExp(`${label.source}\\s*:?\\s*(\\d{2})/(\\d{2})/(\\d{4})(?!\\s+\\d{2}:)`, "i").exec(text);
+  return match ? `${match[3]}-${match[2]}-${match[1]}T23:59:00` : undefined;
+}
+
+function decimal(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  const value = Number(raw.replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function parseDetailPage(lines: string[]): ArceDetail | null {
+  // The page's own heading, the line after the breadcrumb (or the first line, when the breadcrumb was not selected).
+  const headerIndex = lines.findIndex((line) => HEADER.test(line) && !BREADCRUMB.test(line));
+  if (headerIndex < 0) return null;
+  const header = HEADER.exec(lines[headerIndex])!;
+  const procedureNumber = header[1].trim();
+  const buyer = header[2].trim();
+
+  const description: string[] = [];
+  for (const line of lines.slice(headerIndex + 1)) {
+    if (STOP_LINE.test(line) || /^Pliego$/i.test(line)) break;
+    if (line === lines[headerIndex]) continue;
+    description.push(line);
+  }
+
+  const items: ArceDetailItem[] = [];
+  const start = lines.findIndex((line) => /^Ítems del llamado$/i.test(line));
+  if (start >= 0) {
+    for (let i = start + 1; i < lines.length; i += 1) {
+      if (PAGE_FOOTER.test(lines[i])) break;
+      const item = /^Ítem N[ºo°]\s*\d+\s+(.+?)(?:\s*\(C[oó]d\. Art[ií]culo\s*(\d+)\))?$/i.exec(lines[i]);
+      if (!item) continue;
+      const amount = /^Cantidad:\s*([\d.,]+)\s*(.*)$/i.exec(lines[i + 1] ?? "");
+      items.push({ description: item[1].trim(), ...(item[2] ? { code: item[2] } : {}), ...(amount ? { quantity: decimal(amount[1]), unit: amount[2].trim() || undefined } : {}) });
+    }
+  }
+
+  const joined = lines.join("\n");
+  return {
+    procedureNumber,
+    procedure: procedureNumber.replace(/\s+\S+\/\d{2,4}$/, "").trim(),
+    buyer,
+    description: description.join(" ").replace(/^["“]|["”]$/g, "").trim(),
+    deadline: montevideoTime(joined, /Recepci[oó]n de ofertas hasta/),
+    published: montevideoTime(joined, /(?:Fecha Publicaci[oó]n|Publicado)/),
+    opening: montevideoTime(joined, /Acto de Apertura/),
+    questionsUntil: montevideoDate(joined, /Aclaraciones hasta el/),
+    items,
+    purchaseId: DETAIL_URL.exec(joined)?.[1],
+  };
+}
+
+/** The detail pages in a paste: one per breadcrumb, or the whole text when none was selected. */
+export function parseArceDetailPages(text: string): ArceDetail[] {
+  const lines = text.split(/\r?\n/).map((line) => line.replace(/﻿/g, "").replace(/\s+/g, " ").trim()).filter(Boolean);
+  const starts = lines.flatMap((line, index) => (BREADCRUMB.test(line) ? [index] : []));
+  const pages = starts.length === 0 ? [lines] : starts.map((at, i) => lines.slice(at, starts[i + 1] ?? lines.length));
+  return pages.map(parseDetailPage).filter((page): page is ArceDetail => page !== null);
+}
+
+/** A detail page in the OCDS shape the daily import reads, items and files included. */
+export function arceDetailToRelease(detail: ArceDetail, documents: { title: string; url: string }[] = []): ArceRelease {
+  const release = arceListCallToRelease(detail);
+  return {
+    ...release,
+    tender: {
+      ...release.tender,
+      items: detail.items.map((item, index) => ({
+        id: String(index + 1),
+        description: item.description,
+        ...(item.code ? { classification: { id: item.code, description: item.description } } : {}),
+        ...(item.quantity !== undefined ? { quantity: item.quantity } : {}),
+        ...(item.unit ? { unit: { name: item.unit } } : {}),
+      })),
+      documents: documents.map((doc, index) => ({
+        id: String(index + 1),
+        title: doc.title,
+        url: doc.url,
+        documentType: /pliego/i.test(doc.title) ? "biddingDocuments" : "clarifications",
+      })),
+    },
+  };
+}

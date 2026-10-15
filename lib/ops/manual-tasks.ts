@@ -29,9 +29,9 @@ export type ManualTask = {
   /** The official site the data comes from. */
   site: { label: string; href: string };
   /**
-   * Shown only while this scheduled job's last heartbeat reads "skipped" —
-   * a stand-in for an automatic import that is paused, gone again the day
-   * the job runs normally.
+   * Shown only while this scheduled job's last heartbeat is not "ok" —
+   * "skipped" (paused) or "failed" — a stand-in for an automatic import that
+   * is not running, gone again the day the job runs normally.
    */
   whilePaused?: string;
 };
@@ -83,12 +83,12 @@ export const MANUAL_TASKS: ManualTask[] = [
     // bolivia-sicoes-paste.ts brings the whole classifier with it.
     site: { label: "SICOES", href: "https://www.sicoes.gob.bo/portal/index.php" },
   },
-  // Added 2026-10-15 (user: 现在就做), only while ARCE refuses our servers and
-  // the daily Uruguay import records a pause (scripts/cron-uruguay.ts).
+  // Added 2026-10-15 (user: 现在就做 / 上面的手动提醒，应该也要增加提醒？), only
+  // while the daily Uruguay import is paused or failing (scripts/cron-uruguay.ts).
   {
     id: "uruguay-arce",
     label: "乌拉圭 ARCE（自动导入暂停期间）",
-    how: "在 ARCE「Llamados vigentes」列表页全选复制，直接粘贴到「乌拉圭」页的「ARCE 列表粘贴导入」",
+    how: "在 ARCE「Llamados vigentes」列表页全选复制，贴到「乌拉圭」页的「ARCE 列表初筛」；把值得的项目详情页整页贴到「ARCE 详情页粘贴导入」",
     href: "/admin/import-tenders/uruguay",
     site: { label: "ARCE", href: "https://www.comprasestatales.gub.uy/consultas/" },
     whilePaused: "import-uruguay",
@@ -131,7 +131,7 @@ export async function readManualTasks(supabase: SupabaseClient | null, now = new
     for (const row of (data ?? []) as { job: string; last_run_at: string; detail: string | null; status: string }[]) rows.set(row.job, row);
   }
   const today = beijingDay(now);
-  return MANUAL_TASKS.filter((task) => !task.whilePaused || rows.get(task.whilePaused)?.status === "skipped").map((task) => {
+  return MANUAL_TASKS.filter((task) => !task.whilePaused || ["skipped", "failed"].includes(rows.get(task.whilePaused)?.status ?? "")).map((task) => {
     const row = rows.get(manualTaskJob(task.id));
     return { ...task, lastDoneAt: row?.last_run_at ?? null, detail: row?.detail ?? null, doneToday: row ? beijingDay(row.last_run_at) === today : false };
   });

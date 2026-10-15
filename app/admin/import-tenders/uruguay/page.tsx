@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ImportUruguayForm } from "@/components/admin/ImportUruguayForm";
 import { ImportUruguayPasteForm } from "@/components/admin/ImportUruguayPasteForm";
+import { ScreenUruguayListForm } from "@/components/admin/ScreenUruguayListForm";
 import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
 import { RefreshAwardsPanel } from "@/components/admin/RefreshAwardsPanel";
 import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
@@ -18,13 +19,19 @@ export default async function AdminImportTendersUruguayPage() {
     <div className="flex flex-col gap-3">
       {/* Added 2026-10-15 (user: 现在就做): ARCE refuses our servers, so the daily import is paused. */}
       <ImportSourceSection
-        name="ARCE 列表粘贴导入（自动导入暂停期间）"
-        hint="ARCE 从 10 月 14 日起拒绝平台服务器访问，每日自动导入暂停；在 ARCE 列表页复制粘贴导入"
+        name="ARCE 粘贴导入（自动导入暂停期间）"
+        hint="先贴列表初筛，再把值得的项目详情页整页粘贴导入"
         mode="manual"
         defaultOpen
         links={[{ label: "ARCE", href: `${ARCE_BASE}/consultas/` }]}
       >
-        <ImportUruguayPasteForm />
+        <div className="flex flex-col gap-3 text-sm text-[#233846]">
+          <p className="text-xs leading-5 text-[#64717c]">
+            ARCE 从 2026 年 10 月 14 日起拒绝平台服务器访问（网站对访客照常开放），下面的每日自动导入暂停，每轮只试探一次，恢复后自动继续。暂停期间在这里手动导入。导入后在「通用维护 → 更新项目文案」生成中文标题和摘要。
+          </p>
+          <ScreenUruguayListForm />
+          <ImportUruguayPasteForm />
+        </div>
       </ImportSourceSection>
       <ImportSourceSection
         name="comprasestatales.gub.uy — 乌拉圭国家采购监管署（ARCE）"

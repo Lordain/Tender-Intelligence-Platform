@@ -17,7 +17,7 @@ import { SEACE_PUBLIC_SEARCH_URL } from "@/lib/peru-seace-url";
  * Client-safe: no server-only imports, the panel imports the list and the
  * day helper.
  */
-export type ManualTaskId = "comprasmx" | "proyectos-estrategicos" | "peru-seace" | "cfe-micrositio" | "ecuador-soce" | "bolivia-sicoes";
+export type ManualTaskId = "comprasmx" | "proyectos-estrategicos" | "peru-seace" | "cfe-micrositio" | "ecuador-soce" | "bolivia-sicoes" | "uruguay-arce";
 
 export type ManualTask = {
   id: ManualTaskId;
@@ -28,6 +28,12 @@ export type ManualTask = {
   href: string;
   /** The official site the data comes from. */
   site: { label: string; href: string };
+  /**
+   * Shown only while this scheduled job's last heartbeat reads "skipped" —
+   * a stand-in for an automatic import that is paused, gone again the day
+   * the job runs normally.
+   */
+  whilePaused?: string;
 };
 
 export const MANUAL_TASKS: ManualTask[] = [
@@ -77,6 +83,16 @@ export const MANUAL_TASKS: ManualTask[] = [
     // bolivia-sicoes-paste.ts brings the whole classifier with it.
     site: { label: "SICOES", href: "https://www.sicoes.gob.bo/portal/index.php" },
   },
+  // Added 2026-10-15 (user: 现在就做), only while ARCE refuses our servers and
+  // the daily Uruguay import records a pause (scripts/cron-uruguay.ts).
+  {
+    id: "uruguay-arce",
+    label: "乌拉圭 ARCE（自动导入暂停期间）",
+    how: "在 ARCE「Llamados vigentes」列表页全选复制，直接粘贴到「乌拉圭」页的「ARCE 列表粘贴导入」",
+    href: "/admin/import-tenders/uruguay",
+    site: { label: "ARCE", href: "https://www.comprasestatales.gub.uy/consultas/" },
+    whilePaused: "import-uruguay",
+  },
 ];
 
 export function manualTaskJob(id: ManualTaskId): string {
@@ -105,19 +121,17 @@ export async function markManualTaskDone(supabase: SupabaseClient | null, id: Ma
 }
 
 export async function readManualTasks(supabase: SupabaseClient | null, now = new Date()): Promise<ManualTaskState[]> {
-  const rows = new Map<string, { last_run_at: string; detail: string | null }>();
+  const rows = new Map<string, { last_run_at: string; detail: string | null; status?: string }>();
   if (supabase) {
+    const pausedJobs = MANUAL_TASKS.flatMap((task) => (task.whilePaused ? [task.whilePaused] : []));
     const { data } = await supabase
       .from("cron_heartbeats")
-      .select("job, last_run_at, detail")
-      .in(
-        "job",
-        MANUAL_TASKS.map((task) => manualTaskJob(task.id)),
-      );
-    for (const row of (data ?? []) as { job: string; last_run_at: string; detail: string | null }[]) rows.set(row.job, row);
+      .select("job, last_run_at, detail, status")
+      .in("job", [...MANUAL_TASKS.map((task) => manualTaskJob(task.id)), ...pausedJobs]);
+    for (const row of (data ?? []) as { job: string; last_run_at: string; detail: string | null; status: string }[]) rows.set(row.job, row);
   }
   const today = beijingDay(now);
-  return MANUAL_TASKS.map((task) => {
+  return MANUAL_TASKS.filter((task) => !task.whilePaused || rows.get(task.whilePaused)?.status === "skipped").map((task) => {
     const row = rows.get(manualTaskJob(task.id));
     return { ...task, lastDoneAt: row?.last_run_at ?? null, detail: row?.detail ?? null, doneToday: row ? beijingDay(row.last_run_at) === today : false };
   });

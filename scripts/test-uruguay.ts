@@ -53,7 +53,8 @@ check("tender number", mapped.tenderNumber, "Licitación Pública 16/2026 (ID 1)
 check("title is the description", mapped.title.es, "Suministro de transformadores de potencia");
 check("deadline in UTC", mapped.submissionDeadline, "2026-11-20T18:30:00.000Z");
 check("open before the deadline", mapped.status, "open");
-check("source page", mapped.sourceUrl, "https://www.comprasestatales.gub.uy/consultas/detalle/id/1");
+// The form of the link the owner copied from ARCE on 2026-10-15 (the earlier /consultas/detalle/id/1 was never checked).
+check("source page", mapped.sourceUrl, "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1");
 check("no amount", mapped.estimatedValue, undefined);
 
 // No amount → at most 常规, even when the 一句话总结 gives a long contract term.

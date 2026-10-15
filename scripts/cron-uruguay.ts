@@ -10,8 +10,11 @@
  */
 import { createSupabaseAdminClient } from "../lib/supabase/admin-client";
 import { ingestUruguay } from "../lib/ingestion/ingest-uruguay";
+import { ArceRefusedError } from "../lib/ingestion/connectors/uruguay-arce-live";
 import { writeCronHeartbeat } from "../lib/ops/cron-jobs";
 import { hasWriteFlag } from "@/lib/cli-write-flag";
+
+const URUGUAY_PAUSED_DETAIL = "暂停中：ARCE 拒绝我们服务器的访问（HTTP 403），每轮只试探 1 次，对方恢复后自动继续";
 
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 
@@ -31,7 +34,20 @@ async function main() {
     process.exit(1);
   }
 
-  const result = await ingestUruguay(supabase, { write, days: daysFlag() });
+  let result: Awaited<ReturnType<typeof ingestUruguay>>;
+  try {
+    result = await ingestUruguay(supabase, { write, days: daysFlag() });
+  } catch (error) {
+    // ARCE has refused our servers since 2026-10-14 (the site still open to
+    // visitors). That is a pause, not a breakage: recorded as skipped so the
+    // admin banner stays quiet, one request per run, and the import resumes
+    // on its own the day ARCE answers again (user, 2026-10-15: 我不想联系 /
+    // 关提醒、保留每天探测).
+    if (!(error instanceof ArceRefusedError)) throw error;
+    console.log(`ARCE 拒绝访问，本轮暂停：${error.message}`);
+    if (write) await writeCronHeartbeat(supabase!, "import-uruguay", "skipped", URUGUAY_PAUSED_DETAIL);
+    return;
+  }
   console.log(`ARCE 窗口内新发布 ${result.listedCount} 条${result.failedReads.length ? `（${result.failedReads.length} 条读取失败）` : ""}，按采购方式：`);
   for (const [procedure, count] of result.byProcedure) console.log(`  ${String(count).padStart(4)}  ${procedure}`);
   console.log(`\n读取范围（公开招标 + 重点国企/部委的简易招标）${result.rows.length} 条；保留 ${result.kept.length} 条：`);

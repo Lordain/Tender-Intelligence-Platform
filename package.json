@@ -89,6 +89,7 @@
     "test:abbreviation-notes": "tsx scripts/test-abbreviation-notes.ts",
     "test:oxi-floor": "tsx scripts/test-oxi-floor.ts",
     "test:uruguay": "tsx scripts/test-uruguay.ts",
+    "test:uruguay-paste": "tsx scripts/test-uruguay-paste.ts",
     "test:awards-dr-uy-pa": "tsx scripts/test-awards-dr-uy-pa.ts",
     "test:list-facets": "tsx scripts/test-list-facets.ts",
     "test:upcoming-deadlines": "tsx scripts/test-upcoming-deadlines.ts",

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ImportUruguayForm } from "@/components/admin/ImportUruguayForm";
+import { ImportUruguayPasteForm } from "@/components/admin/ImportUruguayPasteForm";
 import { ImportSourceSection } from "@/components/admin/ImportSourceSection";
 import { RefreshAwardsPanel } from "@/components/admin/RefreshAwardsPanel";
 import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
@@ -15,6 +16,16 @@ export default async function AdminImportTendersUruguayPage() {
   const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Uruguay");
   return (
     <div className="flex flex-col gap-3">
+      {/* Added 2026-10-15 (user: 现在就做): ARCE refuses our servers, so the daily import is paused. */}
+      <ImportSourceSection
+        name="ARCE 列表粘贴导入（自动导入暂停期间）"
+        hint="ARCE 从 10 月 14 日起拒绝平台服务器访问，每日自动导入暂停；在 ARCE 列表页复制粘贴导入"
+        mode="manual"
+        defaultOpen
+        links={[{ label: "ARCE", href: `${ARCE_BASE}/consultas/` }]}
+      >
+        <ImportUruguayPasteForm />
+      </ImportSourceSection>
       <ImportSourceSection
         name="comprasestatales.gub.uy — 乌拉圭国家采购监管署（ARCE）"
         hint="全部公开招标，以及 UTE、ANCAP、OSE、ANP、AFE、交通部的简易招标；乌拉圭不公布预算，没有金额的按常规"

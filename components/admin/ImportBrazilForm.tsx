@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { USD_RATES } from "@/lib/currency";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 
 /**
@@ -351,7 +352,7 @@ export function ImportBrazilForm() {
         <h4 className="mt-3 font-black text-[#071826]">二、金额门槛（巴西单独一套）</h4>
         <p>
           低于 <strong>200 万美元</strong>的项目不进推荐列表。分档：
-          常规 200–500 万 · 中型 500–1000 万 · 大型 1000 万以上（美元，按 1 USD = 5.16 BRL 折算）。
+          常规 200–500 万 · 中型 500–1000 万 · 大型 1000 万以上（美元，按 1 USD = {(1 / USD_RATES.BRL).toFixed(2)} BRL 折算）。
           巴西比其他国家高（其他国家 100 万起），因为 PNCP 覆盖 5,570 个市，R$400 万在那边只是一个普通小镇合同。
         </p>
 

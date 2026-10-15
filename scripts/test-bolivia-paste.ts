@@ -12,6 +12,7 @@ import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { boliviaAmount, boliviaGovernmentLevel, boliviaTime, mapSicoesToTender, parseSicoesProcesses } from "@/lib/ingestion/bolivia-sicoes-paste";
 import { importBoliviaPaste } from "@/lib/ingestion/import-bolivia-paste";
+import { USD_RATES } from "@/lib/currency";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 import { isStagedCountry } from "@/lib/staged-countries";
 import { parseBoliviaListPaste, screenBoliviaListRow } from "@/lib/ingestion/bolivia-list-screen";
@@ -118,7 +119,9 @@ async function main() {
   console.log("导入（预览与写入）");
   const preview = await importBoliviaPaste(null, `${guardia}\n${ende}`, { write: false, now: NOW });
   check("预览结果", preview.rows.map((row) => [row.cuce, row.outcome]), [["26-1704-00-1694954-1-1", "excluded"], ["26-0514-00-1695257-1-1", "write"]]);
-  check("美元折算显示", Math.round(preview.rows[1].budgetUsd ?? 0), 2673379);
+  // Bs 31,946,877 through the BOB row of lib/currency.ts — computed, so a rate refresh does not break it.
+  check("原币预算", Math.round(preview.rows[1].budget ?? 0), 31946877);
+  check("美元折算显示", Math.round(preview.rows[1].budgetUsd ?? 0), Math.round((preview.rows[1].budget ?? 0) * USD_RATES.BOB));
   check("预览标出世行编号", preview.rows[1].lenderReference, "BO-ENDE-568419-CW-RFB");
   const db = recordingSupabase();
   const written = await importBoliviaPaste(db.client, `${guardia}\n${ende}`, { write: true, now: NOW, keep: { "26-1704-00-1694954-1-1": "standard" } });

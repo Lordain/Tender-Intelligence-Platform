@@ -31,7 +31,14 @@ export const PLAN_NAMES = {
 } as const;
 
 export type PaidPlan = keyof typeof PLAN_PRICES_USD;
-export const USD_CNY_REFERENCE_RATE = 6.7459;
+/**
+ * The ¥ shown next to each USD price on /pricing and /subscribe — a reference
+ * figure only; the charge is in USD. Refreshed 2026-10-15 (user: 同时也要看订阅
+ * 页面的人民币汇率): open.er-api.com 6.7065, frankfurter (ECB) 6.691, midpoint
+ * 6.699; it was 6.7459. The bank-transfer MXN rate is separate
+ * (USD_MXN_BANK_TRANSFER_RATE, set in the deployment's environment).
+ */
+export const USD_CNY_REFERENCE_RATE = 6.699;
 
 /** Plan navigation must not depend on Stripe Price IDs being configured. */
 export function parsePaidPlanSelection(plan: string | null, interval: string | null): { plan: PaidPlan; interval: PaidInterval } | null {

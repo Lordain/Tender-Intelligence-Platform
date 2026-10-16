@@ -88,3 +88,34 @@ export function truncatePdfToPages(filePath: string, maxPages: number): Truncate
     return noop;
   }
 }
+
+/**
+ * The given pages (0-based, any order) as a new temp PDF in document order —
+ * 「按内容选页」 on a scanned document (lib/ingestion/page-ocr.ts), where the
+ * model reads the chosen pages as images. Never throws: on failure returns
+ * null and the caller falls back to the first N pages.
+ */
+export function copyPdfPages(filePath: string, pages: number[]): TruncatedPdf | null {
+  const originalPages = countPdfPages(filePath);
+  const wanted = [...new Set(pages)].filter((page) => page >= 0 && (originalPages === null || page < originalPages)).sort((a, b) => a - b);
+  if (wanted.length === 0) return null;
+  let dir: string | null = null;
+  try {
+    dir = mkdtempSync(join(tmpdir(), "tender-pages-"));
+    const parts: string[] = [];
+    for (const page of wanted) {
+      const part = join(dir, `page-${page + 1}.pdf`);
+      execFileSync("pdfseparate", ["-f", String(page + 1), "-l", String(page + 1), filePath, part], { stdio: "pipe" });
+      if (!existsSync(part)) throw new Error(`pdfseparate wrote no page ${page + 1}`);
+      parts.push(part);
+    }
+    const out = join(dir, "selected.pdf");
+    execFileSync("pdfunite", [...parts, out], { stdio: "pipe" });
+    const dirToRemove = dir;
+    return { path: out, originalPages, usedPages: parts.length, truncated: true, cleanup: () => rmSync(dirToRemove, { recursive: true, force: true }) };
+  } catch (err) {
+    if (dir) rmSync(dir, { recursive: true, force: true });
+    console.warn(`[pdf-pages] Could not copy the selected pages of ${filePath} (${(err as Error).message}); reading the first pages instead.`);
+    return null;
+  }
+}

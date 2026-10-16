@@ -104,8 +104,12 @@ export async function analyzeUploadedDocument(
   supabase: SupabaseClient,
   tenderSlug: string,
   files: { buffer: Buffer; fileName: string }[],
-  /** waitForTitles: no time limit on the title update — 本地批量分析 only, see refreshTitlesAfterAnalysis. */
-  options: { write: boolean; force: boolean; waitForTitles?: boolean },
+  /**
+   * waitForTitles: no time limit on the title update — 本地批量分析 only, see refreshTitlesAfterAnalysis.
+   * pageSelection: "relevant" is 本地批量分析's 按内容选页 opt-in (lib/ingestion/page-selection.ts);
+   * text-layer PDFs and scans alike (scans scored by local OCR when Tesseract is installed), the page cap and cost unchanged.
+   */
+  options: { write: boolean; force: boolean; waitForTitles?: boolean; pageSelection?: "first" | "relevant" },
 ): Promise<AnalyzeUploadedDocumentResult> {
   if (files.length === 0) throw new Error("no files provided");
 
@@ -203,9 +207,19 @@ export async function analyzeUploadedDocument(
         // up front. See maxPagesForTier().
         const maxPages = maxPagesForTier(relevanceTier);
         const extraction: TenderExtraction = hasText
-          ? await extractTenderRequirementsQwenAnthropic(tempPath, context, "qwen3.7-plus", maxPages)
-          : await extractTenderRequirements(tempPath, context, model, undefined, true, maxPages, undefined, (note) =>
+          ? await extractTenderRequirementsQwenAnthropic(tempPath, context, "qwen3.7-plus", maxPages, options.pageSelection ?? "first", (note) =>
               warnings.push(`「${intake.fileName}」${note}`),
+            )
+          : await extractTenderRequirements(
+              tempPath,
+              context,
+              model,
+              undefined,
+              true,
+              maxPages,
+              undefined,
+              (note) => warnings.push(`「${intake.fileName}」${note}`),
+              options.pageSelection ?? "first",
             );
         perFile.push({ intake, model, extraction });
       } catch (err) {

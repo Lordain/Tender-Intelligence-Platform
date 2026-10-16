@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
-import { truncatePdfToPages } from "@/lib/ingestion/pdf-pages";
+import { copyPdfPages, truncatePdfToPages, type TruncatedPdf } from "@/lib/ingestion/pdf-pages";
+import { pageRanges, selectRelevantPages } from "@/lib/ingestion/page-selection";
+import { pageTextsForScan } from "@/lib/ingestion/page-ocr";
 import { getPdfPageCount } from "@/lib/ingestion/pdf-split";
 import { isTextLayerSubstantial } from "@/lib/ingestion/text-layer";
 import { classifyExtractionFailure, isRetriableExtractionFailure } from "@/lib/ingestion/extraction-failure";
@@ -1123,6 +1125,16 @@ export async function extractTenderRequirements(
   preferExtractedText?: boolean,
   /** Called with anything the operator should see that is not a failure — currently a partially-read chunked document. */
   onWarning?: (message: string) => void,
+  /**
+   * "relevant": send the maxPages pages that score highest for what the
+   * analysis extracts instead of the first ones (lib/ingestion/page-
+   * selection.ts) — an opt-in on 本地批量分析 (user, 2026-10-16: 后台增加这种
+   * 方案，我试用看看效果). On the extracted-text path: same page count, never
+   * more text. On a PDF read natively (a scan): the pages are scored from
+   * their own text or local OCR (lib/ingestion/page-ocr.ts — user: 建议 A + B)
+   * and the same number of pages is sent as images.
+   */
+  pageSelection: "first" | "relevant" = "first",
 ): Promise<TenderExtraction> {
   // Word documents — .docx and legacy .doc alike (2026-09-03, per the
   // user's report that many real tender documents arrive as Word files,
@@ -1153,6 +1165,25 @@ export async function extractTenderRequirements(
   // Same branch as Word, for the same reason and one more: a provider that
   // buffers a multi-megabyte native PDF for 12 minutes and then rejects it
   // on size is not one to send a PDF to at all. See preferExtractedText.
+  if (preferExtractedText && pageSelection === "relevant" && maxPages !== undefined) {
+    const pageTexts = (await extractDocumentText(filePath)).split("\f");
+    // pdftotext ends every page with a form feed, so the last entry is empty.
+    if (pageTexts.length > 1 && !pageTexts[pageTexts.length - 1].trim()) pageTexts.pop();
+    const selection = selectRelevantPages(pageTexts, maxPages);
+    if (selection.note) {
+      console.log(`  ${selection.note}`);
+      onWarning?.(selection.note);
+    }
+    return runTextExtractionWithOverflowRetry(
+      client,
+      model,
+      instruction.replace("attached document", "document text below"),
+      selection.pages.map((page) => pageTexts[page]).join("\f"),
+      context,
+      useStructuredOutput,
+      maxPages,
+    );
+  }
   if (preferExtractedText) {
     const capped = maxPages === undefined ? null : truncatePdfToPages(filePath, maxPages);
     try {
@@ -1176,10 +1207,11 @@ export async function extractTenderRequirements(
   // of it thrown away. Everything below — the chunking fallback and the
   // plain-text fallback — then operates on the capped file too, so the cap
   // holds on every path rather than only the happy one.
-  const capped = maxPages === undefined ? null : truncatePdfToPages(filePath, maxPages);
+  const capped: TruncatedPdf | null =
+    maxPages === undefined ? null : ((pageSelection === "relevant" ? await selectScannedPages(filePath, maxPages, onWarning) : null) ?? truncatePdfToPages(filePath, maxPages));
   const sourcePath = capped?.path ?? filePath;
   if (capped?.truncated) {
-    console.log(`  Reading the first ${capped.usedPages} of ${capped.originalPages} pages (tier cap ${maxPages}).`);
+    console.log(`  Reading ${capped.usedPages} of ${capped.originalPages} pages (tier cap ${maxPages}).`);
   }
 
   try {
@@ -1243,6 +1275,35 @@ export async function extractTenderRequirements(
   } finally {
     capped?.cleanup();
   }
+}
+
+/**
+ * 「按内容选页」 for a PDF the model reads as images: the maxPages best pages
+ * as a new PDF, or null to read the first maxPages as before (a short
+ * document, no signal, or the pages could not be copied). Says which, either
+ * way, so the operator can judge the option on scans.
+ */
+async function selectScannedPages(filePath: string, maxPages: number, onWarning?: (message: string) => void): Promise<TruncatedPdf | null> {
+  const scan = await pageTextsForScan(filePath);
+  if (scan.texts.length <= maxPages) return null;
+  const selection = selectRelevantPages(scan.texts, maxPages, { budget: "pages" });
+  const how = scan.ocrPages > 0 ? `本机识别了 ${scan.ocrPages} 页扫描页` : "用文件自带的文字";
+  if (!selection.note) {
+    const why =
+      scan.unreadPages > 0
+        ? `${scan.unreadPages} 页是扫描图片、读不出文字（本机没装 Tesseract 文字识别）`
+        : "各页都看不出资质、业绩等内容";
+    const message = `按内容选页：这份扫描件${why}，照旧读前 ${maxPages} 页。`;
+    console.log(`  ${message}`);
+    onWarning?.(message);
+    return null;
+  }
+  const copied = copyPdfPages(filePath, selection.pages);
+  if (!copied) return null;
+  const message = `按内容选页（扫描件，${how}打分）：读了第 ${pageRanges(selection.pages.map((page) => page + 1))} 页（共 ${scan.texts.length} 页；原来只读前 ${maxPages} 页）`;
+  console.log(`  ${message}`);
+  onWarning?.(message);
+  return copied;
 }
 
 // es/en mirror zh here (untranslated()'s convention) rather than carrying

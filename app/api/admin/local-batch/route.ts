@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
-  const body = (await request.json()) as { folderPath?: string; write?: boolean; force?: boolean };
+  const body = (await request.json()) as { folderPath?: string; write?: boolean; force?: boolean; relevantPages?: boolean };
   const folderPath = body.folderPath?.trim();
   if (!folderPath) return NextResponse.json({ error: "请填写文件夹路径。" }, { status: 400 });
   // Absolute only: a relative path resolves against the dev server's own
@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     const result = await analyzeLocalFolder(supabase, folderPath, {
       write: body.write === true,
       force: body.force === true,
+      pageSelection: body.relevantPages === true ? "relevant" : "first",
     });
     if (body.write === true) revalidateTenders();
     return NextResponse.json(result);

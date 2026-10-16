@@ -30,6 +30,8 @@ export function LocalBatchAnalysisForm() {
   const [folderPath, setFolderPath] = useState("");
   const [write, setWrite] = useState(true);
   const [force, setForce] = useState(false);
+  // 按内容选页 (user, 2026-10-16: 后台增加这种方案，我试用看看效果) — off by default.
+  const [relevantPages, setRelevantPages] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
@@ -43,7 +45,7 @@ export function LocalBatchAnalysisForm() {
       const response = await fetch("/api/admin/local-batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folderPath, write, force }),
+        body: JSON.stringify({ folderPath, write, force, relevantPages }),
       });
       const data = await response.json();
       if (!response.ok) setError(data.error ?? "分析失败");
@@ -83,6 +85,15 @@ export function LocalBatchAnalysisForm() {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} className="accent-[#ffb21c]" />
             重新分析已处理过的文件（默认按内容哈希跳过，避免重复付费）
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={relevantPages} onChange={(e) => setRelevantPages(e.target.checked)} className="mt-1 accent-[#ffb21c]" />
+            <span>
+              按内容选页（试用）
+              <span className="block text-xs text-[#8a959c]">
+                不只读前 20 / 30 / 40 页：保留前两页和最能说明项目内容的两页（用于一句话总结），其余按资质、业绩、文件要求、保证金、罚则等内容打分，挑最相关的页。交给模型的页数和字数都不超过原来，成本不变。扫描件先在本机用 Tesseract 识别文字来打分（免费，每页约 1–3 秒；没装 Tesseract 的扫描件照旧读前几页）。
+              </span>
+            </span>
           </label>
         </div>
 

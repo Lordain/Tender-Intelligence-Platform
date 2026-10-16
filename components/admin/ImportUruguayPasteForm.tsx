@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  arceIdFromInput,
   ARCE_SCREENED_IDS_KEY,
   extractArceDocuments,
   extractArceLinks,
@@ -56,6 +57,8 @@ export function ImportUruguayPasteForm() {
   const [result, setResult] = useState<UruguayDetailResponse | null>(null);
   /** purchase id → tier for excluded calls kept by hand. */
   const [keep, setKeep] = useState<Record<string, UruguayKeepTier>>({});
+  /** Page place → the id or address typed for a page that came without one. */
+  const [typedIds, setTypedIds] = useState<Record<number, string>>({});
 
   async function run(write: boolean) {
     if (!text.trim()) {
@@ -71,7 +74,7 @@ export function ImportUruguayPasteForm() {
       const res = await fetch("/api/admin/import-uruguay-paste", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pastes: body, write, keep, known: screenedIds() }),
+        body: JSON.stringify({ pastes: body, write, keep, known: screenedIds(), ids: typedIds }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -112,6 +115,7 @@ export function ImportUruguayPasteForm() {
           if (!event.target.value.trim()) setPastes([]);
           setResult(null);
           setKeep({});
+          setTypedIds({});
         }}
         rows={10}
         placeholder={"InicioConsulta de PublicacionesPFI - Licitación pública internacional 27250/2026 Administración de las Obras Sanitarias del Estado | …\n…\n Recepción de ofertas hasta: 23/11/2026 14:00hs\nFecha Publicación: …\n…\nÍtems del llamado\nÍtem Nº 1  …"}
@@ -120,7 +124,7 @@ export function ImportUruguayPasteForm() {
       {pastes.length > 0 && (
         <p className="mt-1 text-xs text-[#52636e]">
           已贴 {pastes.length} 页，其中 {withIds} 页带有项目链接。
-          {withIds < pastes.length && " 有些详情页本身不带项目链接：先在上面第一步初筛过的项目，会自动用初筛读到的编号；没经过初筛的，把它的网址（浏览器地址栏）也贴进框里。预览时可以看到每个项目是否拿到了编号。"}
+          {withIds < pastes.length && " 有些详情页本身不带项目链接：第一步初筛过的项目会自动用初筛读到的编号；还没拿到编号的，预览后在那一行填上编号即可。"}
         </p>
       )}
 
@@ -147,7 +151,7 @@ export function ImportUruguayPasteForm() {
         <div className="mt-4 border-t border-[#eef1f2] pt-3 text-sm text-[#52636e]">
           {noId.length > 0 && (
             <p className="mb-3 rounded-xl border border-[#eed18c] bg-[#fff8e7] px-3 py-2 text-sm font-semibold text-[#8a5a00]">
-              有 {noId.length} 个项目没拿到 ARCE 项目编号，不会写入：{noId.map((row) => row.procedureNumber).join("、")}。请先在上面第一步初筛它所在的列表，或把它的详情页网址（浏览器地址栏）也贴进框里，再点预览。
+              有 {noId.length} 个项目没拿到 ARCE 项目编号，还不能写入：{noId.map((row) => row.procedureNumber).join("、")}。请在下面那一行填上项目编号（详情页网址最后那串数字）或整个网址，再点预览。
             </p>
           )}
           <p>
@@ -162,7 +166,7 @@ export function ImportUruguayPasteForm() {
           </p>
           <ul className="mt-3 flex flex-col gap-3">
             {result.rows.map((row) => (
-              <li key={row.purchaseId ?? `${row.procedureNumber}|${row.buyer}`} className="rounded-xl border border-[#e5e9eb] bg-white p-3">
+              <li key={row.page} className="rounded-xl border border-[#e5e9eb] bg-white p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs font-bold text-[#071826]">{row.procedureNumber}</span>
                   {row.purchaseId && <span className="font-mono text-[11px] text-[#8a959c]">ID {row.purchaseId}</span>}
@@ -185,6 +189,33 @@ export function ImportUruguayPasteForm() {
                   )}
                 </p>
                 <p className="mt-1 text-xs text-[#64717c]">{row.reasonZh}</p>
+                {row.outcome === "no_id" && (
+                  <label className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-[#233846]">
+                    项目编号
+                    <input
+                      value={typedIds[row.page] ?? ""}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setTypedIds((current) => ({ ...current, [row.page]: value }));
+                      }}
+                      placeholder="1380261 或详情页网址"
+                      className="h-8 w-64 max-w-full rounded-lg border border-[#d8e0e3] bg-white px-2 font-mono text-xs text-[#071826] outline-none focus:border-[#ffb21c]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => run(false)}
+                      disabled={submitting !== null || !arceIdFromInput(typedIds[row.page] ?? "")}
+                      className="h-8 rounded-lg border border-[#d8e0e3] bg-white px-3 text-xs font-black text-[#071826] transition-colors hover:bg-[#f4f6f7] disabled:opacity-50"
+                    >
+                      用这个编号预览
+                    </button>
+                    <span className="font-normal text-[#7a878f]">
+                      {(typedIds[row.page] ?? "").trim() && !arceIdFromInput(typedIds[row.page] ?? "")
+                        ? "没认出编号：填详情页网址最后那串数字，或整个网址。"
+                        : "在 ARCE 打开这个项目，浏览器地址栏最后那串数字就是编号（…/id/1380261）。预览确认「会写入」后再点写入。"}
+                    </span>
+                  </label>
+                )}
                 {row.purchaseId && (row.outcome === "excluded" || row.outcome === "manual_keep") && (
                   <label className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-[#233846]">
                     手动保留

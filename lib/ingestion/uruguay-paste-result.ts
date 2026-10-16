@@ -138,6 +138,15 @@ export function normalizeArceLabel(text: string): string {
     .toLowerCase();
 }
 
+/**
+ * The id an admin typed for a detail page that came without one: the number
+ * itself (「1380261」) or the page's address.
+ */
+export function arceIdFromInput(input: string): string | undefined {
+  const text = input.trim();
+  return DETAIL_HREF.exec(text)?.[1] ?? /^(\d{4,12})$/.exec(text)?.[1];
+}
+
 /** The detail page of a call, in the form the owner's link has (opens in a visitor's browser). */
 export function arceCallUrl(purchaseId: string): string {
   return `https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/${purchaseId}`;
@@ -173,7 +182,13 @@ export type UruguayPasteRow = {
 /** One paste into the detail-page import: the page's text and what the copied HTML linked to. */
 export type ArceDetailPaste = { text: string; links: ArceLink[]; documents: ArceDocLink[] };
 
-export type UruguayDetailRow = UruguayPasteRow & { items: number; documents: number; keyDates: number };
+export type UruguayDetailRow = UruguayPasteRow & {
+  items: number;
+  documents: number;
+  keyDates: number;
+  /** The page's place among those pasted, to hand it an id typed by hand (importUruguayDetails' ids). */
+  page: number;
+};
 
 export type UruguayDetailResponse = {
   rows: UruguayDetailRow[];

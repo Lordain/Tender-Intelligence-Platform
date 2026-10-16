@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { arceDetailToRelease, arceListCallToRelease, attachArcePurchaseIds, isArceSaleOrLease, parseArceDetailPages, parseArceList } from "@/lib/ingestion/uruguay-arce-paste";
 import { importUruguayDetails, importUruguayPaste, screenUruguayList } from "@/lib/ingestion/import-uruguay-paste";
-import { arceCallUrl, extractArceDocuments, extractArceLinks, knownArceId, readMarkdownLinks, screenedLabel } from "@/lib/ingestion/uruguay-paste-result";
+import { arceCallUrl, arceIdFromInput, extractArceDocuments, extractArceLinks, knownArceId, readMarkdownLinks, screenedLabel } from "@/lib/ingestion/uruguay-paste-result";
 import { isIngestedArceTender } from "@/lib/ingestion/connectors/uruguay-arce-live";
 import { mapArceReleaseToTender, uruguayGovernmentLevel } from "@/lib/ingestion/uruguay-mapper";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
@@ -218,6 +218,27 @@ async function noSelfLinkChecks() {
     { write: false, now: NOW },
   );
   check("网址和页面一起贴 → 从网址读 ID → 写入", [address.rows[0].purchaseId, address.rows[0].outcome], ["1380261", "write"]);
+  // The address and the page as two pastes, as the owner did (2026-10-16: 已贴 2 页).
+  const url = "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1380261";
+  const before = await importUruguayDetails(null, [{ text: url, links: [], documents: [] }, { text, links: [], documents: [] }], { write: false, now: NOW });
+  check("网址单独先贴、再贴页面 → 读到 ID → 写入", [before.rows.length, before.rows[0].purchaseId, before.rows[0].outcome], [1, "1380261", "write"]);
+  const after = await importUruguayDetails(null, [{ text, links: [], documents: [] }, { text: `${url}\n`, links: [], documents: [] }], { write: false, now: NOW });
+  check("先贴页面、网址单独后贴 → 也读到", after.rows[0].purchaseId, "1380261");
+  const other = readFileSync(join(process.cwd(), "lib/ingestion/__fixtures__/uruguay/detalle-27250-2026-ose.txt"), "utf8");
+  const twoPages = await importUruguayDetails(
+    null,
+    [{ text: other, links: [{ label: "", purchaseId: "1365001" }], documents: [] }, { text: url, links: [], documents: [] }, { text, links: [], documents: [] }],
+    { write: false, now: NOW },
+  );
+  check("网址不会配给已有 ID 的页面", twoPages.rows.map((row) => row.purchaseId), ["1365001", "1380261"]);
+  check("每行带上它是第几页", twoPages.rows.map((row) => row.page), [0, 1]);
+  const typed = await importUruguayDetails(null, [{ text, links: [], documents: [] }], { write: false, now: NOW, ids: { 0: "1380261" } });
+  check("预览后在那一行填编号 → 写入", [typed.rows[0].purchaseId, typed.rows[0].outcome, typed.rows[0].url], ["1380261", "write", url]);
+  check("填编号：数字", arceIdFromInput(" 1380261 "), "1380261");
+  check("填编号：整个网址", arceIdFromInput(url), "1380261");
+  check("填编号：没有 https 的网址", arceIdFromInput("comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1380261"), "1380261");
+  check("填编号：采购编号不算（103864/2026）", arceIdFromInput("103864/2026"), undefined);
+  check("填编号：乱填不算", arceIdFromInput("abc"), undefined);
   check("同一编号两个机构 → 按机构区分", knownArceId("Licitación Pública 2/2026", "Ministerio B", [
     { label: screenedLabel("Licitación Pública 2/2026", "Ministerio A"), purchaseId: "1" },
     { label: screenedLabel("Licitación Pública 2/2026", "Ministerio B"), purchaseId: "2" },

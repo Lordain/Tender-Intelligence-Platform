@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { importUruguayDetails } from "@/lib/ingestion/import-uruguay-paste";
-import { URUGUAY_KEEP_TIERS, type ArceDetailPaste, type UruguayKeepTier } from "@/lib/ingestion/uruguay-paste-result";
+import { arceIdFromInput, URUGUAY_KEEP_TIERS, type ArceDetailPaste, type UruguayKeepTier } from "@/lib/ingestion/uruguay-paste-result";
 import { logAdminAlert } from "@/lib/admin-alerts";
 import { markManualTaskDone } from "@/lib/ops/manual-tasks";
 import { revalidateTenders } from "@/lib/cache-tags";
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
-  const body = (await request.json().catch(() => ({}))) as { pastes?: unknown; write?: boolean; keep?: Record<string, string>; known?: unknown };
+  const body = (await request.json().catch(() => ({}))) as { pastes?: unknown; write?: boolean; keep?: Record<string, string>; known?: unknown; ids?: Record<string, unknown> };
   const pastes: ArceDetailPaste[] = (Array.isArray(body.pastes) ? body.pastes : [])
     .slice(0, MAX_PASTES)
     .filter((paste) => typeof paste?.text === "string" && paste.text.trim())
@@ -33,11 +33,18 @@ export async function POST(request: Request) {
   const keep: Record<string, UruguayKeepTier> = {};
   for (const [id, tier] of Object.entries(body.keep ?? {})) if (/^\d{1,12}$/.test(id) && (URUGUAY_KEEP_TIERS as readonly string[]).includes(tier)) keep[id] = tier as UruguayKeepTier;
 
+  // Ids typed for pages that came without one: page place → the number or the page's address.
+  const ids: Record<number, string> = {};
+  for (const [page, input] of Object.entries(body.ids ?? {})) {
+    const id = typeof input === "string" ? arceIdFromInput(input) : undefined;
+    if (/^\d{1,3}$/.test(page) && id) ids[Number(page)] = id;
+  }
+
   const supabase = createSupabaseAdminClient();
   if (body.write === true && !supabase) return NextResponse.json({ error: "Supabase isn't configured." }, { status: 500 });
 
   try {
-    const result = await importUruguayDetails(supabase, pastes, { write: body.write === true, keep, known: cleanArceLinks(body.known) });
+    const result = await importUruguayDetails(supabase, pastes, { write: body.write === true, keep, known: cleanArceLinks(body.known), ids });
     if (body.write === true) {
       // The public list is cached; drop it so this import shows up now.
       revalidateTenders();

@@ -52,7 +52,7 @@ const OUTCOME_ZH: Record<UruguayPasteOutcome, string> = {
   closed: "交标截止日已过，不写入",
   not_open: "已不在投标阶段，不写入",
   exists: "平台上已有，不重复写入",
-  no_id: "没拿到项目 ID，不写入（先在第一步初筛这个项目所在的列表，或把这个项目详情页的网址也贴进框里）",
+  no_id: "没拿到项目 ID，还不能写入（在下面填上项目编号或网址）",
 };
 
 const MANUAL_REASON = { zh: "管理员在后台手动设置", en: "Manually set by an admin", es: "Establecido manualmente por un administrador" };
@@ -170,8 +170,9 @@ function pasteId(links: ArceLink[]): string | undefined {
  * The second step (1层是录标书): detail pages pasted one after another, each
  * written with its items, files, opening and clarification deadline, under
  * the same rules as the list and the daily import. The id comes from the
- * links the copied page carries; a page pasted without them is shown but not
- * written.
+ * links the copied page carries, the page's address pasted with it or next
+ * to it, the list screening, or the admin typing it; a page without one is
+ * shown but not written.
  */
 export async function importUruguayDetails(
   supabase: SupabaseClient | null,
@@ -182,18 +183,30 @@ export async function importUruguayDetails(
     keep?: Record<string, UruguayKeepTier>;
     /** Ids the list screening read (ARCE_SCREENED_IDS_KEY), for a page that carries no link to itself. */
     known?: ArceLink[];
+    /** Ids the admin typed for pages that came without one, by the page's place (UruguayDetailRow.page). */
+    ids?: Record<number, string>;
   },
 ): Promise<UruguayDetailResponse> {
   const now = options.now ?? new Date();
-  const pages = pastes.flatMap((paste) => {
+  const read = pastes.map((paste) => {
     const markdown = readMarkdownLinks(paste.text);
     const details = parseArceDetailPages(markdown.text);
-    const id = details.length === 1 ? pasteId([...paste.links, ...markdown.links]) : undefined;
-    const documents = [...paste.documents, ...markdown.documents];
-    return details.map((detail) => {
-      const purchaseId = detail.purchaseId || id || knownArceId(detail.procedureNumber, detail.buyer, options.known ?? []);
-      return { detail: purchaseId ? { ...detail, purchaseId } : detail, documents: details.length === 1 ? documents : [] };
-    });
+    return { details, id: pasteId([...paste.links, ...markdown.links]), documents: [...paste.documents, ...markdown.documents] };
+  });
+  // A page's address pasted on its own, before or after the page (user,
+  // 2026-10-16: the two came as two pastes): its id goes to the page next to
+  // it that has none.
+  const lacksId = (entry: (typeof read)[number] | undefined) => entry?.details.length === 1 && !entry.details[0].purchaseId && !entry.id;
+  read.forEach((entry, index) => {
+    if (entry.details.length > 0 || !entry.id) return;
+    const target = lacksId(read[index + 1]) ? read[index + 1] : lacksId(read[index - 1]) ? read[index - 1] : undefined;
+    if (target) target.id = entry.id;
+  });
+  const pages = read.flatMap(({ details, id, documents }) =>
+    details.map((detail) => ({ detail, id: details.length === 1 ? id : undefined, documents: details.length === 1 ? documents : [] })),
+  ).map(({ detail, id, documents }, page) => {
+    const purchaseId = detail.purchaseId || id || options.ids?.[page] || knownArceId(detail.procedureNumber, detail.buyer, options.known ?? []);
+    return { detail: purchaseId ? { ...detail, purchaseId } : detail, documents, page };
   });
   if (pages.length === 0) {
     throw new PasteInputError("没有找到项目详情——请在 ARCE 打开项目（Ver detalles de la compra），从页面标题开始全选整页复制，直接粘贴到这里。");
@@ -206,7 +219,7 @@ export async function importUruguayDetails(
   const toWrite: Tender[] = [];
   const links: { slug: string; links: ReturnType<typeof uruguayDocumentLinks> }[] = [];
   const seen = new Set<string>();
-  for (const { detail, documents } of pages) {
+  for (const { detail, documents, page } of pages) {
     if (detail.purchaseId) {
       if (seen.has(detail.purchaseId)) continue;
       seen.add(detail.purchaseId);
@@ -251,6 +264,7 @@ export async function importUruguayDetails(
       items: detail.items.length,
       documents: documents.length,
       keyDates: keyDates.length,
+      page,
     });
   }
 

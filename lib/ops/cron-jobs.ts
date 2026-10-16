@@ -35,6 +35,7 @@ export type CronJobId =
   | "import-peru-app"
   | "refresh-statuses"
   | "import-guyana"
+  | "import-suriname"
   | "import-argentina"
   | "import-dominicana"
   | "import-cfe-dof"
@@ -104,6 +105,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   { id: "import-peru-app", label: "秘鲁 ProInversión APP 项目自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "refresh-statuses", label: "已入库项目状态刷新（巴西、智利、墨西哥）", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-guyana", label: "圭亚那 eprocure 自动导入（未公开）", maxAgeHours: 30, runsOn: "github-actions" },
+  { id: "import-suriname", label: "苏里南 gov.sr 招标栏目自动导入（未公开）", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-argentina", label: "阿根廷 COMPR.AR / CONTRAT.AR / ADIF / 政府公报 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-dominicana", label: "多米尼加 DGCP 自动导入", maxAgeHours: 30, runsOn: "github-actions" },
   { id: "import-cfe-dof", label: "墨西哥 CFE（DOF 公报）自动导入", maxAgeHours: 30, runsOn: "github-actions" },

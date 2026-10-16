@@ -23,7 +23,8 @@
 // 2026-10-10 (user: 前台+后台+全站文字都开通Bolivia).
 // Uruguay joined 2026-10-13 (user: 帮忙看看增加乌拉圭 → 都收，没金额的最多中型) and
 // opened 2026-10-14 (user: 前台+后台开放乌拉圭).
-export const STAGED_COUNTRIES: readonly string[] = ["Guyana"];
+// Suriname joined 2026-10-16 (user: 苏里南做，先只在后台可见 → A).
+export const STAGED_COUNTRIES: readonly string[] = ["Guyana", "Suriname"];
 
 export function isStagedCountry(country: string | null | undefined): boolean {
   return country != null && STAGED_COUNTRIES.includes(country);

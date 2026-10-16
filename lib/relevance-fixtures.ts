@@ -636,6 +636,35 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
     scopeType: "works",
     country: "Mexico",
   },
+  // A parroquia is also Ecuador's civil division below the cantón; a call
+  // that names it as its location is not religious (user, 2026-10-15: 为什么？
+  // about this road, excluded as a church until then).
+  {
+    title: "ASFALTADO DE LA VÍA DAYUMA PINDO, ETAPA II (ABSCISA 4+000 HASTA 11+240 DE LA VÍA, LONGITUD DE 7.240 METROS), PARROQUIA DAYUMA, CANTÓN FRANCISCO DE ORELLANA, PROVINCIA DE ORELLANA.",
+    expectedTier: "standard",
+    note: "Real SOCE call LICO-MIT-ORE-2026-003, US$6.77M road paving. 'PARROQUIA DAYUMA' is the rural parish it runs through. Transport works under US$10M are 常规 (2026-10-10 bands).",
+    industries: ["transportation", "construction"],
+    scopeType: "works",
+    estimatedValue: 6_770_811.11,
+    currency: "USD",
+    buyer: "DIRECCION DISTRITAL 22D02C04-PUERTO FRANCISCO DE ORELLANA COCA-ORELLANA-MIT",
+    country: "Ecuador",
+    procedureType: "Licitación",
+  },
+  {
+    title: "RESTAURACIÓN DE LA PARROQUIA SAN JOSÉ",
+    expectedTier: "excluded",
+    note: "The parish church itself is the work: still religious, still excluded (全部TEMPLO 和IGLESIA和PARROQUIA 宗教相关都不要).",
+    scopeType: "works",
+    country: "Ecuador",
+  },
+  {
+    title: "CONSTRUCCIÓN DE LA CASA PARROQUIAL Y SALÓN COMUNAL",
+    expectedTier: "excluded",
+    note: "casa parroquial — a parish house. Religious, excluded.",
+    scopeType: "works",
+    country: "Ecuador",
+  },
   {
     title: "SERVICIOS MEDICOS DE ESPECIALIZACION (HEMODIALISIS)",
     expectedTier: "excluded",

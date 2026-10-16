@@ -7,6 +7,7 @@ import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
 import { classifyGuyanaRelevance, guyanaFactsFromStoredFields, guyanaIndustries, GUYANA_SOURCE_NAME } from "@/lib/relevance-guyana";
+import { classifySurinameRelevance, surinameIndustries, SURINAME_SOURCE_NAME } from "@/lib/relevance-suriname";
 import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-codelco";
 import { classifyChileConcesionRelevance, CHILE_CONCESIONES_SOURCE_NAME } from "@/lib/relevance-chile-concesiones";
 import { classifyMetroSantiagoRelevance } from "@/lib/relevance-metro-santiago";
@@ -275,7 +276,14 @@ const EXCLUDE_KEYWORDS = [
 
   // Religious buildings — all of them, per the user: 全部TEMPLO 和IGLESIA
   // 和PARROQUIA 宗教相关都不要.
-  /\btemplo\b|\biglesia\b|\bparroquia\b|\bcapilla\b|\bconvento\b|bas[íi]lica|santuario/i,
+  //
+  // "parroquia" only when the parish church is what is being worked on:
+  // in Ecuador (and Venezuela) a parroquia is also the civil division
+  // below the cantón, and calls name it as their location — "ASFALTADO DE
+  // LA VÍA DAYUMA PINDO …, PARROQUIA DAYUMA, CANTÓN FRANCISCO DE ORELLANA"
+  // is a US$6.8M road, excluded as religious until 2026-10-15 (user: 为什么？).
+  /\btemplo\b|\biglesia\b|\bcapilla\b|\bconvento\b|bas[íi]lica|santuario|\bparroquial(es)?\b/i,
+  /\b(construcci[óo]n|reconstrucci[óo]n|restauraci[óo]n|rehabilitaci[óo]n|reparaci[óo]n|remodelaci[óo]n|mantenimiento|ampliaci[óo]n|intervenci[óo]n|pintura)\s+(de\s+|del\s+)?(la\s+)?parroquia\b/i,
 
   // Health SERVICE delivery and medical consumables, as opposed to
   // equipment. hemodinamia/hemodiálisis moved here off the whitelist.
@@ -4849,6 +4857,15 @@ function classifyStoredTenderFields(input: StoredTenderClassificationInput): {
         scopeType: input.scopeType,
         facts: guyanaFactsFromStoredFields(input.procedureType, input.summary),
       }),
+    };
+  }
+  // Suriname's gov.sr 「Aanbestedingen」: Guyana's rule (user, 2026-10-16: A),
+  // see lib/relevance-suriname.ts — English posts, no amounts; the procedure
+  // in procedureType is the size signal.
+  if (input.sourceName === SURINAME_SOURCE_NAME) {
+    return {
+      industries: surinameIndustries(input.title, input.scopeType),
+      relevance: classifySurinameRelevance({ title: input.title, summary: input.summary, scopeType: input.scopeType, procedureType: input.procedureType }),
     };
   }
   // Petrobras / Transpetro, from Petronect: own rules, see lib/relevance-petronect.ts.

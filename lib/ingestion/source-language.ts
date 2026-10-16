@@ -46,8 +46,8 @@ const PORTUGUESE_COUNTRIES = new Set(["Brazil"]);
  * handled exactly as it was before this function existed, rather than
  * silently changing language.
  */
-/** Countries whose tenders are published in English — Guyana (2026-09-27). */
-const ENGLISH_COUNTRIES = new Set(["Guyana"]);
+/** Countries whose tenders are published in English — Guyana (2026-09-27); Suriname (2026-10-16), whose gov.sr calls are posted in English. */
+const ENGLISH_COUNTRIES = new Set(["Guyana", "Suriname"]);
 
 export function sourceLanguageFor(country: string | null | undefined): TenderSourceLanguage {
   if (country && PORTUGUESE_COUNTRIES.has(country)) return "pt";

@@ -1,7 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { extractArceLinks, type ArceLink, type UruguayPasteResponse, type UruguayPasteRow } from "@/lib/ingestion/uruguay-paste-result";
+import { ARCE_SCREENED_IDS_KEY, extractArceLinks, screenedLabel, type ArceLink, type UruguayPasteResponse, type UruguayPasteRow } from "@/lib/ingestion/uruguay-paste-result";
+
+/**
+ * Hands the screened calls' ids to the detail step (ImportUruguayPasteForm):
+ * some detail pages carry no link to themselves (user, 2026-10-16: 我点了写入
+ * 的乌拉圭项目为什么没进系统？). Kept for the browser session, newest first.
+ */
+function rememberScreenedIds(rows: UruguayPasteRow[]) {
+  try {
+    const fresh: ArceLink[] = rows.filter((row) => row.purchaseId).map((row) => ({ label: screenedLabel(row.procedureNumber, row.buyer), purchaseId: row.purchaseId! }));
+    const stored = JSON.parse(sessionStorage.getItem(ARCE_SCREENED_IDS_KEY) ?? "[]") as ArceLink[];
+    const merged = [...fresh, ...stored.filter((old) => !fresh.some((link) => link.purchaseId === old.purchaseId))].slice(0, 1500);
+    sessionStorage.setItem(ARCE_SCREENED_IDS_KEY, JSON.stringify(merged));
+  } catch {
+    // Storage blocked: the detail step then needs the page's own link or address.
+  }
+}
 
 function copy(text: string) {
   navigator.clipboard?.writeText(text).catch(() => undefined);
@@ -82,6 +98,7 @@ export function ScreenUruguayListForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       setResult(data as UruguayPasteResponse);
+      rememberScreenedIds((data as UruguayPasteResponse).rows);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setResult(null);

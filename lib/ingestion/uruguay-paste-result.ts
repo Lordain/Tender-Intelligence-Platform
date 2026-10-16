@@ -94,7 +94,38 @@ export function readMarkdownLinks(text: string): { text: string; links: ArceLink
     else if (/pliego|aclaraci[oó]n|archivo adjunto/i.test(label)) documents.push({ title: label.trim(), url: absolute(href) });
     return label;
   });
-  return { text: plain, links, documents };
+  // A detail page's own address pasted as it is (from the address bar): some
+  // detail pages carry no link to themselves — UTE's Licitación Abreviada
+  // 103864/2026, pasted 2026-10-16, linked only its pliego and the footer —
+  // so the address is how the admin hands over the id.
+  const bare = plain.replace(/(?:https?:\/\/)?(?:www\.)?comprasestatales\.gub\.uy\/consultas\/detalle\/(?:[^\s"'?#]*\/)?id\/(\d+)\S*/gi, (_whole, purchaseId: string) => {
+    links.push({ label: "", purchaseId });
+    return "";
+  });
+  return { text: bare, links, documents };
+}
+
+/**
+ * The ids the 「ARCE 列表初筛」 read, kept in the browser for the detail step:
+ * a detail page that carries no link to itself is matched back to its listed
+ * call by procedure number (and buyer, when two buyers share a number).
+ */
+export const ARCE_SCREENED_IDS_KEY = "uruguay-arce-screened-ids";
+
+export function screenedLabel(procedureNumber: string, buyer: string): string {
+  return normalizeArceLabel(`${procedureNumber} ${buyer}`);
+}
+
+/** The id a known (screened) call gives a detail page, or undefined when none or more than one fits. */
+export function knownArceId(procedureNumber: string, buyer: string, known: ArceLink[]): string | undefined {
+  const procedure = normalizeArceLabel(procedureNumber);
+  if (!procedure) return undefined;
+  const candidates = known.filter((link) => link.label === procedure || link.label.startsWith(`${procedure} `));
+  const ids = new Set(candidates.map((link) => link.purchaseId));
+  if (ids.size <= 1) return [...ids][0];
+  const firstBuyer = normalizeArceLabel(buyer.split("|")[0] ?? "");
+  const sameBuyer = new Set(candidates.filter((link) => firstBuyer && link.label.includes(firstBuyer)).map((link) => link.purchaseId));
+  return sameBuyer.size === 1 ? [...sameBuyer][0] : undefined;
 }
 
 /** Lower case, one space, no 「Ver detalles de la compra」 — the form both a link's text and a list entry are compared in. */

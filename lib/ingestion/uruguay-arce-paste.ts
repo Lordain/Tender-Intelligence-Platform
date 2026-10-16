@@ -171,9 +171,15 @@ function decimal(raw: string | undefined): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
-function parseDetailPage(lines: string[]): ArceDetail | null {
+function parseDetailPage(pageLines: string[]): ArceDetail | null {
+  // A page copied as Markdown (2026-10-16, UTE's Licitación Abreviada
+  // 103864/2026) lists its fields as bullets — 「* Acto de Apertura:」 then
+  // 「* 05/11/2026 13:00hs」 — and numbers its breadcrumb (「3. Licitación
+  // Abreviada …」). The bullets are dropped so each value follows its label as
+  // in the plain copy; a numbered breadcrumb line is never the heading.
+  const lines = pageLines.map((line) => line.replace(/^[*•-]\s+/, ""));
   // The page's own heading, the line after the breadcrumb (or the first line, when the breadcrumb was not selected).
-  const headerIndex = lines.findIndex((line) => HEADER.test(line) && !BREADCRUMB.test(line));
+  const headerIndex = lines.findIndex((line) => HEADER.test(line) && !BREADCRUMB.test(line) && !/^\d+\.\s/.test(line));
   if (headerIndex < 0) return null;
   const header = HEADER.exec(lines[headerIndex])!;
   const procedureNumber = header[1].trim();
@@ -193,7 +199,9 @@ function parseDetailPage(lines: string[]): ArceDetail | null {
       if (PAGE_FOOTER.test(lines[i])) break;
       const item = /^Ítem N[ºo°]\s*\d+\s+(.+?)(?:\s*\(C[oó]d\. Art[ií]culo\s*(\d+)\))?$/i.exec(lines[i]);
       if (!item) continue;
-      const amount = /^Cantidad:\s*([\d.,]+)\s*(.*)$/i.exec(lines[i + 1] ?? "");
+      // 「Cantidad: 3,00 UNIDAD」, or 「Cantidad:」 with the figure on the next line (the Markdown copy).
+      const quantityText = /^Cantidad:\s*$/i.test(lines[i + 1] ?? "") ? (lines[i + 2] ?? "") : (lines[i + 1] ?? "").replace(/^Cantidad:\s*/i, "");
+      const amount = /^Cantidad:/i.test(lines[i + 1] ?? "") ? /^([\d.,]+)\s*(.*)$/.exec(quantityText) : null;
       items.push({ description: item[1].trim(), ...(item[2] ? { code: item[2] } : {}), ...(amount ? { quantity: decimal(amount[1]), unit: amount[2].trim() || undefined } : {}) });
     }
   }

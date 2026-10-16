@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { arceDetailToRelease, arceListCallToRelease, attachArcePurchaseIds, isArceSaleOrLease, parseArceDetailPages, parseArceList } from "@/lib/ingestion/uruguay-arce-paste";
 import { importUruguayDetails, importUruguayPaste, screenUruguayList } from "@/lib/ingestion/import-uruguay-paste";
-import { arceCallUrl, extractArceDocuments, extractArceLinks, readMarkdownLinks } from "@/lib/ingestion/uruguay-paste-result";
+import { arceCallUrl, extractArceDocuments, extractArceLinks, knownArceId, readMarkdownLinks, screenedLabel } from "@/lib/ingestion/uruguay-paste-result";
 import { isIngestedArceTender } from "@/lib/ingestion/connectors/uruguay-arce-live";
 import { mapArceReleaseToTender, uruguayGovernmentLevel } from "@/lib/ingestion/uruguay-mapper";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
@@ -194,6 +194,36 @@ Publicado: 29/06/2026 15:10hs | Última Modificación: 15/10/2026 12:18hs
   check("贴错内容 → 提示", wrong instanceof PasteInputError, true);
 }
 
+async function noSelfLinkChecks() {
+  // UTE's Licitación Abreviada 103864/2026, pasted 2026-10-16 as Markdown: the
+  // page links only its pliego and the footer, never itself, so the id has to
+  // come from the list screening or from the page's address pasted with it.
+  console.log("详情页本身不带项目链接（UTE 103864/2026）");
+  const text = readFileSync(join(process.cwd(), "lib/ingestion/__fixtures__/uruguay/detalle-103864-2026-ute-sin-enlace.txt"), "utf8");
+  const header = parseArceDetailPages(readMarkdownLinks(text).text)[0];
+  check("Markdown 的编号导航「3.」不当成标题", header.procedureNumber, "Licitación Abreviada 103864/2026");
+  check("「* Acto de Apertura:」后一行的时间读到", header.opening, "2026-11-05T13:00:00");
+  check("「* Cantidad:」后一行的数量读到", header.items.map((item) => item.quantity), [3, 1, 2, 2]);
+  const alone = await importUruguayDetails(null, [{ text, links: [], documents: [] }], { write: false, now: NOW });
+  check("什么都不给 → 没有 ID，不写入", alone.rows[0].outcome, "no_id");
+  const known = [
+    { label: screenedLabel("Licitación Abreviada 103864/2026", "Administración Nacional de Usinas y Trasmisiones Eléctricas | Administración Nacional de Usinas y Trasmisiones Eléctricas"), purchaseId: "1380261" },
+    { label: screenedLabel("Licitación Abreviada 103865/2026", "Administración Nacional de Usinas y Trasmisiones Eléctricas"), purchaseId: "1380999" },
+  ];
+  const screened = await importUruguayDetails(null, [{ text, links: [], documents: [] }], { write: false, now: NOW, known });
+  check("第一步初筛读到的 ID 接过来 → 写入", [screened.rows[0].purchaseId, screened.rows[0].outcome], ["1380261", "write"]);
+  const address = await importUruguayDetails(
+    null,
+    [{ text: `https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1380261\n${text}`, links: [], documents: [] }],
+    { write: false, now: NOW },
+  );
+  check("网址和页面一起贴 → 从网址读 ID → 写入", [address.rows[0].purchaseId, address.rows[0].outcome], ["1380261", "write"]);
+  check("同一编号两个机构 → 按机构区分", knownArceId("Licitación Pública 2/2026", "Ministerio B", [
+    { label: screenedLabel("Licitación Pública 2/2026", "Ministerio A"), purchaseId: "1" },
+    { label: screenedLabel("Licitación Pública 2/2026", "Ministerio B"), purchaseId: "2" },
+  ]), "2");
+}
+
 async function reminderChecks() {
   console.log("每日手动任务提醒（乌拉圭只在自动导入没在正常跑时出现）");
   const heartbeat = (status: string, hoursAgo: number) =>
@@ -207,7 +237,7 @@ async function reminderChecks() {
   check("没有记录 → 不显示", await shown(empty), false);
 }
 
-void importChecks().then(twoStepChecks).then(reminderChecks).then(() => {
+void importChecks().then(twoStepChecks).then(noSelfLinkChecks).then(reminderChecks).then(() => {
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 });

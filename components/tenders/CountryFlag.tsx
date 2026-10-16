@@ -92,6 +92,17 @@ export function GuyanaFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/** Sky blue, white, sky blue vertical bands; the coat of arms at the centre drawn as a small green wreath at this size. */
+export function GuatemalaFlag({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 14" className={`inline-block h-3.5 w-5 shrink-0 ${className}`}>
+      <rect width="20" height="14" fill="#4997d0" />
+      <rect x="6.67" width="6.67" height="14" fill="#fff" />
+      <circle cx="10" cy="7" r="1.9" fill="none" stroke="#5a8f29" strokeWidth="0.7" />
+    </svg>
+  );
+}
+
 /** Green, white, red, white, green bands (2:1:4:1:2) with a yellow five-pointed star on the red. */
 export function SurinameFlag({ className = "" }: { className?: string }) {
   return (
@@ -192,5 +203,6 @@ export function CountryFlag({ country, className = "" }: { country: string; clas
   if (country === "Bolivia") return <BoliviaFlag className={className} />;
   if (country === "Uruguay") return <UruguayFlag className={className} />;
   if (country === "Suriname") return <SurinameFlag className={className} />;
+  if (country === "Guatemala") return <GuatemalaFlag className={className} />;
   return null;
 }

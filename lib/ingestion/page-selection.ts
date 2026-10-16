@@ -133,7 +133,12 @@ export function pageRanges(pages: number[]): string {
 /** How many pages, after the first two, are kept for what the project is. */
 const PROJECT_PAGES = 2;
 
-export function selectRelevantPages(pageTexts: string[], maxPages: number): PageSelection {
+/**
+ * budget "chars" (the text path): never more characters than the first N
+ * pages. "pages" (a scan, read as images): the page count is the cost, and
+ * a page's OCR length says nothing about it.
+ */
+export function selectRelevantPages(pageTexts: string[], maxPages: number, options: { budget?: "chars" | "pages" } = {}): PageSelection {
   const raw = pageTexts.map((text, page) => ({ page, ...scorePage(text), projectScore: scoreProjectPage(text) }));
   const all = pageTexts.map((_, page) => page);
   if (pageTexts.length <= maxPages) return { pages: all, note: null, scores: raw };
@@ -160,7 +165,7 @@ export function selectRelevantPages(pageTexts: string[], maxPages: number): Page
 
   // Never more text than the first N pages: drop the weakest requirement
   // pages until the selection fits the characters the old cap sent.
-  const budget = firstN.reduce((sum, page) => sum + pageTexts[page].length, 0);
+  const budget = options.budget === "pages" ? Infinity : firstN.reduce((sum, page) => sum + pageTexts[page].length, 0);
   let used = chosen.reduce((sum, page) => sum + pageTexts[page].length, 0);
   // Weakest requirement page first; the project pages only if that is not enough.
   const droppable = [...project, ...chosen.filter((page) => !always.includes(page) && !project.includes(page))];

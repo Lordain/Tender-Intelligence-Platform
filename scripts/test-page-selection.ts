@@ -60,6 +60,11 @@ const heavyChars = (list: number[]) => list.reduce((sum, page) => sum + heavy[pa
 check("Budget holds with an oversized page", heavyChars(heavySelection.pages) <= heavyChars(heavy.map((_, i) => i).slice(0, 20)), true);
 check("The oversized page is the one dropped", heavySelection.pages.includes(37), false);
 
+// A scan is read as images: the page count is the cost, the OCR length is not.
+const scanSelection = selectRelevantPages(heavy, 20, { budget: "pages" });
+check("Scan: never more pages than the cap", scanSelection.pages.length <= 20, true);
+check("Scan: a long OCR page is not dropped for its length", scanSelection.pages.includes(37), true);
+
 check("Page ranges", pageRanges([1, 2, 3, 7, 9, 10]), "1–3, 7, 9–10");
 
 console.log(`\n${passed} passed, ${failed} failed`);

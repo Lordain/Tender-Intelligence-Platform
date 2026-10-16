@@ -10,6 +10,7 @@ import { upsertTendersBatched } from "@/lib/ingestion/upsert-tenders";
 import { PasteInputError } from "@/lib/ingestion/paste-input-error";
 import { RELEVANCE_TIER_LABELS } from "@/lib/tender-labels";
 import {
+  knownArceId,
   readMarkdownLinks,
   URUGUAY_KEEP_TIERS,
   type ArceDetailPaste,
@@ -51,7 +52,7 @@ const OUTCOME_ZH: Record<UruguayPasteOutcome, string> = {
   closed: "交标截止日已过，不写入",
   not_open: "已不在投标阶段，不写入",
   exists: "平台上已有，不重复写入",
-  no_id: "没拿到项目 ID，不写入（请在 ARCE 页面上直接复制粘贴，不要先贴到记事本）",
+  no_id: "没拿到项目 ID，不写入（先在第一步初筛这个项目所在的列表，或把这个项目详情页的网址也贴进框里）",
 };
 
 const MANUAL_REASON = { zh: "管理员在后台手动设置", en: "Manually set by an admin", es: "Establecido manualmente por un administrador" };
@@ -175,7 +176,13 @@ function pasteId(links: ArceLink[]): string | undefined {
 export async function importUruguayDetails(
   supabase: SupabaseClient | null,
   pastes: ArceDetailPaste[],
-  options: { write: boolean; now?: Date; keep?: Record<string, UruguayKeepTier> },
+  options: {
+    write: boolean;
+    now?: Date;
+    keep?: Record<string, UruguayKeepTier>;
+    /** Ids the list screening read (ARCE_SCREENED_IDS_KEY), for a page that carries no link to itself. */
+    known?: ArceLink[];
+  },
 ): Promise<UruguayDetailResponse> {
   const now = options.now ?? new Date();
   const pages = pastes.flatMap((paste) => {
@@ -183,7 +190,10 @@ export async function importUruguayDetails(
     const details = parseArceDetailPages(markdown.text);
     const id = details.length === 1 ? pasteId([...paste.links, ...markdown.links]) : undefined;
     const documents = [...paste.documents, ...markdown.documents];
-    return details.map((detail) => ({ detail: detail.purchaseId || !id ? detail : { ...detail, purchaseId: id }, documents: details.length === 1 ? documents : [] }));
+    return details.map((detail) => {
+      const purchaseId = detail.purchaseId || id || knownArceId(detail.procedureNumber, detail.buyer, options.known ?? []);
+      return { detail: purchaseId ? { ...detail, purchaseId } : detail, documents: details.length === 1 ? documents : [] };
+    });
   });
   if (pages.length === 0) {
     throw new PasteInputError("没有找到项目详情——请在 ARCE 打开项目（Ver detalles de la compra），从页面标题开始全选整页复制，直接粘贴到这里。");

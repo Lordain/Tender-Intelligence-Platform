@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ARCE_SCREENED_IDS_KEY,
   extractArceDocuments,
   extractArceLinks,
   URUGUAY_KEEP_TIERS,
   type ArceDetailPaste,
+  type ArceLink,
   type UruguayDetailResponse,
   type UruguayDetailRow,
   type UruguayKeepTier,
@@ -14,6 +16,15 @@ import {
 
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 const WRITES = new Set(["write", "short_window", "manual_keep"]);
+
+/** The ids 「ARCE 列表初筛」 read this session (ScreenUruguayListForm), for pages that carry no link to themselves. */
+function screenedIds(): ArceLink[] {
+  try {
+    return JSON.parse(sessionStorage.getItem(ARCE_SCREENED_IDS_KEY) ?? "[]") as ArceLink[];
+  } catch {
+    return [];
+  }
+}
 
 /** Montevideo wall-clock time (UTC-3), which is what ARCE showed. */
 function montevideoTime(iso: string | undefined): string {
@@ -60,7 +71,7 @@ export function ImportUruguayPasteForm() {
       const res = await fetch("/api/admin/import-uruguay-paste", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pastes: body, write, keep }),
+        body: JSON.stringify({ pastes: body, write, keep, known: screenedIds() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -76,6 +87,7 @@ export function ImportUruguayPasteForm() {
   }
 
   const writable = result?.rows.filter((row) => WRITES.has(row.outcome) || (row.outcome === "excluded" && row.purchaseId && keep[row.purchaseId])).length ?? 0;
+  const noId = result?.rows.filter((row) => row.outcome === "no_id") ?? [];
   const withIds = pastes.filter((paste) => paste.links.length > 0).length;
 
   return (
@@ -106,9 +118,9 @@ export function ImportUruguayPasteForm() {
         className="mt-3 w-full rounded-xl border border-[#d8e0e3] bg-white px-3 py-2 font-mono text-xs text-[#071826] outline-none focus:border-[#ffb21c]"
       />
       {pastes.length > 0 && (
-        <p className={`mt-1 text-xs ${withIds === pastes.length ? "text-[#52636e]" : "font-semibold text-[#8a5a00]"}`}>
-          已贴 {pastes.length} 页，其中 {withIds} 页读到了项目链接。
-          {withIds < pastes.length && " 没读到链接的那页拿不到项目 ID，不能写入：请清空后在 ARCE 详情页上直接复制粘贴。"}
+        <p className="mt-1 text-xs text-[#52636e]">
+          已贴 {pastes.length} 页，其中 {withIds} 页带有项目链接。
+          {withIds < pastes.length && " 有些详情页本身不带项目链接：先在上面第一步初筛过的项目，会自动用初筛读到的编号；没经过初筛的，把它的网址（浏览器地址栏）也贴进框里。预览时可以看到每个项目是否拿到了编号。"}
         </p>
       )}
 
@@ -133,9 +145,19 @@ export function ImportUruguayPasteForm() {
 
       {result && (
         <div className="mt-4 border-t border-[#eef1f2] pt-3 text-sm text-[#52636e]">
+          {noId.length > 0 && (
+            <p className="mb-3 rounded-xl border border-[#eed18c] bg-[#fff8e7] px-3 py-2 text-sm font-semibold text-[#8a5a00]">
+              有 {noId.length} 个项目没拿到 ARCE 项目编号，不会写入：{noId.map((row) => row.procedureNumber).join("、")}。请先在上面第一步初筛它所在的列表，或把它的详情页网址（浏览器地址栏）也贴进框里，再点预览。
+            </p>
+          )}
           <p>
             识别到 {result.rows.length} 个项目，其中 {writable} 个会写入。
-            {result.written !== undefined && <span className="font-semibold text-emerald-700"> 已写入 {result.written} 条{result.documentLinks ? `，标书链接 ${result.documentLinks} 个` : ""}。</span>}
+            {result.written !== undefined && (
+              <span className={`font-semibold ${result.written > 0 ? "text-emerald-700" : "text-[#8a5a00]"}`}>
+                {" "}
+                已写入 {result.written} 条{result.documentLinks ? `，标书链接 ${result.documentLinks} 个` : ""}。
+              </span>
+            )}
             {result.failed && result.failed.length > 0 && <span className="font-semibold text-red-700"> {result.failed.length} 条失败：{result.failed.map((f) => f.error).join("；")}</span>}
           </p>
           <ul className="mt-3 flex flex-col gap-3">

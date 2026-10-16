@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const admin = await getAdminUser();
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
-  const body = (await request.json().catch(() => ({}))) as { pastes?: unknown; write?: boolean; keep?: Record<string, string> };
+  const body = (await request.json().catch(() => ({}))) as { pastes?: unknown; write?: boolean; keep?: Record<string, string>; known?: unknown };
   const pastes: ArceDetailPaste[] = (Array.isArray(body.pastes) ? body.pastes : [])
     .slice(0, MAX_PASTES)
     .filter((paste) => typeof paste?.text === "string" && paste.text.trim())
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   if (body.write === true && !supabase) return NextResponse.json({ error: "Supabase isn't configured." }, { status: 500 });
 
   try {
-    const result = await importUruguayDetails(supabase, pastes, { write: body.write === true, keep });
+    const result = await importUruguayDetails(supabase, pastes, { write: body.write === true, keep, known: cleanArceLinks(body.known) });
     if (body.write === true) {
       // The public list is cached; drop it so this import shows up now.
       revalidateTenders();

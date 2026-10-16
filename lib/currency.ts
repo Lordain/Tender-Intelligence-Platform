@@ -123,6 +123,11 @@ export const USD_RATES: Record<string, number> = {
   // the two Bolivian contracts are priced against is still to be confirmed,
   // and it decides whether a Bs 7–12M contract clears the $1M floor.
   BOB: 1 / 11.72,
+  // Added 2026-10-16 for Guatemala (Guatecompras paste, staged). open.er-api.com,
+  // read 2026-10-16: 7.64. The Banco de Guatemala has held the quetzal near
+  // 7.6–7.8 for years. Guatecompras publishes no amounts today; this is for
+  // an amount an admin enters or a document states.
+  GTQ: 1 / 7.64,
   // The two Chilean INDEXED UNITS, not currencies — and both appear in the
   // Moneda column as if they were: CLF 47 rows, UF 37 (the same unit under its
   // ISO code and its Spanish name), UTM 6. Ninety real amounts that would

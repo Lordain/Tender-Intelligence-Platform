@@ -18,7 +18,7 @@ import { CRON_JOBS } from "@/lib/ops/cron-jobs";
  * Client-safe: no server-only imports, the panel imports the list and the
  * day helper.
  */
-export type ManualTaskId = "comprasmx" | "proyectos-estrategicos" | "peru-seace" | "cfe-micrositio" | "ecuador-soce" | "bolivia-sicoes" | "uruguay-arce";
+export type ManualTaskId = "comprasmx" | "proyectos-estrategicos" | "peru-seace" | "cfe-micrositio" | "ecuador-soce" | "bolivia-sicoes" | "uruguay-arce" | "guatemala-guatecompras";
 
 export type ManualTask = {
   id: ManualTaskId;
@@ -96,6 +96,15 @@ export const MANUAL_TASKS: ManualTask[] = [
     href: "/admin/import-tenders/uruguay",
     site: { label: "ARCE", href: "https://www.comprasestatales.gub.uy/consultas/" },
     whilePaused: "import-uruguay",
+  },
+  // Added 2026-10-16 (user: A — 两步粘贴导入，每天要手动贴一次): Guatecompras
+  // challenges our servers, so Guatemala is pasted by hand every day.
+  {
+    id: "guatemala-guatecompras",
+    label: "危地马拉 Guatecompras（未公开）",
+    how: "在 Guatecompras「Concursos vigentes」点「Licitación Pública」，复制第 1 页贴到「Guatecompras 列表初筛」；把值得的项目详情页整页贴到「Guatecompras 详情页粘贴导入」",
+    href: "/admin/import-tenders/guatemala",
+    site: { label: "Guatecompras", href: "https://www.guatecompras.gt/concursos/consultaConcursos.aspx" },
   },
 ];
 

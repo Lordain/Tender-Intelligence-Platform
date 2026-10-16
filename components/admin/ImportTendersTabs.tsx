@@ -36,6 +36,7 @@ const TABS = [
   // Staged (lib/staged-countries.ts): imported and reviewable here, not public yet.
   { href: "/admin/import-tenders/guyana", label: "圭亚那（未公开）", country: "Guyana" },
   { href: "/admin/import-tenders/suriname", label: "苏里南（未公开）", country: "Suriname" },
+  { href: "/admin/import-tenders/guatemala", label: "危地马拉（未公开）", country: "Guatemala" },
 ];
 
 /** Flag-sized globe for the one multi-country source — a generic globe, not the World Bank's logo. */

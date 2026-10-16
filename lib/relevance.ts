@@ -4745,7 +4745,9 @@ function applyOxiFloor(relevance: TenderRelevance, input: StoredTenderClassifica
  * and a power-plant fire system — were all ordinary work (user: 只改乌拉圭，
  * 没金额最多常规). A stated amount still lifts a row by the value bands.
  */
-const NO_AMOUNT_MAX_STANDARD_COUNTRIES: ReadonlySet<string> = new Set(["Uruguay"]);
+// Guatemala joined 2026-10-16 with its first import (user: A): Guatecompras
+// shows no amount on the list or on a call's page.
+const NO_AMOUNT_MAX_STANDARD_COUNTRIES: ReadonlySet<string> = new Set(["Uruguay", "Guatemala"]);
 
 function applyNoAmountCap(relevance: TenderRelevance, input: StoredTenderClassificationInput): TenderRelevance {
   if (TIER_RANK[relevance.tier] <= TIER_RANK.standard || !NO_AMOUNT_MAX_STANDARD_COUNTRIES.has(input.country)) return relevance;
@@ -4761,11 +4763,33 @@ function applyNoAmountCap(relevance: TenderRelevance, input: StoredTenderClassif
   };
 }
 
+/**
+ * Guatemala's rule A (user, 2026-10-16: A): local governments' calls are not
+ * kept. Measured on Guatecompras's 2026 awards (Licitación Pública, January–
+ * September): municipalities placed 1,808 of 2,354, and 6% of theirs reached
+ * US$1M against 25% of central government's; no title keyword separated the
+ * large municipal ones (the best, 「mercado」, was right 31% of the time on 13
+ * calls). Neither the list nor a call's page states an amount, so the kind of
+ * entity is the size signal there is.
+ */
+function isGuatemalaLocalGovernmentCall(input: StoredTenderClassificationInput): boolean {
+  return input.country === "Guatemala" && input.governmentLevel === "municipal";
+}
+
+const GUATEMALA_LOCAL_GOVERNMENT_REASON = {
+  zh: "地方政府（市政府等）的招标：按危地马拉的收录规则只收中央部委、国有企业和自治机构的项目。这类项目绝大多数是村路、学校、供水等小工程，且不公布金额，默认不进入推荐列表（数据仍保留，可用于统计）。",
+  en: "A local government's call. Guatemala's rule keeps central government, state companies and autonomous bodies only: municipal calls are overwhelmingly small rural works and publish no amount.",
+  es: "Licitación de un gobierno local. En Guatemala solo se incluyen el gobierno central, las empresas del Estado y las entidades autónomas: las municipales son en su gran mayoría obras rurales pequeñas y no publican monto.",
+};
+
 export function classifyStoredTender(input: StoredTenderClassificationInput): {
   industries: ReturnType<typeof classifyIndustries>;
   relevance: TenderRelevance;
 } {
   const fields = classifyStoredTenderFields(input);
+  if (isGuatemalaLocalGovernmentCall(input)) {
+    return { ...fields, relevance: { tier: "excluded", label: LABELS.excluded, reason: GUATEMALA_LOCAL_GOVERNMENT_REASON } };
+  }
   const hasAmount = input.estimatedValue !== undefined && input.estimatedValue !== null;
   const floored = applyOxiFloor(fields.relevance, input);
   const withDuration = input.oneLineSummary ? applySummaryDurationFloor(floored, input.oneLineSummary, hasAmount) : floored;

@@ -129,6 +129,7 @@
     "test:analytics-source": "tsx scripts/test-analytics-source.ts",
     "test:guyana": "tsx scripts/test-guyana.ts",
     "test:suriname": "tsx scripts/test-suriname.ts",
+    "test:guatemala-paste": "tsx scripts/test-guatemala-paste.ts",
     "test:page-selection": "tsx scripts/test-page-selection.ts",
     "test:argentina": "tsx scripts/test-argentina.ts",
     "test:wire-documents": "tsx scripts/test-wire-documents.ts",

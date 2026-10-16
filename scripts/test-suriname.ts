@@ -1,14 +1,18 @@
 /**
- * Suriname (gov.sr 「Aanbestedingen」, added 2026-10-16, dry run only): reading
- * each post's procedure, bid deadline, pre-bid meeting, clarification
- * deadline and financier. Offline — runs on the 15 posts saved on
- * 2026-10-16 (email addresses removed). Tiers are not checked here: the
- * rules for Suriname are still to be agreed.
+ * Suriname (gov.sr 「Aanbestedingen」, staged 2026-10-16): reading each post's
+ * procedure, bid deadline, pre-bid meeting, clarification deadline and
+ * financier; the user's rule (A — Guyana's); what a run writes; the
+ * stored-field round trip and the staged-country gate. Offline — runs on the
+ * 15 posts saved on 2026-10-16 (email addresses removed).
  */
 import fixture from "../lib/ingestion/__fixtures__/suriname/aanbestedingen-2026-10-16.json" with { type: "json" };
 import type { SurinamePost } from "../lib/ingestion/connectors/suriname-govsr-live";
 import { parseSurinamePost, postText } from "../lib/ingestion/suriname-notice";
 import { mapSurinameNoticeToTender, surinameScopeType } from "../lib/ingestion/suriname-mapper";
+import { ingestSuriname } from "../lib/ingestion/ingest-suriname";
+import { classifyStoredTender } from "../lib/relevance";
+import { isStagedCountry } from "../lib/staged-countries";
+import { sourceLanguageFor } from "../lib/ingestion/source-language";
 
 let passed = 0;
 let failed = 0;
@@ -70,5 +74,55 @@ check("No email address in any mapped row", mapped.filter((tender) => /@/.test(J
 check("Slug from the post id", mapped[0].slug, "suriname-govsr-162550");
 check("Country", [...new Set(mapped.map((tender) => tender.country))], ["Suriname"]);
 
-console.log(`\n${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+// The rule (user, 2026-10-16: A — Guyana's): ICB works and equipment kept.
+const tierOf = new Map(mapped.map((tender) => [Number(tender.slug.replace("suriname-govsr-", "")), tender.relevance.tier]));
+check("Hospital equipment and furniture, ICB: 中型 (furniture next to equipment does not exclude)", tierOf.get(162550), "significant");
+check("Reeberg design and build, ICB works: 中型", tierOf.get(162218), "significant");
+check("Heavy machinery, ICB: 中型", tierOf.get(157205), "significant");
+check("IDB data-centre equipment, ICB: 中型", tierOf.get(157139), "significant");
+check("School furniture alone, ICB: excluded", tierOf.get(159578), "excluded");
+check("Learning books, ICB: excluded", tierOf.get(160468), "excluded");
+check("EPD hardware, NCB: excluded", tierOf.get(161433), "excluded");
+check("Turf fields, NCB: excluded", tierOf.get(157385), "excluded");
+check("Expression of interest: excluded", tierOf.get(162300), "excluded");
+check("No method stated: excluded", tierOf.get(159809), "excluded");
+check("6 of 15 kept", mapped.filter((tender) => tender.relevance.tier !== "excluded").length, 6);
+check("Industry: hospital → healthcare", mapped.find((tender) => tender.slug === "suriname-govsr-162550")?.industries, ["healthcare"]);
+check("Industry: machinery → heavy_equipment", mapped.find((tender) => tender.slug === "suriname-govsr-157205")?.industries, ["heavy_equipment"]);
+check("Industry: data storage → ict_telecom", mapped.find((tender) => tender.slug === "suriname-govsr-157139")?.industries, ["ict_telecom"]);
+check("Industry: design and build housing → construction", mapped.find((tender) => tender.slug === "suriname-govsr-162218")?.industries, ["construction"]);
+
+// Stored-field round trip: reclassify from what the row keeps gives the same tier.
+for (const tender of mapped) {
+  const again = classifyStoredTender({
+    title: tender.title.es,
+    summary: tender.summary.es,
+    buyer: tender.buyer,
+    country: tender.country,
+    governmentLevel: tender.governmentLevel,
+    scopeType: tender.scopeType,
+    procedureType: tender.procedureType,
+    tenderNumber: tender.tenderNumber,
+    sourceName: tender.sourceName,
+  });
+  check(`Round trip ${tender.slug}`, again.relevance.tier, tender.relevance.tier);
+}
+
+// What a run on 16 October writes: the kept calls still taking bids.
+async function run() {
+  const result = await ingestSuriname(null, { write: false, posts, now: new Date("2026-10-16T12:00:00Z") });
+  check("Written on 2026-10-16: hospital equipment and Reeberg", result.kept.map((tender) => tender.slug).sort(), ["suriname-govsr-162218", "suriname-govsr-162550"]);
+  check("Kept but closed are not written", result.rows.filter((row) => row.outcome === "closed").length, 4);
+  check("No stale warning with posts", result.staleWarning, null);
+  const empty = await ingestSuriname(null, { write: false, posts: [] });
+  check("Stale warning when the category returns nothing", empty.staleWarning !== null, true);
+
+  // Staged: admin pages only; English originals.
+  check("Suriname is staged", isStagedCountry("Suriname"), true);
+  check("Suriname originals are English", sourceLanguageFor("Suriname"), "en");
+
+  console.log(`\n${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exit(1);
+}
+
+run();

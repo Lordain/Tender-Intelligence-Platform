@@ -31,7 +31,7 @@ const TIER_ZH: Record<string, string> = { flagship: "大型", significant: "中�
 const ZH: Record<string, string> = {
   Mexico: "墨西哥", Brazil: "巴西", Peru: "秘鲁", Colombia: "哥伦比亚", Chile: "智利", Argentina: "阿根廷",
   "Dominican Republic": "多米尼加", Ecuador: "厄瓜多尔", Panama: "巴拿马", Bolivia: "玻利维亚", Uruguay: "乌拉圭",
-  Guyana: "圭亚那",
+  Guyana: "圭亚那", Suriname: "苏里南",
 };
 
 type Row = {

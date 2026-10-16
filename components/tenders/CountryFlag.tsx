@@ -92,6 +92,18 @@ export function GuyanaFlag({ className = "" }: { className?: string }) {
   );
 }
 
+/** Green, white, red, white, green bands (2:1:4:1:2) with a yellow five-pointed star on the red. */
+export function SurinameFlag({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 14" className={`inline-block h-3.5 w-5 shrink-0 ${className}`}>
+      <rect width="20" height="14" fill="#377e3f" />
+      <rect y="2.8" width="20" height="8.4" fill="#fff" />
+      <rect y="4.2" width="20" height="5.6" fill="#b40a2d" />
+      <path d="M10 4.6l.6 1.85h1.95l-1.58 1.15.6 1.85L10 8.3l-1.57 1.15.6-1.85-1.58-1.15H9.4Z" fill="#ecc81d" />
+    </svg>
+  );
+}
+
 /** Three horizontal bands, light blue–white–light blue, with the Sun of May at the centre (drawn as a plain gold disc at this size). */
 export function ArgentinaFlag({ className = "" }: { className?: string }) {
   return (
@@ -179,5 +191,6 @@ export function CountryFlag({ country, className = "" }: { country: string; clas
   if (country === "Panama") return <PanamaFlag className={className} />;
   if (country === "Bolivia") return <BoliviaFlag className={className} />;
   if (country === "Uruguay") return <UruguayFlag className={className} />;
+  if (country === "Suriname") return <SurinameFlag className={className} />;
   return null;
 }

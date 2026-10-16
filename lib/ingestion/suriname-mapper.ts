@@ -1,25 +1,27 @@
 /**
  * A gov.sr 「Aanbestedingen」 notice (suriname-notice.ts) → a Tender, for
- * Suriname (user, 2026-10-16: 苏里南做，先只在后台可见). Added staged: nothing
- * is written until the dry run (scripts/cron-suriname.ts) has been read and
- * the rules agreed.
+ * Suriname (user, 2026-10-16: 苏里南做，先只在后台可见). Suriname is staged
+ * (lib/staged-countries.ts): what is written shows in the admin pages only.
  *
- * Every notice maps; whether it is kept is the general rules' call
- * (classifyStoredTender), as for any country. No post states an amount.
+ * Every notice maps; whether it is kept is lib/relevance-suriname.ts's call
+ * (user, 2026-10-16: A — Guyana's rule), reached through
+ * classifyStoredTender by the source name, so reclassify gives a stored row
+ * the same tier. No post states an amount.
  */
 import type { Tender, TenderKeyDate, TenderScopeType } from "@/types/tender";
 import { slugify, untranslated } from "@/lib/ingestion/text-utils";
 import { classifyStoredTender } from "@/lib/relevance";
 import { SURINAME_TENDERS_PAGE } from "@/lib/ingestion/connectors/suriname-govsr-live";
 import type { SurinameMethod, SurinameNotice } from "@/lib/ingestion/suriname-notice";
+import { SURINAME_EOI_LABEL, SURINAME_ICB_LABEL, SURINAME_NCB_LABEL, SURINAME_SOURCE_NAME } from "@/lib/relevance-suriname";
 
-export const SURINAME_SOURCE_NAME = "Suriname — gov.sr Aanbestedingen (Ministerie van Financiën en Planning)";
+export { SURINAME_SOURCE_NAME };
 
 /** The same labels as Guyana's (lib/relevance-guyana.ts), so both read alike. */
 export const SURINAME_PROCEDURE_LABEL: Record<Exclude<SurinameMethod, null>, string> = {
-  icb: "International Competitive Bidding (ICB)",
-  ncb: "National Competitive Bidding (NCB)",
-  eoi: "Request for Expressions of Interest (consulting)",
+  icb: SURINAME_ICB_LABEL,
+  ncb: SURINAME_NCB_LABEL,
+  eoi: SURINAME_EOI_LABEL,
 };
 
 export function surinameScopeType(notice: Pick<SurinameNotice, "method" | "title" | "text">): TenderScopeType {
@@ -44,7 +46,8 @@ export function mapSurinameNoticeToTender(notice: SurinameNotice, now: Date = ne
     `Procuring entity: ${buyer}.`,
     notice.scope ? `Scope: ${notice.scope}` : undefined,
     notice.method ? `${SURINAME_PROCEDURE_LABEL[notice.method]}.` : undefined,
-    notice.financier === "Social Bond" ? "Financed from the Republic of Suriname's February 2026 Social Bond (priority social projects)." : notice.financier ? `Financed by the ${notice.financier}.` : undefined,
+    // "Financed by the …." is what relevance-suriname.ts reads back.
+    notice.financier === "Social Bond" ? "Financed by the Republic of Suriname's February 2026 Social Bond (priority social projects)." : notice.financier ? `Financed by the ${notice.financier}.` : undefined,
     notice.deadline ? `${notice.method === "eoi" ? "Expressions of interest" : "Bids"} are due by ${paramaribo(notice.deadline)} (Paramaribo time).` : undefined,
     notice.method === "eoi" ? undefined : "The bidding documents are requested by email from the procuring office named in the notice; bids in English.",
     "Published on gov.sr (Aanbestedingen).",

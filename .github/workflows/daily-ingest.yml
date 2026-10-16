@@ -286,6 +286,12 @@ jobs:
           - name: Guyana (eprocure, staged)
             command: cron:guyana
             poppler: true
+          # Added 2026-10-16. Suriname's gov.sr 「Aanbestedingen」: one request
+          # (robots.txt asks for 60 s between requests), the ICB works and
+          # equipment calls still taking bids (user: A — Guyana's rule).
+          # Suriname is staged — admin pages only, see lib/staged-countries.ts.
+          - name: Suriname (gov.sr, staged)
+            command: cron:suriname
           # Added 2026-09-27. Argentina: COMPR.AR, CONTRAT.AR, ADIF and the
           # Boletín Oficial, the platform's rules with two Argentine settings
           # (unpriced rows as Mexico's; energy, rail, power, transport, water

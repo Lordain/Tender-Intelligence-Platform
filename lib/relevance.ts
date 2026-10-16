@@ -7,6 +7,7 @@ import { isSmallDeclaredChileanBand } from "@/lib/chile-amount-band";
 import { SHORT_BID_WINDOW_DAYS } from "@/lib/ingestion/recency";
 import { classifyPetronectRelevance, PETRONECT_SOURCE_NAME } from "@/lib/relevance-petronect";
 import { classifyGuyanaRelevance, guyanaFactsFromStoredFields, guyanaIndustries, GUYANA_SOURCE_NAME } from "@/lib/relevance-guyana";
+import { classifySurinameRelevance, surinameIndustries, SURINAME_SOURCE_NAME } from "@/lib/relevance-suriname";
 import { classifyCodelcoRelevance, CODELCO_SOURCE_NAME } from "@/lib/relevance-codelco";
 import { classifyChileConcesionRelevance, CHILE_CONCESIONES_SOURCE_NAME } from "@/lib/relevance-chile-concesiones";
 import { classifyMetroSantiagoRelevance } from "@/lib/relevance-metro-santiago";
@@ -4856,6 +4857,15 @@ function classifyStoredTenderFields(input: StoredTenderClassificationInput): {
         scopeType: input.scopeType,
         facts: guyanaFactsFromStoredFields(input.procedureType, input.summary),
       }),
+    };
+  }
+  // Suriname's gov.sr 「Aanbestedingen」: Guyana's rule (user, 2026-10-16: A),
+  // see lib/relevance-suriname.ts — English posts, no amounts; the procedure
+  // in procedureType is the size signal.
+  if (input.sourceName === SURINAME_SOURCE_NAME) {
+    return {
+      industries: surinameIndustries(input.title, input.scopeType),
+      relevance: classifySurinameRelevance({ title: input.title, summary: input.summary, scopeType: input.scopeType, procedureType: input.procedureType }),
     };
   }
   // Petrobras / Transpetro, from Petronect: own rules, see lib/relevance-petronect.ts.

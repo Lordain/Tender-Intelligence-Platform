@@ -6,7 +6,7 @@ import type { TranslatedTender } from "@/lib/ingestion/translate-titles";
 
 /**
  * en->zh title/summary translation, for Guyana (eprocure.gov.gy, added
- * 2026-09-27). A separate prompt for the reason translate-titles-pt.ts gives
+ * 2026-09-27) and Suriname (gov.sr, added 2026-10-16). A separate prompt for the reason translate-titles-pt.ts gives
  * for Portuguese: the Spanish prompt is half rules about Spanish strings, and
  * handing English to a field named "titleEs" tells the model the wrong
  * language. Same provider, model and wire shape as the other two paths.
@@ -33,9 +33,11 @@ export type TenderToTranslateEn = {
   titleIsTruncated?: boolean;
 };
 
-const SYSTEM_PROMPT = `You translate Guyanese government tender titles and summaries from English to Chinese, for a platform that helps Chinese enterprises evaluate real bidding opportunities.
+const SYSTEM_PROMPT = `You translate Guyanese and Surinamese government tender titles and summaries from English to Chinese, for a platform that helps Chinese enterprises evaluate real bidding opportunities.
 
 Guyana is an English-speaking country in South America. Its tenders are published by ministries and state companies through the National Procurement and Tender Administration Board (NPTAB), in British-influenced English.
+
+Suriname, Guyana's eastern neighbour, is Dutch-speaking, but the calls on this platform are published in English by its Ministry of Finance and Planning (财政和计划部) on the government site gov.sr. Its place, school and programme names are often Dutch ("Reeberg Block 3B", "VOJ Meerzorg"): keep them exactly as written in full-width parentheses after a transliteration, as for Guyana; the capital is 帕拉马里博 (Paramaribo) and needs no parentheses. The rules below that name Guyana — its regions, its dollars, its agencies — apply to Guyanese items only. Suriname vocabulary: Social Bond 社会债券, priority social projects 优先社会项目, Suriname Debt Management Office (SDMO) 苏里南债务管理办公室（SDMO）, Academic Hospital Paramaribo 帕拉马里博学术医院, Ministry of Public Works and Spatial Planning 公共工程和空间规划部, design and build 设计施工总承包, pre-bid meeting 标前会议. "SRD" is the Surinamese dollar 苏里南元.
 
 Ground rules:
 - Translate naturally and accurately — a Chinese business reader should immediately understand what is being procured. Chinese puts the place before the thing: 第三区莱瓜恩岛（Leguan）输水干管供应与安装, not 输水干管供应与安装，莱瓜恩岛.

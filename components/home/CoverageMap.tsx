@@ -74,8 +74,11 @@ const CALLOUT: Record<string, { side: "left" | "right"; y: number; edge: number 
   "Dominican Republic": { side: "right", y: 62, edge: 480 },
   Colombia: { side: "right", y: 226, edge: 660 },
   Brazil: { side: "right", y: 372, edge: 670 },
-  Bolivia: { side: "right", y: 520, edge: 600 },
-  Argentina: { side: "right", y: 664, edge: 520 },
+  // Bolivia and Argentina moved down the column to make room for Uruguay
+  // (2026-10-16), whose card sits off the Río de la Plata.
+  Bolivia: { side: "right", y: 492, edge: 600 },
+  Uruguay: { side: "right", y: 606, edge: 640 },
+  Argentina: { side: "right", y: 720, edge: 520 },
 };
 
 const pct = (value: number, of: number) => `${(value / of) * 100}%`;
@@ -134,6 +137,10 @@ function CountryCard({ entry, facing, className = "" }: { entry: CoverageCountry
 export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
   const byCountry = new Map(countries.map((entry) => [entry.country, entry]));
   const lit = LATAM_MAP_SHAPES.filter((shape) => shape.country && byCountry.has(shape.country));
+  // A covered country the painted map does not light yet (Uruguay, until the
+  // map is redrawn — user, 2026-10-16: 地图可以晚点刷新): pinned and linked to its
+  // card by its outline's name, not lit.
+  const pinned = LATAM_MAP_SHAPES.filter((shape) => byCountry.has(shape.country ?? shape.name));
   const total = countries.reduce((sum, entry) => sum + entry.liveCount, 0);
   const ranked = [...countries].sort((a, b) => b.liveCount - a.liveCount);
 
@@ -167,7 +174,7 @@ export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
                 role="img"
                 aria-label={`拉美地图：已覆盖 ${countries.length} 个国家，共 ${total} 个在招项目`}
               >
-                <MapBody lit={lit} byCountry={byCountry} callouts />
+                <MapBody lit={lit} pinned={pinned} byCountry={byCountry} callouts />
               </svg>
               <svg
                 viewBox={`0 0 ${LATAM_MAP_VIEWBOX.width} ${LATAM_MAP_VIEWBOX.height}`}
@@ -175,7 +182,7 @@ export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
                 role="img"
                 aria-label={`拉美地图：已覆盖 ${countries.length} 个国家，共 ${total} 个在招项目`}
               >
-                <MapBody lit={lit} byCountry={byCountry} callouts={false} />
+                <MapBody lit={lit} pinned={pinned} byCountry={byCountry} callouts={false} />
               </svg>
             </div>
 
@@ -202,10 +209,12 @@ export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
 
 function MapBody({
   lit,
+  pinned,
   byCountry,
   callouts,
 }: {
   lit: typeof LATAM_MAP_SHAPES;
+  pinned: typeof LATAM_MAP_SHAPES;
   byCountry: Map<string, CoverageCountry>;
   callouts: boolean;
 }) {
@@ -234,8 +243,8 @@ function MapBody({
         );
       })}
 
-      {lit.map((shape) => {
-        const entry = byCountry.get(shape.country!)!;
+      {pinned.map((shape) => {
+        const entry = byCountry.get(shape.country ?? shape.name)!;
         const callout = callouts ? CALLOUT[entry.country] : undefined;
         const edge = callout?.edge ?? 0;
         // An elbow: out from the country to the column, then level into the card.

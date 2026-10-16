@@ -7,7 +7,6 @@ import { CoverageMap, type CoverageCountry } from "@/components/home/CoverageMap
 import { AVAILABLE_COUNTRIES } from "@/lib/tender-list-page";
 import { liveTenderCountForCountry } from "@/lib/tender-links";
 import { countryPages } from "@/lib/country-pages";
-import { LATAM_MAP_SHAPES } from "@/lib/latam-map";
 import { getCountryInsight } from "@/lib/country-insights";
 import { countryLabel } from "@/lib/tender-labels";
 import { ParticipationGuidesPreview } from "@/components/home/ParticipationGuidesPreview";
@@ -63,11 +62,10 @@ export default async function Home() {
   // The coverage map's numbers: the country pages' own live count, on this
   // page's five-minute revalidation (which every import also triggers).
   const now = new Date();
-  // Only the countries the map draws lit (lib/latam-map.ts): Uruguay opened
-  // 2026-10-14, but the painted map is redone with the next country to open
-  // (user: 地图先不刷新 … 等到再加一个国家再刷首页地图), so until then it keeps
-  // its ten.
-  const coverage: CoverageCountry[] = AVAILABLE_COUNTRIES.filter((country) => LATAM_MAP_SHAPES.some((shape) => shape.country === country)).map((country) => {
+  // Every open country (user, 2026-10-16: 地图可以晚点刷新，但是内容要刷新): the
+  // count, the total and the cards include Uruguay, opened 2026-10-14, while
+  // the painted map, which does not light it yet, waits for its redraw.
+  const coverage: CoverageCountry[] = AVAILABLE_COUNTRIES.map((country) => {
     const page = countryPages.find((entry) => entry.country === country);
     const insight = page ? getCountryInsight(page.slug) : undefined;
     return {

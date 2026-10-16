@@ -30,7 +30,8 @@ const ONLY = countryIndex >= 0 ? process.argv[countryIndex + 1] : undefined;
 const TIER_ZH: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规" };
 const ZH: Record<string, string> = {
   Mexico: "墨西哥", Brazil: "巴西", Peru: "秘鲁", Colombia: "哥伦比亚", Chile: "智利", Argentina: "阿根廷",
-  "Dominican Republic": "多米尼加", Ecuador: "厄瓜多尔", Panama: "巴拿马", Bolivia: "玻利维亚",
+  "Dominican Republic": "多米尼加", Ecuador: "厄瓜多尔", Panama: "巴拿马", Bolivia: "玻利维亚", Uruguay: "乌拉圭",
+  Guyana: "圭亚那",
 };
 
 type Row = {
@@ -101,7 +102,9 @@ async function main() {
   const now = new Date();
   const today = platformDay(now);
   const live = rows.filter((row) => {
-    if (isStagedCountry(row.country)) return false;
+    // A staged country is left out unless asked for by name (--country Guyana);
+    // none of its rows is public, analysed or not.
+    if (isStagedCountry(row.country) && row.country !== ONLY) return false;
     const status = deriveTenderStatus(row.status, { submissionDeadline: row.submission_deadline, publicationDate: row.publication_date, sourceName: row.source_name }, now);
     if (!LIVE_TENDER_STATUSES.includes(status)) return false;
     if (!row.submission_deadline || !today) return true;
@@ -114,7 +117,7 @@ async function main() {
   console.log("国家          库内在招   网站显示(已分析)   未分析(网站不显示)   显示比例");
   for (const [country] of byCountry) {
     const all = live.filter((row) => row.country === country);
-    const shown = all.filter((row) => analysed.has(row.id)).length;
+    const shown = isStagedCountry(country) ? 0 : all.filter((row) => analysed.has(row.id)).length;
     console.log(`  ${(ZH[country] ?? country).padEnd(8)}  ${String(all.length).padStart(6)}   ${String(shown).padStart(10)}         ${String(all.length - shown).padStart(10)}          ${Math.round((shown / all.length) * 100)}%`);
   }
   console.log("");
@@ -122,9 +125,10 @@ async function main() {
   for (const [country] of byCountry) {
     if (ONLY && country !== ONLY) continue;
     const all = live.filter((row) => row.country === country);
-    const shown = all.filter((row) => analysed.has(row.id));
-    const hidden = all.filter((row) => !analysed.has(row.id));
-    console.log(`==== ${ZH[country] ?? country}：网站显示 ${shown.length} 条 / 库内在招 ${all.length} 条 ====`);
+    const staged = isStagedCountry(country);
+    const shown = all.filter((row) => !staged && analysed.has(row.id));
+    const hidden = all.filter((row) => staged || !analysed.has(row.id));
+    console.log(`==== ${ZH[country] ?? country}${staged ? "（未公开）" : ""}：网站显示 ${shown.length} 条 / 库内在招 ${all.length} 条 ====`);
     printTally("网站显示的：按来源", tally(shown, (row) => row.source_name ?? "(无)"));
     printTally("网站显示的：按规模", tally(shown, (row) => TIER_ZH[row.relevance_tier ?? "standard"] ?? row.relevance_tier ?? "常规"));
     printTally("网站显示的：按采购方式", tally(shown, (row) => (row.procedure_type ?? "(无)").slice(0, 50)));
@@ -134,7 +138,10 @@ async function main() {
       return usd < 2e6 ? "< 200万美元" : usd < 5e6 ? "200–500万" : usd < 10e6 ? "500–1000万" : "≥ 1000万";
     }));
     printTally("未分析（网站不显示）：按来源", tally(hidden, (row) => row.source_name ?? "(无)"));
-    if (ONLY) {
+    if (ONLY && staged) {
+      console.log("    未公开国家，库内在招的全部：");
+      for (const row of hidden.slice(0, 40)) console.log(`      ${(TIER_ZH[row.relevance_tier ?? "standard"] ?? "").padEnd(3)} ${(row.submission_deadline ?? "").slice(0, 10)} ${(row.title?.zh || row.title?.es || "").replace(/\s+/g, " ").slice(0, 50)}`);
+    } else if (ONLY) {
       console.log("    网站显示的前 40 条：");
       for (const row of shown.slice(0, 40)) console.log(`      ${(TIER_ZH[row.relevance_tier ?? "standard"] ?? "").padEnd(3)} ${(row.source_name ?? "").slice(0, 22).padEnd(22)} ${(row.title?.zh || row.title?.es || "").replace(/\s+/g, " ").slice(0, 50)}`);
     }

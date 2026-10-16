@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { truncatePdfToPages } from "@/lib/ingestion/pdf-pages";
+import { selectRelevantPages } from "@/lib/ingestion/page-selection";
 import { getPdfPageCount } from "@/lib/ingestion/pdf-split";
 import { isTextLayerSubstantial } from "@/lib/ingestion/text-layer";
 import { classifyExtractionFailure, isRetriableExtractionFailure } from "@/lib/ingestion/extraction-failure";
@@ -1123,6 +1124,13 @@ export async function extractTenderRequirements(
   preferExtractedText?: boolean,
   /** Called with anything the operator should see that is not a failure — currently a partially-read chunked document. */
   onWarning?: (message: string) => void,
+  /**
+   * "relevant": on the extracted-text path only, send the maxPages pages that
+   * score highest for what the analysis extracts instead of the first ones —
+   * same page count, never more text (lib/ingestion/page-selection.ts). An
+   * opt-in on 本地批量分析 (user, 2026-10-16: 后台增加这种方案，我试用看看效果).
+   */
+  pageSelection: "first" | "relevant" = "first",
 ): Promise<TenderExtraction> {
   // Word documents — .docx and legacy .doc alike (2026-09-03, per the
   // user's report that many real tender documents arrive as Word files,
@@ -1153,6 +1161,25 @@ export async function extractTenderRequirements(
   // Same branch as Word, for the same reason and one more: a provider that
   // buffers a multi-megabyte native PDF for 12 minutes and then rejects it
   // on size is not one to send a PDF to at all. See preferExtractedText.
+  if (preferExtractedText && pageSelection === "relevant" && maxPages !== undefined) {
+    const pageTexts = (await extractDocumentText(filePath)).split("\f");
+    // pdftotext ends every page with a form feed, so the last entry is empty.
+    if (pageTexts.length > 1 && !pageTexts[pageTexts.length - 1].trim()) pageTexts.pop();
+    const selection = selectRelevantPages(pageTexts, maxPages);
+    if (selection.note) {
+      console.log(`  ${selection.note}`);
+      onWarning?.(selection.note);
+    }
+    return runTextExtractionWithOverflowRetry(
+      client,
+      model,
+      instruction.replace("attached document", "document text below"),
+      selection.pages.map((page) => pageTexts[page]).join("\f"),
+      context,
+      useStructuredOutput,
+      maxPages,
+    );
+  }
   if (preferExtractedText) {
     const capped = maxPages === undefined ? null : truncatePdfToPages(filePath, maxPages);
     try {

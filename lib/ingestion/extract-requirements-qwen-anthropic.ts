@@ -52,6 +52,9 @@ export async function extractTenderRequirementsQwenAnthropic(
   model: Extract<ExtractionModel, "qwen3.7-plus"> = "qwen3.7-plus",
   /** Per-tier page cap — see maxPagesForTier() in extraction-routing.ts. */
   maxPages?: number,
+  /** "relevant": 按内容选页 — see extract-requirements.ts's pageSelection. */
+  pageSelection: "first" | "relevant" = "first",
+  onWarning?: (message: string) => void,
 ): Promise<TenderExtraction> {
   const client = new Anthropic({
     apiKey: process.env.DASHSCOPE_API_KEY,
@@ -59,5 +62,5 @@ export async function extractTenderRequirementsQwenAnthropic(
   });
   // preferExtractedText: true — see that parameter's comment in
   // extract-requirements.ts for the three days of real failures behind it.
-  return extractTenderRequirements(filePath, context, model, client, false, maxPages, true);
+  return extractTenderRequirements(filePath, context, model, client, false, maxPages, true, onWarning, pageSelection);
 }

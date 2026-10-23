@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { ingestGuyana, type GuyanaRow } from "@/lib/ingestion/ingest-guyana";
 import type { GuyanaImportResponse, GuyanaImportRow } from "@/lib/ingestion/guyana-import-result";
 import { logAdminAlert } from "@/lib/admin-alerts";
+import { revalidateTenders } from "@/lib/cache-tags";
 
 /**
  * The 圭亚那 tab's import button (user, 2026-09-27: 增加手动导入按钮), over the
@@ -11,8 +12,8 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  * diverge. The web host has no pdftotext; the notices are read with pdf.js
  * there (guyana-eprocure-live.ts). ~35 notices took ~6 s on 2026-09-27.
  *
- * Nothing here is public: Guyana is staged (lib/staged-countries.ts), so a
- * write lands in the admin pages only and no public cache needs dropping.
+ * Guyana opened 2026-10-23, so a write drops the public list's cache like
+ * every other country's import.
  */
 export const maxDuration = 300;
 
@@ -55,6 +56,8 @@ export async function POST(request: Request) {
       staleWarning: result.staleWarning,
       ...(write ? { upsertedCount: result.upsertedCount ?? 0, failed: result.failed ?? [] } : {}),
     };
+    // The public list is cached; drop it so this import shows up now.
+    if (write) revalidateTenders();
     return NextResponse.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

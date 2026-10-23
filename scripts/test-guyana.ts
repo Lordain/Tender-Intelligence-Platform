@@ -118,7 +118,7 @@ async function main() {
   check("no notice readable → warning", empty.staleWarning?.includes("一份招标公告都没读出文字"), true);
 
   // --- Staging and language ------------------------------------------------------
-  check("Guyana is staged", isStagedCountry("Guyana"), true);
+  check("Guyana is open (2026-10-23)", isStagedCountry("Guyana"), false);
   check("open countries are not", ["Mexico", "Brazil", "Colombia", "Peru", "Chile"].map(isStagedCountry), [false, false, false, false, false]);
   check("null country is not staged", isStagedCountry(null), false);
   check("Guyana is English", sourceLanguageFor("Guyana"), "en");

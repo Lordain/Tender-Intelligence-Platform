@@ -5,7 +5,7 @@ import { getViewerEntitlement } from "@/lib/access-control-server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-client";
 import { getCurrentUser } from "@/lib/supabase/server-client";
 
-const country = z.enum(["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Argentina", "Dominican Republic", "Panama", "Ecuador", "Bolivia", "Uruguay"]);
+const country = z.enum(["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Argentina", "Dominican Republic", "Panama", "Ecuador", "Bolivia", "Uruguay", "Guyana"]);
 const schema = z.object({ countries: z.array(country).min(1).max(BASIC_PLAN_COUNTRY_LIMIT) });
 
 /**

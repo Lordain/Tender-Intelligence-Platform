@@ -7,22 +7,15 @@ import { GUYANA_EPROCURE_LIST_URL } from "@/lib/ingestion/connectors/guyana-epro
 const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "中型", standard: "常规", excluded: "排除" };
 
 /**
- * Guyana is staged (lib/staged-countries.ts): imported daily, invisible to
- * visitors. This tab is where the user reviews what came in before deciding
- * to open it (2026-09-27). The import button runs the daily job's code on
- * the web host, which reads the notices with pdf.js (no pdftotext there).
+ * Guyana's tab: the manual import and what came in. Staged 2026-09-27 and
+ * opened to visitors 2026-10-23 (user: 前台+后台+首页，开发圭亚那). The import
+ * button runs the daily job's code on the web host, which reads the notices
+ * with pdf.js (no pdftotext there).
  */
 export default async function AdminImportTendersGuyanaPage() {
   const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Guyana");
   return (
     <div className="flex flex-col gap-3">
-      <section className="rounded-2xl border border-[#eed18c] bg-[#fff8e7] px-5 py-4 text-sm leading-6 text-[#6d4c0d]">
-        <p className="font-black">圭亚那尚未对外公开</p>
-        <p className="mt-1 text-xs leading-5">
-          项目每天自动导入，只在后台可见：前台列表、详情页、首页、网站地图、搜索引擎推送和摘要邮件都不会出现。审核满意后，把圭亚那从
-          <code className="mx-1">lib/staged-countries.ts</code>移到公开国家名单即可上线。
-        </p>
-      </section>
       <ImportSourceSection
         name="eprocure.gov.gy — 圭亚那政府集中采购"
         hint="国家采购与招标管理委员会（NPTAB）；只保留国际招标和大额项目"

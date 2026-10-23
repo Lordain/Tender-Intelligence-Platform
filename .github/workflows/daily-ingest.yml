@@ -281,9 +281,9 @@ jobs:
           # Added 2026-09-27. Guyana's eprocure.gov.gy: every open opportunity,
           # each notice PDF read for ICB/NCB and the lender, only large works and
           # purchases written (user: 小项目不要，只要大型工程项目或者采购项目).
-          # Guyana is staged — admin pages only, see lib/staged-countries.ts.
+          # Staged until 2026-10-23, then opened to visitors (前台+后台+首页，开发圭亚那).
           # Reading the notices needs poppler's pdftotext, hence `poppler`.
-          - name: Guyana (eprocure, staged)
+          - name: Guyana (eprocure)
             command: cron:guyana
             poppler: true
           # Added 2026-10-16. Suriname's gov.sr 「Aanbestedingen」: one request
@@ -332,8 +332,8 @@ jobs:
           # 比对后 OK). The World Bank's procurement notices for every platform
           # country; a call the country's own system already gave the platform
           # (same World Bank reference, or same deadline and title) is not
-          # written, a doubtful match waits in the admin 世界银行 tab. Guyana
-          # stays staged (Bolivia opened 2026-10-10). See scripts/cron-worldbank.ts.
+          # written, a doubtful match waits in the admin 世界银行 tab. Bolivia
+          # opened 2026-10-10, Guyana 2026-10-23. See scripts/cron-worldbank.ts.
           - name: World Bank (procurement notices)
             command: cron:worldbank
           # Added 2026-10-04. National energy auctions kept by hand (Chile CNE,

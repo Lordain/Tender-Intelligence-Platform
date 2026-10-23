@@ -73,7 +73,7 @@ export const prepareGroups: ChecklistGroup[] = [
 /** Where first bids most often go wrong, one line each. */
 export const cautionItems: Array<{ title: string; icon: BeginnerIconName; detail: string }> = [
   { title: "时间比想象的紧", icon: "clock", detail: "公告到截标常只有 2–6 周，认证和翻译就要 2–4 周。" },
-  { title: "以原文为准", icon: "language", detail: "文件是西班牙语（巴西是葡萄牙语），翻译只作参考，递交按原文要求。" },
+  { title: "以原文为准", icon: "language", detail: "文件是西班牙语（巴西是葡萄牙语，圭亚那是英语），翻译只作参考，递交按原文要求。" },
   { title: "补遗必须逐份看", icon: "amendments", detail: "截标前常有多次修改和澄清答复，漏看一份可能整份标作废。" },
   { title: "格式错误直接废标", icon: "reject", detail: "漏签字、漏页、保函不符、超时一分钟，都会被直接淘汰。" },
   { title: "算清税费和汇率", icon: "tax", detail: "增值税、预扣税、关税、汇率波动和付款周期都要算进报价。" },

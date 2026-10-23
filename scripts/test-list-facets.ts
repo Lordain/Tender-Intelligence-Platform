@@ -103,13 +103,14 @@ check(
 );
 
 // The allowlist is still the outer gate: a country with no connector cannot
-// appear just because a row names it. Guyana is in ALL_COUNTRIES (the admin
+// appear just because a row names it. Suriname is in ALL_COUNTRIES (the admin
 // form's <select>) but not in AVAILABLE_COUNTRIES (it is staged). This used
-// Chile until Chile opened (2026-09-25).
+// Chile until Chile opened (2026-09-25), and Guyana until Guyana opened
+// (2026-10-23).
 check(
   "a country outside AVAILABLE_COUNTRIES never appears, visible rows or not",
-  !page([tender("gy-1", "Guyana", "flagship")]).availableCountries.includes(
-    "Guyana" as (typeof AVAILABLE_COUNTRIES)[number],
+  !page([tender("sr-1", "Suriname", "flagship")]).availableCountries.includes(
+    "Suriname" as (typeof AVAILABLE_COUNTRIES)[number],
   ),
 );
 

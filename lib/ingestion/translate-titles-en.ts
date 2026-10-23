@@ -11,9 +11,10 @@ import type { TranslatedTender } from "@/lib/ingestion/translate-titles";
  * handing English to a field named "titleEs" tells the model the wrong
  * language. Same provider, model and wire shape as the other two paths.
  *
- * Guyana is staged (lib/staged-countries.ts), so what this writes is read in
- * the admin pages first. Run `npm run translate:tenders -- --sample 5` on the
- * first Guyanese rows and read them before trusting the prompt.
+ * Guyana was staged until 2026-10-23, so its first rows were read in the
+ * admin pages before it opened; Suriname is still staged. Run
+ * `npm run translate:tenders -- --sample 5` on a new English source's first
+ * rows and read them before trusting the prompt.
  */
 
 const TranslatedItemSchema = z.object({

@@ -25,7 +25,7 @@ export function ImportGuyanaForm() {
   const [result, setResult] = useState<GuyanaImportResponse | null>(null);
 
   async function run() {
-    if (write && !confirm("确定要从 eprocure.gov.gy 拉取圭亚那在招项目，并把保留的大型项目写入 Supabase 吗？（只在后台可见）")) return;
+    if (write && !confirm("确定要从 eprocure.gov.gy 拉取圭亚那在招项目，并把保留的大型项目写入 Supabase 吗？")) return;
     setSubmitting(true);
     setError(null);
     setResult(null);

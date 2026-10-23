@@ -67,8 +67,8 @@ const rows: Tender[] = [
   // Words that appear only in the source summary or only in the 一句话总结 (2026-10-02).
   tender("mx-4", "Mexico", { summaryEs: "Suministro de aerogeneradores Vestas", oneLine: "风电机组整机采购含十年运维" }),
   tender("pe-2", "Peru", { summaryEs: "Adquisición de tomógrafos Siemens", oneLine: "医院CT设备采购含安装培训" }),
-  // Not an AVAILABLE_COUNTRIES country (Guyana is staged): never on /tenders, so never in a reminder.
-  tender("gy-1", "Guyana"),
+  // Not an AVAILABLE_COUNTRIES country (Suriname is staged; this was Guyana until it opened, 2026-10-23): never on /tenders, so never in a reminder.
+  tender("sr-1", "Suriname"),
   // Argentina opened 2026-09-29: on /tenders, so in reminders.
   tender("ar-1", "Argentina"),
   tender("mx-old", "Mexico", { createdAt: "2026-09-01T00:00:00.000Z" }),
@@ -100,7 +100,7 @@ function alertIds(viewer: ViewerEntitlement, href: string, lastCheckedAt?: strin
 // ── Country ──────────────────────────────────────────────────────────────
 check("country=Peru reminds about Peru only (before: every country)", JSON.stringify(alertIds(viewers.专业版!, "/tenders?country=Peru")) === JSON.stringify(["pe-1", "pe-2"]));
 check("country=Mexico,Chile is honoured", alertIds(viewers.专业版!, "/tenders?country=Mexico,Chile&status=none").every((id) => id.startsWith("mx") || id.startsWith("cl")));
-check("no country param = the open countries only, never Guyana", !alertIds(viewers.专业版!, "/tenders?status=none").includes("gy-1"));
+check("no country param = the open countries only, never Suriname", !alertIds(viewers.专业版!, "/tenders?status=none").includes("sr-1"));
 check("no country param includes Argentina since it opened", alertIds(viewers.专业版!, "/tenders?status=none").includes("ar-1"));
 check("Basic (Mexico) saving country=Brazil still gets Brazil reminders, as the list shows them", JSON.stringify(alertIds(viewers.基础版墨西哥!, "/tenders?country=Brazil")) === JSON.stringify(["br-1", "br-2"]));
 

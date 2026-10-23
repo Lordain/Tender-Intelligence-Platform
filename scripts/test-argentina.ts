@@ -296,7 +296,7 @@ async function main() {
   }
 
   // --- Staging and language ------------------------------------------------------
-  check("Argentina is open (2026-09-29), Guyana still staged", [isStagedCountry("Argentina"), isStagedCountry("Guyana")], [false, true]);
+  check("Argentina is open (2026-09-29), Suriname still staged", [isStagedCountry("Argentina"), isStagedCountry("Suriname")], [false, true]);
   check("open countries are not staged", ["Mexico", "Brazil", "Colombia", "Peru", "Chile"].map(isStagedCountry), [false, false, false, false, false]);
   check("Argentina is Spanish", sourceLanguageFor("Argentina"), "es");
 

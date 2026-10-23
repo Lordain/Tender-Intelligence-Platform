@@ -5,8 +5,8 @@
  * the large ones — lib/relevance-guyana.ts. Small ones are never written: the
  * user does not want them (2026-09-27: 小项目不要).
  *
- * Guyana is a STAGED country (lib/staged-countries.ts): what this writes is
- * visible in the admin pages and nowhere public until the user opens it.
+ * Staged from 2026-09-27; opened to visitors 2026-10-23 (user:
+ * 前台+后台+首页，开发圭亚那).
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchGuyanaOpportunities, fetchNoticeText, type GuyanaOpportunity } from "@/lib/ingestion/connectors/guyana-eprocure-live";

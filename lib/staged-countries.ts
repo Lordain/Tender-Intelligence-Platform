@@ -25,7 +25,8 @@
 // opened 2026-10-14 (user: 前台+后台开放乌拉圭).
 // Suriname joined 2026-10-16 (user: 苏里南做，先只在后台可见 → A), and
 // Guatemala the same day (user: A — Guatecompras 两步粘贴导入).
-export const STAGED_COUNTRIES: readonly string[] = ["Guyana", "Suriname", "Guatemala"];
+// Guyana, staged first (2026-09-27), opened 2026-10-23 (user: 前台+后台+首页，开发圭亚那).
+export const STAGED_COUNTRIES: readonly string[] = ["Suriname", "Guatemala"];
 
 export function isStagedCountry(country: string | null | undefined): boolean {
   return country != null && STAGED_COUNTRIES.includes(country);

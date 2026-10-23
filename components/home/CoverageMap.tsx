@@ -72,7 +72,11 @@ const CALLOUT: Record<string, { side: "left" | "right"; y: number; edge: number 
   Peru: { side: "left", y: 478, edge: -60 },
   Chile: { side: "left", y: 650, edge: 190 },
   "Dominican Republic": { side: "right", y: 62, edge: 480 },
-  Colombia: { side: "right", y: 226, edge: 660 },
+  // Guyana (2026-10-23), pinned like Uruguay until the map is redrawn: its
+  // card between the Dominican Republic's and Colombia's, over the Atlantic.
+  Guyana: { side: "right", y: 144, edge: 560 },
+  // Colombia's card moved down (226 → 268) so its line passes under Guyana's pin, not through it.
+  Colombia: { side: "right", y: 268, edge: 660 },
   Brazil: { side: "right", y: 372, edge: 670 },
   // Bolivia and Argentina moved down the column to make room for Uruguay
   // (2026-10-16), whose card sits off the Río de la Plata.
@@ -137,7 +141,7 @@ function CountryCard({ entry, facing, className = "" }: { entry: CoverageCountry
 export function CoverageMap({ countries }: { countries: CoverageCountry[] }) {
   const byCountry = new Map(countries.map((entry) => [entry.country, entry]));
   const lit = LATAM_MAP_SHAPES.filter((shape) => shape.country && byCountry.has(shape.country));
-  // A covered country the painted map does not light yet (Uruguay, until the
+  // A covered country the painted map does not light yet (Uruguay and Guyana, until the
   // map is redrawn — user, 2026-10-16: 地图可以晚点刷新): pinned and linked to its
   // card by its outline's name, not lit.
   const pinned = LATAM_MAP_SHAPES.filter((shape) => byCountry.has(shape.country ?? shape.name));

@@ -23,11 +23,11 @@ import type { Locale } from "@/types/tender";
 // 哥伦比亚、秘鲁), with Chile last because it has no connector — this array
 // also feeds the admin tender form's country <select>, and an option nobody
 // can import belongs at the bottom rather than third.
-// Guyana (2026-09-27) is imported but staged — see lib/staged-countries.ts;
-// it is here so the admin form and labels know it, not because it is public.
+// Guyana (2026-09-27) was imported staged — see lib/staged-countries.ts — and
+// opened 2026-10-23.
 // Argentina (2026-09-27) was staged the same way and opened 2026-09-29.
 // Uruguay (2026-10-13) was staged the same way and opened 2026-10-14.
-// Suriname and Guatemala (2026-10-16) are imported but staged, as Guyana is.
+// Suriname and Guatemala (2026-10-16) are imported but staged, as Guyana was.
 export const ALL_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Guyana", "Argentina", "Dominican Republic", "Ecuador", "Panama", "Bolivia", "Uruguay", "Suriname", "Guatemala"] as const;
 
 export const COUNTRY_LABELS: Record<(typeof ALL_COUNTRIES)[number], LocalizedText> = {

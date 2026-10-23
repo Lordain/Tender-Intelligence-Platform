@@ -1,8 +1,8 @@
 /**
  * The daily read of Guyana's eprocure.gov.gy, as a plain script so the GitHub
  * Actions schedule can run it. Invoked by .github/workflows/daily-ingest.yml.
- * Added 2026-09-27. Guyana is STAGED (lib/staged-countries.ts): what this
- * writes shows in the admin pages only.
+ * Added 2026-09-27, staged, and opened to visitors 2026-10-23 (user:
+ * 前台+后台+首页，开发圭亚那).
  *
  * Reads each notice with poppler's `pdftotext` (the daily job installs it),
  * or with pdf.js where it is not installed — see guyana-eprocure-live.ts.

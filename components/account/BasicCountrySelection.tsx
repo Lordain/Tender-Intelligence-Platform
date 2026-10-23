@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BASIC_PLAN_COUNTRY_LIMIT } from "@/lib/access-control";
 
-const countries = [{ value: "Mexico", label: "墨西哥" }, { value: "Brazil", label: "巴西" }, { value: "Colombia", label: "哥伦比亚" }, { value: "Peru", label: "秘鲁" }, { value: "Chile", label: "智利" }, { value: "Argentina", label: "阿根廷" }, { value: "Dominican Republic", label: "多米尼加" }, { value: "Panama", label: "巴拿马" }, { value: "Ecuador", label: "厄瓜多尔" }, { value: "Bolivia", label: "玻利维亚" }, { value: "Uruguay", label: "乌拉圭" }];
+const countries = [{ value: "Mexico", label: "墨西哥" }, { value: "Brazil", label: "巴西" }, { value: "Colombia", label: "哥伦比亚" }, { value: "Peru", label: "秘鲁" }, { value: "Chile", label: "智利" }, { value: "Argentina", label: "阿根廷" }, { value: "Dominican Republic", label: "多米尼加" }, { value: "Panama", label: "巴拿马" }, { value: "Ecuador", label: "厄瓜多尔" }, { value: "Bolivia", label: "玻利维亚" }, { value: "Uruguay", label: "乌拉圭" }, { value: "Guyana", label: "圭亚那" }];
 
 const labelOf = (value: string) => countries.find((item) => item.value === value)?.label ?? value;
 

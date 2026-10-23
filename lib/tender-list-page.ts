@@ -98,8 +98,9 @@ export const UPCOMING_DEADLINE_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
 // 2026-09-29 (前台+后台开放阿根廷), the Dominican Republic 2026-10-04
 // (公开多米尼加(前台+后台+网站内的文字描述)), Panama and Ecuador last,
 // 2026-10-06 (直接把这两个国家的前后台可视都做了吧), Bolivia 2026-10-10
-// (前台+后台+全站文字都开通Bolivia), Uruguay last, 2026-10-14 (前台+后台开放乌拉圭).
-export const AVAILABLE_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Argentina", "Dominican Republic", "Panama", "Ecuador", "Bolivia", "Uruguay"] as const;
+// (前台+后台+全站文字都开通Bolivia), Uruguay 2026-10-14 (前台+后台开放乌拉圭),
+// Guyana last, 2026-10-23 (前台+后台+首页，开发圭亚那).
+export const AVAILABLE_COUNTRIES = ["Mexico", "Brazil", "Colombia", "Peru", "Chile", "Argentina", "Dominican Republic", "Panama", "Ecuador", "Bolivia", "Uruguay", "Guyana"] as const;
 
 export type TenderListSearchParams = Record<string, string | string[] | undefined>;
 

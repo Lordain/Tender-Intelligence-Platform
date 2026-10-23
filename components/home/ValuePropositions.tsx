@@ -8,9 +8,10 @@
  * 30多个平台，因为我们还在加，就避免再改了 — 29 on that day).
  *
  * Every claim here is something the platform does today. The dots are the
- * official sources the importers read — 26 named here, 27 counting ANEEL's two
- * auction feeds separately, on 2026-10-14 (PanamaCompra and SOCE added when
- * Panama and Ecuador opened, SICOES when Bolivia did, ARCE when Uruguay did). The "30 多个" copy is
+ * official sources the importers read — 27 named here, 28 counting ANEEL's two
+ * auction feeds separately, on 2026-10-23 (PanamaCompra and SOCE added when
+ * Panama and Ecuador opened, SICOES when Bolivia did, ARCE when Uruguay did,
+ * NPTAB — Guyana's eprocure.gov.gy — when Guyana did). The "30 多个" copy is
  * deliberately ahead of this list; the dots are the sources, not a count.
  *
  * The motion is decoration on a picture that already says everything when
@@ -39,19 +40,23 @@ type Dot = { name: string; x: number; y: number };
  * sits between two short ones (Metro SCL and PanamaCompra touched at 12 a row);
  * 15 over 12 since ARCE (2026-10-14), a short name in the row of short names,
  * set between SECOP II and ChileCompra, which touched at 15 a row — 14 over 13
- * would line the rows up again, as 12 over 11 did.
+ * would line the rows up again, as 12 over 11 did; 15 over 13 since NPTAB
+ * (2026-10-23), a short name set after PanamaCompra so it still sits between
+ * two short ones.
  */
 const DESKTOP_ROWS = [
   ["ComprasMX", "PNCP", "SECOP II", "ARCE", "ChileCompra", "SEACE", "COMPR.AR", "PEMEX", "DGCP", "Petrobras", "UPME", "SOCE", "Codelco", "CFE", "DOU"],
-  ["Petroperú", "ANEEL", "CONTRAT.AR", "ADIF", "ProInversión", "SHCP", "Metro SCL", "BORA", "PanamaCompra", "Cemig", "SICOES", "ANTAQ"],
+  ["Petroperú", "ANEEL", "CONTRAT.AR", "ADIF", "ProInversión", "SHCP", "Metro SCL", "BORA", "PanamaCompra", "NPTAB", "Cemig", "SICOES", "ANTAQ"],
 ];
 // Five a row since SOCE and PanamaCompra (2026-10-06): each long name sits
 // between two short ones, since a 360px row of five leaves ~62px a dot.
 // SICOES (2026-10-10) makes the row of the shortest names six; ARCE
-// (2026-10-14) a second six, every long name in it between two short ones.
+// (2026-10-14) a second six, every long name in it between two short ones;
+// NPTAB (2026-10-23) a third, at the end of the row whose one long name is
+// PanamaCompra.
 const MOBILE_ROWS = [
   ["ComprasMX", "SOCE", "ChileCompra", "PNCP", "SECOP II"],
-  ["PEMEX", "DOU", "PanamaCompra", "CFE", "SEACE"],
+  ["PEMEX", "DOU", "PanamaCompra", "CFE", "SEACE", "NPTAB"],
   ["Petrobras", "Codelco", "ARCE", "COMPR.AR", "BORA", "DGCP"],
   ["ANEEL", "ADIF", "SICOES", "Cemig", "ANTAQ", "Petroperú"],
   ["Metro SCL", "UPME", "CONTRAT.AR", "SHCP", "ProInversión"],
@@ -252,7 +257,7 @@ export function ValuePropositions() {
         {/* Stage 1 — scattered official portals converging into one entry. */}
         <Reveal className="mt-10 text-center">
           <p className="text-sm font-black text-[#071826]">拉美各国 30 多个官方采购平台</p>
-          <p className="mt-1 text-xs text-[#75838c]">西语、葡语 · 格式各异</p>
+          <p className="mt-1 text-xs text-[#75838c]">西语、葡语、英语 · 格式各异</p>
           {/* Highlighted on request (user, 2026-10-04); wording changed from 数千条 to 上万条 on request.
               The buyer count is distinct publishing entities over the last year or month: SECOP II
               10,611, PNCP 7,188 in September 2026 alone, ChileCompra ~850, plus estimates for

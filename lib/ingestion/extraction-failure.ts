@@ -167,6 +167,25 @@ export function isRetriableExtractionFailure(err: unknown): boolean {
   return isTransientServerError(err) || isMalformedModelOutput(err);
 }
 
+/**
+ * A timeout that fired long before the call's own budget did — which means it
+ * was not the budget. The SDK reports every network-level timeout as the same
+ * "Request timed out.": its own page-scaled budget (20+ minutes, see
+ * requestOptions() in extract-requirements.ts), but also Node failing to open
+ * the connection at all (UND_ERR_CONNECT_TIMEOUT, 10s by default). Reproduced
+ * 2026-10-29 with the SDK in this repo: a connect timeout comes back as
+ * APIConnectionTimeoutError "Request timed out.", word for word what a Chile
+ * document showed in 本地批量分析 twice, while the same document analysed in
+ * 68s on another run. A connection that never opened was never billed and
+ * costs nothing to retry — the opposite of the case NEVER_TRANSIENT is about.
+ */
+export const EARLY_TIMEOUT_MS = 2 * 60 * 1000;
+
+export function isEarlyTimeout(err: unknown, elapsedMs: number): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /timed?\s*out|timeout/i.test(message) && elapsedMs < EARLY_TIMEOUT_MS;
+}
+
 export function isTransientServerError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
   if (NEVER_TRANSIENT.test(message)) return false;

@@ -33,7 +33,7 @@ import {
 } from "../lib/ingestion/extract-requirements";
 import { BATCH_BUDGET_MS, batchBudgetExhausted, classifyExtractionFailure, shouldAbortBatch } from "../lib/ingestion/extraction-failure";
 import { isTextLayerSubstantial } from "../lib/ingestion/text-layer";
-import { isRetriableExtractionFailure, isTransientServerError } from "../lib/ingestion/extraction-failure";
+import { isEarlyTimeout, isRetriableExtractionFailure, isTransientServerError } from "../lib/ingestion/extraction-failure";
 import { escapeStrayQuotes, normalizeRawExtraction } from "../lib/ingestion/extract-requirements";
 import { chooseExtractionModel, maxPagesForTier } from "../lib/ingestion/extraction-routing";
 import { createServer } from "node:http";
@@ -597,6 +597,32 @@ async function main() {
   });
 
   // ---- A model's wording must not cost the batch ----
+  // ---- A connection that never opened is not the budget running out ----
+  // 2026-10-29: a Chile document failed twice with the SDK's bare "Request
+  // timed out." and analysed in 68s on another run. The SDK says that for a
+  // 10s connect timeout too, which was never retried.
+  await group("连不上模型服务的超时要重试一次", async () => {
+    const big = join(TMP, "big.pdf");
+    check("a timeout seconds in is early", isEarlyTimeout(new Error("Request timed out."), 10_000));
+    check("a timeout after the 20-minute budget is not", !isEarlyTimeout(new Error("Request timed out."), 20 * 60 * 1000));
+    check("only a timeout counts", !isEarlyTimeout(new Error("Connection error."), 1_000));
+
+    const once = stubClient([new Error("Request timed out."), FULL_RESPONSE]);
+    const result = await extractTenderRequirements(big, CONTEXT, "qwen3.7-plus", once.client, false, 20, true);
+    check("an early timeout is retried once and the document comes through", once.calls.length === 2 && result.qualifications.length === 1);
+
+    const twice = stubClient([new Error("Request timed out."), new Error("Request timed out."), FULL_RESPONSE]);
+    let message = "";
+    try {
+      await extractTenderRequirements(big, CONTEXT, "qwen3.7-plus", twice.client, false, 20, true);
+    } catch (err) {
+      message = err instanceof Error ? err.message : String(err);
+    }
+    check("only once — a second early timeout is not retried again", twice.calls.length === 2);
+    check("and the failure says the service could not be reached", message.startsWith("Request timed out.（") && message.includes("没连上模型服务") && message.includes("已自动重试 1 次"), message);
+    check("the original wording stays first, so the classifiers still read it", !isTransientServerError(new Error(message)) && classifyExtractionFailure(new Error(message)).kind === "document");
+  });
+
   await group("风险等级用别的写法不该中止整批", async () => {
     for (const [written, expected] of [["alto", "high"], ["MUY ALTO", "critical"], ["中等", "medium"], ["高", "high"], ["Bajo", "low"]] as const) {
       const normalized = normalizeRawExtraction({ risks: [{ level: written }] }) as { risks: { level: string }[] };

@@ -32,11 +32,20 @@
  * UND_ERR_HEADERS_TIMEOUT), and raising it lets the slow response through.
  */
 
-type UndiciAgentOptions = { headersTimeout: number; bodyTimeout: number };
+type UndiciAgentOptions = { headersTimeout: number; bodyTimeout: number; connect: { timeout: number } };
+
+/**
+ * How long opening the connection may take. undici's default is 10s, and a
+ * connection to DashScope's international endpoint that has not opened in
+ * 10s ends the call as "Request timed out." (see isEarlyTimeout() in
+ * extraction-failure.ts). 30s gives a slow route its handshake; a connection
+ * that still does not open is retried once by extract-requirements.ts.
+ */
+const CONNECT_TIMEOUT_MS = 30_000;
 type Dispatcher = object;
 
 const GLOBAL_DISPATCHER = Symbol.for("undici.globalDispatcher.1");
-const cache = new Map<number, Dispatcher | null>();
+const cache = new Map<number, Dispatcher>();
 
 /**
  * A dispatcher whose header/body timeouts match `timeoutMs`, so Node never
@@ -45,10 +54,13 @@ const cache = new Map<number, Dispatcher | null>();
  */
 export function dispatcherForTimeout(timeoutMs: number): Dispatcher | undefined {
   const cached = cache.get(timeoutMs);
-  if (cached !== undefined) return cached ?? undefined;
+  if (cached) return cached;
 
+  // Only a dispatcher is cached, never a failure to build one: before the
+  // process's first fetch there is no class to read yet, and caching that
+  // miss kept every later call at this timeout on Node's 300s defaults.
   const built = build(timeoutMs);
-  cache.set(timeoutMs, built ?? null);
+  if (built) cache.set(timeoutMs, built);
   return built;
 }
 
@@ -61,7 +73,7 @@ function build(timeoutMs: number): Dispatcher | undefined {
     const AgentClass = existing?.constructor as (new (opts: UndiciAgentOptions) => Dispatcher) | undefined;
     if (typeof AgentClass !== "function") return undefined;
 
-    const agent = new AgentClass({ headersTimeout: timeoutMs, bodyTimeout: timeoutMs });
+    const agent = new AgentClass({ headersTimeout: timeoutMs, bodyTimeout: timeoutMs, connect: { timeout: Math.min(CONNECT_TIMEOUT_MS, timeoutMs) } });
     return typeof (agent as { dispatch?: unknown }).dispatch === "function" ? agent : undefined;
   } catch {
     return undefined;

@@ -4,7 +4,7 @@ import { pageRanges, selectRelevantPages } from "@/lib/ingestion/page-selection"
 import { pageTextsForScan } from "@/lib/ingestion/page-ocr";
 import { getPdfPageCount } from "@/lib/ingestion/pdf-split";
 import { isTextLayerSubstantial } from "@/lib/ingestion/text-layer";
-import { classifyExtractionFailure, isRetriableExtractionFailure } from "@/lib/ingestion/extraction-failure";
+import { classifyExtractionFailure, isEarlyTimeout, isRetriableExtractionFailure } from "@/lib/ingestion/extraction-failure";
 import { extname } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
@@ -762,7 +762,10 @@ const TRANSIENT_RETRY_DELAY_MS = 3_000;
  * output coming back malformed on the manual-JSON path). The
  * SDK's own retries stay off — see requestOptions() for why, and note that a
  * timeout is excluded by name there and here, since retrying one costs the
- * whole budget again.
+ * whole budget again — unless it came early (isEarlyTimeout): then it was a
+ * connection that never opened, not the budget, and is retried like a reset.
+ * A timeout that still fails says which of the two it was, since the SDK's
+ * own "Request timed out." reads the same for both.
  *
  * What this is worth, measured rather than assumed: on 2026-09-16 a single
  * Anthropic 500 cost three 90MB Convocatorias and a Peru OXI document their
@@ -779,16 +782,40 @@ async function runExtraction(
   /** Only used to size the request timeout — see requestOptions(). */
   maxPages?: number,
 ) {
+  const startedAt = Date.now();
   try {
     return await runExtractionOnce(client, model, content, context, useStructuredOutput, maxPages);
   } catch (err) {
-    if (!isRetriableExtractionFailure(err)) throw err;
+    const early = isEarlyTimeout(err, Date.now() - startedAt);
+    if (!early && !isRetriableExtractionFailure(err)) throw explainTimeout(err, Date.now() - startedAt, false);
     console.warn(
-      `  ${context.tenderNumber}: 这一次调用没成功（${(err instanceof Error ? err.message : String(err)).slice(0, 160)}），${TRANSIENT_RETRY_DELAY_MS / 1000} 秒后重试一次。`,
+      `  ${context.tenderNumber}: 这一次调用没成功（${(err instanceof Error ? err.message : String(err)).slice(0, 160)}${early ? `，${((Date.now() - startedAt) / 1000).toFixed(1)} 秒就超时，是没连上模型服务` : ""}），${TRANSIENT_RETRY_DELAY_MS / 1000} 秒后重试一次。`,
     );
     await new Promise((resolve) => setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS));
-    return await runExtractionOnce(client, model, content, context, useStructuredOutput, maxPages);
+    const retriedAt = Date.now();
+    try {
+      return await runExtractionOnce(client, model, content, context, useStructuredOutput, maxPages);
+    } catch (retryErr) {
+      throw explainTimeout(retryErr, Date.now() - retriedAt, true);
+    }
   }
+}
+
+/**
+ * The SDK's "Request timed out." with which timeout it was appended, for the
+ * admin reading the batch result: the call's own budget ran out, or the
+ * model service could not be reached at all. Any other error passes through
+ * unchanged. The original message is kept first, so every classifier that
+ * reads it (NEVER_TRANSIENT, classifyExtractionFailure) still sees it.
+ */
+function explainTimeout(err: unknown, elapsedMs: number, retried: boolean): unknown {
+  const message = err instanceof Error ? err.message : String(err);
+  if (!/timed?\s*out|timeout/i.test(message)) return err;
+  const secs = (elapsedMs / 1000).toFixed(1);
+  const why = isEarlyTimeout(err, elapsedMs)
+    ? `${secs} 秒就超时：没连上模型服务（网络或服务暂时不通）${retried ? "，已自动重试 1 次仍失败" : ""}，稍后单独重跑这个项目即可`
+    : `等了 ${Math.round(elapsedMs / 60000)} 分钟模型仍未答完`;
+  return new Error(`${message}（${why}）`, { cause: err });
 }
 
 async function runExtractionOnce(

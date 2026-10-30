@@ -12,6 +12,9 @@
     { "path": "/api/cron/trigger-daily-ingest?pass=full", "schedule": "0 11 * * *" },
     { "path": "/api/cron/trigger-daily-ingest?pass=light", "schedule": "0 21 * * *" },
     { "path": "/api/cron/trigger-daily-ingest?pass=colombia", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/user-activity-digest", "schedule": "12 1 * * *" }
+    { "path": "/api/cron/user-activity-digest", "schedule": "12 1 * * *" },
+    { "path": "/api/cron/revalidate-tenders", "schedule": "30 13 * * *" },
+    { "path": "/api/cron/revalidate-tenders", "schedule": "30 23 * * *" },
+    { "path": "/api/cron/revalidate-tenders", "schedule": "30 5 * * *" }
   ]
 }

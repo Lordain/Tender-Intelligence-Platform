@@ -14,7 +14,7 @@ const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "�
  * admin pastes Ficha pages here.
  */
 export default async function AdminImportTendersBoliviaPage() {
-  const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === BOLIVIA);
+  const rows = (await fetchAdminTenderListFromDb({ country: BOLIVIA }).catch(() => null)) ?? [];
   return (
     <div className="flex flex-col gap-3">
       <ImportSourceSection

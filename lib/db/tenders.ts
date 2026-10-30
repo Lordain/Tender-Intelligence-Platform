@@ -948,7 +948,7 @@ type AnalysedDocumentProbeRow = {
  * every requirement and risk id of every analysed tender was most of what
  * this query used to send back.
  */
-async function fetchAnalysisStates(supabase: SupabaseClient): Promise<{ empty: Set<string>; analysed: Set<string> }> {
+async function fetchAnalysisStates(supabase: SupabaseClient, country?: string): Promise<{ empty: Set<string>; analysed: Set<string> }> {
   const empty = new Set<string>();
   const analysed = new Set<string>();
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
@@ -957,6 +957,7 @@ async function fetchAnalysisStates(supabase: SupabaseClient): Promise<{ empty: S
         .from("tenders")
         .select("slug, tender_documents!inner ( id ), tender_requirements ( id ), tender_risks ( id )")
         .eq("tender_documents.extraction_status", "extracted")
+        .match(country ? { country } : {})
         .limit(1, { referencedTable: "tender_documents" })
         .limit(1, { referencedTable: "tender_requirements" })
         .limit(1, { referencedTable: "tender_risks" })
@@ -974,7 +975,14 @@ async function fetchAnalysisStates(supabase: SupabaseClient): Promise<{ empty: S
   return { empty, analysed };
 }
 
-export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[] | null> {
+export async function fetchAdminTenderListFromDb(
+  /**
+   * One country's rows only, read as one country's rows (2026-10-30): each
+   * 导入 tab used to read the whole table — about 3 MB of Supabase egress a
+   * visit — and then keep a twelfth of it.
+   */
+  options: { country?: string } = {},
+): Promise<AdminTenderListRow[] | null> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
 
@@ -988,6 +996,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
           // DOCUMENTS_NEEDED_SELECT's comment for why it cannot be skipped.
           "id, slug, tender_number, title, summary, title_zh_short, one_line_summary, buyer, industries, country, status, relevance_tier, relevance_manually_overridden, homepage_featured, estimated_value, currency, publication_date, publication_date_is_estimated, created_at, updated_at, submission_deadline, source_name, tender_key_dates ( type, date )",
         )
+        .match(options.country ? { country: options.country } : {})
         .order("publication_date", { ascending: false })
         .range(from, from + SUPABASE_PAGE_SIZE - 1);
 
@@ -1004,7 +1013,7 @@ export async function fetchAdminTenderListFromDb(): Promise<AdminTenderListRow[]
   };
 
   // Independent queries — run side by side rather than one after the other.
-  const [rows, analysisStates] = await Promise.all([fetchRows(), fetchAnalysisStates(supabase)]);
+  const [rows, analysisStates] = await Promise.all([fetchRows(), fetchAnalysisStates(supabase, options.country)]);
   if (!rows) return null;
 
   return rows

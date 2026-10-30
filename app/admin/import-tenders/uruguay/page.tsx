@@ -14,7 +14,7 @@ const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "�
  * Staged on 2026-10-13 and opened to visitors 2026-10-14 (user: 前台+后台开放乌拉圭).
  */
 export default async function AdminImportTendersUruguayPage() {
-  const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Uruguay");
+  const rows = (await fetchAdminTenderListFromDb({ country: "Uruguay" }).catch(() => null)) ?? [];
   return (
     <div className="flex flex-col gap-3">
       {/* Added 2026-10-15 (user: 现在就做): ARCE refuses our servers, so the daily import is paused. */}

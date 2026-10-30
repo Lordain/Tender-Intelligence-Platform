@@ -1,16 +1,18 @@
 /**
- * The public tender list is cached for 5 minutes (`unstable_cache` in
- * lib/tenders.ts). The tag was declared there from the start, but nothing
+ * The public tender list is cached for 24 hours since 2026-10-30, 5 minutes
+ * before (`unstable_cache` in lib/tenders.ts). The tag was declared there
+ * from the start, but nothing
  * ever invalidated it — so every admin edit took up to 5 minutes to appear
  * on the public site, with no way to tell whether a change had failed or
  * was simply still waiting. Fixed 2026-09-11.
  *
  * Called from the API routes rather than from lib/ingestion/*, because those
  * modules are shared with the terminal scripts, where there is no Next.js
- * request context and `revalidateTag` has nothing to invalidate. A CLI
- * import therefore still waits out the 5-minute TTL — acceptable, since
- * nobody is watching the site for the result of a bulk import the way they
- * watch it after fixing one tender's title.
+ * request context and `revalidateTag` has nothing to invalidate. The daily
+ * import on GitHub Actions instead ends by calling
+ * /api/cron/revalidate-tenders, and Vercel calls the same route a couple of
+ * hours after each daily pass in case that step did not run; a CLI import
+ * run by hand shows up at the next of those, or at the next admin write.
  */
 import { revalidatePath, revalidateTag } from "next/cache";
 

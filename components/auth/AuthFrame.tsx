@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 
-export function AuthFrame({ mode, children }: { mode: "login" | "register"; children: React.ReactNode }) {
+export function AuthFrame({ mode, eyebrow, children }: { mode: "login" | "register"; /** Replaces 欢迎回来 / 开始使用 — the maintenance notice says 暂停服务. */ eyebrow?: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-1 bg-[#f7f4ee] px-5 py-10 sm:px-8 sm:py-14">
       <div className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-3xl border border-[#dbe2e5] bg-[#fffdf9] shadow-[0_28px_80px_-62px_rgba(6,27,43,.65)] lg:grid-cols-[0.9fr_1.1fr]">
@@ -21,7 +21,7 @@ export function AuthFrame({ mode, children }: { mode: "login" | "register"; chil
         </section>
         <section className="flex items-center p-7 sm:p-10 lg:p-14">
           <div className="w-full">
-            <p className="mb-3 text-xs font-black text-[#b86e00]">{mode === "login" ? "欢迎回来" : "开始使用"}</p>
+            <p className="mb-3 text-xs font-black text-[#b86e00]">{eyebrow ?? (mode === "login" ? "欢迎回来" : "开始使用")}</p>
             {children}
           </div>
         </section>

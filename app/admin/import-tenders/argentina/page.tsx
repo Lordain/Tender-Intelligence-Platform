@@ -11,7 +11,7 @@ const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "�
  * opened to visitors 2026-09-29 (前台+后台开放阿根廷).
  */
 export default async function AdminImportTendersArgentinaPage() {
-  const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Argentina");
+  const rows = (await fetchAdminTenderListFromDb({ country: "Argentina" }).catch(() => null)) ?? [];
   return (
     <div className="flex flex-col gap-3">
       <ImportSourceSection

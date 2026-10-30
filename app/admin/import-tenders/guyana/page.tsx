@@ -13,7 +13,7 @@ const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "�
  * with pdf.js (no pdftotext there).
  */
 export default async function AdminImportTendersGuyanaPage() {
-  const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Guyana");
+  const rows = (await fetchAdminTenderListFromDb({ country: "Guyana" }).catch(() => null)) ?? [];
   return (
     <div className="flex flex-col gap-3">
       <ImportSourceSection

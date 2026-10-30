@@ -103,7 +103,44 @@ const getCachedTenderListEncoded = unstable_cache(encodedTenderList, ["public-te
   tags: [TENDERS_CACHE_TAG],
 });
 
-/** React's cache() so the several readers in one render decode the list once. */
-export const getCachedTenderList = cache(async (): Promise<Tender[]> =>
-  JSON.parse(brotliDecompressSync(Buffer.from(await getCachedTenderListEncoded(), "base64")).toString("utf8")) as Tender[],
-);
+/**
+ * True while `next build` prerenders pages. A deploy must not depend on the
+ * database answering: on 2026-10-30, with the Supabase project restricted for
+ * egress, every deploy failed at the first page that read the list
+ * (/countries/colombia), so not even the change meant to cut that egress could
+ * go out.
+ */
+const IS_BUILD = process.env.NEXT_PHASE === "phase-production-build";
+
+/** getTendersBySlugs, except that during a build a database that does not answer gives no rows rather than a failed deploy — see IS_BUILD. */
+export async function getTendersBySlugsForBuild(slugs: string[]): Promise<Map<string, Tender>> {
+  try {
+    return await getTendersBySlugs(slugs);
+  } catch (err) {
+    if (!IS_BUILD) throw err;
+    console.warn(`[tender-list] 构建时读不到项目详情，页面先不带详情生成：${err instanceof Error ? err.message : String(err)}`);
+    return new Map();
+  }
+}
+
+/**
+ * React's cache() so the several readers in one render decode the list once.
+ *
+ * During a build only, a database that does not answer gives an empty list
+ * instead of a failed deploy: the prerendered pages are ISR pages, rebuilt on
+ * their own revalidate once the database answers again. The failure is not
+ * cached — unstable_cache stores nothing when its function throws — and at
+ * runtime a failure still throws, so an outage is never served as "no
+ * tenders" from the cache.
+ */
+export const getCachedTenderList = cache(async (): Promise<Tender[]> => {
+  let encoded: string;
+  try {
+    encoded = await getCachedTenderListEncoded();
+  } catch (err) {
+    if (!IS_BUILD) throw err;
+    console.warn(`[tender-list] 构建时读不到项目列表，页面先以空列表生成：${err instanceof Error ? err.message : String(err)}`);
+    return [];
+  }
+  return JSON.parse(brotliDecompressSync(Buffer.from(encoded, "base64")).toString("utf8")) as Tender[];
+});

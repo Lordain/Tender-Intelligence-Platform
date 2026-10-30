@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { localize, uiText, useLocale } from "@/lib/i18n";
 import { AuthFrame } from "@/components/auth/AuthFrame";
+import { AuthMaintenanceNotice } from "@/components/auth/AuthMaintenanceNotice";
+import { AUTH_MAINTENANCE } from "@/lib/auth-maintenance";
 import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
 import { ResendConfirmation } from "@/components/auth/ResendConfirmation";
 import { authCallbackMessage, authErrorCode, authErrorMessage } from "@/lib/auth-errors";
@@ -68,6 +70,12 @@ export default function LoginPage() {
 
   function nextPath() {
     return safeNextPath(new URLSearchParams(window.location.search).get("next"));
+  }
+
+  if (AUTH_MAINTENANCE) {
+    return (
+      <AuthFrame mode="login" eyebrow="暂停服务"><AuthMaintenanceNotice mode="login" /></AuthFrame>
+    );
   }
 
   if (!SUPABASE_CONFIGURED) {

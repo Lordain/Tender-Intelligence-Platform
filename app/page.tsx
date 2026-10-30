@@ -1,4 +1,4 @@
-import { getAllTenders, getTendersBySlugs } from "@/lib/tenders";
+import { getCachedTenderList, getTendersBySlugsForBuild } from "@/lib/tenders";
 import { fetchHomepageControlSettings } from "@/lib/db/site-settings";
 import { HomeHero } from "@/components/tenders/HomeHero";
 import { FeaturedTenders } from "@/components/tenders/FeaturedTenders";
@@ -19,19 +19,28 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-/** Same reasoning as app/tenders/page.tsx — see its comment. This page reads the same service-role data and was prerendered at build time with no revalidation, so a newly featured tender never reached the homepage until the next deploy. */
-export const revalidate = 300;
+/**
+ * Same reasoning as app/tenders/page.tsx — see its comment. This page reads the same service-role data and was prerendered at build time with no revalidation, so a newly featured tender never reached the homepage until the next deploy.
+ *
+ * Hourly rather than every 5 minutes since 2026-10-30, and the list is the
+ * 24-hour cached one rather than its own full-table read: each re-render read
+ * the whole public table plus the featured tenders' full rows, up to 288
+ * times a day, and that Supabase egress got the project restricted.
+ * revalidateTenders() (lib/cache-tags.ts) re-renders this page at once after
+ * an admin write or the daily import, so the hour only bounds anything else.
+ */
+export const revalidate = 3600;
 
 export default async function Home() {
-  const [tenders, settings] = await Promise.all([getAllTenders(), fetchHomepageControlSettings()]);
+  const [tenders, settings] = await Promise.all([getCachedTenderList(), fetchHomepageControlSettings()]);
   const { featured, ticker } = selectHomepageTenders(tenders, settings);
 
-  // One query for all of them (2026-09-06). getAllTenders() above omits
+  // One query for all of them (2026-09-06). The list above omits
   // the child-table joins, so the cards' previews need the full row — but
   // fetching it per pick was featuredCount + tickerCount separate
   // single-row queries (13 at the defaults), each joining three child
   // tables, for what is one `.in("slug", …)`.
-  const detailBySlug = await getTendersBySlugs([...featured, ...ticker].map((tender) => tender.slug));
+  const detailBySlug = await getTendersBySlugsForBuild([...featured, ...ticker].map((tender) => tender.slug));
   // Projected, not passed through. Both components below are "use client", so
   // whatever they receive is serialized into this page's HTML — and this page
   // is the most crawled one on the site. Handing them a whole Tender put the

@@ -33,6 +33,9 @@ export const TENDERS_CACHE_TAG = "tenders";
  */
 export function revalidateTenders(): void {
   revalidateTag(TENDERS_CACHE_TAG, { expire: 0 });
+  // The homepage re-renders hourly (app/page.tsx), so a change has to reach
+  // it here rather than by waiting for that.
+  revalidatePath("/");
   revalidateAdminTenderList();
 }
 

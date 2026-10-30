@@ -13,7 +13,7 @@ const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "�
  * admin pastes procedure pages here.
  */
 export default async function AdminImportTendersEcuadorPage() {
-  const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === ECUADOR);
+  const rows = (await fetchAdminTenderListFromDb({ country: ECUADOR }).catch(() => null)) ?? [];
   return (
     <div className="flex flex-col gap-3">
       <ImportSourceSection

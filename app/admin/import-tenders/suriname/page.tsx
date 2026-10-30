@@ -12,7 +12,7 @@ const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "�
  * 可见 → A), where the imported calls are reviewed before it opens.
  */
 export default async function AdminImportTendersSurinamePage() {
-  const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Suriname");
+  const rows = (await fetchAdminTenderListFromDb({ country: "Suriname" }).catch(() => null)) ?? [];
   return (
     <div className="flex flex-col gap-3">
       <section className="rounded-2xl border border-[#eed18c] bg-[#fff8e7] px-5 py-4 text-sm leading-6 text-[#6d4c0d]">

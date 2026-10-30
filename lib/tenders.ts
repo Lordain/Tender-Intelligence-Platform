@@ -69,6 +69,15 @@ export async function getTendersBySlugs(slugs: string[]): Promise<Map<string, Te
  *
  * The cache key changed with the stored shape ("-v2"), so an entry written by
  * the previous deployment is never decoded as a compressed one.
+ *
+ * KEPT FOR 24 HOURS, not 5 minutes (2026-10-30). Every rebuild reads the whole
+ * public table plus every requirement and risk id — about 4–5 MB of Supabase
+ * egress — and on a 5-minute TTL any visitor or crawler after expiry set one
+ * off, up to 288 a day: 300–800 MB a day, which took the Free plan's 5 GB a
+ * month to 14.9 GB and got the project restricted (user: 我不升Pro … 做，24小时).
+ * Nothing waits on the timer for freshness: every admin write calls
+ * revalidateTenders() (lib/cache-tags.ts), and the daily import ends by
+ * calling /api/cron/revalidate-tenders.
  */
 const TENDER_LIST_CACHE_LIMIT = 2 * 1024 * 1024;
 const TENDER_LIST_CACHE_WARN_AT = Math.floor(TENDER_LIST_CACHE_LIMIT * 0.75);
@@ -87,8 +96,10 @@ async function encodedTenderList(): Promise<string> {
   return encoded;
 }
 
+const TENDER_LIST_CACHE_SECONDS = 24 * 60 * 60;
+
 const getCachedTenderListEncoded = unstable_cache(encodedTenderList, ["public-tender-list-v2"], {
-  revalidate: 300,
+  revalidate: TENDER_LIST_CACHE_SECONDS,
   tags: [TENDERS_CACHE_TAG],
 });
 

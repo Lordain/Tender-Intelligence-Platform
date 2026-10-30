@@ -426,3 +426,25 @@ jobs:
           # Optional. Unset → the Baidu push is skipped and only IndexNow runs.
           BAIDU_PUSH_TOKEN: ${{ secrets.BAIDU_PUSH_TOKEN }}
         run: npm run ping:indexnow -- --write
+
+  # Added 2026-10-30. The public tender list is cached for 24 hours to keep
+  # Supabase egress inside the Free plan (lib/tenders.ts), so the day's new
+  # rows appear when this drops that cache, once every import has finished,
+  # failed ones included. CRON_SECRET is the same value as the site's own
+  # (Vercel → Environment Variables); without it this step is skipped and
+  # Vercel's own calls to the same route (vercel.json) refresh it instead.
+  refresh-site-cache:
+    needs: [gate, ingest]
+    if: always() && needs.gate.outputs.run == 'true' && (github.event_name == 'schedule' || inputs.write)
+    runs-on: ubuntu-latest
+    name: Refresh public list cache
+    steps:
+      - name: Revalidate
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::notice::CRON_SECRET is not set for this repository — skipped; Vercel's scheduled call refreshes the list instead."
+            exit 0
+          fi
+          curl -fsS --max-time 30 -X POST -H "Authorization: Bearer $CRON_SECRET" https://latintender.com/api/cron/revalidate-tenders

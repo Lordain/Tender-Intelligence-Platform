@@ -11,7 +11,7 @@ const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "�
  * on 2026-10-04 and opened to visitors the same day (user: 公开多米尼加).
  */
 export default async function AdminImportTendersDominicanaPage() {
-  const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Dominican Republic");
+  const rows = (await fetchAdminTenderListFromDb({ country: "Dominican Republic" }).catch(() => null)) ?? [];
   return (
     <div className="flex flex-col gap-3">
       <ImportSourceSection

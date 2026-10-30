@@ -12,7 +12,7 @@ const TIER_LABEL: Record<string, string> = { flagship: "大型", significant: "�
  * opened to visitors the same day (user: 直接把这两个国家的前后台可视都做了吧).
  */
 export default async function AdminImportTendersPanamaPage() {
-  const rows = ((await fetchAdminTenderListFromDb().catch(() => null)) ?? []).filter((row) => row.country === "Panama");
+  const rows = (await fetchAdminTenderListFromDb({ country: "Panama" }).catch(() => null)) ?? [];
   return (
     <div className="flex flex-col gap-3">
       <ImportSourceSection

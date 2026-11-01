@@ -2744,8 +2744,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "MANUTENCAO EM DIVERSOS LOCAIS DA MALHA V IARIA DO MUNICIPIO DE LIMEIRA",
     expectedTier: "significant",
-    note: "Real row, PNCP 45132495000140-1-000670/2026, R$26.5M (~$5.1M), stored 中型. Road upkeep across a municipal network: excluded by 'manutenção' from 2026-09-25, kept again on 2026-09-29 (user: 金额都不小…需要留，不排除). The smallest of the three large Brazilian road-upkeep frameworks, and so the one LARGE_BRAZIL_ROAD_UPKEEP_USD is set below.",
-    country: "Brazil", scopeType: "services", governmentLevel: "municipal", industries: ["general"], estimatedValue: 26_539_470.13, currency: "BRL",
+    note: "Real row, PNCP 45132495000140-1-000670/2026, R$26.5M (~$5.1M at BRL 5.16), stored 中型. At 5.41 (2026-11-01) the real amount reads ~$4.9M, under the 中型 line, so the amount here was raised to R$27.5M (~$5.08M) to keep the case testing what it was written for. Road upkeep across a municipal network: excluded by 'manutenção' from 2026-09-25, kept again on 2026-09-29 (user: 金额都不小…需要留，不排除). The smallest of the three large Brazilian road-upkeep frameworks, and so the one LARGE_BRAZIL_ROAD_UPKEEP_USD is set below.",
+    country: "Brazil", scopeType: "services", governmentLevel: "municipal", industries: ["general"], estimatedValue: 27_500_000, currency: "BRL",
   },
   {
     title: "Registro de preços para contratação eventual e futura de empresa de engenharia para execução de serviços de manutenção e conservação de estradas vicinais localizadas nos municípios do Estado do Maranhão, com fornecimento de todos os materiais, equipamentos, ferramentas e mão de obra, mediante execução sob demanda deflagrada por ordem de serviço, com o objeto parcelado em 6 (seis) lotes regionais.",
@@ -3130,10 +3130,10 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "Construção do novo fórum da comarca de Abelardo Luz, no regime de empreitada por preço global, incluindo o fornecimento dos materiais, equipamentos e mão de obra necessários",
     procedureType: "Concorrência - Presencial",
-    estimatedValue: 13_054_418.01,
+    estimatedValue: 13_800_000,
     currency: "BRL",
     expectedTier: "standard",
-    note: "Real row, 83845701000159-1-000065/2026 (TJ Santa Catarina). A courthouse at ~$2.53M — just over the pure-works floor, so kept.",
+    note: "Real row, 83845701000159-1-000065/2026 (TJ Santa Catarina). A courthouse just over the pure-works floor, so kept. The real R$13,054,418.01 read ~$2.53M–2.58M at BRL 5.16–5.05; at 5.41 (2026-11-01) it reads ~$2.41M, below the floor, so the amount here was raised to R$13.8M (~$2.55M) to keep testing the side of the floor this case was written for.",
     country: "Brazil", scopeType: "works", governmentLevel: "state", industries: ["construction"],
   },
   {

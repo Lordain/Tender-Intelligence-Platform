@@ -9,6 +9,20 @@ import type { Locale } from "@/types/tender";
  * figures — the UI should read as "approximately" even where it doesn't
  * say so literally.
  *
+ * Refreshed 2026-11-01 by the monthly FX Routine: BRL alone was more than
+ * 5% off, and only it moved:
+ *
+ *   BRL 5.05  -> 5.41    (7.1%: Banco Central do Brasil PTAX 2026-10-30
+ *                         venda 5.4212 / open.er-api.com 2026-11-01 5.396;
+ *                         Brazilian amounts read about 7% too high in dollars)
+ *
+ * The rest stayed inside 2.5%: MXN 18.82 (1.8%), COP 3164 (1.1%), PEN 3.458,
+ * EUR 1.1166, GBP 1.3388, CLP 986.2, GYD 209.5, ARS 1534 (BCRA Comunicación
+ * A 3500, 2026-10-30; 1.4%), DOP 60.96, BOB 12.01 (2.5%, market rate as
+ * agreed 2026-10-09), GTQ 7.64; UF ≈ 41,250 CLP and UTM 72,440 CLP for
+ * November (sii.cl — mindicador.cl answered empty that day) give 41.83 and
+ * 73.47 dollars.
+ *
  * Refreshed 2026-10-15 (user: 调整一下现网的汇率，我感觉墨西哥偏差比较大),
  * against open.er-api.com and frankfurter (ECB), midpoint where both carry
  * the pair; CLP, UF and UTM against mindicador.cl (Banco Central de Chile).
@@ -85,8 +99,9 @@ export const USD_RATES: Record<string, number> = {
   // sandbox reaches no FX host, so unlike the rows above it was not
   // cross-checked here against Wise/XE/Investing.com. It replaces a 5.4
   // placeholder that was ~4.5% off; the monthly FX Routine re-checks it like
-  // every other row from here on.
-  BRL: 1 / 5.05,
+  // every other row from here on. 5.05 from 2026-10-15; 5.41 from 2026-11-01
+  // (BCB PTAX 5.4212 / open.er-api.com 5.396 — see the header).
+  BRL: 1 / 5.41,
   // Added 2026-09-24 for Chile, the last thing blocking that source: the
   // busca export carries a currency on 4,055 of 4,055 rows, 3,918 of them CLP,
   // and without a rate convertToUsd() returns null — so a real 690,000,000

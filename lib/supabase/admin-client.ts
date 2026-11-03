@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { countingFetch } from "@/lib/ops/supabase-egress";
 
 let cachedAdminClient: SupabaseClient | null | undefined;
 let cachedReadClient: SupabaseClient | null | undefined;
@@ -18,7 +19,8 @@ let cachedReadClient: SupabaseClient | null | undefined;
 function build(key: string | undefined): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!url || !key) return null;
-  return createClient(url, key, { auth: { persistSession: false } });
+  // countingFetch: the platform's own egress count — lib/ops/supabase-egress.ts.
+  return createClient(url, key, { auth: { persistSession: false }, global: { fetch: countingFetch() } });
 }
 
 /**

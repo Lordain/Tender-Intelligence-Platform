@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { evaluateBotProtection } from "@/lib/security/bot-protection";
+import { countingFetch } from "@/lib/ops/supabase-egress";
 
 // Standard Supabase SSR proxy (formerly "middleware"): refreshes the auth
 // session cookie on every request so the access token doesn't silently
@@ -17,6 +18,8 @@ export async function proxy(request: NextRequest) {
   if (!url || !key) return response;
 
   const supabase = createServerClient(url, key, {
+    // The platform's own egress count — lib/ops/supabase-egress.ts.
+    global: { fetch: countingFetch() },
     cookies: {
       getAll() {
         return request.cookies.getAll();

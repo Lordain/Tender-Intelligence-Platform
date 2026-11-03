@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { countingFetch } from "@/lib/ops/supabase-egress";
 
 /**
  * Per-request Supabase client scoped to the signed-in user's session (via
@@ -17,6 +18,8 @@ export async function getSupabaseServerUserClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // The platform's own egress count — lib/ops/supabase-egress.ts.
+      global: { fetch: countingFetch() },
       cookies: {
         getAll() {
           return cookieStore.getAll();

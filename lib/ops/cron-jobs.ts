@@ -18,6 +18,7 @@ export type CronJobId =
   | "purge-stale-colombia"
   | "trigger-daily-ingest"
   | "user-activity-digest"
+  | "supabase-egress-check"
   | "import-colombia"
   | "import-pemex"
   | "licitia-daily"
@@ -69,6 +70,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   // so the widest gap is 15h.
   { id: "tender-digest", label: "每日招标摘要邮件", maxAgeHours: 24, runsOn: "vercel" },
   { id: "subscription-renewal-reminders", label: "续费提醒", maxAgeHours: 30, runsOn: "vercel" },
+  { id: "supabase-egress-check", label: "Supabase 流量用量检查（平台自己记账）", maxAgeHours: 30, runsOn: "vercel" },
   { id: "purge-stale-colombia", label: "哥伦比亚过期项目清理", maxAgeHours: 30, runsOn: "vercel" },
   // Twice daily (11:xx and 21:xx UTC): starts daily-ingest on GitHub on time.
   // A skipped heartbeat here (token not set) is healthy — GitHub's own

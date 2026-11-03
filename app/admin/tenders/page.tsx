@@ -2,6 +2,7 @@ import Link from "next/link";
 import { fetchAdminTenderListFromDb } from "@/lib/db/tenders";
 import { AdminTenderList } from "@/components/admin/AdminTenderList";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SupabaseEgressNote } from "@/components/admin/SupabaseEgressNote";
 
 export default async function AdminTendersPage() {
   const tenders = await fetchAdminTenderListFromDb();
@@ -26,6 +27,8 @@ export default async function AdminTendersPage() {
           </>
         }
       />
+
+      <SupabaseEgressNote />
 
       {tenders === null ? (
         <p className="rounded-2xl border border-[#dbe2e5] bg-[#fffdf9] p-6 text-sm text-[#64717c]">Supabase 未配置。</p>

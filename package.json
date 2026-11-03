@@ -58,6 +58,7 @@
     "test:summary-adjustment": "tsx scripts/test-summary-adjustment.ts",
     "test:download": "tsx scripts/test-download-file.ts",
     "test:extraction-pipeline": "tsx scripts/test-extraction-pipeline.ts",
+    "test:supabase-egress": "tsx --env-file-if-exists=.env.local scripts/test-supabase-egress.ts",
     "test:weekly": "tsx scripts/test-weekly.ts",
     "test:secop-links": "tsx scripts/test-secop-links.ts",
     "test:colombia-titles": "tsx scripts/test-colombia-titles.ts",

@@ -15,6 +15,7 @@
     { "path": "/api/cron/user-activity-digest", "schedule": "12 1 * * *" },
     { "path": "/api/cron/revalidate-tenders", "schedule": "30 13 * * *" },
     { "path": "/api/cron/revalidate-tenders", "schedule": "30 23 * * *" },
-    { "path": "/api/cron/revalidate-tenders", "schedule": "30 5 * * *" }
+    { "path": "/api/cron/revalidate-tenders", "schedule": "30 5 * * *" },
+    { "path": "/api/cron/supabase-egress-check", "schedule": "40 1 * * *" }
   ]
 }

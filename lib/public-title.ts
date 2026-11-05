@@ -85,6 +85,12 @@ const ALLOWED_LATIN_TOKENS: ReadonlySet<string> = new Set([
   // Added 2026-09-28 after a real run refused both the public title and the
   // summary of an ADIF tender (铁路ATS监控系统采购) over the three letters.
   "ats", "atp", "ato", "cbtc",
+  // The European mainline standard, written the same way: 配备ERTMS系统的动车组.
+  // ERTMS and its train-control layer ETCS name the KIND of signalling a
+  // railway adopts, like CBTC for a metro. Added 2026-11-05 after a real run
+  // refused the summary of Mexico's 52 diesel multiple units with ERTMS
+  // (proyectosestrategicos-fl-09-jzo-009jzo001-i-1-2026) over the five letters.
+  "ertms", "etcs",
 ]);
 
 const LATIN_RUN = /[A-Za-z]+/g;

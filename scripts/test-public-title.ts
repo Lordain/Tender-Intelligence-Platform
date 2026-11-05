@@ -290,6 +290,9 @@ acceptsShortFrom("BRT系统配套工程改造与建设", "波哥大快速公交�
 accepts("阿根廷 铁路ATS监控系统采购");
 acceptsSummary("铁路ATS监控系统的采购项目。");
 accepts("地铁CBTC信号系统升级改造");
+// 2026-11-05: Mexico's 52 diesel multiple units, refused over ERTMS.
+acceptsSummary("52列配备ERTMS系统的客运柴油动车组采购项目，包含相关动车组的采购。");
+accepts("墨西哥 配备ETCS列控系统的客运动车组采购");
 // A proper noun next to it is still refused.
 rejects("阿根廷 ADIF铁路ATS监控系统采购", "含有原文词：ADIF");
 

@@ -228,6 +228,8 @@ async function main() {
   for (const [label, error] of [
     ["the page-count limit", new Error("A maximum of 100 PDF pages may be provided")],
     ["the base64 field-length limit", new Error('400 {"error":{"message":"String value length (28049408) exceeds the maximum allowed (28000000)"}}')],
+    // Real message, 2026-11-05 (a 33MB scanned Peru bases PDF after 按内容选页).
+    ["Claude's 32 MB PDF limit", new Error('400 {"type":"error","error":{"type":"invalid_request_error","message":"messages.0.content.0.document.source.base64: PDF exceeds 32 MB maximum: 33659316 bytes > 33554432 bytes"}}')],
   ] as const) {
     const big = join(TMP, "big.pdf");
     const { run, calls } = manual(big, [error, FULL_RESPONSE]);

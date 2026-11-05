@@ -387,7 +387,13 @@ function isPdfNativeLimitError(err: unknown): boolean {
     // ceiling, but this matcher never recognised the message, so the
     // splitter it was sized for never ran — the document just threw
     // (confirmed 2026-09-13 on a real Peru bases PDF).
-    /exceeded limit on max bytes to request body/i.test(message)
+    /exceeded limit on max bytes to request body/i.test(message) ||
+    // Claude's own size cap, as it is worded since late 2026: "PDF exceeds
+    // 32 MB maximum: 33659316 bytes > 33554432 bytes". The older wording
+    // above ("exceeds the maximum size") does not match it, so a 33MB
+    // scanned Peru bases PDF (peru-seace-lp-sm-38-2026-gru-gr-c-1,
+    // 2026-11-05) failed outright instead of being split.
+    /pdf exceeds \d+\s*mb maximum/i.test(message)
   );
 }
 

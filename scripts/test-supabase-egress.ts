@@ -4,6 +4,7 @@
  * supabase-js client runs through countingFetch exactly as the app's do.
  */
 import { createServer } from "node:http";
+import { gzipSync } from "node:zlib";
 import type { AddressInfo } from "node:net";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -48,6 +49,10 @@ async function main() {
 
   console.log("真实 supabase-js 客户端经过 countingFetch");
   const rowsJson = JSON.stringify([{ id: 1, title: "Licitación" }, { id: 2, title: "Pregão" }]);
+  // A list page as Supabase sends it: repetitive JSON, gzipped on the wire, no Content-Length.
+  const bigRows = Array.from({ length: 400 }, (_, i) => ({ id: i, title: { es: `Licitación pública ${i}`, zh: `公开招标 ${i}` }, country: "Mexico", status: "open" }));
+  const bigJson = JSON.stringify(bigRows);
+  const bigGzip = gzipSync(Buffer.from(bigJson));
   // Every add_supabase_egress call the counter makes; it flushes on the next tick, so two awaited queries are two calls.
   const rpcCalls: { p_bytes: number; p_requests: number }[] = [];
   const server = createServer((req, res) => {
@@ -57,6 +62,12 @@ async function main() {
       if (req.url?.startsWith("/rest/v1/rpc/add_supabase_egress")) {
         rpcCalls.push(JSON.parse(body));
         res.writeHead(204).end();
+        return;
+      }
+      if (req.url?.startsWith("/rest/v1/gzipped")) {
+        res.writeHead(200, { "content-type": "application/json", "content-encoding": "gzip" });
+        res.write(bigGzip.subarray(0, 100));
+        res.end(bigGzip.subarray(100));
         return;
       }
       if (req.url?.startsWith("/rest/v1/chunked")) {
@@ -87,6 +98,18 @@ async function main() {
     check("两次请求都记上了：请求数", total.requests, 2);
     check("写入记账的请求本身不经过计数", rpcCalls.length <= 2, true);
     check("写入后清空，写入本身不计数", pendingSupabaseEgress(), []);
+
+    console.log("压缩传输（Supabase 实际的发送方式）");
+    rpcCalls.length = 0;
+    const gz = await client.from("gzipped").select("*");
+    check("压缩传输：数据照常返回", (gz.data ?? []).length, 400);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await flushSupabaseEgress();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const gzCounted = rpcCalls.reduce((sum, call) => sum + call.p_bytes, 0);
+    console.log(`    解压后 ${Buffer.byteLength(bigJson)} 字节，线上 ${bigGzip.byteLength} 字节，记账 ${gzCounted} 字节`);
+    check("按压缩后的大小记账（与实际线上字节相差 20% 以内）", Math.abs(gzCounted - bigGzip.byteLength) / bigGzip.byteLength < 0.2, true);
+    check("远小于解压后的大小（不再多算）", gzCounted < Buffer.byteLength(bigJson) / 3, true);
 
     const before = pendingSupabaseEgress().length;
     process.env.SUPABASE_SERVICE_ROLE_KEY = "";

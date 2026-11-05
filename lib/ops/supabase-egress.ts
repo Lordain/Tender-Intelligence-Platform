@@ -14,10 +14,15 @@
  * session refresh), which are small. So the count runs a little LOW, and the
  * thresholds below are set with that in mind.
  *
- * How a response is measured: its Content-Length when the server sends one;
- * otherwise the body is counted as it streams through, which counts the
- * decompressed bytes and so runs HIGH for a gzipped response. Either way it is
- * a triage figure for an alert, not the number Supabase bills.
+ * How a response is measured: its Content-Length when the server sends one.
+ * Otherwise the body is counted as it streams through — and when the response
+ * came compressed (Content-Encoding), fetch has already decompressed it, so the
+ * decompressed bytes are gzipped again here and THAT size is counted. Counting
+ * the decompressed bytes instead read 680 MB on 2026-11-05 against Supabase's
+ * own 0.03 GB: JSON shrinks ~20× on the wire, and egress is billed on the wire.
+ * Gzip runs a little above the Brotli Supabase may actually send, so the
+ * estimate errs high. Either way it is a triage figure for an alert, not the
+ * number Supabase bills.
  *
  * Totals go to public.supabase_egress_daily (migration 0071) through
  * add_supabase_egress(), batched per tick and sent with a plain fetch so the
@@ -116,6 +121,21 @@ export function pendingSupabaseEgress(): { day: string; bytes: number; requests:
   return [...pending.entries()].map(([day, entry]) => ({ day, ...entry }));
 }
 
+/** A compressed response larger than this is estimated from its first part, at the same ratio. */
+const MAX_RECOMPRESS_BYTES = 8 * 1024 * 1024;
+
+/** How many bytes `chunks` take gzipped — the wire size of a response fetch has already decompressed. */
+export async function gzippedSize(chunks: Uint8Array[]): Promise<number> {
+  const stream = new Blob(chunks as BlobPart[]).stream().pipeThrough(new CompressionStream("gzip"));
+  let size = 0;
+  const reader = stream.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return size;
+    size += value.byteLength;
+  }
+}
+
 /**
  * A fetch for the Supabase clients' `global.fetch` that counts each response's
  * size. The response the caller gets is the same one, or — when its size has
@@ -134,14 +154,29 @@ export function countingFetch(baseFetch: typeof fetch = globalThis.fetch): typeo
       add(0);
       return response;
     }
+    const compressed = /\b(gzip|br|deflate|zstd)\b/i.test(response.headers.get("content-encoding") ?? "");
     let bytes = 0;
+    const kept: Uint8Array[] = [];
+    let keptBytes = 0;
     const counter = new TransformStream<Uint8Array, Uint8Array>({
       transform(chunk, controller) {
         bytes += chunk.byteLength;
+        if (compressed && keptBytes < MAX_RECOMPRESS_BYTES) {
+          kept.push(chunk);
+          keptBytes += chunk.byteLength;
+        }
         controller.enqueue(chunk);
       },
       flush() {
-        add(bytes);
+        if (!compressed) {
+          add(bytes);
+          return;
+        }
+        // Not awaited: the caller gets its body now, the count follows.
+        void gzippedSize(kept).then(
+          (size) => add(keptBytes > 0 ? Math.round(size * (bytes / keptBytes)) : 0),
+          () => add(bytes),
+        );
       },
     });
     return new Response(response.body.pipeThrough(counter), { status: response.status, statusText: response.statusText, headers: response.headers });

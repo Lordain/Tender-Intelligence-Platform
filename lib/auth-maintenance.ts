@@ -6,6 +6,7 @@
  * in place of their forms; nothing else changes, and a session a visitor
  * already has keeps working.
  *
- * To reopen: set this to false and deploy.
+ * To reopen: set this to false and deploy. Reopened 2026-11-05 once Supabase
+ * answered again (user: 恢复注册、登入).
  */
-export const AUTH_MAINTENANCE = true;
+export const AUTH_MAINTENANCE = false;

@@ -311,6 +311,67 @@ export function describeAmbiguity(fileName: string, tenderNumber: string, candid
   ].join("\n");
 }
 
+/**
+ * Which known tender number a document names: the FILE NAME first, then its
+ * text, and never a coin toss between two.
+ *
+ * This used to be one search over `fileName + text` that kept the LONGEST
+ * number found, ties going to whichever came first in slug order. Two real
+ * Mexican documents were filed against the wrong tender that way
+ * (2026-11-05), each analysed several times over, and every run reported
+ * success:
+ *
+ *   - LO-09-JZO-009JZO001-T-82-2026.DOCX, named for its own tender, written
+ *     onto LO-09-JZO-009JZO001-T-36-2026 — the earlier procedure for the
+ *     same railway works, which its text cites;
+ *   - CFE-0004-CACOT-0010-2026.pdf written onto CFE-0004-CACOA-0010-2026.
+ *
+ * Both numbers in each pair are the same length, both appeared in the
+ * haystack, and the wrong one sorted first (`t-36` < `t-82`, `cacoa` <
+ * `cacot`). The file name had the right answer all along: a document's
+ * name is chosen for THAT document, while its text routinely cites related
+ * procedures — the one it replaces, the one it complements.
+ *
+ * So the order is: the file name literally, then the file name with its
+ * separators removed (squashSeparators — a name the file system rewrote is
+ * still the name), then the text. At each step the longest number wins, as
+ * before — a number nested inside a longer one is not a second answer —
+ * but two DIFFERENT numbers of the same length are reported as ambiguous
+ * rather than settled by sort order. Abstaining costs a rename; guessing
+ * costs a wrong page and an overwritten analysis.
+ *
+ * Pure: `knownNumbers` are the uppercase keys of loadKnownTenders().
+ */
+export type TenderNumberMatch =
+  | { number: string; source: "filename" | "filename-mangled" | "text" }
+  | { ambiguous: string[]; source: "filename" | "filename-mangled" | "text" };
+
+export function findTenderNumber(fileName: string, text: string, knownNumbers: Iterable<string>): TenderNumberMatch | null {
+  const numbers = [...knownNumbers];
+  const longest = (hits: string[], source: TenderNumberMatch["source"]): TenderNumberMatch | null => {
+    if (hits.length === 0) return null;
+    const max = Math.max(...hits.map((hit) => hit.length));
+    const top = [...new Set(hits.filter((hit) => hit.length === max))].sort();
+    return top.length === 1 ? { number: top[0], source } : { ambiguous: top, source };
+  };
+
+  const upperName = fileName.toUpperCase();
+  const fromName = longest(numbers.filter((number) => upperName.includes(number)), "filename");
+  if (fromName) return fromName;
+
+  // A name whose separators the file system replaced (see
+  // matchNumberInMangledFileName) still outranks the text — but when even
+  // that reading is ambiguous, the text gets its turn before giving up.
+  const mangled = matchNumberInMangledFileName(fileName, numbers);
+  if (mangled && "number" in mangled) return { number: mangled.number, source: "filename-mangled" };
+
+  const upperText = text.toUpperCase();
+  const fromText = longest(numbers.filter((number) => upperText.includes(number)), "text");
+  if (fromText) return fromText;
+
+  return mangled ? { ambiguous: mangled.ambiguous, source: "filename-mangled" } : null;
+}
+
 export async function resolveTender(
   supabase: SupabaseClient,
   pdfPath: string,
@@ -351,35 +412,19 @@ export async function resolveTender(
     }
   }
 
-  // Check the file name first (cheap, and a human-chosen name is
-  // higher-confidence than a regex frequency count), then the document's
-  // own extracted text. Prefer the LONGEST matching known number if more
-  // than one appears — a document naming its own procedure plus a couple
-  // of others it references should still resolve to its own.
+  // The file name first, then the document's own text — see
+  // findTenderNumber() for why the order, and not just the length, decides.
   const text = await extractDocumentText(pdfPath);
   const haystack = `${fileName}\n${text}`.toUpperCase();
-  let bestMatch: string | undefined;
-  for (const tenderNumber of knownTenders.keys()) {
-    if (haystack.includes(tenderNumber) && (!bestMatch || tenderNumber.length > bestMatch.length)) bestMatch = tenderNumber;
+  const found = findTenderNumber(fileName, text, knownTenders.keys());
+  if (found && "ambiguous" in found) {
+    const where = found.source === "text" ? "文件名里没有招标编号，正文里" : found.source === "filename" ? "文件名里" : "文件名去掉分隔符后";
+    return {
+      skip: `${fileName} — ${where}同时出现了 ${found.ambiguous.length} 个招标编号（${found.ambiguous.join("、")}），无法判断属于哪个项目，已跳过（没有分析、没有计费、没有改动任何项目）。把文件改名成「<项目slug>__${fileName}」可以直接定位。`,
+    };
   }
-
-  // Nothing matched literally — try the file name again with its
-  // separators removed, in case the one in the tender number is a
-  // character the operator's file system would not store. See
-  // squashSeparators().
-  let numberWasMangled = false;
-  if (!bestMatch) {
-    const mangled = matchNumberInMangledFileName(fileName, knownTenders.keys());
-    if (mangled && "ambiguous" in mangled) {
-      return {
-        skip: `${fileName} — 文件名去掉分隔符后同时命中 ${mangled.ambiguous.length} 个招标编号（${mangled.ambiguous.join("、")}），无法判断属于哪个项目，已跳过（没有分析、没有计费、没有改动任何项目）。把文件改名成「<项目slug>.pdf」可以直接定位。`,
-      };
-    }
-    if (mangled) {
-      bestMatch = mangled.number;
-      numberWasMangled = true;
-    }
-  }
+  const bestMatch = found?.number;
+  const numberWasMangled = found?.source === "filename-mangled";
 
   if (bestMatch) {
     // A number can name more than one tender — see the header. Which one
@@ -396,7 +441,7 @@ export async function resolveTender(
             ? `matched known tender_number ${bestMatch}${numberWasMangled ? " (file name had its separators stripped)" : ""}; ${candidates.length} tenders share it, resolved by buyer name in the document (${choice.evidence.join(", ")})`
             : numberWasMangled
               ? `matched known tender_number ${bestMatch} in the file name, ignoring separators the file system could not store`
-              : `matched known tender_number ${bestMatch} in file name/text`,
+              : `matched known tender_number ${bestMatch} in the ${found?.source === "filename" ? "file name" : "document text"}`,
       },
     };
   }

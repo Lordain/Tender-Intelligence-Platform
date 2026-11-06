@@ -17,7 +17,7 @@
  *
  * Usage: npm run test:document-matching
  */
-import { chooseAmongCandidates, describeAmbiguity, indexKnownTenders, matchNumberInMangledFileName, squashSeparators, toWordHaystack, type KnownTender } from "../lib/ingestion/match-documents-to-tenders";
+import { chooseAmongCandidates, describeAmbiguity, findTenderNumber, indexKnownTenders, matchNumberInMangledFileName, squashSeparators, toWordHaystack, type KnownTender } from "../lib/ingestion/match-documents-to-tenders";
 
 type Check = { label: string; pass: boolean; detail?: string };
 const checks: Check[] = [];
@@ -168,6 +168,38 @@ check(
 );
 check("完全对不上的文件名返回 null", matchNumberInMangledFileName("convocatoria-final.pdf", numbers) === null);
 check("squashSeparators 只留字母数字并大写", squashSeparators("05639268000191-1-000015/2026") === "0563926800019110000152026");
+
+// --- findTenderNumber: the file name outranks the text ------------------
+// The two real misfilings of 2026-11-05. Each document is named for its own
+// tender, cites a related procedure of the same length in its text, and the
+// cited one sorts first — the old single search kept that one, silently.
+const T36 = "LO-09-JZO-009JZO001-T-36-2026";
+const T82 = "LO-09-JZO-009JZO001-T-82-2026";
+const CACOA = "CFE-0004-CACOA-0010-2026";
+const CACOT = "CFE-0004-CACOT-0010-2026";
+const mexico = [CACOA, CACOT, T36, T82, "FL-09-JZO-009JZO001-I-1-2026"];
+const matchOf = (r: ReturnType<typeof findTenderNumber>) => (r && "number" in r ? r.number : r ? `歧义：${r.ambiguous.join("、")}` : "无");
+
+const t82 = findTenderNumber("LO-09-JZO-009JZO001-T-82-2026.DOCX", `CONVOCATORIA ${T82}. ANTECEDENTE: PROCEDIMIENTO ${T36} DECLARADO DESIERTO.`, mexico);
+check("T-82 的文件归 T-82（以前被写到 T-36）", matchOf(t82) === T82, `实际 ${matchOf(t82)}`);
+check("...并且注明是从文件名认出来的", t82?.source === "filename");
+const cacot = findTenderNumber("CFE-0004-CACOT-0010-2026.pdf", `REFERENCIA: ${CACOA}. SUBESTACION QUERETARO.`, mexico);
+check("CACOT-0010 的文件归 CACOT-0010（以前被写到 CACOA-0010）", matchOf(cacot) === CACOT, `实际 ${matchOf(cacot)}`);
+
+const textTie = findTenderNumber("Convocatoria.pdf", `PROCEDIMIENTO ${T82}; VER TAMBIEN ${T36}.`, mexico);
+check("文件名没有编号、正文里两个一样长的编号打平时弃权，不按排序挑", !!textTie && "ambiguous" in textTie, `实际 ${matchOf(textTie)}`);
+const nameTie = findTenderNumber(`${T36} y ${T82}.pdf`, "", mexico);
+check("文件名里写了两个一样长的编号也弃权", !!nameTie && "ambiguous" in nameTie && nameTie.source === "filename");
+
+// Behaviour that already worked must keep working.
+check("文件名没有编号时照旧从正文认", matchOf(findTenderNumber("Convocatoria.pdf", `LICITACION ${CACOT}`, mexico)) === CACOT);
+check(
+  "正文里长短不一的编号仍取最长的（短的嵌在长的里面不算第二个答案）",
+  matchOf(findTenderNumber("Bases.pdf", "LICITACION PUBLICA CVC LP 008 2026 (ANTES LP-006-2026)", [SHORT, COLOMBIA])) === COLOMBIA,
+);
+check("Windows 改写过的巴西文件名照旧能认", matchOf(findTenderNumber(windowsName, "", numbers)) === PNCP);
+check("被改写的文件名也排在正文前面", findTenderNumber(windowsName, `VER ${OTHER_PNCP}`, numbers)?.source === "filename-mangled");
+check("什么都对不上返回 null", findTenderNumber("Bases.pdf", "SIN NUMERO", mexico) === null);
 
 // --- describeAmbiguity: the operator has to be able to act on it -------
 const message = describeAmbiguity("Pliego.pdf", "LP-006-2026", [SAMACA, AYAPEL]);

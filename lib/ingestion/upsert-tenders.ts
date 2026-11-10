@@ -7,7 +7,7 @@ import { REVIEW_CSV_HEADERS, reviewCsvRow, toCsv, writeReviewCsv } from "@/lib/i
 import { slugify } from "@/lib/ingestion/text-utils";
 import { legacyStatus, lifecycleSchemaAvailable } from "@/lib/ingestion/lifecycle-schema";
 import { linkReissuedTenders } from "@/lib/ingestion/reissue";
-import { procurementFingerprints } from "@/lib/ingestion/duplicate-procurement";
+import { procurementFingerprints, sameNumberDuplicates, type StoredNumberRow } from "@/lib/ingestion/duplicate-procurement";
 
 /**
  * Real yearly Datos Abiertos exports run tens of thousands of rows — one
@@ -118,6 +118,30 @@ async function dropDuplicateProcurements(supabase: SupabaseClient, tenders: Tend
     claim();
   }
   return tenders.filter((tender) => !dropped.has(tender.slug));
+}
+
+/**
+ * Drops NEW Mexican rows whose procedure number is already stored under
+ * another slug — see sameNumberDuplicates(). Same failure rule as
+ * dropDuplicateProcurements: a failed lookup writes everything.
+ */
+async function dropSameNumberDuplicates(supabase: SupabaseClient, tenders: Tender[]): Promise<Tender[]> {
+  const numbers = [...new Set(tenders.filter((t) => t.country === "Mexico" && t.tenderNumber?.trim()).flatMap((t) => [t.tenderNumber.trim(), t.tenderNumber.trim().toUpperCase()]))];
+  if (numbers.length === 0) return tenders;
+  const stored: StoredNumberRow[] = [];
+  for (const numberChunk of chunk(numbers, LOOKUP_CHUNK_SIZE)) {
+    const { data, error } = await withOneRetry(() => supabase.from("tenders").select("slug, tender_number, country").in("tender_number", numberChunk));
+    if (error) {
+      console.warn(`  同编号重复检查读取失败，本次不做这项检查：${error.message}`);
+      return tenders;
+    }
+    for (const row of data ?? []) stored.push({ slug: row.slug as string, tenderNumber: row.tender_number as string | null, country: row.country as string | null });
+  }
+  const dropped = sameNumberDuplicates(tenders, stored);
+  if (dropped.length === 0) return tenders;
+  for (const { slug, twin } of dropped) console.log(`  同一个招标编号已在库里，不写入：${slug}（与 ${twin} 是同一个项目）`);
+  const droppedSlugs = new Set(dropped.map((d) => d.slug));
+  return tenders.filter((t) => !droppedSlugs.has(t.slug));
 }
 
 async function withOneRetry<T>(run: () => PromiseLike<T>): Promise<T> {
@@ -747,10 +771,13 @@ export async function upsertTendersBatched(
   // this same import, is not written. A row whose slug is already stored is
   // always written: that is an update, and refusing it would freeze both
   // halves of a pair already in the table. See duplicate-procurement.ts.
-  const liveTenders = await dropDuplicateProcurements(supabase, notDeleted);
+  //
+  // Then Mexico's procedure numbers (2026-11-10): the same number under
+  // another slug is the same procurement — see sameNumberDuplicates().
+  const liveTenders = await dropSameNumberDuplicates(supabase, await dropDuplicateProcurements(supabase, notDeleted));
   const skippedDuplicateProcurementCount = notDeleted.length - liveTenders.length;
   if (skippedDuplicateProcurementCount > 0) {
-    console.log(`Skipping ${skippedDuplicateProcurementCount} tender(s) already stored under another id (same buyer, amount, deadline and title) — not written twice.`);
+    console.log(`Skipping ${skippedDuplicateProcurementCount} tender(s) already stored under another id (same procedure number, or same buyer, amount, deadline and title) — not written twice.`);
   }
 
   for (const batch of chunk(liveTenders, BATCH_SIZE)) {

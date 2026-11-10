@@ -3,7 +3,7 @@
  *
  *   npm run test:duplicate-procurement
  */
-import { groupDuplicateProcurements, procurementFingerprint, procurementFingerprints } from "../lib/ingestion/duplicate-procurement";
+import { groupDuplicateProcurements, procurementFingerprint, procurementFingerprints, sameNumberDuplicates } from "../lib/ingestion/duplicate-procurement";
 
 let passed = 0;
 let failed = 0;
@@ -56,6 +56,43 @@ const rows = [
 ];
 const groups = groupDuplicateProcurements(rows, (row) => row.id, (row) => row.input).map((group) => group.map((row) => row.id).sort().join(","));
 check("分组：巴西两条一组，墨西哥只有标题相同的一组", JSON.stringify(groups.sort()) === JSON.stringify(["a,b", "c,e"]));
+
+// Mexico: one procedure number, one row, whichever source came first
+// (2026-11-10, 谁先进来留谁). The seven real pairs went both ways.
+const T21 = "FP-09-210-009000999-T-21-2026";
+const T25 = "FP-09-210-009000999-T-25-2026";
+const mx = (slug: string, tenderNumber: string) => ({ slug, tenderNumber, country: "Mexico" });
+// LicitIA first (11:56), then the admin's Proyectos Estratégicos upload (21:40).
+const upload = sameNumberDuplicates(
+  [mx("proyectosestrategicos-fp-09-210-009000999-t-21-2026", T21)],
+  [{ slug: "comprasmx-fp-09-210-009000999-t-21-2026", tenderNumber: T21, country: "Mexico" }],
+);
+check("先有 Compras MX 那条，再手动导入同一个编号：不建第二条", upload.length === 1 && upload[0].twin === "comprasmx-fp-09-210-009000999-t-21-2026");
+// The upload first (21:40), then LicitIA (21:41) — the check runs at write time.
+const licitia = sameNumberDuplicates(
+  [mx("comprasmx-fp-09-210-009000999-t-25-2026", T25)],
+  [{ slug: "proyectosestrategicos-fp-09-210-009000999-t-25-2026", tenderNumber: T25, country: "Mexico" }],
+);
+check("先手动导入，LicitIA 后到：也不建第二条", licitia.length === 1 && licitia[0].slug === "comprasmx-fp-09-210-009000999-t-25-2026");
+check(
+  "已经在库里的那条照常更新（同一个 slug 不算重复）",
+  sameNumberDuplicates([mx("proyectosestrategicos-fp-09-210-009000999-t-25-2026", T25)], [{ slug: "proyectosestrategicos-fp-09-210-009000999-t-25-2026", tenderNumber: T25, country: "Mexico" }]).length === 0,
+);
+check(
+  "一对已经重复的旧数据：两条都照常更新，不会被冻住",
+  sameNumberDuplicates(
+    [mx("comprasmx-fp-09-210-009000999-t-21-2026", T21), mx("proyectosestrategicos-fp-09-210-009000999-t-21-2026", T21)],
+    [{ slug: "comprasmx-fp-09-210-009000999-t-21-2026", tenderNumber: T21, country: "Mexico" }, { slug: "proyectosestrategicos-fp-09-210-009000999-t-21-2026", tenderNumber: T21, country: "Mexico" }],
+  ).length === 0,
+);
+check("编号大小写不同也认作同一个", sameNumberDuplicates([mx("a", T21.toLowerCase())], [{ slug: "b", tenderNumber: T21, country: "Mexico" }]).length === 1);
+check("同一次导入里两个 slug 同编号：只留第一条", sameNumberDuplicates([mx("a", T21), mx("b", T21)], []).map((d) => d.slug).join() === "b");
+check("编号不同不受影响", sameNumberDuplicates([mx("a", T21)], [{ slug: "b", tenderNumber: T25, country: "Mexico" }]).length === 0);
+check(
+  "哥伦比亚同编号（各市自己的 LP-006-2026）不按编号合并",
+  sameNumberDuplicates([{ slug: "secop-800100000-lp-006-2026", tenderNumber: "LP-006-2026", country: "Colombia" }], [{ slug: "secop-800200000-lp-006-2026", tenderNumber: "LP-006-2026", country: "Colombia" }]).length === 0,
+);
+check("没有编号的不参与判断", sameNumberDuplicates([mx("a", "  ")], [{ slug: "b", tenderNumber: "  ", country: "Mexico" }]).length === 0);
 
 console.log(failed === 0 ? `全部 ${passed} 项通过` : `${failed} 项失败`);
 if (failed > 0) process.exit(1);

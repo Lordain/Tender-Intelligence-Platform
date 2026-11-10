@@ -91,3 +91,59 @@ export function groupDuplicateProcurements<T>(rows: readonly T[], idOf: (row: T)
   }
   return [...groups.values()].filter((group) => group.length > 1);
 }
+
+/**
+ * Mexico: one procedure number is one procurement, whichever source brought it.
+ *
+ * Found 2026-11-10: seven Proyectos Estratégicos procedures (FP-09-210-
+ * 009000999-T-21…26, FP-09-JZO-009JZO001-I-3/I-4) were stored twice, once as
+ * `comprasmx-fp-…` from the LicitIA feed and once as `proyectosestrategicos-
+ * fp-…` from the admin's own export upload. The two sources slug into
+ * different namespaces on purpose, and the fingerprint above never matched
+ * them because the two spell the buyer differently (a full agency name
+ * against its acronym). Both directions happened: four with LicitIA first,
+ * and three where LicitIA wrote a minute after the upload, having read the
+ * existing numbers three minutes before it.
+ *
+ * The user's rule (谁先进来留谁): a NEW row whose number is already stored
+ * under another slug is not written; the row already there keeps being
+ * updated by its own source. Checked at write time, so it holds however long
+ * a source spent between reading and writing.
+ *
+ * Mexico only. A Mexican procedure number names its buying unit and is unique
+ * nationally (LO-09-JZO-009JZO001-T-36-2026); a Colombian one is an
+ * entity-local sequence — every municipality has its own LP-006-2026 — and
+ * matching on it would drop real, different projects.
+ */
+export type StoredNumberRow = { slug: string; tenderNumber: string | null; country: string | null };
+
+export function sameNumberDuplicates(
+  tenders: readonly { slug: string; tenderNumber: string; country: string }[],
+  stored: readonly StoredNumberRow[],
+): { slug: string; twin: string }[] {
+  const key = (number: string | null | undefined) => (number ?? "").trim().toUpperCase();
+  const storedSlugs = new Set(stored.map((row) => row.slug));
+  const owner = new Map<string, string>();
+  for (const row of stored) {
+    if (row.country !== "Mexico" || !key(row.tenderNumber)) continue;
+    if (!owner.has(key(row.tenderNumber))) owner.set(key(row.tenderNumber), row.slug);
+  }
+  const dropped: { slug: string; twin: string }[] = [];
+  for (const tender of tenders) {
+    const number = key(tender.tenderNumber);
+    if (tender.country !== "Mexico" || !number) continue;
+    // Already stored under this slug: an update, never refused.
+    if (storedSlugs.has(tender.slug)) {
+      if (!owner.has(number)) owner.set(number, tender.slug);
+      continue;
+    }
+    const twin = owner.get(number);
+    if (twin && twin !== tender.slug) {
+      dropped.push({ slug: tender.slug, twin });
+      continue;
+    }
+    // First of its number in this import claims it for the rest.
+    owner.set(number, tender.slug);
+  }
+  return dropped;
+}

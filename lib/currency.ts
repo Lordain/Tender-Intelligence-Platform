@@ -9,6 +9,23 @@ import type { Locale } from "@/types/tender";
  * figures — the UI should read as "approximately" even where it doesn't
  * say so literally.
  *
+ * Refreshed 2026-11-13 (user: 刷新一下网站的汇率), on the 2026-10-15 rule —
+ * every row more than 1.5% off moved:
+ *
+ *   BRL 5.41  -> 5.61    (3.6%: BCB PTAX 2026-11-12 venda 5.6143 /
+ *                         frankfurter (ECB) 5.6169 / open.er-api.com 5.6102)
+ *   COP 3200  -> 3289    (2.7%, single source: open.er-api.com 3288.65;
+ *                         ECB carries no COP)
+ *   ARS 1513  -> 1545    (2.1%: BCRA Comunicación A 3500 2026-11-12 1545.5 /
+ *                         open.er-api.com 1544.4)
+ *
+ * The rest stayed inside 1%: MXN 18.655 (0.9%: 18.620 / ECB 18.691),
+ * PEN 3.411 (0.9%), EUR 1.1075 (1.0%: 1.1068 / ECB 1.1081), GBP 1.325,
+ * CLP 984.1 (983.70 market / 984.49 dólar observado 2026-11-12, sii.cl),
+ * GYD 209.4, DOP 61.10, BOB 11.82 (0.9%), GTQ 7.67; UF 41,322.93 CLP
+ * (2026-11-13) and UTM 72,440 CLP (November), both sii.cl since mindicador.cl
+ * timed out, give 41.99 and 73.62 dollars (0.4%).
+ *
  * Refreshed 2026-11-01 by the monthly FX Routine: BRL alone was more than
  * 5% off, and only it moved:
  *
@@ -80,7 +97,7 @@ import type { Locale } from "@/types/tender";
 export const USD_RATES: Record<string, number> = {
   USD: 1,
   MXN: 1 / 18.49,
-  COP: 1 / 3200,
+  COP: 1 / 3289,
   PEN: 1 / 3.44,
   // Added 2026-09-11: Peru's OECE data is genuinely multi-currency and a real
   // import turned up 7 EUR and 2 GBP tenders. Without a rate, convertToUsd()
@@ -100,8 +117,9 @@ export const USD_RATES: Record<string, number> = {
   // cross-checked here against Wise/XE/Investing.com. It replaces a 5.4
   // placeholder that was ~4.5% off; the monthly FX Routine re-checks it like
   // every other row from here on. 5.05 from 2026-10-15; 5.41 from 2026-11-01
-  // (BCB PTAX 5.4212 / open.er-api.com 5.396 — see the header).
-  BRL: 1 / 5.41,
+  // (BCB PTAX 5.4212 / open.er-api.com 5.396); 5.61 from 2026-11-13 (see the
+  // header).
+  BRL: 1 / 5.61,
   // Added 2026-09-24 for Chile, the last thing blocking that source: the
   // busca export carries a currency on 4,055 of 4,055 rows, 3,918 of them CLP,
   // and without a rate convertToUsd() returns null — so a real 690,000,000
@@ -127,8 +145,9 @@ export const USD_RATES: Record<string, number> = {
   // Added 2026-09-27 for Argentina (staged). The BCRA's own reference rate
   // (Comunicación A 3500, api.bcra.gob.ar estadisticascambiarias), read
   // 2026-09-27: 1513. The peso moves several percent a month, which is inside
-  // what a $1M floor can tell apart; refresh it when the gap grows.
-  ARS: 1 / 1513,
+  // what a $1M floor can tell apart; refresh it when the gap grows. 1545
+  // from 2026-11-13 (BCRA 1545.5, see the header).
+  ARS: 1 / 1545,
   // Added 2026-10-04 for the Dominican Republic (DGCP). open.er-api.com,
   // read 2026-10-04: 59.59. The Banco Central has let the peso drift a few
   // percent a year, well inside what a $1M floor can tell apart.

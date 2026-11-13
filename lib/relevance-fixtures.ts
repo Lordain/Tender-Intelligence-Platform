@@ -1404,9 +1404,9 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "ADQUISICION E INSTALACION DE DISPOSITIVOS Y EQUIPOS DE CONECTIVIDAD PARA EL MEJORAMIENTO; MANTENIMIENTO Y AMPLIACION DEL SISTEMA DE CIRCUITO CERRADO DE TELEVISION (CCTV) Y DEL SISTEMA INTEGRADO DE EME",
     expectedTier: "standard",
-    note: "Real row, STICS-LP-009-2026, COP 3.25bn (~$1.0M), 90 days. The CCTV buildout NEW_BUILD_OR_PURCHASE's comment names as one to keep: that guard got it past the maintenance rule, and the 90-day delivery then dropped it anyway. 常规, not 中型: CCTV is scale-capped.",
+    note: "Real row, STICS-LP-009-2026, COP 3.25bn (~$1.0M), 90 days. At COP 3289 (2026-11-13) the real amount reads ~$988k, under the $1M floor, so the amount here was raised to COP 3.35bn (~$1.02M) to keep testing the side of the floor this case was written for. The CCTV buildout NEW_BUILD_OR_PURCHASE's comment names as one to keep: that guard got it past the maintenance rule, and the 90-day delivery then dropped it anyway. 常规, not 中型: CCTV is scale-capped.",
     scopeType: "equipment", governmentLevel: "state", industries: ["ict_telecom"], procedureType: "Licitación pública",
-    structuredDurationDays: 90, estimatedValue: 3_249_120_313, currency: "COP", country: "Colombia",
+    structuredDurationDays: 90, estimatedValue: 3_350_000_000, currency: "COP", country: "Colombia",
   },
   {
     title: "ADQUISICIÓN DE UN VEHÍCULO DE BOMBEROS TIPO ESCALERA PARA EL CUERPO DE BOMBEROS OFICIAL DE MONTERÍA",
@@ -2085,8 +2085,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "ADQUISICION E INSTALACION DE DISPOSITIVOS Y EQUIPOS DE CONECTIVIDAD PARA EL MEJORAMIENTO, MANTENIMIENTO Y AMPLIACION DEL SISTEMA DE CIRCUITO CERRADO DE TELEVISION (CCTV) Y DEL SISTEMA INTEGRADO DE EMERGENCIAS SIES 123, OPERADO Y MONITOREADO POR LA POLICIA NACIONAL DEL DEPARTAMENTO DE RISARALDA",
     expectedTier: "standard",
-    note: "STICS-LP-009-2026, COP 3,249,120,313 (~USD 1.0M). A real CCTV/SIES buildout — adquisición e instalación, with the upkeep word in the middle of the scope.",
-    country: "Colombia", scopeType: "equipment", estimatedValue: 3249120313, currency: "COP",
+    note: "STICS-LP-009-2026, COP 3,249,120,313 (~USD 1.0M); raised to COP 3.35bn (~$1.02M) at COP 3289 (2026-11-13), when the real amount fell just under the $1M floor. A real CCTV/SIES buildout — adquisición e instalación, with the upkeep word in the middle of the scope.",
+    country: "Colombia", scopeType: "equipment", estimatedValue: 3350000000, currency: "COP",
   },
   {
     title: "MANTENIMIENTO Y REHABILITACIÓN DE LA VÍA TERCIARIA DEL MUNICIPIO DE GUADUAS",
@@ -2744,8 +2744,8 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "MANUTENCAO EM DIVERSOS LOCAIS DA MALHA V IARIA DO MUNICIPIO DE LIMEIRA",
     expectedTier: "significant",
-    note: "Real row, PNCP 45132495000140-1-000670/2026, R$26.5M (~$5.1M at BRL 5.16), stored 中型. At 5.41 (2026-11-01) the real amount reads ~$4.9M, under the 中型 line, so the amount here was raised to R$27.5M (~$5.08M) to keep the case testing what it was written for. Road upkeep across a municipal network: excluded by 'manutenção' from 2026-09-25, kept again on 2026-09-29 (user: 金额都不小…需要留，不排除). The smallest of the three large Brazilian road-upkeep frameworks, and so the one LARGE_BRAZIL_ROAD_UPKEEP_USD is set below.",
-    country: "Brazil", scopeType: "services", governmentLevel: "municipal", industries: ["general"], estimatedValue: 27_500_000, currency: "BRL",
+    note: "Real row, PNCP 45132495000140-1-000670/2026, R$26.5M (~$5.1M at BRL 5.16), stored 中型. At 5.41 (2026-11-01) the real amount reads ~$4.9M, under the 中型 line, so the amount here was raised to R$27.5M (~$5.08M) to keep the case testing what it was written for; at 5.61 (2026-11-13) that read ~$4.90M, so it is now R$28.6M (~$5.10M). Road upkeep across a municipal network: excluded by 'manutenção' from 2026-09-25, kept again on 2026-09-29 (user: 金额都不小…需要留，不排除). The smallest of the three large Brazilian road-upkeep frameworks, and so the one LARGE_BRAZIL_ROAD_UPKEEP_USD is set below.",
+    country: "Brazil", scopeType: "services", governmentLevel: "municipal", industries: ["general"], estimatedValue: 28_600_000, currency: "BRL",
   },
   {
     title: "Registro de preços para contratação eventual e futura de empresa de engenharia para execução de serviços de manutenção e conservação de estradas vicinais localizadas nos municípios do Estado do Maranhão, com fornecimento de todos os materiais, equipamentos, ferramentas e mão de obra, mediante execução sob demanda deflagrada por ordem de serviço, com o objeto parcelado em 6 (seis) lotes regionais.",
@@ -3130,10 +3130,10 @@ export const RELEVANCE_FIXTURES: RelevanceFixture[] = [
   {
     title: "Construção do novo fórum da comarca de Abelardo Luz, no regime de empreitada por preço global, incluindo o fornecimento dos materiais, equipamentos e mão de obra necessários",
     procedureType: "Concorrência - Presencial",
-    estimatedValue: 13_800_000,
+    estimatedValue: 14_400_000,
     currency: "BRL",
     expectedTier: "standard",
-    note: "Real row, 83845701000159-1-000065/2026 (TJ Santa Catarina). A courthouse just over the pure-works floor, so kept. The real R$13,054,418.01 read ~$2.53M–2.58M at BRL 5.16–5.05; at 5.41 (2026-11-01) it reads ~$2.41M, below the floor, so the amount here was raised to R$13.8M (~$2.55M) to keep testing the side of the floor this case was written for.",
+    note: "Real row, 83845701000159-1-000065/2026 (TJ Santa Catarina). A courthouse just over the pure-works floor, so kept. The real R$13,054,418.01 read ~$2.53M–2.58M at BRL 5.16–5.05; at 5.41 (2026-11-01) it reads ~$2.41M, below the floor, so the amount here was raised to R$13.8M (~$2.55M) to keep testing the side of the floor this case was written for; at 5.61 (2026-11-13) that read ~$2.46M, so it is now R$14.4M (~$2.57M).",
     country: "Brazil", scopeType: "works", governmentLevel: "state", industries: ["construction"],
   },
   {

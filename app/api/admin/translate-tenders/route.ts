@@ -28,6 +28,13 @@ import { logAdminAlert } from "@/lib/admin-alerts";
  */
 export const maxDuration = 300;
 const STOP_AFTER_MS = 120_000;
+/**
+ * And a call still running at 240 s is cut off (lib/ingestion/model-deadline.ts):
+ * the SDK would otherwise wait up to ten minutes for one slow DashScope call,
+ * and the host killed the whole request at 300 even at 18 rows (2026-11-18).
+ * 60 s are left for the writes and the response.
+ */
+const DEADLINE_MS = 240_000;
 
 export async function POST(request: Request) {
   const admin = await getAdminUser();
@@ -43,7 +50,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { write?: boolean; limit?: number };
 
   try {
-    const result = await translateAllTenders(supabase, { write: body.write === true, limit: body.limit, stopAfterMs: STOP_AFTER_MS });
+    const result = await translateAllTenders(supabase, { write: body.write === true, limit: body.limit, stopAfterMs: STOP_AFTER_MS, deadlineMs: DEADLINE_MS });
     if (result.failedCount && result.lastErrorMessage) {
       await logAdminAlert(supabase, "translate-tenders", new Error(result.lastErrorMessage));
     }

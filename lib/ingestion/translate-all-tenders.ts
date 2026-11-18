@@ -27,6 +27,7 @@ import { translateTenderBatchEn } from "@/lib/ingestion/translate-titles-en";
 import { sourceLanguageFor, SOURCE_LANGUAGE_LABELS, type TenderSourceLanguage } from "@/lib/ingestion/source-language";
 import type { LocalizedText } from "@/types/tender";
 import { runPool } from "@/lib/ingestion/run-pool";
+import { modelDeadline } from "@/lib/ingestion/model-deadline";
 
 // Was 25 — dropped after a real run (2026-09-03) truncated a 25-item
 // batch's output (max_tokens: 8000 in translate-titles.ts) when a few
@@ -88,7 +89,7 @@ function countByLanguage(rows: TranslatableRow[]): { language: TenderSourceLangu
  * is safe only because chunkByLanguage() is the only thing that builds these
  * arrays — hence the check below rather than a comment promising it.
  */
-async function translateRows(rows: TranslatableRow[]): Promise<TranslatedTender[]> {
+async function translateRows(rows: TranslatableRow[], signal?: AbortSignal): Promise<TranslatedTender[]> {
   const language = sourceLanguageFor(rows[0]?.country);
   if (rows.some((row) => sourceLanguageFor(row.country) !== language)) {
     throw new Error("translateRows was handed a batch of mixed source languages — chunkByLanguage() is the only thing that should build these");
@@ -105,6 +106,7 @@ async function translateRows(rows: TranslatableRow[]): Promise<TranslatedTender[
         summaryPt: t.summary.es,
         titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
       })),
+      signal,
     );
   }
 
@@ -117,6 +119,7 @@ async function translateRows(rows: TranslatableRow[]): Promise<TranslatedTender[
         summaryEn: t.summary.es,
         titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
       })),
+      signal,
     );
   }
 
@@ -126,7 +129,7 @@ async function translateRows(rows: TranslatableRow[]): Promise<TranslatedTender[
     summaryEs: t.summary.es,
     titleIsTruncated: titleIsTruncated(t.title.es, t.summary.es),
   }));
-  return translateTenderBatchQwen(input);
+  return translateTenderBatchQwen(input, signal);
 }
 
 export type TranslateAllTendersResult = {
@@ -233,9 +236,15 @@ export async function translateAllTenders(
      * (2026-09-28). Unset for the CLI.
      */
     stopAfterMs?: number;
+    /**
+     * Cut off any model call still running this many ms after the call
+     * began — see lib/ingestion/model-deadline.ts. Unset for the CLI.
+     */
+    deadlineMs?: number;
   },
 ): Promise<TranslateAllTendersResult> {
   const startedAt = Date.now();
+  const deadline = modelDeadline(startedAt, options.deadlineMs);
   // PostgREST caps an unranged select at 1000 rows — page with .range()
   // so tenders past the first 1000 don't silently get skipped.
   const PAGE_SIZE = 1000;
@@ -274,7 +283,7 @@ export async function translateAllTenders(
       // a preview that routes differently from --write is a preview of
       // nothing.
       const translated = (
-        await Promise.all(chunkByLanguage(rowsToPreview, BATCH_SIZE).map((group) => translateRows(group)))
+        await Promise.all(chunkByLanguage(rowsToPreview, BATCH_SIZE).map((group) => translateRows(group, deadline.signal())))
       ).flat();
       const bySlug = new Map(translated.map((r) => [r.slug, r]));
       // Through the same verifier the write path uses: a preview that shows
@@ -305,6 +314,8 @@ export async function translateAllTenders(
 
   let processed = 0;
   let stoppedEarly = false;
+  // Rows whose call the deadline cut off: untouched, so left for the next run.
+  let cutOff = 0;
   const timeUp = () => {
     if (options.stopAfterMs === undefined || processed === 0 || Date.now() - startedAt <= options.stopAfterMs) return false;
     stoppedEarly = true;
@@ -316,7 +327,7 @@ export async function translateAllTenders(
     processed += batch.length;
     let results: TranslatedTender[];
     try {
-      results = await translateRows(batch);
+      results = await translateRows(batch, deadline.signal());
     } catch (err) {
       results = [];
       lastErrorMessage = err instanceof Error ? err.message : String(err);
@@ -328,8 +339,9 @@ export async function translateAllTenders(
     // a single bad row doesn't sink its whole batch.
     const missing = batch.filter((t) => !bySlug.has(t.slug));
     for (const tender of missing) {
+      if (deadline.passed()) break;
       try {
-        const [single] = await translateRows([tender]);
+        const [single] = await translateRows([tender], deadline.signal());
         if (single) bySlug.set(tender.slug, single);
       } catch (err) {
         lastErrorMessage = err instanceof Error ? err.message : String(err);
@@ -338,6 +350,10 @@ export async function translateAllTenders(
 
     for (const tender of batch) {
       const translated = bySlug.get(tender.slug);
+      if (!translated && deadline.passed()) {
+        cutOff++;
+        continue;
+      }
       if (!translated) {
         failedCount++;
         failedSlugs.push(tender.slug);
@@ -378,5 +394,6 @@ export async function translateAllTenders(
     options.onProgress?.(translatedCount + failedCount, toTranslate.length);
   }, timeUp);
 
-  return { ...result, translatedCount, failedCount, failedSlugs, writtenSlugs, droppedIdentifiers, lastErrorMessage, ...(stoppedEarly ? { leftForNextRun: toTranslate.length - processed } : {}) };
+  if (cutOff > 0) stoppedEarly = true;
+  return { ...result, translatedCount, failedCount, failedSlugs, writtenSlugs, droppedIdentifiers, lastErrorMessage, ...(stoppedEarly ? { leftForNextRun: toTranslate.length - processed + cutOff } : {}) };
 }

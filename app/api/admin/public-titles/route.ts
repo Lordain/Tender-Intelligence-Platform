@@ -50,6 +50,13 @@ const MAX_SAMPLE = 20;
  */
 export const maxDuration = 300;
 const STOP_AFTER_MS = 120_000;
+/**
+ * And a call still running at 240 s is cut off (lib/ingestion/model-deadline.ts):
+ * the SDK would otherwise wait up to ten minutes for one slow DashScope call,
+ * and the host killed the whole request at 300 even at 18 rows (2026-11-18).
+ * 60 s are left for the writes and the response.
+ */
+const DEADLINE_MS = 240_000;
 
 export async function POST(request: Request) {
   const admin = await getAdminUser();
@@ -70,7 +77,7 @@ export async function POST(request: Request) {
       write,
       limit: body.limit,
       sample: write || body.sample === undefined ? undefined : Math.min(body.sample, MAX_SAMPLE),
-      stopAfterMs: STOP_AFTER_MS,
+      stopAfterMs: STOP_AFTER_MS, deadlineMs: DEADLINE_MS,
     });
     if (result.lastErrorMessage) {
       await logAdminAlert(supabase, "public-titles", new Error(result.lastErrorMessage));

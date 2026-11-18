@@ -4,6 +4,7 @@ import { publicSummaryProblems, publicTitleProblems, shortTitleProblems } from "
 import { stripUnverifiedParentheticals } from "@/lib/ingestion/translate-titles";
 import type { LocalizedText } from "@/types/tender";
 import { runPool } from "@/lib/ingestion/run-pool";
+import { modelDeadline } from "@/lib/ingestion/model-deadline";
 import { MODEL_CONCURRENCY } from "@/lib/ingestion/translate-all-tenders";
 
 /**
@@ -275,9 +276,12 @@ export async function generateDisplayText(
     onProgress?: (done: number, total: number) => void;
     /** Stop starting new batches this many ms after the call began — see translateAllTenders' option of the same name. */
     stopAfterMs?: number;
+    /** Cut off any model call still running this many ms after the call began — see lib/ingestion/model-deadline.ts. */
+    deadlineMs?: number;
   },
 ): Promise<GenerateDisplayTextResult> {
   const startedAt = Date.now();
+  const deadline = modelDeadline(startedAt, options.deadlineMs);
   const candidates = await loadCandidates(supabase);
   const selected = options.limit === undefined ? candidates : candidates.slice(0, options.limit);
 
@@ -288,7 +292,7 @@ export async function generateDisplayText(
       attemptedCount: rows.length,
     };
     try {
-      const generated = await generateDisplayTextBatch(rows.map(toInput));
+      const generated = await generateDisplayTextBatch(rows.map(toInput), deadline.signal());
       const bySlug = new Map(generated.map((item) => [item.slug, item]));
       result.preview = rows.map((row) => {
         const got = bySlug.get(row.slug);
@@ -326,6 +330,8 @@ export async function generateDisplayText(
 
   let processed = 0;
   let stoppedEarly = false;
+  // Rows whose call the deadline cut off: untouched, so left for the next run.
+  let cutOff = 0;
   const timeUp = () => {
     if (options.stopAfterMs === undefined || processed === 0 || Date.now() - startedAt <= options.stopAfterMs) return false;
     stoppedEarly = true;
@@ -336,7 +342,7 @@ export async function generateDisplayText(
     processed += batch.length;
     let generated: Awaited<ReturnType<typeof generateDisplayTextBatch>> = [];
     try {
-      generated = await generateDisplayTextBatch(batch.map(toInput));
+      generated = await generateDisplayTextBatch(batch.map(toInput), deadline.signal());
     } catch (err) {
       lastErrorMessage = err instanceof Error ? err.message : String(err);
     }
@@ -346,8 +352,9 @@ export async function generateDisplayText(
     // it was sent. Retry only what is missing, one at a time, so one bad row
     // does not sink its batch.
     for (const row of batch.filter((candidate) => !bySlug.has(candidate.slug))) {
+      if (deadline.passed()) break;
       try {
-        const [single] = await generateDisplayTextBatch([toInput(row)]);
+        const [single] = await generateDisplayTextBatch([toInput(row)], deadline.signal());
         if (single) bySlug.set(single.slug, single);
       } catch (err) {
         lastErrorMessage = err instanceof Error ? err.message : String(err);
@@ -357,6 +364,10 @@ export async function generateDisplayText(
     for (const row of batch) {
       done += 1;
       const got = bySlug.get(row.slug);
+      if (got === undefined && deadline.passed()) {
+        cutOff += 1;
+        continue;
+      }
       if (got === undefined) {
         failedSlugs.push(row.slug);
         continue;
@@ -427,6 +438,6 @@ export async function generateDisplayText(
     rejected,
     failedSlugs,
     lastErrorMessage,
-    ...(stoppedEarly ? { leftForNextRun: selected.length - processed } : {}),
+    ...(stoppedEarly || cutOff > 0 ? { leftForNextRun: selected.length - processed + cutOff } : {}),
   };
 }

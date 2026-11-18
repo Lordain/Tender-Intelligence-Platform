@@ -63,7 +63,8 @@ Ground rules:
 - Return exactly one output item per input item, matched back by the echoed id (order doesn't need to match). The id is a pairing label, never part of the tender — never put it in titleZh or summaryZh.
 - Respond with ONLY a JSON object of the shape {"items": [{"id": string, "titleZh": string, "summaryZh": string}, ...]} — no prose, no markdown fences.`;
 
-export async function translateTenderBatchEn(items: TenderToTranslateEn[]): Promise<TranslatedTender[]> {
+/** `signal` cuts the call off at the admin request's deadline (lib/ingestion/model-deadline.ts). */
+export async function translateTenderBatchEn(items: TenderToTranslateEn[], signal?: AbortSignal): Promise<TranslatedTender[]> {
   const client = new OpenAI({
     apiKey: process.env.DASHSCOPE_API_KEY,
     baseURL: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
@@ -86,7 +87,7 @@ export async function translateTenderBatchEn(items: TenderToTranslateEn[]): Prom
         ),
       },
     ],
-  });
+  }, { signal });
 
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error(`Qwen en translation batch returned no content (finish_reason: ${response.choices[0]?.finish_reason})`);

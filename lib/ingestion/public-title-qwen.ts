@@ -176,7 +176,8 @@ export type GeneratedDisplayText = {
   summaryZhPublic: string;
 };
 
-export async function generateDisplayTextBatch(items: DisplayTextInput[]): Promise<GeneratedDisplayText[]> {
+/** `signal` cuts the call off at the admin request's deadline (lib/ingestion/model-deadline.ts). */
+export async function generateDisplayTextBatch(items: DisplayTextInput[], signal?: AbortSignal): Promise<GeneratedDisplayText[]> {
   const client = new OpenAI({
     apiKey: process.env.DASHSCOPE_API_KEY,
     baseURL: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
@@ -210,7 +211,7 @@ export async function generateDisplayTextBatch(items: DisplayTextInput[]): Promi
         }))),
       },
     ],
-  });
+  }, { signal });
 
   const content = response.choices[0]?.message?.content;
   if (!content) {

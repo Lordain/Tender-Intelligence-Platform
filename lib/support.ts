@@ -21,7 +21,7 @@ export const SUPPORT_WHATSAPP = clean(process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP)?
  * rendered select-all instead: one click takes the whole string, ready to
  * paste into WeChat's search.
  */
-export const SUPPORT_WECHAT = clean(process.env.NEXT_PUBLIC_SUPPORT_WECHAT) || "Latin-tender";
+export const SUPPORT_WECHAT = clean(process.env.NEXT_PUBLIC_SUPPORT_WECHAT) || "Latin_tender";
 
 export function invoiceEmailHref(accountEmail?: string | null) {
   if (!BILLING_EMAIL) return null;

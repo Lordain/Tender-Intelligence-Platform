@@ -57,7 +57,7 @@ fi
 
 echo "== 运行网站的用户和目录"
 id -u "$APP_USER" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "$APP_USER"
-mkdir -p "$APP_DIR/releases" "$APP_DIR/shared" "$APP_DIR/logs"
+mkdir -p "$APP_DIR/releases" "$APP_DIR/shared" "$APP_DIR/logs" "$APP_DIR/incoming"
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 if [ ! -f "$APP_DIR/shared/.env" ]; then
   install -o "$APP_USER" -g "$APP_USER" -m 600 /dev/null "$APP_DIR/shared/.env"

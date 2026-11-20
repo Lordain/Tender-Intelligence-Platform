@@ -1,0 +1,11 @@
+# Caddy obtains and renews the HTTPS certificates itself, once the GoDaddy A
+# record points here. It replaces any X-Forwarded-For a client sends with the
+# real address, which is what lib/security/rate-limit.ts reads.
+latintender.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}
+
+www.latintender.com {
+	redir https://latintender.com{uri} permanent
+}

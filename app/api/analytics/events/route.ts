@@ -1,3 +1,4 @@
+import { deploymentEnv } from "@/lib/deployment-env";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { isAdminEmail } from "@/lib/admin-auth";
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
   // geo headers, which is how they were told apart. VERCEL_ENV is set on
   // every Vercel deployment; see lib/notifications/email-config.ts.
   const isInternal =
-    process.env.VERCEL_ENV !== "production" ||
+    deploymentEnv() !== "production" ||
     isAdminEmail(user?.email) ||
     request.cookies.get(INTERNAL_TRAFFIC_COOKIE)?.value === "1";
   const { error } = await supabase.from("analytics_events").insert({

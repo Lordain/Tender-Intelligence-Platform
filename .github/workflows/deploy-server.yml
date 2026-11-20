@@ -1,0 +1,40 @@
+name: Deploy to server
+
+# Builds and switches the self-hosted server (deploy/) to the new main, the way
+# Vercel deployed on every merge. Skipped, not failed, until the three secrets
+# exist: DEPLOY_HOST (the server's IP), DEPLOY_SSH_KEY (a private key whose
+# public half is in /home/latintender/.ssh/authorized_keys) and
+# DEPLOY_KNOWN_HOSTS (`ssh-keyscan <IP>`). See deploy/README.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+    steps:
+      - name: Skip when the server is not configured
+        if: env.DEPLOY_HOST == ''
+        run: echo "DEPLOY_HOST 未设置，跳过部署（见 deploy/README.md）"
+
+      - name: Deploy over SSH
+        if: env.DEPLOY_HOST != ''
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Update the server's checkout first, so deploy.sh and cron-call.sh
+          # are the versions in this commit, then build and switch.
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "latintender@$DEPLOY_HOST" \
+            "git -C /srv/latintender/repo fetch -q origin main && git -C /srv/latintender/repo checkout -q -B main FETCH_HEAD && bash /srv/latintender/repo/deploy/deploy.sh main"

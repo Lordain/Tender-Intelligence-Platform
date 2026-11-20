@@ -8,7 +8,7 @@
 - **Caddy**：对外的 80/443，自动申请和续期 HTTPS 证书，转发给本机 3000 端口
 - **systemd 服务 `latintender`**：用 `next start` 运行网站，开机自启、崩溃自动重启
 - **/etc/cron.d/latintender**：代替原来 vercel.json 里的 12 个定时任务，时间相同（UTC）
-- **GitHub Actions `Deploy to server`**：main 每次合并后自动登录服务器部署
+- **GitHub Actions `Deploy to server`**：main 每次合并后在 GitHub 上编译，再登录服务器解压、切换（服务器 2 GB，不在本机编译）
 
 目录：
 
@@ -18,6 +18,7 @@
 /srv/latintender/current     指向正在运行的那个版本
 /srv/latintender/shared/.env 环境变量（密钥），只有 latintender 用户能读
 /srv/latintender/logs/       deploy.log、cron.log
+/srv/latintender/incoming/   GitHub 上传的编译结果，部署后自动删除
 ```
 
 下面的命令在 **PowerShell 里 ssh 登录服务器后** 运行。`<IP>` 换成服务器公网 IP。
@@ -79,29 +80,11 @@ APP_URL=https://latintender.com
 
 保存：`Ctrl+O` 回车，退出：`Ctrl+X`。
 
-## 5. 第一次部署
+## 5. 让 GitHub 能登录服务器（部署要用）
 
-```bash
-sudo -u latintender bash /srv/latintender/repo/deploy/deploy.sh
-```
-
-大约 5–10 分钟，最后一行是 `已上线 <版本号>` 就成功了。在服务器上自测：
-
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" -H "Host: latintender.com" http://127.0.0.1:3000/
-```
-
-输出 `200` 即正常。
-
-## 6. 切换域名（GoDaddy）
-
-GoDaddy → 我的产品 → latintender.com → **DNS**，找到类型为 **A**、名称为 **@** 的那一条，
-把值 `216.198.79.1` 改成 `<IP>`，TTL 选 600 秒，保存。**其他记录（Zoho 邮箱的 MX、TXT）都不要动。**
-
-几分钟到半小时后 https://latintender.com 就会打开新服务器，证书由 Caddy 自动申请。
-要退回 Vercel，把 A 记录改回 `216.198.79.1` 即可。
-
-## 7. 合并后自动部署
+**不要在服务器上编译。** `next build` 要约 2.8 GB 内存，2 GB 的服务器会被交换空间拖到卡死
+（2026-11-20 实测，只能强制重启）。编译放在 GitHub 的机器上做，服务器只解压和运行；
+`deploy.sh` 在内存不够时也会拒绝在本机编译。
 
 在自己电脑的 PowerShell 里生成一把给 GitHub Actions 用的密钥：
 
@@ -125,7 +108,28 @@ sudo -u latintender chmod 600 /home/latintender/.ssh/authorized_keys
 | `DEPLOY_SSH_KEY` | `Get-Content $HOME\.ssh\latintender_deploy` 的全部内容（私钥） |
 | `DEPLOY_KNOWN_HOSTS` | PowerShell 里 `ssh-keyscan <IP>` 的输出 |
 
-之后每次合并到 main，Actions 里的 **Deploy to server** 会自动部署。
+编译时 GitHub 只拿到 `deploy/build-env.sh` 放行的配置：Supabase 的读取钥匙（页面要用真实数据
+生成，否则会是示例数据）和公开配置。付款、邮件、AI、GitHub token、CRON_SECRET 不离开服务器。
+
+## 6. 第一次部署
+
+GitHub 仓库 → **Actions** → **Deploy to server** → **Run workflow**（之后每次合并到 main 会自动跑）。
+大约 5–8 分钟，绿色对勾就成功了。在服务器上自测：
+
+```bash
+tail -n 5 /srv/latintender/logs/deploy.log
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: latintender.com" http://127.0.0.1:3000/
+```
+
+最后一行输出 `200` 即正常。
+
+## 7. 切换域名（GoDaddy）
+
+GoDaddy → 我的产品 → latintender.com → **DNS**，找到类型为 **A**、名称为 **@** 的那一条，
+把值 `216.198.79.1` 改成 `<IP>`，TTL 选 600 秒，保存。**其他记录（Zoho 邮箱的 MX、TXT）都不要动。**
+
+几分钟到半小时后 https://latintender.com 就会打开新服务器，证书由 Caddy 自动申请。
+要退回 Vercel，把 A 记录改回 `216.198.79.1` 即可。
 
 ## 切换后要做的事
 

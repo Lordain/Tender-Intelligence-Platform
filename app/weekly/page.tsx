@@ -5,7 +5,10 @@ import { getCachedTenderList } from "@/lib/tenders";
 import { archiveWeeks } from "@/lib/weekly-digest";
 import { formatWeekRange, weekSlug, weekTitle } from "@/lib/weekly";
 
-export const revalidate = 300;
+// 24 h, the same as the tender list it reads (lib/tenders.ts); revalidateTenders() and the
+// thrice-daily cron still refresh it on every data change. Was 300 s: rebuilding pages whose
+// data had not changed is what filled ISR Writes and Fluid Active CPU (Vercel paused 2026-11-19).
+export const revalidate = 86_400;
 
 export const metadata: Metadata = pageMetadata({
   title: "拉美招标周报｜每周新发布的政府采购与国企招标项目",

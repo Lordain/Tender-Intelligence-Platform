@@ -108,8 +108,10 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 50));
     const gzCounted = rpcCalls.reduce((sum, call) => sum + call.p_bytes, 0);
     console.log(`    解压后 ${Buffer.byteLength(bigJson)} 字节，线上 ${bigGzip.byteLength} 字节，记账 ${gzCounted} 字节`);
-    check("按压缩后的大小记账（与实际线上字节相差 20% 以内）", Math.abs(gzCounted - bigGzip.byteLength) / bigGzip.byteLength < 0.2, true);
-    check("远小于解压后的大小（不再多算）", gzCounted < Buffer.byteLength(bigJson) / 3, true);
+    // A fixed ratio now, not a second gzip (CPU on Vercel Hobby, 2026-11-19).
+    check("按固定压缩比估算（解压后 ÷ 10）", gzCounted, Math.round(Buffer.byteLength(bigJson) / 10));
+    check("宁多勿少：不低于真实线上字节", gzCounted >= bigGzip.byteLength, true);
+    check("远小于解压后的大小（不再多算 20 倍）", gzCounted < Buffer.byteLength(bigJson) / 3, true);
 
     const before = pendingSupabaseEgress().length;
     process.env.SUPABASE_SERVICE_ROLE_KEY = "";

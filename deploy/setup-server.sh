@@ -20,18 +20,23 @@ if [ "$(id -u)" -ne 0 ]; then echo "请用 sudo 运行" >&2; exit 1; fi
 echo "== 系统更新和基础软件"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y curl git ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https unattended-upgrades poppler-utils
+apt-get install -y curl git ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https unattended-upgrades poppler-utils fail2ban
+# SSH answers to the whole internet with a password; fail2ban bans an address
+# after repeated failed logins (its sshd jail is on by default on Ubuntu).
+systemctl enable --now fail2ban >/dev/null
 # Security updates install themselves.
 dpkg-reconfigure -f noninteractive unattended-upgrades
 # vercel.json's cron schedules are UTC; so are the ones in deploy/crontab.
 timedatectl set-timezone UTC
 
 echo "== Node.js 22"
-if ! command -v node >/dev/null || ! node -v | grep -q '^v22\.'; then
+# Checked at /usr/bin/node, the path latintender.service starts: another Node
+# elsewhere on PATH would satisfy `command -v` and leave the service broken.
+if ! [ -x /usr/bin/node ] || ! /usr/bin/node -v | grep -q '^v22\.'; then
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   apt-get install -y nodejs
 fi
-node -v
+/usr/bin/node -v
 
 echo "== Caddy（自动申请和续期 HTTPS 证书）"
 if ! command -v caddy >/dev/null; then
@@ -76,6 +81,18 @@ echo "== Caddy 站点配置"
 install -m 644 "$HERE/Caddyfile" /etc/caddy/Caddyfile
 caddy validate --config /etc/caddy/Caddyfile >/dev/null
 systemctl reload caddy || systemctl restart caddy
+
+echo "== 日志轮转（deploy.log、cron.log 每周归档，保留 8 周）"
+cat > /etc/logrotate.d/latintender <<EOF
+$APP_DIR/logs/*.log {
+  weekly
+  rotate 8
+  compress
+  missingok
+  notifempty
+  copytruncate
+}
+EOF
 
 echo "== 定时任务（替代 vercel.json 里的 crons）"
 install -m 644 "$HERE/crontab" /etc/cron.d/latintender

@@ -10,6 +10,11 @@ Group=latintender
 WorkingDirectory=/srv/latintender/current
 Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1
+# The server has 1.7 GB and Node collects lazily while memory is free: the
+# process went from ~190 MB to ~870 MB in five hours (2026-11-20). A 768 MB
+# heap makes it collect sooner; if it is ever exceeded, systemd restarts it
+# in five seconds instead of the machine sliding into swap.
+Environment=NODE_OPTIONS=--max-old-space-size=768
 # Only Caddy, on the same machine, talks to it.
 ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000 -H 127.0.0.1
 Restart=always

@@ -6,9 +6,9 @@ name: Deploy to server
 # Built here, not on the server: `next build` needs ~2.8 GB, and on the 2 GB
 # server it pushed everything into swap and froze the machine (2026-11-20).
 # The runner builds at the server's own path, /srv/latintender/releases/<sha>,
-# so nothing in `.next` points somewhere the server does not have. Only
-# `.next` (~25 MB compressed) is uploaded; the server installs its own
-# node_modules and unpacks it (deploy/deploy.sh).
+# so nothing in `.next` points somewhere the server does not have. `.next`
+# (~25 MB compressed) is uploaded, and node_modules (~160 MB) only when
+# package-lock.json changed; the server never runs `npm ci` (deploy/deploy.sh).
 #
 # The build gets only what deploy/build-env.sh lets out of the server's .env:
 # the Supabase read key (the prerendered pages read real tenders, and without
@@ -79,13 +79,45 @@ jobs:
           tar --exclude=.next/cache -czf "$RUNNER_TEMP/next.tgz" .next
           ls -lh "$RUNNER_TEMP/next.tgz"
 
-      - name: Upload and switch
+      - name: Upload
         if: env.DEPLOY_HOST != ''
         run: |
           ssh server "mkdir -p /srv/latintender/incoming"
           scp -q "$RUNNER_TEMP/next.tgz" "server:/srv/latintender/incoming/$GITHUB_SHA.tgz"
-          # Unpack and switch to exactly the commit that was built.
-          ssh server "bash /srv/latintender/repo/deploy/deploy.sh $GITHUB_SHA"
+          # node_modules too, but only when the lockfile differs from the one
+          # being served: the server never runs `npm ci` (next to a running
+          # site it froze the 2 GB machine, 2026-11-20), and otherwise reuses
+          # the served release's node_modules. ~160 MB when it is needed.
+          REL="/srv/latintender/releases/$GITHUB_SHA"
+          here="$(sha256sum "$REL/package-lock.json" | cut -d' ' -f1)"
+          there="$(ssh server "sha256sum /srv/latintender/current/package-lock.json 2>/dev/null | cut -d' ' -f1" || true)"
+          if [ "$here" != "$there" ]; then
+            echo "package-lock.json 有变化，上传装好的依赖"
+            tar -czf "$RUNNER_TEMP/node_modules.tgz" -C "$REL" node_modules
+            ls -lh "$RUNNER_TEMP/node_modules.tgz"
+            scp -q "$RUNNER_TEMP/node_modules.tgz" "server:/srv/latintender/incoming/$GITHUB_SHA.node_modules.tgz"
+          else
+            echo "依赖没有变化，服务器沿用现有依赖"
+          fi
+
+      - name: Switch
+        if: env.DEPLOY_HOST != ''
+        run: |
+          # Started detached and polled, so a dropped SSH connection no longer
+          # stops it halfway (2026-11-20). deploy.sh writes "<sha> <exit code>"
+          # to logs/deploy-status when it ends, whichever way.
+          ssh server "rm -f /srv/latintender/logs/deploy-status; setsid nohup bash /srv/latintender/repo/deploy/deploy.sh $GITHUB_SHA > /dev/null 2>&1 < /dev/null & echo started"
+          for _ in $(seq 1 60); do
+            sleep 10
+            status="$(ssh server "cat /srv/latintender/logs/deploy-status 2>/dev/null" || true)"
+            case "$status" in
+              "$GITHUB_SHA 0") ssh server "tail -n 8 /srv/latintender/logs/deploy.log"; exit 0 ;;
+              "$GITHUB_SHA "*) ssh server "tail -n 25 /srv/latintender/logs/deploy.log"; exit 1 ;;
+            esac
+          done
+          echo "部署 10 分钟还没有结束"
+          ssh server "tail -n 25 /srv/latintender/logs/deploy.log" || true
+          exit 1
 
       - name: Remove the copied .env
         if: always() && env.DEPLOY_HOST != ''

@@ -4,6 +4,13 @@
 #
 #   sudo -u latintender bash /srv/latintender/repo/deploy/deploy.sh [ref]
 #
+# Normally run by .github/workflows/deploy-server.yml, which builds `.next` on
+# GitHub's runner and uploads it to incoming/<sha>.tgz first: `next build`
+# needs ~2.8 GB, and on this 2 GB server it pushed everything into swap and
+# froze the machine (2026-11-20). With that file present this script only
+# installs dependencies and unpacks it. Without it, it builds here — and
+# refuses to on a machine with too little memory.
+#
 # Each release is built in its own directory while the current one keeps
 # serving, then `current` is switched and the service restarted. If the new
 # release does not answer, `current` is switched back. The last three releases
@@ -32,10 +39,28 @@ if [ ! -f "$REL/.build-ok" ]; then
   # next build inlines NEXT_PUBLIC_* from here, and next start reads the rest.
   ln -sfn "$APP_DIR/shared/.env" "$REL/.env.production.local"
   cd "$REL"
-  npm ci --no-audit --no-fund
-  NODE_OPTIONS=--max-old-space-size=3072 NEXT_TELEMETRY_DISABLED=1 npx next build
+  PREBUILT="$APP_DIR/incoming/$SHA.tgz"
+  if [ -f "$PREBUILT" ]; then
+    echo "   使用 GitHub 上编译好的版本"
+    npm ci --no-audit --no-fund
+    tar -xzf "$PREBUILT" -C "$REL"
+    [ -f "$REL/.next/BUILD_ID" ] || { echo "!! 编译结果不完整（没有 .next/BUILD_ID）" >&2; exit 1; }
+    rm -f "$PREBUILT"
+  else
+    mem_kb="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"
+    if [ "$mem_kb" -lt 3500000 ]; then
+      echo "!! 这台服务器内存 $((mem_kb / 1024)) MB，不够在本机编译（约需 3 GB），会把服务器卡死。" >&2
+      echo "!! 请在 GitHub 的 Actions 里运行「Deploy to server」，它会在 GitHub 上编译好再传过来。" >&2
+      rm -rf "$REL"
+      exit 1
+    fi
+    npm ci --no-audit --no-fund
+    NODE_OPTIONS=--max-old-space-size=3072 NEXT_TELEMETRY_DISABLED=1 npx next build
+  fi
   touch "$REL/.build-ok"
 fi
+# Uploads that were never used (a superseded run) are not kept.
+find "$APP_DIR/incoming" -name '*.tgz' -mmin +120 -delete 2>/dev/null || true
 
 # Only a real, existing release counts as something to go back to: on the
 # first deploy there is no `current`, and `readlink -f` would hand back the

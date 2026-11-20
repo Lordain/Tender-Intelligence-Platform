@@ -1,10 +1,24 @@
 name: Deploy to server
 
-# Builds and switches the self-hosted server (deploy/) to the new main, the way
-# Vercel deployed on every merge. Skipped, not failed, until the three secrets
-# exist: DEPLOY_HOST (the server's IP), DEPLOY_SSH_KEY (a private key whose
-# public half is in /home/latintender/.ssh/authorized_keys) and
-# DEPLOY_KNOWN_HOSTS (`ssh-keyscan <IP>`). See deploy/README.md.
+# Builds the site on GitHub's runner and switches the self-hosted server
+# (deploy/) to it, the way Vercel deployed on every merge.
+#
+# Built here, not on the server: `next build` needs ~2.8 GB, and on the 2 GB
+# server it pushed everything into swap and froze the machine (2026-11-20).
+# The runner builds at the server's own path, /srv/latintender/releases/<sha>,
+# so nothing in `.next` points somewhere the server does not have. Only
+# `.next` (~25 MB compressed) is uploaded; the server installs its own
+# node_modules and unpacks it (deploy/deploy.sh).
+#
+# The build gets only what deploy/build-env.sh lets out of the server's .env:
+# the Supabase read key (the prerendered pages read real tenders, and without
+# it they fall back to mock data) and public, non-secret configuration.
+# Payments, email, AI, the GitHub token and CRON_SECRET stay on the server.
+# What the runner does get is deleted after the build; nothing is stored in
+# GitHub.
+#
+# Skipped, not failed, until DEPLOY_HOST, DEPLOY_SSH_KEY and
+# DEPLOY_KNOWN_HOSTS exist. See deploy/README.md.
 on:
   push:
     branches: [main]
@@ -25,7 +39,15 @@ jobs:
         if: env.DEPLOY_HOST == ''
         run: echo "DEPLOY_HOST 未设置，跳过部署（见 deploy/README.md）"
 
-      - name: Deploy over SSH
+      - uses: actions/checkout@v4
+        if: env.DEPLOY_HOST != ''
+
+      - uses: actions/setup-node@v4
+        if: env.DEPLOY_HOST != ''
+        with:
+          node-version: 22
+
+      - name: SSH key
         if: env.DEPLOY_HOST != ''
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -34,7 +56,37 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          # Update the server's checkout first, so deploy.sh and cron-call.sh
-          # are the versions in this commit, then build and switch.
-          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "latintender@$DEPLOY_HOST" \
-            "git -C /srv/latintender/repo fetch -q origin main && git -C /srv/latintender/repo checkout -q -B main FETCH_HEAD && bash /srv/latintender/repo/deploy/deploy.sh main"
+          printf 'Host server\n  HostName %s\n  User latintender\n  IdentityFile ~/.ssh/deploy_key\n  BatchMode yes\n  ServerAliveInterval 30\n' "$DEPLOY_HOST" > ~/.ssh/config
+
+      - name: Update the server's checkout
+        if: env.DEPLOY_HOST != ''
+        # So deploy.sh, build-env.sh and cron-call.sh on the server are this
+        # commit's before anything below runs them.
+        run: ssh server "git -C /srv/latintender/repo fetch -q origin $GITHUB_SHA && git -C /srv/latintender/repo checkout -q -B main FETCH_HEAD"
+
+      - name: Build at the server's path
+        if: env.DEPLOY_HOST != ''
+        run: |
+          REL="/srv/latintender/releases/$GITHUB_SHA"
+          sudo mkdir -p "$REL" && sudo chown "$USER" "$REL"
+          git archive HEAD | tar -x -C "$REL"
+          ( umask 077; ssh server "bash /srv/latintender/repo/deploy/build-env.sh" > "$REL/.env.production.local" )
+          grep -oE '^[A-Z0-9_]+' "$REL/.env.production.local" | tr '\n' ' '; echo
+          cd "$REL"
+          npm ci --no-audit --no-fund
+          NEXT_TELEMETRY_DISABLED=1 npx next build
+          rm -f "$REL/.env.production.local"
+          tar --exclude=.next/cache -czf "$RUNNER_TEMP/next.tgz" .next
+          ls -lh "$RUNNER_TEMP/next.tgz"
+
+      - name: Upload and switch
+        if: env.DEPLOY_HOST != ''
+        run: |
+          ssh server "mkdir -p /srv/latintender/incoming"
+          scp -q "$RUNNER_TEMP/next.tgz" "server:/srv/latintender/incoming/$GITHUB_SHA.tgz"
+          # Unpack and switch to exactly the commit that was built.
+          ssh server "bash /srv/latintender/repo/deploy/deploy.sh $GITHUB_SHA"
+
+      - name: Remove the copied .env
+        if: always() && env.DEPLOY_HOST != ''
+        run: rm -f "/srv/latintender/releases/$GITHUB_SHA/.env.production.local" ~/.ssh/deploy_key

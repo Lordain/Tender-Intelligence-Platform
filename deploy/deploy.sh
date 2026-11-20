@@ -32,10 +32,13 @@ LOG="$APP_DIR/logs/deploy.log"
 exec > >(tee -a "$LOG") 2>&1
 echo "== $(date -u +%FT%TZ) 部署 $REF"
 
-# One deploy at a time.
+# The result goes to the status file however this ends — set before anything
+# below can exit, the lock check included, or the workflow waits for nothing.
+trap 'echo "$REF $?" > "$APP_DIR/logs/deploy-status"' EXIT
+# One deploy at a time. fd 9 is closed for everything this starts (9>&-), so a
+# long-lived child cannot keep holding the lock after the deploy has ended.
 exec 9>"$APP_DIR/logs/deploy.lock"
 flock -n 9 || { echo "!! 另一个部署正在进行，这次不执行" >&2; exit 1; }
-trap 'echo "$REF $?" > "$APP_DIR/logs/deploy-status"' EXIT
 # Unpacking and hard-linking come second to the site being served.
 renice -n 10 -p $$ >/dev/null 2>&1 || true
 ionice -c3 -p $$ >/dev/null 2>&1 || true
@@ -100,7 +103,7 @@ if [ -L "$APP_DIR/current" ] && [ -d "$(readlink -f "$APP_DIR/current")" ]; then
 fi
 ln -sfn "$REL" "$APP_DIR/current.new"
 mv -Tf "$APP_DIR/current.new" "$APP_DIR/current"
-sudo /usr/bin/systemctl restart latintender
+sudo /usr/bin/systemctl restart latintender 9>&-
 
 healthy=false
 for _ in $(seq 1 30); do
@@ -114,7 +117,7 @@ if [ "$healthy" != true ]; then
     echo "!! 已切回上一个版本 $PREVIOUS" >&2
     ln -sfn "$PREVIOUS" "$APP_DIR/current.new"
     mv -Tf "$APP_DIR/current.new" "$APP_DIR/current"
-    sudo /usr/bin/systemctl restart latintender
+    sudo /usr/bin/systemctl restart latintender 9>&-
   fi
   exit 1
 fi

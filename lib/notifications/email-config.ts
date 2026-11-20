@@ -1,4 +1,5 @@
 import "server-only";
+import { deploymentEnv } from "@/lib/deployment-env";
 import { notificationsEnabled } from "@/lib/notifications/tender-digest";
 
 /**
@@ -39,10 +40,10 @@ export type EmailConfigCheck = {
  * deployment; its absence means someone's own machine.
  */
 export function describeEmailEnvironment(): { label: string; isLocal: boolean } {
-  const vercelEnv = process.env.VERCEL_ENV?.trim();
-  if (vercelEnv === "production") return { label: "生产环境", isLocal: false };
-  if (vercelEnv === "preview") return { label: "Preview 部署", isLocal: false };
-  if (vercelEnv) return { label: `Vercel ${vercelEnv}`, isLocal: false };
+  const env = deploymentEnv();
+  if (env === "production") return { label: "生产环境", isLocal: false };
+  if (env === "preview") return { label: "Preview 部署", isLocal: false };
+  if (env) return { label: `部署环境 ${env}`, isLocal: false };
   return { label: "本机开发环境（.env.local）", isLocal: true };
 }
 

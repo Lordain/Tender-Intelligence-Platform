@@ -18,7 +18,10 @@ type IndustryPageProps = { params: Promise<{ industry: string }> };
 const LISTED = 24;
 
 /** Same five minutes as the country pages and the cached list. */
-export const revalidate = 300;
+// 24 h, the same as the tender list it reads (lib/tenders.ts); revalidateTenders() and the
+// thrice-daily cron still refresh it on every data change. Was 300 s: rebuilding pages whose
+// data had not changed is what filled ISR Writes and Fluid Active CPU (Vercel paused 2026-11-19).
+export const revalidate = 86_400;
 export const dynamicParams = false;
 
 export function generateStaticParams() {

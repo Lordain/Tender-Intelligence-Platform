@@ -3,19 +3,5 @@
     "deploymentEnabled": {
       "claude/**": false
     }
-  },
-  "crons": [
-    { "path": "/api/cron/tender-digest", "schedule": "0 15 * * *" },
-    { "path": "/api/cron/tender-digest", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/subscription-renewal-reminders", "schedule": "0 16 * * *" },
-    { "path": "/api/cron/purge-stale-colombia", "schedule": "30 3 * * *" },
-    { "path": "/api/cron/trigger-daily-ingest?pass=full", "schedule": "0 11 * * *" },
-    { "path": "/api/cron/trigger-daily-ingest?pass=light", "schedule": "0 21 * * *" },
-    { "path": "/api/cron/trigger-daily-ingest?pass=colombia", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/user-activity-digest", "schedule": "12 1 * * *" },
-    { "path": "/api/cron/revalidate-tenders", "schedule": "30 13 * * *" },
-    { "path": "/api/cron/revalidate-tenders", "schedule": "30 23 * * *" },
-    { "path": "/api/cron/revalidate-tenders", "schedule": "30 5 * * *" },
-    { "path": "/api/cron/supabase-egress-check", "schedule": "40 1 * * *" }
-  ]
+  }
 }

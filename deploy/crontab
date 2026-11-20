@@ -1,0 +1,18 @@
+# /etc/cron.d/latintender — the crons vercel.json used to run, same schedules
+# (UTC; deploy/setup-server.sh sets the server to UTC). Keep the two in step
+# if a schedule changes.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+0 15 * * *   latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh /api/cron/tender-digest
+0 0 * * *    latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh /api/cron/tender-digest
+0 16 * * *   latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh /api/cron/subscription-renewal-reminders
+30 3 * * *   latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh /api/cron/purge-stale-colombia
+0 11 * * *   latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh "/api/cron/trigger-daily-ingest?pass=full"
+0 21 * * *   latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh "/api/cron/trigger-daily-ingest?pass=light"
+0 3 * * *    latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh "/api/cron/trigger-daily-ingest?pass=colombia"
+12 1 * * *   latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh /api/cron/user-activity-digest
+30 13 * * *  latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh /api/cron/revalidate-tenders
+30 23 * * *  latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh /api/cron/revalidate-tenders
+30 5 * * *   latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh /api/cron/revalidate-tenders
+40 1 * * *   latintender /bin/bash /srv/latintender/repo/deploy/cron-call.sh /api/cron/supabase-egress-check

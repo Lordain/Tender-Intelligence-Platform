@@ -1,3 +1,4 @@
+import { deploymentEnv } from "@/lib/deployment-env";
 import AdmZip from "adm-zip";
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/admin-auth";
@@ -69,10 +70,15 @@ const MAX_FILES = 40;
  * Vercel keeps the old ceiling: the whole ZIP is built in memory and returned
  * as one response body there, which a 100MB file does not survive regardless
  * of what this constant says. On a local dev server neither limit applies.
+ *
+ * The self-hosted server (deploy/, 2026-11-20) builds the ZIP in memory the
+ * same way, on a 2 GB machine, so it keeps the hosted ceiling too: HOSTED is
+ * any real deployment, not just Vercel.
  */
-const MAX_FILE_BYTES = (process.env.VERCEL ? 40 : 150) * 1024 * 1024;
+const HOSTED = Boolean(process.env.VERCEL) || deploymentEnv() !== undefined;
+const MAX_FILE_BYTES = (HOSTED ? 40 : 150) * 1024 * 1024;
 /** Total ZIP ceiling. Locally this is what a whole batch of 100MB documents needs; on Vercel the response body could never carry it. */
-const MAX_TOTAL_BYTES = (process.env.VERCEL ? 80 : 400) * 1024 * 1024;
+const MAX_TOTAL_BYTES = (HOSTED ? 80 : 400) * 1024 * 1024;
 /** How long with no new bytes before a transfer is treated as dead. See lib/ingestion/download-file.ts for why this is a stall clock and not a per-file deadline. */
 const STALL_TIMEOUT_MS = 30_000;
 /**
@@ -90,7 +96,7 @@ const CONCURRENCY = 2;
  * maxDuration above and the response still has to be built and sent inside
  * it; a local dev server has no limit, which is where a big batch belongs.
  */
-const TOTAL_BUDGET_MS = process.env.VERCEL ? 270_000 : 900_000;
+const TOTAL_BUDGET_MS = HOSTED ? 270_000 : 900_000;
 
 /**
  * Hosts that do not accept this server at all, seen 2026-10-02 from Vercel:

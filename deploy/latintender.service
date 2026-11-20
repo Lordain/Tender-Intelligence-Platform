@@ -1,0 +1,19 @@
+[Unit]
+Description=LatinTender (Next.js)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=latintender
+Group=latintender
+# A symlink to the release being served; deploy/deploy.sh switches it.
+WorkingDirectory=/srv/latintender/current
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+# Only Caddy, on the same machine, talks to it.
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000 -H 127.0.0.1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

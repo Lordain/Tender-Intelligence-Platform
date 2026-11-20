@@ -8,8 +8,15 @@
 # GitHub's runner and uploads it to incoming/<sha>.tgz first: `next build`
 # needs ~2.8 GB, and on this 2 GB server it pushed everything into swap and
 # froze the machine (2026-11-20). With that file present this script only
-# installs dependencies and unpacks it. Without it, it builds here — and
-# refuses to on a machine with too little memory.
+# unpacks it, and takes node_modules either from incoming/<sha>.node_modules.tgz
+# (uploaded when package-lock.json changed) or, hard-linked, from the release
+# being served — never `npm ci` here: next to a running site it needs more
+# memory than this server has, and a deploy that did it froze the machine a
+# second time (2026-11-20). Without an upload it builds here only on a machine
+# with enough memory, and otherwise stops with a message.
+#
+# The workflow starts this detached and polls logs/deploy-status ("<ref> <exit
+# code>"), so a dropped SSH connection no longer stops it halfway.
 #
 # Each release is built in its own directory while the current one keeps
 # serving, then `current` is switched and the service restarted. If the new
@@ -24,6 +31,17 @@ LOG="$APP_DIR/logs/deploy.log"
 
 exec > >(tee -a "$LOG") 2>&1
 echo "== $(date -u +%FT%TZ) 部署 $REF"
+
+# The result goes to the status file however this ends — set before anything
+# below can exit, the lock check included, or the workflow waits for nothing.
+trap 'echo "$REF $?" > "$APP_DIR/logs/deploy-status"' EXIT
+# One deploy at a time. fd 9 is closed for everything this starts (9>&-), so a
+# long-lived child cannot keep holding the lock after the deploy has ended.
+exec 9>"$APP_DIR/logs/deploy.lock"
+flock -n 9 || { echo "!! 另一个部署正在进行，这次不执行" >&2; exit 1; }
+# Unpacking and hard-linking come second to the site being served.
+renice -n 10 -p $$ >/dev/null 2>&1 || true
+ionice -c3 -p $$ >/dev/null 2>&1 || true
 
 if [ ! -s "$APP_DIR/shared/.env" ]; then echo "$APP_DIR/shared/.env 是空的，先按 deploy/README.md 填好" >&2; exit 1; fi
 
@@ -40,9 +58,23 @@ if [ ! -f "$REL/.build-ok" ]; then
   ln -sfn "$APP_DIR/shared/.env" "$REL/.env.production.local"
   cd "$REL"
   PREBUILT="$APP_DIR/incoming/$SHA.tgz"
+  MODULES="$APP_DIR/incoming/$SHA.node_modules.tgz"
+  SERVING=""
+  if [ -L "$APP_DIR/current" ] && [ -d "$(readlink -f "$APP_DIR/current")" ]; then SERVING="$(readlink -f "$APP_DIR/current")"; fi
   if [ -f "$PREBUILT" ]; then
     echo "   使用 GitHub 上编译好的版本"
-    npm ci --no-audit --no-fund
+    if [ -f "$MODULES" ]; then
+      echo "   依赖有变化：使用 GitHub 上装好的依赖"
+      tar -xzf "$MODULES" -C "$REL"
+      rm -f "$MODULES"
+    elif [ -n "$SERVING" ] && [ -d "$SERVING/node_modules" ] && cmp -s "$SERVING/package-lock.json" "$REL/package-lock.json"; then
+      echo "   依赖没有变化：沿用正在运行的版本的依赖"
+      cp -al "$SERVING/node_modules" "$REL/node_modules"
+    else
+      echo "!! 依赖有变化，但 GitHub 没有上传装好的依赖。不在本机安装（会把服务器拖垮），这次不部署。" >&2
+      rm -rf "$REL"
+      exit 1
+    fi
     tar -xzf "$PREBUILT" -C "$REL"
     [ -f "$REL/.next/BUILD_ID" ] || { echo "!! 编译结果不完整（没有 .next/BUILD_ID）" >&2; exit 1; }
     rm -f "$PREBUILT"
@@ -71,7 +103,7 @@ if [ -L "$APP_DIR/current" ] && [ -d "$(readlink -f "$APP_DIR/current")" ]; then
 fi
 ln -sfn "$REL" "$APP_DIR/current.new"
 mv -Tf "$APP_DIR/current.new" "$APP_DIR/current"
-sudo /usr/bin/systemctl restart latintender
+sudo /usr/bin/systemctl restart latintender 9>&-
 
 healthy=false
 for _ in $(seq 1 30); do
@@ -85,7 +117,7 @@ if [ "$healthy" != true ]; then
     echo "!! 已切回上一个版本 $PREVIOUS" >&2
     ln -sfn "$PREVIOUS" "$APP_DIR/current.new"
     mv -Tf "$APP_DIR/current.new" "$APP_DIR/current"
-    sudo /usr/bin/systemctl restart latintender
+    sudo /usr/bin/systemctl restart latintender 9>&-
   fi
   exit 1
 fi

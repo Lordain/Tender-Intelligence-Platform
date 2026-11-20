@@ -37,7 +37,13 @@ if [ ! -f "$REL/.build-ok" ]; then
   touch "$REL/.build-ok"
 fi
 
-PREVIOUS="$(readlink -f "$APP_DIR/current" 2>/dev/null || true)"
+# Only a real, existing release counts as something to go back to: on the
+# first deploy there is no `current`, and `readlink -f` would hand back the
+# path itself.
+PREVIOUS=""
+if [ -L "$APP_DIR/current" ] && [ -d "$(readlink -f "$APP_DIR/current")" ]; then
+  PREVIOUS="$(readlink -f "$APP_DIR/current")"
+fi
 ln -sfn "$REL" "$APP_DIR/current.new"
 mv -Tf "$APP_DIR/current.new" "$APP_DIR/current"
 sudo /usr/bin/systemctl restart latintender

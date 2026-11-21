@@ -39,7 +39,7 @@ jobs:
         if: env.DEPLOY_HOST == ''
         run: echo "DEPLOY_HOST 未设置，跳过部署（见 deploy/README.md）"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.DEPLOY_HOST != ''
 
       - uses: actions/setup-node@v4

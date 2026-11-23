@@ -29,7 +29,7 @@ import {
   TRIAL_DAYS,
   type ViewerEntitlement,
 } from "../lib/access-control";
-import { cnyReferencePrice, parsePaidPlanSelection, PLAN_PRICES_USD } from "../lib/billing-catalog";
+import { parsePaidPlanSelection, PLAN_PRICES_USD, PLAN_REFERENCE_CNY } from "../lib/billing-catalog";
 import { basicDigestCountries, digestCadence } from "../lib/notifications/digest-cadence";
 
 const NOW = Date.parse("2026-06-15T12:00:00Z");
@@ -73,8 +73,8 @@ check("enterprise monthly price has no promotion", PLAN_PRICES_USD.enterprise.mo
 check("basic plan opens checkout without a Stripe Price ID", parsePaidPlanSelection("basic", "monthly"), { plan: "basic", interval: "monthly" });
 check("annual selection opens checkout", parsePaidPlanSelection("basic", "annual"), { plan: "basic", interval: "annual" });
 check("legacy semiannual selection is rejected", parsePaidPlanSelection("basic", "semiannual"), null);
-check("monthly RMB reference ends in 99", [cnyReferencePrice(99), cnyReferencePrice(199), cnyReferencePrice(399)], [699, 1299, 2699]);
-check("annual RMB reference ends in 99", [cnyReferencePrice(990), cnyReferencePrice(1990), cnyReferencePrice(3990)], [6599, 13299, 26699]);
+check("monthly RMB reference figures", [PLAN_REFERENCE_CNY.basic.monthly, PLAN_REFERENCE_CNY.professional.monthly, PLAN_REFERENCE_CNY.enterprise.monthly], [599, 1199, 2499]);
+check("annual RMB reference figures", [PLAN_REFERENCE_CNY.basic.annual, PLAN_REFERENCE_CNY.professional.annual, PLAN_REFERENCE_CNY.enterprise.annual], [5999, 11999, 24999]);
 check("annual is ten months' price", [PLAN_PRICES_USD.basic.annual, PLAN_PRICES_USD.professional.annual, PLAN_PRICES_USD.enterprise.annual], [990, 1990, 3990]);
 check("free reminder is weekly", digestCadence(null, false, false), "weekly");
 check("basic reminder is daily", digestCadence("basic", false, false), "daily");

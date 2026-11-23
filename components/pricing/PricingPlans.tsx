@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { TRIAL_DAYS } from "@/lib/access-control";
-import { ANNUAL_SAVING_PERCENT, cnyReferencePrice, INTERVAL_UNIT_ZH, PLAN_PRICES_USD, type PaidInterval, type PaidPlan } from "@/lib/billing-catalog";
+import { ANNUAL_SAVING_PERCENT, INTERVAL_UNIT_ZH, PLAN_PRICES_USD, PLAN_REFERENCE_CNY, type PaidInterval, type PaidPlan } from "@/lib/billing-catalog";
 
 type FeatureIcon = "user" | "users" | "globe" | "pin" | "document" | "analysis" | "bell" | "history" | "bookmark" | "tag" | "download" | "chart";
 
@@ -143,7 +143,7 @@ export function PricingPlans() {
                 <span className="text-5xl font-black leading-none tracking-[-0.05em] text-[#071826]">{plan.id === "free" ? "免费" : `$${PLAN_PRICES_USD[plan.id][interval].toLocaleString("en-US")}`}</span>
                 <span className="text-sm font-semibold text-[#64717c]">{plan.id === "free" ? "长期使用" : `USD / ${INTERVAL_UNIT_ZH[interval]}`}</span>
               </p>
-              {plan.id !== "free" && <p className="mt-3 text-sm font-bold text-[#8a5b11]">约 ¥{cnyReferencePrice(PLAN_PRICES_USD[plan.id][interval]).toLocaleString("zh-CN")} RMB / {INTERVAL_UNIT_ZH[interval]}</p>}
+              {plan.id !== "free" && <p className="mt-3 text-sm font-bold text-[#8a5b11]">约 ¥{PLAN_REFERENCE_CNY[plan.id][interval].toLocaleString("zh-CN")} RMB / {INTERVAL_UNIT_ZH[interval]}</p>}
               {plan.id !== "free" && interval === "annual" && <p className="mt-1 text-xs font-bold text-emerald-700">比按月付省 {ANNUAL_SAVING_PERCENT}%</p>}
             </div>
             <p className="mt-4 text-[15px] leading-7 text-[#52636e]">

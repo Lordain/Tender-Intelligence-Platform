@@ -34,7 +34,13 @@ export const BILLING_INTERVAL_LABELS: Record<BillingInterval, string> = {
   annual: "年度",
 };
 
-export const TRIAL_DAYS = 7;
+/**
+ * Days of full access a new account gets (user, 2026-11-23: 我想调整成3天).
+ * The database default sets the real end date at signup (migration 0072);
+ * this is the figure the pages state, and the fallback when a profile has no
+ * date. Accounts that signed up before keep the end date they were given.
+ */
+export const TRIAL_DAYS = 3;
 
 /**
  * How many countries 基础个人版 opens in full (user, 2026-10-10: 把当前的基础

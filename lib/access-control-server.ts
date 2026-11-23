@@ -187,7 +187,7 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
   if (profileError) throw new Error(`试用状态读取失败：${profileError.message}`);
   const trialEndsAt = (profile?.trial_ends_at as string | undefined) ?? fallbackEnd;
   const role = new Date(trialEndsAt).getTime() > Date.now() ? "trial" : "free";
-  return { ...EMPTY, role, trialEndsAt, paymentPastDue: pastDueOwnerId !== null, subscriptionOwnerUserId: pastDueOwnerId, periodStart: role === "trial" ? new Date(new Date(trialEndsAt).getTime() - TRIAL_DAYS * 86_400_000).toISOString() : null, periodEnd: role === "trial" ? trialEndsAt : null };
+  return { ...EMPTY, role, trialEndsAt, paymentPastDue: pastDueOwnerId !== null, subscriptionOwnerUserId: pastDueOwnerId, periodStart: role === "trial" ? new Date(user.created_at).toISOString() : null, periodEnd: role === "trial" ? trialEndsAt : null };
 });
 
 export async function getViewerRole(): Promise<ViewerRole> {

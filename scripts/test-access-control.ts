@@ -66,7 +66,7 @@ check("an unknown future status grants nothing", subscriptionStatusFromStripe("s
 // ---------------------------------------------------------------------------
 // Entitlement.
 // ---------------------------------------------------------------------------
-check("no-card trial lasts seven days", TRIAL_DAYS, 7);
+check("no-card trial lasts three days", TRIAL_DAYS, 3);
 check("basic monthly price has no promotion", PLAN_PRICES_USD.basic.monthly, 99);
 check("professional monthly price has no promotion", PLAN_PRICES_USD.professional.monthly, 199);
 check("enterprise monthly price has no promotion", PLAN_PRICES_USD.enterprise.monthly, 399);

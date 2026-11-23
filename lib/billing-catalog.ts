@@ -40,6 +40,16 @@ export type PaidPlan = keyof typeof PLAN_PRICES_USD;
  */
 export const USD_CNY_REFERENCE_RATE = 6.699;
 
+/**
+ * The "约 ¥…" figure for a USD amount: the conversion at the reference rate,
+ * moved to the nearest amount ending in 99 (user, 2026-11-23: 人民币帮忙调整成
+ * 百位数结尾99). $99 → ¥663 → ¥699; $199 → ¥1,333 → ¥1,299. Display only;
+ * the charge stays in USD.
+ */
+export function cnyReferencePrice(usdAmount: number): number {
+  return Math.max(99, Math.round((usdAmount * USD_CNY_REFERENCE_RATE + 1) / 100) * 100 - 1);
+}
+
 /** Plan navigation must not depend on Stripe Price IDs being configured. */
 export function parsePaidPlanSelection(plan: string | null, interval: string | null): { plan: PaidPlan; interval: PaidInterval } | null {
   if (interval !== "monthly" && interval !== "annual") return null;

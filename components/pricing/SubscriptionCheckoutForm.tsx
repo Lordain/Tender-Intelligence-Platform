@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { BILLING_INTERVAL_LABELS } from "@/lib/access-control";
-import { ANNUAL_SAVING_PERCENT, INTERVAL_UNIT_ZH, PLAN_NAMES, USD_CNY_REFERENCE_RATE, type PaidInterval, type PaidPlan } from "@/lib/billing-catalog";
+import { ANNUAL_SAVING_PERCENT, INTERVAL_UNIT_ZH, PLAN_NAMES, PLAN_REFERENCE_CNY, type PaidInterval, type PaidPlan } from "@/lib/billing-catalog";
 import { SUPPORT_WECHAT } from "@/lib/support";
 
 type BillingProfile = {
@@ -128,7 +128,7 @@ export function SubscriptionCheckoutForm({ plan, interval, usdAmount, bankQuote,
         <p className="mt-3 text-3xl font-black">{usd.format(usdAmount)}</p>
         <p className="mt-1 text-xs leading-5 text-white/55">美元标价，已包含依法适用的税费。</p>
         {interval === "annual" && <p className="mt-2 text-xs font-bold leading-5 text-emerald-300">比按月付省 {ANNUAL_SAVING_PERCENT}%。</p>}
-        <p className="mt-2 text-sm font-bold text-[#ffd16f]">约 ¥{Math.round(usdAmount * USD_CNY_REFERENCE_RATE).toLocaleString("zh-CN")} RMB / {INTERVAL_UNIT_ZH[interval]} <span className="text-xs font-normal text-white/55">仅供参考，按 1 USD ≈ ¥{USD_CNY_REFERENCE_RATE} 估算</span></p>
+        <p className="mt-2 text-sm font-bold text-[#ffd16f]">约 ¥{PLAN_REFERENCE_CNY[plan][interval].toLocaleString("zh-CN")} RMB / {INTERVAL_UNIT_ZH[interval]} <span className="text-xs font-normal text-white/55">仅供参考，按美元扣款</span></p>
 
         <div className="mt-6 rounded-2xl border border-[#ffb21c]/60 bg-[#ffb21c]/10 p-4">
           <p className="text-sm font-black text-[#ffd16f]">希望使用微信付款？</p>

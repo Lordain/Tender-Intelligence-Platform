@@ -7,6 +7,10 @@ import { SUPPORT_WECHAT } from "@/lib/support";
 import { EnterprisePaymentSteps } from "@/components/billing/EnterprisePaymentSteps";
 import { internationalWireEnabled } from "@/lib/manual-wire";
 import { invoiceSeller } from "@/lib/billing/invoice-seller";
+// Read from the constant, never retyped: the cards above this line compute
+// ¥ from USD_CNY_REFERENCE_RATE, so a literal here goes stale the first time
+// the rate is refreshed and the page contradicts its own prices.
+import { USD_CNY_REFERENCE_RATE } from "@/lib/billing-catalog";
 
 export const metadata: Metadata = pageMetadata({
   title: "订阅方案与价格",
@@ -43,7 +47,7 @@ export default function PricingPage() {
           <p className="flex items-center gap-2 text-base font-black text-[#071826]"><span className="size-2 rounded-full bg-[#ffb21c]" aria-hidden="true" />需要微信付款？请先联系我们</p>
           <p className="mt-2 text-sm leading-7">微信 ID：<span className="select-all font-black text-[#071826]">{SUPPORT_WECHAT}</span>。请告知所选套餐及注册邮箱；确认付款金额与收款方式后，工作人员核实到账，再从后台人工开通。微信联系或提供付款截图不等于已开通权限。</p>
         </div>
-        <p className="mt-10 text-center text-xs leading-6 text-[#64717c]">人民币金额仅供参考，实际按美元价格扣款；银行卡账单上的人民币金额以发卡行当日汇率为准。</p>
+        <p className="mt-10 text-center text-xs leading-6 text-[#64717c]">人民币金额仅供参考：按人民币汇率 1 美元 ≈ {USD_CNY_REFERENCE_RATE} 元人民币估算，并取整到以 99 结尾。实际支付以美元价格及付款时适用汇率为准。</p>
         <p className="text-center text-xs leading-6 text-[#64717c]">所有价格均以美元计价并已包含依法适用的税费；银行转账在确认付款方式后显示锁定的 MXN 金额。具体支付周期与服务条款以订阅确认页面为准。</p>
         <InvoiceContact compact />
       </div>

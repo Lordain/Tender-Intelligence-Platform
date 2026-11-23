@@ -32,16 +32,23 @@ export const PLAN_NAMES = {
 
 export type PaidPlan = keyof typeof PLAN_PRICES_USD;
 /**
- * The "约 ¥…" figure shown beside each USD price on /pricing and /subscribe
- * (user, 2026-11-23: 改成 599 / 1199 / 2499; annual 5,999 / 11,999 / 24,999).
- * A set display figure, not a conversion: the charge stays the USD price, and
- * the card statement's yuan amount follows the issuing bank's rate.
+ * The ¥ shown next to each USD price on /pricing and /subscribe — a reference
+ * figure only; the charge is in USD. Refreshed 2026-10-15 (user: 同时也要看订阅
+ * 页面的人民币汇率): open.er-api.com 6.7065, frankfurter (ECB) 6.691, midpoint
+ * 6.699; it was 6.7459. The bank-transfer MXN rate is separate
+ * (USD_MXN_BANK_TRANSFER_RATE, set in the deployment's environment).
  */
-export const PLAN_REFERENCE_CNY = {
-  basic: { monthly: 599, annual: 5_999 },
-  professional: { monthly: 1_199, annual: 11_999 },
-  enterprise: { monthly: 2_499, annual: 24_999 },
-} as const satisfies Record<PaidPlan, Record<PaidInterval, number>>;
+export const USD_CNY_REFERENCE_RATE = 6.699;
+
+/**
+ * The "约 ¥…" figure for a USD amount: the conversion at the reference rate,
+ * moved to the nearest amount ending in 99 (user, 2026-11-23: 人民币帮忙调整成
+ * 百位数结尾99). $99 → ¥663 → ¥699; $199 → ¥1,333 → ¥1,299. Display only;
+ * the charge stays in USD.
+ */
+export function cnyReferencePrice(usdAmount: number): number {
+  return Math.max(99, Math.round((usdAmount * USD_CNY_REFERENCE_RATE + 1) / 100) * 100 - 1);
+}
 
 /** Plan navigation must not depend on Stripe Price IDs being configured. */
 export function parsePaidPlanSelection(plan: string | null, interval: string | null): { plan: PaidPlan; interval: PaidInterval } | null {

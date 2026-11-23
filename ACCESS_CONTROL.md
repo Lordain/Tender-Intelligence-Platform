@@ -1,6 +1,6 @@
 # Access control
 
-The site runs in subscription mode. Every newly registered user receives a five-day, no-card trial. Trial expiry is stored in `profiles.trial_ends_at`.
+The site runs in subscription mode. Every newly registered user receives a three-day, no-card trial (new signups only; migration 0072). Trial expiry is stored in `profiles.trial_ends_at`.
 
 - `guest`: homepage and pricing are public; the tender list is read-only and all interactions ask the visitor to log in. Homepage-featured tenders remain public in full.
 - `trial`: full tender, saved-item, account, and twice-daily notification access until `trial_ends_at`.

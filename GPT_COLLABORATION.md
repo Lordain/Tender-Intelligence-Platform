@@ -8,7 +8,7 @@
 
 - UI 面向中国企业，中文为主要语言（`types/tender.ts` 里几乎所有文本字段都是 `LocalizedText = { es, en, zh }` 三语结构，但产品实际只渲染 zh）
 - 数据来源：政府招标网站的公开导出（Excel/CSV/JSON），不是标准 API——每个数据源都有自己的抓取脚本，细节见 `lib/ingestion/README.md`（这个文件很长，但记录了大量真实踩过的坑，改动相关代码前建议先搜索关键词）
-- 商业模式：**已上线收费**。Stripe 订阅，个人版 / 企业版，注册送 5 天免费试用（不绑卡）。标书分析分标准档（Claude Sonnet 5）和精度档（Claude Opus 5），翻译和常规提取走 Qwen/DashScope —— **Gemini 已于 2026-09 移除，不要再往回加**
+- 商业模式：**已上线收费**。Stripe 订阅，个人版 / 企业版，注册送 3 天免费试用（不绑卡）。标书分析分标准档（Claude Sonnet 5）和精度档（Claude Opus 5），翻译和常规提取走 Qwen/DashScope —— **Gemini 已于 2026-09 移除，不要再往回加**
 
 ## 技术栈
 

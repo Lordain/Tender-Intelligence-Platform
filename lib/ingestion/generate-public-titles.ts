@@ -22,7 +22,8 @@ import { MODEL_CONCURRENCY } from "@/lib/ingestion/translate-all-tenders";
  * previous behaviour.
  */
 /**
- * Deliberately larger than translate-all-tenders.ts's 8, which is NOT an
+ * Was twenty until 2026-11-26 (see the end of this note) — deliberately
+ * larger than translate-all-tenders.ts's 8, which is NOT an
  * oversight to copy.
  *
  * That 8 was set after a real run truncated a 25-item batch, because a
@@ -37,8 +38,20 @@ import { MODEL_CONCURRENCY } from "@/lib/ingestion/translate-all-tenders";
  * the rules and ~17k on the actual rows; at 20 that first number is ~42k. The
  * per-item retry below still covers the one risk a bigger batch adds — a
  * model returning fewer items than it was sent.
+ *
+ * Five, not twenty (2026-11-26). At twenty a small run was ONE call: 9 rows
+ * went out together, that call ran past the 240 s deadline, and the run wrote
+ * 0 rows with 「Request was aborted.」 — no time was left for the per-row
+ * retry either. At five the same 9 rows are two calls running side by side,
+ * and each call is capped (below), so a stalled one costs its own five rows a
+ * retry instead of costing the whole run. The prompt re-sent per call is the
+ * price: about 3x the input tokens of twenty, a few cents per 300 rows.
  */
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 5;
+/** A batch of five normally answers in well under a minute. */
+const BATCH_CALL_CAP_MS = 120_000;
+/** A one-row retry is a short reply; a minute is many times what it needs. */
+const SINGLE_CALL_CAP_MS = 60_000;
 
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -342,7 +355,7 @@ export async function generateDisplayText(
     processed += batch.length;
     let generated: Awaited<ReturnType<typeof generateDisplayTextBatch>> = [];
     try {
-      generated = await generateDisplayTextBatch(batch.map(toInput), deadline.signal());
+      generated = await generateDisplayTextBatch(batch.map(toInput), deadline.signal(BATCH_CALL_CAP_MS));
     } catch (err) {
       lastErrorMessage = err instanceof Error ? err.message : String(err);
     }
@@ -354,7 +367,7 @@ export async function generateDisplayText(
     for (const row of batch.filter((candidate) => !bySlug.has(candidate.slug))) {
       if (deadline.passed()) break;
       try {
-        const [single] = await generateDisplayTextBatch([toInput(row)], deadline.signal());
+        const [single] = await generateDisplayTextBatch([toInput(row)], deadline.signal(SINGLE_CALL_CAP_MS));
         if (single) bySlug.set(single.slug, single);
       } catch (err) {
         lastErrorMessage = err instanceof Error ? err.message : String(err);

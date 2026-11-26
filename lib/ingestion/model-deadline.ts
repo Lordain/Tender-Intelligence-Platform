@@ -16,8 +16,14 @@
  * and counted as left for the next run, which the panel starts by itself.
  */
 export type ModelDeadline = {
-  /** Abort signal for the next call, or undefined when there is no deadline (the CLI). */
-  signal(): AbortSignal | undefined;
+  /**
+   * Abort signal for the next call, or undefined when there is no deadline (the CLI).
+   * `capMs` also cuts this one call off after that long, even with time left
+   * before the deadline, so one call that stalls cannot use up the time the
+   * rows behind it need (2026-11-26: one 9-row call ran past 240 s and the run
+   * wrote nothing).
+   */
+  signal(capMs?: number): AbortSignal | undefined;
   /** True once the deadline has passed; a row not done by then is left for the next run, not failed. */
   passed(): boolean;
 };
@@ -26,7 +32,7 @@ export function modelDeadline(startedAt: number, deadlineMs: number | undefined,
   if (deadlineMs === undefined) return { signal: () => undefined, passed: () => false };
   const deadlineAt = startedAt + deadlineMs;
   return {
-    signal: () => AbortSignal.timeout(Math.max(1, deadlineAt - now())),
+    signal: (capMs) => AbortSignal.timeout(Math.max(1, Math.min(deadlineAt - now(), capMs ?? Number.POSITIVE_INFINITY))),
     passed: () => now() >= deadlineAt,
   };
 }

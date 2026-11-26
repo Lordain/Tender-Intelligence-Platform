@@ -33,6 +33,7 @@ async function main() {
   check("到点后 passed() 为 true", d.passed());
   const none = modelDeadline(1_000, undefined);
   check("命令行（不设截止）不给信号、永不到点", none.signal() === undefined && !none.passed());
+  check("命令行即使给了单次上限也不给信号", none.signal(10) === undefined);
 
   // The SDK against a server that never answers.
   let requests = 0;
@@ -55,6 +56,20 @@ async function main() {
   check("不回应的调用在截止时间被取消（不是等 10 分钟）", error !== undefined && elapsed < 5_000, `用时 ${elapsed} ms，错误 ${String(error)}`);
   check("取消时已经到点，这一批的行会算作「留给下一轮」而不是失败", deadline.passed());
   check("取消后不再重试", requests === 1, `服务器收到 ${requests} 次请求`);
+
+  // A per-call cap fires before the deadline: the call is cut off, but the
+  // deadline has NOT passed, so the rows behind it still get their retry.
+  const capStart = Date.now();
+  const capped = modelDeadline(capStart, 10_000);
+  let capError: unknown;
+  try {
+    await client.chat.completions.create({ model: "qwen3.7-plus", messages: [{ role: "user", content: "x" }] }, { signal: capped.signal(800) });
+  } catch (err) {
+    capError = err;
+  }
+  const capElapsed = Date.now() - capStart;
+  check("单次上限先到：这一次调用被取消", capError !== undefined && capElapsed < 3_000, `用时 ${capElapsed} ms`);
+  check("单次上限先到：总截止还没到，后面的行仍可重试", !capped.passed());
 
   server.closeAllConnections();
   server.close();
